@@ -6,6 +6,7 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::state::tags::{AnnotateForm, TagForm, annotate_problem, push_remote, tag_problem};
 use crate::tag::TagMsg;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Id, Key, Modifiers, RichText};
 use trellis_core::branch_ops::ref_name_warning;
 use trellis_core::names::blocks_here;
@@ -29,8 +30,10 @@ pub fn new_tag(ui: &mut egui::Ui, form: &mut TagForm, snap: Option<&Snapshot>, p
     }
     ui.add_space(6.0);
     let msg_id = Id::new("trellis-tag-message");
-    let r =
-        ui.add(egui::TextEdit::singleline(&mut form.name).id(Id::new("trellis-tag-name")).hint_text("v1.0.0").desired_width(f32::INFINITY));
+    let r = controls::field(
+        ui,
+        egui::TextEdit::singleline(&mut form.name).id(Id::new("trellis-tag-name")).hint_text("v1.0.0").desired_width(f32::INFINITY),
+    );
     // Read before focus is requested again below, which would hide that Enter left the field.
     let enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     let problem = tag_problem(snap, &form.name);
@@ -45,7 +48,10 @@ pub fn new_tag(ui: &mut egui::Ui, form: &mut TagForm, snap: Option<&Snapshot>, p
         ui.label(RichText::new(w).color(color::amber()));
     }
     let hint = if form.annotated { "Message (required)" } else { "Message (optional, makes an annotated tag)" };
-    ui.add(egui::TextEdit::multiline(&mut form.message).id(msg_id).hint_text(hint).desired_rows(3).desired_width(f32::INFINITY));
+    controls::field(
+        ui,
+        egui::TextEdit::multiline(&mut form.message).id(msg_id).hint_text(hint).desired_rows(3).desired_width(f32::INFINITY),
+    );
     let valid = problem.is_none() && (!form.annotated || !form.message.trim().is_empty());
     if enter && problem.is_none() && form.annotated && form.message.trim().is_empty() {
         // The name is in; the message is still needed.
@@ -83,10 +89,10 @@ fn push_row(ui: &mut egui::Ui, form: &mut TagForm, snap: &Snapshot, push_on: boo
     }
     let mut on = push_on;
     let changed = if let [(only, _)] = snap.remotes.as_slice() {
-        ui.checkbox(&mut on, format!("Push to {only}")).on_hover_text(PUSH_HINT).changed()
+        controls::checkbox(ui, &mut on, format!("Push to {only}")).on_hover_text(PUSH_HINT).changed()
     } else {
         ui.horizontal(|ui| {
-            let changed = ui.checkbox(&mut on, "Push to").on_hover_text(PUSH_HINT).changed();
+            let changed = controls::checkbox(ui, &mut on, "Push to").on_hover_text(PUSH_HINT).changed();
             egui::ComboBox::from_id_salt("tag-push-remote").selected_text(form.remote.as_str()).width(180.0).show_ui(ui, |ui| {
                 for (name, _) in &snap.remotes {
                     ui.selectable_value(&mut form.remote, name.clone(), name.as_str());
@@ -121,7 +127,8 @@ pub fn annotate_tag(ui: &mut egui::Ui, form: &mut AnnotateForm, snap: Option<&Sn
         && !form.message.trim().is_empty()
         && ui.memory(|m| m.has_focus(id))
         && ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter));
-    let r = ui.add(
+    let r = controls::field(
+        ui,
         egui::TextEdit::multiline(&mut form.message)
             .id(id)
             .hint_text("Tag message (required)")

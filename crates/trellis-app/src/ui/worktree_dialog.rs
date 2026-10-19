@@ -8,6 +8,7 @@ use super::theme::color;
 use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::worktrees::{WorktreeForm, branch_problem, default_folder, folder_problem, folder_warning};
+use crate::ui::theme::controls;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::repo::Snapshot;
@@ -36,7 +37,8 @@ pub fn new_worktree(ui: &mut egui::Ui, form: &mut WorktreeForm, snap: Option<&Sn
     let mut enter = false;
     ui.horizontal(|ui| {
         let browse_w = 80.0;
-        let r = ui.add(egui::TextEdit::singleline(&mut form.folder).id(folder_id).desired_width(ui.available_width() - browse_w));
+        let r =
+            controls::field(ui, egui::TextEdit::singleline(&mut form.folder).id(folder_id).desired_width(ui.available_width() - browse_w));
         if r.changed() {
             form.folder_edited = true;
         }
@@ -54,7 +56,8 @@ pub fn new_worktree(ui: &mut egui::Ui, form: &mut WorktreeForm, snap: Option<&Sn
 
     ui.add_space(6.0);
     ui.label(RichText::new("New branch").color(color::weak()));
-    let r = ui.add(
+    let r = controls::field(
+        ui,
         egui::TextEdit::singleline(&mut form.branch).id(Id::new("trellis-worktree-branch")).hint_text(hint).desired_width(f32::INFINITY),
     );
     if r.changed()
@@ -74,7 +77,7 @@ pub fn new_worktree(ui: &mut egui::Ui, form: &mut WorktreeForm, snap: Option<&Sn
     }
 
     ui.add_space(4.0);
-    ui.checkbox(&mut form.open, "Open in a new tab");
+    controls::checkbox(ui, &mut form.open, "Open in a new tab");
     ui.add_space(8.0);
     let valid = snap.is_some() && folder_bad.is_none() && branch_bad.is_none() && !form.busy();
     ui.horizontal(|ui| {

@@ -15,6 +15,7 @@ use crate::state::submodules::{
     SectionCx, copy_url_blocked, copy_url_text, edit_blocked, open_blocked, row_word, tooltip, update_blocked, update_label,
 };
 use crate::submodule::{Batch, SubmoduleMsg};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Painter, Pos2, Stroke, pos2, vec2};
 use trellis_core::repo::{Snapshot, SubmoduleInfo, SubmoduleState};
 use trellis_core::settings::SubmoduleUpdates;
@@ -62,7 +63,7 @@ fn header_menu(ui: &mut egui::Ui, snap: &Snapshot, cx: &SectionCx, msgs: &mut Ve
             (SubmoduleUpdates::Always, "Always in this repository"),
             (SubmoduleUpdates::Never, "Never in this repository"),
         ] {
-            if ui.radio(cx.updates == choice, label).clicked() {
+            if controls::radio(ui, cx.updates == choice, label).clicked() {
                 msgs.push(Msg::Submodule(SubmoduleMsg::SetUpdates(choice)));
                 ui.close_menu();
             }

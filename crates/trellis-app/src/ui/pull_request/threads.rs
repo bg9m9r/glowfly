@@ -15,6 +15,7 @@ use crate::state::pull_request_threads::{
     Placement, file_threads, go_to_open, hidden, hidden_text, is_open, kind_counts, on_file, outdated_toggle, placement, reply_blocked,
     resolve_blocked, resolve_label, resolved_toggle, where_text,
 };
+use crate::ui::theme::controls;
 use eframe::egui::{self, Align, Color32, FontId, Layout, Margin, RichText, Sense, Stroke, Ui, vec2};
 use std::collections::HashMap;
 use trellis_core::forge::ReviewThread;
@@ -187,7 +188,7 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
     }
     ui.add_space(4.0);
     let draft = v.forms.replies.entry(t.id.clone()).or_default();
-    ui.add(egui::TextEdit::multiline(draft).desired_rows(2).hint_text("Reply…").desired_width(f32::INFINITY));
+    controls::field(ui, egui::TextEdit::multiline(draft).desired_rows(2).hint_text("Reply…").desired_width(f32::INFINITY));
     ui.horizontal(|ui| {
         let blocked = reply_blocked(v, t);
         let r = ui.add_enabled(blocked.is_none(), egui::Button::new("Reply"));

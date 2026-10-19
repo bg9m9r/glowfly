@@ -6,6 +6,7 @@
 use super::super::theme::color;
 use super::super::widgets::{self, Icon};
 use crate::state::issue_form::too_many;
+use crate::ui::theme::controls;
 use eframe::egui::{self, CornerRadius, FontId, Rect, RichText, Sense, Ui, pos2, vec2};
 use trellis_core::matching::contains_lower;
 use trellis_core::text::printable;
@@ -44,7 +45,7 @@ pub(super) fn multi(ui: &mut Ui, p: &Picker, query: &mut String, chosen: &mut Ve
             chosen.remove(i);
         }
     }
-    let field = ui.add(egui::TextEdit::singleline(query).hint_text(p.hint).desired_width(f32::INFINITY));
+    let field = controls::field(ui, egui::TextEdit::singleline(query).hint_text(p.hint).desired_width(f32::INFINITY));
     let list_id = ui.make_persistent_id((p.id_salt, "matches"));
     let last: Option<Rect> = ui.data(|d| d.get_temp(list_id));
     // Still shown while the pointer is over it, so a click that takes the focus off the field lands.

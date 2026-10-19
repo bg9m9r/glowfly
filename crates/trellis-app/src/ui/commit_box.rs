@@ -11,6 +11,7 @@ use crate::msg::CommitMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::commit::{commit_blocked, pushes_after};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Align, Color32, Key, Layout, Modifiers, RichText, vec2};
 use trellis_core::i18n::Lang;
 
@@ -35,7 +36,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     ui.horizontal(|ui| {
         ui.label(RichText::new(t.tr("commit.title")).strong().color(color::text()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.checkbox(&mut st.draft.amend, t.tr("commit.amend")).changed() && st.draft.amend {
+            if controls::checkbox(ui, &mut st.draft.amend, t.tr("commit.amend")).changed() && st.draft.amend {
                 msgs.push(Msg::Commit(CommitMsg::PrefillAmend));
             }
         });
@@ -73,14 +74,14 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     ui.horizontal_wrapped(|ui| {
         let mut push = st.settings.push_after_commit;
         let r = ui
-            .add_enabled(snap.head_branch.is_some(), egui::Checkbox::new(&mut push, t.tr("commit.push_after.check")))
+            .add_enabled(snap.head_branch.is_some(), controls::Check::new(&mut push, t.tr("commit.push_after.check")))
             .on_hover_text(t.tr("commit.push_after.tip"))
             .on_disabled_hover_text(t.tr("commit.push_after.detached"));
         // The setting changes through update, which also saves it.
         if r.changed() {
             msgs.push(Msg::Commit(CommitMsg::SetPushAfterCommit(push)));
         }
-        ui.checkbox(&mut st.draft.skip_hooks, t.tr("commit.skip_hooks.check")).on_hover_text(t.tr("commit.skip_hooks.tip"));
+        controls::checkbox(ui, &mut st.draft.skip_hooks, t.tr("commit.skip_hooks.check")).on_hover_text(t.tr("commit.skip_hooks.tip"));
     });
 
     let label = st.draft.button_label(t, snap.staged.len(), pushes_after(st), snap.state == git2::RepositoryState::Merge);

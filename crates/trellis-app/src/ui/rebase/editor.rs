@@ -8,6 +8,7 @@ use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase::{Editing, RebasePanel};
 use crate::ui::spell_edit::spell_text_edit;
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, CornerRadius, Id, Response, RichText, Stroke, Ui};
 
 pub const COMBINED_LABEL: &str = "Message of the combined commit";
@@ -94,5 +95,8 @@ pub(super) fn forget(ui: &Ui) {
 
 /// The one-line command field.
 fn command_field(ui: &mut Ui, draft: &mut String) -> Response {
-    ui.add(egui::TextEdit::singleline(draft).hint_text(COMMAND_HINT).font(egui::TextStyle::Monospace).desired_width(f32::INFINITY))
+    controls::field(
+        ui,
+        egui::TextEdit::singleline(draft).hint_text(COMMAND_HINT).font(egui::TextStyle::Monospace).desired_width(f32::INFINITY),
+    )
 }

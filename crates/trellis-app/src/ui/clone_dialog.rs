@@ -8,6 +8,7 @@ use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::clone::{CloneForm, LimitKind};
 use crate::state::clone_service::CloneSource;
+use crate::ui::theme::controls;
 use chrono::NaiveDate;
 use eframe::egui::{self, Id, RichText};
 use std::path::Path;
@@ -43,7 +44,7 @@ pub(super) fn destination(ui: &mut egui::Ui, path: &str) {
 fn row(ui: &mut egui::Ui, label: &str, text: &mut String, id: &str, hint: &str, width: f32) {
     ui.horizontal(|ui| {
         ui.label(label);
-        ui.add(egui::TextEdit::singleline(text).id(Id::new(id)).hint_text(hint).desired_width(width));
+        controls::field(ui, egui::TextEdit::singleline(text).id(Id::new(id)).hint_text(hint).desired_width(width));
     });
 }
 
@@ -59,15 +60,15 @@ fn tabs(ui: &mut egui::Ui, form: &CloneForm, msgs: &mut Vec<Msg>) {
 }
 
 fn shallow_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate) {
-    ui.checkbox(&mut form.shallow, "Shallow clone (download only recent history)");
+    controls::checkbox(ui, &mut form.shallow, "Shallow clone (download only recent history)");
     if !form.shallow {
         return;
     }
     ui.indent("trellis-clone-shallow", |ui| {
         ui.horizontal(|ui| {
             ui.label("History to download");
-            ui.radio_value(&mut form.limit, LimitKind::Depth, "Latest commits");
-            ui.radio_value(&mut form.limit, LimitKind::Since, "Commits since a date");
+            controls::radio_value(ui, &mut form.limit, LimitKind::Depth, "Latest commits");
+            controls::radio_value(ui, &mut form.limit, LimitKind::Since, "Commits since a date");
         });
         match form.limit {
             LimitKind::Depth => {
@@ -90,7 +91,7 @@ fn shallow_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate) {
 
 /// The sparse checkout option; `blocked` says why this git can't do it.
 fn sparse_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, blocked: Option<&str>) {
-    let check = ui.add_enabled(blocked.is_none(), egui::Checkbox::new(&mut form.sparse, "Sparse checkout (check out only some folders)"));
+    let check = ui.add_enabled(blocked.is_none(), controls::Check::new(&mut form.sparse, "Sparse checkout (check out only some folders)"));
     if let Some(why) = blocked {
         check.on_disabled_hover_text(why);
     }
@@ -99,7 +100,8 @@ fn sparse_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, blo
     }
     ui.indent("trellis-clone-sparse-options", |ui| {
         ui.label("Folders to check out, one per line");
-        ui.add(
+        controls::field(
+            ui,
             egui::TextEdit::multiline(&mut form.sparse_folders)
                 .id(Id::new("trellis-clone-sparse"))
                 .desired_rows(4)
@@ -108,7 +110,7 @@ fn sparse_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, blo
         problem(ui, form.problems_now(today).sparse.as_ref());
         note(ui, "Files at the top of the repository are always checked out. Leave the list empty to check out only those.");
         ui.add_space(4.0);
-        ui.checkbox(&mut form.partial, "Download file contents only for these folders (partial clone)");
+        controls::checkbox(ui, &mut form.partial, "Download file contents only for these folders (partial clone)");
         note(ui, "Faster for large repositories. Trellis can't show changes to files that weren't downloaded.");
     });
 }
@@ -132,7 +134,8 @@ pub fn show(
     ui.add_space(4.0);
     match form.source {
         CloneSource::Url => {
-            let url = ui.add(
+            let url = controls::field(
+                ui,
                 egui::TextEdit::singleline(&mut form.url)
                     .id(Id::new("trellis-clone-url"))
                     .hint_text("https://github.com/owner/repo.git")
@@ -147,7 +150,8 @@ pub fn show(
     }
     ui.add_space(4.0);
     ui.horizontal(|ui| {
-        let edit = ui.add(
+        let edit = controls::field(
+            ui,
             egui::TextEdit::singleline(&mut form.parent)
                 .id(Id::new("trellis-clone-parent"))
                 .hint_text("Clone into folder")

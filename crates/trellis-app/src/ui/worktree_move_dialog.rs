@@ -6,6 +6,7 @@ use super::theme::color;
 use crate::msg::{FolderPurpose, Msg, PrefsMsg};
 use crate::state::worktree_move::{MoveForm, target_problem};
 use crate::state::worktrees::folder_warning;
+use crate::ui::theme::controls;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::repo::Snapshot;
@@ -28,7 +29,7 @@ pub fn move_worktree(
     ui.horizontal(|ui| {
         let browse_w = 80.0;
         let edit = egui::TextEdit::singleline(&mut form.folder).id(Id::new("trellis-worktree-move-folder"));
-        let r = ui.add(edit.desired_width(ui.available_width() - browse_w));
+        let r = controls::field(ui, edit.desired_width(ui.available_width() - browse_w));
         enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
         if focus && !enter {
             r.request_focus();

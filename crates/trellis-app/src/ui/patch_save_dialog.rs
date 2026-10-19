@@ -8,6 +8,7 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::patch::PatchMsg;
 use crate::state::patch::changes::{SaveChangesForm, blocked, rows, untracked_count};
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText, Sense};
 use trellis_core::patch_ops::{NO_CHANGES, WipScope};
 use trellis_core::repo::Snapshot;
@@ -34,15 +35,15 @@ pub fn show(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: Option<&Snapsho
     ui.add_space(8.0);
     ui.label(RichText::new("What goes in").strong());
     for (scope, text, note) in CHOICES {
-        ui.radio_value(&mut form.scope, scope, text);
+        controls::radio_value(ui, &mut form.scope, scope, text);
         ui.indent(text, |ui| ui.label(RichText::new(note).color(color::weak())));
     }
     ui.add_space(4.0);
     if form.scope != WipScope::Staged && !form.pick {
         let n = snap.map(|s| untracked_count(s, form.scope)).unwrap_or(0);
-        ui.checkbox(&mut form.untracked, format!("Include untracked files ({n})"));
+        controls::checkbox(ui, &mut form.untracked, format!("Include untracked files ({n})"));
     }
-    ui.checkbox(&mut form.pick, "Only selected files");
+    controls::checkbox(ui, &mut form.pick, "Only selected files");
     if let (true, Some(snap)) = (form.pick, snap) {
         ui.add_space(4.0);
         checklist(ui, form, snap);
@@ -93,7 +94,7 @@ fn checklist(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: &Snapshot) {
             for f in &files[range] {
                 ui.horizontal(|ui| {
                     let mut on = form.chosen.contains(&f.path);
-                    let boxed = ui.add(egui::Checkbox::without_text(&mut on)).changed();
+                    let boxed = ui.add(controls::Check::without_text(&mut on)).changed();
                     ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
                     if ui.add(egui::Label::new(&f.path).truncate().selectable(false).sense(Sense::click())).clicked() {
                         on = !on;

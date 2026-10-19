@@ -55,7 +55,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let repo_filters = snap.map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
     let mut close = false;
     let first = msgs.len();
-    let resp = egui::Modal::new(egui::Id::new("trellis-modal")).show(ctx, |ui| {
+    let resp = super::theme::modal(ctx, egui::Id::new("trellis-modal")).show(ctx, |ui| {
         ui.set_width(460.0);
         match modal {
             Modal::Confirm { title, body, button, .. } => close = confirm_dialog::show(ui, t, title, body, button, false, msgs),

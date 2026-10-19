@@ -12,6 +12,7 @@ use crate::msg::{IssueMsg, Msg};
 use crate::state::issue_form::{IssueForm, OptionsState};
 use crate::state::issue_words as words;
 use crate::state::{ForgeState, ProjectKeys};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText, Ui};
 use trellis_core::forge::Provider;
 use trellis_core::forge::filters::Named;
@@ -49,14 +50,14 @@ pub fn show(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: b
         combo(ui, "issue-priority", shown, 200.0, &priorities, &mut form.priority);
     }
     caption(ui, form.title_label());
-    let r = ui.add(egui::TextEdit::singleline(&mut form.title).desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.title).desired_width(f32::INFINITY));
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if focus && ui.memory(|m| m.focused().is_none()) {
         r.request_focus();
     }
     caption(ui, "Description");
     let d = egui::TextEdit::multiline(&mut form.description).hint_text(format!("Describe the {noun} (optional)")).desired_rows(6);
-    ui.add(d.desired_width(f32::INFINITY));
+    controls::field(ui, d.desired_width(f32::INFINITY));
     let opts = form.loaded().cloned().unwrap_or_default();
     // Bitbucket issues have no labels.
     if form.loaded().is_none() || !opts.labels.is_empty() || opts.labels_free {
@@ -92,7 +93,7 @@ pub fn show(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: b
         });
     }
     ui.add_space(4.0);
-    ui.checkbox(&mut form.then_branch, "Create a branch for it afterwards");
+    controls::checkbox(ui, &mut form.then_branch, "Create a branch for it afterwards");
     match &form.options {
         OptionsState::Loading => {
             ui.label(RichText::new(words::loading_text(p)).size(11.5).color(color::weak()));
@@ -205,7 +206,10 @@ fn project(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, msgs: &mu
             });
         }
         None => {
-            let r = ui.add(egui::TextEdit::singleline(&mut form.project_text).hint_text("Project key, e.g. PROJ").desired_width(200.0));
+            let r = controls::field(
+                ui,
+                egui::TextEdit::singleline(&mut form.project_text).hint_text("Project key, e.g. PROJ").desired_width(200.0),
+            );
             if r.lost_focus() && form.project_text.trim() != form.project {
                 msgs.push(Msg::Issue(IssueMsg::SetProject(form.project_text.trim().to_owned())));
             }

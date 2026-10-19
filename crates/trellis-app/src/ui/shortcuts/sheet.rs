@@ -5,6 +5,7 @@
 use super::Caps;
 use crate::keymap::{Binding, Keymap};
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{Align, Id, Layout, RichText, ScrollArea, Sense, TextEdit, Ui, vec2};
 
 const WIDTH: f32 = 540.0;
@@ -20,7 +21,7 @@ pub fn show(ui: &mut Ui, filter: &mut String, focus: bool, keys: &Keymap) -> boo
         .id(Id::new("trellis-shortcut-filter"))
         .hint_text("Filter by action or key")
         .desired_width(f32::INFINITY);
-    let r = ui.add(field);
+    let r = controls::field(ui, field);
     if focus {
         r.request_focus();
     }

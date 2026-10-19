@@ -24,7 +24,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let (settings, git) = (&st.settings, &st.git);
     let t = settings.lang();
     let Some(w) = st.onboarding.welcome.as_mut() else { return };
-    let resp = egui::Modal::new(Id::new("trellis-welcome")).show(ctx, |ui| {
+    let resp = super::theme::modal(ctx, Id::new("trellis-welcome")).show(ctx, |ui| {
         ui.set_width(WIDTH);
         header(ui, t, w.step, msgs);
         ui.add_space(14.0);

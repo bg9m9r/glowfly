@@ -8,6 +8,7 @@ use crate::git_env::GitEnvMsg;
 use crate::msg::Msg;
 use crate::state::git_env::GitState;
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText, Ui};
 use std::path::PathBuf;
 use trellis_core::git_program::{Candidate, from_setting};
@@ -122,7 +123,7 @@ fn sentence(why: &str) -> String {
 
 /// A radio row; true when clicked.
 fn radio(ui: &mut Ui, enabled: bool, selected: bool, label: &str) -> bool {
-    ui.add_enabled(enabled, egui::RadioButton::new(selected, RichText::new(label).color(color::text()))).clicked()
+    ui.add_enabled(enabled, controls::Radio::new(selected, RichText::new(label).color(color::text()))).clicked()
 }
 
 /// Lines under a radio row, lined up with its label.

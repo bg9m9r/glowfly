@@ -7,6 +7,7 @@ use super::dialog::{field, note, problem_line};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::forks::{ForkCreate, ForkStep, added_as, error_text};
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText};
 use trellis_core::forge::Connection;
 use trellis_core::remote_ops::{RemoteNameProblem, check_remote_name};
@@ -76,7 +77,7 @@ pub fn show(
                     ui.add_space(6.0);
                     let (enter, ok) = name_field(ui, f, snap, true, focus);
                     ui.add_space(4.0);
-                    ui.checkbox(&mut f.fetch_after, "Fetch its branches after adding");
+                    controls::checkbox(ui, &mut f.fetch_after, "Fetch its branches after adding");
                     submit = enter;
                     primary = Some(("Add as remote", ok && idle, RemoteMsg::AddMyFork));
                 }

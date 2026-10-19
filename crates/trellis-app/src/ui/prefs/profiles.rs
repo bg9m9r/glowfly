@@ -13,6 +13,7 @@ use crate::state::profiles::{
     editing_caption, identity_line, key_hint,
 };
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use crate::ui::widgets;
 use eframe::egui::{self, Align, Align2, CornerRadius, FontId, Key, Layout, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use trellis_core::settings::{Profile, ProfileId, Settings};
@@ -129,7 +130,7 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
 /// The inline rename field: Enter or leaving it commits, Esc cancels.
 fn rename_field(ui: &mut Ui, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
     let Some(form) = page.renaming.as_mut() else { return };
-    let r = ui.add(egui::TextEdit::singleline(&mut form.name).desired_width(240.0).margin(vec2(6.0, 3.0)));
+    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.name).desired_width(240.0).margin(vec2(6.0, 3.0)));
     if form.focus {
         r.request_focus();
         form.focus = false;
@@ -154,8 +155,8 @@ fn add_form(ui: &mut Ui, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
         if let Some(e) = &form.error {
             ui.label(RichText::new(e).size(12.0).color(color::red()));
         }
-        ui.checkbox(&mut form.copy_current, COPY_CURRENT);
-        ui.checkbox(&mut form.copy_accounts, COPY_ACCOUNTS);
+        controls::checkbox(ui, &mut form.copy_current, COPY_CURRENT);
+        controls::checkbox(ui, &mut form.copy_accounts, COPY_ACCOUNTS);
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             if primary_button(ui, "Add", !blank).clicked() || (enter && !blank) {

@@ -7,6 +7,7 @@ use crate::keymap::Keymap;
 use crate::msg::{KeysMsg, Msg};
 use crate::state::keys_page::KeysPage;
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Align, Id, Layout, RichText, TextEdit, Ui, vec2};
 
 /// The widest the list gets, so a row's keys stay near its label.
@@ -25,7 +26,7 @@ pub fn keyboard_page(ui: &mut Ui, page: &mut KeysPage, keys: &Keymap, msgs: &mut
             .hint_text("Filter by action or key")
             .desired_width(320.0)
             .margin(vec2(8.0, 5.0));
-        ui.add(field);
+        controls::field(ui, field);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let reset = ui.add_enabled(keys.customized() && !page.confirm_reset_all, egui::Button::new("Reset all to defaults"));
             if reset.on_disabled_hover_text("Every shortcut has its default key").clicked() {

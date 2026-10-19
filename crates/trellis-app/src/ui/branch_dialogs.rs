@@ -5,6 +5,7 @@
 use super::theme::color;
 use crate::msg::BranchMsg;
 use crate::msg::{JobMsg, Msg};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText};
 use trellis_core::branch_ops::{NameProblem, branch_name_warning, check_branch_name, is_valid_branch_name};
 use trellis_core::gitcli::args;
@@ -51,7 +52,7 @@ pub fn new_branch(
     };
     ui.heading(heading);
     ui.add_space(6.0);
-    let r = ui.add(egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
     super::access::name_field(&r, "Branch name");
     if focus {
         r.request_focus();
@@ -59,7 +60,7 @@ pub fn new_branch(
     let new = name.trim();
     let problem = check_branch_name(new, &locals(snap), None).err();
     name_lines(ui, new, problem.as_ref(), false);
-    ui.checkbox(checkout, "Check out after creating");
+    controls::checkbox(ui, checkout, "Check out after creating");
     ui.add_space(8.0);
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     ui.horizontal(|ui| {
@@ -85,7 +86,7 @@ pub fn rename(ui: &mut egui::Ui, old: &str, name: &mut String, snap: Option<&Sna
     let mut close = false;
     ui.heading(format!("Rename branch {old}"));
     ui.add_space(6.0);
-    let r = ui.add(egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
     if focus {
         r.request_focus();
     }
@@ -138,7 +139,7 @@ pub fn upstream(
         });
         ui.end_row();
         ui.label("Branch");
-        ui.add(egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(300.0));
+        controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(300.0));
         ui.end_row();
     });
     let target = name.trim();

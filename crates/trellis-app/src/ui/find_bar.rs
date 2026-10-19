@@ -5,6 +5,7 @@
 use crate::state::blame_find::BlameFind;
 use crate::ui::access::name_field;
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use crate::ui::widgets::{Icon, small_icon};
 use eframe::egui::{self, Key, RichText, Ui};
 
@@ -30,7 +31,7 @@ pub(in crate::ui) fn plural(n: usize, one: &str, many: &str) -> String {
 /// `focus` focuses the Find field (and is cleared).
 pub(in crate::ui) fn find_and_line(ui: &mut Ui, find: &mut BlameFind, goto: &mut String, focus: &mut bool) -> Vec<FindIntent> {
     let mut out = Vec::new();
-    let line = ui.add(egui::TextEdit::singleline(goto).hint_text(LINE_HINT).desired_width(70.0));
+    let line = controls::field(ui, egui::TextEdit::singleline(goto).hint_text(LINE_HINT).desired_width(70.0));
     name_field(&line, LINE_HINT);
     if line.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
         out.push(FindIntent::GoToLine);
@@ -52,7 +53,7 @@ pub(in crate::ui) fn find_and_line(ui: &mut Ui, find: &mut BlameFind, goto: &mut
         ui.label(RichText::new(count).color(color::weak()));
     }
     let w = (ui.available_width() - 16.0).clamp(80.0, 180.0);
-    let field = ui.add(egui::TextEdit::singleline(&mut find.query).hint_text(FIND_HINT).desired_width(w));
+    let field = controls::field(ui, egui::TextEdit::singleline(&mut find.query).hint_text(FIND_HINT).desired_width(w));
     name_field(&field, FIND_HINT);
     if std::mem::take(focus) {
         field.request_focus();

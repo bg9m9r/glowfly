@@ -11,6 +11,7 @@ use super::theme::color;
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::state::conflict::ConflictView;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Align, Align2, Color32, Direction, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use trellis_core::conflict_folds::clean_fold;
 use trellis_core::conflict_rows::{PaneRow, pane_rows, scroll_target};
@@ -152,7 +153,7 @@ fn line_check(ui: &mut Ui, r: Rect, view: &ConflictView, c: &Chunk, (k, side, li
     // A child that doesn't move the rows' cursor; added after the row, so it gets the click.
     let mut child = ui.new_child(builder);
     let tip = if taken { "Leave this line out" } else { "Take this line" };
-    let resp = child.add(egui::Checkbox::without_text(&mut taken)).on_hover_text(tip).on_disabled_hover_text(EDITED_TIP);
+    let resp = child.add(controls::Check::without_text(&mut taken)).on_hover_text(tip).on_disabled_hover_text(EDITED_TIP);
     if resp.changed() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictToggleLine { chunk: k, side, line }));
     }
@@ -200,7 +201,7 @@ fn chunk_header(ui: &mut Ui, r: Rect, view: &ConflictView, k: usize, side: Side,
         return;
     }
     let mut taken = pick.takes_side(c, side);
-    let check_box = egui::Checkbox::new(&mut taken, "Take").indeterminate(pick.partly_takes_side(c, side));
+    let check_box = controls::Check::new(&mut taken, "Take").indeterminate(pick.partly_takes_side(c, side));
     if ui.put(check, check_box).changed() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictToggle { chunk: k, side }));
     }

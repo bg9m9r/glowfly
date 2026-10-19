@@ -8,6 +8,7 @@ use super::dialog::{field, note, problem_line};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::forks::{ForkPicker, added_as, error_text, visible};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Id, Layout, RichText};
 use trellis_core::forge::Connection;
 use trellis_core::remote_ops::{RemoteNameProblem, check_remote_name};
@@ -83,7 +84,8 @@ pub fn show(
         }
     } else {
         listed = true;
-        let r = ui.add(
+        let r = controls::field(
+            ui,
             egui::TextEdit::singleline(&mut p.filter)
                 .id(Id::new("trellis-fork-filter"))
                 .hint_text("Filter forks")
@@ -108,7 +110,7 @@ pub fn show(
     if listed {
         problem_line(ui, name_p.as_ref().filter(|n| **n != RemoteNameProblem::Empty).map(|n| n.message()).unwrap_or_default());
         ui.add_space(4.0);
-        ui.checkbox(&mut p.fetch_after, "Fetch its branches after adding");
+        controls::checkbox(ui, &mut p.fetch_after, "Fetch its branches after adding");
     }
     let mut close = false;
     ui.add_space(10.0);

@@ -13,6 +13,8 @@ use trellis_core::settings::ThemeChoice;
 mod builtin;
 mod builtin_extra;
 pub mod color;
+pub mod contrast;
+pub mod controls;
 pub mod custom;
 
 pub use builtin::{DARK, LIGHT, builtin};
@@ -38,11 +40,15 @@ pub fn apply_style(ctx: &egui::Context, p: &Palette) {
             v.faint_bg_color = p.hover;
             v.override_text_color = None;
             v.selection.bg_fill = p.selected;
-            v.selection.stroke = Stroke::new(1.0_f32, p.accent);
+            // egui draws a selected selectable_label's text in this colour; text fields set
+            // their own focus ring in `controls::Field`.
+            v.selection.stroke = Stroke::new(1.0_f32, p.strong);
             v.hyperlink_color = p.accent;
             v.window_stroke = Stroke::new(1.0_f32, p.border);
             v.widgets.noninteractive.bg_stroke = Stroke::new(1.0_f32, p.border);
             v.widgets.noninteractive.fg_stroke = Stroke::new(1.0_f32, p.text);
+            // egui fades hint text and disabled widgets toward this colour.
+            v.widgets.noninteractive.weak_bg_fill = p.panel;
             v.widgets.inactive.bg_fill = p.toolbar;
             v.widgets.inactive.weak_bg_fill = p.toolbar;
             v.widgets.inactive.fg_stroke = Stroke::new(1.0_f32, p.text);
@@ -54,6 +60,19 @@ pub fn apply_style(ctx: &egui::Context, p: &Palette) {
             style.spacing.button_padding = vec2(8.0, 3.0);
         });
     }
+}
+
+/// The colour a modal dims the window with: lighter on light palettes, so both dim alike.
+pub fn backdrop(p: &Palette) -> egui::Color32 {
+    egui::Color32::from_black_alpha(if p.dark { 140 } else { 64 })
+}
+
+/// A modal in the active palette: its backdrop and egui's popup frame with a `dialog_border`
+/// edge (margins, shadow and corners as egui's own modal).
+pub fn modal(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
+    let p = color::current();
+    let frame = egui::Frame::popup(&ctx.style()).stroke(Stroke::new(1.0_f32, p.dialog_border));
+    egui::Modal::new(id).backdrop_color(backdrop(&p)).frame(frame)
 }
 
 /// Styles egui from this thread's active palette (tests that draw without the shell).
@@ -99,5 +118,9 @@ impl ThemeCache {
     }
 }
 
+#[cfg(test)]
+mod controls_tests;
+#[cfg(test)]
+mod snapshot_tests_controls;
 #[cfg(test)]
 mod tests;

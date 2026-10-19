@@ -1,6 +1,7 @@
 //! A text field that underlines misspellings and offers corrections on right-click.
 
 use super::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Stroke, TextFormat, text::LayoutJob};
 use trellis_core::spell::{Miss, Speller};
 
@@ -23,7 +24,7 @@ pub fn spell_text_edit(
         ui.fonts(|f| f.layout_job(job))
     };
     let edit = if rows <= 1 { egui::TextEdit::singleline(text) } else { egui::TextEdit::multiline(text).desired_rows(rows) };
-    let resp = ui.add(edit.hint_text(hint).desired_width(f32::INFINITY).layouter(&mut layouter));
+    let resp = controls::field(ui, edit.hint_text(hint).desired_width(f32::INFINITY).layouter(&mut layouter));
     if enabled {
         let misses = speller.check(text);
         if !misses.is_empty() {

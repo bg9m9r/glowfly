@@ -6,6 +6,7 @@ use super::{help, primary_button, row, warn};
 use crate::msg::{Msg, SparseMsg};
 use crate::state::sparse::{SparsePage, summary};
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, Modifiers, RichText, Ui, vec2};
 use trellis_core::sparse_ops::{SparseMode, SparseStatus};
 
@@ -65,9 +66,9 @@ fn status_row(ui: &mut Ui, status: &SparseStatus) {
 fn mode_row(ui: &mut Ui, page: &mut SparsePage) {
     row(ui, "Mode", |ui| {
         ui.horizontal(|ui| {
-            ui.radio_value(&mut page.mode, SparseMode::Cone, "Folders (cone mode)");
+            controls::radio_value(ui, &mut page.mode, SparseMode::Cone, "Folders (cone mode)");
             ui.add_space(8.0);
-            ui.radio_value(&mut page.mode, SparseMode::Patterns, "Patterns");
+            controls::radio_value(ui, &mut page.mode, SparseMode::Patterns, "Patterns");
         });
         help(
             ui,
@@ -94,7 +95,7 @@ fn paths_row(ui: &mut Ui, page: &mut SparsePage, cx: &SparseContext, msgs: &mut 
             .desired_width(320.0)
             .margin(vec2(8.0, 5.0))
             .hint_text(hint);
-        let r = ui.add(edit);
+        let r = controls::field(ui, edit);
         if r.changed() {
             page.paths_error = None;
         }

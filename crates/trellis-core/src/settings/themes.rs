@@ -21,7 +21,8 @@ pub use super::themes_io::{MAX_FILE_BYTES, create, load_all, load_dir, themes_di
 /// Every color a theme sets, in the palette's order.
 #[rustfmt::skip]
 pub const COLOR_KEYS: &[&str] = &[
-    "bg", "panel", "toolbar", "input", "border", "hover", "selected", "accent", "text", "strong", "weak", "faint",
+    "bg", "panel", "toolbar", "input", "border", "input_border", "dialog_border", "hover", "selected", "accent",
+    "text", "strong", "weak", "faint",
     "green", "red", "amber", "blue", "purple",
     "diff_add", "diff_del", "diff_add_sel", "diff_del_sel", "diff_add_word", "diff_del_word", "hunk_bg", "hunk_fg",
     "banner", "primary", "primary_off", "primary_border", "danger", "danger_off", "tag_bg", "tag_fg",

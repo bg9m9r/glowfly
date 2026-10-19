@@ -3,6 +3,7 @@
 //! lines are painted.
 
 use super::{help, row};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Ui};
 use trellis_core::settings::{DIFF_FONT_SIZES, HistoryPane, Settings, TAB_SIZES};
 
@@ -18,25 +19,25 @@ pub fn editor_page(ui: &mut Ui, s: &mut Settings) {
         help(ui, t.tr("prefs.editor.tab_size.help"));
     });
     row(ui, t.tr("prefs.editor.line_numbers.label"), |ui| {
-        ui.checkbox(&mut s.diff_line_numbers, "");
+        controls::checkbox(ui, &mut s.diff_line_numbers, "");
         help(ui, t.tr("prefs.editor.line_numbers.help"));
     });
     row(ui, t.tr("prefs.editor.syntax.label"), |ui| {
-        ui.checkbox(&mut s.syntax_highlighting, "");
+        controls::checkbox(ui, &mut s.syntax_highlighting, "");
         help(ui, t.tr("prefs.editor.syntax.help"));
     });
     row(ui, t.tr("prefs.editor.word_highlights.label"), |ui| {
-        ui.checkbox(&mut s.diff_word_highlights, "");
+        controls::checkbox(ui, &mut s.diff_word_highlights, "");
         help(ui, t.tr("prefs.editor.word_highlights.help"));
     });
     row(ui, t.tr("prefs.editor.wrap.label"), |ui| {
-        ui.checkbox(&mut s.diff_word_wrap, "");
+        controls::checkbox(ui, &mut s.diff_word_wrap, "");
         help(ui, t.tr("prefs.editor.wrap.help"));
     });
     row(ui, t.tr("prefs.editor.history_pane.label"), |ui| {
         ui.horizontal(|ui| {
-            ui.radio_value(&mut s.history.pane, HistoryPane::Diff, t.tr("prefs.editor.history_pane.diff"));
-            ui.radio_value(&mut s.history.pane, HistoryPane::File, t.tr("prefs.editor.history_pane.file"));
+            controls::radio_value(ui, &mut s.history.pane, HistoryPane::Diff, t.tr("prefs.editor.history_pane.diff"));
+            controls::radio_value(ui, &mut s.history.pane, HistoryPane::File, t.tr("prefs.editor.history_pane.file"));
         });
         help(ui, t.tr("prefs.editor.history_pane.help"));
     });

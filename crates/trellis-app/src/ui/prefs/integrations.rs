@@ -6,6 +6,7 @@ use crate::msg::Msg;
 use crate::state::profiles::accounts_owner;
 use crate::state::{ForgeState, PrefsState};
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Sense, Stroke, Ui, vec2};
 use std::path::Path;
@@ -107,7 +108,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
         _ => "Personal Access Token",
     };
     row(ui, token_label, |ui| {
-        ui.add(egui::TextEdit::singleline(&mut prefs.int_token).password(true).desired_width(320.0).margin(vec2(8.0, 5.0)));
+        controls::field(ui, egui::TextEdit::singleline(&mut prefs.int_token).password(true).desired_width(320.0).margin(vec2(8.0, 5.0)));
         help(ui, &format!("{} Stored in the Windows Credential Manager, never in Trellis's settings file.", provider.token_help()));
         if is_trello {
             trello::token_link(ui, &prefs.int_user, msgs);
@@ -193,13 +194,13 @@ pub fn tracker_page(
             Some(t) => format!("Automatic ({} has no issue tracker)", t.provider.name()),
             None => "Automatic (remote not recognized)".to_owned(),
         };
-        if ui.radio(current == TrackerChoice::Auto, auto_label).clicked() {
+        if controls::radio(ui, current == TrackerChoice::Auto, auto_label).clicked() {
             msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::Auto)));
         }
         for a in &trackers {
             let selected = matches!(&current, TrackerChoice::Jira { account, .. } | TrackerChoice::Trello { account, .. } if account == a);
             // Clicking the chosen one again keeps its project or board.
-            if ui.radio(selected, format!("{} · {}", a.provider.name(), a.host)).clicked() && !selected {
+            if controls::radio(ui, selected, format!("{} · {}", a.provider.name(), a.host)).clicked() && !selected {
                 let choice = if a.provider == Provider::Trello {
                     TrackerChoice::Trello { account: a.clone(), board: String::new(), board_name: String::new() }
                 } else {
@@ -208,7 +209,7 @@ pub fn tracker_page(
                 msgs.push(Msg::Forge(ForgeMsg::SetTracker(choice)));
             }
         }
-        if ui.radio(current == TrackerChoice::None, "None").clicked() {
+        if controls::radio(ui, current == TrackerChoice::None, "None").clicked() {
             msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::None)));
         }
         if host.is_some_and(|h| h.provider == Provider::BitbucketDataCenter) {

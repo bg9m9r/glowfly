@@ -6,6 +6,7 @@ use super::clone_dialog::{destination, note, problem};
 use super::theme::color;
 use crate::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg};
 use crate::state::init::{FolderLine, GITIGNORE_KEPT, InitForm};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Id, RichText};
 use trellis_core::init_ops::{GitignoreTemplate, INITIAL_COMMIT, License};
 
@@ -23,7 +24,8 @@ fn label(ui: &mut egui::Ui, text: &str) {
 fn folder(ui: &mut egui::Ui, form: &mut InitForm, focus: bool, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         label(ui, "Folder");
-        let edit = ui.add(
+        let edit = controls::field(
+            ui,
             egui::TextEdit::singleline(&mut form.folder)
                 .id(Id::new("trellis-init-folder"))
                 .hint_text("Folder for the new repository")
@@ -60,7 +62,7 @@ fn gitignore(ui: &mut egui::Ui, form: &mut InitForm) {
             }
         });
     });
-    ui.checkbox(&mut form.os_editor, "Also ignore operating system and editor files (macOS, Windows, common editors)");
+    controls::checkbox(ui, &mut form.os_editor, "Also ignore operating system and editor files (macOS, Windows, common editors)");
     if form.facts().is_some_and(|f| f.gitignore) {
         note(ui, GITIGNORE_KEPT);
     }
@@ -80,7 +82,7 @@ fn license(ui: &mut egui::Ui, form: &mut InitForm, year: i32) {
     if form.license.is_some_and(License::needs_holder) {
         ui.horizontal(|ui| {
             label(ui, "Copyright holder");
-            ui.add(egui::TextEdit::singleline(&mut form.holder).id(Id::new("trellis-init-holder")).desired_width(250.0));
+            controls::field(ui, egui::TextEdit::singleline(&mut form.holder).id(Id::new("trellis-init-holder")).desired_width(250.0));
         });
         problem(ui, form.problems().holder.as_ref());
         note(ui, &format!("{year} and this name go in the copyright line."));
@@ -103,7 +105,8 @@ pub fn show(ui: &mut egui::Ui, form: &mut InitForm, year: i32, focus: bool, msgs
     ui.add_space(6.0);
     ui.horizontal(|ui| {
         label(ui, "Initial branch");
-        ui.add(
+        controls::field(
+            ui,
             egui::TextEdit::singleline(&mut form.branch).id(Id::new("trellis-init-branch")).hint_text("git's default").desired_width(160.0),
         );
     });
@@ -115,10 +118,10 @@ pub fn show(ui: &mut egui::Ui, form: &mut InitForm, year: i32, focus: bool, msgs
     ui.add_space(6.0);
     let commit_text = format!("Commit these files as \"{INITIAL_COMMIT}\"");
     if form.can_commit(year) {
-        ui.checkbox(&mut form.commit, commit_text);
+        controls::checkbox(ui, &mut form.commit, commit_text);
     } else {
         // Treated as off: nothing would be committed.
-        ui.add_enabled(false, egui::Checkbox::new(&mut false, RichText::new(commit_text).color(color::weak())));
+        ui.add_enabled(false, controls::Check::new(&mut false, RichText::new(commit_text).color(color::weak())));
     }
     ui.add_space(8.0);
     let blocked = form.problems().blocked;

@@ -8,6 +8,7 @@ use crate::msg::Msg;
 use crate::state::ForgeState;
 use crate::state::branches;
 use crate::state::push_pr::{self, HostBranch};
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText};
 use trellis_core::forge::{self, NewPullRequest, RefStyle};
 use trellis_core::repo::Snapshot;
@@ -69,8 +70,11 @@ pub(super) fn show(ui: &mut egui::Ui, f: PrForm, fs: &ForgeState, snap: Option<&
         });
     }
     ui.add_space(6.0);
-    ui.add(egui::TextEdit::singleline(f.title).hint_text("Title").desired_width(f32::INFINITY));
-    ui.add(egui::TextEdit::multiline(f.description).hint_text("Description (Markdown)").desired_rows(5).desired_width(f32::INFINITY));
+    controls::field(ui, egui::TextEdit::singleline(f.title).hint_text("Title").desired_width(f32::INFINITY));
+    controls::field(
+        ui,
+        egui::TextEdit::multiline(f.description).hint_text("Description (Markdown)").desired_rows(5).desired_width(f32::INFINITY),
+    );
     let keys = parse_keys(f.items);
     if fs.tracker.is_some() {
         ui.horizontal(|ui| {
@@ -80,13 +84,13 @@ pub(super) fn show(ui: &mut egui::Ui, f: PrForm, fs: &ForgeState, snap: Option<&
                 Some(RefStyle::Trello) => "e.g. AbCd1234 or a card link",
                 _ => "e.g. 123, 456",
             };
-            ui.add(egui::TextEdit::singleline(f.items).hint_text(hint).desired_width(220.0));
+            controls::field(ui, egui::TextEdit::singleline(f.items).hint_text(hint).desired_width(220.0));
         });
         for k in &keys {
             issue_chip(ui, fs, k, msgs);
         }
     }
-    ui.checkbox(f.draft, "Create as draft");
+    controls::checkbox(ui, f.draft, "Create as draft");
     ui.add_space(10.0);
     ui.horizontal(|ui| {
         let valid = pushed && !f.title.trim().is_empty() && !f.target.is_empty() && f.target != f.source;

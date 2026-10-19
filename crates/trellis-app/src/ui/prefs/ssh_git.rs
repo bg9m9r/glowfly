@@ -13,6 +13,7 @@ use crate::state::ssh_use::{
 };
 use crate::state::trust::shown_value;
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::paths::same_spelling;
@@ -86,7 +87,7 @@ fn level(
 pub(super) fn agent_row(ui: &mut Ui, page: &SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
     row(ui, "SSH Agent", |ui| {
         let mut on = cx.use_agent;
-        if ui.add(egui::Checkbox::new(&mut on, "Use local SSH agent")).changed() {
+        if ui.add(controls::Check::new(&mut on, "Use local SSH agent")).changed() {
             msgs.push(Msg::Ssh(SshMsg::SetUseAgent(on)));
         }
         help(ui, USE_AGENT_HELP);

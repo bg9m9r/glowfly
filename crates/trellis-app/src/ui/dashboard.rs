@@ -11,6 +11,7 @@ use crate::msg::{DashboardMsg, Msg, PrefsMsg};
 use crate::state::dashboard::{AccountState, DashShow, Phase, service_header};
 use crate::state::dashboard_rows::{Row, counts, empty_text, sections};
 use crate::state::{AppState, PrefPage};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Ui};
 use trellis_core::forge::Account;
 
@@ -90,7 +91,8 @@ fn controls(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
         }
         ui.add_space(12.0);
-        ui.add(
+        controls::field(
+            ui,
             egui::TextEdit::singleline(&mut st.dashboard.filter)
                 .hint_text("Filter by title, number, author or repository")
                 .desired_width(320.0),

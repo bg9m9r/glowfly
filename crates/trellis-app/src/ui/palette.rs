@@ -10,6 +10,7 @@ use crate::msg::PaletteMsg;
 use crate::state::AppState;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette};
 use crate::state::palette_nav::{Jump, PAGE_ROWS};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Align2, Color32, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, pos2, text::LayoutJob, vec2};
 
 const WIDTH: f32 = 560.0;
@@ -39,7 +40,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let listing = !matches!(p.mode, Mode::Input(_));
     let id = Id::new(AREA_ID);
     let area = egui::Modal::default_area(id).anchor(Align2::CENTER_TOP, vec2(0.0, 80.0));
-    let resp = egui::Modal::new(id).area(area).show(ctx, |ui| {
+    let resp = super::theme::modal(ctx, id).area(area).show(ctx, |ui| {
         ui.set_width(WIDTH);
         let mut run_selected = false;
         if !prompting {
@@ -113,7 +114,8 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
                 k.prompt()
             }
         };
-        let r = ui.add(
+        let r = controls::field(
+            ui,
             egui::TextEdit::singleline(&mut p.query)
                 .id(Id::new("trellis-palette-query"))
                 .hint_text(hint)

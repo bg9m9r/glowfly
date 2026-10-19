@@ -4,6 +4,7 @@
 use super::theme::color;
 use crate::msg::{Msg, TabsMsg};
 use crate::state::tabs::{MAX_TAB_LABEL, RenameTabForm};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText};
 
 /// Draws the dialog; returns true when it should close. Its field keeps the keyboard focus
@@ -14,7 +15,7 @@ pub fn rename(ui: &mut egui::Ui, form: &mut RenameTabForm, focus: bool, msgs: &m
     ui.label(RichText::new(trellis_core::native_path::shown(&form.path)).color(color::weak()));
     ui.add_space(6.0);
     let field = egui::TextEdit::singleline(&mut form.text).hint_text(form.folder.as_str()).char_limit(MAX_TAB_LABEL);
-    let r = ui.add(field.desired_width(f32::INFINITY));
+    let r = controls::field(ui, field.desired_width(f32::INFINITY));
     // Read before focus is taken back, or the Enter that just left the field is missed.
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if focus {

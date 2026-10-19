@@ -6,6 +6,7 @@ use crate::msg::PrefsMsg;
 use crate::msg::{FilePurpose, Msg};
 use crate::state::PrefsState;
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::settings::Settings;
@@ -118,12 +119,13 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
 
     if format == SigningFormat::OpenPgp {
         row(ui, "Passphrase Prompt", |ui| {
-            ui.checkbox(&mut settings.gpg_prompts_in_app, "Ask for the key's passphrase in Trellis");
+            controls::checkbox(ui, &mut settings.gpg_prompts_in_app, "Ask for the key's passphrase in Trellis");
             help(ui, PROMPT_HELP);
         });
         row(ui, "Generate new GPG Key", |ui| {
             ui.horizontal(|ui| {
-                ui.add(
+                controls::field(
+                    ui,
                     egui::TextEdit::singleline(&mut signing.passphrase)
                         .password(true)
                         .hint_text("Passphrase (optional)")
@@ -162,12 +164,12 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
     }
 
     row(ui, "Sign Commits by Default", |ui| {
-        if ui.checkbox(&mut git.gpgsign, "").changed() {
+        if controls::checkbox(ui, &mut git.gpgsign, "").changed() {
             set(msgs, "commit.gpgsign", &git.gpgsign.to_string());
         }
     });
     row(ui, "Sign Tags by Default", |ui| {
-        if ui.checkbox(&mut git.tag_gpgsign, "").changed() {
+        if controls::checkbox(ui, &mut git.tag_gpgsign, "").changed() {
             set(msgs, "tag.gpgsign", &git.tag_gpgsign.to_string());
         }
         help(ui, "Trellis commits and tags through git, so these settings also apply on the command line.");

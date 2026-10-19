@@ -6,6 +6,7 @@ use crate::onboarding::{OnboardingMsg, StartChoice};
 use crate::state::git_env::GitState;
 use crate::state::onboarding::Welcome;
 use crate::state::{PrefPage, host_text};
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText, vec2};
 use trellis_core::forge::Connection;
 use trellis_core::i18n::Lang;
@@ -51,10 +52,10 @@ pub fn identity(ui: &mut egui::Ui, w: &mut Welcome, settings: &Settings, keyboar
     ui.add_enabled_ui(keyboard && !f.saving, |ui| {
         egui::Grid::new("welcome-identity").num_columns(2).spacing(vec2(10.0, 6.0)).show(ui, |ui| {
             ui.label(t.tr("welcome.identity.name.label"));
-            ui.add(egui::TextEdit::singleline(&mut f.name).hint_text("Ada Lovelace").desired_width(320.0));
+            controls::field(ui, egui::TextEdit::singleline(&mut f.name).hint_text("Ada Lovelace").desired_width(320.0));
             ui.end_row();
             ui.label(t.tr("welcome.identity.email.label"));
-            ui.add(egui::TextEdit::singleline(&mut f.email).hint_text("ada@example.com").desired_width(320.0));
+            controls::field(ui, egui::TextEdit::singleline(&mut f.email).hint_text("ada@example.com").desired_width(320.0));
             ui.end_row();
         });
     });
@@ -146,7 +147,7 @@ pub fn start(ui: &mut egui::Ui, t: Lang, w: &mut Welcome, has_repo: bool, msgs: 
                 msgs.push(Msg::Onboarding(OnboardingMsg::StartTour));
             }
         } else {
-            ui.checkbox(&mut w.tour_after, t.tr("welcome.start.tour_after.check"));
+            controls::checkbox(ui, &mut w.tour_after, t.tr("welcome.start.tour_after.check"));
         }
     });
     ui.add_space(10.0);

@@ -7,6 +7,7 @@ use super::theme::color;
 use crate::deep_link::DeepLinkMsg;
 use crate::msg::Msg;
 use crate::state::deep_link::{LinkDialog, NO_CLONE_URL};
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText};
 
 /// Draws dialog `d`; true when it is to close (Close or Cancel). The other buttons leave it
@@ -52,7 +53,7 @@ pub fn show(ui: &mut egui::Ui, d: &LinkDialog, msgs: &mut Vec<Msg>) -> bool {
             ui.add(egui::Label::new(format!("These folders are all copies of the repository with {what}. Which one should open?")).wrap());
             ui.add_space(6.0);
             for (i, p) in paths.iter().enumerate() {
-                if ui.radio(*picked == i, trellis_core::native_path::shown(p)).clicked() {
+                if controls::radio(ui, *picked == i, trellis_core::native_path::shown(p)).clicked() {
                     msgs.push(link(DeepLinkMsg::Choose(i)));
                 }
             }

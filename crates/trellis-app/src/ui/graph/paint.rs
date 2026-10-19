@@ -5,6 +5,7 @@ use crate::ui::avatars::Avatars;
 use crate::ui::build_status;
 use crate::ui::common::lane_color;
 use crate::ui::theme::color;
+use crate::ui::theme::contrast::{self, ChipStyle};
 use crate::ui::widgets;
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, epaint::CubicBezierShape, epaint::RectShape, pos2, vec2};
 use trellis_core::forge::CheckState;
@@ -133,10 +134,6 @@ pub fn draw_avatar(p: &egui::Painter, c: egui::Pos2, r: f32, name: &str, email: 
     }
 }
 
-fn solid(lane: Color32, dark_alpha: f32) -> Color32 {
-    if color::is_dark() { lane.gamma_multiply(dark_alpha) } else { lane }
-}
-
 /// Where a row's ref chips were drawn.
 pub struct RefChips {
     /// The first label's chip.
@@ -166,14 +163,14 @@ pub fn draw_ref_labels(
     marker: Option<CheckState>,
 ) -> RefChips {
     let first = &labels[0];
-    let (fill, fg, text) = match first.kind {
-        RefKind::Head => (Color32::from_gray(200), Color32::BLACK, "HEAD".to_owned()),
-        // Translucent fills read well on dark backgrounds; light backgrounds need solid color.
-        RefKind::Local if first.is_head => (solid(lane, 0.75), Color32::WHITE, format!("✔ {}", first.name)),
-        RefKind::Local => (solid(lane, 0.65), Color32::WHITE, first.name.clone()),
-        RefKind::Remote => (lane.gamma_multiply(0.25), lane, first.name.clone()),
-        RefKind::Tag => (color::tag_bg(), color::tag_fg(), first.name.clone()),
+    let (style, text) = match first.kind {
+        RefKind::Head => (ChipStyle::Head, "HEAD".to_owned()),
+        RefKind::Local if first.is_head => (ChipStyle::CurrentBranch, format!("✔ {}", first.name)),
+        RefKind::Local => (ChipStyle::Branch, first.name.clone()),
+        RefKind::Remote => (ChipStyle::Remote, first.name.clone()),
+        RefKind::Tag => (ChipStyle::Tag, first.name.clone()),
     };
+    let (fill, fg) = contrast::ref_chip(style, lane, &color::current());
     let extra = labels.len() - 1;
     let reserve = if extra > 0 { 30.0 } else { 0.0 };
     let g = p.layout_no_wrap(text, FontId::proportional(12.5), fg);

@@ -7,6 +7,7 @@ use super::common::{status_color, status_label, widget_row_height};
 use super::theme::color;
 use crate::msg::{Msg, StashMsg};
 use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, stashable, wip_files};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText, Sense};
 use trellis_core::repo::Snapshot;
 use trellis_core::stash_ops::StashScope;
@@ -33,7 +34,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut StashPushForm, snap: Option<&Snapshot>
     };
     ui.label(RichText::new(on).color(color::weak()));
     ui.add_space(6.0);
-    let r = ui.add(egui::TextEdit::singleline(&mut form.message).hint_text("Message (optional)").desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.message).hint_text("Message (optional)").desired_width(f32::INFINITY));
     // Read before focus is taken, or the Enter that just left the field is missed.
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if focus && std::mem::take(&mut form.focus_message) {
@@ -42,7 +43,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut StashPushForm, snap: Option<&Snapshot>
     ui.add_space(8.0);
     ui.label(RichText::new("What to stash").strong());
     for (scope, text, note) in CHOICES {
-        ui.radio_value(&mut form.scope, scope, text);
+        controls::radio_value(ui, &mut form.scope, scope, text);
         ui.indent(text, |ui| ui.label(RichText::new(note).color(color::weak())));
     }
     if let (StashScope::Files, Some(snap)) = (form.scope, snap) {
@@ -102,7 +103,7 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
                 ui.horizontal(|ui| {
                     let usable = stashable(f);
                     let mut on = usable && form.chosen.contains(&f.path);
-                    let boxed = ui.add_enabled(usable, egui::Checkbox::without_text(&mut on)).changed();
+                    let boxed = ui.add_enabled(usable, controls::Check::without_text(&mut on)).changed();
                     ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
                     let sense = if usable { Sense::click() } else { Sense::hover() };
                     let clicked = ui.add(egui::Label::new(&f.path).truncate().selectable(false).sense(sense)).clicked();

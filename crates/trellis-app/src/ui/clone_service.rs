@@ -9,6 +9,7 @@ use crate::state::PrefPage;
 use crate::state::clone::CloneForm;
 use crate::state::clone_service::{ServicePicker, account_label, visible};
 use crate::state::forks::error_text;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Id, Layout, RichText};
 use trellis_core::forge::Connection;
 
@@ -84,7 +85,8 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, connections: &[Connection],
     } else if p.list.repos.is_empty() {
         ui.label("No repositories found for this account.");
     } else {
-        let r = ui.add(
+        let r = controls::field(
+            ui,
             egui::TextEdit::singleline(&mut p.filter)
                 .id(Id::new("trellis-clone-repo-filter"))
                 .hint_text("Filter repositories")
@@ -101,7 +103,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, connections: &[Connection],
     }
     ui.add_space(4.0);
     let mut ssh = p.ssh;
-    if ui.checkbox(&mut ssh, "Use the SSH URL").changed() {
+    if controls::checkbox(ui, &mut ssh, "Use the SSH URL").changed() {
         msgs.push(Msg::Clone(CloneMsg::UseSsh(ssh)));
     }
     if p.picked_repo(&form.url).is_some() {

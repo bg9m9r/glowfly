@@ -7,6 +7,7 @@ use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase::needs_stash;
 use crate::state::rebase_quick::{BLANK, RewordForm, STASH_NOTE};
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Color32, Key, Modifiers, RichText, Stroke};
 use trellis_core::repo::Snapshot;
 
@@ -22,7 +23,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut RewordForm, snap: Option<&Snapshot>, f
     // Read before the field sees the key, so the Enter doesn't become a new line.
     let submit = ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter));
     let hint = form.hint();
-    let r = ui.add(egui::TextEdit::multiline(&mut form.draft).hint_text(hint).desired_rows(6).desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::multiline(&mut form.draft).hint_text(hint).desired_rows(6).desired_width(f32::INFINITY));
     if focus && std::mem::take(&mut form.focus) {
         r.request_focus();
     }

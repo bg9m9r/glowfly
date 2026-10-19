@@ -5,6 +5,7 @@ use super::theme::color;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::state::gitflow::StartForm;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText};
 use trellis_core::branch_ops::NameProblem;
 use trellis_core::gitflow::{Branches, StartProblem, check_start, open_branches};
@@ -22,7 +23,7 @@ pub fn start(ui: &mut egui::Ui, form: &mut StartForm, snap: Option<&Snapshot>, f
     let r = ui
         .horizontal(|ui| {
             ui.label(RichText::new(s.prefix(kind)).color(color::weak()));
-            ui.add(egui::TextEdit::singleline(&mut form.name).hint_text(hint).desired_width(f32::INFINITY))
+            controls::field(ui, egui::TextEdit::singleline(&mut form.name).hint_text(hint).desired_width(f32::INFINITY))
         })
         .inner;
     // Not under a credential prompt: its fields need the keyboard.

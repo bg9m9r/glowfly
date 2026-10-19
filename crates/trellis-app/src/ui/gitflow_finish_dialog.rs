@@ -7,6 +7,7 @@ use super::theme::color;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::state::gitflow::FinishForm;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText};
 use trellis_core::gitflow::{Branches, FinishProblem, WorkState, check_finish, short_name};
 use trellis_core::repo::Snapshot;
@@ -25,7 +26,7 @@ pub fn finish(ui: &mut egui::Ui, form: &mut FinishForm, snap: Option<&Snapshot>,
         let hint = trellis_core::gitflow::default_tag(&s, kind, &form.branch).unwrap_or_default();
         egui::Grid::new("gitflow-finish-grid").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
             ui.label("Tag");
-            let r = ui.add(egui::TextEdit::singleline(&mut form.tag).hint_text(hint).desired_width(f32::INFINITY));
+            let r = controls::field(ui, egui::TextEdit::singleline(&mut form.tag).hint_text(hint).desired_width(f32::INFINITY));
             if focus && form.focus_tag {
                 r.request_focus();
                 form.focus_tag = false;
@@ -33,12 +34,12 @@ pub fn finish(ui: &mut egui::Ui, form: &mut FinishForm, snap: Option<&Snapshot>,
             submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
             ui.end_row();
             ui.label("Message");
-            ui.add(egui::TextEdit::multiline(&mut form.message).desired_rows(3).desired_width(f32::INFINITY));
+            controls::field(ui, egui::TextEdit::multiline(&mut form.message).desired_rows(3).desired_width(f32::INFINITY));
             ui.end_row();
         });
         ui.add_space(4.0);
     }
-    ui.checkbox(&mut form.keep, format!("Keep {} after finishing", form.branch));
+    controls::checkbox(ui, &mut form.keep, format!("Keep {} after finishing", form.branch));
     ui.add_space(4.0);
     let result = check_finish(&s, &form.branch, &form.options(), &Branches::of(snap), &WorkState::of(snap));
     match &result {

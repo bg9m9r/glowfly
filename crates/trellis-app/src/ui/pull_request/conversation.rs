@@ -11,6 +11,7 @@ use crate::state::AppState;
 use crate::state::pull_request::{Page, PrAction, PrView, description_text};
 use crate::state::pull_request_actions::{comment_blocked, error_for, verdict_text};
 use crate::state::pull_request_threads::{self, Item};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Margin, RichText, Ui};
 use trellis_core::forge::{Entry, EntryKind, Verdict};
 use trellis_core::settings::Settings;
@@ -131,7 +132,7 @@ fn comment_box(ui: &mut Ui, v: &mut PrView, msgs: &mut Vec<Msg>) {
         note(ui, e.to_owned(), color::red());
     }
     let edit = egui::TextEdit::multiline(&mut v.forms.comment).hint_text("Write a comment").desired_rows(3).desired_width(f32::INFINITY);
-    ui.add(edit);
+    controls::field(ui, edit);
     let blocked = comment_blocked(v);
     ui.horizontal(|ui| {
         let mut r = ui.add_enabled(blocked.is_none(), egui::Button::new("Comment"));

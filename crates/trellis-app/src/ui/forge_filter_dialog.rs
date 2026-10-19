@@ -7,6 +7,7 @@ use crate::msg::{FilterMsg, Msg};
 use crate::state::ForgeState;
 use crate::state::forge_filter_form::FilterForm;
 use crate::state::forge_filters::{OptionsState, suggestions};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText};
 use trellis_core::forge::filters::matching::{self, Field};
 use trellis_core::forge::filters::{Draft, Milestone, Review, Sprint, Who};
@@ -36,7 +37,7 @@ pub fn show(
         ui.label(RichText::new(format!("{} · {}", t.provider.name(), t.display())).color(color::weak()));
     }
     ui.add_space(8.0);
-    let r = ui.add(egui::TextEdit::singleline(&mut form.name).hint_text("Filter name").desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.name).hint_text("Filter name").desired_width(f32::INFINITY));
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if focus && ui.memory(|m| m.focused().is_none()) {
         r.request_focus();
@@ -101,7 +102,7 @@ impl Fields<'_> {
         row(ui, "Draft", why, |ui| combo(ui, "draft", &mut self.form.c.draft, &drafts));
         let why = self.why(Field::Base);
         row(ui, "Target branch", why, |ui| {
-            ui.add(egui::TextEdit::singleline(&mut self.form.c.base).hint_text("Any branch").desired_width(WIDTH))
+            controls::field(ui, egui::TextEdit::singleline(&mut self.form.c.base).hint_text("Any branch").desired_width(WIDTH))
         });
         self.labels(ui);
         self.milestone(ui);
@@ -112,7 +113,7 @@ impl Fields<'_> {
         let why = self.why(Field::Author);
         row(ui, "Created by", why, |ui| combo(ui, "creator", &mut self.form.c.author, &[(Who::Anyone, "Anyone"), (Who::Me, "Me")]));
         let why = self.why(Field::Mentions);
-        row(ui, "Mentions", why, |ui| ui.checkbox(&mut self.form.c.mentions_me, "Mentions me"));
+        row(ui, "Mentions", why, |ui| controls::checkbox(ui, &mut self.form.c.mentions_me, "Mentions me"));
         self.labels(ui);
         self.milestone(ui);
         if self.form.provider.is_some_and(|p| p.is_jira()) {
@@ -130,7 +131,7 @@ impl Fields<'_> {
         let noun = self.form.provider.map(matching::labels_noun).unwrap_or("Labels");
         let why = self.why(Field::Labels);
         row(ui, noun, why.clone(), |ui| {
-            ui.add(egui::TextEdit::singleline(&mut self.form.labels).hint_text("Comma-separated").desired_width(WIDTH))
+            controls::field(ui, egui::TextEdit::singleline(&mut self.form.labels).hint_text("Comma-separated").desired_width(WIDTH))
         });
         let typed = self.form.label_list();
         let offered: Vec<String> =

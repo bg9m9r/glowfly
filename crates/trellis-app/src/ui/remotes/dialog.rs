@@ -6,6 +6,7 @@ use super::super::theme::color;
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::remotes::{RemoteForm, extra_push_urls, name_problem, push_problem, push_same_as_fetch, url_problem};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::remote_ops::{RemoteNameProblem, UrlProblem};
 use trellis_core::repo::Snapshot;
@@ -13,7 +14,7 @@ use trellis_core::repo::Snapshot;
 /// A field with its label above it; returns whether Enter left it.
 pub(super) fn field(ui: &mut egui::Ui, label: &str, text: &mut String, id: &str, hint: &str) -> (egui::Response, bool) {
     ui.label(label);
-    let r = ui.add(egui::TextEdit::singleline(text).id(Id::new(id)).hint_text(hint).desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::singleline(text).id(Id::new(id)).hint_text(hint).desired_width(f32::INFINITY));
     let enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     (r, enter)
 }
@@ -88,7 +89,7 @@ pub fn show(
         }
     } else {
         ui.add_space(6.0);
-        ui.checkbox(&mut form.fetch_after, "Fetch its branches after adding");
+        controls::checkbox(ui, &mut form.fetch_after, "Fetch its branches after adding");
     }
 
     let valid = name_p.is_none() && url_p.is_none() && push_p.is_none();

@@ -33,6 +33,7 @@ use super::widgets::{self, Icon};
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::state::{AppState, PrefPage};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Align2, Color32, FontId, RichText, Sense, Stroke, Ui, pos2, vec2};
 use trellis_core::forge::Provider;
 
@@ -78,7 +79,7 @@ pub(super) fn caption(ui: &mut Ui, text: &str) {
 }
 
 pub(super) fn text_field(ui: &mut Ui, value: &mut String, hint: &str) -> egui::Response {
-    ui.add(egui::TextEdit::singleline(value).hint_text(hint).desired_width(320.0).margin(vec2(8.0, 5.0)))
+    controls::field(ui, egui::TextEdit::singleline(value).hint_text(hint).desired_width(320.0).margin(vec2(8.0, 5.0)))
 }
 
 pub(super) fn primary_button(ui: &mut Ui, text: &str, enabled: bool) -> egui::Response {

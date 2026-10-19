@@ -5,6 +5,7 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::msg::PublishMsg;
 use crate::state::publish::PublishForm;
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText};
 use trellis_core::forge;
 
@@ -41,16 +42,16 @@ pub fn form(ui: &mut egui::Ui, f: &mut PublishForm, idle: bool, msgs: &mut Vec<M
             }
         });
         ui.label("/");
-        ui.add(egui::TextEdit::singleline(&mut f.name).hint_text("repository-name").desired_width(f32::INFINITY));
+        controls::field(ui, egui::TextEdit::singleline(&mut f.name).hint_text("repository-name").desired_width(f32::INFINITY));
     });
     let name = f.name.trim();
     if !name.is_empty() && !forge::valid_repo_name(name) {
         ui.label(RichText::new("Use letters, digits, '.', '-' and '_' only.").color(color::amber()));
     }
-    ui.add(egui::TextEdit::singleline(&mut f.description).hint_text("Description (optional)").desired_width(f32::INFINITY));
+    controls::field(ui, egui::TextEdit::singleline(&mut f.description).hint_text("Description (optional)").desired_width(f32::INFINITY));
     ui.horizontal(|ui| {
-        ui.radio_value(&mut f.private, true, "Private");
-        ui.radio_value(&mut f.private, false, "Public");
+        controls::radio_value(ui, &mut f.private, true, "Private");
+        controls::radio_value(ui, &mut f.private, false, "Public");
     });
     if let Some(e) = &f.error {
         ui.add_space(4.0);

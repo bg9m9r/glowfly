@@ -8,6 +8,7 @@ use crate::msg::CredentialMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::askpass::PendingPrompt;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::askpass::{PromptKind, host, user_and_host};
 use trellis_core::git_credential::is_http_url;
@@ -124,7 +125,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let p = &mut st.askpass;
     let secret_id = Id::new("trellis-credentials-secret");
     // The response's should_close() is deliberately ignored: the backdrop must not cancel.
-    egui::Modal::new(Id::new("trellis-credentials")).show(ctx, |ui| {
+    super::theme::modal(ctx, Id::new("trellis-credentials")).show(ctx, |ui| {
         ui.set_width(420.0);
         ui.horizontal(|ui| {
             if l.key_icon {
@@ -155,7 +156,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let focus = std::mem::take(&mut p.focus_pending);
         let mut submit = false;
         if let Some(hint) = l.user {
-            let r = ui.add(egui::TextEdit::singleline(&mut p.user).hint_text(hint).desired_width(f32::INFINITY));
+            let r = controls::field(ui, egui::TextEdit::singleline(&mut p.user).hint_text(hint).desired_width(f32::INFINITY));
             if focus {
                 r.request_focus();
             }
@@ -173,7 +174,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 let width = ui.available_width() - 32.0;
                 let field =
                     egui::TextEdit::singleline(&mut p.secret).id(secret_id).password(!p.reveal).hint_text(hint).desired_width(width);
-                let r = ui.add(field);
+                let r = controls::field(ui, field);
                 if focus && l.user.is_none() {
                     r.request_focus();
                 }
@@ -194,7 +195,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         }
         if l.remember {
             ui.add_space(4.0);
-            ui.checkbox(&mut p.remember, "Remember this sign-in");
+            controls::checkbox(ui, &mut p.remember, "Remember this sign-in");
         }
         if let Some(help) = l.help {
             ui.add_space(2.0);

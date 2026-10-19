@@ -4,6 +4,7 @@
 use super::theme::color;
 use crate::msg::{Msg, StashMsg};
 use crate::state::stashes::RenameStashForm;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText};
 
 /// Draws the dialog; returns true when it should close. Its field keeps the keyboard focus unless
@@ -18,7 +19,7 @@ pub fn rename(ui: &mut egui::Ui, form: &mut RenameStashForm, focus: bool, idle: 
     };
     ui.label(RichText::new(at).color(color::weak()));
     ui.add_space(6.0);
-    let r = ui.add(egui::TextEdit::singleline(&mut form.message).hint_text("Stash message").desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.message).hint_text("Stash message").desired_width(f32::INFINITY));
     // Read before focus is taken back, or the Enter that just left the field is missed.
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if focus {

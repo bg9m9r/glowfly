@@ -10,6 +10,7 @@ use super::diff::{ROW_H, mono};
 use super::theme::color;
 use crate::msg::{ConflictMsg, DiffMsg, Msg};
 use crate::state::conflict::{ConflictView, OutputEdit};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Stroke, Ui, UiBuilder, vec2};
 use trellis_core::conflict_pick::ChunkPick;
 use trellis_core::conflict_rows::{OutRow, output_rows, scroll_target};
@@ -168,7 +169,7 @@ fn editor(ui: &mut Ui, e: &mut OutputEdit, saving: bool, scroll_to: Option<usize
             .lock_focus(true)
             .desired_width(width)
             .min_size(vec2(0.0, ui.available_height()));
-        if ui.add_enabled(!saving, text).changed() {
+        if ui.add_enabled(!saving, controls::Field(text)).changed() {
             msgs.push(Msg::Conflict(ConflictMsg::ConflictOutputEdited));
         }
     });

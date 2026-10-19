@@ -5,6 +5,7 @@
 //! applies to terminals started afterwards.
 
 use super::{help, row, text_field, warn};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Ui};
 use trellis_core::external_tools;
 use trellis_core::i18n::Lang;
@@ -48,28 +49,28 @@ pub(crate) fn page_for(ui: &mut Ui, s: &mut Settings, linux: bool) {
     });
     row(ui, t.tr("prefs.terminal.cursor.label"), |ui| {
         ui.horizontal(|ui| {
-            ui.radio_value(&mut p.cursor, CursorStyle::Block, t.tr("prefs.terminal.cursor.block"));
-            ui.radio_value(&mut p.cursor, CursorStyle::Underline, t.tr("prefs.terminal.cursor.underline"));
-            ui.radio_value(&mut p.cursor, CursorStyle::Bar, t.tr("prefs.terminal.cursor.bar"));
+            controls::radio_value(ui, &mut p.cursor, CursorStyle::Block, t.tr("prefs.terminal.cursor.block"));
+            controls::radio_value(ui, &mut p.cursor, CursorStyle::Underline, t.tr("prefs.terminal.cursor.underline"));
+            controls::radio_value(ui, &mut p.cursor, CursorStyle::Bar, t.tr("prefs.terminal.cursor.bar"));
         });
         help(ui, t.tr("prefs.terminal.cursor.help"));
     });
     row(ui, t.tr("prefs.terminal.dim.label"), |ui| {
-        ui.checkbox(&mut p.dim_unfocused, "");
+        controls::checkbox(ui, &mut p.dim_unfocused, "");
         help(ui, t.tr("prefs.terminal.dim.help"));
     });
     row(ui, t.tr("prefs.terminal.copy_on_select.label"), |ui| {
-        ui.checkbox(&mut p.copy_on_select, "");
+        controls::checkbox(ui, &mut p.copy_on_select, "");
         help(ui, t.tr("prefs.terminal.copy_on_select.help"));
     });
     if linux {
         row(ui, t.tr("prefs.terminal.middle_click.label"), |ui| {
-            ui.checkbox(&mut p.middle_click_paste, "");
+            controls::checkbox(ui, &mut p.middle_click_paste, "");
             help(ui, t.tr("prefs.terminal.middle_click.help"));
         });
     }
     row(ui, t.tr("prefs.terminal.open_in_panel.label"), |ui| {
-        ui.checkbox(&mut p.open_in_panel, t.tr("prefs.terminal.open_in_panel.check"));
+        controls::checkbox(ui, &mut p.open_in_panel, t.tr("prefs.terminal.open_in_panel.check"));
         help(ui, t.tr("prefs.terminal.open_in_panel.help"));
     });
     row(ui, t.tr("prefs.terminal.reset.label"), |ui| {

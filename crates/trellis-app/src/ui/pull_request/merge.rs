@@ -10,6 +10,7 @@ use crate::state::pull_request_actions::{
     delete_after_merge_blocked, delete_branch_offer, error_for, merge_blocked, merge_confirm, mergeability, method_blocked, method_help,
     method_label,
 };
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::{MergeMethod, PrState};
 use trellis_core::repo::Snapshot;
@@ -45,7 +46,7 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
     let target = printable(&v.pr.target);
     for m in MergeMethod::ALL {
         let blocked = method_blocked(&detail, m);
-        let mut r = ui.add_enabled(blocked.is_none(), egui::RadioButton::new(v.forms.merge_method == Some(m), method_label(m)));
+        let mut r = ui.add_enabled(blocked.is_none(), controls::Radio::new(v.forms.merge_method == Some(m), method_label(m)));
         if let Some(why) = blocked {
             r = r.on_disabled_hover_text(why);
         }
@@ -62,13 +63,13 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
         ui.label(RichText::new("Commit title").color(color::text()));
         let title =
             egui::TextEdit::singleline(&mut v.forms.merge_title).hint_text("Empty: the service's default").desired_width(f32::INFINITY);
-        ui.add(title);
+        controls::field(ui, title);
         ui.label(RichText::new("Commit message").color(color::text()));
         let message = egui::TextEdit::multiline(&mut v.forms.merge_message)
             .hint_text("Empty: the service's default")
             .desired_rows(3)
             .desired_width(f32::INFINITY);
-        ui.add(message);
+        controls::field(ui, message);
     }
     ui.add_space(4.0);
     let source = printable(&v.pr.source);
@@ -80,7 +81,7 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
             v.forms.delete_branch = false;
         }
         let label = format!("Delete {source} on {} after merging", v.remote);
-        let r = ui.add_enabled(blocked.is_none(), egui::Checkbox::new(&mut v.forms.delete_branch, label));
+        let r = ui.add_enabled(blocked.is_none(), controls::Check::new(&mut v.forms.delete_branch, label));
         if let Some(why) = &blocked {
             r.on_disabled_hover_text(why);
         }

@@ -4,6 +4,7 @@ use super::{LABEL_W, help, row};
 use crate::msg::{Msg, PrefsMsg};
 use crate::themes::ThemeState;
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText, Sense, Stroke, Ui, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
@@ -30,7 +31,7 @@ pub fn combo<T: PartialEq + Copy>(ui: &mut Ui, id: &str, value: &mut T, options:
 pub fn date_pattern(ui: &mut Ui, label: &str, value: &mut String, default: &str, locale: &str, now: (i64, i32)) {
     row(ui, label, |ui| {
         ui.horizontal(|ui| {
-            ui.add(egui::TextEdit::singleline(value).hint_text(default).desired_width(230.0).margin(vec2(8.0, 5.0)));
+            controls::field(ui, egui::TextEdit::singleline(value).hint_text(default).desired_width(230.0).margin(vec2(8.0, 5.0)));
             let pattern = if value.trim().is_empty() { default } else { value.as_str() };
             let preview = trellis_core::dates::format(now.0, pattern, locale, now.1);
             ui.label(RichText::new(preview).size(12.0).color(color::weak()));
@@ -56,13 +57,13 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, now: (i64, i3
         )
     });
     row(ui, t.tr("prefs.ui.behind_alerts.label"), |ui| {
-        ui.checkbox(&mut s.behind_alerts, "");
+        controls::checkbox(ui, &mut s.behind_alerts, "");
         help(ui, t.tr("prefs.ui.behind_alerts.help"));
     });
     row(ui, t.tr("prefs.ui.desktop_notifications.label"), |ui| {
         // Not bound to the setting: update saves it and sends the confirming notification.
         let mut on = s.desktop_notifications;
-        if ui.checkbox(&mut on, t.tr("prefs.ui.desktop_notifications.check")).changed() {
+        if controls::checkbox(ui, &mut on, t.tr("prefs.ui.desktop_notifications.check")).changed() {
             msgs.push(Msg::Prefs(PrefsMsg::SetDesktopNotifications(on)));
         }
         help(ui, t.tr("prefs.ui.desktop_notifications.help"));
@@ -105,7 +106,7 @@ fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
     date_pattern(ui, t.tr("prefs.ui.date_time_format.label"), &mut s.date_time_format, &d.date_time_format, &loc, now);
     date_pattern(ui, t.tr("prefs.ui.date_verbose_format.label"), &mut s.date_verbose_format, &d.date_verbose_format, &loc, now);
     row(ui, t.tr("prefs.ui.relative_dates.label"), |ui| {
-        ui.checkbox(&mut s.relative_dates, t.tr("prefs.ui.relative_dates.check"));
+        controls::checkbox(ui, &mut s.relative_dates, t.tr("prefs.ui.relative_dates.check"));
     });
 }
 
@@ -121,43 +122,43 @@ fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
         });
     });
     row(ui, t.tr("prefs.ui.left_panel.label"), |ui| {
-        ui.checkbox(&mut s.show_left_panel, "");
+        controls::checkbox(ui, &mut s.show_left_panel, "");
     });
     row(ui, t.tr("prefs.ui.details_panel.label"), |ui| {
-        ui.checkbox(&mut s.show_details_panel, "");
+        controls::checkbox(ui, &mut s.show_details_panel, "");
     });
     row(ui, t.tr("prefs.ui.toolbar.label"), |ui| {
-        ui.checkbox(&mut s.show_toolbar, "");
+        controls::checkbox(ui, &mut s.show_toolbar, "");
         help(ui, t.tr("prefs.ui.toolbar.help"));
     });
     row(ui, t.tr("prefs.ui.menu_bar.label"), |ui| {
-        ui.checkbox(&mut s.show_menu_bar, "");
+        controls::checkbox(ui, &mut s.show_menu_bar, "");
         help(ui, t.tr("prefs.ui.menu_bar.help"));
     });
     row(ui, t.tr("prefs.ui.toolbar_labels.label"), |ui| {
-        ui.checkbox(&mut s.toolbar_labels, "");
+        controls::checkbox(ui, &mut s.toolbar_labels, "");
     });
     row(ui, t.tr("prefs.ui.spellcheck.label"), |ui| {
-        ui.checkbox(&mut s.spellcheck, "");
+        controls::checkbox(ui, &mut s.spellcheck, "");
         help(ui, t.tr("prefs.ui.spellcheck.help"));
     });
     row(ui, t.tr("prefs.ui.initials.label"), |ui| {
-        ui.checkbox(&mut s.use_initials, "");
+        controls::checkbox(ui, &mut s.use_initials, "");
         help(ui, t.tr("prefs.ui.initials.help"));
     });
     row(ui, t.tr("prefs.ui.ghost.label"), |ui| {
-        ui.checkbox(&mut s.ghost_refs, "");
+        controls::checkbox(ui, &mut s.ghost_refs, "");
         help(ui, t.tr("prefs.ui.ghost.help"));
     });
     row(ui, t.tr("prefs.ui.highlight_rows.label"), |ui| {
-        ui.checkbox(&mut s.highlight_ref_rows, "");
+        controls::checkbox(ui, &mut s.highlight_ref_rows, "");
     });
     row(ui, t.tr("prefs.ui.worktree_wips.label"), |ui| {
-        ui.checkbox(&mut s.worktree_wips, "");
+        controls::checkbox(ui, &mut s.worktree_wips, "");
         help(ui, t.tr("prefs.ui.worktree_wips.help"));
     });
     row(ui, t.tr("prefs.ui.group_tabs.label"), |ui| {
-        ui.checkbox(&mut s.group_worktree_tabs, t.tr("prefs.ui.group_tabs.check"));
+        controls::checkbox(ui, &mut s.group_worktree_tabs, t.tr("prefs.ui.group_tabs.check"));
         help(ui, t.tr("prefs.ui.group_tabs.help"));
     });
     row(ui, t.tr("prefs.ui.branch_visibility.label"), |ui| {

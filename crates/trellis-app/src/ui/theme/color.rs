@@ -8,12 +8,20 @@ use trellis_core::highlight::TokenKind;
 
 /// The colors of one theme.
 ///
-/// Contrast rules, checked for every built-in by a test (WCAG relative luminance):
-/// - Standard themes: `text` >= 4.5:1 on `bg`, `panel`, `input`, `hunk_bg` and every `diff_*`
-///   background; every `syn_*` >= 2.4:1 on `panel`, `diff_add`, `diff_del`, `diff_add_word`
-///   and `diff_del_word`.
-/// - High-contrast themes: `text` >= 7:1 on those backgrounds, `weak` >= 4.5:1 on `bg`, `panel`
-///   and `input`, and every `syn_*` >= 4.5:1.
+/// Contrast rules, checked for every built-in by a test (WCAG contrast ratio; "standard" and
+/// "high contrast" give the two minimums where they differ):
+/// - `text` on `bg`, `panel`, `toolbar`, `input`, `hover`, `selected`, `hunk_bg` and every
+///   `diff_*` background: 4.5:1 standard, 7:1 high contrast. `strong` on `selected`: the same.
+/// - `weak` on `bg`, `panel`, `toolbar`, `input`, `hover` and `selected`: 4.5:1.
+/// - `faint` on `bg`, `panel` and `input`: 4.5:1, and at least 1.0 below `weak`'s ratio on
+///   `panel` (which is below `text`'s), so the three steps stay apart.
+/// - `input_border` on `bg`, `panel`, `input` and `toolbar`, and `dialog_border` on `panel`:
+///   3:1 standard, 4.5:1 high contrast.
+/// - `accent` on `bg`, `panel` and `input`: 3:1 (focus rings, and the `input`-coloured mark on
+///   an accent-filled checkbox).
+/// - `tag_fg` on `tag_bg`: 4.5:1 standard, 7:1 high contrast.
+/// - Every `syn_*` on `panel`, `diff_add`, `diff_del`, `diff_add_word` and `diff_del_word`:
+///   2.4:1 standard, 4.5:1 high contrast.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Palette {
     /// Dark background: picks egui's dark style, dims graph lanes, sets terminal ANSI brightening.
@@ -23,6 +31,11 @@ pub struct Palette {
     pub toolbar: Color32,
     pub input: Color32,
     pub border: Color32,
+    /// The 1 px border of text fields, checkboxes and radio buttons: at least 3:1 on `input`,
+    /// `panel`, `bg` and `toolbar`.
+    pub input_border: Color32,
+    /// The 1 px frame of modal dialogs: at least 3:1 on `panel`.
+    pub dialog_border: Color32,
     pub hover: Color32,
     pub selected: Color32,
     pub accent: Color32,
@@ -97,7 +110,8 @@ pub fn set_dark(dark: bool) {
 /// Declares an accessor per color and `Palette`'s by-name access, from one list of the fields.
 macro_rules! palette_fields {
     ($($name:ident),* $(,)?) => {
-        $(pub fn $name() -> Color32 { ACTIVE.with_borrow(|p| p.$name) })*
+        // Every color gets one; a few are only read through a `Palette` (ref chips, controls).
+        $(#[allow(dead_code)] pub fn $name() -> Color32 { ACTIVE.with_borrow(|p| p.$name) })*
 
         impl Palette {
             /// The color names, in field order (the names theme files use).
@@ -131,6 +145,8 @@ palette_fields!(
     toolbar,
     input,
     border,
+    input_border,
+    dialog_border,
     hover,
     selected,
     accent,

@@ -5,6 +5,7 @@ use super::common::short;
 use crate::msg::{Msg, SelectionMsg};
 use crate::state::pick::{MainlineForm, PickOp};
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Color32, RichText, Stroke};
 
 /// What the dialog explains about the choice.
@@ -33,7 +34,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut MainlineForm, idle: bool, msgs: &mut V
         if !p.labels.is_empty() {
             text.push_str(&format!(" ({})", p.labels.join(", ")));
         }
-        ui.radio_value(&mut form.choice, i, text);
+        controls::radio_value(ui, &mut form.choice, i, text);
     }
     ui.add_space(10.0);
     ui.horizontal(|ui| {

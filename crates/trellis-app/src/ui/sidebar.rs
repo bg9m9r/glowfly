@@ -19,6 +19,7 @@ use crate::state::forge_filters::{self, IssueView, PrView};
 use crate::state::palette::StashAction;
 use crate::state::panel_layout::Fit;
 use crate::state::{AppState, ForgeState, Selection, Status};
+use crate::ui::theme::controls;
 use eframe::egui;
 use trellis_core::forge::{self, FilterKind};
 use trellis_core::repo::Snapshot;
@@ -37,7 +38,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
         ui.add_space(8.0);
         ui.horizontal(|ui| {
             ui.add_space(8.0);
-            ui.add(
+            controls::field(
+                ui,
                 egui::TextEdit::singleline(&mut st.view.ref_filter)
                     .hint_text("Filter (branches, PRs, issues)")
                     .desired_width(ui.available_width() - 8.0),

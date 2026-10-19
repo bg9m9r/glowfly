@@ -6,6 +6,7 @@ use crate::keymap::BindingId;
 use crate::msg::{Msg, SearchMsg};
 use crate::state::{AppState, Selection};
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, PopupCloseBehavior, RichText};
 use trellis_core::matching::contains_lower;
 
@@ -25,7 +26,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         // The field gives up width before the controls after it run out of room.
         let width = (ui.available_width() - CONTROLS_W).clamp(160.0, 420.0);
         let empty = st.view.search.is_empty();
-        let r = ui.add(egui::TextEdit::singleline(&mut st.view.search).hint_text(HINT).desired_width(width));
+        let r = controls::field(ui, egui::TextEdit::singleline(&mut st.view.search).hint_text(HINT).desired_width(width));
         let r = if empty { r.on_hover_text(HINT) } else { r };
 
         // A credential prompt, the command palette or the author picker keeps the keyboard.
@@ -94,7 +95,7 @@ fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 msgs.push(Msg::Search(SearchMsg::PickAuthor(None)));
                 ui.memory_mut(|m| m.close_popup());
             }
-            ui.add(egui::TextEdit::singleline(filter).hint_text("Filter authors").desired_width(220.0));
+            controls::field(ui, egui::TextEdit::singleline(filter).hint_text("Filter authors").desired_width(220.0));
             let Some(list) = &search.authors else {
                 ui.label(RichText::new("Reading authors…").color(color::weak()));
                 return;

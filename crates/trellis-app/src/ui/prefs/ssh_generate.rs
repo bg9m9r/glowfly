@@ -5,11 +5,15 @@ use super::{help, primary_button, row, text_field, warn};
 use crate::msg::Msg;
 use crate::ssh::SshMsg;
 use crate::state::ssh::{MISMATCH, SshPage, TAKEN};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Ui};
 use trellis_core::ssh_keys::{SshListing, comment_problem};
 
 fn password(ui: &mut Ui, value: &mut String) {
-    ui.add(egui::TextEdit::singleline(value).password(true).hint_text("Optional").desired_width(320.0).margin(egui::vec2(8.0, 5.0)));
+    controls::field(
+        ui,
+        egui::TextEdit::singleline(value).password(true).hint_text("Optional").desired_width(320.0).margin(egui::vec2(8.0, 5.0)),
+    );
 }
 
 pub(super) fn generate_form(ui: &mut Ui, page: &mut SshPage, listing: &SshListing, msgs: &mut Vec<Msg>) {

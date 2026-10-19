@@ -21,7 +21,7 @@ pub(super) fn dismissal<T>(resp: &egui::ModalResponse<T>) -> Option<Dismiss> {
 /// it is the top one: the form beneath is dimmed and takes no input. Esc and a backdrop click
 /// mean Keep editing.
 pub(super) fn discard_question(ctx: &egui::Context, t: Lang, msgs: &mut Vec<Msg>) {
-    let resp = egui::Modal::new(Id::new("trellis-modal-discard")).show(ctx, |ui| {
+    let resp = super::theme::modal(ctx, Id::new("trellis-modal-discard")).show(ctx, |ui| {
         ui.set_width(360.0);
         ui.heading(t.tr("dialog.discard.title"));
         ui.add_space(6.0);

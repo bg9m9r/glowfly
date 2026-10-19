@@ -10,6 +10,7 @@ use crate::state::submodules::add::{AddForm, Disk, relative_url_hint};
 use crate::state::submodules::edit::EditForm;
 use crate::state::submodules::remove::RemoveForm;
 use crate::submodule::SubmoduleMsg;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::repo::Snapshot;
 use trellis_core::submodule_ops::default_path;
@@ -27,7 +28,8 @@ pub fn add(ui: &mut egui::Ui, form: &mut AddForm, snap: Option<&Snapshot>, focus
     ui.add_space(6.0);
 
     ui.label(RichText::new("Repository URL").color(color::weak()));
-    let r = ui.add(
+    let r = controls::field(
+        ui,
         egui::TextEdit::singleline(&mut form.url)
             .id(url_id)
             .hint_text("https://… or the path of a repository on this computer")
@@ -54,7 +56,8 @@ pub fn add(ui: &mut egui::Ui, form: &mut AddForm, snap: Option<&Snapshot>, focus
 
     ui.add_space(6.0);
     ui.label(RichText::new("Path").color(color::weak()));
-    let r = ui.add(
+    let r = controls::field(
+        ui,
         egui::TextEdit::singleline(&mut form.path)
             .id(path_id)
             .hint_text("A folder in this repository, e.g. libs/lib")
@@ -92,7 +95,8 @@ pub fn add(ui: &mut egui::Ui, form: &mut AddForm, snap: Option<&Snapshot>, focus
 
     ui.add_space(6.0);
     ui.label(RichText::new("Branch").color(color::weak()));
-    let r = ui.add(
+    let r = controls::field(
+        ui,
         egui::TextEdit::singleline(&mut form.branch)
             .id(branch_id)
             .hint_text("Optional. Leave empty for the remote's default branch")
@@ -145,7 +149,7 @@ pub fn edit(ui: &mut egui::Ui, form: &mut EditForm, focus: bool, idle: bool, msg
     ui.add_space(6.0);
 
     ui.label(RichText::new("Repository URL").color(color::weak()));
-    let r = ui.add(egui::TextEdit::singleline(&mut form.url).id(url_id).desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.url).id(url_id).desired_width(f32::INFINITY));
     enter |= pressed(ui, &r);
     if focus && !ui.memory(|m| m.has_focus(branch_id)) {
         r.request_focus();
@@ -159,7 +163,8 @@ pub fn edit(ui: &mut egui::Ui, form: &mut EditForm, focus: bool, idle: bool, msg
 
     ui.add_space(6.0);
     ui.label(RichText::new("Branch").color(color::weak()));
-    let r = ui.add(
+    let r = controls::field(
+        ui,
         egui::TextEdit::singleline(&mut form.branch)
             .id(branch_id)
             .hint_text("Empty for the remote's default branch")

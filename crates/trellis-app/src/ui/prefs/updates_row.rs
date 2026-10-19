@@ -5,6 +5,7 @@ use super::{help, row};
 use crate::msg::{Msg, UpdateMsg};
 use crate::state::updates::{UpdateStatus, UpdatesState, available_text, download_failed_text};
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::settings::Settings;
 
@@ -20,7 +21,7 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
     let send = |msgs: &mut Vec<Msg>, m: UpdateMsg| msgs.push(Msg::Updates(m));
     let t = s.lang();
     row(ui, t.tr("prefs.general.updates.label"), |ui| {
-        ui.checkbox(&mut s.updates.check, t.tr("prefs.general.updates.check"));
+        controls::checkbox(ui, &mut s.updates.check, t.tr("prefs.general.updates.check"));
         ui.label(RichText::new(u.prefs_line(t, view.last_checked.as_deref())).color(color::text()));
         if ui.add_enabled(!u.busy(), egui::Button::new(t.tr("prefs.general.updates.check_now.button"))).clicked() {
             send(msgs, UpdateMsg::CheckNow);

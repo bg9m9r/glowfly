@@ -127,7 +127,7 @@ are in Later > UI review polish.
   - Losing unpushed commits, stashes or changed files for good (remove a submodule, force
     remove a worktree) needs an acknowledgement checkbox before the button enables
   - Cancel and Close come from the translation tables, not literals
-- [ ] **Readable controls in every theme**: text fields get a 1 px border (at least 3:1) and a
+- [x] **Readable controls in every theme**: text fields get a 1 px border (at least 3:1) and a
       focus ring; checkboxes and radios are always-visible boxes and circles with the mark
       inside; the modal backdrop dims about the same in light and dark and dialogs get a
       border; muted text, chips (the HEAD pill, tag pills, selected toggles) and selection
@@ -2187,3 +2187,16 @@ here, under the item they grew from.
   static check can't see (server messages, theme names, hook output)
 - Use the painted ahead/behind arrows wherever else counts appear (remote and Git Flow rows, tab
   tooltips, the dashboard)
+
+### Readable controls in every theme
+
+- Combo boxes get the field border and focus ring (they share egui's button visuals today)
+- Menus, tooltips and popups get the stronger dialog_border edge (window_stroke still uses border)
+- Dialogs in dark themes get a surface one step lighter than panel and a stronger shadow
+- DragValue editors and other egui-internal text edits get the field border
+- The selected row stays clearly different from a hovered row in the light themes
+- Other chips reach 4.5:1: issue and PR state chips, PR thread chips, SSH key chips, the keyboard
+  pill, the update and trust chips, the LFS badge, the graph's worktree and stash label chips,
+  release-note chips
+- The text cursor takes its colour from the palette
+- Graph lane colours checked for contrast against bg in the light themes

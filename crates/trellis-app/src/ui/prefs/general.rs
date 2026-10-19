@@ -10,6 +10,7 @@ use crate::msg::PrefsMsg;
 use crate::state::deep_link::SchemeView;
 use crate::state::prefs::{Autocrlf, GitConfigValues};
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use eframe::egui::{self, Color32, RichText, Ui};
 use trellis_core::git_version::GitInfo;
 use trellis_core::i18n::Lang;
@@ -52,10 +53,10 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         warn(ui, t.tr("prefs.general.auto_fetch.warn"));
     });
     row(ui, t.tr("prefs.general.auto_prune.label"), |ui| {
-        ui.checkbox(&mut s.auto_prune, t.tr("prefs.general.auto_prune.check"));
+        controls::checkbox(ui, &mut s.auto_prune, t.tr("prefs.general.auto_prune.check"));
     });
     row(ui, t.tr("prefs.general.remember_sign_ins.label"), |ui| {
-        ui.checkbox(&mut s.remember_https_credentials, t.tr("prefs.general.remember_sign_ins.check"));
+        controls::checkbox(ui, &mut s.remember_https_credentials, t.tr("prefs.general.remember_sign_ins.check"));
         help(ui, t.tr("prefs.general.remember_sign_ins.help"));
     });
     row(ui, t.tr("prefs.general.default_branch.label"), |ui| {
@@ -68,22 +69,22 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         warn(ui, t.tr("prefs.general.initial_commits.warn"));
     });
     row(ui, t.tr("prefs.general.load_more.label"), |ui| {
-        ui.checkbox(&mut s.load_more_on_scroll, t.tr("prefs.general.load_more.check"));
+        controls::checkbox(ui, &mut s.load_more_on_scroll, t.tr("prefs.general.load_more.check"));
         help(ui, t.tr("prefs.general.load_more.help"));
     });
     row(ui, t.tr("prefs.general.reopen.label"), |ui| {
-        ui.checkbox(&mut s.reopen_last_repo, t.tr("prefs.general.reopen.check"));
+        controls::checkbox(ui, &mut s.reopen_last_repo, t.tr("prefs.general.reopen.check"));
     });
     row(ui, t.tr("prefs.general.watch_files.label"), |ui| {
-        ui.checkbox(&mut s.watch_files, t.tr("prefs.general.watch_files.check"));
+        controls::checkbox(ui, &mut s.watch_files, t.tr("prefs.general.watch_files.check"));
         help(ui, &watch_files_help(t, keys));
     });
     row(ui, t.tr("prefs.general.conflict_check.label"), |ui| {
-        ui.checkbox(&mut s.conflict_check, t.tr("prefs.general.conflict_check.check"));
+        controls::checkbox(ui, &mut s.conflict_check, t.tr("prefs.general.conflict_check.check"));
         help(ui, t.tr("prefs.general.conflict_check.help"));
     });
     row(ui, t.tr("prefs.general.submodules.label"), |ui| {
-        ui.checkbox(&mut s.submodules.keep_updated, t.tr("prefs.general.submodules.check"));
+        controls::checkbox(ui, &mut s.submodules.keep_updated, t.tr("prefs.general.submodules.check"));
         help(ui, t.tr("prefs.general.submodules.help"));
     });
     row(ui, t.tr("prefs.general.delete_to_trash.label"), |ui| {
@@ -92,13 +93,13 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         } else {
             t.tr("prefs.general.delete_to_trash.check_other")
         };
-        ui.checkbox(&mut s.delete_to_trash, check);
+        controls::checkbox(ui, &mut s.delete_to_trash, check);
         help(ui, t.tr("prefs.general.delete_to_trash.help"));
     });
     row(ui, t.tr("prefs.general.extended_logging.label"), |ui| {
         // Through a message, so the runner hears of it (the error log's level changes too).
         let mut on = s.extended_logging;
-        if ui.checkbox(&mut on, t.tr("prefs.general.extended_logging.check")).changed() {
+        if controls::checkbox(ui, &mut on, t.tr("prefs.general.extended_logging.check")).changed() {
             msgs.push(Msg::Logs(LogsMsg::SetExtended(on)));
         }
         help(ui, t.tr("prefs.general.extended_logging.help"));
@@ -111,7 +112,7 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     });
     if let Some(git) = git {
         row(ui, t.tr("prefs.general.longpaths.label"), |ui| {
-            if ui.checkbox(&mut git.longpaths, "").changed() {
+            if controls::checkbox(ui, &mut git.longpaths, "").changed() {
                 msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
                     global: true,
                     key: "core.longpaths".into(),

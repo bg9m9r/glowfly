@@ -7,6 +7,7 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
 use crate::state::files::{PathForm, listed, tracked};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText};
 use trellis_core::repo::{PathProblem, Snapshot, check_new_path, new_path_warning};
 
@@ -41,7 +42,7 @@ pub fn rename_file(
     if tracked {
         ui.add_space(4.0);
         let mut on = stage_renames;
-        if ui.checkbox(&mut on, "Stage the rename (git mv)").on_hover_text(STAGE_HINT).changed() {
+        if controls::checkbox(ui, &mut on, "Stage the rename (git mv)").on_hover_text(STAGE_HINT).changed() {
             msgs.push(Msg::WorkFile(WorkFileMsg::SetRenameStages(on)));
         }
         let note = if stage_renames {
@@ -58,7 +59,7 @@ pub fn rename_file(
 /// The path field with its problem line and normalized preview. Returns (Enter pressed in the
 /// field, the path can be submitted).
 fn path_field(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, old: Option<&str>, focus: bool) -> (bool, bool) {
-    let r = ui.add(egui::TextEdit::singleline(&mut form.text).hint_text("folder/name.ext").desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.text).hint_text("folder/name.ext").desired_width(f32::INFINITY));
     if focus {
         r.request_focus();
     }

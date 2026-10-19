@@ -6,6 +6,7 @@
 use super::theme::color;
 use crate::msg::Msg;
 use crate::state::worktree_manage::{LockForm, RemoveForm};
+use crate::ui::theme::controls;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::worktree_ops::Refusal;
@@ -31,7 +32,7 @@ pub fn remove(ui: &mut egui::Ui, form: &mut RemoveForm, idle: bool, msgs: &mut V
     }
     if let Some(b) = form.branch.clone() {
         ui.add_space(8.0);
-        ui.checkbox(&mut form.delete_branch, format!("Also delete branch {b}"));
+        controls::checkbox(ui, &mut form.delete_branch, format!("Also delete branch {b}"));
         ui.label(
             RichText::new("Only if it is merged (git branch -d). If it isn't, the worktree is still removed and you are told.")
                 .color(color::weak()),
@@ -41,7 +42,7 @@ pub fn remove(ui: &mut egui::Ui, form: &mut RemoveForm, idle: bool, msgs: &mut V
         {
             ui.add_space(4.0);
             let label = format!("Also delete {} on {}", r.tracking.merge, r.tracking.remote);
-            let c = ui.add_enabled(r.blocked.is_none(), egui::Checkbox::new(&mut form.delete_remote, label));
+            let c = ui.add_enabled(r.blocked.is_none(), controls::Check::new(&mut form.delete_remote, label));
             if let Some(why) = &r.blocked {
                 c.on_disabled_hover_text(why);
             }
@@ -80,7 +81,8 @@ pub fn lock(ui: &mut egui::Ui, form: &mut LockForm, focus: bool, idle: bool, msg
     );
     ui.add_space(8.0);
     ui.label(RichText::new("Reason (optional)").color(color::weak()));
-    let r = ui.add(
+    let r = controls::field(
+        ui,
         egui::TextEdit::singleline(&mut form.reason)
             .id(Id::new("trellis-worktree-lock-reason"))
             .hint_text("e.g. on the USB drive")

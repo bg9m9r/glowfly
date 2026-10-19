@@ -9,6 +9,7 @@ use crate::state::menu_bar::zoom_blocked;
 use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
 use crate::ui::theme::color;
+use crate::ui::theme::controls;
 use crate::ui::theme_names;
 use eframe::egui::{self, Button, RichText};
 use trellis_core::i18n::Lang;
@@ -70,21 +71,21 @@ fn diff_items(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
         ui.close_menu();
     };
     for (layout, label) in [(DiffLayout::Inline, t.tr("menu.view.inline")), (DiffLayout::Split, t.tr("menu.view.split"))] {
-        if ui.radio(s.diff_layout == layout, label).clicked() {
+        if controls::radio(ui, s.diff_layout == layout, label).clicked() {
             push(ui, DiffMsg::SetDiffLayout(layout));
         }
     }
     for (mode, label) in [(DiffMode::Hunks, t.tr("menu.view.hunks")), (DiffMode::WholeFile, t.tr("menu.view.whole_file"))] {
-        if ui.radio(s.diff_mode == mode, label).clicked() {
+        if controls::radio(ui, s.diff_mode == mode, label).clicked() {
             push(ui, DiffMsg::SetDiffMode(mode));
         }
     }
     let mut ignore = s.diff_ignore_whitespace;
-    if ui.checkbox(&mut ignore, t.tr("menu.view.ignore_whitespace")).clicked() {
+    if controls::checkbox(ui, &mut ignore, t.tr("menu.view.ignore_whitespace")).clicked() {
         push(ui, DiffMsg::SetIgnoreWhitespace(ignore));
     }
     let mut wrap = s.diff_word_wrap;
-    if ui.checkbox(&mut wrap, t.tr("menu.view.wrap")).clicked() {
+    if controls::checkbox(ui, &mut wrap, t.tr("menu.view.wrap")).clicked() {
         push(ui, DiffMsg::SetWordWrap(wrap));
     }
 }
@@ -94,7 +95,7 @@ fn theme_items(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.set_min_width(200.0);
     let current = &st.settings.theme;
     let mut pick = |ui: &mut egui::Ui, choice: ThemeChoice, label: String| {
-        if ui.radio(*current == choice, label).clicked() {
+        if controls::radio(ui, *current == choice, label).clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::SetTheme(choice)));
             ui.close_menu();
         }

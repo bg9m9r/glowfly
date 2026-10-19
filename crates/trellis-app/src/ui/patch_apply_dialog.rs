@@ -7,6 +7,7 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::patch::PatchMsg;
 use crate::state::patch::apply::{ApplyForm, ApplyMode, NO_MESSAGES, NOTHING_TO_APPLY, THREE_WAY_INDEX, apply_blocked};
+use crate::ui::theme::controls;
 use eframe::egui::{self, RichText};
 use trellis_core::patch_ops::OnFail;
 use trellis_core::repo::Snapshot;
@@ -34,8 +35,8 @@ pub fn show(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>, id
     files(ui, form);
     ui.add_space(8.0);
     ui.label(RichText::new("How to apply").strong());
-    ui.radio_value(&mut form.mode, ApplyMode::Changes, "Apply the changes to your files");
-    let commits = ui.add_enabled(form.summary.commits > 0, egui::RadioButton::new(form.mode == ApplyMode::Commits, "Apply as commits"));
+    controls::radio_value(ui, &mut form.mode, ApplyMode::Changes, "Apply the changes to your files");
+    let commits = ui.add_enabled(form.summary.commits > 0, controls::Radio::new(form.mode == ApplyMode::Commits, "Apply as commits"));
     if commits.on_disabled_hover_text(NO_MESSAGES).clicked() {
         form.mode = ApplyMode::Commits;
     }
@@ -43,7 +44,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>, id
     ui.indent("apply-options", |ui| match form.mode {
         ApplyMode::Changes => changes_options(ui, form),
         ApplyMode::Commits => {
-            ui.checkbox(&mut form.am_three_way, "Three-way fallback when a patch doesn't apply");
+            controls::checkbox(ui, &mut form.am_three_way, "Three-way fallback when a patch doesn't apply");
             let on = match snap.and_then(|s| s.head_branch.as_deref()) {
                 Some(b) => b.to_owned(),
                 None => "detached HEAD".to_owned(),
@@ -97,18 +98,18 @@ fn files(ui: &mut egui::Ui, form: &ApplyForm) {
 fn changes_options(ui: &mut egui::Ui, form: &mut ApplyForm) {
     let three_way = form.opts.on_fail == OnFail::ThreeWay;
     ui.label(RichText::new("Where").strong());
-    let only = ui.add_enabled(!three_way, egui::RadioButton::new(!form.opts.index && !three_way, "Working tree only"));
+    let only = ui.add_enabled(!three_way, controls::Radio::new(!form.opts.index && !three_way, "Working tree only"));
     if only.on_disabled_hover_text(THREE_WAY_INDEX).clicked() {
         form.opts.index = false;
     }
-    if ui.radio(form.opts.index || three_way, "Working tree and index (stage the changes)").clicked() {
+    if controls::radio(ui, form.opts.index || three_way, "Working tree and index (stage the changes)").clicked() {
         form.opts.index = true;
     }
     ui.add_space(4.0);
     ui.label(RichText::new("If part of the patch doesn't apply").strong());
     for (choice, text) in ON_FAIL {
-        ui.radio_value(&mut form.opts.on_fail, choice, text);
+        controls::radio_value(ui, &mut form.opts.on_fail, choice, text);
     }
     ui.add_space(4.0);
-    ui.checkbox(&mut form.opts.reverse, "Reverse: take these changes out");
+    controls::checkbox(ui, &mut form.opts.reverse, "Reverse: take these changes out");
 }

@@ -37,6 +37,10 @@ pub fn widget_row_height(ui: &egui::Ui) -> f32 {
     s.interact_size.y.max(text + 2.0 * s.button_padding.y)
 }
 
+/// How many lane colours there are before they repeat.
+#[cfg(test)]
+pub const LANE_COUNT: usize = LANE_COLORS.len();
+
 pub fn lane_color(i: usize) -> Color32 {
     LANE_COLORS[i % LANE_COLORS.len()]
 }

@@ -7,6 +7,7 @@ use super::widgets::{self, Icon};
 use crate::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
 use crate::state::repo_lists::favorite_label;
 use crate::state::repo_scan::{FinderRow, RepoScan, matches};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Align, Layout, Response, RichText, Sense, vec2};
 use std::path::PathBuf;
 use trellis_core::i18n::Lang;
@@ -50,7 +51,7 @@ pub fn show(ui: &mut egui::Ui, t: Lang, filter: &mut String, lists: FinderLists,
     });
     if !folders.is_empty() {
         ui.add_space(10.0);
-        let r = ui.add(egui::TextEdit::singleline(filter).hint_text(t.tr("finder.filter.hint")).desired_width(f32::INFINITY));
+        let r = controls::field(ui, egui::TextEdit::singleline(filter).hint_text(t.tr("finder.filter.hint")).desired_width(f32::INFINITY));
         if focus {
             r.request_focus();
         }

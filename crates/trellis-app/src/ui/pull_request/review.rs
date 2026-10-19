@@ -7,6 +7,7 @@ use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::pull_request::{PrAction, PrView};
 use crate::state::pull_request_actions::{error_for, review_blocked, review_button, review_choice_blocked};
+use crate::ui::theme::controls;
 use eframe::egui::{self, Ui};
 use trellis_core::forge::ReviewEvent;
 
@@ -24,7 +25,7 @@ pub(super) fn show(ui: &mut Ui, v: &mut PrView, msgs: &mut Vec<Msg>) {
     for (ev, label, help) in CHOICES {
         let blocked = review_choice_blocked(v, ev);
         let checked = v.forms.review_event == ev;
-        let mut r = ui.add_enabled(blocked.is_none(), egui::RadioButton::new(checked, label));
+        let mut r = ui.add_enabled(blocked.is_none(), controls::Radio::new(checked, label));
         if let Some(why) = &blocked {
             r = r.on_disabled_hover_text(why);
         }
@@ -41,7 +42,7 @@ pub(super) fn show(ui: &mut Ui, v: &mut PrView, msgs: &mut Vec<Msg>) {
         .hint_text("Summary (optional when approving)")
         .desired_rows(3)
         .desired_width(f32::INFINITY);
-    ui.add(summary);
+    controls::field(ui, summary);
     if pending {
         note(ui, "You have a review in progress on the service; this submits it with its comments.", color::weak());
     }

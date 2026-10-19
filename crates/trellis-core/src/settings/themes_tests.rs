@@ -85,6 +85,15 @@ fn aliases_resolve() {
 }
 
 #[test]
+fn border_keys_parse() {
+    let f = p(r##"{ "colors": { "input_border": "#123456", "dialog_border": "border" } }"##);
+    assert!(f.problems.is_empty(), "{:?}", f.problems);
+    assert_eq!((f.colors["input_border"], f.colors["dialog_border"]), (rgb(0x123456), ColorValue::Base("border")));
+    let f = p(r##"{ "colors": { "border": "#0a0b0c", "dialog_border": "border" } }"##);
+    assert_eq!(f.colors["dialog_border"], rgb(0x0a0b0c));
+}
+
+#[test]
 fn cycles_keep_the_base_value() {
     let f = p(r##"{ "colors": { "hover": "selected", "selected": "hover", "accent": "#010101", "red": "red", "weak": "hover" } }"##);
     let cycles: Vec<_> = f.problems.iter().filter(|p| matches!(p, ThemeProblem::Cycle { .. })).cloned().collect();
@@ -132,7 +141,7 @@ fn fatal_problems() {
 
 #[test]
 fn choices_and_builtins() {
-    assert_eq!(COLOR_KEYS.len(), 41);
+    assert_eq!(COLOR_KEYS.len(), 43);
     for t in BuiltinTheme::ALL {
         assert_eq!(BuiltinTheme::from_id(t.id()), Some(t));
     }
