@@ -24,6 +24,8 @@ pub struct AddForm {
     pub asked: Option<String>,
     /// The runner's answer and the repo path it is for: Ok(warnings), or why git would refuse.
     pub checked: Option<(String, Result<Vec<String>, String>)>,
+    /// The fields edited and whether Add was tried, so a problem waits for them.
+    pub touched: crate::state::touched::Touched,
 }
 
 /// What the disk check says about the folder as it is typed now.
@@ -46,7 +48,16 @@ pub struct AddRequest {
 
 impl AddForm {
     pub fn new(repo: PathBuf) -> Self {
-        Self { repo, url: String::new(), path: String::new(), path_edited: false, branch: String::new(), asked: None, checked: None }
+        Self {
+            repo,
+            url: String::new(),
+            path: String::new(),
+            path_edited: false,
+            branch: String::new(),
+            asked: None,
+            checked: None,
+            touched: Default::default(),
+        }
     }
 
     /// The folder as a repo path, or why it can't take a submodule (from the text and the

@@ -43,6 +43,9 @@ pub fn show(
     let label = if form.editing.is_some() { "Save" } else { "Create filter" };
     let ok = form.problems(existing).is_empty();
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(ok)).submit(submit));
+    if out.attempted {
+        form.touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::ForgeFilter(FilterMsg::Save));
     }
@@ -52,10 +55,12 @@ pub fn show(
 /// The name and the conditions; returns whether Enter left the name field.
 fn body(ui: &mut egui::Ui, form: &mut FilterForm, fs: Option<&ForgeState>, existing: &RepoForgeFilters, focus: bool) -> bool {
     let r = controls::field(ui, egui::TextEdit::singleline(&mut form.name).hint_text("Filter name").desired_width(f32::INFINITY));
+    form_message::track(&mut form.touched, "name", &r);
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if focus && ui.memory(|m| m.focused().is_none()) {
         r.request_focus();
     }
+    form_message::field(ui, &form.touched, "name", form.name_problem(existing).map(Message::error));
     ui.add_space(8.0);
     let options = fs.map(|f| (suggestions(f, form.kind), f.filters.options(form.kind).clone()));
     let (loaded, state) = options.unwrap_or((Some(FilterOptions::default()), OptionsState::NotAsked));
@@ -71,12 +76,10 @@ fn body(ui: &mut egui::Ui, form: &mut FilterForm, fs: Option<&ForgeState>, exist
         ui.add_space(4.0);
         ui.label(RichText::new(format!("Couldn't load the choices: {e}")).size(11.5).color(color::faint()));
     }
-    let problems = form.problems(existing);
-    if !problems.is_empty() {
+    // The conditions come from the filter on show, not from typing: they show at once.
+    for p in form.condition_problems() {
         ui.add_space(6.0);
-        for p in &problems {
-            form_message::line(ui, Message::error(p.as_str()));
-        }
+        form_message::form(ui, Message::error(p));
     }
     submit
 }

@@ -27,6 +27,8 @@ pub struct ForkPicker {
     /// The last name Trellis suggested; a pick replaces `name` only while it still equals this.
     pub suggested: String,
     pub fetch_after: bool,
+    /// Whether the name was edited or Add remote tried, so its problem waits for them.
+    pub touched: super::touched::Touched,
 }
 
 /// Where the Fork dialog is.
@@ -54,6 +56,8 @@ pub struct ForkCreate {
     pub name: String,
     pub fetch_after: bool,
     pub error: Option<ForgeError>,
+    /// Whether the name was edited or a submit tried, so its problem waits for them.
+    pub touched: super::touched::Touched,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

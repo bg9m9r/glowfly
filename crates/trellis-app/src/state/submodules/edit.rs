@@ -25,13 +25,24 @@ pub struct EditForm {
     pub branch: String,
     pub original_url: String,
     pub original_branch: String,
+    /// The fields edited and whether Save was tried, so a problem waits for them.
+    pub touched: crate::state::touched::Touched,
 }
 
 impl EditForm {
     pub fn new(repo: PathBuf, sm: &SubmoduleInfo) -> Self {
         let url = sm.url.clone().unwrap_or_default();
         let branch = sm.branch.clone().unwrap_or_default();
-        Self { repo, path: sm.path.clone(), name: sm.name.clone(), original_url: url.clone(), original_branch: branch.clone(), url, branch }
+        Self {
+            repo,
+            path: sm.path.clone(),
+            name: sm.name.clone(),
+            original_url: url.clone(),
+            original_branch: branch.clone(),
+            url,
+            branch,
+            touched: Default::default(),
+        }
     }
 
     pub fn url_problem(&self) -> Option<&'static str> {

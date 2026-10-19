@@ -10,6 +10,7 @@ use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::clone::{CloneForm, LimitKind};
 use crate::state::clone_service::CloneSource;
+use crate::state::touched::Touched;
 use crate::ui::theme::controls;
 use crate::ui::widgets::form_message::{self, Message};
 use chrono::NaiveDate;
@@ -17,11 +18,10 @@ use eframe::egui::{self, Id, RichText};
 use std::path::Path;
 use trellis_core::forge::Connection;
 
-/// A field's problem, under it.
-pub(super) fn problem(ui: &mut egui::Ui, text: Option<&String>) {
-    if let Some(t) = text {
-        form_message::line(ui, Message::error(t.as_str()));
-    }
+/// The problem of the field named `field`, under it, once that field was edited or a submit
+/// was tried.
+pub(super) fn problem(ui: &mut egui::Ui, touched: &Touched, field: &str, text: Option<&String>) {
+    form_message::field(ui, touched, field, text.map(|t| Message::error(t.as_str())));
 }
 
 pub(super) fn note(ui: &mut egui::Ui, text: &str) {
@@ -43,11 +43,20 @@ pub(super) fn destination(ui: &mut egui::Ui, path: &str) {
     });
 }
 
-/// A label and a single-line text field on one row.
-fn row(ui: &mut egui::Ui, label: &str, text: &mut String, id: &str, hint: &str, width: f32) {
+/// A label and a single-line text field on one row; marks `field` edited when it changes.
+fn row(
+    ui: &mut egui::Ui,
+    label: &str,
+    (touched, field): (&mut Touched, &'static str),
+    text: &mut String,
+    id: &str,
+    hint: &str,
+    width: f32,
+) {
     ui.horizontal(|ui| {
         ui.label(label);
-        controls::field(ui, egui::TextEdit::singleline(text).id(Id::new(id)).hint_text(hint).desired_width(width));
+        let r = controls::field(ui, egui::TextEdit::singleline(text).id(Id::new(id)).hint_text(hint).desired_width(width));
+        form_message::track(touched, field, &r);
     });
 }
 
@@ -75,19 +84,19 @@ fn shallow_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate) {
         });
         match form.limit {
             LimitKind::Depth => {
-                row(ui, "Commits", &mut form.depth, "trellis-clone-depth", "", 70.0);
-                problem(ui, form.problems_now(today).depth.as_ref());
+                row(ui, "Commits", (&mut form.touched, "depth"), &mut form.depth, "trellis-clone-depth", "", 70.0);
+                problem(ui, &form.touched, "depth", form.problems_now(today).depth.as_ref());
                 note(ui, "How many of the newest commits on the branch to download.");
             }
             LimitKind::Since => {
-                row(ui, "Since", &mut form.since, "trellis-clone-since", "YYYY-MM-DD", 110.0);
-                problem(ui, form.problems_now(today).since.as_ref());
+                row(ui, "Since", (&mut form.touched, "since"), &mut form.since, "trellis-clone-since", "YYYY-MM-DD", 110.0);
+                problem(ui, &form.touched, "since", form.problems_now(today).since.as_ref());
                 note(ui, "Commits made before this day are left out.");
             }
         }
         ui.add_space(4.0);
-        row(ui, "Branch", &mut form.branch, "trellis-clone-branch", "Remote's default branch", 220.0);
-        problem(ui, form.problems_now(today).branch.as_ref());
+        row(ui, "Branch", (&mut form.touched, "branch"), &mut form.branch, "trellis-clone-branch", "Remote's default branch", 220.0);
+        problem(ui, &form.touched, "branch", form.problems_now(today).branch.as_ref());
         note(ui, "Only this branch is downloaded. Leave it empty for the remote's default branch.");
     });
 }
@@ -103,14 +112,15 @@ fn sparse_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, blo
     }
     ui.indent("trellis-clone-sparse-options", |ui| {
         ui.label("Folders to check out, one per line");
-        controls::field(
+        let r = controls::field(
             ui,
             egui::TextEdit::multiline(&mut form.sparse_folders)
                 .id(Id::new("trellis-clone-sparse"))
                 .desired_rows(4)
                 .desired_width(f32::INFINITY),
         );
-        problem(ui, form.problems_now(today).sparse.as_ref());
+        form_message::track(&mut form.touched, "sparse", &r);
+        problem(ui, &form.touched, "sparse", form.problems_now(today).sparse.as_ref());
         note(ui, "Files at the top of the repository are always checked out. Leave the list empty to check out only those.");
         ui.add_space(4.0);
         controls::checkbox(ui, &mut form.partial, "Download file contents only for these folders (partial clone)");
@@ -135,6 +145,9 @@ pub fn show(
     let mut close = d.body(ui, |ui| body(ui, cx, form, today, sparse_blocked, connections, msgs));
     let p = form.problems_now(today);
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Clone").enabled(!p.blocked)));
+    if out.attempted {
+        form.touched.attempt();
+    }
     if out.primary
         && let Some(req) = form.request(today)
     {
@@ -168,9 +181,10 @@ fn body(
                     .desired_width(f32::INFINITY),
             );
             super::access::name_field(&url, "Repository URL");
+            form_message::track(&mut form.touched, "url", &url);
             // Each line is checked right after its field is drawn, so it follows this frame's
             // typing. The folder check doesn't affect the URL's line.
-            problem(ui, form.problems(today, true).url.as_ref());
+            problem(ui, &form.touched, "url", form.problems(today, true).url.as_ref());
         }
         CloneSource::Service => close |= super::clone_service::show(ui, cx.t, form, connections, cx.keyboard, msgs),
     }
@@ -184,14 +198,16 @@ fn body(
                 .desired_width(340.0),
         );
         super::access::name_field(&edit, "Clone into folder");
+        form_message::track(&mut form.touched, "folder", &edit);
         if edit.changed() {
             msgs.push(Msg::Clone(CloneMsg::ParentEdited));
         }
         if ui.add(buttons::secondary("Browse…").small()).clicked() {
+            form.touched.mark("folder");
             msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::CloneParent)));
         }
     });
-    problem(ui, form.problems_now(today).folder.as_ref());
+    problem(ui, &form.touched, "folder", form.problems_now(today).folder.as_ref());
     let name = form.name();
     if !name.is_empty() && !form.parent.trim().is_empty() {
         destination(ui, &Path::new(form.parent.trim()).join(&name).display().to_string());

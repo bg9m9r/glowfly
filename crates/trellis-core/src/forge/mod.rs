@@ -61,8 +61,8 @@ pub use forks::{CreatedFork, Fork, ForkList, ForkLookup, Wait, create_fork, find
 pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
 pub use issue_details::{
-    CreateOptions, IssueDetails, NewIssue, Person, create_issue, issue_create_options, issue_details, issues_in_app, noun, project_problem,
-    title_word, type_problem, type_required,
+    CreateOptions, IssueDetails, IssueField, NewIssue, Person, create_issue, issue_create_options, issue_details, issues_in_app, noun,
+    project_problem, title_word, type_problem, type_required,
 };
 pub use links::https_host;
 pub use model::*;

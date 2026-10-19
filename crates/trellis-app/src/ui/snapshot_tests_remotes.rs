@@ -10,6 +10,7 @@ use super::snapshot_tests_worktrees::{H, center, pushed};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::remotes::RemoteForm;
+use crate::state::touched::Touched;
 use crate::state::{AppState, Modal, RunningJob};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
@@ -67,6 +68,7 @@ fn remote_add_dialog() {
     let mut f = RemoteForm::add(st.snap.as_ref().unwrap());
     f.name = "origin".into();
     f.url = "https://example.com/team/mirror.git".into();
+    f.touched = Touched::all();
     st.modal = Some(Modal::Remote(f));
     let mut h = harness(st, true);
     h.run();

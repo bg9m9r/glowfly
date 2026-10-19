@@ -56,6 +56,7 @@ fn publish(owners: &[&str], owner: &str) -> Modal {
         loading: false,
         creating: false,
         error: None,
+        touched: Default::default(),
     }))
 }
 
@@ -101,6 +102,7 @@ fn forms_info_and_confirms_are_told_apart() {
         name: "ada".into(),
         fetch_after: true,
         error: None,
+        touched: Default::default(),
     };
     let confirms = [
         Modal::Confirm { title: "T".into(), body: "B".into(), button: "Go".into(), then: Box::new(Msg::ClearLog) },

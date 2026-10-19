@@ -8,6 +8,7 @@ use super::super::widgets::buttons;
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::remotes::{RemoteForm, extra_push_urls, name_problem, push_problem, push_same_as_fetch, url_problem};
+use crate::state::touched::Touched;
 use crate::ui::theme::controls;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Id, Key, RichText};
@@ -22,11 +23,10 @@ pub(super) fn field(ui: &mut egui::Ui, label: &str, text: &mut String, id: &str,
     (r, enter)
 }
 
-/// A field's problem under it; nothing for empty `text`.
-pub(super) fn problem_line(ui: &mut egui::Ui, text: String) {
-    if !text.is_empty() {
-        form_message::line(ui, Message::error(text));
-    }
+/// The problem of the field named `field` under it, once that field was edited or a submit
+/// was tried; nothing for empty `text`.
+pub(super) fn problem_line(ui: &mut egui::Ui, touched: &Touched, field: &str, text: String) {
+    form_message::field(ui, touched, field, Some(text).filter(|t| !t.is_empty()).map(Message::error));
 }
 
 pub(super) fn note(ui: &mut egui::Ui, text: impl Into<String>) {
@@ -60,23 +60,37 @@ pub fn show(
     ui.add_space(6.0);
 
     let (name_r, enter_name) = field(ui, "Name", &mut form.name, "trellis-remote-name", "upstream");
+    form_message::track(&mut form.touched, "name", &name_r);
     let name_p = name_problem(snap, form);
-    problem_line(ui, name_p.as_ref().filter(|p| **p != RemoteNameProblem::Empty).map(|p| p.message()).unwrap_or_default());
+    problem_line(
+        ui,
+        &form.touched,
+        "name",
+        name_p.as_ref().filter(|p| **p != RemoteNameProblem::Empty).map(|p| p.message()).unwrap_or_default(),
+    );
     if focus && ui.memory(|m| m.focused().is_none()) {
         name_r.request_focus();
     }
     ui.add_space(6.0);
 
-    let (_, enter_url) = field(ui, "Fetch URL", &mut form.url, "trellis-remote-url", "https://example.com/owner/repo.git or a folder path");
+    let (url_r, enter_url) =
+        field(ui, "Fetch URL", &mut form.url, "trellis-remote-url", "https://example.com/owner/repo.git or a folder path");
+    form_message::track(&mut form.touched, "url", &url_r);
     let url_p = url_problem(form);
-    problem_line(ui, url_p.as_ref().filter(|p| **p != UrlProblem::Empty).map(|p| p.message(false)).unwrap_or_default());
+    problem_line(
+        ui,
+        &form.touched,
+        "url",
+        url_p.as_ref().filter(|p| **p != UrlProblem::Empty).map(|p| p.message(false)).unwrap_or_default(),
+    );
     ui.add_space(6.0);
 
-    let (_, enter_push) = field(ui, "Push URL (optional)", &mut form.push_url, "trellis-remote-push", "Same as the fetch URL");
+    let (push_r, enter_push) = field(ui, "Push URL (optional)", &mut form.push_url, "trellis-remote-push", "Same as the fetch URL");
+    form_message::track(&mut form.touched, "push", &push_r);
     let push_p = push_problem(form);
     note(ui, "Leave empty to push to the fetch URL.");
     if let Some(p) = &push_p {
-        problem_line(ui, p.message(true));
+        problem_line(ui, &form.touched, "push", p.message(true));
     } else if push_same_as_fetch(form) {
         note(ui, "Same as the fetch URL.");
     }
@@ -102,6 +116,9 @@ pub fn show(
     let enter = enter_name || enter_url || enter_push;
     let label = if form.is_edit() { "Save" } else { "Add remote" };
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(ready)).submit(enter));
+    if out.attempted {
+        form.touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Remote(RemoteMsg::Submit));
     }

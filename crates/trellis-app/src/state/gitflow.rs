@@ -60,6 +60,8 @@ impl GitFlowPage {
 pub struct StartForm {
     pub kind: FlowKind,
     pub name: String,
+    /// Whether the name was edited or Start tried, so its problem waits for them.
+    pub touched: super::touched::Touched,
 }
 
 /// The Finish dialog: the branch, the tag and message (release and hotfix) and Keep.
@@ -71,6 +73,8 @@ pub struct FinishForm {
     pub keep: bool,
     /// Focus the Tag field on the next frame.
     pub focus_tag: bool,
+    /// Whether the tag was edited or Finish tried, so its problem waits for them.
+    pub touched: super::touched::Touched,
 }
 
 impl FinishForm {

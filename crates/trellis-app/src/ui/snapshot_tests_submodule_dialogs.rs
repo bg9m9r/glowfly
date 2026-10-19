@@ -8,6 +8,7 @@ use crate::msg::Msg;
 use crate::state::submodules::add::AddForm;
 use crate::state::submodules::edit::EditForm;
 use crate::state::submodules::remove::RemoveForm;
+use crate::state::touched::Touched;
 use crate::state::{AppState, Modal};
 use crate::submodule::SubmoduleMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -59,6 +60,7 @@ fn submodule_add_dialog_problems() {
         f.path_edited = true;
         f.branch = "bad..name".into();
         f.checked = Some(("README.md".into(), Err(tracked.into())));
+        f.touched = Touched::all();
     });
     let mut h = harness(st, true);
     h.run();
@@ -169,6 +171,7 @@ fn edit_dialog(theme: ThemeChoice, name: &str, dark: bool) {
     };
     let mut form = EditForm::new(st.snap.as_ref().unwrap().workdir.clone(), &sm);
     form.url = "-x".into();
+    form.touched.mark("url");
     st.modal = Some(Modal::EditSubmodule(form));
     let mut h = harness(st, dark);
     h.run();

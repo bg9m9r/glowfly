@@ -38,6 +38,7 @@ pub(super) fn dialog(st: &mut AppState, branch: &str) {
         message: default_tag_message(kind, short),
         keep: false,
         focus_tag: kind.versioned(),
+        touched: Default::default(),
     }));
 }
 

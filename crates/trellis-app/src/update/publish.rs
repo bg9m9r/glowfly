@@ -120,6 +120,7 @@ pub(super) fn open(st: &mut AppState, fx: &mut Vec<Effect>) {
         loading: false,
         creating: false,
         error: None,
+        touched: Default::default(),
     })));
     load_owners(st, fx);
 }

@@ -45,6 +45,8 @@ pub struct CloneForm {
     /// expanded, resolved) when it is one. Set by `update` from `CloneMsg::ParentChecked`; views
     /// never look at the disk.
     pub parent_checked: Option<(String, Option<PathBuf>)>,
+    /// The fields edited and whether Clone was tried, so a problem waits for them.
+    pub touched: super::touched::Touched,
 }
 
 /// What is wrong with the form: each field's red line (None when it is fine or empty in a way
@@ -86,6 +88,7 @@ impl CloneForm {
             partial: false,
             service: ServicePicker::default(),
             parent_checked: None,
+            touched: super::touched::Touched::default(),
         }
     }
 

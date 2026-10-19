@@ -27,6 +27,7 @@ pub fn start(ui: &mut egui::Ui, cx: Cx, form: &mut StartForm, snap: Option<&Snap
             controls::field(ui, egui::TextEdit::singleline(&mut form.name).hint_text(hint).desired_width(f32::INFINITY))
         })
         .inner;
+    form_message::track(&mut form.touched, "name", &r);
     // Not under a credential prompt: its fields need the keyboard.
     if cx.keyboard {
         r.request_focus();
@@ -41,9 +42,9 @@ pub fn start(ui: &mut egui::Ui, cx: Cx, form: &mut StartForm, snap: Option<&Snap
         }
         // An empty name only disables Start.
         Err(StartProblem::Name(NameProblem::Empty, _)) => {}
-        Err(p) => {
-            form_message::line(ui, Message::error(p.message()));
-        }
+        // The repository's state, not the name: it shows at once.
+        Err(p @ StartProblem::MissingBase { .. }) => form_message::form(ui, Message::error(p.message())),
+        Err(p) => form_message::field(ui, &form.touched, "name", Some(Message::error(p.message()))),
     }
     if kind.versioned() {
         let open = open_branches(&s, kind, &b);
@@ -54,6 +55,9 @@ pub fn start(ui: &mut egui::Ui, cx: Cx, form: &mut StartForm, snap: Option<&Snap
     }
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Start").enabled(result.is_ok())).submit(submit));
+    if out.attempted {
+        form.touched.attempt();
+    }
     // Update closes the dialog once the job starts.
     if out.primary {
         msgs.push(Msg::GitFlow(GitFlowMsg::Start { kind, name: name.to_owned() }));

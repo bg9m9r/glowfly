@@ -6,7 +6,7 @@
 use super::AppState;
 use super::issue_words;
 use trellis_core::forge::filters::Named;
-use trellis_core::forge::{self, CreateOptions, NewIssue, Provider, Target, issues_in_app, type_problem, type_required};
+use trellis_core::forge::{self, CreateOptions, IssueField, NewIssue, Provider, Target, issues_in_app, type_required};
 
 /// The labels, people, types and epics the service offers.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -51,6 +51,8 @@ pub struct IssueForm {
     pub busy: bool,
     /// The last create's failure.
     pub error: Option<String>,
+    /// The fields edited and whether Create was tried, so a problem waits for them.
+    pub touched: super::touched::Touched,
 }
 
 impl IssueForm {
@@ -81,6 +83,7 @@ impl IssueForm {
             people_query: String::new(),
             busy: false,
             error: None,
+            touched: Default::default(),
         }
     }
 
@@ -151,18 +154,26 @@ impl IssueForm {
     /// What keeps the issue from being created, listed live in the dialog. The type is asked
     /// for only once the types are loaded (or failed to).
     pub fn problems(&self) -> Vec<String> {
-        let mut out = self.to_new().problems(self.provider());
-        if matches!(self.options, OptionsState::NotAsked | OptionsState::Loading)
-            && let Some(why) = type_problem(self.provider())
-        {
-            out.retain(|p| p != why);
+        self.field_problems().into_iter().map(|(_, why)| why).collect()
+    }
+
+    /// `problems`, each with the field it is about.
+    pub fn field_problems(&self) -> Vec<(IssueField, String)> {
+        let mut out = self.to_new().field_problems(self.provider());
+        if matches!(self.options, OptionsState::NotAsked | OptionsState::Loading) {
+            out.retain(|(f, _)| *f != IssueField::Type);
         }
         if let Some(o) = self.loaded()
             && self.people.len() > o.max_assignees
         {
-            out.push(too_many(o.max_assignees));
+            out.push((IssueField::Assignees, too_many(o.max_assignees)));
         }
         out
+    }
+
+    /// The problem with `field`, if it has one.
+    pub fn problem(&self, field: IssueField) -> Option<String> {
+        self.field_problems().into_iter().find(|(f, _)| *f == field).map(|(_, why)| why)
     }
 
     /// Why Create is disabled: the first problem, or the types still loading on a tracker that

@@ -18,13 +18,15 @@ pub struct RemoteForm {
     pub push_url: String,
     /// Add only: fetch the new remote in the same job.
     pub fetch_after: bool,
+    /// The fields edited and whether a submit was tried, so a problem waits for them.
+    pub touched: super::touched::Touched,
 }
 
 impl RemoteForm {
     /// An empty Add form, named origin when the repository has no remote yet.
     pub fn add(snap: &Snapshot) -> Self {
         let name = if snap.remotes.is_empty() { "origin".to_owned() } else { String::new() };
-        Self { original: None, name, url: String::new(), push_url: String::new(), fetch_after: true }
+        Self { original: None, name, url: String::new(), push_url: String::new(), fetch_after: true, touched: Default::default() }
     }
 
     /// An Edit form filled from `info` (its first fetch and push URLs).
@@ -35,6 +37,7 @@ impl RemoteForm {
             url: info.fetch_url().to_owned(),
             push_url: info.push_url().unwrap_or("").to_owned(),
             fetch_after: false,
+            touched: Default::default(),
         }
     }
 

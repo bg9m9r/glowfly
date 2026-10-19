@@ -1,5 +1,5 @@
 //! The Create issue dialog: GitHub with labels and an assignee chosen, Jira with its project,
-//! type and epic and a missing summary, an Azure Boards work item with its type, tags and
+//! type and epic and a missing summary (shown once Create is tried), an Azure Boards work item with its type, tags and
 //! parent, Trello's board and write-token note, Bitbucket's kind and priority, and creating
 //! then failing with the server's words.
 
@@ -8,6 +8,7 @@ use crate::msg::{IssueMsg, Msg};
 use crate::state::issue_form::{IssueForm, OptionsState};
 use crate::state::{AppState, ForgeState, Modal, ProjectKeys, Status};
 use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::Key;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
@@ -91,6 +92,10 @@ fn create_issue_jira_dark() {
     });
     let mut h = harness(st, true);
     h.run();
+    assert!(h.query_by_label("Enter a summary.").is_none(), "nobody typed a summary yet");
+    // Enter on the disabled Create shows it, under the Summary field.
+    h.press_key(Key::Enter);
+    h.run();
     h.check_snapshot("create_issue_jira_dark");
     assert!(h.query_by_label("Enter a summary.").is_some());
     assert!(h.get_by_role_and_label(Role::Button, "Create issue").is_disabled());
@@ -127,7 +132,7 @@ fn loading_choices_and_a_failed_load() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Loading labels, people and types…").is_some());
-    assert!(h.query_by_label("Enter a title.").is_some());
+    assert!(h.query_by_label("Enter a title.").is_none(), "nobody typed a title yet");
     if let Some(Modal::CreateIssue(f)) = h.state_mut().0.modal.as_mut() {
         f.options = OptionsState::Failed("timed out".into());
     }
@@ -199,7 +204,10 @@ fn trello_asks_for_a_board_and_a_write_token() {
     }
     assert!(h.query_by_label("Labels").is_none(), "no labels before a board");
     assert!(h.get_by_role_and_label(Role::Button, "Create card").is_disabled());
-    assert!(h.query_by_label("Choose a board.").is_some());
+    assert!(h.query_by_label("Choose a board.").is_none(), "nothing tried yet");
+    h.press_key(Key::Enter);
+    h.run();
+    assert!(h.query_by_label("Choose a board.").is_some(), "a submit shows it");
     h.get_by_label("Allow a write token").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenUrl(u) if u.contains("scope=read,write"))));

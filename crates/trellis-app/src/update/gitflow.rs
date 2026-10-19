@@ -114,7 +114,7 @@ fn start_dialog(st: &mut AppState, kind: FlowKind, given: Option<String>) {
         return;
     }
     let name = given.unwrap_or_else(|| gitflow::suggest_version(&b.tags, &s.version_tag, kind).unwrap_or_default());
-    st.modal = Some(Modal::GitFlowStart(StartForm { kind, name }));
+    st.modal = Some(Modal::GitFlowStart(StartForm { kind, name, touched: Default::default() }));
 }
 
 fn start(st: &mut AppState, kind: FlowKind, name: &str, now: Instant, fx: &mut Vec<Effect>) {

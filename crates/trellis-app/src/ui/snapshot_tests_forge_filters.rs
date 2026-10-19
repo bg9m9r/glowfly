@@ -5,8 +5,10 @@ use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::{FilterMsg, Msg};
 use crate::state::forge_filter_form::FilterForm;
 use crate::state::forge_filters::{IssueList, MeState, OptionsState};
+use crate::state::touched::Touched;
 use crate::state::{AppState, ForgeState, Modal, Status};
 use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::Key;
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
 use trellis_core::forge::filters::{Milestone, Named, Sprint};
@@ -231,12 +233,30 @@ fn forge_filter_dialog_problems() {
     st.forge.as_mut().unwrap().filters.pr_options = OptionsState::Loading;
     let mut form = FilterForm::new(FilterKind::Prs, Some(Provider::GitHub), &Conditions::default());
     form.name = "ui WORK".into();
+    form.touched = Touched::all();
     st.modal = Some(Modal::ForgeFilter(Box::new(form)));
     let mut h = harness(st, false);
     h.run();
     assert!(h.query_by_label("Another pull request filter is already called \u{201c}ui WORK\u{201d}.").is_some());
     assert!(h.query_by_label("Create filter").is_some_and(|n| n.is_disabled()));
     h.check_snapshot("forge_filter_dialog_problems");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn new_filter_waits_for_a_name() {
+    let (mut st, dir) = with_prs(ThemeChoice::Dark, "filter-dialog-untouched", Provider::GitHub, two_saved());
+    let form = FilterForm::new(FilterKind::Prs, Some(Provider::GitHub), &Conditions::default());
+    st.modal = Some(Modal::ForgeFilter(Box::new(form)));
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Enter a name.").is_none(), "nobody typed a name yet");
+    assert!(h.query_by_label("Create filter").is_some_and(|n| n.is_disabled()));
+    h.press_key(Key::Enter);
+    h.run();
+    assert!(h.query_by_label("Enter a name.").is_some(), "a submit shows it");
+    assert!(matches!(&h.state().0.modal, Some(Modal::ForgeFilter(_))), "still open");
     drop(h);
     remove_fixture(&dir);
 }

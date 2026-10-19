@@ -19,12 +19,15 @@ pub struct FilterForm {
     pub labels: String,
     /// Every condition but the labels, which `conditions` reads from `labels`.
     pub c: Conditions,
+    /// Whether the name was edited or a save tried, so its problem waits for them.
+    pub touched: super::touched::Touched,
 }
 
 impl FilterForm {
     /// A new filter starting from `start`'s conditions (the filter on show).
     pub fn new(kind: FilterKind, provider: Option<Provider>, start: &Conditions) -> Self {
-        FilterForm { editing: None, kind, provider, name: String::new(), labels: start.labels.join(", "), c: start.clone() }
+        let labels = start.labels.join(", ");
+        FilterForm { editing: None, kind, provider, name: String::new(), labels, c: start.clone(), touched: Default::default() }
     }
 
     pub fn edit(saved: &SavedFilter, provider: Option<Provider>) -> Self {
@@ -57,19 +60,26 @@ impl FilterForm {
 
     /// Everything that keeps the filter from being saved; empty when it can be.
     pub fn problems(&self, existing: &RepoForgeFilters) -> Vec<String> {
-        let mut out = Vec::new();
+        self.name_problem(existing).into_iter().chain(self.condition_problems()).collect()
+    }
+
+    /// What is wrong with the name, shown under its field.
+    pub fn name_problem(&self, existing: &RepoForgeFilters) -> Option<String> {
         let name = self.name.trim();
         if name.is_empty() {
-            out.push("Enter a name.".to_owned());
+            Some("Enter a name.".to_owned())
         } else if name.chars().count() > MAX_NAME {
-            out.push(format!("Keep the name to {MAX_NAME} characters."));
+            Some(format!("Keep the name to {MAX_NAME} characters."))
         } else if existing.saved_of(self.kind).any(|s| Some(s.id) != self.editing && s.name.trim().to_lowercase() == name.to_lowercase()) {
-            out.push(format!("Another {} filter is already called \u{201c}{name}\u{201d}.", self.noun()));
+            Some(format!("Another {} filter is already called \u{201c}{name}\u{201d}.", self.noun()))
+        } else {
+            None
         }
-        if let Some(p) = self.provider {
-            out.extend(matching::problems(p, self.kind, &self.conditions()));
-        }
-        out
+    }
+
+    /// The conditions the service can't apply together, shown for the whole form.
+    pub fn condition_problems(&self) -> Vec<String> {
+        self.provider.map(|p| matching::problems(p, self.kind, &self.conditions())).unwrap_or_default()
     }
 
     /// The dialog's heading: "New pull request filter", "Edit issue filter", …

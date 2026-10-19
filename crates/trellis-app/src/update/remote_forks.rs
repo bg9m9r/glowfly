@@ -94,6 +94,7 @@ pub(super) fn open_picker(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
         name: String::new(),
         suggested: String::new(),
         fetch_after: true,
+        touched: Default::default(),
     })));
     fx.push(Effect::Remote(RemoteEffect::ListForks(req(st, workdir, target))));
 }
@@ -147,6 +148,7 @@ pub(super) fn open_create(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
         name: String::new(),
         fetch_after: true,
         error: None,
+        touched: Default::default(),
     })));
     fx.push(Effect::Remote(RemoteEffect::FindMyFork(req(st, workdir, target))));
 }

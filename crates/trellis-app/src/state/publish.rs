@@ -21,6 +21,8 @@ pub struct PublishForm {
     pub loading: bool,
     pub creating: bool,
     pub error: Option<String>,
+    /// Whether the name was edited or Create tried, so its problem waits for them.
+    pub touched: super::touched::Touched,
 }
 
 impl PublishForm {

@@ -9,6 +9,7 @@ use super::widgets::buttons;
 use crate::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg};
 use crate::state::init::{FolderLine, GITIGNORE_KEPT, InitForm};
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message;
 use eframe::egui::{self, Id, RichText};
 use trellis_core::init_ops::{GitignoreTemplate, INITIAL_COMMIT, License};
 
@@ -33,6 +34,7 @@ fn folder(ui: &mut egui::Ui, form: &mut InitForm, focus: bool, msgs: &mut Vec<Ms
                 .hint_text("Folder for the new repository")
                 .desired_width(250.0),
         );
+        form_message::track(&mut form.touched, "folder", &edit);
         if edit.changed() {
             msgs.push(Msg::Init(InitMsg::FolderEdited));
         }
@@ -41,11 +43,12 @@ fn folder(ui: &mut egui::Ui, form: &mut InitForm, focus: bool, msgs: &mut Vec<Ms
             edit.request_focus();
         }
         if ui.add(buttons::secondary("Browse…").small()).clicked() {
+            form.touched.mark("folder");
             msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::InitRepo)));
         }
     });
     match form.folder_line() {
-        Some(FolderLine::Problem(t)) => problem(ui, Some(&t.to_owned())),
+        Some(FolderLine::Problem(t)) => problem(ui, &form.touched, "folder", Some(&t.to_owned())),
         Some(FolderLine::Note(t)) => note(ui, t),
         None => {}
     }
@@ -85,9 +88,11 @@ fn license(ui: &mut egui::Ui, form: &mut InitForm, year: i32) {
     if form.license.is_some_and(License::needs_holder) {
         ui.horizontal(|ui| {
             label(ui, "Copyright holder");
-            controls::field(ui, egui::TextEdit::singleline(&mut form.holder).id(Id::new("trellis-init-holder")).desired_width(250.0));
+            let r =
+                controls::field(ui, egui::TextEdit::singleline(&mut form.holder).id(Id::new("trellis-init-holder")).desired_width(250.0));
+            form_message::track(&mut form.touched, "holder", &r);
         });
-        problem(ui, form.problems().holder.as_ref());
+        problem(ui, &form.touched, "holder", form.problems().holder.as_ref());
         note(ui, &format!("{year} and this name go in the copyright line."));
     }
     if form.license.is_some()
@@ -105,6 +110,9 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut InitForm, year: i32, msgs: &mu
     d.body(ui, |ui| body(ui, form, year, cx.keyboard, msgs));
     let blocked = form.problems().blocked;
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create repository").enabled(!blocked)));
+    if out.attempted {
+        form.touched.attempt();
+    }
     let mut close = out.dismiss;
     if out.primary
         && let Some(req) = form.request(year)
@@ -120,12 +128,13 @@ fn body(ui: &mut egui::Ui, form: &mut InitForm, year: i32, focus: bool, msgs: &m
     ui.add_space(6.0);
     ui.horizontal(|ui| {
         label(ui, "Initial branch");
-        controls::field(
+        let r = controls::field(
             ui,
             egui::TextEdit::singleline(&mut form.branch).id(Id::new("trellis-init-branch")).hint_text("git's default").desired_width(160.0),
         );
+        form_message::track(&mut form.touched, "branch", &r);
     });
-    problem(ui, form.problems().branch.as_ref());
+    problem(ui, &form.touched, "branch", form.problems().branch.as_ref());
     ui.add_space(6.0);
     gitignore(ui, form);
     ui.add_space(6.0);

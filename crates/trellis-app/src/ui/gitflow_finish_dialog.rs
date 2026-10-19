@@ -29,12 +29,23 @@ pub fn finish(ui: &mut egui::Ui, cx: Cx, form: &mut FinishForm, snap: Option<&Sn
         egui::Grid::new("gitflow-finish-grid").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
             ui.label("Tag");
             let r = controls::field(ui, egui::TextEdit::singleline(&mut form.tag).hint_text(hint).desired_width(f32::INFINITY));
+            form_message::track(&mut form.touched, "tag", &r);
             if focus && form.focus_tag {
                 r.request_focus();
                 form.focus_tag = false;
             }
             submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
             ui.end_row();
+            // The tag's own problem, under it, once it was edited or Finish was tried.
+            let checked = check_finish(&s, &form.branch, &form.options(), &Branches::of(snap), &WorkState::of(snap));
+            if let Err(p) = &checked
+                && tag_problem(p)
+                && form.touched.shows("tag")
+            {
+                ui.label("");
+                ui.vertical(|ui| form_message::field(ui, &form.touched, "tag", Some(Message::error(p.message()))));
+                ui.end_row();
+            }
             ui.label("Message");
             controls::field(ui, egui::TextEdit::multiline(&mut form.message).desired_rows(3).desired_width(f32::INFINITY));
             ui.end_row();
@@ -51,17 +62,25 @@ pub fn finish(ui: &mut egui::Ui, cx: Cx, form: &mut FinishForm, snap: Option<&Sn
                 ui.label(RichText::new(format!("{}. {}", i + 1, capitalize(&step.what))).color(color::weak()));
             }
         }
-        // An empty tag or message only disables Finish.
+        // An empty tag or message only disables Finish; the tag's problem is under it.
         Err(FinishProblem::EmptyTag | FinishProblem::EmptyMessage) => {}
-        Err(p) => {
-            form_message::line(ui, Message::error(p.message()));
-        }
+        Err(p) if tag_problem(p) => {}
+        // The repository's state: it shows at once.
+        Err(p) => form_message::form(ui, Message::error(p.message())),
     }
     let valid = result.is_ok() && idle;
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Finish").enabled(valid)).submit(submit));
+    if out.attempted {
+        form.touched.attempt();
+    }
     // Update closes the dialog once the job starts.
     if out.primary {
         msgs.push(Msg::GitFlow(GitFlowMsg::Finish { branch: form.branch.clone(), options: form.options() }));
     }
     out.dismiss
+}
+
+/// Whether `p` is about the tag typed (not the repository's state).
+fn tag_problem(p: &FinishProblem) -> bool {
+    matches!(p, FinishProblem::InvalidTag(_) | FinishProblem::TagExists(_) | FinishProblem::TagClashes(..) | FinishProblem::TagUnusable(_))
 }

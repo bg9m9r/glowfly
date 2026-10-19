@@ -34,6 +34,8 @@ pub struct InitForm {
     pub holder_suggested: String,
     /// Commit the files written as "Initial commit".
     pub commit: bool,
+    /// The fields edited and whether Create was tried, so a problem waits for them.
+    pub touched: super::touched::Touched,
 }
 
 /// What blocks Create repository: each field's red line, and whether it is blocked (silent
@@ -72,6 +74,7 @@ impl InitForm {
             holder: String::new(),
             holder_suggested: String::new(),
             commit: true,
+            touched: super::touched::Touched::default(),
         }
     }
 

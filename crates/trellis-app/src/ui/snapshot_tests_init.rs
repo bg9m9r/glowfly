@@ -4,6 +4,7 @@
 
 use super::snapshot_tests::{render, settings};
 use crate::state::init::InitForm;
+use crate::state::touched::Touched;
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -46,6 +47,11 @@ fn init_dialog_existing_repo() {
 
 #[test]
 fn init_dialog_problems() {
-    let f = InitForm { branch: "a..b".into(), license: Some(License::Bsd3), ..form(r"C:\src\tool", facts(r"C:\src\tool")) };
+    let f = InitForm {
+        branch: "a..b".into(),
+        license: Some(License::Bsd3),
+        touched: Touched::all(),
+        ..form(r"C:\src\tool", facts(r"C:\src\tool"))
+    };
     render("init_dialog_problems", with_form(ThemeChoice::Dark, f), true);
 }

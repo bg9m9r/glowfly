@@ -76,7 +76,7 @@ fn prefs_gitflow_edited() {
 #[test]
 fn gitflow_start_release() {
     let (mut st, dir) = initialized(ThemeChoice::Dark, "gitflow-start");
-    st.modal = Some(Modal::GitFlowStart(StartForm { kind: FlowKind::Release, name: "0.2.0".into() }));
+    st.modal = Some(Modal::GitFlowStart(StartForm { kind: FlowKind::Release, name: "0.2.0".into(), touched: Default::default() }));
     render("gitflow_start_release", st, true);
     remove_fixture(&dir);
 }
@@ -105,6 +105,7 @@ fn gitflow_finish_release() {
         message: "Release 0.2.0".into(),
         keep: false,
         focus_tag: true,
+        touched: Default::default(),
     }));
     render("gitflow_finish_release", st, true);
     remove_fixture(&dir);
@@ -122,6 +123,7 @@ fn gitflow_finish_feature_blocked() {
         message: String::new(),
         keep: false,
         focus_tag: false,
+        touched: Default::default(),
     }));
     render("gitflow_finish_feature_blocked", st, false);
     remove_fixture(&dir);

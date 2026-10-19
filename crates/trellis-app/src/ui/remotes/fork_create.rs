@@ -26,6 +26,7 @@ fn name_field(ui: &mut egui::Ui, f: &mut ForkCreate, snap: Option<&Snapshot>, en
     let mut enter = false;
     ui.add_enabled_ui(enabled, |ui| {
         let (r, e) = field(ui, "Remote name", &mut f.name, "trellis-fork-create-name", "fork");
+        form_message::track(&mut f.touched, "name", &r);
         if focus && ui.memory(|m| m.focused().is_none()) {
             r.request_focus();
         }
@@ -33,7 +34,12 @@ fn name_field(ui: &mut egui::Ui, f: &mut ForkCreate, snap: Option<&Snapshot>, en
     });
     let existing: Vec<&str> = snap.map(|s| s.remote_info.iter().map(|r| r.name.as_str()).collect()).unwrap_or_default();
     let problem = check_remote_name(f.name.trim(), &existing, None).err();
-    problem_line(ui, problem.as_ref().filter(|p| **p != RemoteNameProblem::Empty).map(|p| p.message()).unwrap_or_default());
+    problem_line(
+        ui,
+        &f.touched,
+        "name",
+        problem.as_ref().filter(|p| **p != RemoteNameProblem::Empty).map(|p| p.message()).unwrap_or_default(),
+    );
     (enter, problem.is_none())
 }
 
@@ -109,6 +115,9 @@ pub fn show(
         None => Footer::new().close(),
     };
     let out = d.finish(ui, footer);
+    if out.attempted {
+        f.touched.attempt();
+    }
     if out.primary
         && let Some((_, _, msg)) = primary
     {

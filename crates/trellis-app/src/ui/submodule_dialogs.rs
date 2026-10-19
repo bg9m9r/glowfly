@@ -38,8 +38,11 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
             .desired_width(f32::INFINITY),
     );
     if r.changed() {
+        form.touched.mark("url");
         if !form.path_edited {
             form.path = default_path(&form.url);
+            // The folder follows the URL being typed.
+            form.touched.mark("path");
         }
         edited = true;
     }
@@ -54,7 +57,7 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
         if form.url.trim().is_empty() {
             ui.label(RichText::new(p).color(color::weak()));
         } else {
-            form_message::line(ui, Message::error(p));
+            form_message::field(ui, &form.touched, "url", Some(Message::error(p)));
         }
     } else if let Some(h) = relative_url_hint(&form.url) {
         ui.label(RichText::new(h).color(color::weak()));
@@ -71,6 +74,7 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
     );
     if r.changed() {
         form.path_edited = true;
+        form.touched.mark("path");
         edited = true;
     }
     enter |= pressed(ui, &r);
@@ -80,7 +84,7 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
             if form.path.trim().is_empty() {
                 ui.label(RichText::new(e).color(color::weak()));
             } else {
-                form_message::line(ui, Message::error(e));
+                form_message::field(ui, &form.touched, "path", Some(Message::error(e)));
             }
             false
         }
@@ -90,12 +94,12 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
                 false
             }
             Disk::Err(e) => {
-                form_message::line(ui, Message::error(e));
+                form_message::field(ui, &form.touched, "path", Some(Message::error(e)));
                 false
             }
             Disk::Ok(warnings) => {
                 for w in warnings {
-                    form_message::line(ui, Message::warning(w.as_str()));
+                    form_message::field(ui, &form.touched, "path", Some(Message::warning(w.as_str())));
                 }
                 true
             }
@@ -111,11 +115,10 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
             .hint_text("Optional. Leave empty for the remote's default branch")
             .desired_width(f32::INFINITY),
     );
+    form_message::track(&mut form.touched, "branch", &r);
     enter |= pressed(ui, &r);
     let branch_bad = form.branch_problem();
-    if let Some(p) = branch_bad {
-        form_message::line(ui, Message::error(p));
-    }
+    form_message::field(ui, &form.touched, "branch", branch_bad.map(Message::error));
 
     ui.add_space(6.0);
     ui.label(
@@ -124,6 +127,9 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
     );
     let valid = url_bad.is_none() && path_ok && branch_bad.is_none() && idle;
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Add submodule").enabled(valid)).submit(enter));
+    if out.attempted {
+        form.touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Submodule(SubmoduleMsg::Add));
     }
@@ -154,13 +160,14 @@ pub fn edit(ui: &mut egui::Ui, cx: Cx, form: &mut EditForm, idle: bool, msgs: &m
 
     ui.label(RichText::new("Repository URL").color(color::weak()));
     let r = controls::field(ui, egui::TextEdit::singleline(&mut form.url).id(url_id).desired_width(f32::INFINITY));
+    form_message::track(&mut form.touched, "url", &r);
     enter |= pressed(ui, &r);
     if focus && !ui.memory(|m| m.has_focus(branch_id)) {
         r.request_focus();
     }
     let url_bad = form.url_problem();
-    if let Some(p) = url_bad {
-        form_message::line(ui, Message::error(p));
+    if let Some(p) = url_bad.filter(|_| form.touched.shows("url")) {
+        form_message::field(ui, &form.touched, "url", Some(Message::error(p)));
     } else if let Some(h) = relative_url_hint(&form.url) {
         ui.label(RichText::new(h).color(color::weak()));
     }
@@ -174,10 +181,11 @@ pub fn edit(ui: &mut egui::Ui, cx: Cx, form: &mut EditForm, idle: bool, msgs: &m
             .hint_text("Empty for the remote's default branch")
             .desired_width(f32::INFINITY),
     );
+    form_message::track(&mut form.touched, "branch", &r);
     enter |= pressed(ui, &r);
     let branch_bad = form.branch_problem();
-    if let Some(p) = branch_bad {
-        form_message::line(ui, Message::error(p));
+    if let Some(p) = branch_bad.filter(|_| form.touched.shows("branch")) {
+        form_message::field(ui, &form.touched, "branch", Some(Message::error(p)));
     } else {
         ui.label(RichText::new(BRANCH_HINT).color(color::weak()));
     }
@@ -186,6 +194,9 @@ pub fn edit(ui: &mut egui::Ui, cx: Cx, form: &mut EditForm, idle: bool, msgs: &m
     ui.label(RichText::new(EDIT_NOTE).color(color::weak()));
     let valid = form.changed() && url_bad.is_none() && branch_bad.is_none() && idle;
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Save").enabled(valid)).submit(enter));
+    if out.attempted {
+        form.touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Submodule(SubmoduleMsg::Edit));
     }

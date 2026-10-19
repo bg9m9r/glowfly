@@ -19,9 +19,12 @@
 //! Test code is skipped: files named `tests.rs`, `*_tests.rs` or `snapshot_tests*.rs`, modules
 //! declared under `#[cfg(test)]`, and inline `#[cfg(test)] mod` blocks.
 
+#[path = "support/dialogs.rs"]
+mod dialogs;
 #[path = "support/views.rs"]
 mod views;
 
+use dialogs::DIALOG_FILES;
 use views::{child_module, code_lines, is_test_file, test_only_modules, view_sources};
 
 /// The files that define the helpers, and may use egui's widgets.
@@ -39,49 +42,6 @@ const DENIED: &[(&str, &str)] = &[
     ("add(egui::TextEdit", "controls::field"),
     ("add(TextEdit", "controls::field"),
     ("Modal::new(", "theme::modal"),
-];
-
-/// The files every dialog is drawn from: those `ui/modals.rs` dispatches to, and the
-/// confirmation, discard question and askpass windows.
-const DIALOG_FILES: &[&str] = &[
-    "ui/askpass.rs",
-    "ui/branch_dialogs.rs",
-    "ui/clone_dialog.rs",
-    "ui/confirm_dialog.rs",
-    "ui/conflict_check.rs",
-    "ui/create_pr_dialog.rs",
-    "ui/deep_link_dialog.rs",
-    "ui/dialog_guard.rs",
-    "ui/file_dialogs.rs",
-    "ui/forge_filter_dialog.rs",
-    "ui/gitflow_dialog.rs",
-    "ui/gitflow_finish_dialog.rs",
-    "ui/init_dialog.rs",
-    "ui/issue/create_dialog.rs",
-    "ui/mainline_dialog.rs",
-    "ui/menu_bar/about.rs",
-    "ui/patch_apply_dialog.rs",
-    "ui/patch_save_dialog.rs",
-    "ui/publish.rs",
-    "ui/rebase/reword_dialog.rs",
-    "ui/release_notes.rs",
-    "ui/remotes/dialog.rs",
-    "ui/remotes/fork_create.rs",
-    "ui/remotes/fork_pick.rs",
-    "ui/repo_finder.rs",
-    "ui/repo_sync.rs",
-    "ui/shortcuts.rs",
-    "ui/stash_dialog.rs",
-    "ui/stash_push_dialog.rs",
-    "ui/submodule_dialogs.rs",
-    "ui/tab_dialog.rs",
-    "ui/tag_dialog.rs",
-    "ui/trash_offer_dialog.rs",
-    "ui/trust_dialog.rs",
-    "ui/undo_dialog.rs",
-    "ui/worktree_dialog.rs",
-    "ui/worktree_manage_dialog.rs",
-    "ui/worktree_move_dialog.rs",
 ];
 
 /// What dialogs draw through the frame instead, as (pattern, what to use).

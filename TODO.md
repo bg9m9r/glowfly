@@ -2325,9 +2325,6 @@ here, under the item they grew from.
 
 ### One style for empty, loading, error and banner states
 
-- Hold back the problems of the forms that still show them at once (clone, init, remotes, submodules,
-  Git Flow, publish, create issue) until a field is edited or a submit is tried, as the branch, tag,
-  stash, file and worktree dialogs do
 - Show a warning for a prefilled value (a remote branch's name in Create worktree) only once it is
   edited, like errors
 - A banner with a determinate progress bar for operations that report progress

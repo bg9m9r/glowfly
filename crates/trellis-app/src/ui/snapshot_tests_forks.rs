@@ -70,6 +70,7 @@ fn picker(st: &AppState, forks: Vec<Fork>) -> ForkPicker {
         name: String::new(),
         suggested: String::new(),
         fetch_after: true,
+        touched: Default::default(),
     }
 }
 
@@ -82,6 +83,7 @@ fn create(st: &AppState, step: ForkStep, name: &str) -> ForkCreate {
         name: name.into(),
         fetch_after: true,
         error: None,
+        touched: Default::default(),
     }
 }
 

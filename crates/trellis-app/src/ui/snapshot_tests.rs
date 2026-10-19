@@ -276,6 +276,7 @@ fn publish_to_github_dialog() {
         loading: false,
         creating: false,
         error: Some("Repository creation failed. name already exists on this account".into()),
+        touched: Default::default(),
     })));
     render("publish_dialog", st, true);
 }

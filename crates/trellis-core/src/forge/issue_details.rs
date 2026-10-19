@@ -140,30 +140,45 @@ pub fn type_required(p: Provider) -> bool {
     type_problem(p).is_some()
 }
 
+/// The part of a new issue a problem is about, so a form can show it under that field.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IssueField {
+    Project,
+    Title,
+    Description,
+    Type,
+    Assignees,
+}
+
 impl NewIssue {
     /// Why the service would refuse the issue, in the order the dialog lists them.
     pub fn problems(&self, p: Provider) -> Vec<String> {
+        self.field_problems(p).into_iter().map(|(_, why)| why).collect()
+    }
+
+    /// `problems`, each with the field it is about.
+    pub fn field_problems(&self, p: Provider) -> Vec<(IssueField, String)> {
         let mut out = Vec::new();
         if let Some(why) = project_problem(p)
             && self.project.trim().is_empty()
         {
-            out.push(why.to_owned());
+            out.push((IssueField::Project, why.to_owned()));
         }
         let word = title_word(p);
         let title = self.title.trim();
         if title.is_empty() {
-            out.push(format!("Enter a {word}."));
+            out.push((IssueField::Title, format!("Enter a {word}.")));
         } else if title.chars().count() > MAX_TITLE {
-            out.push(format!("Keep the {word} to {MAX_TITLE} characters."));
+            out.push((IssueField::Title, format!("Keep the {word} to {MAX_TITLE} characters.")));
         }
         let max = max_description(p);
         if self.description.chars().count() > max {
-            out.push(format!("The description is too long for {} ({max} characters at most).", p.name()));
+            out.push((IssueField::Description, format!("The description is too long for {} ({max} characters at most).", p.name())));
         }
         if let Some(why) = type_problem(p)
             && self.kind.as_deref().is_none_or(|k| k.trim().is_empty())
         {
-            out.push(why.to_owned());
+            out.push((IssueField::Type, why.to_owned()));
         }
         out
     }

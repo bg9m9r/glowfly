@@ -43,12 +43,12 @@ pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &m
             }
         });
         ui.label("/");
-        controls::field(ui, egui::TextEdit::singleline(&mut f.name).hint_text("repository-name").desired_width(f32::INFINITY));
+        let r = controls::field(ui, egui::TextEdit::singleline(&mut f.name).hint_text("repository-name").desired_width(f32::INFINITY));
+        form_message::track(&mut f.touched, "name", &r);
     });
     let name = f.name.trim();
-    if !name.is_empty() && !forge::valid_repo_name(name) {
-        form_message::line(ui, Message::error("Use letters, digits, '.', '-' and '_' only."));
-    }
+    let bad = (!name.is_empty() && !forge::valid_repo_name(name)).then(|| Message::error("Use letters, digits, '.', '-' and '_' only."));
+    form_message::field(ui, &f.touched, "name", bad);
     controls::field(ui, egui::TextEdit::singleline(&mut f.description).hint_text("Description (optional)").desired_width(f32::INFINITY));
     ui.horizontal(|ui| {
         controls::radio_value(ui, &mut f.private, true, "Private");
@@ -68,6 +68,9 @@ pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &m
     let ready = idle && !f.loading && !f.creating && f.user.is_some() && !f.owner.is_empty() && forge::valid_repo_name(name);
     let label = if f.creating { "Creating…" } else { "Create and push" };
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(ready)));
+    if out.attempted {
+        f.touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Publish(PublishMsg::Publish));
     }

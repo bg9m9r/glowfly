@@ -2,8 +2,8 @@
 //! (Bitbucket: kind; Trello: list), the priority (Bitbucket), the title (Jira: summary; Trello:
 //! name), the description, labels and assignees (`picker`), the Jira epic or Azure parent, and
 //! whether to create a branch afterwards, all captioned in the tracker's words
-//! (`issue_words`). The choices come from the service once loaded; the checks are listed live
-//! above the buttons. The view edits the form's text and picks in place; a committed project
+//! (`issue_words`). The choices come from the service once loaded; each check shows under its
+//! field once that field was edited or Create was tried. The view edits the form's text and picks in place; a committed project
 //! or board, Create, Try again and the write-token link are sent as messages.
 
 use super::super::dialog_frame::{Cx, Dialog, Footer};
@@ -17,8 +17,8 @@ use crate::state::{ForgeState, ProjectKeys};
 use crate::ui::theme::controls;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Key, RichText, Ui};
-use trellis_core::forge::Provider;
 use trellis_core::forge::filters::Named;
+use trellis_core::forge::{IssueField, Provider};
 use trellis_core::text::printable;
 
 /// Draws the dialog; returns true when it should close. The title takes the keyboard focus
@@ -36,6 +36,9 @@ pub fn show(ui: &mut Ui, cx: Cx, form: &mut IssueForm, fs: Option<&ForgeState>, 
     let label = if form.busy { "Creating…".to_owned() } else { form.heading() };
     let ok = blocked.is_none() && !form.busy;
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(ok).why(blocked.as_deref())).submit(submit));
+    if out.attempted {
+        form.touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Issue(IssueMsg::Create));
     }
@@ -54,10 +57,17 @@ fn body(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool,
     if p == Provider::Trello {
         board(ui, form, msgs);
     }
-    if let Some(types) = form.loaded().map(|o| o.types.clone()).filter(|t| !t.is_empty()) {
+    problem(ui, form, IssueField::Project, "project");
+    let types = form.loaded().map(|o| o.types.clone()).filter(|t| !t.is_empty());
+    if let Some(types) = &types {
         caption(ui, words::type_label(p));
         let shown = form.kind_title().unwrap_or("Choose a type").to_owned();
-        combo(ui, "issue-type", shown, 200.0, &types, &mut form.kind);
+        let before = form.kind.clone();
+        combo(ui, "issue-type", shown, 200.0, types, &mut form.kind);
+        if form.kind != before {
+            form.touched.mark("type");
+        }
+        problem(ui, form, IssueField::Type, "type");
     }
     if let Some(priorities) = form.loaded().map(|o| o.priorities.clone()).filter(|t| !t.is_empty()) {
         caption(ui, words::priority_label(p));
@@ -67,13 +77,17 @@ fn body(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool,
     }
     caption(ui, form.title_label());
     let r = controls::field(ui, egui::TextEdit::singleline(&mut form.title).desired_width(f32::INFINITY));
+    form_message::track(&mut form.touched, "title", &r);
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if focus && ui.memory(|m| m.focused().is_none()) {
         r.request_focus();
     }
+    problem(ui, form, IssueField::Title, "title");
     caption(ui, "Description");
     let d = egui::TextEdit::multiline(&mut form.description).hint_text(format!("Describe the {noun} (optional)")).desired_rows(6);
-    controls::field(ui, d.desired_width(f32::INFINITY));
+    let r = controls::field(ui, d.desired_width(f32::INFINITY));
+    form_message::track(&mut form.touched, "description", &r);
+    problem(ui, form, IssueField::Description, "description");
     let opts = form.loaded().cloned().unwrap_or_default();
     // Bitbucket issues have no labels.
     if form.loaded().is_none() || !opts.labels.is_empty() || opts.labels_free {
@@ -94,7 +108,12 @@ fn body(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool,
     let max = if form.loaded().is_some() { opts.max_assignees } else { usize::MAX };
     let picker =
         Picker { id_salt: "issue-people", hint: words::people_hint(p), options: &people, max, free: false, add_word: words::add_word(p) };
+    let before = form.people.len();
     multi(ui, &picker, &mut form.people_query, &mut form.people);
+    if form.people.len() != before {
+        form.touched.mark("people");
+    }
+    problem(ui, form, IssueField::Assignees, "people");
     if form.epic_shown() {
         caption(ui, words::epic_label(p));
         let shown = match &form.epic {
@@ -124,17 +143,23 @@ fn body(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool,
         }
         OptionsState::NotAsked | OptionsState::Loaded(_) => {}
     }
-    let problems = form.problems();
-    if !problems.is_empty() || form.error.is_some() {
+    // No types to choose from (they failed to load): the type's problem is the form's.
+    if types.is_none()
+        && let Some(why) = form.problem(IssueField::Type)
+    {
         ui.add_space(6.0);
-    }
-    for p in &problems {
-        form_message::line(ui, Message::error(p.as_str()));
+        form_message::form(ui, Message::error(why));
     }
     if let Some(e) = &form.error {
+        ui.add_space(6.0);
         form_message::form(ui, Message::error(format!("Couldn't create the {noun}: {e}")));
     }
     submit
+}
+
+/// `field`'s problem under it, once the field named `key` was edited or Create was tried.
+fn problem(ui: &mut Ui, form: &IssueForm, field: IssueField, key: &str) {
+    form_message::field(ui, &form.touched, key, form.problem(field).map(Message::error));
 }
 
 fn caption(ui: &mut Ui, text: &str) {
@@ -164,7 +189,7 @@ fn write_note(ui: &mut Ui, form: &IssueForm, msgs: &mut Vec<Msg>) {
 }
 
 /// Trello's board: the tracker's own, or one of the member's open boards to choose.
-fn board(ui: &mut Ui, form: &IssueForm, msgs: &mut Vec<Msg>) {
+fn board(ui: &mut Ui, form: &mut IssueForm, msgs: &mut Vec<Msg>) {
     let p = form.provider();
     if form.board_fixed() {
         ui.add_space(4.0);
@@ -177,6 +202,7 @@ fn board(ui: &mut Ui, form: &IssueForm, msgs: &mut Vec<Msg>) {
     egui::ComboBox::from_id_salt("issue-board").selected_text(shown).width(300.0).show_ui(ui, |ui| {
         for b in &form.boards {
             if ui.selectable_label(b.key == form.project, printable(&b.title)).clicked() && b.key != form.project {
+                form.touched.mark("project");
                 msgs.push(Msg::Issue(IssueMsg::SetProject(b.key.clone())));
             }
         }
@@ -200,6 +226,7 @@ fn project(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, msgs: &mu
             egui::ComboBox::from_id_salt("issue-project").selected_text(shown).width(200.0).show_ui(ui, |ui| {
                 for k in &keys {
                     if ui.selectable_label(&form.project == k, k.as_str()).clicked() && &form.project != k {
+                        form.touched.mark("project");
                         msgs.push(Msg::Issue(IssueMsg::SetProject(k.clone())));
                     }
                 }
@@ -210,6 +237,7 @@ fn project(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, msgs: &mu
                 ui,
                 egui::TextEdit::singleline(&mut form.project_text).hint_text("Project key, e.g. PROJ").desired_width(200.0),
             );
+            form_message::track(&mut form.touched, "project", &r);
             if r.lost_focus() && form.project_text.trim() != form.project {
                 msgs.push(Msg::Issue(IssueMsg::SetProject(form.project_text.trim().to_owned())));
             }
