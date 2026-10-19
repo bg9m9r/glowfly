@@ -235,6 +235,18 @@ From hands-on testing on 2026-10-19. The behaviour fixes come first; the design 
 wait for a choice on the design board, so don't plan an item marked "Waiting on a design choice"
 until this list says which option was chosen.
 
+- [ ] **Trellis's own wording**: rewrite these labels and help texts in fresh words of our
+      own, in every language table, the docs and the snapshots: the help for the default branch
+      name, the initial-commits warning, core.longpaths and the auto-fetch interval; the "How do
+      I renew an expired key?" link; "Automatically group worktree tabs together"; "Exit
+      preferences" (say "Back to repository"); the commit button's "Commit changes to N files" /
+      "Stage files to commit" (e.g. "Commit 2 files" / "Stage something to commit"); the
+      "// WIP" worktree placeholder (use "Uncommitted changes · folder", as in the main row);
+      the date settings' "Date word" and verbose names (say "Long date" and "Full date and
+      time"), with the default format taken from the system's locale or ISO 8601 instead of
+      `MM/DD/YYYY @ h:mm A`; and the option names Ghost branch (say "Quick-branch chip"), Smart
+      branch visibility ("Relevant branches"), Solo / Soloing ("Show only" / "Showing only
+      name") and Highlight associated rows ("Trace a branch on hover")
 - [ ] **Stash and carry on**: checkout, pull, merge, rebase, cherry-pick, revert and reset first
       check for staged or unstaged changes; if there are any, a prompt names the operation and
       the file count and offers "Stash and <operation>" or Cancel, plus "Always stash" (a
@@ -262,6 +274,15 @@ until this list says which option was chosen.
 - [ ] **Small fixes from testing**: the terminal tab bar's + is centred and drawn like the ×
       (the repository tab bar's too); the ⚠ badge by the branch picker says on hover what it
       warns about and opens it on click
+- [ ] **Branch-led colour** (colour direction B, chosen 2026-10-19): the status colours (added,
+      removed, modified, info, operation in progress) used the same way everywhere as soft
+      tints; each branch keeps one colour wherever it shows (graph lane and label, a sidebar dot,
+      the Branch picker, a line under the active tab, the details header), picked from its name
+      so it stays the same between sessions, with main on the accent; a wide palette (16 or more
+      hues, ordered so neighbouring lanes differ, even lightness per theme, a colour-blind-safe
+      option); two lanes side by side never share a hue; right-click a branch for Colour… to pin
+      one; greys tinted towards the accent; a colour per person for avatars. Waiting on a design
+      choice (the branch palette board)
 - [ ] **Design system**: one set of tokens (surface steps, borders, hover and pressed tints,
       radii, shadows, focus ring, accent and semantic colours, motion) for every theme, and the
       components built on them: the button family (primary, tonal, quiet, danger, icon-only,
@@ -913,6 +934,25 @@ ideas that grew out of each item and grouped by that item. They are not tracked 
 checkboxes; they are built after the open items above, roughly in this order. New
 follow-ups go to Ideas, not here.
 
+### New directions
+
+Chosen on 2026-10-19 as the features that make Trellis its own, in this order.
+
+- Preview before you act: before a rebase, merge, reset, cherry-pick or drop, show the graph as
+  it will look afterwards (worked out in a temporary index or worktree), with the commits that
+  move, disappear or conflict marked, then Apply or Cancel
+- Operation journal: a timeline of every state the repository has been in (from the reflog and
+  Trellis's own records, e.g. "Before rebasing feature/login, 10:42"), each restorable in one
+  click, with lost and dangling commits found and recoverable
+- Stacked branches: recognise a branch built on another, draw the stack, restack everything
+  above after amending a lower branch (`git rebase --update-refs`), and push the stack with one
+  pull request per layer
+- Custom commands: actions defined in a TOML file (git or shell templates with {branch}, {sha},
+  {files}) that show in the command palette, context menus and an optional toolbar slot, and
+  can be shared per repository in `.trellis/commands.toml`
+- Range-diff: compare a branch before and after a rebase or force-push, commit by commit
+  (`git range-diff`), e.g. "what changed since my last review?"
+
 ### UI review polish
 
 The minor findings of the [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md); its
@@ -1141,6 +1181,41 @@ blockers and major findings are Milestone 1 items.
 Polish, edge cases and power-user extras that are not planned work. Nothing here is built
 until a triage moves it to Later or a milestone. New follow-ups from finished items go
 here, under the item they grew from.
+
+### New directions
+
+- Absorb and split: drag hunks from the working tree onto existing commits (fixup and
+  autosquash), and split a commit by dragging its hunks into new commits; offline and exact
+- Line history: select lines and follow their history across renames and moves (`git log -L`,
+  move detection), with a slider through the versions of that block
+- Bisect assistant: good and bad shading on the graph, Test this commit buttons, an optional
+  script that runs each step, and a final report with the culprit's diff
+- Repository health page: size, largest blobs, LFS candidates, stale branches, unpruned remotes,
+  commit-graph and multi-pack-index state, fsmonitor and untracked cache, each with an
+  explained one-click fix and `git maintenance start`
+- Compare two refs: merge base, commits unique to each side, the combined diff and predicted
+  conflicts, with a merge that uses Preview before you act
+- Patch email: format-patch with a cover letter, send-email set-up, and applying a mailbox
+  series as a series
+- Trailer composer: pickers for Co-authored-by, Signed-off-by, Fixes and Reviewed-by from the
+  repository's history, a Conventional Commits helper with scopes from the changed paths, and
+  per-repository message rules
+- Offline pull request review: fetch a pull request's refs and threads, review and comment
+  offline, and send the queued comments and approvals when back online
+- Accessibility as a headline: screen-reader support through AccessKit everywhere, a keyboard
+  path for every operation, reduced motion, and colour-blind-safe lanes with patterns
+- Monorepo tools: history and graph filtered to a folder, a CODEOWNERS overlay in file lists
+  and diffs, and editing the sparse-checkout cone from the file tree
+- Daily work log: a private, local summary of the day's commits, branches and pull requests
+  across repositories, to copy into a stand-up
+- Timeline graph: an optional left-to-right graph on a true time axis, branches as labelled
+  tracks, zoomable from years to minutes
+- Native platform feel: native title bar and menus on macOS, the system accent colour as an
+  option, Windows jump lists, the Linux portal file picker, and a portable mode
+- An identity from the name: the lattice as a quiet motif in empty states, the icon's green and
+  sand in the palette, a vine lane style, and plain descriptive feature names
+- Explain mode: a toggle that shows, in tooltips and confirmations, the git command each action
+  runs and what it does in one plain sentence
 
 ### Complete translations
 
