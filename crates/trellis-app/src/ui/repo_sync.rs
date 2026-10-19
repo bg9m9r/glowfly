@@ -32,7 +32,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, sync: Option<&RepoSync>, msgs: &mut Vec<M
                 SyncKind::Pull => "Pulling",
             };
             match sync.stopping() {
-                Some(n) => ui.label(format!("Stopping: {n} still running")),
+                Some(n) => ui.label(t.trn("repo_sync.stopping", n, &[])),
                 None => ui.label(format!("{verb}: {done} of {all} done")),
             };
         });
@@ -89,7 +89,7 @@ fn row(ui: &mut egui::Ui, t: Lang, sync: &RepoSync, index: usize, r: &SyncRow, m
         let text_w = (ui.available_width() - ACTIONS_W).max(0.0);
         ui.allocate_ui_with_layout(egui::vec2(text_w, h), Layout::left_to_right(Align::Center), |ui| {
             ui.set_min_width(text_w);
-            state(ui, sync.kind, &r.state, text_w);
+            state(ui, t, sync.kind, &r.state, text_w);
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if can_open(r) {
@@ -108,7 +108,7 @@ fn row(ui: &mut egui::Ui, t: Lang, sync: &RepoSync, index: usize, r: &SyncRow, m
 }
 
 /// Where a row stands, in at most `width`: a failure shows git's whole output on hover.
-fn state(ui: &mut egui::Ui, kind: SyncKind, s: &RowState, width: f32) {
+fn state(ui: &mut egui::Ui, t: Lang, kind: SyncKind, s: &RowState, width: f32) {
     match s {
         RowState::Waiting => {
             ui.label(RichText::new("Waiting").color(color::weak()));
@@ -118,7 +118,7 @@ fn state(ui: &mut egui::Ui, kind: SyncKind, s: &RowState, width: f32) {
             ui.label(RichText::new("Running…").color(color::weak()));
         }
         RowState::Stopped => {
-            ui.label(RichText::new("Stopped").color(color::weak()));
+            ui.label(RichText::new(t.tr("repo_sync.row.stopped")).color(color::weak()));
         }
         RowState::Done(o) => {
             let (text, bad) = outcome_text(kind, o);

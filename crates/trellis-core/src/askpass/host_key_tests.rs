@@ -62,3 +62,14 @@ fn other_questions_are_not_read() {
                    Are you sure you want to continue connecting (yes/no)? ";
     assert_eq!(parse(differs), None);
 }
+
+#[test]
+fn a_host_known_by_another_key_type_is_not_read() {
+    // known_hosts has, say, an RSA key for the host and the server now offers an ED25519 one:
+    // the host isn't new, so the dialog must not say it is.
+    let other_type = "The authenticity of host 'example.com (192.0.2.10)' can't be established
+                      but keys of different type are already known for this host.
+                      ED25519 key fingerprint is SHA256:abc.
+                      Are you sure you want to continue connecting (yes/no/[fingerprint])? ";
+    assert_eq!(parse(other_type), None);
+}

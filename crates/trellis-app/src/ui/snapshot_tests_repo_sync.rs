@@ -153,3 +153,21 @@ fn repo_sync_finished_light() {
     }
     h.check_snapshot("repo_sync_finished_light");
 }
+
+#[test]
+fn repo_sync_stopping_is_translated() {
+    use trellis_core::i18n::Lang;
+    let rows = vec![row("billing", RowState::Running), row("docs", RowState::Running), row("notes", RowState::Stopped)];
+    let mut s = settings(ThemeChoice::Dark);
+    s.language = "de".into();
+    let mut st = AppState::new(s, Vec::new(), Instant::now());
+    st.repo_sync = Some(RepoSync { generation: 1, kind: SyncKind::Fetch, scope: SyncScope::Listed, rows });
+    st.modal = Some(Modal::SyncRepos);
+    let mut h = harness(st, true);
+    steps(&mut h);
+    let de = Lang::De;
+    assert!(h.query_by_label(&de.trn("repo_sync.stopping", 2, &[])).is_some(), "the header is in German");
+    assert!(h.query_by_label(de.tr("repo_sync.row.stopped")).is_some(), "the row state is in German");
+    assert!(h.query_by_label("Stopped").is_none());
+    assert!(h.query_by_label_contains("still running").is_none());
+}

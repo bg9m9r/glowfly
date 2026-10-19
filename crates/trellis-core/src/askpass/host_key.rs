@@ -32,8 +32,11 @@ const FINGERPRINT: &str = " key fingerprint is ";
 /// Reads OpenSSH's unknown-host question, or `None` when `text` isn't in that wording (or
 /// lacks the host or the fingerprint).
 pub fn parse(text: &str) -> Option<HostKey> {
-    // A key that differs from the one recorded for the address is a different question.
-    if text.contains("differs from the key for the IP address") {
+    // A key that differs from the one recorded for the address, or a host already known by a
+    // key of another type, is a different question: the server isn't new, so ssh's own text
+    // (with its warning) is shown instead.
+    const NOT_NEW: [&str; 2] = ["differs from the key for the IP address", "already known for this host"];
+    if NOT_NEW.iter().any(|w| text.contains(w)) {
         return None;
     }
     let mut names: Option<(String, Option<u16>, Option<String>)> = None;
