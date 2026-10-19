@@ -135,6 +135,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "language",
     // Like the external tools: the machine's shell, and the panel's window state.
     "terminal",
+    // Window layout, like the terminal panel's: drawer sizes stay put when the profile changes.
+    "panel_sizes",
 ];
 
 /// What a profile switch changed in the settings in use.
