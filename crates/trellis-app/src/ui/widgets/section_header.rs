@@ -119,7 +119,9 @@ pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> Hea
 
     let enabled = h.add.as_ref().is_some_and(|a| a.blocked.is_none());
     let add = h.add.as_ref().map(|a| {
-        let r = ui.interact(add_rect, add_id, if enabled { Sense::click() } else { Sense::hover() | Sense::FOCUSABLE });
+        // A disabled + still senses clicks (and ignores them below), so a click on it does not
+        // fall through to the header row and toggle the section.
+        let r = ui.interact(add_rect, add_id, Sense::click());
         let name = a.name.clone();
         r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, name.clone()));
         match &a.blocked {
@@ -134,7 +136,7 @@ pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> Hea
         r.on_hover_text("More actions").on_hover_cursor(egui::CursorIcon::PointingHand)
     });
 
-    if let (Some(a), Some(r)) = (&h.add, &add) {
+    if let (Some(a), Some(r), true) = (&h.add, &add, enabled) {
         match a.action {
             AddAction::Send(action) => {
                 if r.clicked() {

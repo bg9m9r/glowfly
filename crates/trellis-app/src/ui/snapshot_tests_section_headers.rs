@@ -94,6 +94,7 @@ fn stashes_header_blocked() {
     h.check_snapshot("stashes_header_blocked");
     click(&mut h, at, PointerButton::Primary);
     assert!(!pushed(&h, &|m| matches!(m, Msg::Stash(_))), "a disabled + sends nothing");
+    assert!(h.state().0.view.sections.stashes, "a disabled + leaves the section open");
     drop(h);
     remove_fixture(&dir);
 }
@@ -167,4 +168,50 @@ fn remote_count() {
     assert!(pushed(&h, &|m| matches!(m, Msg::Remote(RemoteMsg::AddDialog))));
     drop(h);
     remove_fixture(&dir);
+}
+
+/// A header with a disabled + and no ⋯ (so no context menu that would take the click): clicking
+/// the + leaves the section open and does not open the +'s menu.
+#[test]
+fn blocked_add_without_menu_keeps_section() {
+    use crate::ui::widgets::section_header::{AddAction, Header, HeaderAdd, show};
+    use eframe::egui;
+    use egui_kittest::Harness;
+    let mut h = Harness::builder().with_size(egui::vec2(320.0, 120.0)).build_ui_state(
+        |ui, (open, msgs): &mut (bool, Vec<Msg>)| {
+            let items = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
+                if ui.button("Probe item").clicked() {
+                    msgs.push(Msg::Remote(RemoteMsg::AddDialog));
+                }
+            };
+            let add = HeaderAdd { name: "Probe add".into(), tip: None, blocked: Some("Not now".into()), action: AddAction::Menu(&items) };
+            show(ui, Header { title: "Probe", count: Some(1), add: Some(add), menu: None }, open, msgs);
+        },
+        (true, Vec::new()),
+    );
+    h.run();
+    let b = h.get_by_label("Probe add").bounding_box().expect("the +");
+    let at = pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32);
+    for pressed in [true, false] {
+        h.input_mut().events.push(Event::PointerMoved(at));
+        h.input_mut().events.push(Event::PointerButton { pos: at, button: PointerButton::Primary, pressed, modifiers: Default::default() });
+        h.step();
+    }
+    h.run();
+    assert!(h.state().0, "a disabled + leaves the section open");
+    assert!(h.query_by_label("Probe item").is_none(), "a disabled + opens no menu");
+    // A click on the row itself still toggles it.
+    let row = pos2(b.x0 as f32 - 120.0, at.y);
+    for pressed in [true, false] {
+        h.input_mut().events.push(Event::PointerMoved(row));
+        h.input_mut().events.push(Event::PointerButton {
+            pos: row,
+            button: PointerButton::Primary,
+            pressed,
+            modifiers: Default::default(),
+        });
+        h.step();
+    }
+    h.run();
+    assert!(!h.state().0, "the row toggles");
 }
