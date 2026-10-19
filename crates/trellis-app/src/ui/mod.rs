@@ -7,6 +7,7 @@ mod activity_log;
 mod am_banner;
 mod askpass;
 mod askpass_host_key;
+mod auto_stash_dialog;
 mod avatars;
 mod blame;
 mod branch_dialogs;
@@ -138,6 +139,8 @@ mod snapshot_check;
 mod snapshot_tests;
 #[cfg(test)]
 mod snapshot_tests_askpass;
+#[cfg(test)]
+mod snapshot_tests_auto_stash;
 #[cfg(test)]
 mod snapshot_tests_banners;
 #[cfg(test)]

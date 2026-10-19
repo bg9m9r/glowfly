@@ -13,6 +13,7 @@ use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
 use crate::state::commit_menu::{hard_reset_body, reset_title};
 use crate::state::patch::PATCH_BLOCKED_MERGE;
+use crate::state::rebase::needs_stash;
 use crate::state::rebase_onto::{onto_commit_blocker, onto_menu_labels};
 use crate::state::selection::{MultiSelection, cherry_pick_blocker};
 use crate::tag::TagMsg;
@@ -78,8 +79,13 @@ fn reset_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs:
         menu_item(msgs, ui, t.tr("commits.menu.reset.mixed"), Msg::git("Reset (mixed)", &["reset", "--mixed", &sha]));
         let hard = Msg::git("Reset (hard)", &["reset", "--hard", &sha]);
         let body = hard_reset_body(t, current, c);
-        let confirm = Msg::confirm_danger(t.tr("commits.menu.reset.hard_title"), body, t.tr("commits.menu.reset.button"), hard);
-        menu_item(msgs, ui, t.tr("commits.menu.reset.hard"), confirm);
+        // With uncommitted changes the auto-stash prompt asks instead, so it asks once.
+        let ask = if needs_stash(snap) {
+            hard
+        } else {
+            Msg::confirm_danger(t.tr("commits.menu.reset.hard_title"), body, t.tr("commits.menu.reset.button"), hard)
+        };
+        menu_item(msgs, ui, t.tr("commits.menu.reset.hard"), ask);
         menu_note(ui, t.tr("commits.menu.reset.hard_hint"));
     });
 }

@@ -1,6 +1,7 @@
 //! Create a branch from the toolbar, commit on it, check out main and diverge, merge the branch
 //! with a merge commit, delete it through the confirm dialog, then check out with local
-//! changes: carried over when they don't collide, refused when they do.
+//! changes: stashed and put back, left alone on Cancel, and kept in the stash when putting them
+//! back conflicts.
 
 use super::find::{Pick, Region};
 use super::fixture::{self as disk, Fixture, write};
@@ -77,24 +78,41 @@ fn branch_merge_delete_and_checkout_with_changes() {
     j.toast(true, "Checkout succeeded");
     assert_eq!(disk::work_text(&repo, "a.txt").as_deref(), Some("a\n"));
 
-    // step 8: a local edit the checkout doesn't touch is carried over.
+    // step 8: a local edit is stashed first and put back after the checkout.
     write(&repo, "b.txt", "b edited\n");
     j.refresh();
     j.branch_menu("other", "Checkout");
+    j.click("Stash and check out", Region::Anywhere, Pick::Only);
     j.toast(true, "Checkout succeeded");
+    j.toast(true, "Your changes from \"Auto-stash before checking out other\" are back.");
+    assert_eq!(disk::stash_count(&repo), 0);
     j.see("other", Region::Toolbar);
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("other"));
     assert_eq!(disk::work_text(&repo, "a.txt").as_deref(), Some("a from other\n"));
     assert_eq!(disk::work_text(&repo, "b.txt").as_deref(), Some("b edited\n"));
 
-    // step 9: an edit the checkout would overwrite stops it; nothing changes.
+    // step 9: the prompt asks again; Cancel changes nothing.
     write(&repo, "a.txt", "a edited here\n");
     j.refresh();
     j.branch_menu("main", "Checkout");
-    j.toast(false, "Checkout failed");
+    j.see("Stash and check out", Region::Anywhere);
+    j.click("Cancel", Region::Anywhere, Pick::Only);
+    j.absent("Stash and check out", Region::Anywhere);
     j.see("other", Region::Toolbar);
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("other"));
     assert_eq!(disk::work_text(&repo, "a.txt").as_deref(), Some("a edited here\n"));
     assert_eq!(disk::work_text(&repo, "b.txt").as_deref(), Some("b edited\n"));
-    assert!(j.logged("a.txt"), "the activity log names the file in the way");
+    assert_eq!(disk::stash_count(&repo), 0);
+
+    // step 10: an edit main changes too: the checkout runs, and putting it back conflicts, so
+    // the stash stays (marked auto) and a.txt holds the conflict.
+    j.branch_menu("main", "Checkout");
+    j.click("Stash and check out", Region::Anywhere, Pick::Only);
+    j.toast(false, "Putting back \"Auto-stash before checking out main\" conflicted in 1 file.");
+    assert_eq!(disk::head_branch(&repo).as_deref(), Some("main"));
+    assert!(disk::work_text(&repo, "a.txt").unwrap().contains("<<<<<<<"));
+    assert_eq!(disk::work_text(&repo, "b.txt").as_deref(), Some("b edited\n"));
+    assert_eq!(disk::stash_count(&repo), 1);
+    assert!(j.logged("a.txt"), "the activity log keeps git's output, naming the file");
+    j.see("On other: Auto-stash before checking out main", Region::Sidebar);
 }

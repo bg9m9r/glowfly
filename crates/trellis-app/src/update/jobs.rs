@@ -2,6 +2,7 @@
 //! RunningJob plus effect it runs (`begin_tool_job` for the merge tool, which skips the gate).
 
 use crate::effect::Effect;
+use crate::state::auto_stash::{AutoStashJob, Making};
 use crate::state::push_pr::PrStart;
 use crate::state::trust::Created;
 use crate::state::{AppState, RunningJob};
@@ -31,6 +32,8 @@ pub(super) struct JobSpec {
     pub record: Option<UndoKind>,
     /// Run nothing unless this revision still resolves to this commit.
     pub expect: Option<(String, git2::Oid)>,
+    /// The job starts with this auto-stash, to put back once it ends (update/auto_stash.rs).
+    pub auto_stash: Option<AutoStashJob>,
 }
 
 impl JobSpec {
@@ -48,6 +51,7 @@ impl JobSpec {
             write_file: None,
             record: None,
             expect: None,
+            auto_stash: None,
         }
     }
 }
@@ -73,6 +77,7 @@ pub(super) fn busy(st: &mut AppState, quiet: bool) -> bool {
 
 /// Runs `spec` as the active job. Holding it for the trust prompt pushes no effect.
 pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Started {
+    let auto_stash = spec.auto_stash;
     let job = RunningJob {
         label: spec.label,
         workdir: None,
@@ -100,6 +105,10 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     let started = launch(st, job, spec.cwd, move |cwd| Effect::RunGit { cwd, cmds, write_file, record, prompts, expect }, fx);
     if started != Started::No {
         super::submodule_batch::job_started(st, &label, moves);
+        // Also for a job held for the trust prompt; dropping it clears this.
+        if let Some(job) = auto_stash {
+            st.auto_stash.making = Some(Making { label: label.clone(), workdir: st.workdir(), job });
+        }
     }
     if started == Started::Now {
         super::sign_in::job_started(st, quiet, &label, &sign_in_cmds);
@@ -128,6 +137,30 @@ pub(super) fn begin_job(
         then_link: false,
         then_open: None,
         keeps_undo,
+        fetches: false,
+    };
+    launch(st, job, None, effect, fx)
+}
+
+/// `begin_job` for work Trellis starts on its own (putting an auto-stash back): quiet (no toast,
+/// a quiet log line, no credential prompts), skipped silently while another job runs, and
+/// dropped by the trust gate rather than held. It keeps the undo history.
+pub(super) fn begin_background_job(
+    st: &mut AppState,
+    label: &str,
+    effect: impl FnOnce(PathBuf) -> Effect,
+    fx: &mut Vec<Effect>,
+) -> Started {
+    let job = RunningJob {
+        label: label.into(),
+        workdir: None,
+        quiet: true,
+        clear_commit: false,
+        then_push: false,
+        then_pr: None,
+        then_link: false,
+        then_open: None,
+        keeps_undo: true,
         fetches: false,
     };
     launch(st, job, None, effect, fx)

@@ -54,6 +54,7 @@ fn remote_tip(st: &AppState, remote: &str, name: &str) -> Oid {
 #[test]
 fn checkout_remote_creates_tracking_branch() {
     let (mut st, work, bare) = with_origin("rb-checkout-new");
+    super::tests::clean_tree(&work);
     git(&work, &["push", "-q", "origin", "main:other"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let (cmds, record) = run_git(&mut st, checkout("origin", "other"));
@@ -70,6 +71,8 @@ fn checkout_remote_creates_tracking_branch() {
 #[test]
 fn checkout_remote_switches_to_tracking_local() {
     let (mut st, work, bare) = with_origin("rb-checkout-local");
+    super::tests::clean_tree(&work);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(cmds(&mut st, checkout("origin", "feature")), vec![args(&["checkout", "feature", "--"])]);
     assert!(cmds(&mut st, checkout("origin", "main")).is_empty(), "main tracks origin/main and is checked out");
     assert_eq!(last_log(&st), "main is already checked out.");

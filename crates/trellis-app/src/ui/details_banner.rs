@@ -45,6 +45,9 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
             (Some((name, _)), None) => super::am_banner::title(ui, snap, name, !conflicted.is_empty()),
             _ => {}
         }
+        if let Some(note) = crate::state::auto_stash::banner_note(st) {
+            ui.add(egui::Label::new(egui::RichText::new(note).color(super::theme::color::weak())).wrap());
+        }
         if let Some(first) = conflicted.first() {
             ui.horizontal(|ui| {
                 ui.label(t.trn("details.banner.conflicted", conflicted.len(), &[]));

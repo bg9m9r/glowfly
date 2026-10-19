@@ -1,8 +1,9 @@
 //! Staging, committing, git commands (push, pull, branch…), and auto-fetch; reverts are in update/revert.rs. Jobs start in
 //! update/jobs.rs, re-exported here.
 
+use super::auto_stash::Gate;
 use crate::effect::{Effect, LocalOp, NoteKind, UndoResult};
-use crate::msg::{JobMsg, StageMsg};
+use crate::msg::{JobMsg, Msg, StageMsg};
 use crate::state::trust::Created;
 use crate::state::{AppState, CommitDraft};
 use std::time::{Duration, Instant};
@@ -98,6 +99,20 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
     match msg {
         JobMsg::Git { label, mut cmds } => {
             let record = if cmds.len() == 1 { UndoKind::classify(&cmds[0]) } else { None };
+            // Uncommitted changes in the way: ask, or stash them first (update/auto_stash.rs).
+            if let [cmd] = cmds.as_slice() {
+                let retry = || Msg::Job(JobMsg::Git { label: label.clone(), cmds: cmds.clone() });
+                match super::auto_stash::gate(st, &cmd.clone(), retry) {
+                    Gate::Asked => return,
+                    Gate::Stash(op) => {
+                        let mut spec = JobSpec { record, ..JobSpec::new(label, cmds) };
+                        super::auto_stash::wrap(st, &mut spec, op);
+                        start_job(st, spec, fx);
+                        return;
+                    }
+                    Gate::Run => {}
+                }
+            }
             // A hard reset stashes uncommitted changes first, so undoing it brings them back.
             if record == Some(UndoKind::Reset(ResetMode::Hard)) {
                 cmds = trellis_core::undo::hard_reset_commands(&cmds[0][2]);
@@ -296,6 +311,7 @@ pub(super) fn finish_job(
     }
     let reopen = super::conflict::after_undo(&undo, ok);
     super::undo::finished(st, &job, ok, undo, here);
+    super::auto_stash::job_finished(st, &job);
     if here && let Some((p, open_closed)) = reopen {
         super::conflict::reopen_after_undo(st, p, open_closed, fx);
     }

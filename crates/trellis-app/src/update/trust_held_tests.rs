@@ -2,7 +2,7 @@
 //! run on Trust and run, and are dropped on Cancel.
 
 use super::jobs::{JobSpec, Started, begin_job, start_job};
-use super::tests::{scratch_repo, state};
+use super::tests::{clean_tree, scratch_repo, state};
 use super::trust_tests::{asking, drive, open, real, run, untrusted_repo};
 use crate::effect::{Effect, InitEffect, StashEffect};
 use crate::msg::{CloneMsg, CommitMsg, InitMsg, Msg, TrustMsg};
@@ -16,9 +16,18 @@ use trellis_core::gitcli::args;
 use trellis_core::init_ops::InitPlan;
 use trellis_core::settings::RepoTrust;
 
-/// `untrusted_repo` opened, with the first-open prompt dismissed.
+/// `untrusted_repo` with a clean tree (so pulls and checkouts don't stop at the auto-stash
+/// prompt) opened, with the first-open prompt dismissed.
 pub(crate) fn held_repo(name: &str) -> (AppState, PathBuf) {
+    held_repo_with(name, true)
+}
+
+/// `held_repo`, keeping `untrusted_repo`'s uncommitted edit unless `clean`.
+pub(crate) fn held_repo_with(name: &str, clean: bool) -> (AppState, PathBuf) {
     let dir = untrusted_repo(name);
+    if clean {
+        clean_tree(&dir);
+    }
     let mut st = state();
     open(&mut st, &dir);
     assert!(asking(&st), "the first open asks");
@@ -92,7 +101,7 @@ fn pull_while_undecided_asks_first() {
 
 #[test]
 fn commit_while_held_asks_first() {
-    let (mut st, dir) = held_repo("held-commit");
+    let (mut st, dir) = held_repo_with("held-commit", false);
     std::fs::write(dir.join("new.txt"), "new\n").unwrap();
     st.draft.summary = "Add a file".into();
     let fx = run(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit));
@@ -169,6 +178,7 @@ fn dont_trust_drops_the_held_job() {
 #[test]
 fn a_refused_repository_asks_before_a_job() {
     let dir = untrusted_repo("held-refused");
+    clean_tree(&dir);
     let mut st = state();
     open(&mut st, &dir);
     let real = real(&st);
@@ -188,6 +198,7 @@ fn a_refused_repository_asks_before_a_job() {
 #[test]
 fn a_trusted_or_clean_repository_runs_at_once() {
     let clean = scratch_repo("held-clean");
+    clean_tree(&clean);
     let mut st = state();
     open(&mut st, &clean);
     assert!(st.modal.is_none());
@@ -197,6 +208,7 @@ fn a_trusted_or_clean_repository_runs_at_once() {
     let _ = std::fs::remove_dir_all(&clean);
 
     let dir = untrusted_repo("held-trusted");
+    clean_tree(&dir);
     let mut st = state();
     let canonical = std::fs::canonicalize(&dir).unwrap();
     record(&mut st.settings, &canonical, RepoTrust::Trusted);

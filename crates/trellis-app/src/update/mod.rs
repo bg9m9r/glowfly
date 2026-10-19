@@ -5,6 +5,7 @@
 mod app;
 mod askpass;
 mod askpass_store;
+mod auto_stash;
 mod avatars;
 mod blame;
 mod branches;
@@ -166,6 +167,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Commit(m) => commit::handle(st, m, now, &mut fx),
         Msg::Job(m) => ops::job(st, m, now, &mut fx),
         Msg::Stash(m) => stash::handle(st, m, &mut fx),
+        Msg::AutoStash(m) => auto_stash::handle(st, m, now, &mut fx),
         Msg::Files(m) => files::handle(st, m, now, &mut fx),
         Msg::WorkFile(m) => work_files::handle(st, m, now, &mut fx),
         Msg::Branch(m) => branches::handle(st, m, &mut fx),

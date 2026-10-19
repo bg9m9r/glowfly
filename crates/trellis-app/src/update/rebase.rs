@@ -179,7 +179,10 @@ fn start(st: &mut AppState, confirmed: bool, autostash: bool, now: Instant, fx: 
     }
     let drops = p.drops();
     let stash = needs_stash(snap);
-    if (((drops > 0 || stash) && !confirmed) || (stash && !autostash))
+    // Always stash (Preferences > General) answers the stash-only question; drops still ask.
+    let always = stash && st.settings.auto_stash;
+    let autostash = autostash || always;
+    if (((drops > 0 || (stash && !always)) && !confirmed) || (stash && !autostash))
         && let Some((title, body)) = start_question(drops, p.branch(), stash)
     {
         let then = Msg::Rebase(RebaseMsg::StartRebase { confirmed: true, autostash: stash });

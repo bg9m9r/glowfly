@@ -57,6 +57,25 @@ pub(super) fn scratch_repo(name: &str) -> PathBuf {
     dir
 }
 
+/// Undoes `scratch_repo`'s uncommitted edit of a.txt, for tests of checkouts, pulls and merges
+/// the auto-stash prompt would otherwise stop to ask about.
+pub(super) fn clean_tree(dir: &Path) {
+    std::fs::write(
+        dir.join("a.txt"),
+        "one
+",
+    )
+    .unwrap();
+}
+
+/// Answers the open auto-stash prompt with its primary ("Stash and ...") and runs what follows:
+/// the operation, then putting the changes back.
+#[track_caller]
+pub(super) fn accept_stash(st: &mut AppState) {
+    assert!(matches!(st.modal, Some(crate::state::Modal::AutoStash(_))), "the auto-stash prompt is open");
+    drive(st, Msg::AutoStash(crate::msg::AutoStashMsg::Stash));
+}
+
 /// The shortcut `text`, written as Windows and Linux show it, as this system shows it: the
 /// Command modifier reads "Cmd" and Alt reads "Option" on macOS (`KeyLabels`). Plain Ctrl
 /// chords (Ctrl+`) have no business going through this.

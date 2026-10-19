@@ -3,6 +3,7 @@
 
 use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
@@ -195,6 +196,23 @@ fn graph_commit_menu_reset_submenu() {
     }
     h.get_by_label(Lang::En.tr("commits.menu.reset.hard")).click();
     h.run();
+    // The fixture has uncommitted changes: the reset goes straight on and the auto-stash prompt
+    // asks, so the user is asked once.
+    let sent = h.state().1.iter().any(|m| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if cmds[0][..2] == ["reset", "--hard"]));
+    assert!(sent, "{:?}", h.state().1.len());
+    drop(h);
+
+    // On a clean tree the danger confirmation asks, naming the commit.
+    let (mut st, clean_dir) = with_repo(ThemeChoice::Dark, "commit-menu-reset-clean");
+    let snap = st.snap.as_mut().unwrap();
+    (snap.staged, snap.unstaged) = (Vec::new(), Vec::new());
+    let row = st.snap.as_ref().unwrap().row_of[&fix] + 1;
+    let mut h = harness(st, true);
+    h.run();
+    click(&mut h, pos2(700.0, row_y(row)), PointerButton::Secondary);
+    open_submenu(&mut h, "Reset main to this commit");
+    h.get_by_label(Lang::En.tr("commits.menu.reset.hard")).click();
+    h.run();
     let sha = fix.to_string()[..7].to_owned();
     let named = format!("\"Fix build on Windows\" ({sha})");
     let asked = h.state().1.iter().any(
@@ -203,6 +221,7 @@ fn graph_commit_menu_reset_submenu() {
     assert!(asked, "the confirmation names the commit by its summary");
     drop(h);
     remove_fixture(&dir);
+    remove_fixture(&clean_dir);
 }
 
 #[test]

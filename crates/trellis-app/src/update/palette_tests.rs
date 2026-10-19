@@ -1,7 +1,7 @@
 //! Headless tests for the command palette: opening, the commands it lists, moving the
 //! selection, and running commands through the existing messages.
 
-use super::tests::{drive, git, keys, scratch_repo, state};
+use super::tests::{accept_stash, drive, git, keys, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::PaletteMsg;
@@ -207,9 +207,13 @@ fn run_closes_palette_and_stages() {
 #[test]
 fn run_checkout_switches_branch() {
     let (mut st, dir) = repo_with_topic("palette-checkout");
-    // Checkout keeps the modified a.txt (topic is at the same commit).
+    // The modified a.txt is stashed first and comes back after the checkout.
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Checkout("topic".into()))));
+    accept_stash(&mut st);
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("topic"));
+    // Line endings as git's checkout writes them (core.autocrlf on Windows).
+    assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap().replace("\r\n", "\n"), "one\ntwo\n");
+    assert!(st.snap.as_ref().unwrap().stashes.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

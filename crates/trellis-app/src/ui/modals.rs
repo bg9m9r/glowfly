@@ -21,7 +21,8 @@
 //! from uncommitted changes (drawn by `patch_save_dialog.rs`), finding repositories in project
 //! folders (drawn by `repo_finder.rs`), fetching or pulling across repositories (drawn by
 //! `repo_sync.rs`), renaming a tab (drawn by `tab_dialog.rs`), choosing a merge's mainline parent
-//! (drawn by `mainline_dialog.rs`) and the home Trash offer (drawn by `trash_offer_dialog.rs`).
+//! (drawn by `mainline_dialog.rs`), the home Trash offer (drawn by `trash_offer_dialog.rs`) and
+//! stashing uncommitted changes before an operation (drawn by `auto_stash_dialog.rs`).
 
 use crate::msg::{DialogMsg, Msg};
 use crate::state::{AppState, Modal};
@@ -137,6 +138,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             Modal::RenameTab(form) => close = super::tab_dialog::rename(ui, cx, form, msgs),
             Modal::Mainline(form) => close = super::mainline_dialog::show(ui, cx, form, idle, msgs),
             Modal::TrashOffer(o) => close = super::trash_offer_dialog::show(ui, cx, o, msgs),
+            Modal::AutoStash(ask) => close = super::auto_stash_dialog::show(ui, cx, ask, msgs),
         }
     });
     if close {

@@ -33,6 +33,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             apply_status(st, result, submodules, open_stamp, now, fx);
             super::lfs::patterns_read(st, lfs_patterns, fx);
             super::pick::state_changed(st, state_before);
+            super::auto_stash::seen(st, true, now, fx);
             super::status_tip::check(st, slow.as_ref(), now, fx);
             // A dialog may have been open when the repository loaded.
             super::trust::maybe_ask(st, false);
@@ -63,6 +64,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 }
             }
             super::pick::state_changed(st, state_before);
+            super::auto_stash::seen(st, false, now, fx);
             super::status_tip::check(st, slow.as_ref(), now, fx);
         }
         LoadMsg::SpeedUpStatus(speedups) => super::status_tip::speed_up(st, speedups, fx),

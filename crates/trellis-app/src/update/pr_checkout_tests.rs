@@ -2,7 +2,7 @@
 //! code host, so a name like a path must never discard changes and one like an option is refused.
 
 use super::branch_tests::with_origin;
-use super::tests::{drive, git};
+use super::tests::{accept_stash, drive, git};
 use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -14,6 +14,11 @@ fn head(dir: &Path) -> String {
     let (ok, out) = run(dir, &args(&["rev-parse", "--abbrev-ref", "HEAD"]));
     assert!(ok, "{out}");
     out.trim().to_owned()
+}
+
+/// A working file's text with git's line endings (core.autocrlf on Windows) as "\n".
+fn text(dir: &Path, file: &str) -> String {
+    std::fs::read_to_string(dir.join(file)).unwrap().replace("\r\n", "\n")
 }
 
 fn cleanup(dirs: &[&Path]) {
@@ -44,8 +49,9 @@ fn a_branch_named_like_a_path_keeps_changes() {
     let cmd = pr_checkout(st.snap.as_ref().unwrap(), "origin", "src").unwrap();
     assert_eq!(cmd, args(&["checkout", "--track", "origin/src", "--"]));
     drive(&mut st, Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![cmd] }));
+    accept_stash(&mut st);
     assert_eq!(head(&work), "src");
-    assert_eq!(std::fs::read_to_string(work.join("src")).unwrap(), "my unsaved work\n");
+    assert_eq!(text(&work, "src"), "my unsaved work\n");
 
     // Now local: the local branch, still with `--`.
     git(&work, &["switch", "-q", "main"]);
@@ -53,8 +59,9 @@ fn a_branch_named_like_a_path_keeps_changes() {
     let cmd = pr_checkout(st.snap.as_ref().unwrap(), "origin", "src").unwrap();
     assert_eq!(cmd, checkout_local("src"));
     drive(&mut st, Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![cmd] }));
+    accept_stash(&mut st);
     assert_eq!(head(&work), "src");
-    assert_eq!(std::fs::read_to_string(work.join("src")).unwrap(), "my unsaved work\n");
+    assert_eq!(text(&work, "src"), "my unsaved work\n");
     cleanup(&[&work, &bare]);
 }
 

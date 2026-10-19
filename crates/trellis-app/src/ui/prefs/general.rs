@@ -102,6 +102,10 @@ fn repositories(ui: &mut Ui, t: Lang, s: &mut Settings, cx: &GeneralContext) {
         controls::checkbox(ui, &mut s.delete_to_trash, check);
         help(ui, t.tr("prefs.general.delete_to_trash.help"));
     });
+    row(ui, t.tr("prefs.general.auto_stash.label"), |ui| {
+        controls::checkbox(ui, &mut s.auto_stash, t.tr("prefs.general.auto_stash.check"));
+        help(ui, t.tr("prefs.general.auto_stash.help"));
+    });
 }
 
 /// Extended logging and the logs folder.

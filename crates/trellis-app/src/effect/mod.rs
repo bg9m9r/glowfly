@@ -48,7 +48,7 @@ pub use notify::{DesktopNote, NoteKind};
 pub use rebase::RebaseEffect;
 pub use repo::{ConflictRead, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;
-pub use stash::StashEffect;
+pub use stash::{PutBackRequest, StashEffect};
 pub use submodule::SubmoduleEffect;
 pub use ui::UiEffect;
 pub use updates::UpdateEffect;
@@ -193,7 +193,7 @@ pub enum Effect {
     /// Runs `git worktree move` once the target is free. Unscoped like RunGit: it ends the
     /// active job.
     MoveWorktree(crate::worktree::MoveRequest),
-    /// Stash list jobs: renaming an entry (stash.rs).
+    /// Stash list jobs: renaming an entry, putting an auto-stash back (stash.rs).
     Stash(StashEffect),
     /// Git LFS status for the preferences page: installed version, set up or not, tracked patterns.
     LoadLfs {

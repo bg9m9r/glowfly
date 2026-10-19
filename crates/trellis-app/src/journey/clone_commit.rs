@@ -83,7 +83,9 @@ fn clone_stage_commit_push_pull() {
     commit_files(&other, &[("remote.txt", "from elsewhere\n")], "Add remote.txt");
     git(&other, &["push", "-q", "origin", "main"]);
     j.click("Pull the current branch", Region::Toolbar, Pick::Only);
+    j.click("Stash and pull", Region::Anywhere, Pick::Only);
     j.toast(true, "Pull succeeded");
+    j.toast(true, "Your changes from \"Auto-stash before pulling into main\" are back.");
     assert_eq!(Some(disk::head_oid(&clone)), disk::remote_oid(&bare, "main"));
     assert_eq!(disk::work_text(&clone, "remote.txt").as_deref(), Some("from elsewhere\n"));
     assert!(disk::work_text(&clone, "notes.txt").unwrap().contains("line 19 edited\n"));

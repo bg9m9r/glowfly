@@ -60,7 +60,7 @@ pub use recent::{FolderCheck, RecentMsg};
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
 pub use repos::{ReposMsg, ScanFound};
 pub use sparse::SparseMsg;
-pub use stash::StashMsg;
+pub use stash::{AutoStashMsg, StashMsg};
 pub use tabs::{CloseRequest, TabsMsg};
 pub use trust::TrustMsg;
 pub use updates::{CheckedRelease, UpdateMsg};
@@ -105,6 +105,8 @@ pub enum Msg {
     Job(JobMsg),
     /// Renaming a stash and the Stash dialog (update/stash.rs).
     Stash(StashMsg),
+    /// Stash and carry on: the auto-stash prompt, putting it back and Show stash (update/auto_stash.rs).
+    AutoStash(AutoStashMsg),
     /// Restoring a file from a commit, opening or showing a working-tree file (update/files.rs).
     Files(FilesMsg),
     /// Creating, renaming, deleting and discarding working-tree files (update/work_files.rs).
@@ -273,6 +275,7 @@ impl Msg {
             Msg::Commit(m) => m.on_inactive(),
             Msg::Job(m) => m.on_inactive(),
             Msg::Stash(m) => m.on_inactive(),
+            Msg::AutoStash(m) => m.on_inactive(),
             Msg::Files(m) => m.on_inactive(),
             Msg::WorkFile(m) => m.on_inactive(),
             Msg::Branch(m) => m.on_inactive(),

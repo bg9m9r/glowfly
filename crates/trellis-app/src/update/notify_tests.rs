@@ -140,6 +140,8 @@ fn a_load_in_flight_keeps_the_watch_for_the_next_one() {
 #[test]
 fn pull_action_runs_pull() {
     let (mut st, work, bare) = with_origin("notify-pull");
+    super::tests::clean_tree(&work);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     remote_commit(&bare, "main", "r1.txt");
     auto_fetch(&mut st);
     let id = st.toasts.last().expect("an alert").id;

@@ -7,7 +7,7 @@
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
-use crate::msg::BranchMsg;
+use crate::msg::{BranchMsg, Msg};
 use crate::state::branches::{self, NO_REMOTES};
 use crate::state::remote_branch;
 use crate::state::worktree_branches;
@@ -77,7 +77,9 @@ fn checkout(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
         return;
     }
     // A single command: `start_job` records it for undo as `JobMsg::Git` would.
-    start_job(st, JobSpec::new("Checkout".into(), vec![branches::checkout_local(name)]), fx);
+    let spec = JobSpec::new("Checkout".into(), vec![branches::checkout_local(name)]);
+    let retry = || Msg::Branch(BranchMsg::Checkout(name.to_owned()));
+    super::auto_stash::start_guarded(st, spec, retry, fx);
 }
 
 /// Checks out the local branch tracking `remote`/`name`, or creates one tracking it, unless the
@@ -102,7 +104,9 @@ fn checkout_remote(st: &mut AppState, remote: &str, name: &str, fx: &mut Vec<Eff
         return;
     }
     // A single command: `start_job` records it for undo (`UndoKind::Checkout`).
-    start_job(st, JobSpec::new("Checkout".into(), vec![remote_branch::checkout_cmd(remote, name)]), fx);
+    let spec = JobSpec::new("Checkout".into(), vec![remote_branch::checkout_cmd(remote, name)]);
+    let retry = || Msg::Branch(BranchMsg::CheckoutRemote { remote: remote.to_owned(), name: name.to_owned() });
+    super::auto_stash::start_guarded(st, spec, retry, fx);
 }
 
 fn rename(st: &mut AppState, old: &str, new: &str, fx: &mut Vec<Effect>) {

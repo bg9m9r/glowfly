@@ -128,7 +128,7 @@ fn general(view: SchemeView) -> egui_kittest::Harness<'static, (AppState, Vec<Ms
     let mut st = app(ThemeChoice::Dark);
     st.prefs = Some(PrefsState::new(PrefPage::General));
     st.deep_link.scheme = view;
-    let mut h = harness_sized(st, true, egui::vec2(1400.0, 1500.0));
+    let mut h = harness_sized(st, true, egui::vec2(1400.0, 1620.0));
     h.run();
     h
 }

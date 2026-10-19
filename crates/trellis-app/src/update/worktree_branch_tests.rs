@@ -68,6 +68,8 @@ fn checkout_and_delete_refused_for_a_branch_in_another_worktree() {
 #[test]
 fn a_free_branch_is_checked_out_as_an_undoable_job() {
     let (mut st, dir, side) = with_side("wtb-free");
+    super::tests::clean_tree(&dir);
+    super::tests::drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Refresh));
     let fx = update(&mut st, branch(BranchMsg::Checkout("free".into())), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, record, .. }] => {

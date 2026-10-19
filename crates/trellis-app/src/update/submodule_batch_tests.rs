@@ -115,6 +115,7 @@ fn two_branches(name: &str) -> (AppState, PathBuf, PathBuf) {
     git(&parent, &["commit", "-q", "-m", "lib on other"]);
     git(&parent, &["checkout", "-q", "main"]);
     git(&parent, &["submodule", "update", "-q", "--checkout", "--", PATH]);
+    super::tests::clean_tree(&parent);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(sub(&st).state, SubmoduleState::InSync);
     (st, parent, lib)

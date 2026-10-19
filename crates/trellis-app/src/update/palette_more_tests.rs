@@ -63,6 +63,8 @@ fn stash_and_pop_entries() {
 #[test]
 fn undo_redo_entries_follow_history() {
     let (mut st, dir) = repo_with_topic("palette-more-undo");
+    super::tests::clean_tree(&dir);
+    drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Refresh));
     assert!(!has(&st, "Undo"));
     assert!(!has(&st, "Redo"));
 

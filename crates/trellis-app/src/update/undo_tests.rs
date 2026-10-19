@@ -1,7 +1,7 @@
 //! Headless tests for undo and redo: what gets recorded, when the history is kept or cleared,
 //! and undoing each kind of operation end to end against real repositories.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{clean_tree, drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::CommitMsg;
@@ -99,6 +99,8 @@ fn git_jobs_record_their_kind() {
     let fx = update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now());
     assert!(matches!(&fx[..], [Effect::RunGit { record: Some(UndoKind::Commit { amend: false }), .. }]), "{fx:?}");
     st.job = None;
+    // The tree stays dirty: Always stash lets the guarded jobs through, still recorded as themselves.
+    st.settings.auto_stash = true;
     let fx = update(&mut st, Msg::git("Merge", &["merge", "x"]), Instant::now());
     let merge = UndoKind::Move { op: trellis_core::undo::MoveOp::Merge, detail: Some("x".into()) };
     assert!(matches!(&fx[..], [Effect::RunGit { record: Some(k), .. }] if *k == merge), "{fx:?}");
@@ -160,6 +162,7 @@ fn hard_reset_undo_refused_while_dirty_then_allowed() {
 #[test]
 fn stale_history_is_cleared() {
     let dir = scratch_repo("undo-stale");
+    clean_tree(&dir);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     git(&dir, &["branch", "feature"]);

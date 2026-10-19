@@ -73,6 +73,8 @@ pub(super) fn submit_reword(st: &mut AppState, now: Instant, fx: &mut Vec<Effect
 /// the last question didn't mention (`autostash` false).
 pub(super) fn run(st: &mut AppState, mut plan: QuickPlan, autostash: bool, confirmed: bool, now: Instant, fx: &mut Vec<Effect>) -> Started {
     let stash = st.snap.as_ref().is_some_and(needs_stash);
+    // Always stash (Preferences > General) answers the stash-only question; a drop still asks.
+    let autostash = autostash || (stash && st.settings.auto_stash);
     let is_drop = matches!(plan.edit, QuickEdit::Drop(_));
     if (is_drop && !confirmed) || (stash && !autostash) {
         if is_drop {

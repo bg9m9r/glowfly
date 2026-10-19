@@ -325,6 +325,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     st.snap = Some(snap);
     super::line_counts::status_changed(st, fx);
     super::pick::state_changed(st, state_before);
+    super::auto_stash::seen(st, true, now, fx);
     super::search::snapshot_changed(st, fx);
     super::trust::loaded(st, kind, fx);
     super::submodule_batch::opened(st, kind, now, fx);

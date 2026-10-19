@@ -31,8 +31,11 @@ pub(super) fn checkout(st: &mut AppState, tag: String, fx: &mut Vec<Effect>) {
     let label = format!("Checkout tag {tag}");
     let record = UndoKind::classify(&cmd);
     let workdir = st.workdir();
-    // Also for a job waiting for the trust prompt; dropping it clears this.
-    if ops::start_job(st, JobSpec { record, ..JobSpec::new(label.clone(), vec![cmd]) }, fx) != ops::Started::No {
+    // Also for a job waiting for the trust prompt; dropping it clears this. Not while the
+    // auto-stash prompt asks: its answer sends this again.
+    let spec = JobSpec { record, ..JobSpec::new(label.clone(), vec![cmd]) };
+    let retry = || Msg::Tag(crate::tag::TagMsg::Checkout { tag: tag.clone() });
+    if super::auto_stash::start_guarded(st, spec, retry, fx) != ops::Started::No {
         st.tag_checkout = Some(TagCheckoutJob { label, tag, oid, workdir });
     }
 }

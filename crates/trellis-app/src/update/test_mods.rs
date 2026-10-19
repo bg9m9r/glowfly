@@ -11,6 +11,10 @@ pub(super) mod askpass_gpg_tests;
 pub(super) mod askpass_store_tests;
 #[path = "askpass_tests.rs"]
 pub(super) mod askpass_tests;
+#[path = "auto_stash_flow_tests.rs"]
+pub(super) mod auto_stash_flow_tests;
+#[path = "auto_stash_tests.rs"]
+pub(super) mod auto_stash_tests;
 #[path = "blame_tests.rs"]
 pub(super) mod blame_tests;
 #[path = "branch_tests.rs"]

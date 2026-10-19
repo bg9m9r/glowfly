@@ -4,7 +4,7 @@
 
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, scratch_repo, state};
-use super::trust_held_tests::held_repo;
+use super::trust_held_tests::held_repo_with;
 use super::update;
 use crate::effect::Effect;
 use crate::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StashMsg, TrustMsg};
@@ -262,7 +262,7 @@ fn a_long_selection_writes_the_pathspec_file() {
 
 #[test]
 fn stash_runs_are_held_by_trust() {
-    let (mut st, dir) = held_repo("stash-push-held");
+    let (mut st, dir) = held_repo_with("stash-push-held", false);
     dialog(&mut st, StashScope::All);
     let fx = run(&mut st, push(StashScope::All, "", &[]));
     assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "{fx:?}");

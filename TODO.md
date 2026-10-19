@@ -247,7 +247,7 @@ until this list says which option was chosen.
       `MM/DD/YYYY @ h:mm A`; and the option names Ghost branch (say "Quick-branch chip"), Smart
       branch visibility ("Relevant branches"), Solo / Soloing ("Show only" / "Showing only
       name") and Highlight associated rows ("Trace a branch on hover")
-- [ ] **Stash and carry on**: checkout, pull, merge, rebase, cherry-pick, revert and reset first
+- [x] **Stash and carry on**: checkout, pull, merge, rebase, cherry-pick, revert and reset first
       check for staged or unstaged changes; if there are any, a prompt names the operation and
       the file count and offers "Stash and <operation>" or Cancel, plus "Always stash" (a
       preference); one click stashes, runs the operation and puts the changes back when it
@@ -1258,6 +1258,19 @@ here, under the item they grew from.
   sand in the palette, a vine lane style, and plain descriptive feature names
 - Explain mode: a toggle that shows, in tooltips and confirmations, the git command each action
   runs and what it does in one plain sentence
+
+### Stash and carry on
+
+- Interactive rebase and graph edits: use the named auto-stash instead of git's `--autostash`
+- A Show stash button on the toast when git's own autostash is kept after an interactive rebase
+- Restore the staged state on put-back (`stash pop --index`, falling back to a plain pop)
+- Guard multi-command jobs too: pull request checkout, Git Flow start and finish
+- Don't count submodule-only changes as dirty in the guard
+- An option to include untracked files in the auto-stash
+- Remember pending auto-stashes across restarts (offer to put them back on reopen)
+- Pull and Checkout tooltips say when the changes will be stashed first
+- Offer Stash and carry on from the "would be overwritten" error toast for operations started
+  outside the guard
 
 ### Complete translations
 

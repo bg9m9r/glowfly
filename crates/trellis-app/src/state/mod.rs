@@ -4,6 +4,7 @@
 pub mod am_banner;
 mod app_queries;
 pub mod askpass;
+pub mod auto_stash;
 pub mod blame;
 pub mod blame_find;
 pub mod blocked;
@@ -317,6 +318,9 @@ pub enum Modal {
     RenameTab(tabs::RenameTabForm),
     /// Which parent of a merge commit to cherry-pick or revert against (`ui/mainline_dialog.rs`).
     Mainline(pick::MainlineForm),
+    /// Uncommitted changes in the way of an operation: stash them and carry on
+    /// (`ui/auto_stash_dialog.rs`).
+    AutoStash(auto_stash::AutoStashAsk),
     /// The trash on a file's drive can't be used: move it to the home Trash or delete it
     /// permanently (`ui/trash_offer_dialog.rs`).
     TrashOffer(files::TrashOffer),
@@ -475,6 +479,8 @@ pub struct AppState {
     pub onboarding: onboarding::Onboarding,
     /// The cross-repository dashboard: global, not parked with a tab.
     pub dashboard: dashboard::Dashboard,
+    /// Auto-stashes being made or waiting to be put back, per workdir: global, not parked.
+    pub auto_stash: auto_stash::AutoStashes,
     /// Trellis's own update check and download (global; nothing saved but `settings.updates`).
     pub updates: updates::UpdatesState,
     pub view: ViewState,
@@ -565,6 +571,7 @@ impl AppState {
             trust: Default::default(),
             onboarding: Default::default(),
             dashboard: Default::default(),
+            auto_stash: Default::default(),
             updates: Default::default(),
             view: ViewState::default(),
         };

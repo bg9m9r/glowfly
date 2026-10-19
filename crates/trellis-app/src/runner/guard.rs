@@ -60,6 +60,8 @@ enum Kind {
     RepoSync(u64, usize),
     /// A commit's or the working tree's line counts: pending until a result arrives.
     LineCounts(FailedLineCounts),
+    /// Putting an auto-stash back (workdir, stash): it ends the active job.
+    PutBack(PathBuf, git2::Oid),
     Log,
 }
 
@@ -115,6 +117,7 @@ impl Recovery {
             Effect::Repos(ReposEffect::Scan { generation, roots }) => Kind::RepoScan(*generation, roots.clone()),
             Effect::Repos(ReposEffect::Sync { generation, index, .. }) => Kind::RepoSync(*generation, *index),
             Effect::LineCounts(e) => Kind::LineCounts(e.failure()),
+            Effect::Stash(StashEffect::PutBack(r)) => Kind::PutBack(r.cwd.clone(), r.oid),
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -153,6 +156,10 @@ impl Recovery {
             Kind::LineCounts(FailedLineCounts::Commit(oid)) => Msg::Repo(RepoMsg::CommitLineCountsLoaded { oid, result: Err(text) }),
             Kind::LineCounts(FailedLineCounts::Wip(generation)) => {
                 Msg::Repo(RepoMsg::WipLineCountsLoaded { generation, result: Err(text) })
+            }
+            Kind::PutBack(workdir, oid) => {
+                let outcome = trellis_core::stash_ops::PutBack::Failed;
+                Msg::AutoStash(crate::msg::AutoStashMsg::PutBack { workdir, oid, outcome, output: text, undo: None })
             }
             Kind::Log => Msg::Logged { ok: false, text },
         };

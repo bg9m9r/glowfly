@@ -57,6 +57,7 @@ fn with_more_remotes(name: &str) -> (AppState, std::path::PathBuf, std::path::Pa
     git(&work, &["branch", "-q", "--track", "mine", "origin/shared"]);
     git(&work, &["remote", "set-head", "origin", "main"]);
     git(&work, &["fetch", "-q", "origin"]);
+    super::tests::clean_tree(&work);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     (st, work, bare)
 }
@@ -99,6 +100,8 @@ fn remote_entry_runs_checkout_track() {
 fn remote_name_with_slash() {
     let (mut st, dir) = repo_with_topic("pal-co-slash");
     let snap = st.snap.as_mut().unwrap();
+    // A clean tree, so the checkout doesn't stop to offer an auto-stash.
+    snap.unstaged.clear();
     let oid = snap.head_oid.unwrap();
     snap.remotes = vec![("team/fork".into(), vec![("fix/x".into(), oid), ("topic".into(), oid)])];
     let e = find(&st, "Checkout team/fork/fix/x").expect("listed");

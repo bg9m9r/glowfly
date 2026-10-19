@@ -2,6 +2,7 @@
 //! dialog for one merge commit, and selecting the WIP row (with its banner) when one stops.
 
 use crate::effect::Effect;
+use crate::msg::{Msg, SelectionMsg};
 pub(super) use crate::state::pick::PickOp;
 use crate::state::pick::{MainlineForm, label};
 use crate::state::selection::{cherry_pick_blocker, in_graph_order, revert_blocker};
@@ -45,7 +46,13 @@ pub(super) fn run(st: &mut AppState, op: PickOp, oids: Vec<Oid>, mainline: Optio
         PickOp::CherryPick => cherry_pick_cmd(&oids, mainline),
         PickOp::Revert => revert_cmd(&oids, mainline),
     };
-    super::ops::start_job(st, super::ops::JobSpec::new(label(op, oids.len()), vec![cmd]), fx);
+    let spec = super::ops::JobSpec::new(label(op, oids.len()), vec![cmd]);
+    let retry = || match (mainline, op) {
+        (Some(mainline), _) => Msg::Selection(SelectionMsg::PickMerge { op, oid: oids[0], mainline }),
+        (None, PickOp::CherryPick) => Msg::Selection(SelectionMsg::CherryPick(oids.clone())),
+        (None, PickOp::Revert) => Msg::Selection(SelectionMsg::Revert(oids.clone())),
+    };
+    super::auto_stash::start_guarded(st, spec, retry, fx);
 }
 
 /// After the active tab's snapshot state was replaced (it was `before`): when a cherry-pick or
