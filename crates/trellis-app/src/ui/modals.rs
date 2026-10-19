@@ -22,13 +22,16 @@
 //! `repo_sync.rs`), renaming a tab (drawn by `tab_dialog.rs`), choosing a merge's mainline parent
 //! (drawn by `mainline_dialog.rs`) and the home Trash offer (drawn by `trash_offer_dialog.rs`).
 
-use crate::msg::Msg;
+use crate::msg::{DialogMsg, Msg};
 use crate::state::{AppState, Modal};
 use eframe::egui;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Under a credential prompt, Esc and clicks belong to the prompt.
     let prompting = st.askpass.showing();
+    // Under the "Discard your changes?" question, the form's fields don't take the focus.
+    let asking = st.dialog.asking;
+    let keyboard = !prompting && !asking;
     let today = trellis_core::clone_ops::local_date(st.view.now, st.view.utc_offset);
     let sparse_blocked = st.git.blocked(trellis_core::git_version::Feature::SparseCheckout);
     // Worked out before the dialog borrows the state: which results are open or favorites.
@@ -67,22 +70,22 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 });
             }
             Modal::NewBranch { start, name, checkout } => {
-                // Not under a credential prompt: its fields need the keyboard.
-                close = super::branch_dialogs::new_branch(ui, start.as_deref(), name, checkout, snap, !prompting, msgs);
+                // Not under a credential prompt or the discard question: its fields need the keyboard.
+                close = super::branch_dialogs::new_branch(ui, start.as_deref(), name, checkout, snap, keyboard, msgs);
             }
-            Modal::NewTag(form) => close = super::tag_dialog::new_tag(ui, form, snap, push_tags, !prompting, msgs),
-            Modal::AnnotateTag(form) => close = super::tag_dialog::annotate_tag(ui, form, snap, !prompting, msgs),
-            Modal::NewWorktree(form) => close = super::worktree_dialog::new_worktree(ui, form, snap, !prompting, msgs),
+            Modal::NewTag(form) => close = super::tag_dialog::new_tag(ui, form, snap, push_tags, keyboard, msgs),
+            Modal::AnnotateTag(form) => close = super::tag_dialog::annotate_tag(ui, form, snap, keyboard, msgs),
+            Modal::NewWorktree(form) => close = super::worktree_dialog::new_worktree(ui, form, snap, keyboard, msgs),
             Modal::RemoveWorktree(form) => close = super::worktree_manage_dialog::remove(ui, form, idle, msgs),
-            Modal::LockWorktree(form) => close = super::worktree_manage_dialog::lock(ui, form, !prompting, idle, msgs),
-            Modal::MoveWorktree(form) => close = super::worktree_move_dialog::move_worktree(ui, form, snap, !prompting, idle, msgs),
-            Modal::AddSubmodule(form) => close = super::submodule_dialogs::add(ui, form, snap, !prompting, idle, msgs),
-            Modal::EditSubmodule(form) => close = super::submodule_dialogs::edit(ui, form, !prompting, idle, msgs),
+            Modal::LockWorktree(form) => close = super::worktree_manage_dialog::lock(ui, form, keyboard, idle, msgs),
+            Modal::MoveWorktree(form) => close = super::worktree_move_dialog::move_worktree(ui, form, snap, keyboard, idle, msgs),
+            Modal::AddSubmodule(form) => close = super::submodule_dialogs::add(ui, form, snap, keyboard, idle, msgs),
+            Modal::EditSubmodule(form) => close = super::submodule_dialogs::edit(ui, form, keyboard, idle, msgs),
             Modal::RemoveSubmodule(form) => close = super::submodule_dialogs::remove(ui, form, idle, msgs),
             Modal::Clone(form) => {
-                close = super::clone_dialog::show(ui, form, today, sparse_blocked.as_deref(), connections, !prompting, msgs)
+                close = super::clone_dialog::show(ui, form, today, sparse_blocked.as_deref(), connections, keyboard, msgs)
             }
-            Modal::Init(form) => close = super::init_dialog::show(ui, form, chrono::Datelike::year(&today), !prompting, msgs),
+            Modal::Init(form) => close = super::init_dialog::show(ui, form, chrono::Datelike::year(&today), keyboard, msgs),
             Modal::CreatePr { source, target, targets, title, description, draft, items } => {
                 let Some(fs) = fs.filter(|f| f.host.is_some()) else {
                     close = true;
@@ -92,33 +95,31 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 close = super::create_pr_dialog::show(ui, form, fs, snap, idle, msgs);
             }
             Modal::Publish(f) => close = super::publish::form(ui, f, idle, msgs),
-            Modal::RenameBranch { old, name } => close = super::branch_dialogs::rename(ui, old, name, snap, !prompting, msgs),
-            Modal::RenameStash(form) => close = super::stash_dialog::rename(ui, form, !prompting, idle, msgs),
-            Modal::StashPush(form) => close = super::stash_push_dialog::show(ui, form, snap, !prompting, idle, msgs),
+            Modal::RenameBranch { old, name } => close = super::branch_dialogs::rename(ui, old, name, snap, keyboard, msgs),
+            Modal::RenameStash(form) => close = super::stash_dialog::rename(ui, form, keyboard, idle, msgs),
+            Modal::StashPush(form) => close = super::stash_push_dialog::show(ui, form, snap, keyboard, idle, msgs),
             Modal::SetUpstream { branch, remote, name } => close = super::branch_dialogs::upstream(ui, branch, remote, name, snap, msgs),
-            Modal::NewFile(form) => close = super::file_dialogs::new_file(ui, form, snap, !prompting, msgs),
-            Modal::RenameFile { old, form } => {
-                close = super::file_dialogs::rename_file(ui, old, form, snap, stage_renames, !prompting, msgs)
-            }
+            Modal::NewFile(form) => close = super::file_dialogs::new_file(ui, form, snap, keyboard, msgs),
+            Modal::RenameFile { old, form } => close = super::file_dialogs::rename_file(ui, old, form, snap, stage_renames, keyboard, msgs),
             Modal::Remote(form) => {
                 let fork_source = snap.and_then(|s| crate::state::forks::fork_source(s, connections));
-                close = super::remotes::dialog::show(ui, form, snap, fork_source, !prompting, idle, msgs);
+                close = super::remotes::dialog::show(ui, form, snap, fork_source, keyboard, idle, msgs);
             }
-            Modal::AddFork(p) => close = super::remotes::fork_pick::show(ui, p, snap, connections, !prompting, idle, msgs),
-            Modal::CreateFork(f) => close = super::remotes::fork_create::show(ui, f, snap, connections, !prompting, idle, msgs),
-            Modal::GitFlowStart(form) => close = super::gitflow_dialog::start(ui, form, snap, !prompting, msgs),
-            Modal::GitFlowFinish(form) => close = super::gitflow_finish_dialog::finish(ui, form, snap, idle, !prompting, msgs),
-            Modal::Shortcuts { filter } => close = super::shortcuts::sheet(ui, filter, !prompting, keys),
+            Modal::AddFork(p) => close = super::remotes::fork_pick::show(ui, p, snap, connections, keyboard, idle, msgs),
+            Modal::CreateFork(f) => close = super::remotes::fork_create::show(ui, f, snap, connections, keyboard, idle, msgs),
+            Modal::GitFlowStart(form) => close = super::gitflow_dialog::start(ui, form, snap, keyboard, msgs),
+            Modal::GitFlowFinish(form) => close = super::gitflow_finish_dialog::finish(ui, form, snap, idle, keyboard, msgs),
+            Modal::Shortcuts { filter } => close = super::shortcuts::sheet(ui, filter, keyboard, keys),
             Modal::Trust(p) => close = super::trust_dialog::show(ui, p, msgs),
             Modal::ConflictReport(r) => {
                 let remote = snap.is_some_and(|s| crate::state::conflict_check::is_remote(s, &r.request.target));
                 let on_head = snap.is_some_and(|s| crate::state::conflict_check::for_head(r, s));
                 close = super::conflict_check::report_modal(ui, r, remote, on_head, idle, msgs);
             }
-            Modal::ForgeFilter(form) => close = super::forge_filter_dialog::show(ui, form, fs, &repo_filters, !prompting, msgs),
+            Modal::ForgeFilter(form) => close = super::forge_filter_dialog::show(ui, form, fs, &repo_filters, keyboard, msgs),
             Modal::DeepLink(d) => close = super::deep_link_dialog::show(ui, d, msgs),
-            Modal::CreateIssue(form) => close = super::issue::create_dialog::show(ui, form, fs, !prompting, msgs),
-            Modal::RewordCommit(form) => close = super::rebase::reword_dialog::show(ui, form, snap, !prompting, idle, msgs),
+            Modal::CreateIssue(form) => close = super::issue::create_dialog::show(ui, form, fs, keyboard, msgs),
+            Modal::RewordCommit(form) => close = super::rebase::reword_dialog::show(ui, form, snap, keyboard, idle, msgs),
             Modal::About => close = super::menu_bar::about(ui, t, git, crate::state::menu_bar::VERSION, msgs),
             Modal::ReleaseNotes(d) => close = super::release_notes::show(ui, t, d, msgs),
             Modal::UndoCreated(form) => close = super::undo_dialog::created_branch(ui, form, msgs),
@@ -127,17 +128,22 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             Modal::FindRepos { filter } => {
                 let (rows, folders) = finder.as_ref().map(|(r, f)| (&r[..], &f[..])).unwrap_or_default();
                 let lists = super::repo_finder::FinderLists { rows, scan: repo_scan, folders };
-                close = super::repo_finder::show(ui, t, filter, lists, !prompting, msgs);
+                close = super::repo_finder::show(ui, t, filter, lists, keyboard, msgs);
             }
             Modal::SyncRepos => close = super::repo_sync::show(ui, repo_sync),
-            Modal::RenameTab(form) => close = super::tab_dialog::rename(ui, form, !prompting, msgs),
+            Modal::RenameTab(form) => close = super::tab_dialog::rename(ui, form, keyboard, msgs),
             Modal::Mainline(form) => close = super::mainline_dialog::show(ui, form, idle, msgs),
             Modal::TrashOffer(o) => close = super::trash_offer_dialog::show(ui, o, msgs),
         }
     });
-    if close || (!prompting && resp.should_close()) {
+    if close {
         // The dialog closes before what it asked for runs, so a dialog that opens (the trust
         // prompt holding the job it started) isn't closed with it.
         msgs.insert(first, Msg::CloseModal);
+    } else if asking {
+        // Drawn after the form, so it stacks on top and the form beneath takes no input.
+        super::dialog_guard::discard_question(ctx, t, msgs);
+    } else if !prompting && let Some(how) = super::dialog_guard::dismissal(&resp) {
+        msgs.insert(first, Msg::Dialog(DialogMsg::Dismiss(how)));
     }
 }

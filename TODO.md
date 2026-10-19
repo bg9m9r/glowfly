@@ -108,7 +108,7 @@ are in Later > UI review polish.
   - The conflict view's header has one primary "Save and mark resolved" with progress ("1 of
     2 conflicts resolved"); Save with markers, Open in merge tool and Reset picks… go in a ⋯
     menu, Reset picks asks when picks exist, and the duplicate buttons in the binary view go
-- [ ] **Dialogs keep what was typed**: a click on the backdrop never closes a form dialog;
+- [x] **Dialogs keep what was typed**: a click on the backdrop never closes a form dialog;
       Esc on an edited form asks "Discard your changes?" (or the draft is kept and restored
       when the dialog reopens); only information and confirm dialogs close on a backdrop click
       (`ui/modals.rs`)
@@ -2143,3 +2143,18 @@ here, under the item they grew from.
 - Restore, Open and Show items in a folder entry file's context menu
 - Match case, whole word and regex options for find in the File view
 - Select and copy text in the File view
+
+### Dialogs keep what was typed
+
+- Keep a discarded or closed form's draft per dialog kind and offer it again when the same
+  dialog reopens
+- Restore the keyboard focus to the field that had it after Keep editing, for dialogs that don't
+  request focus every frame
+- Count the Create issue form's chosen type and priority as edits (left out because loading the
+  options fills their defaults)
+- Create fork dialog: treat a typed remote name as an edit (it is a confirm today because the
+  name is filled after the lookup)
+- Ask before a trust prompt or another dialog replaces an edited form
+- Ask before closing the window or the tab while an edited form is open
+- Enter on the discard question runs Keep editing, with focus on it when it opens (with the
+  shared dialog frame's Enter and focus rules)

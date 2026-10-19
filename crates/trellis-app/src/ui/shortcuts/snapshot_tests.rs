@@ -2,7 +2,7 @@
 //! summary taking focus for Ctrl+Shift+M. Shares the fixture repository and renderer with
 //! `ui::snapshot_tests`.
 
-use crate::msg::Msg;
+use crate::msg::{DialogMsg, Dismiss, Msg};
 use crate::state::{Modal, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -74,7 +74,9 @@ fn shortcut_sheet_empty_and_close() {
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::CloseModal)));
     h.press_key(egui::Key::Escape);
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::CloseModal)), "Esc closes the sheet");
+    // Reported as a dismissal, which closes the sheet in update (update/dialog_tests.rs).
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Dialog(DialogMsg::Dismiss(Dismiss::Escape)))), "Esc dismisses the sheet");
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::CloseModal)));
     drop(h);
     remove_fixture(&dir);
 }

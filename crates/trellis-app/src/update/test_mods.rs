@@ -47,6 +47,8 @@ pub(super) mod deep_link_open_tests;
 pub(super) mod deep_link_tests;
 #[path = "desktop_notify_tests.rs"]
 pub(super) mod desktop_notify_tests;
+#[path = "dialog_tests.rs"]
+pub(super) mod dialog_tests;
 #[path = "diff_gaps_tests.rs"]
 pub(super) mod diff_gaps_tests;
 #[path = "diff_nav_refresh_tests.rs"]

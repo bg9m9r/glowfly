@@ -19,6 +19,7 @@ mod conflict_files;
 mod dashboard;
 mod deep_link;
 mod deep_link_open;
+mod dialog;
 mod diff;
 mod diff_gaps;
 mod files;
@@ -189,6 +190,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Onboarding(m) => onboarding::handle(st, m, now, &mut fx),
         Msg::DeepLink(m) => deep_link::handle(st, m, now, &mut fx),
         Msg::Dashboard(m) => dashboard::handle(st, m, now, &mut fx),
+        Msg::Dialog(m) => dialog::handle(st, m),
         Msg::App(m) => app::handle(st, m, &mut fx),
         Msg::Updates(m) => updates::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
@@ -214,16 +216,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             }
         }
         Msg::ToastAction(id) => notify::toast_action(st, id, now, &mut fx),
-        Msg::CloseModal => {
-            // Closing the trust prompt without a decision drops the job waiting for it.
-            if matches!(st.modal, Some(crate::state::Modal::Trust(_))) {
-                trust::dismissed(st);
-            }
-            if matches!(st.modal, Some(crate::state::Modal::DeepLink(_))) {
-                deep_link::modal_closed(st);
-            }
-            st.modal = None;
-        }
+        Msg::CloseModal => dialog::close(st),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::OpenUrl(url)),
         Msg::OpenTerminal => tools::open_terminal(st, now, &mut fx),
@@ -231,6 +224,9 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Logged { ok, text } => st.log(ok, text),
         Msg::ClearLog => logs::clear(st, &mut fx),
     }
+    // Records a dialog that just opened (to tell later whether it was edited) and forgets a
+    // closed one.
+    st.dialog.track(st.modal.as_ref());
     logs::flush(st, &mut fx);
     fx
 }

@@ -18,6 +18,8 @@ pub mod dashboard;
 pub mod dashboard_plan;
 pub mod dashboard_rows;
 pub mod deep_link;
+pub mod dialog_guard;
+pub mod dialog_kind;
 pub mod diff_nav;
 pub mod files;
 mod forge;
@@ -370,6 +372,7 @@ pub struct AppState {
     /// the reload after it lands (update/notify.rs).
     pub behind_watch: Option<notify::BehindWatch>,
     pub modal: Option<Modal>,
+    pub dialog: dialog_guard::DialogGuard,
     pub prefs: Option<PrefsState>,
     pub forge: Option<ForgeState>,
     /// Per-commit (files, added, deleted) for the CHANGES column.
@@ -484,6 +487,7 @@ impl AppState {
             toast_seq: 0,
             behind_watch: None,
             modal: None,
+            dialog: Default::default(),
             prefs: None,
             forge: None,
             stats: HashMap::new(),

@@ -76,7 +76,7 @@ binary (package `trellis`).
 | --- | --- |
 | `main.rs` | Starts the window, or hands a `trellis://` argument to the window already running; also runs as git's sequence editor (`--write-todo`), gpg.program wrapper (`TRELLIS_GPG_WRAPPER`) and askpass helper. |
 | `logging.rs` | The tracing setup, after the helper modes exit: warnings, errors and panics to `errors.log` (rotated; debug details with extended logging, switched at runtime), `RUST_LOG` to stderr, and the panic hook. |
-| `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, `InitMsg` in `init.rs`, `FilterMsg` in `forge_filters.rs`, `IssueMsg` in `issue.rs` for the issue panel and the Create issue dialog, …, one file per few areas; the first-run welcome and the tour carry `OnboardingMsg` from `onboarding.rs`), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
+| `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, `InitMsg` in `init.rs`, `FilterMsg` in `forge_filters.rs`, `IssueMsg` in `issue.rs` for the issue panel and the Create issue dialog, …, one file per few areas; the first-run welcome and the tour carry `OnboardingMsg` from `onboarding.rs`; a dialog's backdrop click or Esc and the discard question carry `DialogMsg` from `dialog.rs`), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
 | `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`, `forge_filters.rs` for PR and issue filter calls, `issue.rs` for the issue panel's and the Create issue dialog's tracker calls, `blame.rs`, `notify.rs` for desktop notifications), grouped effects of the Clone and Init dialogs, the SUBMODULES section and interactive rebase (`clone.rs`, `init.rs`, `submodule.rs`, `rebase.rs`), `Effect::name` (`names.rs`) and `Effect::scope` (`scope.rs`). |
 | `build.rs` | Bundles `CHANGELOG.md` into the program (`OUT_DIR`) and, for Windows, embeds the icon and version details in `trellis.exe`. |
 | `lfs.rs`, `git_env.rs`, `themes.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs`, `logs.rs`, `onboarding.rs`, `deep_link.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
@@ -181,6 +181,12 @@ binary (package `trellis`).
   (stale generations are ignored); a pull queues behind the repository's other jobs. A saved
   "don't trust" skips a repository without running anything. Closing the dialog leaves the run
   going; its end is then told in a toast that opens it again.
+- **Dialogs**: `Modal::kind` (`state/dialog_kind.rs`) sorts each dialog into a form,
+  information or confirm dialog. `ui/modals.rs` reports a backdrop click or Esc as
+  `DialogMsg::Dismiss`. `update/dialog.rs` closes information and confirm dialogs, ignores the
+  backdrop for forms, and on Esc compares the form's `Modal::draft` with the one `DialogGuard`
+  recorded when it opened (after every update). When they differ it asks "Discard your
+  changes?" (`ui/dialog_guard.rs`).
 - **Toasts** (`state/toasts.rs`) can carry one action button with a stored `Msg`. A click
   sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only
   while the toast's repository is the active tab. `toast_replacing` updates a toast still on

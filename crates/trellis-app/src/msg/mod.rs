@@ -18,6 +18,7 @@ mod app;
 mod blame;
 mod branch;
 mod dashboard;
+mod dialog;
 mod diff;
 mod files;
 mod forge;
@@ -43,6 +44,7 @@ pub use app::AppMsg;
 pub use blame::BlameMsg;
 pub use branch::{BranchMsg, CloneMsg};
 pub use dashboard::DashboardMsg;
+pub use dialog::{DialogMsg, Dismiss};
 pub use diff::{ConflictMsg, DiffMsg, HistoryMsg};
 pub use files::{FilesMsg, WorkFileMsg, not_opened, restore_failed};
 pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
@@ -176,6 +178,8 @@ pub enum Msg {
     DeepLink(crate::deep_link::DeepLinkMsg),
     /// The cross-repository dashboard (update/dashboard.rs).
     Dashboard(DashboardMsg),
+    /// A click on a dialog's backdrop or Esc, and the discard question (update/dialog.rs).
+    Dialog(DialogMsg),
     /// Quitting and the About dialog (update/app.rs).
     App(AppMsg),
     /// Trellis's own updates and the release notes (update/updates.rs).
@@ -292,6 +296,7 @@ impl Msg {
             Msg::Onboarding(m) => m.on_inactive(),
             Msg::DeepLink(m) => m.on_inactive(),
             Msg::Dashboard(m) => m.on_inactive(),
+            Msg::Dialog(m) => m.on_inactive(),
             Msg::App(m) => m.on_inactive(),
             Msg::Updates(m) => m.on_inactive(),
             Msg::Tick(_)
