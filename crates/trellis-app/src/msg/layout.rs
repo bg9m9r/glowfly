@@ -18,13 +18,21 @@ pub enum LayoutMsg {
     SetPanel { panel: Panel, shown: bool },
     /// A drag of the drawer's edge ended at `size` px (saved within its limits).
     PanelSize { panel: SizedPanel, size: f32 },
+    /// Draw the commit panel in full for the tool view open now (the rail's expand control).
+    ExpandDetails,
 }
 
 impl LayoutMsg {
     /// UI intents, never results of background work: nothing to keep for an inactive tab.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::ZoomIn | Self::ZoomOut | Self::ZoomReset | Self::TogglePanel(_) | Self::SetPanel { .. } | Self::PanelSize { .. } => None,
+            Self::ZoomIn
+            | Self::ZoomOut
+            | Self::ZoomReset
+            | Self::TogglePanel(_)
+            | Self::SetPanel { .. }
+            | Self::PanelSize { .. }
+            | Self::ExpandDetails => None,
         }
     }
 }

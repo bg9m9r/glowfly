@@ -1,6 +1,6 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
 //! lock, wrench, warning, keyboard, external diff, into, comment, pencil, plus, issue, check, more,
-//! the file pages and open file), called from
+//! the file pages, open file, the expand chevrons and commit), called from
 //! `widgets::paint_icon`.
 
 use super::widgets::Icon;
@@ -261,6 +261,20 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             line(pos2(c.x - 2.0, c.y + 2.0), tip);
             line(tip, pos2(tip.x - 6.0, tip.y));
             line(tip, pos2(tip.x, tip.y + 6.0));
+        }
+        Icon::ExpandLeft | Icon::ExpandRight => {
+            // Two strokes meeting at the tip, on the side the chevron points to.
+            let dx = if icon == Icon::ExpandLeft { -2.5 } else { 2.5 };
+            let s = Stroke::new(s.width * 1.25, s.color); // 2 px at the usual size
+            p.line_segment([pos2(c.x - dx, c.y - 5.0), pos2(c.x + dx, c.y)], s);
+            p.line_segment([pos2(c.x + dx, c.y), pos2(c.x - dx, c.y + 5.0)], s);
+        }
+        Icon::Commit => {
+            // A node on its branch line: the line stops at the circle's edge.
+            let r = 4.0;
+            p.circle_stroke(c, r, s);
+            line(pos2(c.x, c.y - 9.0), pos2(c.x, c.y - r));
+            line(pos2(c.x, c.y + r), pos2(c.x, c.y + 9.0));
         }
         _ => return false,
     }

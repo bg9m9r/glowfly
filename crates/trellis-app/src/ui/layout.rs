@@ -1,5 +1,6 @@
 //! The window zoom, applied to egui from the settings each frame, and the status bar's way back
-//! from a zoom or a hidden toolbar. Which panels `draw` shows is in `settings` too.
+//! from a zoom or a hidden toolbar. Which panels are shown is in `settings` too; `frame_layout.rs`
+//! draws them, and a hidden side panel's edge strip is in `panel_rails.rs`.
 
 use super::theme::color;
 use crate::keymap::BindingId;

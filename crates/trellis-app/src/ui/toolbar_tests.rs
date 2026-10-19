@@ -88,12 +88,13 @@ fn a_focused_button_shows_its_tooltip() {
 
 #[test]
 fn a_tooltip_at_the_edge_stays_in_the_window() {
+    // As narrow as the toolbar's groups go without meeting (a narrower window overlaps them).
     let (st, dir) = plain(ThemeChoice::Dark, "toolbar-edge");
-    let mut h = harness_sized(st, true, egui::vec2(900.0, 600.0));
+    let mut h = harness_sized(st, true, egui::vec2(1200.0, 600.0));
     h.run();
     hover(&mut h, "Open settings");
     let body = h.get_by_label("Themes, accounts, keys and git options.").bounding_box().expect("the tooltip");
-    assert!(body.x0 >= 0.0 && body.x1 <= 900.0 && body.y1 <= 600.0, "{body:?}");
+    assert!(body.x0 >= 0.0 && body.x1 <= 1200.0 && body.y1 <= 600.0, "{body:?}");
     drop(h);
     remove_fixture(&dir);
 }
@@ -200,6 +201,89 @@ fn tip_push_german() {
     h.run();
     hover(&mut h, name);
     h.check_snapshot("tip_push_german");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The fixture as `plain`, changed by `case` (a name, the head, the chip, the hosting service).
+fn variant(case: usize, labels: bool, name: &str) -> (AppState, PathBuf) {
+    use crate::state::ForgeState;
+    use crate::state::conflict_check::{ConflictReport, current_request};
+    use trellis_core::conflict_check::Prediction;
+    use trellis_core::forge::{Provider, Target};
+    let (mut st, dir) = plain(ThemeChoice::Dark, name);
+    st.settings.toolbar_labels = labels;
+    if case == 4 {
+        // On search, which the chip compares with main.
+        crate::ui::snapshot_tests::git(&dir, &["checkout", "-q", "search"], "2026-01-10T10:00:00+00:00");
+        crate::ui::snapshot_tests::reload(&mut st, &dir, &trellis_core::repo::LoadOptions::all(500));
+    }
+    let long_branch = "feature/".to_owned() + &"a-very-long-branch-name-".repeat(3) + "that-goes-on";
+    let snap = st.snap.as_mut().unwrap();
+    match case {
+        0 => {}
+        1 | 4 => {
+            // An 80-character head branch (with the chip in case 4).
+            let long = format!("{long_branch:-<80}");
+            let head = snap.locals.iter_mut().find(|b| b.is_head).unwrap();
+            head.name.clone_from(&long);
+            snap.head_branch = Some(long);
+            if case == 4 {
+                let request = current_request(snap).expect("the long branch compares with main");
+                let generation = st.conflict_checks.start().unwrap();
+                let result = Ok(Prediction::Conflicts(vec!["a.txt".into(); 12]));
+                st.conflict_checks.finish(generation, ConflictReport { request, result });
+            }
+        }
+        2 => snap.head_branch = None,
+        3 => snap.name = "r".repeat(60),
+        _ => {
+            let github = Target {
+                provider: Provider::GitHub,
+                host: "github.com".into(),
+                owner: "o".into(),
+                project: String::new(),
+                repo: "r".into(),
+            };
+            st.forge = Some(ForgeState::new(Some(github), "origin".into(), None));
+        }
+    }
+    (st, dir)
+}
+
+#[test]
+fn toolbar_buttons_stay_put() {
+    const TERMINAL: &str = "Show the terminal panel";
+    for labels in [true, false] {
+        let mut first = None;
+        for case in 0..6 {
+            let (st, dir) = variant(case, labels, &format!("toolbar-put-{case}-{labels}"));
+            let long = st.snap.as_ref().unwrap().head_branch.clone().filter(|b| b.len() == 80);
+            let has_pr = st.forge.is_some();
+            let mut h = harness(st, true);
+            h.run();
+            let at = (span(&h, "Undo the last action").0, span(&h, TERMINAL).0);
+            assert_eq!(*first.get_or_insert(at), at, "case {case}, labels {labels}");
+            if let Some(name) = long {
+                // Cut on screen, but still found by its whole name.
+                assert!(span(&h, &name).1 - span(&h, &name).0 < 240.0);
+            }
+            if case == 4 {
+                assert!(h.query_by_label("Conflicts with main").is_some(), "the chip");
+            }
+            assert_eq!(h.query_all_by_label_contains("create a pull request on").next().is_some(), has_pr, "case {case}");
+            drop(h);
+            remove_fixture(&dir);
+        }
+    }
+}
+
+#[test]
+fn toolbar_long_branch_name() {
+    let (st, dir) = variant(1, true, "toolbar-long-branch");
+    let mut h = harness(st, true);
+    settle(&mut h);
+    h.check_snapshot("toolbar_long_branch_name");
     drop(h);
     remove_fixture(&dir);
 }

@@ -1,10 +1,12 @@
 //! Zooming the window, showing or hiding its panels and the sizes its drawers were dragged to:
-//! all are settings, saved when they change; the shell applies them on the next frame.
+//! all are settings, saved when they change; the shell applies them on the next frame. Expanding
+//! the commit panel collapsed beside a tool view is view state only (`view.details_expanded_for`),
+//! never saved, and lasts while that tool view stays open.
 
 use crate::effect::Effect;
 use crate::msg::{LayoutMsg, Msg};
 use crate::state::AppState;
-use crate::state::layout::{Panel, set_shown, shown, zoom_toast_text};
+use crate::state::layout::{Panel, set_shown, shown, tool_view, zoom_toast_text};
 use crate::state::panel_layout;
 use crate::state::toasts::ToastAction;
 use std::time::Instant;
@@ -27,6 +29,7 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
                 fx.push(super::prefs::save_settings(st));
             }
         }
+        LayoutMsg::ExpandDetails => st.view.details_expanded_for = tool_view(st),
     }
 }
 
@@ -40,9 +43,11 @@ fn set_and_note(st: &mut AppState, p: Panel, on: bool, now: Instant, fx: &mut Ve
     }
 }
 
-/// Shows the commit details panel if it is hidden (the commit box is in it).
+/// Shows the commit details panel if it is hidden, and in full if it is collapsed beside a
+/// tool view (the commit box is in it).
 pub(super) fn reveal_details(st: &mut AppState, fx: &mut Vec<Effect>) {
     set(st, Panel::Details, true, fx);
+    st.view.details_expanded_for = tool_view(st);
 }
 
 /// Moves to zoom level `new` (saving it when it differs) and shows the level in the zoom

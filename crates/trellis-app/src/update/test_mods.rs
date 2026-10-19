@@ -133,6 +133,8 @@ pub(super) mod keys_tests;
 pub(super) mod language_override_tests;
 #[path = "language_tests.rs"]
 pub(super) mod language_tests;
+#[path = "layout_rail_tests.rs"]
+pub(super) mod layout_rail_tests;
 #[path = "layout_tests.rs"]
 pub(super) mod layout_tests;
 #[path = "lfs_fetch_tests.rs"]

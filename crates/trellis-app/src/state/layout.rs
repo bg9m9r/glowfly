@@ -1,11 +1,14 @@
 //! The window's zoom and which of its panels are drawn: the left panel of refs, the commit
 //! details panel, the toolbar and the menu bar. All live in `Settings`; the shell reads them
-//! each frame.
+//! each frame. The tool view open in the central area decides whether the commit details panel
+//! is drawn in full or as a narrow rail (`details_shape`), which is view state, never saved.
 
 use super::AppState;
 use super::palette_commands::{Entry, PaletteCommand, entry, with_detail};
 use crate::keymap::BindingId;
 use crate::msg::LayoutMsg;
+use std::collections::HashSet;
+use trellis_core::repo::Snapshot;
 use trellis_core::settings::{DEFAULT_ZOOM_PERCENT, Settings, ZOOM_STEPS};
 
 /// A panel that can be hidden.
@@ -75,6 +78,82 @@ pub fn set_shown(s: &mut Settings, p: Panel, on: bool) -> bool {
     let changed = *field != on;
     *field = on;
     changed
+}
+
+/// A view filling the central area that needs room: the commit details panel collapses to a
+/// rail while one is open.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ToolView {
+    Conflict,
+    Blame,
+    FileHistory,
+    FolderHistory,
+    Issue,
+    GitFlow,
+}
+
+/// The tool view the central area draws now, if any. `ui::central::show` and
+/// `AppState::graph_shown` follow this same order: keep the three in step.
+pub fn tool_view(st: &AppState) -> Option<ToolView> {
+    use super::history::HistoryKind;
+    if st.dashboard.open || st.snap.is_none() {
+        None
+    } else if st.conflict.is_some() {
+        Some(ToolView::Conflict)
+    } else if st.blame.is_some() {
+        Some(ToolView::Blame)
+    } else if let Some(h) = &st.history {
+        Some(match h.kind {
+            HistoryKind::File => ToolView::FileHistory,
+            HistoryKind::Folder => ToolView::FolderHistory,
+        })
+    } else if st.pull_request.is_some() {
+        // The pull request panel covers the issue panel, and keeps the full commit panel.
+        None
+    } else if st.issue.is_some() {
+        Some(ToolView::Issue)
+    } else if st.diff.is_some() || st.rebase.is_some() {
+        None
+    } else if st.gitflow_panel {
+        Some(ToolView::GitFlow)
+    } else {
+        None
+    }
+}
+
+/// How the commit details panel is drawn this frame.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DetailsShape {
+    /// The resizable drawer.
+    Full,
+    /// A narrow rail (a tool view is open and the panel wasn't expanded in it).
+    Rail,
+    /// Not at all (the saved setting hides it): an edge strip brings it back.
+    Hidden,
+}
+
+pub fn details_shape(st: &AppState) -> DetailsShape {
+    if !st.settings.show_details_panel {
+        return DetailsShape::Hidden;
+    }
+    match tool_view(st) {
+        Some(v) if st.view.details_expanded_for != Some(v) => DetailsShape::Rail,
+        _ => DetailsShape::Full,
+    }
+}
+
+/// The working tree's changed files: distinct paths across the unstaged and staged lists, so a
+/// file staged and then modified again counts once.
+pub fn wip_change_count(snap: &Snapshot) -> usize {
+    snap.unstaged.iter().chain(&snap.staged).map(|f| f.path.as_str()).collect::<HashSet<&str>>().len()
+}
+
+/// Forgets the commit panel's expansion once the tool view it was expanded in is gone or
+/// another one replaced it (`update` calls it after every message).
+pub fn drop_stale_expansion(st: &mut AppState) {
+    if st.view.details_expanded_for.is_some() && st.view.details_expanded_for != tool_view(st) {
+        st.view.details_expanded_for = None;
+    }
 }
 
 /// The toast after a zoom step, e.g. "Zoom 125%", noting when a limit is reached.

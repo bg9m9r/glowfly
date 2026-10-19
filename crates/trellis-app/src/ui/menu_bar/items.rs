@@ -1,8 +1,10 @@
-//! Menu items with their key on the right and, when disabled, the reason on hover.
+//! Menu items with their key on the right and, when disabled, the reason on hover, and check
+//! items with a check box in the gutter before the label.
 
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::Msg;
-use eframe::egui::{self, Button, WidgetText};
+use crate::ui::theme::controls::paint_check_box;
+use eframe::egui::{self, Button, Color32, Rect, TextStyle, WidgetInfo, WidgetText, WidgetType, pos2, vec2};
 
 /// One item: `label`, the current key of `key` right-aligned, disabled with `blocked` as the
 /// hover text, pushing `msg` and closing the menu when clicked.
@@ -20,6 +22,29 @@ pub(super) fn item(
         msgs.push(msg);
         ui.close_menu();
     }
+}
+
+/// A check item: a check box showing `on`, then `label`, with `key`'s current key on the right;
+/// disabled with `blocked` as the hover text. Returns whether it was clicked (the caller acts and
+/// closes the menu). Screen readers get a checkbox with its state.
+pub(super) fn check_item(ui: &mut egui::Ui, keys: &Keymap, label: &str, on: bool, key: Option<BindingId>, blocked: Option<&str>) -> bool {
+    let font = TextStyle::Button.resolve(ui.style());
+    // Placeholder colour: the button paints the text in its own interaction colour.
+    let mut job = egui::text::LayoutJob::simple_singleline(label.to_owned(), font, Color32::PLACEHOLDER);
+    let gutter = ui.spacing().icon_width + ui.spacing().icon_spacing;
+    if let Some(first) = job.sections.first_mut() {
+        first.leading_space = gutter;
+    }
+    let enabled = blocked.is_none();
+    let mut r = ui.add_enabled(enabled, Button::new(job).shortcut_text(hint(keys, key)));
+    let pad = ui.spacing().button_padding.x;
+    let gutter_rect = Rect::from_min_size(pos2(r.rect.left() + pad, r.rect.top()), vec2(ui.spacing().icon_width, r.rect.height()));
+    paint_check_box(ui, gutter_rect, on, r.hovered());
+    r.widget_info(|| WidgetInfo::selected(WidgetType::Checkbox, enabled, on, label));
+    if let Some(why) = blocked {
+        r = r.on_disabled_hover_text(why);
+    }
+    r.clicked()
 }
 
 /// Adds `button`, enabled unless `blocked` (then the reason shows on hover); whether it was

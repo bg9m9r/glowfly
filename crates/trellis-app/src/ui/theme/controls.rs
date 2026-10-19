@@ -78,27 +78,38 @@ impl egui::Widget for Check<'_> {
             }
         });
         if ui.is_rect_visible(rect) {
-            let p = color::current();
-            let (_, big) = ui.spacing().icon_rectangles(rect);
-            let on = *checked || indeterminate;
-            let (fill, stroke) = icon_colors(&p, on, response.hovered());
-            let radius = CornerRadius::same(3);
-            ui.painter().rect(big, radius, fill, stroke, StrokeKind::Inside);
-            let mark = Stroke::new(2.0_f32, p.input);
-            let (l, r, t, b, w) = (big.left(), big.right(), big.top(), big.bottom(), big.width());
-            if indeterminate {
-                ui.painter().add(Shape::hline((l + 0.25 * w)..=(r - 0.25 * w), big.center().y, mark));
-            } else if *checked {
-                let points = vec![pos2(l + 0.22 * w, big.center().y), pos2(l + 0.42 * w, b - 0.26 * w), pos2(r - 0.2 * w, t + 0.26 * w)];
-                ui.painter().add(Shape::line(points, mark));
-            }
+            let big = paint_box(ui, rect, *checked, indeterminate, response.hovered());
             if response.has_focus() {
-                ui.painter().rect_stroke(big.expand(2.0), CornerRadius::same(5), Stroke::new(2.0_f32, p.accent), StrokeKind::Middle);
+                let accent = color::current().accent;
+                ui.painter().rect_stroke(big.expand(2.0), CornerRadius::same(5), Stroke::new(2.0_f32, accent), StrokeKind::Middle);
             }
             paint_label(ui, rect, galley, &response);
         }
         response
     }
+}
+
+/// A checkbox's box, as `Check` draws it, in the icon square at the left of `rect` (egui's
+/// `icon_rectangles`), for items that draw their own label (the View menu's check items).
+pub fn paint_check_box(ui: &Ui, rect: Rect, on: bool, hovered: bool) {
+    paint_box(ui, rect, on, false, hovered);
+}
+
+/// Paints the box (with a check mark when `checked`, a dash when `indeterminate`); returns it.
+fn paint_box(ui: &Ui, rect: Rect, checked: bool, indeterminate: bool, hovered: bool) -> Rect {
+    let p = color::current();
+    let (_, big) = ui.spacing().icon_rectangles(rect);
+    let (fill, stroke) = icon_colors(&p, checked || indeterminate, hovered);
+    ui.painter().rect(big, CornerRadius::same(3), fill, stroke, StrokeKind::Inside);
+    let mark = Stroke::new(2.0_f32, p.input);
+    let (l, r, t, b, w) = (big.left(), big.right(), big.top(), big.bottom(), big.width());
+    if indeterminate {
+        ui.painter().add(Shape::hline((l + 0.25 * w)..=(r - 0.25 * w), big.center().y, mark));
+    } else if checked {
+        let points = vec![pos2(l + 0.22 * w, big.center().y), pos2(l + 0.42 * w, b - 0.26 * w), pos2(r - 0.2 * w, t + 0.26 * w)];
+        ui.painter().add(Shape::line(points, mark));
+    }
+    big
 }
 
 /// A radio button: an input-coloured circle with an `input_border` edge, or an accent circle

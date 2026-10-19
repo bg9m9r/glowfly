@@ -86,6 +86,12 @@ pub enum Icon {
     FileBinary,
     /// A square with an arrow out of its top-right corner: open the file in its default app.
     OpenFile,
+    /// An open chevron pointing left: expand a panel collapsed at the window's right edge.
+    ExpandLeft,
+    /// An open chevron pointing right: bring back a panel hidden at the window's left edge.
+    ExpandRight,
+    /// A circle on a vertical line: a commit (the collapsed commit panel's Commit entry).
+    Commit,
 }
 
 /// Every icon's line width: they are outlines only.
@@ -263,6 +269,7 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
         Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check | Icon::More => {} // icons.rs
         Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
+        Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit => {}                               // icons.rs
     }
 }
 

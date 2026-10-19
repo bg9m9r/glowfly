@@ -45,7 +45,7 @@ impl AppState {
     }
 
     /// Whether the commit graph is the central view: the same order as `ui/central.rs::show`
-    /// (keep the two in step).
+    /// and `state::layout::tool_view` (keep the three in step).
     pub fn graph_shown(&self) -> bool {
         !self.dashboard.open
             && self.snap.is_some()

@@ -126,6 +126,27 @@ fn menu_bar_view_dark_and_light() {
     remove_fixture(&dir);
 }
 
+/// The panel items are check items: a checkbox each, ticked while the panel is shown.
+#[test]
+fn view_menu_checks_the_shown_panels() {
+    use eframe::egui::accesskit::{Role, Toggled};
+    let (st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-view-checks");
+    let h = opened(st, true, "View");
+    for label in ["Left panel", "Commit details panel", "Toolbar", "Menu bar"] {
+        let node = h.get_by_label(label);
+        assert_eq!((node.role(), node.toggled()), (Role::CheckBox, Some(Toggled::True)), "{label}");
+    }
+    assert_eq!(h.get_by_label("Terminal").toggled(), Some(Toggled::False));
+    assert_eq!(h.get_by_label("Activity log").toggled(), Some(Toggled::False));
+    drop(h);
+    let (mut st, _) = with_bar(ThemeChoice::Dark, "menu-bar-view-checks");
+    st.settings.show_left_panel = false;
+    let h = opened(st, true, "View");
+    assert_eq!(h.get_by_label("Left panel").toggled(), Some(Toggled::False));
+    drop(h);
+    remove_fixture(&dir);
+}
+
 #[test]
 fn menu_bar_view_theme() {
     let (st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-theme");
@@ -162,12 +183,15 @@ type Case = (&'static str, &'static str, &'static str, fn(&Msg) -> bool);
 
 #[test]
 fn menu_items_send_their_messages() {
-    let cases: [Case; 6] = [
+    let cases: [Case; 7] = [
         ("menu-click-new-tab", "File", "New tab", |m| matches!(m, Msg::Tabs(TabsMsg::NewTab))),
         ("menu-click-quit", "File", "Quit", |m| matches!(m, Msg::App(AppMsg::Quit))),
         ("menu-click-zoom", "View", "Zoom in", |m| matches!(m, Msg::Layout(LayoutMsg::ZoomIn))),
-        ("menu-click-hide-bar", "View", "Hide menu bar", |m| {
+        ("menu-click-hide-bar", "View", "Menu bar", |m| {
             matches!(m, Msg::Layout(LayoutMsg::SetPanel { panel: Panel::MenuBar, shown: false }))
+        }),
+        ("menu-click-left-panel", "View", "Left panel", |m| {
+            matches!(m, Msg::Layout(LayoutMsg::SetPanel { panel: Panel::Left, shown: false }))
         }),
         ("menu-click-about", "Help", "About Trellis…", |m| matches!(m, Msg::App(AppMsg::ShowAbout))),
         ("menu-click-check-updates", "Help", "Check for updates", |m| matches!(m, Msg::Updates(UpdateMsg::CheckNow))),

@@ -54,13 +54,7 @@ pub const GROUP_GAP: f32 = 16.0;
 /// reason.
 pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, name: &str, enabled: bool, labels: bool) -> Response {
     let sense = if enabled { Sense::click() } else { Sense::hover() | Sense::FOCUSABLE };
-    let width = if labels {
-        let text_w = ui.painter().layout_no_wrap(label.to_owned(), FontId::proportional(12.0), Color32::PLACEHOLDER).size().x;
-        TOOL_W.max(text_w + CAPTION_PAD)
-    } else {
-        TOOL_W_BARE
-    };
-    let (rect, resp) = ui.allocate_exact_size(vec2(width, TOOL_H), sense);
+    let (rect, resp) = ui.allocate_exact_size(vec2(tool_width(ui, label, labels), TOOL_H), sense);
     let p = ui.painter();
     let slot = rect.shrink(1.0);
     let radius = CornerRadius::same(TOOL_RADIUS);
@@ -90,6 +84,16 @@ pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, name: &str, enabled: bo
     if enabled { resp.on_hover_cursor(egui::CursorIcon::PointingHand) } else { resp }
 }
 
+/// The width `tool_button` gives a button captioned `label`.
+pub fn tool_width(ui: &Ui, label: &str, labels: bool) -> f32 {
+    if labels {
+        let text_w = ui.painter().layout_no_wrap(label.to_owned(), FontId::proportional(12.0), Color32::PLACEHOLDER).size().x;
+        TOOL_W.max(text_w + CAPTION_PAD)
+    } else {
+        TOOL_W_BARE
+    }
+}
+
 /// The space between two toolbar groups (with `TOOL_SPACING` between the items).
 pub fn tool_gap(ui: &mut Ui) {
     ui.add_space(GROUP_GAP - ui.spacing().item_spacing.x);
@@ -105,11 +109,14 @@ pub fn tool_divider(ui: &mut Ui) {
     tool_gap(ui);
 }
 
+/// A dropdown caret button's width.
+pub const CARET_W: f32 = 14.0;
+
 /// Small dropdown caret button right against its tool button (no spacing between them), with
 /// the caret at the button's icon height.
 pub fn caret_button(ui: &mut Ui, labels: bool) -> Response {
     ui.add_space(-ui.spacing().item_spacing.x);
-    let (rect, resp) = ui.allocate_exact_size(vec2(14.0, TOOL_H), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(CARET_W, TOOL_H), Sense::click());
     let p = ui.painter();
     if resp.hovered() {
         p.rect_filled(rect.shrink(1.0), CornerRadius::same(TOOL_RADIUS), color::hover());

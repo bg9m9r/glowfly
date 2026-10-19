@@ -6,6 +6,7 @@
 
 use crate::msg::{LayoutMsg, Msg};
 use crate::state::AppState;
+use crate::state::layout::{DetailsShape, details_shape};
 use crate::state::panel_layout::{self, DETAILS, Fit, MAIN_MIN_WIDTH, SIDEBAR, Spec};
 use eframe::egui::{self, Id, Pos2, Rect, Vec2, containers::panel::PanelState};
 use trellis_core::settings::SizedPanel;
@@ -30,6 +31,13 @@ pub fn pin(ctx: &egui::Context, id: Id, size: f32, was_dragging: bool) {
     ctx.data_mut(|d| d.insert_persisted(id, PanelState { rect }));
 }
 
+/// For a panel not drawn this frame: forgets the rect egui keeps for it, so nothing reads the
+/// last frame's panel as still there (a drawer standing aside for its rail, say). Its size
+/// comes back from the settings through `pin`.
+pub fn forget(ctx: &egui::Context, id: &str) {
+    ctx.data_mut(|d| d.remove::<PanelState>(Id::new(id)));
+}
+
 /// After drawing a drawer whose size is saved in the settings: tracks the drag of its edge
 /// and, when one ends, reports the size it was dragged to (`size`, the drawn length).
 pub fn track(ctx: &egui::Context, st: &mut AppState, p: SizedPanel, id: Id, size: f32, msgs: &mut Vec<Msg>) {
@@ -45,21 +53,22 @@ pub fn track(ctx: &egui::Context, st: &mut AppState, p: SizedPanel, id: Id, size
     }
 }
 
-/// The left and details drawers' fits for this frame (for the shown ones), from the width left
-/// beside the panels drawn so far.
+/// The left and details drawers' fits for this frame (for the ones drawn in full), from the
+/// width left beside the panels drawn so far.
 pub fn side_fits(ctx: &egui::Context, st: &AppState) -> (Option<Fit>, Option<Fit>) {
     let room = ctx.available_rect().width();
     let sizes = &st.settings.panel_sizes;
+    let (left_on, details_on) = (st.settings.show_left_panel, details_shape(st) == DetailsShape::Full);
     let mut drawers = Vec::with_capacity(2);
-    if st.settings.show_left_panel {
+    if left_on {
         drawers.push((SIDEBAR, sizes.get(SizedPanel::Sidebar)));
     }
-    if st.settings.show_details_panel {
+    if details_on {
         drawers.push((DETAILS, sizes.get(SizedPanel::Details)));
     }
     let mut fits = panel_layout::fit(room, MAIN_MIN_WIDTH, &drawers).into_iter();
-    let left = st.settings.show_left_panel.then(|| fits.next()).flatten();
-    let details = st.settings.show_details_panel.then(|| fits.next()).flatten();
+    let left = left_on.then(|| fits.next()).flatten();
+    let details = details_on.then(|| fits.next()).flatten();
     (left, details)
 }
 

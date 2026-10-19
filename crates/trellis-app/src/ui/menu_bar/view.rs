@@ -1,7 +1,7 @@
 //! View: zoom, the panels, the terminal and the activity log, the diff settings, the theme and
 //! Refresh.
 
-use super::items::{clicked, item};
+use super::items::{check_item, item};
 use crate::keymap::BindingId as I;
 use crate::msg::{DiffMsg, LayoutMsg, Msg, PrefsMsg, RepoMsg};
 use crate::state::layout::{Panel, shown};
@@ -11,7 +11,7 @@ use crate::terminal::TerminalMsg;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
 use crate::ui::theme_names;
-use eframe::egui::{self, Button, RichText};
+use eframe::egui::{self, RichText};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::{DiffLayout, DiffMode, ThemeChoice};
 
@@ -28,15 +28,18 @@ pub(super) fn menu(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         ui.separator();
         for panel in Panel::ALL {
             let on = shown(&st.settings, panel);
-            let label = panel_label(t, panel, on);
-            item(ui, keys, label, panel.binding(), None, Msg::Layout(LayoutMsg::SetPanel { panel, shown: !on }), msgs);
+            if check_item(ui, keys, panel_label(t, panel), on, panel.binding(), None) {
+                msgs.push(Msg::Layout(LayoutMsg::SetPanel { panel, shown: !on }));
+                ui.close_menu();
+            }
         }
-        let terminal = if st.terminal.open { t.tr("menu.view.hide_terminal") } else { t.tr("menu.view.show_terminal") };
         let no_repo = st.snap.is_none().then_some(t.tr("menu.common.no_repo"));
-        item(ui, keys, terminal, Some(I::ToggleTerminal), no_repo, Msg::Terminal(TerminalMsg::Toggle), msgs);
-        let log = if st.view.show_log { t.tr("menu.view.hide_log") } else { t.tr("menu.view.show_log") };
+        if check_item(ui, keys, t.tr("menu.view.terminal"), st.terminal.open, Some(I::ToggleTerminal), no_repo) {
+            msgs.push(Msg::Terminal(TerminalMsg::Toggle));
+            ui.close_menu();
+        }
         // View state, like the toolbar's Activity button.
-        if clicked(ui, Button::new(log), None) {
+        if check_item(ui, keys, t.tr("menu.view.activity_log"), st.view.show_log, None, None) {
             st.view.show_log = !st.view.show_log;
             ui.close_menu();
         }
@@ -48,17 +51,13 @@ pub(super) fn menu(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// Show or Hide `panel` (`on`: it is shown now).
-fn panel_label(t: Lang, panel: Panel, on: bool) -> &'static str {
-    match (panel, on) {
-        (Panel::Left, false) => t.tr("menu.view.show_left_panel"),
-        (Panel::Left, true) => t.tr("menu.view.hide_left_panel"),
-        (Panel::Details, false) => t.tr("menu.view.show_details_panel"),
-        (Panel::Details, true) => t.tr("menu.view.hide_details_panel"),
-        (Panel::Toolbar, false) => t.tr("menu.view.show_toolbar"),
-        (Panel::Toolbar, true) => t.tr("menu.view.hide_toolbar"),
-        (Panel::MenuBar, false) => t.tr("menu.view.show_menu_bar"),
-        (Panel::MenuBar, true) => t.tr("menu.view.hide_menu_bar"),
+/// The check item's label for `panel`.
+fn panel_label(t: Lang, panel: Panel) -> &'static str {
+    match panel {
+        Panel::Left => t.tr("menu.view.left_panel"),
+        Panel::Details => t.tr("menu.view.details_panel"),
+        Panel::Toolbar => t.tr("menu.view.toolbar"),
+        Panel::MenuBar => t.tr("menu.view.menu_bar"),
     }
 }
 

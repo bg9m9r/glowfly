@@ -199,7 +199,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
       normal-contrast buttons for operations and the git-too-old notice; error, warning and
       info message styles for every form, with field errors under the field and none before
       the user has typed
-- [ ] **Layout that gives tool views room**: the commit panel collapses to a narrow rail while
+- [x] **Layout that gives tool views room**: the commit panel collapses to a narrow rail while
       file history, folder history, blame, conflicts, issues or Git Flow are open, and comes
       back on Close; a hidden sidebar or details panel leaves an edge rail or status-bar link
       to bring it back, and the View menu shows them with check marks; toasts sit below the
@@ -2362,3 +2362,16 @@ here, under the item they grew from.
 - Double-click a file row to open it in the external diff tool
 - Stable per-file row ids in scrolled file lists, so an open row menu stays with its file while the list scrolls
 - A pointing-hand cursor over file rows, matching the file history list
+
+### Layout that gives tool views room
+
+- Toolbar name limits that grow with the window (repository and branch names are cut at 96 and 128 px so a 1400 px window fits every group with captions; wide windows could show more)
+- Toolbar groups that fold into an overflow menu, or a narrower picker slot, when a window under about 1200 px would make them overlap
+- Commit rail: a collapse control on the expanded commit panel, to go back to the rail without closing the tool view
+- Commit rail: a preference for which tool views collapse the commit panel, or to never collapse it
+- Commit rail: entries for an operation in progress (conflicted count, Continue / Abort) and separate staged and unstaged counts
+- Collapse the left panel to a rail as well while a tool view is open
+- Remember the expanded commit panel per tool view kind or per tab
+- Status-bar links for a hidden left or details panel alongside the edge strips
+- A command palette entry to expand the collapsed commit panel
+- Toasts narrower than 360 px in windows too small for one plus its margins

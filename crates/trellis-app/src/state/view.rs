@@ -140,6 +140,9 @@ pub struct ViewState {
     pub panel_drag: Option<SizedPanel>,
     /// The zoom toast's id, so the next zoom step updates it (set only by update).
     pub zoom_toast: Option<u64>,
+    /// The tool view in which the collapsed commit panel was expanded; set and cleared only by
+    /// update (`state::layout::drop_stale_expansion`), so it isn't parked with a tab.
+    pub details_expanded_for: Option<super::layout::ToolView>,
 }
 
 impl Default for ViewState {
@@ -184,6 +187,7 @@ impl Default for ViewState {
             column_drag: None,
             panel_drag: None,
             zoom_toast: None,
+            details_expanded_for: None,
         }
     }
 }

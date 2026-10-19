@@ -1,22 +1,24 @@
-//! Top toolbar: repository and branch pickers, git actions and app buttons, in groups with even
-//! spacing (`widgets::tool_gap`). Each button's tooltip comes from `toolbar_tips.rs`, and its
+//! Top toolbar: repository and branch pickers (`toolbar_pickers.rs`, a fixed-width slot), git
+//! actions and app buttons, in groups with even spacing (`widgets::tool_gap`) that never move:
+//! the pull request button's room stays blank without a hosting service. Each button's tooltip comes from `toolbar_tips.rs`, and its
 //! enabled flag from the same rule in `state/toolbar_tips.rs`; the menus are in
 //! `toolbar_menus.rs`.
 
-use super::common::{caret_after, menu_item, short};
 use super::theme::color;
 use super::widgets::{self, Icon, tooltip::attach};
 use crate::msg::{BranchMsg, ForgeMsg, JobMsg, Msg, PaletteMsg, PrefsMsg, PublishMsg, RepoMsg};
 use crate::state::toolbar_tips as rules;
 use crate::state::{AppState, PrefPage};
-use eframe::egui::{self, Align, Layout, RichText};
-use menus::{dropdown, repo_menu, terminal_button};
+use eframe::egui::{self, Align, Layout};
+use menus::{dropdown, terminal_button};
 
 #[path = "toolbar_menus.rs"]
 mod menus;
 #[cfg(test)]
 #[path = "toolbar_names_tests.rs"]
 mod names_tests;
+#[path = "toolbar_pickers.rs"]
+mod pickers;
 #[cfg(test)]
 #[path = "toolbar_tests.rs"]
 mod tests;
@@ -32,47 +34,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.set_height(widgets::TOOL_H);
-                // repository ▾ › branch ▾
-                ui.vertical(|ui| {
-                    ui.add_space(4.0);
-                    ui.label(RichText::new(t.tr("toolbar.repository")).size(11.0).color(color::weak()));
-                    let name = st.snap.as_ref().map(|s| s.name.clone()).unwrap_or_else(|| t.tr("toolbar.open").into());
-                    let r = ui.menu_button(RichText::new(name).size(16.0).strong().color(color::text()), |ui| repo_menu(ui, t, st, msgs));
-                    caret_after(ui, &r.response);
-                });
+                // repository ▾ › branch ▾ and the conflict chip, in a slot of fixed width.
+                pickers::pickers(ui, st, msgs);
                 let Some(snap) = &st.snap else { return };
-                ui.add_space(12.0);
-                ui.label(RichText::new("›").size(20.0).color(color::weak()));
-                ui.vertical(|ui| {
-                    ui.add_space(4.0);
-                    ui.label(RichText::new(t.tr("toolbar.branch")).size(11.0).color(color::weak()));
-                    let head = snap
-                        .head_branch
-                        .clone()
-                        .unwrap_or_else(|| snap.head_oid.map(|o| t.trf("toolbar.detached", &[("sha", &short(o))])).unwrap_or_default());
-                    let r = ui.menu_button(RichText::new(head).size(16.0).color(color::text()), |ui| {
-                        ui.set_min_width(220.0);
-                        for b in &snap.locals {
-                            let text = if b.is_head { format!("✔ {}", b.name) } else { b.name.clone() };
-                            let elsewhere = crate::state::worktree_branches::checkout_blocked(snap, &b.name);
-                            let mut r = ui.add_enabled(!b.is_head && elsewhere.is_none(), egui::Button::new(text));
-                            if let Some(why) = &elsewhere {
-                                r = r.on_disabled_hover_text(why);
-                            }
-                            if r.clicked() {
-                                msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
-                                ui.close_menu();
-                            }
-                        }
-                        ui.separator();
-                        let new_branch = Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() });
-                        menu_item(msgs, ui, t.tr("toolbar.new_branch"), new_branch);
-                    });
-                    caret_after(ui, &r.response);
-                });
-                super::conflict_check::indicator(ui, st, msgs);
-
-                ui.add_space(52.0);
+                // The slot's slack already parts short names from the buttons: one group gap.
+                widgets::tool_gap(ui);
                 ui.spacing_mut().item_spacing.x = widgets::TOOL_SPACING;
                 let (keys, idle) = (&st.keymap, st.job.is_none());
                 let r = tool(ui, Icon::Undo, t.tr("toolbar.undo.button"), t.tr("toolbar.undo.name"), idle && !st.undo.undo.is_empty());
@@ -159,6 +125,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     }
                     let name = if merge_request { t.tr("toolbar.pr_menu.merge_request") } else { t.tr("toolbar.pr_menu.pull_request") };
                     dropdown(ui, "pr-menu", name, 260.0, labels, |ui| super::pr_menu_items::pr_menu(ui, snap, fs, idle, msgs));
+                } else {
+                    // The PR button and its caret's room, so the buttons after them stay put.
+                    let w = widgets::tool_width(ui, t.tr("toolbar.pr.button"), labels);
+                    ui.add_space(w + widgets::CARET_W + widgets::TOOL_SPACING);
                 }
                 widgets::tool_divider(ui);
                 terminal_button(ui, st, labels, super::terminal::right_click_item(t, &st.settings), msgs);

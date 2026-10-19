@@ -45,6 +45,7 @@ mod file_view_switch;
 mod find_bar;
 mod forge_filter_dialog;
 mod forge_filter_menu;
+mod frame_layout;
 mod git_banner;
 mod gitflow_dialog;
 mod gitflow_finish_dialog;
@@ -72,6 +73,7 @@ mod modals;
 mod op_strip;
 mod palette;
 mod pane_status;
+mod panel_rails;
 mod panel_size;
 mod patch_apply_dialog;
 mod patch_save_dialog;
@@ -108,6 +110,7 @@ mod tags;
 mod terminal;
 pub mod theme;
 mod theme_names;
+mod toasts;
 mod toolbar;
 mod tour;
 mod trash_offer_dialog;
@@ -398,46 +401,14 @@ pub struct UiCache {
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.
 pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     widgets::tooltip::configure(ctx, st.settings.reduce_motion);
-    status::status_bar(ctx, st, msgs);
-    if st.prefs.is_some() {
-        // The terminal isn't drawn, so it can't hold the keyboard (and Esc closes Preferences).
-        st.terminal.focused = false;
-        prefs::show(ctx, st, msgs);
-    } else {
-        menu_bar::show(ctx, st, msgs);
-        tabs::show(ctx, st, msgs);
-        if st.settings.show_toolbar {
-            toolbar::show(ctx, st, msgs);
-        }
-        op_strip::show(ctx, st, msgs);
-        git_banner::show(ctx, st, msgs);
-        if st.snap.is_some() && !st.dashboard.open {
-            sign_in_banner::show(ctx, st, msgs);
-            lfs_banner::show(ctx, st, msgs);
-        }
-        activity_log::show(ctx, st, msgs);
-        if st.snap.is_some() && !st.dashboard.open {
-            let (left, right) = panel_size::side_fits(ctx, st);
-            if let Some(fit) = left {
-                sidebar::show(ctx, st, fit, msgs);
-            }
-            if let Some(fit) = right {
-                details::show(ctx, st, cache, fit, msgs);
-            }
-            terminal::show(ctx, st, msgs);
-        } else {
-            st.terminal.focused = false;
-        }
-        let central = central::show(ctx, st, cache, msgs);
-        tour::show(ctx, st, central, msgs);
-    }
+    let bounds = frame_layout::show(ctx, st, cache, msgs);
     // Before the dialogs, so a dialog or credential prompt opened over them stacks on top.
     palette::show(ctx, st, msgs);
     welcome::show(ctx, st, msgs);
     modals::show(ctx, st, msgs);
     // After the other dialogs, so a credential prompt stacks on top of them.
     askpass::show(ctx, st, msgs);
-    status::toasts(ctx, st, msgs);
+    toasts::show(ctx, st, bounds, msgs);
     st.view.was_typing = shortcuts::text_field_focused(ctx);
     widgets::tooltip_motion::animate(ctx, st.settings.reduce_motion);
 }

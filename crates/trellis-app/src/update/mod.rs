@@ -238,6 +238,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     // Records a dialog that just opened (to tell later whether it was edited) and forgets a
     // closed one.
     st.dialog.track(st.modal.as_ref());
+    // An expanded commit panel lasts only for the tool view it was expanded in.
+    crate::state::layout::drop_stale_expansion(st);
     logs::flush(st, &mut fx);
     fx
 }

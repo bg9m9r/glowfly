@@ -16,17 +16,23 @@ use trellis_core::conflict_check::Prediction;
 /// The chip's height; the toolbar row is 48px.
 const HEIGHT: f32 = 24.0;
 
+/// The check the chip shows and its conflicting paths, while it is drawn.
+pub fn shown(st: &AppState) -> Option<(&ConflictReport, &Vec<String>)> {
+    if !st.settings.conflict_check {
+        return None;
+    }
+    let current = cc::current_request(st.snap.as_ref()?);
+    let report = st.conflict_checks.shown(current.as_ref())?;
+    let Ok(Prediction::Conflicts(paths)) = &report.result else { return None };
+    Some((report, paths))
+}
+
 /// Draws the chip while the preference is on and the last automatic check, for the inputs on
 /// screen, found conflicts; nothing otherwise (not even its spacing, so the toolbar doesn't
 /// move). A click opens the popover below it.
 pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    if !st.settings.conflict_check {
-        return;
-    }
+    let Some((report, paths)) = shown(st) else { return };
     let Some(snap) = &st.snap else { return };
-    let current = cc::current_request(snap);
-    let Some(report) = st.conflict_checks.shown(current.as_ref()) else { return };
-    let Ok(Prediction::Conflicts(paths)) = &report.result else { return };
     let count = if paths.is_empty() { "!".to_owned() } else { paths.len().to_string() };
     let galley = ui.painter().layout_no_wrap(count, FontId::proportional(12.5), color::text());
     ui.add_space(8.0);

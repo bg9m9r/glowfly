@@ -1,6 +1,7 @@
 //! The conflict view's header: the primary Save and mark resolved with how many conflicts are
 //! resolved, the more-actions menu, and a binary file's header and body without duplicate
-//! buttons. Shares the fixture of `snapshot_tests`.
+//! buttons. Shares the fixture of `snapshot_tests`. The commit panel is expanded beside the
+//! view, so its conflicted file row (with its own Mark resolved) is drawn too.
 
 use crate::state::AppState;
 use crate::state::tool_compare::MERGE_TOOL_BUTTON;
@@ -31,6 +32,7 @@ fn one_of_two(name: &str) -> (AppState, PathBuf) {
     let view = st.conflict.as_mut().unwrap();
     assert_eq!(view.chunk_count(), 2);
     view.picks[0] = Choice::Ours.into();
+    st.view.details_expanded_for = crate::state::layout::tool_view(&st);
     (st, dir)
 }
 
@@ -68,7 +70,8 @@ fn conflict_more_menu() {
 
 #[test]
 fn conflict_binary_fallback() {
-    let (st, dir) = with_conflict("conflict-binary-fallback", "logo.bin", |side| format!("{side}\0image").into_bytes());
+    let (mut st, dir) = with_conflict("conflict-binary-fallback", "logo.bin", |side| format!("{side}\0image").into_bytes());
+    st.view.details_expanded_for = crate::state::layout::tool_view(&st);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("conflict_binary_fallback");
