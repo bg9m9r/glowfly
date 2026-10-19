@@ -15,6 +15,7 @@ use crate::state::issue_form::{IssueForm, OptionsState};
 use crate::state::issue_words as words;
 use crate::state::{ForgeState, ProjectKeys};
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Key, RichText, Ui};
 use trellis_core::forge::Provider;
 use trellis_core::forge::filters::Named;
@@ -128,10 +129,10 @@ fn body(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool,
         ui.add_space(6.0);
     }
     for p in &problems {
-        ui.label(RichText::new(p).color(color::red()));
+        form_message::line(ui, Message::error(p.as_str()));
     }
     if let Some(e) = &form.error {
-        ui.add(egui::Label::new(RichText::new(format!("Couldn't create the {noun}: {e}")).color(color::red())).wrap());
+        form_message::form(ui, Message::error(format!("Couldn't create the {noun}: {e}")));
     }
     submit
 }

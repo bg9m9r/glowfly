@@ -11,6 +11,7 @@ use crate::msg::Msg;
 use crate::state::gitflow::GitFlowPage;
 use crate::ui::theme::color;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::branch_ops::is_valid_branch_name;
 use trellis_core::gitflow::{BranchPlan, Branches, FlowKind, GitFlowSettings, InitProblem, check_settings, flow_branches, plan_branches};
@@ -143,7 +144,7 @@ fn buttons(ui: &mut Ui, page: &GitFlowPage, b: &Branches, initialized: bool, bus
             warn(ui, "Branches named with the old prefixes will no longer count as Git Flow branches.");
         }
         if let Some(p) = &problem {
-            ui.add(egui::Label::new(RichText::new(p).size(12.0).color(color::red())).wrap());
+            form_message::line(ui, Message::error(p.as_str()));
         }
         ui.add_space(4.0);
         ui.horizontal(|ui| {

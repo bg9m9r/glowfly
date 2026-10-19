@@ -10,6 +10,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::askpass::PendingPrompt;
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::askpass::{PromptKind, host, user_and_host};
 use trellis_core::git_credential::is_http_url;
@@ -103,16 +104,16 @@ forgotten. To use GnuPG's own window instead, turn this off in Preferences > Com
 
 /// The notice under the fields for a prompt asked again, or for a host whose credentials
 /// failed last time.
-fn notice(p: &PendingPrompt) -> Option<(String, egui::Color32)> {
+fn notice(p: &PendingPrompt) -> Option<Message<'static>> {
     if p.retry {
         let text = match p.prompt.kind {
             PromptKind::Passphrase { .. } | PromptKind::GpgPassphrase { .. } => "That passphrase didn't unlock the key. Try again.",
             _ => "That didn't work. Try again.",
         };
-        return Some((text.into(), color::red()));
+        return Some(Message::error(text));
     }
     let h = host(&p.prompt.kind).filter(|_| p.rejected_before)?;
-    Some((format!("The credentials last used for {h} were not accepted."), color::amber()))
+    Some(Message::warning(format!("The credentials last used for {h} were not accepted.")))
 }
 
 /// Draws the oldest waiting prompt, if any. A click outside does not cancel it; Esc does.
@@ -178,8 +179,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             });
         }
-        if let Some((text, col)) = notice(&front) {
-            ui.add(egui::Label::new(RichText::new(text).color(col)).wrap());
+        if let Some(m) = notice(&front) {
+            form_message::line(ui, m);
         }
         if l.token_hint {
             ui.add_space(2.0);

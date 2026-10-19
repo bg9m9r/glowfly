@@ -9,6 +9,7 @@ use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::remotes::{RemoteForm, extra_push_urls, name_problem, push_problem, push_same_as_fetch, url_problem};
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::remote_ops::{RemoteNameProblem, UrlProblem};
 use trellis_core::repo::Snapshot;
@@ -21,9 +22,10 @@ pub(super) fn field(ui: &mut egui::Ui, label: &str, text: &mut String, id: &str,
     (r, enter)
 }
 
+/// A field's problem under it; nothing for empty `text`.
 pub(super) fn problem_line(ui: &mut egui::Ui, text: String) {
     if !text.is_empty() {
-        ui.label(RichText::new(text).color(color::red()));
+        form_message::line(ui, Message::error(text));
     }
 }
 

@@ -13,6 +13,7 @@ use crate::state::submodules::edit::EditForm;
 use crate::state::submodules::remove::RemoveForm;
 use crate::submodule::SubmoduleMsg;
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::repo::Snapshot;
 use trellis_core::submodule_ops::default_path;
@@ -49,8 +50,12 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
     }
     let url_bad = form.url_problem();
     if let Some(p) = url_bad {
-        let col = if form.url.trim().is_empty() { color::weak() } else { color::red() };
-        ui.label(RichText::new(p).color(col));
+        // An empty URL only says what to enter.
+        if form.url.trim().is_empty() {
+            ui.label(RichText::new(p).color(color::weak()));
+        } else {
+            form_message::line(ui, Message::error(p));
+        }
     } else if let Some(h) = relative_url_hint(&form.url) {
         ui.label(RichText::new(h).color(color::weak()));
     }
@@ -72,8 +77,11 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
     let path_ok = match snap.map(|s| form.rel(s)) {
         None => false,
         Some(Err(e)) => {
-            let col = if form.path.trim().is_empty() { color::weak() } else { color::red() };
-            ui.label(RichText::new(e).color(col));
+            if form.path.trim().is_empty() {
+                ui.label(RichText::new(e).color(color::weak()));
+            } else {
+                form_message::line(ui, Message::error(e));
+            }
             false
         }
         Some(Ok(rel)) => match form.disk_state(&rel) {
@@ -82,12 +90,12 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
                 false
             }
             Disk::Err(e) => {
-                ui.label(RichText::new(e).color(color::red()));
+                form_message::line(ui, Message::error(e));
                 false
             }
             Disk::Ok(warnings) => {
                 for w in warnings {
-                    ui.label(RichText::new(w).color(color::amber()));
+                    form_message::line(ui, Message::warning(w.as_str()));
                 }
                 true
             }
@@ -106,7 +114,7 @@ pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot
     enter |= pressed(ui, &r);
     let branch_bad = form.branch_problem();
     if let Some(p) = branch_bad {
-        ui.label(RichText::new(p).color(color::red()));
+        form_message::line(ui, Message::error(p));
     }
 
     ui.add_space(6.0);
@@ -152,7 +160,7 @@ pub fn edit(ui: &mut egui::Ui, cx: Cx, form: &mut EditForm, idle: bool, msgs: &m
     }
     let url_bad = form.url_problem();
     if let Some(p) = url_bad {
-        ui.label(RichText::new(p).color(color::red()));
+        form_message::line(ui, Message::error(p));
     } else if let Some(h) = relative_url_hint(&form.url) {
         ui.label(RichText::new(h).color(color::weak()));
     }
@@ -169,7 +177,7 @@ pub fn edit(ui: &mut egui::Ui, cx: Cx, form: &mut EditForm, idle: bool, msgs: &m
     enter |= pressed(ui, &r);
     let branch_bad = form.branch_problem();
     if let Some(p) = branch_bad {
-        ui.label(RichText::new(p).color(color::red()));
+        form_message::line(ui, Message::error(p));
     } else {
         ui.label(RichText::new(BRANCH_HINT).color(color::weak()));
     }
@@ -198,7 +206,7 @@ pub fn remove(ui: &mut egui::Ui, cx: Cx, form: &mut RemoveForm, idle: bool, msgs
         });
         for w in form.warnings() {
             ui.add_space(6.0);
-            ui.label(RichText::new(w).color(color::red()));
+            form_message::form(ui, Message::warning(w));
         }
     });
     if let Some(label) = form.ack_label() {

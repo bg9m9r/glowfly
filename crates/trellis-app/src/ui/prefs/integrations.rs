@@ -8,6 +8,7 @@ use crate::state::{ForgeState, PrefsState};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::form_message::{self, Message};
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Sense, Stroke, Ui, vec2};
 use std::path::Path;
@@ -136,7 +137,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
     if let Some(e) = &prefs.int_error {
         ui.horizontal(|ui| {
             ui.add_space(LABEL_W + 18.0);
-            ui.label(RichText::new(e).color(color::red()));
+            ui.vertical(|ui| form_message::line(ui, Message::error(e.as_str())));
         });
     }
     if provider.is_tracker_only() {

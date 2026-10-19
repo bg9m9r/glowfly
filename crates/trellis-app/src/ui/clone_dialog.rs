@@ -11,15 +11,16 @@ use crate::msg::{FolderPurpose, Msg};
 use crate::state::clone::{CloneForm, LimitKind};
 use crate::state::clone_service::CloneSource;
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use chrono::NaiveDate;
 use eframe::egui::{self, Id, RichText};
 use std::path::Path;
 use trellis_core::forge::Connection;
 
-/// A field's problem, in red under it.
+/// A field's problem, under it.
 pub(super) fn problem(ui: &mut egui::Ui, text: Option<&String>) {
     if let Some(t) = text {
-        ui.label(RichText::new(t.as_str()).color(color::red()));
+        form_message::line(ui, Message::error(t.as_str()));
     }
 }
 

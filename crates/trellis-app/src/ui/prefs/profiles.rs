@@ -16,6 +16,7 @@ use crate::ui::theme::color;
 use crate::ui::theme::controls;
 use crate::ui::widgets;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Align, Align2, CornerRadius, FontId, Key, Layout, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::{Profile, ProfileId, Settings};
@@ -123,7 +124,7 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
         let field = egui::Rect::from_min_size(pos2(text_x - 4.0, rect.top() + 3.0), vec2(240.0, 24.0));
         rename_field(&mut ui.new_child(UiBuilder::new().max_rect(field)), page, msgs);
         if let Some(e) = page.renaming.as_ref().and_then(|f| f.error.clone()) {
-            ui.label(RichText::new(e).size(12.0).color(color::red()));
+            form_message::line(ui, Message::error(e));
         }
     }
 }
@@ -154,7 +155,7 @@ fn add_form(ui: &mut Ui, t: Lang, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) 
         let blank = form.name.trim().is_empty();
         let enter = name.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
         if let Some(e) = &form.error {
-            ui.label(RichText::new(e).size(12.0).color(color::red()));
+            form_message::line(ui, Message::error(e.as_str()));
         }
         controls::checkbox(ui, &mut form.copy_current, COPY_CURRENT);
         controls::checkbox(ui, &mut form.copy_accounts, COPY_ACCOUNTS);

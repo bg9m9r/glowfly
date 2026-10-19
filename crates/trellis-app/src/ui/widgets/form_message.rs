@@ -50,6 +50,12 @@ pub fn field(ui: &mut Ui, touched: &Touched, field: &str, msg: Option<Message>) 
     if msg.kind != Severity::Info && !touched.shows(field) {
         return;
     }
+    line(ui, msg);
+}
+
+/// `msg` under a field, at once: for a form that decides itself when a problem shows (one that
+/// says nothing while a field is empty, say).
+pub fn line(ui: &mut Ui, msg: Message) {
     ui.add_space(2.0 - ui.spacing().item_spacing.y);
     let row_h = ui.fonts(|f| f.row_height(&FontId::proportional(FIELD_TEXT)));
     ui.horizontal_top(|ui| {

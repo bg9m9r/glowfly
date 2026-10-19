@@ -10,6 +10,7 @@ use crate::deep_link::DeepLinkMsg;
 use crate::msg::Msg;
 use crate::state::deep_link::{LinkDialog, NO_CLONE_URL};
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 
 /// Draws dialog `d`; true when it is to close (Close or Cancel). The other buttons leave it
@@ -31,7 +32,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, d: &LinkDialog, msgs: &mut Vec<Msg>) -> b
             ui.add(egui::Label::new(RichText::new(format!("{} in {repo}", capitalize(what))).color(color::weak())).wrap());
             if let Some(p) = problem {
                 ui.add_space(6.0);
-                ui.add(egui::Label::new(RichText::new(p.as_str()).color(color::red())).wrap());
+                form_message::form(ui, Message::error(p.as_str()));
             }
             let footer = Footer::new()
                 .cancel()

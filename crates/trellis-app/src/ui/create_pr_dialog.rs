@@ -3,7 +3,6 @@
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::dialog_frame::{Cx, Dialog, Footer};
-use super::theme::color;
 use super::widgets::buttons;
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
@@ -11,6 +10,7 @@ use crate::state::ForgeState;
 use crate::state::branches;
 use crate::state::push_pr::{self, HostBranch};
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use trellis_core::forge::{self, NewPullRequest, RefStyle};
 use trellis_core::repo::Snapshot;
@@ -107,15 +107,13 @@ fn body(
     let pushed = snap.is_some_and(|s| s.remotes.iter().any(|(r, b)| *r == fs.remote && b.iter().any(|(n, _)| n == f.source)));
     if let Some((text, local)) = snap.and_then(|s| push_note(s, fs, f.source, pushed)) {
         ui.add_space(4.0);
-        ui.horizontal_wrapped(|ui| {
-            ui.label(RichText::new(text).color(color::amber()));
-            // The dialog stays open: it is the one shown again once the push lands.
-            if let Some(local) = local
-                && ui.add(buttons::secondary(format!("Push {local}")).small().enabled(idle)).clicked()
-            {
-                msgs.push(Msg::Forge(ForgeMsg::PushAndStartPr { branch: local, target: Some(f.target.clone()) }));
-            }
-        });
+        form_message::form(ui, Message::warning(text));
+        // The dialog stays open: it is the one shown again once the push lands.
+        if let Some(local) = local
+            && ui.add(buttons::secondary(format!("Push {local}")).small().enabled(idle)).clicked()
+        {
+            msgs.push(Msg::Forge(ForgeMsg::PushAndStartPr { branch: local, target: Some(f.target.clone()) }));
+        }
     }
     ui.add_space(6.0);
     controls::field(ui, egui::TextEdit::singleline(f.title).hint_text("Title").desired_width(f32::INFINITY));

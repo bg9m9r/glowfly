@@ -10,6 +10,7 @@ use crate::msg::Msg;
 use crate::patch::PatchMsg;
 use crate::state::patch::apply::{ApplyForm, ApplyMode, NO_MESSAGES, NOTHING_TO_APPLY, THREE_WAY_INDEX, apply_blocked};
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use trellis_core::patch_ops::OnFail;
 use trellis_core::repo::Snapshot;
@@ -39,9 +40,11 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut ApplyForm, snap: Option<&Snaps
 /// What the patch holds and how to apply it; returns why it can't be applied now.
 fn body(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>) -> Option<String> {
     match form.summary_line() {
-        Some(line) => ui.label(RichText::new(line).strong()),
-        None => ui.label(RichText::new(NOTHING_TO_APPLY).color(color::red())),
-    };
+        Some(line) => {
+            ui.label(RichText::new(line).strong());
+        }
+        None => form_message::form(ui, Message::warning(NOTHING_TO_APPLY)),
+    }
     files(ui, form);
     ui.add_space(8.0);
     ui.label(RichText::new("How to apply").strong());
@@ -65,8 +68,8 @@ fn body(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>) -> Opt
     });
     let blocked = snap.and_then(|s| apply_blocked(form, s));
     if let Some(why) = blocked.as_deref().filter(|w| *w != NOTHING_TO_APPLY) {
-        ui.add_space(4.0);
-        ui.add(egui::Label::new(RichText::new(why).color(color::red())).wrap());
+        ui.add_space(6.0);
+        form_message::form(ui, Message::warning(why));
     }
     // Without a snapshot there is no repository to apply to.
     blocked.or(snap.is_none().then(|| NOTHING_TO_APPLY.to_owned()))

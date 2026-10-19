@@ -10,6 +10,7 @@ use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::state::gitflow::FinishForm;
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Key, RichText};
 use trellis_core::gitflow::{Branches, FinishProblem, WorkState, check_finish, short_name};
 use trellis_core::repo::Snapshot;
@@ -53,7 +54,7 @@ pub fn finish(ui: &mut egui::Ui, cx: Cx, form: &mut FinishForm, snap: Option<&Sn
         // An empty tag or message only disables Finish.
         Err(FinishProblem::EmptyTag | FinishProblem::EmptyMessage) => {}
         Err(p) => {
-            ui.add(egui::Label::new(RichText::new(p.message()).color(color::red())).wrap());
+            form_message::line(ui, Message::error(p.message()));
         }
     }
     let valid = result.is_ok() && idle;

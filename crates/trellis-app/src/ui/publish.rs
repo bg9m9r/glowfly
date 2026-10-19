@@ -8,6 +8,7 @@ use crate::msg::Msg;
 use crate::msg::PublishMsg;
 use crate::state::publish::PublishForm;
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use trellis_core::forge;
 
@@ -46,7 +47,7 @@ pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &m
     });
     let name = f.name.trim();
     if !name.is_empty() && !forge::valid_repo_name(name) {
-        ui.label(RichText::new("Use letters, digits, '.', '-' and '_' only.").color(color::amber()));
+        form_message::line(ui, Message::error("Use letters, digits, '.', '-' and '_' only."));
     }
     controls::field(ui, egui::TextEdit::singleline(&mut f.description).hint_text("Description (optional)").desired_width(f32::INFINITY));
     ui.horizontal(|ui| {
@@ -54,8 +55,8 @@ pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &m
         controls::radio_value(ui, &mut f.private, false, "Public");
     });
     if let Some(e) = &f.error {
-        ui.add_space(4.0);
-        ui.label(RichText::new(e.as_str()).color(color::red()));
+        ui.add_space(6.0);
+        form_message::form(ui, Message::error(e.as_str()));
     }
     if f.creating {
         ui.horizontal(|ui| {

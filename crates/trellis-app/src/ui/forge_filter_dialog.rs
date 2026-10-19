@@ -10,6 +10,7 @@ use crate::state::ForgeState;
 use crate::state::forge_filter_form::FilterForm;
 use crate::state::forge_filters::{OptionsState, suggestions};
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Key, RichText};
 use trellis_core::forge::filters::matching::{self, Field};
 use trellis_core::forge::filters::{Draft, Milestone, Review, Sprint, Who};
@@ -74,7 +75,7 @@ fn body(ui: &mut egui::Ui, form: &mut FilterForm, fs: Option<&ForgeState>, exist
     if !problems.is_empty() {
         ui.add_space(6.0);
         for p in &problems {
-            ui.label(RichText::new(p).color(color::red()));
+            form_message::line(ui, Message::error(p.as_str()));
         }
     }
     submit

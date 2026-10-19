@@ -8,6 +8,7 @@ use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::state::gitflow::StartForm;
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Key, RichText};
 use trellis_core::branch_ops::NameProblem;
 use trellis_core::gitflow::{Branches, StartProblem, check_start, open_branches};
@@ -41,7 +42,7 @@ pub fn start(ui: &mut egui::Ui, cx: Cx, form: &mut StartForm, snap: Option<&Snap
         // An empty name only disables Start.
         Err(StartProblem::Name(NameProblem::Empty, _)) => {}
         Err(p) => {
-            ui.label(RichText::new(p.message()).color(color::red()));
+            form_message::line(ui, Message::error(p.message()));
         }
     }
     if kind.versioned() {

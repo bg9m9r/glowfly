@@ -11,6 +11,7 @@ use crate::msg::Msg;
 use crate::patch::PatchMsg;
 use crate::state::patch::changes::{SaveChangesForm, blocked, rows, untracked_count};
 use crate::ui::theme::controls;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText, Sense};
 use trellis_core::patch_ops::{NO_CHANGES, WipScope};
 use trellis_core::repo::Snapshot;
@@ -61,8 +62,8 @@ fn body(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: Option<&Snapshot>) 
     }
     let blocked = snap.map_or(Some(NO_CHANGES), |s| blocked(form, s));
     if let Some(why) = blocked {
-        ui.add_space(4.0);
-        ui.label(RichText::new(why).color(color::red()));
+        ui.add_space(6.0);
+        form_message::form(ui, Message::warning(why));
     }
     blocked
 }

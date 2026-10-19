@@ -6,6 +6,7 @@ use crate::msg::{ForgeMsg, Msg};
 use crate::state::trello::BoardList;
 use crate::ui::theme::color;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::{self, Account, Provider, Target};
 use trellis_core::settings::TrackerChoice;
@@ -62,14 +63,12 @@ pub(super) fn board_row(ui: &mut Ui, account: &Account, board: &str, board_name:
                 ui.label(RichText::new("Loading boards…").size(12.0).color(color::weak()));
             });
         } else if let Some(e) = &list.error {
-            ui.horizontal_wrapped(|ui| {
-                ui.label(RichText::new(e).size(12.0).color(color::red()));
-                if ui.add(buttons::secondary("Try again").small()).clicked() {
-                    msgs.push(Msg::Forge(ForgeMsg::LoadTrelloBoards(account.clone())));
-                }
-            });
+            form_message::line(ui, Message::error(e.as_str()));
+            if ui.add(buttons::secondary("Try again").small()).clicked() {
+                msgs.push(Msg::Forge(ForgeMsg::LoadTrelloBoards(account.clone())));
+            }
         } else if !board.is_empty() && list.account.as_ref() == Some(account) && !list.has(board) {
-            ui.label(RichText::new("This board is closed or no longer shared with you.").size(12.0).color(color::amber()));
+            form_message::line(ui, Message::warning("This board is closed or no longer shared with you."));
         }
         help(
             ui,
