@@ -95,7 +95,12 @@ pub fn truncate_label(ui: &mut Ui, text: impl Into<WidgetText>, max_w: f32) -> R
 /// `text` with characters taken off its start, behind "…", until it fits in `max_w` in `font`
 /// (just "…" when nothing does): a path whose end matters more than its start.
 pub fn cut_left(ui: &Ui, text: &str, font: &FontId, max_w: f32) -> String {
-    let width = |s: &str| ui.painter().layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
+    cut_left_in(ui.painter(), text, font, max_w)
+}
+
+/// `cut_left`, measured with painter `p` (for text painted outside a widget).
+pub fn cut_left_in(p: &Painter, text: &str, font: &FontId, max_w: f32) -> String {
+    let width = |s: &str| p.layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
     if width(text) <= max_w {
         return text.to_owned();
     }
