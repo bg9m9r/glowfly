@@ -47,7 +47,7 @@ pub(super) fn paint(p: &Painter, rect: Rect, look: RowLook) {
 /// The opaque band for a row on a `lane`: the strongest tint up to `BAND_T` that keeps `weak`
 /// text at 4.5:1, `text` as readable as on the background (up to 7:1) and `faint` text as
 /// readable as on the background (up to 4.5:1). The background itself when no tint does.
-pub(super) fn band_color(lane: Color32, pal: &Palette) -> Color32 {
+pub(in crate::ui) fn band_color(lane: Color32, pal: &Palette) -> Color32 {
     let steps = (BAND_T * 100.0).round() as u32;
     let keeps = |band: Color32| {
         ratio(pal.weak, band) >= 4.5

@@ -5,8 +5,9 @@ use crate::effect::LoadKind;
 use crate::effect::StatusRead;
 use git2::Oid;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Instant;
-use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, FileEntry, SlowStatus, Snapshot};
+use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, FileEntry, FileLineCounts, SlowStatus, Snapshot, WipLineCounts};
 use trellis_core::signature_check::SignatureCheck;
 
 /// Opening the repository, selecting a commit or the working tree, opening a diff, and their
@@ -57,6 +58,16 @@ pub enum RepoMsg {
         generation: u64,
         result: Result<SignatureCheck, String>,
     },
+    /// Commit `oid`'s per-file line counts (update/line_counts.rs).
+    CommitLineCountsLoaded {
+        oid: Oid,
+        result: Result<Arc<FileLineCounts>, String>,
+    },
+    /// The working tree's per-file line counts for request `generation`.
+    WipLineCountsLoaded {
+        generation: u64,
+        result: Result<Box<WipLineCounts>, String>,
+    },
 }
 
 impl RepoMsg {
@@ -84,7 +95,10 @@ impl RepoMsg {
             // Dropped: parking forgot the pending check, so the view asks again on return.
             | Self::WantSignature(..)
             | Self::CheckSignatureAgain(..)
-            | Self::SignatureChecked { .. } => None,
+            | Self::SignatureChecked { .. }
+            // Dropped: parking forgot the pending request, and the return asks again.
+            | Self::CommitLineCountsLoaded { .. }
+            | Self::WipLineCountsLoaded { .. } => None,
         }
     }
 }

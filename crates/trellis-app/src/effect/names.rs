@@ -48,6 +48,7 @@ impl Effect {
             Effect::ForgetCredentialManager { .. } => "forget-gcm",
             Effect::TrelloBoards { .. } => "trello-boards",
             Effect::Stats { .. } => "stats",
+            Effect::LineCounts(e) => e.name(),
             Effect::SearchPaths { .. } => "search-paths",
             Effect::VerifySignature { .. } => "verify-signature",
             Effect::FetchAvatars(_) => "avatars",
@@ -140,6 +141,7 @@ impl Effect {
             | Effect::ForgetCredentialManager { .. }
             | Effect::TrelloBoards { .. }
             | Effect::Stats { .. }
+            | Effect::LineCounts(_)
             | Effect::SearchPaths { .. }
             | Effect::VerifySignature { .. }
             | Effect::FetchAvatars(_)

@@ -229,6 +229,7 @@ fn apply_status(
         Ok(status) => {
             let Some(snap) = st.snap.as_mut() else { return };
             set_status(snap, status, submodules);
+            super::line_counts::status_changed(st, fx);
             if diff_changed(st, open_stamp) {
                 super::repo::reload_diff(st, fx);
             }

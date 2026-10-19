@@ -154,25 +154,11 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             }
         }
         RepoMsg::CloseDiff => close_diff(st),
-        RepoMsg::WantStats(oids) => {
-            let Some(workdir) = st.workdir() else { return };
-            let missing: Vec<Oid> = oids.into_iter().filter(|o| !st.stats.contains_key(o) && !st.stats_pending.contains(o)).collect();
-            if !missing.is_empty() {
-                st.stats_pending.extend(missing.iter().copied());
-                fx.push(Effect::Stats { workdir, oids: missing });
-            }
-        }
-        RepoMsg::StatsDropped(oids) => {
-            for oid in oids {
-                st.stats_pending.remove(&oid);
-            }
-        }
-        RepoMsg::StatsLoaded(batch) => {
-            for (oid, files, adds, dels) in batch {
-                st.stats_pending.remove(&oid);
-                st.stats.insert(oid, (files, adds, dels));
-            }
-        }
+        RepoMsg::WantStats(oids) => super::line_counts::want_totals(st, oids, fx),
+        RepoMsg::StatsDropped(oids) => super::line_counts::totals_dropped(st, oids),
+        RepoMsg::StatsLoaded(batch) => super::line_counts::totals_loaded(st, batch),
+        RepoMsg::CommitLineCountsLoaded { oid, result } => super::line_counts::commit_loaded(st, oid, result),
+        RepoMsg::WipLineCountsLoaded { generation, result } => super::line_counts::wip_loaded(st, generation, result, fx),
         RepoMsg::WantSignature(oid) => super::signatures::want(st, oid, fx),
         RepoMsg::CheckSignatureAgain(oid) => super::signatures::again(st, oid, fx),
         RepoMsg::SignatureChecked { oid, generation, result } => super::signatures::checked(st, oid, generation, result),
@@ -311,6 +297,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             st.view.scroll_to_row = Some(0);
             st.stats.clear();
             st.stats_pending.clear();
+            st.line_counts.clear();
             st.signatures.clear();
             st.conflict_checks.clear();
         }
@@ -336,6 +323,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     let reload = super::graph_filter::loaded(st, &snap, kind, fx);
     super::notify::loaded(st, &snap, kind, now, fx);
     st.snap = Some(snap);
+    super::line_counts::status_changed(st, fx);
     super::pick::state_changed(st, state_before);
     super::search::snapshot_changed(st, fx);
     super::trust::loaded(st, kind, fx);
@@ -387,6 +375,7 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     super::pull_request::close(st);
     super::issue::close(st);
     fx.push(Effect::LoadDetail { workdir, oid });
+    super::line_counts::want_commit(st, oid, fx);
     if scroll && let Some(row) = super::search::reveal(st, oid) {
         // Leave a few rows of context above the target.
         st.view.scroll_to_row = Some(row.saturating_sub(4));

@@ -83,6 +83,8 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
             "messages_between",
             "commit_stats",
             "commit_detail",
+            "commit_line_counts",
+            "wip_line_counts",
             "compare",
             "load_diff",
             "load_diff_with",

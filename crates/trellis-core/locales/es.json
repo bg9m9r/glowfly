@@ -181,6 +181,7 @@
   "finder.truncated": "Se detuvo tras buscar en {max} carpetas. Añade una carpeta más cercana a tus repositorios.",
   "finder.unreadable": "no se puede leer: {error}",
   "git_banner.choose.button": "Elegir git…",
+  "graph.wip.label": "Cambios sin confirmar",
   "menu.common.no_repo": "Abre primero un repositorio",
   "menu.edit.cant_undo": "No se puede deshacer {label}: solo se pueden deshacer checkout, commit, reset, merge, pull, rebase, cherry-pick, revert, crear o eliminar una rama o etiqueta, stash, pop, apply, drop, descartes, restauraciones de archivos y resoluciones de conflictos guardadas",
   "menu.edit.copy_branch": "Copiar nombre de la rama",

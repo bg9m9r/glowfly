@@ -21,7 +21,7 @@ use crate::state::tool_compare::{RESOLVE_IN_MERGE_TOOL, ToolAvail};
 use crate::tools::ToolsMsg;
 use eframe::egui::{self, RichText};
 use trellis_core::i18n::Lang;
-use trellis_core::repo::{DiffTarget, FileEntry, Snapshot};
+use trellis_core::repo::{DiffTarget, FileEntry, Snapshot, WipLineCounts};
 use trellis_core::undo::DISCARD_STASH_MESSAGE;
 
 pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
@@ -38,7 +38,8 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let lists = 2 + usize::from(!conflicted.is_empty()) + usize::from(!resolved.is_empty());
     let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / lists as f32).max(60.0);
     let tools = ToolAvail::of(st);
-    let ctx = RowContext { lfs: TrackContext::of(st), tools: &tools, keys: &st.keymap, lang: st.settings.lang() };
+    let lines = st.line_counts.wip();
+    let ctx = RowContext { lfs: TrackContext::of(st), tools: &tools, keys: &st.keymap, lang: st.settings.lang(), lines };
     let lists = super::conflict_files::Lists { conflicted: &conflicted, resolved: &resolved, height: list_h };
     super::conflict_files::show(ui, st, lists, &open, ctx, msgs);
     let reveal = st.view.file_reveal.as_ref();
@@ -49,14 +50,15 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
 }
 
 /// What every working-tree row needs, built once per frame: Track in Git LFS's context and
-/// the diff and merge tools' availability, the keymap for the header buttons' tips, and the
-/// language the rows are drawn in.
+/// the diff and merge tools' availability, the keymap for the header buttons' tips, the
+/// language the rows are drawn in, and the working tree's line counts (once read).
 #[derive(Clone, Copy)]
 pub(super) struct RowContext<'a> {
     pub lfs: TrackContext<'a>,
     pub tools: &'a ToolAvail,
     pub keys: &'a Keymap,
     pub lang: Lang,
+    pub lines: Option<&'a WipLineCounts>,
 }
 
 /// What the central panel shows, so its file row is drawn selected.
@@ -151,7 +153,10 @@ pub(super) fn wip_file_row(
         (false, false) => Msg::Stage(StageMsg::StageFile(f.path.clone())),
     };
     let t = ctx.lang;
-    super::widgets::file_row(ui, |ui| {
+    // Conflicted rows never show counts; bars of both lists share one scale.
+    let lines = ctx.lines.filter(|_| !conflicted);
+    let count = lines.and_then(|w| if staged { w.staged.get(&f.path) } else { w.unstaged.get(&f.path) });
+    let row = |ui: &mut egui::Ui| {
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
         let action = match (staged, conflicted) {
             (true, _) => t.tr("details.wip.unstage.button"),
@@ -222,5 +227,9 @@ pub(super) fn wip_file_row(
             };
             file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items, tool);
         });
-    });
+    };
+    match count.zip(lines) {
+        Some((n, w)) => super::widgets::file_row_with_end(ui, |ui| super::line_counts::row_end(ui, n, w.largest()), row),
+        None => super::widgets::file_row(ui, row),
+    };
 }

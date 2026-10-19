@@ -4,6 +4,7 @@
 //! the row's tooltip.
 
 use super::paint::Columns;
+use crate::ui::common::{added_color, removed_color};
 use crate::ui::theme::color;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
 use crate::ui::widgets::{self, Cut, paint_cut, paint_cut_text};
@@ -75,10 +76,10 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
     {
         let cp = painter.with_clip_rect(cols.rect(cols.changes, rect));
         let font = FontId::proportional(12.0);
-        let added = paint_cut_text(&cp, pos2(cols.changes.0, mid), &format!("+{adds}"), font.clone(), color::green(), width(cols.changes));
+        let added = paint_cut_text(&cp, pos2(cols.changes.0, mid), &format!("+{adds}"), font.clone(), added_color(), width(cols.changes));
         if !added.cut {
             let x = added.rect.right() + 6.0;
-            paint_cut_text(&cp, pos2(x, mid), &format!("−{dels}"), font, color::red(), cols.changes.1 - x);
+            paint_cut_text(&cp, pos2(x, mid), &format!("−{dels}"), font, removed_color(), cols.changes.1 - x);
         }
     }
     if cfg.commit {

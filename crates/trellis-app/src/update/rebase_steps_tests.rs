@@ -29,7 +29,10 @@ fn selecting_a_commit_row_shows_the_commit() {
     let fx = rb(&mut st, RebaseMsg::RebaseSelect(1));
     assert_eq!(panel(&st).selected, Some(1));
     assert_eq!(st.selection, Selection::Commit(c[1]));
-    assert!(matches!(&fx[..], [Effect::LoadDetail { oid, .. }] if *oid == c[1]), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(crate::effect::LineCountsEffect::Commit { .. })] if *oid == c[1]),
+        "{fx:?}"
+    );
     assert!(st.rebase.is_some(), "the panel stays open");
     rb(&mut st, RebaseMsg::RebaseAddStep { after: Some(1), step: NewStep::Break });
     let fx = rb(&mut st, RebaseMsg::RebaseSelect(2));

@@ -44,6 +44,7 @@ pub mod known_folders;
 pub mod layout;
 pub mod lfs;
 pub mod lfs_notes;
+pub mod line_counts;
 pub mod lines;
 pub mod logs;
 pub mod menu_bar;
@@ -408,6 +409,8 @@ pub struct AppState {
     /// Per-commit (files, added, deleted) for the CHANGES column.
     pub stats: HashMap<Oid, (usize, usize, usize)>,
     pub stats_pending: HashSet<Oid>,
+    /// Per-file line counts of commits and of the working tree (parked with the tab).
+    pub line_counts: line_counts::LineCounts,
     /// Signature checks of the active tab's commits (parked with the tab).
     pub signatures: signatures::Signatures,
     /// Predicted merge conflicts of the checked-out branch (parked with the tab).
@@ -523,6 +526,7 @@ impl AppState {
             forge: None,
             stats: HashMap::new(),
             stats_pending: HashSet::new(),
+            line_counts: Default::default(),
             signatures: Default::default(),
             conflict_checks: Default::default(),
             search: Default::default(),

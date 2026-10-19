@@ -189,6 +189,7 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
             st.selection = Selection::Commit(o);
             st.detail = None;
             fx.push(Effect::LoadDetail { workdir: snap.workdir.clone(), oid: o });
+            super::line_counts::want_commit(st, o, fx);
         }
         Selection::None | Selection::Wip | Selection::VsWorkdir(_) => {
             st.selection = Selection::None;

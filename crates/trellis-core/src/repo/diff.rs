@@ -44,7 +44,7 @@ pub(super) fn head_tree(repo: &Repository) -> Option<Tree<'_>> {
     repo.head().ok().and_then(|h| h.peel_to_tree().ok())
 }
 
-fn commit_diff<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
+pub(super) fn commit_diff<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
     let c = repo.find_commit(oid)?;
     let tree = c.tree()?;
     let parent_tree = if c.parent_count() > 0 { Some(c.parent(0)?.tree()?) } else { None };

@@ -208,6 +208,7 @@ pub struct Parked {
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,
     pub stats: HashMap<Oid, (usize, usize, usize)>,
+    pub line_counts: crate::state::line_counts::LineCounts,
     pub signatures: crate::state::signatures::Signatures,
     /// The last conflict check (one in flight is asked for again on return).
     pub conflict_checks: crate::state::conflict_check::ConflictChecks,

@@ -45,6 +45,7 @@ mod jobs;
 mod keys;
 mod layout;
 mod lfs;
+mod line_counts;
 mod logs;
 mod notify;
 mod onboarding;

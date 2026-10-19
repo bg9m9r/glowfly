@@ -181,6 +181,7 @@
   "finder.truncated": "Nach {max} durchsuchten Ordnern angehalten. Füge einen Ordner hinzu, der näher an deinen Repositorys liegt.",
   "finder.unreadable": "kann nicht gelesen werden: {error}",
   "git_banner.choose.button": "Git auswählen…",
+  "graph.wip.label": "Nicht committete Änderungen",
   "menu.common.no_repo": "Öffne zuerst ein Repository",
   "menu.edit.cant_undo": "{label} kann nicht rückgängig gemacht werden: Rückgängig machen lassen sich nur Checkout, Commit, Reset, Merge, Pull, Rebase, Cherry-Pick, Revert, das Erstellen oder Löschen eines Branches oder Tags, Stash, Pop, Apply, Drop, Verwerfen, das Wiederherstellen von Dateien und gespeicherte Konfliktlösungen",
   "menu.edit.copy_branch": "Branch-Namen kopieren",

@@ -1,6 +1,6 @@
 //! Accessible names of painted widgets and hint-only fields: every toolbar tool button by its
 //! descriptive name (disabled exactly when it can't be used, and never the same as a palette
-//! row's), graph rows by their summary ("// WIP" for
+//! row's), graph rows by their summary ("Uncommitted changes" for
 //! the working tree) and the commit box's fields by their hint. No image comparison.
 
 use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -98,7 +98,7 @@ fn graph_rows_and_commit_fields_are_named() {
     let summary = st.snap.as_ref().unwrap().commits[0].summary.clone();
     let mut h = harness(st, true);
     h.run();
-    assert_eq!(h.query_all_by_role_and_label(Role::Button, "// WIP").count(), 1);
+    assert_eq!(h.query_all_by_role_and_label(Role::Button, "Uncommitted changes").count(), 1);
     assert!(h.query_all_by_role_and_label(Role::Button, &summary).next().is_some(), "{summary}");
     let field = h.get_by_role_and_label(Role::TextInput, "Commit summary");
     field.type_text("Name the fields");

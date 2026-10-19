@@ -16,8 +16,8 @@ pub mod tooltip_motion;
 pub mod truncate;
 
 pub use super::list_row::{
-    GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row, list_row,
-    list_row_cut, list_row_hidden,
+    GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row,
+    file_row_with_end, list_row, list_row_cut, list_row_hidden,
 };
 pub use icon::{Icon, paint_icon, paint_icon_sized};
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};

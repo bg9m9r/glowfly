@@ -139,7 +139,10 @@ fn select_commit_selects_on_graph_and_closes() {
     let fx = update(&mut st, Msg::Blame(BlameMsg::SelectCommit(h)), Instant::now());
     assert!(st.blame.is_none() && st.history.is_none());
     assert_eq!(st.selection, Selection::Commit(h));
-    assert!(matches!(&fx[..], [Effect::LoadDetail { oid, .. }] if *oid == h), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(crate::effect::LineCountsEffect::Commit { .. })] if *oid == h),
+        "{fx:?}"
+    );
 
     st.blame = Some(BlameView::loading("a.txt".into(), None));
     let fx = update(&mut st, Msg::Blame(BlameMsg::SelectCommit(oid(9))), Instant::now());

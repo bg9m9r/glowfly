@@ -1,22 +1,22 @@
 //! Other worktrees' WIP rows in the graph (a dashed node in its lane's colour joined to the
-//! worktree's HEAD commit, a "// WIP · <folder>" box and the change counts), plus the box and
-//! counts drawing shared with this tab's own WIP row.
+//! worktree's HEAD commit, a "// WIP · <folder>" box and the change counts). This tab's own
+//! WIP row is drawn by `wip_row`.
 
 use super::nodes;
 use super::paint::{Columns, draw_lanes, lane_x, paint_pencil};
 use crate::state::worktrees::wip_label;
-use crate::ui::common::lane_color;
+use crate::ui::common::{added_color, lane_color, modified_color, removed_color};
 use crate::ui::theme::color;
 use eframe::egui::{CornerRadius, FontId, Painter, Rect, pos2, vec2};
 use trellis_core::graph::WorktreeWipRow;
 use trellis_core::repo::{ChangeCounts, WorktreeInfo};
 
-/// The narrowest a WIP box is (the width of this tab's "// WIP" box).
+/// The narrowest another worktree's WIP box is.
 const MIN_BOX_W: f32 = 96.0;
 
 /// Draws a rounded WIP box holding `text`, starting at `x` and centred on `mid`; returns its
 /// right edge.
-pub(super) fn wip_box(mp: &Painter, x: f32, mid: f32, text: &str) -> f32 {
+fn wip_box(mp: &Painter, x: f32, mid: f32, text: &str) -> f32 {
     let g = mp.layout_no_wrap(text.to_owned(), FontId::proportional(13.0), color::weak());
     let w = (g.size().x + 16.0).max(MIN_BOX_W);
     let r = Rect::from_min_size(pos2(x, mid - 11.0), vec2(w, 22.0));
@@ -27,9 +27,9 @@ pub(super) fn wip_box(mp: &Painter, x: f32, mid: f32, text: &str) -> f32 {
 
 /// Draws the change counts from `x`: a pencil and the modified count in amber, "+ N" added in
 /// green and "− N" deleted in red, leaving out zeros.
-pub(super) fn draw_counts(mp: &Painter, x: f32, mid: f32, c: ChangeCounts) {
+fn draw_counts(mp: &Painter, x: f32, mid: f32, c: ChangeCounts) {
     let mut x = x;
-    for (n, sym, col) in [(c.modified, "", color::amber()), (c.added, "+", color::green()), (c.deleted, "−", color::red())] {
+    for (n, sym, col) in [(c.modified, "", modified_color()), (c.added, "+", added_color()), (c.deleted, "−", removed_color())] {
         if n > 0 {
             if sym.is_empty() {
                 paint_pencil(mp, pos2(x + 5.0, mid), col);

@@ -2,7 +2,8 @@
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
 use crate::effect::{
-    CloneEffect, Effect, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, SubmoduleEffect, UndoResult, UpdateEffect,
+    CloneEffect, Effect, FailedLineCounts, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, SubmoduleEffect, UndoResult,
+    UpdateEffect,
 };
 use crate::msg::BlameMsg;
 use crate::msg::CloneMsg;
@@ -57,6 +58,8 @@ enum Kind {
     /// One repository of a fetch or pull across repositories (generation, row): it fails, so
     /// the next one starts.
     RepoSync(u64, usize),
+    /// A commit's or the working tree's line counts: pending until a result arrives.
+    LineCounts(FailedLineCounts),
     Log,
 }
 
@@ -111,6 +114,7 @@ impl Recovery {
             Effect::Updates(UpdateEffect::Download(_)) => Kind::Update(None),
             Effect::Repos(ReposEffect::Scan { generation, roots }) => Kind::RepoScan(*generation, roots.clone()),
             Effect::Repos(ReposEffect::Sync { generation, index, .. }) => Kind::RepoSync(*generation, *index),
+            Effect::LineCounts(e) => Kind::LineCounts(e.failure()),
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -145,6 +149,10 @@ impl Recovery {
             Kind::RepoSync(generation, index) => {
                 let outcome = trellis_core::repo_sync::Outcome::Failed(text);
                 Msg::Repos(crate::msg::ReposMsg::Synced { generation, index, outcome })
+            }
+            Kind::LineCounts(FailedLineCounts::Commit(oid)) => Msg::Repo(RepoMsg::CommitLineCountsLoaded { oid, result: Err(text) }),
+            Kind::LineCounts(FailedLineCounts::Wip(generation)) => {
+                Msg::Repo(RepoMsg::WipLineCountsLoaded { generation, result: Err(text) })
             }
             Kind::Log => Msg::Logged { ok: false, text },
         };
@@ -300,6 +308,21 @@ mod tests {
         assert!(
             matches!(*msg, Msg::Blame(BlameMsg::Loaded { generation: 4, ref path, result: Err(ref e) }) if path == "a.txt" && e.contains("boom"))
         );
+    }
+
+    #[test]
+    fn a_panicking_line_count_reports_a_failed_result() {
+        use crate::effect::LineCountsEffect;
+        let effect = Effect::LineCounts(LineCountsEffect::Wip { workdir: "r".into(), generation: 3 });
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
+        let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
+        assert!(matches!(*msg, Msg::Repo(RepoMsg::WipLineCountsLoaded { generation: 3, result: Err(ref e) }) if e.contains("boom")));
+
+        let oid = git2::Oid::from_bytes(&[7; 20]).unwrap();
+        let effect = Effect::LineCounts(LineCountsEffect::Commit { workdir: "r".into(), oid });
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
+        let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
+        assert!(matches!(*msg, Msg::Repo(RepoMsg::CommitLineCountsLoaded { oid: o, result: Err(_) }) if o == oid));
     }
 
     #[test]

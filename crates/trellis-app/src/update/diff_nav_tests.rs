@@ -87,9 +87,10 @@ pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
     }
 }
 
-/// The one diff load in `fx`: its target and reload flag.
+/// The one diff load in `fx` (line counts asked for beside it aside): its target and reload flag.
 pub(super) fn one_load(fx: &[Effect]) -> (&DiffTarget, bool) {
-    match fx {
+    let fx: Vec<&Effect> = fx.iter().filter(|e| !matches!(e, Effect::LineCounts(_))).collect();
+    match fx.as_slice() {
         [Effect::LoadDiff { target, reload, .. }] => (target, *reload),
         other => panic!("expected one diff load, got {other:?}"),
     }

@@ -95,3 +95,10 @@ pub fn ref_chip(style: ChipStyle, lane: Color32, p: &Palette) -> (Color32, Color
         ChipStyle::CurrentBranch => tint(0.40, 0.30),
     }
 }
+
+/// A change-kind chip's (fill, text) colours for a change of colour `col` (the WIP row's M / A / D
+/// chips): a soft opaque tint of it, with the text pushed until it reaches 4.5:1 on the tint.
+pub fn change_chip(col: Color32, p: &Palette) -> (Color32, Color32) {
+    let fill = mix(p.bg, col, if p.dark { 0.22 } else { 0.16 });
+    (fill, readable_on(col, fill, p.dark, 4.5))
+}

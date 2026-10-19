@@ -181,7 +181,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
   - In a narrow panel the labelled file actions fold into a ⋯ menu
   - A changed image shows before and after with dimensions and sizes instead of "Binary file
     not shown"; other binary files show both sizes
-- [ ] **Line counts in red and green**: `+N −M` for each changed file (with a small bar sized to
+- [x] **Line counts in red and green**: `+N −M` for each changed file (with a small bar sized to
       the change), each commit row and the commit details header, and the WIP row (one line:
       "Uncommitted changes", then M 3 · A 1 · D 1 chips with tinted fills and a right-aligned
       `+48 −17`); added green, removed red, modified amber, matching the status letters;
@@ -2332,3 +2332,17 @@ here, under the item they grew from.
 - Empty states for the stash, worktree, submodule and activity lists
 - Translate the pane titles and hints of the empty, loading and failed states
 - Split `ui/mod.rs` and `state/mod.rs`, which are past 400 lines
+
+### Line counts in red and green
+
+- Line counts on the multi-commit, compare-with-working-tree and pull request file lists
+- A tooltip on a file row's counts and bar ("12 lines added, 3 removed")
+- Compact large counts (12.3k) in narrow panels
+- Other worktrees' WIP rows drawn with the same chips and total
+- Counts and totals for commits and working trees past the 2,000-file cap
+- Fill the graph's CHANGES total from a selected commit's per-file counts when they arrive first
+- Counts for Git LFS files from their real content
+- Sort a file list by the size of its change
+- A preference to hide the per-file bars
+- Keep the label whole on the graph's WIP row at default column widths (a shorter label or chips
+  that shrink to letters first)

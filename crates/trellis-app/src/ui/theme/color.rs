@@ -20,6 +20,8 @@ use trellis_core::highlight::TokenKind;
 /// - `accent` on `bg`, `panel` and `input`: 3:1 (focus rings, and the `input`-coloured mark on
 ///   an accent-filled checkbox).
 /// - `tag_fg` on `tag_bg`: 4.5:1 standard, 7:1 high contrast.
+/// - `green`, `red` and `amber` on `bg`, `panel`, `hover`, `selected` and the graph's lane bands:
+///   3:1 standard, 4.5:1 high contrast (line counts and status letters).
 /// - Every `syn_*` on `panel`, `diff_add`, `diff_del`, `diff_add_word` and `diff_del_word`:
 ///   2.4:1 standard, 4.5:1 high contrast.
 #[derive(Clone, Copy, PartialEq, Debug)]

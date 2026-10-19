@@ -91,3 +91,23 @@ fn file_rows_are_a_fixed_height_with_their_contents_centred() {
         assert_eq!(step, LIST_ROW_H + 4.0);
     });
 }
+
+#[test]
+fn a_file_rows_end_part_keeps_its_width_and_the_path_is_cut() {
+    let (mut row, mut end, mut path) = (Rect::NOTHING, Rect::NOTHING, Rect::NOTHING);
+    pass(|ui| {
+        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+        row = file_row_with_end(
+            ui,
+            |ui| end = ui.allocate_exact_size(vec2(60.0, 10.0), Sense::hover()).0,
+            |ui| path = ui.label("a/very/long/path/that/never/fits/in/three/hundred/pixels/of/row/width.txt").rect,
+        )
+        .response
+        .rect;
+    });
+    assert_eq!(row.height(), LIST_ROW_H);
+    assert_eq!(end.width(), 60.0, "the end part keeps its width");
+    assert!((end.right() - row.right()).abs() < 0.01, "flush with the right edge: {end:?} in {row:?}");
+    assert!(path.right() <= end.left(), "the path is cut before the end part: {path:?}, {end:?}");
+    assert!(path.left() <= row.left() + 0.01, "the path starts at the row's left");
+}

@@ -1,6 +1,7 @@
 //! The commit graph: a table with configurable, resizable columns (branch / tag, graph, message,
 //! changes, commit, date), rows banded in their lane's colour, author nodes, ghost refs, branch
-//! highlighting, and other worktrees' WIP rows.
+//! highlighting, this tab's WIP row (`wip_row`: its label, change chips and line total) and
+//! other worktrees' WIP rows.
 
 mod cells;
 mod header;
@@ -15,9 +16,12 @@ mod resize;
 mod row_look;
 mod search_bar;
 mod select;
+mod wip_row;
 mod worktree_wip;
 
 pub use paint::draw_avatar;
+#[cfg(test)]
+pub(in crate::ui) use row_look::band_color;
 
 use super::UiCache;
 use super::common::lane_color;
@@ -114,6 +118,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let offset = st.view.utc_offset;
         let avatars = &mut cache.avatars;
         let stats = &st.stats;
+        let wip_label = settings.lang().tr("graph.wip.label");
+        let wip_total = st.line_counts.wip().and_then(|w| w.total());
         let mut want_stats: Vec<Oid> = Vec::new();
         let mut hover_tip_next = None;
         let tips = st.forge.as_ref().map(|f| &f.tips);
@@ -156,7 +162,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 match (commit, worktree) {
                     (Some(c), _) => super::access::name_button(&resp, true, &c.summary),
                     (None, Some((_, wt))) => super::access::name_button(&resp, true, &crate::state::worktrees::wip_label(wt)),
-                    (None, None) => super::access::name_button(&resp, true, "// WIP"),
+                    (None, None) => super::access::name_button(&resp, true, wip_label),
                 }
                 // Another worktree's row is never selected.
                 let selected = match (selection, commit) {
@@ -193,8 +199,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         nodes::wip_ring(&gp, pos2(node_x, mid), lane_col);
                     }
                     let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
-                    let right = worktree_wip::wip_box(&mp, cols.msg.0, mid, "// WIP");
-                    worktree_wip::draw_counts(&mp, right + 12.0, mid, snap.changes);
+                    wip_row::draw(&mp, &cols, mid, wip_label, snap.changes, wip_total);
                     if resp.clicked() {
                         msgs.push(select::wip_click(ui.input(|i| i.modifiers)));
                     }

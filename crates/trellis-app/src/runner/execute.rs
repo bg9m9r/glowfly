@@ -3,8 +3,8 @@
 
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, dashboard, deep_link, diff_gaps, expect, files, forge_calls, forks,
-    git_env, git_ops, highlight, history, init, issues, keys, notify, onboarding, os, patches, path_search, profiles, pull_request, rebase,
-    repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools, updates, worktrees,
+    git_env, git_ops, highlight, history, init, issues, keys, line_counts, notify, onboarding, os, patches, path_search, profiles,
+    pull_request, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
@@ -153,6 +153,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             (!failures.is_empty()).then(|| Msg::Logged { ok: false, text: failures.join("\n") })
         }
         Effect::Stats { workdir, oids } => Some(Msg::Repo(RepoMsg::StatsLoaded(repo::commit_stats(&workdir, &oids)))),
+        Effect::LineCounts(e) => Some(line_counts::run(e)),
         Effect::SearchPaths { workdir, request, terms, oids } => {
             Some(path_search::once(path_search::Request { workdir, request, terms, oids }))
         }

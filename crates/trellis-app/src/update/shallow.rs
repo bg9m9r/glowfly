@@ -35,11 +35,13 @@ pub(super) fn refreshed(st: &mut AppState, new: &Snapshot, fx: &mut Vec<Effect>)
     for oid in gone {
         st.stats.remove(&oid);
         st.stats_pending.remove(&oid);
+        st.line_counts.forget_commit(oid);
         if st.selection == Selection::Commit(oid)
             && new.row_of.contains_key(&oid)
             && let Some(workdir) = st.workdir()
         {
             fx.push(Effect::LoadDetail { workdir, oid });
+            super::line_counts::want_commit(st, oid, fx);
         }
     }
 }

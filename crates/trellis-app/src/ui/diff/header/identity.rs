@@ -5,7 +5,7 @@
 use super::controls::ICON;
 use super::fit::{Plan, Widths};
 use crate::state::diff_header::{ChangeText, Context, FileKind, HeaderModel};
-use crate::ui::common::status_color;
+use crate::ui::common::{added_color, removed_color, status_color};
 use crate::ui::theme::{color, fonts};
 use crate::ui::widgets::truncate::cut_left;
 use crate::ui::widgets::{Icon, paint_icon_sized};
@@ -50,8 +50,8 @@ fn status_parts(m: &HeaderModel) -> Vec<Part> {
     }
     match m.change {
         ChangeText::Lines { added, removed } => {
-            v.push(Part::Text(format!("+{added}"), chip_font(), color::green()));
-            v.push(Part::Text(format!("\u{2212}{removed}"), chip_font(), color::red()));
+            v.push(Part::Text(format!("+{added}"), chip_font(), added_color()));
+            v.push(Part::Text(format!("\u{2212}{removed}"), chip_font(), removed_color()));
         }
         ChangeText::Sizes { old, new } => match (old, new) {
             (Some(a), Some(b)) => {

@@ -60,7 +60,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                         let target = DiffTarget::ToWorkdir(oid, f.path.clone());
                         let src = RowSource::ToWorkdir(oid);
                         let in_workdir = c.in_workdir(&f.path);
-                        let actions = RowActions { src, history_at: oid, in_workdir, lfs, diff_blocked, patch_blocked: None };
+                        let actions = RowActions { src, history_at: oid, in_workdir, lfs, diff_blocked, patch_blocked: None, lines: None };
                         changed_file_row(ui, t, f, target, open, actions, msgs);
                     }
                 },

@@ -42,6 +42,7 @@ mod init;
 mod instance;
 mod issues;
 mod keys;
+mod line_counts;
 mod logs;
 mod notify;
 mod onboarding;

@@ -17,7 +17,7 @@ use crate::state::{AppState, Selection};
 use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
 use git2::Oid;
 use trellis_core::i18n::Lang;
-use trellis_core::repo::{DiffTarget, FileEntry};
+use trellis_core::repo::{DiffTarget, FileEntry, LineCount};
 use trellis_core::settings::SizedPanel;
 
 // Declared here rather than beside the other views: the file lists that use it are these panels.
@@ -109,7 +109,14 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     });
     ui.separator();
     let n = d.files.len();
-    ui.label(RichText::new(t.trn("details.commit.changed_files", n, &[])).strong().color(color::text()));
+    let counts = st.line_counts.commit(d.oid);
+    let files = ui.label(RichText::new(t.trn("details.commit.changed_files", n, &[])).strong().color(color::text()));
+    if let Some(c) = counts.filter(|c| c.complete) {
+        // On the same line, right-aligned, without moving what follows.
+        let rect = egui::Rect::from_x_y_ranges(files.rect.right()..=ui.max_rect().right(), files.rect.y_range());
+        let mut end = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(Layout::right_to_left(Align::Center)));
+        super::line_counts::total(&mut end, c.total);
+    }
     let lfs = TrackContext::of(st);
     let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
     let row_h = widgets::LIST_ROW_H;
@@ -119,15 +126,17 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
         for f in &d.files[range] {
             let patch_blocked = (d.parents.len() > 1).then_some(crate::state::patch::PATCH_BLOCKED_MERGE);
             let src = RowSource::Commit(d.oid);
-            let actions = RowActions { src, history_at: d.oid, in_workdir: d.in_workdir(&f.path), lfs, diff_blocked, patch_blocked };
+            let lines = counts.and_then(|c| c.get(&f.path).map(|n| (n, c.largest)));
+            let in_workdir = d.in_workdir(&f.path);
+            let actions = RowActions { src, history_at: d.oid, in_workdir, lfs, diff_blocked, patch_blocked, lines };
             changed_file_row(ui, t, f, DiffTarget::Commit(d.oid, f.path.clone()), open, actions, msgs);
         }
     });
 }
 
-/// The file actions of a commit's (or comparison's) file row: where its change comes from,
-/// the commit its history and blame are seen from, whether the path is in the working tree,
-/// what Track in Git LFS needs, and why Open in external diff tool is disabled.
+/// What a file row draws and offers: where its change comes from, the commit its history and
+/// blame are seen from, whether the path is in the working tree, what Track in Git LFS needs,
+/// why Open in external diff tool is disabled, and its line counts.
 #[derive(Clone, Copy)]
 pub(super) struct RowActions<'a> {
     pub src: RowSource,
@@ -137,6 +146,9 @@ pub(super) struct RowActions<'a> {
     pub diff_blocked: Option<&'a str>,
     /// Why Create patch from this file… is unavailable (a merge commit).
     pub patch_blocked: Option<&'a str>,
+    /// The file's lines added and removed, and the largest change in its list (the bar's
+    /// scale); None draws no counts.
+    pub lines: Option<(LineCount, usize)>,
 }
 
 /// A file changed by a commit (or between two): its status and path, which opens `target`.
@@ -151,7 +163,7 @@ pub(super) fn changed_file_row(
     actions: RowActions<'_>,
     msgs: &mut Vec<Msg>,
 ) {
-    widgets::file_row(ui, |ui| {
+    let row = |ui: &mut egui::Ui| {
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
         let r = ui.selectable_label(open == Some(&target), RichText::new(&f.path).monospace());
         super::path_warnings::mark(ui, f);
@@ -174,5 +186,9 @@ pub(super) fn changed_file_row(
             let items = if a.in_workdir { track_items(&f.path, a.lfs) } else { Vec::new() };
             file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.diff_blocked, a.patch_blocked);
         });
-    });
+    };
+    match actions.lines {
+        Some((n, largest)) => widgets::file_row_with_end(ui, |ui| super::line_counts::row_end(ui, n, largest), row),
+        None => widgets::file_row(ui, row),
+    };
 }

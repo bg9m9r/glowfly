@@ -167,6 +167,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::ForgetCredentialManager { .. }
         | Effect::TrelloBoards { .. }
         | Effect::Stats { .. }
+        | Effect::LineCounts(_)
         | Effect::SearchPaths { .. }
         | Effect::VerifySignature { .. }
         | Effect::FetchAvatars(_)

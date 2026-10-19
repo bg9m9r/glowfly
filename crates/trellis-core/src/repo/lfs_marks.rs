@@ -7,7 +7,7 @@
 
 use super::{DiffTarget, FileEntry, Hazard, rpath};
 use crate::lfs::pointer::{self, LfsChange, LfsSide, MAX_POINTER_BYTES};
-use git2::{Delta, Diff, DiffFile, FileMode, Index, ObjectType, Oid, Repository, Tree};
+use git2::{Delta, Diff, DiffDelta, DiffFile, FileMode, Index, ObjectType, Oid, Repository, Tree};
 use std::path::Path;
 
 /// The most rows of one list checked; rows past it are left unmarked.
@@ -81,6 +81,19 @@ pub(super) fn mark_delta_files(repo: &Repository, diff: &Diff, files: &mut [File
         } else {
             regular_blob(&d.new_file()).is_some_and(|id| pointer::read_blob(repo, id).is_some())
         };
+    }
+}
+
+/// Whether either side of `delta` is a Git LFS pointer: the old blob, or the new blob (the
+/// working copy with `in_workdir`).
+pub(super) fn delta_is_pointer(repo: &Repository, delta: &DiffDelta<'_>, in_workdir: bool) -> bool {
+    if blob_is_pointer(repo, regular_blob(&delta.old_file())) {
+        return true;
+    }
+    match delta.status() {
+        Delta::Deleted => false,
+        _ if in_workdir => rpath::text(rpath::delta_bytes(delta)).is_some_and(|p| file_is_pointer(repo.workdir(), &p)),
+        _ => blob_is_pointer(repo, regular_blob(&delta.new_file())),
     }
 }
 

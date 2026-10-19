@@ -45,13 +45,27 @@ pub fn lane_color(i: usize) -> Color32 {
     LANE_COLORS[i % LANE_COLORS.len()]
 }
 
+/// Added lines and files: the one colour shared by status letters, line counts, bars and chips.
+pub fn added_color() -> Color32 {
+    color::green()
+}
+
+/// Removed lines and deleted files (shared by status letters, line counts, bars and chips).
+pub fn removed_color() -> Color32 {
+    color::red()
+}
+
+/// Modified files (shared by status letters, line counts, bars and chips).
+pub fn modified_color() -> Color32 {
+    color::amber()
+}
+
 pub fn status_color(c: char) -> Color32 {
     match c {
-        'A' | '?' => color::green(),
-        'D' => color::red(),
+        'A' | '?' => added_color(),
+        'D' => removed_color(),
         'R' => color::blue(),
-        '!' => color::amber(),
-        'M' => color::amber(),
+        'M' | '!' => modified_color(),
         _ => color::weak(),
     }
 }

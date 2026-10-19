@@ -62,6 +62,7 @@ mod issue;
 mod layout;
 mod lfs_badge;
 mod lfs_banner;
+mod line_counts;
 mod list_row;
 mod mainline_dialog;
 mod menu_bar;
@@ -219,6 +220,8 @@ mod snapshot_tests_language_panels;
 mod snapshot_tests_lfs;
 #[cfg(test)]
 mod snapshot_tests_lfs_notes;
+#[cfg(test)]
+mod snapshot_tests_line_counts;
 #[cfg(test)]
 mod snapshot_tests_load_more;
 #[cfg(test)]

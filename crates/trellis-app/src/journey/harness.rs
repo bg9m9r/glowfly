@@ -342,7 +342,7 @@ impl Journey {
 
     /// Selects the working tree's row in the graph.
     pub fn select_wip(&mut self) {
-        self.click("// WIP", Region::Central, Pick::Only);
+        self.click("Uncommitted changes", Region::Central, Pick::Only);
     }
 
     /// Stages everything and commits it as `summary` from the details panel.

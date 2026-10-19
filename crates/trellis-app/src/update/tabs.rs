@@ -207,6 +207,7 @@ pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         super::issue::reload_pending(st, fx);
         super::rebase::reload_pending(st, fx);
         super::diff_preview::reload_pending(st, fx);
+        super::line_counts::reload_pending(st, fx);
         super::conflict_check::want(st, fx);
     } else if let Some(path) = st.tabs[i].path.clone() {
         super::repo::load(st, path, LoadKind::Open, fx);
@@ -241,6 +242,7 @@ pub(super) fn park(st: &mut AppState) -> Parked {
         undo: std::mem::take(&mut st.undo),
         forge: st.forge.take(),
         stats: std::mem::take(&mut st.stats),
+        line_counts: st.line_counts.parked(),
         signatures: st.signatures.parked(),
         conflict_checks: st.conflict_checks.parked(),
         search: std::mem::take(&mut st.view.search),
@@ -316,6 +318,7 @@ fn unpark(st: &mut AppState, p: Parked) {
         f.replies_dropped();
     }
     st.stats = p.stats;
+    st.line_counts = p.line_counts;
     st.signatures = p.signatures;
     st.conflict_checks = p.conflict_checks;
     st.view.search = p.search;

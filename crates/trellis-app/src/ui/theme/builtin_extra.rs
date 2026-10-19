@@ -25,7 +25,7 @@ pub const HIGH_CONTRAST_DARK: Palette = Palette {
     weak: hex(0xc9cdd4),
     faint: hex(0x9ea3ab),
     green: hex(0x6ee36a),
-    red: hex(0xff7a6e),
+    red: hex(0xff8a7e),
     amber: hex(0xffcc4d),
     blue: hex(0x82b8ff),
     purple: hex(0xcfa8ff),

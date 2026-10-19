@@ -20,6 +20,7 @@ mod forge_filters;
 mod history;
 mod init;
 mod issue;
+mod line_counts;
 mod names;
 mod notify;
 mod rebase;
@@ -38,6 +39,7 @@ pub use forge_filters::{FilterCall, FilterResult};
 pub use history::FileTextRequest;
 pub use init::InitEffect;
 pub use issue::*;
+pub use line_counts::{FailedLineCounts, LineCountsEffect};
 pub use notify::{DesktopNote, NoteKind};
 pub use rebase::RebaseEffect;
 pub use repo::{ConflictRead, KnownRepo, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
@@ -298,6 +300,8 @@ pub enum Effect {
         workdir: PathBuf,
         oids: Vec<Oid>,
     },
+    /// Per-file line counts of a commit or the working tree (runner/line_counts.rs); reads only.
+    LineCounts(LineCountsEffect),
     /// Which of `oids` (newest first) changed a path matching `terms`, for search request
     /// `request`; reported in chunks as SearchMsg::PathsSearched. Handled by Runner::run's
     /// path-search worker: a newer request replaces one waiting and stops one running.

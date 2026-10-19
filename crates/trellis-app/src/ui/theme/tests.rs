@@ -135,6 +135,61 @@ fn ref_chips_are_readable() {
 }
 
 #[test]
+fn change_colors_are_readable() {
+    let mut failures = Vec::new();
+    for t in BuiltinTheme::ALL {
+        let p = builtin(t);
+        let min = if matches!(t, BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight) { 4.5 } else { 3.0 };
+        let lanes = (0..crate::ui::common::LANE_COUNT)
+            .map(|l| (format!("lane {l}"), crate::ui::graph::band_color(crate::ui::common::lane_color(l), p)));
+        let bgs: Vec<(String, Color32)> = [("bg", p.bg), ("panel", p.panel), ("hover", p.hover), ("selected", p.selected)]
+            .map(|(n, c)| (n.to_owned(), c))
+            .into_iter()
+            .chain(lanes)
+            .collect();
+        for (name, fg) in [("green", p.green), ("red", p.red), ("amber", p.amber)] {
+            for (bg_name, bg) in &bgs {
+                let r = ratio(fg, *bg);
+                if r < min {
+                    failures.push(format!("{t:?}: {name} on {bg_name} is {r:.2}:1, below {min}:1"));
+                }
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "{}",
+        failures.join(
+            "
+"
+        )
+    );
+}
+
+#[test]
+fn change_chips_are_readable() {
+    let mut failures = Vec::new();
+    for t in BuiltinTheme::ALL {
+        let p = builtin(t);
+        for (name, col) in [("green", p.green), ("red", p.red), ("amber", p.amber)] {
+            let (fill, fg) = contrast::change_chip(col, p);
+            let r = ratio(fg, fill);
+            if fill.a() != 255 || r < 4.5 {
+                failures.push(format!("{t:?} {name} chip: {r:.2}:1, fill alpha {}", fill.a()));
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "{}",
+        failures.join(
+            "
+"
+        )
+    );
+}
+
+#[test]
 fn ref_chips_are_soft() {
     let mut failures = Vec::new();
     for t in BuiltinTheme::ALL {

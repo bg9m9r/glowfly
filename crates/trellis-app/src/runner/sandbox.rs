@@ -116,6 +116,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::Rebase(_)
             | Effect::UndoRedo { .. }
             | Effect::Stats { .. }
+            | Effect::LineCounts(_)
             | Effect::SearchPaths { .. }
             | Effect::VerifySignature { .. }
             | Effect::ReadGitConfig { .. }

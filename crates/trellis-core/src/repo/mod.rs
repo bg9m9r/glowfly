@@ -5,7 +5,8 @@
 //! The types are here (the diff ones in `diff_types`, `Snapshot`'s queries in `snapshot_impl`);
 //! the work is split by area: `load` (history, refs, status), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`
-//! (and `diff_gaps`, the unchanged lines between hunks),
+//! (and `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per
+//! file of a commit or of the working tree),
 //! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the
 //! picks a file saved with markers holds), `template`
@@ -47,6 +48,7 @@ mod history;
 mod history_forward;
 mod index;
 mod lfs_marks;
+mod line_counts;
 mod lines;
 mod load;
 mod markers;
@@ -108,6 +110,7 @@ pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use history_forward::name_at_head;
 pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
+pub use line_counts::{FileLineCounts, LineCount, MAX_COUNTED_FILES, WipLineCounts, commit_line_counts, wip_line_counts};
 pub use lines::{apply_lines, apply_shown};
 pub use load::{load, load_cached, messages_between};
 pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};

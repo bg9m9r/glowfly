@@ -115,7 +115,8 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
                         let target = DiffTarget::Between(from, to, f.path.clone());
                         let src = RowSource::Between { from, to };
                         let in_workdir = c.in_workdir(&f.path);
-                        let actions = RowActions { src, history_at: m.oids[0], in_workdir, lfs, diff_blocked, patch_blocked: None };
+                        let actions =
+                            RowActions { src, history_at: m.oids[0], in_workdir, lfs, diff_blocked, patch_blocked: None, lines: None };
                         changed_file_row(ui, t, f, target, open, actions, msgs);
                     }
                 },

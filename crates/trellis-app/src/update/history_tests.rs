@@ -185,7 +185,10 @@ fn view_on_graph_selects_visible_commits_only() {
     let fx = update(&mut st, Msg::History(HistoryMsg::ShowInGraph(head)), Instant::now());
     assert!(st.history.is_none());
     assert_eq!(st.selection, Selection::Commit(head));
-    assert!(matches!(&fx[..], [Effect::LoadDetail { oid, .. }] if *oid == head), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(crate::effect::LineCountsEffect::Commit { .. })] if *oid == head),
+        "{fx:?}"
+    );
     assert!(st.view.scroll_to_row.is_some());
 
     let (mut st, dir2) = with_view("history-graph-hidden");

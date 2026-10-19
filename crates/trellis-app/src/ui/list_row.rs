@@ -1,7 +1,7 @@
 //! The sidebar's list rows: one line of text (cut with "…" when it doesn't fit) with optional dim
 //! text (words, or counts with painted arrows) and a marker slot at the right, plus the
 //! skip-if-scrolled-away helper the long sections use; the file lists' fixed-height rows
-//! (`file_row`); and the side panels' row heights and insets.
+//! (`file_row`, and `file_row_with_end` with a part at the right edge); and the side panels' row heights and insets.
 
 use super::theme::{color, fonts, spacing};
 use super::widgets::truncate;
@@ -176,6 +176,19 @@ pub fn file_row<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> egui::InnerRe
         ui.set_min_height(LIST_ROW_H);
         add(ui)
     })
+}
+
+/// `file_row` with an `end` part flush with the row's right edge (a file's line counts): `end` is
+/// laid out first, right to left, so it keeps its width and `add`'s widgets (the path) are cut
+/// before it.
+pub fn file_row_with_end<R>(ui: &mut Ui, end: impl FnOnce(&mut Ui), add: impl FnOnce(&mut Ui) -> R) -> egui::InnerResponse<R> {
+    let w = ui.available_width();
+    let inner = ui.allocate_ui_with_layout(vec2(w, LIST_ROW_H), Layout::right_to_left(Align::Center), |ui| {
+        ui.set_min_height(LIST_ROW_H);
+        end(ui);
+        ui.with_layout(Layout::left_to_right(Align::Center), add).inner
+    });
+    egui::InnerResponse::new(inner.inner, inner.response)
 }
 
 #[cfg(test)]
