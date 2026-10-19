@@ -224,6 +224,23 @@ fn step_tips_follow_the_keymap() {
     assert_eq!(step_tip(&keys, false, StepKind::End), "No changes before this file", "no key, no parentheses");
 }
 
+#[test]
+fn primary_tips_follow_the_language_and_keymap() {
+    use super::actions::primary_tip;
+    let mut keys = Keymap::default();
+    let stage = Primary::Stage("a.txt".into());
+    let unstage = Primary::Unstage("a.txt".into());
+    let s = keys.hint(BindingId::Stage).expect("Stage has a default key").to_owned();
+    assert_eq!(primary_tip(&stage, &keys, Lang::En), format!("Stage this file ({s}). With lines selected, {s} stages only those lines."));
+    let de = primary_tip(&stage, &keys, Lang::De);
+    assert!(de.starts_with("Diese Datei bereitstellen") && de.contains(&s), "{de}");
+    assert!(!primary_tip(&unstage, &keys, Lang::De).contains("Unstage"));
+    assert!(!primary_tip(&unstage, &keys, Lang::Es).contains("Unstage"));
+    keys.set(BindingId::Unstage, Vec::new());
+    assert_eq!(primary_tip(&unstage, &keys, Lang::En), "Unstage this file", "no key, no key sentence");
+    assert_eq!(primary_tip(&unstage, &keys, Lang::De), "Diese Datei zurücknehmen");
+}
+
 /// The header alone, `width` wide, in the dark palette over the app's background, for snapshots.
 fn themed(m: HeaderModel, width: f32, height: f32) -> Harness<'static, Vec<Msg>> {
     use crate::ui::theme::{self, color};

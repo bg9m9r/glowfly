@@ -1082,8 +1082,7 @@ here, under the item they grew from.
 
 ### Complete translations
 
-- The diff file header: Stage file / Unstage file, the Unstaged and Staged chips and the
-  primary button's tooltip
+- The diff file header: Stage file / Unstage file and the Unstaged and Staged chips
 - Disabled menu items' reasons ("This commit isn't on the current branch", "has no upstream",
   "isn't on a code host") and the shared busy reason
 - Job and activity-log labels (the titles git jobs run under, such as "Reset (hard)")

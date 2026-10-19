@@ -84,7 +84,7 @@ fn right_groups(ui: &mut Ui, m: &HeaderModel, w: &Widths, plan: &fit::Plan, keys
     }
     if m.primary.is_some() {
         divide(ui);
-        actions::show_primary(ui, m, keys, msgs);
+        actions::show_primary(ui, m, keys, t, msgs);
     }
     divide(ui);
     actions::show_close(ui, keys, t, msgs);

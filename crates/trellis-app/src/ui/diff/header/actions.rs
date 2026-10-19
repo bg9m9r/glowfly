@@ -151,15 +151,13 @@ fn primary_button<'a>(p: &Primary, tip: &'a str) -> buttons::StyledButton<'a> {
     buttons::primary(text).radius(controls::RADIUS).tip(tip)
 }
 
-fn primary_tip(p: &Primary, keys: &Keymap) -> String {
-    let (id, verb) = match p {
-        Primary::Stage(_) => (BindingId::Stage, "stage"),
-        Primary::Unstage(_) => (BindingId::Unstage, "unstage"),
-    };
-    let title = if verb == "stage" { "Stage" } else { "Unstage" };
-    match keys.hint(id) {
-        Some(k) => format!("{title} this file ({k}). With lines selected, {k} {verb}s only those lines."),
-        None => format!("{title} this file"),
+/// The primary button's tooltip in `t`, naming its key when it has one.
+pub(super) fn primary_tip(p: &Primary, keys: &Keymap, t: Lang) -> String {
+    match (p, keys.hint(BindingId::Stage), keys.hint(BindingId::Unstage)) {
+        (Primary::Stage(_), Some(k), _) => t.trf("diff.header.stage_file_key.tip", &[("key", &k)]),
+        (Primary::Stage(_), None, _) => t.tr("diff.header.stage_file.tip").to_owned(),
+        (Primary::Unstage(_), _, Some(k)) => t.trf("diff.header.unstage_file_key.tip", &[("key", &k)]),
+        (Primary::Unstage(_), _, None) => t.tr("diff.header.unstage_file.tip").to_owned(),
     }
 }
 
@@ -168,9 +166,9 @@ pub(super) fn primary_width(ui: &Ui, m: &HeaderModel) -> f32 {
     m.primary.as_ref().map_or(0.0, |p| primary_button(p, "").desired_width(ui))
 }
 
-pub(super) fn show_primary(ui: &mut Ui, m: &HeaderModel, keys: &Keymap, msgs: &mut Vec<Msg>) {
+pub(super) fn show_primary(ui: &mut Ui, m: &HeaderModel, keys: &Keymap, t: Lang, msgs: &mut Vec<Msg>) {
     let Some(p) = &m.primary else { return };
-    let tip = primary_tip(p, keys);
+    let tip = primary_tip(p, keys, t);
     if ui.add(primary_button(p, &tip)).clicked() {
         msgs.push(Msg::Stage(match p {
             Primary::Stage(path) => StageMsg::StageFile(path.clone()),
