@@ -93,7 +93,7 @@ fn launch_failures_still_point_to_preferences() {
     assert!(run(&mut st, failed).is_empty());
     failure(&st);
     let action = st.toasts.last().and_then(|t| t.action.as_ref()).map(|a| a.label.as_str());
-    assert_eq!(action, Some("Open Preferences"));
+    assert_eq!(action, Some("Open preferences"));
 }
 
 #[test]
