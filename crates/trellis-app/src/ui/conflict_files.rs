@@ -38,7 +38,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, lists: Lists, open: &OpenFi
 
 /// A list header like Unstaged Files': the title with its count, and `buttons` at the right.
 fn header(ui: &mut egui::Ui, title: &str, n: usize, buttons: impl FnOnce(&mut egui::Ui)) {
-    egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
+    egui::Frame::new().fill(color::raised()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.add(egui::Label::new(type_scale::section_text(ui, format!("{title} ({n})"))).selectable(false));
             ui.with_layout(Layout::right_to_left(Align::Center), buttons);
@@ -107,7 +107,7 @@ fn resolved_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, r: &ResolvedF
     let selected = matches!(open.diff, Some(DiffTarget::Staged(p)) if p == path);
     let row = super::widgets::file_row(ui, selected, path, |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(14.0, 14.0), Sense::hover());
-        paint_icon(ui.painter(), rect.center(), Icon::Check, color::green());
+        paint_icon(ui.painter(), rect.center(), Icon::Check, color::added());
         super::widgets::row_text(ui, egui::RichText::new(path).monospace(), selected);
         super::path_warnings::mark(ui, &r.entry);
         let b = ui.add_enabled(why.is_none(), egui::Button::new("Mark conflicted").small());

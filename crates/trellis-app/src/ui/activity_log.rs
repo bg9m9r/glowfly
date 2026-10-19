@@ -88,14 +88,14 @@ fn activity(ui: &mut Ui, st: &AppState) {
                         let at = st.settings.format_verbose(e.session, st.view.utc_offset);
                         group_header(ui, format!("Earlier session · {at}"));
                     }
-                    if entry.ok { color::weak() } else { color::red().gamma_multiply(0.6) }
+                    if entry.ok { color::weak() } else { color::removed().gamma_multiply(0.6) }
                 }
                 None => {
                     if any_earlier && !current {
                         current = true;
                         group_header(ui, "This session".to_owned());
                     }
-                    if entry.ok { color::text() } else { color::red() }
+                    if entry.ok { color::text() } else { color::removed() }
                 }
             };
             ui.label(RichText::new(&entry.text).color(c));
@@ -132,9 +132,9 @@ fn file(ui: &mut Ui, st: &AppState, kind: LogKind, msgs: &mut Vec<Msg>) {
                     Some(n) => {
                         let line = &tail.lines[n];
                         let c = if line.contains(" ERROR ") {
-                            color::red()
+                            color::removed()
                         } else if line.contains(" WARN ") {
-                            color::amber()
+                            color::warn()
                         } else {
                             color::text()
                         };

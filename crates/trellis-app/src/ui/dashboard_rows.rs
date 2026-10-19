@@ -104,7 +104,7 @@ pub(super) fn pr_row(ui: &mut Ui, st: &AppState, data: &TargetData, pr: &PullReq
         sub.push_str(" · changes requested");
     }
     // The pull request's tooltip has the whole title, so it stays the only one.
-    let (r, marker, _) = two_line_row(ui, &title, &sub, (&right, color::purple()), slot);
+    let (r, marker, _) = two_line_row(ui, &title, &sub, (&right, color::progress()), slot);
     if let Some(c) = &pr.checks
         && slot > 0.0
     {

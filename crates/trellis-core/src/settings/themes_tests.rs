@@ -95,17 +95,37 @@ fn border_keys_parse() {
 
 #[test]
 fn cycles_keep_the_base_value() {
-    let f = p(r##"{ "colors": { "hover": "selected", "selected": "hover", "accent": "#010101", "red": "red", "weak": "hover" } }"##);
+    let f =
+        p(r##"{ "colors": { "hover": "selected", "selected": "hover", "accent": "#010101", "removed": "removed", "weak": "hover" } }"##);
     let cycles: Vec<_> = f.problems.iter().filter(|p| matches!(p, ThemeProblem::Cycle { .. })).cloned().collect();
     let cycle = |k: &str| ThemeProblem::Cycle { key: k.into() };
-    assert_eq!(cycles, [cycle("hover"), cycle("red"), cycle("selected")]);
-    for k in ["hover", "selected", "red"] {
+    assert_eq!(cycles, [cycle("hover"), cycle("removed"), cycle("selected")]);
+    for k in ["hover", "selected", "removed"] {
         assert!(!f.colors.contains_key(k), "{k}");
     }
     assert_eq!(f.colors["accent"], rgb(0x010101));
     assert_eq!(f.colors["weak"], ColorValue::Base("hover"), "an alias into a loop gets the base value");
     assert_eq!(f.problems.len(), 3);
     assert_eq!(cycles[0].key(), Some("hover"));
+}
+
+#[test]
+fn legacy_color_names_still_load() {
+    let f = p(r##"{ "colors": { "green": "#010203", "amber": "selected", "purple": "#040506", "hover": "blue" } }"##);
+    assert!(f.problems.is_empty(), "{:?}", f.problems);
+    assert_eq!(f.colors["added"], rgb(0x010203));
+    assert_eq!(f.colors["modified"], ColorValue::Base("selected"));
+    assert_eq!(f.colors["progress"], rgb(0x040506));
+    assert_eq!(f.colors["hover"], ColorValue::Base("info"));
+    assert!(!f.colors.contains_key("green"));
+}
+
+#[test]
+fn new_color_name_wins_over_the_old_one() {
+    let f = p(r##"{ "colors": { "added": "#010101", "green": "#020202" } }"##);
+    assert!(f.problems.is_empty(), "{:?}", f.problems);
+    assert_eq!(f.colors["added"], rgb(0x010101));
+    assert_eq!(f.colors.len(), 1);
 }
 
 #[test]
@@ -141,7 +161,7 @@ fn fatal_problems() {
 
 #[test]
 fn choices_and_builtins() {
-    assert_eq!(COLOR_KEYS.len(), 43);
+    assert_eq!(COLOR_KEYS.len(), 46);
     for t in BuiltinTheme::ALL {
         assert_eq!(BuiltinTheme::from_id(t.id()), Some(t));
     }

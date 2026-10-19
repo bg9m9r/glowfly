@@ -133,7 +133,7 @@ fn header_buttons(
         ui.label(RichText::new(t.tr("conflict.header.no_lines")).color(color::weak()));
         return moved;
     }
-    let tint = if done == n { color::green() } else { color::weak() };
+    let tint = if done == n { color::added() } else { color::weak() };
     ui.label(RichText::new(progress).color(tint));
     ui.add_space(STEPS_GAP);
     // Right to left: next first. Arrows are painted (the bundled fonts lack them).

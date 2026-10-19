@@ -1,7 +1,7 @@
 //! Keeps banners and form messages in one style. Only the banner widget (`widgets/banner.rs`)
 //! fills with the banner colour; the Git LFS note in a diff is a box inside a pane, not a banner,
 //! and keeps it too. Every dialog (`support/dialogs.rs`, the list `controls.rs` checks) and the
-//! preference pages with forms leave red and amber to `widgets/form_message.rs`: a problem goes
+//! preference pages with forms leave the status and warning colours to `widgets/form_message.rs`: a problem goes
 //! through `form_message::field` or `form`. The dialogs that colour a list row's status (not a
 //! form message) are named in `ROW_STATUS`.
 //!
@@ -22,7 +22,7 @@ use views::{code_lines, view_sources};
 /// The files that may fill with `color::banner()`.
 const BANNER_ALLOWED: &[&str] = &["ui/widgets/banner.rs", "ui/diff/lfs_note.rs"];
 
-/// Dialogs whose red or amber marks a row's status in a list, not a form's message.
+/// Dialogs whose status or warning colour marks a row's status in a list, not a form's message.
 const ROW_STATUS: &[&str] = &["ui/conflict_check.rs", "ui/release_notes.rs", "ui/repo_finder.rs", "ui/repo_sync.rs"];
 
 /// Forms outside the dialogs whose messages go through `form_message`.
@@ -33,9 +33,9 @@ const PAGE_FORMS: &[&str] = &["ui/prefs/gitflow.rs", "ui/prefs/profiles.rs", "ui
 const LINE_ALLOWED: &[&str] = &["ui/askpass.rs"];
 
 /// The colours a form leaves to `form_message`.
-const FORM_DENIED: &[&str] = &["color::red()", "color::amber()"];
+const FORM_DENIED: &[&str] = &["color::removed()", "color::modified()", "color::warn()"];
 
-/// Whether the file at `rel` must leave red and amber to `form_message`.
+/// Whether the file at `rel` must leave the status and warning colours to `form_message`.
 fn is_form(rel: &str) -> bool {
     (DIALOG_FILES.contains(&rel) && !ROW_STATUS.contains(&rel)) || PAGE_FORMS.contains(&rel)
 }
@@ -90,20 +90,21 @@ fn the_check_catches_a_hand_made_banner() {
 
 #[test]
 fn the_check_catches_coloured_problem_lines() {
-    let src = "fn a(ui: &mut Ui) {\n    ui.label(RichText::new(p).color(color::red()));\n    ui.label(w.color(color::amber()));\n}\n";
+    let src = "fn a(ui: &mut Ui) {\n    ui.label(RichText::new(p).color(color::removed()));\n    ui.label(w.color(color::warn()));\n    ui.label(m.color(color::modified()));\n}\n";
     let found = violations("ui/branch_dialogs.rs", src);
-    assert_eq!(found, ["2: `color::red()`; use form_message::field or form", "3: `color::amber()`; use form_message::field or form"]);
+    let use_form = |n: usize, c: &str| format!("{n}: `{c}`; use form_message::field or form");
+    assert_eq!(found, [use_form(2, "color::removed()"), use_form(3, "color::warn()"), use_form(4, "color::modified()")]);
     assert!(violations("ui/conflict_check.rs", src).is_empty(), "a row's status");
-    assert!(violations("ui/prefs/trello.rs", src).len() == 2, "a page's form");
+    assert!(violations("ui/prefs/trello.rs", src).len() == 3, "a page's form");
 }
 
 #[test]
 fn every_dialog_is_checked_for_coloured_problem_lines() {
-    let src = "fn a(ui: &mut Ui) {\n    ui.label(RichText::new(e).color(color::red()));\n}\n";
+    let src = "fn a(ui: &mut Ui) {\n    ui.label(RichText::new(e).color(color::removed()));\n}\n";
     let unchecked: Vec<&str> =
         DIALOG_FILES.iter().copied().filter(|f| !ROW_STATUS.contains(f)).filter(|f| violations(f, src).is_empty()).collect();
     assert!(unchecked.is_empty(), "dialogs the colour check skips: {unchecked:?}");
-    assert_eq!(violations("ui/trust_dialog.rs", src), ["2: `color::red()`; use form_message::field or form"]);
+    assert_eq!(violations("ui/trust_dialog.rs", src), ["2: `color::removed()`; use form_message::field or form"]);
 }
 
 #[test]

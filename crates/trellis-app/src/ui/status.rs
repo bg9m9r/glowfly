@@ -23,7 +23,7 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
             ui.horizontal_centered(|ui| {
                 if let Some(fs) = &st.forge {
                     if let Some(h) = &fs.host {
-                        ui.label(RichText::new(h.provider.name()).color(color::blue()).font(type_scale::strong(ui, type_scale::BODY)));
+                        ui.label(RichText::new(h.provider.name()).color(color::info()).font(type_scale::strong(ui, type_scale::BODY)));
                         ui.label(RichText::new(h.display()).color(color::weak()));
                         let open = open_requests_text(t, fs.pr_noun(), fs.prs.len());
                         status_label_ui(ui, t, &fs.host_status, &open, msgs);
@@ -34,7 +34,7 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                     if let Some(tracker) = fs.tracker.as_ref().filter(|h| Some(*h) != fs.host.as_ref()) {
                         ui.label(RichText::new("·").color(color::faint()));
                         ui.label(
-                            RichText::new(tracker.provider.name()).color(color::blue()).font(type_scale::strong(ui, type_scale::BODY)),
+                            RichText::new(tracker.provider.name()).color(color::info()).font(type_scale::strong(ui, type_scale::BODY)),
                         );
                         let assigned = t.trf("status.assigned", &[("count", &fs.my_issues.len())]);
                         status_label_ui(ui, t, &fs.tracker_status, &assigned, msgs);

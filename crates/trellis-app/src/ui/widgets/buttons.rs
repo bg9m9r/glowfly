@@ -191,7 +191,7 @@ impl<'a> StyledButton<'a> {
 /// (fill, text, edge) of an enabled button of `kind`, not hovered.
 fn colors(kind: Kind) -> (Color32, Color32, Stroke) {
     match kind {
-        Kind::Primary => (color::primary(), Color32::WHITE, Stroke::new(1.0_f32, color::primary_border())),
+        Kind::Primary => (color::primary(), color::on_primary(), Stroke::new(1.0_f32, color::primary_border())),
         Kind::Secondary => (color::panel(), color::text(), Stroke::new(1.0_f32, color::input_border())),
         Kind::Danger => (color::danger(), Color32::WHITE, Stroke::NONE),
     }
@@ -205,7 +205,7 @@ fn shade(fill: Color32, t: f32) -> Color32 {
 impl Widget for StyledButton<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let enabled = self.enabled && ui.is_enabled();
-        let (fill, fg, stroke) = if enabled { colors(self.kind) } else { (color::toolbar(), color::weak(), Stroke::NONE) };
+        let (fill, fg, stroke) = if enabled { colors(self.kind) } else { (color::raised(), color::weak(), Stroke::NONE) };
         let galley = self.galley(ui, fg);
         let size = self.size(&galley);
         let (rect, resp) = ui.allocate_exact_size(size, if enabled { Sense::click() } else { Sense::hover() });

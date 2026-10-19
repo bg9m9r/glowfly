@@ -147,7 +147,7 @@ fn back_and_title(ui: &mut Ui, title: &str, msgs: &mut Vec<Msg>) {
 /// it is blank. Returns the footer.
 fn input_step(ui: &mut Ui, kind: InputKind, query: &str, msgs: &mut Vec<Msg>, run_selected: bool) -> &'static str {
     match kind.problem(query) {
-        Some(p) => note(ui, p, color::red()),
+        Some(p) => note(ui, p, color::removed()),
         None => note(ui, kind.note(), color::weak()),
     }
     if run_selected && let Some(cmd) = kind.command(query) {
@@ -202,7 +202,7 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
     let kind = pk.kind;
     match &pk.items {
         Items::Loading => note(ui, kind.loading(), color::weak()),
-        Items::Failed(e) => note(ui, e, color::red()),
+        Items::Failed(e) => note(ui, e, color::removed()),
         Items::Ready(v) if v.is_empty() => note(ui, kind.empty_text(), color::weak()),
         Items::Ready(_) => match pk.ranked() {
             Some(r) if !r.hits.is_empty() => {

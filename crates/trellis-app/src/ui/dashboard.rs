@@ -158,7 +158,7 @@ fn body(ui: &mut Ui, st: &AppState, filter: &str, msgs: &mut Vec<Msg>) {
             if let Some(e) = repo.error {
                 ui.horizontal(|ui| {
                     ui.add_space(26.0);
-                    ui.label(RichText::new(e).size(type_scale::SMALL).color(color::red()));
+                    ui.label(RichText::new(e).size(type_scale::SMALL).color(color::removed()));
                 });
             }
             let checks = repo.rows.iter().any(|r| matches!(r, Row::Pr(p) if p.checks.is_some()));

@@ -38,7 +38,7 @@ pub fn show(ctx: &egui::Context, t: Lang, view: BarView, msgs: &mut Vec<Msg>) {
 
 /// A green tick and "Saved", at `alpha` of full strength (it fades out).
 pub fn saved_tick(ui: &mut Ui, t: Lang, alpha: f32) {
-    let col = color::green().gamma_multiply(alpha);
+    let col = color::added().gamma_multiply(alpha);
     let (r, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
     // The fonts lack a check mark: painted.
     widgets::paint_icon(ui.painter(), r.center(), Icon::Check, col);

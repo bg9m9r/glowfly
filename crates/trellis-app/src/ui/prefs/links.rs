@@ -19,7 +19,7 @@ pub fn links_row(ui: &mut Ui, t: Lang, view: &SchemeView, msgs: &mut Vec<Msg>) {
             return;
         }
         let (text, error) = status_text(t, view);
-        ui.add(egui::Label::new(RichText::new(text).color(if error { color::red() } else { color::text() })).wrap());
+        ui.add(egui::Label::new(RichText::new(text).color(if error { color::removed() } else { color::text() })).wrap());
         let checking = matches!(view, SchemeView::Unknown | SchemeView::Checking);
         let other = matches!(view, SchemeView::Known(SchemeStatus::OtherProgram(_)));
         ui.horizontal(|ui| {

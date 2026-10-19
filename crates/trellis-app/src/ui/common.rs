@@ -16,19 +16,6 @@ use git2::Oid;
 use trellis_core::forge::{self, RefStyle};
 use trellis_core::i18n::Lang;
 
-const LANE_COLORS: [Color32; 10] = [
-    Color32::from_rgb(0x1f, 0xb5, 0xc9),
-    Color32::from_rgb(0x3d, 0x7d, 0xf7),
-    Color32::from_rgb(0x9b, 0x5d, 0xe0),
-    Color32::from_rgb(0xd0, 0x4f, 0xb8),
-    Color32::from_rgb(0xe8, 0x4a, 0x7a),
-    Color32::from_rgb(0xe8, 0x5c, 0x3a),
-    Color32::from_rgb(0xf0, 0x8d, 0x2e),
-    Color32::from_rgb(0xe8, 0xc4, 0x30),
-    Color32::from_rgb(0x7b, 0xc9, 0x3f),
-    Color32::from_rgb(0x2e, 0xc2, 0x95),
-];
-
 /// The height of a `ui.horizontal` row of labels and buttons, for lists drawn with
 /// `ScrollArea::show_rows` (only the rows in view are laid out).
 pub fn widget_row_height(ui: &egui::Ui) -> f32 {
@@ -42,32 +29,33 @@ pub fn widget_row_height(ui: &egui::Ui) -> f32 {
 
 /// How many lane colours there are before they repeat.
 #[cfg(test)]
-pub const LANE_COUNT: usize = LANE_COLORS.len();
+pub const LANE_COUNT: usize = super::theme::families::LANE_COUNT;
 
+/// Graph lane `i`'s colour, from the active palette's branch family.
 pub fn lane_color(i: usize) -> Color32 {
-    LANE_COLORS[i % LANE_COLORS.len()]
+    color::lane(i)
 }
 
 /// Added lines and files: the one colour shared by status letters, line counts, bars and chips.
 pub fn added_color() -> Color32 {
-    color::green()
+    color::added()
 }
 
 /// Removed lines and deleted files (shared by status letters, line counts, bars and chips).
 pub fn removed_color() -> Color32 {
-    color::red()
+    color::removed()
 }
 
 /// Modified files (shared by status letters, line counts, bars and chips).
 pub fn modified_color() -> Color32 {
-    color::amber()
+    color::modified()
 }
 
 pub fn status_color(c: char) -> Color32 {
     match c {
         'A' | '?' => added_color(),
         'D' => removed_color(),
-        'R' => color::blue(),
+        'R' => color::info(),
         'M' | '!' => modified_color(),
         _ => color::weak(),
     }
@@ -81,9 +69,9 @@ pub fn status_label(c: char) -> char {
 pub fn state_color(state: &str) -> Color32 {
     match state.to_ascii_lowercase().as_str() {
         "new" | "to do" | "proposed" => color::weak(),
-        "active" | "in progress" | "committed" | "doing" => color::blue(),
-        "resolved" | "done" | "closed" => color::green(),
-        _ => color::amber(),
+        "active" | "in progress" | "committed" | "doing" => color::info(),
+        "resolved" | "done" | "closed" => color::added(),
+        _ => color::warn(),
     }
 }
 
@@ -189,7 +177,7 @@ pub fn issue_chip(ui: &mut egui::Ui, fs: &ForgeState, key: &str, msgs: &mut Vec<
     let tag = fs.mention(key);
     let text = match fs.cache.get(key) {
         Some(i) => RichText::new(format!("{tag}  {} · {}  {}", i.kind, i.state, i.title)).color(color::text()),
-        None => RichText::new(tag).color(color::blue()),
+        None => RichText::new(tag).color(color::info()),
     };
     let r = ui.add(egui::Button::new(text.size(type_scale::SMALL)).fill(color::input()).truncate());
     if r.clicked() {
@@ -213,7 +201,7 @@ pub fn forge_error_rows(ui: &mut egui::Ui, error: &str, msgs: &mut Vec<Msg>) {
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         ui.add_space(widgets::ROW_INDENT);
-        ui.label(RichText::new(error).color(color::red()).size(type_scale::SMALL));
+        ui.label(RichText::new(error).color(color::removed()).size(type_scale::SMALL));
     });
     ui.horizontal(|ui| {
         ui.add_space(widgets::ROW_INDENT);
@@ -233,7 +221,7 @@ pub fn status_label_ui(ui: &mut egui::Ui, t: Lang, status: &Status, ok_text: &st
             ui.label(RichText::new(format!("· {ok_text}")).color(color::weak()));
         }
         Status::Error(e) => {
-            ui.label(RichText::new(format!("· {e}")).color(color::red()));
+            ui.label(RichText::new(format!("· {e}")).color(color::removed()));
             if ui.link(t.tr("status.sign_in")).clicked() {
                 msgs.push(Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }));
             }

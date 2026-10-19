@@ -38,7 +38,7 @@ pub fn spell_text_edit(
 /// Text with misspelled ranges underlined.
 fn layout(s: &str, misses: &[Miss], font: egui::FontId, text_color: egui::Color32) -> LayoutJob {
     let plain = TextFormat { font_id: font, color: text_color, ..Default::default() };
-    let wrong = TextFormat { underline: Stroke::new(1.5_f32, color::red()), ..plain.clone() };
+    let wrong = TextFormat { underline: Stroke::new(1.5_f32, color::removed()), ..plain.clone() };
     let mut job = LayoutJob::default();
     let mut last = 0;
     for m in misses {

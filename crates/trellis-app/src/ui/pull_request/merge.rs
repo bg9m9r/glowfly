@@ -99,6 +99,6 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
         reason::line(ui, Some(why), egui::Align::Min);
     }
     if let Some(e) = error_for(v, &PrAction::Merge) {
-        note(ui, e.to_owned(), color::red());
+        note(ui, e.to_owned(), color::removed());
     }
 }

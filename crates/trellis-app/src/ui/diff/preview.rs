@@ -119,7 +119,7 @@ fn caption(ui: &mut Ui, text: &str) {
 /// The image fitted in `card`, centred over a checkerboard.
 fn image_card(ui: &Ui, card: Rect, t: &TextureHandle, img: &PreviewImage) {
     let p = ui.painter();
-    p.rect_filled(card, CornerRadius::same(6), color::toolbar());
+    p.rect_filled(card, CornerRadius::same(6), color::raised());
     let room = card.shrink(PAD);
     let (w, h) = (img.width.max(1) as f32, img.height.max(1) as f32);
     let scale = (room.width() / w).min(room.height() / h).min(MAX_ZOOM);
@@ -170,7 +170,7 @@ fn placeholder(ui: &mut Ui, card: Rect, text: &str) {
 
 /// The binary page, "Can't preview this image" and the size.
 fn undecodable(ui: &mut Ui, card: Rect, size: u64) {
-    ui.painter().rect_filled(card, CornerRadius::same(6), color::toolbar());
+    ui.painter().rect_filled(card, CornerRadius::same(6), color::raised());
     centred(ui, card, |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(40.0, 40.0), egui::Sense::hover());
         empty_state::paint(ui.painter(), rect.center(), EmptyIcon::Binary, color::weak());

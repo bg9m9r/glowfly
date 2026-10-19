@@ -45,10 +45,10 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         if panel.editable()
             && let Some(why) = &blocker
         {
-            ui.label(RichText::new(why).color(color::red()));
+            ui.label(RichText::new(why).color(color::removed()));
         }
         if let Some(e) = panel.error.as_ref().filter(|e| blocker.as_ref() != Some(*e)) {
-            ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
+            ui.add(egui::Label::new(RichText::new(e).color(color::removed())).wrap());
         }
         ui.label(RichText::new(if remaining { REMAINING_HINT } else { HINT }).size(type_scale::SMALL).color(color::weak()));
         if !remaining && st.snap.as_ref().is_some_and(needs_stash) {
@@ -136,7 +136,7 @@ fn plus_button(ui: &mut Ui, label: &str) -> egui::Response {
     let (rect, r) = ui.allocate_exact_size(size, if enabled { Sense::click() } else { Sense::hover() });
     r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, label));
     let p = ui.painter();
-    let fill = if enabled && r.hovered() { color::hover() } else { color::toolbar() };
+    let fill = if enabled && r.hovered() { color::hover() } else { color::raised() };
     p.rect_filled(rect, egui::CornerRadius::same(4), fill);
     p.rect_stroke(rect, egui::CornerRadius::same(4), Stroke::new(1.0_f32, color::border()), egui::StrokeKind::Inside);
     paint_icon(p, egui::pos2(rect.left() + 15.0, rect.center().y), Icon::Plus, if enabled { color::primary() } else { color::faint() });

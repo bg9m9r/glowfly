@@ -92,7 +92,7 @@ fn weak(ui: &mut Ui, text: &str) {
 
 /// The inset list: heading, rows, "and N more" and the note.
 fn preview(ui: &mut Ui, p: &TipPreview, t: Lang) {
-    Frame::new().fill(color::toolbar()).corner_radius(CornerRadius::same(6)).inner_margin(Margin::same(8)).show(ui, |ui| {
+    Frame::new().fill(color::raised()).corner_radius(CornerRadius::same(6)).inner_margin(Margin::same(8)).show(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.spacing_mut().item_spacing.y = 3.0;
         ui.add(Label::new(type_scale::section_text(ui, &p.heading)).wrap());

@@ -100,7 +100,7 @@ fn chip(ui: &mut Ui, text: &str) -> bool {
     let size = vec2(galley.size().x + 30.0, 20.0);
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
     let p = ui.painter();
-    p.rect_filled(rect, CornerRadius::same(3), color::toolbar());
+    p.rect_filled(rect, CornerRadius::same(3), color::raised());
     p.galley(pos2(rect.left() + 6.0, rect.center().y - galley.size().y / 2.0), galley, color::text());
     let cross = Rect::from_center_size(pos2(rect.right() - 11.0, rect.center().y), vec2(18.0, 18.0));
     let r = ui.interact(cross, ui.id().with(("remove", rect.left().to_bits(), rect.top().to_bits())), Sense::click());

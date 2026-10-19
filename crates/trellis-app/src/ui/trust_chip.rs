@@ -22,7 +22,7 @@ pub fn show(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     };
     let galley = ui.painter().layout_no_wrap("Untrusted".into(), type_scale::font(type_scale::SMALL), color::text());
     let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 34.0, HEIGHT), Sense::click());
-    let amber = color::amber();
+    let amber = color::warn();
     let p = ui.painter();
     let fill = amber.gamma_multiply(if resp.hovered() { 0.28 } else { 0.16 });
     p.rect_filled(rect, CornerRadius::same((HEIGHT / 2.0) as u8), fill);

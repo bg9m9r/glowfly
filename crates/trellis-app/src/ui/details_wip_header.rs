@@ -101,7 +101,7 @@ pub(super) fn header(ui: &mut Ui, title: String, staged: bool, count: usize, ctx
     // they keep their own clicks.
     let sense = if staged { Sense::click() } else { Sense::hover() };
     let scope = ui.scope_builder(egui::UiBuilder::new().sense(sense), |ui| {
-        egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
+        egui::Frame::new().fill(color::raised()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     buttons(ui, &title, staged, count, ctx, msgs);

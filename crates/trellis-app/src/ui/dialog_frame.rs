@@ -239,5 +239,5 @@ impl Open {
 pub fn ack(ui: &mut Ui, t: Lang, acked: &mut bool, label: Option<&str>) -> Response {
     ui.add_space(10.0);
     let text = label.unwrap_or(t.tr("common.ack.check"));
-    controls::checkbox(ui, acked, RichText::new(text).color(color::red()))
+    controls::checkbox(ui, acked, RichText::new(text).color(color::removed()))
 }

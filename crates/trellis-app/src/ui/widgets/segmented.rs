@@ -56,7 +56,7 @@ pub fn segmented_opts<T: Copy + PartialEq>(ui: &mut Ui, current: T, options: &[S
         .collect();
     let total = widths.iter().sum::<f32>() + 2.0 * INSET;
     let (track, track_resp) = ui.allocate_exact_size(vec2(total, HEIGHT), Sense::hover());
-    ui.painter().rect_filled(track, CornerRadius::same(RADIUS), color::toolbar());
+    ui.painter().rect_filled(track, CornerRadius::same(RADIUS), color::raised());
     let mut picked = None;
     let mut x = track.left() + INSET;
     for (i, (o, w)) in options.iter().zip(widths).enumerate() {

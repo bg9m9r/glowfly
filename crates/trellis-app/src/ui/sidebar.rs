@@ -225,7 +225,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
             ui,
             widgets::ROW_INDENT,
             &title,
-            Some((&[Part::Text(&right)][..], color::purple())),
+            Some((&[Part::Text(&right)][..], color::progress())),
             slot,
             selected,
             false,

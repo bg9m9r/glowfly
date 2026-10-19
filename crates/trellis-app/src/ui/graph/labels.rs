@@ -224,7 +224,7 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
         let mut hit = Rect::from_min_max(drawn[0].min, pos2(end, drawn[0].max.y));
         if f.plus {
             let hidden = row.chips.len() - f.shown;
-            end += GAP + widgets::chip(&rp, end + GAP, mid, &format!("+{hidden}"), color::toolbar(), color::weak());
+            end += GAP + widgets::chip(&rp, end + GAP, mid, &format!("+{hidden}"), color::raised(), color::weak());
             hit.max.x = end;
         }
         out.labels_hit = Some(hit);

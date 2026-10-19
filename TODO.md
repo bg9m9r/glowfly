@@ -274,7 +274,7 @@ until this list says which option was chosen.
 - [x] **Small fixes from testing**: the terminal tab bar's + is centred and drawn like the ×
       (the repository tab bar's too); the ⚠ badge by the branch picker says on hover what it
       warns about and opens it on click
-- [ ] **Brand colour and tinted neutrals** (from the colour review, 2026-10-19): the accent moves
+- [x] **Brand colour and tinted neutrals** (from the colour review, 2026-10-19): the accent moves
       from teal to the icon's lattice green, with the icon's sand as a second brand colour.
       Accent: dark #4dc588 (OKLCH 0.74 0.14 158) with dark ink #0f1a14 on primary buttons;
       light #14764a (0.50 0.11 158) with white. Sand carries tags (replacing today's tag
@@ -2783,3 +2783,22 @@ here, under the item they grew from.
 - The chip's hover and click failure seen in the running app didn't reproduce headlessly (pointer
   tests, the whole app, 60 fps mouse moves); if it recurs, check egui's hit-test there with
   `debug.show_interactive_widgets`
+
+### Brand colour and tinted neutrals
+
+- Put the menu bar and the repository tab strip on the chrome colour, with the active tab lifted
+  (goes with Window chrome and toolbar)
+- Retint the diff, hunk and banner backgrounds onto the tinted neutrals (the blue-grey hunk_bg
+  sits on green-tinted panels)
+- Status-coloured chips on the raised fill (issue state, a thread's Outdated, rebase step chips)
+  use the status chip tint, so their text reaches 4.5:1 in light
+- Give errors and failures their own attention colour instead of removed's red, and success its
+  own token instead of added's green
+- Theme files: note when a file uses an old colour name (green, red, amber, blue, purple) and
+  offer the new one
+- Theme files set the repository group colours
+- Move the high-contrast tag chips onto sand too (they keep their amber-tinted tags)
+- Retune the favourite star and other non-warning uses of warn (favourites, CI pending) once
+  Vivid colour gives each job its own colour
+- A slightly stronger modal backdrop in Dark: its darker panel now drops only about 8 L* under
+  the backdrop

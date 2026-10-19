@@ -89,9 +89,9 @@ fn release(ui: &mut egui::Ui, t: Lang, r: &ReleaseNotes, new: bool, msgs: &mut V
         if new {
             // As wide as the chip draws its text (`widgets::chip`), at least the English slot.
             let text = t.tr("release_notes.new_chip");
-            let text_w = ui.painter().layout_no_wrap(text.into(), type_scale::font(type_scale::CAPTION), color::green()).size().x;
+            let text_w = ui.painter().layout_no_wrap(text.into(), type_scale::font(type_scale::CAPTION), color::added()).size().x;
             let (rect, _) = ui.allocate_exact_size(vec2(36.0_f32.max(text_w + 12.0), 18.0), Sense::hover());
-            widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::green().gamma_multiply(0.25), color::green());
+            widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::added().gamma_multiply(0.25), color::added());
         }
     });
     for s in &r.sections {
@@ -106,9 +106,9 @@ fn section(ui: &mut egui::Ui, s: &NoteSection, msgs: &mut Vec<Msg>) {
             if s.breaking {
                 // The font has no warning sign: paint one.
                 let (rect, _) = ui.allocate_exact_size(vec2(18.0, 16.0), Sense::hover());
-                widgets::paint_icon(ui.painter(), rect.center(), Icon::Warning, color::amber());
+                widgets::paint_icon(ui.painter(), rect.center(), Icon::Warning, color::warn());
             }
-            let col = if s.breaking { color::amber() } else { color::strong() };
+            let col = if s.breaking { color::warn() } else { color::strong() };
             ui.label(RichText::new(&s.title).font(type_scale::strong(ui, type_scale::BODY)).color(col));
         });
     }

@@ -134,7 +134,7 @@ fn entry(ui: &mut Ui, e: &Entry, settings: &Settings, now: i64, offset: i32) {
 /// The comment box and its button, with the last post's failure above it.
 fn comment_box(ui: &mut Ui, v: &mut PrView, msgs: &mut Vec<Msg>) {
     if let Some(e) = error_for(v, &PrAction::Comment) {
-        note(ui, e.to_owned(), color::red());
+        note(ui, e.to_owned(), color::removed());
     }
     let edit = egui::TextEdit::multiline(&mut v.forms.comment).hint_text("Write a comment").desired_rows(3).desired_width(f32::INFINITY);
     controls::field(ui, edit);

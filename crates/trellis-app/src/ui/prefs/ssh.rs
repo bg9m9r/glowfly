@@ -154,7 +154,7 @@ fn actions(ui: &mut Ui, key: &SshKeyPair, page: &SshPage, cx: &SshContext, msgs:
             })
             .collect();
         if key.fingerprint.as_deref().is_some_and(|fp| page.agent.as_ref().is_some_and(|a| a.holds(fp))) {
-            chips.push(("In agent".into(), color::green()));
+            chips.push(("In agent".into(), color::added()));
         }
         chip_row(ui, &chips);
     });

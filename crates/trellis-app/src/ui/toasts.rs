@@ -55,14 +55,14 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
             let fade = 1.0 - (t.at.elapsed().as_secs_f32() - (t.lifetime().as_secs_f32() - 1.0)).clamp(0.0, 1.0);
             // A failure stays red with a button too (Details); other toasts with one are blue.
             let accent = if !t.ok {
-                color::red()
+                color::removed()
             } else if t.action.is_some() {
-                color::blue()
+                color::info()
             } else {
-                color::green()
+                color::added()
             };
             egui::Frame::new()
-                .fill(color::toolbar().gamma_multiply(fade))
+                .fill(color::raised().gamma_multiply(fade))
                 .stroke(Stroke::new(1.0_f32, accent.gamma_multiply(fade)))
                 .corner_radius(4)
                 .inner_margin(egui::Margin::symmetric(PAD_X, 8))

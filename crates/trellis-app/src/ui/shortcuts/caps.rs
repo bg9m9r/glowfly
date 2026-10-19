@@ -61,7 +61,7 @@ impl Caps {
         let hovered = sense.senses_click() && resp.hovered();
         let painter = ui.painter();
         let border = if hovered { color::primary_border() } else { color::faint() };
-        let fill = if hovered { color::hover() } else { color::toolbar() };
+        let fill = if hovered { color::hover() } else { color::raised() };
         let fg = if self.dim { color::faint() } else { color::text() };
         let mut x = rect.left();
         for (cap, g) in self.pieces {

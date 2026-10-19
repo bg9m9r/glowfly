@@ -162,7 +162,7 @@ fn chip(ui: &mut Ui, parts: &[Part]) -> egui::Response {
     let text = parts_text(parts);
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, &text));
     let p = ui.painter();
-    p.rect_filled(rect, CornerRadius::same(CHIP_RADIUS), color::toolbar());
+    p.rect_filled(rect, CornerRadius::same(CHIP_RADIUS), color::raised());
     let mut x = rect.left() + CHIP_PAD;
     let y = rect.center().y;
     for part in parts {

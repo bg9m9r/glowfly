@@ -22,7 +22,7 @@ pub(super) fn summary(ui: &mut Ui, s: &LfsSummary, msgs: &mut Vec<Msg>) {
             }
         }
         if let Some(w) = &s.warning {
-            ui.add(egui::Label::new(RichText::new(w).color(color::amber())).wrap());
+            ui.add(egui::Label::new(RichText::new(w).color(color::warn())).wrap());
         }
         ui.add_space(4.0);
         if ui.button(SUMMARY_SHOW_POINTER).clicked() {

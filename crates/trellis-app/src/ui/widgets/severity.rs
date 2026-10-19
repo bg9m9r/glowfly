@@ -17,9 +17,9 @@ impl Severity {
     /// The mark's colour: red, amber or blue.
     pub fn color(self) -> Color32 {
         match self {
-            Severity::Error => color::red(),
-            Severity::Warning => color::amber(),
-            Severity::Info => color::blue(),
+            Severity::Error => color::removed(),
+            Severity::Warning => color::warn(),
+            Severity::Info => color::info(),
         }
     }
 

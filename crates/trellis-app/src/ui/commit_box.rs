@@ -71,7 +71,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
         s.request_focus();
     }
     let len = st.draft.summary.chars().count();
-    let c = if len > 72 { color::red() } else { color::faint() };
+    let c = if len > 72 { color::removed() } else { color::faint() };
     ui.label(RichText::new(format!("{len}/72")).size(type_scale::SMALL).color(c));
     let d = spell_text_edit(ui, &mut st.draft.description, t.tr("commit.description_hint"), 4, &mut cache.speller, spell);
     super::access::name_field(&d, t.tr("commit.description_hint"));
@@ -129,7 +129,7 @@ fn more_menu(ui: &mut egui::Ui, draft: &mut CommitDraft, t: Lang) {
     let on = draft.skip_hooks;
     let mut b = egui::Button::new("").min_size(vec2(MORE_W, MORE_W));
     if on {
-        b = b.fill(contrast::mix(color::panel(), color::amber(), 0.25)).stroke(Stroke::new(1.0_f32, color::amber()));
+        b = b.fill(contrast::mix(color::panel(), color::warn(), 0.25)).stroke(Stroke::new(1.0_f32, color::warn()));
     }
     let menu = egui::menu::menu_custom_button(ui, b, |ui| {
         let check = controls::checkbox(ui, &mut draft.skip_hooks, t.tr("commit.skip_hooks.check"));
@@ -140,7 +140,7 @@ fn more_menu(ui: &mut egui::Ui, draft: &mut CommitDraft, t: Lang) {
     });
     let tip = if on { t.tr("commit.more.skipping_tip") } else { t.tr("commit.more.tip") };
     let r = menu.response.on_hover_text(tip);
-    widgets::paint_icon(ui.painter(), r.rect.center(), Icon::More, if on { color::amber() } else { color::text() });
+    widgets::paint_icon(ui.painter(), r.rect.center(), Icon::More, if on { color::warn() } else { color::text() });
     // The name stays the same either way, so the button is always found by it.
     super::access::name_button(&r, true, t.tr("commit.more.tip"));
 }

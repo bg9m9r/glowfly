@@ -20,8 +20,8 @@ pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let Some((text, kind)) = st.updates.chip(t) else { return };
     let accent = match kind {
-        ChipKind::Failed => color::red(),
-        ChipKind::Available | ChipKind::Downloading | ChipKind::Downloaded => color::blue(),
+        ChipKind::Failed => color::removed(),
+        ChipKind::Available | ChipKind::Downloading | ChipKind::Downloaded => color::info(),
     };
     let font = type_scale::font(type_scale::SMALL);
     let text_w = ui.painter().layout_no_wrap(text.clone(), font.clone(), color::text()).size().x;

@@ -32,10 +32,10 @@ pub enum BannerKind {
 impl BannerKind {
     fn color(self) -> Color32 {
         match self {
-            BannerKind::Info => color::blue(),
-            BannerKind::Warning => color::amber(),
-            BannerKind::Error => color::red(),
-            BannerKind::Progress => color::accent(),
+            BannerKind::Info => color::info(),
+            BannerKind::Warning => color::warn(),
+            BannerKind::Error => color::removed(),
+            BannerKind::Progress => color::progress(),
         }
     }
 
@@ -113,7 +113,7 @@ pub fn frame<R>(ui: &mut Ui, kind: BannerKind, icon: Option<(Icon, Color32)>, co
             (None, Some(s)) => severity::paint(ui.painter(), c, ICON, s, s.color()),
             (None, None) => {
                 let spin = Rect::from_center_size(c, vec2(SPINNER, SPINNER));
-                egui::Spinner::new().size(SPINNER).color(color::accent()).paint_at(ui, spin);
+                egui::Spinner::new().size(SPINNER).color(color::progress()).paint_at(ui, spin);
             }
         }
         inner.inner

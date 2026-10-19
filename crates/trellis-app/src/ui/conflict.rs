@@ -38,7 +38,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if in_tool {
         ui.horizontal(|ui| {
             ui.add_space(8.0);
-            ui.label(RichText::new(format!("{IN_MERGE_TOOL}.")).color(color::amber()));
+            ui.label(RichText::new(format!("{IN_MERGE_TOOL}.")).color(color::warn()));
         });
     }
     auto_note(ui, view);

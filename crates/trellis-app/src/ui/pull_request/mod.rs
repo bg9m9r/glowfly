@@ -103,9 +103,9 @@ fn tabs(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
 /// The color of a tone.
 pub(super) fn tone_color(t: Tone) -> Color32 {
     match t {
-        Tone::Good => color::green(),
-        Tone::Bad => color::red(),
-        Tone::Warn => color::amber(),
+        Tone::Good => color::added(),
+        Tone::Bad => color::removed(),
+        Tone::Warn => color::warn(),
         Tone::Neutral => color::weak(),
     }
 }
@@ -143,7 +143,7 @@ fn header(ui: &mut Ui, t: Lang, v: &PrView, msgs: &mut Vec<Msg>) {
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 ui.add_space(8.0);
                 let (rect, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
-                widgets::paint_icon(ui.painter(), rect.center(), Icon::PullRequest, color::purple());
+                widgets::paint_icon(ui.painter(), rect.center(), Icon::PullRequest, color::progress());
                 ui.label(RichText::new(&v.label).color(color::weak()));
                 const DRAFT: &str = "Draft";
                 let chip_w = if pr.draft {
@@ -158,7 +158,7 @@ fn header(ui: &mut Ui, t: Lang, v: &PrView, msgs: &mut Vec<Msg>) {
                 });
                 if pr.draft {
                     let (rect, _) = ui.allocate_exact_size(vec2(chip_w, 20.0), Sense::hover());
-                    widgets::chip(ui.painter(), rect.left(), rect.center().y, DRAFT, color::toolbar(), color::weak());
+                    widgets::chip(ui.painter(), rect.left(), rect.center().y, DRAFT, color::raised(), color::weak());
                 }
             });
         });

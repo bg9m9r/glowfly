@@ -29,6 +29,6 @@ pub(super) fn paint_reset(ui: &Ui, rect: Rect, text: &str, shade: Shade) {
 
 /// A merge row's dot where other rows have their grip, like the graph's merge nodes.
 pub(super) fn paint_merge_mark(ui: &Ui, rect: Rect, dropped: bool) {
-    let c = if dropped { color::faint() } else { color::purple() };
+    let c = if dropped { color::faint() } else { color::progress() };
     ui.painter().circle_filled(pos2(rect.left() + GRIP_X, rect.center().y), 5.0, c);
 }

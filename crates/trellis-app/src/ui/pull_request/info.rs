@@ -19,11 +19,11 @@ fn status(ui: &mut Ui, v: &PrView) {
     let pr = &v.pr;
     let mut any = false;
     if pr.draft {
-        note(ui, "Draft: still in progress, not ready to merge.", color::amber());
+        note(ui, "Draft: still in progress, not ready to merge.", color::warn());
         any = true;
     }
     match v.state() {
-        Some(PrState::Merged) => note(ui, format!("Merged into {}", printable(&pr.target)), color::green()),
+        Some(PrState::Merged) => note(ui, format!("Merged into {}", printable(&pr.target)), color::added()),
         Some(PrState::Closed) => note(ui, "Closed without merging", color::weak()),
         _ => {}
     }

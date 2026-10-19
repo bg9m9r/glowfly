@@ -51,7 +51,7 @@ pub(super) fn panes(
     let half_view = (ui.available_width() / 2.0).round();
     // Column headers: the side, its name and Take all.
     let (strip, _) = ui.allocate_exact_size(vec2(ui.available_width(), 26.0), Sense::hover());
-    ui.painter().rect_filled(strip, 0.0, color::toolbar());
+    ui.painter().rect_filled(strip, 0.0, color::raised());
     for (side, title, name, r) in [
         (Side::Ours, "Ours", &file.labels.ours, Rect::from_min_max(strip.min, pos2(strip.left() + half_view, strip.bottom()))),
         (Side::Theirs, "Theirs", &file.labels.theirs, Rect::from_min_max(pos2(strip.left() + half_view, strip.top()), strip.max)),

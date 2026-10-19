@@ -26,8 +26,8 @@ pub(super) fn display(line: &str) -> String {
 
 pub(super) fn tint(side: Side) -> Color32 {
     match side {
-        Side::Ours => color::blue().gamma_multiply(0.18),
-        Side::Theirs => color::purple().gamma_multiply(0.18),
+        Side::Ours => color::info().gamma_multiply(0.18),
+        Side::Theirs => color::progress().gamma_multiply(0.18),
     }
 }
 

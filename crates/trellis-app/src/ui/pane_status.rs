@@ -74,7 +74,7 @@ pub fn failed_line(ui: &mut Ui, t: Lang, f: Failure, msgs: &mut Vec<Msg>) {
     ui.vertical(|ui| {
         ui.horizontal(|ui| {
             let (rect, _) = ui.allocate_exact_size(vec2(LINE_MARK, LINE_MARK), egui::Sense::hover());
-            severity::paint(ui.painter(), rect.center(), LINE_MARK, Severity::Warning, color::amber());
+            severity::paint(ui.painter(), rect.center(), LINE_MARK, Severity::Warning, color::warn());
             ui.label(RichText::new(f.title).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         });
         ui.add(egui::Label::new(RichText::new(&message).color(color::weak())).wrap());

@@ -62,16 +62,16 @@ fn line(ui: &mut Ui, text: String, c: egui::Color32) {
 /// The problems and the error come from trellis-core as they are.
 fn problems(ui: &mut Ui, t: Lang, choice: &ThemeChoice, cat: &ThemeCatalog) {
     if let Some(e) = &cat.error {
-        line(ui, e.clone(), color::red());
+        line(ui, e.clone(), color::removed());
     }
     let ThemeChoice::Custom(id) = choice else { return };
     let Some(f) = cat.get(id) else {
         let dark = theme_names::builtin(t, BuiltinTheme::Dark);
-        line(ui, t.trf("prefs.ui.theme.not_in_folder", &[("file", &format!("{id}.json")), ("theme", &dark)]), color::amber());
+        line(ui, t.trf("prefs.ui.theme.not_in_folder", &[("file", &format!("{id}.json")), ("theme", &dark)]), color::warn());
         return;
     };
     for p in &f.problems {
-        line(ui, format!("{}: {p}", f.file_name()), if p.is_fatal() { color::red() } else { color::amber() });
+        line(ui, format!("{}: {p}", f.file_name()), if p.is_fatal() { color::removed() } else { color::warn() });
     }
     line(ui, t.trf("prefs.ui.theme.base", &[("theme", &theme_names::builtin(t, f.base))]), color::weak());
 }

@@ -79,7 +79,7 @@ fn chip(ui: &mut Ui, text: &str, fg: Color32) {
     let w = ui.painter().layout_no_wrap(text.to_owned(), type_scale::font(type_scale::CAPTION), fg).size().x + 12.0;
     let (rect, resp) = ui.allocate_exact_size(vec2(w, 20.0), Sense::hover());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, text));
-    widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::toolbar(), fg);
+    widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::raised(), fg);
 }
 
 /// A link that goes to the thread's line, or says why it can't.
@@ -120,7 +120,7 @@ pub(super) fn card(ui: &mut Ui, v: &mut PrView, id: &str, place: Place, ctx: &Ct
     }
     let failed = error_for(v, &PrAction::Reply(t.id.clone())).or_else(|| error_for(v, &PrAction::Resolve(t.id.clone())));
     if let Some(e) = failed {
-        note(ui, e.to_owned(), color::red());
+        note(ui, e.to_owned(), color::removed());
     }
     ui.add_space(6.0);
 }
@@ -143,10 +143,10 @@ fn header(ui: &mut Ui, t: &ReviewThread, place: Place, open: bool, ctx: &Ctx, ms
                 ui.label(RichText::new("on").color(color::weak()));
                 go_link(ui, where_text(t), &t.id, blocked.as_ref(), msgs);
                 if t.outdated {
-                    chip(ui, "Outdated", color::amber());
+                    chip(ui, "Outdated", color::warn());
                 }
                 if t.resolved {
-                    chip(ui, "Resolved", color::green());
+                    chip(ui, "Resolved", color::added());
                     if let Some(by) = &t.resolved_by {
                         ui.label(RichText::new(format!("by {}", printable(by))).color(color::weak()));
                     }

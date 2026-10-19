@@ -128,7 +128,7 @@ fn paint_row(ui: &egui::Ui, rect: Rect, text: &str, checked: bool, enabled: bool
         p.rect_filled(rect, CornerRadius::same(3), color::hover());
     }
     if checked {
-        let (c, s) = (pos2(rect.left() + 11.0, rect.center().y), Stroke::new(1.8_f32, color::blue()));
+        let (c, s) = (pos2(rect.left() + 11.0, rect.center().y), Stroke::new(1.8_f32, color::info()));
         p.line_segment([pos2(c.x - 4.0, c.y), pos2(c.x - 1.0, c.y + 3.0)], s);
         p.line_segment([pos2(c.x - 1.0, c.y + 3.0), pos2(c.x + 5.0, c.y - 4.0)], s);
     }

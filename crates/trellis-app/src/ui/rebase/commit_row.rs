@@ -13,9 +13,9 @@ pub(super) fn action_color(a: RebaseAction) -> Color32 {
     match a {
         RebaseAction::Pick => color::weak(),
         RebaseAction::Reword => color::primary(),
-        RebaseAction::Squash | RebaseAction::Fixup => color::purple(),
-        RebaseAction::Drop => color::red(),
-        RebaseAction::Edit => color::amber(),
+        RebaseAction::Squash | RebaseAction::Fixup => color::progress(),
+        RebaseAction::Drop => color::removed(),
+        RebaseAction::Edit => color::warn(),
     }
 }
 
@@ -45,7 +45,7 @@ pub(super) fn paint_row(ui: &Ui, rect: Rect, item: &TodoItem, look: &Look, shade
     if item.action.combines() {
         // An L from the row above into this one: the commit melds into the one before it.
         let (cx, cy) = (x + 6.0, rect.center().y);
-        let s = Stroke::new(1.5_f32, color::purple());
+        let s = Stroke::new(1.5_f32, color::progress());
         p.line_segment([pos2(cx, rect.top() - GAP), pos2(cx, cy)], s);
         p.line_segment([pos2(cx, cy), pos2(cx + INDENT - 8.0, cy)], s);
         x += INDENT;
@@ -84,7 +84,7 @@ fn shown_summary(item: &TodoItem) -> &str {
 /// a step's kind).
 pub(super) fn paint_chip(ui: &Ui, row: Rect, text: &str, c: Color32) {
     let rect = Rect::from_min_size(pos2(row.left() + COMBO_X, row.center().y - 11.0), vec2(COMBO_W, 22.0));
-    ui.painter().rect_filled(rect, CornerRadius::same(3), color::toolbar());
+    ui.painter().rect_filled(rect, CornerRadius::same(3), color::raised());
     let pos = pos2(rect.left() + 8.0, rect.center().y);
     ui.painter().text(pos, Align2::LEFT_CENTER, text, type_scale::font(type_scale::BODY), c);
 }

@@ -21,7 +21,7 @@ fn keys_match_theme_files() {
     }
     assert_eq!((p.get("acent"), p.get_mut("dark").is_none()), (None, true));
     assert_eq!(p.hex_entries().len(), COLOR_KEYS.len());
-    assert_eq!(p.hex_entries()[3], ("input", [3, 1, 2]));
+    assert_eq!((p.hex_entries()[3].0, p.hex_entries()[4]), ("raised", ("input", [4, 1, 2])));
 }
 
 #[test]
@@ -30,11 +30,11 @@ fn builtins() {
         assert_eq!(builtin(t).dark, t.is_dark(), "{t:?}");
     }
     // A few values pinned, so a palette change is deliberate.
-    assert_eq!((DARK.bg, DARK.text, DARK.syn_attr, DARK.diff_del_word), (rgb(0x1a1d22), rgb(0xdde1e7), rgb(0x8ac6d0), rgb(0x76303a)));
-    assert_eq!((LIGHT.bg, LIGHT.text, LIGHT.syn_attr, LIGHT.diff_del_word), (rgb(0xf3f5f8), rgb(0x1f242b), rgb(0x006b75), rgb(0xf2b4b4)));
+    assert_eq!((DARK.bg, DARK.text, DARK.syn_attr, DARK.diff_del_word), (rgb(0x151b18), rgb(0xe0e6e3), rgb(0x8ac6d0), rgb(0x76303a)));
+    assert_eq!((LIGHT.bg, LIGHT.text, LIGHT.syn_attr, LIGHT.diff_del_word), (rgb(0xf9f7f1), rgb(0x161c19), rgb(0x006b75), rgb(0xf2b4b4)));
 }
 
-fn rgb(c: u32) -> Color32 {
+pub(super) fn rgb(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8)
 }
 
@@ -44,6 +44,7 @@ fn builtins_meet_the_contrast_rules() {
         "bg",
         "panel",
         "toolbar",
+        "raised",
         "input",
         "hover",
         "selected",
@@ -72,7 +73,7 @@ fn builtins_meet_the_contrast_rules() {
             check("text", bg, text_min);
         }
         check("strong", "selected", text_min);
-        for bg in ["bg", "panel", "toolbar", "input", "hover", "selected"] {
+        for bg in ["bg", "panel", "toolbar", "raised", "input", "hover", "selected"] {
             check("weak", bg, 4.5);
         }
         for bg in ["bg", "panel", "input"] {
@@ -89,11 +90,8 @@ fn builtins_meet_the_contrast_rules() {
                 check(s, bg, if high { 4.5 } else { 2.4 });
             }
         }
-        // Filled primary buttons (the commit button) carry white text.
-        let white = ratio(Color32::WHITE, p.primary);
-        if white < text_min {
-            failures.push(format!("{t:?}: white on primary is {white:.2}:1, below {text_min}:1"));
-        }
+        // Filled primary buttons (the commit button) carry `on_primary` text.
+        check("on_primary", "primary", text_min);
         let (text, weak, faint) = (ratio(p.text, p.panel), ratio(p.weak, p.panel), ratio(p.faint, p.panel));
         if weak < faint + 1.0 || text <= weak {
             failures.push(format!("{t:?}: on panel text {text:.2}, weak {weak:.2} and faint {faint:.2} are too close"));
@@ -147,35 +145,13 @@ fn change_colors_are_readable() {
             .into_iter()
             .chain(lanes)
             .collect();
-        for (name, fg) in [("green", p.green), ("red", p.red), ("amber", p.amber)] {
+        for name in ["added", "removed", "modified", "info", "progress", "warn"] {
+            let fg = p.get(name).unwrap();
             for (bg_name, bg) in &bgs {
                 let r = ratio(fg, *bg);
                 if r < min {
                     failures.push(format!("{t:?}: {name} on {bg_name} is {r:.2}:1, below {min}:1"));
                 }
-            }
-        }
-    }
-    assert!(
-        failures.is_empty(),
-        "{}",
-        failures.join(
-            "
-"
-        )
-    );
-}
-
-#[test]
-fn change_chips_are_readable() {
-    let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
-        for (name, col) in [("green", p.green), ("red", p.red), ("amber", p.amber)] {
-            let (fill, fg) = contrast::change_chip(col, p);
-            let r = ratio(fg, fill);
-            if fill.a() != 255 || r < 4.5 {
-                failures.push(format!("{t:?} {name} chip: {r:.2}:1, fill alpha {}", fill.a()));
             }
         }
     }
@@ -222,45 +198,14 @@ fn ref_chips_are_soft() {
 fn backdrop_dims_light_and_dark_alike() {
     assert!(backdrop(&DARK).a() > backdrop(&LIGHT).a());
     // High contrast dark is left out: its surfaces are already black, so there is little to dim.
+    // Dark's panel is near black too (L* about 12), so it drops by a little less.
     for (name, p) in [("dark", DARK), ("light", LIGHT), ("sand", SAND), ("high contrast light", HIGH_CONTRAST_LIGHT)] {
         let dimmed = contrast::dimmed(p.panel, backdrop(&p));
         let drop = contrast::lightness(p.panel) - contrast::lightness(dimmed);
-        assert!((9.0..=25.0).contains(&drop), "{name}: panel L* drops by {drop:.1}");
+        assert!((8.0..=25.0).contains(&drop), "{name}: panel L* drops by {drop:.1}");
         if !p.dark {
             assert!(contrast::lightness(dimmed) >= 65.0, "{name}: dimmed panel is too dark");
         }
-    }
-}
-
-/// The HSL hue of `c`, in degrees (0 for a grey).
-fn hue(c: Color32) -> f32 {
-    let [r, g, b] = [c.r(), c.g(), c.b()].map(|v| f32::from(v) / 255.0);
-    let (max, min) = (r.max(g).max(b), r.min(g).min(b));
-    let d = max - min;
-    if d == 0.0 {
-        return 0.0;
-    }
-    let h = if max == r {
-        ((g - b) / d).rem_euclid(6.0)
-    } else if max == g {
-        (b - r) / d + 2.0
-    } else {
-        (r - g) / d + 4.0
-    };
-    h * 60.0
-}
-
-#[test]
-fn one_teal_accent_and_amber_for_progress() {
-    assert!((hue(rgb(0x2ec4d1)) - 184.9).abs() < 0.5 && hue(rgb(0xff0000)) == 0.0 && hue(rgb(0x0000ff)) == 240.0);
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
-        for (key, c) in [("accent", p.accent), ("primary", p.primary), ("primary_border", p.primary_border), ("selected", p.selected)] {
-            let h = hue(c);
-            assert!((170.0..=200.0).contains(&h), "{t:?}: {key}'s hue is {h:.0}");
-        }
-        let h = hue(p.amber);
-        assert!((30.0..=50.0).contains(&h), "{t:?}: amber's hue is {h:.0}");
     }
 }
 
@@ -270,9 +215,11 @@ fn panels_are_lifted() {
         let p = builtin(t);
         let l = contrast::lightness;
         assert!(l(p.panel) > l(p.bg), "{t:?}: panel is lighter than the canvas");
-        if p.dark {
-            assert!(l(p.toolbar) > l(p.panel), "{t:?}: toolbar is lighter than the panel");
+        if matches!(t, BuiltinTheme::Dark | BuiltinTheme::Light) {
+            assert!(l(p.toolbar) < l(p.bg), "{t:?}: the chrome is darker than the canvas");
         }
+        let r = ratio(p.raised, p.panel);
+        assert!(r >= 1.08, "{t:?}: raised is only {r:.3}:1 off the panel");
     }
 }
 
@@ -306,7 +253,7 @@ fn egui_style_follows_the_palette() {
     }
 }
 
-fn ocean(base: BuiltinTheme, colors: &[(&'static str, ColorValue)]) -> ThemeFile {
+pub(super) fn ocean(base: BuiltinTheme, colors: &[(&'static str, ColorValue)]) -> ThemeFile {
     let mut f = ThemeFile::failed("ocean", std::path::Path::new("ocean.json"), trellis_core::settings::ThemeProblem::TooLarge);
     f.problems.clear();
     f.base = base;
@@ -319,7 +266,7 @@ fn build_applies_a_file() {
     let f = ocean(BuiltinTheme::Light, &[("accent", ColorValue::Rgb([1, 2, 3])), ("hover", ColorValue::Base("selected"))]);
     let p = custom::build(&f);
     assert_eq!((p.accent, p.hover, p.dark, p.bg), (Color32::from_rgb(1, 2, 3), LIGHT.selected, false, LIGHT.bg));
-    assert_eq!(custom::starter(&p)[9], ("accent", [1, 2, 3]));
+    assert_eq!(custom::starter(&p)[10], ("accent", [1, 2, 3]));
 }
 
 #[test]

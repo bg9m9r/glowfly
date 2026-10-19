@@ -202,7 +202,7 @@ fn row(
         if draggable {
             grip = Some(super::repo_list_drag::grip(ui, t.tr("repos.drag.grip")));
         }
-        let (icon, col) = if fav { (Icon::StarFilled, color::amber()) } else { (Icon::Star, color::weak()) };
+        let (icon, col) = if fav { (Icon::StarFilled, color::warn()) } else { (Icon::Star, color::weak()) };
         if widgets::small_icon(ui, icon, favorite_label(t, fav), col).clicked() {
             msgs.push(favorite());
         }

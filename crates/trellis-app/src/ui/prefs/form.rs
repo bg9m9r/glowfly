@@ -121,7 +121,7 @@ pub fn warn(ui: &mut Ui, text: &str) {
         ui.painter().add(egui::Shape::convex_polygon(
             vec![pos2(c.x, c.y - 5.0), pos2(c.x + 5.5, c.y + 4.5), pos2(c.x - 5.5, c.y + 4.5)],
             Color32::TRANSPARENT,
-            Stroke::new(1.3_f32, color::amber()),
+            Stroke::new(1.3_f32, color::warn()),
         ));
         ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
     });

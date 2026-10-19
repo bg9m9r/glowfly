@@ -130,7 +130,7 @@ fn body(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         }
         SessionStatus::Failed(error) => {
             st.terminal.focused = false;
-            ui.label(RichText::new(format!("Could not start the shell: {error}")).color(color::red()));
+            ui.label(RichText::new(format!("Could not start the shell: {error}")).color(color::removed()));
             ui.horizontal(|ui| {
                 if ui.add(buttons::secondary("Restart")).clicked() {
                     msgs.push(Msg::Terminal(TerminalMsg::Restart));

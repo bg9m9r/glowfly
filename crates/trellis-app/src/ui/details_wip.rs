@@ -179,7 +179,7 @@ pub(super) fn wip_file_row(
         super::path_warnings::mark(ui, f);
         super::lfs_badge::badge(ui, f);
         if let Some((text, green)) = note {
-            ui.label(RichText::new(text).size(type_scale::SMALL).color(if green { color::green() } else { color::weak() }));
+            ui.label(RichText::new(text).size(type_scale::SMALL).color(if green { color::added() } else { color::weak() }));
         }
     };
     let r = match count.zip(lines) {

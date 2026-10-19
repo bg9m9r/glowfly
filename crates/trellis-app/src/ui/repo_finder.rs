@@ -120,7 +120,7 @@ fn row(ui: &mut egui::Ui, t: Lang, r: &FinderRow, msgs: &mut Vec<Msg>) -> bool {
     let mut opened = false;
     let path = &r.repo.path;
     ui.horizontal(|ui| {
-        let (icon, col) = if r.favorite { (Icon::StarFilled, color::amber()) } else { (Icon::Star, color::weak()) };
+        let (icon, col) = if r.favorite { (Icon::StarFilled, color::warn()) } else { (Icon::Star, color::weak()) };
         if widgets::small_icon(ui, icon, favorite_label(t, r.favorite), col).clicked() {
             msgs.push(Msg::Recent(RecentMsg::SetFavorite { path: path.clone(), favorite: !r.favorite }));
         }

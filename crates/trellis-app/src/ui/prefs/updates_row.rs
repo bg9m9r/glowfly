@@ -32,17 +32,17 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
             UpdateStatus::Idle => {}
             UpdateStatus::Checking { .. } => spinning(ui, t.tr("updates.checking")),
             UpdateStatus::UpToDate => {
-                ui.label(RichText::new(t.tr("updates.up_to_date")).color(color::green()));
+                ui.label(RichText::new(t.tr("updates.up_to_date")).color(color::added()));
             }
             UpdateStatus::CheckFailed(e) => {
                 let text = t.trf("prefs.general.updates.couldnt_check", &[("error", e)]);
-                ui.add(egui::Label::new(RichText::new(text).color(color::red())).wrap());
+                ui.add(egui::Label::new(RichText::new(text).color(color::removed())).wrap());
                 if ui.add(buttons::secondary(t.tr("updates.try_again.button"))).clicked() {
                     send(msgs, UpdateMsg::CheckNow);
                 }
             }
             UpdateStatus::Available(o) => {
-                ui.label(RichText::new(available_text(t, &o.version)).font(type_scale::strong(ui, type_scale::BODY)).color(color::blue()));
+                ui.label(RichText::new(available_text(t, &o.version)).font(type_scale::strong(ui, type_scale::BODY)).color(color::info()));
                 ui.horizontal(|ui| {
                     let label = if o.asset.is_some() { t.tr("updates.download.button") } else { t.tr("updates.open_release_page.button") };
                     if ui.add(buttons::secondary(label)).clicked() {
@@ -68,7 +68,7 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
                 }
             }
             UpdateStatus::DownloadFailed { error, .. } => {
-                ui.add(egui::Label::new(RichText::new(download_failed_text(t, error)).color(color::red())).wrap());
+                ui.add(egui::Label::new(RichText::new(download_failed_text(t, error)).color(color::removed())).wrap());
                 if ui.add(buttons::secondary(t.tr("updates.try_again.button"))).clicked() {
                     send(msgs, UpdateMsg::Download);
                 }

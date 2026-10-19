@@ -31,14 +31,14 @@ pub(super) fn span_colors(style: &CellStyle) -> (Color32, Option<Color32>) {
 fn ansi(i: u8) -> Color32 {
     let dark = color::is_dark();
     let base = match i % 8 {
-        0 if dark => color::toolbar(),
+        0 if dark => color::raised(),
         0 => color::text(),
-        1 => color::red(),
-        2 => color::green(),
-        3 => color::amber(),
-        4 => color::blue(),
-        5 => color::purple(),
-        6 => color::accent(),
+        1 => color::removed(),
+        2 => color::added(),
+        3 => color::warn(),
+        4 => color::info(),
+        5 => color::progress(),
+        6 => color::syn_constant(),
         _ if dark => color::text(),
         _ => color::weak(),
     };
@@ -64,7 +64,7 @@ mod tests {
     fn bold_brightens_and_inverse_swaps() {
         color::set_dark(true);
         let red = resolve(TermColor::Indexed(1), Color32::BLACK);
-        assert_eq!(red, color::red());
+        assert_eq!(red, color::removed());
         let (bold, _) = span_colors(&CellStyle { fg: TermColor::Indexed(1), bold: true, ..Default::default() });
         assert_eq!(bold, resolve(TermColor::Indexed(9), Color32::BLACK));
         assert_ne!(bold, red);

@@ -32,7 +32,7 @@ pub(super) fn paint_step(ui: &Ui, rect: Rect, step: &TodoStep, shade: Shade) {
             }
         }
         TodoStep::Break => {
-            paint_chip(ui, rect, "break", color::amber());
+            paint_chip(ui, rect, "break", color::warn());
             paint_cut_text(p, pos2(x, cy), BREAK_NOTE, type_scale::font(type_scale::BODY), color::weak(), max_w);
         }
         _ => {}

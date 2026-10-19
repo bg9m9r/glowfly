@@ -48,8 +48,8 @@ pub(super) fn section(
     for sm in snap.submodules.iter().filter(|s| shown(&s.path) || shown(&s.name)) {
         let col = match sm.state {
             SubmoduleState::Uninitialized => color::weak(),
-            SubmoduleState::Missing => color::red(),
-            _ => color::amber(),
+            SubmoduleState::Missing => color::removed(),
+            _ => color::warn(),
         };
         let word = row_word(sm);
         let right = word.as_deref().map(|w| [widgets::Part::Text(w)]);
@@ -104,31 +104,31 @@ fn menu(ui: &mut egui::Ui, sm: &SubmoduleInfo, snap: &Snapshot, cx: &SectionCx, 
 /// The row's status marker, painted (the bundled fonts lack suitable glyphs). An added
 /// submodule gets a small plus at the top right.
 fn marker(p: &Painter, c: Pos2, sm: &SubmoduleInfo) {
-    let stroke = Stroke::new(1.5_f32, color::amber());
+    let stroke = Stroke::new(1.5_f32, color::warn());
     match sm.state {
         SubmoduleState::InSync => {
-            p.circle_filled(c, 4.0, color::green());
+            p.circle_filled(c, 4.0, color::added());
         }
         SubmoduleState::OutOfSync => {
-            p.circle_filled(c, 4.0, color::amber());
+            p.circle_filled(c, 4.0, color::warn());
         }
         SubmoduleState::Dirty => {
             p.circle_stroke(c, 4.0, stroke);
         }
         SubmoduleState::DirtyOutOfSync => {
-            p.circle_filled(c, 4.0, color::amber());
+            p.circle_filled(c, 4.0, color::warn());
             p.circle_stroke(c, 6.0, stroke);
         }
         SubmoduleState::Uninitialized => widgets::dashed_circle(p, c, 4.0, Stroke::new(1.5_f32, color::weak())),
         SubmoduleState::Missing => {
-            let red = Stroke::new(1.5_f32, color::red());
+            let red = Stroke::new(1.5_f32, color::removed());
             widgets::dashed_circle(p, c, 4.0, red);
             p.line_segment([c + vec2(-3.5, 3.5), c + vec2(3.5, -3.5)], red);
         }
     }
     if sm.added {
         let plus = c + vec2(5.0, -5.0);
-        let green = Stroke::new(1.5_f32, color::green());
+        let green = Stroke::new(1.5_f32, color::added());
         p.line_segment([plus - vec2(2.5, 0.0), plus + vec2(2.5, 0.0)], green);
         p.line_segment([plus - vec2(0.0, 2.5), plus + vec2(0.0, 2.5)], green);
     }

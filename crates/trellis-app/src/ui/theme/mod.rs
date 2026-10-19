@@ -18,6 +18,7 @@ pub mod color;
 pub mod contrast;
 pub mod controls;
 pub mod custom;
+pub mod families;
 pub mod fonts;
 pub mod spacing;
 pub mod type_scale;
@@ -56,8 +57,8 @@ pub fn apply_style(ctx: &egui::Context, p: &Palette) {
             v.widgets.noninteractive.fg_stroke = Stroke::new(1.0_f32, p.text);
             // egui fades hint text and disabled widgets toward this colour.
             v.widgets.noninteractive.weak_bg_fill = p.panel;
-            v.widgets.inactive.bg_fill = p.toolbar;
-            v.widgets.inactive.weak_bg_fill = p.toolbar;
+            v.widgets.inactive.bg_fill = p.raised;
+            v.widgets.inactive.weak_bg_fill = p.raised;
             v.widgets.inactive.fg_stroke = Stroke::new(1.0_f32, p.text);
             v.widgets.hovered.bg_fill = p.hover;
             v.widgets.hovered.weak_bg_fill = p.hover;
@@ -140,6 +141,8 @@ impl ThemeCache {
 
 #[cfg(test)]
 mod controls_tests;
+#[cfg(test)]
+mod family_tests;
 #[cfg(test)]
 mod snapshot_tests_controls;
 #[cfg(test)]

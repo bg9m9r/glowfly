@@ -197,7 +197,7 @@ fn drop_slot(left: f32, strip_left: f32, pitch: f32, n: usize) -> usize {
 
 /// The color of the `n`th group from the left, so neighbouring groups differ.
 fn group_color(n: usize) -> Color32 {
-    [color::blue(), color::purple(), color::green(), color::amber()][n % 4].gamma_multiply(0.8)
+    color::repo_group(n).gamma_multiply(0.8)
 }
 
 /// The strip under a grouped tab: inset at the group's outer ends, and across the `gap` to the

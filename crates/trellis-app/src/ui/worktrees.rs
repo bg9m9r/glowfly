@@ -57,9 +57,9 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
     for wt in list.iter().filter(|w| matches(w)) {
         let label = if wt.current { format!("✔  {}", wt.folder_name()) } else { wt.folder_name() };
         let col = if wt.locked.is_some() {
-            color::amber()
+            color::warn()
         } else if wt.missing {
-            color::red()
+            color::removed()
         } else {
             color::weak()
         };

@@ -66,7 +66,7 @@ pub fn identity(ui: &mut egui::Ui, w: &mut Welcome, settings: &Settings, keyboar
     }
     if let Some(e) = &f.error {
         ui.add_space(4.0);
-        ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
+        ui.add(egui::Label::new(RichText::new(e).color(color::removed())).wrap());
     }
 }
 
@@ -115,14 +115,14 @@ pub fn git(ui: &mut egui::Ui, t: Lang, git: &GitState, msgs: &mut Vec<Msg>) {
             ui.label(
                 RichText::new(t.trf("welcome.git.ready", &[("version", &version)]))
                     .font(type_scale::strong(ui, type_scale::BODY))
-                    .color(color::green()),
+                    .color(color::added()),
             );
             if let Some(path) = &info.path {
                 weak(ui, &trellis_core::native_path::shown(path));
             }
         }
         Some(problem) => {
-            ui.add(egui::Label::new(RichText::new(problem).color(color::amber())).wrap());
+            ui.add(egui::Label::new(RichText::new(problem).color(color::warn())).wrap());
             ui.add_space(4.0);
             if ui.link(t.tr("welcome.git.download.button")).clicked() {
                 msgs.push(Msg::OpenUrl(DOWNLOAD_GIT.into()));

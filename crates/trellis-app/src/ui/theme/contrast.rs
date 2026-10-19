@@ -1,4 +1,4 @@
-//! Contrast maths (WCAG relative luminance and ratio, CIE lightness) and the colours of the
+//! Contrast maths (WCAG relative luminance and ratio, CIE lightness, OKLCH for the tests) and the colours of the
 //! graph's ref chips, worked out so their text stays readable on every palette and lane.
 
 use super::color::Palette;
@@ -29,6 +29,23 @@ pub fn lightness(c: Color32) -> f64 {
     const E: f64 = 216.0 / 24389.0;
     const K: f64 = 24389.0 / 27.0;
     if y > E { 116.0 * y.cbrt() - 16.0 } else { K * y }
+}
+
+/// OKLCH (lightness 0 to 1, chroma, hue in degrees 0 to 360) of an sRGB colour.
+#[cfg(test)]
+pub fn oklch(c: Color32) -> (f64, f64, f64) {
+    let lin = |v: u8| {
+        let s = f64::from(v) / 255.0;
+        if s <= 0.04045 { s / 12.92 } else { ((s + 0.055) / 1.055).powf(2.4) }
+    };
+    let (r, g, b) = (lin(c.r()), lin(c.g()), lin(c.b()));
+    let l = (0.412_221_470_8 * r + 0.536_332_536_3 * g + 0.051_445_992_9 * b).cbrt();
+    let m = (0.211_903_498_2 * r + 0.680_699_545_1 * g + 0.107_396_956_6 * b).cbrt();
+    let s = (0.088_302_461_9 * r + 0.281_718_837_6 * g + 0.629_978_700_5 * b).cbrt();
+    let lightness = 0.210_454_255_3 * l + 0.793_617_785_0 * m - 0.004_072_046_8 * s;
+    let a = 1.977_998_495_1 * l - 2.428_592_205_0 * m + 0.450_593_709_9 * s;
+    let bb = 0.025_904_037_1 * l + 0.782_771_766_2 * m - 0.808_675_766_0 * s;
+    (lightness, a.hypot(bb), bb.atan2(a).to_degrees().rem_euclid(360.0))
 }
 
 /// `a` moved `t` (0 to 1) of the way to `b`, byte by byte in gamma space as egui blends. Opaque.
@@ -98,7 +115,9 @@ pub fn ref_chip(style: ChipStyle, lane: Color32, p: &Palette) -> (Color32, Color
 
 /// A change-kind chip's (fill, text) colours for a change of colour `col` (the WIP row's M / A / D
 /// chips): a soft opaque tint of it, with the text pushed until it reaches 4.5:1 on the tint.
+/// Light palettes tint at 10%, so the status colour itself reads at 4.5:1 there and only the
+/// odd one (Light's modified) is pushed; dark ones at 22%.
 pub fn change_chip(col: Color32, p: &Palette) -> (Color32, Color32) {
-    let fill = mix(p.bg, col, if p.dark { 0.22 } else { 0.16 });
+    let fill = mix(p.bg, col, if p.dark { 0.22 } else { 0.10 });
     (fill, readable_on(col, fill, p.dark, 4.5))
 }

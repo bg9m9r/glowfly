@@ -21,7 +21,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     egui::TopBottomPanel::top("sign_in_banner").frame(egui::Frame::new()).show(ctx, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for n in shown {
-            let b = Banner::new(BannerKind::Info).icon(Icon::Key, color::blue()).text(banner_line(n));
+            let b = Banner::new(BannerKind::Info).icon(Icon::Key, color::info()).text(banner_line(n));
             banner::show(ui, b, |ui| {
                 let (workdir, remote) = (n.workdir.clone(), n.remote.clone());
                 if ui.add(buttons::secondary("Not now")).clicked() {

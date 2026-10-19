@@ -123,8 +123,8 @@ fn state(ui: &mut egui::Ui, t: Lang, kind: SyncKind, s: &RowState, width: f32) {
         RowState::Done(o) => {
             let (text, bad) = outcome_text(kind, o);
             let col = match o {
-                Outcome::Untrusted => color::amber(),
-                _ if bad => color::red(),
+                Outcome::Untrusted => color::warn(),
+                _ if bad => color::removed(),
                 _ => color::text(),
             };
             match failure_tip(o) {

@@ -209,7 +209,7 @@ pub fn icon_button(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
     let enabled = ui.is_enabled();
     let (rect, resp) = ui.allocate_exact_size(vec2(26.0, 24.0), if enabled { Sense::click() } else { Sense::hover() });
     let p = ui.painter();
-    let fill = if enabled && resp.hovered() { color::hover() } else { color::toolbar() };
+    let fill = if enabled && resp.hovered() { color::hover() } else { color::raised() };
     p.rect_filled(rect, CornerRadius::same(3), fill);
     // The toolbar icons are drawn for ~20px; scale down by drawing at the center.
     paint_icon(p, rect.center(), icon, if enabled { color::text() } else { color::faint() });

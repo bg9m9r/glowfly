@@ -41,9 +41,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mu
     let b = badge(format, state);
     let (tint, glyph) = match b.verdict {
         _ if !done => (color::weak(), Glyph::Ring),
-        Verdict::Verified => (color::green(), Glyph::Check),
-        Verdict::Signed | Verdict::Expired => (color::amber(), Glyph::Ring),
-        Verdict::Revoked | Verdict::Bad => (color::red(), Glyph::Cross),
+        Verdict::Verified => (color::added(), Glyph::Check),
+        Verdict::Signed | Verdict::Expired => (color::warn(), Glyph::Ring),
+        Verdict::Revoked | Verdict::Bad => (color::removed(), Glyph::Cross),
     };
 
     let galley = ui.painter().layout_no_wrap(b.label.into(), type_scale::font(type_scale::SMALL), color::text());

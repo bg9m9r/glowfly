@@ -111,11 +111,11 @@ fn base_row(ui: &mut Ui, snap: &Snapshot, role: &str, name: &str, msgs: &mut Vec
     let y = rect.center().y;
     p.text(pos2(rect.left() + 8.0, y), Align2::LEFT_CENTER, role, type_scale::font(type_scale::SMALL), color::weak());
     let x = rect.left() + 110.0;
-    let name_col = if exists { color::strong() } else { color::red() };
+    let name_col = if exists { color::strong() } else { color::removed() };
     let t = p.text(pos2(x, y), Align2::LEFT_CENTER, name, type_scale::font(type_scale::BODY), name_col);
     let after = match oid {
         Some(o) => (short(o), color::faint()),
-        None if !exists => ("missing".to_owned(), color::red()),
+        None if !exists => ("missing".to_owned(), color::removed()),
         None => (String::new(), color::faint()),
     };
     p.text(pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, after.0, type_scale::mono(type_scale::SMALL), after.1);

@@ -181,7 +181,7 @@ fn skipped_chip(ui: &mut Ui, view: &BlameView, snap: Option<&Snapshot>, msgs: &m
         })
         .collect();
     let text = format!("Skipping {}", plural(view.skipped.len(), "commit", "commits"));
-    ui.label(RichText::new(text).color(color::amber())).on_hover_text(tip.join("\n"));
+    ui.label(RichText::new(text).color(color::warn())).on_hover_text(tip.join("\n"));
     if ui.add(buttons::secondary(SHOW_ALL).small()).on_hover_text("Stop skipping commits").clicked() {
         msgs.push(Msg::Blame(BlameMsg::ClearSkipped));
     }

@@ -7,7 +7,9 @@
 //! ```
 //!
 //! A color is `#rrggbb` or the name of another color, which resolves to that color's final
-//! value (the file's own, or the base theme's). Parsing never fails: everything that can't be
+//! value (the file's own, or the base theme's). The old names `green`, `red`, `amber`, `blue` and
+//! `purple` still work, as keys and as values, for `added`, `removed`, `modified`, `info` and
+//! `progress`; when a file sets both, the new name wins. Parsing never fails: everything that can't be
 //! used is reported as a [`ThemeProblem`] and falls back to the base theme, key by key. This
 //! module is pure; the I/O is in `themes_io.rs`.
 
@@ -21,17 +23,21 @@ pub use super::themes_io::{MAX_FILE_BYTES, create, load_all, load_dir, themes_di
 /// Every color a theme sets, in the palette's order.
 #[rustfmt::skip]
 pub const COLOR_KEYS: &[&str] = &[
-    "bg", "panel", "toolbar", "input", "border", "input_border", "dialog_border", "hover", "selected", "accent",
+    "bg", "panel", "toolbar", "raised", "input", "border", "input_border", "dialog_border", "hover", "selected", "accent",
     "text", "strong", "weak", "faint",
-    "green", "red", "amber", "blue", "purple",
+    "added", "removed", "modified", "info", "progress",
     "diff_add", "diff_del", "diff_add_sel", "diff_del_sel", "diff_add_word", "diff_del_word", "hunk_bg", "hunk_fg",
-    "banner", "primary", "primary_off", "primary_border", "danger", "danger_off", "tag_bg", "tag_fg",
+    "warn", "banner", "primary", "on_primary", "primary_off", "primary_border", "danger", "danger_off", "tag_bg", "tag_fg",
     "syn_comment", "syn_string", "syn_number", "syn_constant", "syn_keyword", "syn_type", "syn_function", "syn_attr",
 ];
 
-/// The palette name `s` stands for, as the `'static` key.
+/// Older color names and the keys they now stand for.
+const LEGACY_COLOR_KEYS: &[(&str, &str)] =
+    &[("green", "added"), ("red", "removed"), ("amber", "modified"), ("blue", "info"), ("purple", "progress")];
+
+/// The palette name `s` stands for, as the `'static` key: an exact key, else an older name's key.
 fn color_key(s: &str) -> Option<&'static str> {
-    COLOR_KEYS.iter().copied().find(|k| *k == s)
+    COLOR_KEYS.iter().copied().find(|k| *k == s).or_else(|| LEGACY_COLOR_KEYS.iter().find(|(old, _)| *old == s).map(|(_, k)| *k))
 }
 
 /// A palette that ships with Trellis; theme files start from one.
@@ -295,14 +301,19 @@ pub fn parse(id: &str, path: &Path, bytes: &[u8]) -> ThemeFile {
     if let Some(c) = colors {
         let mut entries: Vec<(&String, &Value)> = c.iter().collect();
         entries.sort_by(|a, b| a.0.cmp(b.0));
+        // Current names first, then the older ones, which only fill keys the file left unset.
+        let (legacy, current): (Vec<_>, Vec<_>) = entries.into_iter().partition(|(k, _)| LEGACY_COLOR_KEYS.iter().any(|(old, _)| old == k));
         let mut raw = BTreeMap::new();
-        for (k, v) in entries {
+        for (is_legacy, (k, v)) in current.into_iter().map(|e| (false, e)).chain(legacy.into_iter().map(|e| (true, e))) {
             let Some(key) = color_key(k) else {
                 file.problems.push(ThemeProblem::UnknownColor(crate::text::printable(k)));
                 continue;
             };
             let parsed = v.as_str().and_then(|s| parse_hex(s).map(Raw::Rgb).or_else(|| color_key(s.trim()).map(Raw::Alias)));
             match parsed {
+                Some(r) if is_legacy => {
+                    raw.entry(key).or_insert(r);
+                }
                 Some(r) => {
                     raw.insert(key, r);
                 }

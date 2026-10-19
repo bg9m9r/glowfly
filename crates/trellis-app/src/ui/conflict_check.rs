@@ -44,7 +44,7 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.add_space(8.0);
     let (rect, _) = ui.allocate_exact_size(vec2(galley.size().x + 36.0, HEIGHT), Sense::hover());
     let resp = ui.interact(rect, Id::new(CHIP_ID), Sense::click());
-    let amber = color::amber();
+    let amber = color::warn();
     let p = ui.painter();
     let radius = CornerRadius::same((HEIGHT / 2.0) as u8);
     p.rect_filled(rect, radius, amber.gamma_multiply(if resp.hovered() { 0.28 } else { 0.16 }));

@@ -22,11 +22,11 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     } else if st.job.is_some() {
         Banner::new(BannerKind::Progress)
     } else {
-        Banner::new(BannerKind::Info).icon(Icon::Check, color::green())
+        Banner::new(BannerKind::Info).icon(Icon::Check, color::added())
     };
     b = b.title(text.title.as_str()).clickable(true);
     if let Some((detail, all)) = &text.detail {
-        b = b.detail(detail.as_str(), if *all { color::green() } else { color::amber() });
+        b = b.detail(detail.as_str(), if *all { color::added() } else { color::warn() });
     }
     let r = banner::top(ctx, "op_strip", b, |ui| {
         if ui.add(buttons::secondary(t.tr("op_strip.show.button"))).clicked() {

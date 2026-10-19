@@ -31,7 +31,7 @@ pub fn aligned(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
 /// Disconnect at the right. As wide as the column it is drawn in.
 pub fn account_card(ui: &mut Ui, c: &Connection, msgs: &mut Vec<Msg>) {
     let w = ui.available_width();
-    egui::Frame::new().fill(color::toolbar()).corner_radius(4).inner_margin(egui::Margin::symmetric(16, 12)).show(ui, |ui| {
+    egui::Frame::new().fill(color::raised()).corner_radius(4).inner_margin(egui::Margin::symmetric(16, 12)).show(ui, |ui| {
         ui.set_width((w - 32.0).max(0.0));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.add(buttons::secondary("Disconnect").small()).clicked() {
@@ -42,7 +42,7 @@ pub fn account_card(ui: &mut Ui, c: &Connection, msgs: &mut Vec<Msg>) {
                 ui.painter().circle_stroke(r.center(), 11.0, Stroke::new(1.5_f32, color::weak()));
                 widgets::paint_icon(ui.painter(), r.center(), Icon::User, color::weak());
                 ui.vertical(|ui| {
-                    ui.label(RichText::new("Connected").color(color::green()));
+                    ui.label(RichText::new("Connected").color(color::added()));
                     ui.add(egui::Label::new(RichText::new(c.account.display()).color(color::text())).wrap());
                     let how = format!("{} via {}", c.user, c.method);
                     ui.add(egui::Label::new(RichText::new(how).size(type_scale::SMALL).color(color::weak())).wrap());

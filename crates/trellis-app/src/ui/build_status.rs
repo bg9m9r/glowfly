@@ -21,18 +21,18 @@ pub fn paint_marker(p: &Painter, c: Pos2, state: CheckState) {
     let mark = Stroke::new(1.4_f32, color::panel());
     match state {
         CheckState::Passed => {
-            p.circle_filled(c, 5.0, color::green());
+            p.circle_filled(c, 5.0, color::added());
             p.line(vec![c + vec2(-2.4, 0.2), c + vec2(-0.6, 2.0), c + vec2(2.6, -1.8)], mark);
         }
         CheckState::Failed => {
-            p.circle_filled(c, 5.0, color::red());
+            p.circle_filled(c, 5.0, color::removed());
             let h = 1.9;
             p.line_segment([c + vec2(-h, -h), c + vec2(h, h)], mark);
             p.line_segment([c + vec2(-h, h), c + vec2(h, -h)], mark);
         }
         CheckState::Pending => {
-            p.circle_stroke(c, 4.2, Stroke::new(1.6_f32, color::amber()));
-            p.circle_filled(c, 1.4, color::amber());
+            p.circle_stroke(c, 4.2, Stroke::new(1.6_f32, color::warn()));
+            p.circle_filled(c, 1.4, color::warn());
         }
     }
 }

@@ -19,7 +19,7 @@ use trellis_core::repo::{Chunk, Segment};
 
 /// The tint of text typed in the output.
 fn typed() -> Color32 {
-    color::green().gamma_multiply(0.18)
+    color::added().gamma_multiply(0.18)
 }
 
 /// The Output strip (Edit / Done, Wrap lines, and Discard edits outside conflicts while any
@@ -31,7 +31,7 @@ pub(super) fn output(ui: &mut Ui, view: &mut ConflictView, scroll_to: Option<usi
         return;
     }
     let (strip, _) = ui.allocate_exact_size(vec2(ui.available_width(), 26.0), Sense::hover());
-    ui.painter().rect_filled(strip, 0.0, color::toolbar());
+    ui.painter().rect_filled(strip, 0.0, color::raised());
     ui.painter().hline(strip.x_range(), strip.top(), Stroke::new(1.0_f32, color::border()));
     let builder = UiBuilder::new().max_rect(strip.shrink2(vec2(8.0, 2.0))).layout(Layout::left_to_right(Align::Center));
     ui.allocate_new_ui(builder, |ui| {
@@ -59,7 +59,7 @@ pub(super) fn output(ui: &mut Ui, view: &mut ConflictView, scroll_to: Option<usi
     if let Some(note) = &view.edit_note {
         ui.horizontal(|ui| {
             ui.add_space(8.0);
-            ui.label(RichText::new(note.as_str()).color(color::amber()));
+            ui.label(RichText::new(note.as_str()).color(color::warn()));
         });
     }
     let saving = view.saving;
@@ -139,7 +139,7 @@ fn painted(ui: &mut Ui, view: &ConflictView, scroll_to: Option<usize>, wrap_on: 
             }
             OutRow::Unresolved(k) => {
                 let text = format!("Conflict {}: pick a side above", k + 1);
-                cell(ui, rect, 0.0, None, &text, (color::amber().gamma_multiply(0.18), color::amber()), None);
+                cell(ui, rect, 0.0, None, &text, (color::warn().gamma_multiply(0.18), color::warn()), None);
                 if k == current {
                     current_bar(ui, rect);
                 }

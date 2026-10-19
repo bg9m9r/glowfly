@@ -77,7 +77,7 @@ fn header(ui: &mut Ui, t: Lang, v: &IssueView, open_label: &str, msgs: &mut Vec<
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 ui.add_space(8.0);
                 let (rect, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
-                let tint = if v.closed() { color::purple() } else { color::green() };
+                let tint = if v.closed() { color::progress() } else { color::added() };
                 widgets::paint_icon(ui.painter(), rect.center(), Icon::Issue, tint);
                 ui.label(RichText::new(&v.mention).color(color::weak()));
                 let title = RichText::new(printable(&v.issue.title)).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text());

@@ -15,7 +15,7 @@ use eframe::egui;
 
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(workdir) = banner_workdir(st) else { return };
-    let b = Banner::new(BannerKind::Warning).icon(Icon::Storage, color::amber()).text(BANNER_TEXT);
+    let b = Banner::new(BannerKind::Warning).icon(Icon::Storage, color::warn()).text(BANNER_TEXT);
     banner::top(ctx, "lfs_banner", b, |ui| {
         if ui.add(buttons::secondary(BANNER_DISMISS)).clicked() {
             msgs.push(Msg::Lfs(LfsMsg::DismissBanner(workdir.to_path_buf())));

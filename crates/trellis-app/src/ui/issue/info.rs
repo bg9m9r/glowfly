@@ -117,5 +117,5 @@ fn chip(ui: &mut Ui, text: &str, fg: Color32) {
     let text = printable(text);
     let w = ui.painter().layout_no_wrap(text.clone(), type_scale::font(type_scale::CAPTION), fg).size().x + 12.0;
     let (rect, _) = ui.allocate_exact_size(vec2(w, 20.0), Sense::hover());
-    widgets::chip(ui.painter(), rect.left(), rect.center().y, &text, color::toolbar(), fg);
+    widgets::chip(ui.painter(), rect.left(), rect.center().y, &text, color::raised(), fg);
 }
