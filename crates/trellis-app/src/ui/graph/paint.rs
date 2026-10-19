@@ -1,6 +1,7 @@
 //! Drawing helpers for the commit graph: column layout, lanes, nodes and ref labels.
 
 use super::LANE_W;
+use super::ref_group::Chip;
 use crate::ui::avatars::Avatars;
 use crate::ui::build_status;
 use crate::ui::common::lane_color;
@@ -10,13 +11,15 @@ use crate::ui::widgets;
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, epaint::CubicBezierShape, epaint::RectShape, pos2, vec2};
 use trellis_core::forge::CheckState;
 use trellis_core::graph::GraphRow;
-use trellis_core::repo::{self, RefKind};
+use trellis_core::repo::RefKind;
 use trellis_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
 
 /// The narrowest a drag leaves the message column.
 const MIN_MSG_W: f32 = 120.0;
 /// Room a ref chip adds at its right end for a build marker.
 const MARK_W: f32 = 14.0;
+/// Room a ref chip adds after its name for the remote mark of an upstream in sync with it.
+const CLOUD_W: f32 = 17.0;
 
 /// Horizontal extent of each column for one row (empty ranges for hidden columns).
 pub struct Columns {
@@ -144,25 +147,25 @@ pub struct RefChips {
     pub cut: bool,
 }
 
-/// A label chip's width for text `text_w` wide (plus `mark_w` for a build marker) in `room`,
-/// and whether the text had to be cut off to fit.
-pub fn chip_width(text_w: f32, mark_w: f32, room: f32) -> (f32, bool) {
-    let want = text_w + 14.0 + mark_w;
+/// A label chip's width for text `text_w` wide (plus `marks_w` for the marks in its right end:
+/// the remote mark, the build marker) in `room`, and whether the text had to be cut off to fit.
+pub fn chip_width(text_w: f32, marks_w: f32, room: f32) -> (f32, bool) {
+    let want = text_w + 14.0 + marks_w;
     (want.min(room), want > room)
 }
 
-/// Draws the first ref label as a chip (with the tip's build `marker` inside its right end when
-/// known), then a "+N" chip for the rest.
+/// Draws the first chip's label (with a cloud after the name when its upstream is in sync, and
+/// the tip's build `marker` inside its right end when known), then a "+N" chip for the rest.
 pub fn draw_ref_labels(
     p: &egui::Painter,
     x: f32,
     max_x: f32,
     y: f32,
-    labels: &[repo::RefLabel],
+    chips: &[Chip],
     lane: Color32,
     marker: Option<CheckState>,
 ) -> RefChips {
-    let first = &labels[0];
+    let first = chips[0].label;
     let (style, text) = match first.kind {
         RefKind::Head => (ChipStyle::Head, "HEAD".to_owned()),
         RefKind::Local if first.is_head => (ChipStyle::CurrentBranch, format!("✔ {}", first.name)),
@@ -171,18 +174,22 @@ pub fn draw_ref_labels(
         RefKind::Tag => (ChipStyle::Tag, first.name.clone()),
     };
     let (fill, fg) = contrast::ref_chip(style, lane, &color::current());
-    let extra = labels.len() - 1;
+    let extra = chips.len() - 1;
     let reserve = if extra > 0 { 30.0 } else { 0.0 };
     let g = p.layout_no_wrap(text, FontId::proportional(12.5), fg);
     let mark_w = if marker.is_some() { MARK_W } else { 0.0 };
-    let (w, cut) = chip_width(g.size().x, mark_w, max_x - x - reserve);
+    let cloud_w = if chips[0].upstream.is_some() { CLOUD_W } else { 0.0 };
+    let (w, cut) = chip_width(g.size().x, mark_w + cloud_w, max_x - x - reserve);
     let r = Rect::from_min_size(pos2(x, y - 11.0), vec2(w, 22.0));
     p.rect_filled(r, CornerRadius::same(3), fill);
     p.rect_stroke(r, CornerRadius::same(3), Stroke::new(1.0_f32, lane), egui::StrokeKind::Inside);
     let gh = g.size().y;
     let mut text_clip = r.shrink(2.0);
-    text_clip.max.x -= mark_w;
+    text_clip.max.x -= mark_w + cloud_w;
     p.with_clip_rect(text_clip).galley(pos2(x + 7.0, y - gh / 2.0), g, fg);
+    if cloud_w > 0.0 {
+        paint_cloud(&p.with_clip_rect(r), pos2(r.right() - mark_w - 13.0, y), fg);
+    }
     if let Some(state) = marker {
         build_status::paint_marker_on(&p.with_clip_rect(r), pos2(r.right() - 9.0, y), state);
     }
@@ -192,6 +199,42 @@ pub fn draw_ref_labels(
         end += widgets::chip(p, end, y, &format!("+{extra}"), color::toolbar(), color::weak());
     }
     RefChips { rect: r, end, cut }
+}
+
+/// A cloud outline about 12 px wide centred on `c`: the remote mark of a branch whose upstream
+/// is in sync. Three bumps over a flat base, traced as the outline seen from a point inside.
+pub fn paint_cloud(p: &egui::Painter, c: egui::Pos2, col: Color32) {
+    // (centre offset, radius) of each bump, and the base box between the outer bumps' centres.
+    const BUMPS: [((f32, f32), f32); 3] = [((-4.0, 1.5), 2.0), ((0.0, -0.8), 3.3), ((3.4, 1.0), 2.5)];
+    const BASE: (f32, f32, f32, f32) = (-4.0, 1.0, 3.4, 3.5);
+    let o = vec2(0.0, 2.0);
+    let far = |d: egui::Vec2| {
+        let circles = BUMPS.iter().filter_map(|&((cx, cy), r)| {
+            let m = o - vec2(cx, cy);
+            let b = d.dot(m);
+            let disc = b * b - (m.length_sq() - r * r);
+            (disc >= 0.0).then(|| -b + disc.sqrt())
+        });
+        let slab = |o: f32, d: f32, lo: f32, hi: f32| {
+            if d > 1e-6 {
+                (hi - o) / d
+            } else if d < -1e-6 {
+                (lo - o) / d
+            } else {
+                f32::INFINITY
+            }
+        };
+        let base = slab(o.x, d.x, BASE.0, BASE.2).min(slab(o.y, d.y, BASE.1, BASE.3));
+        circles.fold(base, f32::max)
+    };
+    let points = (0..72)
+        .map(|i| {
+            let a = i as f32 / 72.0 * std::f32::consts::TAU;
+            let d = vec2(a.cos(), a.sin());
+            c + o + d * far(d)
+        })
+        .collect();
+    p.add(egui::epaint::PathShape::closed_line(points, Stroke::new(1.4_f32, col)));
 }
 
 pub fn paint_pencil(p: &egui::Painter, c: egui::Pos2, col: Color32) {
@@ -210,5 +253,7 @@ mod tests {
         assert_eq!(chip_width(86.0, 0.0, 100.0), (100.0, false), "fits exactly");
         assert_eq!(chip_width(200.0, 0.0, 100.0), (100.0, true), "too long");
         assert_eq!(chip_width(80.0, 16.0, 100.0), (100.0, true), "the build marker takes room too");
+        assert_eq!(chip_width(50.0, super::CLOUD_W, 100.0), (81.0, false), "the remote mark fits beside the name");
+        assert_eq!(chip_width(70.0, super::CLOUD_W, 100.0), (100.0, true), "and is kept when the name is cut");
     }
 }

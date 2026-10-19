@@ -257,6 +257,8 @@ mod snapshot_tests_rebase_steps;
 #[cfg(test)]
 mod snapshot_tests_ref_names;
 #[cfg(test)]
+mod snapshot_tests_ref_sync;
+#[cfg(test)]
 mod snapshot_tests_remote_branch;
 #[cfg(test)]
 mod snapshot_tests_remotes;

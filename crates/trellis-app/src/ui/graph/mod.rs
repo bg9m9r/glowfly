@@ -5,6 +5,7 @@ mod cells;
 mod header;
 mod more;
 mod paint;
+mod ref_group;
 mod ref_menu;
 mod resize;
 mod search_bar;
@@ -216,20 +217,21 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 // BRANCH / TAG column, connected to the node.
                 let mut ghost_rect = None;
                 let mut labels_hit = None;
-                // The first chip, when its name is cut off: hovering it shows the whole name.
-                let mut cut_chip = None;
+                // The first chip, and whether its name is cut off: hovering it shows the whole name.
+                let mut first_chip = None;
+                let chips = snap.refs.get(&c.oid).map(|l| ref_group::chips(l, &snap.locals));
                 if cols_cfg.refs {
                     let rp = painter.with_clip_rect(cols.rect(cols.refs, rect));
                     let mut labels_end = cols.refs.0;
-                    if let Some(labels) = snap.refs.get(&c.oid) {
+                    if let Some((labels, chips)) = snap.refs.get(&c.oid).zip(chips.as_deref()) {
                         let mut mark = None;
                         if tips.is_some() && labels.iter().any(|l| matches!(l.kind, RefKind::Local | RefKind::Remote)) {
                             tips_seen.push(c.oid);
                             mark = tips.and_then(|t| t.checks(c.oid)).map(|c| c.state);
                         }
-                        let chips = draw_ref_labels(&rp, cols.refs.0 + 6.0, cols.refs.1 - 6.0, mid, labels, lane_col, mark);
-                        let (label_rect, end) = (chips.rect, chips.end);
-                        cut_chip = chips.cut.then_some(label_rect);
+                        let drawn = draw_ref_labels(&rp, cols.refs.0 + 6.0, cols.refs.1 - 6.0, mid, chips, lane_col, mark);
+                        let (label_rect, end) = (drawn.rect, drawn.end);
+                        first_chip = Some((label_rect, drawn.cut));
                         if cols_cfg.tree {
                             gp.line_segment([pos2(cols.graph.0, mid), pos2(node_x - 10.0, mid)], Stroke::new(1.5_f32, lane_col));
                             rp.line_segment([pos2(end, mid), pos2(cols.refs.1, mid)], Stroke::new(1.5_f32, lane_col));
@@ -289,15 +291,16 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
                 let in_refs = pointer.is_some_and(|p| cols.rect(cols.refs, rect).contains(p));
                 let in_date = cols_cfg.date && pointer.is_some_and(|p| cols.rect(cols.date, rect).contains(p));
-                let resp = match snap.refs.get(&c.oid).map(Vec::as_slice) {
-                    Some(labels) if hovered && in_refs && labels.len() > 1 => resp.on_hover_ui_at_pointer(|ui| {
-                        for l in labels {
-                            ui.label(&l.name);
+                // A lone chip names itself on hover when cut off or folding in its upstream.
+                let on_chip = first_chip.zip(pointer).is_some_and(|((r, _), p)| r.contains(p));
+                let explain = first_chip.is_some_and(|(_, cut)| cut) || chips.as_ref().is_some_and(|c| c[0].upstream.is_some());
+                let resp = match chips.as_deref() {
+                    Some(chips) if hovered && in_refs && chips.len() > 1 => resp.on_hover_ui_at_pointer(|ui| {
+                        for chip in chips {
+                            ui.label(chip.tip());
                         }
                     }),
-                    Some([only]) if hovered && cut_chip.zip(pointer).is_some_and(|(r, p)| r.contains(p)) => {
-                        resp.on_hover_text_at_pointer(&only.name)
-                    }
+                    Some([only]) if hovered && on_chip && explain => resp.on_hover_text_at_pointer(only.tip()),
                     _ if hovered && text.msg.hovered(pointer) => resp.on_hover_ui_at_pointer(|ui| cells::message_tip(ui, c, show_body)),
                     _ if hovered && text.sha.hovered(pointer) => resp.on_hover_text_at_pointer(&c.oid.to_string()[..7]),
                     _ if hovered && text.author.hovered(pointer) => resp.on_hover_text_at_pointer(&c.author),
