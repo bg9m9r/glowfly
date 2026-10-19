@@ -222,7 +222,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
       placeholder, WIP row, dates, the commit, branch and tag menus, hunk buttons and every
       dialog's Cancel come from the tables; "Discard all" and "Stage all" keep "all"; a test
       renders each panel in German and fails on strings from an English allow-list
-- [ ] **Clearer prompts and safer controls**: the SSH host-key prompt shows host, key type and
+- [x] **Clearer prompts and safer controls**: the SSH host-key prompt shows host, key type and
       fingerprint as fields with one sentence of explanation and "Trust and connect" / Cancel
       (Cancel the default), with the raw text under Details; the sign-in dialog labels Username
       and "Password or personal access token"; Skip hooks moves to a ⋯ menu by the commit
@@ -2454,3 +2454,20 @@ here, under the item they grew from.
 - A PR header + that pushes the branch first (Push and create) when the host lacks it
 - Let the PULL REQUESTS and ISSUES filter chip use the + and ⋯ room while they are hidden; the
   reserved room cuts the filter name short at the default panel width
+
+### Clearer prompts and safer controls
+
+- Stop in repo sync also kills the git processes already running (a cancellable gitcli run)
+- Repo sync: Retry all failed rows at once, and Copy error from a failed row
+- Host-key prompt: list the other names or addresses the key is known by as their own field
+- Host-key prompt: a Copy fingerprint button and a hint linking to the service's published
+  fingerprints
+- Explain ssh's "host key has changed" refusal in the failed job's error, with the
+  known_hosts line to check
+- Sign-in dialog: a caps-lock warning on the secret field
+- Terminal: Kill all names the programs running in each terminal before stopping them
+- Commit more-actions menu: further per-commit options (sign-off trailer, sign this commit)
+- Graph search: Esc in a non-empty field clears it before a second Esc closes the bar
+- The commit button's label is cut with "…" in a narrow panel; show the whole label on hover
+- The search bar's fixed count slot leaves the query field at its 160 px minimum in a
+  740 px graph pane; shrink the slot or move the count under the field when narrow

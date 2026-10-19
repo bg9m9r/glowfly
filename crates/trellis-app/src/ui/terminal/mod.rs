@@ -22,7 +22,7 @@ use eframe::egui::{self, Align, FontSelection, Layout, RichText, text::LayoutJob
 use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
 
-const KILL_TIP: &str = "Stop the shell and everything running in it";
+const KILL_TIP: &str = "Stop the shell and everything running in it (asks first while a program runs)";
 
 /// Draws the panel while it is open and a repository is.
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {

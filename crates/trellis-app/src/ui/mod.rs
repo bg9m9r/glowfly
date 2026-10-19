@@ -6,6 +6,7 @@ mod access;
 mod activity_log;
 mod am_banner;
 mod askpass;
+mod askpass_host_key;
 mod avatars;
 mod blame;
 mod branch_dialogs;

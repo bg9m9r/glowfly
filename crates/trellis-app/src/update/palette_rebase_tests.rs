@@ -1,7 +1,8 @@
 //! The palette's history entries: reword, squash and drop of the selected commit with their
-//! keys, and Continue, Skip and Edit remaining steps while a rebase is in progress.
+//! keys, Continue, Skip and Edit remaining steps while a rebase is in progress, and Restore
+//! original order while the panel is open.
 
-use super::rebase_tests::repo;
+use super::rebase_tests::{repo, with_panel};
 use super::update;
 use crate::effect::{Effect, RebaseEffect};
 use crate::msg::{Msg, PaletteMsg};
@@ -11,7 +12,7 @@ use crate::state::palette_commands::palette_commands_rebase::RebaseCommand;
 use crate::state::{AppState, Selection};
 use git2::RepositoryState;
 use std::time::Instant;
-use trellis_core::rebase::{QuickEdit, Resume};
+use trellis_core::rebase::{QuickEdit, RebaseBase, Resume};
 use trellis_core::repo::FileEntry;
 
 /// Each shown entry's label and key hint.
@@ -110,5 +111,28 @@ fn rebase_onto_the_selected_commit() {
     st.selection = Selection::Commit(other);
     st.snap.as_mut().unwrap().head_branch = None;
     assert!(!entries(&st).iter().any(|(l, _)| l.contains(" onto ")));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn restore_original_order_while_the_panel_is_open() {
+    let (st, dir, _) = repo("palette-rebase-restore-none");
+    assert!(find(&entries(&st), "Restore original order").is_none(), "no panel open");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let (mut st, dir, _) = with_panel("palette-rebase-restore", RebaseBase::FromCommit(git2::Oid::zero()));
+    assert_eq!(find(&entries(&st), "Restore original order"), Some(&None));
+    assert!(matches!(RebaseCommand::RestoreOrder.msg(), Msg::Rebase(crate::msg::RebaseMsg::RebaseReset)));
+    let order = |st: &AppState| st.rebase.as_ref().unwrap().items.iter().filter_map(|s| s.oid()).collect::<Vec<_>>();
+    let original = order(&st);
+    update(&mut st, Msg::Rebase(crate::msg::RebaseMsg::RebaseMove { from: 0, to: 2 }), Instant::now());
+    assert_ne!(order(&st), original);
+    let run = Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Rebase(RebaseCommand::RestoreOrder)));
+    update(&mut st, run, Instant::now());
+    assert_eq!(order(&st), original, "back to the original order");
+
+    st.rebase.as_mut().unwrap().stale = true;
+    let all = entries(&st);
+    assert!(find(&all, "Reload rebase steps").is_some() && find(&all, "Restore original order").is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

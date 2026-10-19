@@ -81,7 +81,7 @@ impl CredentialPrompts {
         match self.front().map(|p| &p.prompt.kind) {
             None => false,
             Some(PromptKind::Username { .. }) => !self.user.trim().is_empty(),
-            Some(PromptKind::Confirm | PromptKind::Other { secret: false }) => true,
+            Some(PromptKind::Confirm | PromptKind::HostKey(_) | PromptKind::Other { secret: false }) => true,
             Some(_) => !self.secret.is_empty(),
         }
     }

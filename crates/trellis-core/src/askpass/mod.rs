@@ -18,13 +18,16 @@
 //! ([`protocol::GpgAsk`]), shown as a [`PromptKind::GpgPassphrase`] prompt.
 //!
 //! Classification of the prompt text ([`prompt::classify`]) is pure and decides which dialog
-//! is shown.
+//! is shown; [`host_key::parse`] reads ssh's unknown-host question into fields.
 
 pub mod client;
+pub mod host_key;
 pub mod prompt;
 pub mod protocol;
 pub mod server;
 
+#[cfg(test)]
+mod host_key_tests;
 #[cfg(test)]
 mod prompt_tests;
 #[cfg(test)]
@@ -35,6 +38,7 @@ mod server_tests;
 use std::time::Duration;
 
 pub use client::{HelperError, Outcome, ask, ask_from_env, ask_gpg, ask_gpg_from_env};
+pub use host_key::HostKey;
 pub use prompt::{PromptKind, classify, host, user_and_host};
 pub use protocol::{ENV_ADDR, ENV_TOKEN, GpgAsk, SSH_HINT_ENV};
 pub use server::{Event, Server};

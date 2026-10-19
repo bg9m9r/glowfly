@@ -67,7 +67,13 @@ fn graph_search_no_matches() {
         assert!(h.query_by_label(hint).is_some(), "the syntax hint, alone");
         assert!(h.query_by_label("Load more commits").is_none(), "the whole history is loaded");
         h.check_snapshot(name);
-        assert!(matches!(&click(&mut h, "Clear search")[..], [Msg::Search(SearchMsg::Clear)]));
+        // The pane's button (the lower one: the search field has a clear button by that name too).
+        assert_eq!(h.query_all_by_label("Clear search").count(), 2);
+        h.state_mut().1.clear();
+        let y = |n: &egui_kittest::kittest::Node<'_>| n.bounding_box().map_or(0.0, |r| r.y0);
+        h.get_all_by_label("Clear search").max_by(|a, b| y(a).total_cmp(&y(b))).unwrap().click();
+        h.run();
+        assert!(matches!(&h.state().1[..], [Msg::Search(SearchMsg::Clear)]));
         drop(h);
         remove_fixture(&dir);
     }

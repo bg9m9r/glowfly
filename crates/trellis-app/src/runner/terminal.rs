@@ -7,7 +7,7 @@
 
 use super::{Runner, Waker};
 use crate::msg::Msg;
-use crate::terminal::{TerminalEffect, TerminalMsg};
+use crate::terminal::{AfterCheck, TerminalEffect, TerminalMsg};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -167,26 +167,27 @@ impl<W: Waker + Clone> Runner<W> {
             TerminalEffect::Close(id) => {
                 self.terminals.map().remove(&id);
             }
-            TerminalEffect::CheckActivity(id) => {
+            TerminalEffect::CheckActivity { id, then } => {
                 let report = Reporter { tx: self.tx.clone(), waker: self.waker.clone() };
-                check_activity(id, self.terminals.probe(id), report);
+                check_activity(id, then, self.terminals.probe(id), report);
             }
         }
     }
 }
 
-/// Reports what session `id`'s shell is doing, reading `probe` on its own thread so the UI
-/// thread never waits for it. No probe (the session is gone or still starting) is Unknown.
-fn check_activity<W: Waker + Clone>(id: u64, probe: Option<ShellProbe>, report: Reporter<W>) {
+/// Reports what session `id`'s shell is doing (with `then`, what waits on the answer), reading
+/// `probe` on its own thread so the UI thread never waits for it. No probe (the session is gone
+/// or still starting) is Unknown.
+fn check_activity<W: Waker + Clone>(id: u64, then: AfterCheck, probe: Option<ShellProbe>, report: Reporter<W>) {
     let Some(probe) = probe else {
-        return report.send(TerminalMsg::Activity { id, activity: ShellActivity::Unknown });
+        return report.send(TerminalMsg::Activity { id, activity: ShellActivity::Unknown, then });
     };
     let thread_report = report.clone();
     let spawned = std::thread::Builder::new()
         .name("trellis-terminal-probe".into())
-        .spawn(move || thread_report.send(TerminalMsg::Activity { id, activity: probe.activity() }));
+        .spawn(move || thread_report.send(TerminalMsg::Activity { id, activity: probe.activity(), then }));
     if spawned.is_err() {
-        report.send(TerminalMsg::Activity { id, activity: ShellActivity::Unknown });
+        report.send(TerminalMsg::Activity { id, activity: ShellActivity::Unknown, then });
     }
 }
 
@@ -241,7 +242,7 @@ fn short_name(program: &str) -> String {
 mod tests {
     use super::{Control, Handle, KillSwitch, ProbeSlot, Reporter, Terminals, check_activity, short_name};
     use crate::msg::Msg;
-    use crate::terminal::TerminalMsg;
+    use crate::terminal::{AfterCheck, TerminalMsg};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Arc, mpsc};
     use trellis_core::terminal::{ShellActivity, ShellProbe};
@@ -318,9 +319,12 @@ mod tests {
         impl super::Waker for NoWake {
             fn wake(&self) {}
         }
-        check_activity(9, None, Reporter { tx, waker: NoWake });
+        check_activity(9, AfterCheck::Kill, None, Reporter { tx, waker: NoWake });
         match rx.try_recv() {
-            Ok(Msg::Terminal(TerminalMsg::Activity { id: 9, activity })) => assert_eq!(activity, ShellActivity::Unknown),
+            Ok(Msg::Terminal(TerminalMsg::Activity { id: 9, activity, then })) => {
+                assert_eq!(activity, ShellActivity::Unknown);
+                assert_eq!(then, AfterCheck::Kill, "the answer carries what waits on it");
+            }
             _ => panic!("expected an Activity report"),
         }
     }

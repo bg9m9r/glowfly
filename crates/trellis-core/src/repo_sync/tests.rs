@@ -43,15 +43,16 @@ fn a_repository_that_runs_programs_is_skipped_unless_trusted() {
 #[test]
 fn failures_say_why() {
     let gone = crate::paths::temp_dir().join(format!("trellis-sync-gone-{}", std::process::id()));
-    assert_eq!(sync(&gone, SyncOp::Pull, true), Outcome::Failed("The folder can't be found.".into()));
+    assert_eq!(sync(&gone, SyncOp::Pull, true), Outcome::Failed { reason: "The folder can't be found.".into(), detail: String::new() });
     let (work, bare) = with_origin("sync-fails");
     git(&work, &["remote", "set-url", "origin", &bare.with_file_name("no-such-origin.git").display().to_string()]);
-    let Outcome::Failed(why) = sync(&work, SyncOp::Fetch { prune: true }, true) else { panic!("fetching a missing remote") };
-    assert!(!why.is_empty() && !why.contains('\n'), "{why}");
+    let Outcome::Failed { reason, detail } = sync(&work, SyncOp::Fetch { prune: true }, true) else { panic!("fetching a missing remote") };
+    assert!(!reason.is_empty() && !reason.contains('\n'), "{reason}");
+    assert!(detail.contains(&reason) && !detail.contains('\r'), "{detail}");
     // A folder that isn't a repository.
     let plain = crate::paths::temp_dir().join(format!("trellis-sync-plain-folder-{}", std::process::id()));
     std::fs::create_dir_all(&plain).unwrap();
-    assert!(matches!(sync(&plain, SyncOp::Fetch { prune: true }, true), Outcome::Failed(_)));
+    assert!(matches!(sync(&plain, SyncOp::Fetch { prune: true }, true), Outcome::Failed { .. }));
     let _ = std::fs::remove_dir_all(&plain);
 }
 
@@ -60,4 +61,18 @@ fn commands_fetch_every_remote_and_only_fast_forward() {
     assert_eq!(command(SyncOp::Fetch { prune: true }), ["fetch", "--all", "--prune"]);
     assert_eq!(command(SyncOp::Fetch { prune: false }), ["fetch", "--all"]);
     assert_eq!(command(SyncOp::Pull), ["pull", "--ff-only"]);
+}
+
+#[test]
+fn error_detail_keeps_what_git_showed_last() {
+    assert_eq!(error_detail("Receiving objects: 10%\rReceiving objects: 100%\nfatal: boom\n\n"), "Receiving objects: 100%\nfatal: boom");
+    let d = error_detail("fatal: unable to access 'https://ada:s3cret@example.com/r.git/'");
+    assert!(!d.contains("s3cret") && d.contains("example.com"), "{d}");
+    let many: String = (1..=100).map(|i| format!("line {i}\n")).collect();
+    let d = error_detail(&many);
+    assert_eq!(d.lines().count(), 40);
+    assert!(d.starts_with("line 61\n") && d.ends_with("line 100"), "{d}");
+    let long = format!("{}\nfatal: the end", "x".repeat(9000));
+    let d = error_detail(&long);
+    assert!(d.chars().count() <= 4000 && d.ends_with("fatal: the end"), "{}", d.chars().count());
 }

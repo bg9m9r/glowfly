@@ -27,6 +27,10 @@ pub enum ReposMsg {
     Synced { generation: u64, index: usize, outcome: Outcome },
     /// Show the last fetch or pull across repositories again (its toast's action).
     ShowSync,
+    /// Stop starting repositories in the running fetch or pull; those running finish.
+    StopSync,
+    /// Run row `index` of run `generation` again (a failed or stopped row).
+    RetrySync { generation: u64, index: usize },
 }
 
 /// What a scan found, with each repository's identity (runner/repos.rs).
@@ -49,7 +53,9 @@ impl ReposMsg {
             | Self::Scanned { .. }
             | Self::StartSync { .. }
             | Self::Synced { .. }
-            | Self::ShowSync => None,
+            | Self::ShowSync
+            | Self::StopSync
+            | Self::RetrySync { .. } => None,
         }
     }
 }

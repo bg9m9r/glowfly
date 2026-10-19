@@ -2,6 +2,7 @@
 //! included) for what git or ssh asks through the askpass helper. Edits only the prompt's text
 //! buffers and view flags; answering and cancelling go through `Msg`s.
 
+use super::access;
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::{self, Icon, buttons};
@@ -23,17 +24,20 @@ struct Layout {
     line: Option<String>,
     /// Under the line: who owns the key (if known) and its id.
     detail: Option<(Option<String>, String)>,
-    /// The plain field and its hint.
+    /// The plain field's label (drawn above it, and its accessible name).
     user: Option<&'static str>,
-    /// The masked field and its hint.
+    /// The masked field's label.
     secret: Option<&'static str>,
     token_hint: bool,
     /// Offer "Remember this sign-in" (an HTTPS sign-in).
     remember: bool,
     /// Small help above the footer.
     help: Option<&'static str>,
-    /// Show the whole prompt text (a host-key question).
-    full_text: bool,
+    /// A yes/no question: danger tone (Cancel is the default) and no line about saving.
+    confirm: bool,
+    /// Show ssh's unknown-host question as fields ([`super::askpass_host_key`]); otherwise a
+    /// confirmation shows the whole prompt text.
+    host_key: bool,
     primary: &'static str,
 }
 
@@ -49,7 +53,8 @@ impl Layout {
             token_hint: false,
             remember: false,
             help: None,
-            full_text: false,
+            confirm: false,
+            host_key: false,
             primary,
         }
     }
@@ -60,7 +65,7 @@ fn layout(p: &PendingPrompt) -> Layout {
         PromptKind::Username { url } => Layout {
             line: Some(format!("Git needs credentials for {url}.")),
             user: Some("Username"),
-            secret: Some("Password or token"),
+            secret: Some(TOKEN_LABEL),
             token_hint: true,
             remember: is_http_url(url),
             ..Layout::new(format!("Sign in to {}", host(&p.prompt.kind).unwrap_or_else(|| url.clone())), "Sign in")
@@ -71,7 +76,9 @@ fn layout(p: &PendingPrompt) -> Layout {
                 (true, None, Some(h)) => h,
                 _ => target.clone(),
             };
-            Layout { secret: Some("Password"), remember: is_http_url(target), ..Layout::new(format!("Password for {who}"), "OK") }
+            let http = is_http_url(target);
+            let label = if http { TOKEN_LABEL } else { "Password" };
+            Layout { secret: Some(label), remember: http, ..Layout::new(format!("Password for {who}"), "OK") }
         }
         PromptKind::Passphrase { key } => Layout {
             line: Some(format!("Enter the passphrase for {key}.")),
@@ -85,7 +92,10 @@ fn layout(p: &PendingPrompt) -> Layout {
             help: Some(GPG_HELP),
             ..Layout::new("Unlock signing key".into(), "Unlock")
         },
-        PromptKind::Confirm => Layout { key_icon: false, full_text: true, ..Layout::new("Confirm SSH connection".into(), "Yes") },
+        PromptKind::Confirm => Layout { key_icon: false, confirm: true, ..Layout::new("Confirm SSH connection".into(), "Yes") },
+        PromptKind::HostKey(_) => {
+            Layout { key_icon: false, confirm: true, host_key: true, ..Layout::new("Unknown SSH host".into(), "Trust and connect") }
+        }
         PromptKind::Other { secret } => {
             let field = Some("Answer");
             Layout {
@@ -98,6 +108,9 @@ fn layout(p: &PendingPrompt) -> Layout {
         }
     }
 }
+
+/// The secret field's label where git accepts either an account password or a token.
+const TOKEN_LABEL: &str = "Password or personal access token";
 
 /// Help for a signing passphrase: why it isn't asked every time, and how to get GnuPG's window.
 const GPG_HELP: &str = "gpg-agent remembers the passphrase for a while, so Trellis asks again only once it has \
@@ -132,6 +145,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         if l.key_icon {
             d = d.icon(Icon::Key);
         }
+        if l.host_key {
+            // Room for a SHA256 fingerprint on one line.
+            d = d.wide();
+        }
         let mut d = d.begin(ui);
         if let Some(line) = &l.line {
             ui.add(egui::Label::new(RichText::new(line).color(color::weak())).wrap());
@@ -143,15 +160,21 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             ui.label(RichText::new(format!("Key {key}")).monospace().color(color::weak()));
         }
-        if l.full_text {
+        if l.host_key
+            && let PromptKind::HostKey(k) = &front.prompt.kind
+        {
+            super::askpass_host_key::body(ui, &mut d, k, &front.prompt.text, front.id);
+        } else if l.confirm {
             d.body(ui, |ui| ui.add(egui::Label::new(RichText::new(front.prompt.text.trim_end())).wrap()));
         }
         ui.add_space(8.0);
         let enter = ui.input(|i| i.key_pressed(Key::Enter));
         let focus = std::mem::take(&mut p.focus_pending);
         let mut submit = false;
-        if let Some(hint) = l.user {
-            let r = controls::field(ui, egui::TextEdit::singleline(&mut p.user).hint_text(hint).desired_width(f32::INFINITY));
+        if let Some(label) = l.user {
+            field_label(ui, label);
+            let r = controls::field(ui, egui::TextEdit::singleline(&mut p.user).desired_width(f32::INFINITY));
+            access::name_field(&r, label);
             if focus {
                 r.request_focus();
             }
@@ -164,12 +187,16 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             }
         }
-        if let Some(hint) = l.secret {
+        if let Some(label) = l.secret {
+            if l.user.is_some() {
+                ui.add_space(6.0);
+            }
+            field_label(ui, label);
             ui.horizontal(|ui| {
                 let width = ui.available_width() - 32.0;
-                let field =
-                    egui::TextEdit::singleline(&mut p.secret).id(secret_id).password(!p.reveal).hint_text(hint).desired_width(width);
+                let field = egui::TextEdit::singleline(&mut p.secret).id(secret_id).password(!p.reveal).desired_width(width);
                 let r = controls::field(ui, field);
+                access::name_field(&r, label);
                 if focus && l.user.is_none() {
                     r.request_focus();
                 }
@@ -196,7 +223,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.add_space(2.0);
             ui.add(egui::Label::new(RichText::new(help).color(color::weak()).size(type_scale::SMALL)).wrap());
         }
-        if !l.full_text {
+        if !l.confirm {
             let saved = if l.remember && p.remember {
                 "Trellis saves this sign-in with git's credential helper once git accepts it."
             } else {
@@ -208,9 +235,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let valid = p.can_submit();
         let mut cancel = ui.input(|i| i.key_pressed(Key::Escape));
         let button = buttons::primary(l.primary).enabled(valid);
-        // A host-key question isn't answered Yes by a stray Enter: Yes keeps the primary style,
+        // A yes/no question isn't answered by a stray Enter: its button keeps the primary style,
         // but the dialog's tone makes Cancel the default.
-        let footer = if l.full_text { Footer::new().danger(button) } else { Footer::new().primary(button) };
+        let footer = if l.confirm { Footer::new().danger(button) } else { Footer::new().primary(button) };
         let out = d.finish(ui, footer.cancel().submit(submit));
         submit = out.primary;
         cancel |= out.dismiss;
@@ -220,4 +247,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             msgs.push(Msg::Credentials(CredentialMsg::AnswerCredentials));
         }
     });
+}
+
+/// The visible label above a field.
+fn field_label(ui: &mut egui::Ui, label: &str) {
+    ui.label(RichText::new(label).color(color::text()));
+    ui.add_space(2.0);
 }

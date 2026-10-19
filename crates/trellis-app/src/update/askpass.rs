@@ -96,7 +96,7 @@ fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
             }
             Secret::new(user)
         }
-        PromptKind::Confirm => Secret::new("yes"),
+        PromptKind::Confirm | PromptKind::HostKey(_) => Secret::new("yes"),
         PromptKind::Other { secret: false } => Secret::new(std::mem::take(&mut p.user)),
         PromptKind::Password { target, user: Some(u) } if p.remember => {
             let secret = Secret::new(std::mem::take(&mut p.secret));

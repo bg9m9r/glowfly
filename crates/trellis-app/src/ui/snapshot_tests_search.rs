@@ -313,3 +313,40 @@ fn arrow_keys_move_through_the_shown_matches() {
     drop(h);
     remove_fixture(&dir);
 }
+
+#[test]
+fn graph_search_clear() {
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-clear");
+    searching(&mut st, "release");
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("1 match").is_some());
+    let close_x = |h: &Harness<'_, (AppState, Vec<Msg>)>| h.get_by_label("Close").bounding_box().expect("Close is drawn").x0;
+    let before = close_x(&h);
+    let field = h.get(By::new().role(Role::TextInput).value("release")).bounding_box().unwrap();
+    let clear = h.get_by_label("Clear search").bounding_box().expect("the clear button is drawn");
+    assert!(clear.x0 > field.x0 && clear.x1 <= field.x1 && clear.y0 >= field.y0 && clear.y1 <= field.y1, "inside the field");
+    h.check_snapshot("graph_search_clear");
+
+    // The count changes length; Close stays where it was.
+    let st = &mut h.state_mut().0;
+    searching(st, "path:notes.txt");
+    let request = st.search.paths.pending.expect("a request");
+    let commits = &st.snap.as_ref().unwrap().commits;
+    let searched: Vec<_> = commits[..3].iter().map(|c| c.oid).collect();
+    let chunk = crate::msg::PathsChunk { searched, touching: vec![commits[0].oid], done: false };
+    send(st, SearchMsg::PathsSearched { request, result: Ok(chunk) });
+    h.run_steps(4);
+    assert!(h.query_by_label("1 so far, searching…").is_some());
+    assert_eq!(close_x(&h), before, "the count's slot keeps its width");
+
+    h.state_mut().1.clear();
+    h.get_by_label("Clear search").click();
+    h.run_steps(4);
+    assert_eq!(search_msgs(&h), ["Clear"]);
+    h.state_mut().0.view.search.clear();
+    h.run_steps(4);
+    assert!(h.query_by_label("Clear search").is_none(), "nothing to clear");
+    drop(h);
+    remove_fixture(&dir);
+}

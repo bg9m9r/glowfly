@@ -24,6 +24,13 @@ impl Drop for Ack {
     }
 }
 
+/// What waits on a `CheckActivity` answer: closing the tab or killing its shell.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AfterCheck {
+    Close,
+    Kill,
+}
+
 /// A keyboard step through the active tab's history (Shift with Page Up/Down, Home, End).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScrollStep {
@@ -41,8 +48,10 @@ pub enum TerminalMsg {
     /// Show or hide the panel (toolbar button, palette, Ctrl+`).
     Toggle,
     Hide,
-    /// Stop the active tab's shell.
+    /// Stop the active tab's shell; asks first while the shell runs a program.
     Kill,
+    /// Kill session `id`'s shell without asking (the kill confirmation's button).
+    KillNow(u64),
     /// Start a new shell in the active tab's place after its shell ended.
     Restart,
     /// Keyboard input for the active tab's shell.
@@ -101,10 +110,12 @@ pub enum TerminalMsg {
         id: u64,
         error: String,
     },
-    /// What session `id`'s shell was doing when its tab was asked to close.
+    /// What session `id`'s shell was doing when its tab was asked to close (`then` is Close)
+    /// or its shell to be killed (`then` is Kill).
     Activity {
         id: u64,
         activity: ShellActivity,
+        then: AfterCheck,
     },
 }
 
@@ -116,6 +127,7 @@ impl TerminalMsg {
             Self::Toggle
             | Self::Hide
             | Self::Kill
+            | Self::KillNow(..)
             | Self::Restart
             | Self::Input(..)
             | Self::Resize { .. }
@@ -166,8 +178,11 @@ pub enum TerminalEffect {
     /// Forget session `id` (it ended or its tab closed); its thread ends once the shell has.
     Close(u64),
     /// Find out, off the UI thread, whether session `id`'s shell is running a program; reported
-    /// as `TerminalMsg::Activity`.
-    CheckActivity(u64),
+    /// as `TerminalMsg::Activity` carrying `then`.
+    CheckActivity {
+        id: u64,
+        then: AfterCheck,
+    },
 }
 
 impl std::fmt::Debug for TerminalEffect {
@@ -180,7 +195,7 @@ impl std::fmt::Debug for TerminalEffect {
             Self::Resize { id, rows, cols } => write!(f, "Resize {{ id: {id}, rows: {rows}, cols: {cols} }}"),
             Self::Kill(id) => write!(f, "Kill({id})"),
             Self::Close(id) => write!(f, "Close({id})"),
-            Self::CheckActivity(id) => write!(f, "CheckActivity({id})"),
+            Self::CheckActivity { id, then } => write!(f, "CheckActivity {{ id: {id}, then: {then:?} }}"),
         }
     }
 }

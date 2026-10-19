@@ -1,5 +1,6 @@
 //! Fetch or pull across listed repositories: at most four at a time, trust, stale results, the
-//! empty case, the toast after the dialog closed, and a real pull through the runner.
+//! empty case, the toast after the dialog closed, Stop and Retry, and a real pull through the
+//! runner.
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
@@ -47,6 +48,14 @@ fn synced(st: &mut AppState, generation: u64, index: usize, outcome: Outcome) ->
     run(st, ReposMsg::Synced { generation, index, outcome })
 }
 
+fn failed(reason: &str) -> Outcome {
+    Outcome::Failed { reason: reason.into(), detail: String::new() }
+}
+
+fn states(st: &AppState) -> Vec<RowState> {
+    st.repo_sync.as_ref().unwrap().rows.iter().map(|r| r.state.clone()).collect()
+}
+
 #[test]
 fn nothing_to_fetch_says_so() {
     let mut st = state();
@@ -78,7 +87,7 @@ fn at_most_four_run_and_each_result_starts_the_next() {
     assert!(syncs(&synced(&mut st, generation + 1, 0, Outcome::UpToDate)).is_empty());
     let next = syncs(&synced(&mut st, generation, 0, Outcome::UpToDate));
     assert_eq!(next.iter().map(|s| s.1).collect::<Vec<_>>(), [4]);
-    assert!(syncs(&synced(&mut st, generation, 0, Outcome::Failed("again".into()))).is_empty());
+    assert!(syncs(&synced(&mut st, generation, 0, failed("again"))).is_empty());
     assert_eq!(st.repo_sync.as_ref().unwrap().rows[0].state, RowState::Done(Outcome::UpToDate));
     // Starting again while it runs shows it, without starting anything.
     st.modal = None;
@@ -121,7 +130,7 @@ fn a_run_that_ends_behind_a_closed_dialog_says_so_in_a_toast() {
     assert!(st.modal.is_none());
     synced(&mut st, generation, 0, Outcome::UpToDate);
     assert!(st.toasts.is_empty(), "still running");
-    synced(&mut st, generation, 1, Outcome::Failed("no route".into()));
+    synced(&mut st, generation, 1, failed("no route"));
     let toast = st.toasts.last().expect("a toast");
     assert_eq!(toast.text, "Fetch of 2 repositories: 1 up to date, 1 failed.");
     assert!(!toast.ok);
@@ -129,6 +138,69 @@ fn a_run_that_ends_behind_a_closed_dialog_says_so_in_a_toast() {
     assert!(matches!(*action.msg, Msg::Repos(ReposMsg::ShowSync)));
     run(&mut st, ReposMsg::ShowSync);
     assert!(matches!(st.modal, Some(Modal::SyncRepos)));
+}
+
+#[test]
+fn stop_keeps_waiting_repositories_from_starting() {
+    let mut st = with_favorites(&["a", "b", "c", "d", "e", "f"]);
+    let generation = syncs(&start(&mut st, SyncKind::Fetch, SyncScope::Favorites))[0].0;
+    update(&mut st, Msg::CloseModal, Instant::now());
+    let fx = run(&mut st, ReposMsg::StopSync);
+    assert!(fx.is_empty(), "{fx:?}");
+    assert_eq!(states(&st)[4..], [RowState::Stopped, RowState::Stopped]);
+    assert!(st.repo_sync.as_ref().unwrap().running(), "the four running finish");
+    assert_eq!(st.repo_sync.as_ref().unwrap().stopping(), Some(4));
+    for i in 0..4 {
+        assert!(syncs(&synced(&mut st, generation, i, Outcome::UpToDate)).is_empty(), "nothing new starts");
+    }
+    let sync = st.repo_sync.as_ref().unwrap();
+    assert!(!sync.running());
+    assert!(sync.summary().contains("2 stopped"), "{}", sync.summary());
+    let toast = st.toasts.last().expect("the end toast, the dialog being closed");
+    assert!(toast.text.contains("4 up to date, 2 stopped"), "{}", toast.text);
+    // Stop on a finished run does nothing.
+    assert!(run(&mut st, ReposMsg::StopSync).is_empty());
+    assert_eq!(st.toasts.len(), 1);
+}
+
+#[test]
+fn retry_runs_a_failed_or_stopped_row_again() {
+    let mut st = with_favorites(&["a", "b", "c", "d", "e", "f"]);
+    let generation = syncs(&start(&mut st, SyncKind::Fetch, SyncScope::Favorites))[0].0;
+    let retry = |st: &mut AppState, generation, index| syncs(&run(st, ReposMsg::RetrySync { generation, index }));
+    // Waiting and running rows can't be retried.
+    assert!(retry(&mut st, generation, 0).is_empty() && retry(&mut st, generation, 5).is_empty());
+    assert_eq!(states(&st)[5], RowState::Waiting);
+    run(&mut st, ReposMsg::StopSync);
+    // Row 0 fails; row 4 would start but was stopped.
+    assert!(syncs(&synced(&mut st, generation, 0, failed("no route"))).is_empty());
+    synced(&mut st, generation, 1, Outcome::UpToDate);
+    // A stale generation, or an up-to-date row, does nothing.
+    assert!(retry(&mut st, generation + 1, 0).is_empty());
+    assert!(retry(&mut st, generation, 1).is_empty());
+    let again = retry(&mut st, generation, 0);
+    assert_eq!(again.iter().map(|s| (s.0, s.1)).collect::<Vec<_>>(), [(generation, 0)]);
+    assert_eq!(states(&st)[0], RowState::Running);
+    // Four run again (0, 2, 3 and the stopped 4); the fifth waits for one to finish.
+    assert_eq!(retry(&mut st, generation, 4).iter().map(|s| s.1).collect::<Vec<_>>(), [4]);
+    assert!(retry(&mut st, generation, 5).is_empty());
+    assert_eq!(states(&st)[5], RowState::Waiting);
+    assert_eq!(syncs(&synced(&mut st, generation, 2, Outcome::UpToDate)).iter().map(|s| s.1).collect::<Vec<_>>(), [5]);
+}
+
+#[test]
+fn retry_after_the_run_ended_and_for_a_refused_repository() {
+    let mut st = with_favorites(&["a", "b"]);
+    let generation = syncs(&start(&mut st, SyncKind::Pull, SyncScope::Favorites))[0].0;
+    synced(&mut st, generation, 0, failed("no route"));
+    synced(&mut st, generation, 1, failed("no route"));
+    assert!(!st.repo_sync.as_ref().unwrap().running());
+    let again = syncs(&run(&mut st, ReposMsg::RetrySync { generation, index: 0 }));
+    assert_eq!(again.iter().map(|s| (s.1, s.3)).collect::<Vec<_>>(), [(0, SyncOp::Pull)]);
+    // A repository refused since is skipped without running.
+    crate::state::trust::record(&mut st.settings, &abs("b"), RepoTrust::NotTrusted);
+    assert!(run(&mut st, ReposMsg::RetrySync { generation, index: 1 }).is_empty());
+    assert_eq!(states(&st)[1], RowState::Done(Outcome::Untrusted));
 }
 
 /// A repository with an `origin` that has one commit it lacks; returns (work, bare).

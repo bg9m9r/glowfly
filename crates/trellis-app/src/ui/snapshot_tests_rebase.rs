@@ -137,7 +137,7 @@ fn header_buttons_and_esc() {
     h.get_by_label("Start rebase").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }))));
-    h.get_by_label("Reset").click();
+    h.get_by_label("Restore original order").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::RebaseReset))));
     h.get_by_label("Cancel").click();

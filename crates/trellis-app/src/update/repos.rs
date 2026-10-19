@@ -16,5 +16,7 @@ pub(super) fn handle(st: &mut AppState, msg: ReposMsg, now: Instant, fx: &mut Ve
         ReposMsg::StartSync { kind, scope } => super::repo_sync::start(st, kind, scope, now, fx),
         ReposMsg::Synced { generation, index, outcome } => super::repo_sync::synced(st, generation, index, outcome, now, fx),
         ReposMsg::ShowSync => super::repo_sync::show(st),
+        ReposMsg::StopSync => super::repo_sync::stop(st, now),
+        ReposMsg::RetrySync { generation, index } => super::repo_sync::retry(st, generation, index, now, fx),
     }
 }

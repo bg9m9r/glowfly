@@ -8,7 +8,7 @@ use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::state::terminal::SessionStatus;
 use crate::state::{AppState, Modal};
-use crate::terminal::{TerminalEffect as E, TerminalMsg as T};
+use crate::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg as T};
 use std::time::Instant;
 use trellis_core::terminal::ShellActivity;
 
@@ -35,7 +35,7 @@ fn second(st: &mut AppState) -> u64 {
 }
 
 fn activity(st: &mut AppState, id: u64, activity: ShellActivity) -> Vec<Effect> {
-    run(st, T::Activity { id, activity })
+    run(st, T::Activity { id, activity, then: AfterCheck::Close })
 }
 
 fn running(program: Option<&str>) -> ShellActivity {
@@ -48,7 +48,7 @@ fn a_running_shell_is_asked_about_first_and_closes_when_idle() {
     started(&mut st, one);
     let two = second(&mut st);
     let fx = terminal(run(&mut st, T::CloseTab(two)));
-    assert!(matches!(&fx[..], [E::CheckActivity(c)] if *c == two), "{fx:?}");
+    assert!(matches!(&fx[..], [E::CheckActivity { id: c, then: AfterCheck::Close }] if *c == two), "{fx:?}");
     assert!(has(&st, two), "the tab stays until the answer");
 
     let fx = terminal(activity(&mut st, two, ShellActivity::Idle));
@@ -131,7 +131,7 @@ fn starting_and_ended_shells_close_at_once() {
     let (mut st, dir, one) = open_with_panel("term-close-now");
     // Still starting.
     let fx = terminal(run(&mut st, T::CloseTab(one)));
-    assert!(fx.iter().all(|e| !matches!(e, E::CheckActivity(_))), "{fx:?}");
+    assert!(fx.iter().all(|e| !matches!(e, E::CheckActivity { .. })), "{fx:?}");
     assert!(!has(&st, one));
     let _ = std::fs::remove_dir_all(&dir);
 

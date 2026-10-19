@@ -51,6 +51,7 @@ pub struct StyledButton<'a> {
     radius: u8,
     text_size: Option<f32>,
     height: Option<f32>,
+    max_width: Option<f32>,
 }
 
 /// The view's main action.
@@ -82,6 +83,7 @@ impl<'a> StyledButton<'a> {
             radius: RADIUS,
             text_size: None,
             height: None,
+            max_width: None,
         }
     }
 
@@ -140,6 +142,13 @@ impl<'a> StyledButton<'a> {
         self
     }
 
+    /// The widest it gets: a longer label is cut with "…" (the commit box's button, which
+    /// shares its row with the more-actions button).
+    pub fn max_width(mut self, w: f32) -> Self {
+        self.max_width = Some(w);
+        self
+    }
+
     pub fn is_enabled(&self) -> bool {
         self.enabled
     }
@@ -155,7 +164,13 @@ impl<'a> StyledButton<'a> {
         if let Some(px) = self.text_size {
             text = text.size(px);
         }
-        WidgetText::from(text).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, TextStyle::Button)
+        match self.max_width {
+            Some(max) => {
+                let room = (max - 2.0 * PADDING.x).max(0.0);
+                WidgetText::from(text).into_galley(ui, Some(egui::TextWrapMode::Truncate), room, TextStyle::Button)
+            }
+            None => WidgetText::from(text).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, TextStyle::Button),
+        }
     }
 
     fn size(&self, galley: &egui::Galley) -> egui::Vec2 {

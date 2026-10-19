@@ -15,8 +15,12 @@ pub enum PromptKind {
     /// spec), owned by `user`; `retry` when the last answer didn't unlock it. Only built from a
     /// structured request ([`super::Prompt::gpg`]), never by [`classify`].
     GpgPassphrase { key: String, user: Option<String>, retry: bool },
-    /// A yes/no question, such as ssh's unknown host key.
+    /// A yes/no question that isn't in a wording Trellis reads, such as an agent's "Allow use
+    /// of key?".
     Confirm,
+    /// ssh's question about a server it has no host key for, read into fields
+    /// ([`super::host_key::parse`]). Answered like [`PromptKind::Confirm`].
+    HostKey(super::host_key::HostKey),
     /// Anything else; `secret` when the text mentions a password, PIN, token or the like.
     Other { secret: bool },
 }
@@ -24,7 +28,7 @@ pub enum PromptKind {
 /// Classifies a prompt. `hint` is ssh's `SSH_ASKPASS_PROMPT` (`confirm` for yes/no questions).
 pub fn classify(text: &str, hint: Option<&str>) -> PromptKind {
     if hint == Some("confirm") || text.contains("(yes/no") {
-        return PromptKind::Confirm;
+        return super::host_key::parse(text).map_or(PromptKind::Confirm, PromptKind::HostKey);
     }
     let t = text.trim_end();
     let t = t.strip_suffix(':').unwrap_or(t).trim_end();

@@ -1,24 +1,33 @@
-//! The graph's search bar: the query field, the Highlight | Filter mode, the author picker, the
-//! match count and Close. It edits only the query and author filter text; everything else is a
-//! `SearchMsg` for update/search.rs.
+//! The graph's search bar: the query field (with a painted clear button while it has text), the
+//! Highlight | Filter mode, the author picker, the match count in a fixed-width slot (so Close
+//! doesn't move as it changes) and Close. It edits only the query and author filter text;
+//! everything else is a `SearchMsg` for update/search.rs.
 
 use crate::keymap::BindingId;
 use crate::msg::{Msg, SearchMsg};
 use crate::state::{AppState, Selection};
+use crate::ui::access;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
-use crate::ui::widgets;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::segmented::segmented;
-use eframe::egui::{self, Key, PopupCloseBehavior, RichText};
+use crate::ui::widgets::{self, Icon, truncate};
+use eframe::egui::{self, Align, CursorIcon, Key, Layout, PopupCloseBehavior, Rect, RichText, Sense, pos2, vec2};
 use trellis_core::matching::contains_lower;
 
 /// How many authors the picker lists before asking for a narrower filter.
 const MAX_AUTHORS: usize = 200;
 
-/// Room for the Highlight | Filter mode, author picker, match count ("12 so far, searching…")
-/// and Close after the query field.
-const CONTROLS_W: f32 = 525.0;
+/// Room after the query field: the Highlight | Filter mode (~150), the author picker (160 plus
+/// its arrow and padding), the match count's slot (`COUNT_W`), Close (~55) and the spacing.
+const CONTROLS_W: f32 = 585.0;
+
+/// The match count's slot: kept whether or not there is a count, so the controls after it stay
+/// put while it changes ("No matches", "3 of 12", "12 so far, searching…").
+const COUNT_W: f32 = 160.0;
+
+/// The field's right inner margin, where the clear button sits so text never runs under it.
+const CLEAR_ROOM: f32 = 26.0;
 
 /// The empty query field's hint (cut with "…" in a narrow field), also its hover text when the
 /// field is empty and the hint is cut.
@@ -30,9 +39,17 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         // The field gives up width before the controls after it run out of room.
         let width = (ui.available_width() - CONTROLS_W).clamp(160.0, 420.0);
         let empty = st.view.search.is_empty();
-        let (hint, hint_cut) = widgets::truncate::hint(ui, HINT, width);
-        let r = controls::field(ui, egui::TextEdit::singleline(&mut st.view.search).hint_text(hint).desired_width(width));
+        // The text's width: the field keeps the same outer width with the clear button's room.
+        let inner = width - (CLEAR_ROOM - 4.0);
+        let (hint, hint_cut) = widgets::truncate::hint(ui, HINT, inner);
+        // egui's default margin (4, 2), with room for the clear button at the right.
+        let margin = egui::Margin { left: 4, right: CLEAR_ROOM as i8, top: 2, bottom: 2 };
+        let edit = egui::TextEdit::singleline(&mut st.view.search).hint_text(hint).desired_width(inner).margin(margin);
+        let r = controls::field(ui, edit);
         let r = if empty && hint_cut { r.on_hover_text(HINT) } else { r };
+        if !st.view.search.is_empty() {
+            clear_button(ui, r.rect, st.settings.lang().tr("search.clear.button"), msgs);
+        }
 
         // A credential prompt, the command palette or the author picker keeps the keyboard.
         let covered = st.askpass.showing() || st.palette.is_some();
@@ -65,20 +82,42 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             Selection::Commit(o) => st.snap.as_ref().and_then(|s| s.row_of.get(o).copied()),
             _ => None,
         };
-        if let Some(text) = st.search.count_text(selected) {
-            let r = ui.label(RichText::new(text).color(color::weak()));
-            if st.search.searching_files() {
-                r.on_hover_text("Looking through the files each loaded commit changed");
-            } else if let Some(snap) = st.snap.as_ref().filter(|s| s.truncated) {
-                let len = snap.commits.len();
-                r.on_hover_text(format!("Searches the newest {len} loaded commits; Load more searches further back."));
-            }
-        }
+        let count = st.search.count_text(selected);
+        ui.allocate_ui_with_layout(vec2(COUNT_W, ui.spacing().interact_size.y), Layout::left_to_right(Align::Center), |ui| {
+            ui.set_min_width(COUNT_W);
+            let Some(text) = count else { return };
+            let (r, cut) = truncate::cut_label(ui, RichText::new(&text).color(color::weak()), COUNT_W);
+            let why = if st.search.searching_files() {
+                Some("Looking through the files each loaded commit changed".to_owned())
+            } else {
+                let loaded = st.snap.as_ref().filter(|s| s.truncated).map(|s| s.commits.len());
+                loaded.map(|len| format!("Searches the newest {len} loaded commits; Load more searches further back."))
+            };
+            match (cut, why) {
+                (true, Some(why)) => r.on_hover_text(format!("{text}\n{why}")),
+                (true, None) => r.on_hover_text(text),
+                (false, Some(why)) => r.on_hover_text(why),
+                (false, None) => r,
+            };
+        });
 
         if ui.add(buttons::secondary(st.settings.lang().tr("common.close.button")).small()).clicked() {
             msgs.push(Msg::Search(SearchMsg::Close));
         }
     });
+}
+
+/// The painted × inside the right end of the query field (`field` is its rect): empties the
+/// query and the author filter and gives the field the keyboard again.
+fn clear_button(ui: &mut egui::Ui, field: Rect, name: &str, msgs: &mut Vec<Msg>) {
+    let x = Rect::from_center_size(pos2(field.right() - CLEAR_ROOM / 2.0, field.center().y), vec2(18.0, 18.0));
+    let c = ui.interact(x, ui.id().with("search-clear"), Sense::click()).on_hover_cursor(CursorIcon::PointingHand).on_hover_text(name);
+    let col = if c.hovered() { color::text() } else { color::faint() };
+    widgets::paint_icon(ui.painter(), x.center(), Icon::Close, col);
+    access::name_button(&c, true, name);
+    if c.clicked() {
+        msgs.push(Msg::Search(SearchMsg::Clear));
+    }
 }
 
 /// The author picker: "Any author", a filter field, then the history's authors.

@@ -7,7 +7,7 @@
 use crate::effect::Effect;
 use crate::state::AppState;
 use crate::state::terminal::{DEFAULT_SIZE, SessionStatus, TermSession};
-use crate::terminal::{TerminalEffect as E, TerminalMsg};
+use crate::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg};
 use std::path::{Path, PathBuf};
 use trellis_core::terminal::{TermScreen, encode};
 
@@ -32,11 +32,8 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
             st.terminal.open = false;
             remember_open(st, fx);
         }
-        TerminalMsg::Kill => {
-            if let Some(s) = active_mut(st).filter(|s| s.alive()) {
-                fx.push(Effect::Terminal(E::Kill(s.id)));
-            }
-        }
+        TerminalMsg::Kill => tabs::kill(st, fx),
+        TerminalMsg::KillNow(id) => tabs::kill_now(st, id, fx),
         TerminalMsg::Restart => tabs::restart(st, fx),
         TerminalMsg::Input(inputs) => {
             // Input after the shell has ended goes nowhere.
@@ -109,7 +106,10 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
             fx.push(Effect::Terminal(E::Close(id)));
             st.log(false, format!("Could not start the terminal: {error}"));
         }
-        TerminalMsg::Activity { id, activity } => tabs::activity(st, id, activity, fx),
+        TerminalMsg::Activity { id, activity, then } => match then {
+            AfterCheck::Close => tabs::activity(st, id, activity, fx),
+            AfterCheck::Kill => tabs::kill_activity(st, id, activity, fx),
+        },
     }
 }
 

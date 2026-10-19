@@ -133,7 +133,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 let lists = super::repo_finder::FinderLists { rows, scan: repo_scan, folders };
                 close = super::repo_finder::show(ui, cx, filter, lists, msgs);
             }
-            Modal::SyncRepos => close = super::repo_sync::show(ui, cx, repo_sync),
+            Modal::SyncRepos => close = super::repo_sync::show(ui, cx, repo_sync, msgs),
             Modal::RenameTab(form) => close = super::tab_dialog::rename(ui, cx, form, msgs),
             Modal::Mainline(form) => close = super::mainline_dialog::show(ui, cx, form, idle, msgs),
             Modal::TrashOffer(o) => close = super::trash_offer_dialog::show(ui, cx, o, msgs),

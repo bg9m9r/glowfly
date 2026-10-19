@@ -40,8 +40,13 @@ fn confirmations_and_other_prompts() {
     let host_key = "The authenticity of host 'example.com (192.0.2.1)' can't be established.\n\
                     ED25519 key fingerprint is SHA256:abc.\n\
                     Are you sure you want to continue connecting (yes/no/[fingerprint])? ";
-    assert_eq!(classify(host_key, None), PromptKind::Confirm);
+    let PromptKind::HostKey(k) = classify(host_key, None) else { panic!("not read as a host key") };
+    assert_eq!((k.host.as_str(), k.address.as_deref()), ("example.com", Some("192.0.2.1")));
+    assert_eq!((k.key_type.as_str(), k.fingerprint.as_str()), ("ED25519", "SHA256:abc"));
+    assert_eq!(host(&PromptKind::HostKey(k)), None);
     assert_eq!(classify("Allow use of key?", Some("confirm")), PromptKind::Confirm);
+    // A yes/no question that doesn't read as a host key stays a plain confirmation.
+    assert_eq!(classify("Continue anyway (yes/no)? ", None), PromptKind::Confirm);
     assert_eq!(classify("Verification code: ", None), PromptKind::Other { secret: false });
     assert_eq!(classify("Enter PIN for authenticator: ", None), PromptKind::Other { secret: true });
     assert_eq!(host(&PromptKind::Confirm), None);

@@ -30,8 +30,9 @@ pub enum Outcome {
     NoUpstream,
     /// Skipped: its config or hooks would make git run programs and the user hasn't trusted it.
     Untrusted,
-    /// The folder is gone or isn't a repository, or git failed (the reason).
-    Failed(String),
+    /// The folder is gone or isn't a repository, or git failed: `reason` is one line, `detail`
+    /// git's whole output (redacted and capped), or empty when there is nothing beyond the reason.
+    Failed { reason: String, detail: String },
 }
 
 /// How long one repository's fetch or pull may take before git is stopped.
@@ -50,11 +51,11 @@ pub fn command(op: SyncOp) -> Vec<String> {
 /// scanned first and it is skipped when they would make git run programs.
 pub fn sync(path: &Path, op: SyncOp, trusted: bool) -> Outcome {
     if !path.is_dir() {
-        return Outcome::Failed("The folder can't be found.".into());
+        return Outcome::Failed { reason: "The folder can't be found.".into(), detail: String::new() };
     }
     let repo = match Repository::open(path) {
         Ok(r) => r,
-        Err(e) => return Outcome::Failed(crate::safe_directory::open_error(path, &e).to_string()),
+        Err(e) => return Outcome::Failed { reason: crate::safe_directory::open_error(path, &e).to_string(), detail: String::new() },
     };
     if !trusted && !crate::trust::scan(&repo).is_empty() {
         return Outcome::Untrusted;
@@ -68,8 +69,12 @@ pub fn sync(path: &Path, op: SyncOp, trusted: bool) -> Outcome {
     let before = ref_targets(&repo);
     let out = gitcli::output(path, &command(op), "", gitcli::NO_PROMPTS, Some(TIMEOUT));
     if !out.ok {
-        let why = if out.timed_out { format!("git stopped after {} minutes.", TIMEOUT.as_secs() / 60) } else { last_line(&out.combined()) };
-        return Outcome::Failed(why);
+        let text = out.combined();
+        if out.timed_out {
+            let reason = format!("git stopped after {} minutes.", TIMEOUT.as_secs() / 60);
+            return Outcome::Failed { reason, detail: error_detail(&text) };
+        }
+        return failure(&text);
     }
     // Reopened: libgit2 caches packed references.
     let after = Repository::open(path).map(|r| ref_targets(&r)).unwrap_or_default();
@@ -101,10 +106,37 @@ fn ref_targets(repo: &Repository) -> Vec<(String, Option<git2::Oid>)> {
     out
 }
 
+/// The most lines of git's output a failure keeps, and the most characters.
+const DETAIL_LINES: usize = 40;
+const DETAIL_CHARS: usize = 4000;
+
+/// A failure from git's output: its last line as the reason, the whole output as the detail.
+fn failure(text: &str) -> Outcome {
+    Outcome::Failed { reason: last_line(text), detail: error_detail(text) }
+}
+
+/// What a line of git's output finally shows: progress rewrites the line after each `\r`.
+fn shown(line: &str) -> &str {
+    line.rsplit('\r').next().unwrap_or(line).trim()
+}
+
 /// The last line of git's output that says something (the error, after progress lines).
 fn last_line(text: &str) -> String {
-    let line = text.lines().map(str::trim).rfind(|l| !l.is_empty()).unwrap_or("git failed.");
+    let line = text.lines().map(shown).rfind(|l| !l.is_empty()).unwrap_or("git failed.");
     crate::text::redact_credentials(line)
+}
+
+/// git's output for a failed run's hover: each line as it finally showed, credentials in URLs
+/// redacted, empty lines dropped, the last 40 lines and at most 4000 characters (the end kept).
+pub(crate) fn error_detail(text: &str) -> String {
+    let lines: Vec<String> = text.lines().map(shown).filter(|l| !l.is_empty()).map(crate::text::redact_credentials).collect();
+    let out = lines[lines.len().saturating_sub(DETAIL_LINES)..].join("\n");
+    let n = out.chars().count();
+    if n <= DETAIL_CHARS {
+        return out;
+    }
+    let tail: String = out.chars().skip(n - (DETAIL_CHARS - 1)).collect();
+    format!("…{tail}")
 }
 
 #[cfg(test)]

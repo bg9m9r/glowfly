@@ -1,14 +1,14 @@
 //! Terminal tabs: several shells per repository, numbered "Terminal N" with the lowest free
 //! number. New tab, switching, closing (asking first while the shell runs a program; the
-//! neighbour takes over; the last one hides the panel), Restart in place, and Kill all after a
-//! confirmation.
+//! neighbour takes over; the last one hides the panel), Kill (also asking first while a program
+//! runs), Restart in place, and Kill all after a confirmation.
 
 use super::terminal::{active_index, remember_open, spawn, sync};
 use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::state::terminal::SessionStatus;
 use crate::state::{AppState, Modal};
-use crate::terminal::{TerminalEffect as E, TerminalMsg};
+use crate::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg};
 use std::path::PathBuf;
 use trellis_core::terminal::ShellActivity;
 
@@ -47,7 +47,7 @@ pub(super) fn select_tab(st: &mut AppState, id: u64) {
 pub(super) fn close_tab(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
     let Some(i) = st.terminal.index_of(id) else { return };
     if st.terminal.sessions[i].status == SessionStatus::Running {
-        fx.push(Effect::Terminal(E::CheckActivity(id)));
+        fx.push(Effect::Terminal(E::CheckActivity { id, then: AfterCheck::Close }));
     } else {
         close_now(st, id, fx);
     }
@@ -72,6 +72,47 @@ pub(super) fn activity(st: &mut AppState, id: u64, activity: ShellActivity, fx: 
         None => format!("Terminal {n} is running a program. Close it and stop it?"),
     };
     st.modal = Some(Modal::danger("Close terminal", body, "Close terminal", Msg::Terminal(TerminalMsg::CloseTabNow(id))));
+}
+
+/// Kills the active tab's shell: a running shell first asks the runner what it is doing (the
+/// answer comes back to `kill_activity`); a shell still starting is killed at once.
+pub(super) fn kill(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let Some(i) = active_index(st) else { return };
+    let s = &st.terminal.sessions[i];
+    match s.status {
+        SessionStatus::Running => fx.push(Effect::Terminal(E::CheckActivity { id: s.id, then: AfterCheck::Kill })),
+        SessionStatus::Starting => fx.push(Effect::Terminal(E::Kill(s.id))),
+        SessionStatus::Exited(_) | SessionStatus::Failed(_) => {}
+    }
+}
+
+/// What session `id`'s shell was doing when Kill was clicked: a running program asks first
+/// (unless another dialog is open, when the click is dropped); an idle or unknown shell is
+/// killed at once. Nothing happens once the shell has ended.
+pub(super) fn kill_activity(st: &mut AppState, id: u64, activity: ShellActivity, fx: &mut Vec<Effect>) {
+    let Some(i) = st.terminal.index_of(id) else { return };
+    let s = &st.terminal.sessions[i];
+    if s.status != SessionStatus::Running {
+        return;
+    }
+    let n = s.number;
+    let ShellActivity::Running { program } = activity else { return fx.push(Effect::Terminal(E::Kill(id))) };
+    if st.modal.is_some() {
+        return;
+    }
+    let body = match program {
+        Some(p) => format!("Terminal {n} is running {p}. Kill the shell and stop {p}?"),
+        None => format!("Terminal {n} is running a program. Kill the shell and stop it?"),
+    };
+    st.modal = Some(Modal::danger("Kill terminal", body, "Kill", Msg::Terminal(TerminalMsg::KillNow(id))));
+}
+
+/// Kills session `id`'s shell without asking, if it still runs. Its tab stays and offers
+/// Restart once the shell has ended.
+pub(super) fn kill_now(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
+    if st.terminal.index_of(id).is_some_and(|i| st.terminal.sessions[i].alive()) {
+        fx.push(Effect::Terminal(E::Kill(id)));
+    }
 }
 
 /// Stops session `id`'s shell if it runs and removes its tab; the tab to its right becomes

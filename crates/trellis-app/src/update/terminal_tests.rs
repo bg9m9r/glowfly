@@ -10,7 +10,7 @@ use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
 use crate::state::AppState;
 use crate::state::terminal::SessionStatus;
-use crate::terminal::{TerminalEffect as E, TerminalMsg as T};
+use crate::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg as T};
 use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::terminal::{KeyMods, TermColor, TermInput, TermKey};
@@ -136,7 +136,11 @@ fn resize_updates_screen_and_pty_once() {
 fn exit_kill_and_restart() {
     let (mut st, dir, id) = open_with_panel("term-exit");
     run(&mut st, T::Started { id, program: "pwsh".into() });
-    assert!(matches!(&terminal(run(&mut st, T::Kill))[..], [E::Kill(i)] if *i == id));
+    // Kill asks the runner what the shell is doing first; an idle shell is killed at once.
+    let fx = terminal(run(&mut st, T::Kill));
+    assert!(matches!(&fx[..], [E::CheckActivity { id: i, then: AfterCheck::Kill }] if *i == id), "{fx:?}");
+    let idle = T::Activity { id, activity: trellis_core::terminal::ShellActivity::Idle, then: AfterCheck::Kill };
+    assert!(matches!(&terminal(run(&mut st, idle))[..], [E::Kill(i)] if *i == id));
     assert!(run(&mut st, T::Restart).is_empty(), "a running shell isn't restarted");
 
     let fx = terminal(run(&mut st, T::Exited { id, code: Some(1) }));

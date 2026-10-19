@@ -1,6 +1,7 @@
-//! The palette's history entries: reword, squash into parent and drop the selected commit (when
-//! that edit can run), rebase the current branch onto it (plainly or interactively), and
-//! Continue, Skip and Edit remaining steps while a rebase is in progress.
+//! The palette's history entries: restore the open rebase panel's original order, reword,
+//! squash into parent and drop the selected commit (when that edit can run), rebase the current
+//! branch onto it (plainly or interactively), and Continue, Skip and Edit remaining steps while
+//! a rebase is in progress.
 
 use super::{Entry, PaletteCommand as C, entry};
 use crate::keymap::BindingId;
@@ -21,6 +22,8 @@ pub enum RebaseCommand {
     EditRemaining,
     /// Rebase the current branch onto the commit: `git rebase <oid>`, or the panel.
     Onto { oid: Oid, interactive: bool },
+    /// The open panel's list back to its original order and actions (a stale list reloads).
+    RestoreOrder,
 }
 
 impl RebaseCommand {
@@ -29,6 +32,7 @@ impl RebaseCommand {
             Self::Edit(e) => RebaseMsg::Edit(e.clone()),
             Self::Resume(how) => RebaseMsg::Resume(*how),
             Self::EditRemaining => RebaseMsg::OpenRemaining,
+            Self::RestoreOrder => RebaseMsg::RebaseReset,
             Self::Onto { oid, interactive: true } => RebaseMsg::OpenRebase(RebaseBase::OntoCommit(*oid)),
             Self::Onto { oid, interactive: false } => return Msg::git("Rebase", &["rebase", &oid.to_string()]),
         };
@@ -43,13 +47,17 @@ impl RebaseCommand {
             Self::Edit(QuickEdit::Drop(_)) => BindingId::DropCommit,
             Self::Resume(Resume::Continue) => BindingId::RebaseContinue,
             Self::Resume(Resume::Skip) => BindingId::RebaseSkip,
-            Self::EditRemaining | Self::Onto { .. } => return None,
+            Self::EditRemaining | Self::Onto { .. } | Self::RestoreOrder => return None,
         })
     }
 }
 
 pub(super) fn entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     let cmd = |c: RebaseCommand| C::Rebase(c);
+    if let Some(p) = st.rebase.as_ref().filter(|p| p.editable()) {
+        let label = if p.stale { "Reload rebase steps" } else { "Restore original order" };
+        out.push(entry(cmd(RebaseCommand::RestoreOrder), label, "rebase reset undo revert original order steps todo"));
+    }
     if let Selection::Commit(oid) = st.selection {
         let b = super::super::rebase_quick::single(snap, oid);
         let sha = &oid.to_string()[..7];

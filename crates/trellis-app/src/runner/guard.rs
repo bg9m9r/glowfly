@@ -147,7 +147,7 @@ impl Recovery {
                 Msg::Repos(crate::msg::ReposMsg::Scanned { generation, report })
             }
             Kind::RepoSync(generation, index) => {
-                let outcome = trellis_core::repo_sync::Outcome::Failed(text);
+                let outcome = trellis_core::repo_sync::Outcome::Failed { reason: text, detail: String::new() };
                 Msg::Repos(crate::msg::ReposMsg::Synced { generation, index, outcome })
             }
             Kind::LineCounts(FailedLineCounts::Commit(oid)) => Msg::Repo(RepoMsg::CommitLineCountsLoaded { oid, result: Err(text) }),

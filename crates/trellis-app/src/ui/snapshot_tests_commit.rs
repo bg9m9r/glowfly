@@ -1,4 +1,5 @@
-//! The commit box: its options row and button suffixes, the commit template note, and the
+//! The commit box: its options row and button suffixes, the more-actions menu with Skip hooks,
+//! the commit template note, and the
 //! Ctrl+Enter / Ctrl+Shift+Enter shortcuts. Shares the fixture repository and renderer with
 //! `snapshot_tests`.
 
@@ -32,6 +33,30 @@ fn commit_box_options() {
     h.run();
     h.check_snapshot("commit_box_options");
     assert!(h.query_by_label_contains("and push (skip hooks)").is_some(), "the button names both options");
+    assert!(h.query_by_label("Skip hooks").is_none(), "Skip hooks is in the more-actions menu");
+    let more = h.get_by_label("More commit options");
+    assert_eq!(more.role(), Role::Button);
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn commit_box_more_menu() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-more-menu");
+    git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    st.draft.summary = "Add login form".into();
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label_contains("(skip hooks)").is_none());
+    h.get_by_label("More commit options").click();
+    h.run();
+    h.check_snapshot("commit_box_more_menu");
+    h.get_by_label("Skip hooks").click();
+    h.run();
+    assert!(h.state().0.draft.skip_hooks);
+    assert!(h.query_by_label("Skip hooks").is_none(), "the menu closes so the tint shows");
+    assert!(h.query_by_label_contains("(skip hooks)").is_some(), "the button says hooks are skipped");
     drop(h);
     remove_fixture(&dir);
 }

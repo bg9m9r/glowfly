@@ -1,5 +1,7 @@
 //! The credential prompt over the main window: sign in (with Remember this sign-in), a
-//! passphrase retried, a host-key confirmation, and a signing key's passphrase (first and retried). Shares the fixture repository and renderer with `snapshot_tests`.
+//! passphrase retried, an unknown SSH host (as fields) and a confirmation that isn't read as one,
+//! and a signing key's passphrase (first and retried). Shares the fixture repository and
+//! renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::CredentialMsg;
@@ -42,6 +44,12 @@ fn credential_prompt_sign_in() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("credential_prompt_sign_in");
+    // Visible labels above the fields, which also name them.
+    assert!(h.query_all_by_label("Username").any(|n| n.role() == egui::accesskit::Role::Label));
+    assert!(h.query_all_by_label("Username").any(|n| n.role() == egui::accesskit::Role::TextInput));
+    let token = "Password or personal access token";
+    assert!(h.query_all_by_label(token).any(|n| n.role() == egui::accesskit::Role::Label));
+    assert!(h.query_all_by_label(token).any(|n| n.role() == egui::accesskit::Role::PasswordInput));
     assert!(h.query_by_label_contains("hunter2").is_none(), "the password is masked");
     assert!(h.query_by_label_contains("were not accepted").is_some());
     assert!(h.query_by_label_contains("saves this sign-in with git's credential helper").is_some());
@@ -82,16 +90,65 @@ fn credential_prompt_host_key() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("credential_prompt_host_key");
-    assert!(h.query_by_label("Yes").is_some_and(|n| !n.is_disabled()));
+    for label in ["Unknown SSH host", "example.com", "192.0.2.10", "ED25519", "Details"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(h.query_by_label_contains("SHA256:Xq7f").is_some());
+    assert!(h.query_by_label("Trust and connect").is_some_and(|n| !n.is_disabled()));
+    let raw = "Are you sure you want to continue connecting";
+    assert!(h.query_by_label_contains(raw).is_none(), "ssh's text waits under Details");
     // A stray Enter doesn't accept an unknown host key: Cancel is the default.
     h.press_key(eframe::egui::Key::Enter);
     h.run();
     assert!(!pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::AnswerCredentials))));
     assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
     h.state_mut().1.clear();
+    h.get_by_label("Details").click();
+    h.run();
+    assert!(h.query_by_label_contains(raw).is_some());
+    h.get_by_label("Trust and connect").click();
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::AnswerCredentials))));
+    h.state_mut().1.clear();
     h.get_by_label("Cancel").click();
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn credential_prompt_confirm_raw_light() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "askpass-confirm-raw");
+    let text = "Allow use of key /home/ada/.ssh/id_ed25519?\nKey fingerprint SHA256:abc.";
+    st.askpass.queue.push_back(PendingPrompt {
+        id: 1,
+        prompt: Prompt::new(text, Some("confirm".into())),
+        retry: false,
+        rejected_before: false,
+    });
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("credential_prompt_confirm_raw_light");
+    assert!(h.query_by_label("Confirm SSH connection").is_some());
+    assert!(h.query_by_label_contains("Allow use of key /home/ada/.ssh/id_ed25519?").is_some());
+    assert!(h.query_by_label("Yes").is_some_and(|n| !n.is_disabled()));
+    assert!(h.query_by_label("Details").is_none());
+    h.press_key(egui::Key::Enter);
+    h.run();
+    assert!(!pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::AnswerCredentials))));
+    assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn credential_prompt_https_password_label() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "askpass-https-password");
+    prompt(&mut st, "Password for 'https://ada@github.com': ", false, false);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_all_by_label("Password or personal access token").any(|n| n.role() == egui::accesskit::Role::PasswordInput));
     drop(h);
     remove_fixture(&dir);
 }

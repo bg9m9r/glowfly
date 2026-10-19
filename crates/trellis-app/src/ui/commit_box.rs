@@ -1,22 +1,24 @@
-//! The commit box under the WIP file lists: summary and description, the Amend, "Push after
-//! committing" and "Skip hooks" options, the commit button with why it is disabled centred under
-//! it (that line's height is always kept, so the box doesn't change height), and the Ctrl+Enter
-//! shortcuts. The
-//! summary takes the keyboard when `view.focus_message` is set (Ctrl+Shift+M).
+//! The commit box under the WIP file lists: summary and description, the Amend and "Push after
+//! committing" options, the commit button with why it is disabled centred under it (that line's
+//! height is always kept, so the box doesn't change height), a more-actions menu right of the
+//! button holding "Skip hooks" (tinted amber while hooks are skipped), and the Ctrl+Enter
+//! shortcuts. The summary takes the keyboard when `view.focus_message` is set (Ctrl+Shift+M).
 
 use super::UiCache;
 use super::common::issue_chip;
 use super::spell_edit::spell_text_edit;
-use super::theme::color;
+use super::theme::{color, contrast};
+use super::widgets::{self, Icon};
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::CommitMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
+use crate::state::CommitDraft;
 use crate::state::commit::{commit_blocked, pushes_after};
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::{buttons, reason};
-use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText};
+use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText, Stroke, vec2};
 use trellis_core::i18n::Lang;
 
 /// Height the commit box needs below the file lists (the lists share what is left), its reason
@@ -88,17 +90,20 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
         if r.changed() {
             msgs.push(Msg::Commit(CommitMsg::SetPushAfterCommit(push)));
         }
-        controls::checkbox(ui, &mut st.draft.skip_hooks, t.tr("commit.skip_hooks.check")).on_hover_text(t.tr("commit.skip_hooks.tip"));
     });
 
     let label = st.draft.button_label(t, snap.staged.len(), pushes_after(st), snap.state == git2::RepositoryState::Merge);
     let blocked = commit_blocked(st, false);
     let enabled = blocked.is_none();
     let tip = shortcuts_tip(t, &st.keymap);
-    let button = buttons::primary(label).enabled(enabled).why(blocked).tip(&tip).min_width(ui.available_width()).min_height(34.0);
-    if ui.add(button).clicked() {
-        msgs.push(Msg::Commit(CommitMsg::Commit));
-    }
+    ui.horizontal(|ui| {
+        let w = ui.available_width() - MORE_W - ui.spacing().item_spacing.x;
+        let button = buttons::primary(label).enabled(enabled).why(blocked).tip(&tip).min_width(w).max_width(w).min_height(MORE_W);
+        if ui.add(button).clicked() {
+            msgs.push(Msg::Commit(CommitMsg::Commit));
+        }
+        more_menu(ui, &mut st.draft, t);
+    });
     reason::line(ui, blocked, Align::Center);
 
     if s.has_focus() || d.has_focus() {
@@ -113,4 +118,29 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
             msgs.push(Msg::Commit(CommitMsg::Commit));
         }
     }
+}
+
+/// The more-actions button's side: square, as tall as the commit button.
+const MORE_W: f32 = 34.0;
+
+/// The painted more-actions button right of the commit button, and its menu with Skip hooks.
+/// Tinted amber while hooks are skipped, so the choice stays visible with the menu closed.
+fn more_menu(ui: &mut egui::Ui, draft: &mut CommitDraft, t: Lang) {
+    let on = draft.skip_hooks;
+    let mut b = egui::Button::new("").min_size(vec2(MORE_W, MORE_W));
+    if on {
+        b = b.fill(contrast::mix(color::panel(), color::amber(), 0.25)).stroke(Stroke::new(1.0_f32, color::amber()));
+    }
+    let menu = egui::menu::menu_custom_button(ui, b, |ui| {
+        let check = controls::checkbox(ui, &mut draft.skip_hooks, t.tr("commit.skip_hooks.check"));
+        // Close at once, so the button's tint shows the choice.
+        if check.on_hover_text(t.tr("commit.skip_hooks.tip")).changed() {
+            ui.close_menu();
+        }
+    });
+    let tip = if on { t.tr("commit.more.skipping_tip") } else { t.tr("commit.more.tip") };
+    let r = menu.response.on_hover_text(tip);
+    widgets::paint_icon(ui.painter(), r.rect.center(), Icon::More, if on { color::amber() } else { color::text() });
+    // The name stays the same either way, so the button is always found by it.
+    super::access::name_button(&r, true, t.tr("commit.more.tip"));
 }

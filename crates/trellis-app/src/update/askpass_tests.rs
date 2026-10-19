@@ -216,3 +216,20 @@ fn carry_and_submit_rules() {
     }
     assert!(matches!(Prompt::new("Enter PIN: ", None).kind, PromptKind::Other { secret: true }));
 }
+
+#[test]
+fn an_unknown_host_key_is_trusted_with_yes_or_cancelled() {
+    let host_key = "The authenticity of host 'example.com (192.0.2.10)' can't be established.\n\
+                    ED25519 key fingerprint is SHA256:abc.\n\
+                    Are you sure you want to continue connecting (yes/no/[fingerprint])? ";
+    let mut st = state();
+    ask(&mut st, 1, host_key);
+    assert!(matches!(st.askpass.front().map(|p| &p.prompt.kind), Some(PromptKind::HostKey(_))));
+    assert!(st.askpass.can_submit(), "nothing needs typing");
+    assert_eq!(answers(&send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials))), [(1, Some("yes".into()))]);
+
+    start_job(&mut st, "Fetch");
+    ask(&mut st, 2, host_key);
+    assert_eq!(answers(&send(&mut st, Msg::Credentials(CredentialMsg::CancelCredentials))), [(2, None)]);
+    assert_eq!(st.askpass.ended, Some(PromptEnd::Cancelled));
+}
