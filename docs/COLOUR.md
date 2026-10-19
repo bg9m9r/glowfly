@@ -189,7 +189,9 @@ order, to `#rrggbb` or to another key's name; `trellis-core`'s `COLOR_KEYS` and
 The older names still load, as keys and as values: `green` is `added`, `red` is `removed`,
 `amber` is `modified`, `blue` is `info` and `purple` is `progress`. When a file sets both the
 old and the new name, the new name wins. Keys a file leaves out (including `raised`,
-`on_primary` and `warn` in older files) come from its base theme.
+`on_primary` and `warn` in older files) come from its base theme, with one exception: a file
+that sets its own `primary` but no `on_primary` keeps the base's ink only while it reaches 4.5:1
+on that primary, and otherwise gets white or black, whichever reads better.
 
 ## 7. Adding a colour
 

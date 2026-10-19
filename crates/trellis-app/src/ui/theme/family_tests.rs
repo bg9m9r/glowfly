@@ -212,3 +212,21 @@ fn custom_files_inherit_the_families() {
     assert_eq!(p.status.added, Color32::from_rgb(1, 2, 3), "the old name sets added");
     assert_eq!(p.attention.warn, DARK.attention.warn);
 }
+
+#[test]
+fn custom_primary_without_ink_stays_readable() {
+    let build = |base, colors: &[(&'static str, ColorValue)]| custom::build(&ocean(base, colors));
+    // A file made from the old Dark starter: its own primary, no on_primary.
+    let old_dark = build(BuiltinTheme::Dark, &[("primary", ColorValue::Rgb([0x0e, 0x7a, 0x85]))]);
+    assert_eq!(old_dark.on_primary, Color32::WHITE);
+    for (base, rgb) in [(BuiltinTheme::Dark, [0x1f, 0x3a, 0x8a]), (BuiltinTheme::Light, [0xf5, 0xd0, 0x4a])] {
+        let p = build(base, &[("primary", ColorValue::Rgb(rgb))]);
+        let r = ratio(p.on_primary, p.primary);
+        assert!(r >= 4.5, "{base:?} with primary {rgb:?}: on_primary is {r:.2}:1");
+    }
+    // The base ink stays while it reads, and a file's own on_primary is kept as set.
+    let near = build(BuiltinTheme::Dark, &[("primary", ColorValue::Rgb([0x55, 0xcc, 0x90]))]);
+    assert_eq!(near.on_primary, DARK.on_primary);
+    let own = build(BuiltinTheme::Dark, &[("primary", ColorValue::Rgb([0x0e, 0x7a, 0x85])), ("on_primary", ColorValue::Rgb([1, 2, 3]))]);
+    assert_eq!(own.on_primary, Color32::from_rgb(1, 2, 3));
+}

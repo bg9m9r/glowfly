@@ -1,12 +1,18 @@
 //! Palettes from theme files: the base theme with the file's colors on top.
 
 use super::color::Palette;
+use super::contrast::ratio;
 use super::{DARK, builtin};
 use crate::themes::ThemeState;
 use eframe::egui::Color32;
 use trellis_core::settings::{ColorValue, ThemeChoice, ThemeFile};
 
-/// The palette of a loaded theme file: its base, with every color it sets.
+/// The contrast the primary button's text needs.
+const PRIMARY_INK_MIN: f64 = 4.5;
+
+/// The palette of a loaded theme file: its base, with every color it sets. A file that sets its
+/// own `primary` but no `on_primary` keeps the base's ink only while it reads on that primary;
+/// otherwise the button text is white or black, whichever reads better.
 pub fn build(file: &ThemeFile) -> Palette {
     let base = *builtin(file.base);
     let mut p = base;
@@ -19,7 +25,18 @@ pub fn build(file: &ThemeFile) -> Palette {
             *slot = c;
         }
     }
+    if file.colors.contains_key("primary") && !file.colors.contains_key("on_primary") {
+        p.on_primary = primary_ink(base.on_primary, p.primary);
+    }
     p
+}
+
+/// `ink` if it reads on `primary`, else white or black, whichever reads better.
+fn primary_ink(ink: Color32, primary: Color32) -> Color32 {
+    if ratio(ink, primary) >= PRIMARY_INK_MIN {
+        return ink;
+    }
+    if ratio(Color32::WHITE, primary) >= ratio(Color32::BLACK, primary) { Color32::WHITE } else { Color32::BLACK }
 }
 
 /// The palette `choice` shows: a built-in, a loaded theme file, or Dark for a file that isn't
