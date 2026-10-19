@@ -124,7 +124,7 @@ fn loaded_results_fill_the_form() {
     sparse(&mut st, SparseMsg::Loaded { generation: g, result: Ok(on(&["lib"], SparseMode::Cone)) });
     assert_eq!(page(&st).paths, "mine");
     assert!(page(&st).edited());
-    sparse(&mut st, SparseMsg::ResetForm);
+    run(&mut st, Msg::Prefs(PrefsMsg::RevertPage));
     assert_eq!((page(&st).paths.as_str(), page(&st).mode), ("lib", SparseMode::Cone));
 
     page_mut(&mut st).paths = "mine again".into();

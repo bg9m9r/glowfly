@@ -1,13 +1,13 @@
-//! Diff text size and tab stops (Preferences > Editor).
+//! Diff text size and tab stops (Preferences > Diff viewer).
 
 use super::Settings;
 use std::ops::RangeInclusive;
 
 /// The diff viewer's text size when nothing else is set.
 pub const DEFAULT_DIFF_FONT_SIZE: f32 = 12.5;
-/// The diff text sizes Preferences > Editor offers.
+/// The diff text sizes Preferences > Diff viewer offers.
 pub const DIFF_FONT_SIZES: RangeInclusive<f32> = 8.0..=24.0;
-/// The tab sizes Preferences > Editor offers.
+/// The tab sizes Preferences > Diff viewer offers.
 pub const TAB_SIZES: RangeInclusive<u8> = 1..=16;
 
 impl Settings {

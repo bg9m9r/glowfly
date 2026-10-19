@@ -1,11 +1,10 @@
 //! Preferences > Git Flow (repository-specific): whether Git Flow is set up, the production and
 //! development branches with a note on how each would be created, the branch and tag prefixes,
-//! Initialize / Save, buttons that start a feature, release or hotfix, and a row that picks an
-//! open one to finish. Every action is a `Msg`; the checks are the pure ones from
-//! `trellis_core::gitflow`.
+//! Initialize (or, once set up, Create missing branches; edits are saved by the Save / Revert
+//! bar), buttons that start a feature, release or hotfix, and a row that picks an open one to
+//! finish. Every action is a `Msg`; the checks are the pure ones from `trellis_core::gitflow`.
 
-use super::appearance::section;
-use super::{help, primary_button, row, text_field, warn};
+use super::{help, primary_button, row, section, text_field, warn};
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::state::blocked::BUSY;
@@ -23,6 +22,8 @@ pub struct GitFlowContext<'a> {
     pub snap: Option<&'a Snapshot>,
     /// A git job is running.
     pub busy: bool,
+    /// Why Start and Finish wait while the form has unsaved edits.
+    pub save_first: &'a str,
 }
 
 /// A line under a branch field.
@@ -55,8 +56,10 @@ pub fn gitflow_page(ui: &mut Ui, page: &mut GitFlowPage, cx: &GitFlowContext, ms
 
     buttons(ui, page, &b, initialized, cx.busy, msgs);
     if let Some(s) = &saved {
-        start_row(ui, s, &b, cx.busy, msgs);
-        finish_row(ui, &mut page.finish_branch, s, &b, cx.busy, msgs);
+        // Edits wait for the bar: Start and Finish use the saved settings.
+        let wait = Wait { busy: cx.busy, edited: page.edited().then_some(cx.save_first) };
+        start_row(ui, s, &b, &wait, msgs);
+        finish_row(ui, &mut page.finish_branch, s, &b, &wait, msgs);
     }
 }
 
@@ -126,7 +129,21 @@ fn prefix_rows(ui: &mut Ui, form: &mut GitFlowSettings) -> bool {
     changed
 }
 
-/// The prefix warning, the first problem, Initialize / Save and Discard changes.
+/// What holds the Start and Finish buttons back: a running job, or unsaved edits (with why).
+struct Wait<'a> {
+    busy: bool,
+    edited: Option<&'a str>,
+}
+
+impl Wait<'_> {
+    fn blocked(&self) -> bool {
+        self.busy || self.edited.is_some()
+    }
+}
+
+/// The prefix warning, the first problem, and Initialize while Git Flow isn't set up, or Create
+/// missing branches once it is (unedited, with a configured branch missing). Saving edits is
+/// the Save / Revert bar's.
 fn buttons(ui: &mut Ui, page: &GitFlowPage, b: &Branches, initialized: bool, busy: bool, msgs: &mut Vec<Msg>) {
     let form = page.form.trimmed();
     let checked = check_settings(&form);
@@ -139,7 +156,7 @@ fn buttons(ui: &mut Ui, page: &GitFlowPage, b: &Branches, initialized: bool, bus
     };
     let missing = matches!(&plan, Ok((p, d)) if *p != BranchPlan::Exists || *d != BranchPlan::Exists);
     let edited = page.edited();
-    let enabled = !busy && checked.is_ok() && plan.is_ok() && (!initialized || edited || missing);
+    let valid = checked.is_ok() && plan.is_ok();
     row(ui, "", |ui| {
         if page.prefixes_changed() {
             warn(ui, "Branches named with the old prefixes will no longer count as Git Flow branches.");
@@ -147,53 +164,54 @@ fn buttons(ui: &mut Ui, page: &GitFlowPage, b: &Branches, initialized: bool, bus
         if let Some(p) = &problem {
             form_message::line(ui, Message::error(p.as_str()));
         }
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            let label = if initialized { "Save" } else { "Initialize Git Flow" };
-            // A problem line above already says why; else busy, or nothing to save.
-            let why = if problem.is_some() {
-                None
-            } else if busy {
-                Some(BUSY)
-            } else {
-                (initialized && !edited && !missing).then_some("Nothing changed")
-            };
-            if primary_button(ui, label, enabled, why).clicked() {
+        if !initialized {
+            ui.add_space(4.0);
+            // A problem line above already says why; else busy.
+            let why = if problem.is_some() { None } else { busy.then_some(BUSY) };
+            if primary_button(ui, "Initialize Git Flow", !busy && valid, why).clicked() {
                 msgs.push(Msg::GitFlow(GitFlowMsg::Apply));
             }
-            if edited && ui.add(buttons::secondary("Discard changes")).clicked() {
-                msgs.push(Msg::GitFlow(GitFlowMsg::Discard));
+        } else if !edited && missing {
+            ui.add_space(4.0);
+            let create = buttons::secondary("Create missing branches").enabled(!busy && valid).why(busy.then_some(BUSY));
+            if ui.add(create).clicked() {
+                msgs.push(Msg::GitFlow(GitFlowMsg::Apply));
             }
-        });
+        }
     });
 }
 
 /// Start feature / release / hotfix, each from its saved base branch.
-fn start_row(ui: &mut Ui, s: &GitFlowSettings, b: &Branches, busy: bool, msgs: &mut Vec<Msg>) {
+fn start_row(ui: &mut Ui, s: &GitFlowSettings, b: &Branches, wait: &Wait, msgs: &mut Vec<Msg>) {
     row(ui, "Start", |ui| {
         ui.horizontal_wrapped(|ui| {
             for kind in FlowKind::ALL {
                 let base = s.base(kind);
                 let exists = b.local(base);
-                let r = ui.add(buttons::secondary(format!("Start {}…", kind.noun())).enabled(!busy && exists));
+                let start = buttons::secondary(format!("Start {}…", kind.noun())).enabled(!wait.blocked() && exists).why(wait.edited);
+                let r = ui.add(start);
                 let hover = if exists {
                     format!("Branch from {base}")
                 } else if kind == FlowKind::Hotfix {
                     format!("{base} is needed to start a hotfix, and it doesn't exist.")
                 } else {
-                    format!("{base} doesn't exist. Save to create it.")
+                    format!("{base} doesn't exist. Create missing branches to create it.")
                 };
-                if r.on_hover_text(&hover).clicked() {
+                let r = if wait.edited.is_some() { r } else { r.on_hover_text(&hover) };
+                if r.clicked() {
                     msgs.push(Msg::GitFlow(GitFlowMsg::StartDialog(kind)));
                 }
             }
         });
+        if let Some(why) = wait.edited {
+            crate::ui::widgets::reason::line(ui, Some(why), egui::Align::Min);
+        }
     });
 }
 
 /// Pick an open feature, release or hotfix branch (the checked-out one by default) and open the
 /// Finish dialog for it.
-fn finish_row(ui: &mut Ui, choice: &mut String, s: &GitFlowSettings, b: &Branches, busy: bool, msgs: &mut Vec<Msg>) {
+fn finish_row(ui: &mut Ui, choice: &mut String, s: &GitFlowSettings, b: &Branches, wait: &Wait, msgs: &mut Vec<Msg>) {
     let open = flow_branches(s, b);
     row(ui, "Finish", |ui| {
         let Some((_, first)) = open.first() else {
@@ -209,7 +227,7 @@ fn finish_row(ui: &mut Ui, choice: &mut String, s: &GitFlowSettings, b: &Branche
                     ui.selectable_value(choice, (*n).to_owned(), *n);
                 }
             });
-            if ui.add(buttons::secondary("Finish…").enabled(!busy)).clicked() {
+            if ui.add(buttons::secondary("Finish…").enabled(!wait.blocked()).why(wait.edited)).clicked() {
                 msgs.push(Msg::GitFlow(GitFlowMsg::FinishDialog(choice.clone())));
             }
         });

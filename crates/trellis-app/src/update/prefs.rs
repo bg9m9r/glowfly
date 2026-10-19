@@ -1,4 +1,5 @@
-//! Preferences: opening/closing, settings persistence, git config, folder pickers.
+//! Preferences: opening/closing, settings persistence, git config, folder pickers, and the
+//! messages of the navigation and the save model (prefs_nav.rs, prefs_save.rs, prefs_leave.rs).
 
 use crate::effect::Effect;
 use crate::msg::PrefsMsg;
@@ -57,7 +58,12 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             super::repo::refresh(st, fx);
         }
         PrefsMsg::SelectIntegration(p) => select_integration(st, p),
-        PrefsMsg::GitConfig { global, key, value } => fx.push(Effect::SetGitConfig { cwd: st.any_dir(), global, key, value }),
+        PrefsMsg::GitConfig { global, key, value } => {
+            fx.push(Effect::SetGitConfig { cwd: st.any_dir(), global, key, value });
+            if let Some(p) = st.prefs.as_mut() {
+                p.saved.mark();
+            }
+        }
         PrefsMsg::SettingsEdited => {
             if serde_json::to_string(&st.settings).ok().as_deref() != Some(st.saved_settings.as_str()) {
                 fx.push(save_settings(st));
@@ -81,6 +87,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::GitConfigLoaded(values) => {
             if let Some(p) = st.prefs.as_mut() {
                 p.ssh.prefill_comment(&values.user_email);
+                p.git_saved = Some(values.clone());
                 p.git = Some(values);
                 if p.page == PrefPage::Profile {
                     super::profiles::on_config(st, fx);
@@ -210,16 +217,30 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 }
                 super::clone::check_parent(st, std::time::Duration::ZERO, fx);
             }
+            // Only fills the field: the Save / Revert bar writes it.
             FolderPurpose::HooksPath => {
-                let value = path.display().to_string();
                 if let Some(git) = st.prefs.as_mut().and_then(|p| p.git.as_mut()) {
-                    git.hooks_path = value.clone();
+                    git.hooks_path = path.display().to_string();
                 }
-                fx.push(Effect::SetGitConfig { cwd: st.any_dir(), global: false, key: "core.hooksPath".into(), value: Some(value) });
             }
         },
         PrefsMsg::FolderPicked { path: None, .. } => {}
         PrefsMsg::SettingsUnreadable(text) => unreadable(st, text, now),
+        PrefsMsg::Navigate(page) => super::prefs_nav::navigate(st, page, now, fx),
+        PrefsMsg::SavePage => {
+            super::prefs_save::save_page(st, fx);
+        }
+        PrefsMsg::RevertPage => super::prefs_save::revert_page(st),
+        PrefsMsg::LeaveSave => super::prefs_save::leave_save(st, now, fx),
+        PrefsMsg::LeaveDiscard => super::prefs_save::leave_discard(st, now, fx),
+        PrefsMsg::ShowAccountForm(on) => {
+            if let Some(p) = st.prefs.as_mut() {
+                p.int_adding = on;
+                p.int_token.clear();
+                p.int_user.clear();
+                p.int_error = None;
+            }
+        }
     }
 }
 
@@ -242,9 +263,13 @@ fn unreadable(st: &mut AppState, text: String, now: Instant) {
     st.toast(false, text, now);
 }
 
-/// Records the current settings as saved and returns the effect that writes them.
+/// Records the current settings as saved and returns the effect that writes them; open
+/// Preferences shows its "Saved" tick.
 pub(super) fn save_settings(st: &mut AppState) -> Effect {
     st.saved_settings = serde_json::to_string(&st.settings).unwrap_or_default();
+    if let Some(p) = st.prefs.as_mut() {
+        p.saved.mark();
+    }
     Effect::SaveSettings(Box::new(st.settings.clone()))
 }
 
@@ -271,6 +296,7 @@ pub(super) fn select_integration(st: &mut AppState, provider: Provider) {
     let saved = st.settings.connections.iter().find(|c| c.account.provider == provider).map(|c| c.account.clone());
     let Some(p) = st.prefs.as_mut() else { return };
     p.int_provider = provider;
+    p.int_adding = false;
     p.int_error = None;
     p.int_token.clear();
     p.int_user.clear();

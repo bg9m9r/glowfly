@@ -16,6 +16,9 @@
 //! `.enabled` keeps the disabled look. `widgets/buttons.rs` and `common.rs` (the menu items) are
 //! exempt.
 //!
+//! Every checkbox says what it does beside the box: no `checkbox(.., "")` in any view, and no
+//! `Check::without_text` on a preference page (a list row's bare box is labelled by its row).
+//!
 //! Test code is skipped: files named `tests.rs`, `*_tests.rs` or `snapshot_tests*.rs`, modules
 //! declared under `#[cfg(test)]`, and inline `#[cfg(test)] mod` blocks.
 
@@ -159,6 +162,43 @@ fn button_violations(rel: &str, src: &str) -> Vec<String> {
         }
     }
     found
+}
+
+/// A checkbox without inline text, as "line: message".
+fn bare_checkboxes(rel: &str, src: &str) -> Vec<String> {
+    let prefs = rel.starts_with("ui/prefs/");
+    let bare = |line: &str| {
+        (prefs && line.contains("Check::without_text("))
+            || line.match_indices("checkbox(").any(|(i, _)| line[i..].split(')').next().is_some_and(|args| args.ends_with(", \"\"")))
+    };
+    code_lines(src).iter().enumerate().filter(|(_, l)| bare(l)).map(|(i, _)| format!("{}: a checkbox without inline text", i + 1)).collect()
+}
+
+#[test]
+fn checkboxes_have_inline_text() {
+    let report: Vec<String> = view_sources()
+        .iter()
+        .flat_map(|(rel, text)| bare_checkboxes(rel, text).into_iter().map(move |v| format!("src/{rel}:{v}")))
+        .collect();
+    assert!(
+        report.is_empty(),
+        "preference checkboxes say what they do beside the box (form::check_row):
+{}",
+        report.join(
+            "
+"
+        )
+    );
+}
+
+#[test]
+fn the_check_catches_bare_checkboxes() {
+    let n = |rel: &str, s: &str| bare_checkboxes(rel, s).len();
+    assert_eq!(n("ui/prefs/signing.rs", "if controls::checkbox(ui, &mut git.gpgsign, \"\").changed() {"), 1);
+    assert_eq!(n("ui/prefs/signing.rs", "ui.add(controls::Check::without_text(&mut on));"), 1);
+    assert_eq!(n("ui/prefs/signing.rs", "controls::checkbox(ui, &mut on, \"Sign new commits by default\");"), 0);
+    assert_eq!(n("ui/patch_save_dialog.rs", "ui.add(controls::Check::without_text(&mut on));"), 0, "a list row's box");
+    assert_eq!(n("ui/stash_push_dialog.rs", "controls::checkbox(ui, &mut on, \"\");"), 1, "anywhere");
 }
 
 #[test]

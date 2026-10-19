@@ -78,7 +78,7 @@ pub(super) struct DiffView<'a> {
     pub hunk_gen: Option<u64>,
     /// The line selection; `None` when lines can't be selected (the whole-file view).
     pub sel: Option<&'a LineSelection>,
-    /// Font, row height and gutters from Preferences > Editor.
+    /// Font, row height and gutters from Preferences > Diff viewer.
     pub style: DiffStyle,
     /// How long lines wrap, `None` when they don't.
     pub wrap: Option<wrap::Wrap>,

@@ -1,6 +1,6 @@
 //! Terminal tabs in the panel's header: two shells of one repository with the second active,
 //! their close crosses, New terminal tab and Kill all; and the toolbar Terminal button's
-//! right-click item, which follows Preferences > In-App Terminal.
+//! right-click item, which follows Preferences > Terminal.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;

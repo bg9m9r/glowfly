@@ -8,10 +8,9 @@ pub enum SparseMsg {
     ShowPage,
     /// Read the status again ("Check again").
     Reload,
-    /// Turn on or Save paths with the form's mode and text (checked in update).
+    /// Turn on or Save (the Save / Revert bar) with the form's mode and text (checked in
+    /// update).
     Apply,
-    /// Undo edits: fill the form from the status again.
-    ResetForm,
     /// `git sparse-checkout reapply`.
     Reapply,
     /// `git sparse-checkout disable`.
@@ -33,14 +32,7 @@ impl SparseMsg {
     /// drops it (a status for another tab means nothing here; `Done` is never scoped).
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::ShowPage
-            | Self::Reload
-            | Self::Apply
-            | Self::ResetForm
-            | Self::Reapply
-            | Self::Disable
-            | Self::Loaded { .. }
-            | Self::Done { .. } => None,
+            Self::ShowPage | Self::Reload | Self::Apply | Self::Reapply | Self::Disable | Self::Loaded { .. } | Self::Done { .. } => None,
         }
     }
 }

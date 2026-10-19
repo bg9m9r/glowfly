@@ -32,7 +32,7 @@ pub enum Icon {
     NextChange,
     /// Two columns of three dots: a drag handle.
     Grip,
-    /// Angle brackets around a slash: code (Preferences > Editor).
+    /// Angle brackets around a slash: code (Preferences > Diff viewer).
     Code,
     /// Show / hide a masked field's text.
     Eye,
@@ -92,6 +92,8 @@ pub enum Icon {
     ExpandRight,
     /// A circle on a vertical line: a commit (the collapsed commit panel's Commit entry).
     Commit,
+    /// A circle with a meridian and the equator: Preferences > Language & region.
+    Globe,
 }
 
 /// Every icon's line width: they are outlines only.
@@ -269,7 +271,7 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
         Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check | Icon::More => {} // icons.rs
         Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
-        Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit => {}                               // icons.rs
+        Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe => {}                 // icons.rs
     }
 }
 

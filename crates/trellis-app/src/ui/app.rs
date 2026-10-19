@@ -212,6 +212,10 @@ impl TrellisApp {
         } else if self.st.settings.auto_fetch_minutes > 0 {
             ctx.request_repaint_after(Duration::from_secs(5));
         }
+        // The "Saved" tick beside a Preferences title fades out.
+        if self.st.prefs.as_ref().is_some_and(|p| p.saved.showing() || p.saved.pending) {
+            ctx.request_repaint_after(Duration::from_millis(100));
+        }
         // The status is re-read on a timer where the watcher can be silent (see `poll_every`).
         if let Some(every) = self.st.watch.poll_interval() {
             ctx.request_repaint_after(every);

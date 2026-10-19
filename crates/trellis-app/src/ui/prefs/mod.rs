@@ -1,14 +1,18 @@
-//! Full-window Preferences: a navigation column, an optional
-//! sub-list (Integrations), and a form with right-aligned labels and help text.
+//! Full-window Preferences: a navigation column, an optional sub-list (Integrations), and a
+//! form with right-aligned labels and help text (form.rs), the page title with its "Saved" tick,
+//! and the Save / Revert bar under a page with unsaved edits (save_bar.rs).
 
 mod appearance;
 mod appearance_graph;
-mod editor;
+mod diff_viewer;
+mod form;
 mod general;
+mod general_git;
 mod git;
 mod git_program;
 mod gitflow;
 mod integrations;
+mod integrations_form;
 mod keyboard;
 mod keyboard_row;
 mod language;
@@ -16,6 +20,7 @@ mod lfs;
 mod links;
 mod profile_setup;
 mod profiles;
+mod save_bar;
 mod signing;
 mod sparse;
 mod ssh;
@@ -28,86 +33,31 @@ mod tools;
 mod trello;
 mod updates_row;
 
+pub(super) use form::*;
+
 use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
+use crate::state::prefs_save;
 use crate::state::{AppState, PrefPage};
-use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align2, Color32, RichText, Sense, Stroke, Ui, pos2, vec2};
+use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::Provider;
-
-pub(super) const LABEL_W: f32 = 240.0;
-
-/// One form row: right-aligned label, then the control(s) and help text underneath.
-pub(super) fn row(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui)) {
-    ui.horizontal_top(|ui| {
-        let (r, _) = ui.allocate_exact_size(vec2(LABEL_W, 24.0), Sense::hover());
-        ui.painter().text(pos2(r.right(), r.center().y), Align2::RIGHT_CENTER, label, type_scale::font(type_scale::BODY), color::text());
-        ui.add_space(18.0);
-        ui.vertical(|ui| {
-            ui.set_max_width(480.0);
-            add(ui);
-        });
-    });
-    ui.add_space(18.0);
-}
-
-pub(super) fn help(ui: &mut Ui, text: &str) {
-    ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
-}
-
-pub(super) fn warn(ui: &mut Ui, text: &str) {
-    ui.horizontal_top(|ui| {
-        let (r, _) = ui.allocate_exact_size(vec2(12.0, 14.0), Sense::hover());
-        let c = r.center();
-        ui.painter().add(egui::Shape::convex_polygon(
-            vec![pos2(c.x, c.y - 5.0), pos2(c.x + 5.5, c.y + 4.5), pos2(c.x - 5.5, c.y + 4.5)],
-            Color32::TRANSPARENT,
-            Stroke::new(1.3_f32, color::amber()),
-        ));
-        ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
-    });
-}
-
-pub(super) fn caption(ui: &mut Ui, text: &str) {
-    ui.horizontal(|ui| {
-        ui.add_space(12.0);
-        ui.label(RichText::new(text).size(type_scale::SMALL).color(color::weak()));
-    });
-    ui.add_space(4.0);
-}
-
-pub(super) fn text_field(ui: &mut Ui, value: &mut String, hint: &str) -> egui::Response {
-    controls::field(ui, egui::TextEdit::singleline(value).hint_text(hint).desired_width(320.0).margin(vec2(8.0, 5.0)))
-}
-
-/// The widest a disabled primary's reason gets beside it before it is cut.
-const REASON_W: f32 = 280.0;
-
-/// A page's primary button; while disabled, `why` shows as a weak line beside it (pass None when
-/// the page already shows that problem above the button). Returns the button's response.
-pub(super) fn primary_button(ui: &mut Ui, text: &str, enabled: bool, why: Option<&str>) -> egui::Response {
-    let button = buttons::primary(text).enabled(enabled).why(why);
-    let Some(why) = why.filter(|_| !enabled) else { return ui.add(button) };
-    let with_reason = |ui: &mut Ui| {
-        let r = ui.add(button);
-        widgets::reason::beside(ui, why, REASON_W);
-        r
-    };
-    // Beside it: in the caller's row, or in a row of its own.
-    if ui.layout().is_horizontal() { with_reason(ui) } else { ui.horizontal(with_reason).inner }
-}
+use trellis_core::i18n::Lang;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(page) = st.prefs.as_ref().map(|p| p.page) else { return };
     let t = st.settings.lang();
     let repo_name = st.snap.as_ref().map(|s| s.name.clone());
-    nav(ctx, page, repo_name.as_deref(), st, msgs);
+    nav(ctx, page, repo_name.as_deref(), t, msgs);
     if page == PrefPage::Integrations {
         providers(ctx, st, msgs);
+    }
+    if st.prefs.as_ref().is_some_and(|p| prefs_save::unsaved(p, &st.settings, st.snap.as_ref())) {
+        // Only Git Flow's and sparse checkout's saves run as a git job.
+        let busy = st.job.is_some() && matches!(page, PrefPage::RepoGitFlow | PrefPage::RepoSparse);
+        save_bar::show(ctx, t, save_bar::BarView { busy }, msgs);
     }
 
     let lfs_cx = lfs::LfsContext {
@@ -115,8 +65,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         remote: st.snap.as_ref().and_then(crate::state::lfs::lfs_remote),
         job: st.job.as_ref().map(|j| j.label.clone()),
     };
-    let sparse_cx = sparse::SparseContext { repo_name: repo_name.clone(), job: st.job.as_ref().map(|j| j.label.clone()) };
-    let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some() };
+    let save_first = t.tr("prefs.save_bar.first");
+    let sparse_cx = sparse::SparseContext { repo_name: repo_name.clone(), job: st.job.as_ref().map(|j| j.label.clone()), save_first };
+    let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some(), save_first };
     let ssh_cx = ssh::SshContext {
         use_agent: st.settings.use_ssh_agent,
         services: crate::state::ssh_service::services(&st.settings.connections)
@@ -144,7 +95,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))
         .show(ctx, |ui| {
             let title = if page == PrefPage::Integrations { prefs.int_provider.name() } else { page.title(t) };
-            ui.label(RichText::new(title).font(type_scale::strong(ui, type_scale::TITLE)).color(color::text()));
+            ui.horizontal(|ui| {
+                ui.label(RichText::new(title).font(type_scale::strong(ui, type_scale::TITLE)).color(color::text()));
+                if prefs.saved.showing() {
+                    ui.add_space(12.0);
+                    save_bar::saved_tick(ui, t, prefs.saved.alpha);
+                }
+            });
             ui.add_space(18.0);
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 6.0;
@@ -168,11 +125,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::Git => git_program::git_program_page(ui, settings, git_state, msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
-                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, now, msgs),
-                    PrefPage::Editor => editor::editor_page(ui, settings),
+                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, msgs),
+                    PrefPage::Language => language::language_page(ui, settings, now),
+                    PrefPage::DiffViewer => diff_viewer::diff_viewer_page(ui, settings),
                     PrefPage::Keyboard => keyboard::keyboard_page(ui, t, &mut prefs.keys, keymap, msgs),
                     PrefPage::Tools => tools::tools_page(ui, settings, msgs),
-                    PrefPage::Terminal => terminal::terminal_page(ui, settings),
+                    PrefPage::Terminal => terminal::terminal_page(ui, settings, msgs),
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
                     PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),
                     PrefPage::RepoSparse => sparse::sparse_page(ui, &mut prefs.sparse, &sparse_cx, msgs),
@@ -181,7 +139,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         let Some(git) = prefs.git.as_mut() else { return };
                         match page {
                             PrefPage::Profile => profiles::profile_page(ui, &*settings, &mut prefs.profiles, git, switching, msgs),
-                            PrefPage::RepoIdentity => git::identity_page(ui, git, msgs),
+                            PrefPage::RepoIdentity => git::identity_page(ui, git),
                             _ => git::hooks_page(ui, git, msgs),
                         }
                     }
@@ -190,8 +148,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         });
 }
 
-fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    let t = st.settings.lang();
+fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, t: Lang, msgs: &mut Vec<Msg>) {
     egui::SidePanel::left("prefs-nav").exact_width(250.0).resizable(false).frame(egui::Frame::new().fill(color::panel())).show(ctx, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         ui.add_space(6.0);
@@ -200,39 +157,24 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
         }
         ui.add_space(12.0);
         caption(ui, t.tr("prefs.nav.caption"));
+        // Every row goes through update, which asks first when the page has unsaved edits.
         let mut go = |ui: &mut Ui, pg: PrefPage, icon: Icon| {
-            if widgets::nav_row(ui, Some(icon), pg.nav_label(t), page == pg).clicked()
-                && let Some(p) = st.prefs.as_mut()
-            {
-                // A key being recorded or a warning belongs to the page it was on.
-                if p.page != pg {
-                    p.keys.recording = None;
-                    p.keys.pending = None;
-                    p.keys.confirm_reset_all = false;
-                }
-                p.page = pg;
+            if widgets::nav_row(ui, Some(icon), pg.nav_label(t), page == pg).clicked() {
+                msgs.push(Msg::Prefs(PrefsMsg::Navigate(pg)));
             }
         };
         go(ui, PrefPage::General, Icon::Gear);
-        // Not `go`: the page looks for installed gits when it opens.
-        if widgets::nav_row(ui, Some(Icon::Branch), PrefPage::Git.nav_label(t), page == PrefPage::Git).clicked() {
-            msgs.push(Msg::GitEnv(crate::git_env::GitEnvMsg::ShowPage));
-        }
-        // Not `go`: the page seeds and fills its profiles when it opens.
-        if widgets::nav_row(ui, Some(Icon::User), PrefPage::Profile.nav_label(t), page == PrefPage::Profile).clicked() {
-            msgs.push(Msg::Profile(crate::profile::ProfileMsg::ShowPage));
-        }
+        go(ui, PrefPage::Git, Icon::Branch);
+        go(ui, PrefPage::Profile, Icon::User);
         go(ui, PrefPage::Integrations, Icon::Plug);
         go(ui, PrefPage::Ui, Icon::Brush);
-        go(ui, PrefPage::Editor, Icon::Code);
+        go(ui, PrefPage::Language, Icon::Globe);
+        go(ui, PrefPage::DiffViewer, Icon::Code);
         go(ui, PrefPage::Keyboard, Icon::Keyboard);
         go(ui, PrefPage::Tools, Icon::Tools);
         go(ui, PrefPage::Terminal, Icon::Terminal);
         go(ui, PrefPage::Signing, Icon::Key);
-        // Not `go`: the page reads ~/.ssh when it opens.
-        if widgets::nav_row(ui, Some(Icon::Lock), PrefPage::Ssh.nav_label(t), page == PrefPage::Ssh).clicked() {
-            msgs.push(Msg::Ssh(crate::ssh::SshMsg::ShowPage));
-        }
+        go(ui, PrefPage::Ssh, Icon::Lock);
         if let Some(name) = repo_name {
             ui.add_space(20.0);
             caption(ui, t.tr("prefs.nav.repo_caption"));
@@ -243,22 +185,10 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
             ui.add_space(4.0);
             go(ui, PrefPage::RepoIdentity, Icon::Identity);
             go(ui, PrefPage::RepoHooks, Icon::Hook);
-            // Not `go`: the page loads Trello boards when it opens.
-            if widgets::nav_row(ui, Some(Icon::Activity), PrefPage::RepoTracker.nav_label(t), page == PrefPage::RepoTracker).clicked() {
-                msgs.push(Msg::Forge(crate::msg::ForgeMsg::ShowTrackerPage));
-            }
-            // Not `go`: the page reads its status when it opens.
-            if widgets::nav_row(ui, Some(Icon::Storage), PrefPage::RepoLfs.nav_label(t), page == PrefPage::RepoLfs).clicked() {
-                msgs.push(Msg::Lfs(crate::lfs::LfsMsg::ShowPage));
-            }
-            // Not `go`: the page fills its form from the snapshot.
-            if widgets::nav_row(ui, Some(Icon::Flow), PrefPage::RepoGitFlow.nav_label(t), page == PrefPage::RepoGitFlow).clicked() {
-                msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ShowPage));
-            }
-            // Not `go`: the page reads its status when it opens.
-            if widgets::nav_row(ui, Some(Icon::Sparse), PrefPage::RepoSparse.nav_label(t), page == PrefPage::RepoSparse).clicked() {
-                msgs.push(Msg::Sparse(crate::msg::SparseMsg::ShowPage));
-            }
+            go(ui, PrefPage::RepoTracker, Icon::Activity);
+            go(ui, PrefPage::RepoLfs, Icon::Storage);
+            go(ui, PrefPage::RepoGitFlow, Icon::Flow);
+            go(ui, PrefPage::RepoSparse, Icon::Sparse);
         }
     });
 }

@@ -1,18 +1,17 @@
-//! Preferences > General.
+//! Preferences > General, in titled sections: Updates, Git (general_git.rs), Fetching, Graph,
+//! Repositories, Sign-ins and Diagnostics.
 
 use super::updates_row::UpdatesView;
-use super::{help, row, text_field, warn};
+use super::{help, row, section, warn};
 use crate::keymap::{BindingId, Keymap};
 use crate::logs::LogsMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
-use crate::msg::PrefsMsg;
 use crate::state::deep_link::SchemeView;
-use crate::state::prefs::{Autocrlf, GitConfigValues};
-use crate::ui::theme::color;
+use crate::state::prefs::GitConfigValues;
 use crate::ui::theme::controls;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, RichText, Ui};
+use eframe::egui::{self, Ui};
 use trellis_core::git_version::GitInfo;
 use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
@@ -34,36 +33,14 @@ pub struct GeneralContext<'a> {
 }
 
 pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValues>, cx: &GeneralContext, msgs: &mut Vec<Msg>) {
-    let (program, keys, scheme) = (cx.program, cx.keys, cx.scheme);
     let t = s.lang();
-    super::language::language_row(ui, s);
-    row(ui, t.tr("prefs.general.git.label"), |ui| {
-        ui.horizontal(|ui| {
-            ui.label(RichText::new(git_program_text(t, program)).color(color::text()));
-            if ui.add(buttons::secondary(t.tr("prefs.general.git.button"))).clicked() {
-                msgs.push(Msg::GitEnv(crate::git_env::GitEnvMsg::ShowPage));
-            }
-        });
-        help(ui, t.tr("prefs.general.git.help"));
-    });
+    section(ui, t.tr("prefs.general.section.updates"));
     super::updates_row::updates_row(ui, s, &cx.updates, msgs);
-    row(ui, t.tr("prefs.general.auto_fetch.label"), |ui| {
-        ui.add(egui::DragValue::new(&mut s.auto_fetch_minutes).range(0..=60).suffix(t.tr("prefs.general.auto_fetch.suffix")));
-        help(ui, t.tr("prefs.general.auto_fetch.help"));
-        help(ui, t.tr("prefs.general.auto_fetch.help_lfs"));
-        warn(ui, t.tr("prefs.general.auto_fetch.warn"));
-    });
-    row(ui, t.tr("prefs.general.auto_prune.label"), |ui| {
-        controls::checkbox(ui, &mut s.auto_prune, t.tr("prefs.general.auto_prune.check"));
-    });
-    row(ui, t.tr("prefs.general.remember_sign_ins.label"), |ui| {
-        controls::checkbox(ui, &mut s.remember_https_credentials, t.tr("prefs.general.remember_sign_ins.check"));
-        help(ui, t.tr("prefs.general.remember_sign_ins.help"));
-    });
-    row(ui, t.tr("prefs.general.default_branch.label"), |ui| {
-        text_field(ui, &mut s.default_branch, "main");
-        help(ui, t.tr("prefs.general.default_branch.help"));
-    });
+    section(ui, t.tr("prefs.general.section.git"));
+    super::general_git::git_section(ui, s, git, cx.program, msgs);
+    section(ui, t.tr("prefs.general.section.fetching"));
+    fetching(ui, t, s);
+    section(ui, t.tr("prefs.general.section.graph"));
     row(ui, t.tr("prefs.general.initial_commits.label"), |ui| {
         ui.add(egui::DragValue::new(&mut s.initial_commits).range(trellis_core::settings::MIN_INITIAL_COMMITS..=200_000).speed(50));
         help(ui, t.tr("prefs.general.initial_commits.help"));
@@ -73,20 +50,48 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         controls::checkbox(ui, &mut s.load_more_on_scroll, t.tr("prefs.general.load_more.check"));
         help(ui, t.tr("prefs.general.load_more.help"));
     });
+    section(ui, t.tr("prefs.general.section.repositories"));
+    repositories(ui, t, s, cx);
+    super::links::links_row(ui, t, cx.scheme, msgs);
+    section(ui, t.tr("prefs.general.section.sign_ins"));
+    row(ui, t.tr("prefs.general.remember_sign_ins.label"), |ui| {
+        controls::checkbox(ui, &mut s.remember_https_credentials, t.tr("prefs.general.remember_sign_ins.check"));
+        help(ui, t.tr("prefs.general.remember_sign_ins.help"));
+    });
+    forget_row(ui, t, s, msgs);
+    section(ui, t.tr("prefs.general.section.diagnostics"));
+    diagnostics(ui, t, s, msgs);
+}
+
+/// Auto-fetch, auto-prune and keeping submodules updated.
+fn fetching(ui: &mut Ui, t: Lang, s: &mut Settings) {
+    row(ui, t.tr("prefs.general.auto_fetch.label"), |ui| {
+        ui.add(egui::DragValue::new(&mut s.auto_fetch_minutes).range(0..=60).suffix(t.tr("prefs.general.auto_fetch.suffix")));
+        help(ui, t.tr("prefs.general.auto_fetch.help"));
+        help(ui, t.tr("prefs.general.auto_fetch.help_lfs"));
+        warn(ui, t.tr("prefs.general.auto_fetch.warn"));
+    });
+    row(ui, t.tr("prefs.general.auto_prune.label"), |ui| {
+        controls::checkbox(ui, &mut s.auto_prune, t.tr("prefs.general.auto_prune.check"));
+    });
+    row(ui, t.tr("prefs.general.submodules.label"), |ui| {
+        controls::checkbox(ui, &mut s.submodules.keep_updated, t.tr("prefs.general.submodules.check"));
+        help(ui, t.tr("prefs.general.submodules.help"));
+    });
+}
+
+/// Reopening the last tabs, watching files, the conflict check and deleting to the Trash.
+fn repositories(ui: &mut Ui, t: Lang, s: &mut Settings, cx: &GeneralContext) {
     row(ui, t.tr("prefs.general.reopen.label"), |ui| {
         controls::checkbox(ui, &mut s.reopen_last_repo, t.tr("prefs.general.reopen.check"));
     });
     row(ui, t.tr("prefs.general.watch_files.label"), |ui| {
         controls::checkbox(ui, &mut s.watch_files, t.tr("prefs.general.watch_files.check"));
-        help(ui, &watch_files_help(t, keys));
+        help(ui, &watch_files_help(t, cx.keys));
     });
     row(ui, t.tr("prefs.general.conflict_check.label"), |ui| {
         controls::checkbox(ui, &mut s.conflict_check, t.tr("prefs.general.conflict_check.check"));
         help(ui, t.tr("prefs.general.conflict_check.help"));
-    });
-    row(ui, t.tr("prefs.general.submodules.label"), |ui| {
-        controls::checkbox(ui, &mut s.submodules.keep_updated, t.tr("prefs.general.submodules.check"));
-        help(ui, t.tr("prefs.general.submodules.help"));
     });
     row(ui, t.tr("prefs.general.delete_to_trash.label"), |ui| {
         let check = if cfg!(windows) {
@@ -97,6 +102,10 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         controls::checkbox(ui, &mut s.delete_to_trash, check);
         help(ui, t.tr("prefs.general.delete_to_trash.help"));
     });
+}
+
+/// Extended logging and the logs folder.
+fn diagnostics(ui: &mut Ui, t: Lang, s: &Settings, msgs: &mut Vec<Msg>) {
     row(ui, t.tr("prefs.general.extended_logging.label"), |ui| {
         // Through a message, so the runner hears of it (the error log's level changes too).
         let mut on = s.extended_logging;
@@ -111,32 +120,6 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         }
         help(ui, t.tr("prefs.general.logs.help"));
     });
-    if let Some(git) = git {
-        row(ui, t.tr("prefs.general.longpaths.label"), |ui| {
-            if controls::checkbox(ui, &mut git.longpaths, "").changed() {
-                msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
-                    global: true,
-                    key: "core.longpaths".into(),
-                    value: Some(git.longpaths.to_string()),
-                }));
-            }
-            help(ui, t.tr("prefs.general.longpaths.help"));
-        });
-        row(ui, t.tr("prefs.general.autocrlf.label"), |ui| {
-            let before = git.autocrlf.clone();
-            egui::ComboBox::from_id_salt("autocrlf").width(320.0).selected_text(git.autocrlf.label(t)).show_ui(ui, |ui| {
-                for (choice, label) in Autocrlf::choices(t) {
-                    ui.selectable_value(&mut git.autocrlf, choice, label);
-                }
-            });
-            if git.autocrlf != before {
-                msgs.push(Msg::Prefs(PrefsMsg::GitConfig { global: true, key: "core.autocrlf".into(), value: git.autocrlf.value() }));
-            }
-            help(ui, t.tr("prefs.general.autocrlf.help"));
-        });
-    }
-    forget_row(ui, t, s, msgs);
-    super::links::links_row(ui, t, scheme, msgs);
 }
 
 /// Forget All Connections: forgetting the saved tokens, or those and Git Credential Manager's
@@ -144,7 +127,7 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
 fn forget_row(ui: &mut Ui, t: Lang, s: &Settings, msgs: &mut Vec<Msg>) {
     row(ui, t.tr("prefs.general.forget.label"), |ui| {
         let n = s.connections.len();
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             if ui.add(buttons::danger(t.tr("prefs.general.forget.button")).enabled(n > 0)).clicked() {
                 msgs.push(Msg::Forge(ForgeMsg::ForgetTokens { gcm: false }));
             }
@@ -164,18 +147,6 @@ fn forget_row(ui: &mut Ui, t: Lang, s: &Settings, msgs: &mut Vec<Msg>) {
             help(ui, &t.trn("prefs.general.forget.connections", n, &[]));
         }
     });
-}
-
-/// "git 2.45.1 at C:\Program Files\Git\cmd\git.exe", or what is missing.
-pub(super) fn git_program_text(t: Lang, info: Option<&GitInfo>) -> String {
-    let Some(info) = info else { return t.tr("prefs.general.git_program.checking").to_owned() };
-    let at = info.path.as_deref().map(trellis_core::native_path::shown);
-    match (info.version, at) {
-        (Some(v), Some(at)) => t.trf("prefs.general.git_program.at", &[("version", &trellis_core::git_version::show(v)), ("path", &at)]),
-        (Some(v), None) => t.trf("prefs.general.git_program.version", &[("version", &trellis_core::git_version::show(v))]),
-        (None, Some(at)) => t.trf("prefs.general.git_program.broken", &[("path", &at)]),
-        (None, None) => t.tr("prefs.general.git_program.missing").to_owned(),
-    }
 }
 
 #[cfg(test)]

@@ -4,7 +4,7 @@
 //! (finishing a branch is in gitflow_finish.rs). Everything is checked again here against the
 //! current snapshot before a job starts.
 
-use super::ops::{JobSpec, busy, start_job};
+use super::ops::{JobSpec, Started, busy, start_job};
 use crate::effect::Effect;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
@@ -22,13 +22,10 @@ pub(super) fn handle(st: &mut AppState, m: GitFlowMsg, now: Instant, fx: &mut Ve
                 fill(st);
             }
         }
-        GitFlowMsg::Apply => apply(st, fx),
-        GitFlowMsg::Discard => {
-            if let Some(p) = st.prefs.as_mut() {
-                p.gitflow.form = p.gitflow.filled.clone();
-                p.gitflow.error = None;
-            }
+        GitFlowMsg::Apply => {
+            apply(st, fx);
         }
+
         GitFlowMsg::StartDialog(kind) => start_dialog(st, kind, None),
         GitFlowMsg::StartFromIssue { kind, name } => start_dialog(st, kind, Some(name)),
         GitFlowMsg::Start { kind, name } => start(st, kind, &name, now, fx),
@@ -64,24 +61,34 @@ pub(super) fn snapshot_changed(st: &mut AppState) {
     }
 }
 
-fn apply(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let (Some(prefs), Some(snap)) = (st.prefs.as_mut(), st.snap.as_ref()) else { return };
+/// Puts the form back to what it was filled with.
+pub(super) fn discard(st: &mut AppState) {
+    if let Some(p) = st.prefs.as_mut() {
+        p.gitflow.form = p.gitflow.filled.clone();
+        p.gitflow.error = None;
+    }
+}
+
+/// Initialize / Save: checks the form and starts the job; false when it was refused (the
+/// problem is on the page, or another job runs).
+pub(super) fn apply(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
+    let (Some(prefs), Some(snap)) = (st.prefs.as_mut(), st.snap.as_ref()) else { return false };
     let page = &mut prefs.gitflow;
     let form = page.form.trimmed();
     if let Err(p) = gitflow::check_settings(&form) {
         page.error = Some(p.message());
-        return;
+        return false;
     }
     let cmds = match gitflow::init_cmds(&form, &snap.gitflow, &Branches::of(snap)) {
         Ok(cmds) => cmds,
         Err(p) => {
             page.error = Some(p.message());
-            return;
+            return false;
         }
     };
     page.error = None;
     let label = if snap.gitflow.is_initialized() { SAVE_LABEL } else { INIT_LABEL };
-    start_job(st, JobSpec::new(label.into(), cmds), fx);
+    start_job(st, JobSpec::new(label.into(), cmds), fx) != Started::No
 }
 
 /// Shows the Git Flow panel in place of the graph, closing the diff, the conflict view, the

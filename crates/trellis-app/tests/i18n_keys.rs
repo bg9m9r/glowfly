@@ -157,3 +157,15 @@ fn the_dismiss_scan_finds_literal_buttons() {
     assert!(literal_dismiss("ui.button(t.tr(\"common.cancel.button\"))").is_empty());
     assert!(literal_dismiss("ui.button(\"Cancel rebase\")").is_empty());
 }
+
+/// Preference row labels stay short enough for the label column: what a row does at length
+/// goes in its checkbox text or help.
+#[test]
+fn preference_row_labels_are_short() {
+    let long: Vec<String> = Lang::En
+        .keys()
+        .filter(|(k, v)| k.starts_with("prefs.") && k.ends_with(".label") && v.chars().count() > 32)
+        .map(|(k, v)| format!("{k}: {v:?}"))
+        .collect();
+    assert!(long.is_empty(), "row labels of more than 32 characters:\n{}", long.join("\n"));
+}

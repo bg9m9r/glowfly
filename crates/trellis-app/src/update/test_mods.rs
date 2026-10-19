@@ -211,6 +211,10 @@ pub(super) mod pick_tests;
 pub(super) mod pr_checkout_tests;
 #[path = "pr_details_tests.rs"]
 pub(super) mod pr_details_tests;
+#[path = "prefs_leave_tests.rs"]
+pub(super) mod prefs_leave_tests;
+#[path = "prefs_save_tests.rs"]
+pub(super) mod prefs_save_tests;
 #[path = "profile_setup_tests.rs"]
 pub(super) mod profile_setup_tests;
 #[path = "profiles_tests.rs"]

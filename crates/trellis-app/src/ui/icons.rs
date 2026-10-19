@@ -1,6 +1,6 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
 //! lock, wrench, warning, keyboard, external diff, into, comment, pencil, plus, issue, check, more,
-//! the file pages, open file, the expand chevrons and commit), called from
+//! the file pages, open file, the expand chevrons, commit and globe), called from
 //! `widgets::paint_icon`.
 
 use super::widgets::Icon;
@@ -275,6 +275,12 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             p.circle_stroke(c, r, s);
             line(pos2(c.x, c.y - 9.0), pos2(c.x, c.y - r));
             line(pos2(c.x, c.y + r), pos2(c.x, c.y + 9.0));
+        }
+        Icon::Globe => {
+            // A circle with one meridian and the equator.
+            p.circle_stroke(c, 8.0, s);
+            p.add(egui::Shape::ellipse_stroke(c, vec2(3.5, 8.0), s));
+            line(pos2(c.x - 8.0, c.y), pos2(c.x + 8.0, c.y));
         }
         _ => return false,
     }

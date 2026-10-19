@@ -74,6 +74,7 @@ pub mod path_hazards;
 pub mod pick;
 pub mod pr_details;
 pub mod prefs;
+pub mod prefs_save;
 pub mod profiles;
 pub mod publish;
 pub mod pull_request;
@@ -239,6 +240,16 @@ pub enum Modal {
         ack: Option<String>,
         acked: bool,
         then: Box<Msg>,
+    },
+    /// A question with two answers besides Cancel: `button` (the primary, Enter's default)
+    /// runs `then`, and `alt` (secondary, left of it) runs `alt_then`.
+    ConfirmChoice {
+        title: String,
+        body: String,
+        button: String,
+        then: Box<Msg>,
+        alt: String,
+        alt_then: Box<Msg>,
     },
     Clone(clone::CloneForm),
     Init(init::InitForm),

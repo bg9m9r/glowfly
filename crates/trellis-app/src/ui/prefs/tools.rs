@@ -1,18 +1,17 @@
-//! Preferences > External tools: the editor that opens files and the repository, a custom
-//! terminal for Open in terminal, the diff tool that compares a file's versions, and the merge
-//! tool that resolves a conflict. Each tool's arguments warn about an unmatched quote, names
-//! that are not its placeholders and (diff and merge tools) the versions they leave out. Edits
-//! apply at once (the shell saves the settings when they change); Browse… asks update to show
-//! a file dialog.
+//! Preferences > External tools: the editor that opens files and the repository, the diff tool
+//! that compares a file's versions, and the merge tool that resolves a conflict (the external
+//! terminal is on the Terminal page, which shares `program_field` and `warnings`). Each tool's
+//! arguments warn about an unmatched quote, names that are not its placeholders and (diff and
+//! merge tools) the versions they leave out. Edits apply at once (the shell saves the settings
+//! when they change); Browse… asks update to show a file dialog.
 
-use super::appearance::section;
-use super::{help, row, text_field, warn};
+use super::{help, row, section, text_field, warn};
 use crate::msg::Msg;
 use crate::state::tools::{bundle_warning, missing_warnings, template_warnings};
 use crate::tools::{ToolKind, ToolsMsg};
 use crate::ui::widgets::buttons;
 use eframe::egui::Ui;
-use trellis_core::external_tools::{self, DIFF_PLACEHOLDERS, EDITOR_PLACEHOLDERS, MERGE_PLACEHOLDERS};
+use trellis_core::external_tools::{DIFF_PLACEHOLDERS, EDITOR_PLACEHOLDERS, MERGE_PLACEHOLDERS};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::{ExternalTools, Settings};
 
@@ -46,20 +45,6 @@ pub fn tools_page(ui: &mut Ui, s: &mut Settings, msgs: &mut Vec<Msg>) {
         }
     });
 
-    let et = &mut s.external_tools;
-    section(ui, t.tr("prefs.tools.terminal.section"));
-    row(ui, t.tr("prefs.tools.terminal.label"), |ui| {
-        program_field(ui, t, &mut et.terminal, t.tr("prefs.tools.terminal.hint"), ToolKind::Terminal, msgs);
-        help(ui, t.tr("prefs.tools.terminal.help"));
-    });
-    let custom = external_tools::program(&et.terminal).is_some();
-    row(ui, t.tr("prefs.tools.terminal_args.label"), |ui| {
-        ui.add_enabled_ui(custom, |ui| {
-            text_field(ui, &mut et.terminal_args, "");
-        });
-        help(ui, t.tr("prefs.tools.terminal_args.help"));
-        warnings(ui, t, &et.terminal_args, &EDITOR_PLACEHOLDERS, &[]);
-    });
     diff_section(ui, t, s, msgs);
     merge_section(ui, t, s, msgs);
 }
@@ -111,7 +96,7 @@ fn merge_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
 }
 
 /// A program's text field and its Browse… button.
-fn program_field(ui: &mut Ui, t: Lang, value: &mut String, hint: &str, kind: ToolKind, msgs: &mut Vec<Msg>) {
+pub(super) fn program_field(ui: &mut Ui, t: Lang, value: &mut String, hint: &str, kind: ToolKind, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         text_field(ui, value, hint);
         if ui.add(buttons::secondary(t.tr("prefs.tools.browse.button"))).clicked() {
@@ -122,7 +107,7 @@ fn program_field(ui: &mut Ui, t: Lang, value: &mut String, hint: &str, kind: Too
 
 /// The warnings under an arguments field whose placeholders are `known`, and which should name
 /// each of `wanted`.
-fn warnings(ui: &mut Ui, t: Lang, template: &str, known: &[&str], wanted: &[&str]) {
+pub(super) fn warnings(ui: &mut Ui, t: Lang, template: &str, known: &[&str], wanted: &[&str]) {
     for w in template_warnings(t, template, known).into_iter().chain(missing_warnings(t, template, wanted)) {
         warn(ui, &w);
     }

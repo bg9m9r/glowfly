@@ -28,7 +28,7 @@ fn the_commit_refusal_toast_is_in_the_chosen_language() {
 #[test]
 fn choosing_a_language_saves_it() {
     let mut st = state();
-    st.prefs = Some(PrefsState::new(PrefPage::General));
+    st.prefs = Some(PrefsState::new(PrefPage::Language));
     update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
     st.settings.language = "es".into();
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());

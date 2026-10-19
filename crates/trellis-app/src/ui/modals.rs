@@ -1,5 +1,5 @@
 //! Dialogs, every one drawn through `dialog_frame` (title, scrolling body, footer in the fixed
-//! order, Enter and the default button's focus) in `theme::dialog`: confirmation (drawn by `confirm_dialog.rs`, also in its danger form), new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
+//! order, Enter and the default button's focus) in `theme::dialog`: confirmation (drawn by `confirm_dialog.rs`, also in its danger form and with an alternative answer), new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
 //! worktree (drawn by `worktree_dialog.rs`), remove and lock worktree (drawn by
 //! `worktree_manage_dialog.rs`), add and remove submodule (drawn by `submodule_dialogs.rs`), clone
 //! (drawn by `clone_dialog.rs` and `clone_service.rs`), init (drawn by `init_dialog.rs`), create
@@ -62,11 +62,14 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let cx = Cx { t, keyboard, key: egui::Id::new("trellis-dialog").with(std::mem::discriminant(&*modal)) };
         match modal {
             Modal::Confirm { title, body, button, .. } => {
-                close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Normal, None, msgs)
+                close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Normal, None, None, msgs)
             }
             Modal::ConfirmDanger { title, body, button, ack, acked, .. } => {
                 let ack = ack.as_deref().map(|label| (label, acked));
-                close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Danger, ack, msgs);
+                close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Danger, ack, None, msgs);
+            }
+            Modal::ConfirmChoice { title, body, button, alt, .. } => {
+                close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Normal, None, Some(alt), msgs)
             }
             Modal::NewBranch { start, name, checkout, touched } => {
                 // Not under a credential prompt or the discard question: its fields need the keyboard.

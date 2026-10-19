@@ -1,177 +1,50 @@
-//! Preferences > Integrations (one page per hosting service) and Repo > Issue Tracker.
+//! Preferences > Integrations (one page per hosting service: a card for each connected account,
+//! then Add another account or the sign-in form, integrations_form.rs) and Repo > Issue
+//! Tracker.
 
-use super::{LABEL_W, help, primary_button, row, text_field, trello};
-use crate::msg::ForgeMsg;
-use crate::msg::Msg;
+use super::integrations_form::{account_card, aligned, sign_in_form};
+use super::{help, row, text_field, trello};
+use crate::msg::{ForgeMsg, Msg, PrefsMsg};
 use crate::state::profiles::accounts_owner;
 use crate::state::{ForgeState, PrefsState};
-use crate::ui::theme::color;
 use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use crate::ui::widgets::form_message::{self, Message};
-use crate::ui::widgets::{self, Icon};
-use eframe::egui::{self, RichText, Sense, Stroke, Ui, vec2};
+use eframe::egui::Ui;
 use std::path::Path;
-use trellis_core::forge::{self, Account, Provider, Target};
+use trellis_core::forge::{Account, Provider};
 use trellis_core::settings::{Settings, TrackerChoice};
-
-/// Why Connect waits: the host isn't known yet.
-const NO_HOST: &str = "Enter the host domain first";
 
 pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
     let provider = prefs.int_provider;
-    let account = forge::parse_host(provider, &prefs.int_host).map(|(host, org)| Account { provider, host, org });
-    let connection = account.as_ref().and_then(|a| s.connection(a)).cloned();
-
-    // Which profile the accounts switch with, over the card.
+    let t = s.lang();
+    // Which profile the accounts switch with, over the cards.
     if let Some(p) = s.active_profile() {
-        ui.horizontal(|ui| {
-            ui.add_space(LABEL_W - 20.0);
-            help(ui, &accounts_owner(&p.name));
-        });
+        aligned(ui, |ui| help(ui, &accounts_owner(&p.name)));
         ui.add_space(6.0);
     }
-    // Connection card, centered over the form.
-    ui.horizontal(|ui| {
-        ui.add_space(LABEL_W - 20.0);
-        egui::Frame::new().fill(color::toolbar()).corner_radius(4).inner_margin(egui::Margin::symmetric(16, 12)).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                let (r, _) = ui.allocate_exact_size(vec2(26.0, 40.0), Sense::hover());
-                ui.painter().circle_stroke(r.center(), 11.0, Stroke::new(1.5_f32, color::weak()));
-                widgets::paint_icon(ui.painter(), r.center(), Icon::User, color::weak());
-                ui.vertical(|ui| match &connection {
-                    Some(c) => {
-                        ui.label(RichText::new("Connected").color(color::green()));
-                        ui.label(
-                            RichText::new(format!("{} · {} via {}", c.account.display(), c.user, c.method))
-                                .size(type_scale::SMALL)
-                                .color(color::weak()),
-                        );
-                        if ui.add(buttons::secondary("Disconnect").small()).clicked() {
-                            msgs.push(Msg::Forge(ForgeMsg::Disconnect(c.account.clone())));
-                        }
-                    }
-                    None => {
-                        ui.label(RichText::new("Not connected").color(color::red()));
-                        if let Some(a) = &account {
-                            ui.label(RichText::new(a.display()).size(type_scale::SMALL).color(color::weak()));
-                        }
-                        if provider.supports_gcm() {
-                            ui.horizontal(|ui| {
-                                let enabled = !prefs.int_busy && account.is_some();
-                                let label = format!("Connect to {}", provider.name());
-                                let tip = if account.is_some() {
-                                    "Sign in with Git Credential Manager (the same sign-in git push uses)"
-                                } else {
-                                    NO_HOST
-                                };
-                                // While busy, the spinner says why.
-                                let why = (!prefs.int_busy && account.is_none()).then_some(NO_HOST);
-                                if primary_button(ui, &label, enabled, why).on_hover_text(tip).clicked()
-                                    && let Some(a) = &account
-                                {
-                                    msgs.push(Msg::Forge(ForgeMsg::Connect { account: a.clone(), user: None, token: None }));
-                                }
-                                if prefs.int_busy {
-                                    ui.add(egui::Spinner::new().size(14.0));
-                                }
-                            });
-                        }
-                    }
-                });
-            });
-        });
-    });
-    ui.add_space(14.0);
-    if provider.supports_gcm() {
-        ui.horizontal(|ui| {
-            ui.add_space(LABEL_W + 60.0);
-            ui.label(RichText::new("or").size(type_scale::BODY).color(color::text()));
-        });
-        ui.add_space(14.0);
+    let mine: Vec<_> = s.connections.iter().filter(|c| c.account.provider == provider).cloned().collect();
+    for c in &mine {
+        aligned(ui, |ui| account_card(ui, c, msgs));
+        ui.add_space(8.0);
     }
-
-    if provider.fixed_host().is_none() {
-        row(ui, "Host domain", |ui| {
-            text_field(ui, &mut prefs.int_host, provider.host_hint());
-        });
-    }
-    let is_trello = provider == Provider::Trello;
-    if let Some(label) = provider.username_label() {
-        row(ui, label, |ui| {
-            let hint = match label {
-                "Email" => "you@example.com",
-                _ if is_trello => "32-character key",
-                _ => "username",
-            };
-            text_field(ui, &mut prefs.int_user, hint);
-            if is_trello {
-                trello::key_link(ui, msgs);
+    if mine.is_empty() || prefs.int_adding {
+        ui.add_space(6.0);
+        sign_in_form(ui, t, prefs, !mine.is_empty(), msgs);
+    } else {
+        aligned(ui, |ui| {
+            if ui.add(buttons::secondary("Add another account")).clicked() {
+                msgs.push(Msg::Prefs(PrefsMsg::ShowAccountForm(true)));
             }
         });
     }
-    let token_label = match provider {
-        Provider::Bitbucket => "App password",
-        Provider::JiraCloud => "API token",
-        Provider::Trello => "Token",
-        _ => "Personal access token",
-    };
-    row(ui, token_label, |ui| {
-        controls::field(ui, egui::TextEdit::singleline(&mut prefs.int_token).password(true).desired_width(320.0).margin(vec2(8.0, 5.0)));
-        help(ui, &format!("{} Stored in the Windows Credential Manager, never in Trellis's settings file.", provider.token_help()));
-        if is_trello {
-            trello::token_link(ui, &prefs.int_user, msgs);
-        } else if let Some(url) = account.as_ref().and_then(Target::token_url)
-            && ui.link("Create a token").clicked()
-        {
-            msgs.push(Msg::OpenUrl(url));
-        }
-    });
-    ui.horizontal(|ui| {
-        ui.add_space(LABEL_W + 18.0);
-        let needs_user = matches!(provider, Provider::JiraCloud | Provider::Trello) && prefs.int_user.trim().is_empty();
-        let valid = !prefs.int_token.trim().is_empty() && account.is_some() && !prefs.int_busy && !needs_user;
-        if primary_button(ui, "Connect", valid, None).clicked()
-            && let Some(a) = &account
-        {
-            let user = Some(prefs.int_user.trim().to_owned()).filter(|u| !u.is_empty());
-            msgs.push(Msg::Forge(ForgeMsg::Connect { account: a.clone(), user, token: Some(prefs.int_token.trim().to_owned()) }));
-        }
-        if prefs.int_busy {
-            ui.add(egui::Spinner::new().size(14.0));
-        }
-    });
-    if let Some(e) = &prefs.int_error {
-        ui.horizontal(|ui| {
-            ui.add_space(LABEL_W + 18.0);
-            ui.vertical(|ui| form_message::line(ui, Message::error(e.as_str())));
-        });
-    }
+    ui.add_space(10.0);
     if provider.is_tracker_only() {
-        ui.add_space(10.0);
-        let text = if is_trello {
+        let text = if provider == Provider::Trello {
             "Trello is an issue tracker. Once connected, choose it and a board for a repository under Repo-specific preferences > Issue tracker."
         } else {
             "Jira is an issue tracker. Once connected, choose it for a repository under Repo-specific preferences > Issue tracker."
         };
         row(ui, "", |ui| help(ui, text));
-    }
-
-    let mine: Vec<_> = s.connections.iter().filter(|c| c.account.provider == provider).cloned().collect();
-    if !mine.is_empty() {
-        ui.add_space(20.0);
-        row(ui, "Connected accounts", |ui| {
-            for c in mine {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new(c.account.display()).color(color::text()));
-                    ui.label(RichText::new(format!("{} · {}", c.user, c.method)).size(type_scale::SMALL).color(color::weak()));
-                    if ui.add(buttons::secondary("Disconnect").small()).clicked() {
-                        msgs.push(Msg::Forge(ForgeMsg::Disconnect(c.account.clone())));
-                    }
-                });
-            }
-        });
     }
     if let Some(var) = provider.env_var() {
         row(ui, "", |ui| {

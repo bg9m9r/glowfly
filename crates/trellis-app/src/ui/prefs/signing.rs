@@ -1,7 +1,7 @@
 //! Preferences > Commit signing: format, program, signing key (listed from gpg or ~/.ssh),
 //! where the key's passphrase is asked, key generation, and signing defaults.
 
-use super::{help, primary_button, row, text_field, warn};
+use super::{check_row, help, primary_button, row, text_field, warn};
 use crate::msg::PrefsMsg;
 use crate::msg::{FilePurpose, Msg};
 use crate::state::PrefsState;
@@ -167,15 +167,11 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
         });
     }
 
-    row(ui, "Sign commits by default", |ui| {
-        if controls::checkbox(ui, &mut git.gpgsign, "").changed() {
-            set(msgs, "commit.gpgsign", &git.gpgsign.to_string());
-        }
-    });
-    row(ui, "Sign tags by default", |ui| {
-        if controls::checkbox(ui, &mut git.tag_gpgsign, "").changed() {
-            set(msgs, "tag.gpgsign", &git.tag_gpgsign.to_string());
-        }
-        help(ui, "Trellis commits and tags through git, so these settings also apply on the command line.");
-    });
+    if check_row(ui, "Sign commits", &mut git.gpgsign, "Sign new commits by default", None).changed() {
+        set(msgs, "commit.gpgsign", &git.gpgsign.to_string());
+    }
+    let help = Some("Trellis commits and tags through git, so these settings also apply on the command line.");
+    if check_row(ui, "Sign tags", &mut git.tag_gpgsign, "Sign new tags by default", help).changed() {
+        set(msgs, "tag.gpgsign", &git.tag_gpgsign.to_string());
+    }
 }

@@ -130,14 +130,14 @@ fn apply_refused() {
     assert_eq!(page(&st).error.as_deref(), Some("Enter a feature prefix."));
     assert!(st.job.is_none());
 
-    flow(&mut st, GitFlowMsg::Discard);
+    run(&mut st, Msg::Prefs(PrefsMsg::RevertPage));
     assert_eq!(page(&st).form, page(&st).filled);
     assert_eq!(page(&st).error, None);
 
     page_mut(&mut st).form.production = "nope".into();
     assert!(git_job(&flow(&mut st, GitFlowMsg::Apply)).is_none());
     assert_eq!(page(&st).error.as_deref(), Some("nope doesn't exist."));
-    flow(&mut st, GitFlowMsg::Discard);
+    run(&mut st, Msg::Prefs(PrefsMsg::RevertPage));
     assert_eq!(page(&st).error, None);
     assert_eq!(page(&st).form.production, "main");
     cleanup(&dir);
@@ -184,7 +184,7 @@ fn snapshot_changed_refills() {
     assert_eq!(page(&st).form.feature, "x/");
     assert_eq!(page(&st).base.release.as_deref(), Some("rel/"));
 
-    flow(&mut st, GitFlowMsg::Discard);
+    run(&mut st, Msg::Prefs(PrefsMsg::RevertPage));
     git(&dir, &["config", "gitflow.prefix.hotfix", "fix/"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(page(&st).form.hotfix, "fix/");

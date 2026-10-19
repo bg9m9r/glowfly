@@ -216,6 +216,8 @@ pub enum Msg {
         then: Box<Msg>,
     },
     ConfirmAccepted,
+    /// The alternative button of `Modal::ConfirmChoice`: runs its `alt_then`.
+    ConfirmAlt,
     /// A toast's action button (state/toasts.rs): runs its message and removes the toast (update/notify.rs).
     ToastAction(u64),
     /// Close whichever dialog is open.
@@ -314,6 +316,7 @@ impl Msg {
             | Msg::Confirm { .. }
             | Msg::ConfirmDanger { .. }
             | Msg::ConfirmAccepted
+            | Msg::ConfirmAlt
             | Msg::ToastAction(_)
             | Msg::CloseModal
             | Msg::Copy(_)

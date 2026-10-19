@@ -1,5 +1,5 @@
-//! Building the confirmation dialogs (`Modal::Confirm` and `Modal::ConfirmDanger`) outside
-//! `update`, and whether one may run its step.
+//! Building the confirmation dialogs (`Modal::Confirm`, `Modal::ConfirmDanger` and
+//! `Modal::ConfirmChoice`) outside `update`, and whether one may run its step.
 
 use super::Modal;
 use crate::msg::Msg;
@@ -31,7 +31,7 @@ impl Modal {
     /// `ConfirmDanger` whose acknowledgement (if it has one) is ticked.
     pub fn confirm_ready(&self) -> bool {
         match self {
-            Modal::Confirm { .. } => true,
+            Modal::Confirm { .. } | Modal::ConfirmChoice { .. } => true,
             Modal::ConfirmDanger { ack, acked, .. } => ack.is_none() || *acked,
             _ => false,
         }

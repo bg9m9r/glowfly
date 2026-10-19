@@ -1,4 +1,4 @@
-//! Headless tests for Preferences > Editor: the settings save once, change only how the open
+//! Headless tests for Preferences > Diff viewer: the settings save once, change only how the open
 //! diff is painted (no reload), and closing Preferences keeps the diff's top row.
 
 use super::tests::state;
@@ -74,25 +74,25 @@ fn changing_tab_size_does_not_reload() {
 }
 
 #[test]
-fn open_editor_page() {
+fn open_diff_viewer_page() {
     let mut st = state();
-    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Editor)));
-    assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Editor));
-    assert_eq!(PrefPage::Editor.title(trellis_core::i18n::Lang::En), "Editor");
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::DiffViewer)));
+    assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::DiffViewer));
+    assert_eq!(PrefPage::DiffViewer.title(trellis_core::i18n::Lang::En), "Diff viewer");
 }
 
 #[test]
 fn closing_prefs_keeps_the_diff_top_row() {
     let mut st = with_diff();
     st.view.diff_top_row = 7;
-    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Editor)));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::DiffViewer)));
     st.settings.diff_font_size = 16.0;
     run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
     assert_eq!(st.view.diff_scroll_to_row, Some(7), "the same row stays at the top at the new row height");
 
     let mut st = state();
-    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Editor)));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::DiffViewer)));
     run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
     assert_eq!(st.view.diff_scroll_to_row, None, "no diff open");
 }

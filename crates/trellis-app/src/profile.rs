@@ -23,8 +23,6 @@ pub enum ProfileMsg {
     Add { name: String, copy_current: bool, copy_accounts: bool },
     /// The inline rename field was committed.
     Rename { id: ProfileId, name: String },
-    /// An identity field lost focus with this text.
-    SetIdentity { id: ProfileId, field: IdentityField, value: String },
     /// The Delete button: ask first.
     AskDelete(ProfileId),
     /// Accepting the Delete confirmation.
@@ -66,7 +64,6 @@ impl ProfileMsg {
             | Self::Select(_)
             | Self::Add { .. }
             | Self::Rename { .. }
-            | Self::SetIdentity { .. }
             | Self::AskDelete(_)
             | Self::Delete(_)
             | Self::Switch(_)

@@ -1,4 +1,4 @@
-//! Preferences > In-App Terminal (the shell, text size, cursor and dimming, copy on select,
+//! Preferences > Terminal (the shell, text size, cursor and dimming, copy on select,
 //! middle-click paste, and whether Open in terminal uses the panel), and the panel's remembered
 //! state.
 

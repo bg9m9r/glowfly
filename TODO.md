@@ -211,7 +211,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
 - [x] **Sidebar create actions**: every section header shows a hover + (and a ⋯ for its menu)
       like ISSUES; SUBMODULES and WORKTREES are always listed, with "Add submodule…" and "Add
       worktree…" in their empty state; REMOTE counts remotes, not remote branches
-- [ ] **Preferences structure**: Editor is renamed Diff Viewer; one Terminal page for the
+- [x] **Preferences structure**: Editor is renamed Diff Viewer; one Terminal page for the
       built-in and external terminal; Language and date locale together; General split into
       titled sections; one save model (instant, with a short "Saved"; pages that write repo
       config get a sticky Save / Revert bar and warn on leaving with unsaved edits); the
@@ -269,12 +269,12 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | SSH | ✔ SSH page (key pairs, generate a key, the key git uses, local agent, add a key to a hosting service) | Follow-ups in Later > SSH key management |
 | Integrations | ✔ 10 services | PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
-| External Tools | ✔ Editor, terminal, diff tool and merge tool | Follow-ups in Later > External tools and Later > External diff and merge tools |
+| External Tools | ✔ Editor, diff tool and merge tool (the external terminal is on the Terminal page) | Follow-ups in Later > External tools and Later > External diff and merge tools |
 | Notifications | ✔ location, behind alerts and desktop notifications under UI Customization | Per-kind choices, click to focus (Later > Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors (wait on repository groups) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
-| Editor | ◐ Editor (font size, tab size, line numbers, syntax and word highlights, word wrap) | Font family, EOL character |
-| In-App Terminal | ✔ In-App Terminal page (shell, font size, cursor style, dim when unfocused, copy on select, middle-click paste (Linux), Open in terminal in the panel) | Font family, line height (Ideas > Built-in terminal) |
+| Diff viewer | ◐ Diff viewer (font size, tab size, line numbers, syntax and word highlights, word wrap) | Font family, EOL character |
+| Terminal | ✔ Terminal page (built-in: shell, font size, cursor style, dim when unfocused, copy on select, middle-click paste (Linux), Open in terminal in the panel; external: program and arguments) | Font family, line height (Ideas > Built-in terminal) |
 | Experimental | ✘ | Git executable selection and version (P3) |
 | *Repo:* Encoding | ✘ | Per-repo file encoding for diffs |
 | *Repo:* Gitflow | ✔ Git Flow page, Start and Finish, Git Flow panel, branch from issue | Finish options (Later > Git Flow) |
@@ -1091,6 +1091,20 @@ here, under the item they grew from.
 - Built-in filter names on the pull request and issue filter chips
 - Names only screen readers hear: the column resize grips and the hidden and solo markers
 - The branch rows' ahead/behind tooltips and the graph header's shallow-clone tooltip
+
+### Preferences structure
+
+- Ask before quitting the app (window close) while a Preferences page has unsaved edits
+- Ctrl/Cmd+S saves the page and Esc on the Save / Revert bar reverts
+- Commit signing text fields (program, allowed signers file) on the Save / Revert bar instead
+  of saving on leaving the field
+- "Saved" waits for the git config write to succeed and shows the error inline when it fails
+- Integrations: rename or reorder accounts, and a per-account Test connection button
+- Rename the prefs.ui.date_* and prefs.tools.terminal.* translation keys to match their new
+  pages
+- A search field over all Preferences pages
+- Remember the last Preferences page between openings
+- Highlight the unsaved fields on a page and in its nav row
 
 ### Disabled actions say why
 

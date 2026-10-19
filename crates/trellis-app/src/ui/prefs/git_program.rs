@@ -2,7 +2,7 @@
 //! version in use. The page only asks (`GitEnvMsg`); update checks a choice, saves it and
 //! follows the new git everywhere.
 
-use super::general::git_program_text;
+use super::general_git::git_program_text;
 use super::{help, row, warn};
 use crate::git_env::GitEnvMsg;
 use crate::msg::Msg;

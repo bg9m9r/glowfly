@@ -1,4 +1,4 @@
-//! Per-frame drawing metrics of the diff viewer, from Preferences > Editor: the text font, the
+//! Per-frame drawing metrics of the diff viewer, from Preferences > Diff viewer: the text font, the
 //! row height and the gutter positions, which scale with the font size so the default size
 //! draws exactly as the fixed layout did.
 

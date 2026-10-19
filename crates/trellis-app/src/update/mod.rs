@@ -56,6 +56,9 @@ mod patch;
 mod pick;
 mod pr_details;
 mod prefs;
+mod prefs_leave;
+mod prefs_nav;
+mod prefs_save;
 mod profile_setup;
 mod profiles;
 mod publish;
@@ -137,6 +140,11 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         st.toast(false, why, now);
         return fx;
     }
+    // Leaving a Preferences page with unsaved edits asks first (update/prefs_leave.rs).
+    let Some(msg) = prefs_leave::hold(st, msg) else {
+        st.dialog.track(st.modal.as_ref());
+        return fx;
+    };
     match msg {
         // Each area's messages go to its handler, which matches them exhaustively.
         Msg::Repo(m) => repo::handle(st, m, now, &mut fx),
@@ -204,6 +212,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             watch::poll(st, t, &mut fx);
             build_status::tick(st, t, &mut fx);
             updates::tick(st, t, &mut fx);
+            prefs_save::tick(st, t);
         }
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {
@@ -220,10 +229,20 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             // A step that needs the acknowledgement waits, open, until it is ticked.
             if !st.modal.as_ref().is_some_and(crate::state::Modal::confirm_ready) {
                 tracing::debug!("confirmation not ready (no confirm open, or its acknowledgement isn't ticked)");
-            } else if let Some(crate::state::Modal::Confirm { then, .. } | crate::state::Modal::ConfirmDanger { then, .. }) =
-                st.modal.take()
+            } else if let Some(
+                crate::state::Modal::Confirm { then, .. }
+                | crate::state::Modal::ConfirmDanger { then, .. }
+                | crate::state::Modal::ConfirmChoice { then, .. },
+            ) = st.modal.take()
             {
                 fx.extend(update(st, *then, now));
+            }
+        }
+        Msg::ConfirmAlt => {
+            if matches!(st.modal, Some(crate::state::Modal::ConfirmChoice { .. }))
+                && let Some(crate::state::Modal::ConfirmChoice { alt_then, .. }) = st.modal.take()
+            {
+                fx.extend(update(st, *alt_then, now));
             }
         }
         Msg::ToastAction(id) => notify::toast_action(st, id, now, &mut fx),
@@ -235,6 +254,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Logged { ok, text } => st.log(ok, text),
         Msg::ClearLog => logs::clear(st, &mut fx),
     }
+    prefs_leave::settle(st);
     // Records a dialog that just opened (to tell later whether it was edited) and forgets a
     // closed one.
     st.dialog.track(st.modal.as_ref());

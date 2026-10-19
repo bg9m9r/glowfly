@@ -268,7 +268,11 @@ mod snapshot_tests_prefs_git;
 #[cfg(test)]
 mod snapshot_tests_prefs_keyboard;
 #[cfg(test)]
+mod snapshot_tests_prefs_layout;
+#[cfg(test)]
 mod snapshot_tests_prefs_notify;
+#[cfg(test)]
+mod snapshot_tests_prefs_save;
 #[cfg(test)]
 mod snapshot_tests_prefs_terminal;
 #[cfg(test)]

@@ -1,6 +1,8 @@
-//! The confirmation dialog (`Modal::Confirm`), and its danger form for steps that lose work
+//! The confirmation dialog (`Modal::Confirm`), its danger form for steps that lose work
 //! (`Modal::ConfirmDanger`): the danger-filled button at the right edge with Cancel focused
-//! 12 px to its left, and, for a step that can't be undone, an acknowledgement to tick first.
+//! 12 px to its left, and, for a step that can't be undone, an acknowledgement to tick first;
+//! and its form with an alternative answer between Cancel and the primary
+//! (`Modal::ConfirmChoice`), which pushes `Msg::ConfirmAlt`.
 
 use crate::msg::Msg;
 use crate::ui::dialog_frame::{self, Cx, Dialog, Footer, Tone};
@@ -8,13 +10,14 @@ use crate::ui::widgets::buttons;
 use eframe::egui::{self, Ui};
 
 /// Draws the dialog; returns true when it should close (Cancel). `ack` is the acknowledgement's
-/// label and tick, when the step needs one.
+/// label and tick, when the step needs one; `alt` the alternative button's label.
 pub(super) fn show(
     ui: &mut Ui,
     cx: Cx,
     (title, body, button): (&str, &str, &str),
     tone: Tone,
     ack: Option<(&str, &mut bool)>,
+    alt: Option<&str>,
     msgs: &mut Vec<Msg>,
 ) -> bool {
     let mut d = Dialog::new(cx, title).begin(ui);
@@ -24,13 +27,19 @@ pub(super) fn show(
         dialog_frame::ack(ui, cx.t, acked, Some(label));
         ok = *acked;
     }
+    let footer = match alt {
+        Some(alt) => Footer::new().alt(buttons::secondary(alt)),
+        None => Footer::new(),
+    };
     let footer = match tone {
-        Tone::Normal => Footer::new().primary(buttons::primary(button)),
-        Tone::Danger => Footer::new().danger(buttons::danger(button).enabled(ok).why(Some(cx.t.tr("common.ack.tip")))),
+        Tone::Normal => footer.primary(buttons::primary(button)),
+        Tone::Danger => footer.danger(buttons::danger(button).enabled(ok).why(Some(cx.t.tr("common.ack.tip")))),
     };
     let out = d.finish(ui, footer.cancel());
     if out.primary {
         msgs.push(Msg::ConfirmAccepted);
+    } else if out.alt == Some(0) {
+        msgs.push(Msg::ConfirmAlt);
     }
     out.dismiss
 }

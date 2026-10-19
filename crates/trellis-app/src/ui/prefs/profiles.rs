@@ -1,11 +1,11 @@
 //! Preferences > Profile: the profile list (current marker, switch, inline rename, delete), the
-//! New profile form, and the selected profile's identity fields, then what else switches with
-//! it (profile_setup.rs). The view edits only text buffers and which form is open; everything
-//! else is a `Msg`.
+//! New profile form, and the selected profile's identity fields (saved by the Save / Revert
+//! bar), then what else switches with it (profile_setup.rs). The view edits only text buffers
+//! and which form is open; everything else is a `Msg`.
 
 use super::{help, primary_button, row, text_field};
 use crate::msg::Msg;
-use crate::profile::{IdentityField, ProfileMsg};
+use crate::profile::ProfileMsg;
 use crate::state::prefs::GitConfigValues;
 use crate::state::profiles::{
     ADD_BUTTON, AddForm, COPY_ACCOUNTS, COPY_CURRENT, CURRENT_CHIP, CURRENT_HELP, DELETE_BUTTON, DELETE_DISABLED, KEY_HELP, LIST_HELP,
@@ -36,12 +36,14 @@ pub fn profile_page(
 ) {
     list(ui, settings, page, switching, msgs);
     add_form(ui, settings.lang(), page, msgs);
-    fields(ui, settings, page, git, msgs);
+    fields(ui, settings, page, git);
 }
 
 fn list(ui: &mut Ui, settings: &Settings, page: &mut ProfilesPage, switching: Option<ProfileId>, msgs: &mut Vec<Msg>) {
+    // Wider than the field column where there is room, never past the content column.
+    let width = (ui.available_width() - super::field_left(ui)).clamp(0.0, LIST_W);
     row(ui, LIST_LABEL, |ui| {
-        ui.set_max_width(LIST_W);
+        ui.set_max_width(width);
         ui.spacing_mut().item_spacing.y = 4.0;
         for p in &settings.profiles {
             let current = settings.active_profile == Some(p.id);
@@ -178,31 +180,22 @@ fn add_form(ui: &mut Ui, t: Lang, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) 
     }
 }
 
-fn fields(ui: &mut Ui, settings: &Settings, page: &mut ProfilesPage, git: &GitConfigValues, msgs: &mut Vec<Msg>) {
+fn fields(ui: &mut Ui, settings: &Settings, page: &mut ProfilesPage, git: &GitConfigValues) {
     let Some(p) = page.selected.and_then(|id| settings.profile(id)) else { return };
     let current = settings.active_profile == Some(p.id);
-    let id = p.id;
     row(ui, "", |ui| {
         ui.label(RichText::new(editing_caption(&p.name, current)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
     });
-    let mut set =
-        |field: IdentityField, value: &str| msgs.push(Msg::Profile(ProfileMsg::SetIdentity { id, field, value: value.to_owned() }));
     row(ui, "Author name", |ui| {
-        if text_field(ui, &mut page.author_name, "Your name").lost_focus() {
-            set(IdentityField::AuthorName, &page.author_name);
-        }
+        text_field(ui, &mut page.author_name, "Your name");
     });
     row(ui, "Author email", |ui| {
-        if text_field(ui, &mut page.author_email, "you@example.com").lost_focus() {
-            set(IdentityField::AuthorEmail, &page.author_email);
-        }
+        text_field(ui, &mut page.author_email, "you@example.com");
         help(ui, if current { CURRENT_HELP } else { OTHER_HELP });
     });
     row(ui, "Signing key", |ui| {
         let hint = key_hint(p.signing_key.as_deref(), &git.signing_key);
-        if text_field(ui, &mut page.signing_key, &hint).lost_focus() {
-            set(IdentityField::SigningKey, &page.signing_key);
-        }
+        text_field(ui, &mut page.signing_key, &hint);
         help(ui, KEY_HELP);
     });
     super::profile_setup::setup_rows(ui, settings, p, current);

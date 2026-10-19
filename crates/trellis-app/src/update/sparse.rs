@@ -21,12 +21,10 @@ pub(super) fn handle(st: &mut AppState, m: SparseMsg, now: Instant, fx: &mut Vec
             }
         }
         SparseMsg::Reload => load(st, fx),
-        SparseMsg::ResetForm => {
-            if let Some(p) = st.prefs.as_mut() {
-                p.sparse.fill();
-            }
+
+        SparseMsg::Apply => {
+            apply(st, fx);
         }
-        SparseMsg::Apply => apply(st, fx),
         SparseMsg::Reapply => when_on(st, REAPPLY_LABEL, SparseCommand::Reapply, fx),
         SparseMsg::Disable => when_on(st, DISABLE_LABEL, SparseCommand::Disable, fx),
         SparseMsg::Loaded { generation, result } => loaded(st, generation, result),
@@ -56,18 +54,22 @@ fn status(st: &AppState) -> Option<&SparseStatus> {
     st.prefs.as_ref().and_then(|p| p.sparse.status.as_ref())
 }
 
-/// Turn on or Save paths: the form's text, checked for its mode first.
-fn apply(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(p) = st.prefs.as_mut() else { return };
+/// Turn on or Save: the form's text, checked for its mode first; false when it was refused
+/// (the problem is on the page, or the job couldn't start).
+pub(super) fn apply(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
+    let Some(p) = st.prefs.as_mut() else { return false };
     if p.sparse.status.is_none() {
-        return;
+        return false;
     }
     match sparse_ops::parse_paths(&p.sparse.paths, p.sparse.mode) {
-        Err(problem) => p.sparse.paths_error = Some(problem.message()),
+        Err(problem) => {
+            p.sparse.paths_error = Some(problem.message());
+            false
+        }
         Ok(paths) => {
             p.sparse.paths_error = None;
             let (label, mode) = (p.sparse.apply_label(), p.sparse.mode);
-            start(st, label, SparseCommand::Set { mode, paths }, fx);
+            start(st, label, SparseCommand::Set { mode, paths }, fx) != ops::Started::No
         }
     }
 }
@@ -82,11 +84,12 @@ fn when_on(st: &mut AppState, label: &str, command: SparseCommand, fx: &mut Vec<
 
 /// Runs `command` as the active job, unless one is running (said in the log). It rewrites the
 /// working tree, so the undo history is cleared.
-fn start(st: &mut AppState, label: &str, command: SparseCommand, fx: &mut Vec<Effect>) {
+fn start(st: &mut AppState, label: &str, command: SparseCommand, fx: &mut Vec<Effect>) -> ops::Started {
     if let Some(why) = st.git.blocked(trellis_core::git_version::Feature::SparseCheckout) {
-        return st.log(false, why);
+        st.log(false, why);
+        return ops::Started::No;
     }
-    ops::begin_job(st, label, false, move |cwd| Effect::SparseCheckout { cwd, command }, fx);
+    ops::begin_job(st, label, false, move |cwd| Effect::SparseCheckout { cwd, command }, fx)
 }
 
 fn loaded(st: &mut AppState, generation: u64, result: Result<SparseStatus, String>) {

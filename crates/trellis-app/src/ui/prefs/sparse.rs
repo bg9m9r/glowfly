@@ -1,6 +1,6 @@
 //! Preferences > Sparse checkout (repository-specific): whether it is on, the mode, the folders
-//! or patterns to check out, and Turn on / Save paths, Reapply and Turn off. Every action is a
-//! `Msg`.
+//! or patterns to check out, and Turn on while it is off, or Reapply and Turn off while it is on
+//! (edits to the paths are saved by the Save / Revert bar). Every action is a `Msg`.
 
 use super::{help, primary_button, row, warn};
 use crate::msg::{Msg, SparseMsg};
@@ -9,7 +9,7 @@ use crate::state::sparse::{SparsePage, summary};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::ui::widgets::{self, buttons};
 use eframe::egui::{self, Key, Modifiers, RichText, Ui, vec2};
 use trellis_core::sparse_ops::{SparseMode, SparseStatus};
 
@@ -18,6 +18,8 @@ pub struct SparseContext {
     pub repo_name: Option<String>,
     /// The running job's label.
     pub job: Option<String>,
+    /// Why Reapply and Turn off wait while the form has unsaved edits.
+    pub save_first: &'static str,
 }
 
 pub fn sparse_page(ui: &mut Ui, page: &mut SparsePage, cx: &SparseContext, msgs: &mut Vec<Msg>) {
@@ -124,28 +126,27 @@ fn actions_row(ui: &mut Ui, page: &SparsePage, status: &SparseStatus, cx: &Spars
     let busy = cx.job.is_some();
     row(ui, "Actions", |ui| {
         ui.horizontal_wrapped(|ui| {
-            let (text, tip) = if status.enabled {
-                ("Save paths", "Replace the paths with this list and update the working tree.")
-            } else {
-                ("Turn on", "Check out only what this list names.")
-            };
-            if primary_button(ui, text, !busy, busy.then_some(BUSY)).on_hover_text(tip).clicked() {
-                msgs.push(Msg::Sparse(SparseMsg::Apply));
-            }
             if !status.enabled {
+                let tip = "Check out only what this list names.";
+                if primary_button(ui, "Turn on", !busy, busy.then_some(BUSY)).on_hover_text(tip).clicked() {
+                    msgs.push(Msg::Sparse(SparseMsg::Apply));
+                }
                 return;
             }
-            if page.edited() && ui.add(buttons::secondary("Undo edits")).clicked() {
-                msgs.push(Msg::Sparse(SparseMsg::ResetForm));
-            }
-            let reapply = "Write or remove files again to match the current paths, for example after committing or discarding \
-                           changes that kept files outside them.";
-            if ui.add(buttons::secondary("Reapply").enabled(!busy)).on_hover_text(reapply).clicked() {
+            // Edits wait for the bar: these act on the saved paths.
+            let edited = page.edited().then_some(cx.save_first);
+            let enabled = !busy && edited.is_none();
+            let reapply = "Write or remove files again to match the current paths, for example after committing or discarding                            changes that kept files outside them.";
+            let r = ui.add(buttons::secondary("Reapply").enabled(enabled).why(edited));
+            if r.on_hover_text(reapply).clicked() {
                 msgs.push(Msg::Sparse(SparseMsg::Reapply));
             }
             let off = "Check out every tracked file again and stop using sparse checkout.";
-            if ui.add(buttons::secondary("Turn off").enabled(!busy)).on_hover_text(off).clicked() {
+            if ui.add(buttons::secondary("Turn off").enabled(enabled).why(edited)).on_hover_text(off).clicked() {
                 msgs.push(Msg::Sparse(SparseMsg::Disable));
+            }
+            if let Some(why) = edited {
+                widgets::reason::beside(ui, why, 280.0);
             }
         });
         if let Some(job) = &cx.job {

@@ -286,6 +286,7 @@ fn connected(
             fx.push(super::prefs::save_settings(st));
             if let Some(p) = st.prefs.as_mut() {
                 p.int_token.clear();
+                p.int_adding = false;
             }
             st.log(true, format!("Connected to {} ({}) as {user}.", account.provider.name(), account.display()));
             // A new connection can make a self-hosted remote recognizable.

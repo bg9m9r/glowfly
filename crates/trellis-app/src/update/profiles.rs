@@ -68,7 +68,7 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
                 }
             }
         }
-        ProfileMsg::SetIdentity { id, field, value } => set_identity(st, id, field, value.trim(), fx),
+
         ProfileMsg::AskDelete(id) => {
             if st.settings.active_profile == Some(id) || st.profile_switch == Some(id) {
                 return;
@@ -125,11 +125,12 @@ pub(super) fn on_config(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
 }
 
-/// Stores an edited field. The current profile's identity is git's, so its changes are written
-/// to the global config as well; clearing its key only forgets it here. While a switch runs,
-/// that write waits for it (two writers would fight over the file, and the switch's would win
-/// or lose at random): the profile that ends up current gets its identity written afterwards.
-fn set_identity(st: &mut AppState, id: ProfileId, field: IdentityField, value: &str, fx: &mut Vec<Effect>) {
+/// Stores a field the Profile page saves (prefs_save.rs). The current profile's identity is
+/// git's, so its changes are written to the global config as well; clearing its key only
+/// forgets it here. While a switch runs, that write waits for it (two writers would fight over
+/// the file, and the switch's would win or lose at random): the profile that ends up current
+/// gets its identity written afterwards.
+pub(super) fn set_identity(st: &mut AppState, id: ProfileId, field: IdentityField, value: &str, fx: &mut Vec<Effect>) {
     let Some(profile) = st.settings.profile_mut(id) else { return };
     let changed = match field {
         IdentityField::AuthorName => replace(&mut profile.author_name, value.to_owned()),

@@ -12,7 +12,7 @@ pub struct BlameRequest {
     pub at: Option<Oid>,
     /// Whitespace, moves and skipped commits (the header's toggles and skipped chip).
     pub opts: BlameOptions,
-    /// Highlight the lines too (Preferences > Editor syntax highlighting).
+    /// Highlight the lines too (Preferences > Diff viewer syntax highlighting).
     pub highlight: bool,
     pub generation: u64,
     /// For a HEAD blame re-run after HEAD moved: the HEAD it was last shown at; when `path` is

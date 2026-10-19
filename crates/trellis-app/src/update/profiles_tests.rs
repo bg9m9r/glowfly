@@ -25,6 +25,13 @@ pub(super) fn profile(st: &mut AppState, m: ProfileMsg) -> Vec<Effect> {
     run(st, Msg::Profile(m))
 }
 
+/// Stores one identity field as the Profile page's Save does.
+fn set_identity(st: &mut AppState, id: ProfileId, field: IdentityField, value: &str) -> Vec<Effect> {
+    let mut fx = Vec::new();
+    super::profiles::set_identity(st, id, field, value.trim(), &mut fx);
+    fx
+}
+
 pub(super) fn values(name: &str, email: &str) -> GitConfigValues {
     GitConfigValues { user_name: name.into(), user_email: email.into(), signing_format: "openpgp".into(), ..Default::default() }
 }
@@ -169,33 +176,33 @@ fn renaming() {
 #[test]
 fn editing_the_current_profile_writes_git_config() {
     let mut st = two_profiles();
-    let set = |field, value: &str| ProfileMsg::SetIdentity { id: WORK, field, value: value.into() };
-    let fx = profile(&mut st, set(IdentityField::AuthorEmail, " ada@new.example "));
+    let set = |st: &mut AppState, field, value: &str| set_identity(st, WORK, field, value);
+    let fx = set(&mut st, IdentityField::AuthorEmail, " ada@new.example ");
     assert_eq!(git_writes(&fx), vec![("user.email".to_owned(), Some("ada@new.example".to_owned()))]);
     assert_eq!(saves(&fx), 1);
     assert_eq!(st.settings.profile(WORK).unwrap().author_email, "ada@new.example");
     assert_eq!(st.prefs.as_ref().unwrap().git.as_ref().unwrap().user_email, "ada@new.example");
 
-    let fx = profile(&mut st, set(IdentityField::AuthorName, "  "));
+    let fx = set(&mut st, IdentityField::AuthorName, "  ");
     assert_eq!(git_writes(&fx), vec![("user.name".to_owned(), None)], "a blank name unsets it");
 
-    let fx = profile(&mut st, set(IdentityField::SigningKey, "ABCD"));
+    let fx = set(&mut st, IdentityField::SigningKey, "ABCD");
     assert_eq!(git_writes(&fx), vec![("user.signingkey".to_owned(), Some("ABCD".to_owned()))]);
-    let fx = profile(&mut st, set(IdentityField::SigningKey, ""));
+    let fx = set(&mut st, IdentityField::SigningKey, "");
     assert!(git_writes(&fx).is_empty(), "clearing the key leaves git's alone");
     assert_eq!(saves(&fx), 1);
     assert_eq!(st.settings.profile(WORK).unwrap().signing_key, None);
 
-    assert!(profile(&mut st, set(IdentityField::AuthorEmail, "ada@new.example")).is_empty(), "unchanged");
+    assert!(set(&mut st, IdentityField::AuthorEmail, "ada@new.example").is_empty(), "unchanged");
 }
 
 #[test]
 fn editing_another_profile_only_saves() {
     let mut st = two_profiles();
-    let fx = profile(&mut st, ProfileMsg::SetIdentity { id: PERSONAL, field: IdentityField::AuthorName, value: "Ada Lovelace".into() });
+    let fx = set_identity(&mut st, PERSONAL, IdentityField::AuthorName, "Ada Lovelace");
     assert!(git_writes(&fx).is_empty());
     assert_eq!(saves(&fx), 1);
-    let fx = profile(&mut st, ProfileMsg::SetIdentity { id: PERSONAL, field: IdentityField::SigningKey, value: " ".into() });
+    let fx = set_identity(&mut st, PERSONAL, IdentityField::SigningKey, " ");
     assert!(git_writes(&fx).is_empty());
     assert_eq!(st.settings.profile(PERSONAL).unwrap().signing_key, None);
     assert_eq!(st.prefs.as_ref().unwrap().git.as_ref().unwrap().user_name, "Ada", "the mirror is git's");
@@ -300,11 +307,11 @@ fn config_read_during_a_switch_leaves_the_current_profile_alone() {
 
 #[test]
 fn editing_the_current_profile_during_a_switch_waits_for_it() {
-    // The Switch click and the field losing focus land in the same frame.
+    // The Switch click and the page's Save land in the same frame.
     let mut st = two_profiles();
     profile(&mut st, ProfileMsg::Switch(PERSONAL));
-    let edit = ProfileMsg::SetIdentity { id: WORK, field: IdentityField::AuthorEmail, value: "ada@new.example".into() };
-    let fx = profile(&mut st, edit.clone());
+    let edit = |st: &mut AppState| set_identity(st, WORK, IdentityField::AuthorEmail, "ada@new.example");
+    let fx = edit(&mut st);
     assert!(git_writes(&fx).is_empty(), "no write races the switch: {fx:?}");
     assert_eq!(saves(&fx), 1);
     assert_eq!(st.prefs.as_ref().unwrap().git.as_ref().unwrap().user_email, "ada@work.example", "git's mirror stays");
@@ -320,7 +327,7 @@ fn editing_the_current_profile_during_a_switch_waits_for_it() {
     // The same edit, then a failed switch: Work stays current and its edited identity is written.
     let mut st = two_profiles();
     profile(&mut st, ProfileMsg::Switch(PERSONAL));
-    profile(&mut st, edit);
+    edit(&mut st);
     let fx = profile(&mut st, ProfileMsg::Applied { id: PERSONAL, result: Err("could not lock config file".into()) });
     assert_eq!(st.settings.active_profile, Some(WORK));
     let (id, identity) = rewrite(&fx).expect("a rewrite");
@@ -340,7 +347,7 @@ fn editing_the_current_profile_during_a_switch_waits_for_it() {
 fn editing_the_target_during_a_switch_writes_it_once_current() {
     let mut st = two_profiles();
     profile(&mut st, ProfileMsg::Switch(PERSONAL));
-    let fx = profile(&mut st, ProfileMsg::SetIdentity { id: PERSONAL, field: IdentityField::AuthorName, value: "Ada Lovelace".into() });
+    let fx = set_identity(&mut st, PERSONAL, IdentityField::AuthorName, "Ada Lovelace");
     assert!(git_writes(&fx).is_empty());
     // The switch wrote Personal's identity from before the edit.
     let fx = profile(&mut st, ProfileMsg::Applied { id: PERSONAL, result: Ok(values("Ada L", "ada@home.example")) });

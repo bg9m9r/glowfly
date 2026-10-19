@@ -25,7 +25,8 @@ pub const NAME_LABEL: &str = "Profile name";
 pub const NEW_NAME_HINT: &str = "Work";
 pub const COPY_CURRENT: &str = "Copy the identity of the current profile";
 pub const COPY_ACCOUNTS: &str = "Start with the current profile's connected accounts";
-pub const CURRENT_HELP: &str = "Changes to the current profile are saved to your global Git config (user.name / user.email / user.signingkey) when you leave the field.";
+pub const CURRENT_HELP: &str =
+    "Changes to the current profile are written to your global Git config (user.name, user.email, user.signingkey) when you save.";
 pub const OTHER_HELP: &str = "Saved with the profile. Written to your global Git config when you switch to it.";
 pub const KEY_HELP: &str = "Leave empty to keep whatever key Git has when you switch to this profile.";
 pub const ACCOUNTS_LABEL: &str = "Accounts";
@@ -34,9 +35,9 @@ pub const NO_ACCOUNTS: &str = "No connected accounts";
 pub const ACCOUNTS_INHERIT: &str = "Uses the current profile's accounts until you switch to it";
 pub const ACCOUNTS_CURRENT_HELP: &str = "Connect or disconnect accounts in Integrations; they belong to this profile.";
 pub const ACCOUNTS_OTHER_HELP: &str = "Connected again when you switch to this profile. Sign-ins are shared per account.";
-pub const PREFS_CURRENT_HELP: &str = "Your General, UI customization and Editor settings are saved with this profile.";
+pub const PREFS_CURRENT_HELP: &str = "Your General, UI customization and Diff viewer settings are saved with this profile.";
 pub const PREFS_SAVED_HELP: &str =
-    "General, UI customization and Editor settings are saved with this profile; they come back when you switch to it.";
+    "General, UI customization and Diff viewer settings are saved with this profile; they come back when you switch to it.";
 pub const PREFS_INHERIT_HELP: &str = "None saved yet: switching to this profile keeps the current preferences.";
 
 pub fn delete_body(name: &str) -> String {

@@ -1,8 +1,7 @@
-//! Preferences > UI Customization > Commit Graph: which columns the graph shows, and the two
-//! layout resets.
+//! Preferences > UI customization > Commit graph: which columns the graph shows (one labelled
+//! checkbox each, in one row), how commit descriptions show, and the two layout resets.
 
-use super::appearance::{combo, section};
-use super::{help, row};
+use super::{combo, help, row, section};
 use crate::ui::theme::controls;
 use crate::ui::widgets::buttons;
 use eframe::egui::Ui;
@@ -12,14 +11,22 @@ use trellis_core::settings::{ColumnWidths, DescriptionMode as DM, GraphColumns, 
 pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
     section(ui, t.tr("prefs.ui.graph.section"));
     let c = &mut s.columns;
-    row(ui, t.tr("prefs.ui.graph.refs.label"), |ui| {
-        controls::checkbox(ui, &mut c.refs, "");
-    });
-    row(ui, t.tr("prefs.ui.graph.tree.label"), |ui| {
-        controls::checkbox(ui, &mut c.tree, "");
-    });
-    row(ui, t.tr("prefs.ui.graph.message.label"), |ui| {
-        controls::checkbox(ui, &mut c.message, "");
+    // One checkbox per column, left to right as the graph shows them.
+    row(ui, t.tr("prefs.ui.graph.columns.label"), |ui| {
+        controls::checkbox(ui, &mut c.refs, t.tr("prefs.ui.graph.refs.check"));
+        controls::checkbox(ui, &mut c.tree, t.tr("prefs.ui.graph.tree.check"));
+        controls::checkbox(ui, &mut c.message, t.tr("prefs.ui.graph.message.check"));
+        controls::checkbox(ui, &mut c.changes, t.tr("prefs.ui.graph.changes.check"));
+        ui.horizontal(|ui| {
+            ui.add_space(26.0);
+            help(ui, t.tr("prefs.ui.graph.changes.help"));
+        });
+        controls::checkbox(ui, &mut c.commit, t.tr("prefs.ui.graph.author.check"));
+        ui.horizontal(|ui| {
+            ui.add_space(26.0);
+            ui.add_enabled_ui(c.commit, |ui| controls::checkbox(ui, &mut c.commit_sha, t.tr("prefs.ui.graph.sha.check")));
+        });
+        controls::checkbox(ui, &mut c.date, t.tr("prefs.ui.graph.date.check"));
     });
     row(ui, t.tr("prefs.ui.graph.description.label"), |ui| {
         let options = [
@@ -28,19 +35,6 @@ pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
             (DM::Never, t.tr("prefs.ui.graph.description.never")),
         ];
         combo(ui, "description", &mut c.description, &options)
-    });
-    row(ui, t.tr("prefs.ui.graph.changes.label"), |ui| {
-        controls::checkbox(ui, &mut c.changes, "");
-        help(ui, t.tr("prefs.ui.graph.changes.help"));
-    });
-    row(ui, t.tr("prefs.ui.graph.author.label"), |ui| {
-        controls::checkbox(ui, &mut c.commit, "");
-    });
-    row(ui, t.tr("prefs.ui.graph.sha.label"), |ui| {
-        ui.add_enabled_ui(c.commit, |ui| controls::checkbox(ui, &mut c.commit_sha, ""));
-    });
-    row(ui, t.tr("prefs.ui.graph.date.label"), |ui| {
-        controls::checkbox(ui, &mut c.date, "");
     });
     row(ui, t.tr("prefs.ui.columns.label"), |ui| {
         ui.horizontal(|ui| {

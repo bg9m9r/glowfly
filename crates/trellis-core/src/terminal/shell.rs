@@ -1,5 +1,5 @@
 //! Which shell a built-in terminal starts: the automatic choice, or the one chosen in
-//! Preferences > In-App Terminal. A chosen shell that can't be found is an error, never
+//! Preferences > Terminal. A chosen shell that can't be found is an error, never
 //! replaced by another one.
 
 use super::pty::ShellCommand;

@@ -112,6 +112,8 @@ pub enum PaletteCommand {
     ConfigureGitFlow,
     /// Open Preferences on the Sparse Checkout page.
     ConfigureSparse,
+    /// Open Preferences on the Terminal page.
+    ConfigureTerminal,
     /// Open the Start dialog for this kind.
     StartGitFlow(trellis_core::gitflow::FlowKind),
     /// Open the Finish dialog for this flow branch.

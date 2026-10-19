@@ -1,5 +1,5 @@
 //! Language snapshots: Preferences > General in German (long labels must fit their column), the
-//! Language menu open, External Tools in Spanish with its warnings, and the main window's commit
+//! Language & region page and its Language menu open, External Tools in Spanish with its warnings, and the main window's commit
 //! box and status bar in German; and switching the language from the menu takes effect on the
 //! next frame.
 
@@ -41,31 +41,45 @@ fn prefs_general_german() {
     h.check_snapshot("prefs_general_german");
 }
 
+/// The first menu on the page: the language.
+fn open_language_menu(h: &mut egui_kittest::Harness<'static, (AppState, Vec<crate::msg::Msg>)>) {
+    h.query_all_by_role(Role::ComboBox).next().expect("the language menu").click();
+    h.run();
+}
+
 #[test]
-fn prefs_general_language_menu_light() {
-    let st = prefs(ThemeChoice::Light, PrefPage::General, "system");
+fn prefs_language() {
+    let mut h = harness_sized(prefs(ThemeChoice::Dark, PrefPage::Language, "system"), true, egui::vec2(1400.0, 1000.0));
+    h.run();
+    h.check_snapshot("prefs_language");
+    // Row labels and section titles are painted; the image shows them.
+    assert!(h.query_all_by_label("Language & region").next().is_some(), "the nav entry and title");
+    assert!(h.query_by_label_contains("3 hours ago").is_some(), "relative dates moved here");
+}
+
+#[test]
+fn prefs_language_menu_light() {
+    let st = prefs(ThemeChoice::Light, PrefPage::Language, "system");
     let mut h = harness(st, false);
     h.run();
-    h.get_by_role(Role::ComboBox).click();
-    h.run();
+    open_language_menu(&mut h);
     for entry in ["Deutsch", "English", "Español"] {
         assert!(h.query_by_label(entry).is_some(), "{entry} is offered");
     }
-    h.check_snapshot("prefs_general_language_menu_light");
+    h.check_snapshot("prefs_language_menu_light");
 }
 
 #[test]
 fn language_applies_without_restart() {
-    let mut h = harness(prefs(ThemeChoice::Dark, PrefPage::General, "system"), true);
+    let mut h = harness(prefs(ThemeChoice::Dark, PrefPage::Language, "system"), true);
     h.run();
-    assert!(h.query_all_by_label("General").count() > 0);
-    h.get_by_role(Role::ComboBox).click();
-    h.run();
+    assert!(h.query_all_by_label("Language & region").count() > 0);
+    open_language_menu(&mut h);
     h.get_by_label("Deutsch").click();
     h.run();
     assert_eq!(h.state().0.settings.language, "de", "the menu edits the setting in place");
-    assert!(h.query_all_by_label("Allgemein").count() > 0, "the navigation is German on the next frame");
-    assert_eq!(h.query_all_by_label("General").count(), 0);
+    assert!(h.query_all_by_label("Sprache und Region").count() > 0, "the page is German on the next frame");
+    assert_eq!(h.query_all_by_label("Language & region").count(), 0);
 }
 
 #[test]

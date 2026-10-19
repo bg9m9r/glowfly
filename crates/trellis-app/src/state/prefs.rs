@@ -1,5 +1,6 @@
-//! Preferences screen state: the open page, editable mirrors of git config values, and the
-//! Integrations connect form.
+//! Preferences screen state: the open page, editable mirrors of git config values (and the
+//! values as read, for the Save / Revert bar), the Integrations connect form and the leave
+//! waiting on the unsaved-changes question.
 
 use trellis_core::forge::{Account, Provider};
 use trellis_core::i18n::Lang;
@@ -12,13 +13,15 @@ pub enum PrefPage {
     Profile,
     Integrations,
     Ui,
+    /// The interface language and how dates and times are written.
+    Language,
     /// Diff text: font size, tab size, line numbers, syntax and word highlights.
-    Editor,
+    DiffViewer,
     /// Keyboard shortcuts: changing, adding and removing keys.
     Keyboard,
-    /// External editor and terminal programs.
+    /// External editor, diff and merge tools.
     Tools,
-    /// The built-in terminal: shell, font size, cursor, dimming, Open in terminal.
+    /// The built-in terminal and the external terminal Open in terminal starts.
     Terminal,
     Signing,
     /// SSH key pairs in ~/.ssh and generating one.
@@ -48,7 +51,8 @@ impl PrefPage {
             PrefPage::Profile => t.tr("prefs.nav.profile"),
             PrefPage::Integrations => t.tr("prefs.nav.integrations"),
             PrefPage::Ui => t.tr("prefs.nav.ui"),
-            PrefPage::Editor => t.tr("prefs.nav.editor"),
+            PrefPage::Language => t.tr("prefs.nav.language"),
+            PrefPage::DiffViewer => t.tr("prefs.nav.diff_viewer"),
             PrefPage::Keyboard => t.tr("prefs.nav.keyboard"),
             PrefPage::Tools => t.tr("prefs.nav.tools"),
             PrefPage::Terminal => t.tr("prefs.nav.terminal"),
@@ -168,6 +172,16 @@ pub struct PrefsState {
     pub ssh: crate::state::ssh::SshPage,
     pub profiles: crate::state::profiles::ProfilesPage,
     pub keys: crate::state::keys_page::KeysPage,
+    /// The git config values as last read or saved: what the Save / Revert bar compares with.
+    pub git_saved: Option<GitConfigValues>,
+    /// The leave waiting on the "Save your changes?" question.
+    pub leaving: Option<Box<crate::msg::Msg>>,
+    /// Lets the one replayed leave through the unsaved-changes guard.
+    pub leave_approved: bool,
+    /// The "Saved" tick beside the page title.
+    pub saved: crate::state::prefs_save::SavedFlash,
+    /// The Integrations sign-in form is shown beside connected accounts.
+    pub int_adding: bool,
 }
 
 impl PrefsState {
@@ -190,6 +204,11 @@ impl PrefsState {
             ssh: Default::default(),
             profiles: Default::default(),
             keys: Default::default(),
+            git_saved: None,
+            leaving: None,
+            leave_approved: false,
+            saved: Default::default(),
+            int_adding: false,
         }
     }
 }

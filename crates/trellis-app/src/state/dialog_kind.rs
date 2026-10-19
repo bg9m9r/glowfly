@@ -51,6 +51,7 @@ impl Modal {
             // lookup after it opens.
             Modal::Confirm { .. }
             | Modal::ConfirmDanger { .. }
+            | Modal::ConfirmChoice { .. }
             | Modal::Trust(_)
             | Modal::RemoveWorktree(_)
             | Modal::RemoveSubmodule(_)
@@ -126,6 +127,7 @@ impl Modal {
             Modal::SavePatch(f) => format!("{:?}", (&f.scope, f.pick, &f.chosen, f.untracked)),
             Modal::Confirm { .. }
             | Modal::ConfirmDanger { .. }
+            | Modal::ConfirmChoice { .. }
             | Modal::Trust(_)
             | Modal::RemoveWorktree(_)
             | Modal::RemoveSubmodule(_)

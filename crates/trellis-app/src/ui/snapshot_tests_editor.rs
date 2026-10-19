@@ -1,4 +1,4 @@
-//! Preferences > Editor snapshots: the page itself, and the diff viewer without line numbers
+//! Preferences > Diff viewer snapshots: the page itself, and the diff viewer without line numbers
 //! and with another tab size and font size. Shares the fixtures with `snapshot_tests` and
 //! `snapshot_tests_diff`.
 
@@ -11,12 +11,12 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 use trellis_core::{highlight, intraline};
 
 #[test]
-fn preferences_editor() {
+fn preferences_diff_viewer() {
     // No git configuration is needed, so the page draws without waiting for it.
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
-    st.prefs = Some(PrefsState::new(PrefPage::Editor));
+    st.prefs = Some(PrefsState::new(PrefPage::DiffViewer));
     assert!(st.prefs.as_ref().unwrap().git.is_none());
-    render("prefs_editor", st, true);
+    render("prefs_diff_viewer", st, true);
 }
 
 #[test]

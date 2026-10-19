@@ -72,7 +72,7 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
     }
 }
 
-/// Open in terminal: a new tab in the terminal panel when Preferences > In-App Terminal says
+/// Open in terminal: a new tab in the terminal panel when Preferences > Terminal says
 /// so; else the custom terminal when one is set, else the usual one is detected. A custom
 /// terminal that fails is reported, never replaced: the user chose it.
 pub(super) fn open_terminal(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {

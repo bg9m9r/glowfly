@@ -1,14 +1,14 @@
-//! Preferences > Editor: how the diff viewer draws text. Edits apply at once (views edit the
+//! Preferences > Diff viewer: how the diff viewer draws text. Edits apply at once (views edit the
 //! settings in place and the shell saves them); nothing reloads, since these only decide how
 //! lines are painted.
 
-use super::{help, row};
+use super::{check_row, help, row};
 use crate::ui::theme::controls;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Ui};
 use trellis_core::settings::{DIFF_FONT_SIZES, HistoryPane, Settings, TAB_SIZES};
 
-pub fn editor_page(ui: &mut Ui, s: &mut Settings) {
+pub fn diff_viewer_page(ui: &mut Ui, s: &mut Settings) {
     let t = s.lang();
     row(ui, t.tr("prefs.editor.font_size.label"), |ui| {
         let size = egui::DragValue::new(&mut s.diff_font_size).range(DIFF_FONT_SIZES).speed(0.25).max_decimals(1);
@@ -19,22 +19,16 @@ pub fn editor_page(ui: &mut Ui, s: &mut Settings) {
         ui.add(egui::DragValue::new(&mut s.tab_size).range(TAB_SIZES));
         help(ui, t.tr("prefs.editor.tab_size.help"));
     });
-    row(ui, t.tr("prefs.editor.line_numbers.label"), |ui| {
-        controls::checkbox(ui, &mut s.diff_line_numbers, "");
-        help(ui, t.tr("prefs.editor.line_numbers.help"));
-    });
-    row(ui, t.tr("prefs.editor.syntax.label"), |ui| {
-        controls::checkbox(ui, &mut s.syntax_highlighting, "");
-        help(ui, t.tr("prefs.editor.syntax.help"));
-    });
-    row(ui, t.tr("prefs.editor.word_highlights.label"), |ui| {
-        controls::checkbox(ui, &mut s.diff_word_highlights, "");
-        help(ui, t.tr("prefs.editor.word_highlights.help"));
-    });
-    row(ui, t.tr("prefs.editor.wrap.label"), |ui| {
-        controls::checkbox(ui, &mut s.diff_word_wrap, "");
-        help(ui, t.tr("prefs.editor.wrap.help"));
-    });
+    let (label, check, text) =
+        (t.tr("prefs.editor.line_numbers.label"), t.tr("prefs.editor.line_numbers.check"), t.tr("prefs.editor.line_numbers.help"));
+    check_row(ui, label, &mut s.diff_line_numbers, check, Some(text));
+    let (label, check, text) = (t.tr("prefs.editor.syntax.label"), t.tr("prefs.editor.syntax.check"), t.tr("prefs.editor.syntax.help"));
+    check_row(ui, label, &mut s.syntax_highlighting, check, Some(text));
+    let (label, check, text) =
+        (t.tr("prefs.editor.word_highlights.label"), t.tr("prefs.editor.word_highlights.check"), t.tr("prefs.editor.word_highlights.help"));
+    check_row(ui, label, &mut s.diff_word_highlights, check, Some(text));
+    let (label, check, text) = (t.tr("prefs.editor.wrap.label"), t.tr("prefs.editor.wrap.check"), t.tr("prefs.editor.wrap.help"));
+    check_row(ui, label, &mut s.diff_word_wrap, check, Some(text));
     row(ui, t.tr("prefs.editor.history_pane.label"), |ui| {
         ui.horizontal(|ui| {
             controls::radio_value(ui, &mut s.history.pane, HistoryPane::Diff, t.tr("prefs.editor.history_pane.diff"));
@@ -66,7 +60,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn reset_restores_only_editor_fields() {
+    fn reset_restores_only_diff_viewer_fields() {
         let mut s = Settings {
             diff_font_size: 20.0,
             tab_size: 8,

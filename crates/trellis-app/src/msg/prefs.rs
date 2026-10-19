@@ -74,6 +74,18 @@ pub enum PrefsMsg {
     },
     /// The settings file couldn't be read at startup (it was backed up); shown once.
     SettingsUnreadable(String),
+    /// A navigation row: show this page (asking first when the open one has unsaved edits).
+    Navigate(PrefPage),
+    /// The Save / Revert bar's Save: write the open page's edits.
+    SavePage,
+    /// The Save / Revert bar's Revert: put the open page's fields back to what was loaded.
+    RevertPage,
+    /// "Save your changes?" answered Save: save, then complete the leave.
+    LeaveSave,
+    /// "Save your changes?" answered Discard: revert, then complete the leave.
+    LeaveDiscard,
+    /// Integrations: show (Add another account) or hide (Cancel) the sign-in form.
+    ShowAccountForm(bool),
 }
 
 impl PrefsMsg {
@@ -101,7 +113,13 @@ impl PrefsMsg {
             | Self::GpgKeyGenerated(..)
             | Self::PublicKeyExported(..)
             | Self::FolderPicked { .. }
-            | Self::SettingsUnreadable(..) => None,
+            | Self::SettingsUnreadable(..)
+            | Self::Navigate(..)
+            | Self::SavePage
+            | Self::RevertPage
+            | Self::LeaveSave
+            | Self::LeaveDiscard
+            | Self::ShowAccountForm(..) => None,
         }
     }
 }

@@ -1,4 +1,5 @@
-//! Preferences > In-App Terminal snapshots: the page with its defaults, and with a custom shell
+//! Preferences > Terminal snapshots: the page with its defaults (the built-in and external
+//! terminal sections), and with a custom shell
 //! whose arguments have an unmatched quote; its navigation entry and the shell choices this
 //! system offers; the page as Linux draws it, with Middle-click paste.
 
@@ -27,12 +28,14 @@ fn prefs_terminal_dark() {
     let mut h = harness_sized(page(TerminalPrefs::default()), true, eframe::egui::vec2(1400.0, 900.0));
     h.run();
     h.check_snapshot("prefs_terminal");
-    assert!(h.query_all_by_label("In-app terminal").next().is_some(), "the nav entry and title");
+    assert!(h.query_all_by_label("Terminal").next().is_some(), "the nav entry and title");
+    assert!(h.query_by_label("Open a tab in the built-in terminal").is_some());
+    assert!(h.query_by_label_contains("Open in terminal doesn't open a built-in tab").is_some(), "the external terminal moved here");
     assert!(h.query_by_label_contains("Separated by spaces").is_none(), "arguments only for a custom program");
     assert!(h.query_by_label_contains("Selecting text with the mouse").is_some());
     assert_eq!(h.query_by_label_contains("A middle click on the terminal").is_some(), cfg!(target_os = "linux"), "only where it acts");
     // The menu lists exactly this system's choices.
-    h.get_by_role(Role::ComboBox).click();
+    h.query_all_by_role(Role::ComboBox).next().expect("the shell menu").click();
     h.run();
     for c in
         [ShellChoice::Auto, ShellChoice::Pwsh, ShellChoice::WindowsPowerShell, ShellChoice::Cmd, ShellChoice::Bash, ShellChoice::Custom]
@@ -62,7 +65,7 @@ fn prefs_terminal_linux() {
             color::set_palette(&theme::DARK);
             theme::apply_style(ctx, &theme::DARK);
             ctx.set_theme(theme::egui_theme(&theme::DARK));
-            egui::CentralPanel::default().show(ctx, |ui| page_for(ui, s, true));
+            egui::CentralPanel::default().show(ctx, |ui| page_for(ui, s, true, &mut Vec::new()));
         },
         s,
     );

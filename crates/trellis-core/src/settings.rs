@@ -205,27 +205,27 @@ pub struct Settings {
     /// Hunks only or the whole file (diff header toggle).
     #[serde(default)]
     pub diff_mode: DiffMode,
-    /// Color diff text by language (Preferences > Editor).
+    /// Color diff text by language (Preferences > Diff viewer).
     pub syntax_highlighting: bool,
     /// Hide whitespace-only changes in diffs (diff header toggle).
     #[serde(default)]
     pub diff_ignore_whitespace: bool,
-    /// Diff text size in points (Preferences > Editor); read through `diff_font_px()`.
+    /// Diff text size in points (Preferences > Diff viewer); read through `diff_font_px()`.
     pub diff_font_size: f32,
-    /// Columns per tab stop when drawing diff text (Preferences > Editor); read through
+    /// Columns per tab stop when drawing diff text (Preferences > Diff viewer); read through
     /// `tab_columns()`.
     pub tab_size: u8,
-    /// Old/new line numbers in the diff gutters (Preferences > Editor).
+    /// Old/new line numbers in the diff gutters (Preferences > Diff viewer).
     pub diff_line_numbers: bool,
-    /// Changed-word fills on paired -/+ lines (Preferences > Editor).
+    /// Changed-word fills on paired -/+ lines (Preferences > Diff viewer).
     pub diff_word_highlights: bool,
-    /// Wrap long diff lines to the viewer's width (diff header toggle and Preferences > Editor).
+    /// Wrap long diff lines to the viewer's width (diff header toggle and Preferences > Diff viewer).
     #[serde(default)]
     pub diff_word_wrap: bool,
     /// The blame header's whitespace and move toggles.
     #[serde(default)]
     pub blame: BlamePrefs,
-    /// The file history's Diff / File choice (header toggle and Preferences > Editor).
+    /// The file history's Diff / File choice (header toggle and Preferences > Diff viewer).
     #[serde(default)]
     pub history: HistoryPrefs,
 
@@ -310,7 +310,7 @@ pub struct Settings {
     /// The daily update check and the release notes last shown (Preferences > General > Updates).
     #[serde(default)]
     pub updates: UpdatePrefs,
-    /// Preferences > In-App Terminal, and the panel's remembered state.
+    /// Preferences > Terminal, and the panel's remembered state.
     #[serde(default)]
     pub terminal: TerminalPrefs,
     /// The sizes the left, details and logs drawers were dragged to (the app clamps them).
