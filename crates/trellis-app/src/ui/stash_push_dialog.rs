@@ -7,8 +7,10 @@ use super::common::{status_color, status_label, widget_row_height};
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::buttons;
+use super::widgets::form_message::{self, Message};
 use crate::msg::{Msg, StashMsg};
 use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, stashable, wip_files};
+use crate::state::touched::Touched;
 use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText, Sense};
 use trellis_core::repo::Snapshot;
@@ -52,10 +54,14 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
     }
     let paths = snap.map(|s| form.paths(s)).unwrap_or_default();
     let blocked = snap.and_then(|s| push_blocked(s, form.scope, &paths));
-    if let Some(why) = blocked {
-        ui.add_space(4.0);
-        let text = if why == NO_FILES { "Choose at least one file." } else { why };
-        ui.label(RichText::new(text).color(color::red()));
+    match blocked {
+        // A prompt for what the list needs, not a problem.
+        Some(NO_FILES) => form_message::field(ui, &Touched::all(), "files", Some(Message::info("Choose at least one file."))),
+        Some(why) => {
+            ui.add_space(6.0);
+            form_message::form(ui, Message::warning(why));
+        }
+        None => {}
     }
     // Without a snapshot there is nothing to check, and nothing to stash.
     let blocked = blocked.or(snap.is_none().then_some(NOTHING));

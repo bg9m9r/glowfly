@@ -6,6 +6,7 @@
 use super::dialog_frame::{self, Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::buttons;
+use super::widgets::form_message::{self, Message};
 use crate::msg::Msg;
 use crate::state::worktree_manage::{LockForm, RemoveForm};
 use crate::ui::theme::controls;
@@ -38,12 +39,12 @@ fn body(ui: &mut egui::Ui, form: &mut RemoveForm) {
     ));
     if let Some(note) = form.close_note() {
         ui.add_space(6.0);
-        ui.label(RichText::new(note).color(color::amber()));
+        form_message::form(ui, Message::info(note));
     }
     if let Some(note) = form.force_note() {
-        let col = if matches!(form.refusal, Some(Refusal::Locked(_))) { color::amber() } else { color::red() };
+        let locked = matches!(form.refusal, Some(Refusal::Locked(_)));
         ui.add_space(6.0);
-        ui.label(RichText::new(note).color(col));
+        form_message::form(ui, if locked { Message::warning(note) } else { Message::error(note) });
     }
     if let Some(b) = form.branch.clone() {
         ui.add_space(8.0);
@@ -63,7 +64,8 @@ fn body(ui: &mut egui::Ui, form: &mut RemoveForm) {
             }
         }
         if let Some(note) = form.remote_note() {
-            ui.label(RichText::new(note).color(color::red()));
+            ui.add_space(4.0);
+            form_message::form(ui, Message::warning(note));
         }
     }
 }

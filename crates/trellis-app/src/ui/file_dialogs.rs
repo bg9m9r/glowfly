@@ -6,9 +6,11 @@
 use super::dialog_frame::{Cx, Dialog, Footer, Open};
 use super::theme::color;
 use super::widgets::buttons;
+use super::widgets::form_message::{self, Message};
 use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
 use crate::state::files::{PathForm, listed, tracked};
+use crate::state::touched::Touched;
 use crate::ui::theme::controls;
 use eframe::egui::{self, Key, RichText};
 use trellis_core::repo::{PathProblem, Snapshot, check_new_path, new_path_warning};
@@ -18,8 +20,12 @@ use trellis_core::repo::{PathProblem, Snapshot, check_new_path, new_path_warning
 pub fn new_file(ui: &mut egui::Ui, cx: Cx, form: &mut PathForm, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {
     let d = Dialog::new(cx, "New file").subtitle("A path inside the repository; missing folders are created.").begin(ui);
     let (submit, valid) = path_field(ui, form, snap, None, cx.keyboard);
-    footer(ui, d, form, "Create", submit, valid, || Msg::WorkFile(WorkFileMsg::CreateFile(form.text.clone())), msgs)
+    let msg = || Msg::WorkFile(WorkFileMsg::CreateFile(form.text.clone()));
+    footer(ui, d, (form.busy, &mut form.touched), "Create", submit, valid, msg, msgs)
 }
+
+/// The path field's key in `Touched`.
+const PATH: &str = "path";
 
 const STAGE_HINT: &str = "Moves the file in the index too, so the old and new paths show as one staged rename. The file's other staged and unstaged changes are kept.";
 
@@ -52,13 +58,16 @@ pub fn rename_file(
         ui.label(RichText::new(note).color(color::weak()));
     }
     let msg = || Msg::WorkFile(WorkFileMsg::RenameFile { from: old.to_owned(), to: form.text.clone(), stage: tracked && stage_renames });
-    footer(ui, d, form, "Rename", submit, valid, msg, msgs)
+    footer(ui, d, (form.busy, &mut form.touched), "Rename", submit, valid, msg, msgs)
 }
 
 /// The path field with its problem line and normalized preview. Returns (Enter pressed in the
 /// field, the path can be submitted).
 fn path_field(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, old: Option<&str>, focus: bool) -> (bool, bool) {
     let r = controls::field(ui, egui::TextEdit::singleline(&mut form.text).hint_text("folder/name.ext").desired_width(f32::INFINITY));
+    form_message::track(&mut form.touched, PATH, &r);
+    // Read before focus is requested again, which would hide that Enter left the field.
+    let enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if focus {
         r.request_focus();
     }
@@ -72,14 +81,17 @@ fn path_field(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, o
     }
     let checked = check_new_path(&form.text);
     let unchanged = old.is_some_and(|o| checked.as_deref() == Ok(o));
-    let problem = if unchanged { None } else { problem(&form.text, snap, old).or_else(|| form.current_error().map(str::to_owned)) };
-    if let Some(p) = &problem {
-        error_line(ui, p);
-    } else if let Some(w) = checked.as_deref().ok().filter(|_| !unchanged).and_then(new_path_warning) {
-        // Allowed here, but the repository won't check out on Windows.
-        ui.add_space(4.0);
-        ui.label(RichText::new(w).color(color::amber()));
+    if form.current_error().is_some() {
+        // The last submit failed: its error shows like any other problem.
+        form.touched.attempt();
     }
+    let problem = if unchanged { None } else { problem(&form.text, snap, old).or_else(|| form.current_error().map(str::to_owned)) };
+    let message = match &problem {
+        Some(p) => Some(Message::error(p.as_str())),
+        // Allowed here, but the repository won't check out on Windows.
+        None => checked.as_deref().ok().filter(|_| !unchanged).and_then(new_path_warning).map(Message::warning),
+    };
+    form_message::field(ui, &form.touched, PATH, message);
     if let Ok(path) = &checked
         && path != form.text.trim()
     {
@@ -87,7 +99,7 @@ fn path_field(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, o
         ui.label(RichText::new(format!("Becomes {path}")).color(color::weak()));
     }
     let valid = checked.is_ok() && !unchanged && problem.is_none();
-    (r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)), valid)
+    (enter, valid)
 }
 
 /// What is wrong with `text` as a new path, from the text and the snapshot alone. Empty input
@@ -101,27 +113,25 @@ fn problem(text: &str, snap: Option<&Snapshot>, old: Option<&str>) -> Option<Str
     }
 }
 
-fn error_line(ui: &mut egui::Ui, text: &str) {
-    ui.add_space(4.0);
-    ui.label(RichText::new(text).color(color::red()));
-}
-
-/// A spinner while a request runs, then Cancel and the submit button. Returns true for Cancel.
+/// A spinner while a request runs (`busy`), then Cancel and the submit button. Returns true for Cancel.
 #[allow(clippy::too_many_arguments)]
 fn footer(
     ui: &mut egui::Ui,
     d: Open,
-    form: &PathForm,
+    (busy, touched): (bool, &mut Touched),
     label: &str,
     submit: bool,
     valid: bool,
     msg: impl FnOnce() -> Msg,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    if form.busy {
+    if busy {
         ui.add(egui::Spinner::new().size(12.0));
     }
-    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(valid && !form.busy)).submit(submit));
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(valid && !busy)).submit(submit));
+    if out.attempted {
+        touched.attempt();
+    }
     if out.primary {
         msgs.push(msg());
     }

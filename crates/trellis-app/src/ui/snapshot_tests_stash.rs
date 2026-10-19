@@ -157,7 +157,10 @@ fn rename_stash_dialog() {
 
 #[test]
 fn rename_stash_dialog_blank_light() {
-    let (st, dir) = dialog(ThemeChoice::Light, "rename-stash-dialog-blank", 0, |f| f.message = "  ".into());
+    let (st, dir) = dialog(ThemeChoice::Light, "rename-stash-dialog-blank", 0, |f| {
+        f.message = "  ".into();
+        f.touched.mark("message");
+    });
     let mut h = harness(st, false);
     h.run();
     assert!(h.query_by_label("stash@{0} · made on main").is_some());

@@ -33,11 +33,13 @@ pub struct PathForm {
     pub error: Option<(String, String)>,
     /// A create or rename is running; submitting again is off until it reports back.
     pub busy: bool,
+    /// Whether the path was edited or a submit tried (its problem shows then).
+    pub touched: super::touched::Touched,
 }
 
 impl PathForm {
     pub fn new(text: impl Into<String>) -> Self {
-        Self { text: text.into(), error: None, busy: false }
+        Self { text: text.into(), ..Self::default() }
     }
 
     /// The error for the text now in the field, if any.

@@ -7,8 +7,10 @@
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::buttons;
+use super::widgets::form_message::{self, Message};
 use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
+use crate::state::touched::Touched;
 use crate::state::worktrees::{WorktreeForm, branch_problem, default_folder, folder_problem, folder_warning};
 use crate::ui::theme::controls;
 use crate::worktree::WorktreeMsg;
@@ -43,17 +45,18 @@ pub fn new_worktree(ui: &mut egui::Ui, cx: Cx, form: &mut WorktreeForm, snap: Op
         if r.changed() {
             form.folder_edited = true;
         }
+        form_message::track(&mut form.touched, "folder", &r);
         enter |= r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
         if ui.add(buttons::secondary("Browse…").small()).clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::WorktreeParent)));
         }
     });
     let folder_bad = snap.and_then(|s| folder_problem(s, &form.folder)).or_else(|| form.current_error().map(str::to_owned));
-    if let Some(p) = &folder_bad {
-        ui.label(RichText::new(p).color(color::red()));
-    } else if let Some(w) = snap.and_then(|s| folder_warning(s, &form.folder)) {
-        ui.label(RichText::new(w).color(color::amber()));
-    }
+    let folder_msg = match &folder_bad {
+        Some(p) => Some(Message::error(p.as_str())),
+        None => snap.and_then(|s| folder_warning(s, &form.folder)).map(Message::warning),
+    };
+    form_message::field(ui, &form.touched, "folder", folder_msg);
 
     ui.add_space(6.0);
     ui.label(RichText::new("New branch").color(color::weak()));
@@ -67,20 +70,25 @@ pub fn new_worktree(ui: &mut egui::Ui, cx: Cx, form: &mut WorktreeForm, snap: Op
     {
         form.folder = default_folder(s, &form.slug());
     }
+    form_message::track(&mut form.touched, "branch", &r);
     // Read before focus is requested again below, which would hide that Enter left the field.
     enter |= r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if focus && !ui.memory(|m| m.has_focus(folder_id)) {
         r.request_focus();
     }
     let branch_bad = snap.and_then(|s| branch_problem(s, &form.base, &form.branch));
-    if let Some(p) = &branch_bad {
-        ui.label(RichText::new(p).color(color::red()));
-    }
+    // With no new branch the problem is the base's (checked out elsewhere): it shows untyped.
+    let all = Touched::all();
+    let touched = if form.branch.trim().is_empty() { &all } else { &form.touched };
+    form_message::field(ui, touched, "branch", branch_bad.as_deref().map(Message::error));
 
     ui.add_space(4.0);
     controls::checkbox(ui, &mut form.open, "Open in a new tab");
     let valid = snap.is_some() && folder_bad.is_none() && branch_bad.is_none() && !form.busy();
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create worktree").enabled(valid)).submit(enter));
+    if out.attempted {
+        form.touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Worktree(WorktreeMsg::Submit));
     }

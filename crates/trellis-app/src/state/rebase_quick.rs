@@ -171,12 +171,14 @@ pub struct RewordForm {
     pub draft: String,
     /// The message field takes the keyboard focus once.
     pub focus: bool,
+    /// Whether the message was edited or a submit tried (its problem shows then).
+    pub touched: super::touched::Touched,
 }
 
 impl RewordForm {
     /// The form for a prepared reword or squash; a squash starts from the joined messages.
     pub fn new(workdir: PathBuf, plan: QuickPlan) -> Self {
-        let mut form = Self { workdir, plan, draft: String::new(), focus: true };
+        let mut form = Self { workdir, plan, draft: String::new(), focus: true, touched: Default::default() };
         let joined = form.row().and_then(|i| i.new_message.clone()).filter(|_| form.squashes());
         form.draft = joined.unwrap_or_else(|| form.original().to_owned()).trim_end().to_owned();
         form

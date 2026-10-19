@@ -29,12 +29,14 @@ pub struct RenameStashForm {
     pub original: String,
     /// The editable text.
     pub message: String,
+    /// Whether the text was edited or a submit tried (its problem shows then).
+    pub touched: super::touched::Touched,
 }
 
 impl RenameStashForm {
     pub fn new(s: &StashInfo) -> Self {
         let message = split_message(&s.message).1.to_owned();
-        Self { oid: s.oid, index: s.index, original: s.message.clone(), message }
+        Self { oid: s.oid, index: s.index, original: s.message.clone(), message, touched: Default::default() }
     }
 
     /// The full stash list text the field gives; None while it is blank.

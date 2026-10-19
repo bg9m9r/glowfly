@@ -56,10 +56,17 @@ fn new_file_dialog_folder_prefill() {
     remove_fixture(&dir);
 }
 
+/// A form whose path was typed in, so its problem shows.
+fn typed(text: &str) -> PathForm {
+    let mut f = PathForm::new(text);
+    f.touched.mark("path");
+    f
+}
+
 #[test]
 fn new_file_dialog_invalid_light() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "new-file-invalid");
-    st.modal = Some(Modal::NewFile(PathForm::new(".git/hooks/x")));
+    st.modal = Some(Modal::NewFile(typed(".git/hooks/x")));
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("new_file_dialog_invalid_light");
@@ -114,7 +121,7 @@ fn rename_file_dialog() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "rename-file");
     st.settings.stage_renames = false;
     st.snap.as_mut().unwrap().unstaged.push(FileEntry::new("notes.txt", '?'));
-    st.modal = Some(Modal::RenameFile { old: "README.md".into(), form: PathForm::new("notes.txt") });
+    st.modal = Some(Modal::RenameFile { old: "README.md".into(), form: typed("notes.txt") });
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("rename_file_dialog");

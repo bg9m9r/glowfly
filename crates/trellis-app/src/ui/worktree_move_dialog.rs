@@ -5,8 +5,9 @@
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::buttons;
+use super::widgets::form_message::{self, Message};
 use crate::msg::{FolderPurpose, Msg, PrefsMsg};
-use crate::state::worktree_move::{MoveForm, target_problem};
+use crate::state::worktree_move::{MoveForm, UNMOVED, target_problem};
 use crate::state::worktrees::folder_warning;
 use crate::ui::theme::controls;
 use crate::worktree::WorktreeMsg;
@@ -24,6 +25,7 @@ pub fn move_worktree(ui: &mut egui::Ui, cx: Cx, form: &mut MoveForm, snap: Optio
         let browse_w = 84.0;
         let edit = egui::TextEdit::singleline(&mut form.folder).id(Id::new("trellis-worktree-move-folder"));
         let r = controls::field(ui, edit.desired_width(ui.available_width() - browse_w));
+        form_message::track(&mut form.touched, "folder", &r);
         enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
         if focus && !enter {
             r.request_focus();
@@ -33,17 +35,26 @@ pub fn move_worktree(ui: &mut egui::Ui, cx: Cx, form: &mut MoveForm, snap: Optio
         }
     });
     let bad = snap.and_then(|s| target_problem(s, &form.path, &form.folder)).or_else(|| form.current_error().map(str::to_owned));
-    if let Some(p) = &bad {
-        ui.label(RichText::new(p).color(color::red()));
-    } else if let Some(w) = snap.and_then(|s| folder_warning(s, &form.folder)) {
-        ui.label(RichText::new(w).color(color::amber()));
+    if form.current_error().is_some() {
+        // The runner refused the last submit: its error shows like any other problem.
+        form.touched.attempt();
     }
+    let message = match &bad {
+        // The field starts on the current folder: say so, as information.
+        Some(p) if p == UNMOVED => Some(Message::info(UNMOVED)),
+        Some(p) => Some(Message::error(p.as_str())),
+        None => snap.and_then(|s| folder_warning(s, &form.folder)).map(Message::warning),
+    };
+    form_message::field(ui, &form.touched, "folder", message);
     ui.add_space(6.0);
     ui.label(
         RichText::new("git moves the folder and updates its records. A tab showing it follows it to the new folder.").color(color::weak()),
     );
     let valid = snap.is_some() && bad.is_none() && idle;
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Move").enabled(valid)).submit(enter));
+    if out.attempted {
+        form.touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Worktree(WorktreeMsg::Move));
     }

@@ -14,7 +14,17 @@ use views::{code_lines, view_sources};
 const BANNER_ALLOWED: &[&str] = &["ui/widgets/banner.rs", "ui/diff/lfs_note.rs"];
 
 /// The forms whose messages go through `form_message`.
-const FORM_FILES: &[&str] = &["ui/branch_dialogs.rs", "ui/tag_dialog.rs"];
+const FORM_FILES: &[&str] = &[
+    "ui/branch_dialogs.rs",
+    "ui/tag_dialog.rs",
+    "ui/stash_dialog.rs",
+    "ui/stash_push_dialog.rs",
+    "ui/rebase/reword_dialog.rs",
+    "ui/file_dialogs.rs",
+    "ui/worktree_dialog.rs",
+    "ui/worktree_manage_dialog.rs",
+    "ui/worktree_move_dialog.rs",
+];
 
 /// The colours a converted form leaves to `form_message`.
 const FORM_DENIED: &[&str] = &["color::red()", "color::amber()"];

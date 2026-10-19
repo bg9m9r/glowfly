@@ -30,6 +30,8 @@ pub struct WorktreeForm {
     pub pending: Option<NewWorktree>,
     /// The heading in place of the base's (a pull request's worktree).
     pub title: Option<String>,
+    /// Which fields were edited, and whether a submit was tried.
+    pub touched: super::touched::Touched,
 }
 
 impl WorktreeForm {
@@ -39,9 +41,20 @@ impl WorktreeForm {
             WorktreeBase::Remote { branch, .. } => branch.clone(),
             _ => String::new(),
         };
-        let mut form =
-            Self { base, folder: String::new(), folder_edited: false, branch, open: true, error: None, pending: None, title: None };
+        let mut form = Self {
+            base,
+            folder: String::new(),
+            folder_edited: false,
+            branch,
+            open: true,
+            error: None,
+            pending: None,
+            title: None,
+            touched: Default::default(),
+        };
         form.folder = default_folder(snap, &form.slug());
+        // The folder starts as Trellis's own choice: a problem with it shows from the start.
+        form.touched.mark("folder");
         form
     }
 

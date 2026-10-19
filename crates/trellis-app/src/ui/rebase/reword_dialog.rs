@@ -11,6 +11,7 @@ use crate::ui::dialog_frame::{Cx, Dialog, Footer};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use trellis_core::repo::Snapshot;
 
@@ -22,12 +23,12 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut RewordForm, snap: Option<&Snap
     let d = Dialog::new(cx, form.title()).subtitle(form.subtitle()).begin(ui);
     let hint = form.hint();
     let r = controls::field(ui, egui::TextEdit::multiline(&mut form.draft).hint_text(hint).desired_rows(6).desired_width(f32::INFINITY));
+    form_message::track(&mut form.touched, "message", &r);
     if cx.keyboard && std::mem::take(&mut form.focus) {
         r.request_focus();
     }
-    if form.draft.trim().is_empty() {
-        ui.label(RichText::new(BLANK).color(color::red()));
-    }
+    let problem = form.draft.trim().is_empty().then(|| Message::error(BLANK));
+    form_message::field(ui, &form.touched, "message", problem);
     let stash = snap.is_some_and(needs_stash);
     if stash {
         ui.add_space(4.0);
@@ -36,6 +37,9 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut RewordForm, snap: Option<&Snap
     let blocked = form.blocker(idle);
     let button = buttons::primary(form.button(stash)).enabled(blocked.is_none()).why(blocked);
     let out = d.finish(ui, Footer::new().cancel().primary(button));
+    if out.attempted {
+        form.touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Rebase(RebaseMsg::SubmitReword));
     }

@@ -26,6 +26,12 @@ impl Touched {
     pub fn attempt(&mut self) {
         self.attempted = true;
     }
+
+    /// Shows every problem: for a problem that comes from the form's own starting values, not
+    /// from anything typed.
+    pub fn all() -> Self {
+        Self { fields: Vec::new(), attempted: true }
+    }
 }
 
 #[cfg(test)]
@@ -52,6 +58,11 @@ mod tests {
         t.mark("name");
         t.mark("name");
         assert_eq!(t.fields, vec!["name"]);
+    }
+
+    #[test]
+    fn all_shows_every_field() {
+        assert!(Touched::all().shows("folder"));
     }
 
     #[test]

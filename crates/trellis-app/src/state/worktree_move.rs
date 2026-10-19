@@ -22,12 +22,15 @@ pub struct MoveForm {
     /// (folder text it was for, message) from the runner; shown only while the field holds
     /// that text.
     pub error: Option<(String, String)>,
+    /// Whether the folder was edited or a submit tried (its problem shows then).
+    pub touched: super::touched::Touched,
 }
 
 impl MoveForm {
     /// The form for `wt`, its New folder field holding where it is now.
     pub fn new(wt: &WorktreeInfo) -> Self {
-        Self { path: wt.path.clone(), name: wt.folder_name(), folder: shown(&wt.path), folder_id: wt.folder, error: None }
+        let (path, name, folder) = (wt.path.clone(), wt.folder_name(), shown(&wt.path));
+        Self { path, name, folder, folder_id: wt.folder, error: None, touched: Default::default() }
     }
 
     /// The runner's error, while the folder field still holds the text it was for.
@@ -57,6 +60,9 @@ pub fn move_refused(wt: &WorktreeInfo) -> Option<&'static str> {
     }
 }
 
+/// Why the folder can't be the new place: it is the current one (a prompt, not an error).
+pub const UNMOVED: &str = "That is where it is now.";
+
 /// What makes the typed folder `text` unusable as the new place of the worktree at `from`,
 /// before the disk is checked.
 pub fn target_problem(snap: &Snapshot, from: &Path, text: &str) -> Option<String> {
@@ -65,7 +71,7 @@ pub fn target_problem(snap: &Snapshot, from: &Path, text: &str) -> Option<String
         Err(p) => return Some(p.message(text.trim())),
     };
     if same_spelling(&path, from) {
-        return Some("That is where it is now.".to_owned());
+        return Some(UNMOVED.to_owned());
     }
     if is_within(&path, from) {
         return Some("A worktree can't be moved into its own folder.".to_owned());
