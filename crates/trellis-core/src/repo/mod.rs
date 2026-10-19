@@ -95,7 +95,7 @@ use diff::{head_tree, path_opts, workdir_opts};
 pub use diff_gaps::load_gap_text;
 pub use diff_types::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptions};
 pub use entry::{FileEntry, Hazard};
-pub use file_at::{FILE_VIEW_MAX_BYTES, FileAt, FileAtOptions, LfsState, file_at, file_at_with};
+pub use file_at::{BINARY_NOT_SHOWN, FILE_VIEW_MAX_BYTES, FileAt, FileAtOptions, LfsState, file_at, file_at_with};
 pub use folder_history::{folder_file_today, folder_history};
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};

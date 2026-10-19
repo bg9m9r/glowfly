@@ -23,6 +23,7 @@ mod syntax;
 mod thread_marks;
 pub(in crate::ui) mod wrap;
 
+use super::empty_state;
 use super::file_buttons::CommitFile;
 use super::theme::color;
 use crate::msg::DiffMsg;
@@ -31,7 +32,7 @@ use crate::state::AppState;
 use crate::state::diff_nav;
 use crate::state::lines::{LineClick, LineSelection};
 use crate::state::pull_request_threads::{self, Marks};
-use eframe::egui::{CursorIcon, FontId, Rect, Response, RichText, Sense, Ui, vec2};
+use eframe::egui::{CursorIcon, FontId, Rect, Response, Sense, Ui, vec2};
 use hunk_header::hunk_header;
 use rows_cache::{DiffRowsCache, Source};
 pub(super) use style::DiffStyle;
@@ -270,7 +271,8 @@ pub(super) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
 /// The diff's rows without the header bar: what `show` draws below it, and what views that
 /// embed a commit's diff of a file (the file history) draw. A Git LFS pointer on either side
 /// shows a summary instead, until "Show pointer text"; a binary file and a diff without hunks
-/// get a note instead (whitespace-only when Ignore whitespace hides the changes). Commit
+/// get an empty state instead (whitespace-only, with a way to show it, when Ignore whitespace
+/// hides the changes). Commit
 /// diffs have Revert Hunk buttons and line selection for Revert lines (both off while
 /// whitespace is hidden).
 pub(super) fn body(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs: &mut Vec<Msg>) {
@@ -286,16 +288,17 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCach
     {
         let Some((_, diff)) = &st.diff else { return };
         if diff.binary {
-            ui.label(RichText::new("Binary file not shown.").color(color::weak()));
+            empty_state::binary_file(ui);
             return;
         }
         if diff.hunks.is_empty() {
-            let text = if st.settings.diff_ignore_whitespace {
-                "Only whitespace changed in this file. Turn off Ignore whitespace to see it."
+            if st.settings.diff_ignore_whitespace {
+                if empty_state::whitespace_only(ui) {
+                    msgs.push(Msg::Diff(DiffMsg::SetIgnoreWhitespace(false)));
+                }
             } else {
-                "No textual changes (mode or empty file)."
-            };
-            ui.label(RichText::new(text).color(color::weak()));
+                empty_state::no_changes(ui);
+            }
             return;
         }
     }

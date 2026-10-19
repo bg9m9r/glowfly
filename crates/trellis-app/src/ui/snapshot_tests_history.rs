@@ -116,6 +116,7 @@ fn file_history_file_binary_light() {
     text.state = TextState::Failed("Binary file not shown".into());
     let mut h = harness(st, false);
     h.run();
+    assert!(h.query_by_label(super::empty_state::BINARY_TITLE).is_some());
     h.check_snapshot("file_history_file_binary_light");
     drop(h);
     remove_fixture(&dir);

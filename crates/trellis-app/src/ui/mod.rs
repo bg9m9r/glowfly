@@ -35,6 +35,7 @@ mod details_wip;
 mod details_workdir;
 mod dialog_guard;
 mod diff;
+mod empty_state;
 mod file_buttons;
 mod file_dialogs;
 mod file_menu;

@@ -8,6 +8,8 @@ use std::path::Path;
 
 /// The largest file the File view reads.
 pub const FILE_VIEW_MAX_BYTES: usize = 8 * 1024 * 1024;
+/// How `file_at`'s error for a binary file starts (the File view shows those as an empty state).
+pub const BINARY_NOT_SHOWN: &str = "Binary file not shown";
 
 /// How many leading bytes of smudged content are checked for a NUL (as git does).
 const BINARY_SNIFF_BYTES: usize = 8000;
@@ -93,11 +95,11 @@ pub fn file_at_with(workdir: &Path, oid: Oid, path: &str, o: FileAtOptions) -> R
     let bytes = match &smudged {
         Some(b) => {
             if b[..b.len().min(BINARY_SNIFF_BYTES)].contains(&0) {
-                return Err(Error::Unsupported("Binary file not shown (stored in Git LFS)".into()));
+                return Err(Error::Unsupported(format!("{BINARY_NOT_SHOWN} (stored in Git LFS)")));
             }
             b.as_slice()
         }
-        None if blob.is_binary() => return Err(Error::Unsupported("Binary file not shown".into())),
+        None if blob.is_binary() => return Err(Error::Unsupported(BINARY_NOT_SHOWN.into())),
         None => blob.content(),
     };
     if bytes.len() > FILE_VIEW_MAX_BYTES {

@@ -18,7 +18,7 @@ use crate::state::blame_find::ranges;
 use crate::state::history::{FileTextData, TextState};
 use eframe::egui::{self, Align, Align2, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use std::sync::Arc;
-use trellis_core::repo::LfsState;
+use trellis_core::repo::{BINARY_NOT_SHOWN, LfsState};
 
 pub(in crate::ui) const WRAP_LINES: &str = "Wrap lines";
 pub(in crate::ui) const WRAP_TIP: &str = "Continue long lines on the next line";
@@ -34,6 +34,7 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     let text = view.text.as_ref().filter(|t| t.oid == oid && t.path == path && t.before == before);
     let data = match text.map(|t| &t.state) {
         None | Some(TextState::Loading) => return note(ui, "Loading…", false, color::weak()),
+        Some(TextState::Failed(e)) if e.starts_with(BINARY_NOT_SHOWN) => return super::empty_state::binary_file(ui),
         Some(TextState::Failed(e)) => return note(ui, &e.clone(), true, color::weak()),
         Some(TextState::Ready(data)) => data.clone(),
     };

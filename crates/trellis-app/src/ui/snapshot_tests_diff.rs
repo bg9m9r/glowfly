@@ -1,10 +1,12 @@
 //! Diff viewer snapshots: layouts, line selection, syntax and word highlights, hunk-header
-//! context, and hidden whitespace. Shares the fixture repository and renderer with
+//! context, and hidden whitespace (a diff with nothing to draw is in `snapshot_tests_empty_state`). Shares the fixture repository and renderer with
 //! `snapshot_tests`.
 
 use super::snapshot_tests::{git, render, with_repo};
 
 // Declared here to keep them beside the diff snapshots they extend.
+#[path = "snapshot_tests_empty_state.rs"]
+mod snapshot_tests_empty_state;
 #[path = "snapshot_tests_gaps.rs"]
 mod snapshot_tests_gaps;
 #[path = "snapshot_tests_lines_drag.rs"]
@@ -221,12 +223,6 @@ fn diff_ignore_whitespace() {
     assert_eq!(changed, ["    2 * (w + h)", "    2 * w + 2 * h   "]);
     assert!(st.hunk_ops_gen().is_some());
     render("diff_ignore_whitespace", st, true);
-    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-
-    // A file whose changes are all whitespace: no rows, but the toggle stays to show them again.
-    let (st, dir) = with_hidden_whitespace("diff-ws-only", "notes.txt", "one\n  two\n", "one  \n\ttwo\n");
-    assert!(st.diff.as_ref().unwrap().1.hunks.is_empty());
-    render("diff_whitespace_only", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 
