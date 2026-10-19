@@ -112,7 +112,7 @@ are in Later > UI review polish.
       Esc on an edited form asks "Discard your changes?" (or the draft is kept and restored
       when the dialog reopens); only information and confirm dialogs close on a backdrop click
       (`ui/modals.rs`)
-- [ ] **No missing glyphs**: the sidebar's ahead/behind arrows (`2□`) are painted as shapes,
+- [x] **No missing glyphs**: the sidebar's ahead/behind arrows (`2□`) are painted as shapes,
       with a snapshot of a branch that is ahead and behind; a test walks the UI's string
       literals and label templates and fails on a character the bundled fonts can't draw
 - [ ] **Dialog frame and button styles**: one shared dialog frame (16–20 px padding, title,
@@ -2174,3 +2174,16 @@ here, under the item they grew from.
 - A status-bar chip variant of the strip, and a preference to hide the strip
 - Hover tips on the conflict header menu's items (what Save with markers and Mark resolved do)
 - Translate the remaining English text in the conflict view body and the rebase and patch banner titles
+
+### No missing glyphs
+
+- Put the ahead/behind counts into the LOCAL row's tooltip and accessible description ("2 ahead,
+  3 behind origin/search"), so the painted arrows have words for screen readers
+- A fallback font (system or bundled) for CJK, Hangul and other scripts in commit messages,
+  author names, branch names and paths, which draw as boxes today
+- Dates in the ja_JP, zh_CN and ko_KR locales use CJK month and weekday words the fonts lack, so
+  the date preview in Preferences and every date show boxes
+- A debug-build warning when a frame lays out a character with no glyph, for runtime text the
+  static check can't see (server messages, theme names, hook output)
+- Use the painted ahead/behind arrows wherever else counts appear (remote and Git Flow rows, tab
+  tooltips, the dashboard)

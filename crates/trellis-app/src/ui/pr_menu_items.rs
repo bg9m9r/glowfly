@@ -17,7 +17,7 @@ use trellis_core::repo::{BranchInfo, Snapshot};
 /// A pull request row's tooltip (the sidebar's and the dashboard's): branches and author, the
 /// reviewers' votes, the merge status, the checks and the start of the description.
 pub(super) fn pr_tooltip(pr: &PullRequest) -> String {
-    let mut tooltip = format!("{} → {}\nby {}", pr.source, pr.target, pr.author);
+    let mut tooltip = format!("{} into {}\nby {}", pr.source, pr.target, pr.author);
     for rv in &pr.reviewers {
         tooltip.push_str(&format!("\n{}: {}{}", rv.name, rv.state, if rv.required { " (required)" } else { "" }));
     }

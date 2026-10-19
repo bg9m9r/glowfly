@@ -75,6 +75,27 @@ fn set_upstream_dialog_light() {
     remove_fixture(&dir);
 }
 
+/// A LOCAL row ahead of and behind its upstream: each count with a painted arrow.
+#[test]
+fn sidebar_ahead_behind() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "ahead-behind");
+    tracked(&mut st, 2, 3);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("sidebar_ahead_behind");
+    // The counts are painted beside the name, not part of the row's accessible name.
+    assert!(h.get_all_by_label("search").next().is_some());
+    remove_fixture(&dir);
+}
+
+#[test]
+fn sidebar_ahead_only_light() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "ahead-only");
+    tracked(&mut st, 1, 0);
+    render("sidebar_ahead_only_light", st, false);
+    remove_fixture(&dir);
+}
+
 /// Right-clicks the LOCAL row of `search` (the topmost row with that name).
 fn open_menu(h: &mut egui_kittest::Harness<'_, (AppState, Vec<Msg>)>) {
     let rect = h.get_all_by_label("search").filter_map(|n| n.bounding_box()).min_by(|a, b| a.y0.total_cmp(&b.y0)).expect("the sidebar row");

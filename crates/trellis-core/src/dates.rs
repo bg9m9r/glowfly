@@ -116,9 +116,10 @@ pub const LOCALES: [(&str, &str); 14] = [
     ("nl_NL", "Nederlands"),
     ("sv_SE", "Svenska"),
     ("pl_PL", "Polski"),
-    ("ja_JP", "日本語"),
-    ("zh_CN", "中文"),
-    ("ko_KR", "한국어"),
+    // Named in English: the bundled fonts have no CJK or Hangul glyphs.
+    ("ja_JP", "Japanese"),
+    ("zh_CN", "Chinese (Simplified)"),
+    ("ko_KR", "Korean"),
 ];
 
 #[cfg(test)]

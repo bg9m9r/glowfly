@@ -7,7 +7,7 @@ use super::forge_filter_menu::{self, AddButton, Picker};
 use super::panel_size;
 use super::ref_visibility;
 use super::theme::color;
-use super::widgets;
+use super::widgets::{self, Part};
 use crate::msg::BranchMsg;
 use crate::msg::IssueMsg;
 use crate::msg::JobMsg;
@@ -75,23 +75,24 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             if widgets::list_row_hidden(ui) {
                 continue;
             }
-            let mut right = String::new();
+            let pr = fs.and_then(|f| Some(f.pr_label(crate::state::push_pr::open_pr(snap, f, &b.name)?.id)));
+            let worktree = crate::state::worktree_branches::elsewhere(snap, &b.name);
+            let mut parts = Vec::new();
             if b.ahead > 0 {
-                right.push_str(&format!("{}↑ ", b.ahead));
+                parts.push(Part::Ahead(b.ahead));
             }
             if b.behind > 0 {
-                right.push_str(&format!("{}↓", b.behind));
+                parts.push(Part::Behind(b.behind));
             }
-            if let Some((f, pr)) = fs.and_then(|f| Some((f, crate::state::push_pr::open_pr(snap, f, &b.name)?))) {
-                right.push_str(&format!(" {}", f.pr_label(pr.id)));
+            if let Some(l) = &pr {
+                parts.push(Part::Text(l));
             }
-            let worktree = crate::state::worktree_branches::elsewhere(snap, &b.name);
             if worktree.is_some() {
-                right.push_str(" worktree");
+                parts.push(Part::Text("worktree"));
             }
             let label = if b.is_head { format!("✔  {}", b.name) } else { b.name.clone() };
             let selected = b.oid.is_some_and(|o| sel.includes(o));
-            let right = (!right.is_empty()).then_some((right.trim(), color::weak()));
+            let right = (!parts.is_empty()).then_some((&parts[..], color::weak()));
             let (r, marker) = widgets::list_row_slot(ui, 26.0, &label, right, slot, selected, b.is_head);
             if r.hovered() {
                 *hover_next = b.oid;
@@ -206,7 +207,8 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
         let right = format!("{}{}", f.pr_label(pr.id), if votes > 0 { format!(" ✔{votes}") } else { String::new() });
         let tip = f.pr_heads.get(&pr.id).copied();
         let selected = tip.is_some_and(|o| *sel == Selection::Commit(o));
-        let (r, marker) = widgets::list_row_slot(ui, 26.0, &title, Some((&right, color::purple())), slot, selected, false);
+        let (r, marker) =
+            widgets::list_row_slot(ui, 26.0, &title, Some((&[Part::Text(&right)][..], color::purple())), slot, selected, false);
         if let Some(c) = &pr.checks {
             super::build_status::paint_marker(&ui.painter_at(r.rect), marker.center(), c.state);
         }

@@ -84,7 +84,7 @@ fn path_field(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, o
         && path != form.text.trim()
     {
         ui.add_space(2.0);
-        ui.label(RichText::new(format!("→ {path}")).color(color::weak()));
+        ui.label(RichText::new(format!("Becomes {path}")).color(color::weak()));
     }
     let valid = checked.is_ok() && !unchanged && problem.is_none();
     (r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)), valid)

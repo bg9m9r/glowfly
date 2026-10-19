@@ -32,7 +32,8 @@ One flat JSON object per language, keys sorted:
 - Row labels on Preferences pages are drawn right-aligned in a fixed column without wrapping:
   keep them to about 32 characters.
 - Only Latin-1 letters render with the bundled fonts. Don't use symbol glyphs such as arrows or
-  pencils in texts; the UI paints those.
+  pencils in texts; the UI paints those. `cargo test -p trellis glyph` fails on any character
+  the bundled fonts can't draw.
 
 ## Adding a key
 
