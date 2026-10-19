@@ -169,9 +169,22 @@ are in Later > UI review polish.
     shows it too
   - Disabled buttons keep their tooltip and say why ("No stashes to pop")
 - [ ] **Line counts in red and green**: `+N −M` for each changed file (with a small bar sized to
-      the change), each commit row and the commit details header, and the WIP row ("3 modified,
-      1 added, 1 deleted · +48 −17"); added green, removed red, modified amber, matching the
-      status letters; computed off the UI thread and cached per commit
+      the change), each commit row and the commit details header, and the WIP row (one line:
+      "Uncommitted changes", then M 3 · A 1 · D 1 chips with tinted fills and a right-aligned
+      `+48 −17`); added green, removed red, modified amber, matching the status letters;
+      computed off the UI thread and cached per commit
+- [ ] **History table that carries more information**: 40 px rows with columns for branches
+      and tags, graph, message (the widest, with a weak first body line after the summary),
+      changes (`+N −M`), commit (author with the short SHA under it) and a right-aligned date
+  - Each branch keeps one colour through its lane, its label, a line joining label to node and
+    a faint band across the row, so a commit's branch reads without tracing lines
+  - Nodes show the committer's initials on a muted fill; merge commits are small solid dots;
+    the WIP node is a dashed ring
+  - One label per branch with small local and remote marks instead of separate local and
+    remote labels; tags get a tag mark; ref labels are soft tinted fills with no outline; a
+    "+N" chip when a commit has more labels than fit, and hovering lists them all
+  - Selection is a light accent tint with a 3 px accent bar at the left edge; hover is a
+    slightly lifted row
 - [ ] **Type scale and text styles**: a five-step scale with 14 px body text and an 11 px
       floor (nothing that carries information smaller: the 0/72 counter, "Esc returns to one
       commit", hunk buttons, welcome-screen links, LFS Untrack); section headers set by
