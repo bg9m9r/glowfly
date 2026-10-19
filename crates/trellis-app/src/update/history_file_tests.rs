@@ -83,7 +83,7 @@ fn deleted_entry_requests_the_version_before() {
     assert!(r[0].smudge, "a clean repository lets git run");
     assert!(st.history.as_ref().unwrap().text.as_ref().is_some_and(|t| t.before));
     // A result for the commit's own version is not the one waited for.
-    let data = Arc::new(FileTextData { lines: vec!["x".into()], spans: None, lfs: Default::default() });
+    let data = Arc::new(FileTextData { lines: vec!["x".into()], spans: None, lfs: Default::default(), preview: None });
     send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(3), path: "a.txt".into(), before: false, result: Ok(data.clone()) });
     assert!(matches!(st.history.as_ref().unwrap().text.as_ref().unwrap().state, TextState::Loading));
     send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(3), path: "a.txt".into(), before: true, result: Ok(data) });
@@ -135,7 +135,7 @@ fn stale_text_is_ignored() {
     let (mut st, dir) = with_view("history-file-stale");
     send(&mut st, HistoryMsg::SelectHistoryEntry(0));
     send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::File));
-    let data = Arc::new(FileTextData { lines: vec!["x".into()], spans: None, lfs: Default::default() });
+    let data = Arc::new(FileTextData { lines: vec!["x".into()], spans: None, lfs: Default::default(), preview: None });
     send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(2), path: "a.txt".into(), before: false, result: Ok(data.clone()) });
     send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(1), path: "b.txt".into(), before: false, result: Ok(data.clone()) });
     let text = st.history.as_ref().unwrap().text.as_ref().unwrap();

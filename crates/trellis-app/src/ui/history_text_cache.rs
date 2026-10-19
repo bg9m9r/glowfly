@@ -47,7 +47,7 @@ mod tests {
     use trellis_core::repo::LfsState;
 
     fn data(lines: &[&str]) -> Arc<FileTextData> {
-        Arc::new(FileTextData { lines: lines.iter().map(|l| l.to_string()).collect(), spans: None, lfs: LfsState::None })
+        Arc::new(FileTextData { lines: lines.iter().map(|l| l.to_string()).collect(), spans: None, lfs: LfsState::None, preview: None })
     }
 
     #[test]

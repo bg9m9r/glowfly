@@ -19,7 +19,7 @@ sys-locale.workspace = true
 base64 = "0.23.1"
 icu_normalizer = "2.3"
 getrandom = "0.3"
-image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] }
 pulldown-cmark = { version = "0.13", default-features = false }
 keyring = { version = "3", features = ["windows-native", "apple-native"] }
 sha2 = "0.11.1"

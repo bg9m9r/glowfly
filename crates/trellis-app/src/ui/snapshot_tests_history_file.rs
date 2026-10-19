@@ -27,7 +27,7 @@ pub(super) fn set_text(st: &mut AppState, lines: Vec<String>, lfs: LfsState) {
     let view = st.history.as_mut().unwrap();
     let text = view.text.as_mut().unwrap();
     let spans = highlight::highlight_file(SyntaxHint { path: "lib.rs", language: None }, &lines);
-    text.state = TextState::Ready(Arc::new(FileTextData { lines, spans, lfs }));
+    text.state = TextState::Ready(Arc::new(FileTextData { lines, spans, lfs, preview: None }));
 }
 
 /// The opened version with a long comment line in the middle.
@@ -114,7 +114,7 @@ fn file_history_file_deleted() {
     assert_eq!(status, 'D');
     let f = repo::file_at_with(&dir, oid, "words.rs", FileAtOptions { before: true, smudge: false }).unwrap();
     let spans = highlight::highlight_file(SyntaxHint { path: "words.rs", language: None }, &f.lines);
-    let data = Arc::new(FileTextData { lines: f.lines, spans, lfs: f.lfs });
+    let data = Arc::new(FileTextData { lines: f.lines, spans, lfs: f.lfs, preview: None });
     view.text = Some(FileText { oid, path: "words.rs".into(), before: true, state: TextState::Ready(data) });
     st.history = Some(view);
     let mut h = harness(st, true);

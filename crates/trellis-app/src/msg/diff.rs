@@ -238,6 +238,8 @@ pub enum HistoryMsg {
     SelectHistoryFile(usize),
     /// The header's Diff / File toggle.
     SetHistoryPane(HistoryPane),
+    /// The File view's Text / Preview switch for Markdown, remembered in the settings.
+    SetFilePreview(bool),
     /// The File view's Find field changed: search again and go to the first match below the
     /// top line.
     FileFindChanged,
@@ -284,6 +286,7 @@ impl HistoryMsg {
             | Self::SelectHistoryEntry(..)
             | Self::SelectHistoryFile(..)
             | Self::SetHistoryPane(..)
+            | Self::SetFilePreview(..)
             | Self::FileFindChanged
             | Self::FileFindStep(..)
             | Self::FocusFileFind

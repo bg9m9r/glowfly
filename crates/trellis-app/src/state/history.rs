@@ -1,6 +1,7 @@
 //! The open file or folder history: the commits that changed it, the selected one (and, in a
 //! folder history, the selected file), where the walk stopped, and the Diff / File choice with
-//! the file's text as of the selected commit.
+//! the file's text (and, for Markdown and images, what the File view's preview draws) as of
+//! the selected commit.
 
 use super::history_text::TextNav;
 use git2::Oid;
@@ -27,6 +28,27 @@ pub struct FileTextData {
     pub spans: Option<Vec<Vec<Span>>>,
     /// Whether the lines are a Git LFS file's content or its pointer.
     pub lfs: LfsState,
+    /// What the File view can draw rendered: a Markdown file's text, or an image (which has no
+    /// lines).
+    pub preview: Option<Preview>,
+}
+
+/// What the File view can draw instead of the lines.
+pub enum Preview {
+    /// The lines joined with "\n", parsed when drawn (and kept parsed by the view's cache).
+    Markdown { source: String },
+    /// The decoded image and the file's size in bytes.
+    Image { image: trellis_core::preview_image::PreviewImage, size: u64 },
+}
+
+/// Without the text, so a log never holds a whole file.
+impl std::fmt::Debug for Preview {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Preview::Markdown { source } => f.debug_struct("Markdown").field("bytes", &source.len()).finish(),
+            Preview::Image { image, size } => f.debug_struct("Image").field("image", image).field("size", size).finish(),
+        }
+    }
 }
 
 impl FileTextData {
@@ -174,6 +196,30 @@ impl FileHistoryView {
         let before = status == 'D';
         let have = self.text.as_ref().is_some_and(|t| t.oid == oid && t.path == path && t.before == before);
         (!have).then(|| (oid, path.to_owned(), before))
+    }
+
+    /// The text the File view shows, once the shown version's has arrived.
+    pub fn shown_text(&self) -> Option<&Arc<FileTextData>> {
+        let (oid, path, status) = self.shown()?;
+        let before = status == 'D';
+        let t = self.text.as_ref().filter(|t| t.oid == oid && t.path == path && t.before == before)?;
+        match &t.state {
+            TextState::Ready(data) => Some(data),
+            _ => None,
+        }
+    }
+
+    /// Whether the File view draws a preview rather than the lines: always for an image, for
+    /// Markdown when `preview_on` (the Text / Preview choice).
+    pub fn previewing(&self, preview_on: bool) -> bool {
+        if self.pane != HistoryPane::File {
+            return false;
+        }
+        match self.shown_text().and_then(|d| d.preview.as_ref()) {
+            Some(Preview::Image { .. }) => true,
+            Some(Preview::Markdown { .. }) => preview_on,
+            None => false,
+        }
     }
 
     /// The shown file's name in the working tree today: `today_path()` in a file history; in a

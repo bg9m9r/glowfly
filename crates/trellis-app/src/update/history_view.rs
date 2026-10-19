@@ -1,6 +1,6 @@
 //! The history's right panel: the selected file of a folder entry (and stepping through its
-//! files), the Diff / File toggle (remembered in the settings), and the File view's text of
-//! the selected version (`Effect::LoadFileText`).
+//! files), the Diff / File toggle and the File view's Text / Preview switch (both remembered in
+//! the settings), and the File view's text of the selected version (`Effect::LoadFileText`).
 
 use crate::effect::{Effect, FileTextRequest};
 use crate::state::AppState;
@@ -37,6 +37,21 @@ pub(super) fn set_pane(st: &mut AppState, pane: HistoryPane, fx: &mut Vec<Effect
         view.pane = pane;
     }
     want_text(st, fx);
+}
+
+/// The File view's Text / Preview choice for Markdown, remembered for later histories. Either
+/// body starts at the top.
+pub(super) fn set_preview(st: &mut AppState, on: bool, fx: &mut Vec<Effect>) {
+    if st.history.is_none() {
+        return;
+    }
+    if st.settings.history.preview != on {
+        st.settings.history.preview = on;
+        fx.push(super::prefs::save_settings(st));
+    }
+    if let Some(view) = st.history.as_mut() {
+        view.nav.to_top = true;
+    }
 }
 
 /// Asks for the shown file's text when the File view needs it.

@@ -36,6 +36,9 @@ pub fn diff_viewer_page(ui: &mut Ui, s: &mut Settings) {
         });
         help(ui, t.tr("prefs.editor.history_pane.help"));
     });
+    let (label, check, text) =
+        (t.tr("prefs.editor.history_preview.label"), t.tr("prefs.editor.history_preview.check"), t.tr("prefs.editor.history_preview.help"));
+    check_row(ui, label, &mut s.history.preview, check, Some(text));
     row(ui, t.tr("prefs.editor.reset.label"), |ui| {
         if ui.add(buttons::secondary(t.tr("prefs.editor.reset.button"))).clicked() {
             reset(s);
@@ -68,7 +71,7 @@ mod tests {
             syntax_highlighting: false,
             diff_word_highlights: false,
             diff_word_wrap: true,
-            history: trellis_core::settings::HistoryPrefs { pane: HistoryPane::File },
+            history: trellis_core::settings::HistoryPrefs { pane: HistoryPane::File, preview: true },
             auto_fetch_minutes: 9,
             ..Settings::default()
         };
@@ -78,6 +81,7 @@ mod tests {
         assert!(s.diff_line_numbers && s.syntax_highlighting && s.diff_word_highlights);
         assert!(!s.diff_word_wrap);
         assert_eq!(s.history.pane, HistoryPane::Diff);
+        assert!(!s.history.preview, "Markdown shows as text again");
         assert_eq!(s.auto_fetch_minutes, 9);
     }
 }

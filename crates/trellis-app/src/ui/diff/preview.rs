@@ -1,4 +1,4 @@
-//! A binary file's body: a changed PNG or JPEG shows Before and After side by side, each image
+//! A binary file's body: a changed image shows Before and After side by side, each image
 //! fitted in its half over a checkerboard (so transparency shows) with its size under it; a
 //! missing side shows a dashed "Added" or "Deleted" card and a side that can't be decoded says
 //! so with its size. Any other binary file shows the binary empty state with both sizes. While
@@ -7,12 +7,10 @@
 use super::empty_state::{self, EmptyIcon};
 use crate::state::AppState;
 use crate::state::diff_preview;
+use crate::ui::image_paint::{checkerboard, load};
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
-use eframe::egui::{
-    self, Align, Color32, ColorImage, Context, CornerRadius, Layout, Rect, RichText, Stroke, TextureHandle, TextureOptions, Ui, UiBuilder,
-    pos2, vec2,
-};
+use eframe::egui::{self, Align, Color32, Context, CornerRadius, Layout, Rect, RichText, Stroke, TextureHandle, Ui, UiBuilder, pos2, vec2};
 use std::sync::Arc;
 use trellis_core::lfs::pointer::size_text;
 use trellis_core::preview_image::{PreviewImage, is_image_path};
@@ -21,12 +19,8 @@ use trellis_core::repo::{BinarySide, BinarySides};
 /// Around the two columns, and between them.
 const PAD: f32 = 16.0;
 const GAP: f32 = 16.0;
-/// The checkerboard's squares.
-const CHECK: f32 = 8.0;
 /// Never drawn larger than this many times its own size.
 const MAX_ZOOM: f32 = 4.0;
-/// Images this small or smaller are drawn with sharp pixels.
-const SHARP_MAX: u32 = 256;
 /// The card's least and greatest height.
 const CARD_MIN_H: f32 = 120.0;
 const CARD_MAX_H: f32 = 560.0;
@@ -64,12 +58,6 @@ impl PreviewTextures {
             *self = Self::default();
         }
     }
-}
-
-fn load(ctx: &Context, name: &str, img: &PreviewImage) -> TextureHandle {
-    let pixels = ColorImage::from_rgba_unmultiplied(img.shown, &img.rgba);
-    let options = if img.width.max(img.height) <= SHARP_MAX { TextureOptions::NEAREST } else { TextureOptions::LINEAR };
-    ctx.load_texture(name, pixels, options)
 }
 
 /// Draws the binary diff on screen's body.
@@ -126,25 +114,6 @@ fn image_card(ui: &Ui, card: Rect, t: &TextureHandle, img: &PreviewImage) {
     let rect = Rect::from_center_size(room.center(), vec2(w * scale, h * scale));
     checkerboard(p, rect);
     p.image(t.id(), rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
-}
-
-/// Light and dark squares under `rect`, so transparent pixels show as such.
-fn checkerboard(p: &egui::Painter, rect: Rect) {
-    let (light, dark) = if color::is_dark() {
-        (Color32::from_gray(0x5a), Color32::from_gray(0x46))
-    } else {
-        (Color32::from_gray(0xf4), Color32::from_gray(0xdc))
-    };
-    p.rect_filled(rect, 0.0, light);
-    let p = p.with_clip_rect(rect.intersect(p.clip_rect()));
-    let cols = (rect.width() / CHECK).ceil() as usize;
-    let rows = (rect.height() / CHECK).ceil() as usize;
-    for r in 0..rows {
-        for c in (r % 2..cols).step_by(2) {
-            let min = pos2(rect.left() + c as f32 * CHECK, rect.top() + r as f32 * CHECK);
-            p.rect_filled(Rect::from_min_size(min, vec2(CHECK, CHECK)), 0.0, dark);
-        }
-    }
 }
 
 /// A dashed card naming what happened to the side that has no file.

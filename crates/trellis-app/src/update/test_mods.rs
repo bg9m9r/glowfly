@@ -123,6 +123,8 @@ pub(super) mod history_file_tests;
 pub(super) mod history_find_tests;
 #[path = "history_folder_tests.rs"]
 pub(super) mod history_folder_tests;
+#[path = "history_preview_tests.rs"]
+pub(super) mod history_preview_tests;
 #[path = "history_refresh_tests.rs"]
 pub(super) mod history_refresh_tests;
 #[path = "history_tests.rs"]

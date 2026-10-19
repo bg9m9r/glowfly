@@ -90,7 +90,7 @@ pub(super) fn with_file_view(name: &str, theme: ThemeChoice) -> (AppState, PathB
     let f = repo::file_at(&dir, at, "lib.rs").unwrap();
     let spans = highlight::highlight_file(SyntaxHint { path: "lib.rs", language: None }, &f.lines);
     assert!(spans.is_some(), "Rust is highlighted");
-    let data = Arc::new(FileTextData { lines: f.lines, spans, lfs: f.lfs });
+    let data = Arc::new(FileTextData { lines: f.lines, spans, lfs: f.lfs, preview: None });
     view.text = Some(FileText { oid: at, path: "lib.rs".into(), before: false, state: TextState::Ready(data) });
     st.history = Some(view);
     (st, dir)

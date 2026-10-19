@@ -1,4 +1,4 @@
-//! A binary diff's sides: sizes from blobs and working files, images decoded for PNG paths, and
+//! A binary diff's sides: sizes from blobs and working files, images decoded for image paths, and
 //! the added, deleted, renamed, oversized and corrupt cases.
 
 use super::*;
@@ -110,5 +110,18 @@ fn large_files_are_not_decoded_and_renames_use_the_old_path() {
     let s = binary_sides(&dir, &DiffTarget::Commit(head(&dir), "brand.png".into())).unwrap();
     assert_eq!((size(&s.old), size(&s.new)), (Some(old.len() as u64), Some(old.len() as u64)));
     assert_eq!((dims(&s.old), dims(&s.new)), (Some((4, 3)), Some((4, 3))));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_gif_side_decodes_too() {
+    let dir = scratch_repo("binary-sides-gif");
+    let img = RgbaImage::from_pixel(5, 4, Rgba([200, 40, 40, 255]));
+    let mut gif = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut gif, ImageFormat::Gif).unwrap();
+    put(&dir, "anim.gif", gif.get_ref());
+    let s = binary_sides(&dir, &DiffTarget::Unstaged("anim.gif".into())).unwrap();
+    let image = s.new.as_ref().and_then(|s| s.image.as_ref()).expect("the GIF decodes");
+    assert_eq!((image.width, image.height, image.format), (5, 4, "GIF"));
     let _ = std::fs::remove_dir_all(&dir);
 }

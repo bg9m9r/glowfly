@@ -16,7 +16,7 @@ fn send(st: &mut AppState, m: HistoryMsg) -> Vec<Effect> {
 }
 
 fn text(lines: &[&str]) -> Arc<FileTextData> {
-    Arc::new(FileTextData { lines: lines.iter().map(|l| l.to_string()).collect(), spans: None, lfs: Default::default() })
+    Arc::new(FileTextData { lines: lines.iter().map(|l| l.to_string()).collect(), spans: None, lfs: Default::default(), preview: None })
 }
 
 fn nav(st: &AppState) -> &TextNav {

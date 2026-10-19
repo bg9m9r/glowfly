@@ -53,6 +53,7 @@ pub mod path_query;
 pub mod paths;
 pub mod persist;
 pub mod pick_ops;
+pub mod preview;
 pub mod preview_image;
 mod quoted;
 pub mod rebase;

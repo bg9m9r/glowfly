@@ -1,7 +1,7 @@
-//! Parsed Markdown bodies (pull request and issue descriptions and comments), kept so each
-//! body is parsed and its code blocks highlighted once, not every frame. Keyed by the text's
-//! hash; the text is kept too, so a hash collision parses again instead of showing the wrong
-//! body.
+//! Parsed Markdown bodies (pull request and issue descriptions and comments, and the file
+//! history File view's preview), kept so each body is parsed and its code blocks highlighted
+//! once, not every frame. Keyed by the text's hash; the text is kept too, so a hash collision
+//! parses again instead of showing the wrong body.
 
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
@@ -12,6 +12,9 @@ use trellis_core::markdown::{self, Block, MdDoc};
 
 /// More bodies than this and the cache starts over.
 const MAX_BODIES: usize = 256;
+/// More text than this, all kept bodies together, and the cache starts over (a File view
+/// preview can be up to `markdown::MARKDOWN_MAX_BYTES` on its own).
+const MAX_BYTES: usize = 16 << 20;
 /// The longest code block highlighted, in lines.
 const MAX_BLOCK_LINES: usize = 300;
 /// Lines highlighted per body, all code blocks together; later blocks stay plain.
@@ -34,6 +37,8 @@ pub(in crate::ui) struct CodeBlock {
 #[derive(Default)]
 pub struct MarkdownCache {
     bodies: HashMap<u64, (String, Rc<Rendered>)>,
+    /// The kept texts' lengths, summed.
+    bytes: usize,
 }
 
 impl MarkdownCache {
@@ -47,11 +52,15 @@ impl MarkdownCache {
         {
             return r.clone();
         }
-        if self.bodies.len() >= MAX_BODIES {
+        if self.bodies.len() >= MAX_BODIES || self.bytes + text.len() > MAX_BYTES {
             self.bodies.clear();
+            self.bytes = 0;
         }
         let r = Rc::new(render(text));
-        self.bodies.insert(key, (text.to_owned(), r.clone()));
+        if let Some((old, _)) = self.bodies.insert(key, (text.to_owned(), r.clone())) {
+            self.bytes -= old.len();
+        }
+        self.bytes += text.len();
         r
     }
 }
@@ -115,6 +124,20 @@ mod tests {
         assert!(cache.get(&"a".repeat(markdown::MARKDOWN_MAX_BYTES + 1)).doc.is_none());
         let long = format!("```rust\n{}```\n", "let x = 1;\n".repeat(MAX_BLOCK_LINES + 1));
         assert!(cache.get(&long).code[0].spans.is_none());
+    }
+
+    #[test]
+    fn a_large_body_over_the_byte_budget_starts_the_cache_over() {
+        let mut cache = MarkdownCache::default();
+        let first = cache.get("# First");
+        let big = "b".repeat(MAX_BYTES);
+        let r = cache.get(&big);
+        assert!(r.doc.is_none(), "over the parse limit, drawn plain");
+        assert_eq!(cache.bytes, MAX_BYTES);
+        let again = cache.get("# First");
+        assert!(!Rc::ptr_eq(&first, &again), "parsed again after the cache started over");
+        assert!(again.doc.as_ref().is_some_and(|d| d.blocks.len() == 1));
+        assert!(Rc::ptr_eq(&again, &cache.get("# First")));
     }
 
     #[test]

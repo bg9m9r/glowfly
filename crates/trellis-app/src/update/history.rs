@@ -34,6 +34,7 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
         HistoryMsg::SelectHistoryEntry(i) => select(st, i, fx),
         HistoryMsg::SelectHistoryFile(i) => history_view::select_file(st, i, fx),
         HistoryMsg::SetHistoryPane(pane) => history_view::set_pane(st, pane, fx),
+        HistoryMsg::SetFilePreview(on) => history_view::set_preview(st, on, fx),
         HistoryMsg::FileTextLoaded { oid, path, before, result } => history_view::text_loaded(st, oid, &path, before, result),
         HistoryMsg::FileFindChanged => history_find::find_changed(st),
         HistoryMsg::FileFindStep(d) => history_find::find_step(st, d),

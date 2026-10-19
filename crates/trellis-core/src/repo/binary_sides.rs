@@ -1,4 +1,4 @@
-//! A binary diff's two sides as the viewer shows them: each side's size and, for a PNG or JPEG
+//! A binary diff's two sides as the viewer shows them: each side's size and, for an image
 //! small enough, its decoded image. The sides come from `tool_sides::diff_sides`, so renames,
 //! deletions and untracked files resolve the same way the viewer and the external diff tool see
 //! them (a submodule has no sides and gives an error).
@@ -19,7 +19,7 @@ pub const PREVIEW_MAX_BYTES: u64 = 32 << 20;
 pub struct BinarySide {
     /// Its size in bytes.
     pub size: u64,
-    /// The decoded image, for a PNG or JPEG path that decoded; `None` otherwise.
+    /// The decoded image, for an image path that decoded; `None` otherwise.
     pub image: Option<PreviewImage>,
 }
 

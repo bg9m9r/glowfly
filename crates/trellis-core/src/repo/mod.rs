@@ -8,7 +8,7 @@
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`
 //! (and `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per
 //! file of a commit or of the working tree),
-//! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
+//! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit) and `file_bytes` (its bytes, binary or not, for the image preview), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the
 //! picks a file saved with markers holds), `template`
 //! (commit.template), `tool_sides` (versions for external tools) and `binary_sides` (a binary diff's
@@ -44,6 +44,7 @@ mod entry;
 mod exact;
 mod fetch_time;
 mod file_at;
+mod file_bytes;
 mod folder_history;
 mod graph_cache;
 mod history;
@@ -109,6 +110,7 @@ pub use diff_types::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptio
 pub use divergence::Divergence;
 pub use entry::{FileEntry, Hazard};
 pub use file_at::{BINARY_NOT_SHOWN, FILE_VIEW_MAX_BYTES, FileAt, FileAtOptions, LfsState, file_at, file_at_with};
+pub use file_bytes::{FileBytes, file_bytes_at};
 pub use folder_history::{folder_file_today, folder_history};
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
@@ -401,6 +403,8 @@ mod divergence_tests;
 mod exact_tests;
 #[cfg(test)]
 mod file_at_tests;
+#[cfg(test)]
+mod file_bytes_tests;
 #[cfg(test)]
 mod folder_history_tests;
 #[cfg(test)]

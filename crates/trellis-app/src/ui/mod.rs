@@ -68,9 +68,11 @@ mod history;
 mod history_file;
 mod history_folder;
 mod history_footer;
+mod history_preview;
 mod history_text_cache;
 mod icons;
 mod icons_panel;
+mod image_paint;
 mod init_dialog;
 mod issue;
 mod journal;
@@ -99,6 +101,7 @@ mod patch_save_dialog;
 mod path_warnings;
 mod pr_menu_items;
 mod prefs;
+mod preview_cache;
 pub(crate) mod probe;
 mod publish;
 mod pull_request;
@@ -259,6 +262,8 @@ mod snapshot_tests_history;
 mod snapshot_tests_history_edges;
 #[cfg(test)]
 mod snapshot_tests_history_file;
+#[cfg(test)]
+mod snapshot_tests_history_preview;
 #[cfg(test)]
 mod snapshot_tests_history_table;
 #[cfg(test)]
@@ -485,12 +490,16 @@ pub struct UiCache {
     pub diff_images: diff::preview::PreviewTextures,
     /// Parsed Markdown bodies (pull request and issue descriptions and comments).
     pub markdown: markdown_cache::MarkdownCache,
+    /// The file history File view's image preview texture.
+    pub history_preview: preview_cache::PreviewTexture,
 }
 
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.
 pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     widgets::tooltip::configure(ctx, st.settings.reduce_motion);
     let bounds = frame_layout::show(ctx, st, cache, msgs);
+    // Frees the File view's image texture once a frame draws no image.
+    cache.history_preview.end_frame();
     // Before the dialogs, so a dialog or credential prompt opened over them stacks on top.
     palette::show(ctx, st, msgs);
     welcome::show(ctx, st, msgs);

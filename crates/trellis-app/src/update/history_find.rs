@@ -37,9 +37,10 @@ pub(super) fn find_step(st: &mut AppState, d: isize) {
     }
 }
 
-/// Focuses the Find field, which only the File pane shows.
+/// Focuses the Find field, which only the File pane shows (and not over a preview).
 pub(super) fn focus_find(st: &mut AppState) {
-    if let Some(view) = st.history.as_mut().filter(|v| v.pane == HistoryPane::File) {
+    let preview_on = st.settings.history.preview;
+    if let Some(view) = st.history.as_mut().filter(|v| v.pane == HistoryPane::File && !v.previewing(preview_on)) {
         view.nav.focus_find = true;
     }
 }

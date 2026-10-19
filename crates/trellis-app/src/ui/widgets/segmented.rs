@@ -10,7 +10,7 @@ use crate::ui::theme::type_scale;
 use eframe::egui::{self, CornerRadius, CursorIcon, FontId, Rect, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
 /// The track's height and corners; a segment sits 2 px inside it.
-const HEIGHT: f32 = 28.0;
+pub const HEIGHT: f32 = 28.0;
 const RADIUS: u8 = 6;
 const INSET: f32 = 2.0;
 /// Room either side of a label.
