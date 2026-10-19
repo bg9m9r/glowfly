@@ -66,6 +66,32 @@ fn terminal_panel_dark() {
     remove_fixture(&dir);
 }
 
+/// A long prompt as a pseudoconsole sends it: trimmed of its trailing space, erased to the end
+/// of the line and the cursor placed one cell past the space, under a full row ending in red.
+const LONG_PROMPT: &str = "\x1b[?25l\x1b[2J\x1b[m\x1b[H\
+PS C:\\work> cd trellis-worktrees\\terminal-keeps-the-prompts-space\\src\r\n\
+-------------------------------------------------------------------------------\x1b[31m|\x1b[0m\r\n\
+PS C:\\work\\trellis-worktrees\\terminal-keeps-the-prompts-space\\src>\x1b[K\x1b[3;68H\x1b[?25h";
+
+#[test]
+fn terminal_prompt_space_dark() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "terminal-prompt-space");
+    let mut screen = TermScreen::new(24, 80);
+    screen.feed(LONG_PROMPT.as_bytes());
+    assert_eq!(screen.cursor(), Some((2, 67)), "one cell past the prompt's space");
+    let workdir = st.snap.as_ref().unwrap().workdir.clone();
+    let status = SessionStatus::Running;
+    st.terminal.sessions.push(TermSession { id: 1, number: 1, selection: None, workdir, program: "pwsh".into(), screen, status });
+    st.terminal.next_id = 2;
+    st.terminal.open = true;
+    st.terminal.focus_requested = true;
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("terminal_prompt_space");
+    drop(h);
+    remove_fixture(&dir);
+}
+
 #[test]
 fn terminal_exited_light() {
     let (st, dir) = with_session(ThemeChoice::Light, "terminal-exited", SessionStatus::Exited(Some(0)));

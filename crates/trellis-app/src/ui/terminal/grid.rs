@@ -20,8 +20,7 @@ const MIN_COLS: u16 = 10;
 /// Draws session `index` in the rest of `ui`.
 pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mut Vec<Msg>) {
     let font = FontId::monospace(st.settings.terminal.font_px());
-    let cw = ui.fonts(|f| f.glyph_width(&font, 'M'));
-    let rh = ui.fonts(|f| f.row_height(&font)).round();
+    let (cw, rh) = ui.fonts(|f| super::metrics::cell_size(f, &font));
     let id = Id::new("trellis-terminal-grid");
     let (rect, _) = ui.allocate_exact_size(ui.available_size(), Sense::hover());
     let resp = ui.interact(rect, id, Sense::click_and_drag());
@@ -111,9 +110,10 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
     paint::thumb(&painter, rect, session.screen.view(), session.screen.history_len(), rows_now);
 }
 
-/// Paints `span` from `at`, each cell at its own column (an ASCII run in one piece), so a
-/// fallback font's glyph widths or a cell's combining marks can't shift the columns after it.
-/// Bold is the text again one pixel to the right.
+/// Paints `span` from `at`. An ASCII run is one galley: `cw` is the pixel-rounded advance epaint
+/// places each of its glyphs at (metrics.rs), so they land on their cells. Fallback-font and
+/// combining-mark cells are still placed one by one, so their widths can't shift the columns
+/// after them. Bold is the text again one pixel to the right.
 fn paint_text(painter: &egui::Painter, at: egui::Pos2, span: &TermSpan, cw: f32, font: &FontId, fg: egui::Color32) {
     let offsets: &[f32] = if span.style.bold { &[0.0, 1.0] } else { &[0.0] };
     for dx in offsets {

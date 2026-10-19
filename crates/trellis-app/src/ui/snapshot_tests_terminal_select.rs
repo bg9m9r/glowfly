@@ -33,7 +33,7 @@ fn cell(h: &H, row: u16, col: u16) -> Pos2 {
     let b = h.get_by_label("Terminal screen").bounding_box().expect("the grid");
     let st = &h.state().0;
     let font = eframe::egui::FontId::monospace(st.settings.terminal.font_px());
-    let (cw, rh) = h.ctx.fonts(|f| (f.glyph_width(&font, 'M'), f.row_height(&font).round()));
+    let (cw, rh) = h.ctx.fonts(|f| super::terminal::metrics::cell_size(f, &font));
     pos2(b.x0 as f32 + 4.0 + (f32::from(col) + 0.5) * cw, b.y0 as f32 + 4.0 + (f32::from(row) + 0.5) * rh)
 }
 

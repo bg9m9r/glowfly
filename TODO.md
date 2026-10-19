@@ -265,7 +265,7 @@ until this list says which option was chosen.
       warnings in a failed pull's log come from and stop showing them
 - [x] **Activity panel opens only when asked**: nothing opens it but the toolbar's Activity
       button, the View menu or a toast's Details; each repository tab has its own log
-- [ ] **Terminal keeps the prompt's space**: pwsh's "PS C:\path> " loses its trailing space on
+- [x] **Terminal keeps the prompt's space**: pwsh's "PS C:\path> " loses its trailing space on
       longer paths (the cursor sits right after ">"); reproduce from the raw byte stream in a
       test covering short, long and wrapping prompts and fix the emulator; the space always shows
 - [ ] **One label for a branch and its copies on every remote**: a same-commit copy on any
@@ -1282,6 +1282,17 @@ here, under the item they grew from.
   sand in the palette, a vine lane style, and plain descriptive feature names
 - Explain mode: a toggle that shows, in tooltips and confirmations, the git command each action
   runs and what it does in one plain sentence
+
+### Terminal keeps the prompt's space
+
+- BS, CUB, EL and ECH right after a write into the last column act one cell off (vt100 keeps
+  the cursor past the edge instead of on the last cell)
+- A rebuilt screen (Clear history, parser recovery) forgets which rows wrapped, so copying a
+  wrapped line afterwards splits it
+- Diff, blame, file history and conflict views measure columns with the unrounded 'M' advance;
+  check long lines for the same drift against their highlights and wrap widths
+- Log the raw PTY bytes at trace level (RUST_LOG) so a shell's output can be captured for
+  regression tests
 
 ### Stash and carry on
 

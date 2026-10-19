@@ -72,7 +72,10 @@ impl TermScreen {
         match query {
             queries::Query::CursorPosition => {
                 let (r, c) = self.parser.screen().cursor_position();
-                format!("\x1b[{};{}R", r + 1, c + 1).into_bytes()
+                let (_, cols) = self.parser.screen().size();
+                // After a write into the last column vt100 holds the column past the edge;
+                // terminals report the last column.
+                format!("\x1b[{};{}R", r + 1, c.min(cols.saturating_sub(1)) + 1).into_bytes()
             }
             queries::Query::Status => b"\x1b[0n".to_vec(),
             queries::Query::Attributes => b"\x1b[?62;22c".to_vec(),
@@ -199,7 +202,8 @@ impl TermScreen {
     }
 
     /// Where the cursor is in view as (row, col), or None while the program hides it or the
-    /// view is scrolled back past it.
+    /// view is scrolled back past it. After a write into the last column the cursor shows on
+    /// that last cell until the next character wraps to the next row.
     pub fn cursor(&self) -> Option<(u16, u16)> {
         let screen = self.parser.screen();
         if screen.hide_cursor() {
@@ -276,7 +280,8 @@ fn row(screen: &vt100::Screen, r: u16, cols: u16) -> TermRow {
         }
         joinable = !one_cell;
     }
-    // Trailing blanks that draw nothing.
+    // Trailing blanks that draw nothing. They are left out of the spans only: the cursor comes
+    // from the parser, so a prompt's trailing space still leaves the cursor after it.
     while let Some(last) = spans.last_mut() {
         let s = last.style;
         if s.bg != TermColor::Default || s.inverse || s.underline {

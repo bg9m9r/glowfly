@@ -1,10 +1,12 @@
 //! The built-in terminal panel under the central area: a header (the shell and repository, the
 //! terminal tabs, New terminal tab, Kill all, Kill or Restart, Hide) over the active tab's
-//! screen. Its height is remembered when a drag of its edge ends.
+//! screen, and the grid's cell size (metrics). Its height is remembered when a drag of its edge
+//! ends.
 
 mod colors;
 mod grid;
 mod input;
+pub(super) mod metrics;
 mod mouse;
 mod paint;
 mod tabs;

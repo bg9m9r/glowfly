@@ -100,6 +100,8 @@ pub fn xterm_rgb(idx: u8) -> Option<(u8, u8, u8)> {
 #[cfg(test)]
 mod history_tests;
 #[cfg(test)]
+mod prompt_tests;
+#[cfg(test)]
 mod screen_tests;
 
 #[cfg(test)]
