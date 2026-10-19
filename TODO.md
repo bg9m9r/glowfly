@@ -274,22 +274,46 @@ until this list says which option was chosen.
 - [ ] **Small fixes from testing**: the terminal tab bar's + is centred and drawn like the ×
       (the repository tab bar's too); the ⚠ badge by the branch picker says on hover what it
       warns about and opens it on click
-- [ ] **Branch-led colour** (the base of colour direction C, Vivid, chosen 2026-10-19): the status colours (added,
-      removed, modified, info, operation in progress) used the same way everywhere as soft
-      tints; each branch keeps one colour wherever it shows (graph lane and label, a sidebar dot,
-      the Branch picker, a line under the active tab, the details header), picked from its name
-      so it stays the same between sessions, with main on the accent; a wide palette (16 or more
-      hues, ordered so neighbouring lanes differ, even lightness per theme, a colour-blind-safe
-      option); two lanes side by side never share a hue; right-click a branch for Colour… to pin
-      one; greys tinted towards the accent; a colour per person for avatars. Palette: 16 hues
-      (P1 chosen 2026-10-19, now being revised towards cooler, less pink hues: P3 on the branch
-      colours board); confirm the final 16 before building.
-- [ ] **Vivid colour** (colour direction C, after Branch-led colour): a colour you pick for each
-      repository, shown on its tab, as a thin line along the top of the window and in the
-      repository list (picked from its name until you choose one); a soft coloured backing behind
-      toolbar icons; a warm coral kept only for "needs you" moments such as a conflict. Repository
-      and branch colours must not clash: the repository colour stays on chrome, branch colours
-      stay in content.
+- [ ] **Brand colour and tinted neutrals** (from the colour review, 2026-10-19): the accent moves
+      from teal to the icon's lattice green, with the icon's sand as a second brand colour.
+      Accent: dark #4dc588 (OKLCH 0.74 0.14 158) with dark ink #0f1a14 on primary buttons;
+      light #14764a (0.50 0.11 158) with white. Sand carries tags (replacing today's tag
+      colours): dark text #e4d6b6 on its tint, light #6f562a on #e3dac2. Neutrals keep chroma
+      at or below 0.015. Dark, tinted green (hue 160): chrome #0f1612, base #151b18, panel
+      #1b221e, raised #262e29, hairline #2d3530, selection #244534, text #e0e6e3, weak #a4aea8,
+      faint #7f8983. Light, warm paper (hue 90): chrome #ece9e1, base #f9f7f1, panel #fdfcf9,
+      hairline #dcd9d0, selection #cfeddb, text #161c19, weak #4c5550, faint #68716c. Status
+      colours move off the accent: added #7bc85f / #357518, removed #ea6a64 / #b63132,
+      modified #edb345 / #a06604, info #60aaf3 / #1f68bc, operation in progress #a689f1 /
+      #6d47b8 (dark / light; in light, chip tints at about 10% so chip text reaches 4.5:1).
+      Separate token families in the theme code (status, branch, repository, attention), and
+      contrast tests that also assert the reserved hue bands below. Write the colour rules in
+      docs/COLOUR.md.
+- [ ] **Branch-led colour** (the base of colour direction C, Vivid, chosen 2026-10-19): each
+      branch keeps one colour wherever it shows (graph lane and label, a sidebar dot, the
+      Branch picker, a line under the active tab, the details header), picked from its name so
+      it stays the same between sessions; only main uses the accent; two lanes side by side
+      never share a hue; right-click a branch for Colour… to pin one; a colour per person for
+      avatars; a colour-blind-safe preset in Preferences, with names always beside the colour.
+      Palette: P1 tuned after the colour review: the accent band (about 145–175°) and the
+      attention band (about 35–60°) are kept out, leaving 14 hues plus main, and neighbouring
+      hues alternate between two lightness tiers (dark L 0.70 / 0.80, C 0.145), in this order:
+      Rose, Lime, Violet, Orange, Cyan, Magenta, Olive, Azure, Red, Teal (192°), Orchid, Gold,
+      Sky, Indigo. Dark: #e77492 #a3cf64 #c5aeff #d78c1a #04d4f1 #fb97db #9ea827 #93c1fe #fea195
+      #0ab5b1 #c37fd8 #dfba3b #0aabea #8794f7. Light text and chip tones: #861f43 #4d7002
+      #6d4ea8 #6c4302 #057080 #953d7c #4d5201 #2462b1 #a43c33 #005957 #6b2d7d #786101 #005475
+      #3b4097. Light graph lines and dots use brighter tones (3:1 is enough for non-text):
+      #c04d6e #719c27 #9776db #a86b06 #0b9db3 #c664a8 #7a8201 #498de5 #d86357 #0a8c89 #9e59b3
+      #a98904 #0685b6 #646fd1.
+- [ ] **Vivid colour** (colour direction C, after Branch-led colour), with one job per colour
+      kind: status colours appear only as letter badges or +/− signs in diffs and file lists;
+      branch colours only as lines, dots and name pills; repository colours only on window
+      chrome (its tab, a thin line along the top of the window, the repository list), from a
+      quieter set of about 8 hues at chroma 0.08, picked by you, with none as the default;
+      a coral used only for "needs you" moments such as a conflict, the one solid-filled
+      status (dark #fb794a with ink #22110b, light #bf4306 with white, always with the warning
+      icon); toolbar icons on a neutral backing (the accent at 8–10%), never a colour per icon.
+      At most three hue families in the chrome at once (accent, repository, coral when needed).
 - [ ] **Design system**: one set of tokens (surface steps, borders, hover and pressed tints,
       radii, shadows, focus ring, accent and semantic colours, motion) for every theme, and the
       components built on them: the button family (primary, tonal, quiet, danger, icon-only,
