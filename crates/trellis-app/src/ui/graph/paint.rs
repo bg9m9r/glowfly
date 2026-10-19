@@ -58,6 +58,12 @@ impl Columns {
         (self.msg.1 - self.msg.0 - MIN_MSG_W).max(0.0)
     }
 
+    /// This tab's WIP row's cell: from the message column to the table's right edge, across the
+    /// changes, commit and date columns that the row leaves empty.
+    pub fn wip_span(&self) -> (f32, f32) {
+        (self.msg.0, self.date.1.max(self.msg.1))
+    }
+
     pub fn rect(&self, col: (f32, f32), row: Rect) -> Rect {
         Rect::from_x_y_ranges(col.0..=col.1.max(col.0), row.y_range())
     }

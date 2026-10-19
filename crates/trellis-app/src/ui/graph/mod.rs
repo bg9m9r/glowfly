@@ -198,7 +198,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     if cols_cfg.tree {
                         nodes::wip_ring(&gp, pos2(node_x, mid), lane_col);
                     }
-                    let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
+                    let mp = painter.with_clip_rect(cols.rect(cols.wip_span(), rect));
                     wip_row::draw(&mp, &cols, mid, wip_label, snap.changes, wip_total);
                     if resp.clicked() {
                         msgs.push(select::wip_click(ui.input(|i| i.modifiers)));

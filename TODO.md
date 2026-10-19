@@ -2345,5 +2345,3 @@ here, under the item they grew from.
 - Counts for Git LFS files from their real content
 - Sort a file list by the size of its change
 - A preference to hide the per-file bars
-- Keep the label whole on the graph's WIP row at default column widths (a shorter label or chips
-  that shrink to letters first)

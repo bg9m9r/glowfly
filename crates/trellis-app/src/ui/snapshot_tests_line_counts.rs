@@ -1,6 +1,7 @@
 //! Line counts: a commit's file rows and header total, the working tree's Unstaged and Staged
-//! Files rows, and the graph's WIP row (chips and total; narrow, where the total is hidden and
-//! the label cut; and in High Contrast Dark). Dark and light.
+//! Files rows, and the graph's WIP row (chips and total at the default columns; narrow, where
+//! the total and then the chips are hidden before the label is cut; and in High Contrast Dark).
+//! Dark and light.
 
 use super::snapshot_tests::{git, harness, harness_palette, remove_fixture, render, with_repo};
 use super::theme;
@@ -9,7 +10,7 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use trellis_core::repo::{self, LoadOptions};
-use trellis_core::settings::ResizableColumn::{Commit, Date, Refs};
+use trellis_core::settings::ResizableColumn::Refs;
 use trellis_core::settings::ThemeChoice;
 
 const D: &str = "2026-01-12T10:00:00+00:00";
@@ -85,34 +86,35 @@ fn details_wip_line_counts() {
     remove_fixture(&dir);
 }
 
-/// `with_wip` with narrower side columns, leaving the message column room for the whole row.
-fn with_wide_message(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
-    let (mut st, dir) = with_wip(theme, name);
-    st.settings.column_widths = st.settings.column_widths.with(Refs, 100.0).with(Commit, 90.0).with(Date, 130.0);
-    (st, dir)
-}
-
+/// At the reference size with the default columns: the row spans the empty commit and date
+/// columns, so the label, chips and total all show.
 #[test]
 fn graph_wip_row() {
-    let (st, dir) = with_wide_message(ThemeChoice::Dark, "lines-graph-wip");
+    let (st, dir) = with_wip(ThemeChoice::Dark, "lines-graph-wip");
     assert!(st.line_counts.wip().unwrap().total().is_some());
+    assert_eq!(st.settings.column_widths, Default::default(), "the default columns");
     render("graph_wip_row", st, true);
-    let (st, _) = with_wide_message(ThemeChoice::Light, "lines-graph-wip");
+    let (st, _) = with_wip(ThemeChoice::Light, "lines-graph-wip");
     render("graph_wip_row_light", st, false);
-    let (st, _) = with_wide_message(ThemeChoice::HighContrastDark, "lines-graph-wip");
+    let (st, _) = with_wip(ThemeChoice::HighContrastDark, "lines-graph-wip");
     let mut h = harness_palette(st, theme::HIGH_CONTRAST_DARK);
     h.run();
     h.check_snapshot("graph_wip_row_high_contrast");
     remove_fixture(&dir);
 }
 
+/// With the commit and date columns hidden and a wide BRANCH / TAG column, the row is narrow:
+/// the total goes first, then the chips, and the label stays whole.
 #[test]
 fn graph_wip_row_narrow() {
-    let (mut st, dir) = with_wip(ThemeChoice::Dark, "lines-graph-narrow");
-    // The message column has too little room for the total, and the label is cut.
-    st.settings.column_widths = st.settings.column_widths.with(Refs, 140.0).with(Commit, 120.0).with(Date, 150.0);
-    let mut h = harness(st, true);
-    h.run();
-    h.check_snapshot("graph_wip_row_narrow");
-    remove_fixture(&dir);
+    for (refs, name) in [(370.0, "graph_wip_row_narrow"), (450.0, "graph_wip_row_narrower")] {
+        let (mut st, dir) = with_wip(ThemeChoice::Dark, "lines-graph-narrow");
+        st.settings.columns.commit = false;
+        st.settings.columns.date = false;
+        st.settings.column_widths = st.settings.column_widths.with(Refs, refs);
+        let mut h = harness(st, true);
+        h.run();
+        h.check_snapshot(name);
+        remove_fixture(&dir);
+    }
 }
