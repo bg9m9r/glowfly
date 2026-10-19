@@ -267,8 +267,7 @@ impl Open {
             r.request_focus();
         }
         // A focused footer button was already pressed by egui's own Enter.
-        let run_default =
-            submit || self.cmd_enter || (self.enter && self.focus_start.is_none()) || (field_enter && default_is_primary);
+        let run_default = submit || self.cmd_enter || (self.enter && self.focus_start.is_none()) || (field_enter && default_is_primary);
         if run_default {
             if default_is_primary {
                 out.primary |= primary_on;
