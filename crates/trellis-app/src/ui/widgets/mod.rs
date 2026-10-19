@@ -3,12 +3,14 @@
 //! is in `truncate.rs`, the shared rich tooltip and egui's tooltip style in `tooltip.rs`, its
 //! rise into place in `tooltip_motion.rs`, and the segmented control in `segmented.rs`. The
 //! banner style is in `banner.rs`, field and form messages in `form_message.rs`, and the error,
-//! warning and information marks in `severity.rs`.
+//! warning and information marks in `severity.rs`. The shared row selection and hover look is
+//! in `row_fill.rs`.
 
 pub mod banner;
 pub mod buttons;
 pub mod form_message;
 mod icon;
+pub mod row_fill;
 pub mod segmented;
 pub mod severity;
 pub mod tooltip;
@@ -17,7 +19,7 @@ pub mod truncate;
 
 pub use super::list_row::{
     GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row,
-    file_row_with_end, list_row, list_row_cut, list_row_hidden,
+    file_row_with_end, list_row, list_row_cut, list_row_hidden, row_text,
 };
 pub use icon::{Icon, paint_icon, paint_icon_sized};
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};

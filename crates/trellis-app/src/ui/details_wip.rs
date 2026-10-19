@@ -156,80 +156,81 @@ pub(super) fn wip_file_row(
     // Conflicted rows never show counts; bars of both lists share one scale.
     let lines = ctx.lines.filter(|_| !conflicted);
     let count = lines.and_then(|w| if staged { w.staged.get(&f.path) } else { w.unstaged.get(&f.path) });
+    let action = match (staged, conflicted) {
+        (true, _) => t.tr("details.wip.unstage.button"),
+        (false, true) => t.tr("details.wip.mark_resolved.button"),
+        (false, false) => t.tr("details.wip.stage.button"),
+    };
+    let selected = match open.diff {
+        _ if conflicted => open.conflict == Some(f.path.as_str()),
+        Some(DiffTarget::Staged(p)) => staged && *p == f.path,
+        Some(DiffTarget::Unstaged(p)) => !staged && *p == f.path,
+        _ => false,
+    };
     let row = |ui: &mut egui::Ui| {
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
-        let action = match (staged, conflicted) {
-            (true, _) => t.tr("details.wip.unstage.button"),
-            (false, true) => t.tr("details.wip.mark_resolved.button"),
-            (false, false) => t.tr("details.wip.stage.button"),
-        };
         // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).
         let usable = !matches!(f.hazard, Some(trellis_core::repo::Hazard::NotUtf8(_)));
         if ui.add_enabled(usable, egui::Button::new(action).small()).clicked() {
             msgs.push(toggle());
         }
-        let selected = match open.diff {
-            _ if conflicted => open.conflict == Some(f.path.as_str()),
-            Some(DiffTarget::Staged(p)) => staged && *p == f.path,
-            Some(DiffTarget::Unstaged(p)) => !staged && *p == f.path,
-            _ => false,
-        };
-        let r = ui.selectable_label(selected, RichText::new(&f.path).monospace());
+        super::widgets::row_text(ui, RichText::new(&f.path).monospace(), selected);
         super::path_warnings::mark(ui, f);
         super::lfs_badge::badge(ui, f);
         if let Some((text, green)) = note {
             ui.label(RichText::new(text).small().color(if green { color::green() } else { color::weak() }));
         }
-        if r.clicked() {
-            msgs.push(if conflicted {
-                Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone()))
-            } else {
-                Msg::Repo(RepoMsg::OpenDiff(target()))
-            });
-        }
-        r.context_menu(|ui| {
-            if conflicted {
-                menu_item(msgs, ui, t.tr("details.wip.open_conflict"), Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));
-            }
-            menu_item(msgs, ui, action, toggle());
-            // Checking out the index version of a conflicted path means nothing.
-            if !staged && !conflicted {
-                if f.status == '?' {
-                    menu_item(msgs, ui, t.tr("details.wip.discard.item"), Msg::WorkFile(WorkFileMsg::DiscardUntracked(f.path.clone())));
-                } else {
-                    menu_item(
-                        msgs,
-                        ui,
-                        t.tr("details.wip.discard.item"),
-                        Msg::confirm_danger(
-                            t.tr("details.wip.discard.title"),
-                            t.trf("details.wip.discard.body", &[("path", &f.path)]),
-                            t.tr("details.wip.discard.button"),
-                            Msg::Stage(StageMsg::DiscardFile(f.path.clone())),
-                        ),
-                    );
-                }
-            }
-            file_menu::stash_file_item(ui, msgs, snap, f);
-            file_menu::patch_file_item(ui, msgs, f, staged);
-            if f.status != '?' {
-                file_menu::history_items(ui, msgs, &f.path, None, (f.status == 'A').then_some(t.tr("details.wip.not_committed")));
-            }
-            menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
-            let unstages = crate::state::files::unstages_on_delete(snap, &f.path);
-            let missing = snap.missing_from_workdir(&f.path);
-            let items = if missing { Vec::new() } else { track_items(&f.path, ctx.lfs) };
-            let tool = if conflicted {
-                let msg = Msg::Tools(ToolsMsg::ResolveInMergeTool(f.path.clone()));
-                ToolItem { label: RESOLVE_IN_MERGE_TOOL, msg, blocked: ctx.tools.merge.as_deref() }
-            } else {
-                file_menu::diff_item(target(), ctx.tools.diff)
-            };
-            file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items, tool);
+    };
+    let r = match count.zip(lines) {
+        Some((n, w)) => super::widgets::file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::row_end(ui, n, w.largest()), row),
+        None => super::widgets::file_row(ui, selected, &f.path, row),
+    }
+    .response;
+    if r.clicked() {
+        msgs.push(if conflicted {
+            Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone()))
+        } else {
+            Msg::Repo(RepoMsg::OpenDiff(target()))
         });
-    };
-    match count.zip(lines) {
-        Some((n, w)) => super::widgets::file_row_with_end(ui, |ui| super::line_counts::row_end(ui, n, w.largest()), row),
-        None => super::widgets::file_row(ui, row),
-    };
+    }
+    r.context_menu(|ui| {
+        if conflicted {
+            menu_item(msgs, ui, t.tr("details.wip.open_conflict"), Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));
+        }
+        menu_item(msgs, ui, action, toggle());
+        // Checking out the index version of a conflicted path means nothing.
+        if !staged && !conflicted {
+            if f.status == '?' {
+                menu_item(msgs, ui, t.tr("details.wip.discard.item"), Msg::WorkFile(WorkFileMsg::DiscardUntracked(f.path.clone())));
+            } else {
+                menu_item(
+                    msgs,
+                    ui,
+                    t.tr("details.wip.discard.item"),
+                    Msg::confirm_danger(
+                        t.tr("details.wip.discard.title"),
+                        t.trf("details.wip.discard.body", &[("path", &f.path)]),
+                        t.tr("details.wip.discard.button"),
+                        Msg::Stage(StageMsg::DiscardFile(f.path.clone())),
+                    ),
+                );
+            }
+        }
+        file_menu::stash_file_item(ui, msgs, snap, f);
+        file_menu::patch_file_item(ui, msgs, f, staged);
+        if f.status != '?' {
+            file_menu::history_items(ui, msgs, &f.path, None, (f.status == 'A').then_some(t.tr("details.wip.not_committed")));
+        }
+        menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
+        let unstages = crate::state::files::unstages_on_delete(snap, &f.path);
+        let missing = snap.missing_from_workdir(&f.path);
+        let items = if missing { Vec::new() } else { track_items(&f.path, ctx.lfs) };
+        let tool = if conflicted {
+            let msg = Msg::Tools(ToolsMsg::ResolveInMergeTool(f.path.clone()));
+            ToolItem { label: RESOLVE_IN_MERGE_TOOL, msg, blocked: ctx.tools.merge.as_deref() }
+        } else {
+            file_menu::diff_item(target(), ctx.tools.diff)
+        };
+        file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items, tool);
+    });
 }

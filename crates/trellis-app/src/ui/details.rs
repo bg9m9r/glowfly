@@ -163,32 +163,32 @@ pub(super) fn changed_file_row(
     actions: RowActions<'_>,
     msgs: &mut Vec<Msg>,
 ) {
+    let selected = open == Some(&target);
     let row = |ui: &mut egui::Ui| {
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
-        let r = ui.selectable_label(open == Some(&target), RichText::new(&f.path).monospace());
+        widgets::row_text(ui, RichText::new(&f.path).monospace(), selected);
         super::path_warnings::mark(ui, f);
         super::lfs_badge::badge(ui, f);
-        if r.clicked() {
-            msgs.push(Msg::Repo(RepoMsg::OpenDiff(target)));
-        }
-        r.context_menu(|ui| {
-            // Blame needs the file at `history_at`: a commit compared with the working tree
-            // lacks the files added since; another commit lacks the ones it deleted.
-            let a = actions;
-            let missing = match a.src {
-                RowSource::ToWorkdir(o) => {
-                    matches!(f.status, 'A' | 'R').then(|| t.trf("details.file.not_in_commit", &[("sha", &short(o))]))
-                }
-                _ => (f.status == 'D').then(|| t.tr("details.file.deleted_here").to_owned()),
-            };
-            file_menu::history_items(ui, msgs, &f.path, Some(a.history_at), missing.as_deref());
-            menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
-            let items = if a.in_workdir { track_items(&f.path, a.lfs) } else { Vec::new() };
-            file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.diff_blocked, a.patch_blocked);
-        });
     };
-    match actions.lines {
-        Some((n, largest)) => widgets::file_row_with_end(ui, |ui| super::line_counts::row_end(ui, n, largest), row),
-        None => widgets::file_row(ui, row),
-    };
+    let r = match actions.lines {
+        Some((n, largest)) => widgets::file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::row_end(ui, n, largest), row),
+        None => widgets::file_row(ui, selected, &f.path, row),
+    }
+    .response;
+    if r.clicked() {
+        msgs.push(Msg::Repo(RepoMsg::OpenDiff(target)));
+    }
+    r.context_menu(|ui| {
+        // Blame needs the file at `history_at`: a commit compared with the working tree
+        // lacks the files added since; another commit lacks the ones it deleted.
+        let a = actions;
+        let missing = match a.src {
+            RowSource::ToWorkdir(o) => matches!(f.status, 'A' | 'R').then(|| t.trf("details.file.not_in_commit", &[("sha", &short(o))])),
+            _ => (f.status == 'D').then(|| t.tr("details.file.deleted_here").to_owned()),
+        };
+        file_menu::history_items(ui, msgs, &f.path, Some(a.history_at), missing.as_deref());
+        menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
+        let items = if a.in_workdir { track_items(&f.path, a.lfs) } else { Vec::new() };
+        file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.diff_blocked, a.patch_blocked);
+    });
 }

@@ -1,14 +1,20 @@
 //! The sidebar's list rows: one line of text (cut with "…" when it doesn't fit) with optional dim
 //! text (words, or counts with painted arrows) and a marker slot at the right, plus the
 //! skip-if-scrolled-away helper the long sections use; the file lists' fixed-height rows
-//! (`file_row`, and `file_row_with_end` with a part at the right edge); and the side panels' row heights and insets.
+//! (`file_row`, and `file_row_with_end` with a part at the right edge), each one click target
+//! with its selection painted across the row and into the panel padding, and `row_text` for
+//! their unnamed path; and the side panels' row heights and insets. Selection and hover look
+//! like the graph's (`widgets::row_fill`).
 
 use super::theme::{color, fonts, spacing};
-use super::widgets::truncate;
+use super::widgets::{row_fill, truncate};
 
 use std::sync::Arc;
 
-use eframe::egui::{self, Align, Color32, FontId, Galley, Layout, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
+use eframe::egui::{
+    self, Align, Color32, FontId, Galley, InnerResponse, Layout, Painter, Pos2, Rect, Response, RichText, Sense, Stroke, TextStyle,
+    TextWrapMode, Ui, UiBuilder, WidgetInfo, WidgetText, WidgetType, pos2, vec2,
+};
 
 /// One piece of a list row's dim right-hand text.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -59,11 +65,7 @@ pub fn list_row_cut(
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
     let p = ui.painter_at(rect);
-    if selected {
-        p.rect_filled(rect, 0.0, color::selected());
-    } else if resp.hovered() {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
+    row_fill::paint(&p, rect, selected, resp.hovered());
     let mut right_w = if slot > 0.0 { slot + PAD_X + PARTS_GAP } else { 0.0 };
     if let Some((parts, col)) = right {
         let (total, pieces) = layout_parts(&p, parts, col);
@@ -168,27 +170,70 @@ pub fn list_row_hidden(ui: &mut Ui) -> bool {
     true
 }
 
+/// How far a file row's selection reaches past each side of the row, into the list's panel
+/// padding (every host panel has at least this much), so the content does not move.
+pub const FILE_ROW_BLEED: f32 = spacing::GRID;
+
 /// One row of a file list drawn with `ScrollArea::show_rows(ui, LIST_ROW_H, ..)`: `add`'s widgets
-/// left to right, vertically centred in a row exactly `LIST_ROW_H` tall.
-pub fn file_row<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> egui::InnerResponse<R> {
-    let w = ui.available_width();
-    ui.allocate_ui_with_layout(vec2(w, LIST_ROW_H), Layout::left_to_right(Align::Center), |ui| {
-        ui.set_min_height(LIST_ROW_H);
-        add(ui)
-    })
+/// left to right, vertically centred in a row exactly `LIST_ROW_H` tall. The whole row is one
+/// click target named `name`: `.response` is the row's click response, and only real buttons
+/// inside it take their own clicks. `selected` paints the selection across the row.
+pub fn file_row<R>(ui: &mut Ui, selected: bool, name: &str, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+    file_row_in(ui, selected, name, Layout::left_to_right(Align::Center), add)
 }
 
 /// `file_row` with an `end` part flush with the row's right edge (a file's line counts): `end` is
 /// laid out first, right to left, so it keeps its width and `add`'s widgets (the path) are cut
-/// before it.
-pub fn file_row_with_end<R>(ui: &mut Ui, end: impl FnOnce(&mut Ui), add: impl FnOnce(&mut Ui) -> R) -> egui::InnerResponse<R> {
-    let w = ui.available_width();
-    let inner = ui.allocate_ui_with_layout(vec2(w, LIST_ROW_H), Layout::right_to_left(Align::Center), |ui| {
-        ui.set_min_height(LIST_ROW_H);
+/// before it. `.response` is the whole row's click response, as for `file_row`.
+pub fn file_row_with_end<R>(
+    ui: &mut Ui,
+    selected: bool,
+    name: &str,
+    end: impl FnOnce(&mut Ui),
+    add: impl FnOnce(&mut Ui) -> R,
+) -> InnerResponse<R> {
+    file_row_in(ui, selected, name, Layout::right_to_left(Align::Center), |ui| {
         end(ui);
         ui.with_layout(Layout::left_to_right(Align::Center), add).inner
-    });
-    egui::InnerResponse::new(inner.inner, inner.response)
+    })
+}
+
+/// The file rows' core: the row is allocated (and so registered for clicks) before its
+/// contents, so the buttons added later sit on top and win their own clicks.
+fn file_row_in<R>(ui: &mut Ui, selected: bool, name: &str, layout: Layout, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), LIST_ROW_H), Sense::click());
+    let enabled = ui.is_enabled();
+    resp.widget_info(|| WidgetInfo::selected(WidgetType::SelectableLabel, enabled, selected, name));
+    if ui.is_rect_visible(rect) {
+        // Wider than the list, but no taller, so rows scrolled out of view stay hidden.
+        let clip = ui.clip_rect().expand2(vec2(FILE_ROW_BLEED, 0.0));
+        let p = Painter::new(ui.ctx().clone(), ui.layer_id(), clip);
+        // `contains_pointer` stays true while the pointer is over the row's buttons.
+        row_fill::paint(&p, rect.expand2(vec2(FILE_ROW_BLEED, 0.0)), selected, resp.contains_pointer());
+    }
+    let mut child = ui.new_child(UiBuilder::new().max_rect(rect).layout(layout));
+    // Labels only sense hover then, so their clicks reach the row; their tooltips still show.
+    child.style_mut().interaction.selectable_labels = false;
+    child.set_min_height(LIST_ROW_H);
+    InnerResponse::new(add(&mut child), resp)
+}
+
+/// A file row's path (or a commit's summary), painted with no accessible name of its own (the
+/// row has it) and cut with "…" to the room left, whole on hover. It takes a selectable label's
+/// size, so rows lay out as they did; a selected row's text is strong.
+pub fn row_text(ui: &mut Ui, text: RichText, selected: bool) -> Response {
+    let pad = ui.spacing().button_padding;
+    let wrap_w = (ui.available_width() - 2.0 * pad.x).max(0.0);
+    let galley = WidgetText::from(text).into_galley(ui, Some(TextWrapMode::Truncate), wrap_w, TextStyle::Button);
+    let mut size = galley.size() + 2.0 * pad;
+    size.y = size.y.max(ui.spacing().interact_size.y);
+    let (rect, resp) = ui.allocate_exact_size(size, Sense::hover());
+    if ui.is_rect_visible(rect) {
+        let col = if selected { color::strong() } else { ui.visuals().text_color() };
+        let pos = ui.layout().align_size_within_rect(galley.size(), rect.shrink2(pad)).min;
+        ui.painter().galley(pos, galley.clone(), col);
+    }
+    if galley.elided { resp.on_hover_text(galley.text()) } else { resp }
 }
 
 #[cfg(test)]

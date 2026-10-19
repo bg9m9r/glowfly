@@ -45,12 +45,15 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         rows.len(),
         |ui, range| {
             for &(oid, row) in &rows[range] {
-                widgets::file_row(ui, |ui| {
+                let summary = &snap.commits[row].summary;
+                let r = widgets::file_row(ui, false, summary, |ui| {
                     ui.label(RichText::new(short(oid)).monospace().color(color::weak()));
-                    if ui.selectable_label(false, &snap.commits[row].summary).clicked() {
-                        msgs.push(Msg::Repo(RepoMsg::SelectCommit(oid)));
-                    }
-                });
+                    widgets::row_text(ui, RichText::new(summary), false);
+                })
+                .response;
+                if r.clicked() {
+                    msgs.push(Msg::Repo(RepoMsg::SelectCommit(oid)));
+                }
             }
         },
     );

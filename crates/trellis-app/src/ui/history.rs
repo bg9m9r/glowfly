@@ -108,12 +108,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
             }
             let date_rect = ui.is_rect_visible(rect).then(|| {
                 let selected = view.selected == Some(i);
-                if selected {
-                    ui.painter().rect_filled(rect, 0.0, color::selected());
-                    ui.painter().rect_filled(egui::Rect::from_min_size(rect.min, vec2(3.0, ROW_H)), 0.0, color::accent());
-                } else if resp.hovered() {
-                    ui.painter().rect_filled(rect, 0.0, color::hover());
-                }
+                super::widgets::row_fill::paint(ui.painter(), rect, selected, resp.hovered());
                 row(ui, st, rect, e, view.kind)
             });
             if resp.hovered() {

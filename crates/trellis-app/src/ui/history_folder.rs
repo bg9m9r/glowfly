@@ -4,6 +4,7 @@
 use super::common::{menu_item, status_color};
 use super::file_menu;
 use super::theme::color;
+use super::widgets;
 use crate::msg::{HistoryMsg, Msg};
 use crate::state::AppState;
 use eframe::egui::{self, RichText, Ui};
@@ -25,23 +26,25 @@ pub(super) fn files(ui: &mut Ui, st: &AppState, e: &HistoryEntry, scroll: Option
     }
     let prefix = format!("{folder}/");
     egui::ScrollArea::vertical().id_salt(("history-folder-files", e.oid)).max_height(ui.available_height() * 0.35).show(ui, |ui| {
-        ui.spacing_mut().item_spacing.y = 2.0;
+        ui.spacing_mut().item_spacing.y = 0.0;
         for (i, f) in e.files.iter().enumerate() {
-            ui.horizontal(|ui| {
+            let shown = f.path.strip_prefix(&prefix).unwrap_or(&f.path);
+            let selected = view.file == i;
+            let r = widgets::file_row(ui, selected, shown, |ui| {
                 ui.label(RichText::new(f.status.to_string()).monospace().color(status_color(f.status)));
-                let shown = f.path.strip_prefix(&prefix).unwrap_or(&f.path);
-                let r = ui.selectable_label(view.file == i, shown);
-                if scroll == Some(i) {
-                    r.scroll_to_me(None);
-                }
-                if r.clicked() {
-                    msgs.push(Msg::History(HistoryMsg::SelectHistoryFile(i)));
-                }
-                r.context_menu(|ui| {
-                    let deleted = (f.status == 'D').then_some("This commit deletes the file");
-                    file_menu::history_items(ui, msgs, &f.path, Some(e.oid), deleted);
-                    menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
-                });
+                widgets::row_text(ui, RichText::new(shown), selected);
+            })
+            .response;
+            if scroll == Some(i) {
+                r.scroll_to_me(None);
+            }
+            if r.clicked() {
+                msgs.push(Msg::History(HistoryMsg::SelectHistoryFile(i)));
+            }
+            r.context_menu(|ui| {
+                let deleted = (f.status == 'D').then_some("This commit deletes the file");
+                file_menu::history_items(ui, msgs, &f.path, Some(e.oid), deleted);
+                menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
             });
         }
     });

@@ -1,15 +1,13 @@
-//! A graph row's background: a faint band in its node's lane colour, the hovered branch's
-//! highlight, the selection's fill with an accent bar along the left edge, and the lifted look of
-//! a hovered row.
+//! A graph row's background: a faint band in its node's lane colour and the hovered branch's
+//! highlight. The selection (a fill with an accent bar along the left edge) and the lifted look
+//! of a hovered row come from `widgets::row_fill`.
 
 use crate::ui::theme::color::{self, Palette};
 use crate::ui::theme::contrast::{mix, ratio};
-use eframe::egui::{Color32, Painter, Rect, pos2, vec2};
+use eframe::egui::{Color32, Painter, Rect};
 
 /// How far the band moves from the background toward the lane colour, at most.
 const BAND_T: f32 = 0.07;
-/// The width of the selected row's accent bar.
-const SEL_BAR_W: f32 = 3.0;
 
 /// How one row looks.
 pub(super) struct RowLook {
@@ -28,20 +26,7 @@ pub(super) fn paint(p: &Painter, rect: Rect, look: RowLook) {
     if look.highlighted {
         p.rect_filled(rect, 0.0, look.lane.gamma_multiply(0.16));
     }
-    if look.selected {
-        p.rect_filled(rect, 0.0, pal.selected);
-        p.rect_filled(Rect::from_min_size(rect.left_top(), vec2(SEL_BAR_W, rect.height())), 0.0, pal.accent);
-    } else if look.hovered {
-        // Lifted: the hover fill with a soft shadow inside the bottom edge.
-        p.rect_filled(rect, 0.0, pal.hover);
-        let alpha = if pal.dark { 70 } else { 26 };
-        let line = |from: f32, a: u8| {
-            let r = Rect::from_min_max(pos2(rect.left(), rect.bottom() - from), pos2(rect.right(), rect.bottom() - from + 1.0));
-            p.rect_filled(r, 0.0, Color32::from_black_alpha(a));
-        };
-        line(1.0, alpha);
-        line(2.0, alpha / 2);
-    }
+    crate::ui::widgets::row_fill::paint(p, rect, look.selected, look.hovered);
 }
 
 /// The opaque band for a row on a `lane`: the strongest tint up to `BAND_T` that keeps `weak`

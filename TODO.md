@@ -189,7 +189,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
 - [x] **Toggles look like toggles**: Diff/File/Blame, the dashboard tabs and the search mode
       are segmented controls (the diff's own view switches move into the file header's View
       menu); hunk buttons at body size with Discard set apart
-- [ ] **Full-row selection in file lists**: the commit panel's and file history's file lists
+- [x] **Full-row selection in file lists**: the commit panel's and file history's file lists
       select the whole row with the same fill and accent bar as the graph and sidebar
 - [x] **One style for empty, loading, error and banner states**: an `empty_state(icon, title,
       hint, action)` widget for empty panes (the dashboard with Open, Clone and Connect; search
@@ -2353,3 +2353,12 @@ here, under the item they grew from.
 - Blame header: hide or rename the row-2 File history button while the Diff | File | Blame switch shows, since both lead back to the history
 - Hunk header: fold the hunk buttons into one menu when the visible width is too narrow for body-size labels
 - Search bar: measure the Highlight | Filter width instead of the fixed CONTROLS_W
+
+### Full-row selection in file lists
+
+- Up and Down arrow keys move the open file in the commit, WIP and pull request file lists, as the file history list already does
+- Clicks in the panel padding beside a file row (where its selection now reaches) select the row too
+- Right-click on a row's Stage / Mark resolved / Mark conflicted button opens the row's menu as well
+- Double-click a file row to open it in the external diff tool
+- Stable per-file row ids in scrolled file lists, so an open row menu stays with its file while the list scrolls
+- A pointing-hand cursor over file rows, matching the file history list

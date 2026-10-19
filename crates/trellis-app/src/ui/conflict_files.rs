@@ -102,27 +102,28 @@ fn resolved_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, r: &ResolvedF
         let body = mark_conflicted_body(std::slice::from_ref(path));
         Msg::confirm("Mark conflicted", body, "Mark conflicted", Msg::Conflict(ConflictMsg::MarkConflicted(vec![path.clone()])))
     };
-    super::widgets::file_row(ui, |ui| {
+    let staged = snap.staged.iter().any(|f| f.path == *path);
+    let selected = matches!(open.diff, Some(DiffTarget::Staged(p)) if p == path);
+    let row = super::widgets::file_row(ui, selected, path, |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(14.0, 14.0), Sense::hover());
         paint_icon(ui.painter(), rect.center(), Icon::Check, color::green());
-        let staged = snap.staged.iter().any(|f| f.path == *path);
-        let selected = matches!(open.diff, Some(DiffTarget::Staged(p)) if p == path);
-        let label = ui.selectable_label(selected, egui::RichText::new(path).monospace());
+        super::widgets::row_text(ui, egui::RichText::new(path).monospace(), selected);
         super::path_warnings::mark(ui, &r.entry);
-        if label.clicked() && staged {
-            msgs.push(Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged(path.clone()))));
-        }
         let b = ui.add_enabled(why.is_none(), egui::Button::new("Mark conflicted").small());
         let b = b.on_hover_text("Bring the conflict back into the file").on_disabled_hover_text(why.as_deref().unwrap_or_default());
         if b.clicked() {
             msgs.push(confirm());
         }
-        label.context_menu(|ui| {
-            super::common::menu_item_if(msgs, ui, "Mark conflicted", why.as_deref(), confirm());
-            menu_item(msgs, ui, "Copy path", Msg::Copy(path.clone()));
-            if r.entry.hazard.is_none() {
-                file_menu::history_items(ui, msgs, path, None, None);
-            }
-        });
+    })
+    .response;
+    if row.clicked() && staged {
+        msgs.push(Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged(path.clone()))));
+    }
+    row.context_menu(|ui| {
+        super::common::menu_item_if(msgs, ui, "Mark conflicted", why.as_deref(), confirm());
+        menu_item(msgs, ui, "Copy path", Msg::Copy(path.clone()));
+        if r.entry.hazard.is_none() {
+            file_menu::history_items(ui, msgs, path, None, None);
+        }
     });
 }

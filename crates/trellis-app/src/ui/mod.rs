@@ -192,6 +192,8 @@ mod snapshot_tests_file_menu;
 #[cfg(test)]
 mod snapshot_tests_file_menu_lfs;
 #[cfg(test)]
+mod snapshot_tests_file_rows;
+#[cfg(test)]
 mod snapshot_tests_forge_filters;
 #[cfg(test)]
 mod snapshot_tests_forks;

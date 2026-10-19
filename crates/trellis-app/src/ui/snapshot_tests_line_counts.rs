@@ -48,7 +48,7 @@ fn with_commit(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
 
 /// The fixture with staged and unstaged edits, an untracked file and a deletion, with the
 /// working tree's counts loaded.
-fn with_wip(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_wip(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     write(&dir, "app.txt", "app\nfix\nstaged line\n");
     git(&dir, &["add", "app.txt"], D);
