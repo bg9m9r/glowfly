@@ -68,6 +68,8 @@ pub fn paint_cut_text(p: &Painter, at: Pos2, text: &str, font: FontId, color: Co
 }
 
 /// A non-selectable one-line label cut to `max_w` (and the room left), named by its whole text.
+/// In a wrapping row the room is a whole row (`available_width` there), so a label that doesn't
+/// fit what is left of the row moves onto the next one instead of being cut.
 /// Returns its response and whether it was cut; it attaches no tooltip, so the caller decides.
 pub fn cut_label(ui: &mut Ui, text: impl Into<WidgetText>, max_w: f32) -> (Response, bool) {
     let width = max_w.min(ui.available_width()).max(0.0);
@@ -117,7 +119,7 @@ pub fn full_tip(cut: bool, text: &str, tip: Option<String>) -> Option<String> {
 mod snapshot_tests;
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use eframe::egui::text::TextFormat;
     use eframe::egui::{Align, LayerId};
@@ -206,6 +208,46 @@ mod tests {
         assert!(Cut { rect, cut: true }.hovered(inside));
         assert!(!Cut { rect, cut: true }.hovered(Some(pos2(80.0, 8.0))));
         assert!(!Cut { rect, cut: true }.hovered(None));
+    }
+
+    /// Runs `f` once in a central panel `width` points wide.
+    pub(crate) fn in_panel(width: f32, f: impl FnOnce(&mut Ui)) {
+        let ctx = egui::Context::default();
+        let screen = Rect::from_min_size(Pos2::ZERO, vec2(width, 300.0));
+        let mut f = Some(f);
+        let _ = ctx.run(egui::RawInput { screen_rect: Some(screen), ..Default::default() }, |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                if let Some(f) = f.take() {
+                    f(ui);
+                }
+            });
+        });
+        assert!(f.is_none(), "the panel ran");
+    }
+
+    #[test]
+    fn a_label_in_a_wrapping_row_moves_to_the_next_row_instead_of_being_cut() {
+        in_panel(300.0, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                let row_top = ui.cursor().top();
+                ui.add_space(ui.available_width() - 30.0);
+                let (r, cut) = cut_label(ui, "3 days ago", f32::INFINITY);
+                assert!(!cut, "a whole row has room for it");
+                assert!(r.rect.top() > row_top, "it moved onto the next row: {:?}", r.rect);
+            });
+        });
+    }
+
+    #[test]
+    fn a_label_in_a_plain_row_is_cut_to_the_room_left() {
+        in_panel(300.0, |ui| {
+            ui.horizontal(|ui| {
+                ui.add_space(ui.available_width() - 30.0);
+                let (r, cut) = cut_label(ui, "3 days ago", f32::INFINITY);
+                assert!(cut);
+                assert!(r.rect.width() <= 30.0, "{:?}", r.rect);
+            });
+        });
     }
 
     #[test]

@@ -2,12 +2,12 @@
 //! note for a break), and Edit command, Remove step, Move up and Move down. Also every row's
 //! right-click menu, which adds these steps.
 
-use super::commit_row::{Buttons, line, move_buttons, paint_back, paint_chip};
+use super::commit_row::{Buttons, move_buttons, paint_back, paint_chip};
 use super::rows::{BUTTONS_W, Place, SHA_X, Shade};
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase_steps::NewStep;
 use crate::ui::theme::color;
-use crate::ui::widgets::Icon;
+use crate::ui::widgets::{Icon, paint_cut_text};
 use eframe::egui::{FontId, Rect, Response, Ui, pos2};
 use trellis_core::rebase::TodoStep;
 
@@ -20,18 +20,19 @@ pub(super) fn paint_step(ui: &Ui, rect: Rect, step: &TodoStep, shade: Shade) {
     let cy = rect.center().y;
     let x = rect.left() + SHA_X;
     let max_w = rect.right() - BUTTONS_W - 16.0 - x;
+    let p = ui.painter();
     match step {
         TodoStep::Exec(cmd) => {
             paint_chip(ui, rect, "exec", color::primary());
             if cmd.trim().is_empty() {
-                line(ui, pos2(x, cy), NO_COMMAND, FontId::proportional(13.0), color::faint(), max_w);
+                paint_cut_text(p, pos2(x, cy), NO_COMMAND, FontId::proportional(13.0), color::faint(), max_w);
             } else {
-                line(ui, pos2(x, cy), cmd, FontId::monospace(12.5), color::text(), max_w);
+                paint_cut_text(p, pos2(x, cy), cmd, FontId::monospace(12.5), color::text(), max_w);
             }
         }
         TodoStep::Break => {
             paint_chip(ui, rect, "break", color::amber());
-            line(ui, pos2(x, cy), BREAK_NOTE, FontId::proportional(13.0), color::weak(), max_w);
+            paint_cut_text(p, pos2(x, cy), BREAK_NOTE, FontId::proportional(13.0), color::weak(), max_w);
         }
         _ => {}
     }

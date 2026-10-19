@@ -54,7 +54,7 @@ pub(super) fn paint_row(ui: &Ui, rect: Rect, item: &TodoItem, look: &Look, shade
     let (text, weak) = if dropped { (color::faint(), color::faint()) } else { (color::text(), color::weak()) };
     let cy = rect.center().y;
     let sha = &item.oid.to_string()[..7];
-    let sha_w = line(ui, pos2(x, cy), sha, FontId::monospace(12.0), weak, 70.0);
+    let sha_w = paint_cut_text(p, pos2(x, cy), sha, FontId::monospace(12.0), weak, 70.0).rect.width();
     x += sha_w + 10.0;
 
     let date = look.settings.format_time(item.time, look.now, look.offset);
@@ -62,10 +62,10 @@ pub(super) fn paint_row(ui: &Ui, rect: Rect, item: &TodoItem, look: &Look, shade
     let meta = format!("{author}, {date}");
     let meta_w = ui.fonts(|f| f.layout_no_wrap(meta.clone(), FontId::proportional(12.0), weak).size().x).min(META_W - 10.0);
     let meta_x = rect.right() - BUTTONS_W - 10.0 - meta_w;
-    line(ui, pos2(meta_x, cy), &meta, FontId::proportional(12.0), weak, META_W - 10.0);
+    paint_cut_text(p, pos2(meta_x, cy), &meta, FontId::proportional(12.0), weak, META_W - 10.0);
 
     let summary = shown_summary(item);
-    let w = line(ui, pos2(x, cy), summary, FontId::proportional(13.5), text, meta_x - x - 16.0);
+    let w = paint_cut_text(p, pos2(x, cy), summary, FontId::proportional(13.5), text, meta_x - x - 16.0).rect.width();
     if dropped && w > 0.0 {
         p.line_segment([pos2(x, cy + 0.5), pos2(x + w, cy + 0.5)], Stroke::new(1.0_f32, text));
     }
@@ -93,12 +93,6 @@ pub(super) fn paint_chip(ui: &Ui, row: Rect, text: &str, c: Color32) {
 /// The action as a painted label in place of its combo box (while rows move).
 pub(super) fn paint_action(ui: &Ui, row: Rect, a: RebaseAction) {
     paint_chip(ui, row, a.keyword(), action_color(a));
-}
-
-/// One line of text cut to `max_w` with an ellipsis, vertically centred on `pos.y`. Returns its
-/// width.
-pub(super) fn line(ui: &Ui, pos: egui::Pos2, text: &str, font: FontId, c: Color32, max_w: f32) -> f32 {
-    paint_cut_text(ui.painter(), pos, text, font, c, max_w).rect.width()
 }
 
 /// The row's controls: what it is, which actions its combo box offers, and whether it is fixed
