@@ -15,6 +15,10 @@ use trellis_core::gitcli::args;
 use trellis_core::repo::LoadOptions;
 use trellis_core::settings::ThemeChoice;
 
+// The chip under the real pointer.
+#[path = "snapshot_tests_conflict_chip.rs"]
+mod chip;
+
 /// The fixture checked out on `search`, whose automatic check against main found `result`.
 fn on_search(theme: ThemeChoice, name: &str, result: Result<Prediction, String>) -> (AppState, PathBuf, CheckRequest) {
     let (mut st, dir) = with_repo(theme, name);

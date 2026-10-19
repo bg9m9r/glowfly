@@ -164,8 +164,6 @@ mod snapshot_tests_compare;
 #[cfg(test)]
 mod snapshot_tests_conflict_check;
 #[cfg(test)]
-mod snapshot_tests_conflict_chip;
-#[cfg(test)]
 mod snapshot_tests_conflict_files;
 #[cfg(test)]
 mod snapshot_tests_conflict_layout;

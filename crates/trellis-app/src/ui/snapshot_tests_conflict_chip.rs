@@ -3,8 +3,6 @@
 //! panel open and in the light theme. These move the mouse (PointerMoved / PointerButton), which
 //! goes through egui's hit-testing, unlike an accessibility click.
 
-use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
-use super::snapshot_tests_terminal::with_session;
 use crate::conflict_check::CheckRequest;
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -12,6 +10,8 @@ use crate::state::conflict_check::{ConflictReport, current_request};
 use crate::state::terminal::SessionStatus;
 use crate::terminal::TerminalMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
+use crate::ui::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
+use crate::ui::snapshot_tests_terminal::with_session;
 use eframe::egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
