@@ -1,8 +1,8 @@
-//! Top toolbar: repository and branch pickers (`toolbar_pickers.rs`, a fixed-width slot), git
-//! actions and app buttons, in groups with even spacing (`widgets::tool_gap`) that never move:
-//! the pull request button's room stays blank without a hosting service. Each button's tooltip comes from `toolbar_tips.rs`, and its
-//! enabled flag from the same rule in `state/toolbar_tips.rs`; the menus are in
-//! `toolbar_menus.rs`.
+//! Top toolbar: repository and branch pickers (`toolbar_pickers.rs`, a slot whose width follows
+//! only the window), git actions and app buttons, in groups with even spacing
+//! (`widgets::tool_gap`) that never move: the pull request button's room stays blank without a
+//! hosting service. Each button's tooltip comes from `toolbar_tips.rs`, and its enabled flag
+//! from the same rule in `state/toolbar_tips.rs`; the menus are in `toolbar_menus.rs`.
 
 use super::theme::color;
 use super::widgets::{self, Icon, tooltip::attach};
@@ -34,9 +34,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.set_height(widgets::TOOL_H);
-                // repository ▾ › branch ▾ and the conflict chip, in a slot of fixed width.
+                // repository ▾ › branch ▾ and the conflict chip, in a slot that leaves the rest room.
                 pickers::pickers(ui, st, msgs);
                 let Some(snap) = &st.snap else { return };
+                let after_slot = ui.cursor().min.x;
                 // The slot's slack already parts short names from the buttons: one group gap.
                 widgets::tool_gap(ui);
                 ui.spacing_mut().item_spacing.x = widgets::TOOL_SPACING;
@@ -136,6 +137,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 if attach(r, keys, t, || tips::folder(st)).clicked() {
                     msgs.push(Msg::OpenFolder(snap.workdir.clone()));
                 }
+                let middle = ui.cursor().min.x - after_slot;
 
                 let flips = ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     let r = tool(ui, Icon::Gear, t.tr("toolbar.settings.button"), t.tr("toolbar.settings.name"), true);
@@ -154,12 +156,18 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     if attach(r, keys, t, || tips::refresh(st)).clicked() {
                         msgs.push(Msg::Repo(RepoMsg::Refresh));
                     }
+                    // The buttons' width, and the chip's with its gap when it is drawn.
+                    let buttons = ui.min_rect().width();
                     widgets::tool_gap(ui);
+                    let gap = ui.min_rect().width();
                     super::trust_chip::show(ui, st, msgs);
-                    (search, log)
+                    let right = ui.min_rect().width();
+                    (search, log, if right > gap { right } else { buttons })
                 });
                 // View state, flipped once the tooltips above are drawn from it.
-                let (search, log) = flips.inner;
+                let (search, log, right) = flips.inner;
+                // The rest of the bar, with a group gap at least between the two groups.
+                pickers::remember_rest(ui.ctx(), middle + widgets::GROUP_GAP + right);
                 if search {
                     st.view.show_search = !st.view.show_search;
                 }

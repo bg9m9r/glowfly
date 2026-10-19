@@ -2365,8 +2365,8 @@ here, under the item they grew from.
 
 ### Layout that gives tool views room
 
-- Toolbar name limits that grow with the window (repository and branch names are cut at 96 and 128 px so a 1400 px window fits every group with captions; wide windows could show more)
-- Toolbar groups that fold into an overflow menu, or a narrower picker slot, when a window under about 1200 px would make them overlap
+- Toolbar name limits that grow with the window (repository and branch names are cut at 96 and 128 px at most; wide windows could show more)
+- Toolbar groups that fold into an overflow menu, or captions that drop, when even the narrowest picker slot leaves them overlapping (with captions: under about 1250 px in English, 1330 px in German)
 - Commit rail: a collapse control on the expanded commit panel, to go back to the rail without closing the tool view
 - Commit rail: a preference for which tool views collapse the commit panel, or to never collapse it
 - Commit rail: entries for an operation in progress (conflicted count, Continue / Abort) and separate staged and unstaged counts
