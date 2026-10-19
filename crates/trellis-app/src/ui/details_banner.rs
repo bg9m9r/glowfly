@@ -48,7 +48,7 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
             // The step that loses work alone at the right edge, apart from the others.
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 for (label, a) in actions.iter().filter(|(_, a)| destructive(a)) {
-                    if ui.add(buttons::danger_outline(action_text(t, label))).clicked() {
+                    if ui.add(buttons::secondary(action_text(t, label))).clicked() {
                         msgs.push(banner_msg(st, label, a));
                     }
                 }
@@ -62,13 +62,8 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
                         let old_git = (*a == CHERRY_PICK_SKIP || *a == REVERT_SKIP).then_some(skip_blocked.as_deref()).flatten();
                         let why = if held { Some(t.tr("details.banner.resolve_first.tip")) } else { old_git };
                         let text = action_text(t, label);
-                        let button = if cont { buttons::primary(text, why.is_none()) } else { egui::Button::new(text) };
-                        let r = ui.add_enabled(why.is_none(), button);
-                        let r = match why {
-                            Some(w) => r.on_disabled_hover_text(w),
-                            None => r,
-                        };
-                        if r.clicked() {
+                        let button = if cont { buttons::primary(text) } else { buttons::secondary(text) };
+                        if ui.add(button.enabled(why.is_none()).why(why)).clicked() {
                             msgs.push(if cont { action_msg(snap.state, label, a) } else { banner_msg(st, label, a) });
                         }
                     }
@@ -80,7 +75,7 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
     ui.add_space(6.0);
 }
 
-/// Abort and Reset bisect: drawn apart, in the danger outline.
+/// Abort and Reset bisect: drawn apart at the right edge (the confirmation they open is the danger one).
 fn destructive(args: &[&str]) -> bool {
     matches!(Risky::of(args), Some(Risky::Abort | Risky::ResetBisect))
 }
@@ -89,8 +84,8 @@ fn destructive(args: &[&str]) -> bool {
 fn commit_merge_button(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let why = commit_merge_blocked(st);
     let t = st.settings.lang();
-    let r = ui.add_enabled(why.is_none(), buttons::primary(action_text(t, "Commit merge"), why.is_none()));
-    if r.on_disabled_hover_text(why.unwrap_or_default()).clicked() {
+    let b = buttons::primary(action_text(t, "Commit merge")).enabled(why.is_none()).why(why.as_deref());
+    if ui.add(b).clicked() {
         msgs.push(Msg::Commit(CommitMsg::CommitMerge));
     }
 }

@@ -65,8 +65,9 @@ fn header_buttons(ui: &mut Ui, t: Lang, view: &ConflictView, tool: Option<&str>,
     } else {
         t.trf("conflict.header.save.pick_first.tip", &[("left", &view.unresolved())])
     };
-    let save = ui.add_enabled(can, buttons::primary(t.tr("conflict.header.save.button"), can));
-    if save.on_hover_text(t.tr("conflict.header.save.tip")).on_disabled_hover_text(why).clicked() {
+    let save = ui.add(buttons::primary(t.tr("conflict.header.save.button")).enabled(can).why(Some(&why)));
+    let save = if can { save.on_hover_text(t.tr("conflict.header.save.tip")) } else { save };
+    if save.clicked() {
         msgs.push(Msg::Conflict(ConflictMsg::SaveConflict));
     }
     let n = view.chunk_count();

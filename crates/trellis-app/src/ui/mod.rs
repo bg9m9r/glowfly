@@ -159,6 +159,8 @@ mod snapshot_tests_deep_link;
 #[cfg(test)]
 mod snapshot_tests_dialog_discard;
 #[cfg(test)]
+mod snapshot_tests_dialog_frame;
+#[cfg(test)]
 mod snapshot_tests_diff;
 #[cfg(test)]
 mod snapshot_tests_editor;
