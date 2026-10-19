@@ -18,9 +18,23 @@ pub fn onto_commit_blocker(snap: &Snapshot, oid: Oid) -> Option<String> {
     contained.then(|| rebase::contains_commit(current, oid))
 }
 
-/// The plain and the interactive entry: "Rebase main onto 1a2b3c4" and
+/// The palette's plain and interactive entries: "Rebase main onto 1a2b3c4" and
 /// "Interactive rebase main onto 1a2b3c4…".
 pub fn onto_labels(current: &str, oid: Oid) -> (String, String) {
     let sha = &oid.to_string()[..7];
     (format!("Rebase {current} onto {sha}"), format!("Interactive rebase {current} onto {sha}…"))
+}
+
+/// The commit menu's plain and interactive entries: the menu's header already names the commit.
+pub fn onto_menu_labels(current: &str) -> (String, String) {
+    (format!("Rebase {current} onto this commit"), format!("Interactive rebase {current} onto this commit…"))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn menu_labels_leave_the_commit_to_the_header() {
+        let want = ("Rebase main onto this commit".to_owned(), "Interactive rebase main onto this commit…".to_owned());
+        assert_eq!(super::onto_menu_labels("main"), want);
+    }
 }

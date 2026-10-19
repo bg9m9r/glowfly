@@ -50,7 +50,7 @@ fn worktree_local_menu() {
     h.run();
     row_menu(&mut h, "search", true);
     h.check_snapshot("worktree_local_menu");
-    for item in ["Checkout", "Delete", "Force delete"] {
+    for item in ["Checkout", "Delete…", "Force delete…"] {
         assert!(h.get_by_label(item).is_disabled(), "{item}");
     }
     h.get_by_label("Open worktree").click();

@@ -96,18 +96,18 @@ fn remote_group_menu_github() {
     h.run();
     let at = center(&h, "origin");
     click(&mut h, at, PointerButton::Secondary);
-    for item in ["View origin on GitHub", "Add a fork of origin…", "Fork origin (team/app) on GitHub…"] {
+    for item in ["View on GitHub", "Add a fork…", "Fork on GitHub…"] {
         assert!(!h.get_by_label(item).is_disabled(), "{item}");
     }
     h.check_snapshot("remote_group_menu_github");
-    h.get_by_label("View origin on GitHub").click();
+    h.get_by_label("View on GitHub").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Remote(RemoteMsg::View(n)) if n == "origin")));
 
     let at = center(&h, "backup");
     click(&mut h, at, PointerButton::Secondary);
-    assert!(h.get_by_label("View backup in browser").is_disabled(), "a folder has no web page");
-    assert!(h.get_by_label("Add a fork of backup…").is_disabled());
+    assert!(h.get_by_label("View in browser").is_disabled(), "a folder has no web page");
+    assert!(h.get_by_label("Add a fork…").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

@@ -61,7 +61,7 @@ fn branch_merge_delete_and_checkout_with_changes() {
     j.see_contains("Merge branch 'feature'", Region::Central);
 
     // step 6: delete the merged branch through the confirm dialog.
-    j.branch_menu("feature", "Delete");
+    j.branch_menu("feature", "Delete…");
     j.see("Delete local branch feature?", Region::Anywhere);
     j.click("Delete", Region::Anywhere, Pick::Last);
     j.toast(true, "Delete branch succeeded");

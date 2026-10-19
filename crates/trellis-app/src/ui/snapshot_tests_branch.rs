@@ -115,7 +115,8 @@ fn branch_menu() {
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Branch(BranchMsg::FastForwardBranch(b)) if b == "search")));
     open_menu(&mut h);
-    h.get_by_label("Copy link to branch").click();
+    super::menu_testing::open_submenu(&mut h, "Copy");
+    super::menu_testing::submenu_item(&h, "Copy", "Link").click();
     h.run();
     let want = crate::deep_link::LinkTarget::LocalBranch("search".into());
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
@@ -129,7 +130,7 @@ fn branch_menu() {
     open_menu(&mut h);
     assert!(h.get_by_label("Fast-forward to origin/search").is_disabled());
     assert!(h.get_by_label("Push").is_disabled(), "behind its upstream");
-    assert!(h.query_by_label("Delete together with origin/search").is_some_and(|n| !n.is_disabled()));
+    assert!(h.query_by_label("Delete together with origin/search…").is_some_and(|n| !n.is_disabled()));
     assert!(h.query_by_label("Unset upstream").is_some());
     drop(h);
 
@@ -140,7 +141,7 @@ fn branch_menu() {
     let mut h = harness(st, true);
     h.run();
     open_menu(&mut h);
-    assert!(h.get_by_label("Delete together with origin/search").is_disabled());
+    assert!(h.get_by_label("Delete together with origin/search…").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

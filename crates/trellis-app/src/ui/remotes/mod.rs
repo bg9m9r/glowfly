@@ -1,9 +1,10 @@
 //! The REMOTE section of the left panel: a group row per configured remote (also remotes with
-//! no branches yet) with its URLs on hover and a menu to fetch it, view it on its hosting
-//! service, add a teammate's fork of it, fork it into the user's account, edit it, copy its URLs
-//! or remove it, and under it the remote-tracking branch rows. The header's menu adds a remote.
+//! no branches yet) with its URLs on hover and a menu, headed by the remote's name, to fetch it,
+//! view it on its hosting service, add a teammate's fork of it, fork it into the user's account,
+//! edit it, copy its URLs or a link (the Copy submenu) or remove it, and under it the
+//! remote-tracking branch rows. The header's menu adds a remote.
 
-use super::common::{hint_row, menu_item, menu_item_if};
+use super::common::{hint_row, menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use super::remote_branch_menu::{RemoteMenu, remote_branch_menu};
 use super::theme::color;
@@ -13,7 +14,7 @@ use crate::msg::BranchMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
-use crate::state::forks::{ForkAction, add_fork_label, fork_label, fork_target, view_item};
+use crate::state::forks::{ADD_FORK_ITEM, ForkAction, fork_menu_label, fork_target, view_item};
 use crate::state::remotes::{fetch_blocked, find, tooltip};
 use crate::state::{ForgeState, Selection};
 use eframe::egui::{self, Align2, FontId, Response, Sense, pos2, vec2};
@@ -115,24 +116,33 @@ fn group_row(ui: &mut egui::Ui, name: &str) -> Response {
 fn group_menu(ui: &mut egui::Ui, info: &RemoteInfo, idle: bool, connections: &[Connection], msgs: &mut Vec<Msg>) {
     let name = &info.name;
     let msg = |m: RemoteMsg| Msg::Remote(m);
-    menu_item_if(msgs, ui, format!("Fetch {name}"), fetch_blocked(info, idle), msg(RemoteMsg::Fetch(name.clone())));
+    menu_header(ui, name);
+    menu_item_if(msgs, ui, "Fetch", fetch_blocked(info, idle), msg(RemoteMsg::Fetch(name.clone())));
     let (view, why) = view_item(info, connections);
     menu_item_if(msgs, ui, view, why.as_deref(), msg(RemoteMsg::View(name.clone())));
     ui.separator();
     let why = fork_target(info, connections, ForkAction::List).err();
-    menu_item_if(msgs, ui, add_fork_label(name), why.as_deref(), msg(RemoteMsg::ForkDialog(name.clone())));
+    menu_item_if(msgs, ui, ADD_FORK_ITEM, why.as_deref(), msg(RemoteMsg::ForkDialog(name.clone())));
     let why = fork_target(info, connections, ForkAction::Create).err();
-    menu_item_if(msgs, ui, fork_label(info, connections), why.as_deref(), msg(RemoteMsg::ForkOnService(name.clone())));
+    menu_item_if(msgs, ui, fork_menu_label(info, connections), why.as_deref(), msg(RemoteMsg::ForkOnService(name.clone())));
     ui.separator();
-    menu_item(msgs, ui, "Edit remote…", msg(RemoteMsg::EditDialog(name.clone())));
-    if !info.fetch_url().is_empty() {
-        menu_item(msgs, ui, "Copy fetch URL", Msg::Copy(info.fetch_url().to_owned()));
-        let link = LinkTarget::Repository { remote: Some(name.clone()) };
-        menu_item(msgs, ui, format!("Copy link to repository on {name}"), Msg::DeepLink(DeepLinkMsg::Copy(link)));
-    }
-    if let Some(p) = info.separate_push_url() {
-        menu_item(msgs, ui, "Copy push URL", Msg::Copy(p.to_owned()));
+    menu_item(msgs, ui, "Edit…", msg(RemoteMsg::EditDialog(name.clone())));
+    let (fetch, push) = (info.fetch_url(), info.separate_push_url());
+    if !fetch.is_empty() || push.is_some() {
+        ui.separator();
+        ui.menu_button("Copy", |ui| {
+            if !fetch.is_empty() {
+                menu_item(msgs, ui, "Fetch URL", Msg::Copy(fetch.to_owned()));
+            }
+            if let Some(p) = push {
+                menu_item(msgs, ui, "Push URL", Msg::Copy(p.to_owned()));
+            }
+            if !fetch.is_empty() {
+                let link = LinkTarget::Repository { remote: Some(name.clone()) };
+                menu_item(msgs, ui, "Link", Msg::DeepLink(DeepLinkMsg::Copy(link)));
+            }
+        });
     }
     ui.separator();
-    menu_item(msgs, ui, "Remove remote…", Msg::Remote(RemoteMsg::RemoveDialog(name.clone())));
+    menu_item(msgs, ui, "Remove…", Msg::Remote(RemoteMsg::RemoveDialog(name.clone())));
 }

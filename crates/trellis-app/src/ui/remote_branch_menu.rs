@@ -1,10 +1,10 @@
 //! The right-click menu of a remote-tracking branch, shared by the REMOTE rows of the left panel
-//! and the remote-branch labels in the graph: checkout (the local branch tracking it, or a new
-//! one), fast-forward of that local branch, a worktree, merge, rebase, conflict check, compare
-//! and set upstream against the checked-out branch, pull requests, a new branch, copy, hide or
-//! solo, and delete on the remote. The branch's name heads the menu once; the items leave it
-//! out. Disabled items say why on hover, with the same text `update` logs when it refuses a late
-//! message.
+//! and the remote-branch labels in the graph, in groups: checkout (the local branch tracking it,
+//! or a new one), a new branch and a worktree; fast-forward of that local branch, merge, rebase,
+//! conflict check, compare and set upstream against the checked-out branch; pull requests; hide
+//! or solo; the Copy submenu; and delete on the remote. The branch's name heads the menu once;
+//! the items leave it out. Disabled items say why on hover, with the same text `update` logs
+//! when it refuses a late message.
 
 use super::common::{menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
@@ -17,7 +17,7 @@ use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use git2::Oid;
 use trellis_core::rebase::RebaseBase;
-use trellis_core::repo::Snapshot;
+use trellis_core::repo::{BranchInfo, Snapshot};
 use trellis_core::settings::GraphFilter;
 use trellis_core::worktree_ops::WorktreeBase;
 
@@ -34,7 +34,16 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     let (current, fs, filter) = (c.current, c.fs, c.graph);
     let full = format!("{remote}/{name}");
     menu_header(ui, &full);
-    local_items(ui, remote, name, snap, msgs);
+    let tracking = remote_branch::tracking_local(snap, remote, name);
+    checkout_items(ui, remote, name, oid, tracking, snap, msgs);
+    if tracking.is_some() || !current.is_empty() {
+        ui.separator();
+    }
+    if let Some(b) = tracking {
+        let blocked = branches::fast_forward_blocked(b, snap.state);
+        let ff = Msg::Branch(BranchMsg::FastForwardBranch(b.name.clone()));
+        menu_item_if(msgs, ui, format!("Fast-forward {} to this branch", b.name), blocked.as_deref(), ff);
+    }
     if !current.is_empty() {
         current_items(ui, remote, name, oid, snap, current, msgs);
     }
@@ -46,17 +55,18 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
         }
     }
     ui.separator();
-    menu_item(msgs, ui, "Create branch here…", Msg::Branch(BranchMsg::NewBranch { start: Some(oid.to_string()), name: String::new() }));
-    menu_item(msgs, ui, "Copy branch name", Msg::Copy(full.clone()));
-    let link = LinkTarget::RemoteBranch { remote: remote.to_owned(), name: name.to_owned() };
-    menu_item(msgs, ui, "Copy link to branch", Msg::DeepLink(DeepLinkMsg::Copy(link)));
-    ui.separator();
     ref_visibility::menu_items(ui, &format!("refs/remotes/{full}"), filter, false, msgs);
+    ui.separator();
+    ui.menu_button("Copy", |ui| {
+        menu_item(msgs, ui, "Name", Msg::Copy(full.clone()));
+        let link = LinkTarget::RemoteBranch { remote: remote.to_owned(), name: name.to_owned() };
+        menu_item(msgs, ui, "Link", Msg::DeepLink(DeepLinkMsg::Copy(link)));
+    });
     ui.separator();
     menu_item(
         msgs,
         ui,
-        format!("Delete from {remote}"),
+        "Delete from remote…",
         Msg::confirm(
             "Delete remote branch",
             format!("Delete branch {name} on {remote}? This affects everyone using the remote."),
@@ -66,26 +76,30 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     );
 }
 
-/// The local counterpart: check out the tracking branch (or create one), fast-forward it, and
-/// create a worktree.
-fn local_items(ui: &mut egui::Ui, remote: &str, name: &str, snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    match remote_branch::tracking_local(snap, remote, name) {
-        Some(b) => {
+/// Check out the tracking branch (or create one), create a branch here, and create a worktree.
+fn checkout_items(
+    ui: &mut egui::Ui,
+    remote: &str,
+    name: &str,
+    oid: Oid,
+    tracking: Option<&BranchInfo>,
+    snap: &Snapshot,
+    msgs: &mut Vec<Msg>,
+) {
+    match tracking {
+        Some(b) if !b.is_head => {
             let local = b.name.as_str();
-            if !b.is_head {
-                let blocked = worktree_branches::checkout_blocked(snap, local);
-                menu_item_if(msgs, ui, format!("Checkout {local}"), blocked.as_deref(), Msg::Branch(BranchMsg::Checkout(local.to_owned())));
-            }
-            let blocked = branches::fast_forward_blocked(b, snap.state);
-            let ff = Msg::Branch(BranchMsg::FastForwardBranch(local.to_owned()));
-            menu_item_if(msgs, ui, format!("Fast-forward {local} to this branch"), blocked.as_deref(), ff);
+            let blocked = worktree_branches::checkout_blocked(snap, local);
+            menu_item_if(msgs, ui, format!("Checkout {local}"), blocked.as_deref(), Msg::Branch(BranchMsg::Checkout(local.to_owned())));
         }
+        Some(_) => {}
         None => {
             let blocked = remote_branch::checkout_blocked(snap, remote, name);
             let checkout = Msg::Branch(BranchMsg::CheckoutRemote { remote: remote.to_owned(), name: name.to_owned() });
             menu_item_if(msgs, ui, "Checkout", blocked.as_deref(), checkout);
         }
     }
+    menu_item(msgs, ui, "Create branch here…", Msg::Branch(BranchMsg::NewBranch { start: Some(oid.to_string()), name: String::new() }));
     if name != "HEAD" {
         let base = WorktreeBase::Remote { remote: remote.to_owned(), branch: name.to_owned() };
         menu_item(msgs, ui, "Create worktree from this branch…", Msg::Worktree(WorktreeMsg::CreateDialog(base)));

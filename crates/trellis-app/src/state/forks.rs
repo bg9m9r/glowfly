@@ -93,17 +93,30 @@ pub fn fork_label(info: &RemoteInfo, connections: &[Connection]) -> String {
     }
 }
 
+/// The remote menu's Fork item: "Fork on GitHub…", or a generic label when no service is
+/// recognized. The menu's header names the remote.
+pub fn fork_menu_label(info: &RemoteInfo, connections: &[Connection]) -> String {
+    match forge::parse_remote(info.fetch_url(), connections) {
+        Some(t) => format!("Fork on {}…", t.provider.name()),
+        None => "Fork on its hosting service…".into(),
+    }
+}
+
+/// The palette's Add a fork entry, and where the fork-creation log points.
 pub fn add_fork_label(name: &str) -> String {
     format!("Add a fork of {name}…")
 }
 
-/// The View item's label and, when it is disabled, why.
+/// The remote menu's Add a fork item.
+pub const ADD_FORK_ITEM: &str = "Add a fork…";
+
+/// The remote menu's View item ("View on GitHub", "View in browser") and, when it is disabled,
+/// why.
 pub fn view_item(info: &RemoteInfo, connections: &[Connection]) -> (String, Option<String>) {
-    let name = &info.name;
     match forge::web_page(info.fetch_url(), connections) {
-        Ok(p) if !p.service.is_empty() => (format!("View {name} on {}", p.service), None),
-        Ok(_) => (format!("View {name} in browser"), None),
-        Err(e) => (format!("View {name} in browser"), Some(e.message())),
+        Ok(p) if !p.service.is_empty() => (format!("View on {}", p.service), None),
+        Ok(_) => ("View in browser".into(), None),
+        Err(e) => ("View in browser".into(), Some(e.message())),
     }
 }
 
@@ -152,4 +165,25 @@ pub fn add_job(snap: &Snapshot, source_url: &str, fork: &Fork, name: &str, fetch
     let url = fork.url_like(source_url);
     check_url(url).map_err(|p| p.message(false))?;
     Ok((format!("Add remote {name}"), add_cmds(name, url, None, fetch)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn remote(url: &str) -> RemoteInfo {
+        RemoteInfo { name: "origin".into(), urls: vec![url.into()], push_urls: Vec::new(), skip_fetch_all: false }
+    }
+
+    #[test]
+    fn menu_labels_leave_the_remote_to_the_header() {
+        assert_eq!(fork_menu_label(&remote("https://github.com/team/app.git"), &[]), "Fork on GitHub…");
+        assert_eq!(fork_menu_label(&remote("https://example.com/team/app.git"), &[]), "Fork on its hosting service…");
+        assert_eq!(view_item(&remote("https://github.com/team/app.git"), &[]), ("View on GitHub".into(), None));
+        assert_eq!(view_item(&remote("https://example.com/team/app.git"), &[]).0, "View in browser");
+        let folder = trellis_core::paths::temp_dir().join("app.git");
+        let (label, why) = view_item(&remote(&folder.to_string_lossy()), &[]);
+        assert_eq!(label, "View in browser");
+        assert!(why.is_some(), "a folder has no web page");
+    }
 }

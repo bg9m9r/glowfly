@@ -1,9 +1,11 @@
-//! The TAGS row menu: annotate (lightweight tags only), hide or solo in the graph, push to each
-//! remote or all of them, delete locally, delete from each remote or all of them, which items
-//! show for one remote or none, the remote items disabled while a job runs, the remote delete
-//! confirmation, and the markers on hidden and soloed tag rows. Remotes are injected into the
+//! The TAGS row menu: the tag's name once in the header, annotate (lightweight tags only), the
+//! Push to submenu (each remote or all of them), hide or solo in the graph, the Copy submenu,
+//! delete locally, the Delete from remote submenu, which items show for one remote or none, the
+//! remote items disabled while a job runs, the remote delete confirmation, and the markers on
+//! hidden and soloed tag rows. Remotes are injected into the
 //! shared fixture's snapshot so the images are deterministic.
 
+use super::menu_testing::{open_submenu, submenu_item, texts_containing};
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use super::snapshot_tests_remotes::{click_steps, running};
 use super::snapshot_tests_select::click;
@@ -19,20 +21,8 @@ use std::path::PathBuf;
 use trellis_core::repo::LoadOptions;
 use trellis_core::settings::{FilterOp, GraphFilter, ThemeChoice};
 
-const ITEMS: [&str; 12] = [
-    "Checkout (detached)",
-    "Annotate…",
-    "Hide in graph",
-    "Solo",
-    "Copy link to this tag",
-    "Push to origin",
-    "Push to backup",
-    "Push to all remotes",
-    "Delete locally",
-    "Delete from origin",
-    "Delete from backup",
-    "Delete from all remotes",
-];
+const ITEMS: [&str; 8] =
+    ["Checkout (detached)", "Annotate…", "Push to", "Hide in graph", "Solo", "Copy", "Delete locally…", "Delete from remote"];
 
 /// The fixture with the TAGS section open and the given remotes (no branches on them).
 fn with_tags(theme: ThemeChoice, name: &str, remotes: &[&str]) -> (AppState, PathBuf) {
@@ -71,20 +61,34 @@ fn tag_row_menu() {
     for item in ITEMS {
         assert!(h.query_by_label(item).is_some(), "{item}");
     }
+    // The name is in the header (and on the row and the graph's chip), never in an item.
+    let named: Vec<String> = texts_containing(&h, "v0.1.0").into_iter().filter(|l| l != "v0.1.0").collect();
+    assert!(named.is_empty(), "no item repeats the tag's name: {named:?}");
     h.check_snapshot("tag_menu");
-    h.get_by_label("Delete from all remotes").click();
+    open_submenu(&mut h, "Delete from remote");
+    h.check_snapshot("tag_menu_delete_submenu");
+    submenu_item(&h, "Delete from remote", "All remotes…").click();
     h.run();
     let want = TagMsg::DeleteRemote { tag: "v0.1.0".into(), remotes: both() };
     assert!(pushed(&h, &|m| matches!(m, Msg::Confirm { then, .. } if matches!(&**then, Msg::Tag(t) if *t == want))));
 
     open_menu(&mut h);
-    h.get_by_label("Push to all remotes").click();
+    open_submenu(&mut h, "Delete from remote");
+    submenu_item(&h, "Delete from remote", "origin…").click();
+    h.run();
+    let want = TagMsg::DeleteRemote { tag: "v0.1.0".into(), remotes: vec!["origin".into()] };
+    assert!(pushed(&h, &|m| matches!(m, Msg::Confirm { then, .. } if matches!(&**then, Msg::Tag(t) if *t == want))));
+
+    open_menu(&mut h);
+    open_submenu(&mut h, "Push to");
+    submenu_item(&h, "Push to", "All remotes").click();
     h.run();
     let want = TagMsg::Push { tag: "v0.1.0".into(), remotes: both() };
     assert!(pushed(&h, &|m| matches!(m, Msg::Tag(t) if *t == want)));
 
     open_menu(&mut h);
-    h.get_by_label("Push to backup").click();
+    open_submenu(&mut h, "Push to");
+    submenu_item(&h, "Push to", "backup").click();
     h.run();
     let want = TagMsg::Push { tag: "v0.1.0".into(), remotes: vec!["backup".into()] };
     assert!(pushed(&h, &|m| matches!(m, Msg::Tag(t) if *t == want)));
@@ -102,7 +106,8 @@ fn tag_row_menu() {
     assert!(pushed(&h, &|m| matches!(m, Msg::Tag(t) if *t == want)));
 
     open_menu(&mut h);
-    h.get_by_label("Copy link to this tag").click();
+    open_submenu(&mut h, "Copy");
+    submenu_item(&h, "Copy", "Link").click();
     h.run();
     let want = crate::deep_link::LinkTarget::Tag("v0.1.0".into());
     assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
@@ -121,13 +126,14 @@ fn tag_row_menu_one_remote() {
     let mut h = harness(st, true);
     h.run();
     open_menu(&mut h);
-    for item in ["Checkout (detached)", "Push to origin", "Delete locally", "Delete from origin"] {
-        assert!(h.query_by_label(item).is_some(), "{item}");
-    }
-    for item in ["Push to all remotes", "Delete from all remotes"] {
-        assert!(h.query_by_label(item).is_none(), "{item}");
-    }
-    assert!(!h.get_by_label("Delete from origin").is_disabled());
+    open_submenu(&mut h, "Push to");
+    assert!(!submenu_item(&h, "Push to", "origin").is_disabled());
+    assert!(h.query_by_label("All remotes").is_none());
+    open_submenu(&mut h, "Delete from remote");
+    assert!(!submenu_item(&h, "Delete from remote", "origin…").is_disabled());
+    assert!(h.query_by_label("All remotes…").is_none());
+    h.press_key(Key::Escape);
+    h.run();
     h.press_key(Key::Escape);
     h.run();
 
@@ -136,9 +142,13 @@ fn tag_row_menu_one_remote() {
     h.run_steps(2);
     let at = tag_row(&h, "v0.1.0");
     click_steps(&mut h, at, PointerButton::Secondary);
-    assert!(h.get_by_label("Delete from origin").is_disabled(), "a job is running");
-    assert!(h.get_by_label("Push to origin").is_disabled());
-    assert!(!h.get_by_label("Delete locally").is_disabled());
+    assert!(!h.get_by_label("Delete locally…").is_disabled());
+    h.get_by_label("Push to").hover();
+    h.run_steps(3);
+    assert!(submenu_item(&h, "Push to", "origin").is_disabled(), "a job is running");
+    h.get_by_label("Delete from remote").hover();
+    h.run_steps(3);
+    assert!(submenu_item(&h, "Delete from remote", "origin…").is_disabled(), "a job is running");
     drop(h);
     remove_fixture(&dir);
 
@@ -147,12 +157,9 @@ fn tag_row_menu_one_remote() {
     h.run();
     open_menu(&mut h);
     assert!(h.query_by_label("Checkout (detached)").is_some());
-    assert!(h.query_by_label("Delete locally").is_some());
-    for item in ["Push to all remotes", "Delete from all remotes"] {
-        assert!(h.query_by_label(item).is_none(), "{item}");
-    }
-    assert!(h.query_by_label_contains("Push to").is_none() && h.query_by_label_contains("Delete from").is_none());
-    h.get_by_label("Delete locally").click();
+    assert!(h.query_by_label("Delete locally…").is_some());
+    assert!(h.query_by_label("Push to").is_none() && h.query_by_label("Delete from remote").is_none());
+    h.get_by_label("Delete locally…").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Confirm { title, button, .. } if title == "Delete tag" && button == "Delete")));
     drop(h);

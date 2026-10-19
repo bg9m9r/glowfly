@@ -118,6 +118,8 @@ mod worktrees;
 #[cfg(test)]
 mod hint_tests;
 #[cfg(test)]
+mod menu_testing;
+#[cfg(test)]
 mod snapshot_check;
 #[cfg(test)]
 mod snapshot_tests;
@@ -199,6 +201,8 @@ mod snapshot_tests_lfs_notes;
 mod snapshot_tests_load_more;
 #[cfg(test)]
 mod snapshot_tests_logs;
+#[cfg(test)]
+mod snapshot_tests_menu_copy;
 #[cfg(test)]
 mod snapshot_tests_onboarding;
 #[cfg(test)]

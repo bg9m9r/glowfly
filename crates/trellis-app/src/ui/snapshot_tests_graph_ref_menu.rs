@@ -3,6 +3,7 @@
 //! row; a tag's push items, the same as in the TAGS menu. Shares the fixture repository with
 //! `snapshot_tests`.
 
+use super::menu_testing::submenu_item;
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_remotes::{click_steps, running};
 use super::snapshot_tests_select::{click, row_y};
@@ -30,7 +31,7 @@ fn graph_label_menu_branch() {
     assert!(h.query_by_label("Merge into main").is_some(), "the branch's own menu");
     assert!(h.query_by_label("Create patch…").is_none(), "not the commit menu");
     h.state_mut().1.clear();
-    h.get_by_label("Delete").click();
+    h.get_by_label("Delete…").click();
     h.run();
     let confirm = h.state().1.iter().any(|m| matches!(m, Msg::Confirm { title, .. } if title == "Delete branch"));
     assert!(confirm, "the confirmation is asked for");
@@ -57,7 +58,7 @@ fn graph_label_menu_many() {
     h.check_snapshot("graph_label_menu_tag");
     assert!(h.query_by_label("Checkout (detached)").is_some(), "the tag's menu");
     h.state_mut().1.clear();
-    h.get_by_label("Delete locally").click();
+    h.get_by_label("Delete locally…").click();
     h.run();
     let confirm = h.state().1.iter().any(|m| matches!(m, Msg::Confirm { title, .. } if title == "Delete tag"));
     assert!(confirm, "the confirmation is asked for");
@@ -94,10 +95,13 @@ fn graph_label_menu_remote() {
     remove_fixture(&dir);
 }
 
-/// Opens the tag's submenu on main's tip, whose chips carry main and v0.1.0.
+/// Opens the tag's submenu on main's tip, whose chips carry main and v0.1.0, and in it the Push
+/// to submenu.
 fn open_tag_submenu(h: &mut super::snapshot_tests_worktrees::H) {
     click(h, pos2(CHIP_X, row_y(MAIN_ROW)), PointerButton::Secondary);
     h.get_by_label("Tag v0.1.0").hover();
+    h.run();
+    h.get_by_label("Push to").hover();
     h.run();
 }
 
@@ -109,17 +113,17 @@ fn graph_label_menu_tag_push() {
     h.run();
     open_tag_submenu(&mut h);
     h.check_snapshot("graph_label_menu_tag_remotes");
-    for item in ["Push to origin", "Push to backup", "Push to all remotes"] {
-        assert!(h.query_by_label(item).is_some_and(|n| !n.is_disabled()), "{item}");
+    for item in ["origin", "backup", "All remotes"] {
+        assert!(!submenu_item(&h, "Push to", item).is_disabled(), "{item}");
     }
     let tag = "v0.1.0".to_owned();
     let sent = |h: &super::snapshot_tests_worktrees::H, want: TagMsg| h.state().1.iter().any(|m| matches!(m, Msg::Tag(t) if *t == want));
-    h.get_by_label("Push to backup").click();
+    submenu_item(&h, "Push to", "backup").click();
     h.run();
     assert!(sent(&h, TagMsg::Push { tag: tag.clone(), remotes: vec!["backup".into()] }), "one remote");
 
     open_tag_submenu(&mut h);
-    h.get_by_label("Push to all remotes").click();
+    submenu_item(&h, "Push to", "All remotes").click();
     h.run();
     assert!(sent(&h, TagMsg::Push { tag: tag.clone(), remotes: vec!["origin".into(), "backup".into()] }), "every remote");
 
@@ -134,7 +138,9 @@ fn graph_label_menu_tag_push() {
     click_steps(&mut h, pos2(CHIP_X, row_y(MAIN_ROW)), PointerButton::Secondary);
     h.get_by_label("Tag v0.1.0").hover();
     h.run_steps(3);
-    assert!(h.get_by_label("Push to origin").is_disabled(), "a job is running");
+    h.get_by_label("Push to").hover();
+    h.run_steps(3);
+    assert!(submenu_item(&h, "Push to", "origin").is_disabled(), "a job is running");
     drop(h);
     remove_fixture(&dir);
 }

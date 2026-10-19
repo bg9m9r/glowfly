@@ -11,6 +11,7 @@ pub mod build_status;
 pub mod clone;
 pub mod clone_service;
 pub mod commit;
+pub mod commit_menu;
 pub mod conflict;
 pub mod conflict_check;
 pub mod conflict_files;

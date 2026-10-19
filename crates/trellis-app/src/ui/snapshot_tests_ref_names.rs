@@ -51,7 +51,7 @@ fn ref_menu_long_name() {
     h.run();
     click(&mut h, pos2(CHIP_X, row_y(SEARCH_ROW)), PointerButton::Secondary);
     h.check_snapshot("ref_menu_long_name");
-    for item in ["Checkout", "Merge into main", "Rebase main onto this branch", "Push", "Rename…", "Hide in graph", "Solo", "Delete"] {
+    for item in ["Checkout", "Merge into main", "Rebase main onto this branch", "Push", "Rename…", "Hide in graph", "Solo", "Delete…"] {
         assert!(h.query_by_label(item).is_some(), "{item}");
     }
     assert!(h.query_by_label_contains(&format!("Checkout {LONG}")).is_none(), "the items leave the name out");

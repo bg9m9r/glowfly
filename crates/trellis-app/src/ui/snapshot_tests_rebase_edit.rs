@@ -52,10 +52,14 @@ fn multi_commit_menu_edit() {
     // Row 0 is the WIP row (the README is modified).
     click(&mut h, pos2(700.0, row_y(1)), PointerButton::Secondary);
     h.check_snapshot("multi_commit_menu_edit");
-    assert!(!h.get_by_label("Squash 2 commits").is_disabled());
-    assert!(!h.get_by_label("Drop 2 commits…").is_disabled());
+    assert!(!h.get_by_label("Squash…").is_disabled());
+    assert!(!h.get_by_label("Drop…").is_disabled());
+    // The count is in the header only; the details panel to the right keeps its counted buttons.
+    let in_menu = h.query_all_by_label_contains("2 commits").filter(|n| n.bounding_box().is_some_and(|b| b.x0 < 1000.0));
+    let in_menu: Vec<String> = in_menu.map(|n| super::menu_testing::node_text(&n)).collect();
+    assert_eq!(in_menu, ["2 commits selected"]);
     h.state_mut().1.clear();
-    h.get_by_label("Squash 2 commits").click();
+    h.get_by_label("Squash…").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::Edit(QuickEdit::Squash(o))) if *o == [c3, c2])));
 
@@ -63,8 +67,8 @@ fn multi_commit_menu_edit() {
     select(&mut h.state_mut().0, &[c3, c1]);
     h.run();
     click(&mut h, pos2(700.0, row_y(1)), PointerButton::Secondary);
-    assert!(h.get_by_label("Squash 2 commits").is_disabled());
-    assert!(!h.get_by_label("Drop 2 commits…").is_disabled());
+    assert!(h.get_by_label("Squash…").is_disabled());
+    assert!(!h.get_by_label("Drop…").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

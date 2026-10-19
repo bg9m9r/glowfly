@@ -24,9 +24,9 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     ui.label(RichText::new(t.trn("details.multi.selected", m.len(), &[])).strong().size(15.0).color(color::text()));
     ui.horizontal_wrapped(|ui| {
-        cherry_pick_button(ui, t, m, msgs);
-        revert_button(ui, t, m, msgs);
-        patch_button(ui, t, m, msgs);
+        cherry_pick_button(ui, t.trn("details.multi.cherry_pick.button", m.len(), &[]), m, msgs);
+        revert_button(ui, t.trn("details.multi.revert.button", m.len(), &[]), m, msgs);
+        patch_button(ui, t.trn("details.multi.patch.button", m.len(), &[]), m, msgs);
         if ui.button(t.tr("details.multi.copy_shas.button")).clicked() {
             msgs.push(copy_shas(m));
         }

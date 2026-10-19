@@ -3,6 +3,7 @@
 //! nothing changed). Remotes are injected into the shared fixture's snapshot with fixed URLs so
 //! the images are deterministic.
 
+use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, center, pushed};
@@ -110,29 +111,34 @@ fn remote_group_menu() {
     assert!(h.query_by_label("No branches yet. Fetch this remote to load them.").is_some());
     let at = center(&h, "origin");
     click(&mut h, at, PointerButton::Secondary);
-    for item in ["Fetch origin", "Edit remote…", "Copy fetch URL", "Copy link to repository on origin", "Copy push URL", "Remove remote…"]
-    {
+    for item in ["Fetch", "Edit…", "Copy", "Remove…"] {
         assert!(h.query_by_label(item).is_some(), "{item}");
     }
     // example.com is no hosting service Trellis knows: its page opens, but there are no forks.
-    assert!(!h.get_by_label("View origin in browser").is_disabled());
-    assert!(h.get_by_label("Add a fork of origin…").is_disabled());
-    assert!(h.get_by_label("Fork origin on its hosting service…").is_disabled());
+    assert!(!h.get_by_label("View in browser").is_disabled());
+    assert!(h.get_by_label("Add a fork…").is_disabled());
+    assert!(h.get_by_label("Fork on its hosting service…").is_disabled());
     h.check_snapshot("remote_group_menu");
-    h.get_by_label("Fetch origin").click();
+    open_submenu(&mut h, "Copy");
+    for item in ["Fetch URL", "Push URL", "Link"] {
+        submenu_item(&h, "Copy", item);
+    }
+    h.get_by_label("Fetch").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Remote(RemoteMsg::Fetch(n)) if n == "origin")));
 
     let at = center(&h, "backup");
     click(&mut h, at, PointerButton::Secondary);
-    assert!(h.query_by_label("Fetch backup").is_some());
-    assert!(h.query_by_label("Copy push URL").is_none());
-    h.get_by_label("Copy fetch URL").click();
+    assert!(h.query_by_label("Fetch").is_some());
+    open_submenu(&mut h, "Copy");
+    assert!(h.query_by_label("Push URL").is_none());
+    submenu_item(&h, "Copy", "Fetch URL").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Copy(u) if u == "D:/backups/app.git")));
     let at = center(&h, "backup");
     click(&mut h, at, PointerButton::Secondary);
-    h.get_by_label("Copy link to repository on backup").click();
+    open_submenu(&mut h, "Copy");
+    submenu_item(&h, "Copy", "Link").click();
     h.run();
     let want = crate::deep_link::LinkTarget::Repository { remote: Some("backup".into()) };
     assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
@@ -171,7 +177,7 @@ fn remote_header_menu() {
     h.run_steps(2);
     let at = center(&h, "origin");
     click_steps(&mut h, at, PointerButton::Secondary);
-    assert!(h.get_by_label("Fetch origin").is_disabled(), "a job is running");
+    assert!(h.get_by_label("Fetch").is_disabled(), "a job is running");
     drop(h);
     remove_fixture(&dir);
 }

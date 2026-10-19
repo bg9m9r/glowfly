@@ -77,14 +77,40 @@ pub fn short(oid: Oid) -> String {
 /// The widest a ref menu's header gets before its name wraps onto more lines.
 const MENU_HEADER_W: f32 = 320.0;
 
-/// A ref menu's title: the ref's name, once, in bold and not clickable (wrapped when it is
-/// long), then a separator. The items below it leave the name out.
+/// An object menu's title: the object's name, once, in bold and not clickable (wrapped when it
+/// is long), then a separator. The items below it leave the name out.
 pub fn menu_header(ui: &mut egui::Ui, title: &str) {
+    header(ui, RichText::new(title).strong());
+}
+
+/// A commit menu's title: the summary in bold (cut to 80 characters), then the short SHA, weak
+/// and monospace; just the SHA when there is no summary.
+pub fn commit_menu_header(ui: &mut egui::Ui, summary: &str, oid: Oid) {
+    let cut = crate::state::commit_menu::header_summary(summary);
+    let mut job = egui::text::LayoutJob::default();
+    let (style, align) = (ui.style().clone(), egui::Align::Center);
+    let sha = if cut.is_empty() {
+        short(oid)
+    } else {
+        RichText::new(cut).strong().append_to(&mut job, &style, egui::FontSelection::Default, align);
+        format!("  {}", short(oid))
+    };
+    RichText::new(sha).monospace().color(color::weak()).append_to(&mut job, &style, egui::FontSelection::Default, align);
+    header(ui, job);
+}
+
+/// The header row: wrapped at `MENU_HEADER_W`, not clickable, then a separator.
+fn header(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) {
     ui.scope(|ui| {
         ui.set_max_width(MENU_HEADER_W);
-        ui.add(egui::Label::new(RichText::new(title).strong()).wrap().selectable(false));
+        ui.add(egui::Label::new(text).wrap().selectable(false));
     });
     ui.separator();
+}
+
+/// A weak, small, not clickable line in a menu that explains the item above it.
+pub fn menu_note(ui: &mut egui::Ui, text: &str) {
+    ui.add(egui::Label::new(RichText::new(text).small().color(color::weak())).selectable(false));
 }
 
 /// A menu item's button. Its text never wraps: a submenu opens narrow and grows to fit its

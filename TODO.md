@@ -139,7 +139,7 @@ are in Later > UI review polish.
       headers can't run together ("GRAPHCOMMIT MESSAGE"); actionable notices (fetch this remote,
       trust for LFS) wrap instead of being cut; translated header buttons move into a ⋯ menu
       instead of being cut to "Neu…"
-- [ ] **Menus name their object once**: the tag, remote, remote-group and multi-commit menus
+- [x] **Menus name their object once**: the tag, remote, remote-group and multi-commit menus
       get the branch menu's header-and-short-verbs treatment; object menus are grouped by intent
       (branch and tag, integrate, rewrite, copy, delete) with a Copy ▸ submenu; every item that
       opens a dialog or confirmation ends in "…"; commits are named by summary, not a bare SHA;
@@ -2218,3 +2218,19 @@ here, under the item they grew from.
 - Translate the graph column titles (the floors already size the columns for longer titles)
 - Cut the file history row's date when the panel is narrower than the date
 - Show the whole text of a cut row when it gets keyboard focus, not only on hover
+
+### Menus name their object once
+
+- Palette entries name commits by summary instead of a short SHA ("Rebase main onto 1a2b3c4",
+  "Reword commit 1a2b3c4…", "Squash 1a2b3c4 into parent")
+- The disabled-rebase hover ("main already contains 1a2b3c4.") says "this commit" in menus and
+  uses the summary elsewhere
+- Copy > Message offers the full message (summary and body), not only the summary
+- The commit, branch, remote-branch, tag and remote menus' English labels move onto the Lang
+  tables (only the multi-commit menu is translated)
+- The blame row, file history entry, stash, worktree and submodule menus get the same header,
+  intent groups and Copy submenu
+- Tag Push to submenu marks (or hides) the remotes that already have the tag
+- Tag and branch Copy submenus add a link to the object on a chosen remote's hosting page
+- The Hard reset confirmation says how many files will be stashed
+- The remote group menu's header shows the repository path (owner/repo) weak next to the name

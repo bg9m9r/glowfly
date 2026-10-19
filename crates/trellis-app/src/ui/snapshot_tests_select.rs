@@ -1,11 +1,13 @@
 //! Several commits selected: the graph rows, the details panel, the two-commit diff, the
 //! multi-commit menu and Esc. Shares the fixture repository and renderer with `snapshot_tests`.
 
+use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
+use crate::state::commit_menu::{RESET_HARD, RESET_HARD_NOTE, RESET_MIXED, RESET_SOFT};
 use crate::state::selection::MultiSelection;
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -106,9 +108,8 @@ fn graph_multi_menu() {
     h.run();
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.check_snapshot("graph_multi_menu");
-    // The details panel has the same button; the menu's is the one over the graph.
-    let in_menu = h.get_all_by_label("Cherry-pick 2 commits").find(|n| n.bounding_box().is_some_and(|b| b.x0 < 1000.0));
-    in_menu.expect("the menu item").click();
+    assert_eq!(h.get_all_by_label("2 commits selected").count(), 2, "the details panel's title and the menu's header");
+    h.get_by_label("Cherry-pick").click();
     h.run();
     let picked = h.state().1.iter().find_map(|m| if let Msg::Selection(SelectionMsg::CherryPick(o)) = m { Some(o.clone()) } else { None });
     assert_eq!(picked, Some(vec![search, login]));
@@ -117,8 +118,7 @@ fn graph_multi_menu() {
     // The menu offers the selection as one patch.
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.state_mut().1.clear();
-    let in_menu = h.get_all_by_label("Create patch from 2 commits…").find(|n| n.bounding_box().is_some_and(|b| b.x0 < 1000.0));
-    in_menu.expect("the menu item").click();
+    h.get_by_label("Create patch…").click();
     h.run();
     let exported = h.state().1.iter().find_map(|m| if let Msg::Patch(PatchMsg::Export(o)) = m { Some(o.clone()) } else { None });
     assert_eq!(exported, Some(vec![search, login]));
@@ -126,13 +126,23 @@ fn graph_multi_menu() {
     // Or copies it.
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.state_mut().1.clear();
-    h.get_by_label("Copy patch of 2 commits").click();
+    open_submenu(&mut h, "Copy");
+    submenu_item(&h, "Copy", "Patch").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Patch(PatchMsg::Copy(o)) if *o == [search, login])));
+    // And their SHAs, one per line.
+    click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
+    h.state_mut().1.clear();
+    open_submenu(&mut h, "Copy");
+    submenu_item(&h, "Copy", "SHAs").click();
+    h.run();
+    let shas = format!("{search}\n{login}");
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Copy(t) if *t == shas)));
 
     // Any other row gets the single-commit menu.
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
-    assert!(h.query_by_label("Cherry-pick commit").is_some());
+    assert!(h.query_by_label("Cherry-pick").is_some());
+    assert_eq!(h.get_all_by_label("2 commits selected").count(), 1, "the single-commit menu has its own header");
     assert_eq!(h.query_all_by_label("Cherry-pick 2 commits").count(), 1, "only the details panel's button");
     drop(h);
     remove_fixture(&dir);
@@ -170,13 +180,25 @@ fn esc_collapses_after_closing_the_diff() {
 fn graph_commit_menu_reset_submenu() {
     // The submenu opens beside the menu at its items' full width, one line each.
     let (st, dir) = with_repo(ThemeChoice::Dark, "commit-menu-reset");
-    let row = st.snap.as_ref().unwrap().row_of[&commit(&st, "Fix build on Windows")] + 1;
+    let fix = commit(&st, "Fix build on Windows");
+    let row = st.snap.as_ref().unwrap().row_of[&fix] + 1;
     let mut h = harness(st, true);
     h.run();
     click(&mut h, pos2(700.0, row_y(row)), PointerButton::Secondary);
-    h.get_by_label("Reset current branch to this commit").hover();
-    h.run();
+    open_submenu(&mut h, "Reset main to this commit");
     h.check_snapshot("graph_commit_menu_reset_submenu");
+    for item in [RESET_SOFT, RESET_MIXED, RESET_HARD, RESET_HARD_NOTE] {
+        assert!(h.query_by_label(item).is_some(), "{item}");
+    }
+    h.get_by_label(RESET_HARD).click();
+    h.run();
+    let sha = fix.to_string()[..7].to_owned();
+    let named = format!("\"Fix build on Windows\" ({sha})");
+    let asked = h.state().1.iter().any(
+        |m| matches!(m, Msg::Confirm { title, body, .. } if title == "Hard reset" && body.contains(&named) && body.contains("Untracked files")),
+    );
+    assert!(asked, "the confirmation names the commit by its summary");
+    drop(h);
     remove_fixture(&dir);
 }
 
@@ -195,15 +217,16 @@ fn graph_commit_menu() {
     // A commit main doesn't contain: main can be rebased onto it, plainly or interactively.
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.check_snapshot("graph_commit_menu");
-    assert!(!h.get_by_label(&format!("Rebase main onto {}", sha(search))).is_disabled());
+    assert!(!h.get_by_label("Rebase main onto this commit").is_disabled());
     h.state_mut().1.clear();
-    h.get_by_label(&format!("Interactive rebase main onto {}…", sha(search))).click();
+    h.get_by_label("Interactive rebase main onto this commit…").click();
     h.run();
     let want = trellis_core::rebase::RebaseBase::OntoCommit(search);
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(crate::msg::RebaseMsg::OpenRebase(b)) if *b == want)));
 
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
-    assert!(h.get_by_label(&format!("Rebase main onto {}", sha(fix))).is_disabled(), "main already contains it");
+    assert!(h.query_by_label(&format!("Fix build on Windows  {}", sha(fix))).is_some(), "the header");
+    assert!(h.get_by_label("Rebase main onto this commit").is_disabled(), "main already contains it");
     h.state_mut().1.clear();
     h.get_by_label("Create patch…").click();
     h.run();
@@ -211,12 +234,14 @@ fn graph_commit_menu() {
     assert_eq!(exported, Some(vec![fix]));
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
     h.state_mut().1.clear();
-    h.get_by_label("Copy patch").click();
+    open_submenu(&mut h, "Copy");
+    submenu_item(&h, "Copy", "Patch").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Patch(PatchMsg::Copy(o)) if *o == [fix])));
 
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
-    h.get_by_label("Copy link to this commit").click();
+    open_submenu(&mut h, "Copy");
+    submenu_item(&h, "Copy", "Link").click();
     h.run();
     let want = crate::deep_link::LinkTarget::Commit(fix);
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
@@ -224,12 +249,13 @@ fn graph_commit_menu() {
     // A merge commit has no patch of its own.
     click(&mut h, pos2(700.0, row_y(merge_row)), PointerButton::Secondary);
     assert!(h.get_by_label("Create patch…").is_disabled());
-    assert!(h.get_by_label("Copy patch").is_disabled());
     // History edits need a linear run up to HEAD, which is a merge here.
-    assert!(h.get_by_label("Squash into parent").is_disabled());
+    assert!(h.get_by_label("Squash into parent…").is_disabled());
+    open_submenu(&mut h, "Copy");
+    assert!(submenu_item(&h, "Copy", "Patch").is_disabled());
     click(&mut h, pos2(700.0, row_y(root_row)), PointerButton::Secondary);
-    assert!(h.get_by_label("Squash into parent").is_disabled());
-    assert!(h.get_by_label("Reword commit…").is_disabled());
+    assert!(h.get_by_label("Squash into parent…").is_disabled());
+    assert!(h.get_by_label("Reword…").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

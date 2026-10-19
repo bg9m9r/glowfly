@@ -70,6 +70,11 @@ fn remote_branch_menu_tracked() {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert!(h.query_by_label("Checkout").is_none(), "the tracking branch is offered instead");
+    assert!(h.query_by_label("Delete from remote…").is_some());
+    // The name is in the header (and on the rows and the graph's chips), never in an item.
+    let named: Vec<String> =
+        super::menu_testing::texts_containing(&h, "origin/search").into_iter().filter(|l| l != "origin/search").collect();
+    assert!(named.is_empty(), "{named:?}");
     h.get_by_label("Fast-forward search to this branch").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, BranchMsg::FastForwardBranch(n) if n == "search")));
