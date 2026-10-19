@@ -79,9 +79,10 @@ fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
-/// Whether the section is drawn: the repository has a linked worktree.
-pub fn section_shown(snap: &Snapshot) -> bool {
-    snap.worktrees.iter().any(|w| !w.is_main())
+/// The WORKTREES section's rows: every worktree (the main one first) once one is linked, and
+/// none while there is only the main one (the section shows its empty state then).
+pub fn listed(snap: &Snapshot) -> &[WorktreeInfo] {
+    if snap.worktrees.iter().any(|w| !w.is_main()) { &snap.worktrees } else { &[] }
 }
 
 /// The text at the right of a row: what is checked out, then whether it is locked or missing,

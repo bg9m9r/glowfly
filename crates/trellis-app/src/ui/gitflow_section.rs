@@ -1,14 +1,15 @@
 //! The GIT FLOW section of the left panel: Features, Releases and Hotfixes groups with a Start
 //! '+' and menu each, and the local flow branches under them (prefix stripped). A click jumps to
 //! the tip, a double-click checks out, the row menu finishes the branch or does any local branch
-//! action; the header's menu opens the panel, starts a branch or configures Git Flow. Also the
-//! issue menu's Start Git Flow items.
+//! action; the header's + offers the three Start items, and its menu opens the panel, starts a
+//! branch or configures Git Flow. Also the issue menu's Start Git Flow items.
 
 use super::branch_menu::local_branch_menu;
 use super::common::{menu_item, menu_item_if};
 use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
+use super::widgets::section_header::{self, AddAction, Header, HeaderAdd};
 use crate::gitflow::GitFlowMsg;
 use crate::msg::BranchMsg;
 use crate::msg::Msg;
@@ -45,8 +46,20 @@ pub(super) fn section(
     msgs: &mut Vec<Msg>,
 ) {
     let groups = grouped(s, &Branches::of(snap));
-    let h = widgets::section_header(ui, "Git Flow", Some(total(&groups)), open);
-    h.context_menu(|ui| header_menu(ui, snap, msgs));
+    let starts = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
+        for k in FlowKind::ALL {
+            start_item(ui, snap, k, msgs);
+        }
+    };
+    let add = HeaderAdd {
+        name: "Start Git Flow branch".into(),
+        tip: Some("Start a feature, release or hotfix".into()),
+        blocked: None,
+        action: AddAction::Menu(&starts),
+    };
+    let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| header_menu(ui, snap, msgs);
+    let h = Header { title: "Git Flow", count: Some(total(&groups)), add: Some(add), menu: Some(&menu) };
+    section_header::show(ui, h, open, msgs);
     if !*open {
         return;
     }

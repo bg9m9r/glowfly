@@ -1,16 +1,19 @@
 //! The TAGS section of the left panel: one row per tag (a click jumps to its commit) and the row
 //! menu, headed by the tag's name: checkout, annotate a lightweight tag, push to a remote or all
 //! of them, hide or solo it in the graph, copy its name or a link, delete locally, and delete
-//! from a remote or all of them (asked first).
+//! from a remote or all of them (asked first). The header's + makes a tag on HEAD's commit,
+//! and its menu a lightweight or an annotated one.
 
 use super::common::{menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use super::widgets;
+use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::Selection;
 use crate::state::rebase::JOB_RUNNING;
+use crate::state::section_actions::SectionAction;
 use crate::state::tags::delete_remote_confirm;
 use crate::tag::TagMsg;
 use eframe::egui;
@@ -21,17 +24,24 @@ const ANNOTATE_HINT: &str = "Replace this lightweight tag with an annotated tag 
 
 /// What the rows are drawn against: the left-panel filter, the selection, whether no job is
 /// running (the remote items are disabled while one is), and the graph filter (hidden and soloed
-/// tags).
+/// tags), and the header's New tag and New annotated tag.
 pub(super) struct Rows<'a> {
     pub shown: &'a dyn Fn(&str) -> bool,
     pub sel: &'a Selection,
     pub idle: bool,
     pub graph: &'a GraphFilter,
+    pub new_tag: &'a SectionAction,
+    pub annotated: &'a SectionAction,
 }
 
 pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows: Rows, msgs: &mut Vec<Msg>) {
-    let Rows { shown, sel, idle, graph } = rows;
-    widgets::section_header(ui, "Tags", Some(snap.tags.len()), open);
+    let Rows { shown, sel, idle, graph, new_tag, annotated } = rows;
+    let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
+        action_item(ui, msgs, new_tag);
+        action_item(ui, msgs, annotated);
+    };
+    let h = Header { title: "Tags", count: Some(snap.tags.len()), add: Some(HeaderAdd::send(new_tag)), menu: Some(&menu) };
+    section_header::show(ui, h, open, msgs);
     if !*open {
         return;
     }

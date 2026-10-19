@@ -64,7 +64,8 @@ fn stash_push_dialog_files() {
     let mut h = harness(st, true);
     h.run();
     for text in ["Stash changes", "on main", "Selected files", "2 of 5 files"] {
-        assert!(h.query_by_label(text).is_some(), "{text}");
+        // "Stash changes" is also the STASHES header's +.
+        assert!(h.query_all_by_label(text).next().is_some(), "{text}");
     }
     assert!(!stash_button(&h).is_disabled());
     h.check_snapshot("stash_push_dialog_files");

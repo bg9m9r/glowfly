@@ -12,7 +12,7 @@ use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::runner;
-use crate::state::worktrees::{WorktreeForm, checked_out_in, folder_warning, right_text, section_shown};
+use crate::state::worktrees::{WorktreeForm, checked_out_in, folder_warning, listed, right_text};
 use crate::state::{AppState, Modal, RunningJob};
 use crate::worktree::{NewWorktree, WorktreeMsg};
 use git2::Oid;
@@ -152,7 +152,7 @@ fn create_from_branch_and_open() {
     let snap = st.snap.as_ref().unwrap();
     assert!(same_place(&snap.workdir, &dir));
     assert_eq!(snap.worktrees.len(), 2, "{:?}", snap.worktrees);
-    assert!(section_shown(snap));
+    assert_eq!(listed(snap).len(), 2);
     cleanup(&dir);
 }
 
@@ -353,7 +353,7 @@ fn section_text_rules() {
     let (mut st, dir) = opened("wt-text");
     let snap = st.snap.as_mut().unwrap();
     assert_eq!(snap.worktrees.len(), 1);
-    assert!(!section_shown(snap), "only the main worktree");
+    assert!(listed(snap).is_empty(), "only the main worktree");
     assert_eq!(checked_out_in(snap, "main").map(|w| w.is_main()), Some(true));
     assert!(checked_out_in(snap, "side").is_none());
 
@@ -370,7 +370,7 @@ fn section_text_rules() {
     assert_eq!(right_text(&linked), "detached abc1234 · locked · missing");
     assert_eq!(right_text(&main), "main");
     snap.worktrees.push(linked);
-    assert!(section_shown(snap));
+    assert_eq!(listed(snap).len(), 2);
 
     let inside = main.path.join("sub").display().to_string();
     let warning = folder_warning(snap, &inside).expect("a warning inside the main worktree");

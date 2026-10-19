@@ -2,13 +2,15 @@
 //! marker, a status word and an explanatory tooltip; double-click opens it, and the row menu
 //! opens, initializes, updates or restores it, copies its URL, edits or removes it. The header's
 //! menu adds one, initializes or updates them all, and chooses whether this repository updates
-//! them after checkouts and pulls (the palette's Add submodule… adds one too, which is how the
-//! first one is added: the section only shows when there are submodules).
+//! them after checkouts and pulls; its + adds one too. The section always shows: without
+//! submodules, an empty state line offers Add submodule….
 
-use super::common::{menu_item, menu_item_if};
+use super::common::menu_item_if;
 use super::theme::color;
 use super::widgets;
+use super::widgets::section_header::{self, Header, HeaderAdd};
 use crate::msg::Msg;
+use crate::state::section_actions::SectionAction;
 use crate::state::submodules::batch::{init_all_blocked, update_all_blocked};
 use crate::state::submodules::remove::remove_blocked;
 use crate::state::submodules::{
@@ -25,13 +27,18 @@ pub(super) fn section(
     snap: &Snapshot,
     cx: &SectionCx,
     open: &mut bool,
-    shown: &dyn Fn(&str) -> bool,
+    (shown, filtering): (&dyn Fn(&str) -> bool, bool),
+    add: &SectionAction,
     msgs: &mut Vec<Msg>,
 ) {
-    let h = widgets::section_header(ui, "Submodules", Some(snap.submodules.len()), open);
-    h.context_menu(|ui| header_menu(ui, snap, cx, msgs));
+    let items = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| header_menu(ui, snap, cx, add, msgs);
+    let h = Header { title: "Submodules", count: Some(snap.submodules.len()), add: Some(HeaderAdd::send(add)), menu: Some(&items) };
+    section_header::show(ui, h, open, msgs);
     if !*open {
         return;
+    }
+    if snap.submodules.is_empty() && !filtering {
+        section_header::empty_row(ui, "No submodules", add, msgs);
     }
     for sm in snap.submodules.iter().filter(|s| shown(&s.path) || shown(&s.name)) {
         let col = match sm.state {
@@ -52,11 +59,14 @@ pub(super) fn section(
     }
 }
 
-fn header_menu(ui: &mut egui::Ui, snap: &Snapshot, cx: &SectionCx, msgs: &mut Vec<Msg>) {
+/// Add, the batch items (left out while there are none), and the update choice.
+fn header_menu(ui: &mut egui::Ui, snap: &Snapshot, cx: &SectionCx, add: &SectionAction, msgs: &mut Vec<Msg>) {
     let batch = |batch| Msg::Submodule(SubmoduleMsg::Batch { batch, confirmed: false });
-    menu_item(msgs, ui, "Add submodule…", Msg::Submodule(SubmoduleMsg::AddDialog));
-    menu_item_if(msgs, ui, "Initialize all submodules", init_all_blocked(&snap.submodules), batch(Batch::InitAll));
-    menu_item_if(msgs, ui, "Update all submodules", update_all_blocked(&snap.submodules), batch(Batch::UpdateAll));
+    section_header::action_item(ui, msgs, add);
+    if !snap.submodules.is_empty() {
+        menu_item_if(msgs, ui, "Initialize all submodules", init_all_blocked(&snap.submodules), batch(Batch::InitAll));
+        menu_item_if(msgs, ui, "Update all submodules", update_all_blocked(&snap.submodules), batch(Batch::UpdateAll));
+    }
     ui.separator();
     ui.menu_button("Update after checkout and pull", |ui| {
         let follow = if cx.global { "Follow preferences (on)" } else { "Follow preferences (off)" };

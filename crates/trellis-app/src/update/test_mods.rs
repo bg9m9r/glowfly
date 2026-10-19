@@ -265,6 +265,8 @@ pub(super) mod revert_tests;
 pub(super) mod search_paths_tests;
 #[path = "search_tests.rs"]
 pub(super) mod search_tests;
+#[path = "section_actions_tests.rs"]
+pub(super) mod section_actions_tests;
 #[path = "selection_span_tests.rs"]
 pub(super) mod selection_span_tests;
 #[path = "selection_tests.rs"]

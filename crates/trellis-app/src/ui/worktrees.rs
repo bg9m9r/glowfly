@@ -1,42 +1,57 @@
-//! The WORKTREES section of the left panel: one row per worktree (the main one first) with what
-//! it has checked out, whether it is locked or missing, and a tooltip. A click jumps to its HEAD
-//! commit, a double-click opens it in a tab, and the row menu (also on the worktree's WIP row in
-//! the graph) opens it, shows its folder, copies its path, locks or unlocks it, moves it, removes
-//! it, and prunes missing records (also from the header's menu).
+//! The WORKTREES section of the left panel: once a worktree is linked, one row per worktree (the
+//! main one first) with what it has checked out, whether it is locked or missing, and a tooltip;
+//! before that, an empty state line offering Add worktree…. A click jumps to its HEAD commit, a
+//! double-click opens it in a tab, and the row menu (also on the worktree's WIP row in the graph)
+//! opens it, shows its folder, copies its path, locks or unlocks it, moves it, removes it, and
+//! prunes missing records. The header's + adds a worktree from HEAD, and its menu adds one or
+//! prunes missing records.
 
 use super::common::{menu_item, menu_item_if};
 use super::theme::color;
 use super::widgets;
+use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::Selection;
+use crate::state::section_actions::SectionAction;
 use crate::state::worktree_manage::{manage_blocked, open_elsewhere, prune_blocked, remove_blocked, row_prune_blocked};
 use crate::state::worktree_move::move_refused;
-use crate::state::worktrees::{open_blocked, right_text, tooltip};
+use crate::state::worktrees::{listed, open_blocked, right_text, tooltip};
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use git2::Oid;
 use trellis_core::repo::{Snapshot, WorktreeInfo};
 
-/// What the rows are drawn against: the left-panel filter, the selection, and the folders open
-/// in tabs (their tooltips say so).
+/// What the rows are drawn against: the left-panel filter (and whether it has text), the
+/// selection, the folders open in tabs (their tooltips say so), and the header's Add worktree.
 pub(super) struct Rows<'a> {
     pub shown: &'a dyn Fn(&str) -> bool,
     pub sel: &'a Selection,
     pub open_tabs: &'a [crate::state::tabs::Place],
+    pub add: &'a SectionAction,
+    pub filtering: bool,
 }
 
 pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows: Rows, hover_next: &mut Option<Oid>, msgs: &mut Vec<Msg>) {
-    let Rows { shown, sel, open_tabs } = rows;
-    let h = widgets::section_header(ui, "Worktrees", Some(snap.worktrees.len()), open);
-    h.context_menu(|ui| menu_item_if(msgs, ui, "Prune missing worktrees", prune_blocked(snap), Msg::Worktree(WorktreeMsg::Prune)));
+    let Rows { shown, sel, open_tabs, add, filtering } = rows;
+    let list = listed(snap);
+    let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
+        action_item(ui, msgs, add);
+        ui.separator();
+        menu_item_if(msgs, ui, "Prune missing worktrees", prune_blocked(snap), Msg::Worktree(WorktreeMsg::Prune));
+    };
+    let h = Header { title: "Worktrees", count: Some(list.len()), add: Some(HeaderAdd::send(add)), menu: Some(&menu) };
+    section_header::show(ui, h, open, msgs);
     if !*open {
         return;
+    }
+    if list.is_empty() && !filtering {
+        section_header::empty_row(ui, "No worktrees", add, msgs);
     }
     let matches = |w: &WorktreeInfo| {
         shown(&w.folder_name()) || w.branch.as_deref().is_some_and(shown) || shown(&trellis_core::native_path::shown(&w.path))
     };
-    for wt in snap.worktrees.iter().filter(|w| matches(w)) {
+    for wt in list.iter().filter(|w| matches(w)) {
         let label = if wt.current { format!("✔  {}", wt.folder_name()) } else { wt.folder_name() };
         let col = if wt.locked.is_some() {
             color::amber()

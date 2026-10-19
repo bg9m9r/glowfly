@@ -68,7 +68,7 @@ fn center(n: &Node) -> egui::Pos2 {
 /// pointer has moved (at a speed, so over frames a few milliseconds apart, not the harness's
 /// quarter-second steps) more recently than the click that opened the menu, and has then rested
 /// for the tooltip delay. The frames carry their own times; the harness keeps the last one.
-fn rest_on(h: &mut H, at: egui::Pos2) {
+pub(super) fn rest_on(h: &mut H, at: egui::Pos2) {
     let t = h.ctx.input(|i| i.time);
     let frames = (0..4).map(|k| (0.01 * (k + 1) as f64, Some(at - egui::vec2((3 - k) as f32 * 2.0, 0.0))));
     let rest = (1..=4).map(|k| (0.04 + 0.25 * k as f64, None));

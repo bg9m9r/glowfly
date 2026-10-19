@@ -1,9 +1,10 @@
 //! The filter chip in the PULL REQUESTS and ISSUES headers, and its popover: the built-in
 //! filters, the repository's saved filters (edit, move, remove) and New filter…, sent as
-//! `Msg::ForgeFilter`; and the ISSUES header's painted + (Create issue).
+//! `Msg::ForgeFilter`; the chip sits left of the shared header's + and ⋯.
 
 use super::common::{forge_error_rows, hint_row};
 use super::theme::color;
+use super::widgets::section_header::{self, HeaderAdd, HeaderResponse, MenuFn};
 use super::widgets::{self, Icon};
 use crate::msg::{FilterMsg, Msg};
 use crate::state::forge_filters::Hint;
@@ -25,38 +26,22 @@ pub(super) struct Picker<'a> {
 
 const ROW: f32 = 26.0;
 
-/// A painted + button in a section header, just left of the count.
-pub(super) struct AddButton {
-    pub tooltip: String,
-    /// Why it is disabled, shown on hover.
-    pub blocked: Option<String>,
-    pub msg: fn() -> Msg,
-}
-
-/// The section header with the filter chip just left of the count (and left of the + when
-/// there is one). A click on the chip or the + leaves the section as it is.
+/// The section header (with its + and ⋯) and the filter chip just left of them. A click on
+/// the chip, the + or the ⋯ leaves the section as it is.
 pub(super) fn header(
     ui: &mut egui::Ui,
     title: &str,
     count: usize,
     open: &mut bool,
     p: Picker,
-    add: Option<AddButton>,
+    (add, menu): (Option<HeaderAdd>, MenuFn),
     msgs: &mut Vec<Msg>,
 ) -> Response {
-    let resp = widgets::section_header(ui, title, Some(count), open);
+    let h = section_header::Header { title, count: Some(count), add, menu: Some(menu) };
+    let HeaderResponse { header: resp, free_right: right } = section_header::show(ui, h, open, msgs);
     let painter = ui.painter().clone();
-    let (title_font, count_font) = widgets::section_fonts(ui);
+    let (title_font, _) = widgets::section_fonts(ui);
     let title_w = painter.layout_no_wrap(title.to_owned(), title_font, color::text()).size().x;
-    // Just left of the count, which `section_header` draws `PAD_X` from the right edge.
-    let count_w = painter.layout_no_wrap(count.to_string(), count_font, color::text()).size().x;
-    let mut right = resp.rect.right() - (widgets::PAD_X + 6.0) - count_w;
-    if let Some(a) = add {
-        let cy = resp.rect.center().y;
-        let rect = Rect::from_min_max(pos2(right - 20.0, cy - 10.0), pos2(right, cy + 10.0));
-        add_button(ui, rect, &a, msgs);
-        right -= 24.0;
-    }
     let room = (right - (resp.rect.left() + widgets::TITLE_X + title_w + 6.0) - 26.0).max(24.0);
     let job = widgets::truncate::cut_job(p.label, type_scale::font(type_scale::CAPTION), color::weak());
     let galley = widgets::truncate::cut_galley(ui.ctx(), job, room);
@@ -84,27 +69,6 @@ pub(super) fn header(
         popover(ui, &p, msgs);
     });
     resp
-}
-
-/// The + in its own rect over the header, so a click on it doesn't toggle the section.
-fn add_button(ui: &mut egui::Ui, rect: Rect, a: &AddButton, msgs: &mut Vec<Msg>) {
-    let enabled = a.blocked.is_none();
-    let id = ui.make_persistent_id(("section-add", a.tooltip.as_str()));
-    let r = ui.interact(rect, id, if enabled { Sense::click() } else { Sense::hover() });
-    let p = ui.painter();
-    if enabled && r.hovered() {
-        p.rect_filled(rect, CornerRadius::same(3), color::selected());
-    }
-    widgets::paint_icon(p, rect.center(), Icon::Plus, if enabled { color::weak() } else { color::faint() });
-    let tooltip = a.tooltip.clone();
-    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, tooltip.clone()));
-    let r = match &a.blocked {
-        Some(why) => r.on_hover_text(why.as_str()),
-        None => r.on_hover_text(a.tooltip.as_str()).on_hover_cursor(egui::CursorIcon::PointingHand),
-    };
-    if r.clicked() {
-        msgs.push((a.msg)());
-    }
 }
 
 /// The section's title inside a sentence: "Pull requests" → "pull requests".

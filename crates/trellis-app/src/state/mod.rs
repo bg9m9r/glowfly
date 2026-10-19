@@ -96,6 +96,7 @@ pub mod repo_lists;
 pub mod repo_scan;
 pub mod repo_sync;
 pub mod search;
+pub mod section_actions;
 pub mod selection;
 pub mod selection_span;
 pub mod selection_wip;

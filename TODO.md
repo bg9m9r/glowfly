@@ -208,7 +208,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
 - [x] **Disabled actions say why**: a disabled primary button has a one-line reason next to it
       (the rebase panel's pattern) and a disabled menu item a short weak suffix; setup-gated
       items ("Open in external diff tool" with no tool set) stay enabled and open the setting
-- [ ] **Sidebar create actions**: every section header shows a hover + (and a ⋯ for its menu)
+- [x] **Sidebar create actions**: every section header shows a hover + (and a ⋯ for its menu)
       like ISSUES; SUBMODULES and WORKTREES are always listed, with "Add submodule…" and "Add
       worktree…" in their empty state; REMOTE counts remotes, not remote branches
 - [ ] **Preferences structure**: Editor is renamed Diff Viewer; one Terminal page for the
@@ -2414,3 +2414,17 @@ here, under the item they grew from.
 - Tune the Preferences label column for the longest translated labels at 14 px
 - The commit details' "ISSUES" / "CARDS" heading and its German and Spanish values are still all caps
 - The graph's columns overlap (lanes under the Commit column) when the centre gets narrower than about 560 px
+
+### Sidebar create actions
+
+- Fetch all remotes from the REMOTE header menu
+- Push all tags and a "Push new tags" toggle in the TAGS header menu
+- Pop or apply the latest stash from the STASHES header menu
+- Translate the left panel's section titles, menus and empty-state lines
+- Open a focused header's menu with the menu key or Shift+F10
+- A preference to hide empty sections (WORKTREES, SUBMODULES, TAGS, STASHES)
+- Count only linked worktrees in the WORKTREES header, so the count doesn't jump from 0 to 2
+  when the first one is added
+- A PR header + that pushes the branch first (Push and create) when the host lacks it
+- Let the PULL REQUESTS and ISSUES filter chip use the + and ⋯ room while they are hidden; the
+  reserved room cuts the filter name short at the default panel width

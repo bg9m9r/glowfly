@@ -15,7 +15,7 @@ use crate::worktree::WorktreeMsg;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
-use egui_kittest::kittest::{By, Queryable};
+use egui_kittest::kittest::{By, Node, Queryable};
 use git2::Oid;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::{ChangeCounts, ChangesRead, WorktreeInfo};
@@ -70,6 +70,12 @@ pub(super) fn with_worktrees(theme: ThemeChoice, name: &str) -> (AppState, PathB
 pub(super) fn center(h: &H, label: &str) -> Pos2 {
     let rect = h.get_by_label(label).bounding_box().expect("the row");
     pos2(((rect.x0 + rect.x1) / 2.0) as f32, ((rect.y0 + rect.y1) / 2.0) as f32)
+}
+
+/// The open dialog's button `label` where a left-panel header's + has the same name ("Add
+/// remote"): the dialog draws after the panel, so its button comes last.
+pub(super) fn dialog_button<'h>(h: &'h H, label: &'h str) -> Node<'h> {
+    h.query_all_by_role_and_label(Role::Button, label).last().expect("the dialog's button")
 }
 
 pub(super) fn pushed(h: &H, want: &dyn Fn(&Msg) -> bool) -> bool {

@@ -6,14 +6,13 @@
 use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
-use super::snapshot_tests_worktrees::{H, center, pushed};
+use super::snapshot_tests_worktrees::{H, center, dialog_button, pushed};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::remotes::RemoteForm;
 use crate::state::touched::Touched;
 use crate::state::{AppState, Modal, RunningJob};
 use crate::ui::snapshot_check::CheckSnapshot;
-use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
@@ -73,13 +72,13 @@ fn remote_add_dialog() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("A remote named origin already exists.").is_some());
-    assert!(h.get_by_role_and_label(Role::Button, "Add remote").is_disabled());
+    assert!(dialog_button(&h, "Add remote").is_disabled());
     h.check_snapshot("remote_add_dialog");
 
     form(&mut h).name = "backup2".into();
     h.run();
-    assert!(!h.get_by_role_and_label(Role::Button, "Add remote").is_disabled());
-    h.get_by_role_and_label(Role::Button, "Add remote").click();
+    assert!(!dialog_button(&h, "Add remote").is_disabled());
+    dialog_button(&h, "Add remote").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Remote(RemoteMsg::Submit))));
     drop(h);

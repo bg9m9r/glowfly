@@ -5,7 +5,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
-use super::snapshot_tests_worktrees::{H, center, pushed};
+use super::snapshot_tests_worktrees::{H, center, dialog_button, pushed};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::forks::{ForkCreate, ForkPicker, ForkStep};
@@ -89,7 +89,7 @@ fn create(st: &AppState, step: ForkStep, name: &str) -> ForkCreate {
 }
 
 fn button_disabled(h: &H, label: &str) -> bool {
-    h.get_by_role_and_label(Role::Button, label).is_disabled()
+    dialog_button(h, label).is_disabled()
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn fork_picker_dialog() {
     h.get_by_label("grace/app").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Remote(RemoteMsg::PickFork(1)))));
-    h.get_by_role_and_label(Role::Button, "Add remote").click();
+    dialog_button(&h, "Add remote").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Remote(RemoteMsg::AddFork))));
     drop(h);
@@ -177,7 +177,7 @@ fn fork_picker_empty_light() {
     }
     h.run_steps(3);
     assert!(h.query_by_label("Loading forks…").is_some());
-    assert!(h.query_by_label("Add remote").is_none());
+    assert_eq!(h.query_all_by_role_and_label(Role::Button, "Add remote").count(), 1, "only the REMOTE header's +");
     drop(h);
     remove_fixture(&dir);
 }

@@ -99,6 +99,7 @@ mod signature_badge;
 mod spell_edit;
 mod stash_dialog;
 mod stash_push_dialog;
+mod stashes;
 mod status;
 mod submodule_dialogs;
 mod submodules;

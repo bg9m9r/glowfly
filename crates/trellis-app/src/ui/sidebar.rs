@@ -3,20 +3,20 @@
 
 use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, menu_item_if, state_color};
-use super::forge_filter_menu::{self, AddButton, Picker};
+use super::forge_filter_menu::{self, Picker};
 use super::panel_size;
 use super::ref_visibility;
 use super::theme::color;
+use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use super::widgets::{self, Part};
 use crate::msg::BranchMsg;
+use crate::msg::FilterMsg;
 use crate::msg::IssueMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
-use crate::msg::StashMsg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::forge_filters::{self, IssueView, PrView};
-use crate::state::palette::StashAction;
 use crate::state::panel_layout::Fit;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use crate::ui::theme::controls;
@@ -58,8 +58,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
 }
 
 fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
+    let actions = crate::state::section_actions::all(st);
     let open_tabs = crate::state::tabs::open_places(&st.tabs);
-    let create_blocked = crate::state::issue_form::create_blocked(st);
     let open_issue = st.issue.as_ref().map(|v| v.key.clone());
     let Some(snap) = &st.snap else { return };
     let repo_filters = st.settings.forge_filters_for(&snap.real_workdir);
@@ -75,7 +75,10 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let tips_seen = &mut st.view.tips_seen;
     let slot = super::build_status::tip_slot(fs);
 
-    widgets::section_header(ui, "Local", Some(snap.locals.len()), &mut sections.local);
+    let local_menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| action_item(ui, msgs, &actions.local);
+    let local =
+        Header { title: "Local", count: Some(snap.locals.len()), add: Some(HeaderAdd::send(&actions.local)), menu: Some(&local_menu) };
+    section_header::show(ui, local, &mut sections.local, msgs);
     if sections.local {
         for b in snap.locals.iter().filter(|b| shown(&b.name)) {
             if widgets::list_row_hidden(ui) {
@@ -134,14 +137,22 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     }
 
     let connections = &st.settings.connections;
-    let ctx = super::remotes::Ctx { shown: &shown, sel, current: &current, fs, graph, idle, filtering: !filter.is_empty(), connections };
+    let filtering = !filter.is_empty();
+    let add_remote = &actions.remote;
+    let ctx = super::remotes::Ctx { shown: &shown, sel, current: &current, fs, graph, idle, filtering, connections, add_remote };
     super::remotes::section(ui, snap, &mut sections.remote, ctx, hover_next, tips_seen, msgs);
 
     if let Some(f) = fs.filter(|f| f.host.is_some()) {
         let title = if f.pr_noun() == "merge request" { "Merge requests" } else { "Pull requests" };
         let view = forge_filters::pr_view(f, &repo_filters);
         let picker = Picker { kind: FilterKind::Prs, label: &view.label, filters: &repo_filters, provider: f.host_provider() };
-        forge_filter_menu::header(ui, title, view.rows.len(), &mut sections.prs, picker, None, msgs);
+        let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
+            super::pr_menu_items::pr_menu(ui, snap, f, idle, msgs);
+            ui.separator();
+            menu_item(msgs, ui, "New filter…", Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Prs)));
+        };
+        let add = actions.pr.as_ref().map(HeaderAdd::send);
+        forge_filter_menu::header(ui, title, view.rows.len(), &mut sections.prs, picker, (add, &menu), msgs);
         if sections.prs {
             pull_requests(ui, snap, f, &view, sel, &shown, msgs);
         }
@@ -150,49 +161,33 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let view = forge_filters::issue_view(f, &repo_filters);
         let provider = f.tracker.as_ref().map(|t| t.provider);
         let picker = Picker { kind: FilterKind::Issues, label: &view.label, filters: &repo_filters, provider };
-        let create = || Msg::Issue(IssueMsg::CreateDialog);
-        let add = AddButton { tooltip: format!("Create {}", f.issue_noun()), blocked: create_blocked.clone(), msg: create };
-        let header = forge_filter_menu::header(ui, "Issues", view.rows.len(), &mut sections.issues, picker, Some(add), msgs);
-        header.context_menu(|ui| menu_item_if(msgs, ui, format!("Create {}…", f.issue_noun()), create_blocked.as_deref(), create()));
+        let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
+            if let Some(a) = &actions.issue {
+                action_item(ui, msgs, a);
+            }
+            ui.separator();
+            menu_item(msgs, ui, "New filter…", Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Issues)));
+        };
+        let add = actions.issue.as_ref().map(HeaderAdd::send);
+        forge_filter_menu::header(ui, "Issues", view.rows.len(), &mut sections.issues, picker, (add, &menu), msgs);
         if sections.issues {
             let in_app = provider.is_some_and(forge::issues_in_app);
             issues(ui, snap, f, &view, &shown, (open_issue.as_deref(), in_app), msgs);
         }
     }
     if let Some(s) = snap.gitflow.settings() {
-        let rows = super::gitflow_section::Rows { shown: &shown, sel, fs, graph, filtering: !filter.is_empty() };
+        let rows = super::gitflow_section::Rows { shown: &shown, sel, fs, graph, filtering };
         super::gitflow_section::section(ui, snap, &s, &mut sections.gitflow, rows, hover_next, msgs);
     }
 
-    let rows = super::tags::Rows { shown: &shown, sel, idle, graph };
+    let rows = super::tags::Rows { shown: &shown, sel, idle, graph, new_tag: &actions.tag, annotated: &actions.annotated_tag };
     super::tags::section(ui, snap, &mut sections.tags, rows, msgs);
 
-    widgets::section_header(ui, "Stashes", Some(snap.stashes.len()), &mut sections.stashes);
-    if sections.stashes {
-        for s in snap.stashes.iter().filter(|s| shown(&s.message)) {
-            if widgets::list_row_hidden(ui) {
-                continue;
-            }
-            let r = widgets::list_row(ui, widgets::ROW_INDENT, &s.message, None, *sel == Selection::Commit(s.oid), false);
-            let stash = |action| crate::state::stash_confirm::stash_msg(snap, action, s);
-            if r.clicked() {
-                msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
-            }
-            r.context_menu(|ui| {
-                menu_item(msgs, ui, "Apply", stash(StashAction::Apply));
-                menu_item(msgs, ui, "Pop", stash(StashAction::Pop));
-                menu_item(msgs, ui, "Rename…", Msg::Stash(StashMsg::RenameDialog { oid: s.oid }));
-                menu_item(msgs, ui, "Delete", stash(StashAction::Drop));
-            });
-        }
-    }
-    if crate::state::worktrees::section_shown(snap) {
-        let rows = super::worktrees::Rows { shown: &shown, sel, open_tabs: &open_tabs };
-        super::worktrees::section(ui, snap, &mut sections.worktrees, rows, hover_next, msgs);
-    }
-    if !snap.submodules.is_empty() {
-        super::submodules::section(ui, snap, &sub_cx, &mut sections.submodules, &shown, msgs);
-    }
+    let stash = (&actions.stash, &actions.stash_staged);
+    super::stashes::section(ui, snap, &mut sections.stashes, sel, &shown, stash, msgs);
+    let rows = super::worktrees::Rows { shown: &shown, sel, open_tabs: &open_tabs, add: &actions.worktree, filtering };
+    super::worktrees::section(ui, snap, &mut sections.worktrees, rows, hover_next, msgs);
+    super::submodules::section(ui, snap, &sub_cx, &mut sections.submodules, (&shown, filtering), &actions.submodule, msgs);
     ui.add_space(12.0);
 }
 
@@ -314,3 +309,7 @@ fn issues(
         });
     }
 }
+
+#[cfg(test)]
+#[path = "snapshot_tests_section_headers.rs"]
+mod snapshot_tests_section_headers;

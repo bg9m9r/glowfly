@@ -1,5 +1,6 @@
-//! Custom-painted widget controls: toolbar buttons and their spacing, section headers, chips,
-//! nav rows, icon buttons; icon shapes are in `icon.rs`, text cut to a width with an ellipsis
+//! Custom-painted widget controls: toolbar buttons and their spacing, chips, nav rows, icon
+//! buttons; left-panel section headers (with their hover + and ⋯, and the empty state line) are
+//! in `section_header.rs`, icon shapes in `icon.rs`, text cut to a width with an ellipsis
 //! is in `truncate.rs`, the shared rich tooltip and egui's tooltip style in `tooltip.rs`, its
 //! rise into place in `tooltip_motion.rs`, and the segmented control in `segmented.rs`. The
 //! banner style is in `banner.rs`, field and form messages in `form_message.rs`, and the error,
@@ -13,6 +14,7 @@ pub mod form_message;
 mod icon;
 pub mod reason;
 pub mod row_fill;
+pub mod section_header;
 pub mod segmented;
 pub mod severity;
 pub mod tooltip;
@@ -24,12 +26,15 @@ pub use super::list_row::{
     file_row_with_end, list_row, list_row_cut, list_row_hidden, row_text,
 };
 pub use icon::{Icon, paint_icon, paint_icon_sized};
+pub use section_header::section_fonts;
+#[cfg(test)]
+pub use section_header::section_header;
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;
 use crate::ui::theme::type_scale;
 
-use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
+use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 
 /// A tool slot's width with captions shown; a longer caption widens it to the caption plus
 /// `CAPTION_PAD`.
@@ -140,33 +145,6 @@ pub fn chevron(p: &Painter, c: Pos2, open: bool, col: Color32) {
         vec![pos2(c.x - 2.0, c.y - 4.0), pos2(c.x + 3.0, c.y), pos2(c.x - 2.0, c.y + 4.0)]
     };
     p.add(egui::Shape::convex_polygon(pts, col, Stroke::NONE));
-}
-
-/// The fonts of a section header's title (the section-header style) and of its count (regular
-/// body text), for measuring what `section_header` draws.
-pub fn section_fonts(ui: &Ui) -> (FontId, FontId) {
-    (type_scale::section(ui), type_scale::font(type_scale::BODY))
-}
-
-/// Sidebar section header: chevron, title in the section-header style, and the count on the
-/// right in weak body text. Toggles `open`.
-pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool) -> Response {
-    let (title_font, count_font) = section_fonts(ui);
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), SECTION_H), Sense::click());
-    let p = ui.painter();
-    if resp.hovered() {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
-    p.line_segment([rect.left_top(), rect.right_top()], Stroke::new(1.0_f32, color::border()));
-    chevron(p, pos2(rect.left() + PAD_X, rect.center().y), *open, color::weak());
-    p.text(pos2(rect.left() + TITLE_X, rect.center().y), Align2::LEFT_CENTER, title, title_font, color::text());
-    if let Some(n) = count {
-        p.text(pos2(rect.right() - PAD_X, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), count_font, color::weak());
-    }
-    if resp.clicked() {
-        *open = !*open;
-    }
-    resp
 }
 
 /// Rounded label chip drawn with the painter; returns its width.

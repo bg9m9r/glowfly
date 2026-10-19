@@ -2,13 +2,15 @@
 //! no branches yet) with its URLs on hover and a menu, headed by the remote's name, to fetch it,
 //! view it on its hosting service, add a teammate's fork of it, fork it into the user's account,
 //! edit it, copy its URLs or a link (the Copy submenu) or remove it, and under it the
-//! remote-tracking branch rows. The header's menu adds a remote.
+//! remote-tracking branch rows. The header's + and menu add a remote; its count is the number of
+//! remotes.
 
 use super::common::{hint_row, menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use super::remote_branch_menu::{RemoteMenu, remote_branch_menu};
 use super::theme::color;
 use super::widgets;
+use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
 use crate::msg::Msg;
@@ -16,6 +18,7 @@ use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
 use crate::state::forks::{ADD_FORK_ITEM, ForkAction, fork_menu_label, fork_target, view_item};
 use crate::state::remotes::{fetch_blocked, find, tooltip};
+use crate::state::section_actions::SectionAction;
 use crate::state::{ForgeState, Selection};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align2, Response, Sense, pos2, vec2};
@@ -43,6 +46,8 @@ pub(super) struct Ctx<'a> {
     pub filtering: bool,
     /// Saved connections, to recognize self-hosted services.
     pub connections: &'a [Connection],
+    /// The header's Add remote.
+    pub add_remote: &'a SectionAction,
 }
 
 pub(in crate::ui) fn section(
@@ -55,9 +60,9 @@ pub(in crate::ui) fn section(
     msgs: &mut Vec<Msg>,
 ) {
     let slot = super::build_status::tip_slot(c.fs);
-    let count = snap.remotes.iter().map(|(_, b)| b.len()).sum();
-    let h = widgets::section_header(ui, "Remote", Some(count), open);
-    h.context_menu(|ui| menu_item(msgs, ui, "Add remote…", Msg::Remote(RemoteMsg::AddDialog)));
+    let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| action_item(ui, msgs, c.add_remote);
+    let h = Header { title: "Remote", count: Some(snap.remotes.len()), add: Some(HeaderAdd::send(c.add_remote)), menu: Some(&menu) };
+    section_header::show(ui, h, open, msgs);
     if !*open {
         return;
     }

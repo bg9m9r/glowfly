@@ -3,7 +3,7 @@
 //! confirmation (with everything it warns about), drawn over the shared fixture.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use super::snapshot_tests_worktrees::{H, p, pushed};
+use super::snapshot_tests_worktrees::{H, dialog_button, p, pushed};
 use crate::msg::Msg;
 use crate::state::submodules::add::AddForm;
 use crate::state::submodules::edit::EditForm;
@@ -29,7 +29,7 @@ fn add_dialog(name: &str, fill: impl FnOnce(&mut AddForm)) -> (AppState, PathBuf
 }
 
 fn add_disabled(h: &H) -> bool {
-    h.get_by_role_and_label(Role::Button, "Add submodule").is_disabled()
+    dialog_button(h, "Add submodule").is_disabled()
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn submodule_add_dialog() {
     h.run();
     h.check_snapshot("submodule_add_dialog");
     assert!(!add_disabled(&h));
-    h.get_by_role_and_label(Role::Button, "Add submodule").click();
+    dialog_button(&h, "Add submodule").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::Add))));
     drop(h);
