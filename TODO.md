@@ -231,6 +231,68 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
       panel's Reset becomes "Restore original order"; graph search gets a clear × and a
       fixed-width count
 
+From hands-on testing on 2026-10-19. The behaviour fixes come first; the design items after them
+wait for a choice on the design board, so don't plan an item marked "Waiting on a design choice"
+until this list says which option was chosen.
+
+- [ ] **Stash and carry on**: checkout, pull, merge, rebase, cherry-pick, revert and reset first
+      check for staged or unstaged changes; if there are any, a prompt names the operation and
+      the file count and offers "Stash and <operation>" or Cancel, plus "Always stash" (a
+      preference); one click stashes, runs the operation and puts the changes back when it
+      finishes (after Continue or Abort for a rebase or merge that stops on conflicts)
+  - The stash is named for what it was for ("Auto-stash before rebasing main onto
+    rebase/stepwise"); the toasts name it when it is made and when it is put back or kept,
+    with a button that selects it, and its Stashes row has an "auto" marker
+  - When putting it back conflicts, say so and leave it in the list; nothing is lost
+- [ ] **Double-click a branch to check it out**: in the sidebar and on graph labels, through
+      Stash and carry on when there are changes; a remote branch checks out its local tracking
+      branch, creating it when there is none
+- [ ] **Errors say what to do**: failed git operations show a plain toast that names the cause
+      and the fix ("Your changes to 3 files would be overwritten: Stash and pull") instead of
+      raw git text such as "Merge with strategy ort failed"; find where the `<stdin>` whitespace
+      warnings in a failed pull's log come from and stop showing them
+- [ ] **Activity panel opens only when asked**: nothing opens it but the toolbar's Activity
+      button, the View menu or a toast's Details; each repository tab has its own log
+- [ ] **Terminal keeps the prompt's space**: pwsh's "PS C:\path> " loses its trailing space on
+      longer paths (the cursor sits right after ">"); reproduce from the raw byte stream in a
+      test covering short, long and wrapping prompts and fix the emulator; the space always shows
+- [ ] **One label for a branch and its copies on every remote**: a same-commit copy on any
+      remote (`fork/x` as well as the upstream) folds into the label with the cloud instead of
+      counting as "+1"
+- [ ] **Small fixes from testing**: the terminal tab bar's + is centred and drawn like the ×
+      (the repository tab bar's too); the ⚠ badge by the branch picker says on hover what it
+      warns about and opens it on click
+- [ ] **Design system**: one set of tokens (surface steps, borders, hover and pressed tints,
+      radii, shadows, focus ring, accent and semantic colours, motion) for every theme, and the
+      components built on them: the button family (primary, tonal, quiet, danger, icon-only,
+      split), toolbar groups, text fields, tabs, menus, tooltips, chips, dialogs, toasts and one
+      icon set; what has landed (dialog frame, button styles, file header, toggles, chips) moves
+      onto them unchanged in intent. Waiting on a design choice
+- [ ] **Window chrome and toolbar**: the title bar, menu, repository tabs (each with a shape,
+      hover state, even widths and an ellipsis), the toolbar's grouped buttons, a new Branch
+      icon, and Repository › Branch pickers sized to their names. Waiting on a design choice
+- [ ] **History table edges and commit details**: 12 px cell padding and a 16 px inset at the
+      table's edges with the headers aligned; the commit details panel gets one clear type
+      hierarchy, SHA and parent chips that copy, and file rows with status chips.
+      Waiting on a design choice
+- [ ] **Dialogs and text fields**: 36 px fields, label-field-help groups, roomier dialog frames
+      with a × and size classes, and a fresh look at colour, type size and layout (tinted fields,
+      a header band or icon, a side explanation pane); every dialog moves onto them.
+      Waiting on a design choice
+- [ ] **Terminal panel**: an always-present header, tabs named from the shell and folder,
+      + with a shell picker, quiet icon buttons (Clear, Kill, ⋯, Settings to Preferences ›
+      Terminal, maximise, hide) and a readable 16-colour palette per theme.
+      Waiting on a design choice
+- [ ] **SSH preferences**: key cards with Copy public key, key generation in a dialog, a key
+      picker for all repositories and this one, and an agent status pill. Waiting on a design
+      choice
+- [ ] **Activity panel design**: a list of runs (title, time, result) with their output folded
+      underneath and routine fetches kept quiet. Waiting on a design choice
+- [ ] **Disabled menu items explain on hover**: a greyed label with a small ⓘ and the reason in a
+      tooltip on hover or keyboard focus, in every menu. Waiting on a design choice
+- [ ] **Welcome screen**: choice cards with an icon and a line of description, a clearer
+      stepper and the tour as a quiet link. Waiting on a design choice
+
 What [Milestone 1](ROADMAP.md#milestone-1-first-release-in-progress) needs that tests and CI can
 check. Its hands-on criteria (daily use, merging the release pull request) are in ROADMAP.md.
 
