@@ -50,6 +50,7 @@ impl Modal {
             // Create fork mostly asks "fork it?"; its one field is filled in by the service
             // lookup after it opens.
             Modal::Confirm { .. }
+            | Modal::ConfirmDanger { .. }
             | Modal::Trust(_)
             | Modal::RemoveWorktree(_)
             | Modal::RemoveSubmodule(_)
@@ -124,6 +125,7 @@ impl Modal {
             Modal::ApplyPatch(f) => format!("{:?}", (&f.mode, &f.opts, f.am_three_way)),
             Modal::SavePatch(f) => format!("{:?}", (&f.scope, f.pick, &f.chosen, f.untracked)),
             Modal::Confirm { .. }
+            | Modal::ConfirmDanger { .. }
             | Modal::Trust(_)
             | Modal::RemoveWorktree(_)
             | Modal::RemoveSubmodule(_)

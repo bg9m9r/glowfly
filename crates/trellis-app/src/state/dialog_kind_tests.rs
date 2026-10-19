@@ -104,6 +104,7 @@ fn forms_info_and_confirms_are_told_apart() {
     };
     let confirms = [
         Modal::Confirm { title: "T".into(), body: "B".into(), button: "Go".into(), then: Box::new(Msg::ClearLog) },
+        Modal::ConfirmDanger { title: "T".into(), body: "B".into(), button: "Go".into(), then: Box::new(Msg::ClearLog) },
         Modal::Trust(trust),
         Modal::RemoveWorktree(RemoveForm::new(&worktree())),
         Modal::CreateFork(Box::new(fork)),
