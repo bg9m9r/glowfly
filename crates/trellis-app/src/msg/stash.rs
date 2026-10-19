@@ -47,6 +47,8 @@ pub enum AutoStashMsg {
     },
     /// Open STASHES and select the stash with this commit.
     Show(Oid),
+    /// A failure toast's Stash and <op>: run the operation again with the auto-stash approved.
+    Retry(Box<crate::state::auto_stash::StashRetry>),
 }
 
 impl AutoStashMsg {
@@ -54,7 +56,7 @@ impl AutoStashMsg {
     /// unscoped like RunGit's JobDone.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::Stash | Self::Discard | Self::PutBack { .. } | Self::Show(_) => None,
+            Self::Stash | Self::Discard | Self::PutBack { .. } | Self::Show(_) | Self::Retry(_) => None,
         }
     }
 }

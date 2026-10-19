@@ -222,6 +222,9 @@ pub enum Msg {
     ConfirmAlt,
     /// A toast's action button (state/toasts.rs): runs its message and removes the toast (update/notify.rs).
     ToastAction(u64),
+    /// A toast's Details beside its fix (state/toasts.rs): removes the toast and shows the
+    /// activity log.
+    ToastDetails(u64),
     /// Close whichever dialog is open.
     CloseModal,
     // The outside world, from menus all over the app.
@@ -321,6 +324,7 @@ impl Msg {
             | Msg::ConfirmAccepted
             | Msg::ConfirmAlt
             | Msg::ToastAction(_)
+            | Msg::ToastDetails(_)
             | Msg::CloseModal
             | Msg::Copy(_)
             | Msg::OpenUrl(_)

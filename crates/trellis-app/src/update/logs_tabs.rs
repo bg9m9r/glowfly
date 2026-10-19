@@ -78,7 +78,7 @@ pub(super) fn details(st: &mut AppState, tab: TabId, fx: &mut Vec<Effect>) {
 }
 
 /// Announces the first failure logged loudly in this `update`: a failure toast pushed after
-/// `since` gets a Details button, else a new failure toast with Details shows the line's
+/// `since` gets a Details button (beside its fix, when it has one), else a new failure toast with Details shows the line's
 /// headline. Nothing new is shown while the panel already shows that tab's activity log. Run at
 /// the end of `update`, which has the time.
 pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
@@ -93,6 +93,8 @@ pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
     if let Some(t) = st.toasts.iter_mut().rev().find(|t| t.id > since && !t.ok) {
         if t.action.is_none() {
             t.action = Some(action);
+        } else if t.details.is_none() {
+            t.details = Some(action);
         }
         return;
     }

@@ -37,6 +37,21 @@ fn finds_what_a_remote_needs() {
 }
 
 #[test]
+fn tells_a_changed_host_key() {
+    let changed = "@@@@@@@@@@@
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@
+Host key verification failed.";
+    assert!(host_key_changed(changed));
+    assert_eq!(need(changed), None);
+    assert!(!host_key_changed(
+        "Host key verification failed.
+fatal: Could not read from remote repository."
+    ));
+    assert!(!host_key_changed(""));
+}
+
+#[test]
 fn finds_rejected_credentials() {
     let out = "$ git push\nfatal: Authentication failed for 'https://github.com/o/r.git/'";
     assert_eq!(rejected_urls(out), ["https://github.com/o/r.git/"]);

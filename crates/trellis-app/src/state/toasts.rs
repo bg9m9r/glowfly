@@ -1,5 +1,7 @@
 //! Toast notifications: short messages in a corner of the window that expire on their own.
-//! A toast can carry one action button (`ToastAction`), which sends `Msg::ToastAction`.
+//! A toast can carry one action button (`ToastAction`), which sends `Msg::ToastAction`; a
+//! failure with a fix (update/job_errors.rs) also carries Details beside it, which sends
+//! `Msg::ToastDetails`.
 
 use super::AppState;
 use crate::msg::Msg;
@@ -19,6 +21,9 @@ pub struct Toast {
     /// Unique for the session, so a click names the toast it was on.
     pub id: u64,
     pub action: Option<ToastAction>,
+    /// Details, beside `action` when that holds a fix; a toast without a fix keeps Details in
+    /// `action`.
+    pub details: Option<ToastAction>,
 }
 
 /// A button under a toast's text.
@@ -31,7 +36,7 @@ pub struct ToastAction {
 
 impl Toast {
     pub fn lifetime(&self) -> Duration {
-        if self.action.is_some() { ACTION_TOAST_LIFETIME } else { TOAST_LIFETIME }
+        if self.action.is_some() || self.details.is_some() { ACTION_TOAST_LIFETIME } else { TOAST_LIFETIME }
     }
 }
 
@@ -66,7 +71,7 @@ impl AppState {
 
     fn push_toast(&mut self, ok: bool, text: String, action: Option<ToastAction>, now: Instant) -> u64 {
         self.toast_seq += 1;
-        self.toasts.push(Toast { ok, text, at: now, id: self.toast_seq, action });
+        self.toasts.push(Toast { ok, text, at: now, id: self.toast_seq, action, details: None });
         if self.toasts.len() > TOAST_LIMIT {
             self.toasts.remove(0);
         }

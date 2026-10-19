@@ -23,6 +23,7 @@ pub mod external_tools;
 pub mod forge;
 pub mod fuzzy;
 pub mod git_credential;
+pub mod git_errors;
 pub mod git_program;
 pub mod git_version;
 pub mod gitcli;

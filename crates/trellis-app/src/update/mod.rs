@@ -42,6 +42,7 @@ mod inactive;
 mod init;
 mod issue;
 mod issue_create;
+mod job_errors;
 mod jobs;
 mod keys;
 mod layout;
@@ -250,7 +251,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
                 fx.extend(update(st, *alt_then, now));
             }
         }
-        Msg::ToastAction(id) => notify::toast_action(st, id, now, &mut fx),
+        Msg::ToastAction(id) => notify::toast_action(st, id, false, now, &mut fx),
+        Msg::ToastDetails(id) => notify::toast_action(st, id, true, now, &mut fx),
         Msg::CloseModal => dialog::close(st),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::OpenUrl(url)),

@@ -141,6 +141,7 @@ fn forget(st: &mut AppState, h: HeldJob, trusted: bool) {
     st.tag_job.take_if(|j| j.label == label);
     st.patch_apply.take_if(|j| j.label == label);
     st.auto_stash.making.take_if(|m| m.label == label);
+    st.auto_stash.unstashed.take_if(|u| u.label == label);
     if label == super::rebase::JOB_LABEL {
         let active = st.snap.as_ref().is_some_and(|s| is_repo_at(s, &h.real));
         let panel = if active {

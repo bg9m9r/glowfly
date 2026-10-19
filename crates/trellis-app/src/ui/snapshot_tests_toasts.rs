@@ -98,3 +98,34 @@ fn toast_top_left_toolbar_hidden() {
     assert!(top < f64::from(tabs) + 48.0, "where the toolbar would be: {top} vs {tabs}");
     remove_fixture(&dir);
 }
+
+/// A failure whose cause has a fix: the fix and Details side by side under the wrapped text,
+/// the frame still red and as wide as the others.
+#[test]
+fn toast_failure_fix() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "toast-fix");
+    st.settings.notification_location = Corner::TopRight;
+    let now = Instant::now();
+    st.toast(true, PLAIN, now);
+    st.toast(false, "Your changes to 3 files would be overwritten.", now);
+    let fix =
+        ToastAction { label: "Stash and pull".into(), msg: Box::new(Msg::git("Pull", &["pull", "--ff"])), workdir: Some(dir.clone()) };
+    st.set_last_toast_action(fix);
+    let details = crate::logs::LogsMsg::Show(crate::logs::LogKind::Activity);
+    let t = st.toasts.last_mut().unwrap();
+    t.details = Some(ToastAction { label: "Details".into(), msg: Box::new(Msg::Logs(details)), workdir: None });
+    let id = t.id;
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("toast_failure_fix");
+    let fix = h.get_by_label("Stash and pull").bounding_box().expect("the fix");
+    let details = h.get_by_label("Details").bounding_box().expect("Details");
+    assert!(fix.x1 <= details.x0 && (fix.y0 - details.y0).abs() < 1.0, "side by side, the fix first");
+    h.get_by_label("Stash and pull").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::ToastAction(i) if *i == id)), "the fix sends ToastAction");
+    h.get_by_label("Details").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::ToastDetails(i) if *i == id)), "Details sends ToastDetails");
+    remove_fixture(&dir);
+}

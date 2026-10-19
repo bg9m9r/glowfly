@@ -96,7 +96,7 @@ fn cherry_pick_end_to_end() {
 fn cherry_pick_conflict_shows_banner_state() {
     let (mut st, dir, f) = feature_repo("multi-pick-conflict", &[("x1", "theirs\n"), ("x2", "theirs\nmore\n")], Some("ours\n"));
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f[0], f[1]])));
-    assert!(st.toasts.iter().any(|t| !t.ok && t.text.starts_with("Cherry-pick 2 commits failed")));
+    assert!(st.toasts.iter().any(|t| !t.ok && t.text == "Stopped on conflicts in 1 file. Resolve it, then continue or abort."));
     let state = st.snap.as_ref().unwrap().state;
     assert!(matches!(state, RepositoryState::CherryPick | RepositoryState::CherryPickSequence), "{state:?}");
     let (name, actions) = crate::ui::common::state_actions(state).unwrap();

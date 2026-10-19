@@ -39,15 +39,16 @@ pub(super) fn anchor(corner: Corner, b: ToastBounds, screen: Rect) -> (Align2, V
     }
 }
 
-/// The toasts, newest last. The area takes clicks only while a toast has an action button, so
-/// plain toasts let clicks through to what is under them.
+/// The toasts, newest last. The area takes clicks only while a toast has a button, so plain
+/// toasts let clicks through to what is under them. A failure's fix and its Details sit side by
+/// side, the fix first.
 pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, msgs: &mut Vec<Msg>) {
     st.toasts.retain(|t| t.at.elapsed() < t.lifetime());
     if st.toasts.is_empty() {
         return;
     }
     let (align, offset) = anchor(st.settings.notification_location, bounds, ctx.screen_rect());
-    let interactable = st.toasts.iter().any(|t| t.action.is_some());
+    let interactable = st.toasts.iter().any(|t| t.action.is_some() || t.details.is_some());
     egui::Area::new(egui::Id::new("toasts")).anchor(align, offset).interactable(interactable).show(ctx, |ui| {
         for t in &st.toasts {
             // Fade out over the last second.
@@ -68,14 +69,21 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                 .show(ui, |ui| {
                     ui.set_width(TOAST_W - 2.0 * f32::from(PAD_X));
                     ui.add(egui::Label::new(RichText::new(&t.text).color(color::text().gamma_multiply(fade))).wrap());
-                    if let Some(a) = &t.action {
+                    if t.action.is_some() || t.details.is_some() {
                         ui.add_space(4.0);
                         ui.scope(|ui| {
                             ui.multiply_opacity(fade);
-                            let button = egui::Button::new(&a.label).fill(color::input()).stroke(Stroke::new(1.0_f32, color::border()));
-                            if ui.add(button).clicked() {
-                                msgs.push(Msg::ToastAction(t.id));
-                            }
+                            ui.horizontal(|ui| {
+                                let buttons = [(&t.action, Msg::ToastAction(t.id)), (&t.details, Msg::ToastDetails(t.id))];
+                                for (a, msg) in buttons {
+                                    let Some(a) = a else { continue };
+                                    let button =
+                                        egui::Button::new(&a.label).fill(color::input()).stroke(Stroke::new(1.0_f32, color::border()));
+                                    if ui.add(button).clicked() {
+                                        msgs.push(msg);
+                                    }
+                                }
+                            });
                         });
                     }
                 });

@@ -54,11 +54,13 @@ pub(super) fn unchanged(st: &mut AppState) {
     st.behind_watch.take_if(|w| generation > w.after_gen);
 }
 
-/// A toast's action button was clicked: removes the toast and runs its message, unless the
-/// action is for a repository whose tab is no longer active.
-pub(super) fn toast_action(st: &mut AppState, id: u64, now: Instant, fx: &mut Vec<Effect>) {
+/// A toast's action button (or, with `details`, its Details beside a fix) was clicked: removes
+/// the toast and runs that button's message, unless it is for a repository whose tab is no
+/// longer active.
+pub(super) fn toast_action(st: &mut AppState, id: u64, details: bool, now: Instant, fx: &mut Vec<Effect>) {
     let Some(i) = st.toasts.iter().position(|t| t.id == id) else { return };
-    let Some(action) = st.toasts.remove(i).action else { return };
+    let t = st.toasts.remove(i);
+    let Some(action) = (if details { t.details } else { t.action }) else { return };
     if let Some(dir) = &action.workdir
         && !st.workdir().is_some_and(|w| same_spelling(dir, &w))
     {

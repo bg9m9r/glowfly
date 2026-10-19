@@ -244,7 +244,9 @@ fn raw_inner(
     timeout: Option<Duration>,
 ) -> (GitOutput, Vec<u8>) {
     let mut cmd = Command::new(program);
-    cmd.args(args)
+    // merge's state restore and stash --index feed git apply on stdin; its whitespace warnings
+    // are noise in a job log.
+    cmd.args(crate::git_errors::with_quiet_apply(args).iter())
         .current_dir(cwd)
         .stdin(if input.is_empty() { Stdio::null() } else { Stdio::piped() })
         .stdout(Stdio::piped())

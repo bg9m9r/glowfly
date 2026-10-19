@@ -23,7 +23,7 @@ fn rebase_conflict_resolved_in_merge_view() {
 
     // step 1: the rebase stops on f.txt, with the conflict markers in the working file.
     j.branch_menu("main", "Rebase topic onto this branch");
-    j.toast(false, "Rebase failed");
+    j.toast(false, "Stopped on conflicts in 1 file.");
     let rebasing = |repo: &std::path::Path| {
         matches!(disk::state(repo), RepositoryState::Rebase | RepositoryState::RebaseMerge | RepositoryState::RebaseInteractive)
     };

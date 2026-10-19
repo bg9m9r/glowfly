@@ -271,3 +271,31 @@ fn interactive_rebase_with_always_stash_skips_question() {
     assert!(matches!(st.modal, Some(Modal::ConfirmDanger { .. })), "dropping commits still asks");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn gate_records_the_retry_of_a_guarded_command() {
+    use super::auto_stash::{Gate, gate};
+    let (mut st, dir) = clean_repo("as-gate-retry");
+    let cmd = args(&["checkout", "feature", "--"]);
+    let want = AutoStashFor::Checkout { target: "feature".into() };
+    let g = gate(&mut st, &cmd, checkout_feature);
+    assert!(
+        matches!(&g, Gate::Run(Some(r)) if r.op == want && matches!(*r.retry, Msg::Job(JobMsg::Git { ref label, .. }) if label == "Checkout"))
+    );
+    assert!(matches!(gate(&mut st, &args(&["fetch"]), || Msg::git("Fetch", &["fetch"])), Gate::Run(None)), "not guarded");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn approval_beats_a_snapshot_that_shows_no_changes() {
+    let (mut st, dir) = clean_repo("as-gate-approved");
+    st.auto_stash.approved =
+        Some(crate::state::auto_stash::Approval { op: AutoStashFor::Checkout { target: "feature".into() }, stash: true });
+    let fx = up(&mut st, checkout_feature());
+    assert_eq!(
+        git_cmds(&fx),
+        vec![args(&["stash", "push", "-m", "Auto-stash before checking out feature"]), args(&["checkout", "feature", "--"])]
+    );
+    assert!(st.auto_stash.approved.is_none(), "taken by the gate");
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -259,7 +259,7 @@ until this list says which option was chosen.
 - [x] **Double-click a branch to check it out**: in the sidebar and on graph labels, through
       Stash and carry on when there are changes; a remote branch checks out its local tracking
       branch, creating it when there is none
-- [ ] **Errors say what to do**: failed git operations show a plain toast that names the cause
+- [x] **Errors say what to do**: failed git operations show a plain toast that names the cause
       and the fix ("Your changes to 3 files would be overwritten: Stash and pull") instead of
       raw git text such as "Merge with strategy ort failed"; find where the `<stdin>` whitespace
       warnings in a failed pull's log come from and stop showing them
@@ -2750,3 +2750,21 @@ here, under the item they grew from.
   prefix
 - Say in the tooltip when a local chip's own upstream is at another commit while a copy on
   another remote is level with it
+
+### Errors say what to do
+
+- A Try again button on lock-file and HTTPS sign-in failures (needs the retry Msg for every
+  job, not just guarded ones)
+- A Delete lock file button when no git process is running in the repository
+- Network causes in plain words (Could not resolve host, repository not found, 'origin' does
+  not appear to be a git repository, timeouts)
+- Count conflicted files from the refreshed status instead of git's CONFLICT lines (rename and
+  directory conflicts are undercounted)
+- Force push with lease as a second fix on the rejected-push toast
+- Use the classifier for the auto-stash put-back failure toast (auto_stash::told still shows the
+  last line) and for other flows' "<x> failed: <reason>" headlines (clone, submodule, gitflow,
+  worktree)
+- Keep git's "LF will be replaced by CRLF" warnings out of job logs, or fold them into one line
+- Translate job labels so the fallback "<label> failed: ..." text is fully in the UI language
+- A Fetch-then-fast-forward fix for a sidebar Fast-forward that was rejected as non-fast-forward
+  on a non-HEAD branch

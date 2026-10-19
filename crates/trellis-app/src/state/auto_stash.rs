@@ -46,6 +46,21 @@ pub struct Making {
     pub job: AutoStashJob,
 }
 
+/// The operation a guarded job ran without stashing, and the message that starts it again:
+/// what its failure's Stash and <op> sends.
+pub struct StashRetry {
+    pub op: AutoStashFor,
+    pub retry: Box<Msg>,
+}
+
+/// The guarded job that runs (or waits for the trust prompt) without an auto-stash, matched by
+/// label and workdir when a job ends.
+pub struct Unstashed {
+    pub label: String,
+    pub workdir: Option<PathBuf>,
+    pub retry: StashRetry,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Phase {
     /// The job ended; only snapshots of load generation `from` or later may put it back.
@@ -70,8 +85,9 @@ pub struct PendingStash {
 pub struct AutoStashes {
     pub making: Option<Making>,
     pub pending: Vec<PendingStash>,
-    /// Set only while the prompt's retry message runs.
+    /// Set only while the prompt's (or a failure toast's) retry message runs.
     pub approved: Option<Approval>,
+    pub unstashed: Option<Unstashed>,
 }
 
 impl AutoStashes {

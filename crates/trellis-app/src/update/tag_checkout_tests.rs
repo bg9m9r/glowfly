@@ -104,7 +104,7 @@ fn missing_tag_and_busy_app_start_nothing() {
 fn failed_checkout_keeps_the_default_text_and_the_flag() {
     let (mut st, dir, _) = tagged("tag-co-failed");
     run(&mut st, checkout("v1.0"));
-    let output = "$ git checkout refs/tags/v1.0\nerror: Your local changes would be overwritten by checkout";
+    let output = "$ git checkout refs/tags/v1.0\nfatal: boom";
     run(&mut st, Msg::Job(JobMsg::JobDone { ok: false, output: output.into(), undo: None }));
     let toast = st.toasts.last().expect("a toast");
     assert!(!toast.ok && toast.text.starts_with("Checkout tag v1.0 failed: "), "{}", toast.text);

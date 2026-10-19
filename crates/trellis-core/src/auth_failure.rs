@@ -32,7 +32,7 @@ const HOST_KEY_CHANGED: &str = "REMOTE HOST IDENTIFICATION HAS CHANGED";
 /// What `text` says the remote needs, if it failed for want of a sign-in. None whenever ssh
 /// reports a changed host key.
 pub fn need(text: &str) -> Option<AuthNeed> {
-    if text.contains(HOST_KEY_CHANGED) {
+    if host_key_changed(text) {
         return None;
     }
     if text.contains(HOST_KEY) {
@@ -42,6 +42,11 @@ pub fn need(text: &str) -> Option<AuthNeed> {
         return Some(AuthNeed::Ssh);
     }
     HTTPS.iter().any(|m| text.contains(m)).then_some(AuthNeed::Https)
+}
+
+/// Whether ssh reports that the server's host key no longer matches the one it knows.
+pub fn host_key_changed(text: &str) -> bool {
+    text.contains(HOST_KEY_CHANGED)
 }
 
 /// ssh's "Permission denied (publickey,password)." for a method the user can sign in with.

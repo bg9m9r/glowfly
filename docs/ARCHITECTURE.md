@@ -31,6 +31,7 @@ binary (package `trellis`).
 | `safe_directory.rs` | Repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling. |
 | `native_path.rs`, `volume.rs` | The spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`); whether a folder is on a network or virtual file system. |
 | `askpass/` | Credential prompts: classifying git's and ssh's questions (`host_key.rs` reads ssh's unknown-host question into fields), the helper protocol, the app's listener and the helper's client. |
+| `git_errors.rs` | Why a failed git command failed, from its untranslated output (cause plus listed files and names), for the failure toast; `-c apply.whitespace=nowarn` on merge, pull and stash so git's internal patch warnings stay out of job logs (pure). |
 | `git_credential.rs`, `auth_failure.rs`, `ssh_version.rs` | Saving and dropping HTTPS sign-ins typed in the prompt with git's credential helper (`git credential approve` / `reject`, setting up the platform's store when git has none); reading git's output for fetches that need a sign-in, rejected credentials and the remote they belong to (pure); OpenSSH's version, and the legacy askpass set-up (a `DISPLAY` placeholder and a new session per git child) before 8.4 on Unix. |
 | `instance/` | One window for links: the running app's loopback listener and its private instance file (address, token, process id in the runtime folder), and a second process handing its `trellis://` link over (letting the window take the foreground on Windows). |
 | `link.rs`, `link/find.rs` | `trellis://` links: the format (building, parsing and every refusal), remote URL identity (`url_key`, `same_url`), the root commit, and checking a folder for the linked repository and its target (libgit2 reads only). |
@@ -205,8 +206,11 @@ binary (package `trellis`).
   is ticked, and `update` refuses to run it before then.
 - **Toasts** (`state/toasts.rs`) can carry one action button with a stored `Msg`. A click
   sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only
-  while the toast's repository is the active tab. `toast_replacing` updates a toast still on
-  screen instead of stacking another (the zoom toast keeps its id in `view.zoom_toast`).
+  while the toast's repository is the active tab. A failed job's toast says git's cause in
+  plain words and can carry a fix (`update/job_errors.rs`, from `git_errors::classify`), with
+  Details beside it in `Toast::details` (`Msg::ToastDetails`, which works from any tab).
+  `toast_replacing` updates a toast still on screen instead of stacking another (the zoom toast
+  keeps its id in `view.zoom_toast`).
 - **Incremental status**: the watcher (`watcher.rs`) collects the work-tree paths of a burst
   when nothing else changed (no index, `info/exclude`, `.gitignore`, `.gitattributes`, HEAD or
   ref change, no lost events, at most `watch::MAX_WATCH_PATHS`) and sends them in
@@ -243,7 +247,11 @@ binary (package `trellis`).
   progress it opens `Modal::AutoStash` holding the retry (Always stash skips it, except for a
   hard reset), and the answer reruns the retry with `st.auto_stash.approved` set for just that
   call. `wrap` puts `git stash push -m <message>` before the command in the same job (same label,
-  undo recorded as the original command) and marks it (`making`, dropped with a held job).
+  undo recorded as the original command) and marks it (`making`, dropped with a held job). A
+  guarded command the gate lets run unstashed (the snapshot showed nothing to stash) is recorded
+  with its retry (`unstashed`, matched by label and workdir when the job ends); if git then says
+  changes were in the way, the failure toast's Stash and <op> sends `AutoStashMsg::Retry`, which
+  reruns it with the stash approved.
   `finish_job` turns the mark into a pending entry armed for the next load generation; `seen`
   runs after each snapshot of that tab, finds the stash, and once the operation is over (merge
   committed or aborted, rebase continued) and no job runs, puts it back as the quiet job

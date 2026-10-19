@@ -131,6 +131,8 @@ pub(super) mod issue_create_tests;
 pub(super) mod issue_services_tests;
 #[path = "issue_tests.rs"]
 pub(super) mod issue_tests;
+#[path = "job_errors_tests.rs"]
+pub(super) mod job_errors_tests;
 #[path = "keys_tests.rs"]
 pub(super) mod keys_tests;
 #[path = "language_override_tests.rs"]

@@ -9,12 +9,18 @@
 //! `job_finished` arms a pending entry with `from = load_gen + 1`, and `seen`, after each
 //! snapshot of that tab, finds the stash and, once nothing is in progress, puts it back as a
 //! quiet job (`StashEffect::PutBack`), whose result `handle` turns into a toast.
+//!
+//! A guarded job the gate lets run without stashing (the snapshot showed nothing to stash) is
+//! recorded with its retry (`ran`, `AutoStashes::unstashed`); when it fails because changes were
+//! in the way, its toast's Stash and <op> sends that retry with the stash approved
+//! (update/job_errors.rs, `AutoStashMsg::Retry`).
 
 use super::jobs::{JobSpec, Started, begin_background_job, start_job};
 use crate::effect::{Effect, PutBackRequest, StashEffect};
 use crate::msg::{AutoStashMsg, Msg};
 use crate::state::auto_stash::{
-    Approval, AutoStashAsk, AutoStashJob, PendingStash, Phase, back, blocks, changed_files, conflicted, failed, found, gone, made, ready,
+    Approval, AutoStashAsk, AutoStashJob, PendingStash, Phase, StashRetry, Unstashed, back, blocks, changed_files, conflicted, failed,
+    found, gone, made, ready,
 };
 use crate::state::toasts::ToastAction;
 use crate::state::{AppState, Modal, RunningJob};
@@ -28,8 +34,9 @@ pub(super) const PUT_BACK_LABEL: &str = "Put back stashed changes";
 
 /// What an entry point does with its command.
 pub(super) enum Gate {
-    /// Run it as it is: nothing to stash, nothing guarded, or Discard and reset.
-    Run,
+    /// Run it as it is: nothing to stash, nothing guarded, or Discard and reset. With the retry
+    /// of a guarded command that runs without stashing, for its failure's Stash and <op>.
+    Run(Option<StashRetry>),
     /// Stash first (`wrap`).
     Stash(AutoStashFor),
     /// The prompt opened, or couldn't (logged): run nothing now.
@@ -39,15 +46,17 @@ pub(super) enum Gate {
 /// Whether `cmd` may run now on the active tab's tree; `retry` is the message that starts it
 /// again once the prompt is answered.
 pub(super) fn gate(st: &mut AppState, cmd: &[String], retry: impl FnOnce() -> Msg) -> Gate {
-    let Some(snap) = st.snap.as_ref() else { return Gate::Run };
-    let Some(op) = AutoStashFor::of_command(cmd, snap.head_branch.as_deref()) else { return Gate::Run };
+    let Some(snap) = st.snap.as_ref() else { return Gate::Run(None) };
+    let Some(op) = AutoStashFor::of_command(cmd, snap.head_branch.as_deref()) else { return Gate::Run(None) };
+    // The prompt's answer or a failure toast's Stash and <op>; also when the snapshot hasn't
+    // caught up with the changes.
+    if let Some(a) = st.auto_stash.approved.take_if(|a| a.op == op) {
+        return if a.stash { Gate::Stash(op) } else { Gate::Run(None) };
+    }
     if !blocks(snap) {
-        return Gate::Run;
+        return Gate::Run(Some(StashRetry { op, retry: Box::new(retry()) }));
     }
     let files = changed_files(snap);
-    if let Some(a) = st.auto_stash.approved.take_if(|a| a.op == op) {
-        return if a.stash { Gate::Stash(op) } else { Gate::Run };
-    }
     if st.settings.auto_stash && !op.is_hard_reset() {
         return Gate::Stash(op);
     }
@@ -68,15 +77,37 @@ pub(super) fn start_guarded(st: &mut AppState, mut spec: JobSpec, retry: impl Fn
     if spec.cmds.len() != 1 {
         return start_job(st, spec, fx);
     }
-    let cmd = spec.cmds[0].clone();
+    let (cmd, label) = (spec.cmds[0].clone(), spec.label.clone());
     match gate(st, &cmd, retry) {
         Gate::Asked => Started::No,
-        Gate::Run => start_job(st, spec, fx),
+        Gate::Run(r) => {
+            let started = start_job(st, spec, fx);
+            ran(st, &label, started, r);
+            started
+        }
         Gate::Stash(op) => {
             wrap(st, &mut spec, op);
             start_job(st, spec, fx)
         }
     }
+}
+
+/// A guarded job labelled `label` was asked to start without an auto-stash: records `retry`
+/// for its failure toast while it runs or waits for the trust prompt (any older record is
+/// stale by now).
+pub(super) fn ran(st: &mut AppState, label: &str, started: Started, retry: Option<StashRetry>) {
+    if started != Started::No {
+        let workdir = st.workdir();
+        st.auto_stash.unstashed = retry.map(|retry| Unstashed { label: label.to_owned(), workdir, retry });
+    }
+}
+
+/// The retry recorded for `job`, which just ended (always cleared: only the job it was recorded
+/// for can use it).
+pub(super) fn take_retry(st: &mut AppState, job: &RunningJob) -> Option<StashRetry> {
+    let u = st.auto_stash.unstashed.take()?;
+    let same = u.label == job.label && matches!((&u.workdir, &job.workdir), (Some(a), Some(b)) if same_spelling(a, b));
+    same.then_some(u.retry)
 }
 
 /// Puts the auto-stash for `op` in front of `spec`'s one command, keeping the job recorded for
@@ -158,6 +189,10 @@ fn show_action(t: trellis_core::i18n::Lang, oid: git2::Oid, workdir: std::path::
 pub(super) fn handle(st: &mut AppState, msg: AutoStashMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         AutoStashMsg::Stash => answer(st, true, now, fx),
+        AutoStashMsg::Retry(r) => {
+            let StashRetry { op, retry } = *r;
+            approve_and_run(st, op, true, retry, now, fx);
+        }
         AutoStashMsg::Discard => answer(st, false, now, fx),
         AutoStashMsg::PutBack { workdir, oid, outcome, output, undo } => {
             let undo = undo.map(|u| *u);
@@ -200,8 +235,14 @@ fn answer(st: &mut AppState, stash: bool, now: Instant, fx: &mut Vec<Effect>) {
         st.settings.auto_stash = true;
         fx.push(super::prefs::save_settings(st));
     }
-    st.auto_stash.approved = Some(Approval { op: ask.op, stash });
-    fx.extend(super::update(st, *ask.retry, now));
+    approve_and_run(st, ask.op, stash, ask.retry, now, fx);
+}
+
+/// Runs `retry` with the answer `stash` for `op`, which the gate takes when the retry reaches
+/// it.
+fn approve_and_run(st: &mut AppState, op: AutoStashFor, stash: bool, retry: Box<Msg>, now: Instant, fx: &mut Vec<Effect>) {
+    st.auto_stash.approved = Some(Approval { op, stash });
+    fx.extend(super::update(st, *retry, now));
     // The answer never outlives its retry.
     st.auto_stash.approved = None;
 }

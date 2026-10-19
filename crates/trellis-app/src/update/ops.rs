@@ -100,9 +100,10 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
         JobMsg::Git { label, mut cmds } => {
             let record = if cmds.len() == 1 { UndoKind::classify(&cmds[0]) } else { None };
             // Uncommitted changes in the way: ask, or stash them first (update/auto_stash.rs).
+            let mut retry = None;
             if let [cmd] = cmds.as_slice() {
-                let retry = || Msg::Job(JobMsg::Git { label: label.clone(), cmds: cmds.clone() });
-                match super::auto_stash::gate(st, &cmd.clone(), retry) {
+                let again = || Msg::Job(JobMsg::Git { label: label.clone(), cmds: cmds.clone() });
+                match super::auto_stash::gate(st, &cmd.clone(), again) {
                     Gate::Asked => return,
                     Gate::Stash(op) => {
                         let mut spec = JobSpec { record, ..JobSpec::new(label, cmds) };
@@ -110,14 +111,15 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
                         start_job(st, spec, fx);
                         return;
                     }
-                    Gate::Run => {}
+                    Gate::Run(r) => retry = r,
                 }
             }
             // A hard reset stashes uncommitted changes first, so undoing it brings them back.
             if record == Some(UndoKind::Reset(ResetMode::Hard)) {
                 cmds = trellis_core::undo::hard_reset_commands(&cmds[0][2]);
             }
-            start_job(st, JobSpec { record, ..JobSpec::new(label, cmds) }, fx);
+            let started = start_job(st, JobSpec { record, ..JobSpec::new(label.clone(), cmds) }, fx);
+            super::auto_stash::ran(st, &label, started, retry);
         }
         JobMsg::Abort { label, args, keep } => super::op_progress::abort(st, label, args, keep, now, fx),
         JobMsg::Push { force } => push(st, force, fx),
@@ -266,9 +268,10 @@ pub(super) fn force_push_cmd(b: &trellis_core::repo::BranchInfo, snap: &Snapshot
     Some(cmd)
 }
 
-/// The active job ended: logs and toasts it (`headline`, or "<label> succeeded" / "<label>
-/// failed: <reason>"), closes the credential prompts it left, updates the undo history of the tab it ran in, and refreshes that tab if
-/// it is still active.
+/// The active job ended: logs and toasts it (`headline`; for a failure without one, git's cause
+/// in plain words with its fix, update/job_errors.rs; else "<label> succeeded" / "<label>
+/// failed: <reason>"), closes the credential prompts it left, updates the undo history of the
+/// tab it ran in, and refreshes that tab if it is still active.
 pub(super) fn finish_job(
     st: &mut AppState,
     ok: bool,
@@ -279,6 +282,7 @@ pub(super) fn finish_job(
     fx: &mut Vec<Effect>,
 ) {
     let Some(mut job) = st.job.take() else { return };
+    let stash_retry = super::auto_stash::take_retry(st, &job);
     super::sign_in::job_finished(st, job.workdir.as_deref(), ok, &output);
     let then_pr = job.then_pr.take();
     // A cancelled or timed-out credential prompt explains a failure better than git's output.
@@ -288,12 +292,18 @@ pub(super) fn finish_job(
     if job.quiet {
         st.log_quiet_in(job.workdir.as_deref(), ok, text);
     } else {
-        let headline = headline.unwrap_or_else(|| {
-            if ok { format!("{} succeeded", job.label) } else { format!("{} failed: {}", job.label, last_line(&output)) }
-        });
+        let explained = (!ok && headline.is_none()).then(|| super::job_errors::explain(st, &job, stash_retry, &output)).flatten();
+        let (headline, fix) = match (headline, explained) {
+            (Some(h), _) => (h, None),
+            (None, Some(e)) => (e.text, e.fix),
+            (None, None) => (super::job_errors::default_headline(&job.label, ok, &output), None),
+        };
         super::notify::desktop(st, NoteKind::Job, &headline, job.workdir.as_deref(), fx);
         // Pushed first, so a failure's announcement gives this toast its Details.
         st.toast(ok, headline, now);
+        if let Some(f) = fix {
+            st.set_last_toast_action(f);
+        }
         st.log_in(job.workdir.as_deref(), ok, text);
     }
     // The user may have switched tabs while the job ran.
