@@ -328,3 +328,22 @@ fn load_reads_commit_template() {
     let t = load(&dir, &LoadOptions::all(10)).unwrap().commit_template.expect("template loaded");
     assert_eq!((t.summary.as_str(), t.description.as_str(), t.comment_char), ("chore:", "# details", '#'));
 }
+
+#[test]
+fn commit_detail_reads_author_and_committer_apart() {
+    let dir = scratch_repo("detail-people");
+    write(&dir, "a.txt", "one\n");
+    let repo = git2::Repository::open(&dir).unwrap();
+    let mut index = repo.index().unwrap();
+    index.add_path(std::path::Path::new("a.txt")).unwrap();
+    let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
+    let author = git2::Signature::new("Ada Lovelace", "ada@example.com", &git2::Time::new(1_767_000_000, 0)).unwrap();
+    let committer = git2::Signature::new("Grace Hopper", "grace@example.com", &git2::Time::new(1_767_086_400, 0)).unwrap();
+    let oid = repo.commit(Some("HEAD"), &author, &committer, "Add a\n", &tree, &[]).unwrap();
+
+    let d = commit_detail(&dir, oid).unwrap();
+    assert_eq!(d.author_time, 1_767_000_000, "the author date");
+    assert_eq!(d.time, 1_767_086_400, "the committer date");
+    assert_eq!((d.author.as_str(), d.email.as_str()), ("Ada Lovelace", "ada@example.com"));
+    assert_eq!((d.committer.as_str(), d.committer_email.as_str()), ("Grace Hopper", "grace@example.com"));
+}

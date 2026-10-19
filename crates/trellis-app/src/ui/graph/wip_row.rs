@@ -1,8 +1,8 @@
 //! This tab's own WIP row: "Uncommitted changes", the M / A / D chips and, right-aligned, the
 //! working tree's total `+N −M`. The row has no commit, author or date, so it spans the message
-//! column and the empty columns after it (`Columns::wip_span`).
+//! column and the empty columns after it, up to the table's inset (`Columns::wip_span`).
 
-use super::paint::Columns;
+use super::layout::Columns;
 use crate::ui::line_counts;
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
@@ -12,8 +12,6 @@ use trellis_core::repo::{ChangeCounts, LineCount};
 
 /// Between the label and the chips.
 const LABEL_GAP: f32 = 10.0;
-/// The total's inset from the row's right edge.
-const TOTAL_INSET: f32 = 8.0;
 /// The least space between the chips and the total; closer, the total is hidden.
 const TOTAL_GAP: f32 = 12.0;
 
@@ -42,8 +40,8 @@ fn fit(room: f32, label_w: f32, chips_w: f32, total_w: Option<f32>) -> Fit {
 pub(super) fn draw(mp: &Painter, cols: &Columns, mid: f32, label: &str, changes: ChangeCounts, total: Option<LineCount>) {
     let ctx = mp.ctx();
     let font = type_scale::font(type_scale::BODY);
-    let (left, end) = cols.wip_span();
-    let right = end - TOTAL_INSET;
+    // The span already ends at the table's inset.
+    let (left, right) = cols.wip_span();
     let label_w = ctx.fonts(|f| f.layout_no_wrap(label.to_owned(), font.clone(), color::text()).size().x);
     let chips_w = line_counts::chips_width(ctx, changes);
     let fits = fit(right - left, label_w, chips_w, total.map(|t| line_counts::total_width(ctx, t)));
@@ -99,9 +97,10 @@ mod tests {
         let cols = Columns::new(rect, 60.0, &GraphColumns::default(), &ColumnWidths::default());
         let (left, right) = cols.wip_span();
         assert_eq!(left, cols.msg.0);
+        assert_eq!(right, cols.inner.1);
         assert!(right >= cols.date.1 && right >= cols.commit.1);
         assert!(cols.msg.1 - cols.msg.0 < LABEL + LABEL_GAP + CHIPS);
-        let room = right - TOTAL_INSET - left;
+        let room = right - left;
         assert_eq!(fit(room, LABEL, CHIPS, Some(TOTAL)), Fit { chips: true, total: true, label_max: room - LABEL_GAP - CHIPS });
     }
 }

@@ -1,4 +1,4 @@
-//! Drawing helpers for the commit graph: column layout, lanes and the details panel's avatar.
+//! Drawing helpers for the commit graph: lanes and the details panel's avatar.
 
 use super::LANE_W;
 use crate::ui::avatars::Avatars;
@@ -6,71 +6,10 @@ use crate::ui::common::lane_color;
 use crate::ui::widgets;
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, epaint::CubicBezierShape, epaint::RectShape, pos2, vec2};
 use trellis_core::graph::GraphRow;
-use trellis_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
 
-/// The narrowest a drag leaves the message column.
-const MIN_MSG_W: f32 = 120.0;
-
-/// Horizontal extent of each column for one row (empty ranges for hidden columns), left to
-/// right: BRANCH / TAG, GRAPH, MESSAGE, CHANGES, COMMIT, DATE.
-pub struct Columns {
-    pub refs: (f32, f32),
-    pub graph: (f32, f32),
-    pub msg: (f32, f32),
-    pub changes: (f32, f32),
-    pub commit: (f32, f32),
-    pub date: (f32, f32),
-}
-
-impl Columns {
-    pub fn new(rect: Rect, graph_w: f32, c: &GraphColumns, w: &ColumnWidths) -> Self {
-        use ResizableColumn::*;
-        let mut x = rect.left();
-        let refs = if c.refs { (x, x + w.get(Refs)) } else { (x, x) };
-        x = refs.1;
-        let graph = if c.tree { (x, x + graph_w) } else { (x, x) };
-        x = graph.1;
-        let right = rect.right() - 6.0;
-        let date = if c.date { (right - w.get(Date), right) } else { (right, right) };
-        let commit = if c.commit { (date.0 - w.get(Commit), date.0 - 8.0) } else { (date.0, date.0) };
-        let changes = if c.changes { (commit.0 - w.get(Changes), commit.0 - 8.0) } else { (commit.0, commit.0) };
-        let msg = (x + 10.0, changes.0 - 12.0);
-        Self { refs, graph, msg, changes, commit, date }
-    }
-
-    /// Each shown resizable column with the x of the divider that resizes it: the one on the
-    /// right of BRANCH / TAG, the one on the left of the right-aligned columns.
-    pub fn grips(&self, c: &GraphColumns) -> impl Iterator<Item = (ResizableColumn, f32)> {
-        let refs = if c.tree { self.graph.0 } else { self.msg.0 - 6.0 };
-        [
-            (c.refs, ResizableColumn::Refs, refs),
-            (c.changes, ResizableColumn::Changes, self.changes.0),
-            (c.commit, ResizableColumn::Commit, self.commit.0),
-            (c.date, ResizableColumn::Date, self.date.0),
-        ]
-        .into_iter()
-        .filter(|(on, ..)| *on)
-        .map(|(_, col, x)| (col, x))
-    }
-
-    /// How much wider the columns may grow before the message column drops below `MIN_MSG_W`.
-    pub fn msg_room(&self) -> f32 {
-        (self.msg.1 - self.msg.0 - MIN_MSG_W).max(0.0)
-    }
-
-    /// This tab's WIP row's cell: from the message column to the table's right edge, across the
-    /// changes, commit and date columns that the row leaves empty.
-    pub fn wip_span(&self) -> (f32, f32) {
-        (self.msg.0, self.date.1.max(self.msg.1))
-    }
-
-    pub fn rect(&self, col: (f32, f32), row: Rect) -> Rect {
-        Rect::from_x_y_ranges(col.0..=col.1.max(col.0), row.y_range())
-    }
-}
-
+/// The centre of `lane` in a GRAPH column whose content starts at `graph_x`.
 pub fn lane_x(graph_x: f32, lane: usize) -> f32 {
-    graph_x + 6.0 + lane as f32 * LANE_W + LANE_W / 2.0
+    graph_x + lane as f32 * LANE_W + LANE_W / 2.0
 }
 
 fn edge(p: &egui::Painter, a: egui::Pos2, b: egui::Pos2, c: Color32) {

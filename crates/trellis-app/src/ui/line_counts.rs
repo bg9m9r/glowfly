@@ -54,6 +54,43 @@ pub(super) fn row_end(ui: &mut Ui, count: LineCount, largest: usize) {
     }
 }
 
+/// A file row's end, in a right-to-left `ui`: the bar alone (the counts follow the path,
+/// `inline`). Nothing for a change of no lines.
+pub(super) fn bar_end(ui: &mut Ui, count: LineCount, largest: usize) {
+    if count.total() == 0 {
+        return;
+    }
+    let (rect, _) = ui.allocate_exact_size(vec2(BAR_W, BAR_H), Sense::hover());
+    paint_bar(ui.painter(), rect, bar_fill(count, largest));
+}
+
+/// The `+N` and `−M` labels of `count` that show (a zero side left out).
+fn inline_parts(count: LineCount) -> impl Iterator<Item = (String, eframe::egui::Color32)> {
+    let (added, removed) = texts(count);
+    [(count.added > 0).then(|| (added, added_color())), (count.removed > 0).then(|| (removed, removed_color()))].into_iter().flatten()
+}
+
+/// A file's counts beside its path, in a left-to-right `ui`: `+N` then `−M`, `GAP` apart, a
+/// zero side left out. Nothing at all for a change of no lines. Takes `inline_width`.
+pub(super) fn inline(ui: &mut Ui, count: LineCount) {
+    if count.total() == 0 {
+        return;
+    }
+    ui.scope(|ui| {
+        ui.spacing_mut().item_spacing.x = GAP;
+        for (text, col) in inline_parts(count) {
+            ui.label(RichText::new(text).size(type_scale::SMALL).color(col));
+        }
+    });
+}
+
+/// The width `inline` takes.
+pub(super) fn inline_width(ctx: &Context, count: LineCount) -> f32 {
+    let w = |t: String| ctx.fonts(|f| f.layout_no_wrap(t, type_scale::font(type_scale::SMALL), color::text()).size().x);
+    let widths: Vec<f32> = inline_parts(count).map(|(t, _)| w(t)).collect();
+    widths.iter().sum::<f32>() + GAP * widths.len().saturating_sub(1) as f32
+}
+
 fn paint_bar(p: &Painter, rect: Rect, (green, red): (f32, f32)) {
     let round = CornerRadius::same(2);
     p.rect_filled(rect, round, color::border());
@@ -144,5 +181,33 @@ mod tests {
         assert_eq!((g, r), (0.0, BAR_MIN), "a small change still shows");
         let (g, r) = bar_fill(n(5, 5), 4);
         assert_eq!(g + r, BAR_W, "never past the bar");
+    }
+
+    /// How far `inline(count)` moves the cursor of a left-to-right row with no spacing of its
+    /// own, and what `inline_width` says it takes.
+    fn advance(count: LineCount) -> (f32, f32) {
+        let ctx = Context::default();
+        let mut out = (0.0, 0.0);
+        let _ = ctx.run(eframe::egui::RawInput::default(), |ctx| {
+            eframe::egui::CentralPanel::default().show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    let x0 = ui.cursor().left();
+                    inline(ui, count);
+                    out = (ui.cursor().left() - x0, inline_width(ui.ctx(), count));
+                });
+            });
+        });
+        out
+    }
+
+    #[test]
+    fn inline_counts_take_the_width_they_say() {
+        for count in [n(3, 0), n(3, 1), n(0, 12), n(1200, 34)] {
+            let (moved, said) = advance(count);
+            assert!((moved - said).abs() < 0.5, "{count:?}: moved {moved}, said {said}");
+        }
+        assert!(advance(n(3, 0)).1 < advance(n(3, 1)).1, "a zero side is left out");
+        assert_eq!(advance(n(0, 0)), (0.0, 0.0), "no change draws nothing");
     }
 }

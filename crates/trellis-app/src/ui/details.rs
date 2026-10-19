@@ -1,21 +1,20 @@
-//! Right panel: staging and committing (WIP, `details_wip.rs`), the selected commit's details,
-//! several selected commits (`details_multi.rs`) or a commit compared with the working
-//! directory (`details_workdir.rs`).
+//! Right panel: staging and committing (WIP, `details_wip.rs`), the selected commit's details
+//! (`details_commit.rs`), several selected commits (`details_multi.rs`) or a commit compared
+//! with the working directory (`details_workdir.rs`); and the changed-file row they share with
+//! the pull request's files.
 
 use super::UiCache;
-use super::common::{issue_chip, lane_color, menu_item, short, status_color, status_label, with_code};
+use super::common::{menu_item, short};
 use super::file_menu::{self, RowSource};
-use super::graph::draw_avatar;
 use super::panel_size;
-use super::theme::color;
+use super::theme::{color, spacing};
 use super::widgets;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::panel_layout::Fit;
 use crate::state::{AppState, Selection};
-use crate::ui::theme::type_scale;
-use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
+use eframe::egui::{self, RichText};
 use git2::Oid;
 use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, FileEntry, LineCount};
@@ -36,7 +35,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fi
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
             match st.selection {
                 Selection::Wip => super::details_wip::wip_panel(ui, st, cache, msgs),
-                Selection::Commit(_) => commit_panel(ui, st, cache, msgs),
+                Selection::Commit(_) => super::details_commit::panel(ui, st, cache, msgs),
                 Selection::Commits(_) => super::details_multi::panel(ui, st, msgs),
                 Selection::VsWorkdir(_) => super::details_workdir::panel(ui, st, msgs),
                 Selection::None => {
@@ -52,87 +51,6 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fi
             }
         });
     panel_size::track(ctx, st, SizedPanel::Details, id, resp.response.rect.width(), msgs);
-}
-
-fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    let t = st.settings.lang();
-    let Some(d) = &st.detail else {
-        return super::pane_status::loading_line(ui, t.tr("common.loading"));
-    };
-    let open = st.diff.as_ref().map(|(target, _)| target);
-    ui.horizontal(|ui| {
-        ui.label(with_code(t.tr("details.commit.sha"), "{sha}", &short(d.oid), type_scale::SMALL, color::weak()));
-        if ui.small_button(t.tr("common.copy_sha.button")).clicked() {
-            msgs.push(Msg::Copy(d.oid.to_string()));
-        }
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| super::signature_badge::show(ui, st, d, msgs));
-    });
-    let (summary, body) = d.message.split_once('\n').unwrap_or((&d.message, ""));
-    ui.add(egui::Label::new(RichText::new(summary).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text())).wrap());
-    if !body.trim().is_empty() {
-        egui::ScrollArea::vertical().id_salt("commit-body").max_height(180.0).show(ui, |ui| {
-            ui.add(egui::Label::new(RichText::new(body.trim()).color(color::weak())).wrap());
-        });
-    }
-
-    if let Some(fs) = &st.forge {
-        let keys = fs.issue_refs(&d.message);
-        if !keys.is_empty() {
-            ui.add_space(6.0);
-            ui.label(RichText::new(fs.issues_header(t)).size(type_scale::CAPTION).color(color::weak()));
-            for k in keys {
-                issue_chip(ui, fs, &k, msgs);
-            }
-        }
-    }
-
-    ui.add_space(8.0);
-    ui.horizontal(|ui| {
-        let (rect, _) = ui.allocate_exact_size(vec2(32.0, 32.0), Sense::hover());
-        let av = if st.settings.use_initials { None } else { Some(&mut cache.avatars) };
-        draw_avatar(ui.painter(), rect.center(), 15.0, &d.author, &d.email, lane_color(0), av);
-        ui.vertical(|ui| {
-            ui.label(RichText::new(format!("{} <{}>", d.author, d.email)).color(color::text()));
-            let mut when = st.settings.format_verbose(d.time, st.view.utc_offset);
-            if d.committer != d.author {
-                when = t.trf("details.commit.when_committer", &[("when", &when), ("committer", &d.committer)]);
-            }
-            ui.label(RichText::new(when).color(color::weak()));
-        });
-    });
-    ui.horizontal_wrapped(|ui| {
-        ui.label(RichText::new(t.tr("details.commit.parents")).color(color::weak()));
-        for p in &d.parents {
-            if ui.link(RichText::new(short(*p)).monospace()).clicked() {
-                msgs.push(Msg::Repo(RepoMsg::JumpTo(*p)));
-            }
-        }
-    });
-    ui.separator();
-    let n = d.files.len();
-    let counts = st.line_counts.commit(d.oid);
-    let files = ui.label(type_scale::section_text(ui, t.trn("details.commit.changed_files", n, &[])));
-    if let Some(c) = counts.filter(|c| c.complete) {
-        // On the same line, right-aligned, without moving what follows.
-        let rect = egui::Rect::from_x_y_ranges(files.rect.right()..=ui.max_rect().right(), files.rect.y_range());
-        let mut end = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(Layout::right_to_left(Align::Center)));
-        super::line_counts::total(&mut end, c.total);
-    }
-    let lfs = TrackContext::of(st);
-    let tools = crate::state::tool_compare::ToolSetup::of(&st.settings.external_tools);
-    let row_h = widgets::LIST_ROW_H;
-    egui::ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
-        let index = |t: &DiffTarget| d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()));
-        file_reveal::reveal(ui, "commit-files", st.view.file_reveal.as_ref(), index, &range, row_h);
-        for f in &d.files[range] {
-            let patch_blocked = (d.parents.len() > 1).then_some(crate::state::patch::PATCH_BLOCKED_MERGE);
-            let src = RowSource::Commit(d.oid);
-            let lines = counts.and_then(|c| c.get(&f.path).map(|n| (n, c.largest)));
-            let in_workdir = d.in_workdir(&f.path);
-            let actions = RowActions { src, history_at: d.oid, in_workdir, lfs, tools, patch_blocked, lines };
-            changed_file_row(ui, t, f, DiffTarget::Commit(d.oid, f.path.clone()), open, actions, msgs);
-        }
-    });
 }
 
 /// What a file row draws and offers: where its change comes from, the commit its history and
@@ -152,7 +70,8 @@ pub(super) struct RowActions<'a> {
     pub lines: Option<(LineCount, usize)>,
 }
 
-/// A file changed by a commit (or between two): its status and path, which opens `target`.
+/// A file changed by a commit (or between two), which opens `target`: its status chip, its path
+/// (cut first), its `+N −M` right after it, its marks, and the line-count bar at the right end.
 /// Its menu opens the file's history as seen from `actions.history_at`, and has the file
 /// actions.
 pub(super) fn changed_file_row(
@@ -165,14 +84,20 @@ pub(super) fn changed_file_row(
     msgs: &mut Vec<Msg>,
 ) {
     let selected = open == Some(&target);
+    let lines = actions.lines;
     let row = |ui: &mut egui::Ui| {
-        ui.label(RichText::new(status_label(f.status).to_string()).font(type_scale::mono(type_scale::BODY)).color(status_color(f.status)));
-        widgets::row_text(ui, RichText::new(&f.path).monospace(), selected);
+        super::file_status::status_chip(ui, f.status);
+        // The counts keep their width; the path is cut before them.
+        let reserve = lines.map_or(0.0, |(n, _)| super::line_counts::inline_width(ui.ctx(), n) + spacing::GRID);
+        widgets::row_text_reserving(ui, RichText::new(&f.path).monospace(), selected, reserve);
+        if let Some((n, _)) = lines {
+            super::line_counts::inline(ui, n);
+        }
         super::path_warnings::mark(ui, f);
         super::lfs_badge::badge(ui, f);
     };
-    let r = match actions.lines {
-        Some((n, largest)) => widgets::file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::row_end(ui, n, largest), row),
+    let r = match lines {
+        Some((n, largest)) => widgets::file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::bar_end(ui, n, largest), row),
         None => widgets::file_row(ui, selected, &f.path, row),
     }
     .response;

@@ -3,8 +3,8 @@
 //! the node; which tip the pointer over them asks for; where each chip is, for a double-click;
 //! and the ghost "+ branch" chip.
 
+use super::layout::Columns;
 use super::marks::{MARK_W, paint_cloud, paint_local, paint_tag};
-use super::paint::Columns;
 use super::ref_group::Chip;
 use crate::ui::build_status;
 use crate::ui::theme::color;
@@ -17,8 +17,6 @@ use trellis_core::forge::CheckState;
 use trellis_core::i18n::Lang;
 use trellis_core::repo::RefKind;
 
-/// Space between the column's edges and its chips.
-const PAD: f32 = 6.0;
 /// Space between two chips.
 const GAP: f32 = 4.0;
 const CHIP_H: f32 = 22.0;
@@ -201,9 +199,9 @@ impl RefsCell {
 
 /// Draws a commit row's BRANCH / TAG cell in `rect` (see the module notes).
 pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: RefsRow) -> RefsCell {
-    let rp = painter.with_clip_rect(cols.rect(cols.refs, rect));
+    let rp = painter.with_clip_rect(cols.rect(cols.cell.refs, rect));
     let mid = rect.center().y;
-    let x0 = cols.refs.0 + PAD;
+    let x0 = cols.refs.0;
     let mut out = RefsCell::default();
     let mut end = cols.refs.0;
     if !row.chips.is_empty() {
@@ -212,7 +210,7 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
         let text_w = |t: &str, size: f32| rp.layout_no_wrap(t.to_owned(), FontId::proportional(size), color::weak()).size().x;
         let widths: Vec<f32> = specs.iter().map(|s| chip_w(s, text_w(&s.text, FONT))).collect();
         let plus_w = |k: usize| text_w(&format!("+{k}"), PLUS_FONT) + PLUS_PAD;
-        let f = fit(&widths, cols.refs.1 - PAD - x0, plus_w, GAP);
+        let f = fit(&widths, cols.refs.1 - x0, plus_w, GAP);
         let mut drawn = Vec::with_capacity(f.shown);
         let mut x = x0;
         for (i, spec) in specs.iter().take(f.shown).enumerate() {
@@ -229,9 +227,7 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
         }
         out.labels_hit = Some(hit);
         if let Some(edge) = row.node_edge_x {
-            let stroke = Stroke::new(1.5_f32, row.lane);
-            rp.line_segment([pos2(end, mid), pos2(cols.refs.1, mid)], stroke);
-            painter.with_clip_rect(cols.rect(cols.graph, rect)).line_segment([pos2(cols.graph.0, mid), pos2(edge, mid)], stroke);
+            painter.line_segment([pos2(end, mid), pos2(edge, mid)], Stroke::new(1.5_f32, row.lane));
         }
         out.chip_rects = drawn;
         if let Some(p) = row.pointer {
@@ -247,7 +243,7 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
     // A faded "+ branch" after the checked-out commit's labels: click it to branch from the
     // current branch (other commits: right-click > Create branch here).
     let r = Rect::from_min_size(pos2(end + 6.0, mid - 11.0), vec2(80.0, 22.0));
-    if row.ghost && r.right() <= cols.refs.1 - PAD {
+    if row.ghost && r.right() <= cols.refs.1 {
         rp.rect_filled(r, CornerRadius::same(3), color::bg());
         rp.rect_stroke(r, CornerRadius::same(3), Stroke::new(1.0_f32, row.lane.gamma_multiply(0.6)), StrokeKind::Inside);
         rp.text(

@@ -7,12 +7,14 @@
 //! warning and information marks in `severity.rs`. The shared row selection and hover look is
 //! in `row_fill.rs`, and the weak lines and menu suffixes that say why an action is disabled
 //! (or that it opens a setting first) in `reason.rs`. The tab bars' painted close × and
-//! new-tab + are in `tab_glyph.rs`.
+//! new-tab + are in `tab_glyph.rs`, and the quiet, clickable chips of the commit details (its
+//! SHA, parents and committer) in `quiet_chip.rs`.
 
 pub mod banner;
 pub mod buttons;
 pub mod form_message;
 mod icon;
+pub mod quiet_chip;
 pub mod reason;
 pub mod row_fill;
 pub mod section_header;
@@ -25,9 +27,10 @@ pub mod truncate;
 
 pub use super::list_row::{
     GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row,
-    file_row_with_end, list_row, list_row_cut, list_row_hidden, row_text,
+    file_row_with_end, list_row, list_row_cut, list_row_hidden, row_text, row_text_reserving,
 };
 pub use icon::{Icon, paint_icon, paint_icon_sized};
+pub use quiet_chip::quiet_chip;
 pub use section_header::section_fonts;
 #[cfg(test)]
 pub use section_header::section_header;

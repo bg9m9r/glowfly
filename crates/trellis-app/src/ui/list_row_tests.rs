@@ -224,3 +224,24 @@ fn row_text_takes_a_selectable_labels_width() {
     let bar = Rect::from_min_size(row.left_top(), vec2(row_fill::ACCENT_BAR_W, LIST_ROW_H));
     assert!(fills(&shapes).contains(&(bar, color::accent())), "a selected sidebar row has the accent bar");
 }
+
+#[test]
+fn row_text_reserving_leaves_its_room_for_what_follows() {
+    let path = "docs/a/very/long/path/that/never/fits/in/the/row/beside/its/counts.md";
+    let mut right = 0.0;
+    let shapes = pass(|ui| {
+        right = ui.max_rect().right();
+        ui.horizontal(|ui| row_text_reserving(ui, RichText::new(path).monospace(), false, 80.0));
+    });
+    let cut: Vec<_> = shapes
+        .iter()
+        .filter_map(|c| match &c.shape {
+            egui::Shape::Text(t) if t.galley.text().starts_with("docs/") => Some((t.pos.x + t.galley.size().x, t.galley.elided)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(cut.len(), 1, "the path is painted once");
+    let (end, elided) = cut[0];
+    assert!(elided, "the long path is cut");
+    assert!(end <= right - 80.0, "ends at {end}, past the {right} - 80 reserve");
+}

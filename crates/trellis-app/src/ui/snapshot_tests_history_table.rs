@@ -18,8 +18,9 @@ use trellis_core::settings::{ColumnWidths, ThemeChoice};
 
 /// The fixture's search branch's tip (the WIP row is 0).
 const SEARCH_ROW: usize = 1;
-/// Where the "+N" chip sits in `history_labels_overflow`: after two chips in a 240 px column.
-const PLUS_X: f32 = 448.0;
+/// Where the "+N" chip sits in `history_labels_overflow`: after two chips in a 240 px column,
+/// whose chips run from x 276 to 488.
+const PLUS_X: f32 = 456.0;
 /// The labels added to the search branch's tip in `history_labels_overflow`, as their tips read.
 const EXTRA: [&str; 5] = ["feature-a", "feature-b", "origin/feature-c", "v0.2.0", "v0.3.0"];
 

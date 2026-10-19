@@ -111,7 +111,8 @@ fn details_commit_german() {
     st.detail = Some(detail);
     let mut h = harness(st, true);
     h.run();
-    for text in [Lang::De.trn("details.commit.changed_files", n, &[]), Lang::De.tr("common.copy_sha.button").to_owned()] {
+    let short = crate::ui::common::short(oid);
+    for text in [Lang::De.trn("details.commit.changed_files", n, &[]), Lang::De.trf("details.commit.sha", &[("sha", &short)])] {
         assert!(h.query_by_label(&text).is_some(), "{text} is shown");
     }
     h.check_snapshot("details_commit_german");

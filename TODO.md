@@ -332,7 +332,7 @@ until this list says which option was chosen.
       every edge and corner, Snap Layouts on hovering maximise, and the system menu on
       Alt+Space. macOS keeps its traffic lights inset in our bar; Linux keeps the system frame.
       Check text contrast over light and busy wallpapers. Branch icon: A, trunk and branch.
-- [ ] **History table edges and commit details**: 12 px cell padding and a 16 px inset at the
+- [x] **History table edges and commit details**: 12 px cell padding and a 16 px inset at the
       table's edges with the headers aligned; the commit details panel gets one clear type
       hierarchy, SHA and parent chips that copy, and file rows with status chips.
       Chosen 2026-10-19: the board as drawn, with commit details option A (roomy, title
@@ -2802,3 +2802,25 @@ here, under the item they grew from.
   Vivid colour gives each job its own colour
 - A slightly stronger modal backdrop in Dark: its darker panel now drops only about 8 L* under
   the backdrop
+
+### History table edges and commit details
+
+- An 18 px display step in the type scale (a sixth step and its tests); the commit title uses
+  SUBHEAD 16 semibold until then
+- A taller graph column header (28-32 px) to match the roomier cells (shifts every row_y in
+  tests)
+- A brief "Copied" confirmation after clicking a copy chip
+- Status names on hover for the file rows' status chips (Modified, Added, Renamed, Type changed)
+- WIP Unstaged/Staged file rows use the status chips and the counts beside the name
+- The compare-with-working-tree header uses the SHA chip instead of its Copy SHA button
+- Rename rows show the old path (R from -> to)
+- Commit trailers (Co-authored-by, Signed-off-by) shown as person chips
+- Apply .mailmap to author and committer names in the details panel
+- Note when the author and committer are the same but the commit date is later than the author
+  date (rebased or amended)
+- Read non-UTF-8 commit messages and names lossily instead of showing them empty
+- A monospace option for the commit body block
+- Mark the first parent of a merge (the branch merged into) on its chip
+- Graph table: a keyboard focus ring on the column header dividers, to resize without a mouse
+- The search bar's controls past the query field don't shrink: in a narrow graph the field's
+  floor (160 px) is reached and Close can be cut at the right edge

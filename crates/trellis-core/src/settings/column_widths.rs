@@ -34,7 +34,7 @@ impl ResizableColumn {
             Self::Refs => 190.0,
             Self::Changes => 100.0,
             Self::Commit => 170.0,
-            Self::Date => 150.0,
+            Self::Date => 160.0,
         }
     }
 
@@ -56,6 +56,8 @@ impl ResizableColumn {
 }
 
 /// Graph column widths in px; read them through `get`, which sanitizes hand-edited values.
+/// A width is the column's whole cell, divider to divider, including its 12 px padding and, at
+/// the table's edge, the 16 px inset.
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ColumnWidths {
@@ -145,7 +147,7 @@ mod tests {
     #[test]
     fn column_width_defaults() {
         let w = ColumnWidths::default();
-        assert_eq!([Refs, Changes, Commit, Date].map(|c| w.get(c)), [190.0, 100.0, 170.0, 150.0]);
+        assert_eq!([Refs, Changes, Commit, Date].map(|c| w.get(c)), [190.0, 100.0, 170.0, 160.0]);
         assert_eq!(ResizableColumn::ALL.map(|c| w.get(c)), ResizableColumn::ALL.map(|c| c.default_width()));
     }
 
@@ -169,7 +171,7 @@ mod tests {
         assert_eq!(w.commit, 200.0);
         assert!(!w.set(Commit, 200.0), "the same width is no change");
         assert!(!w.set(Date, f32::NAN));
-        assert_eq!(w.date, 150.0);
+        assert_eq!(w.date, 160.0);
 
         let edited = ColumnWidths { refs: f32::INFINITY, commit: 9999.0, ..ColumnWidths::default() };
         assert_eq!(edited.get(Refs), 190.0);

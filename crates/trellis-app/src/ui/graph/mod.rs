@@ -6,6 +6,7 @@
 mod cells;
 mod header;
 mod labels;
+mod layout;
 mod marks;
 mod more;
 mod nodes;
@@ -40,8 +41,9 @@ use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Rect, Sense, pos2, vec2};
 use git2::Oid;
 use labels::Tip;
+use layout::Columns;
 use nodes::NodeKind;
-use paint::{Columns, draw_lanes, lane_x};
+use paint::{draw_lanes, lane_x};
 use std::collections::HashMap;
 use trellis_core::repo::RefKind;
 use trellis_core::settings::DescriptionMode;
@@ -180,7 +182,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let highlighted = commit.is_some_and(|c| highlight.is_some_and(|h| h.contains(&c.oid)));
                 row_look::paint(&painter, rect, row_look::RowLook { lane: lane_col, highlighted, selected, hovered });
 
-                let gp = painter.with_clip_rect(cols.rect(cols.graph, rect));
+                let gp = painter.with_clip_rect(cols.rect(cols.cell.graph, rect));
                 let node_x = lane_x(cols.graph.0, if filtered { 0 } else { g.col });
                 let mid = rect.center().y;
                 // Another worktree's row: a click opens (or switches to) that worktree's tab; its
@@ -265,7 +267,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 };
                 let text = cells::draw(&painter, &cells);
 
-                let in_date = cols_cfg.date && pointer.is_some_and(|p| cols.rect(cols.date, rect).contains(p));
+                let in_date = cols_cfg.date && pointer.is_some_and(|p| cols.rect(cols.cell.date, rect).contains(p));
                 let resp = match refs.hovered_tip {
                     Some(Tip::All) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_list(ui, t, &chips, lane_col)),
                     Some(Tip::One(i)) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_row(ui, t, &chips[i], lane_col)),

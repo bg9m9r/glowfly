@@ -32,6 +32,8 @@ mod date_tip;
 mod deep_link_dialog;
 mod details;
 mod details_banner;
+mod details_chips;
+mod details_commit;
 mod details_multi;
 mod details_wip;
 mod details_workdir;
@@ -43,6 +45,7 @@ mod empty_state_icons;
 mod file_buttons;
 mod file_dialogs;
 mod file_menu;
+mod file_status;
 mod file_view_switch;
 mod find_bar;
 mod forge_filter_dialog;
@@ -174,6 +177,8 @@ mod snapshot_tests_dates;
 #[cfg(test)]
 mod snapshot_tests_deep_link;
 #[cfg(test)]
+mod snapshot_tests_details_commit;
+#[cfg(test)]
 mod snapshot_tests_dialog_discard;
 #[cfg(test)]
 mod snapshot_tests_dialog_enter;
@@ -215,6 +220,8 @@ mod snapshot_tests_graph_double_click;
 mod snapshot_tests_graph_ref_menu;
 #[cfg(test)]
 mod snapshot_tests_history;
+#[cfg(test)]
+mod snapshot_tests_history_edges;
 #[cfg(test)]
 mod snapshot_tests_history_file;
 #[cfg(test)]

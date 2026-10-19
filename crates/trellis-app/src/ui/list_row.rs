@@ -223,8 +223,14 @@ fn file_row_in<R>(ui: &mut Ui, selected: bool, name: &str, layout: Layout, add: 
 /// row has it) and cut with "…" to the room left, whole on hover. It takes a selectable label's
 /// size, so rows lay out as they did; a selected row's text is strong.
 pub fn row_text(ui: &mut Ui, text: RichText, selected: bool) -> Response {
+    row_text_reserving(ui, text, selected, 0.0)
+}
+
+/// `row_text` that leaves `reserve` px after it for what follows on the row (a file's line
+/// counts), cutting the text sooner.
+pub fn row_text_reserving(ui: &mut Ui, text: RichText, selected: bool, reserve: f32) -> Response {
     let pad = ui.spacing().button_padding;
-    let wrap_w = (ui.available_width() - 2.0 * pad.x).max(0.0);
+    let wrap_w = (ui.available_width() - 2.0 * pad.x - reserve).max(0.0);
     let galley = WidgetText::from(text).into_galley(ui, Some(TextWrapMode::Truncate), wrap_w, TextStyle::Button);
     let mut size = galley.size() + 2.0 * pad;
     size.y = size.y.max(ui.spacing().interact_size.y);

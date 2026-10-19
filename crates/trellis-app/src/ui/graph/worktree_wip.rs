@@ -2,8 +2,9 @@
 //! worktree's HEAD commit, an "Uncommitted changes · <folder>" box and the change counts). This
 //! tab's own WIP row is drawn by `wip_row`.
 
+use super::layout::Columns;
 use super::nodes;
-use super::paint::{Columns, draw_lanes, lane_x, paint_pencil};
+use super::paint::{draw_lanes, lane_x, paint_pencil};
 use crate::ui::common::{added_color, lane_color, modified_color, removed_color};
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;

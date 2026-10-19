@@ -39,7 +39,9 @@ fn graph_columns_resized() {
 
 #[test]
 fn graph_column_drag() {
-    let (st, dir) = with_repo(ThemeChoice::Light, "columns-drag");
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "columns-drag");
+    // A narrower BRANCH / TAG column leaves the message column some room to give.
+    st.settings.column_widths = ColumnWidths { refs: 170.0, ..ColumnWidths::default() };
     let mut h = harness(st, false);
     h.run();
     let start = grip(&h, "Resize commit column");

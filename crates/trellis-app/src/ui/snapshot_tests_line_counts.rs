@@ -15,14 +15,14 @@ use trellis_core::settings::ThemeChoice;
 
 const D: &str = "2026-01-12T10:00:00+00:00";
 
-fn write(dir: &Path, file: &str, text: &str) {
+pub(super) fn write(dir: &Path, file: &str, text: &str) {
     if let Some(parent) = dir.join(file).parent() {
         std::fs::create_dir_all(parent).unwrap();
     }
     std::fs::write(dir.join(file), text).unwrap();
 }
 
-fn lines(prefix: &str, n: usize) -> String {
+pub(super) fn lines(prefix: &str, n: usize) -> String {
     (1..=n).map(|i| format!("{prefix} {i}\n")).collect()
 }
 

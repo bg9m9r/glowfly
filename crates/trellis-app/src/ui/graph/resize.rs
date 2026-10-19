@@ -2,7 +2,7 @@
 //! column. The drag lives in `ViewState::column_drag` as a preview; only the release sends the
 //! width to `update`, which saves it.
 
-use super::paint::Columns;
+use super::layout::Columns;
 use crate::msg::{GraphMsg, Msg};
 use crate::state::ColumnDrag;
 use crate::ui::theme::color;

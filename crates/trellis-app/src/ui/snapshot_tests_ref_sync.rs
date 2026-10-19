@@ -143,10 +143,11 @@ fn graph_ref_remote_copies_tooltip() {
     labels.extend([remote_label("fork/review"), remote_label("origin/review")]);
     sort_labels(labels);
     snap.remotes = vec![("fork".into(), vec![("review".into(), search)]), ("origin".into(), vec![("review".into(), search)])];
+    st.settings.column_widths.refs = super::snapshot_tests_graph_double_click::WIDE_REFS;
     let mut h = harness(st, true);
     h.run();
     let before = labels_named(&h, COPIES);
-    // The row's chips are [search, origin/review]; the second sits at about x 336-438.
+    // The row's chips are [search, origin/review]; the second sits at about x 348-456.
     h.input_mut().events.push(Event::PointerMoved(pos2(390.0, row_y(SEARCH_ROW))));
     for _ in 0..4 {
         h.step();

@@ -3,7 +3,7 @@
 //! date, right-aligned. Each is cut to its column with "…"; `RowText` says which were cut, for
 //! the row's tooltip.
 
-use super::paint::Columns;
+use super::layout::Columns;
 use crate::ui::common::{added_color, removed_color};
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;

@@ -6,7 +6,7 @@
 //! the note is always visible.
 
 use super::LANE_W;
-use super::paint::Columns;
+use super::layout::{CELL_PAD, Columns, EDGE_INSET};
 use super::resize;
 use crate::msg::{JobMsg, LoadMsg, Msg};
 use crate::state::ColumnDrag;
@@ -26,8 +26,6 @@ const GAP: f32 = 10.0;
 /// Height of the header row, and of the notes line under it.
 const ROW_H: f32 = 22.0;
 
-/// Space between a column's edges and its title.
-const TITLE_PAD: f32 = 6.0;
 /// The titles' font size.
 const TITLE_FONT: f32 = type_scale::CAPTION;
 
@@ -70,34 +68,30 @@ impl Title {
         }
     }
 
-    /// The column's extent in the header (the message column's starts at its divider).
+    /// The column's content extent, where its title goes (`ORDER` is the columns' order).
     fn extent(self, cols: &Columns) -> (f32, f32) {
-        match self {
-            Self::Refs => cols.refs,
-            Self::Graph => cols.graph,
-            Self::Msg => (cols.msg.0 - 6.0, cols.msg.1),
-            Self::Changes => cols.changes,
-            Self::Commit => cols.commit,
-            Self::Date => cols.date,
-        }
+        cols.content()[self as usize]
     }
 
-    /// The resizable column, with the gap its stored width includes beside what is drawn
-    /// (`Columns::new`).
-    fn resizable(self) -> Option<(ResizableColumn, f32)> {
+    /// The column's cell, divider to divider.
+    fn cell(self, cols: &Columns) -> (f32, f32) {
+        cols.cell.all()[self as usize]
+    }
+
+    fn resizable(self) -> Option<ResizableColumn> {
         match self {
-            Self::Refs => Some((ResizableColumn::Refs, 0.0)),
-            Self::Changes => Some((ResizableColumn::Changes, 8.0)),
-            Self::Commit => Some((ResizableColumn::Commit, 8.0)),
-            Self::Date => Some((ResizableColumn::Date, 0.0)),
+            Self::Refs => Some(ResizableColumn::Refs),
+            Self::Changes => Some(ResizableColumn::Changes),
+            Self::Commit => Some(ResizableColumn::Commit),
+            Self::Date => Some(ResizableColumn::Date),
             Self::Graph | Self::Msg => None,
         }
     }
 }
 
-/// The GRAPH column's width for `lanes`, at least its title's width (`title_w`) and padding.
+/// The GRAPH column's content width for `lanes`, at least its title's width (`title_w`).
 fn graph_width_for(lanes: usize, title_w: f32) -> f32 {
-    (lanes as f32 * LANE_W + 10.0).max(title_w + 2.0 * TITLE_PAD)
+    (lanes as f32 * LANE_W).max(title_w)
 }
 
 /// The GRAPH column's width for `lanes` lanes, wide enough for its title (one lane, or a
@@ -106,17 +100,19 @@ pub(super) fn graph_width(ui: &egui::Ui, t: Lang, lanes: usize) -> f32 {
     graph_width_for(lanes, text_w(ui, Title::Graph.text(t), &FontId::proportional(TITLE_FONT)))
 }
 
-/// The least width of each resizable column: its title with padding, plus the gap the width
-/// includes. COMMIT also fits a seven-character SHA.
+/// The least width of each resizable column: its title with the cell padding on one side and
+/// the edge inset on the other (the most either side takes). COMMIT also fits a seven-character
+/// SHA.
 fn floors(ui: &egui::Ui, t: Lang, font: &FontId) -> [(ResizableColumn, f32); 4] {
-    let sha_w = text_w(ui, "0000000", &type_scale::mono(type_scale::SMALL)) + 8.0 + 2.0;
+    let sha_w = text_w(ui, "0000000", &type_scale::mono(type_scale::SMALL));
     let mut out = ResizableColumn::ALL.map(|c| (c, 0.0));
     for title in ORDER {
-        let Some((col, gap)) = title.resizable() else { continue };
-        let mut floor = text_w(ui, title.text(t), font) + 2.0 * TITLE_PAD + gap;
+        let Some(col) = title.resizable() else { continue };
+        let mut content = text_w(ui, title.text(t), font);
         if col == ResizableColumn::Commit {
-            floor = floor.max(sha_w);
+            content = content.max(sha_w);
         }
+        let floor = content + CELL_PAD + EDGE_INSET;
         if let Some(slot) = out.iter_mut().find(|(c, _)| *c == col) {
             // Whole pixels, as stored widths are.
             slot.1 = floor.ceil();
@@ -165,7 +161,7 @@ pub(super) fn column_header(
         // Too narrow for the whole set beside the title: a line of its own, under the titles.
         let (line, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
         ui.painter().line_segment([line.left_bottom(), line.right_bottom()], Stroke::new(1.0_f32, color::border()));
-        notes.draw(ui, snap, &font, pos2(line.right() - 6.0, line.center().y), line.left() + 6.0, msgs);
+        notes.draw(ui, snap, &font, pos2(line.right() - EDGE_INSET, line.center().y), line.left() + EDGE_INSET, msgs);
     } else {
         notes.draw(ui, snap, &font, pos2(cols.msg.1, hdr.center().y), title_end, msgs);
     }
@@ -180,25 +176,26 @@ fn titles(ui: &egui::Ui, hdr: Rect, cols: &Columns, cols_cfg: &GraphColumns, fon
     p.line_segment([hdr.left_bottom(), hdr.right_bottom()], Stroke::new(1.0_f32, color::border()));
     let shown = || ORDER.into_iter().filter(|c| c.shown(cols_cfg)).map(|c| (c.text(t), c, c.extent(cols)));
     for (text, title, col) in shown() {
-        let clip = p.with_clip_rect(Rect::from_x_y_ranges(col.0..=col.1.max(col.0), hdr.y_range()));
-        let max_w = (col.1 - col.0) - 2.0 * TITLE_PAD;
+        let clip = p.with_clip_rect(cols.rect(title.cell(cols), hdr));
+        let max_w = col.1 - col.0;
         let cut = if title == Title::Date {
             let g = cut_galley(ui.ctx(), cut_job(text, font.clone(), weak), max_w);
-            let rect = Align2::RIGHT_CENTER.anchor_size(pos2(col.1 - TITLE_PAD, hdr.center().y), g.size());
+            let rect = Align2::RIGHT_CENTER.anchor_size(pos2(col.1, hdr.center().y), g.size());
             let cut = g.elided;
             clip.galley(rect.min, g, weak);
             crate::ui::widgets::Cut { rect, cut }
         } else {
-            paint_cut_text(&clip, pos2(col.0 + TITLE_PAD, hdr.center().y), text, font.clone(), weak, max_w)
+            paint_cut_text(&clip, pos2(col.0, hdr.center().y), text, font.clone(), weak, max_w)
         };
         // Only over the title itself, clear of the dividers' grips.
         if cut.cut && cut.rect.width() > 0.0 {
             let _ = ui.interact(cut.rect, ui.id().with(("column-title", title as u8)), Sense::hover()).on_hover_text(text);
         }
     }
-    for (_, _, col) in shown() {
-        if col.0 > hdr.left() + 1.0 {
-            p.line_segment([pos2(col.0, hdr.top() + 4.0), pos2(col.0, hdr.bottom() - 4.0)], Stroke::new(1.0_f32, color::border()));
+    for (_, title, _) in shown() {
+        let x = title.cell(cols).0;
+        if x > hdr.left() + 1.0 {
+            p.line_segment([pos2(x, hdr.top() + 4.0), pos2(x, hdr.bottom() - 4.0)], Stroke::new(1.0_f32, color::border()));
         }
     }
 }
@@ -336,17 +333,20 @@ mod tests {
                 let font = FontId::proportional(TITLE_FONT);
                 let floors = floors(ui, Lang::En, &font);
                 let floor = |c: ResizableColumn| floors.iter().find(|(x, _)| *x == c).map_or(0.0, |f| f.1);
-                assert!(floor(Commit) >= text_w(ui, "Commit", &font) + 2.0 * TITLE_PAD + 8.0);
-                assert!(floor(Commit) >= text_w(ui, "0000000", &FontId::monospace(11.5)) + 8.0);
+                let pads = CELL_PAD + EDGE_INSET;
+                for title in ORDER.into_iter().filter(|t| t.resizable().is_some()) {
+                    assert!(floor(title.resizable().unwrap_or(Refs)) >= text_w(ui, title.text(Lang::En), &font) + pads);
+                }
+                assert!(floor(Commit) >= text_w(ui, "0000000", &type_scale::mono(type_scale::SMALL)) + pads);
                 let w = floored(NARROW, &floors);
                 for (col, f) in floors {
                     assert!(w.get(col) >= f && w.get(col) >= NARROW.get(col), "{col:?}");
                 }
-                assert!(graph_width(ui, Lang::En, 1) >= text_w(ui, "Graph", &font) + 2.0 * TITLE_PAD);
+                assert!(graph_width(ui, Lang::En, 1) >= text_w(ui, "Graph", &font));
             });
         });
-        assert_eq!(graph_width_for(3, 30.0), 3.0 * LANE_W + 10.0, "lanes wider than the title keep their width");
-        assert_eq!(graph_width_for(1, 40.0), 40.0 + 2.0 * TITLE_PAD);
+        assert_eq!(graph_width_for(3, 30.0), 3.0 * LANE_W, "lanes wider than the title keep their width");
+        assert_eq!(graph_width_for(1, 40.0), 40.0);
     }
 
     #[test]
@@ -358,10 +358,10 @@ mod tests {
                 let floor = |t: Lang, c: ResizableColumn| floors(ui, t, &font).iter().find(|(x, _)| *x == c).map_or(0.0, |f| f.1);
                 let changes = Lang::De.tr("graph.header.changes");
                 assert_eq!(changes, "Änderungen");
-                assert!(floor(Lang::De, Changes) >= text_w(ui, changes, &font) + 2.0 * TITLE_PAD + 8.0);
+                assert!(floor(Lang::De, Changes) >= text_w(ui, changes, &font) + CELL_PAD + EDGE_INSET);
                 assert!(floor(Lang::De, Changes) > floor(Lang::En, Changes), "the longer German title widens the floor");
                 let graph = Lang::De.tr("graph.header.graph");
-                assert!(graph_width(ui, Lang::De, 1) >= text_w(ui, graph, &font) + 2.0 * TITLE_PAD);
+                assert!(graph_width(ui, Lang::De, 1) >= text_w(ui, graph, &font));
             });
         });
     }

@@ -12,10 +12,12 @@ use crate::tag::TagMsg;
 use eframe::egui::{Modifiers, pos2};
 use git2::Oid;
 use trellis_core::repo::{RefKind, RefLabel};
-use trellis_core::settings::ThemeChoice;
+use trellis_core::settings::{ColumnWidths, ThemeChoice};
 
 /// Where the first chip of a row sits in the BRANCH / TAG column.
 const CHIP_X: f32 = 290.0;
+/// A BRANCH / TAG width that fits a branch chip and a remote branch chip side by side.
+pub(super) const WIDE_REFS: f32 = 220.0;
 /// The fixture's rows (the WIP row is 0): the search branch's tip and the merge on main.
 const SEARCH_ROW: usize = 1;
 const MAIN_ROW: usize = 2;
@@ -58,9 +60,11 @@ fn graph_label_double_click_uses_the_chip_under_the_pointer() {
     let snap = st.snap.as_mut().unwrap();
     snap.refs.entry(search).or_default().push(remote_label("origin/review"));
     snap.remotes = vec![("origin".into(), vec![("main".into(), main), ("review".into(), search)])];
+    // A BRANCH / TAG column wide enough for both chips.
+    st.settings.column_widths = ColumnWidths { refs: WIDE_REFS, ..ColumnWidths::default() };
     let mut h = harness(st, true);
     h.run();
-    // The row's chips are [search, origin/review]; the second sits at about x 336-438.
+    // The row's chips are [search, origin/review]; the second sits at about x 348-456.
     double_click(&mut h, pos2(390.0, row_y(SEARCH_ROW)), Modifiers::NONE);
     let found = checkouts(&h.state().1);
     let remote = |b: &BranchMsg| checks_out_remote(b, "origin", "review");
@@ -104,9 +108,11 @@ fn graph_label_double_click_on_folded_copies() {
     let snap = st.snap.as_mut().unwrap();
     snap.refs.entry(search).or_default().extend([remote_label("fork/review"), remote_label("origin/review")]);
     snap.remotes = vec![("fork".into(), vec![("review".into(), search)]), ("origin".into(), vec![("review".into(), search)])];
+    // A BRANCH / TAG column wide enough for both chips.
+    st.settings.column_widths = ColumnWidths { refs: WIDE_REFS, ..ColumnWidths::default() };
     let mut h = harness(st, true);
     h.run();
-    // The row's chips are [search, origin/review]; the second sits at about x 336-438.
+    // The row's chips are [search, origin/review]; the second sits at about x 348-456.
     double_click(&mut h, pos2(390.0, row_y(SEARCH_ROW)), Modifiers::NONE);
     let found = checkouts(&h.state().1);
     assert!(matches!(found[..], [b] if checks_out_remote(b, "origin", "review")), "the lead copy's checkout only");

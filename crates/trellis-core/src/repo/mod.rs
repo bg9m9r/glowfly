@@ -321,7 +321,11 @@ pub struct CommitDetail {
     pub author: String,
     pub email: String,
     pub committer: String,
+    pub committer_email: String,
+    /// The committer date (seconds).
     pub time: i64,
+    /// When the author wrote the change (seconds); `time` is when it was committed.
+    pub author_time: i64,
     pub parents: Vec<Oid>,
     pub files: Vec<FileEntry>,
     /// Paths of `files` missing from the working tree when the detail was loaded (deleted,

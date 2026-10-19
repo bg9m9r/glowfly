@@ -18,13 +18,13 @@ use trellis_core::matching::contains_lower;
 /// How many authors the picker lists before asking for a narrower filter.
 const MAX_AUTHORS: usize = 200;
 
-/// Room after the query field: the Highlight | Filter mode (~150), the author picker (160 plus
+/// Room after the query field: the Highlight | Filter mode (~150), the author picker (150 plus
 /// its arrow and padding), the match count's slot (`COUNT_W`), Close (~55) and the spacing.
-const CONTROLS_W: f32 = 585.0;
+const CONTROLS_W: f32 = 565.0;
 
 /// The match count's slot: kept whether or not there is a count, so the controls after it stay
 /// put while it changes ("No matches", "3 of 12", "12 so far, searching…").
-const COUNT_W: f32 = 160.0;
+const COUNT_W: f32 = 150.0;
 
 /// The field's right inner margin, where the clear button sits so text never runs under it.
 const CLEAR_ROOM: f32 = 26.0;
@@ -35,7 +35,7 @@ const HINT: &str = "Search messages, authors and SHAs; narrow with author: or pa
 
 pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
-        ui.add_space(8.0);
+        ui.add_space(super::layout::EDGE_INSET);
         // The field gives up width before the controls after it run out of room.
         let width = (ui.available_width() - CONTROLS_W).clamp(160.0, 420.0);
         let empty = st.view.search.is_empty();
@@ -131,7 +131,7 @@ fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let filter = &mut st.view.author_filter;
     let search = &st.search;
     let open = egui::ComboBox::from_id_salt("search-author")
-        .width(160.0)
+        .width(150.0)
         .selected_text(text)
         // Clicks in the filter field keep the list open.
         .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
