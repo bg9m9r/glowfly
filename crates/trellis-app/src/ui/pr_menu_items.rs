@@ -1,8 +1,9 @@
 //! Pull request items shared by the branch row menus and the toolbar: create one (into the
 //! branch selected before the menu opened, or from the checked-out branch into a remote one),
 //! and push the branch first when the code host lacks it or some of its commits. A branch that
-//! can't be pushed plainly gets a disabled item saying why; nothing is ever force-pushed. Also
-//! the pull request tooltip the sidebar and the dashboard share.
+//! can't be pushed plainly gets a disabled item saying why; nothing is ever force-pushed.
+//! Without a code host, a row menu keeps one disabled item saying why. Also the pull request
+//! tooltip the sidebar and the dashboard share.
 
 use super::common::{menu_item, menu_item_if};
 use crate::msg::ForgeMsg;
@@ -94,6 +95,25 @@ pub(super) fn remote(ui: &mut egui::Ui, name: &str, oid: Oid, snap: &Snapshot, f
             menu_item_if(msgs, ui, format!("Create {noun} from {h} into this branch…"), Some(why.as_str()), create(h, Some(name)));
         }
         _ => menu_item(msgs, ui, format!("Create {noun} from {h} into this branch…"), create(h, Some(name))),
+    }
+}
+
+/// A LOCAL row when no remote is on a code host: one disabled item saying why.
+pub(super) fn local_no_host(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    let why = push_pr::no_host_reason(push_pr::pr_remote(b, snap).as_deref());
+    menu_item_if(msgs, ui, "Create pull request…", Some(&why), create(&b.name, None));
+}
+
+/// A REMOTE row when no remote is on a code host: one disabled item saying why, from the
+/// checked-out branch into this one when that is another branch.
+pub(super) fn remote_no_host(ui: &mut egui::Ui, remote: &str, name: &str, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    let why = push_pr::no_host_reason(Some(remote));
+    match snap.head_info().filter(|h| !push_pr::is_same_branch(h, remote, name)) {
+        Some(h) => {
+            let label = format!("Create pull request from {} into this branch…", h.name);
+            menu_item_if(msgs, ui, label, Some(&why), create(&h.name, Some(name)));
+        }
+        None => menu_item_if(msgs, ui, "Create pull request…", Some(&why), create(name, None)),
     }
 }
 

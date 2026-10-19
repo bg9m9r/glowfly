@@ -47,11 +47,19 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     if !current.is_empty() {
         current_items(ui, remote, name, oid, snap, current, msgs);
     }
-    if let Some(fs) = fs.filter(|f| f.remote == remote && f.host.is_some()) {
-        ui.separator();
-        match fs.pr_for_branch(name) {
-            Some(pr) => menu_item(msgs, ui, format!("Open {} {}", fs.pr_noun(), fs.pr_label(pr.id)), Msg::OpenUrl(pr.url.clone())),
-            None => super::pr_menu_items::remote(ui, name, oid, snap, fs, c.sel, msgs),
+    match fs.filter(|f| f.host.is_some()) {
+        Some(fs) if fs.remote == remote => {
+            ui.separator();
+            match fs.pr_for_branch(name) {
+                Some(pr) => menu_item(msgs, ui, format!("Open {} {}", fs.pr_noun(), fs.pr_label(pr.id)), Msg::OpenUrl(pr.url.clone())),
+                None => super::pr_menu_items::remote(ui, name, oid, snap, fs, c.sel, msgs),
+            }
+        }
+        // Another remote of a repository on a code host: pull requests go through the host's.
+        Some(_) => {}
+        None => {
+            ui.separator();
+            super::pr_menu_items::remote_no_host(ui, remote, name, snap, msgs);
         }
     }
     ui.separator();

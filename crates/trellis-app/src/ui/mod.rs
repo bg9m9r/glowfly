@@ -225,6 +225,8 @@ mod snapshot_tests_platform_dialogs;
 #[cfg(test)]
 mod snapshot_tests_pr_checks;
 #[cfg(test)]
+mod snapshot_tests_pr_no_host;
+#[cfg(test)]
 mod snapshot_tests_prefs_git;
 #[cfg(test)]
 mod snapshot_tests_prefs_keyboard;

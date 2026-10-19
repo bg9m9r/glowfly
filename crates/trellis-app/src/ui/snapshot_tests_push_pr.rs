@@ -92,7 +92,7 @@ fn remote_branch_menu_pr() {
     h.run();
     open_row_menu(&mut h, false);
     h.check_snapshot("remote_branch_menu_pr");
-    assert!(h.query_by_label("Create pull request from main into this branch…").is_some());
+    assert!(!h.get_by_label("Create pull request from main into this branch…").is_disabled(), "on a code host it is on");
     h.get_by_label("Create pull request…").click();
     h.run();
     assert!(sent(&h, |f| matches!(f, ForgeMsg::CreatePrDialog { source, target: None } if source == "search")));

@@ -144,3 +144,26 @@ pub fn pr_source(snap: &Snapshot, fs: &ForgeState, name: &str) -> String {
 pub fn open_pr<'a>(snap: &Snapshot, fs: &'a ForgeState, name: &str) -> Option<&'a PullRequest> {
     fs.pr_for_branch(&pr_source(snap, fs, name))
 }
+
+/// Why the pull request items are off when no remote is on a code host, and there are no remotes.
+pub const NO_REMOTE_FOR_PR: &str = "Add a remote on a code host such as GitHub or GitLab to create pull requests.";
+
+/// Why the pull request items are off when no remote is on a code host: `remote` (the one the
+/// branch tracks or is on, else the default one) isn't on one, or there are no remotes.
+pub fn no_host_reason(remote: Option<&str>) -> String {
+    match remote {
+        Some(r) => format!("{r} isn't on a code host such as GitHub or GitLab, so it can't take pull requests."),
+        None => NO_REMOTE_FOR_PR.to_owned(),
+    }
+}
+
+/// The remote a pull request from local branch `b` would go through: the one it tracks, else
+/// the default one.
+pub fn pr_remote(b: &BranchInfo, snap: &Snapshot) -> Option<String> {
+    branches::remote_tracking(b).map(|t| t.remote.clone()).or_else(|| branches::default_remote(snap))
+}
+
+/// Whether local branch `b` is remote branch `remote`/`name` (named the same, or tracking it).
+pub fn is_same_branch(b: &BranchInfo, remote: &str, name: &str) -> bool {
+    b.name == name || branches::remote_tracking(b).is_some_and(|t| t.remote == remote && t.merge == name)
+}
