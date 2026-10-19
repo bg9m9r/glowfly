@@ -4,6 +4,7 @@
 use super::{help, row};
 use crate::msg::Msg;
 use crate::themes::{ThemeMsg, ThemeState};
+use crate::ui::theme::type_scale;
 use crate::ui::theme::{color, custom};
 use crate::ui::theme_names;
 use crate::ui::widgets::buttons;
@@ -54,7 +55,7 @@ fn selected_text(t: Lang, choice: &ThemeChoice, cat: &ThemeCatalog) -> String {
 }
 
 fn line(ui: &mut Ui, text: String, c: egui::Color32) {
-    ui.add(egui::Label::new(RichText::new(text).size(12.0).color(c)).wrap());
+    ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(c)).wrap());
 }
 
 /// The folder's error, and the selected file's problems (fatal ones red) or why it is missing.

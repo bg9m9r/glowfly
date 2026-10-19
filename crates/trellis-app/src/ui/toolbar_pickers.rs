@@ -8,9 +8,10 @@ use super::menus::repo_menu;
 use crate::msg::{BranchMsg, Msg};
 use crate::state::AppState;
 use crate::ui::common::{caret_after, menu_item, short};
+use crate::ui::theme::type_scale::{self, SUBHEAD};
 use crate::ui::theme::{color, spacing};
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use eframe::egui::{self, FontId, Id, RichText, WidgetText};
+use eframe::egui::{self, Id, RichText, WidgetText};
 
 /// The widest a repository name is drawn (in a window with room for it).
 pub const REPO_NAME_MAX: f32 = 96.0;
@@ -66,12 +67,12 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let chip = st.snap.is_some() && crate::ui::conflict_check::shown(st).is_some();
     let (repo_max, branch_max) = name_limits(slot, chip);
     let t = st.settings.lang();
-    let name_font = FontId::proportional(16.0);
+    let (repo_font, branch_font) = (type_scale::strong(ui, SUBHEAD), type_scale::font(SUBHEAD));
     ui.vertical(|ui| {
         ui.add_space(4.0);
-        ui.label(RichText::new(t.tr("toolbar.repository")).size(11.0).color(color::weak()));
+        ui.label(RichText::new(t.tr("toolbar.repository")).size(type_scale::CAPTION).color(color::weak()));
         let name = st.snap.as_ref().map(|s| s.name.clone()).unwrap_or_else(|| t.tr("toolbar.open").into());
-        let g = cut_galley(ui.ctx(), cut_job(name, name_font.clone(), color::text()), repo_max);
+        let g = cut_galley(ui.ctx(), cut_job(name, repo_font, color::text()), repo_max);
         let r = ui.menu_button(WidgetText::Galley(g.clone()), |ui| repo_menu(ui, t, st, msgs));
         caret_after(ui, &r.response);
         if g.elided {
@@ -80,15 +81,15 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     });
     if let Some(snap) = &st.snap {
         ui.add_space(12.0);
-        ui.label(RichText::new("›").size(20.0).color(color::weak()));
+        ui.label(RichText::new("›").size(type_scale::TITLE).color(color::weak()));
         ui.vertical(|ui| {
             ui.add_space(4.0);
-            ui.label(RichText::new(t.tr("toolbar.branch")).size(11.0).color(color::weak()));
+            ui.label(RichText::new(t.tr("toolbar.branch")).size(type_scale::CAPTION).color(color::weak()));
             let head = snap
                 .head_branch
                 .clone()
                 .unwrap_or_else(|| snap.head_oid.map(|o| t.trf("toolbar.detached", &[("sha", &short(o))])).unwrap_or_default());
-            let g = cut_galley(ui.ctx(), cut_job(head, name_font, color::text()), branch_max);
+            let g = cut_galley(ui.ctx(), cut_job(head, branch_font, color::text()), branch_max);
             let r = ui.menu_button(WidgetText::Galley(g.clone()), |ui| {
                 ui.set_min_width(220.0);
                 for b in &snap.locals {

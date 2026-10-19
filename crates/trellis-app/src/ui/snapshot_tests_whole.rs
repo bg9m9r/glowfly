@@ -104,7 +104,7 @@ fn whole_file_revert_targets_the_blocks_hunk() {
     let generation = st.hunk_ops_gen().expect("buttons enabled");
     let mut h = harness(st, true);
     h.run();
-    let buttons: Vec<_> = h.get_all_by_label("Revert Hunk").collect();
+    let buttons: Vec<_> = h.get_all_by_label("Revert hunk").collect();
     assert_eq!(buttons.len(), 2, "one per change block");
     buttons[1].click();
     h.run();

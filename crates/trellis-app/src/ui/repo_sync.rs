@@ -6,6 +6,7 @@ use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::truncate;
 use crate::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, outcome_text};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText};
 use trellis_core::native_path::shown;
 use trellis_core::repo_sync::Outcome;
@@ -32,7 +33,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, sync: Option<&RepoSync>) -> bool {
     } else {
         ui.label(sync.summary());
     }
-    ui.label(RichText::new(NO_PROMPTS_NOTE).small().color(color::weak()));
+    ui.label(RichText::new(NO_PROMPTS_NOTE).size(type_scale::SMALL).color(color::weak()));
     ui.add_space(8.0);
     d.body(ui, |ui| {
         for r in &sync.rows {
@@ -53,7 +54,7 @@ fn row(ui: &mut egui::Ui, kind: SyncKind, r: &SyncRow) {
         ui.allocate_ui_with_layout(size, Layout::left_to_right(Align::Center), |ui| {
             ui.set_min_width(NAME_WIDTH);
             // One tooltip: the whole name above the path when the name is cut.
-            let (resp, cut) = truncate::cut_label(ui, RichText::new(&r.name).strong(), NAME_WIDTH);
+            let (resp, cut) = truncate::cut_label(ui, RichText::new(&r.name).font(type_scale::strong(ui, type_scale::BODY)), NAME_WIDTH);
             resp.on_hover_text(if cut { format!("{}\n{}", r.name, shown(&r.path)) } else { shown(&r.path) });
         });
         ui.add_space(12.0);

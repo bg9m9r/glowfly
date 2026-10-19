@@ -7,6 +7,7 @@ use crate::state::profiles::accounts_owner;
 use crate::state::{ForgeState, PrefsState};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::form_message::{self, Message};
 use crate::ui::widgets::{self, Icon};
@@ -40,16 +41,18 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
                     Some(c) => {
                         ui.label(RichText::new("Connected").color(color::green()));
                         ui.label(
-                            RichText::new(format!("{} · {} via {}", c.account.display(), c.user, c.method)).size(12.0).color(color::weak()),
+                            RichText::new(format!("{} · {} via {}", c.account.display(), c.user, c.method))
+                                .size(type_scale::SMALL)
+                                .color(color::weak()),
                         );
                         if ui.add(buttons::secondary("Disconnect").small()).clicked() {
                             msgs.push(Msg::Forge(ForgeMsg::Disconnect(c.account.clone())));
                         }
                     }
                     None => {
-                        ui.label(RichText::new("Not Connected").color(color::red()));
+                        ui.label(RichText::new("Not connected").color(color::red()));
                         if let Some(a) = &account {
-                            ui.label(RichText::new(a.display()).size(12.0).color(color::weak()));
+                            ui.label(RichText::new(a.display()).size(type_scale::SMALL).color(color::weak()));
                         }
                         if provider.supports_gcm() {
                             ui.horizontal(|ui| {
@@ -79,13 +82,13 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
     if provider.supports_gcm() {
         ui.horizontal(|ui| {
             ui.add_space(LABEL_W + 60.0);
-            ui.label(RichText::new("or").size(14.0).color(color::text()));
+            ui.label(RichText::new("or").size(type_scale::BODY).color(color::text()));
         });
         ui.add_space(14.0);
     }
 
     if provider.fixed_host().is_none() {
-        row(ui, "Host Domain", |ui| {
+        row(ui, "Host domain", |ui| {
             text_field(ui, &mut prefs.int_host, provider.host_hint());
         });
     }
@@ -104,10 +107,10 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
         });
     }
     let token_label = match provider {
-        Provider::Bitbucket => "App Password",
-        Provider::JiraCloud => "API Token",
+        Provider::Bitbucket => "App password",
+        Provider::JiraCloud => "API token",
         Provider::Trello => "Token",
-        _ => "Personal Access Token",
+        _ => "Personal access token",
     };
     row(ui, token_label, |ui| {
         controls::field(ui, egui::TextEdit::singleline(&mut prefs.int_token).password(true).desired_width(320.0).margin(vec2(8.0, 5.0)));
@@ -143,9 +146,9 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
     if provider.is_tracker_only() {
         ui.add_space(10.0);
         let text = if is_trello {
-            "Trello is an issue tracker. Once connected, choose it and a board for a repository under Repo-Specific Preferences > Issue Tracker."
+            "Trello is an issue tracker. Once connected, choose it and a board for a repository under Repo-specific preferences > Issue tracker."
         } else {
-            "Jira is an issue tracker. Once connected, choose it for a repository under Repo-Specific Preferences > Issue Tracker."
+            "Jira is an issue tracker. Once connected, choose it for a repository under Repo-specific preferences > Issue tracker."
         };
         row(ui, "", |ui| help(ui, text));
     }
@@ -153,11 +156,11 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
     let mine: Vec<_> = s.connections.iter().filter(|c| c.account.provider == provider).cloned().collect();
     if !mine.is_empty() {
         ui.add_space(20.0);
-        row(ui, "Connected Accounts", |ui| {
+        row(ui, "Connected accounts", |ui| {
             for c in mine {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(c.account.display()).color(color::text()));
-                    ui.label(RichText::new(format!("{} · {}", c.user, c.method)).size(12.0).color(color::weak()));
+                    ui.label(RichText::new(format!("{} · {}", c.user, c.method)).size(type_scale::SMALL).color(color::weak()));
                     if ui.add(buttons::secondary("Disconnect").small()).clicked() {
                         msgs.push(Msg::Forge(ForgeMsg::Disconnect(c.account.clone())));
                     }
@@ -189,7 +192,7 @@ pub fn tracker_page(
     let current = s.tracker_for(workdir);
     let host = fs.and_then(|f| f.host.as_ref());
     let trackers: Vec<Account> = s.connections.iter().filter(|c| c.account.provider.is_tracker_only()).map(|c| c.account.clone()).collect();
-    row(ui, "Issues Come From", |ui| {
+    row(ui, "Issues come from", |ui| {
         let auto_label = match host {
             Some(t) if t.provider == Provider::AzureDevOps => "Azure Boards (from the remote)".to_owned(),
             Some(t) if t.provider.has_issues() => format!("{} issues (from the remote)", t.provider.name()),
@@ -225,7 +228,7 @@ pub fn tracker_page(
         trello::board_row(ui, account, board, board_name, &prefs.trello_boards, msgs);
     }
     if let TrackerChoice::Jira { account, project } = &current {
-        row(ui, "Jira Project", |ui| {
+        row(ui, "Jira project", |ui| {
             let r = text_field(ui, &mut prefs.jira_project, "all projects");
             if r.lost_focus() && prefs.jira_project.trim() != project {
                 msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::Jira {

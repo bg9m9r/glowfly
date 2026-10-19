@@ -2,6 +2,7 @@
 
 use super::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Stroke, TextFormat, text::LayoutJob};
 use trellis_core::spell::{Miss, Speller};
 
@@ -55,7 +56,7 @@ fn layout(s: &str, misses: &[Miss], font: egui::FontId, text_color: egui::Color3
 
 /// One submenu per misspelled word (up to five): suggestions and "Add to dictionary".
 fn corrections(ui: &mut egui::Ui, text: &mut String, misses: &[Miss], speller: &mut Speller) {
-    ui.label(egui::RichText::new("Spelling").small().color(color::weak()));
+    ui.label(egui::RichText::new("Spelling").size(type_scale::SMALL).color(color::weak()));
     let mut seen = Vec::new();
     for m in misses.iter().take(5) {
         let Some(word) = text.get(m.start..m.start + m.len).map(str::to_owned) else { continue };

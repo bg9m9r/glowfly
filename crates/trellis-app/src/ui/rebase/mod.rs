@@ -25,6 +25,7 @@ use crate::state::AppState;
 use crate::state::rebase::{HINT, PanelSource, RebasePanel, needs_stash};
 use crate::state::rebase_remaining::{NO_STEPS, REMAINING_HINT, REMAINING_TITLE, UPDATE};
 use crate::state::rebase_steps::NewStep;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Layout, RichText, Sense, Stroke, Ui, vec2};
 use trellis_core::i18n::Lang;
@@ -48,9 +49,9 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         if let Some(e) = panel.error.as_ref().filter(|e| blocker.as_ref() != Some(*e)) {
             ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
         }
-        ui.label(RichText::new(if remaining { REMAINING_HINT } else { HINT }).size(12.0).color(color::weak()));
+        ui.label(RichText::new(if remaining { REMAINING_HINT } else { HINT }).size(type_scale::SMALL).color(color::weak()));
         if !remaining && st.snap.as_ref().is_some_and(needs_stash) {
-            ui.label(RichText::new(STASH_HINT).size(12.0).color(color::weak()));
+            ui.label(RichText::new(STASH_HINT).size(type_scale::SMALL).color(color::weak()));
         }
     });
     ui.separator();
@@ -70,7 +71,7 @@ fn header(ui: &mut Ui, t: Lang, panel: &RebasePanel, blocker: Option<&str>, msgs
         ui.add_space(14.0);
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing.y = 2.0;
-            ui.label(RichText::new(title).strong().size(16.0).color(color::text()));
+            ui.label(RichText::new(title).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()));
             ui.label(RichText::new(panel.subtitle()).color(color::weak()));
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

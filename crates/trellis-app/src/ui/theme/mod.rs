@@ -1,5 +1,6 @@
 //! Colors: the built-in palettes, palettes built from theme files, and egui widget styling,
-//! with the bundled fonts (`fonts.rs`) and the spacing grid (`spacing.rs`).
+//! with the bundled fonts (`fonts.rs`), the type scale (`type_scale.rs`) and the spacing grid
+//! (`spacing.rs`).
 //!
 //! Views read colors through `color::text()` etc. The active palette is a per-thread copy: the
 //! shell's [`ThemeCache`] works out the palette for the chosen theme (again only when the
@@ -19,6 +20,7 @@ pub mod controls;
 pub mod custom;
 pub mod fonts;
 pub mod spacing;
+pub mod type_scale;
 
 pub use builtin::{DARK, LIGHT, builtin};
 #[cfg(test)]
@@ -63,6 +65,7 @@ pub fn apply_style(ctx: &egui::Context, p: &Palette) {
             v.widgets.open.weak_bg_fill = p.hover;
             style.spacing.item_spacing = spacing::ITEM_SPACING;
             style.spacing.button_padding = spacing::BUTTON_PADDING;
+            type_scale::install(style);
             super::widgets::tooltip::style(style, p);
         });
     }

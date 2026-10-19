@@ -27,7 +27,7 @@ fn prefs_terminal_dark() {
     let mut h = harness_sized(page(TerminalPrefs::default()), true, eframe::egui::vec2(1400.0, 900.0));
     h.run();
     h.check_snapshot("prefs_terminal");
-    assert!(h.query_all_by_label("In-App Terminal").next().is_some(), "the nav entry and title");
+    assert!(h.query_all_by_label("In-app terminal").next().is_some(), "the nav entry and title");
     assert!(h.query_by_label_contains("Separated by spaces").is_none(), "arguments only for a custom program");
     assert!(h.query_by_label_contains("Selecting text with the mouse").is_some());
     assert_eq!(h.query_by_label_contains("A middle click on the terminal").is_some(), cfg!(target_os = "linux"), "only where it acts");

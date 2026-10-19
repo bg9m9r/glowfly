@@ -3,9 +3,9 @@
 
 use super::{DiffView, fold, syntax};
 use crate::msg::{Msg, StageMsg};
-use crate::ui::theme::color;
+use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::buttons;
-use eframe::egui::{Rect, Stroke, TextStyle, Ui, pos2, vec2};
+use eframe::egui::{Rect, Stroke, Ui, pos2, vec2};
 use trellis_core::highlight;
 use trellis_core::repo::{DiffTarget, HunkOp};
 
@@ -26,11 +26,17 @@ enum HunkButton {
     Revert,
 }
 
+/// The buttons' text size in a `row_h` tall row: body size, smaller only where the smallest diff
+/// fonts make the row too short for it, and never under the type scale's floor.
+fn text_px(row_h: f32) -> f32 {
+    type_scale::fit(type_scale::BODY, row_h - 4.0)
+}
+
 /// A hunk header row: the `@@` line (its function context in syntax colors), plus its buttons
-/// in body-size text, pinned to the visible right edge so they stay in view when scrolled
-/// sideways: on working-tree diffs Stage Hunk at the edge and Discard Hunk (in the danger
-/// style) to its left behind a wider gap with a divider, Unstage Hunk on staged diffs (each
-/// "N lines" when the hunk has selected lines), Revert Hunk (or Revert N lines) on commit and
+/// in body-size text (`text_px`), pinned to the visible right edge so they stay in view when
+/// scrolled sideways: on working-tree diffs Stage hunk at the edge and Discard hunk (in the
+/// danger style) to its left behind a wider gap with a divider, Unstage hunk on staged diffs
+/// (each "N lines" when the hunk has selected lines), Revert hunk (or Revert N lines) on commit and
 /// comparison diffs. The buttons are disabled while a reload is on its way (`hunk_gen` is
 /// `None`), since the hunk indexes may no longer match the file. With whitespace changes hidden
 /// they apply only the changes shown.
@@ -57,8 +63,7 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         DiffTarget::ToWorkdir(..) => &[],
     };
     let (row_h, mid_y) = (v.style.row_h, rect.top() + v.style.row_h / 2.0);
-    // Body-size text, smaller only where the smallest diff fonts make the row too short for it.
-    let body = TextStyle::Body.resolve(ui.style()).size.min(row_h - 4.0);
+    let body = text_px(row_h);
     let revert_tip = {
         let what = if selected > 0 { "the selected changes" } else { "this change" };
         format!("Undo {what} in your working copy of {path}. The commit itself is not changed.")
@@ -72,7 +77,7 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
             HunkButton::Op(HunkOp::Discard) => "Discard",
         };
         let label = match selected {
-            0 => format!("{verb} Hunk"),
+            0 => format!("{verb} hunk"),
             1 => format!("{verb} 1 line"),
             n => format!("{verb} {n} lines"),
         };
@@ -119,5 +124,19 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
             }
             _ => m,
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui::diff::DiffStyle;
+    use trellis_core::settings::Settings;
+
+    #[test]
+    fn button_text_is_body_size_and_never_under_the_floor() {
+        let smallest = DiffStyle::new(&Settings { diff_font_size: 8.0, ..Settings::default() });
+        assert!(text_px(smallest.row_h) >= type_scale::CAPTION, "at {} px rows", smallest.row_h);
+        assert_eq!(text_px(DiffStyle::new(&Settings::default()).row_h), type_scale::BODY);
     }
 }

@@ -9,9 +9,10 @@ use crate::msg::{KeysMsg, Msg};
 use crate::state::keys_page::{KeysPage, Pending};
 use crate::ui::shortcuts::Caps;
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
-use eframe::egui::{Align, CornerRadius, FontId, Layout, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, vec2};
+use eframe::egui::{Align, CornerRadius, Layout, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, vec2};
 use trellis_core::i18n::Lang;
 
 /// The most keys a row offers Add for.
@@ -27,14 +28,14 @@ pub fn row(ui: &mut Ui, t: Lang, b: &'static Binding, keys: &Keymap, page: &Keys
         ui.allocate_ui_with_layout(vec2(left, 0.0), wrap, |ui| {
             ui.label(RichText::new(b.label).color(color::text()));
             if let Some(note) = b.when.note() {
-                ui.label(RichText::new(note).size(11.5).color(color::weak()));
+                ui.label(RichText::new(note).size(type_scale::CAPTION).color(color::weak()));
             }
             if !b.rebindable {
                 let tip = match b.when.note() {
                     Some(note) => format!("Works only {note}; can't be changed"),
                     None => "Can't be changed".to_owned(),
                 };
-                ui.label(RichText::new("Fixed").size(11.5).color(color::weak())).on_hover_text(tip);
+                ui.label(RichText::new("Fixed").size(type_scale::CAPTION).color(color::weak())).on_hover_text(tip);
             }
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -80,7 +81,7 @@ pub fn row(ui: &mut Ui, t: Lang, b: &'static Binding, keys: &Keymap, page: &Keys
     if recording.is_some() {
         ui.horizontal(|ui| {
             ui.add_space(12.0);
-            ui.label(RichText::new("Esc cancels").size(11.5).color(color::weak()));
+            ui.label(RichText::new("Esc cancels").size(type_scale::CAPTION).color(color::weak()));
         });
     }
     if let Some(p) = page.pending.as_ref().filter(|p| p.id() == b.id) {
@@ -100,7 +101,7 @@ fn pending(ui: &mut Ui, t: Lang, p: &Pending, keys: &Keymap, msgs: &mut Vec<Msg>
                 ok(ui, msgs);
             }
             Pending::Notice { text, .. } => {
-                ui.label(RichText::new(text).size(12.0).color(color::weak()));
+                ui.label(RichText::new(text).size(type_scale::SMALL).color(color::weak()));
                 ok(ui, msgs);
             }
             Pending::Clash { chord, other, fixed: true, .. } => {
@@ -142,7 +143,7 @@ fn ok(ui: &mut Ui, msgs: &mut Vec<Msg>) {
 
 /// The slot waiting for a key: a highlighted pill.
 fn pill(ui: &mut Ui) {
-    let text = ui.painter().layout_no_wrap("Press keys…".to_owned(), FontId::proportional(12.0), color::text());
+    let text = ui.painter().layout_no_wrap("Press keys…".to_owned(), type_scale::font(type_scale::SMALL), color::text());
     let size = text.size() + vec2(16.0, 6.0);
     let (rect, resp) = ui.allocate_exact_size(size, Sense::hover());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, "Press keys…"));

@@ -8,6 +8,7 @@ use crate::msg::{KeysMsg, Msg};
 use crate::state::keys_page::KeysPage;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{Align, Id, Layout, RichText, TextEdit, Ui, vec2};
 use trellis_core::i18n::Lang;
@@ -57,7 +58,7 @@ pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &mut KeysPage, keys: &Keymap, m
     }
     for (group, rows) in groups {
         ui.add_space(14.0);
-        ui.label(RichText::new(group.title()).strong().size(12.5).color(color::weak()));
+        ui.label(RichText::new(group.title()).font(type_scale::strong(ui, type_scale::SMALL)).color(color::weak()));
         ui.add_space(2.0);
         for b in rows {
             keyboard_row::row(ui, t, b, keys, page, msgs);

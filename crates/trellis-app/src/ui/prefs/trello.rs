@@ -1,10 +1,11 @@
 //! Trello's parts of Preferences: the API key and token links on its Integrations page, and
-//! the Board picker under Repo-Specific Preferences > Issue Tracker.
+//! the Board picker under Repo-specific preferences > Issue tracker.
 
 use super::{help, row};
 use crate::msg::{ForgeMsg, Msg};
 use crate::state::trello::BoardList;
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText, Ui};
@@ -60,7 +61,7 @@ pub(super) fn board_row(ui: &mut Ui, account: &Account, board: &str, board_name:
         if list.loading {
             ui.horizontal(|ui| {
                 ui.add(egui::Spinner::new().size(14.0));
-                ui.label(RichText::new("Loading boards…").size(12.0).color(color::weak()));
+                ui.label(RichText::new("Loading boards…").size(type_scale::SMALL).color(color::weak()));
             });
         } else if let Some(e) = &list.error {
             form_message::line(ui, Message::error(e.as_str()));

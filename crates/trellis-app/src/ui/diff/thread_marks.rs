@@ -6,8 +6,9 @@ use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::pull_request_threads::{Mark, Marks};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::{Icon, paint_icon};
-use eframe::egui::{self, Align2, CursorIcon, FontId, Id, Rect, Sense, Ui, pos2, vec2};
+use eframe::egui::{self, Align2, CursorIcon, Id, Rect, Sense, Ui, pos2, vec2};
 use trellis_core::diff_rows::{LineSide, line_keys};
 use trellis_core::repo::DiffLine;
 
@@ -34,7 +35,7 @@ pub(super) fn paint(ui: &Ui, row: Rect, right: f32, row_h: f32, mark: &Mark, msg
     let icon_x = r.left() + 9.0;
     paint_icon(&p, pos2(icon_x, r.center().y), Icon::Comment, col);
     if mark.count > 1 {
-        p.text(pos2(icon_x + 8.0, r.center().y), Align2::LEFT_CENTER, mark.count.to_string(), FontId::proportional(10.5), col);
+        p.text(pos2(icon_x + 8.0, r.center().y), Align2::LEFT_CENTER, mark.count.to_string(), type_scale::font(type_scale::CAPTION), col);
     }
     let resp = resp.on_hover_text("Show the comments on this line");
     if resp.clicked() {

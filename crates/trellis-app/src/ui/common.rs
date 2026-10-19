@@ -8,6 +8,7 @@ use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, ForgeState, PrefPage, Status};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
 use git2::Oid;
 use trellis_core::forge::{self, RefStyle};
@@ -88,13 +89,30 @@ pub fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
+/// `template` with `code` put in place of `slot`: the words proportional and the code (a SHA or
+/// path) monospace, both at `px` in `color`. A template without the slot shows as it is.
+pub fn with_code(template: &str, slot: &str, code: &str, px: f32, color: egui::Color32) -> egui::text::LayoutJob {
+    let mut job = egui::text::LayoutJob::default();
+    let words = egui::TextFormat::simple(type_scale::font(px), color);
+    let mono = egui::TextFormat::simple(type_scale::mono(px), color);
+    let mut parts = template.split(slot);
+    if let Some(first) = parts.next() {
+        job.append(first, 0.0, words.clone());
+    }
+    for part in parts {
+        job.append(code, 0.0, mono.clone());
+        job.append(part, 0.0, words.clone());
+    }
+    job
+}
+
 /// The widest a ref menu's header gets before its name wraps onto more lines.
 const MENU_HEADER_W: f32 = 320.0;
 
 /// An object menu's title: the object's name, once, in bold and not clickable (wrapped when it
 /// is long), then a separator. The items below it leave the name out.
 pub fn menu_header(ui: &mut egui::Ui, title: &str) {
-    header(ui, RichText::new(title).strong());
+    header(ui, RichText::new(title).font(type_scale::strong(ui, type_scale::BODY)));
 }
 
 /// A commit menu's title: the summary in bold (cut to 80 characters), then the short SHA, weak
@@ -106,7 +124,7 @@ pub fn commit_menu_header(ui: &mut egui::Ui, summary: &str, oid: Oid) {
     let sha = if cut.is_empty() {
         short(oid)
     } else {
-        RichText::new(cut).strong().append_to(&mut job, &style, egui::FontSelection::Default, align);
+        RichText::new(cut).font(type_scale::strong(ui, type_scale::BODY)).append_to(&mut job, &style, egui::FontSelection::Default, align);
         format!("  {}", short(oid))
     };
     RichText::new(sha).monospace().color(color::weak()).append_to(&mut job, &style, egui::FontSelection::Default, align);
@@ -124,7 +142,7 @@ fn header(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) {
 
 /// A weak, small, not clickable line in a menu that explains the item above it.
 pub fn menu_note(ui: &mut egui::Ui, text: &str) {
-    ui.add(egui::Label::new(RichText::new(text).small().color(color::weak())).selectable(false));
+    ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).selectable(false));
 }
 
 /// A menu item's button. Its text never wraps: a submenu opens narrow and grows to fit its
@@ -165,7 +183,7 @@ pub fn issue_chip(ui: &mut egui::Ui, fs: &ForgeState, key: &str, msgs: &mut Vec<
         Some(i) => RichText::new(format!("{tag}  {} · {}  {}", i.kind, i.state, i.title)).color(color::text()),
         None => RichText::new(tag).color(color::blue()),
     };
-    let r = ui.add(egui::Button::new(text.size(12.5)).fill(color::input()).truncate());
+    let r = ui.add(egui::Button::new(text.size(type_scale::SMALL)).fill(color::input()).truncate());
     if r.clicked() {
         msgs.push(Msg::OpenUrl(fs.issue_url(key)));
     }
@@ -178,7 +196,7 @@ pub fn hint_row(ui: &mut egui::Ui, text: String) {
     egui::Frame::new().inner_margin(egui::Margin { left: widgets::ROW_INDENT as i8, right: widgets::PAD_X as i8, top: 4, bottom: 4 }).show(
         ui,
         |ui| {
-            ui.add(egui::Label::new(RichText::new(text).size(11.5).color(color::faint())).wrap());
+            ui.add(egui::Label::new(RichText::new(text).size(type_scale::CAPTION).color(color::faint())).wrap());
         },
     );
 }
@@ -187,7 +205,7 @@ pub fn forge_error_rows(ui: &mut egui::Ui, error: &str, msgs: &mut Vec<Msg>) {
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         ui.add_space(widgets::ROW_INDENT);
-        ui.label(RichText::new(error).color(color::red()).size(12.0));
+        ui.label(RichText::new(error).color(color::red()).size(type_scale::SMALL));
     });
     ui.horizontal(|ui| {
         ui.add_space(widgets::ROW_INDENT);
@@ -245,7 +263,7 @@ pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     ui.vertical_centered(|ui| {
         ui.add_space(ui.available_height() * 0.2);
-        ui.label(RichText::new("Trellis").size(40.0).strong().color(color::text()));
+        ui.label(RichText::new("Trellis").font(type_scale::strong(ui, type_scale::WORDMARK)).color(color::text()));
         ui.label(RichText::new(t.tr("welcome_screen.tagline")).color(color::weak()));
         ui.add_space(20.0);
         if st.loading {

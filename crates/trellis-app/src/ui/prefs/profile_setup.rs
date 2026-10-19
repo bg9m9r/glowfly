@@ -8,6 +8,7 @@ use crate::state::profiles::{
     accounts_of, prefs_status,
 };
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use eframe::egui::{RichText, Ui};
 use trellis_core::settings::{Profile, Settings};
 
@@ -17,7 +18,7 @@ pub(super) fn setup_rows(ui: &mut Ui, settings: &Settings, p: &Profile, current:
         ui.add_space(3.0);
         let line = |ui: &mut Ui, text: &str, faint: bool| {
             let c = if faint { color::faint() } else { color::text() };
-            ui.label(RichText::new(text).size(13.0).color(c));
+            ui.label(RichText::new(text).size(type_scale::BODY).color(c));
         };
         match accounts_of(settings, p.id) {
             SetupView::Live(list) | SetupView::Saved(list) if list.is_empty() => line(ui, NO_ACCOUNTS, true),

@@ -1,4 +1,4 @@
-//! Preferences > External Tools: the editor that opens files and the repository, a custom
+//! Preferences > External tools: the editor that opens files and the repository, a custom
 //! terminal for Open in terminal, the diff tool that compares a file's versions, and the merge
 //! tool that resolves a conflict. Each tool's arguments warn about an unmatched quote, names
 //! that are not its placeholders and (diff and merge tools) the versions they leave out. Edits

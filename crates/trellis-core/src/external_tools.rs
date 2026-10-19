@@ -1,4 +1,4 @@
-//! External programs the user chose (Preferences > External Tools): argument templates
+//! External programs the user chose (Preferences > External tools): argument templates
 //! (`template`), finding the program on PATH, and starting it, detached or waiting for it to
 //! exit. `temp` holds the private folder for the copies diff and merge tools are given, and
 //! `compare` writes those copies for a diff or a conflict.

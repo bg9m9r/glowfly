@@ -11,6 +11,7 @@ use super::theme::color;
 use crate::msg::{ConflictMsg, DiffMsg, Msg};
 use crate::state::conflict::{ConflictView, OutputEdit};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Stroke, Ui, UiBuilder, vec2};
 use trellis_core::conflict_pick::ChunkPick;
 use trellis_core::conflict_rows::{OutRow, output_rows, scroll_target};
@@ -34,7 +35,7 @@ pub(super) fn output(ui: &mut Ui, view: &mut ConflictView, scroll_to: Option<usi
     ui.painter().hline(strip.x_range(), strip.top(), Stroke::new(1.0_f32, color::border()));
     let builder = UiBuilder::new().max_rect(strip.shrink2(vec2(8.0, 2.0))).layout(Layout::left_to_right(Align::Center));
     ui.allocate_new_ui(builder, |ui| {
-        ui.label(RichText::new("Output").strong().color(color::text()));
+        ui.label(type_scale::section_text(ui, "Output"));
         ui.label(RichText::new(format!("{resolved} of {n} conflicts resolved")).color(color::weak()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let on = view.edit.is_some();

@@ -11,9 +11,9 @@ use crate::msg::TabsMsg;
 use crate::state::AppState;
 use crate::state::menu_bar::tab_name;
 use crate::state::tab_groups::{self, is_identity, move_order, new_index, shown_at};
+use crate::ui::theme::type_scale;
 use eframe::egui::{
-    self, Align, Align2, Button, Color32, CursorIcon, FontId, Id, Key, Layout, PointerButton, Rect, Response, Sense, Stroke, StrokeKind,
-    pos2, vec2,
+    self, Align, Align2, Button, Color32, CursorIcon, Id, Key, Layout, PointerButton, Rect, Response, Sense, Stroke, StrokeKind, pos2, vec2,
 };
 use std::ops::Range;
 use trellis_core::i18n::Lang;
@@ -226,7 +226,13 @@ fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, active: bool, hovered: b
     // Name, clipped before the close button.
     let text_col = if active { color::text() } else { color::weak() };
     let clip = Rect::from_min_max(rect.min, pos2(close_rect.left() - 4.0, rect.max.y));
-    p.with_clip_rect(clip).text(pos2(rect.left() + 12.0, rect.center().y), Align2::LEFT_CENTER, name, FontId::proportional(13.0), text_col);
+    p.with_clip_rect(clip).text(
+        pos2(rect.left() + 12.0, rect.center().y),
+        Align2::LEFT_CENTER,
+        name,
+        type_scale::font(type_scale::BODY),
+        text_col,
+    );
     // Close button: shown on the active and hovered tabs.
     if show_close {
         if close_hovered {

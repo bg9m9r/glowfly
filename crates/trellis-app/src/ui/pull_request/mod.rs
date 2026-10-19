@@ -19,8 +19,9 @@ use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
 use crate::state::pull_request::{Files, PrTab, PrView, Tone};
 use crate::state::pull_request_threads::on_file;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, Color32, FontId, Layout, Margin, RichText, Sense, Ui, vec2};
+use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Sense, Ui, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::text::printable;
 
@@ -118,7 +119,7 @@ pub(in crate::ui) fn note(ui: &mut Ui, text: impl Into<String>, color: Color32) 
 pub(in crate::ui) fn heading(ui: &mut Ui, text: &str) {
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new(text).strong().color(color::text()));
+    ui.label(type_scale::section_text(ui, text));
 }
 
 /// The icon, label, title and Draft chip, the links and Close; below, the author and branches.
@@ -146,13 +147,13 @@ fn header(ui: &mut Ui, t: Lang, v: &PrView, msgs: &mut Vec<Msg>) {
                 ui.label(RichText::new(&v.label).color(color::weak()));
                 const DRAFT: &str = "Draft";
                 let chip_w = if pr.draft {
-                    ui.painter().layout_no_wrap(DRAFT.to_owned(), FontId::proportional(11.5), color::weak()).size().x + 12.0
+                    ui.painter().layout_no_wrap(DRAFT.to_owned(), type_scale::font(type_scale::CAPTION), color::weak()).size().x + 12.0
                 } else {
                     0.0
                 };
                 ui.scope(|ui| {
                     ui.set_max_width((ui.available_width() - chip_w - 8.0).max(40.0));
-                    let title = RichText::new(printable(&pr.title)).strong().size(15.0).color(color::text());
+                    let title = RichText::new(printable(&pr.title)).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text());
                     ui.add(egui::Label::new(title).truncate());
                 });
                 if pr.draft {

@@ -34,9 +34,9 @@ pub const NO_ACCOUNTS: &str = "No connected accounts";
 pub const ACCOUNTS_INHERIT: &str = "Uses the current profile's accounts until you switch to it";
 pub const ACCOUNTS_CURRENT_HELP: &str = "Connect or disconnect accounts in Integrations; they belong to this profile.";
 pub const ACCOUNTS_OTHER_HELP: &str = "Connected again when you switch to this profile. Sign-ins are shared per account.";
-pub const PREFS_CURRENT_HELP: &str = "Your General, UI Customization and Editor settings are saved with this profile.";
+pub const PREFS_CURRENT_HELP: &str = "Your General, UI customization and Editor settings are saved with this profile.";
 pub const PREFS_SAVED_HELP: &str =
-    "General, UI Customization and Editor settings are saved with this profile; they come back when you switch to it.";
+    "General, UI customization and Editor settings are saved with this profile; they come back when you switch to it.";
 pub const PREFS_INHERIT_HELP: &str = "None saved yet: switching to this profile keeps the current preferences.";
 
 pub fn delete_body(name: &str) -> String {

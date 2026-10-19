@@ -15,6 +15,7 @@ use crate::state::issue_form::{IssueForm, OptionsState};
 use crate::state::issue_words as words;
 use crate::state::{ForgeState, ProjectKeys};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Key, RichText, Ui};
 use trellis_core::forge::filters::Named;
@@ -131,11 +132,11 @@ fn body(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool,
     controls::checkbox(ui, &mut form.then_branch, "Create a branch for it afterwards");
     match &form.options {
         OptionsState::Loading => {
-            ui.label(RichText::new(words::loading_text(p)).size(11.5).color(color::weak()));
+            ui.label(RichText::new(words::loading_text(p)).size(type_scale::CAPTION).color(color::weak()));
         }
         OptionsState::Failed(e) => {
             ui.horizontal_wrapped(|ui| {
-                ui.label(RichText::new(format!("Couldn't load the choices: {e}")).size(11.5).color(color::faint()));
+                ui.label(RichText::new(format!("Couldn't load the choices: {e}")).size(type_scale::CAPTION).color(color::faint()));
                 if ui.link("Try again").clicked() {
                     msgs.push(Msg::Issue(IssueMsg::SetProject(form.project.clone())));
                 }
@@ -164,7 +165,7 @@ fn problem(ui: &mut Ui, form: &IssueForm, field: IssueField, key: &str) {
 
 fn caption(ui: &mut Ui, text: &str) {
     ui.add_space(4.0);
-    ui.label(RichText::new(text).size(12.0).color(color::weak()));
+    ui.label(RichText::new(text).size(type_scale::SMALL).color(color::weak()));
 }
 
 /// A picker over `items` that sets `chosen` to an item's key.
@@ -179,9 +180,11 @@ fn combo(ui: &mut Ui, id: &str, shown: String, width: f32, items: &[Named], chos
 /// Trello: creating cards needs a token that can write, with the link that allows one.
 fn write_note(ui: &mut Ui, form: &IssueForm, msgs: &mut Vec<Msg>) {
     ui.horizontal_wrapped(|ui| {
-        ui.label(RichText::new("Creating cards needs a Trello token allowed to read and write.").size(11.5).color(color::weak()));
+        ui.label(
+            RichText::new("Creating cards needs a Trello token allowed to read and write.").size(type_scale::CAPTION).color(color::weak()),
+        );
         if let Some(url) = form.loaded().and_then(|o| o.write_token_url.clone())
-            && ui.link(RichText::new("Allow a write token").size(11.5)).clicked()
+            && ui.link(RichText::new("Allow a write token").size(type_scale::CAPTION)).clicked()
         {
             msgs.push(Msg::OpenUrl(url));
         }

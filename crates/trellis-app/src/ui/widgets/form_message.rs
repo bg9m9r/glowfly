@@ -6,12 +6,13 @@
 use super::super::theme::color;
 use super::severity::{self, Severity};
 use crate::state::touched::Touched;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, CornerRadius, FontId, Response, RichText, Sense, Stroke, Ui, vec2};
 use std::borrow::Cow;
 
 /// A field message's mark and text size.
 const FIELD_MARK: f32 = 12.0;
-const FIELD_TEXT: f32 = 12.5;
+const FIELD_FONT: f32 = type_scale::SMALL;
 /// A form message's mark.
 const FORM_MARK: f32 = 14.0;
 
@@ -58,12 +59,12 @@ pub fn field(ui: &mut Ui, touched: &Touched, field: &str, msg: Option<Message>) 
 /// other than the credential prompt don't call it (`tests/message_styles.rs`).
 pub fn line(ui: &mut Ui, msg: Message) {
     ui.add_space(2.0 - ui.spacing().item_spacing.y);
-    let row_h = ui.fonts(|f| f.row_height(&FontId::proportional(FIELD_TEXT)));
+    let row_h = ui.fonts(|f| f.row_height(&FontId::proportional(FIELD_FONT)));
     ui.horizontal_top(|ui| {
         ui.spacing_mut().item_spacing.x = 5.0;
         let (rect, _) = ui.allocate_exact_size(vec2(FIELD_MARK, row_h), Sense::hover());
         severity::paint(ui.painter(), rect.center(), FIELD_MARK, msg.kind, msg.kind.color());
-        let text = RichText::new(msg.text.as_ref()).size(FIELD_TEXT).color(msg.kind.text_color());
+        let text = RichText::new(msg.text.as_ref()).size(FIELD_FONT).color(msg.kind.text_color());
         ui.add(egui::Label::new(text).wrap());
     });
 }

@@ -9,9 +9,10 @@ use crate::state::ssh::{NO_KEYGEN, SshPage};
 use crate::state::ssh_use::{AGENT_ON, NOT_TRUSTED, add_blocked, chosen_at};
 use crate::ui::common::{menu_item, menu_item_if};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
-use eframe::egui::{self, Color32, CornerRadius, FontId, RichText, Sense, Ui, vec2};
+use eframe::egui::{self, Color32, CornerRadius, RichText, Sense, Ui, vec2};
 use trellis_core::forge::Account;
 use trellis_core::i18n::Lang;
 use trellis_core::paths::same_spelling;
@@ -29,7 +30,7 @@ pub struct SshContext {
 
 pub fn ssh_page(ui: &mut Ui, t: Lang, page: &mut SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
     if let Some(error) = &page.error {
-        row(ui, "Key Pairs", |ui| {
+        row(ui, "Key pairs", |ui| {
             warn(ui, error);
             ui.add_space(4.0);
             if ui.add(buttons::secondary("Reload")).clicked() {
@@ -52,7 +53,7 @@ pub fn ssh_page(ui: &mut Ui, t: Lang, page: &mut SshPage, cx: &SshContext, msgs:
 }
 
 fn key_pairs(ui: &mut Ui, t: Lang, page: &mut SshPage, listing: &SshListing, cx: &SshContext, msgs: &mut Vec<Msg>) {
-    row(ui, "Key Pairs", |ui| {
+    row(ui, "Key pairs", |ui| {
         ui.horizontal(|ui| {
             help(ui, "Private keys in your .ssh folder that have a matching .pub file. ssh and git use them to reach SSH remotes.");
             if widgets::icon_button(ui, Icon::Refresh, "Reload keys").clicked() {
@@ -87,14 +88,14 @@ fn key_row(ui: &mut Ui, key: &SshKeyPair, page: &SshPage, cx: &SshContext, msgs:
                 ui.vertical(|ui| {
                     ui.spacing_mut().item_spacing.y = 3.0;
                     ui.horizontal(|ui| {
-                        ui.label(RichText::new(key.file_name()).strong().color(color::text()));
-                        ui.label(RichText::new(key.kind_label()).size(12.0).color(color::weak()));
+                        ui.label(RichText::new(key.file_name()).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
+                        ui.label(RichText::new(key.kind_label()).size(type_scale::SMALL).color(color::weak()));
                     });
                     let comment = if key.comment.is_empty() { "No comment" } else { key.comment.as_str() };
-                    ui.label(RichText::new(comment).size(12.0).color(color::weak()));
+                    ui.label(RichText::new(comment).size(type_scale::SMALL).color(color::weak()));
                     match &key.fingerprint {
-                        Some(fp) => ui.label(RichText::new(fp).monospace().size(11.5).color(color::faint())),
-                        None => ui.label(RichText::new("Fingerprint unavailable").size(11.5).color(color::faint())),
+                        Some(fp) => ui.label(RichText::new(fp).monospace().size(type_scale::SMALL).color(color::faint())),
+                        None => ui.label(RichText::new("Fingerprint unavailable").size(type_scale::CAPTION).color(color::faint())),
                     };
                     ui.add_space(3.0);
                     actions(ui, key, page, cx, msgs);
@@ -110,10 +111,6 @@ fn key_row(ui: &mut Ui, key: &SshKeyPair, page: &SshPage, cx: &SshContext, msgs:
     ui.add_space(4.0);
 }
 
-fn small(text: &str) -> RichText {
-    RichText::new(text).size(12.0)
-}
-
 /// The key's action buttons and chips.
 fn actions(ui: &mut Ui, key: &SshKeyPair, page: &SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
@@ -121,7 +118,7 @@ fn actions(ui: &mut Ui, key: &SshKeyPair, page: &SshPage, cx: &SshContext, msgs:
         if cx.use_agent {
             ui.add(buttons::secondary("Use for git…").small().enabled(false).why(Some(AGENT_ON)));
         } else {
-            ui.menu_button(small("Use for git…"), |ui| {
+            ui.menu_button("Use for git…", |ui| {
                 let use_key = |repo| Msg::Ssh(SshMsg::UseKey { key: key.private.clone(), repo, confirmed: false });
                 menu_item(msgs, ui, "For all repositories", use_key(false));
                 if let Some(repo) = &page.repo {
@@ -138,7 +135,7 @@ fn actions(ui: &mut Ui, key: &SshKeyPair, page: &SshPage, cx: &SshContext, msgs:
         if page.agent_adding.as_ref().is_some_and(|p| same_spelling(p, &key.private)) {
             ui.add(egui::Spinner::new().size(12.0));
         }
-        ui.menu_button(small("Add to service…"), |ui| {
+        ui.menu_button("Add to service…", |ui| {
             if cx.services.is_empty() {
                 ui.label(RichText::new("Connect a service in Integrations first").color(color::weak()));
             }
@@ -168,7 +165,7 @@ fn chip_row(ui: &mut Ui, chips: &[(String, Color32)]) {
     if chips.is_empty() {
         return;
     }
-    let font = FontId::proportional(11.5);
+    let font = type_scale::font(type_scale::CAPTION);
     let width: f32 = chips.iter().map(|(t, _)| ui.painter().layout_no_wrap(t.clone(), font.clone(), Color32::WHITE).size().x + 18.0).sum();
     let (rect, _) = ui.allocate_exact_size(vec2(width, 20.0), Sense::hover());
     let mut x = rect.left() + 4.0;

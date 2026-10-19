@@ -10,6 +10,7 @@ use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::theme_names;
 use eframe::egui::{self, RichText};
 use trellis_core::i18n::Lang;
@@ -64,7 +65,7 @@ fn panel_label(t: Lang, panel: Panel) -> &'static str {
 /// The diff viewer's saved settings: they apply whether or not a diff is open.
 fn diff_items(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
     let s = &st.settings;
-    ui.label(RichText::new(t.tr("menu.view.diff")).size(12.0).color(color::weak()));
+    ui.label(RichText::new(t.tr("menu.view.diff")).size(type_scale::SMALL).color(color::weak()));
     let mut push = |ui: &mut egui::Ui, m: DiffMsg| {
         msgs.push(Msg::Diff(m));
         ui.close_menu();

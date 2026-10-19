@@ -14,10 +14,11 @@ use crate::state::profiles::{
 };
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::form_message::{self, Message};
-use eframe::egui::{self, Align, Align2, CornerRadius, FontId, Key, Layout, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
+use eframe::egui::{self, Align, Align2, CornerRadius, Key, Layout, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::{Profile, ProfileId, Settings};
 
@@ -82,7 +83,8 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
     let text_x = rect.left() + 30.0;
     let renaming = page.renaming.as_ref().is_some_and(|f| f.id == p.id);
     if !renaming {
-        let name = painter.text(pos2(text_x, rect.top() + 15.0), Align2::LEFT_CENTER, &p.name, FontId::proportional(13.5), color::text());
+        let name =
+            painter.text(pos2(text_x, rect.top() + 15.0), Align2::LEFT_CENTER, &p.name, type_scale::font(type_scale::BODY), color::text());
         if current {
             widgets::chip(
                 &painter,
@@ -98,7 +100,7 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
         Some(l) => (l, color::weak()),
         None => (NO_IDENTITY.to_owned(), color::faint()),
     };
-    painter.text(pos2(text_x, rect.top() + 32.0), Align2::LEFT_CENTER, line, FontId::proportional(12.0), line_color);
+    painter.text(pos2(text_x, rect.top() + 32.0), Align2::LEFT_CENTER, line, type_scale::font(type_scale::SMALL), line_color);
 
     let buttons = rect.shrink2(vec2(10.0, 0.0));
     // Children that don't allocate: the row above already holds the space.
@@ -150,7 +152,7 @@ fn add_form(ui: &mut Ui, t: Lang, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) 
     let Some(form) = page.adding.as_mut() else { return };
     let mut cancel = false;
     row(ui, NEW_LABEL, |ui| {
-        ui.label(RichText::new(NAME_LABEL).size(12.0).color(color::weak()));
+        ui.label(RichText::new(NAME_LABEL).size(type_scale::SMALL).color(color::weak()));
         let name = text_field(ui, &mut form.name, NEW_NAME_HINT);
         let blank = form.name.trim().is_empty();
         let enter = name.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
@@ -181,22 +183,22 @@ fn fields(ui: &mut Ui, settings: &Settings, page: &mut ProfilesPage, git: &GitCo
     let current = settings.active_profile == Some(p.id);
     let id = p.id;
     row(ui, "", |ui| {
-        ui.label(RichText::new(editing_caption(&p.name, current)).size(14.0).strong().color(color::text()));
+        ui.label(RichText::new(editing_caption(&p.name, current)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
     });
     let mut set =
         |field: IdentityField, value: &str| msgs.push(Msg::Profile(ProfileMsg::SetIdentity { id, field, value: value.to_owned() }));
-    row(ui, "Author Name", |ui| {
-        if text_field(ui, &mut page.author_name, "Your Name").lost_focus() {
+    row(ui, "Author name", |ui| {
+        if text_field(ui, &mut page.author_name, "Your name").lost_focus() {
             set(IdentityField::AuthorName, &page.author_name);
         }
     });
-    row(ui, "Author Email", |ui| {
+    row(ui, "Author email", |ui| {
         if text_field(ui, &mut page.author_email, "you@example.com").lost_focus() {
             set(IdentityField::AuthorEmail, &page.author_email);
         }
         help(ui, if current { CURRENT_HELP } else { OTHER_HELP });
     });
-    row(ui, "Signing Key", |ui| {
+    row(ui, "Signing key", |ui| {
         let hint = key_hint(p.signing_key.as_deref(), &git.signing_key);
         if text_field(ui, &mut page.signing_key, &hint).lost_focus() {
             set(IdentityField::SigningKey, &page.signing_key);

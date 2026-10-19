@@ -57,7 +57,7 @@ fn revert_button_sends_msg() {
     let generation = st.hunk_ops_gen().expect("buttons enabled");
     let mut h = harness(st, true);
     h.run();
-    h.get_by_label("Revert Hunk").click();
+    h.get_by_label("Revert hunk").click();
     h.run();
     assert_eq!(reverts(&h.state().1), [(0, generation)]);
     drop(h);
@@ -67,7 +67,7 @@ fn revert_button_sends_msg() {
     let generation = st.hunk_ops_gen().expect("buttons enabled");
     let mut h = harness(st, true);
     h.run();
-    h.get_by_label("Revert Hunk").click();
+    h.get_by_label("Revert hunk").click();
     h.run();
     assert_eq!(reverts(&h.state().1), [(0, generation)], "whitespace hidden");
     drop(h);
@@ -76,7 +76,7 @@ fn revert_button_sends_msg() {
     assert_eq!(st.hunk_ops_gen(), None);
     let mut h = harness(st, true);
     h.run();
-    h.get_by_label("Revert Hunk").click();
+    h.get_by_label("Revert hunk").click();
     h.run();
     assert!(reverts(&h.state().1).is_empty(), "pending reload");
     remove_fixture(&dir);
@@ -134,7 +134,7 @@ fn commit_diff_lines_click_and_revert() {
     let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
     let mut h = harness(st, true);
     h.run();
-    let b = h.get_by_label("Revert Hunk").bounding_box().expect("the button has bounds");
+    let b = h.get_by_label("Revert hunk").bounding_box().expect("the button has bounds");
     let at = pos2(b.x0 as f32 - 300.0, (b.y0 + b.y1) as f32 / 2.0 + 4.0 * row_h);
     let events = &mut h.input_mut().events;
     events.push(Event::PointerMoved(at));

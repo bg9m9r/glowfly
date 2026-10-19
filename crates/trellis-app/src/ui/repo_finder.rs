@@ -9,6 +9,7 @@ use crate::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
 use crate::state::repo_lists::favorite_label;
 use crate::state::repo_scan::{FinderRow, RepoScan, matches};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, Response, RichText, Sense, vec2};
 use std::path::PathBuf;
 use trellis_core::i18n::Lang;
@@ -31,7 +32,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, filter: &mut String, lists: FinderLists, 
     let mut close = false;
     let (scan, folders) = (lists.scan, lists.folders);
     let mut d = Dialog::new(cx, t.tr("finder.title")).wide().resizable("repo-finder").begin(ui);
-    ui.label(RichText::new(t.tr("finder.folders.header")).strong());
+    ui.label(type_scale::section_text(ui, t.tr("finder.folders.header")));
     for f in folders {
         folder_row(ui, t, f, scan, msgs);
     }
@@ -74,7 +75,7 @@ fn folder_row(ui: &mut egui::Ui, t: Lang, f: &std::path::Path, scan: &RepoScan, 
                 ui.label(shown(f));
                 if let Some((_, why)) = scan.unreadable.iter().find(|(r, _)| same_spelling(r, f)) {
                     let note = t.trf("finder.unreadable", &[("error", why)]);
-                    ui.add(egui::Label::new(RichText::new(note).small().color(color::weak())).truncate());
+                    ui.add(egui::Label::new(RichText::new(note).size(type_scale::SMALL).color(color::weak())).truncate());
                 }
             });
         });
@@ -133,12 +134,12 @@ fn row(ui: &mut egui::Ui, t: Lang, r: &FinderRow, msgs: &mut Vec<Msg>) -> bool {
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if r.open {
-                ui.label(RichText::new(t.tr("repos.open_tag.label")).small().color(color::weak()))
+                ui.label(RichText::new(t.tr("repos.open_tag.label")).size(type_scale::SMALL).color(color::weak()))
                     .on_hover_text(t.tr("repos.open_tag.tip"));
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 let text = shown(path);
-                let label = egui::Label::new(RichText::new(&text).small().color(color::weak())).truncate();
+                let label = egui::Label::new(RichText::new(&text).size(type_scale::SMALL).color(color::weak())).truncate();
                 ui.add(label).on_hover_text(text);
             });
         });

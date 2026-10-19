@@ -64,7 +64,7 @@ fn no_allowed_signers_file() {
     let c = parse_check(SigningFormat::Ssh, out, stderr).unwrap();
     assert_eq!(c.status, SigStatus::NoAllowedSigners);
     assert_eq!(c.verdict(), Verdict::Signed);
-    assert!(c.reason().contains("Preferences > Commit Signing"), "{}", c.reason());
+    assert!(c.reason().contains("Preferences > Commit signing"), "{}", c.reason());
     assert!(c.reason().contains("gpg.ssh.allowedSignersFile"));
     assert!(c.details().is_empty());
 }

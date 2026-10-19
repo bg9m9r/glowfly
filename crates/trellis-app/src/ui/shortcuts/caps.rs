@@ -3,12 +3,13 @@
 
 use crate::keymap::Chord;
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use eframe::egui::{
     self, Color32, CornerRadius, FontId, Galley, Rect, Response, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2,
 };
 use std::sync::Arc;
 
-const CAP_FONT: f32 = 12.0;
+const CAP_FONT: f32 = type_scale::SMALL;
 /// Horizontal and vertical padding inside a key cap.
 const CAP_PAD: egui::Vec2 = vec2(10.0, 4.0);
 /// Space between a cap and the "+" or "or" next to it.

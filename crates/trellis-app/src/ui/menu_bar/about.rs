@@ -6,6 +6,7 @@ use crate::state::git_env::GitState;
 use crate::state::menu_bar::{LICENSE, WEBSITE, git_line, reflow, version_info};
 use crate::ui::dialog_frame::{Cx, Dialog, Footer};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, CollapsingHeader, Label, RichText};
 
@@ -23,11 +24,11 @@ pub(crate) fn about(ui: &mut egui::Ui, cx: Cx, git: &GitState, version: &str, ms
         }
         ui.add_space(10.0);
         ui.separator();
-        ui.label(RichText::new(t.tr("about.notices.title")).strong());
+        ui.label(type_scale::section_text(ui, t.tr("about.notices.title")));
         ui.add(Label::new(RichText::new(t.tr("about.notices.intro")).color(color::weak())).wrap());
         for n in trellis_core::notices::licenses() {
             CollapsingHeader::new(&n.name).id_salt(&n.source).default_open(false).show(ui, |ui| {
-                ui.add(Label::new(RichText::new(reflow(&n.text)).monospace().size(11.5)).wrap());
+                ui.add(Label::new(RichText::new(reflow(&n.text)).size(type_scale::SMALL)).wrap());
             });
         }
         ui.add_space(4.0);

@@ -9,6 +9,7 @@ use crate::state::rebase::{Editing, RebasePanel};
 use crate::ui::spell_edit::spell_text_edit;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, CornerRadius, Id, Response, RichText, Stroke, Ui};
 use trellis_core::i18n::Lang;
@@ -39,15 +40,15 @@ pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut Ui
                     ui.add_enabled_ui(enabled, |ui| {
                         let field = match editing {
                             Editing::Message(_) => {
-                                ui.label(RichText::new("New commit message").size(12.0).color(color::weak()));
+                                ui.label(RichText::new("New commit message").size(type_scale::SMALL).color(color::weak()));
                                 spell_text_edit(ui, &mut panel.draft, "Commit message", 5, &mut cache.speller, spell)
                             }
                             Editing::Combined(_) => {
-                                ui.label(RichText::new(COMBINED_LABEL).size(12.0).color(color::weak()));
+                                ui.label(RichText::new(COMBINED_LABEL).size(type_scale::SMALL).color(color::weak()));
                                 spell_text_edit(ui, &mut panel.draft, "Commit message", 6, &mut cache.speller, spell)
                             }
                             Editing::Command(_) => {
-                                ui.label(RichText::new("Command").size(12.0).color(color::weak()));
+                                ui.label(RichText::new("Command").size(type_scale::SMALL).color(color::weak()));
                                 command_field(ui, &mut panel.draft)
                             }
                         };

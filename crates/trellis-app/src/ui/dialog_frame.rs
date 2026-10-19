@@ -20,6 +20,7 @@
 use super::theme::{color, controls};
 use super::widgets::buttons::{self, StyledButton};
 use super::widgets::{Icon, paint_icon};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Id, Key, Modifiers, Response, RichText, Ui};
 use std::borrow::Cow;
 use trellis_core::i18n::Lang;
@@ -133,7 +134,7 @@ impl<'a> Dialog<'a> {
         }
 
         let top = ui.cursor().top();
-        let title = RichText::new(self.title.as_ref()).size(17.0).strong().color(color::strong());
+        let title = RichText::new(self.title.as_ref()).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::strong());
         match self.icon {
             None => {
                 ui.label(title);

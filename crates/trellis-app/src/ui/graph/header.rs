@@ -12,6 +12,7 @@ use crate::msg::{JobMsg, LoadMsg, Msg};
 use crate::state::ColumnDrag;
 use crate::state::shallow::{header_tooltip, history_remote};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::paint_cut_text;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
 use eframe::egui::{self, Align2, FontId, Pos2, Rect, Response, Sense, Stroke, pos2, vec2};
@@ -27,7 +28,7 @@ const ROW_H: f32 = 22.0;
 /// Space between a column's edges and its title.
 const TITLE_PAD: f32 = 6.0;
 /// The titles' font size.
-const TITLE_FONT: f32 = 10.5;
+const TITLE_FONT: f32 = type_scale::CAPTION;
 
 /// A graph column, for its title.
 #[derive(Clone, Copy, PartialEq)]
@@ -42,12 +43,12 @@ enum Title {
 
 /// Each column's title, left to right.
 const TITLES: [(&str, Title); 6] = [
-    ("BRANCH / TAG", Title::Refs),
-    ("GRAPH", Title::Graph),
-    ("MESSAGE", Title::Msg),
-    ("CHANGES", Title::Changes),
-    ("COMMIT", Title::Commit),
-    ("DATE", Title::Date),
+    ("Branch / tag", Title::Refs),
+    ("Graph", Title::Graph),
+    ("Message", Title::Msg),
+    ("Changes", Title::Changes),
+    ("Commit", Title::Commit),
+    ("Date", Title::Date),
 ];
 
 impl Title {
@@ -97,7 +98,7 @@ fn graph_width_for(lanes: usize, title_w: f32) -> f32 {
 }
 
 /// The GRAPH column's width for `lanes` lanes, wide enough for its title (one lane, or a
-/// filtered search, is narrower than "GRAPH").
+/// filtered search, is narrower than "Graph").
 pub(super) fn graph_width(ui: &egui::Ui, lanes: usize) -> f32 {
     graph_width_for(lanes, text_w(ui, Title::Graph.text(), &FontId::proportional(TITLE_FONT)))
 }
@@ -105,7 +106,7 @@ pub(super) fn graph_width(ui: &egui::Ui, lanes: usize) -> f32 {
 /// The least width of each resizable column: its title with padding, plus the gap the width
 /// includes. COMMIT also fits a seven-character SHA.
 fn floors(ui: &egui::Ui, font: &FontId) -> [(ResizableColumn, f32); 4] {
-    let sha_w = text_w(ui, "0000000", &FontId::monospace(11.5)) + 8.0 + 2.0;
+    let sha_w = text_w(ui, "0000000", &type_scale::mono(type_scale::SMALL)) + 8.0 + 2.0;
     let mut out = ResizableColumn::ALL.map(|c| (c, 0.0));
     for (text, title) in TITLES {
         let Some((col, gap)) = title.resizable() else { continue };
@@ -328,13 +329,13 @@ mod tests {
                 let font = FontId::proportional(TITLE_FONT);
                 let floors = floors(ui, &font);
                 let floor = |c: ResizableColumn| floors.iter().find(|(x, _)| *x == c).map_or(0.0, |f| f.1);
-                assert!(floor(Commit) >= text_w(ui, "COMMIT", &font) + 2.0 * TITLE_PAD + 8.0);
+                assert!(floor(Commit) >= text_w(ui, "Commit", &font) + 2.0 * TITLE_PAD + 8.0);
                 assert!(floor(Commit) >= text_w(ui, "0000000", &FontId::monospace(11.5)) + 8.0);
                 let w = floored(NARROW, &floors);
                 for (col, f) in floors {
                     assert!(w.get(col) >= f && w.get(col) >= NARROW.get(col), "{col:?}");
                 }
-                assert!(graph_width(ui, 1) >= text_w(ui, "GRAPH", &font) + 2.0 * TITLE_PAD);
+                assert!(graph_width(ui, 1) >= text_w(ui, "Graph", &font) + 2.0 * TITLE_PAD);
             });
         });
         assert_eq!(graph_width_for(3, 30.0), 3.0 * LANE_W + 10.0, "lanes wider than the title keep their width");

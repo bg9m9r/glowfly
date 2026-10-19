@@ -13,7 +13,8 @@ use crate::state::tip::{Tip, TipPreview, TipRow, TipSub};
 use crate::ui::common::{status_color, status_label};
 use crate::ui::shortcuts::Caps;
 use crate::ui::theme::color::{self, Palette};
-use eframe::egui::{self, Color32, CornerRadius, FontId, Frame, Label, Margin, Response, RichText, Sense, Shadow, Ui};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, Color32, CornerRadius, Frame, Label, Margin, Response, RichText, Sense, Shadow, Ui};
 use trellis_core::i18n::Lang;
 
 /// The rich tooltip's narrowest and widest.
@@ -62,7 +63,7 @@ pub fn show(ui: &mut Ui, tip: &Tip, keys: &Keymap, t: Lang) {
     ui.set_min_width(MIN_W);
     ui.set_max_width(MAX_W);
     ui.spacing_mut().item_spacing.y = 4.0;
-    ui.add(Label::new(RichText::new(&tip.title).size(14.0).color(color::strong())).wrap());
+    ui.add(Label::new(RichText::new(&tip.title).size(type_scale::BODY).color(color::strong())).wrap());
     match &tip.sub {
         Some(TipSub::Keys(id)) => {
             if let Some(first) = keys.chords(*id).first() {
@@ -74,7 +75,7 @@ pub fn show(ui: &mut Ui, tip: &Tip, keys: &Keymap, t: Lang) {
         None => {}
     }
     if let Some(body) = &tip.body {
-        ui.add(Label::new(RichText::new(body).size(13.0).color(color::text())).wrap());
+        ui.add(Label::new(RichText::new(body).size(type_scale::BODY).color(color::text())).wrap());
     }
     if let Some(p) = &tip.preview {
         ui.add_space(2.0);
@@ -86,7 +87,7 @@ pub fn show(ui: &mut Ui, tip: &Tip, keys: &Keymap, t: Lang) {
 }
 
 fn weak(ui: &mut Ui, text: &str) {
-    ui.add(Label::new(RichText::new(text).size(12.0).color(color::weak())).wrap());
+    ui.add(Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
 }
 
 /// The inset list: heading, rows, "and N more" and the note.
@@ -94,24 +95,24 @@ fn preview(ui: &mut Ui, p: &TipPreview, t: Lang) {
     Frame::new().fill(color::toolbar()).corner_radius(CornerRadius::same(6)).inner_margin(Margin::same(8)).show(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.spacing_mut().item_spacing.y = 3.0;
-        ui.add(Label::new(RichText::new(&p.heading).size(12.0).strong().color(color::text())).wrap());
+        ui.add(Label::new(type_scale::section_text(ui, &p.heading)).wrap());
         for row in &p.rows {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 6.0;
                 match row {
                     TipRow::Commit { sha, summary } => {
-                        ui.label(RichText::new(sha).font(FontId::monospace(12.0)).color(color::weak()));
-                        truncate_label(ui, RichText::new(summary).size(12.0).color(color::text()), ui.available_width());
+                        ui.label(RichText::new(sha).font(type_scale::mono(type_scale::SMALL)).color(color::weak()));
+                        truncate_label(ui, RichText::new(summary).size(type_scale::SMALL).color(color::text()), ui.available_width());
                     }
                     TipRow::File { status, path } => {
                         let letter = status_label(*status).to_string();
-                        ui.label(RichText::new(letter).font(FontId::monospace(12.0)).strong().color(status_color(*status)));
-                        let font = FontId::proportional(12.0);
+                        ui.label(RichText::new(letter).font(type_scale::mono(type_scale::SMALL)).color(status_color(*status)));
+                        let font = type_scale::font(type_scale::SMALL);
                         let shown = cut_left(ui, path, &font, ui.available_width());
                         ui.label(RichText::new(shown).font(font).color(color::text()));
                     }
                     TipRow::Line(text) => {
-                        ui.add(Label::new(RichText::new(text).size(12.0).color(color::weak())).wrap());
+                        ui.add(Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
                     }
                 }
             });

@@ -178,7 +178,7 @@ mod tests {
         let b = badge(SigningFormat::Ssh, BadgeState::Done(&r));
         assert_eq!(b.label, "Signed");
         assert!(b.tooltip.starts_with("Signed · SSH signature\n\n"), "{}", b.tooltip);
-        assert!(b.tooltip.contains("Preferences > Commit Signing"));
+        assert!(b.tooltip.contains("Preferences > Commit signing"));
     }
 
     #[test]

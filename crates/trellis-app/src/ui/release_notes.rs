@@ -6,7 +6,8 @@ use super::theme::color;
 use super::widgets::{self, Icon, buttons};
 use crate::msg::{Msg, UpdateMsg};
 use crate::state::release_notes::NotesDialog;
-use eframe::egui::{self, FontId, RichText, Sense, Stroke, pos2, vec2};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, RichText, Sense, Stroke, pos2, vec2};
 use trellis_core::changelog::{NoteSection, ReleaseNotes, Span, SpanStyle};
 use trellis_core::i18n::Lang;
 
@@ -30,7 +31,7 @@ fn body(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) {
             .show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 let title = t.trf("release_notes.available", &[("version", &offer.version)]);
-                ui.label(RichText::new(title).strong().size(15.0).color(color::text()));
+                ui.label(RichText::new(title).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()));
                 if let Some(notes) = &d.offered_notes {
                     ui.add_space(4.0);
                     for s in &notes.sections {
@@ -70,10 +71,10 @@ fn body(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) {
 /// and sections.
 fn release(ui: &mut egui::Ui, t: Lang, r: &ReleaseNotes, new: bool, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
-        let version = RichText::new(&r.version).strong().size(15.0);
+        let version = RichText::new(&r.version).font(type_scale::strong(ui, type_scale::SUBHEAD));
         match &r.url {
             Some(url) => {
-                let resp = ui.add(egui::Label::new(version.color(color::blue())).sense(Sense::click()));
+                let resp = ui.add(egui::Label::new(version.color(color::accent())).sense(Sense::click()));
                 if resp.on_hover_text(url).on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
                     msgs.push(Msg::OpenUrl(url.clone()));
                 }
@@ -88,7 +89,7 @@ fn release(ui: &mut egui::Ui, t: Lang, r: &ReleaseNotes, new: bool, msgs: &mut V
         if new {
             // As wide as the chip draws its text (`widgets::chip`), at least the English slot.
             let text = t.tr("release_notes.new_chip");
-            let text_w = ui.painter().layout_no_wrap(text.into(), FontId::proportional(11.5), color::green()).size().x;
+            let text_w = ui.painter().layout_no_wrap(text.into(), type_scale::font(type_scale::CAPTION), color::green()).size().x;
             let (rect, _) = ui.allocate_exact_size(vec2(36.0_f32.max(text_w + 12.0), 18.0), Sense::hover());
             widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::green().gamma_multiply(0.25), color::green());
         }
@@ -108,7 +109,7 @@ fn section(ui: &mut egui::Ui, s: &NoteSection, msgs: &mut Vec<Msg>) {
                 widgets::paint_icon(ui.painter(), rect.center(), Icon::Warning, color::amber());
             }
             let col = if s.breaking { color::amber() } else { color::strong() };
-            ui.label(RichText::new(&s.title).strong().color(col));
+            ui.label(RichText::new(&s.title).font(type_scale::strong(ui, type_scale::BODY)).color(col));
         });
     }
     for item in &s.items {
@@ -129,17 +130,17 @@ fn span_label(ui: &mut egui::Ui, span: &Span, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new(&span.text).color(color::text()));
         }
         SpanStyle::Strong => {
-            ui.label(RichText::new(&span.text).strong().color(color::strong()));
+            ui.label(RichText::new(&span.text).font(type_scale::strong(ui, type_scale::BODY)).color(color::strong()));
         }
         SpanStyle::Code => {
             let text = RichText::new(&span.text).monospace().color(color::text()).background_color(color::input());
             ui.label(text);
         }
         SpanStyle::Link(url) => {
-            // A commit's short sha is dim; other links read as links.
+            // Every link is in the accent colour; a commit's short sha is also monospace.
             let sha = (7..=40).contains(&span.text.len()) && span.text.bytes().all(|b| b.is_ascii_hexdigit());
             let text = RichText::new(&span.text);
-            let text = if sha { text.monospace().color(color::faint()) } else { text.color(color::blue()) };
+            let text = if sha { text.font(type_scale::mono(type_scale::SMALL)) } else { text }.color(color::accent());
             let resp = ui.add(egui::Label::new(text).sense(Sense::click()));
             if resp.on_hover_text(url).on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
                 msgs.push(Msg::OpenUrl(url.clone()));

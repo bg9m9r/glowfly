@@ -1,4 +1,4 @@
-//! Rules of Preferences > External Tools: planning an editor or terminal launch from the
+//! Rules of Preferences > External tools: planning an editor or terminal launch from the
 //! settings, the texts of its failures (the diff and merge tools' too), and the page's
 //! warnings. The diff and merge tools' own rules are in state/tool_compare.rs.
 
@@ -10,13 +10,13 @@ use trellis_core::settings::ExternalTools;
 
 /// The file rows' menu item.
 pub const OPEN_IN_EDITOR: &str = "Open in external editor";
-pub const NO_EDITOR: &str = "No external editor is set. Choose one in Preferences > External Tools.";
+pub const NO_EDITOR: &str = "No external editor is set. Choose one in Preferences > External tools.";
 /// The palette's detail when no editor is set.
 pub const NO_EDITOR_DETAIL: &str = "no editor set";
 
 /// The failure text for a template whose field is called `field` on the page.
 pub(super) fn unmatched(field: &str) -> String {
-    format!("The {field} arguments in Preferences > External Tools have an unmatched quote.")
+    format!("The {field} arguments in Preferences > External tools have an unmatched quote.")
 }
 
 fn expand(template: &str, vars: &Vars, field: &str) -> Result<Vec<std::ffi::OsString>, String> {
@@ -62,7 +62,7 @@ pub fn failure_text(kind: ToolKind, program: &str, target: &str, failure: &Launc
     };
     match failure {
         LaunchFailure::NotFound => {
-            format!("Could not find the external {what} \"{program}\". Check the {what} executable in Preferences > External Tools.")
+            format!("Could not find the external {what} \"{program}\". Check the {what} executable in Preferences > External tools.")
         }
         LaunchFailure::Missing(p) => format!("{} is not in the working tree", trellis_core::native_path::shown(p)),
         LaunchFailure::Files(e) => format!("Could not prepare {target} for the {what}: {e}"),
@@ -141,7 +141,7 @@ mod tests {
     #[test]
     fn diff_and_merge_failures_name_the_tool() {
         let t = failure_text(ToolKind::DiffTool, "meld", "a.txt", &LaunchFailure::NotFound);
-        assert_eq!(t, "Could not find the external diff tool \"meld\". Check the diff tool executable in Preferences > External Tools.");
+        assert_eq!(t, "Could not find the external diff tool \"meld\". Check the diff tool executable in Preferences > External tools.");
         let t = failure_text(ToolKind::DiffTool, "meld", "a.txt", &LaunchFailure::Files("disk full".into()));
         assert_eq!(t, "Could not prepare a.txt for the diff tool: disk full");
         let t = failure_text(ToolKind::MergeTool, "kdiff3", "a.txt", &LaunchFailure::NotFound);

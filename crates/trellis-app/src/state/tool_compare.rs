@@ -1,5 +1,5 @@
 //! Rules of the external diff and merge tools: when their entries are disabled and why,
-//! planning a request from Preferences > External Tools, and what a merge tool run's end says.
+//! planning a request from Preferences > External tools, and what a merge tool run's end says.
 
 use super::AppState;
 use super::tools::{failure_text, unmatched};
@@ -15,8 +15,8 @@ pub const OPEN_IN_DIFF_TOOL: &str = "Open in external diff tool";
 pub const RESOLVE_IN_MERGE_TOOL: &str = "Resolve in external merge tool";
 /// The conflict view's button.
 pub const MERGE_TOOL_BUTTON: &str = "Open in merge tool";
-pub const NO_DIFF_TOOL: &str = "No external diff tool is set. Choose one in Preferences > External Tools.";
-pub const NO_MERGE_TOOL: &str = "No external merge tool is set. Choose one in Preferences > External Tools.";
+pub const NO_DIFF_TOOL: &str = "No external diff tool is set. Choose one in Preferences > External tools.";
+pub const NO_MERGE_TOOL: &str = "No external merge tool is set. Choose one in Preferences > External tools.";
 /// Why the merge tool can't start while a job runs.
 pub const BUSY: &str = "Another operation is still running";
 const DELETED: &str = "One side deleted the file: keep or delete it with the buttons below";
@@ -160,7 +160,7 @@ mod tests {
         );
         t.diff_tool_args = "\"{local} {remote}".into();
         let e = diff_request(&t, repo, &DiffTarget::Staged("a.txt".into()), true).unwrap_err();
-        assert_eq!(e, "The Diff tool arguments in Preferences > External Tools have an unmatched quote.");
+        assert_eq!(e, "The Diff tool arguments in Preferences > External tools have an unmatched quote.");
         assert_eq!(merge_request(&tools("meld", ""), repo, "a.txt", true), Err(NO_MERGE_TOOL.to_owned()));
         let r = merge_request(&t, repo, "a.txt", true).unwrap();
         assert_eq!(

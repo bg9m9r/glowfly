@@ -75,9 +75,11 @@ fn wip_header_german_narrow() {
 
 #[test]
 fn wip_header_german_wide() {
-    let (st, dir) = german_wip("truncate-wip-wide", 520.0);
+    // Wide enough for every button beside the whole title, in a wider window so the graph keeps
+    // its columns.
+    let (st, dir) = german_wip("truncate-wip-wide", 600.0);
     let de = Lang::De;
-    let mut h = harness(st, true);
+    let mut h = harness_sized(st, true, vec2(1600.0, 820.0));
     h.run();
     for key in ["details.wip.stage_all.button", "details.wip.discard_all.button", "details.wip.new_file.button"] {
         assert!(h.query_by_label(de.tr(key)).is_some(), "{key}");

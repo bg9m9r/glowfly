@@ -219,9 +219,9 @@ fn welcome_icons_push_messages() {
     assert!(matches!(**then, Msg::Recent(RecentMsg::ClearRecent)));
 }
 
-/// Opens the toolbar's repository menu: the repository name under the "repository" caption.
+/// Opens the toolbar's repository menu: the repository name under the "Repository" caption.
 fn open_repo_menu(h: &mut H) {
-    let caption = h.get_by_label("repository").bounding_box().expect("the caption");
+    let caption = h.get_by_label("Repository").bounding_box().expect("the caption");
     let name = h
         .get_all_by_label("demo")
         .filter_map(|n| n.bounding_box())

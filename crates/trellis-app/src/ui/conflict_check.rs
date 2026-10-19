@@ -10,7 +10,8 @@ use crate::conflict_check::ConflictCheckMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::conflict_check::{self as cc, ConflictReport, JOB_RUNNING};
-use eframe::egui::{self, CornerRadius, FontId, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, CornerRadius, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
 use trellis_core::conflict_check::Prediction;
 
 /// The chip's height; the toolbar row is 48px.
@@ -34,7 +35,7 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some((report, paths)) = shown(st) else { return };
     let Some(snap) = &st.snap else { return };
     let count = if paths.is_empty() { "!".to_owned() } else { paths.len().to_string() };
-    let galley = ui.painter().layout_no_wrap(count, FontId::proportional(12.5), color::text());
+    let galley = ui.painter().layout_no_wrap(count, type_scale::font(type_scale::SMALL), color::text());
     ui.add_space(8.0);
     let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 36.0, HEIGHT), Sense::click());
     let amber = color::amber();
@@ -61,7 +62,7 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 
 fn popover(ui: &mut egui::Ui, report: &ConflictReport, paths: &[String], remote: bool, idle: bool, msgs: &mut Vec<Msg>) {
     let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
-    ui.label(RichText::new(format!("Conflicts with {theirs}")).strong().size(14.0));
+    ui.label(type_scale::section_text(ui, format!("Conflicts with {theirs}")));
     if let Some(note) = cc::target_note(&report.request.target, ours, remote) {
         ui.label(RichText::new(note).color(color::weak()));
     }
@@ -87,7 +88,7 @@ fn popover(ui: &mut egui::Ui, report: &ConflictReport, paths: &[String], remote:
         }
     });
     ui.add_space(4.0);
-    ui.label(RichText::new("Turn this check off in Preferences > General.").small().color(color::faint()));
+    ui.label(RichText::new("Turn this check off in Preferences > General.").size(type_scale::SMALL).color(color::faint()));
 }
 
 /// The report dialog's contents; returns true when Close was clicked. `on_head`: the report is

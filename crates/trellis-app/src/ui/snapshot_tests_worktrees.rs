@@ -85,7 +85,7 @@ fn worktrees_section() {
     let (st, dir) = with_worktrees(ThemeChoice::Dark, "worktrees");
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label("WORKTREES").is_some() || h.query_by_label("feature-login").is_some());
+    assert!(h.query_by_label("Worktrees").is_some() || h.query_by_label("feature-login").is_some());
     assert!(h.query_by_label("✔  app").is_some(), "the current worktree is marked");
     h.check_snapshot("worktrees_section");
     drop(h);

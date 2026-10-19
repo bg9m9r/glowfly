@@ -13,6 +13,7 @@ use super::widgets::{self, Icon};
 use crate::msg::{IssueMsg, Msg};
 use crate::state::AppState;
 use crate::state::issue::IssueView;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Sense, Ui, vec2};
 use trellis_core::i18n::Lang;
@@ -79,7 +80,7 @@ fn header(ui: &mut Ui, t: Lang, v: &IssueView, open_label: &str, msgs: &mut Vec<
                 let tint = if v.closed() { color::purple() } else { color::green() };
                 widgets::paint_icon(ui.painter(), rect.center(), Icon::Issue, tint);
                 ui.label(RichText::new(&v.mention).color(color::weak()));
-                let title = RichText::new(printable(&v.issue.title)).strong().size(15.0).color(color::text());
+                let title = RichText::new(printable(&v.issue.title)).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text());
                 ui.add(egui::Label::new(title).truncate());
             });
         });

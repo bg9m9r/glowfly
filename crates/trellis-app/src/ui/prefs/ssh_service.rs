@@ -6,6 +6,7 @@ use crate::msg::Msg;
 use crate::ssh::SshMsg;
 use crate::state::ssh_service::{UploadForm, UploadState, already_note};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, CornerRadius, RichText, Ui};
 use trellis_core::forge::title_problem;
@@ -18,9 +19,9 @@ pub(super) fn upload_form(ui: &mut Ui, t: Lang, form: &mut UploadForm, file: &st
             ui.set_width(ui.available_width());
             ui.spacing_mut().item_spacing.y = 6.0;
             let heading = format!("Add {file} to {} ({})", form.service(), form.account.host);
-            ui.label(RichText::new(heading).strong().color(color::text()));
+            ui.label(type_scale::section_text(ui, heading));
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Title").size(12.5).color(color::text()));
+                ui.label(RichText::new("Title").size(type_scale::SMALL).color(color::text()));
                 let hint = form.default_title.clone();
                 text_field(ui, &mut form.title, &hint);
             });

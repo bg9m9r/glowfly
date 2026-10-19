@@ -7,6 +7,7 @@ use crate::keymap::{Binding, Keymap};
 use crate::ui::dialog_frame::{Cx, Dialog, Footer};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use eframe::egui::{Align, Id, Layout, RichText, Sense, TextEdit, Ui, vec2};
 
 /// Draws the sheet inside the dialog with the keys in effect; `cx.keyboard` gives the filter
@@ -30,7 +31,7 @@ pub fn show(ui: &mut Ui, cx: Cx, filter: &mut String, keys: &Keymap) -> bool {
         }
         for (group, rows) in &groups {
             ui.add_space(8.0);
-            ui.label(RichText::new(group.title()).strong().size(12.5).color(color::weak()));
+            ui.label(RichText::new(group.title()).font(type_scale::strong(ui, type_scale::SMALL)).color(color::weak()));
             for b in rows {
                 row(ui, b, keys);
             }
@@ -49,7 +50,7 @@ fn row(ui: &mut Ui, b: &Binding, keys: &Keymap) {
         ui.allocate_ui_with_layout(vec2(left, 0.0), wrap, |ui| {
             ui.label(RichText::new(b.label).color(color::text()));
             if let Some(note) = b.when.note() {
-                ui.label(RichText::new(note).size(11.5).color(color::weak()));
+                ui.label(RichText::new(note).size(type_scale::CAPTION).color(color::weak()));
             }
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| caps.paint(ui, &keys.keys_text(b.id), Sense::hover()));

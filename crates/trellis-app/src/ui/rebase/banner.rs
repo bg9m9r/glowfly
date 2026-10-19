@@ -7,6 +7,7 @@
 use crate::msg::{Msg, RebaseMsg, RepoMsg};
 use crate::state::rebase_banner::{EDIT_STEPS, SELECT_COMMIT, STASH_NOTE, lines};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText};
 use git2::RepositoryState;
@@ -14,13 +15,13 @@ use trellis_core::rebase::RebaseProgress;
 
 pub fn progress(ui: &mut egui::Ui, p: &RebaseProgress, name: &str, conflicts_left: bool, msgs: &mut Vec<Msg>) {
     let text = lines(p, name, conflicts_left);
-    ui.label(RichText::new(text.title).strong());
+    ui.label(RichText::new(text.title).font(type_scale::strong(ui, type_scale::BODY)));
     if let Some(stop) = &text.stop {
         // Word by word, so the line wraps between words like plain text.
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(0.0, 2.0);
             words(ui, &format!("{} ", stop.before));
-            let link = egui::Link::new(RichText::new(&stop.sha).monospace().color(color::weak()));
+            let link = egui::Link::new(RichText::new(&stop.sha).monospace());
             if ui.add(link).on_hover_text(SELECT_COMMIT).clicked() {
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(stop.oid)));
             }

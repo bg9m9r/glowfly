@@ -14,6 +14,7 @@ use crate::msg::{ConflictMsg, Msg};
 use crate::state::conflict::ConflictView;
 use crate::state::tool_compare::{IN_MERGE_TOOL, MERGE_TOOL_BUTTON};
 use crate::tools::ToolsMsg;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText, Ui, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::repo::{ConflictContent, Operation, SideLabels};
@@ -36,7 +37,9 @@ pub(super) fn header_bar(ui: &mut Ui, t: Lang, view: &ConflictView, tool: Option
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         // Cut short rather than run past the panel.
-        ui.add(egui::Label::new(RichText::new(&view.path).strong().size(15.0).color(color::text())).truncate());
+        ui.add(
+            egui::Label::new(RichText::new(&view.path).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text())).truncate(),
+        );
         if let Some(f) = &view.file {
             ui.add(egui::Label::new(RichText::new(operation_text(t, &f.labels)).color(color::weak())).truncate());
         }

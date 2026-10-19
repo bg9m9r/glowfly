@@ -9,7 +9,8 @@ use super::widgets::{self, Icon};
 use crate::msg::{Msg, UpdateMsg};
 use crate::state::AppState;
 use crate::state::updates::{ChipKind, UpdateStatus};
-use eframe::egui::{self, CornerRadius, FontId, Sense, Stroke, StrokeKind, pos2, vec2};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, CornerRadius, Sense, Stroke, StrokeKind, pos2, vec2};
 
 const HEIGHT: f32 = 20.0;
 /// The chip's width beside its text: the icon before it (26 px) and the space after (8 px).
@@ -22,7 +23,7 @@ pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         ChipKind::Failed => color::red(),
         ChipKind::Available | ChipKind::Downloading | ChipKind::Downloaded => color::blue(),
     };
-    let font = FontId::proportional(12.0);
+    let font = type_scale::font(type_scale::SMALL);
     let text_w = ui.painter().layout_no_wrap(text.clone(), font.clone(), color::text()).size().x;
     let ellipsis_w = ui.fonts(|f| f.glyph_width(&font, '…'));
     let sense = if kind == ChipKind::Downloading { Sense::hover() } else { Sense::click() };

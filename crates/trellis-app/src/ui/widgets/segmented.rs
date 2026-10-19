@@ -6,6 +6,7 @@
 //! the track and its index, so a label that changes (a count) keeps its id.
 
 use super::super::theme::color;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, CornerRadius, CursorIcon, FontId, Rect, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
 /// The track's height and corners; a segment sits 2 px inside it.
@@ -14,7 +15,7 @@ const RADIUS: u8 = 6;
 const INSET: f32 = 2.0;
 /// Room either side of a label.
 const PAD_X: f32 = 12.0;
-const FONT: f32 = 13.0;
+const FONT: f32 = type_scale::BODY;
 
 /// One option of a segmented control.
 #[derive(Clone, Copy)]

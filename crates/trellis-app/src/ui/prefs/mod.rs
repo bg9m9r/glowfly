@@ -34,8 +34,9 @@ use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align2, Color32, FontId, RichText, Sense, Stroke, Ui, pos2, vec2};
+use eframe::egui::{self, Align2, Color32, RichText, Sense, Stroke, Ui, pos2, vec2};
 use trellis_core::forge::Provider;
 
 pub(super) const LABEL_W: f32 = 240.0;
@@ -44,7 +45,7 @@ pub(super) const LABEL_W: f32 = 240.0;
 pub(super) fn row(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui)) {
     ui.horizontal_top(|ui| {
         let (r, _) = ui.allocate_exact_size(vec2(LABEL_W, 24.0), Sense::hover());
-        ui.painter().text(pos2(r.right(), r.center().y), Align2::RIGHT_CENTER, label, FontId::proportional(13.5), color::text());
+        ui.painter().text(pos2(r.right(), r.center().y), Align2::RIGHT_CENTER, label, type_scale::font(type_scale::BODY), color::text());
         ui.add_space(18.0);
         ui.vertical(|ui| {
             ui.set_max_width(480.0);
@@ -55,7 +56,7 @@ pub(super) fn row(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui)) {
 }
 
 pub(super) fn help(ui: &mut Ui, text: &str) {
-    ui.add(egui::Label::new(RichText::new(text).size(12.0).color(color::weak())).wrap());
+    ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
 }
 
 pub(super) fn warn(ui: &mut Ui, text: &str) {
@@ -67,14 +68,14 @@ pub(super) fn warn(ui: &mut Ui, text: &str) {
             Color32::TRANSPARENT,
             Stroke::new(1.3_f32, color::amber()),
         ));
-        ui.add(egui::Label::new(RichText::new(text).size(12.0).color(color::weak())).wrap());
+        ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
     });
 }
 
 pub(super) fn caption(ui: &mut Ui, text: &str) {
     ui.horizontal(|ui| {
         ui.add_space(12.0);
-        ui.label(RichText::new(text).size(12.5).color(color::weak()));
+        ui.label(RichText::new(text).size(type_scale::SMALL).color(color::weak()));
     });
     ui.add_space(4.0);
 }
@@ -130,7 +131,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))
         .show(ctx, |ui| {
             let title = if page == PrefPage::Integrations { prefs.int_provider.name() } else { page.title(t) };
-            ui.label(RichText::new(title).size(21.0).color(color::text()));
+            ui.label(RichText::new(title).font(type_scale::strong(ui, type_scale::TITLE)).color(color::text()));
             ui.add_space(18.0);
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 6.0;
@@ -181,13 +182,13 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
     egui::SidePanel::left("prefs-nav").exact_width(250.0).resizable(false).frame(egui::Frame::new().fill(color::panel())).show(ctx, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         ui.add_space(6.0);
-        if widgets::nav_row(ui, Some(Icon::Back), t.tr("prefs.nav.exit"), false, 15.0).on_hover_text("Esc").clicked() {
+        if widgets::nav_row(ui, Some(Icon::Back), t.tr("prefs.nav.exit"), false).on_hover_text("Esc").clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
         }
         ui.add_space(12.0);
         caption(ui, t.tr("prefs.nav.caption"));
         let mut go = |ui: &mut Ui, pg: PrefPage, icon: Icon| {
-            if widgets::nav_row(ui, Some(icon), pg.nav_label(t), page == pg, 15.0).clicked()
+            if widgets::nav_row(ui, Some(icon), pg.nav_label(t), page == pg).clicked()
                 && let Some(p) = st.prefs.as_mut()
             {
                 // A key being recorded or a warning belongs to the page it was on.
@@ -201,11 +202,11 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
         };
         go(ui, PrefPage::General, Icon::Gear);
         // Not `go`: the page looks for installed gits when it opens.
-        if widgets::nav_row(ui, Some(Icon::Branch), PrefPage::Git.nav_label(t), page == PrefPage::Git, 15.0).clicked() {
+        if widgets::nav_row(ui, Some(Icon::Branch), PrefPage::Git.nav_label(t), page == PrefPage::Git).clicked() {
             msgs.push(Msg::GitEnv(crate::git_env::GitEnvMsg::ShowPage));
         }
         // Not `go`: the page seeds and fills its profiles when it opens.
-        if widgets::nav_row(ui, Some(Icon::User), PrefPage::Profile.nav_label(t), page == PrefPage::Profile, 15.0).clicked() {
+        if widgets::nav_row(ui, Some(Icon::User), PrefPage::Profile.nav_label(t), page == PrefPage::Profile).clicked() {
             msgs.push(Msg::Profile(crate::profile::ProfileMsg::ShowPage));
         }
         go(ui, PrefPage::Integrations, Icon::Plug);
@@ -216,7 +217,7 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
         go(ui, PrefPage::Terminal, Icon::Terminal);
         go(ui, PrefPage::Signing, Icon::Key);
         // Not `go`: the page reads ~/.ssh when it opens.
-        if widgets::nav_row(ui, Some(Icon::Lock), PrefPage::Ssh.nav_label(t), page == PrefPage::Ssh, 15.0).clicked() {
+        if widgets::nav_row(ui, Some(Icon::Lock), PrefPage::Ssh.nav_label(t), page == PrefPage::Ssh).clicked() {
             msgs.push(Msg::Ssh(crate::ssh::SshMsg::ShowPage));
         }
         if let Some(name) = repo_name {
@@ -224,26 +225,25 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
             caption(ui, t.tr("prefs.nav.repo_caption"));
             ui.horizontal(|ui| {
                 ui.add_space(12.0);
-                ui.label(RichText::new(t.trf("prefs.nav.repo_name", &[("name", &name)])).size(12.0).color(color::faint()));
+                ui.label(RichText::new(t.trf("prefs.nav.repo_name", &[("name", &name)])).size(type_scale::SMALL).color(color::faint()));
             });
             ui.add_space(4.0);
             go(ui, PrefPage::RepoIdentity, Icon::Identity);
             go(ui, PrefPage::RepoHooks, Icon::Hook);
             // Not `go`: the page loads Trello boards when it opens.
-            if widgets::nav_row(ui, Some(Icon::Activity), PrefPage::RepoTracker.nav_label(t), page == PrefPage::RepoTracker, 15.0).clicked()
-            {
+            if widgets::nav_row(ui, Some(Icon::Activity), PrefPage::RepoTracker.nav_label(t), page == PrefPage::RepoTracker).clicked() {
                 msgs.push(Msg::Forge(crate::msg::ForgeMsg::ShowTrackerPage));
             }
             // Not `go`: the page reads its status when it opens.
-            if widgets::nav_row(ui, Some(Icon::Storage), PrefPage::RepoLfs.nav_label(t), page == PrefPage::RepoLfs, 15.0).clicked() {
+            if widgets::nav_row(ui, Some(Icon::Storage), PrefPage::RepoLfs.nav_label(t), page == PrefPage::RepoLfs).clicked() {
                 msgs.push(Msg::Lfs(crate::lfs::LfsMsg::ShowPage));
             }
             // Not `go`: the page fills its form from the snapshot.
-            if widgets::nav_row(ui, Some(Icon::Flow), PrefPage::RepoGitFlow.nav_label(t), page == PrefPage::RepoGitFlow, 15.0).clicked() {
+            if widgets::nav_row(ui, Some(Icon::Flow), PrefPage::RepoGitFlow.nav_label(t), page == PrefPage::RepoGitFlow).clicked() {
                 msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ShowPage));
             }
             // Not `go`: the page reads its status when it opens.
-            if widgets::nav_row(ui, Some(Icon::Sparse), PrefPage::RepoSparse.nav_label(t), page == PrefPage::RepoSparse, 15.0).clicked() {
+            if widgets::nav_row(ui, Some(Icon::Sparse), PrefPage::RepoSparse.nav_label(t), page == PrefPage::RepoSparse).clicked() {
                 msgs.push(Msg::Sparse(crate::msg::SparseMsg::ShowPage));
             }
         }
@@ -261,7 +261,7 @@ fn providers(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
             ui.add_space(8.0);
             for p in Provider::ALL {
                 let label = if connected.contains(&p) { format!("{}  ✔", p.name()) } else { p.name().to_owned() };
-                if widgets::nav_row(ui, None, &label, current == Some(p), 14.0).clicked() {
+                if widgets::nav_row(ui, None, &label, current == Some(p)).clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::SelectIntegration(p)));
                 }
             }

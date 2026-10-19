@@ -40,7 +40,7 @@ fn prefs_integrations_trello() {
     for label in ["Get your API key", "Allow a read-only token", "Allow a token that can create cards", "Trello"] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
-    assert!(h.query_by_label("Host Domain").is_none() && h.query_by_label("Connect to Trello").is_none());
+    assert!(h.query_by_label("Host domain").is_none() && h.query_by_label("Connect to Trello").is_none());
     h.get_by_label("Allow a read-only token").click();
     h.run();
     let want = |m: &Msg| matches!(m, Msg::OpenUrl(u) if u.starts_with("https://trello.com/1/authorize?") && u.contains("scope=read&"));

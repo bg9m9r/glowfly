@@ -40,22 +40,22 @@ fn clone_stage_commit_push_pull() {
     write(&clone, "todo.txt", "buy milk\n");
     j.refresh();
     j.select_wip();
-    j.see("Unstaged Files (2)", Region::Details);
+    j.see("Unstaged files (2)", Region::Details);
     assert_eq!(disk::index_text(&clone, "notes.txt"), Some(notes()), "nothing staged yet");
     assert_eq!(disk::index_text(&clone, "todo.txt"), None);
 
     // step 3: stage only the first hunk of notes.txt.
     j.click("notes.txt", Region::Details, Pick::Only);
-    j.click("Stage Hunk", Region::Central, Pick::First);
+    j.click("Stage hunk", Region::Central, Pick::First);
     let staged = disk::index_text(&clone, "notes.txt").unwrap();
     assert!(staged.contains("line 2 edited\n") && staged.contains("line 19\n"), "{staged}");
     assert_eq!(j.count("notes.txt", Region::Details), 2, "in both lists");
-    j.see("Staged Files (1)", Region::Details);
+    j.see("Staged files (1)", Region::Details);
 
     // step 4: stage the whole new file from its row.
     j.click("Stage", Region::Details, Pick::InRowOf("todo.txt"));
     assert_eq!(disk::index_text(&clone, "todo.txt").as_deref(), Some("buy milk\n"));
-    j.see("Staged Files (2)", Region::Details);
+    j.see("Staged files (2)", Region::Details);
 
     // step 5: commit the staged changes; the second hunk stays in the working tree.
     j.type_into("Commit summary", "Edit notes and add a todo list");
@@ -67,7 +67,7 @@ fn clone_stage_commit_push_pull() {
     let committed = disk::tree_text(&clone, head, "notes.txt").unwrap();
     assert!(committed.contains("line 2 edited\n") && committed.contains("line 19\n"), "{committed}");
     assert!(disk::work_text(&clone, "notes.txt").unwrap().contains("line 19 edited\n"));
-    j.see("Staged Files (0)", Region::Details);
+    j.see("Staged files (0)", Region::Details);
     // The diff still fills the centre; closing it shows the new commit in the graph.
     j.click_containing("Close", Region::Central, Pick::Only);
     j.see("Edit notes and add a todo list", Region::Central);

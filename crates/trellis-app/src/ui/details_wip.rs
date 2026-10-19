@@ -19,6 +19,7 @@ use crate::state::AppState;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::tool_compare::{RESOLVE_IN_MERGE_TOOL, ToolAvail};
 use crate::tools::ToolsMsg;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText};
 use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, FileEntry, Snapshot, WipLineCounts};
@@ -91,7 +92,7 @@ fn file_list(
     msgs: &mut Vec<Msg>,
 ) {
     // The English titles stay the lists' scroll ids, whatever the language.
-    let (id, all) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
+    let (id, all) = if staged { ("Staged files", &snap.staged) } else { ("Unstaged files", &snap.unstaged) };
     // Built only while files are conflicted: a working tree can have thousands of changed files.
     let kept: Option<Vec<&FileEntry>> =
         (!staged && all.iter().any(|f| f.status == '!')).then(|| all.iter().filter(|f| f.status != '!').collect());
@@ -168,7 +169,7 @@ pub(super) fn wip_file_row(
         _ => false,
     };
     let row = |ui: &mut egui::Ui| {
-        ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
+        ui.label(RichText::new(status_label(f.status).to_string()).font(type_scale::mono(type_scale::BODY)).color(status_color(f.status)));
         // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).
         let usable = !matches!(f.hazard, Some(trellis_core::repo::Hazard::NotUtf8(_)));
         if ui.add_enabled(usable, egui::Button::new(action).small()).clicked() {
@@ -178,7 +179,7 @@ pub(super) fn wip_file_row(
         super::path_warnings::mark(ui, f);
         super::lfs_badge::badge(ui, f);
         if let Some((text, green)) = note {
-            ui.label(RichText::new(text).small().color(if green { color::green() } else { color::weak() }));
+            ui.label(RichText::new(text).size(type_scale::SMALL).color(if green { color::green() } else { color::weak() }));
         }
     };
     let r = match count.zip(lines) {

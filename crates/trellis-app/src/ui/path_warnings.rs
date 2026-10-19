@@ -5,6 +5,7 @@
 use super::theme::color;
 use super::widgets::banner::{self, BannerKind};
 use crate::state::path_hazards::warnings;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText};
 use trellis_core::repo::{FileEntry, Snapshot};
 
@@ -15,7 +16,7 @@ pub(super) fn banner(ui: &mut egui::Ui, snap: &Snapshot) {
         return;
     }
     banner::frame(ui, BannerKind::Warning, None, |ui| {
-        ui.label(RichText::new("File names").strong().color(color::text()));
+        ui.label(type_scale::section_text(ui, "File names"));
         for line in lines {
             ui.add(egui::Label::new(RichText::new(line).color(color::text())).wrap());
         }

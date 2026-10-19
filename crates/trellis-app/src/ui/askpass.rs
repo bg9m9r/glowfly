@@ -10,6 +10,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::askpass::PendingPrompt;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::askpass::{PromptKind, host, user_and_host};
@@ -100,7 +101,7 @@ fn layout(p: &PendingPrompt) -> Layout {
 
 /// Help for a signing passphrase: why it isn't asked every time, and how to get GnuPG's window.
 const GPG_HELP: &str = "gpg-agent remembers the passphrase for a while, so Trellis asks again only once it has \
-forgotten. To use GnuPG's own window instead, turn this off in Preferences > Commit Signing.";
+forgotten. To use GnuPG's own window instead, turn this off in Preferences > Commit signing.";
 
 /// The notice under the fields for a prompt asked again, or for a host whose credentials
 /// failed last time.
@@ -143,7 +144,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new(format!("Key {key}")).monospace().color(color::weak()));
         }
         if l.full_text {
-            d.body(ui, |ui| ui.add(egui::Label::new(RichText::new(front.prompt.text.trim_end()).monospace()).wrap()));
+            d.body(ui, |ui| ui.add(egui::Label::new(RichText::new(front.prompt.text.trim_end())).wrap()));
         }
         ui.add_space(8.0);
         let enter = ui.input(|i| i.key_pressed(Key::Enter));
@@ -185,7 +186,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         if l.token_hint {
             ui.add_space(2.0);
             let hint = "Most hosting services expect a personal access token here, not your account password.";
-            ui.add(egui::Label::new(RichText::new(hint).color(color::weak()).size(12.0)).wrap());
+            ui.add(egui::Label::new(RichText::new(hint).color(color::weak()).size(type_scale::SMALL)).wrap());
         }
         if l.remember {
             ui.add_space(4.0);
@@ -193,7 +194,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         }
         if let Some(help) = l.help {
             ui.add_space(2.0);
-            ui.add(egui::Label::new(RichText::new(help).color(color::weak()).size(12.0)).wrap());
+            ui.add(egui::Label::new(RichText::new(help).color(color::weak()).size(type_scale::SMALL)).wrap());
         }
         if !l.full_text {
             let saved = if l.remember && p.remember {
@@ -202,7 +203,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 "Trellis doesn't save what you type here."
             };
             ui.add_space(6.0);
-            ui.label(RichText::new(saved).color(color::weak()).size(12.0));
+            ui.label(RichText::new(saved).color(color::weak()).size(type_scale::SMALL));
         }
         let valid = p.can_submit();
         let mut cancel = ui.input(|i| i.key_pressed(Key::Escape));

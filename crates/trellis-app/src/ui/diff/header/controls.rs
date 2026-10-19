@@ -5,6 +5,7 @@ use crate::keymap::Keymap;
 use crate::state::tip::Tip;
 use crate::ui::access;
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::{Icon, paint_icon_sized, tooltip};
 use eframe::egui::{Align2, Color32, CornerRadius, CursorIcon, FontId, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 use trellis_core::i18n::Lang;
@@ -26,7 +27,7 @@ const DIVIDER_PAD: f32 = 8.0;
 pub(super) const DIVIDER_W: f32 = 1.0 + 2.0 * DIVIDER_PAD;
 
 pub(super) fn font() -> FontId {
-    FontId::proportional(13.0)
+    type_scale::font(type_scale::BODY)
 }
 
 /// The width of `text` in `font`.

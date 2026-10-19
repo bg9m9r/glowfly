@@ -62,7 +62,7 @@ fn opening_a_diff_without_a_tool_points_to_preferences() {
     let dir = scratch_repo("tc-no-diff-tool");
     let mut st = opened(&dir);
     assert!(run(&mut st, ToolsMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))).is_empty());
-    assert_eq!(toast(&st), (false, NO_DIFF_TOOL.to_owned(), Some("Open Preferences".to_owned())));
+    assert_eq!(toast(&st), (false, NO_DIFF_TOOL.to_owned(), Some("Open preferences".to_owned())));
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(NO_DIFF_TOOL));
     let id = st.toasts.last().unwrap().id;
     update(&mut st, Msg::ToastAction(id), Instant::now());
@@ -112,7 +112,7 @@ fn resolving_starts_the_merge_tool_as_the_active_job() {
     let mut st = opened(&dir);
     // No tool set: nothing starts, and the toast points to Preferences.
     assert!(run(&mut st, ToolsMsg::ResolveInMergeTool("a.txt".into())).is_empty());
-    assert_eq!(toast(&st), (false, NO_MERGE_TOOL.to_owned(), Some("Open Preferences".to_owned())));
+    assert_eq!(toast(&st), (false, NO_MERGE_TOOL.to_owned(), Some("Open preferences".to_owned())));
     assert!(st.job.is_none());
 
     st.settings.external_tools.merge_tool = "kdiff3".into();
@@ -177,7 +177,7 @@ fn other_merge_ends_are_reported() {
     let cases = [
         (MergeEnd::Unchanged, false, None),
         (MergeEnd::Exited { code: Some(1), said: "bad".into(), changed: false }, false, None),
-        (MergeEnd::Failed(LaunchFailure::NotFound), false, Some("Open Preferences")),
+        (MergeEnd::Failed(LaunchFailure::NotFound), false, Some("Open preferences")),
         (MergeEnd::Resolved, true, None),
     ];
     for (end, want_ok, want_action) in cases {

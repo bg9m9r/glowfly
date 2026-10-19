@@ -11,6 +11,7 @@ use crate::msg::Msg;
 use crate::patch::PatchMsg;
 use crate::state::patch::changes::{SaveChangesForm, blocked, rows, untracked_count};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText, Sense};
 use trellis_core::patch_ops::{NO_CHANGES, WipScope};
@@ -45,7 +46,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut SaveChangesForm, snap: Option<
 
 /// What goes in; returns why nothing can be saved now.
 fn body(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: Option<&Snapshot>) -> Option<&'static str> {
-    ui.label(RichText::new("What goes in").strong());
+    ui.label(type_scale::section_text(ui, "What goes in"));
     for (scope, text, note) in CHOICES {
         controls::radio_value(ui, &mut form.scope, scope, text);
         ui.indent(text, |ui| ui.label(RichText::new(note).color(color::weak())));
@@ -93,7 +94,11 @@ fn checklist(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: &Snapshot) {
                 ui.horizontal(|ui| {
                     let mut on = form.chosen.contains(&f.path);
                     let boxed = ui.add(controls::Check::without_text(&mut on)).changed();
-                    ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
+                    ui.label(
+                        RichText::new(status_label(f.status).to_string())
+                            .font(type_scale::mono(type_scale::BODY))
+                            .color(status_color(f.status)),
+                    );
                     if ui.add(egui::Label::new(&f.path).truncate().selectable(false).sense(Sense::click())).clicked() {
                         on = !on;
                     } else if !boxed {

@@ -3,6 +3,7 @@
 use super::super::theme::color;
 use super::{note, tone_color};
 use crate::state::pull_request::{PrView, review_summary, reviewer_tone};
+use crate::ui::theme::type_scale;
 use eframe::egui::{RichText, Ui};
 use trellis_core::forge::PrState;
 use trellis_core::text::printable;
@@ -43,7 +44,7 @@ fn status(ui: &mut Ui, v: &PrView) {
 /// The approval summary, then each reviewer with their state.
 fn reviewers(ui: &mut Ui, v: &PrView) {
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Reviewers").strong().color(color::text()));
+        ui.label(type_scale::section_text(ui, "Reviewers"));
         ui.label(RichText::new(review_summary(&v.pr)).color(color::weak()));
     });
     for r in &v.pr.reviewers {

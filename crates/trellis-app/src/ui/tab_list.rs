@@ -9,6 +9,7 @@ use super::widgets;
 use crate::msg::{Msg, TabsMsg};
 use crate::state::AppState;
 use crate::state::menu_bar::tab_name;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Button, Layout, PopupCloseBehavior, RichText, Sense, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::native_path::shown;
@@ -69,5 +70,5 @@ fn list(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
 }
 
 fn heading(ui: &mut egui::Ui, text: &str) {
-    ui.label(RichText::new(text).small().color(color::weak()));
+    ui.label(type_scale::section_text(ui, text));
 }

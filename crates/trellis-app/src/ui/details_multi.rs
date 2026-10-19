@@ -16,6 +16,7 @@ use crate::state::lfs::TrackContext;
 use crate::state::selection::MultiSelection;
 use crate::state::selection_span::Span;
 use crate::state::{AppState, Selection};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText};
 use trellis_core::i18n::Lang;
 use trellis_core::repo::DiffTarget;
@@ -23,7 +24,9 @@ use trellis_core::repo::DiffTarget;
 pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (Some(snap), Selection::Commits(m)) = (&st.snap, &st.selection) else { return };
     let t = st.settings.lang();
-    ui.label(RichText::new(t.trn("details.multi.selected", m.len(), &[])).strong().size(15.0).color(color::text()));
+    ui.label(
+        RichText::new(t.trn("details.multi.selected", m.len(), &[])).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()),
+    );
     ui.horizontal_wrapped(|ui| {
         cherry_pick_button(ui, t.trn("details.multi.cherry_pick.button", m.len(), &[]), m, msgs);
         revert_button(ui, t.trn("details.multi.revert.button", m.len(), &[]), m, msgs);
@@ -31,7 +34,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         if ui.button(t.tr("details.multi.copy_shas.button")).clicked() {
             msgs.push(copy_shas(m));
         }
-        ui.label(RichText::new(t.tr("details.multi.esc_hint")).small().color(color::weak()));
+        ui.label(RichText::new(t.tr("details.multi.esc_hint")).size(type_scale::SMALL).color(color::weak()));
     });
     ui.add_space(6.0);
 
@@ -78,7 +81,7 @@ fn heading(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, from: git2::Oid, to: 
     };
     // The button goes to its own line when the heading leaves no room for it.
     ui.horizontal_wrapped(|ui| {
-        ui.label(RichText::new(text).strong().color(color::text()));
+        ui.label(type_scale::section_text(ui, text));
         let tip = t.trf("details.multi.swap.tip", &[("from", &o), ("to", &f)]);
         if ui.small_button(t.tr("details.multi.swap.button")).on_hover_text(tip).clicked() {
             msgs.push(Msg::Selection(SelectionMsg::SwapCompare));

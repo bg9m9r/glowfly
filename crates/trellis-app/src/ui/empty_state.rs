@@ -9,6 +9,7 @@ pub(super) use super::empty_state_icons::paint;
 use super::theme::color;
 use super::widgets::buttons::{self, StyledButton};
 use super::widgets::severity::{self, Severity};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Color32, FontId, Layout, RichText, Ui, UiBuilder, pos2, vec2};
 use trellis_core::lfs::pointer::size_text;
 
@@ -83,7 +84,7 @@ pub(super) enum Glyph {
 /// returns the index of the button clicked.
 pub fn empty_state(ui: &mut Ui, icon: EmptyIcon, title: &str, hint: &str, buttons: &[PaneButton]) -> Option<usize> {
     let hint = Some(hint).filter(|h| !h.is_empty());
-    block(ui, Glyph::Icon(icon), RichText::new(title).strong().color(color::text()), hint, buttons)
+    block(ui, Glyph::Icon(icon), RichText::new(title).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()), hint, buttons)
 }
 
 fn styled<'a>(b: &PaneButton<'a>) -> StyledButton<'a> {

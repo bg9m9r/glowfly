@@ -41,7 +41,7 @@ pub(super) fn handle(st: &mut AppState, msg: CloneMsg, now: Instant, fx: &mut Ve
                     .map(|n| n.to_string_lossy().into_owned())
                     .unwrap_or_default();
                 let last = super::ops::last_line(&o.output);
-                format!("Cloned {name}, but setting its folders failed: {last}. Choose them in Preferences > Sparse Checkout.")
+                format!("Cloned {name}, but setting its folders failed: {last}. Choose them in Preferences > Sparse checkout.")
             });
             super::jobs::finish_made(st, o.cloned, o.ok, o.output, headline, now, fx);
         }

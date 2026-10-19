@@ -13,7 +13,7 @@ use trellis_core::settings::{DiffLayout, DiffMode};
 use trellis_core::whole_file;
 
 /// The highlight's name for files it found no language for.
-const PLAIN_TEXT: &str = "Plain Text";
+const PLAIN_TEXT: &str = "Plain text";
 
 /// Everything the header draws.
 #[derive(Clone, Debug, PartialEq)]

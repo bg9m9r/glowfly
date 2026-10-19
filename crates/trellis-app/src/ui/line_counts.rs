@@ -5,6 +5,7 @@
 use super::common::{added_color, modified_color, removed_color};
 use super::theme::{color, contrast};
 use super::widgets;
+use crate::ui::theme::type_scale;
 use eframe::egui::{Context, CornerRadius, FontId, Painter, Pos2, Rect, RichText, Sense, Ui, pos2, vec2};
 use trellis_core::repo::{ChangeCounts, LineCount};
 
@@ -16,7 +17,7 @@ const BAR_MIN: f32 = 2.0;
 /// Between the counts and the bar, and between two chips.
 const GAP: f32 = 6.0;
 /// The graph's total, painted.
-const TOTAL_PX: f32 = 12.5;
+const TOTAL_PX: f32 = type_scale::SMALL;
 
 /// The `+N` and `−M` texts (U+2212 for the minus).
 fn texts(c: LineCount) -> (String, String) {
@@ -46,10 +47,10 @@ pub(super) fn row_end(ui: &mut Ui, count: LineCount, largest: usize) {
     ui.add_space((GAP - ui.spacing().item_spacing.x).max(0.0));
     let (added, removed) = texts(count);
     if count.removed > 0 {
-        ui.label(RichText::new(removed).size(12.0).color(removed_color()));
+        ui.label(RichText::new(removed).size(type_scale::SMALL).color(removed_color()));
     }
     if count.added > 0 {
-        ui.label(RichText::new(added).size(12.0).color(added_color()));
+        ui.label(RichText::new(added).size(type_scale::SMALL).color(added_color()));
     }
 }
 
@@ -71,8 +72,8 @@ fn paint_bar(p: &Painter, rect: Rect, (green, red): (f32, f32)) {
 /// A total, in a right-to-left `ui`: `+N` then `−M`, both always.
 pub(super) fn total(ui: &mut Ui, count: LineCount) {
     let (added, removed) = texts(count);
-    ui.label(RichText::new(removed).size(12.0).color(removed_color()));
-    ui.label(RichText::new(added).size(12.0).color(added_color()));
+    ui.label(RichText::new(removed).size(type_scale::SMALL).color(removed_color()));
+    ui.label(RichText::new(added).size(type_scale::SMALL).color(added_color()));
 }
 
 /// The width `paint_total_right` takes.
@@ -121,7 +122,7 @@ pub(super) fn paint_chips(p: &Painter, x: f32, mid: f32, c: ChangeCounts) -> f32
 /// The width `paint_chips` takes.
 pub(super) fn chips_width(ctx: &Context, c: ChangeCounts) -> f32 {
     let widths: Vec<f32> = chip_parts(c)
-        .map(|(text, _)| ctx.fonts(|f| f.layout_no_wrap(text, FontId::proportional(11.5), color::text()).size().x) + 12.0)
+        .map(|(text, _)| ctx.fonts(|f| f.layout_no_wrap(text, type_scale::font(type_scale::CAPTION), color::text()).size().x) + 12.0)
         .collect();
     widths.iter().sum::<f32>() + GAP * widths.len().saturating_sub(1) as f32
 }

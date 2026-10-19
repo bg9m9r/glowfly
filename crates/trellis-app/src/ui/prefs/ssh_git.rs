@@ -14,6 +14,7 @@ use crate::state::ssh_use::{
 use crate::state::trust::shown_value;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Ui};
@@ -21,11 +22,11 @@ use trellis_core::paths::same_spelling;
 use trellis_core::ssh_keys::{AgentReach, KeyChoice, SshListing, WinService};
 
 pub(super) fn choice_row(ui: &mut Ui, page: &SshPage, listing: &SshListing, cx: &SshContext, msgs: &mut Vec<Msg>) {
-    row(ui, "Key for SSH Remotes", |ui| {
+    row(ui, "Key for SSH remotes", |ui| {
         let Some(choices) = &page.choice else {
             ui.horizontal(|ui| {
                 ui.add(egui::Spinner::new().size(14.0));
-                ui.label(RichText::new("Reading core.sshCommand…").size(12.0).color(color::weak()));
+                ui.label(RichText::new("Reading core.sshCommand…").size(type_scale::SMALL).color(color::weak()));
             });
             return;
         };
@@ -59,7 +60,7 @@ fn level(
     cx: &SshContext,
     msgs: &mut Vec<Msg>,
 ) {
-    ui.label(RichText::new(name).size(12.5).strong().color(color::text()));
+    ui.label(RichText::new(name).font(type_scale::strong(ui, type_scale::SMALL)).color(color::text()));
     let stop = |ui: &mut Ui, msgs: &mut Vec<Msg>| {
         if ui.add(buttons::secondary("Stop using").small()).clicked() {
             msgs.push(Msg::Ssh(SshMsg::StopUsing { repo, confirmed: false }));
@@ -71,7 +72,12 @@ fn level(
         Ok(KeyChoice::Key(path)) => {
             let shown = listing.keys.iter().find(|k| same_spelling(&k.private, path)).map(|k| k.file_name());
             ui.horizontal(|ui| {
-                ui.label(RichText::new(shown.unwrap_or_else(|| path.display().to_string())).monospace().size(12.0).color(color::text()));
+                ui.label(
+                    RichText::new(shown.unwrap_or_else(|| path.display().to_string()))
+                        .monospace()
+                        .size(type_scale::SMALL)
+                        .color(color::text()),
+                );
                 stop(ui, msgs);
             });
         }
@@ -86,7 +92,7 @@ fn level(
 }
 
 pub(super) fn agent_row(ui: &mut Ui, page: &SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
-    row(ui, "SSH Agent", |ui| {
+    row(ui, "SSH agent", |ui| {
         let mut on = cx.use_agent;
         if ui.add(controls::Check::new(&mut on, "Use local SSH agent")).changed() {
             msgs.push(Msg::Ssh(SshMsg::SetUseAgent(on)));
@@ -97,10 +103,10 @@ pub(super) fn agent_row(ui: &mut Ui, page: &SshPage, cx: &SshContext, msgs: &mut
             match &page.agent {
                 None => {
                     ui.add(egui::Spinner::new().size(14.0));
-                    ui.label(RichText::new(LOOKING).size(12.0).color(color::weak()));
+                    ui.label(RichText::new(LOOKING).size(type_scale::SMALL).color(color::weak()));
                 }
                 Some(a) => {
-                    ui.label(RichText::new(agent_summary(a)).size(12.5).color(color::text()));
+                    ui.label(RichText::new(agent_summary(a)).size(type_scale::SMALL).color(color::text()));
                 }
             }
             if widgets::icon_button(ui, Icon::Refresh, "Check the agent again").clicked() {
@@ -111,7 +117,7 @@ pub(super) fn agent_row(ui: &mut Ui, page: &SshPage, cx: &SshContext, msgs: &mut
         if let Some(AgentReach::Keys(keys)) = &a.reach {
             for k in keys {
                 let line = if k.comment.is_empty() { k.fingerprint.clone() } else { format!("{}  {}", k.fingerprint, k.comment) };
-                ui.label(RichText::new(line).monospace().size(11.5).color(color::faint()));
+                ui.label(RichText::new(line).monospace().size(type_scale::SMALL).color(color::faint()));
             }
         }
         // The service is only looked up on Windows; without it, this is another system.

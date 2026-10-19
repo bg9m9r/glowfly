@@ -12,15 +12,18 @@
 //! `add_enabled`). A disabled button explains itself on hover with `why`. A focused button gets a
 //! 2 px `accent` ring outside its edge.
 //!
-//! Sizes: 28 px high by default, 24 px `small`, taller with `min_height`, or an exact `height`
-//! inside a fixed-height row.
+//! Sizes: 28 px high by default, 24 px `small` (both at body-size text), taller with
+//! `min_height`, or an exact `height` inside a fixed-height row.
 
 use super::super::theme::{color, contrast};
 use eframe::egui::{self, Color32, CornerRadius, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Widget, WidgetText, vec2};
 use std::borrow::Cow;
 
-/// Padding around the text.
+/// Padding beside the text.
 const PADDING: egui::Vec2 = vec2(12.0, 5.0);
+/// The least room above and below the text. Body text lays out about 20 px tall, so the
+/// minimum heights decide a button's height, not `PADDING.y`.
+const MIN_PAD_Y: f32 = 2.0;
 /// The least height of a button, and of a small one (inline Browse…, Retry).
 const HEIGHT: f32 = 28.0;
 const SMALL_HEIGHT: f32 = 24.0;
@@ -150,13 +153,12 @@ impl<'a> StyledButton<'a> {
     }
 
     fn size(&self, galley: &egui::Galley) -> egui::Vec2 {
-        let s = galley.size() + 2.0 * PADDING;
-        let w = s.x.max(self.min_width);
+        let w = (galley.size().x + 2.0 * PADDING.x).max(self.min_width);
         if let Some(h) = self.height {
             return vec2(w, h);
         }
-        let h = if self.small { SMALL_HEIGHT } else { HEIGHT.max(self.min_height) };
-        vec2(w, s.y.max(h))
+        let h_min = if self.small { SMALL_HEIGHT } else { HEIGHT.max(self.min_height) };
+        vec2(w, h_min.max(galley.size().y + 2.0 * MIN_PAD_Y))
     }
 
     /// The width it takes in `ui` (for laying out a right-aligned row).
@@ -247,14 +249,17 @@ mod tests {
     #[test]
     fn sizes_meet_the_minimums() {
         let mut h = Harness::new_ui(|ui| {
+            crate::ui::theme::apply_theme(ui.ctx());
+            ui.set_style(ui.ctx().style());
+            assert_eq!(ui.style().text_styles[&TextStyle::Button].size, crate::ui::theme::type_scale::BODY);
             assert_eq!(secondary("OK").min_width(76.0).desired_width(ui), 76.0);
             let r = ui.add(secondary("OK"));
-            assert!(r.rect.height() >= HEIGHT);
+            assert_eq!(r.rect.height(), HEIGHT, "default height at body size");
             let r = ui.add(secondary("OK").small());
-            assert!(r.rect.height() >= SMALL_HEIGHT && r.rect.height() < HEIGHT);
-            let r = ui.add(secondary("Stage Hunk").height(17.0).min_width(96.0));
+            assert_eq!(r.rect.height(), SMALL_HEIGHT, "small height at body size");
+            let r = ui.add(secondary("Stage hunk").height(17.0).min_width(120.0));
             assert_eq!(r.rect.height(), 17.0, "an exact height");
-            assert_eq!(r.rect.width(), 96.0, "the least width still applies");
+            assert_eq!(r.rect.width(), 120.0, "the least width still applies");
         });
         h.run();
     }

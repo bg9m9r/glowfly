@@ -1,4 +1,4 @@
-//! Preferences > External Tools snapshots: the page with nothing set (the terminal arguments
+//! Preferences > External tools snapshots: the page with nothing set (the terminal arguments
 //! disabled), and with an editor, custom arguments naming an unknown placeholder, a custom
 //! terminal, and diff and merge tools whose arguments leave out a version; the conflict view
 //! with the merge tool blocked by a job, and with the merge tool open on its file.

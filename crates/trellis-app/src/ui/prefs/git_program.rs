@@ -9,6 +9,7 @@ use crate::msg::Msg;
 use crate::state::git_env::GitState;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use std::path::PathBuf;
@@ -27,7 +28,7 @@ pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Ve
     let current = from_setting(s.git_program.as_deref());
     let busy = page.checking.is_some();
     let choose = |msgs: &mut Vec<Msg>, p: Option<PathBuf>| msgs.push(Msg::GitEnv(GitEnvMsg::Choose(p)));
-    row(ui, "Git Program", |ui| {
+    row(ui, "Git program", |ui| {
         let on_path = current.is_none();
         if radio(ui, !busy, on_path, "Use git from your PATH") && !on_path {
             choose(msgs, None);
@@ -44,7 +45,7 @@ pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Ve
             under(ui, |ui| match &c.check {
                 Ok(v) => version_lines(ui, *v),
                 Err(why) => {
-                    ui.add(egui::Label::new(RichText::new(sentence(why)).size(12.0).color(color::danger())).wrap());
+                    ui.add(egui::Label::new(RichText::new(sentence(why)).size(type_scale::SMALL).color(color::danger())).wrap());
                 }
             });
         }

@@ -5,8 +5,9 @@
 use super::paint::Columns;
 use crate::ui::line_counts;
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::paint_cut_text;
-use eframe::egui::{FontId, Painter, pos2};
+use eframe::egui::{Painter, pos2};
 use trellis_core::repo::{ChangeCounts, LineCount};
 
 /// Between the label and the chips.
@@ -40,7 +41,7 @@ fn fit(room: f32, label_w: f32, chips_w: f32, total_w: Option<f32>) -> Fit {
 /// are incomplete).
 pub(super) fn draw(mp: &Painter, cols: &Columns, mid: f32, label: &str, changes: ChangeCounts, total: Option<LineCount>) {
     let ctx = mp.ctx();
-    let font = FontId::proportional(13.0);
+    let font = type_scale::font(type_scale::BODY);
     let (left, end) = cols.wip_span();
     let right = end - TOTAL_INSET;
     let label_w = ctx.fonts(|f| f.layout_no_wrap(label.to_owned(), font.clone(), color::text()).size().x);

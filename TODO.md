@@ -130,7 +130,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
       for accent, primary and focus, lifted panels, and amber kept for "in progress"; the light
       theme tuned on its own rather than inverted. An opt-in compact density in Preferences at
       most, never the default
-- [ ] **Type scale and text styles**: a five-step scale with 14 px body text and an 11 px
+- [x] **Type scale and text styles**: a five-step scale with 14 px body text and an 11 px
       floor (nothing that carries information smaller: the 0/72 counter, "Esc returns to one
       commit", hunk buttons, welcome-screen links, LFS Untrack); section headers set by
       weight; monospace only for SHAs, paths, code and fingerprints (not the compare header or
@@ -2375,3 +2375,16 @@ here, under the item they grew from.
 - Status-bar links for a hidden left or details panel alongside the edge strips
 - A command palette entry to expand the collapsed commit panel
 - Toasts narrower than 360 px in windows too small for one plus its margins
+
+### Type scale and text styles
+
+- WIP and conflict list headers: show the count as a muted trailing badge instead of "(n)" in the title
+- Host-key prompt: explain it in words, with the host and the fingerprint as separate monospace rows
+- Activity log entries: a time column, an error icon and a Details expander
+- Check the Spanish labels for sentence case too (German capitalises its nouns)
+- A text-size preference that scales the five steps, apart from zoom
+- A semibold monospace face for status letters and emphasised code
+- Check that long context menus still fit small windows at 14 px items; scroll or regroup where they don't
+- Tune the Preferences label column for the longest translated labels at 14 px
+- The commit details' "ISSUES" / "CARDS" heading and its German and Spanish values are still all caps
+- The graph's columns overlap (lanes under the Commit column) when the centre gets narrower than about 560 px

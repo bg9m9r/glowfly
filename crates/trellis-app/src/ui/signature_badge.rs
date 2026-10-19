@@ -6,7 +6,8 @@ use super::theme::color;
 use crate::msg::{Msg, PrefsMsg, RepoMsg};
 use crate::state::signatures::{BadgeState, badge};
 use crate::state::{AppState, PrefPage};
-use eframe::egui::{self, Color32, CornerRadius, FontId, Painter, Pos2, Sense, Stroke, StrokeKind, pos2, vec2};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, Color32, CornerRadius, Painter, Pos2, Sense, Stroke, StrokeKind, pos2, vec2};
 use trellis_core::repo::CommitDetail;
 use trellis_core::signature_check::Verdict;
 
@@ -45,7 +46,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mu
         Verdict::Revoked | Verdict::Bad => (color::red(), Glyph::Cross),
     };
 
-    let galley = ui.painter().layout_no_wrap(b.label.into(), FontId::proportional(12.0), color::text());
+    let galley = ui.painter().layout_no_wrap(b.label.into(), type_scale::font(type_scale::SMALL), color::text());
     let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 30.0, HEIGHT), Sense::click());
     let p = ui.painter();
     let radius = CornerRadius::same((HEIGHT / 2.0) as u8);
@@ -66,7 +67,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mu
         if !key.is_empty() {
             menu_item(msgs, ui, "Copy key", Msg::Copy(key.clone()));
         }
-        menu_item(msgs, ui, "Commit Signing settings…", Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)));
+        menu_item(msgs, ui, "Commit signing settings…", Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)));
     });
 }
 

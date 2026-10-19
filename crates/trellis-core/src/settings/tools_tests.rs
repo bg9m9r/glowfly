@@ -5,7 +5,7 @@ use crate::settings::Settings;
 
 #[test]
 fn external_tools_old_files_and_partial_objects() {
-    // Files written before Preferences > External Tools existed load with the defaults.
+    // Files written before Preferences > External tools existed load with the defaults.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
     assert_eq!(s.external_tools, ExternalTools::default());
     assert_eq!(

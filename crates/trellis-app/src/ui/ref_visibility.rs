@@ -7,6 +7,7 @@ use super::theme::color;
 use crate::msg::GraphMsg;
 use crate::msg::Msg;
 use crate::state::branches::HEAD_ALWAYS_SHOWN;
+use crate::ui::theme::type_scale;
 use eframe::egui::{
     self, Align, Color32, CursorIcon, Layout, Painter, Pos2, Rect, Response, RichText, Sense, Shape, Stroke, UiBuilder, pos2, vec2,
 };
@@ -116,7 +117,7 @@ fn banner_row(ui: &mut egui::Ui, icon: impl Fn(&Painter, Pos2), text: &str, tip:
             msgs.push(filter_msg(op));
         }
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-            let l = egui::Label::new(RichText::new(text).size(12.5).color(color::text())).truncate().selectable(false);
+            let l = egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::text())).truncate().selectable(false);
             ui.add(l).on_hover_text(tip);
         });
     });

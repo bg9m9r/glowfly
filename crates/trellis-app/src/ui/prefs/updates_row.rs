@@ -6,6 +6,7 @@ use crate::msg::{Msg, UpdateMsg};
 use crate::state::updates::{UpdateStatus, UpdatesState, available_text, download_failed_text};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::settings::Settings;
@@ -41,7 +42,7 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
                 }
             }
             UpdateStatus::Available(o) => {
-                ui.label(RichText::new(available_text(t, &o.version)).strong().color(color::blue()));
+                ui.label(RichText::new(available_text(t, &o.version)).font(type_scale::strong(ui, type_scale::BODY)).color(color::blue()));
                 ui.horizontal(|ui| {
                     let label = if o.asset.is_some() { t.tr("updates.download.button") } else { t.tr("updates.open_release_page.button") };
                     if ui.add(buttons::secondary(label)).clicked() {

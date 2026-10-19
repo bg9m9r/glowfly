@@ -8,6 +8,7 @@ use super::theme::color;
 use super::widgets::buttons;
 use super::widgets::severity::{self, Severity};
 use crate::msg::Msg;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText, Ui, vec2};
 use trellis_core::i18n::Lang;
 
@@ -56,7 +57,7 @@ pub fn failed(ui: &mut Ui, t: Lang, f: Failure, msgs: &mut Vec<Msg>) {
         list.push(PaneButton { text: t.tr("common.try_again.button"), primary: false });
     }
     list.push(PaneButton { text: t.tr("common.copy_details.button"), primary: false });
-    let title = RichText::new(f.title).strong().color(color::text());
+    let title = RichText::new(f.title).font(type_scale::strong(ui, type_scale::BODY)).color(color::text());
     let Some(i) = block(ui, Glyph::Severity(Severity::Warning), title, Some(&message), &list) else { return };
     let copy = i + 1 == list.len();
     match f.retry {
@@ -74,7 +75,7 @@ pub fn failed_line(ui: &mut Ui, t: Lang, f: Failure, msgs: &mut Vec<Msg>) {
         ui.horizontal(|ui| {
             let (rect, _) = ui.allocate_exact_size(vec2(LINE_MARK, LINE_MARK), egui::Sense::hover());
             severity::paint(ui.painter(), rect.center(), LINE_MARK, Severity::Warning, color::amber());
-            ui.label(RichText::new(f.title).strong().color(color::text()));
+            ui.label(RichText::new(f.title).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         });
         ui.add(egui::Label::new(RichText::new(&message).color(color::weak())).wrap());
         ui.horizontal(|ui| {

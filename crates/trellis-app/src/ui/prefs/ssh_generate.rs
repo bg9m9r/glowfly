@@ -17,10 +17,10 @@ fn password(ui: &mut Ui, value: &mut String) {
 }
 
 pub(super) fn generate_form(ui: &mut Ui, page: &mut SshPage, listing: &SshListing, msgs: &mut Vec<Msg>) {
-    row(ui, "Generate New Key", |ui| {
+    row(ui, "Generate new key", |ui| {
         help(ui, "Creates an Ed25519 key pair with ssh-keygen.");
     });
-    row(ui, "Save Location", |ui| {
+    row(ui, "Save location", |ui| {
         let hint = trellis_core::ssh_keys::default_location(&listing.home).display().to_string();
         text_field(ui, &mut page.location, &hint);
         if let Some(problem) = page.location_problem() {
@@ -40,7 +40,7 @@ pub(super) fn generate_form(ui: &mut Ui, page: &mut SshPage, listing: &SshListin
         password(ui, &mut page.passphrase);
         help(ui, "Optional. Encrypts the private key; ssh asks for it, or your SSH agent remembers it, when the key is used.");
     });
-    row(ui, "Confirm Passphrase", |ui| {
+    row(ui, "Confirm passphrase", |ui| {
         password(ui, &mut page.confirm);
         if page.passphrase_mismatch() {
             warn(ui, MISMATCH);
@@ -48,7 +48,7 @@ pub(super) fn generate_form(ui: &mut Ui, page: &mut SshPage, listing: &SshListin
     });
     row(ui, "", |ui| {
         ui.horizontal(|ui| {
-            if primary_button(ui, "Generate Key", page.can_generate()).clicked() {
+            if primary_button(ui, "Generate key", page.can_generate()).clicked() {
                 msgs.push(Msg::Ssh(SshMsg::Generate { overwrite: false }));
             }
             if page.generating {

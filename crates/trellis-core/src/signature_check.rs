@@ -113,7 +113,7 @@ impl SignatureCheck {
                 }
             }
             SigStatus::NoAllowedSigners => "SSH signatures are checked against an allowed signers file, and none is set \
-                                            (gpg.ssh.allowedSignersFile). Choose one in Preferences > Commit Signing."
+                                            (gpg.ssh.allowedSignersFile). Choose one in Preferences > Commit signing."
                 .into(),
             SigStatus::NotChecked => couldnt_check(&self.note),
             SigStatus::ExpiredSignature => "The signature has expired.".into(),

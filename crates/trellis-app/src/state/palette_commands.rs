@@ -380,7 +380,7 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
     out.push(entry(C::OpenRepo, "Open repository…", "folder add"));
     super::palette_tabs::tab_entries(st, out);
     out.push(entry(C::Dashboard, "Open dashboard", "pull requests issues reviews assigned across repositories overview inbox"));
-    out.push(entry(C::OpenPrefs, "Open Preferences", "settings options configure"));
+    out.push(entry(C::OpenPrefs, "Open preferences", "settings options configure"));
     super::palette_profiles::profile_entries(st, out);
     out.push(entry(C::KeyboardShortcuts, "Keyboard shortcuts", "keys keyboard bindings hotkeys help reference list"));
     super::palette_onboarding::entries(st, out);

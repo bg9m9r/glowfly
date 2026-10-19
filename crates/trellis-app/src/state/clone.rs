@@ -208,7 +208,7 @@ impl CloneForm {
 fn sparse_problem(p: &PathProblem) -> String {
     match p {
         PathProblem::Pattern(l) => {
-            format!("\"{l}\" looks like a pattern. List folders here; patterns can be set after cloning in Preferences > Sparse Checkout.")
+            format!("\"{l}\" looks like a pattern. List folders here; patterns can be set after cloning in Preferences > Sparse checkout.")
         }
         other => other.message(),
     }

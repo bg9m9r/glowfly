@@ -11,6 +11,7 @@ use crate::onboarding::OnboardingMsg;
 use crate::state::AppState;
 use crate::state::layout::{self, Panel};
 use crate::state::onboarding_tour::{NO_REPOSITORY, PANEL_HIDDEN, TourStep};
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{
     self, Align, Align2, Color32, CornerRadius, Id, LayerId, Layout, Order, Rect, RichText, Stroke, StrokeKind, pos2, vec2,
@@ -100,7 +101,7 @@ fn scrim(ctx: &egui::Context, screen: Rect, target: Option<Rect>) {
 fn card(ui: &mut egui::Ui, st: &AppState, step: TourStep, missing: Option<Missing>, msgs: &mut Vec<Msg>) {
     let send = |msgs: &mut Vec<Msg>, m: OnboardingMsg| msgs.push(Msg::Onboarding(m));
     ui.horizontal(|ui| {
-        ui.label(RichText::new(step.title()).size(15.0).strong().color(color::strong()));
+        ui.label(RichText::new(step.title()).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::strong()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if widgets::small_icon(ui, Icon::Close, "Close the tour", color::weak()).clicked() {
                 send(msgs, OnboardingMsg::CloseTour);

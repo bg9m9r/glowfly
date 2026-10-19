@@ -82,7 +82,7 @@ fn entries_without_repo() {
             "Open repository…",
             "New tab",
             "Open dashboard",
-            "Open Preferences",
+            "Open preferences",
             "Keyboard shortcuts",
             "Show the welcome",
             "View release notes",
@@ -149,7 +149,7 @@ fn entries_with_repo() {
     assert!(all.contains(&"Open other-repo".to_owned()));
     let not_recent = [
         "Open repository…",
-        "Open Preferences",
+        "Open preferences",
         "Open dashboard",
         "Open in terminal",
         "Open repository in external editor",
@@ -350,7 +350,7 @@ fn shortcut_hints() {
     let hint = |label: &str| list.iter().find(|s| s.entry.label == label).map(|s| s.entry.shortcut(&st.keymap)).expect(label);
     assert_eq!(hint("Search commits"), Some(keys("Ctrl+F").as_str()));
     assert_eq!(hint("Close tab"), Some(keys("Ctrl+W").as_str()));
-    assert_eq!(hint("Open Preferences"), Some(keys("Ctrl+,").as_str()));
+    assert_eq!(hint("Open preferences"), Some(keys("Ctrl+,").as_str()));
     assert_eq!(hint("Refresh"), Some("F5"));
     assert_eq!(hint("New tab"), Some(keys("Ctrl+T").as_str()));
     assert_eq!(hint("Stage all files"), Some(keys("Ctrl+Shift+S").as_str()));

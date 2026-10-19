@@ -8,6 +8,7 @@ use crate::logs::{LogKind, LogsMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::panel_layout::{self, ACTIVITY, MAIN_MIN_HEIGHT};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText, TextStyle, Ui};
 use trellis_core::settings::SizedPanel;
 
@@ -69,7 +70,7 @@ fn header(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
 }
 
 fn group_header(ui: &mut Ui, text: String) {
-    ui.label(RichText::new(text).small().color(color::faint()));
+    ui.label(type_scale::section_text(ui, text));
 }
 
 /// The activity log: earlier sessions' entries first, each session under its start time, then
@@ -97,7 +98,7 @@ fn activity(ui: &mut Ui, st: &AppState) {
                     if entry.ok { color::text() } else { color::red() }
                 }
             };
-            ui.label(RichText::new(&entry.text).monospace().color(c));
+            ui.label(RichText::new(&entry.text).color(c));
             ui.separator();
         }
     });

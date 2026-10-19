@@ -8,9 +8,10 @@ use super::empty_state::{self, EmptyIcon};
 use crate::state::AppState;
 use crate::state::diff_preview;
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use eframe::egui::{
-    self, Align, Color32, ColorImage, Context, CornerRadius, FontId, Layout, Rect, RichText, Stroke, TextureHandle, TextureOptions, Ui,
-    UiBuilder, pos2, vec2,
+    self, Align, Color32, ColorImage, Context, CornerRadius, Layout, Rect, RichText, Stroke, TextureHandle, TextureOptions, Ui, UiBuilder,
+    pos2, vec2,
 };
 use std::sync::Arc;
 use trellis_core::lfs::pointer::size_text;
@@ -95,7 +96,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, tex: &mut PreviewTextures) {
         let col = Rect::from_min_size(pos2(left, area.top() + PAD), vec2(col_w, line_h + 8.0 + card_h + 8.0 + line_h));
         ui.scope_builder(UiBuilder::new().max_rect(col).layout(Layout::top_down(Align::Min)), |ui| {
             ui.spacing_mut().item_spacing.y = 8.0;
-            ui.label(RichText::new(title).font(FontId::proportional(12.0)).color(color::weak()));
+            ui.label(RichText::new(title).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
             let (card, _) = ui.allocate_exact_size(vec2(col_w, card_h), egui::Sense::hover());
             match (side, texture) {
                 (None, _) => placeholder(ui, card, missing),
@@ -112,7 +113,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, tex: &mut PreviewTextures) {
 }
 
 fn caption(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text).font(FontId::proportional(12.0)).color(color::weak()));
+    ui.label(RichText::new(text).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
 }
 
 /// The image fitted in `card`, centred over a checkerboard.
@@ -175,7 +176,7 @@ fn undecodable(ui: &mut Ui, card: Rect, size: u64) {
         empty_state::paint(ui.painter(), rect.center(), EmptyIcon::Binary, color::weak());
         ui.add_space(8.0);
         ui.label(RichText::new(CANT_PREVIEW).color(color::text()));
-        ui.label(RichText::new(size_text(size)).font(FontId::proportional(12.0)).color(color::weak()));
+        ui.label(RichText::new(size_text(size)).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
     });
 }
 

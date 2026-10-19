@@ -13,7 +13,7 @@ use crate::ui::UiCache;
 use crate::ui::common::short;
 use crate::ui::diff::wrap::{MIN_COLS, RowMetrics, Wrap};
 use crate::ui::diff::{DiffStyle, paint_line};
-use crate::ui::theme::color;
+use crate::ui::theme::{color, type_scale};
 use eframe::egui::{self, Align2, CursorIcon, FontId, Rect, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
 /// What the body saw this frame: the first line in view and a code line clicked.
@@ -32,6 +32,12 @@ pub(super) fn offset(land: Option<BlameLanding>, m: &RowMetrics, n: usize, viewp
 }
 
 /// The lines, only those in view laid out.
+/// The gutter's text size for code at `code_px`: the small step, less only with the smallest
+/// code fonts, and never under the type scale's floor.
+fn label_px(code_px: f32) -> f32 {
+    type_scale::fit(type_scale::SMALL, code_px + 1.0)
+}
+
 pub(super) fn body(
     ui: &mut Ui,
     st: &AppState,
@@ -61,7 +67,7 @@ pub(super) fn body(
     let m = if wrap.is_some() { RowMetrics::Varied(&rc.offsets) } else { RowMetrics::Uniform(style.row_h) };
     let content_w = if wrap.is_some() { avail_w } else { avail_w.max(code_off + rc.widest as f32 * char_w + 40.0) };
 
-    let small = (style.font.size + 1.0).min(12.0);
+    let small = label_px(style.font.size);
     let fonts = Fonts { name: FontId::proportional(small), sha: FontId::monospace(small) };
     ui.spacing_mut().item_spacing.y = 0.0;
     let mut out = BodyOut { top: view.top_line, clicked: None };
@@ -179,6 +185,12 @@ mod tests {
 
     fn centre(line: usize) -> Option<BlameLanding> {
         Some(BlameLanding { line, center: true })
+    }
+
+    #[test]
+    fn gutter_text_stays_on_the_scale() {
+        assert_eq!(label_px(8.0), type_scale::CAPTION);
+        assert_eq!(label_px(12.5), type_scale::SMALL);
     }
 
     #[test]

@@ -194,7 +194,7 @@ impl PrefsState {
     }
 }
 
-/// What a "Host Domain" field shows for a saved account.
+/// What a "Host domain" field shows for a saved account.
 pub fn host_text(a: &Account) -> String {
     if a.provider == Provider::AzureDevOps { format!("{}/{}", a.host, a.org) } else { a.host.clone() }
 }
@@ -209,7 +209,7 @@ mod tests {
         assert_eq!(Autocrlf::Other("weird".into()).label(Lang::En), "weird (not a value git knows)");
         let de = Autocrlf::Other("weird".into()).label(Lang::De);
         assert!(de.starts_with("weird ") && de != "weird (not a value git knows)", "{de}");
-        assert_eq!(PrefPage::Keyboard.title(Lang::En), "Keyboard Shortcuts");
+        assert_eq!(PrefPage::Keyboard.title(Lang::En), "Keyboard shortcuts");
         assert_eq!(PrefPage::Keyboard.nav_label(Lang::En), "Keyboard");
         assert_eq!(PrefPage::General.title(Lang::De), PrefPage::General.nav_label(Lang::De));
     }

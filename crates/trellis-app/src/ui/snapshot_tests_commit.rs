@@ -72,7 +72,7 @@ fn commit_shortcuts() {
 
     // Without focus in the message fields the shortcuts do nothing.
     h.state_mut().1.clear();
-    h.get_by_label_contains("Unstaged Files").simulate_click();
+    h.get_by_label_contains("Unstaged files").simulate_click();
     h.run();
     h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
     h.run();

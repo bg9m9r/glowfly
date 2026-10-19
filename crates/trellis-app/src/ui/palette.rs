@@ -11,12 +11,13 @@ use crate::state::AppState;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette};
 use crate::state::palette_nav::{Jump, PAGE_ROWS};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align2, Color32, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, pos2, text::LayoutJob, vec2};
 
 const WIDTH: f32 = 560.0;
 const ROW_H: f32 = 28.0;
 const LIST_MAX_H: f32 = 360.0;
-const LABEL_SIZE: f32 = 13.5;
+const LABEL_SIZE: f32 = type_scale::BODY;
 // A page (PageUp/PageDown) is the rows the list shows at its full height.
 const _: () = assert!(PAGE_ROWS == (LIST_MAX_H / ROW_H) as usize);
 
@@ -89,7 +90,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             &Mode::Input(kind) => input_step(ui, kind, &p.query, msgs, run_selected),
         };
         ui.add_space(6.0);
-        ui.label(RichText::new(footer).size(12.0).color(color::weak()));
+        ui.label(RichText::new(footer).size(type_scale::SMALL).color(color::weak()));
     });
     if resp.should_close() && !prompting {
         msgs.push(Msg::Palette(PaletteMsg::ClosePalette));
@@ -120,7 +121,7 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
                 .id(Id::new("trellis-palette-query"))
                 .hint_text(hint)
                 .desired_width(f32::INFINITY)
-                .font(FontId::proportional(15.0)),
+                .font(type_scale::font(type_scale::SUBHEAD)),
         );
         if !prompting {
             r.request_focus();
@@ -139,7 +140,7 @@ fn back_and_title(ui: &mut Ui, title: &str, msgs: &mut Vec<Msg>) {
     if r.on_hover_text("Back to commands (Backspace)").clicked() {
         msgs.push(Msg::Palette(PaletteMsg::PaletteBack));
     }
-    ui.label(RichText::new(title).size(12.5).color(color::weak()));
+    ui.label(RichText::new(title).size(type_scale::SMALL).color(color::weak()));
 }
 
 /// A free-text step: a note under the field; Enter runs the command for the typed text, unless
@@ -189,7 +190,7 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
     if listed.total > list.len() {
         ui.add_space(4.0);
         let more = format!("Showing {} of {} commands. Type more to narrow the list.", list.len(), listed.total);
-        ui.label(RichText::new(more).size(12.0).color(color::weak()));
+        ui.label(RichText::new(more).size(type_scale::SMALL).color(color::weak()));
     }
 }
 
@@ -231,7 +232,7 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
                 });
                 if r.total > r.hits.len() {
                     ui.add_space(4.0);
-                    ui.label(RichText::new(kind.more_text(r.hits.len(), r.total)).size(12.0).color(color::weak()));
+                    ui.label(RichText::new(kind.more_text(r.hits.len(), r.total)).size(type_scale::SMALL).color(color::weak()));
                 }
             }
             _ => note(ui, kind.none_text(), color::weak()),
@@ -279,12 +280,12 @@ fn row(
     }
     let mut right_w = 0.0;
     if let Some(keys) = shortcut {
-        let g = p.layout_no_wrap(keys.to_owned(), FontId::proportional(12.0), color::weak());
+        let g = p.layout_no_wrap(keys.to_owned(), type_scale::font(type_scale::SMALL), color::weak());
         right_w = g.size().x + 18.0;
         p.galley(pos2(rect.right() - g.size().x - 10.0, rect.center().y - g.size().y / 2.0), g, color::weak());
     }
     if let Some(detail) = detail {
-        let g = p.layout_no_wrap(detail.to_owned(), FontId::proportional(12.0), color::weak());
+        let g = p.layout_no_wrap(detail.to_owned(), type_scale::font(type_scale::SMALL), color::weak());
         // 10px in from the row's edge, or 14px left of the shortcut (`right_w` already holds
         // 8px of space to its left).
         let gap = if shortcut.is_some() { 6.0 } else { 10.0 };

@@ -9,6 +9,7 @@ use crate::msg::{IssueMsg, Msg};
 use crate::state::AppState;
 use crate::state::issue::{Details, IssueView};
 use crate::state::pull_request::description_text;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::Entry;
 use trellis_core::settings::Settings;
@@ -44,7 +45,7 @@ fn capital(s: &str) -> String {
 fn conversation(ui: &mut Ui, v: &IssueView, settings: &Settings, now: i64, offset: i32) {
     let Some(d) = v.loaded() else { return };
     ui.horizontal_wrapped(|ui| {
-        ui.label(RichText::new(printable(&d.author)).strong().color(color::text()));
+        ui.label(RichText::new(printable(&d.author)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         ui.label(RichText::new(format!("opened this {}", v.noun)).color(color::weak()));
     });
     let body = description_text(d.body.trim());
@@ -67,7 +68,7 @@ fn conversation(ui: &mut Ui, v: &IssueView, settings: &Settings, now: i64, offse
 fn comment(ui: &mut Ui, c: &Entry, settings: &Settings, now: i64, offset: i32) {
     ui.add_space(4.0);
     ui.horizontal_wrapped(|ui| {
-        ui.label(RichText::new(printable(&c.author)).strong().color(color::text()));
+        ui.label(RichText::new(printable(&c.author)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         if c.time > 0 {
             crate::ui::date_tip::time_label(ui, settings, c.time, now, offset);
         }

@@ -7,7 +7,8 @@ use super::super::theme::color;
 use super::super::widgets::{self, Icon};
 use crate::state::issue_form::too_many;
 use crate::ui::theme::controls;
-use eframe::egui::{self, CornerRadius, FontId, Rect, RichText, Sense, Ui, pos2, vec2};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, CornerRadius, Rect, RichText, Sense, Ui, pos2, vec2};
 use trellis_core::matching::contains_lower;
 use trellis_core::text::printable;
 
@@ -82,7 +83,7 @@ pub(super) fn multi(ui: &mut Ui, p: &Picker, query: &mut String, chosen: &mut Ve
             }
         }
         if matches.is_empty() && !(p.free && !typed.is_empty()) {
-            ui.label(RichText::new("No matches").size(11.5).color(color::faint()));
+            ui.label(RichText::new("No matches").size(type_scale::CAPTION).color(color::faint()));
         }
     });
     ui.data_mut(|d| d.insert_temp(list_id, list.response.rect));
@@ -95,7 +96,7 @@ pub(super) fn multi(ui: &mut Ui, p: &Picker, query: &mut String, chosen: &mut Ve
 /// A chosen item's chip; returns true when its cross was clicked.
 fn chip(ui: &mut Ui, text: &str) -> bool {
     let text = printable(text);
-    let galley = ui.painter().layout_no_wrap(text, FontId::proportional(11.5), color::text());
+    let galley = ui.painter().layout_no_wrap(text, type_scale::font(type_scale::CAPTION), color::text());
     let size = vec2(galley.size().x + 30.0, 20.0);
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
     let p = ui.painter();

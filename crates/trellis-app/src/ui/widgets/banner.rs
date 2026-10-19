@@ -7,6 +7,7 @@
 use super::super::theme::color;
 use super::severity::{self, Severity};
 use super::{Icon, paint_icon};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Color32, CursorIcon, InnerResponse, Layout, Rect, Response, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use std::borrow::Cow;
 
@@ -133,7 +134,7 @@ pub fn show(ui: &mut Ui, b: Banner, buttons: impl FnOnce(&mut Ui)) -> Response {
                     buttons(ui);
                     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                         if let Some(title) = &title {
-                            ui.label(RichText::new(title.as_ref()).strong().color(color::text()));
+                            ui.label(RichText::new(title.as_ref()).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
                         }
                         if let Some(text) = &text {
                             ui.add(egui::Label::new(RichText::new(text.as_ref()).color(color::text())).wrap());

@@ -147,7 +147,7 @@ fn primary_button<'a>(p: &Primary, tip: &'a str) -> buttons::StyledButton<'a> {
         Primary::Stage(_) => STAGE_FILE,
         Primary::Unstage(_) => UNSTAGE_FILE,
     };
-    buttons::primary(text).radius(controls::RADIUS).text_size(13.0).tip(tip)
+    buttons::primary(text).radius(controls::RADIUS).tip(tip)
 }
 
 fn primary_tip(p: &Primary, keys: &Keymap) -> String {

@@ -6,6 +6,7 @@
 use super::paint::Columns;
 use crate::ui::common::{added_color, removed_color};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
 use crate::ui::widgets::{self, Cut, paint_cut, paint_cut_text};
 use eframe::egui::text::{LayoutJob, TextFormat};
@@ -47,9 +48,9 @@ pub(super) struct Cells<'a> {
 /// The summary in `fg` and, when given, the body preview after it in the smaller `weak` text.
 pub(super) fn message_job(summary: &str, body: Option<&str>, fg: Color32, weak: Color32) -> LayoutJob {
     let mut job = LayoutJob::default();
-    job.append(summary, 0.0, TextFormat { valign: Align::Center, ..TextFormat::simple(FontId::proportional(13.0), fg) });
+    job.append(summary, 0.0, TextFormat { valign: Align::Center, ..TextFormat::simple(type_scale::font(type_scale::BODY), fg) });
     if let Some(body) = body.filter(|b| !b.is_empty()) {
-        job.append(body, 10.0, TextFormat { valign: Align::Center, ..TextFormat::simple(FontId::proportional(12.5), weak) });
+        job.append(body, 10.0, TextFormat { valign: Align::Center, ..TextFormat::simple(type_scale::font(type_scale::SMALL), weak) });
     }
     job
 }
@@ -75,7 +76,7 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
         && let Some((_files, adds, dels)) = row.stats
     {
         let cp = painter.with_clip_rect(cols.rect(cols.changes, rect));
-        let font = FontId::proportional(12.0);
+        let font = type_scale::font(type_scale::SMALL);
         let added = paint_cut_text(&cp, pos2(cols.changes.0, mid), &format!("+{adds}"), font.clone(), added_color(), width(cols.changes));
         if !added.cut {
             let x = added.rect.right() + 6.0;
@@ -86,16 +87,16 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
         let cp = painter.with_clip_rect(cols.rect(cols.commit, rect));
         let w = width(cols.commit);
         let author_y = if cfg.commit_sha { mid + AUTHOR_DY } else { mid };
-        text.author = paint_cut_text(&cp, pos2(cols.commit.0, author_y), &c.author, FontId::proportional(12.5), weak, w);
+        text.author = paint_cut_text(&cp, pos2(cols.commit.0, author_y), &c.author, type_scale::font(type_scale::SMALL), weak, w);
         if cfg.commit_sha {
             let sha = &c.oid.to_string()[..7];
-            text.sha = paint_cut_text(&cp, pos2(cols.commit.0, mid + SHA_DY), sha, FontId::monospace(11.5), color::faint(), w);
+            text.sha = paint_cut_text(&cp, pos2(cols.commit.0, mid + SHA_DY), sha, type_scale::mono(type_scale::SMALL), color::faint(), w);
         }
     }
     if let Some(date) = row.date.as_deref().filter(|_| cfg.date) {
         let dp = painter.with_clip_rect(cols.rect(cols.date, rect));
         // A cut date keeps the row's date tooltip, which has the whole date.
-        paint_cut_right(&dp, pos2(cols.date.1, mid), date, FontId::proportional(12.5), weak, width(cols.date));
+        paint_cut_right(&dp, pos2(cols.date.1, mid), date, type_scale::font(type_scale::SMALL), weak, width(cols.date));
     }
     text
 }
@@ -114,7 +115,7 @@ fn paint_cut_right(p: &Painter, right: Pos2, text: &str, font: FontId, color: Co
 /// showed it, wrapped.
 pub(super) fn message_tip(ui: &mut Ui, c: &CommitInfo, with_body: bool) {
     ui.set_max_width(TIP_W);
-    ui.add(Label::new(RichText::new(&c.summary).strong()).wrap());
+    ui.add(Label::new(RichText::new(&c.summary).font(type_scale::strong(ui, type_scale::BODY))).wrap());
     if with_body && !c.body.is_empty() {
         ui.add(Label::new(RichText::new(&c.body).color(color::weak())).wrap());
     }

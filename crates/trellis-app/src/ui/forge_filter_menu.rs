@@ -7,7 +7,8 @@ use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::msg::{FilterMsg, Msg};
 use crate::state::forge_filters::Hint;
-use eframe::egui::{self, Align, CornerRadius, FontId, Layout, Rect, Response, Sense, Stroke, UiBuilder, pos2, vec2};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, Align, CornerRadius, Layout, Rect, Response, Sense, Stroke, UiBuilder, pos2, vec2};
 use trellis_core::forge::filters::matching;
 use trellis_core::forge::{Builtin, FilterChoice, FilterKind, Provider, SavedFilter};
 use trellis_core::settings::RepoForgeFilters;
@@ -45,9 +46,10 @@ pub(super) fn header(
 ) -> Response {
     let resp = widgets::section_header(ui, title, Some(count), open);
     let painter = ui.painter().clone();
-    let title_w = painter.layout_no_wrap(title.to_owned(), FontId::proportional(13.0), color::text()).size().x;
+    let (title_font, count_font) = widgets::section_fonts(ui);
+    let title_w = painter.layout_no_wrap(title.to_owned(), title_font, color::text()).size().x;
     // Just left of the count, which `section_header` draws `PAD_X` from the right edge.
-    let count_w = painter.layout_no_wrap(count.to_string(), FontId::proportional(13.0), color::text()).size().x;
+    let count_w = painter.layout_no_wrap(count.to_string(), count_font, color::text()).size().x;
     let mut right = resp.rect.right() - (widgets::PAD_X + 6.0) - count_w;
     if let Some(a) = add {
         let cy = resp.rect.center().y;
@@ -56,7 +58,7 @@ pub(super) fn header(
         right -= 24.0;
     }
     let room = (right - (resp.rect.left() + widgets::TITLE_X + title_w + 6.0) - 26.0).max(24.0);
-    let job = widgets::truncate::cut_job(p.label, FontId::proportional(11.5), color::weak());
+    let job = widgets::truncate::cut_job(p.label, type_scale::font(type_scale::CAPTION), color::weak());
     let galley = widgets::truncate::cut_galley(ui.ctx(), job, room);
     let cy = resp.rect.center().y;
     let chip = Rect::from_min_max(pos2(right - galley.size().x - 26.0, cy - 10.0), pos2(right, cy + 10.0));
@@ -70,11 +72,10 @@ pub(super) fn header(
     painter.rect_stroke(chip, CornerRadius::same(10), Stroke::new(1.0_f32, color::border()), egui::StrokeKind::Inside);
     painter.galley(pos2(chip.left() + 8.0, cy - galley.size().y / 2.0), galley, color::weak());
     widgets::chevron(&painter, pos2(chip.right() - 10.0, cy + 0.5), true, color::weak());
-    let section = section_name(title);
-    let name = format!("{section} filter: {}", p.label);
+    let name = format!("{title} filter: {}", p.label);
     chip_resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name.clone()));
     let chip_resp =
-        chip_resp.on_hover_text(format!("Choose which {} to show", section.to_lowercase())).on_hover_cursor(egui::CursorIcon::PointingHand);
+        chip_resp.on_hover_text(format!("Choose which {} to show", section_name(title))).on_hover_cursor(egui::CursorIcon::PointingHand);
     if chip_resp.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));
     }
@@ -106,11 +107,9 @@ fn add_button(ui: &mut egui::Ui, rect: Rect, a: &AddButton, msgs: &mut Vec<Msg>)
     }
 }
 
-/// "PULL REQUESTS" → "Pull requests".
+/// The section's title inside a sentence: "Pull requests" → "pull requests".
 fn section_name(title: &str) -> String {
-    let lower = title.to_lowercase();
-    let mut chars = lower.chars();
-    chars.next().map(|c| c.to_uppercase().chain(chars).collect()).unwrap_or_default()
+    title.to_lowercase()
 }
 
 fn popover(ui: &mut egui::Ui, p: &Picker, msgs: &mut Vec<Msg>) {
@@ -134,10 +133,10 @@ fn popover(ui: &mut egui::Ui, p: &Picker, msgs: &mut Vec<Msg>) {
     ui.add_space(4.0);
     ui.separator();
     let saved: Vec<&SavedFilter> = p.filters.saved_of(p.kind).collect();
-    ui.label(egui::RichText::new("Saved filters").size(11.5).color(color::faint()));
+    ui.label(egui::RichText::new("Saved filters").size(type_scale::CAPTION).color(color::faint()));
     ui.add_space(2.0);
     if saved.is_empty() {
-        ui.label(egui::RichText::new("None yet").size(12.0).color(color::faint()));
+        ui.label(egui::RichText::new("None yet").size(type_scale::SMALL).color(color::faint()));
         ui.add_space(4.0);
     }
     for (i, s) in saved.iter().enumerate() {
@@ -174,7 +173,7 @@ fn paint_row(ui: &egui::Ui, rect: Rect, text: &str, checked: bool, enabled: bool
         p.line_segment([pos2(c.x - 1.0, c.y + 3.0), pos2(c.x + 5.0, c.y - 4.0)], s);
     }
     let col = if enabled { color::text() } else { color::faint() };
-    let font = FontId::proportional(13.0);
+    let font = type_scale::font(type_scale::BODY);
     widgets::paint_cut_text(p, pos2(rect.left() + 24.0, rect.center().y), text, font, col, rect.width() - 28.0);
 }
 

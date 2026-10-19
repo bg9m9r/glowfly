@@ -1,4 +1,4 @@
-//! The Board picker of Repo-Specific Preferences > Issue Tracker, for a Trello tracker.
+//! The Board picker of Repo-specific preferences > Issue tracker, for a Trello tracker.
 
 use trellis_core::forge::{Account, TrelloBoard};
 

@@ -1,5 +1,5 @@
 //! Headless tests for the external editor and a custom terminal: the launches planned from
-//! Preferences > External Tools, the refusals and failures (log line and red toast), the program
+//! Preferences > External tools, the refusals and failures (log line and red toast), the program
 //! pickers, Open in terminal with and without a custom terminal, and the palette entries.
 
 use super::tests::{drive, scratch_repo, state};
@@ -183,7 +183,7 @@ fn failed_launches_are_logged_and_toasted() {
     let failed = |kind, failure| ToolsMsg::LaunchFailed { kind, program: "subl".into(), target: "a.txt".into(), failure };
     assert!(run(&mut st, failed(ToolKind::Editor, LaunchFailure::NotFound)).is_empty());
     let text = failure(&st);
-    assert!(text.contains("\"subl\"") && text.contains("Preferences > External Tools") && text.contains("editor"), "{text}");
+    assert!(text.contains("\"subl\"") && text.contains("Preferences > External tools") && text.contains("editor"), "{text}");
     run(&mut st, failed(ToolKind::Terminal, LaunchFailure::NotFound));
     assert!(failure(&st).contains("terminal"));
     run(&mut st, failed(ToolKind::Editor, LaunchFailure::Missing("C:/r/a.txt".into())));
@@ -211,7 +211,7 @@ fn show_page_opens_external_tools() {
     let mut st = state();
     let fx = run(&mut st, ToolsMsg::ShowPage);
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
-    assert_eq!(PrefPage::Tools.title(trellis_core::i18n::Lang::En), "External Tools");
+    assert_eq!(PrefPage::Tools.title(trellis_core::i18n::Lang::En), "External tools");
     assert!(fx.iter().any(|e| matches!(e, Effect::ReadGitConfig { .. })), "{fx:?}");
 }
 

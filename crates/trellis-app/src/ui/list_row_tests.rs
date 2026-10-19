@@ -2,6 +2,7 @@
 //! click target and their selection's reach.
 
 use super::*;
+use crate::ui::theme::fonts;
 use crate::ui::widgets::section_header;
 
 /// Runs one pass (after one that installs the bundled fonts) with `body` in a 300 × 400 panel;
@@ -30,7 +31,7 @@ fn list_rows_and_section_headers_have_their_heights() {
         assert_eq!(marker.right(), r.rect.right() - PAD_X, "the marker slot ends PAD_X from the edge");
         assert_eq!(marker.width(), 18.0);
         let mut open = true;
-        let h = section_header(ui, "LOCAL", Some(3), &mut open);
+        let h = section_header(ui, "Local", Some(3), &mut open);
         assert_eq!(h.rect.height(), SECTION_H);
     });
 }

@@ -75,7 +75,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let tips_seen = &mut st.view.tips_seen;
     let slot = super::build_status::tip_slot(fs);
 
-    widgets::section_header(ui, "LOCAL", Some(snap.locals.len()), &mut sections.local);
+    widgets::section_header(ui, "Local", Some(snap.locals.len()), &mut sections.local);
     if sections.local {
         for b in snap.locals.iter().filter(|b| shown(&b.name)) {
             if widgets::list_row_hidden(ui) {
@@ -138,7 +138,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     super::remotes::section(ui, snap, &mut sections.remote, ctx, hover_next, tips_seen, msgs);
 
     if let Some(f) = fs.filter(|f| f.host.is_some()) {
-        let title = if f.pr_noun() == "merge request" { "MERGE REQUESTS" } else { "PULL REQUESTS" };
+        let title = if f.pr_noun() == "merge request" { "Merge requests" } else { "Pull requests" };
         let view = forge_filters::pr_view(f, &repo_filters);
         let picker = Picker { kind: FilterKind::Prs, label: &view.label, filters: &repo_filters, provider: f.host_provider() };
         forge_filter_menu::header(ui, title, view.rows.len(), &mut sections.prs, picker, None, msgs);
@@ -152,7 +152,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let picker = Picker { kind: FilterKind::Issues, label: &view.label, filters: &repo_filters, provider };
         let create = || Msg::Issue(IssueMsg::CreateDialog);
         let add = AddButton { tooltip: format!("Create {}", f.issue_noun()), blocked: create_blocked.clone(), msg: create };
-        let header = forge_filter_menu::header(ui, "ISSUES", view.rows.len(), &mut sections.issues, picker, Some(add), msgs);
+        let header = forge_filter_menu::header(ui, "Issues", view.rows.len(), &mut sections.issues, picker, Some(add), msgs);
         header.context_menu(|ui| menu_item_if(msgs, ui, format!("Create {}…", f.issue_noun()), create_blocked.as_deref(), create()));
         if sections.issues {
             let in_app = provider.is_some_and(forge::issues_in_app);
@@ -167,7 +167,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let rows = super::tags::Rows { shown: &shown, sel, idle, graph };
     super::tags::section(ui, snap, &mut sections.tags, rows, msgs);
 
-    widgets::section_header(ui, "STASHES", Some(snap.stashes.len()), &mut sections.stashes);
+    widgets::section_header(ui, "Stashes", Some(snap.stashes.len()), &mut sections.stashes);
     if sections.stashes {
         for s in snap.stashes.iter().filter(|s| shown(&s.message)) {
             if widgets::list_row_hidden(ui) {

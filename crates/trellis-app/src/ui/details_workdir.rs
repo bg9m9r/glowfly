@@ -2,7 +2,7 @@
 //! that differ from it to the working tree (staged and unstaged changes and untracked files),
 //! each opening that diff.
 
-use super::common::short;
+use super::common::{short, with_code};
 use super::details::file_reveal::reveal;
 use super::details::{RowActions, changed_file_row};
 use super::file_menu::RowSource;
@@ -10,6 +10,7 @@ use super::theme::color;
 use crate::msg::{Msg, SelectionMsg};
 use crate::state::lfs::TrackContext;
 use crate::state::{AppState, Selection};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText};
 use trellis_core::repo::DiffTarget;
 
@@ -17,19 +18,24 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (Some(snap), Selection::VsWorkdir(w)) = (&st.snap, &st.selection) else { return };
     let oid = w.oid;
     let t = st.settings.lang();
-    let header = t.trf("details.workdir.header", &[("sha", &short(oid))]);
-    ui.add(egui::Label::new(RichText::new(header).monospace().color(color::weak())).wrap());
+    let header = with_code(t.tr("details.workdir.header"), "{sha}", &short(oid), type_scale::SMALL, color::weak());
+    ui.add(egui::Label::new(header).wrap());
     if let Some(&row) = snap.row_of.get(&oid) {
-        ui.add(egui::Label::new(RichText::new(&snap.commits[row].summary).strong().size(15.0).color(color::text())).wrap());
+        ui.add(
+            egui::Label::new(
+                RichText::new(&snap.commits[row].summary).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()),
+            )
+            .wrap(),
+        );
     }
     ui.horizontal(|ui| {
         if ui.small_button(t.tr("common.copy_sha.button")).clicked() {
             msgs.push(Msg::Copy(oid.to_string()));
         }
-        ui.label(RichText::new(t.tr("details.workdir.esc_hint")).small().color(color::weak()));
+        ui.label(RichText::new(t.tr("details.workdir.esc_hint")).size(type_scale::SMALL).color(color::weak()));
     });
     ui.separator();
-    ui.label(RichText::new(t.trf("details.workdir.changes", &[("sha", &short(oid))])).strong().color(color::text()));
+    ui.label(type_scale::section_text(ui, t.trf("details.workdir.changes", &[("sha", &short(oid))])));
     match &w.changes {
         None => super::pane_status::loading_line(ui, t.tr("common.loading")),
         Some(Err(e)) => {

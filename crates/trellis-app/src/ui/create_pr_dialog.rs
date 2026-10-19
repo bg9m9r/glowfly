@@ -10,6 +10,7 @@ use crate::state::ForgeState;
 use crate::state::branches;
 use crate::state::push_pr::{self, HostBranch};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use trellis_core::forge::{self, NewPullRequest, RefStyle};
@@ -96,7 +97,7 @@ fn body(
     msgs: &mut Vec<Msg>,
 ) -> (bool, Vec<String>) {
     ui.horizontal(|ui| {
-        ui.label(RichText::new(f.source.as_str()).strong());
+        ui.label(RichText::new(f.source.as_str()).font(type_scale::strong(ui, type_scale::BODY)));
         ui.label("into");
         egui::ComboBox::from_id_salt("pr-target").selected_text(f.target.as_str()).width(200.0).show_ui(ui, |ui| {
             for t in f.targets.iter() {

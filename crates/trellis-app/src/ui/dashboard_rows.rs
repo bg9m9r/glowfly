@@ -10,6 +10,7 @@ use crate::state::AppState;
 use crate::state::dashboard::{Dashboard, TargetData, pr_label, target_name};
 use crate::state::dashboard_rows::issue_text;
 use crate::state::forge_filters;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Color32, FontId, Rect, Response, Sense, Ui, pos2, vec2};
 use trellis_core::forge::{self, Issue, Provider, PullRequest};
 
@@ -78,7 +79,7 @@ fn two_line_row(ui: &mut Ui, title: &str, sub: &str, right: (&str, Color32), slo
         p.rect_filled(rect, 0.0, color::hover());
     }
     let top = rect.top() + 12.0;
-    let g = p.layout_no_wrap(right.0.to_owned(), FontId::proportional(12.0), right.1);
+    let g = p.layout_no_wrap(right.0.to_owned(), type_scale::font(type_scale::SMALL), right.1);
     let right_w = g.size().x + widgets::PAD_X + 8.0 + slot;
     p.galley(pos2(rect.right() - g.size().x - widgets::PAD_X - slot, top - g.size().y / 2.0), g, right.1);
     let clip = Rect::from_min_max(pos2(rect.left() + INDENT, rect.top()), pos2(rect.right() - right_w, rect.bottom()));

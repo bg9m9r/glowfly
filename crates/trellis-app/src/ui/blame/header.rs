@@ -13,6 +13,7 @@ use crate::ui::file_view_switch::{self, FileShow};
 use crate::ui::find_bar::{FindIntent, plural};
 use crate::ui::history_file::{WRAP_LINES, WRAP_TIP};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{Align, Layout, RichText, Ui};
 use trellis_core::repo::Snapshot;
@@ -28,7 +29,7 @@ const UPDATING: &str = "Updating…";
 /// The Moves menu's button text and its items, in order.
 fn moves_text(m: BlameMoves) -> &'static str {
     match m {
-        BlameMoves::Off => "Moves: Off",
+        BlameMoves::Off => "Moves: off",
         BlameMoves::WithinFile => "Moves: In file",
         BlameMoves::AcrossFiles => "Moves: Across files",
     }
@@ -103,7 +104,7 @@ fn first_row(ui: &mut Ui, t: trellis_core::i18n::Lang, view: &BlameView, over_hi
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         ui.label(RichText::new("Blame").color(color::weak()));
-        ui.label(RichText::new(&view.path).strong().size(15.0).color(color::text()));
+        ui.label(RichText::new(&view.path).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()));
         let resolved = view.data.as_ref().map(|d| short(d.blame.at));
         let at = match (view.at, resolved) {
             (Some(oid), _) => format!("at {}", short(oid)),

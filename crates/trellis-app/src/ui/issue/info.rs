@@ -12,8 +12,9 @@ use crate::state::AppState;
 use crate::state::gitflow::start_blocked;
 use crate::state::issue::{IssueView, linked_branches, meta_rows, state_label};
 use crate::state::issue_words::labels_label;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, Color32, FontId, Layout, RichText, Sense, Ui, vec2};
+use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Ui, vec2};
 use trellis_core::forge;
 use trellis_core::gitflow::FlowKind;
 use trellis_core::text::printable;
@@ -24,7 +25,7 @@ const LABEL_W: f32 = 92.0;
 pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (Some(v), Some(fs)) = (&st.issue, &st.forge) else { return };
     ui.spacing_mut().item_spacing.y = 6.0;
-    ui.label(RichText::new("Details").strong().color(color::text()));
+    ui.label(type_scale::section_text(ui, "Details"));
     details(ui, v, st);
     heading(ui, "Branches");
     let idle = st.job.is_none();
@@ -114,7 +115,7 @@ fn details(ui: &mut Ui, v: &IssueView, st: &AppState) {
 /// A rounded chip with `text` in `fg`.
 fn chip(ui: &mut Ui, text: &str, fg: Color32) {
     let text = printable(text);
-    let w = ui.painter().layout_no_wrap(text.clone(), FontId::proportional(11.5), fg).size().x + 12.0;
+    let w = ui.painter().layout_no_wrap(text.clone(), type_scale::font(type_scale::CAPTION), fg).size().x + 12.0;
     let (rect, _) = ui.allocate_exact_size(vec2(w, 20.0), Sense::hover());
     widgets::chip(ui.painter(), rect.left(), rect.center().y, &text, color::toolbar(), fg);
 }

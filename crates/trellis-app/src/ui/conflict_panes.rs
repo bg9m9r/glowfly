@@ -12,6 +12,7 @@ use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::state::conflict::ConflictView;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Align2, Color32, Direction, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use trellis_core::conflict_folds::clean_fold;
 use trellis_core::conflict_rows::{PaneRow, pane_rows, scroll_target};
@@ -57,10 +58,10 @@ pub(super) fn panes(
     ] {
         let builder = UiBuilder::new().max_rect(r.shrink2(vec2(8.0, 2.0))).layout(Layout::left_to_right(Align::Center));
         ui.allocate_new_ui(builder, |ui| {
-            ui.label(RichText::new(title).strong().color(color::text()));
+            ui.label(type_scale::section_text(ui, title));
             ui.label(RichText::new(name).color(color::weak()));
             if file.no_ancestor {
-                ui.label(RichText::new("no common ancestor").small().color(color::faint()));
+                ui.label(RichText::new("no common ancestor").size(type_scale::SMALL).color(color::faint()));
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if ui.small_button("Take all").on_hover_text(format!("Take {} for every conflict", title.to_lowercase())).clicked() {
@@ -193,7 +194,7 @@ fn chunk_header(ui: &mut Ui, r: Rect, view: &ConflictView, k: usize, side: Side,
     }
     if edited {
         if side == Side::Theirs {
-            let b = ui.put(check, egui::Button::new(RichText::new("Discard edit").small()));
+            let b = ui.put(check, egui::Button::new(RichText::new("Discard edit").size(type_scale::SMALL)));
             if b.on_hover_text("Drop the text typed in the output and bring back the picks").clicked() {
                 msgs.push(Msg::Conflict(ConflictMsg::ConflictDiscardEdit(k)));
             }

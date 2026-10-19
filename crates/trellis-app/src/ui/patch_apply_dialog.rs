@@ -10,6 +10,7 @@ use crate::msg::Msg;
 use crate::patch::PatchMsg;
 use crate::state::patch::apply::{ApplyForm, ApplyMode, NO_MESSAGES, NOTHING_TO_APPLY, THREE_WAY_INDEX, apply_blocked};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use trellis_core::patch_ops::OnFail;
@@ -41,13 +42,13 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut ApplyForm, snap: Option<&Snaps
 fn body(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>) -> Option<String> {
     match form.summary_line() {
         Some(line) => {
-            ui.label(RichText::new(line).strong());
+            ui.label(RichText::new(line).font(type_scale::strong(ui, type_scale::BODY)));
         }
         None => form_message::form(ui, Message::warning(NOTHING_TO_APPLY)),
     }
     files(ui, form);
     ui.add_space(8.0);
-    ui.label(RichText::new("How to apply").strong());
+    ui.label(type_scale::section_text(ui, "How to apply"));
     controls::radio_value(ui, &mut form.mode, ApplyMode::Changes, "Apply the changes to your files");
     let commits = ui.add_enabled(form.summary.commits > 0, controls::Radio::new(form.mode == ApplyMode::Commits, "Apply as commits"));
     if commits.on_disabled_hover_text(NO_MESSAGES).clicked() {
@@ -96,7 +97,7 @@ fn files(ui: &mut egui::Ui, form: &ApplyForm) {
 /// Where the changes go, what to do when part doesn't fit, and reverse.
 fn changes_options(ui: &mut egui::Ui, form: &mut ApplyForm) {
     let three_way = form.opts.on_fail == OnFail::ThreeWay;
-    ui.label(RichText::new("Where").strong());
+    ui.label(type_scale::section_text(ui, "Where"));
     let only = ui.add_enabled(!three_way, controls::Radio::new(!form.opts.index && !three_way, "Working tree only"));
     if only.on_disabled_hover_text(THREE_WAY_INDEX).clicked() {
         form.opts.index = false;
@@ -105,7 +106,7 @@ fn changes_options(ui: &mut egui::Ui, form: &mut ApplyForm) {
         form.opts.index = true;
     }
     ui.add_space(4.0);
-    ui.label(RichText::new("If part of the patch doesn't apply").strong());
+    ui.label(type_scale::section_text(ui, "If part of the patch doesn't apply"));
     for (choice, text) in ON_FAIL {
         controls::radio_value(ui, &mut form.opts.on_fail, choice, text);
     }

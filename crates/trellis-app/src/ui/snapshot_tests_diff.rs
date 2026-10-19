@@ -301,8 +301,8 @@ fn diff_hunk_buttons() {
     let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
     let mut h = harness(st, true);
     h.run();
-    let stage = h.get_by_label("Stage Hunk").bounding_box().expect("the button has bounds");
-    let discard = h.get_by_label("Discard Hunk").bounding_box().expect("the button has bounds");
+    let stage = h.get_by_label("Stage hunk").bounding_box().expect("the button has bounds");
+    let discard = h.get_by_label("Discard hunk").bounding_box().expect("the button has bounds");
     assert!(stage.x0 > discard.x1, "Stage sits at the edge, right of Discard");
     assert!(stage.x0 - discard.x1 >= 16.0, "a wider gap sets Discard apart");
     for b in [stage, discard] {
@@ -318,7 +318,7 @@ fn diff_hunk_buttons() {
     let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
     let mut h = harness(st, true);
     h.run();
-    let stage = h.get_by_label("Stage Hunk").bounding_box().expect("the button has bounds");
+    let stage = h.get_by_label("Stage hunk").bounding_box().expect("the button has bounds");
     assert!(((stage.y1 - stage.y0) as f32 - (row_h - 2.0)).abs() < 0.5);
     h.check_snapshot("diff_hunk_buttons_small_font");
     drop(h);
@@ -330,9 +330,9 @@ fn diff_hunk_buttons() {
     assert_eq!(st.hunk_ops_gen(), None);
     let mut h = harness(st, true);
     h.run();
-    assert!(h.get_by_label("Stage Hunk").is_disabled());
-    assert!(h.get_by_label("Discard Hunk").is_disabled());
-    h.get_by_label("Stage Hunk").hover();
+    assert!(h.get_by_label("Stage hunk").is_disabled());
+    assert!(h.get_by_label("Discard hunk").is_disabled());
+    h.get_by_label("Stage hunk").hover();
     h.run();
     assert!(h.query_by_label_contains("Updating the diff").is_some(), "the hover says why");
     drop(h);

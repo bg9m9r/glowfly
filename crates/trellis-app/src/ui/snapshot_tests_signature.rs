@@ -62,7 +62,7 @@ fn signature_no_allowed_signers() {
     let (mut st, dir, oid) = with_signed_head(ThemeChoice::Light, "sig-no-allowed", Some(SigningFormat::Ssh));
     let stderr = "error: gpg.ssh.allowedSignersFile needs to be configured and exist for ssh signature verification\n";
     checked(&mut st, oid, ssh("N\0\0\0\0undefined\0\n", stderr));
-    hover_shows("signature_no_allowed_signers", st, false, "Signed", "Preferences > Commit Signing");
+    hover_shows("signature_no_allowed_signers", st, false, "Signed", "Preferences > Commit signing");
     remove_fixture(&dir);
 }
 

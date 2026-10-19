@@ -16,7 +16,8 @@ use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::gitflow::{group_title, row_tooltip, start_blocked};
 use crate::state::{ForgeState, PrefPage, Selection};
-use eframe::egui::{self, Align2, FontId, Rect, Response, Sense, Stroke, pos2, vec2};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, Align2, Rect, Response, Sense, Stroke, pos2, vec2};
 use git2::Oid;
 use trellis_core::forge::{self, Issue};
 use trellis_core::gitflow::{Branches, FlowGroup, FlowKind, GitFlowSettings, grouped, total};
@@ -44,7 +45,7 @@ pub(super) fn section(
     msgs: &mut Vec<Msg>,
 ) {
     let groups = grouped(s, &Branches::of(snap));
-    let h = widgets::section_header(ui, "GIT FLOW", Some(total(&groups)), open);
+    let h = widgets::section_header(ui, "Git Flow", Some(total(&groups)), open);
     h.context_menu(|ui| header_menu(ui, snap, msgs));
     if !*open {
         return;
@@ -147,7 +148,7 @@ fn group_row(ui: &mut egui::Ui, title: &str, count: usize, plus_name: &str, enab
     if resp.hovered() {
         p.rect_filled(rect, 0.0, color::hover());
     }
-    let font = FontId::proportional(12.0);
+    let font = type_scale::font(type_scale::SMALL);
     let t = p.text(pos2(rect.left() + widgets::ROW_INDENT, rect.center().y), Align2::LEFT_CENTER, title, font.clone(), color::weak());
     p.text(pos2(t.right() + 6.0, rect.center().y), Align2::LEFT_CENTER, count.to_string(), font, color::faint());
 

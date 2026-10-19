@@ -7,6 +7,7 @@ use crate::state::git_env::GitState;
 use crate::state::onboarding::Welcome;
 use crate::state::{PrefPage, host_text};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, vec2};
 use trellis_core::forge::Connection;
@@ -78,7 +79,7 @@ pub fn connect(ui: &mut egui::Ui, t: Lang, connections: &[Connection], msgs: &mu
     let label = if connections.is_empty() {
         t.tr("welcome.connect.first.button")
     } else {
-        ui.label(RichText::new(t.tr("welcome.connect.connected")).strong().color(color::text()));
+        ui.label(RichText::new(t.tr("welcome.connect.connected")).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         for c in connections {
             ui.horizontal(|ui| {
                 ui.label(RichText::new(c.account.provider.name()).color(color::text()));
@@ -111,7 +112,11 @@ pub fn git(ui: &mut egui::Ui, t: Lang, git: &GitState, msgs: &mut Vec<Msg>) {
     match info.banner() {
         None => {
             let version = info.version.map(trellis_core::git_version::show).unwrap_or_default();
-            ui.label(RichText::new(t.trf("welcome.git.ready", &[("version", &version)])).strong().color(color::green()));
+            ui.label(
+                RichText::new(t.trf("welcome.git.ready", &[("version", &version)]))
+                    .font(type_scale::strong(ui, type_scale::BODY))
+                    .color(color::green()),
+            );
             if let Some(path) = &info.path {
                 weak(ui, &trellis_core::native_path::shown(path));
             }

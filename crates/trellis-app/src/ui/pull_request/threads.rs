@@ -16,8 +16,9 @@ use crate::state::pull_request_threads::{
     resolve_blocked, resolve_label, resolved_toggle, where_text,
 };
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, Color32, FontId, Layout, Margin, RichText, Sense, Stroke, Ui, vec2};
+use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Sense, Stroke, Ui, vec2};
 use std::collections::HashMap;
 use trellis_core::forge::ReviewThread;
 use trellis_core::settings::Settings;
@@ -75,7 +76,7 @@ pub(super) fn filter_bar(ui: &mut Ui, v: &PrView, path: Option<&str>, msgs: &mut
 }
 
 fn chip(ui: &mut Ui, text: &str, fg: Color32) {
-    let w = ui.painter().layout_no_wrap(text.to_owned(), FontId::proportional(11.5), fg).size().x + 12.0;
+    let w = ui.painter().layout_no_wrap(text.to_owned(), type_scale::font(type_scale::CAPTION), fg).size().x + 12.0;
     let (rect, resp) = ui.allocate_exact_size(vec2(w, 20.0), Sense::hover());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, text));
     widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::toolbar(), fg);
@@ -163,7 +164,7 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
     for c in &t.comments {
         ui.add_space(2.0);
         ui.horizontal_wrapped(|ui| {
-            ui.label(RichText::new(printable(&c.author)).strong().color(color::text()));
+            ui.label(RichText::new(printable(&c.author)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
             crate::ui::date_tip::time_label(ui, ctx.settings, c.time, ctx.now, ctx.offset);
             if c.pending {
                 chip(ui, "Pending", color::weak());
@@ -223,7 +224,7 @@ pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, msgs: &mut V
     let n = on_file(p, path);
     let ids: Vec<String> = file_threads(p, &v.threads, path).iter().map(|t| t.id.clone()).collect();
     ui.add_space(6.0);
-    ui.label(RichText::new(format!("Comments on this file  {n}")).strong().color(color::text()));
+    ui.label(type_scale::section_text(ui, format!("Comments on this file  {n}")));
     if let Placement::Elsewhere(why) = placement(v) {
         note(ui, why, color::weak());
     }

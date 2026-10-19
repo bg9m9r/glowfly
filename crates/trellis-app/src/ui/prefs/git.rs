@@ -34,7 +34,7 @@ pub fn identity_page(ui: &mut Ui, git: &mut GitConfigValues, msgs: &mut Vec<Msg>
 }
 
 pub fn hooks_page(ui: &mut Ui, git: &mut GitConfigValues, msgs: &mut Vec<Msg>) {
-    row(ui, "Hooks Path", |ui| {
+    row(ui, "Hooks path", |ui| {
         let mut commit = false;
         ui.horizontal(|ui| {
             commit = text_field(ui, &mut git.hooks_path, ".git/hooks").lost_focus();

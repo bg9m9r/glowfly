@@ -66,7 +66,7 @@ fn drag_test(layout: DiffLayout, name: &str, from_x: f32, to_x: f32) {
     h.run();
     // Inline, line i of the hunk is i + 1 rows below the header, which holds the hunk buttons.
     // Split, `-fix` pairs with `+fixed build`, so `+new line` is a row higher.
-    let b = h.get_by_label("Stage Hunk").bounding_box().expect("the button has bounds");
+    let b = h.get_by_label("Stage hunk").bounding_box().expect("the button has bounds");
     let header_y = (b.y0 + b.y1) as f32 / 2.0;
     let from = pos2(b.x1 as f32 - from_x, header_y + (fix + 1) as f32 * row_h);
     let new_row = if layout == DiffLayout::Split { new_line } else { new_line + 1 };

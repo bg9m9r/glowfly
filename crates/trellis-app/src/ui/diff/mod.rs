@@ -1,5 +1,5 @@
 //! The diff viewer: one column (inline) or old and new side by side (split), showing the hunks
-//! or the whole file, with hunk- and line-level stage, unstage and discard, Revert Hunk and
+//! or the whole file, with hunk- and line-level stage, unstage and discard, Revert hunk and
 //! Revert lines on commit and comparison diffs, and next/previous change navigation. In the
 //! whole-file view long unchanged runs are folded into "N unchanged lines" rows that open in
 //! place when clicked; an opened run folds back from a control on its first line, and the header's
@@ -49,7 +49,7 @@ use trellis_core::whole_file::{self, Fold, WholeFile};
 pub(super) const ROW_H: f32 = 19.0;
 
 pub(super) fn mono() -> FontId {
-    FontId::monospace(12.5)
+    FontId::monospace(trellis_core::settings::DEFAULT_DIFF_FONT_SIZE)
 }
 
 /// What both layouts draw from.
@@ -237,7 +237,7 @@ pub(super) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
 /// shows a summary instead, until "Show pointer text"; a binary file shows its image preview or
 /// sizes (`preview`), and a diff without hunks an empty state (whitespace-only, with a way to show it, when Ignore whitespace
 /// hides the changes). Commit
-/// diffs have Revert Hunk buttons and line selection for Revert lines (both off while
+/// diffs have Revert hunk buttons and line selection for Revert lines (both off while
 /// whitespace is hidden).
 pub(super) fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.diff_scroll_to_row.take();

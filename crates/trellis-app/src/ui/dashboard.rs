@@ -13,6 +13,7 @@ use crate::state::dashboard::{AccountState, DashShow, Phase, service_header};
 use crate::state::dashboard_rows::{Row, counts, empty_hint, empty_text, sections};
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Ui};
 use trellis_core::forge::Account;
@@ -86,7 +87,7 @@ fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let d = &st.dashboard;
     ui.horizontal(|ui| {
         ui.vertical(|ui| {
-            ui.label(RichText::new("Dashboard").size(18.0).strong().color(color::strong()));
+            ui.label(RichText::new("Dashboard").font(type_scale::strong(ui, type_scale::TITLE)).color(color::strong()));
             ui.label(RichText::new("Pull requests and issues across your repositories").color(color::weak()));
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -148,7 +149,7 @@ fn body(ui: &mut Ui, st: &AppState, filter: &str, msgs: &mut Vec<Msg>) {
         ui.add_space(10.0);
         ui.horizontal(|ui| {
             ui.add_space(8.0);
-            ui.label(RichText::new(service_header(s.account)).size(11.5).color(color::weak()));
+            ui.label(RichText::new(service_header(s.account)).size(type_scale::CAPTION).color(color::weak()));
         });
         ui.add_space(2.0);
         for repo in &s.repos {
@@ -156,7 +157,7 @@ fn body(ui: &mut Ui, st: &AppState, filter: &str, msgs: &mut Vec<Msg>) {
             if let Some(e) = repo.error {
                 ui.horizontal(|ui| {
                     ui.add_space(26.0);
-                    ui.label(RichText::new(e).size(12.0).color(color::red()));
+                    ui.label(RichText::new(e).size(type_scale::SMALL).color(color::red()));
                 });
             }
             let checks = repo.rows.iter().any(|r| matches!(r, Row::Pr(p) if p.checks.is_some()));
@@ -179,7 +180,7 @@ fn account_name(a: &Account) -> String {
 fn problem(ui: &mut Ui, text: String, add_buttons: impl FnOnce(&mut Ui)) {
     ui.horizontal(|ui| {
         ui.add_space(26.0);
-        ui.label(RichText::new(text).size(12.0).color(color::text()));
+        ui.label(RichText::new(text).size(type_scale::SMALL).color(color::text()));
         add_buttons(ui);
     });
     ui.add_space(4.0);
@@ -207,7 +208,7 @@ fn not_loaded(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.add_space(16.0);
     ui.horizontal(|ui| {
         ui.add_space(8.0);
-        ui.label(RichText::new("Not loaded").size(13.0).strong().color(color::strong()));
+        ui.label(RichText::new("Not loaded").font(type_scale::strong(ui, type_scale::BODY)).color(color::strong()));
     });
     ui.add_space(6.0);
     for a in failing {
@@ -235,9 +236,9 @@ fn not_loaded(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         };
         ui.horizontal(|ui| {
             ui.add_space(20.0);
-            egui::CollapsingHeader::new(RichText::new(title).size(12.0)).id_salt("dashboard-no-service").show(ui, |ui| {
+            egui::CollapsingHeader::new(RichText::new(title).size(type_scale::SMALL)).id_salt("dashboard-no-service").show(ui, |ui| {
                 for p in &d.no_service {
-                    ui.label(RichText::new(folder_name(p)).size(12.0).color(color::weak()))
+                    ui.label(RichText::new(folder_name(p)).size(type_scale::SMALL).color(color::weak()))
                         .on_hover_text(trellis_core::native_path::shown(p));
                 }
             });
@@ -247,7 +248,7 @@ fn not_loaded(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     for (p, why) in &d.unreadable {
         ui.horizontal(|ui| {
             ui.add_space(26.0);
-            ui.label(RichText::new(format!("{}: {why}", folder_name(p))).size(12.0).color(color::text()))
+            ui.label(RichText::new(format!("{}: {why}", folder_name(p))).size(type_scale::SMALL).color(color::text()))
                 .on_hover_text(trellis_core::native_path::shown(p));
         });
         ui.add_space(4.0);

@@ -232,7 +232,7 @@ fn bitbucket_data_center_points_to_jira() {
     assert!(run(&mut st, IssueMsg::CreateDialog).is_empty());
     assert!(st.modal.is_none());
     let entry = shown(&st, "").into_iter().find(|s| s.entry.label == "Create issue…").map(|s| s.entry.detail);
-    let why = "Bitbucket Data Center has no issue tracker of its own; choose Jira under Repo-Specific Preferences > Issue Tracker";
+    let why = "Bitbucket Data Center has no issue tracker of its own; choose Jira under Repo-specific preferences > Issue tracker";
     assert_eq!(entry, Some(Some(why.into())));
     done(st, dir);
 }

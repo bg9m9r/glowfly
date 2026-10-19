@@ -138,6 +138,7 @@ mod snapshot_tests;
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use crate::ui::theme::type_scale;
     use eframe::egui::text::TextFormat;
     use eframe::egui::{Align, LayerId};
 
@@ -148,7 +149,7 @@ pub(crate) mod tests {
     }
 
     fn font() -> FontId {
-        FontId::proportional(13.0)
+        type_scale::font(type_scale::BODY)
     }
 
     /// The characters a galley draws, the "…" included.
@@ -195,7 +196,11 @@ pub(crate) mod tests {
         let mut job = LayoutJob::default();
         let summary = "Add app skeleton";
         job.append(summary, 0.0, TextFormat { valign: Align::Center, ..TextFormat::simple(font(), Color32::WHITE) });
-        job.append(LONG, 10.0, TextFormat { valign: Align::Center, ..TextFormat::simple(FontId::proportional(12.5), Color32::GRAY) });
+        job.append(
+            LONG,
+            10.0,
+            TextFormat { valign: Align::Center, ..TextFormat::simple(type_scale::font(type_scale::SMALL), Color32::GRAY) },
+        );
         let summary_w = ctx.fonts(|f| f.layout_no_wrap(summary.into(), font(), Color32::WHITE)).size().x;
         let g = cut_galley(&ctx, job, summary_w + 120.0);
         assert!(g.elided);

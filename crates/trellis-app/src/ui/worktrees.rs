@@ -28,7 +28,7 @@ pub(super) struct Rows<'a> {
 
 pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows: Rows, hover_next: &mut Option<Oid>, msgs: &mut Vec<Msg>) {
     let Rows { shown, sel, open_tabs } = rows;
-    let h = widgets::section_header(ui, "WORKTREES", Some(snap.worktrees.len()), open);
+    let h = widgets::section_header(ui, "Worktrees", Some(snap.worktrees.len()), open);
     h.context_menu(|ui| menu_item_if(msgs, ui, "Prune missing worktrees", prune_blocked(snap), Msg::Worktree(WorktreeMsg::Prune)));
     if !*open {
         return;

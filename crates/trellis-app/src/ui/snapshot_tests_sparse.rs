@@ -1,4 +1,4 @@
-//! Preferences > Sparse Checkout snapshots: off, on in folders mode, patterns mode with both
+//! Preferences > Sparse checkout snapshots: off, on in folders mode, patterns mode with both
 //! warnings, an edited form with a refused path, and a job running.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};

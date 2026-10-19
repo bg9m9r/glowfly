@@ -25,6 +25,7 @@ pub use icon::{Icon, paint_icon, paint_icon_sized};
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;
+use crate::ui::theme::type_scale;
 
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 
@@ -76,7 +77,7 @@ pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, name: &str, enabled: bo
             color::weak()
         };
         paint_icon(p, pos2(rect.center().x, rect.top() + ICON_Y), icon, col);
-        p.text(pos2(rect.center().x, rect.top() + CAPTION_Y), Align2::CENTER_CENTER, label, FontId::proportional(12.0), caption);
+        p.text(pos2(rect.center().x, rect.top() + CAPTION_Y), Align2::CENTER_CENTER, label, type_scale::font(type_scale::SMALL), caption);
     } else {
         paint_icon(p, rect.center(), icon, col);
     }
@@ -87,7 +88,7 @@ pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, name: &str, enabled: bo
 /// The width `tool_button` gives a button captioned `label`.
 pub fn tool_width(ui: &Ui, label: &str, labels: bool) -> f32 {
     if labels {
-        let text_w = ui.painter().layout_no_wrap(label.to_owned(), FontId::proportional(12.0), Color32::PLACEHOLDER).size().x;
+        let text_w = ui.painter().layout_no_wrap(label.to_owned(), type_scale::font(type_scale::SMALL), Color32::PLACEHOLDER).size().x;
         TOOL_W.max(text_w + CAPTION_PAD)
     } else {
         TOOL_W_BARE
@@ -139,8 +140,16 @@ pub fn chevron(p: &Painter, c: Pos2, open: bool, col: Color32) {
     p.add(egui::Shape::convex_polygon(pts, col, Stroke::NONE));
 }
 
-/// Sidebar section header: chevron, uppercase title, count on the right. Toggles `open`.
+/// The fonts of a section header's title (the section-header style) and of its count (regular
+/// body text), for measuring what `section_header` draws.
+pub fn section_fonts(ui: &Ui) -> (FontId, FontId) {
+    (type_scale::section(ui), type_scale::font(type_scale::BODY))
+}
+
+/// Sidebar section header: chevron, title in the section-header style, and the count on the
+/// right in weak body text. Toggles `open`.
 pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool) -> Response {
+    let (title_font, count_font) = section_fonts(ui);
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), SECTION_H), Sense::click());
     let p = ui.painter();
     if resp.hovered() {
@@ -148,9 +157,9 @@ pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut
     }
     p.line_segment([rect.left_top(), rect.right_top()], Stroke::new(1.0_f32, color::border()));
     chevron(p, pos2(rect.left() + PAD_X, rect.center().y), *open, color::weak());
-    p.text(pos2(rect.left() + TITLE_X, rect.center().y), Align2::LEFT_CENTER, title, FontId::proportional(13.0), color::text());
+    p.text(pos2(rect.left() + TITLE_X, rect.center().y), Align2::LEFT_CENTER, title, title_font, color::text());
     if let Some(n) = count {
-        p.text(pos2(rect.right() - PAD_X, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), FontId::proportional(13.0), color::blue());
+        p.text(pos2(rect.right() - PAD_X, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), count_font, color::weak());
     }
     if resp.clicked() {
         *open = !*open;
@@ -160,7 +169,7 @@ pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut
 
 /// Rounded label chip drawn with the painter; returns its width.
 pub fn chip(p: &Painter, x: f32, y: f32, text: &str, fill: Color32, fg: Color32) -> f32 {
-    let g = p.layout_no_wrap(text.to_owned(), FontId::proportional(11.5), fg);
+    let g = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::CAPTION), fg);
     let w = g.size().x + 12.0;
     let r = Rect::from_min_size(pos2(x, y - 10.0), vec2(w, 20.0));
     p.rect_filled(r, CornerRadius::same(3), fill);
@@ -188,9 +197,9 @@ pub fn initials(name: &str) -> String {
     }
 }
 
-/// Preferences navigation row: icon + label, highlighted when selected.
-pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool, size: f32) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), size + 20.0), Sense::click());
+/// Preferences navigation row: icon + label in body text, highlighted when selected.
+pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> Response {
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), type_scale::BODY + 20.0), Sense::click());
     let p = ui.painter();
     if selected {
         p.rect_filled(rect, 0.0, color::selected());
@@ -206,7 +215,7 @@ pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool, size
         pos2(x, rect.center().y),
         Align2::LEFT_CENTER,
         text,
-        FontId::proportional(size),
+        type_scale::font(type_scale::BODY),
         if selected { color::strong() } else { color::text() },
     );
     resp.on_hover_cursor(egui::CursorIcon::PointingHand)

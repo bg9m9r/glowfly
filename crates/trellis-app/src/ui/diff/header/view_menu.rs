@@ -6,9 +6,10 @@
 use super::controls::{self, ghost_with};
 use crate::msg::{DiffMsg, Msg};
 use crate::state::diff_header::{VIEW, ViewGroup};
+use crate::ui::theme::type_scale;
 use crate::ui::theme::{color, controls as theme_controls};
 use crate::ui::widgets::{self, buttons, segmented::segmented};
-use eframe::egui::{self, FontId, PopupCloseBehavior, RichText, Ui, pos2};
+use eframe::egui::{self, PopupCloseBehavior, RichText, Ui, pos2};
 use trellis_core::settings::{DiffLayout, DiffMode};
 
 pub(super) const HUNKS_TIP: &str = "Only the changed lines, with a few lines of context around each change";
@@ -60,7 +61,7 @@ pub(super) fn show(ui: &mut Ui, v: &ViewGroup, short: bool, msgs: &mut Vec<Msg>)
 }
 
 fn caption(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text).font(FontId::proportional(12.0)).color(color::weak()));
+    ui.label(RichText::new(text).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
 }
 
 fn menu(ui: &mut Ui, v: &ViewGroup, msgs: &mut Vec<Msg>) {

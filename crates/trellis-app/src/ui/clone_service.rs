@@ -67,7 +67,7 @@ pub fn show(ui: &mut egui::Ui, t: Lang, form: &mut CloneForm, connections: &[Con
     let p = &mut form.service;
     if p.accounts.is_empty() {
         ui.label("Connect GitHub, GitLab or Bitbucket in Preferences > Integrations to pick from your repositories.");
-        if ui.add(buttons::secondary("Open Integrations").small()).clicked() {
+        if ui.add(buttons::secondary("Open integrations").small()).clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
             return true;
         }

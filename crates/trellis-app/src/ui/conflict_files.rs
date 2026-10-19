@@ -12,7 +12,8 @@ use crate::state::AppState;
 use crate::state::conflict_files::{mark_conflicted_body, restorable_paths};
 use crate::state::path_hazards::hazard_of;
 use crate::state::tool_compare::{IN_MERGE_TOOL, merging};
-use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, Align, Layout, Sense, vec2};
 use trellis_core::repo::{DiffTarget, FileEntry, Hazard, ResolvedFile, Snapshot};
 
 /// The rows of both lists and the height each may take.
@@ -39,7 +40,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, lists: Lists, open: &OpenFi
 fn header(ui: &mut egui::Ui, title: &str, n: usize, buttons: impl FnOnce(&mut egui::Ui)) {
     egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.add(egui::Label::new(RichText::new(format!("{title} ({n})")).strong().color(color::text())).selectable(false));
+            ui.add(egui::Label::new(type_scale::section_text(ui, format!("{title} ({n})"))).selectable(false));
             ui.with_layout(Layout::right_to_left(Align::Center), buttons);
         });
     });
@@ -48,13 +49,13 @@ fn header(ui: &mut egui::Ui, title: &str, n: usize, buttons: impl FnOnce(&mut eg
 fn conflicted(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, open: &OpenFile, ctx: RowContext, msgs: &mut Vec<Msg>) {
     let rows = lists.conflicted;
     let usable: Vec<String> = rows.iter().filter(|f| !matches!(f.hazard, Some(Hazard::NotUtf8(_)))).map(|f| f.path.clone()).collect();
-    header(ui, "Conflicted Files", rows.len(), |ui| {
+    header(ui, "Conflicted files", rows.len(), |ui| {
         let b = ui.add_enabled(!usable.is_empty(), egui::Button::new("Mark all resolved").small());
         if b.on_hover_text("Stage every conflicted file as it is now").clicked() {
             msgs.push(Msg::Conflict(ConflictMsg::MarkResolved(usable.clone())));
         }
     });
-    let area = egui::ScrollArea::vertical().id_salt("Conflicted Files").max_height(lists.height).auto_shrink([false, true]);
+    let area = egui::ScrollArea::vertical().id_salt("Conflicted files").max_height(lists.height).auto_shrink([false, true]);
     area.show_rows(ui, super::widgets::LIST_ROW_H, rows.len(), |ui, range| {
         for f in &rows[range] {
             wip_file_row(ui, snap, f, false, open, ctx, st.conflict_files.count_note(&f.path), msgs);
@@ -64,7 +65,7 @@ fn conflicted(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, 
 
 fn resolved(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, open: &OpenFile, msgs: &mut Vec<Msg>) {
     let rows = lists.resolved;
-    header(ui, "Resolved Files", rows.len(), |ui| {
+    header(ui, "Resolved files", rows.len(), |ui| {
         let all = restorable_paths(st);
         let why = rows.iter().find_map(|r| blocked(st, r)).unwrap_or_else(|| "Nothing here can be marked conflicted".into());
         let b = ui.add_enabled(!all.is_empty(), egui::Button::new("Mark all conflicted").small());
@@ -73,7 +74,7 @@ fn resolved(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, op
             msgs.push(Msg::confirm("Mark conflicted", mark_conflicted_body(&all), "Mark conflicted", then));
         }
     });
-    let area = egui::ScrollArea::vertical().id_salt("Resolved Files").max_height(lists.height).auto_shrink([false, true]);
+    let area = egui::ScrollArea::vertical().id_salt("Resolved files").max_height(lists.height).auto_shrink([false, true]);
     area.show_rows(ui, super::widgets::LIST_ROW_H, rows.len(), |ui, range| {
         for r in &rows[range] {
             resolved_row(ui, st, snap, r, open, msgs);

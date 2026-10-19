@@ -17,7 +17,8 @@ use crate::remote::RemoteMsg;
 use crate::state::forks::{ADD_FORK_ITEM, ForkAction, fork_menu_label, fork_target, view_item};
 use crate::state::remotes::{fetch_blocked, find, tooltip};
 use crate::state::{ForgeState, Selection};
-use eframe::egui::{self, Align2, FontId, Response, Sense, pos2, vec2};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, Align2, Response, Sense, pos2, vec2};
 use git2::Oid;
 use trellis_core::forge::Connection;
 use trellis_core::repo::{RemoteInfo, Snapshot};
@@ -55,7 +56,7 @@ pub(in crate::ui) fn section(
 ) {
     let slot = super::build_status::tip_slot(c.fs);
     let count = snap.remotes.iter().map(|(_, b)| b.len()).sum();
-    let h = widgets::section_header(ui, "REMOTE", Some(count), open);
+    let h = widgets::section_header(ui, "Remote", Some(count), open);
     h.context_menu(|ui| menu_item(msgs, ui, "Add remote…", Msg::Remote(RemoteMsg::AddDialog)));
     if !*open {
         return;
@@ -109,7 +110,13 @@ fn group_row(ui: &mut egui::Ui, name: &str) -> Response {
     if resp.hovered() {
         p.rect_filled(rect, 0.0, color::hover());
     }
-    p.text(pos2(rect.left() + widgets::ROW_INDENT, rect.center().y), Align2::LEFT_CENTER, name, FontId::proportional(12.0), color::weak());
+    p.text(
+        pos2(rect.left() + widgets::ROW_INDENT, rect.center().y),
+        Align2::LEFT_CENTER,
+        name,
+        type_scale::font(type_scale::SMALL),
+        color::weak(),
+    );
     resp
 }
 

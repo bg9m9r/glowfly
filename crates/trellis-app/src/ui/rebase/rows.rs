@@ -13,6 +13,7 @@ use crate::state::rebase::RebasePanel;
 use crate::state::rebase_remaining::LOCKED_NOTE;
 use crate::state::tabs::index_after_move;
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Color32, CursorIcon, Rect, Response, RichText, Sense, Ui, pos2, vec2};
 use trellis_core::rebase::{RebaseAction, ResetTo, TodoStep};
 use trellis_core::repo::Snapshot;
@@ -217,7 +218,7 @@ fn locked(ui: &mut Ui, panel: &RebasePanel, look: &Look) {
     let Some(steps) = panel.remaining.as_ref().map(|r| &r.locked).filter(|l| !l.is_empty()) else { return };
     ui.horizontal(|ui| {
         ui.add_space(MARGIN + 4.0);
-        ui.label(RichText::new(LOCKED_NOTE).size(12.0).color(color::weak()));
+        ui.label(RichText::new(LOCKED_NOTE).size(type_scale::SMALL).color(color::weak()));
     });
     for (n, step) in steps.iter().enumerate() {
         let rect = row_rect(ui);

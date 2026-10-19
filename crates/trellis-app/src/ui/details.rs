@@ -3,7 +3,7 @@
 //! directory (`details_workdir.rs`).
 
 use super::UiCache;
-use super::common::{issue_chip, lane_color, menu_item, short, status_color, status_label};
+use super::common::{issue_chip, lane_color, menu_item, short, status_color, status_label, with_code};
 use super::file_menu::{self, RowSource};
 use super::graph::draw_avatar;
 use super::panel_size;
@@ -14,6 +14,7 @@ use crate::msg::RepoMsg;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::panel_layout::Fit;
 use crate::state::{AppState, Selection};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
 use git2::Oid;
 use trellis_core::i18n::Lang;
@@ -60,14 +61,14 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     };
     let open = st.diff.as_ref().map(|(target, _)| target);
     ui.horizontal(|ui| {
-        ui.label(RichText::new(t.trf("details.commit.sha", &[("sha", &short(d.oid))])).monospace().color(color::weak()));
+        ui.label(with_code(t.tr("details.commit.sha"), "{sha}", &short(d.oid), type_scale::SMALL, color::weak()));
         if ui.small_button(t.tr("common.copy_sha.button")).clicked() {
             msgs.push(Msg::Copy(d.oid.to_string()));
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| super::signature_badge::show(ui, st, d, msgs));
     });
     let (summary, body) = d.message.split_once('\n').unwrap_or((&d.message, ""));
-    ui.add(egui::Label::new(RichText::new(summary).strong().size(15.0).color(color::text())).wrap());
+    ui.add(egui::Label::new(RichText::new(summary).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text())).wrap());
     if !body.trim().is_empty() {
         egui::ScrollArea::vertical().id_salt("commit-body").max_height(180.0).show(ui, |ui| {
             ui.add(egui::Label::new(RichText::new(body.trim()).color(color::weak())).wrap());
@@ -78,7 +79,7 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
         let keys = fs.issue_refs(&d.message);
         if !keys.is_empty() {
             ui.add_space(6.0);
-            ui.label(RichText::new(fs.issues_header(t)).size(11.0).color(color::weak()));
+            ui.label(RichText::new(fs.issues_header(t)).size(type_scale::CAPTION).color(color::weak()));
             for k in keys {
                 issue_chip(ui, fs, &k, msgs);
             }
@@ -110,7 +111,7 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     ui.separator();
     let n = d.files.len();
     let counts = st.line_counts.commit(d.oid);
-    let files = ui.label(RichText::new(t.trn("details.commit.changed_files", n, &[])).strong().color(color::text()));
+    let files = ui.label(type_scale::section_text(ui, t.trn("details.commit.changed_files", n, &[])));
     if let Some(c) = counts.filter(|c| c.complete) {
         // On the same line, right-aligned, without moving what follows.
         let rect = egui::Rect::from_x_y_ranges(files.rect.right()..=ui.max_rect().right(), files.rect.y_range());
@@ -165,7 +166,7 @@ pub(super) fn changed_file_row(
 ) {
     let selected = open == Some(&target);
     let row = |ui: &mut egui::Ui| {
-        ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
+        ui.label(RichText::new(status_label(f.status).to_string()).font(type_scale::mono(type_scale::BODY)).color(status_color(f.status)));
         widgets::row_text(ui, RichText::new(&f.path).monospace(), selected);
         super::path_warnings::mark(ui, f);
         super::lfs_badge::badge(ui, f);

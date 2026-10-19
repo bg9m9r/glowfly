@@ -28,7 +28,7 @@ pub(super) fn section(
     shown: &dyn Fn(&str) -> bool,
     msgs: &mut Vec<Msg>,
 ) {
-    let h = widgets::section_header(ui, "SUBMODULES", Some(snap.submodules.len()), open);
+    let h = widgets::section_header(ui, "Submodules", Some(snap.submodules.len()), open);
     h.context_menu(|ui| header_menu(ui, snap, cx, msgs));
     if !*open {
         return;
@@ -59,7 +59,7 @@ fn header_menu(ui: &mut egui::Ui, snap: &Snapshot, cx: &SectionCx, msgs: &mut Ve
     menu_item_if(msgs, ui, "Update all submodules", update_all_blocked(&snap.submodules), batch(Batch::UpdateAll));
     ui.separator();
     ui.menu_button("Update after checkout and pull", |ui| {
-        let follow = if cx.global { "Follow Preferences (on)" } else { "Follow Preferences (off)" };
+        let follow = if cx.global { "Follow preferences (on)" } else { "Follow preferences (off)" };
         for (choice, label) in [
             (SubmoduleUpdates::FollowGlobal, follow),
             (SubmoduleUpdates::Always, "Always in this repository"),

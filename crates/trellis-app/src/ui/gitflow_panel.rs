@@ -10,8 +10,9 @@ use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::gitflow::{empty_text, group_title, row_tooltip, start_blocked};
 use crate::state::{AppState, PrefPage};
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, Align2, FontId, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
+use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use git2::Oid;
 use trellis_core::gitflow::{Branches, FlowBranch, FlowGroup, GitFlowSettings, grouped};
 use trellis_core::i18n::Lang;
@@ -66,9 +67,9 @@ fn header(ui: &mut Ui, t: Lang, s: Option<&GitFlowSettings>, msgs: &mut Vec<Msg>
         ui.add_space(14.0);
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing.y = 2.0;
-            ui.label(RichText::new("Git Flow").strong().size(16.0).color(color::text()));
+            ui.label(RichText::new("Git Flow").font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()));
             if let Some(s) = s {
-                ui.label(RichText::new(subtitle(s)).color(color::weak()));
+                ui.label(RichText::new(subtitle(s)).size(type_scale::SMALL).color(color::weak()));
             }
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -108,16 +109,16 @@ fn base_row(ui: &mut Ui, snap: &Snapshot, role: &str, name: &str, msgs: &mut Vec
     let (rect, resp) = row(ui, &format!("{role} {name}"));
     let p = ui.painter_at(rect);
     let y = rect.center().y;
-    p.text(pos2(rect.left() + 8.0, y), Align2::LEFT_CENTER, role, FontId::proportional(12.0), color::weak());
+    p.text(pos2(rect.left() + 8.0, y), Align2::LEFT_CENTER, role, type_scale::font(type_scale::SMALL), color::weak());
     let x = rect.left() + 110.0;
     let name_col = if exists { color::strong() } else { color::red() };
-    let t = p.text(pos2(x, y), Align2::LEFT_CENTER, name, FontId::proportional(13.0), name_col);
+    let t = p.text(pos2(x, y), Align2::LEFT_CENTER, name, type_scale::font(type_scale::BODY), name_col);
     let after = match oid {
         Some(o) => (short(o), color::faint()),
         None if !exists => ("missing".to_owned(), color::red()),
         None => (String::new(), color::faint()),
     };
-    p.text(pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, after.0, FontId::monospace(12.0), after.1);
+    p.text(pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, after.0, type_scale::mono(type_scale::SMALL), after.1);
     if resp.clicked()
         && let Some(o) = oid
     {
@@ -130,8 +131,8 @@ fn group(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, g: &F
     let kind = g.kind;
     ui.horizontal(|ui| {
         ui.add_space(8.0);
-        ui.label(RichText::new(group_title(kind)).strong().size(14.0).color(color::text()));
-        ui.label(RichText::new(g.len().to_string()).color(color::faint()));
+        ui.label(type_scale::section_text(ui, group_title(kind)));
+        ui.label(RichText::new(g.len().to_string()).font(type_scale::font(type_scale::BODY)).color(color::weak()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let blocked = start_blocked(snap, kind);
             let mut r = ui.add(buttons::secondary(format!("Start {}…", kind.noun())).enabled(blocked.is_none()));
@@ -164,10 +165,10 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
     let y = rect.center().y;
     let label = if b.head { format!("✔  {}", b.short) } else { b.short.to_owned() };
     let col = if b.head { color::strong() } else { color::text() };
-    let t = p.text(pos2(rect.left() + 8.0, y), Align2::LEFT_CENTER, label, FontId::proportional(13.0), col);
-    let t = p.text(pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, b.name, FontId::proportional(12.0), color::weak());
+    let t = p.text(pos2(rect.left() + 8.0, y), Align2::LEFT_CENTER, label, type_scale::font(type_scale::BODY), col);
+    let t = p.text(pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, b.name, type_scale::font(type_scale::SMALL), color::weak());
     if let Some(o) = oid {
-        p.text(pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, short(o), FontId::monospace(12.0), color::faint());
+        p.text(pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, short(o), type_scale::mono(type_scale::SMALL), color::faint());
     }
     let builder = UiBuilder::new().max_rect(rect.shrink2(vec2(8.0, 2.0))).layout(Layout::right_to_left(Align::Center));
     ui.allocate_new_ui(builder, |ui| {

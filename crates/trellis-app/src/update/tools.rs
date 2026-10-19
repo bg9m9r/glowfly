@@ -1,5 +1,5 @@
 //! The external editor, a custom terminal and the diff and merge tools: planning each launch
-//! from Preferences > External Tools (state/tools.rs), the program pickers, and reporting
+//! from Preferences > External tools (state/tools.rs), the program pickers, and reporting
 //! launches that failed; the diff and merge tools' own steps are in update/tool_compare.rs.
 //! Repository trust doesn't hold these up: the programs and their arguments come from the
 //! user's own settings, never from the repository.
@@ -88,9 +88,9 @@ pub(super) fn fail(st: &mut AppState, text: String, now: Instant) {
     st.log(false, text);
 }
 
-/// The toast action that opens Preferences > External Tools.
+/// The toast action that opens Preferences > External tools.
 pub(super) fn prefs_action() -> ToastAction {
-    ToastAction { label: "Open Preferences".into(), msg: Box::new(Msg::Tools(ToolsMsg::ShowPage)), workdir: None }
+    ToastAction { label: "Open preferences".into(), msg: Box::new(Msg::Tools(ToolsMsg::ShowPage)), workdir: None }
 }
 
 /// A failure the settings can fix (no tool set, or not found): the log and a red toast with an

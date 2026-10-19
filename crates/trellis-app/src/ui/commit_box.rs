@@ -12,6 +12,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::commit::{commit_blocked, pushes_after};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText};
 use trellis_core::i18n::Lang;
@@ -35,7 +36,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     ui.add_space(6.0);
     ui.separator();
     ui.horizontal(|ui| {
-        ui.label(RichText::new(t.tr("commit.title")).strong().color(color::text()));
+        ui.label(type_scale::section_text(ui, t.tr("commit.title")));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if controls::checkbox(ui, &mut st.draft.amend, t.tr("commit.amend")).changed() && st.draft.amend {
                 msgs.push(Msg::Commit(CommitMsg::PrefillAmend));
@@ -66,12 +67,12 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     }
     let len = st.draft.summary.chars().count();
     let c = if len > 72 { color::red() } else { color::faint() };
-    ui.label(RichText::new(format!("{len}/72")).small().color(c));
+    ui.label(RichText::new(format!("{len}/72")).size(type_scale::SMALL).color(c));
     let d = spell_text_edit(ui, &mut st.draft.description, t.tr("commit.description_hint"), 4, &mut cache.speller, spell);
     super::access::name_field(&d, t.tr("commit.description_hint"));
     if let Some(template) = &st.draft.template {
         let note = t.trf("commit.template_note", &[("char", &template.comment_char)]);
-        ui.label(RichText::new(note).small().color(color::faint()));
+        ui.label(RichText::new(note).size(type_scale::SMALL).color(color::faint()));
     }
 
     ui.horizontal_wrapped(|ui| {

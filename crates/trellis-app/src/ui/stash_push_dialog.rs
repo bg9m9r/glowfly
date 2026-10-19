@@ -12,6 +12,7 @@ use crate::msg::{Msg, StashMsg};
 use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, stashable, wip_files};
 use crate::state::touched::Touched;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Key, RichText, Sense};
 use trellis_core::repo::Snapshot;
 use trellis_core::stash_ops::StashScope;
@@ -43,7 +44,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
         r.request_focus();
     }
     ui.add_space(8.0);
-    ui.label(RichText::new("What to stash").strong());
+    ui.label(type_scale::section_text(ui, "What to stash"));
     for (scope, text, note) in CHOICES {
         controls::radio_value(ui, &mut form.scope, scope, text);
         ui.indent(text, |ui| ui.label(RichText::new(note).color(color::weak())));
@@ -102,7 +103,11 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
                     let usable = stashable(f);
                     let mut on = usable && form.chosen.contains(&f.path);
                     let boxed = ui.add_enabled(usable, controls::Check::without_text(&mut on)).changed();
-                    ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
+                    ui.label(
+                        RichText::new(status_label(f.status).to_string())
+                            .font(type_scale::mono(type_scale::BODY))
+                            .color(status_color(f.status)),
+                    );
                     let sense = if usable { Sense::click() } else { Sense::hover() };
                     let clicked = ui.add(egui::Label::new(&f.path).truncate().selectable(false).sense(sense)).clicked();
                     super::path_warnings::mark(ui, f);

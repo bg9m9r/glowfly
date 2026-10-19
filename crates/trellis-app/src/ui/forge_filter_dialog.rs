@@ -10,6 +10,7 @@ use crate::state::ForgeState;
 use crate::state::forge_filter_form::FilterForm;
 use crate::state::forge_filters::{OptionsState, suggestions};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Key, RichText};
 use trellis_core::forge::filters::matching::{self, Field};
@@ -74,7 +75,7 @@ fn body(ui: &mut egui::Ui, form: &mut FilterForm, fs: Option<&ForgeState>, exist
     }
     if let OptionsState::Failed(e) = &state {
         ui.add_space(4.0);
-        ui.label(RichText::new(format!("Couldn't load the choices: {e}")).size(11.5).color(color::faint()));
+        ui.label(RichText::new(format!("Couldn't load the choices: {e}")).size(type_scale::CAPTION).color(color::faint()));
     }
     // The conditions come from the filter on show, not from typing: they show at once.
     for p in form.condition_problems() {
@@ -232,7 +233,7 @@ fn combo_loading<T: PartialEq + Clone>(
         }
     });
     if loading {
-        ui.label(RichText::new("Loading…").size(11.5).color(color::faint()));
+        ui.label(RichText::new("Loading…").size(type_scale::CAPTION).color(color::faint()));
     }
     r.response
 }

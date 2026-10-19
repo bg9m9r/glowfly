@@ -13,6 +13,7 @@ use crate::state::repo_lists::{
     clear_recent_confirm, favorite_keys_note, favorite_label, favorites, is_favorite, is_missing, is_open, missing_counts, recent_rows,
     remove_missing_msg, unopened_favorites,
 };
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Color32, Layout, Response, RichText, Sense, Stroke};
 use std::path::Path;
 use trellis_core::i18n::Lang;
@@ -75,7 +76,7 @@ pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                     Some(keys) => t.trf("repos.drag_note_keys", &[("keys", &keys)]),
                     None => t.tr("repos.drag_note").to_owned(),
                 };
-                ui.label(RichText::new(note).small().color(color::weak()));
+                ui.label(RichText::new(note).size(type_scale::SMALL).color(color::weak()));
             }
             let mut rows = Vec::new();
             for (index, p) in favs.iter().enumerate() {
@@ -149,7 +150,7 @@ fn header(ui: &mut egui::Ui, title: &str) {
 }
 
 fn small_link(ui: &mut egui::Ui, text: &str) -> bool {
-    ui.add(egui::Link::new(RichText::new(text).small())).clicked()
+    ui.add(egui::Link::new(RichText::new(text).size(type_scale::SMALL))).clicked()
 }
 
 fn remove_missing_link(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
@@ -167,7 +168,7 @@ fn clear_confirm(st: &AppState) -> Msg {
 
 /// A weak "open" tag; clicking it switches to the tab showing the repository (`open`).
 fn open_tag(ui: &mut egui::Ui, t: Lang, open: Msg, msgs: &mut Vec<Msg>) -> bool {
-    let text = RichText::new(t.tr("repos.open_tag.label")).small().color(color::weak());
+    let text = RichText::new(t.tr("repos.open_tag.label")).size(type_scale::SMALL).color(color::weak());
     let tag = egui::Label::new(text).selectable(false).sense(Sense::click());
     let clicked = ui.add(tag).on_hover_text(t.tr("repos.open_tag.tip")).on_hover_cursor(egui::CursorIcon::PointingHand).clicked();
     if clicked {
@@ -230,10 +231,10 @@ fn row(
             if let Section::Favorite { index, .. } = section
                 && let Some(key) = FAVORITE_BINDINGS.get(index).and_then(|&id| st.keymap.hint(id))
             {
-                ui.label(RichText::new(key).small().color(color::weak()));
+                ui.label(RichText::new(key).size(type_scale::SMALL).color(color::weak()));
             }
             if missing {
-                ui.label(RichText::new(t.tr("repos.not_found.label")).small().color(color::weak()))
+                ui.label(RichText::new(t.tr("repos.not_found.label")).size(type_scale::SMALL).color(color::weak()))
                     .on_hover_text(t.tr("repos.not_found.tip"));
             }
             if in_tab {

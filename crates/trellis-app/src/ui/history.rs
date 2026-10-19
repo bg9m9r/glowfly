@@ -6,7 +6,7 @@
 //! commit can restore its version of a file; Open and Show act on the file as it is today.
 
 use super::UiCache;
-use super::common::{menu_item, menu_item_if, short, status_color};
+use super::common::{menu_item, menu_item_if, short, status_color, with_code};
 use super::empty_state::{EmptyIcon, empty_state};
 use super::file_buttons::{self, CommitFile};
 use super::file_menu;
@@ -20,8 +20,9 @@ use crate::state::AppState;
 use crate::state::history::{FileHistoryView, HistoryKind, HistoryPane};
 use crate::state::tool_compare::{OPEN_IN_DIFF_TOOL, diff_blocked};
 use crate::tools::ToolsMsg;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, Align2, CursorIcon, FontId, Key, Layout, RichText, Sense, Ui, pos2, vec2};
+use eframe::egui::{self, Align, Align2, CursorIcon, Key, Layout, RichText, Sense, Ui, pos2, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, HistoryEntry};
 
@@ -60,7 +61,7 @@ fn header(ui: &mut Ui, t: Lang, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
             HistoryKind::Folder => ("Folder history", format!("{}/", view.path)),
         };
         ui.label(RichText::new(title).color(color::weak()));
-        ui.label(RichText::new(path).strong().size(15.0).color(color::text()));
+        ui.label(RichText::new(path).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()));
         if let (HistoryKind::File, Some(now)) = (view.kind, &view.head_path) {
             ui.label(RichText::new(format!("now {now}")).color(color::weak()))
                 .on_hover_text("Renamed after this commit; the history starts at HEAD under its current name");
@@ -168,9 +169,9 @@ pub(super) fn entry_menu(
 /// Line 1: short SHA and summary. Line 2: status, author (and the old path of a rename, or a
 /// folder entry's file count), with the date on the right. Returns where the date was painted.
 fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry, kind: HistoryKind) -> egui::Rect {
-    let mono = FontId::monospace(12.0);
-    let body = FontId::proportional(13.0);
-    let small = FontId::proportional(12.0);
+    let mono = type_scale::mono(type_scale::SMALL);
+    let body = type_scale::font(type_scale::BODY);
+    let small = type_scale::font(type_scale::SMALL);
     let (left, right) = (rect.left() + 12.0, rect.right() - 10.0);
     let y1 = rect.top() + 13.0;
     let y2 = rect.top() + 31.0;
@@ -237,12 +238,12 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
     };
     let visible = st.snap.as_ref().is_some_and(|s| s.row_of.contains_key(&e.oid));
     egui::Frame::new().inner_margin(egui::Margin::symmetric(10, 8)).show(ui, |ui| {
-        ui.add(egui::Label::new(RichText::new(&e.summary).strong().size(14.0).color(color::text())).truncate());
+        ui.add(egui::Label::new(RichText::new(&e.summary).font(type_scale::strong(ui, type_scale::BODY)).color(color::text())).truncate());
         let author = if e.author.is_empty() { "Unknown" } else { e.author.as_str() };
         let when = st.settings.format_verbose(e.time, st.view.utc_offset);
         ui.label(RichText::new(format!("{author}, {when}")).color(color::weak()));
         ui.horizontal(|ui| {
-            ui.label(RichText::new(format!("commit {}", short(e.oid))).monospace().color(color::weak()));
+            ui.label(with_code("Commit {sha}", "{sha}", &short(e.oid), type_scale::SMALL, color::weak()));
             let link = ui.add_enabled(visible, egui::Link::new("View on graph")).on_disabled_hover_text(NOT_ON_GRAPH);
             if link.clicked() {
                 msgs.push(Msg::History(HistoryMsg::ShowInGraph(e.oid)));

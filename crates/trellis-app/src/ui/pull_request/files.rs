@@ -13,6 +13,7 @@ use crate::remote::RemoteMsg;
 use crate::state::AppState;
 use crate::state::lfs::TrackContext;
 use crate::state::pull_request::{Files, PrView, empty_text, fetch_blocked, files_heading, out_of_sync, unrelated_text};
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::banner::{self, BannerKind};
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
@@ -27,7 +28,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
         Files::Loaded(c) => files_heading(c.comparison.files.len()),
         _ => "Files changed".to_owned(),
     };
-    ui.label(RichText::new(heading).strong().color(color::text()));
+    ui.label(type_scale::section_text(ui, heading));
     notes(ui, st, v, msgs);
     let weak = |ui: &mut Ui, text: String| ui.add(egui::Label::new(RichText::new(text).color(color::weak())).wrap());
     match &v.files {

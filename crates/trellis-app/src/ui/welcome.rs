@@ -10,6 +10,7 @@ use crate::msg::Msg;
 use crate::onboarding::OnboardingMsg;
 use crate::state::AppState;
 use crate::state::onboarding::{Welcome, WelcomeStep};
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Id, Layout, RichText, vec2};
 use trellis_core::i18n::Lang;
@@ -29,7 +30,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         ui.set_width(WIDTH);
         header(ui, t, w.step, msgs);
         ui.add_space(14.0);
-        ui.label(RichText::new(w.step.title(t)).size(17.0).strong().color(color::strong()));
+        ui.label(RichText::new(w.step.title(t)).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::strong()));
         ui.add_space(6.0);
         match w.step {
             WelcomeStep::Identity => welcome_steps::identity(ui, w, settings, !prompting),
@@ -49,7 +50,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 /// The title, the close button and a row of progress dots with their captions.
 fn header(ui: &mut egui::Ui, t: Lang, step: WelcomeStep, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
-        ui.label(RichText::new(t.tr("welcome.title")).size(22.0).strong().color(color::text()));
+        ui.label(RichText::new(t.tr("welcome.title")).font(type_scale::strong(ui, type_scale::TITLE)).color(color::text()));
         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
             if widgets::small_icon(ui, Icon::Close, t.tr("welcome.close.tip"), color::weak()).clicked() {
                 msgs.push(Msg::Onboarding(OnboardingMsg::CloseWelcome));
@@ -74,7 +75,7 @@ fn header(ui: &mut egui::Ui, t: Lang, step: WelcomeStep, msgs: &mut Vec<Msg>) {
             std::cmp::Ordering::Greater => (color::border(), color::faint()),
         };
         p.circle_filled(centre, 5.5, fill);
-        let font = egui::FontId::proportional(12.0);
+        let font = type_scale::font(type_scale::SMALL);
         p.text(egui::pos2(x, rect.top() + 18.0), egui::Align2::CENTER_TOP, s.caption(t), font, text);
     }
 }

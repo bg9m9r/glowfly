@@ -7,8 +7,9 @@ use super::rows::{BUTTONS_W, Place, SHA_X, Shade};
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase_steps::NewStep;
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::{Icon, paint_cut_text};
-use eframe::egui::{FontId, Rect, Response, Ui, pos2};
+use eframe::egui::{Rect, Response, Ui, pos2};
 use trellis_core::rebase::TodoStep;
 
 pub const BREAK_NOTE: &str = "Stop here; Continue goes on";
@@ -25,14 +26,14 @@ pub(super) fn paint_step(ui: &Ui, rect: Rect, step: &TodoStep, shade: Shade) {
         TodoStep::Exec(cmd) => {
             paint_chip(ui, rect, "exec", color::primary());
             if cmd.trim().is_empty() {
-                paint_cut_text(p, pos2(x, cy), NO_COMMAND, FontId::proportional(13.0), color::faint(), max_w);
+                paint_cut_text(p, pos2(x, cy), NO_COMMAND, type_scale::font(type_scale::BODY), color::faint(), max_w);
             } else {
-                paint_cut_text(p, pos2(x, cy), cmd, FontId::monospace(12.5), color::text(), max_w);
+                paint_cut_text(p, pos2(x, cy), cmd, type_scale::mono(type_scale::SMALL), color::text(), max_w);
             }
         }
         TodoStep::Break => {
             paint_chip(ui, rect, "break", color::amber());
-            paint_cut_text(p, pos2(x, cy), BREAK_NOTE, FontId::proportional(13.0), color::weak(), max_w);
+            paint_cut_text(p, pos2(x, cy), BREAK_NOTE, type_scale::font(type_scale::BODY), color::weak(), max_w);
         }
         _ => {}
     }

@@ -8,6 +8,7 @@ use super::ref_group::Chip;
 use crate::ui::build_status;
 use crate::ui::theme::color;
 use crate::ui::theme::contrast::{self, ChipStyle, readable_on};
+use crate::ui::theme::type_scale;
 use crate::ui::widgets;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
 use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
@@ -25,9 +26,9 @@ const TEXT_PAD: f32 = 7.0;
 const TAG_LEAD: f32 = 12.0;
 /// The least room the first chip keeps beside a "+N" chip; with less, the "+N" chip is dropped.
 const MIN_FIRST_W: f32 = 24.0;
-const FONT: f32 = 12.5;
+const FONT: f32 = type_scale::SMALL;
 /// The "+N" chip's font size and text padding (`widgets::chip`).
-const PLUS_FONT: f32 = 11.5;
+const PLUS_FONT: f32 = type_scale::CAPTION;
 const PLUS_PAD: f32 = 12.0;
 
 /// What one chip shows.
@@ -236,7 +237,13 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
     if row.ghost && r.right() <= cols.refs.1 - PAD {
         rp.rect_filled(r, CornerRadius::same(3), color::bg());
         rp.rect_stroke(r, CornerRadius::same(3), Stroke::new(1.0_f32, row.lane.gamma_multiply(0.6)), StrokeKind::Inside);
-        rp.text(pos2(r.left() + 8.0, mid), Align2::LEFT_CENTER, "+ branch", FontId::proportional(12.0), row.lane.gamma_multiply(0.8));
+        rp.text(
+            pos2(r.left() + 8.0, mid),
+            Align2::LEFT_CENTER,
+            "+ branch",
+            type_scale::font(type_scale::SMALL),
+            row.lane.gamma_multiply(0.8),
+        );
         out.ghost = Some(r);
     }
     out

@@ -246,14 +246,14 @@ fn palette_entry_and_hints_come_from_the_table() {
     let find = |st: &AppState, label: &str| entries(st).into_iter().find(|e| e.label == label);
     let sheet = find(&st, "Keyboard shortcuts").expect("Keyboard shortcuts entry");
     assert_eq!(sheet.command, C::KeyboardShortcuts);
-    let prefs_at = entries(&st).iter().position(|e| e.label == "Open Preferences").unwrap();
+    let prefs_at = entries(&st).iter().position(|e| e.label == "Open preferences").unwrap();
     assert_eq!(entries(&st)[prefs_at + 1].label, "Keyboard shortcuts", "right after Open Preferences");
     #[cfg(not(target_os = "macos"))]
     {
         assert_eq!(sheet.shortcut(&st.keymap), Some("Ctrl+/"));
         assert_eq!(find(&st, "Stage all files").unwrap().shortcut(&st.keymap), Some("Ctrl+Shift+S"));
         assert_eq!(find(&st, "Refresh").unwrap().shortcut(&st.keymap), Some("F5"));
-        assert_eq!(find(&st, "Open Preferences").unwrap().shortcut(&st.keymap), Some("Ctrl+,"));
+        assert_eq!(find(&st, "Open preferences").unwrap().shortcut(&st.keymap), Some("Ctrl+,"));
     }
     st.snap.as_mut().unwrap().staged.push(FileEntry::new("b.txt", 'A'));
     #[cfg(not(target_os = "macos"))]

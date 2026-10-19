@@ -40,7 +40,7 @@ fn folders_are_checked_like_the_sparse_checkout_page() {
     let p = sparse_form("docs\nsrc/*.rs").problems(t, true);
     assert_eq!(
         p.sparse.as_deref(),
-        Some("\"src/*.rs\" looks like a pattern. List folders here; patterns can be set after cloning in Preferences > Sparse Checkout.")
+        Some("\"src/*.rs\" looks like a pattern. List folders here; patterns can be set after cloning in Preferences > Sparse checkout.")
     );
     assert!(p.blocked);
     let p = sparse_form("../x").problems(t, true);
@@ -100,7 +100,7 @@ fn a_clone_whose_folders_failed_still_opens() {
     assert!(st.job.is_none());
     let toast = st.toasts.last().unwrap();
     assert!(!toast.ok);
-    assert_eq!(toast.text, "Cloned app, but setting its folders failed: fatal: no space. Choose them in Preferences > Sparse Checkout.");
+    assert_eq!(toast.text, "Cloned app, but setting its folders failed: fatal: no space. Choose them in Preferences > Sparse checkout.");
     assert!(loads(&fx, &dest), "{fx:?}");
     assert!(st.trust.created.contains(&dest));
 

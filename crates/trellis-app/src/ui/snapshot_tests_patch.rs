@@ -221,7 +221,7 @@ fn wip_menus_open_the_create_patch_dialog() {
     let unstaged_row =
         |m: &Msg| matches!(m, Msg::Patch(PatchMsg::ChangesDialog { scope: WipScope::Unstaged, path: Some(p) }) if p == "b.txt");
     assert!(pushed(&h, &unstaged_row));
-    right_click(&mut h, "Staged Files (1)");
+    right_click(&mut h, "Staged files (1)");
     h.get_by_label("Create patch from staged changes…").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Patch(PatchMsg::ChangesDialog { scope: WipScope::Staged, path: None }))));
@@ -231,7 +231,7 @@ fn wip_menus_open_the_create_patch_dialog() {
     let (st, _) = with_files(ThemeChoice::Dark, "patch-wip-menus", &[("b.txt", 'M')], &[]);
     let mut h = harness(st, true);
     h.run();
-    right_click(&mut h, "Staged Files (0)");
+    right_click(&mut h, "Staged files (0)");
     assert!(h.get_by_label("Create patch from staged changes…").is_disabled());
     drop(h);
     remove_fixture(&dir);

@@ -147,7 +147,7 @@ fn staged_header_menu() {
     let (st, dir) = with_files(ThemeChoice::Dark, "stash-push-header-menu", &UNSTAGED[..1], &STAGED[..1]);
     let mut h = harness(st, true);
     h.run();
-    right_click(&mut h, "Staged Files (1)");
+    right_click(&mut h, "Staged files (1)");
     assert!(h.query_by_label("Stash staged changes…").is_some());
     assert_eq!(h.get_all_by_label("Unstage all").count(), 2, "the header's button and the menu item");
     h.check_snapshot("staged_header_menu");

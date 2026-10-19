@@ -87,7 +87,7 @@ pub enum BranchVisibility {
     Smart,
 }
 
-/// Where a repository's issues come from (Repo-Specific Preferences > Issue Tracker).
+/// Where a repository's issues come from (Repo-specific preferences > Issue tracker).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 pub enum TrackerChoice {
     /// The code host's own issues (GitHub/GitLab/Bitbucket issues, Azure Boards).
@@ -167,7 +167,7 @@ pub struct Settings {
     pub date_word_format: String,
     pub date_time_format: String,
     pub date_verbose_format: String,
-    /// Show "3 hours ago" in the graph instead of the Date/Time format.
+    /// Show "3 hours ago" in the graph instead of the date/time format.
     pub relative_dates: bool,
     pub toolbar_labels: bool,
     /// Tooltips and popups appear without fading or sliding in (egui's animations off).
@@ -272,7 +272,7 @@ pub struct Settings {
     /// the order they were added.
     #[serde(default)]
     pub project_folders: Vec<String>,
-    /// Preferences > External Tools.
+    /// Preferences > External tools.
     #[serde(default)]
     pub external_tools: ExternalTools,
     /// Named profiles (Preferences > Profile): identities, and the accounts and preferences of

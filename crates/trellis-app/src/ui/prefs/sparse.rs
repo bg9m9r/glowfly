@@ -1,4 +1,4 @@
-//! Preferences > Sparse Checkout (repository-specific): whether it is on, the mode, the folders
+//! Preferences > Sparse checkout (repository-specific): whether it is on, the mode, the folders
 //! or patterns to check out, and Turn on / Save paths, Reapply and Turn off. Every action is a
 //! `Msg`.
 
@@ -7,6 +7,7 @@ use crate::msg::{Msg, SparseMsg};
 use crate::state::sparse::{SparsePage, summary};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Key, Modifiers, RichText, Ui, vec2};
 use trellis_core::sparse_ops::{SparseMode, SparseStatus};
@@ -147,7 +148,7 @@ fn actions_row(ui: &mut Ui, page: &SparsePage, status: &SparseStatus, cx: &Spars
             }
         });
         if let Some(job) = &cx.job {
-            ui.label(RichText::new(format!("{job}…")).size(12.0).color(color::weak()));
+            ui.label(RichText::new(format!("{job}…")).size(type_scale::SMALL).color(color::weak()));
         }
     });
 }

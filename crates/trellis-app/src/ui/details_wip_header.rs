@@ -9,8 +9,9 @@ use crate::msg::{Msg, StageMsg, WorkFileMsg};
 use crate::ui::access;
 use crate::ui::common::menu_item;
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::{self, Icon, truncate};
-use eframe::egui::{self, Align, Color32, Layout, Response, RichText, Sense, TextStyle, TextWrapMode, Ui, vec2};
+use eframe::egui::{self, Align, Color32, Layout, Response, Sense, TextStyle, TextWrapMode, Ui, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::undo::DISCARD_STASH_MESSAGE;
 
@@ -86,6 +87,13 @@ pub(super) fn shown_count(avail: f32, title_min: f32, widths: &[f32], more_w: f3
     (0..widths.len()).rev().find(|&k| row(k) + more_w + title_min <= avail).unwrap_or(0)
 }
 
+/// How many buttons to show, given `cut` (beside a title cut to `TITLE_MIN`) and `whole` (beside
+/// the whole title) of `len`: when every button fits only by cutting the title, the last one
+/// (New file…) moves into the menu if that shows the title whole.
+fn whole_title_count(cut: usize, whole: usize, len: usize) -> usize {
+    if cut == len && whole + 1 == len && whole > 0 { whole } else { cut }
+}
+
 /// The header of the Unstaged (or `staged`) Files list showing `title`, with `count` files.
 /// Returns the header's response, for the Staged header's menu.
 pub(super) fn header(ui: &mut Ui, title: String, staged: bool, count: usize, ctx: RowContext, msgs: &mut Vec<Msg>) -> Response {
@@ -101,7 +109,7 @@ pub(super) fn header(ui: &mut Ui, title: String, staged: bool, count: usize, ctx
                     // instead of running under them. Not selectable, so a right-click on the
                     // title reaches the header's menu.
                     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        let text = RichText::new(title).strong().color(color::text());
+                        let text = type_scale::section_text(ui, title);
                         truncate::truncate_label(ui, text, ui.available_width());
                     });
                 });
@@ -118,10 +126,13 @@ fn buttons(ui: &mut Ui, title: &str, staged: bool, count: usize, ctx: RowContext
     let actions = actions(staged, count);
     // Small buttons draw their text in the body font.
     let font = TextStyle::Body.resolve(ui.style());
-    let text_w = |s: &str| ui.fonts(|f| f.layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x);
+    let text_w = |s: &str, font: &egui::FontId| ui.fonts(|f| f.layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x);
     let (pad, gap) = (ui.spacing().button_padding.x, ui.spacing().item_spacing.x);
-    let widths: Vec<f32> = actions.iter().map(|a| text_w(a.label(t)) + 2.0 * pad).collect();
-    let shown = shown_count(ui.available_width(), text_w(title).min(TITLE_MIN), &widths, MORE_W + gap, gap);
+    let widths: Vec<f32> = actions.iter().map(|a| text_w(a.label(t), &font) + 2.0 * pad).collect();
+    let title_w = text_w(title, &type_scale::section(ui));
+    let avail = ui.available_width();
+    let cut = shown_count(avail, title_w.min(TITLE_MIN), &widths, MORE_W + gap, gap);
+    let shown = whole_title_count(cut, shown_count(avail, title_w, &widths, MORE_W + gap, gap), widths.len());
     if shown < actions.len() {
         more_button(ui, &actions[shown..], ctx, msgs);
     }
@@ -179,6 +190,15 @@ mod tests {
         assert!(all_w(&THREE[..k], 72.0) + MORE <= avail, "the menu button fits");
         // Narrower still, Discard all and then Stage all follow.
         assert_eq!(shown_count(all_w(&THREE[..1], 72.0) + MORE, 72.0, &THREE, MORE, GAP), 1);
+    }
+
+    #[test]
+    fn new_file_moves_to_the_menu_to_show_the_whole_title() {
+        assert_eq!(whole_title_count(3, 2, 3), 2, "one button fewer shows the title whole");
+        assert_eq!(whole_title_count(3, 3, 3), 3, "all fit beside the whole title");
+        assert_eq!(whole_title_count(3, 1, 3), 3, "a long title is cut rather than lose two buttons");
+        assert_eq!(whole_title_count(2, 1, 3), 2, "already short of room: the usual rule");
+        assert_eq!(whole_title_count(1, 0, 1), 1, "a lone button stays");
     }
 
     #[test]

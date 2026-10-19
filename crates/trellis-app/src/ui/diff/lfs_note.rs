@@ -6,6 +6,7 @@ use crate::lfs::LfsMsg;
 use crate::msg::Msg;
 use crate::state::lfs_notes::{LfsSummary, POINTER_BAR, SHOW_SUMMARY, SUMMARY_SHOW_POINTER};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText, Ui};
 
 /// The summary block in the diff's place.
@@ -13,7 +14,7 @@ pub(super) fn summary(ui: &mut Ui, s: &LfsSummary, msgs: &mut Vec<Msg>) {
     ui.add_space(6.0);
     let frame = egui::Frame::group(ui.style()).fill(color::banner()).inner_margin(egui::Margin::same(10));
     frame.outer_margin(egui::Margin::symmetric(8, 0)).show(ui, |ui| {
-        ui.label(RichText::new(&s.title).strong().color(color::text()));
+        ui.label(RichText::new(&s.title).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         for (line, oid) in &s.lines {
             let r = ui.add(egui::Label::new(RichText::new(line).color(color::weak())).wrap());
             if let Some(oid) = oid {

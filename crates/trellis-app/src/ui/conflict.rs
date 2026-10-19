@@ -17,6 +17,7 @@ use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use crate::state::panel_layout::{CONFLICT_OUTPUT, CONFLICT_PANES_MIN};
 use crate::state::tool_compare::{IN_MERGE_TOOL, merge_blocked, merging};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Frame, RichText, Ui};
 use trellis_core::repo::{ConflictContent, ConflictFile, Side};
 
@@ -130,7 +131,7 @@ fn fallback(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, in_tool: bool
     ui.add_space(16.0);
     ui.horizontal(|ui| {
         ui.add_space(8.0);
-        ui.label(RichText::new(message).size(14.0).color(color::text()));
+        ui.label(RichText::new(message).size(type_scale::BODY).color(color::text()));
     });
     ui.add_space(10.0);
     ui.horizontal(|ui| {

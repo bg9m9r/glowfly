@@ -1,5 +1,5 @@
 //! Messages and effects of the external editor, a custom terminal, and the external diff and
-//! merge tools (Preferences > External Tools; state/tools.rs, state/tool_compare.rs,
+//! merge tools (Preferences > External tools; state/tools.rs, state/tool_compare.rs,
 //! update/tools.rs, update/tool_compare.rs, runner/tools.rs, runner/tools/compare.rs,
 //! ui/prefs/tools.rs).
 
@@ -52,7 +52,7 @@ pub enum ToolsMsg {
     OpenRepo,
     /// From the palette: Preferences on the External Tools page.
     ShowPage,
-    /// Preferences > External Tools Browse… buttons.
+    /// Preferences > External tools Browse… buttons.
     Browse(ToolKind),
     /// The program picker closed; None when cancelled.
     ProgramPicked { kind: ToolKind, path: Option<PathBuf> },

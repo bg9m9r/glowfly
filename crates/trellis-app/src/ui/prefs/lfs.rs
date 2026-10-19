@@ -7,6 +7,7 @@ use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use crate::state::lfs::{INSTALL_URL, LfsPage};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Key, RichText, Ui};
 use trellis_core::lfs::{LfsCommand, LfsPattern, LfsStatus};
@@ -166,7 +167,7 @@ fn pattern_list(ui: &mut Ui, patterns: &[LfsPattern], editable: bool, busy: bool
             ui.set_min_height(22.0);
             ui.label(RichText::new(&p.display).monospace().color(color::text()));
             if p.lockable {
-                ui.label(RichText::new("lockable").size(11.5).color(color::faint()));
+                ui.label(RichText::new("lockable").size(type_scale::CAPTION).color(color::faint()));
             }
             if editable {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -207,6 +208,6 @@ fn commands_row(ui: &mut Ui, cx: &LfsContext, msgs: &mut Vec<Msg>) {
         }
     });
     if let Some(job) = &cx.job {
-        ui.label(RichText::new(format!("{job}…")).size(12.0).color(color::weak()));
+        ui.label(RichText::new(format!("{job}…")).size(type_scale::SMALL).color(color::weak()));
     }
 }

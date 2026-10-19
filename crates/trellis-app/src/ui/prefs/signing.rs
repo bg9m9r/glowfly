@@ -1,4 +1,4 @@
-//! Preferences > Commit Signing: format, program, signing key (listed from gpg or ~/.ssh),
+//! Preferences > Commit signing: format, program, signing key (listed from gpg or ~/.ssh),
 //! where the key's passphrase is asked, key generation, and signing defaults.
 
 use super::{help, primary_button, row, text_field, warn};
@@ -29,7 +29,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
     let signing = &mut prefs.signing;
     let format = SigningFormat::from_config(&git.signing_format);
 
-    row(ui, "Signing Format", |ui| {
+    row(ui, "Signing format", |ui| {
         let mut chosen = format;
         egui::ComboBox::from_id_salt("gpg-format").selected_text(format.label()).width(230.0).show_ui(ui, |ui| {
             for f in SigningFormat::ALL {
@@ -44,9 +44,9 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
     });
 
     let program_label = match format {
-        SigningFormat::OpenPgp => "GPG Program",
-        SigningFormat::Ssh => "SSH Program",
-        SigningFormat::X509 => "X.509 Program",
+        SigningFormat::OpenPgp => "GPG program",
+        SigningFormat::Ssh => "SSH program",
+        SigningFormat::X509 => "X.509 program",
     };
     row(ui, program_label, |ui| {
         ui.horizontal(|ui| {
@@ -71,7 +71,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
         help(ui, text);
     });
 
-    row(ui, "Signing Key", |ui| {
+    row(ui, "Signing key", |ui| {
         ui.horizontal(|ui| {
             let current = if git.signing_key.is_empty() { "<None>".to_owned() } else { git.signing_key.clone() };
             let mut chosen: Option<String> = None;
@@ -119,11 +119,11 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
     });
 
     if format == SigningFormat::OpenPgp {
-        row(ui, "Passphrase Prompt", |ui| {
+        row(ui, "Passphrase prompt", |ui| {
             controls::checkbox(ui, &mut settings.gpg_prompts_in_app, "Ask for the key's passphrase in Trellis");
             help(ui, PROMPT_HELP);
         });
-        row(ui, "Generate new GPG Key", |ui| {
+        row(ui, "Generate new GPG key", |ui| {
             ui.horizontal(|ui| {
                 controls::field(
                     ui,
@@ -151,7 +151,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
     }
 
     if format == SigningFormat::Ssh {
-        row(ui, "Allowed Signers File", |ui| {
+        row(ui, "Allowed signers file", |ui| {
             ui.horizontal(|ui| {
                 if text_field(ui, &mut git.ssh_allowed_signers, "~/.ssh/allowed_signers").lost_focus() {
                     set(msgs, "gpg.ssh.allowedSignersFile", &git.ssh_allowed_signers);
@@ -164,12 +164,12 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
         });
     }
 
-    row(ui, "Sign Commits by Default", |ui| {
+    row(ui, "Sign commits by default", |ui| {
         if controls::checkbox(ui, &mut git.gpgsign, "").changed() {
             set(msgs, "commit.gpgsign", &git.gpgsign.to_string());
         }
     });
-    row(ui, "Sign Tags by Default", |ui| {
+    row(ui, "Sign tags by default", |ui| {
         if controls::checkbox(ui, &mut git.tag_gpgsign, "").changed() {
             set(msgs, "tag.gpgsign", &git.tag_gpgsign.to_string());
         }

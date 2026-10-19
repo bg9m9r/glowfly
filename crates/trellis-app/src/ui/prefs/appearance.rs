@@ -1,18 +1,19 @@
-//! Preferences > UI Customization.
+//! Preferences > UI customization.
 
 use super::{LABEL_W, help, row};
 use crate::msg::{Msg, PrefsMsg};
 use crate::themes::ThemeState;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText, Sense, Stroke, Ui, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
 
-/// A titled section separator, such as the "Date/Time" heading.
+/// A titled section separator, such as the "Date/time" heading.
 pub fn section(ui: &mut Ui, title: &str) {
     ui.add_space(6.0);
-    ui.label(RichText::new(title).size(15.0).color(color::text()));
+    ui.label(type_scale::section_text(ui, title));
     let (r, _) = ui.allocate_exact_size(vec2(LABEL_W + 520.0, 1.0), Sense::hover());
     ui.painter().line_segment([r.left_center(), r.right_center()], Stroke::new(1.0_f32, color::border()));
     ui.add_space(10.0);
@@ -34,7 +35,7 @@ pub fn date_pattern(ui: &mut Ui, label: &str, value: &mut String, default: &str,
             controls::field(ui, egui::TextEdit::singleline(value).hint_text(default).desired_width(230.0).margin(vec2(8.0, 5.0)));
             let pattern = if value.trim().is_empty() { default } else { value.as_str() };
             let preview = trellis_core::dates::format(now.0, pattern, locale, now.1);
-            ui.label(RichText::new(preview).size(12.0).color(color::weak()));
+            ui.label(RichText::new(preview).size(type_scale::SMALL).color(color::weak()));
         });
     });
 }
@@ -78,7 +79,7 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, now: (i64, i3
 fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
     section(ui, t.tr("prefs.ui.date_time.section"));
     ui.horizontal(|ui| {
-        ui.label(RichText::new(t.tr("prefs.ui.date_time.patterns_help")).size(12.0).color(color::weak()));
+        ui.label(RichText::new(t.tr("prefs.ui.date_time.patterns_help")).size(type_scale::SMALL).color(color::weak()));
     });
     ui.add_space(10.0);
     row(ui, t.tr("prefs.ui.date_locale.label"), |ui| {

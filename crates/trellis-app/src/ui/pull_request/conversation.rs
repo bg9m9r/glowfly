@@ -13,6 +13,7 @@ use crate::state::pull_request::{Page, PrAction, PrView, description_text};
 use crate::state::pull_request_actions::{comment_blocked, error_for, verdict_text};
 use crate::state::pull_request_threads::{self, Item};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Margin, RichText, Ui};
 use trellis_core::forge::{Entry, EntryKind, Verdict};
@@ -98,7 +99,7 @@ fn timeline(ui: &mut Ui, v: &mut PrView, ctx: &threads::Ctx, msgs: &mut Vec<Msg>
 /// "<author> opened this pull request", and its description.
 fn opening(ui: &mut Ui, v: &PrView) {
     ui.horizontal_wrapped(|ui| {
-        ui.label(RichText::new(printable(&v.pr.author)).strong().color(color::text()));
+        ui.label(RichText::new(printable(&v.pr.author)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         ui.label(RichText::new(format!("opened this {}", v.noun)).color(color::weak()));
     });
     let d = description_text(v.pr.description.trim());
@@ -115,7 +116,7 @@ fn opening(ui: &mut Ui, v: &PrView) {
 fn entry(ui: &mut Ui, e: &Entry, settings: &Settings, now: i64, offset: i32) {
     ui.add_space(4.0);
     ui.horizontal_wrapped(|ui| {
-        ui.label(RichText::new(printable(&e.author)).strong().color(color::text()));
+        ui.label(RichText::new(printable(&e.author)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         let (did, tone) = verdict_text(&e.kind);
         ui.label(RichText::new(did).color(tone_color(tone)));
         crate::ui::date_tip::time_label(ui, settings, e.time, now, offset);

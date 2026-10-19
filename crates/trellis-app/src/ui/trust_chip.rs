@@ -6,7 +6,8 @@ use super::widgets::{self, Icon};
 use crate::msg::{Msg, TrustMsg};
 use crate::state::AppState;
 use crate::state::trust::{self, Standing};
-use eframe::egui::{self, CornerRadius, FontId, Sense, Stroke, StrokeKind, pos2, vec2};
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, CornerRadius, Sense, Stroke, StrokeKind, pos2, vec2};
 
 /// The chip's height; the toolbar row is 48px.
 const HEIGHT: f32 = 26.0;
@@ -19,7 +20,7 @@ pub fn show(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         Some(s @ (Standing::Undecided | Standing::NotTrusted)) => s,
         _ => return,
     };
-    let galley = ui.painter().layout_no_wrap("Untrusted".into(), FontId::proportional(12.5), color::text());
+    let galley = ui.painter().layout_no_wrap("Untrusted".into(), type_scale::font(type_scale::SMALL), color::text());
     let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 34.0, HEIGHT), Sense::click());
     let amber = color::amber();
     let p = ui.painter();

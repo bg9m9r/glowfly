@@ -16,6 +16,7 @@ use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
 use crate::ui::common::menu_item_if;
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, FontSelection, Layout, RichText, text::LayoutJob};
 use trellis_core::i18n::Lang;
@@ -82,7 +83,12 @@ fn header(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 let program = session.map(|s| s.program.as_str()).unwrap_or_default();
                 let mut job = LayoutJob::default();
-                RichText::new("Terminal").strong().append_to(&mut job, ui.style(), FontSelection::Default, Align::Center);
+                RichText::new("Terminal").font(type_scale::strong(ui, type_scale::BODY)).append_to(
+                    &mut job,
+                    ui.style(),
+                    FontSelection::Default,
+                    Align::Center,
+                );
                 RichText::new(subtitle(program, tab)).color(color::weak()).append_to(
                     &mut job,
                     ui.style(),
@@ -122,7 +128,7 @@ fn body(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 if ui.add(buttons::secondary("Restart")).clicked() {
                     msgs.push(Msg::Terminal(TerminalMsg::Restart));
                 }
-                if ui.add(buttons::secondary("Open Preferences")).clicked() {
+                if ui.add(buttons::secondary("Open preferences")).clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Terminal)));
                 }
             });

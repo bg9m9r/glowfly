@@ -4,10 +4,9 @@
 use super::rows::{BUTTONS_W, COMBO_W, COMBO_X, GAP, GRIP_X, INDENT, Look, META_W, Place, ROW_H, SHA_X, Shade, fill};
 use crate::msg::{Msg, RebaseMsg};
 use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::{Icon, icon_button, paint_cut_text, paint_icon};
-use eframe::egui::{
-    self, Align, Align2, Color32, CornerRadius, FontId, Layout, Rect, RichText, Stroke, StrokeKind, Ui, UiBuilder, pos2, vec2,
-};
+use eframe::egui::{self, Align, Align2, Color32, CornerRadius, Layout, Rect, RichText, Stroke, StrokeKind, Ui, UiBuilder, pos2, vec2};
 use trellis_core::rebase::{RebaseAction, TodoItem};
 
 pub(super) fn action_color(a: RebaseAction) -> Color32 {
@@ -54,18 +53,18 @@ pub(super) fn paint_row(ui: &Ui, rect: Rect, item: &TodoItem, look: &Look, shade
     let (text, weak) = if dropped { (color::faint(), color::faint()) } else { (color::text(), color::weak()) };
     let cy = rect.center().y;
     let sha = &item.oid.to_string()[..7];
-    let sha_w = paint_cut_text(p, pos2(x, cy), sha, FontId::monospace(12.0), weak, 70.0).rect.width();
+    let sha_w = paint_cut_text(p, pos2(x, cy), sha, type_scale::mono(type_scale::SMALL), weak, 70.0).rect.width();
     x += sha_w + 10.0;
 
     let date = look.settings.format_time(item.time, look.now, look.offset);
     let author = if item.author.is_empty() { "Unknown" } else { item.author.as_str() };
     let meta = format!("{author}, {date}");
-    let meta_w = ui.fonts(|f| f.layout_no_wrap(meta.clone(), FontId::proportional(12.0), weak).size().x).min(META_W - 10.0);
+    let meta_w = ui.fonts(|f| f.layout_no_wrap(meta.clone(), type_scale::font(type_scale::SMALL), weak).size().x).min(META_W - 10.0);
     let meta_x = rect.right() - BUTTONS_W - 10.0 - meta_w;
-    paint_cut_text(p, pos2(meta_x, cy), &meta, FontId::proportional(12.0), weak, META_W - 10.0);
+    paint_cut_text(p, pos2(meta_x, cy), &meta, type_scale::font(type_scale::SMALL), weak, META_W - 10.0);
 
     let summary = shown_summary(item);
-    let w = paint_cut_text(p, pos2(x, cy), summary, FontId::proportional(13.5), text, meta_x - x - 16.0).rect.width();
+    let w = paint_cut_text(p, pos2(x, cy), summary, type_scale::font(type_scale::BODY), text, meta_x - x - 16.0).rect.width();
     if dropped && w > 0.0 {
         p.line_segment([pos2(x, cy + 0.5), pos2(x + w, cy + 0.5)], Stroke::new(1.0_f32, text));
     }
@@ -87,7 +86,7 @@ pub(super) fn paint_chip(ui: &Ui, row: Rect, text: &str, c: Color32) {
     let rect = Rect::from_min_size(pos2(row.left() + COMBO_X, row.center().y - 11.0), vec2(COMBO_W, 22.0));
     ui.painter().rect_filled(rect, CornerRadius::same(3), color::toolbar());
     let pos = pos2(rect.left() + 8.0, rect.center().y);
-    ui.painter().text(pos, Align2::LEFT_CENTER, text, FontId::proportional(13.0), c);
+    ui.painter().text(pos, Align2::LEFT_CENTER, text, type_scale::font(type_scale::BODY), c);
 }
 
 /// The action as a painted label in place of its combo box (while rows move).

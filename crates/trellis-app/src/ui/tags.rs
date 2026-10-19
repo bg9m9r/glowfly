@@ -31,7 +31,7 @@ pub(super) struct Rows<'a> {
 
 pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows: Rows, msgs: &mut Vec<Msg>) {
     let Rows { shown, sel, idle, graph } = rows;
-    widgets::section_header(ui, "TAGS", Some(snap.tags.len()), open);
+    widgets::section_header(ui, "Tags", Some(snap.tags.len()), open);
     if !*open {
         return;
     }

@@ -6,14 +6,15 @@
 //! their unnamed path; and the side panels' row heights and insets. Selection and hover look
 //! like the graph's (`widgets::row_fill`).
 
-use super::theme::{color, fonts, spacing};
+use super::theme::{color, spacing};
 use super::widgets::{row_fill, truncate};
+use crate::ui::theme::type_scale;
 
 use std::sync::Arc;
 
 use eframe::egui::{
-    self, Align, Color32, FontId, Galley, InnerResponse, Layout, Painter, Pos2, Rect, Response, RichText, Sense, Stroke, TextStyle,
-    TextWrapMode, Ui, UiBuilder, WidgetInfo, WidgetText, WidgetType, pos2, vec2,
+    self, Align, Color32, Galley, InnerResponse, Layout, Painter, Pos2, Rect, Response, RichText, Sense, Stroke, TextStyle, TextWrapMode,
+    Ui, UiBuilder, WidgetInfo, WidgetText, WidgetType, pos2, vec2,
 };
 
 /// One piece of a list row's dim right-hand text.
@@ -86,7 +87,7 @@ pub fn list_row_cut(
         }
     }
     let text_rect = Rect::from_min_max(pos2(rect.left() + indent, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
-    let font = if strong { fonts::semibold(ui, 13.0) } else { FontId::proportional(13.0) };
+    let font = if strong { type_scale::strong(ui, type_scale::BODY) } else { type_scale::font(type_scale::BODY) };
     let col = if strong { color::strong() } else { color::text() };
     let cut = truncate::paint_cut(&p, pos2(text_rect.left(), rect.center().y), truncate::cut_job(text, font, col), text_rect.width());
     let marker = Rect::from_min_max(pos2(rect.right() - PAD_X - slot, rect.top()), pos2(rect.right() - PAD_X, rect.bottom()));
@@ -109,7 +110,7 @@ struct Piece {
 
 /// Lays out `parts` in the 12 px dim font; returns their total width (gaps included) and pieces.
 fn layout_parts(p: &Painter, parts: &[Part<'_>], col: Color32) -> (f32, Vec<Piece>) {
-    let font = FontId::proportional(12.0);
+    let font = type_scale::font(type_scale::SMALL);
     let pieces: Vec<Piece> = parts
         .iter()
         .map(|part| {
