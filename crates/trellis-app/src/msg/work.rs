@@ -126,6 +126,8 @@ pub enum CommitMsg {
     SetPushAfterCommit(bool),
     PrefillAmend,
     AppendToDescription(String),
+    /// The merge banner's Commit merge: fills a blank draft from MERGE_MSG, then commits.
+    CommitMerge,
 }
 
 impl CommitMsg {
@@ -133,9 +135,12 @@ impl CommitMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::Commit | Self::StageAllAndCommit | Self::SetPushAfterCommit(..) | Self::PrefillAmend | Self::AppendToDescription(..) => {
-                None
-            }
+            Self::Commit
+            | Self::StageAllAndCommit
+            | Self::SetPushAfterCommit(..)
+            | Self::PrefillAmend
+            | Self::AppendToDescription(..)
+            | Self::CommitMerge => None,
         }
     }
 }
@@ -146,6 +151,13 @@ pub enum JobMsg {
     Git {
         label: String,
         cmds: Vec<Vec<String>>,
+    },
+    /// The in-progress banner's confirmed Abort (`args`, named `label`). With `keep`, the
+    /// resolved changes are stashed first so Undo brings them back (`state::op_confirm`).
+    Abort {
+        label: String,
+        args: Vec<String>,
+        keep: bool,
     },
     /// Applies, pops or drops the stash shown at `stash@{index}`, only if that entry still is
     /// commit `oid` (another tab, worktree or terminal may have pushed or dropped one since).
@@ -182,6 +194,7 @@ impl JobMsg {
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
             Self::Git { .. }
+            | Self::Abort { .. }
             | Self::Stash { .. }
             | Self::Push { .. }
             | Self::Deepen(..)

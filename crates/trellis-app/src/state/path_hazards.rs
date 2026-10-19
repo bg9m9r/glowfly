@@ -25,7 +25,7 @@ pub fn hazard_of<'a>(st: &'a AppState, path: &str) -> Option<&'a Hazard> {
 /// file). A confirmation counts as what it confirms.
 pub fn target(msg: &Msg) -> Option<(&str, bool)> {
     Some(match msg {
-        Msg::Confirm { then, .. } => return target(then),
+        Msg::Confirm { then, .. } | Msg::ConfirmDanger { then, .. } => return target(then),
         Msg::Stage(StageMsg::StageFile(p) | StageMsg::UnstageFile(p)) => (p, false),
         Msg::Stage(StageMsg::DiscardFile(p)) => (p, true),
         Msg::Stage(StageMsg::Hunk { path, op, .. }) => (path, *op == HunkOp::Discard),

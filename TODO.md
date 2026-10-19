@@ -96,7 +96,7 @@ The [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md) found these before 
 release; each finding there names the snapshots and code it was seen in. Its minor findings
 are in Later > UI review polish.
 
-- [ ] **In-progress operations stay visible and safe**: a rebase, merge, cherry-pick, revert,
+- [x] **In-progress operations stay visible and safe**: a rebase, merge, cherry-pick, revert,
       am or bisect in progress shows in a strip under the toolbar (or a status-bar chip) whatever
       is selected and whether or not the details panel is shown; clicking it opens the WIP view
   - Abort (rebase, merge, cherry-pick, revert, am), Skip and Reset bisect ask first, naming
@@ -2158,3 +2158,18 @@ here, under the item they grew from.
 - Ask before closing the window or the tab while an edited form is open
 - Enter on the discard question runs Keep editing, with focus on it when it opens (with the
   shared dialog frame's Enter and focus rules)
+
+### In-progress operations stay visible and safe
+
+- Keep resolved files recoverable when aborting with conflicts still unresolved (save the resolved files' blobs first, since git can't stash unmerged entries)
+- Undo for aborting a rebase, a patch series or a multi-commit cherry-pick or revert
+- Undo for Skip commit and Skip patch (the resolved files of the skipped step)
+- Undo of a kept abort also brings back the merge state (MERGE_HEAD), not only the changes
+- A dedicated undo label for the abort stash ("Undo abort of merge") instead of the stash's
+- Prefill the commit draft from MERGE_MSG when a cherry-pick or revert stops for conflicts too
+- Disable the Amend checkbox during a merge, with the reason on hover
+- Bisect in the strip: the good and bad counts, and Mark good / Mark bad
+- Keyboard shortcuts for Continue and Commit merge
+- A status-bar chip variant of the strip, and a preference to hide the strip
+- Hover tips on the conflict header menu's items (what Save with markers and Mark resolved do)
+- Translate the remaining English text in the conflict view body and the rebase and patch banner titles

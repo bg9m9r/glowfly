@@ -46,6 +46,11 @@ pub mod menu_bar;
 pub mod notify;
 pub mod onboarding;
 pub mod onboarding_tour;
+pub mod op_actions;
+pub mod op_confirm;
+#[cfg(test)]
+pub(crate) mod op_fixture;
+pub mod op_strip;
 pub mod palette;
 pub mod palette_commands;
 pub mod palette_files;
@@ -206,6 +211,13 @@ pub enum Modal {
     EditSubmodule(submodules::edit::EditForm),
     RemoveSubmodule(submodules::remove::RemoveForm),
     Confirm {
+        title: String,
+        body: String,
+        button: String,
+        then: Box<Msg>,
+    },
+    /// `Confirm` for a step that loses work: drawn with a danger button that Enter doesn't press.
+    ConfirmDanger {
         title: String,
         body: String,
         button: String,

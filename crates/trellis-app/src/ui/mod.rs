@@ -62,6 +62,7 @@ mod mainline_dialog;
 mod menu_bar;
 mod menus;
 mod modals;
+mod op_strip;
 mod palette;
 mod panel_size;
 mod patch_apply_dialog;
@@ -369,6 +370,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         if st.settings.show_toolbar {
             toolbar::show(ctx, st, msgs);
         }
+        op_strip::show(ctx, st, msgs);
         git_banner::show(ctx, st, msgs);
         if st.snap.is_some() && !st.dashboard.open {
             sign_in_banner::show(ctx, st, msgs);

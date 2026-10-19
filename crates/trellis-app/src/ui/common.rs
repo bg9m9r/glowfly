@@ -9,7 +9,7 @@ use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, ForgeState, PrefPage, Status};
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
-use git2::{Oid, RepositoryState};
+use git2::Oid;
 use trellis_core::forge::{self, RefStyle};
 use trellis_core::i18n::Lang;
 
@@ -206,39 +206,7 @@ pub fn capitalize(s: &str) -> String {
     c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
 }
 
-use crate::state::am_banner::{AM_ABORT, AM_CONTINUE, AM_NAME, AM_SKIP};
-use trellis_core::{patch_ops, pick_ops};
-
-pub type StateAction = (&'static str, &'static [&'static str]);
-
-const REBASE_ACTIONS: &[StateAction] =
-    &[("Continue", &["rebase", "--continue"]), ("Skip commit", &["rebase", "--skip"]), ("Abort rebase", &["rebase", "--abort"])];
-
-/// The in-progress operation name and its Continue/Skip/Abort commands.
-pub fn state_actions(state: RepositoryState) -> Option<(&'static str, &'static [StateAction])> {
-    use RepositoryState::*;
-    Some(match state {
-        Merge => ("Merge", &[("Abort merge", &["merge", "--abort"])]),
-        Rebase | RebaseMerge => ("Rebase", REBASE_ACTIONS),
-        RebaseInteractive => ("Interactive rebase", REBASE_ACTIONS),
-        CherryPick | CherryPickSequence => (
-            "Cherry-pick",
-            &[
-                ("Continue", &["cherry-pick", "--continue"]),
-                ("Skip commit", pick_ops::CHERRY_PICK_SKIP),
-                ("Abort cherry-pick", &["cherry-pick", "--abort"]),
-            ],
-        ),
-        Revert | RevertSequence => (
-            "Revert",
-            &[("Continue", &["revert", "--continue"]), ("Skip commit", pick_ops::REVERT_SKIP), ("Abort revert", &["revert", "--abort"])],
-        ),
-        ApplyMailbox => (AM_NAME, &[(AM_CONTINUE, patch_ops::AM_CONTINUE), (AM_SKIP, patch_ops::AM_SKIP), (AM_ABORT, patch_ops::AM_ABORT)]),
-        ApplyMailboxOrRebase => ("Apply mailbox", &[("Abort", &["am", "--abort"])]),
-        Bisect => ("Bisect", &[("Reset bisect", &["bisect", "reset"])]),
-        Clean => return None,
-    })
-}
+pub use crate::state::op_actions::state_actions;
 
 /// Shown when no repository is open.
 pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {

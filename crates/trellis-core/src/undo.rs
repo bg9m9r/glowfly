@@ -119,6 +119,18 @@ pub fn stash_first_command() -> Vec<String> {
     args(&["stash", "push", "-u", "-m", UNDO_STASH_MESSAGE])
 }
 
+/// The message of the stash an abort keeps the resolved changes of a merge, cherry-pick or
+/// revert in, so Undo brings them back.
+pub const ABORT_STASH_MESSAGE: &str = "Trellis: resolved changes before abort";
+
+/// The commands that abort a merge, single cherry-pick or single revert while keeping its
+/// resolved changes. The stash comes first: git can't stash unmerged entries (so every conflict
+/// must be resolved), and the stash's own hard reset already ends a merge or single pick.
+/// `reset --merge` then ends the operation also when the stash saved nothing.
+pub fn abort_keeping_commands() -> Vec<Vec<String>> {
+    vec![args(&["stash", "push", "-m", ABORT_STASH_MESSAGE]), args(&["reset", "--merge"])]
+}
+
 /// The command Trellis runs for "Discard all".
 pub fn discard_command() -> Vec<String> {
     args(&["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE])
@@ -128,6 +140,8 @@ fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
+#[cfg(test)]
+mod abort_tests;
 #[cfg(test)]
 mod deleted_tests;
 #[cfg(test)]

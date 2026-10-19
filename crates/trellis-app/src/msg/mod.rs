@@ -205,6 +205,14 @@ pub enum Msg {
         button: String,
         then: Box<Msg>,
     },
+    /// Ask before running `then`, which loses work: drawn with a danger button
+    /// (`Msg::confirm_danger`).
+    ConfirmDanger {
+        title: String,
+        body: String,
+        button: String,
+        then: Box<Msg>,
+    },
     ConfirmAccepted,
     /// A toast's action button (state/toasts.rs): runs its message and removes the toast (update/notify.rs).
     ToastAction(u64),
@@ -302,6 +310,7 @@ impl Msg {
             Msg::Tick(_)
             | Msg::Shortcut(_)
             | Msg::Confirm { .. }
+            | Msg::ConfirmDanger { .. }
             | Msg::ConfirmAccepted
             | Msg::ToastAction(_)
             | Msg::CloseModal
@@ -321,5 +330,9 @@ impl Msg {
 
     pub fn confirm(title: &str, body: String, button: &str, then: Msg) -> Msg {
         Msg::Confirm { title: title.into(), body, button: button.into(), then: Box::new(then) }
+    }
+
+    pub fn confirm_danger(title: &str, body: String, button: &str, then: Msg) -> Msg {
+        Msg::ConfirmDanger { title: title.into(), body, button: button.into(), then: Box::new(then) }
     }
 }

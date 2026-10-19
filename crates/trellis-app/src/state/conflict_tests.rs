@@ -64,3 +64,19 @@ fn saved_picks_come_back_over_the_automatic_ones() {
     assert_eq!((v.restored, v.cleans.len(), v.current), (0, 0, 1));
     assert_eq!(v.picks[1], ChunkPick::default());
 }
+
+#[test]
+fn picked_counts_every_resolved_chunk_and_reset_asks_only_then() {
+    let mut v = ConflictView::loading("a.txt".into());
+    v.picks = vec![ChunkPick::default(), ChunkPick::default(), ChunkPick::default()];
+    v.auto = vec![None, None, None];
+    assert_eq!(v.picked(), 0);
+    assert!(matches!(v.reset_msg(Lang::En), Msg::Conflict(ConflictMsg::ConflictReset)), "nothing to lose");
+    v.picks[0] = ChunkPick::Sides(Choice::Ours);
+    v.picks[2] = ChunkPick::Sides(Choice::Theirs);
+    v.auto[2] = Some(Trivial::Identical);
+    assert_eq!(v.picked(), 2, "the user's pick and the automatic one");
+    let Msg::ConfirmDanger { body, button, then, .. } = v.reset_msg(Lang::En) else { panic!("asks first") };
+    assert_eq!((body.as_str(), button.as_str()), ("Clear the picks of 2 conflicts? Text you typed stays.", "Reset picks"));
+    assert!(matches!(*then, Msg::Conflict(ConflictMsg::ConflictReset)));
+}

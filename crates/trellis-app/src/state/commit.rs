@@ -2,6 +2,7 @@
 //! committing can start, the commit button's label and the git commands that commit it.
 
 use super::AppState;
+use git2::RepositoryState;
 use std::path::Path;
 use trellis_core::gitcli::args;
 use trellis_core::i18n::Lang;
@@ -18,6 +19,9 @@ pub struct CommitDraft {
     /// The template the draft was prefilled with. Some => leave its comment lines out of the
     /// message and don't prefill again.
     pub template: Option<CommitTemplate>,
+    /// The MERGE_MSG text the draft was filled with; Some => a merge's own message, cleared
+    /// again when the merge ends while it is untouched.
+    pub merge_msg: Option<String>,
 }
 
 impl CommitDraft {
@@ -62,19 +66,37 @@ impl CommitDraft {
         self.template.as_ref().is_some_and(|t| self.summary.trim() == t.summary.trim() && self.description.trim() == t.description.trim())
     }
 
-    /// Nothing the user wrote: empty, or only the untouched template.
+    /// Fills the draft from a merge's MERGE_MSG and remembers it.
+    pub fn fill_merge(&mut self, m: &str) {
+        self.fill_from(m);
+        self.merge_msg = Some(m.to_owned());
+    }
+
+    /// Whether the draft still holds exactly the merge message it was filled with.
+    pub fn is_untouched_merge_msg(&self) -> bool {
+        self.merge_msg.as_ref().is_some_and(|m| {
+            let mut filled = CommitDraft::default();
+            filled.fill_from(m);
+            filled.message() == self.message()
+        })
+    }
+
+    /// Nothing the user wrote: empty, or only the untouched template or merge message.
     pub fn is_blank(&self) -> bool {
-        self.is_empty() || self.is_untouched_template()
+        self.is_empty() || self.is_untouched_template() || self.is_untouched_merge_msg()
     }
 
     /// The commit button's text: the base label with its slots for " and push" (when `push`)
     /// and " (skip hooks)" (when hooks are skipped), placed where the language puts them.
-    pub fn button_label(&self, t: Lang, staged: usize, push: bool) -> String {
+    /// "Commit merge" while `merging` (not for an amend).
+    pub fn button_label(&self, t: Lang, staged: usize, push: bool, merging: bool) -> String {
         let push_text = if push { t.tr("commit.button.and_push") } else { "" };
         let skip_text = if self.skip_hooks { t.tr("commit.button.skip_hooks") } else { "" };
         let slots: [(&str, &dyn std::fmt::Display); 2] = [("push", &push_text), ("skip", &skip_text)];
         if self.amend {
             t.trf("commit.button.amend", &slots)
+        } else if merging {
+            t.trf("commit.button.merge", &slots)
         } else if staged == 0 {
             t.trf("commit.button.stage_first", &slots)
         } else {
@@ -116,23 +138,48 @@ fn without_template_comments(description: &str, t: &CommitTemplate) -> String {
 }
 
 /// Why committing (or staging everything and committing) can't start now; None when it can.
+/// While merging, every conflict must be resolved, an amend can't run, and an empty Staged list
+/// still commits (a merge whose result equals HEAD).
 pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
     let t = st.settings.lang();
     let Some(snap) = &st.snap else { return Some(t.tr("commit.blocked.no_repo")) };
     let d = &st.draft;
+    let merging = snap.state == RepositoryState::Merge;
+    let conflicted = snap.unstaged.iter().any(|f| f.status == '!');
     if st.job.is_some() {
         Some(t.tr("commit.blocked.job_running"))
+    } else if merging && d.amend {
+        Some(t.tr("commit.blocked.amend_merge"))
+    } else if merging && conflicted {
+        Some(t.tr("commit.blocked.merge_conflicts"))
     } else if d.is_untouched_template() {
         Some(t.tr("commit.blocked.untouched_template"))
     } else if d.summary.trim().is_empty() {
         Some(t.tr("commit.blocked.no_summary"))
-    } else if stage_all && snap.unstaged.iter().any(|f| f.status == '!') {
+    } else if stage_all && conflicted {
         // Staging a conflicted file marks it resolved.
         Some(t.tr("commit.blocked.conflicts"))
+    } else if merging {
+        None
     } else if !d.amend && !stage_all && snap.staged.is_empty() {
         Some(t.tr("commit.blocked.nothing_staged"))
     } else if !d.amend && stage_all && snap.staged.is_empty() && snap.unstaged.is_empty() {
         Some(t.tr("commit.blocked.no_changes"))
+    } else {
+        None
+    }
+}
+
+/// Why the merge banner's Commit merge can't run now: conflicts left, another job, an amend.
+pub fn commit_merge_blocked(st: &AppState) -> Option<String> {
+    let t = st.settings.lang();
+    let conflicted = st.snap.as_ref().map_or(0, |s| s.unstaged.iter().filter(|f| f.status == '!').count());
+    if conflicted > 0 {
+        Some(t.trn("details.banner.commit_merge.conflicts", conflicted, &[]))
+    } else if st.job.is_some() {
+        Some(t.tr("commit.blocked.job_running").to_owned())
+    } else if st.draft.amend {
+        Some(t.tr("commit.blocked.amend_merge").to_owned())
     } else {
         None
     }
@@ -155,13 +202,13 @@ mod tests {
     fn button_label_suffixes() {
         let en = Lang::En;
         let mut d = CommitDraft::default();
-        assert_eq!(d.button_label(en, 1, false), "Commit changes to 1 file");
-        assert_eq!(d.button_label(en, 0, false), "Stage files to commit");
+        assert_eq!(d.button_label(en, 1, false, false), "Commit changes to 1 file");
+        assert_eq!(d.button_label(en, 0, false, false), "Stage files to commit");
         d.skip_hooks = true;
-        assert_eq!(d.button_label(en, 2, true), "Commit changes to 2 files and push (skip hooks)");
+        assert_eq!(d.button_label(en, 2, true, false), "Commit changes to 2 files and push (skip hooks)");
         d.skip_hooks = false;
         d.amend = true;
-        assert_eq!(d.button_label(en, 0, true), "Amend previous commit and push");
+        assert_eq!(d.button_label(en, 0, true, false), "Amend previous commit and push");
     }
 
     #[test]
@@ -172,11 +219,11 @@ mod tests {
             de.tr("commit.button.commit.other"),
             &[("count", &2), ("push", &de.tr("commit.button.and_push")), ("skip", &de.tr("commit.button.skip_hooks"))],
         );
-        let got = d.button_label(de, 2, true);
+        let got = d.button_label(de, 2, true, false);
         assert_eq!(got, want);
         assert!(got.contains(de.tr("commit.button.and_push").trim()) && got.contains(de.tr("commit.button.skip_hooks").trim()), "{got}");
         assert!(!got.contains('{'), "{got}");
-        assert_ne!(got, d.button_label(Lang::En, 2, true));
+        assert_ne!(got, d.button_label(Lang::En, 2, true, false));
     }
 
     #[test]
@@ -223,5 +270,28 @@ mod tests {
         assert!(d.template.is_some(), "a cleared draft keeps its template, so it isn't prefilled again");
         d.fill_from("Message\n\nBody");
         assert!(d.template.is_none());
+    }
+
+    #[test]
+    fn merge_label_and_untouched_merge_message() {
+        let en = Lang::En;
+        let mut d = CommitDraft::default();
+        assert_eq!(d.button_label(en, 1, false, true), "Commit merge");
+        assert_eq!(d.button_label(en, 0, false, true), "Commit merge", "a merge commits with nothing staged");
+        d.skip_hooks = true;
+        assert_eq!(d.button_label(en, 1, true, true), "Commit merge and push (skip hooks)");
+        d.amend = true;
+        assert_eq!(d.button_label(en, 1, false, true), "Amend previous commit (skip hooks)", "amend wins");
+
+        let mut d = CommitDraft::default();
+        d.fill_merge(
+            "Merge branch 'other'
+
+Why it merges",
+        );
+        assert_eq!((d.summary.as_str(), d.description.as_str()), ("Merge branch 'other'", "Why it merges"));
+        assert!(d.is_untouched_merge_msg() && d.is_blank(), "untouched");
+        d.summary.push_str(" into main");
+        assert!(!d.is_untouched_merge_msg() && !d.is_blank(), "edited");
     }
 }

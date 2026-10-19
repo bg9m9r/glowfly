@@ -70,6 +70,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
 
     let head_message = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).and_then(|c| c.message().map(|m| m.trim_end().to_owned()));
     let commit_template = template::commit_template(&repo, &workdir);
+    let merge_message = (state == git2::RepositoryState::Merge).then(|| merge_msg::merge_message(&repo)).flatten();
     let gitflow = crate::gitflow::read_config(&repo);
     let lfs_patterns = crate::lfs::root_patterns(&workdir);
     let mut refs: HashMap<Oid, Vec<RefLabel>> = HashMap::new();
@@ -239,6 +240,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         head_oid,
         head_message,
         commit_template,
+        merge_message,
         gitflow,
         lfs_patterns,
         state,

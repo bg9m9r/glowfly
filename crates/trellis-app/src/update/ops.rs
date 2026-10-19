@@ -104,6 +104,7 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             }
             start_job(st, JobSpec { record, ..JobSpec::new(label, cmds) }, fx);
         }
+        JobMsg::Abort { label, args, keep } => super::op_progress::abort(st, label, args, keep, now, fx),
         JobMsg::Push { force } => push(st, force, fx),
         JobMsg::Deepen(how) => super::shallow::deepen(st, how, fx),
         JobMsg::Stash { action, index, oid } => super::stash::run(st, action, index, oid, fx),

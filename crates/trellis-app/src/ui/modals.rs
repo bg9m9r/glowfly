@@ -1,4 +1,4 @@
-//! Dialogs: confirmation, new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
+//! Dialogs: confirmation (drawn by `confirm_dialog.rs`, also in its danger form), new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
 //! worktree (drawn by `worktree_dialog.rs`), remove and lock worktree (drawn by
 //! `worktree_manage_dialog.rs`), add and remove submodule (drawn by `submodule_dialogs.rs`), clone
 //! (drawn by `clone_dialog.rs` and `clone_service.rs`), init (drawn by `init_dialog.rs`), create
@@ -25,6 +25,9 @@
 use crate::msg::{DialogMsg, Msg};
 use crate::state::{AppState, Modal};
 use eframe::egui;
+
+#[path = "confirm_dialog.rs"]
+mod confirm_dialog;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Under a credential prompt, Esc and clicks belong to the prompt.
@@ -55,20 +58,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let resp = egui::Modal::new(egui::Id::new("trellis-modal")).show(ctx, |ui| {
         ui.set_width(460.0);
         match modal {
-            Modal::Confirm { title, body, button, .. } => {
-                ui.heading(title.as_str());
-                ui.add_space(6.0);
-                ui.label(body.as_str());
-                ui.add_space(12.0);
-                ui.horizontal(|ui| {
-                    if ui.button(button.as_str()).clicked() {
-                        msgs.push(Msg::ConfirmAccepted);
-                    }
-                    if ui.button("Cancel").clicked() {
-                        close = true;
-                    }
-                });
-            }
+            Modal::Confirm { title, body, button, .. } => close = confirm_dialog::show(ui, t, title, body, button, false, msgs),
+            Modal::ConfirmDanger { title, body, button, .. } => close = confirm_dialog::show(ui, t, title, body, button, true, msgs),
             Modal::NewBranch { start, name, checkout } => {
                 // Not under a credential prompt or the discard question: its fields need the keyboard.
                 close = super::branch_dialogs::new_branch(ui, start.as_deref(), name, checkout, snap, keyboard, msgs);

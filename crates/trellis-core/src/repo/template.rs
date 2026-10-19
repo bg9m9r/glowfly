@@ -57,7 +57,7 @@ pub fn commit_template(repo: &Repository, workdir: &Path) -> Option<CommitTempla
 
 /// `core.commentChar` (or `core.commentString`) when it is a single character; '#' otherwise,
 /// including "auto".
-fn comment_char(cfg: &Config) -> char {
+pub(super) fn comment_char(cfg: &Config) -> char {
     ["core.commentChar", "core.commentString"]
         .iter()
         .find_map(|key| {

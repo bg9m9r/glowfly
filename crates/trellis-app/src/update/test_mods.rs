@@ -147,10 +147,14 @@ pub(super) mod lines_drag_tests;
 pub(super) mod lines_tests;
 #[path = "load_more_tests.rs"]
 pub(super) mod load_more_tests;
+#[path = "merge_commit_tests.rs"]
+pub(super) mod merge_commit_tests;
 #[path = "notify_tests.rs"]
 pub(super) mod notify_tests;
 #[path = "onboarding_tests.rs"]
 pub(super) mod onboarding_tests;
+#[path = "op_progress_tests.rs"]
+pub(super) mod op_progress_tests;
 #[path = "palette_blame_tests.rs"]
 pub(super) mod palette_blame_tests;
 #[path = "palette_checkout_tests.rs"]

@@ -17,6 +17,8 @@ pub enum RepoMsg {
     Refresh,
     WindowFocused,
     SelectWip,
+    /// The in-progress strip's click: select the WIP row and show the details panel.
+    ShowInProgress,
     SelectCommit(Oid),
     JumpTo(Oid),
     OpenDiff(DiffTarget),
@@ -67,6 +69,7 @@ impl RepoMsg {
             | Self::Refresh
             | Self::WindowFocused
             | Self::SelectWip
+            | Self::ShowInProgress
             | Self::SelectCommit(..)
             | Self::JumpTo(..)
             | Self::OpenDiff(..)

@@ -4,11 +4,13 @@
 //! markers (`trellis_core::conflict_restore`), the clean runs edited in the output, the folds
 //! opened, and the output's text while it is edited.
 
+use crate::msg::{ConflictMsg, Msg};
 use std::collections::BTreeSet;
 use trellis_core::conflict_edit::{EditText, edit_text};
 use trellis_core::conflict_pick::{ChunkPick, CleanEdits, render};
 use trellis_core::conflict_restore::SavedPicks;
 use trellis_core::conflict_rows::{Trivial, trivial_picks};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{Chunk, ConflictContent, ConflictFile, Segment};
 
 #[derive(Clone, Debug)]
@@ -125,6 +127,25 @@ impl ConflictView {
     /// Chunks not resolved yet: no pick, or typed text with markers still in it.
     pub fn unresolved(&self) -> usize {
         self.picks.iter().filter(|p| p.is_open()).count()
+    }
+
+    /// Chunks resolved so far, by the user or automatically.
+    pub fn picked(&self) -> usize {
+        self.chunk_count() - self.unresolved()
+    }
+
+    /// What Reset picks sends: the reset itself, behind a confirmation once anything is picked.
+    pub fn reset_msg(&self, t: Lang) -> Msg {
+        let reset = Msg::Conflict(ConflictMsg::ConflictReset);
+        match self.picked() {
+            0 => reset,
+            n => Msg::confirm_danger(
+                t.tr("conflict.header.reset.confirm.title"),
+                t.trn("conflict.header.reset.confirm.body", n, &[]),
+                t.tr("conflict.header.reset.confirm.button"),
+                reset,
+            ),
+        }
     }
 
     /// Chunks whose pick was made automatically and not changed since.

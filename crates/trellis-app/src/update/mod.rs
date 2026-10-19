@@ -47,6 +47,7 @@ mod lfs;
 mod logs;
 mod notify;
 mod onboarding;
+mod op_progress;
 mod ops;
 mod palette;
 mod patch;
@@ -210,8 +211,11 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             }
         }
         Msg::Confirm { title, body, button, then } => st.modal = Some(crate::state::Modal::Confirm { title, body, button, then }),
+        Msg::ConfirmDanger { title, body, button, then } => {
+            st.modal = Some(crate::state::Modal::ConfirmDanger { title, body, button, then });
+        }
         Msg::ConfirmAccepted => {
-            if let Some(crate::state::Modal::Confirm { then, .. }) = st.modal.take() {
+            if let Some(crate::state::Modal::Confirm { then, .. } | crate::state::Modal::ConfirmDanger { then, .. }) = st.modal.take() {
                 fx.extend(update(st, *then, now));
             }
         }

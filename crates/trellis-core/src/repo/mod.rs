@@ -45,6 +45,7 @@ mod lfs_marks;
 mod lines;
 mod load;
 mod markers;
+mod merge_msg;
 mod noclobber;
 mod refs_key;
 mod remotes;
@@ -103,6 +104,7 @@ pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_fi
 pub use lines::{apply_lines, apply_shown};
 pub use load::{load, load_cached, messages_between};
 pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
+pub use merge_msg::merge_message;
 pub use refs_key::{open_file_stamp, refs_key};
 pub use remotes::RemoteInfo;
 pub(crate) use removal::TRASH_NAME;
@@ -239,6 +241,9 @@ pub struct Snapshot {
     pub head_message: Option<String>,
     /// The commit.template text to prefill an empty draft with.
     pub commit_template: Option<CommitTemplate>,
+    /// MERGE_MSG cleaned of comment lines while a merge is in progress (prefills the commit
+    /// draft); full loads only.
+    pub merge_message: Option<String>,
     /// The gitflow.* settings (Preferences > Git Flow, palette Start entries).
     pub gitflow: crate::gitflow::GitFlowConfig,
     /// The root .gitattributes' LFS patterns (empty without one); refreshed by full loads and whole status reads (`LoadMsg`).
@@ -385,6 +390,8 @@ mod lines_whole_tests;
 mod load_filter_tests;
 #[cfg(test)]
 mod markers_tests;
+#[cfg(test)]
+mod merge_msg_tests;
 #[cfg(test)]
 mod refs_key_tests;
 #[cfg(test)]

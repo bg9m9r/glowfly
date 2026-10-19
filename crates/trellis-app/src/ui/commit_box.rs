@@ -83,7 +83,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
         ui.checkbox(&mut st.draft.skip_hooks, t.tr("commit.skip_hooks.check")).on_hover_text(t.tr("commit.skip_hooks.tip"));
     });
 
-    let label = st.draft.button_label(t, snap.staged.len(), pushes_after(st));
+    let label = st.draft.button_label(t, snap.staged.len(), pushes_after(st), snap.state == git2::RepositoryState::Merge);
     let blocked = commit_blocked(st, false);
     let enabled = blocked.is_none();
     let button = egui::Button::new(RichText::new(label).strong().color(if enabled { Color32::WHITE } else { color::faint() }))

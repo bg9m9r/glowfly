@@ -25,7 +25,7 @@ fn text(file: &str, lines: usize, changed: &[usize], side: &str) -> String {
 
 /// The fixture mid-merge with alpha.txt (two conflicts), beta.txt (one) and gamma.txt (one,
 /// resolved with `git add`). With `fix_beta`, beta.txt's markers are edited away.
-fn merging(name: &str, fix_beta: bool) -> (AppState, PathBuf) {
+pub(super) fn merging(name: &str, fix_beta: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     let files = [("alpha.txt", 10, vec![2, 8]), ("beta.txt", 4, vec![2]), ("gamma.txt", 4, vec![3])];
     let write = |side: &str| {
@@ -55,7 +55,7 @@ fn merging(name: &str, fix_beta: bool) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn fill_lists(st: &mut AppState, dir: &Path) {
+pub(super) fn fill_lists(st: &mut AppState, dir: &Path) {
     let paths = conflicted_paths(st.snap.as_ref().unwrap());
     let summary = repo::conflict_summary(dir, &paths, true).unwrap();
     st.conflict_files.counts = summary.counts.into_iter().collect();

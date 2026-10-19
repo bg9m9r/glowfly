@@ -189,7 +189,11 @@ fn am_banner_stopped() {
     h.check_snapshot("am_banner_stopped");
     h.get_by_label("Skip patch").click();
     h.run();
-    let skips = |m: &Msg| matches!(m, Msg::Job(JobMsg::Git { label, cmds }) if label == "Skip patch" && cmds[0] == ["am", "--skip"]);
+    // It asks first, then runs the plain skip.
+    let skips = |m: &Msg| {
+        matches!(m, Msg::ConfirmDanger { then, .. }
+            if matches!(&**then, Msg::Job(JobMsg::Git { label, cmds }) if label == "Skip patch" && cmds[0] == ["am", "--skip"]))
+    };
     assert!(pushed(&h, &skips));
     drop(h);
     remove_fixture(&dir);

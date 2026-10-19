@@ -52,6 +52,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             super::refresh::load_finished(st, fx);
         }
         RepoMsg::SelectWip => select_wip(st, fx),
+        RepoMsg::ShowInProgress => super::op_progress::show(st, fx),
         RepoMsg::SelectCommit(oid) => select_commit(st, oid, false, fx),
         RepoMsg::JumpTo(oid) => select_commit(st, oid, true, fx),
         RepoMsg::DetailLoaded { oid, result } => {
@@ -340,7 +341,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::conflict_check::want(st, fx);
     super::worktree_counts::want(st, fx);
     super::gitflow::snapshot_changed(st);
-    super::commit::apply_template(st);
+    super::commit::prefill(st);
     super::watch::sync(st, fx);
     super::terminal::sync(st, fx);
     if kind == LoadKind::Open {

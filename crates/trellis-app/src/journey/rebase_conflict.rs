@@ -41,17 +41,17 @@ fn rebase_conflict_resolved_in_merge_view() {
     assert!(rebasing(&repo));
     assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);
 
-    // step 3: the conflict view; theirs (the commit being replayed) wins, and only Save writes
-    // it: the file is then resolved and staged, so Continue is offered.
+    // step 3: the conflict view; theirs (the commit being replayed) wins, and only Save and mark
+    // resolved writes it: the file is then resolved and staged, so Continue is offered.
     j.click("View conflicts", Region::Details, Pick::Only);
     j.see("Ours", Region::Central);
     j.see("Theirs", Region::Central);
-    j.disabled("Save", Region::Central);
+    j.disabled("Save and mark resolved", Region::Central);
     j.click("Take all", Region::Central, Pick::Rightmost);
-    j.enabled("Save", Region::Central);
+    j.enabled("Save and mark resolved", Region::Central);
     assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);
     assert!(disk::work_text(&repo, "f.txt").unwrap().contains("<<<<<<<"));
-    j.click("Save", Region::Central, Pick::Only);
+    j.click("Save and mark resolved", Region::Central, Pick::Only);
     assert_eq!(disk::work_text(&repo, "f.txt").as_deref(), Some("topic\n"));
     assert!(disk::conflicted_paths(&repo).is_empty());
     assert_eq!(disk::index_text(&repo, "f.txt").as_deref(), Some("topic\n"));

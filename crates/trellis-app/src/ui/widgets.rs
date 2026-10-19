@@ -4,6 +4,9 @@ use super::theme::color;
 
 pub use super::list_row::{list_row, list_row_hidden, list_row_slot};
 
+#[path = "buttons.rs"]
+pub mod buttons;
+
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
 
 // -------------------------------------------------------------------- icons
@@ -78,6 +81,8 @@ pub enum Icon {
     Issue,
     /// A tick of two strokes: a resolved file (the font lacks a check mark).
     Check,
+    /// Three dots in a row: a menu of more actions (the font lacks the ellipsis glyph's weight).
+    More,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -233,7 +238,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
         }
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
-        Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check => {}          // icons.rs
+        Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check | Icon::More => {} // icons.rs
     }
 }
 

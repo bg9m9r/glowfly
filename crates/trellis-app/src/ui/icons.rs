@@ -218,6 +218,11 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             line(pos2(c.x - 5.5, c.y), corner);
             line(corner, pos2(c.x + 6.0, c.y - 5.0));
         }
+        Icon::More => {
+            for dx in [-5.0, 0.0, 5.0] {
+                p.circle_filled(pos2(c.x + dx, c.y), 1.6, s.color);
+            }
+        }
         _ => return false,
     }
     true
