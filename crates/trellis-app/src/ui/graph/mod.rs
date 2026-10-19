@@ -83,6 +83,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             return super::graph_empty::no_matches(ui, st, msgs);
         }
 
+        // What grouping a row's ref labels into chips needs, once per frame.
+        let ref_cx = ref_group::RefContext::of(snap);
         // Pull requests by head commit, for graph badges.
         let pr_at: HashMap<Oid, (String, bool)> = st
             .forge
@@ -221,7 +223,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 }
 
                 // BRANCH / TAG column, joined to the node.
-                let chips = snap.refs.get(&c.oid).map(|l| ref_group::chips(l, &snap.locals)).unwrap_or_default();
+                let chips = snap.refs.get(&c.oid).map(|l| ref_group::chips(l, &ref_cx)).unwrap_or_default();
                 let mut refs = labels::RefsCell::default();
                 if cols_cfg.refs {
                     let labels = snap.refs.get(&c.oid).map_or(&[][..], |l| l.as_slice());
@@ -265,8 +267,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
                 let in_date = cols_cfg.date && pointer.is_some_and(|p| cols.rect(cols.date, rect).contains(p));
                 let resp = match refs.hovered_tip {
-                    Some(Tip::All) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_list(ui, &chips, lane_col)),
-                    Some(Tip::One(i)) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_row(ui, &chips[i], lane_col)),
+                    Some(Tip::All) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_list(ui, t, &chips, lane_col)),
+                    Some(Tip::One(i)) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_row(ui, t, &chips[i], lane_col)),
                     _ if hovered && text.msg.hovered(pointer) => resp.on_hover_ui_at_pointer(|ui| cells::message_tip(ui, c, show_body)),
                     _ if hovered && text.sha.hovered(pointer) => resp.on_hover_text_at_pointer(&c.oid.to_string()[..7]),
                     _ if hovered && text.author.hovered(pointer) => resp.on_hover_text_at_pointer(&c.author),

@@ -328,6 +328,7 @@
   "graph.header.refs": "Branch / Tag",
   "graph.header.shallow": "Flacher Klon",
   "graph.loading_more": "Weitere Commits werden geladen…",
+  "graph.refs.in_sync.tip": "{name}, auf dem Stand von {others}",
   "graph.wip.label": "Nicht committete Änderungen",
   "graph.wip.worktree_label": "Nicht committete Änderungen · {folder}",
   "layout.edge.details.button": "Commit-Details einblenden",

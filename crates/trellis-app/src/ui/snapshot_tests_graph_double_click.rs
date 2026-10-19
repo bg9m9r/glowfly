@@ -1,5 +1,6 @@
-//! Double-clicking a graph row's BRANCH / TAG chips: a local branch chip checks the branch out,
-//! a remote branch chip checks out its tracking branch, and a tag chip, the rest of the row or a
+//! Double-clicking a graph row's BRANCH / TAG chips: a local branch chip checks the branch out
+//! (also when it folds copies on remotes), a remote branch chip checks out its tracking branch
+//! (for copies on several remotes, the lead copy's), and a tag chip, the rest of the row or a
 //! double-click with Shift held stays a row click. Nothing looks different, so there is no
 //! snapshot. Shares the fixture repository with `snapshot_tests`.
 
@@ -55,21 +56,60 @@ fn graph_label_double_click_uses_the_chip_under_the_pointer() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "dbl-click-remote");
     let (search, main) = (tip(&st, "search"), tip(&st, "main"));
     let snap = st.snap.as_mut().unwrap();
-    let label = RefLabel { name: "origin/search".into(), full: "refs/remotes/origin/search".into(), kind: RefKind::Remote, is_head: false };
-    snap.refs.entry(search).or_default().push(label);
-    snap.remotes = vec![("origin".into(), vec![("main".into(), main), ("search".into(), search)])];
+    snap.refs.entry(search).or_default().push(remote_label("origin/review"));
+    snap.remotes = vec![("origin".into(), vec![("main".into(), main), ("review".into(), search)])];
     let mut h = harness(st, true);
     h.run();
-    // The row's chips are [search, origin/search]; the second sits at about x 336-438.
+    // The row's chips are [search, origin/review]; the second sits at about x 336-438.
     double_click(&mut h, pos2(390.0, row_y(SEARCH_ROW)), Modifiers::NONE);
     let found = checkouts(&h.state().1);
-    let remote = |b: &BranchMsg| matches!(b, BranchMsg::CheckoutRemote { remote, name } if remote == "origin" && name == "search");
+    let remote = |b: &BranchMsg| checks_out_remote(b, "origin", "review");
     assert!(matches!(found[..], [b] if remote(b)), "the remote chip's checkout only");
 
     h.state_mut().1.clear();
     double_click(&mut h, pos2(CHIP_X, row_y(SEARCH_ROW)), Modifiers::NONE);
     let found = checkouts(&h.state().1);
     assert!(matches!(found[..], [b] if checks_out(b, "search")), "the local chip's checkout only");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+fn remote_label(name: &str) -> RefLabel {
+    RefLabel { name: name.into(), full: format!("refs/remotes/{name}"), kind: RefKind::Remote, is_head: false }
+}
+
+fn checks_out_remote(b: &BranchMsg, want_remote: &str, want: &str) -> bool {
+    matches!(b, BranchMsg::CheckoutRemote { remote, name } if remote == want_remote && name == want)
+}
+
+#[test]
+fn graph_label_double_click_on_folded_copies() {
+    // search with copies on origin and fork: one chip, which checks out the local branch.
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "dbl-click-copies");
+    let search = tip(&st, "search");
+    let snap = st.snap.as_mut().unwrap();
+    snap.refs.entry(search).or_default().extend([remote_label("fork/search"), remote_label("origin/search")]);
+    snap.remotes = vec![("fork".into(), vec![("search".into(), search)]), ("origin".into(), vec![("search".into(), search)])];
+    let mut h = harness(st, true);
+    h.run();
+    double_click(&mut h, pos2(CHIP_X, row_y(SEARCH_ROW)), Modifiers::NONE);
+    let found = checkouts(&h.state().1);
+    assert!(matches!(found[..], [b] if checks_out(b, "search")), "one checkout of the local branch");
+    drop(h);
+    remove_fixture(&dir);
+
+    // review on fork and origin only: one remote chip led by the default remote's copy.
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "dbl-click-remote-copies");
+    let search = tip(&st, "search");
+    let snap = st.snap.as_mut().unwrap();
+    snap.refs.entry(search).or_default().extend([remote_label("fork/review"), remote_label("origin/review")]);
+    snap.remotes = vec![("fork".into(), vec![("review".into(), search)]), ("origin".into(), vec![("review".into(), search)])];
+    let mut h = harness(st, true);
+    h.run();
+    // The row's chips are [search, origin/review]; the second sits at about x 336-438.
+    double_click(&mut h, pos2(390.0, row_y(SEARCH_ROW)), Modifiers::NONE);
+    let found = checkouts(&h.state().1);
+    assert!(matches!(found[..], [b] if checks_out_remote(b, "origin", "review")), "the lead copy's checkout only");
     drop(h);
     remove_fixture(&dir);
 }

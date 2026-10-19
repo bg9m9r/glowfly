@@ -328,6 +328,7 @@
   "graph.header.refs": "Branch / tag",
   "graph.header.shallow": "Shallow clone",
   "graph.loading_more": "Loading more commits…",
+  "graph.refs.in_sync.tip": "{name}, in sync with {others}",
   "graph.wip.label": "Uncommitted changes",
   "graph.wip.worktree_label": "Uncommitted changes · {folder}",
   "layout.edge.details.button": "Show commit details panel",

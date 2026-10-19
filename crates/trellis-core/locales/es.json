@@ -328,6 +328,7 @@
   "graph.header.refs": "Rama / etiqueta",
   "graph.header.shallow": "Clon superficial",
   "graph.loading_more": "Cargando más commits…",
+  "graph.refs.in_sync.tip": "{name}, al día con {others}",
   "graph.wip.label": "Cambios sin confirmar",
   "graph.wip.worktree_label": "Cambios sin confirmar · {folder}",
   "layout.edge.details.button": "Mostrar los detalles del commit",

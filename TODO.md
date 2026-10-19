@@ -268,7 +268,7 @@ until this list says which option was chosen.
 - [x] **Terminal keeps the prompt's space**: pwsh's "PS C:\path> " loses its trailing space on
       longer paths (the cursor sits right after ">"); reproduce from the raw byte stream in a
       test covering short, long and wrapping prompts and fix the emulator; the space always shows
-- [ ] **One label for a branch and its copies on every remote**: a same-commit copy on any
+- [x] **One label for a branch and its copies on every remote**: a same-commit copy on any
       remote (`fork/x` as well as the upstream) folds into the label with the cloud instead of
       counting as "+1"
 - [ ] **Small fixes from testing**: the terminal tab bar's + is centred and drawn like the ×
@@ -2736,3 +2736,17 @@ here, under the item they grew from.
 - An "All tabs" view in the activity panel that merges every tab's lines
 - Clear in a repository tab also forgets the legacy untagged lines shown there (they age out)
 - Say in the activity panel's header which tab's log it shows
+
+### One label for a branch and its copies on every remote
+
+- Honour `checkout.defaultRemote` (and `remote.pushDefault`) when picking the lead copy of a
+  remote-only chip
+- Also fold copies named like the upstream's branch when it differs from the local name (main
+  tracking origin/trunk, with fork/trunk on the commit)
+- A small count or distinct mark on a chip that folds copies on more than one remote
+- Group a folded chip's refs under one submenu in the right-click menu, with actions such as
+  delete on every remote
+- Map remote-tracking refs to remotes through each remote's fetch refspec instead of the name
+  prefix
+- Say in the tooltip when a local chip's own upstream is at another commit while a copy on
+  another remote is level with it

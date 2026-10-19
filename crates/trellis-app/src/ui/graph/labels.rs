@@ -14,6 +14,7 @@ use crate::ui::widgets;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
 use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 use trellis_core::forge::CheckState;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::RefKind;
 
 /// Space between the column's edges and its chips.
@@ -40,8 +41,8 @@ pub(super) struct ChipSpec {
     lead_tag: bool,
     /// The local mark after the name.
     local: bool,
-    /// The remote mark after the name (a remote branch, or a local one's upstream at the same
-    /// commit).
+    /// The remote mark after the name (a remote branch, or a local one with copies on remotes
+    /// at the same commit).
     remote: bool,
     /// The build marker at the chip's right end.
     build: Option<CheckState>,
@@ -55,7 +56,7 @@ impl ChipSpec {
             RefKind::Head => plain(ChipStyle::Head, "HEAD".to_owned()),
             RefKind::Local => Self {
                 local: true,
-                remote: chip.upstream.is_some(),
+                remote: chip.folds(),
                 ..plain(if l.is_head { ChipStyle::CurrentBranch } else { ChipStyle::Branch }, check(l.is_head, &l.name))
             },
             RefKind::Remote => Self { remote: true, ..plain(ChipStyle::Remote, l.name.clone()) },
@@ -159,7 +160,7 @@ fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, lane: Color32, w: f32
 pub(super) enum Tip {
     /// Some chips are hidden: every label, one per line.
     All,
-    /// This drawn chip, which is cut or folds its upstream in.
+    /// This drawn chip, which is cut or folds copies on remotes in.
     One(usize),
 }
 
@@ -239,7 +240,7 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
                 Some(Tip::All)
             } else {
                 let on = out.chip_at(p);
-                on.filter(|&i| (i == 0 && f.first_cut) || row.chips[i].upstream.is_some()).map(Tip::One)
+                on.filter(|&i| (i == 0 && f.first_cut) || row.chips[i].folds()).map(Tip::One)
             };
         }
     }
@@ -264,9 +265,9 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
 /// Paints one mark centred on a point.
 type PaintMark = fn(&Painter, Pos2, Color32);
 
-/// One label in a tooltip: its painted marks, then its name (saying when its upstream is level
+/// One label in a tooltip: its painted marks, then its name (naming the copies on remotes level
 /// with it).
-pub(super) fn tip_row(ui: &mut Ui, chip: &Chip, lane: Color32) {
+pub(super) fn tip_row(ui: &mut Ui, t: Lang, chip: &Chip, lane: Color32) {
     let spec = ChipSpec::of(chip, None);
     let pal = color::current();
     let (_, fg) = contrast::ref_chip(spec.style, lane, &pal);
@@ -279,14 +280,14 @@ pub(super) fn tip_row(ui: &mut Ui, chip: &Chip, lane: Color32) {
             paint(ui.painter(), r.center(), ink);
         }
         ui.add_space(2.0);
-        ui.label(chip.tip());
+        ui.label(chip.tip(t));
     });
 }
 
 /// Every label of a row, one per line.
-pub(super) fn tip_list(ui: &mut Ui, chips: &[Chip], lane: Color32) {
+pub(super) fn tip_list(ui: &mut Ui, t: Lang, chips: &[Chip], lane: Color32) {
     for chip in chips {
-        tip_row(ui, chip, lane);
+        tip_row(ui, t, chip, lane);
     }
 }
 

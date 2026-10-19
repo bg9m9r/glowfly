@@ -23,12 +23,14 @@ pub fn tracking_local<'a>(snap: &'a Snapshot, remote: &str, name: &str) -> Optio
 /// Splits remote-tracking label `label` ("origin/feature") into its remote and branch name, by
 /// the longest remote in the snapshot followed by '/'; None when no remote matches.
 pub fn split<'a>(snap: &Snapshot, label: &'a str) -> Option<(&'a str, &'a str)> {
-    let remote = snap
-        .remotes
-        .iter()
-        .map(|(r, _)| r.as_str())
-        .filter(|r| label.strip_prefix(r).is_some_and(|rest| rest.starts_with('/')))
-        .max_by_key(|r| r.len())?;
+    let remotes: Vec<&str> = snap.remotes.iter().map(|(r, _)| r.as_str()).collect();
+    split_among(&remotes, label)
+}
+
+/// Splits remote-tracking label `label` into its remote and branch name, by the longest of
+/// `remotes` followed by '/' (remote names may hold '/'); None when none matches.
+pub fn split_among<'a>(remotes: &[&str], label: &'a str) -> Option<(&'a str, &'a str)> {
+    let remote = remotes.iter().filter(|r| label.strip_prefix(**r).is_some_and(|rest| rest.starts_with('/'))).max_by_key(|r| r.len())?;
     Some((&label[..remote.len()], &label[remote.len() + 1..]))
 }
 
