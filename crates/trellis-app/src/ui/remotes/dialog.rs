@@ -9,10 +9,9 @@ use super::super::widgets::{FieldGroup, buttons};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::remotes::{RemoteForm, extra_push_urls, name_problem, push_problem, push_same_as_fetch, url_problem};
-use crate::state::touched::Touched;
 use crate::ui::theme::controls;
 use crate::ui::widgets::form_message::{self, Message};
-use eframe::egui::{self, Id, Key, RichText};
+use eframe::egui::{self, Id, RichText};
 use trellis_core::remote_ops::{RemoteNameProblem, UrlProblem};
 use trellis_core::repo::Snapshot;
 

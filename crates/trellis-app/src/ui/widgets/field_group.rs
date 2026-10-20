@@ -48,11 +48,6 @@ impl<'a> FieldGroup<'a> {
         Self { label: Some(label.into()), ..Self::default() }
     }
 
-    /// A group without a label row.
-    pub fn unlabelled() -> Self {
-        Self::default()
-    }
-
     /// Marks the field optional: `text` (`dialog.field.optional`) at the label row's right end.
     pub fn optional(mut self, text: &'a str) -> Self {
         self.optional = Some(text);
@@ -86,22 +81,20 @@ impl<'a> FieldGroup<'a> {
     /// Draws the group around the field `add` draws, and returns the field's response.
     pub fn show(self, ui: &mut Ui, add: impl FnOnce(&mut Ui) -> Response) -> Response {
         let FieldGroup { label, optional, help, messages } = self;
-        let label_r = label.as_deref().map(|text| {
+        if let Some(text) = label.as_deref() {
             ui.horizontal(|ui| {
-                let l = ui.label(RichText::new(text).size(type_scale::BODY).color(color::text()));
+                ui.label(RichText::new(text).size(type_scale::BODY).color(color::text()));
                 if let Some(o) = optional {
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         ui.label(RichText::new(o).size(type_scale::SMALL).color(color::weak()));
                     });
                 }
-                l
-            })
-            .inner
-        });
+            });
+        }
         let r = add(ui);
-        if let (Some(text), Some(l)) = (label.as_deref(), &label_r) {
+        // The field carries the label's text as its name; the label stays a node of its own.
+        if let Some(text) = label.as_deref() {
             access::name_field(&r, text);
-            r.ctx.accesskit_node_builder(r.id, |n| n.push_labelled_by(l.id.value().into()));
         }
         let mut shown = false;
         for (m, gate) in messages {
@@ -180,6 +173,7 @@ mod tests {
     fn the_label_names_the_field() {
         let mut h = harness(Touched::default(), false);
         h.run();
-        assert_eq!(h.get_by_label("Branch name").role(), Role::TextInput);
+        assert!(h.query_all_by_label("Branch name").any(|n| n.role() == Role::Label), "the visible label");
+        assert!(h.query_all_by_label("Branch name").any(|n| n.role() == Role::TextInput), "the field it names");
     }
 }

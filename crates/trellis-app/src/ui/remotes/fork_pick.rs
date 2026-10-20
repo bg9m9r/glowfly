@@ -6,8 +6,8 @@
 use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
-use super::super::widgets::{FieldGroup, TextField, buttons};
 use super::super::widgets::form_message;
+use super::super::widgets::{FieldGroup, TextField, buttons};
 use super::dialog::{field, note, problem};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;

@@ -2,7 +2,7 @@
 //! branch, a `.gitignore` template, a license and whether to commit them, checked as the user
 //! types with the pure rules in `state::init`.
 
-use super::clone_dialog::{destination, note, problem};
+use super::clone_dialog::{destination, note};
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::text_field::{self, TextField};
@@ -14,16 +14,8 @@ use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Id, RichText};
 use trellis_core::init_ops::{GitignoreTemplate, INITIAL_COMMIT, License};
 
-/// Width of the labels before the fields, so the fields line up.
-const LABEL_WIDTH: f32 = 110.0;
-
-fn label(ui: &mut egui::Ui, text: &str) {
-    let size = egui::vec2(LABEL_WIDTH, ui.spacing().interact_size.y);
-    ui.allocate_ui_with_layout(size, egui::Layout::left_to_right(egui::Align::Center), |ui| {
-        ui.set_min_width(LABEL_WIDTH);
-        ui.label(text);
-    });
-}
+/// The widest a template or license picker gets.
+const PICKER_W: f32 = 280.0;
 
 fn folder(ui: &mut egui::Ui, form: &mut InitForm, focus: bool, msgs: &mut Vec<Msg>) {
     let (shown, help) = match form.folder_line() {
@@ -56,45 +48,56 @@ fn folder(ui: &mut egui::Ui, form: &mut InitForm, focus: bool, msgs: &mut Vec<Ms
     }
     if let Some(f) = form.facts() {
         destination(ui, &trellis_core::native_path::shown(&f.path));
+        // As far from the next group as a group's own gap.
+        ui.add_space(12.0);
     }
 }
 
 fn gitignore(ui: &mut egui::Ui, form: &mut InitForm) {
-    ui.horizontal(|ui| {
-        label(ui, ".gitignore");
+    FieldGroup::new(".gitignore").show(ui, |ui| {
         let shown = form.gitignore.map_or("None", GitignoreTemplate::label);
-        egui::ComboBox::from_id_salt("trellis-init-gitignore").selected_text(shown).width(160.0).show_ui(ui, |ui| {
-            ui.selectable_value(&mut form.gitignore, None, "None");
-            for t in GitignoreTemplate::ALL {
-                ui.selectable_value(&mut form.gitignore, Some(t), t.label());
-            }
-        });
+        let w = ui.available_width().min(PICKER_W);
+        egui::ComboBox::from_id_salt("trellis-init-gitignore")
+            .selected_text(shown)
+            .width(w)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut form.gitignore, None, "None");
+                for t in GitignoreTemplate::ALL {
+                    ui.selectable_value(&mut form.gitignore, Some(t), t.label());
+                }
+            })
+            .response
     });
     controls::checkbox(ui, &mut form.os_editor, "Also ignore operating system and editor files (macOS, Windows, common editors)");
     if form.facts().is_some_and(|f| f.gitignore) {
         note(ui, GITIGNORE_KEPT);
     }
+    // The checkbox and its note close the .gitignore part, as a group's help line would.
+    ui.add_space(12.0);
 }
 
 fn license(ui: &mut egui::Ui, form: &mut InitForm, year: i32) {
-    ui.horizontal(|ui| {
-        label(ui, "License");
+    FieldGroup::new("License").show(ui, |ui| {
         let shown = form.license.map_or("None", License::label);
-        egui::ComboBox::from_id_salt("trellis-init-license").selected_text(shown).width(160.0).show_ui(ui, |ui| {
-            ui.selectable_value(&mut form.license, None, "None");
-            for l in License::ALL {
-                ui.selectable_value(&mut form.license, Some(l), l.label());
-            }
-        });
+        let w = ui.available_width().min(PICKER_W);
+        egui::ComboBox::from_id_salt("trellis-init-license")
+            .selected_text(shown)
+            .width(w)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut form.license, None, "None");
+                for l in License::ALL {
+                    ui.selectable_value(&mut form.license, Some(l), l.label());
+                }
+            })
+            .response
     });
     if form.license.is_some_and(License::needs_holder) {
-        ui.horizontal(|ui| {
-            label(ui, "Copyright holder");
-            let r = ui.add(TextField::new(&mut form.holder).id(Id::new("trellis-init-holder")).width(250.0));
-            form_message::track(&mut form.touched, "holder", &r);
-        });
-        problem(ui, &form.touched, "holder", form.problems().holder.as_ref());
-        note(ui, &format!("{year} and this name go in the copyright line."));
+        let holder = form.problems().holder;
+        let r = FieldGroup::new("Copyright holder")
+            .message(&form.touched, "holder", holder.map(Message::error))
+            .help(format!("{year} and this name go in the copyright line."))
+            .show(ui, |ui| ui.add(TextField::new(&mut form.holder).id(Id::new("trellis-init-holder"))));
+        form_message::track(&mut form.touched, "holder", &r);
     }
     if form.license.is_some()
         && let Some(kept) = form.license_kept()
@@ -108,7 +111,7 @@ fn license(ui: &mut egui::Ui, form: &mut InitForm, year: i32) {
 /// `cx.keyboard` is false (a credential prompt is open above it).
 pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut InitForm, year: i32, msgs: &mut Vec<Msg>) -> bool {
     let mut d = Dialog::new(cx, "Start a new repository").begin(ui);
-    d.body(ui, |ui| body(ui, form, year, cx.keyboard, msgs));
+    d.body(ui, |ui| body(ui, cx, form, year, msgs));
     let blocked = form.problems().blocked;
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create repository").enabled(!blocked)));
     if out.attempted {
@@ -124,20 +127,18 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut InitForm, year: i32, msgs: &mu
     close
 }
 
-fn body(ui: &mut egui::Ui, form: &mut InitForm, year: i32, focus: bool, msgs: &mut Vec<Msg>) {
+fn body(ui: &mut egui::Ui, cx: Cx, form: &mut InitForm, year: i32, msgs: &mut Vec<Msg>) {
+    let (t, focus) = (cx.t, cx.keyboard);
     folder(ui, form, focus, msgs);
-    ui.add_space(6.0);
-    ui.horizontal(|ui| {
-        label(ui, "Initial branch");
-        let r = ui.add(TextField::new(&mut form.branch).id(Id::new("trellis-init-branch")).hint("git's default").width(180.0));
-        form_message::track(&mut form.touched, "branch", &r);
-    });
-    problem(ui, &form.touched, "branch", form.problems().branch.as_ref());
-    ui.add_space(6.0);
+    let branch = form.problems().branch;
+    let r = FieldGroup::new("Initial branch")
+        .optional(t.tr("dialog.field.optional"))
+        .help("Leave empty for git's default branch name")
+        .message(&form.touched, "branch", branch.map(Message::error))
+        .show(ui, |ui| ui.add(TextField::new(&mut form.branch).id(Id::new("trellis-init-branch"))));
+    form_message::track(&mut form.touched, "branch", &r);
     gitignore(ui, form);
-    ui.add_space(6.0);
     license(ui, form, year);
-    ui.add_space(6.0);
     let commit_text = format!("Commit these files as \"{INITIAL_COMMIT}\"");
     if form.can_commit(year) {
         controls::checkbox(ui, &mut form.commit, commit_text);

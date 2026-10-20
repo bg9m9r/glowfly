@@ -5,6 +5,7 @@
 
 use super::common::{status_color, status_label, widget_row_height};
 use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_guides;
 use super::theme::color;
 use super::widgets::buttons;
 use crate::msg::Msg;
@@ -33,7 +34,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut SaveChangesForm, snap: Option<
         Some(b) => format!("From uncommitted changes on {b}"),
         None => "From uncommitted changes on detached HEAD".to_owned(),
     };
-    let mut d = Dialog::new(cx, "Create patch").subtitle(on).begin(ui);
+    let mut d = Dialog::new(cx, "Create patch").subtitle(on).guide(dialog_guides::patch_save(cx.t)).begin(ui);
     let blocked = d.body(ui, |ui| body(ui, form, snap));
     // The body already says why it's blocked; the footer says only that a job is running.
     let why = if blocked.is_some() { None } else { (!idle).then_some(BUSY) };

@@ -4,8 +4,8 @@
 
 use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::pane_status::{self, Failure};
-use super::super::widgets::{FieldGroup, buttons};
 use super::super::widgets::form_message::{self, Message};
+use super::super::widgets::{FieldGroup, buttons};
 use super::dialog::{field, note, problem};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;

@@ -247,4 +247,3 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         msgs.push(Msg::Credentials(CredentialMsg::AnswerCredentials));
     }
 }
-

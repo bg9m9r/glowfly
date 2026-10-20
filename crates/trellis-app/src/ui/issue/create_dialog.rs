@@ -18,7 +18,7 @@ use crate::state::{ForgeState, ProjectKeys};
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
-use eframe::egui::{self, Key, RichText, Ui};
+use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::filters::Named;
 use trellis_core::forge::{IssueField, Provider};
 use trellis_core::i18n::Lang;

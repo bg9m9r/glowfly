@@ -41,8 +41,8 @@ mod size;
 pub use footer::{Footer, Outcome};
 pub use guide::Guide;
 pub use header::take_closed;
-pub use size::Size;
 use size::MIN_WIDTH;
+pub use size::Size;
 
 /// Space kept free between a dialog and the window's edges, and `theme::dialog`'s padding.
 const MARGIN: f32 = 48.0;

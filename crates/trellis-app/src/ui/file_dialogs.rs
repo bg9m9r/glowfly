@@ -5,15 +5,15 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer, Open};
 use super::theme::color;
+use super::widgets::form_message::{self, Message};
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use super::widgets::form_message::{self, Message};
 use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
 use crate::state::files::{PathForm, listed, tracked};
 use crate::state::touched::Touched;
 use crate::ui::theme::controls;
-use eframe::egui::{self, Key, RichText};
+use eframe::egui::{self, RichText};
 use trellis_core::repo::{PathProblem, Snapshot, check_new_path, new_path_warning};
 
 /// The New file dialog; returns true when it should close (Cancel). Its field keeps the keyboard

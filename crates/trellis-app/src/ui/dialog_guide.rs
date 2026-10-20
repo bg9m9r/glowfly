@@ -92,3 +92,38 @@ fn badge_paint(ui: &Ui, rect: Rect, n: usize) {
     let font = type_scale::strong(ui, type_scale::SMALL);
     p.text(rect.center(), Align2::CENTER_CENTER, n.to_string(), font, color::text());
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use eframe::egui::pos2;
+    use egui_kittest::Harness;
+    use egui_kittest::kittest::Queryable;
+
+    #[test]
+    fn beside_needs_room_for_form_gap_and_pane() {
+        assert_eq!(place(480.0, 776.0), Placement::Beside);
+        assert_eq!(place(480.0, 775.0), Placement::Stacked);
+        assert_eq!(place(640.0, 935.0), Placement::Stacked);
+    }
+
+    const LAST: &str = "Step four wraps over more than one line, because a pane only 272 px wide has room for a few words a line.";
+
+    #[test]
+    fn height_matches_the_painted_steps() {
+        let mut h = Harness::builder().with_size(vec2(400.0, 600.0)).build_ui_state(
+            |ui, rect: &mut Rect| {
+                let g = Guide { steps: vec!["One short step.", "A second step, a little longer than the first.", "Three.", LAST] };
+                let height = height(ui, Lang::En, &g, PANE_W);
+                *rect = Rect::from_min_size(pos2(8.0, 8.0), vec2(PANE_W, height));
+                paint(ui, Lang::En, &g, *rect);
+            },
+            Rect::NOTHING,
+        );
+        h.run();
+        let rect = *h.state();
+        let last = h.get_by_label(LAST).bounding_box().expect("the last step has bounds");
+        assert!(last.y1 as f32 <= rect.bottom() - INNER + 0.5, "the last step ends at {} in a pane ending at {}", last.y1, rect.bottom());
+        assert!(last.y1 as f32 >= rect.bottom() - INNER - 0.5, "no space left over: {} in {}", last.y1, rect.bottom());
+    }
+}

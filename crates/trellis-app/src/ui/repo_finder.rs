@@ -4,11 +4,10 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
-use super::widgets::{self, Icon, buttons};
+use super::widgets::{self, Icon, TextField, buttons};
 use crate::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
 use crate::state::repo_lists::favorite_label;
 use crate::state::repo_scan::{FinderRow, RepoScan, matches};
-use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, Response, RichText, Sense, vec2};
 use std::path::PathBuf;

@@ -4,8 +4,8 @@
 
 use super::common::capitalize;
 use super::dialog_frame::{Cx, Dialog, Footer};
-use super::theme::color;
 use super::dialog_guides;
+use super::theme::color;
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
 use crate::gitflow::GitFlowMsg;

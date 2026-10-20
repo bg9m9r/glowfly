@@ -13,7 +13,7 @@ use crate::state::forge_filters::{OptionsState, suggestions};
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
-use eframe::egui::{self, Key, RichText};
+use eframe::egui::{self, RichText};
 use trellis_core::forge::filters::matching::{self, Field};
 use trellis_core::forge::filters::{Draft, Milestone, Review, Sprint, Who};
 use trellis_core::forge::{FilterKind, FilterOptions};
@@ -109,9 +109,7 @@ impl Fields<'_> {
         let drafts = [(Draft::Any, "Any"), (Draft::Ready, "Ready for review only"), (Draft::Drafts, "Drafts only")];
         row(ui, "Draft", why, |ui| combo(ui, "draft", &mut self.form.c.draft, &drafts));
         let why = self.why(Field::Base);
-        row(ui, "Target branch", why, |ui| {
-            ui.add(TextField::new(&mut self.form.c.base).hint("Any branch").width(WIDTH))
-        });
+        row(ui, "Target branch", why, |ui| ui.add(TextField::new(&mut self.form.c.base).hint("Any branch").width(WIDTH)));
         self.labels(ui);
         self.milestone(ui);
     }
@@ -138,9 +136,7 @@ impl Fields<'_> {
     fn labels(&mut self, ui: &mut egui::Ui) {
         let noun = self.form.provider.map(matching::labels_noun).unwrap_or("Labels");
         let why = self.why(Field::Labels);
-        row(ui, noun, why.clone(), |ui| {
-            ui.add(TextField::new(&mut self.form.labels).hint("Comma-separated").width(WIDTH))
-        });
+        row(ui, noun, why.clone(), |ui| ui.add(TextField::new(&mut self.form.labels).hint("Comma-separated").width(WIDTH)));
         let typed = self.form.label_list();
         let offered: Vec<String> =
             self.loaded.labels.iter().filter(|l| !typed.iter().any(|t| t.eq_ignore_ascii_case(l))).take(MAX_CHIPS).cloned().collect();

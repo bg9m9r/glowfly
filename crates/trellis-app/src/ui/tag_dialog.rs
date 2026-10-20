@@ -4,13 +4,14 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::buttons;
 use super::widgets::form_message::{self, Message};
+use super::widgets::text_field::{self, TextField};
+use super::widgets::{FieldGroup, buttons};
 use crate::msg::Msg;
 use crate::state::tags::{AnnotateForm, TagForm, annotate_problem, push_remote, tag_problem};
 use crate::tag::TagMsg;
 use crate::ui::theme::controls;
-use eframe::egui::{self, Id, Key, RichText};
+use eframe::egui::{self, Id, RichText};
 use trellis_core::branch_ops::ref_name_warning;
 use trellis_core::names::blocks_here;
 use trellis_core::repo::Snapshot;
@@ -35,25 +36,25 @@ pub fn new_tag(ui: &mut egui::Ui, cx: Cx, form: &mut TagForm, snap: Option<&Snap
     };
     let d = d.begin(ui);
     let msg_id = Id::new("trellis-tag-message");
-    let r = controls::field(
-        ui,
-        egui::TextEdit::singleline(&mut form.name).id(Id::new("trellis-tag-name")).hint_text("v1.0.0").desired_width(f32::INFINITY),
-    );
-    form_message::track(&mut form.touched, NAME, &r);
-    // Read before focus is requested again below, which would hide that Enter left the field.
-    let enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     let problem = tag_problem(snap, &form.name);
     let name_msg = match &problem {
         Some(p) => Some(Message::error(p.message(form.name.trim()))),
         // Allowed here, but Windows can't store it as a ref file.
         None => ref_name_warning(form.name.trim(), blocks_here()).map(Message::warning),
     };
-    form_message::field(ui, &form.touched, NAME, name_msg);
-    let hint = if form.annotated { "Message (required)" } else { "Message (optional, makes an annotated tag)" };
-    controls::field(
-        ui,
-        egui::TextEdit::multiline(&mut form.message).id(msg_id).hint_text(hint).desired_rows(3).desired_width(f32::INFINITY),
-    );
+    let r = FieldGroup::new("Name")
+        .message(&form.touched, NAME, name_msg)
+        .show(ui, |ui| ui.add(TextField::new(&mut form.name).id(Id::new("trellis-tag-name")).hint("v1.0.0")));
+    form_message::track(&mut form.touched, NAME, &r);
+    // Read before focus is requested again below, which would hide that Enter left the field.
+    let enter = text_field::entered(ui, &r);
+    // Checked again on the name as it is now, which this frame's typing may have changed.
+    let problem = tag_problem(snap, &form.name);
+    let mut group = FieldGroup::new("Message");
+    if !form.annotated {
+        group = group.optional(cx.t.tr("dialog.field.optional")).help("A message makes an annotated tag.");
+    }
+    group.show(ui, |ui| ui.add(TextField::multiline(&mut form.message, 3).id(msg_id)));
     let valid = problem.is_none() && (!form.annotated || !form.message.trim().is_empty());
     if enter && problem.is_none() && form.annotated && form.message.trim().is_empty() {
         // The name is in; the message is still needed.
@@ -122,14 +123,7 @@ pub fn annotate_tag(ui: &mut egui::Ui, cx: Cx, form: &mut AnnotateForm, snap: Op
     ui.add_space(6.0);
     let id = Id::new("trellis-annotate-tag-message");
     let problem = annotate_problem(snap, &form.tag, &form.at);
-    let r = controls::field(
-        ui,
-        egui::TextEdit::multiline(&mut form.message)
-            .id(id)
-            .hint_text("Tag message (required)")
-            .desired_rows(4)
-            .desired_width(f32::INFINITY),
-    );
+    let r = FieldGroup::new("Message").show(ui, |ui| ui.add(TextField::multiline(&mut form.message, 4).id(id)));
     if cx.keyboard && !r.has_focus() {
         r.request_focus();
     }

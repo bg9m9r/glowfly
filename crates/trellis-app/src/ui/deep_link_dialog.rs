@@ -3,7 +3,7 @@
 //! from. Esc closes them through the usual `CloseModal`, which gives the link up.
 
 use super::common::capitalize;
-use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::buttons;
 use crate::deep_link::DeepLinkMsg;
@@ -19,14 +19,14 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, d: &LinkDialog, msgs: &mut Vec<Msg>) -> b
     let link = |m: DeepLinkMsg| Msg::DeepLink(m);
     match d {
         LinkDialog::Invalid { text, reason } => {
-            let d = Dialog::new(cx, "Can't open this link").begin(ui);
+            let d = Dialog::new(cx, "Can't open this link").size(Size::Small).begin(ui);
             ui.add(egui::Label::new(format!("Trellis can't open this link: {reason}.")).wrap());
             ui.add_space(6.0);
             ui.add(egui::Label::new(RichText::new(text.as_str()).monospace().color(color::weak())).wrap());
             d.finish(ui, Footer::new().close()).dismiss
         }
         LinkDialog::NotFound { what, repo, can_clone, problem } => {
-            let d = Dialog::new(cx, "Repository not found").begin(ui);
+            let d = Dialog::new(cx, "Repository not found").size(Size::Small).begin(ui);
             ui.label("No open, recent or favorite repository matches this link.");
             ui.add_space(4.0);
             ui.add(egui::Label::new(RichText::new(format!("{} in {repo}", capitalize(what))).color(color::weak())).wrap());

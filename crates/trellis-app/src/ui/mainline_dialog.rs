@@ -1,18 +1,15 @@
 //! The Choose the mainline parent dialog (`Modal::Mainline`): which parent of a merge commit a
-//! cherry-pick or revert counts the merge's changes against.
+//! cherry-pick or revert counts the merge's changes against. Its side pane explains the choice.
 
 use super::common::short;
 use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_guides;
 use super::widgets::buttons;
 use crate::msg::{Msg, SelectionMsg};
 use crate::state::pick::{MainlineForm, PickOp};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
 use eframe::egui::{self, RichText};
-
-/// What the dialog explains about the choice.
-const EXPLAIN: &str = "A merge commit has more than one parent. The change applied is what the merge brought in compared with the \
-                       parent you choose, which is usually parent 1, the branch that was merged into.";
 
 /// Draws the dialog; returns true when it should close (submitted or Cancel). The primary button
 /// waits while a job runs (`idle` false).
@@ -21,10 +18,8 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut MainlineForm, idle: bool, msgs
         PickOp::CherryPick => "Cherry-pick",
         PickOp::Revert => "Revert",
     };
-    let d = Dialog::new(cx, "Choose the mainline parent").begin(ui);
+    let d = Dialog::new(cx, "Choose the mainline parent").guide(dialog_guides::mainline(cx.t)).begin(ui);
     ui.label(RichText::new(format!("{what} merge commit {} {}", short(form.oid), form.summary)).color(color::text()));
-    ui.add_space(4.0);
-    ui.add(egui::Label::new(RichText::new(EXPLAIN).color(color::weak())).wrap());
     ui.add_space(8.0);
     for (i, p) in form.parents.iter().enumerate() {
         let mut text = format!("Parent {}: {}", i + 1, short(p.oid));

@@ -6,14 +6,15 @@
 use super::common::{status_color, status_label, widget_row_height};
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::buttons;
 use super::widgets::form_message::{self, Message};
+use super::widgets::text_field::{self, TextField};
+use super::widgets::{FieldGroup, buttons};
 use crate::msg::{Msg, StashMsg};
 use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, stashable, wip_files};
 use crate::state::touched::Touched;
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
-use eframe::egui::{self, Key, RichText, Sense};
+use eframe::egui::{self, RichText, Sense};
 use trellis_core::repo::Snapshot;
 use trellis_core::stash_ops::StashScope;
 
@@ -37,9 +38,9 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
     };
     let focus = cx.keyboard;
     let d = Dialog::new(cx, "Stash changes").subtitle(on).begin(ui);
-    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.message).hint_text("Message (optional)").desired_width(f32::INFINITY));
+    let r = FieldGroup::new("Message").optional(cx.t.tr("dialog.field.optional")).show(ui, |ui| ui.add(TextField::new(&mut form.message)));
     // Read before focus is taken, or the Enter that just left the field is missed.
-    let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+    let submit = text_field::entered(ui, &r);
     if focus && std::mem::take(&mut form.focus_message) {
         r.request_focus();
     }

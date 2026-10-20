@@ -136,11 +136,5 @@ pub fn patch_save(t: Lang) -> Guide {
 
 /// Choose the mainline parent.
 pub fn mainline(t: Lang) -> Guide {
-    Guide {
-        steps: vec![
-            t.tr("dialog.guide.mainline.step1"),
-            t.tr("dialog.guide.mainline.step2"),
-            t.tr("dialog.guide.mainline.step3"),
-        ],
-    }
+    Guide { steps: vec![t.tr("dialog.guide.mainline.step1"), t.tr("dialog.guide.mainline.step2"), t.tr("dialog.guide.mainline.step3")] }
 }

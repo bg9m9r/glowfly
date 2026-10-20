@@ -6,7 +6,7 @@
 
 use crate::ui::theme::{color, controls};
 use crate::ui::widgets::buttons::StyledButton;
-use eframe::egui::{self, Align, Id, Key, Margin, Response, TextStyle, Ui, WidgetText, vec2};
+use eframe::egui::{self, Align, Id, Key, Margin, Response, Ui, WidgetText, vec2};
 
 /// A field's height, and a multiline field's least height.
 pub const HEIGHT: f32 = 36.0;
@@ -24,13 +24,12 @@ pub struct TextField<'t> {
     width: Option<f32>,
     password: bool,
     char_limit: Option<usize>,
-    mono: bool,
 }
 
 impl<'t> TextField<'t> {
     /// A single-line field.
     pub fn new(text: &'t mut dyn egui::TextBuffer) -> Self {
-        Self { text, multiline: None, id: None, hint: None, width: None, password: false, char_limit: None, mono: false }
+        Self { text, multiline: None, id: None, hint: None, width: None, password: false, char_limit: None }
     }
 
     /// A multiline field `rows` lines tall (at least `HEIGHT`).
@@ -65,17 +64,11 @@ impl<'t> TextField<'t> {
         self.char_limit = Some(limit);
         self
     }
-
-    /// The text in the monospace font.
-    pub fn monospace(mut self) -> Self {
-        self.mono = true;
-        self
-    }
 }
 
 impl egui::Widget for TextField<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let TextField { text, multiline, id, hint, width, password, char_limit, mono } = self;
+        let TextField { text, multiline, id, hint, width, password, char_limit } = self;
         let rows = multiline.unwrap_or(1);
         let edit = if multiline.is_some() { egui::TextEdit::multiline(text) } else { egui::TextEdit::singleline(text) };
         let margin = Margin::symmetric(PAD_X, PAD_Y);
@@ -98,12 +91,9 @@ impl egui::Widget for TextField<'_> {
         if let Some(n) = char_limit {
             edit = edit.char_limit(n);
         }
-        if mono {
-            edit = edit.font(TextStyle::Monospace);
-        }
         let mut r = ui.add(controls::Field(edit));
         // egui reports the text's rect; the field is the whole box.
-        r.rect = r.rect + margin;
+        r.rect += margin;
         r
     }
 }

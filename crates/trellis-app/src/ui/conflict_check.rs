@@ -3,7 +3,7 @@
 //! for. Texts come from state/conflict_check.rs; the buttons send the same Merge and Rebase
 //! jobs as the branch menus.
 
-use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::{self, Icon, buttons};
 use crate::conflict_check::ConflictCheckMsg;
@@ -108,7 +108,7 @@ pub fn report_modal(
     idle: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let mut d = Dialog::new(cx, "Conflict check").resizable("conflict-report").begin(ui);
+    let mut d = Dialog::new(cx, "Conflict check").size(Size::Wide).resizable("conflict-report").begin(ui);
     d.body(ui, |ui| {
         if let Some(note) = cc::target_note(&report.request.target, &report.request.branch, remote) {
             ui.label(RichText::new(note).color(color::weak()));

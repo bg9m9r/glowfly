@@ -42,7 +42,8 @@ pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &m
         ui.add_space(8.0);
     } else {
         let name = f.name.trim();
-        let bad = (!name.is_empty() && !forge::valid_repo_name(name)).then(|| Message::error("Use letters, digits, '.', '-' and '_' only."));
+        let bad =
+            (!name.is_empty() && !forge::valid_repo_name(name)).then(|| Message::error("Use letters, digits, '.', '-' and '_' only."));
         let r = FieldGroup::new("Name").message(&f.touched, "name", bad).show(ui, |ui| {
             ui.horizontal(|ui| {
                 egui::ComboBox::from_id_salt("publish-owner").selected_text(f.owner.as_str()).width(160.0).show_ui(ui, |ui| {

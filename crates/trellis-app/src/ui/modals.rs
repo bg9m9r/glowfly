@@ -161,9 +161,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     } else if asking {
         // Drawn after the form, so it stacks on top and the form beneath takes no input.
         super::dialog_guard::discard_question(ctx, t, msgs);
-    } else if !prompting
-        && let Some(how) = if closed { Some(Dismiss::CloseButton) } else { super::dialog_guard::dismissal(&resp) }
-    {
+    } else if !prompting && let Some(how) = if closed { Some(Dismiss::CloseButton) } else { super::dialog_guard::dismissal(&resp) } {
         msgs.insert(first, Msg::Dialog(DialogMsg::Dismiss(how)));
     }
 }

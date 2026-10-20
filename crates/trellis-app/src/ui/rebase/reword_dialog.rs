@@ -9,9 +9,9 @@ use crate::state::rebase::needs_stash;
 use crate::state::rebase_quick::{BLANK, RewordForm, STASH_NOTE};
 use crate::ui::dialog_frame::{Cx, Dialog, Footer};
 use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::widgets::buttons;
 use crate::ui::widgets::form_message::{self, Message};
+use crate::ui::widgets::text_field::TextField;
+use crate::ui::widgets::{FieldGroup, buttons};
 use eframe::egui::{self, RichText};
 use trellis_core::repo::Snapshot;
 
@@ -22,13 +22,14 @@ use trellis_core::repo::Snapshot;
 pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut RewordForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let d = Dialog::new(cx, form.title()).subtitle(form.subtitle()).begin(ui);
     let hint = form.hint();
-    let r = controls::field(ui, egui::TextEdit::multiline(&mut form.draft).hint_text(hint).desired_rows(6).desired_width(f32::INFINITY));
+    let problem = form.draft.trim().is_empty().then(|| Message::error(BLANK));
+    let r = FieldGroup::new("Message")
+        .message(&form.touched, "message", problem)
+        .show(ui, |ui| ui.add(TextField::multiline(&mut form.draft, 6).hint(hint)));
     form_message::track(&mut form.touched, "message", &r);
     if cx.keyboard && std::mem::take(&mut form.focus) {
         r.request_focus();
     }
-    let problem = form.draft.trim().is_empty().then(|| Message::error(BLANK));
-    form_message::field(ui, &form.touched, "message", problem);
     let stash = snap.is_some_and(needs_stash);
     if stash {
         ui.add_space(4.0);

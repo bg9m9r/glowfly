@@ -34,13 +34,13 @@ pub use super::list_row::{
     GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row,
     file_row_with_end, list_row, list_row_cut, list_row_hidden, row_text, row_text_reserving,
 };
-pub use icon::{Icon, paint_icon, paint_icon_sized};
 pub use field_group::FieldGroup;
+pub use icon::{Icon, paint_icon, paint_icon_sized};
 pub use quiet_chip::quiet_chip;
-pub use text_field::TextField;
 pub use section_header::section_fonts;
 #[cfg(test)]
 pub use section_header::section_header;
+pub use text_field::TextField;
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;

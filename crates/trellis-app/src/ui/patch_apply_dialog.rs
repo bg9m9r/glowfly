@@ -4,6 +4,7 @@
 //! checks the choice again before running anything.
 
 use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_guides;
 use super::theme::color;
 use super::widgets::buttons;
 use crate::msg::Msg;
@@ -28,7 +29,7 @@ const ON_FAIL: [(OnFail, &str); 3] = [
 /// Draws the dialog; returns true when it should close. Apply waits while a job runs (`idle`
 /// is false); on Apply the dialog stays open until `update` starts the job.
 pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut ApplyForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut d = Dialog::new(cx, "Apply patch").subtitle(form.name.clone()).begin(ui);
+    let mut d = Dialog::new(cx, "Apply patch").subtitle(form.name.clone()).guide(dialog_guides::patch_apply(cx.t)).begin(ui);
     let blocked = d.body(ui, |ui| body(ui, form, snap));
     // The body already says why it can't be applied; the footer only says it waits.
     let why = if blocked.is_some() { None } else { (!idle).then_some(BUSY) };
