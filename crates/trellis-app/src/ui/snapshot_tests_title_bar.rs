@@ -158,15 +158,16 @@ fn the_empty_bar_moves_and_maximizes_the_window() {
     h.run();
     assert_eq!(sent(&h), [WindowCmd::SetMaximized(true)]);
     h.state_mut().1.clear();
-    // A drag that starts on a tab reorders the tabs instead (the first tab's centre).
-    let tab = pos2(8.0 + 32.0 + 8.0 + 110.0, 27.0);
+    // A drag that starts on a tab reorders the tabs instead (from the first tab's centre to the
+    // second's).
+    let (tab, over) = (crate::ui::tabs_tests::tab_centre(&h, 0), crate::ui::tabs_tests::tab_centre(&h, 1));
     pointer(&mut h, tab, Some((PointerButton::Primary, true)));
     h.step();
     pointer(&mut h, tab + vec2(12.0, 0.0), None);
     h.step();
-    pointer(&mut h, tab + vec2(240.0, 0.0), None);
+    pointer(&mut h, over, None);
     h.step();
-    pointer(&mut h, tab + vec2(240.0, 0.0), Some((PointerButton::Primary, false)));
+    pointer(&mut h, over, Some((PointerButton::Primary, false)));
     h.run();
     assert!(sent(&h).is_empty(), "{:?}", sent(&h));
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 1 }))));

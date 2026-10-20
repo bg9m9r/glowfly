@@ -43,9 +43,9 @@ pub const OPAQUE: u8 = 255;
 /// A surface that can sit on Mica.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Surface {
-    /// The title bar and the toolbar, on `toolbar`.
+    /// The title bar, on `toolbar`.
     Chrome,
-    /// The sidebar and its edge strip, on `panel`.
+    /// The toolbar, the sidebar and its edge strip, on `panel`.
     Side,
 }
 
@@ -55,7 +55,8 @@ pub(super) fn bands(p: &Palette) -> &'static [Color32; 9] {
 }
 
 /// What must stay readable on `s`, as (token name, colour, minimum ratio): the floors of
-/// docs/COLOUR.md §3. The toolbar never shows faint text.
+/// docs/COLOUR.md §3. The title bar shows no faint text (a quiet tab's faint icon sits beside
+/// its weak name); the toolbar is on the side surface, which checks every tone it uses.
 pub(super) fn checks(p: &Palette, s: Surface) -> Vec<(&'static str, Color32, f64)> {
     let mut out = vec![("text", p.text, 4.5), ("weak", p.weak, 4.5), ("input_border", p.input_border, 3.0)];
     if s == Surface::Side {

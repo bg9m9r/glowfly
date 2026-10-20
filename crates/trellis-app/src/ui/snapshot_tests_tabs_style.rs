@@ -46,7 +46,8 @@ fn tabs_hover() {
     let mut h = harness(st, true);
     h.run();
     // The fixture's second tab, whose path (in its tooltip) is the same on every machine.
-    pointer(&mut h, tab_centre(1) + vec2(-40.0, 0.0), None);
+    let at = tab_centre(&h, 1) + vec2(-30.0, 0.0);
+    pointer(&mut h, at, None);
     h.run();
     h.check_snapshot("tabs_hover");
     drop(h);
@@ -58,7 +59,8 @@ fn a_cut_tab_shows_its_whole_name_first() {
     let (st, dir) = five_tabs("tabs-cut-tip");
     let mut h = harness(st, true);
     h.run();
-    pointer(&mut h, tab_centre(3) + vec2(-40.0, 0.0), None);
+    let at = tab_centre(&h, 3) + vec2(-40.0, 0.0);
+    pointer(&mut h, at, None);
     for _ in 0..4 {
         h.step();
     }

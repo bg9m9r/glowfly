@@ -17,8 +17,6 @@ type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// A point on the bar's empty space, between the tabs and the window buttons.
 const EMPTY: Pos2 = pos2(1000.0, 20.0);
-/// The first tab's centre.
-const TAB: Pos2 = pos2(8.0 + 32.0 + 8.0 + 110.0, 27.0);
 
 fn open(name: &str, chrome: Chrome, theme: ThemeChoice, change: impl FnOnce(&mut AppState)) -> (H, std::path::PathBuf) {
     let dark = theme == ThemeChoice::Dark;
@@ -77,7 +75,8 @@ fn right_click_on_the_empty_bar_opens_the_system_menu() {
     remove_fixture(&dir);
     // A tab keeps its own right-click.
     let (mut h, dir) = open("system-menu-tab", Chrome::Windows, ThemeChoice::Dark, |_| {});
-    right_click(&mut h, TAB);
+    let tab = crate::ui::tabs_tests::tab_centre(&h, 0);
+    right_click(&mut h, tab);
     assert_eq!(menus_sent(&h), 0, "on a tab");
     drop(h);
     remove_fixture(&dir);

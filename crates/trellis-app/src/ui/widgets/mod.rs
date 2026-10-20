@@ -7,8 +7,9 @@
 //! warning and information marks in `severity.rs`. The shared row selection and hover look is
 //! in `row_fill.rs`, the weak lines that say why an action is disabled in `reason.rs`, and the
 //! menu items marked with an info icon whose reason shows on hover or focus (or that open a
-//! setting first) in `menu_reason.rs`. The tab bars' painted close × and
-//! new-tab + are in `tab_glyph.rs`, and the quiet, clickable chips of the commit details (its
+//! setting first) in `menu_reason.rs`. The toolbar's buttons, toggles, split buttons, caret and
+//! group surfaces are in `tool.rs`. The tab bars' painted close × and new-tab + are in
+//! `tab_glyph.rs`, and the quiet, clickable chips of the commit details (its
 //! SHA, parents and committer) in `quiet_chip.rs`. The quiet headers' ghost buttons, divider
 //! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`. A dialog's 36 px
 //! text field is `text_field.rs`, and its label-field-help group `field_group.rs`.
@@ -28,6 +29,7 @@ pub mod segmented;
 pub mod severity;
 pub mod tab_glyph;
 pub mod text_field;
+mod tool;
 pub mod tooltip;
 pub mod tooltip_motion;
 pub mod truncate;
@@ -43,131 +45,13 @@ pub use section_header::section_fonts;
 #[cfg(test)]
 pub use section_header::section_header;
 pub use text_field::TextField;
+pub use tool::*;
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;
 use crate::ui::theme::type_scale;
 
-use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
-
-/// A tool slot's width with captions shown; a longer caption widens it to the caption plus
-/// `CAPTION_PAD`.
-pub const TOOL_W: f32 = 56.0;
-/// A tool slot's width with captions hidden.
-pub const TOOL_W_BARE: f32 = 40.0;
-/// A tool slot's height, the toolbar row's whole height.
-pub const TOOL_H: f32 = 48.0;
-/// Room beside a caption inside its slot, both sides together.
-pub const CAPTION_PAD: f32 = 8.0;
-/// The icon's centre and the caption's, below the slot's top.
-pub const ICON_Y: f32 = 17.0;
-pub const CAPTION_Y: f32 = 37.0;
-/// The corners of a slot's hover fill, pressed fill and focus ring.
-pub const TOOL_RADIUS: u8 = 6;
-/// Between the buttons of one toolbar group (egui's item spacing there); a dropdown caret sits
-/// right against its button.
-pub const TOOL_SPACING: f32 = 2.0;
-/// Between two toolbar group surfaces: with their padding and stroke, 16 px from a button to
-/// the next group's first one.
-pub const GROUP_GAP: f32 = 8.0;
-/// A toolbar group surface's padding inside its 1 px stroke, and its corners.
-pub const GROUP_PAD: i8 = 3;
-pub const GROUP_RADIUS: u8 = 10;
-/// A toolbar group's height: a button, its padding and its stroke.
-pub const GROUP_H: f32 = TOOL_H + 2.0 * (GROUP_PAD as f32 + 1.0);
-
-/// Toolbar button: the icon with its caption under it (captions optional). `name` is its
-/// accessible name, which includes the caption; the caller attaches the tooltip
-/// (`tooltip::attach`). A disabled button still takes the keyboard focus, so Tab reaches its
-/// reason.
-pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, name: &str, enabled: bool, labels: bool) -> Response {
-    let sense = if enabled { Sense::click() } else { Sense::hover() | Sense::FOCUSABLE };
-    let (rect, resp) = ui.allocate_exact_size(vec2(tool_width(ui, label, labels), TOOL_H), sense);
-    let p = ui.painter();
-    let slot = rect.shrink(1.0);
-    let radius = CornerRadius::same(TOOL_RADIUS);
-    if enabled && resp.is_pointer_button_down_on() {
-        p.rect_filled(slot, radius, color::selected());
-    } else if enabled && resp.hovered() {
-        p.rect_filled(slot, radius, color::hover());
-    }
-    if resp.has_focus() {
-        p.rect_stroke(slot, radius, Stroke::new(1.5_f32, color::accent()), StrokeKind::Inside);
-    }
-    let col = if enabled { color::text() } else { color::faint() };
-    if labels {
-        let caption = if !enabled {
-            color::faint()
-        } else if resp.hovered() {
-            color::text()
-        } else {
-            color::weak()
-        };
-        paint_icon(p, pos2(rect.center().x, rect.top() + ICON_Y), icon, col);
-        p.text(pos2(rect.center().x, rect.top() + CAPTION_Y), Align2::CENTER_CENTER, label, type_scale::font(type_scale::SMALL), caption);
-    } else {
-        paint_icon(p, rect.center(), icon, col);
-    }
-    super::access::name_button(&resp, enabled, name);
-    if enabled { resp.on_hover_cursor(egui::CursorIcon::PointingHand) } else { resp }
-}
-
-/// The width `tool_button` gives a button captioned `label`.
-pub fn tool_width(ui: &Ui, label: &str, labels: bool) -> f32 {
-    if labels {
-        let text_w = ui.painter().layout_no_wrap(label.to_owned(), type_scale::font(type_scale::SMALL), Color32::PLACEHOLDER).size().x;
-        TOOL_W.max(text_w + CAPTION_PAD)
-    } else {
-        TOOL_W_BARE
-    }
-}
-
-/// One toolbar group: its buttons in a row on a quiet surface (the window's background, a 1 px
-/// border, rounded corners), `TOOL_SPACING` apart. The row keeps the parent's direction, so a
-/// group works in a right-to-left layout too.
-pub fn tool_group<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> egui::InnerResponse<R> {
-    egui::Frame::new()
-        .fill(color::bg())
-        .stroke(Stroke::new(1.0_f32, color::border()))
-        .corner_radius(GROUP_RADIUS)
-        .inner_margin(GROUP_PAD)
-        .show(ui, |ui| {
-            // One button high, so a group never grows to the row around it.
-            let row = if ui.layout().prefer_right_to_left() { egui::Layout::right_to_left } else { egui::Layout::left_to_right };
-            ui.allocate_ui_with_layout(vec2(ui.available_width(), TOOL_H), row(egui::Align::Center), |ui| {
-                ui.set_min_height(TOOL_H);
-                ui.spacing_mut().item_spacing.x = TOOL_SPACING;
-                add(ui)
-            })
-            .inner
-        })
-}
-
-/// The space between two toolbar groups (whatever the item spacing between them).
-pub fn tool_gap(ui: &mut Ui) {
-    ui.add_space(GROUP_GAP - ui.spacing().item_spacing.x);
-}
-
-/// A dropdown caret button's width.
-pub const CARET_W: f32 = 14.0;
-
-/// Small dropdown caret button right against its tool button (no spacing between them), with
-/// the caret at the button's icon height.
-pub fn caret_button(ui: &mut Ui, labels: bool) -> Response {
-    ui.add_space(-ui.spacing().item_spacing.x);
-    let (rect, resp) = ui.allocate_exact_size(vec2(CARET_W, TOOL_H), Sense::click());
-    let p = ui.painter();
-    if resp.hovered() {
-        p.rect_filled(rect.shrink(1.0), CornerRadius::same(TOOL_RADIUS), color::hover());
-    }
-    let c = if labels { pos2(rect.center().x, rect.top() + ICON_Y) } else { rect.center() };
-    p.add(egui::Shape::convex_polygon(
-        vec![pos2(c.x - 4.0, c.y - 2.0), pos2(c.x + 4.0, c.y - 2.0), pos2(c.x, c.y + 3.0)],
-        color::weak(),
-        Stroke::NONE,
-    ));
-    resp
-}
+use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
 
 pub fn chevron(p: &Painter, c: Pos2, open: bool, col: Color32) {
     let pts = if open {

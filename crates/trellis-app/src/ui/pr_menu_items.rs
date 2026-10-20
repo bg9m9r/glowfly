@@ -153,6 +153,13 @@ pub(super) fn pr_menu(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, fs: &ForgeSta
     push_pr_item(ui, t, snap, fs, idle, msgs);
 }
 
+/// Whether the PR dropdown holds an item that can be used now: opening the open pull request,
+/// creating one for the checked-out branch, or pushing it and creating one.
+pub(super) fn pr_menu_live(snap: &Snapshot, fs: &ForgeState, idle: bool) -> bool {
+    let head = snap.head_info();
+    head.and_then(|b| push_pr::open_pr(snap, fs, &b.name)).is_some() || (idle && (head.is_some() || push_pr::push_item(snap, fs).is_ok()))
+}
+
 /// "Push <head> and create a …" in the Push and PR dropdowns: enabled when idle and the
 /// checked-out branch has no open pull request and needs a push, otherwise saying why not.
 pub(super) fn push_pr_item(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, fs: &ForgeState, idle: bool, msgs: &mut Vec<Msg>) {

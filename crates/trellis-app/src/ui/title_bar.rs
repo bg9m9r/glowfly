@@ -64,8 +64,9 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
             let strip =
                 Rect::from_min_size(pos2(left, bar.bottom() - TAB_H), vec2(tab_room(bar.width(), inset, buttons_w).max(0.0), TAB_H));
             let mut child = ui.new_child(UiBuilder::new().max_rect(strip).layout(Layout::left_to_right(Align::Min)));
-            // Many tabs never cover the drag space or the window buttons.
-            child.set_clip_rect(strip.intersect(ui.clip_rect()));
+            // Many tabs never cover the drag space or the window buttons; the active tab stands
+            // a little above the strip.
+            child.set_clip_rect(strip.with_min_y(strip.top() - super::tab_paint::LIFT).intersect(ui.clip_rect()));
             tabs::strip(&mut child, st, TAB_H, msgs);
         });
 }

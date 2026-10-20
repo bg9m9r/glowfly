@@ -68,9 +68,9 @@ fn the_list_shows_only_when_it_adds_something() {
     assert!(h.query_by_label(TIP).is_none(), "two tabs that fit and nothing closed");
     drop(h);
 
-    // Too many tabs to show at full width.
+    // Too many tabs to show at their own widths (each at least 96 px).
     let (mut st, _) = with_repo(ThemeChoice::Dark, "tabs-list-hidden");
-    st.tabs.extend((0..6).map(|i| Tab::unloaded(place(&format!("t{i}")))));
+    st.tabs.extend((0..12).map(|i| Tab::unloaded(place(&format!("t{i}")))));
     let mut h = harness(st, true);
     h.run();
     open_list(&mut h);

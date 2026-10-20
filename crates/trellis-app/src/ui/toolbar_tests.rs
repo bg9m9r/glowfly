@@ -1,5 +1,5 @@
 //! The restyled toolbar in the fixture window: its spacing (2 px within a group, none before a
-//! caret, 16 px from a button to the next group's), pickers sized to their names, tooltips for a
+//! caret, 18 px from a button to the next group's), the pickers' long-name snapshots, tooltips for a
 //! focused button and near the window's edge, the reasons of a busy toolbar's dropdown items,
 //! and snapshots of the bar and of the rich tooltips. Motion is reduced so a tooltip settles at
 //! once.
@@ -24,7 +24,7 @@ fn settle(h: &mut H) {
 }
 
 /// The node labelled `label`'s left and right edges.
-fn span(h: &H, label: &str) -> (f64, f64) {
+pub(super) fn span(h: &H, label: &str) -> (f64, f64) {
     let b = h.get_by_label(label).bounding_box().expect("bounds");
     (b.x0, b.x1)
 }
@@ -63,10 +63,10 @@ fn groups_are_spaced_evenly() {
     let gap = |h: &H, a: &str, b: &str| span(h, b).0 - span(h, a).1;
     assert_eq!(gap(&h, "Undo the last action", "Redo the undone action"), 2.0, "within a group");
     assert_eq!(gap(&h, "Pull the current branch", "More pull actions"), 0.0, "a caret touches its button");
-    assert_eq!(gap(&h, "Redo the undone action", "Pull the current branch"), 16.0, "between groups");
-    assert_eq!(gap(&h, "More push actions", "Create a branch"), 16.0, "between groups");
+    assert_eq!(gap(&h, "Redo the undone action", "Pull the current branch"), 18.0, "between groups");
+    assert_eq!(gap(&h, "More push actions", "Create a branch"), 18.0, "between groups");
     assert_eq!(gap(&h, "Create a branch", "Stash all changes"), 2.0);
-    assert_eq!(gap(&h, "Pop the latest stash", "Show the terminal panel"), 16.0, "between groups");
+    assert_eq!(gap(&h, "Pop the latest stash", "Show the terminal panel"), 18.0, "between groups");
     drop(h);
     remove_fixture(&dir);
 }
@@ -233,7 +233,7 @@ fn tip_push_german() {
 }
 
 /// The fixture as `plain`, changed by `case` (a name, the head, the chip, the hosting service).
-fn variant(case: usize, labels: bool, name: &str) -> (AppState, PathBuf) {
+pub(super) fn variant(case: usize, labels: bool, name: &str) -> (AppState, PathBuf) {
     use crate::state::ForgeState;
     use crate::state::conflict_check::{ConflictReport, current_request};
     use trellis_core::conflict_check::Prediction;
@@ -296,32 +296,6 @@ fn toolbar_right_group_stays_put() {
 }
 
 #[test]
-fn pickers_fit_their_names() {
-    let mut undo = Vec::new();
-    for case in 0..6 {
-        let (st, dir) = variant(case, true, &format!("toolbar-fit-{case}"));
-        let long_branch = st.snap.as_ref().unwrap().head_branch.clone().filter(|b| b.len() == 80);
-        let long_repo = Some(st.snap.as_ref().unwrap().name.clone()).filter(|n| n.len() == 60);
-        let has_pr = st.forge.is_some();
-        let mut h = harness(st, true);
-        h.run();
-        undo.push(span(&h, "Undo the last action").0);
-        for name in long_branch.iter().chain(&long_repo) {
-            // Cut on screen, but still found by its whole name.
-            let (l, r) = span(&h, name);
-            assert!(r - l < 300.0, "case {case}: {}", r - l);
-        }
-        if case == 4 {
-            assert!(h.query_by_label("Conflicts with main").is_some(), "the chip");
-        }
-        assert_eq!(h.query_all_by_label_contains("create a pull request on").next().is_some(), has_pr, "case {case}");
-        drop(h);
-        remove_fixture(&dir);
-    }
-    assert!(undo[0] < undo[1], "a longer branch name moves the middle groups: {undo:?}");
-}
-
-#[test]
 fn toolbar_long_branch_name() {
     let (st, dir) = variant(1, true, "toolbar-long-branch");
     let mut h = harness(st, true);
@@ -364,7 +338,7 @@ fn a_narrow_window_narrows_the_pickers_before_the_groups_meet() {
     for (lang, width) in [("en", 1280.0), ("en", 1250.0), ("de", 1330.0)] {
         for case in 0..6 {
             let (folder, refresh) = group_edges(case, lang, width);
-            assert!(refresh - folder >= 16.0, "{lang} {width}, case {case}: Folder ends at {folder}, Refresh starts at {refresh}");
+            assert!(refresh - folder >= 18.0, "{lang} {width}, case {case}: Folder ends at {folder}, Refresh starts at {refresh}");
         }
     }
 }

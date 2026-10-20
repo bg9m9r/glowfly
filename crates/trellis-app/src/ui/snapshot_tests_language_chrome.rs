@@ -9,7 +9,7 @@ use crate::state::release_notes::NotesDialog;
 use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::{harness, harness_sized, remove_fixture, settings, with_repo};
-use eframe::egui::{self, Event, Modifiers, PointerButton, pos2};
+use eframe::egui::{self, Event, Modifiers, PointerButton};
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -86,8 +86,8 @@ fn tab_menu_and_release_notes_in_german() {
     st.settings.show_menu_bar = false;
     let mut h = harness(st, true);
     h.run();
-    // Right-click the second tab (two tabs are 220 wide, 1 apart, after a 6 margin).
-    let at = pos2(6.0 + 221.0 + 110.0, 15.0);
+    // Right-click the second tab.
+    let at = crate::ui::tabs_tests::tab_centre(&h, 1);
     for pressed in [true, false] {
         let events = &mut h.input_mut().events;
         events.push(Event::PointerMoved(at));

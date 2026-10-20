@@ -21,9 +21,9 @@ fn three_tabs(name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-/// The centre of tab `i`: three tabs are 220 wide, 1 apart, after a 6 margin.
-pub(super) fn tab_centre(i: usize) -> Pos2 {
-    pos2(6.0 + 221.0 * i as f32 + 110.0, 15.0)
+/// The centre of tab `i` as last drawn (tabs are as wide as their names).
+pub(super) fn tab_centre(h: &Harness<'_, (AppState, Vec<Msg>)>, i: usize) -> Pos2 {
+    super::tabs::tab_rects(&h.ctx)[i].center()
 }
 
 pub(super) fn pointer(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: Option<(PointerButton, bool)>) {
@@ -39,12 +39,13 @@ fn tab_drag_moves_and_snapshots() {
     let (st, dir) = three_tabs("tab-drag");
     let mut h = harness(st, true);
     h.run();
-    let start = tab_centre(0);
+    let start = tab_centre(&h, 0);
+    // Grabbed at its centre and held a little past tab 1's centre.
+    let over = tab_centre(&h, 1) + egui::vec2(24.0, 0.0);
     pointer(&mut h, start, Some((PointerButton::Primary, true)));
     h.step();
     pointer(&mut h, start + egui::vec2(12.0, 0.0), None);
     h.step();
-    let over = start + egui::vec2(272.0, 0.0);
     pointer(&mut h, over, None);
     h.step();
     h.run();
@@ -56,7 +57,7 @@ fn tab_drag_moves_and_snapshots() {
     let msgs = &h.state().1;
     assert!(
         msgs.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 1 }))),
-        "dropping between tabs 1 and 2 moves tab 0 to 1"
+        "dropping nearest tab 1's slot moves tab 0 to 1"
     );
     assert!(!msgs.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::SelectTab(_)))), "dragging does not select the tab");
     drop(h);
@@ -70,9 +71,10 @@ fn tab_context_menu() {
     let mut h = harness(st, true);
     h.run();
     let right_click = |h: &mut Harness<'_, (AppState, Vec<Msg>)>, i: usize| {
-        pointer(h, tab_centre(i), Some((PointerButton::Secondary, true)));
+        let at = tab_centre(h, i);
+        pointer(h, at, Some((PointerButton::Secondary, true)));
         h.step();
-        pointer(h, tab_centre(i), Some((PointerButton::Secondary, false)));
+        pointer(h, at, Some((PointerButton::Secondary, false)));
         h.run();
     };
     right_click(&mut h, 1);
@@ -98,9 +100,10 @@ fn tab_menu_says_why_items_are_off() {
     st.closed_tabs.clear();
     let mut h = harness(st, true);
     h.run();
-    pointer(&mut h, tab_centre(0), Some((PointerButton::Secondary, true)));
+    let at = tab_centre(&h, 0);
+    pointer(&mut h, at, Some((PointerButton::Secondary, true)));
     h.step();
-    pointer(&mut h, tab_centre(0), Some((PointerButton::Secondary, false)));
+    pointer(&mut h, at, Some((PointerButton::Secondary, false)));
     h.run();
     let t = trellis_core::i18n::Lang::En;
     for (label, key) in [
@@ -150,13 +153,12 @@ fn dragging_a_grouped_tab_out_moves_its_group() {
     let (st, dir) = grouped_tabs("tabs-group-drag");
     let mut h = harness(st, true);
     h.run();
-    let drag_to = |h: &mut Harness<'_, (AppState, Vec<Msg>)>, slots: f32, release: bool| {
-        let start = tab_centre(0);
+    let drag_to = |h: &mut Harness<'_, (AppState, Vec<Msg>)>, slot: usize, release: bool| {
+        let (start, over) = (tab_centre(h, 0), tab_centre(h, slot));
         pointer(h, start, Some((PointerButton::Primary, true)));
         h.step();
         pointer(h, start + egui::vec2(12.0, 0.0), None);
         h.step();
-        let over = start + egui::vec2(221.0 * slots, 0.0);
         pointer(h, over, None);
         h.step();
         h.run();
@@ -166,16 +168,17 @@ fn dragging_a_grouped_tab_out_moves_its_group() {
         }
     };
     // Past group B: both group A tabs slide (the dragged one floats over slot 3).
-    drag_to(&mut h, 3.0, false);
+    let over = tab_centre(&h, 3);
+    drag_to(&mut h, 3, false);
     assert!(h.state().1.is_empty(), "nothing is sent while dragging");
     h.check_snapshot("tabs_group_dragging");
-    pointer(&mut h, tab_centre(0) + egui::vec2(663.0, 0.0), Some((PointerButton::Primary, false)));
+    pointer(&mut h, over, Some((PointerButton::Primary, false)));
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 3 }))), "the raw slot is sent");
 
     // Inside the group: a move within it.
     h.state_mut().1.clear();
-    drag_to(&mut h, 1.0, true);
+    drag_to(&mut h, 1, true);
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 1 }))));
     drop(h);
     remove_fixture(&dir);
@@ -187,7 +190,8 @@ fn a_grouped_tab_names_its_repository_on_hover() {
         let (st, dir) = grouped_tabs(&format!("tabs-group-tip-{i}"));
         let mut h = harness(st, true);
         h.run();
-        pointer(&mut h, tab_centre(i), None);
+        let at = tab_centre(&h, i);
+        pointer(&mut h, at, None);
         for _ in 0..4 {
             h.run();
         }
@@ -206,9 +210,12 @@ fn new_tab_plus_matches_the_close_cross() {
     h.run();
     let b = h.get_by_label("New tab").bounding_box().expect("the + has bounds");
     let (w, ht) = ((b.x1 - b.x0) as f32, (b.y1 - b.y0) as f32);
-    assert_eq!((w, ht), (super::tabs::HEIGHT, super::tabs::HEIGHT), "the click target is the whole slot");
+    let strip_h = super::tabs::HEIGHT - super::tab_paint::LIFT;
+    assert_eq!((w, ht), (32.0, strip_h), "the click target is the whole slot");
     let centre = pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32);
-    assert!((centre.y - tab_centre(0).y).abs() <= 0.5, "the + sits on the tabs' line: {centre:?}");
+    assert!((centre.y - tab_centre(&h, 0).y).abs() <= 0.5, "the + sits on the tabs' line: {centre:?}");
+    let last = super::tabs::tab_rects(&h.ctx)[1];
+    assert_eq!(b.x0 as f32 - last.right(), 4.0, "4 px after the last tab");
     pointer(&mut h, centre, None);
     h.run();
     h.check_snapshot("tabs_new_tab_hover");

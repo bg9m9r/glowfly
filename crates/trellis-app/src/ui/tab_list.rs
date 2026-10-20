@@ -1,7 +1,7 @@
 //! The tab list at the far end of the tab bar: a chevron button whose popup lists the open tabs
 //! (click one to select it) and the recently closed ones, newest first (click one to reopen it).
-//! It shows only when it adds something: closed tabs to reopen, or tabs too many to show at full
-//! width.
+//! It shows only when it adds something: closed tabs to reopen, or tabs too many to show at
+//! their own widths.
 
 use super::theme::color;
 use super::widgets;
@@ -13,13 +13,10 @@ use eframe::egui::{self, Align, Button, Layout, PopupCloseBehavior, RichText, Se
 use trellis_core::i18n::Lang;
 use trellis_core::native_path::shown;
 
-/// A full-width tab and the gap after it.
-const FULL_PITCH: f32 = 221.0;
-
-/// Whether a tab strip `avail` wide, with `slot`-square + and list buttons, shows the tab list
-/// button.
-pub(super) fn wanted(st: &AppState, avail: f32, slot: f32) -> bool {
-    !st.closed_tabs.is_empty() || st.tabs.len() as f32 * FULL_PITCH > avail - 2.0 * slot
+/// Whether the tab list button shows: when there are closed tabs, or the tabs at their own
+/// widths (`needed`, with the gaps between them) are wider than the `room` the strip has for them.
+pub(super) fn wanted(st: &AppState, needed: f32, room: f32) -> bool {
+    !st.closed_tabs.is_empty() || needed > room
 }
 
 /// The tab list button, `slot` square, and its popup.
@@ -33,7 +30,7 @@ pub(super) fn button(ui: &mut egui::Ui, t: Lang, st: &AppState, slot: f32, msgs:
     if lit {
         ui.painter().rect_filled(rect.shrink(3.0), 4.0, color::hover());
     }
-    widgets::chevron(ui.painter(), rect.center(), true, if lit { color::text() } else { color::weak() });
+    widgets::caret(ui.painter(), rect.center(), if lit { color::text() } else { color::weak() });
     let r = r.on_hover_text(tip);
     if r.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));

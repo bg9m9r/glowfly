@@ -32,8 +32,8 @@ pub fn shown(st: &AppState) -> Option<(&ConflictReport, &Vec<String>)> {
 }
 
 /// Draws the chip while the preference is on and the last automatic check, for the inputs on
-/// screen, found conflicts; nothing otherwise (not even its spacing, so the toolbar doesn't
-/// move). Hovering it says what it warns about; a click opens the popover below it, and another
+/// screen, found conflicts; nothing otherwise. It sits before the toolbar's right-hand group
+/// (the caller spaces it), so it appearing moves no other button. Hovering it says what it warns about; a click opens the popover below it, and another
 /// closes it. The chip and its popover have fixed ids (there is one per window), so neither
 /// depends on how many widgets the toolbar drew before them.
 pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
@@ -41,7 +41,6 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
     let count = if paths.is_empty() { "!".to_owned() } else { paths.len().to_string() };
     let galley = ui.painter().layout_no_wrap(count, type_scale::font(type_scale::SMALL), color::text());
-    ui.add_space(8.0);
     let (rect, _) = ui.allocate_exact_size(vec2(galley.size().x + 36.0, HEIGHT), Sense::hover());
     let resp = ui.interact(rect, Id::new(CHIP_ID), Sense::click());
     let amber = color::warn();

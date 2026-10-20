@@ -163,12 +163,11 @@ fn esc_cancels_a_tab_drag() {
     st.diff = Some((DiffTarget::Unstaged("README.md".into()), empty_diff().into()));
     let mut h = app_harness(st);
     h.run();
-    let start = tab_centre(0);
+    let (start, over) = (tab_centre(&h, 0), tab_centre(&h, 1) + egui::vec2(24.0, 0.0));
     pointer(&mut h, start, Some((PointerButton::Primary, true)));
     h.step();
     pointer(&mut h, start + egui::vec2(12.0, 0.0), None);
     h.step();
-    let over = start + egui::vec2(272.0, 0.0);
     pointer(&mut h, over, None);
     h.step();
     h.run();

@@ -1,10 +1,11 @@
 //! The toolbar's Repository › Branch pickers: one group of two parts, each a caption over a
-//! name with its caret, sized to its name up to `NAME_MAX`. A longer branch name keeps its
-//! start and end around a "…" (`truncate::cut_middle_in`), a longer repository name is cut at
-//! its end, and in a window too narrow for everything both shrink further (`name_widths`). A cut
-//! name shows whole on hover, and the accessible name is always the whole name. The branch icon
-//! takes the checked-out branch's colour, and each branch in its menu starts with its colour dot.
-//! The conflict-check chip follows the group.
+//! name with its caret. Each part has a fixed slot for its name (`REPO_SLOT`, `BRANCH_SLOT`), so
+//! switching tabs or branches never resizes the group or moves the groups after it; only a
+//! window too narrow for everything shrinks the slots (`name_widths`). A longer branch name keeps
+//! its start and end around a "…" (`truncate::cut_middle_in`), a longer repository name is cut
+//! at its end. A cut name shows whole on hover, and the accessible name is always the whole name.
+//! The branch icon takes the checked-out branch's colour, and each branch in its menu starts with
+//! its colour dot.
 
 use super::menus::repo_menu;
 use crate::msg::{BranchMsg, Msg};
@@ -20,13 +21,12 @@ use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, Color32, CornerRadius, Galley, Id, Response, Sense, WidgetInfo, WidgetType, pos2, vec2};
 use std::sync::Arc;
 
-/// The widest a name is drawn: about 30 characters.
-pub const NAME_MAX: f32 = 224.0;
+/// The room for the repository and branch names, whatever names they show.
+pub const REPO_SLOT: f32 = 120.0;
+pub const BRANCH_SLOT: f32 = 168.0;
 /// The narrowest the repository and branch names are cut to in a small window.
 pub const REPO_MIN: f32 = 32.0;
 pub const BRANCH_MIN: f32 = 40.0;
-/// Room for the conflict-check chip: its gap, a two-digit count and the spacing after it.
-pub const CHIP_ROOM: f32 = 68.0;
 /// A part's side padding, height and corners.
 const PAD_X: f32 = 10.0;
 const PART_H: f32 = 40.0;
@@ -46,13 +46,12 @@ const REST: &str = "toolbar-after-pickers";
 /// The pickers' menus: one bar, so hovering the other part moves an open menu to it.
 const MENU_ID: &str = "toolbar-pickers";
 
-/// The widths the repository and branch names are drawn at, from their `natural` widths and the
-/// `names_room` left for both (less `CHIP_ROOM` while the chip is shown): each at most
-/// `NAME_MAX`; when they don't fit, the wider shrinks toward the narrower, then both evenly,
-/// never below `REPO_MIN` and `BRANCH_MIN` (nor above their natural widths).
-pub fn name_widths(natural: (f32, f32), names_room: f32, chip: bool) -> (f32, f32) {
-    let (repo, branch) = (natural.0.min(NAME_MAX), natural.1.min(NAME_MAX));
-    let room = names_room - if chip { CHIP_ROOM } else { 0.0 };
+/// The widths of the repository and branch name slots, from their full `slots` and the `room`
+/// the window leaves for both: the full slots when they fit; otherwise the wider shrinks toward
+/// the narrower, then both evenly, never below `REPO_MIN` and `BRANCH_MIN` (nor above their full
+/// widths). The names shown never change them.
+pub fn name_widths(slots: (f32, f32), room: f32) -> (f32, f32) {
+    let (repo, branch) = slots;
     if repo + branch <= room {
         return (repo, branch);
     }
@@ -75,7 +74,7 @@ pub(super) fn remember_rest(ctx: &egui::Context, rest: f32) {
     }
 }
 
-/// The pickers' group and the conflict chip after it.
+/// The pickers' group.
 pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let font = type_scale::strong(ui, BODY);
@@ -85,17 +84,15 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             .clone()
             .unwrap_or_else(|| snap.head_oid.map(|o| t.trf("toolbar.detached", &[("sha", &short(o))])).unwrap_or_default())
     });
-    let chip = st.snap.is_some() && crate::ui::conflict_check::shown(st).is_some();
-    let measure = |s: &str| ui.painter().layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
     // The room the rest of the bar (last frame's width) leaves the names.
     let rest = ui.ctx().data(|d| d.get_temp::<f32>(Id::new(REST)));
     let names_room = rest.map_or(f32::INFINITY, |rest| ui.available_width() - rest - FRAMES - ui.spacing().item_spacing.x);
-    let (repo_w, branch_w) = name_widths((measure(&repo), head.as_deref().map_or(0.0, measure)), names_room, chip);
+    let (repo_w, branch_w) = name_widths((REPO_SLOT, BRANCH_SLOT), names_room);
     widgets::tool_group(ui, |ui| {
         ui.set_min_height(widgets::TOOL_H);
         let g = cut_galley(ui.ctx(), cut_job(repo.clone(), font.clone(), color::text()), repo_w);
         let cut = g.elided;
-        part(ui, t.tr("toolbar.repository"), g, None, &repo, cut, |ui| repo_menu(ui, t, st, msgs));
+        part(ui, t.tr("toolbar.repository"), (g, repo_w), None, &repo, cut, |ui| repo_menu(ui, t, st, msgs));
         if let (Some(snap), Some(head)) = (&st.snap, &head) {
             let (rect, _) = ui.allocate_exact_size(vec2(CHEVRON_W, PART_H), Sense::hover());
             widgets::paint_icon_sized(ui.painter(), rect.center(), Icon::ExpandRight, color::faint(), 14.0);
@@ -104,7 +101,7 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let g = ui.painter().layout_no_wrap(shown, font.clone(), color::text());
             // The icon in the checked-out branch's colour; weak while HEAD is detached.
             let tone = snap.head_swatch().map_or_else(color::weak, line);
-            part(ui, t.tr("toolbar.branch"), g, Some((Icon::Branch, tone)), head, cut, |ui| {
+            part(ui, t.tr("toolbar.branch"), (g, branch_w), Some((Icon::Branch, tone)), head, cut, |ui| {
                 ui.set_min_width(220.0);
                 for b in &snap.locals {
                     let text = if b.is_head { format!("✔ {}", b.name) } else { b.name.clone() };
@@ -125,25 +122,24 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             });
         }
     });
-    if st.snap.is_some() {
-        crate::ui::conflict_check::indicator(ui, st, msgs);
-    }
 }
 
-/// One picker: `caption` over `name` (with `icon` before it, in its colour) and the caret,
-/// opening `menu` below it. Named by `full`, which also shows on hover when the name was `cut`.
+/// One picker: `caption` over `name` (with `icon` before it, in its colour) in a slot of the
+/// width paired with it, and the caret pinned at the part's right, opening `menu` below it.
+/// Named by `full`, which also shows on hover when the name was `cut`.
 fn part(
     ui: &mut egui::Ui,
     caption: &str,
-    name: Arc<Galley>,
+    (name, slot): (Arc<Galley>, f32),
     icon: Option<(Icon, Color32)>,
     full: &str,
     cut: bool,
     menu: impl FnOnce(&mut egui::Ui),
 ) -> Response {
-    let caption = ui.painter().layout_no_wrap(caption.to_owned(), type_scale::font(CAPTION), color::weak());
     let icon_w = if icon.is_some() { ICON_ROOM } else { 0.0 };
-    let w = 2.0 * PAD_X + caption.size().x.max(icon_w + name.size().x + CARET_ROOM);
+    // The slot, not the name, sets the width; in a very narrow window the caption is cut too.
+    let w = 2.0 * PAD_X + icon_w + slot + CARET_ROOM;
+    let caption = cut_galley(ui.ctx(), cut_job(caption.to_owned(), type_scale::font(CAPTION), color::weak()), w - 2.0 * PAD_X);
     let (rect, r) = ui.allocate_exact_size(vec2(w, PART_H), Sense::click());
     let open = menu_anchor::menu_below(ui, Id::new(MENU_ID), &r, false, menu);
     let p = ui.painter();
@@ -158,9 +154,8 @@ fn part(
     if let Some((icon, tone)) = icon {
         widgets::paint_icon_sized(p, pos2(x + 7.0, row_y), icon, tone, 14.0);
     }
-    let (name_x, name_w) = (x + icon_w, name.size().x);
-    p.galley(pos2(name_x, row_y - name.size().y / 2.0), name, color::text());
-    widgets::chevron(p, pos2(name_x + name_w + 8.0, row_y + 1.0), true, color::weak());
+    p.galley(pos2(x + icon_w, row_y - name.size().y / 2.0), name, color::text());
+    widgets::caret(p, pos2(rect.right() - PAD_X - 6.0, row_y + 1.0), color::weak());
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, full));
     if cut { r.on_hover_text(full) } else { r }
 }
@@ -169,41 +164,32 @@ fn part(
 mod tests {
     use super::*;
 
+    const SLOTS: (f32, f32) = (REPO_SLOT, BRANCH_SLOT);
+
     #[test]
-    fn names_that_fit_keep_their_width() {
-        assert_eq!(name_widths((60.0, 90.0), 400.0, false), (60.0, 90.0));
-        assert_eq!(name_widths((60.0, 90.0), f32::INFINITY, true), (60.0, 90.0));
+    fn the_slots_keep_their_width_when_they_fit() {
+        assert_eq!(name_widths(SLOTS, 400.0), SLOTS);
+        assert_eq!(name_widths(SLOTS, f32::INFINITY), SLOTS);
+        assert_eq!(name_widths(SLOTS, REPO_SLOT + BRANCH_SLOT), SLOTS);
     }
 
     #[test]
-    fn each_name_is_capped() {
-        assert_eq!(name_widths((400.0, 500.0), f32::INFINITY, false), (NAME_MAX, NAME_MAX));
-        assert_eq!(name_widths((40.0, 500.0), f32::INFINITY, false), (40.0, NAME_MAX));
+    fn a_narrow_window_shrinks_the_wider_slot_first() {
+        assert_eq!(name_widths(SLOTS, 260.0), (REPO_SLOT, 140.0));
+        assert_eq!(name_widths((168.0, 120.0), 260.0), (140.0, 120.0));
     }
 
     #[test]
-    fn a_long_branch_beside_a_short_repo_shrinks_alone() {
-        assert_eq!(name_widths((60.0, 400.0), 200.0, false), (60.0, 140.0));
-        assert_eq!(name_widths((300.0, 50.0), 200.0, false), (150.0, 50.0));
-    }
-
-    #[test]
-    fn two_long_names_shrink_evenly() {
-        assert_eq!(name_widths((300.0, 300.0), 300.0, false), (150.0, 150.0));
-        assert_eq!(name_widths((120.0, 400.0), 200.0, false), (100.0, 100.0));
-    }
-
-    #[test]
-    fn the_chip_takes_its_room() {
-        assert_eq!(name_widths((100.0, 100.0), 200.0 + CHIP_ROOM, true), (100.0, 100.0));
-        assert_eq!(name_widths((100.0, 100.0), 200.0, true), (66.0, 66.0));
+    fn then_both_shrink_evenly() {
+        assert_eq!(name_widths(SLOTS, 200.0), (100.0, 100.0));
+        assert_eq!(name_widths((150.0, 150.0), 200.0), (100.0, 100.0));
     }
 
     #[test]
     fn the_floors_hold_in_a_tiny_room() {
-        assert_eq!(name_widths((200.0, 200.0), 10.0, false), (REPO_MIN, BRANCH_MIN));
-        assert_eq!(name_widths((200.0, 200.0), -50.0, true), (REPO_MIN, BRANCH_MIN));
-        // A name narrower than its floor keeps its own width.
-        assert_eq!(name_widths((20.0, 200.0), 10.0, false), (20.0, BRANCH_MIN));
+        assert_eq!(name_widths(SLOTS, 10.0), (REPO_MIN, BRANCH_MIN));
+        assert_eq!(name_widths(SLOTS, -50.0), (REPO_MIN, BRANCH_MIN));
+        // A slot narrower than its floor keeps its own width.
+        assert_eq!(name_widths((20.0, 200.0), 10.0), (20.0, BRANCH_MIN));
     }
 }

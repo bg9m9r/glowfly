@@ -1,7 +1,7 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
 //! lock, wrench, warning, keyboard, external diff, into, comment, pencil, plus, issue, check, more,
-//! the file pages, open file, the expand chevrons, commit, globe, menu and info), called from
-//! `widgets::paint_icon`.
+//! the file pages, open file, the expand chevrons, commit, globe, menu, info and repository),
+//! called from `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
@@ -292,6 +292,13 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             p.circle_stroke(c, 8.0, s);
             p.circle_filled(pos2(c.x, c.y - 4.0), 1.5, s.color);
             line(pos2(c.x, c.y - 0.5), pos2(c.x, c.y + 4.5));
+        }
+        Icon::Repo => {
+            // A ledger: its cover, the binding down its left, and a label on the cover.
+            let (l, r, t, b) = (c.x - 7.0, c.x + 7.0, c.y - 8.0, c.y + 8.0);
+            p.add(egui::Shape::closed_line(vec![pos2(l, t), pos2(r, t), pos2(r, b), pos2(l, b)], s));
+            line(pos2(l + 4.0, t), pos2(l + 4.0, b));
+            line(pos2(c.x, c.y - 3.0), pos2(r - 3.0, c.y - 3.0));
         }
         _ => return false,
     }

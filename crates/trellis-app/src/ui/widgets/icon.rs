@@ -109,6 +109,8 @@ pub enum Icon {
     ChevronDown,
     /// A circle with a dot over a short stem: why a menu item is disabled (the fonts lack ⓘ).
     Info,
+    /// A bound ledger with a label on its cover: a repository (the repository tabs).
+    Repo,
 }
 
 /// Every icon's line width: they are outlines only.
@@ -290,7 +292,7 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
         Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check | Icon::More => {} // icons.rs
         Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
-        Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu | Icon::Info => {} // icons.rs
+        Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu | Icon::Info | Icon::Repo => {} // icons.rs
         Icon::Eraser | Icon::Stop | Icon::PanelMaximize | Icon::PanelRestore | Icon::ChevronDown => {} // icons_panel.rs
     }
 }

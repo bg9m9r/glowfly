@@ -45,7 +45,7 @@ fn tinted_surfaces_meet_the_floors_over_every_band() {
             }
         }
     }
-    // The chrome never shows faint text, so it isn't checked there; the sidebar checks it.
+    // The title bar never shows faint text, so it isn't checked there; the side surface checks it.
     assert!(checks(&DARK, Surface::Chrome).iter().all(|(t, _, _)| *t != "faint"));
     assert!(checks(&DARK, Surface::Side).iter().any(|(t, _, _)| *t == "faint"));
 }

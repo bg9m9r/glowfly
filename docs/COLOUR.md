@@ -15,9 +15,9 @@ Views never name a hex value: they read the active palette through `color::text(
 
 | Token | Theme key | What it is for |
 |---|---|---|
-| chrome | `toolbar` | The frame around the content: toolbar, status bar, terminal header, Preferences side panel and save bar, the active repository tab. In Dark it is the darkest surface. |
+| chrome | `toolbar` | The frame around the content: title bar (and the system frame's tab bar), status bar, terminal header, Preferences side panel and save bar. In Dark it is the darkest surface. |
 | base | `bg` | The canvas behind panels. |
-| panel | `panel` | Panels, dialogs, list backgrounds. |
+| panel | `panel` | Panels, dialogs, list backgrounds; the toolbar and the active repository tab, which runs into it. |
 | raised | `raised` | Controls and small fills a step off the panel: egui buttons and combo boxes, disabled styled buttons, chips, cards, tooltips, toasts, segmented tracks, keycaps, pane header strips. |
 | input | `input` | Text fields; also the check mark on an accent-filled checkbox. |
 | hairline | `border` | Lines between regions. |

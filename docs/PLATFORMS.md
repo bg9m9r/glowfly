@@ -466,8 +466,8 @@ Gaps that are accepted for now:
 
 - **The drawn Windows frame has no DWM shadow or rounded corners.**
 - **The system menu is drawn by Windows in its light style** under a dark theme.
-- **Dark's sidebar stays opaque on Mica:** its `faint` text can't reach 4.5:1 over the lightest
-  dark Mica stand-ins at any tint step (the title bar and toolbar do sit on Mica).
+- **Dark's sidebar and toolbar stay opaque on Mica:** the side surface's `faint` text can't reach
+  4.5:1 over the lightest dark Mica stand-ins at any tint step (the title bar does sit on Mica).
 - **macOS's traffic lights aren't centred on the title bar,** which is taller than the system's.
 - **An Alt press and release within one frame isn't seen as a tap,** so it doesn't open the menu.
 
