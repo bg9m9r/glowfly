@@ -64,3 +64,62 @@ fn a_job_in_another_repository_carries_none() {
     assert_eq!(journal, &None);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// The journal op of the first git job in `fx`.
+fn journal_of(fx: &[Effect]) -> (usize, Option<Op>) {
+    match fx.iter().find(|e| matches!(e, Effect::RunGit { .. })) {
+        Some(Effect::RunGit { cmds, journal, .. }) => (cmds.len(), journal.clone()),
+        _ => panic!("a git job"),
+    }
+}
+
+#[test]
+fn a_guarded_pick_keeps_its_note_when_stashed_first() {
+    let (mut st, dir) = opened("journal-pick-stash");
+    st.settings.auto_stash = true;
+    let git = |a: &[&str]| trellis_core::gitcli::read(&dir, &trellis_core::gitcli::args(a)).stdout.trim().to_owned();
+    git(&["checkout", "-q", "topic"]);
+    git(&["commit", "-q", "--allow-empty", "-m", "on topic"]);
+    git(&["checkout", "-q", "-"]);
+    let (pick, head) = (git(&["rev-parse", "topic"]), git(&["rev-parse", "HEAD"]));
+    assert_ne!(pick, head);
+    std::fs::write(dir.join("a.txt"), "one\nmine\n").unwrap();
+    super::tests::drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Refresh));
+    let oid = |rev: &str| git2::Oid::from_str(rev).unwrap();
+    let fx = update(&mut st, Msg::Selection(crate::msg::SelectionMsg::CherryPick(vec![oid(&pick)])), Instant::now());
+    let (n, op) = journal_of(&fx);
+    assert!(n > 1, "stashed first");
+    assert!(matches!(op, Some(Op::CherryPick { .. })), "{op:?}");
+    st.job = None;
+    st.auto_stash.making = None;
+    let fx = update(&mut st, Msg::Selection(crate::msg::SelectionMsg::Revert(vec![oid(&head)])), Instant::now());
+    let (n, op) = journal_of(&fx);
+    assert!(n > 1, "stashed first");
+    assert!(matches!(op, Some(Op::Revert { .. })), "{op:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_recorded_job_of_several_commands_carries_its_note() {
+    let (mut st, dir) = opened("journal-several");
+    let t = trellis_core::repo::Tracking { remote: "origin".into(), merge: "topic".into() };
+    let cmds = trellis_core::branch_ops::delete_with_remote_cmds("topic", &t);
+    let record = Some(trellis_core::undo::UndoKind::DeleteBranch("topic".into()));
+    let mut fx = Vec::new();
+    start_job(&mut st, JobSpec { record, ..JobSpec::new("Delete local and remote branch".into(), cmds) }, &mut fx);
+    assert_eq!(journal_of(&fx), (3, Some(Op::DeleteBranch { name: "topic".into() })));
+    st.job = None;
+    let cmds = vec![trellis_core::gitcli::args(&["add", "--all"]), trellis_core::gitcli::args(&["commit", "--amend", "-F", "msg"])];
+    let record = Some(trellis_core::undo::UndoKind::Commit { amend: true });
+    let mut fx = Vec::new();
+    start_job(&mut st, JobSpec { record, ..JobSpec::new("Amend".into(), cmds) }, &mut fx);
+    assert_eq!(journal_of(&fx), (2, Some(Op::Amend)));
+    st.job = None;
+    // A plain commit after staging everything is no rewrite.
+    let cmds = vec![trellis_core::gitcli::args(&["add", "--all"]), trellis_core::gitcli::args(&["commit", "-F", "msg"])];
+    let record = Some(trellis_core::undo::UndoKind::Commit { amend: false });
+    let mut fx = Vec::new();
+    start_job(&mut st, JobSpec { record, ..JobSpec::new("Stage all and commit".into(), cmds) }, &mut fx);
+    assert_eq!(journal_of(&fx), (2, None));
+    let _ = std::fs::remove_dir_all(&dir);
+}

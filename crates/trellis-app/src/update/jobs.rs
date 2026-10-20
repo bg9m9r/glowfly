@@ -31,8 +31,8 @@ pub(super) struct JobSpec {
     /// Record the job for undo when it is this kind of operation. Left `None`, a single command
     /// run in the active tab's repository is recognised by `UndoKind::classify`.
     pub record: Option<UndoKind>,
-    /// The journal note to write when the job moves HEAD or the op's branch. Left `None`, a
-    /// single command in the active tab's repository gets the note its kind calls for.
+    /// The journal note to write when the job moves HEAD or the op's branch. Left `None`, a job
+    /// in the active tab's repository gets the note its recorded kind calls for.
     pub journal: Option<Op>,
     /// Run nothing unless this revision still resolves to this commit.
     pub expect: Option<(String, git2::Oid)>,
@@ -101,10 +101,13 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         ([c], None) => UndoKind::classify(c),
         _ => None,
     });
-    // Jobs in other repositories (cwd set) get no note.
-    let journal = spec.journal.or_else(|| match (spec.cmds.as_slice(), &spec.cwd, &record) {
-        ([c], None, Some(k)) => Op::of_kind(k, c),
-        _ => None,
+    // Jobs in other repositories (cwd set) get no note. Several commands recorded as one kind
+    // (deleting a branch with its remote one, stage all and amend) are noted from the command
+    // of that kind, else the last.
+    let journal = spec.journal.or_else(|| {
+        let k = record.as_ref().filter(|_| spec.cwd.is_none())?;
+        let c = spec.cmds.iter().find(|c| UndoKind::classify(c).as_ref() == Some(k)).or(spec.cmds.last())?;
+        Op::of_kind(k, c)
     });
     // A branch checkout, pull, merge or reset may be followed by updating the submodules.
     let moves = trellis_core::submodule_ops::moves_work_tree(&spec.cmds) && spec.cwd.is_none();

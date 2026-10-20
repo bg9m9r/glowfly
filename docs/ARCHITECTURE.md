@@ -175,8 +175,10 @@ binary (package `trellis`).
   load opens the create dialog (`update/push_pr.rs::loaded`), never replacing another dialog.
 - **Operation journal**: the timeline is git's reflogs plus Trellis's notes. Only the runner
   writes notes, and only around the work that rewrites history: a `RunGit` whose job carries a
-  `journal` op (worked out in `update/git_job.rs` from the command as the user gave it, before
-  the auto-stash wrap; never for a job in another repository), Undo and Redo, and the start of
+  `journal` op (worked out from the command as the user gave it, before the auto-stash wrap, in
+  `update/git_job.rs` and `update/auto_stash.rs::wrap`, else by `update/jobs.rs::start_job` from
+  the job's undo record and the command of that kind; never for a job in another repository),
+  Undo and Redo, and the start of
   an interactive rebase (`runner/journal.rs::around`). The note records the tip of the branch
   the op moves (else HEAD) just before the run and is kept only when that moved; its time comes
   from the runner's clock, never from `update` or a view. Restore is an ordinary git job with an undo record

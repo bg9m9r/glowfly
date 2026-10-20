@@ -111,13 +111,17 @@ pub(super) fn take_retry(st: &mut AppState, job: &RunningJob) -> Option<StashRet
 }
 
 /// Puts the auto-stash for `op` in front of `spec`'s one command, keeping the job recorded for
-/// undo as that command.
+/// undo, and noted in the journal, as that command.
 pub(super) fn wrap(st: &AppState, spec: &mut JobSpec, op: AutoStashFor) {
-    if spec.record.is_none()
-        && spec.cwd.is_none()
+    if spec.cwd.is_none()
         && let [c] = spec.cmds.as_slice()
     {
-        spec.record = UndoKind::classify(c);
+        if spec.record.is_none() {
+            spec.record = UndoKind::classify(c);
+        }
+        if spec.journal.is_none() {
+            spec.journal = spec.record.as_ref().and_then(|k| trellis_core::journal::Op::of_kind(k, c));
+        }
     }
     spec.cmds.insert(0, op.stash_command());
     let before = st.snap.as_ref().map(|s| s.stashes.iter().map(|x| x.oid).collect()).unwrap_or_default();
