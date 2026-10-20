@@ -5,11 +5,19 @@
 use crate::effect::Effect;
 use crate::state::AppState;
 use std::path::Path;
+use trellis_core::paths::same_spelling;
 use trellis_core::settings::RepoColour;
 
-/// Gives the repository at `path` the colour `colour` (None takes it away).
+/// Gives the repository at `path` the colour `colour` (None takes it away). The colour is saved
+/// under the repository's settings key (where an open tab found it really is), and an entry left
+/// under the spelling the menu sent goes, so the list and the tab agree and a later load keeps it.
 pub(super) fn set(st: &mut AppState, path: &Path, colour: Option<RepoColour>, fx: &mut Vec<Effect>) {
-    if st.settings.set_repo_colour(path, colour) {
+    let key = st.repo_key(path);
+    let mut changed = st.settings.set_repo_colour(&key, colour);
+    if !same_spelling(&key, path) {
+        changed |= st.settings.set_repo_colour(path, None);
+    }
+    if changed {
         fx.push(super::prefs::save_settings(st));
     }
 }

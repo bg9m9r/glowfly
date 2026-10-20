@@ -93,3 +93,33 @@ fn a_listed_path_takes_its_open_tabs_colour() {
 fn set_colour_is_never_scoped() {
     assert!(RecentMsg::SetColour { path: fake("a"), colour: Some(RepoColour::Teal) }.on_inactive().is_none());
 }
+
+#[test]
+fn a_listed_alias_of_an_open_tab_sets_the_tabs_colour() {
+    let mut st = tabs(&["shown"], 0);
+    st.tabs[0].real = Some(fake("real"));
+    set(&mut st, fake("real"), Some(RepoColour::Teal));
+    assert_eq!(listed_colour(&st, &fake("shown")), Some(RepoColour::Teal));
+    let fx = set(&mut st, fake("shown"), None);
+    assert_eq!(saves(&fx), 1, "None from the listed spelling clears the tab's colour: {fx:?}");
+    assert!(st.settings.repo_colours.is_empty());
+    assert_eq!(listed_colour(&st, &fake("shown")), None);
+    set(&mut st, fake("shown"), Some(RepoColour::Plum));
+    assert_eq!(st.settings.repo_colour_for(&fake("real")), Some(RepoColour::Plum), "saved under the real folder");
+    assert_eq!(st.settings.repo_colours.len(), 1, "nothing under the listed spelling: {:?}", st.settings.repo_colours);
+    assert_eq!(tab_colour(&st, 0), Some(RepoColour::Plum), "the tab and the list agree");
+    assert!(!st.settings.adopt_repo_keys(&fake("real"), &[fake("shown").as_path()]), "a reload keeps it");
+    assert_eq!(tab_colour(&st, 0), Some(RepoColour::Plum));
+}
+
+#[test]
+fn a_stale_entry_under_the_listed_spelling_goes_too() {
+    let mut st = tabs(&["shown"], 0);
+    st.tabs[0].real = Some(fake("real"));
+    st.settings.set_repo_colour(&fake("real"), Some(RepoColour::Sky));
+    st.settings.set_repo_colour(&fake("shown"), Some(RepoColour::Ochre));
+    let fx = set(&mut st, fake("shown"), None);
+    assert_eq!(saves(&fx), 1, "{fx:?}");
+    assert!(st.settings.repo_colours.is_empty(), "{:?}", st.settings.repo_colours);
+    assert_eq!(listed_colour(&st, &fake("shown")), None);
+}
