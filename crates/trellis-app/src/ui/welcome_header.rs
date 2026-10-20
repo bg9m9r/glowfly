@@ -19,7 +19,7 @@ const TEXT_X: f32 = 24.0;
 const TEXT_Y: f32 = 28.0;
 /// The close button's inset from the top right, and its size.
 const CLOSE_INSET: f32 = 12.0;
-const CLOSE_SIZE: f32 = 18.0;
+const CLOSE_BOX: f32 = 18.0;
 /// The drawing: at most this wide, ending this far before the right edge (clear of the ×),
 /// left out with less room than `ART_MIN_W`, and kept this far from the text.
 const ART_MAX_W: f32 = 320.0;
@@ -73,7 +73,7 @@ pub(super) fn band(ui: &mut Ui, t: Lang, w: &Welcome, msgs: &mut Vec<Msg>) {
     col.spacing_mut().item_spacing.y = 4.0;
     col.label(RichText::new(t.tr("welcome.title")).font(title_font).color(color::text()));
     widgets::truncate_label(&mut col, RichText::new(subtitle).color(color::weak()), text_max);
-    let close = Rect::from_min_size(pos2(band.right() - CLOSE_INSET - CLOSE_SIZE, band.top() + CLOSE_INSET), vec2(CLOSE_SIZE, CLOSE_SIZE));
+    let close = Rect::from_min_size(pos2(band.right() - CLOSE_INSET - CLOSE_BOX, band.top() + CLOSE_INSET), vec2(CLOSE_BOX, CLOSE_BOX));
     let mut corner = ui.new_child(UiBuilder::new().max_rect(close));
     if widgets::small_icon(&mut corner, Icon::Close, t.tr("welcome.close.tip"), color::weak()).clicked() {
         msgs.push(Msg::Onboarding(OnboardingMsg::CloseWelcome));
