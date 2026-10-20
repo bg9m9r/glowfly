@@ -53,7 +53,9 @@ fn the_welcome_identity_check_is_in_the_chosen_language() {
     update(&mut st, Msg::Onboarding(OnboardingMsg::SaveIdentity), Instant::now());
     let w = st.onboarding.welcome.as_ref().unwrap();
     assert_eq!(w.step, WelcomeStep::Identity);
-    assert_eq!(w.identity.error.as_deref(), Some(Lang::De.tr("welcome.identity.name_blank")));
+    assert_eq!(w.identity.error, None);
+    assert!(w.identity.touched.shows("name"), "Continue was tried");
+    assert_eq!(w.identity.field_problems(Lang::De).0, Some(Lang::De.tr("welcome.identity.name_blank")));
 }
 
 #[test]

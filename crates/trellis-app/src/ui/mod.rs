@@ -143,6 +143,9 @@ mod trust_dialog;
 mod undo_dialog;
 mod update_notice;
 mod welcome;
+mod welcome_art;
+mod welcome_cards;
+mod welcome_header;
 mod welcome_steps;
 pub mod widgets;
 mod window_buttons;
@@ -422,6 +425,8 @@ mod snapshot_tests_trust;
 mod snapshot_tests_undo;
 #[cfg(test)]
 mod snapshot_tests_updates;
+#[cfg(test)]
+mod snapshot_tests_welcome_looks;
 #[cfg(test)]
 mod snapshot_tests_whole;
 #[cfg(test)]

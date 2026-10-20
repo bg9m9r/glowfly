@@ -1,20 +1,25 @@
-//! The welcome's step bodies (ui/welcome.rs draws the header and footer around them).
+//! The welcome's step bodies (ui/welcome.rs draws the header and footer around them), all
+//! left-aligned on the content edge.
 
 use super::theme::color;
 use crate::msg::{Msg, PrefsMsg};
-use crate::onboarding::{OnboardingMsg, StartChoice};
+use crate::onboarding::OnboardingMsg;
 use crate::state::git_env::GitState;
-use crate::state::onboarding::Welcome;
+use crate::state::onboarding::{EMAIL_FIELD, NAME_FIELD, Welcome};
 use crate::state::{PrefPage, host_text};
+use crate::ui::access;
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, RichText, vec2};
+use crate::ui::widgets::form_message::{self, Message};
+use eframe::egui::{self, RichText};
 use trellis_core::forge::Connection;
 use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
 
 const DOWNLOAD_GIT: &str = "https://git-scm.com/downloads";
+/// The identity fields' width (less when the content is narrower).
+const FIELD_W: f32 = 360.0;
 
 fn text(ui: &mut egui::Ui, s: &str) {
     ui.add(egui::Label::new(RichText::new(s).color(color::text())).wrap());
@@ -50,23 +55,33 @@ pub fn identity(ui: &mut egui::Ui, w: &mut Welcome, settings: &Settings, keyboar
     } else {
         weak(ui, t.tr("welcome.identity.unknown"));
     }
-    ui.add_space(6.0);
+    ui.add_space(12.0);
     ui.add_enabled_ui(keyboard && !f.saving, |ui| {
-        egui::Grid::new("welcome-identity").num_columns(2).spacing(vec2(10.0, 6.0)).show(ui, |ui| {
-            ui.label(t.tr("welcome.identity.name.label"));
-            controls::field(ui, egui::TextEdit::singleline(&mut f.name).hint_text("Ada Lovelace").desired_width(320.0));
-            ui.end_row();
-            ui.label(t.tr("welcome.identity.email.label"));
-            controls::field(ui, egui::TextEdit::singleline(&mut f.email).hint_text("ada@example.com").desired_width(320.0));
-            ui.end_row();
-        });
+        let width = FIELD_W.min(ui.available_width());
+        // Labels above the fields; a field's problem under it once it was edited or Continue
+        // was pressed, worked out from the text as it is now.
+        let label = t.tr("welcome.identity.name.label");
+        ui.label(RichText::new(label).color(color::text()));
+        let r = controls::field(ui, egui::TextEdit::singleline(&mut f.name).hint_text("Ada Lovelace").desired_width(width));
+        form_message::track(&mut f.touched, NAME_FIELD, &r);
+        access::name_field(&r, label);
+        form_message::field(ui, &f.touched, NAME_FIELD, f.field_problems(t).0.map(Message::error));
+        ui.add_space(10.0);
+        let label = t.tr("welcome.identity.email.label");
+        ui.label(RichText::new(label).color(color::text()));
+        let r = controls::field(ui, egui::TextEdit::singleline(&mut f.email).hint_text("ada@example.com").desired_width(width));
+        form_message::track(&mut f.touched, EMAIL_FIELD, &r);
+        access::name_field(&r, label);
+        form_message::field(ui, &f.touched, EMAIL_FIELD, f.field_problems(t).1.map(Message::error));
     });
     if let Some(p) = settings.active_profile() {
+        ui.add_space(8.0);
         weak(ui, &t.trf("welcome.identity.profile_note", &[("profile", &p.name)]));
     }
+    // The answer to the last try: git's write error or a refusal.
     if let Some(e) = &f.error {
-        ui.add_space(4.0);
-        ui.add(egui::Label::new(RichText::new(e).color(color::removed())).wrap());
+        ui.add_space(12.0);
+        form_message::form(ui, Message::error(e.as_str()));
     }
 }
 
@@ -122,8 +137,8 @@ pub fn git(ui: &mut egui::Ui, t: Lang, git: &GitState, msgs: &mut Vec<Msg>) {
             }
         }
         Some(problem) => {
-            ui.add(egui::Label::new(RichText::new(problem).color(color::warn())).wrap());
-            ui.add_space(4.0);
+            form_message::form(ui, Message::warning(problem));
+            ui.add_space(6.0);
             if ui.link(t.tr("welcome.git.download.button")).clicked() {
                 msgs.push(Msg::OpenUrl(DOWNLOAD_GIT.into()));
             }
@@ -131,32 +146,24 @@ pub fn git(ui: &mut egui::Ui, t: Lang, git: &GitState, msgs: &mut Vec<Msg>) {
     }
 }
 
-/// Step 4: open, clone or start a repository, the tour, and where the look is changed.
+/// Step 4: open, clone or start a repository as cards, then the tour and where the look is
+/// changed in one quiet row.
 pub fn start(ui: &mut egui::Ui, t: Lang, w: &mut Welcome, has_repo: bool, msgs: &mut Vec<Msg>) {
     text(ui, t.tr("welcome.start.intro"));
-    ui.add_space(10.0);
-    ui.vertical_centered(|ui| {
-        let choices = [
-            (StartChoice::Open, t.tr("common.open_repo.button")),
-            (StartChoice::Clone, t.tr("common.clone_repo.button")),
-            (StartChoice::Init, t.tr("common.init_repo.button")),
-        ];
-        for (choice, label) in choices {
-            if ui.add(buttons::secondary(label).min_width(260.0).min_height(34.0)).clicked() {
-                msgs.push(Msg::Onboarding(OnboardingMsg::Finish(Some(choice))));
-            }
-        }
-        ui.add_space(6.0);
+    ui.add_space(16.0);
+    super::welcome_cards::choices(ui, t, msgs);
+    ui.add_space(16.0);
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = 16.0;
         if has_repo {
-            if ui.add(buttons::secondary(t.tr("welcome.start.tour_now.button"))).clicked() {
+            if ui.link(t.tr("welcome.start.tour_now.link")).clicked() {
                 msgs.push(Msg::Onboarding(OnboardingMsg::StartTour));
             }
         } else {
             controls::checkbox(ui, &mut w.tour_after, t.tr("welcome.start.tour_after.check"));
         }
+        if ui.link(t.trf("welcome.start.look_link", &[("page", &prefs_path(t, PrefPage::Ui))])).clicked() {
+            msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ui)));
+        }
     });
-    ui.add_space(10.0);
-    if ui.link(t.trf("welcome.start.look_link", &[("page", &prefs_path(t, PrefPage::Ui))])).clicked() {
-        msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ui)));
-    }
 }

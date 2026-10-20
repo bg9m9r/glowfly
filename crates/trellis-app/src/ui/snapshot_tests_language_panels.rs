@@ -13,7 +13,7 @@ use super::snapshot_tests_onboarding::{ada, on};
 use super::snapshot_tests_repo_finder::finder;
 use super::snapshot_tests_repo_list::welcome_state;
 use crate::msg::{Msg, ReposMsg};
-use crate::state::onboarding::{WelcomeStep, identity_problem};
+use crate::state::onboarding::{EMAIL_FIELD, WelcomeStep};
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
@@ -55,7 +55,9 @@ fn welcome_screen_german() {
 fn welcome_identity_spanish() {
     let mut st = on(ThemeChoice::Dark, WelcomeStep::Identity, Some(ada()));
     st.settings.language = "es".into();
-    st.onboarding.welcome.as_mut().unwrap().identity.error = identity_problem(Lang::Es, "Ada", "ada").map(Into::into);
+    let f = &mut st.onboarding.welcome.as_mut().unwrap().identity;
+    f.email = "ada".into();
+    f.touched.mark(EMAIL_FIELD);
     let mut h = harness(st, true);
     h.run();
     for text in [
@@ -82,6 +84,11 @@ fn welcome_start_german() {
     assert!(link.contains(Lang::De.tr("prefs.nav.ui")), "{link}");
     assert!(h.query_by_label(&link).is_some(), "{link} is shown");
     assert!(h.query_by_label(Lang::De.tr("welcome.done.button")).is_some());
+    for key in ["welcome.start.open.hint", "welcome.start.clone.hint", "welcome.start.init.hint"] {
+        assert!(h.query_by_label(Lang::De.tr(key)).is_some(), "{key} is shown in German");
+        assert!(h.query_by_label(Lang::En.tr(key)).is_none(), "{key}: no English hint is left");
+    }
+    assert!(h.query_by_label(Lang::De.tr("welcome.start.tour_after.check")).is_some());
     h.check_snapshot("welcome_start_german");
 }
 

@@ -144,8 +144,11 @@ fn save_identity(st: &mut AppState, fx: &mut Vec<Effect>) {
         w.step = WelcomeStep::Connect;
         return;
     }
-    if let Some(problem) = identity_problem(t, &f.name, &f.email) {
-        f.error = Some(problem.into());
+    // A field's problem shows under it (the view works it out from the text); Continue only
+    // makes every field's problem show.
+    if identity_problem(t, &f.name, &f.email).is_some() {
+        f.touched.attempt();
+        f.error = None;
         return;
     }
     if switching {

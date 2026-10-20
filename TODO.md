@@ -370,7 +370,7 @@ until this list says which option was chosen.
 - [x] **Disabled menu items explain on hover**: a greyed label with a small ⓘ and the reason in a
       tooltip on hover or keyboard focus, in every menu. Chosen 2026-10-19: the menus board as
       drawn.
-- [ ] **Welcome screen**: choice cards with an icon and a line of description, a clearer
+- [x] **Welcome screen**: choice cards with an icon and a line of description, a clearer
       stepper and the tour as a quiet link. Chosen 2026-10-19 (option B, to try): a wider
       (760 px) welcome with a tinted header holding a lattice drawing in Trellis's own style,
       a four-segment progress bar, the user's name from the first step, and the three ways to
@@ -1035,8 +1035,6 @@ blockers and major findings are Milestone 1 items.
 - The About dialog folds third-party notices behind "Third-party notices…"
 - "Close (Esc)" text buttons become an × icon with a tooltip
 - Row context menus open below the row so its status text stays visible
-- The welcome wizard: one alignment for the step body, completed steps in the accent colour, and
-  no validation errors before the user types
 - The trust prompt's "{ } Hooks" heading becomes a drawn icon on the text margin, with space
   before the first message
 - The rebase exec editor uses the standard small Save and Cancel buttons
@@ -2999,3 +2997,17 @@ here, under the item they grew from.
   regions the same way
 - Run the smoke job against the packaged .deb (installed binary and desktop entry) instead of
   target/release
+
+### Welcome screen
+
+- Move the welcome onto the shared dialog frame and footer (button side, 36 px fields,
+  label-field-help groups) once Dialogs and text fields lands
+- Grow the header's vine by one commit node per completed step
+- Animate the progress bar's fill and the step change
+- Arrow keys move the focus between the Start step's cards
+- Give each start card its description as the accessible description, not only its title
+- A Recent repositories card on the Start step when Trellis already knows repositories (Show
+  the welcome again)
+- Greet with a typed name the user skipped saving, or with the active profile's name
+- Hide the lattice drawing under a reduced-motion or plain-look setting, if one is added
+- A visible scroll hint when the Start step's body scrolls in a short or narrow window

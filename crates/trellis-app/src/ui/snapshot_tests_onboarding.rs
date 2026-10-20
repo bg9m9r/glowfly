@@ -1,6 +1,7 @@
 //! Snapshots of the first-run welcome (each step and its states) and the tour of the main window
 //! (a panel outlined, the centred last step, a hidden panel), plus the clicks they turn into
-//! messages. Built from state only: no git config is read.
+//! messages. Built from state only: no git config is read. The welcome in other themes and
+//! window sizes is in `snapshot_tests_welcome_looks.rs`.
 
 use super::snapshot_tests::{harness, remove_fixture, settings, with_repo};
 use crate::msg::{LayoutMsg, Msg, PrefsMsg};
@@ -10,10 +11,12 @@ use crate::state::onboarding::{Welcome, WelcomeStep};
 use crate::state::onboarding_tour::TourStep;
 use crate::state::{AppState, PrefPage};
 use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use std::time::Instant;
 use trellis_core::forge::{Account, Connection, Provider};
 use trellis_core::git_version::GitInfo;
+use trellis_core::i18n::Lang;
 use trellis_core::identity::Identity;
 use trellis_core::settings::ThemeChoice;
 
@@ -34,23 +37,59 @@ pub(super) fn on(theme: ThemeChoice, step: WelcomeStep, git: Option<Identity>) -
     st
 }
 
-fn snapshot(name: &str, st: AppState, dark: bool) -> Vec<Msg> {
+pub(super) fn snapshot(name: &str, st: AppState, dark: bool) -> Vec<Msg> {
     let mut h = harness(st, dark);
     h.run();
     h.check_snapshot(name);
     std::mem::take(&mut h.state_mut().1)
 }
 
+/// The identity problems a blank or bad form can show.
+const PROBLEMS: [&str; 3] = ["welcome.identity.email_no_at", "welcome.identity.email_blank", "welcome.identity.name_blank"];
+
 #[test]
 fn welcome_identity() {
-    snapshot("welcome_identity_seeded", on(ThemeChoice::Dark, WelcomeStep::Identity, Some(ada())), true);
-    let mut st = on(ThemeChoice::Dark, WelcomeStep::Identity, Some(Identity::default()));
-    st.onboarding.welcome.as_mut().unwrap().identity.error = Some(trellis_core::i18n::Lang::En.tr("welcome.identity.email_no_at").into());
-    snapshot("welcome_identity_missing", st, true);
+    let mut h = harness(on(ThemeChoice::Dark, WelcomeStep::Identity, Some(ada())), true);
+    h.run();
+    h.check_snapshot("welcome_identity_seeded");
+    assert!(h.query_by_label(Lang::En.tr("welcome.subtitle")).is_some(), "the generic subtitle on the first step");
+    assert!(h.query_by_label("Nice to meet you, Ada Lovelace.").is_none(), "no greeting yet");
+    assert!(h.query_by_label("Step 1 of 4: You").is_some());
+    drop(h);
+    let mut h = harness(on(ThemeChoice::Dark, WelcomeStep::Identity, Some(Identity::default())), true);
+    h.run();
+    h.check_snapshot("welcome_identity_missing");
+    for key in PROBLEMS {
+        assert!(h.query_by_label(Lang::En.tr(key)).is_none(), "{key}: nothing complains before the user types");
+    }
+    drop(h);
     // The spinner keeps repainting: a fixed number of frames instead of running until idle.
     let mut h = harness(on(ThemeChoice::Dark, WelcomeStep::Identity, None), true);
     h.run_steps(4);
     h.check_snapshot("welcome_identity_reading");
+}
+
+#[test]
+fn welcome_identity_attempted() {
+    let mut st = on(ThemeChoice::Dark, WelcomeStep::Identity, Some(Identity::default()));
+    st.onboarding.welcome.as_mut().unwrap().identity.touched.attempt();
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("welcome_identity_attempted");
+    for key in ["welcome.identity.name_blank", "welcome.identity.email_blank"] {
+        assert!(h.query_by_label(Lang::En.tr(key)).is_some(), "{key} shows after Continue");
+    }
+}
+
+#[test]
+fn welcome_identity_typing() {
+    let mut h = harness(on(ThemeChoice::Dark, WelcomeStep::Identity, Some(Identity::default())), true);
+    h.run();
+    h.get_by_role_and_label(Role::TextInput, "Email").type_text("ada");
+    h.run();
+    assert_eq!(h.state().0.onboarding.welcome.as_ref().unwrap().identity.email, "ada");
+    assert!(h.query_by_label(Lang::En.tr("welcome.identity.email_no_at")).is_some(), "the edited field complains");
+    assert!(h.query_by_label(Lang::En.tr("welcome.identity.name_blank")).is_none(), "the other one doesn't");
 }
 
 #[test]
@@ -74,6 +113,8 @@ fn welcome_connect() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("welcome_connect_none");
+    assert!(h.query_by_label("Nice to meet you, Ada Lovelace.").is_some(), "greets with git's name");
+    assert!(h.query_by_label("Step 2 of 4: Services").is_some(), "the progress bar's name");
     h.get_by_label("Connect a service…").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)))));
@@ -107,10 +148,19 @@ fn welcome_start() {
     let mut h = harness(on(ThemeChoice::Dark, WelcomeStep::Start, Some(ada())), true);
     h.run();
     h.check_snapshot("welcome_start");
-    // The welcome screen's own button is behind the dialog; the dialog's is drawn last.
-    h.get_all_by_label("Clone a repository").last().unwrap().click();
+    for key in ["welcome.start.open.hint", "welcome.start.clone.hint", "welcome.start.init.hint"] {
+        assert!(h.query_by_label(Lang::En.tr(key)).is_some(), "{key} is shown");
+    }
+    // The welcome screen's own buttons are behind the dialog; the dialog's cards are drawn last.
+    for label in ["Open a repository", "Clone a repository", "Start a new repository"] {
+        h.get_all_by_label(label).last().unwrap().click();
+        h.run();
+    }
+    h.get_by_label("Done").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Onboarding(OnboardingMsg::Finish(Some(StartChoice::Clone))))));
+    let finished: Vec<_> =
+        h.state().1.iter().filter_map(|m| if let Msg::Onboarding(OnboardingMsg::Finish(c)) = m { Some(*c) } else { None }).collect();
+    assert_eq!(finished, [Some(StartChoice::Open), Some(StartChoice::Clone), Some(StartChoice::Init), None]);
     drop(h);
 
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "welcome-start-repo");
@@ -121,6 +171,7 @@ fn welcome_start() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("welcome_start_with_repo");
+    assert!(h.query_by_label(Lang::En.tr("welcome.start.tour_after.check")).is_none(), "the tour runs now instead");
     h.get_by_label("Take the tour now").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Onboarding(OnboardingMsg::StartTour))));

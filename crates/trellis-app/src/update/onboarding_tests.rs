@@ -115,21 +115,58 @@ fn a_missing_identity_is_written_to_the_global_config() {
 
 #[test]
 fn a_bad_identity_is_refused() {
+    let en = |k| Some(Lang::En.tr(k));
     let cases = [
-        ("", "a@b", Lang::En.tr("welcome.identity.name_blank")),
-        ("Ada", " ", Lang::En.tr("welcome.identity.email_blank")),
-        ("Ada", "ada", Lang::En.tr("welcome.identity.email_no_at")),
-        ("Ada", "ada @x", Lang::En.tr("welcome.identity.email_space")),
+        ("", "a@b", (en("welcome.identity.name_blank"), None)),
+        ("Ada", " ", (None, en("welcome.identity.email_blank"))),
+        ("Ada", "ada", (None, en("welcome.identity.email_no_at"))),
+        ("Ada", "ada @x", (None, en("welcome.identity.email_space"))),
     ];
-    for (name, email, problem) in cases {
+    for (name, email, problems) in cases {
         let mut st = welcome(Identity::default());
         let f = &mut st.onboarding.welcome.as_mut().unwrap().identity;
         f.name = name.into();
         f.email = email.into();
         assert!(run(&mut st, O::SaveIdentity).is_empty(), "{email}");
         let f = &st.onboarding.welcome.as_ref().unwrap().identity;
-        assert_eq!((f.error.as_deref(), f.saving), (Some(problem), false));
+        assert_eq!((f.error.as_deref(), f.saving), (None, false), "field problems stay out of the form's error");
+        assert!(f.touched.shows("name") && f.touched.shows("email"), "Continue makes every problem show");
+        assert_eq!(f.field_problems(Lang::En), problems, "{name} / {email}");
     }
+}
+
+#[test]
+fn nothing_complains_before_the_user_types() {
+    let mut st = welcome(Identity::default());
+    let f = &st.onboarding.welcome.as_ref().unwrap().identity;
+    assert!(f.field_problems(Lang::En).1.is_some(), "the blank email has a problem");
+    assert!(!f.touched.shows("email") && !f.touched.shows("name"), "but it doesn't show yet");
+    // An unchanged blank form just moves on; a name without an email is refused.
+    st.onboarding.welcome.as_mut().unwrap().identity.name = "Ada".into();
+    run(&mut st, O::SaveIdentity);
+    assert_eq!(step(&st), Some(WelcomeStep::Identity));
+    assert!(st.onboarding.welcome.as_ref().unwrap().identity.touched.shows("email"));
+}
+
+#[test]
+fn the_greeting_uses_the_name_git_holds() {
+    let mut st = welcome(Identity::default());
+    let f = &mut st.onboarding.welcome.as_mut().unwrap().identity;
+    (f.name, f.email) = ("Ada Lovelace".into(), "ada@example.com".into());
+    run(&mut st, O::SaveIdentity);
+    assert_eq!(st.onboarding.welcome.as_ref().unwrap().greeting_name(), None, "still on the identity step");
+    run(&mut st, O::IdentityWritten { identity: id("Ada Lovelace", "ada@example.com", None), result: Ok(()) });
+    assert_eq!(st.onboarding.welcome.as_ref().unwrap().greeting_name(), Some("Ada Lovelace"));
+
+    // A typed name skipped without saving: git's old name, or none.
+    let mut st = welcome(id("Ada", "ada@example.com", None));
+    st.onboarding.welcome.as_mut().unwrap().identity.name = "Augusta".into();
+    run(&mut st, O::Skip);
+    assert_eq!(st.onboarding.welcome.as_ref().unwrap().greeting_name(), Some("Ada"));
+    let mut st = welcome(Identity::default());
+    st.onboarding.welcome.as_mut().unwrap().identity.name = "Augusta".into();
+    run(&mut st, O::Skip);
+    assert_eq!(st.onboarding.welcome.as_ref().unwrap().greeting_name(), None);
 }
 
 #[test]
@@ -142,6 +179,9 @@ fn a_failed_write_stays_with_the_error() {
     let w = st.onboarding.welcome.as_ref().unwrap();
     assert_eq!((w.step, w.identity.saving), (WelcomeStep::Identity, false));
     assert_eq!(w.identity.error.as_deref(), Some("could not lock config file"));
+    run(&mut st, O::SaveIdentity);
+    let f = &st.onboarding.welcome.as_ref().unwrap().identity;
+    assert!(f.saving && f.error.is_none(), "the next try clears it");
 }
 
 #[test]
@@ -187,6 +227,9 @@ fn no_write_during_a_profile_switch() {
     assert!(run(&mut st, O::SaveIdentity).is_empty());
     let f = &st.onboarding.welcome.as_ref().unwrap().identity;
     assert_eq!((f.error.as_deref(), f.saving), (Some(Lang::En.tr("welcome.identity.not_during_switch")), false));
+    st.profile_switch = None;
+    assert!(matches!(run(&mut st, O::SaveIdentity).as_slice(), [Effect::Onboarding(OnboardingEffect::WriteIdentity { .. })]));
+    assert!(st.onboarding.welcome.as_ref().unwrap().identity.error.is_none(), "the next try clears it");
 }
 
 #[test]
