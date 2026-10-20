@@ -11,7 +11,7 @@ use crate::state::AppState;
 use crate::state::activity_rows::{copy_text, output_of};
 use crate::state::logs::LogEntry;
 use eframe::egui::text::{LayoutJob, TextFormat};
-use eframe::egui::{self, Color32, CornerRadius, Margin, Rect, RichText, Stroke, Ui};
+use eframe::egui::{self, Color32, CornerRadius, Margin, RichText, Stroke, Ui};
 use trellis_core::logs::{OutputLine, classify_line, output_lines};
 
 /// The most output lines an open row draws; Copy has them all.
@@ -19,11 +19,11 @@ pub(super) const OUTPUT_LINES: usize = 200;
 /// Room under the open part.
 const BOTTOM: f32 = 8.0;
 
-/// Draws `e`'s open part, indented to its title; returns the rect it took.
-pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>) -> Rect {
+/// Draws `e`'s open part, indented to its title.
+pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let indent = TITLE_X;
-    let resp = ui.horizontal_top(|ui| {
+    ui.horizontal_top(|ui| {
         ui.add_space(indent);
         ui.vertical(|ui| {
             ui.set_max_width((ui.available_width() - 8.0).max(0.0));
@@ -46,7 +46,6 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>
             ui.add_space(BOTTOM - 6.0);
         });
     });
-    resp.response.rect
 }
 
 /// The colour of an output line of kind `k`.
@@ -94,7 +93,7 @@ fn output(ui: &mut Ui, st: &AppState, text: &str) {
 }
 
 /// One run of an open routine group: a 28 px faint row with its time, duration and summary.
-pub(super) fn sub_row(ui: &mut Ui, st: &AppState, e: &LogEntry) -> Rect {
+pub(super) fn sub_row(ui: &mut Ui, st: &AppState, e: &LogEntry) {
     let summary = e.run.as_ref().map_or("", |r| r.summary.as_str());
     let time = trellis_core::dates::relative(st.settings.lang(), st.view.now - e.at);
     let look = RowLook {
@@ -107,5 +106,5 @@ pub(super) fn sub_row(ui: &mut Ui, st: &AppState, e: &LogEntry) -> Rect {
         open: None,
         sub: true,
     };
-    paint_row(ui, st, &look, |_, _| {}).rect
+    paint_row(ui, st, &look, |_, _| {});
 }

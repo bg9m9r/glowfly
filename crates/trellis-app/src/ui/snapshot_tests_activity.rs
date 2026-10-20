@@ -108,3 +108,27 @@ fn an_empty_log_says_so() {
     let h = tall(st, true);
     h.get_by_label("Nothing has happened in this tab yet.");
 }
+
+/// Details on a failure toast reveals its run although the list sticks to the newest row: the
+/// run's own line lands in view, not just somewhere near it.
+#[test]
+fn a_reveal_lets_go_of_the_bottom() {
+    let (mut st, [_, _, pull]) = session(ThemeChoice::Dark);
+    for n in 0..12 {
+        st.log.push(note(true, &format!("Checked out topic-{n}"), 0));
+    }
+    let mut h = super::snapshot_tests::harness(st, true);
+    h.run();
+    let row = "Pull, failed, Your changes to 1 file would be overwritten.";
+    let bounds = |h: &Harness<'static, (AppState, Vec<Msg>)>, label: &str| h.get_by_label(label).bounding_box().expect("laid out");
+    let list_top = bounds(&h, "Activity").y1;
+    assert!(bounds(&h, row).y0 < list_top, "stuck to the bottom, the run is above the list");
+    h.state_mut().0.view.activity_reveal = Some(pull);
+    h.run();
+    let run_top = bounds(&h, row).y0;
+    assert!(run_top >= list_top, "the run's line is in view: {run_top} under {list_top}");
+    assert!(run_top < list_top + 2.0 * f64::from(super::activity_rows::ROW_H), "at the list's top: {run_top}");
+    h.run();
+    h.run();
+    assert_eq!(bounds(&h, row).y0, run_top, "and stays there");
+}

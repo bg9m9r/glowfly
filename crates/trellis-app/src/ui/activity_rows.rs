@@ -41,7 +41,11 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         ui.label(egui::RichText::new(t.tr("logs.activity.empty")).color(color::faint()));
         return;
     }
-    egui::ScrollArea::vertical().stick_to_bottom(true).auto_shrink([false, false]).show(ui, |ui| {
+    // A reveal lets go of the bottom for its frame and jumps there within it: sticking, or an
+    // animation that only starts next frame, would be pulled back to the bottom.
+    let revealing = st.view.activity_reveal.is_some();
+    let area = egui::ScrollArea::vertical().stick_to_bottom(!revealing).animated(!revealing);
+    area.auto_shrink([false, false]).show(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for (n, row) in rows(&st.log).into_iter().enumerate() {
             let (rect, id) = match row {
@@ -53,7 +57,8 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ActivityRow::Routine { first, last, count } => (routine(ui, st, first, last, count, msgs), st.log[first].id),
             };
             if st.view.activity_reveal == Some(id) {
-                ui.scroll_to_rect(rect, Some(Align::Center));
+                // The row's own line at the top, its open part below it.
+                ui.scroll_to_rect(rect, Some(Align::Min));
                 st.view.activity_reveal = None;
             }
         }
@@ -166,7 +171,7 @@ fn spoken(t: Lang, title: &str, ok: bool, summary: &str) -> String {
     if summary.is_empty() { format!("{title}, {status}") } else { format!("{title}, {status}, {summary}") }
 }
 
-/// A run or a note, and its open part when it is folded open. Returns the rect it took.
+/// A run or a note, and its open part when it is folded open. Returns its row's rect.
 fn entry(ui: &mut Ui, st: &AppState, i: usize, msgs: &mut Vec<Msg>) -> Rect {
     let e = &st.log[i];
     let t = st.settings.lang();
@@ -198,15 +203,14 @@ fn entry(ui: &mut Ui, st: &AppState, i: usize, msgs: &mut Vec<Msg>) -> Rect {
     if resp.clicked() {
         msgs.push(Msg::Logs(LogsMsg::Fold(e.id)));
     }
-    let mut rect = resp.rect;
     if open == Some(true) {
-        rect = rect.union(super::activity_fold::show(ui, st, e, msgs));
+        super::activity_fold::show(ui, st, e, msgs);
     }
-    rect
+    resp.rect
 }
 
 /// Routine successes `first..=last`, standing for `count` runs: one grey row, and the runs it
-/// holds as sub-rows when it is folded open.
+/// holds as sub-rows when it is folded open. Returns the grey row's rect.
 fn routine(ui: &mut Ui, st: &AppState, first: usize, last: usize, count: u32, msgs: &mut Vec<Msg>) -> Rect {
     let t = st.settings.lang();
     let (head, newest) = (&st.log[first], &st.log[last]);
@@ -239,11 +243,10 @@ fn routine(ui: &mut Ui, st: &AppState, first: usize, last: usize, count: u32, ms
     if resp.clicked() {
         msgs.push(Msg::Logs(LogsMsg::Fold(id)));
     }
-    let mut rect = resp.rect;
     if open {
         for e in &st.log[first..=last] {
-            rect = rect.union(super::activity_fold::sub_row(ui, st, e));
+            super::activity_fold::sub_row(ui, st, e);
         }
     }
-    rect
+    resp.rect
 }
