@@ -224,7 +224,7 @@ fn restart_keeps_the_shell_and_the_name() {
     let (mut st, dir, one) = open_with_panel("term-tab-restart-shell");
     let two = spawned(run(&mut st, T::NewTab(Some(ShellChoice::Bash))));
     run(&mut st, T::StartRename(two));
-    run(&mut st, T::Rename { id: two, name: "build".into() });
+    run(&mut st, T::Rename { id: two, name: "build".into(), submitted: true });
     run(&mut st, T::Exited { id: two, code: Some(0) });
     let fx = terminal(run(&mut st, T::Restart));
     let new = match &fx[..] {

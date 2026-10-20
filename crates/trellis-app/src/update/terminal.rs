@@ -78,7 +78,7 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
         TerminalMsg::Paste => view::paste(st, fx),
         TerminalMsg::PanelHeight(h) => view::panel_height(st, h, fx),
         TerminalMsg::StartRename(id) => header::start_rename(st, id),
-        TerminalMsg::Rename { id, name } => header::rename(st, id, &name),
+        TerminalMsg::Rename { id, name, submitted } => header::rename(st, id, &name, submitted),
         TerminalMsg::CancelRename => header::cancel_rename(st),
         TerminalMsg::ToggleMaximize => header::toggle_maximize(st),
         TerminalMsg::Started { id, program } => {

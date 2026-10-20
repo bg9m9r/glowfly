@@ -135,7 +135,8 @@ pub(super) fn rename_field(ui: &mut Ui, draft: &mut TabRename, pill_w: f32, msgs
         if ui.input(|i| i.key_pressed(Key::Escape)) {
             msgs.push(Msg::Terminal(TerminalMsg::CancelRename));
         } else {
-            msgs.push(Msg::Terminal(TerminalMsg::Rename { id: draft.id, name: draft.text.clone() }));
+            let submitted = ui.input(|i| i.key_pressed(Key::Enter));
+            msgs.push(Msg::Terminal(TerminalMsg::Rename { id: draft.id, name: draft.text.clone(), submitted }));
         }
     }
 }

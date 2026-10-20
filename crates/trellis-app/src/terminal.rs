@@ -94,10 +94,12 @@ pub enum TerminalMsg {
     /// Show the inline rename field for tab `id` (a double-click, or More > Rename terminal).
     StartRename(u64),
     /// The rename field's Enter or losing focus: name tab `id` `name` (blank, or the automatic
-    /// name, goes back to the automatic name).
+    /// name, goes back to the automatic name). `submitted` is Enter, which gives the shell the
+    /// keyboard back; losing focus to another widget leaves the keyboard there.
     Rename {
         id: u64,
         name: String,
+        submitted: bool,
     },
     /// Esc in the rename field.
     CancelRename,

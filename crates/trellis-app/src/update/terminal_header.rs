@@ -18,16 +18,17 @@ pub(super) fn start_rename(st: &mut AppState, id: u64) {
     st.terminal.focus_requested = false;
 }
 
-/// Names tab `id` `name` from its rename field, then gives the keyboard back to the shell. A
-/// blank name, or the automatic one, goes back to naming it automatically.
-pub(super) fn rename(st: &mut AppState, id: u64, name: &str) {
+/// Names tab `id` `name` from its rename field. A blank name, or the automatic one, goes back
+/// to naming it automatically. Enter (`submitted`) gives the keyboard back to the shell; when
+/// the field lost focus to another widget, the keyboard stays with that widget.
+pub(super) fn rename(st: &mut AppState, id: u64, name: &str, submitted: bool) {
     if st.terminal.renaming.as_ref().is_none_or(|r| r.id != id) {
         return;
     }
     st.terminal.renaming = None;
     let Some(s) = st.terminal.sessions.iter_mut().find(|s| s.id == id) else { return };
     s.name = clean_rename(name).filter(|n| *n != auto_name(s));
-    st.terminal.focus_requested = true;
+    st.terminal.focus_requested = submitted;
 }
 
 /// Esc in the rename field: the name stays and the shell gets the keyboard back.

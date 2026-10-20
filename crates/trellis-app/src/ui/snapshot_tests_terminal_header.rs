@@ -13,8 +13,9 @@ use crate::state::terminal::SessionStatus;
 use crate::terminal::TerminalMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Key, vec2};
+use egui::accesskit::Role;
 use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{By, Queryable};
 use std::time::Instant;
 use trellis_core::i18n::Lang;
 use trellis_core::settings::{ShellChoice, TerminalPrefs, ThemeChoice};
@@ -38,7 +39,32 @@ fn terminal_tab_rename_dark() {
     h.run();
     h.press_key(Key::Enter);
     h.run();
-    assert!(pushed(&h, |t| matches!(t, TerminalMsg::Rename { id: 1, name } if name == "build")), "{:?}", h.state().0.terminal.renaming);
+    assert!(
+        pushed(&h, |t| matches!(t, TerminalMsg::Rename { id: 1, name, submitted: true } if name == "build")),
+        "{:?}",
+        h.state().0.terminal.renaming
+    );
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn focus_leaving_the_rename_field_renames_without_the_shell() {
+    let (mut st, dir) = with_session(ThemeChoice::Dark, "terminal-rename-blur", SessionStatus::Running);
+    apply(&mut st, TerminalMsg::StartRename(1));
+    let mut h = app_harness(st);
+    h.run();
+    h.state_mut().1.clear();
+    // Move to another text field (the first one that isn't the rename field holding the name).
+    let other = h
+        .query_all(By::new().role(Role::TextInput))
+        .find(|n| n.value().as_deref() != Some("pwsh \u{b7} demo"))
+        .expect("another text field in the window");
+    other.focus();
+    h.run();
+    assert!(pushed(&h, |t| matches!(t, TerminalMsg::Rename { id: 1, submitted: false, .. })));
+    assert!(!pushed(&h, |t| matches!(t, TerminalMsg::Rename { submitted: true, .. })), "only Enter hands the shell the keyboard");
+    assert!(!h.state().0.terminal.focused, "the shell did not take the keyboard");
     drop(h);
     remove_fixture(&dir);
 }
