@@ -8,6 +8,7 @@ pub mod create_dialog;
 mod info;
 mod picker;
 
+use super::markdown_cache::MarkdownCache;
 use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::msg::{IssueMsg, Msg};
@@ -19,7 +20,7 @@ use eframe::egui::{self, Align, Layout, Margin, RichText, Sense, Ui, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::text::printable;
 
-pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.issue else { return };
     let open_label = st.forge.as_ref().map_or("Open in browser", |f| f.open_issue_label());
     ui.add_space(6.0);
@@ -50,7 +51,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         });
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(16, 10)))
-        .show_inside(ui, |ui| conversation::show(ui, st, msgs));
+        .show_inside(ui, |ui| conversation::show(ui, st, md, msgs));
 }
 
 /// The icon, mention and title on the left; Close, Copy link and Open in browser on the right.

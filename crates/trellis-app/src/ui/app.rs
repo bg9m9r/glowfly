@@ -106,6 +106,7 @@ impl TrellisApp {
                 history_text: Default::default(),
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
+                markdown: Default::default(),
             },
             runner: make_runner(tx, ctx.clone()),
             results,

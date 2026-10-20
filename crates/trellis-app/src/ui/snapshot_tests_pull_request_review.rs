@@ -14,7 +14,7 @@ use egui_kittest::kittest::Queryable;
 use trellis_core::forge::{Entry, EntryKind, MergeMethod, MergeState, PrDetail, PrPage, PrState, Provider, Target, Verdict};
 use trellis_core::settings::ThemeChoice;
 
-fn detail() -> PrDetail {
+pub(super) fn detail() -> PrDetail {
     PrDetail {
         state: PrState::Open,
         draft: false,
@@ -33,13 +33,13 @@ fn detail() -> PrDetail {
     }
 }
 
-fn entry(author: &str, day: i64, kind: EntryKind, body: &str) -> Entry {
+pub(super) fn entry(author: &str, day: i64, kind: EntryKind, body: &str) -> Entry {
     // Days in January 2026, at 10:00 UTC.
     Entry { author: author.into(), time: 1_767_225_600 + (day - 1) * 86_400 + 36_000, kind, body: body.into(), url: String::new() }
 }
 
 /// The panel's page loaded by hand with `d` and `entries`, the forms fitted to it.
-fn load(st: &mut AppState, d: PrDetail, entries: Vec<Entry>) {
+pub(super) fn load(st: &mut AppState, d: PrDetail, entries: Vec<Entry>) {
     let v = st.pull_request.as_mut().unwrap();
     crate::state::pull_request_actions::prefill(&mut v.forms, &d);
     v.page = Page::Loaded(Box::new(PrPage { detail: d, entries, threads: Vec::new(), threads_note: None }));

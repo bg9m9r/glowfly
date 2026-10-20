@@ -258,6 +258,7 @@ fn keys_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
                 history_text: Default::default(),
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
+                markdown: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },

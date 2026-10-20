@@ -42,6 +42,7 @@ pub mod lfs;
 pub mod line_pairs;
 pub mod link;
 pub mod logs;
+pub mod markdown;
 pub mod matching;
 pub mod names;
 pub mod native_path;

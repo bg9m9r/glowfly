@@ -1188,7 +1188,6 @@ blockers and major findings are Milestone 1 items.
   missing or behind
 - A Commits tab: the commits between the merge base and the source tip
 - The pull request's CI / build status in the panel, with a link to the build page
-- Render comment and description Markdown (links, code, lists) instead of plain text
 - Ctrl+Enter to post a comment or submit a review
 - Start a new code comment on a diff line (a single comment or one added to a pending review),
   with suggested changes
@@ -2252,7 +2251,6 @@ here, under the item they grew from.
 
 - Change an issue's state (Jira: its status, through a transition), assignees and labels from the panel
 - Threaded replies with show and collapse (GitLab discussions, Jira comment threads)
-- Render descriptions and comments as Markdown (links, code blocks, emphasis, images) rather than plain text
 - Choose the base branch when creating a branch from an issue
 - GitHub issue types and milestones when creating an issue
 - GitLab milestones, epics and several assignees (paid tiers) when creating an issue
@@ -2270,7 +2268,6 @@ here, under the item they grew from.
 - Trello card comments past the first 1000 actions
 - Choose a Trello card's position in its list (top or bottom) when creating
 - Check a Trello token's write access before Create instead of after a refused create
-- Read a Bitbucket issue's Markdown as rendered HTML instead of the raw text
 - Azure DevOps work item priority and Jira priority in the panel's details
 
 ### Limits found while building integrations
@@ -2329,6 +2326,13 @@ here, under the item they grew from.
 - Remember Show resolved / Show outdated per repository
 - Load threads with more than 100 comments in full (a link opens the rest on the service now)
 - Previous / next code comment thread in the diff
+- Markdown bodies: show remote images (fetched in the background, size-capped, opt-in per
+  repository) instead of their alt text as a link
+- Markdown bodies: emoji shortcodes (`:robot:`), `#123` / `!12` references and `@mentions` as
+  links to the service, and relative links resolved against the repository's web address
+- Markdown bodies: a few safe HTML tags (`<details>`, `<br>`, `<sub>`, `<kbd>`) instead of
+  dropping them, and select text across styled runs (each run selects on its own now)
+- A Preview tab on the comment and reply boxes that renders the Markdown being written
 
 ### Custom themes
 

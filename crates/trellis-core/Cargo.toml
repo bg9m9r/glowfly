@@ -20,6 +20,7 @@ base64 = "0.23.1"
 icu_normalizer = "2.3"
 getrandom = "0.3"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+pulldown-cmark = { version = "0.13", default-features = false }
 keyring = { version = "3", features = ["windows-native", "apple-native"] }
 sha2 = "0.11.1"
 syntect = { version = "5.3", default-features = false, features = ["parsing", "dump-load", "regex-fancy"] }
@@ -40,6 +41,7 @@ two-face = { version = "0.5.2", default-features = false, features = ["syntect-f
 
 # Linux: save tokens in the desktop keyring (GNOME Keyring, KWallet) through the Secret Service.
 [target."cfg(target_os = \"linux\")".dependencies]
+pulldown-cmark = { version = "0.13", default-features = false }
 keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
 
 [target."cfg(windows)".dependencies]

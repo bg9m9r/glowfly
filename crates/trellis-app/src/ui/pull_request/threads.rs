@@ -3,6 +3,8 @@
 //! the pane itself. Cards reply and resolve through `PullRequestMsg`s; their location links
 //! open the thread's line in Files changed.
 
+use super::super::markdown;
+use super::super::markdown_cache::MarkdownCache;
 use super::super::theme::color;
 use super::super::widgets::{self, Icon};
 use super::note;
@@ -96,7 +98,7 @@ fn go_link(ui: &mut Ui, text: String, id: &str, blocked: Option<&String>, msgs: 
 
 /// Thread `id`'s card: where it is and its state, then (while open) the code it is on, its
 /// comments, and the reply box with Reply and Resolve or Unresolve.
-pub(super) fn card(ui: &mut Ui, v: &mut PrView, id: &str, place: Place, ctx: &Ctx, msgs: &mut Vec<Msg>) {
+pub(super) fn card(ui: &mut Ui, v: &mut PrView, id: &str, place: Place, ctx: &Ctx, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let Some(t) = v.loaded().and_then(|p| p.threads.iter().find(|t| t.id == id)).cloned() else { return };
     let open = is_open(&v.threads, &t);
     let focused = v.threads.focus.as_deref() == Some(id);
@@ -111,7 +113,7 @@ pub(super) fn card(ui: &mut Ui, v: &mut PrView, id: &str, place: Place, ctx: &Ct
             ui.set_width(ui.available_width());
             header(ui, &t, place, open, ctx, msgs);
             if open {
-                body(ui, v, &t, place, ctx, msgs);
+                body(ui, v, &t, place, ctx, md, msgs);
             }
         })
         .response;
@@ -156,12 +158,12 @@ fn header(ui: &mut Ui, t: &ReviewThread, place: Place, open: bool, ctx: &Ctx, ms
     });
 }
 
-fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, msgs: &mut Vec<Msg>) {
+fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     if !t.context.is_empty() && (place == Place::Overview || t.outdated) {
         ui.add(egui::Label::new(RichText::new(&t.context).monospace().color(color::weak())).wrap());
         ui.add_space(2.0);
     }
-    for c in &t.comments {
+    for (i, c) in t.comments.iter().enumerate() {
         ui.add_space(2.0);
         ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new(printable(&c.author)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
@@ -172,7 +174,7 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
         });
         let text = description_text(c.body.trim());
         if !text.is_empty() {
-            note(ui, text, color::text());
+            markdown::body(ui, ("pr-thread-comment", &t.id, i), &text, md, msgs);
         }
     }
     if t.more > 0 {
@@ -215,7 +217,7 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
 
 /// The pane under a pull request file's diff: its threads, with the filter bar, and a note
 /// when they can't be placed on the local lines.
-pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, msgs: &mut Vec<Msg>) {
+pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let go_to = go_to_reasons(st);
     let scroll = st.view.pr_thread_scroll.take();
     let ctx = Ctx { settings: &st.settings, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
@@ -231,7 +233,7 @@ pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, msgs: &mut V
     filter_bar(ui, v, Some(path), msgs);
     egui::ScrollArea::vertical().id_salt("pr-file-threads").auto_shrink([false, false]).show(ui, |ui| {
         for id in &ids {
-            card(ui, v, id, Place::File, &ctx, msgs);
+            card(ui, v, id, Place::File, &ctx, md, msgs);
         }
     });
 }

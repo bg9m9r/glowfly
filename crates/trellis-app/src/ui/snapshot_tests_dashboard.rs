@@ -252,6 +252,7 @@ fn esc_closes_the_dashboard_and_the_repository_menu_opens_it() {
                 history_text: Default::default(),
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
+                markdown: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },

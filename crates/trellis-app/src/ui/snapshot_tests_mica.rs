@@ -50,6 +50,7 @@ fn harness(mut st: AppState, p: Palette, bands: &'static [Color32; 9]) -> Harnes
                 history_text: Default::default(),
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
+                markdown: Default::default(),
             });
             if let Some(snap) = st.snap.as_mut() {
                 snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);

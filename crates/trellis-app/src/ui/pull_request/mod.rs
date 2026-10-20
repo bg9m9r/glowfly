@@ -48,7 +48,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                     merge::show(ui, view, st.snap.as_ref(), default_branch.as_deref(), msgs);
                 });
             });
-            center.show_inside(ui, |ui| conversation::show(ui, st, msgs));
+            center.show_inside(ui, |ui| conversation::show(ui, st, &mut cache.markdown, msgs));
         }
         PrTab::Files => {
             side.show_inside(ui, |ui| {
@@ -64,7 +64,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                         let threads = egui::TopBottomPanel::bottom("pr-file-threads");
                         crate::ui::panel_size::inner_bottom(threads, crate::state::panel_layout::PR_THREADS, room)
                             .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(12, 4)))
-                            .show_inside(ui, |ui| threads::file_pane(ui, st, &path, msgs));
+                            .show_inside(ui, |ui| threads::file_pane(ui, st, &path, &mut cache.markdown, msgs));
                     }
                     super::diff::show(ui, st, cache, msgs);
                 } else {

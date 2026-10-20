@@ -69,6 +69,13 @@ impl IssueView {
         self.target.provider
     }
 
+    /// Whether the description and comments are Markdown (GitHub, GitLab, Bitbucket, Trello),
+    /// not text Trellis made from a rich text format (Azure Boards' HTML, Jira Cloud's
+    /// documents) or Jira Data Center's own markup, which are shown as they are.
+    pub fn markdown(&self) -> bool {
+        !matches!(self.provider(), Provider::AzureDevOps | Provider::JiraCloud | Provider::JiraDataCenter)
+    }
+
     /// Closed, done or set aside: the icon turns purple.
     pub fn closed(&self) -> bool {
         let s = self.issue.state.to_lowercase();
@@ -222,6 +229,14 @@ mod tests {
             epic: Some("PROJ-1  Accounts".into()),
             comments: Vec::new(),
         }
+    }
+
+    #[test]
+    fn bodies_are_markdown_except_on_azure_boards_and_jira() {
+        let fs = ForgeState::new(Some(github()), "origin".into(), Some(github()));
+        assert!(IssueView::new(issue("3", "a"), &fs).unwrap().markdown());
+        let fs = ForgeState::new(Some(github()), "origin".into(), Some(jira()));
+        assert!(!IssueView::new(issue("PROJ-3", "a"), &fs).unwrap().markdown());
     }
 
     #[test]

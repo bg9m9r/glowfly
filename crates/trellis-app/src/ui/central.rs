@@ -108,7 +108,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
             } else if st.pull_request.is_some() {
                 pull_request::show(ui, st, cache, msgs);
             } else if st.issue.is_some() {
-                issue::show(ui, st, msgs);
+                issue::show(ui, st, &mut cache.markdown, msgs);
             } else if st.diff.is_some() {
                 diff::show(ui, st, cache, msgs);
             } else if st.rebase.is_some() {

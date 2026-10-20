@@ -80,6 +80,10 @@ mod lfs_banner;
 mod line_counts;
 mod list_row;
 mod mainline_dialog;
+mod markdown;
+mod markdown_cache;
+mod markdown_code;
+mod markdown_inline;
 mod menu_anchor;
 mod menu_bar;
 mod menus;
@@ -320,6 +324,8 @@ mod snapshot_tests_profiles;
 #[cfg(test)]
 mod snapshot_tests_pull_request;
 #[cfg(test)]
+mod snapshot_tests_pull_request_markdown;
+#[cfg(test)]
 mod snapshot_tests_pull_request_review;
 #[cfg(test)]
 mod snapshot_tests_pull_request_threads;
@@ -459,6 +465,8 @@ pub struct UiCache {
     pub blame_rows: blame::rows::BlameRowsCache,
     /// The binary diff's before and after image textures.
     pub diff_images: diff::preview::PreviewTextures,
+    /// Parsed Markdown bodies (pull request and issue descriptions and comments).
+    pub markdown: markdown_cache::MarkdownCache,
 }
 
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.
