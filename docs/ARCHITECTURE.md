@@ -62,7 +62,7 @@ binary (package `trellis`).
 | `settings.rs`, `settings/` | Preferences, theme choices and theme files (`themes.rs` parses them, aliases and loops included; `themes_io.rs` reads the themes folder and writes new files), which graph columns show (`graph_columns.rs`, which maps an old file's separate author and SHA toggles onto the COMMIT column) and their widths, per-repository graph filters, the branch colour preset and per-repository pinned branch colours (`branch_colours.rs`), per-repository PR and issue filters (`forge_filters.rs`), repository trust decisions and named profiles with their identity (seeding, syncing with git, name checks), saved connected accounts and app preferences (`profiles_prefs.rs`: what switches with a profile, and every setting classified as per-profile or global), whether the first-run welcome was seen (`welcome_done`, true for any file written before it existed), the update check and the release notes seen (`updates.rs`), the Downloads folder updates are saved to (`downloads.rs`), and how dates are shown (`date_fmt.rs`: the four patterns (Date, Long date, Date and time, Full date and time), blank following the date locale, relative ages and date hover text). |
 | `identity.rs` | The author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; reading the global identity; writing an identity to the global config in order. |
 | `persist.rs` | Crash-safe writes of Trellis's own files and of files saved for the user (patches); appends to logs. |
-| `logs.rs`, `logs/` | Trellis's log files: the activity log's file format and trimming (`activity.rs`), the size-rotating writer of the error and performance logs (`rotate.rs`), reading a log's end (`tail.rs`), and the text of performance and git command lines (`lines.rs`). |
+| `logs.rs`, `logs/` | Trellis's log files: the activity log's file format and trimming (`activity.rs`), the size-rotating writer of the error and performance logs (`rotate.rs`), reading a log's end (`tail.rs`), the text of performance and git command lines (`lines.rs`), and reading a job's output: its lines as a terminal shows them, their kinds and the last meaningful one (`output.rs`). |
 | `i18n.rs`, `i18n/`, `locales/` | The UI's translations: languages, the bundled catalogs (English base, per-language JSON), lookups with {name} placeholders and English fallback, the OS language read once at startup. |
 | `quoted.rs` | Decoding git's C-quoted paths (`"caf\303\251.txt"`), for blame's porcelain and sparse checkout lists. |
 | `dates.rs`, `dates/locale_patterns.rs` | Dates: moment.js-style patterns, localized month and weekday words, relative ages, and each language's usual patterns for the date locale (ISO 8601 otherwise), keyed by a normalised locale tag with the OS locale read once per run. |
@@ -373,7 +373,17 @@ binary (package `trellis`).
   activates or opens it (`update/logs_tabs.rs`). Nothing opens the panel by itself: a failure
   logged with `log` / `log_in` is announced at the end of `update` as a failure toast with
   Details (`logs_tabs::announce`), or gives Details to a failure toast pushed in that update;
-  Details selects the line's tab and shows its activity log. One ordered
+  Details selects the line's tab and shows its activity log, opening the failed run's row.
+  An entry is a note or a run: a job that ends in `ops::finish_job` is logged by
+  `update/logs_runs.rs` (`job_ended`) with a `RunInfo` (its label, a one-line summary from
+  `logs::last_message` or git's explained cause, its duration from `LogsState::job_started`,
+  which `logs_runs::stamp` sets at the end of `update`), persisted as the line's optional
+  `run` object. A loud failure's row starts open (`LogsState::open`), and its fix is kept once
+  in `LogsState::fixes`: the failure toast's button is a `LogsMsg::Fix(id)` proxy, so the
+  panel and the toast run it once. `state::activity_rows::rows` groups the view's rows
+  (session headers, runs and notes, consecutive successful auto-fetches as one routine row);
+  `cap_routine` keeps such a streak to `ROUTINE_KEEP` entries, the first counting the rest.
+  One ordered
   log worker (`runner/logs.rs`) owns the activity file and the performance log and stamps
   times, so `update` reads no clock. `Runner::run` times every effect that doesn't wait on the
   user (`Effect::timed`) and gitcli's run observer times every git command; those taking

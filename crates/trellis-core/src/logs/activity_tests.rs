@@ -8,7 +8,7 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 fn entry(at: i64, text: &str) -> ActivityEntry {
-    ActivityEntry { session: 100, at, ok: at % 2 == 0, text: text.into(), repo: None }
+    ActivityEntry { session: 100, at, ok: at % 2 == 0, text: text.into(), repo: None, run: None }
 }
 
 fn line_count(path: &Path) -> usize {
@@ -29,6 +29,7 @@ fn activity_line_round_trips() {
         ok: false,
         text: "Push failed:\n\"rejected\" — naïve 日本\r\nend".into(),
         repo: None,
+        run: None,
     };
     let line = activity_line(&e);
     assert!(line.ends_with('\n'));
@@ -53,7 +54,7 @@ fn long_text_is_capped_on_a_char_boundary() {
     // Three-byte chars put a char boundary off the cap's exact byte.
     for pad in 0..3 {
         let text = format!("{}{}", "a".repeat(pad), "語".repeat(MAX_ENTRY_BYTES));
-        let line = activity_line(&ActivityEntry { session: 1, at: 2, ok: true, text, repo: None });
+        let line = activity_line(&ActivityEntry { session: 1, at: 2, ok: true, text, repo: None, run: None });
         let (back, _) = parse_activity(&line);
         let kept = &back[0].text;
         assert!(kept.len() <= MAX_ENTRY_BYTES, "{}", kept.len());
@@ -61,7 +62,8 @@ fn long_text_is_capped_on_a_char_boundary() {
         assert!(kept.ends_with('…'));
     }
     let short = "x".repeat(MAX_ENTRY_BYTES);
-    let (back, _) = parse_activity(&activity_line(&ActivityEntry { session: 1, at: 2, ok: true, text: short.clone(), repo: None }));
+    let (back, _) =
+        parse_activity(&activity_line(&ActivityEntry { session: 1, at: 2, ok: true, text: short.clone(), repo: None, run: None }));
     assert_eq!(back[0].text, short, "text at the cap is kept whole");
 }
 
@@ -136,7 +138,7 @@ fn repo_is_written_only_when_set() {
 fn legacy_lines_read_without_a_repo() {
     let (entries, skipped) = parse_activity(r#"{"v":1,"session":1,"at":2,"ok":true,"text":"x"}"#);
     assert_eq!(skipped, 0);
-    assert_eq!(entries, vec![ActivityEntry { session: 1, at: 2, ok: true, text: "x".into(), repo: None }]);
+    assert_eq!(entries, vec![ActivityEntry { session: 1, at: 2, ok: true, text: "x".into(), repo: None, run: None }]);
 }
 
 #[test]
@@ -177,5 +179,46 @@ fn remove_repo_keeps_other_repositories() {
     std::fs::remove_file(&path).unwrap();
     file.remove_repo(Some(&b)).unwrap();
     assert!(!path.exists(), "a missing file stays missing");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn push_run() -> RunInfo {
+    RunInfo { title: "Push".into(), summary: "Everything up-to-date".into(), took_ms: Some(1250), routine: false }
+}
+
+#[test]
+fn run_info_round_trips() {
+    let e = ActivityEntry { run: Some(push_run()), ..entry(4, "Push done\n$ git push\nEverything up-to-date") };
+    let line = activity_line(&e);
+    assert!(line.contains(r#""run":{"title":"Push","summary":"Everything up-to-date","took_ms":1250}"#), "{line}");
+    assert!(!line.contains("routine"), "default fields are left out: {line}");
+    assert_eq!(parse_activity(&line), (vec![e], 0));
+    let bare = ActivityEntry { run: Some(RunInfo { title: "Fetch".into(), ..RunInfo::default() }), ..entry(6, "Fetch done") };
+    let line = activity_line(&bare);
+    assert!(line.contains(r#""run":{"title":"Fetch"}"#), "{line}");
+    assert_eq!(parse_activity(&line), (vec![bare], 0));
+    let routine = ActivityEntry { run: Some(RunInfo { title: "Auto-fetch".into(), routine: true, ..RunInfo::default() }), ..entry(8, "x") };
+    assert_eq!(parse_activity(&activity_line(&routine)), (vec![routine], 0));
+}
+
+#[test]
+fn plain_lines_still_load() {
+    let (entries, skipped) = parse_activity(r#"{"v":1,"session":1,"at":2,"ok":true,"text":"x","repo":null}"#);
+    assert_eq!((entries[0].run.clone(), skipped), (None, 0));
+    let (entries, _) = parse_activity(r#"{"v":1,"session":1,"at":2,"ok":false,"text":"x","run":{"title":"Pull"}}"#);
+    assert_eq!(entries[0].run, Some(RunInfo { title: "Pull".into(), summary: String::new(), took_ms: None, routine: false }));
+    let (entries, skipped) = parse_activity(r#"{"v":1,"session":1,"at":2,"ok":true,"text":"x","later":{"a":1}}"#);
+    assert_eq!((entries.len(), skipped), (1, 0), "an unknown key is ignored");
+}
+
+#[test]
+fn open_returns_appended_runs() {
+    let dir = scratch("runs");
+    let path = dir.join("activity.jsonl");
+    let (mut file, _) = ActivityFile::open(path.clone(), 10).unwrap();
+    let all = [ActivityEntry { run: Some(push_run()), ..entry(2, "Push done") }, entry(3, "note")];
+    file.append(&all).unwrap();
+    let (_, entries) = ActivityFile::open(path, 10).unwrap();
+    assert_eq!(entries, all);
     let _ = std::fs::remove_dir_all(&dir);
 }

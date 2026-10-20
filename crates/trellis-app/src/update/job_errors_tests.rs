@@ -39,8 +39,13 @@ fn labels(t: &Toast) -> (Option<&str>, Option<&str>) {
     (t.action.as_ref().map(|a| a.label.as_str()), t.details.as_ref().map(|a| a.label.as_str()))
 }
 
-fn action_msg(t: &Toast) -> &Msg {
-    &t.action.as_ref().expect("a fix").msg
+/// The message the toast's fix runs: the run's fix behind a `LogsMsg::Fix` proxy.
+fn action_msg<'a>(st: &'a AppState, t: &'a Toast) -> &'a Msg {
+    let msg = &t.action.as_ref().expect("a fix").msg;
+    match **msg {
+        Msg::Logs(crate::logs::LogsMsg::Fix(id)) => &st.logs.fix(id).expect("the fix is kept").msg,
+        _ => msg,
+    }
 }
 
 fn stash_count(dir: &Path) -> usize {
@@ -124,7 +129,9 @@ fn causes_get_their_fix() {
     let t = last_toast(&st);
     assert!(t.text.starts_with("The remote has commits your branch doesn't have."), "{}", t.text);
     assert_eq!(labels(t), (Some("Pull"), Some("Details")));
-    assert!(matches!(action_msg(t), Msg::Job(JobMsg::Git { label, cmds }) if label == "Pull" && *cmds == vec![args(&["pull", "--ff"])]));
+    assert!(
+        matches!(action_msg(&st, t), Msg::Job(JobMsg::Git { label, cmds }) if label == "Pull" && *cmds == vec![args(&["pull", "--ff"])])
+    );
 
     let cases: [(&str, &str, &str); 5] = [
         (
@@ -156,10 +163,10 @@ fn causes_get_their_fix() {
         assert!(t.text.starts_with(text), "{output}: {}", t.text);
         assert_eq!(labels(t).0, Some(button), "{output}");
         let ok = match button {
-            "View conflicts" => matches!(action_msg(t), Msg::Conflict(ConflictMsg::OpenConflict(p)) if p == "a.txt"),
-            "Push" => matches!(action_msg(t), Msg::Job(JobMsg::Push { force: false })),
-            "Create branch…" => matches!(action_msg(t), Msg::Branch(BranchMsg::NewBranch { start: None, name }) if name.is_empty()),
-            "SSH keys" => matches!(action_msg(t), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh))),
+            "View conflicts" => matches!(action_msg(&st, t), Msg::Conflict(ConflictMsg::OpenConflict(p)) if p == "a.txt"),
+            "Push" => matches!(action_msg(&st, t), Msg::Job(JobMsg::Push { force: false })),
+            "Create branch…" => matches!(action_msg(&st, t), Msg::Branch(BranchMsg::NewBranch { start: None, name }) if name.is_empty()),
+            "SSH keys" => matches!(action_msg(&st, t), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh))),
             _ => t.details.is_none(),
         };
         assert!(ok, "{output}: the fix's message");

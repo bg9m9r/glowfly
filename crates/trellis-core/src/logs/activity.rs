@@ -17,6 +17,25 @@ pub struct ActivityEntry {
     /// The repository of the tab it was logged in; None for a tab without one and for lines
     /// older builds wrote.
     pub repo: Option<PathBuf>,
+    /// The operation this line records, when it is one (a "run"); None for a plain note and for
+    /// lines older builds wrote.
+    pub run: Option<RunInfo>,
+}
+
+/// What an activity line records about a finished operation (a job).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RunInfo {
+    /// The job's label ("Push", "Fetch all").
+    pub title: String,
+    /// One short line: the plain cause of a failure, or what a success did. May be empty.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub summary: String,
+    /// How long the job ran, in milliseconds, when known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub took_ms: Option<u64>,
+    /// A background auto-fetch, which the panel folds with its neighbours.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub routine: bool,
 }
 
 /// Whether two entries' repositories are the same: both none, or the same spelling.
@@ -45,6 +64,8 @@ struct LineOut<'a> {
     /// Written with `paths::encode`, so any path survives the JSON text.
     #[serde(skip_serializing_if = "Option::is_none")]
     repo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    run: Option<RunInfo>,
 }
 
 #[derive(Deserialize)]
@@ -56,6 +77,8 @@ struct LineIn {
     text: String,
     #[serde(default)]
     repo: Option<String>,
+    #[serde(default)]
+    run: Option<RunInfo>,
 }
 
 /// `text`, at most [`MAX_ENTRY_BYTES`] long.
@@ -81,6 +104,7 @@ pub fn activity_line(e: &ActivityEntry) -> String {
         ok: e.ok,
         text: &capped(&e.text),
         repo: e.repo.as_deref().map(crate::paths::encode),
+        run: e.run.as_ref().map(|r| RunInfo { summary: capped(&r.summary).into_owned(), ..r.clone() }),
     };
     let mut s = serde_json::to_string(&line).unwrap_or_default();
     s.push('\n');
@@ -100,6 +124,7 @@ pub fn parse_activity(text: &str) -> (Vec<ActivityEntry>, usize) {
                 ok: l.ok,
                 text: l.text,
                 repo: l.repo.as_deref().map(crate::paths::decode),
+                run: l.run,
             }),
             _ => skipped += 1,
         }

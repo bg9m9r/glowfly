@@ -27,7 +27,14 @@ fn dir() -> PathBuf {
 
 fn earlier(n: usize) -> Vec<ActivityEntry> {
     (0..n)
-        .map(|i| ActivityEntry { session: 1_000, at: 1_000 + i as i64, ok: i % 2 == 0, text: format!("earlier {i}"), repo: None })
+        .map(|i| ActivityEntry {
+            session: 1_000,
+            at: 1_000 + i as i64,
+            ok: i % 2 == 0,
+            text: format!("earlier {i}"),
+            repo: None,
+            run: None,
+        })
         .collect()
 }
 
@@ -221,4 +228,28 @@ fn show_activity_reads_nothing() {
 fn open_folder_asks_the_runner() {
     let mut st = state();
     assert!(matches!(logs(&mut st, LogsMsg::OpenFolder)[..], [Effect::Logs(LogsEffect::OpenFolder)]));
+}
+
+#[test]
+fn loaded_runs_come_back() {
+    let mut st = state();
+    let info =
+        trellis_core::logs::RunInfo { title: "Push".into(), summary: "Everything up-to-date".into(), took_ms: Some(900), routine: false };
+    let saved = ActivityEntry { session: 1_000, at: 1_042, ok: true, text: "Push done".into(), repo: None, run: Some(info.clone()) };
+    let legacy = ActivityEntry { session: 1_000, at: 1_050, ok: true, text: "Fetch done\n$ git fetch".into(), repo: None, run: None };
+    loaded(&mut st, vec![saved, legacy]);
+    assert_eq!(st.log[0].run.as_ref(), Some(&info));
+    assert_eq!(st.log[0].at, 1_042);
+    assert_eq!(st.log[1].run.as_ref().map(|r| r.title.as_str()), Some("Fetch"), "an older build's line is upgraded");
+
+    // Clear forgets the cleared rows' open state and fixes.
+    let id = st.log[0].id;
+    st.logs.open.insert(id);
+    let fix = crate::state::ToastAction { label: "Pull".into(), msg: Box::new(Msg::git("Pull", &["pull"])), workdir: None };
+    st.logs.keep_fix(id, fix);
+    let other = crate::state::logs::EntryId::next();
+    st.logs.open.insert(other);
+    run(&mut st, Msg::ClearLog);
+    assert!(!st.logs.open.contains(&id) && st.logs.fix(id).is_none());
+    assert!(st.logs.open.contains(&other), "another tab's open rows stay");
 }

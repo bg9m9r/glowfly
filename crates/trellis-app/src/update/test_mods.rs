@@ -163,6 +163,8 @@ pub(super) mod lines_drag_tests;
 pub(super) mod lines_tests;
 #[path = "load_more_tests.rs"]
 pub(super) mod load_more_tests;
+#[path = "logs_runs_tests.rs"]
+pub(super) mod logs_runs_tests;
 #[path = "merge_commit_tests.rs"]
 pub(super) mod merge_commit_tests;
 #[path = "notify_tests.rs"]

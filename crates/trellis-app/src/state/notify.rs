@@ -7,6 +7,12 @@ use crate::effect::{DesktopNote, NoteKind};
 use std::path::PathBuf;
 use trellis_core::repo::{BranchInfo, Snapshot};
 
+/// The background fetch's job label (update/ops.rs `auto_fetch`).
+pub const AUTO_FETCH: &str = "Auto-fetch";
+
+/// The LFS download started after a successful auto-fetch (update/lfs.rs).
+pub const AUTO_FETCH_LFS: &str = "Auto-fetch LFS files";
+
 /// How far behind its upstream the checked-out branch was when an auto-fetch ended.
 #[derive(Clone, Debug, PartialEq)]
 pub struct BehindWatch {

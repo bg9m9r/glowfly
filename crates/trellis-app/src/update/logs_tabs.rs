@@ -4,7 +4,7 @@
 use crate::effect::Effect;
 use crate::logs::{LogKind, LogsMsg};
 use crate::msg::{Msg, TabsMsg};
-use crate::state::logs::{LOG_LIMIT, LogEntry, keep_newest};
+use crate::state::logs::{EntryId, LOG_LIMIT, LogEntry, keep_newest};
 use crate::state::tabs::TabId;
 use crate::state::{AppState, ToastAction};
 use std::time::Instant;
@@ -63,18 +63,23 @@ fn prepend(log: &mut Vec<LogEntry>, earlier: Vec<ActivityEntry>) {
     let skip = earlier.len().saturating_sub(room);
     let mut all: Vec<LogEntry> = earlier.into_iter().skip(skip).map(LogEntry::earlier).collect();
     all.append(log);
+    crate::state::activity_rows::cap_routine(&mut all);
     *log = all;
 }
 
-/// A failure toast's Details: selects `tab` if it is still open and not active, then opens the
-/// panel on the activity log.
-pub(super) fn details(st: &mut AppState, tab: TabId, fx: &mut Vec<Effect>) {
+/// A failure toast's Details: selects `tab` if it is still open and not active, opens the
+/// panel on the activity log, and opens the run `entry` and scrolls it into view.
+pub(super) fn details(st: &mut AppState, tab: TabId, entry: Option<EntryId>, fx: &mut Vec<Effect>) {
     if let Some(i) = st.tabs.iter().position(|t| t.id == tab)
         && i != st.active_tab
     {
         super::tabs::handle(st, TabsMsg::SelectTab(i), fx);
     }
     super::logs::show(st, LogKind::Activity, fx);
+    if let Some(e) = entry {
+        st.logs.open.insert(e);
+        st.view.activity_reveal = Some(e);
+    }
 }
 
 /// Announces the first failure logged loudly in this `update`: a failure toast pushed after
@@ -84,7 +89,7 @@ pub(super) fn details(st: &mut AppState, tab: TabId, fx: &mut Vec<Effect>) {
 pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
     let Some(a) = st.logs.announce.take() else { return };
     let msg = match a.tab {
-        Some(tab) => LogsMsg::Details(tab),
+        Some(tab) => LogsMsg::Details { tab, entry: a.entry },
         None => LogsMsg::Show(LogKind::Activity),
     };
     let label = st.settings.lang().tr("logs.toast.details.button").to_owned();

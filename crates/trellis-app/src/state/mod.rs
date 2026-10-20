@@ -1,6 +1,7 @@
 //! Application state: plain data, no egui types. Only `update` changes it, except for
 //! transient view state (`ViewState`) and text buffers that views edit in place.
 
+pub mod activity_rows;
 pub mod am_banner;
 mod app_queries;
 pub mod askpass;

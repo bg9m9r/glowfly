@@ -1,5 +1,7 @@
-//! The logs panel at the bottom: the active tab's activity log, with earlier sessions' entries
-//! in dimmed groups, and the ends of the error and performance logs, read by the runner.
+//! The logs panel at the bottom, on the panel surface: a 40 px header (the Activity, Errors and
+//! Performance tabs on the left, quiet icon buttons on the right, a hairline under it), then
+//! the active tab's activity log (ui/activity_rows.rs) or the end of the error or performance
+//! log, read by the runner.
 
 use super::pane_status::{self, Failure};
 use super::panel_size;
@@ -8,12 +10,25 @@ use crate::logs::{LogKind, LogsMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::panel_layout::{self, ACTIVITY, MAIN_MIN_HEIGHT};
-use crate::ui::theme::type_scale;
-use eframe::egui::{self, Align, Layout, RichText, TextStyle, Ui};
+use crate::state::tip::Tip;
+use crate::ui::widgets::Icon;
+use crate::ui::widgets::ghost::{self, divider, ghost, icon_tip};
+use crate::ui::widgets::segmented::segmented;
+use eframe::egui::{self, Align, Layout, Rect, RichText, Sense, Stroke, TextStyle, Ui, UiBuilder, pos2, vec2};
 use trellis_core::settings::SizedPanel;
 
-/// The first row of a file tab whose start was left out.
-const CUT_NOTE: &str = "Showing the end of the file. Open the logs folder for all of it.";
+pub(super) const HEADER_H: f32 = 40.0;
+/// The panel's side margin, which the hairline runs through.
+pub(super) const SIDE: f32 = 8.0;
+/// The right cluster: three buttons, the gaps between its four items and the divider.
+const RIGHT_W: f32 = 3.0 * ghost::HEIGHT + 3.0 * ghost::SPACE + ghost::DIVIDER_W;
+
+/// The panel's frame: its surface, 8 px at the sides and 6 px under the list; the header starts
+/// at the top edge.
+fn frame() -> egui::Frame {
+    let side = SIDE as i8;
+    egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin { left: side, right: side, top: 0, bottom: 6 })
+}
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !st.view.show_log {
@@ -25,99 +40,80 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let fit = panel_layout::fit_one(ctx.available_rect().height(), keep, ACTIVITY, st.settings.panel_sizes.get(SizedPanel::Activity));
     let id = egui::Id::new(panel_size::ACTIVITY_ID);
     panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Activity));
-    let resp = egui::TopBottomPanel::bottom(id).resizable(true).default_height(fit.size).height_range(fit.lo..=fit.hi).show(ctx, |ui| {
+    let panel = egui::TopBottomPanel::bottom(id).resizable(true).default_height(fit.size).height_range(fit.lo..=fit.hi).frame(frame());
+    let resp = panel.show(ctx, |ui| {
         header(ui, st, msgs);
         match st.logs.tab {
-            LogKind::Activity => activity(ui, st),
+            LogKind::Activity => super::activity_rows::show(ui, st, msgs),
             kind => file(ui, st, kind, msgs),
         }
     });
     panel_size::track(ctx, st, SizedPanel::Activity, id, resp.response.rect.height(), msgs);
 }
 
+/// The 40 px header: the tabs on the left, the buttons on the right, a hairline under it.
 fn header(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    ui.horizontal(|ui| {
-        for kind in LogKind::ALL {
-            if ui.selectable_label(st.logs.tab == kind, kind.label()).clicked() {
-                msgs.push(Msg::Logs(LogsMsg::Show(kind)));
-            }
-        }
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.small_button("Hide").clicked() {
-                st.view.show_log = false;
-            }
-            let tip = match &st.logs.dir {
-                Some(dir) => trellis_core::native_path::shown(dir),
-                None => "The folder Trellis keeps its logs in".to_owned(),
-            };
-            if ui.small_button("Open folder").on_hover_text(tip).clicked() {
-                msgs.push(Msg::Logs(LogsMsg::OpenFolder));
-            }
-            match st.logs.tab {
-                LogKind::Activity => {
-                    if ui.small_button("Clear").clicked() {
-                        msgs.push(Msg::ClearLog);
-                    }
-                }
-                kind => {
-                    if ui.small_button("Reload").clicked() {
-                        msgs.push(Msg::Logs(LogsMsg::Show(kind)));
-                    }
-                }
-            }
-        });
-    });
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), HEADER_H), Sense::hover());
+    let right = Rect::from_min_max(pos2(rect.right() - RIGHT_W, rect.top()), rect.max);
+    let mut r = ui.new_child(UiBuilder::new().max_rect(right).layout(Layout::right_to_left(Align::Center)));
+    r.spacing_mut().item_spacing.x = ghost::SPACE;
+    buttons(&mut r, st, msgs);
+    let left = Rect::from_min_max(rect.min, pos2(right.left() - SIDE, rect.bottom()));
+    let mut l = ui.new_child(UiBuilder::new().max_rect(left).layout(Layout::left_to_right(Align::Center)));
+    let t = st.settings.lang();
+    let tabs: Vec<(LogKind, &str, &str)> = LogKind::ALL.iter().map(|&k| (k, t.tr(k.key()), t.tr(k.tip_key()))).collect();
+    if let Some(kind) = segmented(&mut l, st.logs.tab, &tabs) {
+        msgs.push(Msg::Logs(LogsMsg::Show(kind)));
+    }
+    let x = rect.x_range().expand(SIDE);
+    ui.painter().hline(x, rect.bottom() - 0.5, Stroke::new(1.0_f32, color::border()));
 }
 
-fn group_header(ui: &mut Ui, text: String) {
-    ui.label(type_scale::section_text(ui, text));
-}
-
-/// The activity log: earlier sessions' entries first, each session under its start time, then
-/// this session's under "This session" (only when there are earlier ones).
-fn activity(ui: &mut Ui, st: &AppState) {
-    let any_earlier = st.log.first().is_some_and(|e| e.earlier.is_some());
-    egui::ScrollArea::vertical().stick_to_bottom(true).auto_shrink([false, false]).show(ui, |ui| {
-        let mut session = None;
-        let mut current = false;
-        for entry in &st.log {
-            let c = match entry.earlier {
-                Some(e) => {
-                    if session != Some(e.session) {
-                        session = Some(e.session);
-                        let at = st.settings.format_verbose(e.session, st.view.utc_offset);
-                        group_header(ui, format!("Earlier session · {at}"));
-                    }
-                    if entry.ok { color::weak() } else { color::removed().gamma_multiply(0.6) }
-                }
-                None => {
-                    if any_earlier && !current {
-                        current = true;
-                        group_header(ui, "This session".to_owned());
-                    }
-                    if entry.ok { color::text() } else { color::removed() }
-                }
-            };
-            ui.label(RichText::new(&entry.text).color(c));
-            ui.separator();
-        }
-    });
+/// The right-hand buttons, drawn right to left: Hide panel | Open folder, then Clear on the
+/// activity tab or Reload on a file tab.
+fn buttons(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
+    let keys = &st.keymap;
+    let hide = t.tr("logs.header.hide");
+    let hide_clicked = icon_tip(ghost(ui, Some(Icon::ChevronDown), None, hide, true), keys, t, Tip::new(hide)).clicked();
+    divider(ui);
+    let open = t.tr("logs.header.open_folder");
+    let body = match &st.logs.dir {
+        Some(dir) => trellis_core::native_path::shown(dir),
+        None => t.tr("logs.header.open_folder.tip").to_owned(),
+    };
+    if icon_tip(ghost(ui, Some(Icon::Folder), None, open, true), keys, t, Tip::new(open).body(body)).clicked() {
+        msgs.push(Msg::Logs(LogsMsg::OpenFolder));
+    }
+    let (icon, name, tip, msg) = match st.logs.tab {
+        LogKind::Activity => (Icon::Eraser, "logs.header.clear", "logs.header.clear.tip", Msg::ClearLog),
+        kind => (Icon::Refresh, "logs.header.reload", "logs.header.reload.tip", Msg::Logs(LogsMsg::Show(kind))),
+    };
+    let name = t.tr(name);
+    if icon_tip(ghost(ui, Some(icon), None, name, true), keys, t, Tip::new(name).body(t.tr(tip))).clicked() {
+        msgs.push(msg);
+    }
+    if hide_clicked {
+        st.view.show_log = false;
+    }
 }
 
 /// The end of the error or performance log, one monospace row per line.
 fn file(ui: &mut Ui, st: &AppState, kind: LogKind, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
+    ui.add_space(4.0);
     let view = st.logs.file.as_ref().filter(|v| v.kind == kind);
     let tail = match view.and_then(|v| v.tail.as_ref()) {
-        None => return pane_status::loading_line(ui, "Reading…"),
+        None => return pane_status::loading_line(ui, t.tr("logs.file.reading")),
         Some(Err(e)) => {
-            let f = Failure { title: "Couldn't read this log", error: e, retry: Some(Msg::Logs(LogsMsg::Show(kind))) };
-            return pane_status::failed_line(ui, st.settings.lang(), f, msgs);
+            let f = Failure { title: t.tr("logs.file.failed"), error: e, retry: Some(Msg::Logs(LogsMsg::Show(kind))) };
+            return pane_status::failed_line(ui, t, f, msgs);
         }
-        Some(Ok(t)) if t.lines.is_empty() => {
-            ui.label(RichText::new("Nothing has been logged here yet.").color(color::faint()));
+        Some(Ok(tail)) if tail.lines.is_empty() => {
+            ui.label(RichText::new(t.tr("logs.file.empty")).color(color::faint()));
             return;
         }
-        Some(Ok(t)) => t,
+        Some(Ok(tail)) => tail,
     };
     let note = usize::from(tail.truncated);
     let row_height = ui.text_style_height(&TextStyle::Monospace) + ui.spacing().item_spacing.y;
@@ -128,7 +124,7 @@ fn file(ui: &mut Ui, st: &AppState, kind: LogKind, msgs: &mut Vec<Msg>) {
         |ui, rows| {
             for i in rows {
                 let text = match i.checked_sub(note) {
-                    None => RichText::new(CUT_NOTE).color(color::faint()),
+                    None => RichText::new(t.tr("logs.file.cut")).color(color::faint()),
                     Some(n) => {
                         let line = &tail.lines[n];
                         let c = if line.contains(" ERROR ") {

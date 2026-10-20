@@ -3,7 +3,9 @@
 //! the few effects that need the window.
 
 mod access;
+mod activity_fold;
 mod activity_log;
+mod activity_rows;
 mod am_banner;
 mod askpass;
 mod askpass_host_key;
@@ -151,6 +153,8 @@ mod menu_testing;
 mod snapshot_check;
 #[cfg(test)]
 mod snapshot_tests;
+#[cfg(test)]
+mod snapshot_tests_activity;
 #[cfg(test)]
 mod snapshot_tests_askpass;
 #[cfg(test)]

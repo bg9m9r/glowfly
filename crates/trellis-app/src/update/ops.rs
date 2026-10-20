@@ -2,7 +2,7 @@
 //! update/jobs.rs, re-exported here.
 
 use super::auto_stash::Gate;
-use crate::effect::{Effect, LocalOp, NoteKind, UndoResult};
+use crate::effect::{Effect, LocalOp, UndoResult};
 use crate::msg::{JobMsg, Msg, StageMsg};
 use crate::state::trust::Created;
 use crate::state::{AppState, CommitDraft};
@@ -268,9 +268,7 @@ pub(super) fn force_push_cmd(b: &trellis_core::repo::BranchInfo, snap: &Snapshot
     Some(cmd)
 }
 
-/// The active job ended: logs and toasts it (`headline`; for a failure without one, git's cause
-/// in plain words with its fix, update/job_errors.rs; else "<label> succeeded" / "<label>
-/// failed: <reason>"), closes the credential prompts it left, updates the undo history of the
+/// The active job ended: logs it as a run and toasts it (update/logs_runs.rs), closes the credential prompts it left, updates the undo history of the
 /// tab it ran in, and refreshes that tab if it is still active.
 pub(super) fn finish_job(
     st: &mut AppState,
@@ -287,25 +285,7 @@ pub(super) fn finish_job(
     let then_pr = job.then_pr.take();
     // A cancelled or timed-out credential prompt explains a failure better than git's output.
     let headline = super::askpass::job_finished(st, ok, &job.label, job.workdir.as_deref(), &output, fx).or(headline);
-    let status = if ok { "done" } else { "FAILED" };
-    let text = format!("{} {status}\n{output}", job.label);
-    if job.quiet {
-        st.log_quiet_in(job.workdir.as_deref(), ok, text);
-    } else {
-        let explained = (!ok && headline.is_none()).then(|| super::job_errors::explain(st, &job, stash_retry, &output)).flatten();
-        let (headline, fix) = match (headline, explained) {
-            (Some(h), _) => (h, None),
-            (None, Some(e)) => (e.text, e.fix),
-            (None, None) => (super::job_errors::default_headline(&job.label, ok, &output), None),
-        };
-        super::notify::desktop(st, NoteKind::Job, &headline, job.workdir.as_deref(), fx);
-        // Pushed first, so a failure's announcement gives this toast its Details.
-        st.toast(ok, headline, now);
-        if let Some(f) = fix {
-            st.set_last_toast_action(f);
-        }
-        st.log_in(job.workdir.as_deref(), ok, text);
-    }
+    super::logs_runs::job_ended(st, &job, ok, &output, headline, stash_retry, now, fx);
     // The user may have switched tabs while the job ran.
     let here = match (job.workdir.as_deref(), st.workdir()) {
         (Some(a), Some(b)) => trellis_core::paths::same_spelling(a, &b),

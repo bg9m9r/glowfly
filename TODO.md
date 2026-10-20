@@ -362,7 +362,7 @@ until this list says which option was chosen.
       fingerprint, label and Copy public key, the default key marked, Generate and Use existing
       under the list; "Which key" is two rows with a dropdown each (the keys plus "Let ssh
       decide").
-- [ ] **Activity panel design**: a list of runs (title, time, result) with their output folded
+- [x] **Activity panel design**: a list of runs (title, time, result) with their output folded
       underneath and routine fetches kept quiet. Chosen 2026-10-19 (option A): one row per
       operation with a result icon, a plain title, a short summary, how long it took and when;
       a failed run opens in place to show what went wrong, the fix as a button and the command
@@ -1028,8 +1028,6 @@ blockers and major findings are Milestone 1 items.
   notices, the conflict check's file list, Preferences, the shortcut sheet, file history's 1 px
   horizontal bar); the conflict check shows either the whole list or a top N, not both
 - The About dialog folds third-party notices behind "Third-party notices…"
-- The activity log gets a time column, an error icon with Details, proportional text and real
-  session headers
 - "Close (Esc)" text buttons become an × icon with a tooltip
 - Row context menus open below the row so its status text stays visible
 - The welcome wizard: one alignment for the step body, completed steps in the accent colour, and
@@ -1059,7 +1057,6 @@ blockers and major findings are Milestone 1 items.
 - The command palette's empty list shows Recent, then Suggested, then the rest
 - Plain-language errors instead of git internals (safe.directory values; hosting-service errors
   rewritten as a sentence saying what to do)
-- No toast for routine background successes such as auto-fetch
 - The status bar's update-failed chip gives the reason on hover, with a Details link
 - Submodule status dots have tooltips, and clean rows say "up to date"
 - The tab list button sits after the last tab, and tab groups get a named chip
@@ -2893,3 +2890,19 @@ here, under the item they grew from.
 - Person colours that follow .mailmap (they follow the raw author email today)
 - Pin a branch colour from the command palette
 - Warn when a pin matches a side-by-side branch's pinned hue
+
+### Activity panel design
+
+- Attach extended logging's git command lines under the job that ran them instead of as notes
+  (they arrive from the log worker and can race the job's end), so they no longer break an
+  auto-fetch streak
+- A live row for the job that is running, with its elapsed time and a Stop button
+- When the activity file trims, drop routine auto-fetch lines first so they don't push older runs out
+- Fix buttons for earlier sessions' failures, rebuilt from the saved cause when it still applies
+- Filter the activity log to failures only, or search it
+- Keyboard navigation of activity rows (arrows move, Enter or Space folds)
+- Runs with durations for operations that are not jobs (stage, hunk and line operations, local
+  file operations)
+- Copy or export the whole activity log
+- Selectable text inside the output block
+- Hide a failed row's summary while it is open, since the cause sentence under it repeats it

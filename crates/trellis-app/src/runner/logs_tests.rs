@@ -34,8 +34,8 @@ fn worker_keeps_the_activity_log_across_sessions() {
     assert_eq!(next(&rx), LogsMsg::ActivityLoaded(Ok(EarlierLog { dir: dir.clone(), entries: Vec::new() })));
     let a = dir.join("a");
     w.submit(LogsEffect::Append(vec![
-        NewLine { ok: true, text: "Fetched origin".into(), repo: Some(a.clone()) },
-        NewLine { ok: false, text: "Push failed:\nrejected".into(), repo: None },
+        NewLine { ok: true, text: "Fetched origin".into(), repo: Some(a.clone()), run: None },
+        NewLine { ok: false, text: "Push failed:\nrejected".into(), repo: None, run: None },
     ]));
     // A missing log reads as empty; the answer also shows the append before it was done.
     w.submit(LogsEffect::ReadFile { kind: LogKind::Errors, generation: 7 });
@@ -65,6 +65,28 @@ fn worker_keeps_the_activity_log_across_sessions() {
     next(&rx);
     let (left, _) = logs::parse_activity(&std::fs::read_to_string(dir.join(logs::ACTIVITY_FILE)).unwrap());
     assert!(left.is_empty(), "{left:?}");
+    drop(w);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn appended_runs_load_again() {
+    let dir = trellis_core::paths::temp_dir().join(format!("trellis-log-worker-runs-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let run = logs::RunInfo { title: "Push".into(), summary: "Everything up-to-date".into(), took_ms: Some(1250), routine: false };
+    let (w, rx) = worker(&dir);
+    w.submit(LogsEffect::LoadActivity);
+    next(&rx);
+    w.submit(LogsEffect::Append(vec![NewLine { ok: true, text: "Push done\n$ git push".into(), repo: None, run: Some(run.clone()) }]));
+    // Answered after the append is done.
+    w.submit(LogsEffect::ReadFile { kind: LogKind::Errors, generation: 1 });
+    next(&rx);
+    drop(w);
+    let (w, rx) = worker(&dir);
+    w.submit(LogsEffect::LoadActivity);
+    let LogsMsg::ActivityLoaded(Ok(earlier)) = next(&rx) else { panic!("not loaded") };
+    assert_eq!(earlier.entries.len(), 1);
+    assert_eq!(earlier.entries[0].run, Some(run));
     drop(w);
     let _ = std::fs::remove_dir_all(&dir);
 }

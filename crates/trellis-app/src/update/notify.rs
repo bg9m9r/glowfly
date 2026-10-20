@@ -15,11 +15,7 @@ use std::time::Instant;
 use trellis_core::paths::same_spelling;
 use trellis_core::repo::Snapshot;
 
-/// The background fetch's job label (update/ops.rs `auto_fetch`).
-pub(super) const AUTO_FETCH: &str = "Auto-fetch";
-
-/// The LFS download started after a successful auto-fetch (update/lfs.rs).
-pub(super) const AUTO_FETCH_LFS: &str = "Auto-fetch LFS files";
+pub(super) use crate::state::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
 
 /// A job in the active tab ended, before its refresh is requested. A successful auto-fetch
 /// records the baseline; any other job clears an older one.
@@ -61,13 +57,28 @@ pub(super) fn toast_action(st: &mut AppState, id: u64, details: bool, now: Insta
     let Some(i) = st.toasts.iter().position(|t| t.id == id) else { return };
     let t = st.toasts.remove(i);
     let Some(action) = (if details { t.details } else { t.action }) else { return };
+    run_action(st, action, now, fx);
+}
+
+/// Whether `action` may run now: it names no repository, or the one the active tab shows.
+/// Otherwise a toast says to switch back first.
+pub(super) fn may_run(st: &mut AppState, action: &ToastAction, now: Instant) -> bool {
     if let Some(dir) = &action.workdir
         && !st.workdir().is_some_and(|w| same_spelling(dir, &w))
     {
         st.toast(false, format!("{} wasn't run: switch back to that repository's tab first.", action.label), now);
-        return;
+        return false;
+    }
+    true
+}
+
+/// Runs a toast's (or a failed run's) action when `may_run` allows it; returns whether it ran.
+pub(super) fn run_action(st: &mut AppState, action: ToastAction, now: Instant, fx: &mut Vec<Effect>) -> bool {
+    if !may_run(st, &action, now) {
+        return false;
     }
     fx.extend(super::update(st, *action.msg, now));
+    true
 }
 
 /// Also shows `title` as a desktop notification, with the repository's name as its body, when

@@ -1,7 +1,7 @@
 //! The logs panel: earlier sessions' activity in dimmed groups, the error log's tab, and the
 //! failure toast with Details.
 
-use super::snapshot_tests::{harness, settings};
+use super::snapshot_tests::{NOW, harness, settings};
 use crate::logs::{LogKind, LogsMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -12,12 +12,12 @@ use std::time::Instant;
 use trellis_core::logs::{ActivityEntry, LogTail};
 use trellis_core::settings::ThemeChoice;
 
-/// 2026-10-14 09:30 UTC and a day later.
-const FIRST: i64 = 1_791_970_200;
+/// 2026-01-29 09:30 UTC (three days before the harness's now) and a day later.
+const FIRST: i64 = 1_769_679_000;
 const SECOND: i64 = FIRST + 86_400;
 
 fn earlier(session: i64, minutes: i64, ok: bool, text: &str) -> LogEntry {
-    LogEntry::earlier(ActivityEntry { session, at: session + minutes * 60, ok, text: text.into(), repo: None })
+    LogEntry::earlier(ActivityEntry { session, at: session + minutes * 60, ok, text: text.into(), repo: None, run: None })
 }
 
 #[test]
@@ -27,15 +27,16 @@ fn activity_log_earlier_sessions() {
     st.logs.persist = Persist::On;
     st.log = vec![
         earlier(FIRST, 1, true, "Fetched origin"),
+        // A run line an older build wrote: shown as a run.
+        earlier(FIRST, 2, true, "Fetch done\n$ git fetch origin\nFrom example.com:team/trellis"),
         earlier(FIRST, 4, false, "Push failed: the remote has commits you don't have"),
         earlier(SECOND, 2, true, "Checked out main"),
-        LogEntry::new(true, "Pulled origin/main"),
-        LogEntry::new(false, "Couldn't reach github.com"),
+        LogEntry { at: NOW - 300, ..LogEntry::new(true, "Pulled origin/main") },
+        LogEntry { at: NOW - 60, ..LogEntry::new(false, "Couldn't reach github.com") },
     ];
-    let mut h = harness(st, true);
     // A panel dragged taller than its default, so every group shows.
-    let rect = eframe::egui::Rect::from_min_size(eframe::egui::pos2(0.0, 500.0), eframe::egui::vec2(1400.0, 290.0));
-    h.ctx.data_mut(|d| d.insert_persisted(eframe::egui::Id::new("activity"), eframe::egui::panel::PanelState { rect }));
+    st.settings.panel_sizes.set(trellis_core::settings::SizedPanel::Activity, 380.0);
+    let mut h = harness(st, true);
     h.run();
     h.check_snapshot("activity_log_earlier_sessions");
 }

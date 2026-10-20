@@ -1,14 +1,16 @@
 //! The logs: loading the earlier sessions' activity, writing new lines to the activity file,
 //! the panel's tabs, the logs folder and extended logging. The runner's log worker does the
-//! file work and stamps the times (runner/logs.rs).
+//! file work and stamps the times (runner/logs.rs). Finished jobs, open rows and fixes are in
+//! update/logs_runs.rs.
 
 use crate::effect::Effect;
 use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg};
 use crate::state::AppState;
 use crate::state::logs::{LogFileView, Persist};
+use std::time::Instant;
 use trellis_core::logs::{git_run_line, same_repo};
 
-pub(super) fn handle(st: &mut AppState, m: LogsMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, m: LogsMsg, now: Instant, fx: &mut Vec<Effect>) {
     match m {
         LogsMsg::Start => {
             fx.push(Effect::Logs(LogsEffect::LoadActivity));
@@ -50,7 +52,9 @@ pub(super) fn handle(st: &mut AppState, m: LogsMsg, fx: &mut Vec<Effect>) {
                 st.log_quiet_in(Some(&run.cwd), ok, git_run_line(&run));
             }
         }
-        LogsMsg::Details(tab) => super::logs_tabs::details(st, tab, fx),
+        LogsMsg::Details { tab, entry } => super::logs_tabs::details(st, tab, entry, fx),
+        LogsMsg::Fold(id) => super::logs_runs::fold(st, id),
+        LogsMsg::Fix(id) => super::logs_runs::fix(st, id, now, fx),
     }
 }
 
@@ -90,7 +94,9 @@ pub(super) fn show(st: &mut AppState, kind: LogKind, fx: &mut Vec<Effect>) {
 /// and removes its repository's lines from the file. Other tabs keep theirs.
 pub(super) fn clear(st: &mut AppState, fx: &mut Vec<Effect>) {
     let tag = st.tabs.get(st.active_tab).and_then(|t| t.path.clone());
-    st.log.clear();
+    let cleared: std::collections::HashSet<_> = st.log.drain(..).map(|e| e.id).collect();
+    st.logs.open.retain(|id| !cleared.contains(id));
+    st.logs.fixes.retain(|(id, _)| !cleared.contains(id));
     st.logs.pending.retain(|l| !same_repo(l.repo.as_deref(), tag.as_deref()));
     st.logs.unclaimed.retain(|e| !same_repo(e.repo.as_deref(), tag.as_deref()));
     match st.logs.persist {

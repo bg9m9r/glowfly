@@ -1,9 +1,10 @@
 //! Trellis's log files, all in `settings::log_dir`:
 //!
 //! - `activity.jsonl`: the activity panel's lines across sessions, one JSON object per line
-//!   (`{"v":1,"session":…,"at":…,"ok":…,"text":…,"repo":…}`, times in Unix seconds, `session`
-//!   the start of the session that wrote it, `repo` the repository of the tab it was logged in,
-//!   left out for a tab without one). Kept to the newest entries: trimmed when it is opened, and
+//!   (`{"v":1,"session":…,"at":…,"ok":…,"text":…,"repo":…,"run":{…}}`, times in Unix seconds,
+//!   `session` the start of the session that wrote it, `repo` the repository of the tab it was
+//!   logged in, left out for a tab without one, `run` the finished operation it records
+//!   ([`RunInfo`]), left out for a plain line). Kept to the newest entries: trimmed when it is opened, and
 //!   whenever appends take it past twice that many ([`ActivityFile`]).
 //! - `errors.log`: warnings, errors and panics, as text lines from the app's tracing setup,
 //!   rotated by size ([`RotatingFile`], [`ERROR_LOG_BYTES`]).
@@ -11,15 +12,18 @@
 //!   line each ([`perf_line`]), rotated the same way at [`PERF_LOG_BYTES`].
 //!
 //! A rotated file moves to `<name>.1.log`, the older ones up by one, keeping [`KEEP_ROTATED`].
-//! Every write goes through `persist`; [`read_tail`] reads the end of a text log for the panel.
+//! Every write goes through `persist`; [`read_tail`] reads the end of a text log for the panel,
+//! and [`output_lines`], [`classify_line`] and [`last_message`] read a job's output for it.
 
 mod activity;
 mod lines;
+mod output;
 mod rotate;
 mod tail;
 
-pub use activity::{ActivityEntry, ActivityFile, MAX_ENTRY_BYTES, activity_line, parse_activity, same_repo};
+pub use activity::{ActivityEntry, ActivityFile, MAX_ENTRY_BYTES, RunInfo, activity_line, parse_activity, same_repo};
 pub use lines::{git_run_line, perf_line, redact_url_userinfo};
+pub use output::{OutputLine, classify_line, last_message, output_lines};
 pub use rotate::{RotatingFile, rotated_path};
 pub use tail::{LogTail, read_tail};
 

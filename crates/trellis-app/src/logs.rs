@@ -2,9 +2,11 @@
 //! performance log tabs, the logs folder and extended logging (state/logs.rs, update/logs.rs,
 //! runner/logs.rs, logging.rs, ui/activity_log.rs).
 
+use crate::state::logs::EntryId;
+use crate::state::tabs::TabId;
 use std::path::PathBuf;
 use trellis_core::gitcli::GitRun;
-use trellis_core::logs::{ActivityEntry, LogTail};
+use trellis_core::logs::{ActivityEntry, LogTail, RunInfo};
 
 /// The activity panel's tabs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -18,11 +20,21 @@ pub enum LogKind {
 impl LogKind {
     pub const ALL: [LogKind; 3] = [LogKind::Activity, LogKind::Errors, LogKind::Performance];
 
-    pub fn label(self) -> &'static str {
+    /// The language key of its name; `<key>.tip` explains it.
+    pub fn key(self) -> &'static str {
         match self {
-            LogKind::Activity => "Activity",
-            LogKind::Errors => "Errors",
-            LogKind::Performance => "Performance",
+            LogKind::Activity => "logs.tab.activity",
+            LogKind::Errors => "logs.tab.errors",
+            LogKind::Performance => "logs.tab.performance",
+        }
+    }
+
+    /// The language key of its tooltip.
+    pub fn tip_key(self) -> &'static str {
+        match self {
+            LogKind::Activity => "logs.tab.activity.tip",
+            LogKind::Errors => "logs.tab.errors.tip",
+            LogKind::Performance => "logs.tab.performance.tip",
         }
     }
 }
@@ -34,6 +46,8 @@ pub struct NewLine {
     pub ok: bool,
     pub text: String,
     pub repo: Option<PathBuf>,
+    /// The finished operation it records; None for a note.
+    pub run: Option<RunInfo>,
 }
 
 /// The earlier sessions' activity, read from the logs folder `dir` at startup.
@@ -62,9 +76,13 @@ pub enum LogsMsg {
     SetExtended(bool),
     /// A git command ended while extended logging is on.
     GitRan(GitRun),
-    /// A failure toast's Details: select that tab if it is still open and show its activity
-    /// log.
-    Details(crate::state::tabs::TabId),
+    /// A failure toast's Details: select that tab if it is still open, show its activity log
+    /// and open the failed run's row (`entry`), scrolled into view.
+    Details { tab: TabId, entry: Option<EntryId> },
+    /// Fold an activity row (a routine group by its first entry) open, or closed again.
+    Fold(EntryId),
+    /// Run a failed run's fix: the panel's button, and the failure toast's.
+    Fix(EntryId),
 }
 
 impl LogsMsg {
@@ -79,7 +97,9 @@ impl LogsMsg {
             | Self::OpenFolder
             | Self::SetExtended(_)
             | Self::GitRan(_)
-            | Self::Details(_) => None,
+            | Self::Details { .. }
+            | Self::Fold(_)
+            | Self::Fix(_) => None,
         }
     }
 }

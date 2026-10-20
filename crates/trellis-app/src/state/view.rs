@@ -55,6 +55,9 @@ pub struct ColumnDrag {
 /// Purely visual state that views may change directly.
 pub struct ViewState {
     pub show_log: bool,
+    /// An activity row to scroll into view once (set by update for a toast's Details; the
+    /// view clears it).
+    pub activity_reveal: Option<crate::state::logs::EntryId>,
     pub show_search: bool,
     /// The search bar's query text (parsed by update on `SearchMsg::QueryChanged`).
     pub search: String,
@@ -161,6 +164,7 @@ impl Default for ViewState {
     fn default() -> Self {
         Self {
             show_log: false,
+            activity_reveal: None,
             show_search: false,
             search: String::new(),
             author_filter: String::new(),

@@ -48,7 +48,7 @@ fn scoped(workdir: &Path, msg: Msg) -> Msg {
 }
 
 fn entry(at: i64, text: &str, repo: Option<&Path>) -> ActivityEntry {
-    ActivityEntry { session: 1, at, ok: true, text: text.into(), repo: repo.map(Path::to_path_buf) }
+    ActivityEntry { session: 1, at, ok: true, text: text.into(), repo: repo.map(Path::to_path_buf), run: None }
 }
 
 fn loaded(st: &mut AppState, entries: Vec<ActivityEntry>) -> Vec<Effect> {
@@ -67,7 +67,7 @@ fn appended(fx: &[Effect]) -> Vec<NewLine> {
 /// The tab a toast's Details selects.
 fn details_tab(st: &AppState) -> Option<crate::state::tabs::TabId> {
     st.toasts.iter().find_map(|t| match t.action.as_ref().map(|a| &*a.msg) {
-        Some(Msg::Logs(LogsMsg::Details(tab))) => Some(*tab),
+        Some(Msg::Logs(LogsMsg::Details { tab, .. })) => Some(*tab),
         _ => None,
     })
 }
@@ -83,7 +83,7 @@ fn a_failure_doesnt_open_the_panel() {
     assert_eq!(t.text, "Couldn't save x");
     let action = t.action.as_ref().expect("Details");
     assert_eq!(action.label, "Details");
-    assert!(matches!(&*action.msg, Msg::Logs(LogsMsg::Details(id)) if *id == st.tabs[st.active_tab].id));
+    assert!(matches!(&*action.msg, Msg::Logs(LogsMsg::Details { tab: id, .. }) if *id == st.tabs[st.active_tab].id));
     assert_eq!(action.workdir, None, "works from any tab");
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Couldn't save x"));
 }
@@ -204,12 +204,11 @@ fn an_ok_line_for_another_tab_is_dropped() {
     assert!(st.tabs[1].log.is_empty() && st.log.is_empty());
 }
 
-#[test]
-fn a_finished_job_logs_in_its_own_tab() {
-    let (mut st, _, b) = two_tabs();
+/// A failed Push that ran in `workdir`.
+fn push_failed_in(st: &mut AppState, workdir: &Path) {
     st.job = Some(RunningJob {
         label: "Push".into(),
-        workdir: Some(b.clone()),
+        workdir: Some(workdir.to_path_buf()),
         quiet: false,
         clear_commit: false,
         then_push: false,
@@ -219,7 +218,28 @@ fn a_finished_job_logs_in_its_own_tab() {
         keeps_undo: true,
         fetches: false,
     });
-    run(&mut st, Msg::Job(JobMsg::JobDone { ok: false, output: "remote rejected".into(), undo: None }));
+    run(st, Msg::Job(JobMsg::JobDone { ok: false, output: "remote rejected".into(), undo: None }));
+}
+
+#[test]
+fn details_opens_the_failed_run() {
+    let (mut st, _, b) = two_tabs();
+    push_failed_in(&mut st, &b);
+    let id = st.tabs[1].log.last().expect("the run").id;
+    st.logs.open.clear();
+    let toast = st.toasts.iter().find(|t| !t.ok).expect("the failure toast").id;
+    run(&mut st, Msg::ToastAction(toast));
+    assert_eq!(st.active_tab, 1);
+    assert!(st.view.show_log);
+    assert_eq!(st.logs.tab, LogKind::Activity);
+    assert!(st.logs.open.contains(&id), "the run is opened");
+    assert_eq!(st.view.activity_reveal, Some(id), "and scrolled into view");
+}
+
+#[test]
+fn a_finished_job_logs_in_its_own_tab() {
+    let (mut st, _, b) = two_tabs();
+    push_failed_in(&mut st, &b);
     assert!(st.tabs[1].log.iter().any(|l| l.text.starts_with("Push FAILED")), "{:?}", texts(&st.tabs[1].log));
     assert!(!st.log.iter().any(|l| l.text.starts_with("Push FAILED")));
     assert_eq!(st.toasts.iter().filter(|t| !t.ok).count(), 1, "the headline toast is the announcement");
@@ -251,18 +271,18 @@ fn new_lines_are_tagged_with_their_tab() {
     let (mut st, a, b) = two_tabs();
     loaded(&mut st, Vec::new());
     let fx = run(&mut st, failed("here"));
-    assert_eq!(appended(&fx), [NewLine { ok: false, text: "here".into(), repo: Some(a.clone()) }]);
+    assert_eq!(appended(&fx), [NewLine { ok: false, text: "here".into(), repo: Some(a.clone()), run: None }]);
     let fx = run(&mut st, scoped(&b, failed("there")));
-    assert_eq!(appended(&fx), [NewLine { ok: false, text: "there".into(), repo: Some(b.clone()) }]);
+    assert_eq!(appended(&fx), [NewLine { ok: false, text: "there".into(), repo: Some(b.clone()), run: None }]);
     let c = repo("c");
     let fx = run(&mut st, scoped(&c, failed("unopened")));
-    assert_eq!(appended(&fx), [NewLine { ok: false, text: "unopened".into(), repo: Some(c) }]);
+    assert_eq!(appended(&fx), [NewLine { ok: false, text: "unopened".into(), repo: Some(c), run: None }]);
     assert_eq!(st.log.last().unwrap().text, "unopened", "kept in the active tab's log");
 
     let mut st = state();
     loaded(&mut st, Vec::new());
     let fx = run(&mut st, failed("welcome"));
-    assert_eq!(appended(&fx), [NewLine { ok: false, text: "welcome".into(), repo: None }]);
+    assert_eq!(appended(&fx), [NewLine { ok: false, text: "welcome".into(), repo: None, run: None }]);
 }
 
 #[test]

@@ -1,19 +1,28 @@
 //! The activity logs in memory, one per tab, and what the logs panel shows: earlier sessions'
 //! entries, the lines waiting to be written to the activity file, the failure waiting to be
-//! announced, the open tab and the error or performance log read for it.
+//! announced, the open tab and the error or performance log read for it, the rows folded open
+//! and the fixes failed runs offer.
 //!
-//! The active tab's log is `AppState::log`; every other tab keeps its own in `Tab::log`
+//! An entry is a note or a run (a finished job with its `RunInfo`, update/logs_runs.rs). The
+//! active tab's log is `AppState::log`; every other tab keeps its own in `Tab::log`
 //! (update/tabs.rs swaps them, update/logs_tabs.rs hands out earlier entries).
 
-use super::AppState;
 use super::tabs::TabId;
-use crate::logs::{LogKind, NewLine};
+use super::{AppState, ToastAction};
+use crate::logs::{LogKind, LogsMsg, NewLine};
+use crate::msg::Msg;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use trellis_core::logs::{ActivityEntry, LogTail};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Instant;
+use trellis_core::logs::{ActivityEntry, LogTail, RunInfo};
 
 /// The most entries a tab's activity log keeps (earlier sessions' included), and the activity
 /// file for all repositories together.
 pub const LOG_LIMIT: usize = 500;
+
+/// The most fixes kept for failed runs; the oldest go first.
+pub const FIX_LIMIT: usize = 20;
 
 /// When an entry from an earlier session was written (Unix seconds).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -23,21 +32,44 @@ pub struct Earlier {
     pub at: i64,
 }
 
+/// An activity log entry's name for the session: open rows and fixes are keyed by it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct EntryId(u64);
+
+impl EntryId {
+    pub fn next() -> EntryId {
+        static NEXT: AtomicU64 = AtomicU64::new(1);
+        EntryId(NEXT.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LogEntry {
+    pub id: EntryId,
     pub ok: bool,
     pub text: String,
     /// Set for entries from an earlier session, read from the activity file.
     pub earlier: Option<Earlier>,
+    /// When it was logged, in Unix seconds: `view.now` for this session's entries, the file's
+    /// time for earlier ones.
+    pub at: i64,
+    /// The finished operation it records; None for a note.
+    pub run: Option<RunInfo>,
+    /// How many older routine successes this entry also stands for, dropped by the routine cap
+    /// (state/activity_rows.rs). Never written to the file.
+    pub folded: u32,
 }
 
 impl LogEntry {
     pub fn new(ok: bool, text: impl Into<String>) -> Self {
-        Self { ok, text: text.into(), earlier: None }
+        Self { id: EntryId::next(), ok, text: text.into(), earlier: None, at: 0, run: None, folded: 0 }
     }
 
+    /// An earlier session's entry; a plain run line an older build wrote becomes a run.
     pub fn earlier(e: ActivityEntry) -> Self {
-        Self { ok: e.ok, text: e.text, earlier: Some(Earlier { session: e.session, at: e.at }) }
+        let run = e.run.or_else(|| super::activity_rows::legacy_run(&e.text, e.ok));
+        let earlier = Some(Earlier { session: e.session, at: e.at });
+        Self { id: EntryId::next(), ok: e.ok, text: e.text, earlier, at: e.at, run, folded: 0 }
     }
 }
 
@@ -66,6 +98,8 @@ pub struct Announce {
     pub tab: Option<TabId>,
     /// The toast's text: the line's first line, shortened.
     pub text: String,
+    /// The entry Details opens.
+    pub entry: Option<EntryId>,
 }
 
 /// The longest headline a failure toast shows, in characters.
@@ -92,6 +126,14 @@ pub struct LogsState {
     pub unclaimed: Vec<ActivityEntry>,
     /// The first failure logged loudly since the last announcement.
     pub announce: Option<Announce>,
+    /// The activity rows folded open (a routine group by its first entry's id).
+    pub open: HashSet<EntryId>,
+    /// The fixes failed runs offer, newest last, at most `FIX_LIMIT`. Each runs once, from the
+    /// panel or from the failure toast's button (a `LogsMsg::Fix` proxy).
+    pub fixes: Vec<(EntryId, ToastAction)>,
+    /// When the active job started running (stamped at the end of `update`,
+    /// update/logs_runs.rs).
+    pub job_started: Option<Instant>,
 }
 
 impl LogsState {
@@ -99,6 +141,35 @@ impl LogsState {
     /// lines are waiting.
     pub fn take_append(&mut self) -> Option<Vec<NewLine>> {
         (self.persist == Persist::On && !self.pending.is_empty()).then(|| std::mem::take(&mut self.pending))
+    }
+
+    /// Keeps `action` as run `id`'s fix and returns the button that runs it through
+    /// `LogsMsg::Fix`, for the failure toast.
+    pub fn keep_fix(&mut self, id: EntryId, action: ToastAction) -> ToastAction {
+        let msg = Box::new(Msg::Logs(LogsMsg::Fix(id)));
+        let proxy = ToastAction { label: action.label.clone(), msg, workdir: action.workdir.clone() };
+        self.fixes.retain(|(i, _)| *i != id);
+        self.fixes.push((id, action));
+        if self.fixes.len() > FIX_LIMIT {
+            self.fixes.remove(0);
+        }
+        proxy
+    }
+
+    /// Run `id`'s fix, while it hasn't run.
+    pub fn fix(&self, id: EntryId) -> Option<&ToastAction> {
+        self.fixes.iter().find(|(i, _)| *i == id).map(|(_, a)| a)
+    }
+
+    /// The label of run `id`'s fix.
+    pub fn fix_label(&self, id: EntryId) -> Option<&str> {
+        self.fix(id).map(|a| a.label.as_str())
+    }
+
+    /// Removes and returns run `id`'s fix.
+    pub fn take_fix(&mut self, id: EntryId) -> Option<ToastAction> {
+        let i = self.fixes.iter().position(|(i, _)| *i == id)?;
+        Some(self.fixes.remove(i).1)
     }
 }
 
@@ -123,29 +194,36 @@ impl AppState {
     /// Adds to the active tab's activity log. It never opens the panel: a failure is announced
     /// by a toast with Details at the end of `update`.
     pub fn log(&mut self, ok: bool, text: impl Into<String>) {
-        self.log_to(None, ok, text.into(), true);
+        self.log_to(None, ok, text.into(), None, true);
     }
 
     /// Adds to the active tab's activity log without announcing a failure.
     pub fn log_quiet(&mut self, ok: bool, text: impl Into<String>) {
-        self.log_to(None, ok, text.into(), false);
+        self.log_to(None, ok, text.into(), None, false);
     }
 
     /// Adds to the activity log of the tab showing `repo` (the active tab's when no tab shows
     /// it, tagged with `repo` in the file); a failure is announced as by `log`.
     pub fn log_in(&mut self, repo: Option<&Path>, ok: bool, text: impl Into<String>) {
-        self.log_to(repo, ok, text.into(), true);
+        self.log_to(repo, ok, text.into(), None, true);
     }
 
     /// `log_in` without announcing a failure.
     pub fn log_quiet_in(&mut self, repo: Option<&Path>, ok: bool, text: impl Into<String>) {
-        self.log_to(repo, ok, text.into(), false);
+        self.log_to(repo, ok, text.into(), None, false);
+    }
+
+    /// Logs a finished job as a run in the tab showing `repo`, as `log_in` (`loud`) or
+    /// `log_quiet_in` would. Returns the entry's id.
+    pub fn log_run_in(&mut self, repo: Option<&Path>, ok: bool, text: String, run: RunInfo, loud: bool) -> EntryId {
+        self.log_to(repo, ok, text, Some(run), loud)
     }
 
     /// Adds a line to a tab's log, dropping the oldest entries past `LOG_LIMIT` (auto-fetch
-    /// adds one a minute for as long as the app runs). The line is also queued for the activity
-    /// file, tagged with the tab's repository, unless persistence is off.
-    fn log_to(&mut self, repo: Option<&Path>, ok: bool, text: String, loud: bool) {
+    /// adds one a minute for as long as the app runs; a long streak of them is capped first).
+    /// The line is also queued for the activity file, tagged with the tab's repository, unless
+    /// persistence is off.
+    fn log_to(&mut self, repo: Option<&Path>, ok: bool, text: String, run: Option<RunInfo>, loud: bool) -> EntryId {
         let active = self.tabs.get(self.active_tab);
         // Another tab showing `repo`. With no active tab (only inside a tab handler,
         // `usize::MAX`) the line stays in `log`.
@@ -160,17 +238,21 @@ impl AppState {
         };
         let tab = other.map(|i| self.tabs[i].id).or(active.map(|t| t.id));
         if self.logs.persist != Persist::Off {
-            self.logs.pending.push(NewLine { ok, text: text.clone(), repo: tag });
+            self.logs.pending.push(NewLine { ok, text: text.clone(), repo: tag, run: run.clone() });
             keep_newest(&mut self.logs.pending);
         }
+        let entry = LogEntry { at: self.view.now, run, ..LogEntry::new(ok, text) };
+        let id = entry.id;
         if loud && !ok && self.logs.announce.is_none() {
-            self.logs.announce = Some(Announce { tab, text: headline(&text) });
+            self.logs.announce = Some(Announce { tab, text: headline(&entry.text), entry: Some(id) });
         }
         let log = match other {
             Some(i) => &mut self.tabs[i].log,
             None => &mut self.log,
         };
-        log.push(LogEntry::new(ok, text));
+        log.push(entry);
+        super::activity_rows::cap_routine(log);
         keep_newest(log);
+        id
     }
 }

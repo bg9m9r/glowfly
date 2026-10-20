@@ -50,6 +50,7 @@ mod layout;
 mod lfs;
 mod line_counts;
 mod logs;
+mod logs_runs;
 mod logs_tabs;
 mod notify;
 mod onboarding;
@@ -206,7 +207,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Trust(m) => trust::handle(st, m, now, &mut fx),
         Msg::GitEnv(m) => git_env::handle(st, m, now, &mut fx),
         Msg::Theme(m) => themes::handle(st, m, now, &mut fx),
-        Msg::Logs(m) => logs::handle(st, m, &mut fx),
+        Msg::Logs(m) => logs::handle(st, m, now, &mut fx),
         Msg::Onboarding(m) => onboarding::handle(st, m, now, &mut fx),
         Msg::DeepLink(m) => deep_link::handle(st, m, now, &mut fx),
         Msg::Dashboard(m) => dashboard::handle(st, m, now, &mut fx),
@@ -270,6 +271,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     st.dialog.track(st.modal.as_ref());
     // An expanded commit panel lasts only for the tool view it was expanded in.
     crate::state::layout::drop_stale_expansion(st);
+    logs_runs::stamp(st, now);
     logs_tabs::announce(st, toast_mark, now);
     logs::flush(st, &mut fx);
     fx

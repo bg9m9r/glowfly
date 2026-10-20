@@ -201,7 +201,7 @@ impl<W: Waker> Worker<W> {
         let Some(file) = self.activity.as_mut() else { return };
         let at = chrono::Utc::now().timestamp();
         let session = self.session;
-        self.unsaved.extend(lines.into_iter().map(|l| ActivityEntry { session, at, ok: l.ok, text: l.text, repo: l.repo }));
+        self.unsaved.extend(lines.into_iter().map(|l| ActivityEntry { session, at, ok: l.ok, text: l.text, repo: l.repo, run: l.run }));
         let over = self.unsaved.len().saturating_sub(LOG_LIMIT);
         self.unsaved.drain(..over);
         match file.append(&self.unsaved) {
