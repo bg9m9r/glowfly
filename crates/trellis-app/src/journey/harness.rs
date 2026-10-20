@@ -19,6 +19,9 @@ const TIMEOUT: Duration = Duration::from_secs(120);
 pub(super) struct Shell {
     app: Option<TrellisApp>,
     start: Option<TestStart>,
+    /// The smoke probe's snapshot of the last frame, taken when `want_probe` asks (`probe`).
+    probe: Option<serde_json::Value>,
+    want_probe: bool,
 }
 
 impl Shell {
@@ -94,9 +97,12 @@ impl Journey {
                 }
                 if let Some(app) = shell.app.as_mut() {
                     app.frame(ctx);
+                    if std::mem::take(&mut shell.want_probe) {
+                        shell.probe = Some(crate::ui::probe::snapshot(ctx, app.state()));
+                    }
                 }
             },
-            Shell { app: None, start: Some(start) },
+            Shell { app: None, start: Some(start), probe: None, want_probe: false },
         );
         let mut j = Self { h, fx, toasts: Vec::new(), known: Vec::new() };
         j.settle();
@@ -110,6 +116,14 @@ impl Journey {
     /// The app's state, for diagnostics.
     pub fn state(&self) -> &crate::state::AppState {
         self.app().state()
+    }
+
+    /// What the smoke probe would write now (`ui/probe.rs`), from one more frame: AccessKit
+    /// names exist only while a frame is drawn.
+    pub fn probe(&mut self) -> serde_json::Value {
+        self.h.state_mut().want_probe = true;
+        self.step();
+        self.h.state_mut().probe.take().expect("the frame took a snapshot")
     }
 
     /// The names of the effects the sandbox dropped.

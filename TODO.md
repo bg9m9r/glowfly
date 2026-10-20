@@ -387,7 +387,7 @@ check. Its hands-on criteria (daily use, merging the release pull request) are i
   - [x] Create a branch, merge it, delete it; checkout with local changes
   - [x] Rebase onto a diverged branch, hit a conflict, resolve it in the merge tool, continue
   - [x] Stash and pop; undo and redo a commit and a merge
-- [ ] **Real-input smoke tests (Linux)**: a CI job that runs the release build under Xvfb and
+- [x] **Real-input smoke tests (Linux)**: a CI job that runs the release build under Xvfb and
       sends real X11 mouse and keyboard events with xdotool
   - The first click after the window gains focus, typing in the commit box, a keyboard
     shortcut, a context menu, a drag, a resize, and a 150% scale factor
@@ -2973,3 +2973,19 @@ here, under the item they grew from.
   resized
 - The create issue dialog's label and people pickers at the 36 px field height inside field
   groups, like its text fields
+
+### Real-input smoke tests (Linux)
+
+- A Wayland pass (weston --backend=headless with wtype or ydotool) beside the X11 one
+- More scale factors: 1.25 (fractional rounding) and 2.0
+- More real-input gestures: a double-click on a branch chip, mouse-wheel scrolling of the graph,
+  hover tooltips, dragging a repository tab and a graph column's resize handle
+- Typing non-ASCII text and dead keys (a remapped keycode, a German layout through setxkbmap)
+  and an IME pass
+- A clipboard round trip with real Ctrl+C / Ctrl+V between Trellis and another X client
+- Keep each step's screenshots as an artifact on success too, for visual review of release
+  builds
+- Share the probe's region_of with journey/find.rs so the journeys and the smoke test name
+  regions the same way
+- Run the smoke job against the packaged .deb (installed binary and desktop entry) instead of
+  target/release

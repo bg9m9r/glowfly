@@ -24,8 +24,8 @@ const _: () = assert!(PAGE_ROWS == (LIST_MAX_H / ROW_H) as usize);
 /// The id of the palette's modal area (its rect is in egui's memory under this id).
 pub(crate) const AREA_ID: &str = "trellis-palette";
 
-/// The palette's rect on screen while it is open (tests find its rows inside it).
-#[cfg(test)]
+/// The palette's rect on screen while it is open (tests and the smoke probe find its rows
+/// inside it).
 pub(crate) fn area_rect(ctx: &egui::Context) -> Option<Rect> {
     let layer = egui::LayerId::new(egui::Order::Foreground, Id::new(AREA_ID));
     ctx.memory(|m| if m.areas().visible_last_frame(&layer) { m.area_rect(layer.id) } else { None })

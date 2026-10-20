@@ -38,6 +38,9 @@ pub struct TrellisApp {
     /// The drawn Windows frame's glue with the OS (Snap Layouts, the system menu, Mica); None
     /// elsewhere and in tests.
     native: Option<NativeWindow>,
+    /// The real-input smoke tests' state file (`smoke_probe.rs`); None unless asked for, and in
+    /// tests.
+    probe: Option<crate::smoke_probe::ProbeWriter>,
     /// Results taken from the runner's channel so far (the journeys wait for this to stop
     /// changing).
     #[cfg(test)]
@@ -45,8 +48,15 @@ pub struct TrellisApp {
 }
 
 impl TrellisApp {
-    /// `mica`: the viewport was made transparent for the Mica backdrop.
-    pub fn new(cc: &eframe::CreationContext<'_>, start: Option<crate::StartArg>, logs: crate::logging::LogSetup, mica: bool) -> Self {
+    /// `mica`: the viewport was made transparent for the Mica backdrop. `probe`: the smoke
+    /// tests' state file, when `TRELLIS_SMOKE_PROBE` asked for one.
+    pub fn new(
+        cc: &eframe::CreationContext<'_>,
+        start: Option<crate::StartArg>,
+        logs: crate::logging::LogSetup,
+        mica: bool,
+        probe: Option<crate::smoke_probe::ProbeWriter>,
+    ) -> Self {
         let ctx = &cc.egui_ctx;
         // Before the first pass, so the first frame is drawn in the bundled fonts.
         theme::fonts::install(ctx);
@@ -66,6 +76,11 @@ impl TrellisApp {
         // Only the real app draws its own frame where the OS calls for it; test apps keep System.
         app.st.view.chrome = crate::state::window_chrome::Chrome::current();
         app.native = NativeWindow::install(cc, app.st.view.chrome, mica, ctx.clone());
+        if probe.is_some() {
+            // Before the first frame, so the probe sees named widgets from the start.
+            super::probe::enable(ctx);
+        }
+        app.probe = probe;
         // Read now, not through the runner, so the first frame already has the theme's colors;
         // the folder sits next to the settings file just read.
         let themes = trellis_core::settings::themes::load_all();
@@ -112,6 +127,7 @@ impl TrellisApp {
             results,
             theme: theme::ThemeCache::default(),
             native: None,
+            probe: None,
             #[cfg(test)]
             drained: 0,
         }
@@ -238,6 +254,14 @@ impl TrellisApp {
 
         for msg in msgs {
             self.dispatch(ctx, msg);
+        }
+        // The smoke tests' opt-in state file: a snapshot of this pass, written by its own
+        // thread (`smoke_probe.rs`), never by a view. A changed one asks for one more frame, so
+        // the widgets drawn catch up with the messages just handled.
+        if let Some(p) = &mut self.probe
+            && p.offer(super::probe::snapshot(ctx, &self.st))
+        {
+            ctx.request_repaint();
         }
         // Keep polling while work is in flight or toasts are fading.
         if self.st.job.is_some() || self.st.loading || !self.st.toasts.is_empty() {

@@ -29,6 +29,7 @@ mod profile;
 mod pull_request;
 mod remote;
 mod runner;
+mod smoke_probe;
 mod ssh;
 mod state;
 mod submodule;
@@ -72,6 +73,8 @@ fn main() -> eframe::Result {
     }
     // Only the window logs: the helper modes above exit before this.
     let logs = logging::init();
+    // The real-input smoke tests' state file, only when TRELLIS_SMOKE_PROBE asks for it.
+    let probe = smoke_probe::from_env();
     // The OS language, read once: "system" in the Language setting follows it.
     trellis_core::i18n::detect_system_language();
     if let Err(e) = trellis_core::settings::migrate_old_config_dir() {
@@ -104,7 +107,7 @@ fn main() -> eframe::Result {
         ),
         ..Default::default()
     };
-    eframe::run_native("Trellis", options, Box::new(move |cc| Ok(Box::new(ui::TrellisApp::new(cc, start, logs, mica)))))
+    eframe::run_native("Trellis", options, Box::new(move |cc| Ok(Box::new(ui::TrellisApp::new(cc, start, logs, mica, probe)))))
 }
 
 /// What the command line asks the new window to open.

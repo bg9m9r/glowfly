@@ -75,6 +75,39 @@ jobs:
           hdiutil attach "$RUNNER_TEMP/cs.dmg" -mountpoint "$RUNNER_TEMP/cs"
           TRELLIS_TEST_CS_DIR="$RUNNER_TEMP/cs" cargo test --workspace --locked case_twins -- --nocapture
 
+  # Real X11 input on the release build: clicks, typing, a shortcut, a context menu, a drag, a
+  # resize, at scale 1 and 1.5 (scripts/smoke-linux.sh). Screenshots and logs on failure.
+  smoke:
+    name: Real-input smoke (Linux)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: smoke-release
+      - name: Install Linux build dependencies
+        run: ./scripts/linux-deps.sh
+      - name: Install the X server, window manager and input tools
+        run: sudo apt-get install -y --no-install-recommends xvfb openbox xdotool x11-utils imagemagick jq shellcheck dbus libgl1-mesa-dri libglx-mesa0 libegl1
+      - name: Lint the smoke scripts
+        run: shellcheck -x scripts/smoke-linux.sh scripts/smoke/*.sh
+      - name: Build (release)
+        run: cargo build --release --locked -p trellis
+      - name: Smoke test with real input
+        env:
+          SMOKE_OUT: ${{ runner.temp }}/smoke
+        run: dbus-run-session -- bash scripts/smoke-linux.sh target/release/trellis
+      - name: Upload screenshots and logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-linux
+          path: ${{ runner.temp }}/smoke
+          if-no-files-found: ignore
+          retention-days: 14
+
   # Known vulnerabilities, unmaintained crates and licenses of every dependency (deny.toml).
   deny:
     name: Dependencies (cargo deny)

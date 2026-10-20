@@ -98,6 +98,7 @@ mod patch_save_dialog;
 mod path_warnings;
 mod pr_menu_items;
 mod prefs;
+pub(crate) mod probe;
 mod publish;
 mod pull_request;
 mod rebase;

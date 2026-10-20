@@ -424,6 +424,9 @@ making the decision a pure function and testing it for every OS on every machine
   doesn't lint it. Read it twice before committing (unused imports, a moved helper's name); the
   macOS and Linux CI runs catch the rest.
 - **Snapshot images** are rendered on Windows; the other runners skip only the image comparison.
+- **Real input** is tested on Linux by the CI `smoke` job (`scripts/smoke-linux.sh`): it starts
+  its own Xvfb and window manager, never the caller's display, and sends keys and clicks only
+  through XTEST, at scale 1 and 1.5. Windows follows in its own TODO item.
 
 ## Known gaps and things only a real machine can confirm
 
