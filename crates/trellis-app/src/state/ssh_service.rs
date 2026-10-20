@@ -3,6 +3,7 @@
 
 use std::path::PathBuf;
 use trellis_core::forge::{Account, Connection, title_problem};
+use trellis_core::i18n::Lang;
 
 /// The Add to service form for one key and account.
 #[derive(Clone, Debug, PartialEq)]
@@ -33,12 +34,17 @@ impl UploadForm {
         UploadForm { key, account, title: String::new(), default_title, state: UploadState::Editing }
     }
 
-    /// Why Add key can't run now.
-    pub fn send_blocked(&self) -> Option<&'static str> {
+    /// Why Add key can't run now, in `t`.
+    pub fn send_blocked(&self, t: Lang) -> Option<&'static str> {
         if self.state == UploadState::Sending {
-            return Some("The key is being sent.");
+            return Some(t.tr("prefs.ssh.service.sending.tip"));
         }
-        title_problem(&self.title)
+        self.title_problem(t)
+    }
+
+    /// Why the typed title can't be used, in `t`.
+    pub fn title_problem(&self, t: Lang) -> Option<&'static str> {
+        title_problem(&self.title).map(|_| t.tr("prefs.ssh.service.title.control.warn"))
     }
 
     /// The title to send: the typed one, or the default.
@@ -62,14 +68,12 @@ pub fn service_label(account: &Account) -> String {
     format!("{} ({})", account.provider.name(), account.display())
 }
 
-pub fn fallback_note(service: &str) -> String {
-    format!(
-        "{service} didn't let Trellis add keys with this sign-in (it needs permission to write SSH keys). The key is copied; paste it on the page that opened."
-    )
+pub fn fallback_note(t: Lang, service: &str) -> String {
+    t.trf("prefs.ssh.service.fallback.warn", &[("service", &service)])
 }
 
-pub fn already_note(service: &str, title: &str) -> String {
-    format!("{service} already has this key (titled \u{201c}{title}\u{201d}).")
+pub fn already_note(t: Lang, service: &str, title: &str) -> String {
+    t.trf("prefs.ssh.service.already.help", &[("service", &service), ("title", &title)])
 }
 
 pub fn pasted_toast(service: &str) -> String {

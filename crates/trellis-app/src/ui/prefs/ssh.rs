@@ -75,7 +75,7 @@ fn keys_section(ui: &mut Ui, t: Lang, page: &mut SshPage, listing: &SshListing, 
         }
     }
     ui.horizontal(|ui| {
-        let blocked = page.open_blocked();
+        let blocked = page.open_blocked(t);
         let generate = buttons::secondary(t.tr("prefs.ssh.keys.generate.button")).enabled(blocked.is_none()).why(blocked);
         if ui.add(generate).clicked() {
             msgs.push(Msg::Ssh(SshMsg::OpenGenerate));

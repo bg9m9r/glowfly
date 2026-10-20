@@ -24,6 +24,12 @@ fn ssh_mut(st: &mut AppState) -> &mut crate::state::ssh::SshPage {
 }
 
 #[test]
+fn home_is_absolute_on_this_os() {
+    // The dialog's location is built from HOME; a relative one would be refused.
+    assert!(std::path::Path::new(HOME).is_absolute(), "{HOME}");
+}
+
+#[test]
 fn prefs_ssh_keygen() {
     let st = dialog(ThemeChoice::Dark);
     let mut h = harness(st, true);
@@ -60,4 +66,20 @@ fn prefs_ssh_keygen_generating() {
     assert!(h.get_by_label("Generate key").is_disabled());
     assert!(h.query_by_label("Generating…").is_some());
     h.check_snapshot("prefs_ssh_keygen_generating");
+}
+
+#[test]
+fn prefs_ssh_keygen_in_german() {
+    // The field and footer reasons come from the language tables, not from English text.
+    let mut st = dialog(ThemeChoice::Dark);
+    st.settings.language = "de".into();
+    let p = ssh_mut(&mut st);
+    p.location = "keys/id".into();
+    p.comment = "a	b".into();
+    p.touched = Touched::all();
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label_contains("Gib einen vollständigen Pfad ein").is_some(), "the location's reason");
+    assert!(h.query_by_label_contains("Steuerzeichen").is_some(), "the comment's reason");
+    assert!(h.query_by_label_contains("full path").is_none() && h.query_by_label_contains("control characters").is_none());
 }

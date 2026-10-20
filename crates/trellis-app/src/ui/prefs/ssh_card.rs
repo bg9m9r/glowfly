@@ -96,7 +96,7 @@ fn chip(ui: &mut Ui, text: &str, tip: &str, tint: Color32) {
 fn actions(ui: &mut Ui, t: Lang, key: &SshKeyPair, listing: &SshListing, page: &SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.spacing_mut().button_padding = vec2(6.0, 2.0);
-        let blocked = add_blocked(page, cx.job.as_deref());
+        let blocked = add_blocked(page, cx.job.as_deref(), t);
         let add = buttons::secondary(t.tr("prefs.ssh.card.add_agent.button")).small().enabled(blocked.is_none()).why(blocked.as_deref());
         if ui.add(add).clicked() {
             msgs.push(Msg::Ssh(SshMsg::AddToAgent(key.private.clone())));

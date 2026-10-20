@@ -1,13 +1,16 @@
 //! Headless tests for the Generate SSH key dialog: Generate… opens it with the location and
 //! comment filled, its fields outlive it, Esc closes it without the discard question, and a
-//! failed ssh-keygen run shows in the dialog or, with the dialog closed, as a toast.
+//! failed ssh-keygen run shows in the dialog or, with the dialog closed, as a toast, and the
+//! reasons Generate is refused are in the chosen language.
 
 use super::ssh_tests::{email, fill, home, loaded, page, page_mut, run, ssh};
 use super::tests::state;
 use crate::msg::{DialogMsg, Dismiss, Msg, PrefsMsg};
 use crate::ssh::{GenerateFailure, SshMsg};
+use crate::state::ssh::location_text;
 use crate::state::{Modal, PrefPage};
-use trellis_core::ssh_keys::default_location;
+use trellis_core::i18n::Lang;
+use trellis_core::ssh_keys::{LocationProblem, default_location};
 
 #[test]
 fn open_generate_opens_the_dialog() {
@@ -69,4 +72,45 @@ fn generate_failure_without_the_dialog_toasts() {
     assert_eq!(page(&st).form_error.as_deref(), Some("ssh-keygen failed: boom"), "shown in the dialog");
     assert_eq!(st.toasts.len(), toasts, "no toast while the dialog shows it");
     assert!(matches!(st.modal, Some(Modal::SshKeygen)));
+}
+
+#[test]
+fn refusals_follow_the_language() {
+    let de = Lang::De;
+    let mut st = loaded(vec![], false);
+    st.settings.language = "de".into();
+    ssh(&mut st, SshMsg::OpenGenerate);
+    assert!(st.modal.is_none(), "no ssh-keygen");
+    let missing = de.tr("prefs.ssh.generate.no_keygen.warn");
+    assert_ne!(missing, Lang::En.tr("prefs.ssh.generate.no_keygen.warn"), "German has its own text");
+    assert_eq!(page(&st).form_error.as_deref(), Some(missing));
+    assert_eq!(page(&st).open_blocked(de), Some(missing), "the Generate… button's tip");
+    assert_eq!(page(&st).form_wait(de), Some(missing));
+
+    let mut st = loaded(vec![], true);
+    st.settings.language = "de".into();
+    fill(&mut st, "keys/id", "", "", "");
+    ssh(&mut st, SshMsg::Generate { overwrite: false });
+    let relative = location_text(de, LocationProblem::Relative);
+    assert_ne!(relative, location_text(Lang::En, LocationProblem::Relative));
+    assert_eq!(page(&st).form_error.as_deref(), Some(relative));
+
+    fill(
+        &mut st,
+        "~/.ssh/work",
+        "a
+b",
+        "",
+        "",
+    );
+    let control = page(&st).comment_problem(de).expect("a control character");
+    assert_ne!(Some(control), page(&st).comment_problem(Lang::En));
+    assert_eq!(page(&st).blocked(de), Some(control));
+
+    page_mut(&mut st).comment.clear();
+    page_mut(&mut st).generating = true;
+    assert_eq!(page(&st).form_wait(de), Some(de.tr("prefs.ssh.generate.busy.warn")));
+    for p in [LocationProblem::Empty, LocationProblem::PublicFile, LocationProblem::NotAFile, LocationProblem::WindowsName] {
+        assert_ne!(location_text(de, p), location_text(Lang::En, p), "{p:?}");
+    }
 }

@@ -54,7 +54,7 @@ pub(super) fn open_key_settings(st: &mut AppState, key: &Path, account: &Account
 /// The form's Add key button.
 pub(super) fn send(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(form) = st.prefs.as_ref().and_then(|p| p.ssh.upload.as_ref()) else { return };
-    if form.send_blocked().is_some() {
+    if form.send_blocked(st.settings.lang()).is_some() {
         return;
     }
     let (key, account, title) = (form.key.clone(), form.account.clone(), form.title_to_send());
@@ -91,7 +91,7 @@ pub(super) fn added(
         Ok(AddKeyOutcome::AlreadyThere { title }) => UploadState::AlreadyThere(title),
         Err(e) if e.fallback => {
             open_key_settings(st, key, account, now, fx);
-            UploadState::Failed { message: fallback_note(service), fallback: true }
+            UploadState::Failed { message: fallback_note(st.settings.lang(), service), fallback: true }
         }
         Err(e) => {
             st.log(false, format!("Could not add {file} to {service}: {}", e.message));

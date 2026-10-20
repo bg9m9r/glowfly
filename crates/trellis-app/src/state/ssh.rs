@@ -8,6 +8,7 @@
 use super::ssh_service::UploadForm;
 use super::ssh_use::{Choices, RepoTarget};
 use std::path::{Path, PathBuf};
+use trellis_core::i18n::Lang;
 use trellis_core::paths::same_spelling;
 use trellis_core::ssh_keys::{
     AgentStatus, KeyFileProblem, LocationProblem, SshKeyPair, SshListing, comment_problem, default_location, resolve_location,
@@ -16,7 +17,6 @@ use trellis_core::ssh_keys::{
 pub const COPIED: &str = "Public key copied to the clipboard";
 pub const REPLACE_TITLE: &str = "Replace SSH key";
 pub const REPLACE_BUTTON: &str = "Replace key";
-pub const MISMATCH: &str = "The passphrases don't match.";
 
 #[derive(Default)]
 pub struct SshPage {
@@ -96,37 +96,43 @@ impl SshPage {
         self.passphrase != self.confirm
     }
 
-    /// Why the Generate… button can't open the dialog now.
-    pub fn open_blocked(&self) -> Option<&'static str> {
-        let Some(listing) = &self.listing else { return Some("Wait until your .ssh folder has been read.") };
-        listing.keygen.is_none().then_some("ssh-keygen wasn't found.")
+    /// Why the Generate… button can't open the dialog now, in `t`.
+    pub fn open_blocked(&self, t: Lang) -> Option<&'static str> {
+        let Some(listing) = &self.listing else { return Some(t.tr("prefs.ssh.generate.reading.warn")) };
+        listing.keygen.is_none().then(|| t.tr("prefs.ssh.generate.no_keygen.warn"))
     }
 
     /// The part of `blocked` that isn't about a field: a key is being generated, or the dialog
     /// couldn't open now (`open_blocked`). The dialog's footer shows only this.
-    pub fn form_wait(&self) -> Option<String> {
+    pub fn form_wait(&self, t: Lang) -> Option<&'static str> {
         if self.generating {
-            return Some("A key is being generated.".into());
+            return Some(t.tr("prefs.ssh.generate.busy.warn"));
         }
-        self.open_blocked().map(Into::into)
+        self.open_blocked(t)
     }
 
-    /// The first reason Generate can't run now.
-    pub fn blocked(&self) -> Option<String> {
-        if let Some(wait) = self.form_wait() {
+    /// The first reason Generate can't run now, in `t`.
+    pub fn blocked(&self, t: Lang) -> Option<&'static str> {
+        if let Some(wait) = self.form_wait(t) {
             return Some(wait);
         }
         if let Some(p) = self.location_problem() {
-            return Some(p.message().into());
+            return Some(location_text(t, p));
         }
-        if let Some(p) = comment_problem(&self.comment) {
-            return Some(p.into());
+        if let Some(p) = self.comment_problem(t) {
+            return Some(p);
         }
-        self.passphrase_mismatch().then(|| MISMATCH.into())
+        self.passphrase_mismatch().then(|| t.tr("prefs.ssh.generate.mismatch.warn"))
+    }
+
+    /// Why the typed comment can't be used, in `t`.
+    pub fn comment_problem(&self, t: Lang) -> Option<&'static str> {
+        comment_problem(&self.comment).map(|_| t.tr("prefs.ssh.generate.comment.control.warn"))
     }
 
     pub fn can_generate(&self) -> bool {
-        self.blocked().is_none()
+        // Only whether there is a reason matters, not its language.
+        self.blocked(Lang::En).is_none()
     }
 
     /// Fills the comment with the user's email, once, unless something is typed already.
@@ -144,6 +150,17 @@ impl SshPage {
         {
             self.location = default_location(&listing.home).display().to_string();
         }
+    }
+}
+
+/// What is wrong with a typed save location, in `t`.
+pub fn location_text(t: Lang, p: LocationProblem) -> &'static str {
+    match p {
+        LocationProblem::Empty => t.tr("prefs.ssh.generate.location.empty.warn"),
+        LocationProblem::Relative => t.tr("prefs.ssh.generate.location.relative.warn"),
+        LocationProblem::PublicFile => t.tr("prefs.ssh.generate.location.public.warn"),
+        LocationProblem::NotAFile => t.tr("prefs.ssh.generate.location.folder.warn"),
+        LocationProblem::WindowsName => t.tr("prefs.ssh.generate.location.windows_name.warn"),
     }
 }
 

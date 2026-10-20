@@ -9,9 +9,9 @@ use super::widgets::buttons;
 use super::widgets::form_message::{self, Message};
 use crate::msg::Msg;
 use crate::ssh::SshMsg;
-use crate::state::ssh::SshPage;
+use crate::state::ssh::{SshPage, location_text};
 use eframe::egui::{self, Id, Key, RichText, Ui};
-use trellis_core::ssh_keys::{comment_problem, default_location};
+use trellis_core::ssh_keys::default_location;
 
 /// A field with its label above it; returns its response and whether Enter left it.
 fn field(ui: &mut Ui, label: &str, text: &mut String, id: &str, hint: &str, password: bool) -> (egui::Response, bool) {
@@ -38,7 +38,7 @@ pub fn show(ui: &mut Ui, cx: Cx, page: &mut SshPage, msgs: &mut Vec<Msg>) -> boo
     let (location_r, enter_location) = field(ui, label, &mut page.location, "trellis-ssh-keygen-location", &hint, false);
     form_message::track(&mut page.touched, "location", &location_r);
     let location = match page.location_problem() {
-        Some(p) => Some(Message::error(p.message())),
+        Some(p) => Some(Message::error(location_text(t, p))),
         None => page.location_taken().then(|| Message::warning(t.tr("prefs.ssh.generate.location.taken.warn"))),
     };
     form_message::field(ui, &page.touched, "location", location);
@@ -51,7 +51,7 @@ pub fn show(ui: &mut Ui, cx: Cx, page: &mut SshPage, msgs: &mut Vec<Msg>) -> boo
     let hint = t.tr("prefs.ssh.generate.comment.hint");
     let (comment_r, enter_comment) = field(ui, label, &mut page.comment, "trellis-ssh-keygen-comment", hint, false);
     form_message::track(&mut page.touched, "comment", &comment_r);
-    form_message::field(ui, &page.touched, "comment", comment_problem(&page.comment).map(Message::error));
+    form_message::field(ui, &page.touched, "comment", page.comment_problem(t).map(Message::error));
     note(ui, t.tr("prefs.ssh.generate.comment.help"));
     ui.add_space(6.0);
 
@@ -75,8 +75,8 @@ pub fn show(ui: &mut Ui, cx: Cx, page: &mut SshPage, msgs: &mut Vec<Msg>) -> boo
 
     // Only a reason that isn't a field's: the fields say theirs under them. While ssh-keygen
     // runs, the note says so instead.
-    let wait = page.form_wait().filter(|_| !page.generating);
-    let generate = buttons::primary(t.tr("prefs.ssh.generate.create.button")).enabled(page.can_generate()).why(wait.as_deref());
+    let wait = page.form_wait(t).filter(|_| !page.generating);
+    let generate = buttons::primary(t.tr("prefs.ssh.generate.create.button")).enabled(page.can_generate()).why(wait);
     let enter = enter_location || enter_comment || enter_pass || enter_confirm;
     let mut footer = Footer::new().cancel().primary(generate).submit(enter);
     if page.generating {

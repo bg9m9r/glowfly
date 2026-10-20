@@ -9,7 +9,6 @@ use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, CornerRadius, RichText, Stroke, Ui};
-use trellis_core::forge::title_problem;
 use trellis_core::i18n::Lang;
 
 pub(super) fn upload_form(ui: &mut Ui, t: Lang, form: &mut UploadForm, file: &str, msgs: &mut Vec<Msg>) {
@@ -31,13 +30,13 @@ pub(super) fn upload_form(ui: &mut Ui, t: Lang, form: &mut UploadForm, file: &st
                 let hint = form.default_title.clone();
                 text_field(ui, &mut form.title, &hint);
             });
-            if let Some(problem) = title_problem(&form.title) {
+            if let Some(problem) = form.title_problem(t) {
                 warn(ui, problem);
             }
             ui.horizontal(|ui| {
                 // Not the title's problem, warned about above.
-                let blocked = form.send_blocked();
-                let why = blocked.filter(|b| title_problem(&form.title) != Some(*b));
+                let blocked = form.send_blocked(t);
+                let why = blocked.filter(|b| form.title_problem(t) != Some(*b));
                 if primary_button(ui, t.tr("prefs.ssh.service.add.button"), blocked.is_none(), why).clicked() {
                     msgs.push(Msg::Ssh(SshMsg::SendToService));
                 }
@@ -50,7 +49,7 @@ pub(super) fn upload_form(ui: &mut Ui, t: Lang, form: &mut UploadForm, file: &st
             });
             match &form.state {
                 UploadState::Editing | UploadState::Sending => {}
-                UploadState::AlreadyThere(title) => help(ui, &already_note(form.service(), title)),
+                UploadState::AlreadyThere(title) => help(ui, &already_note(t, form.service(), title)),
                 UploadState::Failed { message, .. } => {
                     warn(ui, message);
                     if ui.add(buttons::secondary(t.tr("prefs.ssh.service.fallback.button"))).clicked() {

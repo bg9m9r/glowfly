@@ -50,18 +50,20 @@ pub(super) fn agent_loaded(st: &mut AppState, generation: u64, status: AgentStat
 /// Why writing the repository's own core.sshCommand can't go ahead: another repository is
 /// open now, or the user no longer trusts this one.
 fn repo_changed(st: &AppState) -> Option<&'static str> {
+    let t = st.settings.lang();
     let target = st.prefs.as_ref()?.ssh.repo.as_ref()?;
     let same = st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &target.real));
     if !same {
-        return Some("Another repository is open now; reload this page.");
+        return Some(t.tr("prefs.ssh.which.repo_changed.tip"));
     }
-    (!st.trusts(&target.real)).then_some(crate::state::ssh_use::NOT_TRUSTED)
+    (!st.trusts(&target.real)).then(|| crate::state::ssh_use::not_trusted(t))
 }
 
 /// The checks Use for git and Stop using share: the reason it can't run (shown on the row), or
 /// the level's current value and label.
 fn check(st: &mut AppState, repo: bool, use_agent: bool) -> Option<(KeyChoice, String)> {
-    let blocked = st.prefs.as_ref().map(|p| use_blocked(&p.ssh, use_agent, repo))?;
+    let t = st.settings.lang();
+    let blocked = st.prefs.as_ref().map(|p| use_blocked(&p.ssh, use_agent, repo, t))?;
     let why = blocked.or_else(|| if repo { repo_changed(st) } else { None });
     let page = &mut st.prefs.as_mut()?.ssh;
     if let Some(why) = why {
@@ -173,9 +175,10 @@ pub(super) fn key_choice_set(st: &mut AppState, repo: bool, result: Result<(), S
 
 pub(super) fn add_to_agent(st: &mut AppState, key: &Path, fx: &mut Vec<Effect>) {
     let job = st.job.as_ref().map(|j| j.label.clone());
+    let t = st.settings.lang();
     let Some(page) = st.prefs.as_mut().map(|p| &mut p.ssh) else { return };
     let Some(private) = page.key(key).map(|k| k.private.clone()) else { return };
-    if let Some(why) = add_blocked(page, job.as_deref()) {
+    if let Some(why) = add_blocked(page, job.as_deref(), t) {
         page.agent_error = Some(why);
         return;
     }

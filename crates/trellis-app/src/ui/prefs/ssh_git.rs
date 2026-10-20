@@ -120,7 +120,7 @@ impl Level<'_> {
     /// The open dropdown: every listed key, then Let ssh decide. Picking the current entry does
     /// nothing; with Use local SSH agent on, only Let ssh decide can be picked.
     fn entries(&self, ui: &mut Ui, repo: bool, choice: &Result<KeyChoice, String>, msgs: &mut Vec<Msg>) {
-        let why = use_blocked(self.page, self.cx.use_agent, repo);
+        let why = use_blocked(self.page, self.cx.use_agent, repo, self.t);
         for k in &self.listing.keys {
             let current = matches!(choice, Ok(KeyChoice::Key(p)) if same_spelling(p, &k.private));
             let text = format!("{}  {}", k.file_name(), k.kind_label());

@@ -5,12 +5,10 @@
 use super::ssh::SshPage;
 use super::trust::shown_value;
 use std::path::{Path, PathBuf};
+use trellis_core::i18n::Lang;
 use trellis_core::paths::same_spelling;
 use trellis_core::ssh_keys::KeyChoice;
 
-pub const NOT_TRUSTED: &str =
-    "Trust this repository first: a key setting in its own config makes git run ssh with it, so Trellis would ask about trusting it.";
-pub const AGENT_ON: &str = "Turn off Use local SSH agent to choose a key";
 pub const AGENT_TOAST: &str = "Trellis leaves core.sshCommand unset; ssh uses your agent.";
 pub const REPLACE_COMMAND_TITLE: &str = "Replace SSH command";
 pub const REMOVE_COMMAND_TITLE: &str = "Remove SSH command";
@@ -41,39 +39,44 @@ pub struct RepoTarget {
     pub trusted: bool,
 }
 
-/// Why Use for git (or Stop using) at this level can't run now.
-pub fn use_blocked(page: &SshPage, use_agent: bool, repo: bool) -> Option<&'static str> {
+/// Why Use for git (or Stop using) at this level can't run now, in `t`.
+pub fn use_blocked(page: &SshPage, use_agent: bool, repo: bool, t: Lang) -> Option<&'static str> {
     if use_agent {
-        return Some(AGENT_ON);
+        return Some(t.tr("prefs.ssh.which.agent_on.tip"));
     }
     if repo {
-        let Some(target) = &page.repo else { return Some("Open a repository first.") };
+        let Some(target) = &page.repo else { return Some(t.tr("prefs.ssh.which.no_repo.tip")) };
         if !target.trusted {
-            return Some(NOT_TRUSTED);
+            return Some(not_trusted(t));
         }
     }
     if page.choice_busy {
-        return Some("core.sshCommand is being changed.");
+        return Some(t.tr("prefs.ssh.which.busy.tip"));
     }
     if page.choice.as_ref().and_then(|c| c.at(repo)).is_none() {
-        return Some("Wait until core.sshCommand has been read.");
+        return Some(t.tr("prefs.ssh.which.reading.tip"));
     }
     None
 }
 
-/// Why Add to agent can't run now; `job` is the running git job's label.
-pub fn add_blocked(page: &SshPage, job: Option<&str>) -> Option<String> {
-    let Some(agent) = &page.agent else { return Some("Wait until the agent has been checked.".into()) };
+/// Why a key can't be chosen for an untrusted repository, in `t`.
+pub fn not_trusted(t: Lang) -> &'static str {
+    t.tr("prefs.ssh.which.not_trusted.tip")
+}
+
+/// Why Add to agent can't run now, in `t`; `job` is the running git job's label.
+pub fn add_blocked(page: &SshPage, job: Option<&str>, t: Lang) -> Option<String> {
+    let Some(agent) = &page.agent else { return Some(t.tr("prefs.ssh.card.add_agent.checking.tip").into()) };
     if agent.ssh_add.is_none() {
-        return Some("ssh-add wasn't found.".into());
+        return Some(t.tr("prefs.ssh.card.add_agent.no_ssh_add.tip").into());
     }
     if !agent.running() {
-        return Some("No SSH agent is running.".into());
+        return Some(t.tr("prefs.ssh.card.add_agent.no_agent.tip").into());
     }
     if page.agent_adding.is_some() {
-        return Some("A key is being added to the agent.".into());
+        return Some(t.tr("prefs.ssh.card.add_agent.busy.tip").into());
     }
-    job.map(|label| format!("Wait until {label} finishes: its credential prompts would mix with ssh-add's."))
+    job.map(|label| t.trf("prefs.ssh.card.add_agent.job.tip", &[("job", &label)]))
 }
 
 /// A level, as toasts and dialogs name it: "all repositories" or "<repo> only".

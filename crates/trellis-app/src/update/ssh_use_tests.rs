@@ -8,10 +8,11 @@ use super::trust_tests::untrusted_repo;
 use crate::effect::Effect;
 use crate::msg::{Msg, PrefsMsg, RepoMsg};
 use crate::ssh::{SshEffect, SshMsg};
-use crate::state::ssh_use::{AGENT_ON, Choices, NOT_TRUSTED, RepoTarget};
+use crate::state::ssh_use::{Choices, RepoTarget, not_trusted};
 use crate::state::trust::{Standing, record};
 use crate::state::{AppState, Modal, PrefPage};
 use std::path::PathBuf;
+use trellis_core::i18n::Lang;
 use trellis_core::settings::RepoTrust;
 use trellis_core::ssh_keys::{KeyChoice, SshKeyPair};
 
@@ -124,13 +125,13 @@ fn let_ssh_decide_runs_with_the_agent_on() {
 fn refusals() {
     let mut st = chosen(KeyChoice::Unset, Some((KeyChoice::Unset, false)));
     assert!(ssh(&mut st, use_key(true)).is_empty());
-    assert_eq!(page(&st).choice_error.as_deref(), Some(NOT_TRUSTED));
+    assert_eq!(page(&st).choice_error.as_deref(), Some(not_trusted(Lang::En)));
 
     let mut st = chosen(KeyChoice::Unset, None);
     assert!(ssh(&mut st, use_key(true)).is_empty(), "no repository");
     st.settings.use_ssh_agent = true;
     assert!(ssh(&mut st, use_key(false)).is_empty());
-    assert_eq!(page(&st).choice_error.as_deref(), Some(AGENT_ON));
+    assert_eq!(page(&st).choice_error.as_deref(), Some(Lang::En.tr("prefs.ssh.which.agent_on.tip")));
     assert!(ssh(&mut st, SshMsg::UseKey { key: "C:/elsewhere/id".into(), repo: false, confirmed: false }).is_empty(), "not listed");
 
     // A trusted repository that is no longer the open one.
@@ -181,7 +182,7 @@ fn only_a_trusted_repository_gets_its_own_key() {
     open_on_page(&mut st, &clean);
     assert_eq!(st.trust_standing(), Some(Standing::Clean));
     assert!(ssh(&mut st, use_key(true)).is_empty());
-    assert_eq!(page(&st).choice_error.as_deref(), Some(NOT_TRUSTED));
+    assert_eq!(page(&st).choice_error.as_deref(), Some(not_trusted(Lang::En)));
     let _ = std::fs::remove_dir_all(&clean);
 
     let undecided = untrusted_repo("ssh-use-undecided");
@@ -189,7 +190,7 @@ fn only_a_trusted_repository_gets_its_own_key() {
     open_on_page(&mut st, &undecided);
     assert_eq!(st.trust_standing(), Some(Standing::Undecided));
     assert!(ssh(&mut st, use_key(true)).is_empty());
-    assert_eq!(page(&st).choice_error.as_deref(), Some(NOT_TRUSTED));
+    assert_eq!(page(&st).choice_error.as_deref(), Some(not_trusted(Lang::En)));
     let _ = std::fs::remove_dir_all(&undecided);
 }
 

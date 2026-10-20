@@ -140,10 +140,11 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// from user.email, keeping what was typed before. Refused (the button is disabled too) while
 /// the folder is read or without ssh-keygen.
 fn open_generate(st: &mut AppState) {
+    let t = st.settings.lang();
     let Some(p) = st.prefs.as_mut() else { return };
     let email = p.git.as_ref().map(|g| g.user_email.clone());
     let page = &mut p.ssh;
-    if let Some(reason) = page.open_blocked() {
+    if let Some(reason) = page.open_blocked(t) {
         page.form_error = Some(reason.into());
         return;
     }
@@ -159,9 +160,10 @@ fn open_generate(st: &mut AppState) {
 /// Starts ssh-keygen with the form, unless something blocks it (the button is disabled then
 /// too). The passphrase stays in the form so a Replace confirmation can reuse it.
 fn generate(st: &mut AppState, overwrite: bool, fx: &mut Vec<Effect>) {
+    let t = st.settings.lang();
     let Some(page) = st.prefs.as_mut().map(|p| &mut p.ssh) else { return };
-    if let Some(reason) = page.blocked() {
-        page.form_error = Some(reason);
+    if let Some(reason) = page.blocked(t) {
+        page.form_error = Some(reason.into());
         return;
     }
     let (Some(keygen), Some(path)) = (page.listing.as_ref().and_then(|l| l.keygen.clone()), page.resolved()) else { return };

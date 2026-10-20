@@ -2068,7 +2068,7 @@ here, under the item they grew from.
 
 ### SSH preferences
 
-- Translate the page's remaining English: the rule reasons (`blocked`, `use_blocked`, `add_blocked`), core's location and comment problems, the Add to service notes, and the toasts and confirmations in update/ssh_use.rs and ssh_service.rs
+- Translate the page's remaining English: the toasts, log lines and confirmations in update/ssh.rs, ssh_use.rs and ssh_service.rs
 - Cancel on the Replace SSH key confirmation goes back to the Generate SSH key dialog instead of closing
 - Suggest a free file name (id_ed25519_2, …) as the save location when the default key already exists
 - Show remembered keys whose files have gone, with Remove from list, instead of skipping them silently

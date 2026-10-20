@@ -1,5 +1,5 @@
 //! Preferences > SSH snapshots: two key cards with their marks, no keys without ssh-keygen, the
-//! folder still being read, the Which key dropdowns (closed and open), the agent pill's states,
+//! folder still being read, the Which key dropdowns (closed and open), the agent pill's states (Checking among them),
 //! a key added with Use existing, and the Add to service form. The Generate SSH key dialog is in
 //! `snapshot_tests_ssh_keygen`. Built from state only: no real home folder, git config, agent
 //! or ssh-keygen.
@@ -16,7 +16,9 @@ use trellis_core::forge::{Account, Connection, Provider};
 use trellis_core::settings::ThemeChoice;
 use trellis_core::ssh_keys::{AgentKey, AgentReach, AgentStatus, KeyChoice, KeyFileProblem, SshKeyPair, SshListing, WinService};
 
-pub(super) const HOME: &str = "C:/Users/ada";
+/// A home folder that is absolute on every OS (a Windows path is relative elsewhere, and the
+/// Generate dialog refuses a relative save location).
+pub(super) const HOME: &str = if cfg!(windows) { "C:/Users/ada" } else { "/Users/ada" };
 
 fn key_in(dir: PathBuf, name: &str, kind: &str, bits: Option<u32>, fingerprint: Option<&str>, comment: &str) -> SshKeyPair {
     SshKeyPair {
@@ -197,6 +199,15 @@ fn prefs_ssh_agent_off() {
 }
 
 #[test]
+fn prefs_ssh_agent_checking() {
+    let mut st = ssh_page(ThemeChoice::Dark, Some(listing(two_keys(), true)));
+    ssh_mut(&mut st).agent = None;
+    let mut h = tall(st, true);
+    assert!(h.query_by_label("Checking…").is_some(), "the pill while the agent is checked");
+    h.check_snapshot("prefs_ssh_agent_checking");
+}
+
+#[test]
 fn prefs_ssh_no_ssh_add() {
     let mut st = ssh_page(ThemeChoice::Dark, Some(listing(two_keys(), true)));
     ssh_mut(&mut st).agent = Some(AgentStatus { auth_sock_set: false, ..Default::default() });
@@ -257,7 +268,7 @@ fn prefs_ssh_add_to_service() {
 
 #[test]
 fn prefs_ssh_service_fallback() {
-    let message = crate::state::ssh_service::fallback_note("GitHub");
+    let message = crate::state::ssh_service::fallback_note(trellis_core::i18n::Lang::En, "GitHub");
     let st = with_form(ThemeChoice::Light, UploadState::Failed { message, fallback: true }, "");
     let mut h = tall(st, false);
     assert!(h.query_by_label("Copy key and open settings").is_some());

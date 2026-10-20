@@ -13,6 +13,7 @@ use crate::state::ssh::SshPage;
 use crate::state::{AppState, Modal, PrefPage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+use trellis_core::i18n::Lang;
 use trellis_core::settings::RepoTrust;
 use trellis_core::ssh_keys::{AgentStatus, KeyChoice, SshKeyPair, SshListing, default_location};
 
@@ -263,20 +264,21 @@ fn page_rules() {
     assert!(!page(&st).location_taken());
     assert!(page(&st).can_generate());
 
+    let en = Lang::En;
     let mut p = SshPage { generating: true, passphrase: "a".into(), ..Default::default() };
-    assert_eq!(p.blocked().as_deref(), Some("A key is being generated."));
+    assert_eq!(p.blocked(en), Some("A key is being generated."));
     p.generating = false;
-    assert!(p.blocked().is_some_and(|b| b.contains(".ssh folder")), "listing first");
+    assert!(p.blocked(en).is_some_and(|b| b.contains(".ssh folder")), "listing first");
     assert_eq!(p.location_problem(), None, "no problem shown before the home folder is known");
     p.listing = Some(listing(vec![], true));
-    assert_eq!(p.blocked().as_deref(), Some("Enter where to save the private key."));
+    assert_eq!(p.blocked(en), Some("Enter where to save the private key."));
     p.location = "~/.ssh/k".into();
     p.comment = "a\tb".into();
-    assert!(p.blocked().is_some_and(|b| b.contains("control characters")));
+    assert!(p.blocked(en).is_some_and(|b| b.contains("control characters")));
     p.comment.clear();
-    assert_eq!(p.blocked().as_deref(), Some("The passphrases don't match."));
+    assert_eq!(p.blocked(en), Some("The passphrases don't match."));
     p.confirm = "a".into();
-    assert_eq!(p.blocked(), None);
+    assert_eq!(p.blocked(en), None);
     assert!(crate::state::ssh::replace_body(Path::new("C:/k/id")).contains("will stop accepting it"));
 }
 
