@@ -231,8 +231,10 @@ fn worktree_dialog_branch() {
 
 #[test]
 fn worktree_dialog_remote_needs_a_branch() {
-    let (st, dir) =
-        dialog(ThemeChoice::Dark, "worktree-dialog-remote", |_| WorktreeBase::Remote { remote: "origin".into(), branch: "search".into() });
+    let (st, dir) = dialog(ThemeChoice::Dark, "worktree-dialog-remote-branch", |_| WorktreeBase::Remote {
+        remote: "origin".into(),
+        branch: "search".into(),
+    });
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_all_by_role_and_label(Role::TextInput, "New branch").next().is_some());
