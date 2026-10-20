@@ -14,21 +14,23 @@ pub(super) fn start_rename(st: &mut AppState, id: u64) {
     let Some(i) = tabs.iter().position(|s| s.id == id) else { return };
     let Some(text) = tab_names(&tabs).into_iter().nth(i) else { return };
     st.terminal.active.insert(workdir, id);
-    st.terminal.renaming = Some(TabRename { id, text, focus: true });
+    st.terminal.renaming = Some(TabRename { id, shown: text.clone(), text, focus: true });
     st.terminal.focus_requested = false;
 }
 
 /// Names tab `id` `name` from its rename field. A blank name, or the automatic one, goes back
-/// to naming it automatically. Enter (`submitted`) gives the keyboard back to the shell; when
+/// to naming it automatically; the name the field opened with (which may carry the " (N)" of
+/// a repeated name) leaves the tab named as it was. Enter (`submitted`) gives the keyboard back to the shell; when
 /// the field lost focus to another widget, the keyboard stays with that widget.
 pub(super) fn rename(st: &mut AppState, id: u64, name: &str, submitted: bool) {
-    if st.terminal.renaming.as_ref().is_none_or(|r| r.id != id) {
+    let Some(draft) = st.terminal.renaming.take_if(|r| r.id == id) else { return };
+    st.terminal.focus_requested = submitted;
+    let Some(s) = st.terminal.sessions.iter_mut().find(|s| s.id == id) else { return };
+    let name = clean_rename(name);
+    if name.as_deref() == clean_rename(&draft.shown).as_deref() {
         return;
     }
-    st.terminal.renaming = None;
-    let Some(s) = st.terminal.sessions.iter_mut().find(|s| s.id == id) else { return };
-    s.name = clean_rename(name).filter(|n| *n != auto_name(s));
-    st.terminal.focus_requested = submitted;
+    s.name = name.filter(|n| *n != auto_name(s));
 }
 
 /// Esc in the rename field: the name stays and the shell gets the keyboard back.

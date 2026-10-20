@@ -44,6 +44,8 @@ pub struct TabRename {
     pub id: u64,
     /// The field's text, edited by the view.
     pub text: String,
+    /// The name the tab showed when the field opened; submitting it unchanged keeps the name.
+    pub shown: String,
     /// Give the field the keyboard; cleared by the view once it has asked for it.
     pub focus: bool,
 }
