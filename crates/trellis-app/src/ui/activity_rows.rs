@@ -167,7 +167,7 @@ fn verbose(st: &AppState, at: i64) -> String {
 
 /// The words a screen reader hears for a row: "<title>, <done|failed>, <summary>".
 fn spoken(t: Lang, title: &str, ok: bool, summary: &str) -> String {
-    let status = t.tr(if ok { "logs.activity.done" } else { "logs.activity.failed" });
+    let status = if ok { t.tr("logs.activity.done") } else { t.tr("logs.activity.failed") };
     if summary.is_empty() { format!("{title}, {status}") } else { format!("{title}, {status}, {summary}") }
 }
 

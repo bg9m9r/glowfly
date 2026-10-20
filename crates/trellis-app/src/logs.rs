@@ -6,6 +6,7 @@ use crate::state::logs::EntryId;
 use crate::state::tabs::TabId;
 use std::path::PathBuf;
 use trellis_core::gitcli::GitRun;
+use trellis_core::i18n::Lang;
 use trellis_core::logs::{ActivityEntry, LogTail, RunInfo};
 
 /// The activity panel's tabs.
@@ -20,21 +21,21 @@ pub enum LogKind {
 impl LogKind {
     pub const ALL: [LogKind; 3] = [LogKind::Activity, LogKind::Errors, LogKind::Performance];
 
-    /// The language key of its name; `<key>.tip` explains it.
-    pub fn key(self) -> &'static str {
+    /// Its tab's name in `t`.
+    pub fn name(self, t: Lang) -> &'static str {
         match self {
-            LogKind::Activity => "logs.tab.activity",
-            LogKind::Errors => "logs.tab.errors",
-            LogKind::Performance => "logs.tab.performance",
+            LogKind::Activity => t.tr("logs.tab.activity"),
+            LogKind::Errors => t.tr("logs.tab.errors"),
+            LogKind::Performance => t.tr("logs.tab.performance"),
         }
     }
 
-    /// The language key of its tooltip.
-    pub fn tip_key(self) -> &'static str {
+    /// Its tab's tooltip in `t`.
+    pub fn tip(self, t: Lang) -> &'static str {
         match self {
-            LogKind::Activity => "logs.tab.activity.tip",
-            LogKind::Errors => "logs.tab.errors.tip",
-            LogKind::Performance => "logs.tab.performance.tip",
+            LogKind::Activity => t.tr("logs.tab.activity.tip"),
+            LogKind::Errors => t.tr("logs.tab.errors.tip"),
+            LogKind::Performance => t.tr("logs.tab.performance.tip"),
         }
     }
 }

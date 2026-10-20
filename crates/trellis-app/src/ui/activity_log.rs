@@ -61,7 +61,7 @@ fn header(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let left = Rect::from_min_max(rect.min, pos2(right.left() - SIDE, rect.bottom()));
     let mut l = ui.new_child(UiBuilder::new().max_rect(left).layout(Layout::left_to_right(Align::Center)));
     let t = st.settings.lang();
-    let tabs: Vec<(LogKind, &str, &str)> = LogKind::ALL.iter().map(|&k| (k, t.tr(k.key()), t.tr(k.tip_key()))).collect();
+    let tabs: Vec<(LogKind, &str, &str)> = LogKind::ALL.iter().map(|&k| (k, k.name(t), k.tip(t))).collect();
     if let Some(kind) = segmented(&mut l, st.logs.tab, &tabs) {
         msgs.push(Msg::Logs(LogsMsg::Show(kind)));
     }
@@ -86,11 +86,10 @@ fn buttons(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         msgs.push(Msg::Logs(LogsMsg::OpenFolder));
     }
     let (icon, name, tip, msg) = match st.logs.tab {
-        LogKind::Activity => (Icon::Eraser, "logs.header.clear", "logs.header.clear.tip", Msg::ClearLog),
-        kind => (Icon::Refresh, "logs.header.reload", "logs.header.reload.tip", Msg::Logs(LogsMsg::Show(kind))),
+        LogKind::Activity => (Icon::Eraser, t.tr("logs.header.clear"), t.tr("logs.header.clear.tip"), Msg::ClearLog),
+        kind => (Icon::Refresh, t.tr("logs.header.reload"), t.tr("logs.header.reload.tip"), Msg::Logs(LogsMsg::Show(kind))),
     };
-    let name = t.tr(name);
-    if icon_tip(ghost(ui, Some(icon), None, name, true), keys, t, Tip::new(name).body(t.tr(tip))).clicked() {
+    if icon_tip(ghost(ui, Some(icon), None, name, true), keys, t, Tip::new(name).body(tip)).clicked() {
         msgs.push(msg);
     }
     if hide_clicked {
