@@ -21,6 +21,7 @@ mod panel_sizes;
 mod paths;
 mod profiles;
 mod profiles_prefs;
+mod repo_colours;
 pub mod repo_keys;
 mod submodules;
 mod terminal;
@@ -45,6 +46,7 @@ pub use panel_sizes::{PanelSizes, SizedPanel};
 pub use paths::{cache_dir, config_dir, home_dir, log_dir, migrate_old_config_dir, runtime_dir, xdg_data_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
+pub use repo_colours::RepoColour;
 pub use submodules::{SubmodulePrefs, SubmoduleUpdates};
 pub use terminal::{CursorStyle, DEFAULT_TERMINAL_FONT_SIZE, ShellChoice, ShellSetting, TERMINAL_FONT_SIZES, TerminalPrefs};
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
@@ -264,6 +266,9 @@ pub struct Settings {
     /// Hues pinned to branches (by branch key) per repository, keyed by `repo_keys`.
     #[serde(default)]
     pub branch_pins: HashMap<String, BTreeMap<String, u8>>,
+    /// Repository colours (Vivid colour) by `repo_keys`, as `RepoColour::id` names; unknown names read as none.
+    #[serde(default)]
+    pub repo_colours: HashMap<String, String>,
     /// Saved pull request and issue filters and the ones shown, per repository, keyed by its
     /// resolved working directory (`repo_keys`).
     #[serde(default)]
@@ -396,6 +401,7 @@ impl Default for Settings {
             repo_trackers: HashMap::new(),
             graph_filters: HashMap::new(),
             branch_pins: HashMap::new(),
+            repo_colours: HashMap::new(),
             repo_forge_filters: HashMap::new(),
             repo_trust: HashMap::new(),
             status_tip_shown: HashMap::new(),

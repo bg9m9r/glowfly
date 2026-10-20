@@ -48,6 +48,10 @@ fn tinted_surfaces_meet_the_floors_over_every_band() {
     // The title bar never shows faint text, so it isn't checked there; the side surface checks it.
     assert!(checks(&DARK, Surface::Chrome).iter().all(|(t, _, _)| *t != "faint"));
     assert!(checks(&DARK, Surface::Side).iter().any(|(t, _, _)| *t == "faint"));
+    // The tab swatches, the top line and the coral chips are checked on the title bar.
+    let chrome = checks(&DARK, Surface::Chrome);
+    assert_eq!(chrome.iter().filter(|(t, _, _)| *t == "needs_you").count(), 1);
+    assert_eq!(chrome.iter().filter(|(t, _, _)| *t == "repository").count(), 8);
 }
 
 #[test]

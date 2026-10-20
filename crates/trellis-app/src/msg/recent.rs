@@ -3,6 +3,7 @@
 use super::Inactive;
 use std::path::PathBuf;
 use trellis_core::paths::FolderId;
+use trellis_core::settings::RepoColour;
 
 /// The recent and favorite repository lists (update/recent.rs).
 pub enum RecentMsg {
@@ -27,6 +28,9 @@ pub enum RecentMsg {
     RemoveMissing,
     /// Drop this folder from the Recent list and the favorites (a listed folder that is gone).
     Forget(PathBuf),
+    /// Give the repository at `path` a colour, or with None take it away (the tab menu's and the
+    /// repository list's Color submenus).
+    SetColour { path: PathBuf, colour: Option<RepoColour> },
 }
 
 /// What `Effect::CheckRepoFolders` found at one listed folder.
@@ -53,7 +57,8 @@ impl RecentMsg {
             | Self::OpenFavorite(_)
             | Self::OpenAll(_)
             | Self::RemoveMissing
-            | Self::Forget(_) => None,
+            | Self::Forget(_)
+            | Self::SetColour { .. } => None,
         }
     }
 }

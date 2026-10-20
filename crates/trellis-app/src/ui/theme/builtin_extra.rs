@@ -3,12 +3,30 @@
 
 use super::branch_palette::{BRANCH_DARK, BRANCH_LIGHT_STRONG};
 use super::color::Palette;
-use super::families::{Attention, Repository, Status};
+use super::families::{Attention, REPO_HUES, Repository, Status};
 use eframe::egui::Color32;
 
 const fn hex(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8)
 }
+
+const fn hues(c: [u32; REPO_HUES]) -> Repository {
+    let mut hues = [Color32::BLACK; REPO_HUES];
+    let mut i = 0;
+    while i < REPO_HUES {
+        hues[i] = hex(c[i]);
+        i += 1;
+    }
+    Repository { hues }
+}
+
+// The repository hues (OKLCH chroma 0.08) in `RepoColour` order: Rose, Ochre, Fern, Teal, Sky,
+// Slate, Iris, Plum, at one lightness per theme (docs/COLOUR.md).
+pub(super) const REPO_DARK: Repository = hues([0xcb8a93, 0xae9e64, 0x90a872, 0x5caeb2, 0x6ba7c9, 0x869ed1, 0xa494ca, 0xbe8cb2]);
+pub(super) const REPO_LIGHT: Repository = hues([0xa0636d, 0x86773d, 0x6a814c, 0x31868a, 0x447fa0, 0x6077a7, 0x7d6da1, 0x95658a]);
+const REPO_HC_DARK: Repository = hues([0xe5a2ac, 0xc7b77c, 0xa9c28a, 0x76c7cc, 0x84c0e4, 0x9eb7eb, 0xbdade5, 0xd8a4cc]);
+const REPO_HC_LIGHT: Repository = hues([0x814750, 0x695a1f, 0x4e6330, 0x00686c, 0x256281, 0x455a88, 0x605182, 0x76496d]);
+const REPO_SAND: Repository = hues([0x9d606a, 0x83743a, 0x677e49, 0x2d8387, 0x417c9d, 0x5d74a4, 0x7a6a9e, 0x926287]);
 
 /// White text on black, with brighter hues and syntax colors.
 pub const HIGH_CONTRAST_DARK: Palette = Palette {
@@ -38,7 +56,7 @@ pub const HIGH_CONTRAST_DARK: Palette = Palette {
     tag_bg: hex(0x574400),
     tag_fg: hex(0xffe394),
     status: Status { added: hex(0x84e36a), removed: hex(0xff8a7e), modified: hex(0xffcc4d), info: hex(0x82b8ff), progress: hex(0xcfa8ff) },
-    attention: Attention { warn: hex(0xffcc4d), banner: hex(0x4d3800) },
+    attention: Attention { warn: hex(0xffcc4d), banner: hex(0x4d3800), needs_you: hex(0xff8a5c), on_needs_you: hex(0x22110b) },
     diff_add: hex(0x06280f),
     diff_del: hex(0x330a0d),
     diff_add_sel: hex(0x0f3d1a),
@@ -55,7 +73,7 @@ pub const HIGH_CONTRAST_DARK: Palette = Palette {
     syn_type: hex(0xffe09c),
     syn_function: hex(0xa0ceff),
     syn_attr: hex(0xa6e4ec),
-    repository: Repository { groups: [hex(0x82b8ff), hex(0xcfa8ff), hex(0x6ee36a), hex(0xffcc4d)] },
+    repository: REPO_HC_DARK,
     branch: BRANCH_DARK,
     ansi: super::ansi::HIGH_CONTRAST_DARK,
 };
@@ -87,7 +105,7 @@ pub const HIGH_CONTRAST_LIGHT: Palette = Palette {
     tag_bg: hex(0xf5e2a6),
     tag_fg: hex(0x4a3500),
     status: Status { added: hex(0x226b10), removed: hex(0xa3150c), modified: hex(0x7a4b00), info: hex(0x0646a8), progress: hex(0x5a1fa8) },
-    attention: Attention { warn: hex(0x7a4b00), banner: hex(0xfbe8b8) },
+    attention: Attention { warn: hex(0x7a4b00), banner: hex(0xfbe8b8), needs_you: hex(0x9c3604), on_needs_you: hex(0xffffff) },
     diff_add: hex(0xe3f7e6),
     diff_del: hex(0xfde4e4),
     diff_add_sel: hex(0xbfe9c7),
@@ -104,7 +122,7 @@ pub const HIGH_CONTRAST_LIGHT: Palette = Palette {
     syn_type: hex(0x5f3e00),
     syn_function: hex(0x0b3f99),
     syn_attr: hex(0x004d55),
-    repository: Repository { groups: [hex(0x0646a8), hex(0x5a1fa8), hex(0x0b6b1d), hex(0x7a4b00)] },
+    repository: REPO_HC_LIGHT,
     branch: BRANCH_LIGHT_STRONG,
     ansi: super::ansi::HIGH_CONTRAST_LIGHT,
 };
@@ -136,7 +154,7 @@ pub const SAND: Palette = Palette {
     tag_bg: hex(0xefd89a),
     tag_fg: hex(0x5e4300),
     status: Status { added: hex(0x4f7f1e), removed: hex(0xb23a2a), modified: hex(0x9a6200), info: hex(0x2d65a8), progress: hex(0x7d4a9e) },
-    attention: Attention { warn: hex(0x9a6200), banner: hex(0xf3dfa8) },
+    attention: Attention { warn: hex(0x9a6200), banner: hex(0xf3dfa8), needs_you: hex(0xbf4306), on_needs_you: hex(0xffffff) },
     diff_add: hex(0xe2ecd0),
     diff_del: hex(0xf5dccf),
     diff_add_sel: hex(0xcfe0b4),
@@ -153,7 +171,7 @@ pub const SAND: Palette = Palette {
     syn_type: hex(0x8a5a00),
     syn_function: hex(0x2a5f9e),
     syn_attr: hex(0x2f6f6a),
-    repository: Repository { groups: [hex(0x2d65a8), hex(0x7d4a9e), hex(0x4f7f1e), hex(0x9a6200)] },
+    repository: REPO_SAND,
     branch: BRANCH_LIGHT_STRONG,
     ansi: super::ansi::SAND,
 };

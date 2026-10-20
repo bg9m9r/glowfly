@@ -1,17 +1,17 @@
-//! Predicted merge conflicts: the toolbar chip (a painted warning triangle and the number of
-//! conflicting files) with its popover, and the report dialog for checks the branch menus ask
+//! Predicted merge conflicts: the toolbar chip (the coral needs-you pill: the warning mark and
+//! the number of conflicting files in its ink) with its popover, and the report dialog for checks the branch menus ask
 //! for. Texts come from state/conflict_check.rs; the buttons send the same Merge and Rebase
 //! jobs as the branch menus.
 
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
-use super::widgets::{self, Icon, buttons};
+use super::widgets::buttons;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::conflict_check::{self as cc, ConflictReport};
 use crate::ui::theme::type_scale;
-use eframe::egui::{self, CornerRadius, Id, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
+use eframe::egui::{self, Id, RichText, Sense, pos2, vec2};
 use trellis_core::conflict_check::Prediction;
 use trellis_core::i18n::Lang;
 
@@ -42,16 +42,12 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
     let t = st.settings.lang();
     let count = if paths.is_empty() { "!".to_owned() } else { paths.len().to_string() };
-    let galley = ui.painter().layout_no_wrap(count, type_scale::font(type_scale::SMALL), color::text());
+    let galley = ui.painter().layout_no_wrap(count, type_scale::font(type_scale::SMALL), super::needs_you::ink());
     let (rect, _) = ui.allocate_exact_size(vec2(galley.size().x + 36.0, HEIGHT), Sense::hover());
     let resp = ui.interact(rect, Id::new(CHIP_ID), Sense::click());
-    let amber = color::warn();
     let p = ui.painter();
-    let radius = CornerRadius::same((HEIGHT / 2.0) as u8);
-    p.rect_filled(rect, radius, amber.gamma_multiply(if resp.hovered() { 0.28 } else { 0.16 }));
-    p.rect_stroke(rect, radius, Stroke::new(1.0_f32, amber.gamma_multiply(0.6)), StrokeKind::Inside);
-    widgets::paint_icon(p, pos2(rect.left() + 15.0, rect.center().y), Icon::Warning, amber);
-    p.galley(pos2(rect.left() + 27.0, rect.center().y - galley.size().y / 2.0), galley, color::text());
+    super::needs_you::paint_pill(p, rect, resp.hovered());
+    p.galley(pos2(rect.left() + 27.0, rect.center().y - galley.size().y / 2.0), galley, super::needs_you::ink());
     let target = report.request.target.name.clone();
     let label = t.trf("conflict_check.chip.name", &[("target", &target)]);
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &label));

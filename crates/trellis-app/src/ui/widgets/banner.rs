@@ -2,11 +2,13 @@
 //! kind's colour at the left edge, a 16 px icon (or a spinner while something runs), roomy
 //! padding, wrapped text and its buttons at the right in the normal styles. The strips under
 //! the toolbar use `top`; banners inside a panel use `frame` around their own content, or
-//! `show` for a title, text and buttons.
+//! `show` for a title, text and buttons. A `NeedsYou` banner (files are conflicted) takes the
+//! coral stripe and the coral badge with the warning mark as its icon (`ui::needs_you`).
 
 use super::super::theme::color;
 use super::severity::{self, Severity};
 use super::{Icon, paint_icon};
+use crate::ui::needs_you;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Color32, CursorIcon, InnerResponse, Layout, Rect, Response, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use std::borrow::Cow;
@@ -27,6 +29,8 @@ pub enum BannerKind {
     Error,
     /// Something is running.
     Progress,
+    /// Trellis waits on you (files are conflicted): the coral, with the warning mark.
+    NeedsYou,
 }
 
 impl BannerKind {
@@ -36,13 +40,14 @@ impl BannerKind {
             BannerKind::Warning => color::warn(),
             BannerKind::Error => color::removed(),
             BannerKind::Progress => color::progress(),
+            BannerKind::NeedsYou => needs_you::fill(),
         }
     }
 
     fn severity(self) -> Option<Severity> {
         match self {
             BannerKind::Info => Some(Severity::Info),
-            BannerKind::Warning => Some(Severity::Warning),
+            BannerKind::Warning | BannerKind::NeedsYou => Some(Severity::Warning),
             BannerKind::Error => Some(Severity::Error),
             BannerKind::Progress => None,
         }
@@ -109,6 +114,7 @@ pub fn frame<R>(ui: &mut Ui, kind: BannerKind, icon: Option<(Icon, Color32)>, co
         let cy = if h <= ONE_ROW { inner.response.rect.center().y } else { slot.top() + 10.0 };
         let c = pos2(slot.center().x, cy);
         match (icon, kind.severity()) {
+            _ if kind == BannerKind::NeedsYou => needs_you::badge(ui.painter(), Rect::from_center_size(c, vec2(ICON, ICON))),
             (Some((icon, col)), _) => paint_icon(ui.painter(), c, icon, col),
             (None, Some(s)) => severity::paint(ui.painter(), c, ICON, s, s.color()),
             (None, None) => {

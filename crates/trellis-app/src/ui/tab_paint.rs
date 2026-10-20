@@ -1,11 +1,12 @@
-//! How a repository tab looks (`tabs.rs` lays the strip out): the repository icon, the name and
-//! the close ×, in a shape with rounded top corners. A quiet tab has no fill (the chrome shows
+//! How a repository tab looks (`tabs.rs` lays the strip out): the repository's colour swatch
+//! (when it has one), the repository icon, the name and the close ×, in a shape with rounded top corners. A quiet tab has no fill (the chrome shows
 //! through), a hovered one the hover fill and a pressed one the pressed fill. The active tab
 //! stands 2 px taller on the toolbar's own fill, so it runs into the toolbar below, with one
 //! 2 px band in its checked-out branch's colour along its rounded top. The × fades in on the
 //! active and hovered tabs without ever changing the layout. Neighbouring quiet tabs are parted
 //! by a short line, and a worktree group's tabs share a strip along their bottom.
 
+use super::repo_swatch;
 use super::theme::color;
 use super::widgets::tab_glyph::{self, TabGlyph};
 use super::widgets::{Cut, Icon, paint_cut_text, paint_icon_sized};
@@ -25,6 +26,9 @@ const ICON_GAP: f32 = 8.0;
 const CLOSE_GAP: f32 = 8.0;
 const PAD_R: f32 = 10.0;
 pub(super) const CHROME_W: f32 = PAD_L + ICON + ICON_GAP + CLOSE_GAP + tab_glyph::BOX + PAD_R;
+/// The repository swatch's size, and the room it adds before the icon.
+const SWATCH: f32 = 8.0;
+pub(super) const SWATCH_ROOM: f32 = 14.0;
 
 /// What a tab shows this frame.
 #[derive(Clone, Copy)]
@@ -41,6 +45,8 @@ pub(super) struct TabLook {
     pub fill: Color32,
     /// The active tab's band: its checked-out branch's line tone.
     pub band: Color32,
+    /// The tab's repository colour, if it has one.
+    pub repo: Option<Color32>,
 }
 
 impl TabLook {
@@ -55,6 +61,7 @@ impl TabLook {
             close_hovered: false,
             fill,
             band: color::accent(),
+            repo: None,
         }
     }
 }
@@ -84,10 +91,15 @@ pub(super) fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, font: FontId,
         color::faint()
     };
     let cy = rect.center().y;
-    paint_icon_sized(p, pos2(rect.left() + PAD_L + ICON / 2.0, cy), Icon::Repo, icon_tone, ICON);
+    let mut left = rect.left() + PAD_L;
+    if let Some(c) = look.repo {
+        repo_swatch::paint(p, pos2(left, cy), SWATCH, c);
+        left += SWATCH_ROOM;
+    }
+    paint_icon_sized(p, pos2(left + ICON / 2.0, cy), Icon::Repo, icon_tone, ICON);
     let text_col = if look.active { color::text() } else { color::weak() };
     // The name, cut with an ellipsis before the close slot (kept whether or not the × shows).
-    let left = rect.left() + PAD_L + ICON + ICON_GAP;
+    let left = left + ICON + ICON_GAP;
     let cut = paint_cut_text(p, pos2(left, cy), name, font, text_col, close_rect.left() - CLOSE_GAP - left);
     if look.close_alpha > 0.0 {
         let hover = look.close_hovered.then(|| color::selected().gamma_multiply(look.close_alpha));

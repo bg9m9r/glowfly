@@ -2,11 +2,11 @@
 //! theme can switch at runtime (Preferences > UI Customization > Theme). The palette is a
 //! per-thread copy the shell sets with [`set_palette`] at the start of each frame.
 
-use super::families::{Ansi, Attention, Branch, LANE_COUNT, Repository, Status};
+use super::families::{Ansi, Attention, Branch, LANE_COUNT, REPO_HUES, Repository, Status};
 use eframe::egui::Color32;
 use std::cell::RefCell;
 use trellis_core::highlight::TokenKind;
-use trellis_core::settings::BranchPalette;
+use trellis_core::settings::{BranchPalette, RepoColour};
 
 /// The colors of one theme, in families: neutrals, brand, status, attention, diff, syntax,
 /// repository, branch and the terminal's basic colours. Every built-in meets the contrast floors and hue bands that the theme
@@ -72,7 +72,8 @@ pub struct Palette {
     pub syn_type: Color32,
     pub syn_function: Color32,
     pub syn_attr: Color32,
-    /// Not theme-file keys yet: always the base palette's.
+    /// The repository hues (tab swatches, the top line, the repository list, worktree group
+    /// strips). Not theme-file keys yet: always the base palette's.
     pub repository: Repository,
     pub branch: Branch,
     /// The terminal's 16 basic colours; not theme-file keys yet either.
@@ -205,9 +206,18 @@ pub fn ansi(i: u8) -> Color32 {
     ACTIVE.with_borrow(|p| p.ansi.colors[usize::from(i % 16)])
 }
 
+/// The order worktree tab groups take the repository hues in: each hue is far from the next
+/// (Rose, Teal, Iris, Ochre, Sky, Plum, Fern, Slate), so neighbouring groups differ strongly.
+const GROUP_ORDER: [usize; REPO_HUES] = [0, 3, 6, 1, 4, 7, 2, 5];
+
 /// The strip colour of the `n`th worktree tab group in the active palette.
 pub fn repo_group(n: usize) -> Color32 {
-    ACTIVE.with_borrow(|p| p.repository.groups[n % p.repository.groups.len()])
+    ACTIVE.with_borrow(|p| p.repository.hues[GROUP_ORDER[n % REPO_HUES]])
+}
+
+/// The colour given to a repository, in the active palette.
+pub fn repo_hue(c: RepoColour) -> Color32 {
+    ACTIVE.with_borrow(|p| p.repository.hues[c.index()])
 }
 
 /// The color for a syntax token kind in the active palette. `Plain` is `text`, though
@@ -230,6 +240,8 @@ pub fn token(k: TokenKind) -> Color32 {
 const FIELD_TINT: f32 = 0.04;
 /// How far a dialog's side pane moves from `panel` toward the accent.
 const GUIDE_TINT: f32 = 0.07;
+/// How far the toolbar groups' backing moves from `toolbar` toward the accent.
+const TOOL_TINT: f32 = 0.09;
 
 impl Palette {
     /// The fill of a dialog's text field: `input` with a faint accent tint. Derived, not a
@@ -243,6 +255,22 @@ impl Palette {
     pub fn guide_fill(&self) -> Color32 {
         super::contrast::mix(self.panel, self.accent, GUIDE_TINT)
     }
+
+    /// The neutral backing of the toolbar's groups: `toolbar` with a quiet accent tint.
+    /// Derived, not a theme-file key.
+    pub fn tool_backing(&self) -> Color32 {
+        super::contrast::mix(self.toolbar, self.accent, TOOL_TINT)
+    }
+
+    /// A hovered tool button on the backing: a step toward `text`.
+    pub fn tool_hover(&self) -> Color32 {
+        super::contrast::mix(self.tool_backing(), self.text, 0.08)
+    }
+
+    /// A pressed (or open) tool button on the backing: two steps toward `text`.
+    pub fn tool_pressed(&self) -> Color32 {
+        super::contrast::mix(self.tool_backing(), self.text, 0.16)
+    }
 }
 
 /// [`Palette::field_fill`] of the active palette.
@@ -253,4 +281,19 @@ pub fn field_fill() -> Color32 {
 /// [`Palette::guide_fill`] of the active palette.
 pub fn guide_fill() -> Color32 {
     ACTIVE.with_borrow(Palette::guide_fill)
+}
+
+/// [`Palette::tool_backing`] of the active palette.
+pub fn tool_backing() -> Color32 {
+    ACTIVE.with_borrow(Palette::tool_backing)
+}
+
+/// [`Palette::tool_hover`] of the active palette.
+pub fn tool_hover() -> Color32 {
+    ACTIVE.with_borrow(Palette::tool_hover)
+}
+
+/// [`Palette::tool_pressed`] of the active palette.
+pub fn tool_pressed() -> Color32 {
+    ACTIVE.with_borrow(Palette::tool_pressed)
 }

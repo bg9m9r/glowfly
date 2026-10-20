@@ -5,8 +5,8 @@
 
 use super::toasts::ToastBounds;
 use super::{
-    UiCache, activity_log, central, details, git_banner, lfs_banner, menu_bar, op_strip, panel_rails, panel_size, prefs, sidebar,
-    sign_in_banner, status, tabs, terminal, title_bar, toolbar, tour,
+    UiCache, activity_log, central, details, git_banner, lfs_banner, menu_bar, op_strip, panel_rails, panel_size, prefs, repo_line,
+    sidebar, sign_in_banner, status, tabs, terminal, title_bar, toolbar, tour,
 };
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -17,6 +17,7 @@ use eframe::egui;
 /// title bar while open); returns where the chrome ends, for the toasts.
 pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) -> ToastBounds {
     status::status_bar(ctx, st, msgs);
+    repo_line::paint(ctx, st);
     let bottom = ctx.available_rect().bottom();
     let drawn = st.view.chrome.drawn();
     if drawn {

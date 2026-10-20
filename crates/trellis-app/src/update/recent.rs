@@ -48,6 +48,7 @@ pub(super) fn handle(st: &mut AppState, msg: RecentMsg, now: Instant, fx: &mut V
             remove_recent(st, &p, fx);
             unfavorite(st, &p, fx);
         }
+        RecentMsg::SetColour { path, colour } => super::repo_colour::set(st, &path, colour, fx),
     }
 }
 

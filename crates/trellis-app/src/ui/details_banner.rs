@@ -33,7 +33,7 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
     let skip_blocked = st.git.blocked(Feature::SequencerSkip);
     let t = st.settings.lang();
     let kind = if !conflicted.is_empty() {
-        BannerKind::Warning
+        BannerKind::NeedsYou
     } else if st.job.is_some() {
         BannerKind::Progress
     } else {

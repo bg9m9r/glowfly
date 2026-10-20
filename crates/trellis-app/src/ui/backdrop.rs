@@ -56,9 +56,15 @@ pub(super) fn bands(p: &Palette) -> &'static [Color32; 9] {
 
 /// What must stay readable on `s`, as (token name, colour, minimum ratio): the floors of
 /// docs/COLOUR.md §3. The title bar shows no faint text (a quiet tab's faint icon sits beside
-/// its weak name); the toolbar is on the side surface, which checks every tone it uses.
+/// its weak name) but the repository swatches and the coral; the toolbar is on the side
+/// surface, which checks every tone it uses.
 pub(super) fn checks(p: &Palette, s: Surface) -> Vec<(&'static str, Color32, f64)> {
     let mut out = vec![("text", p.text, 4.5), ("weak", p.weak, 4.5), ("input_border", p.input_border, 3.0)];
+    if s == Surface::Chrome {
+        // The tab swatches, the top line and the coral chips sit on the title bar.
+        out.push(("needs_you", super::needs_you::fill_of(p), 3.0));
+        out.extend(p.repository.hues.iter().map(|&c| ("repository", c, 3.0)));
+    }
     if s == Surface::Side {
         out.extend([
             ("faint", p.faint, 4.5),

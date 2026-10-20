@@ -113,6 +113,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "repo_trackers",
     "graph_filters",
     "branch_pins",
+    "repo_colours",
     "repo_forge_filters",
     "repo_trust",
     "status_tip_shown",

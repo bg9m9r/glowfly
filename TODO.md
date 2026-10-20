@@ -305,7 +305,7 @@ until this list says which option was chosen.
       #3b4097. Light graph lines and dots use brighter tones (3:1 is enough for non-text):
       #c04d6e #719c27 #9776db #a86b06 #0b9db3 #c664a8 #7a8201 #498de5 #d86357 #0a8c89 #9e59b3
       #a98904 #0685b6 #646fd1.
-- [ ] **Vivid colour** (colour direction C, after Branch-led colour), with one job per colour
+- [x] **Vivid colour** (colour direction C, after Branch-led colour), with one job per colour
       kind: status colours appear only as letter badges or +/− signs in diffs and file lists;
       branch colours only as lines, dots and name pills; repository colours only on window
       chrome (its tab, a thin line along the top of the window, the repository list), from a
@@ -3016,3 +3016,26 @@ here, under the item they grew from.
   idea under Dialogs and text fields)
 - A dialog whose footer has only its dismiss button grows by the item spacing on the right
   (the empty space after it); the welcome leaves it out (set width), the others still have it
+
+### Vivid colour
+
+- Theme files set the repository hues and the coral (`repo_*`, `needs_you`, `on_needs_you`
+  keys, with an ink fallback like `on_primary`'s)
+- A Color row for the open repository on a repository page of Preferences
+- A worktree group's strip takes its worktrees' colour when they share one, and an option to
+  share one colour across a repository's worktrees
+- Repository swatches in the Find repositories dialog, the tab list dropdown, the Window menu's
+  tab list, and a "Set repository color…" command palette entry
+- Prune repository colours of folders removed with Forget or Remove missing
+- Failed operations whose cause is conflicts (error panes, toasts, the activity log) use the
+  coral needs-you mark
+- A coral conflict chip on the graph's WIP row while files are conflicted (conflicted paths are
+  counted under M today)
+- The conflict view's ours/theirs line tints move off info/progress at 18% to their own
+  diff-family pair
+- Retune the favourite star (warn) in the repository list and finder with its own token now
+  that warn has left the chrome
+- The "Merge in progress" strip under the toolbar takes the coral NeedsYou kind while files are
+  conflicted, like the WIP panel's banner
+- Name the conflicted rows' coral badge for screen readers and on hover ("Conflicted"), now that
+  the "!" letter is gone

@@ -1,6 +1,7 @@
 //! Line counts drawn the same everywhere: a file row's `+N −M` with its bar, a total, and the
-//! WIP row's status chips. Added is `added_color`, removed `removed_color`, modified
-//! `modified_color`, as the status letters are.
+//! WIP row's status chips. The counts and letters carry the status colours (added is
+//! `added_color`, removed `removed_color`, modified `modified_color`, as the status letters
+//! are); the bar is neutral: the added share in `weak`, the removed share in `faint`.
 
 use super::common::{added_color, modified_color, removed_color};
 use super::theme::{color, contrast};
@@ -98,11 +99,11 @@ fn paint_bar(p: &Painter, rect: Rect, (green, red): (f32, f32)) {
         return;
     }
     let filled = Rect::from_min_size(rect.min, vec2(green + red, rect.height()));
-    p.rect_filled(filled, round, removed_color());
+    p.rect_filled(filled, round, color::faint());
     if green > 0.0 {
         // Square on the right where red follows it.
         let r = if red > 0.0 { CornerRadius { ne: 0, se: 0, ..round } } else { round };
-        p.rect_filled(Rect::from_min_size(rect.min, vec2(green, rect.height())), r, added_color());
+        p.rect_filled(Rect::from_min_size(rect.min, vec2(green, rect.height())), r, color::weak());
     }
 }
 

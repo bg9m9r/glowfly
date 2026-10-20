@@ -19,20 +19,30 @@ pub struct Status {
     pub progress: Color32,
 }
 
-/// Colours that ask for the user's attention. The attention hue band (35 to 60 deg OKLCH) is
-/// kept free for the later "needs you" colour.
+/// Colours that ask for the user's attention. The attention hue band (35 to 60 deg OKLCH)
+/// belongs to the coral `needs_you` alone.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Attention {
     /// Warnings (and, until each job has its own colour, favourites and pending checks).
     pub warn: Color32,
     /// The fill of banners.
     pub banner: Color32,
+    /// The coral "needs you" (a conflict, a decision Trellis waits on): the one solid-filled
+    /// status, always drawn with the warning mark (`ui::needs_you`).
+    pub needs_you: Color32,
+    /// The ink on a `needs_you` fill.
+    pub on_needs_you: Color32,
 }
 
-/// The colours of repositories: the worktree tab-group strips.
+/// How many repository hues there are (`trellis_core::settings::RepoColour::ALL`).
+pub const REPO_HUES: usize = 8;
+
+/// The colours of repositories: the 8 quiet hues in `RepoColour` order, at OKLCH chroma 0.08.
+/// They mark tab swatches, the window's top line, the repository list and the worktree
+/// tab-group strips.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Repository {
-    pub groups: [Color32; 4],
+    pub hues: [Color32; REPO_HUES],
 }
 
 /// The colours of branches, one per slot of `trellis_core::branch_colour` (the main branch

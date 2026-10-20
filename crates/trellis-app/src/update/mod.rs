@@ -82,6 +82,7 @@ mod release_notes;
 mod remote_forks;
 mod remotes;
 mod repo;
+mod repo_colour;
 mod repo_scan;
 mod repo_sync;
 mod repos;

@@ -1,14 +1,17 @@
 //! Favorite and recent repository rows, shared by the welcome screen, the toolbar's repository
-//! menu and File > Open recent: star, path, "open" and "not found" tags, the favorites' keys,
-//! and on the welcome screen the header links (Open all, Remove missing, Clear) and dragging
+//! menu and File > Open recent: star, the repository's colour swatch (a slot kept on every row
+//! once any repository has a colour, so the paths line up), path, "open" and "not found" tags,
+//! the favorites' keys, and on the welcome screen the row menu's Color submenu, the header links (Open all, Remove missing, Clear) and dragging
 //! favorites into another order (`repo_list_drag.rs`).
 
 use super::common::{menu_item, menu_item_if};
+use super::repo_swatch;
 use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::keymap::FAVORITE_BINDINGS;
 use crate::msg::{Msg, RecentMsg, RepoMsg};
 use crate::state::AppState;
+use crate::state::repo_colours::listed_colour;
 use crate::state::repo_lists::{
     clear_recent_confirm, favorite_keys_note, favorite_label, favorites, is_favorite, is_missing, is_open, missing_counts, recent_rows,
     remove_missing_msg, unopened_favorites,
@@ -194,6 +197,8 @@ fn row(
     let missing = is_missing(st, path);
     let in_tab = is_open(st, path);
     let text = trellis_core::native_path::shown(path);
+    let room = !st.settings.repo_colours.is_empty();
+    let swatch = listed_colour(st, path);
     let open = || Msg::Repo(RepoMsg::Open(path.to_path_buf()));
     let favorite = || Msg::Recent(RecentMsg::SetFavorite { path: path.to_path_buf(), favorite: !fav });
     let remove = || Msg::Recent(RecentMsg::Remove(path.to_path_buf()));
@@ -208,6 +213,7 @@ fn row(
         }
         if place == Place::Menu {
             let col = if missing { color::faint() } else { color::text() };
+            swatch_slot(ui, room, swatch);
             let mut r = ui.add(egui::Button::new(RichText::new(&text).color(col)));
             if missing {
                 r = r.on_hover_text(t.tr("repos.not_found.tip"));
@@ -241,11 +247,16 @@ fn row(
                 open_tag(ui, t, open(), msgs);
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                swatch_slot(ui, room, swatch);
                 let r = link(ui, &text, if missing { color::faint() } else { color::accent() });
                 if r.clicked() {
                     msgs.push(open());
                 }
-                r.context_menu(|ui| row_menu(ui, t, &text, section, fav, [open(), favorite(), remove()], msgs));
+                r.context_menu(|ui| {
+                    row_menu(ui, t, &text, section, fav, [open(), favorite(), remove()], msgs);
+                    ui.separator();
+                    super::repo_colour_menu::items(ui, t, Some(path), swatch, msgs);
+                });
             });
         });
     });
@@ -270,6 +281,18 @@ fn row_menu(ui: &mut egui::Ui, t: Lang, text: &str, section: Section, fav: bool,
         }
     }
     menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(text.to_owned()));
+}
+
+/// The swatch's slot before a path while any repository has a colour (`room`), with the
+/// swatch in it when this one has a colour.
+fn swatch_slot(ui: &mut egui::Ui, room: bool, swatch: Option<trellis_core::settings::RepoColour>) {
+    if !room {
+        return;
+    }
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(repo_swatch::ROOM, repo_swatch::SIZE), Sense::hover());
+    if let Some(c) = swatch {
+        repo_swatch::paint(ui.painter(), rect.left_center(), repo_swatch::SIZE, color::repo_hue(c));
+    }
 }
 
 /// A link that is cut short with "…" when it doesn't fit (the full text shows on hover).

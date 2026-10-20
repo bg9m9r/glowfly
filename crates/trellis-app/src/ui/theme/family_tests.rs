@@ -10,7 +10,7 @@ use trellis_core::settings::{BuiltinTheme, ColorValue};
 
 /// The accent band: only the accent family's hues sit in it.
 const ACCENT_BAND: std::ops::RangeInclusive<f64> = 145.0..=175.0;
-/// The attention band, kept for the later "needs you" colour.
+/// The attention band: the coral "needs you" colour's alone (`vivid_tests.rs` checks it).
 const ATTENTION_BAND: std::ops::RangeInclusive<f64> = 35.0..=60.0;
 
 fn hue(c: Color32) -> f64 {

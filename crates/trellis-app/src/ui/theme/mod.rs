@@ -181,3 +181,5 @@ mod snapshot_tests_controls;
 mod snapshot_tests_fonts;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod vivid_tests;

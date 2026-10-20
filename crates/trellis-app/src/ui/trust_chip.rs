@@ -1,5 +1,7 @@
 //! The toolbar's "Untrusted" chip: shown while the open repository's git is held; its tooltip
 //! says what is paused and why, and a click brings the trust prompt back (update/trust.rs).
+//! While Trellis waits on your decision (Undecided) it is the coral needs-you pill with the
+//! warning mark; after you chose not to trust the repository it is a neutral chip.
 
 use super::theme::color;
 use super::widgets::{self, Icon};
@@ -20,16 +22,21 @@ pub fn show(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         Some(s @ (Standing::Undecided | Standing::NotTrusted)) => s,
         _ => return,
     };
-    let galley = ui.painter().layout_no_wrap("Untrusted".into(), type_scale::font(type_scale::SMALL), color::text());
+    let undecided = standing == Standing::Undecided;
+    let ink = if undecided { super::needs_you::ink() } else { color::text() };
+    let galley = ui.painter().layout_no_wrap("Untrusted".into(), type_scale::font(type_scale::SMALL), ink);
     let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 34.0, HEIGHT), Sense::click());
-    let amber = color::warn();
     let p = ui.painter();
-    let fill = amber.gamma_multiply(if resp.hovered() { 0.28 } else { 0.16 });
-    p.rect_filled(rect, CornerRadius::same((HEIGHT / 2.0) as u8), fill);
-    p.rect_stroke(rect, CornerRadius::same((HEIGHT / 2.0) as u8), Stroke::new(1.0_f32, amber.gamma_multiply(0.6)), StrokeKind::Inside);
-    widgets::paint_icon(p, pos2(rect.left() + 14.0, rect.center().y), Icon::Shield, amber);
+    if undecided {
+        super::needs_you::paint_pill(p, rect, resp.hovered());
+    } else {
+        let radius = CornerRadius::same((HEIGHT / 2.0) as u8);
+        p.rect_filled(rect, radius, if resp.hovered() { color::hover() } else { color::raised() });
+        p.rect_stroke(rect, radius, Stroke::new(1.0_f32, color::border()), StrokeKind::Inside);
+        widgets::paint_icon(p, pos2(rect.left() + 14.0, rect.center().y), Icon::Shield, color::weak());
+    }
     let text_pos = pos2(rect.left() + 26.0, rect.center().y - galley.size().y / 2.0);
-    p.galley(text_pos, galley, color::text());
+    p.galley(text_pos, galley, ink);
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Untrusted"));
     let resp = resp.on_hover_text(trust::paused_note(standing)).on_hover_cursor(egui::CursorIcon::PointingHand);
     if resp.clicked() {

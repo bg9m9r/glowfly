@@ -132,8 +132,8 @@ fn file_list(
 }
 
 /// A row of the Unstaged, Staged or Conflicted Files list: status, Stage / Unstage / Mark
-/// resolved, the path (opens its diff, or the conflict view), `note` (weak, or green) and its
-/// menu.
+/// resolved, the path (opens its diff, or the conflict view), `note` (weak, or in text when
+/// it is good news) and its menu. A conflicted file's status is the coral needs-you badge.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn wip_file_row(
     ui: &mut egui::Ui,
@@ -169,7 +169,14 @@ pub(super) fn wip_file_row(
         _ => false,
     };
     let row = |ui: &mut egui::Ui| {
-        ui.label(RichText::new(status_label(f.status).to_string()).font(type_scale::mono(type_scale::BODY)).color(status_color(f.status)));
+        if conflicted {
+            let (rect, _) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover());
+            super::needs_you::badge(ui.painter(), rect);
+        } else {
+            ui.label(
+                RichText::new(status_label(f.status).to_string()).font(type_scale::mono(type_scale::BODY)).color(status_color(f.status)),
+            );
+        }
         // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).
         let usable = !matches!(f.hazard, Some(trellis_core::repo::Hazard::NotUtf8(_)));
         if ui.add_enabled(usable, egui::Button::new(action).small()).clicked() {
@@ -179,7 +186,7 @@ pub(super) fn wip_file_row(
         super::path_warnings::mark(ui, ctx.lang, f);
         super::lfs_badge::badge(ui, f);
         if let Some((text, green)) = note {
-            ui.label(RichText::new(text).size(type_scale::SMALL).color(if green { color::added() } else { color::weak() }));
+            ui.label(RichText::new(text).size(type_scale::SMALL).color(if green { color::text() } else { color::weak() }));
         }
     };
     let r = match count.zip(lines) {

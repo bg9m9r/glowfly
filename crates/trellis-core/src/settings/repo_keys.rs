@@ -1,5 +1,5 @@
-//! Settings saved per repository (graph filters, pinned branch colours, pull request and issue
-//! filters, the issue tracker, trust decisions, whether submodules are kept updated) are keyed by the repository's resolved working directory
+//! Settings saved per repository (graph filters, pinned branch colours, repository colours, pull
+//! request and issue filters, the issue tracker, trust decisions, whether submodules are kept updated) are keyed by the repository's resolved working directory
 //! (`Snapshot::real_workdir`), saved losslessly (`paths::encode`). One set of helpers reads and
 //! writes every such map, so a repository opened by another spelling (a link, a short 8.3 name,
 //! libgit2's `C:/x/` form) finds its settings, a new entry replaces one saved under another
@@ -104,7 +104,7 @@ impl Settings {
         self.submodule_updates_for(real).unwrap_or(self.submodules.keep_updated)
     }
 
-    /// Moves the graph filter, branch colour pins, pull request and issue filters, issue tracker,
+    /// Moves the graph filter, branch colour pins, repository colour, pull request and issue filters, issue tracker,
     /// slow-status note and submodule choice saved under `aliases` (libgit2's spelling, the path it was opened by) to the repository's
     /// resolved key `real`. Trust decisions were always saved under the resolved key and are left
     /// alone. Returns whether anything moved.
@@ -114,7 +114,8 @@ impl Settings {
         let tips = adopt(&mut self.status_tip_shown, real, aliases);
         let subs = adopt(&mut self.repo_submodule_updates, real, aliases);
         let pins = adopt(&mut self.branch_pins, real, aliases);
-        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters | tips | subs | pins
+        let colours = adopt(&mut self.repo_colours, real, aliases);
+        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters | tips | subs | pins | colours
     }
 }
 
@@ -184,6 +185,16 @@ mod tests {
         assert!(s.adopt_repo_keys(&real, &[Path::new("/link/repo")]));
         assert_eq!(s.branch_pins_for(&real).get("topic"), Some(&9));
         assert_eq!(s.branch_pins.keys().collect::<Vec<_>>(), [&key(&real)]);
+    }
+
+    #[test]
+    fn repo_colours_move_to_the_resolved_key() {
+        let mut s = Settings::default();
+        s.repo_colours.insert("/link/repo".into(), "teal".into());
+        let real = PathBuf::from("/real/repo");
+        assert!(s.adopt_repo_keys(&real, &[Path::new("/link/repo")]));
+        assert_eq!(s.repo_colour_for(&real), Some(crate::settings::RepoColour::Teal));
+        assert_eq!(s.repo_colours.keys().collect::<Vec<_>>(), [&key(&real)]);
     }
 
     #[test]

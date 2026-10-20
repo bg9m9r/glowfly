@@ -16,7 +16,7 @@ use std::time::Instant;
 use trellis_core::settings::ThemeChoice;
 
 /// A path that is absolute on every system (`C:/work/…` on Windows, `/work/…` elsewhere).
-fn abs(rel: &str) -> String {
+pub(super) fn abs(rel: &str) -> String {
     if cfg!(windows) { format!("C:/work/{rel}") } else { format!("/work/{rel}") }
 }
 
@@ -38,7 +38,7 @@ fn lists(st: &mut AppState) {
 }
 
 /// How the list shows `path`: in this system's spelling (`C:\work\web-app` on Windows).
-fn shown(path: &str) -> String {
+pub(super) fn shown(path: &str) -> String {
     trellis_core::native_path::shown(std::path::Path::new(path))
 }
 

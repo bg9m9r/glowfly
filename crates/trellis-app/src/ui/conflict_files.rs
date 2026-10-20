@@ -111,7 +111,7 @@ fn resolved_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, r: &ResolvedF
     let selected = matches!(open.diff, Some(DiffTarget::Staged(p)) if p == path);
     let row = super::widgets::file_row(ui, selected, path, |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(14.0, 14.0), Sense::hover());
-        paint_icon(ui.painter(), rect.center(), Icon::Check, color::added());
+        paint_icon(ui.painter(), rect.center(), Icon::Check, color::weak());
         super::widgets::row_text(ui, egui::RichText::new(path).monospace(), selected);
         super::path_warnings::mark(ui, t, &r.entry);
         let b = ui.add_enabled(why.is_none(), egui::Button::new(mark).small());

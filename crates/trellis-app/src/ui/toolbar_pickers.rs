@@ -4,8 +4,8 @@
 //! window too narrow for everything shrinks the slots (`name_widths`). A longer branch name keeps
 //! its start and end around a "…" (`truncate::cut_middle_in`), a longer repository name is cut
 //! at its end. A cut name shows whole on hover, and the accessible name is always the whole name.
-//! The branch icon takes the checked-out branch's colour, and each branch in its menu starts with
-//! its colour dot.
+//! The branch name follows a dot in the checked-out branch's colour (a ring while HEAD is
+//! detached), and each branch in its menu starts with its colour dot.
 
 use super::menus::repo_menu;
 use crate::msg::{BranchMsg, Msg};
@@ -99,9 +99,9 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let shown = cut_middle_in(ui.painter(), head, &font, branch_w);
             let cut = shown != *head;
             let g = ui.painter().layout_no_wrap(shown, font.clone(), color::text());
-            // The icon in the checked-out branch's colour; weak while HEAD is detached.
-            let tone = snap.head_swatch().map_or_else(color::weak, line);
-            part(ui, t.tr("toolbar.branch"), (g, branch_w), Some((Icon::Branch, tone)), head, cut, |ui| {
+            // A dot in the checked-out branch's colour; a ring while HEAD is detached.
+            let tone = snap.head_swatch().map(line);
+            part(ui, t.tr("toolbar.branch"), (g, branch_w), Some(tone), head, cut, |ui| {
                 ui.set_min_width(220.0);
                 for b in &snap.locals {
                     let text = if b.is_head { format!("✔ {}", b.name) } else { b.name.clone() };
@@ -124,19 +124,19 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// One picker: `caption` over `name` (with `icon` before it, in its colour) in a slot of the
+/// One picker: `caption` over `name` (with `dot` before it: a branch dot, or a ring for None) in a slot of the
 /// width paired with it, and the caret pinned at the part's right, opening `menu` below it.
 /// Named by `full`, which also shows on hover when the name was `cut`.
 fn part(
     ui: &mut egui::Ui,
     caption: &str,
     (name, slot): (Arc<Galley>, f32),
-    icon: Option<(Icon, Color32)>,
+    dot: Option<Option<Color32>>,
     full: &str,
     cut: bool,
     menu: impl FnOnce(&mut egui::Ui),
 ) -> Response {
-    let icon_w = if icon.is_some() { ICON_ROOM } else { 0.0 };
+    let icon_w = if dot.is_some() { ICON_ROOM } else { 0.0 };
     // The slot, not the name, sets the width; in a very narrow window the caption is cut too.
     let w = 2.0 * PAD_X + icon_w + slot + CARET_ROOM;
     let caption = cut_galley(ui.ctx(), cut_job(caption.to_owned(), type_scale::font(CAPTION), color::weak()), w - 2.0 * PAD_X);
@@ -144,15 +144,21 @@ fn part(
     let open = menu_anchor::menu_below(ui, Id::new(MENU_ID), &r, false, menu);
     let p = ui.painter();
     if open {
-        p.rect_filled(rect, CornerRadius::same(PART_RADIUS), color::selected());
+        p.rect_filled(rect, CornerRadius::same(PART_RADIUS), color::tool_pressed());
     } else if r.hovered() {
-        p.rect_filled(rect, CornerRadius::same(PART_RADIUS), color::hover());
+        p.rect_filled(rect, CornerRadius::same(PART_RADIUS), color::tool_hover());
     }
     let x = rect.left() + PAD_X;
     p.galley(pos2(x, rect.top() + 12.0 - caption.size().y / 2.0), caption, color::weak());
     let row_y = rect.top() + 27.0;
-    if let Some((icon, tone)) = icon {
-        widgets::paint_icon_sized(p, pos2(x + 7.0, row_y), icon, tone, 14.0);
+    match dot {
+        Some(Some(c)) => {
+            p.circle_filled(pos2(x + 7.0, row_y), 4.0, c);
+        }
+        Some(None) => {
+            p.circle_stroke(pos2(x + 7.0, row_y), 3.5, egui::Stroke::new(1.5_f32, color::weak()));
+        }
+        None => {}
     }
     p.galley(pos2(x + icon_w, row_y - name.size().y / 2.0), name, color::text());
     widgets::caret(p, pos2(rect.right() - PAD_X - 6.0, row_y + 1.0), color::weak());

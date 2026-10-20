@@ -76,9 +76,9 @@ fn tool_slot(ui: &mut Ui, icon: Icon, label: &str, name: &str, enabled: bool, la
     let on = fill == Fill::Toggle { on: true };
     if fill != Fill::Split {
         if on || (enabled && resp.is_pointer_button_down_on()) {
-            p.rect_filled(slot, radius, color::selected());
+            p.rect_filled(slot, radius, color::tool_pressed());
         } else if enabled && resp.hovered() {
-            p.rect_filled(slot, radius, color::hover());
+            p.rect_filled(slot, radius, color::tool_hover());
         }
     }
     if resp.has_focus() {
@@ -134,14 +134,14 @@ pub fn split_button(
     let mut shapes = Vec::new();
     if lit {
         let both = Rect::from_min_max(left.min, right.max);
-        shapes.push(Shape::rect_filled(both, CornerRadius::same(TOOL_RADIUS), color::hover()));
+        shapes.push(Shape::rect_filled(both, CornerRadius::same(TOOL_RADIUS), color::tool_hover()));
     }
     let r = TOOL_RADIUS;
     if enabled && button.is_pointer_button_down_on() {
-        shapes.push(Shape::rect_filled(left, CornerRadius { nw: r, sw: r, ne: 0, se: 0 }, color::selected()));
+        shapes.push(Shape::rect_filled(left, CornerRadius { nw: r, sw: r, ne: 0, se: 0 }, color::tool_pressed()));
     }
     if open || menu.is_pointer_button_down_on() {
-        shapes.push(Shape::rect_filled(right, CornerRadius { nw: 0, sw: 0, ne: r, se: r }, color::selected()));
+        shapes.push(Shape::rect_filled(right, CornerRadius { nw: 0, sw: 0, ne: r, se: r }, color::tool_pressed()));
     }
     if lit {
         let x = rect.left();
@@ -162,12 +162,12 @@ pub fn caret(p: &Painter, c: Pos2, col: Color32) {
     p.add(Shape::line(pts, Stroke::new(super::tab_glyph::STROKE, col)));
 }
 
-/// One toolbar group: its buttons in a row on a quiet surface (the window's background, a 1 px
+/// One toolbar group: its buttons in a row on a quiet surface (the neutral tool backing, a 1 px
 /// border, rounded corners), `TOOL_SPACING` apart. The row keeps the parent's direction, so a
 /// group works in a right-to-left layout too.
 pub fn tool_group<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> egui::InnerResponse<R> {
     egui::Frame::new()
-        .fill(color::bg())
+        .fill(color::tool_backing())
         .stroke(Stroke::new(1.0_f32, color::border()))
         .corner_radius(GROUP_RADIUS)
         .inner_margin(GROUP_PAD)

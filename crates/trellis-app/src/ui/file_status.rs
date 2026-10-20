@@ -1,5 +1,6 @@
 //! A changed file's status chip: its letter (M, A, D, R, …) centred on a small square in the
-//! status colour, with the same fill and ink as the graph WIP row's change chips.
+//! status colour, with the same fill and ink as the graph WIP row's change chips. A conflicted
+//! file ('!') takes the coral needs-you badge instead.
 
 use super::common::{status_color, status_label};
 use super::theme::{color, contrast};
@@ -14,8 +15,12 @@ const RADIUS: u8 = 4;
 pub(super) fn status_chip(ui: &mut Ui, status: char) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(STATUS_CHIP_W, STATUS_CHIP_W), Sense::hover());
     if ui.is_rect_visible(rect) {
-        let (fill, ink) = contrast::change_chip(status_color(status), &color::current());
         let p = ui.painter();
+        if status == '!' {
+            super::needs_you::badge(p, rect);
+            return resp;
+        }
+        let (fill, ink) = contrast::change_chip(status_color(status), &color::current());
         p.rect_filled(rect, CornerRadius::same(RADIUS), fill);
         p.text(rect.center(), Align2::CENTER_CENTER, status_label(status), type_scale::mono(type_scale::SMALL), ink);
     }

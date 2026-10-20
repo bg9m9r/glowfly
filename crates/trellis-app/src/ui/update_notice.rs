@@ -1,7 +1,8 @@
 //! The status bar's update chip: an available, downloading, downloaded or failed update, with a
 //! painted arrow (or a spinner while downloading). A click shows the notes, installs, shows the
 //! file or tries again. The chip fits its text and, when the status bar runs out of room, cuts
-//! it with "…" (whole in the tooltip).
+//! it with "…" (whole in the tooltip). It is an accent tint while an update is on its way and a
+//! neutral chip when it failed: the status bar's chrome keeps to the accent.
 
 use super::theme::color;
 use super::widgets::truncate::{cut_job, paint_cut};
@@ -19,10 +20,8 @@ const PAD: f32 = 34.0;
 pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let Some((text, kind)) = st.updates.chip(t) else { return };
-    let accent = match kind {
-        ChipKind::Failed => color::removed(),
-        ChipKind::Available | ChipKind::Downloading | ChipKind::Downloaded => color::info(),
-    };
+    let failed = kind == ChipKind::Failed;
+    let accent = if failed { color::weak() } else { color::accent() };
     let font = type_scale::font(type_scale::SMALL);
     let text_w = ui.painter().layout_no_wrap(text.clone(), font.clone(), color::text()).size().x;
     let ellipsis_w = ui.fonts(|f| f.glyph_width(&font, '…'));
@@ -31,8 +30,13 @@ pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (rect, resp) = ui.allocate_exact_size(vec2(w, HEIGHT), sense);
     let p = ui.painter();
     let radius = CornerRadius::same((HEIGHT / 2.0) as u8);
-    p.rect_filled(rect, radius, accent.gamma_multiply(if resp.hovered() { 0.26 } else { 0.14 }));
-    p.rect_stroke(rect, radius, Stroke::new(1.0_f32, accent.gamma_multiply(0.6)), StrokeKind::Inside);
+    let (fill, stroke) = if failed {
+        (if resp.hovered() { color::hover() } else { color::raised() }, color::border())
+    } else {
+        (accent.gamma_multiply(if resp.hovered() { 0.26 } else { 0.14 }), accent.gamma_multiply(0.6))
+    };
+    p.rect_filled(rect, radius, fill);
+    p.rect_stroke(rect, radius, Stroke::new(1.0_f32, stroke), StrokeKind::Inside);
     let icon_at = pos2(rect.left() + 14.0, rect.center().y);
     if kind == ChipKind::Downloading {
         let spin = egui::Rect::from_center_size(icon_at, vec2(12.0, 12.0));

@@ -4,8 +4,9 @@
 //! are in docs/COLOUR.md.
 
 use super::branch_palette::{BRANCH_DARK, BRANCH_LIGHT};
+use super::builtin_extra::{REPO_DARK, REPO_LIGHT};
 use super::color::Palette;
-use super::families::{Attention, Repository, Status};
+use super::families::{Attention, Status};
 use eframe::egui::Color32;
 use trellis_core::settings::BuiltinTheme;
 
@@ -59,7 +60,12 @@ pub const DARK: Palette = Palette {
         info: rgb(0x60, 0xaa, 0xf3),
         progress: rgb(0xa6, 0x89, 0xf1),
     },
-    attention: Attention { warn: rgb(0xe8, 0xb3, 0x39), banner: rgb(0x4a, 0x38, 0x12) },
+    attention: Attention {
+        warn: rgb(0xe8, 0xb3, 0x39),
+        banner: rgb(0x4a, 0x38, 0x12),
+        needs_you: rgb(0xfb, 0x79, 0x4a),
+        on_needs_you: rgb(0x22, 0x11, 0x0b),
+    },
     diff_add: rgb(0x1d, 0x3b, 0x27),
     diff_del: rgb(0x45, 0x21, 0x24),
     diff_add_sel: rgb(0x2a, 0x5c, 0x3a),
@@ -76,7 +82,7 @@ pub const DARK: Palette = Palette {
     syn_type: rgb(0xe6, 0xc0, 0x7a),
     syn_function: rgb(0x6f, 0xae, 0xf2),
     syn_attr: rgb(0x8a, 0xc6, 0xd0),
-    repository: Repository { groups: [rgb(0x5b, 0x9b, 0xf0), rgb(0xa8, 0x7c, 0xe8), rgb(0x5c, 0xc4, 0x5a), rgb(0xe8, 0xb3, 0x39)] },
+    repository: REPO_DARK,
     branch: BRANCH_DARK,
     ansi: super::ansi::DARK,
 };
@@ -113,7 +119,12 @@ pub const LIGHT: Palette = Palette {
         info: rgb(0x1f, 0x68, 0xbc),
         progress: rgb(0x6d, 0x47, 0xb8),
     },
-    attention: Attention { warn: rgb(0xa8, 0x6b, 0x00), banner: rgb(0xfb, 0xec, 0xc8) },
+    attention: Attention {
+        warn: rgb(0xa8, 0x6b, 0x00),
+        banner: rgb(0xfb, 0xec, 0xc8),
+        needs_you: rgb(0xbf, 0x43, 0x06),
+        on_needs_you: rgb(0xff, 0xff, 0xff),
+    },
     diff_add: rgb(0xe4, 0xf6, 0xe7),
     diff_del: rgb(0xfb, 0xe6, 0xe6),
     diff_add_sel: rgb(0xb8, 0xe6, 0xc1),
@@ -130,7 +141,7 @@ pub const LIGHT: Palette = Palette {
     syn_type: rgb(0x8a, 0x5a, 0x00),
     syn_function: rgb(0x1f, 0x5f, 0xbf),
     syn_attr: rgb(0x00, 0x6b, 0x75),
-    repository: Repository { groups: [rgb(0x1f, 0x63, 0xc8), rgb(0x75, 0x3f, 0xc4), rgb(0x23, 0x8a, 0x2f), rgb(0xa8, 0x6b, 0x00)] },
+    repository: REPO_LIGHT,
     branch: BRANCH_LIGHT,
     ansi: super::ansi::LIGHT,
 };

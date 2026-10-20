@@ -206,7 +206,11 @@ pub fn status_label_ui(ui: &mut egui::Ui, t: Lang, status: &Status, ok_text: &st
             ui.label(RichText::new(format!("· {ok_text}")).color(color::weak()));
         }
         Status::Error(e) => {
-            ui.label(RichText::new(format!("· {e}")).color(color::removed()));
+            // Signing in needs you: the coral badge, then the cause in text.
+            ui.label(RichText::new("·").color(color::weak()));
+            let (rect, _) = ui.allocate_exact_size(vec2(12.0, 12.0), egui::Sense::hover());
+            super::needs_you::badge(ui.painter(), rect);
+            ui.label(RichText::new(e.as_str()).color(color::text()));
             if ui.link(t.tr("status.sign_in")).clicked() {
                 msgs.push(Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }));
             }

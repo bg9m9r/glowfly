@@ -5,13 +5,14 @@
 //! active tab's font, so selecting one never changes its width) until they no longer fit, when
 //! they share the width evenly. They are drawn by `tab_paint.rs`; they are dragged sideways to
 //! reorder them (`tab_drag.rs`, Esc cancels a drag), and right-clicking one offers Rename tab
-//! and the close actions. With Group worktree tabs on, tabs of one repository's worktrees form a
+//! and its repository's Color, and the close actions. A coloured repository's tab shows its
+//! swatch before the icon, and is that much wider. With Group worktree tabs on, tabs of one repository's worktrees form a
 //! group (`state/tab_groups.rs`) marked by a colored strip along their bottom; a tab dropped
 //! outside its group takes the group.
 
 use super::backdrop::{self, Surface};
 use super::tab_drag::{SLIDE, Slot, drag, lefts_after};
-use super::tab_paint::{LIFT, TabLook, close_rect, group_color, paint_group_strip, paint_separator, paint_tab, tab_width};
+use super::tab_paint::{LIFT, SWATCH_ROOM, TabLook, close_rect, group_color, paint_group_strip, paint_separator, paint_tab, tab_width};
 use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets::reason::{self, ItemState};
@@ -20,6 +21,7 @@ use crate::msg::Msg;
 use crate::msg::TabsMsg;
 use crate::state::AppState;
 use crate::state::menu_bar::tab_name;
+use crate::state::repo_colours;
 use crate::state::tab_groups::{self, new_index, shown_at};
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::tab_glyph::{self, TabGlyph};
@@ -75,7 +77,9 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         let (active_font, font) = (type_scale::strong(ui, type_scale::BODY), type_scale::font(type_scale::BODY));
         let font_of = |active: bool| if active { active_font.clone() } else { font.clone() };
         let measure = |i: usize| ui.painter().layout_no_wrap(name(i).to_owned(), active_font.clone(), Color32::PLACEHOLDER).size().x;
-        let natural: Vec<f32> = (0..st.tabs.len()).map(|i| tab_width(measure(i))).collect();
+        let repo_of = |i: usize| repo_colours::tab_colour(st, i).map(color::repo_hue);
+        let swatch_room = |i: usize| if repo_of(i).is_some() { SWATCH_ROOM } else { 0.0 };
+        let natural: Vec<f32> = (0..st.tabs.len()).map(|i| tab_width(measure(i) + swatch_room(i))).collect();
         // Room for the tabs before + (and the tab list, when it shows).
         let room = ui.available_width() - GAP - PLUS_W;
         let list = super::tab_list::wanted(st, needed(&natural), room);
@@ -101,7 +105,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         // branch's colour (the accent when detached or without a repository).
         let fill = backdrop::fill(st.view.backdrop, Surface::Side, color::panel());
         let band = st.snap.as_ref().and_then(|s| s.head_swatch()).map_or_else(color::accent, line);
-        let look = |active: bool| TabLook { active, band, ..TabLook::quiet(fill) };
+        let look = |i: usize, active: bool| TabLook { active, band, repo: repo_of(i), ..TabLook::quiet(fill) };
         let (slide, fade) = if st.settings.reduce_motion { (0.0, 0.0) } else { (SLIDE, CLOSE_FADE) };
         // Lit tabs (active, hovered or pressed) get no separator beside them, and none while dragging.
         if floating.is_none() {
@@ -125,7 +129,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                 Some(f) if f.from == i => {}
                 Some(f) => {
                     let rect = rect.translate(vec2(x - rect.left(), 0.0));
-                    paint_tab(p, rect, name(i), font_of(active), TabLook { close_alpha: shown_x, ..look(active) });
+                    paint_tab(p, rect, name(i), font_of(active), TabLook { close_alpha: shown_x, ..look(i, active) });
                     if let Some((members, n)) = group {
                         // Where the group's ends will be after the drop.
                         let at = |j: usize| new_index(&f.order, j);
@@ -136,7 +140,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                 None => {
                     let hovered = r.hovered() || close.hovered();
                     let pressed = !active && r.is_pointer_button_down_on() && !close.hovered();
-                    let tab = TabLook { hovered, pressed, close_alpha: shown_x, close_hovered: close.hovered(), ..look(active) };
+                    let tab = TabLook { hovered, pressed, close_alpha: shown_x, close_hovered: close.hovered(), ..look(i, active) };
                     let cut = paint_tab(p, rect, name(i), font_of(active), tab);
                     if let Some((members, n)) = group {
                         paint_group_strip(p, rect, group_color(*n), i == members.start, i + 1 == members.end, GAP);
@@ -167,7 +171,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         // fill with a border.
         if let Some(f) = floating {
             let active = f.from == st.active_tab;
-            let tab = TabLook { hovered: true, floating: true, close_alpha: if active { 1.0 } else { 0.0 }, ..look(active) };
+            let tab = TabLook { hovered: true, floating: true, close_alpha: if active { 1.0 } else { 0.0 }, ..look(f.from, active) };
             paint_tab(ui.painter(), f.rect, name(f.from), font_of(active), tab);
             if let Some((_, n)) = shown_at(&shown, f.from) {
                 paint_group_strip(ui.painter(), f.rect, group_color(*n), true, true, GAP);
@@ -207,6 +211,7 @@ fn tab_menu(ui: &mut egui::Ui, t: Lang, i: usize, st: &AppState, msgs: &mut Vec<
     let n = st.tabs.len();
     let no_repo = st.tabs[i].path.is_none().then(|| t.tr("tabs.menu.rename.blocked"));
     item(ui, msgs, t.tr("tabs.menu.rename"), "", no_repo, Msg::Tabs(TabsMsg::RenameTabDialog(i)));
+    super::repo_colour_menu::items(ui, t, repo_colours::tab_path(&st.tabs[i]), repo_colours::tab_colour(st, i), msgs);
     ui.separator();
     item(ui, msgs, t.tr("tabs.menu.close"), "", None, Msg::Tabs(TabsMsg::CloseTab(i)));
     let only = (n <= 1).then(|| t.tr("tabs.menu.close_others.blocked"));

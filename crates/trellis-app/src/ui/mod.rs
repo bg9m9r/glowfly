@@ -88,6 +88,7 @@ mod menu_anchor;
 mod menu_bar;
 mod menus;
 mod modals;
+mod needs_you;
 mod op_strip;
 mod palette;
 mod pane_status;
@@ -106,10 +107,13 @@ mod ref_visibility;
 mod release_notes;
 mod remote_branch_menu;
 mod remotes;
+mod repo_colour_menu;
 mod repo_finder;
+mod repo_line;
 mod repo_list;
 mod repo_list_drag;
 mod repo_menu;
+mod repo_swatch;
 mod repo_sync;
 mod shortcuts;
 mod sidebar;
@@ -425,6 +429,8 @@ mod snapshot_tests_trust;
 mod snapshot_tests_undo;
 #[cfg(test)]
 mod snapshot_tests_updates;
+#[cfg(test)]
+mod snapshot_tests_vivid;
 #[cfg(test)]
 mod snapshot_tests_welcome_looks;
 #[cfg(test)]

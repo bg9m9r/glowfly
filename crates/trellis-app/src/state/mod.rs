@@ -97,6 +97,7 @@ pub mod refresh;
 pub mod release_notes;
 pub mod remote_branch;
 pub mod remotes;
+pub mod repo_colours;
 pub mod repo_lists;
 pub mod repo_scan;
 pub mod repo_sync;

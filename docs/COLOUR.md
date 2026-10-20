@@ -4,7 +4,8 @@ How Trellis uses colour: the families every palette is built from, what each col
 the hue bands and contrast floors the tests hold every built-in theme to, and how to add a
 colour. The palettes live in `crates/trellis-app/src/ui/theme/` (`color.rs` declares
 `Palette`, `families.rs` the token families, `builtin.rs` and `builtin_extra.rs` the five
-built-ins); the tests that check this page are `theme/tests.rs` and `theme/family_tests.rs`.
+built-ins); the tests that check this page are `theme/tests.rs`, `theme/family_tests.rs` and
+`theme/vivid_tests.rs`.
 
 Views never name a hex value: they read the active palette through `color::text()`,
 `color::added()` and so on (see "Rules" in [ARCHITECTURE.md](ARCHITECTURE.md)).
@@ -45,8 +46,10 @@ Views never name a hex value: they read the active palette through `color::text(
 | info | `info` | Renames, info banners | Links to services |
 | progress | `progress` | A running operation (banner and spinner) | Pull requests, squash and fixup |
 
-Status colours are used for status letters, line counts and bars, the WIP row's change chips
-and the matching banners.
+In diffs and file lists, status colours appear only as letter badges (the file status chips,
+the WIP row's M / A / D chips, the WIP list's letters) and the `+N` / `−M` counts, besides the
+matching banners. A file row's change bar is neutral: the added share in `weak`, the removed
+share in `faint`, on the `border` track.
 
 ### Attention
 
@@ -54,19 +57,36 @@ and the matching banners.
 |---|---|---|
 | warn | `warn` | Warnings. Until each job has its own colour it also marks favourites and pending checks. |
 | banner | `banner` | The fill of banners. |
+| needs you | (none) | The coral: the one solid-filled status, for moments Trellis waits on you (a conflicted file, a merge stopped on conflicts, a repository whose trust is undecided, a sign-in). Always drawn with the warning mark, by `ui/needs_you.rs` alone: a 16 px badge on conflicted rows and in the conflicted operation banner (`BannerKind::NeedsYou`, with a coral stripe), a pill for the toolbar's conflict and Untrusted chips (shaded 10% toward white in dark themes and black in light ones on hover), a 12 px badge before a status-bar sign-in error. |
+| ink on needs you | (none) | The warning mark and text on the coral. |
 
-The attention band (below) stays free for a later coral "needs you" colour.
+The attention band (below) belongs to the coral. `needs_you` and `on_needs_you` are not
+theme-file keys yet: theme files take their base theme's.
 
 ### Repository
 
-`repository.groups`: the four worktree tab-group strip colours. Not a theme-file key yet;
-theme files always get the base palette's.
+`repository.hues`: 8 quiet hues at OKLCH chroma 0.08, in slot order Rose, Ochre, Fern, Teal,
+Sky, Slate, Iris, Plum (hues 10, 95, 128, 200, 235, 265, 298 and 335 deg, one lightness per
+theme). They mark repositories, only on the window chrome:
+
+- a colour you give a repository (tab menu or welcome row > Color; none by default), saved
+  per working folder (`Settings.repo_colours`, by `repo_keys`, as the names `rose` … `plum`):
+  an 8 px square swatch on its tab, a 2 px line along the window's top edge for the active tab
+  (`ui/repo_line.rs`), and a 10 px swatch before its path in the repository lists, which keep a
+  swatch slot on every row once any repository has a colour;
+- the worktree tab-group strips, which stay automatic and walk the hues in `GROUP_ORDER` (Rose,
+  Teal, Iris, Ochre, Sky, Plum, Fern, Slate), each at least 98 deg from the next.
+
+Swatches are squares, so they never read as a branch's round dot. Not theme-file keys yet:
+theme files take their base theme's hues.
 
 ### Branch
 
 Each branch has one colour wherever it shows: its graph lines, node and row band, its chips,
-its sidebar dot, the Branch picker, the line under the active tab and the commit details'
-branch row. The repository's main branch (the home remote's recorded HEAD, else `main`, then
+its sidebar dot, the Branch picker's dot, the line under the active tab and the commit details'
+branch row. Branch colours appear only as lines, dots and name pills: the Branch picker shows a
+4 px dot in the branch's line tone (a 1.5 px `weak` ring while HEAD is detached), never a tinted
+icon. The repository's main branch (the home remote's recorded HEAD, else `main`, then
 `master`) takes `accent`; every other branch takes one of 14 hues (P1), in slot order Rose,
 Lime, Violet, Orange, Cyan, Magenta, Olive, Azure, Red, Teal, Orchid, Gold, Sky, Indigo. They
 keep out of the accent and attention bands, and neighbouring hues alternate between two
@@ -130,12 +150,27 @@ outside the families and unchanged by the brand colour.
 ## 2. Rules
 
 - One job per colour: each colour means one thing (with the related uses listed above), and
-  no two families share a colour for different meanings.
+  no two families share a colour for different meanings. Each kind keeps to its forms: status
+  colours to letter badges and counts, branch colours to lines, dots and name pills, repository
+  colours to the window chrome, and the coral to "needs you" moments.
+- The coral is the only solid-filled status, and it always comes with the warning mark.
+- The toolbar's groups sit on a neutral backing, `toolbar` mixed 9% toward the accent
+  (`Palette::tool_backing`); a hovered tool is the backing mixed 8% toward `text`, a pressed or
+  open one 16% (`tool_hover`, `tool_pressed`). Icons are `text`, or `faint` when disabled; no
+  icon has its own colour.
+- The chrome's own marks (fills, icons, chips, strips, lines) use at most three hue families at
+  once: the accent (focus, the active tab's line, the terminal-open bar, the toolbar backing),
+  the repository hues (tab swatches, group strips, the top line) and the coral when something
+  needs you. A branch's own line or dot beside its name (the line under the active tab, the
+  Branch picker's dot) belongs to the branch, not the chrome; banners under the toolbar are
+  messages, not chrome. `theme/vivid_tests.rs` keeps status, attention and lane colours out of
+  the chrome's files.
 - The accent never marks status. Running operations use `progress`, not the accent.
 - Only the accent family (`accent`, `primary`, `primary_border`, `selected`) sits in the
   accent band, about 145 to 175 deg OKLCH hue.
-- Status and branch colours stay out of the accent band and out of the attention band (about
-  35 to 60 deg). Status colours also keep OKLCH chroma at 0.08 or more.
+- Status, branch and repository colours stay out of the accent band and out of the attention
+  band (about 35 to 60 deg), which belongs to the coral `needs_you`. Status colours also keep
+  OKLCH chroma at 0.08 or more; repository hues sit at 0.08 and at least 30 deg apart.
 - Neutrals in Dark and Light keep OKLCH chroma at or below 0.015: Dark is tinted green (hue
   about 160), Light's surfaces are warm paper (hue about 90).
 - In Dark and Light, chrome is darker than the base, and raised is at least 1.08:1 off the
@@ -162,6 +197,11 @@ given, the second is for the high-contrast themes.
 | `tag_fg` | tag_bg | 4.5 / 7 |
 | Status and `warn` | bg, panel, hover, selected, every lane band | 3 / 4.5 |
 | Branch line tones (`branch.lanes`) and `accent` as main's line | bg, panel | 3 |
+| Repository hues | toolbar, bg, panel, raised, hover | 3 / 4.5 |
+| `needs_you` | bg, panel, toolbar, selected, banner, hover | 3 |
+| `on_needs_you` | needs_you, and needs_you shaded 10% (hover) | 4.5 / 7 |
+| `text` | tool backing, tool hover, tool pressed | 4.5 / 7 |
+| `weak` | tool backing | 4.5 |
 | Light's chip tones (`branch.chips`) | bg, panel, toolbar, hover, selected, raised | 4.5 |
 | Colour-blind line tones, applied to every built-in | bg, panel | 3 |
 | Colour-blind light text tones (chips on every light built-in) | bg, panel, toolbar, hover, selected, raised | 4.5 |
@@ -282,6 +322,32 @@ colours (their `raised` is their `toolbar`); their accent family is green at the
 contrast: accent #5fe0a0 / #00613a / #2a7550 and primary #003d26 / #005c36 / #236a48, all
 with white ink. High contrast dark's primary is dark enough that white still reads at 7:1 on
 a hovered or pressed button.
+
+### Repository hues and the coral
+
+In slot order Rose, Ochre, Fern, Teal, Sky, Slate, Iris, Plum, as `#rrggbb` without the `#`
+(OKLCH lightness 0.70, 0.57, 0.78, 0.47 and 0.56):
+
+| Theme | Hues | Lowest on chrome |
+|---|---|---|
+| Dark | cb8a93 ae9e64 90a872 5caeb2 6ba7c9 869ed1 a494ca be8cb2 | 4.83 |
+| Light | a0636d 86773d 6a814c 31868a 447fa0 6077a7 7d6da1 95658a | 3.49 |
+| High contrast dark | e5a2ac c7b77c a9c28a 76c7cc 84c0e4 9eb7eb bdade5 d8a4cc | 7.09 |
+| High contrast light | 814750 695a1f 4e6330 00686c 256281 455a88 605182 76496d | 5.15 |
+| Sand | 9d606a 83743a 677e49 2d8387 417c9d 5d74a4 7a6a9e 926287 | 3.36 |
+
+The coral (OKLCH hue about 40 deg) and its ink, with the ink's contrast at rest and on hover:
+
+| Theme | needs_you / on_needs_you | Ink contrast |
+|---|---|---|
+| Dark | #fb794a / #22110b | 6.88, 7.52 |
+| Light, Sand | #bf4306 / #ffffff | 5.22, 6.17 |
+| High contrast dark | #ff8a5c / #22110b | 7.84, 8.53 |
+| High contrast light | #9c3604 / #ffffff | 7.14, 8.22 |
+
+The coral reads at least 3.94:1 on its surroundings (lowest: Sand's toolbar). The tool backing
+is #15261d (Dark), #d9dfd3 (Light), #1d2a27 (High contrast dark), #d4dedd (High contrast light)
+and #d7d5bf (Sand), at most OKLCH chroma 0.030.
 
 ### Terminal colours
 

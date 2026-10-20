@@ -275,6 +275,8 @@ pub(super) mod remote_branch_tests;
 pub(super) mod remote_fork_tests;
 #[path = "remote_tests.rs"]
 pub(super) mod remote_tests;
+#[path = "repo_colour_tests.rs"]
+pub(super) mod repo_colour_tests;
 #[path = "repo_scan_tests.rs"]
 pub(super) mod repo_scan_tests;
 #[path = "repo_sync_tests.rs"]

@@ -20,7 +20,7 @@ use trellis_core::repo::{Chunk, Segment};
 
 /// The tint of text typed in the output.
 fn typed() -> Color32 {
-    color::added().gamma_multiply(0.18)
+    color::diff_add()
 }
 
 /// The Output strip (Edit / Done, Wrap lines, and Discard edits outside conflicts while any
