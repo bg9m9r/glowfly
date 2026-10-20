@@ -1,6 +1,8 @@
-//! Preferences > SSH: reading ~/.ssh, copying a public key, and generating a key (asking before
-//! replacing one). The key git uses and the agent are in `ssh_use`, adding a key to a service in
-//! `ssh_service`. Its effects are unscoped: the page belongs to no repository.
+//! Preferences > SSH: reading ~/.ssh (and the keys added with Use existing), copying a public
+//! key, and generating a key in the Generate SSH key dialog (asking before replacing one). Use
+//! existing and Remove from list are in `ssh_pick`, the key git uses and the agent in
+//! `ssh_use`, adding a key to a service in `ssh_service`. Its effects are unscoped: the page
+//! belongs to no repository.
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::Msg;
@@ -41,7 +43,11 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
             fx.push(Effect::Ui(UiEffect::CopyText(key.public_key.clone())));
             st.toast(true, COPIED, now);
         }
+        SshMsg::OpenGenerate => open_generate(st),
         SshMsg::Generate { overwrite } => generate(st, overwrite, fx),
+        SshMsg::UseExisting => super::ssh_pick::use_existing(st, fx),
+        SshMsg::KeyPicked(result) => super::ssh_pick::picked(st, result, now, fx),
+        SshMsg::ForgetKey(key) => super::ssh_pick::forget(st, &key, fx),
         SshMsg::UseKey { key, repo, confirmed } => super::ssh_use::use_key(st, key, repo, confirmed, fx),
         SshMsg::StopUsing { repo, confirmed } => super::ssh_use::stop_using(st, repo, confirmed, fx),
         SshMsg::SetUseAgent(on) => super::ssh_use::set_use_agent(st, on, now, fx),
@@ -66,10 +72,14 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
             }
             match result {
                 Ok(pair) => {
+                    if matches!(st.modal, Some(Modal::SshKeygen)) {
+                        super::dialog::close(st);
+                    }
                     let page = st.prefs.as_ref().map(|p| p.page);
                     if let Some(p) = st.prefs.as_mut() {
                         p.ssh.passphrase.clear();
                         p.ssh.confirm.clear();
+                        p.ssh.touched = Default::default();
                     }
                     st.toast(true, format!("Created SSH key {}", pair.file_name()), now);
                     if page == Some(PrefPage::Ssh) {
@@ -91,7 +101,15 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
                     if let Some(p) = st.prefs.as_mut() {
                         p.ssh.form_error = Some(e.clone());
                     }
-                    st.log(false, format!("Could not generate an SSH key: {e}"));
+                    let text = format!("Could not generate an SSH key: {e}");
+                    // The open dialog shows the error; closed while ssh-keygen ran, a toast does
+                    // (the log line adds its Details).
+                    if matches!(st.modal, Some(Modal::SshKeygen)) {
+                        st.log_quiet(false, text);
+                    } else {
+                        st.toast(false, text.clone(), now);
+                        st.log(false, text);
+                    }
                 }
             }
         }
@@ -107,14 +125,35 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
         real: s.real_workdir.clone(),
         trusted: st.trust_standing() == Some(Standing::Trusted),
     });
+    let extra = st.settings.ssh_extra_keys.clone();
     let Some(p) = st.prefs.as_mut() else { return };
     p.ssh.generation += 1;
     p.ssh.listing = None;
     p.ssh.error = None;
     p.ssh.repo = repo;
-    fx.push(Effect::Ssh(SshEffect::List { generation: p.ssh.generation }));
+    fx.push(Effect::Ssh(SshEffect::List { generation: p.ssh.generation, extra }));
     super::ssh_use::read_choice(st, fx);
     super::ssh_use::read_agent(st, fx);
+}
+
+/// The Generate… button: opens the dialog with the location filled and the comment prefilled
+/// from user.email, keeping what was typed before. Refused (the button is disabled too) while
+/// the folder is read or without ssh-keygen.
+fn open_generate(st: &mut AppState) {
+    let Some(p) = st.prefs.as_mut() else { return };
+    let email = p.git.as_ref().map(|g| g.user_email.clone());
+    let page = &mut p.ssh;
+    if let Some(reason) = page.open_blocked() {
+        page.form_error = Some(reason.into());
+        return;
+    }
+    page.fill_location();
+    if let Some(email) = email {
+        page.prefill_comment(&email);
+    }
+    page.form_error = None;
+    page.touched = Default::default();
+    st.modal = Some(Modal::SshKeygen);
 }
 
 /// Starts ssh-keygen with the form, unless something blocks it (the button is disabled then

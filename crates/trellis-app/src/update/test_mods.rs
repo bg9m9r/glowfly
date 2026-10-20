@@ -295,6 +295,10 @@ pub(super) mod sign_in_tests;
 pub(super) mod signature_tests;
 #[path = "sparse_tests.rs"]
 pub(super) mod sparse_tests;
+#[path = "ssh_keygen_tests.rs"]
+pub(super) mod ssh_keygen_tests;
+#[path = "ssh_pick_tests.rs"]
+pub(super) mod ssh_pick_tests;
 #[path = "ssh_service_tests.rs"]
 pub(super) mod ssh_service_tests;
 #[path = "ssh_tests.rs"]

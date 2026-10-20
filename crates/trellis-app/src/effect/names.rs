@@ -205,6 +205,9 @@ mod tests {
         assert!(Effect::Patch(copy).timed());
         assert!(!Effect::Ssh(SshEffect::AddToAgent { ssh_add: "ssh-add".into(), key: dir.join("id") }).timed());
         assert!(Effect::Ssh(SshEffect::Agent { generation: 1 }).timed());
-        assert!(Effect::Ssh(SshEffect::List { generation: 1 }).timed());
+        assert!(Effect::Ssh(SshEffect::List { generation: 1, extra: Vec::new() }).timed());
+        let pick = SshEffect::PickKey { title: "Choose a private key".into(), start: dir.clone(), keygen: None };
+        assert_eq!(pick.name(), "ssh-pick-key");
+        assert!(!Effect::Ssh(pick).timed(), "waits on the user");
     }
 }

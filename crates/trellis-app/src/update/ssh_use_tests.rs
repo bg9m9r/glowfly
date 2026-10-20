@@ -1,5 +1,5 @@
-//! Headless tests for the key git uses (Preferences > SSH): Use for git and Stop using at each
-//! level, the confirmations for a command Trellis didn't write, the trust rule for a
+//! Headless tests for the key git uses (Preferences > SSH): choosing a key and Let ssh decide
+//! at each level, the confirmations for a command Trellis didn't write, the trust rule for a
 //! repository's own setting, and the Use local SSH agent setting.
 
 use super::ssh_tests::{listing, loaded, page, page_mut, pair, run, ssh};
@@ -108,6 +108,16 @@ fn stop_using() {
 
     let mut st = chosen(KeyChoice::Unset, None);
     assert!(ssh(&mut st, SshMsg::StopUsing { repo: false, confirmed: false }).is_empty(), "nothing to stop");
+}
+
+#[test]
+fn let_ssh_decide_runs_with_the_agent_on() {
+    // The Which key dropdown keeps Let ssh decide enabled while Use local SSH agent is on: an
+    // unset core.sshCommand is what that setting wants.
+    let mut st = chosen(KeyChoice::Key(key().private), None);
+    st.settings.use_ssh_agent = true;
+    assert_eq!(sets(&ssh(&mut st, SshMsg::StopUsing { repo: false, confirmed: false })), [(None, None)]);
+    assert!(page(&st).choice_busy && !page(&st).choice_repo, "the all-repositories row shows the spinner");
 }
 
 #[test]

@@ -1,4 +1,5 @@
-//! Preferences > SSH: reading the key pairs in ~/.ssh (`SshEffect::List`), generating a key with
+//! Preferences > SSH: reading the key pairs in ~/.ssh and the extra ones (`SshEffect::List`),
+//! picking a key pair anywhere in the OS file dialog (`SshEffect::PickKey`), generating a key with
 //! ssh-keygen, reading and writing core.sshCommand, checking the agent and adding a key to it,
 //! and adding a public key to a hosting-service account.
 
@@ -17,12 +18,19 @@ fn home_or_here() -> PathBuf {
 
 pub(super) fn run(e: SshEffect) -> Msg {
     Msg::Ssh(match e {
-        SshEffect::List { generation } => {
+        SshEffect::List { generation, extra } => {
             let result = match home_dir() {
-                Some(home) => ssh_keys::list(&home, &home).map_err(|e| format!("Couldn't read your .ssh folder: {e}")),
+                Some(home) => ssh_keys::list(&home, &home, &extra).map_err(|e| format!("Couldn't read your .ssh folder: {e}")),
                 None => Err("Couldn't find your home folder.".into()),
             };
             SshMsg::Loaded { generation, result }
+        }
+        SshEffect::PickKey { title, start, keygen } => {
+            let picked = rfd::FileDialog::new().set_title(&title).set_directory(&start).pick_file();
+            SshMsg::KeyPicked(picked.map(|p| {
+                let pair = ssh_keys::read_key_pair(&p, keygen.as_deref());
+                (p, pair)
+            }))
         }
         SshEffect::Generate { keygen, key, overwrite } => {
             let result = ssh_keys::generate(&keygen, &key, overwrite).map_err(|e| match e {

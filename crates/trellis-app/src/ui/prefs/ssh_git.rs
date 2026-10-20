@@ -1,141 +1,144 @@
-//! Preferences > SSH: Key for SSH Remotes (what core.sshCommand says globally and in the open
-//! repository, with Stop using) and SSH Agent (the Use local SSH agent setting, what the agent
-//! holds, and why it may not be reachable). The view never edits settings; it sends `Msg`s.
+//! Preferences > SSH: the Which key section. One row per level (all repositories, and the open
+//! repository), each a dropdown of the listed keys plus Let ssh decide, showing what
+//! core.sshCommand says there. A pick sends the existing `SshMsg::UseKey` / `SshMsg::StopUsing`
+//! (unconfirmed, so a command Trellis didn't write still asks first); the view never writes
+//! config itself.
 
 use super::ssh::SshContext;
-use super::{help, row, warn};
+use super::{fit, help, row, warn};
 use crate::msg::Msg;
 use crate::ssh::SshMsg;
 use crate::state::ssh::SshPage;
-use crate::state::ssh_use::{
-    GIT_SSH_COMMAND_SET, LOOKING, NO_AUTH_SOCK, NOT_SET, OTHER_WITH_AGENT, PAGEANT_NOTE, USE_AGENT_HELP, WINDOWS_AGENT_NOTE, agent_summary,
-    service_line,
-};
+use crate::state::ssh_use::use_blocked;
 use crate::state::trust::shown_value;
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::{self, Icon};
-use eframe::egui::{self, RichText, Ui};
+use crate::ui::theme::{color, type_scale};
+use eframe::egui::{self, RichText, Ui, WidgetInfo, WidgetType};
+use trellis_core::i18n::Lang;
+use trellis_core::native_path;
 use trellis_core::paths::same_spelling;
-use trellis_core::ssh_keys::{AgentReach, KeyChoice, SshListing, WinService};
+use trellis_core::ssh_keys::{KeyChoice, SshListing};
 
-pub(super) fn choice_row(ui: &mut Ui, page: &SshPage, listing: &SshListing, cx: &SshContext, msgs: &mut Vec<Msg>) {
-    row(ui, "Key for SSH remotes", |ui| {
-        let Some(choices) = &page.choice else {
-            ui.horizontal(|ui| {
-                ui.add(egui::Spinner::new().size(14.0));
-                ui.label(RichText::new("Reading core.sshCommand…").size(type_scale::SMALL).color(color::weak()));
-            });
-            return;
-        };
-        level(ui, "All repositories", &choices.global, false, listing, cx, msgs);
-        if let (Some(repo), Some(choice)) = (&page.repo, &choices.repo) {
-            ui.add_space(4.0);
-            level(ui, &format!("{} only", repo.name), choice, true, listing, cx, msgs);
-            if matches!(choice, Ok(KeyChoice::Key(_) | KeyChoice::Other { .. })) {
-                help(ui, &format!("The {} setting overrides the one for all repositories in this repository.", repo.name));
-            }
-        }
-        if page.agent.as_ref().is_some_and(|a| a.git_ssh_command_set) {
-            warn(ui, GIT_SSH_COMMAND_SET);
-        }
-        if page.choice_busy {
-            ui.add(egui::Spinner::new().size(14.0));
-        }
-        if let Some(e) = &page.choice_error {
-            warn(ui, e);
-        }
+pub(super) fn which_key(ui: &mut Ui, t: Lang, page: &SshPage, listing: &SshListing, cx: &SshContext, msgs: &mut Vec<Msg>) {
+    super::section(ui, t.tr("prefs.ssh.which.title"));
+    ui.vertical(|ui| {
+        ui.set_max_width(fit(ui, super::LABEL_W + super::GAP + super::ROW_W));
+        help(ui, t.tr("prefs.ssh.which.help"));
     });
-}
-
-/// One level's line: its name, what it says, and Stop using when something is set.
-fn level(
-    ui: &mut Ui,
-    name: &str,
-    choice: &Result<KeyChoice, String>,
-    repo: bool,
-    listing: &SshListing,
-    cx: &SshContext,
-    msgs: &mut Vec<Msg>,
-) {
-    ui.label(RichText::new(name).font(type_scale::strong(ui, type_scale::SMALL)).color(color::text()));
-    let stop = |ui: &mut Ui, msgs: &mut Vec<Msg>| {
-        if ui.add(buttons::secondary("Stop using").small()).clicked() {
-            msgs.push(Msg::Ssh(SshMsg::StopUsing { repo, confirmed: false }));
-        }
+    ui.add_space(10.0);
+    let Some(choices) = &page.choice else {
+        ui.horizontal(|ui| {
+            ui.add(egui::Spinner::new().size(14.0));
+            ui.label(RichText::new(t.tr("prefs.ssh.which.reading")).size(type_scale::SMALL).color(color::weak()));
+        });
+        ui.add_space(18.0);
+        return;
     };
-    match choice {
-        Err(e) => warn(ui, e),
-        Ok(KeyChoice::Unset) => help(ui, NOT_SET),
-        Ok(KeyChoice::Key(path)) => {
-            let shown = listing.keys.iter().find(|k| same_spelling(&k.private, path)).map(|k| k.file_name());
-            ui.horizontal(|ui| {
-                ui.label(
-                    RichText::new(shown.unwrap_or_else(|| path.display().to_string()))
-                        .monospace()
-                        .size(type_scale::SMALL)
-                        .color(color::text()),
-                );
-                stop(ui, msgs);
-            });
-        }
-        Ok(KeyChoice::Other { value, .. }) => {
-            warn(ui, &format!("Set outside Trellis: {}", shown_value(value)));
+    let level = Level { t, page, listing, cx };
+    level.row(ui, t.tr("prefs.ssh.which.all.label"), false, &choices.global, msgs);
+    if let (Some(repo), Some(choice)) = (&page.repo, &choices.repo) {
+        level.row(ui, &t.trf("prefs.ssh.which.repo.label", &[("repo", &repo.name)]), true, choice, msgs);
+    }
+    let git_ssh_command = page.agent.as_ref().is_some_and(|a| a.git_ssh_command_set);
+    if cx.use_agent || git_ssh_command || page.choice_error.is_some() {
+        row(ui, "", |ui| {
             if cx.use_agent {
-                help(ui, OTHER_WITH_AGENT);
+                help(ui, t.tr("prefs.ssh.which.agent_on.help"));
             }
-            stop(ui, msgs);
-        }
+            if git_ssh_command {
+                warn(ui, t.tr("prefs.ssh.which.git_ssh_command.warn"));
+            }
+            if let Some(e) = &page.choice_error {
+                warn(ui, e);
+            }
+        });
     }
 }
 
-pub(super) fn agent_row(ui: &mut Ui, page: &SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
-    row(ui, "SSH agent", |ui| {
-        let mut on = cx.use_agent;
-        if ui.add(controls::Check::new(&mut on, "Use local SSH agent")).changed() {
-            msgs.push(Msg::Ssh(SshMsg::SetUseAgent(on)));
+/// What every level's row reads.
+struct Level<'a> {
+    t: Lang,
+    page: &'a SshPage,
+    listing: &'a SshListing,
+    cx: &'a SshContext,
+}
+
+impl Level<'_> {
+    /// What the closed dropdown shows for `choice`.
+    fn selected_text(&self, choice: &Result<KeyChoice, String>) -> String {
+        let t = self.t;
+        match choice {
+            Ok(KeyChoice::Unset) => t.tr("prefs.ssh.which.ssh_decides").into(),
+            Ok(KeyChoice::Key(p)) => match self.listing.keys.iter().find(|k| same_spelling(&k.private, p)) {
+                Some(k) => k.file_name(),
+                None => t.trf("prefs.ssh.which.unlisted", &[("path", &native_path::shown(p))]),
+            },
+            Ok(KeyChoice::Other { .. }) => t.tr("prefs.ssh.which.custom").into(),
+            Err(_) => t.tr("prefs.ssh.which.unreadable").into(),
         }
-        help(ui, USE_AGENT_HELP);
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            match &page.agent {
-                None => {
+    }
+
+    /// One level's row: its dropdown, a spinner while it is written, and its notes.
+    fn row(&self, ui: &mut Ui, label: &str, repo: bool, choice: &Result<KeyChoice, String>, msgs: &mut Vec<Msg>) {
+        let (t, page) = (self.t, self.page);
+        let trusted = !repo || page.repo.as_ref().is_some_and(|r| r.trusted);
+        let enabled = choice.is_ok() && trusted && !page.choice_busy;
+        let selected = self.selected_text(choice);
+        row(ui, label, |ui| {
+            ui.horizontal(|ui| {
+                let shown = ui.add_enabled_ui(enabled, |ui| {
+                    egui::ComboBox::from_id_salt(("ssh-which-key", repo))
+                        .selected_text(selected.as_str())
+                        .width(fit(ui, 320.0))
+                        .show_ui(ui, |ui| self.entries(ui, repo, choice, msgs))
+                        .response
+                });
+                shown.inner.widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, enabled, format!("{label}: {selected}")));
+                if page.choice_busy && page.choice_repo == repo {
                     ui.add(egui::Spinner::new().size(14.0));
-                    ui.label(RichText::new(LOOKING).size(type_scale::SMALL).color(color::weak()));
                 }
-                Some(a) => {
-                    ui.label(RichText::new(agent_summary(a)).size(type_scale::SMALL).color(color::text()));
+            });
+            match choice {
+                Err(e) => warn(ui, e),
+                Ok(KeyChoice::Other { value, .. }) => {
+                    warn(ui, &t.trf("prefs.ssh.which.other.warn", &[("value", &shown_value(value))]));
+                    if self.cx.use_agent {
+                        help(ui, t.tr("prefs.ssh.which.other_agent.help"));
+                    }
                 }
+                Ok(KeyChoice::Unset | KeyChoice::Key(_)) => {}
             }
-            if widgets::icon_button(ui, Icon::Refresh, "Check the agent again").clicked() {
-                msgs.push(Msg::Ssh(SshMsg::ReloadAgent));
+            if repo && let Some(target) = &page.repo {
+                if !target.trusted {
+                    help(ui, t.tr("prefs.ssh.which.not_trusted.help"));
+                } else if matches!(choice, Ok(KeyChoice::Key(_) | KeyChoice::Other { .. })) {
+                    help(ui, &t.trf("prefs.ssh.which.overrides.help", &[("repo", &target.name)]));
+                }
             }
         });
-        let Some(a) = &page.agent else { return };
-        if let Some(AgentReach::Keys(keys)) = &a.reach {
-            for k in keys {
-                let line = if k.comment.is_empty() { k.fingerprint.clone() } else { format!("{}  {}", k.fingerprint, k.comment) };
-                ui.label(RichText::new(line).monospace().size(type_scale::SMALL).color(color::faint()));
+    }
+
+    /// The open dropdown: every listed key, then Let ssh decide. Picking the current entry does
+    /// nothing; with Use local SSH agent on, only Let ssh decide can be picked.
+    fn entries(&self, ui: &mut Ui, repo: bool, choice: &Result<KeyChoice, String>, msgs: &mut Vec<Msg>) {
+        let why = use_blocked(self.page, self.cx.use_agent, repo);
+        for k in &self.listing.keys {
+            let current = matches!(choice, Ok(KeyChoice::Key(p)) if same_spelling(p, &k.private));
+            let text = format!("{}  {}", k.file_name(), k.kind_label());
+            let mut r = ui.add_enabled(why.is_none(), egui::SelectableLabel::new(current, text));
+            if let Some(why) = why {
+                r = r.on_disabled_hover_text(why);
+            }
+            if r.clicked() && !current {
+                msgs.push(Msg::Ssh(SshMsg::UseKey { key: k.private.clone(), repo, confirmed: false }));
             }
         }
-        // The service is only looked up on Windows; without it, this is another system.
-        match a.service {
-            Some(s) => {
-                help(ui, service_line(&s));
-                if s == WinService::Running && a.running() && a.git_ssh_env.is_none() {
-                    help(ui, WINDOWS_AGENT_NOTE);
-                }
-            }
-            None if !a.auth_sock_set && !a.running() => warn(ui, NO_AUTH_SOCK),
-            None => {}
+        if self.listing.keys.is_empty() {
+            ui.label(RichText::new(self.t.tr("prefs.ssh.which.no_keys")).color(color::weak()));
         }
-        if a.pageant {
-            help(ui, PAGEANT_NOTE);
+        ui.separator();
+        let unset = matches!(choice, Ok(KeyChoice::Unset));
+        if ui.add(egui::SelectableLabel::new(unset, self.t.tr("prefs.ssh.which.ssh_decides"))).clicked() && !unset {
+            msgs.push(Msg::Ssh(SshMsg::StopUsing { repo, confirmed: false }));
         }
-        if let Some(e) = &page.agent_error {
-            warn(ui, e);
-        }
-    });
+    }
 }

@@ -3,6 +3,7 @@
 use crate::forge::{Account, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
 
 mod blame;
 mod branch_colours;
@@ -298,6 +299,9 @@ pub struct Settings {
     /// Leave core.sshCommand unset and let ssh use the running agent (Preferences > SSH).
     #[serde(default)]
     pub use_ssh_agent: bool,
+    /// Key pairs outside ~/.ssh that Preferences > SSH lists (Use existing).
+    #[serde(default)]
+    pub ssh_extra_keys: Vec<PathBuf>,
     /// Ask for OpenPGP signing passphrases in Trellis rather than GnuPG's own window
     /// (Preferences > Commit Signing).
     pub gpg_prompts_in_app: bool,
@@ -402,6 +406,7 @@ impl Default for Settings {
             profiles: Vec::new(),
             active_profile: None,
             use_ssh_agent: false,
+            ssh_extra_keys: Vec::new(),
             gpg_prompts_in_app: true,
             remember_https_credentials: true,
             extended_logging: false,

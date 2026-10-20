@@ -123,6 +123,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "profiles",
     "active_profile",
     "use_ssh_agent",
+    // The machine's key files, not a profile preference.
+    "ssh_extra_keys",
     "gpg_prompts_in_app",
     "remember_https_credentials",
     // A diagnostic switch, not a profile preference.

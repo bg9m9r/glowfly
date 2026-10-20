@@ -54,6 +54,12 @@ fn use_ssh_agent_defaults_off() {
 }
 
 #[test]
+fn ssh_extra_keys_defaults_empty() {
+    let s: Settings = serde_json::from_str(r#"{"use_ssh_agent": true}"#).unwrap();
+    assert!(s.ssh_extra_keys.is_empty() && Settings::default().ssh_extra_keys.is_empty());
+}
+
+#[test]
 fn git_program_defaults_to_path() {
     // Files written before the setting existed run git from PATH.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

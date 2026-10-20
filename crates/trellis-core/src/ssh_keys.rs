@@ -1,7 +1,8 @@
 //! SSH key pairs in `~/.ssh` and how git reaches SSH remotes with them. Trellis keeps no key
 //! material; it reads the files ssh uses and runs ssh's own tools.
 //!
-//! - `listing`: the pairs in a folder, their public key lines and `ssh-keygen` fingerprints
+//! - `listing`: the pairs in a folder, their public key lines and `ssh-keygen` fingerprints, a
+//!   pair picked anywhere (Use existing) and the key names ssh tries by default
 //! - `tools`: finding `ssh-keygen` and `ssh-add`
 //! - `generate`: generating Ed25519 keys with `ssh-keygen`
 //! - `command`: the key git uses, written into `core.sshCommand`
@@ -26,7 +27,10 @@ pub use command::{
 pub use generate::{
     LocationProblem, NewKey, comment_problem, default_location, generate, keygen_args, resolve_location, resolve_location_for,
 };
-pub use listing::{fingerprint, key_body, kind_from_type, list_key_pairs, parse_fingerprint, parse_public_key};
+pub use listing::{
+    DEFAULT_IDENTITY_NAMES, KeyFileProblem, fingerprint, is_default_identity, key_body, kind_from_type, list_key_pairs, parse_fingerprint,
+    parse_public_key, read_key_pair,
+};
 pub use tools::{find_keygen, find_ssh_add, keygen_candidates, tool_candidates};
 
 #[cfg(test)]
@@ -38,7 +42,8 @@ mod generate_tests;
 #[cfg(test)]
 mod tests;
 
-/// A private key in the .ssh folder with a matching, readable `.pub` file next to it.
+/// A private key (in the .ssh folder, or added with Use existing) with a matching, readable
+/// `.pub` file next to it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SshKeyPair {
     pub private: PathBuf,
@@ -69,7 +74,8 @@ impl SshKeyPair {
     }
 }
 
-/// What Preferences > SSH shows: the key pairs and whether ssh-keygen was found.
+/// What Preferences > SSH shows: the key pairs (the .ssh folder's, then the extra ones) and
+/// whether ssh-keygen was found.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct SshListing {
     pub home: PathBuf,
@@ -90,10 +96,20 @@ pub(crate) fn pub_path(private: &Path) -> PathBuf {
     PathBuf::from(s)
 }
 
-/// Everything Preferences > SSH shows for the user whose home folder is `home`.
-pub fn list(home: &Path, cwd: &Path) -> Result<SshListing> {
+/// Everything Preferences > SSH shows for the user whose home folder is `home`: the pairs in
+/// its .ssh folder, sorted by name, then each of `extra` (keys added with Use existing) that
+/// still reads and isn't listed already, in the order given. Extras that fail are skipped.
+pub fn list(home: &Path, cwd: &Path, extra: &[PathBuf]) -> Result<SshListing> {
     let keygen = find_keygen(cwd);
     let dir = ssh_dir(home);
-    let keys = list_key_pairs(&dir, keygen.as_deref())?;
+    let mut keys = list_key_pairs(&dir, keygen.as_deref())?;
+    for path in extra {
+        if keys.iter().any(|k| crate::paths::same_spelling(&k.private, path)) {
+            continue;
+        }
+        if let Ok(pair) = read_key_pair(path, keygen.as_deref()) {
+            keys.push(pair);
+        }
+    }
     Ok(SshListing { home: home.to_owned(), dir, keys, keygen })
 }

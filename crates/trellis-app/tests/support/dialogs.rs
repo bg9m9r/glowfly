@@ -30,6 +30,7 @@ pub const DIALOG_FILES: &[&str] = &[
     "ui/repo_finder.rs",
     "ui/repo_sync.rs",
     "ui/shortcuts.rs",
+    "ui/ssh_keygen_dialog.rs",
     "ui/stash_dialog.rs",
     "ui/stash_push_dialog.rs",
     "ui/submodule_dialogs.rs",

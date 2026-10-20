@@ -100,3 +100,69 @@ fn lists_only_complete_pairs() {
     assert_eq!(list_key_pairs(&dir.join("missing"), None).unwrap(), vec![]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn read_key_pair_reads_a_pair_anywhere() {
+    let dir = temp("pick");
+    let write = |f: &str, t: &str| std::fs::write(dir.join(f), t).unwrap();
+    write("deploy", "private");
+    write("deploy.pub", "ssh-ed25519 AAAAdeploy deploy@ci\n");
+    let by_private = read_key_pair(&dir.join("deploy"), None).unwrap();
+    let by_public = read_key_pair(&dir.join("deploy.pub"), None).unwrap();
+    assert_eq!(by_private.private, dir.join("deploy"));
+    assert_eq!(by_public, by_private, "a .pub stands for the private key next to it");
+    assert_eq!((by_private.comment.as_str(), by_private.public_key.as_str()), ("deploy@ci", "ssh-ed25519 AAAAdeploy deploy@ci"));
+
+    write("lone", "private");
+    assert_eq!(read_key_pair(&dir.join("lone"), None), Err(KeyFileProblem::NoPublicKey));
+    write("junk", "private");
+    write("junk.pub", "not a key\n");
+    assert_eq!(read_key_pair(&dir.join("junk"), None), Err(KeyFileProblem::NotAPublicKey));
+    std::fs::create_dir_all(dir.join("folder")).unwrap();
+    assert_eq!(read_key_pair(&dir.join("folder"), None), Err(KeyFileProblem::NotAFile));
+    assert_eq!(read_key_pair(&dir.join("missing"), None), Err(KeyFileProblem::NotAFile));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn list_appends_extra_keys() {
+    let home = temp("extra");
+    let ssh = home.join(".ssh");
+    let outside = home.join("keys");
+    std::fs::create_dir_all(&ssh).unwrap();
+    std::fs::create_dir_all(&outside).unwrap();
+    std::fs::write(ssh.join("id_ed25519"), "private").unwrap();
+    std::fs::write(ssh.join("id_ed25519.pub"), "ssh-ed25519 AAAAa ada\n").unwrap();
+    std::fs::write(outside.join("work_key"), "private").unwrap();
+    std::fs::write(outside.join("work_key.pub"), "ssh-ed25519 AAAAw work\n").unwrap();
+    let extra = [outside.join("work_key"), ssh.join("id_ed25519"), outside.join("missing")];
+    let got = list(&home, &home, &extra).unwrap();
+    let names: Vec<String> = got.keys.iter().map(SshKeyPair::file_name).collect();
+    assert_eq!(names, ["id_ed25519", "work_key"], "the duplicate and the missing extra are skipped");
+    assert_eq!(got.keys[1].private, outside.join("work_key"));
+
+    let plain = list(&home, &home, &[]).unwrap();
+    assert_eq!(plain.keys, list_key_pairs(&ssh, plain.keygen.as_deref()).unwrap(), "no extras: the folder's pairs");
+    let _ = std::fs::remove_dir_all(&home);
+}
+
+#[test]
+fn default_identity_names() {
+    let dir = PathBuf::from("/h/.ssh");
+    let at = |folder: &Path, name: &str| SshKeyPair {
+        private: folder.join(name),
+        public: folder.join(format!("{name}.pub")),
+        key_type: String::new(),
+        kind: String::new(),
+        bits: None,
+        fingerprint: None,
+        comment: String::new(),
+        public_key: String::new(),
+    };
+    assert!(is_default_identity(&at(&dir, "id_ed25519"), &dir));
+    assert!(is_default_identity(&at(&dir, "id_rsa"), &dir));
+    assert!(!is_default_identity(&at(Path::new("/elsewhere"), "id_ed25519"), &dir), "another folder");
+    for name in ["id_ED25519", "id_dsa", "id_ed25519_work"] {
+        assert!(!is_default_identity(&at(&dir, name), &dir), "{name}");
+    }
+}

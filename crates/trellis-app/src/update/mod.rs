@@ -92,6 +92,7 @@ mod sign_in;
 mod signatures;
 mod sparse;
 mod ssh;
+mod ssh_pick;
 mod ssh_service;
 mod ssh_use;
 mod stash;

@@ -1,6 +1,7 @@
 //! Headless tests for Preferences > SSH: reading ~/.ssh, the key choice and the agent,
 //! prefilling the form, generating a key (refusals, the Replace confirmation, success and
-//! failure) and copying a public key.
+//! failure) and copying a public key. The Generate SSH key dialog is in `ssh_keygen_tests`,
+//! Use existing in `ssh_pick_tests`.
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
@@ -53,16 +54,16 @@ pub(super) fn page_mut(st: &mut AppState) -> &mut SshPage {
     &mut st.prefs.as_mut().expect("Preferences open").ssh
 }
 
-fn lists(fx: &[Effect]) -> Vec<u64> {
+pub(super) fn lists(fx: &[Effect]) -> Vec<u64> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::Ssh(SshEffect::List { generation }) => Some(*generation),
+            Effect::Ssh(SshEffect::List { generation, .. }) => Some(*generation),
             _ => None,
         })
         .collect()
 }
 
-fn email(st: &mut AppState, email: &str) {
+pub(super) fn email(st: &mut AppState, email: &str) {
     let values = GitConfigValues { user_email: email.into(), ..Default::default() };
     run(st, Msg::Prefs(PrefsMsg::GitConfigLoaded(values)));
 }
@@ -105,7 +106,7 @@ fn opening_on_the_page_reads_it() {
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh)));
     assert_eq!(lists(&fx), [1]);
     assert!(fx.iter().any(|e| matches!(e, Effect::ReadGitConfig { .. })));
-    assert!(Effect::Ssh(SshEffect::List { generation: 1 }).scope().is_none(), "unscoped");
+    assert!(Effect::Ssh(SshEffect::List { generation: 1, extra: Vec::new() }).scope().is_none(), "unscoped");
 }
 
 #[test]
@@ -139,7 +140,7 @@ fn prefill_happens_once() {
     assert_eq!(page(&st).location, "~/.ssh/work", "a typed location is kept");
 }
 
-fn fill(st: &mut AppState, location: &str, comment: &str, passphrase: &str, confirm: &str) {
+pub(super) fn fill(st: &mut AppState, location: &str, comment: &str, passphrase: &str, confirm: &str) {
     let p = page_mut(st);
     p.location = location.into();
     p.comment = comment.into();
@@ -192,13 +193,15 @@ fn generate_is_refused_with_a_reason() {
 #[test]
 fn replace_flow() {
     let mut st = loaded(vec![pair("id_ed25519", "ada")], true);
+    ssh(&mut st, SshMsg::OpenGenerate);
     fill(&mut st, "~/.ssh/id_ed25519", "ada", "s3cret", "s3cret");
     assert!(page(&st).location_taken());
     ssh(&mut st, SshMsg::Generate { overwrite: false });
+    assert!(matches!(st.modal, Some(Modal::SshKeygen)), "open while ssh-keygen runs");
     let path = home().join(".ssh").join("id_ed25519");
     ssh(&mut st, SshMsg::Generated(Err(GenerateFailure::Exists(path.clone()))));
     assert!(!page(&st).generating);
-    let Some(Modal::ConfirmDanger { title, body, button, .. }) = &st.modal else { panic!("a confirmation") };
+    let Some(Modal::ConfirmDanger { title, body, button, .. }) = &st.modal else { panic!("the confirmation replaces the dialog") };
     assert_eq!((title.as_str(), button.as_str()), ("Replace SSH key", "Replace key"));
     assert!(body.starts_with(&path.display().to_string()));
 
@@ -210,9 +213,11 @@ fn replace_flow() {
 #[test]
 fn generated_reloads_and_clears() {
     let mut st = loaded(vec![], true);
+    ssh(&mut st, SshMsg::OpenGenerate);
     fill(&mut st, "~/.ssh/id_ed25519", "", "s3cret", "s3cret");
     ssh(&mut st, SshMsg::Generate { overwrite: false });
     let fx = ssh(&mut st, SshMsg::Generated(Ok(pair("id_ed25519", "ada"))));
+    assert!(st.modal.is_none(), "the dialog closes");
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Created SSH key id_ed25519"));
     assert_eq!((page(&st).passphrase.as_str(), page(&st).confirm.as_str()), ("", ""));
     assert!(!page(&st).generating);

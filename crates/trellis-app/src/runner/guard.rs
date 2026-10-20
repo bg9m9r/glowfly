@@ -381,7 +381,7 @@ mod tests {
         update(&mut st, msg, Instant::now());
         assert!(!st.prefs.as_ref().unwrap().ssh.generating, "Generate can run again");
 
-        let effect = Effect::Ssh(SshEffect::List { generation: 3 });
+        let effect = Effect::Ssh(SshEffect::List { generation: 3, extra: Vec::new() });
         let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
         assert!(matches!(&msg, Msg::Ssh(SshMsg::Loaded { generation: 3, result: Err(_) })));
         update(&mut st, msg, Instant::now());

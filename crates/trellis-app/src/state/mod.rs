@@ -107,6 +107,7 @@ pub mod sign_in;
 pub mod signatures;
 pub mod sparse;
 pub mod ssh;
+pub mod ssh_marks;
 pub mod ssh_service;
 pub mod ssh_use;
 pub mod stash_confirm;
@@ -327,6 +328,9 @@ pub enum Modal {
     /// The trash on a file's drive can't be used: move it to the home Trash or delete it
     /// permanently (`ui/trash_offer_dialog.rs`).
     TrashOffer(files::TrashOffer),
+    /// The Generate SSH key dialog (`ui/ssh_keygen_dialog.rs`). Its fields live in
+    /// `PrefsState.ssh`, so closing it keeps them.
+    SshKeygen,
 }
 
 /// The most commits "Load more" goes up to.

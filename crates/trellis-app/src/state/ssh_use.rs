@@ -1,26 +1,17 @@
 //! Preferences > SSH: the key git uses (core.sshCommand, globally or for the open repository)
-//! and the local SSH agent. The rules that decide what may run now, and the page's texts.
+//! and the local SSH agent. The rules that decide what may run now, and the texts update's
+//! toasts and confirmations show (the views take theirs from the language tables).
 
 use super::ssh::SshPage;
 use super::trust::shown_value;
 use std::path::{Path, PathBuf};
 use trellis_core::paths::same_spelling;
-use trellis_core::ssh_keys::{AgentReach, AgentStatus, KeyChoice, WinService};
+use trellis_core::ssh_keys::KeyChoice;
 
-pub const USE_AGENT_HELP: &str = "ssh gets keys from your running agent. Trellis leaves core.sshCommand unset while this is on.";
 pub const NOT_TRUSTED: &str =
     "Trust this repository first: a key setting in its own config makes git run ssh with it, so Trellis would ask about trusting it.";
 pub const AGENT_ON: &str = "Turn off Use local SSH agent to choose a key";
-pub const NOT_SET: &str = "Not set: ssh picks the key (your ssh config, the agent, or the default key names)";
-pub const OTHER_WITH_AGENT: &str = "git runs this command instead of plain ssh; it may not use the agent";
-pub const GIT_SSH_COMMAND_SET: &str =
-    "GIT_SSH_COMMAND is set in Trellis's environment: it overrides core.sshCommand for every git command Trellis runs.";
 pub const AGENT_TOAST: &str = "Trellis leaves core.sshCommand unset; ssh uses your agent.";
-pub const WINDOWS_AGENT_NOTE: &str = "Git for Windows' own ssh doesn't read keys from the Windows agent service; git uses it unless GIT_SSH or core.sshCommand points at Windows' ssh.exe.";
-pub const PAGEANT_NOTE: &str = "Pageant is running. Add keys in Pageant; ssh-add can't reach it.";
-pub const NO_AUTH_SOCK: &str = "SSH_AUTH_SOCK isn't set in Trellis's environment; start ssh-agent in your login session.";
-pub const NO_SSH_ADD: &str = "ssh-add wasn't found. Install OpenSSH (or Git for Windows) and reload.";
-pub const LOOKING: &str = "Looking for an SSH agent…";
 pub const REPLACE_COMMAND_TITLE: &str = "Replace SSH command";
 pub const REMOVE_COMMAND_TITLE: &str = "Remove SSH command";
 
@@ -111,28 +102,4 @@ pub fn remove_command_body(level: &str, value: &str) -> String {
         "core.sshCommand for {level} is \u{201c}{}\u{201d}, which Trellis didn't write. Remove it, so git runs plain ssh?",
         shown_value(value)
     )
-}
-
-/// The Windows agent service's state, for the agent row.
-pub fn service_line(s: &WinService) -> &'static str {
-    match s {
-        WinService::Running => "The OpenSSH Authentication Agent service is running",
-        WinService::Stopped => "The OpenSSH Authentication Agent service is stopped",
-        WinService::Disabled => "The OpenSSH Authentication Agent service is disabled (an administrator can enable it in Services)",
-        WinService::Missing => "The OpenSSH Authentication Agent service isn't installed",
-    }
-}
-
-/// The agent row's status line.
-pub fn agent_summary(a: &AgentStatus) -> String {
-    if a.ssh_add.is_none() {
-        return NO_SSH_ADD.into();
-    }
-    match &a.reach {
-        Some(AgentReach::Keys(keys)) if keys.len() == 1 => "Agent running: 1 key loaded".into(),
-        Some(AgentReach::Keys(keys)) if !keys.is_empty() => format!("Agent running: {} keys loaded", keys.len()),
-        Some(AgentReach::Keys(_)) => "Agent running, no keys loaded".into(),
-        Some(AgentReach::NoAgent) | None => "No SSH agent is running".into(),
-        Some(AgentReach::Failed(e)) => format!("Couldn't ask the SSH agent: {e}"),
-    }
 }

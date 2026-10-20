@@ -356,7 +356,7 @@ until this list says which option was chosen.
       rename; + opens a terminal and its ▾ picks the shell. On the right, icon buttons with
       tooltips: Clear, Kill terminal (asks only while a program runs), ⋯ (Kill all, Rename),
       Settings, maximise and hide.
-- [ ] **SSH preferences**: key cards with Copy public key, key generation in a dialog, a key
+- [x] **SSH preferences**: key cards with Copy public key, key generation in a dialog, a key
       picker for all repositories and this one, and an agent status pill. Chosen 2026-10-19
       (option A): one column of three titled sections; each key is a card with its
       fingerprint, label and Copy public key, the default key marked, Generate and Use existing
@@ -411,7 +411,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 |---|---|---|
 | General | ✔ General | Missing: delete `.orig` files after merge, show all commits, path to `sh.exe`, extended logging, conflict detection |
 | Profiles | ✔ Profile (identity, connected accounts and app preferences per profile, switching) | Follow-ups in Later > Profiles |
-| SSH | ✔ SSH page (key pairs, generate a key, the key git uses, local agent, add a key to a hosting service) | Follow-ups in Later > SSH key management |
+| SSH | ✔ SSH page (key cards with their marks, a Generate SSH key dialog, Use existing for keys outside ~/.ssh, Which key dropdowns for all repositories and the open one, the local agent with a status pill, add a key to a hosting service) | Follow-ups in Later > SSH key management |
 | Integrations | ✔ 10 services | PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
 | External Tools | ✔ Editor, diff tool and merge tool (the external terminal is on the Terminal page) | Follow-ups in Later > External tools and Later > External diff and merge tools |
@@ -2053,7 +2053,7 @@ here, under the item they grew from.
 
 - Generate RSA or ECDSA keys, and change an existing key's passphrase or comment (ssh-keygen -p
   / -c)
-- Browse buttons for picking a private key file and the save location
+- A Browse button for the Generate SSH key dialog's save location
 - Show in folder and delete a key locally from its row
 - Flag encrypted private keys and keys whose file permissions are too open for ssh on their row
 - Palette entry for the SSH page (palette_commands.rs needs splitting first)
@@ -2063,9 +2063,22 @@ here, under the item they grew from.
 - Add keys to Bitbucket Data Center and Azure DevOps through their APIs
 - List and delete the keys registered on a connected service, and show on each key row which services have it
 - Per-host key choice through ~/.ssh/config Host entries instead of core.sshCommand
-- Choose a key file outside ~/.ssh for Use for git (with the Browse buttons above)
 - Palette entries for Use for git, Add to agent and Add to service (after palette_commands.rs is split)
 - Link from the add-key fallback to reconnect a service with a token that may write SSH keys (Integrations, preselected)
+
+### SSH preferences
+
+- Translate the page's remaining English: the rule reasons (`blocked`, `use_blocked`, `add_blocked`), core's location and comment problems, the Add to service notes, and the toasts and confirmations in update/ssh_use.rs and ssh_service.rs
+- Cancel on the Replace SSH key confirmation goes back to the Generate SSH key dialog instead of closing
+- Suggest a free file name (id_ed25519_2, …) as the save location when the default key already exists
+- Show remembered keys whose files have gone, with Remove from list, instead of skipping them silently
+- Show the key core.sshCommand names as a card when it lives outside .ssh and wasn't added with Use existing
+- Cut a long repository name in the "{repo} only" row label with … and a hover tip
+- Move the section header with a right-hand slot (title, pill, button) into prefs/form.rs once another page needs it
+- Offer to recreate the .pub (ssh-keygen -y) when a picked private key has none
+- Key type choice (RSA 4096, ECDSA, security keys) in the Generate SSH key dialog
+- Click the agent pill to check the agent again or jump to its detail lines
+- Remember a picked key whose path isn't valid Unicode (settings.json keeps paths as text; such a key is listed until the page reloads)
 
 ### Profiles
 

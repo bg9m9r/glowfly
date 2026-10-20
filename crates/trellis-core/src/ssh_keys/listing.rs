@@ -1,9 +1,11 @@
-//! Reading key pairs: public key lines, `ssh-keygen -l` fingerprints, and the pairs in a folder.
+//! Reading key pairs: public key lines, `ssh-keygen -l` fingerprints, the pairs in a folder, a
+//! pair picked anywhere (Use existing) and the key names ssh tries by default.
 
 use super::{SshKeyPair, pub_path};
 use crate::error::Result;
+use crate::paths::same_spelling;
 use crate::signing::command;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// The key type and comment of a public key line (the first line of a `.pub` file). Lines
 /// that don't start with a key type, such as authorized_keys entries with options, are None.
@@ -68,7 +70,13 @@ pub(super) fn read_pair(private: &Path, keygen: Option<&Path>) -> Option<SshKeyP
     }
     let public = pub_path(private);
     let text = std::fs::read_to_string(&public).ok()?;
-    let (key_type, comment) = parse_public_key(&text)?;
+    pair_from(private, public, &text, keygen)
+}
+
+/// The pair built from the `.pub` file's `text`, with its fingerprint when `keygen` is given;
+/// None when the text isn't a public key line.
+fn pair_from(private: &Path, public: PathBuf, text: &str, keygen: Option<&Path>) -> Option<SshKeyPair> {
+    let (key_type, comment) = parse_public_key(text)?;
     let mut pair = SshKeyPair {
         private: private.to_owned(),
         kind: kind_from_type(&key_type),
@@ -85,6 +93,47 @@ pub(super) fn read_pair(private: &Path, keygen: Option<&Path>) -> Option<SshKeyP
         pair.kind = kind;
     }
     Some(pair)
+}
+
+/// The file names ssh tries when no IdentityFile is given (ssh_config(5)), in its .ssh folder.
+/// DSA keys are left out: OpenSSH turned them off by default and later removed them.
+pub const DEFAULT_IDENTITY_NAMES: [&str; 5] = ["id_rsa", "id_ecdsa", "id_ecdsa_sk", "id_ed25519", "id_ed25519_sk"];
+
+/// Whether ssh tries `pair` on its own: it is in `dir` (the .ssh folder) under one of the
+/// default names, spelled exactly (never case-folded).
+pub fn is_default_identity(pair: &SshKeyPair, dir: &Path) -> bool {
+    pair.private.parent().is_some_and(|p| same_spelling(p, dir))
+        && pair.private.file_name().and_then(|n| n.to_str()).is_some_and(|n| DEFAULT_IDENTITY_NAMES.contains(&n))
+}
+
+/// Why a picked file isn't a usable key pair (Use existing).
+#[derive(Clone, Debug, PartialEq)]
+pub enum KeyFileProblem {
+    /// The private key's path isn't a file (a folder, or gone).
+    NotAFile,
+    /// No `<private>.pub` next to it.
+    NoPublicKey,
+    /// The `.pub` file doesn't start with a public key line.
+    NotAPublicKey,
+    /// The `.pub` file couldn't be read.
+    Unreadable(String),
+}
+
+/// The pair for a file the user picked, anywhere: a `.pub` file whose private key is next to it
+/// stands for that key. Read exactly as the listing reads a pair.
+pub fn read_key_pair(picked: &Path, keygen: Option<&Path>) -> Result<SshKeyPair, KeyFileProblem> {
+    let stem = picked.extension().is_some_and(|x| x == "pub").then(|| picked.with_extension(""));
+    let private = stem.filter(|s| s.is_file()).unwrap_or_else(|| picked.to_owned());
+    if !private.is_file() {
+        return Err(KeyFileProblem::NotAFile);
+    }
+    let public = pub_path(&private);
+    let text = match std::fs::read_to_string(&public) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err(KeyFileProblem::NoPublicKey),
+        Err(e) => return Err(KeyFileProblem::Unreadable(e.to_string())),
+    };
+    pair_from(&private, public, &text, keygen).ok_or(KeyFileProblem::NotAPublicKey)
 }
 
 /// The key pairs in `dir`, sorted by file name; fingerprints only when `keygen` is given. A

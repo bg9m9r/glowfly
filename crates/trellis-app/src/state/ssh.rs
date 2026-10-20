@@ -1,20 +1,22 @@
-//! The SSH preferences page: the key pairs read in the background, the Generate New Key form,
-//! the rules that decide whether Generate can run, and the texts its toasts and dialog show.
-//! The key git uses and the agent are in `ssh_use`, adding a key to a service in `ssh_service`.
+//! The SSH preferences page: the key pairs read in the background, the Generate SSH key form
+//! (drawn in its dialog, `Modal::SshKeygen`, with its fields kept here so closing the dialog
+//! keeps them), the rules that decide whether Generate can run, what Use existing last refused,
+//! and the texts its toasts and confirmation show. The key git uses and the agent are in
+//! `ssh_use`, the marks on a key card and the agent pill in `ssh_marks`, adding a key to a
+//! service in `ssh_service`.
 
 use super::ssh_service::UploadForm;
 use super::ssh_use::{Choices, RepoTarget};
 use std::path::{Path, PathBuf};
 use trellis_core::paths::same_spelling;
-use trellis_core::ssh_keys::{AgentStatus, LocationProblem, SshKeyPair, SshListing, comment_problem, default_location, resolve_location};
+use trellis_core::ssh_keys::{
+    AgentStatus, KeyFileProblem, LocationProblem, SshKeyPair, SshListing, comment_problem, default_location, resolve_location,
+};
 
 pub const COPIED: &str = "Public key copied to the clipboard";
 pub const REPLACE_TITLE: &str = "Replace SSH key";
 pub const REPLACE_BUTTON: &str = "Replace key";
 pub const MISMATCH: &str = "The passphrases don't match.";
-pub const TAKEN: &str = "A key already exists here; Generate will ask before replacing it.";
-pub const NO_KEYGEN: &str = "ssh-keygen wasn't found, so fingerprints aren't shown and keys can't be generated. Install OpenSSH (or Git \
-                             for Windows) and reload.";
 
 #[derive(Default)]
 pub struct SshPage {
@@ -32,6 +34,8 @@ pub struct SshPage {
     pub passphrase: String,
     /// The Confirm Passphrase field.
     pub confirm: String,
+    /// Which of the dialog's fields were edited, and whether a submit was tried.
+    pub touched: super::touched::Touched,
     /// ssh-keygen is running.
     pub generating: bool,
     /// Why the last Generate was refused, or what ssh-keygen said when it failed.
@@ -46,6 +50,8 @@ pub struct SshPage {
     pub choice_busy: bool,
     /// The key the running write chooses (None: it unsets the choice).
     pub choice_key: Option<PathBuf>,
+    /// The level the running write changes: the repository's (true) or all repositories'.
+    pub choice_repo: bool,
     /// The repository open when the page was read, for its own core.sshCommand.
     pub repo: Option<RepoTarget>,
     /// What the last agent check found; None while it runs.
@@ -57,6 +63,8 @@ pub struct SshPage {
     pub agent_error: Option<String>,
     /// The Add to service form, under the key it is for.
     pub upload: Option<UploadForm>,
+    /// Why the last file picked with Use existing isn't a key pair, with its file name.
+    pub pick_error: Option<(String, KeyFileProblem)>,
 }
 
 impl SshPage {
@@ -88,14 +96,25 @@ impl SshPage {
         self.passphrase != self.confirm
     }
 
-    /// The first reason Generate can't run now.
-    pub fn blocked(&self) -> Option<String> {
+    /// Why the Generate… button can't open the dialog now.
+    pub fn open_blocked(&self) -> Option<&'static str> {
+        let Some(listing) = &self.listing else { return Some("Wait until your .ssh folder has been read.") };
+        listing.keygen.is_none().then_some("ssh-keygen wasn't found.")
+    }
+
+    /// The part of `blocked` that isn't about a field: a key is being generated, or the dialog
+    /// couldn't open now (`open_blocked`). The dialog's footer shows only this.
+    pub fn form_wait(&self) -> Option<String> {
         if self.generating {
             return Some("A key is being generated.".into());
         }
-        let Some(listing) = &self.listing else { return Some("Wait until your .ssh folder has been read.".into()) };
-        if listing.keygen.is_none() {
-            return Some("ssh-keygen wasn't found.".into());
+        self.open_blocked().map(Into::into)
+    }
+
+    /// The first reason Generate can't run now.
+    pub fn blocked(&self) -> Option<String> {
+        if let Some(wait) = self.form_wait() {
+            return Some(wait);
         }
         if let Some(p) = self.location_problem() {
             return Some(p.message().into());

@@ -107,6 +107,7 @@ mod sidebar;
 mod sign_in_banner;
 mod signature_badge;
 mod spell_edit;
+mod ssh_keygen_dialog;
 mod stash_dialog;
 mod stash_push_dialog;
 mod stashes;
@@ -354,6 +355,8 @@ mod snapshot_tests_signature;
 mod snapshot_tests_sparse;
 #[cfg(test)]
 mod snapshot_tests_ssh;
+#[cfg(test)]
+mod snapshot_tests_ssh_keygen;
 #[cfg(test)]
 mod snapshot_tests_stash;
 #[cfg(test)]

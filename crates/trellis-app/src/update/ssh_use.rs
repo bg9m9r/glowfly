@@ -83,6 +83,7 @@ fn write(st: &mut AppState, repo: bool, key: Option<PathBuf>, fx: &mut Vec<Effec
     page.choice_busy = true;
     page.choice_error = None;
     page.choice_key = key.clone();
+    page.choice_repo = repo;
     fx.push(Effect::Ssh(SshEffect::SetKeyChoice { repo: workdir, key }));
 }
 

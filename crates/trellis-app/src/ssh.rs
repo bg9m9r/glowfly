@@ -1,11 +1,12 @@
-//! Messages and effects of Preferences > SSH: the key pairs in ~/.ssh, generating a key, the
-//! key git uses (core.sshCommand), the local SSH agent and adding a key to a hosting service
-//! (state/ssh*.rs, update/ssh*.rs, runner/ssh.rs, ui/prefs/ssh*.rs).
+//! Messages and effects of Preferences > SSH: the key pairs in ~/.ssh and the ones added with Use
+//! existing (picked in the OS file dialog), generating a key in its dialog, the key git uses
+//! (core.sshCommand), the local SSH agent and adding a key to a hosting service (state/ssh*.rs,
+//! update/ssh*.rs, runner/ssh.rs, ui/prefs/ssh*.rs, ui/ssh_keygen_dialog.rs).
 
 use crate::msg::Inactive;
 use std::path::PathBuf;
 use trellis_core::forge::{Account, AddKeyOutcome};
-use trellis_core::ssh_keys::{AgentReach, AgentStatus, KeyChoice, NewKey, SshKeyPair, SshListing};
+use trellis_core::ssh_keys::{AgentReach, AgentStatus, KeyChoice, KeyFileProblem, NewKey, SshKeyPair, SshListing};
 
 pub enum SshMsg {
     /// The navigation row: switch Preferences to the page and read ~/.ssh.
@@ -14,18 +15,24 @@ pub enum SshMsg {
     Reload,
     /// Copy the public key of the listed pair whose private key is at this path.
     CopyPublicKey(PathBuf),
-    /// The Generate Key button, or accepting the Replace confirmation (`overwrite`).
+    /// The Generate… button: open the Generate SSH key dialog.
+    OpenGenerate,
+    /// The dialog's Generate key button, or accepting the Replace confirmation (`overwrite`).
     Generate {
         overwrite: bool,
     },
-    /// Use for git: make git use this key for SSH remotes, for every repository or (`repo`)
+    /// The Use existing… button: pick a key pair outside the list in the OS file dialog.
+    UseExisting,
+    /// Remove from list: forget a key added with Use existing (its files stay).
+    ForgetKey(PathBuf),
+    /// Which key: make git use this key for SSH remotes, for every repository or (`repo`)
     /// the open one; `confirmed` once the user agreed to replace a command Trellis didn't write.
     UseKey {
         key: PathBuf,
         repo: bool,
         confirmed: bool,
     },
-    /// Stop using: unset core.sshCommand at one level.
+    /// Let ssh decide: unset core.sshCommand at one level.
     StopUsing {
         repo: bool,
         confirmed: bool,
@@ -55,6 +62,8 @@ pub enum SshMsg {
         result: Result<SshListing, String>,
     },
     Generated(Result<SshKeyPair, GenerateFailure>),
+    /// The file the dialog picked, read as a key pair; None when it was cancelled.
+    KeyPicked(Option<(PathBuf, Result<SshKeyPair, KeyFileProblem>)>),
     ChoiceLoaded {
         generation: u64,
         global: Result<KeyChoice, String>,
@@ -104,7 +113,11 @@ impl SshMsg {
             Self::ShowPage
             | Self::Reload
             | Self::CopyPublicKey(_)
+            | Self::OpenGenerate
             | Self::Generate { .. }
+            | Self::UseExisting
+            | Self::ForgetKey(_)
+            | Self::KeyPicked(_)
             | Self::UseKey { .. }
             | Self::StopUsing { .. }
             | Self::SetUseAgent(_)
@@ -129,8 +142,11 @@ impl SshMsg {
 /// `NewKey`).
 #[derive(Debug)]
 pub enum SshEffect {
-    /// Read ~/.ssh: the key pairs, their fingerprints and whether ssh-keygen is installed.
-    List { generation: u64 },
+    /// Read ~/.ssh and the `extra` keys added with Use existing: the key pairs, their
+    /// fingerprints and whether ssh-keygen is installed.
+    List { generation: u64, extra: Vec<PathBuf> },
+    /// Ask for a private key in the OS file dialog, starting in `start`, and read the pair.
+    PickKey { title: String, start: PathBuf, keygen: Option<PathBuf> },
     /// Run ssh-keygen to make `key`; without `overwrite`, an existing key there is refused.
     Generate { keygen: PathBuf, key: NewKey, overwrite: bool },
     /// Read core.sshCommand globally and, with `repo`, in that repository.
@@ -148,6 +164,7 @@ pub enum SshEffect {
 /// What an `SshEffect` reports if it can't finish (see `runner/guard.rs`).
 pub enum SshFailure {
     List(u64),
+    PickKey,
     Generate,
     ReadChoice(u64),
     SetKeyChoice { repo: bool },
@@ -160,6 +177,7 @@ impl SshEffect {
     pub fn name(&self) -> &'static str {
         match self {
             SshEffect::List { .. } => "ssh-keys",
+            SshEffect::PickKey { .. } => "ssh-pick-key",
             SshEffect::Generate { .. } => "ssh-keygen",
             SshEffect::ReadChoice { .. } => "ssh-choice",
             SshEffect::SetKeyChoice { .. } => "ssh-config",
@@ -170,7 +188,8 @@ impl SshEffect {
     }
 
     /// Whether the runner times this for the performance log. `ssh-add` waits while the user
-    /// types the key's passphrase, and the upload may wait on a sign-in window.
+    /// types the key's passphrase, the upload may wait on a sign-in window, and the file dialog
+    /// on the user.
     pub fn timed(&self) -> bool {
         match self {
             SshEffect::List { .. }
@@ -178,13 +197,14 @@ impl SshEffect {
             | SshEffect::ReadChoice { .. }
             | SshEffect::SetKeyChoice { .. }
             | SshEffect::Agent { .. } => true,
-            SshEffect::AddToAgent { .. } | SshEffect::AddToService { .. } => false,
+            SshEffect::PickKey { .. } | SshEffect::AddToAgent { .. } | SshEffect::AddToService { .. } => false,
         }
     }
 
     pub fn failure(&self) -> SshFailure {
         match self {
-            SshEffect::List { generation } => SshFailure::List(*generation),
+            SshEffect::List { generation, .. } => SshFailure::List(*generation),
+            SshEffect::PickKey { .. } => SshFailure::PickKey,
             SshEffect::Generate { .. } => SshFailure::Generate,
             SshEffect::ReadChoice { generation, .. } => SshFailure::ReadChoice(*generation),
             SshEffect::SetKeyChoice { repo, .. } => SshFailure::SetKeyChoice { repo: repo.is_some() },
@@ -200,6 +220,7 @@ impl SshFailure {
     pub fn message(self, text: String) -> SshMsg {
         match self {
             SshFailure::List(generation) => SshMsg::Loaded { generation, result: Err(text) },
+            SshFailure::PickKey => SshMsg::KeyPicked(Some((PathBuf::new(), Err(KeyFileProblem::Unreadable(text))))),
             SshFailure::Generate => SshMsg::Generated(Err(GenerateFailure::Failed(text))),
             SshFailure::ReadChoice(generation) => SshMsg::ChoiceLoaded { generation, global: Err(text), repo: None },
             SshFailure::SetKeyChoice { repo } => SshMsg::KeyChoiceSet { repo, result: Err(text) },

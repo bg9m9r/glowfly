@@ -46,7 +46,8 @@ impl Modal {
             | Modal::RewordCommit(_)
             | Modal::RenameTab(_)
             | Modal::ApplyPatch(_)
-            | Modal::SavePatch(_) => Form,
+            | Modal::SavePatch(_)
+            | Modal::SshKeygen => Form,
             // Create fork mostly asks "fork it?"; its one field is filled in by the service
             // lookup after it opens.
             Modal::Confirm { .. }
@@ -126,6 +127,9 @@ impl Modal {
             Modal::RenameTab(f) => format!("{:?}", f.text),
             Modal::ApplyPatch(f) => format!("{:?}", (&f.mode, &f.opts, f.am_three_way)),
             Modal::SavePatch(f) => format!("{:?}", (&f.scope, f.pick, &f.chosen, f.untracked)),
+            // The fields outlive the dialog in `SshPage` (reopening shows them again), so Esc
+            // loses nothing and needs no question.
+            Modal::SshKeygen => return None,
             Modal::Confirm { .. }
             | Modal::ConfirmDanger { .. }
             | Modal::ConfirmChoice { .. }

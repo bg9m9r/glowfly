@@ -138,13 +138,15 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             | Effect::Onboarding(_)
             // Asks a hosting service.
             | Effect::Clone(crate::effect::CloneEffect::ListRepos { .. })
-            // Would write the global git config, run ssh-keygen or ssh-add, or call a service.
+            // Would write the global git config, run ssh-keygen or ssh-add, call a service, or open a
+            // file dialog.
             | Effect::Ssh(
                 SshEffect::SetKeyChoice { repo: None, .. }
                     | SshEffect::Agent { .. }
                     | SshEffect::AddToAgent { .. }
                     | SshEffect::AddToService { .. }
                     | SshEffect::Generate { .. }
+                    | SshEffect::PickKey { .. }
             )
             // Never show real desktop notifications.
             | Effect::Notify(_)
