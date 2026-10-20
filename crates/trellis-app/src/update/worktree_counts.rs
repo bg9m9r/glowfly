@@ -50,7 +50,7 @@ pub(super) fn counted(st: &mut AppState, refs_key: u64, counts: Vec<WorktreeCoun
             }
         }
         if worktree_wip_heads(&snap.worktrees) != rows_before {
-            super::refresh::lay_out_graph(snap);
+            snap.lay_out_graph();
         }
         slow = counts.iter().find_map(|c| c.slow.clone());
     }

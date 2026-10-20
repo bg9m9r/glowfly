@@ -1,8 +1,8 @@
 //! Drawing helpers for the commit graph: lanes and the details panel's avatar.
 
 use super::LANE_W;
+use super::lane_colours::RowColours;
 use crate::ui::avatars::Avatars;
-use crate::ui::common::lane_color;
 use crate::ui::widgets;
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, epaint::CubicBezierShape, epaint::RectShape, pos2, vec2};
 use trellis_core::graph::GraphRow;
@@ -22,17 +22,18 @@ fn edge(p: &egui::Painter, a: egui::Pos2, b: egui::Pos2, c: Color32) {
     }
 }
 
-pub fn draw_lanes(p: &egui::Painter, graph_x: f32, rect: Rect, g: &GraphRow) {
+/// Draws row `g`'s lane lines in `rect`, each in the colour of the branch owning it there.
+pub(super) fn draw_lanes(p: &egui::Painter, graph_x: f32, rect: Rect, g: &GraphRow, colours: &RowColours) {
     let (top, mid, bottom) = (rect.top(), rect.center().y, rect.bottom());
     let x = |i| lane_x(graph_x, i);
     for i in g.through.iter() {
-        edge(p, pos2(x(i), top), pos2(x(i), bottom), lane_color(i));
+        edge(p, pos2(x(i), top), pos2(x(i), bottom), colours.above(i));
     }
     for &(i, c) in &g.top {
-        edge(p, pos2(x(i), top), pos2(x(c), mid), lane_color(i));
+        edge(p, pos2(x(i), top), pos2(x(c), mid), colours.above(i));
     }
     for &(c, j) in &g.bottom {
-        edge(p, pos2(x(c), mid), pos2(x(j), bottom), lane_color(j));
+        edge(p, pos2(x(c), mid), pos2(x(j), bottom), colours.below(j));
     }
 }
 

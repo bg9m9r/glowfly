@@ -1,6 +1,7 @@
 //! The repository tabs' look with the system frame: the lifted active tab, the separators
 //! between quiet tabs, a cut name with its whole name first in the tooltip, and the hover
-//! shape. Then the redrawn Branch icon and the menu icon at their sizes, in Dark and Light.
+//! shape, and the active tab's line in its checked-out branch's colour (grouped and not). Then
+//! the redrawn Branch icon and the menu icon at their sizes, in Dark and Light.
 
 use crate::state::{AppState, Tab};
 use crate::ui::menu_testing::texts_containing;
@@ -67,6 +68,31 @@ fn a_cut_tab_shows_its_whole_name_first() {
     assert!(tip.lines().nth(1).is_some_and(|l| l.ends_with(LONG)), "the path follows: {tip:?}");
     drop(h);
     remove_fixture(&dir);
+}
+
+/// `st`'s repository (`dir`) with topic checked out, from the branch-colour fixture's branches.
+fn on_topic(st: &mut AppState, dir: &std::path::Path) {
+    crate::ui::snapshot_tests::git(dir, &["checkout", "-q", "-b", "topic"], "2026-01-11T10:00:00+00:00");
+    crate::ui::snapshot_tests::reload(st, dir, &trellis_core::repo::LoadOptions::all(500));
+}
+
+#[test]
+fn active_tab_branch_line() {
+    let (mut st, dir) = five_tabs("tabs-branch-line");
+    on_topic(&mut st, &dir);
+    assert!(st.snap.as_ref().unwrap().head_swatch().is_some_and(|s| s != trellis_core::branch_colour::Swatch::Main));
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("active_tab_branch_line");
+    drop(h);
+    let (mut st, dir2) = crate::ui::tabs_tests::grouped_tabs("tabs-branch-line-grouped");
+    on_topic(&mut st, &dir2);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("active_tab_branch_line_grouped");
+    drop(h);
+    remove_fixture(&dir);
+    remove_fixture(&dir2);
 }
 
 #[test]

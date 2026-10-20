@@ -6,7 +6,14 @@
 //!
 //! Other worktrees with uncommitted changes get a WIP row directly above their HEAD commit: each
 //! is laid out as a commit whose only parent is that HEAD and which nothing waits for.
+//!
+//! `owners` works out which branch owns each node and lane, and `branch_colour::resolve` their
+//! colours; `Snapshot::lay_out_graph` runs all three.
 
+mod merge_names;
+pub mod owners;
+
+use crate::branch_colour::{Colouring, Swatch, preferred};
 use crate::repo::CommitInfo;
 use git2::Oid;
 use std::collections::HashMap;
@@ -101,6 +108,23 @@ pub struct Layout {
     /// they were passed in.
     pub worktree_wips: Vec<WorktreeWipRow>,
     pub max_width: usize,
+    /// Who owns each node and lane (empty until `Snapshot::lay_out_graph`).
+    pub owners: owners::Owners,
+    /// Each owner's colour, by owner index.
+    pub swatches: Vec<Swatch>,
+    /// How the swatches were picked; kept when the graph is laid out again.
+    pub colouring: Colouring,
+}
+
+impl Layout {
+    /// The colour of `owner`: its resolved swatch, or its preferred slot when it has none.
+    pub fn swatch(&self, owner: u32) -> Swatch {
+        if let Some(&s) = self.swatches.get(owner as usize) {
+            return s;
+        }
+        let n = self.colouring.n();
+        self.owners.list.get(owner as usize).map_or(Swatch::Slot(0), |o| Swatch::Slot(preferred(o, n)))
+    }
 }
 
 fn free_slot(lanes: &mut Vec<Option<Oid>>) -> usize {

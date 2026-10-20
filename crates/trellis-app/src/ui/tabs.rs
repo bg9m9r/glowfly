@@ -9,6 +9,7 @@
 
 use super::tab_drag::{Slot, drag};
 use super::tab_paint::{ROUNDING, TabLook, close_rect, group_color, paint_group_strip, paint_separator, paint_tab};
+use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets::truncate::full_tip;
 use crate::msg::Msg;
@@ -61,6 +62,9 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         let name = |i: usize| tab_name(st, i);
         let (active_font, font) = (type_scale::strong(ui, type_scale::BODY), type_scale::font(type_scale::BODY));
         let font_of = |active: bool| if active { active_font.clone() } else { font.clone() };
+        // The active tab's line in its checked-out branch's colour.
+        let branch = st.snap.as_ref().and_then(|s| s.head_swatch()).map(line);
+        let branch_of = |active: bool| if active { branch } else { None };
         // Lit tabs (active or hovered) get no separator beside them, and none while dragging.
         if floating.is_none() {
             let lit = |i: usize, s: &Slot| i == st.active_tab || s.r.hovered() || s.close.hovered();
@@ -80,7 +84,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                 Some(f) => {
                     let shift = (new_index(&f.order, i) as f32 - i as f32) * pitch;
                     let rect = rect.translate(vec2(shift, 0.0));
-                    paint_tab(p, rect, name(i), font_of(active), TabLook { active, ..TabLook::default() });
+                    paint_tab(p, rect, name(i), font_of(active), TabLook { active, branch: branch_of(active), ..TabLook::default() });
                     if let Some((members, n)) = group {
                         // Where the group's ends will be after the drop.
                         let at = |j: usize| new_index(&f.order, j);
@@ -90,7 +94,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                 }
                 None => {
                     let (hovered, close_hovered) = (r.hovered() || close.hovered(), close.hovered());
-                    let look = TabLook { active, hovered, show_close: active || hovered, close_hovered };
+                    let look = TabLook { active, hovered, show_close: active || hovered, close_hovered, branch: branch_of(active) };
                     let cut = paint_tab(p, rect, name(i), font_of(active), look);
                     if let Some((members, n)) = group {
                         paint_group_strip(p, rect, group_color(*n), i == members.start, i + 1 == members.end, gap);
@@ -121,7 +125,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         if let Some(f) = floating {
             let active = f.from == st.active_tab;
             // An inactive tab is lifted off the strip on the hover fill, so it reads as held.
-            let look = TabLook { active, hovered: true, show_close: active, close_hovered: false };
+            let look = TabLook { active, hovered: true, show_close: active, close_hovered: false, branch: branch_of(active) };
             paint_tab(ui.painter(), f.rect, name(f.from), font_of(active), look);
             if let Some((_, n)) = shown_at(&shown, f.from) {
                 paint_group_strip(ui.painter(), f.rect, group_color(*n), true, true, gap);

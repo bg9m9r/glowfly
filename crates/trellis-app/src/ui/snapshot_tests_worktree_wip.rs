@@ -11,8 +11,7 @@ use crate::state::{AppState, Selection};
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{Key, PointerButton, pos2};
 use std::path::PathBuf;
-use trellis_core::graph;
-use trellis_core::repo::{ChangeCounts, worktree_wip_heads};
+use trellis_core::repo::ChangeCounts;
 use trellis_core::settings::ResizableColumn::{Commit, Date, Refs};
 use trellis_core::settings::ThemeChoice;
 
@@ -30,7 +29,7 @@ pub(super) fn with_wips(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     for (i, c) in [(1, counts(2, 1, 0)), (2, counts(0, 0, 3)), (3, counts(1, 0, 0)), (4, counts(1, 0, 0))] {
         snap.worktrees[i].changes = c;
     }
-    snap.graph = graph::layout(&snap.commits, snap.head_oid, snap.is_dirty(), &worktree_wip_heads(&snap.worktrees));
+    snap.lay_out_graph();
     (st, dir)
 }
 

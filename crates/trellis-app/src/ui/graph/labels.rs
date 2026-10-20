@@ -122,9 +122,9 @@ pub(super) fn fit(widths: &[f32], room: f32, plus_w: impl Fn(usize) -> f32, gap:
 
 /// Draws a chip of width `w` from `x`, centred on `y`, and returns its rect: a soft fill with no
 /// outline, the tag mark, the name (cut to leave its marks room), then the local mark, the remote
-/// mark and the build marker.
-fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, lane: Color32, w: f32) -> Rect {
-    let (fill, fg) = contrast::ref_chip(spec.style, lane, &color::current());
+/// mark and the build marker, tinted from its branch's `tone`.
+fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: Color32, w: f32) -> Rect {
+    let (fill, fg) = contrast::ref_chip(spec.style, tone, &color::current());
     let r = Rect::from_min_size(pos2(x, y - CHIP_H / 2.0), vec2(w, CHIP_H));
     p.rect_filled(r, CornerRadius::same(4), fill);
     let cp = p.with_clip_rect(r.intersect(p.clip_rect()));
@@ -165,6 +165,9 @@ pub(super) enum Tip {
 /// What one row's BRANCH / TAG cell draws.
 pub(super) struct RefsRow<'a> {
     pub chips: &'a [Chip<'a>],
+    /// Each chip's branch tone (`lane_colours::chip_tones`).
+    pub tones: &'a [Color32],
+    /// The node's colour: the joining line and the ghost chip.
     pub lane: Color32,
     /// The tip's build state, shown on the first chip.
     pub build: Option<CheckState>,
@@ -215,7 +218,7 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
         let mut x = x0;
         for (i, spec) in specs.iter().take(f.shown).enumerate() {
             let w = if i == 0 { f.first_w } else { widths[i] };
-            drawn.push(draw_chip(&rp, x, mid, spec, row.lane, w));
+            drawn.push(draw_chip(&rp, x, mid, spec, row.tones.get(i).copied().unwrap_or(row.lane), w));
             x += w + GAP;
         }
         end = drawn.last().map_or(x0, |r| r.right());
@@ -262,11 +265,11 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
 type PaintMark = fn(&Painter, Pos2, Color32);
 
 /// One label in a tooltip: its painted marks, then its name (naming the copies on remotes level
-/// with it).
-pub(super) fn tip_row(ui: &mut Ui, t: Lang, chip: &Chip, lane: Color32) {
+/// with it), its marks in its branch's `tone`.
+pub(super) fn tip_row(ui: &mut Ui, t: Lang, chip: &Chip, tone: Color32) {
     let spec = ChipSpec::of(chip, None);
     let pal = color::current();
-    let (_, fg) = contrast::ref_chip(spec.style, lane, &pal);
+    let (_, fg) = contrast::ref_chip(spec.style, tone, &pal);
     let ink = readable_on(fg, ui.visuals().window_fill, pal.dark, 3.0);
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 2.0;
@@ -280,10 +283,10 @@ pub(super) fn tip_row(ui: &mut Ui, t: Lang, chip: &Chip, lane: Color32) {
     });
 }
 
-/// Every label of a row, one per line.
-pub(super) fn tip_list(ui: &mut Ui, t: Lang, chips: &[Chip], lane: Color32) {
-    for chip in chips {
-        tip_row(ui, t, chip, lane);
+/// Every label of a row, one per line, each in its own `tones`.
+pub(super) fn tip_list(ui: &mut Ui, t: Lang, chips: &[Chip], tones: &[Color32]) {
+    for (chip, tone) in chips.iter().zip(tones) {
+        tip_row(ui, t, chip, *tone);
     }
 }
 

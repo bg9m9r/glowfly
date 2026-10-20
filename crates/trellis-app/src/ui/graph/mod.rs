@@ -1,11 +1,12 @@
 //! The commit graph: a table with configurable, resizable columns (branch / tag, graph, message,
-//! changes, commit, date), rows banded in their lane's colour, author nodes, ref chips
+//! changes, commit, date), rows banded in their branch's colour (`lane_colours`), author nodes, ref chips
 //! (double-click a branch chip to check it out), ghost refs, branch highlighting, this tab's WIP
 //! row (`wip_row`: its label, change chips and line total) and other worktrees' WIP rows.
 
 mod cells;
 mod header;
 mod labels;
+mod lane_colours;
 mod layout;
 mod marks;
 mod more;
@@ -26,7 +27,6 @@ pub use paint::draw_avatar;
 pub(in crate::ui) use row_look::band_color;
 
 use super::UiCache;
-use super::common::lane_color;
 use super::theme::color;
 use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
@@ -41,6 +41,7 @@ use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Rect, Sense, pos2, vec2};
 use git2::Oid;
 use labels::Tip;
+use lane_colours::RowColours;
 use layout::Columns;
 use nodes::NodeKind;
 use paint::{draw_lanes, lane_x};
@@ -146,18 +147,18 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let painter = ui.painter_at(rect);
                 let cols = Columns::new(rect, graph_w, &cols_cfg, &widths);
                 // A layout that doesn't match the history or the worktrees draws nothing.
-                let (index, commit, g, worktree) = match rows.at(row) {
+                let (index, commit, g, worktree, colours) = match rows.at(row) {
                     Some(DisplayRow::Commit(i)) => match (snap.commits.get(i), snap.graph.rows.get(i)) {
-                        (Some(c), Some(g)) => (i, Some(c), g, None),
+                        (Some(c), Some(g)) => (i, Some(c), g, None, RowColours::commit(snap, i)),
                         _ => continue,
                     },
                     Some(DisplayRow::Wip) => match snap.graph.wip.as_ref() {
-                        Some(g) => (0, None, g, None),
+                        Some(g) => (0, None, g, None, RowColours::wip(snap)),
                         None => continue,
                     },
                     Some(DisplayRow::Worktree(k)) => match snap.graph.worktree_wips.get(k) {
                         Some(w) => match snap.worktrees.get(w.worktree) {
-                            Some(wt) => (0, None, &w.row, Some((w, wt))),
+                            Some(wt) => (0, None, &w.row, Some((w, wt)), RowColours::worktree(snap, k)),
                             None => continue,
                         },
                         None => continue,
@@ -178,7 +179,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     _ => false,
                 };
                 let hovered = resp.hovered();
-                let lane_col = lane_color(g.col);
+                let lane_col = colours.node();
                 let highlighted = commit.is_some_and(|c| highlight.is_some_and(|h| h.contains(&c.oid)));
                 row_look::paint(&painter, rect, row_look::RowLook { lane: lane_col, highlighted, selected, hovered });
 
@@ -189,7 +190,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 // menu is the WORKTREES row's.
                 if let Some((w, wt)) = worktree {
                     let label = crate::state::worktrees::wip_label(t, wt);
-                    worktree_wip::draw(&painter, cols_cfg.tree.then_some(&gp), &cols, rect, w, wt, &label);
+                    worktree_wip::draw(&painter, cols_cfg.tree.then_some(&gp), &cols, rect, (w, wt, &colours), &label);
                     let resp = resp.on_hover_text(wip_tooltip(wt));
                     if resp.clicked() && open_blocked(wt).is_none() {
                         msgs.push(Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));
@@ -198,7 +199,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     continue;
                 }
                 if cols_cfg.tree && !filtered {
-                    draw_lanes(&gp, cols.graph.0, rect, g);
+                    draw_lanes(&gp, cols.graph.0, rect, g, &colours);
                 }
 
                 let Some(c) = commit else {
@@ -226,6 +227,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
                 // BRANCH / TAG column, joined to the node.
                 let chips = snap.refs.get(&c.oid).map(|l| ref_group::chips(l, &ref_cx)).unwrap_or_default();
+                let tones = lane_colours::chip_tones(snap, &chips, lane_col);
                 let mut refs = labels::RefsCell::default();
                 if cols_cfg.refs {
                     let labels = snap.refs.get(&c.oid).map_or(&[][..], |l| l.as_slice());
@@ -236,7 +238,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     }
                     let ghost = settings.ghost_refs && snap.head_oid == Some(c.oid) && (hovered || selected);
                     let node_edge_x = cols_cfg.tree.then(|| node_x - nodes::radius(kind));
-                    let row = labels::RefsRow { chips: &chips, lane: lane_col, build, node_edge_x, pointer, ghost };
+                    let row = labels::RefsRow { chips: &chips, tones: &tones, lane: lane_col, build, node_edge_x, pointer, ghost };
                     refs = labels::refs_cell(&painter, &cols, rect, row);
                     if refs.on_chip {
                         hover_tip_next = Some(c.oid);
@@ -269,8 +271,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
                 let in_date = cols_cfg.date && pointer.is_some_and(|p| cols.rect(cols.cell.date, rect).contains(p));
                 let resp = match refs.hovered_tip {
-                    Some(Tip::All) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_list(ui, t, &chips, lane_col)),
-                    Some(Tip::One(i)) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_row(ui, t, &chips[i], lane_col)),
+                    Some(Tip::All) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_list(ui, t, &chips, &tones)),
+                    Some(Tip::One(i)) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_row(ui, t, &chips[i], tones[i])),
                     _ if hovered && text.msg.hovered(pointer) => resp.on_hover_ui_at_pointer(|ui| cells::message_tip(ui, c, show_body)),
                     _ if hovered && text.sha.hovered(pointer) => resp.on_hover_text_at_pointer(&c.oid.to_string()[..7]),
                     _ if hovered && text.author.hovered(pointer) => resp.on_hover_text_at_pointer(&c.author),

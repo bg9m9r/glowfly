@@ -2,14 +2,17 @@
 //! name with its caret, sized to its name up to `NAME_MAX`. A longer branch name keeps its
 //! start and end around a "…" (`truncate::cut_middle_in`), a longer repository name is cut at
 //! its end, and in a window too narrow for everything both shrink further (`name_widths`). A cut
-//! name shows whole on hover, and the accessible name is always the whole name. The
-//! conflict-check chip follows the group.
+//! name shows whole on hover, and the accessible name is always the whole name. The branch icon
+//! takes the checked-out branch's colour, and each branch in its menu starts with its colour dot.
+//! The conflict-check chip follows the group.
 
 use super::menus::repo_menu;
 use crate::msg::{BranchMsg, Msg};
 use crate::state::AppState;
+use crate::ui::branch_dot;
 use crate::ui::common::{menu_item, short};
 use crate::ui::menu_anchor;
+use crate::ui::theme::branch_colours::line;
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale::{self, BODY, CAPTION};
 use crate::ui::widgets::truncate::{cut_galley, cut_job, cut_middle_in};
@@ -99,12 +102,15 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let shown = cut_middle_in(ui.painter(), head, &font, branch_w);
             let cut = shown != *head;
             let g = ui.painter().layout_no_wrap(shown, font.clone(), color::text());
-            part(ui, t.tr("toolbar.branch"), g, Some(Icon::Branch), head, cut, |ui| {
+            // The icon in the checked-out branch's colour; weak while HEAD is detached.
+            let tone = snap.head_swatch().map_or_else(color::weak, line);
+            part(ui, t.tr("toolbar.branch"), g, Some((Icon::Branch, tone)), head, cut, |ui| {
                 ui.set_min_width(220.0);
                 for b in &snap.locals {
                     let text = if b.is_head { format!("✔ {}", b.name) } else { b.name.clone() };
                     let elsewhere = crate::state::worktree_branches::checkout_blocked(snap, &b.name);
-                    let mut r = ui.add_enabled(!b.is_head && elsewhere.is_none(), egui::Button::new(text));
+                    let enabled = !b.is_head && elsewhere.is_none();
+                    let mut r = branch_dot::menu_row(ui, &text, line(snap.branch_swatch(&b.name)), enabled);
                     if let Some(why) = &elsewhere {
                         r = r.on_disabled_hover_text(why);
                     }
@@ -124,13 +130,13 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     }
 }
 
-/// One picker: `caption` over `name` (with `icon` before it) and the caret, opening `menu`
-/// below it. Named by `full`, which also shows on hover when the name was `cut`.
+/// One picker: `caption` over `name` (with `icon` before it, in its colour) and the caret,
+/// opening `menu` below it. Named by `full`, which also shows on hover when the name was `cut`.
 fn part(
     ui: &mut egui::Ui,
     caption: &str,
     name: Arc<Galley>,
-    icon: Option<Icon>,
+    icon: Option<(Icon, Color32)>,
     full: &str,
     cut: bool,
     menu: impl FnOnce(&mut egui::Ui),
@@ -149,8 +155,8 @@ fn part(
     let x = rect.left() + PAD_X;
     p.galley(pos2(x, rect.top() + 12.0 - caption.size().y / 2.0), caption, color::weak());
     let row_y = rect.top() + 27.0;
-    if let Some(icon) = icon {
-        widgets::paint_icon_sized(p, pos2(x + 7.0, row_y), icon, color::accent(), 14.0);
+    if let Some((icon, tone)) = icon {
+        widgets::paint_icon_sized(p, pos2(x + 7.0, row_y), icon, tone, 14.0);
     }
     let (name_x, name_w) = (x + icon_w, name.size().x);
     p.galley(pos2(name_x, row_y - name.size().y / 2.0), name, color::text());

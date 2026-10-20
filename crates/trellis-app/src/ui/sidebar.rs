@@ -2,11 +2,13 @@
 //! stashes, worktrees and submodules.
 
 use super::backdrop::{self, Surface};
+use super::branch_dot::{self, DOT_ROOM};
 use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, menu_item_if, state_color};
 use super::forge_filter_menu::{self, Picker};
 use super::panel_size;
 use super::ref_visibility;
+use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use super::widgets::{self, Part};
@@ -110,7 +112,8 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             let label = if b.is_head { format!("✔  {}", b.name) } else { b.name.clone() };
             let selected = b.oid.is_some_and(|o| sel.includes(o));
             let right = (!parts.is_empty()).then_some((&parts[..], color::weak()));
-            let (r, marker, cut) = widgets::list_row_cut(ui, widgets::ROW_INDENT, &label, right, slot, selected, b.is_head);
+            let (r, marker, cut) = widgets::list_row_cut(ui, widgets::ROW_INDENT + DOT_ROOM, &label, right, slot, selected, b.is_head);
+            branch_dot::paint(ui.painter(), r.rect, widgets::ROW_INDENT, line(snap.branch_swatch(&b.name)));
             if r.hovered() {
                 *hover_next = b.oid;
             }

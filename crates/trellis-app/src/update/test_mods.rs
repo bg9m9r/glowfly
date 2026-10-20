@@ -17,6 +17,8 @@ pub(super) mod auto_stash_flow_tests;
 pub(super) mod auto_stash_tests;
 #[path = "blame_tests.rs"]
 pub(super) mod blame_tests;
+#[path = "branch_colour_tests.rs"]
+pub(super) mod branch_colour_tests;
 #[path = "branch_tests.rs"]
 pub(super) mod branch_tests;
 #[path = "build_status_tests.rs"]

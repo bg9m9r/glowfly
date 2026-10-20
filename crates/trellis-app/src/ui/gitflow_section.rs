@@ -4,9 +4,11 @@
 //! action; the header's + offers the three Start items, and its menu opens the panel, starts a
 //! branch or configures Git Flow. Also the issue menu's Start Git Flow items.
 
+use super::branch_dot::{self, DOT_ROOM};
 use super::branch_menu::local_branch_menu;
 use super::common::{menu_item, menu_item_if};
 use super::ref_visibility;
+use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets;
 use super::widgets::section_header::{self, AddAction, Header, HeaderAdd};
@@ -84,13 +86,14 @@ pub(super) fn section(
             let right = worktree.map(|_| [widgets::Part::Text(t.tr("sidebar.local.worktree.part"))]);
             let (r, _, cut) = widgets::list_row_cut(
                 ui,
-                widgets::NESTED_INDENT,
+                widgets::NESTED_INDENT + DOT_ROOM,
                 &label,
                 right.as_ref().map(|p| (&p[..], color::weak())),
                 0.0,
                 selected,
                 b.head,
             );
+            branch_dot::paint(ui.painter(), r.rect, widgets::NESTED_INDENT, line(snap.branch_swatch(b.name)));
             if r.hovered() {
                 *hover_next = info.oid;
             }

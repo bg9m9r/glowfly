@@ -208,6 +208,7 @@
   "details.banner.conflicted.other": "{count} conflicted files",
   "details.banner.resolve_first.tip": "Resolve the conflicted files first.",
   "details.banner.view_conflicts.button": "View conflicts",
+  "details.commit.branch.tip": "The branch whose line this commit sits on in the graph",
   "details.commit.changed_files.one": "{count} changed file",
   "details.commit.changed_files.other": "{count} changed files",
   "details.commit.committer.label": "Committed by {committer}",

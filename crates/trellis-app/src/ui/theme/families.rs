@@ -34,31 +34,18 @@ pub struct Repository {
     pub groups: [Color32; 4],
 }
 
-/// The colours of branches: the graph's lanes.
+/// The colours of branches, one per slot of `trellis_core::branch_colour` (the main branch
+/// takes the accent instead): their lines, dots and bands, and their name chips.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Branch {
+    /// Lines, dots and row bands (3:1 on the background and panel).
     pub lanes: [Color32; LANE_COUNT],
+    /// The tone ref chips are tinted with and their text is pushed from.
+    pub chips: [Color32; LANE_COUNT],
 }
 
-/// How many lane colours there are before they repeat.
-pub const LANE_COUNT: usize = 10;
-
-/// The graph's lane colours.
-pub const LANES: [Color32; LANE_COUNT] = [
-    Color32::from_rgb(0x1f, 0xb5, 0xc9),
-    Color32::from_rgb(0x3d, 0x7d, 0xf7),
-    Color32::from_rgb(0x9b, 0x5d, 0xe0),
-    Color32::from_rgb(0xd0, 0x4f, 0xb8),
-    Color32::from_rgb(0xe8, 0x4a, 0x7a),
-    Color32::from_rgb(0xe8, 0x5c, 0x3a),
-    Color32::from_rgb(0xf0, 0x8d, 0x2e),
-    Color32::from_rgb(0xe8, 0xc4, 0x30),
-    Color32::from_rgb(0x7b, 0xc9, 0x3f),
-    Color32::from_rgb(0x2e, 0xc2, 0x95),
-];
-
-/// The branch family every built-in shares.
-pub const BRANCH: Branch = Branch { lanes: LANES };
+/// How many branch hues there are (`trellis_core::branch_colour::SLOTS`).
+pub const LANE_COUNT: usize = trellis_core::branch_colour::SLOTS as usize;
 
 /// The terminal's 16 basic colours (ANSI 0-7 and their bright 8-15), drawn on `input`.
 #[derive(Clone, Copy, PartialEq, Debug)]

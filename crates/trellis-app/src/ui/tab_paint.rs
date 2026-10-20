@@ -1,8 +1,9 @@
 //! How a repository tab looks (`tabs.rs` lays the strip out): a shape with rounded top
 //! corners, no fill while inactive (the chrome shows through), the hover fill in the same
 //! shape, and the active tab lifted onto the panel colour with an accent line along its top.
-//! Neighbouring quiet tabs are parted by a short line, and a worktree group's tabs share a
-//! coloured strip along their bottom.
+//! The active tab also draws a line in its checked-out branch's colour near its bottom, above
+//! the strip a worktree group's tabs share along their bottom. Neighbouring quiet tabs are
+//! parted by a short line.
 
 use super::theme::color;
 use super::widgets::tab_glyph::{self, TabGlyph};
@@ -19,6 +20,9 @@ pub(super) struct TabLook {
     pub hovered: bool,
     pub show_close: bool,
     pub close_hovered: bool,
+    /// The checked-out branch's line tone, drawn along the active tab's bottom; None when
+    /// detached or without a repository.
+    pub branch: Option<Color32>,
 }
 
 /// Paints one tab; returns where its name went and whether it was cut.
@@ -27,6 +31,10 @@ pub(super) fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, font: FontId,
     if look.active {
         p.rect_filled(rect, ROUNDING, color::panel());
         p.line_segment([rect.left_top() + vec2(6.0, 1.0), rect.right_top() + vec2(-6.0, 1.0)], Stroke::new(2.0_f32, color::accent()));
+        if let Some(c) = look.branch {
+            let y = rect.bottom() - 5.0;
+            p.line_segment([pos2(rect.left() + 12.0, y), pos2(rect.right() - 12.0, y)], Stroke::new(2.0_f32, c));
+        }
     } else if look.hovered {
         p.rect_filled(rect, ROUNDING, color::hover());
     }

@@ -14,6 +14,8 @@ use eframe::egui::{self, Stroke};
 use trellis_core::settings::{BuiltinTheme, ThemeChoice};
 
 mod ansi;
+pub mod branch_colours;
+mod branch_palette;
 mod builtin;
 mod builtin_extra;
 pub mod color;
@@ -154,6 +156,7 @@ impl ThemeCache {
 
 #[cfg(test)]
 mod ansi_tests;
+mod branch_colour_tests;
 #[cfg(test)]
 mod controls_tests;
 #[cfg(test)]

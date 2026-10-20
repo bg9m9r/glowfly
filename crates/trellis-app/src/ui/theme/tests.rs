@@ -112,12 +112,12 @@ fn ref_chips_are_readable() {
     let mut failures = Vec::new();
     for t in BuiltinTheme::ALL {
         let p = builtin(t);
-        for lane in 0..crate::ui::common::LANE_COUNT {
+        for lane in super::branch_colours::swatches() {
             for style in ChipStyle::ALL {
-                let (fill, fg) = contrast::ref_chip(style, crate::ui::common::lane_color(lane), p);
+                let (fill, fg) = contrast::ref_chip(style, super::branch_colours::chip_in(lane, p), p);
                 let r = ratio(fg, fill);
                 if fill.a() != 255 || r < 4.5 {
-                    failures.push(format!("{t:?} lane {lane} {style:?}: {r:.2}:1, fill alpha {}", fill.a()));
+                    failures.push(format!("{t:?} {lane:?} {style:?}: {r:.2}:1, fill alpha {}", fill.a()));
                 }
             }
         }
@@ -138,8 +138,8 @@ fn change_colors_are_readable() {
     for t in BuiltinTheme::ALL {
         let p = builtin(t);
         let min = if matches!(t, BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight) { 4.5 } else { 3.0 };
-        let lanes = (0..crate::ui::common::LANE_COUNT)
-            .map(|l| (format!("lane {l}"), crate::ui::graph::band_color(crate::ui::common::lane_color(l), p)));
+        let lanes = super::branch_colours::swatches()
+            .map(|l| (format!("{l:?}"), crate::ui::graph::band_color(super::branch_colours::line_in(l, p), p)));
         let bgs: Vec<(String, Color32)> = [("bg", p.bg), ("panel", p.panel), ("hover", p.hover), ("selected", p.selected)]
             .map(|(n, c)| (n.to_owned(), c))
             .into_iter()
@@ -170,17 +170,17 @@ fn ref_chips_are_soft() {
     let mut failures = Vec::new();
     for t in BuiltinTheme::ALL {
         let p = builtin(t);
-        for lane in 0..crate::ui::common::LANE_COUNT {
-            let lane_col = crate::ui::common::lane_color(lane);
+        for lane in super::branch_colours::swatches() {
+            let lane_col = super::branch_colours::chip_in(lane, p);
             let fill = |style| contrast::ref_chip(style, lane_col, p).0;
             for style in [ChipStyle::Branch, ChipStyle::Remote, ChipStyle::CurrentBranch] {
                 let r = ratio(fill(style), p.bg);
                 if r >= 3.0 {
-                    failures.push(format!("{t:?} lane {lane} {style:?}: {r:.2}:1 against the background"));
+                    failures.push(format!("{t:?} {lane:?} {style:?}: {r:.2}:1 against the background"));
                 }
             }
             if fill(ChipStyle::Branch) == fill(ChipStyle::CurrentBranch) {
-                failures.push(format!("{t:?} lane {lane}: the checked-out branch looks like any other"));
+                failures.push(format!("{t:?} {lane:?}: the checked-out branch looks like any other"));
             }
         }
     }

@@ -225,10 +225,8 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     }
     let (commits, truncated) = super::walk::newest_commits(&repo, &starts, max_commits)?;
     let row_of = commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();
-    let dirty = !unstaged.is_empty() || !staged.is_empty();
-    let graph = graph::layout(&commits, head_oid, dirty, &worktrees::worktree_wip_heads(&worktrees));
 
-    Ok(Snapshot {
+    let mut snap = Snapshot {
         workdir,
         real_workdir,
         opened_as,
@@ -271,10 +269,12 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         trust_scan,
         shallow_roots,
         fetched_at,
-        graph,
+        graph: graph::Layout::default(),
         refs_key,
         loaded_with,
-    })
+    };
+    snap.lay_out_graph();
+    Ok(snap)
 }
 
 /// Ref names to walk when the graph is filtered; None means everything.

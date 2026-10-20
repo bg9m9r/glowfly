@@ -305,6 +305,8 @@ until this list says which option was chosen.
       #3b4097. Light graph lines and dots use brighter tones (3:1 is enough for non-text):
       #c04d6e #719c27 #9776db #a86b06 #0b9db3 #c664a8 #7a8201 #498de5 #d86357 #0a8c89 #9e59b3
       #a98904 #0685b6 #646fd1.
+      Landed 2026-10-19: palette, name-based colour on every surface, main accent, neighbour
+      rule; still to build: Colour… pinning, per-person avatar colours, colour-blind preset.
 - [ ] **Vivid colour** (colour direction C, after Branch-led colour), with one job per colour
       kind: status colours appear only as letter badges or +/− signs in diffs and file lists;
       branch colours only as lines, dots and name pills; repository colours only on window
@@ -2861,3 +2863,14 @@ here, under the item they grew from.
 - Right-click menu on a pill: Rename, Restart, Close, Close others
 - Bell or new-output indicator on inactive terminal tabs
 - Restart terminal in the More menu when the active shell has ended
+
+### Branch-led colour
+
+- A tooltip naming the branch when hovering a lane line in the graph
+- A pinned colour follows a branch rename, and pins of deleted branches are pruned at load
+- A local branch whose upstream has a different name shares the upstream's colour
+- A branch dot on WORKTREES rows (the worktree's checked-out branch) and in the command
+  palette's checkout entries
+- Remember resolved colours per repository so a branch keeps its colour when new neighbours
+  appear (until pins land)
+- Branch tones as theme-file keys

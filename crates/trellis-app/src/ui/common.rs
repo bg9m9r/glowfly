@@ -27,15 +27,6 @@ pub fn widget_row_height(ui: &egui::Ui) -> f32 {
     s.interact_size.y.max(text + 2.0 * s.button_padding.y)
 }
 
-/// How many lane colours there are before they repeat.
-#[cfg(test)]
-pub const LANE_COUNT: usize = super::theme::families::LANE_COUNT;
-
-/// Graph lane `i`'s colour, from the active palette's branch family.
-pub fn lane_color(i: usize) -> Color32 {
-    color::lane(i)
-}
-
 /// Added lines and files: the one colour shared by status letters, line counts, bars and chips.
 pub fn added_color() -> Color32 {
     color::added()

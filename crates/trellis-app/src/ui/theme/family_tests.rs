@@ -3,7 +3,6 @@
 
 use super::color::Palette;
 use super::contrast::{self, ChipStyle, oklch, ratio};
-use super::families::{self, LANE_COUNT};
 use super::tests::{ocean, rgb};
 use super::*;
 use eframe::egui::Color32;
@@ -98,17 +97,18 @@ fn status_stays_out_of_the_reserved_bands() {
     report(&failures);
 }
 
-/// Lanes whose hue sits in a reserved band today. Branch-led colour retunes them and empties
-/// this list.
-const KNOWN_IN_BAND: [usize; 2] = [6, 9];
-
 #[test]
-fn branch_lanes_and_the_reserved_bands() {
-    let in_band: Vec<usize> = (0..LANE_COUNT).filter(|&i| in_reserved_band(families::LANES[i])).collect();
-    assert_eq!(in_band, KNOWN_IN_BAND);
+fn no_branch_tone_sits_in_a_reserved_band() {
+    let mut failures = Vec::new();
     for t in BuiltinTheme::ALL {
-        assert_eq!(builtin(t).branch.lanes, families::LANES, "{t:?}");
+        let b = builtin(t).branch;
+        for (i, c) in b.lanes.iter().chain(&b.chips).enumerate() {
+            if in_reserved_band(*c) {
+                failures.push(format!("{t:?} tone {i} at {:.1} deg", hue(*c)));
+            }
+        }
     }
+    report(&failures);
 }
 
 #[test]
@@ -194,7 +194,7 @@ fn status_chips_are_readable() {
 #[test]
 fn tags_are_sand() {
     for (name, p) in [("Dark", &DARK), ("Light", &LIGHT)] {
-        assert_eq!(contrast::ref_chip(ChipStyle::Tag, families::LANES[0], p), (p.tag_bg, p.tag_fg), "{name}");
+        assert_eq!(contrast::ref_chip(ChipStyle::Tag, p.branch.chips[0], p), (p.tag_bg, p.tag_fg), "{name}");
         let r = ratio(p.tag_fg, p.tag_bg);
         assert!(r >= 4.5, "{name}: tag text is {r:.2}:1");
         let h = hue(p.tag_bg);

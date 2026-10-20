@@ -92,7 +92,7 @@ fn tab_context_menu() {
 
 /// Five tabs: the fixture and a linked worktree of it (group A), an ungrouped tab, and two tabs
 /// of group B. The linked and B tabs are unloaded, with their groups set by hand.
-fn grouped_tabs(name: &str) -> (AppState, PathBuf) {
+pub(super) fn grouped_tabs(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     let base = trellis_core::paths::temp_dir().join(format!("trellis-tab-groups-{name}"));
     let a = st.snap.as_ref().unwrap().common.clone();

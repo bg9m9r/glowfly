@@ -208,6 +208,7 @@
   "details.banner.conflicted.other": "{count} archivos en conflicto",
   "details.banner.resolve_first.tip": "Resuelve primero los archivos en conflicto.",
   "details.banner.view_conflicts.button": "Ver conflictos",
+  "details.commit.branch.tip": "La rama en cuya línea del grafo está este commit",
   "details.commit.changed_files.one": "{count} archivo cambiado",
   "details.commit.changed_files.other": "{count} archivos cambiados",
   "details.commit.committer.label": "Confirmado por {committer}",

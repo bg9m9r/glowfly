@@ -45,7 +45,7 @@ fn load_pending(st: &mut AppState) -> Vec<Effect> {
     let mut snap = trellis_core::repo::load(&workdir, &st.load_options(&workdir)).unwrap();
     snap.worktrees[1].read = ChangesRead::Pending;
     snap.worktrees[1].changes = ChangeCounts::default();
-    super::refresh::lay_out_graph(&mut snap);
+    snap.lay_out_graph();
     let msg = Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Refresh, result: Ok(Box::new(snap)) });
     update(st, msg, Instant::now())
 }

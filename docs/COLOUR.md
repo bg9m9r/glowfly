@@ -64,8 +64,33 @@ theme files always get the base palette's.
 
 ### Branch
 
-`branch.lanes`: the ten graph lane colours, the same in every built-in. Branch-led colour
-replaces them with hues chosen per branch. Not a theme-file key.
+Each branch has one colour wherever it shows: its graph lines, node and row band, its chips,
+its sidebar dot, the Branch picker, the line under the active tab and the commit details'
+branch row. The repository's main branch (the home remote's recorded HEAD, else `main`, then
+`master`) takes `accent`; every other branch takes one of 14 hues (P1), in slot order Rose,
+Lime, Violet, Orange, Cyan, Magenta, Olive, Azure, Red, Teal, Orchid, Gold, Sky, Indigo. They
+keep out of the accent and attention bands, and neighbouring hues alternate between two
+lightness tiers (OKLCH L 0.70 / 0.80 in the dark tones).
+
+- `branch.lanes`: line tones, for lines, dots and bands (3:1 on bg and panel).
+- `branch.chips`: chip tones, which ref chips are tinted with and their text pushed from.
+
+Dark and High contrast dark use the dark tones for both. Light uses bright line tones and
+darker text tones for chips. High contrast light and Sand use the text tones for both, as the
+line tones fall below 3:1 on their surfaces. Not a theme-file key: theme files get their base
+theme's family.
+
+A branch's slot comes from its name: FNV-1a (32-bit) of its UTF-8 bytes, mod 14, the same in
+every session and on every machine. Remote copies share their local namesake's colour
+(`origin/feature` and `feature` are one key); case counts, as in git. Lines no branch names
+(a merge's other parent without a recognisable merge message) hash their first commit's id.
+
+Neighbour rule: two branches that ever sit in side-by-side lanes never share a hue. In order of
+first appearance from the top, each keeps its name's slot unless an already-placed neighbour
+has it, else takes the next slot (wrapping) no placed neighbour uses; with all 14 taken it keeps
+its own. The colour then holds on every surface, so a branch's colour changes only when its
+neighbours in the graph do. `trellis-core`'s `graph/owners.rs` works out which branch owns each
+lane and `branch_colour.rs` picks the colours.
 
 ### Terminal
 
@@ -88,8 +113,7 @@ outside the families and unchanged by the brand colour.
 - Only the accent family (`accent`, `primary`, `primary_border`, `selected`) sits in the
   accent band, about 145 to 175 deg OKLCH hue.
 - Status and branch colours stay out of the accent band and out of the attention band (about
-  35 to 60 deg). Status colours also keep OKLCH chroma at 0.08 or more. Two lanes (6 and 9)
-  sit in a band today; the test lists them as known exceptions until Branch-led colour.
+  35 to 60 deg). Status colours also keep OKLCH chroma at 0.08 or more.
 - Neutrals in Dark and Light keep OKLCH chroma at or below 0.015: Dark is tinted green (hue
   about 160), Light's surfaces are warm paper (hue about 90).
 - In Dark and Light, chrome is darker than the base, and raised is at least 1.08:1 off the
@@ -115,6 +139,8 @@ given, the second is for the high-contrast themes.
 | `on_primary` | primary, and primary shaded 10% and 18% (hover, press) | 4.5 / 7 |
 | `tag_fg` | tag_bg | 4.5 / 7 |
 | Status and `warn` | bg, panel, hover, selected, every lane band | 3 / 4.5 |
+| Branch line tones (`branch.lanes`) and `accent` as main's line | bg, panel | 3 |
+| Light's chip tones (`branch.chips`) | bg, panel, toolbar, hover, selected, raised | 4.5 |
 | Change chip text | its chip tint | 4.5 |
 | Every `syn_*` | panel, diff_add, diff_del, diff_add_word, diff_del_word | 2.4 / 4.5 |
 | Terminal text colours (below) | input | 4.5 / 7 |
@@ -183,6 +209,29 @@ modified (3.9:1 unpushed); in Dark, removed and progress are pushed.
 | tag_bg / tag_fg | #e3dac2 / #6f562a | 4.96:1 |
 | added / removed / modified / info / progress | #357518 / #b63132 / #a06604 / #1f68bc / #6d47b8 | modified is 3.9 to 4.1:1 on chrome and hover (status letters need 3:1) |
 | warn / banner | #a86b00 / #fbecc8 | |
+
+### Branch
+
+Slot by slot (`theme/branch_palette.rs`): dark tones (Dark and High contrast dark), light text
+and chip tones (Light's chips; every line and chip in High contrast light and Sand) and light
+line tones (Light's lines, dots and bands).
+
+| Slot | Hue | Dark | Light text | Light line |
+|---|---|---|---|---|
+| 0 | Rose | #e77492 | #861f43 | #c04d6e |
+| 1 | Lime | #a3cf64 | #4d7002 | #719c27 |
+| 2 | Violet | #c5aeff | #6d4ea8 | #9776db |
+| 3 | Orange | #d78c1a | #6c4302 | #a86b06 |
+| 4 | Cyan | #04d4f1 | #057080 | #0b9db3 |
+| 5 | Magenta | #fb97db | #953d7c | #c664a8 |
+| 6 | Olive | #9ea827 | #4d5201 | #7a8201 |
+| 7 | Azure | #93c1fe | #2462b1 | #498de5 |
+| 8 | Red | #fea195 | #a43c33 | #d86357 |
+| 9 | Teal | #0ab5b1 | #005957 | #0a8c89 |
+| 10 | Orchid | #c37fd8 | #6b2d7d | #9e59b3 |
+| 11 | Gold | #dfba3b | #786101 | #a98904 |
+| 12 | Sky | #0aabea | #005475 | #0685b6 |
+| 13 | Indigo | #8794f7 | #3b4097 | #646fd1 |
 
 High contrast dark, High contrast light and Sand keep their own surfaces, text, diff and syntax
 colours (their `raised` is their `toolbar`); their accent family is green at their own

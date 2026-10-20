@@ -5,11 +5,12 @@ use super::color::{self, Palette};
 use super::contrast::{self, ChipStyle};
 use super::controls::{self, Check};
 use super::{apply_style, egui_theme};
-use crate::ui::common::{LANE_COUNT, lane_color};
 use crate::ui::snapshot_check::CheckSnapshot;
+use crate::ui::theme::branch_colours::{chip_in, swatches};
 use crate::ui::widgets;
 use eframe::egui::{self, vec2};
 use egui_kittest::Harness;
+use trellis_core::branch_colour::Swatch;
 
 struct Form {
     empty: String,
@@ -57,11 +58,11 @@ fn render_controls(name: &str, p: Palette) {
             let painter = ui.painter();
             let mut x = rect.left();
             let mut y = rect.top() + 12.0;
-            let mut chips = vec![(ChipStyle::Head, 0, "HEAD"), (ChipStyle::CurrentBranch, 0, "✔ main")];
-            chips.extend((0..LANE_COUNT).map(|lane| (ChipStyle::Branch, lane, "topic")));
-            chips.extend([(ChipStyle::Remote, 1, "origin/main"), (ChipStyle::Tag, 0, "v1.2.0")]);
+            let mut chips = vec![(ChipStyle::Head, Swatch::Main, "HEAD"), (ChipStyle::CurrentBranch, Swatch::Main, "✔ main")];
+            chips.extend(swatches().skip(1).map(|lane| (ChipStyle::Branch, lane, "topic")));
+            chips.extend([(ChipStyle::Remote, Swatch::Main, "origin/main"), (ChipStyle::Tag, Swatch::Main, "v1.2.0")]);
             for (style, lane, text) in chips {
-                let (fill, fg) = contrast::ref_chip(style, lane_color(lane), &p);
+                let (fill, fg) = contrast::ref_chip(style, chip_in(lane, &p), &p);
                 if x > rect.right() - 90.0 {
                     x = rect.left();
                     y += 26.0;

@@ -3,8 +3,9 @@
 //! high-contrast and Sand palettes are in `builtin_extra.rs`. The values and the rules they meet
 //! are in docs/COLOUR.md.
 
+use super::branch_palette::{BRANCH_DARK, BRANCH_LIGHT};
 use super::color::Palette;
-use super::families::{Attention, BRANCH, Repository, Status};
+use super::families::{Attention, Repository, Status};
 use eframe::egui::Color32;
 use trellis_core::settings::BuiltinTheme;
 
@@ -76,7 +77,7 @@ pub const DARK: Palette = Palette {
     syn_function: rgb(0x6f, 0xae, 0xf2),
     syn_attr: rgb(0x8a, 0xc6, 0xd0),
     repository: Repository { groups: [rgb(0x5b, 0x9b, 0xf0), rgb(0xa8, 0x7c, 0xe8), rgb(0x5c, 0xc4, 0x5a), rgb(0xe8, 0xb3, 0x39)] },
-    branch: BRANCH,
+    branch: BRANCH_DARK,
     ansi: super::ansi::DARK,
 };
 
@@ -130,6 +131,6 @@ pub const LIGHT: Palette = Palette {
     syn_function: rgb(0x1f, 0x5f, 0xbf),
     syn_attr: rgb(0x00, 0x6b, 0x75),
     repository: Repository { groups: [rgb(0x1f, 0x63, 0xc8), rgb(0x75, 0x3f, 0xc4), rgb(0x23, 0x8a, 0x2f), rgb(0xa8, 0x6b, 0x00)] },
-    branch: BRANCH,
+    branch: BRANCH_LIGHT,
     ansi: super::ansi::LIGHT,
 };

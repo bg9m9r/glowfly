@@ -5,9 +5,11 @@
 //! remote-tracking branch rows. The header's + and menu add a remote; its count is the number of
 //! remotes.
 
+use super::branch_dot::{self, DOT_ROOM};
 use super::common::{hint_row, menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use super::remote_branch_menu::{RemoteMenu, remote_branch_menu};
+use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
@@ -93,7 +95,9 @@ pub(in crate::ui) fn section(
             if widgets::list_row_hidden(ui) {
                 continue;
             }
-            let (r, marker, cut) = widgets::list_row_cut(ui, widgets::NESTED_INDENT, name, None, slot, c.sel.includes(*oid), false);
+            let (r, marker, cut) =
+                widgets::list_row_cut(ui, widgets::NESTED_INDENT + DOT_ROOM, name, None, slot, c.sel.includes(*oid), false);
+            branch_dot::paint(ui.painter(), r.rect, widgets::NESTED_INDENT, line(snap.branch_swatch(name)));
             if r.hovered() {
                 *hover_next = Some(*oid);
             }

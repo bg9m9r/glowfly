@@ -12,6 +12,7 @@ mod avatars;
 pub(crate) mod backdrop;
 mod blame;
 mod branch_dialogs;
+mod branch_dot;
 mod branch_menu;
 mod build_status;
 mod central;
@@ -162,6 +163,8 @@ mod snapshot_tests_blame_menu;
 mod snapshot_tests_blame_wrap;
 #[cfg(test)]
 mod snapshot_tests_branch;
+#[cfg(test)]
+mod snapshot_tests_branch_colour;
 #[cfg(test)]
 mod snapshot_tests_clone;
 #[cfg(test)]

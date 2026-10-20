@@ -3,7 +3,8 @@
 //! that should run hooks or talk to remotes go through `gitcli`.
 //!
 //! The types are here (the diff ones in `diff_types`, `Snapshot`'s queries in `snapshot_impl`);
-//! the work is split by area: `load` (history, refs, status), `status_paths` and `status_merge`
+//! the work is split by area: `load` (history, refs, status), `branch_colours` (laying the graph
+//! out with each lane's owner and colour), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`
 //! (and `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per
 //! file of a commit or of the working tree),
@@ -30,6 +31,7 @@ mod attrs;
 mod binary_sides;
 mod blame;
 mod blame_porcelain;
+mod branch_colours;
 mod collide;
 mod common_dir;
 mod conflict;
@@ -367,6 +369,8 @@ impl LoadOptions {
     }
 }
 
+#[cfg(test)]
+mod branch_colours_tests;
 #[cfg(test)]
 mod bytes_tests;
 #[cfg(test)]

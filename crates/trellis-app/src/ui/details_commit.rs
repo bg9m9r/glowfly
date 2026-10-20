@@ -1,13 +1,15 @@
-//! The selected commit's details, title first: the title (the message's first paragraph, as
-//! git treats it), the author with a relative date and the signature badge, the chips row
+//! The selected commit's details, title first: the branch whose line it sits on (a colour dot and
+//! its name), the title (the message's first paragraph, as git treats it), the author with a relative date and the signature badge, the chips row
 //! (`details_chips`: SHA, parents, committer), the body in a readable block, the forge issues
 //! it mentions, then its changed files.
 
 use super::UiCache;
-use super::common::{issue_chip, lane_color};
+use super::branch_dot::{self, DOT_ROOM};
+use super::common::issue_chip;
 use super::details::{RowActions, changed_file_row, file_reveal};
 use super::file_menu::RowSource;
 use super::graph::draw_avatar;
+use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
@@ -74,6 +76,7 @@ pub(super) fn panel(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut 
         return super::pane_status::loading_line(ui, t.tr("common.loading"));
     };
     let (title, body) = split_message(&d.message);
+    branch_row(ui, st, d);
     if title.is_empty() {
         ui.label(RichText::new(t.tr("details.commit.no_message.label")).color(color::weak()));
     } else {
@@ -103,6 +106,23 @@ pub(super) fn panel(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut 
     files(ui, st, d, msgs);
 }
 
+/// The branch whose line the commit sits on in the graph: its dot and name, small and weak.
+/// Left out for unnamed lines and commits not in the graph (stashes among them).
+fn branch_row(ui: &mut Ui, st: &AppState, d: &CommitDetail) {
+    let Some((name, swatch)) = st.snap.as_ref().and_then(|s| s.commit_branch(d.oid)) else { return };
+    let tip = st.settings.lang().tr("details.commit.branch.tip");
+    let r = ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 0.0;
+        let text = RichText::new(name).size(type_scale::SMALL).color(color::weak());
+        let h = ui.text_style_height(&egui::TextStyle::Body);
+        let (dot, _) = ui.allocate_exact_size(vec2(DOT_ROOM, h), Sense::hover());
+        branch_dot::paint(ui.painter(), dot, 0.0, line(swatch));
+        widgets::cut_label(ui, text, ui.available_width()).0
+    });
+    let _ = r.inner.on_hover_text(tip);
+    gap(ui, 6.0);
+}
+
 /// The author's avatar, name and relative date (the whole name, email and date on hover), with
 /// the signature badge at the row's right end. The name is cut first in a narrow panel.
 fn person_row(ui: &mut Ui, st: &AppState, cache: &mut UiCache, d: &CommitDetail, msgs: &mut Vec<Msg>) {
@@ -117,7 +137,8 @@ fn person_row(ui: &mut Ui, st: &AppState, cache: &mut UiCache, d: &CommitDetail,
     ui.allocate_ui_with_layout(vec2(ui.available_width(), PERSON_H), Layout::left_to_right(Align::Center), |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(PERSON_H, PERSON_H), Sense::hover());
         let av = if st.settings.use_initials { None } else { Some(&mut cache.avatars) };
-        draw_avatar(ui.painter(), rect.center(), AVATAR_R, &d.author, &d.email, lane_color(0), av);
+        let ring = st.snap.as_ref().and_then(|s| s.commit_swatch(d.oid)).map_or_else(color::faint, line);
+        draw_avatar(ui.painter(), rect.center(), AVATAR_R, &d.author, &d.email, ring, av);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             super::signature_badge::show(ui, st, d, msgs);
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {

@@ -45,7 +45,7 @@ pub(in crate::ui) fn band_color(lane: Color32, pal: &Palette) -> Color32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::common::{LANE_COUNT, lane_color};
+    use crate::ui::theme::branch_colours::{line_in, swatches};
     use crate::ui::theme::{DARK, LIGHT, builtin};
     use trellis_core::settings::BuiltinTheme;
 
@@ -54,17 +54,19 @@ mod tests {
         let mut failures = Vec::new();
         for t in BuiltinTheme::ALL {
             let p = builtin(t);
-            for lane in 0..LANE_COUNT {
-                let band = band_color(lane_color(lane), p);
+            for lane in swatches() {
+                let band = band_color(line_in(lane, p), p);
                 let (weak, text) = (ratio(p.weak, band), ratio(p.text, band));
                 if band.a() != 255 || weak < 4.5 || text < ratio(p.text, p.bg).min(7.0) {
-                    failures.push(format!("{t:?} lane {lane}: weak {weak:.2}:1, text {text:.2}:1, alpha {}", band.a()));
+                    failures.push(format!("{t:?} {lane:?}: weak {weak:.2}:1, text {text:.2}:1, alpha {}", band.a()));
                 }
             }
         }
         assert!(failures.is_empty(), "{}", failures.join("\n"));
         for p in [DARK, LIGHT] {
-            assert_ne!(band_color(lane_color(0), &p), p.bg, "the band shows on the standard palettes");
+            for lane in swatches() {
+                assert_ne!(band_color(line_in(lane, &p), &p), p.bg, "{lane:?}: the band shows on the standard palettes");
+            }
         }
     }
 }
