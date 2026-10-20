@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-20 18:41 · **Window chrome and toolbar**: The Repository and Branch pickers keep fixed name slots (shrinking only in a narrow window), so switching tabs or branches no longer moves Undo and the groups after it; the conflict chip joins the untrusted chip before the right-hand group, the toolbar moves onto the panel surface with 10 px group gaps, Pull, Push and PR become split buttons lit as one pill with a stroked caret, and Terminal, Activity and Search keep a fill while on; tabs become as wide as their names with a repository icon, a fading ×, and an active tab 2 px taller on the toolbar's fill with one band in the branch colour, and dragging slides tabs of any width (`f3de24f5`)
 - 2026-10-20 14:32 · **Operation journal**: View > Operation journal and the palette open a timeline of every state HEAD and the local branches have been in, from git's reflogs plus Trellis's own "Before resetting main to ..." notes written around history-rewriting operations, with a preview of each state's history and what Restore would move; Restore puts a branch back (stashing local changes in the same dialog), recreates a deleted branch or checks out an old HEAD, and Undo takes it back (`307476d2`)
 - 2026-10-20 13:16 · **Disabled menu items explain on hover**: Every disabled menu item (context menus, the menu bar, the toolbar's Pull and Push dropdowns, the branch picker, the tab menu, the favorites row menu and the pull request and issue filter popover) greys its label and shows a painted info mark at its right, left of any shortcut, with the whole reason in the shared tooltip on hover or at once while it has the keyboard focus; blocked items take focus but never run, screen readers read the reason as the item's description, and the toolbar dropdowns, branch picker, tab menu and favorites menu gain their reasons (`d7a7b6c1`)
 - 2026-10-20 12:42 · **Activity panel design**: The activity tab lists one row per finished operation with a painted result mark, its title, a short summary, how long it took and when; a failed run opens in place with the cause, its fix (shared with the toast and run once) and Copy over the output in a quiet block coloured by line kind, Details opens and scrolls to it, routine auto-fetches fold into one grey row, earlier sessions sit under real headers, and the panel gets a 40 px header with segmented tabs and icon buttons (`970bb47e`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-19 15:02 · **Activity panel opens only when asked**: A failure no longer opens the activity panel but shows a red toast with Details, which selects that tab and shows its log; each repository tab keeps its own activity log, with results, finished jobs and git lines going to their tab's log, earlier sessions' lines handed back to their tabs from the file (now tagged with the repository) and Clear emptying only that tab's (`91e30f9b`)
 - 2026-10-19 14:49 · **Stash and carry on**: Checkout, pull, merge, rebase, cherry-pick, revert and hard reset on a dirty tree ask once ("Uncommitted changes", with Stash and pull or the like, Cancel and Always stash, or Discard and reset for a hard reset), stash the changes as "Auto-stash before ..." in the same job and put them back when the operation is over, even after Continue, Abort or Commit merge; toasts name the stash with a Show stash button when it is kept, and STASHES marks auto-stashes (`c227a21d`)
 - 2026-10-19 14:04 · **Trellis's own wording**: Preferences help, the expired-key link, the worktree-tab checkbox and the nav's Back to repository row get fresh wording, the options read Quick-branch chip, Trace a branch on hover, Relevant branches and Long date / Date and time / Full date and time, the commit button says Commit N files or Stage something to commit, another worktree's row reads Uncommitted changes · folder, the left panel offers Show only this and Show the rest from the language tables, and blank date patterns follow the date locale (ISO 8601 when unknown), with old saved defaults cleared (`48313864`)
-- 2026-10-19 12:20 · **Clearer prompts and safer controls**: An unknown SSH host is shown as Host, Address, Key type and Fingerprint fields with the raw text under Details and Cancel the default, the sign-in fields get visible labels, Skip hooks moves into a more-actions menu by the commit button that turns amber while on, Kill asks first while a terminal runs a program, repo sync gets Stop, per-row Retry and Open and the whole error on hover, the rebase panel's Reset reads Restore original order, and graph search gets a clear button and a fixed-width count (`6f14f8fc`)
 
 ---
 
@@ -2875,7 +2875,6 @@ here, under the item they grew from.
 - Dragging the only tab moves the window instead of the tab
 - Dim the window buttons under a dialog's backdrop
 - Toolbar groups that don't fit fold into a ⋯ menu instead of crowding the pickers
-- A repository icon before each tab's name
 - Cut long repository names in the middle on tabs, like the branch picker
 - Vibrancy behind the macOS title bar, toolbar and sidebar
 - Mica on Windows 11 21H2 (build 22000), which lacks the documented backdrop attribute
@@ -2889,6 +2888,15 @@ here, under the item they grew from.
   the lightest dark Mica stand-ins at every tint step and stays opaque)
 - Resize from the top edge above the Maximize button (the hit test gives that strip to the
   button, for Snap Layouts)
+- The stroked dropdown caret on the other dropdowns too (the diff header's View menu, the
+  pull request filter chips, the terminal's shell caret, combo-style menu buttons)
+- A quiet tab's faint repository icon on a Mica title bar: the Chrome surface's contrast checks
+  leave out `faint`, so check it at 3:1 as an icon
+- In a window too narrow for every group, a chip appearing still narrows the pickers (it counts
+  in the right-hand block's width); fold the chips into the right-hand group's room instead
+- Animate the dropped tab settling into its slot, like the others slide
+- The system frame's tab bar lifts the active tab within its own 30 px (the tabs start 2 px
+  lower); give it the drawn title bar's 34 px tabs
 
 ### Terminal panel
 
