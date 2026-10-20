@@ -17,6 +17,11 @@ fn job_running(st: &AppState) -> Option<String> {
     st.job.is_some().then(|| st.settings.lang().tr("commit.blocked.job_running").to_owned())
 }
 
+/// Why an action that only needs no job running can't start (Force push, Publish).
+pub fn busy_blocked(st: &AppState) -> Option<String> {
+    job_running(st)
+}
+
 /// The checked-out branch's row, or None on a detached HEAD.
 fn head(snap: &Snapshot) -> Option<&BranchInfo> {
     snap.head_branch.as_ref()?;

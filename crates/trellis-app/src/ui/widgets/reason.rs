@@ -7,31 +7,25 @@
 //!   (the commit box);
 //! - `above` and `in_row`: a dialog footer's reason, in the row's free space before the dismiss
 //!   button, or on its own row above the buttons when the row has less than `IN_ROW_MIN` free;
-//! - `menu_button`: a menu item with a short weak suffix after its label: the short form of why
-//!   it is disabled (`state::blocked`), or `SET_UP` for an entry that opens the setting it needs.
-//!   The suffix is painted text, not a widget, so the item's accessible name stays its label.
+//! - `menu_button` (in `menu_reason.rs`, re-exported here): a menu item with its label greyed
+//!   and a painted info mark when it is disabled, the reason in the shared tooltip on hover or
+//!   keyboard focus, or `SET_UP` after the label of an entry that opens the setting it needs.
 
 use super::super::theme::{color, type_scale};
 use super::truncate::truncate_label;
-use crate::state::blocked::Blocked;
-use eframe::egui::{
-    Align, Button, Direction, FontId, Layout, Response, RichText, Sense, TextStyle, TextWrapMode, Ui, UiBuilder, WidgetText, pos2, vec2,
-};
+use eframe::egui::{Align, Direction, Layout, Response, RichText, Sense, TextStyle, TextWrapMode, Ui, UiBuilder, WidgetText, vec2};
+
+pub use super::menu_reason::{ItemState, menu_button};
 
 /// The reason line's text size, and the height a `line` always takes.
 pub const LINE_SIZE: f32 = type_scale::SMALL;
 pub const LINE_H: f32 = 18.0;
-/// A menu item's suffix: its text size and the space between the label and it.
-pub const SUFFIX_SIZE: f32 = type_scale::SMALL;
-pub const SUFFIX_GAP: f32 = 10.0;
 /// The least free space in a dialog footer's row for its reason to go there, and the space
 /// between the reason and the dismiss button.
 pub const IN_ROW_MIN: f32 = 140.0;
 pub const ROW_GAP: f32 = 12.0;
 /// The height of a dialog footer's buttons, which the reason in their row is centred on.
 const FOOTER_ROW_H: f32 = 28.0;
-/// The suffix of an entry whose program or setting isn't set yet (it opens that setting).
-pub const SET_UP: &str = "Set up…";
 
 fn text(why: &str) -> RichText {
     RichText::new(why).size(LINE_SIZE).color(color::weak())
@@ -85,65 +79,6 @@ pub fn in_row(ui: &mut Ui, why: &str, gap: f32) {
     ui.add_space((ROW_GAP - spacing).max(0.0));
 }
 
-/// A menu item's state: usable, disabled with a reason, or usable while what it needs isn't
-/// set up yet (carrying the hover note; it opens the setting).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ItemState<'a> {
-    Ready,
-    Blocked(Blocked<'a>),
-    Setup(&'a str),
-}
-
-impl<'a> ItemState<'a> {
-    /// Blocked with the short form derived from `why` when there is one, else ready.
-    pub fn blocked_by(why: Option<&'a str>) -> Self {
-        why.map_or(Self::Ready, |w| Self::Blocked(w.into()))
-    }
-}
-
-/// A menu item: `label` (never wrapped), `shortcut` at the right when not empty, and for a
-/// blocked or setup state a weak suffix after the label, with the menu widened to fit it. A
-/// blocked item is disabled (drawn as egui draws one) with the whole reason on hover; a setup
-/// item stays enabled with its note on hover.
-pub fn menu_button(ui: &mut Ui, label: impl Into<WidgetText>, shortcut: impl Into<WidgetText>, state: ItemState<'_>) -> Response {
-    let shortcut = shortcut.into();
-    let suffix = match &state {
-        ItemState::Ready => {
-            let mut b = Button::new(label).wrap_mode(TextWrapMode::Extend);
-            if !shortcut.is_empty() {
-                b = b.shortcut_text(shortcut);
-            }
-            return ui.add(b);
-        }
-        ItemState::Blocked(b) => b.short.to_string(),
-        ItemState::Setup(_) => SET_UP.to_owned(),
-    };
-    // Placeholder colour (unless the label has its own): egui paints the enabled or disabled
-    // text colour.
-    let label = label.into().into_galley(ui, Some(TextWrapMode::Extend), f32::INFINITY, TextStyle::Button);
-    let suffix = ui.fonts(|f| f.layout_no_wrap(suffix, FontId::proportional(SUFFIX_SIZE), color::weak()));
-    let s = ui.spacing();
-    let (pad, spacing) = (s.button_padding.x, s.item_spacing.x);
-    let label_w = label.size().x;
-    let mut min_w = 2.0 * pad + label_w + SUFFIX_GAP + suffix.size().x;
-    let mut button = Button::new(WidgetText::Galley(label)).wrap_mode(TextWrapMode::Extend);
-    if !shortcut.is_empty() {
-        let key = shortcut.clone().into_galley(ui, Some(TextWrapMode::Extend), f32::INFINITY, TextStyle::Button);
-        min_w += spacing + key.size().x;
-        button = button.shortcut_text(shortcut);
-    }
-    let blocked = matches!(state, ItemState::Blocked(_));
-    let r = ui.add_enabled(!blocked, button.min_size(vec2(min_w, 0.0)));
-    // The outer painter: the suffix isn't faded with the disabled label.
-    let at = pos2(r.rect.left() + pad + label_w + SUFFIX_GAP, r.rect.center().y - suffix.size().y / 2.0);
-    ui.painter().galley(at, suffix, color::weak());
-    match state {
-        ItemState::Blocked(b) => r.on_disabled_hover_text(b.full.as_ref()),
-        ItemState::Setup(note) => r.on_hover_text(note),
-        ItemState::Ready => r,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,16 +103,5 @@ mod tests {
             assert_eq!(h.query_by_label("Enter a summary").is_some(), why.is_some());
         }
         assert!(heights.windows(2).all(|w| w[0] == w[1]), "{heights:?}");
-    }
-
-    #[test]
-    fn menu_items_keep_their_label_as_name() {
-        let mut h = Harness::new_ui(|ui| {
-            menu_button(ui, "Unlock", "", ItemState::Blocked("It is locked. Unlock it first.".into()));
-            menu_button(ui, "Open", "", ItemState::Setup("Opens the page"));
-        });
-        h.run();
-        assert!(h.get_by_label("Unlock").is_disabled());
-        assert!(!h.get_by_label("Open").is_disabled());
     }
 }

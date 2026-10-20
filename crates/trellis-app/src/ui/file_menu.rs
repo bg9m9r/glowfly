@@ -121,7 +121,7 @@ pub(super) fn revert_file_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, target: D
         _ => "Undo this commit's changes to the file in your working copy. The commit itself is not changed.",
     };
     let r = match blocked {
-        Some(why) => reason::menu_button(ui, REVERT_FILE, "", ItemState::Blocked(why.into())),
+        Some(why) => reason::menu_button(ui, REVERT_FILE, "", ItemState::Blocked(why)),
         None => reason::menu_button(ui, REVERT_FILE, "", ItemState::Ready).on_hover_text(hover),
     };
     if r.clicked() {
@@ -197,7 +197,7 @@ fn new_file_here(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str) {
 pub(super) fn lfs_track_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, items: &[TrackItem]) {
     for item in items {
         let r = match &item.blocked {
-            Some(why) => reason::menu_button(ui, &item.label, "", ItemState::Blocked(why.as_str().into())),
+            Some(why) => reason::menu_button(ui, &item.label, "", ItemState::Blocked(why.as_str())),
             None => reason::menu_button(ui, &item.label, "", ItemState::Ready).on_hover_text(&item.hover),
         };
         if r.clicked() {

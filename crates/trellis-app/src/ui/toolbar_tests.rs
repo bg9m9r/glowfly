@@ -1,6 +1,8 @@
 //! The restyled toolbar in the fixture window: its spacing (2 px within a group, none before a
-//! caret, 16 px from a button to the next group's), pickers sized to their names, tooltips for a focused button and near the window's edge, and
-//! snapshots of the bar and of the rich tooltips. Motion is reduced so a tooltip settles at once.
+//! caret, 16 px from a button to the next group's), pickers sized to their names, tooltips for a
+//! focused button and near the window's edge, the reasons of a busy toolbar's dropdown items,
+//! and snapshots of the bar and of the rich tooltips. Motion is reduced so a tooltip settles at
+//! once.
 
 use crate::state::AppState;
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -83,6 +85,30 @@ fn a_focused_button_shows_its_tooltip() {
     settle(&mut h);
     assert!(h.query_by_label("No stashes to pop").is_some(), "Pop's tooltip");
     assert!(h.query_by_label("Nothing to undo").is_none(), "one tooltip at a time");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn busy_dropdown_items_say_why() {
+    let (mut st, dir) = plain(ThemeChoice::Dark, "toolbar-busy-menus");
+    crate::state::toolbar_tips::tests::running(&mut st);
+    let busy = trellis_core::i18n::Lang::En.tr("commit.blocked.job_running");
+    // A running job shows a spinner, which keeps repainting.
+    let mut h = harness(st, true);
+    h.run_steps(4);
+    h.get_by_label("More pull actions").click();
+    h.run_steps(4);
+    let fetch = h.get_by_label("Fetch all");
+    assert!(fetch.is_disabled());
+    assert_eq!(fetch.description().as_deref(), Some(busy));
+    h.get_by_label("More push actions").click();
+    h.run_steps(4);
+    for label in ["Force push (with lease)", "Publish to GitHub…"] {
+        let item = h.get_by_label(label);
+        assert!(item.is_disabled(), "{label}");
+        assert_eq!(item.description().as_deref(), Some(busy), "{label}");
+    }
     drop(h);
     remove_fixture(&dir);
 }

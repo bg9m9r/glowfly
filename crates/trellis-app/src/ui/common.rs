@@ -8,7 +8,6 @@ use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
-use crate::state::blocked::Blocked;
 use crate::state::{AppState, ForgeState, PrefPage, Status};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
@@ -132,19 +131,14 @@ pub fn menu_item(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::
     menu_item_state(msgs, ui, label, ItemState::Ready, m);
 }
 
-/// A menu item that is disabled while `blocked` is set: a short form of the reason follows the
-/// label, and the whole reason shows on hover.
+/// A menu item that is disabled while `blocked` is set: greyed with a painted info mark, the
+/// whole reason in a tooltip on hover or keyboard focus.
 pub fn menu_item_if(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: Option<&str>, m: Msg) {
     menu_item_state(msgs, ui, label, ItemState::blocked_by(blocked), m);
 }
 
-/// `menu_item_if` with the site's own short form of the reason.
-pub fn menu_item_blocked(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: Option<Blocked<'_>>, m: Msg) {
-    menu_item_state(msgs, ui, label, blocked.map_or(ItemState::Ready, ItemState::Blocked), m);
-}
-
-/// A menu item that stays enabled while what it needs isn't set up (`setup` holds the hover
-/// note): a weak "Set up…" follows the label, and running it opens the setting.
+/// A menu item that stays enabled while what it needs isn't set up (`setup` holds the note shown
+/// on hover or focus): a weak "Set up…" follows the label, and running it opens the setting.
 pub fn menu_item_setup(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, setup: Option<&str>, m: Msg) {
     menu_item_state(msgs, ui, label, setup.map_or(ItemState::Ready, ItemState::Setup), m);
 }

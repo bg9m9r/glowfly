@@ -1,9 +1,11 @@
 //! The filter chip in the PULL REQUESTS and ISSUES headers, and its popover: the built-in
 //! filters, the repository's saved filters (edit, move, remove) and New filter…, sent as
-//! `Msg::ForgeFilter`; the chip sits left of the shared header's + and ⋯.
+//! `Msg::ForgeFilter`; the chip sits left of the shared header's + and ⋯. A built-in filter the
+//! service can't run is greyed with an info mark, its reason on hover or keyboard focus.
 
 use super::common::{forge_error_rows, hint_row};
 use super::theme::color;
+use super::widgets::menu_reason;
 use super::widgets::section_header::{self, HeaderAdd, HeaderResponse, MenuFn};
 use super::widgets::{self, Icon};
 use crate::msg::{FilterMsg, Msg};
@@ -78,9 +80,8 @@ fn popover(ui: &mut egui::Ui, t: Lang, p: &Picker, msgs: &mut Vec<Msg>) {
     let builtins: &[Builtin] = if p.kind == FilterKind::Prs { &Builtin::PRS } else { &Builtin::ISSUES };
     for &b in builtins {
         let why = p.provider.and_then(|pr| matching::unsupported(pr, p.kind, &b.conditions()));
-        let r = row(ui, b.label(), shown == FilterChoice::Builtin(b), why.is_none());
+        let r = row(ui, b.label(), shown == FilterChoice::Builtin(b), why.as_deref());
         let r = match (&why, p.provider) {
-            (Some(why), _) => r.on_disabled_hover_text(why),
             (None, Some(Provider::AzureDevOps)) if b == Builtin::IssuesMentioningMe => {
                 r.on_hover_text("Azure Boards finds mentions from the last 30 days.")
             }
@@ -104,7 +105,7 @@ fn popover(ui: &mut egui::Ui, t: Lang, p: &Picker, msgs: &mut Vec<Msg>) {
     }
     ui.add_space(4.0);
     ui.separator();
-    if row(ui, t.tr("sidebar.new_filter"), false, true).clicked() {
+    if row(ui, t.tr("sidebar.new_filter"), false, None).clicked() {
         choose(ui, msgs, FilterMsg::NewDialog(p.kind));
     }
 }
@@ -114,12 +115,19 @@ fn choose(ui: &egui::Ui, msgs: &mut Vec<Msg>, m: FilterMsg) {
     msgs.push(Msg::ForgeFilter(m));
 }
 
-/// A selectable row: the text, with a painted check mark when it is the one on show.
-fn row(ui: &mut egui::Ui, text: &str, checked: bool, enabled: bool) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW), if enabled { Sense::click() } else { Sense::hover() });
+/// A selectable row: the text, with a painted check mark when it is the one on show. While
+/// `why` holds a reason it is blocked: greyed with the info mark, focusable but not clickable,
+/// and the reason shows on hover or focus.
+fn row(ui: &mut egui::Ui, text: &str, checked: bool, why: Option<&str>) -> Response {
+    let sense = if why.is_none() { Sense::click() } else { Sense::hover() | Sense::FOCUSABLE };
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW), sense);
+    let enabled = why.is_none();
     paint_row(ui, rect, text, checked, enabled, enabled && resp.hovered());
     resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, enabled, checked, text));
-    resp
+    let Some(why) = why else { return resp };
+    menu_reason::paint_info(ui.painter(), rect, 6.0, resp.hovered() || resp.has_focus());
+    menu_reason::paint_focus(ui, &resp);
+    menu_reason::explain(resp, why)
 }
 
 fn paint_row(ui: &egui::Ui, rect: Rect, text: &str, checked: bool, enabled: bool, hovered: bool) {
@@ -134,7 +142,8 @@ fn paint_row(ui: &egui::Ui, rect: Rect, text: &str, checked: bool, enabled: bool
     }
     let col = if enabled { color::text() } else { color::faint() };
     let font = type_scale::font(type_scale::BODY);
-    widgets::paint_cut_text(p, pos2(rect.left() + 24.0, rect.center().y), text, font, col, rect.width() - 28.0);
+    let room = if enabled { 0.0 } else { menu_reason::INFO_ROOM };
+    widgets::paint_cut_text(p, pos2(rect.left() + 24.0, rect.center().y), text, font, col, rect.width() - 28.0 - room);
 }
 
 /// A saved filter's row; while hovered or on show it also has Edit, Move up, Move down and

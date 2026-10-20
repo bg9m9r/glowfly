@@ -1,6 +1,6 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
 //! lock, wrench, warning, keyboard, external diff, into, comment, pencil, plus, issue, check, more,
-//! the file pages, open file, the expand chevrons, commit, globe and menu), called from
+//! the file pages, open file, the expand chevrons, commit, globe, menu and info), called from
 //! `widgets::paint_icon`.
 
 use super::widgets::Icon;
@@ -286,6 +286,12 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             for dy in [-5.0, 0.0, 5.0] {
                 line(pos2(c.x - 7.0, c.y + dy), pos2(c.x + 7.0, c.y + dy));
             }
+        }
+        Icon::Info => {
+            // A circle with a dot over a short stem.
+            p.circle_stroke(c, 8.0, s);
+            p.circle_filled(pos2(c.x, c.y - 4.0), 1.5, s.color);
+            line(pos2(c.x, c.y - 0.5), pos2(c.x, c.y + 4.5));
         }
         _ => return false,
     }

@@ -5,8 +5,9 @@
 //! rise into place in `tooltip_motion.rs`, and the segmented control in `segmented.rs`. The
 //! banner style is in `banner.rs`, field and form messages in `form_message.rs`, and the error,
 //! warning and information marks in `severity.rs`. The shared row selection and hover look is
-//! in `row_fill.rs`, and the weak lines and menu suffixes that say why an action is disabled
-//! (or that it opens a setting first) in `reason.rs`. The tab bars' painted close × and
+//! in `row_fill.rs`, the weak lines that say why an action is disabled in `reason.rs`, and the
+//! menu items marked with an info icon whose reason shows on hover or focus (or that open a
+//! setting first) in `menu_reason.rs`. The tab bars' painted close × and
 //! new-tab + are in `tab_glyph.rs`, and the quiet, clickable chips of the commit details (its
 //! SHA, parents and committer) in `quiet_chip.rs`. The quiet headers' ghost buttons, divider
 //! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`. A dialog's 36 px
@@ -18,6 +19,7 @@ pub mod field_group;
 pub mod form_message;
 pub mod ghost;
 mod icon;
+pub mod menu_reason;
 pub mod quiet_chip;
 pub mod reason;
 pub mod row_fill;

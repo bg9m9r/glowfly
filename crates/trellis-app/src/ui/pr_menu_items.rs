@@ -5,11 +5,11 @@
 //! Without a code host, a row menu keeps one disabled item saying why. Also the pull request
 //! tooltip the sidebar and the dashboard share.
 
-use super::common::{menu_item, menu_item_blocked, menu_item_if};
+use super::common::{menu_item, menu_item_if};
 use super::widgets::reason::{self, ItemState};
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
-use crate::state::blocked::{BUSY, Blocked, short_form};
+use crate::state::blocked::BUSY;
 use crate::state::push_pr::{self, HostBranch};
 use crate::state::{ForgeState, Selection};
 use eframe::egui;
@@ -111,35 +111,24 @@ pub(super) fn remote(
     }
 }
 
-/// Why a pull request can't go through `remote` (or no remote at all), with a short form that
-/// names the remote.
-fn no_host(remote: Option<&str>) -> Blocked<'static> {
-    let full = push_pr::no_host_reason(remote);
-    let short = match remote {
-        Some(r) => format!("{r} isn't on a code host"),
-        None => short_form(&full).into_owned(),
-    };
-    Blocked::new(short, full)
-}
-
 /// A LOCAL row when no remote is on a code host: one disabled item saying why.
 pub(super) fn local_no_host(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    let why = no_host(push_pr::pr_remote(b, snap).as_deref());
+    let why = push_pr::no_host_reason(push_pr::pr_remote(b, snap).as_deref());
     let label = t.trf("pr.menu.create", &[("noun", &t.tr("forge.noun.pull_request"))]);
-    menu_item_blocked(msgs, ui, label, Some(why), create(&b.name, None));
+    menu_item_if(msgs, ui, label, Some(&why), create(&b.name, None));
 }
 
 /// A REMOTE row when no remote is on a code host: one disabled item saying why, from the
 /// checked-out branch into this one when that is another branch.
 pub(super) fn remote_no_host(ui: &mut egui::Ui, t: Lang, remote: &str, name: &str, snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    let why = no_host(Some(remote));
+    let why = push_pr::no_host_reason(Some(remote));
     let noun = t.tr("forge.noun.pull_request");
     match snap.head_info().filter(|h| !push_pr::is_same_branch(h, remote, name)) {
         Some(h) => {
             let label = t.trf("pr.menu.create_from_into_this", &[("noun", &noun), ("branch", &h.name)]);
-            menu_item_blocked(msgs, ui, label, Some(why), create(&h.name, Some(name)));
+            menu_item_if(msgs, ui, label, Some(&why), create(&h.name, Some(name)));
         }
-        None => menu_item_blocked(msgs, ui, t.trf("pr.menu.create", &[("noun", &noun)]), Some(why), create(name, None)),
+        None => menu_item_if(msgs, ui, t.trf("pr.menu.create", &[("noun", &noun)]), Some(&why), create(name, None)),
     }
 }
 

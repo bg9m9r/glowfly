@@ -4,9 +4,9 @@
 //! one, and a staged new file present or gone, whose delete also unstages it). New file in this
 //! folder is enabled on every row. Open in external diff tool (Resolve in external merge tool
 //! on a conflicted row) and Open in external editor stay enabled with "Set up…" until a program
-//! is set (they then open Preferences). Disabled items show a short reason. Revert changes to this file needs the
-//! file in the working tree, unless the commit deleted it. Clicks check the messages the items
-//! send.
+//! is set (they then open Preferences). Disabled items are greyed with an info mark. Revert
+//! changes to this file needs the file in the working tree, unless the commit deleted it. Clicks
+//! check the messages the items send.
 
 use super::file_menu::{
     DELETE, NEW_FILE_HERE, OPEN_DEFAULT, OPEN_IN_DIFF_TOOL, OPEN_IN_EDITOR, RENAME, RESOLVE_IN_MERGE_TOOL, REVERT_FILE, RowSource,

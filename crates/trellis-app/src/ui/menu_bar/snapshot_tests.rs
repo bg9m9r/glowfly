@@ -119,12 +119,18 @@ fn menu_bar_edit() {
 #[test]
 fn disabled_items_keep_their_labels() {
     let (st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-disabled-labels");
+    let why = st.undo.redo_entry(st.settings.lang(), true).1.expect("nothing to redo");
     let mut h = opened(st, true, "Edit");
-    // Keyed and disabled: found by its label alone, its reason's short form painted beside it.
+    // Keyed and disabled: found by its label alone, greyed with the info mark beside it.
     assert!(h.get_by_label("Redo").is_disabled());
     h.get_by_label("Redo").click();
     h.run();
     assert!(!sent(&h, |m| matches!(m, Msg::Job(JobMsg::Redo))), "a disabled item sends nothing");
+    assert!(h.query_by_label(&why).is_none(), "no reason text in the menu");
+    h.get_by_label("Redo").focus();
+    h.run();
+    assert!(h.query_by_label(&why).is_some(), "the reason under the focused item");
+    assert!(h.get_by_label("Redo").is_disabled());
     drop(h);
 
     remove_fixture(&dir);

@@ -72,7 +72,9 @@ fn branch_picker_menu_dots() {
     let picker = h.get_all_by_label("main").filter_map(|n| n.bounding_box()).find(|r| r.y1 < 100.0).expect("the Branch picker");
     click(&mut h, pos2(((picker.x0 + picker.x1) / 2.0) as f32, ((picker.y0 + picker.y1) / 2.0) as f32), PointerButton::Primary);
     assert_eq!(h.query_all_by_label("fix-1").count(), 2, "the sidebar's row and the menu's");
-    assert!(h.get_by_label("✔ main").is_disabled(), "the checked-out branch");
+    let main = h.get_by_label("✔ main");
+    assert!(main.is_disabled(), "the checked-out branch");
+    assert_eq!(main.description().as_deref(), Some("main is already checked out."));
     h.check_snapshot("branch_picker_menu_dots");
     drop(h);
     remove_fixture(&dir);

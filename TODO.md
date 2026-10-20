@@ -367,7 +367,7 @@ until this list says which option was chosen.
       operation with a result icon, a plain title, a short summary, how long it took and when;
       a failed run opens in place to show what went wrong, the fix as a button and the command
       output in a quiet block; routine auto-fetches fold into one grey row.
-- [ ] **Disabled menu items explain on hover**: a greyed label with a small ⓘ and the reason in a
+- [x] **Disabled menu items explain on hover**: a greyed label with a small ⓘ and the reason in a
       tooltip on hover or keyboard focus, in every menu. Chosen 2026-10-19: the menus board as
       drawn.
 - [ ] **Welcome screen**: choice cards with an icon and a line of description, a clearer
@@ -1332,8 +1332,6 @@ here, under the item they grew from.
 
 ### Disabled actions say why
 
-- Toolbar dropdown items (Fetch all, the Pull variants, Force push, Publish, the branch picker)
-  get the weak disabled suffix too
 - Other setup-gated entries stay enabled and open their setting: pull request and issue items
   that need a connected account open Preferences > Integrations, and an issue tracker that isn't
   chosen opens Repo-Specific Preferences > Issue Tracker
@@ -1344,17 +1342,31 @@ here, under the item they grew from.
   and edit, publish, create PR, Git Flow dialogs, credential prompt)
 - Reasons for the remaining preference-page buttons with more than one blocker (the integrations
   token Connect: token or user missing)
-- Expose a disabled menu item's short reason to screen readers as its description once egui's
-  accesskit support allows it
 - One shared BUSY constant: replace the copies of "Another operation is still running." in the
   patch, stash, mainline, submodule and worktree dialogs and `state/remotes.rs` with
   `state::blocked::BUSY`
 - Draw the rebase panel's blocker with the shared reason helper so every disabled reason has one
   look (it is red today)
-- Explicit short forms for menu reasons whose derived form ends in "…" in real menus (the commit
-  menu's Cherry-pick, the blame menu's Blame before this commit)
 - The multi-commit selection panel's disabled Cherry-pick and Revert buttons say why only on
   hover; give them a reason line like the other panels
+
+### Disabled menu items explain on hover
+
+- Keep the toolbar dropdowns open when a blocked item is clicked (their popup closes on any click)
+- Let a blocked menu-bar submenu (Open recent) still open with its entries greyed, instead of
+  being a flat blocked item
+- Show the rich preview tooltip (what Fetch all or a Pull variant would bring in) for blocked
+  toolbar dropdown items as well as the reason
+- Give the dialog lists that grey out rows without an info mark (the fork picker's "added as"
+  rows, the issue picker when full) the same mark, focus and tooltip
+- Check with NVDA and VoiceOver that a focused blocked item reads its label, "unavailable" and
+  the description, and tune the role or description if not
+- Up and Down arrow focus that stays inside an open context menu and wraps at its ends, so the
+  keyboard walks the items, blocked ones included
+- A preference to show the reason inline under a blocked item instead of in a tooltip, for
+  people who don't hover
+- The saved-filter rows' disabled Move up and Move down icon buttons in the filter popover say why
+  only through egui's disabled look; give them the info tooltip on hover and focus
 
 ### Tabs (multiple open repos)
 

@@ -1,7 +1,7 @@
 //! The graph menus' history edits: reword, squash into the parent and drop one commit, or
 //! squash and drop a multi-selection. Each opens a dialog or a confirmation, so each label ends
-//! in an ellipsis. An entry that can't be used is disabled with a short reason after its label
-//! and the whole one on hover (`state::rebase_quick`).
+//! in an ellipsis. An entry that can't be used is greyed with an info mark, its reason on hover
+//! or focus (`state::rebase_quick`).
 
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase_quick;

@@ -72,7 +72,7 @@ pub(crate) fn diverge(snap: &mut Snapshot, ahead: u8, behind: u8, loaded: bool) 
     head.behind = behind.into();
 }
 
-fn running(st: &mut AppState) {
+pub(crate) fn running(st: &mut AppState) {
     st.job = Some(RunningJob {
         label: "Fetch all".into(),
         workdir: None,
@@ -152,6 +152,16 @@ fn blocked_rules_give_their_reasons() {
     ] {
         assert_eq!(why.as_deref(), Some(job));
     }
+}
+
+#[test]
+fn busy_blocked_only_waits_for_a_job() {
+    let mut st = state("tips-busy");
+    assert_eq!(busy_blocked(&st), None);
+    detach(&mut st);
+    assert_eq!(busy_blocked(&st), None, "no branch needed");
+    running(&mut st);
+    assert_eq!(busy_blocked(&st).as_deref(), Some(Lang::En.tr("commit.blocked.job_running")));
 }
 
 #[test]

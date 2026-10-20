@@ -1,5 +1,6 @@
-//! Tab bar interaction tests: dragging a tab to reorder it, the tab context menu, and worktree
-//! tab groups (their strip, dragging a group, the repository line in the tooltip).
+//! Tab bar interaction tests: dragging a tab to reorder it, the tab context menu (and why its
+//! items are off with one tab and none closed), and worktree tab groups (their strip, dragging a
+//! group, the repository line in the tooltip).
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
@@ -86,6 +87,32 @@ fn tab_context_menu() {
     h.get_by_label("Close tabs to the right").click();
     h.run();
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::CloseTabsToRight(_)))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn tab_menu_says_why_items_are_off() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "tab-menu-reasons");
+    st.tabs.truncate(1);
+    st.closed_tabs.clear();
+    let mut h = harness(st, true);
+    h.run();
+    pointer(&mut h, tab_centre(0), Some((PointerButton::Secondary, true)));
+    h.step();
+    pointer(&mut h, tab_centre(0), Some((PointerButton::Secondary, false)));
+    h.run();
+    let t = trellis_core::i18n::Lang::En;
+    for (label, key) in [
+        ("Close other tabs", "tabs.menu.close_others.blocked"),
+        ("Close tabs to the right", "tabs.menu.close_right.blocked"),
+        ("Reopen closed tab", "tabs.menu.reopen.blocked"),
+    ] {
+        let item = h.get_by_label(label);
+        assert!(item.is_disabled(), "{label}");
+        assert_eq!(item.description().as_deref(), Some(t.tr(key)), "{label}");
+    }
+    assert!(!h.get_by_label("Close tab").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

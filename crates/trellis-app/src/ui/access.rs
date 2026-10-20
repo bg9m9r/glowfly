@@ -1,5 +1,5 @@
 //! Accessible names for widgets egui can't name itself: text fields that only show hint text,
-//! and buttons drawn with the painter. Screen readers read these names, and the whole-app tests
+//! and buttons drawn with the painter, plus a longer description (why a menu item is disabled). Screen readers read these names, and the whole-app tests
 //! (`src/journey/`) find widgets by them. Nothing here changes a pixel.
 
 use eframe::egui::{Response, WidgetInfo, WidgetType};
@@ -12,6 +12,12 @@ pub fn name_field(resp: &Response, name: &str) {
 /// Names the painted button `resp`, and says whether it can be clicked.
 pub fn name_button(resp: &Response, enabled: bool, name: &str) {
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, name));
+}
+
+/// Gives `resp` a description that screen readers read after its name (does nothing while
+/// AccessKit is off).
+pub fn describe(resp: &Response, text: &str) {
+    resp.ctx.accesskit_node_builder(resp.id, |n| n.set_description(text));
 }
 
 #[cfg(test)]
@@ -29,10 +35,13 @@ mod tests {
             name_field(&r, "Search text");
             let (_, b) = ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
             name_button(&b, false, "Painted");
+            describe(&b, "Why");
         });
         h.run();
         let field = h.get_by_label("Search text");
         assert_eq!(field.role(), egui::accesskit::Role::TextInput);
-        assert!(h.get_by_label("Painted").is_disabled());
+        let painted = h.get_by_label("Painted");
+        assert!(painted.is_disabled());
+        assert_eq!(painted.description().as_deref(), Some("Why"));
     }
 }

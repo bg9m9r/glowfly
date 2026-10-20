@@ -102,8 +102,9 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &
     });
 }
 
-/// A multi-selection action: in a menu (`in_menu`), an item with a short form of why it is
-/// disabled after its label; in the selection panel, a plain button with the reason on hover.
+/// A multi-selection action: in a menu (`in_menu`), an item greyed with an info mark while it is
+/// disabled, its reason on hover or focus; in the selection panel, a plain button with the
+/// reason on hover.
 fn multi_action(ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: Option<&str>, in_menu: bool) -> egui::Response {
     if in_menu {
         return reason::menu_button(ui, label, "", ItemState::blocked_by(blocked));

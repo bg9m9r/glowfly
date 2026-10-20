@@ -1,9 +1,11 @@
 //! A branch's colour dot: a small filled circle in its line tone, painted left of its name in the
 //! sidebar's branch rows, the Branch picker's menu, the Color submenu and the commit details
-//! header.
+//! header. A Branch picker row that can't be checked out is a blocked menu item
+//! (`widgets::menu_reason`) with the dot kept before its greyed name.
 
 use super::theme::color;
 use super::theme::type_scale;
+use super::widgets::menu_reason::{self, ItemState};
 use eframe::egui::{self, Color32, Painter, Rect, Response, Sense, Ui, pos2, vec2};
 
 /// The room a dot takes before a name.
@@ -20,6 +22,21 @@ pub fn paint(p: &Painter, row: Rect, indent: f32, c: Color32) {
 /// disabled row doesn't click, shows its label weak and takes disabled hover text.
 pub fn menu_row(ui: &mut Ui, label: &str, c: Option<Color32>, enabled: bool) -> Response {
     ui.add_enabled_ui(enabled, |ui| row(ui, label, c)).inner
+}
+
+/// `menu_row`, or while `blocked` a blocked menu item (greyed, with the info mark and the reason
+/// on hover or focus) that keeps the dot before its label.
+pub fn menu_row_if(ui: &mut Ui, label: &str, c: Option<Color32>, blocked: Option<&str>) -> Response {
+    let Some(why) = blocked else { return menu_row(ui, label, c, true) };
+    let mut job = egui::text::LayoutJob::simple_singleline(label.to_owned(), type_scale::font(type_scale::BODY), Color32::PLACEHOLDER);
+    if let Some(first) = job.sections.first_mut() {
+        first.leading_space = DOT_ROOM;
+    }
+    let r = menu_reason::menu_button(ui, job, "", ItemState::Blocked(why));
+    if let Some(c) = c {
+        paint(ui.painter(), r.rect, ui.spacing().button_padding.x, c);
+    }
+    r
 }
 
 fn row(ui: &mut Ui, label: &str, c: Option<Color32>) -> Response {

@@ -11,6 +11,7 @@ use super::tab_drag::{Slot, drag};
 use super::tab_paint::{ROUNDING, TabLook, close_rect, group_color, paint_group_strip, paint_separator, paint_tab};
 use super::theme::branch_colours::line;
 use super::theme::color;
+use super::widgets::reason::{self, ItemState};
 use super::widgets::truncate::full_tip;
 use crate::msg::Msg;
 use crate::msg::TabsMsg;
@@ -19,7 +20,7 @@ use crate::state::menu_bar::tab_name;
 use crate::state::tab_groups::{self, new_index, shown_at};
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::tab_glyph::{self, TabGlyph};
-use eframe::egui::{self, Align, Button, Layout, Response, Sense, Stroke, StrokeKind, WidgetInfo, WidgetType, vec2};
+use eframe::egui::{self, Align, Layout, Response, Sense, Stroke, StrokeKind, WidgetInfo, WidgetType, vec2};
 use trellis_core::i18n::Lang;
 
 pub(crate) use super::tab_drag::dragging;
@@ -154,23 +155,27 @@ fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &crate::keymap::Keymap, heig
 /// The right-click menu of tab `i`. It acts on that tab without selecting it.
 fn tab_menu(ui: &mut egui::Ui, t: Lang, i: usize, st: &AppState, msgs: &mut Vec<Msg>) {
     let n = st.tabs.len();
-    item(ui, msgs, st.tabs[i].path.is_some(), Button::new(t.tr("tabs.menu.rename")), Msg::Tabs(TabsMsg::RenameTabDialog(i)));
+    let no_repo = st.tabs[i].path.is_none().then(|| t.tr("tabs.menu.rename.blocked"));
+    item(ui, msgs, t.tr("tabs.menu.rename"), "", no_repo, Msg::Tabs(TabsMsg::RenameTabDialog(i)));
     ui.separator();
-    item(ui, msgs, true, Button::new(t.tr("tabs.menu.close")), Msg::Tabs(TabsMsg::CloseTab(i)));
-    item(ui, msgs, n > 1, Button::new(t.tr("tabs.menu.close_others")), Msg::Tabs(TabsMsg::CloseOtherTabs(i)));
-    item(ui, msgs, i + 1 < n, Button::new(t.tr("tabs.menu.close_right")), Msg::Tabs(TabsMsg::CloseTabsToRight(i)));
+    item(ui, msgs, t.tr("tabs.menu.close"), "", None, Msg::Tabs(TabsMsg::CloseTab(i)));
+    let only = (n <= 1).then(|| t.tr("tabs.menu.close_others.blocked"));
+    item(ui, msgs, t.tr("tabs.menu.close_others"), "", only, Msg::Tabs(TabsMsg::CloseOtherTabs(i)));
+    let last = (i + 1 >= n).then(|| t.tr("tabs.menu.close_right.blocked"));
+    item(ui, msgs, t.tr("tabs.menu.close_right"), "", last, Msg::Tabs(TabsMsg::CloseTabsToRight(i)));
     ui.separator();
     let reopen_key = st.keymap.hint(crate::keymap::BindingId::ReopenTab).unwrap_or_default();
-    let reopen = Button::new(t.tr("tabs.menu.reopen")).shortcut_text(reopen_key);
-    let r = item(ui, msgs, !st.closed_tabs.is_empty(), reopen, Msg::Tabs(TabsMsg::ReopenClosedTab));
+    let none_closed = st.closed_tabs.is_empty().then(|| t.tr("tabs.menu.reopen.blocked"));
+    let r = item(ui, msgs, t.tr("tabs.menu.reopen"), reopen_key, none_closed, Msg::Tabs(TabsMsg::ReopenClosedTab));
     if let Some(closed) = st.closed_tabs.last() {
         r.on_hover_text(trellis_core::native_path::shown(&closed.path));
     }
 }
 
-/// A menu entry, greyed out unless `enabled`; clicking it pushes `msg` and closes the menu.
-fn item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, enabled: bool, button: Button, msg: Msg) -> Response {
-    let r = ui.add_enabled(enabled, button);
+/// A menu entry with `shortcut` at its right, blocked while `blocked` holds its reason; clicking
+/// it pushes `msg` and closes the menu.
+fn item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, label: &str, shortcut: &str, blocked: Option<&str>, msg: Msg) -> Response {
+    let r = reason::menu_button(ui, label, shortcut, ItemState::blocked_by(blocked));
     if r.clicked() {
         msgs.push(msg);
         ui.close_menu();

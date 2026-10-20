@@ -1,18 +1,17 @@
 //! Disabled actions that say why on screen: a dialog footer's reason line beside Cancel, cut when
 //! long, above the buttons when extras and a note take the row's room, and for a danger button;
-//! and menu items with a short weak reason after a disabled label, or "Set up…" after an entry
-//! that opens a setting first.
+//! and menu items greyed with a painted info mark whose reason shows in the shared tooltip on
+//! hover or keyboard focus, or with "Set up…" after an entry that opens a setting first.
 
-use super::{menu_item, menu_item_blocked, menu_item_if, menu_item_setup};
+use super::{menu_item, menu_item_if, menu_item_setup};
 use crate::msg::Msg;
-use crate::state::blocked::Blocked;
 use crate::state::tool_compare::{DIFF_TOOL_SETUP, OPEN_IN_DIFF_TOOL};
 use crate::tools::ToolsMsg;
 use crate::ui::dialog_frame::{Cx, Dialog, Footer, Size};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests_file_menu::menu_style;
 use crate::ui::theme::{apply_theme, color};
-use crate::ui::widgets::buttons;
+use crate::ui::widgets::{buttons, tooltip};
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -46,7 +45,7 @@ fn create_footer() -> Footer<'static> {
 }
 
 /// The bounds of the one node named `label`.
-fn bounds(h: &Harness, label: &str) -> egui::Rect {
+fn bounds<S>(h: &Harness<'_, S>, label: &str) -> egui::Rect {
     let b = h.get_by_label(label).bounding_box().expect("bounds");
     egui::Rect::from_min_max(egui::pos2(b.x0 as f32, b.y0 as f32), egui::pos2(b.x1 as f32, b.y1 as f32))
 }
@@ -116,20 +115,21 @@ const UNLOCK_WHY: &str = "It is locked. Unlock it first.";
 const LONG_WHY: &str = "Choose the branch you want to compare against before starting";
 const PR: &str = "Create pull request…";
 
-/// A menu frame of five items (with `reasons`, four of them blocked or waiting for setup); the
-/// state is the messages sent and the frame's width.
-fn menu(dark: bool, reasons: bool) -> Harness<'static, (Vec<Msg>, f32)> {
-    Harness::builder().with_size(egui::vec2(480.0, 220.0)).build_ui_state(
+/// A menu frame of five items (with `reasons`, four of them blocked or waiting for setup,
+/// Compare… blocked by `compare_why`) in a `size` window, tooltips without motion; the state is
+/// the messages sent and the frame's width.
+fn menu_in(dark: bool, reasons: bool, compare_why: &'static str, size: egui::Vec2) -> Harness<'static, (Vec<Msg>, f32)> {
+    Harness::builder().with_size(size).build_ui_state(
         move |ui, (msgs, width): &mut (Vec<Msg>, f32)| {
             paint_theme(ui, dark);
+            tooltip::configure(ui.ctx(), true);
             let r = egui::Frame::menu(ui.style()).show(ui, |ui| {
                 menu_style(ui.style_mut());
                 let why = |w| reasons.then_some(w);
                 menu_item(msgs, ui, "Copy path", Msg::Copy("path".into()));
                 menu_item_if(msgs, ui, "Unlock", why(UNLOCK_WHY), Msg::Copy("unlock".into()));
-                menu_item_if(msgs, ui, "Compare…", why(LONG_WHY), Msg::Copy("compare".into()));
-                let pr = reasons.then(|| Blocked::new("Not connected", "Connect GitHub in Preferences first"));
-                menu_item_blocked(msgs, ui, PR, pr, Msg::Copy("pr".into()));
+                menu_item_if(msgs, ui, "Compare…", why(compare_why), Msg::Copy("compare".into()));
+                menu_item_if(msgs, ui, PR, why("Connect GitHub in Preferences first"), Msg::Copy("pr".into()));
                 let open = Msg::Tools(ToolsMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into())));
                 menu_item_setup(msgs, ui, OPEN_IN_DIFF_TOOL, why(DIFF_TOOL_SETUP), open);
             });
@@ -139,16 +139,25 @@ fn menu(dark: bool, reasons: bool) -> Harness<'static, (Vec<Msg>, f32)> {
     )
 }
 
+fn menu(dark: bool, reasons: bool) -> Harness<'static, (Vec<Msg>, f32)> {
+    menu_in(dark, reasons, LONG_WHY, egui::vec2(480.0, 220.0))
+}
+
 #[test]
-fn menu_disabled_suffix() {
+fn menu_disabled_info() {
     let mut plain = menu(true, false);
     plain.run();
     let plain_w = plain.state().1;
-    for (dark, name) in [(true, "menu_disabled_suffix"), (false, "menu_disabled_suffix_light")] {
+    let mut short = menu_in(true, true, "No", egui::vec2(480.0, 220.0));
+    short.run();
+    let short_w = short.state().1;
+    for (dark, name) in [(true, "menu_disabled_info"), (false, "menu_disabled_info_light")] {
         let mut h = menu(dark, true);
         h.run();
         h.check_snapshot(name);
-        assert!(h.state().1 > plain_w + 40.0, "the suffixes widen the menu: {} vs {plain_w}", h.state().1);
+        let w = h.state().1;
+        assert_eq!(w, short_w, "a long reason doesn't widen the menu");
+        assert!(w > plain_w, "the info marks and Set up… take room: {w} vs {plain_w}");
         assert!(h.get_by_label("Unlock").is_disabled(), "found by its exact label");
         assert!(h.get_by_label(PR).is_disabled());
         assert!(!h.get_by_label("Copy path").is_disabled());
@@ -164,4 +173,32 @@ fn menu_disabled_suffix() {
         h.run();
         assert!(matches!(&h.state().0[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
     }
+}
+
+#[test]
+fn menu_disabled_tooltip() {
+    let mut h = menu_in(true, true, LONG_WHY, egui::vec2(520.0, 300.0));
+    h.run();
+    h.get_by_label("Compare…").hover();
+    h.run();
+    h.run();
+    h.check_snapshot("menu_disabled_tooltip");
+    assert!(h.query_by_label(LONG_WHY).is_some(), "the whole reason on hover");
+    let why = bounds(&h, LONG_WHY);
+    assert!(why.width() <= 340.0, "wrapped in the tooltip: {why:?}");
+}
+
+#[test]
+fn menu_disabled_focus_shows_why() {
+    let mut h = menu(true, true);
+    h.run();
+    h.get_by_label("Compare…").focus();
+    h.run();
+    assert!(h.get_by_label("Compare…").is_focused());
+    assert!(h.query_by_label(LONG_WHY).is_some(), "the reason under the focused item");
+    h.get_by_label("Unlock").focus();
+    h.run();
+    assert!(h.query_by_label(UNLOCK_WHY).is_some());
+    assert!(h.query_by_label(LONG_WHY).is_none(), "one tooltip at a time");
+    assert_eq!(h.get_by_label("Unlock").description().as_deref(), Some(UNLOCK_WHY));
 }

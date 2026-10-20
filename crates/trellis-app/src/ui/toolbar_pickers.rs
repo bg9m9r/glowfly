@@ -108,12 +108,12 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 ui.set_min_width(220.0);
                 for b in &snap.locals {
                     let text = if b.is_head { format!("✔ {}", b.name) } else { b.name.clone() };
-                    let elsewhere = crate::state::worktree_branches::checkout_blocked(snap, &b.name);
-                    let enabled = !b.is_head && elsewhere.is_none();
-                    let mut r = branch_dot::menu_row(ui, &text, Some(line(snap.branch_swatch(&b.name))), enabled);
-                    if let Some(why) = &elsewhere {
-                        r = r.on_disabled_hover_text(why);
-                    }
+                    let why = if b.is_head {
+                        Some(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &b.name)]))
+                    } else {
+                        crate::state::worktree_branches::checkout_blocked(snap, &b.name)
+                    };
+                    let r = branch_dot::menu_row_if(ui, &text, Some(line(snap.branch_swatch(&b.name))), why.as_deref());
                     if r.clicked() {
                         msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
                         ui.close_menu();

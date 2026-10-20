@@ -8,6 +8,7 @@
 
 use super::backdrop::{self, Surface};
 use super::theme::color;
+use super::widgets::reason::{self, ItemState};
 use super::widgets::{self, Icon, tooltip::attach};
 use crate::msg::{BranchMsg, ForgeMsg, JobMsg, Msg, PaletteMsg, PrefsMsg, PublishMsg, RepoMsg};
 use crate::state::toolbar_tips as rules;
@@ -65,8 +66,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         msgs.push(Msg::git("Pull", &["pull", "--ff"]));
                     }
                     dropdown(ui, "pull-menu", t.tr("toolbar.pull_menu"), 240.0, labels, |ui| {
-                        let r = ui.add_enabled(rules::fetch_blocked(st).is_none(), egui::Button::new(t.tr("toolbar.fetch_all")));
-                        if attach(r, keys, t, || tips::fetch_all(st)).clicked() {
+                        // A blocked entry shows its reason; a ready one, what it would do.
+                        let why = rules::fetch_blocked(st);
+                        let r = reason::menu_button(ui, t.tr("toolbar.fetch_all"), "", ItemState::blocked_by(why.as_deref()));
+                        let r = if why.is_none() { attach(r, keys, t, || tips::fetch_all(st)) } else { r };
+                        if r.clicked() {
                             msgs.push(Msg::git("Fetch all", &["fetch", "--all", "--prune"]));
                         }
                         // The button's text, and the job's label (English: it is also log and undo text).
@@ -75,8 +79,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                             (t.tr("toolbar.pull_ff_only"), "Pull (fast-forward only)", &["pull", "--ff-only"][..]),
                             (t.tr("toolbar.pull_rebase"), "Pull (rebase)", &["pull", "--rebase"][..]),
                         ] {
-                            let r = ui.add_enabled(rules::pull_variant_blocked(st, text).is_none(), egui::Button::new(text));
-                            if attach(r, keys, t, || tips::pull_variant(st, text)).clicked() {
+                            let why = rules::pull_variant_blocked(st, text);
+                            let r = reason::menu_button(ui, text, "", ItemState::blocked_by(why.as_deref()));
+                            let r = if why.is_none() { attach(r, keys, t, || tips::pull_variant(st, text)) } else { r };
+                            if r.clicked() {
                                 msgs.push(Msg::git(label, a));
                             }
                         }
@@ -86,7 +92,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         msgs.push(Msg::Job(JobMsg::Push { force: false }));
                     }
                     dropdown(ui, "push-menu", t.tr("toolbar.push_menu"), if host.is_some() { 260.0 } else { 200.0 }, labels, |ui| {
-                        if ui.add_enabled(idle, egui::Button::new(t.tr("toolbar.force_push"))).clicked() {
+                        let busy = rules::busy_blocked(st);
+                        let busy = ItemState::blocked_by(busy.as_deref());
+                        if reason::menu_button(ui, t.tr("toolbar.force_push"), "", busy).clicked() {
                             msgs.push(Msg::confirm_danger(
                                 t.tr("toolbar.force_push.title"),
                                 t.tr("toolbar.force_push.body").into(),
@@ -94,7 +102,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                                 Msg::Job(JobMsg::Push { force: true }),
                             ));
                         }
-                        if snap.remotes.is_empty() && ui.add_enabled(idle, egui::Button::new(t.tr("toolbar.publish"))).clicked() {
+                        if snap.remotes.is_empty() && reason::menu_button(ui, t.tr("toolbar.publish"), "", busy).clicked() {
                             msgs.push(Msg::Publish(PublishMsg::PublishDialog));
                         }
                         if let Some(fs) = host {

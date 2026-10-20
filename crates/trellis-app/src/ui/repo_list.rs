@@ -3,7 +3,7 @@
 //! and on the welcome screen the header links (Open all, Remove missing, Clear) and dragging
 //! favorites into another order (`repo_list_drag.rs`).
 
-use super::common::menu_item;
+use super::common::{menu_item, menu_item_if};
 use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::keymap::FAVORITE_BINDINGS;
@@ -260,15 +260,12 @@ fn row_menu(ui: &mut egui::Ui, t: Lang, text: &str, section: Section, fav: bool,
     match section {
         Section::Recent => menu_item(msgs, ui, t.tr("repos.remove_recent"), remove),
         Section::Favorite { index, count } => {
-            let moves = [
-                (t.tr("repos.row_menu.move_up"), index > 0, index.saturating_sub(1)),
-                (t.tr("repos.row_menu.move_down"), index + 1 < count, index + 1),
-            ];
-            for (label, enabled, to) in moves {
-                if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
-                    msgs.push(Msg::Recent(RecentMsg::MoveFavorite { from: index, to }));
-                    ui.close_menu();
-                }
+            let first = (index == 0).then(|| t.tr("repos.row_menu.move_up.blocked"));
+            let last = (index + 1 >= count).then(|| t.tr("repos.row_menu.move_down.blocked"));
+            let moves =
+                [(t.tr("repos.row_menu.move_up"), first, index.saturating_sub(1)), (t.tr("repos.row_menu.move_down"), last, index + 1)];
+            for (label, blocked, to) in moves {
+                menu_item_if(msgs, ui, label, blocked, Msg::Recent(RecentMsg::MoveFavorite { from: index, to }));
             }
         }
     }
