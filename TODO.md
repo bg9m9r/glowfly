@@ -22,6 +22,7 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-20 12:42 · **Activity panel design**: The activity tab lists one row per finished operation with a painted result mark, its title, a short summary, how long it took and when; a failed run opens in place with the cause, its fix (shared with the toast and run once) and Copy over the output in a quiet block coloured by line kind, Details opens and scrolls to it, routine auto-fetches fold into one grey row, earlier sessions sit under real headers, and the panel gets a 40 px header with segmented tabs and icon buttons (`970bb47e`)
 - 2026-10-20 12:40 · **Branch-led colour**: A Color submenu in the local and remote branch menus pins a branch to a hue (saved per repository, shared by its remote copies, recoloured at once; main keeps the accent), commit initials take each author's own colour inside the branch ring, and Preferences > Commit graph > Branch colors offers an 8-hue colour-blind safe palette, completing the item (`1477398`)
 - 2026-10-20 12:16 · **SSH preferences**: Preferences > SSH becomes three titled sections: key cards with their marks (Default, Used in the open repository, Tried by default, In agent), Copy public key and their actions, a Generate SSH key dialog whose fields outlive it, Use existing to list and remember a key pair from anywhere, Which key dropdowns for all repositories and the open one, and an agent status pill (Running with its key count, Off, Not reachable) with a refresh, the page's text translated (`244b5990`)
+- 2026-10-20 12:14 · **Dialogs and text fields**: Dialogs get a header with a painted close button that acts as Esc, Small, Medium and Wide size classes, 36 px tinted text fields in label-field-help groups with a weak Optional marker, and the dialogs for submodules, worktrees, patches, the mainline parent and other less familiar operations a tinted "How it works" pane of numbered steps beside the form (stacked above it in a narrow window); every dialog's text fields move onto them, and tests keep dialogs on the field widget and the guide pane in its place (`6084183d`)
 - 2026-10-20 11:51 · **Terminal panel**: The panel gets a 40 px header with a pill per shell (the shell icon, an automatic name from the shell and folder or the running command, an amber dot once it has ended, a × on the active or hovered pill, double-click to rename), + and a caret that picks the shell, and quiet icon buttons for Clear, Kill terminal, More (Kill all, Rename), Terminal settings, Maximize (the panel takes the main area, Esc restores it) and Hide; the 16 basic terminal colours come from a checked table per theme (`9eb563d8`)
 - 2026-10-19 22:48 · **Window chrome and toolbar**: The drawn Windows frame gains Snap Layouts on the Maximize button, the system menu on Alt+Space or a right-click on the title bar, and a Mica backdrop behind the title bar, toolbar and sidebar where the contrast check passes, with the item now ticked (`8715967b`)
 - 2026-10-19 20:36 · **Window chrome and toolbar**: On Windows Trellis draws a 44 px title bar with a menu button, the tabs, empty space that moves or maximizes the window, its own window buttons, resize edges and border (usable above dialogs, Alt tap opens the menu), macOS gets the same bar inset for the traffic lights while Linux keeps the system frame, tabs get a lifted active tab, separators and a hover shape, the toolbar's buttons sit in grouped surfaces with Repository › Branch pickers sized to their names, and the Branch icon is redrawn; Mica, Snap Layouts, Alt+Space and the contrast check remain (`f68f85cb`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-19 12:20 · **Clearer prompts and safer controls**: An unknown SSH host is shown as Host, Address, Key type and Fingerprint fields with the raw text under Details and Cancel the default, the sign-in fields get visible labels, Skip hooks moves into a more-actions menu by the commit button that turns amber while on, Kill asks first while a terminal runs a program, repo sync gets Stop, per-row Retry and Open and the whole error on hover, the rebase panel's Reset reads Restore original order, and graph search gets a clear button and a fixed-width count (`6f14f8fc`)
 - 2026-10-19 10:56 · **Preferences structure**: Editor becomes Diff viewer, a Language & region page holds the language and date formats, one Terminal page covers the built-in and external terminal, General is split into titled sections, pages that write git or repository config keep edits for a Save / Revert bar and ask before leaving with unsaved changes, a short "Saved" tick follows every save, Integrations shows one card per account with the token form behind Add another account, and every checkbox has inline text with rows that fit narrow windows (`57dd5a11`)
 - 2026-10-19 10:56 · **Complete translations**: The graph column titles and notes, the left panel's section headers, filter hint and empty lines, the local, remote, tag, commit and chip menus with their confirmations, pull request menu items, hunk buttons and their confirmations, relative dates and the dashboard's Updated line come from the language tables, and German snapshot tests fail on any English left in these areas (`4946a010`)
-- 2026-10-19 09:52 · **Sidebar create actions**: Every sidebar section header gets a hover + for its create action (new branch, remote, pull request, issue, tag, stash, worktree, submodule, or a Git Flow start menu) and a more-actions button that opens the header's menu, with a disabled + saying why (`06e01629`)
 
 ---
 
@@ -340,7 +340,7 @@ until this list says which option was chosen.
       hover), quiet chips for the SHA, parent and committer, a readable body block, and files
       with status chips and counts beside the name. The lane bands and selection still run edge
       to edge.
-- [ ] **Dialogs and text fields**: 36 px fields, label-field-help groups, roomier dialog frames
+- [x] **Dialogs and text fields**: 36 px fields, label-field-help groups, roomier dialog frames
       with a × and size classes, and a fresh look at colour, type size and layout (tinted fields,
       a header band or icon, a side explanation pane); every dialog moves onto them.
       Chosen 2026-10-19 (option 3): dialogs for less familiar operations (submodules, worktrees,
@@ -2906,3 +2906,20 @@ here, under the item they grew from.
 - Copy or export the whole activity log
 - Selectable text inside the output block
 - Hide a failed row's summary while it is open, since the cause sentence under it repeats it
+
+### Dialogs and text fields
+
+- Guide panes for sparse checkout, LFS and signing set-up once those flows get their own dialogs
+  (today they are Preferences pages); the SSH key generation dialog from SSH preferences should
+  use .guide too
+- A tinted header band or a painted icon in each dialog's header (only the credential prompt
+  has an icon today)
+- Dropdowns (ComboBox) in dialogs at the 36 px field height, with the same tint and edge as text
+  fields
+- A way to hide the guide pane ("Hide how it works"), remembered for each dialog
+- A field-fill colour key in theme files, with the contrast check run on custom themes
+- A guide pane in resizable dialogs (Dialog rejects resizable + guide today)
+- Preferences pages' text fields on TextField and FieldGroup (they keep their right-aligned
+  label form)
+- A short animation when the guide pane switches between beside and stacked as the window is
+  resized
