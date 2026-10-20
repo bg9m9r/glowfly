@@ -16,6 +16,12 @@
 //! `.enabled` keeps the disabled look. `widgets/buttons.rs` and `common.rs` (the menu items) are
 //! exempt.
 //!
+//! A dialog's text fields are `widgets::TextField` (36 px, tinted, inside a `FieldGroup`): no
+//! `controls::field(` or `TextEdit::` in a dialog file. The dialogs for less familiar operations
+//! (`GUIDED`) explain them in a side pane: each of their `Dialog::new(` has a
+//! `.guide(dialog_guides::..)`, and no other dialog has a `.guide(`, so everyday dialogs keep one
+//! plain pane.
+//!
 //! Every checkbox says what it does beside the box: no `checkbox(.., "")` in any view, and no
 //! `Check::without_text` on a preference page (a list row's bare box is labelled by its row).
 //!
@@ -54,6 +60,22 @@ const DIALOG_DENIED: &[(&str, &str)] = &[
     ("Button::new(", "a Footer button or widgets::buttons"),
     ("\"Cancel\"", "Footer::cancel"),
     ("\"Close\"", "Footer::close"),
+];
+
+/// What dialogs draw their text fields with instead, as (pattern, what to use).
+const DIALOG_FIELD_DENIED: &[(&str, &str)] = &[("controls::field(", "widgets::TextField"), ("TextEdit::", "widgets::TextField")];
+
+/// The dialogs for less familiar operations, which explain them in a side pane.
+const GUIDED: &[&str] = &[
+    "ui/gitflow_dialog.rs",
+    "ui/gitflow_finish_dialog.rs",
+    "ui/mainline_dialog.rs",
+    "ui/patch_apply_dialog.rs",
+    "ui/patch_save_dialog.rs",
+    "ui/submodule_dialogs.rs",
+    "ui/worktree_dialog.rs",
+    "ui/worktree_manage_dialog.rs",
+    "ui/worktree_move_dialog.rs",
 ];
 
 /// Preference pages and panels, as files or folders (ending in `/`). The issue picker's
@@ -162,6 +184,33 @@ fn button_violations(rel: &str, src: &str) -> Vec<String> {
         }
     }
     found
+}
+
+/// A dialog's text fields not drawn with `TextField`, as "line: message".
+fn field_violations(src: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    for (i, line) in code_lines(src).iter().enumerate() {
+        for (pat, instead) in DIALOG_FIELD_DENIED {
+            if count(line, pat) > 0 {
+                found.push(format!("{}: `{pat}`; use {instead}", i + 1));
+            }
+        }
+    }
+    found
+}
+
+/// A side pane where the dialog file at `rel` should or shouldn't have one, as a message.
+fn guide_violation(rel: &str, src: &str) -> Option<String> {
+    let code = code_lines(src);
+    let n = |pat: &str| code.iter().map(|l| count(l, pat)).sum::<usize>();
+    if GUIDED.contains(&rel) {
+        let (dialogs, guides) = (n("Dialog::new("), n(".guide(dialog_guides::"));
+        (dialogs != guides)
+            .then(|| format!("{dialogs} dialogs but {guides} `.guide(dialog_guides::..)`; each explains its step in a side pane"))
+    } else {
+        let guides = n(".guide(");
+        (guides > 0).then(|| format!("{guides} `.guide(`; an everyday dialog has no side pane (or add the file to GUIDED)"))
+    }
 }
 
 /// A checkbox without inline text, as "line: message".
@@ -274,6 +323,59 @@ fn the_check_catches_egui_controls() {
     assert_eq!(n("super::theme::modal(ctx, id).show(ctx, |ui| {});"), 0);
     // A local helper named like the wrapper doesn't count as one.
     assert_eq!(n("let e = egui::TextEdit::singleline(&mut s);\nname_field(&ui.add(e), \"Name\");"), 1);
+}
+
+#[test]
+fn dialogs_use_text_field() {
+    let sources = view_sources();
+    let report: Vec<String> = sources
+        .iter()
+        .filter(|(rel, _)| DIALOG_FILES.contains(&rel.as_str()))
+        .flat_map(|(rel, text)| field_violations(text).into_iter().map(move |v| format!("src/{rel}:{v}")))
+        .collect();
+    assert!(
+        report.is_empty(),
+        "dialog text fields are widgets::TextField inside a FieldGroup (36 px, tinted, label above):\n{}",
+        report.join("\n")
+    );
+}
+
+#[test]
+fn the_check_catches_plain_dialog_fields() {
+    let n = |s: &str| field_violations(s).len();
+    assert_eq!(n("let r = controls::field(ui, egui::TextEdit::singleline(&mut s));"), 2);
+    assert_eq!(n("let e = egui::TextEdit::multiline(&mut s);"), 1);
+    assert_eq!(n("let r = ui.add(TextField::new(&mut s).hint(\"v1.0.0\"));"), 0);
+    assert_eq!(n("FieldGroup::new(\"Name\").show(ui, |ui| ui.add(TextField::multiline(&mut s, 3)));"), 0);
+}
+
+#[test]
+fn guided_dialogs_have_a_side_pane() {
+    let sources = view_sources();
+    let missing: Vec<&str> = GUIDED.iter().filter(|f| !sources.iter().any(|(rel, _)| rel == *f)).copied().collect();
+    assert!(missing.is_empty(), "listed files that no longer exist (update GUIDED): {missing:?}");
+    let report: Vec<String> = sources
+        .iter()
+        .filter(|(rel, _)| DIALOG_FILES.contains(&rel.as_str()) || GUIDED.contains(&rel.as_str()))
+        .filter_map(|(rel, text)| guide_violation(rel, text).map(|v| format!("src/{rel}: {v}")))
+        .collect();
+    assert!(
+        report.is_empty(),
+        "dialogs for less familiar operations explain them in a side pane, and everyday dialogs have none:\n{}",
+        report.join("\n")
+    );
+}
+
+#[test]
+fn the_check_catches_misplaced_guides() {
+    let v = |rel: &str, s: &str| guide_violation(rel, s).is_some();
+    let guided = "ui/worktree_move_dialog.rs";
+    assert!(!v(guided, "let d = Dialog::new(cx, \"Move\").guide(dialog_guides::worktree_move(cx.t)).begin(ui);"));
+    assert!(v(guided, "let d = Dialog::new(cx, \"Move\").begin(ui);"), "a guided dialog without its pane");
+    assert!(v(guided, "Dialog::new(cx, \"A\").guide(dialog_guides::a(t));\nDialog::new(cx, \"B\");"), "one of two");
+    let everyday = "ui/branch_dialogs.rs";
+    assert!(!v(everyday, "let d = Dialog::new(cx, \"New branch\").begin(ui);"));
+    assert!(v(everyday, "let d = Dialog::new(cx, \"New branch\").guide(g).begin(ui);"), "an everyday dialog with a pane");
 }
 
 #[test]

@@ -50,6 +50,7 @@ fn new_tag_dialog_annotated() {
     h.check_snapshot("new_tag_dialog_annotated");
     assert!(h.query_by_label_contains("New annotated tag at").is_some());
     assert!(h.get_by_label("Create tag").is_disabled());
+    assert!(h.query_by_label("Optional").is_none(), "an annotated tag needs its message");
 
     if let Some(Modal::NewTag(f)) = h.state_mut().0.modal.as_mut() {
         f.message = "Release notes".into();
@@ -76,6 +77,8 @@ fn new_tag_dialog_plain_light() {
     h.check_snapshot("new_tag_dialog_plain_light");
     assert!(h.query_by_label_contains("New tag at").is_some());
     assert!(h.get_by_label("Create tag").is_disabled());
+    assert!(h.query_by_label("Optional").is_some(), "a plain tag's message is optional");
+    assert!(h.query_by_label("A message makes an annotated tag.").is_some());
 
     // The name field has the keyboard from the start.
     h.input_mut().events.push(Event::Text("v2".into()));

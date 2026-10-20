@@ -37,6 +37,8 @@ fn worktree_move_dialog() {
     h.run();
     h.check_snapshot("worktree_move_dialog");
     assert!(h.query_by_label("Move worktree feature-login").is_some());
+    let help = "A tab showing it follows it to the new folder.";
+    assert!(h.query_by_label(help).is_some(), "the help shows while the folder has no problem");
     h.get_by_label("Move").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::Move))));
@@ -65,6 +67,7 @@ fn worktree_move_taken_light() {
     h.run();
     h.check_snapshot("worktree_move_taken_light");
     assert!(h.query_by_label_contains("Something is already at").is_some());
+    assert!(h.query_by_label("A tab showing it follows it to the new folder.").is_none(), "the problem takes the help's place");
     drop(h);
     remove_fixture(&dir);
 }

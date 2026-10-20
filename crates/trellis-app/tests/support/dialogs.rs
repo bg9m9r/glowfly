@@ -4,8 +4,11 @@
 /// confirmation, discard question and askpass windows.
 pub const DIALOG_FILES: &[&str] = &[
     "ui/askpass.rs",
+    "ui/askpass_host_key.rs",
+    "ui/auto_stash_dialog.rs",
     "ui/branch_dialogs.rs",
     "ui/clone_dialog.rs",
+    "ui/clone_service.rs",
     "ui/confirm_dialog.rs",
     "ui/conflict_check.rs",
     "ui/create_pr_dialog.rs",
@@ -30,6 +33,7 @@ pub const DIALOG_FILES: &[&str] = &[
     "ui/repo_finder.rs",
     "ui/repo_sync.rs",
     "ui/shortcuts.rs",
+    "ui/shortcuts/sheet.rs",
     "ui/ssh_keygen_dialog.rs",
     "ui/stash_dialog.rs",
     "ui/stash_push_dialog.rs",

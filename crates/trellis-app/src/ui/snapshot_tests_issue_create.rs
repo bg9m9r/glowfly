@@ -99,7 +99,8 @@ fn create_issue_jira_dark() {
     h.check_snapshot("create_issue_jira_dark");
     assert!(h.query_by_label("Enter a summary.").is_some());
     assert!(h.get_by_role_and_label(Role::Button, "Create issue").is_disabled());
-    assert!(h.query_by_label("Summary").is_some() && h.query_by_label("Epic").is_some());
+    // Each label is shown and names its field.
+    assert!(h.query_all_by_label("Summary").next().is_some() && h.query_all_by_label("Epic").next().is_some());
     drop(h);
     remove_fixture(&dir);
 }
@@ -200,9 +201,9 @@ fn trello_asks_for_a_board_and_a_write_token() {
     let mut h = harness(st, true);
     h.run();
     for label in ["Board", "Name", "Members", "Creating cards needs a Trello token allowed to read and write."] {
-        assert!(h.query_by_label(label).is_some(), "{label}");
+        assert!(h.query_all_by_label(label).next().is_some(), "{label}");
     }
-    assert!(h.query_by_label("Labels").is_none(), "no labels before a board");
+    assert!(h.query_all_by_label("Labels").next().is_none(), "no labels before a board");
     assert!(h.get_by_role_and_label(Role::Button, "Create card").is_disabled());
     assert_eq!(h.query_all_by_label("Choose a board.").count(), 1, "nothing tried yet: only the footer says it");
     h.press_key(Key::Enter);

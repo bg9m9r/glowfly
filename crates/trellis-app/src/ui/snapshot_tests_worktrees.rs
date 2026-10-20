@@ -211,6 +211,9 @@ fn worktree_dialog_branch() {
     assert_eq!(PathBuf::from(&form(&mut h).folder), p("C:/work/app-worktrees/search"));
     h.check_snapshot("worktree_dialog_branch");
     assert!(!h.get_by_label("Create worktree").is_disabled());
+    // The labels sit above the fields and name them; a new branch is optional from a branch.
+    assert!(h.query_all_by_role_and_label(Role::TextInput, "New branch").next().is_some());
+    assert!(h.query_by_label("Optional").is_some());
 
     // Typing a new branch name moves the folder along, until the folder is edited.
     h.input_mut().events.push(Event::Text("feature/x".into()));
@@ -222,6 +225,19 @@ fn worktree_dialog_branch() {
     h.get_by_label("Browse…").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Prefs(PrefsMsg::PickFolder(crate::msg::FolderPurpose::WorktreeParent)))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn worktree_dialog_remote_needs_a_branch() {
+    let (st, dir) =
+        dialog(ThemeChoice::Dark, "worktree-dialog-remote", |_| WorktreeBase::Remote { remote: "origin".into(), branch: "search".into() });
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_all_by_role_and_label(Role::TextInput, "New branch").next().is_some());
+    assert!(h.query_by_label("Optional").is_none(), "a remote branch needs a local one to track it");
+    assert!(h.query_by_label("Name of the new local branch; it tracks origin/search").is_some());
     drop(h);
     remove_fixture(&dir);
 }

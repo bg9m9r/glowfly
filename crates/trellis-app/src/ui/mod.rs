@@ -207,6 +207,8 @@ mod snapshot_tests_dialog_frame;
 #[cfg(test)]
 mod snapshot_tests_dialog_keys;
 #[cfg(test)]
+mod snapshot_tests_dialog_look;
+#[cfg(test)]
 mod snapshot_tests_diff;
 #[cfg(test)]
 mod snapshot_tests_editor;

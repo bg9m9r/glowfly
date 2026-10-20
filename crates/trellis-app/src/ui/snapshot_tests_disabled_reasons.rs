@@ -8,7 +8,7 @@ use crate::msg::Msg;
 use crate::state::blocked::Blocked;
 use crate::state::tool_compare::{DIFF_TOOL_SETUP, OPEN_IN_DIFF_TOOL};
 use crate::tools::ToolsMsg;
-use crate::ui::dialog_frame::{Cx, Dialog, Footer};
+use crate::ui::dialog_frame::{Cx, Dialog, Footer, Size};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests_file_menu::menu_style;
 use crate::ui::theme::{apply_theme, color};
@@ -28,13 +28,13 @@ fn paint_theme(ui: &mut egui::Ui, dark: bool) {
     ui.painter().rect_filled(ui.max_rect(), 0.0, color::bg());
 }
 
-/// A Narrow dialog in a 520 x 260 window with a body line and the footer `footer` builds.
+/// A Small dialog in a 520 x 260 window with a body line and the footer `footer` builds.
 fn dialog(dark: bool, footer: impl Fn() -> Footer<'static> + 'static) -> Harness<'static> {
     Harness::builder().with_size(egui::vec2(520.0, 260.0)).build_ui(move |ui| {
         paint_theme(ui, dark);
         let cx = Cx { t: Lang::En, keyboard: false, key: egui::Id::new("reason-dialog") };
         egui::Frame::popup(ui.style()).inner_margin(18).corner_radius(8).show(ui, |ui| {
-            let mut d = Dialog::new(cx, "New branch").begin(ui);
+            let mut d = Dialog::new(cx, "New branch").size(Size::Small).begin(ui);
             d.body(ui, |ui| ui.label("The branch starts at main."));
             d.finish(ui, footer());
         });
