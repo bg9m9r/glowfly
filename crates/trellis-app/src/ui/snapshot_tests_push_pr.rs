@@ -125,6 +125,33 @@ fn create_pr_dialog_push() {
     remove_fixture(&dir);
 }
 
+/// With an issue tracker, the linked issues are a labelled optional field group, the typed
+/// issues shown as chips under the field.
+#[test]
+fn create_pr_dialog_linked_issues() {
+    let (mut st, dir) = with_host(ThemeChoice::Light, "create-pr-linked", &["main", "search"]);
+    tracked(&mut st, 0);
+    let tracker =
+        Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
+    st.forge.as_mut().unwrap().tracker = Some(tracker);
+    st.modal = Some(Modal::CreatePr {
+        source: "search".into(),
+        target: "main".into(),
+        targets: vec!["main".into()],
+        title: "Search results page".into(),
+        description: String::new(),
+        draft: false,
+        items: "12".into(),
+    });
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("create_pr_dialog_linked_issues");
+    assert!(h.query_all_by_label("Issues").any(|n| n.role() == egui::accesskit::Role::TextInput), "the label names the field");
+    assert!(h.query_by_label("#12").is_some(), "the linked issue's chip");
+    drop(h);
+    remove_fixture(&dir);
+}
+
 /// In the description, Enter adds a line and Ctrl/Cmd+Enter creates the pull request.
 #[test]
 fn create_pr_dialog_ctrl_enter() {

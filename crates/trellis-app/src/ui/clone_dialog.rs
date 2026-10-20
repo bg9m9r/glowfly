@@ -11,19 +11,12 @@ use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::clone::{CloneForm, LimitKind};
 use crate::state::clone_service::CloneSource;
-use crate::state::touched::Touched;
 use crate::ui::theme::controls;
 use crate::ui::widgets::form_message::{self, Message};
 use chrono::NaiveDate;
 use eframe::egui::{self, Id, RichText};
 use std::path::Path;
 use trellis_core::forge::Connection;
-
-/// The problem of the field named `field`, under it, once that field was edited or a submit
-/// was tried.
-pub(super) fn problem(ui: &mut egui::Ui, touched: &Touched, field: &str, text: Option<&String>) {
-    form_message::field(ui, touched, field, text.map(|t| Message::error(t.as_str())));
-}
 
 pub(super) fn note(ui: &mut egui::Ui, text: &str) {
     ui.label(RichText::new(text).color(color::weak()));
@@ -44,21 +37,9 @@ pub(super) fn destination(ui: &mut egui::Ui, path: &str) {
     });
 }
 
-/// A label and a single-line text field on one row; marks `field` edited when it changes.
-fn row(
-    ui: &mut egui::Ui,
-    label: &str,
-    (touched, field): (&mut Touched, &'static str),
-    text: &mut String,
-    id: &str,
-    hint: &str,
-    width: f32,
-) {
-    ui.horizontal(|ui| {
-        ui.label(label);
-        let r = ui.add(TextField::new(text).id(Id::new(id)).hint(hint).width(width));
-        form_message::track(touched, field, &r);
-    });
+/// A short single-line field in `group` (its label above, its help or problem under it).
+fn short_field(ui: &mut egui::Ui, group: FieldGroup<'_>, text: &mut String, id: &str, hint: &str, width: f32) -> egui::Response {
+    group.show(ui, |ui| ui.add(TextField::new(text).id(Id::new(id)).hint(hint).width(width)))
 }
 
 /// The URL tab and the Your repositories tab.
@@ -83,22 +64,24 @@ fn shallow_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate) {
             controls::radio_value(ui, &mut form.limit, LimitKind::Depth, "Latest commits");
             controls::radio_value(ui, &mut form.limit, LimitKind::Since, "Commits since a date");
         });
-        match form.limit {
+        let problems = form.problems_now(today);
+        let (key, r) = match form.limit {
             LimitKind::Depth => {
-                row(ui, "Commits", (&mut form.touched, "depth"), &mut form.depth, "trellis-clone-depth", "", 90.0);
-                problem(ui, &form.touched, "depth", form.problems_now(today).depth.as_ref());
-                note(ui, "How many of the newest commits on the branch to download.");
+                let help = "How many of the newest commits on the branch to download.";
+                let group = FieldGroup::new("Commits").help(help).message(&form.touched, "depth", problems.depth.map(Message::error));
+                ("depth", short_field(ui, group, &mut form.depth, "trellis-clone-depth", "", 90.0))
             }
             LimitKind::Since => {
-                row(ui, "Since", (&mut form.touched, "since"), &mut form.since, "trellis-clone-since", "YYYY-MM-DD", 130.0);
-                problem(ui, &form.touched, "since", form.problems_now(today).since.as_ref());
-                note(ui, "Commits made before this day are left out.");
+                let help = "Commits made before this day are left out.";
+                let group = FieldGroup::new("Since").help(help).message(&form.touched, "since", problems.since.map(Message::error));
+                ("since", short_field(ui, group, &mut form.since, "trellis-clone-since", "YYYY-MM-DD", 130.0))
             }
-        }
-        ui.add_space(4.0);
-        row(ui, "Branch", (&mut form.touched, "branch"), &mut form.branch, "trellis-clone-branch", "Remote's default branch", 240.0);
-        problem(ui, &form.touched, "branch", form.problems_now(today).branch.as_ref());
-        note(ui, "Only this branch is downloaded. Leave it empty for the remote's default branch.");
+        };
+        form_message::track(&mut form.touched, key, &r);
+        let help = "Only this branch is downloaded. Leave it empty for the remote's default branch.";
+        let group = FieldGroup::new("Branch").help(help).message(&form.touched, "branch", problems.branch.map(Message::error));
+        let r = short_field(ui, group, &mut form.branch, "trellis-clone-branch", "Remote's default branch", 240.0);
+        form_message::track(&mut form.touched, "branch", &r);
     });
 }
 
@@ -172,8 +155,8 @@ fn body(
             // The folder check doesn't affect the URL's line.
             let shown = form.problems(today, true).url.map(Message::error);
             let group = FieldGroup::new("Repository URL").message(&form.touched, "url", shown);
-            let field = TextField::new(&mut form.url).id(Id::new("trellis-clone-url")).hint("https://github.com/owner/repo.git");
-            let url = group.show(ui, |ui| ui.add(field));
+            let hint = "https://github.com/owner/repo.git";
+            let url = group.show(ui, |ui| ui.add(TextField::new(&mut form.url).id(Id::new("trellis-clone-url")).hint(hint)));
             form_message::track(&mut form.touched, "url", &url);
         }
         CloneSource::Service => close |= super::clone_service::show(ui, cx.t, form, connections, cx.keyboard, msgs),

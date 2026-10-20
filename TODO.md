@@ -2923,3 +2923,5 @@ here, under the item they grew from.
   label form)
 - A short animation when the guide pane switches between beside and stacked as the window is
   resized
+- The create issue dialog's label and people pickers at the 36 px field height inside field
+  groups, like its text fields

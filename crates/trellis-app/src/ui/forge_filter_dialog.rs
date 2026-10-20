@@ -21,9 +21,6 @@ use trellis_core::settings::RepoForgeFilters;
 
 /// Suggested labels shown under the labels field.
 const MAX_CHIPS: usize = 12;
-const WIDTH: f32 = 230.0;
-/// The width of the labels left of the controls.
-const LABEL_W: f32 = 100.0;
 
 /// Draws the dialog; returns true when it should close. The name field takes the keyboard
 /// focus when nothing has it, unless `cx.keyboard` is false (a credential prompt is above it).
@@ -99,60 +96,83 @@ impl Fields<'_> {
     }
 
     fn pr_rows(&mut self, ui: &mut egui::Ui) {
-        let why = self.why(Field::Author);
-        row(ui, "Author", why, |ui| combo(ui, "author", &mut self.form.c.author, &[(Who::Anyone, "Anyone"), (Who::Me, "Me")]));
-        self.assignee(ui);
-        let why = self.why(Field::Review);
-        let reviews = [(Review::Any, "Any"), (Review::WaitingForMe, "Waiting for my review")];
-        row(ui, "Review", why, |ui| combo(ui, "review", &mut self.form.c.review, &reviews));
-        let why = self.why(Field::Draft);
-        let drafts = [(Draft::Any, "Any"), (Draft::Ready, "Ready for review only"), (Draft::Drafts, "Drafts only")];
-        row(ui, "Draft", why, |ui| combo(ui, "draft", &mut self.form.c.draft, &drafts));
-        let why = self.why(Field::Base);
-        row(ui, "Target branch", why, |ui| ui.add(TextField::new(&mut self.form.c.base).hint("Any branch").width(WIDTH)));
+        ui.columns(2, |c| {
+            let why = self.why(Field::Author);
+            condition(&mut c[0], "Author", why, |ui| {
+                combo(ui, "author", &mut self.form.c.author, &[(Who::Anyone, "Anyone"), (Who::Me, "Me")])
+            });
+            self.assignee(&mut c[1]);
+        });
+        ui.columns(2, |c| {
+            let why = self.why(Field::Review);
+            let reviews = [(Review::Any, "Any"), (Review::WaitingForMe, "Waiting for my review")];
+            condition(&mut c[0], "Review", why, |ui| combo(ui, "review", &mut self.form.c.review, &reviews));
+            let why = self.why(Field::Draft);
+            let drafts = [(Draft::Any, "Any"), (Draft::Ready, "Ready for review only"), (Draft::Drafts, "Drafts only")];
+            condition(&mut c[1], "Draft", why, |ui| combo(ui, "draft", &mut self.form.c.draft, &drafts));
+        });
+        ui.columns(2, |c| {
+            let why = self.why(Field::Base);
+            condition(&mut c[0], "Target branch", why, |ui| ui.add(TextField::new(&mut self.form.c.base).hint("Any branch")));
+            self.milestone(&mut c[1]);
+        });
         self.labels(ui);
-        self.milestone(ui);
     }
 
     fn issue_rows(&mut self, ui: &mut egui::Ui) {
-        self.assignee(ui);
-        let why = self.why(Field::Author);
-        row(ui, "Created by", why, |ui| combo(ui, "creator", &mut self.form.c.author, &[(Who::Anyone, "Anyone"), (Who::Me, "Me")]));
-        let why = self.why(Field::Mentions);
-        row(ui, "Mentions", why, |ui| controls::checkbox(ui, &mut self.form.c.mentions_me, "Mentions me"));
+        ui.columns(2, |c| {
+            self.assignee(&mut c[0]);
+            let why = self.why(Field::Author);
+            let who = [(Who::Anyone, "Anyone"), (Who::Me, "Me")];
+            condition(&mut c[1], "Created by", why, |ui| combo(ui, "creator", &mut self.form.c.author, &who));
+        });
+        let sprints = self.form.provider.is_some_and(|p| p.is_jira());
+        ui.columns(2, |c| {
+            self.milestone(&mut c[0]);
+            if sprints {
+                self.sprint(&mut c[1]);
+            }
+        });
         self.labels(ui);
-        self.milestone(ui);
-        if self.form.provider.is_some_and(|p| p.is_jira()) {
-            self.sprint(ui);
+        let why = self.why(Field::Mentions);
+        ui.add_enabled_ui(why.is_none(), |ui| {
+            let r = controls::checkbox(ui, &mut self.form.c.mentions_me, "Mentions me");
+            if let Some(why) = &why {
+                r.on_disabled_hover_text(why);
+            }
+        });
+        if let Some(why) = &why {
+            reason(ui, why);
         }
     }
 
     fn assignee(&mut self, ui: &mut egui::Ui) {
         let why = self.why(Field::Assignee);
         let who = [(Who::Anyone, "Anyone"), (Who::Me, "Me"), (Who::Nobody, "Nobody")];
-        row(ui, "Assignee", why, |ui| combo(ui, "assignee", &mut self.form.c.assignee, &who));
+        condition(ui, "Assignee", why, |ui| combo(ui, "assignee", &mut self.form.c.assignee, &who));
     }
 
+    /// The labels field, with the service's other labels under it to add with a click.
     fn labels(&mut self, ui: &mut egui::Ui) {
         let noun = self.form.provider.map(matching::labels_noun).unwrap_or("Labels");
         let why = self.why(Field::Labels);
-        row(ui, noun, why.clone(), |ui| ui.add(TextField::new(&mut self.form.labels).hint("Comma-separated").width(WIDTH)));
         let typed = self.form.label_list();
         let offered: Vec<String> =
             self.loaded.labels.iter().filter(|l| !typed.iter().any(|t| t.eq_ignore_ascii_case(l))).take(MAX_CHIPS).cloned().collect();
-        if offered.is_empty() || why.is_some() {
-            return;
-        }
-        let mut rect = ui.available_rect_before_wrap();
-        rect.min.x += LABEL_W + ui.spacing().item_spacing.x;
-        rect.max.x = rect.min.x + WIDTH;
-        let layout = egui::Layout::left_to_right(egui::Align::Min).with_main_wrap(true);
-        ui.scope_builder(egui::UiBuilder::new().max_rect(rect).layout(layout), |ui| {
-            for l in offered {
-                if ui.small_button(l.as_str()).on_hover_text(format!("Add {l}")).clicked() {
-                    self.form.add_label(&l);
-                }
+        let chips = why.is_none();
+        let form = &mut *self.form;
+        condition(ui, noun, why, |ui| {
+            let r = ui.add(TextField::new(&mut form.labels).hint("Comma-separated"));
+            if chips && !offered.is_empty() {
+                ui.horizontal_wrapped(|ui| {
+                    for l in offered {
+                        if ui.small_button(l.as_str()).on_hover_text(format!("Add {l}")).clicked() {
+                            form.add_label(&l);
+                        }
+                    }
+                });
             }
+            r
         });
     }
 
@@ -170,7 +190,7 @@ impl Fields<'_> {
             choices.push((self.form.c.milestone.clone(), title.clone()));
         }
         let loading = self.loading;
-        row(ui, noun, why, |ui| combo_loading(ui, "milestone", &mut self.form.c.milestone, &choices, loading));
+        condition(ui, noun, why, |ui| combo_loading(ui, "milestone", &mut self.form.c.milestone, &choices, loading));
     }
 
     fn sprint(&mut self, ui: &mut egui::Ui) {
@@ -187,24 +207,32 @@ impl Fields<'_> {
             choices.push((self.form.c.sprint.clone(), name.clone()));
         }
         let loading = self.loading;
-        row(ui, "Sprint", why, |ui| combo_loading(ui, "sprint", &mut self.form.c.sprint, &choices, loading));
+        condition(ui, "Sprint", why, |ui| combo_loading(ui, "sprint", &mut self.form.c.sprint, &choices, loading));
     }
 }
 
-/// One labelled row of the grid; a control the service can't use is disabled with `why` on hover.
-fn row(ui: &mut egui::Ui, label: &str, why: Option<String>, add: impl FnOnce(&mut egui::Ui) -> egui::Response) {
-    ui.horizontal(|ui| {
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(LABEL_W, ui.spacing().interact_size.y), egui::Sense::hover());
-        let font = egui::TextStyle::Body.resolve(ui.style());
-        let col = if why.is_some() { color::faint() } else { color::text() };
-        ui.painter().text(rect.left_center(), egui::Align2::LEFT_CENTER, label, font, col);
+/// One condition as a field group: its label above the control. A control the service can't
+/// use is disabled, with `why` under it in the help's place and on hover.
+fn condition(ui: &mut egui::Ui, label: &str, why: Option<String>, add: impl FnOnce(&mut egui::Ui) -> egui::Response) {
+    let mut group = FieldGroup::new(label);
+    if let Some(why) = &why {
+        group = group.help(why.as_str());
+    }
+    group.show(ui, |ui| {
         ui.add_enabled_ui(why.is_none(), |ui| {
             let r = add(ui);
-            if let Some(why) = &why {
-                r.on_disabled_hover_text(why);
+            match &why {
+                Some(why) => r.on_disabled_hover_text(why),
+                None => r,
             }
-        });
+        })
+        .inner
     });
+}
+
+/// Why a control is disabled, weak under it.
+fn reason(ui: &mut egui::Ui, why: &str) {
+    ui.add(egui::Label::new(RichText::new(why).size(type_scale::SMALL).color(color::weak())).wrap());
 }
 
 fn combo<T: PartialEq + Clone>(ui: &mut egui::Ui, id: &str, value: &mut T, choices: &[(T, &str)]) -> egui::Response {
@@ -221,7 +249,8 @@ fn combo_loading<T: PartialEq + Clone>(
     loading: bool,
 ) -> egui::Response {
     let selected = choices.iter().find(|(v, _)| v == value).map(|(_, l)| l.clone()).unwrap_or_default();
-    let r = egui::ComboBox::from_id_salt(("forge-filter", id)).selected_text(selected).width(WIDTH).show_ui(ui, |ui| {
+    let width = ui.available_width();
+    let r = egui::ComboBox::from_id_salt(("forge-filter", id)).selected_text(selected).width(width).show_ui(ui, |ui| {
         for (v, l) in choices {
             ui.selectable_value(value, v.clone(), l.as_str());
         }

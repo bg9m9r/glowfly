@@ -124,18 +124,20 @@ fn body(
     description.show(ui, |ui| ui.add(TextField::multiline(f.description, 5)));
     let keys = parse_keys(f.items);
     if fs.tracker.is_some() {
-        ui.horizontal(|ui| {
-            ui.label(format!("{}s", capitalize(fs.issue_noun())));
-            let hint = match fs.style() {
-                Some(RefStyle::Jira) => "e.g. PROJ-12, PROJ-14",
-                Some(RefStyle::Trello) => "e.g. AbCd1234 or a card link",
-                _ => "e.g. 123, 456",
-            };
-            ui.add(TextField::new(f.items).hint(hint).width(220.0));
+        let hint = match fs.style() {
+            Some(RefStyle::Jira) => "e.g. PROJ-12, PROJ-14",
+            Some(RefStyle::Trello) => "e.g. AbCd1234 or a card link",
+            _ => "e.g. 123, 456",
+        };
+        // The linked items show under the field, inside its group.
+        let linked = FieldGroup::new(format!("{}s", capitalize(fs.issue_noun()))).optional(t.tr("dialog.field.optional"));
+        linked.show(ui, |ui| {
+            let r = ui.add(TextField::new(f.items).hint(hint));
+            for k in &keys {
+                issue_chip(ui, fs, k, msgs);
+            }
+            r
         });
-        for k in &keys {
-            issue_chip(ui, fs, k, msgs);
-        }
     }
     controls::checkbox(ui, f.draft, "Create as draft");
     (pushed, keys)

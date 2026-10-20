@@ -105,6 +105,25 @@ fn create_issue_jira_dark() {
     remove_fixture(&dir);
 }
 
+/// Without the site's project list, the Jira project is a typed key in a labelled field group,
+/// its problem under it once Create was tried.
+#[test]
+fn create_issue_jira_project_key() {
+    let account = Account { provider: Provider::JiraCloud, host: "acme.atlassian.net".into(), org: String::new() };
+    let mut form = IssueForm::new(Target::jira(&account, ""));
+    form.touched = crate::state::touched::Touched::all();
+    let why = form.problem(trellis_core::forge::IssueField::Project).expect("a missing project");
+    let (st, dir) = with_form(ThemeChoice::Light, "issue-create-jira-key", form, |_| {});
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("create_issue_jira_project_key");
+    assert!(h.query_all_by_label("Project").any(|n| n.role() == Role::Label), "the label above the field");
+    assert!(h.query_all_by_label("Project").any(|n| n.role() == Role::TextInput), "the field it names");
+    assert_eq!(h.query_all_by_label(&why).count(), 1, "the problem, under the field");
+    drop(h);
+    remove_fixture(&dir);
+}
+
 #[test]
 fn create_issue_busy_error() {
     let mut form = github_form();

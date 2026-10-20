@@ -55,13 +55,13 @@ fn body(ui: &mut Ui, t: Lang, form: &mut IssueForm, fs: Option<&ForgeState>, foc
     let noun = words::noun(p);
     ui.spacing_mut().item_spacing.y = 4.0;
     if p.is_jira() {
-        caption(ui, words::project_label(p));
         project(ui, form, fs, msgs);
+    } else {
+        if p == Provider::Trello {
+            board(ui, form, msgs);
+        }
+        problem(ui, form, IssueField::Project, "project");
     }
-    if p == Provider::Trello {
-        board(ui, form, msgs);
-    }
-    problem(ui, form, IssueField::Project, "project");
     let types = form.loaded().map(|o| o.types.clone()).filter(|t| !t.is_empty());
     if let Some(types) = &types {
         caption(ui, words::type_label(p));
@@ -237,8 +237,8 @@ fn board(ui: &mut Ui, form: &mut IssueForm, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// The project: a list of the site's project keys when known, else a field committed on
-/// Enter or when it loses focus.
+/// The project with its label and problem: a list of the site's project keys when known, else
+/// a field committed on Enter or when it loses focus.
 fn project(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
     let known = fs.and_then(|f| match &f.jira_projects {
         ProjectKeys::Known(set) if !set.is_empty() => {
@@ -248,8 +248,10 @@ fn project(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, msgs: &mu
         }
         _ => None,
     });
+    let label = words::project_label(form.provider());
     match known {
         Some(keys) => {
+            caption(ui, label);
             let shown = if form.project.is_empty() { "Choose a project".to_owned() } else { form.project.clone() };
             egui::ComboBox::from_id_salt("issue-project").selected_text(shown).width(200.0).show_ui(ui, |ui| {
                 for k in &keys {
@@ -259,9 +261,12 @@ fn project(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, msgs: &mu
                     }
                 }
             });
+            problem(ui, form, IssueField::Project, "project");
         }
         None => {
-            let r = ui.add(TextField::new(&mut form.project_text).hint("Project key, e.g. PROJ").width(200.0));
+            ui.add_space(4.0);
+            let group = FieldGroup::new(label).message(&form.touched, "project", form.problem(IssueField::Project).map(Message::error));
+            let r = group.show(ui, |ui| ui.add(TextField::new(&mut form.project_text).hint("Project key, e.g. PROJ").width(200.0)));
             form_message::track(&mut form.touched, "project", &r);
             if r.lost_focus() && form.project_text.trim() != form.project {
                 msgs.push(Msg::Issue(IssueMsg::SetProject(form.project_text.trim().to_owned())));
