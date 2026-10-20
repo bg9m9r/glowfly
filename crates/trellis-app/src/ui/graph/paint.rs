@@ -3,6 +3,7 @@
 use super::LANE_W;
 use super::lane_colours::RowColours;
 use crate::ui::avatars::Avatars;
+use crate::ui::theme::branch_colours::initials_tones;
 use crate::ui::widgets;
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, epaint::CubicBezierShape, epaint::RectShape, pos2, vec2};
 use trellis_core::graph::GraphRow;
@@ -37,20 +38,8 @@ pub(super) fn draw_lanes(p: &egui::Painter, graph_x: f32, rect: Rect, g: &GraphR
     }
 }
 
-fn initials_color(name: &str) -> Color32 {
-    let h = name.bytes().fold(5381u32, |h, b| h.wrapping_mul(33) ^ b as u32);
-    const PALETTE: [Color32; 6] = [
-        Color32::from_rgb(0x2d, 0x5f, 0x8a),
-        Color32::from_rgb(0x6b, 0x3f, 0x8f),
-        Color32::from_rgb(0x2f, 0x7a, 0x5a),
-        Color32::from_rgb(0x8a, 0x4b, 0x2d),
-        Color32::from_rgb(0x7a, 0x2f, 0x55),
-        Color32::from_rgb(0x3d, 0x6b, 0x7a),
-    ];
-    PALETTE[h as usize % PALETTE.len()]
-}
-
-/// An author avatar inside a ring: the image when available, otherwise initials.
+/// An author avatar inside a `ring` (the branch's colour): the image when available, otherwise
+/// initials in the person's colours (`initials_tones`).
 pub fn draw_avatar(p: &egui::Painter, c: egui::Pos2, r: f32, name: &str, email: &str, ring: Color32, avatars: Option<&mut Avatars>) {
     p.circle_filled(c, r, ring);
     let inner = r - 2.0;
@@ -59,8 +48,9 @@ pub fn draw_avatar(p: &egui::Painter, c: egui::Pos2, r: f32, name: &str, email: 
         let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
         p.add(RectShape::filled(rect, CornerRadius::same(inner as u8), Color32::WHITE).with_texture(tex.id(), uv));
     } else {
-        p.circle_filled(c, inner, initials_color(name));
-        p.text(c, Align2::CENTER_CENTER, widgets::initials(name), FontId::proportional(r * 0.85), Color32::WHITE);
+        let (fill, ink) = initials_tones(email, name);
+        p.circle_filled(c, inner, fill);
+        p.text(c, Align2::CENTER_CENTER, widgets::initials(name), FontId::proportional(r * 0.85), ink);
     }
 }
 

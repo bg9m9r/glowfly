@@ -1,12 +1,13 @@
 //! Preferences > UI customization > Commit graph: which columns the graph shows (one labelled
-//! checkbox each, in one row), how commit descriptions show, and the two layout resets.
+//! checkbox each, in one row), how commit descriptions show, the branch colour preset, and the
+//! two layout resets.
 
 use super::{combo, help, row, section};
 use crate::ui::theme::controls;
 use crate::ui::widgets::buttons;
 use eframe::egui::Ui;
 use trellis_core::i18n::Lang;
-use trellis_core::settings::{ColumnWidths, DescriptionMode as DM, GraphColumns, Settings};
+use trellis_core::settings::{BranchPalette, ColumnWidths, DescriptionMode as DM, GraphColumns, Settings};
 
 pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
     section(ui, t.tr("prefs.ui.graph.section"));
@@ -35,6 +36,14 @@ pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
             (DM::Never, t.tr("prefs.ui.graph.description.never")),
         ];
         combo(ui, "description", &mut c.description, &options)
+    });
+    row(ui, t.tr("prefs.ui.branch_palette.label"), |ui| {
+        let options = [
+            (BranchPalette::Standard, t.tr("prefs.ui.branch_palette.standard")),
+            (BranchPalette::ColourBlind, t.tr("prefs.ui.branch_palette.color_blind")),
+        ];
+        combo(ui, "branch_palette", &mut s.branch_palette, &options);
+        help(ui, t.tr("prefs.ui.branch_palette.help"));
     });
     row(ui, t.tr("prefs.ui.columns.label"), |ui| {
         ui.horizontal(|ui| {

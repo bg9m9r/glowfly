@@ -71,7 +71,7 @@ fn one_step_lower_fails_somewhere() {
 fn cached_tint(choice: ThemeChoice) -> Option<MicaTint> {
     let ctx = egui::Context::default();
     let mut cache = ThemeCache::default();
-    cache.select(&ctx, &choice, &ThemeState::default(), true);
+    cache.select(&ctx, &choice, Default::default(), &ThemeState::default(), true);
     cache.mica_tint()
 }
 

@@ -3,7 +3,7 @@
 //! tree turns clean or dirty), so views only read them.
 
 use super::{RefKind, Snapshot, worktrees::worktree_wip_heads};
-use crate::branch_colour::{Swatch, branch_key, resolve};
+use crate::branch_colour::{Colouring, Swatch, branch_key, resolve};
 use crate::graph::{self, owners};
 use git2::Oid;
 use std::collections::HashMap;
@@ -29,6 +29,13 @@ impl Snapshot {
         layout.swatches = resolve(&layout.owners, &colouring);
         layout.colouring = colouring;
         self.graph = layout;
+    }
+
+    /// Colours the graph's owners again with `c` (a pin or the palette's slot count changed),
+    /// without laying it out again; later relayouts keep `c`.
+    pub fn set_colouring(&mut self, c: Colouring) {
+        self.graph.swatches = resolve(&self.graph.owners, &c);
+        self.graph.colouring = c;
     }
 
     fn remote_names(&self) -> Vec<&str> {

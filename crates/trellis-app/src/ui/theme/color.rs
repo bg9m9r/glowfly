@@ -6,6 +6,7 @@ use super::families::{Ansi, Attention, Branch, LANE_COUNT, Repository, Status};
 use eframe::egui::Color32;
 use std::cell::RefCell;
 use trellis_core::highlight::TokenKind;
+use trellis_core::settings::BranchPalette;
 
 /// The colors of one theme, in families: neutrals, brand, status, attention, diff, syntax,
 /// repository, branch and the terminal's basic colours. Every built-in meets the contrast floors and hue bands that the theme
@@ -188,6 +189,11 @@ palette_fields!(
     syn_function => syn_function,
     syn_attr => syn_attr,
 );
+
+/// The active palette's branch preset (how many hues branches and people pick from).
+pub fn branch_preset() -> BranchPalette {
+    ACTIVE.with_borrow(|p| p.branch.preset)
+}
 
 /// Graph lane `i`'s colour in the active palette (they repeat after `LANE_COUNT`).
 pub fn lane(i: usize) -> Color32 {

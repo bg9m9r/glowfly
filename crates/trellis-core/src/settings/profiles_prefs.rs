@@ -8,7 +8,7 @@
 //! live values are `Settings.connections` and the `Settings` fields themselves. A switch saves
 //! the live values into the outgoing profile and loads the incoming one's.
 
-use super::{BranchVisibility, ColumnWidths, Corner, GraphColumns, ProfileId, Settings, SubmodulePrefs, ThemeChoice};
+use super::{BranchPalette, BranchVisibility, ColumnWidths, Corner, GraphColumns, ProfileId, Settings, SubmodulePrefs, ThemeChoice};
 use crate::forge::Account;
 use serde::{Deserialize, Serialize};
 
@@ -75,6 +75,7 @@ profile_prefs! {
     worktree_wips: bool,
     group_worktree_tabs: bool,
     branch_visibility: BranchVisibility,
+    branch_palette: BranchPalette,
     columns: GraphColumns,
     column_widths: ColumnWidths,
     // Editor
@@ -111,6 +112,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "connections",
     "repo_trackers",
     "graph_filters",
+    "branch_pins",
     "repo_forge_filters",
     "repo_trust",
     "status_tip_shown",

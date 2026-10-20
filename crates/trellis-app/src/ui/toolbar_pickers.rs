@@ -110,7 +110,7 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                     let text = if b.is_head { format!("✔ {}", b.name) } else { b.name.clone() };
                     let elsewhere = crate::state::worktree_branches::checkout_blocked(snap, &b.name);
                     let enabled = !b.is_head && elsewhere.is_none();
-                    let mut r = branch_dot::menu_row(ui, &text, line(snap.branch_swatch(&b.name)), enabled);
+                    let mut r = branch_dot::menu_row(ui, &text, Some(line(snap.branch_swatch(&b.name))), enabled);
                     if let Some(why) = &elsewhere {
                         r = r.on_disabled_hover_text(why);
                     }

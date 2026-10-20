@@ -204,6 +204,8 @@ pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     st.log = std::mem::take(&mut st.tabs[i].log);
     let parked = st.tabs[i].parked.take().map(|p| *p).unwrap_or_default();
     unpark(st, parked);
+    // The preset or a pin may have changed while the tab was parked.
+    super::branch_colour::sync(st);
     super::logs_tabs::claim(st);
     super::search_paths::resume(st, fx);
     super::watch::sync(st, fx);

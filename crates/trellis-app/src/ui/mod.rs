@@ -11,6 +11,7 @@ mod auto_stash_dialog;
 mod avatars;
 pub(crate) mod backdrop;
 mod blame;
+mod branch_colour_menu;
 mod branch_dialogs;
 mod branch_dot;
 mod branch_menu;
@@ -165,6 +166,8 @@ mod snapshot_tests_blame_wrap;
 mod snapshot_tests_branch;
 #[cfg(test)]
 mod snapshot_tests_branch_colour;
+#[cfg(test)]
+mod snapshot_tests_branch_pin;
 #[cfg(test)]
 mod snapshot_tests_clone;
 #[cfg(test)]

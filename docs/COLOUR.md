@@ -92,6 +92,28 @@ its own. The colour then holds on every surface, so a branch's colour changes on
 neighbours in the graph do. `trellis-core`'s `graph/owners.rs` works out which branch owns each
 lane and `branch_colour.rs` picks the colours.
 
+Pins: a branch menu's Color submenu (local and remote branches, in the sidebar and the graph)
+pins a branch to a hue, or with Automatic lets it pick its own again. A pin is saved per
+repository (`Settings.branch_pins`, by branch key, so it colours the remote copies too) and
+recolours every surface at once. A pinned branch keeps its hue whatever its neighbours; an
+automatic neighbour moves off it, and two pinned neighbours may share a hue. Main has no pin:
+its Color item is disabled. A pin keeps its slot number, so under the colour-blind preset it
+shows as that number modulo 8.
+
+People: the initials in graph nodes and the commit details avatar take a person's own slot,
+FNV-1a of their trimmed, lowercased email (their name when the email is blank) modulo the
+preset's hue count, never the accent. The fill is the background mixed 30% toward their line
+tone, and the ink their chip tone pushed to 4.5:1 on that fill
+(`theme/branch_colours.rs::initials_tones`). The ring around the initials, or around an avatar
+image, stays the branch's colour.
+
+Colour-blind safe preset (Preferences > UI Customization > Commit graph > Branch colors): 8
+hues that stay apart under protan, deutan and tritan vision as well as normal vision, and keep
+out of the accent and attention bands. Dark and High contrast dark use its dark tones for lines
+and chips; Light, High contrast light and Sand use its line tones for lines and its text tones
+for chips. Theme files take the family of their kind (dark or light). The preset switches with
+the profile. Branch names always appear beside their colour, and main keeps the accent.
+
 ### Terminal
 
 `ansi.colors`: the built-in terminal's 16 basic colours (0-7 and their bright 8-15), one fixed
@@ -141,6 +163,9 @@ given, the second is for the high-contrast themes.
 | Status and `warn` | bg, panel, hover, selected, every lane band | 3 / 4.5 |
 | Branch line tones (`branch.lanes`) and `accent` as main's line | bg, panel | 3 |
 | Light's chip tones (`branch.chips`) | bg, panel, toolbar, hover, selected, raised | 4.5 |
+| Colour-blind line tones, applied to every built-in | bg, panel | 3 |
+| Colour-blind light text tones (chips on every light built-in) | bg, panel, toolbar, hover, selected, raised | 4.5 |
+| Colour-blind dark tones, light line tones | each other and the accents, in OKLab under normal, protan, deutan and tritan vision | distance 0.08 (dark), 0.05 (light lines) |
 | Change chip text | its chip tint | 4.5 |
 | Every `syn_*` | panel, diff_add, diff_del, diff_add_word, diff_del_word | 2.4 / 4.5 |
 | Terminal text colours (below) | input | 4.5 / 7 |
@@ -232,6 +257,25 @@ line tones (Light's lines, dots and bands).
 | 11 | Gold | #dfba3b | #786101 | #a98904 |
 | 12 | Sky | #0aabea | #005475 | #0685b6 |
 | 13 | Indigo | #8794f7 | #3b4097 | #646fd1 |
+
+The colour-blind safe preset, slot by slot: dark tones (Dark and High contrast dark), light line
+tones (lines, dots and bands on every light theme) and light text tones (chips on every light
+theme), with the OKLCH hue the three share within 1.5 deg. Simulated with Machado et al. (2009)
+at full severity on linear sRGB, distance in OKLab: the least distance between any two dark
+tones or a dark tone and a dark accent is 0.087, between light line tones or a light line tone
+and a light accent 0.055 (the standard dark tones get as close as 0.001, Violet and Azure, under
+deutan vision). Chips carry the branch name, so text tones have no distance floor.
+
+| Slot | Hue | Dark | Light line | Light text | Hue (deg) |
+|---|---|---|---|---|---|
+| 0 | Red | #ed485a | #b17272 | #8b0422 | 19 |
+| 1 | Aqua | #45fafc | #0d9295 | #0a4b4b | 196 |
+| 2 | Yellow | #d1c038 | #70640c | #474219 | 102 |
+| 3 | Blue | #2898c9 | #207aa0 | #106082 | 233 |
+| 4 | Plum | #ba7294 | #b2397b | #ac1c6f | 350 |
+| 5 | Lime | #ccee6e | #668014 | #56680f | 122 |
+| 6 | Purple | #9d62f4 | #9169d5 | #482b74 | 299 |
+| 7 | Periwinkle | #a2b5f2 | #3a45cf | #4158bd | 271 |
 
 High contrast dark, High contrast light and Sand keep their own surfaces, text, diff and syntax
 colours (their `raised` is their `toolbar`); their accent family is green at their own

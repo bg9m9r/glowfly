@@ -2,9 +2,9 @@
 //! worktree has, open that worktree), a new branch or worktree, rename and upstream; merge,
 //! rebase, checking for conflicts, fast-forward and push; pull requests (pushing the branch
 //! first when the code host lacks it, into the branch selected before; without a code host, a
-//! disabled item saying why); hide or solo in the graph; the Copy submenu; and delete. The
-//! branch's name heads the menu once; the items leave it out. Disabled items say why on hover,
-//! with the same text `update` logs when it refuses a late message.
+//! disabled item saying why); hide or solo in the graph, and its colour; the Copy submenu; and
+//! delete. The branch's name heads the menu once; the items leave it out. Disabled items say why
+//! on hover, with the same text `update` logs when it refuses a late message.
 
 use super::common::{menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
@@ -58,6 +58,7 @@ pub fn local_branch_menu(
     }
     ui.separator();
     ref_visibility::menu_items(ui, t, &format!("refs/heads/{name}"), filter, b.is_head, msgs);
+    super::branch_colour_menu::items(ui, t, name, snap, msgs);
     ui.separator();
     ui.menu_button(t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("refs.copy.name"), Msg::Copy(name.to_owned()));

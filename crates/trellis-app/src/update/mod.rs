@@ -8,6 +8,7 @@ mod askpass_store;
 mod auto_stash;
 mod avatars;
 mod blame;
+mod branch_colour;
 mod branches;
 mod build_status;
 mod clone;

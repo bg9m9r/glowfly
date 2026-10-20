@@ -1,5 +1,6 @@
 //! A branch's colour dot: a small filled circle in its line tone, painted left of its name in the
-//! sidebar's branch rows, the Branch picker's menu and the commit details header.
+//! sidebar's branch rows, the Branch picker's menu, the Color submenu and the commit details
+//! header.
 
 use super::theme::color;
 use super::theme::type_scale;
@@ -15,12 +16,13 @@ pub fn paint(p: &Painter, row: Rect, indent: f32, c: Color32) {
 }
 
 /// A menu row with the dot in colour `c` and `label`: full width, a hover fill, named for screen
-/// readers. A disabled row doesn't click, shows its label weak and takes disabled hover text.
-pub fn menu_row(ui: &mut Ui, label: &str, c: Color32, enabled: bool) -> Response {
+/// readers. With no colour the dot's room stays empty, so labels line up with dotted rows. A
+/// disabled row doesn't click, shows its label weak and takes disabled hover text.
+pub fn menu_row(ui: &mut Ui, label: &str, c: Option<Color32>, enabled: bool) -> Response {
     ui.add_enabled_ui(enabled, |ui| row(ui, label, c)).inner
 }
 
-fn row(ui: &mut Ui, label: &str, c: Color32) -> Response {
+fn row(ui: &mut Ui, label: &str, c: Option<Color32>) -> Response {
     let enabled = ui.is_enabled();
     let pad = ui.spacing().button_padding;
     let ink = if enabled { color::text() } else { color::weak() };
@@ -35,7 +37,9 @@ fn row(ui: &mut Ui, label: &str, c: Color32) -> Response {
         if enabled && resp.hovered() {
             p.rect_filled(rect, ui.visuals().widgets.hovered.corner_radius, color::hover());
         }
-        paint(p, rect, pad.x, c);
+        if let Some(c) = c {
+            paint(p, rect, pad.x, c);
+        }
         p.galley(pos2(rect.left() + pad.x + DOT_ROOM, rect.center().y - galley.size().y / 2.0), galley, ink);
     }
     resp

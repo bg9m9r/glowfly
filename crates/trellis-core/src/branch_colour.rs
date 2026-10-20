@@ -4,13 +4,18 @@
 //! machine), with its remote copies sharing it: `origin/feature` and `feature` are one key. The
 //! repository's main branch takes the accent instead (`Swatch::Main`). Branches that ever sit in
 //! side-by-side lanes never share a hue: `resolve` moves the later one to the next free slot.
-//! Pins (`Colouring::pins`) fix a branch's slot whatever its neighbours.
+//! Pins (`Colouring::pins`) fix a branch's slot whatever its neighbours; a pin keeps its slot
+//! number, so under a palette with fewer hues it shows as that number modulo the hue count.
+//! People get a slot too (`person_slot`), from their email, for the initials in the graph.
 
 use crate::graph::owners::{Owner, Owners};
 use std::collections::BTreeMap;
 
 /// How many branch hues the palette has (the accent is not one of them).
 pub const SLOTS: u8 = 14;
+
+/// How many hues the colour-blind safe palette has.
+pub const COLOUR_BLIND_SLOTS: u8 = 8;
 
 /// The colour a branch is drawn in: the accent for the main branch, else one of the hues.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -27,6 +32,13 @@ pub fn name_hash(bytes: &[u8]) -> u32 {
 /// The slot (0 to `slots` − 1) a name prefers.
 pub fn slot_of(bytes: &[u8], slots: u8) -> u8 {
     (name_hash(bytes) % u32::from(slots.max(1))) as u8
+}
+
+/// A person's slot (0 to `n` − 1): from their email, trimmed and lowercased (emails are matched
+/// without case, as avatars are), or from their trimmed name when the email is blank.
+pub fn person_slot(email: &str, name: &str, n: u8) -> u8 {
+    let email = email.trim();
+    if email.is_empty() { slot_of(name.trim().as_bytes(), n) } else { slot_of(email.to_lowercase().as_bytes(), n) }
 }
 
 /// The colour key of the full ref name `full`: a local branch's name, or a remote-tracking

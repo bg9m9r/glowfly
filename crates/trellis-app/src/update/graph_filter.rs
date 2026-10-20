@@ -13,6 +13,7 @@ pub(super) fn handle(st: &mut AppState, msg: GraphMsg, fx: &mut Vec<Effect>) {
     match msg {
         GraphMsg::GraphFilter(op) => filter(st, op, fx),
         GraphMsg::HoverRef(tip) => hover_ref(st, tip),
+        GraphMsg::PinColour { key, slot } => super::branch_colour::pin(st, &key, slot, fx),
         GraphMsg::ResizeColumn { col, width } => super::graph_columns::resize(st, col, width, fx),
         GraphMsg::ResetColumnWidth(col) => super::graph_columns::reset(st, col, fx),
     }

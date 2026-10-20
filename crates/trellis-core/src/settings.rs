@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
 mod blame;
+mod branch_colours;
 mod column_widths;
 mod date_fmt;
 mod downloads;
@@ -30,6 +31,7 @@ mod updates;
 mod zoom;
 pub use crate::dates::DateKind;
 pub use blame::{BlameMoves, BlamePrefs};
+pub use branch_colours::BranchPalette;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use downloads::downloads_dir;
 pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
@@ -198,6 +200,8 @@ pub struct Settings {
     /// Keep tabs of one repository's worktrees side by side (Preferences > UI Customization).
     pub group_worktree_tabs: bool,
     pub branch_visibility: BranchVisibility,
+    /// The branch hues: standard or colour-blind safe (Preferences > UI Customization).
+    pub branch_palette: BranchPalette,
     pub columns: GraphColumns,
     /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.
     #[serde(default)]
@@ -256,6 +260,9 @@ pub struct Settings {
     /// Hidden and soloed refs per repository, keyed by its resolved working directory (`repo_keys`).
     #[serde(default)]
     pub graph_filters: HashMap<String, GraphFilter>,
+    /// Hues pinned to branches (by branch key) per repository, keyed by `repo_keys`.
+    #[serde(default)]
+    pub branch_pins: HashMap<String, BTreeMap<String, u8>>,
     /// Saved pull request and issue filters and the ones shown, per repository, keyed by its
     /// resolved working directory (`repo_keys`).
     #[serde(default)]
@@ -361,6 +368,7 @@ impl Default for Settings {
             worktree_wips: true,
             group_worktree_tabs: true,
             branch_visibility: BranchVisibility::All,
+            branch_palette: BranchPalette::Standard,
             columns: GraphColumns::default(),
             column_widths: ColumnWidths::default(),
             diff_layout: DiffLayout::Inline,
@@ -383,6 +391,7 @@ impl Default for Settings {
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
             graph_filters: HashMap::new(),
+            branch_pins: HashMap::new(),
             repo_forge_filters: HashMap::new(),
             repo_trust: HashMap::new(),
             status_tip_shown: HashMap::new(),

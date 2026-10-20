@@ -85,3 +85,26 @@ fn unnamed_lines_hash_their_commit_and_resolving_is_stable() {
     assert_eq!(first[1], Swatch::Slot(slot_of(oid(7).as_bytes(), 14)));
     assert_eq!(resolve(&o, &c), first);
 }
+
+#[test]
+fn a_person_is_coloured_by_their_email() {
+    let want = slot_of(b"ada@example.com", 14);
+    assert_eq!(person_slot("ada@example.com", "Ada", 14), want);
+    assert_eq!(person_slot("  Ada@Example.COM ", "Someone else", 14), want, "case and spaces don't count");
+    assert_eq!(person_slot("", " Ada Lovelace ", 14), slot_of(b"Ada Lovelace", 14), "no email: the name");
+    assert_eq!(person_slot("   ", "Ada Lovelace", 14), slot_of(b"Ada Lovelace", 14));
+    assert!(person_slot("grace@example.com", "Grace", COLOUR_BLIND_SLOTS) < COLOUR_BLIND_SLOTS);
+}
+
+#[test]
+fn the_colour_blind_count_stays_below_eight_and_pins_wrap() {
+    let names: Vec<String> = (0..30).map(|i| format!("b{i}")).collect();
+    let refs: Vec<&str> = names.iter().map(String::as_str).collect();
+    let pairs: Vec<(u32, u32)> = (0..29).map(|i| (i, i + 1)).collect();
+    let o = owners(&refs, &pairs, Some("b0"));
+    let c = Colouring { slots: COLOUR_BLIND_SLOTS, pins: [("b5".to_owned(), 11)].into_iter().collect() };
+    let swatches = resolve(&o, &c);
+    assert!(swatches.iter().all(|s| matches!(s, Swatch::Main) || matches!(s, Swatch::Slot(n) if *n < 8)), "{swatches:?}");
+    assert_eq!(swatches[5], Swatch::Slot(3), "a pin of 11 shows as 11 % 8");
+    assert_eq!(c.slot_for("b5"), 3);
+}

@@ -1,10 +1,9 @@
-//! A graph row's node, in its lane's colour: an ordinary commit's author (initials on a muted
-//! fill, or the avatar) inside a ring, a merge commit's small solid dot, and a WIP row's dashed
-//! ring.
+//! A graph row's node, in its lane's colour: an ordinary commit's author (initials in the
+//! person's own colours, or the avatar) inside a ring, a merge commit's small solid dot, and a
+//! WIP row's dashed ring.
 
 use crate::ui::avatars::Avatars;
-use crate::ui::theme::color;
-use crate::ui::theme::contrast::{mix, readable_on};
+use crate::ui::theme::branch_colours::initials_tones;
 use crate::ui::widgets;
 use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Stroke, epaint::RectShape, pos2, vec2};
 
@@ -12,8 +11,6 @@ use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, S
 pub(super) const NODE_R: f32 = 11.0;
 /// The radius of a merge commit's dot.
 pub(super) const MERGE_R: f32 = 4.0;
-/// How far the muted fill behind initials moves from the background toward the lane colour.
-const FILL_T: f32 = 0.30;
 
 /// Which node a commit row draws.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -31,7 +28,8 @@ pub(super) fn radius(kind: NodeKind) -> f32 {
 }
 
 /// An ordinary commit's node centred on `c`: the author's avatar inside a 2 px `lane` ring when
-/// `avatars` has it, otherwise the initials of `name` on a muted fill inside a thinner ring.
+/// `avatars` has it, otherwise the initials of `name` in the person's colours (`initials_tones`)
+/// inside a thinner `lane` ring.
 pub(super) fn commit(p: &Painter, c: Pos2, name: &str, email: &str, lane: Color32, avatars: Option<&mut Avatars>) {
     if let Some(tex) = avatars.and_then(|a| a.get(email)) {
         p.circle_filled(c, NODE_R, lane);
@@ -41,11 +39,9 @@ pub(super) fn commit(p: &Painter, c: Pos2, name: &str, email: &str, lane: Color3
         p.add(RectShape::filled(rect, CornerRadius::same(inner as u8), Color32::WHITE).with_texture(tex.id(), uv));
         return;
     }
-    let pal = color::current();
-    let fill = mix(pal.bg, lane, FILL_T);
+    let (fill, ink) = initials_tones(email, name);
     p.circle_filled(c, NODE_R, fill);
     p.circle_stroke(c, NODE_R - 0.75, Stroke::new(1.5_f32, lane));
-    let ink = readable_on(lane, fill, pal.dark, 4.5);
     p.text(c, Align2::CENTER_CENTER, widgets::initials(name), FontId::proportional(NODE_R * 0.8), ink);
 }
 

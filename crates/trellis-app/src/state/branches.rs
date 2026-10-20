@@ -10,6 +10,8 @@ use trellis_core::repo::{BranchInfo, Snapshot, Tracking};
 pub const NO_REMOTES: &str = "This repository has no remotes.";
 /// Why the checked-out branch can't be hidden: HEAD is always walked, so only its label would go.
 pub const HEAD_ALWAYS_SHOWN: &str = "The checked-out branch is always shown in the graph.";
+/// Why the main branch has no Color submenu: it is always drawn in the accent.
+pub const MAIN_USES_ACCENT: &str = "The main branch always uses the accent color.";
 
 /// The remote a branch without a remote upstream is pushed to: origin if present, else the
 /// first remote.

@@ -1,6 +1,7 @@
 //! Messages of the commit graph: multi-selection and cherry-pick, the ref filter and hover,
-//! column widths, the commit search, and avatars (update/selection.rs, update/graph_filter.rs,
-//! update/graph_columns.rs, update/search.rs, update/avatars.rs).
+//! pinned branch colours, column widths, the commit search, and avatars (update/selection.rs,
+//! update/graph_filter.rs, update/branch_colour.rs, update/graph_columns.rs, update/search.rs,
+//! update/avatars.rs).
 
 use crate::state::pick::PickOp;
 use git2::Oid;
@@ -71,13 +72,16 @@ impl SelectionMsg {
     }
 }
 
-/// Hidden and soloed refs, the ref under the pointer (update/graph_filter.rs), and column
-/// widths (update/graph_columns.rs).
+/// Hidden and soloed refs, the ref under the pointer (update/graph_filter.rs), pinned branch
+/// colours (update/branch_colour.rs) and column widths (update/graph_columns.rs).
 pub enum GraphMsg {
     /// Hide, show or solo a ref in the active repository's graph (saved per repository).
     GraphFilter(FilterOp),
     /// The ref under the pointer changed (`None`: no ref): highlight its branch's rows.
     HoverRef(Option<Oid>),
+    /// A branch menu's Color submenu: pin the branch key `key` (a local branch and its remote
+    /// copies) to hue `slot`, or with None (Automatic) let it pick its own (saved per repository).
+    PinColour { key: String, slot: Option<u8> },
     /// A header divider drag ended: store this width (clamped) and save settings.
     ResizeColumn { col: ResizableColumn, width: f32 },
     /// A header divider was double-clicked: restore that column's default width.
@@ -89,7 +93,11 @@ impl GraphMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::GraphFilter(..) | Self::HoverRef(..) | Self::ResizeColumn { .. } | Self::ResetColumnWidth(..) => None,
+            Self::GraphFilter(..)
+            | Self::HoverRef(..)
+            | Self::PinColour { .. }
+            | Self::ResizeColumn { .. }
+            | Self::ResetColumnWidth(..) => None,
         }
     }
 }

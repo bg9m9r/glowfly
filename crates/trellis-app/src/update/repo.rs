@@ -260,7 +260,7 @@ pub(super) fn close_diff(st: &mut AppState) {
     next_diff_gen(st);
 }
 
-fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &mut Vec<Effect>) {
+fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, fx: &mut Vec<Effect>) {
     let state_before = st.snap.as_ref().filter(|_| kind == LoadKind::Refresh).map(|s| s.state);
     st.known.learn_snapshot(&snap);
     if kind == LoadKind::Open && super::tabs::open_elsewhere(st, &snap, fx) {
@@ -322,6 +322,8 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::forge::detect(st, &snap);
     let reload = super::graph_filter::loaded(st, &snap, kind, fx);
     super::notify::loaded(st, &snap, kind, now, fx);
+    // After the filter, which adopts the repository's keys: the pins are found under its own.
+    super::branch_colour::apply(&st.settings, &mut snap);
     st.snap = Some(snap);
     super::line_counts::status_changed(st, fx);
     super::pick::state_changed(st, state_before);

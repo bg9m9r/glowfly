@@ -289,7 +289,7 @@ until this list says which option was chosen.
       Separate token families in the theme code (status, branch, repository, attention), and
       contrast tests that also assert the reserved hue bands below. Write the colour rules in
       docs/COLOUR.md.
-- [ ] **Branch-led colour** (the base of colour direction C, Vivid, chosen 2026-10-19): each
+- [x] **Branch-led colour** (the base of colour direction C, Vivid, chosen 2026-10-19): each
       branch keeps one colour wherever it shows (graph lane and label, a sidebar dot, the
       Branch picker, a line under the active tab, the details header), picked from its name so
       it stays the same between sessions; only main uses the accent; two lanes side by side
@@ -305,8 +305,6 @@ until this list says which option was chosen.
       #3b4097. Light graph lines and dots use brighter tones (3:1 is enough for non-text):
       #c04d6e #719c27 #9776db #a86b06 #0b9db3 #c664a8 #7a8201 #498de5 #d86357 #0a8c89 #9e59b3
       #a98904 #0685b6 #646fd1.
-      Landed 2026-10-19: palette, name-based colour on every surface, main accent, neighbour
-      rule; still to build: Colour… pinning, per-person avatar colours, colour-blind preset.
 - [ ] **Vivid colour** (colour direction C, after Branch-led colour), with one job per colour
       kind: status colours appear only as letter badges or +/− signs in diffs and file lists;
       branch colours only as lines, dots and name pills; repository colours only on window
@@ -2872,5 +2870,13 @@ here, under the item they grew from.
 - A branch dot on WORKTREES rows (the worktree's checked-out branch) and in the command
   palette's checkout entries
 - Remember resolved colours per repository so a branch keeps its colour when new neighbours
-  appear (until pins land)
+  appear
 - Branch tones as theme-file keys
+- Separate pins per palette preset (a pin keeps its slot number; 8 hues show it modulo 8)
+- Share pins across a repository's worktrees (they are per working folder, like graph filters)
+- Show on the Color submenu's Automatic row which hue it would give
+- A preview strip of the chosen preset's hues on the Branch colors preference row
+- Person colours in the blame gutter, the file history and the author picker
+- Person colours that follow .mailmap (they follow the raw author email today)
+- Pin a branch colour from the command palette
+- Warn when a pin matches a side-by-side branch's pinned hue

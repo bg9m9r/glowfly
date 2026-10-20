@@ -107,3 +107,21 @@ fn relayout_keeps_colours() {
     assert_eq!(dirty.graph.owners.key(wip), Some("main"), "the WIP row takes HEAD's branch");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_pin_moves_its_neighbour_and_survives_a_relayout() {
+    use crate::branch_colour::Colouring;
+    let dir = diverging("colour-pin");
+    let mut s = open(&dir);
+    let Swatch::Slot(theirs) = s.branch_swatch("fix-1") else { panic!("fix-1 is not main") };
+    let pinned = Colouring { pins: [("topic".to_owned(), theirs)].into_iter().collect(), ..Colouring::default() };
+    s.set_colouring(pinned.clone());
+    assert_eq!(s.branch_swatch("topic"), Swatch::Slot(theirs), "the pin holds");
+    assert_ne!(s.branch_swatch("fix-1"), Swatch::Slot(theirs), "the automatic neighbour moves off it");
+    assert_eq!(s.ref_swatch("refs/heads/topic"), Some(Swatch::Slot(theirs)));
+    s.lay_out_graph();
+    assert_eq!(s.graph.colouring, pinned);
+    assert_eq!(s.branch_swatch("topic"), Swatch::Slot(theirs), "kept across relayouts");
+    assert_ne!(s.branch_swatch("fix-1"), Swatch::Slot(theirs));
+    let _ = std::fs::remove_dir_all(&dir);
+}

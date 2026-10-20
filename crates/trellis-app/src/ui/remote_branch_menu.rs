@@ -2,9 +2,9 @@
 //! and the remote-branch labels in the graph, in groups: checkout (the local branch tracking it,
 //! or a new one), a new branch and a worktree; fast-forward of that local branch, merge, rebase,
 //! conflict check, compare and set upstream against the checked-out branch; pull requests; hide
-//! or solo; the Copy submenu; and delete on the remote. The branch's name heads the menu once;
-//! the items leave it out. Disabled items say why on hover, with the same text `update` logs
-//! when it refuses a late message.
+//! or solo, and its colour; the Copy submenu; and delete on the remote. The branch's name heads
+//! the menu once; the items leave it out. Disabled items say why on hover, with the same text
+//! `update` logs when it refuses a late message.
 
 use super::common::{menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
@@ -70,6 +70,7 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     }
     ui.separator();
     ref_visibility::menu_items(ui, t, &format!("refs/remotes/{full}"), filter, false, msgs);
+    super::branch_colour_menu::items(ui, t, name, snap, msgs);
     ui.separator();
     ui.menu_button(t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("refs.copy.name"), Msg::Copy(full.clone()));

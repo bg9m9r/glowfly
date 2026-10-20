@@ -275,3 +275,16 @@ fn reduce_motion_defaults_off_and_switches_with_the_profile() {
     s.swap_profile_setup(A);
     assert!(s.reduce_motion, "A's, saved on the way out");
 }
+
+#[test]
+fn swap_carries_the_branch_palette_and_keeps_the_pins() {
+    let mut s = two();
+    s.branch_palette = BranchPalette::ColourBlind;
+    s.set_branch_pin(std::path::Path::new("/w/r"), "topic", Some(4));
+    s.swap_profile_setup(B);
+    assert_eq!(s.branch_palette, BranchPalette::Standard, "B's saved preference");
+    assert_eq!(s.branch_pins_for(std::path::Path::new("/w/r")).get("topic"), Some(&4), "the pins stay");
+    s.active_profile = Some(B);
+    s.swap_profile_setup(A);
+    assert_eq!(s.branch_palette, BranchPalette::ColourBlind, "A's, saved on the way out");
+}

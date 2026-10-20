@@ -288,6 +288,7 @@ pub(super) fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
         super::conflict_check::want(st, fx);
     }
     super::tab_groups::regroup(st, fx);
+    super::branch_colour::sync(st);
 }
 
 /// Switches the Integrations page to `provider`, prefilling the host for the open repository.
