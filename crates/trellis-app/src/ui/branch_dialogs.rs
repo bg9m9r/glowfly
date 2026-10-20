@@ -4,13 +4,14 @@
 //! edited or a submit was tried (`form_message`).
 
 use super::dialog_frame::{Cx, Dialog, Footer};
-use super::widgets::buttons;
 use super::widgets::form_message::{self, Message};
+use super::widgets::text_field::{self, TextField};
+use super::widgets::{FieldGroup, buttons};
 use crate::msg::BranchMsg;
 use crate::msg::{JobMsg, Msg};
 use crate::state::touched::Touched;
 use crate::ui::theme::controls;
-use eframe::egui::{self, Key};
+use eframe::egui;
 use trellis_core::branch_ops::{NameProblem, branch_name_warning, check_branch_name, is_valid_branch_name};
 use trellis_core::gitcli::args;
 use trellis_core::repo::{BranchInfo, Snapshot};
@@ -52,17 +53,17 @@ pub fn new_branch(ui: &mut egui::Ui, cx: Cx, f: NewBranchForm, snap: Option<&Sna
         (None, None) => "New branch at HEAD".to_owned(),
     };
     let d = Dialog::new(cx, heading).begin(ui);
-    let r = controls::field(ui, egui::TextEdit::singleline(f.name).hint_text("branch-name").desired_width(f32::INFINITY));
-    super::access::name_field(&r, "Branch name");
+    let locals = locals(snap);
+    let shown = name_message(f.name.trim(), check_branch_name(f.name.trim(), &locals, None).err().as_ref());
+    let group = FieldGroup::new("Branch name").message(f.touched, NAME, shown);
+    let r = group.show(ui, |ui| ui.add(TextField::new(f.name).hint("branch-name")));
     form_message::track(f.touched, NAME, &r);
-    // Read before focus is requested again, which would hide that Enter left the field.
-    let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+    let submit = text_field::entered(ui, &r);
     if cx.keyboard {
         r.request_focus();
     }
     let new = f.name.trim();
-    let problem = check_branch_name(new, &locals(snap), None).err();
-    form_message::field(ui, f.touched, NAME, name_message(new, problem.as_ref()));
+    let problem = check_branch_name(new, &locals, None).err();
     controls::checkbox(ui, f.checkout, "Check out after creating");
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create").enabled(problem.is_none())).submit(submit));
     if out.attempted {
@@ -90,23 +91,21 @@ pub fn rename(
     msgs: &mut Vec<Msg>,
 ) -> bool {
     let d = Dialog::new(cx, format!("Rename branch {old}")).begin(ui);
-    let r = controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
+    let locals = locals(snap);
+    let problem_of = |new: &str| if new == old { None } else { check_branch_name(new, &locals, Some(old)).err() };
+    let shown = Some(name.trim()).filter(|n| *n != old).and_then(|n| name_message(n, problem_of(n).as_ref()));
+    let tracking = branch(snap, old).and_then(|b| b.tracking.as_ref()).filter(|t| t.is_remote());
+    let note = tracking.map(|t| Message::info(format!("Its upstream setting moves with it; {} is not renamed.", t.display())));
+    let group = FieldGroup::new("Branch name").message(touched, NAME, shown).note(note);
+    let r = group.show(ui, |ui| ui.add(TextField::new(name).hint("branch-name")));
     form_message::track(touched, NAME, &r);
-    // Read before focus is requested again, which would hide that Enter left the field.
-    let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+    let submit = text_field::entered(ui, &r);
     if cx.keyboard {
         r.request_focus();
     }
     let new = name.trim();
     let unchanged = new == old;
-    let problem = if unchanged { None } else { check_branch_name(new, &locals(snap), Some(old)).err() };
-    if !unchanged {
-        form_message::field(ui, touched, NAME, name_message(new, problem.as_ref()));
-    }
-    if let Some(t) = branch(snap, old).and_then(|b| b.tracking.as_ref()).filter(|t| t.is_remote()) {
-        let note = format!("Its upstream setting moves with it; {} is not renamed.", t.display());
-        form_message::field(ui, touched, NAME, Some(Message::info(note)));
-    }
+    let problem = problem_of(new);
     let valid = !unchanged && problem.is_none();
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Rename").enabled(valid)).submit(submit));
     if out.attempted && !unchanged {
@@ -130,31 +129,31 @@ pub fn upstream(
 ) -> bool {
     let d = Dialog::new(cx, format!("Upstream for {branch_name}")).subtitle("Pull from and push to:").begin(ui);
     let remotes: &[(String, Vec<(String, git2::Oid)>)] = snap.map(|s| s.remotes.as_slice()).unwrap_or_default();
-    egui::Grid::new("upstream-form").num_columns(2).spacing([10.0, 6.0]).show(ui, |ui| {
-        ui.label("Remote");
-        egui::ComboBox::from_id_salt("upstream-remote").selected_text(remote.as_str()).width(200.0).show_ui(ui, |ui| {
-            for (r, _) in remotes {
-                ui.selectable_value(remote, r.clone(), r);
-            }
-        });
-        ui.end_row();
-        ui.label("Branch");
-        let r = controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(300.0));
-        form_message::track(touched, NAME, &r);
-        ui.end_row();
+    FieldGroup::new("Remote").show(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("upstream-remote").selected_text(remote.as_str()).width(ui.available_width());
+        combo
+            .show_ui(ui, |ui| {
+                for (r, _) in remotes {
+                    ui.selectable_value(remote, r.clone(), r);
+                }
+            })
+            .response
     });
+    let status = {
+        let target = name.trim();
+        let exists = remotes.iter().any(|(r, b)| *r == *remote && b.iter().any(|(n, _)| n == target));
+        if !is_valid_branch_name(target) {
+            Message::error("Not a valid branch name.")
+        } else if exists {
+            Message::info(format!("Tracks {remote}/{target}."))
+        } else {
+            Message::info(format!("{remote}/{target} doesn't exist yet. Push {branch_name} to create it."))
+        }
+    };
+    let r = FieldGroup::new("Branch").message(touched, NAME, Some(status)).show(ui, |ui| ui.add(TextField::new(name).hint("branch-name")));
+    form_message::track(touched, NAME, &r);
     let target = name.trim();
     let valid = is_valid_branch_name(target);
-    let exists = remotes.iter().any(|(r, b)| *r == *remote && b.iter().any(|(n, _)| n == target));
-    ui.add_space(4.0);
-    let status = if !valid {
-        Message::error("Not a valid branch name.")
-    } else if exists {
-        Message::info(format!("Tracks {remote}/{target}."))
-    } else {
-        Message::info(format!("{remote}/{target} doesn't exist yet. Push {branch_name} to create it."))
-    };
-    form_message::field(ui, touched, NAME, Some(status));
     let current = branch(snap, branch_name).and_then(|b| b.tracking.as_ref());
     let unchanged = current.is_some_and(|t| t.remote == *remote && t.merge == target);
     let save = buttons::primary("Save").enabled(valid && !unchanged && !remote.is_empty());

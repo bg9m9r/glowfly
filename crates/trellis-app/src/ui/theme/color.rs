@@ -225,3 +225,32 @@ pub fn token(k: TokenKind) -> Color32 {
         TokenKind::Attribute => syn_attr(),
     }
 }
+
+/// How far a text field's fill moves from `input` toward the accent.
+const FIELD_TINT: f32 = 0.04;
+/// How far a dialog's side pane moves from `panel` toward the accent.
+const GUIDE_TINT: f32 = 0.07;
+
+impl Palette {
+    /// The fill of a dialog's text field: `input` with a faint accent tint. Derived, not a
+    /// theme-file key.
+    pub fn field_fill(&self) -> Color32 {
+        super::contrast::mix(self.input, self.accent, FIELD_TINT)
+    }
+
+    /// The fill of a dialog's side pane (`dialog_frame`'s guide): `panel` tinted toward the
+    /// accent. Derived, not a theme-file key.
+    pub fn guide_fill(&self) -> Color32 {
+        super::contrast::mix(self.panel, self.accent, GUIDE_TINT)
+    }
+}
+
+/// [`Palette::field_fill`] of the active palette.
+pub fn field_fill() -> Color32 {
+    ACTIVE.with_borrow(Palette::field_fill)
+}
+
+/// [`Palette::guide_fill`] of the active palette.
+pub fn guide_fill() -> Color32 {
+    ACTIVE.with_borrow(Palette::guide_fill)
+}

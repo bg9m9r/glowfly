@@ -9,10 +9,12 @@
 //! (or that it opens a setting first) in `reason.rs`. The tab bars' painted close × and
 //! new-tab + are in `tab_glyph.rs`, and the quiet, clickable chips of the commit details (its
 //! SHA, parents and committer) in `quiet_chip.rs`. The quiet headers' ghost buttons, divider
-//! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`.
+//! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`. A dialog's 36 px
+//! text field is `text_field.rs`, and its label-field-help group `field_group.rs`.
 
 pub mod banner;
 pub mod buttons;
+pub mod field_group;
 pub mod form_message;
 pub mod ghost;
 mod icon;
@@ -23,6 +25,7 @@ pub mod section_header;
 pub mod segmented;
 pub mod severity;
 pub mod tab_glyph;
+pub mod text_field;
 pub mod tooltip;
 pub mod tooltip_motion;
 pub mod truncate;
@@ -32,7 +35,9 @@ pub use super::list_row::{
     file_row_with_end, list_row, list_row_cut, list_row_hidden, row_text, row_text_reserving,
 };
 pub use icon::{Icon, paint_icon, paint_icon_sized};
+pub use field_group::FieldGroup;
 pub use quiet_chip::quiet_chip;
+pub use text_field::TextField;
 pub use section_header::section_fonts;
 #[cfg(test)]
 pub use section_header::section_header;

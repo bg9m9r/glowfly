@@ -4,7 +4,8 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::buttons;
+use super::widgets::text_field::{self, TextField};
+use super::widgets::{FieldGroup, buttons};
 use crate::msg::{FilterMsg, Msg};
 use crate::state::ForgeState;
 use crate::state::forge_filter_form::FilterForm;
@@ -55,14 +56,14 @@ pub fn show(
 
 /// The name and the conditions; returns whether Enter left the name field.
 fn body(ui: &mut egui::Ui, form: &mut FilterForm, fs: Option<&ForgeState>, existing: &RepoForgeFilters, focus: bool) -> bool {
-    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.name).hint_text("Filter name").desired_width(f32::INFINITY));
+    let shown = form.name_problem(existing).map(Message::error);
+    let group = FieldGroup::new("Name").message(&form.touched, "name", shown);
+    let r = group.show(ui, |ui| ui.add(TextField::new(&mut form.name).hint("Filter name")));
     form_message::track(&mut form.touched, "name", &r);
-    let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+    let submit = text_field::entered(ui, &r);
     if focus && ui.memory(|m| m.focused().is_none()) {
         r.request_focus();
     }
-    form_message::field(ui, &form.touched, "name", form.name_problem(existing).map(Message::error));
-    ui.add_space(8.0);
     let options = fs.map(|f| (suggestions(f, form.kind), f.filters.options(form.kind).clone()));
     let (loaded, state) = options.unwrap_or((Some(FilterOptions::default()), OptionsState::NotAsked));
     let loaded = loaded.unwrap_or_default();
@@ -109,7 +110,7 @@ impl Fields<'_> {
         row(ui, "Draft", why, |ui| combo(ui, "draft", &mut self.form.c.draft, &drafts));
         let why = self.why(Field::Base);
         row(ui, "Target branch", why, |ui| {
-            controls::field(ui, egui::TextEdit::singleline(&mut self.form.c.base).hint_text("Any branch").desired_width(WIDTH))
+            ui.add(TextField::new(&mut self.form.c.base).hint("Any branch").width(WIDTH))
         });
         self.labels(ui);
         self.milestone(ui);
@@ -138,7 +139,7 @@ impl Fields<'_> {
         let noun = self.form.provider.map(matching::labels_noun).unwrap_or("Labels");
         let why = self.why(Field::Labels);
         row(ui, noun, why.clone(), |ui| {
-            controls::field(ui, egui::TextEdit::singleline(&mut self.form.labels).hint_text("Comma-separated").desired_width(WIDTH))
+            ui.add(TextField::new(&mut self.form.labels).hint("Comma-separated").width(WIDTH))
         });
         let typed = self.form.label_list();
         let offered: Vec<String> =

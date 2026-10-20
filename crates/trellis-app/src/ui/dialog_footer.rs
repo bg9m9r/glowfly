@@ -1,5 +1,5 @@
-//! A dialog's footer (`dialog_frame`): its buttons, built with `Footer`, and their layout in the
-//! fixed order, left to right:
+//! A dialog's footer (`dialog_frame`): its buttons, built with `Footer`, and their layout 24 px under
+//! the body, in the fixed order, left to right:
 //!
 //! extras | note | gap | dismiss, 12 px, alternatives, primary
 //!
@@ -38,7 +38,8 @@ pub(super) fn lay_out(ui: &mut Ui, footer: Footer<'_>, t: Lang) -> Laid {
     let Footer { primary, alts, extras, note, dismiss, tone, submit } = footer;
     let spacing = ui.spacing().item_spacing.x;
     let mut out = Outcome::default();
-    ui.add_space(16.0);
+    // 24 px between the body and the buttons.
+    ui.add_space(24.0);
     let dismiss = dismiss.map(|d| buttons::secondary(d.text(t)).min_width(FOOTER_BUTTON));
     let alts: Vec<_> = alts.into_iter().map(|b| b.min_width(FOOTER_BUTTON)).collect();
     let extras: Vec<_> = extras.into_iter().map(|b| b.min_width(FOOTER_BUTTON)).collect();

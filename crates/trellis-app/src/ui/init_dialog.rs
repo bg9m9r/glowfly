@@ -5,11 +5,12 @@
 use super::clone_dialog::{destination, note, problem};
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::buttons;
+use super::widgets::text_field::{self, TextField};
+use super::widgets::{FieldGroup, buttons};
 use crate::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg};
 use crate::state::init::{FolderLine, GITIGNORE_KEPT, InitForm};
 use crate::ui::theme::controls;
-use crate::ui::widgets::form_message;
+use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Id, RichText};
 use trellis_core::init_ops::{GitignoreTemplate, INITIAL_COMMIT, License};
 
@@ -25,32 +26,33 @@ fn label(ui: &mut egui::Ui, text: &str) {
 }
 
 fn folder(ui: &mut egui::Ui, form: &mut InitForm, focus: bool, msgs: &mut Vec<Msg>) {
-    ui.horizontal(|ui| {
-        label(ui, "Folder");
-        let edit = controls::field(
-            ui,
-            egui::TextEdit::singleline(&mut form.folder)
-                .id(Id::new("trellis-init-folder"))
-                .hint_text("Folder for the new repository")
-                .desired_width(250.0),
-        );
-        form_message::track(&mut form.touched, "folder", &edit);
-        if edit.changed() {
-            msgs.push(Msg::Init(InitMsg::FolderEdited));
-        }
-        // Not on the Enter that left it: the dialog's frame reads that as running Create.
-        if focus && !edit.lost_focus() && ui.memory(|m| m.focused().is_none()) {
-            edit.request_focus();
-        }
-        if ui.add(buttons::secondary("Browse…").small()).clicked() {
-            form.touched.mark("folder");
-            msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::InitRepo)));
-        }
+    let (shown, help) = match form.folder_line() {
+        Some(FolderLine::Problem(t)) => (Some(Message::error(t.to_owned())), None),
+        Some(FolderLine::Note(t)) => (None, Some(t.to_owned())),
+        None => (None, None),
+    };
+    let mut group = FieldGroup::new("Folder").message(&form.touched, "folder", shown);
+    if let Some(help) = help {
+        group = group.help(help);
+    }
+    let mut browse = false;
+    let edit = group.show(ui, |ui| {
+        let field = TextField::new(&mut form.folder).id(Id::new("trellis-init-folder")).hint("Folder for the new repository");
+        let (r, b) = text_field::with_button(ui, field, buttons::secondary("Browse…"));
+        browse = b.clicked();
+        r
     });
-    match form.folder_line() {
-        Some(FolderLine::Problem(t)) => problem(ui, &form.touched, "folder", Some(&t.to_owned())),
-        Some(FolderLine::Note(t)) => note(ui, t),
-        None => {}
+    form_message::track(&mut form.touched, "folder", &edit);
+    if edit.changed() {
+        msgs.push(Msg::Init(InitMsg::FolderEdited));
+    }
+    // Not on the Enter that left it: the dialog's frame reads that as running Create.
+    if focus && !edit.lost_focus() && ui.memory(|m| m.focused().is_none()) {
+        edit.request_focus();
+    }
+    if browse {
+        form.touched.mark("folder");
+        msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::InitRepo)));
     }
     if let Some(f) = form.facts() {
         destination(ui, &trellis_core::native_path::shown(&f.path));
@@ -88,8 +90,7 @@ fn license(ui: &mut egui::Ui, form: &mut InitForm, year: i32) {
     if form.license.is_some_and(License::needs_holder) {
         ui.horizontal(|ui| {
             label(ui, "Copyright holder");
-            let r =
-                controls::field(ui, egui::TextEdit::singleline(&mut form.holder).id(Id::new("trellis-init-holder")).desired_width(250.0));
+            let r = ui.add(TextField::new(&mut form.holder).id(Id::new("trellis-init-holder")).width(250.0));
             form_message::track(&mut form.touched, "holder", &r);
         });
         problem(ui, &form.touched, "holder", form.problems().holder.as_ref());
@@ -128,10 +129,7 @@ fn body(ui: &mut egui::Ui, form: &mut InitForm, year: i32, focus: bool, msgs: &m
     ui.add_space(6.0);
     ui.horizontal(|ui| {
         label(ui, "Initial branch");
-        let r = controls::field(
-            ui,
-            egui::TextEdit::singleline(&mut form.branch).id(Id::new("trellis-init-branch")).hint_text("git's default").desired_width(160.0),
-        );
+        let r = ui.add(TextField::new(&mut form.branch).id(Id::new("trellis-init-branch")).hint("git's default").width(180.0));
         form_message::track(&mut form.touched, "branch", &r);
     });
     problem(ui, &form.touched, "branch", form.problems().branch.as_ref());

@@ -5,7 +5,7 @@
 //! (`Modal::ConfirmChoice`), which pushes `Msg::ConfirmAlt`.
 
 use crate::msg::Msg;
-use crate::ui::dialog_frame::{self, Cx, Dialog, Footer, Tone};
+use crate::ui::dialog_frame::{self, Cx, Dialog, Footer, Size, Tone};
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Ui};
 
@@ -20,7 +20,7 @@ pub(super) fn show(
     alt: Option<&str>,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let mut d = Dialog::new(cx, title).begin(ui);
+    let mut d = Dialog::new(cx, title).size(Size::Small).begin(ui);
     d.body(ui, |ui| ui.add(egui::Label::new(body).wrap()));
     let mut ok = true;
     if let Some((label, acked)) = ack {

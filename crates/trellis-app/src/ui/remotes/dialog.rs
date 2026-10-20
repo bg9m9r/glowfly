@@ -4,7 +4,8 @@
 
 use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::theme::color;
-use super::super::widgets::buttons;
+use super::super::widgets::text_field::{self, TextField};
+use super::super::widgets::{FieldGroup, buttons};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::remotes::{RemoteForm, extra_push_urls, name_problem, push_problem, push_same_as_fetch, url_problem};
@@ -15,18 +16,16 @@ use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::remote_ops::{RemoteNameProblem, UrlProblem};
 use trellis_core::repo::Snapshot;
 
-/// A field with its label above it; returns whether Enter left it.
-pub(super) fn field(ui: &mut egui::Ui, label: &str, text: &mut String, id: &str, hint: &str) -> (egui::Response, bool) {
-    ui.label(label);
-    let r = controls::field(ui, egui::TextEdit::singleline(text).id(Id::new(id)).hint_text(hint).desired_width(f32::INFINITY));
-    let enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+/// A field in `group` (its label, help and problem); returns whether Enter left it.
+pub(super) fn field(ui: &mut egui::Ui, group: FieldGroup, text: &mut String, id: &str, hint: &str) -> (egui::Response, bool) {
+    let r = group.show(ui, |ui| ui.add(TextField::new(text).id(Id::new(id)).hint(hint)));
+    let enter = text_field::entered(ui, &r);
     (r, enter)
 }
 
-/// The problem of the field named `field` under it, once that field was edited or a submit
-/// was tried; nothing for empty `text`.
-pub(super) fn problem_line(ui: &mut egui::Ui, touched: &Touched, field: &str, text: String) {
-    form_message::field(ui, touched, field, Some(text).filter(|t| !t.is_empty()).map(Message::error));
+/// `text` as a field's problem; nothing when it is empty.
+pub(super) fn problem(text: String) -> Option<Message<'static>> {
+    Some(text).filter(|t| !t.is_empty()).map(Message::error)
 }
 
 pub(super) fn note(ui: &mut egui::Ui, text: impl Into<String>) {
@@ -57,43 +56,27 @@ pub fn show(
     {
         msgs.push(Msg::Remote(RemoteMsg::ForkDialog(remote)));
     }
-    ui.add_space(6.0);
+    ui.add_space(8.0);
 
-    let (name_r, enter_name) = field(ui, "Name", &mut form.name, "trellis-remote-name", "upstream");
+    let shown = name_problem(snap, form).filter(|p| *p != RemoteNameProblem::Empty).and_then(|p| problem(p.message()));
+    let group = FieldGroup::new("Name").message(&form.touched, "name", shown);
+    let (name_r, enter_name) = field(ui, group, &mut form.name, "trellis-remote-name", "upstream");
     form_message::track(&mut form.touched, "name", &name_r);
-    let name_p = name_problem(snap, form);
-    problem_line(
-        ui,
-        &form.touched,
-        "name",
-        name_p.as_ref().filter(|p| **p != RemoteNameProblem::Empty).map(|p| p.message()).unwrap_or_default(),
-    );
     if focus && ui.memory(|m| m.focused().is_none()) {
         name_r.request_focus();
     }
-    ui.add_space(6.0);
 
-    let (url_r, enter_url) =
-        field(ui, "Fetch URL", &mut form.url, "trellis-remote-url", "https://example.com/owner/repo.git or a folder path");
+    let shown = url_problem(form).filter(|p| *p != UrlProblem::Empty).and_then(|p| problem(p.message(false)));
+    let group = FieldGroup::new("Fetch URL").message(&form.touched, "url", shown);
+    let (url_r, enter_url) = field(ui, group, &mut form.url, "trellis-remote-url", "https://example.com/owner/repo.git or a folder path");
     form_message::track(&mut form.touched, "url", &url_r);
-    let url_p = url_problem(form);
-    problem_line(
-        ui,
-        &form.touched,
-        "url",
-        url_p.as_ref().filter(|p| **p != UrlProblem::Empty).map(|p| p.message(false)).unwrap_or_default(),
-    );
-    ui.add_space(6.0);
 
-    let (push_r, enter_push) = field(ui, "Push URL (optional)", &mut form.push_url, "trellis-remote-push", "Same as the fetch URL");
+    let shown = push_problem(form).and_then(|p| problem(p.message(true)));
+    let help = if push_same_as_fetch(form) { "Same as the fetch URL." } else { "Leave empty to push to the fetch URL." };
+    let group = FieldGroup::new("Push URL").optional(cx.t.tr("dialog.field.optional")).help(help).message(&form.touched, "push", shown);
+    let (push_r, enter_push) = field(ui, group, &mut form.push_url, "trellis-remote-push", "Same as the fetch URL");
     form_message::track(&mut form.touched, "push", &push_r);
-    let push_p = push_problem(form);
-    note(ui, "Leave empty to push to the fetch URL.");
-    if let Some(p) = &push_p {
-        problem_line(ui, &form.touched, "push", p.message(true));
-    } else if push_same_as_fetch(form) {
-        note(ui, "Same as the fetch URL.");
-    }
+    let (name_p, url_p, push_p) = (name_problem(snap, form), url_problem(form), push_problem(form));
 
     if form.is_edit() {
         if form.renaming() {

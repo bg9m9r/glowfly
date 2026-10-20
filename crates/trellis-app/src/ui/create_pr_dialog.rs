@@ -2,8 +2,8 @@
 //! description, linked issues, draft.
 
 use super::common::{capitalize, issue_chip, parse_keys};
-use super::dialog_frame::{Cx, Dialog, Footer};
-use super::widgets::buttons;
+use super::dialog_frame::{Cx, Dialog, Footer, Size};
+use super::widgets::{FieldGroup, TextField, buttons};
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::state::ForgeState;
@@ -14,6 +14,7 @@ use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use trellis_core::forge::{self, NewPullRequest, RefStyle};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
 
 pub(super) struct PrForm<'a> {
@@ -56,8 +57,8 @@ pub(super) fn show(
     let Some(host) = fs.host.as_ref() else { return true };
     let noun = fs.pr_noun();
     let subtitle = format!("{} · {}", host.provider.name(), host.display());
-    let mut d = Dialog::new(cx, format!("Create {noun}")).subtitle(subtitle).wide().begin(ui);
-    let (pushed, keys) = d.body(ui, |ui| body(ui, &mut f, fs, snap, idle, msgs));
+    let mut d = Dialog::new(cx, format!("Create {noun}")).subtitle(subtitle).size(Size::Wide).begin(ui);
+    let (pushed, keys) = d.body(ui, |ui| body(ui, cx.t, &mut f, fs, snap, idle, msgs));
     let valid = pushed && !f.title.trim().is_empty() && !f.target.is_empty() && f.target != f.source;
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(format!("Create {noun}")).enabled(valid)));
     if out.primary {
@@ -90,6 +91,7 @@ pub(super) fn show(
 /// The form's fields; returns whether the source is on the host's remote, and the linked keys.
 fn body(
     ui: &mut egui::Ui,
+    t: Lang,
     f: &mut PrForm,
     fs: &ForgeState,
     snap: Option<&Snapshot>,
@@ -116,13 +118,10 @@ fn body(
             msgs.push(Msg::Forge(ForgeMsg::PushAndStartPr { branch: local, target: Some(f.target.clone()) }));
         }
     }
-    ui.add_space(6.0);
-    controls::field(ui, egui::TextEdit::singleline(f.title).hint_text("Title").desired_width(f32::INFINITY));
-    let r = controls::field(
-        ui,
-        egui::TextEdit::multiline(f.description).hint_text("Description (Markdown)").desired_rows(5).desired_width(f32::INFINITY),
-    );
-    super::access::name_field(&r, "Description");
+    ui.add_space(12.0);
+    FieldGroup::new("Title").show(ui, |ui| ui.add(TextField::new(f.title)));
+    let description = FieldGroup::new("Description").optional(t.tr("dialog.field.optional")).help("Markdown is supported.");
+    description.show(ui, |ui| ui.add(TextField::multiline(f.description, 5)));
     let keys = parse_keys(f.items);
     if fs.tracker.is_some() {
         ui.horizontal(|ui| {
@@ -132,7 +131,7 @@ fn body(
                 Some(RefStyle::Trello) => "e.g. AbCd1234 or a card link",
                 _ => "e.g. 123, 456",
             };
-            controls::field(ui, egui::TextEdit::singleline(f.items).hint_text(hint).desired_width(220.0));
+            ui.add(TextField::new(f.items).hint(hint).width(220.0));
         });
         for k in &keys {
             issue_chip(ui, fs, k, msgs);

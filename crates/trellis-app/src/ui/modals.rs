@@ -1,5 +1,7 @@
-//! Dialogs, every one drawn through `dialog_frame` (title, scrolling body, footer in the fixed
-//! order, Enter and the default button's focus) in `theme::dialog`: confirmation (drawn by `confirm_dialog.rs`, also in its danger form and with an alternative answer), new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
+//! Dialogs, every one drawn through `dialog_frame` (header with its close button, which sends
+//! `Dismiss::CloseButton` like Esc, scrolling body, footer in the fixed order, Enter and the
+//! default button's focus, and for less familiar operations a side pane explaining them) in
+//! `theme::dialog`: confirmation (drawn by `confirm_dialog.rs`, also in its danger form and with an alternative answer), new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
 //! worktree (drawn by `worktree_dialog.rs`), remove and lock worktree (drawn by
 //! `worktree_manage_dialog.rs`), add and remove submodule (drawn by `submodule_dialogs.rs`), clone
 //! (drawn by `clone_dialog.rs` and `clone_service.rs`), init (drawn by `init_dialog.rs`), create
@@ -25,7 +27,7 @@
 //! stashing uncommitted changes before an operation (drawn by `auto_stash_dialog.rs`) and
 //! generating an SSH key (drawn by `ssh_keygen_dialog.rs`).
 
-use crate::msg::{DialogMsg, Msg};
+use crate::msg::{DialogMsg, Dismiss, Msg};
 use crate::state::{AppState, Modal};
 use crate::ui::dialog_frame::{Cx, Tone};
 use eframe::egui;
@@ -150,6 +152,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
         }
     });
+    // Taken every frame, so a click that closed this dialog never reaches the next one.
+    let closed = super::dialog_frame::take_closed(&resp);
     if close {
         // The dialog closes before what it asked for runs, so a dialog that opens (the trust
         // prompt holding the job it started) isn't closed with it.
@@ -157,7 +161,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     } else if asking {
         // Drawn after the form, so it stacks on top and the form beneath takes no input.
         super::dialog_guard::discard_question(ctx, t, msgs);
-    } else if !prompting && let Some(how) = super::dialog_guard::dismissal(&resp) {
+    } else if !prompting
+        && let Some(how) = if closed { Some(Dismiss::CloseButton) } else { super::dialog_guard::dismissal(&resp) }
+    {
         msgs.insert(first, Msg::Dialog(DialogMsg::Dismiss(how)));
     }
 }

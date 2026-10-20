@@ -3,7 +3,7 @@
 //! finished one. Stop keeps waiting repositories from starting. The run goes on when the
 //! dialog is closed; its end is then told in a toast (update/repo_sync.rs).
 
-use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::{buttons, truncate};
 use crate::msg::{Msg, RepoMsg, ReposMsg};
@@ -22,7 +22,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, sync: Option<&RepoSync>, msgs: &mut Vec<M
     let t = cx.t;
     // Nothing to show without a run.
     let Some(sync) = sync else { return true };
-    let mut d = Dialog::new(cx, sync.title()).wide().resizable("repo-sync").begin(ui);
+    let mut d = Dialog::new(cx, sync.title()).size(Size::Wide).resizable("repo-sync").begin(ui);
     let (done, all) = sync.progress();
     if sync.running() {
         ui.horizontal(|ui| {

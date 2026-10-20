@@ -1,7 +1,7 @@
 //! The Rename tab dialog (`Modal::RenameTab`): the name the tab shows instead of its folder's.
 //! `update` cleans the text again before setting it.
 
-use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::buttons;
 use crate::msg::{Msg, TabsMsg};
@@ -13,7 +13,7 @@ use eframe::egui::{self, Key, RichText};
 /// whenever nothing else in the dialog has it, unless `cx.keyboard` is false (a credential
 /// prompt is open above it).
 pub fn rename(ui: &mut egui::Ui, cx: Cx, form: &mut RenameTabForm, msgs: &mut Vec<Msg>) -> bool {
-    let d = Dialog::new(cx, "Rename tab").subtitle(trellis_core::native_path::shown(&form.path)).begin(ui);
+    let d = Dialog::new(cx, "Rename tab").subtitle(trellis_core::native_path::shown(&form.path)).size(Size::Small).begin(ui);
     let field = egui::TextEdit::singleline(&mut form.text).hint_text(form.folder.as_str()).char_limit(MAX_TAB_LABEL);
     let r = controls::field(ui, field.desired_width(f32::INFINITY));
     // Read before focus is taken back, or the Enter that just left the field is missed.

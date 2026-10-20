@@ -4,9 +4,9 @@
 
 use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::pane_status::{self, Failure};
-use super::super::widgets::buttons;
+use super::super::widgets::{FieldGroup, buttons};
 use super::super::widgets::form_message::{self, Message};
-use super::dialog::{field, note, problem_line};
+use super::dialog::{field, note, problem};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::blocked::BUSY;
@@ -45,23 +45,19 @@ fn name_field(
     focus: bool,
 ) -> (bool, Option<RemoteNameProblem>) {
     let mut enter = false;
+    let existing: Vec<&str> = snap.map(|s| s.remote_info.iter().map(|r| r.name.as_str()).collect()).unwrap_or_default();
+    let check = |name: &str| check_remote_name(name.trim(), &existing, None).err();
+    let shown = check(&f.name).filter(|p| *p != RemoteNameProblem::Empty).and_then(|p| problem(p.message()));
     ui.add_enabled_ui(enabled, |ui| {
-        let (r, e) = field(ui, "Remote name", &mut f.name, "trellis-fork-create-name", "fork");
+        let group = FieldGroup::new("Remote name").message(&f.touched, "name", shown);
+        let (r, e) = field(ui, group, &mut f.name, "trellis-fork-create-name", "fork");
         form_message::track(&mut f.touched, "name", &r);
         if focus && ui.memory(|m| m.focused().is_none()) {
             r.request_focus();
         }
         enter = e;
     });
-    let existing: Vec<&str> = snap.map(|s| s.remote_info.iter().map(|r| r.name.as_str()).collect()).unwrap_or_default();
-    let problem = check_remote_name(f.name.trim(), &existing, None).err();
-    problem_line(
-        ui,
-        &f.touched,
-        "name",
-        problem.as_ref().filter(|p| **p != RemoteNameProblem::Empty).map(|p| p.message()).unwrap_or_default(),
-    );
-    (enter, problem)
+    (enter, check(&f.name))
 }
 
 /// The Fork dialog; returns true when Cancel or Close closes it. The name field takes the focus

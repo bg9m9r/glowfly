@@ -5,7 +5,8 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer, Open};
 use super::theme::color;
-use super::widgets::buttons;
+use super::widgets::text_field::{self, TextField};
+use super::widgets::{FieldGroup, buttons};
 use super::widgets::form_message::{self, Message};
 use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
@@ -64,10 +65,19 @@ pub fn rename_file(
 /// The path field with its problem line and normalized preview. Returns (Enter pressed in the
 /// field, the path can be submitted).
 fn path_field(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, old: Option<&str>, focus: bool) -> (bool, bool) {
-    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.text).hint_text("folder/name.ext").desired_width(f32::INFINITY));
+    if form.current_error().is_some() {
+        // The last submit failed: its error shows like any other problem.
+        form.touched.attempt();
+    }
+    let (_, message, becomes) = assess(form, snap, old);
+    let group = FieldGroup::new("Path").message(&form.touched, PATH, message);
+    let group = match becomes {
+        Some(path) => group.help(format!("Becomes {path}")),
+        None => group,
+    };
+    let r = group.show(ui, |ui| ui.add(TextField::new(&mut form.text).hint("folder/name.ext")));
     form_message::track(&mut form.touched, PATH, &r);
-    // Read before focus is requested again, which would hide that Enter left the field.
-    let enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+    let enter = text_field::entered(ui, &r);
     if focus {
         r.request_focus();
     }
@@ -79,27 +89,24 @@ fn path_field(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, o
         state.cursor.set_char_range(Some(egui::text::CCursorRange::one(end)));
         state.store(ui.ctx(), r.id);
     }
+    let (valid, _, _) = assess(form, snap, old);
+    (enter, valid)
+}
+
+/// Whether the path can be submitted, its message, and the path it becomes when that differs
+/// from what was typed.
+fn assess(form: &PathForm, snap: Option<&Snapshot>, old: Option<&str>) -> (bool, Option<Message<'static>>, Option<String>) {
     let checked = check_new_path(&form.text);
     let unchanged = old.is_some_and(|o| checked.as_deref() == Ok(o));
-    if form.current_error().is_some() {
-        // The last submit failed: its error shows like any other problem.
-        form.touched.attempt();
-    }
     let problem = if unchanged { None } else { problem(&form.text, snap, old).or_else(|| form.current_error().map(str::to_owned)) };
-    let message = match &problem {
-        Some(p) => Some(Message::error(p.as_str())),
+    let valid = checked.is_ok() && !unchanged && problem.is_none();
+    let message = match problem {
+        Some(p) => Some(Message::error(p)),
         // Allowed here, but the repository won't check out on Windows.
         None => checked.as_deref().ok().filter(|_| !unchanged).and_then(new_path_warning).map(Message::warning),
     };
-    form_message::field(ui, &form.touched, PATH, message);
-    if let Ok(path) = &checked
-        && path != form.text.trim()
-    {
-        ui.add_space(2.0);
-        ui.label(RichText::new(format!("Becomes {path}")).color(color::weak()));
-    }
-    let valid = checked.is_ok() && !unchanged && problem.is_none();
-    (enter, valid)
+    let becomes = checked.ok().filter(|path| path != form.text.trim());
+    (valid, message, becomes)
 }
 
 /// What is wrong with `text` as a new path, from the text and the snapshot alone. Empty input

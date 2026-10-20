@@ -1,6 +1,7 @@
-//! Dismissing the open dialog: a backdrop click or Esc closes an information or confirm dialog.
-//! A form ignores the backdrop, and Esc closes it only while it still matches how it opened
-//! (`DialogGuard`); otherwise it asks "Discard your changes?" first.
+//! Dismissing the open dialog: a backdrop click, Esc or the close button in its header closes an
+//! information or confirm dialog. A form ignores the backdrop, and Esc or the close button
+//! closes it only while it still matches how it opened (`DialogGuard`); otherwise it asks
+//! "Discard your changes?" first.
 
 use super::{deep_link, trust};
 use crate::msg::{DialogMsg, Dismiss};
@@ -29,8 +30,8 @@ fn dismiss(st: &mut AppState, how: Dismiss) {
         (DialogKind::Info | DialogKind::Confirm, _) => close(st),
         (DialogKind::Form, Dismiss::Backdrop) => {}
         // Esc on the question means Keep editing, so pressing Esc twice never loses text.
-        (DialogKind::Form, Dismiss::Escape) if st.dialog.asking => st.dialog.asking = false,
-        (DialogKind::Form, Dismiss::Escape) => {
+        (DialogKind::Form, Dismiss::Escape | Dismiss::CloseButton) if st.dialog.asking => st.dialog.asking = false,
+        (DialogKind::Form, Dismiss::Escape | Dismiss::CloseButton) => {
             if st.dialog.edited(modal) {
                 st.dialog.asking = true;
             } else {

@@ -313,3 +313,28 @@ fn the_palette_is_per_thread() {
     color::set_palette(&HIGH_CONTRAST_DARK);
     assert!(color::is_dark());
 }
+
+#[test]
+fn field_and_guide_fills_stay_readable() {
+    let mut failures = Vec::new();
+    for t in BuiltinTheme::ALL {
+        let p = builtin(t);
+        let high = matches!(t, BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight);
+        let mut check = |what: &str, fg: Color32, bg: Color32, min: f64| {
+            let r = ratio(fg, bg);
+            if r < min {
+                failures.push(format!("{t:?}: {what} is {r:.2}:1, below {min}:1"));
+            }
+        };
+        let (field, guide) = (p.field_fill(), p.guide_fill());
+        check("text on field_fill", p.text, field, if high { 7.0 } else { 4.5 });
+        check("weak on field_fill", p.weak, field, 4.5);
+        check("faint on field_fill", p.faint, field, 4.5);
+        check("input_border on field_fill", p.input_border, field, 3.0);
+        check("input_border on panel", p.input_border, p.panel, 3.0);
+        check("text on guide_fill", p.text, guide, 4.5);
+        check("weak on guide_fill", p.weak, guide, 4.5);
+        check("accent on guide_fill", p.accent, guide, 3.0);
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

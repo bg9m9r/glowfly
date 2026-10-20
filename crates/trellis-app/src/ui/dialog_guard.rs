@@ -1,7 +1,7 @@
 //! How a dialog was dismissed (a backdrop click or Esc), and the "Discard your changes?"
 //! question stacked over an edited form (update/dialog.rs decides what each one does).
 
-use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_frame::{self, Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::buttons;
 use crate::msg::{DialogMsg, Dismiss, Msg};
@@ -20,14 +20,14 @@ pub(super) fn dismissal<T>(resp: &egui::ModalResponse<T>) -> Option<Dismiss> {
 }
 
 /// The question over an edited form that Esc tried to close. Drawn after the form's modal, so
-/// it is the top one: the form beneath is dimmed and takes no input. Esc and a backdrop click
-/// mean Keep editing, and so does Enter: Keep editing has the focus when it opens.
+/// it is the top one: the form beneath is dimmed and takes no input. Esc, its close button and a
+/// backdrop click mean Keep editing, and so does Enter: Keep editing has the focus when it opens.
 pub(super) fn discard_question(ctx: &egui::Context, t: Lang, msgs: &mut Vec<Msg>) {
     let id = Id::new("trellis-modal-discard");
     // It takes the keyboard over the form beneath.
     let cx = Cx { t, keyboard: true, key: id };
     let resp = super::theme::dialog(ctx, id).show(ctx, |ui| {
-        let d = Dialog::new(cx, t.tr("dialog.discard.title")).begin(ui);
+        let d = Dialog::new(cx, t.tr("dialog.discard.title")).size(Size::Small).begin(ui);
         ui.label(RichText::new(t.tr("dialog.discard.body")).color(color::weak()));
         let footer = Footer::new()
             .alt(buttons::secondary(t.tr("dialog.discard.discard.button")))
@@ -40,7 +40,8 @@ pub(super) fn discard_question(ctx: &egui::Context, t: Lang, msgs: &mut Vec<Msg>
             msgs.push(Msg::Dialog(DialogMsg::Discard));
         }
     });
-    if dismissal(&resp).is_some() {
+    // Its close button, like Esc, means Keep editing.
+    if dialog_frame::take_closed(&resp) || dismissal(&resp).is_some() {
         msgs.push(Msg::Dialog(DialogMsg::KeepEditing));
     }
 }

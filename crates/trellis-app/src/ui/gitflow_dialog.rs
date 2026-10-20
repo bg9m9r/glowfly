@@ -3,13 +3,14 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::buttons;
+use super::dialog_guides;
+use super::widgets::text_field::{self, TextField};
+use super::widgets::{FieldGroup, buttons};
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::state::gitflow::StartForm;
-use crate::ui::theme::controls;
 use crate::ui::widgets::form_message::{self, Message};
-use eframe::egui::{self, Key, RichText};
+use eframe::egui::{self, RichText};
 use trellis_core::branch_ops::NameProblem;
 use trellis_core::gitflow::{Branches, StartProblem, check_start, open_branches};
 use trellis_core::repo::Snapshot;
@@ -19,32 +20,38 @@ pub fn start(ui: &mut egui::Ui, cx: Cx, form: &mut StartForm, snap: Option<&Snap
     let Some((snap, s)) = snap.and_then(|snap| Some((snap, snap.gitflow.settings()?))) else { return true };
     let b = Branches::of(snap);
     let kind = form.kind;
-    let d = Dialog::new(cx, format!("Start a {}", kind.noun())).begin(ui);
+    let d = Dialog::new(cx, format!("Start a {}", kind.noun())).guide(dialog_guides::gitflow_start(cx.t)).begin(ui);
     let hint = if kind.versioned() { "1.4.0" } else { "short-name" };
-    let r = ui
-        .horizontal(|ui| {
-            ui.label(RichText::new(s.prefix(kind)).color(color::weak()));
-            controls::field(ui, egui::TextEdit::singleline(&mut form.name).hint_text(hint).desired_width(f32::INFINITY))
+    // What Start will do goes under the field until the name has a problem.
+    let (help, shown) = match check_start(&s, kind, form.name.trim(), &b) {
+        Ok(branch) => (Some(format!("Creates {branch} from {} and checks it out.", s.base(kind))), None),
+        // An empty name only disables Start; the base's problem shows above the footer.
+        Err(StartProblem::Name(NameProblem::Empty, _) | StartProblem::MissingBase { .. }) => (None, None),
+        Err(p) => (None, Some(Message::error(p.message()))),
+    };
+    let mut group = FieldGroup::new("Name").message(&form.touched, "name", shown);
+    if let Some(help) = help {
+        group = group.help(help);
+    }
+    let prefix = s.prefix(kind);
+    let r = group.show(ui, |ui| {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(prefix).color(color::weak()));
+            ui.add(TextField::new(&mut form.name).hint(hint))
         })
-        .inner;
+        .inner
+    });
     form_message::track(&mut form.touched, "name", &r);
+    let submit = text_field::entered(ui, &r);
     // Not under a credential prompt: its fields need the keyboard.
     if cx.keyboard {
         r.request_focus();
     }
     let name = form.name.trim();
     let result = check_start(&s, kind, name, &b);
-    ui.add_space(4.0);
-    match &result {
-        Ok(branch) => {
-            let line = format!("Creates {branch} from {} and checks it out.", s.base(kind));
-            ui.label(RichText::new(line).color(color::weak()));
-        }
-        // An empty name only disables Start.
-        Err(StartProblem::Name(NameProblem::Empty, _)) => {}
-        // The repository's state, not the name: it shows at once.
-        Err(p @ StartProblem::MissingBase { .. }) => form_message::form(ui, Message::error(p.message())),
-        Err(p) => form_message::field(ui, &form.touched, "name", Some(Message::error(p.message()))),
+    // The repository's state, not the name: it shows at once.
+    if let Err(p @ StartProblem::MissingBase { .. }) = &result {
+        form_message::form(ui, Message::error(p.message()));
     }
     if kind.versioned() {
         let open = open_branches(&s, kind, &b);
@@ -53,7 +60,6 @@ pub fn start(ui: &mut egui::Ui, cx: Cx, form: &mut StartForm, snap: Option<&Snap
             ui.label(RichText::new(format!("{} {verb} still open.", open.join(", "))).color(color::weak()));
         }
     }
-    let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Start").enabled(result.is_ok())).submit(submit));
     if out.attempted {
         form.touched.attempt();

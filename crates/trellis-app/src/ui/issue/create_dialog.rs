@@ -6,9 +6,10 @@
 //! field once that field was edited or Create was tried. The view edits the form's text and picks in place; a committed project
 //! or board, Create, Try again and the write-token link are sent as messages.
 
-use super::super::dialog_frame::{Cx, Dialog, Footer};
+use super::super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::super::theme::color;
-use super::super::widgets::buttons;
+use super::super::widgets::text_field::{self, TextField};
+use super::super::widgets::{FieldGroup, buttons};
 use super::picker::{Picker, multi};
 use crate::msg::{IssueMsg, Msg};
 use crate::state::issue_form::{IssueForm, OptionsState};
@@ -20,6 +21,7 @@ use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, Key, RichText, Ui};
 use trellis_core::forge::filters::Named;
 use trellis_core::forge::{IssueField, Provider};
+use trellis_core::i18n::Lang;
 use trellis_core::text::printable;
 
 /// Draws the dialog; returns true when it should close. The title takes the keyboard focus
@@ -27,12 +29,12 @@ use trellis_core::text::printable;
 pub fn show(ui: &mut Ui, cx: Cx, form: &mut IssueForm, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) -> bool {
     let p = form.provider();
     let subtitle = format!("{} · {}", p.name(), form.target.display());
-    let mut d = Dialog::new(cx, form.heading()).subtitle(subtitle).wide().begin(ui);
+    let mut d = Dialog::new(cx, form.heading()).subtitle(subtitle).size(Size::Wide).begin(ui);
     if p == Provider::Trello {
         write_note(ui, form, msgs);
         ui.add_space(4.0);
     }
-    let submit = d.body(ui, |ui| body(ui, form, fs, cx.keyboard, msgs));
+    let submit = d.body(ui, |ui| body(ui, cx.t, form, fs, cx.keyboard, msgs));
     let blocked = form.submit_blocked();
     let label = if form.busy { "Creating…".to_owned() } else { form.heading() };
     let ok = blocked.is_none() && !form.busy;
@@ -48,7 +50,7 @@ pub fn show(ui: &mut Ui, cx: Cx, form: &mut IssueForm, fs: Option<&ForgeState>, 
 }
 
 /// The fields, the loading state and the problems; returns whether Enter left the title.
-fn body(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
+fn body(ui: &mut Ui, t: Lang, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
     let p = form.provider();
     let noun = words::noun(p);
     ui.spacing_mut().item_spacing.y = 4.0;
@@ -77,19 +79,19 @@ fn body(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool,
         let shown = chosen.map_or_else(|| words::priority_hint(p).to_owned(), |n| n.title.clone());
         combo(ui, "issue-priority", shown, 200.0, &priorities, &mut form.priority);
     }
-    caption(ui, form.title_label());
-    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.title).desired_width(f32::INFINITY));
+    ui.add_space(8.0);
+    let shown = form.problem(IssueField::Title).map(Message::error);
+    let group = FieldGroup::new(form.title_label()).message(&form.touched, "title", shown);
+    let r = group.show(ui, |ui| ui.add(TextField::new(&mut form.title)));
     form_message::track(&mut form.touched, "title", &r);
-    let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+    let submit = text_field::entered(ui, &r);
     if focus && ui.memory(|m| m.focused().is_none()) {
         r.request_focus();
     }
-    problem(ui, form, IssueField::Title, "title");
-    caption(ui, "Description");
-    let d = egui::TextEdit::multiline(&mut form.description).hint_text(format!("Describe the {noun} (optional)")).desired_rows(6);
-    let r = controls::field(ui, d.desired_width(f32::INFINITY));
+    let shown = form.problem(IssueField::Description).map(Message::error);
+    let group = FieldGroup::new("Description").optional(t.tr("dialog.field.optional")).message(&form.touched, "description", shown);
+    let r = group.show(ui, |ui| ui.add(TextField::multiline(&mut form.description, 6).hint(format!("Describe the {noun}"))));
     form_message::track(&mut form.touched, "description", &r);
-    problem(ui, form, IssueField::Description, "description");
     let opts = form.loaded().cloned().unwrap_or_default();
     // Bitbucket issues have no labels.
     if form.loaded().is_none() || !opts.labels.is_empty() || opts.labels_free {
@@ -185,9 +187,10 @@ fn problem(ui: &mut Ui, form: &IssueForm, field: IssueField, key: &str) {
     form_message::field(ui, &form.touched, key, form.problem(field).map(Message::error));
 }
 
+/// A label above a picker, as a field group's label.
 fn caption(ui: &mut Ui, text: &str) {
     ui.add_space(4.0);
-    ui.label(RichText::new(text).size(type_scale::SMALL).color(color::weak()));
+    ui.label(RichText::new(text).color(color::text()));
 }
 
 /// A picker over `items` that sets `chosen` to an item's key.
@@ -258,10 +261,7 @@ fn project(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, msgs: &mu
             });
         }
         None => {
-            let r = controls::field(
-                ui,
-                egui::TextEdit::singleline(&mut form.project_text).hint_text("Project key, e.g. PROJ").desired_width(200.0),
-            );
+            let r = ui.add(TextField::new(&mut form.project_text).hint("Project key, e.g. PROJ").width(200.0));
             form_message::track(&mut form.touched, "project", &r);
             if r.lost_focus() && form.project_text.trim() != form.project {
                 msgs.push(Msg::Issue(IssueMsg::SetProject(form.project_text.trim().to_owned())));

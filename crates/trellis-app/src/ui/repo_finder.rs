@@ -2,7 +2,7 @@
 //! filter, and the repositories found under them, grouped by project folder. Each row stars the
 //! repository or opens it; the scan itself runs in the runner (`ReposMsg`).
 
-use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::{self, Icon, buttons};
 use crate::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
@@ -31,7 +31,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, filter: &mut String, lists: FinderLists, 
     let t = cx.t;
     let mut close = false;
     let (scan, folders) = (lists.scan, lists.folders);
-    let mut d = Dialog::new(cx, t.tr("finder.title")).wide().resizable("repo-finder").begin(ui);
+    let mut d = Dialog::new(cx, t.tr("finder.title")).size(Size::Wide).resizable("repo-finder").begin(ui);
     ui.label(type_scale::section_text(ui, t.tr("finder.folders.header")));
     for f in folders {
         folder_row(ui, t, f, scan, msgs);
@@ -53,7 +53,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, filter: &mut String, lists: FinderLists, 
     });
     if !folders.is_empty() {
         ui.add_space(10.0);
-        let r = controls::field(ui, egui::TextEdit::singleline(filter).hint_text(t.tr("finder.filter.hint")).desired_width(f32::INFINITY));
+        let r = ui.add(TextField::new(filter).hint(t.tr("finder.filter.hint")));
         if cx.keyboard {
             r.request_focus();
         }

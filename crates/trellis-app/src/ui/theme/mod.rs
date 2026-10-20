@@ -92,13 +92,16 @@ pub fn modal(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
     egui::Modal::new(id).backdrop_color(backdrop(&p)).frame(frame)
 }
 
-/// The frame of every dialog (`dialog_frame`): `modal` with 18 px of padding on all sides and
-/// 8 px corners. The command palette and the welcome flow keep `modal`'s look.
+/// A dialog's padding on all sides (`dialog`); `dialog_frame` works out its caps from it.
+pub const DIALOG_PAD: i8 = 24;
+
+/// The frame of every dialog (`dialog_frame`): `modal` with `DIALOG_PAD` of padding on all sides
+/// and 8 px corners. The command palette and the welcome flow keep `modal`'s look.
 pub fn dialog(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
     let p = color::current();
     let frame = egui::Frame::popup(&ctx.style())
         .stroke(Stroke::new(1.0_f32, p.dialog_border))
-        .inner_margin(egui::Margin::same(18))
+        .inner_margin(egui::Margin::same(DIALOG_PAD))
         .corner_radius(8);
     egui::Modal::new(id).backdrop_color(backdrop(&p)).frame(frame)
 }

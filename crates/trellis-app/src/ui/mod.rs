@@ -44,6 +44,7 @@ mod details_wip;
 mod details_workdir;
 mod dialog_frame;
 mod dialog_guard;
+mod dialog_guides;
 mod diff;
 mod empty_state;
 mod empty_state_icons;

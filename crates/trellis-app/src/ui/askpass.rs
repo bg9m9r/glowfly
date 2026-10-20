@@ -2,17 +2,17 @@
 //! included) for what git or ssh asks through the askpass helper. Edits only the prompt's text
 //! buffers and view flags; answering and cancelling go through `Msg`s.
 
-use super::access;
-use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_frame::{self, Cx, Dialog, Footer, Size};
 use super::theme::color;
-use super::widgets::{self, Icon, buttons};
+use super::widgets::text_field::{self, TextField};
+use super::widgets::{self, FieldGroup, Icon, buttons};
 use crate::msg::CredentialMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::askpass::PendingPrompt;
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::ui::widgets::form_message::Message;
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::askpass::{PromptKind, host, user_and_host};
 use trellis_core::git_credential::is_http_url;
@@ -130,7 +130,8 @@ fn notice(p: &PendingPrompt) -> Option<Message<'static>> {
     Some(Message::warning(format!("The credentials last used for {h} were not accepted.")))
 }
 
-/// Draws the oldest waiting prompt, if any. A click outside does not cancel it; Esc does.
+/// Draws the oldest waiting prompt, if any. A click outside does not cancel it; Esc and the
+/// close button do.
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(front) = st.askpass.front().cloned() else { return };
     let l = layout(&front);
@@ -140,14 +141,14 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // On top of everything, so it takes the keyboard.
     let cx = Cx { t: st.settings.lang(), keyboard: true, key: id };
     // The response's should_close() is deliberately ignored: the backdrop must not cancel.
-    super::theme::dialog(ctx, id).show(ctx, |ui| {
+    let resp = super::theme::dialog(ctx, id).show(ctx, |ui| {
         let mut d = Dialog::new(cx, l.title.as_str());
         if l.key_icon {
             d = d.icon(Icon::Key);
         }
         if l.host_key {
             // Room for a SHA256 fingerprint on one line.
-            d = d.wide();
+            d = d.size(Size::Wide);
         }
         let mut d = d.begin(ui);
         if let Some(line) = &l.line {
@@ -167,18 +168,20 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         } else if l.confirm {
             d.body(ui, |ui| ui.add(egui::Label::new(RichText::new(front.prompt.text.trim_end())).wrap()));
         }
-        ui.add_space(8.0);
-        let enter = ui.input(|i| i.key_pressed(Key::Enter));
+        if l.line.is_some() || l.detail.is_some() || l.confirm {
+            ui.add_space(12.0);
+        }
         let focus = std::mem::take(&mut p.focus_pending);
+        // The notice for a retry goes under the last field.
+        let mut notice = notice(&front);
+        let user_notice = if l.secret.is_none() { notice.take() } else { None };
         let mut submit = false;
         if let Some(label) = l.user {
-            field_label(ui, label);
-            let r = controls::field(ui, egui::TextEdit::singleline(&mut p.user).desired_width(f32::INFINITY));
-            access::name_field(&r, label);
+            let r = FieldGroup::new(label).note(user_notice).show(ui, |ui| ui.add(TextField::new(&mut p.user)));
             if focus {
                 r.request_focus();
             }
-            if r.lost_focus() && enter {
+            if text_field::entered(ui, &r) {
                 // With the password still empty, Enter moves on to it.
                 if l.secret.is_some() && p.secret.is_empty() {
                     ui.memory_mut(|m| m.request_focus(secret_id));
@@ -188,27 +191,22 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
         }
         if let Some(label) = l.secret {
-            if l.user.is_some() {
-                ui.add_space(6.0);
-            }
-            field_label(ui, label);
-            ui.horizontal(|ui| {
-                let width = ui.available_width() - 32.0;
-                let field = egui::TextEdit::singleline(&mut p.secret).id(secret_id).password(!p.reveal).desired_width(width);
-                let r = controls::field(ui, field);
-                access::name_field(&r, label);
-                if focus && l.user.is_none() {
-                    r.request_focus();
-                }
-                submit |= r.lost_focus() && enter;
-                let (icon, tip) = if p.reveal { (Icon::EyeOff, "Hide") } else { (Icon::Eye, "Show") };
-                if widgets::icon_button(ui, icon, tip).clicked() {
-                    p.reveal = !p.reveal;
-                }
+            let r = FieldGroup::new(label).note(notice).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    let width = ui.available_width() - 32.0;
+                    let r = ui.add(TextField::new(&mut p.secret).id(secret_id).password(!p.reveal).width(width));
+                    let (icon, tip) = if p.reveal { (Icon::EyeOff, "Hide") } else { (Icon::Eye, "Show") };
+                    if widgets::icon_button(ui, icon, tip).clicked() {
+                        p.reveal = !p.reveal;
+                    }
+                    r
+                })
+                .inner
             });
-        }
-        if let Some(m) = notice(&front) {
-            form_message::line(ui, m);
+            if focus && l.user.is_none() {
+                r.request_focus();
+            }
+            submit |= text_field::entered(ui, &r);
         }
         if l.token_hint {
             ui.add_space(2.0);
@@ -233,24 +231,20 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new(saved).color(color::weak()).size(type_scale::SMALL));
         }
         let valid = p.can_submit();
-        let mut cancel = ui.input(|i| i.key_pressed(Key::Escape));
+        let cancel = ui.input(|i| i.key_pressed(Key::Escape));
         let button = buttons::primary(l.primary).enabled(valid);
         // A yes/no question isn't answered by a stray Enter: its button keeps the primary style,
         // but the dialog's tone makes Cancel the default.
         let footer = if l.confirm { Footer::new().danger(button) } else { Footer::new().primary(button) };
         let out = d.finish(ui, footer.cancel().submit(submit));
-        submit = out.primary;
-        cancel |= out.dismiss;
-        if cancel {
-            msgs.push(Msg::Credentials(CredentialMsg::CancelCredentials));
-        } else if submit && valid {
-            msgs.push(Msg::Credentials(CredentialMsg::AnswerCredentials));
-        }
+        (cancel || out.dismiss, out.primary && valid)
     });
+    // Decided after the dialog is shown, so its close button counts too.
+    let (cancel, submit) = resp.inner;
+    if cancel || dialog_frame::take_closed(&resp) {
+        msgs.push(Msg::Credentials(CredentialMsg::CancelCredentials));
+    } else if submit {
+        msgs.push(Msg::Credentials(CredentialMsg::AnswerCredentials));
+    }
 }
 
-/// The visible label above a field.
-fn field_label(ui: &mut egui::Ui, label: &str) {
-    ui.label(RichText::new(label).color(color::text()));
-    ui.add_space(2.0);
-}

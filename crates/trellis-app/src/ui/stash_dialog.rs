@@ -1,7 +1,7 @@
 //! The Rename stash dialog (`Modal::RenameStash`): one field for the stash list text after
 //! "On <branch>: ". `update` checks the text again and re-finds the stash before running anything.
 
-use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::widgets::buttons;
 use super::widgets::form_message::{self, Message};
 use crate::msg::{Msg, StashMsg};
@@ -17,7 +17,7 @@ pub fn rename(ui: &mut egui::Ui, cx: Cx, form: &mut RenameStashForm, idle: bool,
         Some(b) => format!("stash@{{{}}} · made on {b}", form.index),
         None => format!("stash@{{{}}}", form.index),
     };
-    let d = Dialog::new(cx, "Rename stash").subtitle(at).begin(ui);
+    let d = Dialog::new(cx, "Rename stash").subtitle(at).size(Size::Small).begin(ui);
     let r = controls::field(ui, egui::TextEdit::singleline(&mut form.message).hint_text("Stash message").desired_width(f32::INFINITY));
     form_message::track(&mut form.touched, "message", &r);
     // Read before focus is taken back, or the Enter that just left the field is missed.

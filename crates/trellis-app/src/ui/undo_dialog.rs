@@ -2,7 +2,7 @@
 //! back, and also deletes the branch while the box is ticked. `update` checks again that the
 //! branch still points where it was created before deleting it.
 
-use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::buttons;
 use crate::effect::UndoOpts;
@@ -13,7 +13,7 @@ use eframe::egui::{self, RichText};
 
 /// Draws the dialog; returns true when it should close.
 pub fn created_branch(ui: &mut egui::Ui, cx: Cx, form: &mut UndoCreatedForm, msgs: &mut Vec<Msg>) -> bool {
-    let d = Dialog::new(cx, format!("Undo checkout of new branch {}", form.branch)).begin(ui);
+    let d = Dialog::new(cx, format!("Undo checkout of new branch {}", form.branch)).size(Size::Small).begin(ui);
     ui.label(format!("Switches back to {}.", form.back_to));
     ui.add_space(8.0);
     controls::checkbox(ui, &mut form.delete, format!("Also delete branch {}", form.branch));

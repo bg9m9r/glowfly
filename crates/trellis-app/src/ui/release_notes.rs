@@ -1,7 +1,7 @@
 //! The release notes dialog (`Modal::ReleaseNotes`): a newer release on offer on top, then the
 //! notes bundled with this build, newest first. Esc closes it through the usual `CloseModal`.
 
-use super::dialog_frame::{Cx, Dialog, Footer};
+use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::{self, Icon, buttons};
 use crate::msg::{Msg, UpdateMsg};
@@ -15,7 +15,7 @@ use trellis_core::i18n::Lang;
 pub fn show(ui: &mut egui::Ui, cx: Cx, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {
     let t = cx.t;
     let running = t.trf("release_notes.running", &[("version", &d.current)]);
-    let mut dialog = Dialog::new(cx, t.tr("release_notes.title")).subtitle(running).wide().resizable("release-notes").begin(ui);
+    let mut dialog = Dialog::new(cx, t.tr("release_notes.title")).subtitle(running).size(Size::Wide).resizable("release-notes").begin(ui);
     dialog.body(ui, |ui| body(ui, t, d, msgs));
     dialog.finish(ui, Footer::new().note(t.tr("release_notes.esc_hint")).close()).dismiss
 }

@@ -5,13 +5,15 @@
 use super::common::capitalize;
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::buttons;
+use super::dialog_guides;
+use super::widgets::text_field::{self, TextField};
+use super::widgets::{FieldGroup, buttons};
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::state::gitflow::FinishForm;
 use crate::ui::theme::controls;
 use crate::ui::widgets::form_message::{self, Message};
-use eframe::egui::{self, Key, RichText};
+use eframe::egui::{self, RichText};
 use trellis_core::gitflow::{Branches, FinishProblem, WorkState, check_finish, short_name};
 use trellis_core::repo::Snapshot;
 
@@ -22,35 +24,22 @@ pub fn finish(ui: &mut egui::Ui, cx: Cx, form: &mut FinishForm, snap: Option<&Sn
     let kind = form.kind;
     let focus = cx.keyboard;
     let title = format!("Finish {} {}", kind.noun(), short_name(&s, kind, &form.branch));
-    let d = Dialog::new(cx, title).subtitle(format!("Branch {}", form.branch)).begin(ui);
+    let d = Dialog::new(cx, title).subtitle(format!("Branch {}", form.branch)).guide(dialog_guides::gitflow_finish(cx.t)).begin(ui);
     let mut submit = false;
     if kind.versioned() {
         let hint = trellis_core::gitflow::default_tag(&s, kind, &form.branch).unwrap_or_default();
-        egui::Grid::new("gitflow-finish-grid").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
-            ui.label("Tag");
-            let r = controls::field(ui, egui::TextEdit::singleline(&mut form.tag).hint_text(hint).desired_width(f32::INFINITY));
-            form_message::track(&mut form.touched, "tag", &r);
-            if focus && form.focus_tag {
-                r.request_focus();
-                form.focus_tag = false;
-            }
-            submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-            ui.end_row();
-            // The tag's own problem, under it, once it was edited or Finish was tried.
-            let checked = check_finish(&s, &form.branch, &form.options(), &Branches::of(snap), &WorkState::of(snap));
-            if let Err(p) = &checked
-                && tag_problem(p)
-                && form.touched.shows("tag")
-            {
-                ui.label("");
-                ui.vertical(|ui| form_message::field(ui, &form.touched, "tag", Some(Message::error(p.message()))));
-                ui.end_row();
-            }
-            ui.label("Message");
-            controls::field(ui, egui::TextEdit::multiline(&mut form.message).desired_rows(3).desired_width(f32::INFINITY));
-            ui.end_row();
-        });
-        ui.add_space(4.0);
+        // The tag's own problem, under it, once it was edited or Finish was tried.
+        let checked = check_finish(&s, &form.branch, &form.options(), &Branches::of(snap), &WorkState::of(snap));
+        let shown = checked.err().filter(tag_problem).map(|p| Message::error(p.message()));
+        let group = FieldGroup::new("Tag").message(&form.touched, "tag", shown);
+        let r = group.show(ui, |ui| ui.add(TextField::new(&mut form.tag).hint(hint)));
+        form_message::track(&mut form.touched, "tag", &r);
+        if focus && form.focus_tag {
+            r.request_focus();
+            form.focus_tag = false;
+        }
+        submit = text_field::entered(ui, &r);
+        FieldGroup::new("Tag message").show(ui, |ui| ui.add(TextField::multiline(&mut form.message, 3)));
     }
     controls::checkbox(ui, &mut form.keep, format!("Keep {} after finishing", form.branch));
     ui.add_space(4.0);

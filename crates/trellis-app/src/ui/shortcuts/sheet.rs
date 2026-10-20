@@ -4,21 +4,17 @@
 
 use super::Caps;
 use crate::keymap::{Binding, Keymap};
-use crate::ui::dialog_frame::{Cx, Dialog, Footer};
+use crate::ui::dialog_frame::{Cx, Dialog, Footer, Size};
 use crate::ui::theme::color;
-use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
-use eframe::egui::{Align, Id, Layout, RichText, Sense, TextEdit, Ui, vec2};
+use crate::ui::widgets::TextField;
+use eframe::egui::{Align, Id, Layout, RichText, Sense, Ui, vec2};
 
 /// Draws the sheet inside the dialog with the keys in effect; `cx.keyboard` gives the filter
 /// field the keyboard (not under a credential prompt). Returns true when Close is clicked.
 pub fn show(ui: &mut Ui, cx: Cx, filter: &mut String, keys: &Keymap) -> bool {
-    let mut d = Dialog::new(cx, "Keyboard shortcuts").wide().resizable("shortcut-sheet").begin(ui);
-    let field = TextEdit::singleline(filter)
-        .id(Id::new("trellis-shortcut-filter"))
-        .hint_text("Filter by action or key")
-        .desired_width(f32::INFINITY);
-    let r = controls::field(ui, field);
+    let mut d = Dialog::new(cx, "Keyboard shortcuts").size(Size::Wide).resizable("shortcut-sheet").begin(ui);
+    let r = ui.add(TextField::new(filter).id(Id::new("trellis-shortcut-filter")).hint("Filter by action or key"));
     if cx.keyboard {
         r.request_focus();
     }

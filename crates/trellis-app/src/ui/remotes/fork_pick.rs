@@ -6,9 +6,9 @@
 use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
-use super::super::widgets::buttons;
+use super::super::widgets::{FieldGroup, TextField, buttons};
 use super::super::widgets::form_message;
-use super::dialog::{field, note, problem_line};
+use super::dialog::{field, note, problem};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::blocked::BUSY;
@@ -88,13 +88,7 @@ pub fn show(
         }
     } else {
         listed = true;
-        let r = controls::field(
-            ui,
-            egui::TextEdit::singleline(&mut p.filter)
-                .id(Id::new("trellis-fork-filter"))
-                .hint_text("Filter forks")
-                .desired_width(f32::INFINITY),
-        );
+        let r = ui.add(TextField::new(&mut p.filter).id(Id::new("trellis-fork-filter")).hint("Filter forks"));
         if focus && ui.memory(|m| m.focused().is_none()) {
             r.request_focus();
         }
@@ -103,8 +97,14 @@ pub fn show(
         if p.list.truncated {
             note(ui, "Showing the newest 1000 forks. For another fork, paste its URL in Add remote.");
         }
-        ui.add_space(6.0);
-        let (r, enter) = field(ui, "Remote name", &mut p.name, "trellis-fork-name", "teammate");
+        ui.add_space(12.0);
+        let existing: Vec<&str> = snap.map(|s| s.remote_info.iter().map(|r| r.name.as_str()).collect()).unwrap_or_default();
+        let shown = check_remote_name(p.name.trim(), &existing, None)
+            .err()
+            .filter(|n| *n != RemoteNameProblem::Empty)
+            .and_then(|n| problem(n.message()));
+        let group = FieldGroup::new("Remote name").message(&p.touched, "name", shown);
+        let (r, enter) = field(ui, group, &mut p.name, "trellis-fork-name", "teammate");
         form_message::track(&mut p.touched, "name", &r);
         submit = enter;
     }
@@ -113,13 +113,6 @@ pub fn show(
     let name_p = check_remote_name(p.name.trim(), &existing, None).err();
     let ready = listed && p.picked.is_some() && name_p.is_none() && idle;
     if listed {
-        problem_line(
-            ui,
-            &p.touched,
-            "name",
-            name_p.as_ref().filter(|n| **n != RemoteNameProblem::Empty).map(|n| n.message()).unwrap_or_default(),
-        );
-        ui.add_space(4.0);
         controls::checkbox(ui, &mut p.fetch_after, "Fetch its branches after adding");
     }
     let why = if !idle {

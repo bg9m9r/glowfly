@@ -3,7 +3,7 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::buttons;
+use super::widgets::{FieldGroup, TextField, buttons};
 use crate::msg::Msg;
 use crate::msg::PublishMsg;
 use crate::state::publish::PublishForm;
@@ -31,25 +31,35 @@ pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &m
         });
     }
 
-    ui.horizontal(|ui| {
-        if f.loading {
+    if f.accounts.len() > 1 {
+        ui.add_space(8.0);
+    }
+    if f.loading {
+        ui.horizontal(|ui| {
             ui.spinner();
             ui.label(RichText::new("Signing in to GitHub…").color(color::weak()));
-            return;
-        }
-        egui::ComboBox::from_id_salt("publish-owner").selected_text(f.owner.as_str()).width(160.0).show_ui(ui, |ui| {
-            for o in &f.owners {
-                ui.selectable_value(&mut f.owner, o.clone(), o);
-            }
         });
-        ui.label("/");
-        let r = controls::field(ui, egui::TextEdit::singleline(&mut f.name).hint_text("repository-name").desired_width(f32::INFINITY));
+        ui.add_space(8.0);
+    } else {
+        let name = f.name.trim();
+        let bad = (!name.is_empty() && !forge::valid_repo_name(name)).then(|| Message::error("Use letters, digits, '.', '-' and '_' only."));
+        let r = FieldGroup::new("Name").message(&f.touched, "name", bad).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_id_salt("publish-owner").selected_text(f.owner.as_str()).width(160.0).show_ui(ui, |ui| {
+                    for o in &f.owners {
+                        ui.selectable_value(&mut f.owner, o.clone(), o);
+                    }
+                });
+                ui.label("/");
+                ui.add(TextField::new(&mut f.name).hint("repository-name"))
+            })
+            .inner
+        });
         form_message::track(&mut f.touched, "name", &r);
-    });
+    }
     let name = f.name.trim();
-    let bad = (!name.is_empty() && !forge::valid_repo_name(name)).then(|| Message::error("Use letters, digits, '.', '-' and '_' only."));
-    form_message::field(ui, &f.touched, "name", bad);
-    controls::field(ui, egui::TextEdit::singleline(&mut f.description).hint_text("Description (optional)").desired_width(f32::INFINITY));
+    let description = FieldGroup::new("Description").optional(cx.t.tr("dialog.field.optional"));
+    description.show(ui, |ui| ui.add(TextField::new(&mut f.description)));
     ui.horizontal(|ui| {
         controls::radio_value(ui, &mut f.private, true, "Private");
         controls::radio_value(ui, &mut f.private, false, "Public");

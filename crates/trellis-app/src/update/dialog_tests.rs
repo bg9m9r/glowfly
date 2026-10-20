@@ -1,6 +1,6 @@
-//! Headless tests for dismissing dialogs: a form ignores the backdrop, Esc closes it at once
-//! only while it matches how it opened, and otherwise asks "Discard your changes?" first;
-//! information and confirm dialogs close on both.
+//! Headless tests for dismissing dialogs: a form ignores the backdrop, Esc and the close button
+//! close it at once only while it matches how it opened, and otherwise ask "Discard your
+//! changes?" first; information and confirm dialogs close on all three.
 
 use super::tests::state;
 use super::update;
@@ -188,7 +188,14 @@ fn closing_or_replacing_the_dialog_drops_the_question() {
 #[test]
 fn dismiss_messages_without_a_dialog_do_nothing() {
     let mut st = state();
-    for m in [DialogMsg::Dismiss(Dismiss::Escape), DialogMsg::Dismiss(Dismiss::Backdrop), DialogMsg::KeepEditing, DialogMsg::Discard] {
+    for m in [
+        DialogMsg::Dismiss(Dismiss::Escape),
+        DialogMsg::Dismiss(Dismiss::Backdrop),
+        DialogMsg::Dismiss(Dismiss::CloseButton),
+        DialogMsg::KeepEditing,
+        DialogMsg::Discard,
+    ] {
+        assert!(m.on_inactive().is_none());
         assert!(run(&mut st, Msg::Dialog(m)).is_empty());
         assert!(st.modal.is_none());
         assert!(!st.dialog.asking);
@@ -234,4 +241,56 @@ fn danger_confirmation_without_acknowledgement_runs_at_once() {
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert!(st.modal.is_none());
     assert!(copies(&fx, "y"));
+}
+
+#[test]
+fn close_button_closes_an_unedited_form() {
+    let mut st = state();
+    new_branch(&mut st, "feature/x");
+    dismiss(&mut st, Dismiss::CloseButton);
+    assert!(st.modal.is_none());
+    assert!(!st.dialog.asking);
+}
+
+#[test]
+fn close_button_asks_on_an_edited_form() {
+    let mut st = state();
+    new_branch(&mut st, "");
+    *branch_name(&mut st) = "wip".into();
+    dismiss(&mut st, Dismiss::CloseButton);
+    assert!(st.dialog.asking, "asks first");
+    assert_eq!(branch_name(&mut st), "wip");
+    // On the question it means Keep editing, as Esc does.
+    dismiss(&mut st, Dismiss::CloseButton);
+    assert!(!st.dialog.asking);
+    assert_eq!(branch_name(&mut st), "wip", "still open");
+}
+
+#[test]
+fn close_button_closes_confirm_and_info() {
+    let mut st = state();
+    st.log(true, "kept");
+    run(&mut st, Msg::confirm("T", "B".into(), "Go", Msg::ClearLog));
+    assert!(matches!(st.modal, Some(Modal::Confirm { .. })));
+    dismiss(&mut st, Dismiss::CloseButton);
+    assert!(st.modal.is_none());
+    assert!(!st.log.is_empty(), "`then` didn't run");
+
+    run(&mut st, Msg::App(AppMsg::ShowAbout));
+    assert!(matches!(st.modal, Some(Modal::About)));
+    dismiss(&mut st, Dismiss::CloseButton);
+    assert!(st.modal.is_none());
+}
+
+#[test]
+fn close_button_on_trust_prompt_drops_the_job() {
+    let (mut st, dir) = super::trust_held_tests::held_repo("close-button-trust");
+    run(&mut st, Msg::git("Pull", &["pull", "--ff"]));
+    assert!(matches!(st.modal, Some(Modal::Trust(_))));
+    assert!(st.trust.held.is_some());
+    dismiss(&mut st, Dismiss::CloseButton);
+    assert!(st.modal.is_none());
+    assert!(st.trust.held.is_none(), "the held job is dropped");
+    assert!(st.log.iter().any(|e| e.text.contains("Pull wasn't run")));
+    let _ = std::fs::remove_dir_all(&dir);
 }

@@ -5,7 +5,7 @@
 use super::clone_dialog::note;
 use super::pane_status::{self, Failure};
 use super::theme::color;
-use super::widgets::buttons;
+use super::widgets::{TextField, buttons};
 use crate::msg::{CloneMsg, Msg, PrefsMsg};
 use crate::state::PrefPage;
 use crate::state::clone::CloneForm;
@@ -84,13 +84,7 @@ pub fn show(ui: &mut egui::Ui, t: Lang, form: &mut CloneForm, connections: &[Con
     } else if p.list.repos.is_empty() {
         ui.label("No repositories found for this account.");
     } else {
-        let r = controls::field(
-            ui,
-            egui::TextEdit::singleline(&mut p.filter)
-                .id(Id::new("trellis-clone-repo-filter"))
-                .hint_text("Filter repositories")
-                .desired_width(f32::INFINITY),
-        );
+        let r = ui.add(TextField::new(&mut p.filter).id(Id::new("trellis-clone-repo-filter")).hint("Filter repositories"));
         // Not on the Enter that left it: the dialog's frame reads that as running Clone.
         if focus && !r.lost_focus() && ui.memory(|m| m.focused().is_none()) {
             r.request_focus();
