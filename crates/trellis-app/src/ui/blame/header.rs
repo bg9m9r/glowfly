@@ -10,36 +10,32 @@ use crate::state::blame::BlameView;
 use crate::state::history::HistoryPane;
 use crate::ui::common::{caret_after, short};
 use crate::ui::file_view_switch::{self, FileShow};
-use crate::ui::find_bar::{FindIntent, plural};
-use crate::ui::history_file::{WRAP_LINES, WRAP_TIP};
+use crate::ui::find_bar::FindIntent;
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{Align, Layout, RichText, Ui};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::{BlameMoves, Settings};
 
-pub(in crate::ui) const BACK: &str = "Back";
-pub(in crate::ui) const FILE_HISTORY: &str = "File history";
-pub(in crate::ui) const IGNORE_WHITESPACE: &str = "Ignore whitespace";
-pub(in crate::ui) const SHOW_ALL: &str = "Show all";
-pub(in crate::ui) const AGE_TIP: &str = "Stronger marks in the gutter are newer commits";
-const UPDATING: &str = "Updating…";
-
-/// The Moves menu's button text and its items, in order.
-fn moves_text(m: BlameMoves) -> &'static str {
+/// The Moves menu's button text.
+fn moves_text(t: Lang, m: BlameMoves) -> &'static str {
     match m {
-        BlameMoves::Off => "Moves: off",
-        BlameMoves::WithinFile => "Moves: In file",
-        BlameMoves::AcrossFiles => "Moves: Across files",
+        BlameMoves::Off => t.tr("blame.header.moves.off"),
+        BlameMoves::WithinFile => t.tr("blame.header.moves.in_file"),
+        BlameMoves::AcrossFiles => t.tr("blame.header.moves.across"),
     }
 }
 
-const MOVES: [(BlameMoves, &str); 3] = [
-    (BlameMoves::Off, "Off"),
-    (BlameMoves::WithinFile, "Lines moved within the file"),
-    (BlameMoves::AcrossFiles, "Lines moved or copied from other files changed in the same commit"),
-];
+/// The Moves menu's items, in order.
+fn moves(t: Lang) -> [(BlameMoves, &'static str); 3] {
+    [
+        (BlameMoves::Off, t.tr("blame.header.moves.item.off")),
+        (BlameMoves::WithinFile, t.tr("blame.header.moves.item.within")),
+        (BlameMoves::AcrossFiles, t.tr("blame.header.moves.item.across")),
+    ]
+}
 
 /// The least width find and go to line need; narrower, they move to a row of their own.
 const FIND_ROW_MIN: f32 = 340.0;
@@ -54,21 +50,22 @@ pub(super) fn show(
     msgs: &mut Vec<Msg>,
 ) {
     let Some(view) = blame.as_mut() else { return };
-    first_row(ui, settings.lang(), view, over_history, msgs);
+    let t = settings.lang();
+    first_row(ui, t, view, over_history, msgs);
     ui.add_space(4.0);
     let mut own_row = false;
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         let back = view.back.last().map(|s| s.at.map_or_else(|| "HEAD".to_owned(), short));
-        let r = ui.add(buttons::secondary(BACK).enabled(back.is_some()));
+        let r = ui.add(buttons::secondary(t.tr("blame.header.back.button")).enabled(back.is_some()));
         let r = match &back {
-            Some(at) => r.on_hover_text(format!("Back to the blame at {at}")),
+            Some(at) => r.on_hover_text(t.trf("blame.header.back.tip", &[("at", at)])),
             None => r,
         };
         if r.clicked() {
             msgs.push(Msg::Blame(BlameMsg::Back));
         }
-        let r = ui.add(buttons::secondary(FILE_HISTORY)).on_hover_text("The history of this file from the blamed commit");
+        let r = ui.add(buttons::secondary(t.tr("blame.header.file_history.button"))).on_hover_text(t.tr("blame.header.file_history.tip"));
         if r.clicked() {
             msgs.push(Msg::Blame(BlameMsg::OpenHistory { select: None }));
         }
@@ -76,8 +73,8 @@ pub(super) fn show(
             return;
         }
         ui.separator();
-        toggles(ui, settings, msgs);
-        skipped_chip(ui, view, snap, msgs);
+        toggles(ui, t, settings, msgs);
+        skipped_chip(ui, t, view, snap, msgs);
         if ui.available_width() < FIND_ROW_MIN {
             own_row = true;
             return;
@@ -100,25 +97,27 @@ pub(super) fn show(
 
 /// "Blame", the path, the commit it is shown at, its size, and Close (after the Diff | File |
 /// Blame switch back to the history, `over_history`).
-fn first_row(ui: &mut Ui, t: trellis_core::i18n::Lang, view: &BlameView, over_history: bool, msgs: &mut Vec<Msg>) {
+fn first_row(ui: &mut Ui, t: Lang, view: &BlameView, over_history: bool, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
-        ui.label(RichText::new("Blame").color(color::weak()));
+        ui.label(RichText::new(t.tr("blame.header.title")).color(color::weak()));
         ui.label(RichText::new(&view.path).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()));
         let resolved = view.data.as_ref().map(|d| short(d.blame.at));
         let at = match (view.at, resolved) {
-            (Some(oid), _) => format!("at {}", short(oid)),
-            (None, Some(head)) => format!("at HEAD · {head}"),
-            (None, None) => "at HEAD".to_owned(),
+            (Some(oid), _) => t.trf("blame.header.at", &[("sha", &short(oid))]),
+            (None, Some(head)) => t.trf("blame.header.at_head_sha", &[("sha", &head)]),
+            (None, None) => t.tr("blame.header.at_head").to_owned(),
         };
         ui.label(RichText::new(at).color(color::weak()));
         if let Some(d) = &view.data {
             let (lines, commits) = (d.blame.lines.len(), d.blame.commits.len());
-            let size = format!("{} · {}", plural(lines, "line", "lines"), plural(commits, "commit", "commits"));
-            ui.label(RichText::new(size).color(color::weak())).on_hover_text(AGE_TIP);
+            let (lines, commits) = (t.trn("blame.header.lines", lines, &[]), t.trn("blame.header.commits", commits, &[]));
+            let size = t.trf("blame.header.size", &[("lines", &lines), ("commits", &commits)]);
+            ui.label(RichText::new(size).color(color::weak())).on_hover_text(t.tr("blame.header.age.tip"));
         }
         if view.updating() {
-            ui.label(RichText::new(UPDATING).color(color::weak())).on_hover_text("Blaming again: HEAD moved");
+            let updating = RichText::new(t.tr("blame.header.updating")).color(color::weak());
+            ui.label(updating).on_hover_text(t.tr("blame.header.updating.tip"));
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.add(buttons::secondary(t.tr("common.close_esc.button"))).clicked() {
@@ -140,15 +139,15 @@ fn first_row(ui: &mut Ui, t: trellis_core::i18n::Lang, view: &BlameView, over_hi
 }
 
 /// Ignore whitespace, the Moves menu and Wrap lines (saved in settings).
-fn toggles(ui: &mut Ui, settings: &Settings, msgs: &mut Vec<Msg>) {
+fn toggles(ui: &mut Ui, t: Lang, settings: &Settings, msgs: &mut Vec<Msg>) {
     let ws = settings.blame.ignore_whitespace;
-    let r = ui.selectable_label(ws, IGNORE_WHITESPACE).on_hover_text("Blame past changes that only add or remove whitespace");
+    let r = ui.selectable_label(ws, t.tr("blame.header.ignore_ws")).on_hover_text(t.tr("blame.header.ignore_ws.tip"));
     if r.clicked() {
         msgs.push(Msg::Blame(BlameMsg::SetIgnoreWhitespace(!ws)));
     }
     let moves = settings.blame.moves;
-    let r = ui.menu_button(moves_text(moves), |ui| {
-        for (m, label) in MOVES {
+    let r = ui.menu_button(moves_text(t, moves), |ui| {
+        for (m, label) in self::moves(t) {
             if ui.selectable_label(moves == m, label).clicked() {
                 if m != moves {
                     msgs.push(Msg::Blame(BlameMsg::SetMoves(m)));
@@ -160,14 +159,14 @@ fn toggles(ui: &mut Ui, settings: &Settings, msgs: &mut Vec<Msg>) {
     caret_after(ui, &r.response);
     ui.add_space(12.0); // clear of the caret
     let wrap = settings.blame.wrap_lines;
-    if ui.selectable_label(wrap, WRAP_LINES).on_hover_text(WRAP_TIP).clicked() {
+    if ui.selectable_label(wrap, t.tr("blame.header.wrap")).on_hover_text(t.tr("blame.header.wrap.tip")).clicked() {
         msgs.push(Msg::Blame(BlameMsg::SetWrapLines(!wrap)));
     }
     ui.add_space(12.0);
 }
 
 /// "Skipping N commits" (each listed on hover) and Show all, while any are skipped.
-fn skipped_chip(ui: &mut Ui, view: &BlameView, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) {
+fn skipped_chip(ui: &mut Ui, t: Lang, view: &BlameView, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) {
     if view.skipped.is_empty() {
         return;
     }
@@ -180,9 +179,10 @@ fn skipped_chip(ui: &mut Ui, view: &BlameView, snap: Option<&Snapshot>, msgs: &m
             None => short(oid),
         })
         .collect();
-    let text = format!("Skipping {}", plural(view.skipped.len(), "commit", "commits"));
+    let text = t.trn("blame.header.skipping", view.skipped.len(), &[]);
     ui.label(RichText::new(text).color(color::warn())).on_hover_text(tip.join("\n"));
-    if ui.add(buttons::secondary(SHOW_ALL).small()).on_hover_text("Stop skipping commits").clicked() {
+    let show_all = buttons::secondary(t.tr("blame.header.show_all.button")).small();
+    if ui.add(show_all).on_hover_text(t.tr("blame.header.show_all.tip")).clicked() {
         msgs.push(Msg::Blame(BlameMsg::ClearSkipped));
     }
 }

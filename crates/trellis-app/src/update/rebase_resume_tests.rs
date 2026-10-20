@@ -28,7 +28,7 @@ fn last_toast(st: &AppState) -> (bool, &str) {
 
 /// The banner's button for `label`, as the WIP panel sends it.
 fn banner(st: &AppState, label: &str) -> Msg {
-    let (_, actions) = crate::ui::common::state_actions(repo_state(st)).expect("an operation in progress");
+    let actions = crate::ui::common::state_actions(repo_state(st)).expect("an operation in progress");
     let (l, a) = actions.iter().find(|(l, _)| *l == label).expect("the action is offered");
     action_msg(repo_state(st), l, a)
 }

@@ -139,8 +139,8 @@ pub fn menu_item_if(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egu
 
 /// A menu item that stays enabled while what it needs isn't set up (`setup` holds the note shown
 /// on hover or focus): a weak "Set up…" follows the label, and running it opens the setting.
-pub fn menu_item_setup(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, setup: Option<&str>, m: Msg) {
-    menu_item_state(msgs, ui, label, setup.map_or(ItemState::Ready, ItemState::Setup), m);
+pub fn menu_item_setup(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, t: Lang, label: impl Into<egui::WidgetText>, setup: Option<&str>, m: Msg) {
+    menu_item_state(msgs, ui, label, setup.map_or(ItemState::Ready, |note| ItemState::setup(t, note)), m);
 }
 
 /// A menu item in `state` (`reason::menu_button`), pushing `m` and closing the menu when clicked.

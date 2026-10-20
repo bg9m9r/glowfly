@@ -6,6 +6,7 @@
 
 use super::{AppState, branches};
 use std::path::PathBuf;
+use trellis_core::i18n::Lang;
 use trellis_core::lfs::pointer::LfsChange;
 use trellis_core::lfs::{self, LfsPattern, LfsStatus, TrackTarget};
 use trellis_core::repo::{DiffTarget, Snapshot, SubmoduleInfo};
@@ -79,15 +80,6 @@ impl LfsInstall {
     }
 }
 
-/// The file menu's submenu.
-pub const TRACK_IN_LFS: &str = "Track in Git LFS";
-/// The submenu's first entry.
-pub const ONLY_THIS_FILE: &str = "Only this file";
-/// Why the entries are disabled without git-lfs.
-pub const NOT_INSTALLED_MENU: &str = "Git LFS isn't installed. See Preferences > Git LFS.";
-/// Why the entries are disabled before the startup check has answered.
-pub const CHECKING: &str = "Checking whether Git LFS is installed…";
-
 /// What a file row needs to build its Track in Git LFS entries.
 #[derive(Clone, Copy)]
 pub struct TrackContext<'a> {
@@ -117,28 +109,33 @@ pub struct TrackItem {
     pub target: TrackTarget,
 }
 
-/// The Track in Git LFS entries for a file row's `path`: none for a submodule.
-pub fn track_items(path: &str, cx: TrackContext) -> Vec<TrackItem> {
+/// The Track in Git LFS entries for a file row's `path`: none for a submodule. Disabled without
+/// git-lfs, and before the startup check has answered.
+pub fn track_items(t: Lang, path: &str, cx: TrackContext) -> Vec<TrackItem> {
     if cx.submodules.iter().any(|s| s.path == path) {
         return Vec::new();
     }
     lfs::track_targets(path)
         .into_iter()
-        .map(|t| {
-            let (label, extra) = match &t {
-                TrackTarget::File(_) => (ONLY_THIS_FILE.to_owned(), ""),
-                TrackTarget::Extension(_) => (format!("Every .{} file", lfs::extension(path).unwrap_or_default()), ""),
+        .map(|target| {
+            let shown: [(&str, &dyn std::fmt::Display); 1] = [("target", &target.display())];
+            let (label, hover) = match &target {
+                TrackTarget::File(_) => (t.tr("lfs.menu.only_file").to_owned(), t.trf("lfs.menu.adds.tip", &shown)),
+                TrackTarget::Extension(_) => {
+                    let ext = lfs::extension(path).unwrap_or_default();
+                    (t.trf("lfs.menu.extension", &[("ext", &ext)]), t.trf("lfs.menu.adds.tip", &shown))
+                }
                 TrackTarget::Folder(_) => {
                     let folder = path.rsplit_once('/').map_or("", |(f, _)| f);
-                    (format!("Everything in {folder}/"), " (subfolders included)")
+                    (t.trf("lfs.menu.folder", &[("folder", &folder)]), t.trf("lfs.menu.adds_folder.tip", &shown))
                 }
             };
             let blocked = match cx.install {
-                LfsInstall::Unknown | LfsInstall::Checking => Some(CHECKING.to_owned()),
-                LfsInstall::Missing => Some(NOT_INSTALLED_MENU.to_owned()),
-                LfsInstall::Installed(_) => lfs::check_target(&t, cx.patterns).err().map(|p| p.message()),
+                LfsInstall::Unknown | LfsInstall::Checking => Some(t.tr("lfs.menu.checking").to_owned()),
+                LfsInstall::Missing => Some(t.tr("lfs.menu.not_installed").to_owned()),
+                LfsInstall::Installed(_) => lfs::check_target(&target, cx.patterns).err().map(|p| p.message(t)),
             };
-            TrackItem { hover: format!("Adds {} to .gitattributes{extra}", t.display()), label, blocked, target: t }
+            TrackItem { hover, label, blocked, target }
         })
         .collect()
 }

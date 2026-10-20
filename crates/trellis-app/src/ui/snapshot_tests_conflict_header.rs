@@ -4,7 +4,6 @@
 //! view, so its conflicted file row (with its own Mark resolved) is drawn too.
 
 use crate::state::AppState;
-use crate::state::tool_compare::MERGE_TOOL_BUTTON;
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::{harness, with_conflict};
 use eframe::egui;
@@ -13,8 +12,10 @@ use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
 use trellis_core::repo::Choice;
 
+const MERGE_TOOL_BUTTON: &str = "Open in merge tool";
+
 /// settings.txt with two conflicts, the first picked as ours.
-fn one_of_two(name: &str) -> (AppState, PathBuf) {
+pub(super) fn one_of_two(name: &str) -> (AppState, PathBuf) {
     let settings = |side: &str| {
         let mut lines: Vec<String> = (1..=12).map(|i| format!("setting_{i} = {i}")).collect();
         match side {

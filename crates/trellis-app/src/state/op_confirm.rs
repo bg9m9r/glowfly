@@ -124,7 +124,7 @@ mod tests {
 
     /// The banner's action of `state` whose label starts with `prefix`.
     fn action(state: RepositoryState, prefix: &str) -> (&'static str, &'static [&'static str]) {
-        *state_actions(state).unwrap().1.iter().find(|(l, _)| l.starts_with(prefix)).unwrap()
+        *state_actions(state).unwrap().iter().find(|(l, _)| l.starts_with(prefix)).unwrap()
     }
 
     fn asked(m: Msg) -> (String, String, String, Msg) {

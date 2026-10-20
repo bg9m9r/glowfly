@@ -16,38 +16,38 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use crate::state::panel_layout::{CONFLICT_OUTPUT, CONFLICT_PANES_MIN};
-use crate::state::tool_compare::{IN_MERGE_TOOL, ToolSetup, merge_blocked, merging};
+use crate::state::tool_compare::{ToolSetup, merge_blocked, merging};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Frame, RichText, Ui};
-use trellis_core::repo::{ConflictContent, ConflictFile, Side};
-
-const LOADING: &str = "Loading the conflict…";
+use trellis_core::i18n::Lang;
+use trellis_core::repo::{ConflictContent, ConflictFile, Side, Unmergeable};
 
 pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.conflict_scroll_to.take();
     let wrap = st.settings.diff_word_wrap;
+    let t = st.settings.lang();
     let Some(view) = &st.conflict else { return };
-    let blocked = merge_blocked(view.file.as_ref().map(|f| &f.content), st.job.is_some());
-    let setup = ToolSetup::of(&st.settings.external_tools).merge;
+    let blocked = merge_blocked(t, view.file.as_ref().map(|f| &f.content), st.job.is_some());
+    let setup = ToolSetup::of(t, &st.settings.external_tools).merge;
     // Nothing here writes the file while the merge tool has it open; it closes the view on a change.
     let in_tool = merging(st, &view.path);
     ui.add_space(6.0);
     let tool = header::MergeTool { blocked: blocked.as_deref(), setup };
-    header::header_bar(ui, st.settings.lang(), view, tool, in_tool, &st.keymap, msgs);
+    header::header_bar(ui, t, view, tool, in_tool, &st.keymap, msgs);
     ui.separator();
     if in_tool {
         ui.horizontal(|ui| {
             ui.add_space(8.0);
-            ui.label(RichText::new(format!("{IN_MERGE_TOOL}.")).color(color::warn()));
+            ui.label(RichText::new(t.tr("conflict.view.in_tool.note")).color(color::warn()));
         });
     }
-    auto_note(ui, view);
-    restored_note(ui, view);
+    auto_note(ui, t, view);
+    restored_note(ui, t, view);
     let Some(file) = &view.file else {
-        return super::pane_status::loading(ui, LOADING);
+        return super::pane_status::loading(ui, t.tr("conflict.view.loading"));
     };
     if !matches!(file.content, ConflictContent::Text(_)) {
-        fallback(ui, view, file, in_tool, msgs);
+        fallback(ui, t, view, file, in_tool, msgs);
         return;
     }
     ui.spacing_mut().item_spacing.y = 0.0;
@@ -61,7 +61,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         .frame(Frame::new().fill(color::bg()))
         .show_inside(ui, |ui| {
             if let Some(view) = st.conflict.as_mut() {
-                output(ui, view, scroll_to, wrap, msgs);
+                output(ui, t, view, scroll_to, wrap, msgs);
             }
         });
     egui::CentralPanel::default().frame(Frame::new()).show_inside(ui, |ui| {
@@ -70,64 +70,64 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             && let Some(file) = &view.file
             && let ConflictContent::Text(segs) = &file.content
         {
-            panes(ui, view, file, segs, scroll_to, wrap, msgs);
+            panes(ui, t, view, file, segs, scroll_to, wrap, msgs);
         }
     });
 }
 
 /// The tooltip of the next (`forward`) or previous conflict arrow, with the step's current key.
-pub(super) fn step_tip(keys: &Keymap, forward: bool) -> String {
-    if forward { keys.tip("Next conflict", BindingId::NextChange) } else { keys.tip("Previous conflict", BindingId::PrevChange) }
+pub(super) fn step_tip(keys: &Keymap, t: Lang, forward: bool) -> String {
+    if forward {
+        keys.tip(t.tr("conflict.view.next.tip"), BindingId::NextChange)
+    } else {
+        keys.tip(t.tr("conflict.view.prev.tip"), BindingId::PrevChange)
+    }
 }
 
 /// Under the header: how many chunks were picked automatically, while any pick still is.
-fn auto_note(ui: &mut Ui, view: &ConflictView) {
+fn auto_note(ui: &mut Ui, t: Lang, view: &ConflictView) {
     let (auto, n) = (view.auto_count(), view.chunk_count());
     if auto == 0 {
         return;
     }
     let text = if auto == n {
-        let all = if n == 1 { "The conflict in this file was" } else { "All conflicts in this file were" };
-        RichText::new(format!(
-            "{all} picked automatically (one side unchanged, or only whitespace differs). You can save it straight away."
-        ))
-        .color(color::accent())
+        let all = if n == 1 { t.tr("conflict.view.auto_one") } else { t.tr("conflict.view.auto_all") };
+        RichText::new(all).color(color::accent())
     } else {
-        RichText::new(format!(
-            "{auto} of {n} conflicts were picked automatically (one side unchanged, or only whitespace differs). Check them before \
-             saving."
-        ))
-        .color(color::weak())
+        RichText::new(t.trn("conflict.view.auto_some", n, &[("auto", &auto)])).color(color::weak())
     };
+    // Wraps, so a longer translation can't widen the view.
     ui.horizontal(|ui| {
         ui.add_space(8.0);
-        ui.label(text);
+        ui.add(egui::Label::new(text).wrap());
     });
 }
 
 /// Under the header: how many chunks came back from the file saved with markers, or that its
 /// edits between the conflicts did, when anything did.
-fn restored_note(ui: &mut Ui, view: &ConflictView) {
+fn restored_note(ui: &mut Ui, t: Lang, view: &ConflictView) {
     let text = match (view.restored, view.chunk_count()) {
         (0, _) if view.baseline.1.is_empty() => return,
-        (0, _) => "Edits saved in the file between the conflicts are back.".to_owned(),
-        (k, n) => format!("Picks saved in the file are back for {k} of {n} conflicts."),
+        (0, _) => t.tr("conflict.view.restored_edits").to_owned(),
+        (k, n) => t.trn("conflict.view.restored_picks", n, &[("restored", &k)]),
     };
     ui.horizontal(|ui| {
         ui.add_space(8.0);
-        ui.label(RichText::new(text).color(color::accent()));
+        ui.add(egui::Label::new(RichText::new(text).color(color::accent())).wrap());
     });
 }
 
 /// Files with no chunk view: the reason, and buttons to take a whole version (the header's menu
 /// holds Open in merge tool and Mark resolved). Nothing writes while `in_tool`.
-fn fallback(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, in_tool: bool, msgs: &mut Vec<Msg>) {
+fn fallback(ui: &mut Ui, t: Lang, view: &ConflictView, file: &ConflictFile, in_tool: bool, msgs: &mut Vec<Msg>) {
     let (labels, content) = (&file.labels, &file.content);
     let message = match content {
-        ConflictContent::Binary => "Binary file: pick a whole version.".to_owned(),
-        ConflictContent::DeletedBy(Side::Theirs) => format!("Deleted on the theirs side ({})", labels.theirs),
-        ConflictContent::DeletedBy(Side::Ours) => format!("Deleted on the ours side ({})", labels.ours),
-        ConflictContent::Unsupported(reason) => format!("This file can't be merged here: {reason}."),
+        ConflictContent::Binary => t.tr("conflict.view.binary").to_owned(),
+        ConflictContent::DeletedBy(Side::Theirs) => t.trf("conflict.view.deleted_theirs", &[("name", &labels.theirs)]),
+        ConflictContent::DeletedBy(Side::Ours) => t.trf("conflict.view.deleted_ours", &[("name", &labels.ours)]),
+        ConflictContent::Unsupported(Unmergeable::SymbolicLink) => t.tr("conflict.view.unsupported.symlink").to_owned(),
+        ConflictContent::Unsupported(Unmergeable::Submodule) => t.tr("conflict.view.unsupported.submodule").to_owned(),
+        ConflictContent::Unsupported(Unmergeable::NotUtf8) => t.tr("conflict.view.unsupported.not_utf8").to_owned(),
         ConflictContent::Text(_) => return,
     };
     ui.add_space(16.0);
@@ -139,20 +139,31 @@ fn fallback(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, in_tool: bool
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         let path = &view.path;
-        for (side, word, name) in [(Side::Ours, "ours", &labels.ours), (Side::Theirs, "theirs", &labels.theirs)] {
+        for (side, name) in [(Side::Ours, &labels.ours), (Side::Theirs, &labels.theirs)] {
             let deleted = *content == ConflictContent::DeletedBy(side);
-            let (label, body) = if deleted {
-                (format!("Delete file ({name})"), format!("Delete {path} and mark it resolved? Changes in the working file are lost."))
-            } else {
-                (
-                    format!("Use {word} ({name})"),
-                    format!("Replace {path} with the {word} version and mark it resolved? Changes in the working file are lost."),
-                )
+            let name: [(&str, &dyn std::fmt::Display); 1] = [("name", name)];
+            let path: [(&str, &dyn std::fmt::Display); 1] = [("path", path)];
+            let (label, body, button) = match (deleted, side) {
+                (true, _) => (
+                    t.trf("conflict.view.delete_file.button", &name),
+                    t.trf("conflict.view.delete_file.body", &path),
+                    t.tr("common.delete.button"),
+                ),
+                (false, Side::Ours) => (
+                    t.trf("conflict.view.use_ours.button", &name),
+                    t.trf("conflict.view.use_ours.body", &path),
+                    t.tr("conflict.view.replace.button"),
+                ),
+                (false, Side::Theirs) => (
+                    t.trf("conflict.view.use_theirs.button", &name),
+                    t.trf("conflict.view.use_theirs.body", &path),
+                    t.tr("conflict.view.replace.button"),
+                ),
             };
             let r = ui.add_enabled(!view.saving && !in_tool, egui::Button::new(&label));
-            if (if in_tool { r.on_disabled_hover_text(IN_MERGE_TOOL) } else { r }).clicked() {
-                let resolve = Msg::Conflict(ConflictMsg::ResolveWithSide { path: path.clone(), side });
-                msgs.push(Msg::confirm_danger("Resolve conflict", body, if deleted { "Delete" } else { "Replace" }, resolve));
+            if (if in_tool { r.on_disabled_hover_text(t.tr("tools.in_merge_tool")) } else { r }).clicked() {
+                let resolve = Msg::Conflict(ConflictMsg::ResolveWithSide { path: view.path.clone(), side });
+                msgs.push(Msg::confirm_danger(t.tr("conflict.view.resolve.title"), body, button, resolve));
             }
         }
     });

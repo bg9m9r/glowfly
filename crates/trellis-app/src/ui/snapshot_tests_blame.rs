@@ -4,7 +4,7 @@
 //! history header's Blame segment, and the Diff | File | Blame switch over a file history.
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
-use super::file_menu::{BLAME, FOLDER_HISTORY, history_items};
+use super::file_menu::{BLAME, history_items};
 use super::file_view_switch::{DIFF, FILE};
 use super::snapshot_tests::{git, harness, remove_fixture, with_history, with_repo};
 use super::snapshot_tests_file_menu::menu_style;
@@ -26,6 +26,8 @@ use std::path::PathBuf;
 use trellis_core::highlight::{self, SyntaxHint};
 use trellis_core::repo::{self, BlameOptions, LoadOptions};
 use trellis_core::settings::ThemeChoice;
+
+const FOLDER_HISTORY: &str = "History of this folder";
 
 const MAIN: &str = "use std::fmt;
 
@@ -151,7 +153,7 @@ fn menu_for(path: &'static str, blocked: Option<&'static str>) -> Harness<'stati
             egui::Frame::menu(ui.style()).show(ui, |ui| {
                 ui.set_width(220.0);
                 menu_style(ui.style_mut());
-                history_items(ui, msgs, path, Some(Oid::from_str(OID).unwrap()), blocked);
+                history_items(ui, trellis_core::i18n::Lang::En, msgs, path, Some(Oid::from_str(OID).unwrap()), blocked);
                 let _ = ui.button("Copy path");
             });
         },

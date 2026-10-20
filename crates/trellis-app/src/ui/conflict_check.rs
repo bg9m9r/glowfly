@@ -9,10 +9,11 @@ use super::widgets::{self, Icon, buttons};
 use crate::conflict_check::ConflictCheckMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::conflict_check::{self as cc, ConflictReport, JOB_RUNNING};
+use crate::state::conflict_check::{self as cc, ConflictReport};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, CornerRadius, Id, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
 use trellis_core::conflict_check::Prediction;
+use trellis_core::i18n::Lang;
 
 /// The chip's height; the toolbar row is 48px.
 const HEIGHT: f32 = 24.0;
@@ -39,6 +40,7 @@ pub fn shown(st: &AppState) -> Option<(&ConflictReport, &Vec<String>)> {
 pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some((report, paths)) = shown(st) else { return };
     let Some(snap) = &st.snap else { return };
+    let t = st.settings.lang();
     let count = if paths.is_empty() { "!".to_owned() } else { paths.len().to_string() };
     let galley = ui.painter().layout_no_wrap(count, type_scale::font(type_scale::SMALL), color::text());
     let (rect, _) = ui.allocate_exact_size(vec2(galley.size().x + 36.0, HEIGHT), Sense::hover());
@@ -51,9 +53,10 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     widgets::paint_icon(p, pos2(rect.left() + 15.0, rect.center().y), Icon::Warning, amber);
     p.galley(pos2(rect.left() + 27.0, rect.center().y - galley.size().y / 2.0), galley, color::text());
     let target = report.request.target.name.clone();
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Conflicts with {target}")));
+    let label = t.trf("conflict_check.chip.name", &[("target", &target)]);
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &label));
     let remote = cc::is_remote(snap, &report.request.target);
-    let resp = resp.on_hover_text(cc::chip_tooltip(report, remote)).on_hover_cursor(egui::CursorIcon::PointingHand);
+    let resp = resp.on_hover_text(cc::chip_tooltip(t, report, remote)).on_hover_cursor(egui::CursorIcon::PointingHand);
     let id = Id::new(POPOVER_ID);
     if resp.clicked() {
         ui.memory_mut(|m| m.toggle_popup(id));
@@ -61,39 +64,40 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let idle = st.job.is_none();
     egui::popup::popup_below_widget(ui, id, &resp, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
         ui.set_width(380.0);
-        popover(ui, report, paths, remote, idle, msgs);
+        popover(ui, t, report, paths, remote, idle, msgs);
     });
 }
 
-fn popover(ui: &mut egui::Ui, report: &ConflictReport, paths: &[String], remote: bool, idle: bool, msgs: &mut Vec<Msg>) {
+fn popover(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, paths: &[String], remote: bool, idle: bool, msgs: &mut Vec<Msg>) {
     let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
-    ui.label(type_scale::section_text(ui, format!("Conflicts with {theirs}")));
-    if let Some(note) = cc::target_note(&report.request.target, ours, remote) {
+    ui.label(type_scale::section_text(ui, t.trf("conflict_check.popover.title", &[("theirs", &theirs)])));
+    if let Some(note) = cc::target_note(t, &report.request.target, ours, remote) {
         ui.label(RichText::new(note).color(color::weak()));
     }
     ui.add_space(6.0);
     if paths.is_empty() {
-        ui.label(cc::headline(report));
+        ui.label(cc::headline(t, report));
     } else {
-        ui.label(format!("{} changed on both sides:", cc::file_count(paths.len())));
-        file_list(ui, paths, true);
+        ui.label(t.trn("conflict_check.popover.both_sides", paths.len(), &[]));
+        file_list(ui, t, paths, true);
     }
     ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
         // The chip shows only a result for the inputs on screen.
-        for (label, m) in actions(report) {
-            if ui.add(buttons::secondary(label).small().enabled(idle).why(Some(JOB_RUNNING))).clicked() {
+        for (label, m) in actions(t, report) {
+            if ui.add(buttons::secondary(label).small().enabled(idle).why(Some(crate::state::blocked::busy(t)))).clicked() {
                 ui.memory_mut(|mem| mem.close_popup());
                 msgs.push(m);
             }
         }
-        if ui.add(buttons::secondary("Check again").small()).clicked() {
+        if ui.add(buttons::secondary(t.tr("conflict_check.check_again.button")).small()).clicked() {
             ui.memory_mut(|mem| mem.close_popup());
             msgs.push(Msg::ConflictCheck(ConflictCheckMsg::CheckNow));
         }
     });
     ui.add_space(4.0);
-    ui.label(RichText::new("Turn this check off in Preferences > General.").size(type_scale::SMALL).color(color::faint()));
+    let off = t.tr("conflict_check.popover.turn_off.hint");
+    ui.label(RichText::new(off).size(type_scale::SMALL).color(color::faint()));
 }
 
 /// The report dialog's contents; returns true when Close was clicked. `on_head`: the report is
@@ -107,28 +111,29 @@ pub fn report_modal(
     idle: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let mut d = Dialog::new(cx, "Conflict check").size(Size::Wide).resizable("conflict-report").begin(ui);
+    let t = cx.t;
+    let mut d = Dialog::new(cx, t.tr("conflict_check.dialog.title")).size(Size::Wide).resizable("conflict-report").begin(ui);
     d.body(ui, |ui| {
-        if let Some(note) = cc::target_note(&report.request.target, &report.request.branch, remote) {
+        if let Some(note) = cc::target_note(t, &report.request.target, &report.request.branch, remote) {
             ui.label(RichText::new(note).color(color::weak()));
             ui.add_space(4.0);
         }
-        ui.label(cc::headline(report));
+        ui.label(cc::headline(t, report));
         if let Ok(Prediction::Conflicts(paths)) = &report.result
             && !paths.is_empty()
         {
             ui.add_space(4.0);
-            file_list(ui, paths, false);
+            file_list(ui, t, paths, false);
         }
         if cc::offers_actions(report) && !on_head {
             ui.add_space(8.0);
-            ui.label(RichText::new(cc::HEAD_MOVED).color(color::weak()));
+            ui.label(RichText::new(t.tr("conflict_check.head_moved")).color(color::weak()));
         }
     });
-    let actions = if on_head { actions(report) } else { Vec::new() };
-    let mut footer = Footer::new().extra(buttons::secondary("Check again")).close();
+    let actions = if on_head { actions(t, report) } else { Vec::new() };
+    let mut footer = Footer::new().extra(buttons::secondary(t.tr("conflict_check.check_again.button"))).close();
     for (label, _) in &actions {
-        footer = footer.alt(buttons::secondary(label.as_str()).enabled(idle).why(Some(JOB_RUNNING)));
+        footer = footer.alt(buttons::secondary(label.as_str()).enabled(idle).why(Some(crate::state::blocked::busy(t))));
     }
     let out = d.finish(ui, footer);
     if let Some(i) = out.alt
@@ -144,21 +149,22 @@ pub fn report_modal(
 }
 
 /// The Merge and Rebase actions (only for a real merge), as (label, message).
-fn actions(report: &ConflictReport) -> Vec<(String, Msg)> {
+fn actions(t: Lang, report: &ConflictReport) -> Vec<(String, Msg)> {
     if !cc::offers_actions(report) {
         return Vec::new();
     }
     let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
+    let names: [(&str, &dyn std::fmt::Display); 2] = [("ours", &ours), ("theirs", &theirs)];
     vec![
-        (format!("Merge {theirs} into {ours}"), Msg::git("Merge", &["merge", theirs])),
-        (format!("Rebase {ours} onto {theirs}"), Msg::git("Rebase", &["rebase", theirs])),
+        (t.trf("conflict_check.merge.button", &names), Msg::git("Merge", &["merge", theirs])),
+        (t.trf("conflict_check.rebase.button", &names), Msg::git("Rebase", &["rebase", theirs])),
     ]
 }
 
 /// The paths in monospace, at most SHOWN_FILES; in the popover in a short scroll area of its
 /// own (`short`), in the report dialog in the dialog's.
-fn file_list(ui: &mut egui::Ui, paths: &[String], short: bool) {
-    let (shown, more) = cc::file_list(paths);
+fn file_list(ui: &mut egui::Ui, t: Lang, paths: &[String], short: bool) {
+    let (shown, more) = cc::file_list(t, paths);
     egui::Frame::new().fill(color::input()).corner_radius(4.0).inner_margin(egui::Margin::symmetric(8, 6)).show(ui, |ui| {
         let lines = |ui: &mut egui::Ui| {
             for p in &shown {

@@ -2,9 +2,7 @@
 //! is not on the graph), and the blame header while finding, with steps to go back to, a
 //! skipped commit and both toggles on.
 
-use super::blame::menu::{
-    BLAME_BEFORE, COPY_LINE, COPY_SHA, LineTarget, NOTHING_BEFORE, SELECT_ON_GRAPH, SHOW_IN_HISTORY, SKIP, line_menu,
-};
+use super::blame::menu::{LineTarget, line_menu};
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_blame::with_blame;
 use super::snapshot_tests_file_menu::menu_style;
@@ -20,6 +18,15 @@ use egui_kittest::kittest::{By, Queryable};
 use git2::Oid;
 use trellis_core::repo::BlameCommit;
 use trellis_core::settings::{BlameMoves, BlamePrefs, ThemeChoice};
+
+// The English texts, pinned.
+const BLAME_BEFORE: &str = "Blame before this commit";
+const SKIP: &str = "Skip this commit";
+const SHOW_IN_HISTORY: &str = "Show in file history";
+const SELECT_ON_GRAPH: &str = "Select on the graph";
+const COPY_LINE: &str = "Copy line";
+const COPY_SHA: &str = "Copy commit SHA";
+const NOTHING_BEFORE: &str = "This commit added these lines with the file, or older history is not in this clone";
 
 const OID: &str = "3f2a9c41d07be5a8c6f19e2d4b7a0c3e5f816d29";
 const LINE: &str = "    pub x: f64,";
@@ -49,7 +56,7 @@ fn menu(before: bool, on_graph: bool) -> Harness<'static, Vec<Msg>> {
                 ui.set_min_width(200.0);
                 menu_style(ui.style_mut());
                 let t = LineTarget { line: 4, text: LINE, commit: &c, before, skipped: false, on_graph };
-                line_menu(ui, msgs, &t);
+                line_menu(ui, trellis_core::i18n::Lang::En, msgs, &t);
             });
         },
         Vec::new(),

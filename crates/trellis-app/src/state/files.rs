@@ -2,6 +2,8 @@
 //! request is running; what status says about a path being deleted, the trash's name, the
 //! file manager's show-in-folder label, and the offer of the home Trash (`TrashOffer`).
 
+use trellis_core::i18n::Lang;
+
 /// Why Open and Show in folder are off for a file the working tree doesn't have.
 pub const NOT_IN_WORKDIR: &str = "Not in your working tree (deleted, renamed or never checked out)";
 /// The platform's name for where deleted files go.
@@ -14,6 +16,22 @@ pub const SHOW_IN_FOLDER: &str = if cfg!(windows) {
 } else {
     "Open containing folder"
 };
+
+/// `NOT_IN_WORKDIR` in the language (the English const stays for the file history's views).
+pub fn not_in_workdir(t: Lang) -> &'static str {
+    t.tr("files.not_in_workdir")
+}
+
+/// `SHOW_IN_FOLDER` in the language.
+pub fn show_in_folder(t: Lang) -> &'static str {
+    if cfg!(windows) {
+        t.tr("files.menu.show_in_folder.windows")
+    } else if cfg!(target_os = "macos") {
+        t.tr("files.menu.show_in_folder.macos")
+    } else {
+        t.tr("files.menu.show_in_folder.linux")
+    }
+}
 
 /// The trash on `path`'s drive can't be used (Linux): `body` asks whether to move it to the home
 /// Trash (`op` in `DeleteMode::HomeTrash`) or delete it permanently instead.

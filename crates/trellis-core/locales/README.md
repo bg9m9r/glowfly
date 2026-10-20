@@ -100,5 +100,12 @@ Keep terms the same across pages.
 | reset (soft / mixed / hard) | zurücksetzen (Soft / Mixed / Hard) | restablecer (soft / mixed / hard) |
 | pull request / merge request | Pull Request / Merge Request | pull request / merge request |
 | issue / work item / card | Issue / Arbeitselement / Karte | incidencia / elemento de trabajo / tarjeta |
+| ours / theirs (sides of a conflict) | Unsere / Ihre | nuestra / suya |
+| conflict marker | Konfliktmarker | marcador de conflicto |
+| mark resolved / mark conflicted | als gelöst markieren / als Konflikt markieren | marcar como resuelto / marcar en conflicto |
+| output (of a conflict) | Ergebnis | resultado |
+| blame | Blame | blame |
+| signature / signed / verified | Signatur / signiert / verifiziert | firma / firmada / verificada |
+| Git LFS / track (in LFS) | Git LFS / verfolgen | Git LFS / seguir |
 
 German uses the informal "du"; Spanish uses "tú".

@@ -109,13 +109,27 @@ fn an_edit_across_a_chunk_and_a_clean_line_is_undone() {
     let c = view(&st);
     let e = c.edit.as_ref().unwrap();
     assert_eq!(e.buffer, e.rendered.text, "the change is undone");
-    assert_eq!(c.edit_note.as_deref(), Some(super::SPAN_NOTE));
+    assert_eq!(c.edit_note.as_deref(), Some(trellis_core::i18n::Lang::En.tr("conflict.output.span_note")));
     assert!(c.picks == picks && c.cleans.is_empty());
     type_in_chunk(&mut st, 0, "fine\n");
     assert!(view(&st).edit_note.is_none(), "an accepted edit clears the note");
     st.conflict.as_mut().unwrap().edit_note = Some("x".into());
     send(&mut st, ConflictMsg::ConflictEditOutput(false));
     assert!(view(&st).edit.is_none() && view(&st).edit_note.is_none(), "so does leaving the editor");
+}
+
+#[test]
+fn the_span_note_follows_the_language() {
+    let mut st = with_fake(2);
+    st.settings.language = "de".into();
+    send(&mut st, ConflictMsg::ConflictEditOutput(true));
+    let e = st.conflict.as_mut().unwrap().edit.as_mut().unwrap();
+    let end = e.rendered.chunks[0].start + 3;
+    e.buffer.replace_range(1..end, "X");
+    send(&mut st, ConflictMsg::ConflictOutputEdited);
+    let de = trellis_core::i18n::Lang::De.tr("conflict.output.span_note");
+    assert_eq!(view(&st).edit_note.as_deref(), Some(de));
+    assert_ne!(de, trellis_core::i18n::Lang::En.tr("conflict.output.span_note"));
 }
 
 #[test]

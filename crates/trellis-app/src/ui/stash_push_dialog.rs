@@ -55,7 +55,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
         checklist(ui, form, snap);
     }
     let paths = snap.map(|s| form.paths(s)).unwrap_or_default();
-    let blocked = snap.and_then(|s| push_blocked(s, form.scope, &paths));
+    let blocked = snap.and_then(|s| push_blocked(trellis_core::i18n::Lang::En, s, form.scope, &paths));
     match blocked {
         // A prompt for what the list needs, not a problem.
         Some(NO_FILES) => form_message::field(ui, &Touched::all(), "files", Some(Message::info("Choose at least one file."))),
@@ -113,7 +113,7 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
                     );
                     let sense = if usable { Sense::click() } else { Sense::hover() };
                     let clicked = ui.add(egui::Label::new(&f.path).truncate().selectable(false).sense(sense)).clicked();
-                    super::path_warnings::mark(ui, f);
+                    super::path_warnings::mark(ui, trellis_core::i18n::Lang::En, f);
                     if clicked {
                         on = !on;
                     }

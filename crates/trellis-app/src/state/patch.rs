@@ -11,6 +11,7 @@ pub mod changes;
 use super::AppState;
 use super::Selection;
 use super::palette_commands::{Entry, PaletteCommand, entry};
+use super::selection::CommitBlock;
 use crate::patch::{ApplyHow, PatchMsg};
 use git2::Oid;
 use std::path::Path;
@@ -21,13 +22,11 @@ use trellis_core::repo::Snapshot;
 pub const APPLY_LABEL: &str = "Apply patch";
 /// The job label of applying a patch as commits.
 pub const AM_LABEL: &str = "Apply patches";
-/// Why Create patch is unavailable for a selection with a merge commit.
-pub const PATCH_BLOCKED_MERGE: &str = "Merge commits can't be saved as a patch.";
 
 /// Why `oids` can't be saved as a patch, if they can't: format-patch has no diff for a merge.
-pub fn export_blocker(snap: &Snapshot, oids: &[Oid]) -> Option<&'static str> {
+pub fn export_blocker(snap: &Snapshot, oids: &[Oid]) -> Option<CommitBlock> {
     let merge = oids.iter().filter_map(|o| snap.row_of.get(o).map(|&r| &snap.commits[r])).any(|c| c.parents.len() > 1);
-    merge.then_some(PATCH_BLOCKED_MERGE)
+    merge.then_some(CommitBlock::PatchMerge)
 }
 
 /// The suggested file name for a patch of `oldest_first`, from the oldest commit's subject.

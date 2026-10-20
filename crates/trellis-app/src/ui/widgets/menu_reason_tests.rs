@@ -2,6 +2,7 @@ use super::*;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
+use trellis_core::i18n::Lang;
 
 const UNLOCK_WHY: &str = "It is locked. Unlock it first.";
 
@@ -9,7 +10,7 @@ const UNLOCK_WHY: &str = "It is locked. Unlock it first.";
 fn menu_items_keep_their_label_as_name() {
     let mut h = Harness::new_ui(|ui| {
         menu_button(ui, "Unlock", "", ItemState::Blocked(UNLOCK_WHY));
-        menu_button(ui, "Open", "", ItemState::Setup("Opens the page"));
+        menu_button(ui, "Open", "", ItemState::setup(Lang::En, "Opens the page"));
     });
     h.run();
     assert!(h.get_by_label("Unlock").is_disabled());
@@ -92,11 +93,25 @@ fn a_long_reason_does_not_widen_the_item() {
 #[test]
 fn setup_items_explain_on_focus() {
     let mut h = Harness::new_ui(|ui| {
-        menu_button(ui, "Open", "", ItemState::Setup("Opens the page"));
+        menu_button(ui, "Open", "", ItemState::setup(Lang::En, "Opens the page"));
     });
     h.run();
     h.get_by_label("Open").focus();
     h.run();
     assert!(h.query_by_label("Opens the page").is_some());
     assert!(!h.get_by_label("Open").is_disabled());
+}
+
+#[test]
+fn setup_items_say_set_up_in_the_language() {
+    let de = ItemState::setup(Lang::De, "x");
+    let ItemState::Setup { note, suffix } = de else { panic!("{de:?}") };
+    assert_eq!(note, "x");
+    assert_eq!(suffix, Lang::De.tr("common.set_up.suffix"));
+    assert_ne!(suffix, Lang::En.tr("common.set_up.suffix"));
+    let mut h = Harness::new_ui(|ui| {
+        menu_button(ui, "Öffnen", "", de);
+    });
+    h.run();
+    assert!(!h.get_by_label("Öffnen").is_disabled(), "a setup item stays enabled");
 }

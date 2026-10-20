@@ -10,10 +10,11 @@ use crate::patch::{PatchEffect, PatchMsg};
 use crate::state::AppState;
 use crate::state::Selection;
 use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::patch::PATCH_BLOCKED_MERGE;
+use crate::state::selection::CommitBlock;
 use crate::state::selection::MultiSelection;
 use git2::Oid;
 use std::time::Instant;
+use trellis_core::i18n::Lang;
 use trellis_core::patch_ops::{ExportReport, PatchSource, WipScope};
 
 /// `three_commits` plus a side branch merged into main as "Merge side".
@@ -43,7 +44,7 @@ fn one_file_of_a_commit_asks_where_to_save() {
     }
     let merge = commit(&st, "Merge side");
     assert!(run(&mut st, PatchMsg::ExportFiles { oid: merge, paths: vec!["c.txt".into()] }).is_empty());
-    assert_eq!(last_log(&st), PATCH_BLOCKED_MERGE);
+    assert_eq!(last_log(&st), CommitBlock::PatchMerge.text(Lang::En));
     cleanup(&dir);
 }
 
@@ -76,7 +77,7 @@ fn copy_refuses_merges() {
     let (mut st, dir) = with_merge("patch-copy-merge");
     let merge = commit(&st, "Merge side");
     assert!(run(&mut st, PatchMsg::Copy(vec![merge])).is_empty());
-    assert_eq!(last_log(&st), PATCH_BLOCKED_MERGE);
+    assert_eq!(last_log(&st), CommitBlock::PatchMerge.text(Lang::En));
     assert!(run(&mut st, PatchMsg::Copy(vec![Oid::zero()])).is_empty());
     cleanup(&dir);
 }

@@ -9,13 +9,23 @@ use crate::lfs::LfsMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
-use crate::state::lfs::{CHECKING, LfsInstall, NOT_INSTALLED_MENU, ONLY_THIS_FILE, TrackContext, track_items};
+use crate::state::lfs::{LfsInstall, TrackContext, track_items as track_items_in};
 use crate::state::{AppState, PrefPage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::gitcli::args;
+use trellis_core::i18n::Lang;
 use trellis_core::lfs::{LfsPattern, LfsStatus, TrackTarget, track_filename_args};
 use trellis_core::repo::{SubmoduleInfo, SubmoduleState};
+
+const CHECKING: &str = "Checking whether Git LFS is installed…";
+const NOT_INSTALLED_MENU: &str = "Git LFS isn't installed. See Preferences > Git LFS.";
+const ONLY_THIS_FILE: &str = "Only this file";
+
+/// The entries in English.
+fn track_items(path: &str, cx: TrackContext) -> Vec<crate::state::lfs::TrackItem> {
+    track_items_in(Lang::En, path, cx)
+}
 
 fn lfs(st: &mut AppState, m: LfsMsg) -> Vec<Effect> {
     update(st, Msg::Lfs(m), Instant::now())
@@ -123,7 +133,7 @@ fn track_items_reasons() {
     assert_eq!(track_items("Makefile", cx(&ok, &psd)).len(), 1);
     let git_file = track_items("assets/.gitattributes", cx(&ok, &psd));
     assert_eq!(git_file.len(), 2, "no extension: just the file and its folder");
-    assert_eq!(git_file[0].blocked, Some(trellis_core::lfs::PatternProblem::GitFile.message()));
+    assert_eq!(git_file[0].blocked, Some(trellis_core::lfs::PatternProblem::GitFile.message(Lang::En)));
     assert_eq!(git_file[1].blocked, None);
 
     let subs = [submodule("libs/core")];

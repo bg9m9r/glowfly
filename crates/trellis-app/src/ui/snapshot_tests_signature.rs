@@ -17,7 +17,7 @@ use trellis_core::signing::SigningFormat;
 const KEY: &str = "SHA256:nu3mXdiXjT/P69lIp2s2NqrOSBxSCmevSqfmgZp4JuA";
 
 /// The fixture with HEAD selected, its detail marked as signed with `signature`.
-fn with_signed_head(theme: ThemeChoice, name: &str, signature: Option<SigningFormat>) -> (AppState, PathBuf, Oid) {
+pub(super) fn with_signed_head(theme: ThemeChoice, name: &str, signature: Option<SigningFormat>) -> (AppState, PathBuf, Oid) {
     let (mut st, dir) = with_repo(theme, name);
     let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
     st.selection = Selection::Commit(oid);
@@ -28,12 +28,12 @@ fn with_signed_head(theme: ThemeChoice, name: &str, signature: Option<SigningFor
 }
 
 /// `st` with a finished check of `oid` cached.
-fn checked(st: &mut AppState, oid: Oid, result: Result<SignatureCheck, String>) {
+pub(super) fn checked(st: &mut AppState, oid: Oid, result: Result<SignatureCheck, String>) {
     let generation = st.signatures.start(oid);
     st.signatures.finish(oid, generation, result);
 }
 
-fn ssh(stdout: &str, stderr: &str) -> Result<SignatureCheck, String> {
+pub(super) fn ssh(stdout: &str, stderr: &str) -> Result<SignatureCheck, String> {
     Ok(parse_check(SigningFormat::Ssh, stdout, stderr).unwrap())
 }
 

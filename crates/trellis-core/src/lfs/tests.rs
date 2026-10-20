@@ -56,17 +56,17 @@ fn pattern_checks() {
     assert_eq!(check_pattern("!*.bin", &[]), Err(PatternProblem::Negated));
     let folder = check_pattern("assets/", &[]).unwrap_err();
     assert_eq!(folder, PatternProblem::Folder("assets/".into()));
-    assert!(folder.message().contains("assets/**"), "{}", folder.message());
+    assert!(folder.message(Lang::En).contains("assets/**"), "{}", folder.message(Lang::En));
     assert_eq!(check_pattern(".gitattributes", &[]), Err(PatternProblem::GitFile));
     let existing = [pat("my[[:space:]]dir/*.bin")];
     let dup = check_pattern("my dir/*.bin", &existing).unwrap_err();
     assert_eq!(dup, PatternProblem::AlreadyTracked("my dir/*.bin".into()));
-    assert_eq!(dup.message(), "my dir/*.bin is already tracked.");
+    assert_eq!(dup.message(Lang::En), "my dir/*.bin is already tracked.");
     assert_eq!(check_pattern(" *.zip ", &existing), Ok("*.zip".into()));
     let hashed = [pat(r"a\#b")];
     assert_eq!(hashed[0].display, "a#b");
     assert_eq!(check_pattern("a#b", &hashed), Err(PatternProblem::AlreadyTracked("a#b".into())));
-    assert_eq!(PatternProblem::Empty.message(), "Enter a pattern.");
+    assert_eq!(PatternProblem::Empty.message(Lang::En), "Enter a pattern.");
 }
 
 #[test]
@@ -196,4 +196,15 @@ fn push_and_pull_through_a_local_origin() {
     ok(&clone, LfsCommand::Pull.args(None));
     assert_eq!(std::fs::read_to_string(clone.join("a.bin")).unwrap(), "real contents\n");
     let _ = std::fs::remove_dir_all(&clone);
+}
+
+#[test]
+fn pattern_problems_follow_the_language() {
+    let folder = PatternProblem::Folder("assets/".into());
+    assert_eq!(folder.message(Lang::En), "A pattern ending in / matches nothing in .gitattributes. To track a folder, use assets/**.");
+    assert_eq!(PatternProblem::AlreadyTracked("*.psd".into()).message(Lang::En), "*.psd is already tracked.");
+    let de = folder.message(Lang::De);
+    assert!(de.contains("assets/**") && de != folder.message(Lang::En), "{de}");
+    assert!(PatternProblem::AlreadyTracked("*.psd".into()).message(Lang::De).contains("*.psd"));
+    assert_ne!(PatternProblem::GitFile.message(Lang::De), PatternProblem::GitFile.message(Lang::En));
 }

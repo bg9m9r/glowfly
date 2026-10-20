@@ -95,7 +95,7 @@ fn wip_merge_banner_ready() {
 #[test]
 fn abort_merge_confirm() {
     let (mut st, dir) = mid_merge("abort-merge-confirm");
-    let (label, args) = state_actions(RepositoryState::Merge).unwrap().1[0];
+    let (label, args) = state_actions(RepositoryState::Merge).unwrap()[0];
     let ask = banner_msg(&st, label, args);
     crate::update::update(&mut st, ask, Instant::now());
     assert!(matches!(st.modal, Some(Modal::ConfirmDanger { .. })));

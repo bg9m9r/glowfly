@@ -4,14 +4,13 @@
 //! accessibility node, so every painted galley is read as well as every node, and checked
 //! against the English these areas used to show.
 
-use super::menu_testing::node_text;
 use super::snapshot_tests::{NOW, harness, remove_fixture};
 use super::snapshot_tests_forge_filters::target;
+use super::snapshot_tests_language_check::{self as check, matches, starred};
 use super::snapshot_tests_remotes::with_remotes;
 use crate::msg::Msg;
 use crate::state::{AppState, ForgeState, Status};
 use crate::ui::snapshot_check::CheckSnapshot;
-use eframe::egui::Shape;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
@@ -173,78 +172,14 @@ const ENGLISH: &[&str] = &[
     "Updated *",
 ];
 
-/// Every text the last frame painted (`Shape::Text` galleys, also inside `Shape::Vec`) and the
-/// text of every accessibility node.
-fn shown_texts(h: &H) -> Vec<String> {
-    fn walk(shape: &Shape, out: &mut Vec<String>) {
-        match shape {
-            Shape::Text(t) => out.push(t.galley.text().to_owned()),
-            Shape::Vec(v) => v.iter().for_each(|s| walk(s, out)),
-            _ => {}
-        }
-    }
-    let mut out = Vec::new();
-    for clipped in &h.output().shapes {
-        walk(&clipped.shape, &mut out);
-    }
-    out.extend(h.query_all_by(|_| true).map(|n| node_text(&n)));
-    out
-}
-
-/// `text` with each `{name}` placeholder made a `*`, to compare with `ENGLISH`'s entries.
-fn starred(text: &str) -> String {
-    let mut out = String::new();
-    let mut rest = text;
-    while let Some(open) = rest.find('{') {
-        match rest[open..].find('}') {
-            Some(close) => {
-                out.push_str(&rest[..open]);
-                out.push('*');
-                rest = &rest[open + close + 1..];
-            }
-            None => break,
-        }
-    }
-    out.push_str(rest);
-    out
-}
-
 /// The `ENGLISH` entries that are not also German text (German keeps "Commit", "Graph", "Tags").
 fn checkable() -> Vec<&'static str> {
-    let german: Vec<String> = Lang::De.keys().map(|(_, v)| starred(v)).collect();
-    ENGLISH.iter().copied().filter(|e| !german.iter().any(|g| g == e)).collect()
-}
-
-/// Whether the shown `text` is the English `entry`: equal, or with each `*` standing for
-/// something non-empty.
-fn matches(entry: &str, text: &str) -> bool {
-    let parts: Vec<&str> = entry.split('*').collect();
-    if parts.len() == 1 {
-        return text == entry;
-    }
-    let (first, last) = (parts[0], parts[parts.len() - 1]);
-    if !text.starts_with(first) || !text.ends_with(last) || text.len() <= first.len() + last.len() {
-        return false;
-    }
-    let mut at = first.len();
-    let end = text.len() - last.len();
-    for mid in &parts[1..parts.len() - 1] {
-        match text[at..end].find(mid) {
-            Some(i) if i > 0 => at += i + mid.len(),
-            _ => return false,
-        }
-    }
-    at < end
+    check::checkable(ENGLISH)
 }
 
 /// The shown strings that are one of this item's English texts.
 fn english_shown(h: &H) -> Vec<String> {
-    let entries = checkable();
-    assert!(entries.len() >= 60, "only {} English texts are left to check", entries.len());
-    let mut found: Vec<String> = shown_texts(h).into_iter().filter(|t| entries.iter().any(|e| matches(e, t.trim()))).collect();
-    found.sort();
-    found.dedup();
-    found
+    check::english_shown(h, ENGLISH, 60)
 }
 
 /// Fails listing each shown string that is one of this item's English texts.
@@ -254,7 +189,7 @@ pub(super) fn assert_no_english(h: &H, what: &str) {
 }
 
 fn shows(h: &H, text: &str) -> bool {
-    shown_texts(h).iter().any(|t| t == text)
+    check::shown_texts(h).iter().any(|t| t == text)
 }
 
 pub(super) fn german(st: &mut AppState) {
@@ -327,7 +262,7 @@ fn panels_german() {
     assert!(shows(&h, de.tr("sidebar.remote.no_branches.hint")), "backup has no branches yet");
     let hint = de.tr("sidebar.filter.hint");
     let cut = hint.split(' ').next().unwrap();
-    assert!(shown_texts(&h).iter().any(|t| t.starts_with(cut)), "the filter field's hint");
+    assert!(check::shown_texts(&h).iter().any(|t| t.starts_with(cut)), "the filter field's hint");
     assert!(shows(&h, de.tr("graph.wip.label")), "the WIP row");
     assert!(h.query_by_label(de.tr("details.wip.stage_all.button")).is_some(), "the WIP lists");
     let days = usize::try_from((NOW - newest) / 86_400).unwrap();

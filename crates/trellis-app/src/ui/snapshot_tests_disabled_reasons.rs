@@ -5,7 +5,7 @@
 
 use super::{menu_item, menu_item_if, menu_item_setup};
 use crate::msg::Msg;
-use crate::state::tool_compare::{DIFF_TOOL_SETUP, OPEN_IN_DIFF_TOOL};
+use crate::state::tool_compare::OPEN_IN_DIFF_TOOL;
 use crate::tools::ToolsMsg;
 use crate::ui::dialog_frame::{Cx, Dialog, Footer, Size};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -131,7 +131,7 @@ fn menu_in(dark: bool, reasons: bool, compare_why: &'static str, size: egui::Vec
                 menu_item_if(msgs, ui, "Compare…", why(compare_why), Msg::Copy("compare".into()));
                 menu_item_if(msgs, ui, PR, why("Connect GitHub in Preferences first"), Msg::Copy("pr".into()));
                 let open = Msg::Tools(ToolsMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into())));
-                menu_item_setup(msgs, ui, OPEN_IN_DIFF_TOOL, why(DIFF_TOOL_SETUP), open);
+                menu_item_setup(msgs, ui, Lang::En, OPEN_IN_DIFF_TOOL, why(Lang::En.tr("tools.diff_setup.tip")), open);
             });
             *width = r.response.rect.width();
         },

@@ -5,7 +5,7 @@
 
 use super::ops::{self, JobSpec, Started, start_job};
 use crate::effect::Effect;
-use crate::state::stashes::{NOTHING, StashPushForm, label, push_blocked, stashable_paths};
+use crate::state::stashes::{StashPushForm, label, push_blocked, stashable_paths};
 use crate::state::{AppState, Modal};
 use trellis_core::stash_ops::{STAGED_MIN_GIT, StashScope, push_command, push_message, staged_unsupported};
 
@@ -17,7 +17,7 @@ const PATHSPEC_FILE: &str = "TRELLIS_STASH_PATHS";
 pub(super) fn open(st: &mut AppState, scope: StashScope, path: Option<String>) {
     let Some(snap) = &st.snap else { return };
     if !snap.is_dirty() {
-        st.log(false, NOTHING);
+        st.log(false, st.settings.lang().tr("stash.blocked.nothing"));
         return;
     }
     st.modal = Some(Modal::StashPush(StashPushForm::new(scope, path)));
@@ -40,9 +40,10 @@ pub(super) fn push(st: &mut AppState, scope: StashScope, body: &str, paths: Vec<
     } else {
         Vec::new()
     };
-    if let Some(why) = push_blocked(snap, scope, &paths) {
+    if let Some(why) = push_blocked(st.settings.lang(), snap, scope, &paths) {
+        let clean = !snap.is_dirty();
         st.log(false, why);
-        if why == NOTHING {
+        if clean {
             close_dialog(st);
         }
         return;

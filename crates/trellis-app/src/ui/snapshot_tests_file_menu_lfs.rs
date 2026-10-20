@@ -2,26 +2,31 @@
 //! row's real context menu, its entries with one already tracked, and all of them disabled
 //! without git-lfs. Clicks check the messages the entries send, and which rows offer the submenu.
 
-use super::file_menu::{RowSource, TRACK_IN_LFS, commit_file_items, lfs_track_items, wip_file_items};
+use super::file_menu::{RowSource, commit_file_items, lfs_track_items, wip_file_items};
 use super::snapshot_tests_file_menu::menu_style;
 use super::theme::{apply_theme, color};
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
-use crate::state::lfs::{LfsInstall, NOT_INSTALLED_MENU, ONLY_THIS_FILE, TrackContext, TrackItem, track_items};
+use crate::state::lfs::{LfsInstall, TrackContext, TrackItem, track_items};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Modifiers, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
+use trellis_core::i18n::Lang;
 use trellis_core::lfs::{LfsPattern, TrackTarget};
 use trellis_core::repo::FileEntry;
+
+const TRACK_IN_LFS: &str = "Track in Git LFS";
+const ONLY_THIS_FILE: &str = "Only this file";
+const NOT_INSTALLED_MENU: &str = "Git LFS isn't installed. See Preferences > Git LFS.";
 
 const PATH: &str = "assets/a.psd";
 
 /// The entries for `path` with `install`, and `*.psd` already tracked.
 fn items(path: &str, install: LfsInstall) -> Vec<TrackItem> {
     let patterns = [LfsPattern { raw: "*.psd".into(), display: "*.psd".into(), lockable: false }];
-    track_items(path, TrackContext { install: &install, patterns: &patterns, submodules: &[] })
+    track_items(Lang::En, path, TrackContext { install: &install, patterns: &patterns, submodules: &[] })
 }
 
 fn installed() -> LfsInstall {
@@ -61,8 +66,8 @@ fn file_menu_wip_lfs() {
             r.context_menu(|ui| {
                 let _ = ui.button("Stage");
                 let _ = ui.button("Copy path");
-                let tool = super::file_menu::diff_item(trellis_core::repo::DiffTarget::Unstaged(PATH.into()), None);
-                wip_file_items(ui, msgs, &f, false, false, &lfs, None, tool);
+                let tool = super::file_menu::diff_item(Lang::En, trellis_core::repo::DiffTarget::Unstaged(PATH.into()), None);
+                wip_file_items(ui, Lang::En, msgs, &f, false, false, &lfs, None, tool);
             });
         },
         Vec::new(),
@@ -122,7 +127,7 @@ fn commit_menu(in_workdir: bool) -> Harness<'static, Vec<Msg>> {
     Harness::builder().with_size(egui::vec2(260.0, 240.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, true);
-            commit_file_items(ui, msgs, RowSource::Commit(oid), &f, in_workdir, &lfs, Default::default(), None);
+            commit_file_items(ui, Lang::En, msgs, RowSource::Commit(oid), &f, in_workdir, &lfs, Default::default(), None);
         },
         Vec::new(),
     )

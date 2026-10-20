@@ -115,7 +115,7 @@ pub(super) fn body(
             let gutter = Rect::from_min_max(pos2(sticky, row(from).top()), pos2(sticky + GUTTER_W, row(to - 1).bottom()));
             gutter::paint_age(&painter, gutter, data.age(run.commit));
             let resp = ui.interact(gutter, ui.id().with(("blame-run", k)), Sense::click());
-            let label = format!("Select {} on the graph", short(c.oid));
+            let label = st.settings.lang().trf("blame.select_run", &[("sha", &short(c.oid))]);
             resp.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &label));
             if resp.hovered() {
                 painter.rect_filled(gutter, 0.0, color::hover());
@@ -143,8 +143,8 @@ pub(super) fn body(
             }
             resp.context_menu(|ui| {
                 let line = ui.ctx().data(|d| d.get_temp::<usize>(menu_id)).unwrap_or(from).clamp(run.start, run.start + run.len - 1);
-                if let Some(t) = target(st, view, data, line) {
-                    menu::line_menu(ui, msgs, &t);
+                if let Some(l) = target(st, view, data, line) {
+                    menu::line_menu(ui, st.settings.lang(), msgs, &l);
                 }
             });
         }
@@ -159,8 +159,8 @@ pub(super) fn body(
                 out.clicked = Some(i);
             }
             resp.context_menu(|ui| {
-                if let Some(t) = target(st, view, data, i) {
-                    menu::line_menu(ui, msgs, &t);
+                if let Some(l) = target(st, view, data, i) {
+                    menu::line_menu(ui, st.settings.lang(), msgs, &l);
                 }
             });
             let clip = Rect::from_min_max(pos2(sticky + code_off, r.top()), r.max).intersect(ui.clip_rect());

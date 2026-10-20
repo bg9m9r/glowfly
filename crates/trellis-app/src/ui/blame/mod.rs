@@ -22,10 +22,6 @@ use crate::state::blame::{BlameData, BlameView};
 use eframe::egui::Ui;
 use menu::LineTarget;
 
-pub(in crate::ui) const LOADING: &str = "Loading the blame…";
-pub(in crate::ui) const FAILED_TITLE: &str = "Couldn't blame this file";
-pub(in crate::ui) const HELD_TITLE: &str = "Blame is paused until you trust this repository";
-
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = st.blame.as_mut() else { return };
     let scroll_to = view.scroll_to.take();
@@ -45,10 +41,11 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                 }
             }
         }
-        _ if view.loading => pane_status::loading(ui, LOADING),
+        _ if view.loading => pane_status::loading(ui, st.settings.lang().tr("blame.loading")),
         _ => match &view.error {
             Some(e) => {
-                let title = if e == crate::state::blame::HELD { HELD_TITLE } else { FAILED_TITLE };
+                let t = st.settings.lang();
+                let title = if e == crate::state::blame::HELD { t.tr("blame.held.title") } else { t.tr("blame.failed.title") };
                 let f = Failure { title, error: e, retry: Some(Msg::Blame(BlameMsg::Retry)) };
                 pane_status::failed(ui, st.settings.lang(), f, msgs);
             }

@@ -8,11 +8,19 @@ use trellis_core::external_tools::{self, Launch, TemplateError, Vars};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::ExternalTools;
 
-/// The file rows' menu item.
+/// The file rows' menu item, in English for the log line that names it (update/files.rs).
 pub const OPEN_IN_EDITOR: &str = "Open in external editor";
 pub const NO_EDITOR: &str = "No external editor is set. Choose one in Preferences > External tools.";
+
+/// The file rows' menu item.
+pub fn open_in_editor(t: Lang) -> &'static str {
+    t.tr("tools.open_in_editor")
+}
+
 /// The editor entries' hover note while no editor is set (they open the page).
-pub const EDITOR_SETUP: &str = "No external editor is set yet: this opens Preferences > External tools to choose one.";
+pub fn editor_setup(t: Lang) -> &'static str {
+    t.tr("tools.editor_setup.tip")
+}
 /// The palette's detail when no editor is set.
 pub const NO_EDITOR_DETAIL: &str = "no editor set";
 

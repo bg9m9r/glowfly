@@ -85,10 +85,13 @@ fn an_unstaged_text_diff() {
     assert_eq!(m.primary, Some(Primary::Stage("src/app.txt".into())));
     assert_eq!(m.actions.open, Some(OpenAction { path: "src/app.txt".into(), missing: None }));
     assert!(m.actions.restore.is_none() && m.actions.diff_tool.is_some());
-    assert_eq!(m.view.unwrap().label(), "Inline \u{b7} Hunks");
+    assert_eq!(m.view.unwrap().label(Lang::En), "Inline \u{b7} Hunks");
     st.settings.diff_layout = DiffLayout::Split;
     st.settings.diff_mode = DiffMode::WholeFile;
-    assert_eq!(model(&st).unwrap().view.unwrap().label(), "Split \u{b7} Whole file");
+    let v = model(&st).unwrap().view.unwrap();
+    assert_eq!(v.label(Lang::En), "Split \u{b7} Whole file");
+    let de = v.label(Lang::De);
+    assert!(de != v.label(Lang::En) && de.contains(" \u{b7} "), "{de}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -98,7 +101,7 @@ fn working_tree_targets() {
     let m = open(&mut st, DiffTarget::Unstaged("new.txt".into()));
     assert_eq!(m.status, Some('A'), "untracked shows as added");
     let m = open(&mut st, DiffTarget::Unstaged("gone.txt".into()));
-    assert_eq!(m.actions.open.unwrap().missing, Some(NOT_IN_WORKDIR), "deleted from the working tree");
+    assert_eq!(m.actions.open.unwrap().missing, Some(crate::state::files::NOT_IN_WORKDIR), "deleted from the working tree");
     let m = open(&mut st, DiffTarget::Staged("staged.txt".into()));
     assert_eq!((m.primary, m.context), (Some(Primary::Unstage("staged.txt".into())), Context::Staged));
     assert_eq!(m.actions.open.unwrap().missing, None);

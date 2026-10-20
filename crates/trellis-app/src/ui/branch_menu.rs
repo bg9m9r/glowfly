@@ -15,7 +15,6 @@ use crate::msg::BranchMsg;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::state::branches::{self, NO_REMOTES};
-use crate::state::conflict_check::NO_TARGET;
 use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere};
 use crate::state::worktrees::open_blocked;
 use crate::state::{ForgeState, Selection};
@@ -105,7 +104,7 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
         let check = Msg::ConflictCheck(ConflictCheckMsg::CheckNow);
         match trellis_core::conflict_check::target_for(snap) {
             Some(target) => menu_item(msgs, ui, t.trf("branch.menu.check_conflicts_with", &[("branch", &target.name)]), check),
-            None => menu_item_if(msgs, ui, t.tr("branch.menu.check_conflicts"), Some(NO_TARGET), check),
+            None => menu_item_if(msgs, ui, t.tr("branch.menu.check_conflicts"), Some(t.tr("conflict_check.no_target")), check),
         }
     } else if !current.is_empty() {
         let args: [(&str, &dyn std::fmt::Display); 1] = [("branch", &current)];

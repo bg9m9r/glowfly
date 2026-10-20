@@ -38,7 +38,8 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mu
         }
     };
     let done = matches!(state, BadgeState::Done(_));
-    let b = badge(format, state);
+    let t = st.settings.lang();
+    let b = badge(t, format, state);
     let (tint, glyph) = match b.verdict {
         _ if !done => (color::weak(), Glyph::Ring),
         Verdict::Verified => (color::added(), Glyph::Check),
@@ -62,12 +63,12 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mu
     let oid = d.oid;
     resp.context_menu(|ui| {
         if !held {
-            menu_item(msgs, ui, "Check again", Msg::Repo(RepoMsg::CheckSignatureAgain(oid)));
+            menu_item(msgs, ui, t.tr("signature.menu.check_again"), Msg::Repo(RepoMsg::CheckSignatureAgain(oid)));
         }
         if !key.is_empty() {
-            menu_item(msgs, ui, "Copy key", Msg::Copy(key.clone()));
+            menu_item(msgs, ui, t.tr("signature.menu.copy_key"), Msg::Copy(key.clone()));
         }
-        menu_item(msgs, ui, "Commit signing settings…", Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)));
+        menu_item(msgs, ui, t.tr("signature.menu.settings"), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)));
     });
 }
 

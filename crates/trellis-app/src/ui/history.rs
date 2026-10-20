@@ -96,7 +96,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
     let Some(view) = &st.history else { return };
     keyboard(ui, view, msgs);
     let in_wd = view.in_workdir(st.snap.as_ref());
-    let tools = ToolSetup::of(&st.settings.external_tools);
+    let tools = ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
     if view.entries.is_empty() {
         return super::history_footer::empty_list(ui, st, view, msgs);
     }
@@ -125,7 +125,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
                 msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(i)));
             }
             resp.context_menu(|ui| match view.kind {
-                HistoryKind::File => entry_menu(ui, msgs, e, view.today_path(), in_wd, tools),
+                HistoryKind::File => entry_menu(ui, st.settings.lang(), msgs, e, view.today_path(), in_wd, tools),
                 HistoryKind::Folder => commit_items(ui, msgs, e),
             });
             ui.painter().hline(rect.x_range(), rect.bottom() - 0.5, (1.0, color::border()));
@@ -146,17 +146,17 @@ fn commit_items(ui: &mut Ui, msgs: &mut Vec<Msg>, e: &HistoryEntry) {
 /// (the entry's change, disabled unless `in_workdir` or the entry deleted the file) and Open / Open in external editor / Show for `open_path` (the file as it is named today),
 /// disabled unless `in_workdir`, with Open in external diff tool for the entry's change (the
 /// editor and diff tool entries say "Set up…" while `tools` has no program for them).
-pub(super) fn entry_menu(ui: &mut Ui, msgs: &mut Vec<Msg>, e: &HistoryEntry, open_path: &str, in_workdir: bool, tools: ToolSetup) {
+pub(super) fn entry_menu(ui: &mut Ui, t: Lang, msgs: &mut Vec<Msg>, e: &HistoryEntry, open_path: &str, in_workdir: bool, tools: ToolSetup) {
     commit_items(ui, msgs, e);
     let deleted = (e.status == 'D').then_some("This commit deletes the file");
     menu_item_if(msgs, ui, BLAME_AT, deleted, Msg::Blame(BlameMsg::Open { path: e.path.clone(), at: Some(e.oid) }));
     ui.separator();
-    file_menu::restore_item(ui, msgs, e.oid, &e.path, e.status);
+    file_menu::restore_item(ui, t, msgs, e.oid, &e.path, e.status);
     // update/revert.rs maps an older name to `open_path`, which `in_workdir` is about.
     let revert_blocked = (!in_workdir && e.status != 'D').then_some(file_menu::NOT_IN_WORKDIR);
-    file_menu::revert_file_item(ui, msgs, DiffTarget::Commit(e.oid, e.path.clone()), revert_blocked);
-    let tool = file_menu::diff_item(DiffTarget::Commit(e.oid, e.path.clone()), tools.diff);
-    file_menu::open_items(ui, msgs, open_path, (!in_workdir).then_some(file_menu::NOT_IN_WORKDIR), tools.editor, Some(tool));
+    file_menu::revert_file_item(ui, t, msgs, DiffTarget::Commit(e.oid, e.path.clone()), revert_blocked);
+    let tool = file_menu::diff_item(t, DiffTarget::Commit(e.oid, e.path.clone()), tools.diff);
+    file_menu::open_items(ui, t, msgs, open_path, (!in_workdir).then_some(file_menu::NOT_IN_WORKDIR), tools.editor, Some(tool));
 }
 
 /// Line 1: short SHA and summary. Line 2: status, author (and the old path of a rename, or a
@@ -269,7 +269,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
 /// Restore, Open and Show for `f`, then Open in external diff tool for its change (always
 /// enabled: with no tool set it says on hover that it opens Preferences > External Tools).
 fn file_actions(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>, f: &CommitFile) {
-    let setup = ToolSetup::of(&st.settings.external_tools).diff;
+    let setup = ToolSetup::of(st.settings.lang(), &st.settings.external_tools).diff;
     ui.horizontal_wrapped(|ui| {
         file_buttons::show(ui, msgs, f);
         let mut button = buttons::secondary(OPEN_IN_DIFF_TOOL);

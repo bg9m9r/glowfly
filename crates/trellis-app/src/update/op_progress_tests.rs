@@ -19,7 +19,7 @@ use trellis_core::undo::{ABORT_STASH_MESSAGE, Action};
 /// The banner message of the action of the current state whose label starts with `prefix`.
 fn banner(st: &AppState, prefix: &str) -> Msg {
     let state = st.snap.as_ref().unwrap().state;
-    let (label, args) = *state_actions(state).unwrap().1.iter().find(|(l, _)| l.starts_with(prefix)).unwrap();
+    let (label, args) = *state_actions(state).unwrap().iter().find(|(l, _)| l.starts_with(prefix)).unwrap();
     banner_msg(st, label, args)
 }
 

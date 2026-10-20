@@ -76,7 +76,7 @@ fn use_theirs_on_a_link_conflict_stages_their_link_without_writing_through_ours(
     make_link(&dir, "cfg", "shared/a.json");
 
     let f = load_conflict(&dir, "cfg").unwrap();
-    assert_eq!(f.content, ConflictContent::Unsupported("a symbolic link".into()));
+    assert_eq!(f.content, ConflictContent::Unsupported(Unmergeable::SymbolicLink));
     resolve_with_side(&dir, "cfg", Side::Theirs, &f.ids).unwrap();
 
     assert_eq!(read(&dir, "shared/a.json"), "A\n", "wrote through the link");
@@ -139,7 +139,7 @@ fn use_a_side_across_a_file_and_link_type_change_keeps_that_sides_type() {
 
     // Taking theirs stages a link, not a file holding its target, and leaves the other conflicts.
     let f = load_conflict(&dir, "to_link").unwrap();
-    assert_eq!((&f.ids, &f.content), (&to_link, &ConflictContent::Unsupported("a symbolic link".into())));
+    assert_eq!((&f.ids, &f.content), (&to_link, &ConflictContent::Unsupported(Unmergeable::SymbolicLink)));
     resolve_with_side(&dir, "to_link", Side::Theirs, &to_link).unwrap();
     assert_link(&dir, "to_file", "victim.txt");
     let index = Repository::open(&dir).unwrap().index().unwrap();
@@ -159,5 +159,31 @@ fn use_a_side_across_a_file_and_link_type_change_keeps_that_sides_type() {
     assert_link(&dir, "to_link", "victim.txt");
     assert_link(&dir, "kept", "victim.txt");
     assert_eq!(read(&dir, "victim.txt"), "keep\n", "wrote through a link");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn submodules_and_text_that_isnt_utf8_say_why_they_cant_be_merged() {
+    let dir = scratch_repo("resolve-unmergeable");
+    write(&dir, "keep.txt", "keep\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "base"]);
+    // A submodule on every side: the merge never reads the (made up) commit ids as blobs.
+    conflict(&dir, "sub", [Some((0o160000, "base")), Some((0o160000, "ours")), Some((0o160000, "theirs"))]);
+    assert_eq!(load_conflict(&dir, "sub").unwrap().content, ConflictContent::Unsupported(Unmergeable::Submodule));
+
+    // Latin-1 text on both sides of a real merge.
+    std::fs::write(dir.join("latin.txt"), b"caf\xe9\n").unwrap();
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "latin"]);
+    git(&dir, &["checkout", "-q", "-b", "other"]);
+    std::fs::write(dir.join("latin.txt"), b"th\xe9\n").unwrap();
+    git(&dir, &["commit", "-q", "-am", "theirs"]);
+    git(&dir, &["checkout", "-q", "main"]);
+    std::fs::write(dir.join("latin.txt"), b"cr\xe8me\n").unwrap();
+    git(&dir, &["commit", "-q", "-am", "ours"]);
+    let (ok, _) = run(&dir, &args(&["merge", "other"]));
+    assert!(!ok, "merge should conflict");
+    assert_eq!(load_conflict(&dir, "latin.txt").unwrap().content, ConflictContent::Unsupported(Unmergeable::NotUtf8));
     let _ = std::fs::remove_dir_all(&dir);
 }

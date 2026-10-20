@@ -263,7 +263,13 @@ mod snapshot_tests_issue_create;
 #[cfg(test)]
 mod snapshot_tests_journal;
 #[cfg(test)]
+mod snapshot_tests_language_check;
+#[cfg(test)]
 mod snapshot_tests_language_chrome;
+#[cfg(test)]
+mod snapshot_tests_language_conflict;
+#[cfg(test)]
+mod snapshot_tests_language_files;
 #[cfg(test)]
 mod snapshot_tests_language_main;
 #[cfg(test)]

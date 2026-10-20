@@ -5,7 +5,7 @@
 use super::snapshot_tests::{git, harness, reload, remove_fixture, render, with_repo};
 use crate::conflict_check::CheckRequest;
 use crate::msg::{JobMsg, Msg};
-use crate::state::conflict_check::{ConflictReport, HEAD_MOVED, current_request};
+use crate::state::conflict_check::{ConflictReport, current_request};
 use crate::state::{AppState, Modal};
 use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
@@ -19,8 +19,10 @@ use trellis_core::settings::ThemeChoice;
 #[path = "snapshot_tests_conflict_chip.rs"]
 mod chip;
 
+const HEAD_MOVED: &str = "The checked-out branch has changed since this check, so it can't merge or rebase from here.";
+
 /// The fixture checked out on `search`, whose automatic check against main found `result`.
-fn on_search(theme: ThemeChoice, name: &str, result: Result<Prediction, String>) -> (AppState, PathBuf, CheckRequest) {
+pub(super) fn on_search(theme: ThemeChoice, name: &str, result: Result<Prediction, String>) -> (AppState, PathBuf, CheckRequest) {
     let (mut st, dir) = with_repo(theme, name);
     git(&dir, &["checkout", "-q", "search"], "2026-01-10T10:00:00+00:00");
     reload(&mut st, &dir, &LoadOptions::all(500));
@@ -31,7 +33,7 @@ fn on_search(theme: ThemeChoice, name: &str, result: Result<Prediction, String>)
     (st, dir, request)
 }
 
-fn conflicts(paths: &[&str]) -> Result<Prediction, String> {
+pub(super) fn conflicts(paths: &[&str]) -> Result<Prediction, String> {
     Ok(Prediction::Conflicts(paths.iter().map(|p| p.to_string()).collect()))
 }
 
@@ -54,7 +56,7 @@ fn conflict_popover() {
 }
 
 /// A check of merging search into main, made for main's tip as checked out in `st`.
-fn report(st: &AppState, kind: TargetKind, result: Result<Prediction, String>) -> ConflictReport {
+pub(super) fn report(st: &AppState, kind: TargetKind, result: Result<Prediction, String>) -> ConflictReport {
     let target = MergeTarget { name: "search".into(), oid: git2::Oid::zero(), kind };
     let ours = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
     ConflictReport { request: CheckRequest { branch: "main".into(), ours, target }, result }

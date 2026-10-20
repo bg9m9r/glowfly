@@ -5,6 +5,7 @@
 use crate::conflict_check::CheckRequest;
 use git2::RepositoryState;
 use trellis_core::conflict_check::{MergeTarget, Prediction, TargetKind, target_for};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
 use trellis_core::text::printable;
 
@@ -13,9 +14,6 @@ mod tests;
 
 /// The most paths a report lists before "and K more".
 pub const SHOWN_FILES: usize = 50;
-/// Why the head branch menu's check is off.
-pub const NO_TARGET: &str = "No upstream with new commits or default branch to compare with.";
-pub use crate::state::rebase::JOB_RUNNING;
 
 /// A finished check.
 #[derive(Clone, Debug, PartialEq)]
@@ -158,63 +156,58 @@ pub fn is_remote(snap: &Snapshot, target: &MergeTarget) -> bool {
         && snap.remotes.iter().any(|(r, bs)| bs.iter().any(|(b, _)| format!("{r}/{b}") == target.name))
 }
 
-/// "1 file", "3 files".
-pub fn file_count(n: usize) -> String {
-    if n == 1 { "1 file".into() } else { format!("{n} files") }
-}
-
 /// The one sentence a result gets (dialog, toast, activity log).
-pub fn headline(report: &ConflictReport) -> String {
+pub fn headline(t: Lang, report: &ConflictReport) -> String {
     let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
+    let names: [(&str, &dyn std::fmt::Display); 2] = [("ours", &ours), ("theirs", &theirs)];
     match &report.result {
-        Ok(Prediction::Conflicts(paths)) if paths.is_empty() => format!("Merging {theirs} into {ours} would stop with conflicts."),
-        Ok(Prediction::Conflicts(paths)) => {
-            format!("Merging {theirs} into {ours} would stop with conflicts in {}:", file_count(paths.len()))
+        Ok(Prediction::Conflicts(paths)) if paths.is_empty() => t.trf("conflict_check.headline.conflicts", &names),
+        Ok(Prediction::Conflicts(paths)) => t.trn("conflict_check.headline.conflicts_files", paths.len(), &names),
+        Ok(Prediction::Clean) => t.trf("conflict_check.headline.clean", &names),
+        Ok(Prediction::UpToDate) => t.trf("conflict_check.headline.up_to_date", &names),
+        Ok(Prediction::FastForward) => t.trf("conflict_check.headline.fast_forward", &names),
+        Err(e) => {
+            let error = printable(e);
+            t.trf("conflict_check.headline.failed", &[("ours", &ours), ("theirs", &theirs), ("error", &error)])
         }
-        Ok(Prediction::Clean) => format!("{theirs} merges into {ours} without conflicts."),
-        Ok(Prediction::UpToDate) => format!("{ours} already contains everything on {theirs}."),
-        Ok(Prediction::FastForward) => format!("{ours} has no commits that {theirs} lacks, so merging is a fast-forward."),
-        Err(e) => format!("Couldn't check {ours} against {theirs}: {}", printable(e)),
     }
 }
 
 /// The toolbar chip's hover text: what it warns about, where the target came from (`remote`:
 /// it is a remote-tracking branch) and what a click shows. Any result gets a fitting text,
 /// though the chip is drawn only for conflicts.
-pub fn chip_tooltip(report: &ConflictReport, remote: bool) -> String {
+pub fn chip_tooltip(t: Lang, report: &ConflictReport, remote: bool) -> String {
     let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
+    let names: [(&str, &dyn std::fmt::Display); 2] = [("ours", &ours), ("theirs", &theirs)];
     let listed = matches!(&report.result, Ok(Prediction::Conflicts(paths)) if !paths.is_empty());
     let mut lines = vec![match &report.result {
-        Ok(Prediction::Conflicts(paths)) if !paths.is_empty() => {
-            format!("Merging {theirs} into {ours} would stop with conflicts in {}.", file_count(paths.len()))
-        }
-        Ok(Prediction::Conflicts(_)) => format!("Merging {theirs} into {ours} would stop with conflicts."),
-        Ok(Prediction::Clean | Prediction::UpToDate | Prediction::FastForward) | Err(_) => headline(report),
+        Ok(Prediction::Conflicts(paths)) if !paths.is_empty() => t.trn("conflict_check.chip.tip_files", paths.len(), &names),
+        Ok(Prediction::Conflicts(_)) => t.trf("conflict_check.chip.tip", &names),
+        Ok(Prediction::Clean | Prediction::UpToDate | Prediction::FastForward) | Err(_) => headline(t, report),
     }];
-    lines.extend(target_note(&report.request.target, ours, remote));
-    lines.push(if listed { "Click to see the files and merge or rebase." } else { "Click for details." }.into());
+    lines.extend(target_note(t, &report.request.target, ours, remote));
+    lines.push(if listed { t.tr("conflict_check.chip.click.files") } else { t.tr("conflict_check.chip.click.details") }.into());
     lines.join("\n")
 }
 
 /// Where the target came from, and for a remote one that its last fetched state counts. None
 /// for a branch the user picked.
-pub fn target_note(target: &MergeTarget, branch: &str, remote: bool) -> Option<String> {
-    let name = target.name.as_str();
-    let mut note = match target.kind {
-        TargetKind::Upstream => format!("{name} is the upstream of {branch}."),
-        TargetKind::DefaultBranch => format!("{name} is this repository's default branch."),
-        TargetKind::Chosen => return None,
+pub fn target_note(t: Lang, target: &MergeTarget, branch: &str, remote: bool) -> Option<String> {
+    let args: [(&str, &dyn std::fmt::Display); 2] = [("name", &target.name), ("branch", &branch)];
+    let note = match (target.kind, remote) {
+        (TargetKind::Upstream, false) => t.trf("conflict_check.note.upstream", &args),
+        (TargetKind::Upstream, true) => t.trf("conflict_check.note.upstream_fetched", &args),
+        (TargetKind::DefaultBranch, false) => t.trf("conflict_check.note.default", &args),
+        (TargetKind::DefaultBranch, true) => t.trf("conflict_check.note.default_fetched", &args),
+        (TargetKind::Chosen, _) => return None,
     };
-    if remote {
-        note.push_str(&format!(" Compared with the last fetched state of {name}."));
-    }
     Some(note)
 }
 
 /// The paths a report lists (at most SHOWN_FILES, made printable), and "and K more" for the rest.
-pub fn file_list(paths: &[String]) -> (Vec<String>, Option<String>) {
+pub fn file_list(t: Lang, paths: &[String]) -> (Vec<String>, Option<String>) {
     let shown = paths.iter().take(SHOWN_FILES).map(|p| printable(p)).collect();
-    let more = (paths.len() > SHOWN_FILES).then(|| format!("and {} more", paths.len() - SHOWN_FILES));
+    let more = (paths.len() > SHOWN_FILES).then(|| t.trn("conflict_check.more", paths.len() - SHOWN_FILES, &[]));
     (shown, more)
 }
 
@@ -228,6 +221,3 @@ pub fn offers_actions(report: &ConflictReport) -> bool {
 pub fn for_head(report: &ConflictReport, snap: &Snapshot) -> bool {
     snap.head_branch.as_deref() == Some(report.request.branch.as_str()) && snap.head_oid == Some(report.request.ours)
 }
-
-/// What the report dialog says in place of Merge and Rebase when it isn't `for_head`.
-pub const HEAD_MOVED: &str = "The checked-out branch has changed since this check, so it can't merge or rebase from here.";

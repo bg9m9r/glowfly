@@ -17,9 +17,11 @@ use trellis_core::rebase::{self, QuickEdit, RebaseProgress, Resume, Stop, StopKi
 use trellis_core::repo::{FileEntry, LoadOptions};
 use trellis_core::settings::ThemeChoice;
 
+const EDIT_STEPS: &str = "Edit remaining steps…";
+
 /// The fixture with three more commits on main after the merge, newest first in the result, so
 /// main's tip is a linear run. `clean` restores the modified README first.
-fn with_linear(theme: ThemeChoice, name: &str, clean: bool) -> (AppState, PathBuf, [Oid; 3]) {
+pub(super) fn with_linear(theme: ThemeChoice, name: &str, clean: bool) -> (AppState, PathBuf, [Oid; 3]) {
     let (mut st, dir) = with_repo(theme, name);
     let d = "2026-01-05T10:00:00+00:00";
     if clean {
@@ -39,7 +41,7 @@ fn with_linear(theme: ThemeChoice, name: &str, clean: bool) -> (AppState, PathBu
     (st, dir, oids)
 }
 
-fn select(st: &mut AppState, oids: &[Oid]) {
+pub(super) fn select(st: &mut AppState, oids: &[Oid]) {
     st.selection = MultiSelection::build(oids.iter().copied(), oids[0], st.snap.as_ref().unwrap());
 }
 
@@ -147,7 +149,7 @@ fn squash_dialog_dirty_light() {
 }
 
 /// The fixture with an interactive rebase stopped at "Add app skeleton" (step 2 of 4).
-fn rebasing(theme: ThemeChoice, name: &str, kind: StopKind, conflicted: bool) -> (AppState, PathBuf) {
+pub(super) fn rebasing(theme: ThemeChoice, name: &str, kind: StopKind, conflicted: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     st.selection = Selection::Wip;
     let snap = st.snap.as_mut().unwrap();
@@ -195,7 +197,7 @@ fn rebase_banner_command() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("rebase_banner_command");
-    h.get_by_label(crate::state::rebase_banner::EDIT_STEPS).click();
+    h.get_by_label(EDIT_STEPS).click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::OpenRemaining))));
     drop(h);
@@ -221,7 +223,7 @@ fn no_step_editing_for_a_plain_rebase() {
     st.snap.as_mut().unwrap().state = RepositoryState::RebaseMerge;
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label(crate::state::rebase_banner::EDIT_STEPS).is_none());
+    assert!(h.query_by_label(EDIT_STEPS).is_none());
     drop(h);
     remove_fixture(&dir);
 }

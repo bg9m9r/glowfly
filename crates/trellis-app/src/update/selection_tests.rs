@@ -13,7 +13,7 @@ use crate::runner;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
 use crate::state::lines::LineClick;
-use crate::state::selection::{MultiSelection, PICK_BLOCKED_ON_HEAD, refreshed};
+use crate::state::selection::{CommitBlock, MultiSelection, refreshed};
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use std::path::{Path, PathBuf};
@@ -316,7 +316,7 @@ fn refresh_prunes_selection() {
     let (mut st, f) = fixture("multi-refresh");
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
-    assert_eq!(multi(&st).pick_blocked, Some(PICK_BLOCKED_ON_HEAD));
+    assert_eq!(multi(&st).pick_blocked, Some(CommitBlock::PickOnHead));
     // HEAD moves to a branch without c4 and c5: they can be picked now. The pair is the same,
     // so its file list is kept.
     git(&f.dir, &["checkout", "-q", "side"]);
@@ -329,7 +329,7 @@ fn refresh_prunes_selection() {
     git(&f.dir, &["reset", "-q", "--hard", &f.c(4).to_string()]);
     let fx = refresh(&mut st);
     assert_eq!(multi(&st).oids, [f.c(4), f.c(3)]);
-    assert_eq!(multi(&st).pick_blocked, Some(PICK_BLOCKED_ON_HEAD));
+    assert_eq!(multi(&st).pick_blocked, Some(CommitBlock::PickOnHead));
     assert_eq!(compares(&fx), [(f.c(3), f.c(4))]);
 
     git(&f.dir, &["reset", "-q", "--hard", &f.c(3).to_string()]);

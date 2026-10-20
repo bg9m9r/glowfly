@@ -30,7 +30,7 @@ fn last_toast(st: &AppState) -> (bool, &str) {
 
 /// Runs the banner action labelled `label` for the operation in progress.
 fn banner_action(st: &mut AppState, label: &str) {
-    let (_, actions) = crate::ui::common::state_actions(repo_state(st)).expect("an operation in progress");
+    let actions = crate::ui::common::state_actions(repo_state(st)).expect("an operation in progress");
     let (l, a) = actions.iter().find(|(l, _)| *l == label).expect("the action is offered");
     drive(st, crate::state::rebase_banner::action_msg(repo_state(st), l, a));
 }
@@ -68,8 +68,9 @@ fn an_edit_step_pauses_and_continue_finishes() {
     assert_eq!(st.selection, Selection::Wip, "the banner is in view");
     let text = format!("Interactive rebase paused at {} (step 1 of 3) so you can edit it. Use Continue when you're done.", short(c[0]));
     assert_eq!(last_toast(&st), (true, text.as_str()));
-    let (name, actions) = crate::ui::common::state_actions(repo_state(&st)).unwrap();
-    assert_eq!(name, "Interactive rebase");
+    let actions = crate::ui::common::state_actions(repo_state(&st)).unwrap();
+    let title = crate::state::op_actions::banner_title(trellis_core::i18n::Lang::En, st.snap.as_ref().unwrap()).unwrap();
+    assert!(title.starts_with("Interactive rebase in progress"), "{title}");
     assert_eq!(actions.iter().map(|(l, _)| *l).collect::<Vec<_>>(), ["Continue", "Skip commit", "Abort rebase"]);
 
     banner_action(&mut st, "Continue");

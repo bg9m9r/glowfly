@@ -5,6 +5,7 @@
 
 use crate::conflict_folds::{CleanFold, clean_fold};
 use crate::conflict_pick::{ChunkPick, CleanEdits};
+use crate::i18n::Lang;
 use crate::repo::{Choice, Chunk, ConflictFile, Segment, Side};
 use std::collections::BTreeSet;
 
@@ -156,11 +157,11 @@ pub enum Trivial {
 
 impl Trivial {
     /// A few words for the chunk header.
-    pub fn label(self) -> &'static str {
+    pub fn label(self, t: Lang) -> &'static str {
         match self {
-            Trivial::Unchanged => "unchanged on one side",
-            Trivial::Identical => "same on both sides",
-            Trivial::Whitespace => "whitespace only",
+            Trivial::Unchanged => t.tr("conflict.auto.unchanged"),
+            Trivial::Identical => t.tr("conflict.auto.identical"),
+            Trivial::Whitespace => t.tr("conflict.auto.whitespace"),
         }
     }
 }

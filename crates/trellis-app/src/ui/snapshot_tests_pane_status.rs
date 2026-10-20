@@ -17,6 +17,8 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use trellis_core::settings::ThemeChoice;
 
+const BLAME_FAILED: &str = "Couldn't blame this file";
+
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// Clicks the button labelled `label` and returns what it pushed.
@@ -33,7 +35,7 @@ fn blame_loading() {
     st.blame = Some(BlameView::loading("src/app.rs".into(), None));
     let mut h = harness(st, true);
     h.run_steps(3);
-    assert!(h.query_by_label(super::blame::LOADING).is_some());
+    assert!(h.query_by_label("Loading the blame…").is_some());
     h.check_snapshot("blame_loading");
     drop(h);
     remove_fixture(&dir);
@@ -47,12 +49,12 @@ fn blame_failed() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("blame_failed");
-    assert!(h.query_by_label(super::blame::FAILED_TITLE).is_some());
+    assert!(h.query_by_label(BLAME_FAILED).is_some());
     assert!(h.query_by_label("Src/x.rs is not in commit abc1234").is_some());
     assert!(h.query_by_label_contains("not found:").is_none(), "no kind prefix on screen");
     assert!(matches!(&click(&mut h, "Try again")[..], [Msg::Blame(BlameMsg::Retry)]));
     let copied = click(&mut h, "Copy details");
-    assert!(matches!(&copied[..], [Msg::Copy(t)] if t.starts_with(super::blame::FAILED_TITLE) && t.ends_with(raw)), "the raw error");
+    assert!(matches!(&copied[..], [Msg::Copy(t)] if t.starts_with(BLAME_FAILED) && t.ends_with(raw)), "the raw error");
     drop(h);
     remove_fixture(&dir);
 }
@@ -64,7 +66,7 @@ fn blame_held_light() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("blame_held_light");
-    assert!(h.query_by_label(super::blame::HELD_TITLE).is_some());
+    assert!(h.query_by_label("Blame is paused until you trust this repository").is_some());
     drop(h);
     remove_fixture(&dir);
 }

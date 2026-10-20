@@ -7,16 +7,17 @@ use super::widgets::banner::{self, BannerKind};
 use crate::state::path_hazards::warnings;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{FileEntry, Snapshot};
 
 /// The banner above the working-tree lists, when there is something to say.
-pub(super) fn banner(ui: &mut egui::Ui, snap: &Snapshot) {
-    let lines = warnings(snap);
+pub(super) fn banner(ui: &mut egui::Ui, t: Lang, snap: &Snapshot) {
+    let lines = warnings(t, snap);
     if lines.is_empty() {
         return;
     }
     banner::frame(ui, BannerKind::Warning, None, |ui| {
-        ui.label(type_scale::section_text(ui, "File names"));
+        ui.label(type_scale::section_text(ui, t.tr("files.warnings.title")));
         for line in lines {
             ui.add(egui::Label::new(RichText::new(line).color(color::text())).wrap());
         }
@@ -25,8 +26,8 @@ pub(super) fn banner(ui: &mut egui::Ui, snap: &Snapshot) {
 }
 
 /// After a row's path: what is wrong with it, with the full reason on hover.
-pub(super) fn mark(ui: &mut egui::Ui, f: &FileEntry) {
+pub(super) fn mark(ui: &mut egui::Ui, t: Lang, f: &FileEntry) {
     if let Some(h) = &f.hazard {
-        ui.label(RichText::new(format!("({})", h.label())).italics().color(color::weak())).on_hover_text(h.reason());
+        ui.label(RichText::new(format!("({})", h.label(t))).italics().color(color::weak())).on_hover_text(h.reason(t));
     }
 }

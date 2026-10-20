@@ -4,15 +4,17 @@
 //! actions with their disabled reasons, and the one primary action.
 
 use super::diff_nav::{self, Counter, StepKind};
-use super::files::NOT_IN_WORKDIR;
+use super::files::not_in_workdir;
 use super::{AppState, Selection};
 use git2::Oid;
+use trellis_core::i18n::Lang;
 use trellis_core::preview_image::is_image_path;
 use trellis_core::repo::{DiffTarget, FileDiff, Snapshot};
 use trellis_core::settings::{DiffLayout, DiffMode};
 use trellis_core::whole_file;
 
-/// The highlight's name for files it found no language for.
+/// The highlight's name for files it found no language for: the syntax set's own id, compared
+/// with and never shown, so it stays as the syntax set spells it.
 const PLAIN_TEXT: &str = "Plain text";
 
 /// Everything the header draws.
@@ -104,24 +106,21 @@ pub struct ViewGroup {
 
 impl ViewGroup {
     /// The button's label: "Inline · Hunks", or "View" without rows.
-    pub fn label(&self) -> String {
+    pub fn label(&self, t: Lang) -> String {
         if !self.rows {
-            return VIEW.to_owned();
+            return t.tr("diff.header.view.button").to_owned();
         }
         let layout = match self.layout {
-            DiffLayout::Inline => "Inline",
-            DiffLayout::Split => "Split",
+            DiffLayout::Inline => t.tr("diff.header.view.inline"),
+            DiffLayout::Split => t.tr("diff.header.view.split"),
         };
         let mode = match self.mode {
-            DiffMode::Hunks => "Hunks",
-            DiffMode::WholeFile => "Whole file",
+            DiffMode::Hunks => t.tr("diff.header.view.hunks"),
+            DiffMode::WholeFile => t.tr("diff.header.view.whole_file"),
         };
-        format!("{layout} \u{b7} {mode}")
+        t.trf("diff.header.view.label", &[("layout", &layout), ("mode", &mode)])
     }
 }
-
-/// The View button's short label.
-pub const VIEW: &str = "View";
 
 /// Restore a commit's version of the file.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -188,7 +187,7 @@ pub fn model(st: &AppState) -> Option<HeaderModel> {
         kind: kind(&path, diff),
         status: diff_nav::file_status(st, target).map(|s| if s == '?' { 'A' } else { s }),
         change,
-        context: context(st, target),
+        context: context(st, target, st.settings.lang()),
         prev,
         next,
         show_nav: has_rows || prev != StepKind::End || next != StepKind::End,
@@ -235,13 +234,13 @@ fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
-fn context(st: &AppState, target: &DiffTarget) -> Context {
+fn context(st: &AppState, target: &DiffTarget, t: Lang) -> Context {
     match target {
         DiffTarget::Commit(oid, _) => Context::Commit { short: short(*oid), summary: summary(st, *oid) },
         DiffTarget::Unstaged(_) => Context::Unstaged,
         DiffTarget::Staged(_) => Context::Staged,
         DiffTarget::Between(a, b, _) => Context::Between(format!("{}..{}", short(*a), short(*b))),
-        DiffTarget::ToWorkdir(o, _) => Context::ToWorkdir(format!("{}..working tree", short(*o))),
+        DiffTarget::ToWorkdir(o, _) => Context::ToWorkdir(t.trf("diff.header.to_workdir", &[("sha", &short(*o))])),
     }
 }
 
@@ -275,7 +274,8 @@ fn view_group(st: &AppState, diff: &FileDiff, rows: bool) -> ViewGroup {
 }
 
 fn actions(st: &AppState, target: &DiffTarget) -> Actions {
-    let diff_tool = Some(super::tool_compare::ToolSetup::of(&st.settings.external_tools).diff);
+    let t = st.settings.lang();
+    let diff_tool = Some(super::tool_compare::ToolSetup::of(t, &st.settings.external_tools).diff);
     let none = Actions { restore: None, open: None, diff_tool };
     match target {
         // Restore, Open and Show for a commit's file, when the open detail lists it.
@@ -284,13 +284,13 @@ fn actions(st: &AppState, target: &DiffTarget) -> Actions {
             let Some(f) = d.files.iter().find(|f| f.path == *path) else { return none };
             Actions {
                 restore: Some(RestoreAction { oid: *oid, path: f.path.clone(), status: f.status }),
-                open: Some(OpenAction { path: f.path.clone(), missing: (!d.in_workdir(&f.path)).then_some(NOT_IN_WORKDIR) }),
+                open: Some(OpenAction { path: f.path.clone(), missing: (!d.in_workdir(&f.path)).then(|| not_in_workdir(t)) }),
                 diff_tool,
             }
         }
         DiffTarget::Unstaged(p) | DiffTarget::Staged(p) | DiffTarget::ToWorkdir(_, p) => Actions {
             restore: None,
-            open: Some(OpenAction { path: p.clone(), missing: (!working_file_on_disk(st, target)).then_some(NOT_IN_WORKDIR) }),
+            open: Some(OpenAction { path: p.clone(), missing: (!working_file_on_disk(st, target)).then(|| not_in_workdir(t)) }),
             diff_tool,
         },
         DiffTarget::Between(..) => none,

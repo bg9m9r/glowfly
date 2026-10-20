@@ -10,6 +10,7 @@
 
 use crate::error::{Error, Result};
 use crate::gitcli::{args, read};
+use crate::i18n::Lang;
 use std::path::{Path, PathBuf};
 
 pub mod pointer;
@@ -280,14 +281,14 @@ pub enum PatternProblem {
 }
 
 impl PatternProblem {
-    pub fn message(&self) -> String {
+    pub fn message(&self, t: Lang) -> String {
         match self {
-            Self::Empty => "Enter a pattern.".to_owned(),
-            Self::Control => "Patterns can't contain line breaks or control characters.".to_owned(),
-            Self::Negated => "Patterns starting with ! aren't allowed in .gitattributes.".to_owned(),
-            Self::Folder(f) => format!("A pattern ending in / matches nothing in .gitattributes. To track a folder, use {f}**."),
-            Self::GitFile => "Git's own files (.gitattributes, .gitignore, .lfsconfig) can't be stored in LFS.".to_owned(),
-            Self::AlreadyTracked(p) => format!("{p} is already tracked."),
+            Self::Empty => t.tr("lfs.pattern.empty").to_owned(),
+            Self::Control => t.tr("lfs.pattern.control").to_owned(),
+            Self::Negated => t.tr("lfs.pattern.negated").to_owned(),
+            Self::Folder(f) => t.trf("lfs.pattern.folder", &[("pattern", f)]),
+            Self::GitFile => t.tr("lfs.pattern.git_file").to_owned(),
+            Self::AlreadyTracked(p) => t.trf("lfs.pattern.already_tracked", &[("pattern", p)]),
         }
     }
 }

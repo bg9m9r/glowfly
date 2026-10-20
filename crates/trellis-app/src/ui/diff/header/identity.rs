@@ -11,6 +11,7 @@ use crate::ui::theme::{color, fonts};
 use crate::ui::widgets::truncate::cut_left;
 use crate::ui::widgets::{Icon, paint_icon_sized};
 use eframe::egui::{self, Color32, CornerRadius, FontId, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
+use trellis_core::i18n::Lang;
 use trellis_core::lfs::pointer::size_text;
 
 /// The gap between the left-hand parts.
@@ -68,22 +69,22 @@ fn status_parts(m: &HeaderModel) -> Vec<Part> {
     v
 }
 
-fn context_parts(m: &HeaderModel) -> Vec<Part> {
+fn context_parts(m: &HeaderModel, t: Lang) -> Vec<Part> {
     let (text, font) = match &m.context {
         Context::Commit { short, .. } => (short.clone(), FontId::monospace(CHIP_PX)),
-        Context::Unstaged => ("Unstaged".into(), chip_font()),
-        Context::Staged => ("Staged".into(), chip_font()),
+        Context::Unstaged => (t.tr("diff.header.unstaged.chip").into(), chip_font()),
+        Context::Staged => (t.tr("diff.header.staged.chip").into(), chip_font()),
         Context::Between(r) | Context::ToWorkdir(r) => (r.clone(), chip_font()),
     };
     vec![Part::Text(text, font, color::text())]
 }
 
-fn parts_text(parts: &[Part]) -> String {
+fn parts_text(parts: &[Part], t: Lang) -> String {
     let words: Vec<&str> = parts
         .iter()
         .map(|p| match p {
             Part::Text(t, ..) => t.as_str(),
-            Part::Arrow => "to",
+            Part::Arrow => t.tr("diff.header.arrow"),
         })
         .collect();
     words.join(" ")
@@ -104,17 +105,17 @@ fn chip_width(ui: &Ui, parts: &[Part]) -> f32 {
 }
 
 /// Fills in the left-hand widths of `w`.
-pub(super) fn widths(ui: &Ui, m: &HeaderModel, w: &mut Widths) {
+pub(super) fn widths(ui: &Ui, m: &HeaderModel, t: Lang, w: &mut Widths) {
     w.icon = ICON;
     w.gap = GAP;
     w.folder = if m.folder.is_empty() { 0.0 } else { width_of(ui, &m.folder, folder_font()) };
     w.name = width_of(ui, &m.name, fonts::semibold(ui, PATH_PX));
     w.status = chip_width(ui, &status_parts(m));
-    w.context = chip_width(ui, &context_parts(m));
+    w.context = chip_width(ui, &context_parts(m, t));
 }
 
 /// Draws the left-hand parts as `plan` has them.
-pub(super) fn show(ui: &mut Ui, m: &HeaderModel, w: &Widths, plan: &Plan) {
+pub(super) fn show(ui: &mut Ui, m: &HeaderModel, t: Lang, w: &Widths, plan: &Plan) {
     ui.spacing_mut().item_spacing.x = 0.0;
     let (rect, _) = ui.allocate_exact_size(vec2(ICON, ICON), Sense::hover());
     let icon = match m.kind {
@@ -144,11 +145,11 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, w: &Widths, plan: &Plan) {
     }
     if plan.status && w.status > 0.0 {
         ui.add_space(GAP);
-        chip(ui, &status_parts(m));
+        chip(ui, t, &status_parts(m));
     }
     if plan.context && w.context > 0.0 {
         ui.add_space(GAP);
-        let r = chip(ui, &context_parts(m));
+        let r = chip(ui, t, &context_parts(m, t));
         if let Context::Commit { summary: Some(s), .. } = &m.context {
             r.on_hover_text(s);
         }
@@ -156,10 +157,10 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, w: &Widths, plan: &Plan) {
 }
 
 /// A pill of `parts` on the toolbar fill, named by its text.
-fn chip(ui: &mut Ui, parts: &[Part]) -> egui::Response {
+fn chip(ui: &mut Ui, t: Lang, parts: &[Part]) -> egui::Response {
     let width = chip_width(ui, parts);
     let (rect, resp) = ui.allocate_exact_size(vec2(width, CHIP_H), Sense::hover());
-    let text = parts_text(parts);
+    let text = parts_text(parts, t);
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, &text));
     let p = ui.painter();
     p.rect_filled(rect, CornerRadius::same(CHIP_RADIUS), color::raised());

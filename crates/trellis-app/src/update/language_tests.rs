@@ -91,3 +91,23 @@ fn the_issue_heading_follows_the_tracker_and_the_language() {
     assert_eq!((issues.issues_header(Lang::En), cards.issues_header(Lang::En)), ("ISSUES", "CARDS"));
     assert_eq!((cards.issues_header(Lang::De), issues.issues_header(Lang::Es)), ("KARTEN", "INCIDENCIAS"));
 }
+
+#[test]
+fn a_multi_selections_blocked_reasons_follow_a_language_switch_without_a_reselect() {
+    use crate::msg::SelectionMsg;
+    use crate::state::Selection;
+    use crate::state::selection::CommitBlock;
+    let (mut st, f) = super::selection_tests::fixture("lang-multi-blocked");
+    drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
+    let blocked = |st: &crate::state::AppState| match &st.selection {
+        Selection::Commits(m) => m.pick_blocked,
+        other => panic!("not a multi-selection: {other:?}"),
+    };
+    assert_eq!(blocked(&st), Some(CommitBlock::PickOnHead));
+    st.settings.language = "de".into();
+    let why = blocked(&st).expect("still blocked").text(st.settings.lang());
+    assert_eq!(why, Lang::De.tr("commits.blocked.pick_on_head"));
+    assert_ne!(why, CommitBlock::PickOnHead.text(Lang::En));
+    let _ = std::fs::remove_dir_all(&f.dir);
+}

@@ -6,6 +6,7 @@
 
 use crate::error::{Error, Result};
 use crate::gitcli;
+use crate::i18n::Lang;
 use crate::signing::SigningFormat;
 use crate::text::printable;
 use git2::Oid;
@@ -52,13 +53,13 @@ pub enum Verdict {
 }
 
 impl Verdict {
-    pub fn label(self) -> &'static str {
+    pub fn label(self, t: Lang) -> &'static str {
         match self {
-            Verdict::Verified => "Verified",
-            Verdict::Signed => "Signed",
-            Verdict::Expired => "Expired",
-            Verdict::Revoked => "Revoked",
-            Verdict::Bad => "Bad signature",
+            Verdict::Verified => t.tr("signature.verdict.verified"),
+            Verdict::Signed => t.tr("signature.verdict.signed"),
+            Verdict::Expired => t.tr("signature.verdict.expired"),
+            Verdict::Revoked => t.tr("signature.verdict.revoked"),
+            Verdict::Bad => t.tr("signature.verdict.bad"),
         }
     }
 }
@@ -93,62 +94,59 @@ impl SignatureCheck {
     }
 
     /// One or two sentences saying what the result means, for the badge's tooltip.
-    pub fn reason(&self) -> String {
+    pub fn reason(&self, t: Lang) -> String {
         let ssh = self.format == SigningFormat::Ssh;
-        match self.status {
-            SigStatus::Good if ssh => "Good signature from a key your allowed signers file lists for this signer.".into(),
-            SigStatus::Good => "Good signature from a key you trust.".into(),
-            SigStatus::GoodUntrusted if ssh => "The signature is good, but your allowed signers file doesn't list this key for this \
-                                                signer, so who made it isn't confirmed."
-                .into(),
-            SigStatus::GoodUntrusted => {
-                "The signature is good, but you haven't marked this key as trusted in GPG, so who made it isn't confirmed.".into()
-            }
+        let why = match self.status {
+            SigStatus::Good if ssh => t.tr("signature.reason.good_ssh"),
+            SigStatus::Good => t.tr("signature.reason.good"),
+            SigStatus::GoodUntrusted if ssh => t.tr("signature.reason.untrusted_ssh"),
+            SigStatus::GoodUntrusted => t.tr("signature.reason.untrusted"),
             SigStatus::CannotCheck => {
                 let missing_key = self.note.is_empty() || self.note.to_ascii_lowercase().contains("public key");
                 if self.format == SigningFormat::OpenPgp && missing_key {
-                    "The signer's public key isn't in your keyring, so the signature can't be checked.".into()
+                    t.tr("signature.reason.no_key")
                 } else {
-                    couldnt_check(&self.note)
+                    return couldnt_check(t, &self.note);
                 }
             }
-            SigStatus::NoAllowedSigners => "SSH signatures are checked against an allowed signers file, and none is set \
-                                            (gpg.ssh.allowedSignersFile). Choose one in Preferences > Commit signing."
-                .into(),
-            SigStatus::NotChecked => couldnt_check(&self.note),
-            SigStatus::ExpiredSignature => "The signature has expired.".into(),
-            SigStatus::ExpiredKey => "The key that made the signature has expired.".into(),
-            SigStatus::RevokedKey => "The key that made the signature has been revoked.".into(),
-            SigStatus::Bad => {
-                "The signature doesn't match this commit: the commit changed after it was signed, or the signature is damaged.".into()
-            }
-        }
+            SigStatus::NoAllowedSigners => t.tr("signature.reason.no_allowed_signers"),
+            SigStatus::NotChecked => return couldnt_check(t, &self.note),
+            SigStatus::ExpiredSignature => t.tr("signature.reason.expired_signature"),
+            SigStatus::ExpiredKey => t.tr("signature.reason.expired_key"),
+            SigStatus::RevokedKey => t.tr("signature.reason.revoked"),
+            SigStatus::Bad => t.tr("signature.reason.bad"),
+        };
+        why.to_owned()
     }
 
     /// The signer, key, fingerprint (when it isn't the key) and trust level (OpenPGP), as
     /// (label, value); empty ones are left out.
-    pub fn details(&self) -> Vec<(&'static str, String)> {
+    pub fn details(&self, t: Lang) -> Vec<(&'static str, String)> {
         let mut out = Vec::new();
         if !self.signer.is_empty() {
-            out.push(("Signer", self.signer.clone()));
+            out.push((t.tr("signature.detail.signer"), self.signer.clone()));
         }
         if !self.key.is_empty() {
-            out.push(("Key", self.key.clone()));
+            out.push((t.tr("signature.detail.key"), self.key.clone()));
         }
         if !self.fingerprint.is_empty() && self.fingerprint != self.key {
-            out.push(("Fingerprint", self.fingerprint.clone()));
+            out.push((t.tr("signature.detail.fingerprint"), self.fingerprint.clone()));
         }
         if self.format == SigningFormat::OpenPgp
-            && let Some(t) = &self.trust
+            && let Some(level) = &self.trust
         {
-            out.push(("Trust", t.clone()));
+            out.push((t.tr("signature.detail.trust"), level.clone()));
         }
         out
     }
 }
 
-fn couldnt_check(note: &str) -> String {
-    if note.is_empty() { "Git couldn't check the signature.".into() } else { format!("Git couldn't check the signature: {note}") }
+fn couldnt_check(t: Lang, note: &str) -> String {
+    if note.is_empty() {
+        t.tr("signature.reason.couldnt_check").to_owned()
+    } else {
+        t.trf("signature.reason.couldnt_check_note", &[("note", &note)])
+    }
 }
 
 /// The format of the signature in commit `oid`'s header, or None if it is unsigned. libgit2

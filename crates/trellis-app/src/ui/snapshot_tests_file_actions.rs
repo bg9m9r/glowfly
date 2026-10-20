@@ -4,7 +4,7 @@
 //! from the working tree, the messages clicks send, and that comparison diff headers gain no
 //! buttons. Shares the fixture repository and renderer with `snapshot_tests`.
 
-use super::file_menu::{NOT_IN_WORKDIR, OPEN_DEFAULT, OPEN_IN_EDITOR, SHOW_IN_FOLDER};
+use super::file_menu::{NOT_IN_WORKDIR, OPEN_DEFAULT, SHOW_IN_FOLDER};
 use super::history::{BLAME_AT, entry_menu};
 use super::snapshot_tests::{harness, harness_sized, remove_fixture, with_history, with_repo};
 use super::snapshot_tests_file_menu::menu_style;
@@ -25,6 +25,8 @@ use trellis_core::repo::{self, DiffTarget, HistoryEntry, LoadOptions};
 use trellis_core::settings::{DiffLayout, ThemeChoice};
 
 const RESTORE: &str = "Restore this version…";
+const OPEN_IN_EDITOR: &str = "Open in external editor";
+const REVERT_FILE: &str = "Revert changes to this file";
 /// The diff header's labelled file actions and its Close control.
 const RESTORE_SHORT: &str = "Restore…";
 const OPEN_SHORT: &str = "Open";
@@ -128,7 +130,8 @@ fn menu_harness(e: HistoryEntry, in_workdir: bool) -> Harness<'static, Vec<Msg>>
             ui.ctx().set_theme(egui::Theme::Dark);
             egui::Frame::menu(ui.style()).show(ui, |ui| {
                 menu_style(ui.style_mut());
-                entry_menu(ui, msgs, &e, "src/app.txt", in_workdir, crate::state::tool_compare::ToolSetup::of(&Default::default()));
+                let en = trellis_core::i18n::Lang::En;
+                entry_menu(ui, en, msgs, &e, "src/app.txt", in_workdir, crate::state::tool_compare::ToolSetup::of(en, &Default::default()));
             });
         },
         Vec::new(),
@@ -154,7 +157,7 @@ fn history_entry_menu() {
 
     let mut h = menu_harness(history_entry('M'), true);
     h.run();
-    h.get_by_label(super::file_menu::REVERT_FILE).click();
+    h.get_by_label(REVERT_FILE).click();
     h.run();
     let want = DiffTarget::Commit(e.oid, e.path.clone());
     assert!(matches!(&h.state()[..], [Msg::Stage(crate::msg::StageMsg::RevertFile(t))] if *t == want), "the entry's change");
@@ -162,7 +165,7 @@ fn history_entry_menu() {
 
     let mut h = menu_harness(history_entry('M'), false);
     h.run();
-    assert!(h.get_by_label(super::file_menu::REVERT_FILE).is_disabled());
+    assert!(h.get_by_label(REVERT_FILE).is_disabled());
     assert!(h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(h.get_by_label(OPEN_IN_EDITOR).is_disabled());
     assert!(h.get_by_label(SHOW_IN_FOLDER).is_disabled());
@@ -171,7 +174,7 @@ fn history_entry_menu() {
     let mut h = menu_harness(history_entry('D'), true);
     h.run();
     assert!(h.get_by_label(BLAME_AT).is_disabled(), "the commit deletes the file");
-    assert!(!h.get_by_label(super::file_menu::REVERT_FILE).is_disabled(), "brings the deleted file back");
+    assert!(!h.get_by_label(REVERT_FILE).is_disabled(), "brings the deleted file back");
     h.get_by_label("Restore the deleted file…").click();
     h.run();
     assert!(

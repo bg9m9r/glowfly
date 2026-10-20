@@ -159,5 +159,18 @@ fn trivial_pick_table() {
     assert_eq!(trivial_pick(&c, true), Some((Theirs, Unchanged)));
     // Equal sides are still equal without a base.
     assert_eq!(trivial_pick(&chunk(&[], &["x"], &["x"]), false), Some((Ours, Identical)));
-    assert_eq!(Whitespace.label(), "whitespace only");
+}
+
+#[test]
+fn trivial_labels_follow_the_language() {
+    use crate::i18n::Lang;
+    let en = [
+        (Trivial::Unchanged, "unchanged on one side"),
+        (Trivial::Identical, "same on both sides"),
+        (Trivial::Whitespace, "whitespace only"),
+    ];
+    for (why, text) in en {
+        assert_eq!(why.label(Lang::En), text);
+        assert_ne!(why.label(Lang::De), text, "{why:?}");
+    }
 }

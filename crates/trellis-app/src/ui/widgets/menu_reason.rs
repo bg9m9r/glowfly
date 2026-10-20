@@ -4,8 +4,8 @@
 //!   edge (left of its shortcut, when it has one). The whole reason shows in the shared tooltip
 //!   on hover, or under the item while it has the keyboard focus, and screen readers get it as
 //!   the item's description. The item takes the focus but never clicks;
-//! - a setup item stays enabled with a weak `SET_UP` after its label, and its note in the same
-//!   tooltip.
+//! - a setup item stays enabled with a weak "Set up…" (in the language) after its label, and its
+//!   note in the same tooltip.
 //!
 //! The reason is never text in the menu, so a long one doesn't widen it, and the item's
 //! accessible name stays its label.
@@ -16,12 +16,11 @@ use super::{Icon, paint_icon_sized, tooltip};
 use eframe::egui::{
     Align, Button, FontId, NumExt, Painter, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, TextWrapMode, Ui, WidgetText, pos2, vec2,
 };
+use trellis_core::i18n::Lang;
 
 /// A setup item's suffix: its text size and the space between the label and it.
 pub const SUFFIX_SIZE: f32 = type_scale::SMALL;
 pub const SUFFIX_GAP: f32 = 10.0;
-/// The suffix of an entry whose program or setting isn't set yet (it opens that setting).
-pub const SET_UP: &str = "Set up…";
 /// The info mark's width, the least space between a blocked label and it, and the room it adds
 /// to an item.
 pub const INFO_W: f32 = 14.0;
@@ -29,15 +28,20 @@ pub const INFO_GAP: f32 = 12.0;
 pub const INFO_ROOM: f32 = INFO_GAP + INFO_W;
 
 /// A menu item's state: usable, disabled with the whole reason, or usable while what it needs
-/// isn't set up yet (carrying the hover note; it opens the setting).
+/// isn't set up yet (carrying the hover note and the suffix; it opens the setting).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ItemState<'a> {
     Ready,
     Blocked(&'a str),
-    Setup(&'a str),
+    Setup { note: &'a str, suffix: &'a str },
 }
 
 impl<'a> ItemState<'a> {
+    /// Usable, opening the setting `note` describes, with the "Set up…" suffix in the language.
+    pub fn setup(t: Lang, note: &'a str) -> Self {
+        Self::Setup { note, suffix: t.tr("common.set_up.suffix") }
+    }
+
     /// Blocked by `why` when there is a reason, else ready.
     pub fn blocked_by(why: Option<&'a str>) -> Self {
         why.map_or(Self::Ready, Self::Blocked)
@@ -58,15 +62,15 @@ pub fn menu_button(ui: &mut Ui, label: impl Into<WidgetText>, shortcut: impl Int
             ui.add(b)
         }
         ItemState::Blocked(why) => blocked_item(ui, label.into(), shortcut, why),
-        ItemState::Setup(note) => setup_item(ui, label.into(), shortcut, note),
+        ItemState::Setup { note, suffix } => setup_item(ui, label.into(), shortcut, note, suffix),
     }
 }
 
-/// An enabled item with the weak `SET_UP` after its label and `note` in the tooltip.
-fn setup_item(ui: &mut Ui, label: WidgetText, shortcut: WidgetText, note: &str) -> Response {
+/// An enabled item with the weak `suffix` after its label and `note` in the tooltip.
+fn setup_item(ui: &mut Ui, label: WidgetText, shortcut: WidgetText, note: &str, suffix: &str) -> Response {
     // Placeholder colour (unless the label has its own): egui paints the text colour.
     let label = label.into_galley(ui, Some(TextWrapMode::Extend), f32::INFINITY, TextStyle::Button);
-    let suffix = ui.fonts(|f| f.layout_no_wrap(SET_UP.to_owned(), FontId::proportional(SUFFIX_SIZE), color::weak()));
+    let suffix = ui.fonts(|f| f.layout_no_wrap(suffix.to_owned(), FontId::proportional(SUFFIX_SIZE), color::weak()));
     let s = ui.spacing();
     let (pad, spacing) = (s.button_padding.x, s.item_spacing.x);
     let label_w = label.size().x;

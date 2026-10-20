@@ -262,9 +262,9 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             if paths.is_empty() {
                 return;
             }
-            mark_conflicted(paths)
+            mark_conflicted(st.settings.lang(), paths)
         }
-        C::MarkConflicted(path) => mark_conflicted(vec![path]),
+        C::MarkConflicted(path) => mark_conflicted(st.settings.lang(), vec![path]),
         C::Undo => Msg::Job(JobMsg::Undo),
         C::Redo => Msg::Job(JobMsg::Redo),
         C::CreateBranch => Msg::Branch(BranchMsg::NewBranch { start: selected_commit(st).map(|o| o.to_string()), name: String::new() }),
@@ -351,9 +351,10 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
 }
 
 /// The Resolved Files list's question before Mark conflicted.
-fn mark_conflicted(paths: Vec<String>) -> Msg {
-    let body = mark_conflicted_body(&paths);
-    Msg::confirm("Mark conflicted", body, "Mark conflicted", Msg::Conflict(ConflictMsg::MarkConflicted(paths)))
+fn mark_conflicted(t: trellis_core::i18n::Lang, paths: Vec<String>) -> Msg {
+    let body = mark_conflicted_body(t, &paths);
+    let (title, button) = (t.tr("conflict.files.mark_conflicted.title"), t.tr("conflict.files.mark_conflicted.button"));
+    Msg::confirm(title, body, button, Msg::Conflict(ConflictMsg::MarkConflicted(paths)))
 }
 
 /// The same messages the sidebar's STASHES menu sends.

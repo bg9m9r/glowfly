@@ -9,7 +9,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StashMsg, TrustMsg};
 use crate::state::palette::{PaletteCommand as C, shown};
-use crate::state::stashes::{CONFLICTED, NO_FILES, NOTHING, NOTHING_STAGED, StashPushForm, wip_files};
+use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, wip_files};
 use crate::state::{AppState, Modal, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -149,7 +149,7 @@ fn staged_with_nothing_staged_is_refused() {
     let (mut st, dir) = repo_with_topic("stash-push-nothing-staged");
     dialog(&mut st, StashScope::Staged);
     assert!(run(&mut st, push(StashScope::Staged, "m", &[])).is_empty());
-    assert_eq!(last_log(&st), NOTHING_STAGED);
+    assert_eq!(last_log(&st), trellis_core::i18n::Lang::En.tr("stash.blocked.nothing_staged"));
     assert!(matches!(st.modal, Some(Modal::StashPush(_))), "the dialog stays open");
     assert!(st.job.is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -206,7 +206,7 @@ fn paths_trellis_cannot_name_safely_are_never_stashed() {
     for (path, h) in [("a.txt", twin), ("caf\\xE9.txt", odd)] {
         let fx = run(&mut st, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, path: Some(path.into()) }));
         assert!(fx.is_empty() && st.modal.is_none(), "{path}: the dialog stays shut");
-        assert_eq!(st.toasts.last().map(|t| t.text.clone()), Some(h.reason()));
+        assert_eq!(st.toasts.last().map(|t| t.text.clone()), Some(h.reason(trellis_core::i18n::Lang::En)));
     }
     let mut form = StashPushForm::new(StashScope::Files, None);
     form.chosen.extend(["a.txt", "b.txt", "caf\\xE9.txt"].map(String::from));
@@ -220,7 +220,7 @@ fn conflicts_and_a_clean_tree_are_refused() {
     st.snap.as_mut().unwrap().unstaged.push(FileEntry::new("d.txt", '!'));
     dialog(&mut st, StashScope::All);
     assert!(run(&mut st, push(StashScope::All, "", &[])).is_empty());
-    assert_eq!(last_log(&st), CONFLICTED);
+    assert_eq!(last_log(&st), trellis_core::i18n::Lang::En.tr("stash.blocked.conflicted"));
     assert!(matches!(st.modal, Some(Modal::StashPush(_))));
 
     let snap = st.snap.as_mut().unwrap();

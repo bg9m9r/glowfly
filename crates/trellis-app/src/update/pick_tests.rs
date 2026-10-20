@@ -8,10 +8,11 @@ use super::tests::drive;
 use crate::effect::Effect;
 use crate::msg::{Msg, RepoMsg, SelectionMsg};
 use crate::state::pick::PickOp;
-use crate::state::selection::{PICK_ONE_ON_HEAD, REVERT_BLOCKED_MERGE};
+use crate::state::selection::CommitBlock;
 use crate::state::{Modal, Selection};
 use git2::{Oid, RepositoryState};
 use trellis_core::gitcli::args;
+use trellis_core::i18n::Lang;
 use trellis_core::undo::{MoveOp, UndoKind};
 
 fn last_log(st: &crate::state::AppState) -> Option<&str> {
@@ -41,11 +42,15 @@ fn merges_open_the_mainline_dialog_alone_and_are_refused_in_a_multi_selection() 
     let (mut st, f) = fixture("pick-mainline");
     let merge = with_merge(&mut st, &f);
     assert!(up(&mut st, Msg::Selection(SelectionMsg::Revert(vec![merge, f.c(5)]))).is_empty());
-    assert_eq!(last_log(&st), Some(REVERT_BLOCKED_MERGE));
+    assert_eq!(last_log(&st), Some(CommitBlock::RevertMerges.text(Lang::En)));
+    st.settings.language = "de".into();
+    assert!(up(&mut st, Msg::Selection(SelectionMsg::Revert(vec![merge, f.c(5)]))).is_empty());
+    assert_eq!(last_log(&st), Some(CommitBlock::RevertMerges.text(Lang::De)));
+    st.settings.language = "en".into();
 
     // A single cherry-pick of a commit HEAD already has is refused.
     assert!(up(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f.c(4)]))).is_empty());
-    assert_eq!(last_log(&st), Some(PICK_ONE_ON_HEAD));
+    assert_eq!(last_log(&st), Some(CommitBlock::PickOneOnHead.text(Lang::En)));
 
     git(&f.dir, &["checkout", "-q", "-b", "other", &f.c(1).to_string()]);
     refresh(&mut st);
@@ -101,7 +106,7 @@ fn a_multi_revert_restores_the_file() {
 }
 
 fn labels(state: RepositoryState) -> Vec<&'static str> {
-    crate::ui::common::state_actions(state).unwrap().1.iter().map(|(l, _)| *l).collect()
+    crate::ui::common::state_actions(state).unwrap().iter().map(|(l, _)| *l).collect()
 }
 
 #[test]
@@ -114,7 +119,7 @@ fn a_stopped_cherry_pick_selects_the_wip_row_and_skips_on() {
     assert!(matches!(state, RepositoryState::CherryPick | RepositoryState::CherryPickSequence), "{state:?}");
     assert_eq!(st.selection, Selection::Wip);
     assert_eq!(labels(state), ["Continue", "Skip commit", "Abort cherry-pick"]);
-    let (label, skip) = crate::ui::common::state_actions(state).unwrap().1[1];
+    let (label, skip) = crate::ui::common::state_actions(state).unwrap()[1];
     let recorded = st.undo.undo.len();
     drive(&mut st, Msg::git(label, skip));
     assert_eq!(st.undo.undo.len(), recorded, "a skip is never recorded for undo");

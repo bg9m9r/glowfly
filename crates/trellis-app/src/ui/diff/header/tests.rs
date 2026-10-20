@@ -1,14 +1,11 @@
 //! Layout and message tests of the diff header, drawn alone from a `HeaderModel`.
 
-use super::actions::{CLOSE_NAME, MORE, OPEN, RESTORE, STAGE_FILE, UNSTAGE_FILE};
-use super::nav::{NEXT_NAME, PREV_NAME};
-use super::view_menu::{COLLAPSE_ALL, EXPAND_ALL, IGNORE_WS, WRAP};
 use super::*;
 use crate::keymap::BindingId;
 use crate::msg::{DiffMsg, FilesMsg, RepoMsg, StageMsg};
 use crate::state::diff_header::{Actions, ChangeText, Context, FileKind, FoldCounts, OpenAction, Primary, RestoreAction, ViewGroup};
 use crate::state::diff_nav::{Counter, StepKind};
-use crate::state::tool_compare::{DIFF_TOOL_SETUP, OPEN_IN_DIFF_TOOL};
+use crate::state::tool_compare::OPEN_IN_DIFF_TOOL;
 use crate::tools::ToolsMsg;
 use crate::ui::file_menu::{OPEN_DEFAULT, SHOW_IN_FOLDER};
 use eframe::egui;
@@ -17,6 +14,20 @@ use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use trellis_core::repo::DiffTarget;
 use trellis_core::settings::{DiffLayout, DiffMode};
+
+// The English texts, pinned: the header reads them from the catalog.
+const CLOSE_NAME: &str = "Close diff";
+const MORE: &str = "More file actions";
+const OPEN: &str = "Open";
+const RESTORE: &str = "Restore…";
+const STAGE_FILE: &str = "Stage file";
+const UNSTAGE_FILE: &str = "Unstage file";
+const NEXT_NAME: &str = "Next change";
+const PREV_NAME: &str = "Previous change";
+const COLLAPSE_ALL: &str = "Collapse all";
+const EXPAND_ALL: &str = "Expand all";
+const IGNORE_WS: &str = "Ignore whitespace";
+const WRAP: &str = "Wrap long lines";
 
 fn oid() -> Oid {
     Oid::from_bytes(&[7; 20]).unwrap()
@@ -65,11 +76,15 @@ fn commit() -> HeaderModel {
 }
 
 fn harness(m: HeaderModel, width: f32) -> Harness<'static, Vec<Msg>> {
+    harness_in(m, width, Lang::En)
+}
+
+fn harness_in(m: HeaderModel, width: f32, t: Lang) -> Harness<'static, Vec<Msg>> {
     let keys = Keymap::default();
     let mut h = Harness::builder().with_size(egui::vec2(width, 360.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             let top = ui.cursor().top();
-            show(ui, &m, &keys, Lang::En, msgs);
+            show(ui, &m, &keys, t, msgs);
             assert_eq!(ui.min_rect().bottom() - top, HEIGHT, "one 48 px row");
         },
         Vec::new(),
@@ -103,6 +118,39 @@ fn one_row_at_every_width() {
                     let b = node.bounding_box().expect("laid out");
                     let mid = (b.y0 + b.y1) / 2.0;
                     assert!((mid - close).abs() <= 2.0, "{width}: {label} at {mid}, Close at {close}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn german_header_fits_in_one_row() {
+    let de = Lang::De;
+    let labels = [
+        de.tr("diff.header.prev.name"),
+        de.tr("diff.header.next.name"),
+        de.tr("tools.open_in_diff_tool"),
+        de.tr("diff.header.stage_file"),
+        de.tr("diff.header.restore"),
+        de.tr("diff.header.open"),
+        de.tr("diff.header.more"),
+        de.tr("diff.header.view.button"),
+        de.tr("diff.header.close.name"),
+    ];
+    for width in [1400.0, 900.0, 700.0, 520.0] {
+        for m in [unstaged(), commit()] {
+            let h = harness_in(m, width, de);
+            let close = middle(&h, de.tr("diff.header.close.name"));
+            let shown: Vec<_> = labels.iter().filter_map(|l| Some((*l, h.query_by_label(l)?.bounding_box()?))).collect();
+            for (label, b) in &shown {
+                let mid = (b.y0 + b.y1) / 2.0;
+                assert!((mid - close).abs() <= 2.0, "{width}: {label} at {mid}, Close at {close}");
+                assert!(b.x0 >= 0.0 && b.x1 <= f64::from(width), "{width}: {label} inside the header: {b:?}");
+            }
+            for (i, (a, ra)) in shown.iter().enumerate() {
+                for (b, rb) in &shown[i + 1..] {
+                    assert!(ra.x1 <= rb.x0 + 0.5 || rb.x1 <= ra.x0 + 0.5, "{width}: {a} overlaps {b}");
                 }
             }
         }
@@ -150,7 +198,8 @@ fn controls_send_their_messages() {
     assert!(matches!(&click(unstaged(), 1400.0, OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
 
     // With no tool set the icon stays usable: update opens Preferences > External Tools.
-    let unset = HeaderModel { actions: Actions { diff_tool: Some(Some(DIFF_TOOL_SETUP)), ..unstaged().actions }, ..unstaged() };
+    let unset =
+        HeaderModel { actions: Actions { diff_tool: Some(Some(Lang::En.tr("tools.diff_setup.tip"))), ..unstaged().actions }, ..unstaged() };
     assert!(!harness(unset.clone(), 1400.0).get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
     assert!(matches!(&click(unset, 1400.0, OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
     let end = HeaderModel { next: StepKind::End, ..unstaged() };
@@ -161,7 +210,7 @@ fn controls_send_their_messages() {
 /// Opens the View popup of `m` and clicks `label` in it.
 fn in_view_menu(m: HeaderModel, label: &str) -> Vec<Msg> {
     let mut h = harness(m.clone(), 1400.0);
-    let button = m.view.unwrap().label();
+    let button = m.view.unwrap().label(Lang::En);
     h.get_by_label(&button).click();
     h.run();
     h.get_by_label(label).click();
@@ -217,11 +266,11 @@ fn chips_show_the_change_and_context() {
 #[test]
 fn step_tips_follow_the_keymap() {
     let mut keys = Keymap::default();
-    assert_eq!(step_tip(&keys, true, StepKind::Change), "Next change (F7)");
+    assert_eq!(step_tip(&keys, Lang::En, true, StepKind::Change), "Next change (F7)");
     keys.set(BindingId::NextChange, vec![crate::keymap::Chord::plain(crate::keymap::KeyName::F(8))]);
-    assert_eq!(step_tip(&keys, true, StepKind::File), "Next change, in the next file (F8)");
+    assert_eq!(step_tip(&keys, Lang::En, true, StepKind::File), "Next change, in the next file (F8)");
     keys.set(BindingId::PrevChange, Vec::new());
-    assert_eq!(step_tip(&keys, false, StepKind::End), "No changes before this file", "no key, no parentheses");
+    assert_eq!(step_tip(&keys, Lang::En, false, StepKind::End), "No changes before this file", "no key, no parentheses");
 }
 
 #[test]

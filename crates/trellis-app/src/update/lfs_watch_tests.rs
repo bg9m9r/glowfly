@@ -41,7 +41,7 @@ fn pattern(raw: &str) -> LfsPattern {
 
 /// Whether the file menu's "Every .bin file" entry is disabled because the pattern is tracked.
 fn bin_tracked(st: &AppState) -> bool {
-    let items = track_items("data/file.bin", TrackContext::of(st));
+    let items = track_items(trellis_core::i18n::Lang::En, "data/file.bin", TrackContext::of(st));
     items.iter().find(|i| i.label == "Every .bin file").expect("an extension entry").blocked.is_some()
 }
 

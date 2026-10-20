@@ -3,6 +3,7 @@
 
 use git2::Oid;
 use std::collections::{HashMap, HashSet};
+use trellis_core::i18n::Lang;
 use trellis_core::signature_check::{SignatureCheck, Verdict};
 use trellis_core::signing::SigningFormat;
 
@@ -88,27 +89,25 @@ pub enum BadgeState<'a> {
 
 /// The badge for a commit signed in `format`. Held and Checking read "Signed" and are drawn
 /// grey; a finished check is coloured by its verdict.
-pub fn badge(format: SigningFormat, state: BadgeState) -> Badge {
-    let signed = |tooltip: String| Badge { verdict: Verdict::Signed, label: Verdict::Signed.label(), tooltip, checked: None };
+pub fn badge(t: Lang, format: SigningFormat, state: BadgeState) -> Badge {
+    let signed = |tooltip: String| Badge { verdict: Verdict::Signed, label: Verdict::Signed.label(t), tooltip, checked: None };
     match state {
-        BadgeState::Held => signed(format!(
-            "Signed with an {} key. Not checked: checking it would run the signing program this repository's settings name, and \
-             you haven't trusted this repository.",
-            format.label()
-        )),
-        BadgeState::Checking => signed("Checking the signature…".into()),
+        BadgeState::Held => signed(t.trf("signature.badge.held.tip", &[("format", &format.label())])),
+        BadgeState::Checking => signed(t.tr("signature.badge.checking.tip").into()),
         BadgeState::Done(Err(e)) => {
-            signed(format!("Signed · {} signature\n\nTrellis couldn't check this signature: {}", format.label(), printable(e)))
+            let error = printable(e);
+            signed(t.trf("signature.badge.failed.tip", &[("format", &format.label()), ("error", &error)]))
         }
         BadgeState::Done(Ok(c)) => {
             let verdict = c.verdict();
-            let mut tooltip = format!("{} · {} signature", verdict.label(), c.format.label());
-            for (name, value) in c.details() {
-                tooltip.push_str(&format!("\n{name}: {value}"));
+            let mut tooltip = t.trf("signature.badge.summary", &[("verdict", &verdict.label(t)), ("format", &c.format.label())]);
+            for (name, value) in c.details(t) {
+                tooltip.push('\n');
+                tooltip.push_str(&t.trf("signature.badge.detail", &[("name", &name), ("value", &value)]));
             }
             tooltip.push_str("\n\n");
-            tooltip.push_str(&c.reason());
-            Badge { verdict, label: verdict.label(), tooltip, checked: Some(c.clone()) }
+            tooltip.push_str(&c.reason(t));
+            Badge { verdict, label: verdict.label(t), tooltip, checked: Some(c.clone()) }
         }
     }
 }
@@ -128,11 +127,11 @@ mod tests {
 
     #[test]
     fn held_and_checking_read_signed() {
-        let b = badge(SigningFormat::Ssh, BadgeState::Held);
+        let b = badge(Lang::En, SigningFormat::Ssh, BadgeState::Held);
         assert_eq!((b.verdict, b.label), (Verdict::Signed, "Signed"));
         assert!(b.tooltip.starts_with("Signed with an SSH key. Not checked:"), "{}", b.tooltip);
         assert!(b.tooltip.contains("you haven't trusted this repository"));
-        let b = badge(SigningFormat::OpenPgp, BadgeState::Checking);
+        let b = badge(Lang::En, SigningFormat::OpenPgp, BadgeState::Checking);
         assert_eq!(b.label, "Signed");
         assert_eq!(b.tooltip, "Checking the signature…");
         assert!(b.checked.is_none());
@@ -142,8 +141,11 @@ mod tests {
     fn verified_tooltip_lists_signer_key_and_reason() {
         let fpr = "0123456789ABCDEF0123456789ABCDEF01234567";
         let r = check(SigningFormat::OpenPgp, &format!("G\0Ada <ada@example.com>\0ABCDEF0123456789\0{fpr}\0ultimate\0gpg: Good\n"), "");
-        let b = badge(SigningFormat::OpenPgp, BadgeState::Done(&r));
+        let b = badge(Lang::En, SigningFormat::OpenPgp, BadgeState::Done(&r));
         assert_eq!((b.verdict, b.label), (Verdict::Verified, "Verified"));
+        let de = badge(Lang::De, SigningFormat::OpenPgp, BadgeState::Done(&r));
+        assert_eq!(de.label, "Verifiziert");
+        assert!(de.tooltip.contains("Fingerabdruck: ") && de.tooltip.contains(fpr), "{}", de.tooltip);
         let lines: Vec<&str> = b.tooltip.lines().collect();
         assert_eq!(
             lines,
@@ -164,7 +166,7 @@ mod tests {
     fn each_verdict_has_its_label() {
         for (letter, label) in [('U', "Signed"), ('X', "Expired"), ('Y', "Expired"), ('R', "Revoked"), ('B', "Bad signature")] {
             let r = check(SigningFormat::OpenPgp, &format!("{letter}\0\0K\0\0\0x\n"), "");
-            let b = badge(SigningFormat::OpenPgp, BadgeState::Done(&r));
+            let b = badge(Lang::En, SigningFormat::OpenPgp, BadgeState::Done(&r));
             assert_eq!(b.label, label, "{letter}");
             assert!(b.tooltip.starts_with(&format!("{label} · OpenPGP signature\nKey: K\n\n")), "{}", b.tooltip);
         }
@@ -175,7 +177,7 @@ mod tests {
         let stderr = "error: gpg.ssh.allowedSignersFile needs to be configured and exist for ssh signature verification";
         let r = check(SigningFormat::Ssh, "N\0\0\0\0undefined\0\n", stderr);
         assert_eq!(r.as_ref().unwrap().status, SigStatus::NoAllowedSigners);
-        let b = badge(SigningFormat::Ssh, BadgeState::Done(&r));
+        let b = badge(Lang::En, SigningFormat::Ssh, BadgeState::Done(&r));
         assert_eq!(b.label, "Signed");
         assert!(b.tooltip.starts_with("Signed · SSH signature\n\n"), "{}", b.tooltip);
         assert!(b.tooltip.contains("Preferences > Commit signing"));
@@ -184,7 +186,7 @@ mod tests {
     #[test]
     fn a_failed_check_says_why() {
         let r = Err("git log failed: fatal: bad object\u{202E}".to_owned());
-        let b = badge(SigningFormat::X509, BadgeState::Done(&r));
+        let b = badge(Lang::En, SigningFormat::X509, BadgeState::Done(&r));
         assert_eq!((b.verdict, b.label), (Verdict::Signed, "Signed"));
         assert_eq!(b.tooltip, "Signed · X.509 signature\n\nTrellis couldn't check this signature: git log failed: fatal: bad object");
     }

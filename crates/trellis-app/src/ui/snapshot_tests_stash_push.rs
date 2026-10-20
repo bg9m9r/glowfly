@@ -120,7 +120,7 @@ fn stash_push_dialog_staged_nothing_light() {
     let (st, dir) = dialog(ThemeChoice::Light, "stash-push-staged-nothing", &[], StashPushForm::new(StashScope::Staged, None));
     let mut h = harness(st, false);
     h.run();
-    assert!(h.query_by_label(crate::state::stashes::NOTHING_STAGED).is_some());
+    assert!(h.query_by_label(trellis_core::i18n::Lang::En.tr("stash.blocked.nothing_staged")).is_some());
     assert!(stash_button(&h).is_disabled());
     h.check_snapshot("stash_push_dialog_staged_nothing_light");
     drop(h);

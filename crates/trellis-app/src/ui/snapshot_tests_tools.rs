@@ -9,6 +9,8 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use std::time::Instant;
 use trellis_core::settings::{ExternalTools, ThemeChoice};
 
+const MERGE_TOOL_BUTTON: &str = "Open in merge tool";
+
 fn page(theme: ThemeChoice, tools: ExternalTools) -> AppState {
     let mut s = settings(theme);
     s.external_tools = tools;
@@ -81,7 +83,7 @@ fn conflict_view_merge_tool_disabled() {
     h.check_snapshot("conflict_view_merge_tool_disabled");
     h.get_by_label("More conflict actions").click();
     h.run_steps(4);
-    assert!(h.get_by_label(crate::state::tool_compare::MERGE_TOOL_BUTTON).is_disabled(), "a job is running");
+    assert!(h.get_by_label(MERGE_TOOL_BUTTON).is_disabled(), "a job is running");
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 
@@ -94,7 +96,7 @@ fn conflict_view_merge_tool_button_sends_resolve() {
     h.run();
     h.get_by_label("More conflict actions").click();
     h.run();
-    h.get_by_label(crate::state::tool_compare::MERGE_TOOL_BUTTON).click();
+    h.get_by_label(MERGE_TOOL_BUTTON).click();
     h.run();
     let sent =
         h.state().1.iter().any(|m| matches!(m, crate::msg::Msg::Tools(crate::tools::ToolsMsg::ResolveInMergeTool(p)) if p == "notes.txt"));

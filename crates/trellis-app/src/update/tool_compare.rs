@@ -21,7 +21,7 @@ use trellis_core::repo::DiffTarget;
 /// repository is trusted.
 pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, now: Instant, fx: &mut Vec<Effect>) {
     let Some(w) = st.workdir() else { return };
-    if ToolSetup::of(&st.settings.external_tools).diff.is_some() {
+    if ToolSetup::of(st.settings.lang(), &st.settings.external_tools).diff.is_some() {
         return show_page(st, now, fx);
     }
     match diff_request(&st.settings.external_tools, &w, &target, st.runs_git_unasked()) {
@@ -40,7 +40,7 @@ pub(super) fn resolve(st: &mut AppState, path: String, now: Instant, fx: &mut Ve
         st.log(false, format!("{path} is not conflicted"));
         return;
     }
-    if ToolSetup::of(&st.settings.external_tools).merge.is_some() {
+    if ToolSetup::of(st.settings.lang(), &st.settings.external_tools).merge.is_some() {
         return show_page(st, now, fx);
     }
     let req = match merge_request(&st.settings.external_tools, &w, &path, st.runs_git_unasked()) {

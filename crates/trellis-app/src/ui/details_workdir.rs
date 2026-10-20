@@ -53,7 +53,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         Some(Ok(c)) => {
             let open = st.diff.as_ref().map(|(target, _)| target);
             let lfs = TrackContext::of(st);
-            let tools = crate::state::tool_compare::ToolSetup::of(&st.settings.external_tools);
+            let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
             let row_h = super::widgets::LIST_ROW_H;
             egui::ScrollArea::vertical().id_salt("workdir-files").auto_shrink([false, false]).show_rows(
                 ui,

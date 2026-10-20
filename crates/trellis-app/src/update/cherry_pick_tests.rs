@@ -7,11 +7,12 @@ use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
-use crate::state::selection::{PICK_BLOCKED_MERGE, PICK_BLOCKED_ON_HEAD};
+use crate::state::selection::CommitBlock;
 use crate::state::{AppState, RunningJob, Selection};
 use git2::{Oid, RepositoryState};
 use std::path::PathBuf;
 use trellis_core::gitcli::args;
+use trellis_core::i18n::Lang;
 
 #[test]
 fn cherry_pick_orders_oldest_first() {
@@ -30,14 +31,20 @@ fn cherry_pick_refusals() {
     let (mut st, f) = fixture("multi-pick-refused");
     // Commits already on the current branch.
     assert!(up(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f.c(4), f.c(5)]))).is_empty());
-    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(PICK_BLOCKED_ON_HEAD));
+    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(CommitBlock::PickOnHead.text(Lang::En)));
+    // In German, the log says so in German.
+    st.settings.language = "de".into();
+    assert!(up(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f.c(4), f.c(5)]))).is_empty());
+    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(CommitBlock::PickOnHead.text(Lang::De)));
+    assert_ne!(CommitBlock::PickOnHead.text(Lang::De), CommitBlock::PickOnHead.text(Lang::En));
+    st.settings.language = "en".into();
     // A merge commit.
     git(&f.dir, &["merge", "-q", "--no-ff", "side", "-m", "merge side"]);
     let merge = head(&f.dir);
     git(&f.dir, &["checkout", "-q", "-b", "other", &f.c(1).to_string()]);
     refresh(&mut st);
     assert!(up(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![merge, f.c(5)]))).is_empty());
-    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(PICK_BLOCKED_MERGE));
+    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(CommitBlock::PickMerges.text(Lang::En)));
     // Another job is running.
     st.job = Some(RunningJob {
         label: "Fetch".into(),
@@ -99,8 +106,9 @@ fn cherry_pick_conflict_shows_banner_state() {
     assert!(st.toasts.iter().any(|t| !t.ok && t.text == "Stopped on conflicts in 1 file. Resolve it, then continue or abort."));
     let state = st.snap.as_ref().unwrap().state;
     assert!(matches!(state, RepositoryState::CherryPick | RepositoryState::CherryPickSequence), "{state:?}");
-    let (name, actions) = crate::ui::common::state_actions(state).unwrap();
-    assert_eq!(name, "Cherry-pick");
+    let actions = crate::ui::common::state_actions(state).unwrap();
+    let title = crate::state::op_actions::banner_title(trellis_core::i18n::Lang::En, st.snap.as_ref().unwrap());
+    assert_eq!(title.as_deref(), Some("Cherry-pick in progress"));
     let labels: Vec<&str> = actions.iter().map(|(l, _)| *l).collect();
     assert_eq!(labels, ["Continue", "Skip commit", "Abort cherry-pick"]);
     assert_eq!(st.selection, Selection::Wip, "the WIP row shows the banner");

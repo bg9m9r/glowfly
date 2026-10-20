@@ -5,38 +5,39 @@
 //! `details_wip::wip_panel`).
 
 use crate::msg::{Msg, RebaseMsg, RepoMsg};
-use crate::state::rebase_banner::{EDIT_STEPS, SELECT_COMMIT, STASH_NOTE, lines};
+use crate::state::rebase_banner::lines;
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText};
 use git2::RepositoryState;
+use trellis_core::i18n::Lang;
 use trellis_core::rebase::RebaseProgress;
 
-pub fn progress(ui: &mut egui::Ui, p: &RebaseProgress, name: &str, conflicts_left: bool, msgs: &mut Vec<Msg>) {
-    let text = lines(p, name, conflicts_left);
-    ui.label(RichText::new(text.title).font(type_scale::strong(ui, type_scale::BODY)));
+pub fn progress(ui: &mut egui::Ui, t: Lang, title: &str, p: &RebaseProgress, conflicts_left: bool, msgs: &mut Vec<Msg>) {
+    let text = lines(t, p, conflicts_left);
+    ui.label(RichText::new(title).font(type_scale::strong(ui, type_scale::BODY)));
     if let Some(stop) = &text.stop {
         // Word by word, so the line wraps between words like plain text.
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(0.0, 2.0);
             words(ui, &format!("{} ", stop.before));
             let link = egui::Link::new(RichText::new(&stop.sha).monospace());
-            if ui.add(link).on_hover_text(SELECT_COMMIT).clicked() {
+            if ui.add(link).on_hover_text(t.tr("details.banner.select_commit.tip")).clicked() {
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(stop.oid)));
             }
             if !stop.summary.is_empty() {
                 words(ui, &format!(" {}", stop.summary));
             }
             // `after` brings its own leading space or punctuation.
-            words(ui, stop.after);
+            words(ui, &stop.after);
         });
     }
     if let Some(command) = &text.command {
         ui.add(egui::Label::new(RichText::new(command).monospace()).wrap());
     }
     if text.stash_note {
-        ui.label(RichText::new(STASH_NOTE).color(color::weak()));
+        ui.label(RichText::new(t.tr("details.banner.stash_note")).color(color::weak()));
     }
 }
 
@@ -48,8 +49,8 @@ fn words(ui: &mut egui::Ui, text: &str) {
 }
 
 /// "Edit remaining steps…", only while an interactive rebase is in progress.
-pub fn edit_steps_button(ui: &mut egui::Ui, state: RepositoryState, msgs: &mut Vec<Msg>) {
-    if state == RepositoryState::RebaseInteractive && ui.add(buttons::secondary(EDIT_STEPS)).clicked() {
+pub fn edit_steps_button(ui: &mut egui::Ui, t: Lang, state: RepositoryState, msgs: &mut Vec<Msg>) {
+    if state == RepositoryState::RebaseInteractive && ui.add(buttons::secondary(t.tr("details.banner.edit_steps.button"))).clicked() {
         msgs.push(Msg::Rebase(RebaseMsg::OpenRemaining));
     }
 }

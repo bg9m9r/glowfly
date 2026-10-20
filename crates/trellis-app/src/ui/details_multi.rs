@@ -28,9 +28,9 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         RichText::new(t.trn("details.multi.selected", m.len(), &[])).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()),
     );
     ui.horizontal_wrapped(|ui| {
-        cherry_pick_button(ui, t.trn("details.multi.cherry_pick.button", m.len(), &[]), m, false, msgs);
-        revert_button(ui, t.trn("details.multi.revert.button", m.len(), &[]), m, false, msgs);
-        patch_button(ui, t.trn("details.multi.patch.button", m.len(), &[]), m, false, msgs);
+        cherry_pick_button(ui, t, t.trn("details.multi.cherry_pick.button", m.len(), &[]), m, false, msgs);
+        revert_button(ui, t, t.trn("details.multi.revert.button", m.len(), &[]), m, false, msgs);
+        patch_button(ui, t, t.trn("details.multi.patch.button", m.len(), &[]), m, false, msgs);
         if ui.button(t.tr("details.multi.copy_shas.button")).clicked() {
             msgs.push(copy_shas(m));
         }
@@ -108,7 +108,7 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
         Some(Ok(c)) => {
             let open = st.diff.as_ref().map(|(target, _)| target);
             let lfs = TrackContext::of(st);
-            let tools = crate::state::tool_compare::ToolSetup::of(&st.settings.external_tools);
+            let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
             let row_h = widgets::LIST_ROW_H;
             egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show_rows(
                 ui,

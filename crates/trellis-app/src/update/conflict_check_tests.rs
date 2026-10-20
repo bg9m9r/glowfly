@@ -8,7 +8,7 @@ use crate::conflict_check::{CheckJob, ConflictCheckMsg};
 use crate::effect::{Effect, LoadKind};
 use crate::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, TrustMsg};
 use crate::runner;
-use crate::state::conflict_check::{NO_TARGET, current_request};
+use crate::state::conflict_check::current_request;
 use crate::state::{AppState, Modal};
 use git2::Oid;
 use std::path::{Path, PathBuf};
@@ -282,7 +282,7 @@ fn refused_manual_checks() {
     open(&mut st, &dir);
     let check = |st: &mut AppState, m: ConflictCheckMsg| update(st, Msg::ConflictCheck(m), Instant::now());
     assert!(check(&mut st, ConflictCheckMsg::CheckNow).is_empty());
-    assert_eq!(st.log.last().unwrap().text, NO_TARGET);
+    assert_eq!(st.log.last().unwrap().text, "No upstream with new commits or default branch to compare with.");
     assert!(check(&mut st, ConflictCheckMsg::CheckBranch("main".into())).is_empty());
     assert_eq!(st.log.last().unwrap().text, "main is the checked-out branch.");
     assert!(check(&mut st, ConflictCheckMsg::CheckBranch("nope".into())).is_empty());
@@ -291,4 +291,22 @@ fn refused_manual_checks() {
     reload(&mut st, &dir);
     assert!(check(&mut st, ConflictCheckMsg::CheckBranch("feature".into())).is_empty());
     assert!(st.log.last().unwrap().text.contains("Check out a branch"));
+}
+
+#[test]
+fn the_report_line_follows_the_language() {
+    let dir = diverged("cc-german");
+    git(&dir, &["checkout", "-q", "main"]);
+    let mut st = state();
+    st.settings.conflict_check = false;
+    st.settings.language = "de".into();
+    open(&mut st, &dir);
+    st.modal = Some(Modal::Shortcuts { filter: String::new() });
+    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch("feature".into())), Instant::now());
+    super::tests::finish(&mut st, fx);
+    let de = trellis_core::i18n::Lang::De;
+    let line = de.trn("conflict_check.headline.conflicts_files", 1, &[("theirs", &"feature"), ("ours", &"main")]);
+    assert_eq!(logged(&st, &line), 1, "the log line is German: {line}");
+    let toast = st.toasts.last().map(|t| t.text.clone()).unwrap_or_default();
+    assert!(toast.starts_with(&line), "the toast is German: {toast}");
 }

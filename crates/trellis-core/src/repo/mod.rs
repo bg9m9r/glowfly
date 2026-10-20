@@ -95,7 +95,9 @@ pub use binary_sides::{BinarySide, BinarySides, PREVIEW_MAX_BYTES, binary_sides}
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
 pub use collide::{Collision, Folding, probe};
 pub use common_dir::{CommonDir, repo_name_of};
-pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict, marker_size};
+pub use conflict::{
+    Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, Unmergeable, load_conflict, marker_size,
+};
 pub use conflict_saved::{RESTORE_MAX, saved_picks};
 pub use diff::{
     BranchChanges, Comparison, ViewDiff, branch_changes, commit_detail, commit_stats, commit_stats_until, compare, compare_files,

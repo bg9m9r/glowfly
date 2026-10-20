@@ -31,7 +31,7 @@ pub(super) fn text(ui: &Ui, st: &AppState, fonts: &Fonts, c: &BlameCommit, first
     let sha = ui.painter().text(pos2(right, y), Align2::RIGHT_CENTER, short(c.oid), fonts.sha.clone(), color::weak());
     let date = st.settings.format_day(c.time, st.view.now, st.view.utc_offset);
     let date = ui.painter().text(pos2(sha.left() - 10.0, y), Align2::RIGHT_CENTER, date, fonts.name.clone(), color::weak());
-    let author = if c.author.is_empty() { "Unknown" } else { c.author.as_str() };
+    let author = if c.author.is_empty() { st.settings.lang().tr("blame.gutter.unknown") } else { c.author.as_str() };
     paint_cut_text(ui.painter(), pos2(left, y), author, fonts.name.clone(), color::text(), date.left() - 10.0 - left);
     if let Some(r) = second {
         paint_cut_text(ui.painter(), pos2(left, r.center().y), &c.summary, fonts.name.clone(), color::faint(), right - left);
@@ -63,14 +63,16 @@ fn cut_body(body: &str) -> String {
 
 /// The gutter's hover: the author, the date, the whole message, and what clicks do.
 pub(super) fn tooltip(st: &AppState, c: &BlameCommit) -> String {
-    let author = if c.author.is_empty() { "Unknown" } else { c.author.as_str() };
+    let t = st.settings.lang();
+    let author = if c.author.is_empty() { t.tr("blame.gutter.unknown") } else { c.author.as_str() };
     let when = st.settings.format_verbose(c.time, st.view.utc_offset);
     let mut tip = format!("{author} <{}>\n{when}\n\n{}", c.email, c.summary);
     if !c.body.is_empty() {
         tip.push_str("\n\n");
         tip.push_str(&cut_body(&c.body));
     }
-    tip.push_str("\n\nClick to select this commit on the graph · right-click for more");
+    tip.push_str("\n\n");
+    tip.push_str(t.tr("blame.gutter.hint"));
     tip
 }
 

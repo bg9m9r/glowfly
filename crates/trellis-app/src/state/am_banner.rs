@@ -1,21 +1,17 @@
-//! The Applying patches banner on the WIP row while a `git am` series is stopped: its title
-//! (which patch of how many), the stopped patch and what to do next, and its button labels.
+//! The Applying patches banner on the WIP row while a `git am` series is stopped: the stopped
+//! patch and what to do next (the title, which patch of how many, is
+//! `op_actions::banner_title`), and its buttons' English labels, the ids the jobs run under.
 //! Pure.
 
+use trellis_core::i18n::Lang;
 use trellis_core::patch_ops::AmProgress;
 
-pub const AM_NAME: &str = "Applying patches";
 pub const AM_CONTINUE: &str = "Continue";
 pub const AM_SKIP: &str = "Skip patch";
 pub const AM_ABORT: &str = "Abort";
-pub const HINT_CONFLICTS: &str = "Resolve the conflicted files, then Continue.";
-pub const HINT_STAGED: &str = "Continue commits this patch and applies the rest.";
-pub const HINT_BY_HAND: &str = "This patch didn't apply. Make its changes by hand and stage them, then Continue, or Skip patch.";
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AmBannerText {
-    /// "Applying patches · patch 2 of 3".
-    pub title: String,
     /// "Stopped at: <subject>", when the subject is known.
     pub stop: Option<String>,
     pub hint: &'static str,
@@ -23,17 +19,16 @@ pub struct AmBannerText {
 
 /// The banner's text for `p`, with `conflicts_left` whether conflicted files remain and
 /// `staged` whether anything is staged.
-pub fn lines(p: &AmProgress, conflicts_left: bool, staged: bool) -> AmBannerText {
-    let title = if p.total == 0 { AM_NAME.to_owned() } else { format!("{AM_NAME} · patch {} of {}", p.step, p.total) };
-    let stop = (!p.subject.is_empty()).then(|| format!("Stopped at: {}", p.subject));
+pub fn lines(t: Lang, p: &AmProgress, conflicts_left: bool, staged: bool) -> AmBannerText {
+    let stop = (!p.subject.is_empty()).then(|| t.trf("details.banner.am.stopped", &[("subject", &p.subject)]));
     let hint = if conflicts_left {
-        HINT_CONFLICTS
+        t.tr("details.banner.am.hint.conflicts")
     } else if staged {
-        HINT_STAGED
+        t.tr("details.banner.am.hint.staged")
     } else {
-        HINT_BY_HAND
+        t.tr("details.banner.am.hint.by_hand")
     };
-    AmBannerText { title, stop, hint }
+    AmBannerText { stop, hint }
 }
 
 /// Whether a job labelled `l` is one of the banner's buttons.
@@ -51,14 +46,17 @@ mod tests {
 
     #[test]
     fn lines_for_each_stop() {
-        let b = lines(&progress(3, "Fix the form"), true, true);
-        assert_eq!(b.title, "Applying patches · patch 2 of 3");
+        let en = Lang::En;
+        let b = lines(en, &progress(3, "Fix the form"), true, true);
         assert_eq!(b.stop.as_deref(), Some("Stopped at: Fix the form"));
-        assert_eq!(b.hint, HINT_CONFLICTS);
-        assert_eq!(lines(&progress(3, "x"), false, true).hint, HINT_STAGED);
-        assert_eq!(lines(&progress(3, "x"), false, false).hint, HINT_BY_HAND);
-        let b = lines(&progress(0, ""), false, false);
-        assert_eq!((b.title.as_str(), b.stop), ("Applying patches", None));
+        assert_eq!(b.hint, en.tr("details.banner.am.hint.conflicts"));
+        assert_eq!(b.hint, "Resolve the conflicted files, then Continue.");
+        assert_eq!(lines(en, &progress(3, "x"), false, true).hint, en.tr("details.banner.am.hint.staged"));
+        assert_eq!(lines(en, &progress(3, "x"), false, false).hint, en.tr("details.banner.am.hint.by_hand"));
+        assert_eq!(lines(en, &progress(0, ""), false, false).stop, None);
+        let de = lines(Lang::De, &progress(3, "Fix the form"), false, false);
+        assert!(de.stop.unwrap().contains("Fix the form"));
+        assert_ne!(de.hint, en.tr("details.banner.am.hint.by_hand"));
     }
 
     #[test]

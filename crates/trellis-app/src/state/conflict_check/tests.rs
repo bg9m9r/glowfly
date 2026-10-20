@@ -2,6 +2,7 @@
 
 use super::*;
 use git2::Oid;
+use trellis_core::i18n::Lang;
 
 fn oid(n: u8) -> Oid {
     Oid::from_bytes(&[n; 20]).unwrap()
@@ -147,7 +148,7 @@ fn store_manual_replaces_the_last_result() {
 #[test]
 fn headlines() {
     let req = request(1, TargetKind::DefaultBranch);
-    let h = |r| headline(&report(req.clone(), r));
+    let h = |r| headline(Lang::En, &report(req.clone(), r));
     assert_eq!(h(conflicts(&["a", "b"])), "Merging main into feature would stop with conflicts in 2 files:");
     assert_eq!(h(conflicts(&["a"])), "Merging main into feature would stop with conflicts in 1 file:");
     assert_eq!(h(conflicts(&[])), "Merging main into feature would stop with conflicts.");
@@ -159,7 +160,7 @@ fn headlines() {
 
 #[test]
 fn chip_tooltip_says_what_and_where() {
-    let tip = |kind, result, remote| chip_tooltip(&report(request(1, kind), result), remote);
+    let tip = |kind, result, remote| chip_tooltip(Lang::En, &report(request(1, kind), result), remote);
     assert_eq!(
         tip(TargetKind::DefaultBranch, conflicts(&["a", "b", "c"]), false),
         "Merging main into feature would stop with conflicts in 3 files.\nmain is this repository's default branch.\nClick to see the files and merge or rebase."
@@ -182,28 +183,35 @@ fn chip_tooltip_says_what_and_where() {
     assert!(err.starts_with("Couldn't check feature against main: boom\n"), "{err}");
     assert!(err.ends_with("\nClick for details."), "{err}");
     assert_eq!(tip(TargetKind::Chosen, Ok(Prediction::Clean), false), "main merges into feature without conflicts.\nClick for details.");
+    let r = report(request(1, TargetKind::DefaultBranch), conflicts(&["a", "b", "c"]));
+    let de = chip_tooltip(Lang::De, &r, false);
+    assert!(de.contains('3'), "{de}");
+    assert_ne!(de, chip_tooltip(Lang::En, &r, false));
+    assert_eq!(de.matches('\n').count(), 2, "the same three lines: {de}");
 }
 
 #[test]
 fn target_notes() {
     let up = request(1, TargetKind::Upstream).target;
     assert_eq!(
-        target_note(&up, "feature", true).unwrap(),
+        target_note(Lang::En, &up, "feature", true).unwrap(),
         "origin/feature is the upstream of feature. Compared with the last fetched state of origin/feature."
     );
     let main = request(1, TargetKind::DefaultBranch).target;
-    assert_eq!(target_note(&main, "feature", false).unwrap(), "main is this repository's default branch.");
+    assert_eq!(target_note(Lang::En, &main, "feature", false).unwrap(), "main is this repository's default branch.");
+    let de = target_note(Lang::De, &up, "feature", true).unwrap();
+    assert!(de.contains("origin/feature") && !de.contains("upstream of"), "{de}");
     let chosen = request(1, TargetKind::Chosen).target;
-    assert_eq!(target_note(&chosen, "feature", false), None);
+    assert_eq!(target_note(Lang::En, &chosen, "feature", false), None);
 }
 
 #[test]
 fn file_list_is_capped() {
     let paths: Vec<String> = (0..60).map(|i| format!("f{i}.txt")).collect();
-    let (shown, more) = file_list(&paths);
+    let (shown, more) = file_list(Lang::En, &paths);
     assert_eq!(shown.len(), SHOWN_FILES);
     assert_eq!(more.as_deref(), Some("and 10 more"));
-    let (shown, more) = file_list(&["a\u{7}b".into()]);
+    let (shown, more) = file_list(Lang::En, &["a\u{7}b".into()]);
     assert_eq!((shown, more), (vec!["ab".to_owned()], None));
 }
 

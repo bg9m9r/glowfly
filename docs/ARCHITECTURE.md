@@ -472,7 +472,9 @@ binary (package `trellis`).
    `env_path`, …) rather than writing new ones.
 10. Views and update build user-visible text with `st.settings.lang()` and `tr` / `trf` / `trn`
     (keys in `crates/trellis-core/locales/`, see its README). Translated text is never matched
-    against git output or used as an egui id; ids use fixed `from_id_salt` strings.
+    against git output or used as an egui id; ids use fixed `from_id_salt` strings. Write each
+    key as a literal inside the call (`t.tr("conflict.panes.ours")`, never a key held in a
+    variable): `tests/i18n_keys.rs` finds the keys the code uses that way.
 
 ## Recipe: adding a feature
 

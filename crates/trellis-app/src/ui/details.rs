@@ -93,7 +93,7 @@ pub(super) fn changed_file_row(
         if let Some((n, _)) = lines {
             super::line_counts::inline(ui, n);
         }
-        super::path_warnings::mark(ui, f);
+        super::path_warnings::mark(ui, t, f);
         super::lfs_badge::badge(ui, f);
     };
     let r = match lines {
@@ -112,9 +112,9 @@ pub(super) fn changed_file_row(
             RowSource::ToWorkdir(o) => matches!(f.status, 'A' | 'R').then(|| t.trf("details.file.not_in_commit", &[("sha", &short(o))])),
             _ => (f.status == 'D').then(|| t.tr("details.file.deleted_here").to_owned()),
         };
-        file_menu::history_items(ui, msgs, &f.path, Some(a.history_at), missing.as_deref());
+        file_menu::history_items(ui, t, msgs, &f.path, Some(a.history_at), missing.as_deref());
         menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
-        let items = if a.in_workdir { track_items(&f.path, a.lfs) } else { Vec::new() };
-        file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.tools, a.patch_blocked);
+        let items = if a.in_workdir { track_items(t, &f.path, a.lfs) } else { Vec::new() };
+        file_menu::commit_file_items(ui, t, msgs, a.src, f, a.in_workdir, &items, a.tools, a.patch_blocked);
     });
 }

@@ -14,7 +14,6 @@ use super::step_tip;
 use crate::keymap::Keymap;
 use crate::msg::{ConflictMsg, Msg};
 use crate::state::conflict::ConflictView;
-use crate::state::tool_compare::{IN_MERGE_TOOL, MERGE_TOOL_BUTTON};
 use crate::tools::ToolsMsg;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText, Sense, TextStyle, Ui, UiBuilder, WidgetText, vec2};
@@ -98,7 +97,7 @@ fn header_buttons(
     }
     let can = view.can_save() && !in_tool;
     let why = if in_tool {
-        IN_MERGE_TOOL.to_owned()
+        t.tr("tools.in_merge_tool").to_owned()
     } else if view.saving {
         t.tr("conflict.header.saving.tip").to_owned()
     } else {
@@ -133,17 +132,21 @@ fn header_buttons(
         ui.label(RichText::new(t.tr("conflict.header.no_lines")).color(color::weak()));
         return moved;
     }
-    let tint = if done == n { color::added() } else { color::weak() };
-    ui.label(RichText::new(progress).color(tint));
-    ui.add_space(STEPS_GAP);
+    // A longer translation can leave too little room: the progress gives way (the Output
+    // strip shows it too) rather than pushing the steps out of the header.
+    if ui.available_width() >= steps_width(ui, t, n, &progress, &counter) {
+        let tint = if done == n { color::added() } else { color::weak() };
+        ui.label(RichText::new(progress).color(tint));
+        ui.add_space(STEPS_GAP);
+    }
     // Right to left: next first. Arrows are painted (the bundled fonts lack them).
-    let tip = step_tip(keys, true);
+    let tip = step_tip(keys, t, true);
     let next = ui.add_enabled_ui(view.current + 1 < n, |ui| icon_button(ui, Icon::NextChange, &tip)).inner;
     if next.clicked() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(1)));
     }
     ui.label(RichText::new(counter).color(color::text()));
-    let tip = step_tip(keys, false);
+    let tip = step_tip(keys, t, false);
     let prev = ui.add_enabled_ui(view.current > 0, |ui| icon_button(ui, Icon::PrevChange, &tip)).inner;
     if prev.clicked() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(-1)));
@@ -178,12 +181,12 @@ fn more_menu(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeT
         }
         let open = Msg::Tools(ToolsMsg::ResolveInMergeTool(path.clone()));
         match tool.blocked {
-            Some(why) => menu_item_if(msgs, ui, MERGE_TOOL_BUTTON, Some(why), open),
-            None => menu_item_setup(msgs, ui, MERGE_TOOL_BUTTON, tool.setup, open),
+            Some(why) => menu_item_if(msgs, ui, t.tr("tools.merge_tool.button"), Some(why), open),
+            None => menu_item_setup(msgs, ui, t, t.tr("tools.merge_tool.button"), tool.setup, open),
         }
         if text {
             let blocked = if in_tool {
-                Some(IN_MERGE_TOOL)
+                Some(t.tr("tools.in_merge_tool"))
             } else if view.saving {
                 Some(t.tr("conflict.header.saving.tip"))
             } else {
@@ -191,7 +194,7 @@ fn more_menu(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeT
             };
             menu_item_if(msgs, ui, t.tr("conflict.header.reset.button"), blocked, view.reset_msg(t));
         }
-        let blocked = in_tool.then_some(IN_MERGE_TOOL);
+        let blocked = in_tool.then(|| t.tr("tools.in_merge_tool"));
         menu_item_if(
             msgs,
             ui,
@@ -208,7 +211,7 @@ fn more_menu(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeT
 /// Why Save with markers can't run: it needs something picked or edited and something left.
 fn markers_blocked(t: Lang, view: &ConflictView, in_tool: bool) -> Option<&'static str> {
     if in_tool {
-        Some(IN_MERGE_TOOL)
+        Some(t.tr("tools.in_merge_tool"))
     } else if view.saving {
         Some(t.tr("conflict.header.saving.tip"))
     } else if view.unresolved() == 0 {

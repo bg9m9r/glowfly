@@ -3,6 +3,7 @@
 
 use git2::Oid;
 use std::collections::{BTreeMap, BTreeSet};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{FileEntry, Snapshot, StashInfo};
 use trellis_core::stash_ops::{StashScope, edited_message, split_message};
 
@@ -11,13 +12,10 @@ pub fn drop_confirm_body(message: &str) -> String {
     format!("Delete \"{message}\"? Undo brings it back while this tab is open.")
 }
 
-/// Why a stash can't run: nothing has changed.
+/// Why a stash can't run: nothing has changed. In English for the Stash dialog, which isn't
+/// translated yet and compares `push_blocked`'s English answer with these two.
 pub const NOTHING: &str = "There are no changes to stash.";
-/// Why a stash can't run: git can't stash with unmerged index entries.
-pub const CONFLICTED: &str = "Resolve the conflicted files before stashing.";
-/// Why a staged-only stash can't run.
-pub const NOTHING_STAGED: &str = "Nothing is staged. Stage the changes to set aside first, or choose another option.";
-/// Why a stash of selected files can't run.
+/// Why a stash of selected files can't run (the dialog shows it as a prompt).
 pub const NO_FILES: &str = "Choose at least one file to stash.";
 
 /// Renaming one stash list entry: the field holds the part after "On <branch>: ".
@@ -103,18 +101,21 @@ pub fn stashable_paths(snap: &Snapshot) -> impl Iterator<Item = String> {
 }
 
 /// Why stashing `scope` (with `paths` for Selected files) can't run now, or None.
-pub fn push_blocked(snap: &Snapshot, scope: StashScope, paths: &[String]) -> Option<&'static str> {
-    if !snap.is_dirty() {
-        Some(NOTHING)
+pub fn push_blocked(t: Lang, snap: &Snapshot, scope: StashScope, paths: &[String]) -> Option<&'static str> {
+    let why = if !snap.is_dirty() {
+        // Nothing has changed.
+        t.tr("stash.blocked.nothing")
     } else if snap.unstaged.iter().any(|f| f.status == '!') {
-        Some(CONFLICTED)
+        // git can't stash with unmerged index entries.
+        t.tr("stash.blocked.conflicted")
     } else if scope == StashScope::Staged && snap.staged.is_empty() {
-        Some(NOTHING_STAGED)
+        t.tr("stash.blocked.nothing_staged")
     } else if scope == StashScope::Files && paths.is_empty() {
-        Some(NO_FILES)
+        t.tr("stash.blocked.no_files")
     } else {
-        None
-    }
+        return None;
+    };
+    Some(why)
 }
 
 /// The job label for stashing `scope`.

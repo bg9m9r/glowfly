@@ -181,13 +181,13 @@ fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
         super::line_counts::total(&mut end, c.total);
     }
     let lfs = TrackContext::of(st);
-    let tools = crate::state::tool_compare::ToolSetup::of(&st.settings.external_tools);
+    let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
     let row_h = widgets::LIST_ROW_H;
     ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
         let index = |t: &DiffTarget| d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()));
         file_reveal::reveal(ui, "commit-files", st.view.file_reveal.as_ref(), index, &range, row_h);
         for f in &d.files[range] {
-            let patch_blocked = (d.parents.len() > 1).then_some(crate::state::patch::PATCH_BLOCKED_MERGE);
+            let patch_blocked = (d.parents.len() > 1).then(|| crate::state::selection::CommitBlock::PatchMerge.text(t));
             let src = RowSource::Commit(d.oid);
             let lines = counts.and_then(|c| c.get(&f.path).map(|n| (n, c.largest)));
             let in_workdir = d.in_workdir(&f.path);

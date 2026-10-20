@@ -32,7 +32,12 @@ pub(super) fn show(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &CommitFile) {
     let missing = (!f.in_workdir).then_some(NOT_IN_WORKDIR);
     let open_path = f.open_path.to_owned();
     let mut buttons = [
-        (file_menu::restore_label(deleted), restore_tip, None, file_menu::restore_msg(f.oid, f.path, f.status)),
+        (
+            file_menu::restore_label(trellis_core::i18n::Lang::En, deleted),
+            restore_tip,
+            None,
+            file_menu::restore_msg(f.oid, f.path, f.status),
+        ),
         (OPEN_DEFAULT, OPEN_DEFAULT.to_owned(), missing, Msg::Files(FilesMsg::OpenWorkingFile(open_path.clone()))),
         (SHOW_IN_FOLDER, SHOW_IN_FOLDER.to_owned(), missing, Msg::Files(FilesMsg::ShowWorkingFile(open_path))),
     ];

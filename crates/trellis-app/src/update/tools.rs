@@ -21,7 +21,7 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
     match msg {
         ToolsMsg::OpenFile { path, line } => {
             let Some(w) = st.workdir() else { return };
-            if ToolSetup::of(&st.settings.external_tools).editor.is_some() {
+            if ToolSetup::of(st.settings.lang(), &st.settings.external_tools).editor.is_some() {
                 return show_page(st, now, fx);
             }
             // Always absolute, so a file named like an option can't be read as one.
@@ -36,7 +36,7 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
                 st.log(false, "Open a repository first.");
                 return;
             };
-            if ToolSetup::of(&st.settings.external_tools).editor.is_some() {
+            if ToolSetup::of(st.settings.lang(), &st.settings.external_tools).editor.is_some() {
                 return show_page(st, now, fx);
             }
             match editor_repo(&st.settings.external_tools, &w) {

@@ -9,10 +9,6 @@ use trellis_core::conflict_edit::{EditResult, edit_text, locate_edit};
 use trellis_core::conflict_pick::{ChunkPick, file_eol};
 use trellis_core::repo::{Choice, ConflictContent, Segment, Side};
 
-/// What the editor says after an edit spanning more than one region was undone.
-pub(crate) const SPAN_NOTE: &str =
-    "An edit can change one conflict or the lines between two conflicts, not both at once: that change was undone.";
-
 /// Applies `f` to the pick of chunk `chunk` (unless its text was typed), making it current.
 fn change(st: &mut AppState, chunk: usize, f: impl FnOnce(&ChunkPick, &trellis_core::repo::Chunk) -> ChunkPick) {
     let Some(v) = st.conflict.as_mut() else { return };
@@ -65,6 +61,7 @@ fn bare(l: &str) -> &str {
 /// inside a clean run that run's (dropped once it reads as the file's own lines again); a
 /// change spanning more than one is undone with a note.
 pub(super) fn edited(st: &mut AppState) {
+    let lang = st.settings.lang();
     let Some(c) = st.conflict.as_mut() else { return };
     let (Some(e), Some(ConflictContent::Text(segs))) = (&c.edit, c.file.as_ref().map(|f| &f.content)) else { return };
     match locate_edit(&e.rendered, &e.buffer, file_eol(segs)) {
@@ -94,7 +91,8 @@ pub(super) fn edited(st: &mut AppState) {
             if let Some(e) = c.edit.as_mut() {
                 e.buffer = e.rendered.text.clone();
             }
-            c.edit_note = Some(SPAN_NOTE.into());
+            // What the editor says after an edit spanning more than one region was undone.
+            c.edit_note = Some(lang.tr("conflict.output.span_note").into());
         }
     }
 }

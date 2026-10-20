@@ -8,6 +8,7 @@ use super::path_hazards::hazard_of;
 use super::tool_compare::merging;
 use git2::RepositoryState;
 use std::collections::HashMap;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{Hazard, ResolvedFile, Snapshot};
 
 #[derive(Clone, Debug, Default)]
@@ -24,11 +25,10 @@ pub struct ConflictFiles {
 impl ConflictFiles {
     /// The note after a conflicted row: its marker count, or "no markers left" (green: ready to
     /// mark resolved). `None` when unknown or not read yet.
-    pub fn count_note(&self, path: &str) -> Option<(String, bool)> {
+    pub fn count_note(&self, t: Lang, path: &str) -> Option<(String, bool)> {
         match (*self.counts.get(path)?)? {
-            0 => Some(("no markers left".into(), true)),
-            1 => Some(("1 conflict".into(), false)),
-            n => Some((format!("{n} conflicts"), false)),
+            0 => Some((t.tr("conflict.files.no_markers").into(), true)),
+            n => Some((t.trn("conflict.files.count", n, &[]), false)),
         }
     }
 
@@ -70,18 +70,9 @@ pub fn restorable_paths(st: &AppState) -> Vec<String> {
 }
 
 /// The question before marking `paths` conflicted again.
-pub fn mark_conflicted_body(paths: &[String]) -> String {
-    match paths {
-        [path] => format!(
-            "Mark {path} conflicted again? git rewrites the file with conflict markers from both sides. The staged resolution and \
-             any edits to the file are lost."
-        ),
-        _ => format!(
-            "Mark {} files conflicted again? git rewrites each with conflict markers from both sides. Their staged resolutions \
-             and any edits to them are lost.",
-            paths.len()
-        ),
-    }
+pub fn mark_conflicted_body(t: Lang, paths: &[String]) -> String {
+    let path = paths.first().map_or("", String::as_str);
+    t.trn("conflict.files.mark_conflicted.body", paths.len(), &[("path", &path)])
 }
 
 /// How many files the "markers left" warning names before "and N more".
@@ -128,13 +119,21 @@ mod tests {
 
     #[test]
     fn mark_conflicted_asks_about_one_or_several() {
-        assert!(mark_conflicted_body(&["a.txt".into()]).starts_with("Mark a.txt conflicted again? git rewrites the file"));
+        let one = ["a.txt".to_owned()];
+        assert_eq!(
+            mark_conflicted_body(Lang::En, &one),
+            "Mark a.txt conflicted again? git rewrites the file with conflict markers from both sides. The staged resolution and \
+             any edits to the file are lost."
+        );
         let three: Vec<String> = ["a", "b", "c"].map(String::from).into();
         assert_eq!(
-            mark_conflicted_body(&three),
+            mark_conflicted_body(Lang::En, &three),
             "Mark 3 files conflicted again? git rewrites each with conflict markers from both sides. Their staged resolutions and \
              any edits to them are lost."
         );
+        let de = mark_conflicted_body(Lang::De, &one);
+        assert!(de.contains("a.txt") && de != mark_conflicted_body(Lang::En, &one), "{de}");
+        assert!(mark_conflicted_body(Lang::De, &three).contains('3'));
     }
 
     #[test]
@@ -143,9 +142,12 @@ mod tests {
             counts: [("a".to_owned(), Some(2)), ("b".to_owned(), Some(1)), ("c".to_owned(), Some(0)), ("d".to_owned(), None)].into(),
             ..Default::default()
         };
-        assert_eq!(files.count_note("a"), Some(("2 conflicts".into(), false)));
-        assert_eq!(files.count_note("b"), Some(("1 conflict".into(), false)));
-        assert_eq!(files.count_note("c"), Some(("no markers left".into(), true)));
-        assert_eq!((files.count_note("d"), files.count_note("e")), (None, None));
+        let en = Lang::En;
+        assert_eq!(files.count_note(en, "a"), Some(("2 conflicts".into(), false)));
+        assert_eq!(files.count_note(en, "b"), Some(("1 conflict".into(), false)));
+        assert_eq!(files.count_note(en, "c"), Some(("no markers left".into(), true)));
+        assert_eq!((files.count_note(en, "d"), files.count_note(en, "e")), (None, None));
+        assert_ne!(files.count_note(Lang::De, "a"), files.count_note(en, "a"));
+        assert_ne!(files.count_note(Lang::De, "c"), files.count_note(en, "c"));
     }
 }

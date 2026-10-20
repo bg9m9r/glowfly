@@ -6,13 +6,36 @@ use super::selection_span::{Span, span_of};
 use super::selection_wip::WorkdirCompare;
 use git2::Oid;
 use std::collections::HashSet;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{Comparison, Snapshot};
 
-pub const PICK_BLOCKED_MERGE: &str = "Merge commits can't be cherry-picked from a multi-selection.";
-pub const PICK_BLOCKED_ON_HEAD: &str = "Some selected commits are already on the current branch.";
-/// Why "Cherry-pick commit" is unavailable for one commit in HEAD's history.
-pub const PICK_ONE_ON_HEAD: &str = "This commit is already on the current branch.";
-pub const REVERT_BLOCKED_MERGE: &str = "Merge commits can't be reverted from a multi-selection.";
+/// Why a commit action is unavailable for the selected commits. Kept as a value and put into
+/// words when drawn or logged, so a language switch needs no reselect.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommitBlock {
+    /// Merge commits among several to cherry-pick.
+    PickMerges,
+    /// Some of several commits to cherry-pick are already on HEAD.
+    PickOnHead,
+    /// The one commit to cherry-pick is already in HEAD's history.
+    PickOneOnHead,
+    /// Merge commits among several to revert.
+    RevertMerges,
+    /// A merge commit has no patch of its own.
+    PatchMerge,
+}
+
+impl CommitBlock {
+    pub fn text(self, t: Lang) -> &'static str {
+        match self {
+            CommitBlock::PickMerges => t.tr("commits.blocked.pick_merges"),
+            CommitBlock::PickOnHead => t.tr("commits.blocked.pick_on_head"),
+            CommitBlock::PickOneOnHead => t.tr("commits.blocked.pick_one_on_head"),
+            CommitBlock::RevertMerges => t.tr("commits.blocked.revert_merges"),
+            CommitBlock::PatchMerge => t.tr("commits.blocked.patch_merge"),
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct MultiSelection {
@@ -34,11 +57,11 @@ pub struct MultiSelection {
     /// tree; `None` while loading (and always without ends).
     pub changes: Option<Result<Comparison, String>>,
     /// Why "Cherry-pick N commits" is unavailable (merges, or commits already on HEAD).
-    pub pick_blocked: Option<&'static str>,
+    pub pick_blocked: Option<CommitBlock>,
     /// Why "Revert N commits" is unavailable (merges).
-    pub revert_blocked: Option<&'static str>,
+    pub revert_blocked: Option<CommitBlock>,
     /// Why "Create patch from N commits" is unavailable (merges).
-    pub export_blocked: Option<&'static str>,
+    pub export_blocked: Option<CommitBlock>,
 }
 
 impl MultiSelection {
@@ -169,16 +192,16 @@ fn is_merge(snap: &Snapshot, oid: &Oid) -> bool {
 
 /// Why these commits can't be cherry-picked onto HEAD, if they can't: merges among several
 /// (one merge goes to the mainline dialog), or commits already in HEAD's history.
-pub fn cherry_pick_blocker(snap: &Snapshot, oids: &[Oid]) -> Option<&'static str> {
+pub fn cherry_pick_blocker(snap: &Snapshot, oids: &[Oid]) -> Option<CommitBlock> {
     if oids.len() > 1 && oids.iter().any(|o| is_merge(snap, o)) {
-        return Some(PICK_BLOCKED_MERGE);
+        return Some(CommitBlock::PickMerges);
     }
     let head = snap.head_oid?;
     if let [one] = oids {
-        return on_head(snap, head, *one).then_some(PICK_ONE_ON_HEAD);
+        return on_head(snap, head, *one).then_some(CommitBlock::PickOneOnHead);
     }
     let on_head: HashSet<Oid> = snap.commits_between(head, None).iter().map(|c| c.oid).collect();
-    oids.iter().any(|o| on_head.contains(o)).then_some(PICK_BLOCKED_ON_HEAD)
+    oids.iter().any(|o| on_head.contains(o)).then_some(CommitBlock::PickOnHead)
 }
 
 /// Whether `oid` is in `head`'s loaded history. The graph is in topological order (children
@@ -204,8 +227,8 @@ fn on_head(snap: &Snapshot, head: Oid, oid: Oid) -> bool {
 
 /// Why these commits can't be reverted together, if they can't: merges among several (one
 /// merge goes to the mainline dialog).
-pub fn revert_blocker(snap: &Snapshot, oids: &[Oid]) -> Option<&'static str> {
-    (oids.len() > 1 && oids.iter().any(|o| is_merge(snap, o))).then_some(REVERT_BLOCKED_MERGE)
+pub fn revert_blocker(snap: &Snapshot, oids: &[Oid]) -> Option<CommitBlock> {
+    (oids.len() > 1 && oids.iter().any(|o| is_merge(snap, o))).then_some(CommitBlock::RevertMerges)
 }
 
 /// `sel` against a newly loaded snapshot: commits that are gone are dropped, the rest re-sorted.

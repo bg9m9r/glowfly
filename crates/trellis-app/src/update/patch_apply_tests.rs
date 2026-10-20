@@ -280,8 +280,9 @@ fn a_stopped_series_then_abort_or_continue() {
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.state, RepositoryState::ApplyMailbox);
     assert_eq!(snap.am.as_ref().map(|a| (a.step, a.total, a.subject.as_str())), Some((1, 2, "Add the second line")));
-    let (name, actions) = state_actions(snap.state).unwrap();
-    assert_eq!(name, "Applying patches");
+    let actions = state_actions(snap.state).unwrap();
+    let title = crate::state::op_actions::banner_title(trellis_core::i18n::Lang::En, snap);
+    assert_eq!(title.as_deref(), Some("Applying patches \u{b7} patch 1 of 2"));
     let labels: Vec<(&str, &[&str])> = actions.to_vec();
     assert_eq!(labels, [("Continue", AM_CONTINUE), ("Skip patch", patch_ops::AM_SKIP), ("Abort", AM_ABORT)]);
 

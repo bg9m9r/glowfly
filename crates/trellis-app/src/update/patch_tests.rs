@@ -9,10 +9,11 @@ use crate::msg::{Msg, PaletteMsg, RepoMsg};
 use crate::patch::{PatchEffect, PatchMsg};
 use crate::state::AppState;
 use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::patch::PATCH_BLOCKED_MERGE;
+use crate::state::selection::CommitBlock;
 use git2::Oid;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+use trellis_core::i18n::Lang;
 use trellis_core::patch_ops::PatchSource;
 
 pub(crate) fn run(st: &mut AppState, m: PatchMsg) -> Vec<Effect> {
@@ -107,7 +108,11 @@ fn export_refuses_merges() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let (merge, third) = (commit(&st, "Merge side"), commit(&st, "Third: more (lines)"));
     assert!(run(&mut st, PatchMsg::Export(vec![merge])).is_empty());
-    assert_eq!(last_log(&st), PATCH_BLOCKED_MERGE);
+    assert_eq!(last_log(&st), CommitBlock::PatchMerge.text(Lang::En));
+    st.settings.language = "de".into();
+    assert!(run(&mut st, PatchMsg::Export(vec![merge])).is_empty());
+    assert_eq!(last_log(&st), CommitBlock::PatchMerge.text(Lang::De));
+    st.settings.language = "en".into();
     assert!(run(&mut st, PatchMsg::Export(vec![third, merge])).is_empty(), "one merge blocks a multi-selection");
     cleanup(&dir);
 }

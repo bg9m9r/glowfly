@@ -12,9 +12,8 @@ use crate::msg::RebaseMsg;
 use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
 use crate::state::commit_menu::{hard_reset_msg, reset_title};
-use crate::state::patch::PATCH_BLOCKED_MERGE;
 use crate::state::rebase_onto::{onto_commit_blocker, onto_menu_labels};
-use crate::state::selection::{MultiSelection, cherry_pick_blocker};
+use crate::state::selection::{CommitBlock, MultiSelection, cherry_pick_blocker};
 use crate::tag::TagMsg;
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
@@ -36,11 +35,11 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
     menu_item(msgs, ui, t.tr("commits.menu.create_worktree"), worktree);
     ui.separator();
     let pick = if merge { t.tr("commits.menu.cherry_pick_merge") } else { t.tr("commits.menu.cherry_pick") };
-    menu_item_if(msgs, ui, pick, cherry_pick_blocker(snap, &[oid]), Msg::Selection(SelectionMsg::CherryPick(vec![oid])));
+    menu_item_if(msgs, ui, pick, cherry_pick_blocker(snap, &[oid]).map(|b| b.text(t)), Msg::Selection(SelectionMsg::CherryPick(vec![oid])));
     let revert = if merge { t.tr("commits.menu.revert_merge") } else { t.tr("commits.menu.revert") };
     menu_item(msgs, ui, revert, Msg::Selection(SelectionMsg::Revert(vec![oid])));
     if let Some(current) = snap.head_branch.as_deref() {
-        let blocked = onto_commit_blocker(snap, oid);
+        let blocked = onto_commit_blocker(t, snap, oid);
         let (plain, interactive) = onto_menu_labels(t, current);
         menu_item_if(msgs, ui, plain, blocked.as_deref(), Msg::git("Rebase", &["rebase", &sha]));
         let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));
@@ -54,7 +53,7 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
     ui.separator();
     menu_item(msgs, ui, t.tr("commits.menu.compare_workdir"), Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)));
     ui.separator();
-    let patch_state = ItemState::blocked_by(merge.then_some(PATCH_BLOCKED_MERGE));
+    let patch_state = ItemState::blocked_by(merge.then(|| CommitBlock::PatchMerge.text(t)));
     let patch = reason::menu_button(ui, t.tr("commits.menu.create_patch"), "", patch_state);
     if patch.clicked() {
         msgs.push(Msg::Patch(PatchMsg::Export(vec![oid])));
@@ -64,7 +63,7 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
         menu_item(msgs, ui, t.tr("commits.menu.copy_sha"), Msg::Copy(sha.clone()));
         menu_item(msgs, ui, t.tr("commits.menu.copy_message"), Msg::Copy(c.summary.clone()));
         menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Commit(oid))));
-        let blocked = merge.then_some(PATCH_BLOCKED_MERGE);
+        let blocked = merge.then(|| CommitBlock::PatchMerge.text(t));
         menu_item_if(msgs, ui, t.tr("commits.menu.copy_patch"), blocked, Msg::Patch(PatchMsg::Copy(vec![oid])));
     });
 }
@@ -86,26 +85,33 @@ fn reset_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs:
 /// many there are.
 pub fn multi_commit_menu(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     menu_header(ui, &t.trn("details.multi.selected", m.len(), &[]));
-    let picked = cherry_pick_button(ui, t.tr("commits.menu.cherry_pick"), m, true, msgs);
-    let reverted = revert_button(ui, t.tr("commits.menu.revert"), m, true, msgs);
+    let picked = cherry_pick_button(ui, t, t.tr("commits.menu.cherry_pick"), m, true, msgs);
+    let reverted = revert_button(ui, t, t.tr("commits.menu.revert"), m, true, msgs);
     ui.separator();
     super::rebase::edit_menu::multi(ui, t, m, snap, msgs);
     ui.separator();
-    let patched = patch_button(ui, t.tr("commits.menu.create_patch"), m, true, msgs);
+    let patched = patch_button(ui, t, t.tr("commits.menu.create_patch"), m, true, msgs);
     if picked || reverted || patched {
         ui.close_menu();
     }
     ui.menu_button(t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("commits.menu.copy_shas"), copy_shas(m));
         let copy = Msg::Patch(PatchMsg::Copy(m.oids.clone()));
-        menu_item_if(msgs, ui, t.tr("commits.menu.copy_patch"), m.export_blocked, copy);
+        menu_item_if(msgs, ui, t.tr("commits.menu.copy_patch"), m.export_blocked.map(|b| b.text(t)), copy);
     });
 }
 
 /// A multi-selection action: in a menu (`in_menu`), an item greyed with an info mark while it is
 /// disabled, its reason on hover or focus; in the selection panel, a plain button with the
 /// reason on hover.
-fn multi_action(ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: Option<&str>, in_menu: bool) -> egui::Response {
+fn multi_action(
+    ui: &mut egui::Ui,
+    t: Lang,
+    label: impl Into<egui::WidgetText>,
+    blocked: Option<CommitBlock>,
+    in_menu: bool,
+) -> egui::Response {
+    let blocked = blocked.map(|b| b.text(t));
     if in_menu {
         return reason::menu_button(ui, label, "", ItemState::blocked_by(blocked));
     }
@@ -120,12 +126,13 @@ fn multi_action(ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: 
 /// whether it was clicked.
 pub(super) fn cherry_pick_button(
     ui: &mut egui::Ui,
+    t: Lang,
     label: impl Into<egui::WidgetText>,
     m: &MultiSelection,
     in_menu: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let clicked = multi_action(ui, label, m.pick_blocked, in_menu).clicked();
+    let clicked = multi_action(ui, t, label, m.pick_blocked, in_menu).clicked();
     if clicked {
         msgs.push(Msg::Selection(SelectionMsg::CherryPick(m.oids.clone())));
     }
@@ -136,12 +143,13 @@ pub(super) fn cherry_pick_button(
 /// Returns whether it was clicked.
 pub(super) fn revert_button(
     ui: &mut egui::Ui,
+    t: Lang,
     label: impl Into<egui::WidgetText>,
     m: &MultiSelection,
     in_menu: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let clicked = multi_action(ui, label, m.revert_blocked, in_menu).clicked();
+    let clicked = multi_action(ui, t, label, m.revert_blocked, in_menu).clicked();
     if clicked {
         msgs.push(Msg::Selection(SelectionMsg::Revert(m.oids.clone())));
     }
@@ -152,12 +160,13 @@ pub(super) fn revert_button(
 /// is selected. Returns whether it was clicked.
 pub(super) fn patch_button(
     ui: &mut egui::Ui,
+    t: Lang,
     label: impl Into<egui::WidgetText>,
     m: &MultiSelection,
     in_menu: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let clicked = multi_action(ui, label, m.export_blocked, in_menu).clicked();
+    let clicked = multi_action(ui, t, label, m.export_blocked, in_menu).clicked();
     if clicked {
         msgs.push(Msg::Patch(PatchMsg::Export(m.oids.clone())));
     }

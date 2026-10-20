@@ -114,7 +114,7 @@ fn mark_conflicted_brings_the_conflict_back() {
     assert!(is_conflicted(&st, "a.txt"));
     assert!(markers_in(&dir, "a.txt") >= 1);
     assert!(st.conflict_files.resolved.is_empty(), "conflicted again");
-    assert_eq!(st.conflict_files.count_note("a.txt"), Some(("1 conflict".into(), false)));
+    assert_eq!(st.conflict_files.count_note(trellis_core::i18n::Lang::En, "a.txt"), Some(("1 conflict".into(), false)));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -144,7 +144,11 @@ fn summary(fx: &[Effect]) -> Option<u64> {
 fn summaries_follow_the_status_and_drop_stale_reads() {
     let dir = conflicted_repo("cf-summary");
     let mut st = opened(&dir);
-    assert_eq!(st.conflict_files.count_note("a.txt"), Some(("1 conflict".into(), false)), "read when the repository opened");
+    assert_eq!(
+        st.conflict_files.count_note(trellis_core::i18n::Lang::En, "a.txt"),
+        Some(("1 conflict".into(), false)),
+        "read when the repository opened"
+    );
     let mut fx = Vec::new();
     super::conflict_files::want(&mut st, &mut fx);
     let generation = summary(&fx).expect("a summary read");

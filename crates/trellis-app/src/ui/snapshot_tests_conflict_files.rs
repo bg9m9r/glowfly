@@ -66,8 +66,8 @@ pub(super) fn fill_lists(st: &mut AppState, dir: &Path) {
 fn wip_conflicted_and_resolved() {
     let (mut st, dir) = merging("conflict-lists", true);
     fill_lists(&mut st, &dir);
-    assert_eq!(st.conflict_files.count_note("alpha.txt"), Some(("2 conflicts".into(), false)));
-    assert_eq!(st.conflict_files.count_note("beta.txt"), Some(("no markers left".into(), true)));
+    assert_eq!(st.conflict_files.count_note(trellis_core::i18n::Lang::En, "alpha.txt"), Some(("2 conflicts".into(), false)));
+    assert_eq!(st.conflict_files.count_note(trellis_core::i18n::Lang::En, "beta.txt"), Some(("no markers left".into(), true)));
     assert_eq!(st.conflict_files.resolved_rows(st.snap.as_ref().unwrap()).len(), 1);
     render("wip_conflicted_and_resolved", st, true);
     super::snapshot_tests::remove_fixture(&dir);

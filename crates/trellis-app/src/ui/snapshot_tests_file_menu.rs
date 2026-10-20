@@ -8,10 +8,7 @@
 //! changes to this file needs the file in the working tree, unless the commit deleted it. Clicks
 //! check the messages the items send.
 
-use super::file_menu::{
-    DELETE, NEW_FILE_HERE, OPEN_DEFAULT, OPEN_IN_DIFF_TOOL, OPEN_IN_EDITOR, RENAME, RESOLVE_IN_MERGE_TOOL, REVERT_FILE, RowSource,
-    SHOW_IN_FOLDER, TRACK_IN_LFS, ToolItem, UNSTAGE_DELETE, commit_file_items, diff_item, wip_file_items,
-};
+use super::file_menu::{OPEN_DEFAULT, RowSource, SHOW_IN_FOLDER, ToolItem, commit_file_items, diff_item, wip_file_items};
 use super::theme::{apply_theme, color};
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
@@ -23,14 +20,26 @@ use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, FileEntry};
+
+// The English texts the menus show, pinned.
+const DELETE: &str = "Delete…";
+const NEW_FILE_HERE: &str = "New file in this folder…";
+const OPEN_IN_DIFF_TOOL: &str = "Open in external diff tool";
+const OPEN_IN_EDITOR: &str = "Open in external editor";
+const RENAME: &str = "Rename…";
+const RESOLVE_IN_MERGE_TOOL: &str = "Resolve in external merge tool";
+const REVERT_FILE: &str = "Revert changes to this file";
+const TRACK_IN_LFS: &str = "Track in Git LFS";
+const UNSTAGE_DELETE: &str = "Unstage and delete…";
 
 const OID: &str = "3f2a9c41d07be5a8c6f19e2d4b7a0c3e5f816d29";
 /// The newer commit of a compared pair (`OID` is the older one).
 const NEWER: &str = "8c1d5e07a94f2b63d0e7c1a5b9f4d28e6a3c7b10";
 
 #[derive(Clone, Copy)]
-enum Menu {
+pub(super) enum Menu {
     Commit {
         in_workdir: bool,
     },
@@ -61,7 +70,12 @@ fn harness(f: FileEntry, menu: Menu, dark: bool) -> Harness<'static, Vec<Msg>> {
 
 /// `harness`, with the diff and merge tools set when `tools`.
 fn harness_with(f: FileEntry, menu: Menu, dark: bool, tools: bool) -> Harness<'static, Vec<Msg>> {
-    let setup = if tools { ToolSetup::default() } else { ToolSetup::of(&trellis_core::settings::ExternalTools::default()) };
+    harness_in(Lang::En, f, menu, dark, tools)
+}
+
+/// `harness_with` in the language `t`.
+pub(super) fn harness_in(t: Lang, f: FileEntry, menu: Menu, dark: bool, tools: bool) -> Harness<'static, Vec<Msg>> {
+    let setup = if tools { ToolSetup::default() } else { ToolSetup::of(t, &trellis_core::settings::ExternalTools::default()) };
     // The menu grows to fit its widest item, a disabled one's reason included.
     let width = 440.0;
     Harness::builder().with_size(egui::vec2(width, 260.0)).build_ui_state(
@@ -74,21 +88,26 @@ fn harness_with(f: FileEntry, menu: Menu, dark: bool, tools: bool) -> Harness<'s
                 ui.set_min_width(220.0);
                 menu_style(ui.style_mut());
                 // The row's existing items, which come first in the real menu.
-                let _ = ui.button(if matches!(menu, Menu::Wip { .. }) { "Stage" } else { "File history" });
-                let _ = ui.button("Copy path");
+                let first =
+                    if matches!(menu, Menu::Wip { .. }) { t.tr("details.wip.stage.button") } else { t.tr("files.menu.file_history") };
+                let _ = ui.button(first);
+                let _ = ui.button(t.tr("common.copy_path"));
                 match menu {
-                    Menu::Commit { in_workdir } => commit_file_items(ui, msgs, RowSource::Commit(oid()), &f, in_workdir, &[], setup, None),
+                    Menu::Commit { in_workdir } => {
+                        commit_file_items(ui, t, msgs, RowSource::Commit(oid()), &f, in_workdir, &[], setup, None)
+                    }
                     Menu::Between { in_workdir } => {
-                        commit_file_items(ui, msgs, RowSource::Between { from: oid(), to: newer() }, &f, in_workdir, &[], setup, None)
+                        let src = RowSource::Between { from: oid(), to: newer() };
+                        commit_file_items(ui, t, msgs, src, &f, in_workdir, &[], setup, None)
                     }
                     Menu::Wip { missing, unstages } => {
                         let tool = if f.status == '!' {
                             let msg = Msg::Tools(ToolsMsg::ResolveInMergeTool(f.path.clone()));
-                            ToolItem { label: RESOLVE_IN_MERGE_TOOL, msg, blocked: None, setup: setup.merge }
+                            ToolItem { label: t.tr("tools.resolve_in_merge_tool"), msg, blocked: None, setup: setup.merge }
                         } else {
-                            diff_item(DiffTarget::Unstaged(f.path.clone()), setup.diff)
+                            diff_item(t, DiffTarget::Unstaged(f.path.clone()), setup.diff)
                         };
-                        wip_file_items(ui, msgs, &f, missing, unstages, &[], setup.editor, tool)
+                        wip_file_items(ui, t, msgs, &f, missing, unstages, &[], setup.editor, tool)
                     }
                 }
             });

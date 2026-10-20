@@ -26,7 +26,7 @@ pub(super) fn run(st: &mut AppState, op: PickOp, oids: Vec<Oid>, mainline: Optio
         PickOp::Revert => revert_blocker(snap, &oids),
     };
     if let Some(why) = blocked {
-        st.log(false, why);
+        st.log(false, why.text(st.settings.lang()));
         return;
     }
     let parents = |o: &Oid| snap.row_of.get(o).map_or(0, |&r| snap.commits[r].parents.len());

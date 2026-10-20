@@ -171,10 +171,11 @@ fn track(st: &mut AppState, text: &str, fx: &mut Vec<Effect>) {
     if refuse_without_lfs(st) {
         return;
     }
+    let lang = st.settings.lang();
     let Some(p) = st.prefs.as_mut() else { return };
     let patterns = p.lfs.status.as_ref().map(|s| s.patterns.as_slice()).unwrap_or_default();
     match lfs::check_pattern(text, patterns) {
-        Err(problem) => p.lfs.pattern_error = Some(problem.message()),
+        Err(problem) => p.lfs.pattern_error = Some(problem.message(lang)),
         Ok(pattern) => {
             p.lfs.new_pattern.clear();
             p.lfs.pattern_error = None;
@@ -193,7 +194,7 @@ fn track_path(st: &mut AppState, t: TrackTarget, fx: &mut Vec<Effect>) {
     }
     let Some(snap) = &st.snap else { return };
     if let Err(p) = lfs::check_target(&t, &snap.lfs_patterns) {
-        return st.log(false, p.message());
+        return st.log(false, p.message(st.settings.lang()));
     }
     start_job(st, JobSpec::new(format!("Track {} in LFS", t.display()), vec![t.args()]), fx);
 }

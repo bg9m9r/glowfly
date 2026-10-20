@@ -63,7 +63,7 @@ fn target_checks() {
     assert_eq!(check_target(&file("a\nb.bin"), &[]), Err(PatternProblem::Control));
     let psd = [pat("*.psd")];
     assert_eq!(check_target(&ext("*.psd"), &psd), Err(PatternProblem::AlreadyTracked("*.psd".into())));
-    assert_eq!(check_target(&ext("*.psd"), &psd).unwrap_err().message(), "*.psd is already tracked.");
+    assert_eq!(check_target(&ext("*.psd"), &psd).unwrap_err().message(Lang::En), "*.psd is already tracked.");
     let hashed = [pat(r"my[[:space:]]dir/a\#b.bin")];
     assert_eq!(check_target(&file("my dir/a#b.bin"), &hashed), Err(PatternProblem::AlreadyTracked("my dir/a#b.bin".into())));
     assert_eq!(check_target(&ext("*.bin"), &psd), Ok(()));

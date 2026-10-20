@@ -10,7 +10,7 @@ use super::widgets::{buttons, reason};
 use crate::msg::{CommitMsg, ConflictMsg, Msg};
 use crate::state::AppState;
 use crate::state::commit::commit_merge_blocked;
-use crate::state::op_actions::action_text;
+use crate::state::op_actions::{action_text, banner_title};
 use crate::state::op_confirm::{Risky, banner_msg};
 use crate::state::rebase_banner::action_msg;
 use eframe::egui::{self, Align, Layout};
@@ -40,10 +40,10 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
         BannerKind::Info
     };
     banner::frame(ui, kind, None, |ui| {
-        match (in_progress, &snap.rebase) {
-            (Some((name, _)), Some(p)) => super::rebase::banner::progress(ui, p, name, !conflicted.is_empty(), msgs),
-            (Some((name, _)), None) => super::am_banner::title(ui, snap, name, !conflicted.is_empty()),
-            _ => {}
+        match (banner_title(t, snap), &snap.rebase) {
+            (Some(title), Some(p)) => super::rebase::banner::progress(ui, t, &title, p, !conflicted.is_empty(), msgs),
+            (Some(title), None) => super::am_banner::title(ui, t, snap, &title, !conflicted.is_empty()),
+            (None, _) => {}
         }
         if let Some(note) = crate::state::auto_stash::banner_note(st) {
             ui.add(egui::Label::new(egui::RichText::new(note).color(super::theme::color::weak())).wrap());
@@ -56,7 +56,7 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
                 }
             });
         }
-        let Some((_, actions)) = in_progress else { return };
+        let Some(actions) = in_progress else { return };
         ui.horizontal(|ui| {
             // The step that loses work alone at the right edge, apart from the others.
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -83,7 +83,7 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
                             reason::beside(ui, why, REASON_W);
                         }
                     }
-                    super::rebase::banner::edit_steps_button(ui, snap.state, msgs);
+                    super::rebase::banner::edit_steps_button(ui, t, snap.state, msgs);
                 });
             });
         });

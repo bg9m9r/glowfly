@@ -13,8 +13,8 @@ fn conflict_steps_name_the_current_key() {
     let mut keys = Keymap::default();
     keys.set(I::NextChange, f8());
     keys.set(I::PrevChange, Vec::new());
-    assert_eq!(super::conflict::step_tip(&keys, true), "Next conflict (F8)");
-    assert_eq!(super::conflict::step_tip(&keys, false), "Previous conflict");
+    assert_eq!(super::conflict::step_tip(&keys, Lang::En, true), "Next conflict (F8)");
+    assert_eq!(super::conflict::step_tip(&keys, Lang::En, false), "Previous conflict");
 }
 
 #[test]

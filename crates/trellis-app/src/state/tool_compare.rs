@@ -3,34 +3,21 @@
 //! disabled and why, planning a request from the settings, and what a merge tool run's end says.
 
 use super::AppState;
-use super::tools::{EDITOR_SETUP, failure_text, unmatched};
+use super::tools::{editor_setup, failure_text, unmatched};
 use crate::tools::{DiffToolRequest, LaunchFailure, MergeEnd, MergeToolRequest, ToolKind};
 use std::path::Path;
 use trellis_core::external_tools;
-use trellis_core::repo::{ConflictContent, DiffTarget};
+use trellis_core::i18n::Lang;
+use trellis_core::repo::{ConflictContent, DiffTarget, Unmergeable};
 use trellis_core::settings::ExternalTools;
 
-/// The file rows' and diff header's entry.
+/// The file history's button (its views aren't translated yet; the rest use the key).
 pub const OPEN_IN_DIFF_TOOL: &str = "Open in external diff tool";
-/// The conflicted rows' entry.
-pub const RESOLVE_IN_MERGE_TOOL: &str = "Resolve in external merge tool";
-/// The conflict view's button.
-pub const MERGE_TOOL_BUTTON: &str = "Open in merge tool";
 pub const NO_DIFF_TOOL: &str = "No external diff tool is set. Choose one in Preferences > External tools.";
 pub const NO_MERGE_TOOL: &str = "No external merge tool is set. Choose one in Preferences > External tools.";
-/// The hover notes of the tool entries while no program is set (they open the page).
-pub const DIFF_TOOL_SETUP: &str = "No external diff tool is set yet: this opens Preferences > External tools to choose one.";
-pub const MERGE_TOOL_SETUP: &str = "No external merge tool is set yet: this opens Preferences > External tools to choose one.";
-/// Why the merge tool can't start while a job runs.
-pub const BUSY: &str = "Another operation is still running";
-const DELETED: &str = "One side deleted the file: keep or delete it with the buttons below";
 /// The palette's details when no tool is set.
 pub const NO_DIFF_TOOL_DETAIL: &str = "no diff tool set";
 pub const NO_MERGE_TOOL_DETAIL: &str = "no merge tool set";
-
-/// Why the conflict view's write actions (Save, Mark resolved, a whole side) are disabled
-/// while the merge tool has the file open.
-pub const IN_MERGE_TOOL: &str = "Open in the merge tool: save and close it there first";
 
 /// The merge tool job's label for `path`.
 pub fn merge_label(path: &str) -> String {
@@ -54,12 +41,12 @@ pub struct ToolSetup {
 }
 
 impl ToolSetup {
-    pub fn of(t: &ExternalTools) -> Self {
+    pub fn of(t: Lang, tools: &ExternalTools) -> Self {
         let unset = |program: &str, note| external_tools::program(program).is_none().then_some(note);
         Self {
-            editor: unset(&t.editor, EDITOR_SETUP),
-            diff: unset(&t.diff_tool, DIFF_TOOL_SETUP),
-            merge: unset(&t.merge_tool, MERGE_TOOL_SETUP),
+            editor: unset(&tools.editor, editor_setup(t)),
+            diff: unset(&tools.diff_tool, t.tr("tools.diff_setup.tip")),
+            merge: unset(&tools.merge_tool, t.tr("tools.merge_setup.tip")),
         }
     }
 }
@@ -67,20 +54,18 @@ impl ToolSetup {
 /// Why the merge tool can't be offered for a conflict whose `content` is known (None when it
 /// isn't loaded): a job running (`busy`), one side deleted the file, or content a tool can't
 /// merge. Binary files are fine. No tool set is not a blocker (`ToolSetup`).
-pub fn merge_blocked(content: Option<&ConflictContent>, busy: bool) -> Option<String> {
+pub fn merge_blocked(t: Lang, content: Option<&ConflictContent>, busy: bool) -> Option<String> {
     if busy {
-        return Some(BUSY.to_owned());
+        return Some(t.tr("tools.busy").to_owned());
     }
-    match content {
-        Some(ConflictContent::DeletedBy(_)) => Some(DELETED.to_owned()),
-        Some(ConflictContent::Unsupported(reason)) => Some(format!("{} can't be merged in a tool", capitalized(reason))),
-        _ => None,
-    }
-}
-
-fn capitalized(s: &str) -> String {
-    let mut c = s.chars();
-    c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default()
+    let why = match content {
+        Some(ConflictContent::DeletedBy(_)) => t.tr("tools.deleted"),
+        Some(ConflictContent::Unsupported(Unmergeable::SymbolicLink)) => t.tr("tools.unsupported.symlink"),
+        Some(ConflictContent::Unsupported(Unmergeable::Submodule)) => t.tr("tools.unsupported.submodule"),
+        Some(ConflictContent::Unsupported(Unmergeable::NotUtf8)) => t.tr("tools.unsupported.not_utf8"),
+        _ => return None,
+    };
+    Some(why.to_owned())
 }
 
 /// Opening `target` of the repository `repo` in the diff tool; the failure text when no tool
@@ -133,7 +118,8 @@ pub struct ToolAvail {
 
 impl ToolAvail {
     pub fn of(st: &AppState) -> Self {
-        Self { setup: ToolSetup::of(&st.settings.external_tools), merge: merge_blocked(None, st.job.is_some()) }
+        let t = st.settings.lang();
+        Self { setup: ToolSetup::of(t, &st.settings.external_tools), merge: merge_blocked(t, None, st.job.is_some()) }
     }
 }
 
@@ -148,24 +134,37 @@ mod tests {
 
     #[test]
     fn entries_say_why_they_are_disabled() {
-        assert_eq!(merge_blocked(None, false), None, "no merge tool set is not a blocker");
-        assert_eq!(merge_blocked(None, true).as_deref(), Some(BUSY));
-        assert_eq!(merge_blocked(Some(&ConflictContent::DeletedBy(Side::Theirs)), false).as_deref(), Some(DELETED));
-        let sub = ConflictContent::Unsupported("a submodule".into());
-        assert_eq!(merge_blocked(Some(&sub), false).as_deref(), Some("A submodule can't be merged in a tool"));
-        assert_eq!(merge_blocked(Some(&ConflictContent::Binary), false), None, "binary files are fine");
-        assert_eq!(merge_blocked(Some(&ConflictContent::Text(Vec::new())), false), None);
+        let en = Lang::En;
+        assert_eq!(merge_blocked(en, None, false), None, "no merge tool set is not a blocker");
+        assert_eq!(merge_blocked(en, None, true).as_deref(), Some("Another operation is still running"));
+        let deleted = merge_blocked(en, Some(&ConflictContent::DeletedBy(Side::Theirs)), false);
+        assert_eq!(deleted.as_deref(), Some("One side deleted the file: keep or delete it with the buttons below"));
+        let sub = ConflictContent::Unsupported(Unmergeable::Submodule);
+        assert_eq!(merge_blocked(en, Some(&sub), false).as_deref(), Some("A submodule can't be merged in a tool"));
+        let link = ConflictContent::Unsupported(Unmergeable::SymbolicLink);
+        assert_eq!(merge_blocked(en, Some(&link), false).as_deref(), Some("A symbolic link can't be merged in a tool"));
+        let bytes = ConflictContent::Unsupported(Unmergeable::NotUtf8);
+        assert_eq!(merge_blocked(en, Some(&bytes), false).as_deref(), Some("Not UTF-8 text can't be merged in a tool"));
+        assert_ne!(merge_blocked(Lang::De, Some(&sub), false), merge_blocked(en, Some(&sub), false));
+        assert_eq!(merge_blocked(en, Some(&ConflictContent::Binary), false), None, "binary files are fine");
+        assert_eq!(merge_blocked(en, Some(&ConflictContent::Text(Vec::new())), false), None);
     }
 
     #[test]
     fn tool_setup_names_what_is_unset() {
-        let unset = ToolSetup { editor: Some(EDITOR_SETUP), diff: Some(DIFF_TOOL_SETUP), merge: Some(MERGE_TOOL_SETUP) };
-        assert_eq!(ToolSetup::of(&tools("", "")), unset);
+        let en = Lang::En;
+        let unset = ToolSetup {
+            editor: Some("No external editor is set yet: this opens Preferences > External tools to choose one."),
+            diff: Some("No external diff tool is set yet: this opens Preferences > External tools to choose one."),
+            merge: Some("No external merge tool is set yet: this opens Preferences > External tools to choose one."),
+        };
+        assert_eq!(ToolSetup::of(en, &tools("", "")), unset);
         let quoted = ExternalTools { editor: " \"\" ".into(), ..tools(" \"\" ", " \"\" ") };
-        assert_eq!(ToolSetup::of(&quoted), unset, "an empty quoted program counts as unset");
+        assert_eq!(ToolSetup::of(en, &quoted), unset, "an empty quoted program counts as unset");
         let set = ExternalTools { editor: "code".into(), ..tools("meld", "kdiff3") };
-        assert_eq!(ToolSetup::of(&set), ToolSetup::default());
-        assert_eq!(ToolSetup::of(&tools("meld", "")).merge, Some(MERGE_TOOL_SETUP));
+        assert_eq!(ToolSetup::of(en, &set), ToolSetup::default());
+        assert_eq!(ToolSetup::of(en, &tools("meld", "")).merge, unset.merge);
+        assert_ne!(ToolSetup::of(Lang::De, &tools("", "")).diff, unset.diff);
     }
 
     #[test]

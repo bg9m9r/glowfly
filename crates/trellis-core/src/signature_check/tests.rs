@@ -18,8 +18,8 @@ fn good_gpg_signature() {
     assert_eq!(c.fingerprint, FPR);
     assert_eq!(c.trust.as_deref(), Some("ultimate"));
     assert!(c.note.is_empty(), "no note for a good signature");
-    assert_eq!(c.reason(), "Good signature from a key you trust.");
-    let d = c.details();
+    assert_eq!(c.reason(Lang::En), "Good signature from a key you trust.");
+    let d = c.details(Lang::En);
     assert_eq!(d.iter().map(|(k, _)| *k).collect::<Vec<_>>(), ["Signer", "Key", "Fingerprint", "Trust"]);
 }
 
@@ -39,11 +39,11 @@ fn every_letter_maps_to_a_status_and_verdict() {
         let c = gpg(&format!("{letter}\0Ada\0ABCDEF0123456789\0{FPR}\0marginal\0gpg: something\n"));
         assert_eq!((c.status, c.verdict()), (status, verdict), "{letter}");
     }
-    assert_eq!(gpg("X\0\0\0\0\0\n").reason(), "The signature has expired.");
-    assert_eq!(gpg("Y\0\0\0\0\0\n").reason(), "The key that made the signature has expired.");
-    assert_eq!(gpg("R\0\0\0\0\0\n").reason(), "The key that made the signature has been revoked.");
-    assert!(gpg("B\0\0\0\0never\0Could not verify\n").reason().starts_with("The signature doesn't match this commit"));
-    assert_eq!(Verdict::Bad.label(), "Bad signature");
+    assert_eq!(gpg("X\0\0\0\0\0\n").reason(Lang::En), "The signature has expired.");
+    assert_eq!(gpg("Y\0\0\0\0\0\n").reason(Lang::En), "The key that made the signature has expired.");
+    assert_eq!(gpg("R\0\0\0\0\0\n").reason(Lang::En), "The key that made the signature has been revoked.");
+    assert!(gpg("B\0\0\0\0never\0Could not verify\n").reason(Lang::En).starts_with("The signature doesn't match this commit"));
+    assert_eq!(Verdict::Bad.label(Lang::En), "Bad signature");
 }
 
 #[test]
@@ -52,9 +52,9 @@ fn missing_public_key() {
     let c = gpg(out);
     assert_eq!(c.status, SigStatus::CannotCheck);
     assert_eq!(c.note, "gpg: Can't check signature: No public key");
-    assert_eq!(c.reason(), "The signer's public key isn't in your keyring, so the signature can't be checked.");
+    assert_eq!(c.reason(Lang::En), "The signer's public key isn't in your keyring, so the signature can't be checked.");
     let ssh = parse_check(SigningFormat::Ssh, "E\0\0\0\0\0ssh-keygen: broken\n", "").unwrap();
-    assert_eq!(ssh.reason(), "Git couldn't check the signature: ssh-keygen: broken");
+    assert_eq!(ssh.reason(Lang::En), "Git couldn't check the signature: ssh-keygen: broken");
 }
 
 #[test]
@@ -64,9 +64,9 @@ fn no_allowed_signers_file() {
     let c = parse_check(SigningFormat::Ssh, out, stderr).unwrap();
     assert_eq!(c.status, SigStatus::NoAllowedSigners);
     assert_eq!(c.verdict(), Verdict::Signed);
-    assert!(c.reason().contains("Preferences > Commit signing"), "{}", c.reason());
-    assert!(c.reason().contains("gpg.ssh.allowedSignersFile"));
-    assert!(c.details().is_empty());
+    assert!(c.reason(Lang::En).contains("Preferences > Commit signing"), "{}", c.reason(Lang::En));
+    assert!(c.reason(Lang::En).contains("gpg.ssh.allowedSignersFile"));
+    assert!(c.details(Lang::En).is_empty());
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn signing_program_missing() {
     let c = parse_check(SigningFormat::OpenPgp, "N\0\0\0\0undefined\0\n", "error: cannot run gpg: No such file or directory\n").unwrap();
     assert_eq!(c.status, SigStatus::NotChecked);
     assert_eq!(c.note, "cannot run gpg: No such file or directory");
-    assert_eq!(c.reason(), "Git couldn't check the signature: cannot run gpg: No such file or directory");
+    assert_eq!(c.reason(Lang::En), "Git couldn't check the signature: cannot run gpg: No such file or directory");
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn odd_output() {
     assert!(parse_check(SigningFormat::OpenPgp, "\n", "").is_err());
     let c = gpg("Q\0\0\0\0\0\n");
     assert_eq!(c.status, SigStatus::NotChecked, "an unknown letter");
-    assert_eq!(c.reason(), "Git couldn't check the signature.");
+    assert_eq!(c.reason(Lang::En), "Git couldn't check the signature.");
     assert_eq!(gpg("U\0Ada\0K\0K\0undefined\0x\n").trust, None);
     assert_eq!(gpg("U\0Ada\0K\0K\0\0x\n").trust, None);
     // Control and bidi characters in the signer are dropped.
@@ -99,13 +99,13 @@ fn untrusted_reasons_differ_by_format() {
     let out = "U\0\0SHA256:abc\0SHA256:abc\0undefined\0Good \"git\" signature\nNo principal matched.\n";
     let ssh = parse_check(SigningFormat::Ssh, out, "").unwrap();
     let pgp = parse_check(SigningFormat::OpenPgp, out, "").unwrap();
-    assert!(ssh.reason().contains("allowed signers file"), "{}", ssh.reason());
-    assert!(pgp.reason().contains("trusted in GPG"), "{}", pgp.reason());
+    assert!(ssh.reason(Lang::En).contains("allowed signers file"), "{}", ssh.reason(Lang::En));
+    assert!(pgp.reason(Lang::En).contains("trusted in GPG"), "{}", pgp.reason(Lang::En));
     // For SSH the fingerprint is the key: shown once. The empty signer is left out.
-    assert_eq!(ssh.details(), vec![("Key", "SHA256:abc".to_owned())]);
+    assert_eq!(ssh.details(Lang::En), vec![("Key", "SHA256:abc".to_owned())]);
     let ssh_good = parse_check(SigningFormat::Ssh, "G\0ada@example.com\0SHA256:abc\0SHA256:abc\0fully\0ok\n", "").unwrap();
-    assert!(ssh_good.reason().contains("allowed signers file lists"));
-    assert!(ssh_good.details().iter().all(|(k, _)| *k != "Trust"), "trust is shown for OpenPGP only");
+    assert!(ssh_good.reason(Lang::En).contains("allowed signers file lists"));
+    assert!(ssh_good.details(Lang::En).iter().all(|(k, _)| *k != "Trust"), "trust is shown for OpenPGP only");
 }
 
 #[test]
@@ -188,4 +188,17 @@ fn ssh_signatures_checked_by_git() {
     for f in ["key", "key.pub", "gitconfig", "allowed", "other-key", "other-key.pub"] {
         let _ = std::fs::remove_file(dir.with_file_name(format!("{name}-{f}")));
     }
+}
+
+#[test]
+fn reasons_and_detail_labels_follow_the_language() {
+    let out = format!("B\0Ada <ada@example.com>\0ABCDEF0123456789\0{FPR}\0never\0Could not verify\n");
+    let c = gpg(&out);
+    assert_ne!(c.reason(Lang::De), c.reason(Lang::En));
+    let labels = |t| c.details(t).into_iter().map(|(k, _)| k).collect::<Vec<_>>();
+    assert_eq!(labels(Lang::En), ["Signer", "Key", "Fingerprint", "Trust"]);
+    assert_eq!(labels(Lang::De), ["Signierer", "Schlüssel", "Fingerabdruck", "Vertrauen"]);
+    assert_eq!(Verdict::Verified.label(Lang::De), "Verifiziert");
+    let broken = parse_check(SigningFormat::Ssh, "E\0\0\0\0\0ssh-keygen: broken\n", "").unwrap();
+    assert!(broken.reason(Lang::De).ends_with("ssh-keygen: broken"), "{}", broken.reason(Lang::De));
 }

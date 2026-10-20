@@ -74,8 +74,17 @@ pub enum ConflictContent {
     Binary,
     /// One side deleted the file; the other changed it.
     DeletedBy(Side),
-    /// Content that can't be merged line by line (the reason, e.g. "a submodule").
-    Unsupported(String),
+    /// Content that can't be merged line by line, and why.
+    Unsupported(Unmergeable),
+}
+
+/// Why a conflicted file can't be merged line by line.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unmergeable {
+    SymbolicLink,
+    Submodule,
+    /// A side (or the merged text) isn't UTF-8.
+    NotUtf8,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -139,8 +148,8 @@ fn merged(repo: &Repository, ancestor: Option<&IndexEntry>, ours: &IndexEntry, t
     let present: Vec<&IndexEntry> = ancestor.into_iter().chain([ours, theirs]).collect();
     for e in &present {
         match e.mode & 0o170000 {
-            0o120000 => return Ok(ConflictContent::Unsupported("a symbolic link".into())),
-            0o160000 => return Ok(ConflictContent::Unsupported("a submodule".into())),
+            0o120000 => return Ok(ConflictContent::Unsupported(Unmergeable::SymbolicLink)),
+            0o160000 => return Ok(ConflictContent::Unsupported(Unmergeable::Submodule)),
             _ => {}
         }
     }
@@ -152,7 +161,7 @@ fn merged(repo: &Repository, ancestor: Option<&IndexEntry>, ours: &IndexEntry, t
         }
         match std::str::from_utf8(blob.content()) {
             Ok(t) => texts.push(t.to_owned()),
-            Err(_) => return Ok(ConflictContent::Unsupported("not UTF-8 text".into())),
+            Err(_) => return Ok(ConflictContent::Unsupported(Unmergeable::NotUtf8)),
         }
     }
     let n = marker_size(texts.iter().map(String::as_str));
@@ -182,7 +191,7 @@ fn merged(repo: &Repository, ancestor: Option<&IndexEntry>, ours: &IndexEntry, t
     };
     let result = repo.merge_file_from_index(ancestor, ours, theirs, Some(&mut opts))?;
     let Ok(text) = std::str::from_utf8(result.content()) else {
-        return Ok(ConflictContent::Unsupported("not UTF-8 text".into()));
+        return Ok(ConflictContent::Unsupported(Unmergeable::NotUtf8));
     };
     let mut segs = parse_merged(text, n)?;
     // libgit2 ends a side that lacks a final newline with one before the next marker.

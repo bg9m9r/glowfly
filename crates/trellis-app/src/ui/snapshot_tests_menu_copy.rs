@@ -83,7 +83,7 @@ fn multi_commit_menu_copy_patch_merge() {
     h.run_steps(4);
     click(&mut h, at, PointerButton::Secondary);
     open_submenu(&mut h, "Copy");
-    assert!(submenu_item(&h, "Copy", "Patch").is_disabled(), "{why}");
+    assert!(submenu_item(&h, "Copy", "Patch").is_disabled(), "{why:?}");
     assert!(!submenu_item(&h, "Copy", "SHAs").is_disabled());
     drop(h);
     remove_fixture(&dir);

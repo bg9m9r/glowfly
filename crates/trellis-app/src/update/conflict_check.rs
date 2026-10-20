@@ -4,7 +4,7 @@
 
 use crate::conflict_check::{CheckJob, CheckRequest, ConflictCheckMsg};
 use crate::effect::Effect;
-use crate::state::conflict_check::{ConflictReport, NO_TARGET, current_request, headline};
+use crate::state::conflict_check::{ConflictReport, current_request, headline};
 use crate::state::{AppState, Modal};
 use std::time::Instant;
 use trellis_core::conflict_check::{MergeTarget, TargetKind};
@@ -39,7 +39,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictCheckMsg, now: Instant, fx:
         ConflictCheckMsg::CheckBranch(name) => check_branch(st, &name, fx),
         ConflictCheckMsg::Checked { request, manual: false, generation, result } => {
             let report = ConflictReport { request, result };
-            let line = headline(&report);
+            let line = headline(st.settings.lang(), &report);
             let done = st.conflict_checks.finish(generation, report);
             if done.accepted && done.new_error.is_some() {
                 st.log_quiet(false, line);
@@ -55,7 +55,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictCheckMsg, now: Instant, fx:
                 st.conflict_checks.store_manual(report.clone());
             }
             let ok = report.result.is_ok();
-            let line = headline(&report);
+            let line = headline(st.settings.lang(), &report);
             st.log(ok, line.clone());
             if st.modal.is_none() {
                 st.modal = Some(Modal::ConflictReport(report));
@@ -69,10 +69,11 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictCheckMsg, now: Instant, fx:
 
 /// Why the checked-out branch can't be checked (CheckNow without a request).
 fn no_request_reason(st: &AppState) -> &'static str {
+    let t = st.settings.lang();
     match &st.snap {
-        Some(s) if s.head_branch.is_none() || s.head_oid.is_none() => "Check out a branch with commits to check it for conflicts.",
-        Some(s) if s.state != git2::RepositoryState::Clean => "Finish or abort the merge, rebase or cherry-pick in progress first.",
-        _ => NO_TARGET,
+        Some(s) if s.head_branch.is_none() || s.head_oid.is_none() => t.tr("conflict_check.no_branch"),
+        Some(s) if s.state != git2::RepositoryState::Clean => t.tr("conflict_check.in_progress"),
+        _ => t.tr("conflict_check.no_target"),
     }
 }
 

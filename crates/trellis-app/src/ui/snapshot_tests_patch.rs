@@ -153,7 +153,7 @@ fn patch_save_changes_pick() {
 }
 
 /// The fixture with a series stopped at patch 2 of 3 ("Validate the login form").
-fn applying(theme: ThemeChoice, name: &str, conflicted: bool) -> (AppState, PathBuf) {
+pub(super) fn applying(theme: ThemeChoice, name: &str, conflicted: bool) -> (AppState, PathBuf) {
     let unstaged: &[(&str, char)] = if conflicted { &[("src/login.rs", '!')] } else { &[] };
     let (mut st, dir) = with_files(theme, name, unstaged, &[]);
     let snap = st.snap.as_mut().unwrap();
@@ -184,7 +184,7 @@ fn am_banner_stopped() {
     let (st, dir) = applying(ThemeChoice::Light, "am-banner-stopped", false);
     let mut h = harness(st, false);
     h.run();
-    assert!(h.query_by_label(crate::state::am_banner::HINT_BY_HAND).is_some());
+    assert!(h.query_by_label(trellis_core::i18n::Lang::En.tr("details.banner.am.hint.by_hand")).is_some());
     assert!(!h.get_by_label("Continue").is_disabled());
     h.check_snapshot("am_banner_stopped");
     h.get_by_label("Skip patch").click();
@@ -240,12 +240,13 @@ fn wip_menus_open_the_create_patch_dialog() {
 #[test]
 fn commit_row_patch_item() {
     let oid = git2::Oid::from_bytes(&[0x1a; 20]).unwrap();
-    for blocked in [None, Some(crate::state::patch::PATCH_BLOCKED_MERGE)] {
+    for blocked in [None, Some(crate::state::selection::CommitBlock::PatchMerge.text(trellis_core::i18n::Lang::En))] {
         let f = FileEntry::new("src/app.txt", 'M');
         let mut h = egui_kittest::Harness::builder().with_size(eframe::egui::vec2(300.0, 260.0)).build_ui_state(
             move |ui, msgs: &mut Vec<Msg>| {
                 super::file_menu::commit_file_items(
                     ui,
+                    trellis_core::i18n::Lang::En,
                     msgs,
                     super::file_menu::RowSource::Commit(oid),
                     &f,

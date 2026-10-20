@@ -12,6 +12,7 @@ use crate::state::rebase::RebasePanel;
 use crate::state::rebase_onto::onto_commit_blocker;
 use git2::{Oid, RepositoryState};
 use std::path::Path;
+use trellis_core::i18n::Lang;
 use trellis_core::rebase::{self, RebaseAction, RebaseBase, ResetTo, TodoStep};
 
 fn panel(st: &AppState) -> &RebasePanel {
@@ -130,13 +131,13 @@ fn onto_commit_blockers() {
     git(&dir, &["checkout", "-q", "main"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let snap = st.snap.as_mut().unwrap();
-    assert_eq!(onto_commit_blocker(snap, c[2]), Some(format!("main already contains {}.", short(c[2]))), "HEAD");
-    assert_eq!(onto_commit_blocker(snap, c[0]), Some(rebase::contains_commit("main", c[0])), "an ancestor");
-    assert_eq!(onto_commit_blocker(snap, other), None, "a commit on another branch");
+    assert_eq!(onto_commit_blocker(Lang::En, snap, c[2]), Some(format!("main already contains {}.", short(c[2]))), "HEAD");
+    assert_eq!(onto_commit_blocker(Lang::En, snap, c[0]), Some(rebase::contains_commit("main", c[0])), "an ancestor");
+    assert_eq!(onto_commit_blocker(Lang::En, snap, other), None, "a commit on another branch");
     snap.state = RepositoryState::Merge;
-    assert_eq!(onto_commit_blocker(snap, other), rebase::in_progress_text(RepositoryState::Merge));
+    assert_eq!(onto_commit_blocker(Lang::En, snap, other), rebase::in_progress_text(RepositoryState::Merge));
     snap.state = RepositoryState::Clean;
     snap.head_branch = None;
-    assert_eq!(onto_commit_blocker(snap, other).as_deref(), Some(rebase::DETACHED));
+    assert_eq!(onto_commit_blocker(Lang::En, snap, other).as_deref(), Some(rebase::DETACHED));
     let _ = std::fs::remove_dir_all(&dir);
 }

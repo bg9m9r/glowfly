@@ -1,6 +1,8 @@
 //! A row of a file list (status, a commit's or a comparison's files), and why Trellis may
 //! refuse to act on it.
 
+use crate::i18n::Lang;
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct FileEntry {
     /// The repository-relative path, '/'-separated. Names no file when `hazard` is `NotUtf8`.
@@ -35,21 +37,40 @@ pub enum Hazard {
 
 impl Hazard {
     /// Why actions on the row are off, for its tooltip and refusals.
-    pub fn reason(&self) -> String {
+    pub fn reason(&self, t: Lang) -> String {
         match self {
-            Self::NotUtf8(_) => "This file's name isn't UTF-8, so Trellis can't act on it safely; use git on the command line.".into(),
-            Self::Twins(others) => format!(
-                "This file system can't tell this path from {}: they are one file on disk. Rename one of them in git first.",
-                others.join(", ")
-            ),
+            Self::NotUtf8(_) => t.tr("files.hazard.not_utf8.reason").to_owned(),
+            Self::Twins(others) => t.trf("files.hazard.twins.reason", &[("paths", &others.join(", "))]),
         }
     }
 
     /// A few words shown after the path.
-    pub fn label(&self) -> &'static str {
+    pub fn label(&self, t: Lang) -> &'static str {
         match self {
-            Self::NotUtf8(_) => "name isn't UTF-8",
-            Self::Twins(_) => "same file as another path",
+            Self::NotUtf8(_) => t.tr("files.hazard.not_utf8.label"),
+            Self::Twins(_) => t.tr("files.hazard.twins.label"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hazard_texts_follow_the_language() {
+        let bytes = Hazard::NotUtf8(b"n\xffme".to_vec());
+        let twins = Hazard::Twins(vec!["A.txt".into(), "a.TXT".into()]);
+        assert_eq!(bytes.reason(Lang::En), "This file's name isn't UTF-8, so Trellis can't act on it safely; use git on the command line.");
+        assert_eq!(
+            twins.reason(Lang::En),
+            "This file system can't tell this path from A.txt, a.TXT: they are one file on disk. Rename one of them in git first."
+        );
+        assert_eq!((bytes.label(Lang::En), twins.label(Lang::En)), ("name isn't UTF-8", "same file as another path"));
+        let de = twins.reason(Lang::De);
+        assert!(de.contains("A.txt, a.TXT") && de != twins.reason(Lang::En), "{de}");
+        assert_ne!(bytes.reason(Lang::De), bytes.reason(Lang::En));
+        assert_ne!(bytes.label(Lang::De), bytes.label(Lang::En));
+        assert_ne!(twins.label(Lang::De), twins.label(Lang::En));
     }
 }

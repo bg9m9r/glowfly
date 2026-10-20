@@ -9,15 +9,12 @@
 //!   button, or on its own row above the buttons when the row has less than `IN_ROW_MIN` free;
 //! - `menu_button` (in `menu_reason.rs`, re-exported here): a menu item with its label greyed
 //!   and a painted info mark when it is disabled, the reason in the shared tooltip on hover or
-//!   keyboard focus, or `SET_UP` after the label of an entry that opens the setting it needs.
+//!   keyboard focus, or "Set up…" after the label of an entry that opens the setting it needs.
 
 use super::super::theme::{color, type_scale};
 use super::truncate::truncate_label;
 use eframe::egui::{Align, Direction, Layout, Response, RichText, Sense, TextStyle, TextWrapMode, Ui, UiBuilder, WidgetText, vec2};
 
-/// The setup suffix, for callers that name it next to `menu_button`.
-#[allow(unused_imports, reason = "part of this module's menu item API; only tests name it so far")]
-pub use super::menu_reason::SET_UP;
 pub use super::menu_reason::{ItemState, menu_button};
 
 /// The reason line's text size, and the height a `line` always takes.
@@ -87,6 +84,7 @@ mod tests {
     use super::*;
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
+    use trellis_core::i18n::Lang;
 
     #[test]
     fn rows_fit_their_reason_by_room_only() {
@@ -94,10 +92,9 @@ mod tests {
     }
 
     #[test]
-    fn menu_items_and_their_setup_suffix_are_reachable_from_here() {
-        assert_eq!(SET_UP, super::super::menu_reason::SET_UP);
+    fn menu_items_and_their_setup_state_are_reachable_from_here() {
         let mut h = Harness::new_ui(|ui| {
-            menu_button(ui, "Open", "", ItemState::Setup("Opens the page"));
+            menu_button(ui, "Open", "", ItemState::setup(Lang::En, "Opens the page"));
         });
         h.run();
         assert!(!h.get_by_label("Open").is_disabled());

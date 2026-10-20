@@ -132,7 +132,7 @@ fn current_items(ui: &mut egui::Ui, c: &RemoteMenu, (remote, name): (&str, &str)
     menu_item(msgs, ui, t.trf("branch.menu.merge_into", &args), Msg::git("Merge", &["merge", &full]));
     menu_item(msgs, ui, t.trf("branch.menu.rebase_onto", &args), Msg::git("Rebase", &["rebase", &full]));
     let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));
-    let blocked = onto_commit_blocker(snap, oid);
+    let blocked = onto_commit_blocker(t, snap, oid);
     menu_item_if(msgs, ui, t.trf("branch.menu.interactive_onto", &args), blocked.as_deref(), onto);
     let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(full.clone()));
     menu_item(msgs, ui, t.trf("branch.menu.check_conflicts_with", &args), check);

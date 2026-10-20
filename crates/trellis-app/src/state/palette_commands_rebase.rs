@@ -73,7 +73,7 @@ pub(super) fn entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
             let c = cmd(RebaseCommand::Edit(QuickEdit::Drop(vec![oid])));
             out.push(entry(c, format!("Drop commit {sha}…"), "rebase history remove delete discard"));
         }
-        if let (Some(current), None) = (&snap.head_branch, super::super::rebase_onto::onto_commit_blocker(snap, oid)) {
+        if let (Some(current), None) = (&snap.head_branch, super::super::rebase_onto::onto_commit_blocker(st.settings.lang(), snap, oid)) {
             let (plain, interactive) = super::super::rebase_onto::onto_labels(current, oid);
             out.push(entry(cmd(RebaseCommand::Onto { oid, interactive: false }), plain, "rebase onto base move commit"));
             let c = cmd(RebaseCommand::Onto { oid, interactive: true });

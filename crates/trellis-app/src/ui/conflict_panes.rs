@@ -16,10 +16,13 @@ use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Align2, Color32, Direction, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use trellis_core::conflict_folds::clean_fold;
 use trellis_core::conflict_rows::{PaneRow, pane_rows, scroll_target};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{Chunk, ConflictFile, Segment, Side};
 
-/// The disabled tooltip of a chunk's checkboxes once its text was typed in the output.
-const EDITED_TIP: &str = "Edited in the output: Discard edit brings the picks back";
+/// The width of a chunk header's Take checkbox and of its Discard edit button, for their
+/// English text; a longer translation widens them by the difference.
+const TAKE_W: f32 = 64.0;
+const DISCARD_W: f32 = 90.0;
 
 /// How many visual lines pane row `row` takes: a chunk row the taller of its two sides; headers
 /// and folds one.
@@ -37,8 +40,10 @@ fn row_lines(row: &PaneRow, segs: &[Segment], chunks: &[&Chunk], wrap: Option<Wr
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn panes(
     ui: &mut Ui,
+    t: Lang,
     view: &ConflictView,
     file: &ConflictFile,
     segs: &[Segment],
@@ -52,19 +57,21 @@ pub(super) fn panes(
     // Column headers: the side, its name and Take all.
     let (strip, _) = ui.allocate_exact_size(vec2(ui.available_width(), 26.0), Sense::hover());
     ui.painter().rect_filled(strip, 0.0, color::raised());
-    for (side, title, name, r) in [
-        (Side::Ours, "Ours", &file.labels.ours, Rect::from_min_max(strip.min, pos2(strip.left() + half_view, strip.bottom()))),
-        (Side::Theirs, "Theirs", &file.labels.theirs, Rect::from_min_max(pos2(strip.left() + half_view, strip.top()), strip.max)),
+    let ours = Rect::from_min_max(strip.min, pos2(strip.left() + half_view, strip.bottom()));
+    let theirs = Rect::from_min_max(pos2(strip.left() + half_view, strip.top()), strip.max);
+    for (side, title, take_tip, name, r) in [
+        (Side::Ours, t.tr("conflict.panes.ours"), t.tr("conflict.panes.take_all.ours.tip"), &file.labels.ours, ours),
+        (Side::Theirs, t.tr("conflict.panes.theirs"), t.tr("conflict.panes.take_all.theirs.tip"), &file.labels.theirs, theirs),
     ] {
         let builder = UiBuilder::new().max_rect(r.shrink2(vec2(8.0, 2.0))).layout(Layout::left_to_right(Align::Center));
         ui.allocate_new_ui(builder, |ui| {
             ui.label(type_scale::section_text(ui, title));
             ui.label(RichText::new(name).color(color::weak()));
             if file.no_ancestor {
-                ui.label(RichText::new("no common ancestor").size(type_scale::SMALL).color(color::faint()));
+                ui.label(RichText::new(t.tr("conflict.panes.no_base")).size(type_scale::SMALL).color(color::faint()));
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if ui.small_button("Take all").on_hover_text(format!("Take {} for every conflict", title.to_lowercase())).clicked() {
+                if ui.small_button(t.tr("conflict.panes.take_all.button")).on_hover_text(take_tip).clicked() {
                     msgs.push(Msg::Conflict(ConflictMsg::ConflictTakeAll(side)));
                 }
             });
@@ -96,16 +103,16 @@ pub(super) fn panes(
                 cell(ui, right, CHECK_W, Some(theirs_no), &text, ink, wrap);
                 // The first line of an opened fold folds it back.
                 if let Some(f) = clean_fold(segs, seg).filter(|f| f.start == line && view.opened.contains(&seg)) {
-                    fold_back(ui, left, f, msgs);
+                    fold_back(ui, t, left, f, msgs);
                 }
             }
             PaneRow::Fold(f) => {
-                fold_row(ui, rect, f, msgs);
+                fold_row(ui, t, rect, f, msgs);
                 return;
             }
             PaneRow::Header(k) => {
                 for (side, r) in [(Side::Ours, left), (Side::Theirs, right)] {
-                    chunk_header(ui, r, view, k, side, msgs);
+                    chunk_header(ui, t, r, view, k, side, msgs);
                 }
                 if resp.clicked() {
                     msgs.push(Msg::Conflict(ConflictMsg::ConflictSelect(k)));
@@ -122,11 +129,11 @@ pub(super) fn panes(
                             let left_out = !pick.is_open() && !pick.is_edited() && !pick.takes_line(c, side, row);
                             let bg = if left_out { tint(side).gamma_multiply(0.5) } else { tint(side) };
                             cell(ui, r, CHECK_W, Some(n), &display(&lines[row]), (bg, color::text()), wrap);
-                            line_check(ui, r, view, c, (chunk, side, row), msgs);
+                            line_check(ui, t, r, view, c, (chunk, side, row), msgs);
                         }
                         None if lines.is_empty() && row == 0 => {
                             let bg = tint(side).gamma_multiply(0.5);
-                            cell(ui, r, CHECK_W, None, "(no lines on this side)", (bg, color::faint()), None)
+                            cell(ui, r, CHECK_W, None, t.tr("conflict.panes.no_lines"), (bg, color::faint()), None)
                         }
                         None => cell(ui, r, CHECK_W, None, "", (color::panel(), color::text()), None),
                     }
@@ -143,7 +150,7 @@ pub(super) fn panes(
 /// The checkbox at the left of a chunk line's cell `r`, on its first visual line: takes or
 /// leaves out line `line` of `side` in chunk `k`. Off once the chunk's text was typed in the
 /// output.
-fn line_check(ui: &mut Ui, r: Rect, view: &ConflictView, c: &Chunk, (k, side, line): (usize, Side, usize), msgs: &mut Vec<Msg>) {
+fn line_check(ui: &mut Ui, t: Lang, r: Rect, view: &ConflictView, c: &Chunk, (k, side, line): (usize, Side, usize), msgs: &mut Vec<Msg>) {
     let pick = &view.picks[k];
     let mut taken = pick.takes_line(c, side, line);
     let rect = Rect::from_min_max(pos2(r.left() + 2.0, r.top()), pos2(r.left() + CHECK_W, r.top() + ROW_H));
@@ -153,8 +160,9 @@ fn line_check(ui: &mut Ui, r: Rect, view: &ConflictView, c: &Chunk, (k, side, li
     }
     // A child that doesn't move the rows' cursor; added after the row, so it gets the click.
     let mut child = ui.new_child(builder);
-    let tip = if taken { "Leave this line out" } else { "Take this line" };
-    let resp = child.add(controls::Check::without_text(&mut taken)).on_hover_text(tip).on_disabled_hover_text(EDITED_TIP);
+    let tip = if taken { t.tr("conflict.panes.leave_line.tip") } else { t.tr("conflict.panes.take_line.tip") };
+    let check = child.add(controls::Check::without_text(&mut taken));
+    let resp = check.on_hover_text(tip).on_disabled_hover_text(t.tr("conflict.panes.edited.tip"));
     if resp.changed() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictToggleLine { chunk: k, side, line }));
     }
@@ -164,10 +172,11 @@ fn line_check(ui: &mut Ui, r: Rect, view: &ConflictView, c: &Chunk, (k, side, li
 /// automatically or its text typed in the output) and a Take checkbox for that side (ticked
 /// when every line of it is taken, mixed when some are). A chunk edited in the output has
 /// Discard edit in the theirs column instead.
-fn chunk_header(ui: &mut Ui, r: Rect, view: &ConflictView, k: usize, side: Side, msgs: &mut Vec<Msg>) {
+fn chunk_header(ui: &mut Ui, t: Lang, r: Rect, view: &ConflictView, k: usize, side: Side, msgs: &mut Vec<Msg>) {
     let p = ui.painter().with_clip_rect(r.intersect(ui.clip_rect()));
     p.rect_filled(r, 0.0, color::hunk_bg());
-    let title = p.text(pos2(r.left() + 12.0, r.center().y), Align2::LEFT_CENTER, format!("Conflict {}", k + 1), mono(), color::hunk_fg());
+    let name = t.trf("conflict.panes.chunk.title", &[("number", &(k + 1))]);
+    let title = p.text(pos2(r.left() + 12.0, r.center().y), Align2::LEFT_CENTER, name, mono(), color::hunk_fg());
     if k == view.current {
         current_bar(ui, r);
     }
@@ -175,10 +184,19 @@ fn chunk_header(ui: &mut Ui, r: Rect, view: &ConflictView, k: usize, side: Side,
     let edited = pick.is_edited();
     // Kept in view when the panes scroll sideways.
     let x = r.right().min(ui.clip_rect().right()) - 8.0;
-    let check = Rect::from_min_max(pos2(x - if edited { 90.0 } else { 64.0 }, r.top()), pos2(x, r.bottom()));
+    let (label, english) = if edited {
+        (t.tr("conflict.panes.discard_edit.button"), Lang::En.tr("conflict.panes.discard_edit.button"))
+    } else {
+        (t.tr("conflict.panes.take.check"), Lang::En.tr("conflict.panes.take.check"))
+    };
+    let text_w =
+        |s: &str| ui.fonts(|f| f.layout_no_wrap(s.to_owned(), egui::FontId::proportional(type_scale::BODY), color::text()).size().x);
+    let grow = (text_w(label) - text_w(english)).max(0.0);
+    let w = if edited { DISCARD_W } else { TAKE_W } + grow;
+    let check = Rect::from_min_max(pos2(x - w, r.top()), pos2(x, r.bottom()));
     let tag = match view.auto.get(k).copied().flatten() {
-        _ if edited => Some("edited in the output".to_owned()),
-        Some(why) => Some(format!("picked automatically · {}", why.label())),
+        _ if edited => Some(t.tr("conflict.panes.edited.tag").to_owned()),
+        Some(why) => Some(t.trf("conflict.panes.auto.tag", &[("why", &why.label(t))])),
         None => None,
     };
     if let Some(tag) = tag {
@@ -194,15 +212,15 @@ fn chunk_header(ui: &mut Ui, r: Rect, view: &ConflictView, k: usize, side: Side,
     }
     if edited {
         if side == Side::Theirs {
-            let b = ui.put(check, egui::Button::new(RichText::new("Discard edit").size(type_scale::SMALL)));
-            if b.on_hover_text("Drop the text typed in the output and bring back the picks").clicked() {
+            let b = ui.put(check, egui::Button::new(RichText::new(label).size(type_scale::SMALL)));
+            if b.on_hover_text(t.tr("conflict.panes.discard_edit.tip")).clicked() {
                 msgs.push(Msg::Conflict(ConflictMsg::ConflictDiscardEdit(k)));
             }
         }
         return;
     }
     let mut taken = pick.takes_side(c, side);
-    let check_box = controls::Check::new(&mut taken, "Take").indeterminate(pick.partly_takes_side(c, side));
+    let check_box = controls::Check::new(&mut taken, label).indeterminate(pick.partly_takes_side(c, side));
     if ui.put(check, check_box).changed() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictToggle { chunk: k, side }));
     }

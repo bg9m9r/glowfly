@@ -15,6 +15,7 @@ use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Stroke, Ui, UiBuilder, vec2};
 use trellis_core::conflict_pick::ChunkPick;
 use trellis_core::conflict_rows::{OutRow, output_rows, scroll_target};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{Chunk, Segment};
 
 /// The tint of text typed in the output.
@@ -25,7 +26,7 @@ fn typed() -> Color32 {
 /// The Output strip (Edit / Done, Wrap lines, and Discard edits outside conflicts while any
 /// clean run is edited), the note after an undone edit, and the output itself. `wrap` is the
 /// Wrap long lines setting.
-pub(super) fn output(ui: &mut Ui, view: &mut ConflictView, scroll_to: Option<usize>, wrap: bool, msgs: &mut Vec<Msg>) {
+pub(super) fn output(ui: &mut Ui, t: Lang, view: &mut ConflictView, scroll_to: Option<usize>, wrap: bool, msgs: &mut Vec<Msg>) {
     let (n, resolved) = (view.chunk_count(), view.chunk_count() - view.unresolved());
     if view.segments().is_none() {
         return;
@@ -35,21 +36,26 @@ pub(super) fn output(ui: &mut Ui, view: &mut ConflictView, scroll_to: Option<usi
     ui.painter().hline(strip.x_range(), strip.top(), Stroke::new(1.0_f32, color::border()));
     let builder = UiBuilder::new().max_rect(strip.shrink2(vec2(8.0, 2.0))).layout(Layout::left_to_right(Align::Center));
     ui.allocate_new_ui(builder, |ui| {
-        ui.label(type_scale::section_text(ui, "Output"));
-        ui.label(RichText::new(format!("{resolved} of {n} conflicts resolved")).color(color::weak()));
+        ui.label(type_scale::section_text(ui, t.tr("conflict.output.title")));
+        ui.label(RichText::new(t.trf("conflict.output.progress", &[("done", &resolved), ("total", &n)])).color(color::weak()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let on = view.edit.is_some();
-            let tip = if on { "Back to the picked lines" } else { "Edit the output by hand" };
-            if ui.selectable_label(on, if on { "Done" } else { "Edit" }).on_hover_text(tip).clicked() {
+            let (label, tip) = if on {
+                (t.tr("conflict.output.done.button"), t.tr("conflict.output.done.tip"))
+            } else {
+                (t.tr("conflict.output.edit.button"), t.tr("conflict.output.edit.tip"))
+            };
+            if ui.selectable_label(on, label).on_hover_text(tip).clicked() {
                 msgs.push(Msg::Conflict(ConflictMsg::ConflictEditOutput(!on)));
             }
-            if ui.selectable_label(wrap, "Wrap lines").on_hover_text("Wrap long lines instead of scrolling sideways").clicked() {
+            let wrap_label = ui.selectable_label(wrap, t.tr("conflict.output.wrap.button"));
+            if wrap_label.on_hover_text(t.tr("conflict.output.wrap.tip")).clicked() {
                 msgs.push(Msg::Diff(DiffMsg::SetWordWrap(!wrap)));
             }
             if !view.cleans.is_empty()
                 && ui
-                    .small_button("Discard edits outside conflicts")
-                    .on_hover_text("Bring back the file's own lines between the conflicts")
+                    .small_button(t.tr("conflict.output.discard_cleans.button"))
+                    .on_hover_text(t.tr("conflict.output.discard_cleans.tip"))
                     .clicked()
             {
                 msgs.push(Msg::Conflict(ConflictMsg::ConflictDiscardCleanEdits));
@@ -65,14 +71,14 @@ pub(super) fn output(ui: &mut Ui, view: &mut ConflictView, scroll_to: Option<usi
     let saving = view.saving;
     match view.edit.as_mut() {
         Some(e) => editor(ui, e, saving, scroll_to, wrap, msgs),
-        None => painted(ui, view, scroll_to, wrap, msgs),
+        None => painted(ui, t, view, scroll_to, wrap, msgs),
     }
 }
 
 /// The painted output: clean lines (long runs folded), taken lines tinted by side in pick
 /// order, typed lines (in a conflict or between them) in green, and a placeholder for each
 /// chunk still to pick.
-fn painted(ui: &mut Ui, view: &ConflictView, scroll_to: Option<usize>, wrap_on: bool, msgs: &mut Vec<Msg>) {
+fn painted(ui: &mut Ui, t: Lang, view: &ConflictView, scroll_to: Option<usize>, wrap_on: bool, msgs: &mut Vec<Msg>) {
     let (Some(file), Some(segs)) = (view.file.as_ref(), view.segments()) else { return };
     let (picks, cleans, current) = (&view.picks, &view.cleans, view.current);
     let (rows, firsts) = output_rows(segs, picks, cleans, &view.opened);
@@ -126,7 +132,7 @@ fn painted(ui: &mut Ui, view: &ConflictView, scroll_to: Option<usize>, wrap_on: 
         match rows[i] {
             OutRow::Clean { .. } => cell(ui, rect, 0.0, numbers[i], &text, (Color32::TRANSPARENT, color::text()), wrap),
             OutRow::CleanEdited { .. } => cell(ui, rect, 0.0, numbers[i], &text, (typed(), color::text()), wrap),
-            OutRow::Fold(f) => fold_row(ui, rect, f, msgs),
+            OutRow::Fold(f) => fold_row(ui, t, rect, f, msgs),
             OutRow::Taken { side, .. } => cell(ui, rect, 0.0, numbers[i], &text, (tint(side), color::text()), wrap),
             OutRow::Edited { chunk, .. } => {
                 cell(ui, rect, 0.0, numbers[i], &text, (typed(), color::text()), wrap);
@@ -138,7 +144,7 @@ fn painted(ui: &mut Ui, view: &ConflictView, scroll_to: Option<usize>, wrap_on: 
                 }
             }
             OutRow::Unresolved(k) => {
-                let text = format!("Conflict {}: pick a side above", k + 1);
+                let text = t.trf("conflict.output.placeholder", &[("number", &(k + 1))]);
                 cell(ui, rect, 0.0, None, &text, (color::warn().gamma_multiply(0.18), color::warn()), None);
                 if k == current {
                     current_bar(ui, rect);

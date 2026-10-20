@@ -106,7 +106,7 @@ fn ordered(st: &mut AppState, oids: Vec<git2::Oid>) -> Option<Vec<git2::Oid>> {
         return None;
     }
     if let Some(why) = export_blocker(snap, &ordered) {
-        st.log(false, why);
+        st.log(false, why.text(st.settings.lang()));
         return None;
     }
     Some(ordered)

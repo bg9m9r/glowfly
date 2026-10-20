@@ -17,7 +17,7 @@ use crate::msg::StageMsg;
 use crate::msg::WorkFileMsg;
 use crate::state::AppState;
 use crate::state::lfs::{TrackContext, track_items};
-use crate::state::tool_compare::{RESOLVE_IN_MERGE_TOOL, ToolAvail};
+use crate::state::tool_compare::ToolAvail;
 use crate::tools::ToolsMsg;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText};
@@ -31,7 +31,7 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
 
     let conflicted: Vec<&FileEntry> = snap.unstaged.iter().filter(|f| f.status == '!').collect();
     super::details_banner::op_banner(ui, st, snap, &conflicted, msgs);
-    super::path_warnings::banner(ui, snap);
+    super::path_warnings::banner(ui, st.settings.lang(), snap);
 
     // The lists shown share what the commit box leaves: Unstaged and Staged, plus Conflicted
     // and Resolved Files while there are any.
@@ -105,7 +105,7 @@ fn file_list(
     };
     let header = header::header(ui, title, staged, count, ctx, msgs);
     if staged {
-        header.context_menu(|ui| file_menu::staged_header_items(ui, msgs, snap));
+        header.context_menu(|ui| file_menu::staged_header_items(ui, t, msgs, snap));
     }
     let area = egui::ScrollArea::vertical().id_salt(id).max_height(max_h).auto_shrink([false, true]);
     if count == 0 {
@@ -176,7 +176,7 @@ pub(super) fn wip_file_row(
             msgs.push(toggle());
         }
         super::widgets::row_text(ui, RichText::new(&f.path).monospace(), selected);
-        super::path_warnings::mark(ui, f);
+        super::path_warnings::mark(ui, ctx.lang, f);
         super::lfs_badge::badge(ui, f);
         if let Some((text, green)) = note {
             ui.label(RichText::new(text).size(type_scale::SMALL).color(if green { color::added() } else { color::weak() }));
@@ -217,21 +217,22 @@ pub(super) fn wip_file_row(
                 );
             }
         }
-        file_menu::stash_file_item(ui, msgs, snap, f);
-        file_menu::patch_file_item(ui, msgs, f, staged);
+        file_menu::stash_file_item(ui, t, msgs, snap, f);
+        file_menu::patch_file_item(ui, t, msgs, f, staged);
         if f.status != '?' {
-            file_menu::history_items(ui, msgs, &f.path, None, (f.status == 'A').then_some(t.tr("details.wip.not_committed")));
+            file_menu::history_items(ui, t, msgs, &f.path, None, (f.status == 'A').then_some(t.tr("details.wip.not_committed")));
         }
         menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
         let unstages = crate::state::files::unstages_on_delete(snap, &f.path);
         let missing = snap.missing_from_workdir(&f.path);
-        let items = if missing { Vec::new() } else { track_items(&f.path, ctx.lfs) };
+        let items = if missing { Vec::new() } else { track_items(t, &f.path, ctx.lfs) };
         let tool = if conflicted {
             let msg = Msg::Tools(ToolsMsg::ResolveInMergeTool(f.path.clone()));
-            ToolItem { label: RESOLVE_IN_MERGE_TOOL, msg, blocked: ctx.tools.merge.as_deref(), setup: ctx.tools.setup.merge }
+            let label = t.tr("tools.resolve_in_merge_tool");
+            ToolItem { label, msg, blocked: ctx.tools.merge.as_deref(), setup: ctx.tools.setup.merge }
         } else {
-            file_menu::diff_item(target(), ctx.tools.setup.diff)
+            file_menu::diff_item(t, target(), ctx.tools.setup.diff)
         };
-        file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items, ctx.tools.setup.editor, tool);
+        file_menu::wip_file_items(ui, t, msgs, f, missing, unstages, &items, ctx.tools.setup.editor, tool);
     });
 }
