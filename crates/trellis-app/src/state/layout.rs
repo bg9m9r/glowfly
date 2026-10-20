@@ -189,6 +189,10 @@ pub(super) fn palette_entries(st: &AppState, out: &mut Vec<Entry>) {
         }
     }
     for panel in Panel::ALL {
+        // A drawn title bar replaces the menu bar.
+        if panel == Panel::MenuBar && st.view.chrome.drawn() {
+            continue;
+        }
         let on = shown(&st.settings, panel);
         let label = format!("{} {}", if on { "Hide" } else { "Show" }, panel.name());
         out.push(entry(PaletteCommand::Layout(LayoutMsg::SetPanel { panel, shown: !on }), label, panel.keywords()));

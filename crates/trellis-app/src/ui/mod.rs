@@ -72,6 +72,7 @@ mod lfs_banner;
 mod line_counts;
 mod list_row;
 mod mainline_dialog;
+mod menu_anchor;
 mod menu_bar;
 mod menus;
 mod modals;
@@ -109,13 +110,16 @@ mod status;
 mod submodule_dialogs;
 mod submodules;
 mod tab_dialog;
+mod tab_drag;
 mod tab_list;
+mod tab_paint;
 mod tabs;
 mod tag_dialog;
 mod tags;
 mod terminal;
 pub mod theme;
 mod theme_names;
+mod title_bar;
 mod toasts;
 mod toolbar;
 mod tour;
@@ -127,6 +131,8 @@ mod update_notice;
 mod welcome;
 mod welcome_steps;
 pub mod widgets;
+mod window_buttons;
+mod window_frame;
 mod worktree_dialog;
 mod worktree_manage_dialog;
 mod worktree_move_dialog;
@@ -347,6 +353,8 @@ mod snapshot_tests_submodule_dialogs;
 #[cfg(test)]
 mod snapshot_tests_submodules;
 #[cfg(test)]
+mod snapshot_tests_tabs_style;
+#[cfg(test)]
 mod snapshot_tests_tag;
 #[cfg(test)]
 mod snapshot_tests_tag_annotate;
@@ -360,6 +368,8 @@ mod snapshot_tests_terminal_select;
 mod snapshot_tests_terminal_tabs;
 #[cfg(test)]
 mod snapshot_tests_themes;
+#[cfg(test)]
+mod snapshot_tests_title_bar;
 #[cfg(test)]
 mod snapshot_tests_toasts;
 #[cfg(test)]
@@ -406,6 +416,7 @@ pub(crate) use app::TestStart;
 pub use app::TrellisApp;
 #[cfg(test)]
 pub(crate) use palette::area_rect as palette_rect;
+pub use window_frame::viewport as window_viewport;
 
 /// Resources owned by the UI thread (textures, the spell checker's COM object).
 pub struct UiCache {
@@ -431,6 +442,8 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     // After the other dialogs, so a credential prompt stacks on top of them.
     askpass::show(ctx, st, msgs);
     toasts::show(ctx, st, bounds, msgs);
+    // Last, above every dialog: the drawn frame's window buttons and resize edges.
+    window_frame::overlay(ctx, st, msgs);
     st.view.was_typing = shortcuts::text_field_focused(ctx);
     widgets::tooltip_motion::animate(ctx, st.settings.reduce_motion);
 }

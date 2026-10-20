@@ -219,14 +219,13 @@ fn welcome_icons_push_messages() {
     assert!(matches!(**then, Msg::Recent(RecentMsg::ClearRecent)));
 }
 
-/// Opens the toolbar's repository menu: the repository name under the "Repository" caption.
+/// Opens the toolbar's repository menu: the button named by the repository, in the toolbar.
 fn open_repo_menu(h: &mut H) {
-    let caption = h.get_by_label("Repository").bounding_box().expect("the caption");
     let name = h
         .get_all_by_label("demo")
         .filter_map(|n| n.bounding_box())
-        .filter(|b| b.y0 >= caption.y1 - 2.0 && (b.x0 - caption.x0).abs() < 20.0)
-        .min_by(|a, b| a.y0.total_cmp(&b.y0))
+        .filter(|b| b.y1 < 120.0)
+        .min_by(|a, b| a.x0.total_cmp(&b.x0))
         .expect("the repository button");
     click(h, pos2(((name.x0 + name.x1) / 2.0) as f32, ((name.y0 + name.y1) / 2.0) as f32), PointerButton::Primary);
 }

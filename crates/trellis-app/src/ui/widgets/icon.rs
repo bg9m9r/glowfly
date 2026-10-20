@@ -94,6 +94,8 @@ pub enum Icon {
     Commit,
     /// A circle with a meridian and the equator: Preferences > Language & region.
     Globe,
+    /// Three lines: the title bar's menu.
+    Menu,
 }
 
 /// Every icon's line width: they are outlines only.
@@ -154,13 +156,17 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
                 }
             }
         }
+        // Trunk and branch: two commits on a trunk, and a third up and to the right whose
+        // branch curves into the trunk.
         Icon::Branch => {
-            p.circle_stroke(pos2(c.x - 4.0, c.y - 7.0), 2.4, s);
-            p.circle_stroke(pos2(c.x - 4.0, c.y + 7.0), 2.4, s);
-            p.circle_stroke(pos2(c.x + 5.0, c.y - 3.0), 2.4, s);
-            line(pos2(c.x - 4.0, c.y - 4.6), pos2(c.x - 4.0, c.y + 4.6));
+            let r = 1.9;
+            let trunk = c.x - 3.75;
+            p.circle_stroke(pos2(trunk, c.y - 5.6), r, s);
+            p.circle_stroke(pos2(trunk, c.y + 5.6), r, s);
+            p.circle_stroke(pos2(c.x + 4.4, c.y - 3.1), r, s);
+            line(pos2(trunk, c.y - 3.7), pos2(trunk, c.y + 3.7));
             p.add(egui::epaint::CubicBezierShape::from_points_stroke(
-                [pos2(c.x + 5.0, c.y - 0.6), pos2(c.x + 5.0, c.y + 3.0), pos2(c.x - 4.0, c.y + 1.0), pos2(c.x - 4.0, c.y + 4.0)],
+                [pos2(c.x + 4.4, c.y - 1.2), pos2(c.x + 4.4, c.y + 1.9), pos2(trunk, c.y + 0.95), pos2(trunk, c.y + 3.7)],
                 false,
                 Color32::TRANSPARENT,
                 s,
@@ -271,7 +277,7 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
         Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check | Icon::More => {} // icons.rs
         Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
-        Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe => {}                 // icons.rs
+        Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu => {}    // icons.rs
     }
 }
 

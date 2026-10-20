@@ -1,0 +1,220 @@
+//! The window frame on each OS and the pure parts of a title bar Trellis draws itself: which
+//! frame applies (`Chrome`), the window actions the bar asks for (`WindowCmd`), what the shell
+//! knows about the window (`WindowInfo`) and the Alt tap that opens the bar's menu (`AltTap`).
+//! The views (`ui/title_bar.rs`, `ui/window_frame.rs`) turn these into widgets, and the shell
+//! turns `WindowCmd` into viewport commands.
+
+use trellis_core::opens::Os;
+
+/// The room left at the start of the macOS bar for the traffic lights.
+pub const TRAFFIC_LIGHTS_W: f32 = 78.0;
+
+/// Who draws the window's frame.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Chrome {
+    /// The system frame and title bar, with Trellis's menu bar and tab bar under it (Linux,
+    /// and every test that doesn't pick another).
+    #[default]
+    System,
+    /// No system frame: Trellis draws the title bar, the window buttons and the resize edges.
+    Windows,
+    /// The system frame with a transparent, full-size title bar: Trellis's bar sits under the
+    /// traffic lights.
+    MacOs,
+}
+
+impl Chrome {
+    pub const fn for_os(os: Os) -> Chrome {
+        match os {
+            Os::Windows => Chrome::Windows,
+            Os::MacOs => Chrome::MacOs,
+            Os::Linux => Chrome::System,
+        }
+    }
+
+    /// The frame of the OS Trellis was built for.
+    pub const fn current() -> Chrome {
+        Self::for_os(Os::current())
+    }
+
+    /// Whether Trellis draws the title bar (with the menu button and the tabs).
+    pub const fn drawn(self) -> bool {
+        matches!(self, Chrome::Windows | Chrome::MacOs)
+    }
+
+    /// Whether Trellis draws Minimize, Maximize and Close.
+    pub const fn window_buttons(self) -> bool {
+        matches!(self, Chrome::Windows)
+    }
+
+    /// Whether Trellis provides the resize edges and corners.
+    pub const fn resize_edges(self) -> bool {
+        matches!(self, Chrome::Windows)
+    }
+
+    /// Whether a tap of Alt opens the title bar's menu.
+    pub const fn alt_opens_menu(self) -> bool {
+        matches!(self, Chrome::Windows)
+    }
+
+    /// The room left empty at the bar's start: the traffic lights on macOS, which hide in
+    /// fullscreen.
+    pub fn leading_inset(self, fullscreen: bool) -> f32 {
+        if matches!(self, Chrome::MacOs) && !fullscreen { TRAFFIC_LIGHTS_W } else { 0.0 }
+    }
+}
+
+/// A window edge or corner to resize from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ResizeEdge {
+    North,
+    South,
+    East,
+    West,
+    NorthEast,
+    NorthWest,
+    SouthEast,
+    SouthWest,
+}
+
+/// A window action asked for by a drawn title bar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WindowCmd {
+    /// Move the window with the OS's move loop (the primary button is down).
+    StartDrag,
+    /// Resize from an edge or corner with the OS's resize loop.
+    BeginResize(ResizeEdge),
+    Minimize,
+    /// Maximize (true) or restore (false).
+    SetMaximized(bool),
+}
+
+/// What the shell read about the window this frame.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct WindowInfo {
+    pub maximized: bool,
+    pub fullscreen: bool,
+}
+
+/// One frame's input, as far as an Alt tap cares.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AltFrame {
+    /// Alt is held.
+    pub alt: bool,
+    /// Ctrl, Shift or Command is held (AltGr reads as Ctrl+Alt).
+    pub other_modifiers: bool,
+    /// A key went down, text was typed, a button was pressed or the wheel turned.
+    pub other_input: bool,
+    /// The window has the keyboard.
+    pub focused: bool,
+}
+
+/// Tracks Alt pressed and released alone: no other key, text, click or scroll, no Ctrl, Shift
+/// or Command, and the window kept the focus throughout.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AltTap {
+    held: bool,
+    alone: bool,
+}
+
+impl AltTap {
+    /// The tracker after frame `f`, and whether that frame finished a tap.
+    pub fn step(self, f: AltFrame) -> (AltTap, bool) {
+        if !f.focused {
+            return (AltTap::default(), false);
+        }
+        let clean = !f.other_modifiers && !f.other_input;
+        match (self.held, f.alt) {
+            (false, true) => (AltTap { held: true, alone: clean }, false),
+            (true, true) => (AltTap { held: true, alone: self.alone && clean }, false),
+            (true, false) => (AltTap::default(), self.alone && !f.other_input),
+            (false, false) => (AltTap::default(), false),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn each_os_gets_its_frame() {
+        assert_eq!(Chrome::for_os(Os::Windows), Chrome::Windows);
+        assert_eq!(Chrome::for_os(Os::MacOs), Chrome::MacOs);
+        assert_eq!(Chrome::for_os(Os::Linux), Chrome::System);
+        assert_eq!(Chrome::current(), Chrome::for_os(Os::current()));
+        assert_eq!(Chrome::default(), Chrome::System);
+    }
+
+    #[test]
+    fn what_each_frame_draws() {
+        // (chrome, drawn, window buttons, resize edges, Alt opens the menu)
+        for (c, drawn, buttons, edges, alt) in [
+            (Chrome::System, false, false, false, false),
+            (Chrome::Windows, true, true, true, true),
+            (Chrome::MacOs, true, false, false, false),
+        ] {
+            assert_eq!(c.drawn(), drawn, "{c:?}");
+            assert_eq!(c.window_buttons(), buttons, "{c:?}");
+            assert_eq!(c.resize_edges(), edges, "{c:?}");
+            assert_eq!(c.alt_opens_menu(), alt, "{c:?}");
+        }
+    }
+
+    #[test]
+    fn only_macos_leaves_room_for_the_traffic_lights() {
+        assert_eq!(Chrome::MacOs.leading_inset(false), 78.0);
+        assert_eq!(Chrome::MacOs.leading_inset(true), 0.0, "the lights hide in fullscreen");
+        for c in [Chrome::System, Chrome::Windows] {
+            assert_eq!(c.leading_inset(false), 0.0);
+            assert_eq!(c.leading_inset(true), 0.0);
+        }
+    }
+
+    const UP: AltFrame = AltFrame { alt: false, other_modifiers: false, other_input: false, focused: true };
+    const ALT: AltFrame = AltFrame { alt: true, ..UP };
+
+    /// Runs `frames` from a fresh tracker; returns the frames (by index) that fired.
+    fn fires(frames: &[AltFrame]) -> Vec<usize> {
+        let mut tap = AltTap::default();
+        let mut out = Vec::new();
+        for (i, f) in frames.iter().enumerate() {
+            let (next, fired) = tap.step(*f);
+            tap = next;
+            if fired {
+                out.push(i);
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn a_press_and_release_fires_once() {
+        assert_eq!(fires(&[UP, ALT, ALT, UP, UP]), [3]);
+    }
+
+    #[test]
+    fn alt_with_a_key_click_or_ctrl_does_not_fire() {
+        let key = AltFrame { other_input: true, ..ALT };
+        assert!(fires(&[ALT, key, ALT, UP]).is_empty(), "Alt+key");
+        let ctrl = AltFrame { other_modifiers: true, ..ALT };
+        assert!(fires(&[ctrl, ctrl, UP]).is_empty(), "Ctrl+Alt (AltGr)");
+        assert!(fires(&[ALT, ctrl, ALT, UP]).is_empty(), "Ctrl pressed during the hold");
+        let click = AltFrame { other_input: true, ..ALT };
+        assert!(fires(&[ALT, click, UP]).is_empty(), "a click while held");
+        assert!(fires(&[ALT, AltFrame { other_input: true, ..UP }]).is_empty(), "a key in the release frame");
+    }
+
+    #[test]
+    fn losing_the_focus_resets_the_tap() {
+        let away = AltFrame { focused: false, ..ALT };
+        assert!(fires(&[ALT, away, UP]).is_empty());
+        assert!(fires(&[ALT, AltFrame { focused: false, ..UP }]).is_empty());
+    }
+
+    #[test]
+    fn two_taps_fire_twice_and_a_hold_never_does() {
+        assert_eq!(fires(&[ALT, UP, ALT, UP]), [1, 3]);
+        assert!(fires(&[ALT; 20]).is_empty());
+    }
+}

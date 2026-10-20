@@ -1,4 +1,5 @@
-//! Window-level actions from the menu bar: quitting and the About dialog.
+//! Window-level actions from the menu bar and a drawn title bar: quitting, the About dialog,
+//! and moving, resizing, minimising or maximising the window.
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::AppMsg;
@@ -10,6 +11,8 @@ pub(super) fn handle(st: &mut AppState, msg: AppMsg, fx: &mut Vec<Effect>) {
         AppMsg::Quit => fx.push(Effect::Ui(UiEffect::CloseWindow)),
         // Like the shortcut sheet: not over another dialog, Preferences or a credential prompt,
         // and it replaces the palette.
+        // The bar only offers what applies, so this checks nothing.
+        AppMsg::Window(cmd) => fx.push(Effect::Ui(UiEffect::Window(cmd))),
         AppMsg::ShowAbout => {
             if st.modal.is_none() && st.prefs.is_none() && !st.askpass.showing() {
                 st.palette = None;

@@ -150,6 +150,17 @@ fn palette_lists_the_menu_bar_without_a_key() {
 }
 
 #[test]
+fn a_drawn_title_bar_drops_the_menu_bar_entries() {
+    use crate::state::window_chrome::Chrome;
+    for chrome in [Chrome::Windows, Chrome::MacOs] {
+        let mut st = state();
+        st.view.chrome = chrome;
+        assert!(find(&st, "Hide menu bar").is_none() && find(&st, "Show menu bar").is_none(), "{chrome:?}");
+        assert!(find(&st, "Hide toolbar").is_some(), "the other panels stay");
+    }
+}
+
+#[test]
 fn set_panel_same_value_saves_nothing() {
     let mut st = state();
     assert!(!saves(&run(&mut st, LayoutMsg::SetPanel { panel: Panel::Toolbar, shown: true })));

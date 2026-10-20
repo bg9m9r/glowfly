@@ -57,6 +57,8 @@ impl TrellisApp {
             paths.extend(recent.first().cloned());
         }
         let mut app = Self::assemble(ctx, settings, recent, Runner::new);
+        // Only the real app draws its own frame where the OS calls for it; test apps keep System.
+        app.st.view.chrome = crate::state::window_chrome::Chrome::current();
         // Read now, not through the runner, so the first frame already has the theme's colors;
         // the folder sits next to the settings file just read.
         let themes = trellis_core::settings::themes::load_all();
@@ -148,6 +150,7 @@ impl TrellisApp {
                 Effect::Ui(UiEffect::RequestAttention) => request_attention(ctx),
                 Effect::Ui(UiEffect::CloseWindow) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
                 Effect::Ui(UiEffect::RequestPaste) => ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste),
+                Effect::Ui(UiEffect::Window(cmd)) => ctx.send_viewport_cmd(super::window_frame::viewport_cmd(cmd)),
                 Effect::Ui(UiEffect::FocusWindow) => {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
                     ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
@@ -175,6 +178,10 @@ impl TrellisApp {
         self.theme.apply(ctx, &self.st.settings, &self.st.themes);
         layout::apply_zoom(ctx, &self.st);
         self.st.view.focused = ctx.input(|i| i.focused);
+        self.st.view.window = ctx.input(|i| crate::state::window_chrome::WindowInfo {
+            maximized: i.viewport().maximized.unwrap_or(false),
+            fullscreen: i.viewport().fullscreen.unwrap_or(false),
+        });
         while let Ok(msg) = self.results.try_recv() {
             #[cfg(test)]
             {

@@ -8,7 +8,8 @@ use eframe::egui::{self, Ui};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
 
-pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, msgs: &mut Vec<Msg>) {
+/// `menu_bar_row`: the system frame's menu bar can be turned off (a drawn title bar has none).
+pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, menu_bar_row: bool, msgs: &mut Vec<Msg>) {
     use trellis_core::settings::Corner;
     let t = s.lang();
     super::theme_row::theme_row(ui, s, themes, msgs);
@@ -36,13 +37,13 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, msgs: &mut Ve
         }
         help(ui, t.tr("prefs.ui.desktop_notifications.help"));
     });
-    interface_section(ui, t, s);
+    interface_section(ui, t, s, menu_bar_row);
     super::appearance_graph::graph_section(ui, t, s);
 }
 
 /// Interface: zoom, the panels, toolbar labels, reduced motion, spell checking and the graph's
 /// extras.
-fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
+fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, menu_bar_row: bool) {
     use trellis_core::settings::BranchVisibility as BV;
     section(ui, t.tr("prefs.ui.interface.section"));
     row(ui, t.tr("prefs.ui.zoom.label"), |ui| {
@@ -56,8 +57,10 @@ fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
     check_row(ui, t.tr("prefs.ui.details_panel.label"), &mut s.show_details_panel, t.tr("prefs.ui.details_panel.check"), None);
     let (label, check, text) = (t.tr("prefs.ui.toolbar.label"), t.tr("prefs.ui.toolbar.check"), t.tr("prefs.ui.toolbar.help"));
     check_row(ui, label, &mut s.show_toolbar, check, Some(text));
-    let (label, check, text) = (t.tr("prefs.ui.menu_bar.label"), t.tr("prefs.ui.menu_bar.check"), t.tr("prefs.ui.menu_bar.help"));
-    check_row(ui, label, &mut s.show_menu_bar, check, Some(text));
+    if menu_bar_row {
+        let (label, check, text) = (t.tr("prefs.ui.menu_bar.label"), t.tr("prefs.ui.menu_bar.check"), t.tr("prefs.ui.menu_bar.help"));
+        check_row(ui, label, &mut s.show_menu_bar, check, Some(text));
+    }
     check_row(ui, t.tr("prefs.ui.toolbar_labels.label"), &mut s.toolbar_labels, t.tr("prefs.ui.toolbar_labels.check"), None);
     let (label, check, text) =
         (t.tr("prefs.ui.reduce_motion.label"), t.tr("prefs.ui.reduce_motion.check"), t.tr("prefs.ui.reduce_motion.help"));

@@ -30,6 +30,7 @@ second one next to it.
 | Timestamps | NTFS 100 ns; FAT 2 s | APFS ns; HFS+ 1 s | ns on ext4 and btrfs; network attribute caches lag |
 | Notifications | WinRT toasts; Focus Assist can hide them | Notification Center; Do Not Disturb can hide them | freedesktop notifications over D-Bus; needs a notification server |
 | git builds | Git for Windows (MinGW), often a newer version | Apple's `/usr/bin/git` (older) or Homebrew's | Whatever the distribution ships, sometimes old |
+| Window frame | Drawn by Trellis: no system decorations; its own title bar, window buttons, resize edges and border | The system frame with a full-size content view: the traffic lights sit over Trellis's title bar | The system frame, with Trellis's menu bar and tab bar below it |
 
 ## Rules
 
@@ -306,6 +307,20 @@ second one next to it.
    here,** and opening one runs no git command until the user clicks Fetch or Clone; the
    repository is found with libgit2 reads only.
 
+### Window frame
+
+1. **The frame follows `Chrome::for_os`, tested for every OS:** Windows gets `Chrome::Windows`
+   (Trellis draws the title bar, window buttons, resize edges and border), macOS `Chrome::MacOs`
+   (a full-size content view; the title bar leaves `TRAFFIC_LIGHTS_W` for the system's buttons
+   and draws no window buttons or edges), and everything else `Chrome::System` (the system frame,
+   the menu bar and the tab bar). Ask the `Chrome` value what to draw (`drawn`, `window_buttons`,
+   `resize_edges`, `alt_opens_menu`, `leading_inset`), never `cfg!(target_os)` in a view.
+2. **Views never send viewport commands:** a drag, double-click, window button or resize edge
+   pushes `AppMsg::Window`, and only the shell (`ui/app.rs`) turns it into a
+   `ViewportCommand`; `tests/layering.rs` checks.
+3. **Resize edges are Windows-only and off while maximized or full screen,** like the 1 px
+   border; on macOS the system frame resizes the window.
+
 ### Watching and refresh
 
 1. **Don't follow links** (`notify::Config::with_follow_symlinks(false)` in `watcher.rs`): a link
@@ -429,6 +444,11 @@ Gaps that are accepted for now:
   shell that is itself a launcher with a differently named child (`wsl.exe`) can look busy; and
   on Windows the orphans of a process whose pid was reused for the shell could count.
 
+- **The drawn Windows frame lacks some system behaviour:** no Snap Layouts flyout over Maximize,
+  no Alt+Space or system menu, and no DWM shadow or rounded corners.
+- **macOS's traffic lights aren't centred on the title bar,** which is taller than the system's.
+- **An Alt press and release within one frame isn't seen as a tap,** so it doesn't open the menu.
+
 Unverified, needs a real machine:
 
 - the terminal and Explorer for repositories on UNC shares and `\\wsl$`;
@@ -446,3 +466,7 @@ Unverified, needs a real machine:
 - signing passphrases through Gpg4win and through Git for Windows' bundled gpg on a real
   machine (the codes `gpg_prompt/status.rs` reads come from GnuPG's documentation);
 - smartcard PINs through loopback pinentry.
+- the drawn Windows frame on Windows 10 and 11 at 100% and 150%: dragging the title bar,
+  double-clicking it, the resize edges and Aero Snap;
+- that the key after an Alt tap isn't swallowed by a system menu loop on Windows;
+- on macOS, the system titlebar strip's own drag and double-click against Trellis's.

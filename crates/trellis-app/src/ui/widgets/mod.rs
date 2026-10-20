@@ -57,9 +57,15 @@ pub const CAPTION_Y: f32 = 37.0;
 pub const TOOL_RADIUS: u8 = 6;
 /// Between the buttons of one toolbar group (egui's item spacing there); a dropdown caret sits
 /// right against its button.
-pub const TOOL_SPACING: f32 = 4.0;
-/// Between two toolbar groups.
-pub const GROUP_GAP: f32 = 16.0;
+pub const TOOL_SPACING: f32 = 2.0;
+/// Between two toolbar group surfaces: with their padding and stroke, 16 px from a button to
+/// the next group's first one.
+pub const GROUP_GAP: f32 = 8.0;
+/// A toolbar group surface's padding inside its 1 px stroke, and its corners.
+pub const GROUP_PAD: i8 = 3;
+pub const GROUP_RADIUS: u8 = 10;
+/// A toolbar group's height: a button, its padding and its stroke.
+pub const GROUP_H: f32 = TOOL_H + 2.0 * (GROUP_PAD as f32 + 1.0);
 
 /// Toolbar button: the icon with its caption under it (captions optional). `name` is its
 /// accessible name, which includes the caption; the caller attaches the tooltip
@@ -107,19 +113,30 @@ pub fn tool_width(ui: &Ui, label: &str, labels: bool) -> f32 {
     }
 }
 
-/// The space between two toolbar groups (with `TOOL_SPACING` between the items).
-pub fn tool_gap(ui: &mut Ui) {
-    ui.add_space(GROUP_GAP - ui.spacing().item_spacing.x);
+/// One toolbar group: its buttons in a row on a quiet surface (the window's background, a 1 px
+/// border, rounded corners), `TOOL_SPACING` apart. The row keeps the parent's direction, so a
+/// group works in a right-to-left layout too.
+pub fn tool_group<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> egui::InnerResponse<R> {
+    egui::Frame::new()
+        .fill(color::bg())
+        .stroke(Stroke::new(1.0_f32, color::border()))
+        .corner_radius(GROUP_RADIUS)
+        .inner_margin(GROUP_PAD)
+        .show(ui, |ui| {
+            // One button high, so a group never grows to the row around it.
+            let row = if ui.layout().prefer_right_to_left() { egui::Layout::right_to_left } else { egui::Layout::left_to_right };
+            ui.allocate_ui_with_layout(vec2(ui.available_width(), TOOL_H), row(egui::Align::Center), |ui| {
+                ui.set_min_height(TOOL_H);
+                ui.spacing_mut().item_spacing.x = TOOL_SPACING;
+                add(ui)
+            })
+            .inner
+        })
 }
 
-/// `tool_gap` with a 1 px, 24 px tall line in its middle.
-pub fn tool_divider(ui: &mut Ui) {
-    let spacing = ui.spacing().item_spacing.x;
-    let x = ui.cursor().min.x - spacing + GROUP_GAP / 2.0;
-    let y = ui.available_rect_before_wrap().center().y;
-    let x = x.round() + 0.5;
-    ui.painter().line_segment([pos2(x, y - 12.0), pos2(x, y + 12.0)], Stroke::new(1.0_f32, color::border()));
-    tool_gap(ui);
+/// The space between two toolbar groups (whatever the item spacing between them).
+pub fn tool_gap(ui: &mut Ui) {
+    ui.add_space(GROUP_GAP - ui.spacing().item_spacing.x);
 }
 
 /// A dropdown caret button's width.

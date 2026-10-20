@@ -1,5 +1,7 @@
 //! Effects that need the window, carried out by the UI shell (`Effect::Ui`).
 
+use crate::state::window_chrome::WindowCmd;
+
 /// Effects that need the window, carried out by the UI shell.
 #[derive(Debug, PartialEq)]
 pub enum UiEffect {
@@ -13,4 +15,6 @@ pub enum UiEffect {
     CloseWindow,
     /// Read the clipboard into an Event::Paste for the focused widget on the next frame.
     RequestPaste,
+    /// Move, resize, minimise or maximise the window: the drawn title bar.
+    Window(WindowCmd),
 }

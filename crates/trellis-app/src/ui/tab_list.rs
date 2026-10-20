@@ -3,7 +3,6 @@
 //! It shows only when it adds something: closed tabs to reopen, or tabs too many to show at full
 //! width.
 
-use super::tabs::HEIGHT;
 use super::theme::color;
 use super::widgets;
 use crate::msg::{Msg, TabsMsg};
@@ -17,14 +16,16 @@ use trellis_core::native_path::shown;
 /// A full-width tab and the gap after it.
 const FULL_PITCH: f32 = 221.0;
 
-/// Whether the tab bar, `avail` wide, shows the tab list button.
-pub(super) fn wanted(st: &AppState, avail: f32) -> bool {
-    !st.closed_tabs.is_empty() || st.tabs.len() as f32 * FULL_PITCH > avail - 2.0 * HEIGHT
+/// Whether a tab strip `avail` wide, with `slot`-square + and list buttons, shows the tab list
+/// button.
+pub(super) fn wanted(st: &AppState, avail: f32, slot: f32) -> bool {
+    !st.closed_tabs.is_empty() || st.tabs.len() as f32 * FULL_PITCH > avail - 2.0 * slot
 }
 
-pub(super) fn button(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
+/// The tab list button, `slot` square, and its popup.
+pub(super) fn button(ui: &mut egui::Ui, t: Lang, st: &AppState, slot: f32, msgs: &mut Vec<Msg>) {
     let tip = t.tr("tabs.list.tip");
-    let (rect, r) = ui.allocate_exact_size(vec2(HEIGHT, HEIGHT), Sense::click());
+    let (rect, r) = ui.allocate_exact_size(vec2(slot, slot), Sense::click());
     r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tip));
     let popup = ui.make_persistent_id("tab-list");
     let open = ui.memory(|m| m.is_popup_open(popup));

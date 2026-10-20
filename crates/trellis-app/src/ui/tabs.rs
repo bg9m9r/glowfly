@@ -1,250 +1,144 @@
-//! The tab bar above the toolbar: one tab per open repository, plus a "new tab" button and, at
-//! the far end when there are closed tabs or the tabs had to shrink, the tab list
-//! (`tab_list.rs`). Tabs are dragged sideways to reorder them (Esc cancels a drag);
-//! right-clicking one offers Rename tab and the close actions. With Group worktree tabs on, tabs
-//! of one repository's worktrees form a group (`state/tab_groups.rs`) marked by a colored strip
-//! along their bottom; a tab dropped outside its group takes the group.
+//! The repository tabs: one per open repository, plus a "new tab" button and, at the far end
+//! when there are closed tabs or the tabs had to shrink, the tab list (`tab_list.rs`). With the
+//! system frame they get their own bar above the toolbar (`show`); a drawn title bar holds them
+//! itself (`strip`, from `title_bar.rs`). Tabs share the width evenly and are drawn by
+//! `tab_paint.rs`; they are dragged sideways to reorder them (`tab_drag.rs`, Esc cancels a
+//! drag), and right-clicking one offers Rename tab and the close actions. With Group worktree
+//! tabs on, tabs of one repository's worktrees form a group (`state/tab_groups.rs`) marked by a
+//! colored strip along their bottom; a tab dropped outside its group takes the group.
 
+use super::tab_drag::{Slot, drag};
+use super::tab_paint::{ROUNDING, TabLook, close_rect, group_color, paint_group_strip, paint_separator, paint_tab};
 use super::theme::color;
+use super::widgets::truncate::full_tip;
 use crate::msg::Msg;
 use crate::msg::TabsMsg;
 use crate::state::AppState;
 use crate::state::menu_bar::tab_name;
-use crate::state::tab_groups::{self, is_identity, move_order, new_index, shown_at};
+use crate::state::tab_groups::{self, new_index, shown_at};
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::tab_glyph::{self, TabGlyph};
-use eframe::egui::{
-    self, Align, Align2, Button, Color32, CursorIcon, Id, Key, Layout, PointerButton, Rect, Response, Sense, Stroke, StrokeKind,
-    WidgetInfo, WidgetType, pos2, vec2,
-};
-use std::ops::Range;
+use eframe::egui::{self, Align, Button, Layout, Response, Sense, Stroke, StrokeKind, WidgetInfo, WidgetType, vec2};
 use trellis_core::i18n::Lang;
 
+pub(crate) use super::tab_drag::dragging;
+
+/// The tab bar's height with the system frame.
 pub(super) const HEIGHT: f32 = 30.0;
-const ROUNDING: egui::CornerRadius = egui::CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 };
-/// Where the drag in progress is kept in egui's temporary memory.
-const DRAG_ID: &str = "tab-drag";
 
-/// A tab being dragged: its index and where on it the pointer grabbed it (from its left edge).
-/// Kept in egui's temporary memory, since the press position is gone by the release frame.
-/// `cancelled` once Esc snapped it back: the rest of that drag does nothing.
-#[derive(Clone, Copy)]
-struct TabDrag {
-    from: usize,
-    grab: f32,
-    cancelled: bool,
-}
-
-/// Whether a tab is being dragged now (and the drag wasn't cancelled): Esc then cancels the
-/// drag and nothing else.
-pub(crate) fn dragging(ctx: &egui::Context) -> bool {
-    let drag = ctx.data(|d| d.get_temp::<TabDrag>(Id::new(DRAG_ID)));
-    drag.is_some_and(|d| !d.cancelled) && ctx.input(|i| i.pointer.primary_down())
-}
-
-/// A drag in progress: the dragged tab, the order a drop now would give (`order[new] == old`),
-/// and where it is drawn.
-struct Floating {
-    from: usize,
-    order: Vec<usize>,
-    rect: Rect,
-}
-
-/// One tab's place in the strip and its interactions this frame.
-struct Slot {
-    rect: Rect,
-    r: Response,
-    close: Response,
-}
-
+/// The tab bar under the system frame's title bar.
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
-    let t = st.settings.lang();
     egui::TopBottomPanel::top("tabs")
         .exact_height(HEIGHT)
-        .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 6, right: 6, top: 0, bottom: 0 }))
-        .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 1.0;
-                // Tabs shrink to share the width once there are many.
-                let list = super::tab_list::wanted(st, ui.available_width());
-                let room = ui.available_width() - HEIGHT * (1.0 + f32::from(u8::from(list)));
-                let width = (room / st.tabs.len() as f32).clamp(60.0, 220.0);
-                let pitch = width + ui.spacing().item_spacing.x;
-                let strip_left = ui.cursor().left();
-                let slots: Vec<Slot> = (0..st.tabs.len())
-                    .map(|i| {
-                        let (rect, _) = ui.allocate_exact_size(vec2(width, HEIGHT), Sense::hover());
-                        let r = ui.interact(rect, ui.id().with(("tab", i)), Sense::click_and_drag());
-                        let close = ui.interact(close_rect(rect), r.id.with("close"), Sense::click());
-                        Slot { rect, r, close }
-                    })
-                    .collect();
-                let on = st.settings.group_worktree_tabs;
-                let blocks = tab_groups::blocks(&st.tabs, on);
-                let shown = tab_groups::shown_groups(&st.tabs, on);
-                let floating = drag(ui, &slots, &blocks, strip_left, pitch, msgs);
-                let gap = pitch - width;
-                let name = |i: usize| tab_name(st, i);
-                for (i, Slot { rect, r, close }) in slots.into_iter().enumerate() {
-                    let active = i == st.active_tab;
-                    let p = ui.painter();
-                    let group = shown_at(&shown, i);
-                    match &floating {
-                        Some(f) if f.from == i => {}
-                        // While dragging, the others slide to where they would be after the drop.
-                        Some(f) => {
-                            let shift = (new_index(&f.order, i) as f32 - i as f32) * pitch;
-                            let rect = rect.translate(vec2(shift, 0.0));
-                            paint_tab(p, rect, name(i), active, false, false, false);
-                            if let Some((members, n)) = group {
-                                // Where the group's ends will be after the drop.
-                                let at = |j: usize| new_index(&f.order, j);
-                                let (lo, hi) = members.clone().map(at).fold((usize::MAX, 0), |(lo, hi), j| (lo.min(j), hi.max(j)));
-                                paint_group_strip(p, rect, group_color(*n), at(i) == lo, at(i) == hi, gap);
-                            }
-                        }
-                        None => {
-                            let (hovered, close_hovered) = (r.hovered(), close.hovered());
-                            paint_tab(p, rect, name(i), active, hovered, active || hovered || close_hovered, close_hovered);
-                            if let Some((members, n)) = group {
-                                paint_group_strip(p, rect, group_color(*n), i == members.start, i + 1 == members.end, gap);
-                            }
-                            let r = match (&st.tabs[i].path, group.and(st.tabs[i].group.as_ref())) {
-                                (Some(path), Some(g)) => {
-                                    let shown = trellis_core::native_path::shown(path);
-                                    r.on_hover_text(t.trf("tabs.group_tip", &[("path", &shown), ("group", &g.name)]))
-                                }
-                                (Some(path), None) => r.on_hover_text(trellis_core::native_path::shown(path)),
-                                (None, _) => r,
-                            };
-                            if close.clicked() || r.middle_clicked() {
-                                msgs.push(Msg::Tabs(TabsMsg::CloseTab(i)));
-                            } else if r.clicked() {
-                                msgs.push(Msg::Tabs(TabsMsg::SelectTab(i)));
-                            }
-                            r.context_menu(|ui| tab_menu(ui, t, i, st, msgs));
-                        }
+        .frame(egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin { left: 6, right: 6, top: 0, bottom: 0 }))
+        .show(ctx, |ui| strip(ui, st, HEIGHT, msgs));
+}
+
+/// The tabs `height` tall, then + and the tab list, left to right in `ui`.
+pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
+    ui.allocate_ui_with_layout(vec2(ui.available_width(), height), Layout::left_to_right(Align::Center), |ui| {
+        ui.spacing_mut().item_spacing.x = 1.0;
+        // Tabs shrink to share the width once there are many.
+        let list = super::tab_list::wanted(st, ui.available_width(), height);
+        let room = ui.available_width() - height * (1.0 + f32::from(u8::from(list)));
+        let width = (room / st.tabs.len() as f32).clamp(60.0, 220.0);
+        let pitch = width + ui.spacing().item_spacing.x;
+        let strip_left = ui.cursor().left();
+        let slots: Vec<Slot> = (0..st.tabs.len())
+            .map(|i| {
+                let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
+                let r = ui.interact(rect, ui.id().with(("tab", i)), Sense::click_and_drag());
+                let close = ui.interact(close_rect(rect), r.id.with("close"), Sense::click());
+                Slot { rect, r, close }
+            })
+            .collect();
+        let on = st.settings.group_worktree_tabs;
+        let blocks = tab_groups::blocks(&st.tabs, on);
+        let shown = tab_groups::shown_groups(&st.tabs, on);
+        let floating = drag(ui, &slots, &blocks, strip_left, pitch, msgs);
+        let gap = pitch - width;
+        let name = |i: usize| tab_name(st, i);
+        let (active_font, font) = (type_scale::strong(ui, type_scale::BODY), type_scale::font(type_scale::BODY));
+        let font_of = |active: bool| if active { active_font.clone() } else { font.clone() };
+        // Lit tabs (active or hovered) get no separator beside them, and none while dragging.
+        if floating.is_none() {
+            let lit = |i: usize, s: &Slot| i == st.active_tab || s.r.hovered() || s.close.hovered();
+            for (i, pair) in slots.windows(2).enumerate() {
+                if !lit(i, &pair[0]) && !lit(i + 1, &pair[1]) {
+                    paint_separator(ui.painter(), pair[0].rect, gap);
+                }
+            }
+        }
+        for (i, Slot { rect, r, close }) in slots.into_iter().enumerate() {
+            let active = i == st.active_tab;
+            let p = ui.painter();
+            let group = shown_at(&shown, i);
+            match &floating {
+                Some(f) if f.from == i => {}
+                // While dragging, the others slide to where they would be after the drop.
+                Some(f) => {
+                    let shift = (new_index(&f.order, i) as f32 - i as f32) * pitch;
+                    let rect = rect.translate(vec2(shift, 0.0));
+                    paint_tab(p, rect, name(i), font_of(active), TabLook { active, ..TabLook::default() });
+                    if let Some((members, n)) = group {
+                        // Where the group's ends will be after the drop.
+                        let at = |j: usize| new_index(&f.order, j);
+                        let (lo, hi) = members.clone().map(at).fold((usize::MAX, 0), |(lo, hi), j| (lo.min(j), hi.max(j)));
+                        paint_group_strip(p, rect, group_color(*n), at(i) == lo, at(i) == hi, gap);
                     }
                 }
-                // The dragged tab, drawn last so it floats above the others.
-                if let Some(f) = floating {
-                    let active = f.from == st.active_tab;
-                    paint_tab(ui.painter(), f.rect, name(f.from), active, false, active, false);
-                    if let Some((_, n)) = shown_at(&shown, f.from) {
-                        paint_group_strip(ui.painter(), f.rect, group_color(*n), true, true, gap);
+                None => {
+                    let (hovered, close_hovered) = (r.hovered() || close.hovered(), close.hovered());
+                    let look = TabLook { active, hovered, show_close: active || hovered, close_hovered };
+                    let cut = paint_tab(p, rect, name(i), font_of(active), look);
+                    if let Some((members, n)) = group {
+                        paint_group_strip(p, rect, group_color(*n), i == members.start, i + 1 == members.end, gap);
                     }
-                    ui.painter().rect_stroke(f.rect, ROUNDING, Stroke::new(1.0_f32, color::primary()), StrokeKind::Inside);
+                    let tip = match (&st.tabs[i].path, group.and(st.tabs[i].group.as_ref())) {
+                        (Some(path), Some(g)) => {
+                            let shown = trellis_core::native_path::shown(path);
+                            Some(t.trf("tabs.group_tip", &[("path", &shown), ("group", &g.name)]))
+                        }
+                        (Some(path), None) => Some(trellis_core::native_path::shown(path)),
+                        (None, _) => None,
+                    };
+                    // A cut name puts the whole name first.
+                    let r = match full_tip(cut.cut, name(i), tip) {
+                        Some(tip) => r.on_hover_text(tip),
+                        None => r,
+                    };
+                    if close.clicked() || r.middle_clicked() {
+                        msgs.push(Msg::Tabs(TabsMsg::CloseTab(i)));
+                    } else if r.clicked() {
+                        msgs.push(Msg::Tabs(TabsMsg::SelectTab(i)));
+                    }
+                    r.context_menu(|ui| tab_menu(ui, t, i, st, msgs));
                 }
-                new_tab_button(ui, t, &st.keymap, msgs);
-                if list {
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| super::tab_list::button(ui, t, st, msgs));
-                }
-            });
-        });
-}
-
-/// Tracks a tab drag: returns where the dragged tab floats while one is in progress, and pushes
-/// `MoveTab` with the slot under it when dropping it there changes the order (`blocks` are the
-/// tabs that move together, `tab_groups::move_order`).
-fn drag(ui: &egui::Ui, slots: &[Slot], blocks: &[Range<usize>], strip_left: f32, pitch: f32, msgs: &mut Vec<Msg>) -> Option<Floating> {
-    let drag_id = Id::new(DRAG_ID);
-    let n = slots.len();
-    if n < 2 {
-        ui.data_mut(|d| d.remove::<TabDrag>(drag_id));
-        return None;
-    }
-    if let Some((i, s)) = slots.iter().enumerate().find(|(_, s)| s.r.drag_started_by(PointerButton::Primary))
-        && let Some(origin) = ui.input(|i| i.pointer.press_origin())
-    {
-        ui.data_mut(|d| d.insert_temp(drag_id, TabDrag { from: i, grab: origin.x - s.rect.left(), cancelled: false }));
-    }
-    let mut state = ui.data(|d| d.get_temp::<TabDrag>(drag_id))?;
-    let slot = slots.get(state.from).filter(|s| s.r.dragged() || s.r.drag_stopped());
-    let (Some(slot), Some(px)) = (slot, ui.input(|i| i.pointer.latest_pos())) else {
-        // The drag ended without reaching this tab (e.g. the tabs changed under it).
-        ui.data_mut(|d| d.remove::<TabDrag>(drag_id));
-        return None;
-    };
-    if !state.cancelled && ui.input(|i| i.key_pressed(Key::Escape)) {
-        state.cancelled = true;
-        ui.data_mut(|d| d.insert_temp(drag_id, state));
-    }
-    if state.cancelled {
-        // Snapped back: the tab stays in its slot until the button is released.
-        if slot.r.drag_stopped() {
-            ui.data_mut(|d| d.remove::<TabDrag>(drag_id));
+            }
         }
-        return None;
-    }
-    let left = (px.x - state.grab).clamp(strip_left, strip_left + (n - 1) as f32 * pitch);
-    let to = drop_slot(left, strip_left, pitch, n);
-    let order = move_order(blocks, state.from, to);
-    if slot.r.drag_stopped() {
-        ui.data_mut(|d| d.remove::<TabDrag>(drag_id));
-        if !is_identity(&order) {
-            msgs.push(Msg::Tabs(TabsMsg::MoveTab { from: state.from, to }));
+        // The dragged tab, drawn last so it floats above the others.
+        if let Some(f) = floating {
+            let active = f.from == st.active_tab;
+            // An inactive tab is lifted off the strip on the hover fill, so it reads as held.
+            let look = TabLook { active, hovered: true, show_close: active, close_hovered: false };
+            paint_tab(ui.painter(), f.rect, name(f.from), font_of(active), look);
+            if let Some((_, n)) = shown_at(&shown, f.from) {
+                paint_group_strip(ui.painter(), f.rect, group_color(*n), true, true, gap);
+            }
+            ui.painter().rect_stroke(f.rect, ROUNDING, Stroke::new(1.0_f32, color::accent()), StrokeKind::Inside);
         }
-        return None;
-    }
-    ui.ctx().set_cursor_icon(CursorIcon::Grabbing);
-    Some(Floating { from: state.from, order, rect: Rect::from_min_size(pos2(left, slot.rect.top()), slot.rect.size()) })
-}
-
-/// The slot nearest to a tab whose left edge is at `left`.
-fn drop_slot(left: f32, strip_left: f32, pitch: f32, n: usize) -> usize {
-    (((left - strip_left) / pitch).round().max(0.0) as usize).min(n - 1)
-}
-
-/// The color of the `n`th group from the left, so neighbouring groups differ.
-fn group_color(n: usize) -> Color32 {
-    color::repo_group(n).gamma_multiply(0.8)
-}
-
-/// The strip under a grouped tab: inset at the group's outer ends, and across the `gap` to the
-/// next tab elsewhere, so it runs unbroken along the group.
-fn paint_group_strip(p: &egui::Painter, rect: Rect, color: Color32, first: bool, last: bool, gap: f32) {
-    let left = rect.left() + if first { 4.0 } else { 0.0 };
-    let right = rect.right() + if last { -4.0 } else { gap };
-    p.rect_filled(Rect::from_min_max(pos2(left, rect.bottom() - 3.0), pos2(right, rect.bottom() - 1.0)), 1.0, color);
-}
-
-fn close_rect(tab: Rect) -> Rect {
-    Rect::from_center_size(pos2(tab.right() - 14.0, tab.center().y), vec2(tab_glyph::BOX, tab_glyph::BOX))
-}
-
-fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, active: bool, hovered: bool, show_close: bool, close_hovered: bool) {
-    let close_rect = close_rect(rect);
-    let fill = if active {
-        color::toolbar()
-    } else if hovered {
-        color::hover()
-    } else {
-        color::bg()
-    };
-    p.rect_filled(rect, ROUNDING, fill);
-    if active {
-        p.line_segment([rect.left_top() + vec2(6.0, 0.5), rect.right_top() + vec2(-6.0, 0.5)], Stroke::new(2.0_f32, color::primary()));
-    }
-    // Name, clipped before the close button.
-    let text_col = if active { color::text() } else { color::weak() };
-    let clip = Rect::from_min_max(rect.min, pos2(close_rect.left() - 4.0, rect.max.y));
-    p.with_clip_rect(clip).text(
-        pos2(rect.left() + 12.0, rect.center().y),
-        Align2::LEFT_CENTER,
-        name,
-        type_scale::font(type_scale::BODY),
-        text_col,
-    );
-    // Close button: shown on the active and hovered tabs.
-    if show_close {
-        tab_glyph::paint(p, close_rect.center(), TabGlyph::Close, text_col, close_hovered.then(color::selected));
-    }
+        new_tab_button(ui, t, &st.keymap, height, msgs);
+        if list {
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| super::tab_list::button(ui, t, st, height, msgs));
+        }
+    });
 }
 
 /// The + after the tabs: drawn like a tab's close × (`tab_glyph`), on the same line, in its
-/// own HEIGHT-square slot.
-fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &crate::keymap::Keymap, msgs: &mut Vec<Msg>) {
-    let (rect, r) = ui.allocate_exact_size(vec2(HEIGHT, HEIGHT), Sense::click());
+/// own `height`-square slot.
+fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &crate::keymap::Keymap, height: f32, msgs: &mut Vec<Msg>) {
+    let (rect, r) = ui.allocate_exact_size(vec2(height, height), Sense::click());
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, t.tr("tabs.new_tab.tip")));
     let r = r.on_hover_text(keys.tip(t.tr("tabs.new_tab.tip"), crate::keymap::BindingId::NewTab));
     tab_glyph::paint(ui.painter(), rect.center(), TabGlyph::Plus, color::weak(), r.hovered().then(color::selected));
@@ -282,18 +176,7 @@ fn item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, enabled: bool, button: Button, m
 
 #[cfg(test)]
 mod tests {
-    use super::drop_slot;
     use crate::state::tabs::index_after_move;
-
-    #[test]
-    fn drop_slot_rounds_and_clamps() {
-        assert_eq!(drop_slot(-50.0, 6.0, 221.0, 3), 0);
-        assert_eq!(drop_slot(6.0, 6.0, 221.0, 3), 0);
-        assert_eq!(drop_slot(6.0 + 110.0, 6.0, 221.0, 3), 0);
-        assert_eq!(drop_slot(6.0 + 111.0, 6.0, 221.0, 3), 1);
-        assert_eq!(drop_slot(6.0 + 442.0, 6.0, 221.0, 3), 2);
-        assert_eq!(drop_slot(5000.0, 6.0, 221.0, 3), 2);
-    }
 
     #[test]
     fn index_after_move_shifts_the_tabs_in_between() {

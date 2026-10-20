@@ -1,7 +1,8 @@
-//! The menu bar: one row of File, Edit, View, Window and Help menus above the tab strip, drawn
-//! on every OS while `settings.show_menu_bar` is on. Every item pushes the message the toolbar,
-//! palette or key already sends, with the key it has in the keymap; a disabled item says why on
-//! hover. `about.rs` draws Help > About Trellis (`Modal::About`).
+//! The menus: File, Edit, View, Window and Help (`menus`). With the system frame they form a
+//! menu bar above the tab bar (`show`, while `settings.show_menu_bar` is on); a drawn title bar
+//! opens them as submenus of its menu button instead. Every item pushes the message the
+//! toolbar, palette or key already sends, with the key it has in the keymap; a disabled item
+//! says why on hover. `about.rs` draws Help > About Trellis (`Modal::About`).
 
 use super::theme::color;
 use crate::msg::Msg;
@@ -20,20 +21,27 @@ pub(super) use about::about;
 #[cfg(test)]
 pub(super) use items::hint;
 
-/// Draws the bar as the topmost panel (call before the other top panels).
+/// Draws the bar as the topmost panel (call before the other top panels), with the system
+/// frame only.
 pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    if !st.settings.show_menu_bar {
+    if st.view.chrome.drawn() || !st.settings.show_menu_bar {
         return;
     }
-    egui::TopBottomPanel::top("menu-bar").frame(Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(6, 2))).show(ctx, |ui| {
-        egui::menu::bar(ui, |ui| {
-            file::menu(ui, st, msgs);
-            edit::menu(ui, st, msgs);
-            view::menu(ui, st, msgs);
-            window::menu(ui, st, msgs);
-            help::menu(ui, st, msgs);
-        });
-    });
+    egui::TopBottomPanel::top("menu-bar").frame(Frame::new().fill(color::toolbar()).inner_margin(Margin::symmetric(6, 2))).show(
+        ctx,
+        |ui| {
+            egui::menu::bar(ui, |ui| menus(ui, st, msgs));
+        },
+    );
+}
+
+/// The five menus in order, as menu bar buttons or (inside a menu) as submenus.
+pub(super) fn menus(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    file::menu(ui, st, msgs);
+    edit::menu(ui, st, msgs);
+    view::menu(ui, st, msgs);
+    window::menu(ui, st, msgs);
+    help::menu(ui, st, msgs);
 }
 
 #[cfg(test)]

@@ -81,6 +81,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         last_checked: st.settings.updates.last_checked.map(|t| st.settings.format_time(t, st.view.now, st.view.utc_offset)),
     };
     let switching = st.profile_switch;
+    let menu_bar_row = !st.view.chrome.drawn();
     let git_state = &st.git;
     let settings = &mut st.settings;
     let keymap = &st.keymap;
@@ -125,7 +126,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::Git => git_program::git_program_page(ui, settings, git_state, msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
-                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, msgs),
+                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, menu_bar_row, msgs),
                     PrefPage::Language => language::language_page(ui, settings, now),
                     PrefPage::DiffViewer => diff_viewer::diff_viewer_page(ui, settings),
                     PrefPage::Keyboard => keyboard::keyboard_page(ui, t, &mut prefs.keys, keymap, msgs),

@@ -68,6 +68,7 @@ const DENIED: &[(&str, &str)] = &[
     ("themes::load_dir", "the theme files"),
     ("themes::create", "the theme files"),
     (".save()", "the settings file"),
+    ("send_viewport_cmd", "the window (views push AppMsg::Window; the shell sends viewport commands)"),
 ];
 
 /// `git2::` items that are plain data and may be used anywhere.
@@ -189,6 +190,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     ("ui/app.rs", "platform::load_tabs", "the shell loads the last session's tabs once, at startup"),
     ("ui/app.rs", "Instant::now", "the shell stamps each frame and message with the time"),
     ("ui/app.rs", "Local::now", "the shell sets `st.view.now` once per frame"),
+    ("ui/app.rs", "send_viewport_cmd", "the shell turns window effects into viewport commands"),
     ("state/app_queries.rs", "std::env", "`outside_dir` (and `any_dir` without a repository) is the temp folder's path; nothing is read"),
 ];
 

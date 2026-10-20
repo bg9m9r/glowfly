@@ -28,6 +28,10 @@ pub(super) fn menu(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         item(ui, keys, t.tr("menu.view.zoom_reset"), Some(I::ZoomReset), reset.as_deref(), zoom_reset, msgs);
         ui.separator();
         for panel in Panel::ALL {
+            // A drawn title bar replaces the menu bar.
+            if panel == Panel::MenuBar && st.view.chrome.drawn() {
+                continue;
+            }
             let on = shown(&st.settings, panel);
             if check_item(ui, keys, panel_label(t, panel), on, panel.binding(), None) {
                 msgs.push(Msg::Layout(LayoutMsg::SetPanel { panel, shown: !on }));

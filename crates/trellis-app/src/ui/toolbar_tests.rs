@@ -1,5 +1,5 @@
-//! The restyled toolbar in the fixture window: its spacing (4 px within a group, none before a
-//! caret, 16 px between groups), tooltips for a focused button and near the window's edge, and
+//! The restyled toolbar in the fixture window: its spacing (2 px within a group, none before a
+//! caret, 16 px from a button to the next group's), pickers sized to their names, tooltips for a focused button and near the window's edge, and
 //! snapshots of the bar and of the rich tooltips. Motion is reduced so a tooltip settles at once.
 
 use crate::state::AppState;
@@ -59,11 +59,12 @@ fn groups_are_spaced_evenly() {
     let mut h = harness(st, true);
     h.run();
     let gap = |h: &H, a: &str, b: &str| span(h, b).0 - span(h, a).1;
-    assert_eq!(gap(&h, "Undo the last action", "Redo the undone action"), 4.0, "within a group");
+    assert_eq!(gap(&h, "Undo the last action", "Redo the undone action"), 2.0, "within a group");
     assert_eq!(gap(&h, "Pull the current branch", "More pull actions"), 0.0, "a caret touches its button");
     assert_eq!(gap(&h, "Redo the undone action", "Pull the current branch"), 16.0, "between groups");
     assert_eq!(gap(&h, "More push actions", "Create a branch"), 16.0, "between groups");
-    assert_eq!(gap(&h, "Create a branch", "Stash all changes"), 4.0);
+    assert_eq!(gap(&h, "Create a branch", "Stash all changes"), 2.0);
+    assert_eq!(gap(&h, "Pop the latest stash", "Show the terminal panel"), 16.0, "between groups");
     drop(h);
     remove_fixture(&dir);
 }
@@ -252,30 +253,46 @@ fn variant(case: usize, labels: bool, name: &str) -> (AppState, PathBuf) {
 }
 
 #[test]
-fn toolbar_buttons_stay_put() {
-    const TERMINAL: &str = "Show the terminal panel";
+fn toolbar_right_group_stays_put() {
+    const REFRESH: &str = "Refresh the repository";
     for labels in [true, false] {
         let mut first = None;
         for case in 0..6 {
             let (st, dir) = variant(case, labels, &format!("toolbar-put-{case}-{labels}"));
-            let long = st.snap.as_ref().unwrap().head_branch.clone().filter(|b| b.len() == 80);
-            let has_pr = st.forge.is_some();
             let mut h = harness(st, true);
             h.run();
-            let at = (span(&h, "Undo the last action").0, span(&h, TERMINAL).0);
+            let at = span(&h, REFRESH).0;
             assert_eq!(*first.get_or_insert(at), at, "case {case}, labels {labels}");
-            if let Some(name) = long {
-                // Cut on screen, but still found by its whole name.
-                assert!(span(&h, &name).1 - span(&h, &name).0 < 240.0);
-            }
-            if case == 4 {
-                assert!(h.query_by_label("Conflicts with main").is_some(), "the chip");
-            }
-            assert_eq!(h.query_all_by_label_contains("create a pull request on").next().is_some(), has_pr, "case {case}");
             drop(h);
             remove_fixture(&dir);
         }
     }
+}
+
+#[test]
+fn pickers_fit_their_names() {
+    let mut undo = Vec::new();
+    for case in 0..6 {
+        let (st, dir) = variant(case, true, &format!("toolbar-fit-{case}"));
+        let long_branch = st.snap.as_ref().unwrap().head_branch.clone().filter(|b| b.len() == 80);
+        let long_repo = Some(st.snap.as_ref().unwrap().name.clone()).filter(|n| n.len() == 60);
+        let has_pr = st.forge.is_some();
+        let mut h = harness(st, true);
+        h.run();
+        undo.push(span(&h, "Undo the last action").0);
+        for name in long_branch.iter().chain(&long_repo) {
+            // Cut on screen, but still found by its whole name.
+            let (l, r) = span(&h, name);
+            assert!(r - l < 300.0, "case {case}: {}", r - l);
+        }
+        if case == 4 {
+            assert!(h.query_by_label("Conflicts with main").is_some(), "the chip");
+        }
+        assert_eq!(h.query_all_by_label_contains("create a pull request on").next().is_some(), has_pr, "case {case}");
+        drop(h);
+        remove_fixture(&dir);
+    }
+    assert!(undo[0] < undo[1], "a longer branch name moves the middle groups: {undo:?}");
 }
 
 #[test]
@@ -289,29 +306,27 @@ fn toolbar_long_branch_name() {
 }
 
 #[test]
-fn names_keep_room_beside_the_chip() {
-    use super::pickers::{BRANCH_NAME_MAX, PICKERS_MIN, PICKERS_W, REPO_NAME_MAX, name_limits};
-    assert_eq!(name_limits(PICKERS_W, false), (REPO_NAME_MAX, BRANCH_NAME_MAX));
-    assert_eq!(name_limits(PICKERS_W, true), (REPO_NAME_MAX, BRANCH_NAME_MAX - 68.0));
-    for slot in [PICKERS_MIN, (PICKERS_MIN + PICKERS_W) / 2.0] {
-        for chip in [false, true] {
-            let (repo, branch) = name_limits(slot, chip);
-            assert!(repo >= 32.0 && branch >= 40.0, "{slot} {chip}: {repo} {branch}");
-        }
-    }
+fn toolbar_pickers_short() {
+    let (mut st, dir) = plain(ThemeChoice::Dark, "toolbar-pickers-short");
+    st.snap.as_mut().unwrap().name = "ui".into();
+    let mut h = harness(st, true);
+    settle(&mut h);
+    h.check_snapshot("toolbar_pickers_short");
+    drop(h);
+    remove_fixture(&dir);
 }
 
 /// Folder's right edge and Refresh's left edge (the end of the middle group and the start of
-/// the right-hand one), then Undo's and Terminal's left edges, in a window `width` wide with
-/// captions, in `lang`, for `variant`'s `case`.
-fn group_edges(case: usize, lang: &str, width: f32) -> (f64, f64, f64, f64) {
+/// the right-hand one), in a window `width` wide with captions, in `lang`, for `variant`'s
+/// `case`.
+fn group_edges(case: usize, lang: &str, width: f32) -> (f64, f64) {
     let (mut st, dir) = variant(case, true, &format!("toolbar-narrow-{case}-{lang}-{width}"));
     st.settings.language = lang.into();
     let t = st.settings.lang();
-    let names = ["toolbar.folder.name", "toolbar.refresh.name", "toolbar.undo.name", "toolbar.terminal.name_show"].map(|k| t.tr(k));
+    let names = ["toolbar.folder.name", "toolbar.refresh.name"].map(|k| t.tr(k));
     let mut h = harness_sized(st, true, egui::vec2(width, 600.0));
     h.run();
-    let edges = (span(&h, names[0]).1, span(&h, names[1]).0, span(&h, names[2]).0, span(&h, names[3]).0);
+    let edges = (span(&h, names[0]).1, span(&h, names[1]).0);
     drop(h);
     remove_fixture(&dir);
     edges
@@ -321,14 +336,9 @@ fn group_edges(case: usize, lang: &str, width: f32) -> (f64, f64, f64, f64) {
 fn a_narrow_window_narrows_the_pickers_before_the_groups_meet() {
     // 1280 px: a maximized window on a 1920 px screen at 150%; German captions need 1330 px.
     for (lang, width) in [("en", 1280.0), ("en", 1250.0), ("de", 1330.0)] {
-        let mut first = None;
         for case in 0..6 {
-            let (folder, refresh, undo, terminal) = group_edges(case, lang, width);
+            let (folder, refresh) = group_edges(case, lang, width);
             assert!(refresh - folder >= 16.0, "{lang} {width}, case {case}: Folder ends at {folder}, Refresh starts at {refresh}");
-            assert_eq!(*first.get_or_insert((undo, terminal)), (undo, terminal), "{lang} {width}, case {case}");
         }
     }
-    // A window with room keeps the widest slot.
-    let (_, _, undo, _) = group_edges(0, "en", 1400.0);
-    assert_eq!(undo, 320.0);
 }

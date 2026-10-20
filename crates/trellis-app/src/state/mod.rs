@@ -130,6 +130,7 @@ pub mod undo_preview;
 pub mod updates;
 mod view;
 pub mod watch;
+pub mod window_chrome;
 pub mod worktree_branches;
 pub mod worktree_manage;
 pub mod worktree_move;

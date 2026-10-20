@@ -1,6 +1,7 @@
 //! Transient view state: scroll targets, hover highlights, focus requests and which
 //! left-panel sections are expanded.
 
+use super::window_chrome::{AltTap, Chrome, WindowInfo};
 use super::{diff_nav, lines};
 use git2::Oid;
 use std::collections::HashSet;
@@ -143,6 +144,13 @@ pub struct ViewState {
     /// The tool view in which the collapsed commit panel was expanded; set and cleared only by
     /// update (`state::layout::drop_stale_expansion`), so it isn't parked with a tab.
     pub details_expanded_for: Option<super::layout::ToolView>,
+    /// Who draws the window frame: set once by the real app (`Chrome::current`); tests keep
+    /// `System` unless they pick another.
+    pub chrome: Chrome,
+    /// Whether the window is maximized or fullscreen, read by the shell each frame.
+    pub window: WindowInfo,
+    /// The Alt tap that opens a drawn title bar's menu (`ui/title_bar.rs`).
+    pub alt_tap: AltTap,
 }
 
 impl Default for ViewState {
@@ -188,6 +196,9 @@ impl Default for ViewState {
             panel_drag: None,
             zoom_toast: None,
             details_expanded_for: None,
+            chrome: Chrome::System,
+            window: WindowInfo::default(),
+            alt_tap: AltTap::default(),
         }
     }
 }

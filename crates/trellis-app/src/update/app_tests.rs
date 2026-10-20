@@ -1,4 +1,5 @@
-//! Headless tests for the menu bar's window actions (Quit, About) and Edit > Find commits.
+//! Headless tests for the menu bar's window actions (Quit, About), a drawn title bar's window
+//! actions and Edit > Find commits.
 
 use super::super::tests::{drive, scratch_repo, state};
 use super::super::update;
@@ -23,6 +24,24 @@ fn quit_closes_the_window_and_changes_nothing() {
     let fx = run(&mut st, Msg::App(AppMsg::Quit));
     assert!(matches!(&fx[..], [Effect::Ui(UiEffect::CloseWindow)]), "{fx:?}");
     assert!(st.modal.is_none() && st.palette.is_none() && st.toasts.is_empty());
+}
+
+#[test]
+fn window_actions_go_to_the_shell_and_change_nothing() {
+    use crate::state::window_chrome::{ResizeEdge, WindowCmd};
+    for cmd in [
+        WindowCmd::StartDrag,
+        WindowCmd::BeginResize(ResizeEdge::SouthEast),
+        WindowCmd::Minimize,
+        WindowCmd::SetMaximized(true),
+        WindowCmd::SetMaximized(false),
+    ] {
+        let mut st = state();
+        let fx = run(&mut st, Msg::App(AppMsg::Window(cmd)));
+        assert!(matches!(&fx[..], [Effect::Ui(UiEffect::Window(c))] if *c == cmd), "{cmd:?}: {fx:?}");
+        assert!(st.modal.is_none() && st.palette.is_none() && st.toasts.is_empty(), "{cmd:?}");
+        assert!(AppMsg::Window(cmd).on_inactive().is_none());
+    }
 }
 
 #[test]

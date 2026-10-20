@@ -114,6 +114,30 @@ pub fn cut_left_in(p: &Painter, text: &str, font: &FontId, max_w: f32) -> String
     ELLIPSIS.to_string()
 }
 
+/// `text` with characters taken out of its middle, behind "…", until it fits in `max_w` in
+/// `font` (just "…" when not even one character each side does): a branch name whose start and
+/// end both matter. Works on whole characters, from the longer side (the start on a tie).
+pub fn cut_middle_in(p: &Painter, text: &str, font: &FontId, max_w: f32) -> String {
+    let width = |s: &str| p.layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
+    if width(text) <= max_w {
+        return text.to_owned();
+    }
+    let chars: Vec<char> = text.chars().collect();
+    let (mut head, mut tail) = (chars.len() / 2, chars.len() / 2);
+    while head > 0 && tail > 0 {
+        let cut: String = chars[..head].iter().chain(&[ELLIPSIS]).chain(&chars[chars.len() - tail..]).collect();
+        if width(&cut) <= max_w {
+            return cut;
+        }
+        if head >= tail {
+            head -= 1;
+        } else {
+            tail -= 1;
+        }
+    }
+    ELLIPSIS.to_string()
+}
+
 /// A text field's hint cut to the field: `TextEdit::hint_text` keeps a laid-out galley as it
 /// is (it lays a plain hint out on one uncut line). Drawn in egui's weak hint colour. Returns
 /// the hint and whether it was cut, for the caller's hover with the whole hint.
@@ -275,6 +299,36 @@ pub(crate) mod tests {
                 assert!(r.rect.width() <= 30.0, "{:?}", r.rect);
             });
         });
+    }
+
+    #[test]
+    fn a_middle_cut_keeps_both_ends() {
+        let ctx = ctx();
+        let p = Painter::new(ctx.clone(), LayerId::background(), Rect::EVERYTHING);
+        let f = font();
+        assert_eq!(cut_middle_in(&p, "main", &f, 200.0), "main", "short text is kept");
+        let name = "feature/accessibility-pass-for-dialogs";
+        let cut = cut_middle_in(&p, name, &f, 160.0);
+        let w = p.layout_no_wrap(cut.clone(), f.clone(), Color32::WHITE).size().x;
+        assert!(w <= 160.0, "{cut:?} is {w} wide");
+        assert_eq!(cut.matches(ELLIPSIS).count(), 1, "{cut:?}");
+        let (head, tail) = cut.split_once(ELLIPSIS).unwrap();
+        assert!(!head.is_empty() && name.starts_with(head), "{cut:?}");
+        assert!(!tail.is_empty() && name.ends_with(tail), "{cut:?}");
+        assert!(tail.chars().count() + 1 >= head.chars().count(), "{cut:?}");
+        assert_eq!(cut_middle_in(&p, name, &f, 4.0), ELLIPSIS.to_string(), "too narrow");
+    }
+
+    #[test]
+    fn a_middle_cut_never_splits_a_character() {
+        let ctx = ctx();
+        let p = Painter::new(ctx.clone(), LayerId::background(), Rect::EVERYTHING);
+        let name = "fonctionnalité/écran-de-connexion-réécrit-über-alles";
+        for w in [40.0, 80.0, 120.0, 160.0] {
+            let cut = cut_middle_in(&p, name, &font(), w);
+            let (head, tail) = cut.split_once(ELLIPSIS).expect("cut");
+            assert!(name.starts_with(head) && name.ends_with(tail), "{w}: {cut:?}");
+        }
     }
 
     #[test]

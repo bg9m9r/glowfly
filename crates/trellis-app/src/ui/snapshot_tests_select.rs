@@ -108,7 +108,7 @@ pub(super) fn row_y(row: usize) -> f32 {
 }
 
 /// Where the graph's first row starts (below the tab bar, toolbar and column header).
-const ROWS_TOP: f32 = 109.0;
+const ROWS_TOP: f32 = 117.0;
 
 #[test]
 fn graph_multi_menu() {

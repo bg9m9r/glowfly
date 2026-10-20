@@ -2786,8 +2786,6 @@ here, under the item they grew from.
 
 ### Brand colour and tinted neutrals
 
-- Put the menu bar and the repository tab strip on the chrome colour, with the active tab lifted
-  (goes with Window chrome and toolbar)
 - Retint the diff, hunk and banner backgrounds onto the tinted neutrals (the blue-grey hunk_bg
   sits on green-tinted panels)
 - Status-coloured chips on the raised fill (issue state, a thread's Outdated, rebase step chips)
@@ -2824,3 +2822,16 @@ here, under the item they grew from.
 - Graph table: a keyboard focus ring on the column header dividers, to resize without a mouse
 - The search bar's controls past the query field don't shrink: in a narrow graph the field's
   floor (160 px) is reached and Close can be cut at the right edge
+
+### Window chrome and toolbar
+
+- A Preferences option to keep the system title bar on Windows
+- The DWM shadow and rounded corners around the drawn Windows frame
+- Centre the macOS traffic lights on the taller title bar
+- Follow macOS's title-bar double-click setting (zoom or minimize) instead of always maximizing
+- F10 opens the title bar's menu, like an Alt tap
+- Dragging the only tab moves the window instead of the tab
+- Dim the window buttons under a dialog's backdrop
+- Toolbar groups that don't fit fold into a ⋯ menu instead of crowding the pickers
+- A repository icon before each tab's name
+- Cut long repository names in the middle on tabs, like the branch picker
