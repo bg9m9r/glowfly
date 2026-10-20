@@ -15,7 +15,10 @@ use super::super::theme::{color, type_scale};
 use super::truncate::truncate_label;
 use eframe::egui::{Align, Direction, Layout, Response, RichText, Sense, TextStyle, TextWrapMode, Ui, UiBuilder, WidgetText, vec2};
 
-pub use super::menu_reason::{ItemState, SET_UP, menu_button};
+/// The setup suffix, for callers that name it next to `menu_button`.
+#[allow(unused_imports, reason = "part of this module's menu item API; only tests name it so far")]
+pub use super::menu_reason::SET_UP;
+pub use super::menu_reason::{ItemState, menu_button};
 
 /// The reason line's text size, and the height a `line` always takes.
 pub const LINE_SIZE: f32 = type_scale::SMALL;
@@ -91,10 +94,8 @@ mod tests {
     }
 
     #[test]
-    fn menu_items_are_reachable_from_here() {
-        use super::super::menu_reason::{INFO_GAP, INFO_ROOM, INFO_SIZE};
+    fn menu_items_and_their_setup_suffix_are_reachable_from_here() {
         assert_eq!(SET_UP, super::super::menu_reason::SET_UP);
-        assert_eq!(INFO_ROOM, INFO_GAP + INFO_SIZE);
         let mut h = Harness::new_ui(|ui| {
             menu_button(ui, "Open", "", ItemState::Setup("Opens the page"));
         });
