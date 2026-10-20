@@ -11,6 +11,8 @@ mod snapshot_tests_empty_state;
 mod snapshot_tests_gaps;
 #[path = "snapshot_tests_lines_drag.rs"]
 mod snapshot_tests_lines_drag;
+#[path = "snapshot_tests_lines_gutter.rs"]
+mod snapshot_tests_lines_gutter;
 #[path = "snapshot_tests_reveal.rs"]
 mod snapshot_tests_reveal;
 use crate::msg::DiffMsg;

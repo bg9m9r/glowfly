@@ -172,6 +172,8 @@ mod branch_colour_tests;
 #[cfg(test)]
 mod controls_tests;
 #[cfg(test)]
+mod diff_select_tests;
+#[cfg(test)]
 mod family_tests;
 #[cfg(test)]
 mod snapshot_tests_controls;

@@ -5,7 +5,7 @@
 use super::style::DiffStyle;
 use super::syntax::paint_line;
 use super::wrap::{RowMetrics, Wrap};
-use super::{DiffView, drag_over, fold, hunk_header, line_click, line_sense, paint_mark, thread_marks};
+use super::{DiffView, LineHover, drag_over, fold, gutter_sign, hunk_header, line_click, line_sense, paint_mark, thread_marks};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
@@ -16,6 +16,13 @@ use trellis_core::repo::DiffLine;
 
 /// A line with its syntax spans and changed-word ranges.
 type CellLine<'a> = (&'a DiffLine, &'a [Span], &'a [Range<u32>]);
+
+/// A cell's selection state: selected, and where the pointer is over it.
+#[derive(Clone, Copy, Default)]
+struct Mark {
+    selected: bool,
+    hover: LineHover,
+}
 
 #[derive(Clone, Copy, PartialEq, Hash)]
 enum Side {
@@ -71,8 +78,8 @@ pub(super) fn show(
                 let spans: &[Span] = if v.hl.is_some() { text.spans.get(line).map_or(&[], Vec::as_slice) } else { &[] };
                 let left = Rect::from_min_max(rect.min, pos2(rect.left() + half, rect.bottom()));
                 let right = Rect::from_min_max(pos2(left.right(), rect.top()), rect.max);
-                cell(ui, left, Some((&dl, spans, &[])), Side::Old, st, v.wrap, false);
-                cell(ui, right, Some((&dl, spans, &[])), Side::New, st, v.wrap, false);
+                cell(ui, left, Some((&dl, spans, &[])), Side::Old, st, v.wrap, Mark::default());
+                cell(ui, right, Some((&dl, spans, &[])), Side::New, st, v.wrap, Mark::default());
                 ui.painter().vline(left.right(), rect.y_range(), Stroke::new(1.0_f32, color::border()));
                 if line == 0 {
                     fold::fold_back_key(ui, left, v, g.key, g.len, st.split_cols().sign, msgs);
@@ -93,7 +100,7 @@ pub(super) fn show(
                 };
                 for (side, r, idx) in [(Side::Old, left, old), (Side::New, right, new)] {
                     let Some(idx) = idx else {
-                        cell(ui, r, None, side, st, v.wrap, false);
+                        cell(ui, r, None, side, st, v.wrap, Mark::default());
                         continue;
                     };
                     let dl = &lines[idx];
@@ -103,12 +110,18 @@ pub(super) fn show(
                         _ => ' ',
                     };
                     let selected = origin != ' ' && v.is_selected(hunk, idx);
-                    let hovered = v.sel.is_some() && {
-                        let resp = ui.interact(r, ui.id().with(("diff-cell", hunk, idx, side)), line_sense(origin));
-                        line_click(ui, &resp, hunk, idx, origin, msgs)
+                    let hover = match v.sel {
+                        Some(_) => {
+                            let resp = ui.interact(r, ui.id().with(("diff-cell", hunk, idx, side)), line_sense(origin));
+                            // The number and the sign, up to the text.
+                            let gutter = Rect::from_min_max(r.min, pos2(r.left() + st.split_cols().text - 2.0, r.bottom()));
+                            line_click(ui, &resp, gutter, hunk, idx, origin, msgs)
+                        }
+                        None => LineHover::default(),
                     };
-                    cell(ui, r, Some((dl, spans(idx), diff.intraline.line(hunk, idx))), side, st, v.wrap, selected);
-                    paint_mark(ui, r, selected, hovered);
+                    let mark = Mark { selected, hover };
+                    cell(ui, r, Some((dl, spans(idx), diff.intraline.line(hunk, idx))), side, st, v.wrap, mark);
+                    paint_mark(ui, r, selected, hover.row);
                     let key = if side == Side::Old { LineSide::Old } else { LineSide::New };
                     if let Some(mark) = v.marks.and_then(|m| thread_marks::find(m, dl, Some(key))) {
                         thread_marks::paint(ui, r, ui.clip_rect().right().min(r.right()), st.row_h, mark, msgs);
@@ -139,18 +152,20 @@ fn dragged_side(ui: &Ui, left: Rect, right: Rect, old: Option<usize>, new: Optio
 
 /// One side of a row: background, line number, sign and text, clipped to the column so long
 /// lines never draw into the other side. `line` comes with its syntax spans and changed-word
-/// ranges; `None` is an empty cell. `selected` cells get the stronger background. `st` gives the
+/// ranges; `None` is an empty cell. Selected cells (`mark`) get the stronger background, and selected
+/// or gutter-hovered ones the check box in place of the sign. `st` gives the
 /// font, the gutter and whether numbers and changed words are drawn; `wrap` how long lines
 /// continue below the first visual line, which holds the number and sign.
-fn cell(ui: &Ui, rect: Rect, line: Option<CellLine>, side: Side, st: &DiffStyle, wrap: Option<Wrap>, selected: bool) {
+fn cell(ui: &Ui, rect: Rect, line: Option<CellLine>, side: Side, st: &DiffStyle, wrap: Option<Wrap>, mark: Mark) {
+    let selected = mark.selected;
     let p = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
     let Some((dl, spans, words)) = line else {
         p.rect_filled(rect, 0.0, color::panel());
         return;
     };
     let (bg, fg, sign) = match (dl.origin, side) {
-        ('-', Side::Old) if selected => (color::diff_del_sel(), color::text(), '-'),
-        ('+', Side::New) if selected => (color::diff_add_sel(), color::text(), '+'),
+        ('-', Side::Old) if selected => (st.sel_del, color::text(), '-'),
+        ('+', Side::New) if selected => (st.sel_add, color::text(), '+'),
         ('-', Side::Old) => (color::diff_del(), color::text(), '-'),
         ('+', Side::New) => (color::diff_add(), color::text(), '+'),
         ('<' | '>' | '=', _) => (Color32::TRANSPARENT, color::weak(), ' '),
@@ -167,7 +182,7 @@ fn cell(ui: &Ui, rect: Rect, line: Option<CellLine>, side: Side, st: &DiffStyle,
         let number = number.map(|n| n.to_string()).unwrap_or_default();
         p.text(pos2(rect.left() + x, y), Align2::RIGHT_CENTER, number, mono.clone(), color::faint());
     }
-    p.text(pos2(rect.left() + cols.sign, y), Align2::LEFT_CENTER, sign, mono.clone(), fg);
+    gutter_sign(&p, pos2(rect.left() + cols.sign, y), sign, fg, mono, selected, mark.hover);
     let marks = match (dl.origin, side) {
         _ if !st.words => None,
         ('-', Side::Old) => Some((words, color::diff_del_word())),

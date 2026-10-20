@@ -9,7 +9,8 @@
 //! keys (E and Shift+E by default) open the first closed run at or below the top and fold back
 //! the opened one at the top. With wrapping on, long lines continue on the next line and their
 //! rows grow to fit. Changed lines are selected by click, Shift-click and Ctrl/Cmd-click, or by
-//! pressing on one and dragging across the lines of its hunk. A changed PNG or JPEG shows its
+//! pressing on one and dragging across the lines of its hunk; a click in a changed line's gutter
+//! adds it to the selection or takes it out (`line_check`). A changed PNG or JPEG shows its
 //! before and after images (`preview`).
 
 pub(in crate::ui) mod fold;
@@ -17,6 +18,7 @@ mod header;
 mod hunk_header;
 mod inline;
 mod lfs_note;
+mod line_check;
 pub(super) mod preview;
 pub(super) mod rows_cache;
 mod split;
@@ -27,14 +29,14 @@ pub(in crate::ui) mod wrap;
 
 use super::UiCache;
 use super::empty_state;
-use super::theme::color;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::lines::{LineClick, LineSelection};
 use crate::state::pull_request_threads::{self, Marks};
-use eframe::egui::{CursorIcon, FontId, Rect, Response, Sense, Ui, vec2};
+use eframe::egui::{CursorIcon, FontId, Pos2, Rect, Response, Sense, Ui};
 use hunk_header::hunk_header;
+pub(super) use line_check::{gutter_sign, paint_mark};
 use rows_cache::{DiffRowsCache, Source};
 pub(super) use style::DiffStyle;
 pub(super) use syntax::paint_line;
@@ -171,41 +173,52 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
     })
 }
 
-/// What the modifiers held make of a click or a drag on a line: Shift for a range, Ctrl/Cmd to
-/// toggle (or, for a drag, to add).
-fn how(ui: &Ui) -> LineClick {
+/// What a click or a drag on a line does: Shift for a range; Ctrl/Cmd, or a press in the
+/// line's gutter (`gutter`), to toggle (or, for a drag, to add); otherwise just this line.
+fn how(ui: &Ui, gutter: bool) -> LineClick {
     let m = ui.input(|i| i.modifiers);
     if m.shift {
         LineClick::Range
-    } else if m.command {
+    } else if m.command || gutter {
         LineClick::Toggle
     } else {
         LineClick::Only
     }
 }
 
-/// Click handling for a diff line (a row in inline, a cell in split): `+`/`-` lines are
-/// selected (Shift for a range, Ctrl/Cmd to toggle); a plain click elsewhere clears the
-/// selection. A press on a `+`/`-` line that moves becomes a drag (`StartLineDrag`). Returns
-/// whether the line is selectable and hovered.
-pub(super) fn line_click(ui: &Ui, resp: &Response, hunk: usize, line: usize, origin: char, msgs: &mut Vec<Msg>) -> bool {
+/// Where the pointer is over a selectable (`+`/`-`) line: anywhere on it, and over its gutter
+/// (the line numbers and the sign).
+#[derive(Clone, Copy, Default)]
+pub(super) struct LineHover {
+    pub row: bool,
+    pub gutter: bool,
+}
+
+/// Click handling for a diff line (a row in inline, a cell in split) whose gutter is `gutter`:
+/// a click on a `+`/`-` line's text selects just that line, a click in its gutter adds it to the
+/// selection or takes it out (as Ctrl/Cmd-click does), Shift-click selects a range; a plain
+/// click on any other line clears the selection. A press on a `+`/`-` line that moves becomes a
+/// drag (`StartLineDrag`), which adds to the selection when it starts in the gutter.
+pub(super) fn line_click(ui: &Ui, resp: &Response, gutter: Rect, hunk: usize, line: usize, origin: char, msgs: &mut Vec<Msg>) -> LineHover {
     let changed = matches!(origin, '+' | '-');
-    let hovered = changed && resp.hovered();
-    if hovered {
+    let in_gutter = |p: Option<Pos2>| changed && p.is_some_and(|p| gutter.contains(p));
+    let row = changed && resp.hovered();
+    if row {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
     if changed && resp.drag_started() {
-        msgs.push(Msg::Diff(DiffMsg::StartLineDrag { hunk, line, how: how(ui) }));
+        let how = how(ui, in_gutter(ui.input(|i| i.pointer.press_origin())));
+        msgs.push(Msg::Diff(DiffMsg::StartLineDrag { hunk, line, how }));
     }
     if resp.clicked() {
-        let how = how(ui);
+        let how = how(ui, in_gutter(resp.interact_pointer_pos()));
         if changed {
             msgs.push(Msg::Diff(DiffMsg::SelectDiffLine { hunk, line, how }));
         } else if how == LineClick::Only {
             msgs.push(Msg::Diff(DiffMsg::ClearLineSelection));
         }
     }
-    hovered
+    LineHover { row, gutter: row && in_gutter(resp.hover_pos()) }
 }
 
 /// How a selectable line senses the pointer: changed lines can also be dragged across; other
@@ -223,17 +236,6 @@ pub(super) fn drag_over(ui: &Ui, v: &DiffView, rect: Rect, hunk: usize, line: us
     if d.over != (hunk, line) && ui.rect_contains_pointer(rect) {
         msgs.push(Msg::Diff(DiffMsg::DragDiffLine { hunk, line }));
     }
-}
-
-/// The bar on a line's left edge: the accent when selected, faint when hovered.
-pub(super) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
-    let c = match (selected, hovered) {
-        (true, _) => color::accent(),
-        (false, true) => color::faint(),
-        _ => return,
-    };
-    let bar = Rect::from_min_size(rect.min, vec2(3.0, rect.height()));
-    ui.painter().with_clip_rect(rect.intersect(ui.clip_rect())).rect_filled(bar, 0.0, c);
 }
 
 /// The diff's rows without the header bar: what `show` draws below it, and what views that

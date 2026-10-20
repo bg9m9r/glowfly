@@ -536,8 +536,9 @@ Done except the group colors, which wait on repository groups in the repository 
   - [x] Cache the computed diff rows instead of rebuilding them every frame
 - [x] **Line-level staging**
   Select lines in a hunk to stage, unstage or discard (click, Shift-click for a range,
-  Ctrl/Cmd-click to toggle, drag across lines; Esc clears). Working-tree diffs only, one hunk
-  at a time.
+  Ctrl/Cmd-click or a click in the line's gutter to toggle, drag across lines; Esc clears).
+  Selected lines show a check box in the sign column and a stronger tint. Working-tree diffs
+  only, one hunk at a time.
   - [x] Keyboard shortcuts: S/U stage or unstage the selected lines (see P1 Keyboard
     shortcuts); reverting lines of a commit diff is under the diff viewer
 - [x] **Merge conflict tool**
@@ -1511,6 +1512,9 @@ here, under the item they grew from.
 - After unstaging every line of a new file, follow the diff to its untracked view instead of
   closing it
 - Ctrl/Cmd-drag over already selected lines removes them (toggle the range) rather than adding
+- Changed-word fills on a selected line are a step weaker than the stronger selected tint in
+  Dark; derive a selected-word fill from it
+- Space toggles the line under the keyboard cursor (with the check box as its focus mark)
 
 ### Merge conflict tool
 

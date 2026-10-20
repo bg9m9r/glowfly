@@ -121,3 +121,20 @@ pub fn change_chip(col: Color32, p: &Palette) -> (Color32, Color32) {
     let fill = mix(p.bg, col, if p.dark { 0.22 } else { 0.10 });
     (fill, readable_on(col, fill, p.dark, 4.5))
 }
+
+/// The fill of a selected `+` (`add`) or `-` diff line: the palette's selected-line tint pushed
+/// up to as far again from the plain tint, in the same hue, as far as the text keeps 4.5:1 and
+/// the syntax colours 2:1 on it. (The high-contrast palettes keep 7:1 and 4.5:1 at the full
+/// push; `diff_select_tests` checks every built-in.)
+pub fn diff_line_selected(p: &Palette, add: bool) -> Color32 {
+    let (plain, sel) = if add { (p.diff_add, p.diff_add_sel) } else { (p.diff_del, p.diff_del_sel) };
+    let push = |k: f32| {
+        let ch = |s: u8, b: u8| (f32::from(s) + (f32::from(s) - f32::from(b)) * k).round().clamp(0.0, 255.0) as u8;
+        Color32::from_rgb(ch(sel.r(), plain.r()), ch(sel.g(), plain.g()), ch(sel.b(), plain.b()))
+    };
+    let readable = |c: Color32| {
+        ratio(p.text, c) >= 4.5
+            && Palette::KEYS.iter().filter(|k| k.starts_with("syn_")).filter_map(|k| p.get(k)).all(|s| ratio(s, c) >= 2.0)
+    };
+    (0..=10).rev().map(|i| push(i as f32 / 10.0)).find(|&c| readable(c)).unwrap_or(sel)
+}

@@ -165,6 +165,8 @@ pub(super) mod lfs_watch_tests;
 pub(super) mod line_counts_tests;
 #[path = "lines_drag_tests.rs"]
 pub(super) mod lines_drag_tests;
+#[path = "lines_gutter_tests.rs"]
+pub(super) mod lines_gutter_tests;
 #[path = "lines_tests.rs"]
 pub(super) mod lines_tests;
 #[path = "load_more_tests.rs"]

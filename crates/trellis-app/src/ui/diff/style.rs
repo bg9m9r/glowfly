@@ -2,7 +2,8 @@
 //! row height and the gutter positions, which scale with the font size so the default size
 //! draws exactly as the fixed layout did.
 
-use eframe::egui::FontId;
+use crate::ui::theme::{color, contrast};
+use eframe::egui::{Color32, FontId};
 use trellis_core::settings::{DEFAULT_DIFF_FONT_SIZE, Settings};
 
 pub(in crate::ui) struct DiffStyle {
@@ -18,6 +19,10 @@ pub(in crate::ui) struct DiffStyle {
     pub words: bool,
     /// Whether long lines wrap to the viewer's width.
     pub wrap: bool,
+    /// The fills of selected `+` and `-` lines (`contrast::diff_line_selected`), worked out once
+    /// per frame from the active palette.
+    pub sel_add: Color32,
+    pub sel_del: Color32,
 }
 
 /// Inline gutter: the right edges of the old and new numbers (`None` when hidden), then the
@@ -42,6 +47,7 @@ pub(in crate::ui) struct SplitCols {
 impl DiffStyle {
     pub fn new(s: &Settings) -> Self {
         let size = s.diff_font_px();
+        let p = color::current();
         Self {
             font: FontId::monospace(size),
             row_h: (size + 6.5).round(),
@@ -50,6 +56,8 @@ impl DiffStyle {
             numbers: s.diff_line_numbers,
             words: s.diff_word_highlights,
             wrap: s.diff_word_wrap,
+            sel_add: contrast::diff_line_selected(&p, true),
+            sel_del: contrast::diff_line_selected(&p, false),
         }
     }
 

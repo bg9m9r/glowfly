@@ -4,10 +4,10 @@
 
 use super::syntax::paint_line;
 use super::wrap::RowMetrics;
-use super::{DiffView, drag_over, fold, hunk_header, line_click, line_sense, paint_mark, thread_marks};
+use super::{DiffView, LineHover, drag_over, fold, gutter_sign, hunk_header, line_click, line_sense, paint_mark, thread_marks};
 use crate::msg::Msg;
 use crate::ui::theme::color;
-use eframe::egui::{Align2, Color32, Sense, Ui, pos2, vec2};
+use eframe::egui::{Align2, Color32, Rect, Sense, Ui, pos2, vec2};
 use trellis_core::diff_rows::DiffRow;
 use trellis_core::highlight::Span;
 
@@ -64,14 +64,19 @@ pub(super) fn show(
             DiffRow::Line { hunk, line } => {
                 let dl = &diff.hunks[hunk].lines[line];
                 let selected = v.is_selected(hunk, line);
-                let hovered = v.sel.is_some() && {
-                    let resp = ui.interact(rect, ui.id().with(("diff-line", hunk, line)), line_sense(dl.origin));
-                    drag_over(ui, v, rect, hunk, line, msgs);
-                    line_click(ui, &resp, hunk, line, dl.origin, msgs)
+                let hover = match v.sel {
+                    Some(_) => {
+                        let resp = ui.interact(rect, ui.id().with(("diff-line", hunk, line)), line_sense(dl.origin));
+                        drag_over(ui, v, rect, hunk, line, msgs);
+                        // The numbers and the sign, up to the text.
+                        let gutter = Rect::from_min_max(rect.min, pos2(rect.left() + cols.text - 2.0, rect.bottom()));
+                        line_click(ui, &resp, gutter, hunk, line, dl.origin, msgs)
+                    }
+                    None => LineHover::default(),
                 };
                 let (bg, fg, sign) = match dl.origin {
-                    '+' if selected => (color::diff_add_sel(), color::text(), '+'),
-                    '-' if selected => (color::diff_del_sel(), color::text(), '-'),
+                    '+' if selected => (st.sel_add, color::text(), '+'),
+                    '-' if selected => (st.sel_del, color::text(), '-'),
                     '+' => (color::diff_add(), color::text(), '+'),
                     '-' => (color::diff_del(), color::text(), '-'),
                     '>' | '<' | '=' => (Color32::TRANSPARENT, color::weak(), ' '),
@@ -87,7 +92,7 @@ pub(super) fn show(
                         p.text(pos2(rect.left() + x, y), Align2::RIGHT_CENTER, num(n), mono.clone(), color::faint());
                     }
                 }
-                p.text(pos2(rect.left() + cols.sign, y), Align2::LEFT_CENTER, sign, mono.clone(), fg);
+                gutter_sign(p, pos2(rect.left() + cols.sign, y), sign, fg, mono, selected, hover);
                 let spans: &[Span] = match (dl.origin, v.hl) {
                     ('<' | '>' | '=', _) | (_, None) => &[],
                     (_, Some(h)) => h.line(hunk, line),
@@ -99,7 +104,7 @@ pub(super) fn show(
                     _ => None,
                 };
                 paint_line(p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab, v.wrap);
-                paint_mark(ui, rect, selected, hovered);
+                paint_mark(ui, rect, selected, hover.row);
                 if let Some(mark) = v.marks.and_then(|m| thread_marks::find(m, dl, None)) {
                     thread_marks::paint(ui, rect, ui.clip_rect().right().min(rect.right()), st.row_h, mark, msgs);
                 }
