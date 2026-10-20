@@ -22,11 +22,11 @@ pub const SUFFIX_SIZE: f32 = type_scale::SMALL;
 pub const SUFFIX_GAP: f32 = 10.0;
 /// The suffix of an entry whose program or setting isn't set yet (it opens that setting).
 pub const SET_UP: &str = "Set up…";
-/// The info mark's width, the least space between a blocked label and it, and the room it adds
+/// The info mark's size, the least space between a blocked label and it, and the room it adds
 /// to an item.
-pub const INFO_W: f32 = 14.0;
+pub const INFO_SIZE: f32 = 14.0;
 pub const INFO_GAP: f32 = 12.0;
-pub const INFO_ROOM: f32 = INFO_GAP + INFO_W;
+pub const INFO_ROOM: f32 = INFO_GAP + INFO_SIZE;
 
 /// A menu item's state: usable, disabled with the whole reason, or usable while what it needs
 /// isn't set up yet (carrying the hover note; it opens the setting).
@@ -125,8 +125,8 @@ fn blocked_item(ui: &mut Ui, label: WidgetText, shortcut: WidgetText, why: &str)
 /// Paints the info mark at `row`'s right, `right_inset` in from its edge, centred on it:
 /// `color::text()` while `lit` (the row hovered or focused), else `color::weak()`.
 pub fn paint_info(p: &Painter, row: Rect, right_inset: f32, lit: bool) {
-    let c = pos2(row.right() - right_inset - INFO_W / 2.0, row.center().y);
-    paint_icon_sized(p, c, Icon::Info, if lit { color::text() } else { color::weak() }, INFO_W);
+    let c = pos2(row.right() - right_inset - INFO_SIZE / 2.0, row.center().y);
+    paint_icon_sized(p, c, Icon::Info, if lit { color::text() } else { color::weak() }, INFO_SIZE);
 }
 
 /// The accent ring inside `resp`'s rect while it has the keyboard focus.
