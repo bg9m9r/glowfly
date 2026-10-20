@@ -414,7 +414,8 @@ binary (package `trellis`).
 2. `ui/`, `update/` and `state/` do no I/O. `tests/layering.rs` denies whole families (the file
    system, processes, network, threads, environment, clock, libgit2 access) and the core
    functions that do I/O, and names the file and line of each use. The few justified exceptions
-   (the shell's startup in `ui/app.rs`) are listed in its `ALLOWED` table with a reason.
+   (the shell's startup in `ui/app.rs`) are listed in its `ALLOWED` table
+   (`tests/layering/rules.rs`) with a reason.
 3. New behavior gets an `update` test; new git or API logic gets a `trellis-core` test. A flow that
    crosses views, the runner and git gets a journey step (`src/journey/`).
 4. New views get an `egui_kittest` snapshot when practical. Views read time from

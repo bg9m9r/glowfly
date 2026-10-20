@@ -110,7 +110,10 @@ pub fn mica_tint(p: &Palette) -> Option<MicaTint> {
 }
 
 /// The colour surface `s` paints instead of `base`: `base` itself on a solid backdrop, else
-/// `base` at the surface's tint.
+/// `base` at the surface's tint. The renderer and the compositor blend premultiplied colours in
+/// gamma space, so the tint is premultiplied there too and what shows is `tinted`'s
+/// `mix(backdrop, base, alpha)`. (`from_rgba_unmultiplied` premultiplies in linear space, which
+/// lightens every tinted surface and turns the light palettes' pure white.)
 pub fn fill(b: Backdrop, s: Surface, base: Color32) -> Color32 {
     match b {
         Backdrop::Solid => base,
@@ -119,7 +122,7 @@ pub fn fill(b: Backdrop, s: Surface, base: Color32) -> Color32 {
                 Surface::Chrome => chrome,
                 Surface::Side => side,
             };
-            Color32::from_rgba_unmultiplied(base.r(), base.g(), base.b(), alpha)
+            Color32::from_rgb(base.r(), base.g(), base.b()).gamma_multiply_u8(alpha)
         }
     }
 }
