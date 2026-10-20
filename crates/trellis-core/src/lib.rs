@@ -80,5 +80,7 @@ pub mod url_scheme;
 pub mod volume;
 pub mod watch;
 pub mod whole_file;
+#[cfg(windows)]
+pub mod win_registry;
 pub mod worktree_ops;
 pub mod wrap;

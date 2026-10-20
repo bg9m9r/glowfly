@@ -321,7 +321,7 @@ until this list says which option was chosen.
       icon set; what has landed (dialog frame, button styles, file header, toggles, chips) moves
       onto them unchanged in intent. Chosen 2026-10-19: the foundations and components boards
       as drawn, open to change once they're seen in the app.
-- [ ] **Window chrome and toolbar**: the title bar, menu, repository tabs (each with a shape,
+- [x] **Window chrome and toolbar**: the title bar, menu, repository tabs (each with a shape,
       hover state, even widths and an ellipsis), the toolbar's grouped buttons, a new Branch
       icon, and Repository › Branch pickers sized to their names. Chosen 2026-10-19 (option C):
       Trellis draws one title bar with the tabs, a ☰ menu (Alt still opens File, Edit, View…)
@@ -2835,3 +2835,15 @@ here, under the item they grew from.
 - Toolbar groups that don't fit fold into a ⋯ menu instead of crowding the pickers
 - A repository icon before each tab's name
 - Cut long repository names in the middle on tabs, like the branch picker
+- Vibrancy behind the macOS title bar, toolbar and sidebar
+- Mica on Windows 11 21H2 (build 22000), which lacks the documented backdrop attribute
+- A dark system menu under a dark theme
+- The system menu opened by Alt+Space highlights its first item
+- Mica behind Preferences' navigation and the status bar
+- The build-status mark's cut-out ring matches a Mica sidebar
+- The Maximize button's tooltip while Windows tracks it for Snap Layouts
+- A Preferences switch for solid surfaces where Mica is available
+- A slightly lighter Dark `faint`, so Dark's sidebar can sit on Mica too (it misses 4.5:1 over
+  the lightest dark Mica stand-ins at every tint step and stays opaque)
+- Resize from the top edge above the Maximize button (the hit test gives that strip to the
+  button, for Snap Layouts)

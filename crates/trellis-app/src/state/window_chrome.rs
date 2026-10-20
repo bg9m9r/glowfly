@@ -1,9 +1,11 @@
 //! The window frame on each OS and the pure parts of a title bar Trellis draws itself: which
 //! frame applies (`Chrome`), the window actions the bar asks for (`WindowCmd`), what the shell
-//! knows about the window (`WindowInfo`) and the Alt tap that opens the bar's menu (`AltTap`).
-//! The views (`ui/title_bar.rs`, `ui/window_frame.rs`) turn these into widgets, and the shell
-//! turns `WindowCmd` into viewport commands.
+//! knows about the window (`WindowInfo`, with the Maximize button as Windows tracks it) and the
+//! Alt tap that opens the bar's menu (`AltTap`). The views (`ui/title_bar.rs`,
+//! `ui/window_frame.rs`) turn these into widgets, and the shell turns `WindowCmd` into viewport
+//! commands, or into the system menu through `platform::native_window`.
 
+use super::window_native::CaptionButton;
 use trellis_core::opens::Os;
 
 /// The room left at the start of the macOS bar for the traffic lights.
@@ -57,6 +59,12 @@ impl Chrome {
         matches!(self, Chrome::Windows)
     }
 
+    /// Whether a right-click on the empty bar opens the window's system menu (Alt+Space opens
+    /// it too, in the OS glue).
+    pub const fn system_menu(self) -> bool {
+        matches!(self, Chrome::Windows)
+    }
+
     /// The room left empty at the bar's start: the traffic lights on macOS, which hide in
     /// fullscreen.
     pub fn leading_inset(self, fullscreen: bool) -> f32 {
@@ -87,6 +95,8 @@ pub enum WindowCmd {
     Minimize,
     /// Maximize (true) or restore (false).
     SetMaximized(bool),
+    /// Show the window's system menu at the pointer: a right-click on the empty bar.
+    SystemMenu,
 }
 
 /// What the shell read about the window this frame.
@@ -94,6 +104,9 @@ pub enum WindowCmd {
 pub struct WindowInfo {
     pub maximized: bool,
     pub fullscreen: bool,
+    /// The Maximize button's hover and press while Windows tracks it for Snap Layouts (egui
+    /// sees no pointer there then); default elsewhere.
+    pub max_button: CaptionButton,
 }
 
 /// One frame's input, as far as an Alt tap cares.
@@ -131,6 +144,12 @@ impl AltTap {
             (false, false) => (AltTap::default(), false),
         }
     }
+
+    /// The tracker once something else used the Alt press (the system menu opened): the
+    /// release that follows never fires, whether or not Alt still reads as held.
+    pub fn cancel(self) -> AltTap {
+        AltTap { held: true, alone: false }
+    }
 }
 
 #[cfg(test)]
@@ -148,16 +167,17 @@ mod tests {
 
     #[test]
     fn what_each_frame_draws() {
-        // (chrome, drawn, window buttons, resize edges, Alt opens the menu)
-        for (c, drawn, buttons, edges, alt) in [
-            (Chrome::System, false, false, false, false),
-            (Chrome::Windows, true, true, true, true),
-            (Chrome::MacOs, true, false, false, false),
+        // (chrome, drawn, window buttons, resize edges, Alt opens the menu, system menu)
+        for (c, drawn, buttons, edges, alt, menu) in [
+            (Chrome::System, false, false, false, false, false),
+            (Chrome::Windows, true, true, true, true, true),
+            (Chrome::MacOs, true, false, false, false, false),
         ] {
             assert_eq!(c.drawn(), drawn, "{c:?}");
             assert_eq!(c.window_buttons(), buttons, "{c:?}");
             assert_eq!(c.resize_edges(), edges, "{c:?}");
             assert_eq!(c.alt_opens_menu(), alt, "{c:?}");
+            assert_eq!(c.system_menu(), menu, "{c:?}");
         }
     }
 
@@ -210,6 +230,23 @@ mod tests {
         let away = AltFrame { focused: false, ..ALT };
         assert!(fires(&[ALT, away, UP]).is_empty());
         assert!(fires(&[ALT, AltFrame { focused: false, ..UP }]).is_empty());
+    }
+
+    #[test]
+    fn alt_tap_cancel_swallows_the_release() {
+        let (tap, _) = AltTap::default().step(ALT);
+        let (tap, fired) = tap.cancel().step(UP);
+        assert!(!fired, "the release after the system menu");
+        assert_eq!(tap, AltTap::default());
+        // Cancelled with Alt already up: the next tap still fires, once, on its release.
+        let mut tap = AltTap::default().cancel();
+        let mut out = Vec::new();
+        for f in [UP, ALT, UP] {
+            let (next, fired) = tap.step(f);
+            tap = next;
+            out.push(fired);
+        }
+        assert_eq!(out, [false, false, true]);
     }
 
     #[test]

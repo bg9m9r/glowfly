@@ -1,8 +1,9 @@
 //! The shell: owns the state, the UI-thread caches and the runner, feeds the views' messages and
 //! the runner's results through `update`, runs the resulting effects, and handles the few
-//! effects that need the window.
+//! effects that need the window. On the drawn Windows frame it also trades state with the OS
+//! glue each frame (`app_native.rs`).
 
-use super::{UiCache, avatars, build_status, layout, shortcuts, theme};
+use super::{UiCache, app_native, avatars, build_status, layout, shortcuts, theme};
 use crate::effect::{Effect, UiEffect};
 use crate::msg::AvatarMsg;
 use crate::msg::Msg;
@@ -10,6 +11,7 @@ use crate::msg::PrefsMsg;
 use crate::msg::RecentMsg;
 use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
+use crate::platform::native_window::NativeWindow;
 use crate::runner::Runner;
 use crate::state::AppState;
 use crate::update::update;
@@ -33,6 +35,9 @@ pub struct TrellisApp {
     results: Receiver<Msg>,
     /// The palette for the chosen theme, set at the start of every frame.
     theme: theme::ThemeCache,
+    /// The drawn Windows frame's glue with the OS (Snap Layouts, the system menu, Mica); None
+    /// elsewhere and in tests.
+    native: Option<NativeWindow>,
     /// Results taken from the runner's channel so far (the journeys wait for this to stop
     /// changing).
     #[cfg(test)]
@@ -40,7 +45,8 @@ pub struct TrellisApp {
 }
 
 impl TrellisApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, start: Option<crate::StartArg>, logs: crate::logging::LogSetup) -> Self {
+    /// `mica`: the viewport was made transparent for the Mica backdrop.
+    pub fn new(cc: &eframe::CreationContext<'_>, start: Option<crate::StartArg>, logs: crate::logging::LogSetup, mica: bool) -> Self {
         let ctx = &cc.egui_ctx;
         // Before the first pass, so the first frame is drawn in the bundled fonts.
         theme::fonts::install(ctx);
@@ -59,6 +65,7 @@ impl TrellisApp {
         let mut app = Self::assemble(ctx, settings, recent, Runner::new);
         // Only the real app draws its own frame where the OS calls for it; test apps keep System.
         app.st.view.chrome = crate::state::window_chrome::Chrome::current();
+        app.native = NativeWindow::install(cc, app.st.view.chrome, mica, ctx.clone());
         // Read now, not through the runner, so the first frame already has the theme's colors;
         // the folder sits next to the settings file just read.
         let themes = trellis_core::settings::themes::load_all();
@@ -103,6 +110,7 @@ impl TrellisApp {
             runner: make_runner(tx, ctx.clone()),
             results,
             theme: theme::ThemeCache::default(),
+            native: None,
             #[cfg(test)]
             drained: 0,
         }
@@ -150,7 +158,15 @@ impl TrellisApp {
                 Effect::Ui(UiEffect::RequestAttention) => request_attention(ctx),
                 Effect::Ui(UiEffect::CloseWindow) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
                 Effect::Ui(UiEffect::RequestPaste) => ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste),
-                Effect::Ui(UiEffect::Window(cmd)) => ctx.send_viewport_cmd(super::window_frame::viewport_cmd(cmd)),
+                Effect::Ui(UiEffect::Window(cmd)) => match super::window_frame::viewport_cmd(cmd) {
+                    Some(c) => ctx.send_viewport_cmd(c),
+                    // The system menu, the only window action without a viewport command.
+                    None => {
+                        if let Some(n) = &self.native {
+                            n.show_system_menu_at_cursor();
+                        }
+                    }
+                },
                 Effect::Ui(UiEffect::FocusWindow) => {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
                     ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
@@ -181,7 +197,12 @@ impl TrellisApp {
         self.st.view.window = ctx.input(|i| crate::state::window_chrome::WindowInfo {
             maximized: i.viewport().maximized.unwrap_or(false),
             fullscreen: i.viewport().fullscreen.unwrap_or(false),
+            ..Default::default()
         });
+        let mut native_msgs = Vec::new();
+        if let Some(native) = &mut self.native {
+            app_native::before_draw(native, &mut self.st, self.theme.mica_tint(), &mut native_msgs);
+        }
         while let Ok(msg) = self.results.try_recv() {
             #[cfg(test)]
             {
@@ -198,8 +219,12 @@ impl TrellisApp {
 
         let now = Instant::now();
         let mut msgs = vec![Msg::Tick(now)];
+        msgs.append(&mut native_msgs);
         self.input(ctx, &mut msgs);
         super::draw(ctx, &mut self.st, &mut self.cache, &mut msgs);
+        if let Some(native) = &self.native {
+            app_native::after_draw(native, ctx, &self.st);
+        }
         build_status::after_draw(&mut self.st, ctx, now, &mut msgs);
         let wanted = self.cache.avatars.take_wanted();
         if !wanted.is_empty() {
@@ -233,6 +258,11 @@ impl TrellisApp {
 impl eframe::App for TrellisApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.frame(ctx);
+    }
+
+    /// Transparent where Mica shows through, else the palette's background.
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        app_native::clear_rgba(self.st.view.backdrop, theme::color::current().bg)
     }
 }
 

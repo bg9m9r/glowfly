@@ -294,7 +294,19 @@ binary (package `trellis`).
   while maximized), a 1 px border, and a drag zone over the bar while a dialog blocks it.
   Views push `AppMsg::Window`; `update/app.rs` returns `UiEffect::Window`, and the shell's
   `dispatch` sends the viewport command (`window_frame::viewport_cmd`), the only
-  `send_viewport_cmd` outside the shell's own effects (`tests/layering.rs`).
+  `send_viewport_cmd` outside the shell's own effects (`tests/layering.rs`). On Windows the
+  shell also installs `platform/native_window/` (`TrellisApp::new`): a window procedure in
+  front of winit's (`win_proc.rs`, its state in atomics) that answers the hit test with
+  `HTMAXBUTTON` over the drawn Maximize button for Snap Layouts, opens the system menu on
+  Alt+Space or on `WindowCmd::SystemMenu` (`win_system.rs`, which also sets the Mica backdrop
+  and reads transparency and high contrast). Each frame `ui/app_native.rs` polls it into view
+  state (`WindowInfo::max_button`, `ViewState::backdrop`, a click as `SetMaximized`, a shown
+  menu cancelling the Alt tap) and hands back `window_frame::caption_geometry`; the pure parts
+  are in `state/window_native.rs`. Only `ui/app.rs` and `ui/app_native.rs` may name
+  `platform::native_window`, and no view, update or state code names `windows::Win32`
+  (`tests/layering.rs`). `ui/backdrop.rs` picks the palette's Mica tints (`mica_tint`, cached in
+  `ThemeCache`) and gives the title bar, toolbar and sidebar their fill (`backdrop::fill`);
+  `TrellisApp::clear_color` clears to transparent only while Mica shows.
 - **Menu bar** (`ui/menu_bar/`, one file per menu; a bar under the system frame only, the
   drawn title bar's menu button otherwise): every item pushes the message the toolbar,
   palette or key already sends, shows its key from the keymap (`Keymap::hint`, never a literal)

@@ -15,6 +15,7 @@ pub enum UiEffect {
     CloseWindow,
     /// Read the clipboard into an Event::Paste for the focused widget on the next frame.
     RequestPaste,
-    /// Move, resize, minimise or maximise the window: the drawn title bar.
+    /// Move, resize, minimise or maximise the window, or show the system menu: the drawn
+    /// title bar.
     Window(WindowCmd),
 }

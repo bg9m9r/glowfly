@@ -1,5 +1,5 @@
 //! Window-level actions from the menu bar and a drawn title bar: quitting, the About dialog,
-//! and moving, resizing, minimising or maximising the window.
+//! and moving, resizing, minimising or maximising the window or showing its system menu.
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::AppMsg;

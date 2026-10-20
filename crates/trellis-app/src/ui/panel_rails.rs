@@ -4,6 +4,7 @@
 //! for that tool view only; `state::layout::details_shape` decides which is drawn).
 
 use super::access;
+use super::backdrop::{self, Surface};
 use super::theme::{color, spacing, type_scale};
 use super::widgets::{self, Icon};
 use crate::keymap::{BindingId, KeyAction};
@@ -29,7 +30,9 @@ pub(super) fn edge(ctx: &egui::Context, st: &AppState, panel: Panel, msgs: &mut 
         let (name, tip) = (t.tr("layout.edge.details.button"), t.tr("layout.edge.details.tip"));
         (egui::SidePanel::right("detail-edge"), name, tip, BindingId::ToggleDetailsPanel, Icon::ExpandLeft)
     };
-    side.exact_width(EDGE_W).resizable(false).show_separator_line(false).frame(egui::Frame::new().fill(color::panel())).show(ctx, |ui| {
+    // The left strip stands in for the sidebar, so it sits on Mica like it.
+    let fill = if left { backdrop::fill(st.view.backdrop, Surface::Side, color::panel()) } else { color::panel() };
+    side.exact_width(EDGE_W).resizable(false).show_separator_line(false).frame(egui::Frame::new().fill(fill)).show(ctx, |ui| {
         let rect = ui.max_rect();
         let resp = ui.allocate_rect(rect, Sense::click());
         let p = ui.painter();

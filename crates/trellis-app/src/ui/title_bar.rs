@@ -2,8 +2,10 @@
 //! button (File, Edit, View, Window and Help as submenus), the repository tabs along its bottom
 //! edge and empty space to grab, before the window buttons (`window_frame.rs` draws those above
 //! every dialog) or after the macOS traffic lights. Dragging the empty space moves the window,
-//! double-clicking it maximizes or restores, and on Windows a tap of Alt opens the menu.
+//! double-clicking it maximizes or restores, and on Windows a tap of Alt opens the menu and a
+//! right-click on the empty space the window's system menu. On Mica the bar is tinted.
 
+use super::backdrop::{self, Surface};
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};
 use super::window_buttons::BUTTON_W;
@@ -25,6 +27,8 @@ const MENU_H: f32 = 30.0;
 pub(super) const MIN_DRAG: f32 = 56.0;
 /// Where the bar keeps its rect and layer for the overlay (`window_frame::overlay`).
 const PLACE: &str = "title-bar-place";
+/// Where the bar keeps the point below its menu button (Alt+Space opens the system menu there).
+const MENU_AT: &str = "title-bar-menu-at";
 
 /// Draws the bar as the topmost panel. While Preferences is open it holds no menu or tabs, so
 /// the window can still be moved, resized and closed.
@@ -32,23 +36,28 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
     egui::TopBottomPanel::top("title-bar")
         .exact_height(TITLE_H)
         .show_separator_line(false)
-        .frame(egui::Frame::new().fill(color::toolbar()))
+        .frame(egui::Frame::new().fill(backdrop::fill(st.view.backdrop, Surface::Chrome, color::toolbar())))
         .show(ctx, |ui| {
             let bar = ui.max_rect();
-            ctx.data_mut(|d| d.insert_temp(Id::new(PLACE), (bar, ui.layer_id())));
+            let chrome = st.view.chrome;
+            let inset = chrome.leading_inset(st.view.window.fullscreen);
+            let x = bar.left() + inset + 8.0;
+            ctx.data_mut(|d| {
+                d.insert_temp(Id::new(PLACE), (bar, ui.layer_id()));
+                d.insert_temp(Id::new(MENU_AT), pos2(x, bar.bottom()));
+            });
             // First, so every widget drawn after it wins the pointer over it.
             let bg = ui.interact(bar, ui.id().with("title-bar-drag"), Sense::CLICK | Sense::DRAG);
             if bg.double_clicked() {
                 msgs.push(Msg::App(AppMsg::Window(WindowCmd::SetMaximized(!st.view.window.maximized))));
             } else if bg.drag_started_by(PointerButton::Primary) {
                 msgs.push(Msg::App(AppMsg::Window(WindowCmd::StartDrag)));
+            } else if bg.secondary_clicked() && chrome.system_menu() {
+                msgs.push(Msg::App(AppMsg::Window(WindowCmd::SystemMenu)));
             }
             if st.prefs.is_some() {
                 return;
             }
-            let chrome = st.view.chrome;
-            let inset = chrome.leading_inset(st.view.window.fullscreen);
-            let x = bar.left() + inset + 8.0;
             menu_button(ui, st, pos2(x, bar.center().y), msgs);
             let buttons_w = if chrome.window_buttons() { 3.0 * BUTTON_W } else { 0.0 };
             let left = x + MENU_W + 8.0;
@@ -64,6 +73,11 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
 /// The bar's rect and layer this frame, once it was drawn.
 pub(super) fn place(ctx: &egui::Context) -> Option<(Rect, LayerId)> {
     ctx.data(|d| d.get_temp::<(Rect, LayerId)>(Id::new(PLACE)))
+}
+
+/// The point just below the menu button's left edge, once the bar was drawn.
+pub(super) fn menu_at(ctx: &egui::Context) -> Option<Pos2> {
+    ctx.data(|d| d.get_temp::<Pos2>(Id::new(MENU_AT)))
 }
 
 /// The tabs' room in a bar `bar_w` wide that leaves `inset` at its start and `buttons_w` for

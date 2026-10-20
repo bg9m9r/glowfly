@@ -6,6 +6,7 @@
 //! `toolbar_tips.rs`, and its enabled flag from the same rule in `state/toolbar_tips.rs`; the
 //! menus are in `toolbar_menus.rs`.
 
+use super::backdrop::{self, Surface};
 use super::theme::color;
 use super::widgets::{self, Icon, tooltip::attach};
 use crate::msg::{BranchMsg, ForgeMsg, JobMsg, Msg, PaletteMsg, PrefsMsg, PublishMsg, RepoMsg};
@@ -32,7 +33,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let labels = st.settings.toolbar_labels;
     let tool = |ui: &mut egui::Ui, icon, label: &str, name: &str, enabled| widgets::tool_button(ui, icon, label, name, enabled, labels);
     egui::TopBottomPanel::top("toolbar")
-        .frame(egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(12, 4)))
+        .frame(
+            egui::Frame::new()
+                .fill(backdrop::fill(st.view.backdrop, Surface::Chrome, color::toolbar()))
+                .inner_margin(egui::Margin::symmetric(12, 4)),
+        )
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.set_height(widgets::GROUP_H);

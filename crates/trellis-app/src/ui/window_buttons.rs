@@ -1,10 +1,13 @@
 //! Minimize, Maximize (Restore while maximized) and Close, flush with the window's top-right
 //! corner when Trellis draws the frame. The glyphs are painted, and the buttons never take the
-//! keyboard focus (the window keeps its own keys for these).
+//! keyboard focus (the window keeps its own keys for these). While Windows tracks the Maximize
+//! button for Snap Layouts, egui sees no pointer over it: its hover and press then come from
+//! the OS (`CaptionButton`), and its click reaches the shell from there.
 
 use super::theme::color;
 use crate::msg::{AppMsg, Msg};
 use crate::state::window_chrome::WindowCmd;
+use crate::state::window_native::CaptionButton;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2, vec2};
 use trellis_core::i18n::Lang;
 
@@ -40,8 +43,9 @@ impl Kind {
     }
 }
 
-/// The three buttons, left to right from the cursor (the caller places them at the corner).
-pub(super) fn show(ui: &mut egui::Ui, t: Lang, maximized: bool, msgs: &mut Vec<Msg>) {
+/// The three buttons, left to right from the cursor (the caller places them at the corner);
+/// `native` is the Maximize button as the OS tracks it.
+pub(super) fn show(ui: &mut egui::Ui, t: Lang, maximized: bool, native: CaptionButton, msgs: &mut Vec<Msg>) {
     let (row, _) = ui.allocate_exact_size(vec2(3.0 * BUTTON_W, BUTTON_H), Sense::hover());
     let kinds = [Kind::Minimize, if maximized { Kind::Restore } else { Kind::Maximize }, Kind::Close];
     for (i, kind) in kinds.into_iter().enumerate() {
@@ -50,7 +54,11 @@ pub(super) fn show(ui: &mut egui::Ui, t: Lang, maximized: bool, msgs: &mut Vec<M
         let r = ui.interact(rect, ui.id().with(("window-button", i)), Sense::CLICK);
         let name = kind.name(t);
         r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, name));
-        let (hovered, pressed) = (r.hovered(), r.is_pointer_button_down_on());
+        let (mut hovered, mut pressed) = (r.hovered(), r.is_pointer_button_down_on());
+        if matches!(kind, Kind::Maximize | Kind::Restore) {
+            hovered |= native.hovered;
+            pressed |= native.drawn_pressed();
+        }
         let close = kind == Kind::Close;
         let fill = match (close, pressed, hovered) {
             (true, true, _) => Some(color::danger().gamma_multiply(0.8)),
@@ -65,6 +73,7 @@ pub(super) fn show(ui: &mut egui::Ui, t: Lang, maximized: bool, msgs: &mut Vec<M
         }
         let ink = if close && (hovered || pressed) { Color32::WHITE } else { color::text() };
         paint_glyph(p, rect.center(), kind, Stroke::new(1.0_f32, ink));
+        // egui's click too: tests and accessibility tools press it without the OS.
         if r.on_hover_text(name).clicked() {
             msgs.push(kind.msg());
         }

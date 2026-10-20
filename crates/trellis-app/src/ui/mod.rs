@@ -9,6 +9,7 @@ mod askpass;
 mod askpass_host_key;
 mod auto_stash_dialog;
 mod avatars;
+pub(crate) mod backdrop;
 mod blame;
 mod branch_dialogs;
 mod branch_menu;
@@ -259,6 +260,8 @@ mod snapshot_tests_logs;
 #[cfg(test)]
 mod snapshot_tests_menu_copy;
 #[cfg(test)]
+mod snapshot_tests_mica;
+#[cfg(test)]
 mod snapshot_tests_onboarding;
 #[cfg(test)]
 mod snapshot_tests_palette;
@@ -385,6 +388,8 @@ mod snapshot_tests_updates;
 #[cfg(test)]
 mod snapshot_tests_whole;
 #[cfg(test)]
+mod snapshot_tests_window_native;
+#[cfg(test)]
 mod snapshot_tests_worktree_branches;
 #[cfg(test)]
 mod snapshot_tests_worktree_manage;
@@ -411,6 +416,7 @@ use eframe::egui;
 use trellis_core::spell::Speller;
 
 mod app;
+mod app_native;
 #[cfg(test)]
 pub(crate) use app::TestStart;
 pub use app::TrellisApp;

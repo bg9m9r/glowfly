@@ -8,9 +8,10 @@
 //! `color::set_palette` at the start of each frame, on the thread that draws it. Tests rendering
 //! different palettes in parallel don't affect each other.
 
+use crate::state::window_native::MicaTint;
 use crate::themes::ThemeState;
 use eframe::egui::{self, Stroke};
-use trellis_core::settings::ThemeChoice;
+use trellis_core::settings::{BuiltinTheme, ThemeChoice};
 
 mod builtin;
 mod builtin_extra;
@@ -110,6 +111,8 @@ pub struct ThemeCache {
     palette: Option<Palette>,
     /// The palette egui's style was last set from.
     applied: Option<Palette>,
+    /// The palette's Mica tints (`backdrop::mica_tint`); None for a high-contrast theme.
+    mica: Option<MicaTint>,
 }
 
 impl ThemeCache {
@@ -123,7 +126,11 @@ impl ThemeCache {
     pub fn select(&mut self, ctx: &egui::Context, choice: &ThemeChoice, themes: &ThemeState, system_dark: bool) {
         let fresh = matches!(&self.key, Some((c, g, s)) if c == choice && *g == themes.generation && *s == system_dark);
         if !fresh {
-            self.palette = Some(custom::resolve(choice, themes, system_dark));
+            let palette = custom::resolve(choice, themes, system_dark);
+            let high_contrast =
+                matches!(choice.builtin(system_dark), Some(BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight));
+            self.mica = if high_contrast { None } else { super::backdrop::mica_tint(&palette) };
+            self.palette = Some(palette);
             self.key = Some((choice.clone(), themes.generation, system_dark));
         }
         let palette = self.palette.unwrap_or(DARK);
@@ -136,6 +143,11 @@ impl ThemeCache {
         if ctx.options(|o| o.theme_preference) != theme.into() {
             ctx.set_theme(theme);
         }
+    }
+
+    /// The selected palette's Mica tints: None when it must stay solid.
+    pub fn mica_tint(&self) -> Option<MicaTint> {
+        self.mica
     }
 }
 

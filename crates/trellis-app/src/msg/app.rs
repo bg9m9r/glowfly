@@ -10,7 +10,8 @@ pub enum AppMsg {
     Quit,
     /// Help > About Trellis: open the About dialog.
     ShowAbout,
-    /// A drawn title bar's window action: move, resize, minimise, maximise or restore.
+    /// A drawn title bar's window action: move, resize, minimise, maximise or restore, or
+    /// show the window's system menu.
     Window(WindowCmd),
 }
 

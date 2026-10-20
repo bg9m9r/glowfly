@@ -2,14 +2,17 @@
 //! command for each `WindowCmd` (sent by the shell), and the overlay drawn above every dialog on
 //! Windows: the window buttons, the resize edges and corners, a 1 px border, and a drag zone
 //! over the title bar while a dialog blocks it. Everything here pushes `AppMsg::Window`; only
-//! the shell sends viewport commands.
+//! the shell sends viewport commands. It also works out the caption geometry the shell hands
+//! the OS (`caption_geometry`): where the Maximize button is, for Snap Layouts, and where
+//! Alt+Space opens the system menu.
 
 use super::theme::color;
 use super::title_bar;
-use super::window_buttons::{self, BUTTON_W};
+use super::window_buttons::{self, BUTTON_H, BUTTON_W};
 use crate::msg::{AppMsg, Msg};
 use crate::state::AppState;
 use crate::state::window_chrome::{Chrome, ResizeEdge, WindowCmd};
+use crate::state::window_native::{CaptionGeometry, PxRect};
 use eframe::egui::viewport::ResizeDirection;
 use eframe::egui::{
     self, Area, CursorIcon, Id, LayerId, Order, PointerButton, Rect, Sense, Stroke, StrokeKind, ViewportBuilder, pos2, vec2,
@@ -19,24 +22,53 @@ use eframe::egui::{
 const EDGE: f32 = 5.0;
 const CORNER: f32 = 12.0;
 
-/// `b` set up for `chrome`: no system frame on Windows, a transparent full-size title bar on
-/// macOS, the system frame elsewhere.
-pub fn viewport(chrome: Chrome, b: ViewportBuilder) -> ViewportBuilder {
+/// `b` set up for `chrome`: no system frame on Windows (transparent with `mica`, for the Mica
+/// backdrop), a transparent full-size title bar on macOS, the system frame elsewhere.
+pub fn viewport(chrome: Chrome, mica: bool, b: ViewportBuilder) -> ViewportBuilder {
     match chrome {
-        Chrome::Windows => b.with_decorations(false),
+        Chrome::Windows => b.with_decorations(false).with_transparent(mica),
         Chrome::MacOs => b.with_fullsize_content_view(true).with_title_shown(false).with_titlebar_shown(false),
         Chrome::System => b,
     }
 }
 
-/// The viewport command that carries out `cmd`.
-pub(super) fn viewport_cmd(cmd: WindowCmd) -> egui::ViewportCommand {
-    match cmd {
+/// The viewport command that carries out `cmd`; None for the system menu, which the shell
+/// opens through the OS glue.
+pub(super) fn viewport_cmd(cmd: WindowCmd) -> Option<egui::ViewportCommand> {
+    Some(match cmd {
         WindowCmd::StartDrag => egui::ViewportCommand::StartDrag,
         WindowCmd::BeginResize(e) => egui::ViewportCommand::BeginResize(direction(e)),
         WindowCmd::Minimize => egui::ViewportCommand::Minimized(true),
         WindowCmd::SetMaximized(on) => egui::ViewportCommand::Maximized(on),
+        WindowCmd::SystemMenu => return None,
+    })
+}
+
+/// The Maximize (or Restore) button's slot: the middle of the three at the top-right.
+pub(super) fn max_button_rect(screen: Rect) -> Rect {
+    Rect::from_min_size(pos2(screen.right() - 2.0 * BUTTON_W, screen.top()), vec2(BUTTON_W, BUTTON_H))
+}
+
+/// `r` in client pixels at `ppp` pixels per point, rounded outward.
+pub(super) fn to_px(r: Rect, ppp: f32) -> PxRect {
+    PxRect {
+        left: (r.left() * ppp).floor() as i32,
+        top: (r.top() * ppp).floor() as i32,
+        right: (r.right() * ppp).ceil() as i32,
+        bottom: (r.bottom() * ppp).ceil() as i32,
     }
+}
+
+/// Where the drawn caption parts are for the OS, in client pixels: only while Trellis draws
+/// the window buttons.
+pub(crate) fn caption_geometry(ctx: &egui::Context, st: &AppState) -> Option<CaptionGeometry> {
+    if !st.view.chrome.window_buttons() {
+        return None;
+    }
+    let (screen, ppp) = (ctx.screen_rect(), ctx.pixels_per_point());
+    let at = title_bar::menu_at(ctx).unwrap_or(pos2(screen.left() + 8.0, screen.top() + title_bar::TITLE_H));
+    let menu_at = ((at.x * ppp).round() as i32, (at.y * ppp).round() as i32);
+    Some(CaptionGeometry { max_button: to_px(max_button_rect(screen), ppp), menu_at })
 }
 
 fn direction(e: ResizeEdge) -> ResizeDirection {
@@ -102,7 +134,7 @@ pub(super) fn overlay(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
         .order(Order::Tooltip)
         .fixed_pos(pos2(screen.right() - buttons_w, screen.top()))
         .constrain(false)
-        .show(ctx, |ui| window_buttons::show(ui, t, window.maximized, msgs));
+        .show(ctx, |ui| window_buttons::show(ui, t, window.maximized, window.max_button, msgs));
     // A dialog blocks the bar: keep its empty space for moving the window.
     let Some((bar, layer)) = title_bar::place(ctx) else { return };
     if ctx.memory(|m| m.allows_interaction(layer)) {
@@ -115,6 +147,8 @@ pub(super) fn overlay(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
             msgs.push(Msg::App(AppMsg::Window(WindowCmd::SetMaximized(!window.maximized))));
         } else if r.drag_started_by(PointerButton::Primary) {
             msgs.push(Msg::App(AppMsg::Window(WindowCmd::StartDrag)));
+        } else if r.secondary_clicked() && st.view.chrome.system_menu() {
+            msgs.push(Msg::App(AppMsg::Window(WindowCmd::SystemMenu)));
         }
     });
 }
@@ -143,19 +177,41 @@ mod tests {
 
     #[test]
     fn each_frame_sets_up_its_viewport() {
-        let b = viewport(Chrome::Windows, ViewportBuilder::default());
-        assert_eq!(b.decorations, Some(false));
-        assert_eq!((b.fullsize_content_view, b.title_shown, b.titlebar_shown), (None, None, None));
-        let b = viewport(Chrome::MacOs, ViewportBuilder::default());
-        assert_eq!((b.fullsize_content_view, b.title_shown, b.titlebar_shown), (Some(true), Some(false), Some(false)));
-        assert_eq!(b.decorations, None, "macOS keeps its frame");
-        let b = viewport(Chrome::System, ViewportBuilder::default());
-        assert_eq!((b.decorations, b.fullsize_content_view, b.title_shown, b.titlebar_shown), (None, None, None, None));
+        for mica in [false, true] {
+            let b = viewport(Chrome::Windows, mica, ViewportBuilder::default());
+            assert_eq!(b.decorations, Some(false));
+            assert_eq!(b.transparent, Some(mica), "transparent only for Mica");
+            assert_eq!((b.fullsize_content_view, b.title_shown, b.titlebar_shown), (None, None, None));
+            let b = viewport(Chrome::MacOs, mica, ViewportBuilder::default());
+            assert_eq!((b.fullsize_content_view, b.title_shown, b.titlebar_shown), (Some(true), Some(false), Some(false)));
+            assert_eq!((b.decorations, b.transparent), (None, None), "macOS keeps its frame and is never transparent");
+            let b = viewport(Chrome::System, mica, ViewportBuilder::default());
+            assert_eq!((b.decorations, b.fullsize_content_view, b.title_shown, b.titlebar_shown), (None, None, None, None));
+            assert_eq!(b.transparent, None);
+        }
+    }
+
+    #[test]
+    fn to_px_rounds_outward() {
+        let r = Rect::from_min_max(pos2(1302.0, 0.0), pos2(1348.0, 36.0));
+        assert_eq!(to_px(r, 1.0), PxRect { left: 1302, top: 0, right: 1348, bottom: 36 });
+        assert_eq!(to_px(r, 1.5), PxRect { left: 1953, top: 0, right: 2022, bottom: 54 });
+        assert_eq!(to_px(r, 2.0), PxRect { left: 2604, top: 0, right: 2696, bottom: 72 });
+        let odd = Rect::from_min_max(pos2(10.3, 0.4), pos2(20.2, 5.1));
+        assert_eq!(to_px(odd, 1.5), PxRect { left: 15, top: 0, right: 31, bottom: 8 });
+    }
+
+    #[test]
+    fn max_button_rect_is_the_middle_slot() {
+        let screen = Rect::from_min_size(pos2(0.0, 0.0), vec2(1440.0, 880.0));
+        assert_eq!(max_button_rect(screen), Rect::from_min_max(pos2(1440.0 - 92.0, 0.0), pos2(1440.0 - 46.0, 36.0)));
     }
 
     #[test]
     fn every_window_action_has_its_command() {
         use egui::ViewportCommand as V;
+        assert_eq!(viewport_cmd(WindowCmd::SystemMenu), None, "the shell opens it through the OS");
+        let viewport_cmd = |c| viewport_cmd(c).expect("a viewport command");
         assert_eq!(viewport_cmd(WindowCmd::StartDrag), V::StartDrag);
         assert_eq!(viewport_cmd(WindowCmd::Minimize), V::Minimized(true));
         assert_eq!(viewport_cmd(WindowCmd::SetMaximized(true)), V::Maximized(true));

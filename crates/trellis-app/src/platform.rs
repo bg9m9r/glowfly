@@ -1,10 +1,11 @@
 //! Operating-system integration: the recent-repositories and tabs files, what is at the listed
-//! folders, terminals, file managers (opening a folder, or showing a file selected in it), and the
-//! window icon.
+//! folders, terminals, file managers (opening a folder, or showing a file selected in it), the
+//! window icon, and the drawn Windows frame's glue with the OS (`native_window`).
 
 use std::path::{Path, PathBuf};
 
 mod icon;
+pub mod native_window;
 mod terminal;
 pub use icon::app_icon;
 pub use terminal::open_terminal;

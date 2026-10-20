@@ -2,6 +2,7 @@
 //! left-panel sections are expanded.
 
 use super::window_chrome::{AltTap, Chrome, WindowInfo};
+use super::window_native::Backdrop;
 use super::{diff_nav, lines};
 use git2::Oid;
 use std::collections::HashSet;
@@ -151,6 +152,9 @@ pub struct ViewState {
     pub window: WindowInfo,
     /// The Alt tap that opens a drawn title bar's menu (`ui/title_bar.rs`).
     pub alt_tap: AltTap,
+    /// What the title bar, toolbar and sidebar are painted on: set by the shell each frame;
+    /// views read it through `ui::backdrop::fill`.
+    pub backdrop: Backdrop,
 }
 
 impl Default for ViewState {
@@ -199,6 +203,7 @@ impl Default for ViewState {
             chrome: Chrome::System,
             window: WindowInfo::default(),
             alt_tap: AltTap::default(),
+            backdrop: Backdrop::Solid,
         }
     }
 }

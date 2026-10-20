@@ -85,10 +85,14 @@ fn main() -> eframe::Result {
             Err(e) => tracing::debug!("opening a window for the link: {e}"),
         }
     }
+    let chrome = state::window_chrome::Chrome::current();
+    // Mica behind the drawn Windows frame needs a transparent window, made only where it shows.
+    let mica = chrome == state::window_chrome::Chrome::Windows && platform::native_window::mica_capable();
     let options = eframe::NativeOptions {
         // The frame Trellis draws itself, or the system's (`state::window_chrome`).
         viewport: ui::window_viewport(
-            state::window_chrome::Chrome::current(),
+            chrome,
+            mica,
             egui::ViewportBuilder::default()
                 .with_title("Trellis")
                 .with_inner_size([1440.0, 880.0])
@@ -99,7 +103,7 @@ fn main() -> eframe::Result {
         ),
         ..Default::default()
     };
-    eframe::run_native("Trellis", options, Box::new(move |cc| Ok(Box::new(ui::TrellisApp::new(cc, start, logs)))))
+    eframe::run_native("Trellis", options, Box::new(move |cc| Ok(Box::new(ui::TrellisApp::new(cc, start, logs, mica)))))
 }
 
 /// What the command line asks the new window to open.

@@ -69,6 +69,8 @@ const DENIED: &[(&str, &str)] = &[
     ("themes::create", "the theme files"),
     (".save()", "the settings file"),
     ("send_viewport_cmd", "the window (views push AppMsg::Window; the shell sends viewport commands)"),
+    ("platform::native_window", "the OS window (only the shell talks to it)"),
+    ("windows::Win32", "the OS (Win32 calls belong in platform/)"),
 ];
 
 /// `git2::` items that are plain data and may be used anywhere.
@@ -191,6 +193,8 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     ("ui/app.rs", "Instant::now", "the shell stamps each frame and message with the time"),
     ("ui/app.rs", "Local::now", "the shell sets `st.view.now` once per frame"),
     ("ui/app.rs", "send_viewport_cmd", "the shell turns window effects into viewport commands"),
+    ("ui/app.rs", "platform::native_window", "the shell installs the native window glue once, at startup"),
+    ("ui/app_native.rs", "platform::native_window", "the shell trades caption geometry and window state with the OS each frame"),
     ("state/app_queries.rs", "std::env", "`outside_dir` (and `any_dir` without a repository) is the temp folder's path; nothing is read"),
 ];
 

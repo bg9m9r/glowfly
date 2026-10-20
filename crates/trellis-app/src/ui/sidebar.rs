@@ -1,6 +1,7 @@
 //! Left panel: local and remote branches, pull requests, issues, Git Flow branches, tags,
 //! stashes, worktrees and submodules.
 
+use super::backdrop::{self, Surface};
 use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, menu_item_if, state_color};
 use super::forge_filter_menu::{self, Picker};
@@ -33,7 +34,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
     panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Sidebar));
     // The filter field's hint, cut with "…" in a narrow panel (whole on hover while empty).
     let filter_hint = st.settings.lang().tr("sidebar.filter.hint");
-    let resp = panel_size::side(egui::SidePanel::left(id), fit).frame(egui::Frame::new().fill(color::panel())).show(ctx, |ui| {
+    let fill = backdrop::fill(st.view.backdrop, Surface::Side, color::panel());
+    let resp = panel_size::side(egui::SidePanel::left(id), fit).frame(egui::Frame::new().fill(fill)).show(ctx, |ui| {
         panel_size::fill(ui);
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
         ui.spacing_mut().item_spacing.y = 0.0;

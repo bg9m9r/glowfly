@@ -30,7 +30,7 @@ second one next to it.
 | Timestamps | NTFS 100 ns; FAT 2 s | APFS ns; HFS+ 1 s | ns on ext4 and btrfs; network attribute caches lag |
 | Notifications | WinRT toasts; Focus Assist can hide them | Notification Center; Do Not Disturb can hide them | freedesktop notifications over D-Bus; needs a notification server |
 | git builds | Git for Windows (MinGW), often a newer version | Apple's `/usr/bin/git` (older) or Homebrew's | Whatever the distribution ships, sometimes old |
-| Window frame | Drawn by Trellis: no system decorations; its own title bar, window buttons, resize edges and border | The system frame with a full-size content view: the traffic lights sit over Trellis's title bar | The system frame, with Trellis's menu bar and tab bar below it |
+| Window frame | Drawn by Trellis: no system decorations; its own title bar, window buttons, resize edges and border, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Trellis's title bar | The system frame, with Trellis's menu bar and tab bar below it |
 
 ## Rules
 
@@ -320,6 +320,20 @@ second one next to it.
    `ViewportCommand`; `tests/layering.rs` checks.
 3. **Resize edges are Windows-only and off while maximized or full screen,** like the 1 px
    border; on macOS the system frame resizes the window.
+4. **The drawn Maximize button answers Windows' hit test (`WM_NCHITTEST`) with `HTMAXBUTTON`,**
+   so Windows 11 shows Snap Layouts over it. Windows then tracks the button and egui sees no
+   pointer there: its hover and press come from `st.view.window.max_button`, and its click
+   reaches update from the shell (`ui/app_native.rs`) as `AppMsg::Window(SetMaximized)`. The
+   shell hands the OS the button's rect each frame (`window_frame::caption_geometry`).
+5. **Alt+Space and a right-click on the empty bar open the window's system menu** through
+   `platform::native_window` (the only place with Win32 calls; `tests/layering.rs` checks).
+   egui never sees Alt+Space, and the shell cancels the Alt tap once the menu has shown. The
+   chosen command goes back as `WM_SYSCOMMAND`, so Windows carries it out.
+6. **Mica only on build 22621 or later, with transparency effects on and high contrast off,**
+   and only behind the title bar, toolbar and sidebar, painted through `ui::backdrop::fill`.
+   Everything else stays opaque. The tints come from `backdrop::mica_tint`'s ladder, which keeps
+   text readable over stand-in Mica colours; a surface that can't reach the floors at any step
+   stays opaque, and high-contrast themes stay solid.
 
 ### Watching and refresh
 
@@ -444,8 +458,10 @@ Gaps that are accepted for now:
   shell that is itself a launcher with a differently named child (`wsl.exe`) can look busy; and
   on Windows the orphans of a process whose pid was reused for the shell could count.
 
-- **The drawn Windows frame lacks some system behaviour:** no Snap Layouts flyout over Maximize,
-  no Alt+Space or system menu, and no DWM shadow or rounded corners.
+- **The drawn Windows frame has no DWM shadow or rounded corners.**
+- **The system menu is drawn by Windows in its light style** under a dark theme.
+- **Dark's sidebar stays opaque on Mica:** its `faint` text can't reach 4.5:1 over the lightest
+  dark Mica stand-ins at any tint step (the title bar and toolbar do sit on Mica).
 - **macOS's traffic lights aren't centred on the title bar,** which is taller than the system's.
 - **An Alt press and release within one frame isn't seen as a tap,** so it doesn't open the menu.
 
@@ -469,4 +485,12 @@ Unverified, needs a real machine:
 - the drawn Windows frame on Windows 10 and 11 at 100% and 150%: dragging the title bar,
   double-clicking it, the resize edges and Aero Snap;
 - that the key after an Alt tap isn't swallowed by a system menu loop on Windows;
+- Mica showing behind the title bar, toolbar and sidebar on Windows 11 22H2, 23H2 and 24H2 at
+  100% and 150%, with no system caption buttons showing through, and the glow renderer's
+  transparency on Intel, AMD and NVIDIA drivers;
+- the Snap Layouts flyout over the drawn Maximize button, and its hover, press and click;
+- where Alt+Space opens the system menu, and its keyboard Move and Size;
+- the `MICA_DARK` and `MICA_LIGHT` stand-ins against a colour picker on the real backdrop over
+  light, dark and busy wallpapers;
+- turning transparency effects or high contrast on and off while Trellis runs;
 - on macOS, the system titlebar strip's own drag and double-click against Trellis's.

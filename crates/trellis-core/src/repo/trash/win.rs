@@ -3,6 +3,7 @@
 
 use super::{BinSettings, TrashProblem, TrashRefusal, problem_of_hresult, problem_of_win32};
 use crate::native_path::wide;
+use crate::win_registry::dword;
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use windows::core::PCWSTR;
@@ -52,27 +53,6 @@ fn volume_guid(root: &OsStr) -> Option<String> {
     let start = name.find('{')?;
     let end = name.find('}')?;
     (start < end).then(|| name[start..=end].to_owned())
-}
-
-/// A DWORD from the registry, or None when the key or value isn't there.
-fn dword(hkey: windows::Win32::System::Registry::HKEY, key: &str, value: &str) -> Option<u32> {
-    use windows::Win32::System::Registry::{RRF_RT_REG_DWORD, RegGetValueW};
-    let (key, value) = (wide(OsStr::new(key)), wide(OsStr::new(value)));
-    let mut data = 0u32;
-    let mut size = std::mem::size_of::<u32>() as u32;
-    // SAFETY: both strings are NUL-terminated; `data` and `size` are valid for a DWORD.
-    let r = unsafe {
-        RegGetValueW(
-            hkey,
-            PCWSTR(key.as_ptr()),
-            PCWSTR(value.as_ptr()),
-            RRF_RT_REG_DWORD,
-            None,
-            Some((&raw mut data).cast()),
-            Some(&mut size),
-        )
-    };
-    r.is_ok().then_some(data)
 }
 
 /// The Recycle Bin settings for the drive at `root`, as Explorer's Recycle Bin properties
