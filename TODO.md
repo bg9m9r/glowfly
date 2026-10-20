@@ -21,6 +21,7 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
 - 2026-10-20 19:14 · **Real-input smoke tests (Linux)**: A CI job builds the release binary and drives it under its own Xvfb and openbox with real XTEST input at scale 1 and 1.5 (`scripts/smoke-linux.sh`): a click that focuses the window and a click after the window manager focused it must both select a graph row, typed text in the commit summary must arrive exactly and commit only the staged file, a commit's menu creates a branch, Ctrl+Shift+L hides and shows the left panel, dragging the sidebar edge saves its width and a resized window still lays out and takes clicks, read back through an opt-in probe file (`TRELLIS_SMOKE_PROBE`) and the disk; failures upload screenshots and logs (`7c12ec7f`)
 - 2026-10-20 19:14 · **In-app pull request view**: Pull request descriptions, comments, reviews and code comment threads, and GitHub, GitLab, Bitbucket and Trello issue descriptions and comments, render as Markdown (headings, emphasis, inline code, highlighted code blocks, nested and task lists, quotes, rules, tables, links that open in the browser with the address on hover; images as alt-text links), parsed once per body and cached; Azure Boards and Jira bodies stay plain (`66c0f24e`)
+- 2026-10-20 19:04 · **Language**: The conflict view, the conflicted and resolved lists and the conflict check, the file row menus and path warnings, the diff file header, blame and the signature badge, the reasons on disabled commit and multi-select items, and the in-progress banners follow the language, with German snapshot checks that no English is left, completing the item (`d7bd0dc1`)
 - 2026-10-20 19:04 · **Line-level staging**: A click in a changed line's gutter (its numbers or sign) adds it to the selection or takes it out while the others stay, Shift-click still makes a range and a drag down the gutter adds, a click on the text still selects only that line; selected lines get a stronger tint in their own hue and a filled accent check box in place of the +/-, a hovered gutter shows a hollow box, and the selection stays within one hunk (`9f16c31b`)
 - 2026-10-20 18:41 · **Window chrome and toolbar**: The Repository and Branch pickers keep fixed name slots (shrinking only in a narrow window), so switching tabs or branches no longer moves Undo and the groups after it; the conflict chip joins the untrusted chip before the right-hand group, the toolbar moves onto the panel surface with 10 px group gaps, Pull, Push and PR become split buttons lit as one pill with a stroked caret, and Terminal, Activity and Search keep a fill while on; tabs become as wide as their names with a repository icon, a fading ×, and an active tab 2 px taller on the toolbar's fill with one band in the branch colour, and dragging slides tabs of any width (`f3de24f5`)
 - 2026-10-20 14:32 · **Operation journal**: View > Operation journal and the palette open a timeline of every state HEAD and the local branches have been in, from git's reflogs plus Trellis's own "Before resetting main to ..." notes written around history-rewriting operations, with a preview of each state's history and what Restore would move; Restore puts a branch back (stashing local changes in the same dialog), recreates a deleted branch or checks out an old HEAD, and Undo takes it back (`307476d2`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-19 17:41 · **Errors say what to do**: A failed git operation shows one plain sentence naming the cause (local changes, untracked files, conflicts, rejected pushes, missing upstream, lock files, sign-in and more) with a fix button such as Stash and pull, View conflicts or Set upstream... and Details beside it, and merge, pull and stash no longer log `<stdin>` whitespace warnings (`2e767e7b`)
 - 2026-10-19 16:54 · **One label for a branch and its copies on every remote**: A graph branch chip folds its upstream and every same-commit copy with its name on any remote (remote names matched longest first), copies on several remotes with no local branch share one remote chip led by the tracked copy or the default remote's, the "+N" count skips them, the tooltip names every copy, and double-click checks out the branch or the lead copy (`81f4c7bf`)
 - 2026-10-19 16:20 · **Double-click a branch to check it out**: Double-clicking a graph branch chip checks it out (remote chips through their tracking branch, made when there is none), via Stash and carry on on a dirty tree, while tags, the rest of the row and modified clicks keep selecting (`96a85247`)
-- 2026-10-19 16:00 · **Terminal keeps the prompt's space**: grid cells use the pixel-rounded font advance so text, cursor and mouse line up; DSR and screen rebuilds keep a write into the last column (`9930daca`)
 
 ---
 
@@ -954,14 +954,17 @@ Done except the group colors, which wait on repository groups in the repository 
 - [x] **Zoom** in/out/reset; show/hide the left, detail and toolbar panels
 - [x] **Menu bar** (File / Edit / View / Window / Help), including Undo/Redo under Edit, an
       About dialog with the third-party notices, and a UI Customization toggle to hide it
-- [ ] **Language**: translate the UI (date locale and relative dates already exist)
+- [x] **Language**: translate the UI (date locale and relative dates already exist)
   - [x] Catalog (English base, Deutsch, Español) with system-language detection, Language on
     Preferences > General, and translated Preferences navigation, General (with its Updates row),
     Editor, External Tools and UI Customization pages, commit box, status bar and its update chip,
     menu bar and About dialog, toolbar, tab bar, the release notes dialog, the first-run welcome,
     the welcome screen and its repository lists (also the toolbar's repository menu and File >
     Open recent), Find repositories, and the details panel (commit details, the WIP lists, row
-    actions and in-progress banner buttons, several commits and the working-directory comparison)
+    actions and in-progress banner buttons, several commits and the working-directory comparison),
+    the conflict view, the conflicted and resolved file lists and the conflict check, the file row
+    menus and path warnings, the diff file header, blame, the signature badge, the commit and
+    multi-select menus' reasons, and the in-progress banner titles and stop lines
 - [x] **Logs**: keep the activity log across sessions; error and performance logs; extended
       logging (the in-session activity log exists)
 - [x] **Command-line companion**: `trellis <path>` and `trellis .` work (subcommands are under
@@ -1326,9 +1329,9 @@ here, under the item they grew from.
 
 ### Complete translations
 
-- The diff file header: Stage file / Unstage file and the Unstaged and Staged chips
-- Disabled menu items' reasons ("This commit isn't on the current branch", "has no upstream",
-  "isn't on a code host") and the shared busy reason
+- Disabled menu items' reasons still in English: the rebase edit-menu reasons ("This commit
+  isn't on the current branch"), the branch menus' "has no upstream" / "isn't on a code host",
+  and the remaining BUSY / JOB_RUNNING users
 - Job and activity-log labels (the titles git jobs run under, such as "Reset (hard)")
 - The worktree row menu (Prune missing worktrees), the Git Flow header menu, the pull request
   and issue row menus, and the filter popover's "Saved filters" and "None yet"
@@ -2471,15 +2474,22 @@ here, under the item they grew from.
 - Translate undo action descriptions (Action::describe, e.g. "checkout of main") and the labels of the jobs they name, shown in the Edit menu, toolbar tips, status bar and activity log
 - Translate error texts that come from trellis-core: update check and download errors, theme file problems and the themes folder error
 - Translate the tour of the main window (ui/tour.rs, state/onboarding_tour.rs) and its closing toast
-- Translate the in-progress banner titles and stop lines (rebase and patch-series banners, Edit remaining steps…) and the operation names from state_actions
-- Translate the Conflicted Files and Resolved Files lists (ui/conflict_files.rs) and their Mark conflicted confirmations
-- Translate the file row menus (ui/file_menu.rs: history, blame, external tools, LFS, stash and patch items) and the path warnings
-- Translate the signature badge (ui/signature_badge.rs)
-- Translate the multi-select blocked reasons (cherry-pick, revert, patch) and the single-commit context menu in ui/menus.rs
 - Translate git's missing or too-old banner text built in trellis-core (welcome Git step and window banner)
 - Translate the folder picker titles (Add a project folder, Open a Git repository and the other Preferences pickers)
 - Translate the palette's repository commands (e.g. Remove missing repositories from the lists)
 - Translate the pull request panel's file list texts (only its rows' Copy path follows the language)
+- Translate the rebase edit-menu reasons from trellis_core::rebase (This commit isn't on the current branch, merge selected, side line) and core's in_progress_text / DETACHED used by the rebase panel
+- Translate the file history views' own texts (history.rs, history_folder.rs, history_file.rs, file_buttons.rs, file_view_switch.rs, diff/preview.rs) and drop the English constants kept for them (file_menu::BLAME, OPEN_DEFAULT, files::NOT_IN_WORKDIR, SHOW_IN_FOLDER, history NOT_ON_GRAPH, WRAP_LINES)
+- Translate the find and go-to-line fields shared by blame and the file views (ui/find_bar.rs)
+- Translate core's case-mismatch line in the File names banner (Snapshot::case_mismatch)
+- Translate the external tool failure toasts (NO_DIFF_TOOL, NO_MERGE_TOOL, merge_end_text, unmatched quote) and the palette's tool details
+- Translate the remaining JOB_RUNNING / blocked::BUSY users (tags, preference pages, fork and worktree dialogs, rebase quick edits)
+- Translate the conflict view's undo descriptions and the merge tool job label shown in the status bar
+- Translate the Stash dialog (its blocked reasons stay English with it until then)
+- The conflict Output strip says "1 of 1 conflicts resolved": give it the header's singular and plural forms (its English snapshots change with it)
+- A narrow conflict view cuts the panes' "picked automatically · whitespace only" tag in German; wrap it or drop the reason part when it doesn't fit
+- The automatic-pick notes ("The conflict in this file was picked automatically…") are separate one / all texts; fold them into one plural text
+- Translate the palette's rebase entries (Restore original order, Reload rebase steps)
 
 ### Whole-app journey tests
 

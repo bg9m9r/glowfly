@@ -31,8 +31,7 @@ account.
 
 The daily-driver, power-user, integration and polish items of TODO.md (P0 to P3 and Preferences
 parity) are built, with tests on all three CI systems. Open leftovers: issues on Bitbucket, Azure
-DevOps and Trello (Create and view issues), the views Language hasn't translated yet, and Default
-group color (waits for repository groups).
+DevOps and Trello (Create and view issues) and Default group color (waits for repository groups).
 
 ### Milestone 1: first release (in progress)
 
