@@ -1007,9 +1007,10 @@ Chosen on 2026-10-19 as the features that make Trellis its own, in this order.
 - Preview before you act: before a rebase, merge, reset, cherry-pick or drop, show the graph as
   it will look afterwards (worked out in a temporary index or worktree), with the commits that
   move, disappear or conflict marked, then Apply or Cancel
-- Operation journal: a timeline of every state the repository has been in (from the reflog and
-  Trellis's own records, e.g. "Before rebasing feature/login, 10:42"), each restorable in one
-  click, with lost and dangling commits found and recoverable
+- Lost commit recovery in the operation journal: mark states whose commit no branch, tag or
+  remote reaches any more (a revwalk that pushes the journal's commits and hides every ref tip),
+  find dangling commits nothing references with git fsck --connectivity-only (dropped stashes
+  named as such), and offer Create branch here and Restore for them
 - Stacked branches: recognise a branch built on another, draw the stack, restack everything
   above after amending a lower branch (`git rebase --update-refs`), and push the stack with one
   pull request per layer
@@ -1279,6 +1280,25 @@ here, under the item they grew from.
   sand in the palette, a vine lane style, and plain descriptive feature names
 - Explain mode: a toggle that shows, in tooltips and confirmations, the git command each action
   runs and what it does in one plain sentence
+
+### Operation journal
+
+- Show the remote-tracking branches' and refs/stash reflogs in the timeline
+- Filter the timeline by branch or HEAD, and search the labels and commit summaries
+- Day headers in the list (Today, Yesterday, then dates)
+- Up and Down to move between rows, Enter for Restore..., and a bindable shortcut to open the
+  journal
+- Expand a finished rebase's row to show the steps the timeline folds away
+- Restore every branch a rebase --update-refs moved from its one note
+- Notes for operations run in the terminal panel or outside Trellis
+- Notes for stash drops and Discard all, with stash states in the timeline
+- Draw the preview's history with the real lane graph instead of one lane
+- Load more than the newest 2,000 states
+- Compare a state with now (a diff, or a range-diff of the branch)
+- Say when git will expire a state (gc.reflogExpire, gc.reflogExpireUnreachable)
+- Notes for jobs run in other repositories (repo sync pulls)
+- An Undo or Redo note's operation name comes from core's English description, so it reads in
+  English in other languages; key it to the language tables instead
 
 ### Terminal keeps the prompt's space
 

@@ -185,13 +185,11 @@ pub enum Effect {
     DetectLfs {
         cwd: PathBuf,
     },
-    /// Runs `git worktree remove` then, if asked, `git branch -d`. Unscoped like RunGit: it ends
-    /// the active job.
+    /// `git worktree remove` then, if asked, `git branch -d`; unscoped like RunGit (ends the job).
     RemoveWorktree(crate::worktree::RemoveRequest),
     /// Other worktrees' changes the load left Pending (`WorktreeMsg::ChangesCounted`).
     CountWorktreeChanges(crate::worktree::CountRequest),
-    /// Runs `git worktree move` once the target is free. Unscoped like RunGit: it ends the
-    /// active job.
+    /// `git worktree move` once the target is free; unscoped like RunGit (ends the job).
     MoveWorktree(crate::worktree::MoveRequest),
     /// Stash list jobs: renaming an entry, putting an auto-stash back (stash.rs).
     Stash(StashEffect),
@@ -205,8 +203,7 @@ pub enum Effect {
         workdir: PathBuf,
         generation: u64,
     },
-    /// Runs `git sparse-checkout` set, reapply or disable. Unscoped like RunGit: it ends the
-    /// active job.
+    /// `git sparse-checkout` set, reapply or disable; unscoped like RunGit (ends the job).
     SparseCheckout {
         cwd: PathBuf,
         command: trellis_core::sparse_ops::SparseCommand,
@@ -226,13 +223,15 @@ pub enum Effect {
     LoadBlame(BlameRequest),
     /// Runs git commands in order, stopping at the first failure. `write_file` is written first
     /// (used for commit messages). With `record`, the state before and after is compared and
-    /// the resulting undoable action reported back. Without `prompts` (background jobs) git
-    /// fails rather than open a credential prompt.
+    /// the resulting undoable action reported back; with `journal`, a journal note is written
+    /// when the run moved HEAD or the op's branch (runner/journal.rs). Without `prompts`
+    /// (background jobs) git fails rather than open a credential prompt.
     RunGit {
         cwd: PathBuf,
         cmds: Vec<Vec<String>>,
         write_file: Option<(PathBuf, String)>,
         record: Option<UndoKind>,
+        journal: Option<trellis_core::journal::Op>,
         prompts: bool,
         /// Run nothing unless this revision still resolves to this commit.
         expect: Option<(String, git2::Oid)>,
@@ -373,6 +372,8 @@ pub enum Effect {
     Onboarding(crate::onboarding::OnboardingEffect),
     /// Dry-runs a merge with git merge-tree (conflict_check.rs); reads only.
     CheckConflicts(crate::conflict_check::CheckJob),
+    /// Reading the operation journal and a state's preview (journal.rs); reads only.
+    Journal(crate::journal::JournalEffect),
     /// Fork lists and forking for the REMOTE section (remote.rs); unscoped.
     Remote(crate::remote::RemoteEffect),
     /// A sparse clone and listing the user's repositories for the Clone dialog; unscoped.

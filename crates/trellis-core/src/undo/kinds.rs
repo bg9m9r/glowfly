@@ -85,6 +85,13 @@ pub enum UndoKind {
     StashDrop {
         rev: Option<String>,
     },
+    /// `update-ref -m <reason> refs/heads/<name> <new> <old>`: the journal's Restore of a branch
+    /// that isn't checked out.
+    SetBranch(String),
+}
+
+fn full_id(s: &str) -> bool {
+    s.len() == 40 && s.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
 fn plain(s: &str) -> bool {
@@ -117,6 +124,9 @@ impl UndoKind {
                 }))
             }
             [op @ ("merge" | "pull" | "cherry-pick" | "revert" | "rebase"), rest @ ..] => move_kind(op, rest),
+            ["update-ref", "-m", _, r, new, old] if full_id(new) && full_id(old) => {
+                r.strip_prefix("refs/heads/").filter(|n| !n.is_empty()).map(|n| UndoKind::SetBranch(n.to_owned()))
+            }
             _ => stash_kind(&a, argv),
         }
     }

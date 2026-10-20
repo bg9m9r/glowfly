@@ -37,6 +37,7 @@ pub mod identity;
 pub mod init_ops;
 pub mod instance;
 pub mod intraline;
+pub mod journal;
 pub mod lfs;
 pub mod line_pairs;
 pub mod link;

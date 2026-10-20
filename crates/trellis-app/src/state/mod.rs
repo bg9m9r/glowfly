@@ -42,6 +42,8 @@ pub mod init;
 pub mod issue;
 pub mod issue_form;
 pub mod issue_words;
+pub mod journal;
+pub mod journal_restore;
 pub mod keys_page;
 pub mod known_folders;
 pub mod layout;
@@ -414,6 +416,11 @@ pub struct AppState {
     /// The Git Flow panel is open; shown in place of the graph (below the rebase panel). Parked
     /// with the tab.
     pub gitflow_panel: bool,
+    /// The operation journal, shown in place of the graph (update/journal.rs). Parked with the
+    /// tab.
+    pub journal: Option<journal::JournalView>,
+    /// Incremented for every journal load and preview request; older results are ignored.
+    pub journal_gen: u64,
     pub draft: CommitDraft,
     pub job: Option<RunningJob>,
     /// The active tab's undo history.
@@ -540,6 +547,8 @@ impl AppState {
             rebase: None,
             rebase_gen: 0,
             gitflow_panel: false,
+            journal: None,
+            journal_gen: 0,
             draft: CommitDraft::default(),
             job: None,
             undo: undo::UndoHistory::default(),

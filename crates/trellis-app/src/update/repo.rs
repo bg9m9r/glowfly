@@ -291,6 +291,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             super::pull_request::close(st);
             super::issue::close(st);
             super::rebase::close(st);
+            super::journal::close(st);
             st.gitflow_panel = false;
             st.draft = CommitDraft::default();
             st.undo = Default::default();
@@ -346,6 +347,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     super::forge::resolve_pr_heads(st);
     if kind == LoadKind::Refresh {
         super::pull_request::refreshed(st, fx);
+        super::journal::refreshed(st, fx);
     }
     reload_diff(st, fx);
     super::forge::refresh(st, kind == LoadKind::Open, false, now, fx);
@@ -375,6 +377,7 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     super::history::close(st);
     super::blame::close(st);
     st.gitflow_panel = false;
+    super::journal::close(st);
     super::pull_request::close(st);
     super::issue::close(st);
     fx.push(Effect::LoadDetail { workdir, oid });

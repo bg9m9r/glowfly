@@ -3,7 +3,7 @@
 
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, dashboard, deep_link, diff_gaps, expect, files, forge_calls, forks,
-    git_env, git_ops, highlight, history, init, issues, keys, line_counts, notify, onboarding, os, patches, path_search, profiles,
+    git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, os, patches, path_search, profiles,
     pull_request, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
@@ -111,19 +111,27 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::LoadLfs { workdir, generation } => {
             Some(Msg::Lfs(LfsMsg::Loaded { generation, result: trellis_core::lfs::status(&workdir).map_err(err) }))
         }
-        Effect::RunGit { cwd, cmds, write_file, record, prompts, expect } => {
+        Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect } => {
             if let Some(refused) = expect.and_then(|(rev, oid)| expect::check(&cwd, &rev, oid).err()) {
                 return Some(Msg::Job(JobMsg::JobDone { ok: false, output: refused, undo: record.map(|_| UndoResult::Recorded(None)) }));
             }
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             // A pop onto local changes mixes them with the stash's, so it can't be undone.
             let irreversible = before.as_ref().is_some_and(undo::irreversible);
-            let (ok, output) = git_ops::run_git(&cwd, &cmds, write_file, prompts);
-            let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
-            let undo = if ok && irreversible { None } else { record.map(|k| UndoResult::Recorded(recorded(k))) };
+            // The journal note sees the refs before git runs and after the undo record is read.
+            let (ok, output, undo) = journal::around(&cwd, journal, || {
+                let (ok, output) = git_ops::run_git(&cwd, &cmds, write_file, prompts);
+                let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
+                let undo = if ok && irreversible { None } else { record.map(|k| UndoResult::Recorded(recorded(k))) };
+                (ok, output, undo)
+            });
             Some(Msg::Job(JobMsg::JobDone { ok, output, undo }))
         }
-        Effect::UndoRedo { cwd, action, redo, opts } => Some(git_ops::undo_redo(&cwd, action, redo, opts)),
+        Effect::UndoRedo { cwd, action, redo, opts } => {
+            let what = action.describe();
+            let op = if redo { trellis_core::journal::Op::Redo { what } } else { trellis_core::journal::Op::Undo { what } };
+            Some(journal::around(&cwd, Some(op), || git_ops::undo_redo(&cwd, action, redo, opts)))
+        }
         Effect::Rebase(e) => Some(rebase::run(e)),
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {
             Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call))))
@@ -183,6 +191,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Onboarding(e) => Some(onboarding::run(e)),
         Effect::Theme(e) => themes::run(e),
         Effect::CheckConflicts(job) => Some(conflict_check::run(job)),
+        Effect::Journal(e) => Some(journal::run(e)),
         Effect::Remote(e) => Some(forks::run(e)),
         Effect::Clone(e) => Some(clone::run(e)),
         Effect::Init(e) => Some(init::run(e)),

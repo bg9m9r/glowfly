@@ -73,6 +73,7 @@ mod icons;
 mod icons_panel;
 mod init_dialog;
 mod issue;
+mod journal;
 mod layout;
 mod lfs_badge;
 mod lfs_banner;
@@ -254,6 +255,8 @@ mod snapshot_tests_init;
 mod snapshot_tests_issue;
 #[cfg(test)]
 mod snapshot_tests_issue_create;
+#[cfg(test)]
+mod snapshot_tests_journal;
 #[cfg(test)]
 mod snapshot_tests_language_chrome;
 #[cfg(test)]

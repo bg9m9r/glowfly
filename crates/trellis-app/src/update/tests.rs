@@ -425,7 +425,7 @@ fn unreadable_settings_are_reported_once() {
 fn job_output_hides_credentials_in_urls() {
     let dir = scratch_repo("redact");
     let cmds = vec![args(&["remote", "add", "x", "https://ada:TOKEN123@example.com/o/r.git"])];
-    let effect = Effect::RunGit { cwd: dir.clone(), cmds, write_file: None, record: None, prompts: false, expect: None };
+    let effect = Effect::RunGit { cwd: dir.clone(), cmds, write_file: None, record: None, journal: None, prompts: false, expect: None };
     let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = runner::execute(effect) else { panic!("expected JobDone") };
     assert!(ok, "{output}");
     assert!(!output.contains("TOKEN123") && output.contains("https://***@example.com/o/r.git"), "{output}");

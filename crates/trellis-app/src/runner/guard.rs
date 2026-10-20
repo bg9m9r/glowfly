@@ -203,6 +203,7 @@ mod tests {
             cmds: vec![],
             write_file: None,
             record: Some(UndoKind::Checkout),
+            journal: None,
             prompts: false,
             expect: None,
         };

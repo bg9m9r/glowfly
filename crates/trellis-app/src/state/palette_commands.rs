@@ -120,6 +120,8 @@ pub enum PaletteCommand {
     FinishGitFlow(String),
     /// Show the Git Flow panel.
     OpenGitFlowPanel,
+    /// The operation journal (update/journal.rs).
+    OpenJournal,
     /// Enter the issue sub-list for starting this kind; choosing an issue runs
     /// `StartGitFlowFromIssue`.
     ChooseGitFlowIssue(trellis_core::gitflow::FlowKind),
@@ -357,6 +359,8 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     super::patch::palette_entries(st, snap, out);
     palette_setup::setup_entries(out);
     palette_gitflow::gitflow_entries(st, snap, out);
+    let journal = "journal reflog history timeline states restore recover go back time travel undo before";
+    out.push(entry(C::OpenJournal, "Open operation journal", journal));
     palette_commands_worktrees::worktree_entries(st, snap, out);
     palette_issues::issue_entries(st, out);
     palette_commands_submodules::submodule_entries(st, snap, out);

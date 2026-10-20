@@ -95,6 +95,8 @@ pub(super) mod forge_filters_tests;
 pub(super) mod forge_tests;
 #[path = "git_env_tests.rs"]
 pub(super) mod git_env_tests;
+#[path = "git_job_tests.rs"]
+pub(super) mod git_job_tests;
 #[path = "git_program_tests.rs"]
 pub(super) mod git_program_tests;
 #[path = "gitflow_finish_tests.rs"]
@@ -135,6 +137,10 @@ pub(super) mod issue_services_tests;
 pub(super) mod issue_tests;
 #[path = "job_errors_tests.rs"]
 pub(super) mod job_errors_tests;
+#[path = "journal_restore_tests.rs"]
+pub(super) mod journal_restore_tests;
+#[path = "journal_tests.rs"]
+pub(super) mod journal_tests;
 #[path = "keys_tests.rs"]
 pub(super) mod keys_tests;
 #[path = "language_override_tests.rs"]

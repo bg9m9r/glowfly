@@ -5,8 +5,9 @@
 //!
 //! `kinds` recognises the command lines, `action` names what was recorded, `record` captures the
 //! state around an operation, and `planning` decides how to reverse it, with `refs` (branches and
-//! tags), `moved` (merge, pull, cherry-pick, revert, rebase), `stash`, `reset`, `saved` and
-//! `deleted` (Delete and Unstage and delete).
+//! tags, also a branch the journal's Restore moved with `update-ref`), `moved` (merge, pull,
+//! cherry-pick, revert, rebase), `stash`, `reset`, `saved` and `deleted` (Delete and Unstage and
+//! delete).
 //! Rebases, also interactive ones and graph edits, are recorded around their run instead
 //! (`rebased.rs`): they finish in steps, possibly outside Trellis. A merge, cherry-pick or revert
 //! that stopped for conflicts and was finished later (Continue, Skip or a commit) is recorded as
@@ -38,6 +39,7 @@ pub(crate) use kinds::{commits_label, move_targets};
 use planning::{has_staged, is_clean, stale};
 pub use planning::{plan, plan_with};
 pub use rebased::{RebaseStart, rebase_start, rebased, unmoved};
+pub(crate) use record::head;
 use record::stash_top;
 pub use record::{Before, after, before, irreversible, redone};
 pub use reset::{HARD_RESET_STASH_MESSAGE, hard_reset_commands};

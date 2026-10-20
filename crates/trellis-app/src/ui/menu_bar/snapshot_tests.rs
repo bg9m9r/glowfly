@@ -1,7 +1,9 @@
 //! The menu bar and its menus, the About dialog, and what clicking items sends. Shares the
 //! fixture repository and renderer with `ui/snapshot_tests.rs`.
 
+use crate::journal::JournalMsg;
 use crate::msg::{AppMsg, JobMsg, LayoutMsg, Msg, TabsMsg, UpdateMsg};
+use crate::state::journal::JournalView;
 use crate::state::layout::Panel;
 use crate::state::menu_bar::VERSION;
 use crate::state::{AppState, Modal, git_env::GitState};
@@ -150,7 +152,9 @@ fn menu_bar_view_dark_and_light() {
     let mut h = opened(st, true, "View");
     h.check_snapshot("menu_bar_view");
     drop(h);
-    let (st, _) = with_bar(ThemeChoice::Light, "menu-bar-view");
+    // With the journal open: its item is ticked.
+    let (mut st, _) = with_bar(ThemeChoice::Light, "menu-bar-view");
+    st.journal = Some(JournalView { timeline: Some(Ok(Default::default())), ..Default::default() });
     let mut h = opened(st, false, "View");
     h.check_snapshot("menu_bar_view_light");
     drop(h);
@@ -169,6 +173,18 @@ fn view_menu_checks_the_shown_panels() {
     }
     assert_eq!(h.get_by_label("Terminal").toggled(), Some(Toggled::False));
     assert_eq!(h.get_by_label("Activity log").toggled(), Some(Toggled::False));
+    assert_eq!(h.get_by_label("Operation journal").toggled(), Some(Toggled::False));
+    drop(h);
+    let (mut st, _) = with_bar(ThemeChoice::Dark, "menu-bar-view-checks");
+    st.journal = Some(JournalView { timeline: Some(Ok(Default::default())), ..Default::default() });
+    let h = opened(st, true, "View");
+    let journal = h.query_all_by_label("Operation journal").find(|n| n.role() == Role::CheckBox).expect("the check item");
+    assert_eq!(journal.toggled(), Some(Toggled::True));
+    drop(h);
+    let (mut st, _) = with_bar(ThemeChoice::Dark, "menu-bar-view-checks");
+    st.snap = None;
+    let h = opened(st, true, "View");
+    assert!(h.get_by_label("Operation journal").is_disabled(), "no repository");
     drop(h);
     let (mut st, _) = with_bar(ThemeChoice::Dark, "menu-bar-view-checks");
     st.settings.show_left_panel = false;
@@ -214,7 +230,7 @@ type Case = (&'static str, &'static str, &'static str, fn(&Msg) -> bool);
 
 #[test]
 fn menu_items_send_their_messages() {
-    let cases: [Case; 7] = [
+    let cases: [Case; 8] = [
         ("menu-click-new-tab", "File", "New tab", |m| matches!(m, Msg::Tabs(TabsMsg::NewTab))),
         ("menu-click-quit", "File", "Quit", |m| matches!(m, Msg::App(AppMsg::Quit))),
         ("menu-click-zoom", "View", "Zoom in", |m| matches!(m, Msg::Layout(LayoutMsg::ZoomIn))),
@@ -224,6 +240,7 @@ fn menu_items_send_their_messages() {
         ("menu-click-left-panel", "View", "Left panel", |m| {
             matches!(m, Msg::Layout(LayoutMsg::SetPanel { panel: Panel::Left, shown: false }))
         }),
+        ("menu-click-journal", "View", "Operation journal", |m| matches!(m, Msg::Journal(JournalMsg::Toggle))),
         ("menu-click-about", "Help", "About Trellis…", |m| matches!(m, Msg::App(AppMsg::ShowAbout))),
         ("menu-click-check-updates", "Help", "Check for updates", |m| matches!(m, Msg::Updates(UpdateMsg::CheckNow))),
     ];

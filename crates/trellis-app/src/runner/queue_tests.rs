@@ -119,6 +119,7 @@ fn which_effects_queue() {
         cmds: cmds.iter().map(|c| trellis_core::gitcli::args(c)).collect(),
         write_file: None,
         record: None,
+        journal: None,
         prompts: false,
         expect: None,
     };
@@ -204,6 +205,7 @@ fn every_effect_that_changes_a_repository_queues() {
             cmds: vec![trellis_core::gitcli::args(&["commit"])],
             write_file: None,
             record: None,
+            journal: None,
             prompts: false,
             expect: None,
         },

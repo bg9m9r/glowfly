@@ -4,7 +4,7 @@
 
 use super::UiCache;
 use super::theme::color;
-use super::{blame, common, conflict, dashboard, diff, gitflow_panel, graph, history, issue, pull_request, rebase};
+use super::{blame, common, conflict, dashboard, diff, gitflow_panel, graph, history, issue, journal, pull_request, rebase};
 use crate::msg::BlameMsg;
 use crate::msg::ConflictMsg;
 use crate::msg::DiffMsg;
@@ -75,6 +75,8 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     } else if let Some(p) = &st.rebase {
         // Esc first closes the message editor, then the panel.
         msgs.push(if p.editing.is_some() { Msg::Rebase(RebaseMsg::RebaseCancelMessage) } else { Msg::Rebase(RebaseMsg::CloseRebase) });
+    } else if st.journal.is_some() {
+        msgs.push(Msg::Journal(crate::journal::JournalMsg::Close));
     } else if st.gitflow_panel {
         msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ClosePanel));
     } else if matches!(st.selection, crate::state::Selection::Commits(_) | crate::state::Selection::VsWorkdir(_)) {
@@ -85,7 +87,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
 }
 
 /// The central panel: the dashboard while open, else the welcome screen without a repository, else the innermost view open
-/// (conflict, blame, file history, pull request panel, issue panel, diff, rebase panel, Git Flow panel), else
+/// (conflict, blame, file history, pull request panel, issue panel, diff, rebase panel, operation journal, Git Flow panel), else
 /// the graph. Returns where the panel was drawn (the tour outlines it).
 pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) -> egui::Rect {
     egui::CentralPanel::default()
@@ -111,6 +113,8 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
                 diff::show(ui, st, cache, msgs);
             } else if st.rebase.is_some() {
                 rebase::show(ui, st, cache, msgs);
+            } else if st.journal.is_some() {
+                journal::show(ui, st, msgs);
             } else if st.gitflow_panel {
                 gitflow_panel::show(ui, st, msgs);
             } else {

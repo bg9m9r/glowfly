@@ -26,7 +26,8 @@ pub(super) fn run(e: RebaseEffect) -> Msg {
         }
         RebaseEffect::Start { cwd, request, detail } => {
             let before = undo::rebase_start(&cwd);
-            let result = rebase::start(&cwd, &request, &sequence_editor());
+            let op = Some(trellis_core::journal::Op::Rewrite);
+            let result = super::journal::around(&cwd, op, || rebase::start(&cwd, &request, &sequence_editor()));
             let undo = recorded(&cwd, before, &detail, &result);
             RebaseMsg::RebaseFinished { result: result.map_err(err), undo }
         }

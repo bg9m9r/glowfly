@@ -31,6 +31,7 @@ mod forge;
 mod forge_filter_edit;
 mod forge_filters;
 mod git_env;
+mod git_job;
 mod gitflow;
 mod gitflow_finish;
 mod graph_columns;
@@ -45,6 +46,7 @@ mod issue;
 mod issue_create;
 mod job_errors;
 mod jobs;
+mod journal;
 mod keys;
 mod layout;
 mod lfs;
@@ -190,6 +192,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Patch(m) => patch::handle(st, m, now, &mut fx),
         Msg::Tools(m) => tools::handle(st, m, now, &mut fx),
         Msg::ConflictCheck(m) => conflict_check::handle(st, m, now, &mut fx),
+        Msg::Journal(m) => journal::handle(st, m, now, &mut fx),
         Msg::PullRequest(m) => pull_request::handle(st, m, now, &mut fx),
         Msg::Issue(m) => issue::handle(st, m, now, &mut fx),
         Msg::Forge(m) => forge::handle(st, m, now, &mut fx),

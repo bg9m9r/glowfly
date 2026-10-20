@@ -222,6 +222,18 @@ impl Journey {
         self.settle();
     }
 
+    /// Hovers the widget whose name starts with or contains `label`, as when opening a submenu.
+    #[track_caller]
+    pub fn hover(&mut self, label: &str, region: Region, pick: Pick<'_>) {
+        {
+            let Some(node) = find::find(&self.h, label, false, region, pick) else {
+                panic!("{}", self.missing("widget", label, region, pick))
+            };
+            node.hover();
+        }
+        self.settle();
+    }
+
     /// Clicks `label` in the open context menu.
     #[track_caller]
     pub fn menu(&mut self, label: &str) {

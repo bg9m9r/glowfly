@@ -89,6 +89,7 @@ pub enum ToolView {
     FileHistory,
     FolderHistory,
     Issue,
+    Journal,
     GitFlow,
 }
 
@@ -114,6 +115,8 @@ pub fn tool_view(st: &AppState) -> Option<ToolView> {
         Some(ToolView::Issue)
     } else if st.diff.is_some() || st.rebase.is_some() {
         None
+    } else if st.journal.is_some() {
+        Some(ToolView::Journal)
     } else if st.gitflow_panel {
         Some(ToolView::GitFlow)
     } else {

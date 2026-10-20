@@ -385,6 +385,10 @@ second one next to it.
    Windows (`SHGetKnownFolderPath`, wherever the user moved it; else `%USERPROFILE%\Downloads`),
    `~/Downloads` on macOS, and `XDG_DOWNLOAD_DIR` from `user-dirs.dirs` (else `~/Downloads`) on
    XDG desktops; when that isn't a folder, the cache folder's `updates`.
+8. **Per-repository records go in the repository's own git dir**, never the config folder: the
+   operation journal's notes are `<git dir>/trellis/journal.jsonl` (`journal::notes::path`, a
+   linked worktree's own git dir, since HEAD is per worktree), appended through
+   `persist::append` and trimmed through `persist::atomic_write`, bounded like a log.
 
 ## Testing on every OS
 

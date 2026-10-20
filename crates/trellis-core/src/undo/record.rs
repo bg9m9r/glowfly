@@ -34,7 +34,7 @@ struct Apply {
     clean: Option<bool>,
 }
 
-pub(super) fn head(repo: &Repository) -> (Option<HeadPos>, Option<Oid>) {
+pub(crate) fn head(repo: &Repository) -> (Option<HeadPos>, Option<Oid>) {
     match repo.head() {
         Ok(h) => {
             let oid = h.target();
@@ -99,7 +99,7 @@ pub fn before(workdir: &Path, kind: &UndoKind) -> Result<Before> {
     let mut b =
         Before { head, head_oid, branch: None, stash_top: None, locals: None, existed: false, apply: None, paused: None, dropped: None };
     match kind {
-        UndoKind::DeleteBranch(name) => b.branch = local_branch(&repo, name),
+        UndoKind::DeleteBranch(name) | UndoKind::SetBranch(name) => b.branch = local_branch(&repo, name),
         UndoKind::DiscardAll | UndoKind::Reset(ResetMode::Hard) | UndoKind::StashPush { .. } => b.stash_top = stash_top(&repo),
         UndoKind::Checkout => b.locals = Some(local_names(&repo)?),
         UndoKind::CreateBranch(name) => b.existed = ref_exists(&repo, &format!("refs/heads/{name}")),
@@ -198,6 +198,10 @@ pub fn after(workdir: &Path, kind: UndoKind, mut before: Before) -> Result<Optio
             target.map(|oid| Action::CreateTag { name, oid })
         }
         UndoKind::Move { op, detail } => moved.map(|(from, to)| Action::Moved { op, detail, branch: branch_name(&pos), from, to }),
+        UndoKind::SetBranch(name) => match (before.branch, local_branch(&repo, &name)) {
+            (Some((from, _)), Some((to, _))) if from != to => Some(Action::SetBranch { name, from, to }),
+            _ => None,
+        },
         UndoKind::StashPush { replay } => match stash_top(&repo) {
             Some(stash) if Some(stash) != before.stash_top => {
                 let c = repo.find_commit(stash)?;

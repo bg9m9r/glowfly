@@ -246,3 +246,12 @@ fn ignores_follow_gitignore() {
     let _ = std::fs::remove_dir_all(&plain);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn journal_notes_never_reload() {
+    for p in ["trellis", "trellis/journal.jsonl", "worktrees/wt/trellis", "worktrees/wt/trellis/journal.jsonl"] {
+        for touch in [Touch::Other, Touch::Modified] {
+            assert_eq!(git_change(Path::new(p), touch), Change::None, "{p} {touch:?}");
+        }
+    }
+}

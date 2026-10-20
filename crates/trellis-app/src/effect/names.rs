@@ -75,6 +75,8 @@ impl Effect {
             Effect::Onboarding(e) => e.name(),
             Effect::Theme(e) => e.name(),
             Effect::CheckConflicts(_) => "check-conflicts",
+            Effect::Journal(crate::journal::JournalEffect::Load { .. }) => "journal-load",
+            Effect::Journal(crate::journal::JournalEffect::Preview { .. }) => "journal-preview",
             Effect::Remote(e) => e.name(),
             Effect::Clone(e) => e.name(),
             Effect::Init(e) => e.name(),
@@ -147,6 +149,7 @@ impl Effect {
             | Effect::Onboarding(_)
             | Effect::Theme(_)
             | Effect::CheckConflicts(_)
+            | Effect::Journal(_)
             | Effect::Remote(_)
             | Effect::Clone(_)
             | Effect::Init(_)

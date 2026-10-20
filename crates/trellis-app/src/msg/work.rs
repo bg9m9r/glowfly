@@ -152,6 +152,14 @@ pub enum JobMsg {
         label: String,
         cmds: Vec<Vec<String>>,
     },
+    /// The journal's Restore: `cmd` as a `Git` job that writes the journal note `op`, run only
+    /// while `expect`'s revision still resolves to its commit.
+    Journaled {
+        label: String,
+        cmd: Vec<String>,
+        op: trellis_core::journal::Op,
+        expect: Option<(String, Oid)>,
+    },
     /// The in-progress banner's confirmed Abort (`args`, named `label`). With `keep`, the
     /// resolved changes are stashed first so Undo brings them back (`state::op_confirm`).
     Abort {
@@ -194,6 +202,7 @@ impl JobMsg {
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
             Self::Git { .. }
+            | Self::Journaled { .. }
             | Self::Abort { .. }
             | Self::Stash { .. }
             | Self::Push { .. }

@@ -283,6 +283,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::StartGitFlow(k) => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartDialog(k)),
         C::FinishGitFlow(b) => Msg::GitFlow(crate::gitflow::GitFlowMsg::FinishDialog(b)),
         C::OpenGitFlowPanel => Msg::GitFlow(crate::gitflow::GitFlowMsg::OpenPanel),
+        C::OpenJournal => Msg::Journal(crate::journal::JournalMsg::Open),
         C::StartGitFlowFromIssue { kind, name } => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartFromIssue { kind, name }),
         C::CreateIssue => Msg::Issue(IssueMsg::CreateDialog),
         C::ViewIssue(key) => Msg::Issue(IssueMsg::Open(key)),

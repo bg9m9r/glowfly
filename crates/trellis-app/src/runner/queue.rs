@@ -192,6 +192,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::GitEnv(_)
         | Effect::Theme(_)
         | Effect::CheckConflicts(_)
+        | Effect::Journal(_)
         | Effect::Remote(_)
         | Effect::Clone(_)
         | Effect::Init(_)

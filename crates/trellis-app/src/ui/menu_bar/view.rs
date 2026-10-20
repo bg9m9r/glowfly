@@ -48,6 +48,10 @@ pub(super) fn menu(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             st.view.show_log = !st.view.show_log;
             ui.close_menu();
         }
+        if check_item(ui, keys, t.tr("menu.view.journal"), st.journal.is_some(), None, no_repo) {
+            msgs.push(Msg::Journal(crate::journal::JournalMsg::Toggle));
+            ui.close_menu();
+        }
         ui.separator();
         diff_items(ui, t, st, msgs);
         ui.menu_button(t.tr("menu.view.theme"), |ui| theme_items(ui, t, st, msgs));

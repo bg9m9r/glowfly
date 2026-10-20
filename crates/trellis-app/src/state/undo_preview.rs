@@ -40,6 +40,13 @@ pub fn preview(t: Lang, a: &Action, snap: Option<&Snapshot>, redo: bool) -> TipP
             rows.extend(commits(snap, &[target]));
             rows
         }
+        Action::SetBranch { name, from, to } => {
+            let target = if redo { *to } else { *from };
+            let args: &[(&str, &dyn std::fmt::Display)] = &[("branch", name), ("sha", &short_sha(target))];
+            let mut rows = vec![pick(t.trf("undo.preview.moves_back", args), t.trf("undo.preview.moves_again", args))];
+            rows.extend(commits(snap, &[target]));
+            rows
+        }
         Action::Moved { branch, from, to, .. } => return moved(t, snap, heading, branch, *from, *to, redo),
         Action::DeleteBranch { name, oid, .. } => {
             let args: &[(&str, &dyn std::fmt::Display)] = &[("branch", name), ("sha", &short_sha(*oid))];

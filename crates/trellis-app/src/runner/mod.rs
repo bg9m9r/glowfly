@@ -41,6 +41,7 @@ mod history;
 mod init;
 mod instance;
 mod issues;
+mod journal;
 mod keys;
 mod line_counts;
 mod logs;

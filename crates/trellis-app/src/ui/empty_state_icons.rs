@@ -21,6 +21,8 @@ pub enum EmptyIcon {
     Inbox,
     /// Three commits on a line: no commits.
     Commits,
+    /// A clock face with an arrow turning back: no journal states.
+    Journal,
 }
 
 /// Paints `icon` centred on `c` in `col`.
@@ -70,7 +72,30 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: EmptyIcon, col: Color32) {
                 p.circle_stroke(pos2(c.x, y), r, s);
             }
         }
+        EmptyIcon::Journal => clock_back(p, c, s),
     }
+}
+
+/// A clock face with an open arc around it, its arrowhead pointing counter-clockwise: going
+/// back in time.
+fn clock_back(p: &Painter, c: Pos2, s: Stroke) {
+    use std::f32::consts::{FRAC_PI_2, PI};
+    p.circle_stroke(c, 11.0, s);
+    p.line_segment([c, pos2(c.x, c.y - 7.0)], s);
+    p.line_segment([c, pos2(c.x + 5.0, c.y + 2.0)], s);
+    // Screen angles (y down): the arc runs from just past the top, clockwise round to the left.
+    let r = 18.0;
+    let at = |a: f32| pos2(c.x + r * a.cos(), c.y + r * a.sin());
+    let (from, to) = (-FRAC_PI_2 + 0.5, PI + 0.35);
+    let steps = 28;
+    let arc: Vec<Pos2> = (0..=steps).map(|i| at(from + (to - from) * i as f32 / steps as f32)).collect();
+    p.add(egui::Shape::line(arc, s));
+    // The arrowhead at the arc's start, pointing back along it (counter-clockwise).
+    let tip = at(from);
+    let back = vec2(from.sin(), -from.cos());
+    let side = vec2(from.cos(), from.sin());
+    let head = [tip + back * -5.0 + side * 4.0, tip, tip + back * -5.0 - side * 4.0];
+    p.add(egui::Shape::line(head.to_vec(), s));
 }
 
 /// A 30 x 38 page with its top-right corner folded, centred on `c`, and its mark.

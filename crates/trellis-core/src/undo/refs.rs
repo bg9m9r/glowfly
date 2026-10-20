@@ -61,6 +61,25 @@ pub(super) fn tag(repo: &Repository, name: &str, oid: Oid, redo: bool) -> Plan {
     }
 }
 
+/// Undoes (or redoes) moving branch `name` from `from` to `to` with `update-ref`, whose old
+/// value check refuses it if the branch moved meanwhile. Not while it is checked out here:
+/// moving it would leave the index and files behind.
+pub(super) fn set_branch(repo: &Repository, pos: &Option<HeadPos>, name: &str, from: Oid, to: Oid, redo: bool) -> Plan {
+    let (expect, target) = if redo { (from, to) } else { (to, from) };
+    match tip(repo, name) {
+        None => stale(format!("Branch {name} no longer exists")),
+        Some(t) if t != Some(expect) => stale(format!("Branch {name} has moved since it was restored")),
+        _ if matches!(pos, Some(HeadPos::Branch(b)) if b == name) => {
+            unsafe_(format!("Branch {name} is checked out; switch to another branch first."))
+        }
+        _ if repo.find_commit(target).is_err() => gone(),
+        _ => {
+            let reason = format!("Trellis: {} move of {name}", if redo { "redo" } else { "undo" });
+            Plan::Run(vec![args(&["update-ref", "-m", &reason, &format!("refs/heads/{name}"), &target.to_string(), &expect.to_string()])])
+        }
+    }
+}
+
 /// The command that deletes branch `c` after undoing the checkout that created it, if it still
 /// points where it was created.
 pub(super) fn delete_created(repo: &Repository, c: &Created) -> Result<Vec<String>, Plan> {

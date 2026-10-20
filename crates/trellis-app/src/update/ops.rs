@@ -1,15 +1,13 @@
 //! Staging, committing, git commands (push, pull, branch…), and auto-fetch; reverts are in update/revert.rs. Jobs start in
 //! update/jobs.rs, re-exported here.
 
-use super::auto_stash::Gate;
 use crate::effect::{Effect, LocalOp, UndoResult};
-use crate::msg::{JobMsg, Msg, StageMsg};
+use crate::msg::{JobMsg, StageMsg};
 use crate::state::trust::Created;
 use crate::state::{AppState, CommitDraft};
 use std::time::{Duration, Instant};
 use trellis_core::gitcli::args;
 use trellis_core::repo::{DiffTarget, HunkOp, Snapshot};
-use trellis_core::undo::{ResetMode, UndoKind};
 
 pub(super) use super::jobs::{JobSpec, Started, begin_job, busy, start_job};
 
@@ -97,30 +95,8 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
 
 pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        JobMsg::Git { label, mut cmds } => {
-            let record = if cmds.len() == 1 { UndoKind::classify(&cmds[0]) } else { None };
-            // Uncommitted changes in the way: ask, or stash them first (update/auto_stash.rs).
-            let mut retry = None;
-            if let [cmd] = cmds.as_slice() {
-                let again = || Msg::Job(JobMsg::Git { label: label.clone(), cmds: cmds.clone() });
-                match super::auto_stash::gate(st, &cmd.clone(), again) {
-                    Gate::Asked => return,
-                    Gate::Stash(op) => {
-                        let mut spec = JobSpec { record, ..JobSpec::new(label, cmds) };
-                        super::auto_stash::wrap(st, &mut spec, op);
-                        start_job(st, spec, fx);
-                        return;
-                    }
-                    Gate::Run(r) => retry = r,
-                }
-            }
-            // A hard reset stashes uncommitted changes first, so undoing it brings them back.
-            if record == Some(UndoKind::Reset(ResetMode::Hard)) {
-                cmds = trellis_core::undo::hard_reset_commands(&cmds[0][2]);
-            }
-            let started = start_job(st, JobSpec { record, ..JobSpec::new(label.clone(), cmds) }, fx);
-            super::auto_stash::ran(st, &label, started, retry);
-        }
+        JobMsg::Git { label, cmds } => super::git_job::run(st, label, cmds, None, None, fx),
+        JobMsg::Journaled { label, cmd, op, expect } => super::git_job::run(st, label, vec![cmd], Some(op), expect, fx),
         JobMsg::Abort { label, args, keep } => super::op_progress::abort(st, label, args, keep, now, fx),
         JobMsg::Push { force } => push(st, force, fx),
         JobMsg::Deepen(how) => super::shallow::deepen(st, how, fx),

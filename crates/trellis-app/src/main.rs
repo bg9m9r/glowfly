@@ -14,6 +14,7 @@ mod git_env;
 mod gitflow;
 #[cfg(test)]
 mod glyph_check;
+mod journal;
 #[cfg(test)]
 mod journey;
 mod keymap;

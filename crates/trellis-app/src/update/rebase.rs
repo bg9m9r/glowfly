@@ -143,6 +143,7 @@ pub(super) fn close_views(st: &mut AppState) {
     super::history::close(st);
     super::blame::close(st);
     st.gitflow_panel = false;
+    super::journal::close(st);
     super::pull_request::close(st);
     super::issue::close(st);
 }

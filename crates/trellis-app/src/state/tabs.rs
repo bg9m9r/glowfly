@@ -227,6 +227,8 @@ pub struct Parked {
     pub rebase: Option<RebasePanel>,
     /// The Git Flow panel is open.
     pub gitflow_panel: bool,
+    /// The operation journal (a load or preview in flight is asked for again on return).
+    pub journal: Option<crate::state::journal::JournalView>,
     pub draft: CommitDraft,
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,

@@ -102,6 +102,7 @@ fn open_panel(st: &mut AppState) {
     super::history::close(st);
     super::blame::close(st);
     super::rebase::close(st);
+    super::journal::close(st);
     st.gitflow_panel = true;
 }
 

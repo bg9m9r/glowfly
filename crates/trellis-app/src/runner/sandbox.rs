@@ -125,6 +125,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::ReadTabGroups(_)
             | Effect::Patch(PatchEffect::Export { .. } | PatchEffect::Inspect { .. } | PatchEffect::Copy { .. })
             | Effect::CheckConflicts(_)
+            | Effect::Journal(_)
             | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(_)
             | Effect::GitEnv(GitEnvEffect::Detect { .. } | GitEnvEffect::Discover { .. })

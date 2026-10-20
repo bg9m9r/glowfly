@@ -8,6 +8,7 @@
 //! - `rebase_conflict`: rebase onto a diverged branch, resolve the conflict in the conflict
 //!   view, continue.
 //! - `stash_undo`: stash and pop; undo and redo a commit and a merge.
+//! - `journal_restore`: hard reset a branch, restore it from the operation journal, undo that.
 //!
 //! The app is built by `TrellisApp::for_test`: its saves go to the fixture's config folder,
 //! and effects that would reach the network, the OS shell or the global git config are
@@ -22,5 +23,6 @@ mod harness;
 mod branches;
 mod clone_commit;
 mod harness_tests;
+mod journal_restore;
 mod rebase_conflict;
 mod stash_undo;

@@ -158,6 +158,12 @@ pub enum Action {
         via: DeleteVia,
         staged: Option<StagedNew>,
     },
+    /// Branch `name`, not checked out, moved from `from` to `to` (the journal's Restore).
+    SetBranch {
+        name: String,
+        from: Oid,
+        to: Oid,
+    },
 }
 
 /// A resolution's index entry: its mode and blob.
@@ -227,6 +233,7 @@ impl Action {
             Action::Resolve { path, staged: Some(_), .. } => format!("resolution of {path}"),
             Action::Resolve { path, staged: None, .. } => format!("save of {path} with markers"),
             Action::DeleteFile { path, .. } => format!("delete of {path}"),
+            Action::SetBranch { name, to, .. } => format!("move of branch {name} to {}", short(*to)),
         }
     }
 

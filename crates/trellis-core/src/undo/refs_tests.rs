@@ -157,3 +157,48 @@ fn checkout_track_records_the_upstream() {
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }
+
+#[test]
+fn a_branch_moved_with_update_ref_undoes_and_redoes() {
+    let dir = scratch_repo("undo-set-branch");
+    let c1 = commit(&dir, "a.txt", "one\n", "c1");
+    let c2 = commit(&dir, "a.txt", "two\n", "c2");
+    git(&dir, &["branch", "x", &c2.to_string()]);
+    let cmd = crate::journal::restore::move_branch("x", c1, c2);
+    let kind = UndoKind::classify(&cmd).expect("recognised");
+    assert_eq!(kind, UndoKind::SetBranch("x".into()));
+    let tag = args(&["update-ref", "-m", "r", "refs/tags/v1", &c1.to_string(), &c2.to_string()]);
+    assert_eq!(UndoKind::classify(&tag), None, "only branches");
+    assert_eq!(UndoKind::classify(&args(&["update-ref", "-m", "r", "refs/heads/x", "HEAD", &c2.to_string()])), None);
+
+    let b = before(&dir, &kind).unwrap();
+    let (ok, out) = crate::gitcli::run(&dir, &cmd);
+    assert!(ok, "{out}");
+    let action = after(&dir, kind, b).unwrap().expect("recorded");
+    assert_eq!(action, Action::SetBranch { name: "x".into(), from: c2, to: c1 });
+    assert_eq!(action.describe(), format!("move of branch x to {}", &c1.to_string()[..7]));
+
+    let undo = plan(&dir, &action, false).unwrap();
+    assert_eq!(undo, cmds(&[&["update-ref", "-m", "Trellis: undo move of x", "refs/heads/x", &c2.to_string(), &c1.to_string()]]));
+    run_plan(&dir, undo);
+    assert_eq!(tip(&dir, "x"), Some(c2));
+    let redo = plan(&dir, &action, true).unwrap();
+    assert_eq!(redo, cmds(&[&["update-ref", "-m", "Trellis: redo move of x", "refs/heads/x", &c1.to_string(), &c2.to_string()]]));
+    run_plan(&dir, redo);
+    assert_eq!(tip(&dir, "x"), Some(c1));
+
+    // Moved since: stale. Checked out: the entry stays.
+    git(&dir, &["branch", "-f", "x", &c2.to_string()]);
+    assert!(refused(plan(&dir, &action, false).unwrap()).is_stale());
+    git(&dir, &["branch", "-f", "x", &c1.to_string()]);
+    git(&dir, &["checkout", "-q", "x"]);
+    let r = refused(plan(&dir, &action, false).unwrap());
+    assert!(matches!(&r, Refusal::Unsafe(m) if m.contains("checked out")), "{r:?}");
+    git(&dir, &["checkout", "-q", "main"]);
+    let missing = Oid::from_str("0123456789abcdef0123456789abcdef01234567").unwrap();
+    let ghost = Action::SetBranch { name: "x".into(), from: missing, to: c1 };
+    assert!(matches!(refused(plan(&dir, &ghost, false).unwrap()), Refusal::Stale(m) if m.contains("gone")));
+    git(&dir, &["branch", "-D", "x"]);
+    assert!(refused(plan(&dir, &action, false).unwrap()).is_stale(), "the branch is gone");
+    let _ = std::fs::remove_dir_all(&dir);
+}

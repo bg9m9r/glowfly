@@ -8,6 +8,7 @@ use crate::state::trust::Created;
 use crate::state::{AppState, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
+use trellis_core::journal::Op;
 use trellis_core::undo::UndoKind;
 
 /// A git command sequence to run as the (single) active job.
@@ -30,6 +31,9 @@ pub(super) struct JobSpec {
     /// Record the job for undo when it is this kind of operation. Left `None`, a single command
     /// run in the active tab's repository is recognised by `UndoKind::classify`.
     pub record: Option<UndoKind>,
+    /// The journal note to write when the job moves HEAD or the op's branch. Left `None`, a
+    /// single command in the active tab's repository gets the note its kind calls for.
+    pub journal: Option<Op>,
     /// Run nothing unless this revision still resolves to this commit.
     pub expect: Option<(String, git2::Oid)>,
     /// The job starts with this auto-stash, to put back once it ends (update/auto_stash.rs).
@@ -50,6 +54,7 @@ impl JobSpec {
             then_open: None,
             write_file: None,
             record: None,
+            journal: None,
             expect: None,
             auto_stash: None,
         }
@@ -96,13 +101,19 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         ([c], None) => UndoKind::classify(c),
         _ => None,
     });
+    // Jobs in other repositories (cwd set) get no note.
+    let journal = spec.journal.or_else(|| match (spec.cmds.as_slice(), &spec.cwd, &record) {
+        ([c], None, Some(k)) => Op::of_kind(k, c),
+        _ => None,
+    });
     // A branch checkout, pull, merge or reset may be followed by updating the submodules.
     let moves = trellis_core::submodule_ops::moves_work_tree(&spec.cmds) && spec.cwd.is_none();
     let (label, quiet) = (job.label.clone(), spec.quiet);
     // A fetch in the active repository can pause or resume its remotes' auto-fetch.
     let sign_in_cmds = if spec.cwd.is_none() { spec.cmds.clone() } else { Vec::new() };
     let (cmds, write_file, expect) = (spec.cmds, spec.write_file, spec.expect);
-    let started = launch(st, job, spec.cwd, move |cwd| Effect::RunGit { cwd, cmds, write_file, record, prompts, expect }, fx);
+    let effect = move |cwd| Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect };
+    let started = launch(st, job, spec.cwd, effect, fx);
     if started != Started::No {
         super::submodule_batch::job_started(st, &label, moves);
         // Also for a job held for the trust prompt; dropping it clears this.

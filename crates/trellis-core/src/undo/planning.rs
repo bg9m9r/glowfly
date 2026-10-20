@@ -153,6 +153,7 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
             refs::remove_branch(&repo, &pos, name, *oid, format!("Branch {name} has moved since it was created"))
         }
         Action::CreateTag { name, oid } => refs::tag(&repo, name, *oid, redo),
+        Action::SetBranch { name, from, to } => refs::set_branch(&repo, &pos, name, *from, *to, redo),
         Action::Moved { branch, from, to, .. } => {
             let (expect, target) = if redo { (*from, *to) } else { (*to, *from) };
             if !at(&pos, head_oid, branch, expect) {
