@@ -801,7 +801,6 @@
   "prefs.ssh.generate.mismatch.warn": "The passphrases don't match.",
   "prefs.ssh.generate.no_keygen.warn": "ssh-keygen wasn't found.",
   "prefs.ssh.generate.passphrase.help": "Encrypts the private key; ssh asks for it, or your SSH agent remembers it, when the key is used.",
-  "prefs.ssh.generate.passphrase.hint": "Optional",
   "prefs.ssh.generate.passphrase.label": "Passphrase",
   "prefs.ssh.generate.reading.warn": "Wait until your .ssh folder has been read.",
   "prefs.ssh.generate.subtitle": "Creates an Ed25519 key pair with ssh-keygen.",

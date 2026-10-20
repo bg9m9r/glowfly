@@ -801,7 +801,6 @@
   "prefs.ssh.generate.mismatch.warn": "Las frases de contraseña no coinciden.",
   "prefs.ssh.generate.no_keygen.warn": "No se encontró ssh-keygen.",
   "prefs.ssh.generate.passphrase.help": "Cifra la clave privada; ssh la pide, o tu agente SSH la recuerda, cuando se usa la clave.",
-  "prefs.ssh.generate.passphrase.hint": "Opcional",
   "prefs.ssh.generate.passphrase.label": "Frase de contraseña",
   "prefs.ssh.generate.reading.warn": "Espera a que se lea tu carpeta .ssh.",
   "prefs.ssh.generate.subtitle": "Crea un par de claves Ed25519 con ssh-keygen.",
