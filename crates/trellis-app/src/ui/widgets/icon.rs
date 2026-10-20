@@ -1,4 +1,5 @@
-//! The `Icon` set and `paint_icon`: the first icons' shapes here, the newer ones in `ui/icons.rs`.
+//! The `Icon` set and `paint_icon`: the first icons' shapes here, the newer ones in `ui/icons.rs`
+//! and the terminal panel header's in `ui/icons_panel.rs`.
 
 use eframe::egui::emath::TSTransform;
 use eframe::egui::layers::ShapeIdx;
@@ -96,6 +97,16 @@ pub enum Icon {
     Globe,
     /// Three lines: the title bar's menu.
     Menu,
+    /// A tilted eraser on a line: clear the terminal.
+    Eraser,
+    /// A rounded square outline: stop (kill) the terminal's shell.
+    Stop,
+    /// Two arrows out to opposite corners: maximise the panel.
+    PanelMaximize,
+    /// Two arrows in from opposite corners: restore the panel.
+    PanelRestore,
+    /// An open chevron pointing down: hide the panel.
+    ChevronDown,
 }
 
 /// Every icon's line width: they are outlines only.
@@ -119,7 +130,7 @@ pub fn paint_icon_sized(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: f3
 
 fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
     let col = s.color;
-    if crate::ui::icons::paint(p, c, icon, s) {
+    if crate::ui::icons::paint(p, c, icon, s) || crate::ui::icons_panel::paint(p, c, icon, s) {
         return;
     }
     let line = |a: Pos2, b: Pos2| p.line_segment([a, b], s);
@@ -278,6 +289,7 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check | Icon::More => {} // icons.rs
         Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
         Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu => {}    // icons.rs
+        Icon::Eraser | Icon::Stop | Icon::PanelMaximize | Icon::PanelRestore | Icon::ChevronDown => {} // icons_panel.rs
     }
 }
 

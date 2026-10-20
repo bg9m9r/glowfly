@@ -77,6 +77,7 @@ pub const DARK: Palette = Palette {
     syn_attr: rgb(0x8a, 0xc6, 0xd0),
     repository: Repository { groups: [rgb(0x5b, 0x9b, 0xf0), rgb(0xa8, 0x7c, 0xe8), rgb(0x5c, 0xc4, 0x5a), rgb(0xe8, 0xb3, 0x39)] },
     branch: BRANCH,
+    ansi: super::ansi::DARK,
 };
 
 pub const LIGHT: Palette = Palette {
@@ -130,4 +131,5 @@ pub const LIGHT: Palette = Palette {
     syn_attr: rgb(0x00, 0x6b, 0x75),
     repository: Repository { groups: [rgb(0x1f, 0x63, 0xc8), rgb(0x75, 0x3f, 0xc4), rgb(0x23, 0x8a, 0x2f), rgb(0xa8, 0x6b, 0x00)] },
     branch: BRANCH,
+    ansi: super::ansi::LIGHT,
 };

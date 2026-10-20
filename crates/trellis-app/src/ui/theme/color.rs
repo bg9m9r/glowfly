@@ -2,17 +2,17 @@
 //! theme can switch at runtime (Preferences > UI Customization > Theme). The palette is a
 //! per-thread copy the shell sets with [`set_palette`] at the start of each frame.
 
-use super::families::{Attention, Branch, LANE_COUNT, Repository, Status};
+use super::families::{Ansi, Attention, Branch, LANE_COUNT, Repository, Status};
 use eframe::egui::Color32;
 use std::cell::RefCell;
 use trellis_core::highlight::TokenKind;
 
 /// The colors of one theme, in families: neutrals, brand, status, attention, diff, syntax,
-/// repository and branch. Every built-in meets the contrast floors and hue bands that the theme
+/// repository, branch and the terminal's basic colours. Every built-in meets the contrast floors and hue bands that the theme
 /// tests check; see docs/COLOUR.md for what each colour is for and the rules.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Palette {
-    /// Dark background: picks egui's dark style, dims graph lanes, sets terminal ANSI brightening.
+    /// Dark background: picks egui's dark style and dims graph lanes.
     pub dark: bool,
     // Neutrals.
     /// The base surface (content behind panels).
@@ -74,6 +74,8 @@ pub struct Palette {
     /// Not theme-file keys yet: always the base palette's.
     pub repository: Repository,
     pub branch: Branch,
+    /// The terminal's 16 basic colours; not theme-file keys yet either.
+    pub ansi: Ansi,
 }
 
 thread_local! {
@@ -190,6 +192,11 @@ palette_fields!(
 /// Graph lane `i`'s colour in the active palette (they repeat after `LANE_COUNT`).
 pub fn lane(i: usize) -> Color32 {
     ACTIVE.with_borrow(|p| p.branch.lanes[i % LANE_COUNT])
+}
+
+/// The terminal's basic colour `i` (0-15, repeating after) in the active palette.
+pub fn ansi(i: u8) -> Color32 {
+    ACTIVE.with_borrow(|p| p.ansi.colors[usize::from(i % 16)])
 }
 
 /// The strip colour of the `n`th worktree tab group in the active palette.

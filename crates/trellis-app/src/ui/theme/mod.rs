@@ -13,6 +13,7 @@ use crate::themes::ThemeState;
 use eframe::egui::{self, Stroke};
 use trellis_core::settings::{BuiltinTheme, ThemeChoice};
 
+mod ansi;
 mod builtin;
 mod builtin_extra;
 pub mod color;
@@ -151,6 +152,8 @@ impl ThemeCache {
     }
 }
 
+#[cfg(test)]
+mod ansi_tests;
 #[cfg(test)]
 mod controls_tests;
 #[cfg(test)]

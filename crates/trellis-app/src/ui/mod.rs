@@ -65,6 +65,7 @@ mod history_folder;
 mod history_footer;
 mod history_text_cache;
 mod icons;
+mod icons_panel;
 mod init_dialog;
 mod issue;
 mod layout;
@@ -365,6 +366,10 @@ mod snapshot_tests_tag_annotate;
 mod snapshot_tests_tag_menu;
 #[cfg(test)]
 mod snapshot_tests_terminal;
+#[cfg(test)]
+mod snapshot_tests_terminal_colors;
+#[cfg(test)]
+mod snapshot_tests_terminal_header;
 #[cfg(test)]
 mod snapshot_tests_terminal_select;
 #[cfg(test)]

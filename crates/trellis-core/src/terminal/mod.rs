@@ -1,7 +1,7 @@
 //! Terminal emulation for the built-in terminal panel: the screen model (screen) and its history
 //! (history), key and paste encoding (keys), PTY sessions (pty), which shell to start (shell),
 //! the queries the terminal answers (queries), redrawing a screen on a fresh parser (replay) and
-//! whether the shell is running a program (activity).
+//! whether the shell is running a program (activity), and the window title a program sets (title).
 
 mod activity;
 mod history;
@@ -11,10 +11,12 @@ mod queries;
 mod replay;
 mod screen;
 pub mod shell;
+mod title;
 
 pub use activity::{ShellActivity, ShellProbe};
 pub use keys::{KeyMods, Modes, TermInput, TermKey, encode};
 pub use screen::{HISTORY_ROWS, TermScreen};
+pub use title::command_from_title;
 
 /// A cell boundary on an absolute line (see `TermScreen`): `col` 0 is before the first cell.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]

@@ -117,6 +117,7 @@ pub mod tab_losses;
 pub mod tabs;
 pub mod tags;
 pub mod terminal;
+pub mod terminal_names;
 pub mod tip;
 pub mod toasts;
 pub mod tool_compare;

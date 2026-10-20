@@ -219,7 +219,9 @@ second one next to it.
     Windows; loaded from a settings file elsewhere they act as Automatic. Bash on Windows is Git
     Bash, found next to the git on PATH (`<Git>\bin\bash.exe` from `<Git>\cmd`, `<Git>\bin` or
     `<Git>\mingw64\bin`), else `bash.exe` on PATH. A chosen shell that can't be found is reported
-    in the panel, never replaced by another.
+    in the panel, never replaced by another. The panel's shell picker (the caret after +) offers
+    `ShellChoice::offered` for this OS without probing PATH; a picked shell that is missing fails
+    in its own tab rather than being hidden.
 11. **Whether a terminal's shell is running a program comes only from
     `terminal::ShellProbe::activity`, off the UI thread.** On Windows it reads the shell's child
     processes from a ToolHelp snapshot: console hosts (`conhost.exe`, `OpenConsole.exe`) are

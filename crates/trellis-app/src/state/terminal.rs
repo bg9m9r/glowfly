@@ -4,7 +4,7 @@
 use super::AppState;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use trellis_core::settings::TerminalPrefs;
+use trellis_core::settings::{ShellSetting, TerminalPrefs};
 use trellis_core::terminal::{TermPoint, TermScreen};
 
 /// The grid a session starts with before the panel has reported its size: (rows, cols).
@@ -32,6 +32,20 @@ pub struct TerminalPanel {
     pub wheel_rem: f32,
     /// Whether the panel's edge was being dragged last frame; view state.
     pub resizing: bool,
+    /// Whether the panel takes the main area instead of sitting under it. Not saved.
+    pub maximized: bool,
+    /// The tab being renamed in place, with the field's text; view state.
+    pub renaming: Option<TabRename>,
+}
+
+/// A terminal tab's inline rename field.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TabRename {
+    pub id: u64,
+    /// The field's text, edited by the view.
+    pub text: String,
+    /// Give the field the keyboard; cleared by the view once it has asked for it.
+    pub focus: bool,
 }
 
 /// egui's copy and cut commands. On Windows they come from Ctrl+Insert and Shift+Delete as
@@ -54,12 +68,17 @@ pub enum SessionStatus {
 
 pub struct TermSession {
     pub id: u64,
-    /// "Terminal N" in the tab strip: the lowest number free in its repository.
+    /// The lowest number free in its repository when it started: it tells apart tabs that
+    /// would show the same name ("pwsh · demo (2)").
     pub number: u32,
     /// The repository the shell was started in; compared with `PathBuf` equality only.
     pub workdir: PathBuf,
     /// The shell's short name (pwsh, bash), once it runs.
     pub program: String,
+    /// The shell it was started with; Restart starts the same one.
+    pub shell: ShellSetting,
+    /// The name the user gave the tab, shown instead of the automatic one.
+    pub name: Option<String>,
     pub screen: TermScreen,
     pub status: SessionStatus,
     /// Text selected with the mouse; written by the view, cleared by update.
@@ -127,6 +146,12 @@ impl TerminalPanel {
     pub fn index_of(&self, id: u64) -> Option<usize> {
         self.sessions.iter().position(|s| s.id == id)
     }
+}
+
+/// Whether the panel is drawn in the main area: open, maximised, and on a repository view (not
+/// the dashboard or Preferences).
+pub fn maximized_shown(st: &AppState) -> bool {
+    st.terminal.open && st.terminal.maximized && st.snap.is_some() && !st.dashboard.open && st.prefs.is_none()
 }
 
 /// The active repository's active session, if it has one.

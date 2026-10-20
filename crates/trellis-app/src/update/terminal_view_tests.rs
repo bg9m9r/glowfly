@@ -187,7 +187,7 @@ fn a_remembered_panel_starts_its_shell_with_the_chosen_shell() {
     assert_eq!(st.terminal.sessions.len(), 1, "one shell for the restored panel");
     assert!(!st.terminal.focus_requested, "the keyboard stays where it was");
     // A new tab carries the chosen shell to the runner.
-    let fx = terminal(run(&mut st, T::NewTab));
+    let fx = terminal(run(&mut st, T::NewTab(None)));
     assert!(matches!(&fx[..], [E::Spawn { shell: s, .. }] if *s == shell), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

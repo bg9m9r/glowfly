@@ -45,7 +45,8 @@ impl AppState {
     }
 
     /// Whether the commit graph is the central view: the same order as `ui/central.rs::show`
-    /// and `state::layout::tool_view` (keep the three in step).
+    /// and `state::layout::tool_view` (keep the three in step). A maximised terminal panel
+    /// covers it.
     pub fn graph_shown(&self) -> bool {
         !self.dashboard.open
             && self.snap.is_some()
@@ -57,5 +58,6 @@ impl AppState {
             && self.diff.is_none()
             && self.rebase.is_none()
             && !self.gitflow_panel
+            && !super::terminal::maximized_shown(self)
     }
 }

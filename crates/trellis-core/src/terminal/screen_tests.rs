@@ -1,4 +1,5 @@
-//! The screen model's tests: styled spans, wide glyphs, queries, resizing and panic recovery.
+//! The screen model's tests: styled spans, wide glyphs, queries, resizing, panic recovery and
+//! the window title.
 
 use super::*;
 
@@ -125,4 +126,45 @@ fn a_parser_panic_resets_the_screen_instead_of_crashing() {
     assert_eq!(s.size(), (24, 78));
     s.feed(b"\x1b[1;1Hok");
     assert!(s.text().starts_with("ok"), "{:?}", s.text());
+}
+
+#[test]
+fn osc_0_and_2_set_the_title_and_osc_1_does_not() {
+    let mut s = screen("\x1b]0;first\x07");
+    assert_eq!(s.title(), Some("first"));
+    s.feed(b"\x1b]2;second\x1b\\");
+    assert_eq!(s.title(), Some("second"), "ST-terminated");
+    s.feed(b"\x1b]1;icon\x07");
+    assert_eq!(s.title(), Some("second"), "the icon name is not the title");
+    s.feed(b"\x1b]2;a; b\x07");
+    assert_eq!(s.title(), Some("a; b"), "a ';' in the title");
+    s.feed(b"\x1b]2;\x07");
+    assert_eq!(s.title(), None, "an empty title clears it");
+    assert_eq!(screen("plain").title(), None);
+}
+
+#[test]
+fn titles_are_cleaned_and_capped() {
+    let s = screen("\x1b]0;  cargo\u{7f} test  \x07");
+    assert_eq!(s.title(), Some("cargo test"));
+    let s = screen(&format!("\x1b]0;{}\x07", "x".repeat(400)));
+    assert_eq!(s.title().map(|t| t.chars().count()), Some(256));
+}
+
+#[test]
+fn a_title_split_across_chunks_arrives_whole() {
+    let mut s = screen("\x1b]0;car");
+    assert_eq!(s.title(), None);
+    s.feed(b"go test\x07");
+    assert_eq!(s.title(), Some("cargo test"));
+}
+
+#[test]
+fn the_title_survives_resizes_and_rebuilds() {
+    let mut s = screen(&format!("\x1b]0;kept\x07{}漢", "a".repeat(77)));
+    s.resize(10, 79);
+    assert_eq!(s.title(), Some("kept"));
+    s.resize(24, 78);
+    assert_eq!(s.size(), (24, 78));
+    assert_eq!(s.title(), Some("kept"), "after the rebuild that drops the cut glyph");
 }

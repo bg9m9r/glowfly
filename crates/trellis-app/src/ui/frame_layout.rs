@@ -1,7 +1,7 @@
 //! The window's panels in drawing order: the status bar, the top chrome (the drawn title bar
 //! with the tabs, or with the system frame the menu bar and the tab bar; then the toolbar,
-//! operation strip and banners), the side panels with their rails, the central view and the
-//! tour. egui gives each panel the room the ones before it left, so the order is the layout.
+//! operation strip and banners), the side panels with their rails, the central view (or the
+//! maximised terminal panel in its place) and the tour. egui gives each panel the room the ones before it left, so the order is the layout.
 
 use super::toasts::ToastBounds;
 use super::{
@@ -45,7 +45,11 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
     let top = ctx.available_rect().top();
     activity_log::show(ctx, st, msgs);
     side_panels(ctx, st, cache, msgs);
-    let central = central::show(ctx, st, cache, msgs);
+    let central = if crate::state::terminal::maximized_shown(st) {
+        terminal::show_in_main(ctx, st, msgs)
+    } else {
+        central::show(ctx, st, cache, msgs)
+    };
     tour::show(ctx, st, central, msgs);
     ToastBounds { top, bottom }
 }

@@ -75,6 +75,8 @@ fn esc_closes_preferences_opened_while_the_terminal_had_focus() {
         selection: None,
         workdir,
         program: "pwsh".into(),
+        shell: Default::default(),
+        name: None,
         screen,
         status: SessionStatus::Running,
     });

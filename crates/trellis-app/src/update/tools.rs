@@ -77,7 +77,7 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
 /// terminal that fails is reported, never replaced: the user chose it.
 pub(super) fn open_terminal(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     if st.settings.terminal.open_in_panel && st.snap.is_some() {
-        super::terminal_tabs::new_tab(st, fx);
+        super::terminal_tabs::new_tab(st, None, fx);
         return;
     }
     let Some(w) = st.workdir() else { return };

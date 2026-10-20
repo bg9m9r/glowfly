@@ -8,11 +8,13 @@
 //! in `row_fill.rs`, and the weak lines and menu suffixes that say why an action is disabled
 //! (or that it opens a setting first) in `reason.rs`. The tab bars' painted close × and
 //! new-tab + are in `tab_glyph.rs`, and the quiet, clickable chips of the commit details (its
-//! SHA, parents and committer) in `quiet_chip.rs`.
+//! SHA, parents and committer) in `quiet_chip.rs`. The quiet headers' ghost buttons, divider
+//! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`.
 
 pub mod banner;
 pub mod buttons;
 pub mod form_message;
+pub mod ghost;
 mod icon;
 pub mod quiet_chip;
 pub mod reason;

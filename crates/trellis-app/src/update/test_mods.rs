@@ -337,6 +337,8 @@ pub(super) mod tag_remote_tests;
 pub(super) mod tag_tests;
 #[path = "terminal_close_tests.rs"]
 pub(super) mod terminal_close_tests;
+#[path = "terminal_header_tests.rs"]
+pub(super) mod terminal_header_tests;
 #[path = "terminal_kill_tests.rs"]
 pub(super) mod terminal_kill_tests;
 #[path = "terminal_tabs_tests.rs"]

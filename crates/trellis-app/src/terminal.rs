@@ -2,7 +2,7 @@
 //! runner/terminal.rs, ui/terminal/).
 
 use std::path::PathBuf;
-use trellis_core::settings::ShellSetting;
+use trellis_core::settings::{ShellChoice, ShellSetting};
 use trellis_core::terminal::{ShellActivity, TermInput};
 
 /// Carried by an `Output` message: dropping it tells the session's output thread that the
@@ -61,8 +61,10 @@ pub enum TerminalMsg {
         rows: u16,
         cols: u16,
     },
-    /// Start another terminal tab in the active repository (showing the panel if it is hidden).
-    NewTab,
+    /// Start another terminal tab in the active repository (showing the panel if it is hidden):
+    /// with the Preferences shell for None, else with that choice (a custom one with the
+    /// program and arguments from Preferences).
+    NewTab(Option<ShellChoice>),
     /// Make session `id` the active tab.
     SelectTab(u64),
     /// Stop session `id`'s shell if it runs and remove its tab; asks first when the shell is
@@ -89,6 +91,18 @@ pub enum TerminalMsg {
     Paste,
     /// A drag of the panel's edge ended at this height, in points.
     PanelHeight(f32),
+    /// Show the inline rename field for tab `id` (a double-click, or More > Rename terminal).
+    StartRename(u64),
+    /// The rename field's Enter or losing focus: name tab `id` `name` (blank, or the automatic
+    /// name, goes back to the automatic name).
+    Rename {
+        id: u64,
+        name: String,
+    },
+    /// Esc in the rename field.
+    CancelRename,
+    /// The panel takes the main area, or goes back under it.
+    ToggleMaximize,
     // ---- from the runner
     /// Session `id`'s shell is running; `program` is its short name (pwsh, bash).
     Started {
@@ -131,7 +145,7 @@ impl TerminalMsg {
             | Self::Restart
             | Self::Input(..)
             | Self::Resize { .. }
-            | Self::NewTab
+            | Self::NewTab(..)
             | Self::SelectTab(..)
             | Self::CloseTab(..)
             | Self::CloseTabNow(..)
@@ -144,6 +158,10 @@ impl TerminalMsg {
             | Self::Clear
             | Self::Paste
             | Self::PanelHeight(..)
+            | Self::StartRename(..)
+            | Self::Rename { .. }
+            | Self::CancelRename
+            | Self::ToggleMaximize
             | Self::Started { .. }
             | Self::Output { .. }
             | Self::Exited { .. }
@@ -162,7 +180,8 @@ pub enum TerminalEffect {
         cwd: PathBuf,
         rows: u16,
         cols: u16,
-        /// The shell Preferences chose, resolved by the runner.
+        /// The shell to start (Preferences' or the one picked for this tab), resolved by the
+        /// runner.
         shell: ShellSetting,
     },
     Write {

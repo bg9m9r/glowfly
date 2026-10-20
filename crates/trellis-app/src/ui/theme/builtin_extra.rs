@@ -56,6 +56,7 @@ pub const HIGH_CONTRAST_DARK: Palette = Palette {
     syn_attr: hex(0xa6e4ec),
     repository: Repository { groups: [hex(0x82b8ff), hex(0xcfa8ff), hex(0x6ee36a), hex(0xffcc4d)] },
     branch: BRANCH,
+    ansi: super::ansi::HIGH_CONTRAST_DARK,
 };
 
 /// Black text on white, with deeper hues and syntax colors.
@@ -104,6 +105,7 @@ pub const HIGH_CONTRAST_LIGHT: Palette = Palette {
     syn_attr: hex(0x004d55),
     repository: Repository { groups: [hex(0x0646a8), hex(0x5a1fa8), hex(0x0b6b1d), hex(0x7a4b00)] },
     branch: BRANCH,
+    ansi: super::ansi::HIGH_CONTRAST_LIGHT,
 };
 
 /// A warm light theme: brown text on sand-colored surfaces.
@@ -152,4 +154,5 @@ pub const SAND: Palette = Palette {
     syn_attr: hex(0x2f6f6a),
     repository: Repository { groups: [hex(0x2d65a8), hex(0x7d4a9e), hex(0x4f7f1e), hex(0x9a6200)] },
     branch: BRANCH,
+    ansi: super::ansi::SAND,
 };

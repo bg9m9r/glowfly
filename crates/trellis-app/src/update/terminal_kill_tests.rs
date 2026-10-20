@@ -11,6 +11,12 @@ use crate::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg as T};
 use std::time::Instant;
 use trellis_core::terminal::ShellActivity;
 
+/// The first tab's name once it runs pwsh: "pwsh \u{b7} <the fixture's folder>".
+fn first_tab(st: &AppState) -> String {
+    let dir = super::terminal_tests::workdir(st);
+    format!("pwsh \u{b7} {}", dir.file_name().unwrap().to_string_lossy())
+}
+
 fn started(st: &mut AppState, id: u64) {
     run(st, T::Started { id, program: "pwsh".into() });
 }
@@ -46,7 +52,7 @@ fn a_running_program_asks_and_kill_confirms() {
     match &st.modal {
         Some(Modal::ConfirmDanger { title, body, button, then, .. }) => {
             assert_eq!(title, "Kill terminal");
-            assert_eq!(body, "Terminal 1 is running npm. Kill the shell and stop npm?");
+            assert_eq!(*body, format!("{} is running npm. Kill the shell and stop npm?", first_tab(&st)));
             assert_eq!(button, "Kill");
             assert!(matches!(**then, Msg::Terminal(T::KillNow(k)) if k == id));
         }
@@ -65,7 +71,9 @@ fn an_unnamed_program_gets_the_generic_question() {
     started(&mut st, id);
     answer(&mut st, id, running(None));
     match &st.modal {
-        Some(Modal::ConfirmDanger { body, .. }) => assert_eq!(body, "Terminal 1 is running a program. Kill the shell and stop it?"),
+        Some(Modal::ConfirmDanger { body, .. }) => {
+            assert_eq!(*body, format!("{} is running a program. Kill the shell and stop it?", first_tab(&st)))
+        }
         _ => panic!("expected a confirmation"),
     }
     let _ = std::fs::remove_dir_all(&dir);

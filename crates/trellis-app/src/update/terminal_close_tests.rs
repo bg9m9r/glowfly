@@ -12,6 +12,12 @@ use crate::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg as T};
 use std::time::Instant;
 use trellis_core::terminal::ShellActivity;
 
+/// The first tab's name once it runs pwsh: "pwsh \u{b7} <the fixture's folder>".
+fn first_tab(st: &AppState) -> String {
+    let dir = super::terminal_tests::workdir(st);
+    format!("pwsh \u{b7} {}", dir.file_name().unwrap().to_string_lossy())
+}
+
 fn started(st: &mut AppState, id: u64) {
     run(st, T::Started { id, program: "pwsh".into() });
     assert_eq!(st.terminal.sessions.iter().find(|s| s.id == id).unwrap().status, SessionStatus::Running);
@@ -27,7 +33,7 @@ fn active(st: &AppState) -> Option<u64> {
 
 /// A second tab, started; returns its id.
 fn second(st: &mut AppState) -> u64 {
-    let fx = terminal(run(st, T::NewTab));
+    let fx = terminal(run(st, T::NewTab(None)));
     let [E::Spawn { id, .. }] = fx.as_slice() else { panic!("{fx:?}") };
     let id = *id;
     started(st, id);
@@ -83,7 +89,7 @@ fn a_running_program_asks_and_close_confirms() {
     match &st.modal {
         Some(Modal::ConfirmDanger { title, body, button, then, .. }) => {
             assert_eq!(title, "Close terminal");
-            assert_eq!(body, "Terminal 1 is running git. Close it and stop git?");
+            assert_eq!(*body, format!("{} is running git. Close it and stop git?", first_tab(&st)));
             assert_eq!(button, "Close terminal", "the action, not a dismiss label");
             assert!(matches!(**then, Msg::Terminal(T::CloseTabNow(c)) if c == one));
         }
@@ -102,7 +108,9 @@ fn an_unnamed_program_gets_the_generic_question() {
     started(&mut st, one);
     activity(&mut st, one, running(None));
     match &st.modal {
-        Some(Modal::ConfirmDanger { body, .. }) => assert_eq!(body, "Terminal 1 is running a program. Close it and stop it?"),
+        Some(Modal::ConfirmDanger { body, .. }) => {
+            assert_eq!(*body, format!("{} is running a program. Close it and stop it?", first_tab(&st)))
+        }
         _ => panic!("expected a confirmation"),
     }
     let _ = std::fs::remove_dir_all(&dir);

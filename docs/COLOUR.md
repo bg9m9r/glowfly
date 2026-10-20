@@ -67,6 +67,14 @@ theme files always get the base palette's.
 `branch.lanes`: the ten graph lane colours, the same in every built-in. Branch-led colour
 replaces them with hues chosen per branch. Not a theme-file key.
 
+### Terminal
+
+`ansi.colors`: the built-in terminal's 16 basic colours (0-7 and their bright 8-15), one fixed
+table per built-in theme in `ui/theme/ansi.rs`, drawn on `input`. Bold text in 0-7 uses 8-15;
+the 256-colour cube, the grey ramp and truecolour are not themed. Not a theme-file key yet:
+theme files take their base theme's table. See section 5 for the values and section 3 for the
+floors.
+
 ### Diff and syntax
 
 `diff_*`, `hunk_*` and `syn_*` colour diff lines, hunk headers and syntax tokens. They are
@@ -109,6 +117,16 @@ given, the second is for the high-contrast themes.
 | Status and `warn` | bg, panel, hover, selected, every lane band | 3 / 4.5 |
 | Change chip text | its chip tint | 4.5 |
 | Every `syn_*` | panel, diff_add, diff_del, diff_add_word, diff_del_word | 2.4 / 4.5 |
+| Terminal text colours (below) | input | 4.5 / 7 |
+| Terminal 8 (bright black, dim hints) | input | 3 / 4.5 |
+| Terminal background colours (below) | input | 1.25 off it, with `text` on them at 4.5 / 7 |
+
+The terminal's text colours are 1-7 and 9-15 in dark themes, and 0-6 and 9-14 in light ones;
+its background colours are 0 (black) in dark themes, and 7 and 15 (white) in light ones.
+Colours 1-6 and 9-14 keep their hue's OKLCH band (red 0-45 or 345-360, green 115-165, yellow
+60-115, blue 225-285, magenta 290-345, cyan 165-225), and each bright colour is at least 0.04
+OKLCH lightness off its normal one: lighter in dark themes, darker in light ones, so bold text
+gets stronger rather than fainter. `theme/ansi_tests.rs` checks all of this.
 
 ## 4. Chip tints
 
@@ -172,6 +190,21 @@ contrast: accent #5fe0a0 / #00613a / #2a7550 and primary #003d26 / #005c36 / #23
 with white ink. High contrast dark's primary is dark enough that white still reads at 7:1 on
 a hovered or pressed button.
 
+### Terminal colours
+
+0-7 then 8-15, as `#rrggbb` without the `#`:
+
+| Theme | 0-7 | 8-15 |
+|---|---|---|
+| Dark | 2a322d f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 c9d1cc | 86918a ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f4f7f5 |
+| Light | 1c2420 c0362f 2f7d1c 8a6400 2a5fc4 8a3fb8 087c80 d3d9d5 | 6b746f a3241e 226614 6e5000 1d4ba3 70299b 006468 e2e7e4 |
+| High contrast dark | 303030 ff6b6b 5fe36a ffd84a 7ab4ff e08aff 4fe0e0 e6e6e6 | a6a6a6 ff9c9c 9cf0a2 ffec96 a8ccff eeb5ff 96f0f0 ffffff |
+| High contrast light | 000000 a31515 08621a 6b4c00 0646a8 6a1fa0 005f63 d0d0d0 | 55595f 7f0d0d 084f15 523900 043682 52157d 004a4d e5e5e5 |
+| Sand | 2e2519 b23a2b 4a7a1a 8a6200 2d65a8 84429e 1b7570 e3d9c6 | 76695a 93291c 3a6312 6d4c00 1f4f8a 6a2f82 0f5d59 eae2d2 |
+
+The lowest ratios of a chromatic colour on `input` are 4.99 (Light 6) and 5.01 (Sand 2), and
+7.36 in High contrast light.
+
 ## 6. Theme-file keys
 
 A theme file (Preferences > UI Customization > Theme files) sets any of these keys, in this
@@ -202,3 +235,6 @@ on that primary, and otherwise gets white or black, whichever reads better.
    checks the two lists match).
 3. Add a contrast or band rule for it to `theme/tests.rs` or `theme/family_tests.rs`.
 4. Describe its job on this page.
+
+A new built-in theme also needs a terminal table in `ui/theme/ansi.rs` (start from Dark's or
+Light's and adjust it until `theme/ansi_tests.rs` passes), set as the palette's `ansi`.

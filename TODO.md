@@ -347,7 +347,7 @@ until this list says which option was chosen.
       sparse checkout, LFS, signing set-up and the like) get a tinted side pane that explains
       the operation in a few plain steps, with the form beside it. Everyday dialogs such as
       Create branch use option 1: roomy and neutral, one pane.
-- [ ] **Terminal panel**: an always-present header, tabs named from the shell and folder,
+- [x] **Terminal panel**: an always-present header, tabs named from the shell and folder,
       + with a shell picker, quiet icon buttons (Clear, Kill, ⋯, Settings to Preferences ›
       Terminal, maximise, hide) and a readable 16-colour palette per theme.
       Chosen 2026-10-19 (option A): one 40 px header on the panel surface; each tab is a pill
@@ -2847,3 +2847,17 @@ here, under the item they grew from.
   the lightest dark Mica stand-ins at every tint step and stays opaque)
 - Resize from the top edge above the Maximize button (the hit test gives that strip to the
   button, for Snap Layouts)
+
+### Terminal panel
+
+- Grey out shells in the caret's menu that aren't installed (probe PATH on a runner thread when the menu opens)
+- Follow the shell's working folder from OSC 7 for the "program · folder" name
+- Strip the elevated console's localised "Administrator: " prefix from window titles
+- Remember custom tab names and the maximised state across restarts
+- Keyboard shortcuts for maximise, rename and a new terminal with a chosen shell
+- Drag pills to reorder terminal tabs
+- Distinct painted icons per shell (PowerShell, cmd, bash, custom)
+- Theme-file keys for the 16 terminal colours (custom themes take their base theme's table)
+- Right-click menu on a pill: Rename, Restart, Close, Close others
+- Bell or new-output indicator on inactive terminal tabs
+- Restart terminal in the More menu when the active shell has ended

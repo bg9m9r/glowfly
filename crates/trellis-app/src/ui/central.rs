@@ -19,7 +19,8 @@ use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
 use eframe::egui::{self, Key};
 
-/// Esc closes the innermost thing open: Preferences, the tour, the dashboard, the conflict view, the blame view, the
+/// Esc closes the innermost thing open: a maximised terminal panel (restored first, while the
+/// keyboard is outside the shell), Preferences, the tour, the dashboard, the conflict view, the blame view, the
 /// file history (a line selection first), the diff (a line selection first), the pull request panel, the issue panel, the interactive
 /// rebase panel (its message editor first), the Git Flow panel, then a multi-selection or a
 /// commit compared with the working directory, and
@@ -43,6 +44,10 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     // closes a popup it draws on Esc too; closing it here also clears one no longer drawn.
     if ctx.memory(|m| m.any_popup_open()) {
         ctx.memory_mut(|m| m.close_popup());
+        return;
+    }
+    if crate::state::terminal::maximized_shown(st) {
+        msgs.push(Msg::Terminal(crate::terminal::TerminalMsg::ToggleMaximize));
         return;
     }
     if st.prefs.is_some() {

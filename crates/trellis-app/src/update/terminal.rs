@@ -1,7 +1,8 @@
 //! The built-in terminal panel: showing and hiding it (remembered in the settings), a first
 //! shell per repository (started the first time the panel shows that repository), keyboard
-//! input, resizing, and the shells' output and exit. Terminal tabs are in terminal_tabs.rs, and
-//! scrolling, the selection and the grid's menu in terminal_view.rs. Workdirs are compared as
+//! input, resizing, and the shells' output and exit. Terminal tabs are in terminal_tabs.rs,
+//! scrolling, the selection and the grid's menu in terminal_view.rs, and renaming a tab and
+//! maximising the panel in terminal_header.rs. Workdirs are compared as
 //! plain paths: no filesystem access here.
 
 use crate::effect::Effect;
@@ -9,10 +10,11 @@ use crate::state::AppState;
 use crate::state::terminal::{DEFAULT_SIZE, SessionStatus, TermSession};
 use crate::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg};
 use std::path::{Path, PathBuf};
+use trellis_core::settings::ShellSetting;
 use trellis_core::terminal::{TermScreen, encode};
 
 pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
-    use super::{terminal_tabs as tabs, terminal_view as view};
+    use super::{terminal_header as header, terminal_tabs as tabs, terminal_view as view};
     match m {
         TerminalMsg::Toggle => {
             if st.snap.is_none() {
@@ -21,6 +23,7 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
             if st.terminal.open {
                 // Hiding never stops a shell.
                 st.terminal.open = false;
+                st.terminal.maximized = false;
             } else {
                 st.terminal.open = true;
                 st.terminal.focus_requested = true;
@@ -30,6 +33,8 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
         }
         TerminalMsg::Hide => {
             st.terminal.open = false;
+            st.terminal.maximized = false;
+            st.terminal.renaming = None;
             remember_open(st, fx);
         }
         TerminalMsg::Kill => tabs::kill(st, fx),
@@ -59,7 +64,7 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
                 fx.push(Effect::Terminal(E::Resize { id: s.id, rows, cols }));
             }
         }
-        TerminalMsg::NewTab => tabs::new_tab(st, fx),
+        TerminalMsg::NewTab(choice) => tabs::new_tab(st, choice, fx),
         TerminalMsg::SelectTab(id) => tabs::select_tab(st, id),
         TerminalMsg::CloseTab(id) => tabs::close_tab(st, id, fx),
         TerminalMsg::CloseTabNow(id) => tabs::close_now(st, id, fx),
@@ -72,6 +77,10 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
         TerminalMsg::Clear => view::clear(st, fx),
         TerminalMsg::Paste => view::paste(st, fx),
         TerminalMsg::PanelHeight(h) => view::panel_height(st, h, fx),
+        TerminalMsg::StartRename(id) => header::start_rename(st, id),
+        TerminalMsg::Rename { id, name } => header::rename(st, id, &name),
+        TerminalMsg::CancelRename => header::cancel_rename(st),
+        TerminalMsg::ToggleMaximize => header::toggle_maximize(st),
         TerminalMsg::Started { id, program } => {
             if let Some(s) = session_mut(st, id) {
                 s.program = program;
@@ -129,7 +138,8 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     let Some(workdir) = st.snap.as_ref().map(|s| s.workdir.clone()) else { return };
     if st.terminal.sessions_for(&workdir).next().is_none() {
-        spawn(st, workdir, 1, None, fx);
+        let shell = st.settings.terminal.shell.clone();
+        spawn(st, workdir, 1, None, shell, fx);
     }
 }
 
@@ -144,6 +154,9 @@ pub(super) fn tab_closed(st: &mut AppState, path: &Path, closing: &[usize], fx: 
     let ids: Vec<u64> = st.terminal.sessions_for(path).map(|s| s.id).collect();
     st.terminal.sessions.retain(|s| s.workdir != path);
     st.terminal.active.remove(path);
+    if st.terminal.renaming.as_ref().is_some_and(|r| ids.contains(&r.id)) {
+        st.terminal.renaming = None;
+    }
     for id in ids {
         // Kill reaches the session's thread before Close drops the runner's handle on it.
         fx.push(Effect::Terminal(E::Kill(id)));
@@ -151,9 +164,16 @@ pub(super) fn tab_closed(st: &mut AppState, path: &Path, closing: &[usize], fx: 
     }
 }
 
-/// Starts a shell numbered `number` in `workdir`, at `index` in the sessions (else at the end),
+/// Starts `shell` numbered `number` in `workdir`, at `index` in the sessions (else at the end),
 /// and makes it the repository's active tab. Returns its id.
-pub(super) fn spawn(st: &mut AppState, workdir: PathBuf, number: u32, index: Option<usize>, fx: &mut Vec<Effect>) -> u64 {
+pub(super) fn spawn(
+    st: &mut AppState,
+    workdir: PathBuf,
+    number: u32,
+    index: Option<usize>,
+    shell: ShellSetting,
+    fx: &mut Vec<Effect>,
+) -> u64 {
     let id = st.terminal.next_id;
     st.terminal.next_id += 1;
     let (rows, cols) = st.terminal.grid.unwrap_or(DEFAULT_SIZE);
@@ -162,6 +182,8 @@ pub(super) fn spawn(st: &mut AppState, workdir: PathBuf, number: u32, index: Opt
         number,
         workdir: workdir.clone(),
         program: String::new(),
+        shell: shell.clone(),
+        name: None,
         screen: TermScreen::new(rows, cols),
         status: SessionStatus::Starting,
         selection: None,
@@ -171,7 +193,6 @@ pub(super) fn spawn(st: &mut AppState, workdir: PathBuf, number: u32, index: Opt
         _ => st.terminal.sessions.push(session),
     }
     st.terminal.active.insert(workdir.clone(), id);
-    let shell = st.settings.terminal.shell.clone();
     fx.push(Effect::Terminal(E::Spawn { id, cwd: workdir, rows, cols, shell }));
     id
 }

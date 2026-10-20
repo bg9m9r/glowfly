@@ -3,6 +3,7 @@
 use std::panic::AssertUnwindSafe;
 
 use super::keys::Modes;
+use super::title::ScreenEvents;
 use super::{CellStyle, TermColor, TermRow, TermSpan};
 use super::{queries, replay};
 
@@ -14,7 +15,8 @@ pub const HISTORY_ROWS: usize = 5_000;
 /// screen row `r` is line `pushed + r`, and the history row `d` rows above the screen is line
 /// `pushed - d`. Numbers can be trusted only while `epoch` stays the same.
 pub struct TermScreen {
-    pub(super) parser: vt100::Parser,
+    /// The parser, with the window title the program last set.
+    pub(super) parser: vt100::Parser<ScreenEvents>,
     /// The start of a query split across two chunks of output, held back until the rest comes.
     pending: Vec<u8>,
     /// How many history rows the parser keeps.
@@ -39,7 +41,7 @@ impl TermScreen {
     /// A screen keeping `history` rows of history.
     pub fn with_history(rows: u16, cols: u16, history: usize) -> Self {
         Self {
-            parser: vt100::Parser::new(rows.max(1), cols.max(1), history),
+            parser: vt100::Parser::new_with_callbacks(rows.max(1), cols.max(1), history, ScreenEvents::default()),
             pending: Vec::new(),
             history_cap: history,
             view: 0,
@@ -154,14 +156,16 @@ impl TermScreen {
     }
 
     /// Replaces the parser with a fresh one of the same size and modes showing `pick` of the
-    /// screen's rows from the top, with the cursor at `cursor`. The history is lost.
+    /// screen's rows from the top, with the cursor at `cursor`. The history is lost; the window
+    /// title is kept.
     pub(super) fn rebuild_with(&mut self, pick: impl FnOnce(&[TermRow]) -> &[TermRow], cursor: (u16, u16)) {
         self.view = 0;
         self.parser.screen_mut().set_scrollback(0);
         let (rows, cols) = self.size();
         let all = self.rows();
         let replay = replay::replay_at(self.parser.screen(), pick(&all), cursor);
-        let mut parser = vt100::Parser::new(rows, cols, self.history_cap);
+        let events = std::mem::take(self.parser.callbacks_mut());
+        let mut parser = vt100::Parser::new_with_callbacks(rows, cols, self.history_cap, events);
         parser.process(&replay);
         self.parser = parser;
         self.history_len = 0;
@@ -186,6 +190,12 @@ impl TermScreen {
         let screen = self.parser.screen();
         let (rows, cols) = screen.size();
         (0..rows).any(|r| screen.cell(r, cols - 1).is_some_and(vt100::Cell::is_wide))
+    }
+
+    /// The window title the program last set (OSC 0 or 2), cleaned; None when none is set or
+    /// it was set empty.
+    pub fn title(&self) -> Option<&str> {
+        self.parser.callbacks().title.as_deref()
     }
 
     /// (rows, cols).

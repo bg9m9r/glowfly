@@ -1,50 +1,62 @@
-//! The built-in terminal panel under the central area: a header (the shell and repository, the
-//! terminal tabs, New terminal tab, Kill all, Kill or Restart, Hide) over the active tab's
-//! screen, and the grid's cell size (metrics). Its height is remembered when a drag of its edge
-//! ends.
+//! The built-in terminal panel under the central area: a 40 px header (header.rs: the tabs,
+//! New terminal and the shell picker, and the panel's buttons) over the active tab's screen,
+//! and the grid's cell size (metrics). Its height is remembered when a drag of its edge ends.
+//! Maximised, it takes the central area instead (`show_in_main`).
 
 mod colors;
 mod grid;
+mod header;
 mod input;
 pub(super) mod metrics;
 mod mouse;
 mod paint;
+mod pill;
 mod tabs;
 
 use crate::msg::{Msg, PrefsMsg};
 use crate::state::panel_layout::{self, MAIN_MIN_HEIGHT, TERMINAL};
-use crate::state::terminal::{SessionStatus, TermSession};
+use crate::state::terminal::{SessionStatus, TermSession, maximized_shown};
 use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
 use crate::ui::common::menu_item_if;
 use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, FontSelection, Layout, RichText, text::LayoutJob};
+use eframe::egui::{self, Align, Layout, RichText};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
 
-const KILL_TIP: &str = "Stop the shell and everything running in it (asks first while a program runs)";
+/// The shell menu, for its snapshot (drawn the same on every OS).
+#[cfg(test)]
+pub(super) use tabs::{shell_items, shell_menu};
 
-/// Draws the panel while it is open and a repository is.
+/// The panel's frame: its surface, 8 px at the sides and 6 px under the grid; the header
+/// starts at the top edge.
+fn frame() -> egui::Frame {
+    let side = header::SIDE as i8;
+    egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin { left: side, right: side, top: 0, bottom: 6 })
+}
+
+/// Draws the panel while it is open and a repository is, unless it is maximised (then
+/// `show_in_main` draws it).
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !st.terminal.open || st.snap.is_none() {
         st.terminal.focused = false;
+        return;
+    }
+    if maximized_shown(st) {
         return;
     }
     // Sized from the height left under the bars and the logs panel, keeping the main view.
     let fit = panel_layout::fit_one(ctx.available_rect().height(), MAIN_MIN_HEIGHT, TERMINAL, st.settings.terminal.panel_height);
     let id = egui::Id::new("terminal-panel");
     crate::ui::panel_size::pin(ctx, id, fit.size, st.terminal.resizing);
-    let resp = egui::TopBottomPanel::bottom(id)
-        .resizable(true)
-        .default_height(fit.size)
-        .height_range(fit.lo..=fit.hi)
-        .frame(egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin::symmetric(6, 4)))
-        .show(ctx, |ui| {
-            header(ui, st, msgs);
+    let resp = egui::TopBottomPanel::bottom(id).resizable(true).default_height(fit.size).height_range(fit.lo..=fit.hi).frame(frame()).show(
+        ctx,
+        |ui| {
+            header::show(ui, st, msgs);
             body(ui, st, msgs);
-        });
+        },
+    );
     // Saved once a drag of the edge ends, not every frame or when the window clamps it.
     let dragging = crate::ui::panel_size::dragging(ctx, id);
     if st.terminal.resizing && !dragging {
@@ -53,60 +65,18 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     st.terminal.resizing = dragging;
 }
 
-fn header(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let session = crate::state::terminal::active(st);
-    let snap = st.snap.as_ref();
-    let tab = snap.map(|s| s.name.as_str()).unwrap_or_default();
-    let alive = snap.map_or(0, |s| st.terminal.sessions_for(&s.workdir).filter(|t| t.alive()).count());
-    ui.horizontal(|ui| {
-        // As tall as the tab strip from the start, so the buttons drawn before it are centred on
-        // the same line as its labels.
-        if let Some(h) = tabs::row_height(ui, st) {
-            ui.set_min_height(h);
-        }
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            let hide = st.keymap.tip("Hide the terminal panel", crate::keymap::BindingId::ToggleTerminal);
-            if ui.add(buttons::secondary("Hide").small().tip(&hide)).clicked() {
-                msgs.push(Msg::Terminal(TerminalMsg::Hide));
-            }
-            match session {
-                Some(s) if !s.alive() => {
-                    if ui.add(buttons::secondary("Restart").small()).clicked() {
-                        msgs.push(Msg::Terminal(TerminalMsg::Restart));
-                    }
-                }
-                _ => {
-                    let alive = session.is_some_and(|s| s.alive());
-                    if ui.add(buttons::secondary("Kill").small().enabled(alive)).on_hover_text(KILL_TIP).clicked() {
-                        msgs.push(Msg::Terminal(TerminalMsg::Kill));
-                    }
-                }
-            }
-            if alive >= 2
-                && ui.add(buttons::secondary("Kill all").small()).on_hover_text("Stop every terminal of this repository").clicked()
-            {
-                msgs.push(Msg::Terminal(TerminalMsg::AskKillAll));
-            }
-            ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                let program = session.map(|s| s.program.as_str()).unwrap_or_default();
-                let mut job = LayoutJob::default();
-                RichText::new("Terminal").font(type_scale::strong(ui, type_scale::BODY)).append_to(
-                    &mut job,
-                    ui.style(),
-                    FontSelection::Default,
-                    Align::Center,
-                );
-                RichText::new(subtitle(program, tab)).color(color::weak()).append_to(
-                    &mut job,
-                    ui.style(),
-                    FontSelection::Default,
-                    Align::Center,
-                );
-                ui.label(job);
-                tabs::strip(ui, st, msgs);
-            });
-        });
-    });
+/// The maximised panel in the central area, in place of the main view (no resize edge).
+/// Returns where it was drawn, for the tour.
+pub fn show_in_main(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) -> egui::Rect {
+    st.terminal.resizing = false;
+    egui::CentralPanel::default()
+        .frame(frame())
+        .show(ctx, |ui| {
+            header::show(ui, st, msgs);
+            body(ui, st, msgs);
+        })
+        .response
+        .rect
 }
 
 fn body(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -158,11 +128,6 @@ pub(super) fn right_click_item(t: Lang, s: &Settings) -> &'static str {
     if s.terminal.open_in_panel { t.tr("toolbar.terminal.new_tab") } else { t.tr("toolbar.terminal.external") }
 }
 
-/// What follows "Terminal" in the header: " · program · tab", leaving out what is empty.
-fn subtitle(program: &str, tab: &str) -> String {
-    [program, tab].iter().filter(|s| !s.is_empty()).map(|s| format!(" · {s}")).collect()
-}
-
 /// "Process exited with code N" and a Restart button across the bottom of the panel.
 fn exit_strip(ui: &mut egui::Ui, code: Option<u32>, msgs: &mut Vec<Msg>) {
     egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 4)).show(ui, |ui| {
@@ -182,14 +147,6 @@ fn exit_strip(ui: &mut egui::Ui, code: Option<u32>, msgs: &mut Vec<Msg>) {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn subtitle_separates_the_program_and_tab_from_terminal() {
-        assert_eq!(format!("Terminal{}", super::subtitle("pwsh", "demo")), "Terminal · pwsh · demo");
-        assert_eq!(super::subtitle("", "demo"), " · demo");
-        assert_eq!(super::subtitle("bash", ""), " · bash");
-        assert_eq!(super::subtitle("", ""), "");
-    }
-
     #[test]
     fn right_click_item_follows_the_setting() {
         let mut s = trellis_core::settings::Settings::default();

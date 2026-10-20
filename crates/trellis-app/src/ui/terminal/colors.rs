@@ -1,5 +1,5 @@
-//! Terminal colours: the 16 basic colours from Trellis's own theme tokens, the xterm 256-colour
-//! cube and grey ramp, and truecolour as given.
+//! Terminal colours: the 16 basic colours from the theme's own terminal table
+//! (`color::ansi`), the xterm 256-colour cube and grey ramp, and truecolour as given.
 
 use crate::ui::theme::color;
 use eframe::egui::Color32;
@@ -9,7 +9,7 @@ use trellis_core::terminal::{CellStyle, TermColor, xterm_rgb};
 pub(super) fn resolve(c: TermColor, default: Color32) -> Color32 {
     match c {
         TermColor::Default => default,
-        TermColor::Indexed(i) => xterm_rgb(i).map(|(r, g, b)| Color32::from_rgb(r, g, b)).unwrap_or_else(|| ansi(i)),
+        TermColor::Indexed(i) => xterm_rgb(i).map(|(r, g, b)| Color32::from_rgb(r, g, b)).unwrap_or_else(|| color::ansi(i)),
         TermColor::Rgb(r, g, b) => Color32::from_rgb(r, g, b),
     }
 }
@@ -26,50 +26,23 @@ pub(super) fn span_colors(style: &CellStyle) -> (Color32, Option<Color32>) {
     if style.inverse { (bg.unwrap_or_else(color::input), Some(fg)) } else { (fg, bg) }
 }
 
-/// Basic colour `i` (0–15) in the active palette: 0–7 from the theme's tokens, 8–15 the same
-/// hues a step brighter (lighter on dark, darker on light).
-fn ansi(i: u8) -> Color32 {
-    let dark = color::is_dark();
-    let base = match i % 8 {
-        0 if dark => color::raised(),
-        0 => color::text(),
-        1 => color::removed(),
-        2 => color::added(),
-        3 => color::warn(),
-        4 => color::info(),
-        5 => color::progress(),
-        6 => color::syn_constant(),
-        _ if dark => color::text(),
-        _ => color::weak(),
-    };
-    if i < 8 {
-        base
-    } else if dark {
-        mix(base, Color32::WHITE, 0.25)
-    } else {
-        mix(base, Color32::BLACK, 0.25)
-    }
-}
-
-fn mix(a: Color32, b: Color32, t: f32) -> Color32 {
-    let ch = |x: u8, y: u8| (f32::from(x) + (f32::from(y) - f32::from(x)) * t).round() as u8;
-    Color32::from_rgb(ch(a.r(), b.r()), ch(a.g(), b.g()), ch(a.b(), b.b()))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn bold_brightens_and_inverse_swaps() {
+    fn basic_colours_come_from_the_theme_table() {
         color::set_dark(true);
         let red = resolve(TermColor::Indexed(1), Color32::BLACK);
-        assert_eq!(red, color::removed());
+        assert_eq!(red, color::ansi(1));
         let (bold, _) = span_colors(&CellStyle { fg: TermColor::Indexed(1), bold: true, ..Default::default() });
-        assert_eq!(bold, resolve(TermColor::Indexed(9), Color32::BLACK));
+        assert_eq!(bold, color::ansi(9), "bold uses the bright colour");
         assert_ne!(bold, red);
         assert_eq!(resolve(TermColor::Indexed(196), Color32::BLACK), Color32::from_rgb(255, 0, 0));
         let (fg, bg) = span_colors(&CellStyle { inverse: true, ..Default::default() });
         assert_eq!((fg, bg), (color::input(), Some(color::text())));
+        color::set_dark(false);
+        assert_ne!(resolve(TermColor::Indexed(1), Color32::BLACK), red, "light has its own table");
+        assert_eq!(resolve(TermColor::Indexed(1), Color32::BLACK), color::ansi(1));
     }
 }

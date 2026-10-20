@@ -109,6 +109,7 @@ mod tag_annotate;
 mod tag_checkout;
 mod tags;
 mod terminal;
+mod terminal_header;
 mod terminal_tabs;
 mod terminal_view;
 mod themes;

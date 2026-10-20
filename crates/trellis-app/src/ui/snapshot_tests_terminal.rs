@@ -41,7 +41,17 @@ pub(super) fn with_session(theme: ThemeChoice, name: &str, status: SessionStatus
         screen.feed(OUTPUT.as_bytes());
     }
     let workdir = st.snap.as_ref().unwrap().workdir.clone();
-    st.terminal.sessions.push(TermSession { id: 1, number: 1, selection: None, workdir, program: "pwsh".into(), screen, status });
+    st.terminal.sessions.push(TermSession {
+        id: 1,
+        number: 1,
+        selection: None,
+        workdir,
+        program: "pwsh".into(),
+        shell: Default::default(),
+        name: None,
+        screen,
+        status,
+    });
     st.terminal.next_id = 2;
     st.terminal.open = true;
     st.terminal.focus_requested = true;
@@ -59,9 +69,9 @@ fn terminal_panel_dark() {
     h.run();
     h.check_snapshot("terminal_panel");
     assert!(pushed(&h, |t| matches!(t, TerminalMsg::Resize { .. })), "the grid is not 24x80");
-    assert!(h.query_by_label("Kill").is_some());
-    assert!(h.query_by_label("Restart").is_none());
-    assert!(h.query_by_label("Terminal · pwsh · demo").is_some());
+    assert!(h.query_by_label("Kill terminal").is_some());
+    assert!(h.query_by_label("Restart").is_none(), "Restart is only offered once the shell ends");
+    assert!(h.query_by_label("pwsh · demo").is_some());
     drop(h);
     remove_fixture(&dir);
 }
@@ -81,7 +91,17 @@ fn terminal_prompt_space_dark() {
     assert_eq!(screen.cursor(), Some((2, 67)), "one cell past the prompt's space");
     let workdir = st.snap.as_ref().unwrap().workdir.clone();
     let status = SessionStatus::Running;
-    st.terminal.sessions.push(TermSession { id: 1, number: 1, selection: None, workdir, program: "pwsh".into(), screen, status });
+    st.terminal.sessions.push(TermSession {
+        id: 1,
+        number: 1,
+        selection: None,
+        workdir,
+        program: "pwsh".into(),
+        shell: Default::default(),
+        name: None,
+        screen,
+        status,
+    });
     st.terminal.next_id = 2;
     st.terminal.open = true;
     st.terminal.focus_requested = true;
@@ -99,11 +119,10 @@ fn terminal_exited_light() {
     h.run();
     h.check_snapshot("terminal_exited_light");
     assert!(h.query_by_label("Process exited with code 0").is_some());
-    assert!(h.query_by_label("Kill").is_none());
     h.query_all_by_label("Restart").next().expect("Restart").click();
     h.run();
     assert!(pushed(&h, |t| matches!(t, TerminalMsg::Restart)));
-    h.get_by_label("Hide").click();
+    h.get_by_label("Hide panel").click();
     h.run();
     assert!(pushed(&h, |t| matches!(t, TerminalMsg::Hide)));
     drop(h);

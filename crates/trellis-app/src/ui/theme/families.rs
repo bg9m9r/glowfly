@@ -59,3 +59,9 @@ pub const LANES: [Color32; LANE_COUNT] = [
 
 /// The branch family every built-in shares.
 pub const BRANCH: Branch = Branch { lanes: LANES };
+
+/// The terminal's 16 basic colours (ANSI 0-7 and their bright 8-15), drawn on `input`.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Ansi {
+    pub colors: [Color32; 16],
+}
