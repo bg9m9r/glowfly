@@ -96,7 +96,7 @@ pub fn modal(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
 pub const DIALOG_PAD: i8 = 24;
 
 /// The frame of every dialog (`dialog_frame`): `modal` with `DIALOG_PAD` of padding on all sides
-/// and 8 px corners. The command palette and the welcome flow keep `modal`'s look.
+/// and 8 px corners. The command palette keeps `modal`'s look.
 pub fn dialog(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
     let p = color::current();
     let frame = egui::Frame::popup(&ctx.style())

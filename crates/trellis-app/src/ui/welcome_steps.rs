@@ -7,11 +7,12 @@ use crate::onboarding::OnboardingMsg;
 use crate::state::git_env::GitState;
 use crate::state::onboarding::{EMAIL_FIELD, NAME_FIELD, Welcome};
 use crate::state::{PrefPage, host_text};
-use crate::ui::access;
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::field_group::FieldGroup;
 use crate::ui::widgets::form_message::{self, Message};
+use crate::ui::widgets::text_field::TextField;
 use eframe::egui::{self, RichText};
 use trellis_core::forge::Connection;
 use trellis_core::i18n::Lang;
@@ -57,22 +58,22 @@ pub fn identity(ui: &mut egui::Ui, w: &mut Welcome, settings: &Settings, keyboar
     }
     ui.add_space(12.0);
     ui.add_enabled_ui(keyboard && !f.saving, |ui| {
-        let width = FIELD_W.min(ui.available_width());
-        // Labels above the fields; a field's problem under it once it was edited or Continue
-        // was pressed, worked out from the text as it is now.
-        let label = t.tr("welcome.identity.name.label");
-        ui.label(RichText::new(label).color(color::text()));
-        let r = controls::field(ui, egui::TextEdit::singleline(&mut f.name).hint_text("Ada Lovelace").desired_width(width));
-        form_message::track(&mut f.touched, NAME_FIELD, &r);
-        access::name_field(&r, label);
-        form_message::field(ui, &f.touched, NAME_FIELD, f.field_problems(t).0.map(Message::error));
-        ui.add_space(10.0);
-        let label = t.tr("welcome.identity.email.label");
-        ui.label(RichText::new(label).color(color::text()));
-        let r = controls::field(ui, egui::TextEdit::singleline(&mut f.email).hint_text("ada@example.com").desired_width(width));
-        form_message::track(&mut f.touched, EMAIL_FIELD, &r);
-        access::name_field(&r, label);
-        form_message::field(ui, &f.touched, EMAIL_FIELD, f.field_problems(t).1.map(Message::error));
+        ui.scope(|ui| {
+            ui.set_max_width(FIELD_W.min(ui.available_width()));
+            // A label above each field and one line under it: its problem once it was edited or
+            // Continue was pressed, worked out from the text as it is now, or else its help.
+            let (name_p, email_p) = f.field_problems(t);
+            let r = FieldGroup::new(t.tr("welcome.identity.name.label"))
+                .help(t.tr("welcome.identity.name.help"))
+                .message(&f.touched, NAME_FIELD, name_p.map(Message::error))
+                .show(ui, |ui| ui.add(TextField::new(&mut f.name).hint("Ada Lovelace")));
+            form_message::track(&mut f.touched, NAME_FIELD, &r);
+            let r = FieldGroup::new(t.tr("welcome.identity.email.label"))
+                .help(t.tr("welcome.identity.email.help"))
+                .message(&f.touched, EMAIL_FIELD, email_p.map(Message::error))
+                .show(ui, |ui| ui.add(TextField::new(&mut f.email).hint("ada@example.com")));
+            form_message::track(&mut f.touched, EMAIL_FIELD, &r);
+        });
     });
     if let Some(p) = settings.active_profile() {
         ui.add_space(8.0);

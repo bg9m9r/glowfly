@@ -14,7 +14,10 @@
 //! window; the body scrolls instead of pushing the footer off screen, and a resizable dialog's
 //! body sits in an `egui::Resize` with egui's grip at its bottom right. A dialog for a less
 //! familiar operation has a tinted side pane that explains it in steps (`dialog_guide.rs`, the
-//! texts in `dialog_guides.rs`), beside the form or, in a narrow window, above it.
+//! texts in `dialog_guides.rs`), beside the form or, in a narrow window, above it. A dialog with
+//! a look of its own (the first-run welcome) draws its header itself (`Dialog::header`, placing
+//! the shared close box with `close_button`), sets its content width (`Dialog::width`) and keeps
+//! its body a least height (`Dialog::min_body`).
 //!
 //! Keys: Enter with no modifiers runs the default button when a footer button has focus (egui
 //! presses it), when nothing has focus, or when a single-line field gave up the focus on it or
@@ -40,7 +43,7 @@ mod header;
 mod size;
 pub use footer::{Footer, Outcome};
 pub use guide::Guide;
-pub use header::take_closed;
+pub use header::{close_button, take_closed};
 use size::MIN_WIDTH;
 pub use size::Size;
 
@@ -68,8 +71,14 @@ pub enum Tone {
     Danger,
 }
 
+/// A header the caller draws instead of the title row (`Dialog::header`).
+type DrawHeader<'a> = Box<dyn FnOnce(&mut Ui) + 'a>;
+
 /// A dialog about to be drawn: its title, size class, side pane and whether its body resizes.
 pub struct Dialog<'a> {
+    custom: Option<DrawHeader<'a>>,
+    fixed_w: Option<f32>,
+    min_body: Option<f32>,
     cx: Cx,
     title: Cow<'a, str>,
     subtitle: Option<Cow<'a, str>>,
@@ -81,7 +90,41 @@ pub struct Dialog<'a> {
 
 impl<'a> Dialog<'a> {
     pub fn new(cx: Cx, title: impl Into<Cow<'a, str>>) -> Self {
-        Self { cx, title: title.into(), subtitle: None, icon: None, size: Size::Medium, guide: None, resize: None }
+        Self {
+            custom: None,
+            fixed_w: None,
+            min_body: None,
+            cx,
+            title: title.into(),
+            subtitle: None,
+            icon: None,
+            size: Size::Medium,
+            guide: None,
+            resize: None,
+        }
+    }
+
+    /// Draws the header in place of the title row and close button (the welcome's band,
+    /// progress bar and step title). `draw` runs at the content's top left once the width is
+    /// set. It may paint into the frame's padding (`DIALOG_PAD`) for a band across the dialog,
+    /// and puts its own close button with `close_button`, so `take_closed` works as for any
+    /// dialog.
+    pub fn header(mut self, draw: impl FnOnce(&mut Ui) + 'a) -> Self {
+        self.custom = Some(Box::new(draw));
+        self
+    }
+
+    /// A set content width, clamped to the window, instead of the size class's range.
+    pub fn width(mut self, w: f32) -> Self {
+        self.fixed_w = Some(w);
+        self
+    }
+
+    /// The body's least height, clamped to the room, so a dialog whose steps differ in length
+    /// doesn't jump between them.
+    pub fn min_body(mut self, h: f32) -> Self {
+        self.min_body = Some(h);
+        self
     }
 
     /// A painted icon before the title.
@@ -125,11 +168,12 @@ impl<'a> Dialog<'a> {
         let guide = self.guide.filter(|_| self.resize.is_none()).map(|g| (g, guide::place(self.size.base(), room)));
         let beside = matches!(guide, Some((_, guide::Placement::Beside)));
         let room_for_form = if beside { room - guide::GAP - guide::PANE_W } else { room };
-        let need = header::need(ui, &self.title, self.subtitle.as_deref(), self.icon.is_some());
+        let need = if self.custom.is_some() { 0.0 } else { header::need(ui, &self.title, self.subtitle.as_deref(), self.icon.is_some()) };
         // A resizable dialog is as wide as its box was last frame.
-        let width = match self.resize {
-            Some(_) => ui.data(|d| d.get_temp::<f32>(key.with("dialog-width"))).unwrap_or(self.size.base()).min(room),
-            None => size::width(self.size, need, room_for_form),
+        let width = match (self.resize, self.fixed_w) {
+            (Some(_), _) => ui.data(|d| d.get_temp::<f32>(key.with("dialog-width"))).unwrap_or(self.size.base()).min(room),
+            (None, Some(w)) => w.min(room_for_form),
+            (None, None) => size::width(self.size, need, room_for_form),
         };
         ui.set_width(width);
         let total_w = if beside { width + guide::GAP + guide::PANE_W } else { width };
@@ -154,7 +198,12 @@ impl<'a> Dialog<'a> {
         }
 
         let (left, top) = (ui.cursor().left(), ui.cursor().top());
-        header::draw(ui, t, &self.title, self.subtitle.as_deref(), self.icon, left + total_w);
+        match self.custom {
+            Some(draw) => draw(ui),
+            None => {
+                header::draw(ui, t, &self.title, self.subtitle.as_deref(), self.icon, left + total_w);
+            }
+        }
         ui.add_space(HEADER_GAP);
         let header_bottom = ui.cursor().top();
         if let Some((g, guide::Placement::Stacked)) = &guide {
@@ -169,6 +218,8 @@ impl<'a> Dialog<'a> {
             cx: self.cx,
             standard: self.size.base(),
             resize: self.resize,
+            min_body: self.min_body,
+            exact: self.fixed_w.is_some() && self.resize.is_none(),
             opened,
             focus_start,
             enter,
@@ -190,6 +241,9 @@ pub struct Open {
     cx: Cx,
     standard: f32,
     resize: Option<&'static str>,
+    min_body: Option<f32>,
+    /// A set width: the footer keeps to it exactly.
+    exact: bool,
     opened: bool,
     focus_start: Option<Id>,
     enter: bool,
@@ -206,8 +260,8 @@ pub struct Open {
 }
 
 impl Open {
-    /// Draws `f` in the body's scroll area: as tall as its content up to what the window has
-    /// room for, or, for a resizable dialog, filling the resizable box.
+    /// Draws `f` in the body's scroll area: as tall as its content (at least `Dialog::min_body`)
+    /// up to what the window has room for, or, for a resizable dialog, filling the resizable box.
     pub fn body<R>(&mut self, ui: &mut Ui, f: impl FnOnce(&mut Ui) -> R) -> R {
         let key = self.cx.key;
         let screen = ui.ctx().screen_rect().size();
@@ -215,7 +269,16 @@ impl Open {
         let cap = (screen.y - MARGIN - 2.0 * PAD - self.title_h - below).max(80.0);
         let scroll = egui::ScrollArea::vertical().id_salt(key.with("dialog-body"));
         let r = match self.resize {
-            None => scroll.auto_shrink([false, true]).max_height(cap).show(ui, f).inner,
+            None => {
+                let min = self.min_body;
+                let f = move |ui: &mut Ui| {
+                    if let Some(h) = min {
+                        ui.set_min_height(h.min(cap));
+                    }
+                    f(ui)
+                };
+                scroll.auto_shrink([false, true]).max_height(cap).show(ui, f).inner
+            }
             Some(salt) => {
                 let max = egui::vec2((screen.x - MARGIN - 2.0 * PAD).max(MIN_WIDTH), cap);
                 let min = egui::vec2(Size::Small.base().min(max.x), 200.0_f32.min(cap));
@@ -252,7 +315,7 @@ impl Open {
             }
         }
         let footer::Laid { mut out, dismiss: dismiss_r, primary: primary_r, primary_on, tone, submit } =
-            footer::lay_out(ui, footer, self.cx.t);
+            footer::lay_out(ui, footer, self.cx.t, self.exact);
         let default_is_primary = tone == Tone::Normal && primary_r.is_some();
         let default_r = if default_is_primary { primary_r.as_ref() } else { dismiss_r.as_ref() };
         // A single-line field gives up the focus on Enter, and nothing else in a dialog does:

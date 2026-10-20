@@ -12,6 +12,7 @@ use crate::state::onboarding_tour::TourStep;
 use crate::state::{AppState, PrefPage};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
+use eframe::egui::{Key, Modifiers};
 use egui_kittest::kittest::Queryable;
 use std::time::Instant;
 use trellis_core::forge::{Account, Connection, Provider};
@@ -46,6 +47,16 @@ pub(super) fn snapshot(name: &str, st: AppState, dark: bool) -> Vec<Msg> {
 
 /// The identity problems a blank or bad form can show.
 const PROBLEMS: [&str; 3] = ["welcome.identity.email_no_at", "welcome.identity.email_blank", "welcome.identity.name_blank"];
+/// The help lines under the identity fields while they have nothing to complain about.
+const HELP: [&str; 2] = ["welcome.identity.name.help", "welcome.identity.email.help"];
+
+/// The welcome's messages a run pushed, taken from the harness.
+fn sent(h: &mut H) -> Vec<OnboardingMsg> {
+    let msgs = std::mem::take(&mut h.state_mut().1);
+    msgs.into_iter().filter_map(|m| if let Msg::Onboarding(o) = m { Some(o) } else { None }).collect()
+}
+
+type H = egui_kittest::Harness<'static, (AppState, Vec<Msg>)>;
 
 #[test]
 fn welcome_identity() {
@@ -61,6 +72,9 @@ fn welcome_identity() {
     h.check_snapshot("welcome_identity_missing");
     for key in PROBLEMS {
         assert!(h.query_by_label(Lang::En.tr(key)).is_none(), "{key}: nothing complains before the user types");
+    }
+    for key in HELP {
+        assert!(h.query_by_label(Lang::En.tr(key)).is_some(), "{key} under its field on the untouched form");
     }
     drop(h);
     // The spinner keeps repainting: a fixed number of frames instead of running until idle.
@@ -79,6 +93,55 @@ fn welcome_identity_attempted() {
     for key in ["welcome.identity.name_blank", "welcome.identity.email_blank"] {
         assert!(h.query_by_label(Lang::En.tr(key)).is_some(), "{key} shows after Continue");
     }
+    for key in HELP {
+        assert!(h.query_by_label(Lang::En.tr(key)).is_none(), "{key}: the problem takes the help's place");
+    }
+}
+
+#[test]
+fn welcome_identity_keys() {
+    let mut h = harness(on(ThemeChoice::Dark, WelcomeStep::Identity, Some(Identity::default())), true);
+    h.run();
+    h.get_by_role_and_label(Role::TextInput, "Name").type_text("Ada");
+    h.run();
+    h.get_by_role_and_label(Role::TextInput, "Email").type_text("ada@example.com");
+    h.run();
+    sent(&mut h);
+    // A single-line field gives up the focus on Enter: the frame runs its primary, Continue.
+    h.press_key(Key::Enter);
+    h.run();
+    assert_eq!(sent(&mut h), [OnboardingMsg::SaveIdentity]);
+    let f = &h.state().0.onboarding.welcome.as_ref().unwrap().identity;
+    assert_eq!((f.name.as_str(), f.email.as_str()), ("Ada", "ada@example.com"));
+}
+
+#[test]
+fn welcome_default_has_focus() {
+    let mut st = on(ThemeChoice::Dark, WelcomeStep::Connect, Some(ada()));
+    let account = Account { provider: Provider::GitHub, host: "github.com".into(), org: String::new() };
+    st.settings.connections = vec![Connection { account, user: "ada-l".into(), method: "access token".into() }];
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.get_by_role_and_label(Role::Button, "Continue").is_focused(), "the default button takes the focus");
+    sent(&mut h);
+    h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
+    h.run();
+    assert_eq!(sent(&mut h), [OnboardingMsg::Next]);
+}
+
+#[test]
+fn welcome_close_button() {
+    let mut st = on(ThemeChoice::Dark, WelcomeStep::Git, Some(ada()));
+    st.git.info = Some(GitInfo { path: None, version: Some((2, 45, 1)), chosen: false });
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label(Lang::En.tr("dialog.close.tip")).is_none(), "the welcome draws no standard header");
+    sent(&mut h);
+    h.get_by_label("Close the welcome").click();
+    h.run();
+    assert_eq!(sent(&mut h), [OnboardingMsg::CloseWelcome]);
+    h.run();
+    assert!(sent(&mut h).is_empty(), "the click is taken once");
 }
 
 #[test]
@@ -102,9 +165,23 @@ fn welcome_identity_buttons() {
     h.run();
     h.get_by_label("Close the welcome").click();
     h.run();
-    let msgs = std::mem::take(&mut h.state_mut().1);
-    let sent: Vec<&OnboardingMsg> = msgs.iter().filter_map(|m| if let Msg::Onboarding(o) = m { Some(o) } else { None }).collect();
-    assert_eq!(sent, [&OnboardingMsg::Skip, &OnboardingMsg::SaveIdentity, &OnboardingMsg::CloseWelcome]);
+    assert_eq!(sent(&mut h), [OnboardingMsg::Skip, OnboardingMsg::SaveIdentity, OnboardingMsg::CloseWelcome]);
+    drop(h);
+
+    // While the identity is written, Continue says why it waits in the footer.
+    let mut st = on(ThemeChoice::Dark, WelcomeStep::Identity, Some(ada()));
+    st.onboarding.welcome.as_mut().unwrap().identity.saving = true;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.get_by_role_and_label(Role::Button, "Continue").is_disabled());
+    assert!(h.query_by_label(Lang::En.tr("welcome.identity.saving")).is_some(), "the saving reason");
+    drop(h);
+    // The spinner keeps repainting: a fixed number of frames.
+    let mut h = harness(on(ThemeChoice::Dark, WelcomeStep::Identity, None), true);
+    h.run_steps(4);
+    assert!(h.get_by_role_and_label(Role::Button, "Continue").is_disabled());
+    let reading = h.get_all_by_label(Lang::En.tr("welcome.identity.reading")).count();
+    assert!(reading >= 2, "the body's line and the footer's reason: {reading}");
 }
 
 #[test]

@@ -33,8 +33,10 @@ pub(super) struct Laid {
     pub submit: bool,
 }
 
-/// Draws `footer`'s row (and its reason line), in `t`.
-pub(super) fn lay_out(ui: &mut Ui, footer: Footer<'_>, t: Lang) -> Laid {
+/// Draws `footer`'s row (and its reason line), in `t`. `exact` (a dialog with a set width) leaves
+/// out the empty space after a lone dismiss button, which would reach past the content's right
+/// edge and widen the dialog by the item spacing.
+pub(super) fn lay_out(ui: &mut Ui, footer: Footer<'_>, t: Lang, exact: bool) -> Laid {
     let Footer { primary, alts, extras, note, dismiss, tone, submit } = footer;
     let spacing = ui.spacing().item_spacing.x;
     let mut out = Outcome::default();
@@ -87,7 +89,9 @@ pub(super) fn lay_out(ui: &mut Ui, footer: Footer<'_>, t: Lang) -> Laid {
             let r = ui.add(d);
             out.dismiss = r.clicked();
             dismiss_r = Some(r);
-            ui.add_space(gap_after_dismiss);
+            if gap_after_dismiss > 0.0 || !exact {
+                ui.add_space(gap_after_dismiss);
+            }
         }
         for (i, b) in alts.into_iter().enumerate() {
             if ui.add(b).clicked() {

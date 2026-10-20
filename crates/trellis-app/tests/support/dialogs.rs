@@ -1,7 +1,8 @@
 //! The dialog files the source checks cover (`controls.rs`, `message_styles.rs`).
 
 /// The files every dialog is drawn from: those `ui/modals.rs` dispatches to, and the
-/// confirmation, discard question and askpass windows.
+/// confirmation, discard question and askpass windows, and the first-run welcome, drawn in the
+/// same frame.
 pub const DIALOG_FILES: &[&str] = &[
     "ui/askpass.rs",
     "ui/askpass_host_key.rs",
@@ -43,6 +44,10 @@ pub const DIALOG_FILES: &[&str] = &[
     "ui/trash_offer_dialog.rs",
     "ui/trust_dialog.rs",
     "ui/undo_dialog.rs",
+    "ui/welcome.rs",
+    "ui/welcome_cards.rs",
+    "ui/welcome_header.rs",
+    "ui/welcome_steps.rs",
     "ui/worktree_dialog.rs",
     "ui/worktree_manage_dialog.rs",
     "ui/worktree_move_dialog.rs",

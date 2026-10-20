@@ -45,7 +45,7 @@ fn welcome_start_narrow() {
         assert!(r.x0 >= 0.0 && r.y0 >= 0.0 && r.x1 <= f64::from(w) && r.y1 <= f64::from(hgt), "inside the window: {r:?}");
     }
     let close = h.get_by_label("Close the welcome").bounding_box().unwrap();
-    assert!(close.x1 <= 584.0, "the dialog keeps 16 px from the window's sides: {close:?}");
+    assert!(close.x1 <= 576.0, "the dialog keeps 24 px from the window's sides: {close:?}");
 }
 
 #[test]
@@ -55,4 +55,6 @@ fn welcome_short_window() {
     h.run();
     let cont = h.get_by_role_and_label(Role::Button, "Continue").bounding_box().unwrap();
     assert!(cont.y0 >= 0.0 && cont.y1 <= f64::from(hgt), "the footer stays on screen while the body scrolls: {cont:?}");
+    let step = h.get_by_label("Step 1 of 4: You").bounding_box().unwrap();
+    assert!(step.y0 >= 0.0 && step.y1 <= f64::from(hgt), "the header stays on screen: {step:?}");
 }

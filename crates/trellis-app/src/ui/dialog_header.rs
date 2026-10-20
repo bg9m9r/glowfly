@@ -2,7 +2,8 @@
 //! subtitle under it, and the close button at the row's right end. The button is a painted
 //! cross in a 28 px box, weak at rest and on a hover fill when pointed at. It is not focusable
 //! (Esc is the keyboard's way out), and a click on it is kept for `take_closed`, which the
-//! caller reads every frame after showing the dialog.
+//! caller reads every frame after showing the dialog. The same box can sit in a header the
+//! caller draws itself (`Dialog::header`, the welcome's band) through `close_button`.
 
 use crate::ui::access;
 use crate::ui::theme::{color, type_scale};
@@ -48,12 +49,15 @@ pub(super) fn draw(ui: &mut Ui, t: Lang, title: &str, subtitle: Option<&str>, ic
         ui.add_space(4.0 - ui.spacing().item_spacing.y);
         ui.add(egui::Label::new(RichText::new(s).color(color::weak())).wrap());
     }
-    close_button(ui, t, Rect::from_min_size(pos2(right_edge - CLOSE + NUDGE, top - NUDGE), vec2(CLOSE, CLOSE)))
+    close_button(ui, t.tr("dialog.close.tip"), right_edge, top)
 }
 
-/// The painted close button in `rect`; true when clicked.
-fn close_button(ui: &mut Ui, t: Lang, rect: Rect) -> bool {
-    let tip = t.tr("dialog.close.tip");
+/// The painted close button at a dialog header's top right: `right_edge` is the content's right
+/// edge and `top` the header's top, with the box nudged into the padding as every dialog has it.
+/// `tip` is its tooltip and accessible name. True when clicked; the click is also kept for
+/// `take_closed`.
+pub fn close_button(ui: &mut Ui, tip: &str, right_edge: f32, top: f32) -> bool {
+    let rect = Rect::from_min_size(pos2(right_edge - CLOSE + NUDGE, top - NUDGE), vec2(CLOSE, CLOSE));
     let r = ui.interact(rect, ui.id().with("dialog-close"), Sense::CLICK);
     access::name_button(&r, true, tip);
     let col = if r.hovered() {
