@@ -9,7 +9,7 @@ use crate::onboarding::{OnboardingMsg, StartChoice};
 use crate::state::layout::Panel;
 use crate::state::onboarding::{Welcome, WelcomeStep};
 use crate::state::onboarding_tour::TourStep;
-use crate::state::{AppState, PrefPage};
+use crate::state::{AppState, Modal, PrefPage};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Key, Modifiers};
@@ -127,6 +127,25 @@ fn welcome_default_has_focus() {
     h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
     h.run();
     assert_eq!(sent(&mut h), [OnboardingMsg::Next]);
+}
+
+/// A dialog stacked over the welcome gets the keys: Enter and Ctrl/Cmd+Enter answer it, not the
+/// welcome underneath.
+#[test]
+fn a_dialog_over_the_welcome_takes_the_keys() {
+    let mut st = on(ThemeChoice::Dark, WelcomeStep::Start, Some(ada()));
+    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::ClearLog) });
+    let mut h = harness(st, true);
+    h.run();
+    std::mem::take(&mut h.state_mut().1);
+    h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
+    h.run();
+    let msgs = std::mem::take(&mut h.state_mut().1);
+    assert!(msgs.iter().any(|m| matches!(m, Msg::ConfirmAccepted)), "the top dialog runs its default");
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Onboarding(_))), "the welcome sends nothing");
+    h.press_key(Key::Enter);
+    h.run();
+    assert!(sent(&mut h).is_empty(), "plain Enter doesn't reach the welcome either");
 }
 
 #[test]

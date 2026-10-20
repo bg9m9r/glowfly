@@ -28,12 +28,14 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         return;
     }
     let prompting = st.askpass.showing();
+    // A dialog stacked on top (drawn after this one) owns Enter and Ctrl/Cmd+Enter.
+    let covered = st.modal.is_some();
     let has_repo = st.snap.is_some();
     let (settings, git) = (&st.settings, &st.git);
     let t = settings.lang();
     let Some(w) = st.onboarding.welcome.as_mut() else { return };
-    // Under a credential prompt the welcome reads no keys.
-    let cx = Cx { t, keyboard: !prompting, key: Id::new("trellis-welcome-dialog") };
+    // Under a credential prompt or another dialog the welcome reads no keys.
+    let cx = Cx { t, keyboard: !prompting && !covered, key: Id::new("trellis-welcome-dialog") };
     let no_connections = settings.connections.is_empty();
     let resp = theme::dialog(ctx, Id::new("trellis-welcome")).show(ctx, |ui| {
         let step = w.step;
