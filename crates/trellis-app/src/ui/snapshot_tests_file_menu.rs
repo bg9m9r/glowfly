@@ -93,12 +93,32 @@ pub(super) fn harness_in(t: Lang, f: FileEntry, menu: Menu, dark: bool, tools: b
                 let _ = ui.button(first);
                 let _ = ui.button(t.tr("common.copy_path"));
                 match menu {
-                    Menu::Commit { in_workdir } => {
-                        commit_file_items(ui, t, msgs, RowSource::Commit(oid()), &f, in_workdir, &[], setup, None)
-                    }
+                    Menu::Commit { in_workdir } => commit_file_items(
+                        ui,
+                        t,
+                        msgs,
+                        RowSource::Commit(oid()),
+                        &f,
+                        in_workdir,
+                        &[],
+                        setup,
+                        None,
+                        &crate::state::custom_commands::MenuCommands::none(),
+                    ),
                     Menu::Between { in_workdir } => {
                         let src = RowSource::Between { from: oid(), to: newer() };
-                        commit_file_items(ui, t, msgs, src, &f, in_workdir, &[], setup, None)
+                        commit_file_items(
+                            ui,
+                            t,
+                            msgs,
+                            src,
+                            &f,
+                            in_workdir,
+                            &[],
+                            setup,
+                            None,
+                            &crate::state::custom_commands::MenuCommands::none(),
+                        )
                     }
                     Menu::Wip { missing, unstages } => {
                         let tool = if f.status == '!' {
@@ -107,7 +127,18 @@ pub(super) fn harness_in(t: Lang, f: FileEntry, menu: Menu, dark: bool, tools: b
                         } else {
                             diff_item(t, DiffTarget::Unstaged(f.path.clone()), setup.diff)
                         };
-                        wip_file_items(ui, t, msgs, &f, missing, unstages, &[], setup.editor, tool)
+                        wip_file_items(
+                            ui,
+                            t,
+                            msgs,
+                            &f,
+                            missing,
+                            unstages,
+                            &[],
+                            setup.editor,
+                            tool,
+                            &crate::state::custom_commands::MenuCommands::none(),
+                        )
                     }
                 }
             });

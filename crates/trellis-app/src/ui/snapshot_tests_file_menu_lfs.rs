@@ -67,7 +67,18 @@ fn file_menu_wip_lfs() {
                 let _ = ui.button("Stage");
                 let _ = ui.button("Copy path");
                 let tool = super::file_menu::diff_item(Lang::En, trellis_core::repo::DiffTarget::Unstaged(PATH.into()), None);
-                wip_file_items(ui, Lang::En, msgs, &f, false, false, &lfs, None, tool);
+                wip_file_items(
+                    ui,
+                    Lang::En,
+                    msgs,
+                    &f,
+                    false,
+                    false,
+                    &lfs,
+                    None,
+                    tool,
+                    &crate::state::custom_commands::MenuCommands::none(),
+                );
             });
         },
         Vec::new(),
@@ -127,7 +138,18 @@ fn commit_menu(in_workdir: bool) -> Harness<'static, Vec<Msg>> {
     Harness::builder().with_size(egui::vec2(260.0, 240.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, true);
-            commit_file_items(ui, Lang::En, msgs, RowSource::Commit(oid), &f, in_workdir, &lfs, Default::default(), None);
+            commit_file_items(
+                ui,
+                Lang::En,
+                msgs,
+                RowSource::Commit(oid),
+                &f,
+                in_workdir,
+                &lfs,
+                Default::default(),
+                None,
+                &crate::state::custom_commands::MenuCommands::none(),
+            );
         },
         Vec::new(),
     )

@@ -175,7 +175,7 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
         for (i, shown) in list.iter().enumerate() {
             let selected = sel == Some(i);
             let e = &shown.entry;
-            let key = e.shortcut(&st.keymap);
+            let key = e.shortcut(&st.keymap).or_else(|| st.custom_commands.key_hint(&e.command));
             let r = row(ui, &e.label, e.detail.as_deref(), key, &shown.matched, 0, selected);
             if r.clicked() {
                 msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(shown.entry.command.clone())));

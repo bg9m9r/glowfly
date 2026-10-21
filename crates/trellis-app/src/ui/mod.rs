@@ -31,6 +31,7 @@ mod conflict_fold;
 mod conflict_output;
 mod conflict_panes;
 mod create_pr_dialog;
+mod custom_menu;
 mod dashboard;
 mod dashboard_rows;
 mod date_tip;
@@ -208,6 +209,8 @@ mod snapshot_tests_conflict_check;
 mod snapshot_tests_conflict_files;
 #[cfg(test)]
 mod snapshot_tests_conflict_layout;
+#[cfg(test)]
+mod snapshot_tests_custom_commands;
 #[cfg(test)]
 mod snapshot_tests_dashboard;
 #[cfg(test)]

@@ -6,6 +6,7 @@
 
 mod caps;
 mod chords;
+mod custom_keys;
 mod global;
 mod record;
 mod sheet;

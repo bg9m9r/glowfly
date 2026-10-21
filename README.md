@@ -70,6 +70,10 @@ is going and [TODO.md](TODO.md) for the backlog.
   files are marked with `!`.
 - **Activity log** with the exact git commands run and their output. Auto-refreshes when the
   window regains focus, or on F5.
+- **Custom commands**: your own git and shell actions from a `commands.toml` file, yours or one
+  committed in the repository's `.trellis/` folder. They appear in the command palette, in a
+  Commands submenu of the commit, branch and file menus, and on keys you choose. A repository's
+  own commands run only once you trust it. See [docs/CUSTOM_COMMANDS.md](docs/CUSTOM_COMMANDS.md).
 
 ## Hosting services and issue trackers
 

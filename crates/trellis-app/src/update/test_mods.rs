@@ -47,6 +47,12 @@ pub(super) mod conflict_tests;
 pub(super) mod conflict_undo_tests;
 #[path = "current_hunk_tests.rs"]
 pub(super) mod current_hunk_tests;
+#[path = "custom_commands_palette_tests.rs"]
+pub(super) mod custom_commands_palette_tests;
+#[path = "custom_commands_run_tests.rs"]
+pub(super) mod custom_commands_run_tests;
+#[path = "custom_commands_tests.rs"]
+pub(super) mod custom_commands_tests;
 #[path = "deep_link_open_tests.rs"]
 pub(super) mod deep_link_open_tests;
 #[path = "deep_link_tests.rs"]

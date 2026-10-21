@@ -3,6 +3,7 @@
 //! multi-selection menu for a row of the selection.
 
 use crate::msg::Msg;
+use crate::state::custom_commands::MenuCommands;
 use crate::state::{ForgeState, Selection, remote_branch};
 use crate::ui::branch_menu::local_branch_menu;
 use crate::ui::menus::{commit_menu, multi_commit_menu};
@@ -23,6 +24,8 @@ pub(super) struct RowMenu<'a> {
     pub forge: Option<&'a ForgeState>,
     /// No job is running.
     pub idle: bool,
+    /// The custom commands of the commit and branch menus.
+    pub commands: &'a MenuCommands<'a>,
 }
 
 /// Attaches the row's menu to `resp`. Where the right-click happened is kept until the menu
@@ -40,7 +43,7 @@ pub(super) fn context_menu(ui: &mut egui::Ui, resp: &Response, m: RowMenu, msgs:
             Some(labels) => labels_menu(ui, labels, &m, msgs),
             None => match m.selection {
                 Selection::Commits(s) if s.contains(m.commit.oid) => multi_commit_menu(ui, t, s, m.snap, msgs),
-                _ => commit_menu(ui, t, m.commit, m.snap, msgs),
+                _ => commit_menu(ui, t, m.commit, m.snap, m.commands, msgs),
             },
         }
     });
@@ -72,7 +75,7 @@ fn label_menu(ui: &mut egui::Ui, l: &RefLabel, m: &RowMenu, msgs: &mut Vec<Msg>)
     match l.kind {
         RefKind::Local => {
             if let Some(b) = snap.locals.iter().find(|b| b.name == l.name) {
-                return local_branch_menu(ui, t, b, snap, m.forge, &filter(), m.selection, msgs);
+                return local_branch_menu(ui, t, b, snap, m.forge, &filter(), m.selection, m.commands, msgs);
             }
         }
         RefKind::Remote => {
@@ -86,5 +89,5 @@ fn label_menu(ui: &mut egui::Ui, l: &RefLabel, m: &RowMenu, msgs: &mut Vec<Msg>)
         RefKind::Tag => return tag_menu(ui, t, &l.name, snap, &filter(), m.idle, msgs),
         RefKind::Head => {}
     }
-    commit_menu(ui, t, m.commit, snap, msgs);
+    commit_menu(ui, t, m.commit, snap, m.commands, msgs);
 }

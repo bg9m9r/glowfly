@@ -122,6 +122,7 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
             let open = st.diff.as_ref().map(|(target, _)| target);
             let lfs = TrackContext::of(st);
             let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
+            let commands = crate::state::custom_commands::MenuCommands::for_state(st);
             let row_h = widgets::LIST_ROW_H;
             egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show_rows(
                 ui,
@@ -134,7 +135,16 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
                         let target = DiffTarget::Between(from, to, f.path.clone());
                         let src = RowSource::Between { from, to };
                         let in_workdir = c.in_workdir(&f.path);
-                        let actions = RowActions { src, history_at: m.oids[0], in_workdir, lfs, tools, patch_blocked: None, lines: None };
+                        let actions = RowActions {
+                            src,
+                            history_at: m.oids[0],
+                            in_workdir,
+                            lfs,
+                            tools,
+                            patch_blocked: None,
+                            lines: None,
+                            commands: &commands,
+                        };
                         changed_file_row(ui, t, f, target, open, actions, msgs);
                     }
                 },

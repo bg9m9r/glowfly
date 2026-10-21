@@ -31,6 +31,7 @@ thiserror = "2"
 trash = "5.2"
 portable-pty = "0.9"
 vt100 = "0.16"
+toml = "1.1"
 
 [build-dependencies]
 syntect = { version = "5.3", default-features = false, features = ["parsing", "yaml-load", "dump-create", "regex-fancy"] }

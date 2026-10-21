@@ -8,6 +8,7 @@
 //! disk (`paths::FolderId`), so `submit` hands each job to a router thread that looks the folder
 //! up (once per spelling) and passes the job on, in order; the UI thread never waits on it.
 
+use crate::custom_commands::CustomCommandEffect;
 use crate::effect::{Effect, RebaseEffect, ReposEffect, SubmoduleEffect};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -124,6 +125,8 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         Effect::Submodule(SubmoduleEffect::Remove(r)) => Some(&r.repo),
         Effect::Stash(e) => Some(e.cwd()),
         Effect::SparseCheckout { cwd, .. } => Some(cwd),
+        // A script may change the index, files and refs.
+        Effect::CustomCommand(CustomCommandEffect::RunShell(r)) => Some(&r.cwd),
         Effect::Repos(ReposEffect::Sync { path, op: SyncOp::Pull, .. }) => Some(path),
         // Reads, network calls, Trellis's own files (ordered by `saves`), git config (which no
         // queued job reads mid-way) and work outside the process. Listed one by one so a new
@@ -189,6 +192,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Terminal(_)
         | Effect::Patch(_)
         | Effect::Tool(_)
+        | Effect::CustomCommand(CustomCommandEffect::Load { .. })
         | Effect::GitEnv(_)
         | Effect::Theme(_)
         | Effect::CheckConflicts(_)

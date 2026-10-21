@@ -192,6 +192,7 @@ fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
     }
     let lfs = TrackContext::of(st);
     let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
+    let commands = crate::state::custom_commands::MenuCommands::for_state(st);
     let row_h = widgets::LIST_ROW_H;
     ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
         let index = |t: &DiffTarget| d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()));
@@ -201,7 +202,7 @@ fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
             let src = RowSource::Commit(d.oid);
             let lines = counts.and_then(|c| c.get(&f.path).map(|n| (n, c.largest)));
             let in_workdir = d.in_workdir(&f.path);
-            let actions = RowActions { src, history_at: d.oid, in_workdir, lfs, tools, patch_blocked, lines };
+            let actions = RowActions { src, history_at: d.oid, in_workdir, lfs, tools, patch_blocked, lines, commands: &commands };
             changed_file_row(ui, t, f, DiffTarget::Commit(d.oid, f.path.clone()), open, actions, msgs);
         }
     });

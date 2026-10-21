@@ -130,6 +130,11 @@ fn which_effects_queue() {
     let sync = |op| Effect::Repos(ReposEffect::Sync { generation: 1, index: 0, path: w.clone(), op, trust: None });
     assert_eq!(repo_of(&sync(SyncOp::Pull)), Some(w.as_path()));
     assert_eq!(repo_of(&sync(SyncOp::Fetch { prune: true })), None);
+    // A custom shell command may change anything; reading the commands files changes nothing.
+    use crate::custom_commands::{CustomCommandEffect, ShellRun};
+    let shell = Effect::CustomCommand(CustomCommandEffect::RunShell(ShellRun { cwd: w.clone(), script: "make".into() }));
+    assert_eq!(repo_of(&shell), Some(w.as_path()));
+    assert_eq!(repo_of(&Effect::CustomCommand(CustomCommandEffect::Load { generation: 1, workdir: w.clone() })), None);
     let op = Effect::LocalOp { workdir: w.clone(), op: crate::effect::LocalOp::StageAll };
     assert_eq!(repo_of(&op), Some(w.as_path()));
     assert_eq!(

@@ -321,6 +321,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::Submodule(m) => Msg::Submodule(m),
         C::Worktree(m) => Msg::Worktree(*m),
         C::Tools(m) => Msg::Tools(m),
+        C::Custom(m) => Msg::CustomCommand(m),
         C::Layout(m) => Msg::Layout(m),
         C::Logs(m) => Msg::Logs(m),
         C::Onboarding(m) => Msg::Onboarding(m),

@@ -254,6 +254,7 @@ fn commit_row_patch_item() {
                     &[],
                     Default::default(),
                     blocked,
+                    &crate::state::custom_commands::MenuCommands::none(),
                 );
             },
             Vec::new(),

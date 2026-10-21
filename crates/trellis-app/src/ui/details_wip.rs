@@ -16,6 +16,7 @@ use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::msg::WorkFileMsg;
 use crate::state::AppState;
+use crate::state::custom_commands::MenuCommands;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::tool_compare::ToolAvail;
 use crate::tools::ToolsMsg;
@@ -40,7 +41,9 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / lists as f32).max(60.0);
     let tools = ToolAvail::of(st);
     let lines = st.line_counts.wip();
-    let ctx = RowContext { lfs: TrackContext::of(st), tools: &tools, keys: &st.keymap, lang: st.settings.lang(), lines };
+    let commands = MenuCommands::for_state(st);
+    let ctx =
+        RowContext { lfs: TrackContext::of(st), tools: &tools, keys: &st.keymap, lang: st.settings.lang(), lines, commands: &commands };
     let lists = super::conflict_files::Lists { conflicted: &conflicted, resolved: &resolved, height: list_h };
     super::conflict_files::show(ui, st, lists, &open, ctx, msgs);
     let reveal = st.view.file_reveal.as_ref();
@@ -60,6 +63,8 @@ pub(super) struct RowContext<'a> {
     pub keys: &'a Keymap,
     pub lang: Lang,
     pub lines: Option<&'a WipLineCounts>,
+    /// The custom commands of the file menus.
+    pub commands: &'a MenuCommands<'a>,
 }
 
 /// What the central panel shows, so its file row is drawn selected.
@@ -240,6 +245,6 @@ pub(super) fn wip_file_row(
         } else {
             file_menu::diff_item(t, target(), ctx.tools.setup.diff)
         };
-        file_menu::wip_file_items(ui, t, msgs, f, missing, unstages, &items, ctx.tools.setup.editor, tool);
+        file_menu::wip_file_items(ui, t, msgs, f, missing, unstages, &items, ctx.tools.setup.editor, tool, ctx.commands);
     });
 }

@@ -121,6 +121,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let settings = &st.settings;
         let idle = st.job.is_none();
         let forge = st.forge.as_ref();
+        let commands = crate::state::custom_commands::MenuCommands::for_state(st);
         let now = st.view.now;
         let offset = st.view.utc_offset;
         let avatars = &mut cache.avatars;
@@ -297,7 +298,16 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         select::row_click(c.oid, mods)
                     });
                 }
-                let menu = ref_menu::RowMenu { commit: c, labels_hit: refs.labels_hit, snap, selection, settings, forge, idle };
+                let menu = ref_menu::RowMenu {
+                    commit: c,
+                    labels_hit: refs.labels_hit,
+                    snap,
+                    selection,
+                    settings,
+                    forge,
+                    idle,
+                    commands: &commands,
+                };
                 ref_menu::context_menu(ui, &resp, menu, msgs);
             }
             last

@@ -8,6 +8,7 @@
 
 mod cli_update;
 mod conflict_check;
+mod custom_commands;
 mod deep_link;
 mod effect;
 mod file_op;

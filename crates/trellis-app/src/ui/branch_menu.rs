@@ -2,25 +2,28 @@
 //! worktree has, open that worktree), a new branch or worktree, rename and upstream; merge,
 //! rebase, checking for conflicts, fast-forward and push; pull requests (pushing the branch
 //! first when the code host lacks it, into the branch selected before; without a code host, a
-//! disabled item saying why); hide or solo in the graph, and its colour; the Copy submenu; and
-//! delete. The branch's name heads the menu once; the items leave it out. Disabled items say why
+//! disabled item saying why); hide or solo in the graph, and its colour; the custom commands
+//! (`custom_menu.rs`); the Copy submenu; and delete. The branch's name heads the menu once; the items leave it out. Disabled items say why
 //! on hover, with the same text `update` logs when it refuses a late message.
 
 use super::common::{menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use super::theme::color;
 use crate::conflict_check::ConflictCheckMsg;
+use crate::custom_commands::Target;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
 use crate::msg::Msg;
 use crate::msg::OpPreviewMsg;
 use crate::msg::RebaseMsg;
 use crate::state::branches::{self, NO_REMOTES};
+use crate::state::custom_commands::MenuCommands;
 use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere};
 use crate::state::worktrees::open_blocked;
 use crate::state::{ForgeState, Selection};
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
+use trellis_core::custom_commands::Place;
 use trellis_core::i18n::Lang;
 use trellis_core::op_preview::PreviewOp;
 use trellis_core::rebase::RebaseBase;
@@ -37,6 +40,7 @@ pub fn local_branch_menu(
     fs: Option<&ForgeState>,
     filter: &GraphFilter,
     sel: &Selection,
+    cmds: &MenuCommands,
     msgs: &mut Vec<Msg>,
 ) {
     let name = b.name.as_str();
@@ -60,6 +64,7 @@ pub fn local_branch_menu(
     ui.separator();
     ref_visibility::menu_items(ui, t, &format!("refs/heads/{name}"), filter, b.is_head, msgs);
     super::branch_colour_menu::items(ui, t, name, snap, msgs);
+    super::custom_menu::group(ui, t, cmds, Place::Branch, Target::Branch(name.to_owned()), msgs);
     ui.separator();
     ui.menu_button(t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("refs.copy.name"), Msg::Copy(name.to_owned()));

@@ -51,6 +51,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
             let open = st.diff.as_ref().map(|(t, _)| t);
             let lfs = TrackContext::of(st);
             let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
+            let commands = crate::state::custom_commands::MenuCommands::for_state(st);
             let row_h = crate::ui::widgets::LIST_ROW_H;
             egui::ScrollArea::vertical().id_salt("pr-files").auto_shrink([false, false]).show_rows(ui, row_h, files.len(), |ui, range| {
                 let index = |t: &DiffTarget| files.iter().position(|f| v.diff_target(&f.path).as_ref() == Some(t));
@@ -59,7 +60,8 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
                     let Some(target) = v.diff_target(&f.path) else { continue };
                     let src = RowSource::Between { from: base, to: tip };
                     let in_workdir = c.comparison.in_workdir(&f.path);
-                    let actions = RowActions { src, history_at: tip, in_workdir, lfs, tools, patch_blocked: None, lines: None };
+                    let actions =
+                        RowActions { src, history_at: tip, in_workdir, lfs, tools, patch_blocked: None, lines: None, commands: &commands };
                     changed_file_row(ui, st.settings.lang(), f, target, open, actions, msgs);
                 }
             });

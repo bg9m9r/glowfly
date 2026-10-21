@@ -81,6 +81,8 @@ impl Effect {
             | Effect::Terminal(_)
             | Effect::Patch(_)
             | Effect::Tool(_)
+            // Jobs report to whichever tab is active, like RunGit.
+            | Effect::CustomCommand(_)
             | Effect::GitEnv(_)
             | Effect::Onboarding(_)
             | Effect::Theme(_)

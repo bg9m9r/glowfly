@@ -19,6 +19,7 @@ pub mod confirm;
 pub mod conflict;
 pub mod conflict_check;
 pub mod conflict_files;
+pub mod custom_commands;
 pub mod dashboard;
 pub mod dashboard_plan;
 pub mod dashboard_rows;
@@ -65,6 +66,7 @@ pub mod op_preview;
 pub mod op_strip;
 pub mod palette;
 pub mod palette_commands;
+pub mod palette_custom;
 pub mod palette_files;
 pub mod palette_kinds;
 pub mod palette_nav;
@@ -497,6 +499,8 @@ pub struct AppState {
     pub profile_switch_edits: Vec<trellis_core::settings::ProfileId>,
     /// Repository trust prompts asked and repositories just created, this session.
     pub trust: trust::TrustSession,
+    /// The commands from the commands.toml files (custom_commands.rs).
+    pub custom_commands: custom_commands::CustomCommands,
     /// The first-run welcome and the tour (global, not per tab; nothing saved but the welcome
     /// flag).
     pub onboarding: onboarding::Onboarding,
@@ -594,6 +598,7 @@ impl AppState {
             profile_switch: None,
             profile_switch_edits: Vec::new(),
             trust: Default::default(),
+            custom_commands: Default::default(),
             onboarding: Default::default(),
             dashboard: Default::default(),
             auto_stash: Default::default(),

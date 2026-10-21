@@ -38,6 +38,10 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
             if st.watch.quiet_until.is_some_and(|q| last_event <= q) {
                 return; // caused by a job or local op that already refreshed
             }
+            // A full refresh reads the commands files anyway.
+            if !full {
+                super::custom_commands::watched(st, paths.as_deref(), fx);
+            }
             match (full, paths) {
                 (true, _) => super::repo::refresh(st, fx),
                 // Only these work-tree paths changed: re-read just their rows.

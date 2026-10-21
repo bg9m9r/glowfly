@@ -331,6 +331,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     super::auto_stash::seen(st, true, now, fx);
     super::search::snapshot_changed(st, fx);
     super::trust::loaded(st, kind, fx);
+    super::custom_commands::loaded(st, fx);
     super::submodule_batch::opened(st, kind, now, fx);
     super::conflict_check::want(st, fx);
     super::worktree_counts::want(st, fx);

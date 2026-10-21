@@ -371,6 +371,8 @@ pub enum Effect {
     Patch(crate::patch::PatchEffect),
     /// Launching the external editor or a custom terminal, and their program pickers (tools.rs); unscoped.
     Tool(crate::tools::ToolEffect),
+    /// Reading the commands files and running a shell command as the job (custom_commands.rs); unscoped.
+    CustomCommand(crate::custom_commands::CustomCommandEffect),
     /// Finding git and its version, and adding a folder to safe.directory (git_env.rs); unscoped.
     GitEnv(crate::git_env::GitEnvEffect),
     /// Reading the themes folder, opening it and writing a new theme file (themes.rs); unscoped.

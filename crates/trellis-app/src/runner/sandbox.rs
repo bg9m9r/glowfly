@@ -165,6 +165,8 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::Ssh(_)
             | Effect::Profile(_)
             | Effect::Tool(_)
+            // Reads the user's config folder; runs the OS shell.
+            | Effect::CustomCommand(_)
             | Effect::Theme(_)
             | Effect::Onboarding(_)
             | Effect::Notify(_)
@@ -254,6 +256,19 @@ mod tests {
         let sparse = CloneEffect::Sparse { parent: dir.clone(), cmd: Vec::new(), dest: dir.join("c"), folders: Vec::new() };
         assert!(runner.admit(Effect::Clone(sparse)).is_some());
         assert_eq!(runner.dropped(), ["pick-patch-save", "pick-patch", "list-my-repos"]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn custom_commands_are_dropped() {
+        use crate::custom_commands::{CustomCommandEffect, ShellRun};
+        let dir = folder("custom");
+        let (tx, _rx) = mpsc::channel();
+        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        assert!(runner.admit(Effect::CustomCommand(CustomCommandEffect::Load { generation: 1, workdir: dir.clone() })).is_none());
+        let shell = CustomCommandEffect::RunShell(ShellRun { cwd: dir.clone(), script: "true".into() });
+        assert!(runner.admit(Effect::CustomCommand(shell)).is_none());
+        assert_eq!(runner.dropped(), ["load-custom-commands", "run-custom-command"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

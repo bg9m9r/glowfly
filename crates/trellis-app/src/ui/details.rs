@@ -11,6 +11,7 @@ use super::theme::{color, spacing};
 use super::widgets;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::state::custom_commands::MenuCommands;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::panel_layout::Fit;
 use crate::state::{AppState, Selection};
@@ -68,6 +69,8 @@ pub(super) struct RowActions<'a> {
     /// The file's lines added and removed, and the largest change in its list (the bar's
     /// scale); None draws no counts.
     pub lines: Option<(LineCount, usize)>,
+    /// The custom commands of the file menu.
+    pub commands: &'a MenuCommands<'a>,
 }
 
 /// A file changed by a commit (or between two), which opens `target`: its status chip, its path
@@ -116,6 +119,6 @@ pub(super) fn changed_file_row(
         file_menu::history_items(ui, t, msgs, &f.path, Some(a.history_at), missing.as_deref());
         menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
         let items = if a.in_workdir { track_items(t, &f.path, a.lfs) } else { Vec::new() };
-        file_menu::commit_file_items(ui, t, msgs, a.src, f, a.in_workdir, &items, a.tools, a.patch_blocked);
+        file_menu::commit_file_items(ui, t, msgs, a.src, f, a.in_workdir, &items, a.tools, a.patch_blocked, a.commands);
     });
 }

@@ -196,6 +196,8 @@ pub enum PaletteCommand {
     Patch(crate::patch::PatchMsg),
     /// External editor actions (tools.rs).
     Tools(crate::tools::ToolsMsg),
+    /// A custom command from a commands.toml file (custom_commands.rs).
+    Custom(crate::custom_commands::CustomCommandMsg),
     /// The logs (logs.rs).
     Logs(crate::logs::LogsMsg),
     /// Enter the profile sub-list; choosing a profile runs SwitchProfile.
@@ -349,6 +351,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     palette_commands_worktrees::worktree_entries(st, snap, out);
     palette_issues::issue_entries(st, out);
     palette_commands_submodules::submodule_entries(st, snap, out);
+    super::palette_custom::entries(st, snap, out);
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));
     out.push(entry(C::OpenTerminal, "Open in terminal", "shell console command line prompt cmd"));
     let toggle = if st.terminal.open { "Hide terminal panel" } else { "Show terminal panel" };

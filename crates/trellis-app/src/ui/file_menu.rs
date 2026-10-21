@@ -6,7 +6,7 @@
 //! for files in the working tree, track them in Git LFS, the Stash dialog's entries (the
 //! Staged Files header's menu, Stash this file… on working-tree rows) and the Create patch
 //! entries (a commit row's file, a working-tree row, the staged changes; the LFS, stash and
-//! patch items are in `file_menu_extra.rs`). Menu bodies only, each drawing into the open
+//! patch items are in `file_menu_extra.rs`), then the custom commands (`custom_menu.rs`). Menu bodies only, each drawing into the open
 //! menu's `Ui`, so tests can render them without opening a popup. `file_buttons` reuses the
 //! restore label and message for the same actions as header buttons.
 
@@ -19,6 +19,7 @@ pub(super) use extra::{patch_file_item, staged_header_items, stash_file_item};
 
 use super::common::{menu_item, menu_item_if, menu_item_setup, short};
 use super::widgets::reason::{self, ItemState};
+use crate::custom_commands::Target;
 use crate::msg::BlameMsg;
 use crate::msg::FilesMsg;
 use crate::msg::HistoryMsg;
@@ -26,6 +27,7 @@ use crate::msg::Msg;
 use crate::msg::StageMsg;
 use crate::msg::WorkFileMsg;
 use crate::patch::PatchMsg;
+use crate::state::custom_commands::MenuCommands;
 use crate::state::files::{folder_prefill, not_in_workdir, show_in_folder};
 use crate::state::lfs::TrackItem;
 use crate::state::tool_compare::ToolSetup;
@@ -33,6 +35,7 @@ use crate::state::tools::open_in_editor;
 use crate::tools::ToolsMsg;
 use eframe::egui;
 use git2::Oid;
+use trellis_core::custom_commands::Place;
 use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, FileEntry, is_empty_tree};
 
@@ -208,6 +211,7 @@ pub(super) fn commit_file_items(
     lfs: &[TrackItem],
     tools: ToolSetup,
     patch_blocked: Option<&str>,
+    cmds: &MenuCommands,
 ) {
     ui.separator();
     let missing = (!in_workdir).then(|| not_in_workdir(t));
@@ -241,6 +245,11 @@ pub(super) fn commit_file_items(
     if in_workdir {
         extra::lfs_submenu(ui, t, msgs, lfs);
     }
+    let at = match src {
+        RowSource::Commit(oid) | RowSource::ToWorkdir(oid) | RowSource::FromWorkdir(oid) => oid,
+        RowSource::Between { to, .. } => to,
+    };
+    super::custom_menu::group(ui, t, cmds, Place::File, Target::File { path: f.path.clone(), at: Some(at) }, msgs);
 }
 
 /// Extra items for a working-tree row: separator, open items (disabled when `missing`, with
@@ -261,6 +270,7 @@ pub(super) fn wip_file_items(
     lfs: &[TrackItem],
     editor_setup: Option<&'static str>,
     tool: ToolItem,
+    cmds: &MenuCommands,
 ) {
     ui.separator();
     let gone = missing.then(|| t.tr("files.menu.deleted_in_workdir"));
@@ -276,4 +286,5 @@ pub(super) fn wip_file_items(
     if !missing {
         extra::lfs_submenu(ui, t, msgs, lfs);
     }
+    super::custom_menu::group(ui, t, cmds, Place::File, Target::File { path: f.path.clone(), at: None }, msgs);
 }

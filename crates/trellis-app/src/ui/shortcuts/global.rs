@@ -2,11 +2,13 @@
 //! turned into chords, looked up, and handled when what is open lets the binding through
 //! (Preferences, the palette, a dialog, a credential prompt, a focused text field). A focused
 //! terminal keeps the unshifted keys of the tab, palette, search and refresh actions for its
-//! shell (`terminal_keeps`). Presses no binding takes are left for the views; Esc goes on to
+//! shell (`terminal_keeps`). Then the keys of custom commands (`custom_keys.rs`), only while
+//! nothing covers the main window. Presses no binding takes are left for the views; Esc goes on to
 //! the Esc chain in `ui/central.rs`.
 
 use super::chords::take_press;
 use super::record;
+use crate::custom_commands::{CustomCommandMsg, Target};
 use crate::keymap::{BindingId, Chord, KeyAction, KeyName};
 use crate::msg::{
     BlameMsg, ConflictMsg, DiffMsg, HistoryMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg, SearchMsg,
@@ -30,6 +32,12 @@ pub(crate) fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>)
     let live = Live::now(ctx, st);
     while let Some((id, chord)) = ctx.input_mut(|i| take_press(i, &st.keymap, |id, shell| allowed(id, shell, &live))) {
         fire(id, chord, st, msgs);
+    }
+    // Custom commands' keys, only over the main window itself.
+    if !(live.prefs || live.askpass || live.palette || live.dialog || live.sheet || live.typing || live.terminal) {
+        while let Some(command) = ctx.input_mut(|i| super::custom_keys::take(i, &st.custom_commands.keys)) {
+            msgs.push(Msg::CustomCommand(CustomCommandMsg::Run { command, at: Target::Palette, confirmed: false }));
+        }
     }
     central::escape_key(ctx, st, msgs);
 }

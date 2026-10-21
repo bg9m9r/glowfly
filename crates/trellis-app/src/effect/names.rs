@@ -71,6 +71,7 @@ impl Effect {
             Effect::Terminal(_) => "terminal",
             Effect::Patch(p) => p.name(),
             Effect::Tool(t) => t.name(),
+            Effect::CustomCommand(e) => e.name(),
             Effect::GitEnv(e) => e.name(),
             Effect::Onboarding(e) => e.name(),
             Effect::Theme(e) => e.name(),
@@ -165,6 +166,7 @@ impl Effect {
             Effect::Dashboard(e) => e.timed(),
             Effect::Updates(e) => e.timed(),
             Effect::Repos(e) => e.timed(),
+            Effect::CustomCommand(e) => e.timed(),
             // They wait on the user, hand work to the system, or never run on a worker thread.
             Effect::OpenUrl(_)
             | Effect::OpenTerminal(_)
@@ -215,5 +217,14 @@ mod tests {
         let pick = SshEffect::PickKey { title: "Choose a private key".into(), start: dir.clone(), keygen: None };
         assert_eq!(pick.name(), "ssh-pick-key");
         assert!(!Effect::Ssh(pick).timed(), "waits on the user");
+    }
+
+    #[test]
+    fn custom_command_effects_are_named_and_timed() {
+        use crate::custom_commands::{CustomCommandEffect, ShellRun};
+        let load = Effect::CustomCommand(CustomCommandEffect::Load { generation: 1, workdir: PathBuf::from("repo") });
+        assert_eq!((load.name(), load.timed()), ("load-custom-commands", true));
+        let shell = Effect::CustomCommand(CustomCommandEffect::RunShell(ShellRun { cwd: PathBuf::from("repo"), script: "make".into() }));
+        assert_eq!((shell.name(), shell.timed()), ("run-custom-command", true));
     }
 }

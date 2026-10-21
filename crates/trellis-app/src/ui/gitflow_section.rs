@@ -37,6 +37,8 @@ pub(super) struct Rows<'a> {
     pub graph: &'a GraphFilter,
     /// The left-panel filter has text.
     pub filtering: bool,
+    /// The custom commands of the branch menus.
+    pub commands: &'a crate::state::custom_commands::MenuCommands<'a>,
     pub t: Lang,
 }
 
@@ -128,7 +130,7 @@ pub(super) fn section(
                 let finish = format!("Finish {} {}…", g.kind.noun(), b.short);
                 menu_item(msgs, ui, finish, Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
                 ui.separator();
-                local_branch_menu(ui, t, info, snap, rows.fs, rows.graph, rows.sel, msgs);
+                local_branch_menu(ui, t, info, snap, rows.fs, rows.graph, rows.sel, rows.commands, msgs);
             });
         }
     }

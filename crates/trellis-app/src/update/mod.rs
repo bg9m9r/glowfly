@@ -18,6 +18,8 @@ mod compare_wip;
 mod conflict;
 mod conflict_check;
 mod conflict_files;
+mod custom_commands;
+mod custom_commands_run;
 mod dashboard;
 mod deep_link;
 mod deep_link_open;
@@ -195,6 +197,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Layout(m) => layout::handle(st, m, now, &mut fx),
         Msg::Patch(m) => patch::handle(st, m, now, &mut fx),
         Msg::Tools(m) => tools::handle(st, m, now, &mut fx),
+        Msg::CustomCommand(m) => custom_commands::handle(st, m, now, &mut fx),
         Msg::ConflictCheck(m) => conflict_check::handle(st, m, now, &mut fx),
         Msg::OpPreview(m) => op_preview::handle(st, m, now, &mut fx),
         Msg::Journal(m) => journal::handle(st, m, now, &mut fx),

@@ -4351,6 +4351,7 @@ dependencies = [
  "syntect",
  "sys-locale",
  "thiserror 2.0.21",
+ "toml",
  "trash",
  "two-face",
  "ureq",

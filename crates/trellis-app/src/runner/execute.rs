@@ -2,8 +2,9 @@
 //! the work, and the result message it sends back.
 
 use super::{
-    blame, clone, config, conflict_check, conflict_files, credentials, dashboard, deep_link, diff_gaps, expect, files, forge_calls, forks,
-    git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, op_preview, os, patches,
+    blame, clone, config, conflict_check, conflict_files, credentials, custom_commands, dashboard, deep_link, diff_gaps, expect, files,
+    forge_calls, forks, git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, op_preview, os,
+    patches,
     path_search, profiles, pull_request, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools,
     trust, updates, worktrees,
 };
@@ -188,6 +189,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Profile(e) => Some(profiles::run(e)),
         Effect::Patch(p) => Some(patches::run(p)),
         Effect::Tool(t) => tools::run(t),
+        Effect::CustomCommand(e) => Some(custom_commands::run(e)),
         Effect::GitEnv(e) => Some(git_env::run(e)),
         Effect::Onboarding(e) => Some(onboarding::run(e)),
         Effect::Theme(e) => themes::run(e),

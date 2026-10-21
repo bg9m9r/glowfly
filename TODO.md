@@ -1014,9 +1014,6 @@ Chosen on 2026-10-19 as the features that make Trellis its own, in this order.
 - Stacked branches: recognise a branch built on another, draw the stack, restack everything
   above after amending a lower branch (`git rebase --update-refs`), and push the stack with one
   pull request per layer
-- Custom commands: actions defined in a TOML file (git or shell templates with {branch}, {sha},
-  {files}) that show in the command palette, context menus and an optional toolbar slot, and
-  can be shared per repository in `.trellis/commands.toml`
 - Range-diff: compare a branch before and after a rebase or force-push, commit by commit
   (`git range-diff`), e.g. "what changed since my last review?"
 
@@ -1309,6 +1306,30 @@ here, under the item they grew from.
 - Click a preview row to see its rewritten diff against the original commit
 - A preference that makes the merge, rebase, reset, cherry-pick and drop items always preview
   first
+
+### Custom commands
+
+- Optional toolbar slot for chosen custom commands (after the Design system toolbar rework)
+- Commands in the remote branch, tag, stash and multi-commit menus, with a {shas} placeholder
+  for a selection of commits
+- A Windows cmd or PowerShell kind, or per-OS template variants (template_windows /
+  template_unix)
+- Run a command in the built-in terminal instead of as a job, for interactive programs and live
+  output
+- Stop a running custom command, and stream its output into the Activity row while it runs
+- Ask for text before running ({input:Prompt} placeholders filled from a palette step)
+- More placeholders: {short} sha, {upstream}, {remote}, {tag}, the file's folder
+- Include .trellis/commands.toml in the trust print so a changed repository commands file asks
+  again
+- Preferences page listing loaded commands, their files and problems, with Open file, Reload
+  and Create user file (with a commented example)
+- List custom command keys in the shortcut sheet and Preferences > Keyboard, and let them be
+  rebound there
+- Remember custom commands among the palette's recently run commands
+- A setting to ignore repository commands files entirely
+- Watch the user commands file for changes (today it reloads on each repository load, focus
+  refresh or Reload)
+- Literal pathspecs for {files} so glob characters in file names don't match other files
 
 ### Operation journal
 

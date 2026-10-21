@@ -406,6 +406,17 @@ second one next to it.
    linked worktree's own git dir, since HEAD is per worktree), appended through
    `persist::append` and trimmed through `persist::atomic_write`, bounded like a log.
 
+12. **Custom shell commands run under POSIX sh on every OS, found by `custom_commands::find_sh`
+    on the runner thread only:** `/bin/sh` on Unix; on Windows the `sh.exe` beside the git in use
+    (`<Git>\bin` or `<Git>\usr\bin`, from `<Git>\cmd`, `<Git>\bin` or `<Git>\mingw64\bin`),
+    else `sh.exe` on PATH, else a clear error (never cmd.exe or PowerShell). The script goes in
+    the `TRELLIS_COMMAND` variable with argv `-c 'eval "$TRELLIS_COMMAND" 2>&1'`, because the
+    MSYS runtime re-parses a command line with its own quoting and globbing. Placeholder values
+    are single-quoted (`shell_quote_for`), `{repo}` with forward slashes on Windows; git
+    commands get each value as one argument. The child runs with `CREATE_NO_WINDOW`, stdin
+    closed, `GIT_EDITOR` set to `true` and credential prompts sent to Trellis's dialog, so
+    nothing waits on a terminal.
+
 ## Testing on every OS
 
 CI runs the same lint and tests on Windows, macOS and Linux. Most platform bugs are caught by
@@ -416,7 +427,7 @@ making the decision a pure function and testing it for every OS on every machine
   (`check_new_path_for`, `check_branch_name_for`, `shell_quote_for`, `config_dir_for`,
   `opens_as_program` with `opens::Os`, `volume::linux_remote_kind`, `trash::bin_refuses`,
   `trash::volume_trash_usable`, `home::move_into` with an injected rename,
-  `git_version::missing_for`, `poll_every`) and test every OS's rows on every runner. The
+  `git_version::missing_for`, `poll_every`, `custom_commands::sh_for`) and test every OS's rows on every runner. The
   wrapper that passes `cfg!(windows)` or `Os::current()` stays one line.
 - **Fixtures that no file system has to allow.** Build trees with names that aren't UTF-8,
   NFC/NFD pairs and case twins with `git mktree` or `git update-index --cacheinfo` /

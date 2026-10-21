@@ -154,6 +154,8 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             | Effect::Issue(_)
             // Would read and write the developer's real config folder.
             | Effect::Theme(_)
+            // Would read the developer's own commands file, or run a shell.
+            | Effect::CustomCommand(_)
             // The log worker owns the log files (never attached in tests).
             | Effect::Logs(_)
             // Would read or change which program opens links for the developer's account.

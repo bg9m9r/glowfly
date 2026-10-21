@@ -65,7 +65,9 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let t = st.settings.lang();
     let open_tabs = crate::state::tabs::open_places(&st.tabs);
     let open_issue = st.issue.as_ref().map(|v| v.key.clone());
+    let trusted = crate::state::custom_commands::repo_trusted(st);
     let Some(snap) = &st.snap else { return };
+    let commands = crate::state::custom_commands::MenuCommands::of(&st.custom_commands, snap, trusted, t);
     let repo_filters = st.settings.forge_filters_for(&snap.real_workdir);
     let filter = st.view.ref_filter.to_lowercase();
     let shown = |name: &str| trellis_core::matching::contains_lower(name, &filter);
@@ -143,7 +145,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
             }
             ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &format!("refs/heads/{}", b.name), &b.name, graph, t, msgs);
-            r.context_menu(|ui| local_branch_menu(ui, t, b, snap, fs, graph, sel, msgs));
+            r.context_menu(|ui| local_branch_menu(ui, t, b, snap, fs, graph, sel, &commands, msgs));
         }
     }
 
@@ -191,7 +193,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         }
     }
     if let Some(s) = snap.gitflow.settings() {
-        let rows = super::gitflow_section::Rows { shown: &shown, sel, fs, graph, filtering, t };
+        let rows = super::gitflow_section::Rows { shown: &shown, sel, fs, graph, filtering, commands: &commands, t };
         super::gitflow_section::section(ui, snap, &s, &mut sections.gitflow, rows, hover_next, msgs);
     }
 

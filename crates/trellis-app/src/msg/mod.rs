@@ -2,7 +2,7 @@
 //!
 //! `Msg` has one variant per area, each carrying that area's own enum (defined in this folder,
 //! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule`,
-//! `terminal`, `ssh`, `profile`, `patch`, `tools`, `conflict_check`, `journal`, `pull_request`, `logs`, `onboarding` and `deep_link`;
+//! `terminal`, `ssh`, `profile`, `patch`, `tools`, `custom_commands`, `conflict_check`, `journal`, `pull_request`, `logs`, `onboarding` and `deep_link`;
 //! Trellis's own updates are `UpdateMsg` in `updates.rs`). Each area's enum goes to one handler in `update/`, which matches it
 //! exhaustively, and says through `on_inactive` what its results still need when they arrive
 //! for a tab that is no longer active. Only a few cross-cutting messages are top-level.
@@ -135,6 +135,8 @@ pub enum Msg {
     Patch(crate::patch::PatchMsg),
     /// External editor and terminal (update/tools.rs).
     Tools(crate::tools::ToolsMsg),
+    /// Custom commands from commands.toml files (update/custom_commands.rs).
+    CustomCommand(crate::custom_commands::CustomCommandMsg),
     /// Predicted merge conflicts of the current branch (update/conflict_check.rs).
     ConflictCheck(crate::conflict_check::ConflictCheckMsg),
     /// Previewing an operation before it runs (update/op_preview.rs).
@@ -299,6 +301,7 @@ impl Msg {
             Msg::Layout(m) => m.on_inactive(),
             Msg::Patch(m) => m.on_inactive(),
             Msg::Tools(m) => m.on_inactive(),
+            Msg::CustomCommand(m) => m.on_inactive(),
             Msg::ConflictCheck(m) => m.on_inactive(),
             Msg::OpPreview(m) => m.on_inactive(),
             Msg::Journal(m) => m.on_inactive(),

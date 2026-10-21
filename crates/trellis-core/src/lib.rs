@@ -16,6 +16,7 @@ pub mod conflict_folds;
 pub mod conflict_pick;
 pub mod conflict_restore;
 pub mod conflict_rows;
+pub mod custom_commands;
 pub mod dates;
 pub mod diff_rows;
 pub mod env_path;

@@ -5,6 +5,7 @@
 
 use super::common::{commit_menu_header, menu_header, menu_item, menu_item_if, menu_note};
 use super::widgets::reason::{self, ItemState};
+use crate::custom_commands::Target;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
 use crate::msg::Msg;
@@ -14,18 +15,20 @@ use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
 use crate::state::commit_menu::{hard_reset_msg, reset_title};
 use crate::state::op_preview::pick_blocker;
+use crate::state::custom_commands::MenuCommands;
 use crate::state::rebase_onto::{onto_commit_blocker, onto_menu_labels};
 use crate::state::selection::{CommitBlock, MultiSelection, cherry_pick_blocker, in_graph_order};
 use crate::tag::TagMsg;
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
+use trellis_core::custom_commands::Place;
 use trellis_core::i18n::Lang;
 use trellis_core::op_preview::PreviewOp;
 use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{CommitInfo, Snapshot};
 use trellis_core::worktree_ops::WorktreeBase;
 
-pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, cmds: &MenuCommands, msgs: &mut Vec<Msg>) {
     let oid = c.oid;
     let sha = oid.to_string();
     let merge = c.parents.len() > 1;
@@ -66,6 +69,7 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
         msgs.push(Msg::Patch(PatchMsg::Export(vec![oid])));
         ui.close_menu();
     }
+    super::custom_menu::group(ui, t, cmds, Place::Commit, Target::Commit(oid), msgs);
     ui.menu_button(t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("commits.menu.copy_sha"), Msg::Copy(sha.clone()));
         menu_item(msgs, ui, t.tr("commits.menu.copy_message"), Msg::Copy(c.summary.clone()));
