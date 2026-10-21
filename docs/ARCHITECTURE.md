@@ -37,7 +37,7 @@ binary (package `trellis`).
 | `instance/` | One window for links: the running app's loopback listener and its private instance file (address, token, process id in the runtime folder), and a second process handing its `trellis://` link over (letting the window take the foreground on Windows). |
 | `link.rs`, `link/find.rs` | `trellis://` links: the format (building, parsing and every refusal), remote URL identity (`url_key`, `same_url`), the root commit, and checking a folder for the linked repository and its target (libgit2 reads only). |
 | `url_scheme/` | Registering the `trellis` scheme for this user: the registry class key on Windows (`windows.rs`), a desktop entry and `xdg-mime` on XDG desktops (`xdg.rs`), and the pure decisions both read (the Linux package's own `trellis-links.desktop` in `XDG_DATA_DIRS` counts too); macOS waits for Apple event handling in Trellis.app. |
-| `gpg_prompt/` | Signing passphrases: Trellis as git's gpg.program, running the user's gpg with loopback pinentry and asking through the askpass listener. |
+| `gpg_prompt/` | Signing passphrases: Trellis as git's gpg.program, running the user's gpg with loopback pinentry and asking through the askpass listener; for SSH-format keys, the env that marks ssh-keygen's prompt as a signing prompt. |
 | `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`, `clone_ops.rs`, `shallow_ops.rs`, `worktree_ops.rs`, `stash_ops.rs`, `sparse_ops.rs`, `patch_ops.rs`, `submodule_ops.rs` | Command lines and input checks for branches, tags, remotes, cloning (with the sparse clone job: the clone, then the folders to check out), fetching more of a shallow clone's history, worktrees (moving one: `worktree_ops/moving.rs`), submodules (the Add dialog's fields; removing one: deinit, `git rm`, then its stored module, with what would be lost; `set-url` / `set-branch` for editing one; batch `submodule update` command lines; resolving relative URLs; which commands move the work tree, after which submodules may be updated) and stashes (renaming a stash list entry by dropping and storing the top of `refs/stash` again, and stash push command lines: all, staged only, chosen paths; auto-stashes in `stash_ops/auto.rs`: which single commands the guard covers, their fixed English stash messages, and putting a stash back with `git stash pop` once nothing is in progress, telling restored, conflicted, failed and gone apart); sparse checkout state, paths and command lines; patch files (`patch_ops/`): format-patch export of commits or one file of a commit, uncommitted changes through git diff (all, staged or unstaged, chosen paths, untracked files), clipboard text, reading what a patch file holds without git, git apply command lines for each option (index, three-way, `.rej` files, reverse) and their errors, and git am series with where a stopped one is. |
 | `pick_ops.rs` | Command lines for cherry-picking and reverting commits from the graph (several at once, a merge against a chosen mainline parent, skipping a stopped commit), run through gitcli so hooks, config and signing apply. Which picking is stopped (`Picking`), and, in `pick_empty.rs`, telling a commit that changes nothing from a conflict and skipping it (`skip_empty`, with `--skip` from git 2.23; an older git ends a single pick cleanly) so the rest of the run goes on, counted in a `PickResult`. |
 | `init_ops.rs`, `init_ops/` | New repository files and the init job: `.gitignore` templates, license texts, what the chosen folder already holds, and init, write (never overwriting) and commit. |
@@ -128,7 +128,7 @@ binary (package `trellis`).
 | `crates/trellis-app/tests/i18n_keys.rs` | Every translation key the code looks up exists in English, and every English key is used. |
 | `crates/trellis-app/tests/sequence_editor.rs` | A rebase with the built executable as the sequence editor. |
 | `crates/trellis-app/tests/askpass.rs` | The built executable as the askpass helper. |
-| `crates/trellis-app/tests/gpg_prompt.rs` | The built executable as gpg.program: the loop guard, and (Unix) `git commit -S` through a fake gpg. |
+| `crates/trellis-app/tests/gpg_prompt.rs` | The built executable as gpg.program: the loop guard, (Unix) `git commit -S` through a fake gpg, and (Unix) `git commit -S` with a protected SSH key. |
 | `crates/trellis-app/tests/app_icon.rs` | The app icon: draws it (`app_icon/draw.rs`) and checks every PNG in `assets/icon/` and inside `trellis.ico` and `trellis.icns` (`app_icon/containers.rs`); `UPDATE_ICONS=1` rewrites them. |
 | `crates/trellis-app/tests/snapshots/` | Approved UI images. |
 | `scripts/smoke-linux.sh` (+ `scripts/smoke/`), CI job `smoke` | Real X11 input on the release build under its own Xvfb and openbox, at scale 1 and 1.5: the first click after a focus change, typing in the commit box and committing, a context menu, a shortcut, a drag and a resize, read back through the probe file and the disk. `src/journey/probe.rs` dry-runs its labels on every OS. |
@@ -419,7 +419,19 @@ binary (package `trellis`).
   the passphrase on fd 0, asking again after a bad passphrase (three tries). When
   `settings.gpg_prompts_in_app` is off, `update/askpass.rs` answers `Reply::UseSystem` without
   showing anything; that, an unreachable app, or a GnuPG without loopback runs gpg exactly as
-  git asked, so GnuPG's own pinentry appears.
+  git asked, so GnuPG's own pinentry appears. On Windows the wrapper maps an MSYS-style
+  gpg.program (`/usr/bin/gpg`, `/c/…`) into the git install found from `GIT_EXEC_PATH`.
+  With `gpg.format=ssh` git runs ssh-keygen itself, which asks through `SSH_ASKPASS` like ssh.
+  For commands that may sign (commit, merge, rebase, cherry-pick, revert, am, pull, tag,
+  commit-tree), `gitcli` reads `gpg.format` and `user.signingKey` once (`gpg_prompt/ssh_env.rs`)
+  and, for a key file (not a literal `key::` key, which is agent-only), sets
+  `TRELLIS_SSH_SIGNING_KEY`. The helper then sends ssh-keygen's wording (`Enter passphrase:` or
+  `Enter passphrase for "<key>":`) as a structured `SshSignAsk` (`askpass/ssh_sign.rs`), shown
+  as `PromptKind::SshSigningPassphrase`. It is always shown in Trellis (the GnuPG-window
+  preference doesn't apply) and never as a retry, since ssh-keygen stops at the first wrong
+  passphrase; a job that then fails with ssh-keygen's "incorrect passphrase" gets the headline
+  "<Label> failed: the passphrase didn't unlock the SSH signing key"
+  (`CredentialPrompts::answered_ssh_signing`).
 - **Logs**: each tab has its own activity log: the active tab's is `AppState::log`, the others'
   `Tab::log`. `AppState::log` / `log_quiet` add to the active tab's; `log_in` / `log_quiet_in`
   route a line to the tab showing a repository (a scoped result, a finished job, a git command).

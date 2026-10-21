@@ -1,6 +1,6 @@
 //! The helper's side: sends one prompt to the app and waits for the answer.
 
-use super::protocol::{self, ENV_ADDR, ENV_TOKEN, GpgAsk, MAX_LINE, Response, SSH_HINT_ENV};
+use super::protocol::{self, ENV_ADDR, ENV_SSH_SIGNING_KEY, ENV_TOKEN, GpgAsk, MAX_LINE, Response, SSH_HINT_ENV};
 use super::{PROMPT_TIMEOUT, Secret};
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpStream};
@@ -77,9 +77,14 @@ fn from_env() -> Result<(String, String), HelperError> {
 /// How long a helper waits: the app's own timeout, plus time for its answer to arrive.
 const HELPER_WAIT: Duration = Duration::from_secs(PROMPT_TIMEOUT.as_secs() + 30);
 
-/// [`ask`] with the address, token and ssh hint from the environment gitcli set up.
+/// [`ask`] with the address, token and ssh hint from the environment gitcli set up. ssh-keygen's
+/// prompt in a command gitcli marked as signing with an SSH key goes as a structured request
+/// ([`super::ssh_sign::ask_for`]).
 pub fn ask_from_env(prompt: &str) -> Result<Outcome, HelperError> {
     let (addr, token) = from_env()?;
+    if let Some(ask) = super::ssh_sign::ask_for(prompt, std::env::var(ENV_SSH_SIGNING_KEY).ok().as_deref()) {
+        return exchange(&addr, &protocol::encode_ssh_sign_request(&token, &ask), HELPER_WAIT);
+    }
     let hint = std::env::var(SSH_HINT_ENV).ok();
     ask(&addr, &token, prompt, hint.as_deref(), HELPER_WAIT)
 }

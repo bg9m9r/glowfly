@@ -7,6 +7,8 @@ use super::*;
 
 #[path = "askpass_gpg_tests.rs"]
 pub(super) mod askpass_gpg_tests;
+#[path = "askpass_ssh_sign_tests.rs"]
+pub(super) mod askpass_ssh_sign_tests;
 #[path = "askpass_store_tests.rs"]
 pub(super) mod askpass_store_tests;
 #[path = "askpass_tests.rs"]

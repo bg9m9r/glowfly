@@ -7,7 +7,8 @@
 //! child also gets Trellis as its `GIT_ASKPASS` / `SSH_ASKPASS` program (see
 //! [`crate::askpass`]), so prompts no credential helper answers open a dialog instead of
 //! failing, and Trellis as its `gpg.program` (see [`crate::gpg_prompt`]), so signing
-//! passphrases are asked the same way. A command that must never prompt passes [`NO_PROMPTS`]
+//! passphrases are asked the same way, and, for SSH-format signing, the key file ssh-keygen will
+//! ask about (`TRELLIS_SSH_SIGNING_KEY`). A command that must never prompt passes [`NO_PROMPTS`]
 //! (or [`BACKGROUND`]) as its environment, which also leaves `gpg.program` alone. With OpenSSH
 //! before 8.4 on Unix, children also start in a new session ([`crate::ssh_version::prepare`]).
 //!
@@ -94,18 +95,6 @@ pub fn askpass_vars_for(a: &AskpassEnv, legacy: bool, display: Option<&OsStr>) -
 /// child given only these can't prompt through the app.
 pub fn askpass_env() -> Vec<(&'static str, OsString)> {
     ASKPASS.get().map(askpass_vars).unwrap_or_default()
-}
-
-/// Trellis as git's gpg.program ([`crate::gpg_prompt::env::vars`]) once the helper is enabled,
-/// for a command that may prompt (`env` isn't [`NO_PROMPTS`]).
-fn gpg_env(env: &[(&str, &str)]) -> Vec<(&'static str, OsString)> {
-    use crate::gpg_prompt::env::{allows_prompts, vars};
-    let inherited = std::env::var_os("GIT_CONFIG_COUNT");
-    ASKPASS
-        .get()
-        .filter(|_| allows_prompts(env))
-        .map(|a| vars(&a.exe, inherited.as_deref(), &crate::git_program::program()))
-        .unwrap_or_default()
 }
 
 /// The `DISPLAY` to set for ssh children so OpenSSH before 8.4 (`legacy`, Unix only) uses the
@@ -300,7 +289,7 @@ fn base_command(program: &OsStr, cwd: &Path, args: &[String], env: &[(&str, &str
         .env("LANGUAGE", "C")
         .env("LC_MESSAGES", "C")
         .envs(askpass_env())
-        .envs(gpg_env(env))
+        .envs(crate::gpg_prompt::env::for_command(cwd, args, env, ASKPASS.get()))
         .envs(env.iter().copied());
     crate::env_path::apply(&mut cmd);
     if stoppable {

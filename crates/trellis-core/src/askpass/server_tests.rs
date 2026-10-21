@@ -1,6 +1,6 @@
 use super::client::{HelperError, Outcome, ask, ask_gpg};
 use super::prompt::PromptKind;
-use super::protocol::GpgAsk;
+use super::protocol::{self, GpgAsk, Response, SshSignAsk};
 use super::server::{Event, MAX_CONNECTIONS, REQUEST_TIMEOUT, Server, start_with};
 use super::{Reply, Secret};
 use std::io::{Read, Write};
@@ -74,6 +74,27 @@ fn signing_requests_become_gpg_prompts() {
             (other, _) => panic!("unexpected {other:?}"),
         }
     }
+}
+
+#[test]
+fn ssh_signing_requests_become_ssh_signing_prompts() {
+    let (s, events) = server(Duration::from_secs(60));
+    let ask = SshSignAsk { key: "~/.ssh/id_ed25519".into() };
+    let request = protocol::encode_ssh_sign_request(s.token(), &ask);
+    let (tx, result) = mpsc::channel();
+    let addr = s.addr();
+    std::thread::spawn(move || {
+        let mut stream = TcpStream::connect(addr).unwrap();
+        stream.set_read_timeout(Some(WAIT)).unwrap();
+        stream.write_all(request.as_bytes()).unwrap();
+        let mut line = String::new();
+        let _ = stream.read_to_string(&mut line);
+        let _ = tx.send(protocol::decode_response(&line).ok());
+    });
+    let (id, prompt) = asked(&events);
+    assert_eq!(prompt.kind, PromptKind::SshSigningPassphrase { key: "~/.ssh/id_ed25519".into() });
+    assert!(s.answer(id, Reply::Answer(Secret::new("right"))));
+    assert!(result.recv_timeout(WAIT).unwrap() == Some(Response::Answer("right".into())));
 }
 
 #[test]

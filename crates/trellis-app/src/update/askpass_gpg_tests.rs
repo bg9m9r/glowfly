@@ -17,11 +17,11 @@ fn gpg(st: &mut AppState, id: u64, retry: bool) -> Vec<Effect> {
     send(st, Msg::Credentials(CredentialMsg::CredentialPrompt { id, prompt: Prompt::gpg(ask) }))
 }
 
-fn send(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn send(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
-fn start_job(st: &mut AppState, label: &str) {
+pub(super) fn start_job(st: &mut AppState, label: &str) {
     st.job = Some(RunningJob {
         label: label.into(),
         workdir: None,
@@ -36,11 +36,11 @@ fn start_job(st: &mut AppState, label: &str) {
     });
 }
 
-fn finish(st: &mut AppState, ok: bool) {
+pub(super) fn finish(st: &mut AppState, ok: bool) {
     send(st, Msg::Job(JobMsg::JobDone { ok, output: "$ git commit\nerror: gpg failed to sign the data".into(), undo: None }));
 }
 
-fn last_toast(st: &AppState) -> Option<&str> {
+pub(super) fn last_toast(st: &AppState) -> Option<&str> {
     st.toasts.last().map(|t| t.text.as_str())
 }
 

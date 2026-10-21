@@ -131,9 +131,10 @@ impl Shared {
         let Some(pending) = self.pending.upgrade() else { return Some(Response::Cancelled) };
         pending.lock().unwrap_or_else(|e| e.into_inner()).insert(id, tx);
         drop(pending);
-        let prompt = match req.gpg {
-            Some(ask) => Prompt::gpg(ask),
-            None => Prompt::new(req.prompt, req.hint),
+        let prompt = match (req.gpg, req.ssh_sign) {
+            (Some(ask), _) => Prompt::gpg(ask),
+            (None, Some(ask)) => Prompt::ssh_sign(ask),
+            (None, None) => Prompt::new(req.prompt, req.hint),
         };
         (self.on_event)(Event::Asked { id, prompt });
         let reply = match rx.recv_timeout(self.timeout) {

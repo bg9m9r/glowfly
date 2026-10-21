@@ -1,6 +1,7 @@
 //! Trellis as git's gpg.program: the built executable stops a loop back into itself, still
 //! answers askpass prompts with the wrapper marker set, and (on Unix, with a fake gpg script)
-//! asks a listener started here for the signing passphrase while git commits.
+//! asks a listener started here for the signing passphrase while git commits; with a protected
+//! SSH key, ssh-keygen's prompt reaches the listener as an SSH signing prompt.
 
 use std::process::{Command, Output};
 use std::sync::mpsc::{self, Receiver};
@@ -70,6 +71,7 @@ mod end_to_end {
     use super::*;
     use std::path::{Path, PathBuf};
     use trellis_core::gitcli::{self, AskpassEnv, args};
+    use trellis_core::signing::SigningFormat;
 
     /// A stand-in for gpg: lists one key, refuses `--pinentry-mode error` with "No pinentry",
     /// and in loopback mode signs only when the first stdin line is "right".
@@ -181,6 +183,86 @@ esac
         assert!(!out.ok, "{}", out.combined());
         assert!(out.stderr.contains("the passphrase prompt was cancelled"), "{}", out.stderr);
         assert_eq!(seen.recv_timeout(Duration::from_secs(10)).unwrap(), gpg_kind(false));
+        let _ = std::fs::remove_dir_all(repo.parent().unwrap());
+    }
+
+    /// A repository signing with a new ed25519 key protected by the passphrase "right": the
+    /// repository and the key's public file, or None (after saying so) without ssh-keygen.
+    fn ssh_scratch(name: &str) -> Option<(PathBuf, PathBuf)> {
+        let dir = trellis_core::paths::temp_dir().join(format!("trellis-gpg-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let made = Command::new("ssh-keygen")
+            .args(["-q", "-t", "ed25519", "-N", "right", "-C", "t", "-f"])
+            .arg(dir.join("key"))
+            .stdin(std::process::Stdio::null())
+            .output();
+        match made {
+            Ok(o) if o.status.success() => {}
+            other => {
+                eprintln!("ssh-keygen unavailable, skipping: {other:?}");
+                return None;
+            }
+        }
+        let (repo, public) = (dir.join("repo"), dir.join("key.pub"));
+        std::fs::create_dir_all(&repo).unwrap();
+        let public_text = public.to_str().unwrap();
+        for a in [&["init", "-q"][..], &["config", "gpg.format", "ssh"], &["config", "user.signingkey", public_text]] {
+            let (ok, out) = gitcli::run(&repo, &args(a));
+            assert!(ok, "{out}");
+        }
+        Some((repo, public))
+    }
+
+    /// `git commit -S` with the askpass variables and the SSH signing marker a foreground job
+    /// gets, and no ssh-agent.
+    fn ssh_commit(repo: &Path, s: &Server, public: &Path) -> gitcli::GitOutput {
+        let askpass = AskpassEnv { exe: EXE.into(), addr: s.addr(), token: s.token().into() };
+        let mut vars: Vec<(&str, String)> =
+            gitcli::askpass_vars(&askpass).into_iter().map(|(k, v)| (k, v.into_string().unwrap())).collect();
+        vars.extend(
+            trellis_core::gpg_prompt::ssh_env::vars(SigningFormat::Ssh, public.to_str())
+                .into_iter()
+                .map(|(k, v)| (k, v.into_string().unwrap())),
+        );
+        let mut env: Vec<(&str, &str)> = vars.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        env.extend([
+            ("SSH_AUTH_SOCK", ""),
+            ("GIT_AUTHOR_NAME", "Ada Lovelace"),
+            ("GIT_AUTHOR_EMAIL", "ada@example.com"),
+            ("GIT_COMMITTER_NAME", "Ada Lovelace"),
+            ("GIT_COMMITTER_EMAIL", "ada@example.com"),
+        ]);
+        gitcli::output(repo, &args(&["commit", "-S", "--allow-empty", "-m", "x"]), "", &env, Some(Duration::from_secs(60)))
+    }
+
+    #[test]
+    fn ssh_signing_asks_for_the_key_passphrase() {
+        let Some((repo, public)) = ssh_scratch("ssh-sign") else { return };
+        let private = public.with_extension("").to_str().unwrap().to_owned();
+        let wait = Duration::from_secs(10);
+
+        let (s, seen) = listener(vec![Some("right")]);
+        let out = ssh_commit(&repo, &s, &public);
+        if !out.ok && out.stderr.contains("usage:") {
+            eprintln!("ssh-keygen can't sign (no -Y), skipping: {}", out.stderr);
+            let _ = std::fs::remove_dir_all(repo.parent().unwrap());
+            return;
+        }
+        assert!(out.ok, "{}", out.combined());
+        assert_eq!(seen.recv_timeout(wait).unwrap(), PromptKind::SshSigningPassphrase { key: private.clone() });
+        let (ok, body) = gitcli::run(&repo, &args(&["cat-file", "commit", "HEAD"]));
+        assert!(ok && body.contains("-----BEGIN SSH SIGNATURE-----"), "{body}");
+
+        let (s, seen) = listener(vec![None]);
+        let out = ssh_commit(&repo, &s, &public);
+        assert!(!out.ok, "cancelled: {}", out.combined());
+        assert_eq!(seen.recv_timeout(wait).unwrap(), PromptKind::SshSigningPassphrase { key: private });
+
+        let (s, _seen) = listener(vec![Some("wrong")]);
+        let out = ssh_commit(&repo, &s, &public);
+        assert!(!out.ok, "wrong passphrase: {}", out.combined());
+        assert!(trellis_core::askpass::ssh_sign::wrong_passphrase(&out.combined()), "{}", out.combined());
         let _ = std::fs::remove_dir_all(repo.parent().unwrap());
     }
 }

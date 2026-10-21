@@ -11,7 +11,8 @@
 //! through command-scope config ([`env::vars`]), which wins over every config file. Run that
 //! way ([`is_wrapper_call`]), Trellis:
 //!
-//! 1. finds the program the user configured ([`program::user_program`]; `gpg` by default);
+//! 1. finds the program the user configured ([`program::user_program`]; `gpg` by default),
+//!    mapping MSYS-style paths (`/usr/bin/gpg`) into the Git for Windows install on Windows;
 //! 2. tries it with `--pinentry-mode error` ([`args::probe`]): a cached or unprotected key
 //!    signs straight away and nothing is shown;
 //! 3. on "No pinentry", asks the app through the askpass listener ([`crate::askpass`]) with a
@@ -24,12 +25,18 @@
 //! Anything that isn't a sign call (signature verification) passes straight through.
 //! [`flow`] is the state machine, generic over the gpg runs and the asking so tests use fakes;
 //! [`real`] runs the real program and asks the real app.
+//!
+//! With `gpg.format=ssh` git runs `gpg.ssh.program` (ssh-keygen) itself, not the wrapper.
+//! ssh-keygen asks for a protected key's passphrase through `SSH_ASKPASS`, which gitcli already
+//! sets, and gitcli adds `TRELLIS_SSH_SIGNING_KEY` for commands that may sign, so the helper
+//! sends an [`crate::askpass::SshSignAsk`] ([`ssh_env`], [`crate::askpass::ssh_sign`]).
 
 pub mod args;
 pub mod env;
 pub mod flow;
 pub mod program;
 pub mod real;
+pub mod ssh_env;
 pub mod status;
 
 #[cfg(test)]
@@ -40,6 +47,8 @@ mod env_tests;
 mod flow_tests;
 #[cfg(test)]
 mod program_tests;
+#[cfg(test)]
+mod ssh_env_tests;
 #[cfg(test)]
 mod status_tests;
 #[cfg(test)]

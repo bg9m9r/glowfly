@@ -15,6 +15,10 @@ pub enum PromptKind {
     /// spec), owned by `user`; `retry` when the last answer didn't unlock it. Only built from a
     /// structured request ([`super::Prompt::gpg`]), never by [`classify`].
     GpgPassphrase { key: String, user: Option<String>, retry: bool },
+    /// ssh-keygen asks, while git signs with an SSH key, for the passphrase of the private key
+    /// `key`. Only built from a structured request ([`super::Prompt::ssh_sign`]), never by
+    /// [`classify`].
+    SshSigningPassphrase { key: String },
     /// A yes/no question that isn't in a wording Trellis reads, such as an agent's "Allow use
     /// of key?".
     Confirm,
@@ -23,6 +27,13 @@ pub enum PromptKind {
     HostKey(super::host_key::HostKey),
     /// Anything else; `secret` when the text mentions a password, PIN, token or the like.
     Other { secret: bool },
+}
+
+impl PromptKind {
+    /// A signing key's passphrase (OpenPGP or SSH), rather than a credential for a host.
+    pub fn is_signing(&self) -> bool {
+        matches!(self, PromptKind::GpgPassphrase { .. } | PromptKind::SshSigningPassphrase { .. })
+    }
 }
 
 /// Classifies a prompt. `hint` is ssh's `SSH_ASKPASS_PROMPT` (`confirm` for yes/no questions).

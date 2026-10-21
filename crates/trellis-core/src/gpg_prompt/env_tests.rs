@@ -32,3 +32,20 @@ fn no_prompts_leaves_gpg_alone() {
     assert!(allows_prompts(&[]));
     assert!(allows_prompts(&[("GIT_SEQUENCE_EDITOR", "x")]));
 }
+
+#[test]
+fn each_command_gets_the_signing_env_only_when_it_may_prompt() {
+    use super::env::for_command;
+    let exe = if cfg!(windows) { Path::new(r"C:\Apps\Trellis\trellis.exe") } else { Path::new("/opt/trellis/bin/trellis") };
+    let a = crate::gitcli::AskpassEnv { exe: exe.to_owned(), addr: "127.0.0.1:1".into(), token: "t".into() };
+    let cwd = crate::paths::temp_dir();
+    let status = crate::gitcli::args(&["status"]);
+    assert!(for_command(&cwd, &status, &[], None).is_empty(), "before the helper is enabled");
+    assert!(for_command(&cwd, &status, crate::gitcli::NO_PROMPTS, Some(&a)).is_empty());
+    let commit = crate::gitcli::args(&["commit", "-m", "x"]);
+    assert!(for_command(&cwd, &commit, crate::gitcli::NO_PROMPTS, Some(&a)).is_empty());
+    let v = for_command(&cwd, &status, &[], Some(&a));
+    let inherited = std::env::var_os("GIT_CONFIG_COUNT");
+    assert_eq!(v, vars(exe, inherited.as_deref(), &crate::git_program::program()));
+    assert!(v.iter().all(|(k, _)| *k != crate::askpass::ENV_SSH_SIGNING_KEY));
+}

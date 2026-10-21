@@ -51,6 +51,9 @@ pub struct CredentialPrompts {
     pub ended: Option<PromptEnd>,
     /// The prompt that ended the job early asked for a signing passphrase.
     pub ended_signing: bool,
+    /// An SSH signing passphrase was given during the current job, so a failure that ssh-keygen
+    /// calls a wrong passphrase gets its own headline.
+    pub answered_ssh_signing: bool,
     /// View state: the dialog's "Remember this sign-in" box, set from the setting whenever
     /// prompts start queueing.
     pub remember: bool,

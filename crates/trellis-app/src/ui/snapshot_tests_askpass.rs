@@ -1,6 +1,6 @@
 //! The credential prompt over the main window: sign in (with Remember this sign-in), a
 //! passphrase retried, an unknown SSH host (as fields) and a confirmation that isn't read as one,
-//! and a signing key's passphrase (first and retried). Shares the fixture repository and
+//! a signing key's passphrase (first and retried), and an SSH signing key's passphrase. Shares the fixture repository and
 //! renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -11,7 +11,7 @@ use crate::state::askpass::PendingPrompt;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
-use trellis_core::askpass::{GpgAsk, Prompt};
+use trellis_core::askpass::{GpgAsk, Prompt, SshSignAsk};
 use trellis_core::settings::ThemeChoice;
 
 const HOST_KEY: &str = "The authenticity of host 'example.com (192.0.2.10)' can't be established.\n\
@@ -186,6 +186,31 @@ fn credential_prompt_gpg_retry_light() {
     h.press_key(egui::Key::Escape);
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn credential_prompt_ssh_signing() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "askpass-ssh-signing");
+    let prompt = Prompt::ssh_sign(SshSignAsk { key: "~/.ssh/id_ed25519".into() });
+    st.askpass.queue.push_back(PendingPrompt { id: 1, prompt, retry: false, rejected_before: false });
+    st.askpass.focus_pending = true;
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("credential_prompt_ssh_signing");
+    assert!(h.query_by_label("Unlock signing key").is_some());
+    assert!(h.query_by_label_contains("Git is signing with your SSH key").is_some());
+    assert!(h.query_by_label_contains("Key ~/.ssh/id_ed25519").is_some());
+    assert!(h.query_by_label_contains("ssh-agent (ssh-add)").is_some());
+    assert!(h.query_by_label_contains("didn't unlock").is_none());
+    assert!(h.get_by_label("Unlock").is_disabled(), "nothing typed yet");
+    h.state_mut().0.askpass.secret = "hunter2".into();
+    h.run();
+    assert!(h.query_by_label_contains("hunter2").is_none(), "the passphrase is masked");
+    h.get_by_label("Unlock").click();
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::AnswerCredentials))));
     drop(h);
     remove_fixture(&dir);
 }

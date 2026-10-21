@@ -1,4 +1,5 @@
-//! The environment that makes git run Trellis as its gpg.program. Pure.
+//! The environment that makes git run Trellis as its gpg.program (pure, [`vars`]), and the
+//! signing environment gitcli adds to each command ([`for_command`]).
 
 use super::{ENV_GIT, ENV_WRAPPER};
 use std::ffi::{OsStr, OsString};
@@ -26,4 +27,20 @@ pub fn vars(exe: &Path, inherited_count: Option<&OsStr>, git: &OsStr) -> Vec<(&'
 /// [`crate::gitcli::NO_PROMPTS`] (whose empty `GIT_ASKPASS` marks it).
 pub fn allows_prompts(env: &[(&str, &str)]) -> bool {
     !env.contains(&("GIT_ASKPASS", ""))
+}
+
+/// The signing environment for `git <args>` in `cwd` with the caller environment `env`, once
+/// the askpass helper is enabled (`askpass`) and for a command that may prompt: Trellis as
+/// gpg.program ([`vars`]) and, for SSH-format signing, the key file ssh-keygen will ask about
+/// ([`super::ssh_env::vars_for`]).
+pub(crate) fn for_command(
+    cwd: &Path,
+    args: &[String],
+    env: &[(&str, &str)],
+    askpass: Option<&crate::gitcli::AskpassEnv>,
+) -> Vec<(&'static str, OsString)> {
+    let Some(a) = askpass.filter(|_| allows_prompts(env)) else { return Vec::new() };
+    let mut out = vars(&a.exe, std::env::var_os("GIT_CONFIG_COUNT").as_deref(), &crate::git_program::program());
+    out.extend(super::ssh_env::vars_for(cwd, args, env));
+    out
 }

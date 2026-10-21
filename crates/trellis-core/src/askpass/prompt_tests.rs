@@ -62,3 +62,18 @@ fn only_structured_requests_are_signing_prompts() {
     // The same text from git or ssh is just a secret question.
     assert_eq!(classify(&p.text, None), PromptKind::Other { secret: true });
 }
+
+#[test]
+fn ssh_signing_prompts_come_only_from_structured_requests() {
+    let p = super::Prompt::ssh_sign(super::SshSignAsk { key: "~/.ssh/id_ed25519".into() });
+    assert_eq!(p.text, "Passphrase for SSH signing key ~/.ssh/id_ed25519");
+    assert_eq!(p.kind, PromptKind::SshSigningPassphrase { key: "~/.ssh/id_ed25519".into() });
+    assert_eq!(host(&p.kind), None);
+    assert_eq!(classify(&p.text, None), PromptKind::Other { secret: true });
+
+    let gpg = PromptKind::GpgPassphrase { key: "K".into(), user: None, retry: false };
+    assert!(p.kind.is_signing() && gpg.is_signing());
+    assert!(!PromptKind::Passphrase { key: "/k".into() }.is_signing());
+    assert!(!PromptKind::Password { target: "x".into(), user: None }.is_signing());
+    assert!(!PromptKind::Other { secret: true }.is_signing());
+}

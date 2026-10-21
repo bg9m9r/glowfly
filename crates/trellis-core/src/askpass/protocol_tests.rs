@@ -66,3 +66,18 @@ fn secrets_are_redacted() {
     super::wipe(&mut buf);
     assert!(buf.is_empty());
 }
+
+#[test]
+fn ssh_signing_requests_round_trip() {
+    let ask = SshSignAsk { key: "~/.ssh/id_ed25519".into() };
+    let line = encode_ssh_sign_request("abc", &ask);
+    assert_eq!(line.matches('\n').count(), 1);
+    let req = decode_request(&line).unwrap();
+    assert_eq!(req.ssh_sign.as_ref(), Some(&ask));
+    assert!(req.gpg.is_none());
+    assert_eq!(req.prompt, "Passphrase for SSH signing key ~/.ssh/id_ed25519");
+
+    assert!(!encode_request("a", "p", None).contains("ssh_sign"), "plain requests leave the field out");
+    let old = r#"{"v":1,"token":"a","prompt":"Enter passphrase: ","hint":null}"#;
+    assert!(decode_request(old).unwrap().ssh_sign.is_none());
+}

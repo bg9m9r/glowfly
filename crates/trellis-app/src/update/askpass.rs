@@ -20,14 +20,14 @@ pub(super) fn handle(st: &mut AppState, msg: CredentialMsg, now: Instant, fx: &m
             let Some(front) = p.queue.pop_front() else { return };
             fx.push(Effect::AnswerPrompt { id: front.id, reply: Reply::Cancel });
             p.ended = Some(PromptEnd::Cancelled);
-            p.ended_signing = matches!(front.prompt.kind, PromptKind::GpgPassphrase { .. });
+            p.ended_signing = front.prompt.kind.is_signing();
             p.carry = None;
             p.clear_buffers();
         }
         CredentialMsg::CredentialPromptExpired(id) => {
             let p = &mut st.askpass;
             let Some(i) = p.queue.iter().position(|q| q.id == id) else { return };
-            let signing = p.queue.remove(i).is_some_and(|q| matches!(q.prompt.kind, PromptKind::GpgPassphrase { .. }));
+            let signing = p.queue.remove(i).is_some_and(|q| q.prompt.kind.is_signing());
             if i == 0 {
                 p.clear_buffers();
             }
@@ -45,14 +45,17 @@ pub(super) fn handle(st: &mut AppState, msg: CredentialMsg, now: Instant, fx: &m
 }
 
 fn asked(st: &mut AppState, id: u64, prompt: Prompt, fx: &mut Vec<Effect>) {
-    // A signing passphrase: GnuPG's own window when the user prefers it, and a retry only when
-    // the wrapper says the last passphrase was wrong.
+    // An OpenPGP signing passphrase: GnuPG's own window when the user prefers it, and a retry
+    // only when the wrapper says the last passphrase was wrong.
     let signing_retry = match &prompt.kind {
         PromptKind::GpgPassphrase { .. } if !st.settings.gpg_prompts_in_app => {
             fx.push(Effect::AnswerPrompt { id, reply: Reply::UseSystem });
             return;
         }
         PromptKind::GpgPassphrase { retry, .. } => Some(*retry),
+        // ssh-keygen gives up after one wrong passphrase, so a second prompt in the same job is
+        // the next signature (a rebase signs every commit), never a second try.
+        PromptKind::SshSigningPassphrase { .. } => Some(false),
         _ => None,
     };
     let remember = st.settings.remember_https_credentials;
@@ -84,6 +87,9 @@ fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     let Some(front) = p.queue.pop_front() else { return };
     let host = askpass::host(&front.prompt.kind);
+    if matches!(front.prompt.kind, PromptKind::SshSigningPassphrase { .. }) {
+        p.answered_ssh_signing = true;
+    }
     let answer = match &front.prompt.kind {
         PromptKind::Username { url } => {
             let user = p.user.trim().to_owned();
@@ -132,7 +138,11 @@ pub(super) fn job_finished(
         (false, Some(PromptEnd::Cancelled), true) => Some(format!("{label} cancelled: no signing passphrase was given")),
         (false, Some(PromptEnd::TimedOut), true) => Some(format!("{label} failed: the signing passphrase prompt timed out")),
         _ => None,
-    };
+    }
+    .or_else(|| {
+        let wrong = !ok && p.ended.is_none() && p.answered_ssh_signing && askpass::ssh_sign::wrong_passphrase(output);
+        wrong.then(|| format!("{label} failed: the passphrase didn't unlock the SSH signing key"))
+    });
     // A stopped job says nothing about the sign-ins it was given: none is kept or forgotten.
     if ok {
         p.failed_hosts.retain(|h| !p.answered_hosts.contains(h));
@@ -153,5 +163,6 @@ pub(super) fn job_finished(
     p.answered_hosts.clear();
     p.ended = None;
     p.ended_signing = false;
+    p.answered_ssh_signing = false;
     headline
 }

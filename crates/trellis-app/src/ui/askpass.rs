@@ -92,6 +92,13 @@ fn layout(p: &PendingPrompt) -> Layout {
             help: Some(GPG_HELP),
             ..Layout::new("Unlock signing key".into(), "Unlock")
         },
+        PromptKind::SshSigningPassphrase { key } => Layout {
+            line: Some("Git is signing with your SSH key. Enter its passphrase.".into()),
+            detail: Some((None, key.clone())),
+            secret: Some("Passphrase"),
+            help: Some(SSH_SIGN_HELP),
+            ..Layout::new("Unlock signing key".into(), "Unlock")
+        },
         PromptKind::Confirm => Layout { key_icon: false, confirm: true, ..Layout::new("Confirm SSH connection".into(), "Yes") },
         PromptKind::HostKey(_) => {
             Layout { key_icon: false, confirm: true, host_key: true, ..Layout::new("Unknown SSH host".into(), "Trust and connect") }
@@ -116,12 +123,19 @@ const TOKEN_LABEL: &str = "Password or personal access token";
 const GPG_HELP: &str = "gpg-agent remembers the passphrase for a while, so Trellis asks again only once it has \
 forgotten. To use GnuPG's own window instead, turn this off in Preferences > Commit signing.";
 
+/// Help for an SSH signing passphrase: ssh-keygen keeps nothing between signatures.
+const SSH_SIGN_HELP: &str =
+    "ssh-keygen asks for the passphrase every time git signs. Add the key to ssh-agent (ssh-add) to sign without being asked.";
+
 /// The notice under the fields for a prompt asked again, or for a host whose credentials
 /// failed last time.
 fn notice(p: &PendingPrompt) -> Option<Message<'static>> {
     if p.retry {
         let text = match p.prompt.kind {
-            PromptKind::Passphrase { .. } | PromptKind::GpgPassphrase { .. } => "That passphrase didn't unlock the key. Try again.",
+            // An SSH signing prompt is never a retry (ssh-keygen stops at the first wrong one).
+            PromptKind::Passphrase { .. } | PromptKind::GpgPassphrase { .. } | PromptKind::SshSigningPassphrase { .. } => {
+                "That passphrase didn't unlock the key. Try again."
+            }
             _ => "That didn't work. Try again.",
         };
         return Some(Message::error(text));

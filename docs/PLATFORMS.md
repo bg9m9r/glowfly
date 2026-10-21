@@ -280,6 +280,12 @@ second one next to it.
    the passphrase on fd 0 (`--passphrase-fd 0`), never in argv, a file or the environment. It
    needs git 2.31 (`GIT_CONFIG_COUNT`) and GnuPG 2.1.12 (loopback allowed by default); with
    anything older, or an agent with `no-allow-loopback-pinentry`, GnuPG's own pinentry is used.
+   On Windows a gpg.program in MSYS form (`/usr/bin/gpg`, `/c/…`, `/cygdrive/c/…`) is mapped
+   into the install found from `GIT_EXEC_PATH` (git exports it to the wrapper; else
+   `git --exec-path`): `<root>/<msystem>/libexec/git-core` or `<root>/usr/lib/git-core`, with
+   `/bin` read as `/usr/bin` (`gpg_prompt/program.rs`). For `gpg.format=ssh`, git runs
+   ssh-keygen directly; it asks through `SSH_ASKPASS`, and gitcli adds `TRELLIS_SSH_SIGNING_KEY`
+   (the user.signingKey file) for commands that may sign (`gpg_prompt/ssh_env.rs`).
 9. **The UI language comes only from `i18n::detect_system_language`**, called once in `main.rs`
    before the window opens: sys-locale's ordered list (Windows: the user's preferred UI
    languages; macOS: the preferred languages; Unix: `LANGUAGE`, then `LC_ALL`, `LC_MESSAGES`,

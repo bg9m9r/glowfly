@@ -15,7 +15,11 @@
 //!    hands the user's [`Reply`] back with [`server::Server::answer`].
 //!
 //! The gpg.program wrapper ([`crate::gpg_prompt`]) sends a structured request instead
-//! ([`protocol::GpgAsk`]), shown as a [`PromptKind::GpgPassphrase`] prompt.
+//! ([`protocol::GpgAsk`]), shown as a [`PromptKind::GpgPassphrase`] prompt. ssh-keygen's
+//! passphrase prompt while git signs with an SSH key goes to the helper like any other, but
+//! gitcli marks commands that may sign ([`protocol::ENV_SSH_SIGNING_KEY`]), so the helper sends it
+//! as a structured request too ([`protocol::SshSignAsk`], read by [`ssh_sign::ask_for`]), shown
+//! as a [`PromptKind::SshSigningPassphrase`] prompt.
 //!
 //! Classification of the prompt text ([`prompt::classify`]) is pure and decides which dialog
 //! is shown; [`host_key::parse`] reads ssh's unknown-host question into fields.
@@ -25,6 +29,7 @@ pub mod host_key;
 pub mod prompt;
 pub mod protocol;
 pub mod server;
+pub mod ssh_sign;
 
 #[cfg(test)]
 mod host_key_tests;
@@ -34,13 +39,15 @@ mod prompt_tests;
 mod protocol_tests;
 #[cfg(test)]
 mod server_tests;
+#[cfg(test)]
+mod ssh_sign_tests;
 
 use std::time::Duration;
 
 pub use client::{HelperError, Outcome, ask, ask_from_env, ask_gpg, ask_gpg_from_env};
 pub use host_key::HostKey;
 pub use prompt::{PromptKind, classify, host, user_and_host};
-pub use protocol::{ENV_ADDR, ENV_TOKEN, GpgAsk, SSH_HINT_ENV};
+pub use protocol::{ENV_ADDR, ENV_SSH_SIGNING_KEY, ENV_TOKEN, GpgAsk, SSH_HINT_ENV, SshSignAsk};
 pub use server::{Event, Server};
 
 /// How long a prompt waits for an answer before it is closed as timed out.
@@ -113,5 +120,12 @@ impl Prompt {
     pub fn gpg(ask: GpgAsk) -> Self {
         let GpgAsk { key, user, retry } = ask;
         Prompt { text: format!("Passphrase for OpenPGP key {key}"), hint: None, kind: PromptKind::GpgPassphrase { key, user, retry } }
+    }
+
+    /// The askpass helper's request for an SSH signing key's passphrase (ssh-keygen asks while
+    /// git signs).
+    pub fn ssh_sign(ask: SshSignAsk) -> Self {
+        let SshSignAsk { key } = ask;
+        Prompt { text: format!("Passphrase for SSH signing key {key}"), hint: None, kind: PromptKind::SshSigningPassphrase { key } }
     }
 }

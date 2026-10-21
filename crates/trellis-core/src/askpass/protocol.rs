@@ -10,6 +10,9 @@ pub const ENV_ADDR: &str = "TRELLIS_ASKPASS";
 pub const ENV_TOKEN: &str = "TRELLIS_ASKPASS_TOKEN";
 /// ssh's hint for the kind of prompt: `confirm` (yes/no) or `none` (a notice; no answer read).
 pub const SSH_HINT_ENV: &str = "SSH_ASKPASS_PROMPT";
+/// Set by gitcli for git commands that may sign with an SSH key: the `user.signingKey` file.
+/// Read by the askpass helper to tell ssh-keygen's signing prompt from other passphrases.
+pub const ENV_SSH_SIGNING_KEY: &str = "TRELLIS_SSH_SIGNING_KEY";
 
 /// The longest line either side reads.
 pub const MAX_LINE: u64 = 64 * 1024;
@@ -26,6 +29,13 @@ pub struct GpgAsk {
     pub retry: bool,
 }
 
+/// What the askpass helper asks for when ssh-keygen prompts while git signs with an SSH key
+/// (see [`super::ssh_sign`]): the passphrase of the private key `key` ssh-keygen asks about.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SshSignAsk {
+    pub key: String,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Request {
     pub v: u32,
@@ -35,6 +45,9 @@ pub struct Request {
     /// Set by the signing wrapper; absent from askpass requests (and from older helpers).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gpg: Option<GpgAsk>,
+    /// Set by the askpass helper for ssh-keygen's signing prompt; absent otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssh_sign: Option<SshSignAsk>,
 }
 
 /// No `Debug`: an answer is a secret.
@@ -71,13 +84,20 @@ fn check_len(s: &str) -> Result<(), ProtocolError> {
 }
 
 pub fn encode_request(token: &str, prompt: &str, hint: Option<&str>) -> String {
-    line(&Request { v: VERSION, token: token.into(), prompt: prompt.into(), hint: hint.map(str::to_owned), gpg: None })
+    line(&Request { v: VERSION, token: token.into(), prompt: prompt.into(), hint: hint.map(str::to_owned), gpg: None, ssh_sign: None })
 }
 
 /// A signing-passphrase request; its `prompt` is the text [`super::Prompt::gpg`] gives.
 pub fn encode_gpg_request(token: &str, ask: &GpgAsk) -> String {
     let prompt = super::Prompt::gpg(ask.clone()).text;
-    line(&Request { v: VERSION, token: token.into(), prompt, hint: None, gpg: Some(ask.clone()) })
+    line(&Request { v: VERSION, token: token.into(), prompt, hint: None, gpg: Some(ask.clone()), ssh_sign: None })
+}
+
+/// An SSH signing-passphrase request; its `prompt` is the text [`super::Prompt::ssh_sign`]
+/// gives.
+pub fn encode_ssh_sign_request(token: &str, ask: &SshSignAsk) -> String {
+    let prompt = super::Prompt::ssh_sign(ask.clone()).text;
+    line(&Request { v: VERSION, token: token.into(), prompt, hint: None, gpg: None, ssh_sign: Some(ask.clone()) })
 }
 
 pub fn decode_request(s: &str) -> Result<Request, ProtocolError> {

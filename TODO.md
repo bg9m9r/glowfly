@@ -1066,11 +1066,6 @@ blockers and major findings are Milestone 1 items.
 - Show desktop notifications under Trellis's own name and icon: register an app id on Windows
   (now attributed to PowerShell) and set the bundle id on macOS once Trellis ships as an app bundle
 
-### GPG passphrase prompts
-
-- Passphrase prompts for SSH-format signing keys (ssh-keygen -Y sign)
-- Resolve MSYS-style gpg.program paths such as /usr/bin/gpg on Windows
-
 ### PR and issue filters
 
 - Team and group review requests counting as Needs my review (GitHub teams, Azure groups)
@@ -2417,6 +2412,20 @@ here, under the item they grew from.
 - Wording for smartcard PIN and touch requests (loopback with a card is unverified)
 - Show the key's expiry date in the passphrase dialog
 - Signing passphrase prompts for git commands typed in the terminal panel
+- Ask again after a wrong SSH signing passphrase (ssh-keygen stops at the first; would need
+  Trellis as gpg.ssh.program re-running -Y sign on git's payload file)
+- Reuse the SSH signing passphrase for the rest of a job that signs many commits (rebase,
+  cherry-pick of a range)
+- Offer to add the signing key to ssh-agent from the SSH signing passphrase dialog
+- Wording for FIDO (sk) SSH signing keys: ssh-keygen's PIN prompt and touch notice
+- Check that Windows' own OpenSSH ssh-keygen (System32) honours SSH_ASKPASS when set as
+  gpg.ssh.program
+- SSH signing passphrase marker for push --signed (push certificates)
+- Map MSYS-style gpg.ssh.program and gpg.x509.program values on Windows (git runs those itself,
+  not the wrapper)
+- Find an MSYS2 or Cygwin git's install root from the git program or PATH when GIT_EXEC_PATH
+  arrives in POSIX form
+- Map MSYS /tmp in gpg.program to the user's temp folder
 
 ### CI / build status
 
