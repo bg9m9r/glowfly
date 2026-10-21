@@ -24,11 +24,20 @@ pub(super) fn resume(cwd: PathBuf, how: Resume, job: RestackJob) -> Msg {
     ran(&cwd, before, job, result)
 }
 
-/// The result message: the job carries the steps still left and the tips before its first run.
+/// The result message: the job carries the steps still left, the tips before its first run and,
+/// after a stop, the step it stopped in (the one before the steps left, or the same one again
+/// when Continue or Skip stopped in it once more).
 fn ran(cwd: &Path, before: Option<RestackBefore>, job: RestackJob, result: Result<RestackRun>) -> Msg {
     let undo = recorded(cwd, before.as_ref(), &job.detail, &result);
+    let stopped = match &result {
+        Ok(r) if matches!(r.outcome, Outcome::Stopped { .. }) => {
+            let i = job.plan.steps.len().checked_sub(r.left.steps.len() + 1);
+            i.and_then(|i| job.plan.steps.get(i).cloned()).or(job.stopped)
+        }
+        _ => None,
+    };
     let plan = result.as_ref().map(|r| r.left.clone()).unwrap_or_else(|_| RestackPlan::default());
-    let job = RestackJob { plan, before, detail: job.detail };
+    let job = RestackJob { plan, before, detail: job.detail, stopped };
     Msg::Rebase(RebaseMsg::RestackRan { result: result.map_err(err), undo, job })
 }
 

@@ -167,7 +167,48 @@ fn abort_drops_the_steps_left() {
     drive(&mut st, Msg::git("Abort rebase", &["rebase", "--abort"]));
     assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::Clean);
     assert!(st.restacks.is_empty());
-    assert!(logged(&st, "The restack ended early: top2 weren't restacked."));
+    assert!(logged(&st, "The restack ended early. Not restacked: top, top2."), "the aborted step's top too");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_single_step_restack_dropped_after_a_stop_says_so_unless_it_finished() {
+    // low <- mid <- top, low amended to conflict with mid: one step, which stops.
+    let dir = stacked("stack-abort-one", false);
+    std::fs::write(
+        dir.join("g.txt"),
+        "uno
+2
+3
+",
+    )
+    .unwrap();
+    git(&dir, &["commit", "-q", "-a", "--amend", "-m", "l1, amended"]);
+    let mut st = opened(&dir);
+    drive(&mut st, above_low());
+    assert_eq!(st.restacks.len(), 1, "the stopped step waits for the banner");
+    drive(&mut st, Msg::git("Abort rebase", &["rebase", "--abort"]));
+    assert!(st.restacks.is_empty());
+    assert!(logged(&st, "The restack ended early. Not restacked: top."));
+
+    // Finished outside Trellis: nothing was left undone, so nothing is logged.
+    st.log.clear();
+    drive(&mut st, above_low());
+    assert_eq!(st.restacks.len(), 1);
+    std::fs::write(
+        dir.join("g.txt"),
+        "both
+2
+3
+",
+    )
+    .unwrap();
+    git(&dir, &["add", "g.txt"]);
+    git(&dir, &["-c", "core.editor=true", "rebase", "--continue"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert!(st.restacks.is_empty());
+    assert!(!logged(&st, "The restack ended early"), "{:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
+    assert_eq!(tip(&dir, "top^"), tip(&dir, "mid"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

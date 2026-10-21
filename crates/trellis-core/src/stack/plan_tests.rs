@@ -79,3 +79,17 @@ fn return_to_is_left_out_when_head_is_the_last_top() {
     assert_eq!(plan(&s, &above("L"), Some("M"), false).return_to, None);
     assert_eq!(plan(&s, &above("L"), Some("other"), false).return_to.as_deref(), Some("other"));
 }
+
+#[test]
+fn a_behind_layer_above_a_behind_layer_gets_its_own_step() {
+    // L <- M (behind, base 1) <- T (behind on M, base 2, a former tip of M): replaying 1..T
+    // wouldn't contain M's tip, so M moves first and T goes onto it from its own old base.
+    let s = stacks(vec![on("M", "L", 1, true), on("T", "M", 2, true)]);
+    let p = plan(&s, &above("L"), Some("L"), false);
+    assert_eq!(p.steps, vec![step("L", 1, "M"), step("M", 2, "T")]);
+    assert_eq!(p.moved(&s), ["M", "T"]);
+
+    // ... and with a current layer between them, the step below the behind one keeps it.
+    let s = stacks(vec![on("M", "L", 1, true), on("N", "M", 2, false), on("T", "N", 3, true)]);
+    assert_eq!(plan(&s, &above("L"), None, false).steps, vec![step("L", 1, "N"), step("N", 3, "T")]);
+}

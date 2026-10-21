@@ -6,7 +6,7 @@ use crate::effect::RestackJob;
 use std::path::PathBuf;
 use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
-use trellis_core::stack::{RestackPlan, RestackScope, plan};
+use trellis_core::stack::{RestackPlan, RestackScope, RestackStep, plan};
 
 /// A restack stopped on a conflict in the repository at `workdir`, with the steps left once the
 /// banner's Continue or Skip finishes the stopped one.
@@ -19,6 +19,17 @@ pub struct PendingRestack {
 /// The steps `scope` asks for on `snap`'s stacks.
 pub fn plan_for(snap: &Snapshot, scope: &RestackScope, autostash: bool) -> RestackPlan {
     plan(&snap.stacks, scope, snap.head_branch.as_deref(), autostash)
+}
+
+/// The branches a restack dropped after a stop didn't get to: the top of the step it stopped
+/// in, when a layer of that step is still behind on `snap` (its rebase was aborted rather than
+/// finished outside Trellis), then the tops of the steps left.
+pub fn not_restacked(snap: &Snapshot, job: &RestackJob) -> Vec<String> {
+    let unfinished = |s: &&RestackStep| {
+        let one = RestackPlan { steps: vec![(*s).clone()], ..RestackPlan::default() };
+        one.moved(&snap.stacks).iter().any(|b| snap.stacks.below(b).is_some_and(|l| l.behind))
+    };
+    job.stopped.iter().filter(unfinished).chain(&job.plan.steps).map(|s| s.top.clone()).collect()
 }
 
 /// The branch the layers move onto: `b` for the branches above it, else the branch `x` is

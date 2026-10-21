@@ -5,16 +5,18 @@
 
 use std::path::PathBuf;
 use trellis_core::rebase::{EditTodoRequest, QuickEdit, RebaseBase, Resume, StartRequest};
-use trellis_core::stack::RestackPlan;
+use trellis_core::stack::{RestackPlan, RestackStep};
 use trellis_core::undo::RestackBefore;
 
 /// A restack job: the steps still to run, every branch's tip before its first run (for undo),
-/// and how the undo history names it ("restack of the branches above search").
+/// how the undo history names it ("restack of the branches above search"), and the step a
+/// stopped run stopped in.
 #[derive(Debug, Clone)]
 pub struct RestackJob {
     pub plan: RestackPlan,
     pub before: Option<RestackBefore>,
     pub detail: String,
+    pub stopped: Option<RestackStep>,
 }
 
 #[derive(Debug)]

@@ -173,3 +173,31 @@ fn head_on_a_middle_layer_moves_with_it_and_comes_back() {
     assert_eq!(head_name(&dir), "mid");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_layer_behind_on_a_behind_layer_moves_onto_its_new_tip() {
+    // main <- low <- mid (m1, m2) <- top (built on m1), then low amended: mid is behind on low
+    // and top behind on mid.
+    let dir = scratch_repo("stack-restack-two-behind");
+    write(&dir, "g.txt", "1\n2\n3\n4\n5\n6\n7\n8\n");
+    commit(&dir, "base");
+    git(&dir, &["checkout", "-q", "-b", "low"]);
+    commit(&dir, "l1");
+    git(&dir, &["checkout", "-q", "-b", "mid"]);
+    commit(&dir, "m1");
+    git(&dir, &["checkout", "-q", "-b", "top"]);
+    commit(&dir, "t1");
+    git(&dir, &["checkout", "-q", "mid"]);
+    commit(&dir, "m2");
+    git(&dir, &["checkout", "-q", "low"]);
+    git(&dir, &["commit", "-q", "--amend", "-m", "l1, amended"]);
+    let p = above_low(&dir, false);
+    assert_eq!(p.steps.len(), 2, "{p:?}");
+    let run = restack(&dir, &p).unwrap();
+    assert!(matches!(run.outcome, Outcome::Finished { .. }), "{:?}", run.outcome);
+    assert_eq!(tip(&dir, "mid~2"), tip(&dir, "low"), "mid keeps both its commits");
+    assert_eq!(parent(&dir, "top"), tip(&dir, "mid"), "top sits on mid's new tip");
+    assert_eq!(count(&dir, "low..top"), 3, "m1 is replayed once, m2 kept, t1 on top");
+    assert!(stacks_of(&dir).links.iter().all(|l| !l.behind));
+    let _ = std::fs::remove_dir_all(&dir);
+}

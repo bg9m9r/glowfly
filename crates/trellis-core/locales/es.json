@@ -1835,7 +1835,7 @@
   "signature.verdict.verified": "Verificada",
   "stack.blocked.up_to_date": "Las ramas sobre {branch} ya están en su punta.",
   "stack.blocked.worktree": "{branch} está extraída en otro worktree; reapílala desde allí.",
-  "stack.dropped": "El reapilado terminó antes de tiempo: {branches} no se reapilaron.",
+  "stack.dropped": "El reapilado terminó antes de tiempo. Sin reapilar: {branches}.",
   "stack.menu.on": "Apilada sobre {branch}",
   "stack.menu.on_behind": "Apilada sobre {branch} · hay que reapilar",
   "stack.menu.restack_above": "Reapilar las ramas de encima",

@@ -1,7 +1,7 @@
 //! Planning a restack (pure): one `git rebase --update-refs --onto` step per leaf of the stack
-//! that needs moving. A step replays the commits after the old base of the first layer that
-//! moves, so only the upper layers' own commits are replayed; `--update-refs` moves the middle
-//! layers on the way.
+//! that needs moving, plus one per layer above the first that is itself behind. A step replays
+//! the commits after the old base of the first layer it moves, so only the upper layers' own
+//! commits are replayed; `--update-refs` moves the middle layers on the way.
 
 use super::{RestackScope, Stacks};
 use git2::Oid;
@@ -70,9 +70,18 @@ pub fn plan(stacks: &Stacks, scope: &RestackScope, head_branch: Option<&str>, au
             !moved.contains(p[j]) && (behind || moved.contains(p[j - 1]))
         });
         let Some(j) = first else { continue };
-        let Some(link) = stacks.below(p[j]) else { continue };
-        let top = p[p.len() - 1];
-        steps.push(RestackStep { onto: p[j - 1].to_owned(), upstream: link.base, top: top.to_owned() });
+        // A layer above `j` that is behind its own lower layer starts a step of its own: the
+        // lower one's current tip isn't in the range replayed from `j`'s old base, so
+        // `--update-refs` wouldn't move it.
+        let mut start = j;
+        for k in j + 1..=p.len() {
+            if k < p.len() && !stacks.below(p[k]).is_some_and(|l| l.behind) {
+                continue;
+            }
+            let Some(link) = stacks.below(p[start]) else { break };
+            steps.push(RestackStep { onto: p[start - 1].to_owned(), upstream: link.base, top: p[k - 1].to_owned() });
+            start = k;
+        }
         moved.extend(&p[j..]);
     }
     let last_top = steps.last().map(|s: &RestackStep| s.top.as_str());

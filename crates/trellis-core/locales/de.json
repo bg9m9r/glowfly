@@ -1835,7 +1835,7 @@
   "signature.verdict.verified": "Verifiziert",
   "stack.blocked.up_to_date": "Die Branches über {branch} liegen schon auf seiner Spitze.",
   "stack.blocked.worktree": "{branch} ist in einem anderen Worktree ausgecheckt; stapele ihn dort neu.",
-  "stack.dropped": "Das Neustapeln endete vorzeitig: {branches} wurden nicht neu gestapelt.",
+  "stack.dropped": "Das Neustapeln endete vorzeitig. Nicht neu gestapelt: {branches}.",
   "stack.menu.on": "Gestapelt auf {branch}",
   "stack.menu.on_behind": "Gestapelt auf {branch} · muss neu gestapelt werden",
   "stack.menu.restack_above": "Branches darüber neu stapeln",

@@ -12,7 +12,7 @@ use crate::msg::{Msg, RebaseMsg};
 use crate::state::AppState;
 use crate::state::ToastAction;
 use crate::state::rebase::{STASH_LINE, needs_stash};
-use crate::state::stack::{PendingRestack, blocker, detail, plan_for};
+use crate::state::stack::{PendingRestack, blocker, detail, not_restacked, plan_for};
 use git2::RepositoryState;
 use std::time::Instant;
 use trellis_core::git_version::Feature;
@@ -42,7 +42,7 @@ pub(super) fn restack(st: &mut AppState, scope: RestackScope, autostash: bool, n
         fx.extend(super::update(st, ask, now));
         return;
     }
-    let job = RestackJob { plan: plan_for(snap, &scope, autostash), before: None, detail: detail(snap, &scope) };
+    let job = RestackJob { plan: plan_for(snap, &scope, autostash), before: None, detail: detail(snap, &scope), stopped: None };
     let effect = move |cwd| Effect::Rebase(RebaseEffect::Restack { cwd, job });
     if super::ops::begin_job(st, JOB_LABEL, false, effect, fx) != Started::No {
         super::submodule_batch::job_started(st, JOB_LABEL, true);
@@ -100,7 +100,7 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot) {
     }
     let Some(i) = st.restacks.iter().position(|p| same_spelling(&p.workdir, &snap.workdir)) else { return };
     let pending = st.restacks.remove(i);
-    let tops: Vec<&str> = pending.job.plan.steps.iter().map(|s| s.top.as_str()).collect();
+    let tops = not_restacked(snap, &pending.job);
     if !tops.is_empty() {
         let text = st.settings.lang().trf("stack.dropped", &[("branches", &tops.join(", "))]);
         st.log(false, text);
