@@ -13,6 +13,7 @@ use crate::conflict_check::ConflictCheckMsg;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
 use crate::msg::Msg;
+use crate::msg::OpPreviewMsg;
 use crate::msg::RebaseMsg;
 use crate::state::branches::{self, NO_REMOTES};
 use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere};
@@ -21,6 +22,7 @@ use crate::state::{ForgeState, Selection};
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
 use trellis_core::i18n::Lang;
+use trellis_core::op_preview::PreviewOp;
 use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{BranchInfo, Snapshot};
 use trellis_core::settings::GraphFilter;
@@ -109,7 +111,14 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
     } else if !current.is_empty() {
         let args: [(&str, &dyn std::fmt::Display); 1] = [("branch", &current)];
         menu_item(msgs, ui, t.trf("branch.menu.merge_into", &args), Msg::git("Merge", &["merge", name]));
+        let preview = |op| Msg::OpPreview(OpPreviewMsg::Open(op));
+        if let Some(oid) = b.oid {
+            menu_item(msgs, ui, t.tr("op_preview.menu.merge"), preview(PreviewOp::Merge { theirs: name.to_owned(), oid }));
+        }
         menu_item(msgs, ui, t.trf("branch.menu.rebase_onto", &args), Msg::git("Rebase", &["rebase", name]));
+        if let Some(oid) = b.oid {
+            menu_item(msgs, ui, t.tr("op_preview.menu.rebase"), preview(PreviewOp::Rebase { onto: name.to_owned(), oid }));
+        }
         let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch(name.to_owned())));
         menu_item(msgs, ui, t.trf("branch.menu.interactive_onto", &args), onto);
         let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(name.to_owned()));

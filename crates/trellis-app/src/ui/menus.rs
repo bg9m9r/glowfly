@@ -8,16 +8,19 @@ use super::widgets::reason::{self, ItemState};
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
 use crate::msg::Msg;
+use crate::msg::OpPreviewMsg;
 use crate::msg::RebaseMsg;
 use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
 use crate::state::commit_menu::{hard_reset_msg, reset_title};
+use crate::state::op_preview::pick_blocker;
 use crate::state::rebase_onto::{onto_commit_blocker, onto_menu_labels};
-use crate::state::selection::{CommitBlock, MultiSelection, cherry_pick_blocker};
+use crate::state::selection::{CommitBlock, MultiSelection, cherry_pick_blocker, in_graph_order};
 use crate::tag::TagMsg;
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use trellis_core::i18n::Lang;
+use trellis_core::op_preview::PreviewOp;
 use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{CommitInfo, Snapshot};
 use trellis_core::worktree_ops::WorktreeBase;
@@ -36,12 +39,16 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
     ui.separator();
     let pick = if merge { t.tr("commits.menu.cherry_pick_merge") } else { t.tr("commits.menu.cherry_pick") };
     menu_item_if(msgs, ui, pick, cherry_pick_blocker(snap, &[oid]).map(|b| b.text(t)), Msg::Selection(SelectionMsg::CherryPick(vec![oid])));
+    let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::CherryPick(vec![oid])));
+    menu_item_if(msgs, ui, t.tr("op_preview.menu.cherry_pick"), pick_blocker(t, snap, &[oid]).as_deref(), preview);
     let revert = if merge { t.tr("commits.menu.revert_merge") } else { t.tr("commits.menu.revert") };
     menu_item(msgs, ui, revert, Msg::Selection(SelectionMsg::Revert(vec![oid])));
     if let Some(current) = snap.head_branch.as_deref() {
         let blocked = onto_commit_blocker(t, snap, oid);
         let (plain, interactive) = onto_menu_labels(t, current);
         menu_item_if(msgs, ui, plain, blocked.as_deref(), Msg::git("Rebase", &["rebase", &sha]));
+        let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Rebase { onto: sha.clone(), oid }));
+        menu_item_if(msgs, ui, t.tr("op_preview.menu.rebase"), blocked.as_deref(), preview);
         let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));
         menu_item_if(msgs, ui, interactive, blocked.as_deref(), onto);
     }
@@ -73,6 +80,9 @@ fn reset_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs:
     let sha = c.oid.to_string();
     let current = snap.head_branch.as_deref();
     ui.menu_button(reset_title(t, current), |ui| {
+        let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Reset { to: c.oid }));
+        menu_item(msgs, ui, t.tr("op_preview.menu.reset"), preview);
+        ui.separator();
         menu_item(msgs, ui, t.tr("commits.menu.reset.soft"), Msg::git("Reset (soft)", &["reset", "--soft", &sha]));
         menu_item(msgs, ui, t.tr("commits.menu.reset.mixed"), Msg::git("Reset (mixed)", &["reset", "--mixed", &sha]));
         let ask = hard_reset_msg(t, snap, c);
@@ -86,6 +96,9 @@ fn reset_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs:
 pub fn multi_commit_menu(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     menu_header(ui, &t.trn("details.multi.selected", m.len(), &[]));
     let picked = cherry_pick_button(ui, t, t.tr("commits.menu.cherry_pick"), m, true, msgs);
+    let oldest_first = in_graph_order(m.oids.iter().copied(), snap, true);
+    let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::CherryPick(oldest_first)));
+    menu_item_if(msgs, ui, t.tr("op_preview.menu.cherry_pick"), m.pick_blocked.map(|b| b.text(t)), preview);
     let reverted = revert_button(ui, t, t.tr("commits.menu.revert"), m, true, msgs);
     ui.separator();
     super::rebase::edit_menu::multi(ui, t, m, snap, msgs);

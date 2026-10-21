@@ -61,6 +61,7 @@ pub mod op_actions;
 pub mod op_confirm;
 #[cfg(test)]
 pub(crate) mod op_fixture;
+pub mod op_preview;
 pub mod op_strip;
 pub mod palette;
 pub mod palette_commands;
@@ -219,7 +220,8 @@ pub struct RunningJob {
 }
 
 /// A dialog over the window. `Shortcuts` is the keyboard shortcut sheet, `filter` its filter
-/// field. `ConflictReport` is a conflict check the user asked for (branch menus, Check again).
+/// field. `ConflictReport` is a conflict check the user asked for (branch menus, Check again);
+/// `OpPreview` what a merge, rebase, reset, cherry-pick or drop would leave, before it runs.
 pub enum Modal {
     NewBranch {
         start: Option<String>,
@@ -302,6 +304,8 @@ pub enum Modal {
     CreateFork(Box<forks::ForkCreate>),
     Trust(trust::TrustPrompt),
     ConflictReport(conflict_check::ConflictReport),
+    /// What an operation would do, before it runs (ui/op_preview_dialog.rs).
+    OpPreview(Box<op_preview::PreviewDialog>),
     ForgeFilter(Box<forge_filter_form::FilterForm>),
     /// An invalid link, a linked repository not found, or several copies to choose from.
     DeepLink(deep_link::LinkDialog),

@@ -47,6 +47,7 @@ mod line_counts;
 mod logs;
 mod notify;
 mod onboarding;
+mod op_preview;
 mod os;
 mod patches;
 mod path_search;

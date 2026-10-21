@@ -31,6 +31,7 @@ impl Effect {
             | Effect::VerifySignature { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
             Effect::CheckConflicts(j) => Some(&j.workdir),
+            Effect::OpPreview(j) => Some(&j.workdir),
             Effect::Journal(e) => Some(e.scope()),
             Effect::LoadBlame(r) => Some(&r.workdir),
             Effect::LoadFileText(r) => Some(&r.workdir),

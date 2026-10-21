@@ -57,6 +57,7 @@ mod logs_runs;
 mod logs_tabs;
 mod notify;
 mod onboarding;
+mod op_preview;
 mod op_progress;
 mod ops;
 mod palette;
@@ -195,6 +196,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Patch(m) => patch::handle(st, m, now, &mut fx),
         Msg::Tools(m) => tools::handle(st, m, now, &mut fx),
         Msg::ConflictCheck(m) => conflict_check::handle(st, m, now, &mut fx),
+        Msg::OpPreview(m) => op_preview::handle(st, m, now, &mut fx),
         Msg::Journal(m) => journal::handle(st, m, now, &mut fx),
         Msg::PullRequest(m) => pull_request::handle(st, m, now, &mut fx),
         Msg::Issue(m) => issue::handle(st, m, now, &mut fx),

@@ -159,7 +159,7 @@ fn actions(t: Lang, report: &ConflictReport) -> Vec<(String, Msg)> {
 
 /// The paths in monospace, at most SHOWN_FILES; in the popover in a short scroll area of its
 /// own (`short`), in the report dialog in the dialog's.
-fn file_list(ui: &mut egui::Ui, t: Lang, paths: &[String], short: bool) {
+pub(super) fn file_list(ui: &mut egui::Ui, t: Lang, paths: &[String], short: bool) {
     let (shown, more) = cc::file_list(t, paths);
     egui::Frame::new().fill(color::input()).corner_radius(4.0).inner_margin(egui::Margin::symmetric(8, 6)).show(ui, |ui| {
         let lines = |ui: &mut egui::Ui| {

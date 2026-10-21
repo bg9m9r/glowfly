@@ -25,6 +25,7 @@ mod branches;
 mod clone_commit;
 mod harness_tests;
 mod journal_restore;
+mod op_preview;
 mod probe;
 mod rebase_conflict;
 mod stash_undo;

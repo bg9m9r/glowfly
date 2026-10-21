@@ -60,6 +60,7 @@ impl Modal {
             | Modal::Mainline(_)
             | Modal::TrashOffer(_)
             | Modal::AutoStash(_)
+            | Modal::OpPreview(_)
             | Modal::CreateFork(_) => Confirm,
             // Their filter fields are cheap to type again.
             Modal::Shortcuts { .. }
@@ -140,6 +141,7 @@ impl Modal {
             | Modal::Mainline(_)
             | Modal::TrashOffer(_)
             | Modal::AutoStash(_)
+            | Modal::OpPreview(_)
             | Modal::CreateFork(_)
             | Modal::Shortcuts { .. }
             | Modal::About

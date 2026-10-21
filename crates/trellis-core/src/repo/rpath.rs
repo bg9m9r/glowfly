@@ -18,7 +18,7 @@ pub(super) fn entry(bytes: &[u8], status: char) -> FileEntry {
 }
 
 /// `bytes` for the screen: the UTF-8 parts as they are, each other byte as `\xHH`.
-pub(super) fn shown(bytes: &[u8]) -> String {
+pub(crate) fn shown(bytes: &[u8]) -> String {
     let mut out = String::with_capacity(bytes.len() + 8);
     for chunk in bytes.utf8_chunks() {
         out.push_str(chunk.valid());

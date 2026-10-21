@@ -1011,9 +1011,6 @@ follow-ups go to Ideas, not here.
 
 Chosen on 2026-10-19 as the features that make Trellis its own, in this order.
 
-- Preview before you act: before a rebase, merge, reset, cherry-pick or drop, show the graph as
-  it will look afterwards (worked out in a temporary index or worktree), with the commits that
-  move, disappear or conflict marked, then Apply or Cancel
 - Stacked branches: recognise a branch built on another, draw the stack, restack everything
   above after amending a lower branch (`git rebase --update-refs`), and push the stack with one
   pull request per layer
@@ -1265,6 +1262,28 @@ here, under the item they grew from.
   sand in the palette, a vine lane style, and plain descriptive feature names
 - Explain mode: a toggle that shows, in tooltips and confirmations, the git command each action
   runs and what it does in one plain sentence
+
+### Preview before you act
+
+- Draw the preview on the real lane graph (both sides of a merge, branch lanes), with a
+  before/after view side by side
+- Replay rebase, cherry-pick and drop previews with git merge-tree --merge-base per step (git
+  2.40+) so merge drivers, rerere and merge.renames apply as in the real run
+- Preview a cherry-pick or revert of a merge commit with its mainline (from the mainline
+  dialog), and preview Revert
+- Preview the interactive rebase panel's list (reorder, squash, reword, exec) and the graph's
+  reword and squash edits
+- Preview a pull, a Git Flow finish and a stash pop
+- Preview a rebase.rebaseMerges rebase and octopus merges in drop plans
+- A Cancel button and a progress line for long previews; lift the 500-commit replay cap
+- Command palette entries for the preview actions
+- Offer Preview from the conflict check report and chip popover, and from the drop and hard
+  reset confirmations
+- Show what happens to uncommitted changes (the auto-stash and whether putting it back
+  conflicts)
+- Click a preview row to see its rewritten diff against the original commit
+- A preference that makes the merge, rebase, reset, cherry-pick and drop items always preview
+  first
 
 ### Operation journal
 

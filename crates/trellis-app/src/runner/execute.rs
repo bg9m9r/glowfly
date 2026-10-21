@@ -3,9 +3,9 @@
 
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, dashboard, deep_link, diff_gaps, expect, files, forge_calls, forks,
-    git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, os, patches, path_search, profiles,
-    pull_request, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools, trust, updates,
-    worktrees,
+    git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, op_preview, os, patches,
+    path_search, profiles, pull_request, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools,
+    trust, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
@@ -192,6 +192,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Onboarding(e) => Some(onboarding::run(e)),
         Effect::Theme(e) => themes::run(e),
         Effect::CheckConflicts(job) => Some(conflict_check::run(job)),
+        Effect::OpPreview(job) => Some(op_preview::run(job)),
         Effect::Journal(e) => Some(journal::run(e)),
         Effect::Remote(e) => Some(forks::run(e)),
         Effect::Clone(e) => Some(clone::run(e)),

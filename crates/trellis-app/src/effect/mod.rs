@@ -24,6 +24,7 @@ mod issue;
 mod line_counts;
 mod names;
 mod notify;
+mod op_preview;
 mod rebase;
 mod repo;
 mod repos;
@@ -46,6 +47,7 @@ pub use init::InitEffect;
 pub use issue::*;
 pub use line_counts::{FailedLineCounts, LineCountsEffect};
 pub use notify::{DesktopNote, NoteKind};
+pub use op_preview::OpPreviewJob;
 pub use rebase::RebaseEffect;
 pub use repo::{ConflictRead, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;
@@ -377,6 +379,8 @@ pub enum Effect {
     Onboarding(crate::onboarding::OnboardingEffect),
     /// Dry-runs a merge with git merge-tree (conflict_check.rs); reads only.
     CheckConflicts(crate::conflict_check::CheckJob),
+    /// Works out what an operation would do without changing the repository (runner/op_preview.rs); reads only.
+    OpPreview(OpPreviewJob),
     /// Reading the operation journal and a state's preview (journal.rs); reads only.
     Journal(crate::journal::JournalEffect),
     /// Fork lists and forking for the REMOTE section (remote.rs); unscoped.

@@ -91,6 +91,8 @@ mod menu_bar;
 mod menus;
 mod modals;
 mod needs_you;
+mod op_preview_dialog;
+mod op_preview_rows;
 mod op_strip;
 mod palette;
 mod pane_status;
@@ -306,6 +308,8 @@ mod snapshot_tests_menu_copy;
 mod snapshot_tests_mica;
 #[cfg(test)]
 mod snapshot_tests_onboarding;
+#[cfg(test)]
+mod snapshot_tests_op_preview;
 #[cfg(test)]
 mod snapshot_tests_palette;
 #[cfg(test)]

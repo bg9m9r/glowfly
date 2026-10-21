@@ -28,6 +28,7 @@ mod init;
 mod issue;
 mod keys;
 mod layout;
+mod op_preview;
 mod prefs;
 mod rebase;
 mod recent;
@@ -54,6 +55,7 @@ pub use init::InitMsg;
 pub use issue::IssueMsg;
 pub use keys::KeysMsg;
 pub use layout::LayoutMsg;
+pub use op_preview::{OpPreviewMsg, ResetMode};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use recent::{FolderCheck, RecentMsg};
@@ -135,6 +137,8 @@ pub enum Msg {
     Tools(crate::tools::ToolsMsg),
     /// Predicted merge conflicts of the current branch (update/conflict_check.rs).
     ConflictCheck(crate::conflict_check::ConflictCheckMsg),
+    /// Previewing an operation before it runs (update/op_preview.rs).
+    OpPreview(OpPreviewMsg),
     /// The operation journal: the states HEAD and the branches have been in, and Restore
     /// (update/journal.rs).
     Journal(crate::journal::JournalMsg),
@@ -296,6 +300,7 @@ impl Msg {
             Msg::Patch(m) => m.on_inactive(),
             Msg::Tools(m) => m.on_inactive(),
             Msg::ConflictCheck(m) => m.on_inactive(),
+            Msg::OpPreview(m) => m.on_inactive(),
             Msg::Journal(m) => m.on_inactive(),
             Msg::PullRequest(m) => m.on_inactive(),
             Msg::Issue(m) => m.on_inactive(),

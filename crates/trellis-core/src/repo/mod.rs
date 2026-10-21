@@ -129,6 +129,7 @@ pub use resolve::{Choice, conflict_ids, render_output, resolve_with_side, write_
 pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_conflicted, mark_resolved, resolve_undo_ids, resolved_paths};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::{ALREADY_REVERTED, RevertPart, RevertRequest, Reverted, revert};
+pub(crate) use rpath::shown as shown_path;
 pub use status::{ChangeCounts, status_at};
 pub use status_merge::{covers, merge_unstaged};
 pub use status_paths::{CLI_PATH_BYTES, PathsStatus, status_of_paths};

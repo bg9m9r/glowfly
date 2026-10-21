@@ -47,6 +47,7 @@ pub mod matching;
 pub mod names;
 pub mod native_path;
 pub mod notices;
+pub mod op_preview;
 pub mod opens;
 pub mod patch_ops;
 pub mod path_query;

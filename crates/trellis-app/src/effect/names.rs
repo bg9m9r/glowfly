@@ -1,6 +1,6 @@
 //! Short names of effects, for the worker threads and the debug log.
 
-use super::Effect;
+use super::{Effect, OpPreviewJob};
 
 impl Effect {
     /// A short name for the worker thread and the debug log.
@@ -75,6 +75,7 @@ impl Effect {
             Effect::Onboarding(e) => e.name(),
             Effect::Theme(e) => e.name(),
             Effect::CheckConflicts(_) => "check-conflicts",
+            Effect::OpPreview(_) => OpPreviewJob::name(),
             Effect::Journal(e) => e.name(),
             Effect::Remote(e) => e.name(),
             Effect::Clone(e) => e.name(),
@@ -149,6 +150,7 @@ impl Effect {
             | Effect::Onboarding(_)
             | Effect::Theme(_)
             | Effect::CheckConflicts(_)
+            | Effect::OpPreview(_)
             | Effect::Journal(_)
             | Effect::Remote(_)
             | Effect::Clone(_)

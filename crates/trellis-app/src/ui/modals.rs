@@ -14,7 +14,8 @@
 //! fork as a remote and forking on the hosting service (drawn by `remotes/fork_pick.rs` and
 //! `remotes/fork_create.rs`), the keyboard shortcut sheet (drawn by `shortcuts/sheet.rs`), the
 //! repository trust prompt (drawn by `trust_dialog.rs`), a conflict check's report (drawn by
-//! `conflict_check.rs`), a pull request or issue filter (drawn by `forge_filter_dialog.rs`), the
+//! `conflict_check.rs`), what an operation would do before it runs (drawn by
+//! `op_preview_dialog.rs`), a pull request or issue filter (drawn by `forge_filter_dialog.rs`), the
 //! trellis:// link dialogs (drawn by `deep_link_dialog.rs`), creating an issue (drawn by
 //! `issue/create_dialog.rs`), rewording a commit from the graph (drawn by
 //! `rebase/reword_dialog.rs`), the About dialog (drawn by `menu_bar/about.rs`), the release notes
@@ -50,6 +51,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let repo_sync = st.repo_sync.as_ref();
     // The Generate SSH key dialog's fields live on the SSH page (a borrow apart from the modal's).
     let ssh_page = st.prefs.as_mut().map(|p| &mut p.ssh);
+    let preview_env = super::op_preview_dialog::Env {
+        snap: st.snap.as_ref(),
+        settings: &st.settings,
+        now: st.view.now,
+        offset: st.view.utc_offset,
+        idle: st.job.is_none(),
+    };
     let Some(modal) = st.modal.as_mut() else { return };
     let snap = st.snap.as_ref();
     let fs = st.forge.as_ref();
@@ -125,6 +133,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 let on_head = snap.is_some_and(|s| crate::state::conflict_check::for_head(r, s));
                 close = super::conflict_check::report_modal(ui, cx, r, remote, on_head, idle, msgs);
             }
+            Modal::OpPreview(d) => close = super::op_preview_dialog::show(ui, cx, d, &preview_env, msgs),
             Modal::ForgeFilter(form) => close = super::forge_filter_dialog::show(ui, cx, form, fs, &repo_filters, msgs),
             Modal::DeepLink(d) => close = super::deep_link_dialog::show(ui, cx, d, msgs),
             Modal::CreateIssue(form) => close = super::issue::create_dialog::show(ui, cx, form, fs, msgs),
