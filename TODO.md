@@ -19,7 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
-- 2026-10-21 14:46 · **CI / build status**: per-check list with states, durations and Required tags in the pull request panel (`7db7767a`)
+- 2026-10-21 14:46 · **CI / build status**: per-check list with states, durations and Required tags in the pull request panel (`718a895c`)
 - 2026-10-21 13:46 · **Search and filter**: background commit index of large repositories' whole history, so search counts, Enter, Filter and Keep searching cover every commit and load straight to the next match, with review fixes applied (`b733326f`)
 - 2026-10-21 13:41 · **SSH key management**: Keys named in ~/.ssh/config or by Use existing are matched against the listed keys on disk so a link, short name or other case lists once, and the Windows OpenSSH switch lands on main (`d817ddba`)
 - 2026-10-21 12:06 · **SSH key management**: Preferences > SSH lists the keys ~/.ssh/config and its Includes name (with an In ssh config chip, and the entries it can't list with the reason), shows keys only the agent holds with Copy public key, and on Windows offers Use Windows' OpenSSH (global core.sshCommand) when git runs its bundled ssh, with Use Git's own ssh to undo (`d817ddba`)
