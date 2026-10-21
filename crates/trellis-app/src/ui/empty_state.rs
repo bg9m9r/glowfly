@@ -121,19 +121,26 @@ pub(super) fn block(ui: &mut Ui, glyph: Glyph, title: RichText, hint: Option<&st
     let n = rows.len() as f32;
     let buttons_h = if rows.is_empty() { 0.0 } else { 16.0 + n * BUTTON_H + (n - 1.0) * gap_y };
     let glyph_h = if matches!(glyph, Glyph::Spinner) { SPINNER } else { ICON };
-    let block_h = glyph_h + 16.0 + title_h + hint_h + buttons_h;
+    // On a pane too short for the whole block (a terminal panel), the icon is left out so the
+    // title, hint and buttons stay in view.
+    let text_h = title_h + hint_h + buttons_h;
+    let short = matches!(glyph, Glyph::Icon(_)) && area.height().is_finite() && area.height() < MIN_TOP + glyph_h + 16.0 + text_h;
+    let (glyph_h, glyph_gap) = if short { (0.0, 0.0) } else { (glyph_h, 16.0) };
+    let block_h = glyph_h + glyph_gap + text_h;
     let free = if area.height().is_finite() { area.height() - block_h } else { 0.0 };
     let top = area.top() + (free / 3.0).max(MIN_TOP);
     let block = egui::Rect::from_min_size(pos2(area.center().x - width / 2.0, top), vec2(width, block_h.max(0.0)));
     let mut clicked = None;
     ui.scope_builder(UiBuilder::new().max_rect(block).layout(Layout::top_down(Align::Center)), |ui| {
-        let (rect, _) = ui.allocate_exact_size(vec2(glyph_h, glyph_h), egui::Sense::hover());
-        match glyph {
-            Glyph::Icon(icon) => super::empty_state_icons::paint(ui.painter(), rect.center(), icon, color::weak()),
-            Glyph::Severity(s) => severity::paint(ui.painter(), rect.center(), ICON, s, s.color()),
-            Glyph::Spinner => egui::Spinner::new().size(SPINNER).color(color::weak()).paint_at(ui, rect),
+        if !short {
+            let (rect, _) = ui.allocate_exact_size(vec2(glyph_h, glyph_h), egui::Sense::hover());
+            match glyph {
+                Glyph::Icon(icon) => super::empty_state_icons::paint(ui.painter(), rect.center(), icon, color::weak()),
+                Glyph::Severity(s) => severity::paint(ui.painter(), rect.center(), ICON, s, s.color()),
+                Glyph::Spinner => egui::Spinner::new().size(SPINNER).color(color::weak()).paint_at(ui, rect),
+            }
+            ui.add_space(glyph_gap);
         }
-        ui.add_space(16.0);
         ui.add(egui::Label::new(title).wrap());
         if let Some(hint) = hint {
             ui.add_space(8.0);

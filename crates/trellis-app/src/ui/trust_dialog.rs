@@ -1,8 +1,8 @@
 //! The "Trust this repository?" dialog: what in the repository's own config and hooks makes git
 //! run programs, and the Trust / Don't trust choice (update/trust.rs records it). When a git
-//! job the user started waits for the decision, it names that job and offers Trust and run or
-//! Cancel instead. For a repository trusted earlier that gained settings or hooks since, it asks
-//! again and lists only what is new.
+//! job the user started, or the built-in terminal's shells, wait for the decision, it says so
+//! and offers Trust and run or Cancel instead. For a repository trusted earlier that gained
+//! settings or hooks since, it asks again and lists only what is new.
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
@@ -22,9 +22,10 @@ pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     let title = if p.gained.is_some() { "Trust this repository again?" } else { "Trust this repository?" };
     let mut d = Dialog::new(cx, title).begin(ui);
     d.body(ui, |ui| body(ui, p));
-    let footer = match p.held {
-        Some(_) => Footer::new().cancel().danger(buttons::primary("Trust and run")),
-        None => Footer::new().alt(buttons::secondary("Don't trust")).danger(buttons::primary("Trust")),
+    let footer = if p.held.is_some() || p.terminal {
+        Footer::new().cancel().danger(buttons::primary("Trust and run"))
+    } else {
+        Footer::new().alt(buttons::secondary("Don't trust")).danger(buttons::primary("Trust"))
     };
     let out = d.finish(ui, footer);
     if out.primary || out.alt.is_some() {
@@ -39,6 +40,11 @@ fn body(ui: &mut Ui, p: &TrustPrompt) {
     ui.add(egui::Label::new(RichText::new(trellis_core::native_path::shown(&p.workdir)).color(color::weak())).wrap());
     if let Some(label) = &p.held {
         let what = format!("{} needs git to run this repository's settings and hooks.", printable(label));
+        ui.add(egui::Label::new(RichText::new(what).font(type_scale::strong(ui, type_scale::BODY))).wrap());
+    }
+    if p.terminal {
+        let what =
+            "The terminal waits for this decision: shell prompts often run git, which runs what this repository's settings and hooks name.";
         ui.add(egui::Label::new(RichText::new(what).font(type_scale::strong(ui, type_scale::BODY))).wrap());
     }
     if p.refused {

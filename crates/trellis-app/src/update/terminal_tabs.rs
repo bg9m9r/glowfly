@@ -88,7 +88,7 @@ pub(super) fn kill(st: &mut AppState, fx: &mut Vec<Effect>) {
     match s.status {
         SessionStatus::Running => fx.push(Effect::Terminal(E::CheckActivity { id: s.id, then: AfterCheck::Kill })),
         SessionStatus::Starting => fx.push(Effect::Terminal(E::Kill(s.id))),
-        SessionStatus::Exited(_) | SessionStatus::Failed(_) => {}
+        SessionStatus::Exited(_) | SessionStatus::Failed(_) | SessionStatus::Held => {}
     }
 }
 
@@ -165,7 +165,8 @@ fn workdir_is_active(st: &AppState, workdir: &std::path::Path) -> bool {
 /// position and name, still active.
 pub(super) fn restart(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(i) = active_index(st) else { return };
-    if st.terminal.sessions[i].alive() {
+    // A held shell hasn't started, so nothing ended; trusting the repository starts it.
+    if st.terminal.sessions[i].alive() || st.terminal.sessions[i].status == SessionStatus::Held {
         return;
     }
     let old = st.terminal.sessions.remove(i);

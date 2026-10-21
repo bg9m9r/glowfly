@@ -4,7 +4,7 @@
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, settings, with_repo};
 use crate::msg::{Msg, TrustMsg};
-use crate::state::trust::{TrustPrompt, record};
+use crate::state::trust::{Standing, TrustPrompt, record, record_trusted};
 use crate::state::{AppState, Modal};
 use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
@@ -22,7 +22,16 @@ fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, held: Option
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     let workdir = PathBuf::from("C:/work/tools");
     let held = held.map(str::to_owned);
-    st.modal = Some(Modal::Trust(TrustPrompt { name: "tools".into(), real: workdir.clone(), workdir, scan, refused, held, gained: None }));
+    st.modal = Some(Modal::Trust(TrustPrompt {
+        name: "tools".into(),
+        real: workdir.clone(),
+        workdir,
+        scan,
+        refused,
+        held,
+        gained: None,
+        terminal: false,
+    }));
     st
 }
 
@@ -162,8 +171,26 @@ fn trust_prompt_changed() {
     assert!(h.query_by_label("pre-commit").is_none());
 }
 
+#[test]
+fn trust_prompt_terminal() {
+    let scan = TrustScan { config: vec![setting("core.fsmonitor", ".git/fsmon.sh")], ..TrustScan::default() };
+    let mut st = prompt_state(ThemeChoice::Dark, scan, false, None);
+    if let Some(Modal::Trust(p)) = st.modal.as_mut() {
+        p.terminal = true;
+    }
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("trust_prompt_terminal");
+    assert!(h.query_by_label_contains("The terminal waits for this decision").is_some());
+    assert!(h.query_by_label("Trust and run").is_some() && h.query_by_label("Cancel").is_some());
+    assert!(h.query_by_label("Don't trust").is_none(), "the shells' prompt offers Trust and run or Cancel");
+    h.press_key(eframe::egui::Key::Enter);
+    h.run();
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Trust(TrustMsg::Decide { .. }))), "Enter never trusts");
+}
+
 /// Gives the fixture at `dir` a core.sshCommand and loads it again, so its git is held.
-fn make_untrusted(st: &mut AppState, dir: &Path) -> PathBuf {
+pub(super) fn make_untrusted(st: &mut AppState, dir: &Path) -> PathBuf {
     git(dir, &["config", "core.sshCommand", "ssh -v"], "2026-01-05T10:00:00+00:00");
     reload(st, dir, &LoadOptions::all(500));
     st.snap.as_ref().unwrap().real_workdir.clone()
@@ -202,6 +229,38 @@ fn toolbar_untrusted_light() {
         h.run();
     }
     assert!(h.query_by_label_contains("You chose not to trust").is_some());
+    remove_fixture(&dir);
+}
+
+#[test]
+fn toolbar_untrusted_changed() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "toolbar-untrusted-changed");
+    let real = make_untrusted(&mut st, &dir);
+    let print = st.snap.as_ref().unwrap().trust_print.clone();
+    record_trusted(&mut st.settings, &real, print);
+    let hook = dir.join(".git").join("hooks").join("post-merge");
+    std::fs::write(
+        &hook,
+        "#!/bin/sh
+exit 0
+",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    assert_eq!(st.trust_standing(), Some(Standing::Changed));
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("Untrusted").hover();
+    for _ in 0..4 {
+        h.run();
+    }
+    assert!(h.query_by_label_contains("gained settings or hooks").is_some());
+    h.check_snapshot("toolbar_untrusted_changed");
     remove_fixture(&dir);
 }
 

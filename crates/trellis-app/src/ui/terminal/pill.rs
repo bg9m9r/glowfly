@@ -47,6 +47,7 @@ fn status_line(t: Lang, status: &SessionStatus) -> String {
         SessionStatus::Exited(Some(code)) => t.trf("terminal.tab.exited", &[("code", code)]),
         SessionStatus::Exited(None) => t.tr("terminal.tab.exited_unknown").to_owned(),
         SessionStatus::Failed(_) => t.tr("terminal.tab.failed").to_owned(),
+        SessionStatus::Held => t.tr("terminal.tab.held").to_owned(),
     }
 }
 

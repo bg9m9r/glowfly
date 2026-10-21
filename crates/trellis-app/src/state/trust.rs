@@ -108,6 +108,8 @@ pub struct TrustPrompt {
     pub held: Option<String>,
     /// For a repository trusted earlier (`Standing::Changed`): what its scan gained since.
     pub gained: Option<TrustScan>,
+    /// The built-in terminal's shells wait for this decision: Trust and run / Cancel.
+    pub terminal: bool,
 }
 
 /// The prompt for the loaded repository `snap`.
@@ -125,6 +127,7 @@ pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
         refused: standing == Standing::NotTrusted,
         held: None,
         gained,
+        terminal: false,
     }
 }
 

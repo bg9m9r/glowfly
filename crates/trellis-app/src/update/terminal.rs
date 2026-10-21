@@ -131,15 +131,36 @@ pub(super) fn remember_open(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// Starts a shell for the active repository if the panel is open and it has none yet. A shell
-/// that ended (or failed to start) counts: it is restarted only when the user asks.
+/// that ended (or failed to start) counts: it is restarted only when the user asks. Held shells
+/// of the active repository start once git runs there unasked (`release_held`).
 pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if !st.terminal.open {
+    let Some(workdir) = st.snap.as_ref().map(|s| s.workdir.clone()) else { return };
+    if st.terminal.open && st.terminal.sessions_for(&workdir).next().is_none() {
+        let shell = st.settings.terminal.shell.clone();
+        spawn(st, workdir, 1, None, shell, fx);
+    }
+    release_held(st, fx);
+}
+
+/// Starts every held shell (`SessionStatus::Held`) of the active repository, if git runs there
+/// unasked now: each gets a fresh screen at the panel's size and keeps its id, number, shell
+/// and name. The terminal takes the keyboard when the panel is open.
+pub(super) fn release_held(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if !st.runs_git_unasked() {
         return;
     }
     let Some(workdir) = st.snap.as_ref().map(|s| s.workdir.clone()) else { return };
-    if st.terminal.sessions_for(&workdir).next().is_none() {
-        let shell = st.settings.terminal.shell.clone();
-        spawn(st, workdir, 1, None, shell, fx);
+    let (rows, cols) = st.terminal.grid.unwrap_or(DEFAULT_SIZE);
+    let mut started = false;
+    for s in st.terminal.sessions.iter_mut().filter(|s| s.workdir == workdir && s.status == SessionStatus::Held) {
+        s.status = SessionStatus::Starting;
+        s.screen = TermScreen::new(rows, cols);
+        s.selection = None;
+        fx.push(Effect::Terminal(E::Spawn { id: s.id, cwd: workdir.clone(), rows, cols, shell: s.shell.clone() }));
+        started = true;
+    }
+    if started && st.terminal.open {
+        st.terminal.focus_requested = true;
     }
 }
 
@@ -165,7 +186,9 @@ pub(super) fn tab_closed(st: &mut AppState, path: &Path, closing: &[usize], fx: 
 }
 
 /// Starts `shell` numbered `number` in `workdir`, at `index` in the sessions (else at the end),
-/// and makes it the repository's active tab. Returns its id.
+/// and makes it the repository's active tab. Returns its id. `workdir` is always the active
+/// repository's (every caller passes the active snapshot's): while git is held there, the tab
+/// is made but its shell waits (`SessionStatus::Held`) until the repository is trusted.
 pub(super) fn spawn(
     st: &mut AppState,
     workdir: PathBuf,
@@ -177,6 +200,7 @@ pub(super) fn spawn(
     let id = st.terminal.next_id;
     st.terminal.next_id += 1;
     let (rows, cols) = st.terminal.grid.unwrap_or(DEFAULT_SIZE);
+    let held = !st.runs_git_unasked();
     let session = TermSession {
         id,
         number,
@@ -185,7 +209,7 @@ pub(super) fn spawn(
         shell: shell.clone(),
         name: None,
         screen: TermScreen::new(rows, cols),
-        status: SessionStatus::Starting,
+        status: if held { SessionStatus::Held } else { SessionStatus::Starting },
         selection: None,
     };
     match index {
@@ -193,7 +217,11 @@ pub(super) fn spawn(
         _ => st.terminal.sessions.push(session),
     }
     st.terminal.active.insert(workdir.clone(), id);
-    fx.push(Effect::Terminal(E::Spawn { id, cwd: workdir, rows, cols, shell }));
+    if held {
+        tracing::debug!("holding a shell until {} is trusted", workdir.display());
+    } else {
+        fx.push(Effect::Terminal(E::Spawn { id, cwd: workdir, rows, cols, shell }));
+    }
     id
 }
 

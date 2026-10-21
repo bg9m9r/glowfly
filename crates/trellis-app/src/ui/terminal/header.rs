@@ -6,7 +6,7 @@
 use super::tabs;
 use crate::keymap::BindingId;
 use crate::msg::{Msg, PrefsMsg};
-use crate::state::terminal::{self, TermSession};
+use crate::state::terminal::{self, SessionStatus, TermSession};
 use crate::state::tip::Tip;
 use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
@@ -67,6 +67,7 @@ fn buttons(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let kill = t.tr("terminal.header.kill");
     let blocked = match session {
         None => Some(t.tr("terminal.header.no_terminal")),
+        Some(s) if s.status == SessionStatus::Held => Some(t.tr("terminal.header.held")),
         Some(s) if !s.alive() => Some(t.tr("terminal.header.ended")),
         Some(_) => None,
     };

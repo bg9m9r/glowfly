@@ -391,6 +391,8 @@ pub(super) mod trust_held_tests;
 pub(super) mod trust_inherit_tests;
 #[path = "trust_print_tests.rs"]
 pub(super) mod trust_print_tests;
+#[path = "trust_terminal_tests.rs"]
+pub(super) mod trust_terminal_tests;
 #[path = "trust_tests.rs"]
 pub(super) mod trust_tests;
 #[path = "undo_continue_tests.rs"]

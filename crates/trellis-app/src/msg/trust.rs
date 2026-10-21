@@ -12,6 +12,9 @@ pub enum TrustMsg {
     Decide { real: PathBuf, trusted: bool },
     /// Show the trust prompt again for the active repository at `real` (toolbar chip, palette).
     Ask { real: PathBuf },
+    /// Show the trust prompt for the active repository at `real` on behalf of its held terminal
+    /// shells (the panel's Trust and run…).
+    AskForTerminal { real: PathBuf },
     /// The repositories a job just made from the trusted repository `from` (its real path), as
     /// read by the runner; `open` opens once they are recorded.
     Inherited { kind: InheritKind, from: PathBuf, repos: Vec<InheritedRepo>, open: Option<PathBuf> },
@@ -33,7 +36,7 @@ impl TrustMsg {
     /// as it is a user intent or an unscoped result and never comes back scoped.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::Decide { .. } | Self::Ask { .. } | Self::Inherited { .. } => None,
+            Self::Decide { .. } | Self::Ask { .. } | Self::AskForTerminal { .. } | Self::Inherited { .. } => None,
         }
     }
 }

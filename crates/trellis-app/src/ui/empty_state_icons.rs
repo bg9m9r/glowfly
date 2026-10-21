@@ -23,6 +23,8 @@ pub enum EmptyIcon {
     Commits,
     /// A clock face with an arrow turning back: no journal states.
     Journal,
+    /// A shield: the repository isn't trusted yet.
+    Shield,
 }
 
 /// Paints `icon` centred on `c` in `col`.
@@ -73,6 +75,7 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: EmptyIcon, col: Color32) {
             }
         }
         EmptyIcon::Journal => clock_back(p, c, s),
+        EmptyIcon::Shield => crate::ui::widgets::paint_icon_sized(p, c, crate::ui::widgets::Icon::Shield, col, 36.0),
     }
 }
 

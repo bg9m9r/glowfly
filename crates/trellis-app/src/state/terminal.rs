@@ -66,6 +66,9 @@ pub enum SessionStatus {
     Exited(Option<u32>),
     /// The shell could not be started.
     Failed(String),
+    /// No shell runs yet: git is held in its repository (trust), so the shell, whose prompt may
+    /// run git, waits; trusting it starts it (update/terminal.rs `release_held`).
+    Held,
 }
 
 pub struct TermSession {

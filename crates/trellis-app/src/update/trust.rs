@@ -21,7 +21,8 @@ use trellis_core::settings::RepoTrust;
 pub(super) fn handle(st: &mut AppState, msg: TrustMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         TrustMsg::Decide { real, trusted } => decide(st, &real, trusted, now, fx),
-        TrustMsg::Ask { real } => ask(st, &real),
+        TrustMsg::Ask { real } => ask(st, &real, false),
+        TrustMsg::AskForTerminal { real } => ask(st, &real, true),
         TrustMsg::Inherited { kind, from, repos, open } => super::trust_inherit::inherited(st, kind, &from, repos, open, fx),
     }
 }
@@ -32,14 +33,15 @@ fn holds(s: Standing) -> bool {
 }
 
 /// Shows the prompt again for the active repository at `real`, if git is held there (Undecided,
-/// NotTrusted or Changed) and no other dialog is open. Closes the palette, which never covers a
-/// dialog.
-fn ask(st: &mut AppState, real: &Path) {
+/// NotTrusted or Changed) and no other dialog is open; `terminal`: on behalf of its held
+/// terminal shells. Closes the palette, which never covers a dialog.
+fn ask(st: &mut AppState, real: &Path, terminal: bool) {
     let Some(snap) = st.snap.as_ref().filter(|s| same_spelling(&s.real_workdir, real)) else { return };
     if !holds(standing(&st.settings, snap)) || st.modal.is_some() {
         return;
     }
-    let prompt = prompt_for(&st.settings, snap);
+    let mut prompt = prompt_for(&st.settings, snap);
+    prompt.terminal = terminal;
     if !st.trust.asked.iter().any(|p| same_spelling(p, &prompt.real)) {
         st.trust.asked.push(prompt.real.clone());
     }
@@ -89,6 +91,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
         // The load options changed (trusted), so this is a full load whose status git reads.
         super::repo::refresh(st, fx);
         super::forge::refresh(st, true, false, now, fx);
+        released(st, fx);
         if let Some(h) = held {
             release(st, h, real, named, fx);
         }
@@ -269,6 +272,16 @@ pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
         fx.push(super::prefs::save_settings(st));
     }
     maybe_ask(st, kind == LoadKind::Open);
+    released(st, fx);
+}
+
+/// What waits outside the job gate for the active repository to run git unasked: held terminal
+/// shells and the LFS and Sparse Checkout pages' reads.
+pub(super) fn released(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if !st.runs_git_unasked() {
+        return;
+    }
+    super::terminal::release_held(st, fx);
 }
 
 /// Shows the trust prompt for the active repository if it is undecided (or gained settings or

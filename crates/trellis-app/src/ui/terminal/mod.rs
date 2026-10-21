@@ -6,6 +6,7 @@
 mod colors;
 mod grid;
 mod header;
+mod held;
 mod input;
 pub(super) mod metrics;
 mod mouse;
@@ -97,6 +98,10 @@ fn body(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 exit_strip(ui, code, msgs);
                 ui.with_layout(Layout::top_down(Align::Min), |ui| grid::show(ui, st, index, msgs));
             });
+        }
+        SessionStatus::Held => {
+            st.terminal.focused = false;
+            held::show(ui, st, msgs);
         }
         SessionStatus::Failed(error) => {
             st.terminal.focused = false;
