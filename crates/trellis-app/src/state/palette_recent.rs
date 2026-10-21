@@ -6,6 +6,7 @@
 use super::layout::Panel;
 use super::palette_commands::PaletteCommand;
 use super::palette_commands::palette_commands_rebase::RebaseCommand;
+use super::palette_commands::palette_stack::StackCommand;
 use super::palette_kinds::StashAction;
 use crate::logs::{LogKind, LogsMsg};
 use crate::msg::LayoutMsg;
@@ -153,6 +154,8 @@ impl PaletteCommand {
             C::Rebase(RebaseCommand::Resume(Resume::Skip)) => "rebase-skip",
             C::Rebase(RebaseCommand::EditRemaining) => "rebase-edit-steps",
             C::Rebase(RebaseCommand::RestoreOrder) => "rebase-restore-order",
+            C::Stack(StackCommand::Push(_)) => "push-stack",
+            C::Stack(StackCommand::CreatePrs(_)) => "create-stack-prs",
             C::OpenFileHistory(_) | C::OpenFolderHistory(_) | C::OpenBlame(_) => return None,
             C::Worktree(m) if **m == crate::worktree::WorktreeMsg::Prune => "prune-worktrees",
             C::Worktree(_) => return None,

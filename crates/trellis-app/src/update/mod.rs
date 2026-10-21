@@ -114,6 +114,8 @@ mod ssh_pick;
 mod ssh_service;
 mod ssh_use;
 mod stack;
+mod stack_prs;
+mod stack_push;
 mod stash;
 mod stash_push;
 mod status_tip;
@@ -192,6 +194,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::History(m) => history::handle(st, m, now, &mut fx),
         Msg::Blame(m) => blame::handle(st, m, now, &mut fx),
         Msg::Rebase(m) => rebase::handle(st, m, now, &mut fx),
+        Msg::Stack(m) => stack_push::handle(st, m, now, &mut fx),
         Msg::Tabs(m) => tabs::handle(st, m, &mut fx),
         Msg::Stage(m) => ops::stage(st, m, now, &mut fx),
         Msg::Commit(m) => commit::handle(st, m, now, &mut fx),

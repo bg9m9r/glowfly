@@ -117,6 +117,8 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::RunGit { .. }
             | Effect::Pick(_)
             | Effect::Rebase(_)
+            // Journeys push to local bare repositories.
+            | Effect::Stack(_)
             | Effect::UndoRedo { .. }
             | Effect::Stats { .. }
             | Effect::LineCounts(_)

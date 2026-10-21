@@ -63,6 +63,8 @@ pub struct ForgeState {
     pub tips: TipChecks,
     /// A push for a pull request succeeded: open its create dialog when the next snapshot lands.
     pub open_after_load: Option<super::push_pr::PrStart>,
+    /// Creating the pull requests of a stack, one create dialog per layer (update/stack_prs.rs).
+    pub stack_prs: Option<super::stack_prs::StackPrs>,
     /// Checks and votes past the first `CHECKED_PRS`, on services read per pull request.
     pub details: PrDetailPass,
     /// The Jira tracker's project keys.
@@ -90,6 +92,7 @@ impl ForgeState {
             last_refresh: None,
             tips: TipChecks::default(),
             open_after_load: None,
+            stack_prs: None,
             details: PrDetailPass::default(),
             jira_projects: ProjectKeys::Unknown,
             filters: Default::default(),
@@ -104,6 +107,15 @@ impl ForgeState {
         self.details.asking.clear();
         self.details.queue.clear();
         self.filters.replies_dropped();
+    }
+
+    /// The stack step of the create dialog for `source` (its name on the host): its index and
+    /// the stack's layer count, while a stack's run has that layer's dialog open.
+    pub fn stack_step(&self, source: &str) -> Option<(usize, usize)> {
+        match &self.stack_prs {
+            Some(super::stack_prs::StackPrs::Running(run)) => run.step_of(source),
+            _ => None,
+        }
     }
 
     pub fn pr_for_branch(&self, branch: &str) -> Option<&PullRequest> {

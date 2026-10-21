@@ -53,6 +53,7 @@ impl Effect {
             Effect::CheckRepoFolders(_) => "check-repo-folders",
             Effect::ReadTabGroups(_) => "read-tab-groups",
             Effect::SaveTabs { .. } => "save-tabs",
+            Effect::Stack(e) => e.name(),
             Effect::Os(e) => e.name(),
             Effect::Prefs(e) => e.name(),
             Effect::Ssh(e) => e.name(),
@@ -128,6 +129,7 @@ impl Effect {
             | Effect::Pick(_)
             | Effect::UndoRedo { .. }
             | Effect::Rebase(_)
+            | Effect::Stack(_)
             | Effect::Forge { .. }
             | Effect::Account(_)
             | Effect::Stats { .. }

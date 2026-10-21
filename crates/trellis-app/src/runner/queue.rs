@@ -209,6 +209,8 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Repos(ReposEffect::Scan { .. } | ReposEffect::Sync { op: SyncOp::Fetch { .. }, .. })
         // A network call, and a fetch that only adds objects.
         | Effect::Partial(_)
+        // Pushes update remote-tracking refs at most, like a push RunGit (`network_only`).
+        | Effect::Stack(_)
         | Effect::StopGit(_)
         | Effect::Ui(_) => None,
     }

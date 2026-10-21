@@ -53,7 +53,7 @@ fn open_row_menu(h: &mut H, local: bool) {
 
 /// Rests the pointer on `label` (a disabled item) until its reason shows; whether `why` is on
 /// screen.
-fn hover_shows(h: &mut H, label: &str, why: &str) -> bool {
+pub(super) fn hover_shows(h: &mut H, label: &str, why: &str) -> bool {
     let at = center(&h.get_by_label(label));
     rest_on(h, at);
     h.query_by_label_contains(why).is_some()

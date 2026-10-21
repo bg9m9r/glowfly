@@ -17,7 +17,7 @@ use trellis_core::forge::{Provider, PullRequest, Target};
 use trellis_core::repo::{BranchInfo, Tracking};
 use trellis_core::settings::ThemeChoice;
 
-fn tip(st: &AppState, name: &str) -> Oid {
+pub(super) fn tip(st: &AppState, name: &str) -> Oid {
     st.snap.as_ref().unwrap().locals.iter().find(|b| b.name == name).and_then(|b| b.oid).unwrap()
 }
 
@@ -27,7 +27,7 @@ fn branch<'a>(st: &'a mut AppState, name: &str) -> &'a mut BranchInfo {
 
 /// The fixture on GitHub through `origin`, whose loaded branches are `remote` (each at the
 /// local branch's tip of the same name).
-fn with_host(theme: ThemeChoice, name: &str, remote: &[&str]) -> (AppState, PathBuf) {
+pub(super) fn with_host(theme: ThemeChoice, name: &str, remote: &[&str]) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let target =
         Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };

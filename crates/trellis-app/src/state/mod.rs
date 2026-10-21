@@ -127,6 +127,8 @@ pub mod ssh_marks;
 pub mod ssh_service;
 pub mod ssh_use;
 pub mod stack;
+pub mod stack_prs;
+pub mod stack_push;
 pub mod stack_rows;
 pub mod stash_confirm;
 pub mod stashes;

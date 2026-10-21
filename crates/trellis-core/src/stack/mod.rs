@@ -6,17 +6,23 @@
 //! rebased or gained commits, so the branches above it need a restack. `plan` turns a request
 //! into `git rebase --update-refs --onto` steps, one per leaf that needs moving (and one per
 //! layer above it that is itself behind), and `restack` runs them through gitcli (so hooks,
-//! signing and config apply), resuming after a stop.
+//! signing and config apply), resuming after a stop. `push` sends every layer through gitcli
+//! with `git push --porcelain` (`porcelain` builds the commands and reads the answer), leasing
+//! only layers rewritten locally and never pushing one that is behind or diverged.
 
 use git2::Oid;
 
 mod link;
 mod plan;
+mod porcelain;
+mod push;
 mod read;
 mod restack;
 
 pub use link::{BranchTip, StackInput, link};
 pub use plan::{RestackPlan, RestackStep, plan};
+pub use porcelain::{commands as push_commands, parse as parse_porcelain};
+pub use push::{LayerOutcome, LayerPushed, MAX_LEASE_REFLOG, PushPlan, PushTarget, StackPush, classify, push};
 pub use read::read;
 pub use restack::{RestackRun, restack, resume};
 
@@ -100,6 +106,10 @@ pub enum RestackScope {
 mod link_tests;
 #[cfg(test)]
 mod plan_tests;
+#[cfg(test)]
+mod porcelain_tests;
+#[cfg(test)]
+mod push_tests;
 #[cfg(test)]
 mod read_tests;
 #[cfg(test)]

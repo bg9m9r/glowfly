@@ -334,6 +334,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::ApplyPatch => Msg::Patch(crate::patch::PatchMsg::PickToApply),
         C::Patch(m) => Msg::Patch(m),
         C::Rebase(c) => c.msg(),
+        C::Stack(c) => c.msg(),
         C::SwitchProfile(id) => Msg::Profile(crate::profile::ProfileMsg::Switch(id)),
         C::ReviewTrust => {
             let Some(s) = &st.snap else { return };

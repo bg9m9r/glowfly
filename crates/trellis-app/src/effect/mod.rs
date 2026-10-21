@@ -33,6 +33,7 @@ mod repo;
 mod repos;
 mod scope;
 mod selection;
+mod stack;
 mod stash;
 mod submodule;
 mod trust;
@@ -59,6 +60,7 @@ pub use rebase::{RebaseEffect, RestackJob};
 pub use repo::{ConflictRead, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;
 pub use selection::StackRequest;
+pub use stack::{StackEffect, StackPushJob};
 pub use stash::{PutBackRequest, StashEffect};
 pub use submodule::SubmoduleEffect;
 pub use trust::TrustEffect;
@@ -259,6 +261,8 @@ pub enum Effect {
     Pick(PickJob),
     /// Interactive rebase: the panel's list, graph edits, running and resuming.
     Rebase(RebaseEffect),
+    /// Pushing a stack's layers (stack.rs).
+    Stack(StackEffect),
     /// Undoes (or redoes) `action` after checking the repository still matches it. Unscoped like
     /// `RunGit`: the job's result must reach `update` even if its tab is no longer active.
     UndoRedo {

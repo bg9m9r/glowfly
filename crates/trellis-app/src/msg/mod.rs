@@ -36,6 +36,7 @@ mod recent;
 mod repo;
 mod repos;
 mod sparse;
+mod stack;
 mod stash;
 mod tabs;
 mod trust;
@@ -64,6 +65,7 @@ pub use recent::{FolderCheck, RecentMsg};
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
 pub use repos::{ReposMsg, ScanFound};
 pub use sparse::SparseMsg;
+pub use stack::StackMsg;
 pub use stash::{AutoStashMsg, StashMsg};
 pub use tabs::{CloseRequest, TabsMsg};
 pub use trust::{InheritedRepo, TrustMsg};
@@ -99,6 +101,8 @@ pub enum Msg {
     Blame(BlameMsg),
     /// The interactive rebase panel (update/rebase.rs).
     Rebase(RebaseMsg),
+    /// Pushing a stack and creating its pull requests (update/stack_push.rs).
+    Stack(StackMsg),
     /// The tab bar (update/tabs.rs).
     Tabs(TabsMsg),
     /// Staging, unstaging and discarding files, hunks and lines (update/ops.rs).
@@ -288,6 +292,7 @@ impl Msg {
             Msg::History(m) => m.on_inactive(),
             Msg::Blame(m) => m.on_inactive(),
             Msg::Rebase(m) => m.on_inactive(),
+            Msg::Stack(m) => m.on_inactive(),
             Msg::Tabs(m) => m.on_inactive(),
             Msg::Stage(m) => m.on_inactive(),
             Msg::Commit(m) => m.on_inactive(),

@@ -246,6 +246,7 @@ pub(super) fn park(st: &mut AppState) -> Parked {
     st.view.diff_opening = None;
     st.view.stage_move_on = None;
     st.view.diff_cursor = None;
+    super::stack_prs::parked(st);
     Parked {
         snap: st.snap.take(),
         selection: std::mem::take(&mut st.selection),

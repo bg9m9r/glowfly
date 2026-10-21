@@ -1,16 +1,26 @@
-//! Restack jobs: running a restack's steps with `trellis_core::stack` (inside a journal note,
+//! Stack jobs: running a restack's steps with `trellis_core::stack` (inside a journal note,
 //! like other history rewrites) and going on with a stopped one after the banner's Continue or
-//! Skip, each recording what the run means for the undo history.
+//! Skip, each recording what the run means for the undo history; and pushing a stack's layers
+//! (`Effect::Stack`), which moves no local branch, so it needs no note and no undo record.
 
 use super::err;
-use crate::effect::{RestackJob, UndoResult};
-use crate::msg::{Msg, RebaseMsg};
+use crate::effect::{RestackJob, StackEffect, UndoResult};
+use crate::msg::{Msg, RebaseMsg, StackMsg};
 use std::path::{Path, PathBuf};
 use trellis_core::error::Result;
 use trellis_core::journal::Op;
 use trellis_core::rebase::{Outcome, Resume};
 use trellis_core::stack::{self, RestackPlan, RestackRun};
 use trellis_core::undo::{self, RestackBefore};
+
+pub(super) fn run(e: StackEffect) -> Msg {
+    match e {
+        StackEffect::Push { cwd, job } => {
+            let result = stack::push(&cwd, &job.targets).map_err(err);
+            Msg::Stack(StackMsg::Pushed { result, job: Box::new(job) })
+        }
+    }
+}
 
 pub(super) fn restack(cwd: PathBuf, job: RestackJob) -> Msg {
     let before = job.before.clone().or_else(|| undo::restack_before(&cwd));

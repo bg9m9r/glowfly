@@ -1,11 +1,13 @@
 //! The Create pull/merge request dialog (`Modal::CreatePr`): source, target, push note, title,
-//! description, linked issues, draft.
+//! description, linked issues, draft. As a step of a stack's run (`ForgeState::stack_step`) it
+//! says which layer it is and adds Skip; its Cancel stops the run.
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::widgets::{FieldGroup, TextField, buttons};
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
+use crate::msg::StackMsg;
 use crate::state::ForgeState;
 use crate::state::branches;
 use crate::state::push_pr::{self, HostBranch};
@@ -57,10 +59,30 @@ pub(super) fn show(
     let Some(host) = fs.host.as_ref() else { return true };
     let noun = fs.pr_noun();
     let subtitle = format!("{} · {}", host.provider.name(), host.display());
+    let step = fs.stack_step(f.source);
     let mut d = Dialog::new(cx, format!("Create {noun}")).subtitle(subtitle).size(Size::Wide).begin(ui);
-    let (pushed, keys) = d.body(ui, |ui| body(ui, cx.t, &mut f, fs, snap, idle, msgs));
+    let (pushed, keys) = d.body(ui, |ui| {
+        if let Some((index, total)) = step {
+            form_message::form(ui, Message::info(cx.t.trf("stack.prs.step", &[("index", &index), ("total", &total)])));
+            ui.add_space(8.0);
+        }
+        body(ui, cx.t, &mut f, fs, snap, idle, msgs)
+    });
     let valid = pushed && !f.title.trim().is_empty() && !f.target.is_empty() && f.target != f.source;
-    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(format!("Create {noun}")).enabled(valid)));
+    let mut footer = Footer::new().cancel();
+    if step.is_some() {
+        footer = footer.alt(buttons::secondary(cx.t.tr("stack.prs.skip.button")));
+    }
+    let out = d.finish(ui, footer.primary(buttons::primary(format!("Create {noun}")).enabled(valid)));
+    if step.is_some() {
+        if out.alt == Some(0) {
+            msgs.push(Msg::Stack(StackMsg::SkipPr));
+            return true;
+        }
+        if out.dismiss && !out.primary {
+            msgs.push(Msg::Stack(StackMsg::StopPrs));
+        }
+    }
     if out.primary {
         // Trackers linked by mention get "Closes #12"-style lines; Azure Boards items are
         // linked through the API.

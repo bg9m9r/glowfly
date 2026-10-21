@@ -14,6 +14,7 @@ pub(super) fn handle(st: &mut AppState, msg: DialogMsg) {
         DialogMsg::KeepEditing => st.dialog.asking = false,
         DialogMsg::Discard => {
             if st.modal.is_some() {
+                super::stack_prs::dismissed(st);
                 close(st);
             }
         }
@@ -35,6 +36,7 @@ fn dismiss(st: &mut AppState, how: Dismiss) {
             if st.dialog.edited(modal) {
                 st.dialog.asking = true;
             } else {
+                super::stack_prs::dismissed(st);
                 close(st);
             }
         }

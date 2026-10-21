@@ -56,6 +56,7 @@ impl Effect {
             | Effect::SparseCheckout { .. }
             | Effect::RunGit { .. }
             | Effect::Pick(_)
+            | Effect::Stack(_)
             | Effect::UndoRedo { .. }
             | Effect::Account(_)
             | Effect::FetchAvatars(_)

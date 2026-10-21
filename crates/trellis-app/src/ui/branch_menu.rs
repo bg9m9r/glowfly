@@ -1,7 +1,8 @@
 //! The right-click menu of a local branch, in groups: checkout (or, for a branch another
 //! worktree has, open that worktree), a new branch or worktree, rename and upstream; merge,
 //! rebase, checking for conflicts, comparing with its version before the last rebase
-//! (Range-diff), fast-forward and push; pull requests (pushing the branch
+//! (Range-diff), fast-forward and push; the stack items for a branch in a stack (restack,
+//! push, pull requests: `stack_menu.rs`); pull requests (pushing the branch
 //! first when the code host lacks it, into the branch selected before; without a code host, a
 //! disabled item saying why); hide or solo in the graph, and its colour; the custom commands
 //! (`custom_menu.rs`); the Copy submenu; and delete. The branch's name heads the menu once; the items leave it out. Disabled items say why
@@ -51,7 +52,7 @@ pub fn local_branch_menu(
     ui.separator();
     integrate_items(ui, t, b, snap, msgs);
     push_items(ui, t, b, snap, msgs);
-    super::stack_menu::items(ui, t, b, snap, msgs);
+    super::stack_menu::items(ui, t, b, snap, fs, msgs);
     // Always drawn: without a code host, a disabled item says why there are no pull requests.
     ui.separator();
     match fs.filter(|fs| fs.host.is_some()) {

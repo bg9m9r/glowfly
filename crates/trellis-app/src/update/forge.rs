@@ -175,6 +175,8 @@ pub(super) fn resolve_pr_heads(st: &mut AppState) {
 fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effect>) {
     let mut logs: Vec<(bool, String)> = Vec::new();
     let mut prs_changed = false;
+    // Created pull requests' sources and whether a create failed, for a stack's run.
+    let (mut created, mut create_failed) = (Vec::new(), false);
     let Some(fs) = st.forge.as_mut() else { return };
     let is_host = fs.host.as_ref() == Some(&reply.target);
     let is_tracker = fs.tracker.as_ref() == Some(&reply.target);
@@ -236,10 +238,14 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
             ForgeResult::DefaultBranch(b) => fs.default_branch = b.or(fs.default_branch.take()),
             ForgeResult::Created(Ok(pr)) => {
                 logs.push((true, format!("Created {} {} {}\n{}", fs.pr_noun(), fs.pr_label(pr.id), pr.title, pr.url)));
+                created.push(pr.source.clone());
                 fs.prs.insert(0, *pr);
                 prs_changed = true;
             }
-            ForgeResult::Created(Err(e)) => logs.push((false, format!("Creating the {} failed: {}", fs.pr_noun(), e.message))),
+            ForgeResult::Created(Err(e)) => {
+                create_failed = true;
+                logs.push((false, format!("Creating the {} failed: {}", fs.pr_noun(), e.message)));
+            }
             ForgeResult::TipChecks(asked, r) => super::build_status::replied(fs, &asked, r.map_err(drop), now),
             ForgeResult::PrDetails(r) => prs_changed |= pr_details::replied(fs, r, &key, now),
             ForgeResult::ProjectKeys(r) => match r {
@@ -261,6 +267,10 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
         super::pull_request::prs_changed(st, fx);
         super::dashboard::prs_arrived(st, now, fx);
     }
+    if create_failed {
+        super::stack_prs::create_failed(st);
+    }
+    super::stack_prs::created(st, &created, fx);
     pr_details::send_next(st, fx);
 }
 

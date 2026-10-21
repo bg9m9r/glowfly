@@ -107,6 +107,7 @@ impl Recovery {
             | Effect::Submodule(SubmoduleEffect::Remove(_))
             | Effect::Stash(StashEffect::Rename { .. })
             | Effect::SparseCheckout { .. }
+            | Effect::Stack(_)
             | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(InitEffect::Run { .. })
             | Effect::Tool(ToolEffect::RunMerge(_) | ToolEffect::RunGitMerge(_)) => Kind::Job(None),

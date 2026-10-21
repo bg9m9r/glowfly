@@ -35,6 +35,8 @@ mod palette_pr;
 mod palette_setup;
 #[path = "palette_shallow.rs"]
 mod palette_shallow;
+#[path = "palette_stack.rs"]
+pub mod palette_stack;
 #[path = "palette_stash.rs"]
 mod palette_stash;
 
@@ -216,6 +218,8 @@ pub enum PaletteCommand {
     RepoList(RepoListCommand),
     /// History edits and the rebase in progress (palette_commands_rebase.rs).
     Rebase(palette_commands_rebase::RebaseCommand),
+    /// Pushing the checked-out branch's stack and creating its pull requests (palette_stack.rs).
+    Stack(palette_stack::StackCommand),
 }
 
 impl PaletteCommand {

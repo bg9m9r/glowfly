@@ -1011,10 +1011,6 @@ follow-ups go to Ideas, not here.
 
 Chosen on 2026-10-19 as the features that make Trellis its own, in this order.
 
-- Stacked branches: push the stack (each layer, with --force-with-lease where a restack
-  rewrote it) and create one pull request per layer with its base set to the layer below
-  (recognising, drawing and restacking stacks is done)
-
 ### UI review polish
 
 The minor findings of the [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md); its
@@ -1264,6 +1260,14 @@ here, under the item they grew from.
 - Preview a restack (commits per layer, predicted conflicts) in the operation preview dialog
 - Restack a stack whose layer is checked out in another worktree by running that step in that
   worktree
+- Retarget a layer's open pull request when the layer below it is merged or renamed, and after
+  a restack, instead of leaving its base on the old branch
+- Add a table of the stack's pull requests, linked and in order, to each layer's description
+  and keep it current as layers are created or merged
+- After a stale lease, offer Fetch and push again for the layers that were left alone
+- Push stack to a remote other than each layer's upstream (or origin), chosen per run
+- Keep a stack's create dialogs going across a tab switch instead of stopping the run
+- Toolbar Push dropdown item for Push stack when the current branch is in a stack
 - Handle rebase.updateRefs=true in the interactive rebase panel, whose todo then holds
   update-ref lines
 - After aborting a stopped restack, check the branch that was checked out before out again

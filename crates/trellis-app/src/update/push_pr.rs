@@ -100,8 +100,10 @@ pub(super) fn create(st: &mut AppState, pr: NewPullRequest, fx: &mut Vec<Effect>
     if missing {
         let msg = format!("{} isn't on {} yet. Push it first, then create the {}.", pr.source, fs.remote, fs.pr_noun());
         st.log(false, msg);
+        super::stack_prs::refused(st, &pr.source);
         return;
     }
+    super::stack_prs::sending(st, &pr.source);
     super::forge::request(st, host, false, ForgeCall::Create(pr), fx);
 }
 
@@ -116,9 +118,16 @@ pub(super) fn job_finished(st: &mut AppState, then_pr: Option<PrStart>, ok: bool
     }
 }
 
-/// A snapshot landed: opens the create dialog a push was waiting for. One already open for
-/// that branch (the push started from it) keeps what was typed; another dialog isn't replaced.
+/// A snapshot landed: opens the create dialog a push was waiting for, or starts a stack's
+/// create dialogs whose push landed (update/stack_prs.rs).
 pub(super) fn loaded(st: &mut AppState, fx: &mut Vec<Effect>) {
+    open_after_load(st, fx);
+    super::stack_prs::loaded(st, fx);
+}
+
+/// Opens the create dialog a push was waiting for. One already open for that branch (the push
+/// started from it) keeps what was typed; another dialog isn't replaced.
+fn open_after_load(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(fs) = st.forge.as_mut() else { return };
     let Some(p) = fs.open_after_load.take() else { return };
     let noun = fs.pr_noun();

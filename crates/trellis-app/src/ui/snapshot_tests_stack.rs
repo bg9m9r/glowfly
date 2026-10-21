@@ -18,7 +18,7 @@ type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// The fixture with login-page stacked on search (`behind`: on an older tip of it) and an
 /// unrelated branch, docs, off main.
-fn with_stack(theme: ThemeChoice, name: &str, behind: bool) -> (AppState, PathBuf) {
+pub(super) fn with_stack(theme: ThemeChoice, name: &str, behind: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let snap = st.snap.as_mut().unwrap();
     let main = snap.locals.iter().find(|b| b.name == "main").cloned().unwrap();
@@ -31,7 +31,7 @@ fn with_stack(theme: ThemeChoice, name: &str, behind: bool) -> (AppState, PathBu
 }
 
 /// Right-clicks the left panel's row labelled `label`.
-fn row_menu(h: &mut H, label: &str) {
+pub(super) fn row_menu(h: &mut H, label: &str) {
     let rect = h.get_all_by_label(label).filter_map(|n| n.bounding_box()).filter(|r| r.x0 < 250.0).min_by(|a, b| a.y0.total_cmp(&b.y0));
     let rect = rect.expect("the sidebar row");
     click(h, pos2(((rect.x0 + rect.x1) / 2.0) as f32, ((rect.y0 + rect.y1) / 2.0) as f32), PointerButton::Secondary);
