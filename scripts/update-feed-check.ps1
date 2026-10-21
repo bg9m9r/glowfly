@@ -59,6 +59,14 @@ function Get-FeedName([hashtable]$Package, [string]$Tag) {
     "trellis-$Tag-$($Package.Triple).$($Package.Ext)"
 }
 
+# Stops when a feed file the script wrote starts with a BOM or holds a carriage return.
+function Assert-FeedText([string]$Path) {
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+    if ($bom) { throw "$Path starts with a byte order mark" }
+    if ($bytes -contains 13) { throw "$Path has a carriage return (lines must end in LF)" }
+}
+
 # A feed folder for $Tag: both packages under the tag's names, SHA256SUMS (the format
 # sha256sum writes, LF, no BOM) and release.json (UTF-8 without a BOM, which the JSON reader
 # refuses). -Digest replaces the tested package's checksum, -OmitSum leaves its line out and
@@ -89,7 +97,10 @@ function New-Feed {
     [IO.File]::WriteAllText((Join-Path $Dir 'SHA256SUMS'), (-join $lines), $utf8)
     $assets = @($sorted + 'SHA256SUMS' | ForEach-Object { @{ name = $_ } })
     $release = [ordered]@{ tag_name = $Tag; name = "Trellis $Tag"; body = 'Installer check feed'; assets = $assets }
-    [IO.File]::WriteAllText((Join-Path $Dir 'release.json'), ($release | ConvertTo-Json -Depth 4), $utf8)
+    # ConvertTo-Json separates lines with the system's newline (CRLF on Windows).
+    $json = ($release | ConvertTo-Json -Depth 4) -replace "`r`n", "`n"
+    [IO.File]::WriteAllText((Join-Path $Dir 'release.json'), $json, $utf8)
+    foreach ($file in 'SHA256SUMS', 'release.json') { Assert-FeedText (Join-Path $Dir $file) }
     if ($TamperAfter) {
         $stream = [IO.File]::Open((Join-Path $Dir $tested), [IO.FileMode]::Append)
         try { $stream.WriteByte(0x21) } finally { $stream.Dispose() }
