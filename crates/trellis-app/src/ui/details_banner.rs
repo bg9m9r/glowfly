@@ -2,7 +2,8 @@
 //! cherry-pick, revert, patch series or bisect) or conflicts are left: its title, the conflicted
 //! files with View conflicts, and the actions: the primary Continue (Commit merge for a merge)
 //! and Skip at the left, Abort or Reset bisect alone at the right; all but Continue ask first
-//! (`state::op_confirm`). A disabled Continue or Commit merge says why right after it.
+//! (`state::op_confirm`). A disabled Continue or Commit merge says why right after it. A merge
+//! that is part of a stopped Git Flow Finish says so under the title, with the steps left.
 
 use super::common::state_actions;
 use super::widgets::banner::{self, BannerKind};
@@ -47,6 +48,10 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
         }
         if let Some(note) = crate::state::auto_stash::banner_note(st) {
             ui.add(egui::Label::new(egui::RichText::new(note).color(super::theme::color::weak())).wrap());
+        }
+        if let Some(r) = st.gitflow_resume.as_ref().filter(|r| r.resume.merging(snap)) {
+            let text = crate::state::gitflow_resume::waiting_text(t, &r.resume);
+            ui.add(egui::Label::new(egui::RichText::new(text).color(super::theme::color::weak())).wrap());
         }
         if let Some(first) = conflicted.first() {
             ui.horizontal(|ui| {

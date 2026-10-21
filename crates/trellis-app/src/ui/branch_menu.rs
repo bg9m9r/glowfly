@@ -21,6 +21,7 @@ use crate::msg::RebaseMsg;
 use crate::range_diff::RangeDiffMsg;
 use crate::state::branches::{self, NO_REMOTES};
 use crate::state::custom_commands::MenuCommands;
+use crate::state::gitflow_base::{Deleting, guard};
 use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere};
 use crate::state::worktrees::open_blocked;
 use crate::state::{ForgeState, Selection};
@@ -190,7 +191,8 @@ fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs:
 }
 
 /// Delete, force delete and, with an upstream on a remote, delete together with it (only when
-/// the checked-out branch contains it). All are disabled for a branch another worktree has.
+/// the checked-out branch contains it). All are disabled for a branch another worktree has, and
+/// ask more firmly for the Git Flow production or development branch (`gitflow_base::guard`).
 fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let head = snap.head_branch.as_deref();
@@ -201,11 +203,17 @@ fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
         ui,
         t.tr("branch.menu.delete"),
         in_worktree,
-        Msg::confirm_danger(
-            t.tr("branch.delete.title"),
-            t.trf("branch.delete.body", &[("branch", &name)]),
-            t.tr("common.delete.button"),
-            Msg::git("Delete branch", &["branch", "-d", name]),
+        guard(
+            t,
+            snap,
+            name,
+            Deleting::Local,
+            Msg::confirm_danger(
+                t.tr("branch.delete.title"),
+                t.trf("branch.delete.body", &[("branch", &name)]),
+                t.tr("common.delete.button"),
+                Msg::git("Delete branch", &["branch", "-d", name]),
+            ),
         ),
     );
     menu_item_if(
@@ -213,11 +221,17 @@ fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
         ui,
         t.tr("branch.menu.force_delete"),
         in_worktree,
-        Msg::confirm_danger(
-            t.tr("branch.force_delete.title"),
-            t.trf("branch.force_delete.body", &[("branch", &name)]),
-            t.tr("common.delete.button"),
-            Msg::git("Delete branch", &["branch", "-D", name]),
+        guard(
+            t,
+            snap,
+            name,
+            Deleting::Local,
+            Msg::confirm_danger(
+                t.tr("branch.force_delete.title"),
+                t.trf("branch.force_delete.body", &[("branch", &name)]),
+                t.tr("common.delete.button"),
+                Msg::git("Delete branch", &["branch", "-D", name]),
+            ),
         ),
     );
     if let Some(tr) = branches::can_delete_with_remote(b) {
@@ -227,11 +241,17 @@ fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
             ui,
             t.trf("branch.menu.delete_with_remote", &[("remote_branch", &tr.display())]),
             blocked.as_deref(),
-            Msg::confirm_danger(
-                t.tr("branch.delete_both.title"),
-                branches::delete_with_remote_body(t, b, tr),
-                t.tr("branch.delete_both.button"),
-                Msg::Branch(BranchMsg::DeleteBranchAndRemote(name.to_owned())),
+            guard(
+                t,
+                snap,
+                name,
+                Deleting::LocalAndRemote(&tr.remote),
+                Msg::confirm_danger(
+                    t.tr("branch.delete_both.title"),
+                    branches::delete_with_remote_body(t, b, tr),
+                    t.tr("branch.delete_both.button"),
+                    Msg::Branch(BranchMsg::DeleteBranchAndRemote(name.to_owned())),
+                ),
             ),
         );
     }

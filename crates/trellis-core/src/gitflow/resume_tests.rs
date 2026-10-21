@@ -206,18 +206,15 @@ fn aborted_or_changed_resumes_are_gone() {
     let aborted = snap(&dir);
     assert_eq!(resume_state(&r, false, &aborted), ResumeState::Waiting, "a stale snapshot isn't an abort");
     assert_eq!(resume_state(&r, true, &aborted), ResumeState::Gone(ResumeGone::Aborted("main".into())));
-    assert_eq!(ResumeGone::Aborted("main".into()).message(), "the merge into main was aborted");
 
     git(&dir, &["checkout", "-q", "release/1.2.0"]);
     commit(&dir, "b.txt", "more\n", "more");
     git(&dir, &["checkout", "-q", "main"]);
     let moved = ResumeGone::BranchMoved("release/1.2.0".into());
     assert_eq!(resume_state(&r, false, &snap(&dir)), ResumeState::Gone(moved.clone()));
-    assert_eq!(moved.message(), "release/1.2.0 has new commits since Finish stopped");
     git(&dir, &["branch", "-D", "release/1.2.0"]);
     let deleted = ResumeGone::BranchGone("release/1.2.0".into());
     assert_eq!(resume_state(&r, false, &snap(&dir)), ResumeState::Gone(deleted.clone()));
-    assert_eq!(deleted.message(), "release/1.2.0 no longer exists");
 
     git(&dir, &["config", "--unset", "gitflow.branch.develop"]);
     assert_eq!(resume_state(&r, true, &snap(&dir)), ResumeState::Gone(ResumeGone::NotSetUp));

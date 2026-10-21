@@ -11,17 +11,19 @@ use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
 use crate::msg::Msg;
 use crate::state::blocked::BUSY;
+use crate::state::gitflow_base;
 use crate::state::worktree_manage::{LockForm, RemoveForm};
 use crate::ui::theme::controls;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Id, RichText};
+use trellis_core::i18n::Lang;
 use trellis_core::worktree_ops::Refusal;
 
 /// The Remove dialog; returns true when Cancel closes it. The danger button is disabled while a
 /// job runs (`idle` false), and in force mode until the acknowledgement is ticked.
 pub fn remove(ui: &mut egui::Ui, cx: Cx, form: &mut RemoveForm, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let mut d = Dialog::new(cx, format!("Remove worktree {}", form.name)).guide(dialog_guides::worktree_remove(cx.t)).begin(ui);
-    d.body(ui, |ui| body(ui, form));
+    d.body(ui, |ui| body(ui, cx.t, form));
     if let Some(label) = form.ack_label() {
         dialog_frame::ack(ui, cx.t, &mut form.acked, Some(&label));
     }
@@ -34,8 +36,9 @@ pub fn remove(ui: &mut egui::Ui, cx: Cx, form: &mut RemoveForm, idle: bool, msgs
     out.dismiss
 }
 
-/// What goes, why force is needed, and the branch options.
-fn body(ui: &mut egui::Ui, form: &mut RemoveForm) {
+/// What goes, why force is needed, and the branch options (with the Git Flow warning when the
+/// branch to delete is the production or development branch).
+fn body(ui: &mut egui::Ui, t: Lang, form: &mut RemoveForm) {
     ui.label(format!(
         "Deletes the folder {} and everything in it, and drops git's record of the worktree. Commits and branches stay in the repository.",
         trellis_core::native_path::shown(&form.path)
@@ -69,6 +72,12 @@ fn body(ui: &mut egui::Ui, form: &mut RemoveForm) {
         if let Some(note) = form.remote_note() {
             ui.add_space(4.0);
             form_message::form(ui, Message::warning(note));
+        }
+        if form.delete_branch
+            && let Some(role) = form.flow_base
+        {
+            ui.add_space(4.0);
+            form_message::form(ui, Message::warning(gitflow_base::warning(t, role, &b)));
         }
     }
 }

@@ -14,11 +14,12 @@ use crate::ui::theme::controls;
 use crate::ui::widgets::{buttons, reason};
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::{MergeMethod, PrState};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
 use trellis_core::text::printable;
 
 /// Shown once the page is loaded.
-pub(super) fn show(ui: &mut Ui, v: &mut PrView, snap: Option<&Snapshot>, default_branch: Option<&str>, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, t: Lang, v: &mut PrView, snap: Option<&Snapshot>, default_branch: Option<&str>, msgs: &mut Vec<Msg>) {
     let Some(page) = v.loaded() else { return };
     let state = page.detail.state;
     heading(ui, "Merge");
@@ -26,7 +27,7 @@ pub(super) fn show(ui: &mut Ui, v: &mut PrView, snap: Option<&Snapshot>, default
     match state {
         PrState::Merged => {
             note(ui, format!("Merged into {target}."), color::text());
-            let offer = snap.and_then(|s| delete_branch_offer(v, s, default_branch));
+            let offer = snap.and_then(|s| delete_branch_offer(t, v, s, default_branch));
             if let Some(confirm) = offer
                 && ui.add(buttons::secondary(format!("Delete {} on {}", printable(&v.pr.source), v.remote))).clicked()
             {

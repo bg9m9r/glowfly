@@ -12,6 +12,7 @@ use super::ref_visibility;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::{BranchMsg, Msg, OpPreviewMsg, RebaseMsg, SelectionMsg};
+use crate::state::gitflow_base::{Deleting, guard};
 use crate::state::rebase_onto::onto_commit_blocker;
 use crate::state::{ForgeState, Selection, branches, remote_branch, worktree_branches};
 use crate::worktree::WorktreeMsg;
@@ -84,11 +85,17 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
         msgs,
         ui,
         t.tr("remote_branch.menu.delete"),
-        Msg::confirm_danger(
-            t.tr("remote_branch.delete.title"),
-            t.trf("remote_branch.delete.body", &[("branch", &name), ("remote", &remote)]),
-            t.tr("common.delete.button"),
-            Msg::git("Delete remote branch", &["push", remote, "--delete", name]),
+        guard(
+            t,
+            snap,
+            name,
+            Deleting::Remote(remote),
+            Msg::confirm_danger(
+                t.tr("remote_branch.delete.title"),
+                t.trf("remote_branch.delete.body", &[("branch", &name), ("remote", &remote)]),
+                t.tr("common.delete.button"),
+                Msg::git("Delete remote branch", &["push", remote, "--delete", name]),
+            ),
         ),
     );
 }

@@ -5,39 +5,30 @@ use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::gitflow_resume::{offered, ready_text};
-use crate::ui::theme::color;
-use eframe::egui::{self, RichText};
-
-const FORGET_TIP: &str = "Drop the remaining steps. Run them yourself or finish the branch again.";
-const BUSY_TIP: &str = "Another operation is still running.";
+use crate::ui::widgets::banner::{self, Banner, BannerKind};
+use crate::ui::widgets::buttons;
+use eframe::egui;
+use trellis_core::i18n::Lang;
 
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(r) = offered(st) else { return };
-    let text = ready_text(&r.resume);
+    let t = st.settings.lang();
     let idle = st.job.is_none();
-    egui::TopBottomPanel::top("gitflow_resume_banner")
-        .frame(egui::Frame::new().fill(color::banner()).inner_margin(egui::Margin::symmetric(12, 6)))
-        .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    buttons(ui, true, idle, msgs);
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                        ui.add(egui::Label::new(RichText::new(text).color(color::text())).wrap());
-                    });
-                });
-            });
-        });
+    let b = Banner::new(BannerKind::Info).text(ready_text(t, &r.resume));
+    banner::top(ctx, "gitflow_resume_banner", b, |ui| buttons(ui, t, true, idle, msgs));
 }
 
 /// Forget, then (once the merge is committed, `ready`) Continue finish, added right to left;
 /// Continue is disabled while a job runs (`idle` false).
-pub fn buttons(ui: &mut egui::Ui, ready: bool, idle: bool, msgs: &mut Vec<Msg>) {
-    if ui.button("Forget").on_hover_text(FORGET_TIP).clicked() {
+pub fn buttons(ui: &mut egui::Ui, t: Lang, ready: bool, idle: bool, msgs: &mut Vec<Msg>) {
+    let forget = buttons::secondary(t.tr("gitflow.resume.forget.button")).tip(t.tr("gitflow.resume.forget.tip"));
+    if ui.add(forget).clicked() {
         msgs.push(Msg::GitFlow(GitFlowMsg::ForgetFinish));
     }
     if ready {
-        let r = ui.add_enabled(idle, egui::Button::new("Continue finish")).on_disabled_hover_text(BUSY_TIP);
-        if r.clicked() {
+        let why = (!idle).then(|| t.tr("common.busy"));
+        let cont = buttons::primary(t.tr("gitflow.resume.continue.button")).enabled(idle).why(why);
+        if ui.add(cont).clicked() {
             msgs.push(Msg::GitFlow(GitFlowMsg::ContinueFinish));
         }
     }

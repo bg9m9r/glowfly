@@ -2,9 +2,11 @@
 //! action or choice is unavailable, the labels and explanations, the merge confirmation and
 //! the post-merge branch deletion. Pure; the calls are made by update/pull_request/calls.rs.
 
+use super::gitflow_base::Deleting;
 use super::pull_request::{PrAction, PrView, Tone};
 use crate::msg::Msg;
 use trellis_core::forge::{EntryKind, MergeMethod, MergeState, PrDetail, PrPage, PrState, ReviewEvent, Verdict};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
 
 /// The most characters a comment, review summary or merge message may have.
@@ -241,19 +243,21 @@ pub fn merge_confirm(v: &PrView, default_branch: Option<&str>) -> Msg {
 
 /// After a merge: the Delete button's confirmation, when the source branch is still on the
 /// remote, in the same repository, not the default branch, and the repository doesn't delete
-/// merged branches itself.
-pub fn delete_branch_offer(v: &PrView, snap: &Snapshot, default_branch: Option<&str>) -> Option<Msg> {
+/// merged branches itself. Asks more firmly when the source is the Git Flow production or
+/// development branch (`gitflow_base::guard`).
+pub fn delete_branch_offer(t: Lang, v: &PrView, snap: &Snapshot, default_branch: Option<&str>) -> Option<Msg> {
     if v.state() != Some(PrState::Merged) || delete_after_merge_blocked(v, default_branch).is_some() {
         return None;
     }
     super::pull_request::Tips::of(snap, &v.remote, &v.pr).source?;
     let (remote, source) = (v.remote.as_str(), v.pr.source.as_str());
-    Some(Msg::confirm_danger(
+    let confirm = Msg::confirm_danger(
         "Delete remote branch",
         format!("Delete branch {source} on {remote}? This affects everyone using the remote."),
         "Delete",
         Msg::git("Delete remote branch", &["push", remote, "--delete", source]),
-    ))
+    );
+    Some(super::gitflow_base::guard(t, snap, source, Deleting::Remote(remote), confirm))
 }
 
 /// What an entry's author did, and its tone.
@@ -284,4 +288,4 @@ pub fn error_for<'a>(v: &'a PrView, action: &PrAction) -> Option<&'a str> {
 }
 
 #[cfg(test)]
-pub(super) mod tests;
+pub(crate) mod tests;

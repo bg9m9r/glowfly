@@ -99,19 +99,6 @@ pub enum ResumeGone {
     Aborted(String),
 }
 
-impl ResumeGone {
-    /// "feature/login no longer exists" (no full stop).
-    pub fn message(&self) -> String {
-        match self {
-            ResumeGone::NotSetUp => "Git Flow is no longer set up".into(),
-            ResumeGone::SettingsChanged => "the Git Flow settings changed".into(),
-            ResumeGone::BranchGone(b) | ResumeGone::BaseGone(b) => format!("{b} no longer exists"),
-            ResumeGone::BranchMoved(b) => format!("{b} has new commits since Finish stopped"),
-            ResumeGone::Aborted(into) => format!("the merge into {into} was aborted"),
-        }
-    }
-}
-
 /// Where `r` stands in `snap`. `seen_merge`: a snapshot with the merge in progress was seen,
 /// so a clean state with the target back at `base` means the merge was aborted (a stale
 /// snapshot from before the merge doesn't).

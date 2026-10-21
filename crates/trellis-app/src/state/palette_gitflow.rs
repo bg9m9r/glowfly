@@ -48,7 +48,8 @@ pub(super) fn gitflow_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entr
     }
     if let Some(r) = offered(st).filter(|_| st.job.is_none()) {
         let keywords = "gitflow git-flow finish continue resume remaining steps merge committed conflict";
-        let e = entry(PaletteCommand::ContinueGitFlowFinish, palette_label(&r.resume), keywords);
-        out.push(with_detail(e, Some(steps_left(r.resume.plan.steps.len()))));
+        let t = st.settings.lang();
+        let e = entry(PaletteCommand::ContinueGitFlowFinish, palette_label(t, &r.resume), keywords);
+        out.push(with_detail(e, Some(steps_left(t, r.resume.plan.steps.len()))));
     }
 }

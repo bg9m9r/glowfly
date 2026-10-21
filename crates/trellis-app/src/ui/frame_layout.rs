@@ -5,8 +5,8 @@
 
 use super::toasts::ToastBounds;
 use super::{
-    UiCache, activity_log, central, details, git_banner, lfs_banner, menu_bar, op_strip, panel_rails, panel_size, prefs, repo_line,
-    sidebar, sign_in_banner, status, tabs, terminal, title_bar, toolbar, tour,
+    UiCache, activity_log, central, details, git_banner, gitflow_resume_banner, lfs_banner, menu_bar, op_strip, panel_rails, panel_size,
+    prefs, repo_line, sidebar, sign_in_banner, status, tabs, terminal, title_bar, toolbar, tour,
 };
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -42,6 +42,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
     if st.snap.is_some() && !st.dashboard.open {
         sign_in_banner::show(ctx, st, msgs);
         lfs_banner::show(ctx, st, msgs);
+        gitflow_resume_banner::show(ctx, st, msgs);
     }
     let top = ctx.available_rect().top();
     activity_log::show(ctx, st, msgs);

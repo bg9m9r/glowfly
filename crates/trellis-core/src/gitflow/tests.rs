@@ -274,7 +274,6 @@ fn base_roles() {
     let s = defaults();
     assert_eq!(s.base_role("main"), Some(FlowBase::Production));
     assert_eq!(s.base_role("develop"), Some(FlowBase::Development));
-    assert_eq!((FlowBase::Production.noun(), FlowBase::Development.noun()), ("production", "development"));
     for none in ["Main", "DEVELOP", "feature/x", ""] {
         assert_eq!(s.base_role(none), None, "{none}");
     }

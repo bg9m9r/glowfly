@@ -50,7 +50,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                     info::show(ui, view);
                     checks::show(ui, view, lang, now, msgs);
                     review::show(ui, view, msgs);
-                    merge::show(ui, view, st.snap.as_ref(), default_branch.as_deref(), msgs);
+                    merge::show(ui, st.settings.lang(), view, st.snap.as_ref(), default_branch.as_deref(), msgs);
                 });
             });
             center.show_inside(ui, |ui| conversation::show(ui, st, &mut cache.markdown, msgs));

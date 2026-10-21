@@ -1,69 +1,49 @@
-//! Deleting the branch Git Flow names as production or development: the destructive
-//! confirmation that replaces the plain Confirm (branch menus, the remote branch menu, the pull
-//! request's delete offer), and the warning the Remove worktree dialog shows.
+//! Deleting the branch Git Flow names as production or development: the shared danger
+//! confirmation made firmer (its own title, a warning paragraph after the question and a
+//! "… anyway" button) for the branch menus, the remote branch menu and the pull request's delete
+//! offer, and the warning the Remove worktree dialog shows. Branch names match exactly
+//! (case-sensitive), as git's do.
 
-use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use trellis_core::gitflow::FlowBase;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
 
-/// The confirmation (Modal::GitFlowDeleteBase).
-pub struct BaseDelete {
-    /// "Delete development branch" (or production).
-    pub title: String,
-    /// The plain confirmation's question ("Delete local branch develop?").
-    pub question: String,
-    /// The red paragraph: what the branch is for and what stops working.
-    pub warning: String,
-    /// "Delete anyway".
-    pub button: String,
-    /// The delete to run.
-    pub then: Box<Msg>,
+/// Which copy of the branch the confirmed step deletes.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Deleting<'a> {
+    Local,
+    /// The branch on this remote.
+    Remote(&'a str),
+    /// The local branch and its copy on this remote.
+    LocalAndRemote(&'a str),
 }
 
 /// What `branch` is for in Git Flow and what can't run without it.
-pub fn warning(role: FlowBase, branch: &str) -> String {
-    let what = match role {
-        FlowBase::Production => "Releases and hotfixes are merged into it and tagged there, and hotfixes start from it.",
-        FlowBase::Development => "Features and releases start from it and every Finish merges into it.",
-    };
-    format!(
-        "{branch} is the Git Flow {} branch. {what} Until it exists again or Preferences > Git Flow names another \
-         branch, those steps can't run.",
-        role.noun()
-    )
-}
-
-/// Asks before running `then`, which deletes the local branch `branch`: the destructive
-/// confirmation when Git Flow names it as production or development, else the plain one.
-pub fn confirm_delete(snap: &Snapshot, branch: &str, title: &str, question: String, button: &str, then: Msg) -> Msg {
-    ask(snap, branch, None, title, question, button, then)
-}
-
-/// The same for deleting `name` on `remote` (the warning adds that the remote holds the shared
-/// copy).
-pub fn confirm_remote_delete(snap: &Snapshot, remote: &str, name: &str, title: &str, question: String, button: &str, then: Msg) -> Msg {
-    ask(snap, name, Some(remote), title, question, button, then)
-}
-
-fn ask(snap: &Snapshot, branch: &str, remote: Option<&str>, title: &str, question: String, button: &str, then: Msg) -> Msg {
-    let Some(role) = snap.gitflow.base_role(branch) else { return Msg::confirm(title, question, button, then) };
-    let mut warning = warning(role, branch);
-    if let Some(r) = remote {
-        warning.push_str(&format!(" {r} holds the copy everyone else uses."));
+pub fn warning(t: Lang, role: FlowBase, branch: &str) -> String {
+    match role {
+        FlowBase::Production => t.trf("gitflow.delete_base.production.warn", &[("branch", &branch)]),
+        FlowBase::Development => t.trf("gitflow.delete_base.development.warn", &[("branch", &branch)]),
     }
-    Msg::GitFlow(GitFlowMsg::DeleteBase(Box::new(BaseDelete {
-        title: format!("Delete {} branch", role.noun()),
-        question,
-        warning,
-        button: format!("{button} anyway"),
-        then: Box::new(then),
-    })))
 }
 
-/// The warning for removing a worktree together with its branch, when that branch is the
-/// production or development branch.
-pub fn worktree_warning(snap: &Snapshot, branch: Option<&str>) -> Option<String> {
-    let branch = branch?;
-    snap.gitflow.base_role(branch).map(|role| warning(role, branch))
+/// `confirm` (a `Msg::ConfirmDanger` that deletes `branch`) made firmer when Git Flow names
+/// `branch` as production or development; anything else comes back unchanged.
+pub fn guard(t: Lang, snap: &Snapshot, branch: &str, what: Deleting, confirm: Msg) -> Msg {
+    let Some(role) = snap.gitflow.base_role(branch) else { return confirm };
+    let Msg::ConfirmDanger { body, ack, then, .. } = confirm else { return confirm };
+    let title = match role {
+        FlowBase::Production => t.tr("gitflow.delete_base.production.title"),
+        FlowBase::Development => t.tr("gitflow.delete_base.development.title"),
+    };
+    let mut warn = warning(t, role, branch);
+    if let Deleting::Remote(remote) | Deleting::LocalAndRemote(remote) = what {
+        warn.push(' ');
+        warn.push_str(&t.trf("gitflow.delete_base.remote.warn", &[("remote", &remote)]));
+    }
+    let button = match what {
+        Deleting::LocalAndRemote(_) => t.tr("gitflow.delete_base.delete_both.button"),
+        Deleting::Local | Deleting::Remote(_) => t.tr("gitflow.delete_base.delete.button"),
+    };
+    Msg::ConfirmDanger { title: title.into(), body: format!("{body}\n\n{warn}"), button: button.into(), ack, then }
 }

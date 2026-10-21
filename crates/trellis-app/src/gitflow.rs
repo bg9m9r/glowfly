@@ -1,6 +1,5 @@
 //! Messages of the Git Flow preferences page, the Start and Finish dialogs, continuing a Finish
-//! stopped at a conflict, confirming the delete of the production or development branch, the
-//! Git Flow panel and the left panel's GIT FLOW section (state/gitflow*.rs, update/gitflow*.rs,
+//! stopped at a merge conflict, the Git Flow panel and the left panel's GIT FLOW section (state/gitflow*.rs, update/gitflow*.rs,
 //! ui/prefs/gitflow.rs, ui/gitflow_*.rs).
 
 use trellis_core::gitflow::FlowKind;
@@ -31,11 +30,6 @@ pub enum GitFlowMsg {
     ContinueFinish,
     /// Drop the remembered steps of a stopped Finish (Forget).
     ForgetFinish,
-    /// Open the destructive confirmation before deleting the configured production or
-    /// development branch (branch menus, remote branch menu, pull request delete offer).
-    DeleteBase(Box<crate::state::gitflow_base::BaseDelete>),
-    /// That confirmation's red button: run the delete it holds.
-    DeleteBaseConfirmed,
 }
 
 impl GitFlowMsg {
@@ -53,9 +47,7 @@ impl GitFlowMsg {
             | Self::ClosePanel
             | Self::StartFromIssue { .. }
             | Self::ContinueFinish
-            | Self::ForgetFinish
-            | Self::DeleteBase(..)
-            | Self::DeleteBaseConfirmed => None,
+            | Self::ForgetFinish => None,
         }
     }
 }

@@ -1,10 +1,12 @@
 //! Headless tests for continuing a Git Flow Finish stopped at a merge conflict: the offer once
 //! the merge is committed, the Continue finish job and its headline, a second conflict, the
-//! refusals, an aborted merge, parking with the tab, and a later Finish clearing the steps, end
-//! to end against real repositories.
+//! refusals, an aborted merge, parking with the tab, a later Finish clearing the steps, the
+//! palette entry, translated log lines and opening another repository, end to end against real
+//! repositories.
 
 use super::gitflow_tests::{cleanup, flow, git_job, initialized, job_label, last_log, run};
-use super::tests::{drive, finish, git};
+use super::tests::{drive, finish, git, scratch_repo};
+use crate::effect::LoadKind;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
 use crate::state::gitflow::FinishJob;
@@ -15,6 +17,7 @@ use git2::RepositoryState;
 use std::path::{Path, PathBuf};
 use trellis_core::gitcli::{args, run as git_run};
 use trellis_core::gitflow::{Branches, FinishOptions, StartTips, WorkState, check_finish};
+use trellis_core::i18n::Lang;
 
 fn commit(dir: &Path, file: &str, text: &str) {
     std::fs::write(dir.join(file), text).unwrap();
@@ -83,7 +86,7 @@ fn continue_after_commit() {
     refresh(&mut st);
     assert!(resume(&st).ready);
     let e = entries(&st).into_iter().find(|e| e.command == C::ContinueGitFlowFinish).expect("palette entry");
-    assert_eq!((e.label.as_str(), e.detail.as_deref()), ("Continue finishing Git Flow feature login", Some("1 step left")));
+    assert_eq!((e.label.as_str(), e.detail.as_deref()), ("Continue finishing feature/login", Some("1 step left")));
 
     let fx = flow(&mut st, GitFlowMsg::ContinueFinish);
     let cmds = vec![args(&["checkout", "develop", "--"]), args(&["branch", "-d", "feature/login"])];
@@ -186,7 +189,10 @@ fn aborted_merge_drops_resume() {
     git(&dir, &["merge", "--abort"]);
     refresh(&mut st);
     assert!(st.gitflow_resume.is_none());
-    assert_eq!(last_log(&st), "Finish feature login can't continue: the merge into develop was aborted. Its remaining steps were dropped.");
+    assert_eq!(
+        last_log(&st),
+        "Finishing feature/login can't continue: the merge into develop was aborted. Its remaining steps were dropped."
+    );
     cleanup(&dir);
 }
 
@@ -200,7 +206,7 @@ fn moved_branch_drops_resume() {
     assert!(st.gitflow_resume.is_none());
     assert_eq!(
         last_log(&st),
-        "Finish feature login can't continue: feature/login has new commits since Finish stopped. Its remaining steps were dropped."
+        "Finishing feature/login can't continue: feature/login has new commits since Finish stopped. Its remaining steps were dropped."
     );
     cleanup(&dir);
 }
@@ -221,6 +227,7 @@ fn pending_job(st: &AppState, snap: &trellis_core::repo::Snapshot, workdir: Path
         then_pr: None,
         then_link: false,
         keeps_undo: false,
+        fetches: false,
     };
     assert!(st.gitflow_finish.is_none());
     let done = plan.summary(&s);
@@ -276,4 +283,53 @@ fn successful_finish_clears_same_branch() {
     assert_eq!(toast(&st), "Finished feature login: merged into develop and deleted feature/login.");
     assert!(st.gitflow_resume.is_none());
     cleanup(&dir);
+}
+
+#[test]
+fn dropped_reason_is_translated() {
+    let (mut st, dir) = stopped("german");
+    st.settings.language = "de".into();
+    resolve(&dir);
+    git(&dir, &["checkout", "-q", "feature/login"]);
+    commit(&dir, "b.txt", "more\n");
+    refresh(&mut st);
+    assert!(st.gitflow_resume.is_none());
+    let de = Lang::De;
+    let why = de.trf("gitflow.resume.why.branch_moved", &[("branch", &"feature/login")]);
+    let expected = de.trf("gitflow.resume.dropped", &[("branch", &"feature/login"), ("why", &why)]);
+    assert_eq!(last_log(&st), expected);
+    assert!(!last_log(&st).contains("can't continue"), "not the English text");
+    cleanup(&dir);
+}
+
+#[test]
+fn palette_offers_continue_only_when_ready_and_idle() {
+    let (mut st, dir) = stopped("palette");
+    let offered = |st: &AppState| entries(st).into_iter().find(|e| e.command == C::ContinueGitFlowFinish);
+    assert!(offered(&st).is_none(), "not while the merge is open");
+    resolve(&dir);
+    refresh(&mut st);
+    let e = offered(&st).expect("offered once committed");
+    assert_eq!(e.detail.as_deref(), Some("1 step left"));
+    run(&mut st, Msg::git("Status", &["status"]));
+    assert!(st.job.is_some());
+    assert!(offered(&st).is_none(), "not while a job runs");
+    st.job = None;
+    assert!(offered(&st).is_some());
+    cleanup(&dir);
+}
+
+#[test]
+fn opening_another_repository_clears_resume() {
+    let (mut st, dir) = stopped("reopen");
+    let other = scratch_repo("gitflow-resume-other");
+    let options = st.snap.as_ref().unwrap().loaded_with.clone();
+    let snap = trellis_core::repo::load(&other, &options).unwrap();
+    let want = snap.workdir.clone();
+    let m = Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Open, result: Ok(Box::new(snap)) });
+    run(&mut st, m);
+    assert_eq!(st.snap.as_ref().map(|s| &s.workdir), Some(&want), "the other repository is shown");
+    assert!(st.gitflow_resume.is_none());
+    cleanup(&dir);
+    cleanup(&other);
 }

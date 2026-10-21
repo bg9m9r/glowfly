@@ -10,16 +10,6 @@ pub enum FlowBase {
     Development,
 }
 
-impl FlowBase {
-    /// "production" or "development".
-    pub fn noun(self) -> &'static str {
-        match self {
-            FlowBase::Production => "production",
-            FlowBase::Development => "development",
-        }
-    }
-}
-
 impl GitFlowSettings {
     /// The role of `branch`, by exact (case-sensitive) name.
     pub fn base_role(&self, branch: &str) -> Option<FlowBase> {

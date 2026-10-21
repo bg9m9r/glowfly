@@ -8,7 +8,7 @@ use super::snapshot_tests_gitflow::{pushed, with_flow_branches};
 use super::snapshot_tests_worktrees::with_worktrees;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
-use crate::state::gitflow_base::{confirm_delete, warning};
+use crate::state::gitflow_base::{Deleting, guard};
 use crate::state::gitflow_resume::StoppedFinish;
 use crate::state::worktree_manage::RemoveForm;
 use crate::state::{AppState, Modal, Selection};
@@ -16,6 +16,7 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use trellis_core::gitflow::{Branches, FinishOptions, FlowBase, StartTips, WorkState, check_finish};
+use trellis_core::i18n::Lang;
 use trellis_core::settings::ThemeChoice;
 
 /// Finish of `branch` stopped at its merge number `merge` (0-based step index), from a real plan
@@ -76,7 +77,8 @@ fn gitflow_resume_waiting() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("gitflow_resume_waiting");
-    let line = "This merge belongs to Finish feature login. Commit it, then Continue finish runs: delete feature/login.";
+    let line = "This merge is part of finishing feature/login. Once it is committed, Continue finish does the rest: delete \
+                feature/login.";
     assert!(h.query_by_label(line).is_some());
     assert!(h.query_by_label("Continue finish").is_none(), "no banner while the merge is open");
     drop(h);
@@ -86,16 +88,25 @@ fn gitflow_resume_waiting() {
 #[test]
 fn gitflow_delete_base() {
     let (mut st, dir) = with_flow_branches(ThemeChoice::Dark, "gitflow-delete-base");
-    let then = Msg::git("Delete branch", &["branch", "-d", "develop"]);
-    let m = confirm_delete(st.snap.as_ref().unwrap(), "develop", "Delete branch", "Delete local branch develop?".into(), "Delete", then);
-    let Msg::GitFlow(GitFlowMsg::DeleteBase(b)) = m else { panic!("the destructive confirmation") };
-    st.modal = Some(Modal::GitFlowDeleteBase(b));
+    let t = Lang::En;
+    let plain = Msg::confirm_danger(
+        t.tr("branch.delete.title"),
+        t.trf("branch.delete.body", &[("branch", &"develop")]),
+        t.tr("common.delete.button"),
+        Msg::git("Delete branch", &["branch", "-d", "develop"]),
+    );
+    let Msg::ConfirmDanger { title, body, button, then, .. } = guard(t, st.snap.as_ref().unwrap(), "develop", Deleting::Local, plain)
+    else {
+        panic!("a danger confirmation")
+    };
+    assert_eq!(title, "Delete development branch");
+    st.modal = Some(Modal::danger(title, body, button, *then));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("gitflow_delete_base");
     h.get_by_label("Delete anyway").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::GitFlow(GitFlowMsg::DeleteBaseConfirmed))));
+    assert!(pushed(&h, &|m| matches!(m, Msg::ConfirmAccepted)));
     drop(h);
     remove_fixture(&dir);
 }
@@ -104,12 +115,8 @@ fn gitflow_delete_base() {
 fn worktree_remove_flow_base() {
     let (mut st, dir) = with_worktrees(ThemeChoice::Light, "worktree-remove-flow-base");
     let wt = st.snap.as_ref().unwrap().worktrees.iter().find(|w| w.folder_name() == "feature-login").unwrap().clone();
-    let form = RemoveForm {
-        branch: Some("develop".into()),
-        delete_branch: true,
-        flow_base: Some(warning(FlowBase::Development, "develop")),
-        ..RemoveForm::new(&wt)
-    };
+    let form =
+        RemoveForm { branch: Some("develop".into()), delete_branch: true, flow_base: Some(FlowBase::Development), ..RemoveForm::new(&wt) };
     st.modal = Some(Modal::RemoveWorktree(form));
     render("worktree_remove_flow_base", st, false);
     remove_fixture(&dir);

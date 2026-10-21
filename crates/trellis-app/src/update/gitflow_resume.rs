@@ -56,7 +56,7 @@ pub(super) fn snapshot_changed(st: &mut AppState) {
         ResumeState::Waiting => r.ready = false,
         ResumeState::Ready => r.ready = true,
         ResumeState::Gone(g) => {
-            let text = gone_text(&r.resume, &g);
+            let text = gone_text(st.settings.lang(), &r.resume, &g);
             st.gitflow_resume = None;
             st.log(false, text);
         }
@@ -66,8 +66,9 @@ pub(super) fn snapshot_changed(st: &mut AppState) {
 /// Continue finish: checks the state again and runs the steps left as one job. Refusals are
 /// logged and keep the steps; the job's end replaces or clears them.
 pub(super) fn continue_finish(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
+    let t = st.settings.lang();
     let (Some(r), Some(snap)) = (st.gitflow_resume.as_ref(), st.snap.as_ref()) else {
-        st.log(false, "There is no stopped Finish to continue.");
+        st.log(false, t.tr("gitflow.resume.nothing"));
         return;
     };
     let Some(s) = snap.gitflow.settings() else {
@@ -77,12 +78,12 @@ pub(super) fn continue_finish(st: &mut AppState, now: Instant, fx: &mut Vec<Effe
     match resume_state(&r.resume, r.seen_merge, snap) {
         ResumeState::Ready => {}
         ResumeState::Waiting => {
-            let text = not_committed_text(&r.resume.into);
+            let text = not_committed_text(t, &r.resume.into);
             st.log(false, text);
             return;
         }
         ResumeState::Gone(g) => {
-            let text = gone_text(&r.resume, &g);
+            let text = gone_text(t, &r.resume, &g);
             st.gitflow_resume = None;
             st.log(false, text);
             return;

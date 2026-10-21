@@ -13,6 +13,7 @@ use crate::state::gitflow::{empty_text, group_title, row_tooltip, start_blocked}
 use crate::state::gitflow_resume::{ready_text, waiting_text};
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::banner::{self, Banner, BannerKind};
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use git2::Oid;
@@ -61,17 +62,10 @@ pub fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 /// is committed.
 fn resume_row(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(r) = st.gitflow_resume.as_ref() else { return };
-    let text = if r.ready { ready_text(&r.resume) } else { waiting_text(&r.resume) };
-    egui::Frame::group(ui.style()).fill(color::banner()).show(ui, |ui| {
-        ui.set_width(ui.available_width());
-        ui.horizontal(|ui| {
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                super::gitflow_resume_banner::buttons(ui, r.ready, st.job.is_none(), msgs);
-                ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                    ui.add(egui::Label::new(RichText::new(text).color(color::text())).wrap());
-                });
-            });
-        });
+    let t = st.settings.lang();
+    let text = if r.ready { ready_text(t, &r.resume) } else { waiting_text(t, &r.resume) };
+    banner::show(ui, Banner::new(BannerKind::Info).text(text), |ui| {
+        super::gitflow_resume_banner::buttons(ui, t, r.ready, st.job.is_none(), msgs);
     });
 }
 

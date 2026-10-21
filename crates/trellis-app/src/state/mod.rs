@@ -320,7 +320,6 @@ pub enum Modal {
     },
     GitFlowStart(gitflow::StartForm),
     GitFlowFinish(gitflow::FinishForm),
-    GitFlowDeleteBase(Box<gitflow_base::BaseDelete>),
     Remote(remotes::RemoteForm),
     AddFork(Box<forks::ForkPicker>),
     CreateFork(Box<forks::ForkCreate>),
