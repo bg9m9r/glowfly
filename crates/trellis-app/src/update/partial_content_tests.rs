@@ -188,6 +188,15 @@ fn blame_reports_the_versions_it_needs() {
 fn an_untrusted_repository_downloads_as_a_job_once_trusted() {
     let (mut st, src, dest) = partial("partial-untrusted", true);
     st.modal = None;
+    let (to, message) = (head(&st), "second".to_owned());
+    st.undo.record(trellis_core::undo::Action::Commit {
+        branch: Some("main".into()),
+        from: blob(&dest, "HEAD~1"),
+        to,
+        message,
+        amend: false,
+    });
+    let fetched_at = st.snap.as_ref().unwrap().fetched_at;
     let back = read_head_diff(&mut st);
     assert!(run(&mut st, back).is_empty(), "nothing runs in an untrusted repository unasked");
     assert_eq!(phase(&st), Some(ContentPhase::Waiting(Wait::Trust)));
@@ -201,6 +210,8 @@ fn an_untrusted_repository_downloads_as_a_job_once_trusted() {
     finish(&mut st, fx);
     assert!(st.job.is_none() && st.partial.content.is_none());
     assert_eq!(diff_lines(&st), ["one", "two"]);
+    assert_eq!(st.undo.undo.len(), 1, "a download moves no branch, so Undo stays");
+    assert_eq!(st.snap.as_ref().unwrap().fetched_at, fetched_at, "nor does it count as a fetch");
     cleanup(&[&src, &dest]);
 }
 

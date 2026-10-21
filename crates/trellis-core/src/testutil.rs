@@ -67,18 +67,25 @@ pub(crate) fn file_url(p: &Path) -> String {
 /// commits: a.txt "one", then d/b.txt, then a.txt "one\ntwo". HEAD's blobs are checked out;
 /// HEAD~2's a.txt (also HEAD~1's) is missing. Returns (source, clone).
 pub(crate) fn partial_clone(name: &str) -> (PathBuf, PathBuf) {
+    partial_clone_of(name, |src| {
+        write(src, "a.txt", "one\n");
+        git(src, &["add", "."]);
+        git(src, &["commit", "-q", "-m", "first"]);
+        std::fs::create_dir_all(src.join("d")).unwrap();
+        write(src, "d/b.txt", "b\n");
+        git(src, &["add", "."]);
+        git(src, &["commit", "-q", "-m", "second"]);
+        write(src, "a.txt", "one\ntwo\n");
+        git(src, &["add", "."]);
+        git(src, &["commit", "-q", "-m", "third"]);
+    })
+}
+
+/// A blobless partial clone of a source whose history `commit` makes. Returns (source, clone).
+pub(crate) fn partial_clone_of(name: &str, commit: impl FnOnce(&Path)) -> (PathBuf, PathBuf) {
     let src = scratch_repo(&format!("{name}-src"));
     set_config(&src, &[("uploadpack.allowFilter", "true"), ("uploadpack.allowAnySHA1InWant", "true")]);
-    write(&src, "a.txt", "one\n");
-    git(&src, &["add", "."]);
-    git(&src, &["commit", "-q", "-m", "first"]);
-    std::fs::create_dir_all(src.join("d")).unwrap();
-    write(&src, "d/b.txt", "b\n");
-    git(&src, &["add", "."]);
-    git(&src, &["commit", "-q", "-m", "second"]);
-    write(&src, "a.txt", "one\ntwo\n");
-    git(&src, &["add", "."]);
-    git(&src, &["commit", "-q", "-m", "third"]);
+    commit(&src);
     let clone = src.with_file_name(format!("{}-partial", src.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&clone);
     git(src.parent().unwrap(), &["clone", "-q", "--filter=blob:none", &file_url(&src), &clone.display().to_string()]);

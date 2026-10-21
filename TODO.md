@@ -2155,6 +2155,8 @@ here, under the item they grew from.
   conflict view, which still read only what is there
 - Offer to turn a partial clone into a full one (`git fetch --refetch` without the filter, or
   dropping the promisor settings after a full fetch)
+- Reload a partial clone's commit file list after a download, so a rename it listed as a delete
+  and an add (its contents missing) shows as the rename
 
 ### Sparse checkout
 

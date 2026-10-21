@@ -11,7 +11,7 @@
 use crate::error::{Error, Result};
 use crate::gitcli;
 use crate::repo::DiffTarget;
-use git2::{DiffDelta, Oid, Repository};
+use git2::{Delta, Diff, DiffDelta, Oid, Repository};
 use std::path::Path;
 
 /// How many objects one download command asks for (about 8 KB of arguments).
@@ -97,6 +97,26 @@ pub(crate) fn delta_blobs(target: &DiffTarget, d: &DiffDelta) -> Vec<Oid> {
     out.extend(old.then(|| blob(d.old_file())).flatten());
     out.extend(new.then(|| blob(d.new_file())).flatten());
     out
+}
+
+/// Detects renames in `diff`, the diff behind a read of `target`'s file. Detection compares the
+/// contents of the deleted and added files, and libgit2 fails with not-found when a partial
+/// clone lacks some of them: that is reported as [`Error::MissingContent`] for those sides, plus
+/// the `viewed` delta's own, so one download lets the read go through.
+pub(crate) fn find_renames(
+    repo: &Repository,
+    workdir: &Path,
+    target: &DiffTarget,
+    diff: &mut Diff<'_>,
+    viewed: impl Fn(&DiffDelta<'_>) -> bool,
+) -> Result<()> {
+    let Err(e) = diff.find_similar(None) else { return Ok(()) };
+    if e.code() == git2::ErrorCode::NotFound {
+        let compared = |d: &DiffDelta<'_>| matches!(d.status(), Delta::Added | Delta::Deleted) || viewed(d);
+        let wanted: Vec<Oid> = diff.deltas().filter(compared).flat_map(|d| delta_blobs(target, &d)).collect();
+        require(repo, workdir, target.path(), wanted)?;
+    }
+    Err(e.into())
 }
 
 /// Every version of `path` in the history of `at`, old and new side of each change, as

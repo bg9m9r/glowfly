@@ -175,3 +175,53 @@ fn raw_records_give_both_sides() {
     let text = format!("\n:100644 100644 {a} {b} M\0a.txt\0\n:000000 100644 {z} {a} A\0a.txt\0");
     assert_eq!(parse_raw(text.as_bytes()), [Oid::from_str(&a).unwrap(), Oid::from_str(&b).unwrap()]);
 }
+
+/// A source whose second commit renames a.txt to b.txt with an edit and replaces x.txt by y.txt,
+/// and a third that changes b.txt and y.txt, so the clone lacks every blob the second compares.
+fn renamed_clone(name: &str) -> (PathBuf, PathBuf) {
+    crate::testutil::partial_clone_of(name, |src| {
+        write(src, "a.txt", "alpha\nbeta\ngamma\ndelta\n");
+        write(src, "x.txt", "only x\n");
+        git(src, &["add", "."]);
+        git(src, &["commit", "-q", "-m", "first"]);
+        git(src, &["mv", "a.txt", "b.txt"]);
+        write(src, "b.txt", "alpha\nbeta\ngamma\ndelta\nepsilon\n");
+        git(src, &["rm", "-q", "x.txt"]);
+        write(src, "y.txt", "a different y\n");
+        git(src, &["add", "."]);
+        git(src, &["commit", "-q", "-m", "second"]);
+        write(src, "b.txt", "changed\n");
+        write(src, "y.txt", "changed y\n");
+        git(src, &["commit", "-q", "-am", "third"]);
+    })
+}
+
+#[test]
+fn rename_detection_without_the_contents_lists_and_downloads_what_it_compares() {
+    let (src, clone) = renamed_clone("partial-renames");
+    let second = rev(&clone, "HEAD~1");
+    let statuses = |dir: &Path| {
+        let mut v: Vec<(String, char)> = repo::commit_detail(dir, second).unwrap().files.into_iter().map(|f| (f.path, f.status)).collect();
+        v.sort();
+        v
+    };
+    let listed = statuses(&clone);
+    assert_eq!(listed, [("a.txt".into(), 'D'), ("b.txt".into(), 'A'), ("x.txt".into(), 'D'), ("y.txt".into(), 'A')], "no renames yet");
+    assert!(repo::compare_files(&clone, rev(&clone, "HEAD~2"), second).is_ok());
+
+    let target = DiffTarget::Commit(second, "b.txt".into());
+    let m = missing_of(repo::load_diff_for_view(&clone, &target, LoadDiffOptions::default()).unwrap_err());
+    let mut want = vec![blob(&src, "HEAD~2:a.txt"), blob(&src, "HEAD~2:x.txt"), blob(&src, "HEAD~1:b.txt"), blob(&src, "HEAD~1:y.txt")];
+    let mut got = m.oids.clone();
+    want.sort();
+    got.sort();
+    assert_eq!(got, want, "both sides of every add and delete rename detection compares");
+    assert_eq!(m.path, "b.txt");
+    download(&clone, &m);
+
+    let v = repo::load_diff_for_view(&clone, &target, LoadDiffOptions::default()).expect("reads once downloaded");
+    let added: Vec<&str> = v.diff.hunks.iter().flat_map(|h| h.lines.iter()).filter(|l| l.origin == '+').map(|l| l.text.as_str()).collect();
+    assert_eq!(added, ["epsilon"], "shown as the rename it is");
+    assert_eq!(statuses(&clone), statuses(&src), "the list finds the rename too");
+    cleanup(&[&src, &clone]);
+}

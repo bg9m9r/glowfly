@@ -108,6 +108,8 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         then_link: spec.then_link,
         then_open: spec.then_open,
         keeps_undo: super::undo::keeps_history(&spec.cmds),
+        // Only a plain fetch or pull refreshes the remote branches. Downloading a partial clone's
+        // missing contents (`-c ... fetch <ids>`) writes no ref and no FETCH_HEAD, so it isn't one.
         fetches: spec.cmds.iter().any(|c| matches!(c.first().map(String::as_str), Some("fetch" | "pull"))),
     };
     // Background jobs fail rather than pop up a credential prompt.

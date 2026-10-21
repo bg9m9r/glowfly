@@ -334,3 +334,15 @@ fn hard_reset_stashes_uncommitted_work_and_undo_restores_it() {
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap().replace("\r\n", "\n"), "not committed\n");
     cleanup(&[&dir]);
 }
+
+#[test]
+fn git_options_before_the_subcommand_are_skipped() {
+    use super::undo::keeps_history;
+    let a = |v: &[&str]| trellis_core::gitcli::args(v);
+    let ids = [Oid::hash_object(git2::ObjectType::Blob, b"x").unwrap()];
+    assert!(keeps_history(&trellis_core::partial::fetch_cmds("origin", &ids)), "downloading a partial clone's contents");
+    assert!(keeps_history(&[a(&["-c", "a=b", "--no-pager", "push", "origin"])]));
+    assert!(!keeps_history(&[a(&["-c", "a=b", "fetch", ".", "a:b"])]), "a fetch into the repository itself");
+    assert!(!keeps_history(&[a(&["-c", "a=b", "commit", "-m", "x"])]));
+    assert!(!keeps_history(&[a(&["-c", "a=b"])]), "no subcommand");
+}

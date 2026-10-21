@@ -45,12 +45,25 @@ pub(super) fn head_tree(repo: &Repository) -> Option<Tree<'_>> {
 }
 
 pub(super) fn commit_diff<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
+    renamed(repo, commit_plain(repo, oid, opts)?)
+}
+
+/// `commit_diff` without rename detection.
+fn commit_plain<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
     let c = repo.find_commit(oid)?;
     let tree = c.tree()?;
     let parent_tree = if c.parent_count() > 0 { Some(c.parent(0)?.tree()?) } else { None };
-    let mut diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), opts)?;
-    diff.find_similar(None)?;
-    Ok(diff)
+    Ok(repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), opts)?)
+}
+
+/// `diff` with renames detected. Detection compares the deleted and added files' contents, which
+/// a partial clone may not have: there the deletes and adds stay as they are (the diff pane asks
+/// for those contents instead, `partial::find_renames`).
+fn renamed<'r>(repo: &Repository, mut diff: Diff<'r>) -> Result<Diff<'r>> {
+    match diff.find_similar(None) {
+        Err(e) if e.code() == git2::ErrorCode::NotFound && crate::partial::looks_partial(repo) => Ok(diff),
+        found => found.map(|()| diff).map_err(Into::into),
+    }
 }
 
 /// One end of a comparison: commit `oid`'s tree, or nothing for the empty tree.
@@ -64,23 +77,27 @@ fn side_tree(repo: &Repository, oid: Oid) -> Result<Option<Tree<'_>>> {
 /// The tree-to-tree diff from commit `from` to commit `to` (either may be the empty tree), with
 /// renames detected.
 fn trees_diff<'r>(repo: &'r Repository, from: Oid, to: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
+    renamed(repo, trees_plain(repo, from, to, opts)?)
+}
+
+fn trees_plain<'r>(repo: &'r Repository, from: Oid, to: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
     let (from_tree, to_tree) = (side_tree(repo, from)?, side_tree(repo, to)?);
-    let mut diff = repo.diff_tree_to_tree(from_tree.as_ref(), to_tree.as_ref(), opts)?;
-    diff.find_similar(None)?;
-    Ok(diff)
+    Ok(repo.diff_tree_to_tree(from_tree.as_ref(), to_tree.as_ref(), opts)?)
 }
 
 /// The diff from commit `oid`'s tree to the working tree (through the index, so staged and
 /// unstaged changes both count), untracked files included and renames detected; `reversed`
 /// runs it from the working tree to the commit. Ignored files are left out.
 fn workdir_diff<'r>(repo: &'r Repository, oid: Oid, reversed: bool, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
+    renamed(repo, workdir_plain(repo, oid, reversed, opts)?)
+}
+
+fn workdir_plain<'r>(repo: &'r Repository, oid: Oid, reversed: bool, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
     let tree = repo.find_commit(oid)?.tree()?;
     let mut fresh = DiffOptions::new();
     let o = opts.unwrap_or(&mut fresh);
     o.include_untracked(true).recurse_untracked_dirs(true).show_untracked_content(true).reverse(reversed);
-    let mut diff = repo.diff_tree_to_workdir_with_index(Some(&tree), Some(o))?;
-    diff.find_similar(None)?;
-    Ok(diff)
+    Ok(repo.diff_tree_to_workdir_with_index(Some(&tree), Some(o))?)
 }
 
 /// One entry per delta, named by its new path (the old one for a deletion). In a `reversed`
@@ -277,8 +294,11 @@ pub fn load_diff_for_view(workdir: &Path, target: &DiffTarget, opts: LoadDiffOpt
 fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bool) -> Result<ViewDiff> {
     let repo = Repository::open(workdir)?;
     let path = target.path();
-    let diff = target_diff(&repo, target, opts, None)?;
+    let mut diff = plain_target_diff(&repo, target, opts, None)?;
     // A partial clone may not have the blobs yet; libgit2 can't fetch them.
+    if finds_renames(target) {
+        crate::partial::find_renames(&repo, workdir, target, &mut diff, |d| super::rpath::touches(d, path))?;
+    }
     if let Some(delta) = diff.deltas().find(|d| super::rpath::touches(d, path)) {
         crate::partial::require(&repo, workdir, path, crate::partial::delta_blobs(target, &delta))?;
     }
@@ -325,6 +345,17 @@ fn old_text(repo: &Repository, patch: &Patch<'_>, hunks: &[Hunk]) -> Option<Arc<
 /// The diff behind `target`, with `context` lines around each change when set (and hunks
 /// never merged because of nearby changes, so one hunk spans the file).
 pub(super) fn target_diff<'r>(repo: &'r Repository, target: &DiffTarget, opts: LoadDiffOptions, context: Option<u32>) -> Result<Diff<'r>> {
+    let diff = plain_target_diff(repo, target, opts, context)?;
+    if finds_renames(target) { renamed(repo, diff) } else { Ok(diff) }
+}
+
+/// Whether `target`'s diff detects renames (the staged and unstaged ones are one path's).
+fn finds_renames(target: &DiffTarget) -> bool {
+    !matches!(target, DiffTarget::Unstaged(_) | DiffTarget::Staged(_))
+}
+
+/// `target_diff` without rename detection.
+fn plain_target_diff<'r>(repo: &'r Repository, target: &DiffTarget, opts: LoadDiffOptions, context: Option<u32>) -> Result<Diff<'r>> {
     let mut o = match target {
         DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) | DiffTarget::FromWorkdir(..) => DiffOptions::new(),
         DiffTarget::Unstaged(p) => workdir_opts(p),
@@ -335,10 +366,10 @@ pub(super) fn target_diff<'r>(repo: &'r Repository, target: &DiffTarget, opts: L
         o.context_lines(n).interhunk_lines(0);
     }
     Ok(match target {
-        DiffTarget::Commit(oid, _) => commit_diff(repo, *oid, Some(&mut o))?,
-        DiffTarget::Between(from, to, _) => trees_diff(repo, *from, *to, Some(&mut o))?,
-        DiffTarget::ToWorkdir(oid, _) => workdir_diff(repo, *oid, false, Some(&mut o))?,
-        DiffTarget::FromWorkdir(oid, _) => workdir_diff(repo, *oid, true, Some(&mut o))?,
+        DiffTarget::Commit(oid, _) => commit_plain(repo, *oid, Some(&mut o))?,
+        DiffTarget::Between(from, to, _) => trees_plain(repo, *from, *to, Some(&mut o))?,
+        DiffTarget::ToWorkdir(oid, _) => workdir_plain(repo, *oid, false, Some(&mut o))?,
+        DiffTarget::FromWorkdir(oid, _) => workdir_plain(repo, *oid, true, Some(&mut o))?,
         DiffTarget::Unstaged(_) => repo.diff_index_to_workdir(None, Some(&mut o))?,
         DiffTarget::Staged(_) => repo.diff_tree_to_index(head_tree(repo).as_ref(), None, Some(&mut o))?,
     })

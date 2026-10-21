@@ -78,9 +78,10 @@ fn start(st: &mut AppState, redo: bool, action: Action, opts: UndoOpts, fx: &mut
 /// files stay put), and the LFS commands that only touch hooks, config or the LFS store (install, fetch, push, prune).
 /// A fetch into the repository itself (`fetch . a:b`, a fast-forward without checkout) moves a
 /// branch, so it doesn't count; LFS track, untrack, pull and checkout write working-tree files.
+/// git's own options before the subcommand (`-c name=value fetch ...`) are skipped.
 pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
     cmds.iter().all(|c| {
-        let a: Vec<&str> = c.iter().map(String::as_str).collect();
+        let a: Vec<&str> = c[subcommand_at(c)..].iter().map(String::as_str).collect();
         match a.as_slice() {
             ["fetch", rest @ ..] => !rest.contains(&"."),
             ["push" | "tag" | "clone" | "init" | "config", ..] => true,
@@ -97,6 +98,20 @@ pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
             _ => false,
         }
     })
+}
+
+/// Where `cmd`'s subcommand starts, past git's own options (read as `gitcli::subcommand` reads
+/// them); `cmd.len()` when there is none.
+fn subcommand_at(cmd: &[String]) -> usize {
+    let mut i = 0;
+    while let Some(a) = cmd.get(i) {
+        match a.as_str() {
+            "-c" | "-C" => i += 2,
+            s if s.starts_with('-') => i += 1,
+            _ => return i,
+        }
+    }
+    cmd.len()
 }
 
 /// Updates the history of the tab `job` ran in (active when `here`, otherwise parked).
