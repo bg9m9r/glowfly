@@ -99,17 +99,33 @@ fn command_merge(req: &GitMergeRequest, cmd: &str, trust_exit_code: bool) -> Mer
 }
 
 /// A built-in tool: `git mergetool` with stdin closed, so a question it asks fails rather than
-/// waits.
+/// waits. `--literal-pathspecs` reaches the git commands its script runs, so the path is never a
+/// pathspec pattern; a name the script's shell would expand as a pattern is refused instead.
 fn git_mergetool(req: &GitMergeRequest) -> MergeEnd {
+    if !mergetool_can_open(&req.path) {
+        return MergeEnd::Failed(LaunchFailure::Other(format!(
+            "git mergetool can't open {}: it reads *, ?, [ or \\ in a file name as a pattern and could merge \
+             another file. Set a merge tool in Preferences > External tools, or mergetool.{}.cmd in git config.",
+            req.path, req.tool.name
+        )));
+    }
     let file = req.workdir.join(&req.path);
     let before = fingerprint(&file);
     let tool = format!("--tool={}", req.tool.name);
-    let out = gitcli::output(&req.workdir, &args(&["mergetool", "--no-prompt", &tool, "--", &req.path]), "", &[], None);
+    let a = args(&["--literal-pathspecs", "mergetool", "--no-prompt", &tool, "--", &req.path]);
+    let out = gitcli::output(&req.workdir, &a, "", &[], None);
     if out.code.is_none() && !out.timed_out {
         return MergeEnd::Failed(LaunchFailure::Other(out.stderr.trim().to_owned()));
     }
     let changed = fingerprint(&file) != before;
     git_merge_end(out.code, git_said(&out.stderr, &out.stdout), changed, repo::is_conflicted(&req.workdir, &req.path).ok())
+}
+
+/// Whether `git mergetool` can be pointed at `path`: its script splits the conflicted names
+/// unquoted, so the shell expands `*`, `?` and `[...]` (and some shells `\`) against the files in
+/// the top folder, and `[ab].txt` would merge and stage `a.txt`.
+fn mergetool_can_open(path: &str) -> bool {
+    !path.contains(['*', '?', '[', '\\'])
 }
 
 #[cfg(test)]

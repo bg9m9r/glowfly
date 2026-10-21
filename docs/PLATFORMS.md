@@ -416,10 +416,16 @@ second one next to it.
     commands get each value as one argument. The child runs with `CREATE_NO_WINDOW`, stdin
     closed, `GIT_EDITOR` set to `true` and credential prompts sent to Trellis's dialog, so
     nothing waits on a terminal. git config's diff and merge tool commands (`difftool.<name>.cmd`,
-    `mergetool.<name>.cmd`) run the same way (`external_tools::shell_tool`): `find_sh`, the
+    `mergetool.<name>.cmd`) run the same way (`external_tools/shell_tool.rs`): `find_sh`, the
     command in `TRELLIS_COMMAND` (argv `-c 'eval "$TRELLIS_COMMAND"'`, stderr kept apart), and
     `LOCAL`, `REMOTE`, `BASE` and `MERGED` in the environment, with native paths for the copies
-    and the repo-relative path for `MERGED`, in the repository's top folder.
+    and the repo-relative path for `MERGED`, in the repository's top folder. Which tool runs is
+    read by `external_tools/git_config.rs` on the runner thread, through `gitcli` (`git config -z
+    --get-regexp`, so values may hold newlines), with a built-in name checked against the
+    `mergetools` folder under `git --exec-path`, never a hard-coded install path. A built-in
+    merge tool runs as `git --literal-pathspecs mergetool -- <path>`, and a path holding `*`,
+    `?`, `[` or `\` is refused, because git-mergetool's own sh script expands those as a pattern
+    against the top folder's files and would merge another file.
 
 ## Testing on every OS
 

@@ -2335,6 +2335,7 @@ here, under the item they grew from.
 - Use a built-in tool's own trusted exit code when the user overrides its cmd
 - Copy git config's tool into the External tools fields with one click
 - Report a git difftool failure that comes after its 10-second watch (git's tool scripts start slowly on Windows)
+- Run a built-in merge tool on a file whose name has *, ? or [ (refused now: git mergetool's script globs the name)
 
 ### Notifications
 

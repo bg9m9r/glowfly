@@ -1,4 +1,4 @@
-use super::super::fixture::{conflicted, git};
+use super::super::fixture::{conflicted, conflicted_files, git};
 use super::*;
 use trellis_core::external_tools::git_config::GitTool;
 use trellis_core::repo::DiffTarget;
@@ -24,8 +24,12 @@ fn builtin(name: &str) -> GitTool {
 }
 
 fn merge(dir: &Path, tool: GitTool) -> MergeEnd {
-    match run_merge(GitMergeRequest { tool, workdir: dir.into(), path: "a.txt".into(), filters: true }) {
-        Msg::Tools(ToolsMsg::MergeToolExited { path, end, .. }) if path == "a.txt" => end,
+    merge_at(dir, "a.txt", tool)
+}
+
+fn merge_at(dir: &Path, file: &str, tool: GitTool) -> MergeEnd {
+    match run_merge(GitMergeRequest { tool, workdir: dir.into(), path: file.into(), filters: true }) {
+        Msg::Tools(ToolsMsg::MergeToolExited { path, end, .. }) if path == file => end,
         _ => panic!("expected MergeToolExited"),
     }
 }
@@ -59,6 +63,41 @@ fn a_builtin_merge_tool_runs_through_git_mergetool() {
         other => panic!("expected an exit with an error, got {other:?}"),
     }
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn git_mergetool_never_reads_the_file_name_as_a_pattern() {
+    // `git mergetool` runs a tool git config names: here a command git itself runs, so this
+    // needs no sh of Trellis's own.
+    let dir = conflicted_files("git-mergetool-pattern", &["a.txt", "[ab].txt", "b c.txt"]);
+    git(&dir, &["config", "mergetool.t.cmd", "cp \"$REMOTE\" \"$MERGED\""]);
+    git(&dir, &["config", "mergetool.keepBackup", "false"]);
+    // `[ab].txt` would merge and stage a.txt: refused, and neither file is touched.
+    let e = merge_at(&dir, "[ab].txt", builtin("t"));
+    assert!(matches!(&e, MergeEnd::Failed(LaunchFailure::Other(t)) if t.contains("[ab].txt")), "{e:?}");
+    for f in ["a.txt", "[ab].txt"] {
+        assert_eq!(repo::is_conflicted(&dir, f).ok(), Some(true), "{f}");
+    }
+    assert!(std::fs::read_to_string(dir.join("a.txt")).unwrap().contains("<<<<<<<"));
+    // A name with a space goes through, as one literal path.
+    assert_eq!(merge_at(&dir, "b c.txt", builtin("t")), MergeEnd::Resolved);
+    assert_eq!(
+        std::fs::read_to_string(dir.join("b c.txt")).unwrap(),
+        "theirs
+"
+    );
+    assert_eq!(repo::is_conflicted(&dir, "a.txt").ok(), Some(true));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn mergetool_refuses_only_names_its_shell_would_expand() {
+    for ok in ["a.txt", "dir/b c.txt", "x(1).txt", ":c.txt", "{a,b}.txt"] {
+        assert!(mergetool_can_open(ok), "{ok}");
+    }
+    for refused in ["[ab].txt", "a*.txt", "a?.txt", "dir/x[1]", r"a\b"] {
+        assert!(!mergetool_can_open(refused), "{refused}");
+    }
 }
 
 #[test]

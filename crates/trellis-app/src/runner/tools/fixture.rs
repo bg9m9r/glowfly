@@ -10,6 +10,12 @@ pub(super) fn git(dir: &Path, a: &[&str]) {
 
 /// A repository in the middle of a merge where a.txt conflicts ("ours" against "theirs").
 pub(super) fn conflicted(name: &str) -> PathBuf {
+    conflicted_files(name, &["a.txt"])
+}
+
+/// A repository in the middle of a merge where each of `files` conflicts ("ours" against
+/// "theirs").
+pub(super) fn conflicted_files(name: &str, files: &[&str]) -> PathBuf {
     let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -17,15 +23,21 @@ pub(super) fn conflicted(name: &str) -> PathBuf {
     for (k, v) in [("user.name", "Test"), ("user.email", "t@example.com"), ("commit.gpgsign", "false"), ("core.autocrlf", "false")] {
         git(&dir, &["config", k, v]);
     }
-    std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+    write_all(&dir, files, "one\n");
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "base"]);
     git(&dir, &["checkout", "-q", "-b", "other"]);
-    std::fs::write(dir.join("a.txt"), "theirs\n").unwrap();
+    write_all(&dir, files, "theirs\n");
     git(&dir, &["commit", "-q", "-am", "theirs"]);
     git(&dir, &["checkout", "-q", "main"]);
-    std::fs::write(dir.join("a.txt"), "ours\n").unwrap();
+    write_all(&dir, files, "ours\n");
     git(&dir, &["commit", "-q", "-am", "ours"]);
     assert!(!run(&dir, &args(&["merge", "other"])).0, "merge should conflict");
     dir
+}
+
+fn write_all(dir: &Path, files: &[&str], text: &str) {
+    for f in files {
+        std::fs::write(dir.join(f), text).unwrap();
+    }
 }
