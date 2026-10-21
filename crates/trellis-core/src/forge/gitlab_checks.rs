@@ -6,7 +6,7 @@ use super::check_detail::{CheckList, CheckQuery, CheckRun, RunState, time_of};
 use super::checks::{TipQuery, per_tip};
 use super::gitlab::project_api;
 use super::{Auth, CheckState, Checks, Target, get, page};
-use crate::error::Result;
+use crate::error::{Error, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -14,6 +14,9 @@ use std::collections::HashMap;
 struct Pipeline {
     #[serde(default)]
     id: u64,
+    /// The project it ran in: a fork's own for a merge request from a fork.
+    #[serde(default)]
+    project_id: u64,
     #[serde(default)]
     sha: String,
     status: String,
@@ -127,10 +130,15 @@ fn to_run(j: Job) -> CheckRun {
     }
 }
 
-/// The jobs of the merge request's head pipeline, in pipeline order; none without one.
+/// The jobs of the merge request's head pipeline, in pipeline order; none without one. A
+/// merge request from a fork usually runs its pipeline in the fork, so the jobs are read from
+/// the project the pipeline ran in; when that project can't be read, the pipeline's own state
+/// stands in for its jobs.
 pub(super) fn check_list(t: &Target, auth: &Auth, q: &CheckQuery) -> Result<CheckList> {
     #[derive(Deserialize)]
     struct Mr {
+        #[serde(default)]
+        project_id: u64,
         #[serde(default)]
         sha: String,
         #[serde(default)]
@@ -138,11 +146,33 @@ pub(super) fn check_list(t: &Target, auth: &Auth, q: &CheckQuery) -> Result<Chec
     }
     let mr: Mr = get(auth, &format!("{}/merge_requests/{}", project_api(t), q.id))?;
     let Some(p) = mr.head_pipeline.filter(|p| p.id != 0) else { return Ok(CheckList::empty(mr.sha)) };
-    let mut jobs: Vec<Job> = page::by_link(auth, format!("{}/pipelines/{}/jobs?per_page=100", project_api(t), p.id))?;
-    // Listed newest first; oldest first keeps the stages in order.
-    jobs.sort_by_key(|j| j.id);
-    let sha = if p.sha.is_empty() { mr.sha } else { p.sha };
-    Ok(CheckList { sha, runs: jobs.into_iter().map(to_run).collect(), complete: true })
+    let sha = if p.sha.is_empty() { mr.sha } else { p.sha.clone() };
+    let in_other_project = p.project_id != 0 && p.project_id != mr.project_id;
+    let project = if in_other_project { format!("https://{}/api/v4/projects/{}", t.host, p.project_id) } else { project_api(t) };
+    let runs = match page::by_link::<Job>(auth, format!("{project}/pipelines/{}/jobs?per_page=100", p.id)) {
+        Ok(mut jobs) => {
+            // Listed newest first; oldest first keeps the stages in order.
+            jobs.sort_by_key(|j| j.id);
+            jobs.into_iter().map(to_run).collect()
+        }
+        Err(Error::NotFound(_) | Error::Forbidden(_)) if in_other_project => vec![pipeline_run(p)],
+        Err(e) => return Err(e),
+    };
+    Ok(CheckList { sha, runs, complete: true })
+}
+
+/// The whole pipeline as one check, for when its jobs can't be read.
+fn pipeline_run(p: Pipeline) -> CheckRun {
+    CheckRun {
+        name: "Pipeline".into(),
+        group: None,
+        state: job_state(&p.status),
+        required: None,
+        started: None,
+        finished: None,
+        url: p.web_url,
+        description: "runs in the source project, whose jobs can't be read".into(),
+    }
 }
 
 #[cfg(test)]

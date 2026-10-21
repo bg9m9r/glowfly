@@ -160,6 +160,40 @@ fn gitlab_lists_head_pipeline_jobs() {
     assert_eq!(routes(&m), [MR_ROUTE]);
 }
 
+#[test]
+fn gitlab_reads_a_fork_pipelines_jobs_from_the_fork() {
+    const FORK_JOBS: &str = "GET gitlab.com/api/v4/projects/900/pipelines/56/jobs?per_page=100";
+    let mr = r#"{"project_id":12,"sha":"f1","head_pipeline":{"id":56,"project_id":900,"sha":"f1","status":"running","web_url":"https://gitlab.com/fork/app/-/pipelines/56"}}"#;
+    let m = Mock::start(move |r| match r.route().as_str() {
+        MR_ROUTE => Reply::json(mr),
+        FORK_JOBS => Reply::json(r#"[{"id":201,"name":"unit","stage":"test","status":"running","allow_failure":false}]"#),
+        _ => Reply::not_found(),
+    });
+    let t = remote("https://gitlab.com/g/app");
+    let list = check_list(&t, &token(Provider::GitLab), &q(7, None)).unwrap();
+    assert_eq!(routes(&m), [MR_ROUTE, FORK_JOBS]);
+    assert_eq!((list.sha.as_str(), names(&list)), ("f1", vec!["unit"]));
+
+    // A fork this account can't read: the pipeline's own state stands in for its jobs.
+    let m = Mock::start(move |r| match r.route().as_str() {
+        MR_ROUTE => Reply::json(mr),
+        _ => Reply::not_found(),
+    });
+    let list = check_list(&t, &token(Provider::GitLab), &q(7, None)).unwrap();
+    assert_eq!(routes(&m), [MR_ROUTE, FORK_JOBS]);
+    let run = find_run(&list, "Pipeline");
+    assert_eq!((run.state, run.url.as_str()), (RunState::Running, "https://gitlab.com/fork/app/-/pipelines/56"));
+    assert_eq!(list.runs.len(), 1);
+
+    // The target project's own jobs missing is still an error.
+    let m = Mock::start(|r| match r.route().as_str() {
+        MR_ROUTE => Reply::json(r#"{"project_id":12,"sha":"a","head_pipeline":{"id":55,"project_id":12,"status":"failed"}}"#),
+        _ => Reply::not_found(),
+    });
+    assert!(check_list(&t, &token(Provider::GitLab), &q(7, None)).unwrap_err().is_not_found());
+    assert_eq!(routes(&m), [MR_ROUTE, JOBS_ROUTE]);
+}
+
 const AZ_BASE: &str = "dev.azure.com/contoso/Fabrikam%20Web";
 const AZ_REPO: &str = "dev.azure.com/contoso/Fabrikam%20Web/_apis/git/repositories/web%20app";
 const BUILD_POLICY_ID: &str = "0609b952-1397-4640-95ec-e00a01b2c241";
