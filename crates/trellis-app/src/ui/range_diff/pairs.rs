@@ -9,6 +9,7 @@ use crate::state::AppState;
 use crate::state::journal::short;
 use crate::state::range_diff::status_label;
 use crate::ui::common::{added_color, modified_color, removed_color};
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, contrast, type_scale};
 use crate::ui::widgets::{Icon, paint_cut_text, paint_icon, row_fill};
 use eframe::egui::{self, Color32, CornerRadius, CursorIcon, Painter, Rect, Sense, Ui, pos2, vec2};
@@ -91,7 +92,7 @@ fn chip(p: &Painter, x: f32, y: f32, text: &str, col: Color32) -> Rect {
     let (fill, ink) = contrast::change_chip(col, &color::current());
     let galley = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::SMALL), ink);
     let rect = Rect::from_min_size(pos2(x, y - H / 2.0), vec2(galley.size().x + 2.0 * PAD, H));
-    p.rect_filled(rect, CornerRadius::same(4), fill);
+    p.rect_filled(rect, CornerRadius::same(radius::SM), fill);
     p.galley(pos2(x + PAD, y - galley.size().y / 2.0), galley, ink);
     rect
 }
