@@ -21,6 +21,7 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
 - 2026-10-21 13:41 · **SSH key management**: Keys named in ~/.ssh/config or by Use existing are matched against the listed keys on disk so a link, short name or other case lists once, and the Windows OpenSSH switch lands on main (`d817ddba`)
 - 2026-10-21 12:06 · **SSH key management**: Preferences > SSH lists the keys ~/.ssh/config and its Includes name (with an In ssh config chip, and the entries it can't list with the reason), shows keys only the agent holds with Copy public key, and on Windows offers Use Windows' OpenSSH (global core.sshCommand) when git runs its bundled ssh, with Use Git's own ssh to undo (`d817ddba`)
+- 2026-10-21 12:02 · **Search and filter**: background commit index of large repositories' whole history, so search counts, Enter, Filter and Keep searching cover every commit and load straight to the next match (`0674c2bd`)
 - 2026-10-21 11:49 · **Rebind keyboard shortcuts**: Preferences > Keyboard gets a Repository commands group where fetch, pull, push, create branch or tag, stash, pop, file history, blame, the operation journal, open in terminal and show folder can each be given a key that runs the palette command while no text field has focus, with blocked commands logging the toolbar's reason (`f39befe2`)
 - 2026-10-21 11:09 · **Stacked branches**: Push stack and Create pull requests for the stack land on main, with each layer's push outcome logged to the pushed repository's tab rather than the active one (`989e237b`)
 - 2026-10-21 09:48 · **UI review polish**: Dialog bodies, Preferences and the File view get an always-visible scroll cue, About folds its third-party notices behind their own dialog, tool view headers close with a ghost × with an Esc tooltip, the rebase editors and Keyboard preferences use the standard small buttons and weak ×, the commit summary counter sits beside the field turning amber past 50 and red past 72, and the status bar joins only the parts present with counts matching the filtered lists (`5360df2b`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-21 00:09 · **Custom commands**: Git and shell actions defined in a `commands.toml` file (yours in the config folder, or a repository's committed `.trellis/commands.toml`) appear in the command palette with a Reload entry, in a Commands submenu of the commit, local branch and file menus, and on their own keys; `{branch}`, `{sha}`, `{files}` and `{repo}` are filled from the row (one git argument each, single-quoted for sh), shell commands run under POSIX sh (Git for Windows' `sh.exe` on Windows), a command can ask first, a repository's own commands wait for the trust prompt until it is trusted, and file mistakes are logged with their line and toasted once (`668d84fc`)
 - 2026-10-20 22:57 · **Repository trust**: A trusted repository is asked about again when its hooks, filters or other run-on-open config change, worktrees and submodules Trellis creates inherit their parent's trust, background jobs are gated by the repository they run in, and built-in terminal shells and the LFS and Sparse Checkout pages' git reads wait until the repository is trusted (`810dc550`)
 - 2026-10-20 22:55 · **Preview before you act**: Preview… items in the commit, multi-selection, branch, remote branch and edit menus open a dialog that works out, without changing the files, index or branches, the history a merge, rebase, reset, cherry-pick or drop would leave: where it stops and on which files, the commits that move, are copied or arrive, and the commits no branch or tag will reach any more; Apply runs what the direct item runs (soft, mixed or hard for a reset), refused once the branch moved, with Preview again (`00ea49c3`)
-- 2026-10-20 22:36 · **Operation journal**: States that no branch, tag, remote branch, worktree HEAD or stash reaches any more get a Lost chip and a preview line saying only the reflog keeps them, and a new Lost commits tab lists what `git fsck` finds no ref keeping (dropped stashes named as such, the newest 500): a lost commit offers Create branch here and Restore (a confirmed, undoable detached checkout), a dropped stash Apply stash and Put back in stash list (`fd272821`)
 
 ---
 
@@ -1058,7 +1058,6 @@ blockers and major findings are Milestone 1 items.
 
 - Keep the index when stashing (`--keep-index`) as a Stash dialog option
 - When a staged rename's new path is chosen, stash its old path too, so the rename moves as a whole
-
 
 ### Notifications
 
