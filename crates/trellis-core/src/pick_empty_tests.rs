@@ -178,6 +178,54 @@ fn only_what_git_said_counts() {
     assert!(stopped_empty(&dir, "The previous cherry-pick is now empty, possibly due to conflict resolution."));
     assert!(!stopped_empty(&dir, "hint: nothing to commit\n$ git commit -m nothing to commit"));
     assert!(!stopped_empty(&dir, "error: your local changes would be overwritten by cherry-pick."));
+    assert!(!stopped_empty(&dir, "[main 1a2b3c4] Stop polling when the queue is now empty"));
+    assert!(!stopped_empty(&dir, "[main 1a2b3c4] Revert \"nothing to commit\""));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_subject_that_sounds_empty_does_not_skip_a_real_failure() {
+    let dir = scratch_repo("empty-pick-subject");
+    commit(
+        &dir, "a.txt", "a
+", "base",
+    );
+    git(&dir, &["checkout", "-q", "-b", "side"]);
+    let a = commit(
+        &dir,
+        "q.txt",
+        "q
+",
+        "Stop polling when the queue is now empty, nothing to commit",
+    );
+    let b = commit(
+        &dir,
+        "config.local",
+        "side
+",
+        "add config.local",
+    );
+    git(&dir, &["checkout", "-q", "main"]);
+    write(
+        &dir,
+        "config.local",
+        "mine
+",
+    );
+    let before = head(&dir);
+    let (ok, out, r) = pick(&dir, Picking::CherryPick, &[a, b], &cherry_pick_cmd(&[a, b], None), true);
+    assert!(!ok, "the untracked file stops the second pick: {out}");
+    assert!(out.contains("is now empty"), "git echoes the first commit's subject: {out}");
+    assert!(!stopped_empty(&dir, &out), "{out}");
+    assert!(r.skipped.is_empty() && r.left_empty.is_none(), "{r:?}");
+    let repo = Repository::open(&dir).unwrap();
+    assert_eq!(repo.graph_ahead_behind(head(&dir), before).unwrap(), (1, 0), "only the first commit made");
+    assert!(repo.path().join("sequencer").is_dir(), "left stopped at the second commit");
+    assert_eq!(
+        std::fs::read_to_string(dir.join("config.local")).unwrap(),
+        "mine
+"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

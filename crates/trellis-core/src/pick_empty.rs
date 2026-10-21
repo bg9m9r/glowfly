@@ -27,18 +27,23 @@ impl PickResult {
     }
 }
 
-/// What git prints when the commit it is at would make no change (its output is untranslated).
-const EMPTY_SIGNS: [&str; 4] = ["is now empty", "nothing to commit", "nothing added to commit", "no changes added to commit"];
+/// How the lines git prints when the commit it is at would make no change begin (its output is
+/// untranslated). Matching only line starts keeps the `[branch sha] subject` lines of commits
+/// made earlier in the run from counting, whatever their subjects say.
+const EMPTY_SIGNS: [&str; 5] = [
+    "nothing to commit",
+    "nothing added to commit",
+    "no changes added to commit",
+    "The previous cherry-pick is now empty",
+    "The previous revert is now empty",
+];
 
 /// After a failed pick or revert that printed `output`: whether git stopped only because the
-/// commit it was at changes nothing. The index has no conflicts, its tree is HEAD's, and git
-/// said so (the job log's `$ git` echo lines and `hint:` lines don't count).
+/// commit it was at changes nothing. The index has no conflicts, its tree is HEAD's, and a line
+/// of git's own says so (the job log's `$ git` echo lines, `hint:` lines and commit subjects
+/// don't count).
 pub fn stopped_empty(dir: &Path, output: &str) -> bool {
-    let said = output
-        .lines()
-        .map(str::trim_start)
-        .filter(|l| !l.starts_with("hint:") && !l.starts_with("$ git"))
-        .any(|l| EMPTY_SIGNS.iter().any(|s| l.contains(s)));
+    let said = output.lines().map(str::trim_start).any(|l| EMPTY_SIGNS.iter().any(|s| l.starts_with(s)));
     said && index_is_head(dir).unwrap_or(false)
 }
 
