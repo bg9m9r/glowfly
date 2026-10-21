@@ -1,11 +1,12 @@
 //! The selected state's preview: its label, "<subject> · <sha> · <date>", what Restore would
-//! move, up to 8 first-parent commits from it painted as a short lane in the subject's colour,
-//! Restore… and Create branch here…, and git's raw reflog entry.
+//! move (and, when nothing keeps its commit any more, that only the reflog does), up to 8
+//! first-parent commits from it painted as a short lane in the subject's colour, Restore… and
+//! Create branch here…, and git's raw reflog entry. The lane is shared with `lost_preview.rs`.
 
 use crate::journal::JournalMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::journal::{JournalView, moves_sentence, row_label, short, subject_name};
+use crate::state::journal::{JournalView, moves_sentence, row_label, short, subject_name, unreachable_line};
 use crate::state::journal_restore;
 use crate::ui::pane_status;
 use crate::ui::theme::branch_colours::line;
@@ -48,6 +49,9 @@ fn pane(ui: &mut Ui, st: &AppState, view: &JournalView, snap: &Snapshot, row: &R
         ui.add_space(4.0);
         ui.add(egui::Label::new(RichText::new(moves).color(color::text())).wrap());
     }
+    if row.unreachable && row.summary.is_some() {
+        ui.add(egui::Label::new(RichText::new(unreachable_line(t)).color(color::text())).wrap());
+    }
     ui.add_space(10.0);
     ui.label(RichText::new(t.tr("journal.preview.history")).font(type_scale::section(ui)).color(color::weak()));
     match view.preview.as_ref().filter(|p| p.key == row.key()).and_then(|p| p.result.as_ref()) {
@@ -55,7 +59,13 @@ fn pane(ui: &mut Ui, st: &AppState, view: &JournalView, snap: &Snapshot, row: &R
         Some(Err(e)) => {
             ui.label(RichText::new(crate::ui::common::capitalize(trellis_core::error::plain_message(e).trim())).color(color::weak()));
         }
-        Some(Ok(p)) => lane(ui, st, snap, &row.subject, &p.history),
+        Some(Ok(p)) => {
+            let tone = match &row.subject {
+                Subject::Head => color::accent(),
+                Subject::Branch(b) => line(snap.branch_swatch(b)),
+            };
+            lane(ui, st, tone, &p.history);
+        }
     }
     ui.add_space(12.0);
     let why = journal_restore::plan(snap, row, st.job.is_some(), t).err();
@@ -76,13 +86,9 @@ fn pane(ui: &mut Ui, st: &AppState, view: &JournalView, snap: &Snapshot, row: &R
     }
 }
 
-/// The commits as a vertical lane: a dot per commit joined by a 2 px line in the subject's
-/// colour, with the summary, short SHA and age beside each.
-fn lane(ui: &mut Ui, st: &AppState, snap: &Snapshot, subject: &Subject, history: &[CommitLine]) {
-    let tone: Color32 = match subject {
-        Subject::Head => color::accent(),
-        Subject::Branch(b) => line(snap.branch_swatch(b)),
-    };
+/// The commits as a vertical lane: a dot per commit joined by a 2 px line in `tone`, with the
+/// summary, short SHA and age beside each.
+pub(super) fn lane(ui: &mut Ui, st: &AppState, tone: Color32, history: &[CommitLine]) {
     let w = ui.available_width();
     let (rect, _) = ui.allocate_exact_size(vec2(w, LANE_ROW_H * history.len() as f32), Sense::hover());
     let p = ui.painter();

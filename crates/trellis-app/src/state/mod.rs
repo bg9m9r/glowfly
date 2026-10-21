@@ -43,6 +43,7 @@ pub mod issue;
 pub mod issue_form;
 pub mod issue_words;
 pub mod journal;
+pub mod journal_lost;
 pub mod journal_restore;
 pub mod keys_page;
 pub mod known_folders;

@@ -1,7 +1,8 @@
 //! The journal's state list: 56 px painted rows, newest first, laid out only where visible (up
-//! to 2,000 of them). Line 1 is the label and the time; line 2 the subject chip, "Now" on a
-//! subject's current state, the short SHA and the commit's summary. Hovering shows git's raw
-//! reflog text; right-click offers Restore…, Create branch here… and Copy > SHA.
+//! to 2,000 of them). Line 1 is the label and the time; line 2 the subject chip, "Lost" when
+//! nothing keeps the commit any more, "Now" on a subject's current state, the short SHA and the
+//! commit's summary. Hovering shows git's raw reflog text (the Lost chip and the time have their
+//! own tips); right-click offers Restore…, Create branch here… and Copy > SHA.
 
 use super::chip;
 use crate::journal::JournalMsg;
@@ -39,16 +40,20 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let label = row_label(st.settings.lang(), row);
             // The row's accessible name: its label, as painted on its first line.
             crate::ui::access::name_button(&resp, true, &label);
-            let time = ui.is_rect_visible(rect).then(|| {
+            let painted = ui.is_rect_visible(rect).then(|| {
                 row_fill::paint(ui.painter(), rect, selected, resp.hovered());
                 paint(ui, st, rect, row, &label)
             });
             if resp.hovered() {
                 ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
             }
-            let over_time = time.zip(ui.ctx().pointer_hover_pos()).is_some_and(|(r, p)| r.contains(p));
+            let pointer = ui.ctx().pointer_hover_pos();
+            let over = |r: Option<Rect>| r.zip(pointer).is_some_and(|(r, p)| r.contains(p));
+            let (over_time, over_lost) = (over(painted.map(|p| p.0)), over(painted.and_then(|p| p.1)));
             let resp = if resp.hovered() && over_time {
                 resp.on_hover_text_at_pointer(st.settings.date_tooltip(row.at, st.view.now, st.view.utc_offset))
+            } else if resp.hovered() && over_lost {
+                resp.on_hover_text_at_pointer(st.settings.lang().tr("journal.unreachable.tip"))
             } else if !row.message.is_empty() {
                 resp.on_hover_text(trellis_core::text::printable(&row.message))
             } else {
@@ -63,8 +68,8 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// Paints one row's two lines; returns where the time went.
-fn paint(ui: &Ui, st: &AppState, rect: Rect, row: &Row, label: &str) -> Rect {
+/// Paints one row's two lines; returns where the time and the Lost chip went.
+fn paint(ui: &Ui, st: &AppState, rect: Rect, row: &Row, label: &str) -> (Rect, Option<Rect>) {
     let t = st.settings.lang();
     let p = ui.painter();
     let (left, right) = (rect.left() + PAD_X, rect.right() - PAD_X);
@@ -76,16 +81,20 @@ fn paint(ui: &Ui, st: &AppState, rect: Rect, row: &Row, label: &str) -> Rect {
     paint_cut_text(p, pos2(left, y1), label, body, color::text(), (time.left() - 12.0 - left).max(0.0));
 
     let mut x = left;
-    x += chip(p, x, y2, subject_name(&row.subject), (right - x) * 0.4) + 6.0;
+    x += chip(p, x, y2, subject_name(&row.subject), (right - x) * 0.4, color::text()).width() + 6.0;
+    let lost = row.unreachable.then(|| chip(p, x, y2, t.tr("journal.unreachable.chip"), right - x, color::warn()));
+    if let Some(r) = lost {
+        x += r.width() + 6.0;
+    }
     if row.current {
-        x += chip(p, x, y2, t.tr("journal.now"), right - x) + 6.0;
+        x += chip(p, x, y2, t.tr("journal.now"), right - x, color::text()).width() + 6.0;
     }
     let mono = type_scale::mono(type_scale::SMALL);
     let sha = paint_cut_text(p, pos2(x, y2), &short(row.oid), mono, color::weak(), (right - x).max(0.0));
     x += sha.rect.width() + 8.0;
     let summary = row.summary.as_deref().unwrap_or(t.tr("journal.gone"));
     paint_cut_text(p, pos2(x, y2), summary, small, color::weak(), (right - x).max(0.0));
-    time
+    (time, lost)
 }
 
 /// The row menu: its label as the header, Restore… (disabled with why), Create branch here…

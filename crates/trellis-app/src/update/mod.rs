@@ -47,6 +47,7 @@ mod issue_create;
 mod job_errors;
 mod jobs;
 mod journal;
+mod journal_lost;
 mod keys;
 mod layout;
 mod lfs;

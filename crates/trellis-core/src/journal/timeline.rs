@@ -51,6 +51,7 @@ pub(super) fn build(entries: Vec<RawEntry>, notes: Vec<Note>, head: Option<Oid>,
                 note: None,
                 summary: None,
                 current: false,
+                unreachable: false,
             };
             (row, e.index)
         })
@@ -76,6 +77,7 @@ pub(super) fn build(entries: Vec<RawEntry>, notes: Vec<Note>, head: Option<Oid>,
                         note: Some(note.clone()),
                         summary: None,
                         current: false,
+                        unreachable: false,
                     },
                     0,
                 )),

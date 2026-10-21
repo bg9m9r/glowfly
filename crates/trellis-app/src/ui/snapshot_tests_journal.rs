@@ -37,6 +37,7 @@ fn row(subject: Subject, oid: Oid, ago: i64, event: Event, message: &str, summar
         note: None,
         summary: summary.map(Into::into),
         current: false,
+        unreachable: false,
     }
 }
 
@@ -46,7 +47,7 @@ fn note(op: Op, branch: &str, oid: Oid) -> Note {
 
 /// A journal on the fixture: main reset back from the search branch's tip (the selected,
 /// noted row), main's commits, a HEAD checkout, a deleted branch and a commit that is gone.
-fn journal(st: &mut AppState, selected: usize) {
+pub(super) fn journal(st: &mut AppState, selected: usize) {
     let main = |s: &str| Subject::Branch(s.into());
     let (merge, search, fix, skeleton) = (
         commit(st, "Merge branch 'login-page'"),
@@ -107,6 +108,7 @@ fn journal(st: &mut AppState, selected: usize) {
         timeline: Some(Ok(timeline)),
         selected: Some(key.clone()),
         preview: Some(PreviewState { key, generation: 1, result: Some(Ok(preview)) }),
+        ..Default::default()
     });
 }
 
@@ -179,7 +181,7 @@ fn journal_restore_blocked() {
 
 fn with_timeline(name: &str, timeline: Option<Result<Timeline, String>>) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
-    st.journal = Some(JournalView { generation: 1, loading: timeline.is_none(), timeline, selected: None, preview: None });
+    st.journal = Some(JournalView { generation: 1, loading: timeline.is_none(), timeline, ..Default::default() });
     (st, dir)
 }
 
@@ -253,7 +255,16 @@ fn journal_de() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("journal_de");
-    for english in ["Operation journal", "Restore…", "Create branch here…", "History at this state", "Git's reflog entry", "Now"] {
+    for english in [
+        "Operation journal",
+        "Restore…",
+        "Create branch here…",
+        "History at this state",
+        "Git's reflog entry",
+        "Now",
+        "States",
+        "Lost commits",
+    ] {
         assert!(h.query_by_label(english).is_none(), "{english} is translated");
     }
     drop(h);

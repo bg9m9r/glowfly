@@ -4,7 +4,7 @@
 //! here, never in `update`. A note that can't be written is logged and never fails the run.
 
 use super::execute::err;
-use crate::journal::{JournalEffect, JournalMsg};
+use crate::journal::{JournalEffect, JournalMsg, LostMsg};
 use crate::msg::Msg;
 use std::path::Path;
 use trellis_core::journal::{self, Op, notes};
@@ -18,6 +18,14 @@ pub(super) fn run(e: JournalEffect) -> Msg {
         JournalEffect::Preview { workdir, key, oid, against, generation } => {
             let result = journal::preview(&workdir, oid, against).map_err(err);
             Msg::Journal(JournalMsg::PreviewLoaded { generation, key, result })
+        }
+        JournalEffect::Lost { workdir, generation } => {
+            let result = journal::lost::find(&workdir).map(Box::new).map_err(err);
+            Msg::Journal(JournalMsg::Lost(LostMsg::Loaded { generation, result }))
+        }
+        JournalEffect::LostPreview { workdir, oid, from, generation } => {
+            let result = journal::preview(&workdir, from, None).map_err(err);
+            Msg::Journal(JournalMsg::Lost(LostMsg::PreviewLoaded { generation, oid, result }))
         }
     }
 }

@@ -1,5 +1,6 @@
 //! The operation journal (`JournalMsg`): opening it in the central area, reading it and the
 //! selected state's preview, and Restore through the pure plan in state/journal_restore.rs.
+//! The Lost commits tab is update/journal_lost.rs.
 //! Every load and preview carries a generation from `AppState::journal_gen`, so a result for a
 //! view that was closed, reopened or parked meanwhile is dropped.
 
@@ -34,6 +35,8 @@ pub(super) fn handle(st: &mut AppState, msg: JournalMsg, now: Instant, fx: &mut 
             let msg = journal_restore::create_branch(row, snap);
             super::branches::handle(st, msg, fx);
         }
+        JournalMsg::Tab(tab) => super::journal_lost::show_tab(st, tab, fx),
+        JournalMsg::Lost(m) => super::journal_lost::handle(st, m, now, fx),
     }
 }
 
@@ -61,10 +64,12 @@ pub(super) fn close(st: &mut AppState) {
     st.journal = None;
 }
 
-/// Reads the journal again when it is open (a full refresh, Refresh, Try again).
+/// Reads the journal again when it is open (a full refresh, Refresh, Try again), and the lost
+/// commits while their tab shows.
 pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.journal.is_some() {
         load(st, fx);
+        super::journal_lost::refreshed(st, fx);
     }
 }
 
@@ -134,4 +139,5 @@ pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     } else if let Some(key) = pending {
         select(st, key, fx);
     }
+    super::journal_lost::reload_pending(st, fx);
 }

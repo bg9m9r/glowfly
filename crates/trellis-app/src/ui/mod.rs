@@ -275,6 +275,8 @@ mod snapshot_tests_issue_create;
 #[cfg(test)]
 mod snapshot_tests_journal;
 #[cfg(test)]
+mod snapshot_tests_journal_lost;
+#[cfg(test)]
 mod snapshot_tests_language_check;
 #[cfg(test)]
 mod snapshot_tests_language_chrome;

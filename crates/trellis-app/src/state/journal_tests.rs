@@ -17,6 +17,7 @@ fn row(subject: Subject, n: u8, event: Event, message: &str) -> Row {
         note: None,
         summary: Some("A commit".into()),
         current: false,
+        unreachable: false,
     }
 }
 
@@ -104,4 +105,19 @@ fn against_is_the_branch_tip_or_head() {
     assert_eq!(against(&snap, &Subject::Head), Some(oid(4)));
     assert_eq!(against(&snap, &Subject::Branch("gone".into())), None);
     assert_eq!(capped_line(Lang::En), "Showing the newest 2,000 states");
+}
+
+#[test]
+fn the_unreachable_line_and_the_chip() {
+    let t = Lang::En;
+    assert_eq!(
+        unreachable_line(t),
+        "No branch, tag, remote branch or stash reaches this commit any more. Git keeps it only while this reflog entry lasts; Restore or Create branch here keeps it."
+    );
+    assert_eq!(t.tr("journal.unreachable.chip"), "Lost");
+    // A marked row keeps its label.
+    let mut r = row(Subject::Head, 1, Event::Commit { subject: "x".into() }, "commit: x");
+    let before = row_label(t, &r);
+    r.unreachable = true;
+    assert_eq!(row_label(t, &r), before);
 }

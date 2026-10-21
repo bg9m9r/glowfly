@@ -17,6 +17,7 @@ fn row(subject: Subject, n: u8, event: Event) -> Row {
         note: None,
         summary: Some("s".into()),
         current: false,
+        unreachable: false,
     }
 }
 

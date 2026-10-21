@@ -139,6 +139,8 @@ pub(super) mod issue_services_tests;
 pub(super) mod issue_tests;
 #[path = "job_errors_tests.rs"]
 pub(super) mod job_errors_tests;
+#[path = "journal_lost_tests.rs"]
+pub(super) mod journal_lost_tests;
 #[path = "journal_restore_tests.rs"]
 pub(super) mod journal_restore_tests;
 #[path = "journal_tests.rs"]

@@ -1,7 +1,8 @@
 //! The operation journal's view state (`AppState::journal`, parked with its tab) and the pure
 //! words it shows: a row's label (its note's, else its event's, else git's raw message), the
 //! subject's name, the tip a state is compared with, and the sentence saying what Restore would
-//! move. Restore's own rules are in `journal_restore.rs`.
+//! move (and that only the reflog keeps an unreachable state). Restore's own rules are in
+//! `journal_restore.rs`; the Lost commits tab's are in `journal_lost.rs`.
 
 use git2::Oid;
 use trellis_core::i18n::Lang;
@@ -18,6 +19,10 @@ pub struct JournalView {
     pub timeline: Option<Result<Timeline, String>>,
     pub selected: Option<RowKey>,
     pub preview: Option<PreviewState>,
+    /// The header's States | Lost commits control; States each time the journal opens.
+    pub tab: super::journal_lost::JournalTab,
+    /// The Lost commits tab, once it has shown.
+    pub lost: Option<super::journal_lost::LostView>,
 }
 
 /// The preview of the selected row.
@@ -177,6 +182,11 @@ pub fn moves_sentence(t: Lang, row: &Row, preview: Option<&Preview>, snap: &Snap
         [one] => t.trf("journal.preview.with_count", &[("moves", &moves), ("first", one)]),
         [one, two, ..] => t.trf("journal.preview.with_counts", &[("moves", &moves), ("first", one), ("second", two)]),
     })
+}
+
+/// The preview's sentence under an unreachable row's moves sentence.
+pub fn unreachable_line(t: Lang) -> &'static str {
+    t.tr("journal.preview.unreachable")
 }
 
 /// The footer under a list cut at `MAX_ROWS`.

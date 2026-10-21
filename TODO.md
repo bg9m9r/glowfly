@@ -1014,10 +1014,6 @@ Chosen on 2026-10-19 as the features that make Trellis its own, in this order.
 - Preview before you act: before a rebase, merge, reset, cherry-pick or drop, show the graph as
   it will look afterwards (worked out in a temporary index or worktree), with the commits that
   move, disappear or conflict marked, then Apply or Cancel
-- Lost commit recovery in the operation journal: mark states whose commit no branch, tag or
-  remote reaches any more (a revwalk that pushes the journal's commits and hides every ref tip),
-  find dangling commits nothing references with git fsck --connectivity-only (dropped stashes
-  named as such), and offer Create branch here and Restore for them
 - Stacked branches: recognise a branch built on another, draw the stack, restack everything
   above after amending a lower branch (`git rebase --update-refs`), and push the stack with one
   pull request per layer
@@ -1288,6 +1284,21 @@ here, under the item they grew from.
 - Notes for jobs run in other repositories (repo sync pulls)
 - An Undo or Redo note's operation name comes from core's English description, so it reads in
   English in other languages; key it to the language tables instead
+- Stop a long git fsck from the Lost commits tab
+- Throttle Lost commits reloads on watcher refreshes in very large repositories
+- Show the files and diff a dropped stash holds in its preview
+- Branch from a dropped stash (git stash branch <name> <commit>)
+- Undo for Put back in stash list (drop it again)
+- Count the commits under each lost tip and show the whole lost segment
+- Say when git will prune a lost commit (gc.pruneExpire)
+- A palette command and a View menu item that open the journal on Lost commits
+- Show the lost count on the Lost commits tab label
+- Filter or search the Lost commits list (stashes only, by author, by text)
+- Tell Trellis's own auto-stashes and rebase autostashes apart from other dropped stashes
+- Say "lost" in an unreachable row's accessible name
+- Recover dangling blobs (files staged but never committed)
+- Jump from a lost tip to its marked row in the States tab
+- Disable Apply stash while a job runs or an operation is in progress, with the reason
 
 ### Terminal keeps the prompt's space
 

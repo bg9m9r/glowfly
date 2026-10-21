@@ -222,3 +222,17 @@ fn the_palette_lists_it_only_with_a_repository() {
     assert!(has(&st));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_reset_away_state_is_marked_unreachable() {
+    let (mut st, dir) = opened("journal-unreachable");
+    let second = st.snap.as_ref().unwrap().head_oid.unwrap();
+    git(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    open_loaded(&mut st, &dir);
+    let rows = st.journal.as_ref().unwrap().rows();
+    let marked: Vec<_> = rows.iter().filter(|r| r.oid == second).collect();
+    assert!(!marked.is_empty() && marked.iter().all(|r| r.unreachable), "{rows:#?}");
+    assert!(rows.iter().filter(|r| r.current).all(|r| !r.unreachable));
+    let _ = std::fs::remove_dir_all(&dir);
+}
