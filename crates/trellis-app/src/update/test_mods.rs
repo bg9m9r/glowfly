@@ -405,6 +405,8 @@ pub(super) mod terminal_view_tests;
 pub(super) mod themes_tests;
 #[path = "tool_compare_tests.rs"]
 pub(super) mod tool_compare_tests;
+#[path = "tool_git_tests.rs"]
+pub(super) mod tool_git_tests;
 #[path = "tools_tests.rs"]
 pub(super) mod tools_tests;
 #[path = "trello_tests.rs"]

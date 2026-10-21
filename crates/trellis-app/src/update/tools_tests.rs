@@ -238,6 +238,7 @@ fn show_page_opens_external_tools() {
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
     assert_eq!(PrefPage::Tools.title(trellis_core::i18n::Lang::En), "External tools");
     assert!(fx.iter().any(|e| matches!(e, Effect::ReadGitConfig { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Tool(ToolEffect::ReadGitTools { next: None, .. }))), "{fx:?}");
 }
 
 #[test]
@@ -295,7 +296,8 @@ fn palette_offers_the_diff_and_merge_tools_for_what_is_open() {
     // Run before a tool is set, it opens Preferences > External Tools.
     st.settings.external_tools.diff_tool.clear();
     let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Tools(ToolsMsg::OpenDiff(target.clone())))), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::Tool(_))), "{fx:?}");
+    let fx = super::tool_compare_tests::read_none(&mut st, fx);
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Tool(t) if !matches!(t, ToolEffect::ReadGitTools { next: None, .. }))), "{fx:?}");
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
     assert_eq!(st.palette_recent.position("open-in-diff-tool"), Some(0));
     st.prefs = None;

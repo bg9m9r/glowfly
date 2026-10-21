@@ -133,6 +133,7 @@ pub mod terminal_names;
 pub mod tip;
 pub mod toasts;
 pub mod tool_compare;
+pub mod tool_git;
 pub mod toolbar_tips;
 pub mod tools;
 pub mod touched;

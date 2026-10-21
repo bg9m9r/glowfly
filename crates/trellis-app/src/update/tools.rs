@@ -4,7 +4,8 @@
 //! A tool entry run while its program isn't set opens Preferences > External Tools instead
 //! (`show_page`), whoever sent it: a menu, a header, the palette or a stale frame.
 //! Repository trust doesn't hold these up: the programs and their arguments come from the
-//! user's own settings, never from the repository.
+//! user's own settings, never from the repository. git config's tools, used when no program is
+//! set, may come from the repository's own config: those are gated in update/tool_git.rs.
 
 use crate::effect::Effect;
 use crate::msg::Msg;
@@ -69,6 +70,7 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
         ToolsMsg::OpenDiff(target) => super::tool_compare::open_diff(st, target, now, fx),
         ToolsMsg::ResolveInMergeTool(path) => super::tool_compare::resolve(st, path, now, fx),
         ToolsMsg::MergeToolExited { workdir, path, program, end } => super::tool_compare::exited(st, workdir, path, program, end, now, fx),
+        ToolsMsg::GitToolsRead { cwd, tools, next } => super::tool_git::on_read(st, cwd, tools, next, now, fx),
     }
 }
 

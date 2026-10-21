@@ -103,7 +103,7 @@ impl Recovery {
             | Effect::SparseCheckout { .. }
             | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(InitEffect::Run { .. })
-            | Effect::Tool(ToolEffect::RunMerge(_)) => Kind::Job(None),
+            | Effect::Tool(ToolEffect::RunMerge(_) | ToolEffect::RunGitMerge(_)) => Kind::Job(None),
             Effect::Clone(CloneEffect::ListRepos { account, .. }) => Kind::Repos(account.clone()),
             Effect::Rebase(RebaseEffect::Start { .. } | RebaseEffect::Resume { .. }) => Kind::Rebase,
             Effect::Rebase(RebaseEffect::EditTodo { .. }) => Kind::EditTodo,
@@ -257,13 +257,17 @@ mod tests {
 
     #[test]
     fn a_panicking_merge_tool_ends_its_job() {
-        use crate::tools::MergeToolRequest;
+        use crate::tools::{GitMergeRequest, MergeToolRequest};
+        use trellis_core::external_tools::git_config::{GitTool, GitToolRun};
         let req =
             MergeToolRequest { program: "m".into(), template: String::new(), workdir: "C:/r".into(), path: "a.txt".into(), filters: false };
-        let effect = Effect::Tool(ToolEffect::RunMerge(req));
-        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
-        let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };
-        assert!(output.contains("boom") && output.contains("run-merge-tool"), "{output}");
+        let tool = GitTool { name: "m".into(), chosen_by: "merge.tool".into(), run: GitToolRun::BuiltIn { path: None } };
+        let git = GitMergeRequest { tool, workdir: "C:/r".into(), path: "a.txt".into(), filters: false };
+        for effect in [Effect::Tool(ToolEffect::RunMerge(req)), Effect::Tool(ToolEffect::RunGitMerge(git))] {
+            let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
+            let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };
+            assert!(output.contains("boom") && output.contains(effect.name()), "{output}");
+        }
     }
 
     #[test]

@@ -1,6 +1,7 @@
 //! The Preferences navigation column: showing the page a row names, and running what that page
 //! needs as it opens (finding installed gits, filling the profiles, reading ~/.ssh, the
-//! repository's tracker boards, LFS and sparse status, or the Git Flow form). The handlers are
+//! repository's tracker boards, LFS and sparse status, the Git Flow form, or git config's diff
+//! and merge tools). The handlers are
 //! called directly, not through `update`, so the unsaved-changes guard sees the row once.
 
 use crate::effect::Effect;
@@ -34,6 +35,10 @@ pub(super) fn navigate(st: &mut AppState, page: PrefPage, now: Instant, fx: &mut
         PrefPage::RepoLfs => super::lfs::handle(st, LfsMsg::ShowPage, now, fx),
         PrefPage::RepoGitFlow => super::gitflow::handle(st, GitFlowMsg::ShowPage, now, fx),
         PrefPage::RepoSparse => super::sparse::handle(st, SparseMsg::ShowPage, now, fx),
+        PrefPage::Tools => {
+            p.page = PrefPage::Tools;
+            super::tool_git::read_for_page(st, fx);
+        }
         other => p.page = other,
     }
 }

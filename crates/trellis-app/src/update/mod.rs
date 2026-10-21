@@ -129,6 +129,7 @@ mod terminal_tabs;
 mod terminal_view;
 mod themes;
 mod tool_compare;
+mod tool_git;
 mod tools;
 mod trello;
 mod trust;

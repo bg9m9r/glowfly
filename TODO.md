@@ -418,7 +418,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | SSH | ✔ SSH page (key cards with their marks, a Generate SSH key dialog, Use existing for keys outside ~/.ssh, Which key dropdowns for all repositories and the open one, the local agent with a status pill, add a key to a hosting service) | Follow-ups in Later > SSH key management |
 | Integrations | ✔ 10 services | PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
-| External Tools | ✔ Editor, diff tool and merge tool (the external terminal is on the Terminal page) | Follow-ups in Later > External tools and Later > External diff and merge tools |
+| External Tools | ✔ Editor, diff tool and merge tool (the external terminal is on the Terminal page) | Follow-ups in Later > External tools and Ideas > External diff and merge tools |
 | Notifications | ✔ location, behind alerts and desktop notifications under UI Customization | Per-kind choices, click to focus (Later > Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors (wait on repository groups) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
@@ -1095,11 +1095,6 @@ blockers and major findings are Milestone 1 items.
 ### Profiles
 
 - Automatic per-repository or per-folder profiles (includeIf / local identity applied on open)
-
-### External diff and merge tools
-
-- Use the tools named in git config (diff.tool / merge.tool, difftool.<name>.cmd) when Trellis
-  has none set
 
 ### Notifications
 
@@ -2331,6 +2326,15 @@ here, under the item they grew from.
 - Option to mark the file resolved automatically when the merge tool saves it and exits with 0
 - Name the temp folders after the sides' branch names instead of ours/theirs
 - Remove the diff tool's temporary copies when Trellis quits, not only by the 24-hour sweep
+- git config's GUI choice: diff.guitool / merge.guitool and difftool.guiDefault (git difftool --gui)
+- Name git config's tool in the file menus' hover notes and the palette's detail (needs a cached read per repository)
+- Run console merge tools (vimdiff, nvimdiff, emerge in a terminal) in a built-in terminal tab
+- Honour mergetool.keepBackup / keepTemporaries / hideResolved for commands Trellis runs itself
+- Open the diff once the trust prompt is accepted (hold the diff tool like a held job)
+- Suggest git's built-in tool names (git difftool --tool-help) on the External tools page
+- Use a built-in tool's own trusted exit code when the user overrides its cmd
+- Copy git config's tool into the External tools fields with one click
+- Report a git difftool failure that comes after its 10-second watch (git's tool scripts start slowly on Windows)
 
 ### Notifications
 

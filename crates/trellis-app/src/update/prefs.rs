@@ -20,6 +20,9 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 prefs.jira_project = project;
             }
             st.prefs = Some(prefs);
+            if page == PrefPage::Tools {
+                super::tool_git::read_for_page(st, fx);
+            }
             // Which program opens trellis:// links (General), read again at every opening.
             super::deep_link::check_scheme(st, fx);
             if page == PrefPage::RepoTracker {

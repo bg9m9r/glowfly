@@ -2,23 +2,34 @@
 //! that compares a file's versions, and the merge tool that resolves a conflict (the external
 //! terminal is on the Terminal page, which shares `program_field` and `warnings`). Each tool's
 //! arguments warn about an unmatched quote, names that are not its placeholders and (diff and
-//! merge tools) the versions they leave out. Edits apply at once (the shell saves the settings
-//! when they change); Browse… asks update to show a file dialog.
+//! merge tools) the versions they leave out. An empty diff or merge tool field says which tool
+//! git config names instead and how it runs (read by update when the page opens). Edits apply at
+//! once (the shell saves the settings when they change); Browse… asks update to show a file
+//! dialog.
 
 use super::{help, row, section, text_field, warn};
 use crate::msg::Msg;
+use crate::state::tool_git::page_hint;
 use crate::state::tools::{bundle_warning, missing_warnings, template_warnings};
 use crate::tools::{ToolKind, ToolsMsg};
 use crate::ui::widgets::buttons;
 use eframe::egui::Ui;
-use trellis_core::external_tools::{DIFF_PLACEHOLDERS, EDITOR_PLACEHOLDERS, MERGE_PLACEHOLDERS};
+use trellis_core::external_tools::git_config::{GitTools, ToolMode};
+use trellis_core::external_tools::{self, DIFF_PLACEHOLDERS, EDITOR_PLACEHOLDERS, MERGE_PLACEHOLDERS};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::{ExternalTools, Settings};
 
 const DIFF_TOOL_ARGS: &str = ExternalTools::DIFF_TOOL_ARGS;
 const MERGE_TOOL_ARGS: &str = ExternalTools::MERGE_TOOL_ARGS;
 
-pub fn tools_page(ui: &mut Ui, s: &mut Settings, msgs: &mut Vec<Msg>) {
+/// What the page knows of git config's tools: None until read; `held` says git is held in the
+/// active repository.
+pub struct GitToolsView<'a> {
+    pub tools: Option<&'a GitTools>,
+    pub held: bool,
+}
+
+pub fn tools_page(ui: &mut Ui, s: &mut Settings, git: &GitToolsView, msgs: &mut Vec<Msg>) {
     let t = s.lang();
     let et = &mut s.external_tools;
     section(ui, t.tr("prefs.tools.editor.section"));
@@ -45,12 +56,33 @@ pub fn tools_page(ui: &mut Ui, s: &mut Settings, msgs: &mut Vec<Msg>) {
         }
     });
 
-    diff_section(ui, t, s, msgs);
-    merge_section(ui, t, s, msgs);
+    diff_section(ui, t, s, git, msgs);
+    merge_section(ui, t, s, git, msgs);
+}
+
+/// Under an empty diff or merge tool field: the tool git config names for `mode`, what it runs,
+/// and why it can't run or waits for trust. Nothing while unread, or when it names none.
+fn git_tool_hint(ui: &mut Ui, t: Lang, mode: ToolMode, field: &str, git: &GitToolsView) {
+    if external_tools::program(field).is_some() {
+        return;
+    }
+    let tool = git.tools.and_then(|g| match mode {
+        ToolMode::Diff => g.diff.as_ref(),
+        ToolMode::Merge => g.merge.as_ref(),
+    });
+    let Some(tool) = tool else { return };
+    let hint = page_hint(t, mode, tool, git.held);
+    help(ui, &hint.using);
+    if let Some(detail) = &hint.detail {
+        help(ui, detail);
+    }
+    for w in &hint.warn {
+        warn(ui, w);
+    }
 }
 
 /// The diff tool: its program, its arguments and their own Restore default arguments.
-fn diff_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
+fn diff_section(ui: &mut Ui, t: Lang, s: &mut Settings, git: &GitToolsView, msgs: &mut Vec<Msg>) {
     let et = &mut s.external_tools;
     section(ui, t.tr("prefs.tools.diff.section"));
     row(ui, t.tr("prefs.tools.diff.label"), |ui| {
@@ -59,6 +91,7 @@ fn diff_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
         if bundle_warning(&et.diff_tool) {
             warn(ui, t.tr("prefs.tools.bundle_warn"));
         }
+        git_tool_hint(ui, t, ToolMode::Diff, &et.diff_tool, git);
     });
     row(ui, t.tr("prefs.tools.diff_args.label"), |ui| {
         text_field(ui, &mut et.diff_tool_args, DIFF_TOOL_ARGS);
@@ -73,7 +106,7 @@ fn diff_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
 }
 
 /// The merge tool, laid out as the diff tool.
-fn merge_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
+fn merge_section(ui: &mut Ui, t: Lang, s: &mut Settings, git: &GitToolsView, msgs: &mut Vec<Msg>) {
     let et = &mut s.external_tools;
     section(ui, t.tr("prefs.tools.merge.section"));
     row(ui, t.tr("prefs.tools.merge.label"), |ui| {
@@ -82,6 +115,7 @@ fn merge_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
         if bundle_warning(&et.merge_tool) {
             warn(ui, t.tr("prefs.tools.bundle_warn"));
         }
+        git_tool_hint(ui, t, ToolMode::Merge, &et.merge_tool, git);
     });
     row(ui, t.tr("prefs.tools.merge_args.label"), |ui| {
         text_field(ui, &mut et.merge_tool_args, MERGE_TOOL_ARGS);

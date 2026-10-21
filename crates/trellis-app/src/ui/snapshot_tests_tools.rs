@@ -1,6 +1,7 @@
 //! Preferences > External tools snapshots: the page with nothing set (the terminal arguments
 //! disabled), and with an editor, custom arguments naming an unknown placeholder, a custom
-//! terminal, and diff and merge tools whose arguments leave out a version; the conflict view
+//! terminal, and diff and merge tools whose arguments leave out a version; with git config's
+//! tools under the empty fields (a command and a built-in tool, an unknown one); the conflict view
 //! with the merge tool blocked by a job, and with the merge tool open on its file.
 
 use super::snapshot_tests::{harness_sized, settings};
@@ -46,6 +47,31 @@ fn preferences_tools_custom_light() {
         ..ExternalTools::default()
     };
     render_tall("prefs_tools_custom_light", page(ThemeChoice::Light, tools), false);
+}
+
+#[test]
+fn preferences_tools_git_config() {
+    use trellis_core::external_tools::git_config::{GitTool, GitToolRun, GitTools};
+    let mut st = page(ThemeChoice::Dark, ExternalTools::default());
+    let cmd = GitToolRun::Command {
+        key: "difftool.meld.cmd".into(),
+        cmd: "meld \"$LOCAL\" \"$REMOTE\"".into(),
+        trust_exit_code: false,
+        from_repo: false,
+    };
+    let diff = GitTool { name: "meld".into(), chosen_by: "diff.tool".into(), run: cmd };
+    let merge = GitTool { name: "vimdiff".into(), chosen_by: "merge.tool".into(), run: GitToolRun::BuiltIn { path: None } };
+    st.prefs.as_mut().unwrap().git_tools = Some(GitTools { diff: Some(diff), merge: Some(merge) });
+    render_tall("prefs_tools_git_config", st, true);
+}
+
+#[test]
+fn preferences_tools_git_config_unknown_light() {
+    use trellis_core::external_tools::git_config::{GitTool, GitToolRun, GitTools};
+    let mut st = page(ThemeChoice::Light, ExternalTools::default());
+    let diff = GitTool { name: "compare-tool".into(), chosen_by: "merge.tool".into(), run: GitToolRun::Unknown };
+    st.prefs.as_mut().unwrap().git_tools = Some(GitTools { diff: Some(diff), merge: None });
+    render_tall("prefs_tools_git_config_unknown_light", st, false);
 }
 
 #[test]

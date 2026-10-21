@@ -200,7 +200,8 @@ fn command_key(name: &str, value: &str) -> Option<String> {
         "diff" => matches!(key, "command" | "textconv"),
         "merge" => key == "driver",
         "filter" => matches!(key, "clean" | "smudge" | "process"),
-        "difftool" | "mergetool" => key == "cmd",
+        // git difftool / mergetool start a tool's own command, or a built-in tool from `.path`.
+        "difftool" | "mergetool" => matches!(key, "cmd" | "path"),
         "remote" => matches!(key, "uploadpack" | "receivepack") || (matches!(key, "url" | "pushurl") && runs_transport(value)),
         // A branch's remote can be a URL.
         "branch" => matches!(key, "remote" | "pushremote") && runs_transport(value),

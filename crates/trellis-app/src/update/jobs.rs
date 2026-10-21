@@ -208,7 +208,8 @@ pub(super) fn begin_background_job(
 /// Makes a job labelled `label` the active one in the active tab's repository, running the
 /// effect `effect` builds for that folder, unless another job is running (said in the log).
 /// Unlike `begin_job`, the trust prompt never holds it: it is for a program the user chose in
-/// their own settings (the merge tool), and its copies of the repository's files are made
+/// their own settings (the merge tool, or a merge command from the user's own git config, never
+/// the repository's), and its copies of the repository's files are made
 /// without the repository's filters while the repository is not trusted, so nothing the
 /// repository configures runs. It keeps the undo history: the tool edits (and at most stages)
 /// a working file and moves no refs, like the conflict view's Save and Mark resolved.

@@ -1,17 +1,18 @@
 //! The external diff and merge tools: opening a diff in the diff tool (an unscoped effect that
 //! reports only failures), and resolving a conflict in the merge tool as the single active job,
-//! ended through `ops::finish_job` when the program exits. With no program set, either one opens
-//! Preferences > External Tools instead (`tools::show_page`). The rules are in
-//! state/tool_compare.rs; the runner side is runner/tools/compare.rs.
+//! ended through `ops::finish_job` when the program exits. With no program set, git config's
+//! tool is read first (update/tool_git.rs); only when it names none does Preferences > External
+//! Tools open (`tools::show_page`). The rules are in state/tool_compare.rs; the runner side is
+//! runner/tools/compare.rs.
 
-use super::tools::{fail, prefs_action, show_page};
+use super::tools::{fail, prefs_action};
 use crate::effect::Effect;
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::ToastAction;
 use crate::state::tool_compare::{ToolSetup, diff_request, merge_end_text, merge_label, merge_request, not_found};
-use crate::tools::{MergeEnd, MergeToolRequest, ToolEffect};
+use crate::tools::{GitToolNext, MergeEnd, MergeToolRequest, ToolEffect};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::paths::same_spelling;
@@ -22,7 +23,7 @@ use trellis_core::repo::DiffTarget;
 pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, now: Instant, fx: &mut Vec<Effect>) {
     let Some(w) = st.workdir() else { return };
     if ToolSetup::of(st.settings.lang(), &st.settings.external_tools).diff.is_some() {
-        return show_page(st, now, fx);
+        return super::tool_git::read_then(st, GitToolNext::Diff(target), fx);
     }
     match diff_request(&st.settings.external_tools, &w, &target, st.runs_git_unasked()) {
         Ok(req) => fx.push(Effect::Tool(ToolEffect::OpenDiff(req))),
@@ -41,7 +42,7 @@ pub(super) fn resolve(st: &mut AppState, path: String, now: Instant, fx: &mut Ve
         return;
     }
     if ToolSetup::of(st.settings.lang(), &st.settings.external_tools).merge.is_some() {
-        return show_page(st, now, fx);
+        return super::tool_git::read_then(st, GitToolNext::Merge(path), fx);
     }
     let req = match merge_request(&st.settings.external_tools, &w, &path, st.runs_git_unasked()) {
         Ok(r) => r,

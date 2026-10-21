@@ -1,10 +1,12 @@
 //! Messages and effects of the external editor, a custom terminal, and the external diff and
 //! merge tools (Preferences > External tools; state/tools.rs, state/tool_compare.rs,
 //! update/tools.rs, update/tool_compare.rs, runner/tools.rs, runner/tools/compare.rs,
-//! ui/prefs/tools.rs).
+//! ui/prefs/tools.rs), with git config's tools when Preferences sets none (state/tool_git.rs,
+//! update/tool_git.rs, runner/tools/git_tool.rs).
 
 use std::path::PathBuf;
 use trellis_core::external_tools::Launch;
+use trellis_core::external_tools::git_config::{GitTool, GitTools};
 use trellis_core::repo::DiffTarget;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -66,6 +68,18 @@ pub enum ToolsMsg {
     /// The merge tool run as a job in `workdir` ended (runner/tools/compare.rs). `program` as
     /// typed.
     MergeToolExited { workdir: PathBuf, path: String, program: String, end: MergeEnd },
+    /// git config's diff and merge tools were read in `cwd` (runner/tools.rs); `next` is the
+    /// click waiting for them, None for the External tools page. Boxed: they are large.
+    GitToolsRead { cwd: PathBuf, tools: Result<Box<GitTools>, String>, next: Option<GitToolNext> },
+}
+
+/// A tool entry waiting for git config's tools: no program was set in Preferences.
+#[derive(Clone, Debug, PartialEq)]
+pub enum GitToolNext {
+    /// Open this diff in git config's diff tool.
+    Diff(DiffTarget),
+    /// Resolve this conflicted file (repo-relative) in git config's merge tool.
+    Merge(String),
 }
 
 impl ToolsMsg {
@@ -81,6 +95,8 @@ impl ToolsMsg {
             | Self::LaunchFailed { .. }
             | Self::OpenDiff(_)
             | Self::ResolveInMergeTool(_)
+            // Checks the active tab itself (update/tool_git.rs).
+            | Self::GitToolsRead { .. }
             // The job logic (ops::finish_job) decides what an inactive tab needs.
             | Self::MergeToolExited { .. } => None,
         }
@@ -108,6 +124,25 @@ pub struct MergeToolRequest {
     pub filters: bool,
 }
 
+/// Opening a diff in git config's diff tool `tool`, as for `DiffToolRequest`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GitDiffRequest {
+    pub tool: GitTool,
+    pub workdir: PathBuf,
+    pub target: DiffTarget,
+    pub filters: bool,
+}
+
+/// Resolving the conflict at `path` in git config's merge tool `tool`, as for
+/// `MergeToolRequest`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GitMergeRequest {
+    pub tool: GitTool,
+    pub workdir: PathBuf,
+    pub path: String,
+    pub filters: bool,
+}
+
 /// Starting the editor, terminal or a diff or merge tool, and their program pickers, run by
 /// runner/tools.rs.
 #[derive(Debug)]
@@ -121,6 +156,14 @@ pub enum ToolEffect {
     OpenDiff(DiffToolRequest),
     /// Writes the conflict's stages and runs the merge tool until it exits (the active job).
     RunMerge(MergeToolRequest),
+    /// Reads git config's diff and merge tools in `cwd` (with the repository's own values when
+    /// `has_repo`); runs nothing.
+    ReadGitTools { cwd: PathBuf, has_repo: bool, next: Option<GitToolNext> },
+    /// Writes the diff's versions and starts git config's diff tool on them, without waiting.
+    OpenGitDiff(GitDiffRequest),
+    /// Writes the conflict's stages (for a command) and runs git config's merge tool until it
+    /// exits (the active job).
+    RunGitMerge(GitMergeRequest),
 }
 
 impl ToolEffect {
@@ -134,6 +177,9 @@ impl ToolEffect {
             ToolEffect::PickProgram(_) => "pick-tool-program",
             ToolEffect::OpenDiff(_) => "open-diff-tool",
             ToolEffect::RunMerge(_) => "run-merge-tool",
+            ToolEffect::ReadGitTools { .. } => "read-git-tools",
+            ToolEffect::OpenGitDiff(_) => "open-git-diff-tool",
+            ToolEffect::RunGitMerge(_) => "run-git-merge-tool",
         }
     }
 }

@@ -225,3 +225,20 @@ fn run_to_exit_reports_the_exit_code_and_what_it_said() {
     assert!(run_to_exit(&missing).unwrap_err().is_not_found());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn watch_reports_an_early_exit_with_stderr() {
+    let dir = crate::paths::temp_dir();
+    let child = Command::new("git")
+        .arg("--no-such-option")
+        .current_dir(&dir)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn();
+    let Ok(child) = child else { return eprintln!("git can't be started here; skipping") };
+    match watch(child) {
+        Watched::Exited { code: Some(c), stderr } => assert!(c != 0 && !stderr.trim().is_empty(), "{c}: {stderr}"),
+        other => panic!("expected an early exit, got {other:?}"),
+    }
+}

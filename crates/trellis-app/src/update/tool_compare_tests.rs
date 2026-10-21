@@ -57,9 +57,22 @@ fn make_untrusted(dir: &Path) {
     git(dir, &["config", "core.sshCommand", "ssh -v"]);
 }
 
-/// Whether `fx` holds any tool effect (a launch, a diff or a merge).
+/// Whether `fx` holds any tool effect (a launch, a diff or a merge) other than the External
+/// tools page's read of git config.
 fn any_tool(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::Tool(_)))
+    fx.iter().any(|e| matches!(e, Effect::Tool(t) if !matches!(t, ToolEffect::ReadGitTools { next: None, .. })))
+}
+
+/// `fx` must be the read of git config's tools for a click; answers it with none named and
+/// returns what that leads to.
+pub(super) fn read_none(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
+    match <[Effect; 1]>::try_from(fx) {
+        Ok([Effect::Tool(ToolEffect::ReadGitTools { cwd, next: Some(next), .. })]) => {
+            let tools = Ok(Box::default());
+            run(st, ToolsMsg::GitToolsRead { cwd, tools, next: Some(next) })
+        }
+        other => panic!("expected the read of git config's tools, got {other:?}"),
+    }
 }
 
 #[test]
@@ -68,6 +81,8 @@ fn opening_a_diff_without_a_tool_opens_preferences() {
     let mut st = opened(&dir);
     let (toasts, last_log) = (st.toasts.len(), st.log.last().map(|l| l.text.clone()));
     let fx = run(&mut st, ToolsMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into())));
+    // git config is read first; it names no tool either.
+    let fx = read_none(&mut st, fx);
     assert!(!any_tool(&fx), "{fx:?}");
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
     assert_eq!(st.toasts.len(), toasts, "no failure toast");
@@ -119,6 +134,7 @@ fn resolving_starts_the_merge_tool_as_the_active_job() {
     // No tool set: nothing starts, and Preferences opens on External Tools.
     let toasts = st.toasts.len();
     let fx = run(&mut st, ToolsMsg::ResolveInMergeTool("a.txt".into()));
+    let fx = read_none(&mut st, fx);
     assert!(!any_tool(&fx), "{fx:?}");
     assert!(st.job.is_none());
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));

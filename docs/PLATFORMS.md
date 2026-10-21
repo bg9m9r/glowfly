@@ -415,7 +415,11 @@ second one next to it.
     are single-quoted (`shell_quote_for`), `{repo}` with forward slashes on Windows; git
     commands get each value as one argument. The child runs with `CREATE_NO_WINDOW`, stdin
     closed, `GIT_EDITOR` set to `true` and credential prompts sent to Trellis's dialog, so
-    nothing waits on a terminal.
+    nothing waits on a terminal. git config's diff and merge tool commands (`difftool.<name>.cmd`,
+    `mergetool.<name>.cmd`) run the same way (`external_tools::shell_tool`): `find_sh`, the
+    command in `TRELLIS_COMMAND` (argv `-c 'eval "$TRELLIS_COMMAND"'`, stderr kept apart), and
+    `LOCAL`, `REMOTE`, `BASE` and `MERGED` in the environment, with native paths for the copies
+    and the repo-relative path for `MERGED`, in the repository's top folder.
 
 ## Testing on every OS
 

@@ -155,8 +155,12 @@ mod tests {
         let en = Lang::En;
         let unset = ToolSetup {
             editor: Some("No external editor is set yet: this opens Preferences > External tools to choose one."),
-            diff: Some("No external diff tool is set yet: this opens Preferences > External tools to choose one."),
-            merge: Some("No external merge tool is set yet: this opens Preferences > External tools to choose one."),
+            diff: Some(
+                "No external diff tool is set in Preferences: this uses the one git config names, or opens Preferences > External tools to choose one.",
+            ),
+            merge: Some(
+                "No external merge tool is set in Preferences: this uses the one git config names, or opens Preferences > External tools to choose one.",
+            ),
         };
         assert_eq!(ToolSetup::of(en, &tools("", "")), unset);
         let quoted = ExternalTools { editor: " \"\" ".into(), ..tools(" \"\" ", " \"\" ") };

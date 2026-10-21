@@ -147,3 +147,14 @@ fn timeout_kills_the_command() {
     assert!(out.stderr.contains("was stopped"), "{out:?}");
     assert!(start.elapsed() < Duration::from_secs(10), "{:?}", start.elapsed());
 }
+
+#[test]
+fn command_carries_gitclis_environment() {
+    let dir = crate::paths::temp_dir();
+    let mut cmd = command(&dir, &args(&["--version"]), &[]);
+    let env = |k: &str| cmd.get_envs().find(|(n, _)| *n == k).and_then(|(_, v)| v).map(|v| v.to_string_lossy().into_owned());
+    assert_eq!(env("GIT_TERMINAL_PROMPT").as_deref(), Some("0"));
+    assert_eq!(env("LANGUAGE").as_deref(), Some("C"));
+    let out = cmd.stdin(Stdio::null()).output().unwrap();
+    assert!(String::from_utf8_lossy(&out.stdout).starts_with("git version"), "{out:?}");
+}

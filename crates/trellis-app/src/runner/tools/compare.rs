@@ -12,14 +12,14 @@ use trellis_core::repo;
 
 /// What to say about a failure to prepare the files: the bare reason for the ones Trellis
 /// words itself ("no changes in a.txt", "a.txt is a submodule; …").
-fn reason(e: &Error) -> String {
+pub(super) fn reason(e: &Error) -> String {
     match e {
         Error::NotFound(m) | Error::Unsupported(m) | Error::Other(m) => m.clone(),
         e => e.to_string(),
     }
 }
 
-fn launch_failure(e: &Error) -> LaunchFailure {
+pub(super) fn launch_failure(e: &Error) -> LaunchFailure {
     if e.is_not_found() { LaunchFailure::NotFound } else { LaunchFailure::Other(e.to_string()) }
 }
 
@@ -80,37 +80,10 @@ fn merge_end(req: &MergeToolRequest) -> MergeEnd {
 
 #[cfg(test)]
 mod tests {
+    use super::super::fixture::{conflicted, git};
     use super::*;
-    use std::path::{Path, PathBuf};
-    use trellis_core::gitcli::{args, run};
+    use std::path::Path;
     use trellis_core::repo::DiffTarget;
-
-    fn git(dir: &Path, a: &[&str]) {
-        let (ok, out) = run(dir, &args(a));
-        assert!(ok, "git {a:?} failed: {out}");
-    }
-
-    /// A repository in the middle of a merge where a.txt conflicts ("ours" against "theirs").
-    fn conflicted(name: &str) -> PathBuf {
-        let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        git(&dir, &["init", "-q", "-b", "main"]);
-        for (k, v) in [("user.name", "Test"), ("user.email", "t@example.com"), ("commit.gpgsign", "false"), ("core.autocrlf", "false")] {
-            git(&dir, &["config", k, v]);
-        }
-        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
-        git(&dir, &["add", "."]);
-        git(&dir, &["commit", "-q", "-m", "base"]);
-        git(&dir, &["checkout", "-q", "-b", "other"]);
-        std::fs::write(dir.join("a.txt"), "theirs\n").unwrap();
-        git(&dir, &["commit", "-q", "-am", "theirs"]);
-        git(&dir, &["checkout", "-q", "main"]);
-        std::fs::write(dir.join("a.txt"), "ours\n").unwrap();
-        git(&dir, &["commit", "-q", "-am", "ours"]);
-        assert!(!run(&dir, &args(&["merge", "other"])).0, "merge should conflict");
-        dir
-    }
 
     fn merge(dir: &Path, program: &str, template: &str) -> MergeEnd {
         let req = MergeToolRequest {

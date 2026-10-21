@@ -182,6 +182,8 @@ pub struct PrefsState {
     pub saved: crate::state::prefs_save::SavedFlash,
     /// The Integrations sign-in form is shown beside connected accounts.
     pub int_adding: bool,
+    /// git config's diff and merge tools for the External tools page; None until read.
+    pub git_tools: Option<trellis_core::external_tools::git_config::GitTools>,
 }
 
 impl PrefsState {
@@ -209,6 +211,7 @@ impl PrefsState {
             leave_approved: false,
             saved: Default::default(),
             int_adding: false,
+            git_tools: None,
         }
     }
 }

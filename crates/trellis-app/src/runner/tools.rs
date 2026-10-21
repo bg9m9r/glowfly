@@ -1,12 +1,17 @@
 //! Starting the external editor or a custom terminal (`Effect::Tool`), and the dialog that
 //! picks a tool's program. Trellis never waits for the editor, terminal or diff tool; only a
-//! failure to start one is reported. The diff and merge tools are in `compare`.
+//! failure to start one is reported. The diff and merge tools are in `compare`, and git config's
+//! (when Preferences sets none) in `git_tool`.
 
 use crate::msg::Msg;
 use crate::tools::{LaunchFailure, ToolEffect, ToolKind, ToolsMsg};
 use trellis_core::external_tools;
+use trellis_core::external_tools::git_config;
 
 mod compare;
+#[cfg(test)]
+mod fixture;
+mod git_tool;
 
 /// Runs `effect`: a launch reports only a failure, a dialog reports what was picked.
 pub(super) fn run(effect: ToolEffect) -> Option<Msg> {
@@ -43,6 +48,11 @@ pub(super) fn run(effect: ToolEffect) -> Option<Msg> {
         }
         ToolEffect::OpenDiff(req) => compare::open_diff(req),
         ToolEffect::RunMerge(req) => Some(compare::run_merge(req)),
+        ToolEffect::ReadGitTools { cwd, has_repo, next } => {
+            Some(Msg::Tools(ToolsMsg::GitToolsRead { tools: git_config::read(&cwd, has_repo, &[]).map(Box::new), cwd, next }))
+        }
+        ToolEffect::OpenGitDiff(req) => git_tool::open_diff(req),
+        ToolEffect::RunGitMerge(req) => Some(git_tool::run_merge(req)),
     }
 }
 

@@ -235,22 +235,20 @@ fn raw_with(
     result
 }
 
-fn raw_inner(
-    program: &OsStr,
-    cwd: &Path,
-    args: &[String],
-    input: &str,
-    env: &[(&str, &str)],
-    timeout: Option<Duration>,
-) -> (GitOutput, Vec<u8>) {
+/// `git <args>` (the chosen git) in `cwd` with gitcli's environment (see [`output`]), for a git
+/// process the caller starts and watches itself, such as a diff tool left running. Its run isn't
+/// reported to the observer ([`observe_runs`]). Its input and output are left to the caller.
+pub fn command(cwd: &Path, args: &[String], env: &[(&str, &str)]) -> Command {
+    base_command(&crate::git_program::program(), cwd, args, env)
+}
+
+/// `program <args>` in `cwd` with the fixed environment, the askpass variables and `env`.
+fn base_command(program: &OsStr, cwd: &Path, args: &[String], env: &[(&str, &str)]) -> Command {
     let mut cmd = Command::new(program);
     // merge's state restore and stash --index feed git apply on stdin; its whitespace warnings
     // are noise in a job log.
     cmd.args(crate::git_errors::with_quiet_apply(args).iter())
         .current_dir(cwd)
-        .stdin(if input.is_empty() { Stdio::null() } else { Stdio::piped() })
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
         // Never block on an interactive prompt or editor: there is no terminal to answer it.
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GIT_EDITOR", "true")
@@ -273,6 +271,19 @@ fn raw_inner(
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
+    cmd
+}
+
+fn raw_inner(
+    program: &OsStr,
+    cwd: &Path,
+    args: &[String],
+    input: &str,
+    env: &[(&str, &str)],
+    timeout: Option<Duration>,
+) -> (GitOutput, Vec<u8>) {
+    let mut cmd = base_command(program, cwd, args, env);
+    cmd.stdin(if input.is_empty() { Stdio::null() } else { Stdio::piped() }).stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = match cmd.spawn() {
         Ok(c) => c,
         Err(e) => return (GitOutput::failed(format!("{SPAWN_FAILED}{e}")), Vec::new()),

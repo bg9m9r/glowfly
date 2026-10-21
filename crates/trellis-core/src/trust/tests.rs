@@ -235,3 +235,18 @@ fn a_hook_in_another_case_is_listed_on_every_os() {
     assert_eq!(scan_at(&dir).unwrap().hooks, ["Post-Checkout"]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_diff_or_merge_tools_path_is_listed() {
+    // git difftool / mergetool start a built-in tool from its .path.
+    let dir = scratch_repo("trust-tool-path");
+    git(&dir, &["config", "difftool.meld.path", "/opt/meld"]);
+    git(&dir, &["config", "mergetool.kdiff3.path", "kdiff3-wrapper"]);
+    git(&dir, &["config", "mergetool.kdiff3.trustExitCode", "true"]);
+    let s = scan_at(&dir).unwrap();
+    assert_eq!(keys(&s), [("difftool.meld.path", "/opt/meld"), ("mergetool.kdiff3.path", "kdiff3-wrapper")]);
+    // Only the repository's own config is scanned: the user's tools are theirs.
+    assert_eq!(command_key("difftool.meld.path", "/opt/meld").as_deref(), Some("difftool.meld.path"));
+    assert_eq!(command_key("mergetool.kdiff3.trustexitcode", "true"), None);
+    let _ = std::fs::remove_dir_all(&dir);
+}

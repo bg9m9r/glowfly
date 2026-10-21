@@ -72,6 +72,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     };
     let save_first = t.tr("prefs.save_bar.first");
     let job = st.job.as_ref().map(|j| j.label.clone());
+    let tools_held = held.is_some();
     let sparse_cx = sparse::SparseContext { repo_name: repo_name.clone(), job, save_first, held };
     let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some(), save_first };
     let ssh_cx = ssh::SshContext {
@@ -136,7 +137,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::Language => language::language_page(ui, settings, now),
                     PrefPage::DiffViewer => diff_viewer::diff_viewer_page(ui, settings),
                     PrefPage::Keyboard => keyboard::keyboard_page(ui, t, &mut prefs.keys, keymap, msgs),
-                    PrefPage::Tools => tools::tools_page(ui, settings, msgs),
+                    PrefPage::Tools => {
+                        let git = tools::GitToolsView { tools: prefs.git_tools.as_ref(), held: tools_held };
+                        tools::tools_page(ui, settings, &git, msgs)
+                    }
                     PrefPage::Terminal => terminal::terminal_page(ui, settings, msgs),
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
                     PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),

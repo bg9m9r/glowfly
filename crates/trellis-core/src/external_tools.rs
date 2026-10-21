@@ -1,16 +1,20 @@
 //! External programs the user chose (Preferences > External tools): argument templates
 //! (`template`), finding the program on PATH, and starting it, detached or waiting for it to
 //! exit. `temp` holds the private folder for the copies diff and merge tools are given, and
-//! `compare` writes those copies for a diff or a conflict.
+//! `compare` writes those copies for a diff or a conflict. When Preferences names no diff or
+//! merge tool, `git_config` reads the one git config names, and `shell_tool` runs its
+//! configured command in sh.
 
 use crate::error::{Error, Result};
 use crate::native_path::native;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 pub mod compare;
+pub mod git_config;
+pub mod shell_tool;
 pub mod temp;
 mod template;
 pub use template::*;
@@ -203,30 +207,53 @@ pub const EARLY_EXIT: Duration = Duration::from_millis(1500);
 /// background thread. See `console_setup` for its input and output. `Error::NotFound` when the
 /// program can't be found.
 pub fn spawn(l: &Launch) -> Result<()> {
-    let mut child = start(l, false)?;
+    match watch(start(l, false)?) {
+        Watched::Running | Watched::Exited { code: Some(0), .. } => Ok(()),
+        Watched::Exited { code, stderr } => Err(Error::Other(early_exit_message(code, &stderr))),
+    }
+}
+
+/// How a started program fared in its first [`EARLY_EXIT`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Watched {
+    /// Still running (or its state couldn't be read): it was left to run.
+    Running,
+    /// It exited; `stderr` is what it printed there, read only when it failed.
+    Exited { code: Option<i32>, stderr: String },
+}
+
+/// Watches `child` (its stderr piped, or not) for [`EARLY_EXIT`]. One still running then is
+/// left running, reaped on a background thread so it leaves no zombie on Unix.
+pub fn watch(child: Child) -> Watched {
+    watch_for(child, EARLY_EXIT)
+}
+
+/// [`watch`] for `window` instead: for a program that takes a while to fail (git's own tool
+/// scripts).
+pub fn watch_for(mut child: Child, window: Duration) -> Watched {
     let stderr = child.stderr.take().map(drain_stderr);
-    let deadline = Instant::now() + EARLY_EXIT;
+    let deadline = Instant::now() + window;
     while Instant::now() < deadline {
         match child.try_wait() {
-            Ok(Some(status)) if status.success() => return Ok(()),
+            Ok(Some(status)) if status.success() => return Watched::Exited { code: Some(0), stderr: String::new() },
             Ok(Some(status)) => {
                 let said = stderr.and_then(|rx| rx.recv_timeout(Duration::from_millis(500)).ok()).unwrap_or_default();
-                return Err(Error::Other(early_exit_message(status.code(), &said)));
+                return Watched::Exited { code: status.code(), stderr: said };
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(20)),
             Err(_) => break,
         }
     }
-    // Reaped so it leaves no zombie on Unix; Trellis doesn't wait for the program.
+    // Trellis doesn't wait for the program.
     let _ = std::thread::Builder::new().name("trellis-tool-wait".into()).spawn(move || {
         let _ = child.wait();
     });
-    Ok(())
+    Watched::Running
 }
 
 /// Starts `l` as `spawn` and `run_to_exit` describe; `wait` makes a macOS application bundle
 /// run through `open -W`.
-fn start(l: &Launch, wait: bool) -> Result<std::process::Child> {
+fn start(l: &Launch, wait: bool) -> Result<Child> {
     let macos = cfg!(target_os = "macos");
     let resolved = find_on_path(&l.program).ok_or_else(|| Error::NotFound(l.program.display().to_string()))?;
     let (program, args) = command_line(&resolved, &l.args, macos, wait);
@@ -269,7 +296,12 @@ impl ExitReport {
 /// exits, however long that is. A macOS application bundle runs through `open -W`, so this
 /// waits for the app too. `Error::NotFound` when the program can't be found.
 pub fn run_to_exit(l: &Launch) -> Result<ExitReport> {
-    let mut child = start(&Launch { own_console: false, ..l.clone() }, true)?;
+    wait_report(start(&Launch { own_console: false, ..l.clone() }, true)?)
+}
+
+/// Waits until `child` exits, however long that is, and says how it ended (its stderr, when
+/// piped, gives [`ExitReport::said`]).
+pub fn wait_report(mut child: Child) -> Result<ExitReport> {
     let stderr = child.stderr.take().map(drain_stderr);
     let status = child.wait()?;
     let text = stderr.and_then(|rx| rx.recv_timeout(Duration::from_secs(2)).ok()).unwrap_or_default();
