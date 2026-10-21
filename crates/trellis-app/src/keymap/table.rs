@@ -144,6 +144,10 @@ use Group as G;
 use KeyName as K;
 use When as W;
 
+/// Full screen: F11, except on macOS, where F11 shows the desktop and Ctrl+Cmd+F is the
+/// system's key.
+const FULL_SCREEN: &[Chord] = if cfg!(target_os = "macos") { &[C::cmd_ctrl(K::Letter('F'))] } else { &[C::plain(K::F(11))] };
+
 /// Every binding, in display order within its group. Rebindable rows are matched through the
 /// effective keymap (`ui/shortcuts/global.rs`); fixed rows document context keys their views
 /// match themselves (dialogs, the palette, lists, the commit box, Esc in `ui/central.rs`, the
@@ -248,6 +252,7 @@ pub const BINDINGS: &[Binding] = &[
     b(I::ToggleLeftPanel, G::View, "Show or hide the left panel", &[C::cmd_shift(K::Letter('L'))], W::Anywhere),
     b(I::ToggleDetailsPanel, G::View, "Show or hide the commit details panel", &[C::cmd_shift(K::Letter('D'))], W::Anywhere),
     b(I::ToggleToolbar, G::View, "Show or hide the toolbar", &[C::cmd_shift(K::Letter('B'))], W::Anywhere),
+    b(I::ToggleFullscreen, G::View, "Enter or leave full screen", FULL_SCREEN, W::Anywhere),
     b(I::ToggleTerminal, G::View, "Show or hide the terminal", &[C::ctrl(K::Backtick)], W::Anywhere),
     b(I::Sheet, G::General, "Keyboard shortcuts", &[C::cmd(K::Slash)], W::Anywhere),
     b(I::Prefs, G::General, "Preferences", &[C::cmd(K::Comma)], W::Anywhere),

@@ -1,4 +1,4 @@
-//! View: zoom, the panels, the terminal and the activity log, the diff settings, the theme and
+//! View: zoom, the panels, full screen, the terminal and the activity log, the diff settings, the theme and
 //! Refresh.
 
 use super::items::{check_item, item};
@@ -37,6 +37,10 @@ pub(super) fn menu(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 msgs.push(Msg::Layout(LayoutMsg::SetPanel { panel, shown: !on }));
                 ui.close_menu();
             }
+        }
+        if check_item(ui, keys, t.tr("menu.view.full_screen"), st.view.window.fullscreen, Some(I::ToggleFullscreen), None) {
+            msgs.push(Msg::Layout(LayoutMsg::ToggleFullscreen));
+            ui.close_menu();
         }
         let no_repo = st.snap.is_none().then_some(t.tr("menu.common.no_repo"));
         if check_item(ui, keys, t.tr("menu.view.terminal"), st.terminal.open, Some(I::ToggleTerminal), no_repo) {

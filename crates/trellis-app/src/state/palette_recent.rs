@@ -175,6 +175,7 @@ impl PaletteCommand {
                 LayoutMsg::ZoomIn => "zoom-in",
                 LayoutMsg::ZoomOut => "zoom-out",
                 LayoutMsg::ZoomReset => "zoom-reset",
+                LayoutMsg::ToggleFullscreen => "full-screen",
                 LayoutMsg::SetPanel { panel: Panel::Left, .. } => "left-panel",
                 LayoutMsg::SetPanel { panel: Panel::Details, .. } => "details-panel",
                 LayoutMsg::SetPanel { panel: Panel::Toolbar, .. } => "toolbar",

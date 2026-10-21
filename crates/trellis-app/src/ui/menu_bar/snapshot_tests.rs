@@ -174,6 +174,13 @@ fn view_menu_checks_the_shown_panels() {
     assert_eq!(h.get_by_label("Terminal").toggled(), Some(Toggled::False));
     assert_eq!(h.get_by_label("Activity log").toggled(), Some(Toggled::False));
     assert_eq!(h.get_by_label("Operation journal").toggled(), Some(Toggled::False));
+    let full = h.get_by_label("Full screen");
+    assert_eq!((full.role(), full.toggled()), (Role::CheckBox, Some(Toggled::False)));
+    drop(h);
+    let (mut st, _) = with_bar(ThemeChoice::Dark, "menu-bar-view-checks");
+    st.view.window.fullscreen = true;
+    let h = opened(st, true, "View");
+    assert_eq!(h.get_by_label("Full screen").toggled(), Some(Toggled::True));
     drop(h);
     let (mut st, _) = with_bar(ThemeChoice::Dark, "menu-bar-view-checks");
     st.journal = Some(JournalView { timeline: Some(Ok(Default::default())), ..Default::default() });
@@ -230,7 +237,7 @@ type Case = (&'static str, &'static str, &'static str, fn(&Msg) -> bool);
 
 #[test]
 fn menu_items_send_their_messages() {
-    let cases: [Case; 8] = [
+    let cases: [Case; 9] = [
         ("menu-click-new-tab", "File", "New tab", |m| matches!(m, Msg::Tabs(TabsMsg::NewTab))),
         ("menu-click-quit", "File", "Quit", |m| matches!(m, Msg::App(AppMsg::Quit))),
         ("menu-click-zoom", "View", "Zoom in", |m| matches!(m, Msg::Layout(LayoutMsg::ZoomIn))),
@@ -240,6 +247,7 @@ fn menu_items_send_their_messages() {
         ("menu-click-left-panel", "View", "Left panel", |m| {
             matches!(m, Msg::Layout(LayoutMsg::SetPanel { panel: Panel::Left, shown: false }))
         }),
+        ("menu-click-full-screen", "View", "Full screen", |m| matches!(m, Msg::Layout(LayoutMsg::ToggleFullscreen))),
         ("menu-click-journal", "View", "Operation journal", |m| matches!(m, Msg::Journal(JournalMsg::Toggle))),
         ("menu-click-about", "Help", "About Trellis…", |m| matches!(m, Msg::App(AppMsg::ShowAbout))),
         ("menu-click-check-updates", "Help", "Check for updates", |m| matches!(m, Msg::Updates(UpdateMsg::CheckNow))),

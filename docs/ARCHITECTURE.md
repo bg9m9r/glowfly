@@ -325,7 +325,10 @@ binary (package `trellis`).
   view. `LayoutMsg::ExpandDetails` and Go to the commit message set it, and `update` clears it
   (`drop_stale_expansion`) as soon as the tool view changes or closes; the saved setting never
   changes. A hidden left or details panel leaves a 16 px edge strip that shows it again
-  (`ui/panel_rails.rs`, with the rail). Toasts are anchored to `ToastBounds`, where the top
+  (`ui/panel_rails.rs`, with the rail). Full screen is the window's own state, never saved:
+  `LayoutMsg::ToggleFullscreen` asks the shell for `WindowCmd::SetFullscreen` from
+  `view.window.fullscreen` (read each frame), and `WindowCmd::in_window` narrows what the drawn
+  bar's window actions do while full screen (docs/PLATFORMS.md, Window frame). Toasts are anchored to `ToastBounds`, where the top
   chrome and the status bar end, measured while `frame_layout` draws them (`ui/toasts.rs`), all
   one width. The toolbar's repository and branch pickers (`ui/toolbar_pickers.rs`) are sized
   to their names up to a cap, and in a window too narrow for everything the pure

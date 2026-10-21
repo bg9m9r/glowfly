@@ -1,11 +1,11 @@
 //! The title bar Trellis draws on Windows and macOS: snapshots of the bar (dark, light,
-//! maximized, macOS, Close hovered, the menu and its File submenu, Preferences, German, many
+//! maximized, full screen, macOS, Close hovered, the menu and its File submenu, Preferences, German, many
 //! tabs), and what its parts send: the window buttons, moving and maximizing from the empty
 //! bar, resizing from the edges, all of it over a dialog, and the Alt tap. With the system
 //! frame none of it is drawn.
 
 use crate::msg::{AppMsg, Msg, TabsMsg};
-use crate::state::window_chrome::{Chrome, ResizeEdge, WindowCmd};
+use crate::state::window_chrome::{Chrome, ResizeEdge, WindowCmd, WindowInfo};
 use crate::state::{AppState, Modal, PrefPage, PrefsState, Tab};
 use crate::ui::menu_testing::open_submenu;
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -143,6 +143,23 @@ fn the_window_buttons_send_their_actions() {
 }
 
 #[test]
+fn title_bar_windows_full_screen() {
+    let (mut st, dir) = fixture(Chrome::Windows, ThemeChoice::Dark, "title-bar-full-screen");
+    st.view.window.fullscreen = true;
+    let mut h = open(st, true);
+    settle(&mut h);
+    h.check_snapshot("title_bar_windows_full_screen");
+    let t = h.state().0.settings.lang();
+    assert!(h.query_by_label(t.tr("title_bar.maximize")).is_none(), "the middle button is Restore");
+    h.get_by_label(t.tr("title_bar.restore")).click();
+    h.run();
+    // `update` turns it into leaving full screen.
+    assert_eq!(sent(&h), [WindowCmd::SetMaximized(false)]);
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn the_empty_bar_moves_and_maximizes_the_window() {
     let (st, dir) = fixture(Chrome::Windows, ThemeChoice::Dark, "title-bar-drag");
     let mut h = open(st, true);
@@ -177,8 +194,14 @@ fn the_empty_bar_moves_and_maximizes_the_window() {
 
 /// The window actions a press at `at` sends with `chrome`, maximized or not.
 fn pressed_at(chrome: Chrome, maximized: bool, at: Pos2) -> Vec<WindowCmd> {
-    let (mut st, dir) = fixture(chrome, ThemeChoice::Dark, &format!("title-bar-resize-{chrome:?}-{maximized}-{}", at.x));
-    st.view.window.maximized = maximized;
+    pressed_in(chrome, WindowInfo { maximized, ..WindowInfo::default() }, at)
+}
+
+/// The window actions a press at `at` sends with `chrome` and the window in state `window`.
+fn pressed_in(chrome: Chrome, window: WindowInfo, at: Pos2) -> Vec<WindowCmd> {
+    let (m, f) = (window.maximized, window.fullscreen);
+    let (mut st, dir) = fixture(chrome, ThemeChoice::Dark, &format!("title-bar-resize-{chrome:?}-{m}-{f}-{}", at.x));
+    st.view.window = window;
     let mut h = open(st, true);
     pointer(&mut h, at, Some((PointerButton::Primary, true)));
     h.run();
@@ -195,6 +218,8 @@ fn the_edges_resize_the_window_on_windows_only() {
     assert_eq!(pressed_at(Chrome::Windows, false, pos2(1.0, 400.0)), [WindowCmd::BeginResize(ResizeEdge::West)]);
     assert_eq!(pressed_at(Chrome::Windows, false, pos2(1438.0, 878.0)), [WindowCmd::BeginResize(ResizeEdge::SouthEast)]);
     assert!(pressed_at(Chrome::Windows, true, pos2(1.0, 400.0)).is_empty(), "not while maximized");
+    let full = WindowInfo { fullscreen: true, ..WindowInfo::default() };
+    assert!(pressed_in(Chrome::Windows, full, pos2(1.0, 400.0)).is_empty(), "not in full screen");
     assert!(pressed_at(Chrome::MacOs, false, pos2(1.0, 400.0)).is_empty());
     assert!(pressed_at(Chrome::System, false, pos2(1.0, 400.0)).is_empty());
 }

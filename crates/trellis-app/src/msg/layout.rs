@@ -1,4 +1,5 @@
-//! Messages for the window's zoom and for showing or hiding its panels (update/layout.rs).
+//! Messages for the window's zoom, full screen and showing or hiding its panels
+//! (update/layout.rs).
 
 use super::Inactive;
 use crate::state::layout::Panel;
@@ -12,6 +13,8 @@ pub enum LayoutMsg {
     ZoomOut,
     /// Back to 100%.
     ZoomReset,
+    /// Enter full screen, or leave it (key, palette, View menu); the window's state, never saved.
+    ToggleFullscreen,
     /// Show the panel if hidden, else hide it (keys).
     TogglePanel(Panel),
     /// Show or hide the panel (palette, status bar).
@@ -29,6 +32,7 @@ impl LayoutMsg {
             Self::ZoomIn
             | Self::ZoomOut
             | Self::ZoomReset
+            | Self::ToggleFullscreen
             | Self::TogglePanel(_)
             | Self::SetPanel { .. }
             | Self::PanelSize { .. }

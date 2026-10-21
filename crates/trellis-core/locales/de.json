@@ -1012,6 +1012,7 @@
   "menu.view.activity_log": "Aktivitätsprotokoll",
   "menu.view.details_panel": "Commit-Details",
   "menu.view.diff": "Diff",
+  "menu.view.full_screen": "Vollbild",
   "menu.view.hunks": "Nur geänderte Zeilen",
   "menu.view.ignore_whitespace": "Leerraum ignorieren",
   "menu.view.inline": "Untereinander",

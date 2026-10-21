@@ -1,8 +1,8 @@
-//! Matching the zoom and panel keys: zoom works over everything (typing, the palette, dialogs,
-//! the sheet, Preferences, a credential prompt) except a key being recorded; the panel toggles
-//! work only with nothing in the way.
+//! Matching the zoom, full-screen and panel keys: zoom and full screen work over everything
+//! (typing, the palette, dialogs, the sheet, Preferences, a credential prompt) except a key
+//! being recorded; the panel toggles work only with nothing in the way.
 
-use crate::keymap::{BindingId, KeyName, Slot};
+use crate::keymap::{BindingId, Chord, KeyName, Slot};
 use crate::msg::{KeysMsg, LayoutMsg, Msg};
 use crate::state::askpass::PendingPrompt;
 use crate::state::keys_page::Recording;
@@ -74,6 +74,21 @@ fn zooms(h: &mut H, what: &str) {
     assert_eq!(layout(&press(h, Modifiers::COMMAND, Key::Num0)), Some(LayoutMsg::ZoomReset), "Ctrl+0 {what}");
 }
 
+/// The default full-screen press on this system: Ctrl+Cmd+F on macOS, F11 elsewhere.
+fn full_screen_press() -> (Modifiers, Key) {
+    if cfg!(target_os = "macos") {
+        (Modifiers { ctrl: true, mac_cmd: true, command: true, ..Default::default() }, Key::F)
+    } else {
+        (Modifiers::NONE, Key::F11)
+    }
+}
+
+/// The full-screen key gives its message in `h`.
+fn full_screen(h: &mut H, what: &str) {
+    let (m, key) = full_screen_press();
+    assert_eq!(layout(&press(h, m, key)), Some(LayoutMsg::ToggleFullscreen), "{what}");
+}
+
 #[test]
 fn zoom_keys() {
     let mut h = harness(state(), false);
@@ -103,6 +118,41 @@ fn zoom_works_over_everything() {
     let prompt = PendingPrompt { id: 1, prompt: Prompt::new("Password: ", None), retry: false, rejected_before: false };
     st.askpass.queue.push_back(prompt);
     zooms(&mut harness(st, false), "under a credential prompt");
+}
+
+#[test]
+fn full_screen_key_works_over_everything() {
+    full_screen(&mut harness(state(), false), "with nothing open");
+    let mut h = harness(state(), true);
+    assert!(h.ctx.wants_keyboard_input(), "the field has focus");
+    full_screen(&mut h, "while typing");
+
+    let mut st = state();
+    st.palette = Some(Default::default());
+    full_screen(&mut harness(st, false), "with the palette open");
+    let mut st = state();
+    st.modal = Some(Modal::Shortcuts { filter: String::new() });
+    full_screen(&mut harness(st, false), "with the sheet open");
+    let mut st = state();
+    st.prefs = Some(PrefsState::new(PrefPage::Ui));
+    full_screen(&mut harness(st, false), "under Preferences");
+    let mut st = state();
+    let prompt = PendingPrompt { id: 1, prompt: Prompt::new("Password: ", None), retry: false, rejected_before: false };
+    st.askpass.queue.push_back(prompt);
+    full_screen(&mut harness(st, false), "under a credential prompt");
+}
+
+#[test]
+fn mac_cmd_ctrl_f_is_not_search() {
+    let mut st = state();
+    st.keymap.set(BindingId::ToggleFullscreen, vec![Chord::cmd_ctrl(KeyName::Letter('F'))]);
+    let mut h = harness(st, false);
+    let cmd_ctrl = Modifiers { ctrl: true, mac_cmd: true, command: true, ..Default::default() };
+    assert_eq!(layout(&press(&mut h, cmd_ctrl, Key::F)), Some(LayoutMsg::ToggleFullscreen), "Ctrl+Cmd+F");
+    assert!(!h.state().st.view.show_search, "full screen, not search");
+    // Search's toggle is view state, not a message.
+    assert!(press(&mut h, Modifiers::MAC_CMD | Modifiers::COMMAND, Key::F).is_empty(), "Cmd+F");
+    assert!(h.state().st.view.show_search, "Cmd+F shows the search bar");
 }
 
 #[test]
@@ -138,4 +188,7 @@ fn recording_takes_the_zoom_keys() {
         matches!(msgs.as_slice(), [Msg::Keys(KeysMsg::Recorded(c))] if c.key == KeyName::Equals && c.mods.command),
         "recorded, not zoomed"
     );
+    let (m, key) = full_screen_press();
+    let msgs = press(&mut h, m, key);
+    assert!(matches!(msgs.as_slice(), [Msg::Keys(KeysMsg::Recorded(_))]), "recorded, not full screen");
 }

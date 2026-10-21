@@ -368,6 +368,14 @@ second one next to it.
    Everything else stays opaque. The tints come from `backdrop::mica_tint`'s ladder, which keeps
    text readable over stand-in Mica colours; a surface that can't reach the floors at any step
    stays opaque, and high-contrast themes stay solid.
+7. **Full screen is F11, except on macOS** (Ctrl+Cmd+F there, since F11 shows the desktop),
+   chosen with `cfg!` in `keymap/table.rs` so both branches compile everywhere. It is the
+   window's state, never saved: `LayoutMsg::ToggleFullscreen` sends `WindowCmd::SetFullscreen`
+   from `st.view.window.fullscreen`, which the shell reads each frame, so full screen entered
+   from the system (the green button) is seen too. While full screen, `WindowCmd::in_window`
+   drops moves and resizes and turns Maximize or Restore into leaving full screen, the middle
+   window button reads Restore, and `caption_geometry` leaves out the Maximize rect (no Snap
+   Layouts). View > Full screen stays reachable on every OS.
 
 ### Watching and refresh
 

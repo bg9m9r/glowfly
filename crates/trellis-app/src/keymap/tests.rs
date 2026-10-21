@@ -20,7 +20,7 @@ fn every_id_has_exactly_one_row() {
 #[test]
 fn ids_are_stable() {
     // Users' settings files name bindings by these: renaming one loses their changes.
-    const FROZEN: [&str; 75] = [
+    const FROZEN: [&str; 76] = [
         "stage",
         "unstage",
         "stage-all",
@@ -96,6 +96,7 @@ fn ids_are_stable() {
         "select-focused-commit",
         "open-fold",
         "close-fold",
+        "toggle-fullscreen",
     ];
     let keys: Vec<&str> = BindingId::ALL.iter().map(|id| id.key()).collect();
     assert_eq!(keys, FROZEN);
@@ -160,6 +161,7 @@ fn rebindable_set() {
         I::SelectFocusedCommit,
         I::OpenFold,
         I::CloseFold,
+        I::ToggleFullscreen,
     ];
     assert_eq!(rebindable, want);
 }
@@ -206,6 +208,7 @@ fn chord_text() {
     assert_eq!(keys.keys_text(I::ZoomIn), "Ctrl+= or Ctrl+Plus");
     assert_eq!(keys.hint(I::ZoomReset), Some("Ctrl+0"));
     assert_eq!(keys.hint(I::ToggleToolbar), Some("Ctrl+Shift+B"));
+    assert_eq!(keys.hint(I::ToggleFullscreen), Some("F11"));
 }
 
 #[test]

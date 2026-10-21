@@ -18,6 +18,8 @@ mod chord_tests;
 mod rebind_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod view_tests;
 
 pub use active::Keymap;
 pub use chord::{Chord, KeyName, Mods};

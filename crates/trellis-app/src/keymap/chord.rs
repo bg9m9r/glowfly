@@ -207,6 +207,10 @@ impl Chord {
     pub const fn cmd_alt(key: KeyName) -> Self {
         Self { mods: Mods { command: true, alt: true, ..NONE }, key }
     }
+    /// Cmd+Ctrl on macOS; elsewhere the two fold into Ctrl.
+    pub const fn cmd_ctrl(key: KeyName) -> Self {
+        Self { mods: Mods { command: true, ctrl: true, ..NONE }, key }
+    }
     pub const fn ctrl(key: KeyName) -> Self {
         Self { mods: Mods { ctrl: true, ..NONE }, key }
     }

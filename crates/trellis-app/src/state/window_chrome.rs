@@ -1,6 +1,8 @@
 //! The window frame on each OS and the pure parts of a title bar Trellis draws itself: which
-//! frame applies (`Chrome`), the window actions the bar asks for (`WindowCmd`), what the shell
-//! knows about the window (`WindowInfo`, with the Maximize button as Windows tracks it) and the
+//! frame applies (`Chrome`), the window actions the bar asks for and full screen (`WindowCmd`),
+//! what the shell
+//! knows about the window (`WindowInfo`, with the Maximize button as Windows tracks it; full
+//! screen narrows what a `WindowCmd` does there, `WindowCmd::in_window`) and the
 //! Alt tap that opens the bar's menu (`AltTap`). The views (`ui/title_bar.rs`,
 //! `ui/window_frame.rs`) turn these into widgets, and the shell turns `WindowCmd` into viewport
 //! commands, or into the system menu through `platform::native_window`.
@@ -85,7 +87,7 @@ pub enum ResizeEdge {
     SouthWest,
 }
 
-/// A window action asked for by a drawn title bar.
+/// A window action asked for by a drawn title bar, or by the full-screen key.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WindowCmd {
     /// Move the window with the OS's move loop (the primary button is down).
@@ -97,6 +99,24 @@ pub enum WindowCmd {
     SetMaximized(bool),
     /// Show the window's system menu at the pointer: a right-click on the empty bar.
     SystemMenu,
+    /// Enter (true) or leave (false) full screen: the full-screen key, palette entry and View
+    /// item.
+    SetFullscreen(bool),
+}
+
+impl WindowCmd {
+    /// What `self` does to a window in state `w`: a full-screen window can't be moved or
+    /// resized, and Maximize or Restore leaves full screen.
+    pub fn in_window(self, w: WindowInfo) -> Option<WindowCmd> {
+        if !w.fullscreen {
+            return Some(self);
+        }
+        match self {
+            WindowCmd::StartDrag | WindowCmd::BeginResize(_) => None,
+            WindowCmd::SetMaximized(_) => Some(WindowCmd::SetFullscreen(false)),
+            WindowCmd::Minimize | WindowCmd::SystemMenu | WindowCmd::SetFullscreen(_) => Some(self),
+        }
+    }
 }
 
 /// What the shell read about the window this frame.
@@ -188,6 +208,30 @@ mod tests {
         for c in [Chrome::System, Chrome::Windows] {
             assert_eq!(c.leading_inset(false), 0.0);
             assert_eq!(c.leading_inset(true), 0.0);
+        }
+    }
+
+    #[test]
+    fn full_screen_blocks_moves_and_turns_maximize_into_leaving() {
+        use WindowCmd as W;
+        let windowed = WindowInfo::default();
+        let full = WindowInfo { fullscreen: true, ..WindowInfo::default() };
+        // (command, what it does in full screen)
+        for (cmd, in_full) in [
+            (W::StartDrag, None),
+            (W::BeginResize(ResizeEdge::SouthEast), None),
+            (W::BeginResize(ResizeEdge::North), None),
+            (W::Minimize, Some(W::Minimize)),
+            (W::SetMaximized(true), Some(W::SetFullscreen(false))),
+            (W::SetMaximized(false), Some(W::SetFullscreen(false))),
+            (W::SystemMenu, Some(W::SystemMenu)),
+            (W::SetFullscreen(true), Some(W::SetFullscreen(true))),
+            (W::SetFullscreen(false), Some(W::SetFullscreen(false))),
+        ] {
+            assert_eq!(cmd.in_window(windowed), Some(cmd), "{cmd:?} windowed");
+            let maximized = WindowInfo { maximized: true, ..windowed };
+            assert_eq!(cmd.in_window(maximized), Some(cmd), "{cmd:?} maximized");
+            assert_eq!(cmd.in_window(full), in_full, "{cmd:?} in full screen");
         }
     }
 

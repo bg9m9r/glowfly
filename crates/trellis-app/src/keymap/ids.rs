@@ -77,12 +77,16 @@ pub enum BindingId {
     SelectFocusedCommit,
     OpenFold,
     CloseFold,
+    ToggleFullscreen,
 }
 
 use BindingId as I;
 
+/// How many ids there are.
+const COUNT: usize = 76;
+
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
-const KEYS: [(BindingId, &str); 75] = [
+const KEYS: [(BindingId, &str); COUNT] = [
     (I::Stage, "stage"),
     (I::Unstage, "unstage"),
     (I::StageAll, "stage-all"),
@@ -158,6 +162,7 @@ const KEYS: [(BindingId, &str); 75] = [
     (I::SelectFocusedCommit, "select-focused-commit"),
     (I::OpenFold, "open-fold"),
     (I::CloseFold, "close-fold"),
+    (I::ToggleFullscreen, "toggle-fullscreen"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.
@@ -175,10 +180,10 @@ pub const FAVORITE_BINDINGS: [BindingId; 9] = [
 
 impl BindingId {
     /// Every id, in declaration order (`id as usize` indexes it).
-    pub const ALL: [BindingId; 75] = {
-        let mut all = [I::Stage; 75];
+    pub const ALL: [BindingId; COUNT] = {
+        let mut all = [I::Stage; COUNT];
         let mut n = 0;
-        while n < 75 {
+        while n < COUNT {
             all[n] = KEYS[n].0;
             n += 1;
         }

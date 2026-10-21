@@ -3,8 +3,8 @@
 //! Windows: the window buttons, the resize edges and corners, a 1 px border, and a drag zone
 //! over the title bar while a dialog blocks it. Everything here pushes `AppMsg::Window`; only
 //! the shell sends viewport commands. It also works out the caption geometry the shell hands
-//! the OS (`caption_geometry`): where the Maximize button is, for Snap Layouts, and where
-//! Alt+Space opens the system menu.
+//! the OS (`caption_geometry`): where the Maximize button is, for Snap Layouts (none in full
+//! screen), and where Alt+Space opens the system menu.
 
 use super::theme::color;
 use super::title_bar;
@@ -41,6 +41,7 @@ pub(super) fn viewport_cmd(cmd: WindowCmd) -> Option<egui::ViewportCommand> {
         WindowCmd::Minimize => egui::ViewportCommand::Minimized(true),
         WindowCmd::SetMaximized(on) => egui::ViewportCommand::Maximized(on),
         WindowCmd::SystemMenu => return None,
+        WindowCmd::SetFullscreen(on) => egui::ViewportCommand::Fullscreen(on),
     })
 }
 
@@ -60,7 +61,8 @@ pub(super) fn to_px(r: Rect, ppp: f32) -> PxRect {
 }
 
 /// Where the drawn caption parts are for the OS, in client pixels: only while Trellis draws
-/// the window buttons.
+/// the window buttons. Full screen leaves the Maximize button out, so Windows offers no Snap
+/// Layouts there and egui handles the button (Restore, which leaves full screen).
 pub(crate) fn caption_geometry(ctx: &egui::Context, st: &AppState) -> Option<CaptionGeometry> {
     if !st.view.chrome.window_buttons() {
         return None;
@@ -68,7 +70,8 @@ pub(crate) fn caption_geometry(ctx: &egui::Context, st: &AppState) -> Option<Cap
     let (screen, ppp) = (ctx.screen_rect(), ctx.pixels_per_point());
     let at = title_bar::menu_at(ctx).unwrap_or(pos2(screen.left() + 8.0, screen.top() + title_bar::TITLE_H));
     let menu_at = ((at.x * ppp).round() as i32, (at.y * ppp).round() as i32);
-    Some(CaptionGeometry { max_button: to_px(max_button_rect(screen), ppp), menu_at })
+    let max_button = if st.view.window.fullscreen { PxRect::default() } else { to_px(max_button_rect(screen), ppp) };
+    Some(CaptionGeometry { max_button, menu_at })
 }
 
 fn direction(e: ResizeEdge) -> ResizeDirection {
@@ -134,7 +137,8 @@ pub(super) fn overlay(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
         .order(Order::Tooltip)
         .fixed_pos(pos2(screen.right() - buttons_w, screen.top()))
         .constrain(false)
-        .show(ctx, |ui| window_buttons::show(ui, t, window.maximized, window.max_button, msgs));
+        // Full screen reads as maximized: the middle button is Restore, which leaves it.
+        .show(ctx, |ui| window_buttons::show(ui, t, window.maximized || window.fullscreen, window.max_button, msgs));
     // A dialog blocks the bar: keep its empty space for moving the window.
     let Some((bar, layer)) = title_bar::place(ctx) else { return };
     if ctx.memory(|m| m.allows_interaction(layer)) {
@@ -216,6 +220,8 @@ mod tests {
         assert_eq!(viewport_cmd(WindowCmd::Minimize), V::Minimized(true));
         assert_eq!(viewport_cmd(WindowCmd::SetMaximized(true)), V::Maximized(true));
         assert_eq!(viewport_cmd(WindowCmd::SetMaximized(false)), V::Maximized(false));
+        assert_eq!(viewport_cmd(WindowCmd::SetFullscreen(true)), V::Fullscreen(true));
+        assert_eq!(viewport_cmd(WindowCmd::SetFullscreen(false)), V::Fullscreen(false));
         for (e, d) in [
             (ResizeEdge::North, ResizeDirection::North),
             (ResizeEdge::South, ResizeDirection::South),
@@ -228,6 +234,20 @@ mod tests {
         ] {
             assert_eq!(viewport_cmd(WindowCmd::BeginResize(e)), V::BeginResize(d), "{e:?}");
         }
+    }
+
+    #[test]
+    fn no_snap_layouts_in_full_screen() {
+        let ctx = egui::Context::default();
+        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        let mut st = AppState::new(trellis_core::settings::Settings::default(), Vec::new(), std::time::Instant::now());
+        st.view.chrome = Chrome::Windows;
+        let windowed = caption_geometry(&ctx, &st).expect("Trellis draws the buttons");
+        assert_ne!(windowed.max_button, PxRect::default(), "Snap Layouts while windowed");
+        st.view.window.fullscreen = true;
+        let full = caption_geometry(&ctx, &st).expect("Trellis draws the buttons");
+        assert_eq!(full.max_button, PxRect::default(), "no Snap Layouts in full screen");
+        assert_eq!(full.menu_at, windowed.menu_at, "Alt+Space still opens the system menu");
     }
 
     #[test]

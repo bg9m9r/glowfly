@@ -36,6 +36,8 @@ fn window_actions_go_to_the_shell_and_change_nothing() {
         WindowCmd::SetMaximized(true),
         WindowCmd::SetMaximized(false),
         WindowCmd::SystemMenu,
+        WindowCmd::SetFullscreen(true),
+        WindowCmd::SetFullscreen(false),
     ] {
         let mut st = state();
         let fx = run(&mut st, Msg::App(AppMsg::Window(cmd)));

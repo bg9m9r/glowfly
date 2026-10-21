@@ -67,4 +67,23 @@ mod tests {
         assert!(!s.set(SizedPanel::Activity, 180.0));
         assert_eq!(s.get(SizedPanel::Activity), Some(180.0));
     }
+
+    #[test]
+    fn sizes_survive_a_save_and_load() {
+        let mut s = crate::settings::Settings::default();
+        s.panel_sizes.set(SizedPanel::Sidebar, 312.0);
+        s.panel_sizes.set(SizedPanel::Details, 444.0);
+        let dir = crate::paths::temp_dir().join(format!("trellis-settings-panels-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("settings.json");
+        s.save_to(&file).unwrap();
+        let (back, problem) = crate::settings::Settings::load_from(&file);
+        assert!(problem.is_none(), "{problem:?}");
+        let sizes = back.panel_sizes;
+        assert_eq!(sizes.get(SizedPanel::Sidebar), Some(312.0));
+        assert_eq!(sizes.get(SizedPanel::Details), Some(444.0));
+        assert_eq!(sizes.get(SizedPanel::Activity), None, "never dragged");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

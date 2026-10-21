@@ -1136,12 +1136,6 @@ blockers and major findings are Milestone 1 items.
 - Place comments on their lines when the local source branch differs from the head (map the line
   numbers across the newer commits)
 
-### Zoom
-
-- Toggle full screen (a key such as F11 and a palette entry)
-- A mouse way to bring back a hidden side panel (a thin edge rail or a collapse/expand button)
-- Remember the left and details panel widths across restarts
-
 ### Git engine choice
 
 - Offer to fall back to the PATH git when the saved one disappears, instead of only explaining it in the banner
@@ -2511,6 +2505,11 @@ here, under the item they grew from.
 - Keep the trust chip and conflict-prediction indicator visible while the toolbar is hidden
 - A palette entry and key for showing or hiding the activity log
 - Per-repository panel layout
+- A toast on entering full screen that names the key to leave it
+- An opt-in setting to reopen in full screen when the app was closed in full screen
+- A distraction-free full screen that also hides the toolbar and side panels, restoring them on leave
+- A Leave full screen button in the status bar or title bar while full screen
+- Show a hidden panel's edge-strip tooltip beside the pointer, not at the window's top-left corner over the toolbar
 
 ### Git engine choice
 

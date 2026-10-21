@@ -1,14 +1,16 @@
 //! The commit panel collapsed to a rail beside a tool view (blame, folder history), what its
-//! entries send, the full panel once expanded, and the edge strip a hidden details panel leaves
-//! there instead. Shares the fixture repository and renderer with `snapshot_tests`.
+//! entries send, the full panel once expanded, and the edge strips a hidden left or details panel
+//! leaves (hovered, with its tooltip, and clicked). Shares the fixture repository and renderer
+//! with `snapshot_tests`.
 
+use crate::keymap::BindingId;
 use crate::keymap::KeyAction;
 use crate::msg::{LayoutMsg, Msg};
 use crate::state::AppState;
 use crate::state::layout::{Panel, ToolView};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::harness;
-use crate::ui::snapshot_tests::{reload, remove_fixture};
+use crate::ui::snapshot_tests::{reload, remove_fixture, with_repo};
 use crate::ui::snapshot_tests_blame::with_blame;
 use crate::ui::snapshot_tests_history::with_folder;
 use eframe::egui::{self, containers::panel::PanelState};
@@ -96,6 +98,50 @@ fn layout_details_hidden_in_blame() {
     h.run();
     let want = LayoutMsg::SetPanel { panel: Panel::Details, shown: true };
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Layout(l) if *l == want)));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Whether the harness collected `SetPanel { panel, shown: true }`.
+fn shows(h: &H, panel: Panel) -> bool {
+    let want = LayoutMsg::SetPanel { panel, shown: true };
+    h.state().1.iter().any(|m| matches!(m, Msg::Layout(l) if *l == want))
+}
+
+#[test]
+fn layout_left_edge_hover() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "rail-left-edge");
+    st.settings.show_left_panel = false;
+    let mut h = harness(st, true);
+    h.run();
+    assert_eq!(drawn(&h, "refs-edge").map(|r| r.width()), Some(16.0), "the strip");
+    h.get_by_label("Show left panel").hover();
+    // Past the tooltip's delay.
+    for _ in 0..4 {
+        h.run();
+    }
+    let st = &h.state().0;
+    let tip = st.keymap.tip(st.settings.lang().tr("layout.edge.left.tip"), BindingId::ToggleLeftPanel);
+    assert!(h.query_by_label(&tip).is_some(), "the tooltip names the key: {tip}");
+    h.check_snapshot("layout_left_edge_hover");
+    h.get_by_label("Show left panel").click();
+    h.run();
+    assert!(shows(&h, Panel::Left));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn details_edge_click_on_the_graph() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "rail-details-edge");
+    st.settings.show_details_panel = false;
+    let mut h = harness(st, true);
+    h.run();
+    assert_eq!(drawn(&h, "detail-edge").map(|r| r.width()), Some(16.0), "the strip");
+    assert!(drawn(&h, "detail").is_none() && drawn(&h, "detail-rail").is_none());
+    h.get_by_label("Show commit details panel").click();
+    h.run();
+    assert!(shows(&h, Panel::Details));
     drop(h);
     remove_fixture(&dir);
 }

@@ -90,6 +90,7 @@ fn entries_without_repo() {
             "Hide toolbar labels",
             "Zoom in",
             "Zoom out",
+            "Enter full screen",
             "Hide left panel",
             "Hide commit details panel",
             "Hide toolbar",
@@ -111,11 +112,11 @@ fn entries_without_repo() {
         ]
     );
     let list = shown(&st, "");
-    assert_eq!(list[15].entry.detail.as_deref(), Some("current"));
-    assert!(list[16].entry.detail.is_none() && list[17].entry.detail.is_none());
+    assert_eq!(list[16].entry.detail.as_deref(), Some("current"));
+    assert!(list[17].entry.detail.is_none() && list[18].entry.detail.is_none());
 
     st.settings.theme = ThemeChoice::System;
-    assert_eq!(shown(&st, "")[17].entry.detail.as_deref(), Some("current"));
+    assert_eq!(shown(&st, "")[18].entry.detail.as_deref(), Some("current"));
 
     st.tabs.push(Tab::empty());
     assert!(has(&st, "Close tab"));
@@ -166,10 +167,10 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 29);
+    assert_eq!(shown(&st, "").len(), 30);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 28);
+    assert_eq!(p.selected, 29);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);

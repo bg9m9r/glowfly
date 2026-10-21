@@ -1,5 +1,6 @@
 //! Window-level actions from the menu bar and a drawn title bar: quitting, the About dialog,
-//! and moving, resizing, minimising or maximising the window or showing its system menu.
+//! and moving, resizing, minimising or maximising the window, showing its system menu, or
+//! entering or leaving full screen (which narrows what the others do, `WindowCmd::in_window`).
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::AppMsg;
@@ -9,10 +10,15 @@ pub(super) fn handle(st: &mut AppState, msg: AppMsg, fx: &mut Vec<Effect>) {
     match msg {
         // Tabs and settings are saved as they change, so closing needs nothing else.
         AppMsg::Quit => fx.push(Effect::Ui(UiEffect::CloseWindow)),
+        // A full-screen window can't be moved or resized, and Maximize or Restore leaves full
+        // screen.
+        AppMsg::Window(cmd) => {
+            if let Some(cmd) = cmd.in_window(st.view.window) {
+                fx.push(Effect::Ui(UiEffect::Window(cmd)));
+            }
+        }
         // Like the shortcut sheet: not over another dialog, Preferences or a credential prompt,
         // and it replaces the palette.
-        // The bar only offers what applies, so this checks nothing.
-        AppMsg::Window(cmd) => fx.push(Effect::Ui(UiEffect::Window(cmd))),
         AppMsg::ShowAbout => {
             if st.modal.is_none() && st.prefs.is_none() && !st.askpass.showing() {
                 st.palette = None;

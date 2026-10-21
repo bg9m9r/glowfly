@@ -163,6 +163,8 @@ pub(super) mod language_tests;
 pub(super) mod layout_rail_tests;
 #[path = "layout_tests.rs"]
 pub(super) mod layout_tests;
+#[path = "layout_window_tests.rs"]
+pub(super) mod layout_window_tests;
 #[path = "lfs_fetch_tests.rs"]
 pub(super) mod lfs_fetch_tests;
 #[path = "lfs_notes_tests.rs"]

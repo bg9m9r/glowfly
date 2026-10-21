@@ -1,14 +1,16 @@
 //! Zooming the window, showing or hiding its panels and the sizes its drawers were dragged to:
 //! all are settings, saved when they change; the shell applies them on the next frame. Expanding
 //! the commit panel collapsed beside a tool view is view state only (`view.details_expanded_for`),
-//! never saved, and lasts while that tool view stays open.
+//! never saved, and lasts while that tool view stays open. Full screen is the window's own
+//! state, read each frame into `view.window` and never saved: the toggle only asks the shell.
 
-use crate::effect::Effect;
+use crate::effect::{Effect, UiEffect};
 use crate::msg::{LayoutMsg, Msg};
 use crate::state::AppState;
 use crate::state::layout::{Panel, set_shown, shown, tool_view, zoom_toast_text};
 use crate::state::panel_layout;
 use crate::state::toasts::ToastAction;
+use crate::state::window_chrome::WindowCmd;
 use std::time::Instant;
 use trellis_core::settings::{DEFAULT_ZOOM_PERCENT, zoom_in_from, zoom_out_from};
 
@@ -17,6 +19,7 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
         LayoutMsg::ZoomIn => zoom(st, zoom_in_from(st.settings.zoom_percent), now, fx),
         LayoutMsg::ZoomOut => zoom(st, zoom_out_from(st.settings.zoom_percent), now, fx),
         LayoutMsg::ZoomReset => zoom(st, DEFAULT_ZOOM_PERCENT, now, fx),
+        LayoutMsg::ToggleFullscreen => fx.push(Effect::Ui(UiEffect::Window(WindowCmd::SetFullscreen(!st.view.window.fullscreen)))),
         LayoutMsg::TogglePanel(p) => {
             let on = !shown(&st.settings, p);
             set_and_note(st, p, on, now, fx);

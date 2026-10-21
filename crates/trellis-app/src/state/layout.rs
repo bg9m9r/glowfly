@@ -1,6 +1,6 @@
 //! The window's zoom and which of its panels are drawn: the left panel of refs, the commit
 //! details panel, the toolbar and the menu bar. All live in `Settings`; the shell reads them
-//! each frame. The tool view open in the central area decides whether the commit details panel
+//! each frame. Full screen is the window's own state (`view.window`), never saved. The tool view open in the central area decides whether the commit details panel
 //! is drawn in full or as a narrow rail (`details_shape`), which is view state, never saved.
 
 use super::AppState;
@@ -180,7 +180,7 @@ pub fn zoom_chip_text(percent: u16) -> String {
 }
 
 /// Zoom in, Zoom out and Reset zoom (each while it would change something; the detail is the
-/// level now), and Hide or Show for each panel.
+/// level now), Enter or Leave full screen, and Hide or Show for each panel.
 pub(super) fn palette_entries(st: &AppState, out: &mut Vec<Entry>) {
     let lvl = st.settings.zoom_level();
     let now = || Some(format!("now {lvl}%"));
@@ -194,6 +194,9 @@ pub(super) fn palette_entries(st: &AppState, out: &mut Vec<Entry>) {
             out.push(with_detail(entry(PaletteCommand::Layout(msg), label, keywords), now()));
         }
     }
+    let label = if st.view.window.fullscreen { "Leave full screen" } else { "Enter full screen" };
+    let keywords = "fullscreen full screen window maximize kiosk presentation hide taskbar";
+    out.push(entry(PaletteCommand::Layout(LayoutMsg::ToggleFullscreen), label, keywords));
     for panel in Panel::ALL {
         // A drawn title bar replaces the menu bar.
         if panel == Panel::MenuBar && st.view.chrome.drawn() {

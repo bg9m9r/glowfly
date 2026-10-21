@@ -115,6 +115,10 @@ fn mac_and_pc_labels() {
     assert_eq!(Chord::alt(K::Down).text_in(Pc), "Alt+Down");
     assert_eq!(Chord::cmd_shift(K::Letter('P')).text_in(Pc), "Ctrl+Shift+P");
     assert_eq!(Chord::ctrl(K::Tab).text_in(Pc), "Ctrl+Tab");
+    let full = Chord::cmd_ctrl(K::Letter('F'));
+    assert_eq!(full.text_in(Mac), "Cmd+Ctrl+F");
+    assert_eq!(full.config(), "Mod+Ctrl+F");
+    assert_eq!(Chord::parse(&full.config()), Some(full));
     let m = Chord::cmd_shift(K::Letter('M'));
     assert_eq!(m.parts_in(Mac), ["Cmd", "Shift", "M"]);
     assert_eq!(m.text(), m.text_in(KeyLabels::native()));
