@@ -2,7 +2,7 @@
 //! from the local remote-tracking branches, following refreshes of the refs and of the
 //! service's list, switching tabs, and closing it. Its files' diffs are the shared `st.diff`,
 //! opened through `RepoMsg::OpenDiff`; its page and actions on the service are in
-//! calls.rs, and its code comment threads in threads.rs.
+//! calls.rs, its Checks section in checks.rs, and its code comment threads in threads.rs.
 
 use crate::effect::Effect;
 use crate::pull_request::{FilesJob, PrEffect, PullRequestMsg};
@@ -15,6 +15,9 @@ use trellis_core::repo::DiffTarget;
 pub(super) mod calls;
 #[cfg(test)]
 mod calls_tests;
+mod checks;
+#[cfg(test)]
+mod checks_tests;
 #[cfg(test)]
 mod merge_tests;
 #[cfg(test)]
@@ -40,6 +43,7 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
             st.pull_request = Some(view);
             request(st, fx);
             load(st, fx);
+            checks::load(st, fx);
         }
         PullRequestMsg::Close => close(st),
         PullRequestMsg::FilesLoaded { id, tips, generation, result } => {
@@ -63,6 +67,8 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
         }
         PullRequestMsg::Reload => load(st, fx),
         PullRequestMsg::ReloadFiles => request(st, fx),
+        PullRequestMsg::ToggleChecks => checks::toggle(st),
+        PullRequestMsg::ReloadChecks => checks::load(st, fx),
         PullRequestMsg::PostComment => calls::post_comment(st, fx),
         PullRequestMsg::SubmitReview => calls::submit_review(st, fx),
         PullRequestMsg::Merge => calls::merge(st, fx),
@@ -110,6 +116,7 @@ pub(super) fn close(st: &mut AppState) {
     if st.pull_request.take().is_some() {
         st.pull_request_gen += 1;
         st.pull_request_page_gen += 1;
+        st.pull_request_checks_gen += 1;
         if shown {
             super::repo::close_diff(st);
         }
@@ -137,25 +144,37 @@ pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// The service's list was replaced: the panel's copy follows it, or notes that it is gone.
 /// When the listed head moved past the loaded page's, the page loads again (its mergeability
-/// and head belong to the old one).
+/// and head belong to the old one); the checks load again then too, and when the listed
+/// summary of them changed (a check finished, say).
 pub(super) fn prs_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(view) = st.pull_request.as_mut() else { return };
-    let mut stale = false;
+    let (mut stale, mut checks_stale) = (false, false);
     match st.forge.as_ref().and_then(|f| f.prs.iter().find(|p| p.id == view.pr.id)) {
         Some(pr) => {
+            let summary_changed = view.pr.checks != pr.checks;
+            let head_moved = pr.head.is_some() && view.checks.loaded().is_some_and(|l| !l.sha.is_empty() && !pr.head_matches(&l.sha));
             view.pr = pr.clone();
             view.listed = true;
             stale = view.loaded().is_some_and(|p| pr.head.is_some() && !pr.head_matches(&p.detail.head_sha));
+            checks_stale = summary_changed || head_moved;
         }
         None => view.listed = false,
     }
     if stale {
         load(st, fx);
     }
+    if stale || checks_stale {
+        checks::load(st, fx);
+    }
+}
+
+/// Once a minute while a check is still running: reads the open panel's checks again.
+pub(super) fn checks_tick(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
+    checks::tick(st, now, fx);
 }
 
 /// After a tab switch: a list dropped while the tab was parked, or one whose tips moved, is
-/// asked for again, and the page loads again in the background. An action's reply that came
+/// asked for again, and the page and the checks load again in the background. An action's reply that came
 /// while the tab was parked was only logged, so the panel no longer waits for it.
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     let loading = st.pull_request.as_ref().is_some_and(|v| v.files == Files::Loading);
@@ -164,6 +183,7 @@ pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     retip(st, fx, loading);
     load(st, fx);
+    checks::load(st, fx);
 }
 
 /// Reads the tips again from the snapshot; requests the list when they changed or `again`.

@@ -196,6 +196,14 @@ impl super::Forge for BitbucketDc {
         bitbucket_checks::dc_commits(t, auth, tips)
     }
 
+    /// The head commit's build statuses; none without a full commit id.
+    fn check_list(&self, t: &Target, auth: &Auth, q: &super::CheckQuery) -> Result<super::CheckList> {
+        match q.head.as_deref().filter(|c| full_sha(c)) {
+            Some(sha) => bitbucket_checks::dc_list(auth, &t.host, sha),
+            None => Ok(super::CheckList::empty("")),
+        }
+    }
+
     fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
         super::forks::bitbucket::data_center(t, auth)
     }

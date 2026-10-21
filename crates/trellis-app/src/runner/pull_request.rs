@@ -1,11 +1,11 @@
 //! The pull request panel's work (`Effect::PullRequest`): the files it changes, from its local
 //! remote-tracking tips, and its calls to the hosting service (the page, a comment, a review,
-//! a merge, a thread reply or resolve). The calls sign in the way the pull request list does, in the panel's repository.
+//! its checks, a merge, a thread reply or resolve). The calls sign in the way the pull request list does, in the panel's repository.
 
 use crate::effect::ForgeError;
 use crate::msg::Msg;
 use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
-use trellis_core::forge::{self, Auth};
+use trellis_core::forge::{self, Auth, CheckQuery};
 use trellis_core::repo;
 
 pub(super) fn run(e: PrEffect) -> Msg {
@@ -20,8 +20,9 @@ pub(super) fn run(e: PrEffect) -> Msg {
 
 fn call(job: CallJob) -> Msg {
     let CallJob { req, id, generation, call } = job;
-    // Loading the page in the background never asks for credentials; the user's own actions may.
-    let interactive = !matches!(call, PrCall::Load);
+    // Loading the page or the checks in the background never asks for credentials; the user's
+    // own actions may.
+    let interactive = !matches!(call, PrCall::Load | PrCall::Checks { .. });
     let auth: Result<Auth, ForgeError> = match req.auth {
         Some(a) => Ok(a),
         None => forge::resolve_auth(&req.target.account(), &req.workdir, interactive, req.connected).map_err(ForgeError::from),
@@ -29,6 +30,9 @@ fn call(job: CallJob) -> Msg {
     let t = &req.target;
     let reply = match call {
         PrCall::Load => PrReply::Loaded(auth.and_then(|a| forge::pr_page(t, &a, id).map_err(ForgeError::from))),
+        PrCall::Checks { head } => {
+            PrReply::Checks(auth.and_then(|a| forge::check_list(t, &a, &CheckQuery { id, head }).map_err(ForgeError::from)))
+        }
         PrCall::Comment(body) => PrReply::Commented(auth.and_then(|a| forge::post_comment(t, &a, id, &body).map_err(ForgeError::from))),
         PrCall::Review { event, body, pending } => {
             PrReply::Reviewed(event, auth.and_then(|a| forge::submit_review(t, &a, id, event, &body, pending).map_err(ForgeError::from)))

@@ -8,7 +8,7 @@ use crate::effect::ForgeError;
 use crate::state::pull_request::PrTab;
 use git2::Oid;
 use std::path::PathBuf;
-use trellis_core::forge::{Auth, Entry, MergeMethod, MergeRequest, Merged, PrPage, ReviewEvent, Target, ThreadComment};
+use trellis_core::forge::{Auth, CheckList, Entry, MergeMethod, MergeRequest, Merged, PrPage, ReviewEvent, Target, ThreadComment};
 use trellis_core::repo::BranchChanges;
 
 /// The files pull request `id` changes, from its local tips.
@@ -38,6 +38,10 @@ pub struct PrRequest {
 pub enum PrCall {
     /// The pull request's page: detail and conversation.
     Load,
+    /// Every check on its head commit (`head`: the listed head, when known).
+    Checks {
+        head: Option<String>,
+    },
     Comment(String),
     Review {
         event: ReviewEvent,
@@ -93,6 +97,7 @@ impl PrEffect {
             PrEffect::Files(_) => "load-pr-files",
             PrEffect::Call(j) => match j.call {
                 PrCall::Load => "load-pr-page",
+                PrCall::Checks { .. } => "load-pr-checks",
                 PrCall::Comment(_) => "post-pr-comment",
                 PrCall::Review { .. } => "submit-pr-review",
                 PrCall::Merge { .. } => "merge-pr",
@@ -107,6 +112,7 @@ impl PrEffect {
 #[derive(Clone, Debug, PartialEq)]
 pub enum PrReply {
     Loaded(Result<PrPage, ForgeError>),
+    Checks(Result<CheckList, ForgeError>),
     Commented(Result<Entry, ForgeError>),
     Reviewed(ReviewEvent, Result<(), ForgeError>),
     Merged {
@@ -142,6 +148,10 @@ pub enum PullRequestMsg {
     Reload,
     /// Compare the branches again after Files changed failed (Try again).
     ReloadFiles,
+    /// Open or close the Checks section (its header).
+    ToggleChecks,
+    /// Load the checks again (the Checks section's Try again).
+    ReloadChecks,
     /// Post the comment box's text.
     PostComment,
     /// Submit the review form.
@@ -167,9 +177,9 @@ pub enum PullRequestMsg {
 }
 
 impl PullRequestMsg {
-    /// Nothing is kept for an inactive tab: intents (the thread ones too) are for the active
-    /// tab; a dropped
-    /// FilesLoaded is asked for again by `reload_pending` when its tab becomes active; and
+    /// Nothing is kept for an inactive tab: intents (the thread and Checks ones too) are for the
+    /// active tab; a dropped FilesLoaded is asked for again by `reload_pending` when its tab
+    /// becomes active (as are the checks); and
     /// Replied comes from an unscoped effect, so it never arrives scoped (its handler matches
     /// the repository itself and logs results for other tabs).
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
@@ -180,6 +190,8 @@ impl PullRequestMsg {
             | Self::Tab(_)
             | Self::Reload
             | Self::ReloadFiles
+            | Self::ToggleChecks
+            | Self::ReloadChecks
             | Self::PostComment
             | Self::SubmitReview
             | Self::Merge

@@ -2,10 +2,12 @@
 //! request, the remote-tracking tips it is compared from, the files it changes, the service's
 //! page with its conversation, and the texts that describe them. Pure: the files and the page
 //! are loaded by `Effect::PullRequest`; the action forms' rules are in pull_request_actions.rs,
-//! and the code comment threads' in pull_request_threads.rs.
+//! the code comment threads' in pull_request_threads.rs, and the Checks section's in
+//! pull_request_checks.rs.
 
 use super::ForgeState;
 use super::pull_request_actions::PrForms;
+use super::pull_request_checks::PrChecks;
 use super::pull_request_threads::ThreadView;
 use git2::Oid;
 use trellis_core::forge::{PrPage, PrState, PullRequest, reviews_in_app};
@@ -108,6 +110,8 @@ pub struct PrView {
     pub forms: PrForms,
     /// Which code comment threads are shown and open.
     pub threads: ThreadView,
+    /// Every check on its head commit.
+    pub checks: PrChecks,
 }
 
 impl PrView {
@@ -129,6 +133,7 @@ impl PrView {
             action_error: None,
             forms: PrForms::default(),
             threads: ThreadView::default(),
+            checks: PrChecks::new(fs),
         }
     }
 

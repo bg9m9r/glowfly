@@ -1,9 +1,10 @@
 //! The pull request panel, in place of the graph: a header with the title and links, then two
-//! tabs. Overview has the details, the review and merge forms on the left (`info`, `review`,
-//! `merge`) and the conversation in the middle (`conversation`); Files changed has the changed
+//! tabs. Overview has the details, the checks, the review and merge forms on the left (`info`,
+//! `checks`, `review`, `merge`) and the conversation in the middle (`conversation`); Files changed has the changed
 //! files on the left (`files`) and the open file's diff in the middle, with its code comment
 //! threads (`threads`) in a pane below it.
 
+mod checks;
 mod conversation;
 mod files;
 mod info;
@@ -44,8 +45,10 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             side.show_inside(ui, |ui| {
                 egui::ScrollArea::vertical().id_salt("pr-side").auto_shrink([false, false]).show(ui, |ui| {
                     let default_branch = st.forge.as_ref().and_then(|f| f.default_branch.clone());
+                    let (lang, now) = (st.settings.lang(), st.view.now);
                     let Some(view) = st.pull_request.as_mut() else { return };
                     info::show(ui, view);
+                    checks::show(ui, view, lang, now, msgs);
                     review::show(ui, view, msgs);
                     merge::show(ui, view, st.snap.as_ref(), default_branch.as_deref(), msgs);
                 });

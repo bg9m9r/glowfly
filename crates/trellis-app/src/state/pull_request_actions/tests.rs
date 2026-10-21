@@ -54,6 +54,7 @@ pub(in crate::state) fn view(d: Option<PrDetail>) -> PrView {
         action_error: None,
         forms: PrForms::default(),
         threads: Default::default(),
+        checks: crate::state::pull_request_checks::PrChecks::new(&crate::state::ForgeState::new(None, String::new(), None)),
     }
 }
 

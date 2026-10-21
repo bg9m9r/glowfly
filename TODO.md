@@ -1071,11 +1071,6 @@ blockers and major findings are Milestone 1 items.
 - Passphrase prompts for SSH-format signing keys (ssh-keygen -Y sign)
 - Resolve MSYS-style gpg.program paths such as /usr/bin/gpg on Windows
 
-### CI / build status
-
-- Per-check detail (names, durations, required or optional, cancelled, skipped and action
-  required told apart, and a "no build status" empty state) in the in-app pull request view
-
 ### PR and issue filters
 
 - Team and group review requests counting as Needs my review (GitHub teams, Azure groups)
@@ -1103,7 +1098,6 @@ blockers and major findings are Milestone 1 items.
 - Use the head SHA directly when that commit is already here but the remote-tracking branch is
   missing or behind
 - A Commits tab: the commits between the merge base and the source tip
-- The pull request's CI / build status in the panel, with a link to the build page
 - Ctrl+Enter to post a comment or submit a review
 - Start a new code comment on a diff line (a single comment or one added to a pending review),
   with suggested changes
@@ -2439,6 +2433,15 @@ here, under the item they grew from.
 - Re-read pending pull request checks sooner than the 5-minute refresh
 - A desktop notification when a build on the checked-out branch finishes
 - A Preferences switch to turn off branch-tip status requests
+- Re-run a failed check, job or pipeline from the pull request panel
+- Show a check's log, annotations or failure output in the panel instead of only linking to it
+- GitLab bridge (downstream pipeline) jobs in the checks list
+- Bitbucket Data Center required builds (merge check) and Bitbucket Cloud required-builds merge
+  checks as Required tags
+- Group the checks list by workflow / stage with collapsible groups
+- A "Show only failing" filter for long checks lists
+- The same per-check list for a branch tip or a selected commit (commit details panel)
+- Bitbucket Data Center build durations and build numbers from the newer builds API
 
 ### PR and issue filters
 
@@ -2541,6 +2544,9 @@ here, under the item they grew from.
 - Markdown bodies: a few safe HTML tags (`<details>`, `<br>`, `<sub>`, `<kbd>`) instead of
   dropping them, and select text across styled runs (each run selects on its own now)
 - A Preview tab on the comment and reply boxes that renders the Markdown being written
+- Remember the Checks section's collapsed state per repository
+- Load the checks (and page) by itself once the repository is trusted, instead of on the next open
+  or tab switch
 
 ### Custom themes
 

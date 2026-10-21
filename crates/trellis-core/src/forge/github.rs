@@ -282,6 +282,10 @@ impl super::Forge for GitHub {
         github_checks::commit_rollups(t, auth, tips)
     }
 
+    fn check_list(&self, t: &Target, auth: &Auth, q: &super::CheckQuery) -> Result<super::CheckList> {
+        super::github_check_list::check_list(t, auth, q)
+    }
+
     fn issues(&self, t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
         let mut out = Vec::new();
         for k in keys.iter().filter(|k| k.parse::<u64>().is_ok()).take(30) {

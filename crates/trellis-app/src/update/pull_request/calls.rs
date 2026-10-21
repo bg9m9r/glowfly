@@ -1,5 +1,5 @@
 //! The pull request panel's calls to its hosting service: loading the page (detail and
-//! conversation), posting a comment, submitting a review, replying to and resolving code
+//! conversation; the checks are in checks.rs), posting a comment, submitting a review, replying to and resolving code
 //! comment threads (threads.rs) and merging, then deleting the source branch and fetching. The calls are unscoped effects whose replies name their repository,
 //! service and pull request: a reply for another tab is only logged, a stale page is dropped,
 //! and an action's result is logged even when the panel has closed, since it happened on the
@@ -18,12 +18,9 @@ use trellis_core::gitcli::args;
 use trellis_core::remote_ops::fetch_cmd;
 
 /// A request to the active repository's service, or why there can be none.
-fn request(st: &AppState) -> Result<PrRequest, String> {
+pub(super) fn service_request(st: &AppState) -> Result<PrRequest, String> {
     let (Some(workdir), Some(fs)) = (st.workdir(), st.forge.as_ref()) else { return Err("No hosting service for this repository".into()) };
     let Some(target) = fs.host.clone() else { return Err("No hosting service for this repository".into()) };
-    if !forge::reviews_in_app(target.provider) {
-        return Err(format!("{} reviews aren't supported in Trellis yet", target.provider.name()));
-    }
     let account = target.account();
     if !forge::may_contact(&account, &st.settings.connections) {
         return Err(format!("not connected to {} at {}", account.provider.name(), account.display()));
@@ -31,6 +28,15 @@ fn request(st: &AppState) -> Result<PrRequest, String> {
     let auth = fs.auth.get(&account.key()).cloned();
     let connected = forge::is_connected(&account, &st.settings.connections);
     Ok(PrRequest { workdir, target, auth, connected })
+}
+
+/// `service_request`, for a service with in-app reviews.
+fn request(st: &AppState) -> Result<PrRequest, String> {
+    let req = service_request(st)?;
+    if !forge::reviews_in_app(req.target.provider) {
+        return Err(format!("{} reviews aren't supported in Trellis yet", req.target.provider.name()));
+    }
+    Ok(req)
 }
 
 /// Loads the open panel's page (again); the last page stays on screen meanwhile. Nothing is
@@ -118,7 +124,7 @@ pub(super) fn merge(st: &mut AppState, fx: &mut Vec<Effect>) {
 fn action_text(label: &str, into: &str, reply: &PrReply) -> (bool, String) {
     let fail = |what: &str, e: &ForgeError| (false, format!("{what} {label} failed: {}", e.message));
     match reply {
-        PrReply::Loaded(_) => (true, String::new()),
+        PrReply::Loaded(_) | PrReply::Checks(_) => (true, String::new()),
         PrReply::Commented(Ok(_)) => (true, format!("Commented on {label}")),
         PrReply::Commented(Err(e)) => fail("Commenting on", e),
         PrReply::Reviewed(ReviewEvent::Approve, Ok(())) => (true, format!("Approved {label}")),
@@ -150,7 +156,7 @@ pub(super) fn replied(
 ) {
     let active = st.workdir().as_deref() == Some(workdir) && st.forge.as_ref().and_then(|f| f.host.as_ref()) == Some(target);
     let failed_auth = match &reply {
-        PrReply::Loaded(Err(e)) | PrReply::Commented(Err(e)) | PrReply::Reviewed(_, Err(e)) => e.auth,
+        PrReply::Loaded(Err(e)) | PrReply::Checks(Err(e)) | PrReply::Commented(Err(e)) | PrReply::Reviewed(_, Err(e)) => e.auth,
         PrReply::Merged { result: Err(e), .. }
         | PrReply::RepliedToThread { result: Err(e), .. }
         | PrReply::Resolved { result: Err(e), .. } => e.auth,
@@ -165,12 +171,21 @@ pub(super) fn replied(
     let prefix = target.provider.pr_prefix();
     let label = format!("{prefix}{id}");
     let open = active && st.pull_request.as_ref().is_some_and(|v| v.pr.id == id);
-    if let PrReply::Loaded(result) = reply {
-        if open && generation == st.pull_request_page_gen {
-            page_loaded(st, result);
+    let reply = match reply {
+        PrReply::Loaded(result) => {
+            if open && generation == st.pull_request_page_gen {
+                page_loaded(st, result);
+            }
+            return;
         }
-        return;
-    }
+        PrReply::Checks(result) => {
+            if open && generation == st.pull_request_checks_gen {
+                super::checks::loaded(st, result, now);
+            }
+            return;
+        }
+        other => other,
+    };
     let into = match (&st.pull_request, &st.forge) {
         (Some(v), _) if open => v.pr.target.clone(),
         (_, Some(fs)) if active => fs.prs.iter().find(|p| p.id == id).map(|p| p.target.clone()).unwrap_or_default(),
@@ -233,6 +248,7 @@ pub(super) fn replied(
 fn reply_error(reply: &PrReply) -> Option<&ForgeError> {
     match reply {
         PrReply::Loaded(r) => r.as_ref().err(),
+        PrReply::Checks(r) => r.as_ref().err(),
         PrReply::Commented(r) => r.as_ref().err(),
         PrReply::Reviewed(_, r) => r.as_ref().err(),
         PrReply::Merged { result, .. } => result.as_ref().err(),

@@ -255,6 +255,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             ops::auto_fetch(st, t, &mut fx);
             watch::poll(st, t, &mut fx);
             build_status::tick(st, t, &mut fx);
+            pull_request::checks_tick(st, t, &mut fx);
             updates::tick(st, t, &mut fx);
             prefs_save::tick(st, t);
             load_more::tick(st, t, &mut fx);

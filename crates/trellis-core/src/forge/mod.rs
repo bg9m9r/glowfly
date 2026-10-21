@@ -4,6 +4,7 @@
 //! repositories' targets and asking their services at once for the dashboard (`dashboard`).
 
 mod azure;
+mod azure_check_list;
 mod azure_checks;
 mod azure_issues;
 mod azure_remote;
@@ -15,6 +16,7 @@ mod bitbucket_issues;
 pub mod dashboard;
 pub mod filters;
 mod github;
+mod github_check_list;
 mod github_checks;
 mod github_issues;
 mod gitlab;
@@ -32,6 +34,7 @@ use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 mod auth;
+mod check_detail;
 mod checks;
 mod details;
 mod forks;
@@ -54,6 +57,7 @@ pub use auth::{
     Auth, delete_token, forget_credential_manager, from_credential_manager, is_connected, is_public_host, may_contact, resolve_auth,
     save_token,
 };
+pub use check_detail::{CheckList, CheckQuery, CheckRun, MAX_CHECKS, RunState, check_list, checks_in_app, duration_text};
 pub use checks::{CHECKED_PRS, CheckState, Checks, TipQuery};
 use checks::{TIPS_PER_CALL, full_sha};
 pub use details::{DETAILS_PER_CALL, PrDetails};
@@ -195,6 +199,12 @@ pub trait Forge: Sync {
     /// CI status of branch tips, by full commit id; commits left out of the map have none.
     fn commit_checks(&self, _t: &Target, _auth: &Auth, _tips: &[TipQuery]) -> Result<HashMap<String, Checks>> {
         Ok(HashMap::new())
+    }
+
+    /// Every check on a pull request's head commit, for the pull request panel (see
+    /// `check_detail`).
+    fn check_list(&self, t: &Target, _auth: &Auth, _q: &CheckQuery) -> Result<CheckList> {
+        Err(Error::Unsupported(format!("{} checks aren't supported", t.provider.name())))
     }
 
     /// Where to create a personal access token.

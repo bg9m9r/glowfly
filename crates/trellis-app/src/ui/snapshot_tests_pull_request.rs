@@ -7,13 +7,14 @@ use super::snapshot_tests_select::click;
 use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::pull_request::{Files, PrTab, PrView};
+use crate::state::pull_request_checks::ChecksPane;
 use crate::state::{AppState, ForgeState, Status};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
 use std::sync::Arc;
-use trellis_core::forge::{Provider, PullRequest, Reviewer, Target};
+use trellis_core::forge::{CheckList, Provider, PullRequest, Reviewer, Target};
 use trellis_core::repo::{self, DiffTarget, LoadOptions};
 use trellis_core::settings::ThemeChoice;
 
@@ -24,7 +25,8 @@ fn tip(st: &AppState, name: &str) -> git2::Oid {
 }
 
 /// The fixture with origin on GitHub (acme/demo) and pull request #12 from `search` into
-/// `main`, open in the panel; `refs/remotes/origin/search` only `with_source`.
+/// `main`, open in the panel with no checks reported; `refs/remotes/origin/search` only
+/// `with_source`.
 pub(super) fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let d = "2026-01-10T10:00:00+00:00";
@@ -61,7 +63,9 @@ pub(super) fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) -> (App
         url: "https://github.com/acme/demo/pull/12".into(),
         facets: Default::default(),
     }];
-    let view = PrView::new(fs.prs[0].clone(), &fs, st.snap.as_ref().unwrap());
+    let mut view = PrView::new(fs.prs[0].clone(), &fs, st.snap.as_ref().unwrap());
+    // Answered already, so no spinner keeps the frame repainting.
+    view.checks.pane = ChecksPane::Loaded(CheckList::empty(fs.prs[0].head.clone().unwrap_or_default()));
     st.forge = Some(fs);
     st.pull_request = Some(view);
     (st, dir)

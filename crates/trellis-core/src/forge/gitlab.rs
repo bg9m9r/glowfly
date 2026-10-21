@@ -249,6 +249,10 @@ impl super::Forge for GitLab {
         gitlab_checks::commit_checks(t, auth, tips)
     }
 
+    fn check_list(&self, t: &Target, auth: &Auth, q: &super::CheckQuery) -> Result<super::CheckList> {
+        gitlab_checks::check_list(t, auth, q)
+    }
+
     fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
         super::forks::gitlab::list(t, auth)
     }

@@ -21,11 +21,11 @@ pub(super) fn run(st: &mut AppState, msg: PullRequestMsg) -> Vec<Effect> {
     finish_keeping(st, fx)
 }
 
-/// The service calls among `fx`.
+/// The service calls among `fx`, but for the checks (checks_tests.rs counts those).
 pub(super) fn calls(fx: &[Effect]) -> Vec<&CallJob> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::PullRequest(PrEffect::Call(j)) => Some(&**j),
+            Effect::PullRequest(PrEffect::Call(j)) if !matches!(j.call, PrCall::Checks { .. }) => Some(&**j),
             _ => None,
         })
         .collect()

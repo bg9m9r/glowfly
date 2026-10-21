@@ -280,6 +280,10 @@ impl super::Forge for AzureDevOps {
         azure_checks::commit_checks(t, auth, tips)
     }
 
+    fn check_list(&self, t: &Target, auth: &Auth, q: &super::CheckQuery) -> Result<super::CheckList> {
+        super::azure_check_list::check_list(t, auth, q)
+    }
+
     /// Open work items assigned to the signed-in user in this project, most recently changed first.
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
         wiql(t, auth, &super::filters::azure::wiql_where(&super::Builtin::IssuesAssignedToMe.conditions()))

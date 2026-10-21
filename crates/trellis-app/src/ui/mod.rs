@@ -342,6 +342,8 @@ mod snapshot_tests_pick;
 #[cfg(test)]
 mod snapshot_tests_platform_dialogs;
 #[cfg(test)]
+mod snapshot_tests_pr_check_list;
+#[cfg(test)]
 mod snapshot_tests_pr_checks;
 #[cfg(test)]
 mod snapshot_tests_pr_no_host;

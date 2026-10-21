@@ -9,6 +9,7 @@ mod azure;
 mod azure_issues;
 mod bitbucket;
 mod bitbucket_issues;
+mod check_list;
 mod filters;
 mod forks;
 mod github;

@@ -95,6 +95,7 @@ pub mod profiles;
 pub mod publish;
 pub mod pull_request;
 pub mod pull_request_actions;
+pub mod pull_request_checks;
 pub mod pull_request_threads;
 pub mod push_pr;
 pub mod range_diff;
@@ -431,6 +432,8 @@ pub struct AppState {
     pub pull_request_gen: u64,
     /// Incremented for every request of the panel's page and whenever the panel closes.
     pub pull_request_page_gen: u64,
+    /// Incremented for every checks request and whenever the panel closes.
+    pub pull_request_checks_gen: u64,
     /// The open issue panel; in the pull request panel's place (the two never show together).
     pub issue: Option<issue::IssueView>,
     /// Incremented for every request of the panel's details and whenever the panel closes.
@@ -588,6 +591,7 @@ impl AppState {
             pull_request: None,
             pull_request_gen: 0,
             pull_request_page_gen: 0,
+            pull_request_checks_gen: 0,
             issue: None,
             issue_gen: 0,
             rebase: None,

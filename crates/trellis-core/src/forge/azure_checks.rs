@@ -9,12 +9,12 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 /// The policy type id of "Build" (build validation) policies.
-const BUILD_POLICY: &str = "0609b952-1397-4640-95ec-e00a01b2c241";
+pub(super) const BUILD_POLICY: &str = "0609b952-1397-4640-95ec-e00a01b2c241";
 
 #[derive(Deserialize)]
-struct List<T> {
+pub(super) struct List<T> {
     #[serde(default = "Vec::new")]
-    value: Vec<T>,
+    pub(super) value: Vec<T>,
 }
 
 #[derive(Deserialize)]
@@ -36,7 +36,7 @@ struct Configuration {
     kind: PolicyType,
 }
 
-fn enabled() -> bool {
+pub(super) fn enabled() -> bool {
     true
 }
 
@@ -133,7 +133,7 @@ fn count_statuses(tally: &mut Tally, mut statuses: Vec<Status>) {
 }
 
 /// No access to builds (a token without the Build scope): counted as none.
-fn no_access(e: &Error) -> bool {
+pub(super) fn no_access(e: &Error) -> bool {
     matches!(e, Error::Forbidden(_) | Error::Auth(_))
 }
 

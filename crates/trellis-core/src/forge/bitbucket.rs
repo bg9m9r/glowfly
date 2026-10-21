@@ -209,6 +209,10 @@ impl super::Forge for Bitbucket {
         checks_of(prs, |p| bitbucket_checks::cloud_pr(t, auth, p.id))
     }
 
+    fn check_list(&self, t: &Target, auth: &Auth, q: &super::CheckQuery) -> Result<super::CheckList> {
+        bitbucket_checks::cloud_list(t, auth, q.id)
+    }
+
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {
         #[derive(Deserialize)]
         struct Repo {

@@ -144,8 +144,9 @@ fn pull_request_gitlab_light() {
         project: String::new(),
         repo: "demo".into(),
     });
-    let view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
+    let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
     assert_eq!(view.page, Page::Unsupported);
+    view.checks.pane = crate::state::pull_request_checks::ChecksPane::Loaded(Default::default());
     st.pull_request = Some(view);
     let mut h = harness(st, false);
     h.run();
