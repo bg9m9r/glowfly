@@ -196,3 +196,17 @@ fn the_swapped_comparison_follows_the_working_tree() {
     assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target), "the swapped diff stays open");
     let _ = std::fs::remove_dir_all(&f.dir);
 }
+
+#[test]
+fn retry_keeps_the_direction() {
+    let (mut st, f) = fixture("wip-compare-swap-retry");
+    up(&mut st, Msg::Selection(SelectionMsg::CompareWithWorkdir(f.c(3))));
+    up(&mut st, Msg::Selection(SelectionMsg::SwapCompare));
+    let generation = compared(&st).generation;
+    up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation, result: Err("disk on fire".into()) }));
+    assert!(matches!(compared(&st).changes, Some(Err(_))));
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::RetryCompare));
+    assert_eq!(swapped_reads(&fx), [true], "{fx:?}");
+    assert!(compared(&st).swapped && compared(&st).changes.is_none());
+    let _ = std::fs::remove_dir_all(&f.dir);
+}

@@ -85,10 +85,10 @@ fn a_commit_to_working_tree_diff_reverts_hunks() {
     let mut h = super::snapshot_tests::harness(st, true);
     h.run();
     h.check_snapshot("diff_to_workdir_revert");
-    h.get_by_label("Revert Hunk").click();
+    h.get_by_label("Revert hunk").click();
     h.run();
     let sent = h.state().1.iter().any(|m| matches!(m, Msg::Stage(StageMsg::RevertHunk { index: 0, generation: g }) if *g == generation));
-    assert!(sent, "Revert Hunk sends the revert");
+    assert!(sent, "Revert hunk sends the revert");
     drop(h);
     remove_fixture(&dir);
 }
@@ -102,6 +102,19 @@ fn a_line_from_the_first_commit_combined() {
     assert_eq!(m.span, Span::Range { base: repo::empty_tree(), newest: commit(&st, "Fix build on Windows") });
     assert!(m.changes.as_ref().is_some_and(|c| c.as_ref().is_ok_and(|c| c.files.iter().all(|f| f.status == 'A'))));
     render("graph_range_from_root", st, true);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn a_line_from_a_shallow_boundary_explains() {
+    // As if the clone's downloaded history stopped at its first commit.
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "compare-range-shallow");
+    let root = commit(&st, "Initial commit");
+    st.snap.as_mut().unwrap().shallow_roots = vec![root];
+    let (st, dir) = select(st, dir, &["Fix build on Windows", "Add app skeleton", "Initial commit"], false);
+    let Selection::Commits(m) = &st.selection else { unreachable!() };
+    assert_eq!((m.span, m.compare_ends()), (Span::ShallowEnd, None));
+    render("details_multi_shallow_end", st, true);
     remove_fixture(&dir);
 }
 
@@ -134,7 +147,11 @@ fn the_details_panel_compares_its_commit_with_the_working_directory() {
 
 /// `summaries` selected, with the comparison's file list loaded (`swapped` runs it the other way).
 pub(super) fn selected(theme: ThemeChoice, name: &str, summaries: &[&str], swapped: bool) -> (AppState, PathBuf) {
-    let (mut st, dir) = with_repo(theme, name);
+    let (st, dir) = with_repo(theme, name);
+    select(st, dir, summaries, swapped)
+}
+
+fn select(mut st: AppState, dir: PathBuf, summaries: &[&str], swapped: bool) -> (AppState, PathBuf) {
     let oids: Vec<Oid> = summaries.iter().map(|s| commit(&st, s)).collect();
     let mut sel = MultiSelection::build(oids.iter().copied(), oids[0], st.snap.as_ref().unwrap());
     if let Selection::Commits(m) = &mut sel {

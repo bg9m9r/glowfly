@@ -1,13 +1,13 @@
 //! Headless tests for Revert Hunk and Revert lines on a commit compared with the working tree:
 //! the effect sent, the hunk buttons waiting for the reload, Revert changes to this file and the
-//! reverse direction refused, the R key, the new toast, and end to end.
+//! reverse direction refused, the R key, the new toast, and end to end (undo included).
 
 use super::revert::{DIFF_CHANGED, done_text};
 use super::revert_tests::{head, one_hunk, run, with_diff};
 use super::tests::{drive, git, scratch_repo, state};
 use crate::effect::Effect;
 use crate::keymap::KeyAction;
-use crate::msg::{Msg, RepoMsg, RevertWhat, SelectionMsg, StageMsg};
+use crate::msg::{JobMsg, Msg, RepoMsg, RevertWhat, SelectionMsg, StageMsg};
 use crate::state::{AppState, Selection};
 use trellis_core::repo::{DiffTarget, RevertPart, RevertRequest, Reverted};
 
@@ -110,5 +110,46 @@ fn a_hunk_reverted_end_to_end() {
     }
     assert!(st.undo.undo.last().is_some(), "an undo is recorded");
     assert!(st.log.iter().all(|l| l.ok), "{:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_untracked_file_reverted_away_comes_back_with_undo() {
+    let dir = scratch_repo("revert-workdir-untracked");
+    git(&dir, &["config", "core.autocrlf", "false"]);
+    std::fs::write(
+        dir.join("f.txt"),
+        "f
+",
+    )
+    .unwrap();
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "base"]);
+    std::fs::write(
+        dir.join("new.txt"),
+        "new
+lines
+",
+    )
+    .unwrap();
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let c = head(&st);
+    drive(&mut st, Msg::Selection(SelectionMsg::CompareWithWorkdir(c)));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::ToWorkdir(c, "new.txt".into()))));
+    let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
+    drive(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation }));
+    assert!(!dir.join("new.txt").exists(), "the file the commit lacks is removed");
+    let want = done_text("new.txt", RevertWhat::Hunk, Reverted::RemovedNew);
+    assert!(st.toasts.iter().any(|t| t.ok && t.text == want), "{:?}", st.toasts.iter().map(|t| &t.text).collect::<Vec<_>>());
+
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("new.txt")).unwrap(),
+        "new
+lines
+",
+        "undo brings it back"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }

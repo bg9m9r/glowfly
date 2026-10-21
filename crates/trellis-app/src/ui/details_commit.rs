@@ -90,7 +90,8 @@ pub(super) fn panel(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut 
     // Only graph rows are compared (a stash selected in the sidebar isn't one).
     if st.snap.as_ref().is_some_and(|s| s.row_of.contains_key(&d.oid)) {
         gap(ui, CHIPS_GAP);
-        let compare = buttons::secondary(t.tr("details.commit.compare_workdir.button")).small().tip(t.tr("details.commit.compare_workdir.tip"));
+        let compare =
+            buttons::secondary(t.tr("details.commit.compare_workdir.button")).small().tip(t.tr("details.commit.compare_workdir.tip"));
         if ui.add(compare).clicked() {
             msgs.push(Msg::Selection(SelectionMsg::CompareWithWorkdir(d.oid)));
         }

@@ -119,6 +119,30 @@ fn working_tree_targets() {
 }
 
 #[test]
+fn swapped_and_empty_tree_targets() {
+    let (mut st, dir) = fixture("swapped");
+    let head = head(&st);
+    let short = head.to_string()[..7].to_owned();
+    drive(&mut st, Msg::Selection(crate::msg::SelectionMsg::CompareWithWorkdir(head)));
+    drive(&mut st, Msg::Selection(crate::msg::SelectionMsg::SwapCompare));
+    let m = open(&mut st, DiffTarget::FromWorkdir(head, "src/app.txt".into()));
+    assert_eq!(m.context, Context::FromWorkdir(format!("working tree..{short}")));
+    assert_eq!((m.status, m.primary), (Some('M'), None));
+    assert_eq!(m.actions.open, Some(OpenAction { path: "src/app.txt".into(), missing: None }));
+    // Listed as added this way round: the working tree lacks it.
+    let m = open(&mut st, DiffTarget::FromWorkdir(head, "gone.txt".into()));
+    assert_eq!(m.status, Some('A'));
+    assert_eq!(m.actions.open.unwrap().missing, Some(crate::state::files::NOT_IN_WORKDIR));
+
+    let empty = trellis_core::repo::empty_tree();
+    let m = open(&mut st, DiffTarget::Between(empty, head, "staged.txt".into()));
+    assert_eq!(m.context, Context::Between(format!("empty..{short}")));
+    let m = open(&mut st, DiffTarget::Between(head, empty, "staged.txt".into()));
+    assert_eq!(m.context, Context::Between(format!("{short}..empty")));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn commit_targets_with_and_without_the_detail() {
     let (mut st, dir) = fixture("commit");
     let head = head(&st);
