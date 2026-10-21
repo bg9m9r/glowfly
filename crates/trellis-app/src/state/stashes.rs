@@ -55,10 +55,13 @@ impl RenameStashForm {
     }
 }
 
-/// The Stash dialog: what to stash, and the message.
+/// The Stash dialog: what to stash, the message, and whether the staged changes also stay
+/// staged. Nothing is remembered between openings.
 pub struct StashPushForm {
     pub scope: StashScope,
     pub message: String,
+    /// Keep the staged changes in the index too (--keep-index); not used for Staged.
+    pub keep_index: bool,
     /// Paths ticked under Selected files, kept across refreshes.
     pub chosen: BTreeSet<String>,
     /// Focus the message field on the next frame (true when opened).
@@ -68,7 +71,12 @@ pub struct StashPushForm {
 impl StashPushForm {
     /// The dialog on `scope`, with only `path` ticked (or nothing).
     pub fn new(scope: StashScope, path: Option<String>) -> Self {
-        Self { scope, message: String::new(), chosen: path.into_iter().collect(), focus_message: true }
+        Self { scope, message: String::new(), keep_index: false, chosen: path.into_iter().collect(), focus_message: true }
+    }
+
+    /// Whether the stash keeps the staged changes: ticked, and a scope it applies to.
+    pub fn keeps_index(&self) -> bool {
+        self.keep_index && self.scope != StashScope::Staged
     }
 
     /// The ticked paths that are still changed in `snap` and can be stashed, in list order.

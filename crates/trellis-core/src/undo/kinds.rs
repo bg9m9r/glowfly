@@ -67,10 +67,11 @@ pub enum UndoKind {
         op: MoveOp,
         detail: Option<String>,
     },
-    /// `replay` is the command line that stashes again on redo; `None` when it read its paths
-    /// from a file that may be gone by then.
+    /// `replay` is the command lines that stash again on redo (the push, and for chosen files
+    /// the commands that follow it: `stash_ops::restore_commands`); `None` when it read its
+    /// paths from a file that may be gone by then.
     StashPush {
-        replay: Option<Vec<String>>,
+        replay: Option<Vec<Vec<String>>>,
     },
     /// A pop (or apply) of `rev` (`None`: the newest stash).
     StashApply {
@@ -214,7 +215,7 @@ fn stash_kind(a: &[&str], argv: &[String]) -> Option<UndoKind> {
         ["stash", "push", "-u", "-m", m] if *m == DISCARD_STASH_MESSAGE => Some(UndoKind::DiscardAll),
         ["stash", "push", ..] | ["--literal-pathspecs", "stash", "push", ..] => {
             let from_file = a.iter().any(|s| s.starts_with("--pathspec-from-file"));
-            Some(UndoKind::StashPush { replay: (!from_file).then(|| argv.to_vec()) })
+            Some(UndoKind::StashPush { replay: (!from_file).then(|| vec![argv.to_vec()]) })
         }
         ["stash", verb @ ("pop" | "apply")] => Some(UndoKind::StashApply { pop: *verb == "pop", rev: None }),
         ["stash", verb @ ("pop" | "apply"), rev] if plain(rev) => {

@@ -14,12 +14,15 @@ pub struct FileEntry {
     /// The row's stored content (index, commit, or the working copy where git has none) is a
     /// Git LFS pointer (`lfs_marks`).
     pub lfs: bool,
+    /// For a staged rename in a status read (an 'R' row of the staged list): its path in HEAD,
+    /// when that is UTF-8. None everywhere else, commit and comparison lists included.
+    pub renamed_from: Option<String>,
 }
 
 impl FileEntry {
     /// A row for a path with nothing unusual about it.
     pub fn new(path: impl Into<String>, status: char) -> Self {
-        Self { path: path.into(), status, hazard: None, lfs: false }
+        Self { path: path.into(), status, hazard: None, lfs: false, renamed_from: None }
     }
 }
 

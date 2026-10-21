@@ -13,7 +13,7 @@ use git2::{DiffDelta, DiffFile};
 pub(super) fn entry(bytes: &[u8], status: char) -> FileEntry {
     match std::str::from_utf8(bytes) {
         Ok(path) => FileEntry::new(path, status),
-        Err(_) => FileEntry { path: shown(bytes), status, hazard: Some(Hazard::NotUtf8(bytes.to_vec())), lfs: false },
+        Err(_) => FileEntry { path: shown(bytes), status, hazard: Some(Hazard::NotUtf8(bytes.to_vec())), lfs: false, renamed_from: None },
     }
 }
 

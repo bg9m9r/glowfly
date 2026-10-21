@@ -55,6 +55,12 @@ fn key(path: &str) -> String {
     nfc(&nfc(path).to_lowercase())
 }
 
+/// The name a case- and normalization-insensitive volume sees for `path`: two paths with the
+/// same key can name one file there.
+pub fn name_key(path: &str) -> String {
+    key(path)
+}
+
 /// The groups of index paths (any stage, UTF-8 names only) that share a `key`, sorted.
 pub(super) fn collisions(index: &Index) -> Vec<Collision> {
     let mut by_key: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();

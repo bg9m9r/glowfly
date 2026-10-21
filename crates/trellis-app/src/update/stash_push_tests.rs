@@ -16,12 +16,12 @@ use std::time::Instant;
 use trellis_core::repo::{FileEntry, Hazard};
 use trellis_core::stash_ops::{STAGED_MIN_GIT, StashScope};
 
-fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
 /// A repository with a staged change to a.txt, an unstaged change to b.txt and untracked c.txt.
-fn wip_repo(name: &str) -> (AppState, PathBuf) {
+pub(super) fn wip_repo(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     std::fs::write(dir.join("b.txt"), "b\n").unwrap();
     git(&dir, &["add", "b.txt"]);
@@ -38,12 +38,12 @@ fn wip_repo(name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn dialog(st: &mut AppState, scope: StashScope) {
+pub(super) fn dialog(st: &mut AppState, scope: StashScope) {
     run(st, Msg::Stash(StashMsg::PushDialog { scope, path: None }));
     assert!(matches!(st.modal, Some(Modal::StashPush(_))), "the dialog opened");
 }
 
-fn form(st: &AppState) -> &StashPushForm {
+pub(super) fn form(st: &AppState) -> &StashPushForm {
     match &st.modal {
         Some(Modal::StashPush(f)) => f,
         _ => panic!("the Stash dialog is not open"),
@@ -51,15 +51,15 @@ fn form(st: &AppState) -> &StashPushForm {
 }
 
 fn push(scope: StashScope, message: &str, paths: &[&str]) -> Msg {
-    Msg::Stash(StashMsg::Push { scope, message: message.into(), paths: paths.iter().map(|p| p.to_string()).collect() })
+    super::stash_push_options_tests::push_with(scope, message, paths, false)
 }
 
-fn argv(a: &[&str]) -> Vec<Vec<String>> {
+pub(super) fn argv(a: &[&str]) -> Vec<Vec<String>> {
     vec![a.iter().map(|s| s.to_string()).collect()]
 }
 
 /// The commands and file of the one RunGit effect in `fx`.
-fn git_run(fx: &[Effect]) -> (Vec<Vec<String>>, Option<(PathBuf, String)>) {
+pub(super) fn git_run(fx: &[Effect]) -> (Vec<Vec<String>>, Option<(PathBuf, String)>) {
     match fx {
         [Effect::RunGit { cmds, write_file, .. }] => (cmds.clone(), write_file.clone()),
         other => panic!("expected one RunGit, got {} effects", other.len()),
@@ -70,7 +70,7 @@ fn last_log(st: &AppState) -> String {
     st.log.last().expect("a log line").text.clone()
 }
 
-fn job_label(st: &AppState) -> Option<&str> {
+pub(super) fn job_label(st: &AppState) -> Option<&str> {
     st.job.as_ref().map(|j| j.label.as_str())
 }
 
@@ -99,7 +99,7 @@ fn the_dialog_opens_from_each_entry_point() {
     let (mut st, dir) = wip_repo("stash-push-open");
     dialog(&mut st, StashScope::All);
     let f = form(&st);
-    assert!(f.scope == StashScope::All && f.chosen.is_empty() && f.focus_message && f.message.is_empty());
+    assert!(f.scope == StashScope::All && f.chosen.is_empty() && f.focus_message && f.message.is_empty() && !f.keep_index);
     run(&mut st, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, path: Some("b.txt".into()) }));
     assert_eq!(form(&st).scope, StashScope::Files);
     assert_eq!(form(&st).chosen.iter().collect::<Vec<_>>(), ["b.txt"]);

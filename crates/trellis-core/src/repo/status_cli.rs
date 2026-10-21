@@ -50,15 +50,15 @@ pub(super) fn parse(out: &[u8]) -> (Vec<FileEntry>, Vec<FileEntry>) {
             // "1 XY sub mH mI mW hH hI path"
             Some(b'1') => {
                 if let [_, xy, .., path] = fields(rec, 9)[..] {
-                    changed(xy, path, &mut unstaged, &mut staged);
+                    changed(xy, path, None, &mut unstaged, &mut staged);
                 }
             }
             // "2 XY sub mH mI mW hH hI Xscore path", then the original path as its own record.
             Some(b'2') => {
+                let orig = records.next();
                 if let [_, xy, .., path] = fields(rec, 10)[..] {
-                    changed(xy, path, &mut unstaged, &mut staged);
+                    changed(xy, path, orig, &mut unstaged, &mut staged);
                 }
-                records.next();
             }
             // "u XY sub m1 m2 m3 mW h1 h2 h3 path"
             Some(b'u') => {
@@ -85,7 +85,9 @@ fn fields(rec: &[u8], n: usize) -> Vec<&[u8]> {
     rec.splitn(n, |&b| b == b' ').collect()
 }
 
-fn changed(xy: &[u8], path: &[u8], unstaged: &mut Vec<FileEntry>, staged: &mut Vec<FileEntry>) {
+/// Adds the rows of a changed path. `orig` is a type-2 record's original path: a staged
+/// rename's row keeps it in `renamed_from` (copies and work-tree renames don't).
+fn changed(xy: &[u8], path: &[u8], orig: Option<&[u8]>, unstaged: &mut Vec<FileEntry>, staged: &mut Vec<FileEntry>) {
     let (x, y) = (char::from(xy.first().copied().unwrap_or(b'.')), char::from(xy.get(1).copied().unwrap_or(b'.')));
     let index = match x {
         'A' | 'C' => Some('A'),
@@ -99,7 +101,11 @@ fn changed(xy: &[u8], path: &[u8], unstaged: &mut Vec<FileEntry>, staged: &mut V
         _ => None,
     };
     if let Some(c) = index {
-        staged.push(rpath::entry(path, c));
+        let mut row = rpath::entry(path, c);
+        if x == 'R' {
+            row.renamed_from = orig.and_then(rpath::text);
+        }
+        staged.push(row);
     }
     if let Some(c) = worktree {
         unstaged.push(rpath::entry(path, c));

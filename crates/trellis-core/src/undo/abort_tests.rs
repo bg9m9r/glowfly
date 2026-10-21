@@ -20,7 +20,7 @@ fn abort_keeping_ends_the_merge_and_undo_restores_the_resolution() {
     write(&dir, "a.txt", "merged\n");
     git(&dir, &["add", "a.txt"]);
 
-    let kind = UndoKind::StashPush { replay: Some(args(&["stash", "push", "-m", ABORT_STASH_MESSAGE])) };
+    let kind = UndoKind::StashPush { replay: Some(vec![args(&["stash", "push", "-m", ABORT_STASH_MESSAGE])]) };
     let b = before(&dir, &kind).unwrap();
     for c in abort_keeping_commands() {
         let (ok, out) = run(&dir, &c);

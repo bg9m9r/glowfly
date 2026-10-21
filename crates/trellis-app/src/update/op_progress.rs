@@ -40,6 +40,6 @@ pub(super) fn abort(st: &mut AppState, label: String, args: Vec<String>, keep: b
     }
     let replay = cmd(&["stash", "push", "-m", ABORT_STASH_MESSAGE]);
     let spec =
-        JobSpec { record: Some(UndoKind::StashPush { replay: Some(replay) }), ..JobSpec::new(label, undo::abort_keeping_commands()) };
+        JobSpec { record: Some(UndoKind::StashPush { replay: Some(vec![replay]) }), ..JobSpec::new(label, undo::abort_keeping_commands()) };
     start_job(st, spec, fx);
 }

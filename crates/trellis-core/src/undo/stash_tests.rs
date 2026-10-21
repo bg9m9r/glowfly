@@ -93,6 +93,60 @@ fn stash_push_undo_and_redo() {
 }
 
 #[test]
+fn stash_push_keep_index_undo() {
+    let (dir, _) = base("undo-stash-keep-index");
+    write(&dir, "a.txt", "a unstaged\n");
+    write(&dir, "b.txt", "b staged\n");
+    git(&dir, &["add", "b.txt"]);
+    write(&dir, "c.txt", "untracked\n");
+    let dirty = split(&dir);
+    let (_, action) = record_kind(&dir, &["stash", "push", "-u", "--keep-index"]);
+    let action = action.expect("recorded");
+    assert_eq!(split(&dir), (vec![], vec!["Mb.txt".to_owned()]), "only the staged change is left");
+    let undo = plan(&dir, &action, false).unwrap();
+    assert_eq!(undo, cmds(&[&["stash", "pop", "--index", "stash@{0}"]]));
+    run_plan(&dir, undo);
+    assert_eq!(split(&dir), dirty);
+    assert!(stashes(&dir).is_empty());
+
+    // A file with staged and unstaged changes is left with its staged version, which differs
+    // from what the stash holds for the working tree: the undo is refused, not run.
+    git(&dir, &["reset", "-q", "--hard"]);
+    let _ = std::fs::remove_file(dir.join("c.txt"));
+    write(&dir, "b.txt", "b staged\n");
+    git(&dir, &["add", "b.txt"]);
+    write(&dir, "b.txt", "b staged\nand more\n");
+    let (_, action) = record_kind(&dir, &["stash", "push", "-u", "--keep-index"]);
+    let action = action.expect("recorded");
+    assert!(matches!(refused(plan(&dir, &action, false).unwrap()), Refusal::Dirty(_)));
+    assert_eq!(stashes(&dir).len(), 1, "nothing ran");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Redo of a stash that puts a staged rename's old file back refuses while something is there.
+#[test]
+fn stash_push_redo_never_writes_over_the_old_path() {
+    let (dir, _) = base("undo-stash-rename-redo");
+    git(&dir, &["mv", "a.txt", "moved.txt"]);
+    let (_, action) = record_kind(&dir, &["--literal-pathspecs", "stash", "push", "-u", "--", "moved.txt"]);
+    let Some(Action::StashPush { stash, head, message, replay: Some(push) }) = action else { panic!("{action:?}") };
+    let put_back = crate::stash_ops::restore_commands(&["a.txt".to_owned()]);
+    run_plan(&dir, Plan::Run(put_back.clone()));
+    let replay: Vec<Vec<String>> = push.into_iter().chain(put_back).collect();
+    let action = Action::StashPush { stash, head, message, replay: Some(replay.clone()) };
+    run_plan(&dir, plan(&dir, &action, false).unwrap());
+    assert_eq!(split(&dir), (vec![], vec!["Rmoved.txt".to_owned()]), "the rename is back");
+
+    write(&dir, "a.txt", "mine\n");
+    let r = refused(plan(&dir, &action, true).unwrap());
+    assert!(matches!(&r, Refusal::Dirty(why) if why.contains("a.txt")), "{r:?}");
+    assert!(stashes(&dir).is_empty(), "nothing ran");
+    std::fs::remove_file(dir.join("a.txt")).unwrap();
+    assert_eq!(plan(&dir, &action, true).unwrap(), Plan::Run(replay));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn partial_stash_undo_ignores_other_changes() {
     let (dir, _) = base("undo-stash-files");
     write(&dir, "a.txt", "a edited\n");
@@ -112,37 +166,18 @@ fn partial_stash_undo_ignores_other_changes() {
 #[test]
 fn partial_stash_undo_allows_staged_files_it_left_alone() {
     let (dir, _) = base("undo-stash-files-staged");
-    write(
-        &dir,
-        "a.txt",
-        "a edited
-",
-    );
-    write(
-        &dir,
-        "b.txt",
-        "b staged
-",
-    );
+    write(&dir, "a.txt", "a edited\n");
+    write(&dir, "b.txt", "b staged\n");
     git(&dir, &["add", "b.txt"]);
     let (_, action) = record_kind(&dir, &["--literal-pathspecs", "stash", "push", "--", "a.txt"]);
     let action = action.expect("recorded");
     assert_eq!(split(&dir), (vec![], vec!["Mb.txt".to_owned()]), "b.txt stays staged");
-    write(
-        &dir,
-        "b.txt",
-        "b edited after
-",
-    );
+    write(&dir, "b.txt", "b edited after\n");
     let undo = plan(&dir, &action, false).unwrap();
     assert_eq!(undo, cmds(&[&["stash", "pop", "--index", "stash@{0}"]]));
     run_plan(&dir, undo);
     assert_eq!(split(&dir), (vec!["Ma.txt".to_owned(), "Mb.txt".to_owned()], vec!["Mb.txt".to_owned()]));
-    assert_eq!(
-        std::fs::read_to_string(dir.join("b.txt")).unwrap(),
-        "b edited after
-"
-    );
+    assert_eq!(std::fs::read_to_string(dir.join("b.txt")).unwrap(), "b edited after\n");
 
     // Unstaged since, git would refuse to pop it back over b.txt.
     run_plan(&dir, plan(&dir, &action, true).unwrap());
@@ -158,10 +193,7 @@ fn pop_undo_clears_many_untracked_files_in_short_commands() {
     let names: Vec<String> = (0..600).map(|i| format!("generated/a-fairly-long-generated-file-name-{i:04}.txt")).collect();
     std::fs::create_dir(dir.join("generated")).unwrap();
     for n in &names {
-        write(
-            &dir, n, "x
-",
-        );
+        write(&dir, n, "x\n");
     }
     git(&dir, &["stash", "push", "-q", "-u"]);
     let (_, action) = record_kind(&dir, &["stash", "pop"]);

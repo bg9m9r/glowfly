@@ -118,3 +118,10 @@ fn a_disagreeing_ignorecase_is_reported() {
     assert_eq!(load(&dir, &LoadOptions::all(10)).unwrap().case_mismatch(), None);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn name_key_folds_case_and_normalization() {
+    assert_eq!(name_key("A.txt"), name_key("a.txt"));
+    assert_eq!(name_key("dir/Caf\u{e9}.txt"), name_key("dir/cafe\u{301}.txt"), "composed and decomposed");
+    assert_ne!(name_key("a.txt"), name_key("b.txt"));
+}

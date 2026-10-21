@@ -30,6 +30,10 @@ fn git_and_libgit2_read_the_same_status() {
     assert_eq!(git_read, ours);
     assert_eq!(super::status_cli::status_within(&dir, crate::gitcli::READ_TIMEOUT), Ok(git_read.clone()), "the same read");
     assert!(git_read.1.iter().any(|f| f.path == "renamed.txt" && f.status == 'R'));
+    for f in git_read.0.iter().chain(&git_read.1) {
+        let want = (f.path == "renamed.txt" && f.status == 'R').then(|| "e.txt".to_owned());
+        assert_eq!(f.renamed_from, want, "{}", f.path);
+    }
     assert!(git_read.0.iter().any(|f| f.path == "deep/er/untracked file.txt" && f.status == '?'));
 
     // A repository set up for git's fast status reads it through git; the lists don't change.
@@ -45,6 +49,26 @@ fn conflicts_and_odd_records_parse() {
     let paths: Vec<_> = unstaged.iter().map(|f| (f.path.as_str(), f.status)).collect();
     assert_eq!(paths, [("both.txt", '!'), ("x y.txt", '?')]);
     assert!(staged.is_empty());
+}
+
+#[test]
+fn rename_records_keep_the_old_path() {
+    let row = |p: &str, c, from: Option<&str>| FileEntry { renamed_from: from.map(str::to_owned), ..FileEntry::new(p, c) };
+    let (unstaged, staged) = parse(b"2 R. N... 100644 100644 100644 h1 h2 R100 new.txt\0old.txt\0");
+    assert_eq!(staged, [row("new.txt", 'R', Some("old.txt"))]);
+    assert!(unstaged.is_empty());
+
+    let (unstaged, staged) = parse(b"2 RM N... 100644 100644 100644 h1 h2 R90 new.txt\0old.txt\0");
+    assert_eq!(staged, [row("new.txt", 'R', Some("old.txt"))]);
+    assert_eq!(unstaged, [row("new.txt", 'M', None)]);
+
+    // A copy is staged as an added file, and the record after it still parses: the original
+    // path was read as part of the copy's record.
+    let copy: &[u8] = b"2 C. N... 100644 100644 100644 h1 h2 C75 copy.txt\0src.txt\0";
+    let text = [copy, b"1 .M N... 100644 100644 100644 h1 h2 other.txt\0"].concat();
+    let (unstaged, staged) = parse(&text);
+    assert_eq!(staged, [row("copy.txt", 'A', None)]);
+    assert_eq!(unstaged, [row("other.txt", 'M', None)]);
 }
 
 #[test]

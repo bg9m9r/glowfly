@@ -127,7 +127,7 @@ pub enum Action {
         stash: Oid,
         head: Oid,
         message: String,
-        replay: Option<Vec<String>>,
+        replay: Option<Vec<Vec<String>>>,
     },
     StashApply {
         pop: bool,

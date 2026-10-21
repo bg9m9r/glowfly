@@ -1,6 +1,8 @@
-//! The Stash dialog (`Modal::StashPush`): a message and what goes into the stash (every change,
-//! only the staged changes, or files ticked in a list of the working tree). The list is built
-//! from the snapshot every frame, so a refresh adds or removes rows; ticks are kept by path.
+//! The Stash dialog (`Modal::StashPush`): a message, what goes into the stash (every change,
+//! only the staged changes, or files ticked in a list of the working tree) and whether the
+//! staged changes also stay staged (not offered with only the staged changes; unticked each
+//! time the dialog opens). The list is built from the snapshot every frame, so a refresh adds
+//! or removes rows; ticks are kept by path.
 //! `update` checks the choice again before running anything.
 
 use super::common::{status_color, status_label, widget_row_height};
@@ -36,6 +38,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
         Some(b) => format!("on {b}"),
         None => "on detached HEAD".to_owned(),
     };
+    let t = cx.t;
     let focus = cx.keyboard;
     let d = Dialog::new(cx, "Stash changes").subtitle(on).begin(ui);
     let r = FieldGroup::new("Message").optional(cx.t.tr("dialog.field.optional")).show(ui, |ui| ui.add(TextField::new(&mut form.message)));
@@ -54,6 +57,15 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
         ui.add_space(4.0);
         checklist(ui, form, snap);
     }
+    ui.add_space(8.0);
+    if form.scope == StashScope::Staged {
+        // Drawn unticked whatever the form holds, which comes back with another choice.
+        ui.add_enabled(false, controls::Check::new(&mut false, t.tr("stash.push.keep_index.check")))
+            .on_disabled_hover_text(t.tr("stash.push.keep_index.staged_tip"));
+    } else {
+        controls::checkbox(ui, &mut form.keep_index, t.tr("stash.push.keep_index.check"));
+    }
+    ui.indent("keep-index", |ui| ui.add(egui::Label::new(RichText::new(t.tr("stash.push.keep_index.help")).color(color::weak())).wrap()));
     let paths = snap.map(|s| form.paths(s)).unwrap_or_default();
     let blocked = snap.and_then(|s| push_blocked(trellis_core::i18n::Lang::En, s, form.scope, &paths));
     match blocked {
@@ -73,7 +85,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
     let stash = buttons::primary("Stash").enabled(valid).why(why);
     let out = d.finish(ui, Footer::new().cancel().primary(stash).submit(submit));
     if out.primary {
-        msgs.push(Msg::Stash(StashMsg::Push { scope: form.scope, message: form.message.clone(), paths }));
+        msgs.push(Msg::Stash(StashMsg::Push { scope: form.scope, message: form.message.clone(), paths, keep_index: form.keeps_index() }));
     }
     out.dismiss
 }

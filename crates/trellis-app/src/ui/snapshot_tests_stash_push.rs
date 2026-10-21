@@ -1,7 +1,7 @@
 //! The Stash dialog (Selected files with a message, Only staged changes with nothing staged in
-//! the light theme, All changes while a job runs), the Staged Files header's menu and the WIP
-//! row's Stash this file… item. Made-up working-tree files are injected into the shared
-//! fixture's snapshot so the images are deterministic.
+//! the light theme, All changes while a job runs, All changes keeping the staged changes), the
+//! Staged Files header's menu and the WIP row's Stash this file… item. Made-up working-tree
+//! files are injected into the shared fixture's snapshot so the images are deterministic.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_remotes::running;
@@ -84,7 +84,7 @@ fn stash_push_dialog_files() {
     h.run();
     let all = ["a.txt", "b.txt", "c.txt", "docs/notes.md", "src/lib.rs"];
     let stashes = |m: &Msg| {
-        matches!(m, Msg::Stash(StashMsg::Push { scope: StashScope::Files, message, paths })
+        matches!(m, Msg::Stash(StashMsg::Push { scope: StashScope::Files, message, paths, keep_index: false })
             if message == "Login form, half done" && paths.iter().map(String::as_str).eq(all))
     };
     assert!(pushed(&h, &stashes), "{}", h.state().1.len());
@@ -122,6 +122,7 @@ fn stash_push_dialog_staged_nothing_light() {
     h.run();
     assert!(h.query_by_label(trellis_core::i18n::Lang::En.tr("stash.blocked.nothing_staged")).is_some());
     assert!(stash_button(&h).is_disabled());
+    assert!(h.get_by_label(KEEP).is_disabled(), "Only staged changes has no use for it");
     h.check_snapshot("stash_push_dialog_staged_nothing_light");
     drop(h);
     remove_fixture(&dir);
@@ -139,6 +140,33 @@ fn stash_push_dialog_all_busy() {
     h.get_by_label("Cancel").click();
     h.run_steps(2);
     assert!(pushed(&h, &|m| matches!(m, Msg::CloseModal)));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+const KEEP: &str = "Keep staged changes";
+
+#[test]
+fn stash_push_dialog_keep_index() {
+    let mut form = StashPushForm::new(StashScope::All, None);
+    form.message = "Halfway".into();
+    form.keep_index = true;
+    let (st, dir) = dialog(ThemeChoice::Dark, "stash-push-keep-index", &STAGED, form);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(!h.get_by_label(KEEP).is_disabled());
+    h.check_snapshot("stash_push_dialog_keep_index");
+    stash_button(&h).click();
+    h.run();
+    let keeps =
+        |on: bool| move |m: &Msg| matches!(m, Msg::Stash(StashMsg::Push { scope: StashScope::All, keep_index, .. }) if *keep_index == on);
+    assert!(pushed(&h, &keeps(true)));
+    h.state_mut().1.clear();
+    h.get_by_label(KEEP).click();
+    h.run();
+    stash_button(&h).click();
+    h.run();
+    assert!(pushed(&h, &keeps(false)), "unticked");
     drop(h);
     remove_fixture(&dir);
 }

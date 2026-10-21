@@ -1,5 +1,5 @@
 //! `git stash push` command lines for the Stash dialog: every change, only the staged changes,
-//! or chosen paths, each with an optional message.
+//! or chosen paths, each with an optional message and optionally keeping the staged changes.
 
 use crate::gitcli::args;
 use std::path::Path;
@@ -43,12 +43,19 @@ pub struct PushCommand {
 /// GIT_LITERAL_PATHSPECS), so names with `*`, `?` or `[` are never globs. When the paths add up
 /// to more than `PATHS_ON_COMMAND_LINE` they are read from `pathspec_file` instead. `Staged` has
 /// no `-u`: git refuses `--staged` together with `--include-untracked`.
-pub fn push_command(scope: StashScope, message: Option<&str>, paths: &[String], pathspec_file: &Path) -> PushCommand {
+///
+/// `keep_index` adds `--keep-index` (right after `-u`) for `All` and `Files`: the staged changes
+/// go into the stash and also stay in the index and the working tree. `Staged` ignores it, since
+/// git refuses `--staged` with `--keep-index`.
+pub fn push_command(scope: StashScope, keep_index: bool, message: Option<&str>, paths: &[String], pathspec_file: &Path) -> PushCommand {
     let mut cmd = match scope {
         StashScope::All => args(&["stash", "push", "-u"]),
         StashScope::Staged => args(&["stash", "push", "--staged"]),
         StashScope::Files => args(&["--literal-pathspecs", "stash", "push", "-u"]),
     };
+    if keep_index && scope != StashScope::Staged {
+        cmd.push("--keep-index".into());
+    }
     if let Some(m) = message {
         cmd.extend(args(&["-m", m]));
     }

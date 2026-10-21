@@ -96,7 +96,7 @@ mod worktrees;
 
 pub use binary_sides::{BinarySide, BinarySides, PREVIEW_MAX_BYTES, binary_sides};
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
-pub use collide::{Collision, Folding, probe};
+pub use collide::{Collision, Folding, name_key, probe};
 pub use common_dir::{CommonDir, repo_name_of};
 pub use conflict::{
     Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, Unmergeable, load_conflict, marker_size,

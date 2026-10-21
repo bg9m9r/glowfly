@@ -15,8 +15,8 @@ pub enum StashMsg {
     /// Open the Stash dialog on this choice; with `path`, Selected files with that file ticked.
     PushDialog { scope: StashScope, path: Option<String> },
     /// Stash with the dialog's choice and text; `paths` only for Files. `update` re-checks them
-    /// against the snapshot.
-    Push { scope: StashScope, message: String, paths: Vec<String> },
+    /// against the snapshot. `keep_index`: --keep-index, ignored for Staged.
+    Push { scope: StashScope, message: String, paths: Vec<String>, keep_index: bool },
 }
 
 impl StashMsg {

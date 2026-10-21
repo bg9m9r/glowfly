@@ -6,7 +6,10 @@
 //! keeps the old text, and the reflog dates of `stash@{0..N}` become the time of the rename.
 //!
 //! `push` builds the Stash dialog's `git stash push` command lines (every change, only the
-//! staged changes, or chosen paths).
+//! staged changes, or chosen paths, optionally keeping the staged changes with `--keep-index`).
+//! `renames` makes a chosen staged rename move whole: it finds the rename's old path
+//! (`rename_sources`) and builds the commands that put it back from HEAD after the stash
+//! (`restore_commands`), refusing beforehand when something already sits there (`restore_blocked`).
 //!
 //! `auto` names the stash Trellis makes before an operation that needs a clean work tree
 //! (checkout, pull, merge, rebase, cherry-pick, revert, hard reset), recognises it and git's own
@@ -20,8 +23,10 @@ use std::path::Path;
 
 mod auto;
 mod push;
+mod renames;
 pub use auto::{AUTO_STASH_PREFIX, AutoStashFor, GIT_AUTOSTASH, PutBack, is_auto_stash, pop_put_back, prepare_put_back};
 pub use push::{PATHS_ON_COMMAND_LINE, PushCommand, STAGED_MIN_GIT, StashScope, push_command, push_message, staged_unsupported};
+pub use renames::{RESTORE_BLOCKED, rename_sources, restore_blocked, restore_blocked_output, restore_commands};
 
 /// Splits a stash list text into the branch it was made on and the part the user can edit:
 /// "On <branch>: <rest>" and "WIP on <branch>: <rest>" give `(Some(branch), rest)`, anything
@@ -160,6 +165,10 @@ mod tests;
 #[cfg(test)]
 #[path = "stash_ops/push_tests.rs"]
 mod push_tests;
+
+#[cfg(test)]
+#[path = "stash_ops/renames_tests.rs"]
+mod renames_tests;
 
 #[cfg(test)]
 #[path = "stash_ops/auto_tests.rs"]

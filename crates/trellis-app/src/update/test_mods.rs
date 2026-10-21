@@ -389,6 +389,8 @@ pub(super) mod stack_push_tests;
 pub(super) mod stack_tests;
 #[path = "stash_confirm_tests.rs"]
 pub(super) mod stash_confirm_tests;
+#[path = "stash_push_options_tests.rs"]
+pub(super) mod stash_push_options_tests;
 #[path = "stash_push_tests.rs"]
 pub(super) mod stash_push_tests;
 #[path = "stash_rename_tests.rs"]

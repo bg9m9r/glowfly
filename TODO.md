@@ -1049,11 +1049,6 @@ blockers and major findings are Milestone 1 items.
 
 - Open folder history from a folder row once file lists can show a tree
 
-### Stash improvements
-
-- Keep the index when stashing (`--keep-index`) as a Stash dialog option
-- When a staged rename's new path is chosen, stash its old path too, so the rename moves as a whole
-
 ### Notifications
 
 - Keep a toast up while the pointer is over it, and a close button on toasts
@@ -2149,6 +2144,15 @@ here, under the item they grew from.
 - "Stash…" entry in the STASHES section header menu that opens the Stash dialog
 - Stash the files selected in the WIP lists once working-tree files can be multi-selected
 - Show each stash's date in the sidebar and palette rows (needs the stash commit time in StashInfo)
+- A palette entry that stashes while keeping the staged changes in one step
+- Remember the Keep staged changes choice between openings of the Stash dialog
+- Show a staged rename's old path in the Stash dialog's file list and the WIP lists ("from a.txt")
+- Stash a staged rename whole when its old name isn't UTF-8 (now stashed as an added file, its deletion left staged)
+- Stash a staged rename whole when a new file sits at its old path (now the rename splits and the file stays)
+- Undo a keep-index stash of a file that had both staged and unstaged changes (now refused by the working-tree check)
+- Stash a case-only staged rename whole on a volume that ignores case (now it splits like the other cases)
+- Offer Undo for a stash whose put-back of a rename's old file failed after the stash was made (the stash stays, no undo is recorded)
+- Translate the English job details and redo refusal for a blocked rename stash along with the other runner and undo texts
 
 ### Clone and init options
 

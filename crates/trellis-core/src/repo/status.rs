@@ -112,7 +112,7 @@ pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<F
     };
     for e in statuses.iter() {
         let s = e.status();
-        // A staged rename is listed under its new path.
+        // A staged rename is listed under its new path; its old path is kept in renamed_from.
         let bytes = e.head_to_index().and_then(|d| d.new_file().path_bytes()).unwrap_or_else(|| e.path_bytes());
         let row = |status| super::rpath::entry(bytes, status);
         if s.is_conflicted() {
@@ -134,7 +134,11 @@ pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<F
         };
         let worktree = worktree_char(s);
         if let Some(c) = index {
-            staged.push(row(c));
+            let mut row = row(c);
+            if c == 'R' {
+                row.renamed_from = e.head_to_index().and_then(|d| d.old_file().path_bytes()).and_then(super::rpath::text);
+            }
+            staged.push(row);
         }
         if let Some(c) = worktree {
             unstaged.push(row(c));

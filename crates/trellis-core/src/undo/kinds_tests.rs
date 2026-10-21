@@ -71,11 +71,21 @@ fn classify_recognises_trellis_commands() {
         (&["rebase", "--interactive", "main"], None),
         (&["rebase", "--continue"], None),
         (&["rebase", "--edit-todo"], None),
-        (&["stash", "push", "-u"], Some(UndoKind::StashPush { replay: Some(args(&["stash", "push", "-u"])) })),
-        (&["stash", "push", "-u", "-m", "m"], Some(UndoKind::StashPush { replay: Some(args(&["stash", "push", "-u", "-m", "m"])) })),
+        (&["stash", "push", "-u"], Some(UndoKind::StashPush { replay: Some(vec![args(&["stash", "push", "-u"])]) })),
+        (&["stash", "push", "-u", "-m", "m"], Some(UndoKind::StashPush { replay: Some(vec![args(&["stash", "push", "-u", "-m", "m"])]) })),
+        (
+            &["stash", "push", "-u", "--keep-index", "-m", "m"],
+            Some(UndoKind::StashPush { replay: Some(vec![args(&["stash", "push", "-u", "--keep-index", "-m", "m"])]) }),
+        ),
         (
             &["--literal-pathspecs", "stash", "push", "-u", "--", "a.txt"],
-            Some(UndoKind::StashPush { replay: Some(args(&["--literal-pathspecs", "stash", "push", "-u", "--", "a.txt"])) }),
+            Some(UndoKind::StashPush { replay: Some(vec![args(&["--literal-pathspecs", "stash", "push", "-u", "--", "a.txt"])]) }),
+        ),
+        (
+            &["--literal-pathspecs", "stash", "push", "-u", "--keep-index", "--", "a.txt"],
+            Some(UndoKind::StashPush {
+                replay: Some(vec![args(&["--literal-pathspecs", "stash", "push", "-u", "--keep-index", "--", "a.txt"])]),
+            }),
         ),
         (
             &["--literal-pathspecs", "stash", "push", "-u", "-m", "m", "--pathspec-from-file=f", "--pathspec-file-nul"],

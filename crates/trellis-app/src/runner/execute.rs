@@ -131,6 +131,12 @@ fn execute_unscoped(
             if let Some(refused) = expect.and_then(|(rev, oid)| expect::check(&cwd, &rev, oid).err()) {
                 return Some(Msg::Job(JobMsg::JobDone { ok: false, output: refused, undo: record.map(|_| UndoResult::Recorded(None)) }));
             }
+            // A stash that puts a staged rename's old file back stops before stashing when
+            // something has appeared at that path since the dialog was drawn.
+            if let Some(p) = trellis_core::stash_ops::restore_blocked(&cwd, &cmds) {
+                let output = trellis_core::stash_ops::restore_blocked_output(&p);
+                return Some(Msg::Job(JobMsg::JobDone { ok: false, output, undo: record.map(|_| UndoResult::Recorded(None)) }));
+            }
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             // A pop onto local changes mixes them with the stash's, so it can't be undone.
             let irreversible = before.as_ref().is_some_and(undo::irreversible);

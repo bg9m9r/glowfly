@@ -36,7 +36,7 @@ pub(super) fn handle(st: &mut AppState, msg: StashMsg, fx: &mut Vec<Effect>) {
         },
         StashMsg::Rename { oid, message } => rename(st, oid, &message, fx),
         StashMsg::PushDialog { scope, path } => super::stash_push::open(st, scope, path),
-        StashMsg::Push { scope, message, paths } => super::stash_push::push(st, scope, &message, paths, fx),
+        StashMsg::Push { scope, message, paths, keep_index } => super::stash_push::push(st, scope, &message, paths, keep_index, fx),
     }
 }
 

@@ -6,7 +6,7 @@
 //! A drop is undone by storing the dropped commit back at the top of the list.
 
 use super::planning::{dirty, gone, is_clean, stale};
-use super::{Action, Changes, Plan, reset::stash_index};
+use super::{Action, Changes, Plan, Refusal, reset::stash_index};
 use crate::error::{Error, Result};
 use crate::gitcli::args;
 use crate::repo::{CLI_PATH_BYTES, FileEntry, Hazard, status_at};
@@ -126,12 +126,17 @@ pub(super) fn plan_push(workdir: &Path, repo: &Repository, action: &Action, head
         if head_oid != Some(*head) {
             return Ok(stale("HEAD has moved since the stash"));
         }
+        if let Some(p) = crate::stash_ops::restore_blocked(workdir, replay) {
+            // The file there is the user's; the entry stays for when it has moved.
+            let why = format!("Move {p} away first: redoing the stash would put the old file of a staged rename back there.");
+            return Ok(Plan::Refuse(Refusal::Dirty(why)));
+        }
         let now = status_entries(workdir)?;
         let any = match stash_paths(repo, *stash) {
             Ok(paths) => now.iter().any(|e| paths.contains(&e.path)),
             Err(_) => !now.is_empty(),
         };
-        return Ok(if any { Plan::Run(vec![replay.clone()]) } else { stale("No changes to stash") });
+        return Ok(if any { Plan::Run(replay.clone()) } else { stale("No changes to stash") });
     }
     if head_oid != Some(*head) {
         return Ok(stale("HEAD has moved since the stash"));
