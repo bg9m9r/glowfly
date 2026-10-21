@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-20 21:14 · **Multi-select commits**: A commit compared with the working directory gets Swap direction (the list and diffs run from the working tree to the commit and keep that way through status reads, refreshes and Retry), its commit-to-working-tree diff gets Revert hunk, Revert lines and R (the working file takes the commit's lines, a file the commit lacks is removed with Undo to bring it back, an edited file is refused, never merged), a line of commits reaching the first commit combines from an empty repository (a shallow clone's boundary explains why it can't), and Compare with working directory joins the palette and the commit details (`3c67122e`)
 - 2026-10-20 20:53 · **Real-input smoke tests (Windows)**: A CI job `smoke-windows` builds the release binary and drives it on the runner's desktop with SendInput at zoom 100% and 150% (`scripts/smoke-windows.ps1`, OpenGL through Mesa llvmpipe): a click that focuses the window and a click after SetForegroundWindow (both recorded; whether the first click drops on Windows is decided by the job's first run), typing in the commit summary and committing only the staged file, a commit's menu creating a branch, Ctrl+Shift+L, the sidebar drag and a drag of the drawn resize corner, read back through the probe (which now names the drawn title bar and frame and retries a failed write), settings.json and git; failures save screenshots and logs, and `-DryRun` checks the scripts without a window (`adc93234`)
 - 2026-10-20 20:47 · **Installer and update checks in CI**: A new Installers workflow installs the v0.0.1 MSI and .deb, upgrades them to the current build, checks their files, shortcuts or desktop entries, registry and icons, starts the installed program (and on Linux its window under Xvfb through the desktop entry), runs `trellis --check-update` against local update feeds (`TRELLIS_UPDATE_FEED`: up to date, newer, wrong or missing checksum, changed file, relative folder) and uninstalls with nothing left; `trellis --version` and `--check-update` are new headless modes (`ddd628eb`)
 - 2026-10-20 20:42 · **File history and blame**: The File view previews files: Markdown gets a Text | Preview switch (remembered, also in Preferences > Diff viewer) drawn by the shared Markdown renderer (headings, lists with task boxes, quotes, highlighted code, tables, https links), and images (PNG, JPEG, GIF, WebP, BMP) are drawn at their own size or scaled to fit over a checkerboard with their format, size and scale, while the binary diff now previews GIF, WebP and BMP too (`89d3ee1c`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-20 12:14 · **Dialogs and text fields**: Dialogs get a header with a painted close button that acts as Esc, Small, Medium and Wide size classes, 36 px tinted text fields in label-field-help groups with a weak Optional marker, and the dialogs for submodules, worktrees, patches, the mainline parent and other less familiar operations a tinted "How it works" pane of numbered steps beside the form (stacked above it in a narrow window); every dialog's text fields move onto them, and tests keep dialogs on the field widget and the guide pane in its place (`193957e8`)
 - 2026-10-20 11:51 · **Terminal panel**: The panel gets a 40 px header with a pill per shell (the shell icon, an automatic name from the shell and folder or the running command, an amber dot once it has ended, a × on the active or hovered pill, double-click to rename), + and a caret that picks the shell, and quiet icon buttons for Clear, Kill terminal, More (Kill all, Rename), Terminal settings, Maximize (the panel takes the main area, Esc restores it) and Hide; the 16 basic terminal colours come from a checked table per theme (`9eb563d8`)
 - 2026-10-19 22:48 · **Window chrome and toolbar**: The drawn Windows frame gains Snap Layouts on the Maximize button, the system menu on Alt+Space or a right-click on the title bar, and a Mica backdrop behind the title bar, toolbar and sidebar where the contrast check passes, with the item now ticked (`8715967b`)
-- 2026-10-19 20:36 · **Window chrome and toolbar**: On Windows Trellis draws a 44 px title bar with a menu button, the tabs, empty space that moves or maximizes the window, its own window buttons, resize edges and border (usable above dialogs, Alt tap opens the menu), macOS gets the same bar inset for the traffic lights while Linux keeps the system frame, tabs get a lifted active tab, separators and a hover shape, the toolbar's buttons sit in grouped surfaces with Repository › Branch pickers sized to their names, and the Branch icon is redrawn; Mica, Snap Layouts, Alt+Space and the contrast check remain (`f68f85cb`)
 
 ---
 
@@ -1075,14 +1075,10 @@ blockers and major findings are Milestone 1 items.
 
 ### Multi-select commits
 
-- Swap direction for the commit-to-working-tree comparison (working tree to commit)
-- Revert Hunk and per-line revert on a commit-to-working-tree diff
-- Combined diff of a range that starts at the repository's first commit (from the empty tree)
 - Combined diff of a non-contiguous selection (each commit's own changes stacked)
 - Name the gap in a non-contiguous selection (the first commit whose parent isn't selected)
 - Cherry-pick or revert several commits that include merges, with one mainline for all of them
 - Say when a cherry-pick or revert changed nothing because the branch already has the changes
-- Compare with working directory from the command palette and the commit details panel
 - A key to go back from a select-all to the focused commit, with a toast naming the count
 
 ### Repository trust
@@ -1390,6 +1386,20 @@ here, under the item they grew from.
   people who don't hover
 - The saved-filter rows' disabled Move up and Move down icon buttons in the filter popover say why
   only through egui's disabled look; give them the info tooltip on hover and focus
+
+### Multi-select commits
+
+- Revert changes to this file on a commit-to-working-tree row (Restore the version from the commit covers it today)
+- A hunk action on the working-tree-to-commit direction (take the commit's version of a hunk from the swapped diff)
+- Keep the open file's diff when swapping a working-directory comparison (reopen it the other way instead of closing)
+- Syntax highlighting in context for the swapped comparison's working-tree side (it has no stored blob)
+- Git LFS pointer note inside the swapped diff for its working-tree side (the note reads stored blobs only)
+- Hide line check boxes on the working-tree-to-commit diff, where no line action applies
+- Palette entries to swap or stop an active working-directory comparison
+- A keyboard shortcut for Swap direction
+- Compare a stash with the working directory
+- List a renamed file under its working-tree name in the swapped comparison (it is listed under the commit's name)
+- Show the whole heading of a combined range (hover or wrap) when the panel cuts it short
 
 ### Tabs (multiple open repos)
 
