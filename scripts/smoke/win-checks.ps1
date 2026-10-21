@@ -34,37 +34,58 @@ function Measure-Click([string] $Want) {
     return 'DROPPED'
 }
 
+# Records one first-click result in first-click.txt and as a ::notice:: line.
+function Save-FirstClickResult([string] $Case, [string] $Result) {
+    $record = Join-Path $script:SmokeOut 'first-click.txt'
+    $key = $Case -replace ' ', '-'
+    Add-Content -LiteralPath $record -Value "$($script:Pass) ${key}: $Result"
+    Write-Host "::notice::smoke $($script:Pass) first-click, ${Case}: $Result"
+}
+
+# Runs one first-click case, whose $Body returns its result, and records the result as soon as
+# it is known. A case whose setup or measuring fails is recorded as 'not run: <reason>' and does
+# not throw, so the other case still runs and is recorded.
+function Invoke-FirstClickCase([string] $Case, [scriptblock] $Body) {
+    try {
+        $result = "$(& $Body)"
+    } catch [SmokeFailure] {
+        $result = "not run: $($_.Exception.Message)"
+    } catch {
+        $result = "not run: unexpected error: $_"
+    }
+    Save-FirstClickResult $Case $result
+    return $result
+}
+
 # The click that gives the window the focus must also reach it, (a) when the click itself
-# focuses the window and (b) right after the OS activated it. Both results are recorded (the
-# Input reliability evidence) before the check can fail.
+# focuses the window and (b) right after the OS activated it. Each result is recorded (the
+# Input reliability evidence) as soon as it is measured, before the check can fail.
 function Test-FirstClick {
     $results = [ordered]@{}
-    $null = [TrellisSmoke.Native]::BringToFront($script:ThiefHwnd)
-    Wait-Probe '(a) the window to lose the focus to the thief' { param($p) $p.focused -eq $false } | Out-Null
-    Move-PointerTo 'Add b.txt' 'central'
-    Start-Sleep -Milliseconds 200
-    [TrellisSmoke.Native]::Button(1, $true)
-    Start-Sleep -Milliseconds 50
-    [TrellisSmoke.Native]::Button(1, $false)
-    $results['click to focus'] = Measure-Click "commit:$($script:BOid)"
-
-    $null = [TrellisSmoke.Native]::BringToFront($script:ThiefHwnd)
-    Wait-Probe '(b) the window to lose the focus to the thief' { param($p) $p.focused -eq $false } | Out-Null
-    if (-not [TrellisSmoke.Native]::BringToFront($script:Hwnd)) { Write-SmokeLog '(b) SetForegroundWindow did not make Trellis the foreground window' }
-    Wait-Probe '(b) focus from SetForegroundWindow' { param($p) $p.focused -eq $true } | Out-Null
-    Wait-Settled
-    Invoke-WidgetClick 'Add a.txt' 'central'
-    $results['click after SetForegroundWindow'] = Measure-Click "commit:$($script:AOid)"
-
-    $record = Join-Path $script:SmokeOut 'first-click.txt'
-    foreach ($case in $results.Keys) {
-        $key = $case -replace ' ', '-'
-        Add-Content -LiteralPath $record -Value "$($script:Pass) ${key}: $($results[$case])"
-        Write-Host "::notice::smoke $($script:Pass) first-click, ${case}: $($results[$case])"
+    $results['click to focus'] = Invoke-FirstClickCase 'click to focus' {
+        $null = [TrellisSmoke.Native]::BringToFront($script:ThiefHwnd)
+        Wait-Probe '(a) the window to lose the focus to the thief' { param($p) $p.focused -eq $false } | Out-Null
+        Move-PointerTo 'Add b.txt' 'central'
+        Start-Sleep -Milliseconds 200
+        [TrellisSmoke.Native]::Button(1, $true)
+        Start-Sleep -Milliseconds 50
+        [TrellisSmoke.Native]::Button(1, $false)
+        Measure-Click "commit:$($script:BOid)"
     }
+
+    $results['click after SetForegroundWindow'] = Invoke-FirstClickCase 'click after SetForegroundWindow' {
+        $null = [TrellisSmoke.Native]::BringToFront($script:ThiefHwnd)
+        Wait-Probe '(b) the window to lose the focus to the thief' { param($p) $p.focused -eq $false } | Out-Null
+        if (-not [TrellisSmoke.Native]::BringToFront($script:Hwnd)) { Write-SmokeLog '(b) SetForegroundWindow did not make Trellis the foreground window' }
+        Wait-Probe '(b) focus from SetForegroundWindow' { param($p) $p.focused -eq $true } | Out-Null
+        Wait-Settled
+        Invoke-WidgetClick 'Add a.txt' 'central'
+        Measure-Click "commit:$($script:AOid)"
+    }
+
     $dropped = @($results.Keys | Where-Object { $results[$_] -ne 'delivered' })
     if ($dropped.Count -gt 0) {
-        Invoke-SmokeFailure $script:Check "the first click was dropped: $(($results.Keys | ForEach-Object { "${_}: $($results[$_])" }) -join '; ')"
+        Invoke-SmokeFailure $script:Check "the first click was not delivered: $(($results.Keys | ForEach-Object { "${_}: $($results[$_])" }) -join '; ')"
     }
 }
 

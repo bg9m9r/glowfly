@@ -1,6 +1,6 @@
 # The dry run's self-test for scripts/smoke-windows.ps1, dot-sourced by Invoke-DryRun: widget
-# matching, pixel and screen math, SMOKE_EXPECT_FAIL parsing, the zoom steps and the seeded
-# settings, against an inline sample probe. No window, no input. Each assertion throws with what
+# matching, pixel and screen math, SMOKE_EXPECT_FAIL parsing, the zoom steps, the seeded
+# settings and first-click's recording, against an inline sample probe. No window, no input. Each assertion throws with what
 # it expected.
 
 function Assert-Smoke([bool] $Condition, [string] $Message) {
@@ -33,6 +33,8 @@ $sample = @'
 $savedReporting = $script:Reporting
 $savedCheck = $script:Check
 $savedExpect = $script:ExpectFail
+$savedOut = $script:SmokeOut
+$savedPass = $script:Pass
 $script:Reporting = $false
 $script:Check = 'self-test'
 $script:ClientOrigin = @(10, 20)
@@ -86,9 +88,36 @@ try {
     Assert-Smoke ($seeded.language -eq 'en') "seeded language is $($seeded.language)"
     Assert-Smoke ($seeded.updates.check -eq $false -and $null -eq $seeded.updates.last_checked) 'seeded updates check is off'
     Assert-Smoke ($seeded.updates.notes_seen -eq '1.2.3' -and $seeded.welcome_done -eq $true -and $seeded.reopen_last_repo -eq $false) 'seeded welcome, release notes and reopen'
+
+    # first-click records each case as soon as it is known; a case whose setup fails is recorded
+    # as not run and does not stop the next case from running and being recorded.
+    $script:SmokeOut = Join-Path ([IO.Path]::GetTempPath()) "trellis-smoke-selftest-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+    New-Item -ItemType Directory -Force $script:SmokeOut | Out-Null
+    $script:Pass = 'scale-1'
+    $record = Join-Path $script:SmokeOut 'first-click.txt'
+    $state = @{ Ran = $false }
+    $lines = @(& {
+            $a = Invoke-FirstClickCase 'click to focus' { 'delivered' }
+            Assert-Smoke ($a -eq 'delivered') "a measured case returns its result ('$a')"
+            Assert-Smoke ((Get-Content -LiteralPath $record) -ceq 'scale-1 click-to-focus: delivered') 'a measured case is in first-click.txt before the next case runs'
+            $b = Invoke-FirstClickCase 'click after SetForegroundWindow' { Invoke-SmokeFailure 'first-click' 'timed out waiting for focus'; 'delivered' }
+            Assert-Smoke ($b -ceq 'not run: timed out waiting for focus') "a case whose setup fails is not run ('$b')"
+            $c = Invoke-FirstClickCase 'third' { throw 'boom' }
+            Assert-Smoke ($c -ceq 'not run: unexpected error: boom') "a case with an unexpected error is not run ('$c')"
+            $state.Ran = $true
+        } 6>&1 | ForEach-Object { "$_" })
+    Assert-Smoke $state.Ran 'every first-click case returned'
+    $want = 'scale-1 click-to-focus: delivered', 'scale-1 click-after-SetForegroundWindow: not run: timed out waiting for focus', 'scale-1 third: not run: unexpected error: boom'
+    $got = @(Get-Content -LiteralPath $record)
+    Assert-Smoke (($got -join "`n") -ceq ($want -join "`n")) "first-click.txt holds every case: $($got -join ' | ')"
+    $notices = @($lines | Where-Object { $_.StartsWith('::notice::') })
+    Assert-Smoke ($notices.Count -eq 3 -and $notices[1] -ceq '::notice::smoke scale-1 first-click, click after SetForegroundWindow: not run: timed out waiting for focus') "a ::notice:: line per case: $($notices -join ' | ')"
 } finally {
     $script:Reporting = $savedReporting
     $script:Check = $savedCheck
     $script:ExpectFail = $savedExpect
     $script:ClientOrigin = $null
+    if ($script:SmokeOut -ne $savedOut) { Remove-Item -LiteralPath $script:SmokeOut -Recurse -Force -ErrorAction SilentlyContinue }
+    $script:SmokeOut = $savedOut
+    $script:Pass = $savedPass
 }
