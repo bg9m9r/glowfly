@@ -1,5 +1,6 @@
 //! Preferences > Keyboard: the full list, a row recording a key, a clash with its buttons next to
-//! a fixed row, and the page's controls only asking update (`KeysMsg`) to change anything.
+//! a fixed row, the Repository commands rows (no key until one is added), and the page's
+//! controls only asking update (`KeysMsg`) to change anything.
 
 use super::snapshot_check::CheckSnapshot;
 use super::snapshot_tests::{harness, render, settings};
@@ -27,6 +28,22 @@ fn keys_page(st: &mut AppState) -> &mut crate::state::keys_page::KeysPage {
 #[test]
 fn prefs_keyboard() {
     render("prefs_keyboard", page(ThemeChoice::Dark, ""), true);
+}
+
+/// The Repository commands rows read "No key" with Add until one gets a key.
+#[test]
+fn prefs_keyboard_commands() {
+    let mut st = page(ThemeChoice::Dark, "repository commands");
+    st.keymap.set(I::Fetch, vec![Chord::plain(K::F(8))]);
+    let mut h = harness(st, true);
+    h.run();
+    for label in ["Repository commands", "Fetch all remotes", "Open the repository in a terminal", "Change F8 for Fetch all remotes"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(h.query_all_by_label("Push").next().is_some());
+    assert_eq!(h.query_all_by_label("Reset").count(), 1, "only Fetch differs from its default");
+    assert_eq!(h.query_all_by_label("No key").count(), 13);
+    h.check_snapshot("prefs_keyboard_commands");
 }
 
 #[test]
@@ -145,4 +162,24 @@ fn typing_in_the_filter_narrows_the_rows() {
     assert_eq!(h.state().0.prefs.as_ref().unwrap().keys.filter, "refresh");
     assert!(h.query_by_label("Refresh").is_some());
     assert!(h.query_by_label("New tab").is_none());
+}
+
+#[test]
+fn command_rows_only_ask() {
+    let msgs = click(page(ThemeChoice::Dark, "push"), "Add");
+    assert!(matches!(keys_msgs(&msgs)[..], [KeysMsg::Record { id: I::Push, slot: Slot::Add }]));
+
+    let mut st = page(ThemeChoice::Dark, "push");
+    st.keymap.set(I::Push, vec![Chord::plain(K::F(8))]);
+    let msgs = click(st, "Reset");
+    assert!(matches!(keys_msgs(&msgs)[..], [KeysMsg::Reset(I::Push)]));
+
+    let mut st = page(ThemeChoice::Dark, "push");
+    st.keymap.set(I::Push, vec![Chord::plain(K::F(8))]);
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("Reset").hover();
+    h.run();
+    h.run();
+    assert!(h.query_by_label("Back to no key").is_some(), "the default is no key");
 }

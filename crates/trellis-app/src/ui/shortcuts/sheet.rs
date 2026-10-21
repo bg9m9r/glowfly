@@ -1,6 +1,6 @@
 //! The keyboard shortcut sheet (Ctrl+/): a filter field over every binding in the table,
-//! grouped, each row with its keys drawn as key caps. A reference only; rows don't run
-//! anything.
+//! grouped, each row with its keys drawn as key caps; Repository commands rows without a key
+//! are left out. A reference only; rows don't run anything.
 
 use super::Caps;
 use crate::keymap::{Binding, Keymap};
@@ -19,7 +19,7 @@ pub fn show(ui: &mut Ui, cx: Cx, filter: &mut String, keys: &Keymap) -> bool {
         r.request_focus();
     }
     ui.add_space(4.0);
-    let groups = keys.filter(filter);
+    let groups = keys.filter_for_sheet(filter);
     d.body(ui, |ui| {
         if groups.is_empty() {
             ui.add_space(8.0);

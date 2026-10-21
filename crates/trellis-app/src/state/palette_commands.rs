@@ -3,7 +3,6 @@
 
 use super::AppState;
 use super::palette_kinds::StashAction;
-use crate::keymap::BindingId;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::{DiffLayout, ThemeChoice};
@@ -220,38 +219,6 @@ pub enum PaletteCommand {
     Rebase(palette_commands_rebase::RebaseCommand),
     /// Pushing the checked-out branch's stack and creating its pull requests (palette_stack.rs).
     Stack(palette_stack::StackCommand),
-}
-
-impl PaletteCommand {
-    /// The binding that does the same thing; the palette shows its current key.
-    pub(crate) fn binding(&self) -> Option<BindingId> {
-        use crate::msg::LayoutMsg;
-        use PaletteCommand as C;
-        Some(match self {
-            C::SearchCommits => BindingId::Search,
-            C::CloseTab => BindingId::CloseTab,
-            C::OpenPrefs => BindingId::Prefs,
-            C::Undo => BindingId::Undo,
-            C::Redo => BindingId::Redo,
-            C::NewTab => BindingId::NewTab,
-            C::ReopenClosedTab => BindingId::ReopenTab,
-            C::MoveTab(d) if *d < 0 => BindingId::MoveTabLeft,
-            C::MoveTab(_) => BindingId::MoveTabRight,
-            C::Refresh => BindingId::Refresh,
-            C::StageAll => BindingId::StageAll,
-            C::UnstageAll => BindingId::UnstageAll,
-            C::KeyboardShortcuts => BindingId::Sheet,
-            C::ToggleTerminal => BindingId::ToggleTerminal,
-            C::Layout(LayoutMsg::ZoomIn) => BindingId::ZoomIn,
-            C::Layout(LayoutMsg::ZoomOut) => BindingId::ZoomOut,
-            C::Layout(LayoutMsg::ZoomReset) => BindingId::ZoomReset,
-            C::Layout(LayoutMsg::ToggleFullscreen) => BindingId::ToggleFullscreen,
-            C::Layout(LayoutMsg::SetPanel { panel, .. } | LayoutMsg::TogglePanel(panel)) => return panel.binding(),
-            C::RepoList(c) => return c.binding(),
-            C::Rebase(c) => return c.binding(),
-            _ => return None,
-        })
-    }
 }
 
 pub struct Entry {

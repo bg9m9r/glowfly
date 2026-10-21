@@ -138,6 +138,9 @@ pub enum PaletteMsg {
     PaletteHover(usize),
     /// Close the palette and run this command (or, for a two-step command, open its sub-list).
     RunPaletteCommand(crate::state::palette::PaletteCommand),
+    /// A key from Preferences > Keyboard asks for this palette command: run it (or open its
+    /// step) when the palette would list it now, without recording it among recent commands.
+    RunBoundCommand(crate::state::palette::PaletteCommand),
     /// Leave a palette sub-list for the command list.
     PaletteBack,
     TrackedPathsLoaded {
@@ -157,6 +160,7 @@ impl PaletteMsg {
             | Self::PaletteJump(..)
             | Self::PaletteHover(..)
             | Self::RunPaletteCommand(..)
+            | Self::RunBoundCommand(..)
             | Self::PaletteBack
             | Self::TrackedPathsLoaded { .. } => None,
         }

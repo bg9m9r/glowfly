@@ -5,6 +5,7 @@
 //! sub-lists (apply, pop, delete and rename), the profile sub-list (switching profiles), the
 //! assigned-issue sub-lists (starting a Git Flow branch from an issue), the stash message step
 //! and the commit count of a shallow clone's fetch. The Stash dialog's entries open that dialog.
+//! A command's key from Preferences > Keyboard runs it the same way (`palette_keys.rs`).
 
 use crate::effect::Effect;
 use crate::msg::BlameMsg;
@@ -87,6 +88,7 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
             st.palette = None;
             run(st, cmd, now, fx);
         }
+        PaletteMsg::RunBoundCommand(cmd) => super::palette_keys::run_bound(st, cmd, now, fx),
         PaletteMsg::PaletteBack => {
             if let Some(p) = st.palette.as_mut()
                 && !matches!(p.mode, Mode::Commands)
@@ -145,7 +147,7 @@ fn open_step(st: &mut AppState, mode: Mode) -> bool {
 /// Switches the palette to the sub-list for `kind` (opening it if closed) and fills it: the
 /// tracked files load in the background, the stashes come from the snapshot, the profiles from
 /// settings.
-fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
+pub(super) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
     match kind {
         PickKind::FileHistory | PickKind::Blame => {
             if !palette::can_pick_file(st) {
@@ -197,7 +199,7 @@ fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
 }
 
 /// Switches the palette to the free-text step `kind` (opening it if closed).
-fn enter_input(st: &mut AppState, kind: InputKind) {
+pub(super) fn enter_input(st: &mut AppState, kind: InputKind) {
     let ok = match kind {
         InputKind::StashMessage => palette::can_stash(st),
         InputKind::DeepenBy => st.can_fetch_history(),
@@ -208,7 +210,7 @@ fn enter_input(st: &mut AppState, kind: InputKind) {
 }
 
 /// Runs `cmd` through the message the toolbar, menus and sidebar already send for it.
-fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect>) {
     use PaletteCommand as C;
     let msg = match cmd {
         C::SearchCommits => Msg::Search(SearchMsg::Open),

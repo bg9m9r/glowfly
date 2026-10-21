@@ -67,6 +67,7 @@ pub(crate) mod op_fixture;
 pub mod op_preview;
 pub mod op_strip;
 pub mod palette;
+pub mod palette_bindings;
 pub mod palette_commands;
 pub mod palette_custom;
 pub mod palette_files;

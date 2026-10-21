@@ -12,7 +12,7 @@ fn every_id_has_exactly_one_row() {
         assert_eq!(id as usize, n, "ALL is in declaration order");
         assert_eq!(BINDINGS.iter().filter(|b| b.id == id).count(), 1, "{id:?}");
         assert_eq!(binding(id).id, id);
-        assert!(!binding(id).defaults.is_empty(), "{id:?} has no keys");
+        assert!(runs_command(id) || !binding(id).defaults.is_empty(), "{id:?} has no keys");
     }
     assert_eq!(BINDINGS.len(), BindingId::ALL.len(), "a row's id is missing from ALL");
 }
@@ -99,7 +99,7 @@ fn ids_are_stable() {
         "toggle-fullscreen",
     ];
     let keys: Vec<&str> = BindingId::ALL.iter().map(|id| id.key()).collect();
-    assert_eq!(keys, FROZEN);
+    assert_eq!(keys[..FROZEN.len()], FROZEN);
     for id in BindingId::ALL {
         assert_eq!(BindingId::from_key(id.key()), Some(id));
     }
@@ -108,7 +108,7 @@ fn ids_are_stable() {
 
 #[test]
 fn rebindable_set() {
-    let rebindable: Vec<BindingId> = BindingId::ALL.into_iter().filter(|&id| binding(id).rebindable).collect();
+    let rebindable: Vec<BindingId> = BindingId::ALL.into_iter().filter(|&id| binding(id).rebindable && !runs_command(id)).collect();
     let want = [
         I::Stage,
         I::Unstage,

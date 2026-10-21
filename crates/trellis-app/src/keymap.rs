@@ -2,7 +2,8 @@
 //! works in (`table.rs`), and their ids and settings-file names (`ids.rs`); chords, their
 //! display text (PC or macOS modifier names, `KeyLabels`) and their settings-file form (`chord.rs`); the effective keymap, the defaults
 //! with the user's changes from Preferences > Keyboard (`active.rs`); and the rules for
-//! changing a key (`rebind.rs`). The shortcut matching
+//! changing a key (`rebind.rs`). The Repository commands rows bind palette commands, with no
+//! default keys; `state/palette_bindings.rs` maps them to their commands. The shortcut matching
 //! (`ui/shortcuts/global.rs`), the sheet, the palette's hints and button tooltips all read the
 //! effective keymap in `AppState::keymap`. No egui types here.
 
@@ -15,6 +16,8 @@ mod table;
 #[cfg(test)]
 mod chord_tests;
 #[cfg(test)]
+mod command_tests;
+#[cfg(test)]
 mod rebind_tests;
 #[cfg(test)]
 mod tests;
@@ -23,6 +26,8 @@ mod view_tests;
 
 pub use active::Keymap;
 pub use chord::{Chord, KeyName, Mods};
+#[cfg(test)]
+pub use ids::COMMAND_BINDINGS;
 pub use ids::{BindingId, FAVORITE_BINDINGS};
 pub use rebind::{Check, Slot, apply, check, fold_ctrl, reset_taking, same_keys, swap_chord};
 pub use table::*;

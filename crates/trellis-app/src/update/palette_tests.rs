@@ -366,7 +366,8 @@ fn shortcut_hints() {
     for label in ["Push", "Stash changes", "Create tag at HEAD…", "Checkout topic"] {
         assert_eq!(hint(label), None, "{label}");
     }
-    // F5 refreshes; it doesn't fetch.
-    assert_eq!(PaletteCommand::Fetch.binding(), None);
+    // F5 refreshes; Fetch has no key until one is assigned.
+    assert_eq!(PaletteCommand::Fetch.binding(), Some(crate::keymap::BindingId::Fetch));
+    assert_eq!(st.keymap.hint(crate::keymap::BindingId::Fetch), None);
     let _ = std::fs::remove_dir_all(&dir);
 }

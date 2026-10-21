@@ -1047,11 +1047,6 @@ blockers and major findings are Milestone 1 items.
 
 - Open folder history from a folder row once file lists can show a tree
 
-### Rebind keyboard shortcuts
-
-- Keys for palette commands that have none yet (fetch, pull, push, create branch…), assignable
-  on the Keyboard page
-
 ### Git Flow
 
 - Continue a Finish that stopped at a merge conflict once the merge is committed
@@ -1938,6 +1933,18 @@ here, under the item they grew from.
 - Rebind the fixed context keys (Commit's Ctrl+Enter, list arrows, palette keys) with their own
   per-context conflict rules
 - Per-repository keymaps
+- Default keys for fetch, pull and push once a chord free on Windows, macOS, Linux and common
+  shells is agreed
+- Keys for more palette commands: the apply, pop, delete and rename stash pickers, Open
+  repository, Open dashboard, Switch profile, Copy repository link, Rename branch, Create pull
+  request, Git Flow start
+- A key for Push stack, once that palette entry has landed
+- Keys for each pull variant from the toolbar's pull menu (rebase, fast-forward only)
+- Toolbar Fetch, Pull, Push, Branch, Stash and Pop tooltips name the assigned key
+- Warn on the Keyboard page when a key is also a custom command's key
+- The shortcut sheet points to Preferences > Keyboard for repository commands with no key yet
+- Split palette_commands.rs's entry builders by area (the binding map moved to
+  state/palette_bindings.rs)
 
 ### Built-in terminal
 

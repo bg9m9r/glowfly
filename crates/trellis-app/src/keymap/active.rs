@@ -4,7 +4,7 @@
 use super::chord::{Chord, KeyName};
 use super::ids::BindingId;
 use super::rebind::{self, fold_ctrl, same_keys};
-use super::table::{BINDINGS, Binding, GROUPS, Group, binding};
+use super::table::{BINDINGS, Binding, GROUPS, Group, binding, runs_command};
 use std::collections::BTreeMap;
 
 /// The most keys one action can have (Preferences > Keyboard hides Add at this many).
@@ -186,6 +186,16 @@ impl Keymap {
         GROUPS
             .iter()
             .map(|&g| (g, BINDINGS.iter().filter(|b| b.group == g && matches(b)).collect::<Vec<_>>()))
+            .filter(|(_, rows)| !rows.is_empty())
+            .collect()
+    }
+
+    /// `filter(query)` for the shortcut sheet: Repository commands rows without a key are left
+    /// out (they have none by default), and groups left empty are dropped.
+    pub fn filter_for_sheet(&self, query: &str) -> Vec<(Group, Vec<&'static Binding>)> {
+        self.filter(query)
+            .into_iter()
+            .map(|(g, rows)| (g, rows.into_iter().filter(|b| !(runs_command(b.id) && self.chords(b.id).is_empty())).collect::<Vec<_>>()))
             .filter(|(_, rows)| !rows.is_empty())
             .collect()
     }

@@ -129,3 +129,27 @@ fn shortcut_sheet_history() {
     drop(h);
     remove_fixture(&dir);
 }
+
+/// Repository commands have no key by default, so the sheet leaves them out until one has.
+#[test]
+fn sheet_shows_command_keys_once_bound() {
+    use crate::keymap::{BindingId, Chord, KeyName};
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "shortcut-sheet-commands");
+    st.modal = Some(Modal::Shortcuts { filter: String::new() });
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Fetch all remotes").is_none());
+    assert!(h.query_by_label("Repository commands").is_none());
+    drop(h);
+
+    let (mut st, _) = with_repo(ThemeChoice::Dark, "shortcut-sheet-commands");
+    st.keymap.set(BindingId::Fetch, vec![Chord::plain(KeyName::F(8))]);
+    st.modal = Some(Modal::Shortcuts { filter: String::new() });
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Fetch all remotes").is_some());
+    assert!(h.query_by_label("Repository commands").is_some());
+    assert!(h.query_by_label("Show a file's history (pick the file)").is_none(), "only the commands with a key");
+    drop(h);
+    remove_fixture(&dir);
+}

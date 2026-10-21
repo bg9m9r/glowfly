@@ -78,12 +78,26 @@ pub enum BindingId {
     OpenFold,
     CloseFold,
     ToggleFullscreen,
+    Fetch,
+    Pull,
+    Push,
+    CreateBranch,
+    CreateTag,
+    CreateAnnotatedTag,
+    StashChanges,
+    StashWithMessage,
+    PopStash,
+    FileHistory,
+    BlameFile,
+    OpenJournal,
+    OpenTerminal,
+    ShowRepoFolder,
 }
 
 use BindingId as I;
 
 /// How many ids there are.
-const COUNT: usize = 76;
+const COUNT: usize = 90;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
 const KEYS: [(BindingId, &str); COUNT] = [
@@ -163,6 +177,20 @@ const KEYS: [(BindingId, &str); COUNT] = [
     (I::OpenFold, "open-fold"),
     (I::CloseFold, "close-fold"),
     (I::ToggleFullscreen, "toggle-fullscreen"),
+    (I::Fetch, "fetch"),
+    (I::Pull, "pull"),
+    (I::Push, "push"),
+    (I::CreateBranch, "create-branch"),
+    (I::CreateTag, "create-tag"),
+    (I::CreateAnnotatedTag, "create-annotated-tag"),
+    (I::StashChanges, "stash"),
+    (I::StashWithMessage, "stash-with-message"),
+    (I::PopStash, "pop-stash"),
+    (I::FileHistory, "file-history"),
+    (I::BlameFile, "blame-file"),
+    (I::OpenJournal, "open-journal"),
+    (I::OpenTerminal, "open-in-terminal"),
+    (I::ShowRepoFolder, "show-repo-folder"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.
@@ -176,6 +204,24 @@ pub const FAVORITE_BINDINGS: [BindingId; 9] = [
     I::OpenFavorite7,
     I::OpenFavorite8,
     I::OpenFavorite9,
+];
+
+/// The Repository commands rows: each runs a palette command (`state/palette_bindings.rs`).
+pub const COMMAND_BINDINGS: [BindingId; 14] = [
+    I::Fetch,
+    I::Pull,
+    I::Push,
+    I::CreateBranch,
+    I::CreateTag,
+    I::CreateAnnotatedTag,
+    I::StashChanges,
+    I::StashWithMessage,
+    I::PopStash,
+    I::FileHistory,
+    I::BlameFile,
+    I::OpenJournal,
+    I::OpenTerminal,
+    I::ShowRepoFolder,
 ];
 
 impl BindingId {

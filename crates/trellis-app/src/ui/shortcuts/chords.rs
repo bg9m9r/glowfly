@@ -49,17 +49,18 @@ pub(crate) fn reaches_shell(m: Modifiers) -> bool {
 }
 
 /// Takes the first key press (repeats too) whose binding `allowed` lets through out of `i`'s
-/// events, returning the binding and the pressed chord. `allowed` also gets whether the press
-/// would reach a focused terminal's shell (`reaches_shell`). Presses of other keys, and of
-/// bindings that don't apply now, stay for the views.
-pub(crate) fn take_press(i: &mut InputState, keys: &Keymap, allowed: impl Fn(BindingId, bool) -> bool) -> Option<(BindingId, Chord)> {
-    let (n, id, chord) = i.events.iter().enumerate().find_map(|(n, e)| {
-        let Event::Key { key, pressed: true, modifiers, .. } = e else { return None };
+/// events, returning the binding, the pressed chord and whether the press is a key repeat.
+/// `allowed` also gets whether the press would reach a focused terminal's shell
+/// (`reaches_shell`). Presses of other keys, and of bindings that don't apply now, stay for the
+/// views.
+pub(crate) fn take_press(i: &mut InputState, keys: &Keymap, allowed: impl Fn(BindingId, bool) -> bool) -> Option<(BindingId, Chord, bool)> {
+    let (n, id, chord, repeat) = i.events.iter().enumerate().find_map(|(n, e)| {
+        let Event::Key { key, pressed: true, modifiers, repeat, .. } = e else { return None };
         let mac = mac_press(*modifiers);
         let chord = chord_from_press(*key, *modifiers, mac)?;
         let id = matched(keys, chord, !mac)?;
-        allowed(id, reaches_shell(*modifiers)).then_some((n, id, chord))
+        allowed(id, reaches_shell(*modifiers)).then_some((n, id, chord, *repeat))
     })?;
     i.events.remove(n);
-    Some((id, chord))
+    Some((id, chord, repeat))
 }

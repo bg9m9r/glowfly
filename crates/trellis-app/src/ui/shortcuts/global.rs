@@ -2,14 +2,16 @@
 //! turned into chords, looked up, and handled when what is open lets the binding through
 //! (Preferences, the palette, a dialog, a credential prompt, a focused text field). A focused
 //! terminal keeps the unshifted keys of the tab, palette, search and refresh actions for its
-//! shell (`terminal_keeps`). Then the keys of custom commands (`custom_keys.rs`), only while
+//! shell (`terminal_keeps`). The Repository commands keys run palette commands: a held key runs
+//! its command once (repeats are swallowed), and a focused terminal keeps every press of theirs
+//! that would reach its shell. Then the keys of custom commands (`custom_keys.rs`), only while
 //! nothing covers the main window. Presses no binding takes are left for the views; Esc goes on to
 //! the Esc chain in `ui/central.rs`.
 
 use super::chords::take_press;
 use super::record;
 use crate::custom_commands::{CustomCommandMsg, Target};
-use crate::keymap::{BindingId, Chord, KeyAction, KeyName};
+use crate::keymap::{BindingId, Chord, KeyAction, KeyName, runs_command};
 use crate::msg::{
     BlameMsg, ConflictMsg, DiffMsg, HistoryMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg, SearchMsg,
     SelectionMsg, TabsMsg,
@@ -30,7 +32,11 @@ pub(crate) fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>)
         return;
     }
     let live = Live::now(ctx, st);
-    while let Some((id, chord)) = ctx.input_mut(|i| take_press(i, &st.keymap, |id, shell| allowed(id, shell, &live))) {
+    while let Some((id, chord, repeat)) = ctx.input_mut(|i| take_press(i, &st.keymap, |id, shell| allowed(id, shell, &live))) {
+        // A held key would queue the same fetch or push again and again.
+        if repeat && runs_command(id) {
+            continue;
+        }
         fire(id, chord, st, msgs);
     }
     // Custom commands' keys, only over the main window itself.
@@ -145,6 +151,21 @@ fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         | I::OpenFavorite9 => !covered && !l.sheet && !l.typing,
         I::RewordCommit | I::SquashCommit | I::DropCommit => !covered && !l.sheet && !l.typing && l.graph,
         I::RebaseContinue | I::RebaseSkip => !covered && !l.sheet && !l.typing && l.rebasing,
+        // Palette commands; a focused terminal keeps every key of theirs that reaches its shell.
+        I::Fetch
+        | I::Pull
+        | I::Push
+        | I::CreateBranch
+        | I::CreateTag
+        | I::CreateAnnotatedTag
+        | I::StashChanges
+        | I::StashWithMessage
+        | I::PopStash
+        | I::FileHistory
+        | I::BlameFile
+        | I::OpenJournal
+        | I::OpenTerminal
+        | I::ShowRepoFolder => !covered && !l.sheet && !l.typing && !(l.terminal && shell),
         I::Refresh => true,
         I::Search | I::SearchFilter => !l.palette && !l.prefs,
         I::Prefs => !l.prefs && !l.palette,
@@ -256,6 +277,24 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
             Selection::Commit(o) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::Drop(vec![*o]))),
             Selection::Commits(m) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::Drop(m.oids.clone()))),
             _ => return,
+        },
+        // The palette's own entry runs, only while the palette would list it.
+        I::Fetch
+        | I::Pull
+        | I::Push
+        | I::CreateBranch
+        | I::CreateTag
+        | I::CreateAnnotatedTag
+        | I::StashChanges
+        | I::StashWithMessage
+        | I::PopStash
+        | I::FileHistory
+        | I::BlameFile
+        | I::OpenJournal
+        | I::OpenTerminal
+        | I::ShowRepoFolder => match crate::state::palette_bindings::command_for(id) {
+            Some(cmd) => Msg::Palette(PaletteMsg::RunBoundCommand(cmd)),
+            None => return,
         },
         I::RebaseContinue => Msg::Rebase(RebaseMsg::Resume(Resume::Continue)),
         I::RebaseSkip => Msg::Rebase(RebaseMsg::Resume(Resume::Skip)),

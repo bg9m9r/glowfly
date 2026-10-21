@@ -12,19 +12,22 @@ pub enum Group {
     History,
     Tabs,
     Repositories,
+    /// Palette commands the user gave a key (none has one by default).
+    Commands,
     Palette,
     View,
     General,
 }
 
 /// The groups in the order the sheet and Preferences > Keyboard show them.
-pub const GROUPS: [Group; 9] = [
+pub const GROUPS: [Group; 10] = [
     Group::Staging,
     Group::Navigation,
     Group::Diff,
     Group::History,
     Group::Tabs,
     Group::Repositories,
+    Group::Commands,
     Group::Palette,
     Group::View,
     Group::General,
@@ -39,6 +42,7 @@ impl Group {
             Group::History => "Editing history",
             Group::Tabs => "Tabs",
             Group::Repositories => "Repositories",
+            Group::Commands => "Repository commands",
             Group::Palette => "Command palette",
             Group::View => "View",
             Group::General => "General",
@@ -139,6 +143,12 @@ const fn fixed(id: BindingId, group: Group, label: &'static str, defaults: &'sta
     Binding { id, group, label, defaults, when, rebindable: false }
 }
 
+/// A palette command's row: no key until the user adds one on Preferences > Keyboard, and only
+/// while no text field has focus.
+const fn command(id: BindingId, label: &'static str) -> Binding {
+    b(id, Group::Commands, label, &[], When::NotTyping)
+}
+
 use Chord as C;
 use Group as G;
 use KeyName as K;
@@ -152,7 +162,8 @@ const FULL_SCREEN: &[Chord] = if cfg!(target_os = "macos") { &[C::cmd_ctrl(K::Le
 /// effective keymap (`ui/shortcuts/global.rs`); fixed rows document context keys their views
 /// match themselves (dialogs, the palette, lists, the commit box, Esc in `ui/central.rs`, the
 /// rebase panel's keys in `ui/rebase/keys.rs`), except Go to tab 1 to 8, matched with the
-/// rebindable rows. Change a fixed key there, change it here.
+/// rebindable rows. Change a fixed key there, change it here. The Repository commands rows have
+/// no default keys; each runs a palette command (`state/palette_bindings.rs`).
 pub const BINDINGS: &[Binding] = &[
     b(I::Stage, G::Staging, "Stage the file or the selected lines", &[C::plain(K::Letter('S'))], W::WorkingDiff),
     b(I::Unstage, G::Staging, "Unstage the file or the selected lines", &[C::plain(K::Letter('U'))], W::WorkingDiff),
@@ -235,6 +246,20 @@ pub const BINDINGS: &[Binding] = &[
     b(I::OpenFavorite7, G::Repositories, "Open favorite repository 7", &[C::cmd_alt(K::Digit(7))], W::NotTyping),
     b(I::OpenFavorite8, G::Repositories, "Open favorite repository 8", &[C::cmd_alt(K::Digit(8))], W::NotTyping),
     b(I::OpenFavorite9, G::Repositories, "Open favorite repository 9", &[C::cmd_alt(K::Digit(9))], W::NotTyping),
+    command(I::Fetch, "Fetch all remotes"),
+    command(I::Pull, "Pull"),
+    command(I::Push, "Push"),
+    command(I::CreateBranch, "Create a branch at the selected commit or HEAD"),
+    command(I::CreateTag, "Create a tag at the selected commit or HEAD"),
+    command(I::CreateAnnotatedTag, "Create an annotated tag at the selected commit or HEAD"),
+    command(I::StashChanges, "Stash changes"),
+    command(I::StashWithMessage, "Stash with a message"),
+    command(I::PopStash, "Pop the latest stash"),
+    command(I::FileHistory, "Show a file's history (pick the file)"),
+    command(I::BlameFile, "Blame a file (pick the file)"),
+    command(I::OpenJournal, "Open the operation journal"),
+    command(I::OpenTerminal, "Open the repository in a terminal"),
+    command(I::ShowRepoFolder, "Show the repository folder in the file manager"),
     b(I::Palette, G::Palette, "Open or close the command palette", &[C::cmd(K::Letter('P')), C::cmd_shift(K::Letter('P'))], W::Anywhere),
     fixed(I::PaletteMove, G::Palette, "Move the selection", &[C::plain(K::Up), C::plain(K::Down)], W::InPalette),
     fixed(I::PaletteRun, G::Palette, "Run the selected command", &[C::plain(K::Enter)], W::InPalette),
@@ -261,6 +286,11 @@ pub const BINDINGS: &[Binding] = &[
     b(I::Redo, G::General, "Redo", &[C::cmd(K::Letter('Y')), C::cmd_shift(K::Letter('Z'))], W::NotTyping),
     fixed(I::DialogSubmit, G::General, "Confirm a dialog's name field", &[C::plain(K::Enter)], W::Dialog),
 ];
+
+/// Whether `id` is a Repository commands row, which runs a palette command.
+pub fn runs_command(id: BindingId) -> bool {
+    super::ids::COMMAND_BINDINGS.contains(&id)
+}
 
 /// The binding `id`. Every id has a row in `BINDINGS`.
 pub fn binding(id: BindingId) -> &'static Binding {

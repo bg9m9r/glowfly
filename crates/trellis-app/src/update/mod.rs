@@ -65,6 +65,7 @@ mod op_preview;
 mod op_progress;
 mod ops;
 mod palette;
+mod palette_keys;
 mod partial;
 mod partial_content;
 mod partial_size;

@@ -46,8 +46,8 @@ pub fn row(ui: &mut Ui, t: Lang, b: &'static Binding, keys: &Keymap, page: &Keys
                 return;
             }
             let chords = keys.chords(b.id);
-            let reset =
-                |ui: &mut Ui| ui.add(buttons::secondary("Reset").small()).on_hover_text(format!("Back to {}", keys.defaults_text(b.id)));
+            let back = if b.defaults.is_empty() { "Back to no key".to_owned() } else { format!("Back to {}", keys.defaults_text(b.id)) };
+            let reset = |ui: &mut Ui| ui.add(buttons::secondary("Reset").small()).on_hover_text(&back);
             if !keys.is_default(b.id) && reset(ui).clicked() {
                 push(msgs, KeysMsg::Reset(b.id));
             }
