@@ -4,7 +4,7 @@
 #   pwsh scripts/package-windows.ps1 -Target x86_64-pc-windows-msvc -Tag v0.2.0
 #
 # Signing (both optional): when WINDOWS_CERTIFICATE (a base64 PFX) and
-# WINDOWS_CERTIFICATE_PASSWORD are set, signtool signs trellis.exe before it is packed and then
+# WINDOWS_CERTIFICATE_PASSWORD are set, signtool signs glowfly.exe before it is packed and then
 # the MSI, with an RFC 3161 timestamp. Without them the files are left unsigned.
 param(
     [Parameter(Mandatory = $true)][string]$Target,
@@ -52,12 +52,12 @@ function Write-Sum([string]$path) {
     [IO.File]::WriteAllText((Join-Path (Get-Location).Path "$path.sha256"), "$hash  $file`n")
 }
 
-Add-Signature "$bin/trellis.exe"
+Add-Signature "$bin/glowfly.exe"
 
 # --- The zip -----------------------------------------------------------------------------------
 $stage = Join-Path $dist $name
 New-Item -ItemType Directory -Force $stage | Out-Null
-Copy-Item "$bin/trellis.exe", LICENSE-MIT, LICENSE-APACHE, README.md, THIRD-PARTY-NOTICES.md $stage
+Copy-Item "$bin/glowfly.exe", LICENSE-MIT, LICENSE-APACHE, README.md, THIRD-PARTY-NOTICES.md $stage
 if (Test-Path CHANGELOG.md) { Copy-Item CHANGELOG.md $stage }
 $zip = Join-Path $dist "$name.zip"
 if (Test-Path $zip) { Remove-Item $zip }

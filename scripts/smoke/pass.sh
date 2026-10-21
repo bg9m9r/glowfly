@@ -3,7 +3,7 @@
 # app started on them at one scale factor, then each check in order. Each check runs in a
 # subshell under its own id, so a failure names it; a check listed in SMOKE_EXPECT_FAIL only
 # warns. The labels looked up here are dry-run on every OS by the journey test
-# crates/trellis-app/src/journey/probe.rs; keep the two in step.
+# crates/glowfly-app/src/journey/probe.rs; keep the two in step.
 #
 # Uses the globals of smoke-linux.sh and the helpers of lib.sh.
 # shellcheck disable=SC2154,SC2034,SC2016  # jq filters name their own $variables
@@ -104,7 +104,7 @@ make_fixture() {
 }
 
 start_app() {
-  WINIT_X11_SCALE_FACTOR="$SCALE" TRELLIS_SMOKE_PROBE="$PROBE" RUST_LOG=trellis=debug \
+  WINIT_X11_SCALE_FACTOR="$SCALE" TRELLIS_SMOKE_PROBE="$PROBE" RUST_LOG=glowfly=debug \
     "$BIN" "$REPO" >"$PASS_OUT/app.log" 2>&1 &
   APP_PID=$!
   WID=$(timeout 60 xdotool search --sync --onlyvisible --pid "$APP_PID" 2>/dev/null | head -n1 || true)

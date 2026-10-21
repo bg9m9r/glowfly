@@ -1,0 +1,128 @@
+//! Keeping repository reloads from piling up: at most one load and one status read run for the
+//! active tab at a time, and requests made meanwhile are merged into one more run afterwards.
+//! It also holds a failed load for more history with its automatic retries, and a filtering
+//! search loading further back (`load_more.rs`).
+
+use crate::state::load_more::DeeperSearch;
+use crate::state::{AppState, MAX_COMMITS};
+use glowfly_core::repo::Snapshot;
+use glowfly_core::watch::MAX_WATCH_PATHS;
+use std::collections::BTreeSet;
+use std::time::Instant;
+
+/// How much a refresh reads.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum Depth {
+    /// The status, plus everything else only if refs, HEAD, config or worktrees changed (or the
+    /// load options did) since the snapshot was loaded.
+    Checked,
+    /// Everything (F5).
+    Full,
+}
+
+/// What a status read waiting for the running one reads.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Wanted {
+    /// The whole status.
+    Whole,
+    /// Only the unstaged rows under these work-tree paths (the file watcher's).
+    Paths(BTreeSet<String>),
+}
+
+impl Wanted {
+    /// One read covering both: a whole read absorbs any paths, path sets unite, and a union past
+    /// `MAX_WATCH_PATHS` becomes a whole read.
+    pub fn merge(self, other: Wanted) -> Wanted {
+        match (self, other) {
+            (Wanted::Paths(mut a), Wanted::Paths(b)) => {
+                a.extend(b);
+                if a.len() > MAX_WATCH_PATHS { Wanted::Whole } else { Wanted::Paths(a) }
+            }
+            _ => Wanted::Whole,
+        }
+    }
+
+    /// `queued` merged with `more`.
+    pub fn queue(queued: Option<Wanted>, more: Wanted) -> Wanted {
+        match queued {
+            Some(q) => q.merge(more),
+            None => more,
+        }
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct RefreshState {
+    /// A refresh asked for while a load was running; it runs when that load is done.
+    pub queued: Option<Depth>,
+    /// A status read is running for the current load generation.
+    pub status_busy: bool,
+    /// The status was asked for again while it was being read: what the next read covers.
+    pub status_queued: Option<Wanted>,
+    /// Commits past the limit that Load more added for this tab (until it is switched away).
+    pub extra_commits: usize,
+    /// The open file's `repo::open_file_stamp` when its diff was last read again after a status
+    /// read.
+    pub open_stamp: Option<u64>,
+    /// The `refs_key` a background count of other worktrees' changes runs for; one at a time.
+    /// Kept across loads (`refresh::start`), reset by a tab switch.
+    pub counting: Option<u64>,
+    /// The error of the last load that asked for more history, until a load starts.
+    pub more_failed: Option<String>,
+    /// When the next automatic retry of that load is due.
+    pub more_retry_at: Option<Instant>,
+    /// Automatic retries since a load last succeeded or more was asked for; carried across
+    /// loads.
+    pub more_retries: u8,
+    /// The filtering search loading older history by itself; carried across loads.
+    pub deeper: Option<DeeperSearch>,
+}
+
+/// Whether `snap` stops short of the whole history and may load more of it (below the cap). A
+/// truncated walk loads exactly `max_commits` commits.
+pub fn can_load_more(snap: &Snapshot) -> bool {
+    snap.truncated && snap.loaded_with.max_commits < MAX_COMMITS
+}
+
+impl AppState {
+    /// How many commits the active tab's history walk loads: the limit plus what Load more
+    /// added, up to the cap.
+    pub fn commits_wanted(&self) -> usize {
+        let limit = self.settings.commit_limit();
+        (limit + self.refresh.extra_commits).min(MAX_COMMITS.max(limit))
+    }
+
+    /// Whether more commits were asked for than the snapshot was loaded with: a load for more is
+    /// running or queued.
+    pub fn loading_more(&self) -> bool {
+        self.snap.as_ref().is_some_and(|s| s.loaded_with.max_commits < self.commits_wanted())
+    }
+
+    /// Whether the graph shows its "Loading more commits…" row.
+    pub fn shows_loading_more_row(&self) -> bool {
+        self.loading && self.loading_more()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn paths(p: &[&str]) -> Wanted {
+        Wanted::Paths(p.iter().map(|s| s.to_string()).collect())
+    }
+
+    #[test]
+    fn queued_reads_merge() {
+        assert_eq!(paths(&["a", "b"]).merge(paths(&["b", "c"])), paths(&["a", "b", "c"]));
+        assert_eq!(paths(&["a"]).merge(Wanted::Whole), Wanted::Whole);
+        assert_eq!(Wanted::Whole.merge(paths(&["a"])), Wanted::Whole);
+        assert_eq!(Wanted::Whole.merge(Wanted::Whole), Wanted::Whole);
+        assert_eq!(Wanted::queue(None, paths(&["a"])), paths(&["a"]));
+        assert_eq!(Wanted::queue(Some(paths(&["a"])), paths(&["b"])), paths(&["a", "b"]));
+        let half = |from: usize| Wanted::Paths((from..from + MAX_WATCH_PATHS / 2 + 1).map(|i| format!("f{i}")).collect());
+        assert_eq!(half(0).merge(half(MAX_WATCH_PATHS)), Wanted::Whole, "over the cap");
+        let exact = Wanted::Paths((0..MAX_WATCH_PATHS).map(|i| format!("f{i}")).collect());
+        assert!(matches!(exact.merge(paths(&["f0"])), Wanted::Paths(p) if p.len() == MAX_WATCH_PATHS));
+    }
+}

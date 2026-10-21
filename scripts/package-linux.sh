@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 target="$1"
 tag="$2"
 name="trellis-$tag-$target"
-bin="target/$target/release/trellis"
+bin="target/$target/release/glowfly"
 dist="dist"
 mkdir -p "$dist"
 
@@ -32,9 +32,9 @@ tar -C "$dist" -czf "$dist/$name.tar.gz" "$name"
 rm -rf "$stage"
 sum "$dist/$name.tar.gz"
 
-# --- The .deb (assets and metadata: [package.metadata.deb] in crates/trellis-app/Cargo.toml) ---
+# --- The .deb (assets and metadata: [package.metadata.deb] in crates/glowfly-app/Cargo.toml) ---
 deb="$dist/$name.deb"
-cargo deb -p trellis --no-build --target "$target" --deb-version "${tag#[vV]}" -o "$deb"
+cargo deb -p glowfly --no-build --target "$target" --deb-version "${tag#[vV]}" -o "$deb"
 sum "$deb"
 
 ls -l "$dist"

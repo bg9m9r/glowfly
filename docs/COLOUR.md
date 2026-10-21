@@ -2,7 +2,7 @@
 
 How Trellis uses colour: the families every palette is built from, what each colour is for,
 the hue bands and contrast floors the tests hold every built-in theme to, and how to add a
-colour. The palettes live in `crates/trellis-app/src/ui/theme/` (`color.rs` declares
+colour. The palettes live in `crates/glowfly-app/src/ui/theme/` (`color.rs` declares
 `Palette`, `families.rs` the token families, `builtin.rs` and `builtin_extra.rs` the five
 built-ins); the tests that check this page are `theme/tests.rs`, `theme/family_tests.rs` and
 `theme/vivid_tests.rs`.
@@ -109,7 +109,7 @@ Neighbour rule: two branches that ever sit in side-by-side lanes never share a h
 first appearance from the top, each keeps its name's slot unless an already-placed neighbour
 has it, else takes the next slot (wrapping) no placed neighbour uses; with all 14 taken it keeps
 its own. The colour then holds on every surface, so a branch's colour changes only when its
-neighbours in the graph do. `trellis-core`'s `graph/owners.rs` works out which branch owns each
+neighbours in the graph do. `glowfly-core`'s `graph/owners.rs` works out which branch owns each
 lane and `branch_colour.rs` picks the colours.
 
 Pins: a branch menu's Color submenu (local and remote branches, in the sidebar and the graph)
@@ -389,7 +389,7 @@ The lowest ratios of a chromatic colour on `input` are 4.99 (Light 6) and 5.01 (
 ## 7. Theme-file keys
 
 A theme file (Preferences > UI Customization > Theme files) sets any of these keys, in this
-order, to `#rrggbb` or to another key's name; `trellis-core`'s `COLOR_KEYS` and
+order, to `#rrggbb` or to another key's name; `glowfly-core`'s `COLOR_KEYS` and
 `Palette::KEYS` hold the same list:
 
 `bg`, `panel`, `toolbar`, `raised`, `input`, `border`, `input_border`, `dialog_border`,
@@ -412,7 +412,7 @@ on that primary, and otherwise gets white or black, whichever reads better.
 1. Add the field to its family in `families.rs`, or to the flat neutrals or brand groups of
    `Palette` in `color.rs`, and give it a value in every built-in.
 2. Add its `key => path` entry to `palette_fields!` in `color.rs` and its key to `COLOR_KEYS`
-   in `trellis-core/src/settings/themes.rs`, at the same position (`keys_match_theme_files`
+   in `glowfly-core/src/settings/themes.rs`, at the same position (`keys_match_theme_files`
    checks the two lists match).
 3. Add a contrast or band rule for it to `theme/tests.rs` or `theme/family_tests.rs`.
 4. Describe its job on this page.

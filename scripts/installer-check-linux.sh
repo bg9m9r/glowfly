@@ -116,7 +116,7 @@ assert_version() {
 }
 
 PATHS=(
-  /usr/bin/trellis
+  /usr/bin/glowfly
   /usr/share/applications/trellis.desktop
   /usr/share/applications/trellis-links.desktop
   /usr/share/doc/trellis/LICENSE-MIT
@@ -135,7 +135,7 @@ assert_installed() {
     [ -f "$p" ] || fail "$p isn't installed"
     grep -qxF "$p" <<<"$listed" || fail "dpkg -L trellis doesn't list $p"
   done
-  [ -x /usr/bin/trellis ] || fail "/usr/bin/trellis isn't executable"
+  [ -x /usr/bin/glowfly ] || fail "/usr/bin/glowfly isn't executable"
   desktop-file-validate /usr/share/applications/trellis.desktop /usr/share/applications/trellis-links.desktop ||
     fail "the installed desktop entries don't validate"
 }
@@ -160,7 +160,7 @@ window_start() {
   read -r -a cmd <<<"$exec_line"
   [ "${#cmd[@]}" -gt 0 ] || fail "trellis.desktop has no Exec"
   prog="$(command -v "${cmd[0]}" || true)"
-  [ "$prog" = /usr/bin/trellis ] || fail "Exec=${cmd[0]} resolves to '$prog', not /usr/bin/trellis"
+  [ "$prog" = /usr/bin/glowfly ] || fail "Exec=${cmd[0]} resolves to '$prog', not /usr/bin/glowfly"
 
   # Never the caller's display or Wayland session.
   unset WAYLAND_DISPLAY XDG_SESSION_TYPE DISPLAY
@@ -213,10 +213,10 @@ log "ok files, desktop entries, icons and docs"
 cli="$WORK/cli"
 mkdir -p "$cli/home" "$cli/config" "$cli/cache" "$cli/data"
 cli_env=("HOME=$cli/home" "XDG_CONFIG_HOME=$cli/config" "XDG_CACHE_HOME=$cli/cache" "XDG_DATA_HOME=$cli/data")
-got="$(env "${cli_env[@]}" /usr/bin/trellis --version)" || fail "trellis --version failed"
+got="$(env "${cli_env[@]}" /usr/bin/glowfly --version)" || fail "trellis --version failed"
 [ "$got" = "trellis $version" ] || fail "trellis --version printed '$got'"
 log "ok --version"
-env "${cli_env[@]}" pwsh -NoProfile -File "$here/update-feed-check.ps1" -Trellis /usr/bin/trellis -Version "$version" \
+env "${cli_env[@]}" pwsh -NoProfile -File "$here/update-feed-check.ps1" -Trellis /usr/bin/glowfly -Version "$version" \
   -Installer "$deb" -Archive "$tgz" -Expect installer -Out "$INSTALLER_OUT/feed" || fail "update-feed-check.ps1 failed"
 for d in "$cli/config" "$cli/cache" "$cli/data" "$cli/home/.config"; do
   [ ! -e "$d/trellis" ] || fail "the command-line modes created $d/trellis"

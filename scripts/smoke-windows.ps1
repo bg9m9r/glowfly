@@ -9,7 +9,7 @@ Drives the release build on the desktop it runs on with real input through SendI
 committing, a context menu, a keyboard shortcut, a drag of the sidebar's edge and a drag of the
 window's own resize corner. It runs one full pass per scale in SMOKE_SCALES, each through the
 app's zoom on a fresh fixture repository, settings and git config. The app reports what it shows
-through its opt-in probe file (TRELLIS_SMOKE_PROBE, crates/trellis-app/src/ui/probe.rs).
+through its opt-in probe file (TRELLIS_SMOKE_PROBE, crates/glowfly-app/src/ui/probe.rs).
 
 Real input goes to the desktop in use, so the real pass runs only in CI (GITHUB_ACTIONS=true) or
 with -OnThisDesktop. -DryRun never starts the app or sends input: it parses the scripts, compiles
@@ -27,7 +27,7 @@ Exit codes: 0 all passed, 1 a check failed, 2 a usage, setup or environment erro
 #>
 [CmdletBinding()]
 param(
-    # The Trellis executable (default: <CARGO_TARGET_DIR or target>\release\trellis.exe).
+    # The Trellis executable (default: <CARGO_TARGET_DIR or target>\release\glowfly.exe).
     [string] $Binary,
     # Checks the scripts, the helpers and the fixture without a window or input.
     [switch] $DryRun,
@@ -47,7 +47,7 @@ $script:Root = Split-Path -Parent $PSScriptRoot
 $script:SmokeDir = Join-Path $PSScriptRoot 'smoke'
 $here = (Get-Location).Path
 $target = if ($env:CARGO_TARGET_DIR) { [IO.Path]::GetFullPath($env:CARGO_TARGET_DIR, $script:Root) } else { Join-Path $script:Root 'target' }
-$script:Binary = if ($Binary) { [IO.Path]::GetFullPath($Binary, $here) } else { Join-Path $target 'release\trellis.exe' }
+$script:Binary = if ($Binary) { [IO.Path]::GetFullPath($Binary, $here) } else { Join-Path $target 'release\glowfly.exe' }
 $script:SmokeOut = if ($env:SMOKE_OUT) { [IO.Path]::GetFullPath($env:SMOKE_OUT, $here) } else { Join-Path $target 'smoke-windows' }
 $scaleText = if ($env:SMOKE_SCALES) { $env:SMOKE_SCALES } else { '1 1.5' }
 $script:Scales = @($scaleText -split '\s+' | Where-Object { $_ })
@@ -113,7 +113,7 @@ if ($env:GITHUB_ACTIONS -ne 'true' -and -not $OnThisDesktop) {
     exit 2
 }
 if (-not (Test-Path -LiteralPath $script:Binary -PathType Leaf)) {
-    [Console]::Error.WriteLine("no Trellis at $($script:Binary) (build it with cargo build --release -p trellis)")
+    [Console]::Error.WriteLine("no Trellis at $($script:Binary) (build it with cargo build --release -p glowfly)")
     exit 2
 }
 try {

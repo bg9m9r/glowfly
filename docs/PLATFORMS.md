@@ -240,7 +240,7 @@ second one next to it.
    (`/opt/homebrew/bin:/usr/local/bin`).
 3. **Run the git chosen in Preferences > Git, and check it at startup and on every switch**
    (`git_version::detect`). Every git child is started as `git_program::program()` (the chosen
-   absolute path, else `git` from PATH); `TrellisApp::new` puts the saved choice into effect
+   absolute path, else `git` from PATH); `GlowflyApp::new` puts the saved choice into effect
    before any git runs, and a switch is probed off the UI thread (`git_program::probe`:
    `--version` with a 10 s timeout, `NO_PROMPTS`, `CREATE_NO_WINDOW`, outside any repository)
    before `git_program::set`. Launchers (`git-bash`, `git-cmd`, `git-gui`, `gitk`) are refused

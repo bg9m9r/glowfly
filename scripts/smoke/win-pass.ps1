@@ -4,9 +4,9 @@
 # the dry run. Defines functions only; uses the $script: state of smoke-windows.ps1 and the
 # helpers of win-lib.ps1.
 
-# The zoom steps the app accepts, read from trellis-core so the two can't drift apart.
+# The zoom steps the app accepts, read from glowfly-core so the two can't drift apart.
 function Get-ZoomStep {
-    $source = Join-Path $script:Root 'crates\trellis-core\src\settings\zoom.rs'
+    $source = Join-Path $script:Root 'crates\glowfly-core\src\settings\zoom.rs'
     $m = [regex]::Match((Get-Content -Raw -LiteralPath $source), 'ZOOM_STEPS:\s*\[u16;\s*\d+\]\s*=\s*\[([\d,\s]+)\]')
     if (-not $m.Success) { throw "no ZOOM_STEPS in $source" }
     return @($m.Groups[1].Value -split ',' | ForEach-Object { [int] $_.Trim() })

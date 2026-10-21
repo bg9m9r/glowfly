@@ -94,11 +94,11 @@ jobs:
       - name: Lint the smoke scripts
         run: shellcheck -x scripts/smoke-linux.sh scripts/smoke/*.sh
       - name: Build (release)
-        run: cargo build --release --locked -p trellis
+        run: cargo build --release --locked -p glowfly
       - name: Smoke test with real input
         env:
           SMOKE_OUT: ${{ runner.temp }}/smoke
-        run: dbus-run-session -- bash scripts/smoke-linux.sh target/release/trellis
+        run: dbus-run-session -- bash scripts/smoke-linux.sh target/release/glowfly
       - name: Upload screenshots and logs
         if: failure()
         uses: actions/upload-artifact@v4
@@ -152,11 +152,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "7z could not extract $archive" }
           "SMOKE_MESA_DIR=$dir\x64" >> $env:GITHUB_ENV
       - name: Build (release)
-        run: cargo build --release --locked -p trellis
+        run: cargo build --release --locked -p glowfly
       - name: Smoke test with real input
         env:
           SMOKE_OUT: ${{ runner.temp }}\smoke-windows
-        run: ./scripts/smoke-windows.ps1 -Binary target/release/trellis.exe
+        run: ./scripts/smoke-windows.ps1 -Binary target/release/glowfly.exe
       - name: Upload screenshots and logs
         if: failure()
         uses: actions/upload-artifact@v4

@@ -145,7 +145,7 @@ config. Tokens go to the Windows Credential Manager.
 
 ## Architecture
 
-Two crates: `trellis-core` (git, hosting services, settings; no UI) and `trellis-app` (the egui
+Two crates: `glowfly-core` (git, hosting services, settings; no UI) and `glowfly-app` (the egui
 app, built as an Elm-style message/update loop with background effects).
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the layout and the rules that keep it
 tidy.

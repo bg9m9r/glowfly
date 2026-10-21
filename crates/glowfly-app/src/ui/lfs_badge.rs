@@ -1,0 +1,22 @@
+//! The small "LFS" badge after a file row's path when the row's stored content is a Git LFS
+//! pointer (`FileEntry::lfs`).
+
+use super::theme::color;
+use crate::state::lfs_notes::{BADGE, BADGE_TIP};
+use crate::ui::theme::tokens::radius;
+use crate::ui::theme::type_scale;
+use eframe::egui::{self, RichText, Stroke};
+use glowfly_core::repo::FileEntry;
+
+pub(super) fn badge(ui: &mut egui::Ui, f: &FileEntry) {
+    if !f.lfs {
+        return;
+    }
+    egui::Frame::new()
+        .stroke(Stroke::new(1.0_f32, color::accent()))
+        .corner_radius(radius::SM)
+        .inner_margin(egui::Margin::symmetric(3, 0))
+        .show(ui, |ui| ui.label(RichText::new(BADGE).font(type_scale::strong(ui, type_scale::CAPTION)).color(color::accent())))
+        .response
+        .on_hover_text(BADGE_TIP);
+}

@@ -1,0 +1,68 @@
+//! An exec or break row of the rebase panel: a grip, a chip naming the step, the command (or a
+//! note for a break), and Edit command, Remove step, Move up and Move down. Also every row's
+//! right-click menu, which adds these steps.
+
+use super::commit_row::{Buttons, move_buttons, paint_back, paint_chip};
+use super::rows::{BUTTONS_W, Place, SHA_X, Shade};
+use crate::msg::{Msg, RebaseMsg};
+use crate::state::rebase_steps::NewStep;
+use crate::ui::theme::color;
+use crate::ui::theme::type_scale;
+use crate::ui::widgets::{Icon, paint_cut_text};
+use eframe::egui::{Rect, Response, Ui, pos2};
+use glowfly_core::rebase::TodoStep;
+
+pub const BREAK_NOTE: &str = "Stop here; Continue goes on";
+pub const NO_COMMAND: &str = "(no command yet)";
+
+/// The row's background, chip and text.
+pub(super) fn paint_step(ui: &Ui, rect: Rect, step: &TodoStep, shade: Shade) {
+    paint_back(ui, rect, shade, true);
+    let cy = rect.center().y;
+    let x = rect.left() + SHA_X;
+    let max_w = rect.right() - BUTTONS_W - 16.0 - x;
+    let p = ui.painter();
+    match step {
+        TodoStep::Exec(cmd) => {
+            paint_chip(ui, rect, "exec", color::primary());
+            if cmd.trim().is_empty() {
+                paint_cut_text(p, pos2(x, cy), NO_COMMAND, type_scale::font(type_scale::BODY), color::faint(), max_w);
+            } else {
+                paint_cut_text(p, pos2(x, cy), cmd, type_scale::mono(type_scale::SMALL), color::text(), max_w);
+            }
+        }
+        TodoStep::Break => {
+            paint_chip(ui, rect, "break", color::warn());
+            paint_cut_text(p, pos2(x, cy), BREAK_NOTE, type_scale::font(type_scale::BODY), color::weak(), max_w);
+        }
+        _ => {}
+    }
+}
+
+/// Edit command (exec steps), Remove step, Move up and Move down.
+pub(super) fn step_controls(ui: &mut Ui, rect: Rect, at: Place, step: &TodoStep, msgs: &mut Vec<Msg>) {
+    let edit = matches!(step, TodoStep::Exec(_)).then(|| (Icon::Pencil, "Edit command", RebaseMsg::RebaseEditMessage(at.i)));
+    move_buttons(ui, rect, at, Buttons { edit, remove: Some(RebaseMsg::RebaseRemoveStep(at.i)), moves: true }, msgs);
+}
+
+/// The row's right-click menu: add a step after it, and edit or remove an exec or break step.
+pub(super) fn row_menu(r: &Response, i: usize, step: &TodoStep, msgs: &mut Vec<Msg>) {
+    r.context_menu(|ui| {
+        let mut send = |ui: &mut Ui, m: RebaseMsg| {
+            msgs.push(Msg::Rebase(m));
+            ui.close_menu();
+        };
+        if ui.button("Add exec step after").clicked() {
+            send(ui, RebaseMsg::RebaseAddStep { after: Some(i), step: NewStep::Exec });
+        }
+        if ui.button("Add break step after").clicked() {
+            send(ui, RebaseMsg::RebaseAddStep { after: Some(i), step: NewStep::Break });
+        }
+        if matches!(step, TodoStep::Exec(_)) && ui.button("Edit command…").clicked() {
+            send(ui, RebaseMsg::RebaseEditMessage(i));
+        }
+        if matches!(step, TodoStep::Exec(_) | TodoStep::Break) && ui.button("Remove step").clicked() {
+            send(ui, RebaseMsg::RebaseRemoveStep(i));
+        }
+    });
+}

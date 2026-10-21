@@ -38,7 +38,7 @@ if (-not $m.Success) { throw "no UpgradeCode in trellis.wxs" }
 $upgradeCode = '{' + $m.Groups['code'].Value.ToUpperInvariant() + '}'
 
 $installDir = Join-Path $env:LOCALAPPDATA 'Programs\Trellis'
-$exe = Join-Path $installDir 'trellis.exe'
+$exe = Join-Path $installDir 'glowfly.exe'
 $startLnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'Trellis.lnk'
 $desktopLnk = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Trellis.lnk'
 $installerKey = 'HKCU:\Software\Trellis\Installer'
@@ -91,7 +91,7 @@ function Get-DefaultValue([string]$Key) {
 }
 
 function Assert-Installed {
-    $files = @('trellis.exe', 'LICENSE-MIT', 'LICENSE-APACHE', 'README.md', 'THIRD-PARTY-NOTICES.md')
+    $files = @('glowfly.exe', 'LICENSE-MIT', 'LICENSE-APACHE', 'README.md', 'THIRD-PARTY-NOTICES.md')
     if (Test-Path -LiteralPath (Join-Path $root 'CHANGELOG.md')) { $files += 'CHANGELOG.md' }
     foreach ($f in $files) {
         Assert-That (Test-Path -LiteralPath (Join-Path $installDir $f) -PathType Leaf) "$f isn't in $installDir"

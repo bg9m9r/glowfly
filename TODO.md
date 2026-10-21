@@ -2726,13 +2726,13 @@ here, under the item they grew from.
 - A palette command to switch the language
 - Right-to-left layout for right-to-left languages
 - Translate undo action descriptions (Action::describe, e.g. "checkout of main") and the labels of the jobs they name, shown in the Edit menu, toolbar tips, status bar and activity log
-- Translate error texts that come from trellis-core: update check and download errors, theme file problems and the themes folder error
+- Translate error texts that come from glowfly-core: update check and download errors, theme file problems and the themes folder error
 - Translate the tour of the main window (ui/tour.rs, state/onboarding_tour.rs) and its closing toast
-- Translate git's missing or too-old banner text built in trellis-core (welcome Git step and window banner)
+- Translate git's missing or too-old banner text built in glowfly-core (welcome Git step and window banner)
 - Translate the folder picker titles (Add a project folder, Open a Git repository and the other Preferences pickers)
 - Translate the palette's repository commands (e.g. Remove missing repositories from the lists)
 - Translate the pull request panel's file list texts (only its rows' Copy path follows the language)
-- Translate the rebase edit-menu reasons from trellis_core::rebase (This commit isn't on the current branch, merge selected, side line) and core's in_progress_text / DETACHED used by the rebase panel
+- Translate the rebase edit-menu reasons from glowfly_core::rebase (This commit isn't on the current branch, merge selected, side line) and core's in_progress_text / DETACHED used by the rebase panel
 - Translate the file history views' own texts (history.rs, history_folder.rs, history_file.rs, history_preview.rs, file_buttons.rs, file_view_switch.rs, diff/preview.rs) and drop the English constants kept for them (file_menu::BLAME, OPEN_DEFAULT, files::NOT_IN_WORKDIR, SHOW_IN_FOLDER, history NOT_ON_GRAPH, WRAP_LINES)
 - Translate the find and go-to-line fields shared by blame and the file views (ui/find_bar.rs)
 - Translate core's case-mismatch line in the File names banner (Snapshot::case_mismatch)

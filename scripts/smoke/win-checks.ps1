@@ -1,6 +1,6 @@
 # The checks of one smoke pass for scripts/smoke-windows.ps1, run in order by win-pass.ps1's
 # Invoke-Pass. The labels and probe fields looked up here are dry-run on every OS by the journey
-# test crates/trellis-app/src/journey/probe.rs (with the drawn Windows frame at zoom 150); keep
+# test crates/glowfly-app/src/journey/probe.rs (with the drawn Windows frame at zoom 150); keep
 # the two in step. Defines functions only.
 
 # Virtual keys (the runner's layout is en-US). Alt is never sent.

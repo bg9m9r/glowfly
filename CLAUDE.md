@@ -8,13 +8,13 @@ status; `TODO.md` is the backlog of items, the current milestone first.
 
 - `pwsh scripts/check.ps1`: fmt check, clippy (`-D warnings`), all tests. Run before every commit.
 - `cargo run --release -- <repo path>`: run the app. With no path it reopens the last repo.
-- `UPDATE_SNAPSHOTS=1 cargo test -p trellis snapshot`: re-render UI snapshots into
-  `crates/trellis-app/tests/snapshots/`. Open the PNGs and check them before committing.
-- `UPDATE_ICONS=1 cargo test -p trellis --test app_icon`: redraw the app icon into `assets/icon/`
+- `UPDATE_SNAPSHOTS=1 cargo test -p glowfly snapshot`: re-render UI snapshots into
+  `crates/glowfly-app/tests/snapshots/`. Open the PNGs and check them before committing.
+- `UPDATE_ICONS=1 cargo test -p glowfly --test app_icon`: redraw the app icon into `assets/icon/`
   (PNGs, `trellis.ico`, `trellis.icns`) after changing `tests/app_icon/draw.rs`.
-- `UPDATE_NOTICES=1 cargo test -p trellis-core notice`: regenerate the syntax-definition licenses
+- `UPDATE_NOTICES=1 cargo test -p glowfly-core notice`: regenerate the syntax-definition licenses
   in `THIRD-PARTY-NOTICES.md` after updating the `two-face` crate.
-- `RUST_LOG=trellis=debug`: log background effects as they run.
+- `RUST_LOG=glowfly=debug`: log background effects as they run.
 - `TRELLIS_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture`: read-only check
   against a real hosting service.
 
@@ -33,8 +33,8 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/tr
 
 ## Where code goes
 
-- Git reads/writes and CLI calls: `trellis-core` (`repo.rs`, `gitcli.rs`). Network APIs:
-  `trellis-core/src/forge/`. Nothing in `trellis-core` may depend on egui.
+- Git reads/writes and CLI calls: `glowfly-core` (`repo.rs`, `gitcli.rs`). Network APIs:
+  `glowfly-core/src/forge/`. Nothing in `glowfly-core` may depend on egui.
 - New behaviour: add a variant to the area's message enum (`msg/<area>.rs`, e.g. `RepoMsg`;
   its handler in `update/<area>.rs` matches it exhaustively, and its `on_inactive` decides
   what a result needs for an inactive tab), return an `Effect` for anything slow (add the

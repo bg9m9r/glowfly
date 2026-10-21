@@ -16,7 +16,7 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 
 To rebuild an existing release's files, run the workflow by hand with its tag.
 
-`CHANGELOG.md` is also bundled into the program at build time (`crates/trellis-app/build.rs`):
+`CHANGELOG.md` is also bundled into the program at build time (`crates/glowfly-app/build.rs`):
 it is what the "View release notes" dialog shows, and the dialog opens by itself the first time
 a new version starts.
 
@@ -28,14 +28,14 @@ a new version starts.
 | `trellis-vX.Y.Z-x86_64-pc-windows-msvc.zip` | The Windows program on its own |
 | `trellis-vX.Y.Z-aarch64-apple-darwin.dmg`, `trellis-vX.Y.Z-x86_64-apple-darwin.dmg` | `Trellis.app` (`packaging/macos/Info.plist`, the icns) and a link to `/Applications` |
 | `trellis-vX.Y.Z-<mac target>.tar.gz` | The macOS program on its own |
-| `trellis-vX.Y.Z-x86_64-unknown-linux-gnu.deb` | `/usr/bin/trellis`, `trellis.desktop` (folders open with Trellis), the hidden `trellis-links.desktop` for `trellis://` links, hicolor icons from 16 to 512 px, the licences and README in `/usr/share/doc/trellis`; depends on git |
+| `trellis-vX.Y.Z-x86_64-unknown-linux-gnu.deb` | `/usr/bin/glowfly`, `trellis.desktop` (folders open with Trellis), the hidden `trellis-links.desktop` for `trellis://` links, hicolor icons from 16 to 512 px, the licences and README in `/usr/share/doc/trellis`; depends on git |
 | `trellis-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz` | The Linux program on its own |
 | `<file>.sha256` | The SHA-256 of each file above |
 | `SHA256SUMS` | Every file's SHA-256, in `sha256sum` format |
 
-The app icon is drawn by `crates/trellis-app/tests/app_icon.rs`; `UPDATE_ICONS=1 cargo test -p
+The app icon is drawn by `crates/glowfly-app/tests/app_icon.rs`; `UPDATE_ICONS=1 cargo test -p
 trellis --test app_icon` redraws the files in `assets/icon/`. The Windows build embeds
-`trellis.ico` in `trellis.exe` (`build.rs`, through winresource).
+`trellis.ico` in `glowfly.exe` (`build.rs`, through winresource).
 
 ## Code signing
 
@@ -57,7 +57,7 @@ the macOS app is ad-hoc signed (`codesign --sign -`).
 
 What gets signed:
 
-- **Windows**: `trellis.exe` before it goes into the zip and the MSI, then the MSI, with
+- **Windows**: `glowfly.exe` before it goes into the zip and the MSI, then the MSI, with
   `signtool sign /fd sha256` and an RFC 3161 timestamp (`/tr`).
 - **macOS**: `Trellis.app` with the hardened runtime and a timestamp
   (`codesign --options runtime --timestamp`), then the dmg. With `APPLE_ID`, `APPLE_TEAM_ID`
@@ -78,7 +78,7 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 (`shasum -a 256 -c SHA256SUMS --ignore-missing` on macOS; on Windows compare
 `Get-FileHash <file>` with the file's line.) Signed builds can also be checked with
-`signtool verify /pa trellis.exe` and `codesign --verify --deep --strict Trellis.app` or
+`signtool verify /pa glowfly.exe` and `codesign --verify --deep --strict Trellis.app` or
 `spctl -a -vv Trellis.app`.
 
 ## The update check
@@ -136,8 +136,8 @@ relative `TRELLIS_UPDATE_FEED` (2). It installs nothing and opens no window, so 
 against a debug build, which counts as portable, with stand-in package files of any bytes:
 
 ```
-cargo build -p trellis
-pwsh -NoProfile -File scripts/update-feed-check.ps1 -Trellis target/debug/trellis.exe -Version 0.1.0 `
+cargo build -p glowfly
+pwsh -NoProfile -File scripts/update-feed-check.ps1 -Trellis target/debug/glowfly.exe -Version 0.1.0 `
   -Installer <dir>/trellis-v0.1.0-x86_64-pc-windows-msvc.msi `
   -Archive <dir>/trellis-v0.1.0-x86_64-pc-windows-msvc.zip -Expect archive -Out <work folder>
 ```

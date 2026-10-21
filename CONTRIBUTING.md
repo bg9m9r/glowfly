@@ -24,14 +24,14 @@ pwsh scripts/check.ps1                 # fmt, clippy (-D warnings) and all tests
 `scripts/check.ps1` must pass before a pull request is merged; CI runs the same script.
 
 UI changes are covered by snapshot tests. Re-render them with
-`UPDATE_SNAPSHOTS=1 cargo test -p trellis snapshot`, look at the changed PNGs in
-`crates/trellis-app/tests/snapshots/`, and commit them with your change.
+`UPDATE_SNAPSHOTS=1 cargo test -p glowfly snapshot`, look at the changed PNGs in
+`crates/glowfly-app/tests/snapshots/`, and commit them with your change.
 
 ## How the code is organized
 
 Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before structural changes. The short version:
 
-- Git, CLI and network code lives in `trellis-core`, which must not depend on egui.
+- Git, CLI and network code lives in `glowfly-core`, which must not depend on egui.
 - New behaviour is a `Msg` handled in `update/<area>.rs`. Anything slow returns an `Effect` that
   the runner (`runner/mod.rs`) executes in the background, reporting back with a result `Msg`.
   Test it with a headless `update` test. The architecture document has a step-by-step recipe.

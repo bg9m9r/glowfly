@@ -5,9 +5,9 @@
 # the window, typing in the commit box and committing, a context menu, a keyboard shortcut, a
 # drag of the sidebar's edge and a window resize. It runs one full pass per scale factor in
 # SMOKE_SCALES, each on a fresh fixture repository, config and HOME. The app reports what it
-# shows through its opt-in probe file (TRELLIS_SMOKE_PROBE, crates/trellis-app/src/ui/probe.rs).
+# shows through its opt-in probe file (TRELLIS_SMOKE_PROBE, crates/glowfly-app/src/ui/probe.rs).
 #
-# Usage: scripts/smoke-linux.sh [trellis binary]   (default: $CARGO_TARGET_DIR/release/trellis)
+# Usage: scripts/smoke-linux.sh [trellis binary]   (default: $CARGO_TARGET_DIR/release/glowfly)
 # Environment:
 #   SMOKE_OUT          screenshots and, on failure, logs (default: $CARGO_TARGET_DIR/smoke)
 #   SMOKE_SCALES       scale factors to run (default: "1 1.5")
@@ -30,7 +30,7 @@ fi
 
 target="${CARGO_TARGET_DIR:-target}"
 case "$target" in /*) ;; *) target="$ROOT/$target" ;; esac
-BIN="${1:-$target/release/trellis}"
+BIN="${1:-$target/release/glowfly}"
 case "$BIN" in /*) ;; *) BIN="$PWD/$BIN" ;; esac
 SMOKE_OUT="${SMOKE_OUT:-$target/smoke}"
 case "$SMOKE_OUT" in /*) ;; *) SMOKE_OUT="$PWD/$SMOKE_OUT" ;; esac
@@ -48,7 +48,7 @@ if [ "${#missing[@]}" -gt 0 ]; then
   exit 2
 fi
 if [ ! -x "$BIN" ]; then
-  echo "no executable Trellis at $BIN (build it with cargo build --release -p trellis)" >&2
+  echo "no executable Trellis at $BIN (build it with cargo build --release -p glowfly)" >&2
   exit 2
 fi
 

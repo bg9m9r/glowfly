@@ -16,7 +16,7 @@ target="$1"
 tag="$2"
 version="${tag#[vV]}"
 name="trellis-$tag-$target"
-bin="target/$target/release/trellis"
+bin="target/$target/release/glowfly"
 dist="dist"
 mkdir -p "$dist"
 

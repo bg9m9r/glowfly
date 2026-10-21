@@ -11,7 +11,7 @@
 
   Built by scripts/package-windows.ps1:
     wix build -arch x64 -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -d Version=0.2.0
-      -d BinDir=<folder of trellis.exe> -d SourceDir=<repository> -d AssetsDir=<repository>\assets
+      -d BinDir=<folder of glowfly.exe> -d SourceDir=<repository> -d AssetsDir=<repository>\assets
       -d LicenseRtf=<license.rtf> [-d HasChangelog=1] -o trellis.msi trellis.wxs pages.wxs
 
   The scheme's values must match what url_scheme::windows writes (a core test checks the
@@ -60,7 +60,7 @@
          two with files have fixed ones; never reuse them for different contents. -->
     <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
       <Component Id="TrellisExe" Guid="05533b4e-6786-48ab-a4e3-d079585ec1ab">
-        <File Id="TrellisExeFile" Source="$(var.BinDir)\trellis.exe" KeyPath="no" />
+        <File Id="TrellisExeFile" Source="$(var.BinDir)\glowfly.exe" KeyPath="no" />
         <RegistryValue Root="HKCU" Key="Software\Trellis\Installer" Name="program" Type="integer" Value="1" KeyPath="yes" />
         <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
         <RemoveFolder Id="RemoveProgramsFolder" Directory="ProgramsFolder" On="uninstall" />
@@ -80,16 +80,16 @@
       <Component Id="FolderMenu" Condition="FOLDERMENU = 1">
         <RegistryKey Root="HKCU" Key="Software\Classes\Directory\shell\Trellis">
           <RegistryValue Type="string" Value="Open in Trellis" />
-          <RegistryValue Name="Icon" Type="string" Value="[INSTALLFOLDER]trellis.exe,0" />
+          <RegistryValue Name="Icon" Type="string" Value="[INSTALLFOLDER]glowfly.exe,0" />
           <RegistryKey Key="command">
-            <RegistryValue Type="string" Value='"[INSTALLFOLDER]trellis.exe" "%V"' />
+            <RegistryValue Type="string" Value='"[INSTALLFOLDER]glowfly.exe" "%V"' />
           </RegistryKey>
         </RegistryKey>
         <RegistryKey Root="HKCU" Key="Software\Classes\Directory\Background\shell\Trellis">
           <RegistryValue Type="string" Value="Open in Trellis" />
-          <RegistryValue Name="Icon" Type="string" Value="[INSTALLFOLDER]trellis.exe,0" />
+          <RegistryValue Name="Icon" Type="string" Value="[INSTALLFOLDER]glowfly.exe,0" />
           <RegistryKey Key="command">
-            <RegistryValue Type="string" Value='"[INSTALLFOLDER]trellis.exe" "%V"' />
+            <RegistryValue Type="string" Value='"[INSTALLFOLDER]glowfly.exe" "%V"' />
           </RegistryKey>
         </RegistryKey>
         <RegistryValue Root="HKCU" Key="Software\Trellis\Installer" Name="folders" Type="integer" Value="1" KeyPath="yes" />
@@ -101,10 +101,10 @@
           <RegistryValue Type="string" Value="URL:Trellis link" />
           <RegistryValue Name="URL Protocol" Type="string" Value="" />
           <RegistryKey Key="DefaultIcon">
-            <RegistryValue Type="string" Value='"[INSTALLFOLDER]trellis.exe",0' />
+            <RegistryValue Type="string" Value='"[INSTALLFOLDER]glowfly.exe",0' />
           </RegistryKey>
           <RegistryKey Key="shell\open\command">
-            <RegistryValue Type="string" Value='"[INSTALLFOLDER]trellis.exe" "%1"' />
+            <RegistryValue Type="string" Value='"[INSTALLFOLDER]glowfly.exe" "%1"' />
           </RegistryKey>
         </RegistryKey>
         <RegistryValue Root="HKCU" Key="Software\Trellis\Installer" Name="links" Type="integer" Value="1" KeyPath="yes" />
@@ -113,14 +113,14 @@
 
     <StandardDirectory Id="ProgramMenuFolder">
       <Component Id="StartMenuShortcut">
-        <Shortcut Id="TrellisShortcut" Name="Trellis" Description="A Git client" Target="[INSTALLFOLDER]trellis.exe" WorkingDirectory="INSTALLFOLDER" Icon="TrellisIcon" />
+        <Shortcut Id="TrellisShortcut" Name="Trellis" Description="A Git client" Target="[INSTALLFOLDER]glowfly.exe" WorkingDirectory="INSTALLFOLDER" Icon="TrellisIcon" />
         <RegistryValue Root="HKCU" Key="Software\Trellis\Installer" Name="shortcut" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </StandardDirectory>
 
     <StandardDirectory Id="DesktopFolder">
       <Component Id="DesktopShortcut" Condition="DESKTOPSHORTCUT = 1">
-        <Shortcut Id="TrellisDesktopShortcut" Name="Trellis" Description="A Git client" Target="[INSTALLFOLDER]trellis.exe" WorkingDirectory="INSTALLFOLDER" Icon="TrellisIcon" />
+        <Shortcut Id="TrellisDesktopShortcut" Name="Trellis" Description="A Git client" Target="[INSTALLFOLDER]glowfly.exe" WorkingDirectory="INSTALLFOLDER" Icon="TrellisIcon" />
         <RegistryValue Root="HKCU" Key="Software\Trellis\Installer" Name="desktop" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </StandardDirectory>
