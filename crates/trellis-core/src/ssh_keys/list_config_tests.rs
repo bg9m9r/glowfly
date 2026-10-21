@@ -86,3 +86,42 @@ fn an_unreadable_config_keeps_the_folder_keys() {
     assert_eq!((none.config_error, none.config), (None, vec![]), "no config, no error");
     let _ = std::fs::remove_dir_all(&home);
 }
+
+/// Links `link` to the folder `target`: a symlink, or on Windows a junction when symlinks need
+/// a privilege. False when neither can be made.
+fn link_dir(target: &Path, link: &Path) -> bool {
+    #[cfg(unix)]
+    let made = std::os::unix::fs::symlink(target, link).is_ok();
+    #[cfg(windows)]
+    let made = std::os::windows::fs::symlink_dir(target, link).is_ok()
+        || std::process::Command::new("cmd").args(["/c", "mklink", "/J"]).arg(link).arg(target).output().is_ok_and(|o| o.status.success());
+    made
+}
+
+#[test]
+fn a_folder_key_the_config_spells_another_way_is_listed_once() {
+    let home = temp("list-config-alias");
+    let real = home.join("dotfiles").join("ssh");
+    pair(&real, "id_ed25519");
+    let ssh = home.join(".ssh");
+    if !link_dir(&real, &ssh) {
+        eprintln!("skipped: couldn't link a folder here");
+        return;
+    }
+    let mut config = String::from("IdentityFile ~/dotfiles/ssh/id_ed25519\n");
+    // A volume that ignores case finds the key by another case too.
+    let upper = home.join("DOTFILES").join("SSH").join("id_ed25519");
+    if upper.is_file() {
+        config.push_str("IdentityFile ~/DOTFILES/SSH/id_ed25519\n");
+    }
+    std::fs::write(ssh.join("config"), &config).unwrap();
+    let got = listed(&home, &[real.join("id_ed25519")]);
+    let names: Vec<String> = got.keys.iter().map(SshKeyPair::file_name).collect();
+    assert_eq!(names, ["id_ed25519"], "one card for one key file");
+    assert_eq!(got.keys[0].private, ssh.join("id_ed25519"));
+    assert_eq!(got.config.len(), config.lines().count());
+    for c in &got.config {
+        assert_eq!(c.status, ConfigStatus::Key(ssh.join("id_ed25519")), "{}", c.raw);
+    }
+    let _ = std::fs::remove_dir_all(&home);
+}

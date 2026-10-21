@@ -186,7 +186,7 @@ pub fn list_with(home: &Path, keygen: Option<&Path>, extra: &[PathBuf], cx: &Exp
         })
         .collect();
     for path in extra {
-        if keys.iter().any(|k| crate::paths::same_spelling(&k.private, path)) {
+        if keys.iter().any(|k| crate::paths::same_folder(&k.private, path)) {
             continue;
         }
         if let Ok(pair) = read_key_pair(path, keygen) {
@@ -205,23 +205,28 @@ pub fn list_with(home: &Path, keygen: Option<&Path>, extra: &[PathBuf], cx: &Exp
 }
 
 /// What the file an IdentityFile entry names is, adding its pair to `keys` unless it is listed.
+/// A listed key is matched by asking the disk (`same_folder`), so a link, a short 8.3 name or a
+/// case difference on a volume that ignores case still finds it; the status then names the key
+/// as listed.
 fn config_status(path: PathBuf, keygen: Option<&Path>, keys: &mut Vec<SshKeyPair>) -> ConfigStatus {
-    use crate::paths::same_spelling;
-    if let Some(k) = keys.iter().find(|k| same_spelling(&k.private, &path)) {
-        return ConfigStatus::Key(k.private.clone());
+    use crate::paths::same_folder;
+    let listed = |keys: &[SshKeyPair], private: &Path| keys.iter().find(|k| same_folder(&k.private, private)).map(|k| k.private.clone());
+    if let Some(private) = listed(keys, &path) {
+        return ConfigStatus::Key(private);
     }
     // A public key named alone, with no private key next to it.
     if path.extension().is_some_and(|x| x == "pub") && path.is_file() && !path.with_extension("").is_file() {
         return ConfigStatus::PublicOnly(path.with_extension(""));
     }
     match read_key_pair(&path, keygen) {
-        Ok(pair) => {
-            let private = pair.private.clone();
-            if !keys.iter().any(|k| same_spelling(&k.private, &private)) {
+        Ok(pair) => match listed(keys, &pair.private) {
+            Some(private) => ConfigStatus::Key(private),
+            None => {
+                let private = pair.private.clone();
                 keys.push(pair);
+                ConfigStatus::Key(private)
             }
-            ConfigStatus::Key(private)
-        }
+        },
         Err(KeyFileProblem::NotAFile) if pub_path(&path).is_file() => ConfigStatus::PublicOnly(path),
         Err(KeyFileProblem::NotAFile) if !path.exists() => ConfigStatus::Missing(path),
         Err(problem) => ConfigStatus::NotAPair(path, problem),
