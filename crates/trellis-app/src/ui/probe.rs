@@ -1,19 +1,21 @@
 //! What the smoke probe (`smoke_probe.rs`) reports: the widgets of the pass being drawn with
-//! their accessible names and rectangles, the panels, the keyboard focus and a few `AppState`
-//! fields, as JSON for `scripts/smoke-linux.sh`. No I/O: it reads egui's current pass and the
-//! state only, and is called by the shell at the end of a frame (AccessKit nodes exist only
-//! inside a pass).
+//! their accessible names and rectangles, the panels, the window frame drawn, the keyboard focus
+//! and a few `AppState` fields, as JSON for `scripts/smoke-linux.sh` and
+//! `scripts/smoke-windows.ps1`. No I/O: it reads egui's current pass and the state only, and is
+//! called by the shell at the end of a frame (AccessKit nodes exist only inside a pass).
 //!
 //! The probe forces AccessKit on (`enable`), so the names exist from the first frame;
 //! `accesskit_node_builder` also adds an empty node for each unnamed widget it is asked about,
 //! which only matters while probing.
 
+use crate::state::window_chrome::Chrome;
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, Id, Pos2, Rect, WidgetRect, containers::panel::PanelState};
 use serde_json::{Value, json};
 
-/// The panels the probe reports and regions are cut from, by their egui ids.
-const PANELS: [&str; 6] = ["toolbar", "refs", "detail", "tabs", "status", "activity"];
+/// The panels the probe reports and regions are cut from, by their egui ids. The drawn title
+/// bar (`title-bar`) replaces the menu bar and tabs on Windows and macOS.
+const PANELS: [&str; 7] = ["title-bar", "toolbar", "refs", "detail", "tabs", "status", "activity"];
 
 /// Turns AccessKit on for every later pass, so widgets carry their names. Called once by the
 /// shell when the probe is on.
@@ -37,6 +39,7 @@ pub fn snapshot(ctx: &egui::Context, st: &AppState) -> Value {
         "pixels_per_point": ctx.pixels_per_point(),
         "native_pixels_per_point": ctx.input(|i| i.viewport().native_pixels_per_point),
         "zoom_percent": st.settings.zoom_percent,
+        "chrome": chrome(st.view.chrome),
         "screen": [screen.width(), screen.height()],
         "focused": st.view.focused,
         "busy": st.job.is_some() || st.loading,
@@ -68,6 +71,15 @@ fn selection(s: &Selection) -> String {
     }
 }
 
+/// The window frame being drawn, as the scripts compare it.
+fn chrome(c: Chrome) -> &'static str {
+    match c {
+        Chrome::System => "system",
+        Chrome::Windows => "windows",
+        Chrome::MacOs => "macos",
+    }
+}
+
 fn rect_json(r: Rect) -> Value {
     json!([r.min.x, r.min.y, r.max.x, r.max.y])
 }
@@ -85,7 +97,7 @@ fn panels(ctx: &egui::Context) -> Vec<(&'static str, Rect)> {
 }
 
 /// Which part of the window `p` is in: the open palette, else the first panel holding it
-/// (refs as "sidebar", detail as "details"), else "central". Mirrors the journeys' regions
+/// (refs as "sidebar", detail as "details", title-bar as "title_bar"), else "central". Mirrors the journeys' regions
 /// (`journey/find.rs`).
 fn region_of(panels: &[(&str, Rect)], palette: Option<Rect>, p: Pos2) -> &'static str {
     if palette.is_some_and(|r| r.contains(p)) {
@@ -93,6 +105,7 @@ fn region_of(panels: &[(&str, Rect)], palette: Option<Rect>, p: Pos2) -> &'stati
     }
     let Some((id, _)) = panels.iter().find(|(_, r)| r.contains(p)) else { return "central" };
     match *id {
+        "title-bar" => "title_bar",
         "refs" => "sidebar",
         "detail" => "details",
         "toolbar" => "toolbar",

@@ -442,7 +442,13 @@ making the decision a pure function and testing it for every OS on every machine
 - **Snapshot images** are rendered on Windows; the other runners skip only the image comparison.
 - **Real input** is tested on Linux by the CI `smoke` job (`scripts/smoke-linux.sh`): it starts
   its own Xvfb and window manager, never the caller's display, and sends keys and clicks only
-  through XTEST, at scale 1 and 1.5. Windows follows in its own TODO item.
+  through XTEST, at scale 1 and 1.5. On Windows the `smoke-windows` job
+  (`scripts/smoke-windows.ps1`) sends input only through SendInput, never posted window messages;
+  it brings windows to the front with SetForegroundWindow plus AttachThreadInput, never an Alt
+  press (a lone Alt opens the title bar menu); the scale is the app's zoom, since the runner's
+  DPI is fixed; OpenGL is Mesa's software renderer, staged beside a copy of the exe; and the
+  script refuses to run outside CI without `-OnThisDesktop`, since the input goes to the desktop
+  in use.
 - **Installers** are tested by the `Installers` workflow (`.github/workflows/installers.yml`) on
   every push and pull request: the MSI on Windows (`scripts/installer-check-windows.ps1`) and the
   .deb on Linux (`scripts/installer-check-linux.sh`) are installed over an older package,

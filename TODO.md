@@ -392,11 +392,14 @@ check. Its hands-on criteria (daily use, merging the release pull request) are i
   - The first click after the window gains focus, typing in the commit box, a keyboard
     shortcut, a context menu, a drag, a resize, and a 150% scale factor
   - Fails with a screenshot of the window
-- [ ] **Real-input smoke tests (Windows)**: the same checks on the Windows CI runner's desktop,
+- [x] **Real-input smoke tests (Windows)**: the same checks on the Windows CI runner's desktop,
       through real input events or UI Automation over the AccessKit tree
 - [ ] **Input reliability**: the first click after the window gains focus was dropped while
       testing with synthetic input; fix it if the real-input tests reproduce it, else close it
       with their result
+  - Windows: `smoke-windows` check first-click covers click to focus and a click after
+    SetForegroundWindow; its ::notice lines and first-click.txt give the result (not run
+    locally: no desktop)
 - [x] **Installer and update checks in CI**: install the MSI and DEB the release workflow built,
       start Trellis from them, uninstall cleanly, and update an older build to the new one
       against a local release feed with checksums
@@ -3019,6 +3022,28 @@ here, under the item they grew from.
   regions the same way
 - Run the smoke job against the packaged .deb (installed binary and desktop entry) instead of
   target/release
+
+### Real-input smoke tests (Windows)
+
+- A real per-monitor DPI pass at 150% (the runner's one virtual monitor is fixed at 96 DPI; it
+  needs a second virtual display or a sign-out), including dragging the window across monitors
+  with different DPI (WM_DPICHANGED)
+- A UI Automation pass over the AccessKit tree beside SendInput (Invoke and Value patterns, and
+  checking the names a screen reader gets)
+- Alt+Tab back into Trellis with real keys (releasing Alt must not open the title bar menu), and
+  Alt+Space opening the system menu
+- The drawn title bar with real input: dragging the window by it, a double-click to maximize,
+  Snap Layouts over Maximize, and the Minimize, Maximize and Close buttons
+- Typing through another keyboard layout (German via LoadKeyboardLayout), dead keys,
+  KEYEVENTF_UNICODE text and an IME pass
+- A clipboard round trip with real Ctrl+C and Ctrl+V between Trellis and another window
+- Run the Windows smoke job against the installed MSI instead of target/release
+- Keep each step's screenshots as an artifact on success too
+- One shared list of the labels and checks both smoke scripts read, so Linux and Windows can't
+  drift apart
+- A Windows ARM64 runner pass
+- A fallback in the app when a transparent (Mica) OpenGL window can't be created, if the
+  software renderer ever refuses it
 
 ### Welcome screen
 

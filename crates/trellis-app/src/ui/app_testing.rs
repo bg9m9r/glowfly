@@ -6,6 +6,7 @@ use super::TrellisApp;
 use crate::msg::{Msg, RepoMsg};
 use crate::runner::Runner;
 use crate::state::AppState;
+use crate::state::window_chrome::Chrome;
 use eframe::egui;
 use std::path::PathBuf;
 use trellis_core::settings::{RepoTrust, Settings, ThemeCatalog};
@@ -19,6 +20,8 @@ pub(crate) struct TestStart {
     pub trusted: Vec<PathBuf>,
     /// The repository to open, like a path on the command line.
     pub open: Option<PathBuf>,
+    /// The window frame to draw from the first frame on, as `Chrome::current()` picks it.
+    pub chrome: Chrome,
 }
 
 /// What the app is doing, for a test waiting until it is idle.
@@ -40,11 +43,12 @@ impl TrellisApp {
     /// askpass server, the single-instance listener, the log worker and the update check never
     /// start. The runner is sandboxed (see `runner/sandbox.rs`).
     pub(crate) fn for_test(ctx: &egui::Context, start: TestStart) -> Self {
-        let TestStart { mut settings, files, trusted, open } = start;
+        let TestStart { mut settings, files, trusted, open, chrome } = start;
         for path in &trusted {
             crate::state::trust::record(&mut settings, path, RepoTrust::Trusted);
         }
         let mut app = Self::assemble(ctx, settings, Vec::new(), |tx, waker| Runner::sandboxed(tx, waker, files));
+        app.st.view.chrome = chrome;
         app.start(ctx, ThemeCatalog::default(), None);
         if let Some(path) = open {
             app.dispatch(ctx, Msg::Repo(RepoMsg::Open(path)));

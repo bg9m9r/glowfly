@@ -58,6 +58,7 @@ fn regions_come_from_the_panels_drawn_this_pass() {
         // A panel egui remembers but that isn't drawn this pass is not a region.
         let stale = PanelState { rect: Rect::from_min_max(Pos2::ZERO, Pos2::new(2000.0, 2000.0)) };
         ctx.data_mut(|d| d.insert_persisted(Id::new("toolbar"), stale));
+        egui::TopBottomPanel::top("title-bar").exact_height(44.0).show(ctx, |ui| ui.label("title"));
         egui::SidePanel::left("refs").exact_width(200.0).show(ctx, |ui| ui.label("left"));
         egui::SidePanel::right("detail").exact_width(300.0).show(ctx, |ui| ui.label("right"));
         egui::CentralPanel::default().show(ctx, |ui| ui.label("middle"));
@@ -66,8 +67,9 @@ fn regions_come_from_the_panels_drawn_this_pass() {
     h.run();
     let panels = seen.borrow().clone();
     let rect = |id: &str| panels.iter().find(|(p, _)| *p == id).map(|(_, r)| *r).unwrap_or_else(|| panic!("no {id} in {panels:?}"));
-    let (refs, detail) = (rect("refs"), rect("detail"));
+    let (refs, detail, title) = (rect("refs"), rect("detail"), rect("title-bar"));
     assert!(panels.iter().all(|(id, _)| *id != "toolbar"), "{panels:?}");
+    assert_eq!(region_of(&panels, None, title.center()), "title_bar");
     assert_eq!(region_of(&panels, None, refs.center()), "sidebar");
     assert_eq!(region_of(&panels, None, detail.center()), "details");
     let middle = Pos2::new((refs.right() + detail.left()) / 2.0, refs.center().y);

@@ -1,13 +1,15 @@
-//! A headless dry run of every name and state field the real-input smoke test looks up in the
-//! probe file (`scripts/smoke/pass.sh`, `ui/probe.rs`), on the fixture shape that script
-//! makes. It runs on every CI OS, so a renamed label or a probe field that stops reporting
-//! fails here before the Linux smoke job.
+//! A headless dry run of every name and state field the real-input smoke tests look up in the
+//! probe file (`scripts/smoke/pass.sh` for Linux, `scripts/smoke/win-checks.ps1` for Windows,
+//! `ui/probe.rs`), on the fixture shape those scripts make. It runs on every CI OS, so a renamed
+//! label or a probe field that stops reporting fails here before a smoke job.
 
 use super::find::{Pick, Region};
 use super::fixture::Fixture;
 use super::fixture::{self as disk, commit_files, git, write};
 use super::harness::Journey;
+use crate::state::window_chrome::Chrome;
 use serde_json::Value;
+use std::path::{Path, PathBuf};
 use trellis_core::i18n::Lang;
 
 /// The widgets the probe lists in `region` whose name (`label`, else `value`, as the script's
@@ -25,34 +27,103 @@ fn one(p: &Value, region: &str, label: &str) -> Value {
     found[0].clone()
 }
 
-#[test]
-fn the_probe_names_what_the_smoke_test_looks_for() {
-    let fx = Fixture::new("probe");
+/// The smoke scripts' fixture: three commits, a staged new file and an unstaged edit.
+fn smoke_fixture(fx: &Fixture) -> PathBuf {
     let repo = fx.work().join("smoke");
     std::fs::create_dir_all(&repo).unwrap();
     git(&repo, &["init", "-q", "-b", "main"]);
     disk::configure(&repo);
-    commit_files(&repo, &[("a.txt", "a\n")], "Add a.txt");
-    commit_files(&repo, &[("b.txt", "b\n")], "Add b.txt");
-    let notes: String = (1..=20).map(|n| format!("line {n}\n")).collect();
+    commit_files(
+        &repo,
+        &[(
+            "a.txt", "a
+",
+        )],
+        "Add a.txt",
+    );
+    commit_files(
+        &repo,
+        &[(
+            "b.txt", "b
+",
+        )],
+        "Add b.txt",
+    );
+    let notes: String = (1..=20)
+        .map(|n| {
+            format!(
+                "line {n}
+"
+            )
+        })
+        .collect();
     commit_files(&repo, &[("notes.txt", notes.as_str())], "Add notes");
-    write(&repo, "todo.txt", "buy milk\n");
+    write(
+        &repo,
+        "todo.txt",
+        "buy milk
+",
+    );
     git(&repo, &["add", "todo.txt"]);
-    write(&repo, "notes.txt", &format!("{notes}one more line\n"));
+    write(
+        &repo,
+        "notes.txt",
+        &format!(
+            "{notes}one more line
+"
+        ),
+    );
+    repo
+}
+
+#[test]
+fn the_probe_names_what_the_linux_smoke_test_looks_for() {
+    let fx = Fixture::new("probe");
+    let repo = smoke_fixture(&fx);
     let config = fx.config();
     let mut j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
+    let p = j.probe();
+    assert_eq!(p["chrome"], "system");
+    assert_eq!(p["zoom_percent"], 100);
+    assert!(p["panels"]["title-bar"].is_null(), "{}", p["panels"]);
+    dry_run_checks(&mut j, &repo, "1");
+    // No journey writes a probe file: the test app has no probe.
+    assert!(!config.join("probe.json").exists());
+}
 
+#[test]
+fn the_probe_names_what_the_windows_smoke_test_looks_for() {
+    let fx = Fixture::new("probe-windows");
+    let repo = smoke_fixture(&fx);
+    let mut j = Journey::start_with(fx, Some(repo.clone()), vec![repo.clone()], Chrome::Windows, |s| s.zoom_percent = 150);
+    let p = j.probe();
+    assert_eq!(p["chrome"], "windows");
+    let panels = &p["panels"];
+    assert!(panels["title-bar"].is_array() && panels["refs"].is_array() && panels["detail"].is_array(), "{panels}");
+    assert!(panels["tabs"].is_null(), "the tabs live in the title bar: {panels}");
+    assert_eq!(p["zoom_percent"], 150);
+    let (ppp, native) = (p["pixels_per_point"].as_f64().unwrap(), p["native_pixels_per_point"].as_f64().unwrap());
+    assert!((ppp - 1.5 * native).abs() <= 0.01, "pixels_per_point {ppp}, native {native}");
+    for key in ["title_bar.minimize", "title_bar.maximize", "title_bar.close"] {
+        one(&p, "title_bar", Lang::En.tr(key));
+    }
+    dry_run_checks(&mut j, &repo, "1.5");
+}
+
+/// Every lookup of a smoke pass, in its order: the rows, the commit box, the commit's menu and
+/// its dialog, and the hidden left panel.
+fn dry_run_checks(j: &mut Journey, repo: &Path, scale: &str) {
     // After the first load: the rows, HEAD, both drawers, no dialog.
     let p = j.probe();
     one(&p, "central", "Add notes");
     one(&p, "central", "Add b.txt");
+    one(&p, "central", "Add a.txt");
     one(&p, "central", "Uncommitted changes");
-    assert_eq!(p["head"], disk::head_oid(&repo).to_string());
+    assert_eq!(p["head"], disk::head_oid(repo).to_string());
     assert_eq!(p["head_branch"], "main");
     assert_eq!(p["busy"], false);
     assert_eq!(p["modal"], false, "a startup dialog is in the way");
     assert!(p["panels"]["refs"].is_array() && p["panels"]["detail"].is_array(), "{}", p["panels"]);
-    assert_eq!(p["zoom_percent"], 100);
     assert!(p["seq"].is_null(), "the writer adds seq, not the snapshot");
 
     // The commit box: the summary field, the typed text, the commit button.
@@ -60,10 +131,10 @@ fn the_probe_names_what_the_smoke_test_looks_for() {
     let p = j.probe();
     assert_eq!(p["selection"], "wip");
     assert_eq!(one(&p, "details", "Commit summary")["role"], "TextInput");
-    let text = "Smoke: typed with real keys (scale 1)";
-    j.type_into("Commit summary", text);
+    let text = format!("Smoke: typed with real keys (scale {scale})");
+    j.type_into("Commit summary", &text);
     let p = j.probe();
-    assert_eq!(p["draft_summary"], text);
+    assert_eq!(p["draft_summary"], text.as_str());
     let button = Lang::En.trn("commit.button.commit", 1, &[("push", &""), ("skip", &"")]);
     assert!(button.starts_with("Commit 1 file"), "{button}");
     let buttons = named(&p, "details", |n| n.starts_with("Commit 1 file"));
@@ -87,6 +158,4 @@ fn the_probe_names_what_the_smoke_test_looks_for() {
     let p = j.probe();
     assert!(p["panels"]["refs"].is_null(), "{}", p["panels"]);
     one(&p, "central", "Add b.txt");
-    // No journey writes a probe file: the test app has no probe.
-    assert!(!config.join("probe.json").exists());
 }
