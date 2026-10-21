@@ -275,7 +275,9 @@ impl<'a> StyledButton<'a> {
                 None => resp,
             }
         } else if let Some(why) = self.why {
-            resp.on_hover_text(why)
+            // In a disabled `Ui` (e.g. `add_enabled_ui(false, ..)`) the response is disabled too,
+            // and egui shows only disabled-hover tooltips for it.
+            if resp.enabled() { resp.on_hover_text(why) } else { resp.on_disabled_hover_text(why) }
         } else {
             resp
         }

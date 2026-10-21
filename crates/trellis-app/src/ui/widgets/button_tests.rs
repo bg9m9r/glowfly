@@ -113,6 +113,26 @@ fn icon_only_is_square_and_named() {
 }
 
 #[test]
+fn buttons_in_a_disabled_ui_still_explain_on_hover() {
+    let mut h = Harness::new_ui(|ui| {
+        ui.add_enabled_ui(false, |ui| {
+            crate::ui::widgets::icon_button(ui, Icon::Refresh, "Previous change");
+            ui.add(secondary("Move up").why(Some("Already first")));
+        });
+    });
+    h.run();
+    assert!(h.get_by_label("Previous change").is_disabled());
+    h.get_by_label("Previous change").hover();
+    h.run();
+    h.run();
+    assert_eq!(h.get_all_by_label("Previous change").count(), 2, "the icon button's tooltip shows while disabled");
+    h.get_by_label("Move up").hover();
+    h.run();
+    h.run();
+    assert!(h.query_by_label("Already first").is_some(), "the reason shows while the ui is disabled");
+}
+
+#[test]
 fn looks_follow_the_kind_and_state() {
     let p = crate::ui::theme::DARK;
     let edge = |c| Stroke::new(1.0_f32, c);

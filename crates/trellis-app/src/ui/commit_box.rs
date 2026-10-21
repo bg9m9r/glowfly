@@ -120,6 +120,8 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
 
 /// The commit button's height.
 const BUTTON_H: f32 = 34.0;
+/// The least width of the caret's menu.
+const MENU_W: f32 = 160.0;
 
 /// The commit button and its menu caret as one split button; the caret opens the menu with
 /// Skip hooks, and is tinted with the warning tone while hooks are skipped, so the choice stays
@@ -145,6 +147,10 @@ fn commit_split(
         ui.memory_mut(|m| m.toggle_popup(popup));
     }
     egui::popup::popup_below_widget(ui, popup, &caret, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
+        // The popup starts as wide as its anchor, the narrow caret: give the menu its own width
+        // and keep the label on one line.
+        ui.set_min_width(MENU_W);
+        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
         let check = controls::checkbox(ui, &mut draft.skip_hooks, t.tr("commit.skip_hooks.check"));
         // Close at once, so the caret's tint shows the choice.
         if check.on_hover_text(t.tr("commit.skip_hooks.tip")).changed() {

@@ -52,6 +52,13 @@ fn commit_box_more_menu() {
     h.get_by_label("More commit options").click();
     h.run();
     h.check_snapshot("commit_box_more_menu");
+    // The menu is as wide as its label, not the caret: the label stays on one line, on screen.
+    let check = h.get_by_label("Skip hooks").bounding_box().unwrap();
+    let caret = h.get_by_label("More commit options").bounding_box().unwrap();
+    assert!(check.width() > 2.0 * caret.width(), "the menu is wider than the caret: {check:?}");
+    assert!(check.height() < caret.height(), "the label is one line: {check:?}");
+    let right = f64::from(h.ctx.screen_rect().right());
+    assert!(check.x1 <= right, "the menu stays inside the window: {check:?} {right}");
     h.get_by_label("Skip hooks").click();
     h.run();
     assert!(h.state().0.draft.skip_hooks);
