@@ -1,5 +1,5 @@
 //! Rebase previews: a clean replay, a stop at the second of three commits, up to date and
-//! fast-forward, patch-equivalent commits left out, merges left out (and refused with
+//! fast-forward, a branch with the target merged in replayed rather than up to date, patch-equivalent commits left out, merges left out (and refused with
 //! rebase.rebaseMerges), and an unrelated history replayed from its root.
 
 use super::tests::{commit, diverged, is_kept, is_rewritten, message, oid, row_oid, run, run_with};
@@ -55,6 +55,20 @@ fn up_to_date_and_fast_forward() {
     let p = run(&dir, onto(&dir, "main")).unwrap();
     assert_eq!(p.outcome, Outcome::FastForward);
     assert_eq!(p.arriving, Some(Count { n: 1, more: false }));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_branch_with_the_target_merged_in_is_replayed_without_the_merge() {
+    let (dir, [_, m1, f1, f2]) = diverged("opp-rebase-merged-in");
+    git(&dir, &["merge", "-q", "--no-ff", "-m", "merge main", "main"]);
+    let merge = oid(&dir, "HEAD");
+    let p = run(&dir, onto(&dir, "main")).unwrap();
+    assert_eq!(p.outcome, Outcome::Done, "a merge between HEAD and the target is not up to date");
+    assert_eq!(p.moved.iter().map(|m| m.oid).collect::<Vec<_>>(), [f1, f2]);
+    assert_eq!(p.gone.iter().map(|g| (g.line.oid, g.why)).collect::<Vec<_>>(), [(merge, GoneWhy::MergeLeftOut)]);
+    assert!(is_rewritten(&p.after[0], f2) && is_rewritten(&p.after[1], f1), "{:?}", p.after);
+    assert!(matches!(&p.after[2], AfterRow::Kept { line, .. } if line.oid == m1));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -12,11 +12,12 @@ use std::collections::{HashMap, HashSet};
 
 /// `git rebase <onto>` (at `oid`): the commits `onto..HEAD` without merges and without the ones
 /// whose patch the target already has, replayed onto it; a commit that becomes empty is left
-/// out as already applied.
+/// out as already applied. Like git, a branch that contains the target is up to date only when
+/// its history down to it is linear; a merge in between makes the rebase replay the rest.
 pub(in super::super) fn rebase(cx: &Cx, onto: &str, oid: Oid) -> Result<OpPreview> {
     cx.check_ref(onto, oid)?;
     let (repo, head) = (cx.repo, cx.head);
-    if cx.contains(head, oid)? {
+    if cx.contains(head, oid)? && linear(repo, head, oid)? {
         return cx.nothing();
     }
     if repo.graph_descendant_of(oid, head)? {
@@ -186,6 +187,20 @@ fn finish(cx: &Cx, p: &mut OpPreview, tip: Option<Oid>, moved: Vec<CommitLine>, 
     p.gone = g;
     p.gone_count = count;
     Ok(())
+}
+
+/// Whether the first-parent walk from `from` down to `to` (or to a root) meets no merge: the
+/// check git makes before calling a branch that contains its target up to date.
+fn linear(repo: &Repository, from: Oid, to: Oid) -> Result<bool> {
+    let mut at = repo.find_commit(from)?;
+    while at.id() != to {
+        match at.parent_count() {
+            0 => return Ok(true),
+            1 => at = at.parent(0)?,
+            _ => return Ok(false),
+        }
+    }
+    Ok(true)
 }
 
 /// The commits `from` reaches and `hide` doesn't, in `sort` order.
