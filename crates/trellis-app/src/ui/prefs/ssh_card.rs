@@ -11,6 +11,7 @@ use crate::state::ssh::SshPage;
 use crate::state::ssh_marks::{KeyMark, key_marks, outside_folder};
 use crate::state::ssh_use::add_blocked;
 use crate::ui::common::menu_item;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::{self, Icon, buttons};
 use eframe::egui::{self, Align, Color32, CornerRadius, Layout, RichText, Sense, Stroke, Ui, WidgetInfo, WidgetType, vec2};
@@ -28,7 +29,7 @@ pub(super) fn card(ui: &mut Ui, t: Lang, key: &SshKeyPair, listing: &SshListing,
     egui::Frame::new()
         .fill(color::panel())
         .stroke(Stroke::new(1.0_f32, color::border()))
-        .corner_radius(CornerRadius::same(8))
+        .corner_radius(CornerRadius::same(radius::LG))
         .inner_margin(egui::Margin::symmetric(PAD_X, PAD_Y))
         .show(ui, |ui| {
             ui.set_width(w - 2.0 * (f32::from(PAD_X) + 1.0));

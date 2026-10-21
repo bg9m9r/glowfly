@@ -6,12 +6,13 @@
 //! the track and its index, so a label that changes (a count) keeps its id.
 
 use super::super::theme::color;
+use super::super::theme::tokens::{self, radius};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, CornerRadius, CursorIcon, FontId, Rect, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
 /// The track's height and corners; a segment sits 2 px inside it.
 pub const HEIGHT: f32 = 28.0;
-const RADIUS: u8 = 6;
+const RADIUS: u8 = radius::MD;
 const INSET: f32 = 2.0;
 /// Room either side of a label.
 const PAD_X: f32 = 12.0;
@@ -69,7 +70,7 @@ pub fn segmented_opts<T: Copy + PartialEq>(ui: &mut Ui, current: T, options: &[S
         let label = o.label;
         resp.widget_info(|| WidgetInfo::selected(WidgetType::SelectableLabel, enabled, selected, label));
         let p = ui.painter();
-        let inner = CornerRadius::same(RADIUS - 1);
+        let inner = radius::inside(RADIUS, 1);
         let fg = match (selected, enabled) {
             (true, _) => {
                 p.rect(rect, inner, color::panel(), Stroke::new(1.0_f32, color::input_border()), StrokeKind::Inside);
@@ -83,7 +84,7 @@ pub fn segmented_opts<T: Copy + PartialEq>(ui: &mut Ui, current: T, options: &[S
             (false, true) => color::weak(),
         };
         if resp.has_focus() {
-            p.rect_stroke(rect, inner, Stroke::new(1.5_f32, color::accent()), StrokeKind::Inside);
+            tokens::focus_ring_inset(p, rect, inner);
         }
         p.text(rect.center(), egui::Align2::CENTER_CENTER, label, font.clone(), fg);
         let hover = if enabled { o.tip } else { o.why.unwrap_or(o.tip) };

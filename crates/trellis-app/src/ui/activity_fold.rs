@@ -10,6 +10,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::activity_rows::{copy_text, output_of};
 use crate::state::logs::LogEntry;
+use crate::ui::theme::tokens::radius;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Color32, CornerRadius, Margin, RichText, Stroke, Ui};
 use trellis_core::logs::{OutputLine, classify_line, output_lines};
@@ -84,7 +85,7 @@ fn output(ui: &mut Ui, st: &AppState, text: &str) {
     egui::Frame::new()
         .fill(color::bg())
         .stroke(Stroke::new(1.0_f32, color::border()))
-        .corner_radius(CornerRadius::same(6))
+        .corner_radius(CornerRadius::same(radius::MD))
         .inner_margin(Margin::symmetric(8, 6))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());

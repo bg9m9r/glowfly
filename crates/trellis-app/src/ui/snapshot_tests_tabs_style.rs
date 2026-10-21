@@ -110,7 +110,7 @@ fn icon_branch() {
             for (i, size) in [16.0, 20.0, 24.0].into_iter().enumerate() {
                 widgets::paint_icon_sized(ui.painter(), pos2(band.left() + 24.0 + 36.0 * i as f32, y), Icon::Branch, p.text, size);
             }
-            widgets::paint_icon_sized(ui.painter(), pos2(band.left() + 132.0, y), Icon::Branch, p.accent, 14.0);
+            widgets::paint_icon_sized(ui.painter(), pos2(band.left() + 132.0, y), Icon::Branch, p.accent, widgets::icon::SIZE_SM);
             widgets::paint_icon(ui.painter(), pos2(band.left() + 166.0, y), Icon::Menu, p.text);
             let slot = egui::Rect::from_min_size(pos2(band.left() + 200.0, band.top() + 16.0), vec2(150.0, widgets::TOOL_H));
             ui.scope_builder(egui::UiBuilder::new().max_rect(slot), |ui| {

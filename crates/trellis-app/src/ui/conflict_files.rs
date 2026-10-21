@@ -12,6 +12,7 @@ use crate::state::AppState;
 use crate::state::conflict_files::{mark_conflicted_body, restorable_paths};
 use crate::state::path_hazards::hazard_of;
 use crate::state::tool_compare::merging;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, Sense, vec2};
 use trellis_core::i18n::Lang;
@@ -39,7 +40,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, lists: Lists, open: &OpenFi
 
 /// A list header like Unstaged Files': the title with its count, and `buttons` at the right.
 fn header(ui: &mut egui::Ui, title: String, buttons: impl FnOnce(&mut egui::Ui)) {
-    egui::Frame::new().fill(color::raised()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
+    egui::Frame::new().fill(color::raised()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(radius::SM).show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.add(egui::Label::new(type_scale::section_text(ui, title)).selectable(false));
             ui.with_layout(Layout::right_to_left(Align::Center), buttons);

@@ -3,6 +3,7 @@
 //! (spans from `MarkdownCache`) and selectable like other text.
 
 use super::theme::{color, type_scale};
+use crate::ui::theme::tokens::radius;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, FontId, Stroke, Ui};
 use trellis_core::highlight::Span;
@@ -14,7 +15,7 @@ pub(in crate::ui) fn block(ui: &mut Ui, text: &str, spans: Option<&[Vec<Span>]>)
     egui::Frame::new()
         .fill(color::raised())
         .stroke(Stroke::new(1.0_f32, color::border()))
-        .corner_radius(4)
+        .corner_radius(radius::SM)
         .inner_margin(egui::Margin::same(8))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());

@@ -1,6 +1,7 @@
 //! Colors: the built-in palettes, palettes built from theme files, and egui widget styling,
-//! with the bundled fonts (`fonts.rs`), the type scale (`type_scale.rs`) and the spacing grid
-//! (`spacing.rs`).
+//! with the bundled fonts (`fonts.rs`), the type scale (`type_scale.rs`), the spacing grid
+//! (`spacing.rs`), the design tokens (`tokens.rs`: corners, elevations, focus, motion) and the
+//! colour tokens worked out from a palette (`surfaces.rs`: overlay, state layers, tones).
 //!
 //! Views read colors through `color::text()` etc. The active palette is a per-thread copy: the
 //! shell's [`ThemeCache`] works out the palette for the chosen theme (again only when the
@@ -26,6 +27,8 @@ pub mod custom;
 pub mod families;
 pub mod fonts;
 pub mod spacing;
+pub mod surfaces;
+pub mod tokens;
 pub mod type_scale;
 
 #[cfg(test)]
@@ -34,6 +37,8 @@ pub use builtin::{DARK, LIGHT, builtin};
 #[cfg(test)]
 pub use builtin::{HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, SAND};
 use color::Palette;
+use eframe::egui::CornerRadius;
+use tokens::{Elevation, radius, shadow};
 
 /// egui's light or dark style for a palette.
 pub fn egui_theme(p: &Palette) -> egui::Theme {
@@ -50,7 +55,7 @@ pub fn apply_style(ctx: &egui::Context, p: &Palette) {
         ctx.style_mut_of(egui_theme(p), |style| {
             let v = &mut style.visuals;
             v.panel_fill = p.panel;
-            v.window_fill = p.panel;
+            v.window_fill = p.overlay();
             v.extreme_bg_color = p.input;
             v.faint_bg_color = p.hover;
             v.override_text_color = None;
@@ -59,7 +64,10 @@ pub fn apply_style(ctx: &egui::Context, p: &Palette) {
             // their own focus ring in `controls::Field`.
             v.selection.stroke = Stroke::new(1.0_f32, p.strong);
             v.hyperlink_color = p.accent;
-            v.window_stroke = Stroke::new(1.0_f32, p.border);
+            v.window_stroke = Stroke::new(1.0_f32, p.overlay_edge());
+            v.menu_corner_radius = CornerRadius::same(radius::LG);
+            v.window_corner_radius = CornerRadius::same(radius::XL);
+            v.popup_shadow = shadow(Elevation::Float, p);
             v.widgets.noninteractive.bg_stroke = Stroke::new(1.0_f32, p.border);
             v.widgets.noninteractive.fg_stroke = Stroke::new(1.0_f32, p.text);
             // egui fades hint text and disabled widgets toward this colour.
@@ -67,14 +75,21 @@ pub fn apply_style(ctx: &egui::Context, p: &Palette) {
             v.widgets.inactive.bg_fill = p.raised;
             v.widgets.inactive.weak_bg_fill = p.raised;
             v.widgets.inactive.fg_stroke = Stroke::new(1.0_f32, p.text);
-            v.widgets.hovered.bg_fill = p.hover;
-            v.widgets.hovered.weak_bg_fill = p.hover;
+            // Menu items sit on the overlay; egui's own buttons on the panel still lighten.
+            let hovered = p.hover_on(p.overlay());
+            v.widgets.hovered.bg_fill = hovered;
+            v.widgets.hovered.weak_bg_fill = hovered;
             v.widgets.active.weak_bg_fill = p.selected;
-            v.widgets.open.weak_bg_fill = p.hover;
+            v.widgets.open.weak_bg_fill = hovered;
+            for w in
+                [&mut v.widgets.noninteractive, &mut v.widgets.inactive, &mut v.widgets.hovered, &mut v.widgets.active, &mut v.widgets.open]
+            {
+                w.corner_radius = CornerRadius::same(radius::MD);
+            }
             style.spacing.item_spacing = spacing::ITEM_SPACING;
             style.spacing.button_padding = spacing::BUTTON_PADDING;
             type_scale::install(style);
-            super::widgets::tooltip::style(style, p);
+            super::widgets::tooltip::style(style);
         });
     }
 }
@@ -84,26 +99,30 @@ pub fn backdrop(p: &Palette) -> egui::Color32 {
     egui::Color32::from_black_alpha(if p.dark { 140 } else { 64 })
 }
 
-/// A modal in the active palette: its backdrop and egui's popup frame with a `dialog_border`
-/// edge (margins, shadow and corners as egui's own modal).
+/// A modal in the active palette: its backdrop and egui's popup frame on the panel, with a
+/// `dialog_border` edge and the Dialog shadow (margins and `LG` corners as egui's own modal).
 pub fn modal(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
     let p = color::current();
-    let frame = egui::Frame::popup(&ctx.style()).stroke(Stroke::new(1.0_f32, p.dialog_border));
-    egui::Modal::new(id).backdrop_color(backdrop(&p)).frame(frame)
+    egui::Modal::new(id).backdrop_color(backdrop(&p)).frame(modal_frame(ctx, &p))
+}
+
+fn modal_frame(ctx: &egui::Context, p: &Palette) -> egui::Frame {
+    egui::Frame::popup(&ctx.style()).fill(p.panel).stroke(Stroke::new(1.0_f32, p.dialog_border)).shadow(shadow(Elevation::Dialog, p))
 }
 
 /// A dialog's padding on all sides (`dialog`); `dialog_frame` works out its caps from it.
 pub const DIALOG_PAD: i8 = 24;
 
 /// The frame of every dialog (`dialog_frame`): `modal` with `DIALOG_PAD` of padding on all sides
-/// and 8 px corners. The command palette keeps `modal`'s look.
+/// and `XL` corners. The command palette keeps `modal`'s look.
 pub fn dialog(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
     let p = color::current();
-    let frame = egui::Frame::popup(&ctx.style())
-        .stroke(Stroke::new(1.0_f32, p.dialog_border))
-        .inner_margin(egui::Margin::same(DIALOG_PAD))
-        .corner_radius(8);
-    egui::Modal::new(id).backdrop_color(backdrop(&p)).frame(frame)
+    egui::Modal::new(id).backdrop_color(backdrop(&p)).frame(dialog_frame_for(ctx, &p))
+}
+
+/// The dialog frame in palette `p`.
+fn dialog_frame_for(ctx: &egui::Context, p: &Palette) -> egui::Frame {
+    modal_frame(ctx, p).inner_margin(egui::Margin::same(DIALOG_PAD)).corner_radius(radius::XL)
 }
 
 /// Styles egui from this thread's active palette (tests that draw without the shell).
@@ -181,5 +200,7 @@ mod snapshot_tests_controls;
 mod snapshot_tests_fonts;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod token_tests;
 #[cfg(test)]
 mod vivid_tests;

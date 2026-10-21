@@ -18,6 +18,7 @@ use crate::state::pull_request_threads::{
     resolve_blocked, resolve_label, resolved_toggle, where_text,
 };
 use crate::ui::theme::controls;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Sense, Stroke, Ui, vec2};
@@ -106,7 +107,7 @@ pub(super) fn card(ui: &mut Ui, v: &mut PrView, id: &str, place: Place, ctx: &Ct
     let frame = egui::Frame::new()
         .fill(color::panel())
         .stroke(Stroke::new(1.0_f32, border))
-        .corner_radius(4)
+        .corner_radius(radius::SM)
         .inner_margin(Margin::symmetric(10, 6));
     let resp = frame
         .show(ui, |ui| {

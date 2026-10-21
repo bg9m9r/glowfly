@@ -4,6 +4,7 @@
 use super::rows::{BUTTONS_W, COMBO_W, COMBO_X, GAP, GRIP_X, INDENT, Look, META_W, Place, ROW_H, SHA_X, Shade, fill};
 use crate::msg::{Msg, RebaseMsg};
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::{Icon, icon_button, paint_cut_text, paint_icon};
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, Layout, Rect, RichText, Stroke, StrokeKind, Ui, UiBuilder, pos2, vec2};
@@ -26,9 +27,9 @@ fn action_text(a: RebaseAction) -> RichText {
 /// The row's background, with the floating row's outline, and the grip of a row that moves.
 pub(super) fn paint_back(ui: &Ui, rect: Rect, shade: Shade, grip: bool) {
     let p = ui.painter();
-    p.rect_filled(rect, CornerRadius::same(4), fill(shade));
+    p.rect_filled(rect, CornerRadius::same(radius::SM), fill(shade));
     if shade == Shade::Floating {
-        p.rect_stroke(rect, CornerRadius::same(4), Stroke::new(1.0_f32, color::primary()), StrokeKind::Inside);
+        p.rect_stroke(rect, CornerRadius::same(radius::SM), Stroke::new(1.0_f32, color::primary()), StrokeKind::Inside);
     }
     if grip {
         paint_icon(p, pos2(rect.left() + GRIP_X, rect.center().y), Icon::Grip, color::faint());
@@ -84,7 +85,7 @@ fn shown_summary(item: &TodoItem) -> &str {
 /// a step's kind).
 pub(super) fn paint_chip(ui: &Ui, row: Rect, text: &str, c: Color32) {
     let rect = Rect::from_min_size(pos2(row.left() + COMBO_X, row.center().y - 11.0), vec2(COMBO_W, 22.0));
-    ui.painter().rect_filled(rect, CornerRadius::same(3), color::raised());
+    ui.painter().rect_filled(rect, CornerRadius::same(radius::SM), color::raised());
     let pos = pos2(rect.left() + 8.0, rect.center().y);
     ui.painter().text(pos, Align2::LEFT_CENTER, text, type_scale::font(type_scale::BODY), c);
 }

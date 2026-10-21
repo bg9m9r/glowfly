@@ -62,6 +62,36 @@ fn commit_box_more_menu() {
 }
 
 #[test]
+fn commit_box_split_halves() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-split");
+    git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    st.draft.summary = "Add login form".into();
+    let mut h = harness(st, true);
+    h.run();
+    let caret = h.get_by_label("More commit options").bounding_box().unwrap();
+    let commit = h.get(By::new().role(Role::Button).label_contains("Commit 1 file")).bounding_box().unwrap();
+    assert!((caret.x0 - commit.x1).abs() < 0.5 && (caret.y0 - commit.y0).abs() < 0.5, "one pill: {commit:?} {caret:?}");
+    h.get_by_label("More commit options").click();
+    h.run();
+    assert!(h.query_by_label("Skip hooks").is_some(), "the caret opens the menu");
+    assert_eq!(count(&h, |m| matches!(m, Msg::Commit(CommitMsg::Commit))), 0, "without committing");
+    h.get_by_label("Skip hooks").click();
+    h.run();
+    assert!(h.state().0.draft.skip_hooks);
+    assert!(h.query_by_label("Skip hooks").is_none(), "ticking it closes the menu");
+    h.get_by_label("More commit options").hover();
+    h.run();
+    h.run();
+    h.check_snapshot("design_split_commit");
+    h.get(By::new().role(Role::Button).label_contains("Commit 1 file")).click();
+    h.run();
+    assert_eq!(count(&h, |m| matches!(m, Msg::Commit(CommitMsg::Commit))), 1, "the action half commits");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn commit_box_says_why() {
     const NO_SUMMARY: &str = "Write a summary for the commit.";
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-says-why");

@@ -14,6 +14,7 @@ use crate::state::profiles::{
 };
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets;
 use crate::ui::widgets::buttons;
@@ -75,7 +76,7 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
     } else {
         color::panel()
     };
-    painter.rect_filled(rect, CornerRadius::same(6), fill);
+    painter.rect_filled(rect, CornerRadius::same(radius::MD), fill);
     let marker = pos2(rect.left() + 16.0, rect.top() + 15.0);
     if current {
         painter.circle_filled(marker, 5.0, color::primary());

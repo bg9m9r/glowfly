@@ -9,6 +9,7 @@ use crate::state::rebase::{Editing, RebasePanel};
 use crate::ui::spell_edit::spell_text_edit;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, CornerRadius, Id, Response, RichText, Stroke, Ui};
@@ -34,7 +35,7 @@ pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut Ui
             egui::Frame::new()
                 .fill(color::panel())
                 .stroke(Stroke::new(1.0_f32, color::border()))
-                .corner_radius(CornerRadius::same(4))
+                .corner_radius(CornerRadius::same(radius::SM))
                 .inner_margin(egui::Margin::same(10))
                 .show(ui, |ui| {
                     ui.add_enabled_ui(enabled, |ui| {

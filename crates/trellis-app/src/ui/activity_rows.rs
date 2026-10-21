@@ -26,7 +26,7 @@ const HEAD_H: f32 = 30.0;
 const PAD: f32 = 8.0;
 /// The result mark's column and size.
 const MARK_W: f32 = 16.0;
-const MARK: f32 = 14.0;
+const MARK: f32 = widgets::icon::SIZE_SM;
 /// Where a row's title starts, and its open part.
 pub(super) const TITLE_X: f32 = PAD + MARK_W + PAD;
 /// Between the title, the summary and the right-hand columns.

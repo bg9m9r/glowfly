@@ -15,6 +15,7 @@ use super::widgets::{self, buttons};
 use crate::msg::{Msg, SelectionMsg};
 use crate::state::AppState;
 use crate::state::lfs::TrackContext;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Label, Layout, Margin, RichText, ScrollArea, Sense, Ui, vec2};
 use std::borrow::Cow;
@@ -30,7 +31,7 @@ const BODY_GAP: f32 = 12.0;
 const FILES_GAP: f32 = 16.0;
 /// The body block's inner margin and corner radius.
 const BODY_PAD: i8 = 12;
-const BODY_RADIUS: u8 = 6;
+const BODY_RADIUS: u8 = radius::MD;
 /// The author's row: its height (the avatar's slot) and the avatar's radius.
 const PERSON_H: f32 = 32.0;
 const AVATAR_R: f32 = 15.0;

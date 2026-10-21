@@ -6,6 +6,7 @@ use crate::msg::Msg;
 use crate::ssh::SshMsg;
 use crate::state::ssh_service::{UploadForm, UploadState, already_note};
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, CornerRadius, RichText, Stroke, Ui};
@@ -17,7 +18,7 @@ pub(super) fn upload_form(ui: &mut Ui, t: Lang, form: &mut UploadForm, file: &st
     egui::Frame::new()
         .fill(color::panel())
         .stroke(Stroke::new(1.0_f32, color::border()))
-        .corner_radius(CornerRadius::same(8))
+        .corner_radius(CornerRadius::same(radius::LG))
         .inner_margin(egui::Margin::symmetric(14, 12))
         .show(ui, |ui| {
             ui.set_width(w - 2.0 * 15.0);

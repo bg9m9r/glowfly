@@ -22,6 +22,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::journal_lost::JournalTab;
 use crate::state::tip::Tip;
+use crate::ui::theme::tokens::radius;
 use eframe::egui::{self, Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 
 const HEADER_H: f32 = 56.0;
@@ -123,7 +124,7 @@ fn chip(p: &egui::Painter, x: f32, y: f32, text: &str, max_w: f32, fg: Color32) 
         super::widgets::truncate::cut_galley(p.ctx(), super::widgets::truncate::cut_job(text, font, fg), (max_w - 2.0 * PAD).max(0.0));
     let w = galley.size().x + 2.0 * PAD;
     let rect = Rect::from_min_size(pos2(x, y - H / 2.0), vec2(w, H));
-    p.rect_filled(rect, egui::CornerRadius::same(4), color::toolbar());
+    p.rect_filled(rect, egui::CornerRadius::same(radius::SM), color::toolbar());
     p.galley(pos2(x + PAD, y - galley.size().y / 2.0), galley, fg);
     rect
 }

@@ -9,10 +9,11 @@
 use super::{Icon, PAD_X, ROW_INDENT, SECTION_H, TITLE_X, chevron, paint_icon};
 use crate::msg::Msg;
 use crate::state::section_actions::SectionAction;
+use crate::ui::theme::tokens::{self, radius};
 use crate::ui::theme::{color, type_scale};
 use eframe::egui::menu::BarState;
 use eframe::egui::{
-    self, Align2, CornerRadius, FontId, Id, Rect, Response, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2,
+    self, Align2, CornerRadius, FontId, Id, Rect, Response, RichText, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2,
 };
 use trellis_core::i18n::Lang;
 
@@ -194,12 +195,11 @@ fn menu_open(ui: &Ui, id: Id) -> bool {
 /// The + or ⋯: a rounded fill on hover, the accent ring while focused, and the icon.
 fn paint_button(ui: &Ui, r: &Response, icon: Icon, enabled: bool) {
     let p = ui.painter();
-    let radius = CornerRadius::same(3);
     if enabled && r.hovered() {
-        p.rect_filled(r.rect, radius, color::selected());
+        p.rect_filled(r.rect, CornerRadius::same(radius::SM), color::selected());
     }
     if r.has_focus() {
-        p.rect_stroke(r.rect, radius, Stroke::new(1.5_f32, color::accent()), StrokeKind::Inside);
+        tokens::focus_ring_inset(p, r.rect, radius::SM);
     }
     let col = if !enabled {
         color::faint()

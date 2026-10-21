@@ -7,6 +7,7 @@ use super::diff::fold::paint_chevrons;
 use super::diff::{ROW_H, mono};
 use super::theme::color;
 use crate::msg::{ConflictMsg, Msg};
+use crate::ui::theme::tokens::radius;
 use eframe::egui::{Align2, CornerRadius, CursorIcon, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use trellis_core::conflict_folds::CleanFold;
 use trellis_core::i18n::Lang;
@@ -50,7 +51,7 @@ pub(super) fn fold_back(ui: &mut Ui, t: Lang, row: Rect, f: CleanFold, msgs: &mu
     let p = ui.painter().with_clip_rect(r.intersect(ui.clip_rect()));
     let hovered = resp.hovered();
     if hovered {
-        p.rect_filled(r, CornerRadius::same(3), color::hover());
+        p.rect_filled(r, CornerRadius::same(radius::SM), color::hover());
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
     let ink = if hovered { color::text() } else { color::faint() };

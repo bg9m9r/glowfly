@@ -8,6 +8,8 @@ use std::cell::RefCell;
 use trellis_core::highlight::TokenKind;
 use trellis_core::settings::{BranchPalette, RepoColour};
 
+pub use super::surfaces::{field_fill, guide_fill, hover_layer, inset, tool_backing, tool_hover, tool_press, tool_pressed};
+
 /// The colors of one theme, in families: neutrals, brand, status, attention, diff, syntax,
 /// repository, branch and the terminal's basic colours. Every built-in meets the contrast floors and hue bands that the theme
 /// tests check; see docs/COLOUR.md for what each colour is for and the rules.
@@ -96,6 +98,11 @@ pub fn set_palette(p: &Palette) {
 /// A copy of this thread's palette.
 pub fn current() -> Palette {
     ACTIVE.with_borrow(|p| *p)
+}
+
+/// `f` of this thread's palette, without copying it (`surfaces.rs`'s accessors).
+pub(super) fn with<R>(f: impl FnOnce(&Palette) -> R) -> R {
+    ACTIVE.with_borrow(f)
 }
 
 /// Whether the active palette has a dark background.
@@ -234,66 +241,4 @@ pub fn token(k: TokenKind) -> Color32 {
         TokenKind::Function => syn_function(),
         TokenKind::Attribute => syn_attr(),
     }
-}
-
-/// How far a text field's fill moves from `input` toward the accent.
-const FIELD_TINT: f32 = 0.04;
-/// How far a dialog's side pane moves from `panel` toward the accent.
-const GUIDE_TINT: f32 = 0.07;
-/// How far the toolbar groups' backing moves from `toolbar` toward the accent.
-const TOOL_TINT: f32 = 0.09;
-
-impl Palette {
-    /// The fill of a dialog's text field: `input` with a faint accent tint. Derived, not a
-    /// theme-file key.
-    pub fn field_fill(&self) -> Color32 {
-        super::contrast::mix(self.input, self.accent, FIELD_TINT)
-    }
-
-    /// The fill of a dialog's side pane (`dialog_frame`'s guide): `panel` tinted toward the
-    /// accent. Derived, not a theme-file key.
-    pub fn guide_fill(&self) -> Color32 {
-        super::contrast::mix(self.panel, self.accent, GUIDE_TINT)
-    }
-
-    /// The neutral backing of the toolbar's groups: `toolbar` with a quiet accent tint.
-    /// Derived, not a theme-file key.
-    pub fn tool_backing(&self) -> Color32 {
-        super::contrast::mix(self.toolbar, self.accent, TOOL_TINT)
-    }
-
-    /// A hovered tool button on the backing: a step toward `text`.
-    pub fn tool_hover(&self) -> Color32 {
-        super::contrast::mix(self.tool_backing(), self.text, 0.08)
-    }
-
-    /// A pressed (or open) tool button on the backing: two steps toward `text`.
-    pub fn tool_pressed(&self) -> Color32 {
-        super::contrast::mix(self.tool_backing(), self.text, 0.16)
-    }
-}
-
-/// [`Palette::field_fill`] of the active palette.
-pub fn field_fill() -> Color32 {
-    ACTIVE.with_borrow(Palette::field_fill)
-}
-
-/// [`Palette::guide_fill`] of the active palette.
-pub fn guide_fill() -> Color32 {
-    ACTIVE.with_borrow(Palette::guide_fill)
-}
-
-/// [`Palette::tool_backing`] of the active palette.
-pub fn tool_backing() -> Color32 {
-    ACTIVE.with_borrow(Palette::tool_backing)
-}
-
-/// [`Palette::tool_hover`] of the active palette.
-pub fn tool_hover() -> Color32 {
-    ACTIVE.with_borrow(Palette::tool_hover)
-}
-
-/// [`Palette::tool_pressed`] of the active palette.
-pub fn tool_pressed() -> Color32 {
-    ACTIVE.with_borrow(Palette::tool_pressed)
 }

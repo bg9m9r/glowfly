@@ -1,8 +1,12 @@
 //! The toasts in the corner chosen in Preferences, anchored to the window's chrome: below the
 //! last top panel or above the status bar (`ToastBounds`, measured by `frame_layout`), all one
-//! width so a stack lines up on both edges.
+//! width so a stack lines up on both edges. Each floats on the overlay with `LG` corners and the
+//! Float shadow, outlined in its outcome's tone.
 
 use super::theme::color;
+use super::theme::surfaces::Tone;
+use super::theme::tokens::{self, Elevation, radius};
+use super::widgets::buttons;
 use crate::msg::Msg;
 use crate::state::AppState;
 use eframe::egui::{self, Align2, Rect, RichText, Stroke, Vec2, vec2};
@@ -49,22 +53,26 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
     }
     let (align, offset) = anchor(st.settings.notification_location, bounds, ctx.screen_rect());
     let interactable = st.toasts.iter().any(|t| t.action.is_some() || t.details.is_some());
+    let p = color::current();
     egui::Area::new(egui::Id::new("toasts")).anchor(align, offset).interactable(interactable).show(ctx, |ui| {
         for t in &st.toasts {
             // Fade out over the last second.
             let fade = 1.0 - (t.at.elapsed().as_secs_f32() - (t.lifetime().as_secs_f32() - 1.0)).clamp(0.0, 1.0);
             // A failure stays red with a button too (Details); other toasts with one are blue.
-            let accent = if !t.ok {
-                color::removed()
+            let tone = if !t.ok {
+                Tone::Danger
             } else if t.action.is_some() {
-                color::info()
+                Tone::Info
             } else {
-                color::added()
+                Tone::Success
             };
+            let mut shadow = tokens::shadow(Elevation::Float, &p);
+            shadow.color = shadow.color.gamma_multiply(fade);
             egui::Frame::new()
-                .fill(color::raised().gamma_multiply(fade))
-                .stroke(Stroke::new(1.0_f32, accent.gamma_multiply(fade)))
-                .corner_radius(4)
+                .fill(p.overlay().gamma_multiply(fade))
+                .stroke(Stroke::new(1.0_f32, p.tone(tone).gamma_multiply(fade)))
+                .corner_radius(radius::LG)
+                .shadow(shadow)
                 .inner_margin(egui::Margin::symmetric(PAD_X, 8))
                 .show(ui, |ui| {
                     ui.set_width(TOAST_W - 2.0 * f32::from(PAD_X));
@@ -77,9 +85,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                                 let buttons = [(&t.action, Msg::ToastAction(t.id)), (&t.details, Msg::ToastDetails(t.id))];
                                 for (a, msg) in buttons {
                                     let Some(a) = a else { continue };
-                                    let button =
-                                        egui::Button::new(&a.label).fill(color::input()).stroke(Stroke::new(1.0_f32, color::border()));
-                                    if ui.add(button).clicked() {
+                                    if ui.add(buttons::secondary(&a.label).small()).clicked() {
                                         msgs.push(msg);
                                     }
                                 }

@@ -14,9 +14,10 @@ use crate::keymap::Keymap;
 use crate::state::tip::{Tip, TipPreview, TipRow, TipSub};
 use crate::ui::common::{status_color, status_label};
 use crate::ui::shortcuts::Caps;
-use crate::ui::theme::color::{self, Palette};
+use crate::ui::theme::color;
+use crate::ui::theme::tokens::{motion, radius};
 use crate::ui::theme::type_scale;
-use eframe::egui::{self, Color32, CornerRadius, Frame, Label, Margin, Response, RichText, Sense, Shadow, Ui};
+use eframe::egui::{self, CornerRadius, Frame, Label, Margin, Response, RichText, Sense, Ui};
 use trellis_core::i18n::Lang;
 
 /// The rich tooltip's narrowest and widest.
@@ -25,19 +26,18 @@ const MAX_W: f32 = 340.0;
 /// Plain tooltips wrap at this width.
 const TEXT_W: f32 = 360.0;
 
-/// egui's tooltip (and menu) frame for palette `p`: 8 px corners and a soft shadow under it.
-pub fn style(style: &mut egui::Style, p: &Palette) {
-    style.visuals.menu_corner_radius = CornerRadius::same(8);
-    let alpha = if p.dark { 64 } else { 28 };
-    style.visuals.popup_shadow = Shadow { offset: [0, 4], blur: 16, spread: 0, color: Color32::from_black_alpha(alpha) };
+/// egui's tooltip wrap width (its frame, corners and shadow are `theme::apply_style`'s: the
+/// overlay with `LG` corners and the Float shadow).
+pub fn style(style: &mut egui::Style) {
     style.spacing.tooltip_width = TEXT_W;
 }
 
 /// The tooltip timing, in both egui themes: shown after 400 ms of stillness, at once within
-/// 300 ms of another, fading in over 120 ms (no animations at all with `reduce_motion`).
+/// 300 ms of another, fading in over `motion::STANDARD` (no animations at all with
+/// `reduce_motion`).
 /// Writes the style only when a value differs.
 pub fn configure(ctx: &egui::Context, reduce_motion: bool) {
-    let animation = if reduce_motion { 0.0 } else { tooltip_motion::FADE };
+    let animation = motion::animation_time(reduce_motion);
     for theme in [egui::Theme::Dark, egui::Theme::Light] {
         let s = ctx.style_of(theme);
         let i = &s.interaction;
@@ -105,7 +105,7 @@ fn weak(ui: &mut Ui, text: &str) {
 
 /// The inset list: heading, rows, "and N more" and the note.
 fn preview(ui: &mut Ui, p: &TipPreview, t: Lang) {
-    Frame::new().fill(color::raised()).corner_radius(CornerRadius::same(6)).inner_margin(Margin::same(8)).show(ui, |ui| {
+    Frame::new().fill(color::inset()).corner_radius(CornerRadius::same(radius::MD)).inner_margin(Margin::same(8)).show(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.spacing_mut().item_spacing.y = 3.0;
         ui.add(Label::new(type_scale::section_text(ui, &p.heading)).wrap());
@@ -174,7 +174,7 @@ mod tests {
         configure(&ctx, false);
         for theme in [egui::Theme::Dark, egui::Theme::Light] {
             let s = ctx.style_of(theme);
-            assert_eq!((s.interaction.tooltip_delay, s.interaction.tooltip_grace_time, s.animation_time), (0.4, 0.3, 0.12));
+            assert_eq!((s.interaction.tooltip_delay, s.interaction.tooltip_grace_time, s.animation_time), (0.4, 0.3, motion::STANDARD));
             assert!(s.interaction.show_tooltips_only_when_still);
         }
         configure(&ctx, true);
@@ -208,14 +208,9 @@ mod tests {
     }
 
     #[test]
-    fn style_rounds_and_shadows_the_frame() {
-        for (p, alpha) in [(crate::ui::theme::DARK, 64), (crate::ui::theme::LIGHT, 28)] {
-            let mut s = egui::Style::default();
-            style(&mut s, &p);
-            assert_eq!(s.visuals.menu_corner_radius, CornerRadius::same(8));
-            let want = Shadow { offset: [0, 4], blur: 16, spread: 0, color: Color32::from_black_alpha(alpha) };
-            assert_eq!(s.visuals.popup_shadow, want);
-            assert_eq!(s.spacing.tooltip_width, 360.0);
-        }
+    fn style_sets_the_wrap_width() {
+        let mut s = egui::Style::default();
+        style(&mut s);
+        assert_eq!(s.spacing.tooltip_width, 360.0);
     }
 }

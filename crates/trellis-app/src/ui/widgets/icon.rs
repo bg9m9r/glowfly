@@ -1,5 +1,9 @@
-//! The `Icon` set and `paint_icon`: the first icons' shapes here, the newer ones in `ui/icons.rs`
-//! and the terminal panel header's in `ui/icons_panel.rs`.
+//! The `Icon` set and `paint_icon`: the one set of UI glyphs, every one drawn in the one line
+//! width (`STROKE`) at one of three size tokens (`SIZE_SM`, `SIZE_MD`, `SIZE_LG`, through
+//! `paint_icon_sized`; `paint_icon` draws `SIZE_LG`). The first icons' shapes are here, the
+//! newer ones in `ui/icons.rs` and the terminal panel header's in `ui/icons_panel.rs`. Glyphs
+//! the bundled fonts lack (a pencil, refresh) are icons here, never text. The 40 px empty-state
+//! illustrations (`ui/empty_state_icons.rs`) are a separate set.
 
 use eframe::egui::emath::TSTransform;
 use eframe::egui::layers::ShapeIdx;
@@ -115,6 +119,11 @@ pub enum Icon {
 
 /// Every icon's line width: they are outlines only.
 pub const STROKE: f32 = 1.6;
+/// The icon sizes: small (tabs, rails, menu marks), medium (buttons, header controls) and large
+/// (the toolbar, the grid every icon is drawn on).
+pub const SIZE_SM: f32 = 14.0;
+pub const SIZE_MD: f32 = 16.0;
+pub const SIZE_LG: f32 = 20.0;
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
     paint_icon_stroke(p, c, icon, Stroke::new(STROKE, col));
@@ -123,7 +132,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
 /// `icon` drawn `size` px across instead of the usual 20, its lines still `STROKE` wide: drawn
 /// at 20 px with thicker lines, then the shapes it added are scaled about `c`.
 pub fn paint_icon_sized(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: f32) {
-    let scale = size / 20.0;
+    let scale = size / SIZE_LG;
     let layer = p.layer_id();
     let start = p.ctx().graphics(|g| g.get(layer).map_or(ShapeIdx(0), |l| l.next_idx()));
     paint_icon_stroke(p, c, icon, Stroke::new(STROKE / scale, col));

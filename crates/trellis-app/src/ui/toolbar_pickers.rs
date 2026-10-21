@@ -15,6 +15,7 @@ use crate::ui::common::{menu_item, short};
 use crate::ui::menu_anchor;
 use crate::ui::theme::branch_colours::line;
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale::{self, BODY, CAPTION};
 use crate::ui::widgets::truncate::{cut_galley, cut_job, cut_middle_in};
 use crate::ui::widgets::{self, Icon};
@@ -30,7 +31,7 @@ pub const BRANCH_MIN: f32 = 40.0;
 /// A part's side padding, height and corners.
 const PAD_X: f32 = 10.0;
 const PART_H: f32 = 40.0;
-const PART_RADIUS: u8 = 7;
+const PART_RADIUS: u8 = radius::inside(widgets::GROUP_RADIUS, widgets::GROUP_PAD as u8);
 /// The caret's room after a name, and the branch icon's before it.
 const CARET_ROOM: f32 = 14.0;
 const ICON_ROOM: f32 = 20.0;
@@ -95,7 +96,7 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         part(ui, t.tr("toolbar.repository"), (g, repo_w), None, &repo, cut, |ui| repo_menu(ui, t, st, msgs));
         if let (Some(snap), Some(head)) = (&st.snap, &head) {
             let (rect, _) = ui.allocate_exact_size(vec2(CHEVRON_W, PART_H), Sense::hover());
-            widgets::paint_icon_sized(ui.painter(), rect.center(), Icon::ExpandRight, color::faint(), 14.0);
+            widgets::paint_icon_sized(ui.painter(), rect.center(), Icon::ExpandRight, color::faint(), widgets::icon::SIZE_SM);
             let shown = cut_middle_in(ui.painter(), head, &font, branch_w);
             let cut = shown != *head;
             let g = ui.painter().layout_no_wrap(shown, font.clone(), color::text());

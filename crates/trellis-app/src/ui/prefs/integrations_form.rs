@@ -5,6 +5,7 @@
 use super::{field_left, field_width, help, primary_button, row, text_field, trello};
 use crate::msg::{ForgeMsg, Msg, PrefsMsg};
 use crate::state::PrefsState;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, controls, type_scale};
 use crate::ui::widgets::form_message::{self, Message};
 use crate::ui::widgets::{self, Icon, buttons};
@@ -31,7 +32,7 @@ pub fn aligned(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
 /// Disconnect at the right. As wide as the column it is drawn in.
 pub fn account_card(ui: &mut Ui, c: &Connection, msgs: &mut Vec<Msg>) {
     let w = ui.available_width();
-    egui::Frame::new().fill(color::raised()).corner_radius(4).inner_margin(egui::Margin::symmetric(16, 12)).show(ui, |ui| {
+    egui::Frame::new().fill(color::raised()).corner_radius(radius::SM).inner_margin(egui::Margin::symmetric(16, 12)).show(ui, |ui| {
         ui.set_width((w - 32.0).max(0.0));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.add(buttons::secondary("Disconnect").small()).clicked() {

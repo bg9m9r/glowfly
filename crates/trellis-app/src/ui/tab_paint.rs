@@ -8,12 +8,13 @@
 
 use super::repo_swatch;
 use super::theme::color;
+use super::theme::tokens::radius;
 use super::widgets::tab_glyph::{self, TabGlyph};
-use super::widgets::{Cut, Icon, paint_cut_text, paint_icon_sized};
+use super::widgets::{Cut, Icon, icon, paint_cut_text, paint_icon_sized};
 use eframe::egui::{self, Color32, FontId, Rect, Stroke, StrokeKind, pos2, vec2};
 
 /// A tab's corners: rounded at the top, square where it meets the bar's bottom.
-pub(super) const ROUNDING: egui::CornerRadius = egui::CornerRadius { nw: 8, ne: 8, sw: 0, se: 0 };
+pub(super) const ROUNDING: egui::CornerRadius = radius::top(radius::LG);
 /// How much taller than its slot the active (and the dragged) tab stands.
 pub(super) const LIFT: f32 = 2.0;
 /// The band along the active tab's top.
@@ -21,7 +22,7 @@ const BAND: f32 = 2.0;
 /// A tab's room besides its name: the padding, the icon and its gap, the gap before the close
 /// slot, the close slot and the padding after it.
 const PAD_L: f32 = 12.0;
-const ICON: f32 = 14.0;
+const ICON: f32 = icon::SIZE_SM;
 const ICON_GAP: f32 = 8.0;
 const CLOSE_GAP: f32 = 8.0;
 const PAD_R: f32 = 10.0;

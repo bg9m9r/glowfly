@@ -139,7 +139,7 @@ the profile. Branch names always appear beside their colour, and main keeps the 
 `ansi.colors`: the built-in terminal's 16 basic colours (0-7 and their bright 8-15), one fixed
 table per built-in theme in `ui/theme/ansi.rs`, drawn on `input`. Bold text in 0-7 uses 8-15;
 the 256-colour cube, the grey ramp and truecolour are not themed. Not a theme-file key yet:
-theme files take their base theme's table. See section 5 for the values and section 3 for the
+theme files take their base theme's table. See section 6 for the values and section 3 for the
 floors.
 
 ### Diff and syntax
@@ -202,6 +202,12 @@ given, the second is for the high-contrast themes.
 | `on_needs_you` | needs_you, and needs_you shaded 10% (hover) | 4.5 / 7 |
 | `text` | tool backing, tool hover, tool pressed | 4.5 / 7 |
 | `weak` | tool backing | 4.5 |
+| `text` | overlay, inset | 4.5 / 7 |
+| `weak` | overlay, inset | 4.5 |
+| `text` | hover, pressed and latched layers on panel, raised, overlay and tool backing | 4.5 / 7 |
+| Tonal ink | tonal fill at rest, hovered and pressed | 4.5 / 7 |
+| `accent` (the focus ring) | bg, panel, input, raised, overlay, tool backing | 3 |
+| Tone tint ink (accent, success, warning, danger, info) | its tint | 4.5 |
 | Light's chip tones (`branch.chips`) | bg, panel, toolbar, hover, selected, raised | 4.5 |
 | Colour-blind line tones, applied to every built-in | bg, panel | 3 |
 | Colour-blind light text tones (chips on every light built-in) | bg, panel, toolbar, hover, selected, raised | 4.5 |
@@ -219,7 +225,23 @@ Colours 1-6 and 9-14 keep their hue's OKLCH band (red 0-45 or 345-360, green 115
 OKLCH lightness off its normal one: lighter in dark themes, darker in light ones, so bold text
 gets stronger rather than fainter. `theme/ansi_tests.rs` checks all of this.
 
-## 4. Chip tints
+## 4. Overlay, state layers and tones
+
+These are worked out from the palette in `theme/surfaces.rs`, so every theme, theme files
+included, gets them; none is a theme-file key. `theme/token_tests.rs` checks them over every
+built-in and two custom palettes with odd colours.
+
+| Token | What it is | What it is for |
+|---|---|---|
+| overlay | Dark: `raised` 6% toward `text`. Light: `panel`, and the shadow does the lifting. | Menus, tooltips, egui popups and combo lists, the tour card and toasts, with the Float shadow. Dialogs and the command palette stay on `panel` with the Dialog shadow. |
+| overlay edge | Dark: overlay 12% toward `text`. Light: `border`. | The 1 px edge of everything on the overlay. |
+| inset | Dark: `panel`. Light: `raised`. | A block set into an overlay (a tooltip's preview list). |
+| hover, pressed, latched | A surface 8%, 12% or 16% toward `text` (`hover_on(s)` and so on), or `text` at that opacity as a translucent layer for a control that doesn't know its surface. | Quiet buttons, ghost controls and menu items (`hover_on(overlay)`); latched is a toggle that stays on or an open menu's caret. The toolbar's hover and toggle fills are these on the tool backing. |
+| filled shading | A filled button's fill 10% (hover) or 18% (pressed) toward white in dark palettes, black in light ones. | Primary, secondary and danger buttons. |
+| tones | Accent, success (`added`), warning (`warn`), danger (`removed`) and info (`info`), each with a tint: the change-chip tint of the colour, with the colour pushed to read on it (below). | Toast outlines, the commit caret while hooks are skipped. |
+| tonal | The accent's tint as the fill (moved 10% / 18% toward the accent on hover / press) with the accent as ink, pushed per state until it reads at 4.5:1 (7:1 in a high-contrast palette). | Tonal buttons: important actions that aren't the view's main one (Stage all). |
+
+## 5. Chip tints
 
 A change chip (the WIP row's M / A / D) is an opaque tint of its status colour over the base:
 22% in dark palettes and 10% in light ones (`contrast::change_chip`). The chip text is the
@@ -227,7 +249,7 @@ status colour itself wherever that reaches 4.5:1 on the tint; otherwise `readabl
 5% at a time toward white (dark) or black (light) until it does. In Light that is only
 modified (3.9:1 unpushed); in Dark, removed and progress are pushed.
 
-## 5. Values
+## 6. Values
 
 ### Dark
 
@@ -364,7 +386,7 @@ and #d7d5bf (Sand), at most OKLCH chroma 0.030.
 The lowest ratios of a chromatic colour on `input` are 4.99 (Light 6) and 5.01 (Sand 2), and
 7.36 in High contrast light.
 
-## 6. Theme-file keys
+## 7. Theme-file keys
 
 A theme file (Preferences > UI Customization > Theme files) sets any of these keys, in this
 order, to `#rrggbb` or to another key's name; `trellis-core`'s `COLOR_KEYS` and
@@ -385,7 +407,7 @@ old and the new name, the new name wins. Keys a file leaves out (including `rais
 that sets its own `primary` but no `on_primary` keeps the base's ink only while it reaches 4.5:1
 on that primary, and otherwise gets white or black, whichever reads better.
 
-## 7. Adding a colour
+## 8. Adding a colour
 
 1. Add the field to its family in `families.rs`, or to the flat neutrals or brand groups of
    `Palette` in `color.rs`, and give it a value in every built-in.

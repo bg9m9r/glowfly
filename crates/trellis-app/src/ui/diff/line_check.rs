@@ -5,6 +5,7 @@
 use super::LineHover;
 use crate::ui::theme::color;
 use crate::ui::theme::contrast::ratio;
+use crate::ui::theme::tokens::radius;
 use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Shape, Stroke, StrokeKind, Ui, pos2, vec2};
 
 /// The check box's side.
@@ -45,7 +46,7 @@ pub(in crate::ui) fn gutter_sign(p: &Painter, at: Pos2, sign: char, fg: Color32,
 /// `selected`, otherwise hollow in the weak colour.
 fn check_box(p: &Painter, c: Pos2, selected: bool) {
     let r = Rect::from_center_size(c, vec2(BOX, BOX));
-    let round = CornerRadius::same(3);
+    let round = CornerRadius::same(radius::SM);
     if !selected {
         p.rect_stroke(r, round, Stroke::new(BOX_STROKE, color::weak()), StrokeKind::Inside);
         return;

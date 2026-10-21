@@ -4,6 +4,7 @@
 //! has no room for both, stacked full width above the form. Its text is plain labels, so a
 //! screen reader reads it after the form.
 
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, type_scale};
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, FontId, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, vec2};
 use trellis_core::i18n::Lang;
@@ -19,7 +20,7 @@ const BADGE: f32 = 20.0;
 const BADGE_GAP: f32 = 10.0;
 /// Between the heading and the first step, and between steps.
 const STEP_GAP: f32 = 12.0;
-const RADIUS: u8 = 8;
+const RADIUS: u8 = radius::LG;
 
 /// The steps a guided dialog explains (`dialog_guides.rs`), already in the dialog's language.
 pub struct Guide {

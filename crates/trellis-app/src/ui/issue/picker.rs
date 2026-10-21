@@ -7,6 +7,7 @@ use super::super::theme::color;
 use super::super::widgets::{self, Icon};
 use crate::state::issue_form::too_many;
 use crate::ui::theme::controls;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, CornerRadius, Rect, RichText, Sense, Ui, pos2, vec2};
 use trellis_core::matching::contains_lower;
@@ -100,12 +101,12 @@ fn chip(ui: &mut Ui, text: &str) -> bool {
     let size = vec2(galley.size().x + 30.0, 20.0);
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
     let p = ui.painter();
-    p.rect_filled(rect, CornerRadius::same(3), color::raised());
+    p.rect_filled(rect, CornerRadius::same(radius::SM), color::raised());
     p.galley(pos2(rect.left() + 6.0, rect.center().y - galley.size().y / 2.0), galley, color::text());
     let cross = Rect::from_center_size(pos2(rect.right() - 11.0, rect.center().y), vec2(18.0, 18.0));
     let r = ui.interact(cross, ui.id().with(("remove", rect.left().to_bits(), rect.top().to_bits())), Sense::click());
     if r.hovered() {
-        ui.painter().rect_filled(cross, CornerRadius::same(3), color::hover());
+        ui.painter().rect_filled(cross, CornerRadius::same(radius::SM), color::hover());
     }
     // Painted: the bundled fonts have no cross glyph to rely on.
     widgets::paint_icon(ui.painter(), cross.center(), Icon::Close, color::weak());

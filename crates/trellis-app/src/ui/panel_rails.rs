@@ -11,6 +11,7 @@ use crate::keymap::{BindingId, KeyAction};
 use crate::msg::{LayoutMsg, Msg};
 use crate::state::AppState;
 use crate::state::layout::{Panel, wip_change_count};
+use crate::ui::theme::tokens::radius;
 use eframe::egui::{self, CornerRadius, Sense, Stroke, StrokeKind, pos2, vec2};
 
 /// The edge strip's width.
@@ -43,7 +44,7 @@ pub(super) fn edge(ctx: &egui::Context, st: &AppState, panel: Panel, msgs: &mut 
         let x = if left { rect.right() - 0.5 } else { rect.left() + 0.5 };
         p.line_segment([pos2(x, rect.top()), pos2(x, rect.bottom())], Stroke::new(1.0_f32, color::border()));
         let col = if resp.hovered() { color::text() } else { color::weak() };
-        widgets::paint_icon_sized(p, rect.center(), icon, col, 14.0);
+        widgets::paint_icon_sized(p, rect.center(), icon, col, widgets::icon::SIZE_SM);
         access::name_button(&resp, true, name);
         let resp = resp.on_hover_text(st.keymap.tip(tip, key)).on_hover_cursor(egui::CursorIcon::PointingHand);
         if resp.clicked() {
@@ -92,7 +93,7 @@ fn change_pill(ui: &mut egui::Ui, count: usize, name: &str) -> egui::Response {
     let size = vec2((galley.size().x + 12.0).max(22.0), 20.0);
     let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
     let p = ui.painter();
-    let radius = CornerRadius::same(10);
+    let radius = CornerRadius::same(radius::pill(rect.height()));
     let fill = accent.gamma_multiply(if resp.hovered() { 0.3 } else { 0.18 });
     p.rect(rect, radius, fill, Stroke::new(1.0_f32, accent), StrokeKind::Inside);
     p.galley(rect.center() - galley.size() / 2.0, galley, color::text());

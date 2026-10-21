@@ -6,17 +6,17 @@ use crate::msg::Msg;
 use crate::state::terminal::{SessionStatus, TabRename, TermSession};
 use crate::state::tip::Tip;
 use crate::terminal::TerminalMsg;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, controls, type_scale};
 use crate::ui::widgets::tab_glyph::{self, TabGlyph};
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use crate::ui::widgets::{Icon, paint_icon_sized, tooltip};
+use crate::ui::widgets::{Icon, icon, paint_icon_sized, tooltip};
 use eframe::egui::{self, Align, CornerRadius, CursorIcon, Id, Key, Rect, Response, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use trellis_core::i18n::Lang;
 
 pub(super) const HEIGHT: f32 = 28.0;
-const RADIUS: u8 = 14;
 const PAD_X: f32 = 10.0;
-const ICON: f32 = 14.0;
+const ICON: f32 = icon::SIZE_SM;
 const GAP: f32 = 6.0;
 const DOT: f32 = 6.0;
 const CLOSE: f32 = 16.0;
@@ -75,7 +75,7 @@ pub(super) fn show(
     };
     let p = ui.painter();
     if let Some(fill) = fill {
-        p.rect_filled(rect, CornerRadius::same(RADIUS), fill);
+        p.rect_filled(rect, CornerRadius::same(radius::pill(HEIGHT)), fill);
     }
     let cy = rect.center().y;
     let mut x = rect.left() + PAD_X;

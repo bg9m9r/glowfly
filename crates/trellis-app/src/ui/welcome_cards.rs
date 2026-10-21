@@ -7,6 +7,7 @@ use super::theme::contrast;
 use super::welcome_art;
 use crate::msg::Msg;
 use crate::onboarding::{OnboardingMsg, StartChoice};
+use crate::ui::theme::tokens::{self, radius};
 use crate::ui::theme::type_scale;
 use eframe::egui::{
     self, Align, Color32, CornerRadius, FontId, Layout, Painter, Pos2, Rect, Response, RichText, Sense, Shape, Stroke, StrokeKind, Ui,
@@ -27,7 +28,7 @@ const TITLE_GAP: f32 = 4.0;
 /// The least height side by side and stacked.
 const MIN_H: f32 = 132.0;
 const ROW_MIN_H: f32 = 64.0;
-const RADIUS: u8 = 8;
+const RADIUS: u8 = radius::LG;
 
 /// The three cards; a click (or Enter or Space on a focused card) finishes with its choice.
 pub(super) fn choices(ui: &mut Ui, t: Lang, msgs: &mut Vec<Msg>) {
@@ -112,7 +113,7 @@ fn paint_card(p: &Painter, rect: Rect, resp: &Response) {
     };
     p.rect(rect, radius, fill, Stroke::new(1.0_f32, edge), StrokeKind::Inside);
     if resp.has_focus() {
-        p.rect_stroke(rect.expand(2.0), CornerRadius::same(RADIUS + 2), Stroke::new(2.0_f32, color::accent()), StrokeKind::Outside);
+        tokens::focus_ring(p, rect, RADIUS);
     }
 }
 

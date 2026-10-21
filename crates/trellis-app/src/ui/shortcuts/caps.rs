@@ -3,6 +3,7 @@
 
 use crate::keymap::Chord;
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{
     self, Color32, CornerRadius, FontId, Galley, Rect, Response, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2,
@@ -68,7 +69,7 @@ impl Caps {
             let w = piece_width(cap, &g);
             let r = Rect::from_min_size(pos2(x, rect.top()), vec2(w, rect.height()));
             if cap {
-                painter.rect(r, CornerRadius::same(3), fill, Stroke::new(1.0_f32, border), StrokeKind::Inside);
+                painter.rect(r, CornerRadius::same(radius::SM), fill, Stroke::new(1.0_f32, border), StrokeKind::Inside);
             }
             let at = r.center() - g.size() / 2.0;
             painter.galley(at, g, fg);

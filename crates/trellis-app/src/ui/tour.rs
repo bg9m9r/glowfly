@@ -11,6 +11,7 @@ use crate::onboarding::OnboardingMsg;
 use crate::state::AppState;
 use crate::state::layout::{self, Panel};
 use crate::state::onboarding_tour::{NO_REPOSITORY, PANEL_HIDDEN, TourStep};
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{
@@ -93,7 +94,7 @@ fn scrim(ctx: &egui::Context, screen: Rect, target: Option<Rect>) {
     p.rect_filled(Rect::from_min_max(pos2(screen.min.x, t.bottom()), screen.max), CornerRadius::ZERO, dim);
     p.rect_filled(Rect::from_min_max(pos2(screen.min.x, t.top()), pos2(t.left(), t.bottom())), CornerRadius::ZERO, dim);
     p.rect_filled(Rect::from_min_max(pos2(t.right(), t.top()), pos2(screen.max.x, t.bottom())), CornerRadius::ZERO, dim);
-    p.rect_stroke(t.shrink(1.0), CornerRadius::same(6), Stroke::new(2.0_f32, color::accent()), StrokeKind::Inside);
+    p.rect_stroke(t.shrink(1.0), CornerRadius::same(radius::MD), Stroke::new(2.0_f32, color::accent()), StrokeKind::Inside);
 }
 
 /// The card: title and close, the text, the step's own buttons, then where the tour is and

@@ -7,6 +7,7 @@ use super::DiffView;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use eframe::egui::{Align2, CornerRadius, CursorIcon, Painter, Pos2, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use trellis_core::diff_rows::GapSpan;
 use trellis_core::whole_file::Fold;
@@ -79,7 +80,7 @@ pub(super) fn gap_control(ui: &mut Ui, rect: Rect, v: &DiffView, g: GapSpan, msg
     let p = ui.painter().with_clip_rect(r.intersect(ui.clip_rect()));
     let hovered = resp.hovered();
     if hovered {
-        p.rect_filled(r, CornerRadius::same(3), color::hover());
+        p.rect_filled(r, CornerRadius::same(radius::SM), color::hover());
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
     let ink = if hovered { color::text() } else { color::weak() };
@@ -108,7 +109,7 @@ pub(super) fn fold_back_key(ui: &mut Ui, row: Rect, v: &DiffView, key: u32, len:
     let p = ui.painter().with_clip_rect(r.intersect(ui.clip_rect()));
     let hovered = resp.hovered();
     if hovered {
-        p.rect_filled(r, CornerRadius::same(3), color::hover());
+        p.rect_filled(r, CornerRadius::same(radius::SM), color::hover());
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
     let ink = if hovered { color::text() } else { color::faint() };

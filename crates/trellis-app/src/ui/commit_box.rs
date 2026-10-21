@@ -1,14 +1,15 @@
 //! The commit box under the WIP file lists: summary and description, the Amend and "Push after
 //! committing" options, the commit button with why it is disabled centred under it (that line's
-//! height is always kept, so the box doesn't change height), a more-actions menu right of the
-//! button holding "Skip hooks" (tinted amber while hooks are skipped), and the Ctrl+Enter
-//! shortcuts. The summary takes the keyboard when `view.focus_message` is set (Ctrl+Shift+M).
+//! height is always kept, so the box doesn't change height), the button's menu caret (one split
+//! button) opening a menu with "Skip hooks" (the caret tinted with the warning tone while hooks
+//! are skipped), and the Ctrl+Enter shortcuts. The summary takes the keyboard when `view.focus_message` is set (Ctrl+Shift+M).
 
 use super::UiCache;
 use super::common::issue_chip;
 use super::spell_edit::spell_text_edit;
-use super::theme::{color, contrast};
-use super::widgets::{self, Icon};
+use super::theme::color;
+use super::theme::surfaces::Tone;
+use super::widgets::button_split::CARET_W;
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::CommitMsg;
 use crate::msg::Msg;
@@ -18,7 +19,7 @@ use crate::state::commit::{commit_blocked, pushes_after};
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::{buttons, reason};
-use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText, Stroke, vec2};
+use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText};
 use trellis_core::i18n::Lang;
 
 /// Height the commit box needs below the file lists (the lists share what is left), its reason
@@ -97,12 +98,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     let enabled = blocked.is_none();
     let tip = shortcuts_tip(t, &st.keymap);
     ui.horizontal(|ui| {
-        let w = ui.available_width() - MORE_W - ui.spacing().item_spacing.x;
-        let button = buttons::primary(label).enabled(enabled).why(blocked).tip(&tip).min_width(w).max_width(w).min_height(MORE_W);
-        if ui.add(button).clicked() {
+        if commit_split(ui, label, enabled, blocked, &tip, &mut st.draft, t).clicked() {
             msgs.push(Msg::Commit(CommitMsg::Commit));
         }
-        more_menu(ui, &mut st.draft, t);
     });
     reason::line(ui, blocked, Align::Center);
 
@@ -120,27 +118,38 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     }
 }
 
-/// The more-actions button's side: square, as tall as the commit button.
-const MORE_W: f32 = 34.0;
+/// The commit button's height.
+const BUTTON_H: f32 = 34.0;
 
-/// The painted more-actions button right of the commit button, and its menu with Skip hooks.
-/// Tinted amber while hooks are skipped, so the choice stays visible with the menu closed.
-fn more_menu(ui: &mut egui::Ui, draft: &mut CommitDraft, t: Lang) {
-    let on = draft.skip_hooks;
-    let mut b = egui::Button::new("").min_size(vec2(MORE_W, MORE_W));
-    if on {
-        b = b.fill(contrast::mix(color::panel(), color::warn(), 0.25)).stroke(Stroke::new(1.0_f32, color::warn()));
+/// The commit button and its menu caret as one split button; the caret opens the menu with
+/// Skip hooks, and is tinted with the warning tone while hooks are skipped, so the choice stays
+/// visible with the menu closed. Returns the commit button's response.
+fn commit_split(
+    ui: &mut egui::Ui,
+    label: String,
+    enabled: bool,
+    blocked: Option<&str>,
+    tip: &str,
+    draft: &mut CommitDraft,
+    t: Lang,
+) -> egui::Response {
+    let popup = ui.make_persistent_id("commit-more");
+    let open = ui.memory(|m| m.is_popup_open(popup));
+    let skip = draft.skip_hooks;
+    let w = ui.available_width() - CARET_W;
+    let button = buttons::primary(label).enabled(enabled).why(blocked).tip(tip).min_width(w).max_width(w).min_height(BUTTON_H);
+    // The caret's name stays the same either way, so it is always found by it.
+    let (commit, caret) = buttons::split(button, t.tr("commit.more.tip")).open(open).menu_tone(skip.then_some(Tone::Warning)).show(ui);
+    let caret = caret.on_hover_text(if skip { t.tr("commit.more.skipping_tip") } else { t.tr("commit.more.tip") });
+    if caret.clicked() {
+        ui.memory_mut(|m| m.toggle_popup(popup));
     }
-    let menu = egui::menu::menu_custom_button(ui, b, |ui| {
+    egui::popup::popup_below_widget(ui, popup, &caret, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
         let check = controls::checkbox(ui, &mut draft.skip_hooks, t.tr("commit.skip_hooks.check"));
-        // Close at once, so the button's tint shows the choice.
+        // Close at once, so the caret's tint shows the choice.
         if check.on_hover_text(t.tr("commit.skip_hooks.tip")).changed() {
-            ui.close_menu();
+            ui.memory_mut(|m| m.close_popup());
         }
     });
-    let tip = if on { t.tr("commit.more.skipping_tip") } else { t.tr("commit.more.tip") };
-    let r = menu.response.on_hover_text(tip);
-    widgets::paint_icon(ui.painter(), r.rect.center(), Icon::More, if on { color::warn() } else { color::text() });
-    // The name stays the same either way, so the button is always found by it.
-    super::access::name_button(&r, true, t.tr("commit.more.tip"));
+    commit
 }

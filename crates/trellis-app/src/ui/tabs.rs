@@ -15,6 +15,7 @@ use super::tab_drag::{SLIDE, Slot, drag, lefts_after};
 use super::tab_paint::{LIFT, SWATCH_ROOM, TabLook, close_rect, group_color, paint_group_strip, paint_separator, paint_tab, tab_width};
 use super::theme::branch_colours::line;
 use super::theme::color;
+use super::theme::tokens::motion;
 use super::widgets::reason::{self, ItemState};
 use super::widgets::truncate::full_tip;
 use crate::msg::Msg;
@@ -39,7 +40,7 @@ const PLUS_W: f32 = 32.0;
 /// The narrowest a tab gets when there are too many to show at their own widths.
 const MIN_W: f32 = 60.0;
 /// How long the close × takes to fade in or out.
-const CLOSE_FADE: f32 = 0.10;
+const CLOSE_FADE: f32 = motion::QUICK;
 
 /// The tab bar under the system frame's title bar. Its tabs start `LIFT` below its top, so the
 /// active tab has room to stand taller.
@@ -106,7 +107,11 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         let fill = backdrop::fill(st.view.backdrop, Surface::Side, color::panel());
         let band = st.snap.as_ref().and_then(|s| s.head_swatch()).map_or_else(color::accent, line);
         let look = |i: usize, active: bool| TabLook { active, band, repo: repo_of(i), ..TabLook::quiet(fill) };
-        let (slide, fade) = if st.settings.reduce_motion { (0.0, 0.0) } else { (SLIDE, CLOSE_FADE) };
+        let (slide, fade) = if st.settings.reduce_motion {
+            (0.0, 0.0)
+        } else {
+            (motion::duration(SLIDE, ui.ctx()), motion::duration(CLOSE_FADE, ui.ctx()))
+        };
         // Lit tabs (active, hovered or pressed) get no separator beside them, and none while dragging.
         if floating.is_none() {
             let lit = |i: usize, s: &Slot| i == st.active_tab || s.r.hovered() || s.close.hovered() || s.r.is_pointer_button_down_on();

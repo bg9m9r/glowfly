@@ -4,12 +4,13 @@
 
 use super::common::{status_color, status_label};
 use super::theme::{color, contrast};
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{Align2, CornerRadius, Response, Sense, Ui, vec2};
 
 /// The chip's width and height, the same for every letter so the paths line up.
 pub(super) const STATUS_CHIP_W: f32 = 20.0;
-const RADIUS: u8 = 4;
+const RADIUS: u8 = radius::SM;
 
 /// Draws the chip for `status`; returns its (hover) response.
 pub(super) fn status_chip(ui: &mut Ui, status: char) -> Response {

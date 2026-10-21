@@ -13,6 +13,7 @@ use super::{menu_anchor, menu_bar, tabs};
 use crate::msg::{AppMsg, Msg};
 use crate::state::AppState;
 use crate::state::window_chrome::{AltFrame, WindowCmd};
+use crate::ui::theme::tokens::radius;
 use eframe::egui::{
     self, Align, CornerRadius, Event, Id, LayerId, Layout, PointerButton, Pos2, Rect, Sense, UiBuilder, WidgetInfo, WidgetType, pos2, vec2,
 };
@@ -101,9 +102,9 @@ fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Ms
     let open = menu_anchor::menu_below(ui, Id::new("main-menu"), &r, toggle, |ui| menu_bar::menus(ui, st, msgs));
     let p = ui.painter();
     if open {
-        p.rect_filled(rect, CornerRadius::same(6), color::selected());
+        p.rect_filled(rect, CornerRadius::same(radius::MD), color::selected());
     } else if r.hovered() {
-        p.rect_filled(rect, CornerRadius::same(6), color::hover());
+        p.rect_filled(rect, CornerRadius::same(radius::MD), color::hover());
     }
     paint_icon(p, rect.center(), Icon::Menu, color::text());
     let name = t.tr("title_bar.menu.tip");

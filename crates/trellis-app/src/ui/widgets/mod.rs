@@ -12,14 +12,19 @@
 //! `tab_glyph.rs`, and the quiet, clickable chips of the commit details (its
 //! SHA, parents and committer) in `quiet_chip.rs`. The quiet headers' ghost buttons, divider
 //! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`. A dialog's 36 px
-//! text field is `text_field.rs`, and its label-field-help group `field_group.rs`.
+//! text field is `text_field.rs`, and its label-field-help group `field_group.rs`. The button
+//! family (primary, tonal, secondary, quiet, danger, icon-only) is `buttons.rs`, each state's
+//! colours `button_look.rs`, and the split button (an action and its menu caret as one pill)
+//! `button_split.rs`.
 
 pub mod banner;
+mod button_look;
+pub mod button_split;
 pub mod buttons;
 pub mod field_group;
 pub mod form_message;
 pub mod ghost;
-mod icon;
+pub mod icon;
 pub mod menu_reason;
 pub mod quiet_chip;
 pub mod reason;
@@ -49,6 +54,7 @@ pub use tool::*;
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 
 use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
@@ -62,12 +68,12 @@ pub fn chevron(p: &Painter, c: Pos2, open: bool, col: Color32) {
     p.add(egui::Shape::convex_polygon(pts, col, Stroke::NONE));
 }
 
-/// Rounded label chip drawn with the painter; returns its width.
+/// A pill-shaped label chip drawn with the painter; returns its width.
 pub fn chip(p: &Painter, x: f32, y: f32, text: &str, fill: Color32, fg: Color32) -> f32 {
     let g = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::CAPTION), fg);
     let w = g.size().x + 12.0;
     let r = Rect::from_min_size(pos2(x, y - 10.0), vec2(w, 20.0));
-    p.rect_filled(r, CornerRadius::same(3), fill);
+    p.rect_filled(r, CornerRadius::same(radius::pill(r.height())), fill);
     let gh = g.size().y;
     p.galley(pos2(x + 6.0, y - gh / 2.0), g, fg);
     w
@@ -116,17 +122,11 @@ pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> R
     resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 
-/// A small square button showing a painted icon (for glyphs the font lacks).
+/// A small icon-only button (`buttons::icon_only`, 24 x 24, no fill until hovered) named and
+/// tipped `tooltip`.
 pub fn icon_button(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
-    // Disabled (e.g. inside `add_enabled_ui`): dimmed, inert, and still explained on hover.
-    let enabled = ui.is_enabled();
-    let (rect, resp) = ui.allocate_exact_size(vec2(26.0, 24.0), if enabled { Sense::click() } else { Sense::hover() });
-    let p = ui.painter();
-    let fill = if enabled && resp.hovered() { color::hover() } else { color::raised() };
-    p.rect_filled(rect, CornerRadius::same(3), fill);
-    // The toolbar icons are drawn for ~20px; scale down by drawing at the center.
-    paint_icon(p, rect.center(), icon, if enabled { color::text() } else { color::faint() });
-    resp.on_hover_text(tooltip).on_disabled_hover_text(tooltip)
+    // Disabled (e.g. inside `add_enabled_ui`): faint, inert, and still explained on hover.
+    ui.add(buttons::icon_only(icon, tooltip).small().enabled(ui.is_enabled()).why(Some(tooltip)))
 }
 
 /// A small clickable painted icon with a tooltip, for icons the fonts lack (star, cross).
@@ -134,8 +134,12 @@ pub fn small_icon(ui: &mut Ui, icon: Icon, tooltip: &str, col: Color32) -> Respo
     let (rect, resp) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tooltip));
     if resp.hovered() {
-        ui.painter().rect_filled(rect, CornerRadius::same(3), color::hover());
+        ui.painter().rect_filled(rect, CornerRadius::same(radius::SM), color::hover_layer());
     }
     paint_icon(ui.painter(), rect.center(), icon, col);
     resp.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(tooltip)
 }
+
+#[cfg(test)]
+#[path = "../snapshot_tests_design.rs"]
+mod snapshot_tests_design;

@@ -8,6 +8,7 @@ use super::nodes;
 use super::paint::{draw_lanes, lane_x, paint_pencil};
 use crate::ui::common::{added_color, modified_color, removed_color};
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::truncate::cut_left_in;
 use eframe::egui::{Color32, CornerRadius, Galley, Painter, Rect, pos2, vec2};
@@ -69,7 +70,7 @@ fn box_layout(p: &Painter, text: &str, col_w: f32, counts_w: f32) -> (Arc<Galley
 /// returns its right edge.
 fn wip_box(mp: &Painter, x: f32, mid: f32, g: Arc<Galley>, w: f32) -> f32 {
     let r = Rect::from_min_size(pos2(x, mid - 11.0), vec2(w, 22.0));
-    mp.rect_filled(r, CornerRadius::same(3), color::input());
+    mp.rect_filled(r, CornerRadius::same(radius::SM), color::input());
     mp.galley(pos2(r.left() + PAD, mid - g.size().y / 2.0), g, color::weak());
     r.right()
 }

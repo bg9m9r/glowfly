@@ -13,6 +13,7 @@ use crate::state::rebase::RebasePanel;
 use crate::state::rebase_remaining::LOCKED_NOTE;
 use crate::state::tabs::index_after_move;
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Color32, CursorIcon, Rect, Response, RichText, Sense, Ui, pos2, vec2};
 use trellis_core::rebase::{RebaseAction, ResetTo, TodoStep};
@@ -227,7 +228,7 @@ fn locked(ui: &mut Ui, panel: &RebasePanel, look: &Look) {
         r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, false, &label));
         paint(ui, rect, step, "", look, Shade::Plain, true);
         // Dimmed under a veil of the background.
-        ui.painter().rect_filled(rect, egui::CornerRadius::same(4), color::bg().gamma_multiply(0.55));
+        ui.painter().rect_filled(rect, egui::CornerRadius::same(radius::SM), color::bg().gamma_multiply(0.55));
     }
     ui.add_space(6.0);
 }

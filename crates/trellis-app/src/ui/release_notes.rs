@@ -6,6 +6,7 @@ use super::theme::color;
 use super::widgets::{self, Icon, buttons};
 use crate::msg::{Msg, UpdateMsg};
 use crate::state::release_notes::NotesDialog;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText, Sense, Stroke, pos2, vec2};
 use trellis_core::changelog::{NoteSection, ReleaseNotes, Span, SpanStyle};
@@ -26,7 +27,7 @@ fn body(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) {
         egui::Frame::new()
             .fill(color::panel())
             .stroke(Stroke::new(1.0_f32, color::border()))
-            .corner_radius(6)
+            .corner_radius(radius::MD)
             .inner_margin(egui::Margin::same(12))
             .show(ui, |ui| {
                 ui.set_width(ui.available_width());

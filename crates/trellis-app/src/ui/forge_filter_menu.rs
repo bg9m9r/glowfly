@@ -10,6 +10,7 @@ use super::widgets::section_header::{self, HeaderAdd, HeaderResponse, MenuFn};
 use super::widgets::{self, Icon};
 use crate::msg::{FilterMsg, Msg};
 use crate::state::forge_filters::Hint;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, CornerRadius, Layout, Rect, Response, Sense, Stroke, UiBuilder, pos2, vec2};
 use trellis_core::forge::filters::matching;
@@ -56,9 +57,14 @@ pub(super) fn header(
     let popup = id.with("popover");
     let showing = ui.memory(|m| m.is_popup_open(popup));
     if chip_resp.hovered() || showing {
-        painter.rect_filled(chip, CornerRadius::same(10), color::selected());
+        painter.rect_filled(chip, CornerRadius::same(radius::pill(chip.height())), color::selected());
     }
-    painter.rect_stroke(chip, CornerRadius::same(10), Stroke::new(1.0_f32, color::border()), egui::StrokeKind::Inside);
+    painter.rect_stroke(
+        chip,
+        CornerRadius::same(radius::pill(chip.height())),
+        Stroke::new(1.0_f32, color::border()),
+        egui::StrokeKind::Inside,
+    );
     painter.galley(pos2(chip.left() + 8.0, cy - galley.size().y / 2.0), galley, color::weak());
     widgets::chevron(&painter, pos2(chip.right() - 10.0, cy + 0.5), true, color::weak());
     let name = t.trf("sidebar.filter_chip.name", &[("section", &title), ("filter", &p.label)]);
@@ -133,7 +139,7 @@ fn row(ui: &mut egui::Ui, text: &str, checked: bool, why: Option<&str>) -> Respo
 fn paint_row(ui: &egui::Ui, rect: Rect, text: &str, checked: bool, enabled: bool, hovered: bool) {
     let p = ui.painter();
     if hovered {
-        p.rect_filled(rect, CornerRadius::same(3), color::hover());
+        p.rect_filled(rect, CornerRadius::same(radius::SM), color::hover());
     }
     if checked {
         let (c, s) = (pos2(rect.left() + 11.0, rect.center().y), Stroke::new(1.8_f32, color::info()));

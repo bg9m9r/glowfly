@@ -3,12 +3,13 @@
 //! The rise is a translation of the tooltip's layer, set once a frame after everything is
 //! drawn (`animate`); egui's own area fade does the opacity.
 
+use crate::ui::theme::tokens::motion;
 use eframe::egui::{self, Context, Id, LayerId, Order, emath::TSTransform, vec2};
 
 /// How long the fade and the rise take (egui's `animation_time`).
-pub const FADE: f32 = 0.12;
+pub const FADE: f32 = motion::STANDARD;
 /// How far below its place a tooltip starts.
-pub const RISE: f32 = 4.0;
+pub const RISE: f32 = motion::RISE;
 /// A tooltip shown within this long of another one closing replaces it without motion (egui's
 /// tooltip grace time).
 pub const GRACE: f32 = 0.3;
@@ -33,13 +34,13 @@ fn key() -> Id {
     Id::new("trellis-tooltip-motion")
 }
 
-/// How far below its place a tooltip `age` seconds old is drawn: `RISE` at first, easing out to
-/// 0 at `FADE`; always 0 with reduced motion.
+/// How far below its place a tooltip `age` seconds old is drawn: `RISE` at first, easing
+/// (`motion::ease`) to 0 at `FADE`; always 0 with reduced motion.
 pub fn rise(age: f32, reduce: bool) -> f32 {
     if reduce || age >= FADE {
         return 0.0;
     }
-    RISE * (1.0 - egui::emath::easing::quadratic_out((age / FADE).clamp(0.0, 1.0)))
+    RISE * (1.0 - motion::ease(age / FADE))
 }
 
 /// Whether the tooltip drawn on `layer` replaces one that was just showing (so it shouldn't
@@ -95,11 +96,11 @@ mod tests {
     #[test]
     fn the_rise_eases_out_and_stops() {
         assert_eq!(rise(0.0, false), RISE);
-        let mid = rise(0.06, false);
+        let mid = rise(FADE / 2.0, false);
         assert!(0.0 < mid && mid < RISE, "{mid}");
         assert_eq!(rise(FADE, false), 0.0);
         assert_eq!(rise(1.0, false), 0.0);
-        for age in [0.0, 0.06, 0.12, 2.0] {
+        for age in [0.0, FADE / 2.0, FADE, 2.0] {
             assert_eq!(rise(age, true), 0.0, "reduced motion at {age}");
         }
     }

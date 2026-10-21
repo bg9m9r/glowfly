@@ -10,6 +10,7 @@ use crate::conflict_check::ConflictCheckMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::conflict_check::{self as cc, ConflictReport};
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Id, RichText, Sense, pos2, vec2};
 use trellis_core::conflict_check::Prediction;
@@ -161,7 +162,7 @@ fn actions(t: Lang, report: &ConflictReport) -> Vec<(String, Msg)> {
 /// own (`short`), in the report dialog in the dialog's.
 pub(super) fn file_list(ui: &mut egui::Ui, t: Lang, paths: &[String], short: bool) {
     let (shown, more) = cc::file_list(t, paths);
-    egui::Frame::new().fill(color::input()).corner_radius(4.0).inner_margin(egui::Margin::symmetric(8, 6)).show(ui, |ui| {
+    egui::Frame::new().fill(color::input()).corner_radius(radius::SM).inner_margin(egui::Margin::symmetric(8, 6)).show(ui, |ui| {
         let lines = |ui: &mut egui::Ui| {
             for p in &shown {
                 ui.label(RichText::new(p).monospace());

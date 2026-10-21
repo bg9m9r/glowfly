@@ -6,6 +6,7 @@ use super::controls::ICON;
 use super::fit::{Plan, Widths};
 use crate::state::diff_header::{ChangeText, Context, FileKind, HeaderModel};
 use crate::ui::common::{added_color, removed_color, status_color};
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::theme::{color, fonts};
 use crate::ui::widgets::truncate::cut_left;
@@ -19,7 +20,7 @@ pub(super) const GAP: f32 = 8.0;
 const PATH_PX: f32 = type_scale::BODY;
 /// A chip's height, corners, side padding and the gap between its parts.
 const CHIP_H: f32 = 22.0;
-const CHIP_RADIUS: u8 = 6;
+const CHIP_RADIUS: u8 = radius::MD;
 const CHIP_PAD: f32 = 8.0;
 const CHIP_GAP: f32 = 6.0;
 const CHIP_PX: f32 = type_scale::SMALL;

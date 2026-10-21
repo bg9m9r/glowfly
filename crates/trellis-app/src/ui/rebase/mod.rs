@@ -26,6 +26,7 @@ use crate::state::AppState;
 use crate::state::rebase::{HINT, PanelSource, RebasePanel, needs_stash};
 use crate::state::rebase_remaining::{NO_STEPS, REMAINING_HINT, REMAINING_TITLE, UPDATE};
 use crate::state::rebase_steps::NewStep;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::{buttons, truncate};
 use eframe::egui::{self, Align, Layout, RichText, Sense, Stroke, Ui, vec2};
@@ -137,8 +138,8 @@ fn plus_button(ui: &mut Ui, label: &str) -> egui::Response {
     r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, label));
     let p = ui.painter();
     let fill = if enabled && r.hovered() { color::hover() } else { color::raised() };
-    p.rect_filled(rect, egui::CornerRadius::same(4), fill);
-    p.rect_stroke(rect, egui::CornerRadius::same(4), Stroke::new(1.0_f32, color::border()), egui::StrokeKind::Inside);
+    p.rect_filled(rect, egui::CornerRadius::same(radius::SM), fill);
+    p.rect_stroke(rect, egui::CornerRadius::same(radius::SM), Stroke::new(1.0_f32, color::border()), egui::StrokeKind::Inside);
     paint_icon(p, egui::pos2(rect.left() + 15.0, rect.center().y), Icon::Plus, if enabled { color::primary() } else { color::faint() });
     p.galley(egui::pos2(rect.left() + 28.0, rect.center().y - galley.size().y / 2.0), galley, text_color);
     r

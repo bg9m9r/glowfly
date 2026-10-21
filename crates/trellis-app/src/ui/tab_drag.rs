@@ -6,13 +6,14 @@
 
 use crate::msg::{Msg, TabsMsg};
 use crate::state::tab_groups::{is_identity, move_order};
+use crate::ui::theme::tokens::motion;
 use eframe::egui::{self, CursorIcon, Id, Key, PointerButton, Rect, Response, pos2};
 use std::ops::Range;
 
 /// Where the drag in progress is kept in egui's temporary memory.
 const DRAG_ID: &str = "tab-drag";
 /// How long a tab takes to slide out of the dragged tab's way.
-pub(super) const SLIDE: f32 = 0.12;
+pub(super) const SLIDE: f32 = motion::STANDARD;
 
 /// A tab being dragged: its index and where on it the pointer grabbed it (from its left edge).
 /// Kept in egui's temporary memory, since the press position is gone by the release frame.

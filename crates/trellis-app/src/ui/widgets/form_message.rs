@@ -6,6 +6,7 @@
 use super::super::theme::color;
 use super::severity::{self, Severity};
 use crate::state::touched::Touched;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, CornerRadius, FontId, Response, RichText, Sense, Stroke, Ui, vec2};
 use std::borrow::Cow;
@@ -75,7 +76,7 @@ pub fn form(ui: &mut Ui, msg: Message) {
     egui::Frame::new()
         .fill(tint.gamma_multiply(0.12))
         .stroke(Stroke::new(1.0_f32, tint.gamma_multiply(0.5)))
-        .corner_radius(CornerRadius::same(4))
+        .corner_radius(CornerRadius::same(radius::SM))
         .inner_margin(egui::Margin::symmetric(10, 8))
         .show(ui, |ui| {
             ui.set_min_width(ui.available_width());

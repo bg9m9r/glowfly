@@ -9,9 +9,11 @@ use crate::msg::{Msg, StageMsg, WorkFileMsg};
 use crate::ui::access;
 use crate::ui::common::menu_item;
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::buttons::{self, StyledButton};
 use crate::ui::widgets::{self, Icon, truncate};
-use eframe::egui::{self, Align, Color32, Layout, Response, Sense, TextStyle, TextWrapMode, Ui, vec2};
+use eframe::egui::{self, Align, Color32, Layout, Response, Sense, Ui, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::undo::DISCARD_STASH_MESSAGE;
 
@@ -45,6 +47,19 @@ impl HeaderAction {
             Self::StageAll => Some(keys.tip(t.tr("details.wip.stage_all.tip"), BindingId::StageAll)),
             Self::UnstageAll => Some(keys.tip(t.tr("details.wip.unstage_all.tip"), BindingId::UnstageAll)),
             Self::DiscardAll | Self::NewFile => None,
+        }
+    }
+
+    /// The button: tonal for Stage all and Unstage all, secondary for the rest; small.
+    fn button<'a>(self, t: Lang, tip: Option<&'a str>) -> StyledButton<'a> {
+        let b = match self {
+            Self::StageAll | Self::UnstageAll => buttons::tonal(self.label(t)),
+            Self::DiscardAll | Self::NewFile => buttons::secondary(self.label(t)),
+        };
+        let b = b.small();
+        match tip {
+            Some(tip) => b.tip(tip),
+            None => b,
         }
     }
 
@@ -101,7 +116,7 @@ pub(super) fn header(ui: &mut Ui, title: String, staged: bool, count: usize, ctx
     // they keep their own clicks.
     let sense = if staged { Sense::click() } else { Sense::hover() };
     let scope = ui.scope_builder(egui::UiBuilder::new().sense(sense), |ui| {
-        egui::Frame::new().fill(color::raised()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
+        egui::Frame::new().fill(color::raised()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(radius::SM).show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     buttons(ui, &title, staged, count, ctx, msgs);
@@ -124,28 +139,27 @@ pub(super) fn header(ui: &mut Ui, title: String, staged: bool, count: usize, ctx
 fn buttons(ui: &mut Ui, title: &str, staged: bool, count: usize, ctx: RowContext, msgs: &mut Vec<Msg>) {
     let (keys, t) = (ctx.keys, ctx.lang);
     let actions = actions(staged, count);
-    // Small buttons draw their text in the body font.
-    let font = TextStyle::Body.resolve(ui.style());
-    let text_w = |s: &str, font: &egui::FontId| ui.fonts(|f| f.layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x);
-    let (pad, gap) = (ui.spacing().button_padding.x, ui.spacing().item_spacing.x);
-    let widths: Vec<f32> = actions.iter().map(|a| text_w(a.label(t), &font) + 2.0 * pad).collect();
-    let title_w = text_w(title, &type_scale::section(ui));
+    let tips: Vec<Option<String>> = actions.iter().map(|a| a.tip(keys, t)).collect();
+    let gap = ui.spacing().item_spacing.x;
+    let widths = widths(ui, &actions, t);
+    let section = type_scale::section(ui);
+    let title_w = ui.fonts(|f| f.layout_no_wrap(title.to_owned(), section, Color32::PLACEHOLDER).size().x);
     let avail = ui.available_width();
     let cut = shown_count(avail, title_w.min(TITLE_MIN), &widths, MORE_W + gap, gap);
     let shown = whole_title_count(cut, shown_count(avail, title_w, &widths, MORE_W + gap, gap), widths.len());
     if shown < actions.len() {
         more_button(ui, &actions[shown..], ctx, msgs);
     }
-    for a in &actions[..shown] {
-        let r = ui.add(egui::Button::new(a.label(t)).small().wrap_mode(TextWrapMode::Extend));
-        let r = match a.tip(keys, t) {
-            Some(tip) => r.on_hover_text(tip),
-            None => r,
-        };
-        if r.clicked() {
+    for (a, tip) in actions[..shown].iter().zip(&tips) {
+        if ui.add(a.button(t, tip.as_deref())).clicked() {
             msgs.push(a.msg(t, keys));
         }
     }
+}
+
+/// The widths of `actions`' buttons in `ui`, as `StyledButton` lays them out.
+fn widths(ui: &Ui, actions: &[HeaderAction], t: Lang) -> Vec<f32> {
+    actions.iter().map(|a| a.button(t, None).desired_width(ui)).collect()
 }
 
 /// The more-actions button (a painted icon) and its menu, listing `moved` in reading order.
@@ -220,6 +234,26 @@ mod tests {
         assert_eq!(shown_count(90.0 + GAP + 72.0, 72.0, &one, MORE, GAP), 1);
         assert_eq!(shown_count(90.0 + GAP + 71.0, 72.0, &one, MORE, GAP), 0);
         assert_eq!(shown_count(1000.0, 72.0, &[], MORE, GAP), 0, "no buttons, no menu");
+    }
+
+    #[test]
+    fn widths_are_the_styled_buttons_own() {
+        let mut h = egui_kittest::Harness::new_ui(|ui| {
+            crate::ui::theme::apply_theme(ui.ctx());
+            let t = Lang::En;
+            let all = actions(false, 2);
+            let w = widths(ui, &all, t);
+            for (a, w) in all.iter().zip(&w) {
+                assert_eq!(ui.add(a.button(t, None)).rect.width(), *w, "{a:?} is as wide as it said");
+                assert_eq!(ui.add(a.button(t, None)).rect.height(), 24.0, "{a:?} is small");
+            }
+            // One px short of all three beside the title: New file… moves into the menu first.
+            let gap = ui.spacing().item_spacing.x;
+            let row = w.iter().sum::<f32>() + gap * 3.0 + TITLE_MIN;
+            assert_eq!(shown_count(row, TITLE_MIN, &w, MORE_W + gap, gap), 3);
+            assert_eq!(shown_count(row - 1.0, TITLE_MIN, &w, MORE_W + gap, gap), 2);
+        });
+        h.run();
     }
 
     #[test]

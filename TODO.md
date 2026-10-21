@@ -314,7 +314,7 @@ until this list says which option was chosen.
       status (dark #fb794a with ink #22110b, light #bf4306 with white, always with the warning
       icon); toolbar icons on a neutral backing (the accent at 8–10%), never a colour per icon.
       At most three hue families in the chrome at once (accent, repository, coral when needed).
-- [ ] **Design system**: one set of tokens (surface steps, borders, hover and pressed tints,
+- [x] **Design system**: one set of tokens (surface steps, borders, hover and pressed tints,
       radii, shadows, focus ring, accent and semantic colours, motion) for every theme, and the
       components built on them: the button family (primary, tonal, quiet, danger, icon-only,
       split), toolbar groups, text fields, tabs, menus, tooltips, chips, dialogs, toasts and one
@@ -1227,6 +1227,31 @@ blockers and major findings are Milestone 1 items.
 Polish, edge cases and power-user extras that are not planned work. Nothing here is built
 until a triage moves it to Later or a milestone. New follow-ups from finished items go
 here, under the item they grew from.
+
+### Design system
+- Underline panel tabs (an underline, no boxes) with an Errors count badge; the activity panel
+  keeps its segmented tabs
+- Animate hover and press fills over `motion::QUICK` instead of switching at once
+- Panel and dialog open fades at 220 ms (a `motion::GENTLE` token) as on the foundations board
+- Toast leading result mark (success, error, info) and a close ×
+- Quiet danger button (red text, no fill) for destructive actions in menus and rows
+- Try pill-shaped ref labels in the history table (kept at 4 px for the chosen variant C)
+- Two-layer shadows matching the board's elevations (egui's `Shadow` is one layer)
+- Theme-file keys for the derived tokens (overlay, overlay edge, tonal) so custom themes can
+  override them
+- Spacing scale tokens (4, 8, 12, 16, 24, 32, 48) and the remaining spacing literals moved onto
+  them
+- Replace the font check marks (✔ before the current branch, worktree and votes) with a painted
+  `Icon::Check`
+- Fold the toolbar caret, `widgets::chevron` and the tab glyphs into `Icon` variants
+- The WIP header's more-actions button as an icon-only button with a popup instead of an egui
+  menu button
+- Give `icon_button` an `.enabled()` path so callers stop wrapping it in `add_enabled_ui` (which
+  fades it)
+- A `.kind()` builder so an icon-only button can be secondary, once a view needs one
+- Views for `buttons::quiet` and a leading `.icon()`: both exist with no caller yet
+- The design sheet's hover row from real pointer hovers (one per kind, rendered apart) instead of
+  painted looks; a focused quiet button with its inset ring beside the outside ring
 
 ### New directions
 

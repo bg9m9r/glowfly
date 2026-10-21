@@ -141,7 +141,7 @@ fn primary_button<'a>(t: Lang, p: &Primary, tip: &'a str) -> buttons::StyledButt
         Primary::Stage(_) => t.tr("diff.header.stage_file"),
         Primary::Unstage(_) => t.tr("diff.header.unstage_file"),
     };
-    buttons::primary(text).radius(controls::RADIUS).tip(tip)
+    buttons::primary(text).tip(tip)
 }
 
 /// The primary button's tooltip in `t`, naming its key when it has one.

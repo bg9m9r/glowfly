@@ -4,9 +4,10 @@
 //! the one every toolbar dropdown shares, the pickers' too.
 
 use super::super::theme::color;
+use super::super::theme::tokens::{self, radius};
 use super::{Icon, paint_icon};
 use crate::ui::theme::type_scale;
-use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, StrokeKind, Ui, pos2, vec2};
+use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, pos2, vec2};
 
 /// A tool slot's width with captions shown; a longer caption widens it to the caption plus
 /// `CAPTION_PAD`.
@@ -21,16 +22,17 @@ pub const CAPTION_PAD: f32 = 8.0;
 pub const ICON_Y: f32 = 17.0;
 pub const CAPTION_Y: f32 = 37.0;
 /// The corners of a slot's hover fill, pressed fill and focus ring.
-pub const TOOL_RADIUS: u8 = 6;
+pub const TOOL_RADIUS: u8 = radius::MD;
 /// Between the buttons of one toolbar group (egui's item spacing there); a dropdown caret sits
 /// right against its button.
 pub const TOOL_SPACING: f32 = 2.0;
 /// Between two toolbar group surfaces: with their padding and stroke, 18 px from a button to
 /// the next group's first one.
 pub const GROUP_GAP: f32 = 10.0;
-/// A toolbar group surface's padding inside its 1 px stroke, and its corners.
+/// A toolbar group surface's padding inside its 1 px stroke, and its corners: nested around
+/// the slots' (their corners, the padding and the stroke).
 pub const GROUP_PAD: i8 = 3;
-pub const GROUP_RADIUS: u8 = 10;
+pub const GROUP_RADIUS: u8 = radius::around(TOOL_RADIUS, GROUP_PAD as u8 + 1);
 /// A toolbar group's height: a button, its padding and its stroke.
 pub const GROUP_H: f32 = TOOL_H + 2.0 * (GROUP_PAD as f32 + 1.0);
 /// A dropdown caret button's width.
@@ -75,14 +77,16 @@ fn tool_slot(ui: &mut Ui, icon: Icon, label: &str, name: &str, enabled: bool, la
     let radius = CornerRadius::same(TOOL_RADIUS);
     let on = fill == Fill::Toggle { on: true };
     if fill != Fill::Split {
-        if on || (enabled && resp.is_pointer_button_down_on()) {
+        if on {
             p.rect_filled(slot, radius, color::tool_pressed());
+        } else if enabled && resp.is_pointer_button_down_on() {
+            p.rect_filled(slot, radius, color::tool_press());
         } else if enabled && resp.hovered() {
             p.rect_filled(slot, radius, color::tool_hover());
         }
     }
     if resp.has_focus() {
-        p.rect_stroke(slot, radius, Stroke::new(1.5_f32, color::accent()), StrokeKind::Inside);
+        tokens::focus_ring_inset(p, slot, TOOL_RADIUS);
     }
     let col = if enabled { color::text() } else { color::faint() };
     if labels {
@@ -136,12 +140,13 @@ pub fn split_button(
         let both = Rect::from_min_max(left.min, right.max);
         shapes.push(Shape::rect_filled(both, CornerRadius::same(TOOL_RADIUS), color::tool_hover()));
     }
-    let r = TOOL_RADIUS;
     if enabled && button.is_pointer_button_down_on() {
-        shapes.push(Shape::rect_filled(left, CornerRadius { nw: r, sw: r, ne: 0, se: 0 }, color::tool_pressed()));
+        shapes.push(Shape::rect_filled(left, radius::left(TOOL_RADIUS), color::tool_press()));
     }
-    if open || menu.is_pointer_button_down_on() {
-        shapes.push(Shape::rect_filled(right, CornerRadius { nw: 0, sw: 0, ne: r, se: r }, color::tool_pressed()));
+    if open {
+        shapes.push(Shape::rect_filled(right, radius::right(TOOL_RADIUS), color::tool_pressed()));
+    } else if menu.is_pointer_button_down_on() {
+        shapes.push(Shape::rect_filled(right, radius::right(TOOL_RADIUS), color::tool_press()));
     }
     if lit {
         let x = rect.left();

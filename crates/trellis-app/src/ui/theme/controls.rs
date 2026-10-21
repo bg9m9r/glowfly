@@ -6,6 +6,7 @@
 //! views use these instead of egui's.
 
 use super::color;
+use super::tokens::{self, radius};
 use eframe::egui::{
     self, CornerRadius, Galley, NumExt, Rect, Response, Sense, Shape, Stroke, StrokeKind, TextStyle, Ui, Vec2, WidgetInfo, WidgetText,
     WidgetType, pos2, vec2,
@@ -80,8 +81,7 @@ impl egui::Widget for Check<'_> {
         if ui.is_rect_visible(rect) {
             let big = paint_box(ui, rect, *checked, indeterminate, response.hovered());
             if response.has_focus() {
-                let accent = color::current().accent;
-                ui.painter().rect_stroke(big.expand(2.0), CornerRadius::same(5), Stroke::new(2.0_f32, accent), StrokeKind::Middle);
+                tokens::focus_ring(ui.painter(), big, radius::SM);
             }
             paint_label(ui, rect, galley, &response);
         }
@@ -100,7 +100,7 @@ fn paint_box(ui: &Ui, rect: Rect, checked: bool, indeterminate: bool, hovered: b
     let p = color::current();
     let (_, big) = ui.spacing().icon_rectangles(rect);
     let (fill, stroke) = icon_colors(&p, checked || indeterminate, hovered);
-    ui.painter().rect(big, CornerRadius::same(3), fill, stroke, StrokeKind::Inside);
+    ui.painter().rect(big, CornerRadius::same(radius::SM), fill, stroke, StrokeKind::Inside);
     let mark = Stroke::new(2.0_f32, p.input);
     let (l, r, t, b, w) = (big.left(), big.right(), big.top(), big.bottom(), big.width());
     if indeterminate {

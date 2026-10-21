@@ -9,6 +9,7 @@ use crate::state::AppState;
 use crate::state::diff_preview;
 use crate::ui::image_paint::{checkerboard, load};
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Color32, Context, CornerRadius, Layout, Rect, RichText, Stroke, TextureHandle, Ui, UiBuilder, pos2, vec2};
 use std::sync::Arc;
@@ -107,7 +108,7 @@ fn caption(ui: &mut Ui, text: &str) {
 /// The image fitted in `card`, centred over a checkerboard.
 fn image_card(ui: &Ui, card: Rect, t: &TextureHandle, img: &PreviewImage) {
     let p = ui.painter();
-    p.rect_filled(card, CornerRadius::same(6), color::raised());
+    p.rect_filled(card, CornerRadius::same(radius::MD), color::raised());
     let room = card.shrink(PAD);
     let (w, h) = (img.width.max(1) as f32, img.height.max(1) as f32);
     let scale = (room.width() / w).min(room.height() / h).min(MAX_ZOOM);
@@ -139,7 +140,7 @@ fn placeholder(ui: &mut Ui, card: Rect, text: &str) {
 
 /// The binary page, "Can't preview this image" and the size.
 fn undecodable(ui: &mut Ui, card: Rect, size: u64) {
-    ui.painter().rect_filled(card, CornerRadius::same(6), color::raised());
+    ui.painter().rect_filled(card, CornerRadius::same(radius::MD), color::raised());
     centred(ui, card, |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(40.0, 40.0), egui::Sense::hover());
         empty_state::paint(ui.painter(), rect.center(), EmptyIcon::Binary, color::weak());

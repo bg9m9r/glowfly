@@ -9,6 +9,7 @@ use super::ref_group::Chip;
 use crate::ui::build_status;
 use crate::ui::theme::color;
 use crate::ui::theme::contrast::{self, ChipStyle, readable_on};
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
@@ -126,7 +127,7 @@ pub(super) fn fit(widths: &[f32], room: f32, plus_w: impl Fn(usize) -> f32, gap:
 fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: Color32, w: f32) -> Rect {
     let (fill, fg) = contrast::ref_chip(spec.style, tone, &color::current());
     let r = Rect::from_min_size(pos2(x, y - CHIP_H / 2.0), vec2(w, CHIP_H));
-    p.rect_filled(r, CornerRadius::same(4), fill);
+    p.rect_filled(r, CornerRadius::same(radius::SM), fill);
     let cp = p.with_clip_rect(r.intersect(p.clip_rect()));
     let mut text_x = x + TEXT_PAD;
     if spec.lead_tag {
@@ -247,8 +248,8 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
     // current branch (other commits: right-click > Create branch here).
     let r = Rect::from_min_size(pos2(end + 6.0, mid - 11.0), vec2(80.0, 22.0));
     if row.ghost && r.right() <= cols.refs.1 {
-        rp.rect_filled(r, CornerRadius::same(3), color::bg());
-        rp.rect_stroke(r, CornerRadius::same(3), Stroke::new(1.0_f32, row.lane.gamma_multiply(0.6)), StrokeKind::Inside);
+        rp.rect_filled(r, CornerRadius::same(radius::SM), color::bg());
+        rp.rect_stroke(r, CornerRadius::same(radius::SM), Stroke::new(1.0_f32, row.lane.gamma_multiply(0.6)), StrokeKind::Inside);
         rp.text(
             pos2(r.left() + 8.0, mid),
             Align2::LEFT_CENTER,

@@ -6,6 +6,7 @@
 use super::common::{added_color, modified_color, removed_color};
 use super::theme::{color, contrast};
 use super::widgets;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{Context, CornerRadius, FontId, Painter, Pos2, Rect, RichText, Sense, Ui, pos2, vec2};
 use trellis_core::repo::{ChangeCounts, LineCount};
@@ -93,7 +94,7 @@ pub(super) fn inline_width(ctx: &Context, count: LineCount) -> f32 {
 }
 
 fn paint_bar(p: &Painter, rect: Rect, (green, red): (f32, f32)) {
-    let round = CornerRadius::same(2);
+    let round = CornerRadius::same(radius::XS);
     p.rect_filled(rect, round, color::border());
     if green + red <= 0.0 {
         return;

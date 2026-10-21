@@ -9,6 +9,7 @@ use crate::msg::{KeysMsg, Msg};
 use crate::state::keys_page::{KeysPage, Pending};
 use crate::ui::shortcuts::Caps;
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
@@ -148,6 +149,12 @@ fn pill(ui: &mut Ui) {
     let (rect, resp) = ui.allocate_exact_size(size, Sense::hover());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, "Press keys…"));
     let p = ui.painter();
-    p.rect(rect, CornerRadius::same(10), color::selected(), Stroke::new(1.5_f32, color::primary()), StrokeKind::Inside);
+    p.rect(
+        rect,
+        CornerRadius::same(radius::pill(rect.height())),
+        color::selected(),
+        Stroke::new(1.5_f32, color::primary()),
+        StrokeKind::Inside,
+    );
     p.galley(rect.center() - text.size() / 2.0, text, color::text());
 }

@@ -11,11 +11,10 @@
 //! accessible name stays its label.
 
 use super::super::access;
+use super::super::theme::tokens::{self, radius};
 use super::super::theme::{color, type_scale};
 use super::{Icon, paint_icon_sized, tooltip};
-use eframe::egui::{
-    Align, Button, FontId, NumExt, Painter, Rect, Response, Sense, Stroke, StrokeKind, TextStyle, TextWrapMode, Ui, WidgetText, pos2, vec2,
-};
+use eframe::egui::{Align, Button, FontId, NumExt, Painter, Rect, Response, Sense, TextStyle, TextWrapMode, Ui, WidgetText, pos2, vec2};
 use trellis_core::i18n::Lang;
 
 /// A setup item's suffix: its text size and the space between the label and it.
@@ -23,7 +22,7 @@ pub const SUFFIX_SIZE: f32 = type_scale::SMALL;
 pub const SUFFIX_GAP: f32 = 10.0;
 /// The info mark's width, the least space between a blocked label and it, and the room it adds
 /// to an item.
-pub const INFO_W: f32 = 14.0;
+pub const INFO_W: f32 = super::icon::SIZE_SM;
 pub const INFO_GAP: f32 = 12.0;
 pub const INFO_ROOM: f32 = INFO_GAP + INFO_W;
 
@@ -136,8 +135,7 @@ pub fn paint_info(p: &Painter, row: Rect, right_inset: f32, lit: bool) {
 /// The accent ring inside `resp`'s rect while it has the keyboard focus.
 pub fn paint_focus(ui: &Ui, resp: &Response) {
     if resp.has_focus() {
-        let radius = ui.visuals().widgets.hovered.corner_radius;
-        ui.painter().rect_stroke(resp.rect, radius, Stroke::new(1.5_f32, color::accent()), StrokeKind::Inside);
+        tokens::focus_ring_inset(ui.painter(), resp.rect, radius::MD);
     }
 }
 

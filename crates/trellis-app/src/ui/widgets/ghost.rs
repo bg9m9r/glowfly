@@ -2,23 +2,25 @@
 //! icon, a label or both; transparent until hovered), its width, the thin divider between
 //! groups, and the rich tooltip for icon-only controls.
 
-use super::{Icon, paint_icon_sized, tooltip};
+use super::button_look::{self, Press};
+use super::{Icon, icon, paint_icon_sized, tooltip};
 use crate::keymap::Keymap;
 use crate::state::tip::Tip;
 use crate::ui::access;
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::{self, radius};
 use crate::ui::theme::type_scale;
-use eframe::egui::{Align2, Color32, CornerRadius, CursorIcon, FontId, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
+use eframe::egui::{Align2, Color32, CursorIcon, FontId, Response, Sense, Stroke, Ui, pos2, vec2};
 use trellis_core::i18n::Lang;
 
 /// Every control's height and corners.
 pub const HEIGHT: f32 = 28.0;
-pub const RADIUS: u8 = 6;
+pub const RADIUS: u8 = radius::MD;
 /// Room either side of a labelled control's content, and between its icon and label.
 const PAD_X: f32 = 8.0;
 const ICON_GAP: f32 = 6.0;
 /// Icons are drawn this size.
-pub const ICON: f32 = 16.0;
+pub const ICON: f32 = icon::SIZE_MD;
 /// Space between the controls of one group.
 pub const SPACE: f32 = 4.0;
 /// The divider's line height and the room either side of it.
@@ -48,8 +50,8 @@ pub fn ghost_width(ui: &Ui, icon: bool, label: Option<&str>, extra: f32) -> f32 
     }
 }
 
-/// A ghost control: transparent until hovered (`hover` fill, `selected` while pressed, an
-/// accent ring when focused), `faint` when disabled, named `name` for screen readers. A
+/// A ghost control: the quiet button look, transparent until hovered (the hover layer, the
+/// pressed layer while held, the inset accent ring when focused), `faint` when disabled, named `name` for screen readers. A
 /// disabled control still senses hover and focus, so it can explain itself.
 pub fn ghost(ui: &mut Ui, icon: Option<Icon>, label: Option<&str>, name: &str, enabled: bool) -> Response {
     ghost_with(ui, icon, label, name, enabled, 0.0)
@@ -61,14 +63,11 @@ pub fn ghost_with(ui: &mut Ui, icon: Option<Icon>, label: Option<&str>, name: &s
     let w = ghost_width(ui, icon.is_some(), label, extra);
     let (rect, resp) = ui.allocate_exact_size(vec2(w, HEIGHT), sense);
     let p = ui.painter();
-    let radius = CornerRadius::same(RADIUS);
-    if enabled && resp.is_pointer_button_down_on() {
-        p.rect_filled(rect, radius, color::selected());
-    } else if enabled && resp.hovered() {
-        p.rect_filled(rect, radius, color::hover());
+    if enabled {
+        button_look::paint_quiet(p, rect, RADIUS, Press::of(resp.hovered(), resp.is_pointer_button_down_on(), false));
     }
     if resp.has_focus() {
-        p.rect_stroke(rect, radius, Stroke::new(1.5_f32, color::accent()), StrokeKind::Inside);
+        tokens::focus_ring_inset(p, rect, RADIUS);
     }
     let fg = if !enabled {
         color::faint()

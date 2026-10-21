@@ -1,9 +1,11 @@
 //! A dialog's text field: 36 px tall with single-line text centred, 10 px of side padding, the
 //! faint accent-tinted `color::field_fill()`, and `theme::controls::Field`'s edge and focus ring
-//! (the only code that draws them). A multiline field gets the same fill, edge and padding, and
+//! (the only code that draws them), with a soft accent halo outside the ring while focused
+//! (`tokens::focus_halo`). A multiline field gets the same fill, edge and padding, and
 //! keeps its rows. Ids, hints, focus, masking and char limits behave as the plain `TextEdit`.
 //! Labels, help and messages around a field are `field_group`'s.
 
+use crate::ui::theme::tokens::{self, radius};
 use crate::ui::theme::{color, controls};
 use crate::ui::widgets::buttons::StyledButton;
 use eframe::egui::{self, Align, Id, Key, Margin, Response, Ui, WidgetText, vec2};
@@ -94,6 +96,9 @@ impl egui::Widget for TextField<'_> {
         let mut r = ui.add(controls::Field(edit));
         // egui reports the text's rect; the field is the whole box.
         r.rect += margin;
+        if r.has_focus() {
+            tokens::focus_halo(ui.painter(), r.rect, radius::MD);
+        }
         r
     }
 }

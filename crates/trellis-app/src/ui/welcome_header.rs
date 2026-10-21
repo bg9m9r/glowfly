@@ -8,6 +8,7 @@ use super::theme::{self, color};
 use super::welcome_art;
 use super::widgets;
 use crate::state::onboarding::WelcomeStep;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{Align, CornerRadius, FontId, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, WidgetInfo, WidgetType, pos2, vec2};
 use trellis_core::i18n::Lang;
@@ -29,7 +30,7 @@ const ART_GAP: f32 = 16.0;
 /// The progress segments: gap, height, corners, and the caption's distance below.
 const SEG_GAP: f32 = 8.0;
 const SEG_H: f32 = 4.0;
-const SEG_RADIUS: u8 = 2;
+const SEG_RADIUS: u8 = radius::XS;
 const CAPTION_GAP: f32 = 6.0;
 
 /// The progress row's height: a segment, the gap and a caption line.
@@ -58,7 +59,7 @@ fn band(ui: &mut Ui, t: Lang, greeting: Option<&str>) {
     ui.allocate_exact_size(vec2(width, BAND_H - pad), Sense::hover());
     let style = welcome_art::art_style(&color::current());
     let painter = ui.painter().clone();
-    painter.rect_filled(band, CornerRadius { nw: 7, ne: 7, sw: 0, se: 0 }, style.band);
+    painter.rect_filled(band, radius::top(radius::inside(radius::XL, 1)), style.band);
     if let Some(rule) = style.rule {
         let y = band.bottom() - 0.5;
         painter.line_segment([pos2(band.left(), y), pos2(band.right(), y)], Stroke::new(1.0_f32, rule));

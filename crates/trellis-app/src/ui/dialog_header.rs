@@ -6,6 +6,7 @@
 //! caller draws itself (`Dialog::header`, the welcome's band) through `close_button`.
 
 use crate::ui::access;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::{Icon, paint_icon};
 use eframe::egui::{self, Color32, CornerRadius, Id, LayerId, Rect, RichText, Sense, TextStyle, Ui, pos2, vec2};
@@ -61,7 +62,7 @@ pub fn close_button(ui: &mut Ui, tip: &str, right_edge: f32, top: f32) -> bool {
     let r = ui.interact(rect, ui.id().with("dialog-close"), Sense::CLICK);
     access::name_button(&r, true, tip);
     let col = if r.hovered() {
-        ui.painter().rect_filled(rect, CornerRadius::same(4), color::hover());
+        ui.painter().rect_filled(rect, CornerRadius::same(radius::SM), color::hover_layer());
         color::text()
     } else {
         color::weak()

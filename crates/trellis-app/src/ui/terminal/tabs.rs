@@ -11,6 +11,7 @@ use crate::state::terminal_names::tab_names;
 use crate::terminal::TerminalMsg;
 use crate::ui::prefs::terminal::choice_label;
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::widgets::chevron;
 use crate::ui::widgets::tab_glyph::{self, TabGlyph};
 use eframe::egui::{self, Align, CornerRadius, CursorIcon, Id, Layout, PopupCloseBehavior, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
@@ -69,7 +70,7 @@ fn shell_picker(ui: &mut Ui, prefs: &TerminalPrefs, t: Lang, cy: f32, msgs: &mut
     let name = t.tr("terminal.header.pick_shell");
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, name));
     if resp.hovered() {
-        ui.painter().rect_filled(rect, CornerRadius::same(3), color::hover());
+        ui.painter().rect_filled(rect, CornerRadius::same(radius::SM), color::hover());
     }
     chevron(ui.painter(), rect.center(), true, color::weak());
     let resp = resp.on_hover_cursor(CursorIcon::PointingHand).on_hover_text(name);
