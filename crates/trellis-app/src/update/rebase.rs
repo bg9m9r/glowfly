@@ -128,7 +128,7 @@ pub(super) fn handle(st: &mut AppState, msg: RebaseMsg, now: Instant, fx: &mut V
         }
         RebaseMsg::Resume(how) => super::rebase_resume::resume(st, how, now, fx),
         RebaseMsg::Restack { scope, autostash } => super::stack::restack(st, scope, autostash, now, fx),
-        RebaseMsg::RestackRan { result, undo, job } => super::stack::ran(st, result, undo, job, now, fx),
+        RebaseMsg::RestackRan { result, undo, job } => super::stack::ran(st, result, undo, *job, now, fx),
     }
 }
 

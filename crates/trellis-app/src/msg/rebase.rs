@@ -103,7 +103,7 @@ pub enum RebaseMsg {
     RestackRan {
         result: Result<RestackRun, String>,
         undo: Option<UndoResult>,
-        job: RestackJob,
+        job: Box<RestackJob>,
     },
 }
 

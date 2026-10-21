@@ -4,8 +4,9 @@
 //! gathers with libgit2 (the walked commits outside the base, and the former tips from each
 //! branch's reflog). A link through a former tip is behind: the lower branch was amended,
 //! rebased or gained commits, so the branches above it need a restack. `plan` turns a request
-//! into `git rebase --update-refs --onto` steps, one per leaf that needs moving, and `restack`
-//! runs them through gitcli (so hooks, signing and config apply), resuming after a stop.
+//! into `git rebase --update-refs --onto` steps, one per leaf that needs moving (and one per
+//! layer above it that is itself behind), and `restack` runs them through gitcli (so hooks,
+//! signing and config apply), resuming after a stop.
 
 use git2::Oid;
 

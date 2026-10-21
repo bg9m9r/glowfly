@@ -38,7 +38,7 @@ fn ran(cwd: &Path, before: Option<RestackBefore>, job: RestackJob, result: Resul
     };
     let plan = result.as_ref().map(|r| r.left.clone()).unwrap_or_else(|_| RestackPlan::default());
     let job = RestackJob { plan, before, detail: job.detail, stopped };
-    Msg::Rebase(RebaseMsg::RestackRan { result: result.map_err(err), undo, job })
+    Msg::Rebase(RebaseMsg::RestackRan { result: result.map_err(err), undo, job: Box::new(job) })
 }
 
 /// What a restack run means for the undo history: a finished one is one action moving every
