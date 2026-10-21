@@ -71,6 +71,8 @@ pub struct ViewState {
     pub scroll_offset: Option<f32>,
     /// Graph scroll offset and viewport height from the last frame.
     pub graph_scroll: (f32, f32),
+    /// Graph rows that fit the viewport in the last frame, recorded by the view.
+    pub graph_fit_rows: usize,
     /// First diff row visible in the last frame, recorded by the view.
     pub diff_top_row: usize,
     /// Scroll the diff so this row is at the top on the next frame (set by `update`).
@@ -173,6 +175,7 @@ impl Default for ViewState {
             scroll_to_row: None,
             scroll_offset: None,
             graph_scroll: (0.0, 0.0),
+            graph_fit_rows: 0,
             diff_top_row: 0,
             diff_scroll_to_row: None,
             diff_open_hunk: None,

@@ -25,6 +25,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
         SearchMsg::ToggleFilter => {
             st.search.filter = !st.search.filter;
             keep_selection_in_view(st);
+            super::search_deeper::pump(st, fx);
         }
         SearchMsg::Close => {
             st.view.show_search = false;
@@ -32,12 +33,14 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
             st.search.filter = false;
             st.search.paths = PathSearch { requests: st.search.paths.requests, ..Default::default() };
             recompute(st);
+            super::search_deeper::pump(st, fx);
         }
         SearchMsg::Clear => {
             st.view.search.clear();
             st.view.author_filter.clear();
             st.search.paths = PathSearch { requests: st.search.paths.requests, ..Default::default() };
             recompute(st);
+            super::search_deeper::pump(st, fx);
             st.view.focus_search = true;
         }
         SearchMsg::WantAuthors => {
@@ -52,7 +55,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
             st.view.author_filter.clear();
             query_changed(st, fx);
         }
-        SearchMsg::PathsSearched { request, result } => super::search_paths::searched(st, request, result),
+        SearchMsg::PathsSearched { request, result } => super::search_paths::searched(st, request, result, fx),
     }
 }
 
@@ -64,6 +67,7 @@ fn query_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.search.filter {
         keep_selection_in_view(st);
     }
+    super::search_deeper::pump(st, fx);
 }
 
 /// Parses the query and finds its matches in the loaded history (path terms as far as found).
@@ -74,8 +78,8 @@ pub(super) fn recompute(st: &mut AppState) {
 }
 
 /// A new history was loaded: the same query is matched against it, path answers are kept for
-/// the commits still loaded (the new ones are asked for), and the author list is worked out
-/// again when the picker next opens.
+/// the commits still loaded (the new ones are asked for), the author list is worked out again
+/// when the picker next opens, and a filtering search may load further back.
 pub(super) fn snapshot_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     super::search_paths::history_changed(st);
     recompute(st);
@@ -83,6 +87,8 @@ pub(super) fn snapshot_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.search.authors = None;
     let last = st.snap.as_ref().map_or(0, |s| s.commits.len().saturating_sub(1));
     st.search.cursor = st.search.cursor.min(last);
+    // Loaded with `st.loading` already false, so a filtering search's next batch starts at once.
+    super::search_deeper::pump(st, fx);
 }
 
 /// Enter: selects the first match after the one Enter last landed on, wrapping to the newest.

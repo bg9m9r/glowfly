@@ -278,6 +278,10 @@ impl TrellisApp {
         if let Some(every) = self.st.watch.poll_interval() {
             ctx.request_repaint_after(every);
         }
+        // A failed load for more tries again by itself (`Msg::Tick`) at this time.
+        if let Some(at) = self.st.refresh.more_retry_at {
+            ctx.request_repaint_after(at.saturating_duration_since(now));
+        }
     }
 }
 

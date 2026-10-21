@@ -1,6 +1,6 @@
 //! Loading more of a truncated history when the graph is scrolled near its end: once per load,
-//! only when the preference allows, behind a running refresh, keeping the selection and scroll,
-//! and without retrying a failed load by itself.
+//! only when the preference allows, behind a running refresh, and keeping the selection and
+//! scroll. A failed load for more is in load_more_retry_tests.rs.
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
@@ -142,19 +142,5 @@ fn loading_more_keeps_the_selection_and_scroll() {
     let Selection::Commits(m) = &st.selection else { panic!("still two commits: {:?}", st.selection) };
     assert!(m.contains(oids[0]) && m.contains(oids[1]));
     assert_eq!(st.view.scroll_to_row, None);
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn a_failed_load_does_not_retry_by_itself() {
-    let (mut st, dir) = opened("more-failed");
-    truncate(&mut st);
-    assert_eq!(loads(&near_end(&mut st)).len(), 1);
-    let failed = RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Refresh, result: Err("walk failed".into()) };
-    let fx = update(&mut st, Msg::Repo(failed), Instant::now());
-    finish(&mut st, fx);
-    assert!(!st.shows_loading_more_row());
-    assert!(near_end(&mut st).is_empty(), "no retry loop");
-    assert_eq!(loads(&load_more(&mut st)).len(), 1, "the Load more link tries again");
     let _ = std::fs::remove_dir_all(&dir);
 }

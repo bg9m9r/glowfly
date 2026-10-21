@@ -1087,13 +1087,6 @@ blockers and major findings are Milestone 1 items.
 - Fetch missing file contents on demand in a partial clone (the diff views read through
   libgit2, which can't fetch them)
 
-### Graph columns and loading
-
-- Retry a failed load-more by itself after a delay, or show the failure in the loading row
-  instead of only in the log
-- Keep loading further back while a filtering search finds too few matches (search the whole
-  history without scrolling)
-
 ### Search and filter
 
 - Background indexing for large repos
@@ -2187,6 +2180,15 @@ here, under the item they grew from.
 - A per-repository commit limit, or remembering the extra loaded commits across tab switches
   and restarts
 - Keep the top visible commit in place when a load-more refresh also brings new commits above it
+- Count down to the failed load's automatic retry ("Trying again in 8 s"); needs a clock value
+  passed to the view
+- Show the failed load's reason when the retry note leaves it no room in a narrow message column
+- Skip the automatic retries for a load failure that won't pass (corrupt or missing objects)
+- Ask a filtering search for another batch when the window grows taller and more rows fit
+- Load more while scrolling to the end of a long filtered list
+- Offer Keep searching under a short filtered list whose batch budget is spent
+- Keep a deeper search's loaded history and budget across a tab switch
+- Search older history for matches only, without laying out every commit (past the 200,000 cap)
 
 ### Search and filter
 

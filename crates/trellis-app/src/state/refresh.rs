@@ -1,8 +1,12 @@
 //! Keeping repository reloads from piling up: at most one load and one status read run for the
 //! active tab at a time, and requests made meanwhile are merged into one more run afterwards.
+//! It also holds a failed load for more history with its automatic retries, and a filtering
+//! search loading further back (`load_more.rs`).
 
+use crate::state::load_more::DeeperSearch;
 use crate::state::{AppState, MAX_COMMITS};
 use std::collections::BTreeSet;
+use std::time::Instant;
 use trellis_core::repo::Snapshot;
 use trellis_core::watch::MAX_WATCH_PATHS;
 
@@ -63,6 +67,15 @@ pub struct RefreshState {
     /// The `refs_key` a background count of other worktrees' changes runs for; one at a time.
     /// Kept across loads (`refresh::start`), reset by a tab switch.
     pub counting: Option<u64>,
+    /// The error of the last load that asked for more history, until a load starts.
+    pub more_failed: Option<String>,
+    /// When the next automatic retry of that load is due.
+    pub more_retry_at: Option<Instant>,
+    /// Automatic retries since a load last succeeded or more was asked for; carried across
+    /// loads.
+    pub more_retries: u8,
+    /// The filtering search loading older history by itself; carried across loads.
+    pub deeper: Option<DeeperSearch>,
 }
 
 /// Whether `snap` stops short of the whole history and may load more of it (below the cap). A

@@ -64,8 +64,11 @@ fn graph_search_no_matches() {
         assert!(h.query_by_label("No matches").is_some());
         assert!(h.query_by_label("No commits match").is_some());
         let hint = trellis_core::i18n::Lang::En.tr("search.empty.hint");
-        assert!(h.query_by_label(hint).is_some(), "the syntax hint, alone");
+        assert!(h.query_by_label_contains(hint).is_some(), "the syntax hint");
+        let n = h.state().0.snap.as_ref().unwrap().commits.len();
+        assert!(h.query_by_label_contains(&format!("Searched the whole history ({n} commits).")).is_some());
         assert!(h.query_by_label("Load more commits").is_none(), "the whole history is loaded");
+        assert!(h.query_by_label("Keep searching").is_none());
         h.check_snapshot(name);
         // The pane's button (the lower one: the search field has a clear button by that name too).
         assert_eq!(h.query_all_by_label("Clear search").count(), 2);
@@ -83,6 +86,8 @@ fn graph_search_no_matches() {
 fn graph_search_no_matches_truncated() {
     let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-none-truncated");
     st.snap.as_mut().unwrap().truncated = true;
+    // Without the preference nothing loads by itself, so the pane offers Load more commits.
+    st.settings.load_more_on_scroll = false;
     searching(&mut st, "nothing like this");
     send(&mut st, SearchMsg::ToggleFilter);
     let n = st.snap.as_ref().unwrap().commits.len();

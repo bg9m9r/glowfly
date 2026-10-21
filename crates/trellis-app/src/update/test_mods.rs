@@ -179,6 +179,8 @@ pub(super) mod lines_drag_tests;
 pub(super) mod lines_gutter_tests;
 #[path = "lines_tests.rs"]
 pub(super) mod lines_tests;
+#[path = "load_more_retry_tests.rs"]
+pub(super) mod load_more_retry_tests;
 #[path = "load_more_tests.rs"]
 pub(super) mod load_more_tests;
 #[path = "logs_runs_tests.rs"]
@@ -311,6 +313,8 @@ pub(super) mod revert_lines_tests;
 pub(super) mod revert_tests;
 #[path = "revert_workdir_tests.rs"]
 pub(super) mod revert_workdir_tests;
+#[path = "search_deeper_tests.rs"]
+pub(super) mod search_deeper_tests;
 #[path = "search_paths_tests.rs"]
 pub(super) mod search_paths_tests;
 #[path = "search_tests.rs"]

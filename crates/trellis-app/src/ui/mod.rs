@@ -392,6 +392,8 @@ mod snapshot_tests_revert;
 #[cfg(test)]
 mod snapshot_tests_search;
 #[cfg(test)]
+mod snapshot_tests_search_further;
+#[cfg(test)]
 mod snapshot_tests_select;
 #[cfg(test)]
 mod snapshot_tests_shallow;

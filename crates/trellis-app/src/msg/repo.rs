@@ -105,8 +105,14 @@ impl RepoMsg {
 
 /// A refresh's results, and loading more of the history (update/refresh.rs).
 pub enum LoadMsg {
-    /// Show more of the history than the commit limit (the graph's "Load more").
+    /// Show more of the history than the commit limit (the graph's "Load more"); while a
+    /// failure is held, tries the same load again.
     LoadMoreCommits,
+    /// Try again, in the failed load's row and the no-matches pane: loads the held failed load
+    /// again at once.
+    RetryLoadMore,
+    /// Keep searching, in the no-matches pane: gives the filtering search a fresh batch budget.
+    SearchFurther,
     /// The graph was scrolled near the last loaded commit (pushed by the view each frame it is
     /// there and nothing is pending); loads more when the preference allows.
     NearHistoryEnd,
@@ -147,6 +153,8 @@ impl LoadMsg {
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
             Self::LoadMoreCommits
+            | Self::RetryLoadMore
+            | Self::SearchFurther
             | Self::NearHistoryEnd
             | Self::RepoUnchanged { .. }
             | Self::StatusLoaded { .. }

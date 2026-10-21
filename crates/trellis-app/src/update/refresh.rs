@@ -21,6 +21,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 return; // superseded by a newer load
             }
             st.loading = false;
+            st.refresh.more_retries = 0;
             let state_before = st.snap.as_ref().map(|s| s.state);
             super::notify::unchanged(st);
             // A file list dropped in flight (a tab switch) is asked for again.
@@ -68,19 +69,26 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             super::status_tip::check(st, slow.as_ref(), now, fx);
         }
         LoadMsg::SpeedUpStatus(speedups) => super::status_tip::speed_up(st, speedups, fx),
-        LoadMsg::LoadMoreCommits if st.snap.as_ref().is_some_and(can_load_more) => more_commits(st, fx),
+        // While a failure is held, Load more tries the same load again.
+        LoadMsg::LoadMoreCommits if st.refresh.more_failed.is_some() => super::load_more::retry(st, fx),
+        LoadMsg::LoadMoreCommits if st.snap.as_ref().is_some_and(can_load_more) => {
+            st.refresh.more_retries = 0;
+            more_commits(st, st.settings.commit_limit(), fx)
+        }
         LoadMsg::NearHistoryEnd if st.settings.load_more_on_scroll && st.snap.as_ref().is_some_and(can_load_more) && !st.loading_more() => {
-            more_commits(st, fx)
+            more_commits(st, st.settings.commit_limit(), fx)
         }
         // Everything is loaded already, the preference is off, or a load for more is pending.
         LoadMsg::LoadMoreCommits | LoadMsg::NearHistoryEnd => {}
+        LoadMsg::RetryLoadMore => super::load_more::retry(st, fx),
+        LoadMsg::SearchFurther => super::search_deeper::further(st, fx),
     }
 }
 
-/// Loads another commit limit's worth of history into the active tab (a full walk, since the
-/// load options change), after any load still running.
-fn more_commits(st: &mut AppState, fx: &mut Vec<Effect>) {
-    st.refresh.extra_commits += st.settings.commit_limit();
+/// Loads `step` more commits of history into the active tab (a full walk, since the load
+/// options change), after any load still running.
+pub(super) fn more_commits(st: &mut AppState, step: usize, fx: &mut Vec<Effect>) {
+    st.refresh.extra_commits += step;
     refresh(st, fx);
 }
 
@@ -94,10 +102,14 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
     st.loading = true;
     // Status reads of the older generation are dropped, and the load reads the status anyway.
     // A background count of other worktrees keeps running: its result checks the refs it was for.
+    // A failed load for more and its waiting retry give way to this load (it asks for the same
+    // commits), but the retries made and a filtering search's budget carry on.
     st.refresh = RefreshState {
         open_stamp: st.refresh.open_stamp,
         extra_commits: st.refresh.extra_commits,
         counting: st.refresh.counting,
+        more_retries: st.refresh.more_retries,
+        deeper: st.refresh.deeper.take(),
         ..Default::default()
     };
     let opts = st.load_options(&path);

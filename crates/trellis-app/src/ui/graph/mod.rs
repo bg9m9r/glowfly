@@ -82,6 +82,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         select::keyboard_nav(ui, &st.selection, snap, &rows, &mut st.view, msgs);
 
         let widths = header::column_header(ui, t, snap, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
+        // How many matches fill the graph, for a filtering search loading further back.
+        st.view.graph_fit_rows = (ui.available_height() / ROW_H).floor() as usize;
         if filtered && total == 0 {
             return super::graph_empty::no_matches(ui, st, msgs);
         }
@@ -133,15 +135,18 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let tips = st.forge.as_ref().map(|f| &f.tips);
         let mut tips_seen: Vec<Oid> = Vec::new();
         let pointer = ui.ctx().pointer_hover_pos();
-        // While more history loads, one more row below the last commit says so.
-        let more_row = st.shows_loading_more_row();
-        let shown_rows = total + more_row as usize;
+        // While more history loads, or after loading it failed, one more row below the last
+        // commit says so.
+        let more = st.more_row();
+        let shown_rows = total + more.is_some() as usize;
         let out = area.show_rows(ui, ROW_H, shown_rows, |ui, range| {
             let last = range.end.min(total);
             for row in range {
-                if more_row && row == total {
+                if row == total
+                    && let Some(r) = &more
+                {
                     let line = Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), ROW_H));
-                    more::loading_row(ui, t, ROW_H, Columns::new(line, graph_w, &cols_cfg, &widths).msg.0);
+                    more::row(ui, t, ROW_H, Columns::new(line, graph_w, &cols_cfg, &widths).msg.0, r, msgs);
                     continue;
                 }
                 let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());

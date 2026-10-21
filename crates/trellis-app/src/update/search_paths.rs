@@ -39,8 +39,9 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// A report for request `request`: merges it when it is the one pending, and matches again.
-/// Matches only grow below rows already shown, so nothing scrolls.
-pub(super) fn searched(st: &mut AppState, request: u64, result: Result<PathsChunk, String>) {
+/// Matches only grow below rows already shown, so nothing scrolls. When the search is done, a
+/// filtering search may load further back.
+pub(super) fn searched(st: &mut AppState, request: u64, result: Result<PathsChunk, String>, fx: &mut Vec<Effect>) {
     let p = &mut st.search.paths;
     if p.pending != Some(request) {
         return;
@@ -59,6 +60,9 @@ pub(super) fn searched(st: &mut AppState, request: u64, result: Result<PathsChun
         }
     }
     super::search::recompute(st);
+    if st.search.paths.pending.is_none() {
+        super::search_deeper::pump(st, fx);
+    }
 }
 
 /// The history changed: answers are kept for the commits still loaded, and any request in

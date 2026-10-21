@@ -36,9 +36,17 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             }
             st.loading = false;
             match result {
-                Ok(snap) => loaded(st, *snap, kind, now, fx),
+                Ok(snap) => {
+                    st.refresh.more_retries = 0;
+                    loaded(st, *snap, kind, now, fx)
+                }
                 Err(e) => {
-                    st.log(false, e);
+                    // The snapshot is unchanged, so a load for more is still wanted.
+                    if st.loading_more() {
+                        super::load_more::failed(st, e, now);
+                    } else {
+                        st.log(false, e);
+                    }
                     if kind == LoadKind::Open {
                         let path = st.tabs.get(st.active_tab).and_then(|t| t.path.clone());
                         super::tabs::open_failed(st, fx);

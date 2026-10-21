@@ -36,10 +36,15 @@ pub struct Failure<'a> {
     pub retry: Option<Msg>,
 }
 
+/// `error` as a pane shows it: without its kind prefix, starting with a capital.
+pub(crate) fn plain_error(error: &str) -> String {
+    super::common::capitalize(trellis_core::error::plain_message(error).trim())
+}
+
 impl Failure<'_> {
-    /// The error as shown: without its kind prefix, starting with a capital.
+    /// The error as shown (`plain_error`).
     fn message(&self) -> String {
-        super::common::capitalize(trellis_core::error::plain_message(self.error).trim())
+        plain_error(self.error)
     }
 
     /// What Copy details copies: the title and the error as reported.

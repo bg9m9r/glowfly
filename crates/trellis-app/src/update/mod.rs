@@ -54,6 +54,7 @@ mod keys;
 mod layout;
 mod lfs;
 mod line_counts;
+mod load_more;
 mod logs;
 mod logs_runs;
 mod logs_tabs;
@@ -94,6 +95,7 @@ mod repo_sync;
 mod repos;
 pub(crate) mod revert;
 mod search;
+mod search_deeper;
 mod search_paths;
 mod selection;
 mod selection_focus;
@@ -238,6 +240,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             build_status::tick(st, t, &mut fx);
             updates::tick(st, t, &mut fx);
             prefs_save::tick(st, t);
+            load_more::tick(st, t, &mut fx);
         }
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {

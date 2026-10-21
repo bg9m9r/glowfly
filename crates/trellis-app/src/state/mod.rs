@@ -53,6 +53,7 @@ pub mod lfs;
 pub mod lfs_notes;
 pub mod line_counts;
 pub mod lines;
+pub mod load_more;
 pub mod logs;
 pub mod menu_bar;
 pub mod notify;
