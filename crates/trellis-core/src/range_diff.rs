@@ -216,8 +216,14 @@ pub fn read_output(out: &GitOutput) -> Result<()> {
         return Err(Error::Unsupported(crate::git_version::Feature::RangeDiff.needs_text(None)));
     }
     let message: Vec<&str> = out.stderr.lines().take_while(|l| !l.trim_start().starts_with("usage:")).collect();
-    let text = printable(message.join("
-").trim());
+    let text = printable(
+        message
+            .join(
+                "
+",
+            )
+            .trim(),
+    );
     Err(Error::Other(if text.is_empty() { "git range-diff failed".into() } else { text }))
 }
 
