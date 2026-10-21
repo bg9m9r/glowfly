@@ -145,6 +145,7 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             // file dialog.
             | Effect::Ssh(
                 SshEffect::SetKeyChoice { repo: None, .. }
+                    | SshEffect::SetWindowsSsh { .. }
                     | SshEffect::Agent { .. }
                     | SshEffect::AddToAgent { .. }
                     | SshEffect::AddToService { .. }

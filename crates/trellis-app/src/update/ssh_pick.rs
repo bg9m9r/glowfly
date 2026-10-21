@@ -8,7 +8,7 @@ use crate::state::AppState;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::paths::same_spelling;
-use trellis_core::ssh_keys::{KeyFileProblem, SshKeyPair};
+use trellis_core::ssh_keys::{ConfigStatus, KeyFileProblem, SshKeyPair};
 
 /// The Use existing… button: opens the file dialog in the .ssh folder, once it has been read.
 pub(super) fn use_existing(st: &mut AppState, fx: &mut Vec<Effect>) {
@@ -53,7 +53,7 @@ pub(super) fn picked(st: &mut AppState, result: Option<(PathBuf, Result<SshKeyPa
 }
 
 /// Remove from list: forgets a key added with Use existing. Its files stay where they are; a
-/// key that wasn't added that way is left alone.
+/// key that wasn't added that way is left alone, and one the config also names stays listed.
 pub(super) fn forget(st: &mut AppState, key: &Path, fx: &mut Vec<Effect>) {
     let extra = &mut st.settings.ssh_extra_keys;
     let before = extra.len();
@@ -61,8 +61,12 @@ pub(super) fn forget(st: &mut AppState, key: &Path, fx: &mut Vec<Effect>) {
     if extra.len() == before {
         return;
     }
+    // A key ~/.ssh/config names stays listed: only the remembered entry goes.
     if let Some(listing) = st.prefs.as_mut().and_then(|p| p.ssh.listing.as_mut()) {
-        listing.keys.retain(|k| !same_spelling(&k.private, key));
+        let named = listing.config.iter().any(|c| matches!(&c.status, ConfigStatus::Key(p) if same_spelling(p, key)));
+        if !named {
+            listing.keys.retain(|k| !same_spelling(&k.private, key));
+        }
     }
     fx.push(super::prefs::save_settings(st));
 }

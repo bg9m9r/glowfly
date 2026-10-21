@@ -361,12 +361,16 @@ pub(super) mod ssh_lang_tests;
 pub(super) mod ssh_pick_tests;
 #[path = "ssh_service_tests.rs"]
 pub(super) mod ssh_service_tests;
+#[path = "ssh_sources_tests.rs"]
+pub(super) mod ssh_sources_tests;
 #[path = "ssh_tests.rs"]
 pub(super) mod ssh_tests;
 #[path = "ssh_use_agent_tests.rs"]
 pub(super) mod ssh_use_agent_tests;
 #[path = "ssh_use_tests.rs"]
 pub(super) mod ssh_use_tests;
+#[path = "ssh_windows_tests.rs"]
+pub(super) mod ssh_windows_tests;
 #[path = "stack_prs_tests.rs"]
 pub(super) mod stack_prs_tests;
 #[path = "stack_push_tests.rs"]

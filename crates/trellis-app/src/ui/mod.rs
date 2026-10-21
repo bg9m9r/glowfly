@@ -416,6 +416,8 @@ mod snapshot_tests_ssh;
 #[cfg(test)]
 mod snapshot_tests_ssh_keygen;
 #[cfg(test)]
+mod snapshot_tests_ssh_sources;
+#[cfg(test)]
 mod snapshot_tests_stack;
 #[cfg(test)]
 mod snapshot_tests_stack_push;

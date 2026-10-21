@@ -1,5 +1,8 @@
 //! Preferences > SSH: the key git uses for SSH remotes (core.sshCommand, globally or for the
 //! open, trusted repository), the Use local SSH agent setting, and adding a key to the agent.
+//! The Windows' OpenSSH value (`KeyChoice::WindowsSsh`, see `ssh_windows`) needs nothing of its
+//! own here: Trellis wrote it, so choosing a key replaces it and Let ssh decide unsets it without
+//! asking, and Use local SSH agent leaves it alone (it unsets only the key form).
 
 use crate::effect::Effect;
 use crate::msg::Msg;

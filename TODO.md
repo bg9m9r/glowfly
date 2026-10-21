@@ -414,7 +414,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 |---|---|---|
 | General | ✔ General | Missing: delete `.orig` files after merge, show all commits, path to `sh.exe`, extended logging, conflict detection |
 | Profiles | ✔ Profile (identity, connected accounts and app preferences per profile, switching) | Follow-ups in Ideas > Profiles |
-| SSH | ✔ SSH page (key cards with their marks, a Generate SSH key dialog, Use existing for keys outside ~/.ssh, Which key dropdowns for all repositories and the open one, the local agent with a status pill, add a key to a hosting service) | Follow-ups in Later > SSH key management |
+| SSH | ✔ SSH page (key cards with their marks, a Generate SSH key dialog, Use existing for keys outside ~/.ssh, Which key dropdowns for all repositories and the open one, the local agent with a status pill, add a key to a hosting service) | Follow-ups in Ideas > SSH key management |
 | Integrations | ✔ 10 services | PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
 | External Tools | ✔ Editor, diff tool and merge tool (the external terminal is on the Terminal page) | Follow-ups in Later > External tools and Ideas > External diff and merge tools |
@@ -845,6 +845,8 @@ Done except the group colors, which wait on repository groups in the repository 
   - [x] Choose the key pair git uses for SSH remotes (core.sshCommand with `-i <key> -o IdentitiesOnly=yes`, globally or per repository), show the current choice and stop using it
   - [x] Use local SSH agent: detect a running agent (ssh-add -l, the Windows OpenSSH agent service or a Pageant-style agent), add the selected key to it, and leave core.sshCommand unset while it is on
   - [x] Add the public key to a connected hosting service through its API (optional key title, check whether it is already registered, fallback: copy the key and open the service's SSH key settings page)
+  - [x] Keys outside ~/.ssh: IdentityFile entries in ~/.ssh/config (with Include) and agent-only keys
+  - [x] On Windows, point git at Windows' OpenSSH (global core.sshCommand) so it reads keys from the agent service, with undo
 - [x] **Profiles**
   Several named profiles (identity, integrations, preferences) with quick switching.
   - [x] Named identity profiles: add, rename, delete (asking first), switch from Preferences >
@@ -1060,11 +1062,6 @@ blockers and major findings are Milestone 1 items.
 ### Search and filter
 
 - Background indexing for large repos
-
-### SSH key management
-
-- Keys outside ~/.ssh (IdentityFile entries in ~/.ssh/config, agent-only keys)
-- On Windows, offer to point git at Windows' OpenSSH (core.sshCommand or GIT_SSH) so it reads keys from the agent service
 
 ### Notifications
 
@@ -2266,6 +2263,18 @@ here, under the item they grew from.
 - Per-host key choice through ~/.ssh/config Host entries instead of core.sshCommand
 - Palette entries for Use for git, Add to agent and Add to service (after palette_commands.rs is split)
 - Link from the add-key fallback to reconnect a service with a token that may write SSH keys (Integrations, preselected)
+- Resolve host-dependent IdentityFile tokens (%h, %r, %p, %n, %C, %k, %j) per literal Host pattern, or ask `ssh -G <host>`
+- Read IdentityFile entries from the system ssh_config (/etc/ssh/ssh_config, %ProgramData%\ssh\ssh_config)
+- Include patterns with wildcards in folder names, and tokens or environment variables in Include
+- List CertificateFile entries next to their keys
+- Keep Windows' OpenSSH when choosing a key for all repositories (`<Windows ssh> -i <key> -o IdentitiesOnly=yes`)
+- Offer Windows' OpenSSH for one repository's own core.sshCommand
+- Warn on Windows when HOME and USERPROFILE differ (Windows' OpenSSH reads USERPROFILE\.ssh, Git's ssh HOME/.ssh)
+- Set up prompts for Windows' OpenSSH older than 8.4 instead of only warning
+- Fill in fingerprints from the .pub file (SHA-256 of the key blob) when ssh-keygen is missing
+- Match agent keys when the user's FingerprintHash is md5
+- Open ~/.ssh/config in the editor from the SSH page
+- Show which ~/.ssh/config Host entry and key ssh would use for the open repository's remote
 
 ### SSH preferences
 

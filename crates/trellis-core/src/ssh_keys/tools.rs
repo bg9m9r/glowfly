@@ -39,7 +39,7 @@ pub fn keygen_candidates(
 
 /// Git's exec path and the Windows folder, which say where Git for Windows' and Windows' own
 /// copies are. Both None elsewhere.
-fn windows_roots(cwd: &Path) -> (Option<PathBuf>, Option<PathBuf>) {
+pub(super) fn windows_roots(cwd: &Path) -> (Option<PathBuf>, Option<PathBuf>) {
     if !cfg!(windows) {
         return (None, None);
     }

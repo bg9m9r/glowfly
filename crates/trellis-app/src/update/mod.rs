@@ -114,6 +114,7 @@ mod ssh;
 mod ssh_pick;
 mod ssh_service;
 mod ssh_use;
+mod ssh_windows;
 mod stack;
 mod stack_prs;
 mod stack_push;

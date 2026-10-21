@@ -1,8 +1,8 @@
 //! Preferences > SSH: the section header the page's three sections share (the title, an
 //! optional status pill, a Refresh icon button at the right end, and the rule under them), and
 //! the Agent section: its pill (`state::ssh_marks::agent_pill`), the Use local SSH agent
-//! setting, what the agent holds and why it may not be reachable. The view never edits
-//! settings; it sends `Msg`s.
+//! setting, what the agent holds and why it may not be reachable, and on Windows the Windows'
+//! OpenSSH row (`ssh_windows`). The view never edits settings; it sends `Msg`s.
 
 use super::ssh::SshContext;
 use super::{GAP, LABEL_W, ROW_W, fit, help, warn};
@@ -116,13 +116,11 @@ pub(super) fn agent_section(ui: &mut Ui, t: Lang, page: &SshPage, cx: &SshContex
                     WinService::Missing => t.tr("prefs.ssh.agent.service.missing.help"),
                 };
                 help(ui, line);
-                if s == WinService::Running && a.running() && a.git_ssh_env.is_none() {
-                    help(ui, t.tr("prefs.ssh.agent.windows_note.help"));
-                }
             }
             None if !a.auth_sock_set && !a.running() => warn(ui, t.tr("prefs.ssh.agent.no_auth_sock.warn")),
             None => {}
         }
+        super::ssh_windows::windows_row(ui, t, page, msgs);
         if a.pageant {
             help(ui, t.tr("prefs.ssh.agent.pageant.help"));
         }

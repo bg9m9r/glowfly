@@ -127,6 +127,7 @@ pub mod ssh;
 pub mod ssh_marks;
 pub mod ssh_service;
 pub mod ssh_use;
+pub mod ssh_windows;
 pub mod stack;
 pub mod stack_prs;
 pub mod stack_push;

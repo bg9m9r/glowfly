@@ -45,7 +45,14 @@ pub(super) fn pair(name: &str, comment: &str) -> SshKeyPair {
 }
 
 pub(super) fn listing(keys: Vec<SshKeyPair>, keygen: bool) -> SshListing {
-    SshListing { home: home(), dir: home().join(".ssh"), keys, keygen: keygen.then(|| PathBuf::from("C:/bin/ssh-keygen.exe")) }
+    SshListing {
+        home: home(),
+        dir: home().join(".ssh"),
+        keys,
+        keygen: keygen.then(|| PathBuf::from("C:/bin/ssh-keygen.exe")),
+        config_file: home().join(".ssh").join("config"),
+        ..Default::default()
+    }
 }
 
 pub(super) fn page(st: &AppState) -> &SshPage {

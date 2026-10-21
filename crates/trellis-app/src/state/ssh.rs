@@ -2,8 +2,9 @@
 //! (drawn in its dialog, `Modal::SshKeygen`, with its fields kept here so closing the dialog
 //! keeps them), the rules that decide whether Generate can run, what Use existing last refused,
 //! and the texts its toasts and confirmation show. The key git uses and the agent are in
-//! `ssh_use`, the marks on a key card and the agent pill in `ssh_marks`, adding a key to a
-//! service in `ssh_service`.
+//! `ssh_use`, the marks on a key card, the agent-only keys and the agent pill in `ssh_marks`,
+//! pointing git at Windows' OpenSSH in `ssh_windows`, adding a key to a service in
+//! `ssh_service`.
 
 use super::ssh_service::UploadForm;
 use super::ssh_use::{Choices, RepoTarget};
@@ -65,6 +66,9 @@ pub struct SshPage {
     pub upload: Option<UploadForm>,
     /// Why the last file picked with Use existing isn't a key pair, with its file name.
     pub pick_error: Option<(String, KeyFileProblem)>,
+    /// Why the last Use Windows' OpenSSH (or its undo) was refused, or what git said when it
+    /// failed.
+    pub windows_error: Option<String>,
 }
 
 impl SshPage {

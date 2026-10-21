@@ -20,7 +20,7 @@ use trellis_core::ssh_keys::{AgentKey, AgentReach, AgentStatus, KeyChoice, KeyFi
 /// Generate dialog refuses a relative save location).
 pub(super) const HOME: &str = if cfg!(windows) { "C:/Users/ada" } else { "/Users/ada" };
 
-fn key_in(dir: PathBuf, name: &str, kind: &str, bits: Option<u32>, fingerprint: Option<&str>, comment: &str) -> SshKeyPair {
+pub(super) fn key_in(dir: PathBuf, name: &str, kind: &str, bits: Option<u32>, fingerprint: Option<&str>, comment: &str) -> SshKeyPair {
     SshKeyPair {
         private: dir.join(name),
         public: dir.join(format!("{name}.pub")),
@@ -44,7 +44,7 @@ pub(super) fn two_keys() -> Vec<SshKeyPair> {
     ]
 }
 
-fn ssh_add() -> Option<PathBuf> {
+pub(super) fn ssh_add() -> Option<PathBuf> {
     Some(PathBuf::from("C:/Windows/System32/OpenSSH/ssh-add.exe"))
 }
 
@@ -68,7 +68,7 @@ pub(super) fn ssh_page(theme: ThemeChoice, listing: Option<SshListing>) -> AppSt
 }
 
 /// A harness with a window tall enough for the whole page.
-fn tall(st: AppState, dark: bool) -> egui_kittest::Harness<'static, (AppState, Vec<crate::msg::Msg>)> {
+pub(super) fn tall(st: AppState, dark: bool) -> egui_kittest::Harness<'static, (AppState, Vec<crate::msg::Msg>)> {
     let mut h = harness(st, dark);
     h.set_size(eframe::egui::vec2(1400.0, 1180.0));
     h.run();
@@ -81,14 +81,16 @@ pub(super) fn listing(keys: Vec<SshKeyPair>, keygen: bool) -> SshListing {
         dir: PathBuf::from(HOME).join(".ssh"),
         keys,
         keygen: keygen.then(|| PathBuf::from("C:/Windows/System32/OpenSSH/ssh-keygen.exe")),
+        config_file: PathBuf::from(HOME).join(".ssh").join("config"),
+        ..Default::default()
     }
 }
 
-fn ssh_mut(st: &mut AppState) -> &mut crate::state::ssh::SshPage {
+pub(super) fn ssh_mut(st: &mut AppState) -> &mut crate::state::ssh::SshPage {
     &mut st.prefs.as_mut().unwrap().ssh
 }
 
-fn home_key(name: &str) -> PathBuf {
+pub(super) fn home_key(name: &str) -> PathBuf {
     PathBuf::from(HOME).join(".ssh").join(name)
 }
 
@@ -159,6 +161,7 @@ fn prefs_ssh_git_choice() {
         fingerprint: "SHA256:Zp5LrW0eVb7nQk2HsXy9MfTc4GaUoJd1iCtBq8NwE3s".into(),
         comment: "work".into(),
         kind: "RSA".into(),
+        public_key: None,
     };
     p.agent = Some(AgentStatus {
         ssh_add: ssh_add(),
@@ -224,11 +227,13 @@ fn prefs_ssh_extra_key() {
     let mut keys = two_keys();
     keys.push(deploy);
     let mut st = ssh_page(ThemeChoice::Dark, Some(listing(keys, true)));
+    // Remove from list follows the keys remembered from Use existing.
+    st.settings.ssh_extra_keys = vec![deploy_dir.join("deploy_key")];
     let p = ssh_mut(&mut st);
     p.choice = Some(Choices { global: Ok(KeyChoice::Key(deploy_dir.join("deploy_key"))), repo: None });
     p.pick_error = Some(("work_key".into(), KeyFileProblem::NoPublicKey));
     let mut h = tall(st, true);
-    assert_eq!(h.query_all_by_label("Remove from list").count(), 1, "only the key outside .ssh");
+    assert_eq!(h.query_all_by_label("Remove from list").count(), 1, "only the remembered key");
     assert_eq!(h.query_all_by_label("Default").count(), 1);
     assert!(h.query_by_label("All repositories: deploy_key").is_some());
     assert!(h.query_by_label_contains("work_key has no work_key.pub next to it").is_some());

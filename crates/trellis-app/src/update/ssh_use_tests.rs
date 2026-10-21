@@ -150,7 +150,7 @@ fn turning_the_agent_on_unsets_only_trellis_choices() {
     assert!(st.settings.use_ssh_agent);
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
     assert_eq!(sets(&fx), [(None, None)], "the foreign command stays");
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Trellis leaves core.sshCommand unset; ssh uses your agent."));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Trellis doesn't choose a key in core.sshCommand; ssh uses your agent."));
 
     let mut st = chosen(other("ssh -v"), Some((KeyChoice::Key(key().private), false)));
     assert!(sets(&ssh(&mut st, SshMsg::SetUseAgent(true))).is_empty(), "an untrusted repository's config is left alone");

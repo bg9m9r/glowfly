@@ -263,7 +263,14 @@ second one next to it.
 7. **A path written into a git config value that a shell runs (`core.sshCommand`) goes through
    `native_path::native` and `rebase::shell_quote_for`** (`ssh_keys/command.rs`): no `\\?\`
    prefix, sh-quoted, and forward slashes on Windows. Git for Windows' bundled ssh doesn't read
-   keys from the Windows OpenSSH agent service; only Windows' own `ssh.exe` does.
+   keys from the Windows OpenSSH agent service; only Windows' own `ssh.exe` does. Trellis's value
+   for that one (`ssh_keys/windows_ssh.rs`) is the program alone, resolved from `SystemRoot`
+   (`paths::resolve`, so it has the on-disk spelling), written the same way
+   (`'C:/Windows/System32/OpenSSH/ssh.exe'`), and recognised only by that exact spelling (a drive,
+   then `System32/OpenSSH/ssh.exe`). Paths read from an ssh config are text that may have been
+   written for another OS: decide whether one is a full path with `config_expand::absolute_for`
+   for the OS ssh runs on, convert Git for Windows' MSYS drive form (`/c/Users/…`) only on Windows,
+   and never use `Path::is_absolute` on such text.
 8. **The gpg.program wrapper runs the gpg git would have run** (`gpg_prompt/`): the last
    `gpg.program` / `gpg.openpgp.program` from any scope (system, global, repository, worktree)
    that isn't Trellis, else `gpg` on the PATH git passes on (on Windows that is Git for Windows'

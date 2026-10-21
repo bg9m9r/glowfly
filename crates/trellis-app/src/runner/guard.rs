@@ -416,6 +416,7 @@ mod tests {
         use crate::state::{PrefPage, PrefsState};
         use trellis_core::forge::{Account, Provider};
         use trellis_core::ssh_keys::AgentReach;
+        let prefs_busy = |st: &mut AppState| st.prefs.as_mut().unwrap().ssh.choice_busy = true;
         let panicked = |effect: Effect| {
             assert!(effect.scope().is_none(), "unscoped");
             guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap()
@@ -435,6 +436,15 @@ mod tests {
         update(&mut st, msg, Instant::now());
         let page = &st.prefs.as_ref().unwrap().ssh;
         assert!(!page.choice_busy && page.choice_error.as_deref().is_some_and(|e| e.contains("boom")));
+
+        prefs_busy(&mut st);
+        let msg = panicked(Effect::Ssh(SshEffect::SetWindowsSsh { program: Some("C:/Windows/System32/OpenSSH/ssh.exe".into()) }));
+        assert!(matches!(&msg, Msg::Ssh(SshMsg::WindowsSshSet { on: true, result: Err(e) }) if e.contains("ssh-windows")));
+        update(&mut st, msg, Instant::now());
+        let page = &st.prefs.as_ref().unwrap().ssh;
+        assert!(!page.choice_busy && page.windows_error.as_deref().is_some_and(|e| e.contains("boom")));
+        let msg = panicked(Effect::Ssh(SshEffect::SetWindowsSsh { program: None }));
+        assert!(matches!(&msg, Msg::Ssh(SshMsg::WindowsSshSet { on: false, result: Err(_) })));
 
         let msg = panicked(Effect::Ssh(SshEffect::Agent { generation: 4 }));
         update(&mut st, msg, Instant::now());

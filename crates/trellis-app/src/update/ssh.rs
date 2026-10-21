@@ -1,7 +1,8 @@
 //! Preferences > SSH: reading ~/.ssh (and the keys added with Use existing), copying a public
-//! key, and generating a key in the Generate SSH key dialog (asking before replacing one). Use
-//! existing and Remove from list are in `ssh_pick`, the key git uses and the agent in
-//! `ssh_use`, adding a key to a service in `ssh_service`. Its effects are unscoped: the page
+//! key (a listed pair's or an agent-only key's), and generating a key in the Generate SSH key
+//! dialog (asking before replacing one). Use existing and Remove from list are in `ssh_pick`,
+//! the key git uses and the agent in `ssh_use`, Windows' OpenSSH in `ssh_windows`, adding a key
+//! to a service in `ssh_service`. Its effects are unscoped: the page
 //! belongs to no repository.
 
 use crate::effect::{Effect, UiEffect};
@@ -13,7 +14,7 @@ use crate::state::trust::Standing;
 use crate::state::{AppState, Modal, PrefPage};
 use std::time::Instant;
 use trellis_core::paths::same_spelling;
-use trellis_core::ssh_keys::NewKey;
+use trellis_core::ssh_keys::{AgentReach, NewKey};
 
 pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Effect>) {
     match m {
@@ -43,6 +44,9 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
             fx.push(Effect::Ui(UiEffect::CopyText(key.public_key.clone())));
             st.toast(true, COPIED, now);
         }
+        SshMsg::CopyAgentKey(fingerprint) => copy_agent_key(st, &fingerprint, now, fx),
+        SshMsg::UseWindowsSsh(on) => super::ssh_windows::use_windows_ssh(st, on, fx),
+        SshMsg::WindowsSshSet { on, result } => super::ssh_windows::windows_ssh_set(st, on, result, now, fx),
         SshMsg::OpenGenerate => open_generate(st),
         SshMsg::Generate { overwrite } => generate(st, overwrite, fx),
         SshMsg::UseExisting => super::ssh_pick::use_existing(st, fx),
@@ -134,6 +138,22 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::Ssh(SshEffect::List { generation: p.ssh.generation, extra }));
     super::ssh_use::read_choice(st, fx);
     super::ssh_use::read_agent(st, fx);
+}
+
+/// Copy public key on an agent-only key: the line `ssh-add -L` gave for it, or a toast saying
+/// there is none. A fingerprint the agent no longer lists does nothing.
+fn copy_agent_key(st: &mut AppState, fingerprint: &str, now: Instant, fx: &mut Vec<Effect>) {
+    let t = st.settings.lang();
+    let agent = st.prefs.as_ref().and_then(|p| p.ssh.agent.as_ref());
+    let Some(AgentReach::Keys(keys)) = agent.and_then(|a| a.reach.as_ref()) else { return };
+    let Some(key) = keys.iter().find(|k| k.fingerprint == fingerprint) else { return };
+    match key.public_key.clone() {
+        Some(line) => {
+            fx.push(Effect::Ui(UiEffect::CopyText(line)));
+            st.toast(true, COPIED, now);
+        }
+        None => st.toast(false, t.tr("prefs.ssh.agent_only.copy_failed.toast"), now),
+    }
 }
 
 /// The Generate… button: opens the dialog with the location filled and the comment prefilled

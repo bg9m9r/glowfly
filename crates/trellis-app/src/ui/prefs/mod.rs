@@ -29,6 +29,8 @@ mod ssh_agent;
 mod ssh_card;
 mod ssh_git;
 mod ssh_service;
+mod ssh_sources;
+mod ssh_windows;
 pub(super) mod terminal;
 mod theme_row;
 mod tools;
@@ -83,6 +85,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             .map(|c| (c.account.clone(), crate::state::ssh_service::service_label(&c.account)))
             .collect(),
         job: st.job.as_ref().map(|j| j.label.clone()),
+        extra: st.settings.ssh_extra_keys.clone(),
     };
     let updates = updates_row::UpdatesView {
         updates: &st.updates,

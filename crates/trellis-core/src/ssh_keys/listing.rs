@@ -27,6 +27,18 @@ pub fn key_body(public_line: &str) -> Option<(&str, &str)> {
     Some((key_type, tokens.next()?))
 }
 
+/// The SHA256 fingerprint of a public key line, as `ssh-add -l` and `ssh-keygen -l` print it by
+/// default: "SHA256:" and the unpadded base64 of the SHA-256 of the decoded key body. None when
+/// the line isn't a public key or its body isn't base64.
+pub fn public_fingerprint(public_line: &str) -> Option<String> {
+    use base64::Engine;
+    use base64::engine::general_purpose::{STANDARD, STANDARD_NO_PAD};
+    use sha2::{Digest, Sha256};
+    let (_, body) = key_body(public_line)?;
+    let blob = STANDARD.decode(body).ok()?;
+    Some(format!("SHA256:{}", STANDARD_NO_PAD.encode(Sha256::digest(&blob))))
+}
+
 /// Parses `ssh-keygen -l` output, e.g. "256 SHA256:abc ada@x (ED25519)", into the size, the
 /// fingerprint and the kind in the trailing parentheses.
 pub fn parse_fingerprint(stdout: &str) -> Option<(Option<u32>, String, String)> {

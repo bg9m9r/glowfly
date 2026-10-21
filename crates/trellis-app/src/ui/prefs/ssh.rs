@@ -1,7 +1,9 @@
 //! Preferences > SSH: one column of three sections. Keys lists the key pairs as cards
-//! (`ssh_card`, with the Add to service form under its card, `ssh_service`) and offers
+//! (`ssh_card`, with the Add to service form under its card, `ssh_service`), the ~/.ssh/config
+//! entries that can't be listed and the keys only the agent holds (`ssh_sources`), and offers
 //! Generate… (the Generate SSH key dialog, `ui/ssh_keygen_dialog.rs`) and Use existing…; Which
-//! key picks the key git uses (`ssh_git`); Agent shows the local SSH agent (`ssh_agent`). The
+//! key picks the key git uses (`ssh_git`); Agent shows the local SSH agent (`ssh_agent`, with
+//! the Windows' OpenSSH row from `ssh_windows`). The
 //! view edits only text buffers; everything else is a `Msg`.
 
 use super::{GAP, LABEL_W, ROW_W, fit, help, warn};
@@ -11,6 +13,7 @@ use crate::state::ssh::SshPage;
 use crate::ui::theme::color;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
+use std::path::PathBuf;
 use trellis_core::forge::Account;
 use trellis_core::i18n::Lang;
 use trellis_core::native_path;
@@ -25,6 +28,9 @@ pub struct SshContext {
     pub services: Vec<(Account, String)>,
     /// The running git job's label.
     pub job: Option<String>,
+    /// The keys added with Use existing (`Settings::ssh_extra_keys`): only those can be removed
+    /// from the list.
+    pub extra: Vec<PathBuf>,
 }
 
 pub fn ssh_page(ui: &mut Ui, t: Lang, page: &mut SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
@@ -57,7 +63,8 @@ fn keys_section(ui: &mut Ui, t: Lang, page: &mut SshPage, listing: &SshListing, 
     let dir = native_path::shown(&listing.dir);
     ui.vertical(|ui| {
         ui.set_max_width(fit(ui, LABEL_W + GAP + ROW_W));
-        help(ui, &t.trf("prefs.ssh.keys.help", &[("dir", &dir)]));
+        let config = native_path::shown(&listing.config_file);
+        help(ui, &t.trf("prefs.ssh.keys.help", &[("dir", &dir), ("config", &config)]));
         ui.add_space(6.0);
         if listing.keygen.is_none() {
             warn(ui, t.tr("prefs.ssh.keys.no_keygen.warn"));
@@ -74,6 +81,8 @@ fn keys_section(ui: &mut Ui, t: Lang, page: &mut SshPage, listing: &SshListing, 
             super::ssh_service::upload_form(ui, t, form, &key.file_name(), msgs);
         }
     }
+    super::ssh_sources::config_notes(ui, t, listing);
+    super::ssh_sources::agent_only_rows(ui, t, page, msgs);
     ui.horizontal(|ui| {
         let blocked = page.open_blocked(t);
         let generate = buttons::secondary(t.tr("prefs.ssh.keys.generate.button")).enabled(blocked.is_none()).why(blocked);

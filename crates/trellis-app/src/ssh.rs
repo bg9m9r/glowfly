@@ -1,7 +1,9 @@
 //! Messages and effects of Preferences > SSH: the key pairs in ~/.ssh and the ones added with Use
 //! existing (picked in the OS file dialog), generating a key in its dialog, the key git uses
-//! (core.sshCommand), the local SSH agent and adding a key to a hosting service (state/ssh*.rs,
-//! update/ssh*.rs, runner/ssh.rs, ui/prefs/ssh*.rs, ui/ssh_keygen_dialog.rs).
+//! (core.sshCommand, and on Windows pointing git at Windows' OpenSSH), the keys ~/.ssh/config
+//! names and the ones only the agent holds, the local SSH agent and adding a key to a hosting
+//! service (state/ssh*.rs, update/ssh*.rs, runner/ssh.rs, ui/prefs/ssh*.rs,
+//! ui/ssh_keygen_dialog.rs).
 
 use crate::msg::Inactive;
 use std::path::PathBuf;
@@ -56,6 +58,10 @@ pub enum SshMsg {
         key: PathBuf,
         account: Account,
     },
+    /// Copy the public key of the agent-only key with this fingerprint.
+    CopyAgentKey(String),
+    /// Use Windows' OpenSSH (true) or Use Git's own ssh (false): global core.sshCommand.
+    UseWindowsSsh(bool),
     // ---- from the runner
     Loaded {
         generation: u64,
@@ -86,6 +92,11 @@ pub enum SshMsg {
         key: PathBuf,
         account: Account,
         result: Result<AddKeyOutcome, ServiceKeyError>,
+    },
+    /// The Windows' OpenSSH switch (`on`) or its undo finished.
+    WindowsSshSet {
+        on: bool,
+        result: Result<(), String>,
     },
 }
 
@@ -127,6 +138,9 @@ impl SshMsg {
             | Self::SendToService
             | Self::CancelService
             | Self::OpenKeySettings { .. }
+            | Self::CopyAgentKey(_)
+            | Self::UseWindowsSsh(_)
+            | Self::WindowsSshSet { .. }
             | Self::Loaded { .. }
             | Self::Generated(_)
             | Self::ChoiceLoaded { .. }
@@ -159,6 +173,9 @@ pub enum SshEffect {
     AddToAgent { ssh_add: PathBuf, key: PathBuf },
     /// Add a public key to a hosting-service account (signing in first).
     AddToService { account: Account, public_key: String, title: String, key: PathBuf },
+    /// Make git run Windows' OpenSSH `program` for every repository (global core.sshCommand),
+    /// or with None unset that value again.
+    SetWindowsSsh { program: Option<PathBuf> },
 }
 
 /// What an `SshEffect` reports if it can't finish (see `runner/guard.rs`).
@@ -171,6 +188,7 @@ pub enum SshFailure {
     Agent(u64),
     AddToAgent(PathBuf),
     AddToService { key: PathBuf, account: Account },
+    SetWindowsSsh { on: bool },
 }
 
 impl SshEffect {
@@ -184,6 +202,7 @@ impl SshEffect {
             SshEffect::Agent { .. } => "ssh-agent",
             SshEffect::AddToAgent { .. } => "ssh-add",
             SshEffect::AddToService { .. } => "ssh-key-upload",
+            SshEffect::SetWindowsSsh { .. } => "ssh-windows",
         }
     }
 
@@ -196,7 +215,8 @@ impl SshEffect {
             | SshEffect::Generate { .. }
             | SshEffect::ReadChoice { .. }
             | SshEffect::SetKeyChoice { .. }
-            | SshEffect::Agent { .. } => true,
+            | SshEffect::Agent { .. }
+            | SshEffect::SetWindowsSsh { .. } => true,
             SshEffect::PickKey { .. } | SshEffect::AddToAgent { .. } | SshEffect::AddToService { .. } => false,
         }
     }
@@ -211,6 +231,7 @@ impl SshEffect {
             SshEffect::Agent { generation } => SshFailure::Agent(*generation),
             SshEffect::AddToAgent { key, .. } => SshFailure::AddToAgent(key.clone()),
             SshEffect::AddToService { key, account, .. } => SshFailure::AddToService { key: key.clone(), account: account.clone() },
+            SshEffect::SetWindowsSsh { program } => SshFailure::SetWindowsSsh { on: program.is_some() },
         }
     }
 }
@@ -231,6 +252,7 @@ impl SshFailure {
             SshFailure::AddToService { key, account } => {
                 SshMsg::AddedToService { key, account, result: Err(ServiceKeyError { message: text, fallback: false }) }
             }
+            SshFailure::SetWindowsSsh { on } => SshMsg::WindowsSshSet { on, result: Err(text) },
         }
     }
 }

@@ -1,6 +1,7 @@
-//! The key git uses for SSH remotes, chosen through `core.sshCommand`. Trellis writes one form,
-//! `ssh -i '<key>' -o IdentitiesOnly=yes`, and recognises it when reading the setting back;
-//! anything else is someone else's command, which the page shows and asks before replacing.
+//! The key git uses for SSH remotes, chosen through `core.sshCommand`. Trellis writes two forms,
+//! `ssh -i '<key>' -o IdentitiesOnly=yes` and (on Windows) Windows' own ssh alone, and
+//! recognises them when reading the setting back; anything else is someone else's command,
+//! which the page shows and asks before replacing.
 
 use crate::gitcli::{self, NO_PROMPTS, READ_TIMEOUT, args};
 use crate::rebase::shell_quote_for;
@@ -14,6 +15,9 @@ pub enum KeyChoice {
     Unset,
     /// The form Trellis writes, naming this key.
     Key(PathBuf),
+    /// The form Trellis writes to make git run Windows' own OpenSSH: that program alone
+    /// (`super::windows_ssh`).
+    WindowsSsh(PathBuf),
     /// A command Trellis didn't write; `key` is the file after `-i`, when the command could be
     /// read as plain words.
     Other {
@@ -115,6 +119,12 @@ pub fn parse_ssh_command(value: &str) -> KeyChoice {
     }
     let Some(words) = words(value) else { return KeyChoice::Other { value: value.to_owned(), key: None } };
     let text: Vec<&str> = words.iter().map(|w| w.text.as_str()).collect();
+    if let [program] = text[..]
+        && !words[0].tilde
+        && super::windows_ssh::is_windows_ssh_word(program)
+    {
+        return KeyChoice::WindowsSsh(PathBuf::from(program));
+    }
     if let ["ssh", "-i", key, "-o", "IdentitiesOnly=yes"] = text[..]
         && !words[2].tilde
         && !key.is_empty()

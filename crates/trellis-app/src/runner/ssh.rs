@@ -1,7 +1,7 @@
 //! Preferences > SSH: reading the key pairs in ~/.ssh and the extra ones (`SshEffect::List`),
 //! picking a key pair anywhere in the OS file dialog (`SshEffect::PickKey`), generating a key with
 //! ssh-keygen, reading and writing core.sshCommand, checking the agent and adding a key to it,
-//! and adding a public key to a hosting-service account.
+//! adding a public key to a hosting-service account, and pointing git at Windows' OpenSSH.
 
 use crate::msg::Msg;
 use crate::ssh::{GenerateFailure, ServiceKeyError, SshEffect, SshMsg};
@@ -59,6 +59,14 @@ pub(super) fn run(e: SshEffect) -> Msg {
                 .and_then(|auth| forge::add_ssh_key(&account, &auth, &public_key, &title))
                 .map_err(|e| ServiceKeyError { message: e.to_string(), fallback: forge::needs_fallback(&e) });
             SshMsg::AddedToService { key, account, result }
+        }
+        SshEffect::SetWindowsSsh { program } => {
+            let cwd = home_or_here();
+            let result = match &program {
+                Some(p) => ssh_keys::write_windows_ssh(&cwd, p, &[]),
+                None => ssh_keys::write_choice(&cwd, true, None, &[]),
+            };
+            SshMsg::WindowsSshSet { on: program.is_some(), result }
         }
     })
 }

@@ -1,8 +1,11 @@
-//! The local SSH agent: whether one is running and which keys it holds (`ssh-add -l`), the
+//! The local SSH agent: whether one is running and which keys it holds (`ssh-add -l`, with
+//! their public lines from `ssh-add -L`), which ssh git runs on Windows, the
 //! Windows OpenSSH Authentication Agent service and Pageant, and adding a key with `ssh-add`.
 //! A passphrase only ever reaches ssh-add through the askpass helper, never its arguments.
 
+use super::SshKeyPair;
 use super::tools::tool_candidates;
+use super::windows_ssh::WinSshFacts;
 use crate::gitcli;
 use crate::signing::command;
 use std::ffi::{OsStr, OsString};
@@ -24,6 +27,9 @@ pub struct AgentKey {
     pub fingerprint: String,
     pub comment: String,
     pub kind: String,
+    /// Its public key line from `ssh-add -L`, matched by fingerprint; None when the agent
+    /// didn't give one that matches.
+    pub public_key: Option<String>,
 }
 
 /// What `ssh-add -l` found.
@@ -59,6 +65,8 @@ pub struct AgentStatus {
     pub git_ssh_env: Option<String>,
     /// GIT_SSH_COMMAND is set: it overrides core.sshCommand for every git command.
     pub git_ssh_command_set: bool,
+    /// Which ssh git would run (Windows only).
+    pub win_ssh: Option<WinSshFacts>,
 }
 
 impl AgentStatus {
@@ -74,6 +82,32 @@ impl AgentStatus {
             _ => false,
         }
     }
+
+    /// The agent holds the key of `pair` (see [`pair_matches`]).
+    pub fn holds_pair(&self, pair: &SshKeyPair) -> bool {
+        match &self.reach {
+            Some(AgentReach::Keys(keys)) => keys.iter().any(|k| pair_matches(pair, k)),
+            _ => false,
+        }
+    }
+}
+
+/// Whether the agent's `key` is the key of `pair`: the same fingerprint, or the same public key
+/// body (when the pair has no fingerprint because ssh-keygen is missing).
+pub fn pair_matches(pair: &SshKeyPair, key: &AgentKey) -> bool {
+    let body = super::key_body(&pair.public_key);
+    pair.fingerprint.as_deref() == Some(key.fingerprint.as_str())
+        || (body.is_some() && key.public_key.as_deref().and_then(super::key_body) == body)
+}
+
+/// Fills each key's public line from `ssh-add -L` output, pairing them by the fingerprint
+/// computed from each line (never by position). Keys with no matching line stay None.
+pub fn attach_public_keys(keys: &mut [AgentKey], list_l_stdout: &str) {
+    let lines: Vec<(String, &str)> =
+        list_l_stdout.lines().map(str::trim).filter_map(|l| super::public_fingerprint(l).map(|fp| (fp, l))).collect();
+    for key in keys {
+        key.public_key = lines.iter().find(|(fp, _)| *fp == key.fingerprint).map(|(_, l)| (*l).to_owned());
+    }
 }
 
 /// One line of `ssh-add -l`, e.g. "256 SHA256:abc ada@x laptop (ED25519)".
@@ -81,7 +115,7 @@ pub fn parse_agent_line(line: &str) -> Option<AgentKey> {
     let (bits, fingerprint, kind) = super::parse_fingerprint(line)?;
     let tokens: Vec<&str> = line.split_whitespace().collect();
     let comment = tokens[2..tokens.len() - 1].join(" ");
-    Some(AgentKey { bits, fingerprint, comment, kind })
+    Some(AgentKey { bits, fingerprint, comment, kind, public_key: None })
 }
 
 /// `ssh-add -l`'s answer by its exit code: 0 lists keys, 1 means none are loaded, 2 means no
@@ -138,7 +172,7 @@ pub fn ssh_add_candidates_for(
 
 /// Runs `cmd` (stdout and stderr piped), killing it after `timeout`: the exit code (None if
 /// killed), stdout and stderr.
-fn run_with_timeout(mut cmd: Command, timeout: Duration) -> std::io::Result<(Option<i32>, String, String)> {
+pub(super) fn run_with_timeout(mut cmd: Command, timeout: Duration) -> std::io::Result<(Option<i32>, String, String)> {
     let mut child = cmd.spawn()?;
     let read = |pipe: Option<Box<dyn std::io::Read + Send>>| {
         std::thread::spawn(move || {
@@ -170,13 +204,23 @@ fn run_with_timeout(mut cmd: Command, timeout: Duration) -> std::io::Result<(Opt
 /// UI thread.
 pub fn agent_status(cwd: &Path) -> AgentStatus {
     let ssh_add = super::find_ssh_add(cwd);
-    let reach = ssh_add.as_ref().map(|p| {
+    let list = |p: &Path, flag: &str| {
         let mut cmd = command(p);
-        cmd.arg("-l").env("SSH_ASKPASS_REQUIRE", "never");
-        match run_with_timeout(cmd, LIST_TIMEOUT) {
+        cmd.arg(flag).env("SSH_ASKPASS_REQUIRE", "never");
+        run_with_timeout(cmd, LIST_TIMEOUT)
+    };
+    let reach = ssh_add.as_ref().map(|p| {
+        let mut reach = match list(p, "-l") {
             Ok((code, stdout, stderr)) => parse_agent_list(code, &stdout, &stderr),
             Err(e) => AgentReach::Failed(format!("could not run ssh-add: {e}")),
+        };
+        if let AgentReach::Keys(keys) = &mut reach
+            && !keys.is_empty()
+            && let Ok((Some(0), stdout, _)) = list(p, "-L")
+        {
+            attach_public_keys(keys, &stdout);
         }
+        reach
     });
     let set = |name: &str| std::env::var_os(name).is_some_and(|v| !v.is_empty());
     let git_ssh_env = ["GIT_SSH_COMMAND", "GIT_SSH"].into_iter().find(|n| set(n)).map(str::to_owned);
@@ -188,6 +232,7 @@ pub fn agent_status(cwd: &Path) -> AgentStatus {
         auth_sock_set: set("SSH_AUTH_SOCK"),
         git_ssh_command_set: set("GIT_SSH_COMMAND"),
         git_ssh_env,
+        win_ssh: super::windows_ssh::facts(cwd),
     }
 }
 

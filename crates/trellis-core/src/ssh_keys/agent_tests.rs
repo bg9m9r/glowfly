@@ -6,7 +6,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 fn key(bits: u32, fp: &str, comment: &str, kind: &str) -> AgentKey {
-    AgentKey { bits: Some(bits), fingerprint: fp.into(), comment: comment.into(), kind: kind.into() }
+    AgentKey { bits: Some(bits), fingerprint: fp.into(), comment: comment.into(), kind: kind.into(), public_key: None }
 }
 
 #[test]
@@ -89,4 +89,67 @@ fn key_bodies_ignore_the_comment() {
     assert_ne!(key_body("ssh-ed25519 AAAAx"), key_body("ssh-rsa AAAAx"));
     assert_eq!(key_body("garbage AAAA"), None);
     assert_eq!(key_body("ssh-ed25519"), None);
+}
+
+/// A key made with ssh-keygen once, and the fingerprint `ssh-keygen -lf` printed for it.
+const VECTOR: &str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHPd7mBMr2aPPHDZfeH1Y5iDjDim+AgCEZtNDHuzkwxC vector@trellis";
+const VECTOR_FP: &str = "SHA256:HmAVaqVHVQgdAe2Kcq2GRNUyFYDZipDHmBV+Z1cVE1I";
+
+#[test]
+fn computes_sha256_fingerprints() {
+    assert_eq!(public_fingerprint(VECTOR).as_deref(), Some(VECTOR_FP));
+    assert_eq!(
+        public_fingerprint(&format!(
+            "  {VECTOR}
+"
+        ))
+        .as_deref(),
+        Some(VECTOR_FP),
+        "the comment and spaces don't count"
+    );
+    for junk in ["", "junk", "ssh-ed25519", "ssh-ed25519 not*base64 x"] {
+        assert_eq!(public_fingerprint(junk), None, "{junk:?}");
+    }
+}
+
+#[test]
+fn attaches_public_lines_by_fingerprint() {
+    let other = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQAB other";
+    let other_fp = public_fingerprint(other).expect("valid base64");
+    let mut keys =
+        vec![key(256, "SHA256:unknown", "x", "ED25519"), key(256, &other_fp, "o", "ED25519"), key(256, VECTOR_FP, "v", "ED25519")];
+    attach_public_keys(
+        &mut keys,
+        &format!(
+            "{VECTOR}
+{other}
+not a key
+"
+        ),
+    );
+    assert_eq!(keys[0].public_key, None);
+    assert_eq!(keys[1].public_key.as_deref(), Some(other), "not by position");
+    assert_eq!(keys[2].public_key.as_deref(), Some(VECTOR));
+}
+
+#[test]
+fn pairs_match_agent_keys_by_fingerprint_or_body() {
+    let pair = |fingerprint: Option<&str>| SshKeyPair {
+        private: "/k/id".into(),
+        public: "/k/id.pub".into(),
+        key_type: "ssh-ed25519".into(),
+        kind: "ED25519".into(),
+        bits: None,
+        fingerprint: fingerprint.map(str::to_owned),
+        comment: String::new(),
+        public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHPd7mBMr2aPPHDZfeH1Y5iDjDim+AgCEZtNDHuzkwxC laptop".into(),
+    };
+    let mut held = key(256, VECTOR_FP, "v", "ED25519");
+    assert!(pair_matches(&pair(Some(VECTOR_FP)), &held));
+    assert!(!pair_matches(&pair(None), &held), "no fingerprint and no public line");
+    held.public_key = Some(VECTOR.into());
+    assert!(pair_matches(&pair(None), &held), "the same body");
+    assert!(!pair_matches(&pair(Some("SHA256:other")), &key(256, VECTOR_FP, "v", "ED25519")));
+    let status = AgentStatus { reach: Some(AgentReach::Keys(vec![held])), ..Default::default() };
+    assert!(status.holds_pair(&pair(None)));
 }

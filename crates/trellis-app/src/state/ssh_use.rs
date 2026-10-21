@@ -9,7 +9,7 @@ use trellis_core::i18n::Lang;
 use trellis_core::paths::same_spelling;
 use trellis_core::ssh_keys::KeyChoice;
 
-pub const AGENT_TOAST: &str = "Trellis leaves core.sshCommand unset; ssh uses your agent.";
+pub const AGENT_TOAST: &str = "Trellis doesn't choose a key in core.sshCommand; ssh uses your agent.";
 pub const REPLACE_COMMAND_TITLE: &str = "Replace SSH command";
 pub const REMOVE_COMMAND_TITLE: &str = "Remove SSH command";
 

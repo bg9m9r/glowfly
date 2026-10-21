@@ -72,6 +72,7 @@ impl Level<'_> {
                 Some(k) => k.file_name(),
                 None => t.trf("prefs.ssh.which.unlisted", &[("path", &native_path::shown(p))]),
             },
+            Ok(KeyChoice::WindowsSsh(_)) => t.tr("prefs.ssh.which.windows_ssh").into(),
             Ok(KeyChoice::Other { .. }) => t.tr("prefs.ssh.which.custom").into(),
             Err(_) => t.tr("prefs.ssh.which.unreadable").into(),
         }
@@ -105,12 +106,12 @@ impl Level<'_> {
                         help(ui, t.tr("prefs.ssh.which.other_agent.help"));
                     }
                 }
-                Ok(KeyChoice::Unset | KeyChoice::Key(_)) => {}
+                Ok(KeyChoice::Unset | KeyChoice::Key(_) | KeyChoice::WindowsSsh(_)) => {}
             }
             if repo && let Some(target) = &page.repo {
                 if !target.trusted {
                     help(ui, t.tr("prefs.ssh.which.not_trusted.help"));
-                } else if matches!(choice, Ok(KeyChoice::Key(_) | KeyChoice::Other { .. })) {
+                } else if matches!(choice, Ok(KeyChoice::Key(_) | KeyChoice::WindowsSsh(_) | KeyChoice::Other { .. })) {
                     help(ui, &t.trf("prefs.ssh.which.overrides.help", &[("repo", &target.name)]));
                 }
             }
