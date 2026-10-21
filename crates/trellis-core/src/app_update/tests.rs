@@ -210,6 +210,7 @@ fn release_json_is_parsed_and_cleaned() {
             {"name": "plain.zip", "size": 1, "browser_download_url": "http://github.com/d/plain.zip"},
             {"name": "../x", "size": 1, "browser_download_url": "https://github.com/d/x"},
             {"name": ".hidden", "size": 1, "browser_download_url": "https://github.com/d/h"},
+            {"name": "no-link.zip", "size": 1},
             {"name": "SHA256SUMS", "size": 99, "browser_download_url": "https://github.com/d/SHA256SUMS"}
         ]}"###;
     let r = parse_release(json).unwrap();
@@ -246,6 +247,10 @@ fn scratch(tag: &str) -> PathBuf {
     let dir = crate::paths::temp_dir().join(format!("trellis-update-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     dir
+}
+
+fn hosted() -> Feed {
+    Feed::Hosted(REPOSITORY.to_owned())
 }
 
 const NAME: &str = "trellis-v0.3.0-x86_64-pc-windows-msvc.msi";
@@ -286,16 +291,16 @@ fn serve(served: &'static str, combined: Option<String>, single: Option<String>)
 fn a_verified_download_is_saved() {
     let dir = scratch("ok");
     let mock = serve(BODY, Some(format!("{}  other.zip\n{}", HASH_A, line_for(BODY))), None);
-    let path = download(&download_offer(BODY.len(), "combined"), &dir).unwrap();
+    let path = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap();
     assert_eq!(path, dir.join(NAME));
     assert_eq!(std::fs::read(&path).unwrap(), BODY.as_bytes());
     let hosts: Vec<String> = mock.requests().iter().map(|r| r.host.clone()).collect();
     assert!(hosts.iter().all(|h| h == "github.com"), "{hosts:?}");
     assert!(mock.requests().iter().all(|r| r.header("Authorization").is_none()));
     // Again: the same file is reused; a different one gets a free name.
-    assert_eq!(download(&download_offer(BODY.len(), "combined"), &dir).unwrap(), dir.join(NAME));
+    assert_eq!(download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap(), dir.join(NAME));
     std::fs::write(dir.join(NAME), "something else").unwrap();
-    let again = download(&download_offer(BODY.len(), "combined"), &dir).unwrap();
+    let again = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap();
     assert_eq!(again, dir.join("trellis-v0.3.0-x86_64-pc-windows-msvc (1).msi"));
     assert_eq!(std::fs::read_to_string(dir.join(NAME)).unwrap(), "something else", "never overwritten");
     let _ = std::fs::remove_dir_all(&dir);
@@ -305,7 +310,7 @@ fn a_verified_download_is_saved() {
 fn a_mismatched_download_leaves_nothing() {
     let dir = scratch("bad");
     let _mock = serve(BODY, Some(line_for("the real installer bytes")), None);
-    let err = download(&download_offer(BODY.len(), "combined"), &dir).unwrap_err();
+    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err();
     assert!(err.contains("didn't match its published checksum"), "{err}");
     let left: Vec<_> = std::fs::read_dir(&dir).map(|d| d.flatten().map(|e| e.file_name()).collect()).unwrap_or_default();
     assert!(left.is_empty(), "no file and no temp file: {left:?}");
@@ -316,7 +321,7 @@ fn a_mismatched_download_leaves_nothing() {
 fn the_single_checksum_file_is_the_fallback() {
     let dir = scratch("single");
     let mock = serve(BODY, None, Some(line_for(BODY)));
-    assert_eq!(download(&download_offer(BODY.len(), "single"), &dir).unwrap(), dir.join(NAME));
+    assert_eq!(download(&hosted(), &download_offer(BODY.len(), "single"), &dir).unwrap(), dir.join(NAME));
     assert_eq!(mock.requests().len(), 2);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -325,17 +330,17 @@ fn the_single_checksum_file_is_the_fallback() {
 fn no_checksum_means_no_download() {
     let dir = scratch("nosum");
     let mock = serve(BODY, None, None);
-    let err = download(&download_offer(BODY.len(), "none"), &dir).unwrap_err();
+    let err = download(&hosted(), &download_offer(BODY.len(), "none"), &dir).unwrap_err();
     assert!(err.contains("doesn't publish a checksum") && err.contains(NAME), "{err}");
     assert!(mock.requests().is_empty(), "nothing fetched");
     // Published, but the server has none: the file isn't fetched either.
-    let err = download(&download_offer(BODY.len(), "combined"), &dir).unwrap_err();
+    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err();
     assert!(err.contains("checksums"), "{err}");
     assert!(mock.requests().iter().all(|r| !r.path.ends_with(".msi")), "the file itself was never asked for");
     // A checksum file that doesn't list the file.
     drop(mock);
     let mock = serve(BODY, Some(format!("{HASH_A}  other.zip\n")), None);
-    let err = download(&download_offer(BODY.len(), "combined"), &dir).unwrap_err();
+    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err();
     assert!(err.contains("doesn't publish a checksum"), "{err}");
     assert_eq!(mock.requests().len(), 1);
     assert!(!dir.exists());
@@ -345,8 +350,8 @@ fn no_checksum_means_no_download() {
 fn a_download_of_the_wrong_size_is_refused() {
     let dir = scratch("size");
     let _mock = serve(BODY, Some(line_for(BODY)), None);
-    assert!(download(&download_offer(BODY.len() - 1, "combined"), &dir).is_err(), "longer than announced");
-    assert!(download(&download_offer(BODY.len() + 1, "combined"), &dir).unwrap_err().contains("bytes instead of"));
+    assert!(download(&hosted(), &download_offer(BODY.len() - 1, "combined"), &dir).is_err(), "longer than announced");
+    assert!(download(&hosted(), &download_offer(BODY.len() + 1, "combined"), &dir).unwrap_err().contains("bytes instead of"));
     assert!(!dir.join(NAME).exists());
     let _ = std::fs::remove_dir_all(&dir);
 }

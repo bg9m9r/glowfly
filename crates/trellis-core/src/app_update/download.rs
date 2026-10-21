@@ -2,7 +2,7 @@
 //! byte reaches the disk. The file is held in memory (at most [`MAX_DOWNLOAD`]) and written
 //! atomically through `persist`.
 
-use super::{Offer, SumsSource, sums};
+use super::{Feed, Offer, SumsSource, sums};
 use std::path::{Path, PathBuf};
 
 /// The largest file Trellis downloads.
@@ -30,22 +30,22 @@ pub fn free_name(name: &str, taken: impl Fn(&str) -> bool) -> String {
     (1..).map(|n| format!("{stem} ({n}){ext}")).find(|n| !taken(n)).unwrap_or_else(|| name.to_owned())
 }
 
-/// Downloads `offer`'s file into `dir` once its SHA-256 matches the release's published
-/// checksum; returns where it was saved. Nothing is written when the checksum is missing or
-/// doesn't match.
-pub fn download(offer: &Offer, dir: &Path) -> Result<PathBuf, String> {
+/// Downloads `offer`'s file from `feed` into `dir` once its SHA-256 matches the release's
+/// published checksum (read from the same feed); returns where it was saved. Nothing is written
+/// when the checksum is missing or doesn't match, or the file isn't the announced size.
+pub fn download(feed: &Feed, offer: &Offer, dir: &Path) -> Result<PathBuf, String> {
     let Some(asset) = &offer.asset else { return Err("This release has no download for this system.".to_owned()) };
     let no_sum = || format!("This release doesn't publish a checksum for {}, so it wasn't downloaded.", asset.name);
-    let sums_url = match &offer.sums {
-        SumsSource::Combined(a) | SumsSource::Single(a) => &a.url,
+    let sums_asset = match &offer.sums {
+        SumsSource::Combined(a) | SumsSource::Single(a) => a,
         SumsSource::None => return Err(no_sum()),
     };
-    let text = crate::forge::fetch_public(sums_url, MAX_SUMS).map_err(|e| format!("Couldn't read the checksums: {e}"))?;
+    let text = feed.fetch(sums_asset, MAX_SUMS).map_err(|e| format!("Couldn't read the checksums: {e}"))?;
     let want = sums::expected(&String::from_utf8_lossy(&text), &asset.name).ok_or_else(no_sum)?;
     if asset.size > MAX_DOWNLOAD {
         return Err(format!("{} is larger than {} MB, so it wasn't downloaded.", asset.name, MAX_DOWNLOAD / (1024 * 1024)));
     }
-    let bytes = crate::forge::fetch_public(&asset.url, asset.size).map_err(|e| format!("Couldn't download {}: {e}", asset.name))?;
+    let bytes = feed.fetch(asset, asset.size).map_err(|e| format!("Couldn't download {}: {e}", asset.name))?;
     if bytes.len() as u64 != asset.size {
         return Err(format!("The download of {} was {} bytes instead of {}, so it was discarded.", asset.name, bytes.len(), asset.size));
     }

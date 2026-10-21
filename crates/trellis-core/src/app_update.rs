@@ -8,21 +8,30 @@
 //! - `assets.rs`: this system's platform, how this copy was installed, and which file to fetch.
 //! - `sums.rs`: `SHA256SUMS` and `<file>.sha256` files.
 //! - `download.rs`: fetching, verifying and saving a file (I/O).
+//! - `feed.rs`: where releases are read from: the hosting service, or a local folder named by
+//!   TRELLIS_UPDATE_FEED.
+//! - `check.rs`: the headless check behind `trellis --check-update`.
 //!
-//! The release itself is read by `forge::latest_release`. Trellis never replaces its own
+//! The release itself is read through `Feed` (by default `forge::latest_release`). Trellis never replaces its own
 //! running program: a downloaded installer is opened only when the user asks.
 
 mod assets;
+mod check;
 mod download;
+mod feed;
 mod release;
 mod sums;
 mod version;
 
 #[cfg(test)]
+mod feed_tests;
+#[cfg(test)]
 mod tests;
 
 pub use assets::{Arch, CURRENT_PLATFORM, InstallKind, Platform, SumsSource, TargetOs, install_kind, install_kind_for, pick, sums_source};
+pub use check::{Checked, check_and_download};
 pub use download::{MAX_DOWNLOAD, download, free_name, split_extension};
+pub use feed::{FEED_ENV, FEED_RELEASE, Feed};
 pub use release::{Asset, Release, asset_name_ok, parse_release};
 pub use sums::{expected as expected_sum, parse as parse_sums, sha256};
 pub use version::{PreId, Version};

@@ -1,6 +1,6 @@
-//! A release as the hosting service's API describes it. The answer comes from the network, so
-//! links that aren't `https://` and file names that could leave the downloads folder are dropped
-//! here, before anything else sees them.
+//! A release as the hosting service's API describes it, or a local feed's `release.json` in the
+//! same shape. The answer comes from outside, so links that aren't `https://` and file names that
+//! could leave the downloads folder are dropped here, before anything else sees them.
 
 use crate::error::Result;
 use serde::Deserialize;
@@ -24,7 +24,8 @@ pub struct Release {
 pub struct Asset {
     pub name: String,
     pub size: u64,
-    /// Where it downloads from (always https).
+    /// Where it downloads from (always https); empty for a folder feed, whose files are read by
+    /// name.
     pub url: String,
 }
 
@@ -48,6 +49,7 @@ struct RawAsset {
     name: String,
     #[serde(default)]
     size: u64,
+    #[serde(default)]
     browser_download_url: String,
 }
 
@@ -61,21 +63,39 @@ pub fn asset_name_ok(name: &str) -> bool {
 
 /// Reads a release from the API's JSON.
 pub fn parse_release(json: &[u8]) -> Result<Release> {
-    let raw: RawRelease = serde_json::from_slice(json)?;
+    let mut raw: RawRelease = serde_json::from_slice(json)?;
     let https = |u: &str| crate::forge::https_host(u).is_some();
-    let assets = raw
-        .assets
+    let assets = std::mem::take(&mut raw.assets)
         .into_iter()
         .filter(|a| https(&a.browser_download_url) && asset_name_ok(&a.name))
         .map(|a| Asset { name: a.name, size: a.size, url: a.browser_download_url })
         .collect();
-    let html_url = if https(&raw.html_url) { raw.html_url } else { String::new() };
-    Ok(Release {
+    Ok(finish(raw, assets))
+}
+
+/// Reads a local feed's `release.json` (the API's shape). A listed file is kept when its name
+/// is safe and `file_size` finds it (checked in that order, so no path is built from an
+/// unchecked name); its size is the one on disk and its url empty.
+pub(super) fn parse_feed_release(json: &[u8], file_size: impl Fn(&str) -> Option<u64>) -> Result<Release> {
+    let mut raw: RawRelease = serde_json::from_slice(json)?;
+    let assets = std::mem::take(&mut raw.assets)
+        .into_iter()
+        .filter(|a| asset_name_ok(&a.name))
+        .filter_map(|a| file_size(&a.name).map(|size| Asset { name: a.name, size, url: String::new() }))
+        .collect();
+    Ok(finish(raw, assets))
+}
+
+/// The release `raw` describes, with `assets`: an empty name falls back to the tag, and a web
+/// page that isn't https is dropped.
+fn finish(raw: RawRelease, assets: Vec<Asset>) -> Release {
+    let html_url = if crate::forge::https_host(&raw.html_url).is_some() { raw.html_url } else { String::new() };
+    Release {
         name: raw.name.filter(|n| !n.trim().is_empty()).unwrap_or_else(|| raw.tag_name.clone()),
         tag: raw.tag_name,
         html_url,
         body: raw.body.unwrap_or_default(),
         published_at: raw.published_at,
         assets,
-    })
+    }
 }

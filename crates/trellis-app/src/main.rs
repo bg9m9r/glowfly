@@ -6,6 +6,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod cli_update;
 mod conflict_check;
 mod deep_link;
 mod effect;
@@ -50,12 +51,21 @@ use trellis_core::askpass::{self, HelperError, Outcome};
 fn main() -> eframe::Result {
     // Besides the window, git runs Trellis in three modes that exit without opening one: as the
     // sequence editor of an interactive rebase (`--write-todo`), as gpg.program when it signs
-    // (marked by `TRELLIS_GPG_WRAPPER`), and as the askpass program.
+    // (marked by `TRELLIS_GPG_WRAPPER`), and as the askpass program. Scripts have two more:
+    // `--version` and `--check-update <folder>` (`cli_update`).
     let argv: Vec<OsString> = std::env::args_os().collect();
     // Checked first: the sequence editor runs under git, so it inherits the other modes'
     // variables.
     if argv.get(1).is_some_and(|a| a == "--write-todo") {
         std::process::exit(write_todo(&argv[2..]));
+    }
+    // The command-line modes for scripts: before logging, settings and the smoke probe, so they
+    // write no file of their own.
+    if argv.get(1).is_some_and(|a| a == cli_update::VERSION_FLAG) {
+        std::process::exit(cli_update::print_version());
+    }
+    if argv.get(1).is_some_and(|a| a == cli_update::CHECK_FLAG) {
+        std::process::exit(cli_update::check_update(&argv[2..]));
     }
     // git signs with its gpg.program: ask for the key's passphrase through the running app.
     // Before the askpass checks, since git passes the askpass variables on to it too.
