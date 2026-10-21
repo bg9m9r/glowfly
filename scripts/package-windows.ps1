@@ -37,7 +37,7 @@ function Find-SignTool {
     return $kits.FullName
 }
 
-function Sign-File([string]$path) {
+function Add-Signature([string]$path) {
     if (-not $pfx) { return }
     $signtool = Find-SignTool
     & $signtool sign /f $pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 /d Trellis $path
@@ -52,7 +52,7 @@ function Write-Sum([string]$path) {
     [IO.File]::WriteAllText((Join-Path (Get-Location).Path "$path.sha256"), "$hash  $file`n")
 }
 
-Sign-File "$bin/trellis.exe"
+Add-Signature "$bin/trellis.exe"
 
 # --- The zip -----------------------------------------------------------------------------------
 $stage = Join-Path $dist $name
@@ -71,7 +71,11 @@ $root = (Get-Location).Path
 
 # WiX's standard pages and its launch-after-install action, kept in .wix/ under the repository.
 $wixVersion = "5.0.2"
+# Added once: a second run in the same checkout (an older and a newer package) finds them listed.
+# An unrecognised listing falls back to adding.
+$listed = (wix extension list | Out-String)
 foreach ($ext in "WixToolset.UI.wixext", "WixToolset.Util.wixext") {
+    if ($listed -match [regex]::Escape("$ext $wixVersion")) { continue }
     wix extension add "$ext/$wixVersion"
     if ($LASTEXITCODE -ne 0) { throw "wix extension add $ext failed" }
 }
@@ -102,7 +106,7 @@ $exts = @("-ext", "WixToolset.UI.wixext/$wixVersion", "-ext", "WixToolset.Util.w
 wix build -arch x64 @exts @defines -o $msi packaging/windows/trellis.wxs packaging/windows/pages.wxs
 if ($LASTEXITCODE -ne 0) { throw "wix build failed" }
 Remove-Item -ErrorAction SilentlyContinue (Join-Path $dist "$name.wixpdb"), $rtf
-Sign-File $msi
+Add-Signature $msi
 Write-Sum $msi
 
 if ($pfx) { Remove-Item -Force $pfx }
