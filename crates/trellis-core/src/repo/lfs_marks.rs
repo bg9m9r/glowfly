@@ -84,6 +84,26 @@ pub(super) fn mark_delta_files(repo: &Repository, diff: &Diff, files: &mut [File
     }
 }
 
+/// Marks the rows of a working-tree-to-commit diff (`mark_delta_files` with `new_in_workdir`,
+/// the other way round), so a row's mark doesn't change when the comparison is swapped: the
+/// commit's blob when the working tree lacks the file ('A'), else the working copy.
+pub(super) fn mark_reversed_workdir_files(repo: &Repository, diff: &Diff, files: &mut [FileEntry]) {
+    let workdir = repo.workdir();
+    for (d, f) in diff.deltas().zip(files.iter_mut()).take(MAX_LFS_CHECKS) {
+        if !checkable(f) {
+            continue;
+        }
+        f.lfs = if d.status() == Delta::Added {
+            blob_is_pointer(repo, regular_blob(&d.new_file()))
+        } else if d.old_file().mode() == FileMode::Commit {
+            false
+        } else {
+            let path = d.old_file().path_bytes().and_then(rpath::text).unwrap_or_else(|| f.path.clone());
+            file_is_pointer(workdir, &path)
+        };
+    }
+}
+
 /// Whether either side of `delta` is a Git LFS pointer: the old blob, or the new blob (the
 /// working copy with `in_workdir`).
 pub(super) fn delta_is_pointer(repo: &Repository, delta: &DiffDelta<'_>, in_workdir: bool) -> bool {

@@ -2,7 +2,10 @@
 //! `filter=lfs` attribute, so git stores it as it is whether or not git-lfs is installed.
 
 use crate::lfs::pointer::{LfsChange, LfsSide, Pointer};
-use crate::repo::{DiffTarget, FileEntry, LoadDiffOptions, commit_detail, compare_workdir, load_diff_for_view, status_at, status_of_paths};
+use crate::repo::{
+    DiffTarget, FileEntry, LoadDiffOptions, commit_detail, compare_from_workdir, compare_workdir, load_diff_for_view, status_at,
+    status_of_paths,
+};
 use crate::testutil::{git, lfs_or_skip, scratch_repo, write};
 use git2::{Oid, Repository};
 use std::path::Path;
@@ -86,6 +89,32 @@ fn a_working_tree_comparison_marks_a_pointer_working_copy() {
     write(&dir, "art.psd", &ptr(10, 'a'));
     write(&dir, "plain.txt", "two\n");
     assert_eq!(marks(&compare_workdir(&dir, base).unwrap().files), [("art.psd", 'A', true), ("plain.txt", 'M', false)]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_lfs_badge_is_the_same_both_ways() {
+    let dir = scratch_repo("lfs-marks-compare-both-ways");
+    write(
+        &dir,
+        "plain.txt",
+        "one
+",
+    );
+    write(&dir, "art.psd", &ptr(10, 'a'));
+    let base = commit_all(&dir, "base");
+    std::fs::remove_file(dir.join("art.psd")).unwrap();
+    write(&dir, "loose.psd", &ptr(20, 'b'));
+    write(
+        &dir,
+        "plain.txt",
+        "two
+",
+    );
+    let forward = compare_workdir(&dir, base).unwrap();
+    assert_eq!(marks(&forward.files), [("art.psd", 'D', true), ("loose.psd", 'A', true), ("plain.txt", 'M', false)]);
+    let reversed = compare_from_workdir(&dir, base).unwrap();
+    assert_eq!(marks(&reversed.files), [("art.psd", 'A', true), ("loose.psd", 'D', true), ("plain.txt", 'M', false)]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -143,7 +143,9 @@ fn workdir_comparison(workdir: &Path, oid: Oid, reversed: bool) -> Result<Compar
     let repo = Repository::open(workdir)?;
     let diff = workdir_diff(&repo, oid, reversed, None)?;
     let mut files = file_entries(&diff, reversed);
-    if !reversed {
+    if reversed {
+        super::lfs_marks::mark_reversed_workdir_files(&repo, &diff, &mut files);
+    } else {
         super::lfs_marks::mark_delta_files(&repo, &diff, &mut files, true);
     }
     let absent = absent_paths(&repo, &files);

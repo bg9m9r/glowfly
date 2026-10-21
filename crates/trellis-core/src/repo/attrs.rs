@@ -23,12 +23,23 @@ pub(crate) fn linguist_language_for(repo: &Repository, target: &DiffTarget, path
 }
 
 /// The tree whose `.gitattributes` files apply to `target`: the commit's for a commit diff, the
-/// newer commit's for a comparison. `None` for diffs against the index or the working tree.
+/// newer commit's for a comparison (the commit end when the other is the empty tree). `None`
+/// for diffs against the index or the working tree.
 pub(crate) fn attr_tree<'r>(repo: &'r Repository, target: &DiffTarget) -> Option<Tree<'r>> {
     let oid = match target {
-        DiffTarget::Commit(oid, _) | DiffTarget::Between(_, oid, _) => *oid,
+        DiffTarget::Commit(oid, _) => *oid,
+        DiffTarget::Between(a, b, _) => {
+            if super::is_empty_tree(*b) {
+                *a
+            } else {
+                *b
+            }
+        }
         _ => return None,
     };
+    if super::is_empty_tree(oid) {
+        return None;
+    }
     repo.find_object(oid, None).ok()?.peel_to_tree().ok()
 }
 

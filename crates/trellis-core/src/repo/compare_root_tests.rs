@@ -59,3 +59,20 @@ fn reverting_a_file_the_range_added_removes_it() {
     assert!(!dir.join("b.txt").exists());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_root_range_keeps_the_commits_language_override() {
+    let dir = scratch_repo("compare-root-language");
+    write(&dir, ".gitattributes", "*.txt linguist-language=Rust\n");
+    write(&dir, "a.txt", "a\n");
+    commit_all(&dir, "c1");
+    write(&dir, "a.txt", "a\nmore\n");
+    let c2 = commit_all(&dir, "c2");
+    // The working tree's attributes say otherwise, so only the commit's can give Rust.
+    write(&dir, ".gitattributes", "*.txt linguist-language=C\n");
+    for target in [DiffTarget::Between(empty_tree(), c2, "a.txt".into()), DiffTarget::Between(c2, empty_tree(), "a.txt".into())] {
+        let v = load_diff_for_view(&dir, &target, LoadDiffOptions::default()).unwrap();
+        assert_eq!(v.language.as_deref(), Some("Rust"), "{target:?}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
