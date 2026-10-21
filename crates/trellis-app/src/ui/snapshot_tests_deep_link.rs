@@ -123,14 +123,30 @@ fn deep_link_choose() {
     assert!(!sent(&h, &|m| matches!(m, Msg::CloseModal)), "Open doesn't close first");
 }
 
+/// The height that shows all of Preferences > General, the Trellis Links row at its end.
+const GENERAL_HEIGHT: f32 = 1800.0;
+
 /// Preferences > General, tall enough to show the Trellis Links row at its end.
 fn general(view: SchemeView) -> egui_kittest::Harness<'static, (AppState, Vec<Msg>)> {
     let mut st = app(ThemeChoice::Dark);
     st.prefs = Some(PrefsState::new(PrefPage::General));
     st.deep_link.scheme = view;
-    let mut h = harness_sized(st, true, egui::vec2(1400.0, 1620.0));
+    let mut h = harness_sized(st, true, egui::vec2(1400.0, GENERAL_HEIGHT));
     h.run();
+    if !cfg!(target_os = "macos") {
+        in_view(&h, "Unregister");
+    }
     h
+}
+
+/// Asserts that the widget labelled `label` is drawn clear of the window's bottom, above the
+/// status bar and the page's scroll cue, so a snapshot of the page shows it whole.
+fn in_view(h: &egui_kittest::Harness<'static, (AppState, Vec<Msg>)>, label: &str) {
+    const BOTTOM_MARGIN: f64 = 80.0;
+    let bounds = h.get_by_label(label).bounding_box().expect("a drawn widget has bounds");
+    let bottom = bounds.y1 / f64::from(h.ctx.pixels_per_point());
+    let limit = f64::from(GENERAL_HEIGHT) - BOTTOM_MARGIN;
+    assert!(bottom <= limit, "{label} ends at {bottom}, below {limit} in the {GENERAL_HEIGHT} px window");
 }
 
 #[test]
