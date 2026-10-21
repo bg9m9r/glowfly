@@ -6,6 +6,7 @@ use super::tests::{scratch_repo, state};
 use super::update;
 use super::work_files_tests::last_log;
 use crate::effect::Effect;
+use crate::effect::OsEffect;
 use crate::msg::{FilesMsg, Msg};
 use crate::state::trust::record;
 use crate::state::{AppState, Modal};
@@ -59,7 +60,10 @@ fn opening_a_program_asks_first_and_runs_it_once_agreed() {
     assert!(body.ends_with("To read or edit it instead, use Open in external editor."), "{body}");
     assert!(matches!(then, Msg::Files(FilesMsg::OpenConfirmed(p)) if p == path));
     let fx = run(&mut st, Msg::ConfirmAccepted);
-    assert!(matches!(&fx[..], [Effect::OpenPath { workdir, path: p, confirmed: true }] if *workdir == dir && p == path), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Os(OsEffect::OpenPath { workdir, path: p, confirmed: true })] if *workdir == dir && p == path),
+        "{fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -94,7 +98,7 @@ fn an_untrusted_repository_refuses_to_run_it() {
 fn ordinary_files_open_unasked_and_the_runner_can_still_ask() {
     let (mut st, dir) = loaded("open-plain");
     let fx = run(&mut st, Msg::Files(FilesMsg::OpenWorkingFile("notes.txt".into())));
-    assert!(matches!(&fx[..], [Effect::OpenPath { path, confirmed: false, .. }] if path == "notes.txt"), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::OpenPath { path, confirmed: false, .. })] if path == "notes.txt"), "{fx:?}");
     assert!(st.modal.is_none());
     // The runner found an executable bit: the same question.
     let found = FilesMsg::OpenNeedsConfirm { workdir: dir.clone(), path: "bin/run".into(), kind: "an executable file" };

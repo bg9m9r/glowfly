@@ -1,9 +1,29 @@
 //! Effects that hand something to the operating system: URLs, terminals, the file manager and
 //! files opened in their default program. None of them touch the repository.
 
-use crate::msg::{FilesMsg, Msg};
+use crate::effect::OsEffect;
+use crate::msg::{FilesMsg, Msg, PrefsMsg};
 use std::path::Path;
 use trellis_core::opens::{FileFacts, Os, opens_as_program};
+
+/// Runs one `Effect::Os`.
+pub(super) fn run(e: OsEffect) -> Option<Msg> {
+    match e {
+        OsEffect::OpenUrl(url) => open_url(&url),
+        OsEffect::OpenTerminal(dir) => open_terminal(&dir),
+        OsEffect::OpenFolder(dir) => open_folder(&dir),
+        OsEffect::OpenPath { workdir, path, confirmed } => open_path(&workdir, &path, confirmed),
+        OsEffect::RevealPath(p) => reveal(&p),
+        OsEffect::PickFolder { title, purpose } => {
+            let path = rfd::FileDialog::new().set_title(title).pick_folder();
+            Some(Msg::Prefs(PrefsMsg::FolderPicked { purpose, path }))
+        }
+        OsEffect::PickFile { title, purpose } => {
+            let path = rfd::FileDialog::new().set_title(title).pick_file();
+            Some(Msg::Prefs(PrefsMsg::FilePicked { purpose, path }))
+        }
+    }
+}
 
 fn failed(text: String) -> Option<Msg> {
     Some(Msg::Logged { ok: false, text })

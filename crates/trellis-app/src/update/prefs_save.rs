@@ -1,9 +1,10 @@
 //! Saving and reverting the open Preferences page (the Save / Revert bar and the "Save your
 //! changes?" answers), and the "Saved" tick's clock. Git config is written with
-//! `Effect::SetGitConfig`, profiles through `profiles::set_identity`, and Git Flow and sparse
+//! `Effect::Prefs(PrefsEffect::SetGitConfig)`, profiles through `profiles::set_identity`, and Git Flow and sparse
 //! checkout through their own jobs.
 
 use crate::effect::Effect;
+use crate::effect::PrefsEffect;
 use crate::msg::Msg;
 use crate::profile::{IdentityField, ProfileMsg};
 use crate::state::prefs::GitConfigValues;
@@ -70,7 +71,7 @@ fn write_git(
         if before.as_ref().and_then(|b| b.get(i)).is_some_and(|(_, old)| *old == value) {
             continue;
         }
-        fx.push(Effect::SetGitConfig { cwd: cwd.clone(), global, key: key.into(), value });
+        fx.push(Effect::Prefs(PrefsEffect::SetGitConfig { cwd: cwd.clone(), global, key: key.into(), value }));
     }
     for field in [&mut git.repo_name, &mut git.repo_email, &mut git.hooks_path] {
         *field = field.trim().to_owned();

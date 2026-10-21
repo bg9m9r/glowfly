@@ -4,6 +4,7 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, keys, scratch_repo, state};
 use super::update;
+use crate::effect::OsEffect;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
 use crate::msg::PaletteMsg;
@@ -123,9 +124,9 @@ fn terminal_and_file_manager_entries() {
     assert!(has(&st, SHOW_REPO_FOLDER));
 
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::OpenTerminal)));
-    assert!(matches!(&fx[..], [Effect::OpenTerminal(d)] if *d == workdir), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::OpenTerminal(d))] if *d == workdir), "{fx:?}");
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ShowInFileManager)));
-    assert!(matches!(&fx[..], [Effect::OpenFolder(d)] if *d == workdir), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::OpenFolder(d))] if *d == workdir), "{fx:?}");
 
     let empty = state();
     assert!(!has(&empty, "Open in terminal"));

@@ -5,6 +5,7 @@
 
 use super::tests::{scratch_repo, state};
 use super::update;
+use crate::effect::OsEffect;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg};
 use crate::onboarding::{OnboardingEffect, OnboardingMsg as O, StartChoice};
@@ -283,7 +284,7 @@ fn finish_runs_the_choice() {
 
     let mut st = welcome(Identity::default());
     let fx = run(&mut st, O::Finish(Some(StartChoice::Open)));
-    assert!(fx.iter().any(|e| matches!(e, Effect::PickFolder { .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Os(OsEffect::PickFolder { .. }))));
 
     let mut st = welcome(Identity::default());
     run(&mut st, O::Finish(Some(StartChoice::Init)));

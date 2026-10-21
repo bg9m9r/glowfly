@@ -2,7 +2,6 @@
 //! back with `Msg`s; the few that need the window (`UiEffect`) are handled by the UI shell.
 
 pub use crate::file_op::{DeleteMode, FileOp, WorkFileOk};
-use crate::msg::{FilePurpose, FolderPurpose};
 use git2::Oid;
 use std::path::PathBuf;
 use trellis_core::askpass::Reply;
@@ -25,8 +24,10 @@ mod line_counts;
 mod names;
 mod notify;
 mod op_preview;
+mod os;
 pub mod partial;
 mod pick;
+mod prefs;
 mod rebase;
 mod repo;
 mod repos;
@@ -51,7 +52,9 @@ pub use issue::*;
 pub use line_counts::{FailedLineCounts, LineCountsEffect};
 pub use notify::{DesktopNote, NoteKind};
 pub use op_preview::OpPreviewJob;
+pub use os::OsEffect;
 pub use pick::PickJob;
+pub use prefs::PrefsEffect;
 pub use rebase::{RebaseEffect, RestackJob};
 pub use repo::{ConflictRead, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;
@@ -300,16 +303,6 @@ pub enum Effect {
     },
     /// Downloads (or reads from the disk cache) avatars one after another.
     FetchAvatars(Vec<String>),
-    ReadGitConfig {
-        cwd: PathBuf,
-        has_repo: bool,
-    },
-    SetGitConfig {
-        cwd: PathBuf,
-        global: bool,
-        key: String,
-        value: Option<String>,
-    },
     SaveSettings(Box<Settings>),
     SaveRecent(Vec<PathBuf>),
     /// Which of these repository folders are gone (not a directory or unreachable), and the
@@ -325,42 +318,11 @@ pub enum Effect {
         labels: Vec<Option<String>>,
         active: usize,
     },
-    OpenUrl(String),
-    OpenTerminal(PathBuf),
-    OpenFolder(PathBuf),
-    /// Opens the working-tree file `path` (repo-relative) of `workdir` in the default program.
-    /// Unless `confirmed`, a file the system would run instead of show is reported back
-    /// (`FilesMsg::OpenNeedsConfirm`) rather than opened.
-    OpenPath {
-        workdir: PathBuf,
-        path: String,
-        confirmed: bool,
-    },
-    /// Shows an absolute path selected in the file manager.
-    RevealPath(PathBuf),
-    PickFolder {
-        title: String,
-        purpose: FolderPurpose,
-    },
-    PickFile {
-        title: String,
-        purpose: FilePurpose,
-    },
-    ListSigningKeys {
-        format: trellis_core::signing::SigningFormat,
-        program: String,
-    },
-    GenerateGpgKey {
-        program: String,
-        name: String,
-        email: String,
-        passphrase: String,
-    },
-    ExportPublicKey {
-        format: trellis_core::signing::SigningFormat,
-        program: String,
-        key: String,
-    },
+    /// Hands something to the operating system: a browser, a terminal, the file manager, a
+    /// picker (os.rs, runner/os.rs); unscoped, never touches the repository.
+    Os(OsEffect),
+    /// Git config values and signing keys for Preferences (prefs.rs); unscoped.
+    Prefs(PrefsEffect),
     /// Watch this repository for outside changes, replacing any previous watch; None stops
     /// watching. Handled by `Runner::run` itself (the watcher outlives a worker thread).
     Watch(Option<WatchTarget>),

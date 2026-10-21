@@ -4,6 +4,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::OsEffect;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::themes::{ThemeEffect, ThemeMsg};
@@ -70,7 +71,7 @@ fn created_selects_reloads_and_reveals() {
     let fx = run(&mut st, ThemeMsg::Created(Ok(("my-theme".into(), p.clone()))));
     assert_eq!(st.settings.theme, ThemeChoice::Custom("my-theme".into()));
     assert!(
-        matches!(&fx[..], [Effect::SaveSettings(s), Effect::Theme(ThemeEffect::Load), Effect::RevealPath(r)]
+        matches!(&fx[..], [Effect::SaveSettings(s), Effect::Theme(ThemeEffect::Load), Effect::Os(OsEffect::RevealPath(r))]
             if s.theme == ThemeChoice::Custom("my-theme".into()) && *r == p),
         "{fx:?}"
     );

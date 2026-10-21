@@ -6,7 +6,7 @@
 //! tell when the app is idle.
 
 use super::{Runner, Waker};
-use crate::effect::{CloneEffect, Effect};
+use crate::effect::{CloneEffect, Effect, PrefsEffect};
 use crate::git_env::GitEnvEffect;
 use crate::msg::Msg;
 use crate::patch::PatchEffect;
@@ -122,8 +122,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::LineCounts(_)
             | Effect::SearchPaths { .. }
             | Effect::VerifySignature { .. }
-            | Effect::ReadGitConfig { .. }
-            | Effect::SetGitConfig { global: false, .. }
+            | Effect::Prefs(PrefsEffect::ReadGitConfig { .. } | PrefsEffect::SetGitConfig { global: false, .. })
             | Effect::CheckRepoFolders(_)
             | Effect::ReadTabGroups(_)
             | Effect::Patch(PatchEffect::Export { .. } | PatchEffect::Inspect { .. } | PatchEffect::Copy { .. })
@@ -157,19 +156,15 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::Account(_)
             | Effect::Credential(_)
             | Effect::FetchAvatars(_)
-            | Effect::SetGitConfig { global: true, .. }
-            | Effect::OpenUrl(_)
-            | Effect::OpenTerminal(_)
-            | Effect::OpenFolder(_)
-            | Effect::OpenPath { .. }
-            | Effect::RevealPath(_)
-            | Effect::PickFolder { .. }
-            | Effect::PickFile { .. }
+            | Effect::Prefs(
+                PrefsEffect::SetGitConfig { global: true, .. }
+                | PrefsEffect::ListSigningKeys { .. }
+                | PrefsEffect::GenerateGpgKey { .. }
+                | PrefsEffect::ExportPublicKey { .. },
+            )
+            | Effect::Os(_)
             | Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. })
             | Effect::Clone(CloneEffect::ListRepos { .. })
-            | Effect::ListSigningKeys { .. }
-            | Effect::GenerateGpgKey { .. }
-            | Effect::ExportPublicKey { .. }
             | Effect::Ssh(_)
             // The global git config, Trellis's config folder or a picked folder.
             | Effect::Profile(
@@ -222,7 +217,7 @@ fn save_into(folder: &Path, effect: Effect) -> Option<Msg> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::effect::{DesktopNote, NoteKind};
+    use crate::effect::{DesktopNote, NoteKind, OsEffect};
     use std::sync::mpsc;
 
     #[derive(Clone)]
@@ -246,7 +241,7 @@ mod tests {
         let status =
             Effect::LoadStatus { workdir: dir.clone(), generation: 1, submodules: false, open: None, git_status: false, paths: None };
         assert!(matches!(runner.admit(status), Some(Effect::LoadStatus { .. })));
-        assert!(runner.admit(Effect::OpenUrl("https://example.invalid".into())).is_none());
+        assert!(runner.admit(Effect::Os(OsEffect::OpenUrl("https://example.invalid".into()))).is_none());
         let note = DesktopNote { kind: NoteKind::Job, title: "t".into(), body: "b".into() };
         assert!(runner.admit(Effect::Notify(note)).is_none());
         assert_eq!(runner.dropped(), ["open-url", "desktop-note"]);

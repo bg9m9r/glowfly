@@ -6,6 +6,7 @@ use super::super::test_mods::patch_tests::{beside, cleanup, last_log, last_toast
 use super::super::tests::{drive, git};
 use super::super::update;
 use crate::effect::Effect;
+use crate::effect::OsEffect;
 use crate::msg::{Msg, RepoMsg};
 use crate::patch::{PatchEffect, PatchMsg};
 use crate::state::patch::changes::{NO_PICK, NOTHING_STAGED, RESOLVE_FIRST, SaveChangesForm};
@@ -114,7 +115,7 @@ fn saved_end_to_end_with_show_in_folder() {
     assert!(text.contains("b/a.txt") && text.contains("b/c.txt"), "{text}");
     let id = st.toasts.last().unwrap().id;
     let fx = update(&mut st, Msg::ToastAction(id), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RevealPath(p)] if *p == dest), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::RevealPath(p))] if *p == dest), "{fx:?}");
     cleanup(&dir);
 }
 

@@ -6,6 +6,7 @@
 
 use super::ops::{JobSpec, start_job};
 use super::remotes::configured;
+use crate::effect::OsEffect;
 use crate::effect::{Effect, ForgeError};
 use crate::remote::{ForkRequest, RemoteEffect};
 use crate::state::forks::{
@@ -23,7 +24,7 @@ use trellis_core::repo::Snapshot;
 pub(super) fn view(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
     let Some(info) = configured(st, name) else { return };
     match forge::web_page(info.fetch_url(), &st.settings.connections) {
-        Ok(page) => fx.push(Effect::OpenUrl(page.url)),
+        Ok(page) => fx.push(Effect::Os(OsEffect::OpenUrl(page.url))),
         Err(e) => st.log(false, format!("Can't open {name}: {}", e.message())),
     }
 }

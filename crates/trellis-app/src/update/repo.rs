@@ -1,6 +1,7 @@
 //! Opening and refreshing the repository, selection and diffs.
 
 pub(super) use super::refresh::{load, refresh, refresh_status};
+use crate::effect::OsEffect;
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::FolderPurpose;
 use crate::msg::RepoMsg;
@@ -13,7 +14,9 @@ use trellis_core::settings::DiffMode;
 
 pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        RepoMsg::PickRepo => fx.push(Effect::PickFolder { title: "Open a Git repository".into(), purpose: FolderPurpose::OpenRepo }),
+        RepoMsg::PickRepo => {
+            fx.push(Effect::Os(OsEffect::PickFolder { title: "Open a Git repository".into(), purpose: FolderPurpose::OpenRepo }))
+        }
         RepoMsg::InitRepo => super::init::open(st, fx),
         RepoMsg::Open(path) => super::tabs::open(st, path, fx),
         RepoMsg::Refresh => {

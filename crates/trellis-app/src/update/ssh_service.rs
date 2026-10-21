@@ -2,6 +2,7 @@
 //! without an API for it (and sign-ins that may not write keys) get the key copied and their
 //! SSH key settings page opened instead.
 
+use crate::effect::OsEffect;
 use crate::effect::{Effect, UiEffect};
 use crate::ssh::{ServiceKeyError, SshEffect};
 use crate::state::AppState;
@@ -44,7 +45,7 @@ pub(super) fn open_key_settings(st: &mut AppState, key: &Path, account: &Account
     fx.push(Effect::Ui(UiEffect::CopyText(public_key)));
     match forge::ssh_keys_page(account) {
         Some(url) => {
-            fx.push(Effect::OpenUrl(url));
+            fx.push(Effect::Os(OsEffect::OpenUrl(url)));
             st.toast(true, pasted_toast(account.provider.name()), now);
         }
         None => st.toast(true, COPIED, now),

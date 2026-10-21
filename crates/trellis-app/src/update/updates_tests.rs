@@ -4,6 +4,7 @@
 
 use super::tests::state;
 use super::update;
+use crate::effect::OsEffect;
 use crate::effect::{Effect, UpdateEffect};
 use crate::msg::{CheckedRelease, Msg, PaletteMsg, UpdateMsg as U};
 use crate::state::AppState;
@@ -204,7 +205,7 @@ fn downloads_and_what_follows() {
     let fx = send(&mut st, U::Install, t);
     assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Install(p))] if *p == file));
     let fx = send(&mut st, U::ShowFile, t);
-    assert!(matches!(fx.as_slice(), [Effect::RevealPath(p)] if *p == file));
+    assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::RevealPath(p))] if *p == file));
 }
 
 #[test]
@@ -237,13 +238,13 @@ fn without_a_build_for_this_system_download_opens_the_page() {
     let t = Instant::now();
     send(&mut st, U::Checked { manual: true, result: found("v0.3.0", InstallKind::Installer) }, t);
     let fx = send(&mut st, U::Download, t);
-    assert!(matches!(fx.as_slice(), [Effect::OpenUrl(u)] if u == "https://github.com/bg9m9r/trellis/releases/tag/v0.3.0"));
+    assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::OpenUrl(u))] if u == "https://github.com/bg9m9r/trellis/releases/tag/v0.3.0"));
     assert!(matches!(st.updates.status, UpdateStatus::Available(_)));
     let fx = send(&mut st, U::OpenReleasePage, t);
-    assert!(matches!(fx.as_slice(), [Effect::OpenUrl(u)] if u.ends_with("/releases/tag/v0.3.0")));
+    assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::OpenUrl(u))] if u.ends_with("/releases/tag/v0.3.0")));
     let mut st = app();
     let fx = send(&mut st, U::OpenReleasePage, t);
-    assert!(matches!(fx.as_slice(), [Effect::OpenUrl(u)] if u == "https://github.com/bg9m9r/trellis/releases"));
+    assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::OpenUrl(u))] if u == "https://github.com/bg9m9r/trellis/releases"));
 }
 
 #[test]

@@ -3,13 +3,13 @@
 
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, custom_commands, dashboard, deep_link, diff_gaps, expect, files,
-    forge_calls, forks, git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, op_preview, os,
+    forge_calls, forks, git_env, git_ops, highlight, history, init, issues, journal, line_counts, notify, onboarding, op_preview, os,
     partial, patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures, sparse, ssh,
     stashes, status, submodules, themes, tools, trust, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
-use crate::msg::{AvatarMsg, ConflictMsg, DiffMsg, ForgeMsg, JobMsg, LoadMsg, Msg, PrefsMsg, RecentMsg, RepoMsg, SelectionMsg, StageMsg};
+use crate::msg::{AvatarMsg, ConflictMsg, DiffMsg, ForgeMsg, JobMsg, LoadMsg, Msg, RecentMsg, RepoMsg, SelectionMsg, StageMsg};
 use trellis_core::{avatars, repo, undo};
 
 pub(super) fn err(e: trellis_core::error::Error) -> String {
@@ -175,8 +175,7 @@ fn execute_unscoped(
                 })
                 .collect(),
         ))),
-        Effect::ReadGitConfig { cwd, has_repo } => Some(Msg::Prefs(PrefsMsg::GitConfigLoaded(config::read_git_config(&cwd, has_repo)))),
-        Effect::SetGitConfig { cwd, global, key, value } => config::set(&cwd, global, &key, value.as_deref()),
+        Effect::Prefs(e) => config::run(e),
         save @ (Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. }) => saves::save_now(save),
         Effect::CheckRepoFolders(paths) => Some(Msg::Recent(RecentMsg::FoldersChecked(crate::platform::check_folders(&paths)))),
         Effect::ReadTabGroups(paths) => {
@@ -189,22 +188,7 @@ fn execute_unscoped(
                 .collect();
             Some(Msg::Tabs(crate::msg::TabsMsg::GroupsRead(read)))
         }
-        Effect::OpenUrl(url) => os::open_url(&url),
-        Effect::OpenTerminal(dir) => os::open_terminal(&dir),
-        Effect::OpenFolder(dir) => os::open_folder(&dir),
-        Effect::OpenPath { workdir, path, confirmed } => os::open_path(&workdir, &path, confirmed),
-        Effect::RevealPath(p) => os::reveal(&p),
-        Effect::PickFolder { title, purpose } => {
-            let path = rfd::FileDialog::new().set_title(title).pick_folder();
-            Some(Msg::Prefs(PrefsMsg::FolderPicked { purpose, path }))
-        }
-        Effect::PickFile { title, purpose } => {
-            let path = rfd::FileDialog::new().set_title(title).pick_file();
-            Some(Msg::Prefs(PrefsMsg::FilePicked { purpose, path }))
-        }
-        Effect::ListSigningKeys { format, program } => Some(keys::list(format, &program)),
-        Effect::GenerateGpgKey { program, name, email, passphrase } => Some(keys::generate_gpg(&program, &name, &email, &passphrase)),
-        Effect::ExportPublicKey { format, program, key } => Some(keys::export_public(format, &program, &key)),
+        Effect::Os(e) => os::run(e),
         Effect::Ssh(e) => Some(ssh::run(e)),
         Effect::Credential(e) => Some(credentials::run(e)),
         Effect::Profile(e) => Some(profiles::run(e)),

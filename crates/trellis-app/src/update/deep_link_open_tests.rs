@@ -8,6 +8,7 @@ use super::deep_link_tests::{cleanup, link_text, send};
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::deep_link::{DeepLinkEffect, DeepLinkMsg, FindOrigin};
+use crate::effect::OsEffect;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::{FolderPurpose, JobMsg, Msg, PrefsMsg, RepoMsg};
 use crate::state::deep_link::LinkDialog;
@@ -154,7 +155,7 @@ fn no_match_offers_locate_and_clone() {
 
     // Locate on disk… picks a folder, which is checked alone.
     let fx = send(&mut st, DeepLinkMsg::Locate);
-    assert!(matches!(&fx[..], [Effect::PickFolder { purpose: FolderPurpose::LocateLinkedRepo, .. }]));
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::PickFolder { purpose: FolderPurpose::LocateLinkedRepo, .. })]));
     let folder = trellis_core::paths::temp_dir().join("not-this-one");
     let picked = PrefsMsg::FolderPicked { purpose: FolderPurpose::LocateLinkedRepo, path: Some(folder.clone()) };
     let fx = update(&mut st, Msg::Prefs(picked), Instant::now());

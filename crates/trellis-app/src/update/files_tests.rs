@@ -4,6 +4,7 @@
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::OsEffect;
 use crate::msg::FilesMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
@@ -256,9 +257,12 @@ fn open_and_show_build_absolute_paths() {
 
     let (mut st, dir) = loaded("files-open");
     let fx = run(&mut st, Msg::Files(FilesMsg::OpenWorkingFile("src/a.txt".into())));
-    assert!(matches!(&fx[..], [Effect::OpenPath { workdir, path, confirmed: false }] if *workdir == dir && path == "src/a.txt"), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Os(OsEffect::OpenPath { workdir, path, confirmed: false })] if *workdir == dir && path == "src/a.txt"),
+        "{fx:?}"
+    );
     let fx = run(&mut st, Msg::Files(FilesMsg::ShowWorkingFile("src/a.txt".into())));
-    assert!(matches!(&fx[..], [Effect::RevealPath(p)] if *p == dir.join("src/a.txt")), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::RevealPath(p))] if *p == dir.join("src/a.txt")), "{fx:?}");
     assert_eq!(fx[0].scope(), None, "not tied to a tab");
     let _ = std::fs::remove_dir_all(&dir);
 }

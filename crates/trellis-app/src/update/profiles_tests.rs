@@ -5,6 +5,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::PrefsEffect;
 use crate::msg::{Msg, PrefsMsg};
 use crate::profile::{IdentityField, ProfileEffect, ProfileMsg};
 use crate::state::prefs::GitConfigValues;
@@ -51,7 +52,7 @@ pub(super) fn saves(fx: &[Effect]) -> usize {
 fn git_writes(fx: &[Effect]) -> Vec<(String, Option<String>)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::SetGitConfig { global: true, key, value, .. } => Some((key.clone(), value.clone())),
+            Effect::Prefs(PrefsEffect::SetGitConfig { global: true, key, value, .. }) => Some((key.clone(), value.clone())),
             _ => None,
         })
         .collect()
@@ -105,7 +106,7 @@ fn other_pages_never_seed() {
     let mut st = state();
     run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)));
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::GitConfigLoaded(values("Ada", "ada@example.com"))));
-    assert!(matches!(&fx[..], [Effect::ListSigningKeys { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Prefs(PrefsEffect::ListSigningKeys { .. })]), "{fx:?}");
     assert!(st.settings.profiles.is_empty());
 }
 
@@ -275,7 +276,7 @@ fn a_failed_switch_keeps_the_current_profile() {
     let text = "Could not switch to profile Personal: could not lock config file";
     assert!(st.log.iter().any(|l| !l.ok && l.text == text));
     assert!(st.toasts.iter().any(|t| !t.ok && t.text == text));
-    assert!(matches!(&fx[..], [Effect::ReadGitConfig { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Prefs(PrefsEffect::ReadGitConfig { .. })]), "{fx:?}");
 }
 
 fn rewrite(fx: &[Effect]) -> Option<(ProfileId, Identity)> {
@@ -299,7 +300,7 @@ fn config_read_during_a_switch_leaves_the_current_profile_alone() {
 
     // The switch failed (git's earlier values were put back): the read afterwards syncs again.
     let fx = profile(&mut st, ProfileMsg::Applied { id: PERSONAL, result: Err("could not lock config file".into()) });
-    assert!(matches!(&fx[..], [Effect::ReadGitConfig { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Prefs(PrefsEffect::ReadGitConfig { .. })]), "{fx:?}");
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::GitConfigLoaded(values("Ada", "ada@work.example"))));
     assert_eq!(saves(&fx), 0, "nothing changed");
     assert_eq!(st.settings.profile(WORK).unwrap().author_name, "Ada");
@@ -332,7 +333,7 @@ fn editing_the_current_profile_during_a_switch_waits_for_it() {
     assert_eq!(st.settings.active_profile, Some(WORK));
     let (id, identity) = rewrite(&fx).expect("a rewrite");
     assert_eq!((id, identity.email.as_str()), (WORK, "ada@new.example"));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::ReadGitConfig { .. })), "the rewrite reads back: {fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Prefs(PrefsEffect::ReadGitConfig { .. }))), "the rewrite reads back: {fx:?}");
     assert_eq!(st.profile_switch, Some(WORK), "busy until written");
     assert!(profile(&mut st, ProfileMsg::Switch(PERSONAL)).is_empty());
 
@@ -362,5 +363,5 @@ fn editing_the_target_during_a_switch_writes_it_once_current() {
     assert_eq!(st.profile_switch, None);
     let text = "Could not write profile Personal's identity to your Git config: could not lock config file";
     assert!(st.log.iter().any(|l| !l.ok && l.text == text));
-    assert!(matches!(&fx[..], [Effect::ReadGitConfig { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Prefs(PrefsEffect::ReadGitConfig { .. })]), "{fx:?}");
 }

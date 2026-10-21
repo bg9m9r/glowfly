@@ -5,6 +5,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::OsEffect;
 use crate::msg::{Msg, PaletteMsg, RepoMsg};
 use crate::patch::{PatchEffect, PatchMsg};
 use crate::state::AppState;
@@ -146,7 +147,7 @@ fn save_writes_the_patch_end_to_end() {
     assert!(action.workdir.is_none());
     let id = toast.id;
     let fx = update(&mut st, Msg::ToastAction(id), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RevealPath(p)] if *p == dest), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::RevealPath(p))] if *p == dest), "{fx:?}");
     assert!(last_log(&st).contains(&dest.display().to_string()), "{}", last_log(&st));
     assert!(st.job.is_none());
     cleanup(&dir);

@@ -19,6 +19,7 @@ mod changes_tests;
 #[path = "patch_copy_tests.rs"]
 mod copy_tests;
 
+use crate::effect::OsEffect;
 use crate::effect::{Effect, UiEffect};
 use crate::msg::Msg;
 use crate::patch::{PatchEffect, PatchMsg};
@@ -74,7 +75,7 @@ pub(super) fn handle(st: &mut AppState, m: PatchMsg, now: Instant, fx: &mut Vec<
                 st.log(false, text);
             }
         },
-        PatchMsg::ShowSaved(path) => fx.push(Effect::RevealPath(path)),
+        PatchMsg::ShowSaved(path) => fx.push(Effect::Os(OsEffect::RevealPath(path))),
         PatchMsg::Copy(oids) => {
             let Some(oids) = ordered(st, oids) else { return };
             let Some(workdir) = st.workdir() else { return };

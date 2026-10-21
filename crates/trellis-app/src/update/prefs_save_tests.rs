@@ -7,6 +7,7 @@ use super::profiles_tests::{WORK, two_profiles};
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::PrefsEffect;
 use crate::keymap::{BindingId, Slot};
 use crate::msg::{FolderPurpose, ForgeMsg, Msg, PaletteMsg, PrefsMsg};
 use crate::state::keys_page::Recording;
@@ -54,7 +55,7 @@ pub(super) fn page(st: &AppState) -> PrefPage {
 pub(super) fn writes(fx: &[Effect]) -> Vec<(bool, &str, Option<&str>)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::SetGitConfig { global, key, value, .. } => Some((*global, key.as_str(), value.as_deref())),
+            Effect::Prefs(PrefsEffect::SetGitConfig { global, key, value, .. }) => Some((*global, key.as_str(), value.as_deref())),
             _ => None,
         })
         .collect()

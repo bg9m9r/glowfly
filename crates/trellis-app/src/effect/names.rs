@@ -48,23 +48,13 @@ impl Effect {
             Effect::SearchPaths { .. } => "search-paths",
             Effect::VerifySignature { .. } => "verify-signature",
             Effect::FetchAvatars(_) => "avatars",
-            Effect::ReadGitConfig { .. } => "read-config",
-            Effect::SetGitConfig { .. } => "set-config",
             Effect::SaveSettings(_) => "save-settings",
             Effect::SaveRecent(_) => "save-recent",
             Effect::CheckRepoFolders(_) => "check-repo-folders",
             Effect::ReadTabGroups(_) => "read-tab-groups",
             Effect::SaveTabs { .. } => "save-tabs",
-            Effect::OpenUrl(_) => "open-url",
-            Effect::OpenTerminal(_) => "open-terminal",
-            Effect::OpenFolder(_) => "open-folder",
-            Effect::OpenPath { .. } => "open-path",
-            Effect::RevealPath(_) => "reveal-path",
-            Effect::PickFolder { .. } => "pick-folder",
-            Effect::PickFile { .. } => "pick-file",
-            Effect::ListSigningKeys { .. } => "list-keys",
-            Effect::GenerateGpgKey { .. } => "generate-key",
-            Effect::ExportPublicKey { .. } => "export-key",
+            Effect::Os(e) => e.name(),
+            Effect::Prefs(e) => e.name(),
             Effect::Ssh(e) => e.name(),
             Effect::Profile(e) => e.name(),
             Effect::Watch(_) => "watch",
@@ -145,15 +135,11 @@ impl Effect {
             | Effect::SearchPaths { .. }
             | Effect::VerifySignature { .. }
             | Effect::FetchAvatars(_)
-            | Effect::ReadGitConfig { .. }
-            | Effect::SetGitConfig { .. }
             | Effect::SaveSettings(_)
             | Effect::SaveRecent(_)
             | Effect::CheckRepoFolders(_)
             | Effect::ReadTabGroups(_)
             | Effect::SaveTabs { .. }
-            | Effect::ListSigningKeys { .. }
-            | Effect::ExportPublicKey { .. }
             | Effect::Profile(_)
             | Effect::GitEnv(_)
             | Effect::Onboarding(_)
@@ -176,15 +162,9 @@ impl Effect {
             Effect::Updates(e) => e.timed(),
             Effect::Repos(e) => e.timed(),
             Effect::CustomCommand(e) => e.timed(),
+            Effect::Prefs(e) => e.timed(),
             // They wait on the user, hand work to the system, or never run on a worker thread.
-            Effect::OpenUrl(_)
-            | Effect::OpenTerminal(_)
-            | Effect::OpenFolder(_)
-            | Effect::OpenPath { .. }
-            | Effect::RevealPath(_)
-            | Effect::PickFolder { .. }
-            | Effect::PickFile { .. }
-            | Effect::GenerateGpgKey { .. }
+            Effect::Os(_)
             | Effect::Watch(_)
             | Effect::AnswerPrompt { .. }
             // A keychain may ask the user to allow saving the sign-in.

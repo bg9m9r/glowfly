@@ -6,6 +6,7 @@
 use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::{OsEffect, PrefsEffect};
 use crate::msg::{Msg, PaletteMsg, RepoMsg};
 use crate::state::AppState;
 use crate::state::PrefPage;
@@ -151,7 +152,7 @@ fn open_in_terminal_uses_the_custom_terminal_when_set() {
     let (mut st, dir) = open("tools-terminal", "");
     let w = st.workdir().unwrap();
     let fx = update(&mut st, Msg::OpenTerminal, Instant::now());
-    assert!(matches!(&fx[..], [Effect::OpenTerminal(p)] if *p == w), "detected as before: {fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::OpenTerminal(p))] if *p == w), "detected as before: {fx:?}");
 
     st.settings.external_tools.terminal = "wt".into();
     st.settings.external_tools.terminal_args = r#"-d "{repo}""#.into();
@@ -174,7 +175,7 @@ fn open_in_terminal_can_use_the_panel() {
     st.settings.terminal.open_in_panel = true;
     st.settings.external_tools.terminal = "wt".into();
     let spawns = |fx: &[Effect]| fx.iter().filter(|e| matches!(e, Effect::Terminal(crate::terminal::TerminalEffect::Spawn { .. }))).count();
-    let external = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::OpenTerminal(_) | Effect::Tool(_)));
+    let external = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::Os(OsEffect::OpenTerminal(_)) | Effect::Tool(_)));
     let fx = update(&mut st, Msg::OpenTerminal, Instant::now());
     assert_eq!(spawns(&fx), 1, "{fx:?}");
     assert!(!external(&fx));
@@ -237,7 +238,7 @@ fn show_page_opens_external_tools() {
     let fx = run(&mut st, ToolsMsg::ShowPage);
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
     assert_eq!(PrefPage::Tools.title(trellis_core::i18n::Lang::En), "External tools");
-    assert!(fx.iter().any(|e| matches!(e, Effect::ReadGitConfig { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Prefs(PrefsEffect::ReadGitConfig { .. }))), "{fx:?}");
     assert!(fx.iter().any(|e| matches!(e, Effect::Tool(ToolEffect::ReadGitTools { next: None, .. }))), "{fx:?}");
 }
 

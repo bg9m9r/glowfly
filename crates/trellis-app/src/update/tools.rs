@@ -8,6 +8,7 @@
 //! set, may come from the repository's own config: those are gated in update/tool_git.rs.
 
 use crate::effect::Effect;
+use crate::effect::OsEffect;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::state::AppState;
@@ -84,7 +85,7 @@ pub(super) fn open_terminal(st: &mut AppState, now: Instant, fx: &mut Vec<Effect
     }
     let Some(w) = st.workdir() else { return };
     match terminal(&st.settings.external_tools, &w) {
-        None => fx.push(Effect::OpenTerminal(w)),
+        None => fx.push(Effect::Os(OsEffect::OpenTerminal(w))),
         Some(Ok(launch)) => {
             let target = st.snap.as_ref().map(|s| s.name.clone()).unwrap_or_default();
             fx.push(Effect::Tool(ToolEffect::Launch { kind: ToolKind::Terminal, launch, target, check: None }));

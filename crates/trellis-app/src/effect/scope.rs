@@ -59,23 +59,13 @@ impl Effect {
             | Effect::UndoRedo { .. }
             | Effect::Account(_)
             | Effect::FetchAvatars(_)
-            | Effect::ReadGitConfig { .. }
-            | Effect::SetGitConfig { .. }
+            | Effect::Prefs(_)
             | Effect::SaveSettings(_)
             | Effect::SaveRecent(_)
             | Effect::CheckRepoFolders(_)
             | Effect::ReadTabGroups(_)
             | Effect::SaveTabs { .. }
-            | Effect::OpenUrl(_)
-            | Effect::OpenTerminal(_)
-            | Effect::OpenFolder(_)
-            | Effect::OpenPath { .. }
-            | Effect::RevealPath(_)
-            | Effect::PickFolder { .. }
-            | Effect::PickFile { .. }
-            | Effect::ListSigningKeys { .. }
-            | Effect::GenerateGpgKey { .. }
-            | Effect::ExportPublicKey { .. }
+            | Effect::Os(_)
             | Effect::Ssh(_)
             | Effect::Profile(_)
             | Effect::Watch(_)

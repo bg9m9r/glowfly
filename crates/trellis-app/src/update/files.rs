@@ -4,6 +4,7 @@
 //! working-tree files (in `work_files.rs`).
 
 use crate::effect::Effect;
+use crate::effect::OsEffect;
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use crate::state::trust::Standing;
@@ -103,7 +104,7 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
         }
         FilesMsg::ShowWorkingFile(p) => {
             if let Some(w) = st.workdir() {
-                fx.push(Effect::RevealPath(w.join(&p)));
+                fx.push(Effect::Os(OsEffect::RevealPath(w.join(&p))));
             }
         }
     }
@@ -143,7 +144,7 @@ fn ask_restore(st: &mut AppState, oid: Oid, path: String, deleted: bool) {
 
 fn open(st: &AppState, path: String, confirmed: bool, fx: &mut Vec<Effect>) {
     if let Some(workdir) = st.workdir() {
-        fx.push(Effect::OpenPath { workdir, path, confirmed });
+        fx.push(Effect::Os(OsEffect::OpenPath { workdir, path, confirmed }));
     }
 }
 

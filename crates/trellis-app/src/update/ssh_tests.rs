@@ -5,6 +5,7 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
+use crate::effect::PrefsEffect;
 use crate::effect::{Effect, UiEffect};
 use crate::msg::{Msg, PrefsMsg, RepoMsg};
 use crate::ssh::{GenerateFailure, SshEffect, SshMsg};
@@ -106,7 +107,7 @@ fn opening_on_the_page_reads_it() {
     let mut st = state();
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh)));
     assert_eq!(lists(&fx), [1]);
-    assert!(fx.iter().any(|e| matches!(e, Effect::ReadGitConfig { .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Prefs(PrefsEffect::ReadGitConfig { .. }))));
     assert!(Effect::Ssh(SshEffect::List { generation: 1, extra: Vec::new() }).scope().is_none(), "unscoped");
 }
 

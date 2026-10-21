@@ -2,6 +2,7 @@
 //! services without an API, sending, and each kind of answer.
 
 use super::ssh_tests::{loaded, page, page_mut, pair, ssh};
+use crate::effect::OsEffect;
 use crate::effect::{Effect, UiEffect};
 use crate::ssh::{ServiceKeyError, SshEffect, SshMsg};
 use crate::state::AppState;
@@ -35,7 +36,7 @@ fn copied_and_opened(fx: &[Effect]) -> (Option<String>, Option<String>) {
         _ => None,
     });
     let opened = fx.iter().find_map(|e| match e {
-        Effect::OpenUrl(u) => Some(u.clone()),
+        Effect::Os(OsEffect::OpenUrl(u)) => Some(u.clone()),
         _ => None,
     });
     (copied, opened)

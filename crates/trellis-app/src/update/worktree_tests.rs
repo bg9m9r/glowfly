@@ -7,6 +7,7 @@ use super::tests::same_place;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::OsEffect;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
@@ -335,7 +336,9 @@ fn browse_picks_the_parent() {
     let (mut st, dir) = opened("wt-browse");
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::WorktreeParent)), Instant::now());
     match &fx[..] {
-        [Effect::PickFolder { title, purpose: FolderPurpose::WorktreeParent }] => assert_eq!(title, "Create the worktree in…"),
+        [Effect::Os(OsEffect::PickFolder { title, purpose: FolderPurpose::WorktreeParent })] => {
+            assert_eq!(title, "Create the worktree in…")
+        }
         other => panic!("{other:?}"),
     }
     drive(&mut st, wt(WorktreeMsg::CreateDialog(WorktreeBase::Branch("side".into()))));

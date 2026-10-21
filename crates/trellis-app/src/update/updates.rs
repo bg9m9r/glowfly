@@ -4,6 +4,7 @@
 //! saved.
 
 use super::release_notes::{open_notes, startup_notes};
+use crate::effect::OsEffect;
 use crate::effect::{Effect, UpdateEffect};
 use crate::msg::{CheckedRelease, Msg, UpdateMsg};
 use crate::state::updates::{
@@ -37,13 +38,13 @@ pub(super) fn handle(st: &mut AppState, msg: UpdateMsg, now: Instant, fx: &mut V
         }
         UpdateMsg::ShowFile => {
             if let UpdateStatus::Downloaded { file, .. } = st.updates.settled() {
-                fx.push(Effect::RevealPath(file.clone()));
+                fx.push(Effect::Os(OsEffect::RevealPath(file.clone())));
             }
         }
         UpdateMsg::OpenReleasePage => {
             let page = st.updates.offer().map(|o| o.release.html_url.clone()).filter(|u| !u.is_empty());
             if let Some(url) = page.or_else(|| app_update::releases_page(app_update::REPOSITORY)) {
-                fx.push(Effect::OpenUrl(url));
+                fx.push(Effect::Os(OsEffect::OpenUrl(url)));
             }
         }
         UpdateMsg::ShowNotes => open_notes(st, None),
@@ -165,7 +166,7 @@ fn download(st: &mut AppState, fx: &mut Vec<Effect>) {
     if offer.asset.is_none() {
         // No build for this system: its page lists what there is.
         if !offer.release.html_url.is_empty() {
-            fx.push(Effect::OpenUrl(offer.release.html_url.clone()));
+            fx.push(Effect::Os(OsEffect::OpenUrl(offer.release.html_url.clone())));
         }
         return;
     }

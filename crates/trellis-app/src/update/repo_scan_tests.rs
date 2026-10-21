@@ -2,6 +2,7 @@
 
 use super::tests::{drive, git, state};
 use super::update;
+use crate::effect::OsEffect;
 use crate::effect::{Effect, ReposEffect};
 use crate::msg::{FolderPurpose, Msg, PrefsMsg, ReposMsg, ScanFound};
 use crate::state::repo_scan::{FoundRepo, project_folders};
@@ -109,7 +110,7 @@ fn removing_a_folder_saves_and_scans_the_rest() {
 fn add_folder_asks_for_a_folder() {
     let mut st = state();
     let fx = run(&mut st, ReposMsg::AddFolder);
-    assert!(matches!(&fx[..], [Effect::PickFolder { purpose: FolderPurpose::ProjectFolder, .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::PickFolder { purpose: FolderPurpose::ProjectFolder, .. })]), "{fx:?}");
 }
 
 /// A project folder holding two repositories, one level down and two levels down.

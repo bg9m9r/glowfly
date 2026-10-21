@@ -3,6 +3,7 @@
 
 use super::update;
 use crate::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
+use crate::effect::{OsEffect, PrefsEffect};
 use crate::msg::AvatarMsg;
 use crate::msg::CommitMsg;
 use crate::msg::ForgeMsg;
@@ -124,12 +125,13 @@ pub(super) fn skipped(effect: &Effect) -> bool {
     matches!(
         effect,
         // These need a user or the network; tests don't exercise them here.
-        Effect::Ui(_) | Effect::PickFolder { .. } | Effect::OpenUrl(_) | Effect::OpenTerminal(_) | Effect::OpenFolder(_)
+        Effect::Ui(_)
+            | Effect::Os(OsEffect::PickFolder { .. } | OsEffect::OpenUrl(_) | OsEffect::OpenTerminal(_) | OsEffect::OpenFolder(_))
             | Effect::Forge { .. } | Effect::Account(_) | Effect::SaveSettings(_) | Effect::SaveRecent(_)
             | Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::AnswerPrompt { .. }
             // Shells are never started by these tests.
             | Effect::Terminal(_)
-            | Effect::OpenPath { .. } | Effect::RevealPath(_)
+            | Effect::Os(OsEffect::OpenPath { .. } | OsEffect::RevealPath(_))
             // OS dialogs would wait for a user.
             | Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. })
             // Never start programs or open dialogs from tests.
@@ -364,7 +366,7 @@ fn commit_signing_flow() {
 
     let mut st = state();
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::ReadGitConfig { .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Prefs(PrefsEffect::ReadGitConfig { .. }))));
 
     // Config arrives → the key list for the configured format is requested.
     let values = GitConfigValues {
@@ -375,7 +377,9 @@ fn commit_signing_flow() {
     };
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::GitConfigLoaded(values)), Instant::now());
     match &fx[..] {
-        [Effect::ListSigningKeys { format, program }] => assert_eq!((*format, program.as_str()), (SigningFormat::OpenPgp, "gpg")),
+        [Effect::Prefs(PrefsEffect::ListSigningKeys { format, program })] => {
+            assert_eq!((*format, program.as_str()), (SigningFormat::OpenPgp, "gpg"))
+        }
         other => panic!("expected a key listing, got {other:?}"),
     }
     let key = SigningKey { id: "ABCD".into(), label: "Ada <ada@example.com>".into(), expires: None, expired: false };
@@ -386,7 +390,7 @@ fn commit_signing_flow() {
     st.prefs.as_mut().unwrap().signing.passphrase = "s3cret".into();
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::GenerateGpgKey), Instant::now());
     match &fx[..] {
-        [Effect::GenerateGpgKey { name, email, passphrase, .. }] => {
+        [Effect::Prefs(PrefsEffect::GenerateGpgKey { name, email, passphrase, .. })] => {
             assert_eq!((name.as_str(), email.as_str(), passphrase.as_str()), ("Ada", "ada@example.com", "s3cret"))
         }
         other => panic!("expected key generation, got {other:?}"),
@@ -396,7 +400,9 @@ fn commit_signing_flow() {
 
     // The new key becomes the signing key.
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::GpgKeyGenerated(Ok("NEWKEY".into()))), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::SetGitConfig { key, value: Some(v), .. } if key == "user.signingkey" && v == "NEWKEY")));
+    assert!(fx.iter().any(
+        |e| matches!(e, Effect::Prefs(PrefsEffect::SetGitConfig { key, value: Some(v), .. }) if key == "user.signingkey" && v == "NEWKEY")
+    ));
     assert_eq!(st.prefs.as_ref().unwrap().git.as_ref().unwrap().signing_key, "NEWKEY");
     assert!(!st.prefs.as_ref().unwrap().signing.generating);
 }

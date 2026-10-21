@@ -2,6 +2,7 @@
 //! messages of the navigation and the save model (prefs_nav.rs, prefs_save.rs, prefs_leave.rs).
 
 use crate::effect::Effect;
+use crate::effect::{OsEffect, PrefsEffect};
 use crate::msg::PrefsMsg;
 use crate::msg::{FilePurpose, FolderPurpose};
 use crate::state::{AppState, Modal, PrefPage, PrefsState, host_text};
@@ -46,7 +47,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             // Start the Integrations page on the open repository's service.
             let provider = st.forge.as_ref().and_then(|f| f.host_provider()).unwrap_or(Provider::GitHub);
             select_integration(st, provider);
-            fx.push(Effect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() });
+            fx.push(Effect::Prefs(PrefsEffect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() }));
         }
         PrefsMsg::ClosePrefs => {
             st.prefs = None;
@@ -64,7 +65,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         }
         PrefsMsg::SelectIntegration(p) => select_integration(st, p),
         PrefsMsg::GitConfig { global, key, value } => {
-            fx.push(Effect::SetGitConfig { cwd: st.any_dir(), global, key, value });
+            fx.push(Effect::Prefs(PrefsEffect::SetGitConfig { cwd: st.any_dir(), global, key, value }));
             if let Some(p) = st.prefs.as_mut() {
                 p.saved.mark();
             }
@@ -120,12 +121,12 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             let Some(git) = p.git.as_ref() else { return };
             let program = non_empty(&git.gpg_program, "gpg");
             p.signing.generating = true;
-            fx.push(Effect::GenerateGpgKey {
+            fx.push(Effect::Prefs(PrefsEffect::GenerateGpgKey {
                 program,
                 name: git.user_name.clone(),
                 email: git.user_email.clone(),
                 passphrase: std::mem::take(&mut p.signing.passphrase),
-            });
+            }));
         }
         PrefsMsg::GpgKeyGenerated(result) => {
             if let Some(p) = st.prefs.as_mut() {
@@ -136,12 +137,12 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                     if let Some(git) = st.prefs.as_mut().and_then(|p| p.git.as_mut()) {
                         git.signing_key = id.clone();
                     }
-                    fx.push(Effect::SetGitConfig {
+                    fx.push(Effect::Prefs(PrefsEffect::SetGitConfig {
                         cwd: st.any_dir(),
                         global: true,
                         key: "user.signingkey".into(),
                         value: Some(id.clone()),
-                    });
+                    }));
                     st.toast(true, format!("Created GPG key {id} and set it as your signing key"), now);
                     load_signing_keys(st, fx);
                 }
@@ -155,7 +156,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             }
             let format = SigningFormat::from_config(&git.signing_format);
             let program = non_empty(git.program(), format.default_program());
-            fx.push(Effect::ExportPublicKey { format, program, key: git.signing_key.clone() });
+            fx.push(Effect::Prefs(PrefsEffect::ExportPublicKey { format, program, key: git.signing_key.clone() }));
         }
         PrefsMsg::PublicKeyExported(result) => match result {
             Ok(text) => {
@@ -169,7 +170,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 FilePurpose::SigningProgram => "Signing program",
                 FilePurpose::SshAllowedSigners => "Allowed signers file",
             };
-            fx.push(Effect::PickFile { title: title.into(), purpose });
+            fx.push(Effect::Os(OsEffect::PickFile { title: title.into(), purpose }));
         }
         PrefsMsg::FilePicked { purpose, path: Some(path) } => {
             let value = path.display().to_string();
@@ -189,7 +190,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                     "gpg.ssh.allowedSignersFile"
                 }
             };
-            fx.push(Effect::SetGitConfig { cwd: st.any_dir(), global: true, key: key.into(), value: Some(value) });
+            fx.push(Effect::Prefs(PrefsEffect::SetGitConfig { cwd: st.any_dir(), global: true, key: key.into(), value: Some(value) }));
             load_signing_keys(st, fx);
         }
         PrefsMsg::FilePicked { path: None, .. } => {}
@@ -204,7 +205,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 FolderPurpose::ProjectFolder => crate::state::repo_scan::PICK_TITLE,
                 FolderPurpose::ProfileFolder(_) => crate::state::profile_rules::PICK_FOLDER_TITLE,
             };
-            fx.push(Effect::PickFolder { title: title.into(), purpose });
+            fx.push(Effect::Os(OsEffect::PickFolder { title: title.into(), purpose }));
         }
         PrefsMsg::FolderPicked { purpose, path: Some(path) } => match purpose {
             FolderPurpose::OpenRepo => super::tabs::open(st, path, fx),
@@ -261,7 +262,7 @@ fn load_signing_keys(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(git) = p.git.as_ref() else { return };
     let format = SigningFormat::from_config(&git.signing_format);
     p.signing.keys = None;
-    fx.push(Effect::ListSigningKeys { format, program: non_empty(git.program(), format.default_program()) });
+    fx.push(Effect::Prefs(PrefsEffect::ListSigningKeys { format, program: non_empty(git.program(), format.default_program()) }));
 }
 
 /// Tells the user, in a toast and the activity log, that their settings file couldn't be read.

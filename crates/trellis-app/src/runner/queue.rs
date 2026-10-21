@@ -174,23 +174,13 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::SearchPaths { .. }
         | Effect::VerifySignature { .. }
         | Effect::FetchAvatars(_)
-        | Effect::ReadGitConfig { .. }
-        | Effect::SetGitConfig { .. }
+        | Effect::Prefs(_)
         | Effect::Profile(_)
         | Effect::Onboarding(_)
         | Effect::SaveSettings(_)
         | Effect::SaveRecent(_)
         | Effect::SaveTabs { .. }
-        | Effect::OpenUrl(_)
-        | Effect::OpenTerminal(_)
-        | Effect::OpenFolder(_)
-        | Effect::OpenPath { .. }
-        | Effect::RevealPath(_)
-        | Effect::PickFolder { .. }
-        | Effect::PickFile { .. }
-        | Effect::ListSigningKeys { .. }
-        | Effect::GenerateGpgKey { .. }
-        | Effect::ExportPublicKey { .. }
+        | Effect::Os(_)
         | Effect::Ssh(_)
         | Effect::Watch(_)
         | Effect::AnswerPrompt { .. }

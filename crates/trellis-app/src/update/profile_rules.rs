@@ -9,6 +9,7 @@
 
 use super::prefs::save_settings;
 use crate::effect::Effect;
+use crate::effect::{OsEffect, PrefsEffect};
 use crate::msg::{FolderPurpose, Msg};
 use crate::profile::{ProfileEffect, ProfileMsg};
 use crate::state::repo_identity::{USE_HERE_TITLE, local_who, needs_repair, use_here_body, use_here_button};
@@ -23,7 +24,7 @@ use trellis_core::settings::{FolderRule, ProfileId};
 pub(super) fn add_folder(st: &mut AppState, id: ProfileId, fx: &mut Vec<Effect>) {
     if st.settings.profile(id).is_some() {
         let title = crate::state::profile_rules::PICK_FOLDER_TITLE.into();
-        fx.push(Effect::PickFolder { title, purpose: FolderPurpose::ProfileFolder(id) });
+        fx.push(Effect::Os(OsEffect::PickFolder { title, purpose: FolderPurpose::ProfileFolder(id) }));
     }
 }
 
@@ -144,7 +145,7 @@ pub(super) fn local_cleared(st: &mut AppState, git_dir: PathBuf, result: Result<
             st.identities.insert(git_dir, id);
             // Repo > Identity shows the repository's own values.
             if st.prefs.is_some() {
-                fx.push(Effect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() });
+                fx.push(Effect::Prefs(PrefsEffect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() }));
             }
         }
         Err(e) => {

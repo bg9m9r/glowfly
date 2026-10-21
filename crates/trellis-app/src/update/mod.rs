@@ -156,6 +156,7 @@ mod test_mods;
 #[cfg(test)]
 mod tests;
 
+use crate::effect::OsEffect;
 use crate::effect::{Effect, UiEffect};
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -286,9 +287,9 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::ToastDetails(id) => notify::toast_action(st, id, true, now, &mut fx),
         Msg::CloseModal => dialog::close(st),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
-        Msg::OpenUrl(url) => fx.push(Effect::OpenUrl(url)),
+        Msg::OpenUrl(url) => fx.push(Effect::Os(OsEffect::OpenUrl(url))),
         Msg::OpenTerminal => tools::open_terminal(st, now, &mut fx),
-        Msg::OpenFolder(p) => fx.push(Effect::OpenFolder(p)),
+        Msg::OpenFolder(p) => fx.push(Effect::Os(OsEffect::OpenFolder(p))),
         Msg::Logged { ok, text } => st.log(ok, text),
         Msg::ClearLog => logs::clear(st, &mut fx),
     }

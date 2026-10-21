@@ -7,6 +7,7 @@
 
 use super::prefs::save_settings;
 use crate::effect::Effect;
+use crate::effect::PrefsEffect;
 use crate::msg::Msg;
 use crate::profile::{IdentityField, ProfileEffect, ProfileMsg};
 use crate::state::profiles::{
@@ -185,7 +186,7 @@ pub(super) fn set_identity(st: &mut AppState, id: ProfileId, field: IdentityFiel
         return;
     }
     let git_value = Some(value.to_owned()).filter(|v| !v.is_empty());
-    fx.push(Effect::SetGitConfig { cwd: st.any_dir(), global: true, key: field.git_key().into(), value: git_value });
+    fx.push(Effect::Prefs(PrefsEffect::SetGitConfig { cwd: st.any_dir(), global: true, key: field.git_key().into(), value: git_value }));
     if let Some(git) = st.prefs.as_mut().and_then(|p| p.git.as_mut()) {
         let mirror = match field {
             IdentityField::AuthorName => &mut git.user_name,
@@ -243,7 +244,7 @@ fn applied(
     }
     // A failed switch put git's earlier values back; the read shows them.
     if !finish_switch(st, fx) && failed && st.prefs.is_some() {
-        fx.push(Effect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() });
+        fx.push(Effect::Prefs(PrefsEffect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() }));
     }
 }
 
@@ -271,7 +272,7 @@ fn rewritten(
         }
     }
     if !finish_switch(st, fx) && failed && st.prefs.is_some() {
-        fx.push(Effect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() });
+        fx.push(Effect::Prefs(PrefsEffect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() }));
     }
 }
 

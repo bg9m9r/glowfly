@@ -4,6 +4,7 @@
 use super::tests::{accept_stash, drive, git, keys, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::OsEffect;
 use crate::msg::PaletteMsg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
@@ -276,7 +277,7 @@ fn run_prefs_close_tab_open_repo() {
     assert_eq!(st.tabs.len(), 1);
 
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::OpenRepo)));
-    assert!(matches!(&fx[..], [Effect::PickFolder { purpose: FolderPurpose::OpenRepo, .. }]));
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::PickFolder { purpose: FolderPurpose::OpenRepo, .. })]));
 
     // Fetch on a repository with a remote (a bare clone of itself).
     let dir = scratch_repo("palette-fetch");

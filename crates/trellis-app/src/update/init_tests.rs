@@ -5,6 +5,7 @@
 use super::clone::PARENT_CHECK_DELAY;
 use super::tests::{drive, state};
 use super::update;
+use crate::effect::OsEffect;
 use crate::effect::{Effect, InitEffect};
 use crate::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg, RepoMsg};
 use crate::state::init::{InitForm, InitRequest};
@@ -57,7 +58,7 @@ fn init_opens_the_dialog_instead_of_a_folder_picker() {
         Instant::now(),
     );
     let fx = run(&mut st, Msg::Repo(RepoMsg::InitRepo));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::PickFolder { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Os(OsEffect::PickFolder { .. }))), "{fx:?}");
     let f = form(&mut st);
     assert_eq!(Path::new(&f.folder), Path::new("C:/work"));
     assert_eq!(f.branch, "trunk");

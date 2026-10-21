@@ -6,6 +6,7 @@
 use super::profiles_tests::{PERSONAL, WORK, profile, run, saves, two_profiles};
 use super::tests::{finish_keeping, scratch_repo};
 use crate::effect::Effect;
+use crate::effect::{OsEffect, PrefsEffect};
 use crate::msg::{FolderPurpose, Msg, PrefsMsg, RepoMsg};
 use crate::profile::{IdentityField, ProfileEffect, ProfileMsg};
 use crate::state::{AppState, Modal};
@@ -63,7 +64,7 @@ fn identity(source: IdentitySource, expected: Option<trellis_core::settings::Pro
 fn adding_asks_for_a_folder_or_uses_the_open_repository() {
     let mut st = two_profiles();
     let fx = profile(&mut st, ProfileMsg::AddFolder(WORK));
-    assert!(matches!(&fx[..], [Effect::PickFolder { purpose: FolderPurpose::ProfileFolder(WORK), .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::PickFolder { purpose: FolderPurpose::ProfileFolder(WORK), .. })]), "{fx:?}");
     let picked = paths::temp_dir().join("work");
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::FolderPicked { purpose: FolderPurpose::ProfileFolder(WORK), path: Some(picked.clone()) }));
     match &fx[..] {
@@ -175,7 +176,7 @@ fn removing_deleting_and_editing_a_ruled_profile() {
     let mut fx = Vec::new();
     super::profiles::set_identity(&mut st, PERSONAL, IdentityField::AuthorEmail, "ada@new.example", &mut fx);
     assert_eq!(syncs(&fx), [false]);
-    assert!(!fx.iter().any(|e| matches!(e, Effect::SetGitConfig { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Prefs(PrefsEffect::SetGitConfig { .. }))), "{fx:?}");
     profile(&mut st, ProfileMsg::IncludesSynced(Ok(())));
     // An unruled profile's edit syncs nothing.
     let mut fx = Vec::new();

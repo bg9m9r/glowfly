@@ -5,6 +5,7 @@
 use super::deep_link_open::{after_fetch, go};
 use super::jobs::{JobSpec, Started, start_job};
 use crate::deep_link::{DeepLinkEffect, DeepLinkMsg, FindOrigin, LinkTarget};
+use crate::effect::OsEffect;
 use crate::effect::{Effect, UiEffect};
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::deep_link::{self as dl, Awaiting, Best, LinkDialog, Pending, SchemeView};
@@ -24,9 +25,10 @@ pub(super) fn handle(st: &mut AppState, msg: DeepLinkMsg, now: Instant, fx: &mut
         DeepLinkMsg::Built { result: Err(e), .. } => st.toast(false, format!("Can't make a link: {e}."), now),
         DeepLinkMsg::Open(text) => open(st, text, now, fx),
         DeepLinkMsg::Found { seq, origin, result } => found(st, seq, origin, result, now, fx),
-        DeepLinkMsg::Locate => {
-            fx.push(Effect::PickFolder { title: "Locate the linked repository".into(), purpose: FolderPurpose::LocateLinkedRepo })
-        }
+        DeepLinkMsg::Locate => fx.push(Effect::Os(OsEffect::PickFolder {
+            title: "Locate the linked repository".into(),
+            purpose: FolderPurpose::LocateLinkedRepo,
+        })),
         DeepLinkMsg::Clone => clone(st, fx),
         DeepLinkMsg::Choose(i) => {
             if let Some(Modal::DeepLink(LinkDialog::Choose { paths, picked, .. })) = st.modal.as_mut()

@@ -5,6 +5,7 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
+use crate::effect::OsEffect;
 use crate::effect::{Effect, ForgeError};
 use crate::msg::{Msg, PaletteMsg, RepoMsg};
 use crate::remote::{ForkRequest, RemoteEffect, RemoteMsg};
@@ -101,7 +102,7 @@ fn cleanup(dirs: &[&Path]) {
 fn view_opens_the_repository_page() {
     let (mut st, dir) = repo("fork-view", &[("origin", ORIGIN), ("backup", "D:/backups/app.git")]);
     let fx = run(&mut st, RemoteMsg::View("origin".into()));
-    assert!(matches!(&fx[..], [Effect::OpenUrl(u)] if u == "https://github.com/team/app"), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::OpenUrl(u))] if u == "https://github.com/team/app"), "{fx:?}");
     assert!(run(&mut st, RemoteMsg::View("backup".into())).is_empty());
     assert!(last_log(&st).contains("folder on disk"), "{}", last_log(&st));
     assert!(run(&mut st, RemoteMsg::View("gone".into())).is_empty());
@@ -354,6 +355,6 @@ fn palette_offers_the_remote_actions() {
     assert_eq!(view.command, PaletteCommand::Remote(RemoteMsg::View("origin".into())));
     let mut st = st;
     let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(view.command.clone())), Instant::now());
-    assert!(matches!(&fx[..], [Effect::OpenUrl(_)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::OpenUrl(_))]), "{fx:?}");
     cleanup(&[&dir]);
 }

@@ -1,6 +1,7 @@
 //! The Find repositories dialog: opening it, adding and removing project folders (saved in
 //! settings), and scanning them in the runner. The results are global (`st.repo_scan`).
 
+use crate::effect::OsEffect;
 use crate::effect::{Effect, ReposEffect};
 use crate::msg::{FolderPurpose, ScanFound};
 use crate::state::repo_scan::{PICK_TITLE, project_folders};
@@ -16,7 +17,7 @@ pub(super) fn show(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 pub(super) fn add_folder(fx: &mut Vec<Effect>) {
-    fx.push(Effect::PickFolder { title: PICK_TITLE.into(), purpose: FolderPurpose::ProjectFolder });
+    fx.push(Effect::Os(OsEffect::PickFolder { title: PICK_TITLE.into(), purpose: FolderPurpose::ProjectFolder }));
 }
 
 /// A project folder was picked: adds it unless it is listed already, then scans.

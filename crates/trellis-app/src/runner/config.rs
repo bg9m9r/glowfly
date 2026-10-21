@@ -1,9 +1,23 @@
 //! Reading the git configuration values Preferences shows, and writing one.
 
-use crate::msg::Msg;
+use crate::effect::PrefsEffect;
+use crate::msg::{Msg, PrefsMsg};
 use crate::state::prefs::{Autocrlf, GitConfigValues};
 use std::path::Path;
 use trellis_core::gitcli::{self, args};
+
+/// Runs one `Effect::Prefs`: config values here, signing keys in keys.rs.
+pub(super) fn run(e: PrefsEffect) -> Option<Msg> {
+    match e {
+        PrefsEffect::ReadGitConfig { cwd, has_repo } => Some(Msg::Prefs(PrefsMsg::GitConfigLoaded(read_git_config(&cwd, has_repo)))),
+        PrefsEffect::SetGitConfig { cwd, global, key, value } => set(&cwd, global, &key, value.as_deref()),
+        PrefsEffect::ListSigningKeys { format, program } => Some(super::keys::list(format, &program)),
+        PrefsEffect::GenerateGpgKey { program, name, email, passphrase } => {
+            Some(super::keys::generate_gpg(&program, &name, &email, &passphrase))
+        }
+        PrefsEffect::ExportPublicKey { format, program, key } => Some(super::keys::export_public(format, &program, &key)),
+    }
+}
 
 /// Sets or (for None) unsets one config value; a failure goes to the activity log.
 pub(super) fn set(cwd: &Path, global: bool, key: &str, value: Option<&str>) -> Option<Msg> {

@@ -2,6 +2,7 @@
 //! and reporting the problems of what was loaded.
 
 use crate::effect::Effect;
+use crate::effect::OsEffect;
 use crate::state::AppState;
 use crate::themes::{ThemeEffect, ThemeMsg};
 use std::time::Instant;
@@ -35,7 +36,7 @@ pub(super) fn handle(st: &mut AppState, msg: ThemeMsg, now: Instant, fx: &mut Ve
             st.settings.theme = ThemeChoice::Custom(id);
             fx.push(super::prefs::save_settings(st));
             fx.push(Effect::Theme(ThemeEffect::Load));
-            fx.push(Effect::RevealPath(path));
+            fx.push(Effect::Os(OsEffect::RevealPath(path)));
             st.toast(true, format!("Created theme {file}. Edit it, then press Reload."), now);
         }
         ThemeMsg::Created(Err(e)) => st.log(false, format!("Could not create a theme file: {e}")),
