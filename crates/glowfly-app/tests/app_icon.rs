@@ -1,5 +1,5 @@
 //! The app icon in `assets/icon/`: `UPDATE_ICONS=1 cargo test -p glowfly --test app_icon`
-//! renders it (`app_icon/draw.rs`) and rewrites the PNGs, `glowfly.ico` and `glowfly.icns`
+//! renders it (`app_icon/draw.rs`, with `app_icon/paint.rs`) and rewrites the PNGs, `glowfly.ico` and `glowfly.icns`
 //! (`app_icon/containers.rs`), and the Windows installer's bitmaps in `assets/installer/`
 //! (`app_icon/installer.rs`). Without the variable it checks that every checked-in image
 //! matches the drawing, within 2 per channel (PNG encoders and float edge cases may differ a
@@ -11,6 +11,8 @@ mod containers;
 mod draw;
 #[path = "app_icon/installer.rs"]
 mod installer;
+#[path = "app_icon/paint.rs"]
+mod paint;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
