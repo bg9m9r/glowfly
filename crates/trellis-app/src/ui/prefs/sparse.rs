@@ -1,9 +1,11 @@
 //! Preferences > Sparse checkout (repository-specific): whether it is on, the mode, the folders
 //! or patterns to check out, and Turn on while it is off, or Reapply and Turn off while it is on
-//! (edits to the paths are saved by the Save / Revert bar). Every action is a `Msg`.
+//! (edits to the paths are saved by the Save / Revert bar). While git is held in the repository
+//! (trust) and sparse checkout is on, its paths aren't read: the page says so instead of the
+//! form. Every action is a `Msg`.
 
 use super::{help, primary_button, row, warn};
-use crate::msg::{Msg, SparseMsg};
+use crate::msg::{Msg, SparseMsg, TrustMsg};
 use crate::state::blocked::BUSY;
 use crate::state::sparse::{SparsePage, summary};
 use crate::ui::theme::color;
@@ -11,6 +13,7 @@ use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::{self, buttons};
 use eframe::egui::{self, Key, Modifiers, RichText, Ui, vec2};
+use std::path::PathBuf;
 use trellis_core::sparse_ops::{SparseMode, SparseStatus};
 
 /// What the page needs from outside Preferences, cloned before the page borrows its state.
@@ -20,6 +23,8 @@ pub struct SparseContext {
     pub job: Option<String>,
     /// Why Reapply and Turn off wait while the form has unsaved edits.
     pub save_first: &'static str,
+    /// The active repository's real path while git is held there, for Review trust….
+    pub held: Option<PathBuf>,
 }
 
 pub fn sparse_page(ui: &mut Ui, page: &mut SparsePage, cx: &SparseContext, msgs: &mut Vec<Msg>) {
@@ -43,6 +48,10 @@ pub fn sparse_page(ui: &mut Ui, page: &mut SparsePage, cx: &SparseContext, msgs:
         return;
     };
     status_row(ui, &status);
+    if status.enabled && (status.held || cx.held.is_some()) {
+        held_row(ui, cx, msgs);
+        return;
+    }
     mode_row(ui, page);
     paths_row(ui, page, cx, msgs);
     actions_row(ui, page, &status, cx, msgs);
@@ -64,6 +73,24 @@ fn status_row(ui: &mut Ui, status: &SparseStatus) {
                 ui,
                 "This worktree uses a sparse index (index.sparse), which Trellis can't fully read. Saving the paths here turns it off.",
             );
+        }
+    });
+}
+
+/// Sparse checkout is on and its paths weren't read: git is held in the repository. Without
+/// `cx.held` the status is from before the repository was trusted, and a new one is on its way.
+fn held_row(ui: &mut Ui, cx: &SparseContext, msgs: &mut Vec<Msg>) {
+    row(ui, "Paths", |ui| {
+        help(
+            ui,
+            "Trellis lists the sparse paths with git, and git would run the programs this repository's own settings and hooks name. \
+             Trust it to see and change them.",
+        );
+        if let Some(real) = &cx.held {
+            ui.add_space(4.0);
+            if ui.add(buttons::secondary("Review trust…")).clicked() {
+                msgs.push(Msg::Trust(TrustMsg::Ask { real: real.clone() }));
+            }
         }
     });
 }

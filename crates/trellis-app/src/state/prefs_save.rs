@@ -69,7 +69,8 @@ pub fn unsaved(p: &PrefsState, settings: &Settings, snap: Option<&Snapshot>) -> 
         PrefPage::RepoHooks => git.is_some_and(|(g, s)| differ(&g.hooks_path, &s.hooks_path)),
         PrefPage::Profile => p.profiles.edited(settings),
         PrefPage::RepoGitFlow => snap.is_some_and(|s| s.gitflow.is_initialized()) && p.gitflow.edited(),
-        PrefPage::RepoSparse => p.sparse.status.as_ref().is_some_and(|s| s.enabled) && p.sparse.edited(),
+        // A held status hides the form, so its edits wait too.
+        PrefPage::RepoSparse => p.sparse.status.as_ref().is_some_and(|s| s.enabled && !s.held) && p.sparse.edited(),
         _ => false,
     }
 }

@@ -239,13 +239,7 @@ fn toolbar_untrusted_changed() {
     let print = st.snap.as_ref().unwrap().trust_print.clone();
     record_trusted(&mut st.settings, &real, print);
     let hook = dir.join(".git").join("hooks").join("post-merge");
-    std::fs::write(
-        &hook,
-        "#!/bin/sh
-exit 0
-",
-    )
-    .unwrap();
+    std::fs::write(&hook, "#!/bin/sh\nexit 0\n").unwrap();
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

@@ -54,6 +54,9 @@ pub struct LfsPage {
     pub init_when_ready: bool,
     /// A successful Initialize: offer to pull when the next status shows tracked patterns.
     pub offer_pull: bool,
+    /// The last read was skipped: git is held in the repository. Trusting it reads again
+    /// (update/lfs.rs `trust_released`).
+    pub held: bool,
 }
 
 /// The remote LFS push goes to: HEAD's upstream remote, else origin, else the first remote.

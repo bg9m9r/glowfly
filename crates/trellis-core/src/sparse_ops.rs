@@ -42,10 +42,15 @@ pub struct SparseStatus {
     pub tracked: usize,
     /// Index entries left out of the working tree (skip-worktree).
     pub skipped: usize,
+    /// Sparse checkout is on but its paths weren't read: the caller holds git in this
+    /// repository (trust); `paths` is empty.
+    pub held: bool,
 }
 
-/// Reads the sparse checkout state of the worktree at `workdir`.
-pub fn status(workdir: &Path) -> Result<SparseStatus> {
+/// Reads the sparse checkout state of the worktree at `workdir`. The paths come from `git
+/// sparse-checkout list`, run only when `run_git`; without it the rest is read with libgit2
+/// and an enabled status is `held`.
+pub fn status(workdir: &Path, run_git: bool) -> Result<SparseStatus> {
     let repo = Repository::open(workdir)?;
     // libgit2's config includes the worktree's config.worktree, where git keeps these.
     let config = repo.config()?;
@@ -59,6 +64,11 @@ pub fn status(workdir: &Path) -> Result<SparseStatus> {
     let skipped = index.iter().filter(|e| e.flags_extended & skip != 0).count();
     let mut s = SparseStatus { enabled, sparse_index, tracked, skipped, ..SparseStatus::default() };
     if !enabled {
+        return Ok(s);
+    }
+    if !run_git {
+        s.mode = if cone_cfg { SparseMode::Cone } else { SparseMode::Patterns };
+        s.held = true;
         return Ok(s);
     }
     let out = gitcli::read(workdir, &args(&["-c", "core.quotePath=false", "sparse-checkout", "list"]));

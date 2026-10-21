@@ -91,27 +91,27 @@ fn set(dir: &Path, mode: SparseMode, paths: &[&str]) -> String {
 #[test]
 fn turning_on_with_folders_and_off_again() {
     let dir = fixture("sparse-cone");
-    let s = status(&dir).unwrap();
+    let s = status(&dir, true).unwrap();
     assert_eq!((s.enabled, s.paths.len(), s.tracked, s.skipped), (false, 0, 3, 0));
 
     let out = set(&dir, SparseMode::Cone, &["src"]);
     assert!(out.starts_with("$ git sparse-checkout set --cone --no-sparse-index --stdin\n  src"), "{out}");
     assert!(!dir.join("docs/d.txt").exists());
     assert!(dir.join("r.txt").exists() && dir.join("src/a/x.txt").exists());
-    let s = status(&dir).unwrap();
+    let s = status(&dir, true).unwrap();
     assert_eq!(s, SparseStatus { enabled: true, mode: SparseMode::Cone, paths: strings(&["src"]), tracked: 3, skipped: 1, ..s.clone() });
     assert!(!s.fell_back && !s.sparse_index);
 
     let out = set(&dir, SparseMode::Cone, &[]);
     assert!(out.contains("(no paths: only files at the root)"), "{out}");
     assert!(dir.join("r.txt").exists() && !dir.join("src/a/x.txt").exists());
-    let s = status(&dir).unwrap();
+    let s = status(&dir, true).unwrap();
     assert!(s.enabled && s.paths.is_empty() && s.skipped == 2, "{s:?}");
 
     let (ok, out) = run(&dir, &SparseCommand::Disable);
     assert!(ok, "{out}");
     assert!(dir.join("docs/d.txt").exists() && dir.join("src/a/x.txt").exists());
-    let s = status(&dir).unwrap();
+    let s = status(&dir, true).unwrap();
     assert!(!s.enabled && s.skipped == 0, "{s:?}");
     let (ok, _) = run(&dir, &SparseCommand::Reapply);
     assert!(!ok, "git refuses reapply when sparse checkout is off");
@@ -123,15 +123,15 @@ fn patterns_mode_and_cone_fallback() {
     let dir = fixture("sparse-patterns");
     set(&dir, SparseMode::Patterns, &["/*", "!/docs/"]);
     assert!(!dir.join("docs/d.txt").exists() && dir.join("src/a/x.txt").exists());
-    let s = status(&dir).unwrap();
+    let s = status(&dir, true).unwrap();
     assert_eq!((s.mode, s.paths.clone(), s.fell_back), (SparseMode::Patterns, strings(&["/*", "!/docs/"]), false));
 
     git(&dir, &["config", "--worktree", "core.sparseCheckoutCone", "true"]);
-    let s = status(&dir).unwrap();
+    let s = status(&dir, true).unwrap();
     assert_eq!((s.mode, s.fell_back), (SparseMode::Patterns, true));
 
     git(&dir, &["config", "--worktree", "--unset", "core.sparseCheckoutCone"]);
-    assert_eq!(status(&dir).unwrap().mode, SparseMode::Patterns, "unset reads as patterns, as git does");
+    assert_eq!(status(&dir, true).unwrap().mode, SparseMode::Patterns, "unset reads as patterns, as git does");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -143,7 +143,7 @@ fn unusual_folder_names_round_trip() {
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "cafe"]);
     set(&dir, SparseMode::Cone, &["q\"z", "café"]);
-    let s = status(&dir).unwrap();
+    let s = status(&dir, true).unwrap();
     assert_eq!(s.mode, SparseMode::Cone);
     assert!(s.paths.contains(&"q\"z".to_owned()) && s.paths.contains(&"café".to_owned()), "{:?}", s.paths);
     assert!(dir.join("café/f.txt").exists() && !dir.join("docs/d.txt").exists());
@@ -165,4 +165,19 @@ fn changed_files_outside_the_paths_are_kept() {
     assert!(out.starts_with("$ git sparse-checkout reapply"), "{out}");
     assert!(!dir.join("docs/d.txt").exists());
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn status_without_git_leaves_the_paths_unread() {
+    let dir = fixture("sparse-held");
+    let off = (status(&dir, false).unwrap(), status(&dir, true).unwrap());
+    assert!(!off.0.held && !off.1.held, "nothing needs git while it is off");
+    set(&dir, SparseMode::Cone, &["src"]);
+    let held = status(&dir, false).unwrap();
+    let read = status(&dir, true).unwrap();
+    assert!(held.enabled && held.held && held.paths.is_empty(), "{held:?}");
+    assert_eq!(held.mode, SparseMode::Cone);
+    assert_eq!((held.tracked, held.skipped), (read.tracked, read.skipped));
+    assert!(!read.held);
+    assert_eq!(read.paths, strings(&["src"]));
 }

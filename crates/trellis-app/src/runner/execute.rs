@@ -88,7 +88,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             let saved = result.as_ref().ok().and_then(|f| repo::saved_picks(&workdir, f));
             Some(Msg::Conflict(ConflictMsg::ConflictLoaded { path: path.clone(), generation, result, saved }))
         }
-        Effect::LoadSparse { workdir, generation } => Some(sparse::load(&workdir, generation)),
+        Effect::LoadSparse { workdir, generation, run_git } => Some(sparse::load(&workdir, generation, run_git)),
         Effect::SparseCheckout { cwd, command } => Some(sparse::run(&cwd, &command)),
         Effect::LoadFileHistory { workdir, path, start, limit, folder, generation } => {
             Some(history::walk(&workdir, path, &start, limit, folder, generation))

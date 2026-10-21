@@ -98,7 +98,7 @@ fn opening_the_page_reads_the_status() {
     let generation = page(&st).generation;
     assert_eq!(generation, 1);
     assert!(page(&st).status.is_none(), "Reading… until the status arrives");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadSparse { workdir, generation: 1 } if *workdir == dir)));
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadSparse { workdir, generation: 1, .. } if *workdir == dir)));
 
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoSparse)));
     assert!(loads(&fx));

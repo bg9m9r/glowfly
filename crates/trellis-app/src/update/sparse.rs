@@ -38,16 +38,28 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// Asks for the status; `keep` leaves the current one on screen until the new one arrives, so
-/// the form (with its text and focus) stays put.
+/// the form (with its text and focus) stays put. While git is held in the repository the paths
+/// aren't read (`git sparse-checkout list` would run what its settings name), only what libgit2
+/// reads.
 fn read(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
+    let run_git = st.runs_git_unasked();
     let Some(p) = st.prefs.as_mut() else { return };
     p.sparse.generation += 1;
     if !keep {
         p.sparse.status = None;
     }
     p.sparse.error = None;
-    fx.push(Effect::LoadSparse { workdir, generation: p.sparse.generation });
+    p.sparse.held = !run_git;
+    fx.push(Effect::LoadSparse { workdir, generation: p.sparse.generation, run_git });
+}
+
+/// Git runs unasked in the active repository now: an open Sparse Checkout page whose last read
+/// was held reads again, keeping what it shows until the new status arrives.
+pub(super) fn trust_released(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if st.prefs.as_ref().is_some_and(|p| p.page == PrefPage::RepoSparse && p.sparse.held) {
+        read(st, true, fx);
+    }
 }
 
 fn status(st: &AppState) -> Option<&SparseStatus> {
@@ -100,6 +112,8 @@ fn loaded(st: &mut AppState, generation: u64, result: Result<SparseStatus, Strin
     }
     let refill = std::mem::take(&mut page.refill);
     match result {
+        // The paths are unknown: the form keeps what it holds.
+        Ok(s) if s.held => page.status = Some(s),
         Ok(s) => {
             page.status = Some(s);
             if refill || !page.edited() {

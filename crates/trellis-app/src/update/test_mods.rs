@@ -389,6 +389,8 @@ pub(super) mod trust_held_tab_tests;
 pub(super) mod trust_held_tests;
 #[path = "trust_inherit_tests.rs"]
 pub(super) mod trust_inherit_tests;
+#[path = "trust_pages_tests.rs"]
+pub(super) mod trust_pages_tests;
 #[path = "trust_print_tests.rs"]
 pub(super) mod trust_print_tests;
 #[path = "trust_terminal_tests.rs"]

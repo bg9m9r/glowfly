@@ -202,10 +202,11 @@ pub enum Effect {
         workdir: PathBuf,
         generation: u64,
     },
-    /// Sparse checkout state for the preferences page.
+    /// Sparse checkout state for the preferences page; its paths only with `run_git` (trust).
     LoadSparse {
         workdir: PathBuf,
         generation: u64,
+        run_git: bool,
     },
     /// `git sparse-checkout` set, reapply or disable; unscoped like RunGit (ends the job).
     SparseCheckout {

@@ -6,8 +6,9 @@ use crate::msg::{Msg, SparseMsg};
 use std::path::Path;
 use trellis_core::sparse_ops::{self, SparseCommand};
 
-pub(super) fn load(workdir: &Path, generation: u64) -> Msg {
-    Msg::Sparse(SparseMsg::Loaded { generation, result: sparse_ops::status(workdir).map_err(|e| e.to_string()) })
+/// Reads the status; `run_git` false leaves the paths unread (git is held there).
+pub(super) fn load(workdir: &Path, generation: u64, run_git: bool) -> Msg {
+    Msg::Sparse(SparseMsg::Loaded { generation, result: sparse_ops::status(workdir, run_git).map_err(|e| e.to_string()) })
 }
 
 pub(super) fn run(cwd: &Path, command: &SparseCommand) -> Msg {

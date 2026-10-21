@@ -250,7 +250,7 @@ fn sparse_clone_of(name: &str, partial: bool) {
     assert!(o.cloned && o.ok, "{}", o.output);
     assert!(dest.join("a/x.txt").is_file() && dest.join("root.txt").is_file(), "{}", o.output);
     assert!(!dest.join("b").exists(), "{}", o.output);
-    let status = crate::sparse_ops::status(&dest).unwrap();
+    let status = crate::sparse_ops::status(&dest, true).unwrap();
     assert!(status.enabled);
     assert_eq!(status.mode, SparseMode::Cone);
     assert_eq!(status.paths, ["a"]);

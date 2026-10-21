@@ -29,6 +29,13 @@ impl AppState {
         self.workdir().unwrap_or_else(Self::outside_dir)
     }
 
+    /// The active repository while git runs there unasked, else a folder outside any repository
+    /// (`outside_dir`): for git calls that need no repository and must not read a held one's
+    /// config.
+    pub fn unasked_dir(&self) -> PathBuf {
+        if self.runs_git_unasked() { self.any_dir() } else { Self::outside_dir() }
+    }
+
     /// A folder outside any repository (the temp folder), for git calls that must not read the
     /// active repository's own config, e.g. its credential helper while it isn't trusted.
     pub fn outside_dir() -> PathBuf {

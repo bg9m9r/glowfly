@@ -61,13 +61,18 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         save_bar::show(ctx, t, save_bar::BarView { busy }, msgs);
     }
 
+    // While git is held in the repository, its pages read nothing with git (trust).
+    let held = st.snap.as_ref().filter(|_| !st.runs_git_unasked()).map(|s| s.real_workdir.clone());
     let lfs_cx = lfs::LfsContext {
         repo_name: repo_name.clone(),
         remote: st.snap.as_ref().and_then(crate::state::lfs::lfs_remote),
         job: st.job.as_ref().map(|j| j.label.clone()),
+        held: held.clone(),
+        patterns: st.snap.as_ref().map(|s| s.lfs_patterns.clone()).unwrap_or_default(),
     };
     let save_first = t.tr("prefs.save_bar.first");
-    let sparse_cx = sparse::SparseContext { repo_name: repo_name.clone(), job: st.job.as_ref().map(|j| j.label.clone()), save_first };
+    let job = st.job.as_ref().map(|j| j.label.clone());
+    let sparse_cx = sparse::SparseContext { repo_name: repo_name.clone(), job, save_first, held };
     let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some(), save_first };
     let ssh_cx = ssh::SshContext {
         use_agent: st.settings.use_ssh_agent,

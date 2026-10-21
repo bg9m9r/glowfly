@@ -501,7 +501,10 @@ binary (package `trellis`).
    runs in, the active one or another (`trust::gate` in `update/trust.rs`): it may wait for the
    trust prompt or be refused, so check their `Started` result rather than `st.job`. A job that
    makes repositories from a trusted one (a worktree, submodules) says so after it starts
-   (`update/trust_inherit.rs`), and they are trusted when it succeeds.
+   (`update/trust_inherit.rs`), and they are trusted when it succeeds. Work that waits outside
+   the job gate for the active repository to be trusted, held built-in terminal shells
+   (`SessionStatus::Held`) and the LFS and Sparse Checkout pages' git reads (`LfsPage::held`,
+   `SparseStatus::held`), starts in `trust::released`.
 4. **Runner.** Execute it in `runner/mod.rs`, or in `runner/<area>.rs` for more than a line.
    The real work (git, files, HTTP) goes in `trellis-core`.
 5. **Result.** The runner sends a result message back. Handle it in the same `update` file.

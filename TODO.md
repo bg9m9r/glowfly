@@ -1081,12 +1081,6 @@ blockers and major findings are Milestone 1 items.
 - Say when a cherry-pick or revert changed nothing because the branch already has the changes
 - A key to go back from a select-all to the focused commit, with a toast naming the count
 
-### Repository trust
-
-- Hold shells the built-in terminal starts in an untrusted repository (prompts that run git)
-- Hold the git CLI reads the LFS and Sparse Checkout Preferences pages make in an untrusted
-  repository
-
 ### Keyboard shortcuts
 
 - S in the WIP file lists (keyboard focus in the lists, Up/Down between files), and moving on
@@ -1767,6 +1761,16 @@ here, under the item they grew from.
   the config and refs, not the hooks folder)
 - Take a newly checked-out submodule's own settings into its parent's trust decision, so the
   parent isn't asked again about what the submodule brought
+- Say in the terminal when a repository with running shells stops being trusted or gains
+  settings or hooks (shells already running are never stopped)
+- Hold or warn before Open in external terminal starts a shell in an untrusted repository
+- Offer Don't trust from the terminal's held panel prompt, alongside Trust and run and Cancel
+- Show the LFS setup while a repository is untrusted by reading it without git (libgit2 for the
+  hooks folder and local filters, git outside the repository for the rest)
+- List the sparse paths of an untrusted repository by reading its sparse-checkout file instead
+  of git sparse-checkout list
+- Run git lfs version outside the repository always, and count a repository's alias.* settings
+  for commands Trellis runs (a repository's alias.lfs runs when git-lfs isn't installed)
 
 ### Command palette (fuzzy finder)
 

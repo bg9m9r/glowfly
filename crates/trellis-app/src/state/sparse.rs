@@ -26,6 +26,8 @@ pub struct SparsePage {
     pub paths_error: Option<String>,
     /// A sparse job succeeded: fill the form from the next status even if it was edited.
     pub refill: bool,
+    /// The last read ran no git (git held), so the paths are unknown.
+    pub held: bool,
 }
 
 impl SparsePage {

@@ -282,6 +282,8 @@ pub(super) fn released(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     super::terminal::release_held(st, fx);
+    super::lfs::trust_released(st, fx);
+    super::sparse::trust_released(st, fx);
 }
 
 /// Shows the trust prompt for the active repository if it is undecided (or gained settings or

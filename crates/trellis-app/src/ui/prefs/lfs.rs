@@ -1,16 +1,20 @@
 //! Preferences > Git LFS (repository-specific): whether LFS is set up, the tracked patterns,
-//! a field to track a new one, and the LFS commands. Every action is a `Msg`.
+//! a field to track a new one, and the LFS commands. While git is held in the repository
+//! (trust) only the root .gitattributes' patterns show, with Review trust…. Every action is a
+//! `Msg`.
 
 use super::{help, primary_button, row, text_field, warn};
 use crate::lfs::LfsMsg;
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
+use crate::msg::TrustMsg;
 use crate::state::blocked::BUSY;
 use crate::state::lfs::{INSTALL_URL, LfsPage};
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Key, RichText, Ui};
+use std::path::{Path, PathBuf};
 use trellis_core::lfs::{LfsCommand, LfsPattern, LfsStatus};
 
 /// What the page needs from outside Preferences, cloned before the page borrows its state.
@@ -20,6 +24,10 @@ pub struct LfsContext {
     pub remote: Option<String>,
     /// The running job's label.
     pub job: Option<String>,
+    /// The active repository's real path while git is held there, for Review trust….
+    pub held: Option<PathBuf>,
+    /// The root .gitattributes' patterns, read without git.
+    pub patterns: Vec<LfsPattern>,
 }
 
 pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec<Msg>) {
@@ -27,6 +35,9 @@ pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec
         help(ui, "Open a repository to set up Git LFS.");
         return;
     };
+    if let Some(real) = &cx.held {
+        return held(ui, real, &cx.patterns, msgs);
+    }
     if let Some(error) = &page.error {
         warn(ui, error);
         ui.add_space(6.0);
@@ -48,6 +59,31 @@ pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec
         Some(_) if !status.initialized => not_set_up(ui, &status, repo, busy, msgs),
         Some(version) => set_up(ui, page, &status, version, cx, msgs),
     }
+}
+
+/// Git is held in the repository: nothing was read with it, and no command runs until it is
+/// trusted. The patterns come from .gitattributes.
+fn held(ui: &mut Ui, real: &Path, patterns: &[LfsPattern], msgs: &mut Vec<Msg>) {
+    row(ui, "Status", |ui| {
+        ui.label(RichText::new("Paused until you trust this repository.").color(color::text()));
+        help(
+            ui,
+            "Trellis reads the LFS setup with git, and git would run the programs this repository's own settings and hooks name. \
+             LFS commands wait for your decision too.",
+        );
+        ui.add_space(4.0);
+        if ui.add(buttons::secondary("Review trust…")).clicked() {
+            msgs.push(Msg::Trust(TrustMsg::Ask { real: real.to_path_buf() }));
+        }
+    });
+    row(ui, "Tracked patterns", |ui| {
+        if patterns.is_empty() {
+            help(ui, "No patterns in .gitattributes.");
+        } else {
+            pattern_list(ui, patterns, false, true, msgs);
+            help(ui, "Read from .gitattributes.");
+        }
+    });
 }
 
 /// git-lfs isn't installed: say so, and warn when the repository already uses LFS.

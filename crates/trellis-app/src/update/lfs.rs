@@ -56,7 +56,8 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
         LfsMsg::Loaded { generation, result } => loaded(st, generation, result, now, fx),
         LfsMsg::Detect => {
             st.lfs.install = LfsInstall::Checking;
-            fx.push(Effect::DetectLfs { cwd: st.any_dir() });
+            // Outside a held repository, whose own config (an alias) git would read.
+            fx.push(Effect::DetectLfs { cwd: st.unasked_dir() });
         }
         LfsMsg::Detected(v) => st.lfs.install = LfsInstall::from_version(v),
         LfsMsg::TrackPath(t) => track_path(st, t, fx),
@@ -104,16 +105,30 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// Asks for the status; `keep` leaves the current one on screen until the new one arrives, so
-/// the page (and the New pattern field, with its text and focus) stays put.
+/// the page (and the New pattern field, with its text and focus) stays put. While git is held
+/// in the repository nothing is read (the git CLI would run what its settings name): the page
+/// says so (`LfsPage::held`), and a read already on its way is ignored.
 fn read(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
+    let held = !st.runs_git_unasked();
     let Some(p) = st.prefs.as_mut() else { return };
     p.lfs.generation += 1;
-    if !keep {
+    p.lfs.error = None;
+    p.lfs.held = held;
+    if held || !keep {
         p.lfs.status = None;
     }
-    p.lfs.error = None;
-    fx.push(Effect::LoadLfs { workdir, generation: p.lfs.generation });
+    if !held {
+        fx.push(Effect::LoadLfs { workdir, generation: p.lfs.generation });
+    }
+}
+
+/// Git runs unasked in the active repository now: an open Git LFS page whose last read was
+/// held reads its status.
+pub(super) fn trust_released(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if st.prefs.as_ref().is_some_and(|p| p.page == PrefPage::RepoLfs && p.lfs.held) {
+        read(st, false, fx);
+    }
 }
 
 /// A job finished in the active tab: refresh the page if it is open, keeping it on screen
