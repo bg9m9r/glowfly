@@ -105,6 +105,10 @@ impl DiffView<'_> {
 
 /// The open diff: its header (`header`, one 48 px row) and, below it, `body`.
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+    // The diff being opened waits for contents a partial clone hasn't downloaded.
+    if let Some(p) = st.for_diff() {
+        return super::content_fetch::show(ui, st, p, msgs);
+    }
     if st.diff.is_none() {
         // A scroll target for a diff that is gone is dropped, not kept for the next one.
         st.view.diff_scroll_to_row = None;

@@ -85,6 +85,8 @@ fn main() -> eframe::Result {
     }
     // Only the window logs: the helper modes above exit before this.
     let logs = logging::init();
+    // Before any repository opens: lets libgit2 open partial clones older git made.
+    trellis_core::partial::allow_extension();
     // The real-input smoke tests' state file, only when TRELLIS_SMOKE_PROBE asks for it.
     let probe = smoke_probe::from_env();
     // The OS language, read once: "system" in the Language setting follows it.

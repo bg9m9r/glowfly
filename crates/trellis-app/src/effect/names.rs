@@ -93,6 +93,9 @@ impl Effect {
             Effect::Updates(e) => e.name(),
             Effect::Repos(e) => e.name(),
             Effect::Trust(e) => e.name(),
+            Effect::Partial(super::partial::PartialEffect::SizeHistory(_)) => "partial-size",
+            Effect::Partial(super::partial::PartialEffect::FetchContent(_)) => "partial-content",
+            Effect::StopGit(_) => "stop-git",
             Effect::Ui(_) => "ui",
         }
     }
@@ -190,6 +193,9 @@ impl Effect {
             | Effect::Tool(_)
             | Effect::Notify(_)
             | Effect::Logs(_)
+            // A network call and a download the user may stop; the stop never runs on a worker.
+            | Effect::Partial(_)
+            | Effect::StopGit(_)
             | Effect::Ui(_) => false,
         }
     }

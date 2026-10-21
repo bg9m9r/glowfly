@@ -4,6 +4,7 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
+use crate::effect::partial::PartialEffect;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::{JobMsg, Msg, PaletteMsg, RepoMsg};
 use crate::runner;
@@ -24,7 +25,7 @@ fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 
 /// A source repository with `commits` commits on main and a depth-`depth` clone of it, opened
 /// in a fresh state. Returns (state, source, clone).
-fn shallow_clone(name: &str, commits: usize, depth: u32) -> (AppState, PathBuf, PathBuf) {
+pub(super) fn shallow_clone(name: &str, commits: usize, depth: u32) -> (AppState, PathBuf, PathBuf) {
     let src = scratch_repo(name);
     for i in 1..commits {
         std::fs::write(src.join("b.txt"), format!("{i}\n")).unwrap();
@@ -41,7 +42,7 @@ fn shallow_clone(name: &str, commits: usize, depth: u32) -> (AppState, PathBuf, 
     (st, src, dest)
 }
 
-fn cleanup(dirs: &[&Path]) {
+pub(super) fn cleanup(dirs: &[&Path]) {
     for d in dirs {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -95,7 +96,20 @@ fn entries_only_in_shallow_repos() {
 fn fetch_full_history_job() {
     let (mut st, src, dest) = shallow_clone("shallow-full", 4, 1);
     assert_eq!(st.snap.as_ref().unwrap().commits.len(), 1);
-    let fx = run(&mut st, deepen(Deepen::Full));
+    // The full history is sized first: the source is a folder on this computer.
+    let mut fx = run(&mut st, deepen(Deepen::Full));
+    match &fx[..] {
+        [Effect::Partial(PartialEffect::SizeHistory(r))] => {
+            assert_eq!(r.url.as_deref(), Some(src.display().to_string().as_str()));
+            assert!(r.service.is_none(), "no hosting service to ask");
+        }
+        other => panic!("expected the size check, got {} effects", other.len()),
+    }
+    assert!(st.partial.sizing.is_some() && st.job.is_none());
+    assert!(run(&mut st, deepen(Deepen::Full)).is_empty(), "a second click waits for the first check");
+    let sized = runner::execute(fx.pop().unwrap()).expect("the size");
+    let fx = run(&mut st, sized);
+    assert!(st.partial.sizing.is_none() && st.modal.is_none(), "a small history doesn't ask");
     match &fx[..] {
         [Effect::RunGit { cmds, prompts, .. }] => {
             assert_eq!(cmds, &argv(&["fetch", "--unshallow", "origin"]));

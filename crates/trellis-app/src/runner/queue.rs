@@ -213,13 +213,16 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Issue(_)
         | Effect::Updates(_)
         | Effect::Repos(ReposEffect::Scan { .. } | ReposEffect::Sync { op: SyncOp::Fetch { .. }, .. })
+        // A network call, and a fetch that only adds objects.
+        | Effect::Partial(_)
+        | Effect::StopGit(_)
         | Effect::Ui(_) => None,
     }
 }
 
 /// Fetch and push update remote-tracking refs at most; they never touch the index or files.
 fn network_only(cmd: &[String]) -> bool {
-    matches!(cmd.first().map(String::as_str), Some("fetch" | "push")) && !cmd.iter().any(|a| a == ".")
+    matches!(trellis_core::gitcli::subcommand(cmd), Some("fetch" | "push")) && !cmd.iter().any(|a| a == ".")
 }
 
 #[cfg(test)]

@@ -27,7 +27,8 @@ use trellis_core::text::printable;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.pull_request else { return };
-    let shows_diff = st.diff.as_ref().is_some_and(|(t, _)| view.shows(t));
+    // Also while the file being opened waits for contents a partial clone hasn't downloaded.
+    let shows_diff = st.diff.as_ref().is_some_and(|(t, _)| view.shows(t)) || st.for_diff().is_some();
     let tab = view.tab;
     ui.add_space(6.0);
     header(ui, st.settings.lang(), view, msgs);

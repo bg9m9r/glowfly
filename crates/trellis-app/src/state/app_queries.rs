@@ -74,7 +74,7 @@ impl AppState {
             && self.history.is_none()
             && self.pull_request.is_none()
             && self.issue.is_none()
-            && self.diff.is_none()
+            && !self.diff_or_download()
             && self.rebase.is_none()
             && self.range_diff.is_none()
             && self.journal.is_none()

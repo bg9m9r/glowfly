@@ -50,6 +50,7 @@ mod notify;
 mod onboarding;
 mod op_preview;
 mod os;
+mod partial;
 mod patches;
 mod path_search;
 mod pick;
@@ -69,6 +70,7 @@ mod ssh;
 mod stashes;
 mod stats;
 mod status;
+mod stops;
 mod submodules;
 mod terminal;
 mod terminal_out;
@@ -120,6 +122,8 @@ pub struct Runner<W: Waker + Clone> {
     graph_cache: Arc<repo::GraphCache>,
     /// The log files' worker (attached at startup, never in tests).
     logs: logs::LogWorker,
+    /// The stops of the running git commands that can be cancelled (`Effect::StopGit`).
+    stops: Arc<stops::Stops>,
     /// Whole-app tests: where saves go and which effects are dropped (`sandbox.rs`).
     #[cfg(test)]
     sandbox: Option<sandbox::Sandbox>,
@@ -143,6 +147,7 @@ impl<W: Waker + Clone> Runner<W> {
             stats: Default::default(),
             path_search: Default::default(),
             logs: Default::default(),
+            stops: Default::default(),
             #[cfg(test)]
             sandbox: None,
             #[cfg(test)]
@@ -167,6 +172,11 @@ impl<W: Waker + Clone> Runner<W> {
             Effect::Terminal(t) => return self.terminal(t),
             Effect::Stats { workdir, oids } => return self.stats.submit(workdir, oids, self.tx.clone(), self.waker.clone()),
             Effect::Logs(e) => return self.logs.submit(e),
+            Effect::StopGit(key) => {
+                let asked = self.stops.stop(key);
+                tracing::debug!(?key, asked, "stop git");
+                return;
+            }
             Effect::SearchPaths { workdir, request, terms, oids } => {
                 let r = path_search::Request { workdir, request, terms, oids };
                 return self.path_search.submit(r, self.tx.clone(), self.waker.clone());
@@ -184,6 +194,9 @@ impl<W: Waker + Clone> Runner<W> {
         let repo = queue::repo_of(&effect).map(Path::to_owned);
         let recovery = guard::Recovery::of(&effect, name);
         let graph_cache = Arc::clone(&self.graph_cache);
+        // Registered now, so a stop asked while it waits in its repository's queue is kept.
+        let stop = effect.stop_key().map(|key| (key, self.stops.register(key)));
+        let stops = Arc::clone(&self.stops);
         // Effects that don't wait on the user are timed for the performance log.
         let perf = if effect.timed() { self.logs.perf_probe().map(|p| (p, logs::folder_of(&effect))) } else { None };
         #[cfg(test)]
@@ -192,7 +205,10 @@ impl<W: Waker + Clone> Runner<W> {
             let _span = tracing::debug_span!("effect", name).entered();
             let cancelled = || ticket.as_ref().is_some_and(|(e, mine)| e.load(Ordering::Relaxed) != *mine);
             let started = std::time::Instant::now();
-            let msg = guard::guarded(recovery, || execute_with(effect, &cancelled, &graph_cache));
+            let msg = guard::guarded(recovery, || execute_with(effect, &cancelled, &graph_cache, stop.as_ref().map(|(_, s)| s)));
+            if let Some((key, s)) = &stop {
+                stops.release(*key, s);
+            }
             let took = started.elapsed();
             if let Some((probe, detail)) = perf
                 && took >= trellis_core::logs::SLOW

@@ -1,6 +1,6 @@
 use super::find::{Found, TargetState, check, rank, root_commit};
 use super::{Link, Target};
-use crate::testutil::{git, scratch_repo, with_origin, write};
+use crate::testutil::{file_url, git, scratch_repo, with_origin, write};
 use std::path::{Path, PathBuf};
 
 fn commit(dir: &Path, file: &str, msg: &str) {
@@ -26,12 +26,6 @@ fn sibling(of: &Path, tag: &str) -> PathBuf {
     let p = of.with_file_name(format!("{}-{tag}", of.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&p);
     p
-}
-
-/// `file:///srv/x` on Unix, `file:///C:/x` on Windows.
-fn file_url(p: &Path) -> String {
-    let s = p.display().to_string().replace('\\', "/");
-    if s.starts_with('/') { format!("file://{s}") } else { format!("file:///{s}") }
 }
 
 fn link(url: Option<String>, root: Option<String>, target: Target) -> Link {

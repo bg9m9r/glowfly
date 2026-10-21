@@ -114,10 +114,12 @@ fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// The running job ended: returns the headline for a job that failed because a prompt was
 /// cancelled or timed out, remembers which hosts' credentials were not accepted, saves or drops
 /// the HTTPS sign-ins typed with Remember on (run in `cwd`, judged by the job's `output`), and
-/// cancels and forgets whatever the job left behind.
+/// cancels and forgets whatever the job left behind. A `stopped` job (cancelled from the status
+/// bar) keeps and forgets no sign-in.
 pub(super) fn job_finished(
     st: &mut AppState,
     ok: bool,
+    stopped: bool,
     label: &str,
     cwd: Option<&Path>,
     output: &str,
@@ -131,10 +133,14 @@ pub(super) fn job_finished(
         (false, Some(PromptEnd::TimedOut), true) => Some(format!("{label} failed: the signing passphrase prompt timed out")),
         _ => None,
     };
+    // A stopped job says nothing about the sign-ins it was given: none is kept or forgotten.
     if ok {
         p.failed_hosts.retain(|h| !p.answered_hosts.contains(h));
-    } else if p.ended.is_none() {
+    } else if p.ended.is_none() && !stopped {
         p.failed_hosts.extend(p.answered_hosts.iter().cloned());
+    }
+    if stopped {
+        p.typed.clear();
     }
     super::askpass_store::settle(p, ok, cwd, output, fx);
     let left = std::mem::take(&mut p.queue);

@@ -101,12 +101,17 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
         JobMsg::Abort { label, args, keep } => super::op_progress::abort(st, label, args, keep, now, fx),
         JobMsg::Push { force } => push(st, force, fx),
         JobMsg::Deepen(how) => super::shallow::deepen(st, how, fx),
+        JobMsg::DeepenNow(how) => super::shallow::deepen_now(st, how, fx),
+        JobMsg::Cancel => super::job_stop::cancel(st, fx),
+        JobMsg::Stopped { output } => super::job_stop::stopped(st, output, now, fx),
         JobMsg::Stash { action, index, oid } => super::stash::run(st, action, index, oid, fx),
         JobMsg::Undo => super::undo::run(st, false, now, fx),
         JobMsg::Redo => super::undo::run(st, true, now, fx),
         JobMsg::UndoWith { redo, action, opts } => super::undo::run_with(st, redo, *action, opts, fx),
         JobMsg::PickDone { ok, output, undo, result } => super::pick_done::finished(st, ok, output, undo, result, now, fx),
         JobMsg::JobDone { ok, output, undo } => {
+            // A download started from a waiting pane reads its view again.
+            super::partial_content::job_done(st, ok, &output, fx);
             let flow = super::gitflow_finish::headline(st, ok, &output);
             // Always called so a stale pending tag job or patch apply is cleared.
             let tag = super::tags::headline(st, ok, &output);
@@ -258,14 +263,19 @@ pub(super) fn finish_job(
     fx: &mut Vec<Effect>,
 ) {
     let Some(mut job) = st.job.take() else { return };
+    // Cancelled from the status bar, and the runner stopped it (update/job_stop.rs).
+    let cancelled = st.job_stop.take().is_some_and(|s| s.stopped);
     let stash_retry = super::auto_stash::take_retry(st, &job);
     // Trust passed on to what the job made opens `then_open` itself, once it is recorded.
     let took_open = super::trust_inherit::job_ended(st, &job.label, ok, job.then_open.as_ref().map(|(p, _)| p.as_path()), fx);
     super::sign_in::job_finished(st, job.workdir.as_deref(), ok, &output);
     let then_pr = job.then_pr.take();
     // A cancelled or timed-out credential prompt explains a failure better than git's output.
-    let headline = super::askpass::job_finished(st, ok, &job.label, job.workdir.as_deref(), &output, fx).or(headline);
-    super::logs_runs::job_ended(st, &job, ok, &output, headline, stash_retry, now, fx);
+    let headline = super::askpass::job_finished(st, ok, cancelled, &job.label, job.workdir.as_deref(), &output, fx).or(headline);
+    match headline {
+        Some(h) if cancelled => super::logs_runs::job_cancelled(st, &job, &output, h, now),
+        headline => super::logs_runs::job_ended(st, &job, ok, &output, headline, stash_retry, now, fx),
+    }
     // The user may have switched tabs while the job ran.
     let here = match (job.workdir.as_deref(), st.workdir()) {
         (Some(a), Some(b)) => trellis_core::paths::same_spelling(a, &b),

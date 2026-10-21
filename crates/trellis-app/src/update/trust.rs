@@ -114,6 +114,7 @@ fn release(st: &mut AppState, h: HeldJob, real: &Path, named: bool, fx: &mut Vec
         return forget(st, h, true);
     }
     tracing::debug!("running {} now that {} is trusted", h.job.label, h.name);
+    st.job_stop = super::job_stop::for_effect(&h.effect);
     st.job = Some(h.job);
     fx.push(h.effect);
 }
@@ -285,6 +286,7 @@ pub(super) fn released(st: &mut AppState, fx: &mut Vec<Effect>) {
     super::lfs::trust_released(st, fx);
     super::sparse::trust_released(st, fx);
     super::range_diff::trust_released(st, fx);
+    super::partial_content::trust_released(st, fx);
 }
 
 /// Shows the trust prompt for the active repository if it is undecided (or gained settings or

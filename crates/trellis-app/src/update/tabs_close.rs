@@ -61,6 +61,7 @@ fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         fx.push(save(st));
         return;
     }
+    super::partial_content::leave(st, fx);
     park(st); // discarded with the tab
     if st.tabs.len() == 1 {
         st.tabs[0] = Tab::empty();
@@ -106,6 +107,7 @@ fn close_where(st: &mut AppState, keep: impl Fn(usize) -> bool, survivor: usize,
     let before = |i: usize| closing.iter().filter(|&&j| j < i).count();
     let new_survivor = survivor - before(survivor);
     if closing.contains(&st.active_tab) {
+        super::partial_content::leave(st, fx);
         park(st); // discarded with the tab
         for &j in closing.iter().rev() {
             st.tabs.remove(j);

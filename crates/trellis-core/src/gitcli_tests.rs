@@ -158,3 +158,40 @@ fn command_carries_gitclis_environment() {
     let out = cmd.stdin(Stdio::null()).output().unwrap();
     assert!(String::from_utf8_lossy(&out.stdout).starts_with("git version"), "{out:?}");
 }
+
+#[test]
+fn a_stopped_command_ends_with_everything_it_started() {
+    let dir = crate::testutil::scratch_repo("gitcli-stop");
+    let marker = dir.join("late.txt");
+    let shown = marker.display().to_string().replace('\\', "/");
+    let alias = format!("alias.nap=!sleep 2 && echo late > '{shown}'");
+    let a = args(&["-c", &alias, "nap"]);
+    let stop = Stop::new();
+    let asker = stop.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(300));
+        asker.stop();
+    });
+    let started = std::time::Instant::now();
+    let out = output_until(&dir, &a, "", NO_PROMPTS, &stop);
+    assert!(started.elapsed() < Duration::from_secs(5), "took {:?}", started.elapsed());
+    assert!(out.stopped && !out.ok, "{out:?}");
+    assert!(out.stderr.contains("was cancelled"), "{}", out.stderr);
+    std::thread::sleep(Duration::from_secs(3));
+    assert!(!marker.exists(), "the shell git started was stopped too");
+
+    let early = Stop::new();
+    early.stop();
+    let out = output_until(&dir, &args(&["version"]), "", NO_PROMPTS, &early);
+    assert!(out.stopped && !out.ok && out.stdout.is_empty(), "never started: {out:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_unstopped_command_runs_as_usual() {
+    let dir = crate::testutil::scratch_repo("gitcli-stop-none");
+    let out = output_until(&dir, &args(&["rev-parse", "--is-inside-work-tree"]), "", NO_PROMPTS, &Stop::new());
+    assert!(out.ok && !out.stopped && !out.forced, "{out:?}");
+    assert_eq!(out.stdout.trim(), "true");
+    let _ = std::fs::remove_dir_all(&dir);
+}

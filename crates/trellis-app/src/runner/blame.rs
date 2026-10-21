@@ -13,7 +13,14 @@ pub(super) fn load(r: BlameRequest) -> Msg {
         (None, Some(since)) => repo::name_at_head(&r.workdir, &r.path, since).ok().flatten().unwrap_or_else(|| r.path.clone()),
         _ => r.path.clone(),
     };
-    let result = repo::blame_file(&r.workdir, &path, r.at, &r.opts).map_err(|e| e.to_string()).map(|blame| {
+    let read = match repo::blame_file(&r.workdir, &path, r.at, &r.opts) {
+        // A partial clone hasn't downloaded every version: blame again once it has.
+        Err(trellis_core::error::Error::MissingContent(missing)) => {
+            return Msg::Partial(crate::msg::PartialMsg::ContentMissing { missing, retry: Box::new(crate::effect::Effect::LoadBlame(r)) });
+        }
+        read => read,
+    };
+    let result = read.map_err(|e| e.to_string()).map(|blame| {
         let spans = if r.highlight {
             highlight::highlight_file(SyntaxHint { path: &path, language: blame.language.as_deref() }, &blame.lines)
         } else {

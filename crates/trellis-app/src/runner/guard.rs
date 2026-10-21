@@ -1,6 +1,7 @@
 //! Keeps a panicking effect from leaving the UI waiting forever: the panic is caught and turned
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
+use crate::effect::partial::PartialEffect;
 use crate::effect::{
     CloneEffect, Effect, FailedLineCounts, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, StashEffect, SubmoduleEffect,
     UndoResult, UpdateEffect,
@@ -14,6 +15,7 @@ use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::msg::UpdateMsg;
+use crate::msg::{ContentFailure, PartialMsg};
 use crate::remote::{RemoteEffect, RemoteMsg};
 use crate::ssh::SshFailure;
 use crate::tools::ToolEffect;
@@ -62,6 +64,10 @@ enum Kind {
     LineCounts(FailedLineCounts),
     /// Putting an auto-stash back (workdir, stash): it ends the active job.
     PutBack(PathBuf, git2::Oid),
+    /// Fetch full history's size check (workdir, id): the status bar shows it until it ends.
+    Sizing(PathBuf, u64),
+    /// A background download of missing contents: its pane shows it until it ends.
+    Content(u64),
     Log,
 }
 
@@ -119,6 +125,8 @@ impl Recovery {
             Effect::Repos(ReposEffect::Sync { generation, index, .. }) => Kind::RepoSync(*generation, *index),
             Effect::LineCounts(e) => Kind::LineCounts(e.failure()),
             Effect::Stash(StashEffect::PutBack(r)) => Kind::PutBack(r.cwd.clone(), r.oid),
+            Effect::Partial(PartialEffect::SizeHistory(r)) => Kind::Sizing(r.workdir.clone(), r.id),
+            Effect::Partial(PartialEffect::FetchContent(r)) => Kind::Content(r.id),
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -162,6 +170,11 @@ impl Recovery {
                 let outcome = trellis_core::stash_ops::PutBack::Failed;
                 Msg::AutoStash(crate::msg::AutoStashMsg::PutBack { workdir, oid, outcome, output: text, undo: None })
             }
+            Kind::Sizing(workdir, id) => {
+                tracing::debug!("{text}");
+                Msg::Partial(PartialMsg::HistorySized { workdir, id, size: trellis_core::history_size::HistorySize::Unknown })
+            }
+            Kind::Content(id) => Msg::Partial(PartialMsg::ContentFetched { id, result: Err(ContentFailure::Failed(text)) }),
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {
@@ -207,6 +220,7 @@ mod tests {
             journal: None,
             prompts: false,
             expect: None,
+            stoppable: false,
         };
         let msg = guarded(Recovery::of(&effect, "git"), || panic!("boom {}", 42)).expect("a failure result");
         let Msg::Job(JobMsg::JobDone { ok: false, output, undo: Some(UndoResult::Recorded(None)) }) = &msg else {

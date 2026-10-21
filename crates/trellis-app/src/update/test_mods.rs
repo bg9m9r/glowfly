@@ -145,6 +145,8 @@ pub(super) mod issue_services_tests;
 pub(super) mod issue_tests;
 #[path = "job_errors_tests.rs"]
 pub(super) mod job_errors_tests;
+#[path = "job_stop_tests.rs"]
+pub(super) mod job_stop_tests;
 #[path = "journal_lost_tests.rs"]
 pub(super) mod journal_lost_tests;
 #[path = "journal_restore_tests.rs"]
@@ -229,6 +231,10 @@ pub(super) mod palette_tests;
 pub(super) mod palette_theme_tests;
 #[path = "palette_worktree_tests.rs"]
 pub(super) mod palette_worktree_tests;
+#[path = "partial_content_tests.rs"]
+pub(super) mod partial_content_tests;
+#[path = "partial_size_tests.rs"]
+pub(super) mod partial_size_tests;
 #[path = "patch_tests.rs"]
 pub(super) mod patch_tests;
 #[path = "path_alias_tests.rs"]

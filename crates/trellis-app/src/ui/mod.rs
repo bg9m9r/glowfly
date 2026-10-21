@@ -30,6 +30,7 @@ mod conflict_files;
 mod conflict_fold;
 mod conflict_output;
 mod conflict_panes;
+mod content_fetch;
 mod create_pr_dialog;
 mod custom_menu;
 mod dashboard;
@@ -326,6 +327,8 @@ mod snapshot_tests_palette_recent;
 mod snapshot_tests_palette_stash;
 #[cfg(test)]
 mod snapshot_tests_pane_status;
+#[cfg(test)]
+mod snapshot_tests_partial;
 #[cfg(test)]
 mod snapshot_tests_patch;
 #[cfg(test)]

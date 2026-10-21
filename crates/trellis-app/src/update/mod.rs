@@ -47,6 +47,7 @@ mod init;
 mod issue;
 mod issue_create;
 mod job_errors;
+mod job_stop;
 mod jobs;
 mod journal;
 mod journal_lost;
@@ -64,6 +65,9 @@ mod op_preview;
 mod op_progress;
 mod ops;
 mod palette;
+mod partial;
+mod partial_content;
+mod partial_size;
 mod patch;
 mod pick;
 mod pick_done;
@@ -233,6 +237,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Dialog(m) => dialog::handle(st, m),
         Msg::App(m) => app::handle(st, m, &mut fx),
         Msg::Updates(m) => updates::handle(st, m, now, &mut fx),
+        Msg::Partial(m) => partial::handle(st, m, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).

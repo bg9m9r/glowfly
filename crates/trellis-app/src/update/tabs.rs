@@ -169,6 +169,7 @@ pub(super) fn open_elsewhere(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Ef
     let Some(there) = (0..st.tabs.len()).find(|&j| j != here && st.tabs[j].shows(snap)) else { return false };
     tracing::debug!(path = %snap.workdir.display(), "already open in another tab");
     st.tab_return = None;
+    super::partial_content::leave(st, fx);
     park(st); // discarded with the tab
     let carried = std::mem::take(&mut st.log);
     st.tabs.remove(here);
@@ -183,6 +184,7 @@ fn switch(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         return;
     }
     st.tab_return = None;
+    super::partial_content::leave(st, fx);
     let parked = park(st);
     st.tabs[st.active_tab].parked = Some(Box::new(parked));
     st.tabs[st.active_tab].log = std::mem::take(&mut st.log);

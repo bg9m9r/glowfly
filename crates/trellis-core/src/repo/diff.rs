@@ -278,6 +278,10 @@ fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bo
     let repo = Repository::open(workdir)?;
     let path = target.path();
     let diff = target_diff(&repo, target, opts, None)?;
+    // A partial clone may not have the blobs yet; libgit2 can't fetch them.
+    if let Some(delta) = diff.deltas().find(|d| super::rpath::touches(d, path)) {
+        crate::partial::require(&repo, workdir, path, crate::partial::delta_blobs(target, &delta))?;
+    }
     let lfs = with_old.then(|| super::lfs_marks::diff_change(&repo, target, &diff)).flatten();
     let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     let Some(patch) = file_patch(&diff, path)? else {

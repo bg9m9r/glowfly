@@ -1076,12 +1076,6 @@ blockers and major findings are Milestone 1 items.
 - Keep the index when stashing (`--keep-index`) as a Stash dialog option
 - When a staged rename's new path is chosen, stash its old path too, so the rename moves as a whole
 
-### Clone and init options
-
-- Confirm before unshallowing a very large repository, and cancel a running fetch
-- Fetch missing file contents on demand in a partial clone (the diff views read through
-  libgit2, which can't fetch them)
-
 ### Search and filter
 
 - Background indexing for large repos
@@ -2151,6 +2145,16 @@ here, under the item they grew from.
 - Merge a .gitignore template into an existing .gitignore instead of keeping the old one
 - More .gitignore templates and licenses (AGPL, LGPL, EPL, ISC, CC0), and a README on init
 - A custom initial commit message in the Init dialog
+- Size Fetch more commits (`--deepen`) too, and Bitbucket Data Center and the other services
+  that report no size (count the remote's objects some other way)
+- Cancel other network jobs (push, pull's fetch half, clone) from the status bar, and show a
+  running fetch's progress (objects received, bytes) beside its label
+- Prefetch a commit's missing contents in the background when it is selected in a partial
+  clone, so its diff opens at once, and download a whole folder's contents for a folder diff
+- Download missing contents for the commit diff's line counts, the binary preview and the
+  conflict view, which still read only what is there
+- Offer to turn a partial clone into a full one (`git fetch --refetch` without the filter, or
+  dropping the promisor settings after a full fetch)
 
 ### Sparse checkout
 

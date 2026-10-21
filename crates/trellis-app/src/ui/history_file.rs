@@ -47,7 +47,11 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     let before = status == 'D';
     let text = view.text.as_ref().filter(|t| t.oid == oid && t.path == path && t.before == before);
     let data = match text.map(|t| &t.state) {
-        None | Some(TextState::Loading) => return pane_status::loading(ui, LOADING_FILE),
+        Some(TextState::Loading) => match st.for_file_text(oid, path, before) {
+            Some(p) => return super::content_fetch::show(ui, st, p, msgs),
+            None => return pane_status::loading(ui, LOADING_FILE),
+        },
+        None => return pane_status::loading(ui, LOADING_FILE),
         Some(TextState::Failed(e)) if e.message.starts_with(BINARY_NOT_SHOWN) => return super::empty_state::binary_file(ui),
         Some(TextState::Failed(e)) if !e.retry => {
             empty_state(ui, EmptyIcon::File, UNAVAILABLE_TITLE, &e.message, &[]);

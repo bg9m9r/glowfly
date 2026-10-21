@@ -3,7 +3,8 @@
 
 use super::common::status_label_ui;
 use super::theme::color;
-use crate::msg::Msg;
+use super::widgets::buttons;
+use crate::msg::{JobMsg, Msg};
 use crate::state::AppState;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText};
@@ -47,8 +48,10 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                     ui.label(RichText::new(concat!("Trellis ", env!("CARGO_PKG_VERSION"))).color(color::faint()));
                     super::update_notice::status_item(ui, st, msgs);
                     super::layout::status_items(ui, st, msgs);
-                    if let Some(job) = &st.job {
-                        ui.label(RichText::new(format!("{}…", job.label)).color(color::weak()));
+                    if st.job.is_some() {
+                        job_item(ui, st, msgs);
+                    } else if st.partial.sizing.is_some() {
+                        ui.label(RichText::new(t.tr("status.sizing")).color(color::weak()));
                         ui.add(egui::Spinner::new().size(12.0));
                     } else if st.loading {
                         ui.label(RichText::new(t.tr("status.loading")).color(color::weak()));
@@ -57,6 +60,22 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                 });
             });
         });
+}
+
+/// The running job (right to left: Cancel when it can be stopped, its label, a spinner).
+fn job_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let Some(job) = &st.job else { return };
+    let t = st.settings.lang();
+    if st.job_cancellable() {
+        let tip = t.trf("status.job.cancel.tip", &[("job", &job.label)]);
+        let cancel = buttons::quiet(t.tr("common.cancel.button")).height(20.0).tip(&tip);
+        if ui.add(cancel).clicked() {
+            msgs.push(Msg::Job(JobMsg::Cancel));
+        }
+    }
+    let text = if st.job_cancelling() { t.trf("status.job.cancelling", &[("job", &job.label)]) } else { format!("{}…", job.label) };
+    ui.label(RichText::new(text).color(color::weak()));
+    ui.add(egui::Spinner::new().size(12.0));
 }
 
 #[cfg(test)]

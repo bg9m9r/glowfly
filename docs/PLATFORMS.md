@@ -295,6 +295,12 @@ second one next to it.
     their output (`Start-Process -RedirectStandardOutput … -Wait -PassThru`); a terminal shows
     nothing. Both modes run before logging, settings and the smoke probe, and write no file of
     their own.
+12. **Stop a git child only through `gitcli::output_until`** (with a `gitcli::Stop`). It starts
+    git so its whole process tree can be ended (`process_tree.rs`): on Unix in a new session,
+    then SIGTERM to the process group, 3 s grace, then SIGKILL; on Windows in a job object that
+    is terminated, since killing git.exe alone leaves its remote helpers and ssh running. Never
+    `Child::kill` a git that may have started children. After a stop, remove only the lock and
+    temporary files the run made (`stop_cleanup`), never ones that were there before it.
 
 ### Key labels
 

@@ -183,8 +183,17 @@ pub enum JobMsg {
     Push {
         force: bool,
     },
-    /// Fetch more of a shallow clone's history from its remote (update/shallow.rs).
+    /// Fetch more of a shallow clone's history from its remote (update/shallow.rs); the full
+    /// history is sized first and may ask before it runs.
     Deepen(trellis_core::shallow_ops::Deepen),
+    /// `Deepen` without the size check (the confirmation's button).
+    DeepenNow(trellis_core::shallow_ops::Deepen),
+    /// The status bar's Cancel: stops the active job when it only fetches (update/job_stop.rs).
+    Cancel,
+    /// The runner stopped the active job; `output` is what it printed until then.
+    Stopped {
+        output: String,
+    },
     /// Undo the active tab's most recent undoable operation.
     Undo,
     Redo,
@@ -221,6 +230,9 @@ impl JobMsg {
             | Self::Stash { .. }
             | Self::Push { .. }
             | Self::Deepen(..)
+            | Self::DeepenNow(..)
+            | Self::Cancel
+            | Self::Stopped { .. }
             | Self::Undo
             | Self::Redo
             | Self::UndoWith { .. }

@@ -155,6 +155,37 @@ pub(super) fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std:
     (true, output.trim_end().to_owned())
 }
 
+/// `run_git` for a job that only fetches, stopped when `stop` is asked (`Effect::StopGit`):
+/// git's process tree is ended, then the lock and temporary files it left in the repository are
+/// removed. Returns (ok, output, stopped); a stopped run runs none of the commands after it.
+pub(super) fn run_git_until(cwd: &Path, cmds: &[Vec<String>], prompts: bool, stop: &gitcli::Stop) -> (bool, String, bool) {
+    let before = trellis_core::stop_cleanup::scan(cwd);
+    let mut output = String::new();
+    for c in cmds {
+        output.push_str(&format!("$ git {}\n", trellis_core::text::redact_credentials(&c.join(" "))));
+        let out = gitcli::output_until(cwd, c, "", job_env(prompts), stop);
+        let text = out.combined();
+        if !text.is_empty() {
+            output.push_str(&text);
+            output.push('\n');
+        }
+        if out.stopped {
+            output.push_str("Cancelled.\n");
+            let removed = before.as_ref().map(trellis_core::stop_cleanup::clean).unwrap_or_default();
+            match removed.len() {
+                0 => {}
+                1 => output.push_str("Removed 1 file the stopped fetch left behind.\n"),
+                n => output.push_str(&format!("Removed {n} files the stopped fetch left behind.\n")),
+            }
+            return (false, output.trim_end().to_owned(), true);
+        }
+        if !out.ok {
+            return (false, output.trim_end().to_owned(), false);
+        }
+    }
+    (true, output.trim_end().to_owned(), false)
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -162,5 +193,36 @@ mod tests {
         assert_eq!(super::job_env(false), trellis_core::gitcli::BACKGROUND);
         assert!(super::job_env(false).contains(&("GCM_INTERACTIVE", "never")));
         assert!(super::job_env(true).is_empty(), "a job that may prompt keeps the askpass helper");
+    }
+
+    #[test]
+    fn a_stopped_job_ends_its_git_and_removes_what_it_left_behind() {
+        let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-stop-cleanup-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let (ok, out) = trellis_core::gitcli::run(&dir, &trellis_core::gitcli::args(&["init", "-q"]));
+        assert!(ok, "{out}");
+        let lock = dir.join(".git/refs/heads/topic.lock");
+        // Leaves a ref lock behind, as a fetch stopped while updating refs would.
+        let alias = "alias.slow=!echo x > .git/refs/heads/topic.lock && sleep 20";
+        let cmds = [trellis_core::gitcli::args(&["-c", alias, "slow"]), trellis_core::gitcli::args(&["status"])];
+        let stop = trellis_core::gitcli::Stop::new();
+        let asker = stop.clone();
+        let watched = lock.clone();
+        std::thread::spawn(move || {
+            let until = std::time::Instant::now() + std::time::Duration::from_secs(20);
+            while !watched.exists() && std::time::Instant::now() < until {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            asker.stop();
+        });
+        let started = std::time::Instant::now();
+        let (ok, out, stopped) = super::run_git_until(&dir, &cmds, false, &stop);
+        assert!(stopped && !ok, "{out}");
+        assert!(started.elapsed() < std::time::Duration::from_secs(15), "took {:?}", started.elapsed());
+        assert!(out.contains("Cancelled.") && out.contains("Removed 1 file the stopped fetch left behind."), "{out}");
+        assert!(!out.contains("$ git status"), "nothing after the stopped command runs");
+        assert!(!lock.exists());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

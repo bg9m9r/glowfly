@@ -29,6 +29,7 @@ mod issue;
 mod keys;
 mod layout;
 mod op_preview;
+mod partial;
 mod prefs;
 mod rebase;
 mod recent;
@@ -56,6 +57,7 @@ pub use issue::IssueMsg;
 pub use keys::KeysMsg;
 pub use layout::LayoutMsg;
 pub use op_preview::{OpPreviewMsg, ResetMode};
+pub use partial::{ContentFailure, PartialMsg};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use recent::{FolderCheck, RecentMsg};
@@ -197,6 +199,8 @@ pub enum Msg {
     App(AppMsg),
     /// Trellis's own updates and the release notes (update/updates.rs).
     Updates(UpdateMsg),
+    /// Fetch full history's size check and a partial clone's missing contents (update/partial.rs).
+    Partial(PartialMsg),
     /// A key from ui/shortcuts/global.rs: stage or unstage the open file or its selected lines, stage
     /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
     /// and turned into the usual messages in update/shortcuts.rs.
@@ -332,6 +336,7 @@ impl Msg {
             Msg::Dialog(m) => m.on_inactive(),
             Msg::App(m) => m.on_inactive(),
             Msg::Updates(m) => m.on_inactive(),
+            Msg::Partial(m) => m.on_inactive(),
             Msg::Tick(_)
             | Msg::Shortcut(_)
             | Msg::Confirm { .. }

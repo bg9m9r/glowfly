@@ -39,6 +39,9 @@ pub enum Error {
     /// permanent delete is the remedy (no trash) or retrying after fixing the cause.
     #[error("{0}")]
     TrashRefused(crate::repo::TrashRefusal),
+    /// A partial clone hasn't downloaded file contents the read needs (see `partial`).
+    #[error("the contents of {} haven't been downloaded from {} yet", .0.path, .0.remote)]
+    MissingContent(crate::partial::MissingContent),
     #[error("{0}")]
     Other(String),
 }

@@ -9,7 +9,7 @@ use std::path::PathBuf;
 const TREE: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 fn out(code: i32, stdout: &str, stderr: &str) -> GitOutput {
-    GitOutput { ok: code == 0, code: Some(code), stdout: stdout.into(), stderr: stderr.into(), timed_out: false }
+    GitOutput { ok: code == 0, code: Some(code), stdout: stdout.into(), stderr: stderr.into(), ..GitOutput::default() }
 }
 
 #[test]

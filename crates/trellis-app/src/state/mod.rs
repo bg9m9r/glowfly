@@ -43,6 +43,7 @@ pub mod init;
 pub mod issue;
 pub mod issue_form;
 pub mod issue_words;
+pub mod job_stop;
 pub mod journal;
 pub mod journal_lost;
 pub mod journal_restore;
@@ -79,6 +80,8 @@ pub mod palette_tabs;
 pub mod palette_tools;
 pub mod palette_updates;
 pub mod panel_layout;
+pub mod partial;
+pub mod partial_confirm;
 pub mod patch;
 pub mod path_hazards;
 pub mod pick;
@@ -440,6 +443,10 @@ pub struct AppState {
     pub range_diff_gen: u64,
     pub draft: CommitDraft,
     pub job: Option<RunningJob>,
+    /// The active job's stop, when it can be stopped (state/job_stop.rs).
+    pub job_stop: Option<job_stop::JobStop>,
+    /// Fetch full history's size check and a partial clone's missing contents (state/partial.rs).
+    pub partial: partial::PartialState,
     /// The active tab's undo history.
     pub undo: undo::UndoHistory,
     /// The active tab's activity log (other tabs keep theirs in `Tab::log`; state/logs.rs).
@@ -572,6 +579,8 @@ impl AppState {
             range_diff_gen: 0,
             draft: CommitDraft::default(),
             job: None,
+            job_stop: None,
+            partial: Default::default(),
             undo: undo::UndoHistory::default(),
             log: Vec::new(),
             logs: Default::default(),

@@ -30,6 +30,10 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     header::show(ui, &mut st.blame, &st.settings, st.snap.as_ref(), over_history, msgs);
     ui.separator();
     let Some(view) = &st.blame else { return };
+    // The blame waits for contents a partial clone hasn't downloaded.
+    if let Some(p) = st.for_blame() {
+        return super::content_fetch::show(ui, st, p, msgs);
+    }
     match &view.data {
         // A re-run after HEAD moved keeps the old blame on screen.
         Some(data) if !data.blame.lines.is_empty() => {

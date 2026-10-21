@@ -27,14 +27,18 @@ pub enum Feature {
     MergeTree,
     /// `git cherry-pick --skip` and `git revert --skip`: skipping the commit a sequence stopped at.
     SequencerSkip,
+    /// `git fetch --no-write-fetch-head` (2.29): downloading the file contents a partial clone
+    /// is missing.
+    FetchObjects,
 }
 
 impl Feature {
-    pub const ALL: [Feature; 7] = [
+    pub const ALL: [Feature; 8] = [
         Feature::RangeDiff,
         Feature::Restore,
         Feature::SequencerSkip,
         Feature::SubmoduleEdit,
+        Feature::FetchObjects,
         Feature::ForceIfIncludes,
         Feature::SparseCheckout,
         Feature::MergeTree,
@@ -51,6 +55,7 @@ impl Feature {
             Feature::SparseCheckout => (2, 35),
             Feature::MergeTree => (2, 38),
             Feature::SequencerSkip => (2, 23),
+            Feature::FetchObjects => (2, 29),
         }
     }
 
@@ -64,6 +69,7 @@ impl Feature {
             Feature::SparseCheckout => "sparse checkout",
             Feature::MergeTree => "predicting merge conflicts",
             Feature::SequencerSkip => "skipping a commit in a cherry-pick or revert",
+            Feature::FetchObjects => "downloading file contents a partial clone is missing",
         }
     }
 
@@ -168,10 +174,14 @@ mod tests {
         assert_eq!(missing_for(Some((2, 22, 9))), Feature::ALL[1..].to_vec());
         assert_eq!(
             missing_for(Some((2, 23, 0))),
-            [Feature::SubmoduleEdit, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]
+            [Feature::SubmoduleEdit, Feature::FetchObjects, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]
         );
         assert!(missing_for(Some((2, 24, 9))).contains(&Feature::SubmoduleEdit));
-        assert_eq!(missing_for(Some((2, 25, 0))), [Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]);
+        assert_eq!(
+            missing_for(Some((2, 25, 0))),
+            [Feature::FetchObjects, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]
+        );
+        assert_eq!(missing_for(Some((2, 29, 0))), [Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]);
         assert_eq!(missing_for(Some((2, 34, 1))), [Feature::SparseCheckout, Feature::MergeTree]);
         assert_eq!(missing_for(Some((2, 37, 7))), [Feature::MergeTree]);
         assert!(missing_for(Some((2, 38, 0))).is_empty());
@@ -188,7 +198,7 @@ mod tests {
         assert!(b.contains("2.34.1") && b.contains("2.38 or newer") && b.contains("sparse checkout, predicting merge conflicts"), "{b}");
         assert!(!old.has(Feature::MergeTree) && old.has(Feature::Restore) && old.has(Feature::SubmoduleEdit));
         let older = GitInfo { version: Some((2, 24, 1)), ..old.clone() }.banner().unwrap();
-        assert!(older.contains("these are off: editing a submodule's URL and branch, force pushing"), "{older}");
+        assert!(older.contains("these are off: editing a submodule's URL and branch, downloading file contents"), "{older}");
         assert_eq!(GitInfo { path: None, version: Some((2, 45, 0)), chosen: false }.banner(), None);
         let none = GitInfo::default().banner().unwrap();
         assert!(none.contains("couldn't find git") && none.contains("Preferences > Git"), "{none}");
@@ -209,6 +219,19 @@ mod tests {
         assert_eq!(
             Feature::SequencerSkip.needs_text(Some((2, 22, 0))),
             "Skipping a commit in a cherry-pick or revert needs git 2.23 or newer (you have 2.22.0)."
+        );
+    }
+
+    #[test]
+    fn downloading_missing_contents_needs_2_29() {
+        assert_eq!(Feature::FetchObjects.min(), (2, 29));
+        assert!(missing_for(Some((2, 28, 9))).contains(&Feature::FetchObjects));
+        assert!(!missing_for(Some((2, 29, 0))).contains(&Feature::FetchObjects));
+        let old = GitInfo { version: Some((2, 28, 0)), ..GitInfo::default() };
+        assert!(!old.has(Feature::FetchObjects));
+        assert_eq!(
+            Feature::FetchObjects.needs_text(Some((2, 28, 0))),
+            "Downloading file contents a partial clone is missing needs git 2.29 or newer (you have 2.28.0)."
         );
     }
 

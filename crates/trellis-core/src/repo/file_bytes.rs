@@ -65,6 +65,7 @@ fn read_in(repo: &Repository, workdir: &Path, oid: Oid, path: &str, o: FileAtOpt
         Some(ObjectType::Commit) => return Err(Error::Unsupported(format!("{path} is a submodule"))),
         _ => {}
     }
+    crate::partial::require(repo, workdir, path, [entry.id()])?;
     let blob = repo.find_blob(entry.id())?;
     let too_large = |size: u64| {
         let mb = size.div_ceil(1024 * 1024);

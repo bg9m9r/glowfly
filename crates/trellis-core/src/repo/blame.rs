@@ -153,6 +153,13 @@ pub fn blame_file(workdir: &Path, path: &str, at: Option<Oid>, opts: &BlameOptio
         Some(ObjectType::Commit) => return Err(Error::Unsupported(format!("{path} is a submodule"))),
         _ => {}
     }
+    // A partial clone downloads the versions blame reads first (git blame would fetch them one
+    // at a time).
+    let mut ids = vec![entry.id()];
+    if crate::partial::looks_partial(&repo) {
+        ids.extend(crate::partial::history_blobs(workdir, commit.id(), path));
+    }
+    crate::partial::require(&repo, workdir, path, ids)?;
     let blob = repo.find_blob(entry.id())?;
     if blob.is_binary() {
         return Err(Error::Unsupported(format!("{path} is a binary file; blame shows text files only")));

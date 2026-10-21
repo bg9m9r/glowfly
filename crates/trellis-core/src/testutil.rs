@@ -11,6 +11,7 @@ pub(crate) fn git(dir: &Path, a: &[&str]) {
 
 /// An empty repository on `main` with a fixed identity, in a fresh temporary folder.
 pub(crate) fn scratch_repo(name: &str) -> PathBuf {
+    crate::partial::allow_extension();
     let dir = crate::paths::temp_dir().join(format!("trellis-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -54,6 +55,38 @@ pub(crate) fn alias_of(dir: &Path) -> Option<PathBuf> {
 
 pub(crate) fn write(dir: &Path, file: &str, text: &str) {
     std::fs::write(dir.join(file), text).unwrap();
+}
+
+/// `file:///srv/x` on Unix, `file:///C:/x` on Windows.
+pub(crate) fn file_url(p: &Path) -> String {
+    let s = p.display().to_string().replace('\\', "/");
+    if s.starts_with('/') { format!("file://{s}") } else { format!("file:///{s}") }
+}
+
+/// A blobless partial clone (`--filter=blob:none`, through a file:// URL) of a source with three
+/// commits: a.txt "one", then d/b.txt, then a.txt "one\ntwo". HEAD's blobs are checked out;
+/// HEAD~2's a.txt (also HEAD~1's) is missing. Returns (source, clone).
+pub(crate) fn partial_clone(name: &str) -> (PathBuf, PathBuf) {
+    let src = scratch_repo(&format!("{name}-src"));
+    set_config(&src, &[("uploadpack.allowFilter", "true"), ("uploadpack.allowAnySHA1InWant", "true")]);
+    write(&src, "a.txt", "one\n");
+    git(&src, &["add", "."]);
+    git(&src, &["commit", "-q", "-m", "first"]);
+    std::fs::create_dir_all(src.join("d")).unwrap();
+    write(&src, "d/b.txt", "b\n");
+    git(&src, &["add", "."]);
+    git(&src, &["commit", "-q", "-m", "second"]);
+    write(&src, "a.txt", "one\ntwo\n");
+    git(&src, &["add", "."]);
+    git(&src, &["commit", "-q", "-m", "third"]);
+    let clone = src.with_file_name(format!("{}-partial", src.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&clone);
+    git(src.parent().unwrap(), &["clone", "-q", "--filter=blob:none", &file_url(&src), &clone.display().to_string()]);
+    set_config(
+        &clone,
+        &[("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false"), ("maintenance.auto", "false")],
+    );
+    (src, clone)
 }
 
 /// git-lfs's version, or None (with a note) so tests that need it can skip.

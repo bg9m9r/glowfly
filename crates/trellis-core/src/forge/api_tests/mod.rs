@@ -16,6 +16,7 @@ mod gitlab;
 mod issues;
 mod jira_issues;
 mod paging;
+mod repo_size;
 mod review;
 mod review_threads;
 mod trello;

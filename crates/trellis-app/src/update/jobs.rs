@@ -131,12 +131,14 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     let sign_in_cmds = if spec.cwd.is_none() { spec.cmds.clone() } else { Vec::new() };
     // `git lfs install` adds settings and hooks the trust decision didn't see (trust_inherit.rs).
     let lfs_install = spec.cwd.is_none() && spec.cmds.iter().any(|c| c.windows(2).any(|w| w[0] == "lfs" && w[1] == "install"));
+    // Only a job that just fetches can be cancelled: stopping it leaves the repository as it was.
+    let stoppable = spec.write_file.is_none() && !spec.cmds.is_empty() && spec.cmds.iter().all(|c| fetch_only(c));
     let (cmds, write_file, expect, pick) = (spec.cmds, spec.write_file, spec.expect, spec.pick);
     let effect = move |cwd| match pick {
         Some(PickPlan { picking, oids, can_skip }) => {
             Effect::Pick(PickJob { cwd, cmds, record, journal, prompts, picking, oids, can_skip })
         }
-        None => Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect },
+        None => Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable },
     };
     let started = launch(st, job, spec.cwd, effect, fx);
     if started != Started::No {
@@ -153,6 +155,11 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         }
     }
     started
+}
+
+/// A command that only fetches objects and refs (not `pull`, which merges afterwards).
+fn fetch_only(cmd: &[String]) -> bool {
+    trellis_core::gitcli::subcommand(cmd) == Some("fetch")
 }
 
 /// Makes a job labelled `label` the active one in the active tab's repository, running the
@@ -230,6 +237,7 @@ pub(super) fn begin_tool_job(st: &mut AppState, label: &str, effect: impl FnOnce
         keeps_undo: true,
         fetches: false,
     });
+    st.job_stop = None;
     fx.push(effect(cwd));
     Started::Now
 }
@@ -311,7 +319,9 @@ fn launch(
             return Started::No;
         }
     }
+    let effect = effect(cwd);
+    st.job_stop = super::job_stop::for_effect(&effect);
     st.job = Some(job);
-    fx.push(effect(cwd));
+    fx.push(effect);
     Started::Now
 }

@@ -2,8 +2,10 @@
 //! highlighting in the background. `Runner::run` gives each background job a cancel ticket, so a
 //! newer `Effect::HighlightDiff` cancels the older one.
 
+use crate::effect::Effect;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
+use crate::msg::PartialMsg;
 use crate::msg::RepoMsg;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -22,7 +24,16 @@ pub(super) fn load_job(
     previous: Option<std::sync::Arc<FileDiff>>,
     opts: LoadDiffOptions,
 ) -> Msg {
-    let result = repo::load_diff_for_view(&workdir, &target, opts)
+    let loaded = match repo::load_diff_for_view(&workdir, &target, opts) {
+        // A partial clone hasn't downloaded a side: read again once it has.
+        Err(trellis_core::error::Error::MissingContent(missing)) => {
+            let LoadDiffOptions { ignore_whitespace, whole_file } = opts;
+            let retry = Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file };
+            return Msg::Partial(PartialMsg::ContentMissing { missing, retry: Box::new(retry) });
+        }
+        r => r,
+    };
+    let result = loaded
         .map(|mut v| {
             decorate_in_context(target.path(), v.language.as_deref(), &mut v.diff, previous.as_deref(), v.old.as_ref());
             let d = &v.diff;

@@ -98,6 +98,9 @@ impl Effect {
             | Effect::Updates(_)
             | Effect::Repos(_)
             | Effect::Trust(_)
+            // The size check and the download carry their own workdir and id.
+            | Effect::Partial(_)
+            | Effect::StopGit(_)
             | Effect::Ui(_) => None,
         }
     }

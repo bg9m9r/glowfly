@@ -261,8 +261,11 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
     let Some(target) = target else { return };
     match pane {
         HistoryPane::File => super::history_file::show(ui, st, cache, msgs),
-        HistoryPane::Diff if st.diff.as_ref().is_some_and(|(t, _)| *t == target) => super::diff::body(ui, st, cache, msgs),
-        HistoryPane::Diff => super::pane_status::loading(ui, LOADING_CHANGES),
+        HistoryPane::Diff => match st.for_diff() {
+            Some(p) => super::content_fetch::show(ui, st, p, msgs),
+            None if st.diff.as_ref().is_some_and(|(t, _)| *t == target) => super::diff::body(ui, st, cache, msgs),
+            None => super::pane_status::loading(ui, LOADING_CHANGES),
+        },
     }
 }
 

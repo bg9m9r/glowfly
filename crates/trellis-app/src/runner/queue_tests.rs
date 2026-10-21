@@ -122,6 +122,7 @@ fn which_effects_queue() {
         journal: None,
         prompts: false,
         expect: None,
+        stoppable: false,
     };
     assert_eq!(repo_of(&git(&[&["pull"]])), Some(w.as_path()));
     assert_eq!(repo_of(&git(&[&["fetch", "--all"]])), None, "auto-fetch doesn't hold up staging");
@@ -213,6 +214,7 @@ fn every_effect_that_changes_a_repository_queues() {
             journal: None,
             prompts: false,
             expect: None,
+            stoppable: false,
         },
         Effect::UndoRedo {
             cwd: w.clone(),

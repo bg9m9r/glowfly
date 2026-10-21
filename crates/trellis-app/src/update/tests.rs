@@ -45,6 +45,7 @@ pub(super) fn set_identity(dir: &Path) {
 
 /// A repository with one commit and one modified file.
 pub(super) fn scratch_repo(name: &str) -> PathBuf {
+    trellis_core::partial::allow_extension();
     let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -166,7 +167,7 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             )
             // Asks hosting services.
             | Effect::Dashboard(crate::effect::DashboardEffect::Fetch(_))
-    )
+    ) || matches!(effect, Effect::Partial(crate::effect::partial::PartialEffect::SizeHistory(r)) if r.service.is_some())
 }
 
 #[test]
@@ -427,7 +428,16 @@ fn unreadable_settings_are_reported_once() {
 fn job_output_hides_credentials_in_urls() {
     let dir = scratch_repo("redact");
     let cmds = vec![args(&["remote", "add", "x", "https://ada:TOKEN123@example.com/o/r.git"])];
-    let effect = Effect::RunGit { cwd: dir.clone(), cmds, write_file: None, record: None, journal: None, prompts: false, expect: None };
+    let effect = Effect::RunGit {
+        cwd: dir.clone(),
+        cmds,
+        write_file: None,
+        record: None,
+        journal: None,
+        prompts: false,
+        expect: None,
+        stoppable: false,
+    };
     let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = runner::execute(effect) else { panic!("expected JobDone") };
     assert!(ok, "{output}");
     assert!(!output.contains("TOKEN123") && output.contains("https://***@example.com/o/r.git"), "{output}");

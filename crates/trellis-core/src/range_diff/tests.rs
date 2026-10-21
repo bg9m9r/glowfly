@@ -7,7 +7,7 @@ use crate::testutil::{git, scratch_repo, with_origin, write};
 use std::path::{Path, PathBuf};
 
 fn out(code: i32, stderr: &str) -> GitOutput {
-    GitOutput { ok: code == 0, code: Some(code), stdout: String::new(), stderr: stderr.into(), timed_out: false }
+    GitOutput { ok: code == 0, code: Some(code), stdout: String::new(), stderr: stderr.into(), ..GitOutput::default() }
 }
 
 fn head(dir: &Path, rev: &str) -> Oid {

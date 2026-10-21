@@ -3,13 +3,15 @@
 //! Markdown and images, what the File view's preview draws: a Markdown file's text (parsed by
 //! the view's `MarkdownCache` when drawn) or a decoded image (`Effect::LoadFileText`).
 
-use crate::effect::FileTextRequest;
-use crate::msg::{HistoryMsg, Msg};
+use crate::effect::{Effect, FileTextRequest};
+use crate::msg::{HistoryMsg, Msg, PartialMsg};
 use crate::state::history::{FileTextData, Preview, TextError};
 use std::path::Path;
 use std::sync::Arc;
+use trellis_core::error::Error;
 use trellis_core::highlight::{self, SyntaxHint};
 use trellis_core::markdown::MARKDOWN_MAX_BYTES;
+use trellis_core::partial::MissingContent;
 use trellis_core::preview::{self, PreviewKind};
 use trellis_core::preview_image::{self, FILE_VIEW_SHOWN_MAX};
 use trellis_core::repo::{self, FileAtOptions, HistoryStart, LfsState};
@@ -30,11 +32,31 @@ pub(super) fn file_text(r: FileTextRequest) -> Msg {
         Some(PreviewKind::Image) => image_text(&r, o),
         _ => text(&r, o, kind == Some(PreviewKind::Markdown)),
     };
+    let result = match result {
+        // A partial clone hasn't downloaded this version: read again once it has.
+        Err(Failed::Missing(missing)) => {
+            return Msg::Partial(PartialMsg::ContentMissing { missing, retry: Box::new(Effect::LoadFileText(r)) });
+        }
+        Err(Failed::Text(e)) => Err(e),
+        Ok(d) => Ok(d),
+    };
     Msg::History(HistoryMsg::FileTextLoaded { oid: r.oid, path: r.path, before: r.before, result: result.map(Arc::new) })
 }
 
-fn text(r: &FileTextRequest, o: FileAtOptions, markdown: bool) -> Result<FileTextData, TextError> {
-    let f = repo::file_at_with(&r.workdir, r.oid, &r.path, o).map_err(text_error)?;
+/// Why a file's text wasn't read.
+enum Failed {
+    Text(TextError),
+    Missing(MissingContent),
+}
+
+impl From<TextError> for Failed {
+    fn from(e: TextError) -> Self {
+        Failed::Text(e)
+    }
+}
+
+fn text(r: &FileTextRequest, o: FileAtOptions, markdown: bool) -> Result<FileTextData, Failed> {
+    let f = repo::file_at_with(&r.workdir, r.oid, &r.path, o).map_err(failed)?;
     let spans = highlight::highlight_file(SyntaxHint { path: &r.path, language: f.language.as_deref() }, &f.lines);
     let rendered = markdown && matches!(f.lfs, LfsState::None | LfsState::Content);
     let source = rendered.then(|| f.lines.join("\n"));
@@ -44,8 +66,8 @@ fn text(r: &FileTextRequest, o: FileAtOptions, markdown: bool) -> Result<FileTex
 
 /// An image's pixels, with no lines; a Git LFS pointer not swapped for its content is shown as
 /// its text. An image that doesn't decode won't on a retry either.
-fn image_text(r: &FileTextRequest, o: FileAtOptions) -> Result<FileTextData, TextError> {
-    let f = repo::file_bytes_at(&r.workdir, r.oid, &r.path, o).map_err(text_error)?;
+fn image_text(r: &FileTextRequest, o: FileAtOptions) -> Result<FileTextData, Failed> {
+    let f = repo::file_bytes_at(&r.workdir, r.oid, &r.path, o).map_err(failed)?;
     if matches!(f.lfs, LfsState::Pointer | LfsState::Unavailable(_)) {
         let lines = String::from_utf8_lossy(&f.bytes).lines().map(String::from).collect();
         return Ok(FileTextData { lines, spans: None, lfs: f.lfs, preview: None });
@@ -60,7 +82,10 @@ fn image_text(r: &FileTextRequest, o: FileAtOptions) -> Result<FileTextData, Tex
 }
 
 /// A fixed reason (binary, too large, a submodule) won't change on a retry; a read error may.
-fn text_error(e: trellis_core::error::Error) -> TextError {
-    let retry = !matches!(e, trellis_core::error::Error::Unsupported(_));
-    TextError { message: e.to_string(), retry }
+fn failed(e: Error) -> Failed {
+    if let Error::MissingContent(m) = e {
+        return Failed::Missing(m);
+    }
+    let retry = !matches!(e, Error::Unsupported(_));
+    Failed::Text(TextError { message: e.to_string(), retry })
 }

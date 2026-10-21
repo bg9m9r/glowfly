@@ -136,6 +136,8 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::GitEnv(GitEnvEffect::Detect { .. } | GitEnvEffect::Discover { .. })
             | Effect::Watch(_)
             | Effect::AnswerPrompt { .. }
+            | Effect::Partial(crate::effect::partial::PartialEffect::FetchContent(_))
+            | Effect::StopGit(_)
             // A no-op: the log worker is never attached in a test.
             | Effect::Logs(_)
             // Handled by the shell; it never gets here.
@@ -180,6 +182,8 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::Updates(_)
             | Effect::Remote(_)
             | Effect::Repos(_)
+            // May ask a hosting service.
+            | Effect::Partial(crate::effect::partial::PartialEffect::SizeHistory(_))
             | Effect::Terminal(_)
             | Effect::GitEnv(GitEnvEffect::AddSafeDirectory(_) | GitEnvEffect::Use { .. } | GitEnvEffect::PickProgram) => false,
         };

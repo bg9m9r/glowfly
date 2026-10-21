@@ -25,6 +25,7 @@ mod line_counts;
 mod names;
 mod notify;
 mod op_preview;
+pub mod partial;
 mod pick;
 mod rebase;
 mod repo;
@@ -248,6 +249,8 @@ pub enum Effect {
         prompts: bool,
         /// Run nothing unless this revision still resolves to this commit.
         expect: Option<(String, git2::Oid)>,
+        /// Every command only fetches: `Effect::StopGit(StopKey::Job)` can stop it.
+        stoppable: bool,
     },
     /// A cherry-pick or revert job, carried past the commits that change nothing; unscoped like RunGit.
     Pick(PickJob),
@@ -420,5 +423,11 @@ pub enum Effect {
     Repos(ReposEffect),
     /// Reads repositories just made from a trusted one, to trust them (runner/trust.rs; unscoped).
     Trust(TrustEffect),
+    /// A shallow clone's size check and a partial clone's missing contents (runner/partial.rs);
+    /// unscoped.
+    Partial(partial::PartialEffect),
+    /// Stops the running git command registered under this key, if any. Handled by
+    /// `Runner::run` itself, which holds the stops.
+    StopGit(partial::StopKey),
     Ui(UiEffect),
 }

@@ -114,7 +114,7 @@ pub fn tool_view(st: &AppState) -> Option<ToolView> {
         None
     } else if st.issue.is_some() {
         Some(ToolView::Issue)
-    } else if st.diff.is_some() || st.rebase.is_some() {
+    } else if st.diff_or_download() || st.rebase.is_some() {
         None
     } else if st.range_diff.is_some() {
         Some(ToolView::RangeDiff)

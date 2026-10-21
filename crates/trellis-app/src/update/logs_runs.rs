@@ -70,6 +70,18 @@ pub(super) fn job_ended(
     }
 }
 
+/// Logs the job the user cancelled as a run ("<label> cancelled", summary "Cancelled") with a
+/// plain toast (`headline`): not a failure, so no desktop note and its row stays folded.
+pub(super) fn job_cancelled(st: &mut AppState, job: &RunningJob, output: &str, headline: String, now: Instant) {
+    let took_ms = st.logs.job_started.take().map(|s| u64::try_from(now.saturating_duration_since(s).as_millis()).unwrap_or(u64::MAX));
+    let text = format!("{} cancelled\n{output}", job.label);
+    let run = RunInfo { title: job.label.clone(), summary: "Cancelled".to_owned(), took_ms, routine: is_routine_label(&job.label) };
+    if !job.quiet {
+        st.toast(true, headline, now);
+    }
+    st.log_run_in(job.workdir.as_deref(), true, text, run, false);
+}
+
 /// Whether `action` is the toast button that runs run `id`'s fix.
 fn is_proxy(action: Option<&ToastAction>, id: EntryId) -> bool {
     action.is_some_and(|a| matches!(*a.msg, Msg::Logs(LogsMsg::Fix(i)) if i == id))

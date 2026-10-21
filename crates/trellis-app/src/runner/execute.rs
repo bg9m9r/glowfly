@@ -4,8 +4,8 @@
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, custom_commands, dashboard, deep_link, diff_gaps, expect, files,
     forge_calls, forks, git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, op_preview, os,
-    patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status,
-    submodules, themes, tools, trust, updates, worktrees,
+    partial, patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures, sparse, ssh,
+    stashes, status, submodules, themes, tools, trust, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
@@ -20,21 +20,32 @@ pub(super) fn err(e: trellis_core::error::Error) -> String {
 /// Results that belong to one repository come back as `Msg::Scoped`.
 #[cfg(test)]
 pub fn execute(effect: Effect) -> Option<Msg> {
-    execute_with(effect, &|| false, &repo::GraphCache::default())
+    execute_with(effect, &|| false, &repo::GraphCache::default(), None)
 }
 
 /// `execute`, stopping early when `cancelled` returns true (only HighlightDiff checks it), with
-/// the answers repository loads share.
-pub(super) fn execute_with(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &repo::GraphCache) -> Option<Msg> {
+/// the answers repository loads share; `stop` is the stop of an effect that can be cancelled
+/// (`Effect::stop_key`).
+pub(super) fn execute_with(
+    effect: Effect,
+    cancelled: &dyn Fn() -> bool,
+    graph_cache: &repo::GraphCache,
+    stop: Option<&trellis_core::gitcli::Stop>,
+) -> Option<Msg> {
     let scope = effect.scope().cloned();
-    let msg = execute_unscoped(effect, cancelled, graph_cache)?;
+    let msg = execute_unscoped(effect, cancelled, graph_cache, stop)?;
     Some(match scope {
         Some(workdir) => Msg::Scoped { workdir, msg: Box::new(msg) },
         None => msg,
     })
 }
 
-fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &repo::GraphCache) -> Option<Msg> {
+fn execute_unscoped(
+    effect: Effect,
+    cancelled: &dyn Fn() -> bool,
+    graph_cache: &repo::GraphCache,
+    stop: Option<&trellis_core::gitcli::Stop>,
+) -> Option<Msg> {
     match effect {
         Effect::LoadRepo { path, opts, generation, kind, known } => {
             if let Some(k) = known
@@ -116,7 +127,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::LoadLfs { workdir, generation } => {
             Some(Msg::Lfs(LfsMsg::Loaded { generation, result: trellis_core::lfs::status(&workdir).map_err(err) }))
         }
-        Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect } => {
+        Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable: _ } => {
             if let Some(refused) = expect.and_then(|(rev, oid)| expect::check(&cwd, &rev, oid).err()) {
                 return Some(Msg::Job(JobMsg::JobDone { ok: false, output: refused, undo: record.map(|_| UndoResult::Recorded(None)) }));
             }
@@ -124,13 +135,19 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             // A pop onto local changes mixes them with the stash's, so it can't be undone.
             let irreversible = before.as_ref().is_some_and(undo::irreversible);
             // The journal note sees the refs before git runs and after the undo record is read.
-            let (ok, output, undo) = journal::around(&cwd, journal, || {
-                let (ok, output) = git_ops::run_git(&cwd, &cmds, write_file, prompts);
+            Some(journal::around(&cwd, journal, || {
+                // Only a job that just fetches has a stop, and it writes no file.
+                let (ok, output) = match stop.filter(|_| write_file.is_none()) {
+                    Some(stop) => match git_ops::run_git_until(&cwd, &cmds, prompts, stop) {
+                        (_, output, true) => return Msg::Job(JobMsg::Stopped { output }),
+                        (ok, output, false) => (ok, output),
+                    },
+                    None => git_ops::run_git(&cwd, &cmds, write_file, prompts),
+                };
                 let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
                 let undo = if ok && irreversible { None } else { record.map(|k| UndoResult::Recorded(recorded(k))) };
-                (ok, output, undo)
-            });
-            Some(Msg::Job(JobMsg::JobDone { ok, output, undo }))
+                Msg::Job(JobMsg::JobDone { ok, output, undo })
+            }))
         }
         Effect::Pick(j) => Some(pick::run(j)),
         Effect::UndoRedo { cwd, action, redo, opts } => {
@@ -212,6 +229,9 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Updates(e) => updates::run(e),
         Effect::Repos(e) => Some(repos::run(e)),
         Effect::Trust(e) => Some(trust::run(e)),
+        Effect::Partial(e) => Some(partial::run(e, stop)),
+        // `Runner::run` stops it; there is nothing running here to stop.
+        Effect::StopGit(_) => None,
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

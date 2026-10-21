@@ -66,7 +66,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Diff(DiffMsg::ClearLineSelection));
     } else if st.history.is_some() {
         msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
-    } else if st.diff.is_some() {
+    } else if st.diff_or_download() {
         // Esc first drops a line selection, then closes the diff.
         msgs.push(if st.view.diff_lines.is_empty() { Msg::Repo(RepoMsg::CloseDiff) } else { Msg::Diff(DiffMsg::ClearLineSelection) });
     } else if st.pull_request.is_some() {
@@ -113,7 +113,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
                 pull_request::show(ui, st, cache, msgs);
             } else if st.issue.is_some() {
                 issue::show(ui, st, &mut cache.markdown, msgs);
-            } else if st.diff.is_some() {
+            } else if st.diff_or_download() {
                 diff::show(ui, st, cache, msgs);
             } else if st.rebase.is_some() {
                 rebase::show(ui, st, cache, msgs);

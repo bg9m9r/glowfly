@@ -16,9 +16,12 @@
 
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
+
+mod wait;
+pub use wait::Stop;
 
 /// What git children need to reach the app's credential prompts.
 #[derive(Clone)]
@@ -132,6 +135,10 @@ pub struct GitOutput {
     pub stdout: String,
     pub stderr: String,
     pub timed_out: bool,
+    /// It was stopped through a [`Stop`] ([`output_until`]).
+    pub stopped: bool,
+    /// The stop needed a hard kill: git didn't exit within the grace period (or Windows).
+    pub forced: bool,
 }
 
 impl GitOutput {
@@ -195,9 +202,38 @@ pub fn output_with(
     env: &[(&str, &str)],
     timeout: Option<Duration>,
 ) -> GitOutput {
-    let (mut out, stdout) = raw_with(program, cwd, args, input, env, timeout);
+    let (mut out, stdout) = raw_with(program, cwd, args, input, env, timeout, None);
     out.stdout = String::from_utf8_lossy(&stdout).into_owned();
     out
+}
+
+/// [`output`] without a timeout that stops git, and every process it started, once `stop` is
+/// requested ([`crate::process_tree`]): the result then has `stopped` set and is not `ok`. A
+/// stop requested before the call returns at once without starting git. Only for commands
+/// whose interruption leaves the repository consistent (fetches); the caller removes the
+/// lock and temporary files a stopped fetch leaves ([`crate::stop_cleanup`]).
+pub fn output_until(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], stop: &Stop) -> GitOutput {
+    let program = crate::git_program::program();
+    let (mut out, stdout) = raw_with(&program, cwd, args, input, env, None, Some(stop));
+    out.stdout = String::from_utf8_lossy(&stdout).into_owned();
+    out
+}
+
+/// The git subcommand `args` runs: the first argument that isn't a global option (`-c k=v` and
+/// `-C dir` take the next argument; `--git-dir=…`, `--no-pager` and any other leading `-…`
+/// are skipped).
+pub fn subcommand(args: &[String]) -> Option<&str> {
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "-c" | "-C" => {
+                it.next();
+            }
+            s if s.starts_with('-') => {}
+            s => return Some(s),
+        }
+    }
+    None
 }
 
 /// What [`GitOutput::stderr`] starts with when the program couldn't be started or waited for.
@@ -206,7 +242,7 @@ pub(crate) const SPAWN_FAILED: &str = "failed to run git: ";
 /// Runs the chosen git as [`output`] describes, returning stdout undecoded next to the result,
 /// whose `stdout` is left empty (stderr is decoded).
 fn raw(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: Option<Duration>) -> (GitOutput, Vec<u8>) {
-    raw_with(&crate::git_program::program(), cwd, args, input, env, timeout)
+    raw_with(&crate::git_program::program(), cwd, args, input, env, timeout, None)
 }
 
 /// [`raw`] running `program`. Reports the run to the observer, if one is set, exactly once
@@ -218,9 +254,10 @@ fn raw_with(
     input: &str,
     env: &[(&str, &str)],
     timeout: Option<Duration>,
+    stop: Option<&Stop>,
 ) -> (GitOutput, Vec<u8>) {
     let start = Instant::now();
-    let result = raw_inner(program, cwd, args, input, env, timeout);
+    let result = raw_inner(program, cwd, args, input, env, timeout, stop);
     if let Some(observe) = OBSERVER.get() {
         let out = &result.0;
         observe(&GitRun {
@@ -228,7 +265,7 @@ fn raw_with(
             args: args.to_vec(),
             took: start.elapsed(),
             code: out.code,
-            ok: out.code.is_some() && !out.timed_out,
+            ok: out.code.is_some() && !out.timed_out && !out.stopped,
             timed_out: out.timed_out,
         });
     }
@@ -239,11 +276,13 @@ fn raw_with(
 /// process the caller starts and watches itself, such as a diff tool left running. Its run isn't
 /// reported to the observer ([`observe_runs`]). Its input and output are left to the caller.
 pub fn command(cwd: &Path, args: &[String], env: &[(&str, &str)]) -> Command {
-    base_command(&crate::git_program::program(), cwd, args, env)
+    base_command(&crate::git_program::program(), cwd, args, env, false)
 }
 
-/// `program <args>` in `cwd` with the fixed environment, the askpass variables and `env`.
-fn base_command(program: &OsStr, cwd: &Path, args: &[String], env: &[(&str, &str)]) -> Command {
+/// `program <args>` in `cwd` with the fixed environment, the askpass variables and `env`. A
+/// `stoppable` command runs in its own process group (Unix), so a stop reaches everything it
+/// starts ([`crate::process_tree`]).
+fn base_command(program: &OsStr, cwd: &Path, args: &[String], env: &[(&str, &str)], stoppable: bool) -> Command {
     let mut cmd = Command::new(program);
     // merge's state restore and stash --index feed git apply on stdin; its whitespace warnings
     // are noise in a job log.
@@ -264,7 +303,11 @@ fn base_command(program: &OsStr, cwd: &Path, args: &[String], env: &[(&str, &str
         .envs(gpg_env(env))
         .envs(env.iter().copied());
     crate::env_path::apply(&mut cmd);
-    crate::ssh_version::prepare(&mut cmd);
+    if stoppable {
+        crate::process_tree::prepare(&mut cmd);
+    } else {
+        crate::ssh_version::prepare(&mut cmd);
+    }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -281,8 +324,13 @@ fn raw_inner(
     input: &str,
     env: &[(&str, &str)],
     timeout: Option<Duration>,
+    stop: Option<&Stop>,
 ) -> (GitOutput, Vec<u8>) {
-    let mut cmd = base_command(program, cwd, args, env);
+    if stop.is_some_and(Stop::requested) {
+        let stderr = format!("git {} was cancelled before it started", args.join(" "));
+        return (GitOutput { stderr, stopped: true, ..GitOutput::default() }, Vec::new());
+    }
+    let mut cmd = base_command(program, cwd, args, env, stop.is_some());
     cmd.stdin(if input.is_empty() { Stdio::null() } else { Stdio::piped() }).stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = match cmd.spawn() {
         Ok(c) => c,
@@ -298,67 +346,34 @@ fn raw_inner(
             let _ = stdin.write_all(&input);
         });
     }
-    let stdout = drain(child.stdout.take());
-    let stderr = drain(child.stderr.take());
-    let (status, timed_out) = match wait(&mut child, timeout) {
-        Ok(s) => s,
+    let tree = stop.map(|_| crate::process_tree::attach(&child));
+    let stdout = wait::drain(child.stdout.take());
+    let stderr = wait::drain(child.stderr.take());
+    let waited = match wait::wait(&mut child, timeout, stop.zip(tree.as_ref())) {
+        Ok(w) => w,
         Err(e) => return (GitOutput::failed(format!("{SPAWN_FAILED}{e}")), Vec::new()),
     };
+    let (status, timed_out, stopped) = (waited.status, waited.timed_out, waited.stopped);
     // After a kill, a grandchild (a hook, ssh) may still hold the pipes; don't wait on it.
-    let grace = timed_out.then_some(Duration::from_secs(1));
-    let stdout = collect(&stdout, grace);
+    let grace = (timed_out || stopped).then_some(Duration::from_secs(1));
+    let stdout = wait::collect(&stdout, grace);
     let mut out = GitOutput {
         ok: status.is_some_and(|s| s.success()),
         code: status.and_then(|s| s.code()),
         stdout: String::new(),
-        stderr: String::from_utf8_lossy(&collect(&stderr, grace)).into_owned(),
+        stderr: String::from_utf8_lossy(&wait::collect(&stderr, grace)).into_owned(),
         timed_out,
+        stopped,
+        forced: waited.forced,
     };
+    if stopped {
+        out.stderr.push_str(&format!("\ngit {} was cancelled", args.join(" ")));
+    }
     if timed_out {
         let secs = timeout.unwrap_or_default().as_secs_f32();
         out.stderr.push_str(&format!("\ngit {} took more than {secs}s and was stopped", args.join(" ")));
     }
     (out, stdout)
-}
-
-type Drained = std::sync::mpsc::Receiver<Vec<u8>>;
-
-/// Reads `pipe` to the end on a new thread.
-fn drain(pipe: Option<impl std::io::Read + Send + 'static>) -> Drained {
-    let (tx, rx) = std::sync::mpsc::channel();
-    if let Some(mut pipe) = pipe {
-        std::thread::spawn(move || {
-            let mut buf = Vec::new();
-            let _ = pipe.read_to_end(&mut buf);
-            let _ = tx.send(buf);
-        });
-    }
-    rx
-}
-
-fn collect(rx: &Drained, grace: Option<Duration>) -> Vec<u8> {
-    match grace {
-        Some(d) => rx.recv_timeout(d).unwrap_or_default(),
-        None => rx.recv().unwrap_or_default(),
-    }
-}
-
-/// Waits for `child`, killing it once `timeout` passes. Returns its status (None if killed)
-/// and whether it timed out.
-fn wait(child: &mut Child, timeout: Option<Duration>) -> std::io::Result<(Option<ExitStatus>, bool)> {
-    let Some(timeout) = timeout else { return child.wait().map(|s| (Some(s), false)) };
-    let deadline = Instant::now() + timeout;
-    loop {
-        if let Some(s) = child.try_wait()? {
-            return Ok((Some(s), false));
-        }
-        if Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Ok((None, true));
-        }
-        std::thread::sleep(Duration::from_millis(5));
-    }
 }
 
 /// The installed git's version (`git version`), or None when git can't be run or prints
