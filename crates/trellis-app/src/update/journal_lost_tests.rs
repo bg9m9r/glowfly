@@ -256,3 +256,42 @@ fn parking_the_tab_asks_again() {
     assert!(again[0] > before && v.lost.as_ref().unwrap().generation == again[0]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_refresh_during_a_load_finds_them_again() {
+    let (mut st, dir) = opened("journal-lost-refresh-mid-load");
+    open_loaded(&mut st, &dir);
+    let g = lost_loads(&run(&mut st, JournalMsg::Tab(JournalTab::Lost)))[0];
+    assert!(lost_loads(&run(&mut st, JournalMsg::Refresh)).is_empty(), "one fsck at a time");
+    let fx = lost(&mut st, LostMsg::Loaded { generation: g, result: hand_built(Vec::new()) });
+    let [again] = lost_loads(&fx)[..] else { panic!("the out-of-date result is found again: {fx:?}") };
+    assert!(again > g);
+    let fx = lost(&mut st, LostMsg::Loaded { generation: again, result: hand_built(Vec::new()) });
+    assert!(lost_loads(&fx).is_empty(), "a result with no refresh during it is current");
+    let v = st.journal.as_ref().unwrap().lost.as_ref().unwrap();
+    assert!(!v.loading && !v.stale);
+
+    // Hidden by the time it lands: kept stale until the tab shows.
+    let g = lost_loads(&run(&mut st, JournalMsg::Refresh))[0];
+    run(&mut st, JournalMsg::Refresh);
+    run(&mut st, JournalMsg::Tab(JournalTab::States));
+    assert!(lost_loads(&lost(&mut st, LostMsg::Loaded { generation: g, result: hand_built(Vec::new()) })).is_empty());
+    assert!(st.journal.as_ref().unwrap().lost.as_ref().unwrap().stale);
+    assert_eq!(lost_loads(&run(&mut st, JournalMsg::Tab(JournalTab::Lost))).len(), 1, "read again when it shows");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn parking_on_the_states_tab_waits_for_the_lost_tab() {
+    let (mut st, dir) = opened("journal-lost-park-states");
+    open_loaded(&mut st, &dir);
+    lost_loads(&run(&mut st, JournalMsg::Tab(JournalTab::Lost)));
+    run(&mut st, JournalMsg::Tab(JournalTab::States));
+    drive(&mut st, Msg::Tabs(TabsMsg::NewTab));
+    let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
+    assert!(lost_loads(&fx).is_empty(), "no fsck while the States tab shows");
+    let v = st.journal.as_ref().unwrap().lost.as_ref().unwrap();
+    assert!(!v.loading && v.stale);
+    assert_eq!(lost_loads(&run(&mut st, JournalMsg::Tab(JournalTab::Lost))).len(), 1, "found when it shows");
+    let _ = std::fs::remove_dir_all(&dir);
+}

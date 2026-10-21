@@ -87,18 +87,26 @@ fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
     let lost = view.lost.get_or_insert_with(LostView::default);
     lost.generation = generation;
     lost.loading = true;
+    lost.stale = false;
     fx.push(Effect::Journal(JournalEffect::Lost { workdir, generation }));
 }
 
 fn loaded(st: &mut AppState, generation: u64, result: Result<trellis_core::journal::LostCommits, String>, fx: &mut Vec<Effect>) {
-    let Some(lost) = lost_mut(st).filter(|l| l.generation == generation) else { return };
+    let Some(view) = st.journal.as_mut() else { return };
+    let showing = view.tab == JournalTab::Lost;
+    let Some(lost) = view.lost.as_mut().filter(|l| l.generation == generation) else { return };
     lost.loading = false;
-    lost.stale = false;
     lost.result = Some(result);
+    // Refs changed while `git fsck` ran, so this result may already be out of date: find them
+    // again while the tab shows, else `stale` stays set for when it does.
+    let again = lost.stale && showing;
     // The selection survives a reload while its commit is still lost; its history is read again.
     match lost.selected.take() {
         Some(oid) if lost.commit(oid).is_some() => select(st, oid, fx),
         _ => lost.preview = None,
+    }
+    if again {
+        load(st, fx);
     }
 }
 
@@ -142,11 +150,17 @@ pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// On a tab's return: asks again for a load or history that was in flight when it was parked.
+/// A load is asked for only while the Lost tab shows; on the States tab it is marked stale.
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(lost) = st.journal.as_ref().and_then(|v| v.lost.as_ref()) else { return };
+    let Some(view) = st.journal.as_mut() else { return };
+    let showing = view.tab == JournalTab::Lost;
+    let Some(lost) = view.lost.as_mut() else { return };
     let pending = lost.preview.as_ref().filter(|p| p.result.is_none()).map(|p| p.oid);
-    if lost.loading {
+    if lost.loading && showing {
         load(st, fx);
+    } else if lost.loading {
+        lost.loading = false;
+        lost.stale = true;
     } else if let Some(oid) = pending {
         select(st, oid, fx);
     }

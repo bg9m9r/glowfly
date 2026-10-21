@@ -26,7 +26,7 @@ pub struct LostView {
     /// The load in flight or last asked for (`AppState::journal_gen`).
     pub generation: u64,
     pub loading: bool,
-    /// A refresh happened while the tab was hidden: load again when it shows.
+    /// A refresh happened while the tab was hidden or a load ran: load again when it shows.
     pub stale: bool,
     /// The last load's result; `None` until the first arrives.
     pub result: Option<Result<LostCommits, String>>,
