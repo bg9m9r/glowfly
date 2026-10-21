@@ -59,8 +59,10 @@ pub(super) fn push(
 /// stack's pull requests that landed in the active tab starts them once the refresh lands.
 fn pushed(st: &mut AppState, result: Result<StackPush, String>, job: StackPushJob, now: Instant, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
-    let here = match (st.job.as_ref().and_then(|j| j.workdir.clone()), st.workdir()) {
-        (Some(a), Some(b)) => same_spelling(&a, &b),
+    // The user may have switched tabs while the push ran: its lines go to the pushed repo's tab.
+    let repo = st.job.as_ref().and_then(|j| j.workdir.clone());
+    let here = match (&repo, st.workdir()) {
+        (Some(a), Some(b)) => same_spelling(a, &b),
         _ => false,
     };
     let ok = match result {
@@ -78,7 +80,7 @@ fn pushed(st: &mut AppState, result: Result<StackPush, String>, job: StackPushJo
             super::ops::finish_job(st, ok, run.output.clone(), Some(headline), None, now, fx);
             for l in &run.layers {
                 let landed = matches!(l.outcome, LayerOutcome::Pushed { .. } | LayerOutcome::UpToDate);
-                st.log(landed, layer_line(t, l));
+                st.log_in(repo.as_deref(), landed, layer_line(t, l));
             }
             ok
         }
@@ -88,7 +90,7 @@ fn pushed(st: &mut AppState, result: Result<StackPush, String>, job: StackPushJo
         Some(fs) if ok && here => fs.stack_prs = Some(StackPrs::AfterPush(branch)),
         _ => {
             let remote = job.targets.first().map(|t| t.remote.clone()).unwrap_or_default();
-            st.log(false, t.trf("stack.prs.not_pushed", &[("remote", &remote)]));
+            st.log_in(repo.as_deref(), false, t.trf("stack.prs.not_pushed", &[("remote", &remote)]));
         }
     }
 }

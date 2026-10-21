@@ -187,3 +187,21 @@ fn refusals_start_nothing() {
     no_effect(&mut st, push_stack("mid"), NO_REMOTES);
     cleanup(&dir, &bare);
 }
+
+#[test]
+fn layer_lines_go_to_the_pushed_repos_tab_after_a_tab_switch() {
+    let (mut st, dir, bare) = stacked("stack-push-tab-switch");
+    st.log.clear();
+    let fx = update(&mut st, push_stack("mid"), Instant::now());
+    // Another repository opens in a new, active tab while the push runs.
+    let other = super::tests::scratch_repo("stack-push-tab-switch-other");
+    drive(&mut st, Msg::Repo(RepoMsg::Open(other.clone())));
+    assert!(st.tabs.len() == 2 && st.active_tab == 1);
+    finish(&mut st, fx);
+    let line = "low: pushed as a new branch, tracking origin/low";
+    assert!(!logged(&st, line), "the active tab's log: {:?}", st.log);
+    assert!(st.tabs[0].log.iter().any(|l| l.text == line), "{:?}", st.tabs[0].log);
+    assert_eq!(bare_tip(&bare, "top"), tip(&dir, "top"));
+    cleanup(&dir, &bare);
+    let _ = std::fs::remove_dir_all(&other);
+}
