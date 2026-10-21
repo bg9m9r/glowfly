@@ -18,6 +18,8 @@ pub enum FolderPurpose {
     LocateLinkedRepo,
     /// The Find repositories dialog's Add folder….
     ProjectFolder,
+    /// Preferences > Profile's Add folder… for this profile's folder rules.
+    ProfileFolder(trellis_core::settings::ProfileId),
 }
 
 /// What a file picker was opened for.

@@ -18,6 +18,7 @@ mod keyboard_row;
 mod language;
 mod lfs;
 mod links;
+mod profile_rules;
 mod profile_setup;
 mod profiles;
 mod save_bar;
@@ -88,6 +89,14 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         last_checked: st.settings.updates.last_checked.map(|t| st.settings.format_time(t, st.view.now, st.view.utc_offset)),
     };
     let switching = st.profile_switch;
+    // Field by field, beside the `&mut` borrows of the settings and Preferences below.
+    let here = st.snap.as_ref().map(|s| profile_rules::RepoHere {
+        name: &s.name,
+        git_dir: &s.git_dir,
+        common: &s.common.dir,
+        identity: st.identities.get(&s.git_dir),
+        healed: st.includes.healed.contains(&s.git_dir),
+    });
     let menu_bar_row = !st.view.chrome.drawn();
     let git_state = &st.git;
     let settings = &mut st.settings;
@@ -149,8 +158,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     _ => {
                         let Some(git) = prefs.git.as_mut() else { return };
                         match page {
-                            PrefPage::Profile => profiles::profile_page(ui, &*settings, &mut prefs.profiles, git, switching, msgs),
-                            PrefPage::RepoIdentity => git::identity_page(ui, git),
+                            PrefPage::Profile => profiles::profile_page(ui, &*settings, &mut prefs.profiles, git, switching, here, msgs),
+                            PrefPage::RepoIdentity => git::identity_page(ui, git, here.and_then(|h| h.identity), settings),
                             _ => git::hooks_page(ui, git, msgs),
                         }
                     }

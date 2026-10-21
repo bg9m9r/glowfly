@@ -1,12 +1,16 @@
 //! Messages and effects of named identity profiles: Preferences > Profile and switching from
 //! there or the palette (state/profiles.rs, update/profiles.rs, runner/profiles.rs,
-//! ui/prefs/profiles.rs).
+//! ui/prefs/profiles.rs), and their folder rules with the open repository's identity
+//! (state/profile_rules.rs, state/repo_identity.rs, update/profile_rules.rs,
+//! ui/prefs/profile_rules.rs).
 
 use crate::msg::Inactive;
 use crate::state::prefs::GitConfigValues;
 use std::path::PathBuf;
 use trellis_core::identity::Identity;
-use trellis_core::settings::ProfileId;
+use trellis_core::profile_includes::IncludePlan;
+use trellis_core::repo_identity::RepoIdentity;
+use trellis_core::settings::{FolderRule, ProfileId};
 
 // `Applied` carries the config read back, as `PrefsMsg::GitConfigLoaded` does; each `Msg` is
 // that size anyway, so boxing it would only add an allocation.
@@ -34,6 +38,26 @@ pub enum ProfileMsg {
     Applied { id: ProfileId, result: Result<GitConfigValues, String> },
     /// The current profile's identity, edited while a switch ran, was written afterwards.
     Rewritten { id: ProfileId, result: Result<GitConfigValues, String> },
+    // ---- folder rules, from the page
+    /// Add folder…: pick a folder for this profile.
+    AddFolder(ProfileId),
+    /// Use for this repository: a rule for the open repository's common git dir.
+    AddThisRepo(ProfileId),
+    /// A rule's Remove (its `path` as saved).
+    RemoveFolder { id: ProfileId, path: String },
+    /// Use <profile> here: ask before removing the repository's own identity.
+    AskUseHere(ProfileId),
+    /// Accepting that confirmation, for the repository whose git dir is `git_dir`.
+    UseHere { id: ProfileId, git_dir: PathBuf },
+    // ---- folder rules, from the runner
+    /// A picked folder checked on disk: its rule, or why it can't have one.
+    FolderChecked { id: ProfileId, result: Result<FolderRule, String> },
+    /// The include files and global entries were written (or not).
+    IncludesSynced(Result<(), String>),
+    /// The effective identity of the repository whose git dir is `git_dir`.
+    IdentityRead { git_dir: PathBuf, result: Result<RepoIdentity, String> },
+    /// Its own identity was removed, then read again.
+    LocalCleared { git_dir: PathBuf, result: Result<RepoIdentity, String> },
 }
 
 /// One of a profile's identity fields on the page.
@@ -68,7 +92,17 @@ impl ProfileMsg {
             | Self::Delete(_)
             | Self::Switch(_)
             | Self::Applied { .. }
-            | Self::Rewritten { .. } => None,
+            | Self::Rewritten { .. }
+            | Self::AddFolder(_)
+            | Self::AddThisRepo(_)
+            | Self::RemoveFolder { .. }
+            | Self::AskUseHere(_)
+            | Self::UseHere { .. }
+            | Self::FolderChecked { .. }
+            | Self::IncludesSynced(_)
+            // Keyed by git dir, never scoped: stored for whichever tab shows that repository.
+            | Self::IdentityRead { .. }
+            | Self::LocalCleared { .. } => None,
         }
     }
 }
@@ -80,6 +114,15 @@ pub enum ProfileEffect {
     /// Write the current profile's `identity` again (edited during a switch), then read the
     /// config back.
     Rewrite { cwd: PathBuf, has_repo: bool, id: ProfileId, identity: Identity },
+    /// Check a picked folder (or the open repository's common git dir) for a rule.
+    CheckFolder { id: ProfileId, path: PathBuf, repository: bool },
+    /// Write the include files and, with `place`, put the entries at the end of the global
+    /// config.
+    SyncIncludes { cwd: PathBuf, plan: IncludePlan, place: bool },
+    /// Read the repository's effective identity and its origin from git.
+    ReadIdentity { workdir: PathBuf, git_dir: PathBuf, rules: Vec<(ProfileId, FolderRule)> },
+    /// Remove the repository's own user.name and user.email, then read the identity again.
+    ClearLocalIdentity { workdir: PathBuf, git_dir: PathBuf, rules: Vec<(ProfileId, FolderRule)> },
 }
 
 impl ProfileEffect {
@@ -87,6 +130,10 @@ impl ProfileEffect {
         match self {
             ProfileEffect::Apply { .. } => "apply-profile",
             ProfileEffect::Rewrite { .. } => "rewrite-profile",
+            ProfileEffect::CheckFolder { .. } => "check-profile-folder",
+            ProfileEffect::SyncIncludes { .. } => "sync-profile-includes",
+            ProfileEffect::ReadIdentity { .. } => "read-repo-identity",
+            ProfileEffect::ClearLocalIdentity { .. } => "clear-local-identity",
         }
     }
 }

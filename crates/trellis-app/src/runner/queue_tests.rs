@@ -166,6 +166,18 @@ fn which_effects_queue() {
     let identity = trellis_core::identity::Identity::default();
     let apply = crate::profile::ProfileEffect::Apply { cwd: w.clone(), has_repo: true, id: trellis_core::settings::ProfileId(1), identity };
     assert_eq!(repo_of(&Effect::Profile(apply)), None);
+    // Folder rules and a repository's identity never wait behind its jobs.
+    let id = trellis_core::settings::ProfileId(1);
+    let plan = trellis_core::profile_includes::IncludePlan { files: Vec::new(), entries: Vec::new() };
+    let (workdir, git_dir) = (w.clone(), w.join(".git"));
+    for e in [
+        crate::profile::ProfileEffect::SyncIncludes { cwd: w.clone(), plan, place: true },
+        crate::profile::ProfileEffect::ReadIdentity { workdir: workdir.clone(), git_dir: git_dir.clone(), rules: Vec::new() },
+        crate::profile::ProfileEffect::ClearLocalIdentity { workdir, git_dir, rules: Vec::new() },
+        crate::profile::ProfileEffect::CheckFolder { id, path: w.clone(), repository: true },
+    ] {
+        assert_eq!(repo_of(&Effect::Profile(e)), None);
+    }
     // So does the welcome's identity step.
     let write = crate::onboarding::OnboardingEffect::WriteIdentity { cwd: w.clone(), identity: Default::default() };
     assert_eq!(repo_of(&Effect::Onboarding(write)), None);

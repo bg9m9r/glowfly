@@ -5,19 +5,21 @@ use super::{help, row, text_field};
 use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::prefs::GitConfigValues;
+use crate::state::repo_identity::inherit_hints;
 use crate::ui::widgets::buttons;
 use eframe::egui::Ui;
+use trellis_core::repo_identity::RepoIdentity;
+use trellis_core::settings::Settings;
 
-pub fn identity_page(ui: &mut Ui, git: &mut GitConfigValues) {
-    let global_name = git.user_name.clone();
-    let global_email = git.user_email.clone();
+/// `inherited`: the repository's identity as git last read it, so the hints name a profile's
+/// folder rule when one applies.
+pub fn identity_page(ui: &mut Ui, git: &mut GitConfigValues, inherited: Option<&RepoIdentity>, settings: &Settings) {
+    let (name_hint, email_hint) = inherit_hints(inherited, settings, &git.user_name, &git.user_email);
     row(ui, "Name", |ui| {
-        let hint = if global_name.is_empty() { "not set".to_owned() } else { format!("inherits {global_name}") };
-        text_field(ui, &mut git.repo_name, &hint);
+        text_field(ui, &mut git.repo_name, &name_hint);
     });
     row(ui, "Email", |ui| {
-        let hint = if global_email.is_empty() { "not set".to_owned() } else { format!("inherits {global_email}") };
-        text_field(ui, &mut git.repo_email, &hint);
+        text_field(ui, &mut git.repo_email, &email_hint);
         help(ui, "Overrides your profile for this repository only (local Git config). Leave empty to use your profile.");
     });
 }

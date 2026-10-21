@@ -88,6 +88,7 @@ pub mod pick;
 pub mod pr_details;
 pub mod prefs;
 pub mod prefs_save;
+pub mod profile_rules;
 pub mod profiles;
 pub mod publish;
 pub mod pull_request;
@@ -108,6 +109,7 @@ pub mod release_notes;
 pub mod remote_branch;
 pub mod remotes;
 pub mod repo_colours;
+pub mod repo_identity;
 pub mod repo_lists;
 pub mod repo_scan;
 pub mod repo_sync;
@@ -512,6 +514,11 @@ pub struct AppState {
     /// The profiles (the current one or the switch's target) whose fields were edited while a
     /// switch ran: their git writes wait until it ends.
     pub profile_switch_edits: Vec<trellis_core::settings::ProfileId>,
+    /// The repositories' effective identities as git last reported them, by `Snapshot::git_dir`
+    /// as spelled (global: kept across tabs; state/repo_identity.rs).
+    pub identities: HashMap<PathBuf, trellis_core::repo_identity::RepoIdentity>,
+    /// Writing the profiles' include files and global entries (global).
+    pub includes: repo_identity::IncludeSync,
     /// Repository trust prompts asked and repositories just created, this session.
     pub trust: trust::TrustSession,
     /// The commands from the commands.toml files (custom_commands.rs).
@@ -616,6 +623,8 @@ impl AppState {
             deep_link: Default::default(),
             profile_switch: None,
             profile_switch_edits: Vec::new(),
+            identities: HashMap::new(),
+            includes: Default::default(),
             trust: Default::default(),
             custom_commands: Default::default(),
             onboarding: Default::default(),

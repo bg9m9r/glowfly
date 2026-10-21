@@ -2,7 +2,8 @@
 //! step with git config while Preferences > Profile is open, adding, renaming, editing and
 //! deleting (asking first) profiles, and switching, which writes the profile's identity to the
 //! global git config in the background and, once that worked, swaps in its accounts and
-//! preferences (profile_setup.rs). Its effects are unscoped: git config is global.
+//! preferences (profile_setup.rs). Folder rules and the open repository's identity are in
+//! profile_rules.rs. Its effects are unscoped: git config is global.
 
 use super::prefs::save_settings;
 use crate::effect::Effect;
@@ -29,6 +30,7 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
             let Some(p) = st.prefs.as_mut() else { return };
             p.profiles.fill(&st.settings, Some(id));
             p.profiles.renaming = None;
+            p.profiles.rules_error = None;
         }
         ProfileMsg::Add { name, copy_current, copy_accounts } => {
             let identity =
@@ -73,8 +75,9 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
             if st.settings.active_profile == Some(id) || st.profile_switch == Some(id) {
                 return;
             }
-            let Some(name) = st.settings.profile(id).map(|p| p.name.clone()) else { return };
-            st.modal = Some(Modal::danger(DELETE_TITLE, delete_body(&name), DELETE_BUTTON, Msg::Profile(ProfileMsg::Delete(id))));
+            let Some((name, rules)) = st.settings.profile(id).map(|p| (p.name.clone(), p.folders.len())) else { return };
+            let then = Msg::Profile(ProfileMsg::Delete(id));
+            st.modal = Some(Modal::danger(DELETE_TITLE, delete_body(&name, rules), DELETE_BUTTON, then));
         }
         ProfileMsg::Delete(id) => {
             // The button is disabled on the switch's target; a confirmation can't outlive that.
@@ -84,6 +87,9 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
             match st.settings.delete_profile(id) {
                 Ok(removed) => {
                     fx.push(save_settings(st));
+                    if !removed.folders.is_empty() {
+                        super::profile_rules::request_sync(st, true, fx);
+                    }
                     super::profile_setup::forget_tokens(st, removed.connections.into_iter().flatten().map(|c| c.account), fx);
                     if let Some(p) = st.prefs.as_mut() {
                         if p.profiles.renaming.as_ref().is_some_and(|f| f.id == id) {
@@ -109,6 +115,15 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
         }
         ProfileMsg::Applied { id, result } => applied(st, id, result, now, fx),
         ProfileMsg::Rewritten { id, result } => rewritten(st, id, result, now, fx),
+        ProfileMsg::AddFolder(id) => super::profile_rules::add_folder(st, id, fx),
+        ProfileMsg::AddThisRepo(id) => super::profile_rules::add_this_repo(st, id, fx),
+        ProfileMsg::RemoveFolder { id, path } => super::profile_rules::remove_folder(st, id, &path, fx),
+        ProfileMsg::AskUseHere(id) => super::profile_rules::ask_use_here(st, id),
+        ProfileMsg::UseHere { id: _, git_dir } => super::profile_rules::use_here(st, git_dir, fx),
+        ProfileMsg::FolderChecked { id, result } => super::profile_rules::folder_checked(st, id, result, fx),
+        ProfileMsg::IncludesSynced(result) => super::profile_rules::synced(st, result, now, fx),
+        ProfileMsg::IdentityRead { git_dir, result } => super::profile_rules::identity_read(st, git_dir, result, fx),
+        ProfileMsg::LocalCleared { git_dir, result } => super::profile_rules::local_cleared(st, git_dir, result, now, fx),
     }
 }
 
@@ -141,6 +156,10 @@ pub(super) fn set_identity(st: &mut AppState, id: ProfileId, field: IdentityFiel
         return;
     }
     fx.push(save_settings(st));
+    // Its include file has the identity; the entries stay where they are.
+    if st.settings.profile(id).is_some_and(|p| !p.folders.is_empty()) {
+        super::profile_rules::request_sync(st, false, fx);
+    }
     if st.profile_switch.is_some() {
         if (st.settings.active_profile == Some(id) || st.profile_switch == Some(id)) && !st.profile_switch_edits.contains(&id) {
             st.profile_switch_edits.push(id);
@@ -192,6 +211,7 @@ fn applied(
                     fx.push(save_settings(st));
                     super::profile_setup::switched(st, swap, now, fx);
                     st.toast(true, switched(name), now);
+                    super::profile_rules::want_identity(st, fx);
                 }
                 None => st.log(false, GONE_AFTER_SWITCH),
             }
@@ -246,7 +266,11 @@ fn rewritten(
 fn finish_switch(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
     st.profile_switch = None;
     let edits = std::mem::take(&mut st.profile_switch_edits);
-    let Some(current) = st.settings.active_profile().filter(|p| edits.contains(&p.id)) else { return false };
+    let Some(current) = st.settings.active_profile().filter(|p| edits.contains(&p.id)) else {
+        // A folder-rule sync asked for during the switch can write the config now.
+        super::profile_rules::run_deferred(st, fx);
+        return false;
+    };
     let (id, identity) = (current.id, current.identity());
     st.profile_switch = Some(id);
     fx.push(Effect::Profile(ProfileEffect::Rewrite { cwd: st.any_dir(), has_repo: st.snap.is_some(), id, identity }));

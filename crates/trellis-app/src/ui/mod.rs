@@ -354,6 +354,8 @@ mod snapshot_tests_prefs_save;
 #[cfg(test)]
 mod snapshot_tests_prefs_terminal;
 #[cfg(test)]
+mod snapshot_tests_profile_rules;
+#[cfg(test)]
 mod snapshot_tests_profiles;
 #[cfg(test)]
 mod snapshot_tests_pull_request;

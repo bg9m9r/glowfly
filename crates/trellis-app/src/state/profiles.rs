@@ -40,10 +40,18 @@ pub const PREFS_SAVED_HELP: &str =
     "General, UI customization and Diff viewer settings are saved with this profile; they come back when you switch to it.";
 pub const PREFS_INHERIT_HELP: &str = "None saved yet: switching to this profile keeps the current preferences.";
 
-pub fn delete_body(name: &str) -> String {
-    format!(
-        "Delete the profile \"{name}\"? Its saved accounts and preferences go with it. Your Git config is not changed. This can't be undone."
-    )
+pub fn delete_body(name: &str, rules: usize) -> String {
+    match rules {
+        0 => format!(
+            "Delete the profile \"{name}\"? Its saved accounts and preferences go with it. Your Git config is not changed. This can't be undone."
+        ),
+        n => {
+            let rules = if n == 1 { "Its folder rule is".to_owned() } else { format!("Its {n} folder rules are") };
+            format!(
+                "Delete the profile \"{name}\"? Its saved accounts and preferences go with it. {rules} removed from your Git config. This can't be undone."
+            )
+        }
+    }
 }
 
 /// The Integrations page's line over the connection card.
@@ -133,6 +141,8 @@ pub struct ProfilesPage {
     pub signing_key: String,
     pub renaming: Option<RenameForm>,
     pub adding: Option<AddForm>,
+    /// Why the last folder rule wasn't added (state/profile_rules.rs).
+    pub rules_error: Option<String>,
 }
 
 /// A row's inline rename field.

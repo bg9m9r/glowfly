@@ -59,6 +59,8 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             }
             // The commit limit or branch visibility may have changed.
             super::repo::refresh(st, fx);
+            // So may the profiles' folder rules or the repository's identity.
+            super::profile_rules::want_identity(st, fx);
         }
         PrefsMsg::SelectIntegration(p) => select_integration(st, p),
         PrefsMsg::GitConfig { global, key, value } => {
@@ -200,6 +202,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 FolderPurpose::WorktreeParent => "Create the worktree in…",
                 FolderPurpose::LocateLinkedRepo => "Locate the linked repository",
                 FolderPurpose::ProjectFolder => crate::state::repo_scan::PICK_TITLE,
+                FolderPurpose::ProfileFolder(_) => crate::state::profile_rules::PICK_FOLDER_TITLE,
             };
             fx.push(Effect::PickFolder { title: title.into(), purpose });
         }
@@ -208,6 +211,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             FolderPurpose::WorktreeParent => super::worktrees::parent_picked(st, path),
             FolderPurpose::LocateLinkedRepo => super::deep_link::located(st, path, fx),
             FolderPurpose::ProjectFolder => super::repo_scan::folder_picked(st, path, fx),
+            FolderPurpose::ProfileFolder(id) => super::profile_rules::folder_picked(st, id, path, fx),
             FolderPurpose::InitRepo => {
                 if let Some(Modal::Init(form)) = st.modal.as_mut() {
                     form.folder = trellis_core::native_path::shown(&path);

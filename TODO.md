@@ -413,7 +413,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | Page | Trellis | Gap |
 |---|---|---|
 | General | ✔ General | Missing: delete `.orig` files after merge, show all commits, path to `sh.exe`, extended logging, conflict detection |
-| Profiles | ✔ Profile (identity, connected accounts and app preferences per profile, switching) | Follow-ups in Later > Profiles |
+| Profiles | ✔ Profile (identity, connected accounts and app preferences per profile, switching) | Follow-ups in Ideas > Profiles |
 | SSH | ✔ SSH page (key cards with their marks, a Generate SSH key dialog, Use existing for keys outside ~/.ssh, Which key dropdowns for all repositories and the open one, the local agent with a status pill, add a key to a hosting service) | Follow-ups in Later > SSH key management |
 | Integrations | ✔ 10 services | PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
@@ -1084,10 +1084,6 @@ blockers and major findings are Milestone 1 items.
 
 - Keys outside ~/.ssh (IdentityFile entries in ~/.ssh/config, agent-only keys)
 - On Windows, offer to point git at Windows' OpenSSH (core.sshCommand or GIT_SSH) so it reads keys from the agent service
-
-### Profiles
-
-- Automatic per-repository or per-folder profiles (includeIf / local identity applied on open)
 
 ### Notifications
 
@@ -2266,6 +2262,17 @@ here, under the item they grew from.
 - A "Saved with profile X" caption on the General, UI Customization and Editor pages
 - Copy or reset one profile's preferences from another profile on the Profile page
 - Refresh an open Clone dialog's account list when the profile switches
+- Show a profile's folder-rule count on its row in the profile list (e.g. "Ada <a@b> · 2 folders")
+- Offer to unset a repository's own user.signingkey too when using a profile there, and name it in the confirmation
+- Clean up Trellis's includeIf entries and include files from the global config (a "Remove all folder rules" action, or on uninstall)
+- Handle an includeIf section the user shares with a Trellis entry (extra keys in the same subsection) instead of leaving it in place
+- Rules on other conditions git offers (hasconfig:remote.*.url for a hosting-service account, onbranch:)
+- Show which profile applies in the tab bar or the repository list, not only in the commit box and the Profile page
+- Warn when GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL or GIT_COMMITTER_* in the environment override the identity a rule gives
+- Re-read the effective identity when the repository's .git/config changes on disk (watcher), not only on open and focus
+- A "Pick a profile for this folder" prompt when cloning or initializing into a folder no rule covers
+- Per-rule signing settings (gpg.format, commit.gpgsign) written into the profile's include file
+- Remove a repository's own identity from config.worktree too (extensions.worktreeConfig) when using a profile there
 
 ### Local patches
 

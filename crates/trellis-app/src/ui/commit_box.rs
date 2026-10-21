@@ -1,4 +1,5 @@
-//! The commit box under the WIP file lists: summary and description, the Amend and "Push after
+//! The commit box under the WIP file lists: the title row with the author identity git gives
+//! (state/repo_identity.rs), summary and description, the Amend and "Push after
 //! committing" options, the commit button with why it is disabled centred under it (that line's
 //! height is always kept, so the box doesn't change height), the button's menu caret (one split
 //! button) opening a menu with "Skip hooks" (the caret tinted with the warning tone while hooks
@@ -16,9 +17,10 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::CommitDraft;
 use crate::state::commit::{commit_blocked, pushes_after};
+use crate::state::repo_identity::commit_identity_line;
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
-use crate::ui::widgets::{buttons, reason};
+use crate::ui::widgets::{buttons, reason, truncate_label};
 use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText};
 use trellis_core::i18n::Lang;
 
@@ -41,11 +43,21 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     let t = st.settings.lang();
     ui.add_space(6.0);
     ui.separator();
+    let identity = st.identities.get(&snap.git_dir).map(|id| commit_identity_line(t, id, &st.settings));
     ui.horizontal(|ui| {
         ui.label(type_scale::section_text(ui, t.tr("commit.title")));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if controls::checkbox(ui, &mut st.draft.amend, t.tr("commit.amend")).changed() && st.draft.amend {
                 msgs.push(Msg::Commit(CommitMsg::PrefillAmend));
+            }
+            // Between the title and Amend, cut to the room left, smaller than both so the row
+            // keeps its height.
+            if let Some((line, warn)) = identity {
+                ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                    let tone = if warn { color::warn() } else { color::faint() };
+                    let max_w = ui.available_width();
+                    truncate_label(ui, RichText::new(line).size(type_scale::SMALL).color(tone), max_w);
+                });
             }
         });
     });

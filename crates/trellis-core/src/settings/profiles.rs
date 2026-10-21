@@ -1,8 +1,8 @@
 //! Named profiles (Preferences > Profile): each keeps an author identity, and the current one's
 //! identity is the global git config's; other profiles also keep the connected accounts and app
-//! preferences saved when they were last current (`profiles_prefs`). Checks for names, seeding
-//! the first profile from git, keeping the current one in step with git, and adding, renaming
-//! and deleting.
+//! preferences saved when they were last current (`profiles_prefs`), and its folder rules
+//! (`profile_rules`). Checks for names, seeding the first profile from git, keeping the current
+//! one in step with git, and adding, renaming and deleting.
 
 use super::{ProfilePrefs, Settings};
 use crate::forge::Connection;
@@ -31,6 +31,23 @@ pub struct Profile {
     /// The app preferences saved while another profile is current, with the same None rule.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prefs: Option<ProfilePrefs>,
+    /// The folders (and repositories) whose repositories commit with this profile's identity,
+    /// through includeIf.gitdir entries in the global config (`profile_includes`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub folders: Vec<FolderRule>,
+}
+
+/// One folder rule of a profile: repositories whose git dir is in `path` commit as the profile.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FolderRule {
+    /// `paths::encode`d, resolved on disk when added; for `repository`, the common git dir.
+    pub path: String,
+    /// Added with Use for this repository: `path` is the repository's common git dir.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub repository: bool,
+    /// The folder's file system folds case (probed when added): written as gitdir/i.
+    pub ignore_case: bool,
 }
 
 impl Profile {

@@ -10,6 +10,7 @@ use crate::effect::{CloneEffect, Effect};
 use crate::git_env::GitEnvEffect;
 use crate::msg::Msg;
 use crate::patch::PatchEffect;
+use crate::profile::ProfileEffect;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
@@ -138,6 +139,8 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::AnswerPrompt { .. }
             | Effect::Partial(crate::effect::partial::PartialEffect::FetchContent(_))
             | Effect::StopGit(_)
+            // A repository's own config, read or (asked first) its identity removed.
+            | Effect::Profile(ProfileEffect::ReadIdentity { .. } | ProfileEffect::ClearLocalIdentity { .. })
             // A no-op: the log worker is never attached in a test.
             | Effect::Logs(_)
             // Handled by the shell; it never gets here.
@@ -168,7 +171,13 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::GenerateGpgKey { .. }
             | Effect::ExportPublicKey { .. }
             | Effect::Ssh(_)
-            | Effect::Profile(_)
+            // The global git config, Trellis's config folder or a picked folder.
+            | Effect::Profile(
+                ProfileEffect::Apply { .. }
+                | ProfileEffect::Rewrite { .. }
+                | ProfileEffect::CheckFolder { .. }
+                | ProfileEffect::SyncIncludes { .. },
+            )
             | Effect::Tool(_)
             // Reads the user's config folder; runs the OS shell.
             | Effect::CustomCommand(_)
@@ -263,6 +272,24 @@ mod tests {
         let sparse = CloneEffect::Sparse { parent: dir.clone(), cmd: Vec::new(), dest: dir.join("c"), folders: Vec::new() };
         assert!(runner.admit(Effect::Clone(sparse)).is_some());
         assert_eq!(runner.dropped(), ["pick-patch-save", "pick-patch", "list-my-repos"]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn repository_identity_runs_and_folder_rules_are_dropped() {
+        use trellis_core::profile_includes::IncludePlan;
+        let dir = folder("profiles");
+        let (tx, _rx) = mpsc::channel();
+        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        let (workdir, git_dir) = (dir.clone(), dir.join(".git"));
+        let read = ProfileEffect::ReadIdentity { workdir: workdir.clone(), git_dir: git_dir.clone(), rules: Vec::new() };
+        assert!(runner.admit(Effect::Profile(read)).is_some());
+        assert!(runner.admit(Effect::Profile(ProfileEffect::ClearLocalIdentity { workdir, git_dir, rules: Vec::new() })).is_some());
+        let id = trellis_core::settings::ProfileId(1);
+        let plan = IncludePlan { files: Vec::new(), entries: Vec::new() };
+        assert!(runner.admit(Effect::Profile(ProfileEffect::SyncIncludes { cwd: dir.clone(), plan, place: true })).is_none());
+        assert!(runner.admit(Effect::Profile(ProfileEffect::CheckFolder { id, path: dir.clone(), repository: false })).is_none());
+        assert_eq!(runner.dropped(), ["sync-profile-includes", "check-profile-folder"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

@@ -301,6 +301,16 @@ second one next to it.
     is terminated, since killing git.exe alone leaves its remote helpers and ssh running. Never
     `Child::kill` a git that may have started children. After a stop, remove only the lock and
     temporary files the run made (`stop_cleanup`), never ones that were there before it.
+13. **Profile folder rules are `includeIf.gitdir` entries built only by
+    `profile_includes::gitdir_pattern`**: forward slashes on Windows (a UNC share as
+    `//server/share/`, and only there: on Unix a backslash is a name character and is escaped),
+    the glob characters `* ? [ ]` escaped, a trailing `/` so the folder and everything in it
+    match, and `gitdir/i` chosen by probing the folder in the other case (`check_folder`), never
+    by OS. Folders are resolved (`paths::resolve`) and must be valid text without control
+    characters. Linked worktrees and submodules match by their real git dir
+    (`<main>/.git/worktrees/<name>`, `<super>/.git/modules/<name>`), so Use for this repository
+    adds the common git dir. Which identity applies, and from where, comes from git
+    (`repo_identity::read`, `--show-origin`), not from Trellis's own matching.
 
 ### Key labels
 

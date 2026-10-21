@@ -29,6 +29,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                 refresh(st, fx);
             }
             super::recent::check_folders(st, fx);
+            super::profile_rules::want_identity(st, fx);
         }
         RepoMsg::RepoLoaded { generation, kind, result } => {
             if generation != st.load_gen {
@@ -353,6 +354,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     if kind == LoadKind::Open {
         fx.push(super::tabs::opened(st));
         super::conflict_files::want(st, fx);
+        super::profile_rules::want_identity(st, fx);
     } else {
         super::conflict::status_changed(st, now, fx);
     }

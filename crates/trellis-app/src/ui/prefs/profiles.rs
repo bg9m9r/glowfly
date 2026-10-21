@@ -1,8 +1,10 @@
-//! Preferences > Profile: the profile list (current marker, switch, inline rename, delete), the
-//! New profile form, and the selected profile's identity fields (saved by the Save / Revert
-//! bar), then what else switches with it (profile_setup.rs). The view edits only text buffers
+//! Preferences > Profile: the open repository's identity (profile_rules.rs), the profile list
+//! (current marker, switch, inline rename, delete), the New profile form, and the selected
+//! profile's identity fields (saved by the Save / Revert bar) and folder rules
+//! (profile_rules.rs), then what else switches with it (profile_setup.rs). The view edits only text buffers
 //! and which form is open; everything else is a `Msg`.
 
+use super::profile_rules::{RepoHere, here_row, rules_rows};
 use super::{help, primary_button, row, text_field};
 use crate::msg::Msg;
 use crate::profile::ProfileMsg;
@@ -33,16 +35,24 @@ pub fn profile_page(
     page: &mut ProfilesPage,
     git: &GitConfigValues,
     switching: Option<ProfileId>,
+    here: Option<RepoHere<'_>>,
     msgs: &mut Vec<Msg>,
 ) {
+    if let Some(here) = &here {
+        here_row(ui, settings, here, list_width(ui), msgs);
+    }
     list(ui, settings, page, switching, msgs);
     add_form(ui, settings.lang(), page, msgs);
-    fields(ui, settings, page, git);
+    fields(ui, settings, page, git, here.as_ref(), msgs);
+}
+
+/// Wider than the field column where there is room, never past the content column.
+fn list_width(ui: &Ui) -> f32 {
+    (ui.available_width() - super::field_left(ui)).clamp(0.0, LIST_W)
 }
 
 fn list(ui: &mut Ui, settings: &Settings, page: &mut ProfilesPage, switching: Option<ProfileId>, msgs: &mut Vec<Msg>) {
-    // Wider than the field column where there is room, never past the content column.
-    let width = (ui.available_width() - super::field_left(ui)).clamp(0.0, LIST_W);
+    let width = list_width(ui);
     row(ui, LIST_LABEL, |ui| {
         ui.set_max_width(width);
         ui.spacing_mut().item_spacing.y = 4.0;
@@ -181,7 +191,14 @@ fn add_form(ui: &mut Ui, t: Lang, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) 
     }
 }
 
-fn fields(ui: &mut Ui, settings: &Settings, page: &mut ProfilesPage, git: &GitConfigValues) {
+fn fields(
+    ui: &mut Ui,
+    settings: &Settings,
+    page: &mut ProfilesPage,
+    git: &GitConfigValues,
+    here: Option<&RepoHere<'_>>,
+    msgs: &mut Vec<Msg>,
+) {
     let Some(p) = page.selected.and_then(|id| settings.profile(id)) else { return };
     let current = settings.active_profile == Some(p.id);
     row(ui, "", |ui| {
@@ -199,5 +216,6 @@ fn fields(ui: &mut Ui, settings: &Settings, page: &mut ProfilesPage, git: &GitCo
         text_field(ui, &mut page.signing_key, &hint);
         help(ui, KEY_HELP);
     });
+    rules_rows(ui, p, page, here, list_width(ui), msgs);
     super::profile_setup::setup_rows(ui, settings, p, current);
 }

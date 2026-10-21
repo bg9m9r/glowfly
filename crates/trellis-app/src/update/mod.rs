@@ -76,6 +76,7 @@ mod prefs;
 mod prefs_leave;
 mod prefs_nav;
 mod prefs_save;
+mod profile_rules;
 mod profile_setup;
 mod profiles;
 mod publish;

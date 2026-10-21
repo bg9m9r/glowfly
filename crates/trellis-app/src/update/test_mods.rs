@@ -261,6 +261,8 @@ pub(super) mod prefs_leave_profile_tests;
 pub(super) mod prefs_leave_tests;
 #[path = "prefs_save_tests.rs"]
 pub(super) mod prefs_save_tests;
+#[path = "profile_rules_tests.rs"]
+pub(super) mod profile_rules_tests;
 #[path = "profile_setup_tests.rs"]
 pub(super) mod profile_setup_tests;
 #[path = "profiles_tests.rs"]
