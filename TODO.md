@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-20 20:47 · **Installer and update checks in CI**: A new Installers workflow installs the v0.0.1 MSI and .deb, upgrades them to the current build, checks their files, shortcuts or desktop entries, registry and icons, starts the installed program (and on Linux its window under Xvfb through the desktop entry), runs `trellis --check-update` against local update feeds (`TRELLIS_UPDATE_FEED`: up to date, newer, wrong or missing checksum, changed file, relative folder) and uninstalls with nothing left; `trellis --version` and `--check-update` are new headless modes (`323cac4a`)
 - 2026-10-20 20:42 · **File history and blame**: The File view previews files: Markdown gets a Text | Preview switch (remembered, also in Preferences > Diff viewer) drawn by the shared Markdown renderer (headings, lists with task boxes, quotes, highlighted code, tables, https links), and images (PNG, JPEG, GIF, WebP, BMP) are drawn at their own size or scaled to fit over a checkerboard with their format, size and scale, while the binary diff now previews GIF, WebP and BMP too (`89d3ee1c`)
 - 2026-10-20 20:14 · **Welcome screen**: The welcome now draws in the shared dialog frame at 760 px with its band as the dialog header and the shared close button, the shared footer with Back, Skip and Continue, and Name and Email as 36 px fields in field groups with a help line each (`945fd912`)
 - 2026-10-20 19:31 · **Vivid colour**: Each colour kind gets one job: a Color submenu on the tab menu and welcome rows gives a repository one of 8 quiet hues, shown as a swatch on its tab, a 2 px line along the window's top for the active tab and a swatch in the repository lists (worktree group strips take the same hues, spread out); a coral "needs you" fill, always with the warning mark, marks conflicted files, the conflicted operation banner, the conflict chip and an undecided Untrusted chip; status colours keep to letters and counts (neutral change bars), the Branch picker shows a branch dot, toolbar groups sit on a neutral accent-tinted backing, and the status bar draws service names and errors in text (`28037ddb`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-19 22:48 · **Window chrome and toolbar**: The drawn Windows frame gains Snap Layouts on the Maximize button, the system menu on Alt+Space or a right-click on the title bar, and a Mica backdrop behind the title bar, toolbar and sidebar where the contrast check passes, with the item now ticked (`8715967b`)
 - 2026-10-19 20:36 · **Window chrome and toolbar**: On Windows Trellis draws a 44 px title bar with a menu button, the tabs, empty space that moves or maximizes the window, its own window buttons, resize edges and border (usable above dialogs, Alt tap opens the menu), macOS gets the same bar inset for the traffic lights while Linux keeps the system frame, tabs get a lifted active tab, separators and a hover shape, the toolbar's buttons sit in grouped surfaces with Repository › Branch pickers sized to their names, and the Branch icon is redrawn; Mica, Snap Layouts, Alt+Space and the contrast check remain (`f68f85cb`)
 - 2026-10-19 19:28 · **History table edges and commit details**: The history table's cells get 12 px padding and a 16 px inset at its edges with titles, dividers and the WIP total aligned, and the commit details show the title first, the author with a relative date, quiet chips that copy the SHA, select or copy a parent and copy a differing committer, the body in a readable block, and file rows with status chips and counts beside the path (`47a7160e`)
-- 2026-10-19 18:31 · **Brand colour and tinted neutrals**: The accent becomes the icon's lattice green (dark ink on Dark's primary buttons), tags turn sand, Dark and Light get tinted neutrals with darker chrome and a raised step for controls, chips and tooltips, status colours (added, removed, modified, info, progress) move off the accent with running operations in purple, the high-contrast and Sand themes move their accent to green, theme files gain raised, on_primary and warn while the old colour names still load, and docs/COLOUR.md sets out the colour families, hue bands and contrast floors (`12347f77`)
 
 ---
 
@@ -397,7 +397,7 @@ check. Its hands-on criteria (daily use, merging the release pull request) are i
 - [ ] **Input reliability**: the first click after the window gains focus was dropped while
       testing with synthetic input; fix it if the real-input tests reproduce it, else close it
       with their result
-- [ ] **Installer and update checks in CI**: install the MSI and DEB the release workflow built,
+- [x] **Installer and update checks in CI**: install the MSI and DEB the release workflow built,
       start Trellis from them, uninstall cleanly, and update an older build to the new one
       against a local release feed with checksums
 
@@ -2456,9 +2456,21 @@ here, under the item they grew from.
 - Register an AppUserModelID on the Start menu shortcut and the process, so notifications carry Trellis's name
 - Sign SHA256SUMS (minisign or GPG) and check that signature in the app before trusting the checksums
 - Azure Trusted Signing as an alternative to a PFX certificate for Windows signing
-- A CI dry run that builds the installers on pull requests touching packaging/ or the release workflow
 - A beta channel that offers pre-releases to users who opt in
 - A per-machine (all users) MSI
+
+### Installer and update checks in CI
+
+- Start the installed MSI copy's window with the smoke probe on the Windows runner once it has OpenGL 2 (Mesa llvmpipe or the Windows smoke job's setup)
+- Run the installer checks from the Release workflow (workflow_call) against the files it uploads, before SHA256SUMS is published
+- A macOS DMG check: mount the image, copy Trellis.app to a temporary Applications folder, start it, and check that the update check picks the .dmg
+- Attach to the parent console on Windows so `trellis --version` and `--check-update` print in a terminal without redirection
+- Show in Preferences > Updates when a local update feed (TRELLIS_UPDATE_FEED) is in use
+- Accept an https mirror URL in TRELLIS_UPDATE_FEED besides a local folder
+- Validate the MSI with `wix msi validate` (ICE checks) in the Installers workflow
+- Check the MSI's Options page choices (no desktop shortcut, no folder menu, no scheme) with silent installs that set DESKTOPSHORTCUT, FOLDERMENU and LINKSCHEME to empty, and that an upgrade keeps them off
+- Install the .deb through apt (`apt-get install ./file.deb`) to check dependency resolution on a minimal image
+- Test the `<file>.sha256` single-checksum fallback end to end in the feed script (it is unit-tested)
 
 ### Language
 

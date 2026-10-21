@@ -72,7 +72,7 @@ binary (package `trellis`).
 | `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |
 | `ssh_keys.rs`, `ssh_keys/` | SSH key pairs in `~/.ssh` and the ones added from elsewhere (Use existing): listing them with `ssh-keygen` fingerprints, reading a picked pair and the key names ssh tries by default (`listing.rs`), finding ssh's programs (`tools.rs`), generating Ed25519 keys with `ssh-keygen`, written under a temporary name and then moved into place (`generate.rs`), choosing the key git uses in `core.sshCommand` (`command.rs`), and finding the SSH agent and adding keys with `ssh-add` (`agent.rs`). |
 | `external_tools.rs`, `external_tools/` | External programs (Preferences > External Tools): argument templates and each tool's placeholders (`template.rs`), finding the program on PATH, starting it detached or waiting for it to exit (`run_to_exit`), the private folder for the copies diff and merge tools open (`temp.rs`: one session folder per opening, swept after 24 hours), and writing those copies for a diff or a conflict (`compare.rs`, from `repo/tool_sides.rs`). |
-| `app_update.rs`, `app_update/` | Trellis's own updates: semantic versions (`version.rs`), the release and its files with unsafe links and names dropped (`release.rs`), this platform, how this copy was installed and which file to fetch (`assets.rs`), `SHA256SUMS` files (`sums.rs`), and downloading a file into the Downloads folder only after its SHA-256 matches (`download.rs`). |
+| `app_update.rs`, `app_update/` | Trellis's own updates: semantic versions (`version.rs`), the release and its files with unsafe links and names dropped (`release.rs`), this platform, how this copy was installed and which file to fetch (`assets.rs`), `SHA256SUMS` files (`sums.rs`), downloading a file into the Downloads folder only after its SHA-256 matches (`download.rs`), where releases are read from: the hosting service or a local folder named by `TRELLIS_UPDATE_FEED` (`feed.rs`), and the headless check behind `trellis --check-update` (`check.rs`). |
 | `changelog.rs` | Release notes in release-please's Markdown (the bundled `CHANGELOG.md`, a release's body): releases, sections and styled items. |
 | `conflict_check.rs` | Predicting merge conflicts with `git merge-tree` (nothing in the working tree, index or refs changes), and choosing the branch to compare the checked-out branch with. |
 | `signature_check.rs` | Checking commit signatures through git (`%G?`), so the user's signing programs, keyrings and allowed signers file apply. |
@@ -81,7 +81,8 @@ binary (package `trellis`).
 
 | Module | Holds |
 | --- | --- |
-| `main.rs` | Starts the window, or hands a `trellis://` argument to the window already running; also runs as git's sequence editor (`--write-todo`), gpg.program wrapper (`TRELLIS_GPG_WRAPPER`) and askpass helper. |
+| `main.rs` | Starts the window, or hands a `trellis://` argument to the window already running; also runs as git's sequence editor (`--write-todo`), gpg.program wrapper (`TRELLIS_GPG_WRAPPER`) and askpass helper, and has two command-line modes for scripts (`cli_update.rs`). |
+| `cli_update.rs` | `trellis --version` and `trellis --check-update <folder>` (exit 0 downloaded, 3 up to date, 1 failed, 2 usage): the installer checks' command-line modes, run before logging, settings and the window. |
 | `logging.rs` | The tracing setup, after the helper modes exit: warnings, errors and panics to `errors.log` (rotated; debug details with extended logging, switched at runtime), `RUST_LOG` to stderr, and the panic hook. |
 | `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, `InitMsg` in `init.rs`, `FilterMsg` in `forge_filters.rs`, `IssueMsg` in `issue.rs` for the issue panel and the Create issue dialog, …, one file per few areas; the first-run welcome and the tour carry `OnboardingMsg` from `onboarding.rs`; a dialog's backdrop click, Esc or close button and the discard question carry `DialogMsg` from `dialog.rs`), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
 | `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs` with `LoadKind`, `forge.rs`, `forge_filters.rs` for PR and issue filter calls, `issue.rs` for the issue panel's and the Create issue dialog's tracker calls, `blame.rs`, `notify.rs` for desktop notifications), grouped effects of the Clone and Init dialogs, the SUBMODULES section, interactive rebase, connected accounts and the stash list (`clone.rs`, `init.rs`, `submodule.rs`, `rebase.rs`, `account.rs`, `stash.rs`), the effects the UI shell carries out (`ui.rs`), `Effect::name` (`names.rs`) and `Effect::scope` (`scope.rs`). |
@@ -116,6 +117,7 @@ binary (package `trellis`).
 | `crates/trellis-app/tests/app_icon.rs` | The app icon: draws it (`app_icon/draw.rs`) and checks every PNG in `assets/icon/` and inside `trellis.ico` and `trellis.icns` (`app_icon/containers.rs`); `UPDATE_ICONS=1` rewrites them. |
 | `crates/trellis-app/tests/snapshots/` | Approved UI images. |
 | `scripts/smoke-linux.sh` (+ `scripts/smoke/`), CI job `smoke` | Real X11 input on the release build under its own Xvfb and openbox, at scale 1 and 1.5: the first click after a focus change, typing in the commit box and committing, a context menu, a shortcut, a drag and a resize, read back through the probe file and the disk. `src/journey/probe.rs` dry-runs its labels on every OS. |
+| `.github/workflows/installers.yml`: `scripts/installer-check-windows.ps1`, `scripts/installer-check-linux.sh`, `scripts/update-feed-check.ps1` | The packaged builds on clean runners: the MSI and the .deb installed over a v0.0.1 package, their files, shortcuts or desktop entries, registry and icons checked, the program started (`--version`; on Linux also the window under its own Xvfb), update-checked against local feeds (up to date, newer, wrong or missing checksum, relative feed), and uninstalled with nothing left behind. |
 
 ### Data flow (Elm-style)
 
@@ -428,8 +430,9 @@ binary (package `trellis`).
 - **Releases and updates**: the Release workflow packages each build (`scripts/package-*`,
   `packaging/`; see `docs/RELEASING.md`) and publishes `SHA256SUMS`. In the app, `UpdateMsg::Startup`
   arms the automatic check; `update/updates.rs::tick` starts it (at most once a day, after
-  `STARTUP_DELAY`, an hour after a failure) as `UpdateEffect::Check`, which asks
-  `forge::latest_release` and reports how this copy was installed. `app_update::offer` picks the
+  `STARTUP_DELAY`, an hour after a failure) as `UpdateEffect::Check`, which asks the
+  `app_update::Feed` (`forge::latest_release`, or the folder `TRELLIS_UPDATE_FEED` names) and
+  reports how this copy was installed. `app_update::offer` picks the
   file for this platform; Download runs `app_update::download`, which writes nothing until the
   SHA-256 matches. The release notes dialog reads the `CHANGELOG.md` that `build.rs` bundled, and
   `startup_notes` opens it once per new version (waiting in `notes_pending` while another dialog

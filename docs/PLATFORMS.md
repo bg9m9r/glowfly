@@ -279,6 +279,22 @@ second one next to it.
    `LANG`); the first supported language wins, and `C`/`POSIX` first or nothing supported means
    English. Never read `env::var("LANG")` for it, and never read it again while Trellis runs. It
    is independent of the `LANGUAGE=C` that `gitcli` gives git children (rule 5).
+10. **`TRELLIS_UPDATE_FEED` replaces the release feed with a local folder** (`app_update::Feed`).
+    Unset or empty means the hosting service over https, as always. Set, it must be an absolute
+    path (`Path::is_absolute`, so `/feed` counts as relative on Windows, which needs a drive or
+    UNC prefix); a relative value is an error, never resolved against the working folder. The
+    folder holds `release.json` in the hosting service's release shape next to the files it
+    lists. Listed files are read by their checked names (`asset_name_ok`), with their size from
+    disk; a listed file that is absent or a folder is dropped. No `release.json` means no
+    release yet; a missing folder or bad JSON is a failed check. Checksums still come from the
+    folder's `SHA256SUMS` or `<file>.sha256` and are always enforced, and nothing reaches the
+    network. The variable is read on every check, by the app's checks and downloads and by
+    `trellis --check-update`.
+11. **Release builds on Windows are GUI-subsystem programs** (`windows_subsystem = "windows"`),
+    so `trellis --version` and `trellis --check-update` print only to a caller that redirects
+    their output (`Start-Process -RedirectStandardOutput … -Wait -PassThru`); a terminal shows
+    nothing. Both modes run before logging, settings and the smoke probe, and write no file of
+    their own.
 
 ### Key labels
 
@@ -427,6 +443,14 @@ making the decision a pure function and testing it for every OS on every machine
 - **Real input** is tested on Linux by the CI `smoke` job (`scripts/smoke-linux.sh`): it starts
   its own Xvfb and window manager, never the caller's display, and sends keys and clicks only
   through XTEST, at scale 1 and 1.5. Windows follows in its own TODO item.
+- **Installers** are tested by the `Installers` workflow (`.github/workflows/installers.yml`) on
+  every push and pull request: the MSI on Windows (`scripts/installer-check-windows.ps1`) and the
+  .deb on Linux (`scripts/installer-check-linux.sh`) are installed over an older package,
+  checked (files, shortcuts or desktop entries, registry, icons), started, update-checked with
+  `scripts/update-feed-check.ps1` against local feeds, and uninstalled. The install scripts
+  refuse to run outside GitHub Actions unless given `-AllowLocal` / `--allow-local`, and always
+  refuse when Trellis is already installed, so they never replace or remove a developer's own
+  copy. `update-feed-check.ps1` installs nothing and opens no window, so it runs anywhere.
 
 ## Known gaps and things only a real machine can confirm
 
@@ -467,6 +491,9 @@ Gaps that are accepted for now:
   shell that is itself a launcher with a differently named child (`wsl.exe`) can look busy; and
   on Windows the orphans of a process whose pid was reused for the shell could count.
 
+- **The installed MSI copy's window isn't started on the Windows runner:** it has only Windows'
+  software OpenGL 1.1, and the renderer needs OpenGL 2 or later. The installer check runs the
+  installed program's `--version` and `--check-update` instead; Linux starts the window.
 - **The drawn Windows frame has no DWM shadow or rounded corners.**
 - **The system menu is drawn by Windows in its light style** under a dark theme.
 - **Dark's sidebar and toolbar stay opaque on Mica:** the side surface's `faint` text can't reach

@@ -97,3 +97,47 @@ own program; Install opens the downloaded installer.
 
 Turn the check off in Preferences > General > Updates ("Check for updates once a day"). The
 release notes dialog keeps working without it.
+
+## Checking the installers
+
+The `Installers` workflow (`.github/workflows/installers.yml`) runs on every push and pull
+request (except ones that only touch `docs/`, `TODO.md` or `ROADMAP.md`). It builds the release
+program, packages it twice with the scripts above (once as `v0.0.1`, once as the current
+version), and on a clean runner:
+
+- **Windows** (`scripts/installer-check-windows.ps1`): installs the v0.0.1 MSI silently
+  (`msiexec /i … /qn`), upgrades it to the current one, checks that exactly one Trellis at the
+  current version is installed, its files, both shortcuts, the `HKEY_CURRENT_USER` keys, runs the
+  installed program through each shortcut (`--version`) and through the update-feed check, then
+  uninstalls it (`msiexec /x`) and checks that nothing is left.
+- **Linux** (`scripts/installer-check-linux.sh`): the same with `dpkg -i` and
+  `dpkg --purge`, plus `desktop-file-validate` on the installed entries and the window started
+  from `trellis.desktop`'s `Exec` under its own Xvfb, seen drawing through the smoke probe.
+
+MSI logs, every run's output and the probe are uploaded when a job fails. Both scripts refuse
+to run outside GitHub Actions unless given `-AllowLocal` / `--allow-local`, and always refuse
+when Trellis is already installed.
+
+The update-feed check (`scripts/update-feed-check.ps1`) points `TRELLIS_UPDATE_FEED` at local
+folders shaped like a release:
+
+```
+feed/
+  release.json                                  {"tag_name": "v0.1.1", "assets": [{"name": …}, …]}
+  trellis-v0.1.1-x86_64-pc-windows-msvc.msi     the current package, renamed to the feed's tag
+  trellis-v0.1.1-x86_64-pc-windows-msvc.zip
+  SHA256SUMS                                    "<sha256>  <name>" lines, LF, no BOM
+```
+
+and runs `trellis --check-update <folder>` for each case: the same version (exit 3), an empty
+folder (3), a newer release (0, the installer or archive by install kind, byte for byte), a wrong
+or missing checksum and a file changed after `SHA256SUMS` was written (1, nothing saved), and a
+relative `TRELLIS_UPDATE_FEED` (2). It installs nothing and opens no window, so it runs locally
+against a debug build, which counts as portable, with stand-in package files of any bytes:
+
+```
+cargo build -p trellis
+pwsh -NoProfile -File scripts/update-feed-check.ps1 -Trellis target/debug/trellis.exe -Version 0.1.0 `
+  -Installer <dir>/trellis-v0.1.0-x86_64-pc-windows-msvc.msi `
+  -Archive <dir>/trellis-v0.1.0-x86_64-pc-windows-msvc.zip -Expect archive -Out <work folder>
+```
