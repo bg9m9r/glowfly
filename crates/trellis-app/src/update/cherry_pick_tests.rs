@@ -1,7 +1,7 @@
 //! Headless tests for cherry-picking several selected commits: the command, refusals, and
 //! end to end against real repositories, including a conflict part way.
 
-use super::selection_tests::{commit_on, fixture, git, head, refresh, up};
+use super::selection_tests::{commit_on, fixture, git, refresh, up};
 use super::tests::{drive, state};
 use crate::effect::Effect;
 use crate::msg::Msg;
@@ -21,7 +21,7 @@ fn cherry_pick_orders_oldest_first() {
     refresh(&mut st);
     let fx = up(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f.c(4), f.c(2), f.c(3)])));
     let expected = args(&["cherry-pick", &f.c(2).to_string(), &f.c(3).to_string(), &f.c(4).to_string()]);
-    assert!(matches!(&fx[..], [Effect::RunGit { cmds, record: Some(_), .. }] if *cmds == vec![expected]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Pick(j)] if j.cmds == vec![expected] && j.record.is_some() && j.can_skip), "{fx:?}");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Cherry-pick 3 commits"));
     let _ = std::fs::remove_dir_all(&f.dir);
 }
@@ -38,13 +38,8 @@ fn cherry_pick_refusals() {
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(CommitBlock::PickOnHead.text(Lang::De)));
     assert_ne!(CommitBlock::PickOnHead.text(Lang::De), CommitBlock::PickOnHead.text(Lang::En));
     st.settings.language = "en".into();
-    // A merge commit.
-    git(&f.dir, &["merge", "-q", "--no-ff", "side", "-m", "merge side"]);
-    let merge = head(&f.dir);
     git(&f.dir, &["checkout", "-q", "-b", "other", &f.c(1).to_string()]);
     refresh(&mut st);
-    assert!(up(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![merge, f.c(5)]))).is_empty());
-    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(CommitBlock::PickMerges.text(Lang::En)));
     // Another job is running.
     st.job = Some(RunningJob {
         label: "Fetch".into(),

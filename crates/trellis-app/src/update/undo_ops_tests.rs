@@ -135,7 +135,10 @@ fn a_mainline_cherry_pick_names_the_merge() {
     git(&dir, &["checkout", "-q", "-b", "other", &base]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let oid = git2::Oid::from_str(&merge).unwrap();
-    drive(&mut st, Msg::Selection(SelectionMsg::PickMerge { op: crate::state::pick::PickOp::CherryPick, oid, mainline: 1 }));
+    drive(
+        &mut st,
+        Msg::Selection(SelectionMsg::PickWithMainline { op: crate::state::pick::PickOp::CherryPick, oids: vec![oid], mainline: 1 }),
+    );
     assert_eq!(head_summary(&st), "merge feature");
     assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap().replace("\r\n", "\n"), "base\n1\n");
     let tip = st.undo.undo_entry(st.settings.lang(), true).0;

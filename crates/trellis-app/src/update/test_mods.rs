@@ -237,6 +237,10 @@ pub(super) mod path_case_tests;
 pub(super) mod path_hazards_tests;
 #[path = "perf_tests.rs"]
 pub(super) mod perf_tests;
+#[path = "pick_empty_tests.rs"]
+pub(super) mod pick_empty_tests;
+#[path = "pick_mainline_tests.rs"]
+pub(super) mod pick_mainline_tests;
 #[path = "pick_tests.rs"]
 pub(super) mod pick_tests;
 #[path = "pr_checkout_tests.rs"]
@@ -313,8 +317,12 @@ pub(super) mod search_paths_tests;
 pub(super) mod search_tests;
 #[path = "section_actions_tests.rs"]
 pub(super) mod section_actions_tests;
+#[path = "selection_focus_tests.rs"]
+pub(super) mod selection_focus_tests;
 #[path = "selection_span_tests.rs"]
 pub(super) mod selection_span_tests;
+#[path = "selection_stacked_tests.rs"]
+pub(super) mod selection_stacked_tests;
 #[path = "selection_tests.rs"]
 pub(super) mod selection_tests;
 #[path = "shallow_tests.rs"]

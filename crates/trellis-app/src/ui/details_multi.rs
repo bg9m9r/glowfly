@@ -1,7 +1,7 @@
 //! Right panel for several selected commits: the list, actions on all of them, and for a pair or
 //! one unbroken line of commits (from the empty tree when it starts at the first commit), the
 //! files that differ across them (either way round) and their file actions; otherwise why there
-//! is no combined diff.
+//! is no combined diff, and each commit's own changes stacked (`details_stacked.rs`).
 
 use super::common::short;
 use super::details::file_reveal::reveal;
@@ -28,6 +28,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.label(
         RichText::new(t.trn("details.multi.selected", m.len(), &[])).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()),
     );
+    gap_note(ui, t, m, snap);
     ui.horizontal_wrapped(|ui| {
         cherry_pick_button(ui, t, t.trn("details.multi.cherry_pick.button", m.len(), &[]), m, false, msgs);
         revert_button(ui, t, t.trn("details.multi.revert.button", m.len(), &[]), m, false, msgs);
@@ -39,7 +40,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     });
     ui.add_space(6.0);
 
-    let list_h = if m.compare_ends().is_some() { 160.0 } else { ui.available_height() };
+    let list_h = if m.compare_ends().is_some() || m.stack_oids().is_some() { 160.0 } else { ui.available_height() };
     // Only the rows in view are drawn: a range selection can span the whole history.
     let rows: Vec<(git2::Oid, usize)> = m.oids.iter().filter_map(|&o| Some((o, *snap.row_of.get(&o)?))).collect();
     let row_h = widgets::LIST_ROW_H;
@@ -62,15 +63,29 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         },
     );
 
+    ui.separator();
     let Some((from, to)) = m.compare_ends() else {
-        ui.add_space(8.0);
-        let note = if m.span == Span::ShallowEnd { t.tr("details.multi.span_shallow") } else { t.tr("details.multi.span_gaps") };
-        ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap());
+        super::details_stacked::show(ui, t, st, m, snap, msgs);
         return;
     };
-    ui.separator();
     heading(ui, t, m, from, to, msgs);
     files(ui, t, st, m, from, to, msgs);
+}
+
+/// Why there is no combined diff, under the title: the commit whose parent isn't selected, the
+/// branches the selection splits into, or the shallow clone's boundary.
+fn gap_note(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &trellis_core::repo::Snapshot) {
+    let note = match (m.span, m.gap()) {
+        (Span::Gaps { .. }, Some(c)) => {
+            let merge = snap.row_of.get(&c).is_some_and(|&r| snap.commits[r].parents.len() > 1);
+            let sha = [("sha", &short(c) as &dyn std::fmt::Display)];
+            if merge { t.trf("details.multi.gap_merge", &sha) } else { t.trf("details.multi.gap", &sha) }
+        }
+        (Span::Gaps { .. }, None) => t.tr("details.multi.gap_branches").to_owned(),
+        (Span::ShallowEnd, _) => t.tr("details.multi.span_shallow").to_owned(),
+        (Span::Pair { .. } | Span::Range { .. }, _) => return,
+    };
+    ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap());
 }
 
 /// "Changes from X to Y" (with the count for a line of commits; a line from the first commit is

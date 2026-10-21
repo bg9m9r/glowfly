@@ -196,8 +196,8 @@ fn comparison_restore_clears_absent() {
         span: crate::state::selection_span::Span::Pair { older: other, newer: oid },
         swapped: false,
         changes: Some(Ok(changes)),
+        stacked: None,
         pick_blocked: None,
-        revert_blocked: None,
         export_blocked: None,
     });
 

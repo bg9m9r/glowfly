@@ -65,10 +65,11 @@ fn a_job_in_another_repository_carries_none() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// The journal op of the first git job in `fx`.
+/// The journal op of the first git job (or cherry-pick or revert job) in `fx`.
 fn journal_of(fx: &[Effect]) -> (usize, Option<Op>) {
-    match fx.iter().find(|e| matches!(e, Effect::RunGit { .. })) {
+    match fx.iter().find(|e| matches!(e, Effect::RunGit { .. } | Effect::Pick(_))) {
         Some(Effect::RunGit { cmds, journal, .. }) => (cmds.len(), journal.clone()),
+        Some(Effect::Pick(j)) => (j.cmds.len(), j.journal.clone()),
         _ => panic!("a git job"),
     }
 }

@@ -20,7 +20,7 @@ fn every_id_has_exactly_one_row() {
 #[test]
 fn ids_are_stable() {
     // Users' settings files name bindings by these: renaming one loses their changes.
-    const FROZEN: [&str; 74] = [
+    const FROZEN: [&str; 75] = [
         "stage",
         "unstage",
         "stage-all",
@@ -93,6 +93,7 @@ fn ids_are_stable() {
         "revert-hunk",
         "extend-selection",
         "select-all-commits",
+        "select-focused-commit",
         "open-fold",
         "close-fold",
     ];
@@ -156,6 +157,7 @@ fn rebindable_set() {
         I::RebaseSkip,
         I::RevertHunk,
         I::SelectAllCommits,
+        I::SelectFocusedCommit,
         I::OpenFold,
         I::CloseFold,
     ];

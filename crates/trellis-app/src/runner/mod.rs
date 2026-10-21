@@ -52,6 +52,7 @@ mod op_preview;
 mod os;
 mod patches;
 mod path_search;
+mod pick;
 mod profiles;
 mod pull_request;
 mod queue;

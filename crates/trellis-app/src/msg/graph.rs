@@ -5,7 +5,7 @@
 
 use crate::state::pick::PickOp;
 use git2::Oid;
-use trellis_core::repo::Comparison;
+use trellis_core::repo::{Comparison, StackedCommit};
 use trellis_core::settings::{FilterOp, ResizableColumn};
 
 /// Selecting several graph rows, comparing commits (with each other or the working directory),
@@ -17,18 +17,21 @@ pub enum SelectionMsg {
     SelectCommitRange(Oid),
     /// Esc: back to the one commit the multi-selection started from.
     CollapseSelection,
-    /// Cherry-pick these commits onto HEAD, oldest first (the order is decided in update). One
-    /// merge commit opens the mainline dialog first.
+    /// Cherry-pick these commits onto HEAD, oldest first (the order is decided in update). Merge
+    /// commits among them open the mainline dialog first.
     CherryPick(Vec<Oid>),
-    /// Revert these commits in one job, newest first. One merge commit opens the mainline
-    /// dialog first.
+    /// Revert these commits in one job, newest first. Merge commits among them open the
+    /// mainline dialog first.
     Revert(Vec<Oid>),
-    /// The mainline dialog's submit: cherry-pick or revert merge `oid` against parent
-    /// `mainline` (1-based).
-    PickMerge { op: PickOp, oid: Oid, mainline: u32 },
+    /// The mainline dialog's submit: cherry-pick or revert `oids`, counting each merge's changes
+    /// against parent `mainline` (1-based).
+    PickWithMainline { op: PickOp, oids: Vec<Oid>, mainline: u32 },
     /// The files that differ from commit `from` to `to` (the selection's compare ends), with
     /// which of them are missing from the working tree.
     CompareLoaded { from: Oid, to: Oid, result: Result<Comparison, String> },
+    /// The stacked lists of `oids` (the selection's `stack_oids` when asked): each commit's own
+    /// changes, for a selection with no combined diff.
+    StackedLoaded { oids: Vec<Oid>, result: Result<Vec<StackedCommit>, String> },
     /// Ctrl/Cmd-click on the WIP row: compare the one selected commit with the working
     /// directory, or stop comparing.
     ToggleWip,
@@ -45,6 +48,8 @@ pub enum SelectionMsg {
     SwapCompare,
     /// Select every commit the graph shows (Cmd/Ctrl+A).
     SelectAll,
+    /// The Go back to the focused commit key: select only the multi-selection's focus.
+    BackToFocus,
     /// Try again after the comparison's file list (of a commit range or with the working
     /// directory) couldn't be read.
     RetryCompare,
@@ -60,7 +65,7 @@ impl SelectionMsg {
             | Self::CollapseSelection
             | Self::CherryPick(..)
             | Self::Revert(..)
-            | Self::PickMerge { .. }
+            | Self::PickWithMainline { .. }
             | Self::CompareLoaded { .. }
             | Self::ToggleWip
             | Self::CompareWithWorkdir(..)
@@ -68,7 +73,10 @@ impl SelectionMsg {
             | Self::WorkdirCompareLoaded { .. }
             | Self::SwapCompare
             | Self::SelectAll
+            | Self::BackToFocus
             | Self::RetryCompare => None,
+            // Dropped like CompareLoaded: the tab asks again when it is refreshed.
+            Self::StackedLoaded { .. } => None,
         }
     }
 }

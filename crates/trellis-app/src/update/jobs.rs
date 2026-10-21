@@ -2,7 +2,7 @@
 //! RunningJob plus effect it runs (`begin_tool_job` for the merge tool, which skips the gate).
 
 use super::trust::Gate;
-use crate::effect::Effect;
+use crate::effect::{Effect, PickJob};
 use crate::state::auto_stash::{AutoStashJob, Making};
 use crate::state::push_pr::PrStart;
 use crate::state::trust::Created;
@@ -10,6 +10,7 @@ use crate::state::{AppState, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::journal::Op;
+use trellis_core::pick_ops::Picking;
 use trellis_core::undo::UndoKind;
 
 /// A git command sequence to run as the (single) active job.
@@ -39,6 +40,18 @@ pub(super) struct JobSpec {
     pub expect: Option<(String, git2::Oid)>,
     /// The job starts with this auto-stash, to put back once it ends (update/auto_stash.rs).
     pub auto_stash: Option<AutoStashJob>,
+    /// The job's last command is a cherry-pick or revert of these commits: it runs as
+    /// Effect::Pick, carried past the commits that change nothing.
+    pub pick: Option<PickPlan>,
+}
+
+/// What a cherry-pick or revert job's last command takes (`JobSpec::pick`).
+pub(super) struct PickPlan {
+    pub picking: Picking,
+    /// The commits, in the command's order.
+    pub oids: Vec<git2::Oid>,
+    /// git has `--skip` (2.23 or newer).
+    pub can_skip: bool,
 }
 
 impl JobSpec {
@@ -58,6 +71,7 @@ impl JobSpec {
             journal: None,
             expect: None,
             auto_stash: None,
+            pick: None,
         }
     }
 }
@@ -117,8 +131,13 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     let sign_in_cmds = if spec.cwd.is_none() { spec.cmds.clone() } else { Vec::new() };
     // `git lfs install` adds settings and hooks the trust decision didn't see (trust_inherit.rs).
     let lfs_install = spec.cwd.is_none() && spec.cmds.iter().any(|c| c.windows(2).any(|w| w[0] == "lfs" && w[1] == "install"));
-    let (cmds, write_file, expect) = (spec.cmds, spec.write_file, spec.expect);
-    let effect = move |cwd| Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect };
+    let (cmds, write_file, expect, pick) = (spec.cmds, spec.write_file, spec.expect, spec.pick);
+    let effect = move |cwd| match pick {
+        Some(PickPlan { picking, oids, can_skip }) => {
+            Effect::Pick(PickJob { cwd, cmds, record, journal, prompts, picking, oids, can_skip })
+        }
+        None => Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect },
+    };
     let started = launch(st, job, spec.cwd, effect, fx);
     if started != Started::No {
         super::submodule_batch::job_started(st, &label, moves);

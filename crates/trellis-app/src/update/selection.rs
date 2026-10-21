@@ -4,16 +4,17 @@
 //! Comparing with the working directory is in `compare_wip.rs`; cherry-pick and revert in
 //! `pick.rs`.
 
-use crate::effect::Effect;
+use crate::effect::{Effect, StackRequest};
 use crate::msg::SelectionMsg;
 use crate::state::graph_rows::GraphRows;
 use crate::state::pick::PickOp;
 use crate::state::remote_branch;
 use crate::state::selection::{self as sel, MultiSelection};
 use crate::state::{AppState, Selection};
-use trellis_core::repo::{DiffTarget, Snapshot};
+use std::time::Instant;
+use trellis_core::repo::{DiffTarget, Snapshot, StackedCommit};
 
-pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, now: Instant, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     match msg {
         SelectionMsg::ToggleCommit(oid) => {
@@ -53,7 +54,9 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, fx: &mut Vec<Effect>)
         SelectionMsg::WorkdirCompareLoaded { oid, generation, result } => super::compare_wip::loaded(st, oid, generation, result),
         SelectionMsg::CherryPick(oids) => super::pick::run(st, PickOp::CherryPick, oids, None, fx),
         SelectionMsg::Revert(oids) => super::pick::run(st, PickOp::Revert, oids, None, fx),
-        SelectionMsg::PickMerge { op, oid, mainline } => super::pick::run(st, op, vec![oid], Some(mainline), fx),
+        SelectionMsg::PickWithMainline { op, oids, mainline } => super::pick::run(st, op, oids, Some(mainline), fx),
+        SelectionMsg::StackedLoaded { oids, result } => stacked_loaded(st, oids, result),
+        SelectionMsg::BackToFocus => super::selection_focus::back(st, now, fx),
         SelectionMsg::RetryCompare => retry_compare(st, fx),
     }
 }
@@ -63,7 +66,8 @@ fn retry_compare(st: &mut AppState, fx: &mut Vec<Effect>) {
     match &mut st.selection {
         Selection::Commits(m) => {
             m.changes = None;
-            request_compare(st, fx);
+            m.stacked = None;
+            request_changes(st, fx);
         }
         Selection::VsWorkdir(w) => {
             w.changes = None;
@@ -115,7 +119,23 @@ fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
     {
         super::repo::close_diff(st);
     }
-    request_compare(st, fx);
+    request_changes(st, fx);
+}
+
+/// A stacked list arrived: kept while the selection still shows those commits.
+fn stacked_loaded(st: &mut AppState, oids: Vec<git2::Oid>, result: Result<Vec<StackedCommit>, String>) {
+    match &mut st.selection {
+        Selection::Commits(m) if m.stack_oids() == Some(&oids[..]) => {
+            if let Err(e) = &result {
+                let e = e.clone();
+                m.stacked = Some(result);
+                st.log(false, e);
+            } else {
+                m.stacked = Some(result);
+            }
+        }
+        _ => tracing::debug!("dropped a stale stacked list of {} commits", oids.len()),
+    }
 }
 
 /// Makes `new` the selection, closing whatever showed the old one.
@@ -138,7 +158,7 @@ pub(super) fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
             if vs_workdir {
                 super::compare_wip::request(st, fx);
             } else {
-                request_compare(st, fx);
+                request_changes(st, fx);
             }
         }
         Selection::Wip => {
@@ -153,11 +173,20 @@ pub(super) fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
     }
 }
 
-/// With a comparison to show and its file list not received yet, asks for it.
-fn request_compare(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Selection::Commits(m) = &st.selection else { return };
-    if let (Some((from, to)), None, Some(workdir)) = (m.compare_ends(), &m.changes, st.workdir()) {
-        fx.push(Effect::LoadCompare { workdir, from, to });
+/// Asks for what the panel lists and hasn't received yet: the comparison's file list, or the
+/// stacked list of each commit's own changes.
+fn request_changes(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let (Selection::Commits(m), Some(workdir)) = (&st.selection, st.workdir()) else { return };
+    if let Some(e) = changes_effect(m, workdir) {
+        fx.push(e);
+    }
+}
+
+fn changes_effect(m: &MultiSelection, workdir: std::path::PathBuf) -> Option<Effect> {
+    match (m.compare_ends(), m.stack_oids()) {
+        (Some((from, to)), _) => m.changes.is_none().then_some(Effect::LoadCompare { workdir, from, to }),
+        (None, Some(stack)) => m.stacked.is_none().then(|| Effect::LoadStacked(StackRequest { workdir, oids: stack.to_vec() })),
+        (None, None) => None,
     }
 }
 
@@ -166,7 +195,20 @@ fn request_compare(st: &mut AppState, fx: &mut Vec<Effect>) {
 pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>) {
     let Selection::Commits(m) = &st.selection else { return };
     let old_ends = m.compare_ends();
+    let old_stack: Vec<_> = m.stack_oids().unwrap_or_default().to_vec();
     let new = sel::refreshed(m, snap);
+    // A stacked commit's diff closes when the commit leaves the list.
+    let new_stack = match &new {
+        Selection::Commits(n) => n.stack_oids().unwrap_or_default(),
+        _ => &[],
+    };
+    if let Some((DiffTarget::Commit(o, _), _)) = &st.diff
+        && old_stack.contains(o)
+        && !new_stack.contains(o)
+        && matches!(new, Selection::Commits(_))
+    {
+        super::repo::close_diff(st);
+    }
     let new_ends = match &new {
         Selection::Commits(n) => n.compare_ends(),
         _ => None,
@@ -182,10 +224,9 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
             st.selection = new;
             // A list dropped in flight (a tab switch) is asked for again here.
             if let Selection::Commits(m) = &st.selection
-                && let Some((from, to)) = m.compare_ends()
-                && m.changes.is_none()
+                && let Some(e) = changes_effect(m, snap.workdir.clone())
             {
-                fx.push(Effect::LoadCompare { workdir: snap.workdir.clone(), from, to });
+                fx.push(e);
             }
         }
         Selection::Commit(o) => {

@@ -1,7 +1,46 @@
 //! Command lines for cherry-picking and reverting commits from the graph. The app runs them
-//! through gitcli so hooks, config and commit signing apply.
+//! through gitcli so hooks, config and commit signing apply. Carrying a run past the commits
+//! that change nothing is in `pick_empty.rs`.
 
 use git2::Oid;
+
+#[path = "pick_empty.rs"]
+mod pick_empty;
+pub use pick_empty::*;
+
+/// Which of the two commands a job runs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Picking {
+    #[default]
+    CherryPick,
+    Revert,
+}
+
+impl Picking {
+    /// Skips the commit a stopped run is at and carries on with the rest.
+    pub fn skip(self) -> &'static [&'static str] {
+        match self {
+            Picking::CherryPick => CHERRY_PICK_SKIP,
+            Picking::Revert => REVERT_SKIP,
+        }
+    }
+
+    /// Ends a stopped run, putting the branch back where it started.
+    pub fn abort(self) -> &'static [&'static str] {
+        match self {
+            Picking::CherryPick => &["cherry-pick", "--abort"],
+            Picking::Revert => &["revert", "--abort"],
+        }
+    }
+
+    /// The ref git writes while a commit of the run waits to be committed.
+    fn head_ref(self) -> &'static str {
+        match self {
+            Picking::CherryPick => "CHERRY_PICK_HEAD",
+            Picking::Revert => "REVERT_HEAD",
+        }
+    }
+}
 
 /// Skips the commit a stopped cherry-pick sequence is at and carries on with the rest.
 pub const CHERRY_PICK_SKIP: &[&str] = &["cherry-pick", "--skip"];

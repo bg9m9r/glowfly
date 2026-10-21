@@ -1061,14 +1061,6 @@ blockers and major findings are Milestone 1 items.
 
 - Open folder history from a folder row once file lists can show a tree
 
-### Multi-select commits
-
-- Combined diff of a non-contiguous selection (each commit's own changes stacked)
-- Name the gap in a non-contiguous selection (the first commit whose parent isn't selected)
-- Cherry-pick or revert several commits that include merges, with one mainline for all of them
-- Say when a cherry-pick or revert changed nothing because the branch already has the changes
-- A key to go back from a select-all to the focused commit, with a toast naming the count
-
 ### Keyboard shortcuts
 
 - S in the WIP file lists (keyboard focus in the lists, Up/Down between files), and moving on
@@ -1486,6 +1478,17 @@ here, under the item they grew from.
 - Compare a stash with the working directory
 - List a renamed file under its working-tree name in the swapped comparison (it is listed under the commit's name)
 - Show the whole heading of a combined range (hover or wrap) when the panel cuts it short
+- Load more than the newest 200 commits' changes in a stacked list (a Show more row)
+- Line counts and the change bar on stacked file rows
+- One diff of a file across the stacked commits, each commit's hunks one after another
+- Fold a commit's section in the stacked list (a painted disclosure icon)
+- Click the commit named in the gap line to select it or scroll the graph to it
+- A different mainline for each merge in one cherry-pick or revert (separate git runs per merge)
+- Option to keep commits that change nothing as empty commits instead of skipping them
+- Skip a commit that changes nothing inside a sequence on git older than 2.23
+- Go back to the focused commit from the menu bar and the command palette
+- An action on the Back to the focused commit toast that restores the previous multi-selection
+- Preview cherry-picking several commits that include merges against the chosen mainline
 
 ### Tabs (multiple open repos)
 

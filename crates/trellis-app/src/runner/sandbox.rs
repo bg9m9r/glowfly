@@ -87,6 +87,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::CountWorktreeChanges(_)
             | Effect::LoadDetail { .. }
             | Effect::LoadCompare { .. }
+            | Effect::LoadStacked(_)
             | Effect::LoadWorkdirCompare { .. }
             | Effect::LoadDiff { .. }
             | Effect::HighlightDiff { .. }
@@ -113,6 +114,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::LoadFileText(_)
             | Effect::LoadBlame(_)
             | Effect::RunGit { .. }
+            | Effect::Pick(_)
             | Effect::Rebase(_)
             | Effect::UndoRedo { .. }
             | Effect::Stats { .. }

@@ -126,8 +126,8 @@ pub fn in_list(st: &AppState, t: &DiffTarget) -> bool {
 
 /// The file list `from` was opened from, in on-screen order, as diff targets: the Unstaged then
 /// the Staged Files list (conflicted entries open the conflict view, so they are left out), the
-/// commit details list, the open pull request's list, the comparison list, or in a history the
-/// selected folder entry's files. `None` in a file history, which shows one file, or when the
+/// commit details list, the open pull request's list, the comparison list, a stacked list's
+/// files across its commits, or in a history the selected folder entry's files. `None` in a file history, which shows one file, or when the
 /// list isn't the one on screen.
 fn source_files(st: &AppState, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
     Some(source_entries(st, from)?.into_iter().map(|(t, _)| t).collect())
@@ -149,8 +149,16 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
             Some(unstaged.chain(staged).collect())
         }
         DiffTarget::Commit(oid, _) => {
-            let d = st.detail.as_ref().filter(|d| d.oid == *oid)?;
-            Some(of(&d.files, &|p| DiffTarget::Commit(*oid, p)))
+            if let Some(d) = st.detail.as_ref().filter(|d| d.oid == *oid) {
+                return Some(of(&d.files, &|p| DiffTarget::Commit(*oid, p)));
+            }
+            // A stacked list: every section's files, commit by commit.
+            let Selection::Commits(m) = &st.selection else { return None };
+            let Some(Ok(stack)) = &m.stacked else { return None };
+            stack
+                .iter()
+                .any(|c| c.oid == *oid)
+                .then(|| stack.iter().flat_map(|c| c.files.iter().map(|f| (DiffTarget::Commit(c.oid, f.path.clone()), f.status))).collect())
         }
         DiffTarget::Between(a, b, _) => {
             if let Some(files) = st.pull_request.as_ref().and_then(|v| v.diff_files(*a, *b)) {

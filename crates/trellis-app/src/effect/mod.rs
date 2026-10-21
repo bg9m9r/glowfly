@@ -25,10 +25,12 @@ mod line_counts;
 mod names;
 mod notify;
 mod op_preview;
+mod pick;
 mod rebase;
 mod repo;
 mod repos;
 mod scope;
+mod selection;
 mod stash;
 mod submodule;
 mod trust;
@@ -48,9 +50,11 @@ pub use issue::*;
 pub use line_counts::{FailedLineCounts, LineCountsEffect};
 pub use notify::{DesktopNote, NoteKind};
 pub use op_preview::OpPreviewJob;
+pub use pick::PickJob;
 pub use rebase::RebaseEffect;
 pub use repo::{ConflictRead, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;
+pub use selection::StackRequest;
 pub use stash::{PutBackRequest, StashEffect};
 pub use submodule::SubmoduleEffect;
 pub use trust::TrustEffect;
@@ -91,6 +95,8 @@ pub enum Effect {
         from: Oid,
         to: Oid,
     },
+    /// Each of these commits' own changes (`SelectionMsg::StackedLoaded`).
+    LoadStacked(StackRequest),
     /// The files that differ from commit `oid` to the working tree.
     LoadWorkdirCompare {
         workdir: PathBuf,
@@ -243,6 +249,8 @@ pub enum Effect {
         /// Run nothing unless this revision still resolves to this commit.
         expect: Option<(String, git2::Oid)>,
     },
+    /// A cherry-pick or revert job, carried past the commits that change nothing; unscoped like RunGit.
+    Pick(PickJob),
     /// Interactive rebase: the panel's list, graph edits, running and resuming.
     Rebase(RebaseEffect),
     /// Undoes (or redoes) `action` after checking the repository still matches it. Unscoped like

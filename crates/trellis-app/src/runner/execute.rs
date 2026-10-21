@@ -4,7 +4,7 @@
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, custom_commands, dashboard, deep_link, diff_gaps, expect, files,
     forge_calls, forks, git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, op_preview, os,
-    patches, path_search, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status,
+    patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status,
     submodules, themes, tools, trust, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
@@ -63,6 +63,10 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::LoadCompare { workdir, from, to } => {
             Some(Msg::Selection(SelectionMsg::CompareLoaded { from, to, result: repo::compare(&workdir, from, to).map_err(err) }))
         }
+        Effect::LoadStacked(r) => Some(Msg::Selection(SelectionMsg::StackedLoaded {
+            result: repo::stacked_changes(&r.workdir, &r.oids).map_err(err),
+            oids: r.oids,
+        })),
         Effect::LoadWorkdirCompare { workdir, oid, generation, swapped } => Some(Msg::Selection(SelectionMsg::WorkdirCompareLoaded {
             oid,
             generation,
@@ -128,6 +132,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             });
             Some(Msg::Job(JobMsg::JobDone { ok, output, undo }))
         }
+        Effect::Pick(j) => Some(pick::run(j)),
         Effect::UndoRedo { cwd, action, redo, opts } => {
             let what = action.describe();
             let op = if redo { trellis_core::journal::Op::Redo { what } } else { trellis_core::journal::Op::Undo { what } };

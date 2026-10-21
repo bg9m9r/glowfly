@@ -120,6 +120,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         Effect::Rebase(RebaseEffect::Start { cwd, .. } | RebaseEffect::Resume { cwd, .. } | RebaseEffect::EditTodo { cwd, .. }) => {
             Some(cwd)
         }
+        Effect::Pick(j) => Some(&j.cwd),
         Effect::RemoveWorktree(r) => Some(&r.repo),
         Effect::MoveWorktree(r) => Some(&r.repo),
         Effect::Submodule(SubmoduleEffect::Remove(r)) => Some(&r.repo),
@@ -136,6 +137,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::CountWorktreeChanges(_)
         | Effect::LoadDetail { .. }
         | Effect::LoadCompare { .. }
+        | Effect::LoadStacked(_)
         | Effect::LoadWorkdirCompare { .. }
         | Effect::LoadDiff { .. }
         | Effect::LoadDiffGaps { .. }

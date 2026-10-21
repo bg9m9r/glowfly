@@ -8,7 +8,7 @@ use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
-use crate::state::selection::MultiSelection;
+use crate::state::selection::{CommitBlock, MultiSelection};
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Modifiers, PointerButton, Pos2, pos2};
@@ -26,18 +26,27 @@ fn commit(st: &AppState, summary: &str) -> Oid {
     st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == summary).unwrap().oid
 }
 
-/// `summaries` selected, as Ctrl-clicks would leave them, with the two-commit file list loaded.
-fn with_selection(theme: ThemeChoice, name: &str, summaries: &[&str]) -> (AppState, PathBuf) {
+/// `summaries` selected, as Ctrl-clicks would leave them, with the two-commit file list (or
+/// the stacked list) loaded.
+pub(super) fn with_selection(theme: ThemeChoice, name: &str, summaries: &[&str]) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let oids: Vec<Oid> = summaries.iter().map(|s| commit(&st, s)).collect();
     let mut sel = MultiSelection::build(oids.iter().copied(), oids[0], st.snap.as_ref().unwrap());
-    if let Selection::Commits(m) = &mut sel
-        && let Some((older, newer)) = m.compare_ends()
-    {
-        m.changes = Some(repo::compare(&dir, older, newer).map_err(|e| e.to_string()));
+    if let Selection::Commits(m) = &mut sel {
+        if let Some((older, newer)) = m.compare_ends() {
+            m.changes = Some(repo::compare(&dir, older, newer).map_err(|e| e.to_string()));
+        }
+        load_stacked(m, &dir);
     }
     st.selection = sel;
     (st, dir)
+}
+
+/// Fills in the stacked list, as the runner would, when the selection has one.
+pub(super) fn load_stacked(m: &mut MultiSelection, dir: &std::path::Path) {
+    if let Some(oids) = m.stack_oids().map(<[Oid]>::to_vec) {
+        m.stacked = Some(repo::stacked_changes(dir, &oids).map_err(|e| e.to_string()));
+    }
 }
 
 fn multi(st: &AppState) -> &MultiSelection {
@@ -72,7 +81,9 @@ fn graph_many_commits_selected_light() {
         with_selection(ThemeChoice::Light, "multi-many", &["Merge branch 'login-page'", "Fix build on Windows", "Add login page"]);
     let m = multi(&st);
     assert_eq!(m.len(), 3);
-    assert!(m.pick_blocked.is_some(), "a merge commit can't be picked with the others");
+    assert_eq!(m.pick_blocked, Some(CommitBlock::PickOnHead), "they are on the current branch");
+    assert_eq!(m.gap(), Some(commit(&st, "Fix build on Windows")), "its parent isn't selected");
+    assert!(m.stacked.as_ref().is_some_and(|s| s.as_ref().is_ok_and(|s| s.len() == 3)));
     render("graph_many_commits_selected_light", st, false);
     remove_fixture(&dir);
 }

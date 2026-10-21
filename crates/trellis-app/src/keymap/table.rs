@@ -160,6 +160,13 @@ pub const BINDINGS: &[Binding] = &[
     fixed(I::SelectRow, G::Navigation, "Select the row above or below", &[C::plain(K::Up), C::plain(K::Down)], W::Lists),
     fixed(I::ExtendSelection, G::Navigation, "Extend the commit selection up or down", &[C::shift(K::Up), C::shift(K::Down)], W::Lists),
     b(I::SelectAllCommits, G::Navigation, "Select every commit shown in the graph", &[C::cmd(K::Letter('A'))], W::Lists),
+    b(
+        I::SelectFocusedCommit,
+        G::Navigation,
+        "Go back to the focused commit from a multi-selection",
+        &[C::cmd_shift(K::Letter('A'))],
+        W::Graph,
+    ),
     b(I::Search, G::Navigation, "Show or hide commit search (find in the blame view)", &[C::cmd(K::Letter('F'))], W::Anywhere),
     fixed(I::SearchNext, G::Navigation, "Next search match", &[C::plain(K::Enter)], W::Search),
     b(I::SearchFilter, G::Navigation, "Show only matching commits", &[C::cmd_shift(K::Letter('F'))], W::Anywhere),

@@ -7,7 +7,7 @@ use super::tests::drive;
 use crate::effect::Effect;
 use crate::msg::{Msg, RepoMsg, SelectionMsg};
 use crate::state::selection::{MultiSelection, extend_from, ranged, toggled};
-use crate::state::selection_span::Span;
+use crate::state::selection_span::{Span, span_of};
 use crate::state::selection_wip::{WORKDIR_NEEDS_ONE, WorkdirCompare, wip_toggled};
 use crate::state::{AppState, Selection};
 use git2::Oid;
@@ -41,8 +41,15 @@ fn a_line_of_commits_combines_and_others_explain() {
     select(&mut st, f.c(5));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(3))));
     assert_eq!(multi(&st).oids, [f.c(5), f.c(4), f.side, f.c(3)]);
-    assert_eq!(multi(&st).span, Span::Gaps);
+    assert_eq!(multi(&st).span, Span::Gaps { gap: None }, "every first parent is selected, but side branches off");
     assert!(compares(&fx).is_empty() && multi(&st).compare_ends().is_none());
+
+    // c4's parent c3 is left out: c4 is named.
+    select(&mut st, f.c(5));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(2))));
+    assert_eq!(multi(&st).span, Span::Gaps { gap: Some(f.c(4)) });
+    assert_eq!(multi(&st).gap(), Some(f.c(4)));
 
     // From the first commit, the changes run from the empty tree.
     select(&mut st, f.c(3));
@@ -55,6 +62,19 @@ fn a_line_of_commits_combines_and_others_explain() {
     let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(2))));
     assert_eq!(multi(&st).span, Span::Pair { older: f.c(2), newer: f.c(5) });
     assert_eq!(compares(&fx), [(f.c(2), f.c(5))]);
+    let _ = std::fs::remove_dir_all(&f.dir);
+}
+
+#[test]
+fn a_root_commit_is_never_the_gap() {
+    let (mut st, f) = fixture("span-root-gap");
+    let snap = st.snap.as_mut().unwrap();
+    let oids = [f.c(5), f.c(4), f.c(3), f.c(1)];
+    assert_eq!(span_of(&oids, snap), Span::Gaps { gap: Some(f.c(3)) }, "c3's parent c2 isn't selected");
+    // With c3 a root (as in a repository with two histories), nothing above c1 has a gap.
+    let row = snap.row_of[&f.c(3)];
+    snap.commits[row].parents.clear();
+    assert_eq!(span_of(&oids, snap), Span::Gaps { gap: None });
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
@@ -87,7 +107,8 @@ fn a_line_from_a_shallow_boundary_has_no_combined_diff() {
     select(&mut st, f.c(3));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(1))));
     assert_eq!(multi(&st).span, Span::ShallowEnd);
-    assert!(fx.is_empty(), "{fx:?}");
+    let want = [f.c(3), f.c(2), f.c(1)];
+    assert!(matches!(&fx[..], [Effect::LoadStacked(r)] if r.oids == want), "each commit's own changes instead: {fx:?}");
     assert_eq!(multi(&st).compare_ends(), None);
     let _ = std::fs::remove_dir_all(&f.dir);
 }

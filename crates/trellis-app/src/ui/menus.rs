@@ -174,8 +174,8 @@ pub(super) fn cherry_pick_button(
     clicked
 }
 
-/// Revert the selected commits, disabled with the reason when a merge is selected.
-/// Returns whether it was clicked.
+/// Revert the selected commits (merges among them ask for their mainline first). Returns
+/// whether it was clicked.
 pub(super) fn revert_button(
     ui: &mut egui::Ui,
     t: Lang,
@@ -184,7 +184,7 @@ pub(super) fn revert_button(
     in_menu: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let clicked = multi_action(ui, t, label, m.revert_blocked, in_menu).clicked();
+    let clicked = multi_action(ui, t, label, None, in_menu).clicked();
     if clicked {
         msgs.push(Msg::Selection(SelectionMsg::Revert(m.oids.clone())));
     }

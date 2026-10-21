@@ -1,20 +1,23 @@
 //! Cherry-picking and reverting commits from the graph: the order, the refusals, the mainline
-//! dialog for one merge commit, and selecting the WIP row (with its banner) when one stops.
+//! dialog for the merge commits among them, and selecting the WIP row (with its banner) when one stops.
 
 use crate::effect::Effect;
 use crate::msg::{Msg, SelectionMsg};
 pub(super) use crate::state::pick::PickOp;
 use crate::state::pick::{MainlineForm, label};
-use crate::state::selection::{cherry_pick_blocker, in_graph_order, revert_blocker};
+use crate::state::selection::{cherry_pick_blocker, in_graph_order};
 use crate::state::{AppState, Modal, Selection};
 use git2::{Oid, RepositoryState};
+use trellis_core::git_version::Feature;
 use trellis_core::pick_ops::{cherry_pick_cmd, revert_cmd};
 
-/// Why a mainline the dialog sent doesn't fit the commit.
-pub const NOT_A_PARENT: &str = "That parent isn't one of the merge's parents.";
+/// Why a mainline the dialog sent doesn't fit the commits.
+pub const MAINLINE_MISFIT: &str = "That parent number doesn't fit every selected commit.";
 
-/// Cherry-picks (oldest first) or reverts (newest first) `oids` in one git command. One merge
-/// commit without a `mainline` opens the dialog that picks one; with it, `-m N` is passed.
+/// Cherry-picks (oldest first) or reverts (newest first) `oids` in one git command. Merge
+/// commits among them without a `mainline` open the dialog that picks one; with it, `-m N` is
+/// passed for every commit. The job runs as Effect::Pick, which skips the commits that change
+/// nothing.
 pub(super) fn run(st: &mut AppState, op: PickOp, oids: Vec<Oid>, mainline: Option<u32>, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     let oids = in_graph_order(oids, snap, op == PickOp::CherryPick);
@@ -23,32 +26,33 @@ pub(super) fn run(st: &mut AppState, op: PickOp, oids: Vec<Oid>, mainline: Optio
     }
     let blocked = match op {
         PickOp::CherryPick => cherry_pick_blocker(snap, &oids),
-        PickOp::Revert => revert_blocker(snap, &oids),
+        PickOp::Revert => None,
     };
     if let Some(why) = blocked {
         st.log(false, why.text(st.settings.lang()));
         return;
     }
-    let parents = |o: &Oid| snap.row_of.get(o).map_or(0, |&r| snap.commits[r].parents.len());
-    match (mainline, oids.as_slice()) {
-        (None, [one]) if parents(one) > 1 => {
-            st.modal = MainlineForm::new(op, *one, snap).map(Modal::Mainline);
+    match (MainlineForm::new(op, &oids, snap), mainline) {
+        (Some(form), None) => {
+            st.modal = Some(Modal::Mainline(form));
             return;
         }
-        (Some(n), [one]) if parents(one) > 1 && n >= 1 && n as usize <= parents(one) => {}
-        (Some(_), _) => {
-            st.log(false, NOT_A_PARENT);
+        (Some(form), Some(n)) if form.fits(n) => {}
+        (_, Some(_)) => {
+            st.log(false, MAINLINE_MISFIT);
             return;
         }
-        (None, _) => {}
+        (None, None) => {}
     }
     let cmd = match op {
         PickOp::CherryPick => cherry_pick_cmd(&oids, mainline),
         PickOp::Revert => revert_cmd(&oids, mainline),
     };
-    let spec = super::ops::JobSpec::new(label(op, oids.len()), vec![cmd]);
+    let mut spec = super::ops::JobSpec::new(label(op, oids.len()), vec![cmd]);
+    let can_skip = st.git.has(Feature::SequencerSkip);
+    spec.pick = Some(super::jobs::PickPlan { picking: op.core(), oids: oids.clone(), can_skip });
     let retry = || match (mainline, op) {
-        (Some(mainline), _) => Msg::Selection(SelectionMsg::PickMerge { op, oid: oids[0], mainline }),
+        (Some(mainline), _) => Msg::Selection(SelectionMsg::PickWithMainline { op, oids: oids.clone(), mainline }),
         (None, PickOp::CherryPick) => Msg::Selection(SelectionMsg::CherryPick(oids.clone())),
         (None, PickOp::Revert) => Msg::Selection(SelectionMsg::Revert(oids.clone())),
     };

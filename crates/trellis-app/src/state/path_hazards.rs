@@ -9,8 +9,8 @@ use crate::tools::ToolsMsg;
 use trellis_core::i18n::Lang;
 use trellis_core::repo::{Collision, FileEntry, Hazard, HunkOp, Snapshot};
 
-/// The hazard of `path` in any list on screen: the working tree's, the selected commit's or the
-/// two selected commits' comparison.
+/// The hazard of `path` in any list on screen: the working tree's, the selected commit's, the
+/// selected commits' comparison or their stacked lists.
 pub fn hazard_of<'a>(st: &'a AppState, path: &str) -> Option<&'a Hazard> {
     let snap = st.snap.iter().flat_map(|s| s.unstaged.iter().chain(&s.staged));
     let detail = st.detail.iter().flat_map(|d| &d.files);
@@ -19,7 +19,12 @@ pub fn hazard_of<'a>(st: &'a AppState, path: &str) -> Option<&'a Hazard> {
         Selection::VsWorkdir(w) => w.changes.as_ref().and_then(|c| c.as_ref().ok()).map(|c| c.files.as_slice()).unwrap_or_default(),
         _ => &[],
     };
-    snap.chain(detail).chain(compared).filter(|f: &&FileEntry| f.path == path).find_map(|f| f.hazard.as_ref())
+    let stacked = match &st.selection {
+        Selection::Commits(m) => m.stacked.as_ref().and_then(|s| s.as_ref().ok()).map(|s| s.as_slice()).unwrap_or_default(),
+        _ => &[],
+    };
+    let stacked = stacked.iter().flat_map(|c| &c.files);
+    snap.chain(detail).chain(compared).chain(stacked).filter(|f: &&FileEntry| f.path == path).find_map(|f| f.hazard.as_ref())
 }
 
 /// The path `msg` acts on and whether it destroys contents (discard, delete, restore over the

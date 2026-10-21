@@ -159,6 +159,7 @@ fn select(mut st: AppState, dir: PathBuf, summaries: &[&str], swapped: bool) -> 
         if let Some((from, to)) = m.compare_ends() {
             m.changes = Some(repo::compare(&dir, from, to).map_err(|e| e.to_string()));
         }
+        super::snapshot_tests_select::load_stacked(m, &dir);
     }
     st.selection = sel;
     (st, dir)

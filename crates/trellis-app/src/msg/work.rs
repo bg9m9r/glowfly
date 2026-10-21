@@ -200,6 +200,14 @@ pub enum JobMsg {
         output: String,
         undo: Option<UndoResult>,
     },
+    /// The Effect::Pick job (a cherry-pick or revert) ended; `result` names the commits it
+    /// skipped because they changed nothing.
+    PickDone {
+        ok: bool,
+        output: String,
+        undo: Option<UndoResult>,
+        result: trellis_core::pick_ops::PickResult,
+    },
 }
 
 impl JobMsg {
@@ -216,7 +224,8 @@ impl JobMsg {
             | Self::Undo
             | Self::Redo
             | Self::UndoWith { .. }
-            | Self::JobDone { .. } => None,
+            | Self::JobDone { .. }
+            | Self::PickDone { .. } => None,
         }
     }
 }

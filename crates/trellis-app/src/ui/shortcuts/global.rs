@@ -131,7 +131,7 @@ fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         I::NextChange | I::PrevChange => !covered && !l.sheet && !l.typing && l.stepping,
         I::OpenFold | I::CloseFold => !covered && !l.sheet && !l.typing && l.diff,
         I::BlameNextRun | I::BlamePrevRun => !covered && !l.sheet && !l.typing && l.blame,
-        I::SelectAllCommits => !covered && !l.sheet && !l.typing && l.graph && !l.terminal,
+        I::SelectAllCommits | I::SelectFocusedCommit => !covered && !l.sheet && !l.typing && l.graph && !l.terminal,
         // Not while typing: AltGr is Ctrl+Alt on Windows, and AltGr+digit types characters.
         I::OpenFavorite1
         | I::OpenFavorite2
@@ -227,6 +227,7 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::BlameNextRun => Msg::Blame(BlameMsg::StepRun(1)),
         I::BlamePrevRun => Msg::Blame(BlameMsg::StepRun(-1)),
         I::SelectAllCommits => Msg::Selection(SelectionMsg::SelectAll),
+        I::SelectFocusedCommit => Msg::Selection(SelectionMsg::BackToFocus),
         I::OpenFavorite1
         | I::OpenFavorite2
         | I::OpenFavorite3

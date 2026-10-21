@@ -294,9 +294,9 @@ fn a_merge_commit_asks_for_the_mainline_then_the_guard() {
     assert!(up(&mut st, Msg::Selection(SelectionMsg::Revert(vec![merge]))).is_empty());
     assert!(matches!(st.modal, Some(Modal::Mainline(_))), "the mainline first");
     st.modal = None;
-    let pick = Msg::Selection(SelectionMsg::PickMerge { op: PickOp::Revert, oid: merge, mainline: 1 });
+    let pick = Msg::Selection(SelectionMsg::PickWithMainline { op: PickOp::Revert, oids: vec![merge], mainline: 1 });
     assert!(up(&mut st, pick).is_empty());
-    assert!(matches!(*ask(&st).retry, Msg::Selection(SelectionMsg::PickMerge { mainline: 1, .. })), "then the guard");
+    assert!(matches!(*ask(&st).retry, Msg::Selection(SelectionMsg::PickWithMainline { mainline: 1, .. })), "then the guard");
     accept_stash(&mut st);
     assert_ne!(st.snap.as_ref().unwrap().head_oid, Some(merge), "the revert ran");
     assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap().replace("\r\n", "\n"), "base\n");

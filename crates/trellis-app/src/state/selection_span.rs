@@ -3,6 +3,7 @@
 //! or neither.
 
 use git2::Oid;
+use std::collections::HashSet;
 use trellis_core::repo::{self, Snapshot};
 
 /// The shape of a multi-selection.
@@ -14,8 +15,10 @@ pub enum Span {
     /// one's first parent (the empty tree when it is the repository's first commit), `newest`
     /// the top commit. Their changes together are base..newest.
     Range { base: Oid, newest: Oid },
-    /// Three or more commits that aren't one first-parent line.
-    Gaps,
+    /// Three or more commits that aren't one first-parent line. `gap` is the newest selected
+    /// commit, not the oldest and not a root, whose first parent isn't selected; `None` when
+    /// every first parent is selected but the commits branch apart.
+    Gaps { gap: Option<Oid> },
     /// One first-parent line whose oldest commit is a shallow clone's boundary: what came
     /// before it wasn't downloaded.
     ShallowEnd,
@@ -27,7 +30,7 @@ impl Span {
         match self {
             Span::Pair { older, newer } => Some((older, newer)),
             Span::Range { base, newest } => Some((base, newest)),
-            Span::Gaps | Span::ShallowEnd => None,
+            Span::Gaps { .. } | Span::ShallowEnd => None,
         }
     }
 }
@@ -36,11 +39,13 @@ impl Span {
 pub fn span_of(oids: &[Oid], snap: &Snapshot) -> Span {
     let parent = |o: &Oid| snap.row_of.get(o).and_then(|&r| snap.commits[r].parents.first().copied());
     match oids {
-        [] | [_] => Span::Gaps,
+        [] | [_] => Span::Gaps { gap: None },
         [newer, older] => Span::Pair { older: *older, newer: *newer },
         _ => {
             if oids.windows(2).any(|w| parent(&w[0]) != Some(w[1])) {
-                return Span::Gaps;
+                let members: HashSet<&Oid> = oids.iter().collect();
+                let gap = oids[..oids.len() - 1].iter().find(|o| parent(o).is_some_and(|p| !members.contains(&p))).copied();
+                return Span::Gaps { gap };
             }
             let last = oids[oids.len() - 1];
             if snap.shallow_roots.binary_search(&last).is_ok() {

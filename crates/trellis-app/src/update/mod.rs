@@ -65,6 +65,7 @@ mod ops;
 mod palette;
 mod patch;
 mod pick;
+mod pick_done;
 mod pr_details;
 mod prefs;
 mod prefs_leave;
@@ -95,6 +96,7 @@ pub(crate) mod revert;
 mod search;
 mod search_paths;
 mod selection;
+mod selection_focus;
 mod shallow;
 mod shortcuts;
 mod sign_in;
@@ -170,7 +172,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Repos(m) => repos::handle(st, m, now, &mut fx),
         Msg::Load(m) => refresh::handle(st, m, now, &mut fx),
         Msg::Watch(m) => watch::handle(st, m, now, &mut fx),
-        Msg::Selection(m) => selection::handle(st, m, &mut fx),
+        Msg::Selection(m) => selection::handle(st, m, now, &mut fx),
         Msg::Graph(m) => graph_filter::handle(st, m, &mut fx),
         Msg::Search(m) => search::handle(st, m, &mut fx),
         Msg::Avatars(m) => avatars::handle(st, m, &mut fx),

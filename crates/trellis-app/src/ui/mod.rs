@@ -41,6 +41,7 @@ mod details_banner;
 mod details_chips;
 mod details_commit;
 mod details_multi;
+mod details_stacked;
 mod details_wip;
 mod details_workdir;
 mod dialog_frame;
@@ -404,6 +405,8 @@ mod snapshot_tests_sparse;
 mod snapshot_tests_ssh;
 #[cfg(test)]
 mod snapshot_tests_ssh_keygen;
+#[cfg(test)]
+mod snapshot_tests_stacked;
 #[cfg(test)]
 mod snapshot_tests_stash;
 #[cfg(test)]

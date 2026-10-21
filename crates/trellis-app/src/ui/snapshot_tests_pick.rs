@@ -18,8 +18,8 @@ fn mainline_dialog() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "mainline-dialog");
     let snap = st.snap.as_ref().unwrap();
     let merge = snap.commits.iter().find(|c| c.summary == "Merge branch 'login-page'").unwrap().oid;
-    let form = MainlineForm::new(PickOp::CherryPick, merge, snap).expect("a merge");
-    assert_eq!(form.parents.len(), 2);
+    let form = MainlineForm::new(PickOp::CherryPick, &[merge], snap).expect("a merge");
+    assert_eq!(form.merges[0].parents.len(), 2);
     st.modal = Some(Modal::Mainline(form));
     render("mainline_dialog", st, true);
     remove_fixture(&dir);
@@ -33,14 +33,14 @@ fn mainline_radio_then_enter() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "mainline-enter");
     let snap = st.snap.as_ref().unwrap();
     let merge = snap.commits.iter().find(|c| c.summary == "Merge branch 'login-page'").unwrap().oid;
-    st.modal = Some(Modal::Mainline(MainlineForm::new(PickOp::CherryPick, merge, snap).expect("a merge")));
+    st.modal = Some(Modal::Mainline(MainlineForm::new(PickOp::CherryPick, &[merge], snap).expect("a merge")));
     let mut h = harness(st, true);
     h.run();
     h.get_by_label_contains("Parent 2:").click();
     h.run();
     h.press_key(eframe::egui::Key::Enter);
     h.run();
-    let picked = |m: &Msg| matches!(m, Msg::Selection(SelectionMsg::PickMerge { mainline: 2, .. }));
+    let picked = |m: &Msg| matches!(m, Msg::Selection(SelectionMsg::PickWithMainline { mainline: 2, .. }));
     assert!(h.state().1.iter().any(picked), "Enter picks parent 2");
     drop(h);
     remove_fixture(&dir);

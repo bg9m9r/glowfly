@@ -18,6 +18,11 @@ fn command_lines() {
     assert_eq!(cherry_pick_cmd(&[a], Some(2)), ["cherry-pick", "-m", "2", &a.to_string()]);
     assert_eq!(revert_cmd(&[b, a], None), ["revert", "--no-edit", &b.to_string(), &a.to_string()]);
     assert_eq!(revert_cmd(&[a], Some(1)), ["revert", "--no-edit", "-m", "1", &a.to_string()]);
+    assert_eq!(cherry_pick_cmd(&[a, b], Some(2)), ["cherry-pick", "-m", "2", &a.to_string(), &b.to_string()]);
+    assert_eq!(revert_cmd(&[b, a], Some(2)), ["revert", "--no-edit", "-m", "2", &b.to_string(), &a.to_string()]);
+    assert_eq!(Picking::CherryPick.skip(), CHERRY_PICK_SKIP);
+    assert_eq!(Picking::Revert.skip(), REVERT_SKIP);
+    assert_eq!(Picking::CherryPick.abort(), ["cherry-pick", "--abort"]);
     assert_eq!(CHERRY_PICK_SKIP, ["cherry-pick", "--skip"]);
     assert_eq!(REVERT_SKIP, ["revert", "--skip"]);
 }

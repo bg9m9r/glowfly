@@ -72,10 +72,13 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
                             h.on_disk = true;
                         }
                     }
-                    if let Selection::Commits(m) = &mut st.selection
-                        && let Some(Ok(c)) = &mut m.changes
-                    {
-                        c.absent.remove(&path);
+                    if let Selection::Commits(m) = &mut st.selection {
+                        if let Some(Ok(c)) = &mut m.changes {
+                            c.absent.remove(&path);
+                        }
+                        for c in m.stacked.iter_mut().flatten().flatten() {
+                            c.absent.remove(&path);
+                        }
                     }
                 }
                 Err(e) => {

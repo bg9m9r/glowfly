@@ -31,6 +31,7 @@ impl Effect {
             | Effect::VerifySignature { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
             Effect::CheckConflicts(j) => Some(&j.workdir),
+            Effect::LoadStacked(r) => Some(&r.workdir),
             Effect::OpPreview(j) => Some(&j.workdir),
             Effect::Journal(e) => Some(e.scope()),
             Effect::RangeDiff(j) => Some(&j.workdir),
@@ -54,6 +55,7 @@ impl Effect {
             | Effect::Stash(_)
             | Effect::SparseCheckout { .. }
             | Effect::RunGit { .. }
+            | Effect::Pick(_)
             | Effect::UndoRedo { .. }
             | Effect::Account(_)
             | Effect::FetchAvatars(_)

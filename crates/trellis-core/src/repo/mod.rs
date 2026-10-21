@@ -70,6 +70,7 @@ mod rpath;
 mod shallow;
 mod shown_ws;
 mod snapshot_impl;
+mod stacked;
 mod status;
 mod status_cli;
 mod status_merge;
@@ -130,6 +131,7 @@ pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_con
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::{ALREADY_REVERTED, RevertPart, RevertRequest, Reverted, revert};
 pub(crate) use rpath::shown as shown_path;
+pub use stacked::*;
 pub use status::{ChangeCounts, status_at};
 pub use status_merge::{covers, merge_unstaged};
 pub use status_paths::{CLI_PATH_BYTES, PathsStatus, status_of_paths};

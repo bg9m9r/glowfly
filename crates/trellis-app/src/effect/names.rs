@@ -10,6 +10,7 @@ impl Effect {
             Effect::LoadStatus { .. } => "load-status",
             Effect::LoadDetail { .. } => "load-detail",
             Effect::LoadCompare { .. } => "load-compare",
+            Effect::LoadStacked(_) => "load-stacked",
             Effect::LoadWorkdirCompare { .. } => "load-workdir-compare",
             Effect::LoadDiff { .. } => "load-diff",
             Effect::HighlightDiff { .. } => "highlight",
@@ -37,6 +38,7 @@ impl Effect {
             Effect::LoadSparse { .. } => "sparse-status",
             Effect::SparseCheckout { .. } => "sparse-checkout",
             Effect::RunGit { .. } => "git",
+            Effect::Pick(_) => "pick",
             Effect::UndoRedo { .. } => "undo-redo",
             Effect::Rebase(e) => e.name(),
             Effect::Forge { .. } => "forge",
@@ -103,6 +105,7 @@ impl Effect {
             | Effect::CountWorktreeChanges(_)
             | Effect::LoadDetail { .. }
             | Effect::LoadCompare { .. }
+            | Effect::LoadStacked(_)
             | Effect::LoadWorkdirCompare { .. }
             | Effect::LoadDiff { .. }
             | Effect::HighlightDiff { .. }
@@ -129,6 +132,7 @@ impl Effect {
             | Effect::LoadSparse { .. }
             | Effect::SparseCheckout { .. }
             | Effect::RunGit { .. }
+            | Effect::Pick(_)
             | Effect::UndoRedo { .. }
             | Effect::Rebase(_)
             | Effect::Forge { .. }

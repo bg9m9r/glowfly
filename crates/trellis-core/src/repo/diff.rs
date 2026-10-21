@@ -85,7 +85,7 @@ fn workdir_diff<'r>(repo: &'r Repository, oid: Oid, reversed: bool, opts: Option
 
 /// One entry per delta, named by its new path (the old one for a deletion). In a `reversed`
 /// working-tree diff an untracked file is on the old side only, so it is 'D'.
-fn file_entries(diff: &Diff, reversed: bool) -> Vec<FileEntry> {
+pub(super) fn file_entries(diff: &Diff, reversed: bool) -> Vec<FileEntry> {
     let status = |d: Delta| if reversed && d == Delta::Untracked { 'D' } else { delta_char(d) };
     diff.deltas().map(|d| super::rpath::entry(super::rpath::delta_bytes(&d), status(d.status()))).collect()
 }
@@ -178,7 +178,7 @@ pub fn branch_changes(workdir: &Path, target: Oid, source: Oid) -> Result<Option
 /// The paths of `files` with nothing at them in the working tree (all of them in a bare
 /// repository, and every name that isn't UTF-8). One stat per file, so views can tell which
 /// ones can be opened.
-fn absent_paths(repo: &Repository, files: &[FileEntry]) -> HashSet<String> {
+pub(super) fn absent_paths(repo: &Repository, files: &[FileEntry]) -> HashSet<String> {
     files.iter().filter(|f| f.hazard.is_some() || !on_disk(repo, &f.path)).map(|f| f.path.clone()).collect()
 }
 

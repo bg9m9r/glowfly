@@ -7,20 +7,19 @@ use super::selection_wip::WorkdirCompare;
 use git2::Oid;
 use std::collections::HashSet;
 use trellis_core::i18n::Lang;
-use trellis_core::repo::{Comparison, Snapshot};
+use trellis_core::repo::{Comparison, Snapshot, StackedCommit};
+
+/// The most commits a stacked list loads the changes of (the newest selected).
+pub const STACK_LIMIT: usize = 200;
 
 /// Why a commit action is unavailable for the selected commits. Kept as a value and put into
 /// words when drawn or logged, so a language switch needs no reselect.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CommitBlock {
-    /// Merge commits among several to cherry-pick.
-    PickMerges,
     /// Some of several commits to cherry-pick are already on HEAD.
     PickOnHead,
     /// The one commit to cherry-pick is already in HEAD's history.
     PickOneOnHead,
-    /// Merge commits among several to revert.
-    RevertMerges,
     /// A merge commit has no patch of its own.
     PatchMerge,
 }
@@ -28,10 +27,8 @@ pub enum CommitBlock {
 impl CommitBlock {
     pub fn text(self, t: Lang) -> &'static str {
         match self {
-            CommitBlock::PickMerges => t.tr("commits.blocked.pick_merges"),
             CommitBlock::PickOnHead => t.tr("commits.blocked.pick_on_head"),
             CommitBlock::PickOneOnHead => t.tr("commits.blocked.pick_one_on_head"),
-            CommitBlock::RevertMerges => t.tr("commits.blocked.revert_merges"),
             CommitBlock::PatchMerge => t.tr("commits.blocked.patch_merge"),
         }
     }
@@ -49,17 +46,19 @@ pub struct MultiSelection {
     pub cursor: Oid,
     /// `oids` as a set, for `contains` on every graph and sidebar row.
     pub members: HashSet<Oid>,
-    /// A pair, one line of history, or neither: whether there is a file list, and of what.
+    /// A pair, one line of history, or neither: one combined file list, or a stacked list of
+    /// each commit's own changes.
     pub span: Span,
     /// The comparison runs the other way, as Swap direction asked.
     pub swapped: bool,
     /// The files that differ between `compare_ends` and which are missing from the working
     /// tree; `None` while loading (and always without ends).
     pub changes: Option<Result<Comparison, String>>,
-    /// Why "Cherry-pick N commits" is unavailable (merges, or commits already on HEAD).
+    /// Each of `stack_oids`' own changes, newest first; `None` while loading (and always for a
+    /// pair or a line of history).
+    pub stacked: Option<Result<Vec<StackedCommit>, String>>,
+    /// Why "Cherry-pick N commits" is unavailable (commits already on HEAD).
     pub pick_blocked: Option<CommitBlock>,
-    /// Why "Revert N commits" is unavailable (merges).
-    pub revert_blocked: Option<CommitBlock>,
     /// Why "Create patch from N commits" is unavailable (merges).
     pub export_blocked: Option<CommitBlock>,
 }
@@ -79,7 +78,6 @@ impl MultiSelection {
             [one] => Selection::Commit(*one),
             _ => {
                 let pick_blocked = cherry_pick_blocker(snap, &oids);
-                let revert_blocked = revert_blocker(snap, &oids);
                 let export_blocked = super::patch::export_blocker(snap, &oids);
                 let members = oids.iter().copied().collect();
                 let span = span_of(&oids, snap);
@@ -91,8 +89,8 @@ impl MultiSelection {
                     span,
                     swapped: false,
                     changes: None,
+                    stacked: None,
                     pick_blocked,
-                    revert_blocked,
                     export_blocked,
                 })
             }
@@ -115,11 +113,30 @@ impl MultiSelection {
         Some(if self.swapped { (to, from) } else { (from, to) })
     }
 
+    /// The commits whose own changes the stacked list shows: the newest `STACK_LIMIT` selected,
+    /// when there is no combined comparison.
+    pub fn stack_oids(&self) -> Option<&[Oid]> {
+        self.compare_ends().is_none().then(|| stack_slice(&self.oids))
+    }
+
+    /// The commit named as the reason there is no combined diff (`Span::Gaps`).
+    pub fn gap(&self) -> Option<Oid> {
+        match self.span {
+            Span::Gaps { gap } => gap,
+            _ => None,
+        }
+    }
+
     /// The commit keyboard navigation and Esc start from: the anchor while it is selected,
     /// otherwise the newest selected commit.
     pub fn focus(&self) -> Oid {
         if self.contains(self.anchor) { self.anchor } else { self.oids[0] }
     }
+}
+
+/// The newest `STACK_LIMIT` of `oids` (newest first).
+pub fn stack_slice(oids: &[Oid]) -> &[Oid] {
+    &oids[..oids.len().min(STACK_LIMIT)]
 }
 
 /// The graph rows among `oids`, without duplicates, newest first (or oldest first with `rev`).
@@ -186,16 +203,9 @@ pub fn ranged(sel: &Selection, oid: Oid, snap: &Snapshot, shown: Option<&[usize]
     MultiSelection::build_at(in_range.filter_map(|i| snap.commits.get(i)).map(|c| c.oid), anchor, oid, snap)
 }
 
-fn is_merge(snap: &Snapshot, oid: &Oid) -> bool {
-    snap.row_of.get(oid).is_some_and(|&r| snap.commits[r].parents.len() > 1)
-}
-
-/// Why these commits can't be cherry-picked onto HEAD, if they can't: merges among several
-/// (one merge goes to the mainline dialog), or commits already in HEAD's history.
+/// Why these commits can't be cherry-picked onto HEAD, if they can't: commits already in
+/// HEAD's history. (Merges go to the mainline dialog first.)
 pub fn cherry_pick_blocker(snap: &Snapshot, oids: &[Oid]) -> Option<CommitBlock> {
-    if oids.len() > 1 && oids.iter().any(|o| is_merge(snap, o)) {
-        return Some(CommitBlock::PickMerges);
-    }
     let head = snap.head_oid?;
     if let [one] = oids {
         return on_head(snap, head, *one).then_some(CommitBlock::PickOneOnHead);
@@ -225,23 +235,19 @@ fn on_head(snap: &Snapshot, head: Oid, oid: Oid) -> bool {
     false
 }
 
-/// Why these commits can't be reverted together, if they can't: merges among several (one
-/// merge goes to the mainline dialog).
-pub fn revert_blocker(snap: &Snapshot, oids: &[Oid]) -> Option<CommitBlock> {
-    (oids.len() > 1 && oids.iter().any(|o| is_merge(snap, o))).then_some(CommitBlock::RevertMerges)
-}
-
 /// `sel` against a newly loaded snapshot: commits that are gone are dropped, the rest re-sorted.
 /// While it compares the same ends, the direction and a file list already received are kept
-/// (commits don't change).
+/// (commits don't change); so is a stacked list of the same commits.
 pub fn refreshed(sel: &MultiSelection, snap: &Snapshot) -> Selection {
     let mut new = MultiSelection::build_at(sel.oids.iter().copied(), sel.anchor, sel.cursor, snap);
-    if let Selection::Commits(m) = &mut new
-        && m.span.ends().is_some()
-        && m.span.ends() == sel.span.ends()
-    {
-        m.swapped = sel.swapped;
-        m.changes = sel.changes.clone();
+    if let Selection::Commits(m) = &mut new {
+        if m.span.ends().is_some() && m.span.ends() == sel.span.ends() {
+            m.swapped = sel.swapped;
+            m.changes = sel.changes.clone();
+        }
+        if m.stack_oids().is_some() && m.stack_oids() == sel.stack_oids() {
+            m.stacked = sel.stacked.clone();
+        }
     }
     new
 }
