@@ -108,6 +108,7 @@ mod preview_cache;
 pub(crate) mod probe;
 mod publish;
 mod pull_request;
+mod range_diff;
 mod rebase;
 mod ref_visibility;
 mod release_notes;
@@ -359,6 +360,8 @@ mod snapshot_tests_pull_request_review;
 mod snapshot_tests_pull_request_threads;
 #[cfg(test)]
 mod snapshot_tests_push_pr;
+#[cfg(test)]
+mod snapshot_tests_range_diff;
 #[cfg(test)]
 mod snapshot_tests_rebase;
 #[cfg(test)]

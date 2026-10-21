@@ -134,6 +134,14 @@ fn journal_list_preview() {
     h.get_by_label("Create branch here…").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, JournalMsg::CreateBranch(_))));
+    h.get_by_label("Range-diff with now").click();
+    h.run();
+    let (search, merge) = (commit(&h.state().0, "Search results page"), commit(&h.state().0, "Merge branch 'login-page'"));
+    let compare = h.state().1.iter().any(|m| {
+        matches!(m, Msg::RangeDiff(crate::range_diff::RangeDiffMsg::Open { old, new, label: Some(l), at: Some(_) })
+            if *old == search && *new == merge && l == "main")
+    });
+    assert!(compare, "Range-diff with now compares the state with main now");
     h.get_by_label("Read the journal again").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, JournalMsg::Refresh)));

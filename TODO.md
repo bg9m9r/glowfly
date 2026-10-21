@@ -1014,8 +1014,6 @@ Chosen on 2026-10-19 as the features that make Trellis its own, in this order.
 - Stacked branches: recognise a branch built on another, draw the stack, restack everything
   above after amending a lower branch (`git rebase --update-refs`), and push the stack with one
   pull request per layer
-- Range-diff: compare a branch before and after a rebase or force-push, commit by commit
-  (`git range-diff`), e.g. "what changed since my last review?"
 
 ### UI review polish
 
@@ -1344,7 +1342,7 @@ here, under the item they grew from.
 - Notes for stash drops and Discard all, with stash states in the timeline
 - Draw the preview's history with the real lane graph instead of one lane
 - Load more than the newest 2,000 states
-- Compare a state with now (a diff, or a range-diff of the branch)
+- Compare a state with now as a plain diff
 - Say when git will expire a state (gc.reflogExpire, gc.reflogExpireUnreachable)
 - Notes for jobs run in other repositories (repo sync pulls)
 - An Undo or Redo note's operation name comes from core's English description, so it reads in
@@ -1364,6 +1362,28 @@ here, under the item they grew from.
 - Recover dangling blobs (files staged but never committed)
 - Jump from a lost tip to its marked row in the States tab
 - Disable Apply stash while a job runs or an operation is in progress, with the reason
+
+### Range-diff
+
+- Choose the base by hand: a picker for the mainline branch or any commit, and the creation
+  factor (--creation-factor)
+- Pick the two versions from any refs or reflog entries in a dialog, including older rewrites
+  than the last one, and a Swap sides button
+- Show an added or dropped commit's own diff in the pane instead of a sentence
+- Up and Down move through the pairs, and a key jumps to the next changed pair
+- A palette command and a View menu item for comparing the checked-out branch with its version
+  before the last rebase
+- A Copy submenu (old and new SHA) and Show in graph on pair rows
+- Wrap long interdiff lines with the diff viewer's wrap setting, and a side-by-side layout
+- Syntax colours for the code lines inside the interdiff
+- Include merge commits (--diff-merges=remerge, git 2.39+) and say when merges were left out
+- Reload the comparison when the branch moves again instead of keeping a fixed pair of tips
+- Notes in the comparison as an option (--notes / --no-notes)
+- Only the left or right side (--left-only / --right-only, git 2.31+)
+- Range-diff a pull request's previous and current head from the hosting service's push history
+- Compare more than 300 commits a side in the background with progress and Stop
+- Exercise the pull request and issue panels closing when the view opens in an update test
+- Measure the header's three lines instead of a fixed 72 px height
 
 ### Terminal keeps the prompt's space
 

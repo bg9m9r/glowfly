@@ -33,6 +33,7 @@ impl Effect {
             Effect::CheckConflicts(j) => Some(&j.workdir),
             Effect::OpPreview(j) => Some(&j.workdir),
             Effect::Journal(e) => Some(e.scope()),
+            Effect::RangeDiff(j) => Some(&j.workdir),
             Effect::LoadBlame(r) => Some(&r.workdir),
             Effect::LoadFileText(r) => Some(&r.workdir),
             Effect::CountWorktreeChanges(r) => Some(&r.workdir),

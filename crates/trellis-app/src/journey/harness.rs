@@ -269,6 +269,13 @@ impl Journey {
         self.click(label, Region::Anywhere, Pick::Only);
     }
 
+    /// Presses `key` with nothing focused and waits until the app is idle.
+    pub fn press(&mut self, key: egui::Key) {
+        self.toasts.clear();
+        self.h.press_key(key);
+        self.settle();
+    }
+
     /// Types `text` into the text field named `name`.
     #[track_caller]
     pub fn type_into(&mut self, name: &str, text: &str) {

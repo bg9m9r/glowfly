@@ -58,6 +58,7 @@ pub mod pick_ops;
 pub mod preview;
 pub mod preview_image;
 mod quoted;
+pub mod range_diff;
 pub mod rebase;
 pub mod remote_ops;
 pub mod repo;

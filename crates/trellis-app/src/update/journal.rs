@@ -52,6 +52,7 @@ fn open(st: &mut AppState, fx: &mut Vec<Effect>) {
     super::rebase::close(st);
     super::pull_request::close(st);
     super::issue::close(st);
+    super::range_diff::close(st);
     st.gitflow_panel = false;
     if st.journal.is_none() {
         st.journal = Some(JournalView::default());

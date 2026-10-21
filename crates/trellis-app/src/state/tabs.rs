@@ -229,6 +229,8 @@ pub struct Parked {
     pub gitflow_panel: bool,
     /// The operation journal (a load or preview in flight is asked for again on return).
     pub journal: Option<crate::state::journal::JournalView>,
+    /// The Range-diff view (a comparison in flight is asked for again on return).
+    pub range_diff: Option<crate::state::range_diff::RangeDiffView>,
     pub draft: CommitDraft,
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,

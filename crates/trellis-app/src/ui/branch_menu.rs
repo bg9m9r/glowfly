@@ -1,6 +1,7 @@
 //! The right-click menu of a local branch, in groups: checkout (or, for a branch another
 //! worktree has, open that worktree), a new branch or worktree, rename and upstream; merge,
-//! rebase, checking for conflicts, fast-forward and push; pull requests (pushing the branch
+//! rebase, checking for conflicts, comparing with its version before the last rebase
+//! (Range-diff), fast-forward and push; pull requests (pushing the branch
 //! first when the code host lacks it, into the branch selected before; without a code host, a
 //! disabled item saying why); hide or solo in the graph, and its colour; the custom commands
 //! (`custom_menu.rs`); the Copy submenu; and delete. The branch's name heads the menu once; the items leave it out. Disabled items say why
@@ -16,6 +17,7 @@ use crate::msg::BranchMsg;
 use crate::msg::Msg;
 use crate::msg::OpPreviewMsg;
 use crate::msg::RebaseMsg;
+use crate::range_diff::RangeDiffMsg;
 use crate::state::branches::{self, NO_REMOTES};
 use crate::state::custom_commands::MenuCommands;
 use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere};
@@ -128,6 +130,10 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
         menu_item(msgs, ui, t.trf("branch.menu.interactive_onto", &args), onto);
         let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(name.to_owned()));
         menu_item(msgs, ui, t.trf("branch.menu.check_conflicts_with", &args), check);
+    }
+    if b.oid.is_some() {
+        let compare = Msg::RangeDiff(RangeDiffMsg::OpenRewrite(format!("refs/heads/{name}")));
+        menu_item(msgs, ui, t.tr("branch.menu.range_diff"), compare);
     }
 }
 

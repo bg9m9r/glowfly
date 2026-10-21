@@ -29,6 +29,7 @@ mod patch;
 mod platform;
 mod profile;
 mod pull_request;
+mod range_diff;
 mod remote;
 mod runner;
 mod smoke_probe;

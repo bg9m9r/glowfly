@@ -55,6 +55,7 @@ mod path_search;
 mod profiles;
 mod pull_request;
 mod queue;
+mod range_diff;
 mod rebase;
 mod repos;
 mod revert;

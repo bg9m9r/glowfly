@@ -385,6 +385,8 @@ pub enum Effect {
     OpPreview(OpPreviewJob),
     /// Reading the operation journal and a state's preview (journal.rs); reads only.
     Journal(crate::journal::JournalEffect),
+    /// Comparing two versions of a branch with git range-diff (range_diff.rs); reads only.
+    RangeDiff(crate::range_diff::RangeDiffJob),
     /// Fork lists and forking for the REMOTE section (remote.rs); unscoped.
     Remote(crate::remote::RemoteEffect),
     /// A sparse clone and listing the user's repositories for the Clone dialog; unscoped.

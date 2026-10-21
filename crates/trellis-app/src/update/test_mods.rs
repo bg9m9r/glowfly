@@ -259,6 +259,10 @@ pub(super) mod publish_tests;
 pub(super) mod push_pr_state_tests;
 #[path = "push_pr_tests.rs"]
 pub(super) mod push_pr_tests;
+#[path = "range_diff_flow_tests.rs"]
+pub(super) mod range_diff_flow_tests;
+#[path = "range_diff_tests.rs"]
+pub(super) mod range_diff_tests;
 #[path = "rebase_e2e_tests.rs"]
 pub(super) mod rebase_e2e_tests;
 #[path = "rebase_merges_tests.rs"]

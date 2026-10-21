@@ -76,6 +76,7 @@ impl AppState {
             && self.issue.is_none()
             && self.diff.is_none()
             && self.rebase.is_none()
+            && self.range_diff.is_none()
             && self.journal.is_none()
             && !self.gitflow_panel
             && !super::terminal::maximized_shown(self)

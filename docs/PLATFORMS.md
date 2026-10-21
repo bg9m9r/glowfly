@@ -249,7 +249,7 @@ second one next to it.
    well-known install folders, one row per file (`paths::resolve`) in the spelling found first;
    on macOS `/usr/bin/git` is only listed when the developer tools exist, since Apple's shim
    would open their install dialog. Show which git runs and its version (Preferences > General
-   and > Git), gate features by `git_version::Feature` (`Restore` 2.23, `ForceIfIncludes` 2.30,
+   and > Git), gate features by `git_version::Feature` (`RangeDiff` 2.19, `Restore` 2.23, `ForceIfIncludes` 2.30,
    `SparseCheckout` 2.35, `MergeTree` 2.38), re-detect them when the git changes, and show
    `GitInfo::banner` with the reasons.
 4. **Read git config booleans with `--type=bool`** (`runner/config.rs`): `yes`, `1` and `TRUE`

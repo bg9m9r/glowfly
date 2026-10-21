@@ -127,6 +127,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::CheckConflicts(_)
             | Effect::OpPreview(_)
             | Effect::Journal(_)
+            | Effect::RangeDiff(_)
             | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(_)
             | Effect::Trust(_)

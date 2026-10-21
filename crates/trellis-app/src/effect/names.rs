@@ -78,6 +78,7 @@ impl Effect {
             Effect::CheckConflicts(_) => "check-conflicts",
             Effect::OpPreview(_) => OpPreviewJob::name(),
             Effect::Journal(e) => e.name(),
+            Effect::RangeDiff(_) => "range-diff",
             Effect::Remote(e) => e.name(),
             Effect::Clone(e) => e.name(),
             Effect::Init(e) => e.name(),
@@ -153,6 +154,7 @@ impl Effect {
             | Effect::CheckConflicts(_)
             | Effect::OpPreview(_)
             | Effect::Journal(_)
+            | Effect::RangeDiff(_)
             | Effect::Remote(_)
             | Effect::Clone(_)
             | Effect::Init(_)

@@ -1,7 +1,8 @@
 //! The right-click menu of a remote-tracking branch, shared by the REMOTE rows of the left panel
 //! and the remote-branch labels in the graph, in groups: checkout (the local branch tracking it,
 //! or a new one), a new branch and a worktree; fast-forward of that local branch, merge, rebase,
-//! conflict check, compare and set upstream against the checked-out branch; pull requests; hide
+//! conflict check, compare and set upstream against the checked-out branch, and comparing it
+//! with its version before the last force-push (Range-diff); pull requests; hide
 //! or solo, and its colour; the Copy submenu; and delete on the remote. The branch's name heads
 //! the menu once; the items leave it out. Disabled items say why on hover, with the same text
 //! `update` logs when it refuses a late message.
@@ -39,9 +40,7 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     menu_header(ui, &full);
     let tracking = remote_branch::tracking_local(snap, remote, name);
     checkout_items(ui, t, (remote, name), oid, tracking, snap, msgs);
-    if tracking.is_some() || !current.is_empty() {
-        ui.separator();
-    }
+    ui.separator();
     if let Some(b) = tracking {
         let blocked = branches::fast_forward_blocked(b, snap.state);
         let ff = Msg::Branch(BranchMsg::FastForwardBranch(b.name.clone()));
@@ -51,6 +50,8 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     if !current.is_empty() {
         current_items(ui, c, (remote, name), oid, snap, msgs);
     }
+    let compare = Msg::RangeDiff(crate::range_diff::RangeDiffMsg::OpenRewrite(format!("refs/remotes/{full}")));
+    menu_item(msgs, ui, t.tr("remote_branch.menu.range_diff"), compare);
     match fs.filter(|f| f.host.is_some()) {
         Some(fs) if fs.remote == remote => {
             ui.separator();

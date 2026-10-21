@@ -90,6 +90,7 @@ pub mod pull_request;
 pub mod pull_request_actions;
 pub mod pull_request_threads;
 pub mod push_pr;
+pub mod range_diff;
 pub mod rebase;
 pub mod rebase_banner;
 pub mod rebase_merges;
@@ -430,6 +431,11 @@ pub struct AppState {
     pub journal: Option<journal::JournalView>,
     /// Incremented for every journal load and preview request; older results are ignored.
     pub journal_gen: u64,
+    /// The Range-diff view, shown in place of the graph (update/range_diff.rs); parked with its
+    /// tab.
+    pub range_diff: Option<range_diff::RangeDiffView>,
+    /// Incremented for every comparison asked for; older results are ignored.
+    pub range_diff_gen: u64,
     pub draft: CommitDraft,
     pub job: Option<RunningJob>,
     /// The active tab's undo history.
@@ -560,6 +566,8 @@ impl AppState {
             gitflow_panel: false,
             journal: None,
             journal_gen: 0,
+            range_diff: None,
+            range_diff_gen: 0,
             draft: CommitDraft::default(),
             job: None,
             undo: undo::UndoHistory::default(),

@@ -75,6 +75,7 @@ mod profiles;
 mod publish;
 mod pull_request;
 mod push_pr;
+mod range_diff;
 mod rebase;
 mod rebase_quick;
 mod rebase_remaining;
@@ -201,6 +202,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::ConflictCheck(m) => conflict_check::handle(st, m, now, &mut fx),
         Msg::OpPreview(m) => op_preview::handle(st, m, now, &mut fx),
         Msg::Journal(m) => journal::handle(st, m, now, &mut fx),
+        Msg::RangeDiff(m) => range_diff::handle(st, m, now, &mut fx),
         Msg::PullRequest(m) => pull_request::handle(st, m, now, &mut fx),
         Msg::Issue(m) => issue::handle(st, m, now, &mut fx),
         Msg::Forge(m) => forge::handle(st, m, now, &mut fx),

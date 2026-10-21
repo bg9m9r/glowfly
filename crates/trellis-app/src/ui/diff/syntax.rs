@@ -189,7 +189,7 @@ fn append_spans(job: &mut LayoutJob, text: &str, spans: &[Span], font: &FontId, 
 /// With `ctx` (the function context's byte offset in `header` and its spans, relative to it),
 /// the range part keeps the header color and the context takes the token colors, like code.
 /// Without it, or when the spans don't fit, the whole header is drawn plain, as before.
-pub(super) fn paint_header(p: &Painter, left_center: Pos2, header: &str, ctx: Option<(usize, &[Span])>, font: &FontId, tab: usize) {
+pub(in crate::ui) fn paint_header(p: &Painter, left_center: Pos2, header: &str, ctx: Option<(usize, &[Span])>, font: &FontId, tab: usize) {
     let e = tabs::expand(header, tab);
     let Some(job) = ctx.and_then(|(at, spans)| header_job(&e, at, spans, font, color::hunk_fg(), color::text())) else {
         p.text(left_center, Align2::LEFT_CENTER, e.text, font.clone(), color::hunk_fg());

@@ -39,6 +39,7 @@ use hunk_header::hunk_header;
 pub(super) use line_check::{gutter_sign, paint_mark};
 use rows_cache::{DiffRowsCache, Source};
 pub(super) use style::DiffStyle;
+pub(super) use syntax::paint_header;
 pub(super) use syntax::paint_line;
 use trellis_core::diff_rows::{GapLines, GapSpan};
 use trellis_core::highlight::DiffHighlight;

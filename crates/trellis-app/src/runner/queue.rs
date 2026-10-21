@@ -198,6 +198,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::CheckConflicts(_)
         | Effect::OpPreview(_)
         | Effect::Journal(_)
+        | Effect::RangeDiff(_)
         | Effect::Remote(_)
         | Effect::Clone(_)
         | Effect::Init(_)

@@ -107,6 +107,8 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &
     ui.separator();
     super::rebase::edit_menu::multi(ui, t, m, snap, msgs);
     ui.separator();
+    range_diff_item(ui, t, m, msgs);
+    ui.separator();
     let patched = patch_button(ui, t, t.tr("commits.menu.create_patch"), m, true, msgs);
     if picked || reverted || patched {
         ui.close_menu();
@@ -116,6 +118,22 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &
         let copy = Msg::Patch(PatchMsg::Copy(m.oids.clone()));
         menu_item_if(msgs, ui, t.tr("commits.menu.copy_patch"), m.export_blocked.map(|b| b.text(t)), copy);
     });
+}
+
+/// Range-diff the two commits: the older row (graph order is newest first) is the old version.
+/// Disabled unless exactly two are selected.
+fn range_diff_item(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, msgs: &mut Vec<Msg>) {
+    let label = t.tr("commits.menu.range_diff");
+    match (crate::state::range_diff::multi_blocked(t, m), m.oids.as_slice()) {
+        (None, [new, old]) => {
+            let open = crate::range_diff::RangeDiffMsg::Open { old: *old, new: *new, label: None, at: None };
+            menu_item(msgs, ui, label, Msg::RangeDiff(open));
+        }
+        (why, _) => {
+            let why = why.unwrap_or(t.tr("range_diff.blocked.two"));
+            reason::menu_button(ui, label, "", ItemState::blocked_by(Some(why)));
+        }
+    }
 }
 
 /// A multi-selection action: in a menu (`in_menu`), an item greyed with an info mark while it is

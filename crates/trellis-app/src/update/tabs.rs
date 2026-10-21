@@ -225,6 +225,7 @@ pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         super::issue::reload_pending(st, fx);
         super::rebase::reload_pending(st, fx);
         super::journal::reload_pending(st, fx);
+        super::range_diff::reload_pending(st, fx);
         super::diff_preview::reload_pending(st, fx);
         super::line_counts::reload_pending(st, fx);
         super::conflict_check::want(st, fx);
@@ -258,6 +259,7 @@ pub(super) fn park(st: &mut AppState) -> Parked {
         rebase: st.rebase.take(),
         gitflow_panel: std::mem::take(&mut st.gitflow_panel),
         journal: st.journal.take(),
+        range_diff: st.range_diff.take(),
         draft: std::mem::take(&mut st.draft),
         undo: std::mem::take(&mut st.undo),
         forge: st.forge.take(),
@@ -333,6 +335,9 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.journal = p.journal;
     // Journal results for this tab were dropped while it was parked.
     st.journal_gen += 1;
+    st.range_diff = p.range_diff;
+    // Results for this tab were dropped while it was parked.
+    st.range_diff_gen += 1;
     st.draft = p.draft;
     st.undo = p.undo;
     st.forge = p.forge;

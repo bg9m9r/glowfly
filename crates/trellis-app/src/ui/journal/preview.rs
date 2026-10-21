@@ -1,13 +1,16 @@
 //! The selected state's preview: its label, "<subject> · <sha> · <date>", what Restore would
 //! move (and, when nothing keeps its commit any more, that only the reflog does), up to 8
-//! first-parent commits from it painted as a short lane in the subject's colour, Restore… and
-//! Create branch here…, and git's raw reflog entry. The lane is shared with `lost_preview.rs`.
+//! first-parent commits from it painted as a short lane in the subject's colour, Restore…,
+//! Create branch here… and Range-diff with now (comparing the state with where its subject is
+//! now, disabled with why), and git's raw reflog entry. The lane is shared with `lost_preview.rs`.
 
 use crate::journal::JournalMsg;
 use crate::msg::Msg;
+use crate::range_diff::RangeDiffMsg;
 use crate::state::AppState;
-use crate::state::journal::{JournalView, moves_sentence, row_label, short, subject_name, unreachable_line};
+use crate::state::journal::{JournalView, against, moves_sentence, row_label, short, subject_name, unreachable_line};
 use crate::state::journal_restore;
+use crate::state::range_diff;
 use crate::ui::pane_status;
 use crate::ui::theme::branch_colours::line;
 use crate::ui::theme::{color, type_scale};
@@ -69,12 +72,21 @@ fn pane(ui: &mut Ui, st: &AppState, view: &JournalView, snap: &Snapshot, row: &R
     }
     ui.add_space(12.0);
     let why = journal_restore::plan(snap, row, st.job.is_some(), t).err();
-    ui.horizontal(|ui| {
+    // Wrapped: three buttons don't fit a narrow pane in every language.
+    ui.horizontal_wrapped(|ui| {
         if ui.add(buttons::primary(t.tr("journal.restore.button")).enabled(why.is_none()).why(why.as_deref())).clicked() {
             msgs.push(Msg::Journal(JournalMsg::Restore(row.key())));
         }
         if ui.add(buttons::secondary(t.tr("journal.create_branch"))).clicked() {
             msgs.push(Msg::Journal(JournalMsg::CreateBranch(row.key())));
+        }
+        let blocked = range_diff::journal_blocked(t, snap, row, &st.git);
+        let button = buttons::secondary(t.tr("journal.range_diff.button")).enabled(blocked.is_none()).why(blocked.as_deref());
+        if ui.add(button.tip(t.tr("journal.range_diff.tip"))).clicked()
+            && let Some(new) = against(snap, &row.subject)
+        {
+            let label = Some(subject_name(&row.subject).to_owned());
+            msgs.push(Msg::RangeDiff(RangeDiffMsg::Open { old: row.oid, new, label, at: Some(row.at) }));
         }
     });
     reason::line(ui, why.as_deref(), Align::Min);

@@ -13,6 +13,8 @@ pub type Version = (u32, u32, u32);
 /// A feature that needs a git newer than some still in use.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Feature {
+    /// `git range-diff`: comparing two versions of a branch commit by commit.
+    RangeDiff,
     /// `git restore`: discarding changes to a file, restoring a file from a commit.
     Restore,
     /// `git submodule set-url` (2.25) and `set-branch` (2.22): editing a submodule.
@@ -28,7 +30,8 @@ pub enum Feature {
 }
 
 impl Feature {
-    pub const ALL: [Feature; 6] = [
+    pub const ALL: [Feature; 7] = [
+        Feature::RangeDiff,
         Feature::Restore,
         Feature::SequencerSkip,
         Feature::SubmoduleEdit,
@@ -40,6 +43,7 @@ impl Feature {
     /// The oldest git (major, minor) that has it.
     pub fn min(self) -> (u32, u32) {
         match self {
+            Feature::RangeDiff => (2, 19),
             Feature::Restore => (2, 23),
             Feature::SubmoduleEdit => (2, 25),
             Feature::ForceIfIncludes => (2, 30),
@@ -53,6 +57,7 @@ impl Feature {
     /// What it does, for "needs git 2.38 or newer" texts.
     pub fn label(self) -> &'static str {
         match self {
+            Feature::RangeDiff => "comparing two versions of a branch",
             Feature::Restore => "discarding changes to a file",
             Feature::SubmoduleEdit => "editing a submodule's URL and branch",
             Feature::ForceIfIncludes => "force pushing only over commits you have seen",
@@ -159,7 +164,8 @@ mod tests {
 
     #[test]
     fn features_follow_the_version() {
-        assert_eq!(missing_for(Some((2, 22, 9))), Feature::ALL.to_vec());
+        assert_eq!(missing_for(Some((2, 18, 5))), Feature::ALL.to_vec());
+        assert_eq!(missing_for(Some((2, 22, 9))), Feature::ALL[1..].to_vec());
         assert_eq!(
             missing_for(Some((2, 23, 0))),
             [Feature::SubmoduleEdit, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]
@@ -203,6 +209,18 @@ mod tests {
         assert_eq!(
             Feature::SequencerSkip.needs_text(Some((2, 22, 0))),
             "Skipping a commit in a cherry-pick or revert needs git 2.23 or newer (you have 2.22.0)."
+        );
+    }
+
+    #[test]
+    fn range_diff_needs_2_19() {
+        assert_eq!(Feature::RangeDiff.min(), (2, 19));
+        assert_eq!(Feature::ALL[0], Feature::RangeDiff, "the oldest minimum comes first");
+        assert!(missing_for(Some((2, 18, 0))).contains(&Feature::RangeDiff));
+        assert!(!missing_for(Some((2, 19, 0))).contains(&Feature::RangeDiff));
+        assert_eq!(
+            Feature::RangeDiff.needs_text(Some((2, 18, 0))),
+            "Comparing two versions of a branch needs git 2.19 or newer (you have 2.18.0)."
         );
     }
 

@@ -9,6 +9,7 @@
 //!   view, continue.
 //! - `stash_undo`: stash and pop; undo and redo a commit and a merge.
 //! - `journal_restore`: hard reset a branch, restore it from the operation journal, undo that.
+//! - `range_diff`: compare an amended branch with its version before, from its menu.
 //! - `probe`: what the real-input smoke test (`scripts/smoke-linux.sh`) reads from the probe.
 //!
 //! The app is built by `TrellisApp::for_test`: its saves go to the fixture's config folder,
@@ -27,5 +28,6 @@ mod harness_tests;
 mod journal_restore;
 mod op_preview;
 mod probe;
+mod range_diff;
 mod rebase_conflict;
 mod stash_undo;

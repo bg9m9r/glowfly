@@ -4,7 +4,7 @@
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, custom_commands, dashboard, deep_link, diff_gaps, expect, files,
     forge_calls, forks, git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, op_preview, os,
-    patches, path_search, profiles, pull_request, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules,
+    patches, path_search, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules,
     themes, tools, trust, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
@@ -195,6 +195,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::CheckConflicts(job) => Some(conflict_check::run(job)),
         Effect::OpPreview(job) => Some(op_preview::run(job)),
         Effect::Journal(e) => Some(journal::run(e)),
+        Effect::RangeDiff(job) => Some(range_diff::run(job)),
         Effect::Remote(e) => Some(forks::run(e)),
         Effect::Clone(e) => Some(clone::run(e)),
         Effect::Init(e) => Some(init::run(e)),

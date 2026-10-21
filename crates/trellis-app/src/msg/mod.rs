@@ -2,7 +2,7 @@
 //!
 //! `Msg` has one variant per area, each carrying that area's own enum (defined in this folder,
 //! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule`,
-//! `terminal`, `ssh`, `profile`, `patch`, `tools`, `custom_commands`, `conflict_check`, `journal`, `pull_request`, `logs`, `onboarding` and `deep_link`;
+//! `terminal`, `ssh`, `profile`, `patch`, `tools`, `custom_commands`, `conflict_check`, `journal`, `range_diff`, `pull_request`, `logs`, `onboarding` and `deep_link`;
 //! Trellis's own updates are `UpdateMsg` in `updates.rs`). Each area's enum goes to one handler in `update/`, which matches it
 //! exhaustively, and says through `on_inactive` what its results still need when they arrive
 //! for a tab that is no longer active. Only a few cross-cutting messages are top-level.
@@ -144,6 +144,8 @@ pub enum Msg {
     /// The operation journal: the states HEAD and the branches have been in, and Restore
     /// (update/journal.rs).
     Journal(crate::journal::JournalMsg),
+    /// Comparing two versions of a branch commit by commit (update/range_diff.rs).
+    RangeDiff(crate::range_diff::RangeDiffMsg),
     /// The pull request panel (update/pull_request/).
     PullRequest(crate::pull_request::PullRequestMsg),
     /// The issue panel and the Create issue dialog (update/issue.rs, update/issue_create.rs).
@@ -305,6 +307,7 @@ impl Msg {
             Msg::ConflictCheck(m) => m.on_inactive(),
             Msg::OpPreview(m) => m.on_inactive(),
             Msg::Journal(m) => m.on_inactive(),
+            Msg::RangeDiff(m) => m.on_inactive(),
             Msg::PullRequest(m) => m.on_inactive(),
             Msg::Issue(m) => m.on_inactive(),
             Msg::Forge(m) => m.on_inactive(),
