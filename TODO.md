@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-20 20:42 · **File history and blame**: The File view previews files: Markdown gets a Text | Preview switch (remembered, also in Preferences > Diff viewer) drawn by the shared Markdown renderer (headings, lists with task boxes, quotes, highlighted code, tables, https links), and images (PNG, JPEG, GIF, WebP, BMP) are drawn at their own size or scaled to fit over a checkerboard with their format, size and scale, while the binary diff now previews GIF, WebP and BMP too (`73cef4b4`)
 - 2026-10-20 20:14 · **Welcome screen**: The welcome now draws in the shared dialog frame at 760 px with its band as the dialog header and the shared close button, the shared footer with Back, Skip and Continue, and Name and Email as 36 px fields in field groups with a help line each (`945fd912`)
 - 2026-10-20 19:31 · **Vivid colour**: Each colour kind gets one job: a Color submenu on the tab menu and welcome rows gives a repository one of 8 quiet hues, shown as a swatch on its tab, a 2 px line along the window's top for the active tab and a swatch in the repository lists (worktree group strips take the same hues, spread out); a coral "needs you" fill, always with the warning mark, marks conflicted files, the conflicted operation banner, the conflict chip and an undecided Untrusted chip; status colours keep to letters and counts (neutral change bars), the Branch picker shows a branch dot, toolbar groups sit on a neutral accent-tinted backing, and the status bar draws service names and errors in text (`28037ddb`)
 - 2026-10-20 19:14 · **Real-input smoke tests (Linux)**: A CI job builds the release binary and drives it under its own Xvfb and openbox with real XTEST input at scale 1 and 1.5 (`scripts/smoke-linux.sh`): a click that focuses the window and a click after the window manager focused it must both select a graph row, typed text in the commit summary must arrive exactly and commit only the staged file, a commit's menu creates a branch, Ctrl+Shift+L hides and shows the left panel, dragging the sidebar edge saves its width and a resized window still lays out and takes clicks, read back through an opt-in probe file (`TRELLIS_SMOKE_PROBE`) and the disk; failures upload screenshots and logs (`7c12ec7f`)
@@ -1068,7 +1069,6 @@ blockers and major findings are Milestone 1 items.
 
 ### File history and blame
 
-- Rendered preview (Markdown, images) in the file view
 - Open folder history from a folder row once file lists can show a tree
 
 ### Multi-select commits
@@ -2477,7 +2477,7 @@ here, under the item they grew from.
 - Translate the palette's repository commands (e.g. Remove missing repositories from the lists)
 - Translate the pull request panel's file list texts (only its rows' Copy path follows the language)
 - Translate the rebase edit-menu reasons from trellis_core::rebase (This commit isn't on the current branch, merge selected, side line) and core's in_progress_text / DETACHED used by the rebase panel
-- Translate the file history views' own texts (history.rs, history_folder.rs, history_file.rs, file_buttons.rs, file_view_switch.rs, diff/preview.rs) and drop the English constants kept for them (file_menu::BLAME, OPEN_DEFAULT, files::NOT_IN_WORKDIR, SHOW_IN_FOLDER, history NOT_ON_GRAPH, WRAP_LINES)
+- Translate the file history views' own texts (history.rs, history_folder.rs, history_file.rs, history_preview.rs, file_buttons.rs, file_view_switch.rs, diff/preview.rs) and drop the English constants kept for them (file_menu::BLAME, OPEN_DEFAULT, files::NOT_IN_WORKDIR, SHOW_IN_FOLDER, history NOT_ON_GRAPH, WRAP_LINES)
 - Translate the find and go-to-line fields shared by blame and the file views (ui/find_bar.rs)
 - Translate core's case-mismatch line in the File names banner (Snapshot::case_mismatch)
 - Translate the external tool failure toasts (NO_DIFF_TOOL, NO_MERGE_TOOL, merge_end_text, unmatched quote) and the palette's tool details
@@ -2513,6 +2513,17 @@ here, under the item they grew from.
 - Restore, Open and Show items in a folder entry file's context menu
 - Match case, whole word and regex options for find in the File view
 - Select and copy text in the File view
+- Find and go to line inside the Markdown preview
+- Open relative links from the preview as that file at the same commit, and jump to `#anchors`
+- Show images embedded in Markdown from repository paths at the same commit
+- Table column alignment (`:---:`) in rendered Markdown (File view preview and pull request bodies)
+- Virtualized layout so Markdown longer than 512 KB can be previewed
+- Zoom, pan and actual-size toggle for the File view's image preview
+- Play animated GIF and WebP previews (first frame only now)
+- A keyboard shortcut for the File view's Text / Preview switch
+- Preview other renderable text (reStructuredText, AsciiDoc)
+- Use the editor font and size for code blocks in the File view preview (they use the body size now)
+- Rendered Markdown: an italic run followed by a space draws without the gap ("*try* the" reads "trythe")
 
 ### Dialogs keep what was typed
 
@@ -2664,10 +2675,10 @@ here, under the item they grew from.
 ### A calm file header
 
 - Compare a changed image as an overlay or with a swipe handle, beside Before and After
-- Preview more image formats (GIF, WebP, BMP, ICO) and SVG, drawn rather than shown as text
+- Preview ICO, TIFF, AVIF and SVG images, drawn rather than shown as text
 - Zoom and pan the image preview, with a pixel difference view
 - Preview images stored in Git LFS from their local objects
-- The image preview in the file history's File view and in the conflict view
+- The image preview in the conflict view
 - Keyboard keys for the View menu's choices (layout, section, wrap, ignore whitespace)
 - Remember the View menu's last section per repository
 - A renamed file's header names the old path too ("old → new", the arrow painted)
