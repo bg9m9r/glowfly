@@ -148,11 +148,16 @@ fn repository_commands_wait_for_trust_in_a_clean_repository() {
     assert!(fx.is_empty(), "{fx:?}");
     // It first says where it comes from and what it runs, which the trust prompt doesn't.
     let from = "It comes from this repository's .trellis/commands.toml, not from your own commands file.";
-    assert_eq!(confirm_body(&st), format!("Run Mine?
+    assert_eq!(
+        confirm_body(&st),
+        format!(
+            "Run Mine?
 
 {from}
 
-Runs: git status"));
+Runs: git status"
+        )
+    );
     assert!(update(&mut st, Msg::ConfirmAccepted, Instant::now()).is_empty());
     assert_eq!(held(&st), Some("Mine"));
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
@@ -194,9 +199,14 @@ fn a_repository_command_that_confirms_asks_once_with_its_source() {
     load(&mut st, FileRead::default(), file(&command("Sh", "shell", "echo hi", "confirm = \"Say hi?\"")));
     assert!(run(&mut st, Source::Repo, "Sh", Target::Palette).is_empty());
     let body = confirm_body(&st);
-    assert!(body.starts_with("Say hi?
+    assert!(
+        body.starts_with(
+            "Say hi?
 
-It comes from this repository's .trellis/commands.toml"), "{body}");
+It comes from this repository's .trellis/commands.toml"
+        ),
+        "{body}"
+    );
     update(&mut st, Msg::ConfirmAccepted, Instant::now());
     assert_eq!(held(&st), Some("Sh"), "straight to the trust prompt, not asked twice");
     // Once trusted, it asks only its own question.
@@ -204,9 +214,12 @@ It comes from this repository's .trellis/commands.toml"), "{body}");
     update(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }), Instant::now());
     st.job = None;
     assert!(run(&mut st, Source::Repo, "Sh", Target::Palette).is_empty());
-    assert_eq!(confirm_body(&st), "Say hi?
+    assert_eq!(
+        confirm_body(&st),
+        "Say hi?
 
-Runs: echo hi");
+Runs: echo hi"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

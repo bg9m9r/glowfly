@@ -4,9 +4,8 @@
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, custom_commands, dashboard, deep_link, diff_gaps, expect, files,
     forge_calls, forks, git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, op_preview, os,
-    patches,
-    path_search, profiles, pull_request, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools,
-    trust, updates, worktrees,
+    patches, path_search, profiles, pull_request, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules,
+    themes, tools, trust, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;

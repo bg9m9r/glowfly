@@ -55,14 +55,19 @@ pub(super) fn run(st: &mut AppState, r: CommandRef, at: Target, confirmed: bool,
         };
         let runs = t.trf("commands.confirm.runs", &[("command", &expanded.preview())]);
         let body = match from_repo {
-            true => format!("{question}
+            true => format!(
+                "{question}
 
 {}
 
-{runs}", t.tr("commands.confirm.from_repo")),
-            false => format!("{question}
+{runs}",
+                t.tr("commands.confirm.from_repo")
+            ),
+            false => format!(
+                "{question}
 
-{runs}"),
+{runs}"
+            ),
         };
         let then = Box::new(Msg::CustomCommand(CustomCommandMsg::Run { command: r, at, confirmed: true }));
         let button = t.tr("commands.confirm.button").to_owned();
