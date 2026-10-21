@@ -241,6 +241,8 @@ pub(super) fn park(st: &mut AppState) -> Parked {
     st.view.diff_lines.clear();
     // The parked tab's diff results are dropped, so a pending step can't land.
     st.view.diff_landing = None;
+    st.view.diff_opening = None;
+    st.view.stage_move_on = None;
     st.view.diff_cursor = None;
     Parked {
         snap: st.snap.take(),

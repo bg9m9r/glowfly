@@ -25,7 +25,8 @@ pub use ids::{BindingId, FAVORITE_BINDINGS};
 pub use rebind::{Check, Slot, apply, check, fold_ctrl, reset_taking, same_keys, swap_chord};
 pub use table::*;
 
-/// What the staging, commit-message and sheet keys ask `update/shortcuts.rs` to do.
+/// What the staging, commit-message and sheet keys, and the arrows of a focused Unstaged or
+/// Staged Files list, ask `update/shortcuts.rs` to do.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum KeyAction {
     Stage,
@@ -36,4 +37,10 @@ pub enum KeyAction {
     ToggleSheet,
     /// Revert the selected lines, or the current hunk, of a commit or comparison diff.
     RevertHunk,
+    /// Up/Down in the focused Unstaged (`staged: false`) or Staged Files list: open the file
+    /// below (`down`) or above.
+    StepFile {
+        staged: bool,
+        down: bool,
+    },
 }

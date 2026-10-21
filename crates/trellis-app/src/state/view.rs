@@ -87,6 +87,14 @@ pub struct ViewState {
     /// the file list it came from scrolls its row into view once. Set and cleared only by
     /// `update`.
     pub file_reveal: Option<(DiffTarget, u64)>,
+    /// A file opened (not reloaded) whose diff hasn't arrived yet. Set by `repo::open_diff`;
+    /// cleared when a result of the current generation arrives, the diff closes or the tab is
+    /// parked. Changed only by `update`.
+    pub diff_opening: Option<DiffTarget>,
+    /// The file S or U is staging or unstaging as a whole, so that when its operation reports
+    /// success the view moves on to its neighbour (`update/wip_list.rs`). Changed only by
+    /// `update`.
+    pub stage_move_on: Option<DiffTarget>,
     /// A file opened from a pull request's code comment thread, still loading, and the line
     /// (side, number) to land on. Set and cleared only by `update`.
     pub diff_open_line: Option<(DiffTarget, trellis_core::diff_rows::LineSide, u32)>,
@@ -181,6 +189,8 @@ impl Default for ViewState {
             diff_open_hunk: None,
             diff_landing: None,
             file_reveal: None,
+            diff_opening: None,
+            stage_move_on: None,
             diff_open_line: None,
             pr_thread_scroll: None,
             diff_cursor: None,

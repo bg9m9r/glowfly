@@ -136,6 +136,7 @@ mod trust_inherit;
 mod undo;
 mod updates;
 mod watch;
+mod wip_list;
 mod work_files;
 mod work_files_delete;
 mod worktree_counts;

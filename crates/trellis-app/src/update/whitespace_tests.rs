@@ -135,12 +135,12 @@ fn a_load_started_before_the_toggle_is_dropped() {
     assert_eq!(st.diff, before, "the stale result is dropped");
     assert_eq!(st.hunk_ops_gen(), None);
 
-    // The toggle's reload of the diff on screen does land.
+    // The toggle asks again for the file still opening, and that lands.
     for e in toggled.into_iter().filter(|e| matches!(e, Effect::LoadDiff { .. })) {
         let loaded = crate::runner::execute(e).expect("diff result");
         run(&mut st, loaded);
     }
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&a));
+    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&DiffTarget::Unstaged("ws.txt".into())));
     assert!(st.hunk_ops_gen().is_some());
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -88,6 +88,7 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
                 st.toast(true, note, now);
             }
             super::watch::settled(st, now);
+            super::wip_list::op_done(st, !failed, fx);
             super::repo::refresh_status(st, fx);
         }
     }

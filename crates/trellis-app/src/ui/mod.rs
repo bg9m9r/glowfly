@@ -162,6 +162,7 @@ mod welcome_steps;
 pub mod widgets;
 mod window_buttons;
 mod window_frame;
+pub(crate) mod wip_keys;
 mod worktree_dialog;
 mod worktree_manage_dialog;
 mod worktree_move_dialog;
@@ -461,6 +462,8 @@ mod snapshot_tests_welcome_looks;
 mod snapshot_tests_whole;
 #[cfg(test)]
 mod snapshot_tests_window_native;
+#[cfg(test)]
+mod snapshot_tests_wip_keys;
 #[cfg(test)]
 mod snapshot_tests_worktree_branches;
 #[cfg(test)]

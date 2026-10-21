@@ -333,6 +333,8 @@ pub(super) mod selection_tests;
 pub(super) mod shallow_tests;
 #[path = "shortcuts_tests.rs"]
 pub(super) mod shortcuts_tests;
+#[path = "shortcuts_wip_tests.rs"]
+pub(super) mod shortcuts_wip_tests;
 #[path = "sign_in_tests.rs"]
 pub(super) mod sign_in_tests;
 #[path = "signature_tests.rs"]

@@ -23,7 +23,7 @@ use trellis_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileEntry, Hunk, 
 use trellis_core::settings::DiffMode;
 
 /// One hunk: ` a`, `-b`, `+B`.
-fn one_hunk() -> FileDiff {
+pub(super) fn one_hunk() -> FileDiff {
     let line = |origin: char, text: &str| DiffLine { origin, old: Some(1), new: Some(1), text: text.into() };
     let hunks = vec![Hunk { header: "@@ -1,2 +1,2 @@".into(), lines: vec![line(' ', "a"), line('-', "b"), line('+', "B")] }];
     FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }

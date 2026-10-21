@@ -1,6 +1,6 @@
 //! The WIP panel: the in-progress banner, the Conflicted, Resolved, Unstaged and Staged Files
 //! lists with their rows' actions, and the commit box. The Unstaged and Staged Files headers are
-//! in `details_wip_header.rs`.
+//! in `details_wip_header.rs`; those two lists' keyboard focus and arrows are in `wip_keys.rs`.
 
 #[path = "details_wip_header.rs"]
 mod header;
@@ -28,7 +28,9 @@ use trellis_core::undo::DISCARD_STASH_MESSAGE;
 
 pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
-    let open = OpenFile { diff: st.diff.as_ref().map(|(t, _)| t), conflict: st.conflict.as_ref().map(|c| c.path.as_str()) };
+    // The file being opened is highlighted at once, so a click or a step answers immediately.
+    let opening = st.view.diff_opening.as_ref().filter(|t| t.is_working_tree());
+    let open = OpenFile { diff: opening.or(st.diff.as_ref().map(|(t, _)| t)), conflict: st.conflict.as_ref().map(|c| c.path.as_str()) };
 
     let conflicted: Vec<&FileEntry> = snap.unstaged.iter().filter(|f| f.status == '!').collect();
     super::details_banner::op_banner(ui, st, snap, &conflicted, msgs);
@@ -42,8 +44,8 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let tools = ToolAvail::of(st);
     let lines = st.line_counts.wip();
     let commands = MenuCommands::for_state(st);
-    let ctx =
-        RowContext { lfs: TrackContext::of(st), tools: &tools, keys: &st.keymap, lang: st.settings.lang(), lines, commands: &commands };
+    let (lfs, keys, lang) = (TrackContext::of(st), &st.keymap, st.settings.lang());
+    let ctx = RowContext { lfs, tools: &tools, keys, lang, lines, commands: &commands, keyed: false };
     let lists = super::conflict_files::Lists { conflicted: &conflicted, resolved: &resolved, height: list_h };
     super::conflict_files::show(ui, st, lists, &open, ctx, msgs);
     let reveal = st.view.file_reveal.as_ref();
@@ -65,6 +67,9 @@ pub(super) struct RowContext<'a> {
     pub lines: Option<&'a WipLineCounts>,
     /// The custom commands of the file menus.
     pub commands: &'a MenuCommands<'a>,
+    /// The row's list takes the keyboard focus as a whole (Unstaged and Staged Files), so the
+    /// row is no Tab stop of its own.
+    pub keyed: bool,
 }
 
 /// What the central panel shows, so its file row is drawn selected.
@@ -86,7 +91,9 @@ type Reveal<'a> = Option<&'a (DiffTarget, u64)>;
 
 /// The Unstaged or Staged Files list of the working tree. Conflicted files have their own list
 /// (`conflict_files::show`), so Unstaged Files leaves them out. It scrolls to the file a step
-/// landed on.
+/// landed on. The list takes the keyboard focus as one Tab stop, or by a click on a row; while
+/// it has it, Up/Down step between its files and its current row (or, with none, the list) is
+/// ringed.
 fn file_list(
     ui: &mut egui::Ui,
     snap: &Snapshot,
@@ -108,32 +115,59 @@ fn file_list(
     } else {
         t.trf("details.wip.unstaged.header", &[("count", &count)])
     };
-    let header = header::header(ui, title, staged, count, ctx, msgs);
+    let header = header::header(ui, title.clone(), staged, count, ctx, msgs);
     if staged {
         header.context_menu(|ui| file_menu::staged_header_items(ui, t, msgs, snap));
     }
+    let row_h = super::widgets::LIST_ROW_H;
+    // The list's area, for its focus target: registered before the rows, after the header.
+    let h = if count == 0 { row_h } else { (count as f32 * (row_h + ui.spacing().item_spacing.y)).min(max_h) };
+    let focus =
+        super::wip_keys::target(ui, staged, egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), h)), &title);
+    super::wip_keys::arrows(ui, staged, msgs);
+    let focused = focus.has_focus();
     let area = egui::ScrollArea::vertical().id_salt(id).max_height(max_h).auto_shrink([false, true]);
     if count == 0 {
-        area.show(ui, |ui| ui.label(RichText::new(t.tr("details.wip.none")).color(color::faint())));
+        let shown = area.show(ui, |ui| ui.label(RichText::new(t.tr("details.wip.none")).color(color::faint())));
+        if focused {
+            super::widgets::file_row_focus(ui, shown_rect(&shown));
+        }
         return;
     }
-    // Only the rows in view are drawn: a working tree can have thousands of changed files.
-    let row_h = super::widgets::LIST_ROW_H;
-    area.show_rows(ui, row_h, count, |ui, range| {
-        let index = |t: &DiffTarget| {
-            let path = match t {
-                DiffTarget::Staged(p) if staged => p,
-                DiffTarget::Unstaged(p) if !staged => p,
-                _ => return None,
-            };
-            (0..count).find(|&i| kept.as_ref().map_or(&all[i], |k| k[i]).path == *path)
+    let entry = |i: usize| kept.as_ref().map_or(&all[i], |k| k[i]);
+    let index = |t: &DiffTarget| {
+        let path = match t {
+            DiffTarget::Staged(p) if staged => p,
+            DiffTarget::Unstaged(p) if !staged => p,
+            _ => return None,
         };
+        (0..count).find(|&i| entry(i).path == *path)
+    };
+    // Found in the whole list, so a current row scrolled out of view doesn't ring the list.
+    let current = open.diff.and_then(index);
+    let ctx = RowContext { keyed: true, ..ctx };
+    // Only the rows in view are drawn: a working tree can have thousands of changed files.
+    let shown = area.show_rows(ui, row_h, count, |ui, range| {
         super::details::file_reveal::reveal(ui, id, want, index, &range, row_h);
         for i in range {
-            let f = kept.as_ref().map_or(&all[i], |k| k[i]);
-            wip_file_row(ui, snap, f, staged, open, ctx, None, msgs);
+            let r = wip_file_row(ui, snap, entry(i), staged, open, ctx, None, msgs);
+            if r.clicked() {
+                super::wip_keys::request(ui.ctx(), staged);
+            }
+            if focused && current == Some(i) {
+                super::widgets::file_row_focus(ui, r.rect);
+            }
         }
     });
+    if focused && current.is_none() {
+        super::widgets::file_row_focus(ui, shown_rect(&shown));
+    }
+}
+
+/// The part of a scroll area its content fills (the viewport can be taller).
+fn shown_rect<R>(out: &egui::scroll_area::ScrollAreaOutput<R>) -> egui::Rect {
+    let r = out.inner_rect;
+    egui::Rect::from_min_size(r.min, egui::vec2(r.width(), out.content_size.y.min(r.height())))
 }
 
 /// A row of the Unstaged, Staged or Conflicted Files list: status, Stage / Unstage / Mark
@@ -149,7 +183,7 @@ pub(super) fn wip_file_row(
     ctx: RowContext,
     note: Option<(String, bool)>,
     msgs: &mut Vec<Msg>,
-) {
+) -> egui::Response {
     let target = || if staged { DiffTarget::Staged(f.path.clone()) } else { DiffTarget::Unstaged(f.path.clone()) };
     // A conflicted file opens in the conflict view; marking it resolved checks for markers first.
     let conflicted = !staged && f.status == '!';
@@ -194,9 +228,15 @@ pub(super) fn wip_file_row(
             ui.label(RichText::new(text).size(type_scale::SMALL).color(if green { color::text() } else { color::weak() }));
         }
     };
-    let r = match count.zip(lines) {
-        Some((n, w)) => super::widgets::file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::row_end(ui, n, w.largest()), row),
-        None => super::widgets::file_row(ui, selected, &f.path, row),
+    let r = match (count.zip(lines), ctx.keyed) {
+        (Some((n, w)), false) => {
+            super::widgets::file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::row_end(ui, n, w.largest()), row)
+        }
+        (Some((n, w)), true) => {
+            super::widgets::keyed_file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::row_end(ui, n, w.largest()), row)
+        }
+        (None, false) => super::widgets::file_row(ui, selected, &f.path, row),
+        (None, true) => super::widgets::keyed_file_row(ui, selected, &f.path, row),
     }
     .response;
     if r.clicked() {
@@ -247,4 +287,5 @@ pub(super) fn wip_file_row(
         };
         file_menu::wip_file_items(ui, t, msgs, f, missing, unstages, &items, ctx.tools.setup.editor, tool, ctx.commands);
     });
+    r
 }

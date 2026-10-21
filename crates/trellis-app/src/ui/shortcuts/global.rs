@@ -51,8 +51,9 @@ struct Live {
     sheet: bool,
     /// A dialog other than the sheet.
     dialog: bool,
-    /// A text field has the keyboard.
+    /// A text field has the keyboard (a focused WIP file list isn't typing).
     typing: bool,
+    /// A working-tree diff is open, or a working-tree file is opening.
     working_diff: bool,
     /// A commit or comparison diff is open, with no conflict or blame view over it.
     commit_diff: bool,
@@ -80,8 +81,8 @@ impl Live {
             sheet,
             // The welcome counts as a dialog, except while Preferences hides it.
             dialog: (st.modal.is_some() && !sheet) || (st.onboarding.welcome.is_some() && st.prefs.is_none()),
-            typing: ctx.wants_keyboard_input(),
-            working_diff: st.diff.as_ref().is_some_and(|(t, _)| t.is_working_tree()),
+            typing: ctx.wants_keyboard_input() && crate::ui::wip_keys::focused_list(ctx).is_none(),
+            working_diff: st.view.diff_opening.as_ref().or(st.diff.as_ref().map(|(t, _)| t)).is_some_and(|t| t.is_working_tree()),
             commit_diff: st.blame.is_none() && st.conflict.is_none() && st.diff.as_ref().is_some_and(|(t, _)| t.reverts_hunks()),
             stepping: st.blame.is_none() && (st.conflict.is_some() || st.diff.is_some()),
             diff: st.blame.is_none() && st.conflict.is_none() && st.diff.is_some(),

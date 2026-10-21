@@ -1061,11 +1061,6 @@ blockers and major findings are Milestone 1 items.
 
 - Open folder history from a folder row once file lists can show a tree
 
-### Keyboard shortcuts
-
-- S in the WIP file lists (keyboard focus in the lists, Up/Down between files), and moving on
-  to the next unstaged file after S stages the open one
-
 ### Rebind keyboard shortcuts
 
 - Keys for palette commands that have none yet (fetch, pull, push, create branch…), assignable
@@ -1907,6 +1902,19 @@ here, under the item they grew from.
 
 - Topological next/previous (the next or previous commit on the selected commit's own branch
   line) and first/last row in the graph
+- The rows' Stage/Unstage buttons and menu items also move on to the next file when they act on
+  the open one
+- The sheet and Preferences > Keyboard notes name the WIP lists for the Up/Down and S/U rows
+- Home/End and PageUp/PageDown in a focused WIP list
+- A key to move the focus between the Unstaged and Staged lists keeping the place
+- Enter to open, Space to stage or unstage, and Delete to discard the current file of a focused
+  WIP list
+- Shift+Up/Down to select several WIP files and stage or unstage them together
+- Keyboard focus and Up/Down in the commit, comparison and folder-history file lists, and in the
+  Conflicted and Resolved lists
+- Moving on to the next conflicted file after one is marked resolved from the list
+- Arrow keys in the first frame after a WIP list takes the focus still move egui's focus (the
+  lock starts on the second frame)
 
 ### Rebind keyboard shortcuts
 

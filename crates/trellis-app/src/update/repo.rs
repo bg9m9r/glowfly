@@ -85,6 +85,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             if generation != st.diff_gen {
                 return; // superseded: another file was opened, the diff closed, or a newer reload sent
             }
+            st.view.diff_opening = None;
             // Any accepted result ends a pending step. A refresh while it loads asks for the step's
             // destination again (`diff::renew_step`) rather than reloading the old file, so a
             // superseding reload can't block it.
@@ -174,7 +175,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
 }
 
 pub(super) fn reload_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if open_missing_history_diff(st, fx) || super::diff::renew_step(st, fx) {
+    if open_missing_history_diff(st, fx) || super::diff::renew_step(st, fx) || super::wip_list::renew_open(st, fx) {
         return;
     }
     reload_shown_diff(st, fx);
@@ -184,7 +185,7 @@ pub(super) fn reload_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// block in the whole-file view; no line selection), e.g. after the diff options changed.
 /// Does nothing when no diff is open.
 pub(super) fn reopen_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if open_missing_history_diff(st, fx) || super::diff::renew_step(st, fx) {
+    if open_missing_history_diff(st, fx) || super::diff::renew_step(st, fx) || super::wip_list::renew_open(st, fx) {
         return;
     }
     request_diff(st, fx, false);
@@ -250,6 +251,7 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
         let generation = next_diff_gen(st);
         let ignore_whitespace = st.settings.diff_ignore_whitespace;
         let whole_file = st.settings.diff_mode == DiffMode::WholeFile;
+        st.view.diff_opening = Some(target.clone());
         fx.push(Effect::LoadDiff { workdir, target, reload: false, generation, previous: None, ignore_whitespace, whole_file });
     }
 }
@@ -264,6 +266,7 @@ pub(super) fn close_diff(st: &mut AppState) {
     st.view.file_reveal = None;
     st.view.diff_open_line = None;
     st.view.diff_cursor = None;
+    st.view.diff_opening = None;
     st.diff_preview = None;
     next_diff_gen(st);
 }

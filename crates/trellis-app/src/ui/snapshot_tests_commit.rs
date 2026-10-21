@@ -150,7 +150,8 @@ fn commit_shortcuts() {
 
     // Without focus in the message fields the shortcuts do nothing.
     h.state_mut().1.clear();
-    h.get_by_label_contains("Unstaged files").simulate_click();
+    // The header, not the list (which has the same name).
+    h.get_all_by_label_contains("Unstaged files").find(|n| n.role() == Role::Label).expect("the header").simulate_click();
     h.run();
     h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
     h.run();

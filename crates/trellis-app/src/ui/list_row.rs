@@ -2,11 +2,12 @@
 //! text (words, or counts with painted arrows) and a marker slot at the right, plus the
 //! skip-if-scrolled-away helper the long sections use; the file lists' fixed-height rows
 //! (`file_row`, and `file_row_with_end` with a part at the right edge), each one click target
-//! with its selection painted across the row and into the panel padding, and `row_text` for
-//! their unnamed path; and the side panels' row heights and insets. Selection and hover look
+//! with its selection painted across the row and into the panel padding (`keyed_file_row*` for
+//! a list that takes the keyboard focus as a whole, and `file_row_focus` for its ring), and
+//! `row_text` for their unnamed path; and the side panels' row heights and insets. Selection and hover look
 //! like the graph's (`widgets::row_fill`).
 
-use super::theme::{color, spacing};
+use super::theme::{color, spacing, tokens};
 use super::widgets::{row_fill, truncate};
 use crate::ui::theme::type_scale;
 
@@ -180,7 +181,7 @@ pub const FILE_ROW_BLEED: f32 = spacing::GRID;
 /// click target named `name`: `.response` is the row's click response, and only real buttons
 /// inside it take their own clicks. `selected` paints the selection across the row.
 pub fn file_row<R>(ui: &mut Ui, selected: bool, name: &str, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    file_row_in(ui, selected, name, Layout::left_to_right(Align::Center), add)
+    file_row_in(ui, selected, name, Sense::click(), Layout::left_to_right(Align::Center), add)
 }
 
 /// `file_row` with an `end` part flush with the row's right edge (a file's line counts): `end` is
@@ -193,7 +194,43 @@ pub fn file_row_with_end<R>(
     end: impl FnOnce(&mut Ui),
     add: impl FnOnce(&mut Ui) -> R,
 ) -> InnerResponse<R> {
-    file_row_in(ui, selected, name, Layout::right_to_left(Align::Center), |ui| {
+    file_row_ended(ui, selected, name, Sense::click(), end, add)
+}
+
+/// `file_row` for a list that takes the keyboard focus as a whole (`ui/wip_keys.rs`): the row
+/// takes clicks but is no Tab stop of its own.
+pub fn keyed_file_row<R>(ui: &mut Ui, selected: bool, name: &str, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+    file_row_in(ui, selected, name, Sense::CLICK, Layout::left_to_right(Align::Center), add)
+}
+
+/// `file_row_with_end` for a list that takes the keyboard focus as a whole, as `keyed_file_row`.
+pub fn keyed_file_row_with_end<R>(
+    ui: &mut Ui,
+    selected: bool,
+    name: &str,
+    end: impl FnOnce(&mut Ui),
+    add: impl FnOnce(&mut Ui) -> R,
+) -> InnerResponse<R> {
+    file_row_ended(ui, selected, name, Sense::CLICK, end, add)
+}
+
+/// The focus ring of a focused list's current row (`row`, a file row's rect), across the same
+/// area as its selection fill.
+pub fn file_row_focus(ui: &Ui, row: Rect) {
+    let clip = ui.clip_rect().expand2(vec2(FILE_ROW_BLEED, 0.0));
+    let p = Painter::new(ui.ctx().clone(), ui.layer_id(), clip);
+    tokens::focus_ring_inset(&p, row.expand2(vec2(FILE_ROW_BLEED, 0.0)), 0);
+}
+
+fn file_row_ended<R>(
+    ui: &mut Ui,
+    selected: bool,
+    name: &str,
+    sense: Sense,
+    end: impl FnOnce(&mut Ui),
+    add: impl FnOnce(&mut Ui) -> R,
+) -> InnerResponse<R> {
+    file_row_in(ui, selected, name, sense, Layout::right_to_left(Align::Center), |ui| {
         end(ui);
         ui.with_layout(Layout::left_to_right(Align::Center), add).inner
     })
@@ -201,8 +238,15 @@ pub fn file_row_with_end<R>(
 
 /// The file rows' core: the row is allocated (and so registered for clicks) before its
 /// contents, so the buttons added later sit on top and win their own clicks.
-fn file_row_in<R>(ui: &mut Ui, selected: bool, name: &str, layout: Layout, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), LIST_ROW_H), Sense::click());
+fn file_row_in<R>(
+    ui: &mut Ui,
+    selected: bool,
+    name: &str,
+    sense: Sense,
+    layout: Layout,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> InnerResponse<R> {
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), LIST_ROW_H), sense);
     let enabled = ui.is_enabled();
     resp.widget_info(|| WidgetInfo::selected(WidgetType::SelectableLabel, enabled, selected, name));
     if ui.is_rect_visible(rect) {

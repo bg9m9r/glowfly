@@ -3,7 +3,9 @@
 //! use: S/U stage or unstage the open working-tree file (its selected lines, when a selection is
 //! visible), R reverts the selected lines or the current hunk of a commit or comparison diff,
 //! Ctrl+Shift+S/U stage or unstage everything, Ctrl+Shift+M goes to the commit message, and
-//! Ctrl+/ opens or closes the shortcut sheet (the default keys).
+//! Ctrl+/ opens or closes the shortcut sheet (the default keys). Up/Down in a focused Unstaged or
+//! Staged Files list step between its files, and after S or U staged or unstaged the whole open
+//! file the view moves on to its neighbour (`wip_list.rs`).
 
 use crate::effect::Effect;
 use crate::keymap::KeyAction;
@@ -34,20 +36,38 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
             toggle_sheet(st);
             None
         }
+        KeyAction::StepFile { staged, down } => {
+            super::wip_list::step(st, staged, down, fx);
+            None
+        }
+    };
+    // A whole file staged or unstaged by its key moves the view on once the operation worked.
+    let whole = match &msg {
+        Some(Msg::Stage(StageMsg::StageFile(p))) => Some(DiffTarget::Unstaged(p.clone())),
+        Some(Msg::Stage(StageMsg::UnstageFile(p))) => Some(DiffTarget::Staged(p.clone())),
+        _ => None,
     };
     if let Some(m) = msg {
+        let before = fx.len();
         fx.extend(super::update(st, m, now));
+        // Not when nothing was sent (a refusal, or the merge tool asked first).
+        if let Some(t) = whole
+            && fx[before..].iter().any(|e| matches!(e, Effect::LocalOp { .. }))
+        {
+            super::wip_list::stage_sent(st, t);
+        }
     }
 }
 
-/// What S (`stage`) or U does on the open diff: the selected lines when the selection is
-/// visible, else the whole file. Nothing on a diff of the other side, a commit or comparison
+/// What S (`stage`) or U does on the open diff (or the working-tree file still opening): the
+/// selected lines when the selection is visible on it, else the whole file. Nothing on a diff of the other side, a commit or comparison
 /// diff, a conflicted file, or under the conflict view or the file history.
 fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
     if st.conflict.is_some() || st.history.is_some() {
         return None;
     }
-    let (target, _) = st.diff.as_ref()?;
+    // The file still opening, when there is one: the line selection is on the diff on screen.
+    let target = super::wip_list::cursor(st)?;
     // A conflicted file is marked resolved in the conflict view, never by a stray key.
     let conflicted = st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.path == target.path() && f.status == '!'));
     if conflicted {

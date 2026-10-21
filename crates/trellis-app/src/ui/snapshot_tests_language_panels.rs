@@ -135,7 +135,8 @@ fn details_wip_spanish() {
     let mut h = harness(st, true);
     h.run();
     let header = Lang::Es.trf("details.wip.unstaged.header", &[("count", &count)]);
-    assert!(h.query_by_label(&header).is_some(), "{header} is shown");
+    // The header and its list's focus target share the name.
+    assert!(h.query_all_by_label(&header).next().is_some(), "{header} is shown");
     h.check_snapshot("details_wip_spanish");
     click_header_action(&mut h, Lang::Es.tr("details.wip.discard_all.button"), Lang::Es.tr("details.wip.more.tip"));
     let body = discard_all_text(Lang::Es, &h.state().0.keymap);
