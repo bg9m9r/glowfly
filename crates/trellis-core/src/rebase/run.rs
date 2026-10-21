@@ -110,13 +110,13 @@ pub fn resume(workdir: &Path, how: Resume) -> Result<Outcome> {
 }
 
 /// The stash list's newest entry, if any.
-fn stash_tip(repo: &Repository) -> Option<Oid> {
+pub(crate) fn stash_tip(repo: &Repository) -> Option<Oid> {
     repo.refname_to_id("refs/stash").ok()
 }
 
 /// What a finished git run left: a rebase still in progress, none (with whether git had to
 /// keep an autostash it couldn't apply in the stash list), or a failure.
-fn outcome(workdir: &Path, ok: bool, output: String, autostash: bool, stash_before: Option<Oid>) -> Result<Outcome> {
+pub(crate) fn outcome(workdir: &Path, ok: bool, output: String, autostash: bool, stash_before: Option<Oid>) -> Result<Outcome> {
     if let Some(progress) = progress(workdir) {
         return Ok(Outcome::Stopped { ok, output, progress });
     }

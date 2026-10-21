@@ -78,6 +78,7 @@ pub mod sparse_ops;
 pub mod spell;
 pub mod ssh_keys;
 pub mod ssh_version;
+pub mod stack;
 pub mod stash_ops;
 pub mod stop_cleanup;
 pub mod submodule_ops;

@@ -13,6 +13,8 @@
 //! that stopped for conflicts and was finished later (Continue, Skip or a commit) is recorded as
 //! one move from the HEAD it started at (`resumed.rs`). `resolved` handles conflict resolutions
 //! saved in the conflict view: the conflict's stages come back from git's resolve-undo record.
+//! A restack, which moves several branches at once, is recorded around its run too and undone
+//! branch by branch (`restacked.rs`).
 
 use crate::gitcli::args;
 use crate::repo::StagedNew;
@@ -28,11 +30,12 @@ mod record;
 mod refs;
 mod reset;
 mod resolved;
+mod restacked;
 mod resumed;
 mod reverted;
 mod saved;
 mod stash;
-pub use action::{Action, Changes, Created, Discarded, HeadPos, Staged};
+pub use action::{Action, BranchMove, Changes, Created, Discarded, HeadPos, Staged};
 pub use deleted::{DeleteVia, DeletedSaving, MAX_KEPT_BYTES, Trashers, delete_again, delete_saving, delete_staged_saving, put_back};
 pub use kinds::{MoveOp, ResetMode, UndoKind};
 pub(crate) use kinds::{commits_label, move_targets};
@@ -44,6 +47,7 @@ use record::stash_top;
 pub use record::{Before, after, before, irreversible, redone};
 pub use reset::{HARD_RESET_STASH_MESSAGE, hard_reset_commands};
 pub use resolved::resolve_saving;
+pub use restacked::{RestackBefore, restack_before, restack_unmoved, restacked};
 pub use reverted::revert_saving;
 pub use saved::{RestoreFailed, Saved, discard_saving, restore_saving, write as write_saved};
 
@@ -159,6 +163,8 @@ mod refs_tests;
 mod reset_tests;
 #[cfg(test)]
 mod resolved_tests;
+#[cfg(test)]
+mod restacked_tests;
 #[cfg(test)]
 mod restore_tests;
 #[cfg(test)]

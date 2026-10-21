@@ -30,10 +30,12 @@ pub enum Feature {
     /// `git fetch --no-write-fetch-head` (2.29): downloading the file contents a partial clone
     /// is missing.
     FetchObjects,
+    /// `git rebase --update-refs`: restacking the branches stacked on a rewritten branch.
+    UpdateRefs,
 }
 
 impl Feature {
-    pub const ALL: [Feature; 8] = [
+    pub const ALL: [Feature; 9] = [
         Feature::RangeDiff,
         Feature::Restore,
         Feature::SequencerSkip,
@@ -42,6 +44,7 @@ impl Feature {
         Feature::ForceIfIncludes,
         Feature::SparseCheckout,
         Feature::MergeTree,
+        Feature::UpdateRefs,
     ];
 
     /// The oldest git (major, minor) that has it.
@@ -56,6 +59,7 @@ impl Feature {
             Feature::MergeTree => (2, 38),
             Feature::SequencerSkip => (2, 23),
             Feature::FetchObjects => (2, 29),
+            Feature::UpdateRefs => (2, 38),
         }
     }
 
@@ -70,6 +74,7 @@ impl Feature {
             Feature::MergeTree => "predicting merge conflicts",
             Feature::SequencerSkip => "skipping a commit in a cherry-pick or revert",
             Feature::FetchObjects => "downloading file contents a partial clone is missing",
+            Feature::UpdateRefs => "restacking branches",
         }
     }
 
@@ -174,16 +179,26 @@ mod tests {
         assert_eq!(missing_for(Some((2, 22, 9))), Feature::ALL[1..].to_vec());
         assert_eq!(
             missing_for(Some((2, 23, 0))),
-            [Feature::SubmoduleEdit, Feature::FetchObjects, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]
+            [
+                Feature::SubmoduleEdit,
+                Feature::FetchObjects,
+                Feature::ForceIfIncludes,
+                Feature::SparseCheckout,
+                Feature::MergeTree,
+                Feature::UpdateRefs
+            ]
         );
         assert!(missing_for(Some((2, 24, 9))).contains(&Feature::SubmoduleEdit));
         assert_eq!(
             missing_for(Some((2, 25, 0))),
-            [Feature::FetchObjects, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]
+            [Feature::FetchObjects, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree, Feature::UpdateRefs]
         );
-        assert_eq!(missing_for(Some((2, 29, 0))), [Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]);
-        assert_eq!(missing_for(Some((2, 34, 1))), [Feature::SparseCheckout, Feature::MergeTree]);
-        assert_eq!(missing_for(Some((2, 37, 7))), [Feature::MergeTree]);
+        assert_eq!(
+            missing_for(Some((2, 29, 0))),
+            [Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree, Feature::UpdateRefs]
+        );
+        assert_eq!(missing_for(Some((2, 34, 1))), [Feature::SparseCheckout, Feature::MergeTree, Feature::UpdateRefs]);
+        assert_eq!(missing_for(Some((2, 37, 7))), [Feature::MergeTree, Feature::UpdateRefs]);
         assert!(missing_for(Some((2, 38, 0))).is_empty());
         assert!(missing_for(Some((3, 0, 0))).is_empty());
         assert!(missing_for(None).is_empty(), "unknown: let git say what fails");
@@ -245,6 +260,15 @@ mod tests {
             Feature::RangeDiff.needs_text(Some((2, 18, 0))),
             "Comparing two versions of a branch needs git 2.19 or newer (you have 2.18.0)."
         );
+    }
+
+    #[test]
+    fn restacking_needs_2_38() {
+        assert_eq!(Feature::UpdateRefs.min(), (2, 38));
+        assert!(Feature::ALL.contains(&Feature::UpdateRefs));
+        assert!(missing_for(Some((2, 37, 9))).contains(&Feature::UpdateRefs));
+        assert!(!missing_for(Some((2, 38, 0))).contains(&Feature::UpdateRefs));
+        assert_eq!(Feature::UpdateRefs.needs_text(Some((2, 37, 1))), "Restacking branches needs git 2.38 or newer (you have 2.37.1).");
     }
 
     #[test]

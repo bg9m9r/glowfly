@@ -365,6 +365,8 @@ pub(super) mod ssh_tests;
 pub(super) mod ssh_use_agent_tests;
 #[path = "ssh_use_tests.rs"]
 pub(super) mod ssh_use_tests;
+#[path = "stack_tests.rs"]
+pub(super) mod stack_tests;
 #[path = "stash_confirm_tests.rs"]
 pub(super) mod stash_confirm_tests;
 #[path = "stash_push_tests.rs"]

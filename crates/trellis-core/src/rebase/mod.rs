@@ -29,6 +29,7 @@ pub use progress::{RebaseProgress, progress, stopped_at};
 pub use quick::{QuickEdit, QuickPlan, prepare_edit};
 pub use remaining::{EditTodoRequest, Remaining, edit_todo, remaining};
 pub use run::{Resume, resume, start};
+pub(crate) use run::{outcome, stash_tip};
 pub use todo::{
     build, default_combined, editor_command, group_end, install_todo, is_unchanged, listed_oids, problem, problem_with, shell_quote,
     shell_quote_for,

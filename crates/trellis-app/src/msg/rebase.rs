@@ -1,11 +1,12 @@
 //! Messages of the interactive rebase panel, the graph's history edits and the rebase banner
 //! (update/rebase.rs, update/rebase_remaining.rs, update/rebase_quick.rs,
-//! update/rebase_resume.rs).
+//! update/rebase_resume.rs, update/stack.rs for restacks).
 
-use crate::effect::UndoResult;
+use crate::effect::{RestackJob, UndoResult};
 use crate::state::rebase_steps::NewStep;
 use std::path::PathBuf;
 use trellis_core::rebase::{Outcome, QuickEdit, QuickPlan, RebaseAction, RebaseBase, RebasePlan, Remaining, Resume};
+use trellis_core::stack::{RestackRun, RestackScope};
 
 /// The interactive rebase panel: editing the list, starting the rebase, and the results
 /// (update/rebase.rs); editing the remaining steps of a running rebase
@@ -90,6 +91,20 @@ pub enum RebaseMsg {
     },
     /// The rebase banner's Continue or Skip commit.
     Resume(Resume),
+    /// Restack the branches in `scope` (the branch menu's stack items, the offer after a
+    /// rewrite; update/stack.rs). Uncommitted changes ask first; `autostash`: that question was
+    /// answered, so each step stashes them.
+    Restack {
+        scope: RestackScope,
+        autostash: bool,
+    },
+    /// A restack job's result (its first run, or the banner's Continue or Skip of a stopped
+    /// one), for whichever tab it ran in (like `RebaseFinished`).
+    RestackRan {
+        result: Result<RestackRun, String>,
+        undo: Option<UndoResult>,
+        job: RestackJob,
+    },
 }
 
 impl RebaseMsg {
@@ -119,7 +134,9 @@ impl RebaseMsg {
             | Self::EditPrepared { .. }
             | Self::SubmitReword
             | Self::RunEdit { .. }
-            | Self::Resume(..) => None,
+            | Self::Resume(..)
+            | Self::Restack { .. }
+            | Self::RestackRan { .. } => None,
         }
     }
 }

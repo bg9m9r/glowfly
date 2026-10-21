@@ -1,9 +1,21 @@
 //! Interactive rebase effects: loading the panel's list, preparing a history edit chosen in the
 //! graph, running a rebase, resuming a stopped one, and reading and editing the remaining steps
-//! of a running one.
+//! of a running one; restacking stacked branches (`git rebase --update-refs`) and going on with
+//! a stopped restack.
 
 use std::path::PathBuf;
 use trellis_core::rebase::{EditTodoRequest, QuickEdit, RebaseBase, Resume, StartRequest};
+use trellis_core::stack::RestackPlan;
+use trellis_core::undo::RestackBefore;
+
+/// A restack job: the steps still to run, every branch's tip before its first run (for undo),
+/// and how the undo history names it ("restack of the branches above search").
+#[derive(Debug, Clone)]
+pub struct RestackJob {
+    pub plan: RestackPlan,
+    pub before: Option<RestackBefore>,
+    pub detail: String,
+}
 
 #[derive(Debug)]
 pub enum RebaseEffect {
@@ -21,6 +33,11 @@ pub enum RebaseEffect {
     LoadRemaining { workdir: PathBuf, generation: u64 },
     /// Replaces the remaining steps (`git rebase --edit-todo`); a job, unscoped like `Start`.
     EditTodo { cwd: PathBuf, request: EditTodoRequest },
+    /// Runs a restack's steps (`RebaseMsg::RestackRan`); a job, unscoped like `Start`.
+    Restack { cwd: PathBuf, job: RestackJob },
+    /// Continues or skips the step a restack stopped at, then runs the steps it has left; a job,
+    /// unscoped like `Start`.
+    ResumeRestack { cwd: PathBuf, how: Resume, job: RestackJob },
 }
 
 impl RebaseEffect {
@@ -32,6 +49,8 @@ impl RebaseEffect {
             Self::Resume { .. } => "rebase-resume",
             Self::LoadRemaining { .. } => "rebase-remaining",
             Self::EditTodo { .. } => "rebase-edit-todo",
+            Self::Restack { .. } => "restack",
+            Self::ResumeRestack { .. } => "restack-resume",
         }
     }
 
@@ -40,7 +59,7 @@ impl RebaseEffect {
     pub fn scope(&self) -> Option<&PathBuf> {
         match self {
             Self::LoadPlan { workdir, .. } | Self::PrepareEdit { workdir, .. } | Self::LoadRemaining { workdir, .. } => Some(workdir),
-            Self::Start { .. } | Self::Resume { .. } | Self::EditTodo { .. } => None,
+            Self::Start { .. } | Self::Resume { .. } | Self::EditTodo { .. } | Self::Restack { .. } | Self::ResumeRestack { .. } => None,
         }
     }
 }

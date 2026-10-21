@@ -126,6 +126,8 @@ pub mod ssh;
 pub mod ssh_marks;
 pub mod ssh_service;
 pub mod ssh_use;
+pub mod stack;
+pub mod stack_rows;
 pub mod stash_confirm;
 pub mod stashes;
 pub mod submodules;
@@ -430,6 +432,9 @@ pub struct AppState {
     /// Incremented for every rebase list request and whenever the panel closes; older
     /// `RebasePlanLoaded` results are ignored.
     pub rebase_gen: u64,
+    /// Restacks stopped on a conflict, with the steps still to run once the banner's Continue or
+    /// Skip finishes that step; keyed by working folder rather than parked with a tab.
+    pub restacks: Vec<stack::PendingRestack>,
     /// The Git Flow panel is open; shown in place of the graph (below the rebase panel). Parked
     /// with the tab.
     pub gitflow_panel: bool,
@@ -579,6 +584,7 @@ impl AppState {
             issue_gen: 0,
             rebase: None,
             rebase_gen: 0,
+            restacks: Vec::new(),
             gitflow_panel: false,
             journal: None,
             journal_gen: 0,

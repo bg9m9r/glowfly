@@ -164,6 +164,20 @@ pub enum Action {
         from: Oid,
         to: Oid,
     },
+    /// A restack: every branch it moved, `detail` naming it ("restack of the branches above
+    /// search").
+    Restacked {
+        detail: String,
+        moves: Vec<BranchMove>,
+    },
+}
+
+/// A local branch an operation moved from `from` to `to`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BranchMove {
+    pub name: String,
+    pub from: Oid,
+    pub to: Oid,
 }
 
 /// A resolution's index entry: its mode and blob.
@@ -234,6 +248,7 @@ impl Action {
             Action::Resolve { path, staged: None, .. } => format!("save of {path} with markers"),
             Action::DeleteFile { path, .. } => format!("delete of {path}"),
             Action::SetBranch { name, to, .. } => format!("move of branch {name} to {}", short(*to)),
+            Action::Restacked { detail, .. } => detail.clone(),
         }
     }
 

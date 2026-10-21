@@ -7,7 +7,7 @@
 //! (`custom_menu.rs`); the Copy submenu; and delete. The branch's name heads the menu once; the items leave it out. Disabled items say why
 //! on hover, with the same text `update` logs when it refuses a late message.
 
-use super::common::{menu_header, menu_item, menu_item_if};
+use super::common::{menu_item, menu_item_if};
 use super::ref_visibility;
 use super::theme::color;
 use crate::conflict_check::ConflictCheckMsg;
@@ -46,11 +46,12 @@ pub fn local_branch_menu(
     msgs: &mut Vec<Msg>,
 ) {
     let name = b.name.as_str();
-    menu_header(ui, name);
+    super::stack_menu::header(ui, t, name, snap);
     branch_items(ui, t, b, snap, msgs);
     ui.separator();
     integrate_items(ui, t, b, snap, msgs);
     push_items(ui, t, b, snap, msgs);
+    super::stack_menu::items(ui, t, b, snap, msgs);
     // Always drawn: without a code host, a disabled item says why there are no pull requests.
     ui.separator();
     match fs.filter(|fs| fs.host.is_some()) {

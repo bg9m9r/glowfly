@@ -10,7 +10,7 @@ use eframe::egui::{self, Color32, Painter, Rect, Response, Sense, Ui, pos2, vec2
 
 /// The room a dot takes before a name.
 pub const DOT_ROOM: f32 = 14.0;
-const DOT_R: f32 = 4.0;
+pub(crate) const DOT_R: f32 = 4.0;
 
 /// Paints a dot in colour `c`, `indent` from `row`'s left edge, centred on the row.
 pub fn paint(p: &Painter, row: Rect, indent: f32, c: Color32) {

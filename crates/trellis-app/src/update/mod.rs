@@ -113,6 +113,7 @@ mod ssh;
 mod ssh_pick;
 mod ssh_service;
 mod ssh_use;
+mod stack;
 mod stash;
 mod stash_push;
 mod status_tip;

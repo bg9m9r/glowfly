@@ -67,6 +67,7 @@ mod saves;
 mod signatures;
 mod sparse;
 mod ssh;
+mod stack;
 mod stashes;
 mod stats;
 mod status;

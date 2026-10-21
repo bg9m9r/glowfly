@@ -26,6 +26,11 @@ pub(super) fn resume(st: &mut AppState, how: Resume, now: Instant, fx: &mut Vec<
         refuse(st, why, now);
         return;
     }
+    // A stopped restack goes on with its remaining steps.
+    if super::stack::resume(st, how, fx) {
+        return;
+    }
+    let Some(snap) = &st.snap else { return };
     let label = if snap.state == RebaseInteractive { "Interactive rebase" } else { "Rebase" };
     if super::ops::begin_job(st, label, false, move |cwd| Effect::Rebase(RebaseEffect::Resume { cwd, how }), fx) != Started::No {
         super::submodule_batch::job_started(st, label, true);

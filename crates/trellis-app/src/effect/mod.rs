@@ -52,7 +52,7 @@ pub use line_counts::{FailedLineCounts, LineCountsEffect};
 pub use notify::{DesktopNote, NoteKind};
 pub use op_preview::OpPreviewJob;
 pub use pick::PickJob;
-pub use rebase::RebaseEffect;
+pub use rebase::{RebaseEffect, RestackJob};
 pub use repo::{ConflictRead, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;
 pub use selection::StackRequest;

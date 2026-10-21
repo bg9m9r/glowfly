@@ -272,10 +272,12 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         shallow_roots,
         fetched_at,
         graph: graph::Layout::default(),
+        stacks: Default::default(),
         refs_key,
         loaded_with,
     };
     snap.lay_out_graph();
+    snap.stacks = crate::stack::read(&repo, &snap);
     Ok(snap)
 }
 

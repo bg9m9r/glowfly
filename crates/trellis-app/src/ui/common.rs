@@ -95,6 +95,21 @@ pub fn menu_header(ui: &mut egui::Ui, title: &str) {
     header(ui, RichText::new(title).font(type_scale::strong(ui, type_scale::BODY)));
 }
 
+/// A menu's title with a weak, small note on a second line under it ("Stacked on search").
+pub fn menu_header_note(ui: &mut egui::Ui, title: &str, note: &str) {
+    let mut job = egui::text::LayoutJob::default();
+    let (style, align) = (ui.style().clone(), egui::Align::Min);
+    RichText::new(title).font(type_scale::strong(ui, type_scale::BODY)).append_to(&mut job, &style, egui::FontSelection::Default, align);
+    let note = RichText::new(format!(
+        "
+{note}"
+    ))
+    .font(type_scale::font(type_scale::SMALL))
+    .color(color::weak());
+    note.append_to(&mut job, &style, egui::FontSelection::Default, align);
+    header(ui, job);
+}
+
 /// A commit menu's title: the summary in bold (cut to 80 characters), then the short SHA, weak
 /// and monospace; just the SHA when there is no summary.
 pub fn commit_menu_header(ui: &mut egui::Ui, summary: &str, oid: Oid) {

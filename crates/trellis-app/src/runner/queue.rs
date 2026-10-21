@@ -117,9 +117,13 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::WorkFile { workdir, .. } => Some(workdir),
         Effect::RunGit { cmds, .. } if cmds.iter().all(|c| network_only(c)) => None,
         Effect::RunGit { cwd, .. } | Effect::UndoRedo { cwd, .. } => Some(cwd),
-        Effect::Rebase(RebaseEffect::Start { cwd, .. } | RebaseEffect::Resume { cwd, .. } | RebaseEffect::EditTodo { cwd, .. }) => {
-            Some(cwd)
-        }
+        Effect::Rebase(
+            RebaseEffect::Start { cwd, .. }
+            | RebaseEffect::Resume { cwd, .. }
+            | RebaseEffect::EditTodo { cwd, .. }
+            | RebaseEffect::Restack { cwd, .. }
+            | RebaseEffect::ResumeRestack { cwd, .. },
+        ) => Some(cwd),
         Effect::Pick(j) => Some(&j.cwd),
         Effect::RemoveWorktree(r) => Some(&r.repo),
         Effect::MoveWorktree(r) => Some(&r.repo),

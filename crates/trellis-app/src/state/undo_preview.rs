@@ -48,6 +48,15 @@ pub fn preview(t: Lang, a: &Action, snap: Option<&Snapshot>, redo: bool) -> TipP
             rows
         }
         Action::Moved { branch, from, to, .. } => return moved(t, snap, heading, branch, *from, *to, redo),
+        Action::Restacked { moves, .. } => moves
+            .iter()
+            .take(PREVIEW_ROWS)
+            .map(|m| {
+                let sha = short_sha(if redo { m.to } else { m.from });
+                let args: &[(&str, &dyn std::fmt::Display)] = &[("branch", &m.name), ("sha", &sha)];
+                pick(t.trf("undo.preview.moves_back", args), t.trf("undo.preview.moves_again", args))
+            })
+            .collect(),
         Action::DeleteBranch { name, oid, .. } => {
             let args: &[(&str, &dyn std::fmt::Display)] = &[("branch", name), ("sha", &short_sha(*oid))];
             vec![pick(t.trf("undo.preview.restore_branch", args), t.trf("undo.preview.delete_branch_again", args))]

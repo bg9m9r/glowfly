@@ -8,6 +8,7 @@ use super::common::{forge_error_rows, hint_row, menu_item, menu_item_if, state_c
 use super::forge_filter_menu::{self, Picker};
 use super::panel_size;
 use super::ref_visibility;
+use super::stack_rows;
 use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
@@ -92,7 +93,11 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     };
     section_header::show(ui, local, &mut sections.local, msgs);
     if sections.local {
-        for b in snap.locals.iter().filter(|b| shown(&b.name)) {
+        let mut elbows = stack_rows::Elbows::default();
+        for row in crate::state::stack_rows::local_rows(snap, &shown, !filter.is_empty()) {
+            let (b, dent) = (row.branch, stack_rows::indent(row.depth));
+            // Noted before the hidden check, so rows scrolled out of view still anchor elbows.
+            elbows.note(&b.name, ui.cursor().top() + widgets::LIST_ROW_H / 2.0);
             if widgets::list_row_hidden(ui) {
                 continue;
             }
@@ -108,14 +113,19 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             if let Some(l) = &pr {
                 parts.push(Part::Text(l));
             }
+            if row.link.is_some_and(|l| l.behind) {
+                parts.push(Part::Text(t.tr("sidebar.local.restack.part")));
+            }
             if worktree.is_some() {
                 parts.push(Part::Text(t.tr("sidebar.local.worktree.part")));
             }
             let label = if b.is_head { format!("✔  {}", b.name) } else { b.name.clone() };
             let selected = b.oid.is_some_and(|o| sel.includes(o));
             let right = (!parts.is_empty()).then_some((&parts[..], color::weak()));
-            let (r, marker, cut) = widgets::list_row_cut(ui, widgets::ROW_INDENT + DOT_ROOM, &label, right, slot, selected, b.is_head);
-            branch_dot::paint(ui.painter(), r.rect, widgets::ROW_INDENT, line(snap.branch_swatch(&b.name)));
+            let (r, marker, cut) =
+                widgets::list_row_cut(ui, widgets::ROW_INDENT + DOT_ROOM + dent, &label, right, slot, selected, b.is_head);
+            branch_dot::paint(ui.painter(), r.rect, widgets::ROW_INDENT + dent, line(snap.branch_swatch(&b.name)));
+            elbows.paint(ui.painter(), r.rect, row.depth, row.link.map(|l| l.on.as_str()), color::weak());
             if r.hovered() {
                 *hover_next = b.oid;
             }
@@ -127,8 +137,11 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             };
             // A cut name comes first, whole.
             let whole = cut.then(|| label.clone());
-            let lines: Vec<String> =
-                [whole, tracking, tip, worktree.map(crate::state::worktree_branches::local_tip_line)].into_iter().flatten().collect();
+            let stacked = crate::state::stack_rows::tip_line(t, row.link);
+            let lines: Vec<String> = [whole, tracking, stacked, tip, worktree.map(crate::state::worktree_branches::local_tip_line)]
+                .into_iter()
+                .flatten()
+                .collect();
             let r = if lines.is_empty() {
                 r
             } else {

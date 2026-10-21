@@ -45,6 +45,8 @@ pub(super) fn run(e: RebaseEffect) -> Msg {
         RebaseEffect::LoadRemaining { workdir, generation } => {
             RebaseMsg::RemainingLoaded { generation, result: rebase::remaining(&workdir).map_err(err) }
         }
+        RebaseEffect::Restack { cwd, job } => return super::stack::restack(cwd, job),
+        RebaseEffect::ResumeRestack { cwd, how, job } => return super::stack::resume(cwd, how, job),
         RebaseEffect::EditTodo { cwd, request } => {
             RebaseMsg::RemainingEdited { result: rebase::edit_todo(&cwd, &request, &sequence_editor()).map_err(err) }
         }

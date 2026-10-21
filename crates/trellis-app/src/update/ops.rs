@@ -291,6 +291,7 @@ pub(super) fn finish_job(
         snap.fetched_at = Some(fetched);
     }
     let reopen = super::conflict::after_undo(&undo, ok);
+    super::stack::job_finished(st, ok && !job.quiet, here, &undo, now);
     super::undo::finished(st, &job, ok, undo, here);
     super::auto_stash::job_finished(st, &job);
     if here && let Some((p, open_closed)) = reopen {

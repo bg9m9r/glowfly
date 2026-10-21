@@ -320,6 +320,8 @@ pub struct Snapshot {
     /// full loads; jobs that fetch set it too.
     pub fetched_at: Option<i64>,
     pub graph: Layout,
+    /// Which local branches are stacked on which (full loads only).
+    pub stacks: crate::stack::Stacks,
     /// `refs_key` when the load started: a later equal key means only the status can differ.
     pub refs_key: u64,
     /// The options the snapshot was loaded with.

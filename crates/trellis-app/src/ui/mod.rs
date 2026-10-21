@@ -130,6 +130,8 @@ mod sign_in_banner;
 mod signature_badge;
 mod spell_edit;
 mod ssh_keygen_dialog;
+mod stack_menu;
+mod stack_rows;
 mod stash_dialog;
 mod stash_push_dialog;
 mod stashes;
@@ -413,6 +415,8 @@ mod snapshot_tests_sparse;
 mod snapshot_tests_ssh;
 #[cfg(test)]
 mod snapshot_tests_ssh_keygen;
+#[cfg(test)]
+mod snapshot_tests_stack;
 #[cfg(test)]
 mod snapshot_tests_stacked;
 #[cfg(test)]

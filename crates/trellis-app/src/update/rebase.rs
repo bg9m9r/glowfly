@@ -2,7 +2,7 @@
 //! rebase as the single active job, and showing where it ended (finished, stopped at an edit
 //! or a conflict, or refused). The panel on a running rebase's remaining steps is in
 //! `rebase_remaining`, graph edits in `rebase_quick`, the banner's Continue and Skip in
-//! `rebase_resume`; rebase results end here, in `finished`.
+//! `rebase_resume`, restacks in `stack`; rebase results end here, in `finished`.
 
 use super::ops::Started;
 use super::rebase_resume::{STASH_KEPT, stopped_headline};
@@ -127,6 +127,8 @@ pub(super) fn handle(st: &mut AppState, msg: RebaseMsg, now: Instant, fx: &mut V
             super::rebase_quick::run(st, *plan, autostash, confirmed, now, fx);
         }
         RebaseMsg::Resume(how) => super::rebase_resume::resume(st, how, now, fx),
+        RebaseMsg::Restack { scope, autostash } => super::stack::restack(st, scope, autostash, now, fx),
+        RebaseMsg::RestackRan { result, undo, job } => super::stack::ran(st, result, undo, job, now, fx),
     }
 }
 
@@ -222,7 +224,7 @@ pub(super) fn launch(st: &mut AppState, label: &str, request: StartRequest, deta
 /// panel (active or parked) closes unless nothing was changed, in which case it stays open with
 /// the reason. A stop selects the WIP row, where the banner is. `undo` is what the run means
 /// for the undo history.
-fn finished(st: &mut AppState, result: Result<Outcome, String>, undo: Option<UndoResult>, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn finished(st: &mut AppState, result: Result<Outcome, String>, undo: Option<UndoResult>, now: Instant, fx: &mut Vec<Effect>) {
     let Some(job) = &st.job else { return };
     let (workdir, label) = (job.workdir.clone(), job.label.clone());
     let here = match (workdir.as_deref(), st.workdir()) {

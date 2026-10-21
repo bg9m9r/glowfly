@@ -20,7 +20,7 @@ pub fn onto_commit_blocker(t: Lang, snap: &Snapshot, oid: Oid) -> Option<String>
 }
 
 /// The reason for the operation in progress, if any.
-fn in_progress(t: Lang, state: RepositoryState) -> Option<&'static str> {
+pub(crate) fn in_progress(t: Lang, state: RepositoryState) -> Option<&'static str> {
     use RepositoryState::*;
     Some(match state {
         Clean => return None,

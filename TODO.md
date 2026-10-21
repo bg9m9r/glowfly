@@ -1011,9 +1011,9 @@ follow-ups go to Ideas, not here.
 
 Chosen on 2026-10-19 as the features that make Trellis its own, in this order.
 
-- Stacked branches: recognise a branch built on another, draw the stack, restack everything
-  above after amending a lower branch (`git rebase --update-refs`), and push the stack with one
-  pull request per layer
+- Stacked branches: push the stack (each layer, with --force-with-lease where a restack
+  rewrote it) and create one pull request per layer with its base set to the layer below
+  (recognising, drawing and restacking stacks is done)
 
 ### UI review polish
 
@@ -1241,6 +1241,31 @@ here, under the item they grew from.
   sand in the palette, a vine lane style, and plain descriptive feature names
 - Explain mode: a toggle that shows, in tooltips and confirmations, the git command each action
   runs and what it does in one plain sentence
+
+### Stacked branches
+
+- Palette entries for "Restack branches above <current>" and "Restack onto <lower>"
+- Draw stacks in the graph too: a bracket or a stacked-on label beside the branch labels
+- Use a branch whose upstream is a local branch (`branch.<name>.remote = .`) as an explicit
+  stack hint
+- Choose which of two branches at the same commit is the lower layer (name order for now)
+- After the lower layer is squash-merged on the host, offer to restack the next layer onto
+  the base
+- Make the finished part of a restack aborted midway undoable as one entry (only the
+  operation journal has it now)
+- Stash uncommitted changes once for the whole restack instead of per step, so they always
+  land back on the original branch
+- Preference to restack automatically after amending or rewriting a lower branch, without the
+  toast
+- Preview a restack (commits per layer, predicted conflicts) in the operation preview dialog
+- Restack a stack whose layer is checked out in another worktree by running that step in that
+  worktree
+- Handle rebase.updateRefs=true in the interactive rebase panel, whose todo then holds
+  update-ref lines
+- After aborting a stopped restack, check the branch that was checked out before out again
+  (HEAD stays on the step's top, where git's abort leaves it)
+- Show the git version reason (2.38 for `--update-refs`) on the branch menu's restack items
+  too; today only the refusal toast says it
 
 ### Preview before you act
 
