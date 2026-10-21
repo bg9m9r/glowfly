@@ -177,6 +177,14 @@ fn sidebar_issue_filter_jira() {
     h.run();
     assert!(h.query_by_label("Jira Cloud · Current sprint").is_some());
     assert!(h.query_by_label("Issues filter: Current sprint").is_some());
+    // The status bar counts the list the sidebar shows, with no "·" before the tracker.
+    assert!(h.query_by_label("· 2 in Current sprint").is_some());
+    assert!(h.query_by_label_contains("0 assigned").is_none());
+    let bottom = f64::from(h.ctx.screen_rect().bottom()) - 26.0;
+    let jira =
+        h.query_all_by_label("Jira Cloud").filter_map(|n| n.bounding_box()).find(|r| r.y0 >= bottom).expect("the status bar's tracker");
+    let early_dot = h.query_all_by_label("·").filter_map(|n| n.bounding_box()).any(|r| r.y0 >= bottom && r.x1 <= jira.x0);
+    assert!(!early_dot, "no separator before the tracker");
     h.check_snapshot("sidebar_issue_filter_jira");
     drop(h);
     remove_fixture(&dir);

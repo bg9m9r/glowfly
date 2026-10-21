@@ -1,9 +1,11 @@
 //! The commit box under the WIP file lists: the title row with the author identity git gives
-//! (state/repo_identity.rs), summary and description, the Amend and "Push after
-//! committing" options, the commit button with why it is disabled centred under it (that line's
-//! height is always kept, so the box doesn't change height), the button's menu caret (one split
-//! button) opening a menu with "Skip hooks" (the caret tinted with the warning tone while hooks
-//! are skipped), and the Ctrl+Enter shortcuts. The summary takes the keyboard when `view.focus_message` is set (Ctrl+Shift+M).
+//! (state/repo_identity.rs), the summary with its length to its right (weak up to 50
+//! characters, amber to 72, red past it: `state::commit::summary_length`), the description, the
+//! Amend and "Push after committing" options, the commit button with why it is disabled centred
+//! under it (that line's height is always kept, so the box doesn't change height), the button's
+//! menu caret (one split button) opening a menu with "Skip hooks" (the caret tinted with the
+//! warning tone while hooks are skipped), and the Ctrl+Enter shortcuts. The summary takes the
+//! keyboard when `view.focus_message` is set (Ctrl+Shift+M).
 
 use super::UiCache;
 use super::common::issue_chip;
@@ -16,17 +18,19 @@ use crate::msg::CommitMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::CommitDraft;
-use crate::state::commit::{commit_blocked, pushes_after};
+use crate::state::commit::{SUMMARY_HARD, SummaryLength, commit_blocked, pushes_after, summary_length};
 use crate::state::repo_identity::commit_identity_line;
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::{buttons, reason, truncate_label};
-use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText};
+use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText, vec2};
 use trellis_core::i18n::Lang;
 
 /// Height the commit box needs below the file lists (the lists share what is left), its reason
 /// line included.
 pub(super) const RESERVED_HEIGHT: f32 = 340.0 + reason::LINE_H;
+/// Between the summary field and its length.
+const COUNTER_GAP: f32 = 8.0;
 
 /// The commit button's tooltip: the keys that commit from the message fields.
 pub(super) fn shortcuts_tip(t: Lang, keys: &Keymap) -> String {
@@ -78,14 +82,37 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     }
 
     let spell = st.settings.spellcheck;
-    let s = spell_text_edit(ui, &mut st.draft.summary, t.tr("commit.summary_hint"), 1, &mut cache.speller, spell);
+    // The summary with its length to the right, in a width kept for three digits so the field
+    // doesn't change width as you type.
+    let s = ui
+        .horizontal(|ui| {
+            let font = type_scale::font(type_scale::SMALL);
+            let counter = |s: &String| format!("{}/{SUMMARY_HARD}", s.chars().count());
+            let width = |s: &str| ui.painter().layout_no_wrap(s.to_owned(), font.clone(), color::weak()).size().x;
+            let reserve = width(&counter(&st.draft.summary)).max(width(&format!("000/{SUMMARY_HARD}")));
+            let field_w = (ui.available_width() - reserve - COUNTER_GAP).max(80.0);
+            let s = ui
+                .allocate_ui(vec2(field_w, 0.0), |ui| {
+                    spell_text_edit(ui, &mut st.draft.summary, t.tr("commit.summary_hint"), 1, &mut cache.speller, spell)
+                })
+                .inner;
+            // Counted after the edit, so the number keeps up with typing.
+            let (len, text) = (st.draft.summary.chars().count(), counter(&st.draft.summary));
+            let tone = match summary_length(len) {
+                SummaryLength::Fine => color::weak(),
+                SummaryLength::Long => color::warn(),
+                SummaryLength::TooLong => color::removed(),
+            };
+            ui.allocate_ui_with_layout(vec2(reserve, s.rect.height()), Layout::right_to_left(Align::Center), |ui| {
+                ui.label(RichText::new(text).font(font).color(tone)).on_hover_text(t.tr("commit.summary_count.tip"));
+            });
+            s
+        })
+        .inner;
     super::access::name_field(&s, t.tr("commit.summary_hint"));
     if std::mem::take(&mut st.view.focus_message) {
         s.request_focus();
     }
-    let len = st.draft.summary.chars().count();
-    let c = if len > 72 { color::removed() } else { color::faint() };
-    ui.label(RichText::new(format!("{len}/72")).size(type_scale::SMALL).color(c));
     let d = spell_text_edit(ui, &mut st.draft.description, t.tr("commit.description_hint"), 4, &mut cache.speller, spell);
     super::access::name_field(&d, t.tr("commit.description_hint"));
     if let Some(template) = &st.draft.template {

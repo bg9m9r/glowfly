@@ -1,4 +1,4 @@
-//! Window-level actions from the menu bar and a drawn title bar: quitting, the About dialog,
+//! Window-level actions from the menu bar and a drawn title bar: quitting, the About dialog and its notices,
 //! and moving, resizing, minimising or maximising the window, showing its system menu, or
 //! entering or leaving full screen (which narrows what the others do, `WindowCmd::in_window`).
 
@@ -18,11 +18,17 @@ pub(super) fn handle(st: &mut AppState, msg: AppMsg, fx: &mut Vec<Effect>) {
             }
         }
         // Like the shortcut sheet: not over another dialog, Preferences or a credential prompt,
-        // and it replaces the palette.
+        // and it replaces the palette. The notices' Back returns to it.
         AppMsg::ShowAbout => {
-            if st.modal.is_none() && st.prefs.is_none() && !st.askpass.showing() {
+            if matches!(st.modal, None | Some(Modal::Notices)) && st.prefs.is_none() && !st.askpass.showing() {
                 st.palette = None;
                 st.modal = Some(Modal::About);
+            }
+        }
+        // Only from About, which it replaces.
+        AppMsg::ShowNotices => {
+            if matches!(st.modal, Some(Modal::About)) {
+                st.modal = Some(Modal::Notices);
             }
         }
     }

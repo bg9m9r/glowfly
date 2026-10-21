@@ -100,7 +100,7 @@ fn blame_view() {
     h.get_by_label("File history").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Blame(BlameMsg::OpenHistory { select: None }))));
-    h.get_by_label("Close  (Esc)").click();
+    h.get_by_label("Close blame").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Blame(BlameMsg::Close))));
     drop(h);

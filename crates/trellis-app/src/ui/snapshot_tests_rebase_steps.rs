@@ -3,6 +3,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_rebase::with_panel;
+use crate::msg::{Msg, RebaseMsg};
 use crate::state::AppState;
 use crate::state::rebase::{Editing, RebasePanel};
 use crate::state::rebase_steps::NewStep;
@@ -57,6 +58,16 @@ fn rebase_panel_exec_editor() {
     h.run();
     h.check_snapshot("rebase_panel_exec_editor");
     assert!(h.get_by_label("Save").is_disabled(), "an empty command can't be saved");
+    h.get_by_label("Save").hover();
+    h.run();
+    h.run();
+    assert!(h.query_by_label("Type a command first.").is_some(), "Save says why it is off");
+    // The editor's Cancel, on Save's row (the panel has its own Cancel too).
+    let save = h.get_by_label("Save").bounding_box().unwrap();
+    let cancel = h.query_all_by_label("Cancel").find(|n| n.bounding_box().is_some_and(|r| r.y0 < save.y1 && r.y1 > save.y0));
+    cancel.expect("the editor's Cancel").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::RebaseCancelMessage))));
     drop(h);
     remove_fixture(&dir);
 }

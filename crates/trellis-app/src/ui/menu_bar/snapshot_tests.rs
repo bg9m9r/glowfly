@@ -267,7 +267,7 @@ fn about_through_the_window() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label(&format!("Version {VERSION}")).is_some());
-    assert!(h.query_by_label("Third-party notices").is_some());
+    assert!(h.query_by_label("Third-party notices…").is_some());
     h.get_by_label("Close").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, Msg::CloseModal)));
@@ -278,15 +278,27 @@ fn about_through_the_window() {
 /// The About dialog alone, as `modals.rs` draws it, with a fixed version so a release doesn't
 /// change the image.
 fn about_harness(git: GitState) -> Harness<'static, (GitState, Vec<Msg>)> {
+    dialog_harness(git, |ui, cx, git, msgs| super::about(ui, cx, git, "1.2.3", msgs))
+}
+
+/// The third-party notices dialog alone, as `modals.rs` draws it.
+fn notices_harness() -> Harness<'static, (GitState, Vec<Msg>)> {
+    dialog_harness(GitState::default(), |ui, cx, _, msgs| super::notices(ui, cx, msgs))
+}
+
+type DrawDialog = fn(&mut egui::Ui, crate::ui::dialog_frame::Cx, &GitState, &mut Vec<Msg>) -> bool;
+
+/// A dialog drawn by `draw` in the dark theme, its rect kept under "about-rect".
+fn dialog_harness(git: GitState, draw: DrawDialog) -> Harness<'static, (GitState, Vec<Msg>)> {
     Harness::builder().with_size(egui::vec2(1024.0, 700.0)).build_state(
-        |ctx, (git, msgs): &mut (GitState, Vec<Msg>)| {
+        move |ctx, (git, msgs): &mut (GitState, Vec<Msg>)| {
             color::set_palette(&theme::DARK);
             theme::apply_style(ctx, &theme::DARK);
             ctx.set_theme(theme::egui_theme(&theme::DARK));
             egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |_| {});
             let id = egui::Id::new("trellis-modal");
             let cx = crate::ui::dialog_frame::Cx { t: trellis_core::i18n::Lang::En, keyboard: true, key: id.with("about") };
-            let resp = theme::dialog(ctx, id).show(ctx, |ui| super::about(ui, cx, git, "1.2.3", msgs));
+            let resp = theme::dialog(ctx, id).show(ctx, |ui| draw(ui, cx, git, msgs));
             ctx.data_mut(|d| d.insert_temp(egui::Id::new("about-rect"), resp.response.rect));
         },
         (git, Vec::new()),
@@ -299,19 +311,42 @@ fn about_dialog() {
     let mut h = about_harness(git);
     h.run();
     h.check_snapshot("about_dialog");
-    // The resizable dialog, its padding included, fits inside the window.
+    // The dialog, its padding included, fits inside the window.
     let rect = h.ctx.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("about-rect"))).unwrap();
     assert!(h.ctx.screen_rect().contains_rect(rect), "{rect:?}");
     assert!(h.query_by_label("Git 2.47.1").is_some());
     h.get_by_label("Copy version info").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Copy(t) if t.starts_with("Trellis ") && t.ends_with("\nGit 2.47.1"))));
-    h.get_by_label("Rust").click();
+    assert!(h.query_by_label("Rust").is_none(), "the notices have their own dialog");
+    h.get_by_label("Third-party notices…").click();
     h.run();
-    h.check_snapshot("about_dialog_notice");
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::App(AppMsg::ShowNotices))));
+}
+
+#[test]
+fn notices_dialog() {
+    let mut h = notices_harness();
+    h.run();
+    h.check_snapshot("notices_dialog");
+    let rect = h.ctx.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("about-rect"))).unwrap();
+    assert!(h.ctx.screen_rect().contains_rect(rect), "{rect:?}");
+    assert!(h.query_by_label("Third-party notices").is_some());
     h.get_by_label("Copy all notices").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Copy(t) if t == trellis_core::notices::TEXT)));
+    h.get_by_label("Back").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::App(AppMsg::ShowAbout))));
+}
+
+#[test]
+fn notices_dialog_open() {
+    let mut h = notices_harness();
+    h.run();
+    h.get_by_label("Rust").click();
+    h.run();
+    h.check_snapshot("notices_dialog_open");
 }
 
 #[test]

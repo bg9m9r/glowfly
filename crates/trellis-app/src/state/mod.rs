@@ -130,6 +130,7 @@ pub mod stack;
 pub mod stack_rows;
 pub mod stash_confirm;
 pub mod stashes;
+pub mod status_counts;
 pub mod submodules;
 pub mod tab_groups;
 pub mod tab_losses;
@@ -325,8 +326,10 @@ pub enum Modal {
     /// Reword a commit chosen in the graph, or type the message of commits it squashes
     /// (`ui/rebase/reword_dialog.rs`).
     RewordCommit(Box<rebase_quick::RewordForm>),
-    /// Help > About Trellis: version, links and third-party notices.
+    /// Help > About Trellis: version, licence, git and links.
     About,
+    /// Help > About > Third-party notices: the bundled fonts' and syntax definitions' licenses.
+    Notices,
     /// The release notes, with a newer release on top when one is on offer.
     ReleaseNotes(Box<release_notes::NotesDialog>),
     UndoCreated(undo::UndoCreatedForm),

@@ -11,6 +11,7 @@ mod picker;
 use super::markdown_cache::MarkdownCache;
 use super::theme::color;
 use super::widgets::{self, Icon};
+use crate::keymap::Keymap;
 use crate::msg::{IssueMsg, Msg};
 use crate::state::AppState;
 use crate::state::issue::IssueView;
@@ -24,7 +25,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut V
     let Some(view) = &st.issue else { return };
     let open_label = st.forge.as_ref().map_or("Open in browser", |f| f.open_issue_label());
     ui.add_space(6.0);
-    header(ui, st.settings.lang(), view, open_label, msgs);
+    header(ui, st.settings.lang(), &st.keymap, view, open_label, msgs);
     ui.horizontal(|ui| {
         ui.add_space(32.0);
         let line = printable(&view.kind_line(&st.settings, st.view.utc_offset));
@@ -55,12 +56,12 @@ pub fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut V
 }
 
 /// The icon, mention and title on the left; Close, Copy link and Open in browser on the right.
-fn header(ui: &mut Ui, t: Lang, v: &IssueView, open_label: &str, msgs: &mut Vec<Msg>) {
+fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &IssueView, open_label: &str, msgs: &mut Vec<Msg>) {
     let url = &v.issue.url;
     ui.horizontal(|ui| {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add_space(8.0);
-            if ui.add(buttons::secondary(t.tr("common.close_esc.button"))).clicked() {
+            if widgets::ghost::close_view(ui, keys, t, t.tr("common.close_panel.name")).clicked() {
                 msgs.push(Msg::Issue(IssueMsg::Close));
             }
             let no_link = format!("The service sent no link for this {}.", v.noun);

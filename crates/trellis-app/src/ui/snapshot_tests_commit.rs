@@ -164,3 +164,38 @@ fn commit_shortcuts() {
     drop(h);
     remove_fixture(&dir);
 }
+
+/// The commit box with a `len`-character summary; checks its counter `want` sits to the right of
+/// the summary field on the same row and explains the convention on hover.
+fn summary_counter(theme: ThemeChoice, name: &str, len: usize, want: &str) {
+    let dark = theme == ThemeChoice::Dark;
+    let (mut st, dir) = with_repo(theme, name);
+    git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    // Counted in characters, not bytes: "é" is two bytes.
+    let text = "Rewrite the café menu search so typing filters dishes, drinks and desserts as you go";
+    st.draft.summary = text.chars().take(len).collect();
+    let mut h = harness(st, dark);
+    h.run();
+    h.check_snapshot(name);
+    let counter = h.get_by_label(want).bounding_box().expect("the counter");
+    let field = h.get_by_label("Commit summary").bounding_box().expect("the summary field");
+    assert!(counter.x0 >= field.x1, "right of the field: {counter:?} {field:?}");
+    assert!(counter.y0 < field.y1 && counter.y1 > field.y0, "on the field's row: {counter:?} {field:?}");
+    h.get_by_label(want).hover();
+    h.run();
+    h.run();
+    assert!(h.query_by_label_contains("Summaries read best in 50 characters or fewer").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn commit_box_summary_long() {
+    summary_counter(ThemeChoice::Dark, "commit_box_summary_long", 61, "61/72");
+}
+
+#[test]
+fn commit_box_summary_too_long_light() {
+    summary_counter(ThemeChoice::Light, "commit_box_summary_too_long_light", 80, "80/72");
+}

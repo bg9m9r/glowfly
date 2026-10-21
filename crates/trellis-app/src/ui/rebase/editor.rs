@@ -1,6 +1,8 @@
 //! The rebase panel's inline editors, drawn under their row: a commit's new message, the
 //! message of the commit a squash group combines into (under the group's last row), and an
-//! exec step's command. Each takes the keyboard focus when it opens.
+//! exec step's command. Each takes the keyboard focus when it opens, and ends in a small primary
+//! Save or Update message and a small Cancel (the combined message also has Use git's message);
+//! Save stays disabled, saying why, while the command is empty.
 
 use super::UiCache;
 use super::rows::{MARGIN, SHA_X};
@@ -56,34 +58,28 @@ pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut Ui
                         if fresh {
                             field.request_focus();
                         }
-                        ui.horizontal(|ui| match editing {
-                            Editing::Message(_) => {
-                                if ui.add(buttons::secondary("Update message")).clicked() {
-                                    send(msgs, RebaseMsg::RebaseSaveMessage);
+                        ui.horizontal(|ui| {
+                            let save = match editing {
+                                Editing::Message(_) | Editing::Combined(_) => buttons::primary("Update message").small(),
+                                Editing::Command(_) => {
+                                    let typed = !panel.draft.trim().is_empty();
+                                    let why = (!typed).then_some(t.tr("rebase.editor.command_empty.why"));
+                                    buttons::primary(t.tr("rebase.editor.save.button")).small().enabled(typed).why(why)
                                 }
-                                if ui.link(t.tr("common.cancel.button")).clicked() {
-                                    send(msgs, RebaseMsg::RebaseCancelMessage);
-                                }
+                            };
+                            if ui.add(save).clicked() {
+                                send(msgs, RebaseMsg::RebaseSaveMessage);
                             }
-                            Editing::Combined(_) => {
-                                if ui.add(buttons::secondary("Update message")).clicked() {
-                                    send(msgs, RebaseMsg::RebaseSaveMessage);
-                                }
-                                if ui.add(buttons::secondary("Use git's message")).on_hover_text("Forget the typed message").clicked() {
-                                    send(msgs, RebaseMsg::RebaseResetCombined);
-                                }
-                                if ui.link(t.tr("common.cancel.button")).clicked() {
-                                    send(msgs, RebaseMsg::RebaseCancelMessage);
-                                }
+                            if matches!(editing, Editing::Combined(_))
+                                && ui
+                                    .add(buttons::secondary("Use git's message").small())
+                                    .on_hover_text("Forget the typed message")
+                                    .clicked()
+                            {
+                                send(msgs, RebaseMsg::RebaseResetCombined);
                             }
-                            Editing::Command(_) => {
-                                let typed = !panel.draft.trim().is_empty();
-                                if ui.add(buttons::secondary("Save").enabled(typed)).clicked() {
-                                    send(msgs, RebaseMsg::RebaseSaveMessage);
-                                }
-                                if ui.link(t.tr("common.cancel.button")).clicked() {
-                                    send(msgs, RebaseMsg::RebaseCancelMessage);
-                                }
+                            if ui.add(buttons::secondary(t.tr("common.cancel.button")).small()).clicked() {
+                                send(msgs, RebaseMsg::RebaseCancelMessage);
                             }
                         });
                     });

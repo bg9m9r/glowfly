@@ -55,6 +55,22 @@ fn conflict_popover() {
     remove_fixture(&dir);
 }
 
+#[test]
+fn conflict_popover_many() {
+    let paths: Vec<String> = (0..12).map(|i| format!("src/module_{i:02}.rs")).collect();
+    let (st, dir, _) = on_search(ThemeChoice::Light, "conflict-popover-many", Ok(Prediction::Conflicts(paths)));
+    let mut h = harness(st, false);
+    h.run();
+    h.get_by_label("Conflicts with main").click();
+    h.run();
+    h.check_snapshot("conflict_popover_many");
+    assert!(h.query_by_label("src/module_07.rs").is_some());
+    assert!(h.query_by_label("src/module_08.rs").is_none(), "the popover lists the first eight");
+    assert!(h.query_by_label("and 4 more").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
 /// A check of merging search into main, made for main's tip as checked out in `st`.
 pub(super) fn report(st: &AppState, kind: TargetKind, result: Result<Prediction, String>) -> ConflictReport {
     let target = MergeTarget { name: "search".into(), oid: git2::Oid::zero(), kind };
@@ -71,7 +87,8 @@ fn conflict_report_modal() {
     h.run();
     h.check_snapshot("conflict_report_modal");
     assert!(h.query_by_label("Merging search into main would stop with conflicts in 60 files:").is_some());
-    assert!(h.query_by_label("and 10 more").is_some(), "the cap line");
+    assert!(h.query_by_label("and 10 more").is_none(), "the report lists every path");
+    assert!(h.query_by_label("src/module_59.rs").is_some());
     assert!(h.query_by_label("Rebase main onto search").is_some());
     drop(h);
     remove_fixture(&dir);

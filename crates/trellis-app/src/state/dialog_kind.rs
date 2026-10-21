@@ -65,6 +65,7 @@ impl Modal {
             // Their filter fields are cheap to type again.
             Modal::Shortcuts { .. }
             | Modal::About
+            | Modal::Notices
             | Modal::ReleaseNotes(_)
             | Modal::ConflictReport(_)
             | Modal::DeepLink(_)
@@ -145,6 +146,7 @@ impl Modal {
             | Modal::CreateFork(_)
             | Modal::Shortcuts { .. }
             | Modal::About
+            | Modal::Notices
             | Modal::ReleaseNotes(_)
             | Modal::ConflictReport(_)
             | Modal::DeepLink(_)

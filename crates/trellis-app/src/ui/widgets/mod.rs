@@ -15,7 +15,8 @@
 //! text field is `text_field.rs`, and its label-field-help group `field_group.rs`. The button
 //! family (primary, tonal, secondary, quiet, danger, icon-only) is `buttons.rs`, each state's
 //! colours `button_look.rs`, and the split button (an action and its menu caret as one pill)
-//! `button_split.rs`.
+//! `button_split.rs`. The always-visible thin scroll bar and the edge fades of dialog bodies,
+//! Preferences and the File view are `scroll_cue.rs`.
 
 pub mod banner;
 mod button_look;
@@ -29,6 +30,7 @@ pub mod menu_reason;
 pub mod quiet_chip;
 pub mod reason;
 pub mod row_fill;
+pub mod scroll_cue;
 pub mod section_header;
 pub mod segmented;
 pub mod severity;
@@ -139,6 +141,25 @@ pub fn small_icon(ui: &mut Ui, icon: Icon, tooltip: &str, col: Color32) -> Respo
     }
     paint_icon(ui.painter(), rect.center(), icon, col);
     resp.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(tooltip)
+}
+
+/// A small weak cross that removes something (a key in Preferences > Keyboard): a 14 px icon in
+/// a 20 px box, weak at rest, strong on the hover layer when hovered or focused, named and
+/// tipped `name`.
+pub fn remove_icon(ui: &mut Ui, name: &str) -> Response {
+    let (rect, resp) = ui.allocate_exact_size(vec2(20.0, 20.0), Sense::click());
+    super::access::name_button(&resp, true, name);
+    let p = ui.painter();
+    let lit = resp.hovered() || resp.has_focus();
+    if lit {
+        p.rect_filled(rect, CornerRadius::same(radius::SM), color::hover_layer());
+    }
+    let ink = if lit { color::strong() } else { color::weak() };
+    paint_icon_sized(p, rect.center(), Icon::Close, ink, icon::SIZE_SM);
+    if resp.has_focus() {
+        crate::ui::theme::tokens::focus_ring_inset(p, rect, radius::SM);
+    }
+    resp.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(name)
 }
 
 #[cfg(test)]

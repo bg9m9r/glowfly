@@ -3,7 +3,7 @@
 //! status bar's update chip. Click tests check the message each button sends.
 
 use super::snapshot_tests::{harness, settings};
-use crate::msg::{Msg, UpdateMsg};
+use crate::msg::{Msg, PrefsMsg, UpdateMsg};
 use crate::state::release_notes::NotesDialog;
 use crate::state::updates::UpdateStatus;
 use crate::state::{AppState, Modal, PrefPage, PrefsState};
@@ -204,6 +204,26 @@ fn status_update_failed() {
     h.get_by_label("Update failed · Try again").click();
     h.run();
     assert!(sent(&h, &UpdateMsg::Download));
+    // Details, right of the chip, opens the Updates row in Preferences > General.
+    let chip = h.get_by_label("Update failed · Try again").bounding_box().unwrap();
+    let details = h.get_by_label("Details").bounding_box().unwrap();
+    assert!(details.x0 >= chip.x1, "{details:?} {chip:?}");
+    h.get_by_label("Details").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)))));
+}
+
+#[test]
+fn status_update_failed_tip() {
+    let failed = UpdateStatus::DownloadFailed { offer: Box::new(the_offer()), error: "offline".into() };
+    let mut h = harness(status_bar(failed), true);
+    h.run();
+    h.get_by_label("Update failed · Try again").hover();
+    h.run();
+    h.run();
+    assert!(h.query_by_label_contains("The download failed: offline").is_some(), "the reason");
+    assert!(h.query_by_label_contains("Download again").is_some());
+    h.check_snapshot("status_update_failed_tip");
 }
 
 #[test]

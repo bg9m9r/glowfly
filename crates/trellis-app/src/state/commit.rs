@@ -190,9 +190,42 @@ pub fn pushes_after(st: &AppState) -> bool {
     st.settings.push_after_commit && st.snap.as_ref().is_some_and(|s| s.head_branch.is_some())
 }
 
+/// A summary's length up to here reads well (git-commit(1): ideally under 50 characters).
+pub const SUMMARY_SOFT: usize = 50;
+/// Past this, logs and hosting services cut the summary off.
+pub const SUMMARY_HARD: usize = 72;
+
+/// How a summary's length sits with the convention, for its counter's tone.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SummaryLength {
+    Fine,
+    Long,
+    TooLong,
+}
+
+/// The tone of a summary `len` characters long.
+pub fn summary_length(len: usize) -> SummaryLength {
+    if len <= SUMMARY_SOFT {
+        SummaryLength::Fine
+    } else if len <= SUMMARY_HARD {
+        SummaryLength::Long
+    } else {
+        SummaryLength::TooLong
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn summary_length_follows_the_convention() {
+        assert_eq!(summary_length(0), SummaryLength::Fine);
+        assert_eq!(summary_length(50), SummaryLength::Fine);
+        assert_eq!(summary_length(51), SummaryLength::Long);
+        assert_eq!(summary_length(72), SummaryLength::Long);
+        assert_eq!(summary_length(73), SummaryLength::TooLong);
+    }
 
     fn template() -> CommitTemplate {
         CommitTemplate { summary: "feat:".into(), description: "# why".into(), comment_char: '#' }

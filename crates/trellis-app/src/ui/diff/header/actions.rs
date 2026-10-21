@@ -171,12 +171,7 @@ pub(super) fn show_primary(ui: &mut Ui, m: &HeaderModel, keys: &Keymap, t: Lang,
 }
 
 pub(super) fn show_close(ui: &mut Ui, keys: &Keymap, t: Lang, msgs: &mut Vec<Msg>) {
-    let r = icon_tip(
-        ghost(ui, Some(Icon::Close), None, t.tr("diff.header.close.name"), true),
-        keys,
-        t,
-        Tip::new(t.tr("common.close.button")).keys(BindingId::CloseView),
-    );
+    let r = crate::ui::widgets::ghost::close_view(ui, keys, t, t.tr("diff.header.close.name"));
     if r.clicked() {
         msgs.push(Msg::Repo(RepoMsg::CloseDiff));
     }

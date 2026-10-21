@@ -38,7 +38,7 @@ mod updates_row;
 pub(super) use form::*;
 
 use super::theme::color;
-use super::widgets::{self, Icon};
+use super::widgets::{self, Icon, scroll_cue};
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::state::prefs_save;
@@ -120,7 +120,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             });
             ui.add_space(18.0);
-            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+            scroll_cue::show(ui, egui::ScrollArea::vertical().auto_shrink([false, false]), color::bg(), |ui| {
                 ui.spacing_mut().item_spacing.y = 6.0;
                 let needs_git = matches!(page, PrefPage::Profile | PrefPage::Signing | PrefPage::RepoIdentity | PrefPage::RepoHooks);
                 if page == PrefPage::Signing && prefs.git.is_some() {

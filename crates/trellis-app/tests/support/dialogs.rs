@@ -23,6 +23,7 @@ pub const DIALOG_FILES: &[&str] = &[
     "ui/issue/create_dialog.rs",
     "ui/mainline_dialog.rs",
     "ui/menu_bar/about.rs",
+    "ui/menu_bar/notices.rs",
     "ui/patch_apply_dialog.rs",
     "ui/patch_save_dialog.rs",
     "ui/publish.rs",

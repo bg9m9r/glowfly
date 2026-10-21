@@ -12,7 +12,8 @@ use super::file_buttons::{self, CommitFile};
 use super::file_menu;
 use super::file_view_switch::{self, FileShow};
 use super::theme::color;
-use super::widgets::paint_cut_text;
+use super::widgets::{self, paint_cut_text};
+use crate::keymap::Keymap;
 use crate::msg::BlameMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::Msg;
@@ -39,7 +40,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     let file_scroll = st.view.history_file_scroll.take();
     let Some(view) = &st.history else { return };
     ui.add_space(6.0);
-    header(ui, st.settings.lang(), view, msgs);
+    header(ui, st.settings.lang(), &st.keymap, view, msgs);
     ui.separator();
     let room = ui.available_width();
     super::panel_size::inner_side(egui::SidePanel::left("file-history-list"), crate::state::panel_layout::HISTORY_LIST, room)
@@ -53,7 +54,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
 /// "File history" or "Folder history", the path ("now <name>" when the file was renamed after
 /// the commit it was opened at), "as of <sha>" when the walk didn't start at HEAD, then the
 /// Diff | File | Blame switch and Close.
-fn header(ui: &mut Ui, t: Lang, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
+fn header(ui: &mut Ui, t: Lang, keys: &Keymap, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         let (title, path) = match view.kind {
@@ -71,7 +72,7 @@ fn header(ui: &mut Ui, t: Lang, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
                 .on_hover_text("The history as seen from this commit (it is not part of HEAD's history of this file)");
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.add(buttons::secondary(t.tr("common.close_esc.button"))).clicked() {
+            if widgets::ghost::close_view(ui, keys, t, t.tr("history.header.close.name")).clicked() {
                 msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
             }
             ui.add_space(8.0);

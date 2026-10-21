@@ -18,7 +18,8 @@
 //! `op_preview_dialog.rs`), a pull request or issue filter (drawn by `forge_filter_dialog.rs`), the
 //! trellis:// link dialogs (drawn by `deep_link_dialog.rs`), creating an issue (drawn by
 //! `issue/create_dialog.rs`), rewording a commit from the graph (drawn by
-//! `rebase/reword_dialog.rs`), the About dialog (drawn by `menu_bar/about.rs`), the release notes
+//! `rebase/reword_dialog.rs`), the About dialog and its third-party notices (drawn by `menu_bar/about.rs` and
+//! `menu_bar/notices.rs`), the release notes
 //! (drawn by `release_notes.rs`), undoing a checkout that created a branch (drawn by
 //! `undo_dialog.rs`), applying a patch file (drawn by `patch_apply_dialog.rs`), creating a patch
 //! from uncommitted changes (drawn by `patch_save_dialog.rs`), finding repositories in project
@@ -139,6 +140,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             Modal::CreateIssue(form) => close = super::issue::create_dialog::show(ui, cx, form, fs, msgs),
             Modal::RewordCommit(form) => close = super::rebase::reword_dialog::show(ui, cx, form, snap, idle, msgs),
             Modal::About => close = super::menu_bar::about(ui, cx, git, crate::state::menu_bar::VERSION, msgs),
+            Modal::Notices => close = super::menu_bar::notices(ui, cx, msgs),
             Modal::ReleaseNotes(d) => close = super::release_notes::show(ui, cx, d, msgs),
             Modal::UndoCreated(form) => close = super::undo_dialog::created_branch(ui, cx, form, msgs),
             Modal::ApplyPatch(form) => close = super::patch_apply_dialog::show(ui, cx, form, snap, idle, msgs),

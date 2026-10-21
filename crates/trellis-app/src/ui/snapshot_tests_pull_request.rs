@@ -99,7 +99,7 @@ fn pull_request_out_of_sync_light() {
     h.check_snapshot("pull_request_out_of_sync_light");
     assert!(h.query_by_label_contains("origin/search isn't in this repository.").is_some());
     assert!(!h.get_by_label("Fetch origin").is_disabled());
-    h.get_by_label("Close  (Esc)").click();
+    h.get_by_label("Close panel").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::PullRequest(PullRequestMsg::Close))));
 

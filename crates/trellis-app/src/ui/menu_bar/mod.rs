@@ -2,7 +2,8 @@
 //! menu bar above the tab bar (`show`, while `settings.show_menu_bar` is on); a drawn title bar
 //! opens them as submenus of its menu button instead. Every item pushes the message the
 //! toolbar, palette or key already sends, with the key it has in the keymap; a disabled item
-//! says why on hover. `about.rs` draws Help > About Trellis (`Modal::About`).
+//! says why on hover. `about.rs` draws Help > About Trellis (`Modal::About`), and `notices.rs` its
+//! Third-party notices (`Modal::Notices`), the bundled licenses.
 
 use super::theme::color;
 use crate::msg::Msg;
@@ -14,12 +15,14 @@ mod edit;
 mod file;
 mod help;
 mod items;
+mod notices;
 mod view;
 mod window;
 
 pub(super) use about::about;
 #[cfg(test)]
 pub(super) use items::hint;
+pub(super) use notices::notices;
 
 /// Draws the bar as the topmost panel (call before the other top panels), with the system
 /// frame only.

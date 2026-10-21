@@ -206,12 +206,16 @@ fn target_notes() {
 }
 
 #[test]
-fn file_list_is_capped() {
+fn the_popover_caps_the_list_and_the_report_shows_it_all() {
     let paths: Vec<String> = (0..60).map(|i| format!("f{i}.txt")).collect();
-    let (shown, more) = file_list(Lang::En, &paths);
-    assert_eq!(shown.len(), SHOWN_FILES);
-    assert_eq!(more.as_deref(), Some("and 10 more"));
-    let (shown, more) = file_list(Lang::En, &["a\u{7}b".into()]);
+    let (shown, more) = file_list(Lang::En, &paths, Some(POPOVER_FILES));
+    assert_eq!(shown.len(), 8);
+    assert_eq!(more.as_deref(), Some("and 52 more"));
+    let (shown, more) = file_list(Lang::En, &paths, None);
+    assert_eq!((shown.len(), more), (60, None));
+    let (shown, more) = file_list(Lang::En, &paths[..8], Some(8));
+    assert_eq!((shown.len(), more), (8, None));
+    let (shown, more) = file_list(Lang::En, &["a\u{7}b".into()], None);
     assert_eq!((shown, more), (vec!["ab".to_owned()], None));
 }
 

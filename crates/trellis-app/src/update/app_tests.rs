@@ -48,6 +48,24 @@ fn window_actions_go_to_the_shell_and_change_nothing() {
 }
 
 #[test]
+fn notices_open_from_about_and_back_returns_to_it() {
+    let mut st = state();
+    run(&mut st, Msg::App(AppMsg::ShowNotices));
+    assert!(st.modal.is_none(), "only About opens the notices");
+    run(&mut st, Msg::App(AppMsg::ShowAbout));
+    assert!(run(&mut st, Msg::App(AppMsg::ShowNotices)).is_empty());
+    assert!(matches!(st.modal, Some(Modal::Notices)));
+    run(&mut st, Msg::App(AppMsg::ShowAbout));
+    assert!(about_open(&st), "Back returns to About");
+    st.modal = Some(Modal::SyncRepos);
+    run(&mut st, Msg::App(AppMsg::ShowAbout));
+    assert!(matches!(st.modal, Some(Modal::SyncRepos)), "About still doesn't open over another dialog");
+    run(&mut st, Msg::App(AppMsg::ShowNotices));
+    assert!(matches!(st.modal, Some(Modal::SyncRepos)));
+    assert!(AppMsg::ShowNotices.on_inactive().is_none());
+}
+
+#[test]
 fn about_opens_over_the_palette_and_closes() {
     let mut st = state();
     run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));

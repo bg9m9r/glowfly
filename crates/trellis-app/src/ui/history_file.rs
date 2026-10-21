@@ -14,7 +14,7 @@ use super::empty_state::{EmptyIcon, empty_state};
 use super::find_bar::{self, FindIntent, plural};
 use super::pane_status::{self, Failure};
 use super::theme::color;
-use super::widgets::{segmented, truncate};
+use super::widgets::{scroll_cue, segmented, truncate};
 use crate::msg::{DiffMsg, HistoryMsg, Msg};
 use crate::state::AppState;
 use crate::state::blame_find::ranges;
@@ -201,6 +201,8 @@ pub(super) fn bar_row(ui: &mut Ui, id: &str, h: f32, add: impl FnOnce(&mut Ui)) 
 
 /// The file's lines in a scroll area of their own, only those in view laid out.
 fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, data: Arc<FileTextData>) {
+    // The always-visible thin bar, set first so the text width and wrap columns allow for it.
+    ui.spacing_mut().scroll = scroll_cue::style();
     let style = DiffStyle::new(&st.settings);
     let n = data.lines.len();
     let (char_w, line_h, digit_w) =

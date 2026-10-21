@@ -178,3 +178,22 @@ fn folder_history_moved() {
     drop(h);
     remove_fixture(&dir);
 }
+
+/// The history header's ×: Close and the Esc cap in the rich tooltip, and a click closes it.
+#[test]
+fn file_history_close_tip() {
+    let (st, dir) = super::snapshot_tests::with_history("history-close-tip", ThemeChoice::Dark, 500, 0);
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("Close history").hover();
+    h.run();
+    h.run();
+    assert!(h.query_all_by_label("Close").next().is_some(), "the tooltip's title");
+    assert!(h.query_all_by_label("Esc").next().is_some(), "the tooltip's key cap");
+    h.check_snapshot("file_history_close_tip");
+    h.get_by_label("Close history").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::History(HistoryMsg::CloseFileHistory))));
+    drop(h);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}

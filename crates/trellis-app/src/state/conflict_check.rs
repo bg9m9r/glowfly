@@ -12,8 +12,9 @@ use trellis_core::text::printable;
 #[cfg(test)]
 mod tests;
 
-/// The most paths a report lists before "and K more".
-pub const SHOWN_FILES: usize = 50;
+/// The most paths the toolbar popover lists before "and K more" (the report dialog lists them
+/// all).
+pub const POPOVER_FILES: usize = 8;
 
 /// A finished check.
 #[derive(Clone, Debug, PartialEq)]
@@ -204,10 +205,12 @@ pub fn target_note(t: Lang, target: &MergeTarget, branch: &str, remote: bool) ->
     Some(note)
 }
 
-/// The paths a report lists (at most SHOWN_FILES, made printable), and "and K more" for the rest.
-pub fn file_list(t: Lang, paths: &[String]) -> (Vec<String>, Option<String>) {
-    let shown = paths.iter().take(SHOWN_FILES).map(|p| printable(p)).collect();
-    let more = (paths.len() > SHOWN_FILES).then(|| t.trn("conflict_check.more", paths.len() - SHOWN_FILES, &[]));
+/// The paths a report lists, made printable: every one with no `cap`, else at most `cap` and
+/// "and K more" for the rest.
+pub fn file_list(t: Lang, paths: &[String], cap: Option<usize>) -> (Vec<String>, Option<String>) {
+    let cap = cap.unwrap_or(paths.len());
+    let shown = paths.iter().take(cap).map(|p| printable(p)).collect();
+    let more = (paths.len() > cap).then(|| t.trn("conflict_check.more", paths.len() - cap, &[]));
     (shown, more)
 }
 

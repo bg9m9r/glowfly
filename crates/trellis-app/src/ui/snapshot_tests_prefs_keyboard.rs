@@ -38,6 +38,17 @@ fn prefs_keyboard_favorites() {
     h.check_snapshot("prefs_keyboard_favorites");
 }
 
+/// A key's × strengthens on its hover fill and says what it does.
+#[test]
+fn prefs_keyboard_remove_hover() {
+    let mut h = harness(page(ThemeChoice::Dark, "tab"), true);
+    h.run();
+    h.query_all_by_label("Remove this key").next().expect("a key with its ×").hover();
+    h.run();
+    h.run();
+    h.check_snapshot("prefs_keyboard_remove_hover");
+}
+
 #[test]
 fn prefs_keyboard_recording() {
     let mut st = page(ThemeChoice::Dark, "tab");

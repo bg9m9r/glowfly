@@ -158,24 +158,17 @@ fn actions(t: Lang, report: &ConflictReport) -> Vec<(String, Msg)> {
     ]
 }
 
-/// The paths in monospace, at most SHOWN_FILES; in the popover in a short scroll area of its
-/// own (`short`), in the report dialog in the dialog's.
+/// The paths in monospace: in the popover (`short`) the first `POPOVER_FILES` and "and K more"
+/// under them, with no scroll area of their own; in the report dialog and the operation preview
+/// every path, scrolling in the dialog's body.
 pub(super) fn file_list(ui: &mut egui::Ui, t: Lang, paths: &[String], short: bool) {
-    let (shown, more) = cc::file_list(t, paths);
+    let (shown, more) = cc::file_list(t, paths, short.then_some(cc::POPOVER_FILES));
     egui::Frame::new().fill(color::input()).corner_radius(radius::SM).inner_margin(egui::Margin::symmetric(8, 6)).show(ui, |ui| {
-        let lines = |ui: &mut egui::Ui| {
-            for p in &shown {
-                ui.label(RichText::new(p).monospace());
-            }
-        };
-        if short {
-            egui::ScrollArea::vertical().max_height(180.0).auto_shrink([false, true]).show(ui, lines);
-        } else {
-            ui.set_width(ui.available_width());
-            lines(ui);
+        ui.set_width(ui.available_width());
+        for p in &shown {
+            ui.label(RichText::new(p).monospace());
         }
     });
-    // Below the scroll area, so it shows without scrolling.
     if let Some(more) = more {
         ui.label(RichText::new(more).color(color::weak()));
     }

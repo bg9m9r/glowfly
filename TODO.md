@@ -1020,19 +1020,10 @@ Chosen on 2026-10-19 as the features that make Trellis its own, in this order.
 The minor findings of the [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md); its
 blockers and major findings are Milestone 1 items.
 
-- Scroll areas in dialogs and pages show a scrollbar or fade where they cut a row (About's
-  notices, the conflict check's file list, Preferences, the shortcut sheet, file history's 1 px
-  horizontal bar); the conflict check shows either the whole list or a top N, not both
-- The About dialog folds third-party notices behind "Third-party notices…"
-- "Close (Esc)" text buttons become an × icon with a tooltip
 - Row context menus open below the row so its status text stays visible
 - The trust prompt's "{ } Hooks" heading becomes a drawn icon on the text margin, with space
   before the first message
-- The rebase exec editor uses the standard small Save and Cancel buttons
-- Keyboard preferences: a weak × that strengthens on hover, and a normal Add button
 - Toolbar split buttons: the caret 2–4 px from its button inside one hover background
-- The status bar joins only the parts present (no leading "·") and its counts match the list
-- The commit summary counter sits beside the field and turns amber past 50 and red past 72
 - The "+ branch" ghost on the selected row is a small ghost button, only on the anchor row, on
   hover or focus, and hidden while a ref menu is open
 - Load more, Fetch full history and the shallow count move to a full-width row at the end of the
@@ -1051,7 +1042,6 @@ blockers and major findings are Milestone 1 items.
 - The command palette's empty list shows Recent, then Suggested, then the rest
 - Plain-language errors instead of git internals (safe.directory values; hosting-service errors
   rewritten as a sentence saying what to do)
-- The status bar's update-failed chip gives the reason on hover, with a Details link
 - Submodule status dots have tooltips, and clean rows say "up to date"
 - The tab list button sits after the last tab, and tab groups get a named chip
 - The rebase banner keeps Continue as the primary button with Skip, Abort and Edit steps in a
@@ -1206,6 +1196,20 @@ here, under the item they grew from.
 - Views for `buttons::quiet` and a leading `.icon()`: both exist with no caller yet
 - The design sheet's hover row from real pointer hovers (one per kind, rendered apart) instead of
   painted looks; a focused quiet button with its inset ring beside the outside ring
+- The scroll cue (always-visible thin bar and edge fades) for the sidebar, WIP file lists, graph,
+  diff viewer, activity log and terminal
+- Size the shortcut sheet and other resizable dialogs to the window's height instead of 480 px
+- Conflict check popover: a Show all link that opens the report dialog with the whole list
+- Conflict report and operation preview: lay out only the visible paths of a very long list
+- The × close button with an Esc tooltip for the range diff, journal and Git Flow panels and the
+  graph search bar, and the dashboard's × through `ghost::close_view`
+- The 50/72 summary counter and its tones in the annotate-tag dialog's message field
+- Keyboard preferences: Add with a leading + icon, and Reset as a quiet button
+- Move `widgets::small_icon` callers (recent repositories, repository finder, tour) to the
+  weak-then-strong `remove_icon` look
+- Status bar: name the filter with its section ("2 issues in Current sprint") once tracker nouns
+  have plural keys
+- Update-failed chip: open Preferences scrolled to the Updates row
 
 ### New directions
 

@@ -96,7 +96,7 @@ fn issue_panel_github_light() {
     h.get_by_label("Copy #12").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Copy(t) if t == "#12")));
-    h.get_by_label("Close  (Esc)").click();
+    h.get_by_label("Close panel").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::Close))));
     drop(h);

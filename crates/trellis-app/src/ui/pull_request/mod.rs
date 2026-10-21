@@ -14,6 +14,7 @@ mod threads;
 use super::UiCache;
 use super::theme::color;
 use super::widgets::{self, Icon};
+use crate::keymap::Keymap;
 use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
@@ -31,7 +32,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     let shows_diff = st.diff.as_ref().is_some_and(|(t, _)| view.shows(t)) || st.for_diff().is_some();
     let tab = view.tab;
     ui.add_space(6.0);
-    header(ui, st.settings.lang(), view, msgs);
+    header(ui, st.settings.lang(), &st.keymap, view, msgs);
     tabs(ui, view, msgs);
     ui.separator();
     let room = ui.available_width();
@@ -124,12 +125,12 @@ pub(in crate::ui) fn heading(ui: &mut Ui, text: &str) {
 }
 
 /// The icon, label, title and Draft chip, the links and Close; below, the author and branches.
-fn header(ui: &mut Ui, t: Lang, v: &PrView, msgs: &mut Vec<Msg>) {
+fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &PrView, msgs: &mut Vec<Msg>) {
     let pr = &v.pr;
     ui.horizontal(|ui| {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add_space(8.0);
-            if ui.add(buttons::secondary(t.tr("common.close_esc.button"))).clicked() {
+            if widgets::ghost::close_view(ui, keys, t, t.tr("common.close_panel.name")).clicked() {
                 msgs.push(Msg::PullRequest(PullRequestMsg::Close));
             }
             let no_link = format!("The service sent no link for this {}.", v.noun);

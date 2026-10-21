@@ -2,8 +2,9 @@
 //! is looked up somewhere, so a typo shows up here rather than as a raw key on screen and the
 //! catalogs don't collect dead text. Keys are found as string literals right after `.tr(`,
 //! `.trf(` or `.trn(` (for `trn`, the `.one` and `.other` forms are what exists). Also: no view
-//! brings back an English "Cancel" or "Close" button; they come from `common.cancel.button`,
-//! `common.close.button` and `common.close_esc.button`.
+//! brings back an English "Cancel" or "Close" button (or the old "Close  (Esc)"); they come from
+//! `common.cancel.button` and `common.close.button`, and a view's close × is
+//! `widgets::ghost::close_view`.
 
 #[path = "support/views.rs"]
 mod views;

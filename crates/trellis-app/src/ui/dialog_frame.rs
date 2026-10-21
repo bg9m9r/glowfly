@@ -11,7 +11,8 @@
 //! holds the title and subtitle and, at its right end, a painted close button that does what Esc
 //! does (`take_closed`). The width comes from the size class (`dialog_size.rs`: Small, Medium or
 //! Wide), following the title row or subtitle between the class's base and most, clamped to the
-//! window; the body scrolls instead of pushing the footer off screen, and a resizable dialog's
+//! window; the body scrolls instead of pushing the footer off screen, with an always-visible
+//! thin bar and a fade at a cut edge (`widgets::scroll_cue`), and a resizable dialog's
 //! body sits in an `egui::Resize` with egui's grip at its bottom right. A dialog for a less
 //! familiar operation has a tinted side pane that explains it in steps (`dialog_guide.rs`, the
 //! texts in `dialog_guides.rs`), beside the form or, in a narrow window, above it. A dialog with
@@ -28,7 +29,7 @@
 //! focus unless the body gave it to a field. Esc stays with `dialog_guard::dismissal`.
 
 use super::theme::{DIALOG_PAD, color, controls};
-use super::widgets::Icon;
+use super::widgets::{Icon, scroll_cue};
 use eframe::egui::{self, Id, Key, Modifiers, Rect, Response, RichText, Ui, pos2, vec2};
 use std::borrow::Cow;
 use trellis_core::i18n::Lang;
@@ -277,7 +278,7 @@ impl Open {
                     }
                     f(ui)
                 };
-                scroll.auto_shrink([false, true]).max_height(cap).show(ui, f).inner
+                scroll_cue::show(ui, scroll.auto_shrink([false, true]).max_height(cap), color::panel(), f)
             }
             Some(salt) => {
                 let max = egui::vec2((screen.x - MARGIN - 2.0 * PAD).max(MIN_WIDTH), cap);
@@ -288,7 +289,7 @@ impl Open {
                         .default_size([self.standard.min(max.x), 480.0])
                         .min_size(min)
                         .max_size(max)
-                        .show(ui, |ui| scroll.auto_shrink([false, false]).show(ui, f).inner)
+                        .show(ui, |ui| scroll_cue::show(ui, scroll.auto_shrink([false, false]), color::panel(), f))
                 });
                 let w = shown.response.rect.width();
                 ui.data_mut(|d| d.insert_temp(key.with("dialog-width"), w));

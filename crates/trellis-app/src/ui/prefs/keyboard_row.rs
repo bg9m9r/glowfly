@@ -1,7 +1,8 @@
 //! One row of Preferences > Keyboard: the action and where it works on the left; on the right
-//! its keys as caps (click one to record a replacement), a × after each, Add and Reset. A fixed
-//! row shows its keys dimmed and has no controls. Under the row: "Esc cancels" while recording,
-//! and the warning or notice the row's last change left, with its buttons.
+//! its keys as caps (click one to record a replacement), a weak × after each that strengthens
+//! on hover, Add and Reset. A fixed row shows its keys dimmed and has no controls. Under the
+//! row: "Esc cancels" while recording, and the warning or notice the row's last change left,
+//! with its buttons.
 
 use super::warn;
 use crate::keymap::{Binding, Chord, Keymap, Slot};
@@ -11,8 +12,8 @@ use crate::ui::shortcuts::Caps;
 use crate::ui::theme::color;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets;
 use crate::ui::widgets::buttons;
-use crate::ui::widgets::{self, Icon};
 use eframe::egui::{Align, CornerRadius, Layout, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, vec2};
 use trellis_core::i18n::Lang;
 
@@ -66,8 +67,7 @@ pub fn row(ui: &mut Ui, t: Lang, b: &'static Binding, keys: &Keymap, page: &Keys
                     pill(ui);
                     continue;
                 }
-                let remove = widgets::icon_button(ui, Icon::Close, "Remove this key");
-                remove.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, "Remove this key"));
+                let remove = widgets::remove_icon(ui, "Remove this key");
                 if remove.clicked() {
                     push(msgs, KeysMsg::Remove { id: b.id, index: n });
                 }

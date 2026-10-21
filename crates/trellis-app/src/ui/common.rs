@@ -215,10 +215,14 @@ pub fn forge_error_rows(ui: &mut egui::Ui, error: &str, msgs: &mut Vec<Msg>) {
     ui.add_space(4.0);
 }
 
-pub fn status_label_ui(ui: &mut egui::Ui, t: Lang, status: &Status, ok_text: &str, msgs: &mut Vec<Msg>) {
+/// A service's state in the status bar: "· <ok_text>" when it answered (nothing without a text),
+/// the badge, cause and sign-in links when it failed.
+pub fn status_label_ui(ui: &mut egui::Ui, t: Lang, status: &Status, ok_text: Option<&str>, msgs: &mut Vec<Msg>) {
     match status {
         Status::Ok => {
-            ui.label(RichText::new(format!("· {ok_text}")).color(color::weak()));
+            if let Some(text) = ok_text {
+                ui.label(RichText::new(format!("· {text}")).color(color::weak()));
+            }
         }
         Status::Error(e) => {
             // Signing in needs you: the coral badge, then the cause in text.

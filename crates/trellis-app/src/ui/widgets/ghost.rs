@@ -1,10 +1,10 @@
 //! Ghost controls for quiet headers (the diff header, the terminal panel's): a ghost button (an
 //! icon, a label or both; transparent until hovered), its width, the thin divider between
-//! groups, and the rich tooltip for icon-only controls.
+//! groups, the rich tooltip for icon-only controls, and the × that closes a view.
 
 use super::button_look::{self, Press};
 use super::{Icon, icon, paint_icon_sized, tooltip};
-use crate::keymap::Keymap;
+use crate::keymap::{BindingId, Keymap};
 use crate::state::tip::Tip;
 use crate::ui::access;
 use crate::ui::theme::color;
@@ -106,4 +106,10 @@ pub fn divider(ui: &mut Ui) {
 /// `resp` with the shared rich tooltip `tip`.
 pub fn icon_tip(resp: Response, keys: &Keymap, t: Lang, tip: Tip) -> Response {
     tooltip::attach(resp, keys, t, || tip)
+}
+
+/// The × that closes a view (the diff, blame, a history, an issue or pull request): `name` for
+/// screen readers, Close and the Esc cap in the tooltip.
+pub fn close_view(ui: &mut Ui, keys: &Keymap, t: Lang, name: &str) -> Response {
+    icon_tip(ghost(ui, Some(Icon::Close), None, name, true), keys, t, Tip::new(t.tr("common.close.button")).keys(BindingId::CloseView))
 }

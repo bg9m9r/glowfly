@@ -83,6 +83,7 @@ fn forms_info_and_confirms_are_told_apart() {
     };
     let info = [
         Modal::About,
+        Modal::Notices,
         Modal::Shortcuts { filter: "stage".into() },
         Modal::ConflictReport(ConflictReport { request, result: Err("failed".into()) }),
     ];
