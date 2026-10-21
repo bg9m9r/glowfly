@@ -11,7 +11,7 @@ use crate::msg::RepoMsg;
 use crate::msg::WorkFileMsg;
 use crate::state::Modal;
 use std::path::PathBuf;
-use trellis_core::repo::DiffTarget;
+use trellis_core::repo::{DiffTarget, FileEntry};
 
 #[test]
 fn delete_staged_rename_asks_to_unstage_the_rename() {
@@ -113,7 +113,8 @@ fn end_to_end_delete_staged_rename() {
     git(&dir, &["mv", "b.txt", "c.txt"]);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    assert!(st.snap.as_ref().unwrap().staged.contains(&entry("c.txt", 'R')));
+    let renamed = FileEntry { renamed_from: Some("b.txt".into()), ..entry("c.txt", 'R') };
+    assert!(st.snap.as_ref().unwrap().staged.contains(&renamed));
 
     drive(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "c.txt".into(), confirmed: false }));
     assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { title, .. }) if title == "Delete renamed file"));

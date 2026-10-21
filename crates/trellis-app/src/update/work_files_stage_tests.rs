@@ -10,7 +10,7 @@ use crate::msg::RepoMsg;
 use crate::msg::WorkFileMsg;
 use crate::state::Modal;
 use crate::state::files::{PathForm, folder_prefill};
-use trellis_core::repo::DiffTarget;
+use trellis_core::repo::{DiffTarget, FileEntry};
 
 #[test]
 fn rename_stages_only_tracked_files() {
@@ -96,7 +96,8 @@ fn end_to_end_staged_rename() {
     assert!(dir.join("docs/b.txt").is_file());
     assert!(!dir.join("a.txt").exists());
     let snap = st.snap.as_ref().unwrap();
-    assert!(snap.staged.contains(&entry("docs/b.txt", 'R')), "{:?}", snap.staged);
+    let renamed = FileEntry { renamed_from: Some("a.txt".into()), ..entry("docs/b.txt", 'R') };
+    assert!(snap.staged.contains(&renamed), "{:?}", snap.staged);
     // a.txt had an unstaged edit, which stays unstaged.
     assert!(snap.unstaged.contains(&entry("docs/b.txt", 'M')), "{:?}", snap.unstaged);
     assert!(st.toasts.last().is_some_and(|t| t.text.contains("staged the rename")), "{:?}", st.toasts.last().map(|t| &t.text));
