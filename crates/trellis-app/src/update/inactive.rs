@@ -29,6 +29,7 @@ pub(super) fn inactive(st: &mut AppState, workdir: &Path, msg: Msg, now: Instant
             }
             super::work_files::inactive_result(st, workdir, op, result, now);
         }
+        Some(Inactive::IndexBuilt { build, result }) => super::history_index::parked_built(st, workdir, build, result),
         None => tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display()),
     }
 }

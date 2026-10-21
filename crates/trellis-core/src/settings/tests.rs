@@ -43,6 +43,16 @@ fn load_more_on_scroll_defaults_on() {
 }
 
 #[test]
+fn index_history_defaults_on() {
+    // Files written before the setting existed index large histories for search.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.index_history);
+    let off = Settings { index_history: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.index_history);
+}
+
+#[test]
 fn use_ssh_agent_defaults_off() {
     // Files written before the setting existed keep choosing keys through core.sshCommand.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

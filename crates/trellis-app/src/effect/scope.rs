@@ -44,6 +44,7 @@ impl Effect {
             Effect::DeepLink(e) => e.scope(),
             Effect::Issue(e) => e.scope(),
             Effect::LineCounts(e) => e.scope(),
+            Effect::Index(e) => e.scope(),
             // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
             // active, and work outside any repository.
             Effect::LoadRepo { .. }

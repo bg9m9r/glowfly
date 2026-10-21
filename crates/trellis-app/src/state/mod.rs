@@ -38,6 +38,7 @@ pub mod git_env;
 pub mod gitflow;
 pub mod graph_rows;
 pub mod history;
+pub mod history_index;
 pub mod history_text;
 pub mod init;
 pub mod issue;

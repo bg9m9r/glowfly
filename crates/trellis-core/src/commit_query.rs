@@ -142,18 +142,36 @@ impl CommitQuery {
         !self.paths.is_empty()
     }
 
+    /// The free text (lowercase, words joined by single spaces); empty when there is none.
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
     /// Whether commit `c` matches the text and author terms: the free text (if any) is in its
     /// summary, body or author name, or starts its id, and one of the author values (if any)
-    /// matches its author (see [`author_matches`]). Path terms are checked by
-    /// [`matching_rows`](Self::matching_rows).
+    /// matches its author (see [`author_matches`](Self::author_matches)). Path terms are checked
+    /// by [`matching_rows`](Self::matching_rows).
     pub fn matches(&self, c: &CommitInfo) -> bool {
+        self.text_matches(&c.oid, &c.summary, &c.body, &c.author) && self.author_matches(&c.author, &c.email)
+    }
+
+    /// Whether the free text (if any) is in `summary`, `body` or `author` (the author's name), or
+    /// starts commit id `oid`. True when there is no free text.
+    pub fn text_matches(&self, oid: &Oid, summary: &str, body: &str, author: &str) -> bool {
         let q = self.text.as_str();
-        let text = q.is_empty()
-            || contains_lower(&c.summary, q)
-            || contains_lower(&c.body, q)
-            || contains_lower(&c.author, q)
-            || hex_starts_with(c.oid.as_bytes(), q);
-        text && (self.authors.is_empty() || self.authors.iter().any(|a| author_matches(a, c)))
+        q.is_empty()
+            || contains_lower(summary, q)
+            || contains_lower(body, q)
+            || contains_lower(author, q)
+            || hex_starts_with(oid.as_bytes(), q)
+    }
+
+    /// Whether one of the author terms matches an author called `name` with address `email`: a
+    /// full address must equal the email ignoring case, so picking `ann@example.com` leaves out
+    /// `joann@example.com`; any other value need only be in the name or email. True when there
+    /// are no author terms.
+    pub fn author_matches(&self, name: &str, email: &str) -> bool {
+        self.authors.is_empty() || self.authors.iter().any(|a| author_value_matches(a, name, email))
     }
 
     /// Indexes of the matching commits, ascending; empty for an empty query. With path terms a
@@ -182,14 +200,13 @@ fn is_full_address(value: &str) -> bool {
         && !value.contains(char::is_whitespace)
 }
 
-/// Whether author value `value` (lowercase) matches commit `c`: a full address must equal its
-/// email ignoring case, so picking `ann@example.com` leaves out `joann@example.com`; any other
-/// value need only be in its author name or email.
-fn author_matches(value: &str, c: &CommitInfo) -> bool {
+/// Whether author value `value` (lowercase) matches the author `name` <`email`> (see
+/// [`CommitQuery::author_matches`]).
+fn author_value_matches(value: &str, name: &str, email: &str) -> bool {
     if is_full_address(value) {
-        c.email.chars().flat_map(char::to_lowercase).eq(value.chars())
+        email.chars().flat_map(char::to_lowercase).eq(value.chars())
     } else {
-        contains_lower(&c.author, value) || contains_lower(&c.email, value)
+        contains_lower(name, value) || contains_lower(email, value)
     }
 }
 

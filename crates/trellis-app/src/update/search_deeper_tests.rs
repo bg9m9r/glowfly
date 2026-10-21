@@ -78,7 +78,7 @@ fn a_filter_with_too_few_matches_loads_further_back() {
     assert_eq!(st.search_reach(), Reach::Searching);
     finish(&mut st, fx);
     assert!(!st.loading, "the fixture is complete, so nothing more loads");
-    assert_eq!(st.search_reach(), Reach::Whole { shallow: false });
+    assert_eq!(st.search_reach(), Reach::Whole { shallow: false, commits: 1 });
     let _ = std::fs::remove_dir_all(&dir);
 }
 

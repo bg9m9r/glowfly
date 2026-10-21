@@ -278,6 +278,8 @@ mod snapshot_tests_history_preview;
 #[cfg(test)]
 mod snapshot_tests_history_table;
 #[cfg(test)]
+mod snapshot_tests_index;
+#[cfg(test)]
 mod snapshot_tests_init;
 #[cfg(test)]
 mod snapshot_tests_issue;

@@ -50,6 +50,10 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         controls::checkbox(ui, &mut s.load_more_on_scroll, t.tr("prefs.general.load_more.check"));
         help(ui, t.tr("prefs.general.load_more.help"));
     });
+    row(ui, t.tr("prefs.general.index_history.label"), |ui| {
+        controls::checkbox(ui, &mut s.index_history, t.tr("prefs.general.index_history.check"));
+        help(ui, t.tr("prefs.general.index_history.help"));
+    });
     section(ui, t.tr("prefs.general.section.repositories"));
     repositories(ui, t, s, cx);
     super::links::links_row(ui, t, cx.scheme, msgs);

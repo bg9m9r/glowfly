@@ -2,6 +2,7 @@
 //! and the answers for its path terms. Which rows the graph lays out, filtered or not, is
 //! `graph_rows::GraphRows`.
 
+use crate::state::history_index::{HistoryCount, HistoryIndex};
 use git2::Oid;
 use std::collections::HashSet;
 use trellis_core::commit_query::{AuthorCount, CommitQuery};
@@ -19,11 +20,17 @@ pub struct CommitSearch {
     pub matches: Vec<usize>,
     /// The commit index Enter last landed on; the next Enter goes to the first match after it.
     pub cursor: usize,
+    /// Enter has landed on a match since the query last changed (so past the last loaded match it
+    /// goes on to older ones rather than to the newest).
+    pub stepped: bool,
     /// The loaded history's distinct authors for the author picker, worked out when it first
     /// opens and dropped whenever the history changes.
     pub authors: Option<Vec<AuthorCount>>,
     /// Which loaded commits touch the query's path terms, as far as found.
     pub paths: PathSearch,
+    /// The whole-history index of a large repository and its answer for the query (parked with
+    /// the tab).
+    pub index: HistoryIndex,
 }
 
 /// Answers for the query's path terms, found off the UI thread (update/search_paths.rs). A
@@ -61,8 +68,10 @@ impl CommitSearch {
 
     /// The match count for the search bar ("No matches", "2 of 5", "5 matches", "1 match", or
     /// while path terms are searched "Searching files…" and "3 so far, searching…"); `selected`
-    /// is the selected commit's index. `None` when there is no search.
-    pub fn count_text(&self, selected: Option<usize>) -> Option<String> {
+    /// is the selected commit's index. `history` is what is known beyond the loaded commits
+    /// (`AppState::history_count`): an index being built or asked, or its whole-history totals.
+    /// `None` when there is no search.
+    pub fn count_text(&self, selected: Option<usize>, history: HistoryCount) -> Option<String> {
         if !self.active() {
             return None;
         }
@@ -70,11 +79,21 @@ impl CommitSearch {
         if self.searching_files() {
             return Some(if m == 0 { "Searching files…".to_owned() } else { format!("{m} so far, searching…") });
         }
-        Some(match (m, selected.and_then(|i| self.position(i))) {
+        let total = match history {
+            HistoryCount::Loaded => m,
+            HistoryCount::Indexing => {
+                return Some(if m == 0 { "Indexing history…".to_owned() } else { format!("{m} so far, indexing…") });
+            }
+            HistoryCount::Searching => {
+                return Some(if m == 0 { "Searching history…".to_owned() } else { format!("{m} so far, searching…") });
+            }
+            HistoryCount::Whole { positions, .. } => positions.len(),
+        };
+        Some(match (total, selected.and_then(|i| self.position(i))) {
             (0, _) => "No matches".to_owned(),
-            (_, Some(n)) => format!("{} of {m}", n + 1),
+            (_, Some(n)) => format!("{} of {total}", n + 1),
             (1, None) => "1 match".to_owned(),
-            (_, None) => format!("{m} matches"),
+            (_, None) => format!("{total} matches"),
         })
     }
 }
@@ -89,12 +108,32 @@ mod tests {
 
     #[test]
     fn count_text_describes_the_matches() {
-        assert_eq!(CommitSearch::default().count_text(Some(0)), None);
-        assert_eq!(search(vec![], false).count_text(None).as_deref(), Some("No matches"));
-        assert_eq!(search(vec![2], false).count_text(None).as_deref(), Some("1 match"));
-        assert_eq!(search(vec![2], false).count_text(Some(2)).as_deref(), Some("1 of 1"));
-        assert_eq!(search(vec![0, 2, 5], false).count_text(Some(1)).as_deref(), Some("3 matches"));
-        assert_eq!(search(vec![0, 2, 5], false).count_text(Some(2)).as_deref(), Some("2 of 3"));
+        assert_eq!(CommitSearch::default().count_text(Some(0), HistoryCount::Loaded), None);
+        assert_eq!(search(vec![], false).count_text(None, HistoryCount::Loaded).as_deref(), Some("No matches"));
+        assert_eq!(search(vec![2], false).count_text(None, HistoryCount::Loaded).as_deref(), Some("1 match"));
+        assert_eq!(search(vec![2], false).count_text(Some(2), HistoryCount::Loaded).as_deref(), Some("1 of 1"));
+        assert_eq!(search(vec![0, 2, 5], false).count_text(Some(1), HistoryCount::Loaded).as_deref(), Some("3 matches"));
+        assert_eq!(search(vec![0, 2, 5], false).count_text(Some(2), HistoryCount::Loaded).as_deref(), Some("2 of 3"));
+    }
+
+    #[test]
+    fn count_text_with_the_whole_history() {
+        let whole = |positions: &'static [u32]| HistoryCount::Whole { positions, commits: 5000, complete: true };
+        let s = search(vec![], false);
+        assert_eq!(s.count_text(None, HistoryCount::Indexing).as_deref(), Some("Indexing history…"));
+        assert_eq!(s.count_text(None, HistoryCount::Searching).as_deref(), Some("Searching history…"));
+        assert_eq!(s.count_text(None, whole(&[])).as_deref(), Some("No matches"));
+        assert_eq!(s.count_text(None, whole(&[900])).as_deref(), Some("1 match"));
+        let s = search(vec![0, 2, 5], false);
+        assert_eq!(s.count_text(None, HistoryCount::Indexing).as_deref(), Some("3 so far, indexing…"));
+        assert_eq!(s.count_text(None, HistoryCount::Searching).as_deref(), Some("3 so far, searching…"));
+        let many: &'static [u32] = Vec::leak((0..1234).collect());
+        assert_eq!(s.count_text(Some(5), whole(many)).as_deref(), Some("3 of 1234"));
+        assert_eq!(s.count_text(None, whole(many)).as_deref(), Some("1234 matches"));
+        // Path terms still being searched win.
+        let mut s = CommitSearch { query: CommitQuery::parse("path:src"), ..Default::default() };
+        s.paths.pending = Some(1);
+        assert_eq!(s.count_text(None, whole(many)).as_deref(), Some("Searching files…"));
     }
 
     #[test]
@@ -102,16 +141,16 @@ mod tests {
         let mut s = CommitSearch { query: CommitQuery::parse("path:src"), ..Default::default() };
         s.paths.pending = Some(1);
         assert!(s.searching_files());
-        assert_eq!(s.count_text(None).as_deref(), Some("Searching files…"));
+        assert_eq!(s.count_text(None, HistoryCount::Loaded).as_deref(), Some("Searching files…"));
         s.matches = vec![0, 3];
-        assert_eq!(s.count_text(Some(3)).as_deref(), Some("2 so far, searching…"));
+        assert_eq!(s.count_text(Some(3), HistoryCount::Loaded).as_deref(), Some("2 so far, searching…"));
         s.paths.pending = None;
         assert!(!s.searching_files());
-        assert_eq!(s.count_text(Some(3)).as_deref(), Some("2 of 2"));
+        assert_eq!(s.count_text(Some(3), HistoryCount::Loaded).as_deref(), Some("2 of 2"));
         // A query without path terms isn't searching files, whatever is pending.
         let mut s = search(vec![1], false);
         s.paths.pending = Some(2);
         assert!(!s.searching_files());
-        assert_eq!(s.count_text(None).as_deref(), Some("1 match"));
+        assert_eq!(s.count_text(None, HistoryCount::Loaded).as_deref(), Some("1 match"));
     }
 }

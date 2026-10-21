@@ -101,13 +101,13 @@ fn a_path_term_asks_for_every_loaded_commit_then_matches() {
     assert_eq!(asked.len(), 1);
     assert_eq!(asked[0].1, oids(&st, &all), "every loaded commit, in index order");
     assert_eq!(st.search.paths.pending, Some(asked[0].0));
-    assert_eq!(st.search.count_text(None).as_deref(), Some("Searching files…"));
+    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("Searching files…"));
     assert!(st.search.matches.is_empty());
 
     search_all(&mut st, "path:docs");
     assert_eq!(st.search.matches, [1, 2, 4]);
     assert_eq!(st.search.paths.pending, None);
-    assert_eq!(st.search.count_text(None).as_deref(), Some("3 matches"));
+    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("3 matches"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -168,7 +168,7 @@ fn new_path_terms_drop_the_old_terms_matches() {
     let asked = search(&mut st, "path:src");
     assert_eq!(asked.len(), 1);
     assert!(st.search.matches.is_empty(), "no commit is known to touch src yet");
-    assert_eq!(st.search.count_text(None).as_deref(), Some("Searching files…"));
+    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("Searching files…"));
     let before = st.selection.clone();
     up(&mut st, SearchMsg::Next);
     assert_eq!(st.selection, before, "Enter doesn't land on a docs commit");
@@ -186,7 +186,7 @@ fn partial_reports_match_and_enter_steps_through_them() {
     report(&mut st, request, Ok(chunk));
     assert_eq!(st.search.matches, [1, 2]);
     assert_eq!(st.search.paths.pending, Some(request));
-    assert_eq!(st.search.count_text(None).as_deref(), Some("2 so far, searching…"));
+    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("2 so far, searching…"));
     up(&mut st, SearchMsg::Next);
     assert_eq!(st.selection, Selection::Commit(oid(&st, 1)));
     up(&mut st, SearchMsg::Next);
@@ -211,7 +211,7 @@ fn a_failed_search_is_logged_and_ends() {
     report(&mut st, request, Err("no such repository".into()));
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some("Could not search changed files: no such repository"));
     assert_eq!(st.search.paths.pending, None);
-    assert_eq!(st.search.count_text(None).as_deref(), Some("No matches"));
+    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("No matches"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

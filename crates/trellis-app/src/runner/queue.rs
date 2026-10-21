@@ -172,6 +172,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Stats { .. }
         | Effect::LineCounts(_)
         | Effect::SearchPaths { .. }
+        | Effect::Index(_)
         | Effect::VerifySignature { .. }
         | Effect::FetchAvatars(_)
         | Effect::Prefs(_)

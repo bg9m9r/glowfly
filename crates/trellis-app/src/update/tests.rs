@@ -59,6 +59,39 @@ pub(super) fn scratch_repo(name: &str) -> PathBuf {
     dir
 }
 
+/// A repository whose `main` has `count` empty commits (made by `git fast-import`), one minute
+/// apart, oldest first: commit `i` (0 is the oldest) says "commit {i}", the three oldest also
+/// "needle", and the oldest and the newest also "beacon". Longer than the smallest commit limit
+/// (500), so its graph is cut short.
+pub(super) fn long_repo(name: &str, count: usize) -> PathBuf {
+    let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    git(&dir, &["init", "-q", "-b", "main"]);
+    set_identity(&dir);
+    let mut stream = String::new();
+    for i in 0..count {
+        let mut msg = format!("commit {i}");
+        if i < 3 {
+            msg.push_str(" needle");
+        }
+        if i == 0 || i + 1 == count {
+            msg.push_str(" beacon");
+        }
+        msg.push('\n');
+        let time = 1_600_000_000 + 60 * i;
+        stream.push_str(&format!("commit refs/heads/main\nmark :{}\ncommitter Test <test@example.com> {time} +0000\n", i + 1));
+        stream.push_str(&format!("data {}\n{msg}", msg.len()));
+        if i > 0 {
+            stream.push_str(&format!("from :{i}\n"));
+        }
+        stream.push('\n');
+    }
+    let (ok, out) = trellis_core::gitcli::run_with_input(&dir, &args(&["fast-import", "--quiet"]), &stream, &[]);
+    assert!(ok, "fast-import failed: {out}");
+    dir
+}
+
 /// Undoes `scratch_repo`'s uncommitted edit of a.txt, for tests of checkouts, pulls and merges
 /// the auto-stash prompt would otherwise stop to ask about.
 pub(super) fn clean_tree(dir: &Path) {
@@ -170,6 +203,9 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             )
             // Asks hosting services.
             | Effect::Dashboard(crate::effect::DashboardEffect::Fetch(_))
+            // Index builds run only where a test asks (`history_index_tests`), so the load-more
+            // fallback tests keep today's flow.
+            | Effect::Index(crate::effect::IndexEffect::Build { .. })
     ) || matches!(effect, Effect::Partial(crate::effect::partial::PartialEffect::SizeHistory(r)) if r.service.is_some())
 }
 

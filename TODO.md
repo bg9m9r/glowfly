@@ -830,7 +830,7 @@ Done except the group colors, which wait on repository groups in the repository 
     loading"); jumping to a pinned branch goes with pinning in Branch operations
 - [x] **Search and filter**
   Filter the graph to matches (not just dim them), filter by author, search by file path.
-  (Background indexing for large repos is under Later.)
+  (A background index covers the whole history of large repos.)
   - [x] Filter the graph to matches (Filter toggle, Ctrl+Shift+F, live match count)
   - [x] Author filter (author: terms and an author picker)
   - [x] Search by file path (path: and file: terms: a folder, a file name or a glob)
@@ -1059,9 +1059,6 @@ blockers and major findings are Milestone 1 items.
 - Keep the index when stashing (`--keep-index`) as a Stash dialog option
 - When a staged rename's new path is chosen, stash its old path too, so the rename moves as a whole
 
-### Search and filter
-
-- Background indexing for large repos
 
 ### Notifications
 
@@ -2234,6 +2231,19 @@ here, under the item they grew from.
 - Show commits touching a file from the details panel or file list menu (fills path: in)
 - Remember path answers across query changes (recent term sets) so going back doesn't search again
 - Match path: terms against stashes and the WIP row's changed files
+- Answer path: and file: terms from the history index (per-commit changed paths or a path-to-commits map built in the background)
+- Keep the history index on disk between runs, keyed by repository and starts, so reopening a large repository needs no rebuild
+- Share one history index between the worktree tabs of one repository
+- Compact an index's text blocks after many updates leave unreachable commits' text behind
+- Search the whole commit message, not only the summary and the body's first ~240 characters
+- List the whole history's authors (with commit counts) in the author picker from the index
+- Date terms (before:, after:) answered from the index's author and committer dates
+- Apply .mailmap to author names and emails in search and the author picker
+- Show the whole history's commit count in the graph header once indexed ("Newest 500 of 812345 commits")
+- Hide the graph's Load more row in Filter mode when the index says no older commit matches
+- Show a match older than the graph's 200,000-commit cap in the details panel without loading it
+- Translate the search bar's count and hover texts
+- Limit index memory by a byte budget as well as the commit cap, and say so in the hover
 
 ### Signing beyond config
 

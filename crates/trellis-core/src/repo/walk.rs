@@ -7,10 +7,11 @@
 //! wherever the history allows it.
 
 use super::CommitInfo;
+use super::walk_order::{TimeQueue, walk_parents};
 use crate::error::Result;
 use git2::{Oid, Repository};
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap};
 
 /// The newest commits for the graph, read from `tips`: up to `max` commits, children before
 /// parents, and whether more were left out.
@@ -18,33 +19,25 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 /// The walk is newest first by commit time and stops after `max` commits. libgit2's revwalk
 /// can't do this: any sorting makes it read every reachable commit before returning the first.
 pub(super) fn newest_commits(repo: &Repository, tips: &[Oid], max: usize) -> Result<(Vec<CommitInfo>, bool)> {
-    let mut queue: BinaryHeap<(i64, Reverse<u64>, Oid)> = BinaryHeap::new();
-    let mut seen: HashSet<Oid> = HashSet::new();
-    // Ties in time come out in the order they were found, so a tip pushed first comes first.
-    let mut order = 0u64;
-    let mut push = |queue: &mut BinaryHeap<_>, oid: Oid, time: i64| {
-        if seen.insert(oid) {
-            order += 1;
-            queue.push((time, Reverse(order), oid));
-        }
-    };
+    let mut queue = TimeQueue::default();
     for &tip in tips {
         let c = repo.find_commit(tip)?;
-        push(&mut queue, tip, c.time().seconds());
+        queue.push(tip, c.time().seconds());
     }
     let mut commits = Vec::new();
-    while let Some((_, _, oid)) = queue.pop() {
+    while let Some(oid) = queue.pop() {
         if commits.len() >= max {
             return Ok((children_first(commits), true));
         }
         let c = repo.find_commit(oid)?;
-        for p in c.parents() {
-            push(&mut queue, p.id(), p.time().seconds());
+        for (p, time) in walk_parents(&c) {
+            queue.push(p, time);
         }
+        let (summary, body) = commit_texts(&c);
         commits.push(CommitInfo {
             oid,
-            summary: c.summary().unwrap_or_default().to_owned(),
-            body: flatten_body(c.body().unwrap_or_default()),
+            summary,
+            body,
             author: c.author().name().unwrap_or_default().to_owned(),
             email: c.author().email().unwrap_or_default().to_owned(),
             time: c.time().seconds(),
@@ -52,6 +45,12 @@ pub(super) fn newest_commits(repo: &Repository, tips: &[Oid], max: usize) -> Res
         });
     }
     Ok((children_first(commits), false))
+}
+
+/// The texts search matches in commit `c`: its summary and its body flattened to one capped line
+/// (`flatten_body`). A message that isn't UTF-8 gives empty texts, as libgit2 gives none.
+pub(crate) fn commit_texts(c: &git2::Commit) -> (String, String) {
+    (c.summary().unwrap_or_default().to_owned(), flatten_body(c.body().unwrap_or_default()))
 }
 
 /// `commits` reordered so every commit comes after all of its children in the list, otherwise
@@ -88,7 +87,8 @@ pub(super) fn children_first(commits: Vec<CommitInfo>) -> Vec<CommitInfo> {
     order.into_iter().filter_map(|i| slots[i].take()).collect()
 }
 
-pub(super) fn flatten_body(body: &str) -> String {
+/// `body` on one line: its words joined by single spaces, cut with "…" after about 240 bytes.
+pub(crate) fn flatten_body(body: &str) -> String {
     let mut out = String::new();
     for word in body.split_whitespace() {
         if out.len() > 240 {

@@ -1,7 +1,7 @@
 //! The bottom status bar: the hosting service and tracker with the counts their sidebar lists
-//! show (`state::status_counts`), the job running, and the zoom and Show toolbar items (toasts
-//! are in `toasts.rs`, the logs panel in `activity_log.rs`). Its parts are joined by "·" only
-//! when present.
+//! show (`state::status_counts`), the job running (or a load, or a fresh build of the search's
+//! whole-history index), and the zoom and Show toolbar items (toasts are in `toasts.rs`, the
+//! logs panel in `activity_log.rs`). Its parts are joined by "·" only when present.
 
 use super::common::status_label_ui;
 use super::theme::color;
@@ -54,6 +54,13 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                         ui.add(egui::Spinner::new().size(12.0));
                     } else if st.loading {
                         ui.label(RichText::new(t.tr("status.loading")).color(color::weak()));
+                        ui.add(egui::Spinner::new().size(12.0));
+                    } else if let Some((done, total)) = st.indexing() {
+                        let text = match total {
+                            Some(total) => t.trf("status.indexing.total", &[("done", &done), ("total", &total)]),
+                            None => t.trf("status.indexing", &[("done", &done)]),
+                        };
+                        ui.label(RichText::new(text).color(color::weak()));
                         ui.add(egui::Spinner::new().size(12.0));
                     }
                 });

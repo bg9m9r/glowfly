@@ -9,6 +9,7 @@ pub mod branch_colour;
 pub mod branch_ops;
 pub mod changelog;
 pub mod clone_ops;
+pub mod commit_index;
 pub mod commit_query;
 pub mod conflict_check;
 pub mod conflict_edit;

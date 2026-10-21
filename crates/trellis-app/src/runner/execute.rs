@@ -3,9 +3,9 @@
 
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, custom_commands, dashboard, deep_link, diff_gaps, expect, files,
-    forge_calls, forks, git_env, git_ops, highlight, history, init, issues, journal, line_counts, notify, onboarding, op_preview, os,
-    partial, patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures, sparse, ssh, stack,
-    stashes, status, submodules, themes, tools, trust, updates, worktrees,
+    forge_calls, forks, git_env, git_ops, highlight, history, index, init, issues, journal, line_counts, notify, onboarding, op_preview,
+    os, partial, patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures, sparse, ssh,
+    stack, stashes, status, submodules, themes, tools, trust, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
@@ -166,6 +166,7 @@ fn execute_unscoped(
         Effect::SearchPaths { workdir, request, terms, oids } => {
             Some(path_search::once(path_search::Request { workdir, request, terms, oids }))
         }
+        Effect::Index(e) => index::once(e),
         Effect::VerifySignature { workdir, oid, format, generation } => Some(signatures::verify(&workdir, oid, format, generation)),
         Effect::FetchAvatars(emails) => Some(Msg::Avatars(AvatarMsg::AvatarsLoaded(
             emails

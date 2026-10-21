@@ -5,6 +5,7 @@
 
 use crate::keymap::BindingId;
 use crate::msg::{Msg, SearchMsg};
+use crate::state::history_index::HistoryCount;
 use crate::state::{AppState, Selection};
 use crate::ui::access;
 use crate::ui::theme::color;
@@ -82,16 +83,25 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             Selection::Commit(o) => st.snap.as_ref().and_then(|s| s.row_of.get(o).copied()),
             _ => None,
         };
-        let count = st.search.count_text(selected);
+        let history = st.history_count();
+        let count = st.search.count_text(selected, history);
         ui.allocate_ui_with_layout(vec2(COUNT_W, ui.spacing().interact_size.y), Layout::left_to_right(Align::Center), |ui| {
             ui.set_min_width(COUNT_W);
             let Some(text) = count else { return };
             let (r, cut) = truncate::cut_label(ui, RichText::new(&text).color(color::weak()), COUNT_W);
+            let loaded = st.snap.as_ref().filter(|s| s.truncated).map(|s| s.commits.len());
             let why = if st.search.searching_files() {
                 Some("Looking through the files each loaded commit changed".to_owned())
             } else {
-                let loaded = st.snap.as_ref().filter(|s| s.truncated).map(|s| s.commits.len());
-                loaded.map(|len| format!("Searches the newest {len} loaded commits; Load more searches further back."))
+                match history {
+                    HistoryCount::Indexing => loaded.map(|len| {
+                        format!("Indexing the whole history in the background. Until it is done, the search covers the newest {len} loaded commits.")
+                    }),
+                    HistoryCount::Whole { positions, commits, complete } => Some(whole_text(positions.len(), commits, complete, st.search.matches.len())),
+                    HistoryCount::Loaded | HistoryCount::Searching => {
+                        loaded.map(|len| format!("Searches the newest {len} loaded commits; Load more searches further back."))
+                    }
+                }
             };
             match (cut, why) {
                 (true, Some(why)) => r.on_hover_text(format!("{text}\n{why}")),
@@ -105,6 +115,14 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             msgs.push(Msg::Search(SearchMsg::Close));
         }
     });
+}
+
+/// The count's hover text once the whole-history index answered: `total` matches among its
+/// `commits` commits (the whole history when `complete`), `loaded` of them in the graph.
+fn whole_text(total: usize, commits: usize, complete: bool, loaded: usize) -> String {
+    let matches = if total == 1 { "1 match".to_owned() } else { format!("{total} matches") };
+    let scope = if complete { format!("in the whole history ({commits} commits)") } else { format!("in the newest {commits} commits") };
+    format!("{matches} {scope}, {loaded} of them loaded. Enter loads older matches as it reaches them.")
 }
 
 /// The painted × inside the right end of the query field (`field` is its rect): empties the

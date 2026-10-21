@@ -2,7 +2,9 @@
 //! history is loaded in batches that double the commits asked for (so the total walked stays
 //! about twice the final size), one load at a time and at most `DEEPER_BATCHES` per query. The
 //! next batch is decided here when something changed (a query, a load, a path search), never
-//! by the view, and only while the preference to load more by itself is on.
+//! by the view, and only while the preference to load more by itself is on. Once the
+//! whole-history index has answered the query, one load goes straight to the matches instead
+//! (update/search_index.rs).
 
 use crate::effect::Effect;
 use crate::state::AppState;
@@ -27,12 +29,23 @@ pub(super) fn pump(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     let enough = st.search.matches.len() >= st.fill_rows();
     let more = st.snap.as_ref().is_some_and(can_load_more);
+    // With the whole-history index's answer, one load goes straight to the matches (or none).
+    let target = super::search_index::fill_target(st);
     let query = &st.search.query;
     let deeper = match &mut st.refresh.deeper {
         Some(d) if d.query == *query => d,
         // A new query starts a fresh budget; the old query's goes no further.
         slot => slot.insert(DeeperSearch { query: query.clone(), batches: 0 }),
     };
+    match target {
+        Some(None) => return,
+        Some(Some(count)) => {
+            deeper.batches = deeper.batches.saturating_add(1);
+            super::search_index::load_through(st, count, fx);
+            return;
+        }
+        None => {}
+    }
     if enough || !more || deeper.batches >= DEEPER_BATCHES {
         return;
     }
@@ -43,6 +56,13 @@ pub(super) fn pump(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Keep searching: a fresh batch budget for the current query. Without the preference, or
 /// without a filtering search, it loads more (or tries a failed load again) as Load more does.
 pub(super) fn further(st: &mut AppState, fx: &mut Vec<Effect>) {
+    // The whole-history index knows where the first older match is.
+    if st.refresh.more_failed.is_none()
+        && let Some(count) = super::search_index::further_target(st)
+    {
+        super::search_index::load_through(st, count, fx);
+        return;
+    }
     if !st.settings.load_more_on_scroll || !st.filtering() {
         if st.refresh.more_failed.is_some() {
             super::load_more::retry(st, fx);

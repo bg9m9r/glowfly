@@ -3,8 +3,9 @@
 //! update/search_deeper.rs change them, and the graph reads them through `more_row` and
 //! `search_reach`.
 
-use crate::state::AppState;
+use crate::state::history_index::HistoryCount;
 use crate::state::refresh::can_load_more;
+use crate::state::{AppState, MAX_COMMITS};
 use std::time::Duration;
 use trellis_core::commit_query::CommitQuery;
 
@@ -43,8 +44,14 @@ pub enum Reach<'a> {
     Searching,
     /// Loading older history failed with this error.
     Failed(&'a str),
-    /// Every commit was searched: the whole history, or all a shallow clone has.
-    Whole { shallow: bool },
+    /// Every commit was searched: the whole history of `commits` commits, or all a shallow clone
+    /// has.
+    Whole { shallow: bool, commits: usize },
+    /// The whole-history index searched the newest `commits` commits (its cap) and found nothing.
+    IndexCapped { commits: usize },
+    /// The index found `matches` older commits that match, all past the newest `MAX_COMMITS` the
+    /// graph can load.
+    PastCap { matches: usize },
     /// Only the newest commits were searched, and what could look further.
     Newest(Further),
 }
@@ -94,8 +101,18 @@ impl AppState {
             return Reach::Failed(error);
         }
         let Some(snap) = &self.snap else { return Reach::Newest(Further::Nothing) };
+        if let HistoryCount::Whole { positions, commits, complete } = self.history_count() {
+            match positions.first() {
+                None if complete => return Reach::Whole { shallow: snap.is_shallow(), commits },
+                None => return Reach::IndexCapped { commits },
+                Some(&first) if self.search.matches.is_empty() && first as usize >= MAX_COMMITS => {
+                    return Reach::PastCap { matches: positions.len() };
+                }
+                Some(_) => {}
+            }
+        }
         if !snap.truncated {
-            Reach::Whole { shallow: snap.is_shallow() }
+            Reach::Whole { shallow: snap.is_shallow(), commits: snap.commits.len() }
         } else if !can_load_more(snap) {
             Reach::Newest(Further::Nothing)
         } else if self.settings.load_more_on_scroll {
@@ -163,7 +180,41 @@ mod tests {
         st.settings.load_more_on_scroll = false;
         assert_eq!(st.search_reach(), Reach::Newest(Further::LoadMore));
         st.snap.as_mut().unwrap().truncated = false;
-        assert_eq!(st.search_reach(), Reach::Whole { shallow: false });
+        assert_eq!(st.search_reach(), Reach::Whole { shallow: false, commits: 1 });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_index_answer_says_how_far_it_looked() {
+        use crate::state::history_index::IndexAnswer;
+        use std::sync::Arc;
+        use trellis_core::commit_index::{CommitIndex, IndexKey};
+        let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
+        let mut snap = crate::state::op_fixture::snapshot("reach-index");
+        let dir = snap.workdir.clone();
+        snap.truncated = true;
+        let key = IndexKey::of(&snap);
+        let commits = snap.commits.clone();
+        st.snap = Some(snap);
+        st.view.show_search = true;
+        st.view.search = "x".into();
+        st.search.query = CommitQuery::parse("x");
+        st.search.filter = true;
+        let answer = |st: &mut AppState, ix: CommitIndex, positions: Vec<u32>| {
+            let index = Arc::new(ix);
+            st.search.index.ready = Some(Arc::clone(&index));
+            st.search.index.answer = Some(IndexAnswer { query: st.search.query.clone(), index, positions });
+        };
+        answer(&mut st, CommitIndex::from_commits(key.clone(), &commits), vec![]);
+        assert_eq!(st.search_reach(), Reach::Whole { shallow: false, commits: 1 });
+        // A capped index found nothing in what it holds.
+        answer(&mut st, CommitIndex::from_commits(key.clone(), &commits).marked_incomplete(), vec![]);
+        assert_eq!(st.search_reach(), Reach::IndexCapped { commits: 1 });
+        // Every match past the graph's cap.
+        answer(&mut st, CommitIndex::from_commits(key, &commits), vec![250_000, 250_001]);
+        assert_eq!(st.search_reach(), Reach::PastCap { matches: 2 });
+        st.search.matches = vec![0];
+        assert_eq!(st.search_reach(), Reach::Newest(Further::KeepSearching), "a loaded match: as before");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

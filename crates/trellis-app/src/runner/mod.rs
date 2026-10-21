@@ -2,9 +2,10 @@
 //! the app starts background work.
 //!
 //! `Runner::run` starts one named thread per effect. A few effects get special handling: the
-//! file watcher (`Effect::Watch`), credential-prompt answers and the terminal's shell sessions
-//! are run by the runner itself, the log files have one ordered worker (`logs`), effects are
-//! timed for the performance log, and saves of Trellis's own files are kept in order (`saves`).
+//! file watcher (`Effect::Watch`), credential-prompt answers, the terminal's shell sessions and
+//! the search index's builds and queries (`index`) are run by the runner itself, the log files
+//! have one ordered worker (`logs`), effects are timed for the performance log, and saves of
+//! Trellis's own files are kept in order (`saves`).
 //! `execute.rs` maps each effect to its work; work longer than a line lives in this folder's
 //! per-area files (`files`, `worktrees`, `rebase`, `highlight`, …); the git, file and
 //! network code itself lives in `trellis-core`.
@@ -39,6 +40,8 @@ mod git_ops;
 mod guard;
 mod highlight;
 mod history;
+mod index;
+mod index_query;
 mod init;
 mod instance;
 mod issues;
@@ -119,6 +122,8 @@ pub struct Runner<W: Waker + Clone> {
     stats: stats::StatsWorker,
     /// Finds the commits touching the search's path terms, newest request first.
     path_search: path_search::PathSearchWorker,
+    /// Builds the tabs' whole-history search indexes, one at a time, and asks them for matches.
+    index: index::IndexWorker,
     /// Ahead/behind and containment answers, kept between repository loads.
     graph_cache: Arc<repo::GraphCache>,
     /// The log files' worker (attached at startup, never in tests).
@@ -147,6 +152,7 @@ impl<W: Waker + Clone> Runner<W> {
             graph_cache: Default::default(),
             stats: Default::default(),
             path_search: Default::default(),
+            index: Default::default(),
             logs: Default::default(),
             stops: Default::default(),
             #[cfg(test)]
@@ -182,6 +188,7 @@ impl<W: Waker + Clone> Runner<W> {
                 let r = path_search::Request { workdir, request, terms, oids };
                 return self.path_search.submit(r, self.tx.clone(), self.waker.clone());
             }
+            Effect::Index(e) => return self.index.submit(e, self.tx.clone(), self.waker.clone()),
             other => match self.save(other) {
                 Some(other) => other,
                 None => return,

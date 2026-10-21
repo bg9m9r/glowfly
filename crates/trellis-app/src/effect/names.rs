@@ -46,6 +46,7 @@ impl Effect {
             Effect::Stats { .. } => "stats",
             Effect::LineCounts(e) => e.name(),
             Effect::SearchPaths { .. } => "search-paths",
+            Effect::Index(e) => e.name(),
             Effect::VerifySignature { .. } => "verify-signature",
             Effect::FetchAvatars(_) => "avatars",
             Effect::SaveSettings(_) => "save-settings",
@@ -94,6 +95,7 @@ impl Effect {
     /// Whether the runner times this effect for the performance log (runner/mod.rs).
     pub fn timed(&self) -> bool {
         match self {
+            Effect::Index(e) => e.timed(),
             Effect::LoadRepo { .. }
             | Effect::LoadStatus { .. }
             | Effect::CountWorktreeChanges(_)

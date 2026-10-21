@@ -295,6 +295,7 @@ pub(super) fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
     } else {
         super::conflict_check::want(st, fx);
     }
+    super::history_index::sync(st, fx);
     super::tab_groups::regroup(st, fx);
     super::branch_colour::sync(st);
 }

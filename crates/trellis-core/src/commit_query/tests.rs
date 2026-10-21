@@ -231,3 +231,24 @@ fn with_author_keeps_path_terms_as_written() {
     assert_eq!(q.paths(), [term("My Docs/"), term("x")]);
     assert_eq!(q.authors(), ["ada lovelace"]);
 }
+
+#[test]
+fn text_and_author_parts_match_on_their_own() {
+    let oid = Oid::from_str("0abcdef1234567890abcdef1234567890abcdef1").unwrap();
+    let q = CommitQuery::parse("ada");
+    assert_eq!(q.text(), "ada");
+    // Free text finds the author's name, but the email only through an author term.
+    assert!(q.text_matches(&oid, "", "", "Ada Lovelace"));
+    assert!(!q.text_matches(&oid, "", "", "Grace"));
+    assert!(q.author_matches("Grace", "grace@example.com"), "no author terms: any author");
+    let q = CommitQuery::parse("author:ada@example.com");
+    assert_eq!(q.text(), "");
+    assert!(q.text_matches(&oid, "", "", ""), "no free text: any text");
+    assert!(q.author_matches("Someone", "ADA@example.com"));
+    assert!(!q.author_matches("Ada", "joada@example.com"), "a full address must be equal");
+    let q = CommitQuery::parse("author:lovelace body words");
+    assert!(q.text_matches(&oid, "summary", "some body words here", ""));
+    assert!(q.author_matches("Ada Lovelace", "a@example.com"));
+    assert!(!q.author_matches("Ada", "a@example.com"));
+    assert!(CommitQuery::parse("0ABC").text_matches(&oid, "", "", ""), "an id prefix in any case");
+}

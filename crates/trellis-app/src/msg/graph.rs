@@ -5,6 +5,8 @@
 
 use crate::state::pick::PickOp;
 use git2::Oid;
+use std::sync::Arc;
+use trellis_core::commit_index::CommitIndex;
 use trellis_core::repo::{Comparison, StackedCommit};
 use trellis_core::settings::{FilterOp, ResizableColumn};
 
@@ -136,6 +138,13 @@ pub enum SearchMsg {
     /// A report from Effect::SearchPaths request `request`: a chunk of the commits it looked at
     /// and which of them touch the path terms; `done` on its last chunk.
     PathsSearched { request: u64, result: Result<PathsChunk, String> },
+    /// How far whole-history index build `build` has got (`IndexEffect::Build`): commits indexed
+    /// and about how many there are, when git's commit-graph file says.
+    IndexProgress { build: u64, indexed: usize, estimate: Option<usize> },
+    /// Index build `build` finished, or failed with this error.
+    IndexBuilt { build: u64, result: Result<Arc<CommitIndex>, String> },
+    /// The walk positions of the index's matches for query request `request` (`IndexEffect::Query`).
+    IndexQueried { request: u64, result: Result<Vec<u32>, String> },
 }
 
 /// Part of the answer to a path search (`SearchMsg::PathsSearched`).
@@ -165,6 +174,11 @@ impl SearchMsg {
             // The tab asks again for what is unsearched when it is shown (tabs::activate →
             // search_paths::resume).
             Self::PathsSearched { .. } => None,
+            // A parked tab keeps its finished index (update/history_index.rs `parked_built`).
+            Self::IndexBuilt { build, result } => Some(crate::msg::Inactive::IndexBuilt { build, result }),
+            // The status bar shows progress for the active tab only, and the tab asks for its
+            // query's matches again when it is shown (tabs::activate → search_index::resume).
+            Self::IndexProgress { .. } | Self::IndexQueried { .. } => None,
         }
     }
 }

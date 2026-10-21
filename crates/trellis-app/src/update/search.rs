@@ -32,6 +32,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
             st.view.search.clear();
             st.search.filter = false;
             st.search.paths = PathSearch { requests: st.search.paths.requests, ..Default::default() };
+            st.search.index.drop_answer();
             recompute(st);
             super::search_deeper::pump(st, fx);
         }
@@ -39,6 +40,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
             st.view.search.clear();
             st.view.author_filter.clear();
             st.search.paths = PathSearch { requests: st.search.paths.requests, ..Default::default() };
+            st.search.index.drop_answer();
             recompute(st);
             super::search_deeper::pump(st, fx);
             st.view.focus_search = true;
@@ -56,14 +58,20 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
             query_changed(st, fx);
         }
         SearchMsg::PathsSearched { request, result } => super::search_paths::searched(st, request, result, fx),
+        SearchMsg::IndexProgress { build, indexed, estimate } => super::history_index::progress(st, build, indexed, estimate),
+        SearchMsg::IndexBuilt { build, result } => super::history_index::built(st, build, result, fx),
+        SearchMsg::IndexQueried { request, result } => super::search_index::queried(st, request, result, fx),
     }
 }
 
 fn query_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     recompute(st);
     super::search_paths::want(st, fx);
+    super::search_index::want(st, fx);
     // The next Enter lands on the first (newest) match.
     st.search.cursor = st.snap.as_ref().map_or(0, |s| s.commits.len().saturating_sub(1));
+    st.search.stepped = false;
+    st.search.index.jump = None;
     if st.search.filter {
         keep_selection_in_view(st);
     }
@@ -87,11 +95,18 @@ pub(super) fn snapshot_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.search.authors = None;
     let last = st.snap.as_ref().map_or(0, |s| s.commits.len().saturating_sub(1));
     st.search.cursor = st.search.cursor.min(last);
+    // The history may need its index built or updated, an older match Enter asked for may be
+    // loaded now, and the index is asked for the query if it changed.
+    super::history_index::want_build(st, fx);
+    super::search_index::landed(st, fx);
+    super::search_index::want(st, fx);
     // Loaded with `st.loading` already false, so a filtering search's next batch starts at once.
     super::search_deeper::pump(st, fx);
 }
 
-/// Enter: selects the first match after the one Enter last landed on, wrapping to the newest.
+/// Enter: selects the first match after the one Enter last landed on. Past the last loaded
+/// match, the whole-history index (when it answered) loads the next older one; otherwise Enter
+/// wraps to the newest.
 fn next(st: &mut AppState, fx: &mut Vec<Effect>) {
     // While files are still searched, Enter steps through the matches found so far.
     if !st.search.active() || (st.search.searching_files() && st.search.matches.is_empty()) {
@@ -99,11 +114,18 @@ fn next(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
 
     let cursor = st.search.cursor;
-    let found = st.search.matches.iter().copied().find(|&m| m > cursor).or_else(|| st.search.matches.first().copied());
+    let after = st.search.matches.iter().copied().find(|&m| m > cursor);
+    // The first Enter after a query change lands on the newest match, loaded or not.
+    let beyond = after.is_none() && (st.search.stepped || st.search.matches.is_empty());
+    if beyond && super::search_index::next_beyond(st, fx) {
+        return;
+    }
+    let found = after.or_else(|| st.search.matches.first().copied());
     let oid = found.and_then(|i| st.snap.as_ref()?.commits.get(i).map(|c| (i, c.oid)));
     match oid {
         Some((i, oid)) => {
             st.search.cursor = i;
+            st.search.stepped = true;
             super::repo::select_commit(st, oid, true, fx);
         }
         None => {

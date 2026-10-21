@@ -1,14 +1,16 @@
 //! The graph's empty states (`graph/mod.rs`): a repository with no commits, and a filtered
 //! search with no matches. That pane says how far the search has looked: changed files or
 //! older history still being searched, a failed load for more (Try again, Copy details), the
-//! whole history searched, or only the newest commits, with Keep searching (or Load more
-//! commits when history isn't loaded by itself), always with Clear search and the query syntax.
+//! whole history searched (by the whole-history index too, or as far as it reached), matches
+//! only past what the graph can load, or only the newest commits, with Keep searching (or Load
+//! more commits when history isn't loaded by itself), always with Clear search and the query
+//! syntax.
 
 use super::empty_state::{EmptyIcon, PaneButton, empty_state};
 use super::pane_status::{self, Failure};
 use crate::msg::{LoadMsg, Msg, SearchMsg};
-use crate::state::AppState;
 use crate::state::load_more::{Further, Reach};
+use crate::state::{AppState, MAX_COMMITS};
 use eframe::egui::Ui;
 
 pub(super) const NO_COMMITS_TITLE: &str = "No commits yet";
@@ -35,8 +37,10 @@ pub(super) fn no_matches(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let retry = Some(Msg::Load(LoadMsg::RetryLoadMore));
             return pane_status::failed(ui, t, Failure { title: t.tr("graph.load_more_failed.title"), error, retry }, msgs);
         }
-        Reach::Whole { shallow: true } => (t.trn("search.empty.shallow", n, &[]), None),
-        Reach::Whole { shallow: false } => (t.trn("search.empty.whole", n, &[]), None),
+        Reach::Whole { shallow: true, commits } => (t.trn("search.empty.shallow", commits, &[]), None),
+        Reach::Whole { shallow: false, commits } => (t.trn("search.empty.whole", commits, &[]), None),
+        Reach::IndexCapped { commits } => (t.trn("search.empty.newest", commits, &[]), None),
+        Reach::PastCap { matches } => (t.trn("search.empty.beyond_reach", matches, &[("max", &MAX_COMMITS)]), None),
         Reach::Newest(Further::KeepSearching) => {
             (t.trn("search.empty.newest", n, &[]), Some((t.tr("search.keep_searching.button"), LoadMsg::SearchFurther)))
         }

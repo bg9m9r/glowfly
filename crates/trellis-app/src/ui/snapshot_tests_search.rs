@@ -69,6 +69,9 @@ fn search_msgs(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Vec<String> {
                 SearchMsg::WantAuthors => "WantAuthors".to_owned(),
                 SearchMsg::PickAuthor(a) => format!("PickAuthor({a:?})"),
                 SearchMsg::PathsSearched { request, .. } => format!("PathsSearched({request})"),
+                SearchMsg::IndexProgress { build, .. } => format!("IndexProgress({build})"),
+                SearchMsg::IndexBuilt { build, .. } => format!("IndexBuilt({build})"),
+                SearchMsg::IndexQueried { request, .. } => format!("IndexQueried({request})"),
             }),
             _ => None,
         })

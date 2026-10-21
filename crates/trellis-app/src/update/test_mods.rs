@@ -129,6 +129,8 @@ pub(super) mod history_file_tests;
 pub(super) mod history_find_tests;
 #[path = "history_folder_tests.rs"]
 pub(super) mod history_folder_tests;
+#[path = "history_index_tests.rs"]
+pub(super) mod history_index_tests;
 #[path = "history_preview_tests.rs"]
 pub(super) mod history_preview_tests;
 #[path = "history_refresh_tests.rs"]
@@ -327,6 +329,8 @@ pub(super) mod revert_tests;
 pub(super) mod revert_workdir_tests;
 #[path = "search_deeper_tests.rs"]
 pub(super) mod search_deeper_tests;
+#[path = "search_index_tests.rs"]
+pub(super) mod search_index_tests;
 #[path = "search_paths_tests.rs"]
 pub(super) mod search_paths_tests;
 #[path = "search_tests.rs"]

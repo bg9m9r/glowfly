@@ -18,6 +18,7 @@ mod dashboard;
 mod forge;
 mod forge_filters;
 mod history;
+mod index;
 mod init;
 mod issue;
 mod line_counts;
@@ -48,6 +49,7 @@ pub use dashboard::*;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use forge_filters::{FilterCall, FilterResult};
 pub use history::FileTextRequest;
+pub use index::IndexEffect;
 pub use init::InitEffect;
 pub use issue::*;
 pub use line_counts::{FailedLineCounts, LineCountsEffect};
@@ -298,6 +300,9 @@ pub enum Effect {
         terms: Vec<trellis_core::path_query::PathTerm>,
         oids: Vec<Oid>,
     },
+    /// The whole-history search index: build, query, forget (index.rs). Handled by Runner::run's
+    /// index worker: one build at a time across tabs, newest request first, and one query.
+    Index(IndexEffect),
     /// Checks commit `oid`'s signature (in `format`) with git, for the details panel's badge.
     VerifySignature {
         workdir: PathBuf,

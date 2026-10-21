@@ -44,6 +44,7 @@ profile_prefs! {
     default_branch: String,
     initial_commits: usize,
     load_more_on_scroll: bool,
+    index_history: bool,
     reopen_last_repo: bool,
     watch_files: bool,
     conflict_check: bool,

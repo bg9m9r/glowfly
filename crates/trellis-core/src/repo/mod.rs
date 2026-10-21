@@ -83,7 +83,8 @@ mod tool_sides;
 mod touching;
 mod tracked;
 mod trash;
-mod walk;
+pub(crate) mod walk;
+pub(crate) mod walk_order;
 mod workfile;
 mod workfile_disk;
 mod workfile_mv;
@@ -277,6 +278,10 @@ pub struct Snapshot {
     pub commits: Vec<CommitInfo>,
     pub row_of: HashMap<Oid, usize>,
     pub truncated: bool,
+    /// The commits the history walk starts from, in the order pushed (HEAD, then the visible
+    /// tips): with `shallow_roots`, what decides which commits a longer walk would add
+    /// (`commit_index::IndexKey`).
+    pub starts: Vec<Oid>,
     pub refs: HashMap<Oid, Vec<RefLabel>>,
     pub locals: Vec<BranchInfo>,
     pub remotes: Vec<(String, Vec<(String, Oid)>)>,

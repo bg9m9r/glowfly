@@ -249,6 +249,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         commits,
         row_of,
         truncated,
+        starts,
         refs,
         locals,
         remotes,

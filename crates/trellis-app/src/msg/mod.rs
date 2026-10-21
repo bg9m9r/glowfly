@@ -270,6 +270,8 @@ pub enum Inactive {
     LogAndUndo { text: String, undo: trellis_core::undo::Action },
     /// A working-tree file operation's result: a dialog may still be waiting for it.
     WorkFile { op: FileOp, result: Result<WorkFileOk, String> },
+    /// A whole-history index build for that tab finished: the parked tab keeps the index.
+    IndexBuilt { build: u64, result: Result<std::sync::Arc<trellis_core::commit_index::CommitIndex>, String> },
 }
 
 impl Msg {

@@ -210,6 +210,7 @@ pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     super::branch_colour::sync(st);
     super::logs_tabs::claim(st);
     super::search_paths::resume(st, fx);
+    super::search_index::resume(st, fx);
     super::watch::sync(st, fx);
     super::terminal::sync(st, fx);
     // Results still in flight for the previous tab are now stale.

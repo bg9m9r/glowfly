@@ -123,6 +123,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::Stats { .. }
             | Effect::LineCounts(_)
             | Effect::SearchPaths { .. }
+            | Effect::Index(_)
             | Effect::VerifySignature { .. }
             | Effect::Prefs(PrefsEffect::ReadGitConfig { .. } | PrefsEffect::SetGitConfig { global: false, .. })
             | Effect::CheckRepoFolders(_)

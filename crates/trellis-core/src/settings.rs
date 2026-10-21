@@ -147,6 +147,8 @@ pub struct Settings {
     /// Load more history when the graph is scrolled near the end of a truncated history
     /// (Preferences > General).
     pub load_more_on_scroll: bool,
+    /// Index large repositories' whole history for search (Preferences > General).
+    pub index_history: bool,
     pub reopen_last_repo: bool,
     /// Refresh when files change outside Trellis (Preferences > General).
     pub watch_files: bool,
@@ -354,6 +356,7 @@ impl Default for Settings {
             default_branch: "main".into(),
             initial_commits: 2000,
             load_more_on_scroll: true,
+            index_history: true,
             reopen_last_repo: true,
             watch_files: true,
             conflict_check: true,
