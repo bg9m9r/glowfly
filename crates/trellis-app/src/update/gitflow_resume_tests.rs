@@ -167,7 +167,7 @@ fn continue_refusals() {
     flow(&mut st, GitFlowMsg::ForgetFinish);
     assert!(st.gitflow_resume.is_none());
     flow(&mut st, GitFlowMsg::ContinueFinish);
-    assert_eq!(last_log(&st), "There is no stopped Finish to continue.");
+    assert_eq!(last_log(&st), "There is no stopped finish to continue.");
     cleanup(&dir);
 }
 
@@ -206,7 +206,7 @@ fn moved_branch_drops_resume() {
     assert!(st.gitflow_resume.is_none());
     assert_eq!(
         last_log(&st),
-        "Finishing feature/login can't continue: feature/login has new commits since Finish stopped. Its remaining steps were dropped."
+        "Finishing feature/login can't continue: feature/login has new commits since the finish stopped. Its remaining steps were dropped."
     );
     cleanup(&dir);
 }
