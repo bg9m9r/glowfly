@@ -10,6 +10,8 @@ fn git_and_libgit2_read_the_same_status() {
     for f in ["a.txt", "b.txt", "c.txt", "d.txt", "e.txt"] {
         write(&dir, f, &format!("{f}\n"));
     }
+    let lines: String = (1..=10).map(|i| format!("line {i}\n")).collect();
+    write(&dir, "f.txt", &lines);
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "first"]);
     write(&dir, "a.txt", "changed\n");
@@ -19,6 +21,10 @@ fn git_and_libgit2_read_the_same_status() {
     std::fs::remove_file(dir.join("c.txt")).unwrap();
     git(&dir, &["rm", "-q", "d.txt"]);
     git(&dir, &["mv", "e.txt", "renamed.txt"]);
+    // A rename whose content changed too is still a rename to git (R, not M).
+    git(&dir, &["mv", "f.txt", "edited.txt"]);
+    write(&dir, "edited.txt", &lines.replace("line 5", "line five"));
+    git(&dir, &["add", "edited.txt"]);
     write(&dir, "new.txt", "new\n");
     git(&dir, &["add", "new.txt"]);
     std::fs::create_dir_all(dir.join("deep/er")).unwrap();
@@ -29,9 +35,15 @@ fn git_and_libgit2_read_the_same_status() {
     let git_read = status(&dir).expect("git ran");
     assert_eq!(git_read, ours);
     assert_eq!(super::status_cli::status_within(&dir, crate::gitcli::READ_TIMEOUT), Ok(git_read.clone()), "the same read");
-    assert!(git_read.1.iter().any(|f| f.path == "renamed.txt" && f.status == 'R'));
+    for new in ["renamed.txt", "edited.txt"] {
+        assert!(ours.1.iter().any(|f| f.path == new && f.status == 'R'), "{new}: {:?}", ours.1);
+    }
     for f in git_read.0.iter().chain(&git_read.1) {
-        let want = (f.path == "renamed.txt" && f.status == 'R').then(|| "e.txt".to_owned());
+        let want = match (f.path.as_str(), f.status) {
+            ("renamed.txt", 'R') => Some("e.txt".to_owned()),
+            ("edited.txt", 'R') => Some("f.txt".to_owned()),
+            _ => None,
+        };
         assert_eq!(f.renamed_from, want, "{}", f.path);
     }
     assert!(git_read.0.iter().any(|f| f.path == "deep/er/untracked file.txt" && f.status == '?'));

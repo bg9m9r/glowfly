@@ -5,7 +5,7 @@ use super::push_tests::{committed, stdout, strings, text};
 use super::*;
 use crate::gitcli::run;
 use crate::repo::{FileEntry, status_at};
-use crate::testutil::{git, write};
+use crate::testutil::{git, scratch_repo, write};
 
 #[test]
 fn rename_sources_cases() {
@@ -108,6 +108,41 @@ fn a_staged_rename_is_stashed_whole() {
     git(&dir, &["stash", "pop", "--index"]);
     let status = stdout(&dir, &["status", "--porcelain"]);
     assert!(status.starts_with("R  a.txt -> moved.txt"), "the staged rename is back: {status}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_edited_staged_rename_is_stashed_whole() {
+    let dir = scratch_repo("stash-push-rename-edited");
+    let lines: String = (1..=10).map(|i| format!("line {i}\n")).collect();
+    let edited = lines.replace("line 5", "line five");
+    write(&dir, "a.txt", &lines);
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "first"]);
+    git(&dir, &["mv", "a.txt", "moved.txt"]);
+    write(&dir, "moved.txt", &edited);
+    git(&dir, &["add", "moved.txt"]);
+    // libgit2's own read: the rename keeps its old path although its content changed too.
+    let (_, staged, _) = status_at(&dir, false).unwrap();
+    let moved = staged.iter().find(|f| f.path == "moved.txt").expect("the staged rename");
+    assert_eq!((moved.status, moved.renamed_from.as_deref()), ('R', Some("a.txt")));
+    let paths = strings(&["moved.txt"]);
+    let old = rename_sources(&paths, &staged);
+    assert_eq!(old, ["a.txt"]);
+
+    let c = push_command(StashScope::Files, false, None, &paths, &dir.join(".git/unused"));
+    for cmd in std::iter::once(c.cmd).chain(restore_commands(&old)) {
+        let (ok, out) = run(&dir, &cmd);
+        assert!(ok, "{cmd:?}: {out}");
+    }
+    assert_eq!(text(&dir, "a.txt"), lines);
+    assert!(!dir.join("moved.txt").exists());
+    assert_eq!(stdout(&dir, &["status", "--porcelain"]), "", "nothing is left staged or changed");
+
+    git(&dir, &["stash", "pop", "--index"]);
+    let status = stdout(&dir, &["status", "--porcelain"]);
+    assert!(status.starts_with("R  a.txt -> moved.txt"), "the staged rename is back: {status}");
+    assert_eq!(text(&dir, "moved.txt"), edited);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

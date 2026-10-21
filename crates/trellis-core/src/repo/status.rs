@@ -119,14 +119,16 @@ pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<F
             unstaged.push(row('!'));
             continue;
         }
+        // A rename whose content changed too carries the modified flag as well; git still calls
+        // it a rename, so the rename is checked first.
         let index = if s.is_index_new() {
             Some('A')
+        } else if s.is_index_renamed() {
+            Some('R')
         } else if s.is_index_modified() {
             Some('M')
         } else if s.is_index_deleted() {
             Some('D')
-        } else if s.is_index_renamed() {
-            Some('R')
         } else if s.is_index_typechange() {
             Some('T')
         } else {
