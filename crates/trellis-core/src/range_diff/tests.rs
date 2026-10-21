@@ -194,8 +194,11 @@ fn reading_git_exit() {
     let missing = read_output(&out(1, "git: 'range-diff' is not a git command. See 'git --help'.\n")).unwrap_err();
     assert!(matches!(missing, Error::Unsupported(_)), "{missing:?}");
     assert!(missing.to_string().contains("2.19"), "{missing}");
-    let usage = read_output(&out(129, "usage: git range-diff [<options>] <old-base>..<old-tip> <new-base>..<new-tip>\n")).unwrap_err();
-    assert!(matches!(usage, Error::Unsupported(_)), "{usage:?}");
+    // A current git's argument error keeps git's own message, not the usage text, and isn't
+    // taken for a git without range-diff.
+    let usage = "fatal: need two commit ranges\n\nusage: git range-diff [<options>] <old-base>..<old-tip> <new-base>..<new-tip>\n   or: git range-diff [<options>] <old-tip>...<new-tip>\n";
+    let usage = read_output(&out(129, usage)).unwrap_err();
+    assert!(matches!(&usage, Error::Other(t) if t == "fatal: need two commit ranges"), "{usage:?}");
     let bad =
         read_output(&out(255, "fatal: Invalid revision range main..0000\nerror: could not parse log for 'main..0000'\n")).unwrap_err();
     assert!(matches!(&bad, Error::Other(t) if t.starts_with("fatal: Invalid revision range")), "{bad:?}");
@@ -212,4 +215,31 @@ fn the_command_line() {
     );
     let args = command(Range { base: a, tip: b }, Range { base: c, tip: d });
     assert_eq!(args, ["range-diff".to_string(), "--no-color".into(), "--abbrev=40".into(), format!("{a}..{b}"), format!("{c}..{d}")]);
+    let shared = command(Range { base: a, tip: a }, Range { base: a, tip: d });
+    assert_eq!(shared, ["range-diff".to_string(), "--no-color".into(), "--abbrev=40".into(), a.to_string(), a.to_string(), d.to_string()]);
+}
+
+#[test]
+fn one_version_an_ancestor_of_the_other() {
+    let dir = scratch_repo("rd-ancestor");
+    let first = commit(&dir, "base.txt", "base\n", "base");
+    let earlier = commit(&dir, "a.txt", "a\n", "one");
+    commit(&dir, "b.txt", "b\n", "two");
+    let tip = commit(&dir, "c.txt", "c\n", "three");
+    // An earlier state of main against now, main itself the mainline: every commit since is new.
+    let later = compared(compare(&dir, &Ends::Tips { old: earlier, new: tip }, main_line(&dir)).unwrap());
+    assert_eq!(by_subject(&later), [(Status::Added, "two".into()), (Status::Added, "three".into())]);
+    assert_eq!((later.mainline, later.old, later.new.base), (None, Range { base: earlier, tip: earlier }, earlier));
+    // Two commits on main, without a mainline.
+    let picked = compared(compare(&dir, &Ends::Tips { old: first, new: earlier }, None).unwrap());
+    assert_eq!(by_subject(&picked), [(Status::Added, "one".into())]);
+    // main reset back a commit: its last rewrite dropped one.
+    git(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
+    let reset = compared(compare(&dir, &Ends::LastRewrite { refname: "refs/heads/main".into() }, None).unwrap());
+    assert_eq!(by_subject(&reset), [(Status::Removed, "three".into())]);
+    assert_eq!(reset.new, Range { base: head(&dir, "main"), tip: head(&dir, "main") });
+    // The same commit on both sides, without a mainline, has nothing of its own to compare.
+    let same = compared(compare(&dir, &Ends::Tips { old: tip, new: tip }, None).unwrap());
+    assert!(same.pairs.is_empty(), "{same:?}");
+    let _ = std::fs::remove_dir_all(&dir);
 }

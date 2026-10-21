@@ -129,10 +129,18 @@ pub enum Outcome {
     },
 }
 
-/// `git range-diff --no-color --abbrev=40 <old.base>..<old.tip> <new.base>..<new.tip>`.
+/// `git range-diff --no-color --abbrev=40 <old.base>..<old.tip> <new.base>..<new.tip>`, or
+/// `... <base> <old.tip> <new.tip>` when both sides start at the same base. git refuses an empty
+/// `x..x` range but takes an empty side in the three-argument form, which a merge-base cut gives
+/// when one version is an ancestor of the other.
 pub fn command(old: Range, new: Range) -> Vec<String> {
-    let (a, b) = (format!("{}..{}", old.base, old.tip), format!("{}..{}", new.base, new.tip));
-    gitcli::args(&["range-diff", "--no-color", "--abbrev=40", &a, &b])
+    let mut args = vec!["range-diff".to_owned(), "--no-color".into(), "--abbrev=40".into()];
+    if old.base == new.base {
+        args.extend([old.base.to_string(), old.tip.to_string(), new.tip.to_string()]);
+    } else {
+        args.extend([format!("{}..{}", old.base, old.tip), format!("{}..{}", new.base, new.tip)]);
+    }
+    args
 }
 
 /// Compares the two versions `ends` names in the repository at `workdir`, cutting the ranges
@@ -196,7 +204,7 @@ fn side(repo: &Repository, (index, hex): (u32, String)) -> Result<Side> {
 }
 
 /// Whether git's run worked: a timeout, a git without range-diff (Unsupported) or git's own
-/// error are errors.
+/// error (its message, without the usage text git prints after an argument error) are errors.
 pub fn read_output(out: &GitOutput) -> Result<()> {
     if out.timed_out {
         return Err(Error::Other("Comparing took too long, and git was stopped.".into()));
@@ -204,11 +212,12 @@ pub fn read_output(out: &GitOutput) -> Result<()> {
     if out.code == Some(0) {
         return Ok(());
     }
-    let missing = out.stderr.contains("'range-diff' is not a git command");
-    if missing || (out.code == Some(129) && out.stderr.contains("usage: git range-diff")) {
+    if out.stderr.contains("'range-diff' is not a git command") {
         return Err(Error::Unsupported(crate::git_version::Feature::RangeDiff.needs_text(None)));
     }
-    let text = printable(out.stderr.trim());
+    let message: Vec<&str> = out.stderr.lines().take_while(|l| !l.trim_start().starts_with("usage:")).collect();
+    let text = printable(message.join("
+").trim());
     Err(Error::Other(if text.is_empty() { "git range-diff failed".into() } else { text }))
 }
 
