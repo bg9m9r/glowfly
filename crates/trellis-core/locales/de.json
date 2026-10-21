@@ -138,6 +138,7 @@
   "branch.menu.unset_upstream": "Upstream entfernen",
   "commands.confirm.button": "Ausführen",
   "commands.confirm.default": "{name} ausführen?",
+  "commands.confirm.from_repo": "Er stammt aus der Datei .trellis/commands.toml dieses Repositorys, nicht aus deiner eigenen Befehlsdatei.",
   "commands.confirm.runs": "Führt aus: {command}",
   "commands.menu.held_tip": "Fragt vor dem Ausführen, ob du diesem Repository vertraust.",
   "commands.menu.title": "Befehle",

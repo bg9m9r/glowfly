@@ -138,6 +138,7 @@
   "branch.menu.unset_upstream": "Unset upstream",
   "commands.confirm.button": "Run",
   "commands.confirm.default": "Run {name}?",
+  "commands.confirm.from_repo": "It comes from this repository's .trellis/commands.toml, not from your own commands file.",
   "commands.confirm.runs": "Runs: {command}",
   "commands.menu.held_tip": "Asks you to trust this repository before it runs.",
   "commands.menu.title": "Commands",

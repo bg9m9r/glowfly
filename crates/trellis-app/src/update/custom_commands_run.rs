@@ -3,8 +3,9 @@
 //! about first when it says so, then started as the active job: a git command through
 //! `start_job` (the trust gate, undo record, journal note and refresh of a toolbar job), a
 //! shell command as `CustomCommandEffect::RunShell` through `begin_job`. Both end as
-//! `JobMsg::JobDone`. The repository's own commands run only in a Trusted repository; in one
-//! with no decision and nothing the trust scan found, they wait in the trust prompt here
+//! `JobMsg::JobDone`. The repository's own commands run only in a Trusted repository: in any
+//! other they are first confirmed with their source file and script shown, then in one with no
+//! decision and nothing the trust scan found they wait in the trust prompt here
 //! (`trust::hold`), and in a held one the job gate holds them like any job.
 
 use super::jobs::{JobSpec, begin_job, busy, start_job};
@@ -42,15 +43,30 @@ pub(super) fn run(st: &mut AppState, r: CommandRef, at: Target, confirmed: bool,
             return;
         }
     };
-    if !confirmed && let Some(question) = cmd.confirm_text(&v) {
+    // A repository's own command in a repository the user hasn't trusted always asks first, and
+    // says where it comes from and what it runs: the trust prompt that may follow speaks only of
+    // the repository's settings and hooks.
+    let from_repo = r.source == Source::Repo && st.trust_standing() != Some(Standing::Trusted);
+    let question = cmd.confirm_text(&v).or(from_repo.then_some(ConfirmText::Default));
+    if !confirmed && let Some(question) = question {
         let question = match question {
             ConfirmText::Default => t.trf("commands.confirm.default", &[("name", &cmd.name)]),
             ConfirmText::Text(q) => q,
         };
         let runs = t.trf("commands.confirm.runs", &[("command", &expanded.preview())]);
+        let body = match from_repo {
+            true => format!("{question}
+
+{}
+
+{runs}", t.tr("commands.confirm.from_repo")),
+            false => format!("{question}
+
+{runs}"),
+        };
         let then = Box::new(Msg::CustomCommand(CustomCommandMsg::Run { command: r, at, confirmed: true }));
         let button = t.tr("commands.confirm.button").to_owned();
-        st.modal = Some(Modal::Confirm { title: cmd.name.clone(), body: format!("{question}\n\n{runs}"), button, then });
+        st.modal = Some(Modal::Confirm { title: cmd.name.clone(), body, button, then });
         return;
     }
     if busy(st, false) {

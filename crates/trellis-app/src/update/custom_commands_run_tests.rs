@@ -119,6 +119,14 @@ fn a_command_that_confirms_asks_first() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// The open confirmation's body; accepting it runs what it asked about.
+fn confirm_body(st: &AppState) -> String {
+    match &st.modal {
+        Some(Modal::Confirm { body, .. }) => body.clone(),
+        other => panic!("a confirmation expected: {}", other.is_some()),
+    }
+}
+
 /// The held job's name in the open trust prompt.
 fn held(st: &AppState) -> Option<&str> {
     match &st.modal {
@@ -138,6 +146,14 @@ fn repository_commands_wait_for_trust_in_a_clean_repository() {
     st.job = None;
     let fx = run(&mut st, Source::Repo, "Mine", Target::Palette);
     assert!(fx.is_empty(), "{fx:?}");
+    // It first says where it comes from and what it runs, which the trust prompt doesn't.
+    let from = "It comes from this repository's .trellis/commands.toml, not from your own commands file.";
+    assert_eq!(confirm_body(&st), format!("Run Mine?
+
+{from}
+
+Runs: git status"));
+    assert!(update(&mut st, Msg::ConfirmAccepted, Instant::now()).is_empty());
     assert_eq!(held(&st), Some("Mine"));
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     let fx = update(&mut st, Msg::Trust(TrustMsg::Decide { real: real.clone(), trusted: true }), Instant::now());
@@ -155,6 +171,12 @@ fn cancelling_the_trust_prompt_drops_the_command() {
     let (mut st, dir) = opened("cc-run-cancel");
     load(&mut st, FileRead::default(), file(&command("Sh", "shell", "echo hi", "")));
     assert!(run(&mut st, Source::Repo, "Sh", Target::Palette).is_empty());
+    assert!(confirm_body(&st).ends_with("Runs: echo hi"), "{}", confirm_body(&st));
+    // Declining the confirmation runs nothing and holds nothing.
+    update(&mut st, Msg::CloseModal, Instant::now());
+    assert!(st.modal.is_none() && st.job.is_none() && st.trust.held.is_none());
+    assert!(run(&mut st, Source::Repo, "Sh", Target::Palette).is_empty());
+    update(&mut st, Msg::ConfirmAccepted, Instant::now());
     assert_eq!(held(&st), Some("Sh"));
     update(&mut st, Msg::CloseModal, Instant::now());
     assert!(st.modal.is_none() && st.job.is_none());
@@ -163,6 +185,28 @@ fn cancelling_the_trust_prompt_drops_the_command() {
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
     assert!(matches!(run(&mut st, Source::Repo, "Sh", Target::Palette).as_slice(), [Effect::CustomCommand(_)]));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_repository_command_that_confirms_asks_once_with_its_source() {
+    let (mut st, dir) = opened("cc-run-repo-confirm");
+    load(&mut st, FileRead::default(), file(&command("Sh", "shell", "echo hi", "confirm = \"Say hi?\"")));
+    assert!(run(&mut st, Source::Repo, "Sh", Target::Palette).is_empty());
+    let body = confirm_body(&st);
+    assert!(body.starts_with("Say hi?
+
+It comes from this repository's .trellis/commands.toml"), "{body}");
+    update(&mut st, Msg::ConfirmAccepted, Instant::now());
+    assert_eq!(held(&st), Some("Sh"), "straight to the trust prompt, not asked twice");
+    // Once trusted, it asks only its own question.
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    update(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }), Instant::now());
+    st.job = None;
+    assert!(run(&mut st, Source::Repo, "Sh", Target::Palette).is_empty());
+    assert_eq!(confirm_body(&st), "Say hi?
+
+Runs: echo hi");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -176,6 +220,8 @@ fn in_a_held_repository_every_command_waits() {
     st.modal = None;
     super::trust::dismissed(&mut st);
     assert!(run(&mut st, Source::Repo, "Mine", Target::Palette).is_empty());
+    assert!(confirm_body(&st).contains(".trellis/commands.toml"), "{}", confirm_body(&st));
+    assert!(update(&mut st, Msg::ConfirmAccepted, Instant::now()).is_empty());
     assert_eq!(held(&st), Some("Mine"));
     let _ = std::fs::remove_dir_all(&dir);
 }

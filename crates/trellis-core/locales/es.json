@@ -138,6 +138,7 @@
   "branch.menu.unset_upstream": "Quitar upstream",
   "commands.confirm.button": "Ejecutar",
   "commands.confirm.default": "¿Ejecutar {name}?",
+  "commands.confirm.from_repo": "Viene del archivo .trellis/commands.toml de este repositorio, no de tu propio archivo de comandos.",
   "commands.confirm.runs": "Ejecuta: {command}",
   "commands.menu.held_tip": "Antes de ejecutarse pregunta si confías en este repositorio.",
   "commands.menu.title": "Comandos",

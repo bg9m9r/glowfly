@@ -91,7 +91,10 @@ output, the activity log keeps the last 512 KiB.
 A repository's own commands are code from whoever wrote the file:
 
 - **Trusted repository**: they run like your own.
-- **Repository you haven't decided on**: running one opens the trust prompt first. The command
+- **Any other repository**: running one first asks you to confirm it, naming
+  `.trellis/commands.toml` as its source and showing the exact command or script it runs (its
+  own `confirm` question, if it has one, is asked in the same dialog).
+- **Repository you haven't decided on**: once confirmed, the trust prompt opens. The command
   runs once you trust the repository, and is dropped if you don't.
 - **Repository you chose not to trust, or one that changed since you trusted it**: every
   custom command, yours included, waits for the trust prompt, like the other operations that
