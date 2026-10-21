@@ -60,6 +60,7 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
     let open = st.diff.as_ref().map(|(target, _)| target);
     let lfs = TrackContext::of(st);
     let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
+    let commands = crate::state::custom_commands::MenuCommands::for_state(st);
     let row_h = widgets::LIST_ROW_H;
     let parents = |c: &StackedCommit| snap.row_of.get(&c.oid).map_or(1, |&r| snap.commits[r].parents.len());
     egui::ScrollArea::vertical().id_salt("multi-stacked").auto_shrink([false, false]).show_rows(ui, row_h, rows.len(), |ui, range| {
@@ -89,6 +90,7 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
                         tools,
                         patch_blocked: merge.then(|| CommitBlock::PatchMerge.text(t)),
                         lines: None,
+                        commands: &commands,
                     };
                     changed_file_row(ui, t, f, DiffTarget::Commit(c.oid, f.path.clone()), open, actions, msgs);
                 }
