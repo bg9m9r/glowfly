@@ -95,7 +95,9 @@ fn problems(text: &str) -> Vec<String> {
         if !first.is_uppercase() || !second.is_lowercase() {
             continue;
         }
-        if core.chars().skip(1).any(char::is_uppercase) || PROPER.contains(&core) {
+        // A proper noun's possessive ("Git's") keeps its capital too.
+        let noun = core.strip_suffix("'s").or_else(|| core.strip_suffix("\u{2019}s")).unwrap_or(core);
+        if core.chars().skip(1).any(char::is_uppercase) || PROPER.contains(&noun) {
             continue;
         }
         found.push(core.to_owned());
@@ -172,12 +174,14 @@ fn view_labels_are_sentence_case() {
 fn the_rule_knows_proper_nouns_breaks_and_placeholders() {
     assert_eq!(problems("Stage Hunk"), ["Hunk"]);
     assert_eq!(problems("Unstaged Files (2)"), ["Files"]);
+    assert_eq!(problems("Use Hunk's lines"), ["Hunk's"]);
     for ok in [
         "Stage hunk",
         "Forget all + Git Credential Manager",
         "Preferences > Commit signing",
         "Open {name}",
         "Connect to GitHub",
+        "Use Git's own ssh",
         "Key for SSH remotes",
         "Moves: off",
         "Done. Next",
