@@ -20,6 +20,7 @@ use crate::msg::PaletteMsg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::SearchMsg;
+use crate::msg::SelectionMsg;
 use crate::msg::StageMsg;
 use crate::msg::StashMsg;
 use crate::msg::TabsMsg;
@@ -273,6 +274,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             Msg::Tag(TagMsg::NewTag { at: at.to_string(), annotated })
         }
         C::RenameBranch(name) => Msg::Branch(BranchMsg::RenameBranchDialog(name)),
+        C::CompareWithWorkdir(oid) => Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)),
         C::CreatePr(b) => Msg::Forge(ForgeMsg::CreatePrDialog { source: b, target: None }),
         C::PushAndCreatePr(b) => Msg::Forge(ForgeMsg::PushAndStartPr { branch: b, target: None }),
         C::InitializeLfs => Msg::Lfs(crate::lfs::LfsMsg::InitializeWhenReady),

@@ -2,17 +2,31 @@
 
 use git2::Oid;
 
+/// The id of the empty tree: one end of a comparison that reaches back past the repository's
+/// first commit (`DiffTarget::Between` and `compare` take it at either end).
+pub fn empty_tree() -> Oid {
+    Oid::from_str(crate::patch_ops::EMPTY_TREE).expect("a valid object id")
+}
+
+/// Whether `oid` is the empty tree (`empty_tree`).
+pub fn is_empty_tree(oid: Oid) -> bool {
+    oid == empty_tree()
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum DiffTarget {
     Commit(Oid, String),
     Unstaged(String),
     Staged(String),
     /// `path` as it differs from commit `.0` (older) to commit `.1` (newer), tree to tree with
-    /// renames detected.
+    /// renames detected. Either end may be the empty tree (`empty_tree`).
     Between(Oid, Oid, String),
     /// `path` as it differs from commit `.0` to the working tree (staged and unstaged changes
     /// and untracked files; renames detected).
     ToWorkdir(Oid, String),
+    /// `path` as it differs from the working tree to commit `.0`: the reverse of `ToWorkdir`
+    /// (an untracked file is deleted, a file missing from the working tree added).
+    FromWorkdir(Oid, String),
 }
 
 impl DiffTarget {
@@ -22,7 +36,8 @@ impl DiffTarget {
             | DiffTarget::Unstaged(p)
             | DiffTarget::Staged(p)
             | DiffTarget::Between(_, _, p)
-            | DiffTarget::ToWorkdir(_, p) => p,
+            | DiffTarget::ToWorkdir(_, p)
+            | DiffTarget::FromWorkdir(_, p) => p,
         }
     }
 
@@ -34,12 +49,29 @@ impl DiffTarget {
     /// A diff with the working tree on one side, so it is re-read when the working tree's
     /// status is (the working-tree diffs and a commit compared with the working tree).
     pub fn follows_workdir(&self) -> bool {
-        self.is_working_tree() || matches!(self, DiffTarget::ToWorkdir(..))
+        self.is_working_tree() || self.workdir_compared().is_some()
     }
 
-    /// A diff between stored versions, whose hunks can be reverted in the working tree.
+    /// A diff whose hunks and lines can be reverted in the working tree: a commit's, one between
+    /// two commits, and one from a commit to the working tree (whose working side gets the
+    /// commit's lines back).
     pub fn reverts_hunks(&self) -> bool {
+        matches!(self, DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..))
+    }
+
+    /// A diff whose whole change to a file can be reverted (Revert changes to this file): a
+    /// commit's, or one between two commits. A commit compared with the working tree has
+    /// Restore for that.
+    pub fn reverts_files(&self) -> bool {
         matches!(self, DiffTarget::Commit(..) | DiffTarget::Between(..))
+    }
+
+    /// The commit compared with the working tree, either way round.
+    pub fn workdir_compared(&self) -> Option<Oid> {
+        match self {
+            DiffTarget::ToWorkdir(o, _) | DiffTarget::FromWorkdir(o, _) => Some(*o),
+            _ => None,
+        }
     }
 }
 

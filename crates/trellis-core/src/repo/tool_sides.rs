@@ -34,8 +34,9 @@ pub struct DiffSides {
     pub new_label: String,
 }
 
+/// A short commit id, or "empty" for the empty tree (`Between` from or to it).
 fn short(oid: Oid) -> String {
-    crate::rebase::short(oid)
+    if super::is_empty_tree(oid) { "empty".into() } else { crate::rebase::short(oid) }
 }
 
 /// One side of `delta` as a source: Empty when it has no blob. A submodule can't be compared.
@@ -54,12 +55,20 @@ pub fn diff_sides(workdir: &Path, target: &DiffTarget) -> Result<DiffSides> {
     let diff = super::diff::target_diff(&repo, target, LoadDiffOptions::default(), None)?;
     let path = target.path();
     let delta = diff.deltas().find(|d| rpath::touches(d, path)).ok_or_else(|| Error::NotFound(format!("no changes in {path}")))?;
-    let old = side(&delta.old_file(), path)?;
+    let mut old = side(&delta.old_file(), path)?;
     let mut new = side(&delta.new_file(), path)?;
     if let DiffTarget::Unstaged(p) | DiffTarget::ToWorkdir(_, p) = target
         && delta.status() != git2::Delta::Deleted
     {
         new = SideSource::Working(p.clone());
+    }
+    // From the working tree to a commit: the old side is the working file, under its working
+    // name (a rename's old path), unless the working tree lacks it.
+    if let DiffTarget::FromWorkdir(..) = target
+        && delta.status() != git2::Delta::Added
+    {
+        let f = delta.old_file();
+        old = SideSource::Working(f.path_bytes().and_then(rpath::text).unwrap_or_else(|| path.to_owned()));
     }
     let (old_label, new_label) = match target {
         DiffTarget::Commit(oid, _) => {
@@ -70,6 +79,7 @@ pub fn diff_sides(workdir: &Path, target: &DiffTarget) -> Result<DiffSides> {
         DiffTarget::Staged(_) => ("HEAD".into(), "index".into()),
         DiffTarget::Unstaged(_) => ("index".into(), "working tree".into()),
         DiffTarget::ToWorkdir(oid, _) => (short(*oid), "working tree".into()),
+        DiffTarget::FromWorkdir(oid, _) => ("working tree".into(), short(*oid)),
     };
     let label = |s: &SideSource, l: String| if *s == SideSource::Empty { "empty".to_owned() } else { l };
     Ok(DiffSides { old_label: label(&old, old_label), new_label: label(&new, new_label), old, new })

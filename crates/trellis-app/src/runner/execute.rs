@@ -62,10 +62,10 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::LoadCompare { workdir, from, to } => {
             Some(Msg::Selection(SelectionMsg::CompareLoaded { from, to, result: repo::compare(&workdir, from, to).map_err(err) }))
         }
-        Effect::LoadWorkdirCompare { workdir, oid, generation } => Some(Msg::Selection(SelectionMsg::WorkdirCompareLoaded {
+        Effect::LoadWorkdirCompare { workdir, oid, generation, swapped } => Some(Msg::Selection(SelectionMsg::WorkdirCompareLoaded {
             oid,
             generation,
-            result: repo::compare_workdir(&workdir, oid).map_err(err),
+            result: if swapped { repo::compare_from_workdir(&workdir, oid) } else { repo::compare_workdir(&workdir, oid) }.map_err(err),
         })),
         Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file } => Some(highlight::load_job(
             workdir,

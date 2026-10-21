@@ -102,11 +102,11 @@ pub use conflict::{
 pub use conflict_saved::{RESTORE_MAX, saved_picks};
 pub use diff::{
     BranchChanges, Comparison, ViewDiff, branch_changes, commit_detail, commit_stats, commit_stats_until, compare, compare_files,
-    compare_workdir, load_diff, load_diff_for_view, load_diff_with,
+    compare_from_workdir, compare_workdir, load_diff, load_diff_for_view, load_diff_with,
 };
 use diff::{head_tree, path_opts, workdir_opts};
 pub use diff_gaps::load_gap_text;
-pub use diff_types::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptions};
+pub use diff_types::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptions, empty_tree, is_empty_tree};
 pub use divergence::Divergence;
 pub use entry::{FileEntry, Hazard};
 pub use file_at::{BINARY_NOT_SHOWN, FILE_VIEW_MAX_BYTES, FileAt, FileAtOptions, LfsState, file_at, file_at_with};
@@ -382,6 +382,8 @@ mod collide_tests;
 #[cfg(test)]
 mod common_dir_tests;
 #[cfg(test)]
+mod compare_root_tests;
+#[cfg(test)]
 mod compare_tests;
 #[cfg(test)]
 mod compare_workdir_tests;
@@ -441,6 +443,8 @@ mod restore_tests;
 mod revert_file_tests;
 #[cfg(test)]
 mod revert_tests;
+#[cfg(test)]
+mod revert_workdir_tests;
 #[cfg(test)]
 mod revert_ws_tests;
 #[cfg(test)]

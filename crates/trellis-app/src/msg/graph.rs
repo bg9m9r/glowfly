@@ -40,7 +40,8 @@ pub enum SelectionMsg {
     /// The files that differ from commit `oid` to the working tree, read for request
     /// `generation`.
     WorkdirCompareLoaded { oid: Oid, generation: u64, result: Result<Comparison, String> },
-    /// Swap direction: compare the selection's ends the other way round.
+    /// Swap direction: compare the selection's ends (two commits, a line of them, or a commit
+    /// and the working tree) the other way round.
     SwapCompare,
     /// Select every commit the graph shows (Cmd/Ctrl+A).
     SelectAll,

@@ -100,9 +100,12 @@ fn compare_with_head(st: &mut AppState, oid: git2::Oid, name: &str, fx: &mut Vec
     apply(st, new, fx);
 }
 
-/// Swap direction: the selection's comparison runs the other way. The list is read again, and a
-/// diff of the old direction closes.
+/// Swap direction: the selection's comparison (of commits, or of a commit and the working tree)
+/// runs the other way. The list is read again, and a diff of the old direction closes.
 fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if matches!(st.selection, Selection::VsWorkdir(_)) {
+        return super::compare_wip::swap(st, fx);
+    }
     let Selection::Commits(m) = &mut st.selection else { return };
     let Some(old) = m.compare_ends() else { return };
     m.swapped = !m.swapped;

@@ -19,12 +19,13 @@ pub(super) struct Labels {
 
 impl Labels {
     pub fn of(target: &DiffTarget) -> Self {
-        let short = |o: &Oid| o.to_string()[..7].to_owned();
+        let short = |o: &Oid| if super::is_empty_tree(*o) { "empty".to_owned() } else { o.to_string()[..7].to_owned() };
         match target {
             DiffTarget::Commit(oid, _) => Labels { base: short(oid), theirs: format!("revert of {}", short(oid)) },
             DiffTarget::Between(from, to, _) => Labels { base: short(to), theirs: format!("revert of {}..{}", short(from), short(to)) },
-            // Never reverted (`revert` refuses them); labelled only to keep the match total.
-            DiffTarget::Unstaged(_) | DiffTarget::Staged(_) | DiffTarget::ToWorkdir(..) => {
+            // Never merged: `revert` refuses the working-tree diffs and FromWorkdir, and refuses
+            // a ToWorkdir hunk as stale rather than merge it. Labelled to keep the match total.
+            DiffTarget::Unstaged(_) | DiffTarget::Staged(_) | DiffTarget::ToWorkdir(..) | DiffTarget::FromWorkdir(..) => {
                 Labels { base: "base".into(), theirs: "revert".into() }
             }
         }

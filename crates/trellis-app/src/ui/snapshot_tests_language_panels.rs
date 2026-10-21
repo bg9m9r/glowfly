@@ -167,7 +167,7 @@ fn details_multi_german() {
 
 #[test]
 fn details_workdir_spanish() {
-    let (mut st, dir) = compared(ThemeChoice::Dark, "lang-details-workdir");
+    let (mut st, dir) = compared(ThemeChoice::Dark, "lang-details-workdir", false);
     st.settings.language = "es".into();
     let oid = commit(&st, "Merge branch 'login-page'");
     let mut h = harness(st, true);

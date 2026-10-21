@@ -123,9 +123,9 @@ fn working_tree_or_missing_hunk_is_ignored() {
 }
 
 #[test]
-fn a_commit_compared_with_the_working_tree_has_no_revert() {
-    let (mut st, dir) = with_diff("revert-to-workdir", DiffTarget::Unstaged("a.txt".into()), one_hunk());
-    let target = DiffTarget::ToWorkdir(head(&st), "a.txt".into());
+fn the_working_tree_compared_with_a_commit_has_no_revert() {
+    let (mut st, dir) = with_diff("revert-from-workdir", DiffTarget::Unstaged("a.txt".into()), one_hunk());
+    let target = DiffTarget::FromWorkdir(head(&st), "a.txt".into());
     st.diff = Some((target.clone(), one_hunk().into()));
     assert!(revert(&mut st, 0).is_empty(), "no Revert Hunk");
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertFile(target.clone()))).is_empty(), "no Revert changes to this file");

@@ -187,6 +187,8 @@ pub(super) mod op_progress_tests;
 pub(super) mod palette_blame_tests;
 #[path = "palette_checkout_tests.rs"]
 pub(super) mod palette_checkout_tests;
+#[path = "palette_compare_tests.rs"]
+pub(super) mod palette_compare_tests;
 #[path = "palette_folder_tests.rs"]
 pub(super) mod palette_folder_tests;
 #[path = "palette_issue_tests.rs"]
@@ -289,6 +291,8 @@ pub(super) mod retry_tests;
 pub(super) mod revert_lines_tests;
 #[path = "revert_tests.rs"]
 pub(super) mod revert_tests;
+#[path = "revert_workdir_tests.rs"]
+pub(super) mod revert_workdir_tests;
 #[path = "search_paths_tests.rs"]
 pub(super) mod search_paths_tests;
 #[path = "search_tests.rs"]

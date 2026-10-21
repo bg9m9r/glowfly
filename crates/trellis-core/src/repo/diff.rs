@@ -53,38 +53,48 @@ pub(super) fn commit_diff<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut 
     Ok(diff)
 }
 
-/// The tree-to-tree diff from commit `from` to commit `to`, with renames detected.
+/// One end of a comparison: commit `oid`'s tree, or nothing for the empty tree.
+fn side_tree(repo: &Repository, oid: Oid) -> Result<Option<Tree<'_>>> {
+    if is_empty_tree(oid) {
+        return Ok(None);
+    }
+    Ok(Some(repo.find_commit(oid)?.tree()?))
+}
+
+/// The tree-to-tree diff from commit `from` to commit `to` (either may be the empty tree), with
+/// renames detected.
 fn trees_diff<'r>(repo: &'r Repository, from: Oid, to: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
-    let from_tree = repo.find_commit(from)?.tree()?;
-    let to_tree = repo.find_commit(to)?.tree()?;
-    let mut diff = repo.diff_tree_to_tree(Some(&from_tree), Some(&to_tree), opts)?;
+    let (from_tree, to_tree) = (side_tree(repo, from)?, side_tree(repo, to)?);
+    let mut diff = repo.diff_tree_to_tree(from_tree.as_ref(), to_tree.as_ref(), opts)?;
     diff.find_similar(None)?;
     Ok(diff)
 }
 
 /// The diff from commit `oid`'s tree to the working tree (through the index, so staged and
-/// unstaged changes both count), untracked files included and renames detected. Ignored files
-/// are left out.
-fn workdir_diff<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
+/// unstaged changes both count), untracked files included and renames detected; `reversed`
+/// runs it from the working tree to the commit. Ignored files are left out.
+fn workdir_diff<'r>(repo: &'r Repository, oid: Oid, reversed: bool, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
     let tree = repo.find_commit(oid)?.tree()?;
     let mut fresh = DiffOptions::new();
     let o = opts.unwrap_or(&mut fresh);
-    o.include_untracked(true).recurse_untracked_dirs(true).show_untracked_content(true);
+    o.include_untracked(true).recurse_untracked_dirs(true).show_untracked_content(true).reverse(reversed);
     let mut diff = repo.diff_tree_to_workdir_with_index(Some(&tree), Some(o))?;
     diff.find_similar(None)?;
     Ok(diff)
 }
 
-/// One entry per delta, named by its new path (the old one for a deletion).
-fn file_entries(diff: &Diff) -> Vec<FileEntry> {
-    diff.deltas().map(|d| super::rpath::entry(super::rpath::delta_bytes(&d), delta_char(d.status()))).collect()
+/// One entry per delta, named by its new path (the old one for a deletion). In a `reversed`
+/// working-tree diff an untracked file is on the old side only, so it is 'D'.
+fn file_entries(diff: &Diff, reversed: bool) -> Vec<FileEntry> {
+    let status = |d: Delta| if reversed && d == Delta::Untracked { 'D' } else { delta_char(d) };
+    diff.deltas().map(|d| super::rpath::entry(super::rpath::delta_bytes(&d), status(d.status()))).collect()
 }
 
 /// The files that differ from commit `from` to commit `to`: a file only in `to` is 'A', only in
 /// `from` is 'D', and a rename is 'R' under its new path. In libgit2 path order.
 pub fn compare_files(workdir: &Path, from: Oid, to: Oid) -> Result<Vec<FileEntry>> {
     let repo = Repository::open(workdir)?;
-    Ok(file_entries(&trees_diff(&repo, from, to, None)?))
+    Ok(file_entries(&trees_diff(&repo, from, to, None)?, false))
 }
 
 /// The files that differ from commit `from` to commit `to`, as `compare_files` lists them.
@@ -110,7 +120,7 @@ pub fn compare(workdir: &Path, from: Oid, to: Oid) -> Result<Comparison> {
 
 fn comparison(repo: &Repository, from: Oid, to: Oid) -> Result<Comparison> {
     let diff = trees_diff(repo, from, to, None)?;
-    let mut files = file_entries(&diff);
+    let mut files = file_entries(&diff, false);
     super::lfs_marks::mark_delta_files(repo, &diff, &mut files, false);
     let absent = absent_paths(repo, &files);
     Ok(Comparison { files, absent })
@@ -119,10 +129,23 @@ fn comparison(repo: &Repository, from: Oid, to: Oid) -> Result<Comparison> {
 /// The files that differ from commit `oid` to the working tree (staged and unstaged changes,
 /// untracked files as 'A', renames as 'R' under the new path), plus which are missing from it.
 pub fn compare_workdir(workdir: &Path, oid: Oid) -> Result<Comparison> {
+    workdir_comparison(workdir, oid, false)
+}
+
+/// The files that differ from the working tree to commit `oid`: `compare_workdir` the other way
+/// round, so untracked and newly staged files are 'D', files deleted from the working tree 'A',
+/// and a rename is listed under the commit's name.
+pub fn compare_from_workdir(workdir: &Path, oid: Oid) -> Result<Comparison> {
+    workdir_comparison(workdir, oid, true)
+}
+
+fn workdir_comparison(workdir: &Path, oid: Oid, reversed: bool) -> Result<Comparison> {
     let repo = Repository::open(workdir)?;
-    let diff = workdir_diff(&repo, oid, None)?;
-    let mut files = file_entries(&diff);
-    super::lfs_marks::mark_delta_files(&repo, &diff, &mut files, true);
+    let diff = workdir_diff(&repo, oid, reversed, None)?;
+    let mut files = file_entries(&diff, reversed);
+    if !reversed {
+        super::lfs_marks::mark_delta_files(&repo, &diff, &mut files, true);
+    }
     let absent = absent_paths(&repo, &files);
     Ok(Comparison { files, absent })
 }
@@ -183,7 +206,7 @@ pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
     let repo = Repository::open(workdir)?;
     let c = repo.find_commit(oid)?;
     let diff = commit_diff(&repo, oid, None)?;
-    let mut files = file_entries(&diff);
+    let mut files = file_entries(&diff, false);
     super::lfs_marks::mark_delta_files(&repo, &diff, &mut files, false);
     let absent = absent_paths(&repo, &files);
     Ok(CommitDetail {
@@ -297,7 +320,7 @@ fn old_text(repo: &Repository, patch: &Patch<'_>, hunks: &[Hunk]) -> Option<Arc<
 /// never merged because of nearby changes, so one hunk spans the file).
 pub(super) fn target_diff<'r>(repo: &'r Repository, target: &DiffTarget, opts: LoadDiffOptions, context: Option<u32>) -> Result<Diff<'r>> {
     let mut o = match target {
-        DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) => DiffOptions::new(),
+        DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) | DiffTarget::FromWorkdir(..) => DiffOptions::new(),
         DiffTarget::Unstaged(p) => workdir_opts(p),
         DiffTarget::Staged(p) => path_opts(p),
     };
@@ -308,7 +331,8 @@ pub(super) fn target_diff<'r>(repo: &'r Repository, target: &DiffTarget, opts: L
     Ok(match target {
         DiffTarget::Commit(oid, _) => commit_diff(repo, *oid, Some(&mut o))?,
         DiffTarget::Between(from, to, _) => trees_diff(repo, *from, *to, Some(&mut o))?,
-        DiffTarget::ToWorkdir(oid, _) => workdir_diff(repo, *oid, Some(&mut o))?,
+        DiffTarget::ToWorkdir(oid, _) => workdir_diff(repo, *oid, false, Some(&mut o))?,
+        DiffTarget::FromWorkdir(oid, _) => workdir_diff(repo, *oid, true, Some(&mut o))?,
         DiffTarget::Unstaged(_) => repo.diff_index_to_workdir(None, Some(&mut o))?,
         DiffTarget::Staged(_) => repo.diff_tree_to_index(head_tree(repo).as_ref(), None, Some(&mut o))?,
     })

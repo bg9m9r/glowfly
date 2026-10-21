@@ -125,3 +125,74 @@ fn the_comparison_follows_the_working_tree() {
     assert!(st.diff.is_none());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
+
+fn swapped_reads(fx: &[Effect]) -> Vec<bool> {
+    fx.iter().filter_map(|e| if let Effect::LoadWorkdirCompare { swapped, .. } = e { Some(*swapped) } else { None }).collect()
+}
+
+#[test]
+fn swap_direction_reads_the_list_the_other_way() {
+    let (mut st, f) = fixture("wip-compare-swap");
+    up(&mut st, Msg::Selection(SelectionMsg::CompareWithWorkdir(f.c(3))));
+    let c = Comparison { files: vec![FileEntry::new("f.txt", 'M')], absent: Default::default() };
+    let before = compared(&st).generation;
+    up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation: before, result: Ok(c.clone()) }));
+    st.diff = Some((DiffTarget::ToWorkdir(f.c(3), "f.txt".into()), empty_diff().into()));
+
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::SwapCompare));
+    let w = compared(&st);
+    assert!(w.swapped && w.changes.is_none(), "Loading until the new list arrives");
+    assert_eq!(w.generation, before + 1);
+    assert_eq!(swapped_reads(&fx), [true]);
+    assert!(st.diff.is_none(), "the old direction's diff closes");
+    up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation: before, result: Ok(c.clone()) }));
+    assert_eq!(compared(&st).changes, None, "a read of the old direction is dropped");
+
+    // A commit's own diff stays open; swapping again reads the forward list.
+    st.diff = Some((DiffTarget::Commit(f.c(3), "f.txt".into()), empty_diff().into()));
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::SwapCompare));
+    assert!(!compared(&st).swapped);
+    assert_eq!(swapped_reads(&fx), [false]);
+    assert!(st.diff.is_some());
+
+    // Only a comparison is swapped.
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(4))));
+    let before = st.selection.clone();
+    assert!(up(&mut st, Msg::Selection(SelectionMsg::SwapCompare)).is_empty());
+    assert_eq!(st.selection, before);
+    let _ = std::fs::remove_dir_all(&f.dir);
+}
+
+#[test]
+fn the_swapped_comparison_follows_the_working_tree() {
+    let (mut st, f) = fixture("wip-compare-swap-e2e");
+    std::fs::write(f.dir.join("f.txt"), "edited\n").unwrap();
+    std::fs::write(f.dir.join("new.txt"), "new\n").unwrap();
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    drive(&mut st, Msg::Selection(SelectionMsg::CompareWithWorkdir(f.c(3))));
+    drive(&mut st, Msg::Selection(SelectionMsg::SwapCompare));
+    assert_eq!(listed(&st), [("f.txt".to_owned(), 'M'), ("new.txt".to_owned(), 'D')], "the untracked file is deleted this way");
+
+    let target = DiffTarget::FromWorkdir(f.c(3), "new.txt".into());
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
+    let (shown, diff) = st.diff.clone().expect("the diff opens");
+    assert_eq!(shown, target);
+    let lines: Vec<_> = diff.hunks.iter().flat_map(|h| &h.lines).map(|l| (l.origin, l.text.as_str())).collect();
+    assert_eq!(lines, [('-', "new")]);
+    // Next file steps through the swapped list.
+    let first = DiffTarget::FromWorkdir(f.c(3), "f.txt".into());
+    assert_eq!(crate::state::diff_nav::next_file(&st, &first, 1), Some(target.clone()));
+    assert_eq!(crate::state::diff_nav::next_file(&st, &DiffTarget::ToWorkdir(f.c(3), "f.txt".into()), 1), None);
+
+    // A status read and a refresh read the list again, still swapped.
+    std::fs::write(f.dir.join("more.txt"), "more\n").unwrap();
+    drive(&mut st, Msg::Repo(RepoMsg::WindowFocused));
+    assert!(compared(&st).swapped);
+    assert!(listed(&st).contains(&("more.txt".to_owned(), 'D')), "{:?}", listed(&st));
+    std::fs::remove_file(f.dir.join("more.txt")).unwrap();
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert!(compared(&st).swapped);
+    assert!(!listed(&st).iter().any(|(p, _)| p == "more.txt"), "{:?}", listed(&st));
+    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target), "the swapped diff stays open");
+    let _ = std::fs::remove_dir_all(&f.dir);
+}

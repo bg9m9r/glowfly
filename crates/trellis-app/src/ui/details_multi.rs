@@ -1,6 +1,7 @@
 //! Right panel for several selected commits: the list, actions on all of them, and for a pair or
-//! one unbroken line of commits, the files that differ across them (either way round) and their
-//! file actions; otherwise why there is no combined diff.
+//! one unbroken line of commits (from the empty tree when it starts at the first commit), the
+//! files that differ across them (either way round) and their file actions; otherwise why there
+//! is no combined diff.
 
 use super::common::short;
 use super::details::file_reveal::reveal;
@@ -19,7 +20,7 @@ use crate::state::{AppState, Selection};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText};
 use trellis_core::i18n::Lang;
-use trellis_core::repo::DiffTarget;
+use trellis_core::repo::{self, DiffTarget};
 
 pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (Some(snap), Selection::Commits(m)) = (&st.snap, &st.selection) else { return };
@@ -63,7 +64,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 
     let Some((from, to)) = m.compare_ends() else {
         ui.add_space(8.0);
-        let note = if m.span == Span::FromRoot { t.tr("details.multi.span_from_root") } else { t.tr("details.multi.span_gaps") };
+        let note = if m.span == Span::ShallowEnd { t.tr("details.multi.span_shallow") } else { t.tr("details.multi.span_gaps") };
         ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap());
         return;
     };
@@ -72,17 +73,29 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     files(ui, t, st, m, from, to, msgs);
 }
 
-/// "Changes from X to Y" (with the count for a line of commits) and Swap direction.
+/// "Changes from X to Y" (with the count for a line of commits; a line from the first commit is
+/// compared with an empty repository) and Swap direction, whose tip names the other way.
 fn heading(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, from: git2::Oid, to: git2::Oid, msgs: &mut Vec<Msg>) {
     let (f, o) = (short(from), short(to));
-    let text = match m.span {
-        Span::Range { .. } => t.trf("details.multi.changes_combined", &[("from", &f), ("to", &o), ("count", &m.len())]),
-        _ => t.trf("details.multi.changes", &[("from", &f), ("to", &o)]),
+    let count = m.len();
+    let (text, tip) = match m.span {
+        Span::Range { .. } if repo::is_empty_tree(from) => (
+            t.trf("details.multi.changes_from_root", &[("to", &o), ("count", &count)]),
+            t.trf("details.multi.swap.tip_to_root", &[("from", &o)]),
+        ),
+        Span::Range { .. } if repo::is_empty_tree(to) => (
+            t.trf("details.multi.changes_to_root", &[("from", &f), ("count", &count)]),
+            t.trf("details.multi.swap.tip_from_root", &[("to", &f)]),
+        ),
+        Span::Range { .. } => (
+            t.trf("details.multi.changes_combined", &[("from", &f), ("to", &o), ("count", &count)]),
+            t.trf("details.multi.swap.tip", &[("from", &o), ("to", &f)]),
+        ),
+        _ => (t.trf("details.multi.changes", &[("from", &f), ("to", &o)]), t.trf("details.multi.swap.tip", &[("from", &o), ("to", &f)])),
     };
     // The button goes to its own line when the heading leaves no room for it.
     ui.horizontal_wrapped(|ui| {
         ui.label(type_scale::section_text(ui, text));
-        let tip = t.trf("details.multi.swap.tip", &[("from", &o), ("to", &f)]);
         if ui.small_button(t.tr("details.multi.swap.button")).on_hover_text(tip).clicked() {
             msgs.push(Msg::Selection(SelectionMsg::SwapCompare));
         }

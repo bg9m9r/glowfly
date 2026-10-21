@@ -11,8 +11,8 @@ use super::file_menu::RowSource;
 use super::graph::draw_avatar;
 use super::theme::branch_colours::line;
 use super::theme::color;
-use super::widgets;
-use crate::msg::Msg;
+use super::widgets::{self, buttons};
+use crate::msg::{Msg, SelectionMsg};
 use crate::state::AppState;
 use crate::state::lfs::TrackContext;
 use crate::ui::theme::type_scale;
@@ -87,6 +87,14 @@ pub(super) fn panel(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut 
     person_row(ui, st, cache, d, msgs);
     gap(ui, CHIPS_GAP);
     super::details_chips::row(ui, st, d, msgs);
+    // Only graph rows are compared (a stash selected in the sidebar isn't one).
+    if st.snap.as_ref().is_some_and(|s| s.row_of.contains_key(&d.oid)) {
+        gap(ui, CHIPS_GAP);
+        let compare = buttons::secondary(t.tr("details.commit.compare_workdir.button")).small().tip(t.tr("details.commit.compare_workdir.tip"));
+        if ui.add(compare).clicked() {
+            msgs.push(Msg::Selection(SelectionMsg::CompareWithWorkdir(d.oid)));
+        }
+    }
     if !body.is_empty() {
         gap(ui, BODY_GAP);
         body_block(ui, body);

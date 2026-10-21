@@ -1,12 +1,13 @@
 //! Comparing one commit with the working directory (`Selection::VsWorkdir`): Ctrl-click on the
-//! WIP row or a commit, the commit menu's entry, reading the file list (again after every
+//! WIP row or a commit, the commit menu's entry (also in the palette and the commit details),
+//! Swap direction, reading the file list in the chosen direction (again after every
 //! working-tree status read, so it follows edits), and keeping it across refreshes.
 
 use crate::effect::Effect;
 use crate::state::selection_wip::{WorkdirCompare, wip_toggled};
 use crate::state::{AppState, Selection};
 use git2::Oid;
-use trellis_core::repo::{Comparison, DiffTarget, Snapshot};
+use trellis_core::repo::{Comparison, Snapshot};
 
 /// Ctrl-click on the WIP row: one commit gains the working directory, a comparison drops it,
 /// otherwise the WIP row is selected. Refused (logged) with several commits selected.
@@ -29,13 +30,27 @@ pub(super) fn compare(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     super::selection::apply(st, Selection::VsWorkdir(WorkdirCompare::new(oid)), fx);
 }
 
-/// Reads the compared commit's file list again. The list on screen stays until the new one
-/// arrives, so it doesn't flicker.
+/// Swap direction: the comparison runs the other way (working tree to commit, or back). The
+/// list is read again ("Loading" until it arrives; the new generation drops a read of the old
+/// direction still on its way), and an open diff of this comparison closes.
+pub(super) fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let Selection::VsWorkdir(w) = &mut st.selection else { return };
+    w.swapped = !w.swapped;
+    w.changes = None;
+    let oid = w.oid;
+    if st.diff.as_ref().is_some_and(|(t, _)| t.workdir_compared() == Some(oid)) {
+        super::repo::close_diff(st);
+    }
+    request(st, fx);
+}
+
+/// Reads the compared commit's file list again, in its direction. The list on screen stays
+/// until the new one arrives, so it doesn't flicker.
 pub(super) fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     let Selection::VsWorkdir(w) = &mut st.selection else { return };
     w.generation += 1;
-    fx.push(Effect::LoadWorkdirCompare { workdir, oid: w.oid, generation: w.generation });
+    fx.push(Effect::LoadWorkdirCompare { workdir, oid: w.oid, generation: w.generation, swapped: w.swapped });
 }
 
 /// A file list read: kept when it is the latest read for the compared commit.
@@ -69,7 +84,7 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
     }
     st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
     st.detail = None;
-    if matches!(st.diff, Some((DiffTarget::ToWorkdir(..), _))) {
+    if st.diff.as_ref().is_some_and(|(t, _)| t.workdir_compared().is_some()) {
         super::repo::close_diff(st);
     }
 }

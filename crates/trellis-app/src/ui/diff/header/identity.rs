@@ -74,7 +74,7 @@ fn context_parts(m: &HeaderModel, t: Lang) -> Vec<Part> {
         Context::Commit { short, .. } => (short.clone(), FontId::monospace(CHIP_PX)),
         Context::Unstaged => (t.tr("diff.header.unstaged.chip").into(), chip_font()),
         Context::Staged => (t.tr("diff.header.staged.chip").into(), chip_font()),
-        Context::Between(r) | Context::ToWorkdir(r) => (r.clone(), chip_font()),
+        Context::Between(r) | Context::ToWorkdir(r) | Context::FromWorkdir(r) => (r.clone(), chip_font()),
     };
     vec![Part::Text(text, font, color::text())]
 }

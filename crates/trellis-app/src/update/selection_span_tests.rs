@@ -3,6 +3,7 @@
 //! and the working directory.
 
 use super::selection_tests::{fixture, refresh, up};
+use super::tests::drive;
 use crate::effect::Effect;
 use crate::msg::{Msg, RepoMsg, SelectionMsg};
 use crate::state::selection::{MultiSelection, extend_from, ranged, toggled};
@@ -10,7 +11,7 @@ use crate::state::selection_span::Span;
 use crate::state::selection_wip::{WORKDIR_NEEDS_ONE, WorkdirCompare, wip_toggled};
 use crate::state::{AppState, Selection};
 use git2::Oid;
-use trellis_core::repo::{Comparison, DiffTarget, FileDiff, FileEntry};
+use trellis_core::repo::{self, Comparison, DiffTarget, FileDiff, FileEntry};
 
 fn multi(st: &AppState) -> &MultiSelection {
     match &st.selection {
@@ -43,17 +44,51 @@ fn a_line_of_commits_combines_and_others_explain() {
     assert_eq!(multi(&st).span, Span::Gaps);
     assert!(compares(&fx).is_empty() && multi(&st).compare_ends().is_none());
 
-    // From the first commit there is no parent to compare from.
+    // From the first commit, the changes run from the empty tree.
     select(&mut st, f.c(3));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(1))));
-    assert_eq!(multi(&st).span, Span::FromRoot);
-    assert!(fx.is_empty(), "{fx:?}");
+    assert_eq!(multi(&st).span, Span::Range { base: repo::empty_tree(), newest: f.c(3) });
+    assert_eq!(compares(&fx), [(repo::empty_tree(), f.c(3))]);
 
     // Two commits are a pair, adjacent or not.
     select(&mut st, f.c(5));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(2))));
     assert_eq!(multi(&st).span, Span::Pair { older: f.c(2), newer: f.c(5) });
     assert_eq!(compares(&fx), [(f.c(2), f.c(5))]);
+    let _ = std::fs::remove_dir_all(&f.dir);
+}
+
+#[test]
+fn a_line_from_the_first_commit_compares_with_an_empty_tree() {
+    let (mut st, f) = fixture("span-root");
+    select(&mut st, f.c(3));
+    drive(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(1))));
+    let c = multi(&st).changes.clone().expect("loaded").expect("no error");
+    let files: Vec<_> = c.files.iter().map(|f| (f.path.as_str(), f.status)).collect();
+    assert_eq!(files, [("f.txt", 'A'), ("g.txt", 'A')]);
+
+    let target = DiffTarget::Between(repo::empty_tree(), f.c(3), "f.txt".into());
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
+    let (shown, diff) = st.diff.clone().expect("the diff opens");
+    assert_eq!(shown, target);
+    assert!(!diff.hunks.is_empty() && diff.hunks.iter().flat_map(|h| &h.lines).all(|l| l.origin == '+'));
+
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::SwapCompare));
+    assert_eq!(multi(&st).compare_ends(), Some((f.c(3), repo::empty_tree())));
+    assert_eq!(compares(&fx), [(f.c(3), repo::empty_tree())]);
+    assert!(st.diff.is_none());
+    let _ = std::fs::remove_dir_all(&f.dir);
+}
+
+#[test]
+fn a_line_from_a_shallow_boundary_has_no_combined_diff() {
+    let (mut st, f) = fixture("span-shallow");
+    st.snap.as_mut().unwrap().shallow_roots = vec![f.c(1)];
+    select(&mut st, f.c(3));
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(1))));
+    assert_eq!(multi(&st).span, Span::ShallowEnd);
+    assert!(fx.is_empty(), "{fx:?}");
+    assert_eq!(multi(&st).compare_ends(), None);
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 

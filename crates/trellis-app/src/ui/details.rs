@@ -110,6 +110,7 @@ pub(super) fn changed_file_row(
         let a = actions;
         let missing = match a.src {
             RowSource::ToWorkdir(o) => matches!(f.status, 'A' | 'R').then(|| t.trf("details.file.not_in_commit", &[("sha", &short(o))])),
+            RowSource::FromWorkdir(o) => (f.status == 'D').then(|| t.trf("details.file.not_in_commit", &[("sha", &short(o))])),
             _ => (f.status == 'D').then(|| t.tr("details.file.deleted_here").to_owned()),
         };
         file_menu::history_items(ui, t, msgs, &f.path, Some(a.history_at), missing.as_deref());

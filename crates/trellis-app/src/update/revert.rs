@@ -1,10 +1,13 @@
 //! Reverting part of a commit or comparison diff into the working tree: Revert Hunk, Revert
-//! lines (the line selection) and Revert changes to this file (file-row menus), and their
-//! results, which are recorded in the tab's undo history. While File history is open, a revert
-//! of one of its entries under an older name acts on the file's current name. With whitespace
-//! changes hidden, a hunk or lines revert only the changes shown. Unlike staging, none of these
-//! bump `diff_gen`: a commit diff's hunks can't change, so the other buttons stay valid (the
-//! status refresh that follows reloads the diff anyway).
+//! lines (the line selection) and Revert changes to this file (file-row menus; not for a commit
+//! compared with the working tree, whose rows have Restore), and their results, which are
+//! recorded in the tab's undo history. While File history is open, a revert of one of its
+//! entries under an older name acts on the file's current name. With whitespace changes hidden,
+//! a hunk or lines revert only the changes shown. A commit or comparison diff's hunks can't
+//! change, so reverting them leaves `diff_gen` alone and the other buttons stay valid (the
+//! status refresh that follows reloads the diff anyway). A commit-to-working-tree diff's hunks
+//! do change with the working file, so, as with staging, a revert there bumps `diff_gen`: its
+//! buttons wait for the reload, which `must_reload` then forces.
 
 use crate::effect::Effect;
 use crate::msg::RevertWhat;
@@ -14,7 +17,7 @@ use trellis_core::repo::{DiffTarget, RevertPart, RevertRequest, Reverted};
 use trellis_core::undo::Action;
 
 /// Logged when the diff a hunk or line index was taken from has changed.
-const DIFF_CHANGED: &str = "The diff changed before the revert ran, so nothing was changed. Try again on the updated diff.";
+pub(super) const DIFF_CHANGED: &str = "The diff changed before the revert ran, so nothing was changed. Try again on the updated diff.";
 
 /// Reverts hunk `index` of the open commit or comparison diff shown at `generation`.
 pub(super) fn hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Vec<Effect>) {
@@ -29,7 +32,9 @@ pub(super) fn hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Ve
     let Some((target, diff)) = &st.diff else { return };
     let Some(expected) = diff.hunks.get(index).cloned() else { return };
     let target = target.clone();
+    let follows = target.follows_workdir();
     push(st, target, RevertPart::Hunk { index, expected }, fx);
+    stale_until_reload(st, follows);
 }
 
 /// Reverts the selected lines of the open commit or comparison diff, when the selection
@@ -54,13 +59,23 @@ pub(super) fn lines(st: &mut AppState, fx: &mut Vec<Effect>) {
     let target = target.clone();
     let sel = std::mem::take(&mut st.view.diff_lines);
     let part = RevertPart::Lines { hunk: sel.hunk, expected, lines: sel.lines.into_iter().collect() };
+    let follows = target.follows_workdir();
     push(st, target, part, fx);
+    stale_until_reload(st, follows);
+}
+
+/// After a revert on a diff with the working tree on one side (a commit compared with it), its
+/// hunks are stale until the reload that follows lands.
+fn stale_until_reload(st: &mut AppState, follows_workdir: bool) {
+    if follows_workdir {
+        st.diff_gen += 1;
+    }
 }
 
 /// Reverts the whole change of `target` (a commit or comparison) to its file. It doesn't depend
 /// on the open diff, so there is nothing to check here but the target.
 pub(super) fn file(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
-    if !target.reverts_hunks() {
+    if !target.reverts_files() {
         return;
     }
     push(st, target, RevertPart::File, fx);
@@ -125,6 +140,7 @@ pub(crate) fn done_text(path: &str, what: RevertWhat, r: Reverted) -> String {
         Reverted::Merged => format!("Reverted {done}, merged with your later edits."),
         Reverted::Conflicts => format!("Reverted {done} with conflicts. Edit the file to resolve the conflict markers."),
         Reverted::Removed => format!("Removed {path}. The commit added it, and its contents are still in that commit."),
+        Reverted::RemovedNew => format!("Removed {path}, which the compared commit doesn't have. Undo brings it back."),
     }
 }
 

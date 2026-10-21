@@ -21,7 +21,7 @@ const MIN_W: f32 = 96.0;
 enum HunkButton {
     Op(HunkOp),
     /// Apply the inverse of the hunk, or of its selected lines, to the working tree (commit and
-    /// comparison diffs).
+    /// comparison diffs, and a commit compared with the working tree).
     Revert,
 }
 
@@ -36,7 +36,8 @@ fn text_px(row_h: f32) -> f32 {
 /// scrolled sideways: on working-tree diffs Stage hunk at the edge and Discard hunk (in the
 /// danger style) to its left behind a wider gap with a divider, Unstage hunk on staged diffs
 /// (each "N lines" when the hunk has selected lines), Revert hunk (or Revert N lines) on commit and
-/// comparison diffs. The buttons are disabled while a reload is on its way (`hunk_gen` is
+/// comparison diffs and on a commit compared with the working tree (none the other way round).
+/// The buttons are disabled while a reload is on its way (`hunk_gen` is
 /// `None`), since the hunk indexes may no longer match the file. With whitespace changes hidden
 /// they apply only the changes shown.
 pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs: &mut Vec<Msg>) {
@@ -57,17 +58,24 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     let list: &[HunkButton] = match v.target {
         DiffTarget::Unstaged(_) => &[HunkButton::Op(HunkOp::Stage), HunkButton::Op(HunkOp::Discard)],
         DiffTarget::Staged(_) => &[HunkButton::Op(HunkOp::Unstage)],
-        DiffTarget::Commit(..) | DiffTarget::Between(..) => &[HunkButton::Revert],
-        // Comparing a commit with the working tree: nothing to stage or revert per hunk.
-        DiffTarget::ToWorkdir(..) => &[],
+        DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) => &[HunkButton::Revert],
+        // From the working tree to a commit: nothing to stage or revert per hunk.
+        DiffTarget::FromWorkdir(..) => &[],
     };
     let (row_h, mid_y) = (v.style.row_h, rect.top() + v.style.row_h / 2.0);
     let body = text_px(row_h);
     let t = v.t;
-    let revert_tip = if selected > 0 {
-        t.trf("diff.hunk.revert_selected.tip", &[("path", &path)])
-    } else {
-        t.trf("diff.hunk.revert.tip", &[("path", &path)])
+    let revert_tip = match v.target {
+        DiffTarget::ToWorkdir(oid, _) => {
+            let sha = crate::ui::common::short(*oid);
+            if selected > 0 {
+                t.trf("diff.hunk.revert_workdir_selected.tip", &[("path", &path), ("sha", &sha)])
+            } else {
+                t.trf("diff.hunk.revert_workdir.tip", &[("path", &path), ("sha", &sha)])
+            }
+        }
+        _ if selected > 0 => t.trf("diff.hunk.revert_selected.tip", &[("path", &path)]),
+        _ => t.trf("diff.hunk.revert.tip", &[("path", &path)]),
     };
     let updating = t.tr("diff.hunk.updating");
     let mut x = ui.clip_rect().right() - 8.0;

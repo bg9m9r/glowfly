@@ -1,6 +1,6 @@
 //! Right panel for one commit compared with the working directory: the commit, and the files
-//! that differ from it to the working tree (staged and unstaged changes and untracked files),
-//! each opening that diff.
+//! that differ from it to the working tree (staged and unstaged changes and untracked files), or
+//! with Swap direction from the working tree to it, each opening that diff.
 
 use super::common::{short, with_code};
 use super::details::file_reveal::reveal;
@@ -35,7 +35,20 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         ui.label(RichText::new(t.tr("details.workdir.esc_hint")).size(type_scale::SMALL).color(color::weak()));
     });
     ui.separator();
-    ui.label(type_scale::section_text(ui, t.trf("details.workdir.changes", &[("sha", &short(oid))])));
+    let sha = short(oid);
+    // The tip names the direction the swap goes to.
+    let (heading, tip) = if w.swapped {
+        (t.trf("details.workdir.changes_reversed", &[("sha", &sha)]), t.trf("details.workdir.swap.tip_back", &[("sha", &sha)]))
+    } else {
+        (t.trf("details.workdir.changes", &[("sha", &sha)]), t.trf("details.workdir.swap.tip", &[("sha", &sha)]))
+    };
+    // The button goes to its own line when the heading leaves no room for it.
+    ui.horizontal_wrapped(|ui| {
+        ui.label(type_scale::section_text(ui, heading));
+        if ui.small_button(t.tr("details.workdir.swap.button")).on_hover_text(tip).clicked() {
+            msgs.push(Msg::Selection(SelectionMsg::SwapCompare));
+        }
+    });
     match &w.changes {
         None => super::pane_status::loading_line(ui, t.tr("common.loading")),
         Some(Err(e)) => {
@@ -60,11 +73,11 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 row_h,
                 c.files.len(),
                 |ui, range| {
-                    let index = |t: &DiffTarget| c.files.iter().position(|f| *t == DiffTarget::ToWorkdir(oid, f.path.clone()));
+                    let index = |t: &DiffTarget| c.files.iter().position(|f| *t == w.target(f.path.clone()));
                     reveal(ui, "workdir-files", st.view.file_reveal.as_ref(), index, &range, row_h);
                     for f in &c.files[range] {
-                        let target = DiffTarget::ToWorkdir(oid, f.path.clone());
-                        let src = RowSource::ToWorkdir(oid);
+                        let target = w.target(f.path.clone());
+                        let src = if w.swapped { RowSource::FromWorkdir(oid) } else { RowSource::ToWorkdir(oid) };
                         let in_workdir = c.in_workdir(&f.path);
                         let actions = RowActions { src, history_at: oid, in_workdir, lfs, tools, patch_blocked: None, lines: None };
                         changed_file_row(ui, t, f, target, open, actions, msgs);

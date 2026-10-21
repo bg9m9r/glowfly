@@ -34,7 +34,7 @@ use crate::tools::ToolsMsg;
 use eframe::egui;
 use git2::Oid;
 use trellis_core::i18n::Lang;
-use trellis_core::repo::{DiffTarget, FileEntry};
+use trellis_core::repo::{DiffTarget, FileEntry, is_empty_tree};
 
 // In English for the file history's views, which aren't translated yet; the menus use keys.
 pub(super) use crate::state::files::NOT_IN_WORKDIR;
@@ -52,6 +52,8 @@ pub(super) enum RowSource {
     Between { from: Oid, to: Oid },
     /// The change from this commit to the working tree.
     ToWorkdir(Oid),
+    /// The change from the working tree to this commit (the swapped comparison).
+    FromWorkdir(Oid),
 }
 
 /// File history of `path` (from commit `at`, or HEAD), then Blame of it there, disabled with the
@@ -89,13 +91,19 @@ pub(super) fn restore_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, oid:
 
 /// Restore a comparison row's file from the commit compared to (`to`), or from `from` when `to`
 /// doesn't have it (status 'D'). `to`'s first parent is not used for that case: it can be any
-/// commit, unrelated to this comparison, and may not have the file at all.
+/// commit, unrelated to this comparison, and may not have the file at all. When `to` is the
+/// empty tree (a swapped range from the first commit) the tip says so rather than name it.
 fn between_restore_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, from: Oid, to: Oid, f: &FileEntry) {
     let gone = f.status == 'D';
     let oid = if gone { from } else { to };
     let mut r = ui.button(t.trf("files.menu.restore_from", &[("sha", &short(oid))]));
     if gone {
-        r = r.on_hover_text(t.trf("files.menu.restore_from.tip", &[("to", &short(to)), ("from", &short(from))]));
+        let tip = if is_empty_tree(to) {
+            t.trf("files.menu.restore_from_empty.tip", &[("from", &short(from))])
+        } else {
+            t.trf("files.menu.restore_from.tip", &[("to", &short(to)), ("from", &short(from))])
+        };
+        r = r.on_hover_text(tip);
     }
     if r.clicked() {
         msgs.push(Msg::Files(FilesMsg::RestoreFile { oid, path: f.path.clone(), deleted: false, confirmed: false, overwrite: false }));
@@ -122,9 +130,10 @@ pub(super) fn revert_file_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, 
 }
 
 /// Restore a working-tree comparison row's file as commit `oid` has it; disabled for a file the
-/// commit doesn't have (added since, or a rename's new path).
-fn workdir_restore_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, oid: Oid, f: &FileEntry) {
-    let missing = matches!(f.status, 'A' | 'R').then(|| t.trf("details.file.not_in_commit", &[("sha", &short(oid))]));
+/// commit doesn't have (added since, or a rename's new path; 'D' in the `swapped` comparison).
+fn workdir_restore_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, oid: Oid, f: &FileEntry, swapped: bool) {
+    let lacks = if swapped { f.status == 'D' } else { matches!(f.status, 'A' | 'R') };
+    let missing = lacks.then(|| t.trf("details.file.not_in_commit", &[("sha", &short(oid))]));
     let state = ItemState::blocked_by(missing.as_deref());
     let r = reason::menu_button(ui, t.trf("files.menu.restore_from", &[("sha", &short(oid))]), "", state);
     if r.clicked() {
@@ -217,8 +226,13 @@ pub(super) fn commit_file_items(
             DiffTarget::Between(from, to, f.path.clone())
         }
         RowSource::ToWorkdir(oid) => {
-            workdir_restore_item(ui, t, msgs, oid, f);
+            workdir_restore_item(ui, t, msgs, oid, f, false);
             DiffTarget::ToWorkdir(oid, f.path.clone())
+        }
+        // No Revert changes to this file either way round: Restore covers the whole file.
+        RowSource::FromWorkdir(oid) => {
+            workdir_restore_item(ui, t, msgs, oid, f, true);
+            DiffTarget::FromWorkdir(oid, f.path.clone())
         }
     };
     open_items(ui, t, msgs, &f.path, missing, tools.editor, Some(diff_item(t, target, tools.diff)));

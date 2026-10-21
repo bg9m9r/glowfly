@@ -9,7 +9,7 @@ use super::{AppState, Selection};
 use git2::Oid;
 use trellis_core::i18n::Lang;
 use trellis_core::preview_image::is_image_path;
-use trellis_core::repo::{DiffTarget, FileDiff, Snapshot};
+use trellis_core::repo::{DiffTarget, FileDiff, Snapshot, is_empty_tree};
 use trellis_core::settings::{DiffLayout, DiffMode};
 use trellis_core::whole_file;
 
@@ -81,6 +81,8 @@ pub enum Context {
     Between(String),
     /// "a1b2c3d..working tree".
     ToWorkdir(String),
+    /// "working tree..a1b2c3d".
+    FromWorkdir(String),
 }
 
 /// How many folds of the whole file on screen are open and closed.
@@ -239,8 +241,13 @@ fn context(st: &AppState, target: &DiffTarget, t: Lang) -> Context {
         DiffTarget::Commit(oid, _) => Context::Commit { short: short(*oid), summary: summary(st, *oid) },
         DiffTarget::Unstaged(_) => Context::Unstaged,
         DiffTarget::Staged(_) => Context::Staged,
-        DiffTarget::Between(a, b, _) => Context::Between(format!("{}..{}", short(*a), short(*b))),
+        DiffTarget::Between(a, b, _) => {
+            // A line of commits from the first one is compared with the empty tree.
+            let end = |o: Oid| if is_empty_tree(o) { t.tr("diff.header.empty_tree").to_owned() } else { short(o) };
+            Context::Between(format!("{}..{}", end(*a), end(*b)))
+        }
         DiffTarget::ToWorkdir(o, _) => Context::ToWorkdir(t.trf("diff.header.to_workdir", &[("sha", &short(*o))])),
+        DiffTarget::FromWorkdir(o, _) => Context::FromWorkdir(t.trf("diff.header.from_workdir", &[("sha", &short(*o))])),
     }
 }
 
@@ -288,7 +295,7 @@ fn actions(st: &AppState, target: &DiffTarget) -> Actions {
                 diff_tool,
             }
         }
-        DiffTarget::Unstaged(p) | DiffTarget::Staged(p) | DiffTarget::ToWorkdir(_, p) => Actions {
+        DiffTarget::Unstaged(p) | DiffTarget::Staged(p) | DiffTarget::ToWorkdir(_, p) | DiffTarget::FromWorkdir(_, p) => Actions {
             restore: None,
             open: Some(OpenAction { path: p.clone(), missing: (!working_file_on_disk(st, target)).then(|| not_in_workdir(t)) }),
             diff_tool,
@@ -299,7 +306,8 @@ fn actions(st: &AppState, target: &DiffTarget) -> Actions {
 
 /// Whether the working file of a working-tree diff is there: not for an unstaged deletion, nor
 /// for a staged one unless the path is listed again as untracked; for a comparison with the
-/// working tree, as the comparison found it.
+/// working tree, as the comparison found it (from the working tree to a commit, its 'A' rows are
+/// the files the working tree lacks).
 fn working_file_on_disk(st: &AppState, target: &DiffTarget) -> bool {
     let snap: Option<&Snapshot> = st.snap.as_ref();
     let unstaged = |p: &str| snap.and_then(|s| s.unstaged.iter().find(|f| f.path == p)).map(|f| f.status);
@@ -310,11 +318,18 @@ fn working_file_on_disk(st: &AppState, target: &DiffTarget) -> bool {
             staged != Some('D') || unstaged(p) == Some('?')
         }
         DiffTarget::ToWorkdir(o, p) => match &st.selection {
-            Selection::VsWorkdir(w) if w.oid == *o => match &w.changes {
+            Selection::VsWorkdir(w) if w.oid == *o && !w.swapped => match &w.changes {
                 Some(Ok(c)) => c.in_workdir(p),
                 _ => diff_nav::file_status(st, target) != Some('D'),
             },
             _ => diff_nav::file_status(st, target) != Some('D'),
+        },
+        DiffTarget::FromWorkdir(o, p) => match &st.selection {
+            Selection::VsWorkdir(w) if w.oid == *o && w.swapped => match &w.changes {
+                Some(Ok(c)) => c.in_workdir(p),
+                _ => diff_nav::file_status(st, target) != Some('A'),
+            },
+            _ => diff_nav::file_status(st, target) != Some('A'),
         },
         DiffTarget::Commit(..) | DiffTarget::Between(..) => true,
     }

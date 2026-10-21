@@ -97,14 +97,20 @@ impl StageMsg {
             | Self::RevertLines
             | Self::RevertFile(..)
             | Self::LocalOpDone(Ok(None))
-            | Self::Reverted { result: Ok(Reverted::Applied | Reverted::Removed | Reverted::Merged), undo: None, .. } => None,
+            | Self::Reverted {
+                result: Ok(Reverted::Applied | Reverted::Removed | Reverted::RemovedNew | Reverted::Merged),
+                undo: None,
+                ..
+            } => None,
             Self::LocalOpDone(Err(e)) => Some(Inactive::Log(e)),
             // A discard in a tab switched away from: its undo belongs to that tab.
             Self::LocalOpDone(Ok(Some(action))) => Some(Inactive::Undo(action)),
             // A revert in a tab switched away from: its undo belongs to that tab too.
-            Self::Reverted { result: Ok(Reverted::Applied | Reverted::Removed | Reverted::Merged), undo: Some(a), .. } => {
-                Some(Inactive::Undo(a))
-            }
+            Self::Reverted {
+                result: Ok(Reverted::Applied | Reverted::Removed | Reverted::RemovedNew | Reverted::Merged),
+                undo: Some(a),
+                ..
+            } => Some(Inactive::Undo(a)),
             Self::Reverted { path, what, result: Ok(r @ Reverted::Conflicts), undo } => {
                 let text = crate::update::revert::done_text(&path, what, r);
                 Some(match undo {

@@ -2,7 +2,10 @@
 //! in the working tree only. The inverse patch is applied where the changed lines still are;
 //! when the file was edited since, the revert is merged with those edits instead
 //! (`revert_merge`), and conflicts are written as ordinary conflict markers. A hunk shown with
-//! whitespace changes hidden reverts only the changes shown (`shown_ws`).
+//! whitespace changes hidden reverts only the changes shown (`shown_ws`). A diff from a commit
+//! to the working tree reverts hunks and lines only, giving the working file the commit's
+//! lines; it never merges (its working side has no stored version), so a file edited since is
+//! refused as stale.
 
 use super::diff::{hunk_of, target_diff};
 use super::lines::{Patched, build_patch, images};
@@ -29,7 +32,7 @@ pub enum RevertPart {
 /// A revert of part of a commit or comparison diff.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RevertRequest {
-    /// A `Commit` or `Between` target.
+    /// A `Commit`, `Between` or (hunks and lines only) `ToWorkdir` target.
     pub target: DiffTarget,
     pub part: RevertPart,
     /// The file's name in the working tree when it differs from `target.path()` (File history
@@ -47,6 +50,9 @@ pub enum Reverted {
     Applied,
     /// The commit added the file and nothing else is left in it, so the file was removed.
     Removed,
+    /// The compared commit doesn't have the file and nothing was left in it, so it was removed
+    /// from the working tree (a commit-to-working-tree diff of an untracked or new file).
+    RemovedNew,
     /// Merged cleanly with edits made since.
     Merged,
     /// Merged with edits made since, with conflict markers left in the file.
@@ -63,6 +69,9 @@ pub fn revert(workdir: &Path, req: &RevertRequest) -> Result<Reverted> {
     let target = &req.target;
     if !target.reverts_hunks() {
         return Err(Error::Unsupported("only hunks of a commit or comparison diff can be reverted".into()));
+    }
+    if matches!(req.part, RevertPart::File) && !target.reverts_files() {
+        return Err(Error::Unsupported("use Restore to bring back the commit's version of the whole file".into()));
     }
     let repo = Repository::open(workdir)?;
     let path = target.path();
@@ -106,7 +115,8 @@ pub fn revert(workdir: &Path, req: &RevertRequest) -> Result<Reverted> {
     } else {
         None
     };
-    let ctx = Ctx { repo: &repo, work, file: &file, labels: Labels::of(target) };
+    let to_workdir = matches!(target, DiffTarget::ToWorkdir(..));
+    let ctx = Ctx { repo: &repo, work, file: &file, labels: Labels::of(target), to_workdir };
     let side = side.as_ref();
     match &req.part {
         RevertPart::Hunk { index, expected } => lines_part(&ctx, &delta, patch, *index, expected, None, side),
@@ -123,6 +133,8 @@ pub(super) struct Ctx<'a> {
     /// The working file.
     pub file: &'a Path,
     pub labels: Labels,
+    /// The target is a commit compared with the working tree (`DiffTarget::ToWorkdir`).
+    pub to_workdir: bool,
 }
 
 impl Ctx<'_> {
@@ -200,7 +212,7 @@ fn lines_part(
         return Err(missing());
     }
     let mode = ctx.mode(delta)?;
-    let added = delta.status() == Delta::Added;
+    let added = matches!(delta.status(), Delta::Added | Delta::Untracked);
 
     // libgit2 only matches a hunk at its stated line, so find where the lines are now.
     let pre: Vec<&[u8]> = content.iter().filter(|(o, _)| matches!(o, ' ' | '+')).map(|(_, c)| strip_eol(c.as_slice())).collect();
@@ -212,7 +224,7 @@ fn lines_part(
         match ctx.apply(&bytes) {
             Ok(()) if added && std::fs::metadata(ctx.file).is_ok_and(|m| m.len() == 0) => {
                 crate::persist::remove_file(ctx.file)?;
-                return Ok(Reverted::Removed);
+                return Ok(if ctx.to_workdir { Reverted::RemovedNew } else { Reverted::Removed });
             }
             Ok(()) => return Ok(Reverted::Applied),
             Err(e) if e.code() == ErrorCode::ApplyFail => {}
@@ -220,6 +232,10 @@ fn lines_part(
         }
     }
 
+    // The working side of a working-tree comparison has no stored version to merge from.
+    if ctx.to_workdir {
+        return Err(stale());
+    }
     // Edited since: merge the commit's version, reverted, with the working file.
     let base_id = delta.new_file().id();
     let base = ctx.repo.find_blob(base_id)?;

@@ -92,6 +92,8 @@ pub enum Effect {
         workdir: PathBuf,
         oid: Oid,
         generation: u64,
+        /// From the working tree to the commit instead.
+        swapped: bool,
     },
     LoadDiff {
         workdir: PathBuf,

@@ -1,8 +1,8 @@
 //! The command palette's commands: which are available now, their labels, hidden keywords,
 //! details and the global keys that do the same (their current keys come from the effective keymap, `keymap/active.rs`).
 
+use super::AppState;
 use super::palette_kinds::StashAction;
-use super::{AppState, Selection};
 use crate::keymap::BindingId;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::Snapshot;
@@ -103,6 +103,8 @@ pub enum PaletteCommand {
     },
     /// Opens the Rename branch dialog for this (checked-out) branch.
     RenameBranch(String),
+    /// Compare this commit with the working directory (palette_selected.rs).
+    CompareWithWorkdir(git2::Oid),
     SearchCommits,
     /// Open the Git LFS page and set LFS up once its status shows that it can.
     InitializeLfs,
@@ -271,14 +273,6 @@ pub(super) fn with_detail(mut e: Entry, detail: Option<String>) -> Entry {
     e
 }
 
-/// What Create branch and Create tag start at: the selected commit's short sha, else HEAD.
-fn at_label(st: &AppState) -> String {
-    match &st.selection {
-        Selection::Commit(oid) => oid.to_string()[..7].to_owned(),
-        _ => "HEAD".to_owned(),
-    }
-}
-
 /// A folder's own name, or the whole path when it has none.
 pub(super) fn folder_name(path: &Path) -> String {
     path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.display().to_string())
@@ -336,16 +330,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if let Some(a) = st.undo.redo.last() {
         out.push(with_detail(entry(C::Redo, "Redo", "again forward step history"), Some(a.describe())));
     }
-    if snap.head_oid.is_some() {
-        let at = at_label(st);
-        out.push(entry(C::CreateBranch, format!("Create branch at {at}…"), "new branch"));
-        out.push(entry(C::CreateTag { annotated: false }, format!("Create tag at {at}…"), "new tag release version label"));
-        out.push(entry(
-            C::CreateTag { annotated: true },
-            format!("Create annotated tag at {at}…"),
-            "new tag release version message annotate",
-        ));
-    }
+    super::palette_selected::entries(st, snap, out);
     if let Some(b) = snap.head_info() {
         out.push(entry(C::RenameBranch(b.name.clone()), format!("Rename branch {}…", b.name), "rename move branch"));
     }

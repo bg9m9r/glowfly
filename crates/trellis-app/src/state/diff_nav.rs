@@ -164,9 +164,11 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
                 _ => None,
             }
         }
-        DiffTarget::ToWorkdir(o, _) => match &st.selection {
-            Selection::VsWorkdir(w) if w.oid == *o => match &w.changes {
-                Some(Ok(c)) => Some(of(&c.files, &|p| DiffTarget::ToWorkdir(*o, p))),
+        // Only the list of the comparison's current direction: a ToWorkdir target is never
+        // walked through a swapped list, or the reverse.
+        DiffTarget::ToWorkdir(o, _) | DiffTarget::FromWorkdir(o, _) => match &st.selection {
+            Selection::VsWorkdir(w) if w.oid == *o && w.swapped == matches!(from, DiffTarget::FromWorkdir(..)) => match &w.changes {
+                Some(Ok(c)) => Some(of(&c.files, &|p| w.target(p))),
                 _ => None,
             },
             _ => None,
