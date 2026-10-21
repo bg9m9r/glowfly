@@ -1,4 +1,4 @@
-//! One Trellis window for links: a second `trellis trellis://…` hands its link to the window
+//! One Glowfly window for links: a second `glowfly glowfly://…` hands its link to the window
 //! already running instead of opening another.
 //!
 //! The running app listens on a loopback port ([`serve`]) and writes where, with a random token

@@ -1,7 +1,7 @@
-# Trellis backlog
+# Glowfly backlog
 
 The items behind [ROADMAP.md](ROADMAP.md), which holds the goal, the milestones and their status.
-What Trellis does today and what is planned next, roughly in priority order: the current
+What Glowfly does today and what is planned next, roughly in priority order: the current
 milestone's section first. Each item is a target to design, not a finished spec. A top-level
 item is the unit of work: it is ticked when its core behaviour works and every sub-item is done
 or moved to [Ideas](#ideas). A substantial new feature becomes its own top-level item; smaller
@@ -235,7 +235,7 @@ From hands-on testing on 2026-10-19. The behaviour fixes come first; the design 
 wait for a choice on the design board, so don't plan an item marked "Waiting on a design choice"
 until this list says which option was chosen.
 
-- [x] **Trellis's own wording**: rewrite these labels and help texts in fresh words of our
+- [x] **Glowfly's own wording**: rewrite these labels and help texts in fresh words of our
       own, in every language table, the docs and the snapshots: the help for the default branch
       name, the initial-commits warning, core.longpaths and the auto-fetch interval; the "How do
       I renew an expired key?" link; "Automatically group worktree tabs together"; "Exit
@@ -324,7 +324,7 @@ until this list says which option was chosen.
 - [x] **Window chrome and toolbar**: the title bar, menu, repository tabs (each with a shape,
       hover state, even widths and an ellipsis), the toolbar's grouped buttons, a new Branch
       icon, and Repository › Branch pickers sized to their names. Chosen 2026-10-19 (option C):
-      Trellis draws one title bar with the tabs, a ☰ menu (Alt still opens File, Edit, View…)
+      Glowfly draws one title bar with the tabs, a ☰ menu (Alt still opens File, Edit, View…)
       and the window buttons, giving about 60 px back to content. On Windows 11 the title bar,
       toolbar and sidebar sit on the Mica material while the graph and diff stay solid; Windows
       10, Linux and "transparency effects off" use the solid colour. It must keep everything the
@@ -372,7 +372,7 @@ until this list says which option was chosen.
       drawn.
 - [x] **Welcome screen**: choice cards with an icon and a line of description, a clearer
       stepper and the tour as a quiet link. Chosen 2026-10-19 (option B, to try): a wider
-      (760 px) welcome with a tinted header holding a lattice drawing in Trellis's own style,
+      (760 px) welcome with a tinted header holding a lattice drawing in Glowfly's own style,
       a four-segment progress bar, the user's name from the first step, and the three ways to
       start as large cards side by side; the drawing needs light and high-contrast versions.
 
@@ -401,16 +401,16 @@ check. Its hands-on criteria (daily use, merging the release pull request) are i
     SetForegroundWindow; its ::notice lines and first-click.txt give the result (not run
     locally: no desktop)
 - [x] **Installer and update checks in CI**: install the MSI and DEB the release workflow built,
-      start Trellis from them, uninstall cleanly, and update an older build to the new one
+      start Glowfly from them, uninstall cleanly, and update an older build to the new one
       against a local release feed with checksums
 
 ---
 
 ## Preferences parity (page by page)
 
-The pages a full-featured Git client offers, and where Trellis stands:
+The pages a full-featured Git client offers, and where Glowfly stands:
 
-| Page | Trellis | Gap |
+| Page | Glowfly | Gap |
 |---|---|---|
 | General | ✔ General | Missing: delete `.orig` files after merge, show all commits, path to `sh.exe`, extended logging, conflict detection |
 | Profiles | ✔ Profile (identity, connected accounts and app preferences per profile, switching) | Follow-ups in Ideas > Profiles |
@@ -445,7 +445,7 @@ Done except the group colors, which wait on repository groups in the repository 
       patterns with live previews: *Date*, *Long date*, *Date and time* (the graph's date
       column) and *Full date and time* (commit details). A blank pattern follows the locale's
       usual one (`MM/DD/YYYY h:mm A` in US English, `DD.MM.YYYY HH:mm` in German), or ISO 8601
-      (`YYYY-MM-DD HH:mm`) for a locale Trellis has no row for. Date shows in file history and
+      (`YYYY-MM-DD HH:mm`) for a locale Glowfly has no row for. Date shows in file history and
       blame rows, Long date in the issue panel and the file history footer, and hovering a
       graph, history or comment date shows its full date and age.
 - [ ] **Default group color / reset all to default**,
@@ -566,14 +566,14 @@ Done except the group colors, which wait on repository groups in the repository 
   has moved), Cancel or Esc closes it, and Start explains on hover why it is unavailable
   (another job, uncommitted changes, an operation in progress, a stale list, a squash with
   nothing before it, an empty message, nothing changed). Dropping asks first. Start runs
-  `git rebase -i` with `GIT_SEQUENCE_EDITOR` set to Trellis itself (`--write-todo`), which
+  `git rebase -i` with `GIT_SEQUENCE_EDITOR` set to Glowfly itself (`--write-todo`), which
   installs the prepared todo after checking it lists the same commits as git's; rewords are
   `exec git commit --amend -F` lines. Edit steps and conflicts stop in the "Interactive rebase
   in progress" banner with Continue / Skip commit / Abort rebase. The panel is kept per tab.
   The list also takes exec and break steps, a typed message for the commit a squash group
   combines into, and keyboard control (arrows, Alt+arrows, action letters, X / B, Enter); "Edit
   remaining steps…" opens it on a running rebase's todo (`rebase --edit-todo`, also for one
-  started outside Trellis), rebases and graph edits undo in one step back to where the branch
+  started outside Glowfly), rebases and graph edits undo in one step back to where the branch
   was, and Reword / Squash / Drop / Continue / Skip have keys and palette entries.
 - [x] **Multi-select commits**
   Ctrl-click toggles a commit and Shift-click selects a range of graph rows; Esc returns to one
@@ -588,12 +588,12 @@ Done except the group colors, which wait on repository groups in the repository 
   default): outside edits re-read the status and ref or HEAD changes reload everything, within
   about 0.3 s. Window focus and F5 still refresh as before.
 - [x] **Credential prompts**
-  Trellis is git's and ssh's askpass helper: HTTPS sign-in (username and password or token in
+  Glowfly is git's and ssh's askpass helper: HTTPS sign-in (username and password or token in
   one dialog), SSH key passphrases, SSH passwords and host-key confirmations open an in-app
   prompt, with retry and rejected-credentials notices, cancel and a 5-minute timeout.
   Background jobs and hosting-service sign-in never prompt. HTTPS sign-ins can be remembered
   with git's credential helper (setting up the system's store when git has none), OpenSSH
-  before 8.4 asks through Trellis on Linux and macOS, and auto-fetch skips a remote that needs a
+  before 8.4 asks through Glowfly on Linux and macOS, and auto-fetch skips a remote that needs a
   sign-in, with a banner to sign in.
 - [x] **Branch operations**
   From the local branch menu: rename, set and unset the upstream (also to a branch not on the
@@ -640,10 +640,10 @@ Done except the group colors, which wait on repository groups in the repository 
   - [x] Restore button in the file history's selected-commit header and the commit diff header
 - [x] **Repository trust**
   A repository's `.git/config` (`core.sshCommand`, `credential.helper`, `core.fsmonitor`) and its
-  hooks can run arbitrary commands as soon as git touches it. Before Trellis runs git in a
+  hooks can run arbitrary commands as soon as git touches it. Before Glowfly runs git in a
   repository it didn't clone or create (auto-fetch, hooks), ask whether to trust it.
   - [x] Ask on first open of an untrusted repository, naming the config keys and hooks that
-    would run commands; repositories Trellis cloned or initialised are trusted automatically
+    would run commands; repositories Glowfly cloned or initialised are trusted automatically
   - [x] Hold background fetch (and anything else that runs git on its own) until the user decides
   - [x] While untrusted, browse read-only through libgit2, say in the toolbar why fetch, pull
     and commit hooks are paused, and ask before running git commands the user starts (Trust and
@@ -908,7 +908,7 @@ Done except the group colors, which wait on repository groups in the repository 
   Rebind keys in Preferences, saved in settings and matched through the shortcut table, with
   conflict detection and reset to default.
 - [x] **GPG passphrase prompts**
-  Ask for GPG passphrases for commit and tag signing in Trellis (a Trellis pinentry, or loopback
+  Ask for GPG passphrases for commit and tag signing in Glowfly (a Glowfly pinentry, or loopback
   pinentry), like the existing SSH passphrase prompt.
 
 ## P2: integrations depth
@@ -946,14 +946,14 @@ Done except the group colors, which wait on repository groups in the repository 
 - [x] **Cross-repo dashboard**
   PRs and issues across all connected repos (local, with no cloud account).
 - [x] **Limits found while building integrations**
-  - [x] Paginate PR and issue lists. Trellis stops at 100 (50 on Bitbucket Cloud); `morluto/rea`
+  - [x] Paginate PR and issue lists. Glowfly stops at 100 (50 on Bitbucket Cloud); `morluto/rea`
         already exceeds that.
   - [x] Fetch review states for every PR. Only the first 25 are fetched today, to save API calls.
   - [x] Jira key detection treats strings like `UTF-8` as keys unless a project filter is set.
 
 ## P3: app polish and platform
 
-- [x] **Custom themes**: High Contrast Dark, High Contrast Light and Trellis Sand built in, plus
+- [x] **Custom themes**: High Contrast Dark, High Contrast Light and Glowfly Sand built in, plus
       JSON theme files in the config folder's `themes` folder (a base theme and the colors it
       changes, as #rrggbb or another color's name), listed in Preferences and the palette
 - [x] **Zoom** in/out/reset; show/hide the left, detail and toolbar panels
@@ -972,14 +972,14 @@ Done except the group colors, which wait on repository groups in the repository 
     multi-select menus' reasons, and the in-progress banner titles and stop lines
 - [x] **Logs**: keep the activity log across sessions; error and performance logs; extended
       logging (the in-session activity log exists)
-- [x] **Command-line companion**: `trellis <path>` and `trellis .` work (subcommands are under
+- [x] **Command-line companion**: `glowfly <path>` and `glowfly .` work (subcommands are under
       Later)
-- [x] **Deep links**: `trellis://` links to a repository, branch, commit or tag (named by root
+- [x] **Deep links**: `glowfly://` links to a repository, branch, commit or tag (named by root
       commit and remote URL), copied from the branch, tag, remote and commit menus and the
       palette, opened in the running window with Locate, Clone and Fetch when they don't match,
       and registered per user in Preferences > General (Windows and XDG desktops)
 - [x] **Packaging and updates**: an app icon; MSI, DMG and DEB installers next to the zip and
-      tar.gz downloads, with "Open in Trellis" on folders and `trellis://` links; code signing in
+      tar.gz downloads, with "Open in Glowfly" on folders and `glowfly://` links; code signing in
       CI when the secrets are set; SHA256SUMS; a daily update check with a verified download; and
       the release notes bundled in the app
 - [x] **Git engine choice**: choose
@@ -1011,7 +1011,7 @@ follow-ups go to Ideas, not here.
 
 ### New directions
 
-Chosen on 2026-10-19 as the features that make Trellis its own, in this order.
+Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 
 ### UI review polish
 
@@ -1052,9 +1052,9 @@ blockers and major findings are Milestone 1 items.
 ### Notifications
 
 - Keep a toast up while the pointer is over it, and a close button on toasts
-- Click a desktop notification to bring Trellis to the front and switch to that repository's tab
-- Show desktop notifications under Trellis's own name and icon: register an app id on Windows
-  (now attributed to PowerShell) and set the bundle id on macOS once Trellis ships as an app bundle
+- Click a desktop notification to bring Glowfly to the front and switch to that repository's tab
+- Show desktop notifications under Glowfly's own name and icon: register an app id on Windows
+  (now attributed to PowerShell) and set the bundle id on macOS once Glowfly ships as an app bundle
 
 ### PR and issue filters
 
@@ -1101,12 +1101,12 @@ blockers and major findings are Milestone 1 items.
 
 - Edits to tracked files that match an ignore pattern are dropped by the watcher; check the index before dropping
 - Read the staged list incrementally on index changes (compare the old and new index) instead of a whole status read
-- Turn on git's built-in fsmonitor from Trellis (suggest watchman on Linux), checking that the daemon runs
+- Turn on git's built-in fsmonitor from Glowfly (suggest watchman on Linux), checking that the daemon runs
 - Make the Windows 30 s safety poll cheaper for huge trees (read only folders changed since the last read)
 
 ### Deep links
 
-- macOS: receive links and folders as Apple events (GURL and odoc) and declare the scheme and the folder document type in Trellis.app's Info.plist, so links, Finder's Open With and dropping a folder on the Dock icon open them
+- macOS: receive links and folders as Apple events (GURL and odoc) and declare the scheme and the folder document type in Glowfly.app's Info.plist, so links, Finder's Open With and dropping a folder on the Dock icon open them
 
 ### Cross-repo dashboard
 
@@ -1122,7 +1122,7 @@ blockers and major findings are Milestone 1 items.
 
 ### Packaging and updates
 
-- Install and restart: quit Trellis and run the downloaded installer, or swap the portable program in place
+- Install and restart: quit Glowfly and run the downloaded installer, or swap the portable program in place
 - More formats and targets: .rpm, AppImage or Flatpak, a Homebrew cask, a winget manifest, Linux aarch64 and Windows ARM64 builds
 
 ### Language
@@ -1276,7 +1276,7 @@ here, under the item they grew from.
 - Stop a running custom command, and stream its output into the Activity row while it runs
 - Ask for text before running ({input:Prompt} placeholders filled from a palette step)
 - More placeholders: {short} sha, {upstream}, {remote}, {tag}, the file's folder
-- Include .trellis/commands.toml in the trust print so a changed repository commands file asks
+- Include .glowfly/commands.toml in the trust print so a changed repository commands file asks
   again
 - Preferences page listing loaded commands, their files and problems, with Open file, Reload
   and Create user file (with a commented example)
@@ -1297,7 +1297,7 @@ here, under the item they grew from.
   journal
 - Expand a finished rebase's row to show the steps the timeline folds away
 - Restore every branch a rebase --update-refs moved from its one note
-- Notes for operations run in the terminal panel or outside Trellis
+- Notes for operations run in the terminal panel or outside Glowfly
 - Notes for stash drops and Discard all, with stash states in the timeline
 - Draw the preview's history with the real lane graph instead of one lane
 - Load more than the newest 2,000 states
@@ -1316,7 +1316,7 @@ here, under the item they grew from.
 - A palette command and a View menu item that open the journal on Lost commits
 - Show the lost count on the Lost commits tab label
 - Filter or search the Lost commits list (stashes only, by author, by text)
-- Tell Trellis's own auto-stashes and rebase autostashes apart from other dropped stashes
+- Tell Glowfly's own auto-stashes and rebase autostashes apart from other dropped stashes
 - Say "lost" in an unreachable row's accessible name
 - Recover dangling blobs (files staged but never committed)
 - Jump from a lost tip to its marked row in the States tab
@@ -1489,7 +1489,7 @@ here, under the item they grew from.
   was committed from the commit box (libgit2 reports that state as clean)
 - Name the picked or reverted commits in the undo label of a sequence finished after conflicts
   (it now says N commits)
-- Undo of a merge, cherry-pick or revert continued in the terminal panel or outside Trellis
+- Undo of a merge, cherry-pick or revert continued in the terminal panel or outside Glowfly
 - Undo of discarding an untracked file or a symbolic link (only regular files are saved for undo)
 - Undo of a stash drop across restarts, by finding the dropped commit in the stash reflog or with
   fsck
@@ -1516,7 +1516,7 @@ here, under the item they grew from.
 - Read gitattributes from the commit for blame at a commit and the file history's File view,
   and from the index for staged diffs
 - Show a loading state on a gap control while its lines are read
-- Trim the bundled syntax set to the languages Trellis wants, if the extra ~0.6 MB of binary
+- Trim the bundled syntax set to the languages Glowfly wants, if the extra ~0.6 MB of binary
   size matters
 - A per-file language picker (e.g. in the diff header), remembered per path
 - Take the hunk-header function context from `.gitattributes` diff drivers (`diff=<lang>`,
@@ -1592,7 +1592,7 @@ here, under the item they grew from.
 - Mark all resolved for one folder, once the WIP list has a folder view
 - A Preferences switch to turn off automatic picks for trivial conflicts
 - Pick trivial conflicts in every conflicted file at once, without opening each one
-- Mark conflicted for a submodule resolved in Trellis (no resolve-undo record is written for
+- Mark conflicted for a submodule resolved in Glowfly (no resolve-undo record is written for
   gitlinks)
 - Mark conflicted for modify/delete conflicts (git can't recreate a conflict missing one side)
 - Show the pick order next to ticked lines
@@ -1681,7 +1681,7 @@ here, under the item they grew from.
 - Watch config files pulled in by include.path / includeIf (outside the git dir) so their edits
   reload too
 - Ask about trust again when a trusted repository gains new command-running settings outside
-  Trellis
+  Glowfly
 
 ### Credential prompts
 
@@ -1795,7 +1795,7 @@ here, under the item they grew from.
 - Open and Show for the file history's current file in its top header, independent of the
   selected commit
 - Re-check whether the file history's file is on disk after status refreshes and file watcher
-  events (an untracked file deleted outside Trellis keeps Open enabled)
+  events (an untracked file deleted outside Glowfly keeps Open enabled)
 - Open the commit's version of a file (a temporary copy) when it is no longer in the working
   tree
 - Name the file in the show-in-folder tooltip and the open failure message
@@ -1807,7 +1807,7 @@ here, under the item they grew from.
   repository)
 - Bring back the dialog a held job came from (New tag, Remote, worktree…) after Cancel, with its
   fields intact
-- Don't count hooks Trellis installed itself (git lfs install) as a reason to ask about a
+- Don't count hooks Glowfly installed itself (git lfs install) as a reason to ask about a
   repository that was clean
 - Offer Don't trust on the prompt that holds a job, alongside Trust and run and Cancel
 - Queue several held jobs instead of refusing a second one while the prompt is open
@@ -1836,7 +1836,7 @@ here, under the item they grew from.
 - List the sparse paths of an untrusted repository by reading its sparse-checkout file instead
   of git sparse-checkout list
 - Run git lfs version outside the repository always, and count a repository's alias.* settings
-  for commands Trellis runs (a repository's alias.lfs runs when git-lfs isn't installed)
+  for commands Glowfly runs (a repository's alias.lfs runs when git-lfs isn't installed)
 
 ### Command palette (fuzzy finder)
 
@@ -2190,7 +2190,7 @@ here, under the item they grew from.
 ### Sparse checkout
 
 - Show in the toolbar or status bar that the worktree is sparse, and notice sparse changes made
-  outside Trellis on a plain refresh
+  outside Glowfly on a plain refresh
 - Explain when an opened or restored path is outside the sparse checkout, and keep left-out
   files out of the palette's file finder
 - Add or remove a folder from the paths from file rows and the commit file tree
@@ -2322,8 +2322,8 @@ here, under the item they grew from.
 - Refresh an open Clone dialog's account list when the profile switches
 - Show a profile's folder-rule count on its row in the profile list (e.g. "Ada <a@b> · 2 folders")
 - Offer to unset a repository's own user.signingkey too when using a profile there, and name it in the confirmation
-- Clean up Trellis's includeIf entries and include files from the global config (a "Remove all folder rules" action, or on uninstall)
-- Handle an includeIf section the user shares with a Trellis entry (extra keys in the same subsection) instead of leaving it in place
+- Clean up Glowfly's includeIf entries and include files from the global config (a "Remove all folder rules" action, or on uninstall)
+- Handle an includeIf section the user shares with a Glowfly entry (extra keys in the same subsection) instead of leaving it in place
 - Rules on other conditions git offers (hasconfig:remote.*.url for a hosting-service account, onbranch:)
 - Show which profile applies in the tab bar or the repository list, not only in the commit box and the Profile page
 - Warn when GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL or GIT_COMMITTER_* in the environment override the identity a rule gives
@@ -2392,14 +2392,14 @@ here, under the item they grew from.
 - Compare any commit's version with the working file in the diff tool (from file history and
   blame)
 - Console diff/merge tools started in a terminal window
-- Cancel a running merge tool from Trellis
+- Cancel a running merge tool from Glowfly
 - Option to mark the file resolved automatically when the merge tool saves it and exits with 0
 - Name the temp folders after the sides' branch names instead of ours/theirs
-- Remove the diff tool's temporary copies when Trellis quits, not only by the 24-hour sweep
+- Remove the diff tool's temporary copies when Glowfly quits, not only by the 24-hour sweep
 - git config's GUI choice: diff.guitool / merge.guitool and difftool.guiDefault (git difftool --gui)
 - Name git config's tool in the file menus' hover notes and the palette's detail (needs a cached read per repository)
 - Run console merge tools (vimdiff, nvimdiff, emerge in a terminal) in a built-in terminal tab
-- Honour mergetool.keepBackup / keepTemporaries / hideResolved for commands Trellis runs itself
+- Honour mergetool.keepBackup / keepTemporaries / hideResolved for commands Glowfly runs itself
 - Open the diff once the trust prompt is accepted (hold the diff tool like a held job)
 - Suggest git's built-in tool names (git difftool --tool-help) on the External tools page
 - Use a built-in tool's own trusted exit code when the user overrides its cmd
@@ -2424,13 +2424,13 @@ here, under the item they grew from.
 
 - Passphrase prompts for X.509 (gpgsm) signing through gpg.x509.program
 - A git banner reason saying git older than 2.31 keeps GnuPG's own passphrase window
-- Use Trellis's prompt when Trellis was started with GIT_CONFIG_COUNT set (append at the next
+- Use Glowfly's prompt when Glowfly was started with GIT_CONFIG_COUNT set (append at the next
   index)
 - Wording for smartcard PIN and touch requests (loopback with a card is unverified)
 - Show the key's expiry date in the passphrase dialog
 - Signing passphrase prompts for git commands typed in the terminal panel
 - Ask again after a wrong SSH signing passphrase (ssh-keygen stops at the first; would need
-  Trellis as gpg.ssh.program re-running -Y sign on git's payload file)
+  Glowfly as gpg.ssh.program re-running -Y sign on git's payload file)
 - Reuse the SSH signing passphrase for the rest of a job that signs many commits (rebase,
   cherry-pick of a range)
 - Offer to add the signing key to ssh-agent from the SSH signing passphrase dialog
@@ -2492,7 +2492,7 @@ here, under the item they grew from.
 - GitHub issue types and milestones when creating an issue
 - GitLab milestones, epics and several assignees (paid tiers) when creating an issue
 - Jira priority, components, fix versions, sprint, Epic Name and other required custom fields when creating an issue
-- Open the tracker's own new-issue page in the browser when creating in Trellis fails on required fields
+- Open the tracker's own new-issue page in the browser when creating in Glowfly fails on required fields
 - GitHub issue templates in the Create issue dialog
 - Remember the "Create a branch for it afterwards" choice
 - Open the issue panel from issue references in commit details and branch names
@@ -2518,7 +2518,7 @@ here, under the item they grew from.
 
 ### Trello
 
-- Sign in through Trello's browser authorization flow (redirect back to Trellis) instead of
+- Sign in through Trello's browser authorization flow (redirect back to Glowfly) instead of
   pasting the API key and token
 - Show card labels as coloured chips, and filter the ISSUES list by list or label
 - Recognise board-local card numbers (#12) and bare short ids in commit text, once a board is
@@ -2577,7 +2577,7 @@ here, under the item they grew from.
 ### Custom themes
 
 - Reload theme files automatically when they change on disk (watch the themes folder)
-- Follow system with a chosen dark and light theme pair (today it picks Trellis Dark or Trellis Light)
+- Follow system with a chosen dark and light theme pair (today it picks Glowfly Dark or Glowfly Light)
 - A theme file based on another theme file (inheritance, with loops detected across files)
 - Edit colors in Preferences with a color picker and live preview, saved to the theme file
 - Suggest the closest color name for an unknown key ("acent" -> "accent")
@@ -2608,7 +2608,7 @@ here, under the item they grew from.
 - Find gits bundled inside other applications and IDEs (versioned app folders) during discovery
 - Type or paste a git path in a text field as well as Browse…
 - Choose a git per repository (e.g. a WSL git for repositories under `\\wsl$`)
-- Re-check the chosen git's version automatically when it is upgraded while Trellis runs (Look again covers it by hand)
+- Re-check the chosen git's version automatically when it is upgraded while Glowfly runs (Look again covers it by hand)
 - Run every command of a multi-command job with the git it started with, even when another git is chosen meanwhile
 
 ### Logs
@@ -2620,7 +2620,7 @@ here, under the item they grew from.
 - Record how long queued effects wait behind a repository's queue, and time the stats and path-search workers
 - Leave time spent waiting on a credential or passphrase prompt out of git job timings
 - Rotate the error and performance logs by day as well as by size
-- Keep two Trellis instances' activity logs apart (one file per instance or a lock during trims)
+- Keep two Glowfly instances' activity logs apart (one file per instance or a lock during trims)
 - Open a log file in the system's text editor from the panel
 
 ### Onboarding
@@ -2648,8 +2648,8 @@ here, under the item they grew from.
 
 - Offer to add the link's remote when the repository matched by root commit has no remote with that URL
 - Copy link to a commit or tag on a chosen remote
-- Forward `trellis <path>` to the running window too, not only links
-- A palette step to paste and open a trellis:// link
+- Forward `glowfly <path>` to the running window too, not only links
+- A palette step to paste and open a glowfly:// link
 - Links to a file or line at a commit, and to a stash or pull request
 - A progress toast while a link is resolved against long recent lists
 - Linux fallback that edits mimeapps.list when xdg-mime isn't installed
@@ -2666,7 +2666,7 @@ here, under the item they grew from.
 - Remember the Mine / Review requested / Assigned choice across sessions
 - Add repositories found by scanning a folder, beyond tabs, favorites and recent
 - Treat service repository names that differ only in case as one repository when grouping clones
-- Open issue rows in the in-app issue panel once issues can be viewed in Trellis
+- Open issue rows in the in-app issue panel once issues can be viewed in Glowfly
 - Apply saved PR and issue filters (labels, milestones) across repositories
 - Check out a pull request's branch from the dashboard
 - Created/updated dates on pull request and issue rows (the service models don't carry them yet)
@@ -2686,7 +2686,7 @@ here, under the item they grew from.
 ### Menu bar
 
 - A key to show or hide the menu bar, and Alt showing it for one use while it is hidden
-- About Trellis and Quit as command palette entries
+- About Glowfly and Quit as command palette entries
 - A Show menu bar button in the status bar while the menu bar is hidden
 - Repository and Branch menus (fetch, pull, push, stash, new branch and tag)
 - Recently closed tabs as a submenu, to reopen any of them
@@ -2696,9 +2696,9 @@ here, under the item they grew from.
 
 - A download progress bar (bytes and percent) with Cancel, streaming the file to disk instead of holding it in memory
 - Skip this version: don't offer a release again until a newer one is out
-- "Open in Trellis" in Windows 11's modern context menu (an IExplorerCommand with a sparse package)
-- "Open in Trellis" on drives as well as folders
-- Register an AppUserModelID on the Start menu shortcut and the process, so notifications carry Trellis's name
+- "Open in Glowfly" in Windows 11's modern context menu (an IExplorerCommand with a sparse package)
+- "Open in Glowfly" on drives as well as folders
+- Register an AppUserModelID on the Start menu shortcut and the process, so notifications carry Glowfly's name
 - Sign SHA256SUMS (minisign or GPG) and check that signature in the app before trusting the checksums
 - Azure Trusted Signing as an alternative to a PFX certificate for Windows signing
 - A beta channel that offers pre-releases to users who opt in
@@ -2708,10 +2708,10 @@ here, under the item they grew from.
 
 - Start the installed MSI copy's window with the smoke probe on the Windows runner once it has OpenGL 2 (Mesa llvmpipe or the Windows smoke job's setup)
 - Run the installer checks from the Release workflow (workflow_call) against the files it uploads, before SHA256SUMS is published
-- A macOS DMG check: mount the image, copy Trellis.app to a temporary Applications folder, start it, and check that the update check picks the .dmg
-- Attach to the parent console on Windows so `trellis --version` and `--check-update` print in a terminal without redirection
-- Show in Preferences > Updates when a local update feed (TRELLIS_UPDATE_FEED) is in use
-- Accept an https mirror URL in TRELLIS_UPDATE_FEED besides a local folder
+- A macOS DMG check: mount the image, copy Glowfly.app to a temporary Applications folder, start it, and check that the update check picks the .dmg
+- Attach to the parent console on Windows so `glowfly --version` and `--check-update` print in a terminal without redirection
+- Show in Preferences > Updates when a local update feed (GLOWFLY_UPDATE_FEED) is in use
+- Accept an https mirror URL in GLOWFLY_UPDATE_FEED besides a local folder
 - Validate the MSI with `wix msi validate` (ICE checks) in the Installers workflow
 - Check the MSI's Options page choices (no desktop shortcut, no folder menu, no scheme) with silent installs that set DESKTOPSHORTCUT, FOLDERMENU and LINKSCHEME to empty, and that an upgrade keeps them off
 - Install the .deb through apt (`apt-get install ./file.deb`) to check dependency resolution on a minimal image
@@ -3036,7 +3036,7 @@ here, under the item they grew from.
 - The search bar's fixed count slot leaves the query field at its 160 px minimum in a
   740 px graph pane; shrink the slot or move the count under the field when narrow
 
-### Trellis's own wording
+### Glowfly's own wording
 
 - Translate the rest of the Commit signing page (labels, help, expiry warning, key generation)
 - Translate the worktree WIP row's tooltip lines and change counts ("2 modified, 1 added")
@@ -3257,7 +3257,7 @@ here, under the item they grew from.
   hover tooltips, dragging a repository tab and a graph column's resize handle
 - Typing non-ASCII text and dead keys (a remapped keycode, a German layout through setxkbmap)
   and an IME pass
-- A clipboard round trip with real Ctrl+C / Ctrl+V between Trellis and another X client
+- A clipboard round trip with real Ctrl+C / Ctrl+V between Glowfly and another X client
 - Keep each step's screenshots as an artifact on success too, for visual review of release
   builds
 - Share the probe's region_of with journey/find.rs so the journeys and the smoke test name
@@ -3272,13 +3272,13 @@ here, under the item they grew from.
   with different DPI (WM_DPICHANGED)
 - A UI Automation pass over the AccessKit tree beside SendInput (Invoke and Value patterns, and
   checking the names a screen reader gets)
-- Alt+Tab back into Trellis with real keys (releasing Alt must not open the title bar menu), and
+- Alt+Tab back into Glowfly with real keys (releasing Alt must not open the title bar menu), and
   Alt+Space opening the system menu
 - The drawn title bar with real input: dragging the window by it, a double-click to maximize,
   Snap Layouts over Maximize, and the Minimize, Maximize and Close buttons
 - Typing through another keyboard layout (German via LoadKeyboardLayout), dead keys,
   KEYEVENTF_UNICODE text and an IME pass
-- A clipboard round trip with real Ctrl+C and Ctrl+V between Trellis and another window
+- A clipboard round trip with real Ctrl+C and Ctrl+V between Glowfly and another window
 - Run the Windows smoke job against the installed MSI instead of target/release
 - Keep each step's screenshots as an artifact on success too
 - One shared list of the labels and checks both smoke scripts read, so Linux and Windows can't
@@ -3293,7 +3293,7 @@ here, under the item they grew from.
 - Animate the progress bar's fill and the step change
 - Arrow keys move the focus between the Start step's cards
 - Give each start card its description as the accessible description, not only its title
-- A Recent repositories card on the Start step when Trellis already knows repositories (Show
+- A Recent repositories card on the Start step when Glowfly already knows repositories (Show
   the welcome again)
 - Greet with a typed name the user skipped saving, or with the active profile's name
 - Hide the lattice drawing under a reduced-motion or plain-look setting, if one is added

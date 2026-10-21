@@ -1,5 +1,5 @@
 //! Starting the external editor or a custom terminal (`Effect::Tool`), and the dialog that
-//! picks a tool's program. Trellis never waits for the editor, terminal or diff tool; only a
+//! picks a tool's program. Glowfly never waits for the editor, terminal or diff tool; only a
 //! failure to start one is reported. The diff and merge tools are in `compare`, and git config's
 //! (when Preferences sets none) in `git_tool`.
 
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn a_missing_file_is_reported_before_anything_starts() {
-        let gone = glowfly_core::paths::temp_dir().join(format!("trellis-no-such-file-{}", std::process::id())).join("gone.txt");
+        let gone = glowfly_core::paths::temp_dir().join(format!("glowfly-no-such-file-{}", std::process::id())).join("gone.txt");
         // `git` would start; the missing file stops it first.
         let m =
             run(ToolEffect::Launch { kind: ToolKind::Editor, launch: launch("git"), target: "gone.txt".into(), check: Some(gone.clone()) });
@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn a_missing_program_is_not_found() {
-        let program = format!("trellis-no-such-editor-{}", std::process::id());
+        let program = format!("glowfly-no-such-editor-{}", std::process::id());
         let m = run(ToolEffect::Launch { kind: ToolKind::Terminal, launch: launch(&program), target: "repo".into(), check: None });
         match m {
             Some(Msg::Tools(ToolsMsg::LaunchFailed { kind: ToolKind::Terminal, program: p, target, failure: LaunchFailure::NotFound })) => {

@@ -120,7 +120,7 @@ fn saved_end_to_end_with_show_in_folder() {
 }
 
 #[test]
-fn a_row_trellis_cannot_name_is_refused() {
+fn a_row_glowfly_cannot_name_is_refused() {
     let (mut st, dir) = dirty("patch-wip-hazard");
     let shown = "caf\\xE9.txt";
     let odd = FileEntry { hazard: Some(Hazard::NotUtf8(b"caf\xe9.txt".to_vec())), ..FileEntry::new(shown, '?') };

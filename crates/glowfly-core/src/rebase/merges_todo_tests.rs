@@ -34,13 +34,13 @@ fn label(n: u8) -> TodoStep {
 }
 
 #[cfg(windows)]
-const MSG_DIR: &str = "C:\\repo\\.git\\trellis-rebase";
+const MSG_DIR: &str = "C:\\repo\\.git\\glowfly-rebase";
 #[cfg(windows)]
-const QUOTED_DIR: &str = "C:/repo/.git/trellis-rebase";
+const QUOTED_DIR: &str = "C:/repo/.git/glowfly-rebase";
 #[cfg(not(windows))]
-const MSG_DIR: &str = "/repo/.git/trellis-rebase";
+const MSG_DIR: &str = "/repo/.git/glowfly-rebase";
 #[cfg(not(windows))]
-const QUOTED_DIR: &str = "/repo/.git/trellis-rebase";
+const QUOTED_DIR: &str = "/repo/.git/glowfly-rebase";
 
 /// A list in the shape `merges::script` makes: two lines and the merge joining them.
 fn list(merge_action: RebaseAction) -> Vec<TodoStep> {

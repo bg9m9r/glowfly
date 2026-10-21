@@ -55,7 +55,7 @@ fn bursts_merge_and_ignore_nothing() {
 #[test]
 fn linked_worktree_folder_modifies_are_quiet() {
     use notify::event::{CreateKind, DataChange, MetadataKind, RemoveKind, RenameMode};
-    let wd = glowfly_core::paths::temp_dir().join("trellis-watch-kinds-missing");
+    let wd = glowfly_core::paths::temp_dir().join("glowfly-watch-kinds-missing");
     let gd = wd.join(".git");
     let paths = WatchPaths::new(&wd, &gd);
     let mut ignores = Ignores::open(&wd);
@@ -104,7 +104,7 @@ fn bursts_collect_paths_until_something_else_changes() {
 #[test]
 fn events_name_their_work_tree_paths() {
     use notify::event::{CreateKind, ModifyKind, RenameMode};
-    let wd = glowfly_core::paths::temp_dir().join("trellis-watch-names-missing");
+    let wd = glowfly_core::paths::temp_dir().join("glowfly-watch-names-missing");
     let paths = WatchPaths::new(&wd, &wd.join(".git"));
     let mut ignores = Ignores::open(&wd);
     let rename =
@@ -180,7 +180,7 @@ fn watcher_reports_an_outside_edit() {
     while !next_change(&rx, &dir, deadline.saturating_duration_since(Instant::now())).expect("a full refresh") {}
     while next_change(&rx, &dir, Duration::from_secs(1)).is_some() {}
 
-    // A remote added outside Trellis: the config reloads everything.
+    // A remote added outside Glowfly: the config reloads everything.
     git(&dir, &["remote", "add", "origin", "https://example.com/r.git"]);
     assert_eq!(next_change(&rx, &dir, Duration::from_secs(10)), Some(true), "the config reloads in full");
     // Let any trailing burst finish before checking that ignored files stay quiet.

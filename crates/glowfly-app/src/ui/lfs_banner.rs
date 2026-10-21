@@ -1,6 +1,6 @@
 //! The banner under the toolbar when the active repository stores files in Git LFS but git-lfs
 //! isn't installed, with the install help and the Git LFS page. Dismissed per repository until
-//! Trellis restarts (state/lfs_notes.rs, update/lfs.rs).
+//! Glowfly restarts (state/lfs_notes.rs, update/lfs.rs).
 
 use crate::lfs::LfsMsg;
 use crate::msg::{Msg, PrefsMsg};

@@ -1,7 +1,7 @@
 //! The bundled syntax definitions, the scope-to-kind rules and language detection.
 //!
 //! The set is dumped at build time by `build.rs`: the curated two-face set (syntect's defaults
-//! plus TOML, TypeScript, Dockerfile, Kotlin, Swift and many more) merged with Trellis's own
+//! plus TOML, TypeScript, Dockerfile, Kotlin, Swift and many more) merged with Glowfly's own
 //! grammars in `crates/glowfly-core/syntaxes/` (PowerShell). Loading the dump takes under 1 ms;
 //! regexes compile lazily, the first time a language is parsed.
 //!

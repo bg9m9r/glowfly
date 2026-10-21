@@ -1,7 +1,7 @@
 //! A profile's folder rules (Preferences > Profile > Folders): adding and removing them (a
 //! folder belongs to one profile at most, and only a profile with an author email gets one),
 //! and which rule git applies to a git dir, mirrored from git's `includeIf.gitdir` matching so
-//! Trellis knows what to expect (the deepest folder wins, as the entries are written
+//! Glowfly knows what to expect (the deepest folder wins, as the entries are written
 //! shallow-first and git's last include wins). Pure: the rules were resolved on disk when added
 //! (`profile_includes::check_folder`).
 
@@ -73,7 +73,7 @@ impl Settings {
 
 /// Whether git applies `rule` to a repository whose git dir is `git_dir`: the git dir is the
 /// rule's folder or inside it, as `gitdir:<folder>/` matches. An `ignore_case` rule (`gitdir/i`)
-/// compares ASCII letters without case, as git does; mirroring git is the one place Trellis
+/// compares ASCII letters without case, as git does; mirroring git is the one place Glowfly
 /// folds case itself.
 pub fn rule_matches(rule: &FolderRule, git_dir: &Path) -> bool {
     let folder = paths::decode(&rule.path);

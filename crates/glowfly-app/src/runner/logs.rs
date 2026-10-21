@@ -22,7 +22,7 @@ use std::time::Duration;
 const MAX_APPEND_FAILURES: u8 = 3;
 
 /// No folder: the error for the file tabs and Open logs folder.
-const NO_FOLDER: &str = "Trellis has no folder for its logs on this system.";
+const NO_FOLDER: &str = "Glowfly has no folder for its logs on this system.";
 
 pub(super) enum Job {
     Effect(LogsEffect),
@@ -62,7 +62,7 @@ impl LogWorker {
         self.file_detail = setup.file_detail;
         let (jobs, rx) = channel();
         let state = Worker::new(setup.dir, Arc::clone(&self.extended), tx, waker);
-        if let Err(e) = std::thread::Builder::new().name("trellis-logs".into()).spawn(move || state.run(rx)) {
+        if let Err(e) = std::thread::Builder::new().name("glowfly-logs".into()).spawn(move || state.run(rx)) {
             tracing::error!("could not start the log thread: {e}");
             return None;
         }

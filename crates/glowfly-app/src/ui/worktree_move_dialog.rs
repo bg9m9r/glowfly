@@ -35,7 +35,7 @@ pub fn move_worktree(ui: &mut egui::Ui, cx: Cx, form: &mut MoveForm, snap: Optio
     let group =
         FieldGroup::new("New folder").message(&form.touched, "folder", message).help("A tab showing it follows it to the new folder.");
     let r = group.show(ui, |ui| {
-        let field = TextField::new(&mut form.folder).id(Id::new("trellis-worktree-move-folder"));
+        let field = TextField::new(&mut form.folder).id(Id::new("glowfly-worktree-move-folder"));
         let (r, b) = text_field::with_button(ui, field, buttons::secondary("Browse…"));
         browse = b.clicked();
         r

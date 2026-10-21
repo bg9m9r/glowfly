@@ -1,5 +1,5 @@
 //! Messages of the repository trust prompt (update/trust.rs) and of passing trust on to the
-//! repositories Trellis makes from a trusted one (update/trust_inherit.rs).
+//! repositories Glowfly makes from a trusted one (update/trust_inherit.rs).
 
 use super::Inactive;
 use crate::state::trust::InheritKind;

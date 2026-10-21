@@ -381,7 +381,7 @@ pub enum Effect {
     Logs(crate::logs::LogsEffect),
     /// The pull request panel's file list (scoped) and service calls (unscoped; pull_request.rs).
     PullRequest(crate::pull_request::PrEffect),
-    /// Building and finding trellis:// links, and the scheme registration (deep_link.rs); unscoped.
+    /// Building and finding glowfly:// links, and the scheme registration (deep_link.rs); unscoped.
     DeepLink(crate::deep_link::DeepLinkEffect),
     /// The cross-repository dashboard (runner/dashboard.rs); unscoped; reads repositories with
     /// libgit2 and asks services.

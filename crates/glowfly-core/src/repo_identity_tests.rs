@@ -9,7 +9,7 @@ use crate::testutil::{empty_global_config, scratch_repo};
 const WORK: ProfileId = ProfileId(3);
 
 fn base() -> PathBuf {
-    paths::temp_dir().join("trellis-identity")
+    paths::temp_dir().join("glowfly-identity")
 }
 
 /// `--show-origin -z` output for (origin, key, value) entries.

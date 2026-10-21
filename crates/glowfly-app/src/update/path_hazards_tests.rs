@@ -1,4 +1,4 @@
-//! Rows Trellis won't act on: a name that isn't UTF-8 refuses every file action, and a path that
+//! Rows Glowfly won't act on: a name that isn't UTF-8 refuses every file action, and a path that
 //! shares one file on disk with another index path refuses the destructive ones, before any
 //! effect or confirmation.
 

@@ -134,7 +134,7 @@ impl Recovery {
     }
 
     fn message(self, panic: String) -> Msg {
-        let text = format!("Trellis hit an internal error ({}): {panic}", self.name);
+        let text = format!("Glowfly hit an internal error ({}): {panic}", self.name);
         let msg = match self.kind {
             Kind::Job(undo) => Msg::Job(JobMsg::JobDone { ok: false, output: text, undo }),
             Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(text), undo: None }),

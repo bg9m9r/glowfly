@@ -9,7 +9,7 @@ use crate::testutil::{git, scratch_repo, write};
 use std::path::{Path, PathBuf};
 
 fn file() -> PathBuf {
-    PathBuf::from("/repo/.git/TRELLIS_STASH_PATHS")
+    PathBuf::from("/repo/.git/GLOWFLY_STASH_PATHS")
 }
 
 fn cmd(scope: StashScope, message: Option<&str>, paths: &[&str]) -> PushCommand {
@@ -160,7 +160,7 @@ fn pathspec_file_stash() {
         write(&dir, p, "x\n");
     }
     write(&dir, "extra.txt", "extra\n");
-    let pathspec = dir.join(".git/TRELLIS_STASH_PATHS");
+    let pathspec = dir.join(".git/GLOWFLY_STASH_PATHS");
     let c = push_command(StashScope::Files, false, None, &paths, &pathspec);
     let contents = c.pathspec_file.expect("past the command-line limit");
     std::fs::write(&pathspec, contents).unwrap();

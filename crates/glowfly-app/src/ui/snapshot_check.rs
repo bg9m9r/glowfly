@@ -1,11 +1,11 @@
-//! The one way view tests compare against an approved image. With `TRELLIS_SKIP_SNAPSHOTS=1`
+//! The one way view tests compare against an approved image. With `GLOWFLY_SKIP_SNAPSHOTS=1`
 //! (CI on macOS and Linux, where the images were not rendered and wgpu may have no adapter) the
 //! comparison is skipped with a note, and the rest of each test (driving the harness, checking
 //! messages) still runs.
 
 use egui_kittest::{Harness, SnapshotError};
 
-pub(crate) const SKIP_VAR: &str = "TRELLIS_SKIP_SNAPSHOTS";
+pub(crate) const SKIP_VAR: &str = "GLOWFLY_SKIP_SNAPSHOTS";
 
 /// How many pixels may differ from the approved image before a comparison fails. The approved
 /// images were rendered on a developer machine; the Windows CI runner's renderer anti-aliases a

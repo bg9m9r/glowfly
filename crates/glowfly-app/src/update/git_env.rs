@@ -1,4 +1,4 @@
-//! The git Trellis runs (the startup check, the banner, features turned off for an old git,
+//! The git Glowfly runs (the startup check, the banner, features turned off for an old git,
 //! choosing another git in Preferences > Git) and repositories git refuses because another user
 //! owns them (explained, with an offer to list them in `safe.directory`).
 
@@ -121,7 +121,7 @@ fn switched(st: &mut AppState, program: Option<PathBuf>, info: GitInfo, now: Ins
     };
     st.git.info = Some(info);
     st.git.banner_dismissed = false;
-    st.log(true, format!("Trellis now runs {what}"));
+    st.log(true, format!("Glowfly now runs {what}"));
     // Another git may come with another git-lfs.
     super::lfs::handle(st, LfsMsg::Detect, now, fx);
 }
@@ -147,7 +147,7 @@ pub(super) fn owner_prompt(root: &Path) -> Modal {
         body: format!(
             "Git won't open {shown} because the folder belongs to another user account. This is usual for folders on a \
              network share or in WSL, on a FAT or exFAT drive, or copied from another computer. Git refuses them because a \
-             repository's own settings can make git run programs.\n\nIf you trust this folder, Trellis can list it in \
+             repository's own settings can make git run programs.\n\nIf you trust this folder, Glowfly can list it in \
              safe.directory in your global git config (as {value}) and open it."
         ),
         button: "Trust and open".into(),

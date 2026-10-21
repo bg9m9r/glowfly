@@ -2,7 +2,7 @@ use super::*;
 use crate::testutil::alias_of;
 
 fn dir(name: &str) -> PathBuf {
-    let d = temp_dir().join(format!("trellis-paths-{name}-{}", std::process::id()));
+    let d = temp_dir().join(format!("glowfly-paths-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     resolve(&d)
@@ -25,7 +25,7 @@ fn resolve_follows_a_link_and_keeps_a_missing_tail() {
 
 #[test]
 fn resolve_leaves_what_it_cannot_find() {
-    let p = Path::new("no-such-relative-folder-for-trellis");
+    let p = Path::new("no-such-relative-folder-for-glowfly");
     assert_eq!(resolve(p), p);
     // Relative paths are never resolved against the working folder.
     let rel = Path::new("src").join("no-such-file");
@@ -176,14 +176,14 @@ fn case_twins_on_the_temp_volume() {
 }
 
 /// A real case-sensitive volume or folder (CI: a case-sensitive APFS image on macOS, a folder
-/// with `fsutil file setCaseSensitiveInfo` on Windows), named by `TRELLIS_TEST_CS_DIR`.
+/// with `fsutil file setCaseSensitiveInfo` on Windows), named by `GLOWFLY_TEST_CS_DIR`.
 #[test]
 fn case_twins_on_a_case_sensitive_volume() {
-    let Some(base) = std::env::var_os("TRELLIS_TEST_CS_DIR").map(PathBuf::from) else {
-        eprintln!("note: TRELLIS_TEST_CS_DIR is not set; skipping the case-sensitive volume check");
+    let Some(base) = std::env::var_os("GLOWFLY_TEST_CS_DIR").map(PathBuf::from) else {
+        eprintln!("note: GLOWFLY_TEST_CS_DIR is not set; skipping the case-sensitive volume check");
         return;
     };
-    let root = base.join(format!("trellis-paths-cs-{}", std::process::id()));
+    let root = base.join(format!("glowfly-paths-cs-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).unwrap();
     assert!(case_twins_follow_the_volume(&root), "{} tells case apart", base.display());

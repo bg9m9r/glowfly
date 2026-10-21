@@ -113,7 +113,7 @@ fn only_hard_reset_and_discard_all_offer_to_stash() {
     assert!(!Action::DiscardAll { stash: o, head: o }.offers_stash(true));
     assert!(!Action::Moved { op: MoveOp::Merge, detail: None, branch: None, from: o, to: o }.offers_stash(false));
     assert_eq!(stash_first_command(), args(&["stash", "push", "-u", "-m", UNDO_STASH_MESSAGE]));
-    assert_eq!(UNDO_STASH_MESSAGE, "Trellis: changes before undo");
+    assert_eq!(UNDO_STASH_MESSAGE, "Glowfly: changes before undo");
 }
 
 #[test]

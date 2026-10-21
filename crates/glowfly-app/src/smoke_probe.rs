@@ -1,7 +1,7 @@
 //! The opt-in state file for the real-input smoke tests (`scripts/smoke-linux.sh`,
 //! `scripts/smoke-windows.ps1`): a small JSON description of what is on screen and in state,
 //! which the scripts read to find widgets by their accessible names and to check what isn't on
-//! disk. Off unless `TRELLIS_SMOKE_PROBE` names an absolute path; then the shell offers a
+//! disk. Off unless `GLOWFLY_SMOKE_PROBE` names an absolute path; then the shell offers a
 //! snapshot (`ui/probe.rs`) after every frame, and only a changed one is written, atomically,
 //! by this module's own thread. A write that fails (a reader holding the file on Windows, say)
 //! is retried until it lands or a newer snapshot replaces it, since an unchanged state is never
@@ -19,7 +19,7 @@ const RETRY: Duration = Duration::from_millis(50);
 const LAST_TRIES: u32 = 3;
 
 /// The variable that turns the probe on: the file to write.
-pub const ENV: &str = "TRELLIS_SMOKE_PROBE";
+pub const ENV: &str = "GLOWFLY_SMOKE_PROBE";
 
 /// The probe file named by the variable's `value`: None when it is unset, empty or relative (a
 /// relative path is ignored with a warning, since it would depend on where the app started).
@@ -162,13 +162,13 @@ mod tests {
         assert_eq!(probe_path(None), None);
         assert_eq!(probe_path(Some(OsString::new())), None);
         assert_eq!(probe_path(Some(OsString::from("probe.json"))), None);
-        let abs = glowfly_core::paths::temp_dir().join("trellis-probe-path");
+        let abs = glowfly_core::paths::temp_dir().join("glowfly-probe-path");
         assert_eq!(probe_path(Some(abs.clone().into_os_string())), Some(abs));
     }
 
     #[test]
     fn only_changed_snapshots_are_written_with_a_rising_seq() {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-probe-writer-{}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-probe-writer-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let path = dir.join("probe.json");
         let (mut w, thread) = ProbeWriter::spawn(path.clone());
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn a_failed_write_is_retried_until_it_lands() {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-probe-retry-{}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-probe-retry-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         // A file where the probe's folder should be: every write fails until it goes.
@@ -223,7 +223,7 @@ mod tests {
     fn a_reader_holding_the_file_delays_but_never_loses_the_snapshot() {
         use std::os::windows::fs::OpenOptionsExt;
         const FILE_SHARE_READ: u32 = 1;
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-probe-held-{}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-probe-held-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let path = dir.join("probe.json");
         let (mut w, thread) = ProbeWriter::spawn(path.clone());

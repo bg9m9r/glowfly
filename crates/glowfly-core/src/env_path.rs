@@ -1,4 +1,4 @@
-//! The PATH Trellis gives the programs it starts (git, ssh-keygen, gpg, editors, terminals).
+//! The PATH Glowfly gives the programs it starts (git, ssh-keygen, gpg, editors, terminals).
 //!
 //! An app started from the macOS Dock or Finder gets launchd's minimal PATH
 //! (`/usr/bin:/bin:/usr/sbin:/sbin`), not the one the user's shell sets up, so Apple's
@@ -73,7 +73,7 @@ pub fn merge(login: Option<&OsStr>, current: Option<&OsStr>, fallback: &[&str]) 
 
 /// What the login shell prints between this marker and the end is its PATH; anything a
 /// profile script echoes comes before it.
-const MARKER: &str = "__TRELLIS_PATH__";
+const MARKER: &str = "__GLOWFLY_PATH__";
 
 /// The PATH `shell` sets up as a login shell (`$SHELL -lc`), or None when it fails, prints
 /// nothing usable or takes longer than `timeout` (it is then killed).
@@ -153,9 +153,9 @@ mod tests {
 
     #[test]
     fn profile_chatter_before_the_marker_is_skipped() {
-        assert_eq!(parse_login_output("Welcome!\n__TRELLIS_PATH__/opt/homebrew/bin:/usr/bin"), Some("/opt/homebrew/bin:/usr/bin"));
-        assert_eq!(parse_login_output("__TRELLIS_PATH__/usr/bin\n"), Some("/usr/bin"));
-        for bad in ["", "/usr/bin", "__TRELLIS_PATH__", "__TRELLIS_PATH__relative:/x", "__TRELLIS_PATH__/a\n/b"] {
+        assert_eq!(parse_login_output("Welcome!\n__GLOWFLY_PATH__/opt/homebrew/bin:/usr/bin"), Some("/opt/homebrew/bin:/usr/bin"));
+        assert_eq!(parse_login_output("__GLOWFLY_PATH__/usr/bin\n"), Some("/usr/bin"));
+        for bad in ["", "/usr/bin", "__GLOWFLY_PATH__", "__GLOWFLY_PATH__relative:/x", "__GLOWFLY_PATH__/a\n/b"] {
             assert_eq!(parse_login_output(bad), None, "{bad:?}");
         }
     }
@@ -171,7 +171,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn a_shell_that_hangs_is_given_up_on() {
-        let dir = crate::paths::temp_dir().join(format!("trellis-env-path-{}", std::process::id()));
+        let dir = crate::paths::temp_dir().join(format!("glowfly-env-path-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let shell = dir.join("slow-shell");
         std::fs::write(&shell, "#!/bin/sh\nsleep 30\n").unwrap();

@@ -81,7 +81,7 @@ impl AddPathProblem {
             P::UnderTrackedFile(p) => format!("{p} is a tracked file, so {path} can't be a folder inside it."),
             P::Exists { file: true } => format!("{path} is a file. {choose}"),
             P::Exists { file: false } => format!("{path} already exists. {choose}"),
-            P::ParentLink(p) => format!("{p} is a symbolic link or junction; Trellis won't add a submodule through it."),
+            P::ParentLink(p) => format!("{p} is a symbolic link or junction; Glowfly won't add a submodule through it."),
             P::ParentFile(p) => format!("{p} is a file, so {path} can't be created."),
             P::ParentSpelling(why) => sentence(why),
             P::Ignored => format!("{path} is ignored by .gitignore, so git won't add a submodule there."),

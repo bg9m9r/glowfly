@@ -1,7 +1,8 @@
-//! The per-user `trellis` class key in the registry. Every function takes the classes key's
-//! path under `HKEY_CURRENT_USER`, so tests use a scratch key and never touch the real one.
+//! The per-user `glowfly` class key in the registry, and the old `trellis` one beside it. Every
+//! function takes the classes key's path under `HKEY_CURRENT_USER`, so tests use a scratch key
+//! and never touch the real one.
 
-use super::SchemeStatus;
+use super::{OLD_SCHEME, SCHEME, SchemeStatus};
 use crate::native_path::{native, wide};
 use ::windows::Win32::Foundation::ERROR_FILE_NOT_FOUND;
 use ::windows::Win32::System::Registry::{
@@ -24,7 +25,7 @@ pub(super) fn register(exe: &Path) -> Result<SchemeStatus, String> {
 }
 
 pub(super) fn unregister(exe: &Path) -> Result<SchemeStatus, String> {
-    unregister_at(CLASSES)?;
+    unregister_at(CLASSES, exe)?;
     status_at(CLASSES, exe)
 }
 
@@ -70,7 +71,7 @@ fn set(key: &Key, name: Option<&str>, value: &str) -> Result<(), String> {
     // NUL-terminated UTF-16 string; both outlive the call.
     let r = unsafe { RegSetValueExW(key.0, name_ptr, None, REG_SZ, Some(&data)) };
     if r.is_err() {
-        return Err(format!("Couldn't write a registry value for trellis:// links (error {}).", r.0));
+        return Err(format!("Couldn't write a registry value for {SCHEME}:// links (error {}).", r.0));
     }
     Ok(())
 }
@@ -126,22 +127,35 @@ pub(super) fn delete_tree(path: &str) -> Result<(), String> {
 }
 
 pub(super) fn status_at(root: &str, exe: &Path) -> Result<SchemeStatus, String> {
-    let command = default_value(&format!(r"{root}\trellis\shell\open\command"))?;
+    scheme_status_at(root, SCHEME, exe)
+}
+
+fn scheme_status_at(root: &str, scheme: &str, exe: &Path) -> Result<SchemeStatus, String> {
+    let command = default_value(&format!(r"{root}\{scheme}\shell\open\command"))?;
     Ok(super::decide_windows(command.as_deref(), exe))
 }
 
+/// Registers both schemes for `exe`: `glowfly`, and `trellis` so links made before the rename
+/// open here too.
 pub(super) fn register_at(root: &str, exe: &Path) -> Result<SchemeStatus, String> {
-    let base = format!(r"{root}\trellis");
-    let key = create(&base)?;
-    set(&key, None, "URL:Trellis link")?;
-    set(&key, Some("URL Protocol"), "")?;
-    set(&create(&format!(r"{base}\DefaultIcon"))?, None, &format!("\"{}\",0", native(exe).display()))?;
-    set(&create(&format!(r"{base}\shell\open\command"))?, None, &super::windows_command(exe))?;
+    for scheme in [SCHEME, OLD_SCHEME] {
+        let base = format!(r"{root}\{scheme}");
+        let key = create(&base)?;
+        set(&key, None, "URL:Glowfly link")?;
+        set(&key, Some("URL Protocol"), "")?;
+        set(&create(&format!(r"{base}\DefaultIcon"))?, None, &format!("\"{}\",0", native(exe).display()))?;
+        set(&create(&format!(r"{base}\shell\open\command"))?, None, &super::windows_command(exe))?;
+    }
     status_at(root, exe)
 }
 
-pub(super) fn unregister_at(root: &str) -> Result<(), String> {
-    delete_tree(&format!(r"{root}\trellis"))
+/// Removes the `glowfly` key, and the `trellis` one when it opens links with `exe` (another
+/// program's registration is left alone).
+pub(super) fn unregister_at(root: &str, exe: &Path) -> Result<(), String> {
+    if scheme_status_at(root, OLD_SCHEME, exe)? == SchemeStatus::Registered {
+        delete_tree(&format!(r"{root}\{OLD_SCHEME}"))?;
+    }
+    delete_tree(&format!(r"{root}\{SCHEME}"))
 }
 
 #[cfg(test)]
@@ -160,16 +174,27 @@ mod tests {
     #[test]
     fn register_and_unregister_under_a_scratch_key() {
         let token = crate::askpass::protocol::new_token().unwrap();
-        let root = Scratch(format!(r"Software\Trellis-tests-{token}"));
-        let exe = crate::paths::temp_dir().join("Trellis Test").join("glowfly.exe");
+        let root = Scratch(format!(r"Software\Glowfly-tests-{token}"));
+        let exe = crate::paths::temp_dir().join("Glowfly Test").join("glowfly.exe");
         let other = crate::paths::temp_dir().join("Other").join("other.exe");
         assert_eq!(status_at(&root.0, &exe), Ok(SchemeStatus::NotRegistered));
         assert_eq!(register_at(&root.0, &exe), Ok(SchemeStatus::Registered));
-        assert_eq!(default_value(&format!(r"{}\trellis", root.0)), Ok(Some("URL:Trellis link".to_owned())));
+        assert_eq!(default_value(&format!(r"{}\glowfly", root.0)), Ok(Some("URL:Glowfly link".to_owned())));
+        // trellis:// links from before the rename open here too.
+        assert_eq!(scheme_status_at(&root.0, OLD_SCHEME, &exe), Ok(SchemeStatus::Registered));
         register_at(&root.0, &other).unwrap();
         assert_eq!(status_at(&root.0, &exe), Ok(SchemeStatus::OtherProgram(super::super::windows_command(&other))));
-        unregister_at(&root.0).unwrap();
+        unregister_at(&root.0, &other).unwrap();
         assert_eq!(status_at(&root.0, &exe), Ok(SchemeStatus::NotRegistered));
-        unregister_at(&root.0).unwrap();
+        assert_eq!(scheme_status_at(&root.0, OLD_SCHEME, &exe), Ok(SchemeStatus::NotRegistered));
+        unregister_at(&root.0, &exe).unwrap();
+
+        // Another program's trellis:// registration stays when this copy unregisters.
+        register_at(&root.0, &exe).unwrap();
+        let old = create(&format!(r"{}\{OLD_SCHEME}\shell\open\command", root.0)).unwrap();
+        set(&old, None, &super::super::windows_command(&other)).unwrap();
+        unregister_at(&root.0, &exe).unwrap();
+        assert_eq!(status_at(&root.0, &exe), Ok(SchemeStatus::NotRegistered));
+        assert!(matches!(scheme_status_at(&root.0, OLD_SCHEME, &exe), Ok(SchemeStatus::OtherProgram(_))));
     }
 }

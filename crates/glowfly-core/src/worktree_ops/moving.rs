@@ -15,7 +15,7 @@ pub fn move_cmd(from: &Path, to: &Path) -> Vec<String> {
 #[derive(Clone, Debug, PartialEq)]
 pub enum MoveProblem {
     /// Something (a file, a folder, a link) is already at the path. git would move the worktree
-    /// inside an existing folder, which Trellis never asks for.
+    /// inside an existing folder, which Glowfly never asks for.
     Taken,
     /// The path couldn't be read; the OS error.
     Unreadable(String),

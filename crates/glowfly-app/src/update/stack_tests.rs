@@ -191,7 +191,7 @@ fn a_single_step_restack_dropped_after_a_stop_says_so_unless_it_finished() {
     assert!(st.restacks.is_empty());
     assert!(logged(&st, "The restack ended early. Not restacked: top."));
 
-    // Finished outside Trellis: nothing was left undone, so nothing is logged.
+    // Finished outside Glowfly: nothing was left undone, so nothing is logged.
     st.log.clear();
     drive(&mut st, above_low());
     assert_eq!(st.restacks.len(), 1);

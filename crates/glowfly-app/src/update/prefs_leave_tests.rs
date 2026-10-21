@@ -156,7 +156,7 @@ fn gitflow_edited(name: &str, feature: &str) -> (AppState, std::path::PathBuf) {
 #[test]
 fn git_flow_discard_resets_the_form_and_switches_the_tab() {
     let (mut st, dir) = gitflow_edited("leave-tab", "feat/");
-    st.tabs.push(Tab::unloaded(glowfly_core::paths::temp_dir().join("trellis-other-tab")));
+    st.tabs.push(Tab::unloaded(glowfly_core::paths::temp_dir().join("glowfly-other-tab")));
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     assert!(asking(&st));
     assert_eq!(st.active_tab, 0);
@@ -183,7 +183,7 @@ fn git_flow_saves_through_its_job_and_then_leaves() {
 #[test]
 fn a_refused_git_flow_save_stays() {
     let (mut st, dir) = gitflow_edited("leave-refused", "");
-    st.tabs.push(Tab::unloaded(glowfly_core::paths::temp_dir().join("trellis-other-tab")));
+    st.tabs.push(Tab::unloaded(glowfly_core::paths::temp_dir().join("glowfly-other-tab")));
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     run(&mut st, Msg::ConfirmAccepted);
     let p = st.prefs.as_ref().unwrap();

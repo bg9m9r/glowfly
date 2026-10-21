@@ -21,7 +21,7 @@ const MIN_COLS: u16 = 10;
 pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mut Vec<Msg>) {
     let font = FontId::monospace(st.settings.terminal.font_px());
     let (cw, rh) = ui.fonts(|f| super::metrics::cell_size(f, &font));
-    let id = Id::new("trellis-terminal-grid");
+    let id = Id::new("glowfly-terminal-grid");
     let (rect, _) = ui.allocate_exact_size(ui.available_size(), Sense::hover());
     let resp = ui.interact(rect, id, Sense::click_and_drag());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, "Terminal screen"));

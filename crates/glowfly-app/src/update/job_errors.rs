@@ -12,13 +12,13 @@ use glowfly_core::paths::same_spelling;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::stash_ops::StashScope;
 
-/// A failure toast's text and the button that fixes its cause, if Trellis has one.
+/// A failure toast's text and the button that fixes its cause, if Glowfly has one.
 pub(super) struct Explained {
     pub text: String,
     pub fix: Option<ToastAction>,
 }
 
-/// Explains `job`'s failure from its `output`, when git's cause is one Trellis recognises.
+/// Explains `job`'s failure from its `output`, when git's cause is one Glowfly recognises.
 /// `retry` is the guarded operation it ran without stashing (update/auto_stash.rs), for
 /// Stash and <op>.
 pub(super) fn explain(st: &AppState, job: &RunningJob, retry: Option<StashRetry>, output: &str) -> Option<Explained> {

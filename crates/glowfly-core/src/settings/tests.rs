@@ -93,7 +93,7 @@ fn remember_https_credentials_default_on() {
 
 #[test]
 fn gpg_prompts_in_app_default_on() {
-    // Files written before the setting existed ask for signing passphrases in Trellis.
+    // Files written before the setting existed ask for signing passphrases in Glowfly.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
     assert!(s.gpg_prompts_in_app);
     assert!(Settings::default().gpg_prompts_in_app);
@@ -299,7 +299,7 @@ pub(super) fn json(s: &Settings) -> serde_json::Value {
 }
 
 pub(super) fn scratch_settings(name: &str, text: &[u8]) -> (std::path::PathBuf, std::path::PathBuf) {
-    let dir = crate::paths::temp_dir().join(format!("trellis-settings-{name}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-settings-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("settings.json");
@@ -356,7 +356,7 @@ fn unknown_value_resets_only_that_setting() {
 
 #[test]
 fn missing_file_is_not_a_problem() {
-    let dir = crate::paths::temp_dir().join(format!("trellis-settings-missing-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-settings-missing-{}", std::process::id()));
     let (s, problem) = Settings::load_from(&dir.join("settings.json"));
     assert_eq!((json(&s), problem), (json(&Settings::default()), None));
 }
@@ -393,7 +393,7 @@ fn trust_prints_round_trip_and_follow_the_decision() {
     assert_eq!(s.saved_trust(std::path::Path::new("/w/a")), Some(SavedTrust::trusted(None)));
 
     let mut s = Settings::default();
-    let real = crate::paths::temp_dir().join("trellis-print-key");
+    let real = crate::paths::temp_dir().join("glowfly-print-key");
     let print = TrustPrint(["0123456789abcdef".to_string()].into());
     s.set_trust(&real, Some(SavedTrust::trusted(Some(print.clone()))));
     let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();

@@ -1,4 +1,4 @@
-//! Messages of Trellis's own updates and release notes (update/updates.rs).
+//! Messages of Glowfly's own updates and release notes (update/updates.rs).
 
 use super::Inactive;
 use glowfly_core::app_update::{InstallKind, Release};

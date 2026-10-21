@@ -1,7 +1,7 @@
 //! The palette's issue entries: Create issue… whenever the repository has a tracker (with the
 //! reason as its detail while creating is blocked) or is on Bitbucket Data Center (which has no
 //! tracker of its own: the detail says to choose Jira), and View issue… while the tracker has
-//! issue details in Trellis and issues are listed.
+//! issue details in Glowfly and issues are listed.
 
 use super::{Entry, PaletteCommand, entry, with_detail};
 use crate::state::AppState;
@@ -33,7 +33,7 @@ fn listed(st: &AppState) -> usize {
     st.forge.as_ref().map_or(0, |f| crate::state::palette::issues_to_view(f).len())
 }
 
-/// Whether View issue… can be offered: a tracker with issue details in Trellis, and issues
+/// Whether View issue… can be offered: a tracker with issue details in Glowfly, and issues
 /// listed.
 pub fn can_view(st: &AppState) -> bool {
     st.forge.as_ref().and_then(|f| f.tracker.as_ref()).is_some_and(|t| issues_in_app(t.provider)) && listed(st) > 0

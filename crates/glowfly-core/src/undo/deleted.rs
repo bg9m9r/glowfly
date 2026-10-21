@@ -23,7 +23,7 @@ pub enum DeleteVia {
 }
 
 /// The trashes a delete can use: the system's, and the home Trash for a file whose drive has
-/// none Trellis can use. Production code passes `repo::os_trash` and `repo::home_trash`; tests
+/// none Glowfly can use. Production code passes `repo::os_trash` and `repo::home_trash`; tests
 /// pass stand-ins.
 #[derive(Clone, Copy, Debug)]
 pub struct Trashers {

@@ -24,7 +24,7 @@ fn rows(ui: &mut egui::Ui, p: &ServicePicker, msgs: &mut Vec<Msg>) {
         return;
     }
     let row_height = ui.spacing().interact_size.y;
-    let area = egui::ScrollArea::vertical().id_salt("trellis-clone-repo-list").max_height(220.0).auto_shrink([false, true]);
+    let area = egui::ScrollArea::vertical().id_salt("glowfly-clone-repo-list").max_height(220.0).auto_shrink([false, true]);
     area.show_rows(ui, row_height, shown.len(), |ui, range| {
         for &i in &shown[range] {
             let repo = &p.list.repos[i];
@@ -49,7 +49,7 @@ fn account(ui: &mut egui::Ui, p: &ServicePicker, connections: &[Connection], msg
         note(ui, &account_label(selected, connections));
         return;
     }
-    egui::ComboBox::from_id_salt("trellis-clone-account").selected_text(account_label(selected, connections)).width(320.0).show_ui(
+    egui::ComboBox::from_id_salt("glowfly-clone-account").selected_text(account_label(selected, connections)).width(320.0).show_ui(
         ui,
         |ui| {
             for (i, a) in p.accounts.iter().enumerate() {
@@ -84,7 +84,7 @@ pub fn show(ui: &mut egui::Ui, t: Lang, form: &mut CloneForm, connections: &[Con
     } else if p.list.repos.is_empty() {
         ui.label("No repositories found for this account.");
     } else {
-        let r = ui.add(TextField::new(&mut p.filter).id(Id::new("trellis-clone-repo-filter")).hint("Filter repositories"));
+        let r = ui.add(TextField::new(&mut p.filter).id(Id::new("glowfly-clone-repo-filter")).hint("Filter repositories"));
         // Not on the Enter that left it: the dialog's frame reads that as running Clone.
         if focus && !r.lost_focus() && ui.memory(|m| m.focused().is_none()) {
             r.request_focus();

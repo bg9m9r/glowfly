@@ -92,7 +92,7 @@ pub(super) fn resume(st: &mut AppState, how: Resume, fx: &mut Vec<Effect>) -> bo
 }
 
 /// After a refresh: a stopped restack whose rebase ended some other way (Abort, or outside
-/// Trellis) is dropped, naming the branches it didn't get to.
+/// Glowfly) is dropped, naming the branches it didn't get to.
 pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot) {
     use RepositoryState::*;
     if st.job.is_some() || matches!(snap.state, Rebase | RebaseInteractive | RebaseMerge | ApplyMailboxOrRebase) {

@@ -1,4 +1,4 @@
-//! The key git uses for SSH remotes, chosen through `core.sshCommand`. Trellis writes two forms,
+//! The key git uses for SSH remotes, chosen through `core.sshCommand`. Glowfly writes two forms,
 //! `ssh -i '<key>' -o IdentitiesOnly=yes` and (on Windows) Windows' own ssh alone, and
 //! recognises them when reading the setting back; anything else is someone else's command,
 //! which the page shows and asks before replacing.
@@ -13,12 +13,12 @@ pub const SSH_COMMAND_KEY: &str = "core.sshCommand";
 #[derive(Clone, Debug, PartialEq)]
 pub enum KeyChoice {
     Unset,
-    /// The form Trellis writes, naming this key.
+    /// The form Glowfly writes, naming this key.
     Key(PathBuf),
-    /// The form Trellis writes to make git run Windows' own OpenSSH: that program alone
+    /// The form Glowfly writes to make git run Windows' own OpenSSH: that program alone
     /// (`super::windows_ssh`).
     WindowsSsh(PathBuf),
-    /// A command Trellis didn't write; `key` is the file after `-i`, when the command could be
+    /// A command Glowfly didn't write; `key` is the file after `-i`, when the command could be
     /// read as plain words.
     Other {
         value: String,
@@ -112,7 +112,7 @@ fn words(s: &str) -> Option<Vec<Word>> {
     Some(out)
 }
 
-/// What a core.sshCommand value means: unset, the form Trellis writes, or something else.
+/// What a core.sshCommand value means: unset, the form Glowfly writes, or something else.
 pub fn parse_ssh_command(value: &str) -> KeyChoice {
     if value.trim().is_empty() {
         return KeyChoice::Unset;

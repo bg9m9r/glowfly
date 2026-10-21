@@ -1,4 +1,4 @@
-//! Headless tests for opening a trellis:// link's repository and selecting its target: the
+//! Headless tests for opening a glowfly:// link's repository and selecting its target: the
 //! search's answer (an open tab, a parked tab, a recent repository, several copies, none), a
 //! target that is missing (the Fetch toast, the check after the fetch), and the Locate and Clone
 //! ways out of the Repository not found dialog.
@@ -105,7 +105,7 @@ fn a_recent_match_opens_then_selects() {
 
 #[test]
 fn several_copies_ask_which_one() {
-    let base = glowfly_core::paths::temp_dir().join(format!("trellis-link-choose-{}", std::process::id()));
+    let base = glowfly_core::paths::temp_dir().join(format!("glowfly-link-choose-{}", std::process::id()));
     let (a, b) = (base.join("a"), base.join("b"));
     let oid = Oid::from_str("0123456789abcdef0123456789abcdef01234567").unwrap();
     let mut st = state();
@@ -264,7 +264,7 @@ fn clone_fills_the_url_and_the_clone_is_checked() {
 
 #[test]
 fn a_search_answer_waits_for_a_dialog_opened_meanwhile() {
-    let base = glowfly_core::paths::temp_dir().join(format!("trellis-link-busy-{}", std::process::id()));
+    let base = glowfly_core::paths::temp_dir().join(format!("glowfly-link-busy-{}", std::process::id()));
     let (a, b) = (base.join("a"), base.join("b"));
     let text = link_text("tag/v1");
     let waits = |st: &AppState| {

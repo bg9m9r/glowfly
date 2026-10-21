@@ -128,7 +128,7 @@ fn a_stale_rename_is_ignored_and_cancel_clears_the_draft() {
 #[test]
 fn another_repositorys_tab_is_not_renamed() {
     let (mut st, dir, _) = open_with_panel("term-rename-other");
-    let other = glowfly_core::paths::temp_dir().join("trellis-elsewhere");
+    let other = glowfly_core::paths::temp_dir().join("glowfly-elsewhere");
     st.terminal.sessions.push(TermSession {
         id: 99,
         number: 1,

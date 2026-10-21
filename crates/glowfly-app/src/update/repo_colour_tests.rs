@@ -14,7 +14,7 @@ use std::time::Instant;
 
 /// A made-up folder (nothing is read from disk), absolute on every OS.
 fn fake(name: &str) -> PathBuf {
-    glowfly_core::paths::temp_dir().join("trellis-repo-colour").join(name)
+    glowfly_core::paths::temp_dir().join("glowfly-repo-colour").join(name)
 }
 
 fn set(st: &mut AppState, path: PathBuf, colour: Option<RepoColour>) -> Vec<Effect> {

@@ -1,4 +1,4 @@
-//! Trellis as git's askpass program: the built executable, run with the listener's address and
+//! Glowfly as git's askpass program: the built executable, run with the listener's address and
 //! token in its environment, asks a listener started here and prints the answer, both on its
 //! own and when git runs it during `git credential fill`.
 

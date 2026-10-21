@@ -1,4 +1,4 @@
-//! One rule set for the names Trellis creates or compares: new files and folders, renames,
+//! One rule set for the names Glowfly creates or compares: new files and folders, renames,
 //! branch and tag names, clone and worktree folders, exported patches and SSH keys.
 //!
 //! - [`win_name_problem`]: what Windows refuses in one name (device names, some characters, a
@@ -81,7 +81,7 @@ fn is_device(stem: &str) -> bool {
 
 /// `name` changed just enough to pass [`win_name_problem`]: refused characters become '-', a
 /// trailing dot or space goes, and a device name gets `suffix` after its stem ("aux" with
-/// "-wt" is "aux-wt", "con.d" is "con-wt.d"). For names Trellis makes up itself, never for
+/// "-wt" is "aux-wt", "con.d" is "con-wt.d"). For names Glowfly makes up itself, never for
 /// what the user typed. Can return "" (for "..."); callers have their own fallback.
 pub fn portable(name: &str, suffix: &str) -> String {
     let mapped: String = name.chars().map(|c| if c.is_control() || BAD_CHARS.contains(c) { '-' } else { c }).collect();

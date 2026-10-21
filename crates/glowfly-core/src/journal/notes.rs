@@ -1,5 +1,5 @@
-//! Trellis's own records ("notes"): written before an operation that rewrites history, each
-//! labelling the state that came before it. They live in `<git dir>/trellis/journal.jsonl`, one
+//! Glowfly's own records ("notes"): written before an operation that rewrites history, each
+//! labelling the state that came before it. They live in `<git dir>/glowfly/journal.jsonl`, one
 //! JSON object per line, in the worktree's own git dir for a linked worktree (HEAD is per
 //! worktree there). Appended through `persist::append`, trimmed to the newest `MAX_NOTES`
 //! lines through `persist::atomic_write` once the file passes `TRIM_AT` bytes. Lines that don't
@@ -169,9 +169,16 @@ impl Captured {
     }
 }
 
-/// The notes file of the repository at `workdir` (its worktree's own git dir).
+/// The notes file of the repository at `workdir` (its worktree's own git dir). Notes written
+/// while the app was called Trellis (`<git dir>/trellis`) move to the new folder the first time.
 pub fn path(workdir: &Path) -> Result<PathBuf> {
-    Ok(Repository::open(workdir)?.path().join("trellis").join("journal.jsonl"))
+    let git_dir = Repository::open(workdir)?.path().to_path_buf();
+    let (dir, old) = (git_dir.join("glowfly"), git_dir.join("trellis"));
+    if !dir.exists() && old.join("journal.jsonl").is_file() {
+        // Best effort: on failure the old notes are only left behind.
+        let _ = std::fs::rename(&old, &dir);
+    }
+    Ok(dir.join("journal.jsonl"))
 }
 
 /// Appends `note` as one line, trimming the file to the newest `MAX_NOTES` lines once it is

@@ -35,7 +35,7 @@ pub fn new_tag(ui: &mut egui::Ui, cx: Cx, form: &mut TagForm, snap: Option<&Snap
         Dialog::new(cx, format!("New tag at {short}"))
     };
     let d = d.begin(ui);
-    let msg_id = Id::new("trellis-tag-message");
+    let msg_id = Id::new("glowfly-tag-message");
     let problem = tag_problem(snap, &form.name);
     let name_msg = match &problem {
         Some(p) => Some(Message::error(p.message(form.name.trim()))),
@@ -44,7 +44,7 @@ pub fn new_tag(ui: &mut egui::Ui, cx: Cx, form: &mut TagForm, snap: Option<&Snap
     };
     let r = FieldGroup::new("Name")
         .message(&form.touched, NAME, name_msg)
-        .show(ui, |ui| ui.add(TextField::new(&mut form.name).id(Id::new("trellis-tag-name")).hint("v1.0.0")));
+        .show(ui, |ui| ui.add(TextField::new(&mut form.name).id(Id::new("glowfly-tag-name")).hint("v1.0.0")));
     form_message::track(&mut form.touched, NAME, &r);
     // Read before focus is requested again below, which would hide that Enter left the field.
     let enter = text_field::entered(ui, &r);
@@ -121,7 +121,7 @@ pub fn annotate_tag(ui: &mut egui::Ui, cx: Cx, form: &mut AnnotateForm, snap: Op
         ui.label(RichText::new("Copies already pushed to remotes stay lightweight.").color(color::weak()));
     }
     ui.add_space(6.0);
-    let id = Id::new("trellis-annotate-tag-message");
+    let id = Id::new("glowfly-annotate-tag-message");
     let problem = annotate_problem(snap, &form.tag, &form.at);
     let r = FieldGroup::new("Message").show(ui, |ui| ui.add(TextField::multiline(&mut form.message, 4).id(id)));
     if cx.keyboard && !r.has_focus() {

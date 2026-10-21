@@ -23,7 +23,7 @@ pub(super) fn dismissal<T>(resp: &egui::ModalResponse<T>) -> Option<Dismiss> {
 /// it is the top one: the form beneath is dimmed and takes no input. Esc, its close button and a
 /// backdrop click mean Keep editing, and so does Enter: Keep editing has the focus when it opens.
 pub(super) fn discard_question(ctx: &egui::Context, t: Lang, msgs: &mut Vec<Msg>) {
-    let id = Id::new("trellis-modal-discard");
+    let id = Id::new("glowfly-modal-discard");
     // It takes the keyboard over the form beneath.
     let cx = Cx { t, keyboard: true, key: id };
     let resp = super::theme::dialog(ctx, id).show(ctx, |ui| {

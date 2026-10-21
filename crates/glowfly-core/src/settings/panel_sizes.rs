@@ -73,7 +73,7 @@ mod tests {
         let mut s = crate::settings::Settings::default();
         s.panel_sizes.set(SizedPanel::Sidebar, 312.0);
         s.panel_sizes.set(SizedPanel::Details, 444.0);
-        let dir = crate::paths::temp_dir().join(format!("trellis-settings-panels-{}", std::process::id()));
+        let dir = crate::paths::temp_dir().join(format!("glowfly-settings-panels-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("settings.json");

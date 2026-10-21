@@ -78,7 +78,7 @@ pub fn close_button(ui: &mut Ui, tip: &str, right_edge: f32, top: f32) -> bool {
 
 /// Where a click on the close button of the dialog on `layer` is kept until it is taken.
 fn closed_id(layer: LayerId) -> Id {
-    Id::new("trellis-dialog-closed").with(layer)
+    Id::new("glowfly-dialog-closed").with(layer)
 }
 
 /// Whether the close button of the dialog `resp` showed was clicked this frame. Takes the

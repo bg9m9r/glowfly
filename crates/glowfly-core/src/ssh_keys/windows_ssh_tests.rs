@@ -1,4 +1,4 @@
-//! Which ssh git runs on Windows, decided from facts (on every OS), Trellis's value for Windows'
+//! Which ssh git runs on Windows, decided from facts (on every OS), Glowfly's value for Windows'
 //! ssh, and the facts read from a fixture folder tree.
 
 use super::tests::temp;
@@ -54,7 +54,7 @@ fn which_ssh_git_runs() {
     assert_eq!(git_runs(false, &unset, &git_ssh), GitSsh::WindowsOwn, "GIT_SSH");
     let plink = WinSshFacts { git_ssh: Some("plink.exe".into()), ..facts() };
     assert_eq!(git_runs(false, &unset, &plink), GitSsh::Other("plink.exe".into()));
-    assert_eq!(git_runs(false, &key, &facts()), GitSsh::Bundled, "Trellis's key form runs plain ssh");
+    assert_eq!(git_runs(false, &key, &facts()), GitSsh::Bundled, "Glowfly's key form runs plain ssh");
     assert_eq!(git_runs(false, &KeyChoice::WindowsSsh(WIN.into()), &facts()), GitSsh::WindowsOwn);
     assert_eq!(git_runs(false, &other("ssh -v"), &facts()), GitSsh::Bundled);
     assert_eq!(git_runs(false, &other("plink -batch"), &facts()), GitSsh::Other("plink".into()));

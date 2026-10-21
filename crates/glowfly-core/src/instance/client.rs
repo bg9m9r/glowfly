@@ -9,12 +9,12 @@ use std::path::Path;
 #[derive(thiserror::Error, Debug)]
 pub enum HandOffError {
     /// No window is listening: no instance file, or its port is closed.
-    #[error("no Trellis window is running")]
+    #[error("no Glowfly window is running")]
     NotRunning,
     /// The window answered, but the token didn't match (an old file).
-    #[error("the running Trellis refused the link")]
+    #[error("the running Glowfly refused the link")]
     Rejected,
-    #[error("couldn't reach the running Trellis: {0}")]
+    #[error("couldn't reach the running Glowfly: {0}")]
     Io(#[from] io::Error),
 }
 
@@ -56,7 +56,7 @@ pub fn hand_off_via(file: &Path, link: &str) -> Result<(), HandOffError> {
     stream.flush()?;
     let mut line = String::new();
     if BufReader::new((&stream).take(MAX_LINE)).read_line(&mut line)? == 0 {
-        return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "the running Trellis closed the connection").into());
+        return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "the running Glowfly closed the connection").into());
     }
     let response: Response = serde_json::from_str(line.trim_end()).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     if response.ok { Ok(()) } else { Err(HandOffError::Rejected) }

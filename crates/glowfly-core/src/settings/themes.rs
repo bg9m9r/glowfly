@@ -40,7 +40,7 @@ fn color_key(s: &str) -> Option<&'static str> {
     COLOR_KEYS.iter().copied().find(|k| *k == s).or_else(|| LEGACY_COLOR_KEYS.iter().find(|(old, _)| *old == s).map(|(_, k)| *k))
 }
 
-/// A palette that ships with Trellis; theme files start from one.
+/// A palette that ships with Glowfly; theme files start from one.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BuiltinTheme {
     Dark,
@@ -71,11 +71,11 @@ impl BuiltinTheme {
 
     pub fn label(self) -> &'static str {
         match self {
-            Self::Dark => "Trellis Dark",
-            Self::Light => "Trellis Light",
+            Self::Dark => "Glowfly Dark",
+            Self::Light => "Glowfly Light",
             Self::HighContrastDark => "High Contrast Dark",
             Self::HighContrastLight => "High Contrast Light",
-            Self::Sand => "Trellis Sand",
+            Self::Sand => "Glowfly Sand",
         }
     }
 
@@ -143,7 +143,7 @@ pub enum ColorValue {
     Base(&'static str),
 }
 
-/// Something in a theme file Trellis couldn't use. Each one names its key or field.
+/// Something in a theme file Glowfly couldn't use. Each one names its key or field.
 #[derive(Clone, PartialEq, Eq, Debug, thiserror::Error)]
 pub enum ThemeProblem {
     #[error("could not be read: {0}")]

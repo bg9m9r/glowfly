@@ -183,7 +183,7 @@ fn group(g: &str) -> CommonDir {
 /// Unloaded tabs for made-up paths: "a1" and "a2" are of group "a"; one-letter names have none.
 fn fake_tabs(names: &[&str], active: usize) -> AppState {
     let mut st = state();
-    let base = glowfly_core::paths::temp_dir().join("trellis-fake-tabs");
+    let base = glowfly_core::paths::temp_dir().join("glowfly-fake-tabs");
     st.tabs = names
         .iter()
         .map(|n| {

@@ -109,7 +109,7 @@ pub fn sign_in_form(ui: &mut Ui, t: Lang, prefs: &mut PrefsState, cancel: bool, 
     row(ui, token_label, |ui| {
         let w = super::fit(ui, 320.0);
         controls::field(ui, egui::TextEdit::singleline(&mut prefs.int_token).password(true).desired_width(w).margin(vec2(8.0, 5.0)));
-        help(ui, &format!("{} Stored in the Windows Credential Manager, never in Trellis's settings file.", provider.token_help()));
+        help(ui, &format!("{} Stored in the Windows Credential Manager, never in Glowfly's settings file.", provider.token_help()));
         if is_trello {
             trello::token_link(ui, &prefs.int_user, msgs);
         } else if let Some(url) = account.as_ref().and_then(Target::token_url)

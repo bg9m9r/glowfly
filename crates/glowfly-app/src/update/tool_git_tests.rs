@@ -221,7 +221,7 @@ fn reads_for_another_tab_or_after_a_program_is_set() {
     let dir = conflicted_repo("tg-stale");
     let mut st = opened(&dir);
     let w = st.workdir().unwrap();
-    let elsewhere = glowfly_core::paths::temp_dir().join("trellis-tg-elsewhere");
+    let elsewhere = glowfly_core::paths::temp_dir().join("glowfly-tg-elsewhere");
     assert!(run(&mut st, read(&elsewhere, diff_tools(command(false)), GitToolNext::Diff(unstaged()))).is_empty());
     assert_eq!(last_log(&st).as_deref(), Some("Open in external diff tool wasn't run: its repository is no longer the active tab."));
 

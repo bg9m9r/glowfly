@@ -87,7 +87,7 @@ fn the_note_mentions_only_what_is_off() {
     assert!(marked(&st) && saves(&fx) == 1, "but never checked again");
     let _ = std::fs::remove_dir_all(&dir);
 
-    // status.showUntrackedFiles=normal keeps the cache from helping Trellis's read.
+    // status.showUntrackedFiles=normal keeps the cache from helping Glowfly's read.
     let (mut st, dir) = opened("tip-normal");
     let s = StatusSpeedups { show_untracked_all: Some(false), ..speedups(false, false) };
     read_slowly(&mut st, s);
@@ -150,7 +150,7 @@ fn turn_on_does_nothing_from_another_tab() {
     let toast = st.toasts.last_mut().unwrap();
     let id = toast.id;
     // The note was for a repository that is no longer the active tab.
-    toast.action.as_mut().unwrap().workdir = Some(dir.with_file_name("trellis-tip-elsewhere"));
+    toast.action.as_mut().unwrap().workdir = Some(dir.with_file_name("glowfly-tip-elsewhere"));
     let fx = update(&mut st, Msg::ToastAction(id), Instant::now());
     assert!(fx.is_empty(), "{fx:?}");
     assert!(st.job.is_none());

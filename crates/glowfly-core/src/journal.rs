@@ -1,5 +1,5 @@
 //! The operation journal: every state HEAD and the local branches have been in, newest first,
-//! from git's reflogs (`reflog.rs`) plus Trellis's own records written before an operation that
+//! from git's reflogs (`reflog.rs`) plus Glowfly's own records written before an operation that
 //! rewrites history (`notes.rs`), merged into rows by `timeline.rs`. `events.rs` reads what a
 //! reflog message says happened, `preview.rs` what restoring a state would move, and
 //! `restore.rs` holds Restore's command lines. `reach.rs` marks the rows whose commit nothing

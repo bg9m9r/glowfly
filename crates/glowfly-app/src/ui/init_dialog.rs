@@ -29,7 +29,7 @@ fn folder(ui: &mut egui::Ui, form: &mut InitForm, focus: bool, msgs: &mut Vec<Ms
     }
     let mut browse = false;
     let edit = group.show(ui, |ui| {
-        let field = TextField::new(&mut form.folder).id(Id::new("trellis-init-folder")).hint("Folder for the new repository");
+        let field = TextField::new(&mut form.folder).id(Id::new("glowfly-init-folder")).hint("Folder for the new repository");
         let (r, b) = text_field::with_button(ui, field, buttons::secondary("Browse…"));
         browse = b.clicked();
         r
@@ -57,7 +57,7 @@ fn gitignore(ui: &mut egui::Ui, form: &mut InitForm) {
     FieldGroup::new(".gitignore").show(ui, |ui| {
         let shown = form.gitignore.map_or("None", GitignoreTemplate::label);
         let w = ui.available_width().min(PICKER_W);
-        egui::ComboBox::from_id_salt("trellis-init-gitignore")
+        egui::ComboBox::from_id_salt("glowfly-init-gitignore")
             .selected_text(shown)
             .width(w)
             .show_ui(ui, |ui| {
@@ -80,7 +80,7 @@ fn license(ui: &mut egui::Ui, form: &mut InitForm, year: i32) {
     FieldGroup::new("License").show(ui, |ui| {
         let shown = form.license.map_or("None", License::label);
         let w = ui.available_width().min(PICKER_W);
-        egui::ComboBox::from_id_salt("trellis-init-license")
+        egui::ComboBox::from_id_salt("glowfly-init-license")
             .selected_text(shown)
             .width(w)
             .show_ui(ui, |ui| {
@@ -96,7 +96,7 @@ fn license(ui: &mut egui::Ui, form: &mut InitForm, year: i32) {
         let r = FieldGroup::new("Copyright holder")
             .message(&form.touched, "holder", holder.map(Message::error))
             .help(format!("{year} and this name go in the copyright line."))
-            .show(ui, |ui| ui.add(TextField::new(&mut form.holder).id(Id::new("trellis-init-holder"))));
+            .show(ui, |ui| ui.add(TextField::new(&mut form.holder).id(Id::new("glowfly-init-holder"))));
         form_message::track(&mut form.touched, "holder", &r);
     }
     if form.license.is_some()
@@ -135,7 +135,7 @@ fn body(ui: &mut egui::Ui, cx: Cx, form: &mut InitForm, year: i32, msgs: &mut Ve
         .optional(t.tr("dialog.field.optional"))
         .help("Leave empty for git's default branch name")
         .message(&form.touched, "branch", branch.map(Message::error))
-        .show(ui, |ui| ui.add(TextField::new(&mut form.branch).id(Id::new("trellis-init-branch"))));
+        .show(ui, |ui| ui.add(TextField::new(&mut form.branch).id(Id::new("glowfly-init-branch"))));
     form_message::track(&mut form.touched, "branch", &r);
     gitignore(ui, form);
     license(ui, form, year);

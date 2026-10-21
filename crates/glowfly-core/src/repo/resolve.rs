@@ -5,7 +5,7 @@
 //! A resolution is always built in repository form, from the stages' own bytes, staged as a
 //! blob, and then written to the working tree by git (`checkout-index`). So line endings,
 //! `core.autocrlf`, `eol` and `filter` attributes, `working-tree-encoding` and the executable
-//! bit (with `core.fileMode`) come out exactly as git itself would write them, and Trellis never
+//! bit (with `core.fileMode`) come out exactly as git itself would write them, and Glowfly never
 //! rewrites line endings or calls chmod on the working file.
 //!
 //! Resolutions keep git's resolve-undo record (the index's REUC extension), as `git add` does,

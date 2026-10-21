@@ -3,7 +3,7 @@
 //! `Msg` has one variant per area, each carrying that area's own enum (defined in this folder,
 //! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule`,
 //! `terminal`, `ssh`, `profile`, `patch`, `tools`, `custom_commands`, `conflict_check`, `journal`, `range_diff`, `pull_request`, `logs`, `onboarding` and `deep_link`;
-//! Trellis's own updates are `UpdateMsg` in `updates.rs`). Each area's enum goes to one handler in `update/`, which matches it
+//! Glowfly's own updates are `UpdateMsg` in `updates.rs`). Each area's enum goes to one handler in `update/`, which matches it
 //! exhaustively, and says through `on_inactive` what its results still need when they arrive
 //! for a tab that is no longer active. Only a few cross-cutting messages are top-level.
 
@@ -192,7 +192,7 @@ pub enum Msg {
     Logs(crate::logs::LogsMsg),
     /// The first-run welcome and the tour of the main window (update/onboarding.rs).
     Onboarding(crate::onboarding::OnboardingMsg),
-    /// trellis:// links: copying, opening, their dialogs and the scheme registration
+    /// glowfly:// links: copying, opening, their dialogs and the scheme registration
     /// (update/deep_link.rs).
     DeepLink(crate::deep_link::DeepLinkMsg),
     /// The cross-repository dashboard (update/dashboard.rs).
@@ -201,7 +201,7 @@ pub enum Msg {
     Dialog(DialogMsg),
     /// Quitting and the About dialog (update/app.rs).
     App(AppMsg),
-    /// Trellis's own updates and the release notes (update/updates.rs).
+    /// Glowfly's own updates and the release notes (update/updates.rs).
     Updates(UpdateMsg),
     /// Fetch full history's size check and a partial clone's missing contents (update/partial.rs).
     Partial(PartialMsg),

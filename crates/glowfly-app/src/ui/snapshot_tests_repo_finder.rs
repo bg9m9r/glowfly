@@ -106,7 +106,7 @@ fn repo_finder_empty() {
     st.repo_scan.found.clear();
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label("Add a folder you keep repositories in, and Trellis lists the Git repositories under it.").is_some());
+    assert!(h.query_by_label("Add a folder you keep repositories in, and Glowfly lists the Git repositories under it.").is_some());
     assert!(h.query_by_label("Look again").is_none());
     h.check_snapshot("repo_finder_empty");
 }

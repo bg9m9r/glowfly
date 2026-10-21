@@ -28,7 +28,7 @@ fn set_and_clear_a_label() {
     assert_eq!(label(&st, 1), Some("Frontend"));
     assert_eq!(tab_name(&st, 1), "Frontend");
     assert_eq!(saved_labels(&fx), [vec![None, Some("Frontend".to_owned())]]);
-    assert_eq!(titles(&fx), ["Frontend - Trellis"]);
+    assert_eq!(titles(&fx), ["Frontend - Glowfly"]);
 
     // An inactive tab's label leaves the title alone.
     let a = st.tabs[0].id;
@@ -41,7 +41,7 @@ fn set_and_clear_a_label() {
         let fx = send(&mut st, TabsMsg::SetTabLabel { tab: b, label: cleared.clone() });
         assert_eq!(label(&st, 1), None, "{cleared:?} clears the label");
         assert_eq!(tab_name(&st, 1), "b");
-        assert_eq!(titles(&fx), ["b - Trellis"]);
+        assert_eq!(titles(&fx), ["b - Glowfly"]);
     }
 }
 

@@ -22,7 +22,7 @@ pub struct ShellLaunch {
 
 /// sh's arguments: evaluate the command (quoted, so its own quoting is kept as written). Its
 /// errors stay on stderr, to say why it failed.
-pub const TOOL_SH_ARGS: [&str; 2] = ["-c", "eval \"$TRELLIS_COMMAND\""];
+pub const TOOL_SH_ARGS: [&str; 2] = ["-c", "eval \"$GLOWFLY_COMMAND\""];
 
 /// The sh process for `l`, with no input or output but stderr.
 fn command(l: &ShellLaunch) -> Result<Command> {

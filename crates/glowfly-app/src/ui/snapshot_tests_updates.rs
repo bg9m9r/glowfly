@@ -54,7 +54,7 @@ fn app(theme: ThemeChoice) -> AppState {
 }
 
 fn release(with_files: bool) -> Release {
-    let names = ["trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "SHA256SUMS"];
+    let names = ["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "SHA256SUMS"];
     let url = |n: &str| format!("https://github.com/bg9m9r/trellis/releases/download/v0.3.0/{n}");
     Release {
         tag: "v0.3.0".into(),
@@ -186,7 +186,7 @@ fn status_update_available() {
 
 #[test]
 fn status_update_downloaded() {
-    let file = PathBuf::from("Downloads").join("trellis-v0.3.0-x86_64-pc-windows-msvc.msi");
+    let file = PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
     let mut h = harness(status_bar(UpdateStatus::Downloaded { offer: Box::new(the_offer()), file, installer: true }), true);
     h.run();
     h.check_snapshot("status_update_downloaded");

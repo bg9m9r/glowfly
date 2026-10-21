@@ -151,7 +151,7 @@ pub fn pr_checkout(snap: &Snapshot, remote: &str, source: &str) -> Result<Vec<St
 
 /// Why a pull request's source branch name is never used: git would read it as an option.
 pub(crate) fn pr_source_refused(source: &str) -> Option<String> {
-    (source.is_empty() || source.starts_with('-')).then(|| format!("\"{source}\" isn't a branch name Trellis can check out."))
+    (source.is_empty() || source.starts_with('-')).then(|| format!("\"{source}\" isn't a branch name Glowfly can check out."))
 }
 
 /// A pull request's source branch that is neither a local branch nor on the code host's remote.

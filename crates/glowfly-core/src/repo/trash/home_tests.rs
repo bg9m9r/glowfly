@@ -62,7 +62,7 @@ fn which_drive_trash_folders_can_be_used() {
 
 /// A new, empty folder for one test.
 fn fresh(name: &str) -> PathBuf {
-    let dir = crate::paths::temp_dir().join(format!("trellis-home-trash-{name}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-home-trash-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir

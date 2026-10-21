@@ -1,4 +1,4 @@
-//! The cross-repository dashboard: pull requests and issues of every repository Trellis knows
+//! The cross-repository dashboard: pull requests and issues of every repository Glowfly knows
 //! (open tabs, favorites, then recent), grouped by service account and then by repository. Its
 //! state is global, never parked with a tab, and kept while the dashboard is closed. Which
 //! repositories and calls a refresh plans is in `dashboard_plan.rs`; the rows the view shows are
@@ -61,7 +61,7 @@ pub enum Phase {
 /// A local clone of a target's repository (or a repository whose issues live on it).
 #[derive(Clone, Debug, PartialEq)]
 pub struct LocalRepo {
-    /// As Trellis lists it (a tab, a favorite or a recent entry).
+    /// As Glowfly lists it (a tab, a favorite or a recent entry).
     pub path: PathBuf,
     /// Where it really is (`Snapshot::real_workdir`).
     pub real: PathBuf,

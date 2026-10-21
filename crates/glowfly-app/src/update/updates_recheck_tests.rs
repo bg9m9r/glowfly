@@ -17,14 +17,14 @@ use std::time::{Duration, Instant};
 fn downloaded() -> (AppState, Instant, PathBuf) {
     let (mut st, t) = offered();
     send(&mut st, U::Download, t);
-    let file = PathBuf::from("Downloads").join("trellis-v0.3.0-x86_64-pc-windows-msvc.msi");
+    let file = PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
     send(&mut st, U::Downloaded(Ok(file.clone())), t);
     assert!(matches!(st.updates.status, UpdateStatus::Downloaded { installer: true, .. }));
     (st, t, file)
 }
 
 fn has_install(st: &AppState) -> bool {
-    entries(st).into_iter().any(|e| e.label == "Install Trellis 0.3.0")
+    entries(st).into_iter().any(|e| e.label == "Install Glowfly 0.3.0")
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn check_now_after_a_download_keeps_the_file() {
     assert!(has_install(&st));
     assert_eq!(st.toasts.len(), toasts + 1);
     let toast = st.toasts.last().unwrap();
-    assert_eq!((toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())), ("Downloaded Trellis 0.3.0.", Some("Install")));
+    assert_eq!((toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())), ("Downloaded Glowfly 0.3.0.", Some("Install")));
 }
 
 #[test]
@@ -94,7 +94,7 @@ fn a_newer_release_replaces_an_older_download() {
     send(&mut st, U::Checked { manual: true, result: newer }, t);
     let UpdateStatus::Available(o) = &st.updates.status else { panic!("{:?}", st.updates.status) };
     assert_eq!(o.version.to_string(), "0.4.0");
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Trellis 0.4.0 is available."));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Glowfly 0.4.0 is available."));
 }
 
 #[test]

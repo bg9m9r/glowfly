@@ -44,7 +44,7 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                     }
                 }
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.label(RichText::new(concat!("Trellis ", env!("CARGO_PKG_VERSION"))).color(color::faint()));
+                    ui.label(RichText::new(concat!("Glowfly ", env!("CARGO_PKG_VERSION"))).color(color::faint()));
                     super::update_notice::status_item(ui, st, msgs);
                     super::layout::status_items(ui, st, msgs);
                     if st.job.is_some() {

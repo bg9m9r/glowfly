@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub enum RepoTrust {
     /// Git may run the programs the repository's config and hooks name, on its own too.
     Trusted,
-    /// Trellis doesn't fetch, sign in or let git read the status on its own here.
+    /// Glowfly doesn't fetch, sign in or let git read the status on its own here.
     NotTrusted,
 }
 

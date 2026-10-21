@@ -62,7 +62,7 @@ impl Drop for Input {
 pub(super) fn forward(id: u64, send: impl Fn(TerminalMsg) + Send + Clone + 'static) -> Box<dyn FnMut(Vec<u8>) + Send> {
     let shared = Arc::new(Shared::default());
     let (s, out) = (Arc::clone(&shared), send.clone());
-    match std::thread::Builder::new().name("trellis-terminal-out".into()).spawn(move || run(id, &s, &out)) {
+    match std::thread::Builder::new().name("glowfly-terminal-out".into()).spawn(move || run(id, &s, &out)) {
         Ok(_) => {
             let input = Input(shared);
             Box::new(move |bytes| input.push(bytes))

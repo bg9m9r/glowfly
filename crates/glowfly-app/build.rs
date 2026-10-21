@@ -8,7 +8,7 @@ fn main() {
     // release-please creates CHANGELOG.md with the first release; until then the missing file
     // makes Cargo run this script on every build, which is cheap.
     println!("cargo::rerun-if-changed=../../CHANGELOG.md");
-    println!("cargo::rerun-if-changed=../../assets/icon/trellis.ico");
+    println!("cargo::rerun-if-changed=../../assets/icon/glowfly.ico");
 
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("Cargo sets OUT_DIR"));
     let changelog = std::fs::read(Path::new("../../CHANGELOG.md")).unwrap_or_default();
@@ -28,10 +28,10 @@ fn main() {
 #[cfg(windows)]
 fn windows_resource() {
     let mut res = winresource::WindowsResource::new();
-    res.set_icon("../../assets/icon/trellis.ico")
-        .set("FileDescription", "Trellis")
-        .set("ProductName", "Trellis")
-        .set("LegalCopyright", "Trellis contributors. MIT or Apache-2.0.");
+    res.set_icon("../../assets/icon/glowfly.ico")
+        .set("FileDescription", "Glowfly")
+        .set("ProductName", "Glowfly")
+        .set("LegalCopyright", "Glowfly contributors. MIT or Apache-2.0.");
     if let Err(e) = res.compile() {
         println!("cargo::warning=glowfly.exe gets no icon: the resource compiler failed ({e})");
     }

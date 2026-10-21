@@ -1,5 +1,5 @@
 //! The runner of the whole-app tests (`src/journey/`). Repository and file effects run as in the
-//! app; saves of Trellis's own files go to the test's folder instead of the user's config
+//! app; saves of Glowfly's own files go to the test's folder instead of the user's config
 //! folder, written before `run` returns; and effects that would reach the network, the OS
 //! shell, the desktop, file pickers, the credential store or the global git config are dropped
 //! and recorded by name. The tally counts effects started and still in flight, so a test can
@@ -169,7 +169,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. })
             | Effect::Clone(CloneEffect::ListRepos { .. })
             | Effect::Ssh(_)
-            // The global git config, Trellis's config folder or a picked folder.
+            // The global git config, Glowfly's config folder or a picked folder.
             | Effect::Profile(
                 ProfileEffect::Apply { .. }
                 | ProfileEffect::Rewrite { .. }
@@ -230,7 +230,7 @@ mod tests {
     }
 
     fn folder(name: &str) -> PathBuf {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-sandbox-{}-{name}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-sandbox-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir

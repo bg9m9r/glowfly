@@ -63,7 +63,7 @@ fn apply(st: &mut AppState, req: ApplyRequest, fx: &mut Vec<Effect>) {
     }
     // Command lines are Strings; a name that isn't valid Unicode can't be passed on.
     let Some(text) = req.path.to_str() else {
-        st.log(false, format!("Trellis can't pass this file name to git: {}.", req.path.display()));
+        st.log(false, format!("Glowfly can't pass this file name to git: {}.", req.path.display()));
         return;
     };
     if let Some(why) = st.snap.as_ref().and_then(|s| form::request_blocked(&req, s)) {

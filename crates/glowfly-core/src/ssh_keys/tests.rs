@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 /// A fresh folder for one test (tests run in parallel).
 pub(super) fn temp(name: &str) -> PathBuf {
-    let dir = crate::paths::temp_dir().join(format!("trellis-ssh-keys-{}-{name}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-ssh-keys-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir

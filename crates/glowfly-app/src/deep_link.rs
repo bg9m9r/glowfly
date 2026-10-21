@@ -1,5 +1,5 @@
-//! Messages and effects of `trellis://` links: copying a link to a branch, commit, tag or the
-//! repository, opening one (from the command line, a second Trellis process or a toast), the
+//! Messages and effects of `glowfly://` links: copying a link to a branch, commit, tag or the
+//! repository, opening one (from the command line, a second Glowfly process or a toast), the
 //! dialogs a link may need, and registering the scheme with the OS (state/deep_link.rs,
 //! update/deep_link.rs, update/deep_link_open.rs, runner/deep_link.rs, ui/deep_link_dialog.rs,
 //! ui/prefs/links.rs).
@@ -48,7 +48,7 @@ pub enum DeepLinkMsg {
         what: String,
         result: Result<String, String>,
     },
-    /// A link to open (the command line, another Trellis process, a toast's Open link).
+    /// A link to open (the command line, another Glowfly process, a toast's Open link).
     Open(String),
     /// From the runner: the copies of the linked repository among the candidates, for search
     /// `seq`.

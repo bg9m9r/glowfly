@@ -24,7 +24,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             if page == PrefPage::Tools {
                 super::tool_git::read_for_page(st, fx);
             }
-            // Which program opens trellis:// links (General), read again at every opening.
+            // Which program opens glowfly:// links (General), read again at every opening.
             super::deep_link::check_scheme(st, fx);
             if page == PrefPage::RepoTracker {
                 super::trello::want_boards(st, fx);

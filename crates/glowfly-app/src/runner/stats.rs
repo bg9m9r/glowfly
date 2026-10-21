@@ -46,7 +46,7 @@ impl StatsWorker {
         }
         let worker = self.clone();
         let (tx2, waker2) = (tx.clone(), waker.clone());
-        if let Err(e) = std::thread::Builder::new().name("trellis-stats".into()).spawn(move || worker.work(&tx2, &waker2)) {
+        if let Err(e) = std::thread::Builder::new().name("glowfly-stats".into()).spawn(move || worker.work(&tx2, &waker2)) {
             tracing::error!("could not start the stats thread: {e}");
             let mut s = self.slot();
             s.running = false;
@@ -110,7 +110,7 @@ mod tests {
         w.slot().running = true;
         let a = Oid::from_bytes(&[1; 20]).unwrap();
         let b = Oid::from_bytes(&[2; 20]).unwrap();
-        let dir = glowfly_core::paths::temp_dir().join("trellis-stats-no-repo");
+        let dir = glowfly_core::paths::temp_dir().join("glowfly-stats-no-repo");
         w.submit(dir.clone(), vec![a], tx.clone(), NoWake);
         w.submit(dir.clone(), vec![b], tx.clone(), NoWake);
         let Ok(Msg::Scoped { workdir, msg }) = rx.recv_timeout(Duration::from_secs(5)) else { panic!("a report") };

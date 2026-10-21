@@ -1,4 +1,4 @@
-//! Trellis's core: repository access (libgit2 + git CLI), commit-graph layout, hosting-service
+//! Glowfly's core: repository access (libgit2 + git CLI), commit-graph layout, hosting-service
 //! integrations, settings and formatting helpers. Nothing here depends on the UI.
 
 pub mod app_update;

@@ -99,7 +99,7 @@ fn undo_unsets_the_global_value() {
 }
 
 #[test]
-fn which_key_and_the_agent_setting_treat_it_as_trellis_wrote_it() {
+fn which_key_and_the_agent_setting_treat_it_as_glowfly_wrote_it() {
     let mut st = windows_page(KeyChoice::WindowsSsh(WIN.into()));
     let fx = ssh(&mut st, SshMsg::SetUseAgent(true));
     assert!(key_sets(&fx).is_empty(), "the agent setting leaves Windows' OpenSSH alone");

@@ -34,7 +34,7 @@ pub(super) fn service_request(st: &AppState) -> Result<PrRequest, String> {
 fn request(st: &AppState) -> Result<PrRequest, String> {
     let req = service_request(st)?;
     if !forge::reviews_in_app(req.target.provider) {
-        return Err(format!("{} reviews aren't supported in Trellis yet", req.target.provider.name()));
+        return Err(format!("{} reviews aren't supported in Glowfly yet", req.target.provider.name()));
     }
     Ok(req)
 }

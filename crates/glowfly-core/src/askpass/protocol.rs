@@ -5,14 +5,14 @@
 use serde::{Deserialize, Serialize};
 
 /// The listener's address (`127.0.0.1:<port>`); its presence puts the executable in helper mode.
-pub const ENV_ADDR: &str = "TRELLIS_ASKPASS";
+pub const ENV_ADDR: &str = "GLOWFLY_ASKPASS";
 /// The token the listener expects (32 lowercase hex characters).
-pub const ENV_TOKEN: &str = "TRELLIS_ASKPASS_TOKEN";
+pub const ENV_TOKEN: &str = "GLOWFLY_ASKPASS_TOKEN";
 /// ssh's hint for the kind of prompt: `confirm` (yes/no) or `none` (a notice; no answer read).
 pub const SSH_HINT_ENV: &str = "SSH_ASKPASS_PROMPT";
 /// Set by gitcli for git commands that may sign with an SSH key: the `user.signingKey` file.
 /// Read by the askpass helper to tell ssh-keygen's signing prompt from other passphrases.
-pub const ENV_SSH_SIGNING_KEY: &str = "TRELLIS_SSH_SIGNING_KEY";
+pub const ENV_SSH_SIGNING_KEY: &str = "GLOWFLY_SSH_SIGNING_KEY";
 
 /// The longest line either side reads.
 pub const MAX_LINE: u64 = 64 * 1024;

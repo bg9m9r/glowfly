@@ -179,7 +179,7 @@ impl RenameTabForm {
     }
 }
 
-/// A folder as Trellis knows it without touching the disk: the spellings it was seen by and,
+/// A folder as Glowfly knows it without touching the disk: the spellings it was seen by and,
 /// once it was looked at on a worker thread, its identity.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Place {

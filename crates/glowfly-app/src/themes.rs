@@ -5,7 +5,7 @@
 use glowfly_core::settings::{ThemeCatalog, ThemeProblem};
 use std::path::PathBuf;
 
-/// The theme files Trellis knows about (global, not per tab).
+/// The theme files Glowfly knows about (global, not per tab).
 #[derive(Clone, Debug, Default)]
 pub struct ThemeState {
     pub catalog: ThemeCatalog,

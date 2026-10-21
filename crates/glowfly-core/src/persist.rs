@@ -1,6 +1,6 @@
-//! Every file Trellis writes goes through here: its own files (settings, recent repositories,
+//! Every file Glowfly writes goes through here: its own files (settings, recent repositories,
 //! open tabs, logs), files written for the user (saved patches), and working-tree files it puts
-//! back itself (undo and redo of a discard or restore). [`remove_tree`] deletes a folder Trellis
+//! back itself (undo and redo of a discard or restore). [`remove_tree`] deletes a folder Glowfly
 //! owns the removal of (a submodule's stored module) without following links. Logs grow by
 //! [`append`] (or a handle from [`open_append`]) instead of being replaced.
 //!
@@ -49,7 +49,7 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
 pub fn write_file(path: &Path, bytes: &[u8], opts: WriteOptions) -> std::io::Result<()> {
     let target = if opts.refuse_links {
         if is_link(path) {
-            return Err(std::io::Error::other(format!("{} is a symbolic link; Trellis doesn't write through links", path.display())));
+            return Err(std::io::Error::other(format!("{} is a symbolic link; Glowfly doesn't write through links", path.display())));
         }
         path.to_owned()
     } else {

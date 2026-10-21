@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 fn rule(rest: &str) -> FolderRule {
-    FolderRule { path: paths::encode(&paths::temp_dir().join("trellis-rules-app").join(rest)), ..FolderRule::default() }
+    FolderRule { path: paths::encode(&paths::temp_dir().join("glowfly-rules-app").join(rest)), ..FolderRule::default() }
 }
 
 /// The SyncIncludes effects in `fx`, by `place`.

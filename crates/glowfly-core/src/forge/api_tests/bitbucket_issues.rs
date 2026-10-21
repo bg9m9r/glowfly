@@ -1,4 +1,4 @@
-//! Bitbucket Cloud issues in Trellis: details with comments, the Create dialog's choices, creating
+//! Bitbucket Cloud issues in Glowfly: details with comments, the Create dialog's choices, creating
 //! an issue, and a repository whose issue tracker is turned off.
 
 use super::issues::new_issue;

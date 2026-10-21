@@ -88,7 +88,7 @@ pub fn lock(ui: &mut egui::Ui, cx: Cx, form: &mut LockForm, idle: bool, msgs: &m
     let d = Dialog::new(cx, format!("Lock worktree {}", form.name)).guide(dialog_guides::worktree_lock(cx.t)).begin(ui);
     let r = FieldGroup::new("Reason")
         .optional(cx.t.tr("dialog.field.optional"))
-        .show(ui, |ui| ui.add(TextField::new(&mut form.reason).id(Id::new("trellis-worktree-lock-reason")).hint("e.g. on the USB drive")));
+        .show(ui, |ui| ui.add(TextField::new(&mut form.reason).id(Id::new("glowfly-worktree-lock-reason")).hint("e.g. on the USB drive")));
     let enter = text_field::entered(ui, &r);
     if cx.keyboard {
         r.request_focus();

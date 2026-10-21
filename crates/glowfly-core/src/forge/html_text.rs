@@ -1,4 +1,4 @@
-//! Azure DevOps keeps work item descriptions and comments as HTML. Trellis shows them as plain
+//! Azure DevOps keeps work item descriptions and comments as HTML. Glowfly shows them as plain
 //! text: paragraphs and breaks as new lines, list items as "- ", links as "text (url)", images
 //! as "[image: alt]", entities decoded, scripts and styles dropped. And plain text typed in the
 //! Create dialog goes back as escaped HTML. A small scanner, not a full HTML parser.

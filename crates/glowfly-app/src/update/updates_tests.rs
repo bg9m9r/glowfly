@@ -1,4 +1,4 @@
-//! Headless tests of Trellis's own update check: when automatic checks run, what a check's
+//! Headless tests of Glowfly's own update check: when automatic checks run, what a check's
 //! answer does, downloads and their results, and the palette entries. No network: the effects
 //! are checked and their results sent by hand.
 
@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 /// 2026-02-01 12:00 UTC.
 pub(super) const NOW: i64 = 1_769_947_200;
 
-/// Trellis 0.2.0 on 64-bit Windows, with the clock at `NOW`.
+/// Glowfly 0.2.0 on 64-bit Windows, with the clock at `NOW`.
 pub(super) fn app() -> AppState {
     let mut st = state();
     st.settings.welcome_done = true;
@@ -37,7 +37,7 @@ fn asset(name: &str) -> Asset {
 
 /// Release `tag` with the Windows files; `files: false` publishes none.
 pub(super) fn release(tag: &str, files: bool) -> Release {
-    let names = ["trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "trellis-v0.3.0-x86_64-pc-windows-msvc.zip", "SHA256SUMS"];
+    let names = ["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "glowfly-v0.3.0-x86_64-pc-windows-msvc.zip", "SHA256SUMS"];
     Release {
         tag: tag.into(),
         name: tag.into(),
@@ -114,18 +114,18 @@ fn a_newer_release_is_offered() {
     let fx = send(&mut st, U::Checked { manual: false, result: found("v0.3.0", InstallKind::Installer) }, t);
     let UpdateStatus::Available(o) = &st.updates.status else { panic!("{:?}", st.updates.status) };
     assert_eq!(o.version.to_string(), "0.3.0");
-    assert_eq!(o.asset.as_ref().map(|a| a.name.as_str()), Some("trellis-v0.3.0-x86_64-pc-windows-msvc.msi"));
+    assert_eq!(o.asset.as_ref().map(|a| a.name.as_str()), Some("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"));
     assert_eq!(st.settings.updates.last_checked, Some(NOW));
     assert!(saves(&fx));
     let toast = st.toasts.last().expect("a toast");
-    assert_eq!(toast.text, "Trellis 0.3.0 is available.");
+    assert_eq!(toast.text, "Glowfly 0.3.0 is available.");
     assert_eq!(toast.action.as_ref().map(|a| a.label.as_str()), Some("Download"));
     // Its Download button downloads.
     let id = toast.id;
     let fx = update(&mut st, Msg::ToastAction(id), t);
     assert!(fx.iter().any(|e| matches!(e, Effect::Updates(UpdateEffect::Download(_)))));
     assert!(matches!(st.updates.status, UpdateStatus::Downloading(_)));
-    assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Downloading Trellis 0.3.0…"));
+    assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Downloading Glowfly 0.3.0…"));
 }
 
 #[test]
@@ -136,7 +136,7 @@ fn update_texts_follow_the_language() {
     send(&mut st, U::CheckNow, t);
     send(&mut st, U::Checked { manual: true, result: found("v0.3.0", InstallKind::Installer) }, t);
     let want = Lang::De.trf("updates.available", &[("version", &"0.3.0")]);
-    assert_ne!(want, "Trellis 0.3.0 is available.");
+    assert_ne!(want, "Glowfly 0.3.0 is available.");
     let toast = st.toasts.last().expect("a toast");
     assert_eq!(toast.text, want);
     assert_eq!(toast.action.as_ref().map(|a| a.label.as_str()), Some(Lang::De.tr("updates.download.button")));
@@ -151,7 +151,7 @@ fn the_same_version_is_up_to_date() {
     let t = Instant::now();
     send(&mut st, U::Checked { manual: true, result: found("v0.2.0", InstallKind::Portable) }, t);
     assert_eq!(st.updates.status, UpdateStatus::UpToDate);
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Trellis 0.2.0 is the latest version."));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Glowfly 0.2.0 is the latest version."));
     let mut st = app();
     send(&mut st, U::Checked { manual: false, result: found("v0.1.0", InstallKind::Portable) }, t);
     assert_eq!(st.updates.status, UpdateStatus::UpToDate);
@@ -192,15 +192,15 @@ fn downloads_and_what_follows() {
     let (mut st, t) = offered();
     let fx = send(&mut st, U::Download, t);
     let Some(Effect::Updates(UpdateEffect::Download(o))) = fx.first() else { panic!("no download") };
-    assert_eq!(o.asset.as_ref().unwrap().name, "trellis-v0.3.0-x86_64-pc-windows-msvc.msi");
+    assert_eq!(o.asset.as_ref().unwrap().name, "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
     assert!(checks(&send(&mut st, U::CheckNow, t)).is_empty(), "not while downloading");
     assert!(send(&mut st, U::Download, t).is_empty(), "nor a second download");
 
-    let file = PathBuf::from("Downloads").join("trellis-v0.3.0-x86_64-pc-windows-msvc.msi");
+    let file = PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
     send(&mut st, U::Downloaded(Ok(file.clone())), t);
     assert_eq!(st.updates.status, UpdateStatus::Downloaded { offer: Box::new(o.as_ref().clone()), file: file.clone(), installer: true });
     let toast = st.toasts.last().unwrap();
-    assert_eq!((toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())), ("Downloaded Trellis 0.3.0.", Some("Install")));
+    assert_eq!((toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())), ("Downloaded Glowfly 0.3.0.", Some("Install")));
     assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update downloaded"));
     let fx = send(&mut st, U::Install, t);
     assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Install(p))] if *p == file));
@@ -212,7 +212,7 @@ fn downloads_and_what_follows() {
 fn an_archive_is_shown_not_installed() {
     let (mut st, t) = offered();
     send(&mut st, U::Download, t);
-    let zip = PathBuf::from("Downloads").join("trellis-v0.3.0-x86_64-pc-windows-msvc.zip");
+    let zip = PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.zip");
     send(&mut st, U::Downloaded(Ok(zip.clone())), t);
     assert!(matches!(&st.updates.status, UpdateStatus::Downloaded { installer: false, .. }));
     assert_eq!(st.toasts.last().and_then(|t| t.action.as_ref()).map(|a| a.label.as_str()), Some("Show file"));
@@ -253,7 +253,7 @@ fn palette_entries_follow_the_status() {
     let mut st = app();
     let l = labels(&st);
     assert!(l.contains(&"View release notes".to_owned()) && l.contains(&"Check for updates".to_owned()), "no repository needed");
-    assert!(!l.iter().any(|l| l.starts_with("Download Trellis") || l.starts_with("Install Trellis")));
+    assert!(!l.iter().any(|l| l.starts_with("Download Glowfly") || l.starts_with("Install Glowfly")));
     let t = Instant::now();
     update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Updates(U::CheckNow))), t);
     assert!(matches!(st.updates.status, UpdateStatus::Checking { manual: true, .. }));
@@ -261,12 +261,12 @@ fn palette_entries_follow_the_status() {
     let busy = entries(&st).into_iter().find(|e| e.label == "Check for updates").and_then(|e| e.detail);
     assert_eq!(busy.as_deref(), Some("checking…"));
     send(&mut st, U::Checked { manual: true, result: found("v0.3.0", InstallKind::Installer) }, t);
-    assert!(labels(&st).contains(&"Download Trellis 0.3.0".to_owned()));
+    assert!(labels(&st).contains(&"Download Glowfly 0.3.0".to_owned()));
     update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Updates(U::Download))), t);
     assert!(matches!(st.updates.status, UpdateStatus::Downloading(_)));
-    assert!(!labels(&st).iter().any(|l| l.contains("Trellis 0.3.0")));
-    send(&mut st, U::Downloaded(Ok(PathBuf::from("Downloads").join("trellis-v0.3.0-x86_64-pc-windows-msvc.msi"))), t);
-    assert!(labels(&st).contains(&"Install Trellis 0.3.0".to_owned()));
+    assert!(!labels(&st).iter().any(|l| l.contains("Glowfly 0.3.0")));
+    send(&mut st, U::Downloaded(Ok(PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"))), t);
+    assert!(labels(&st).contains(&"Install Glowfly 0.3.0".to_owned()));
     let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Updates(U::Install))), t);
     assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Install(_))]));
     update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Updates(U::ShowNotes))), t);

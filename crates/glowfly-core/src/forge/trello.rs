@@ -49,7 +49,7 @@ pub fn authorize_url(key: &str, write: bool) -> Option<String> {
     let key = key.trim();
     let scope = if write { "read,write" } else { "read" };
     (key.len() == 32 && key.bytes().all(|b| b.is_ascii_alphanumeric()))
-        .then(|| format!("{WEB}/1/authorize?expiration=never&scope={scope}&response_type=token&name=Trellis&key={key}"))
+        .then(|| format!("{WEB}/1/authorize?expiration=never&scope={scope}&response_type=token&name=Glowfly&key={key}"))
 }
 
 impl Target {

@@ -1,4 +1,4 @@
-# Trellis: notes for AI assistants
+# Glowfly: notes for AI assistants
 
 Native Git client in Rust (egui + libgit2). Read `docs/ARCHITECTURE.md`
 before structural changes. `ROADMAP.md` is the source of truth for the goal, milestones and
@@ -11,11 +11,11 @@ status; `TODO.md` is the backlog of items, the current milestone first.
 - `UPDATE_SNAPSHOTS=1 cargo test -p glowfly snapshot`: re-render UI snapshots into
   `crates/glowfly-app/tests/snapshots/`. Open the PNGs and check them before committing.
 - `UPDATE_ICONS=1 cargo test -p glowfly --test app_icon`: redraw the app icon into `assets/icon/`
-  (PNGs, `trellis.ico`, `trellis.icns`) after changing `tests/app_icon/draw.rs`.
+  (PNGs, `glowfly.ico`, `glowfly.icns`) after changing `tests/app_icon/draw.rs`.
 - `UPDATE_NOTICES=1 cargo test -p glowfly-core notice`: regenerate the syntax-definition licenses
   in `THIRD-PARTY-NOTICES.md` after updating the `two-face` crate.
 - `RUST_LOG=glowfly=debug`: log background effects as they run.
-- `TRELLIS_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture`: read-only check
+- `GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture`: read-only check
   against a real hosting service.
 
 ## Worktrees
@@ -68,5 +68,5 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/tr
 - Git operations that should honour user config, hooks or credentials go through the git CLI
   (`gitcli`); everything else uses libgit2.
 - Never copy code, text, icons or other assets from other Git clients. Implement features from
-  their behaviour, in Trellis's own words and visuals.
+  their behaviour, in Glowfly's own words and visuals.
 - Don't drive the GUI with synthetic mouse input on the user's desktop; use snapshot tests.

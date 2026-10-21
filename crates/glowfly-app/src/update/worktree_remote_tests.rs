@@ -130,6 +130,6 @@ fn create_for_a_pull_request() {
     );
     drive(&mut st, pr("-x"));
     assert!(st.modal.is_none());
-    assert!(st.log.last().unwrap().text.ends_with("\"-x\" isn't a branch name Trellis can check out."));
+    assert!(st.log.last().unwrap().text.ends_with("\"-x\" isn't a branch name Glowfly can check out."));
     cleanup(&[&work, &bare]);
 }

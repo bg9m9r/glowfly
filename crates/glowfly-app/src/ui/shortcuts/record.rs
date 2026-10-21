@@ -1,6 +1,6 @@
 //! Recording a key for Preferences > Keyboard: while a row waits for a key, every key press
 //! and typed text of the frame is taken before any shortcut, dialog or text field sees it. The
-//! first press becomes the recorded chord (Esc cancels); keys Trellis can't bind are swallowed
+//! first press becomes the recorded chord (Esc cancels); keys Glowfly can't bind are swallowed
 //! and recording goes on.
 
 use super::chords::{chord_from_press, mac_press};

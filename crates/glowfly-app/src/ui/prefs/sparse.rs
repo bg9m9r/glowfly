@@ -71,7 +71,7 @@ fn status_row(ui: &mut Ui, status: &SparseStatus) {
         if status.sparse_index {
             warn(
                 ui,
-                "This worktree uses a sparse index (index.sparse), which Trellis can't fully read. Saving the paths here turns it off.",
+                "This worktree uses a sparse index (index.sparse), which Glowfly can't fully read. Saving the paths here turns it off.",
             );
         }
     });
@@ -83,7 +83,7 @@ fn held_row(ui: &mut Ui, cx: &SparseContext, msgs: &mut Vec<Msg>) {
     row(ui, "Paths", |ui| {
         help(
             ui,
-            "Trellis lists the sparse paths with git, and git would run the programs this repository's own settings and hooks name. \
+            "Glowfly lists the sparse paths with git, and git would run the programs this repository's own settings and hooks name. \
              Trust it to see and change them.",
         );
         if let Some(real) = &cx.held {

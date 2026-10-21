@@ -2,7 +2,7 @@
 //!
 //! With `gpg.format=ssh` git runs `gpg.ssh.program` (ssh-keygen) itself, not the gpg.program
 //! wrapper. ssh-keygen asks for a protected key's passphrase through `SSH_ASKPASS`, which
-//! gitcli already points at Trellis; this adds the `user.signingKey` file
+//! gitcli already points at Glowfly; this adds the `user.signingKey` file
 //! ([`crate::askpass::ENV_SSH_SIGNING_KEY`]) for commands that may sign, so the helper can tell
 //! that prompt from an ssh connection's ([`crate::askpass::ssh_sign`]).
 

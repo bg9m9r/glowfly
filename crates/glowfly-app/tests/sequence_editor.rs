@@ -1,4 +1,4 @@
-//! Trellis as git's sequence editor (`trellis --write-todo`): an interactive rebase run with the
+//! Glowfly as git's sequence editor (`glowfly --write-todo`): an interactive rebase run with the
 //! real executable installs the prepared todo, and a todo that doesn't match git's is refused
 //! without changing the repository; the same for `git rebase --edit-todo` on a running rebase.
 
@@ -19,7 +19,7 @@ fn head(dir: &Path) -> Oid {
 
 /// main with three commits, each adding a file.
 fn repo(name: &str) -> PathBuf {
-    let dir = glowfly_core::paths::temp_dir().join(format!("trellis-seq-editor-{name}-{}", std::process::id()));
+    let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-seq-editor-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-q", "-b", "main"]);
@@ -90,7 +90,7 @@ fn the_helper_refuses_a_foreign_commit() {
     let before = head(&dir);
     // The list holds only the tip; `start` checks it and writes the prepared todo.
     let tip = rebase::plan(&dir, &RebaseBase::FromCommit(before)).unwrap();
-    let prepared_dir = Repository::open(&dir).unwrap().path().join("trellis-rebase");
+    let prepared_dir = Repository::open(&dir).unwrap().path().join("glowfly-rebase");
     let parent = Repository::open(&dir).unwrap().find_commit(before).unwrap().parent_id(0).unwrap();
     // A sequence editor that rewrites the prepared todo to name `parent` (outside the range),
     // then hands over to the helper, as if the list had changed in between.
@@ -157,7 +157,7 @@ fn the_helper_refuses_a_foreign_remaining_step() {
     let dir = repo("edit-todo-foreign");
     let r = stopped_at_first(&dir);
     let before = todo_text(&dir);
-    let prepared = Repository::open(&dir).unwrap().path().join("trellis-rebase").join("todo-edit");
+    let prepared = Repository::open(&dir).unwrap().path().join("glowfly-rebase").join("todo-edit");
     // Rewrites the prepared list to name the commit already done, then hands over to the helper.
     let done = git(&dir, &["rev-list", "--max-parents=0", "HEAD"]);
     let foreign = format!(

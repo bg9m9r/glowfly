@@ -1,6 +1,6 @@
 //! The steps an interactive rebase in progress has left, read from git's own todo file (so also
-//! for a rebase started outside Trellis), and replacing them with `git rebase --edit-todo`. The
-//! exec lines Trellis adds for a reword or a combined message are folded back into the row they
+//! for a rebase started outside Glowfly), and replacing them with `git rebase --edit-todo`. The
+//! exec lines Glowfly adds for a reword or a combined message are folded back into the row they
 //! belong to; the lines finishing a reword whose pick is already done are kept as they are.
 
 use super::todo::{MSG_DIR, MessageFile, OwnLine, build, editor_command, listed_oids, own_line, problem_with};

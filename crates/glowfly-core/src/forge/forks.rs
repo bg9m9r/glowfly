@@ -1,6 +1,6 @@
 //! Forks of a repository on its hosting service: listing them, finding the signed-in user's own
 //! fork, and forking into the user's account. Every fork the services send passes one check
-//! (`checked`) before Trellis shows it or adds it as a remote.
+//! (`checked`) before Glowfly shows it or adds it as a remote.
 
 use super::remote::{scp_like, split_url};
 use super::{Auth, Connection, Target, links, page, parse_remote, service};
@@ -40,7 +40,7 @@ impl Fork {
 pub struct ForkList {
     /// Newest first.
     pub forks: Vec<Fork>,
-    /// The service had more than Trellis lists (`page::MAX_ITEMS`).
+    /// The service had more than Glowfly lists (`page::MAX_ITEMS`).
     pub truncated: bool,
 }
 

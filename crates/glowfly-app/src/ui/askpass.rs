@@ -120,7 +120,7 @@ fn layout(p: &PendingPrompt) -> Layout {
 const TOKEN_LABEL: &str = "Password or personal access token";
 
 /// Help for a signing passphrase: why it isn't asked every time, and how to get GnuPG's window.
-const GPG_HELP: &str = "gpg-agent remembers the passphrase for a while, so Trellis asks again only once it has \
+const GPG_HELP: &str = "gpg-agent remembers the passphrase for a while, so Glowfly asks again only once it has \
 forgotten. To use GnuPG's own window instead, turn this off in Preferences > Commit signing.";
 
 /// Help for an SSH signing passphrase: ssh-keygen keeps nothing between signatures.
@@ -150,8 +150,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(front) = st.askpass.front().cloned() else { return };
     let l = layout(&front);
     let p = &mut st.askpass;
-    let secret_id = Id::new("trellis-credentials-secret");
-    let id = Id::new("trellis-credentials");
+    let secret_id = Id::new("glowfly-credentials-secret");
+    let id = Id::new("glowfly-credentials");
     // On top of everything, so it takes the keyboard.
     let cx = Cx { t: st.settings.lang(), keyboard: true, key: id };
     // The response's should_close() is deliberately ignored: the backdrop must not cancel.
@@ -237,9 +237,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         }
         if !l.confirm {
             let saved = if l.remember && p.remember {
-                "Trellis saves this sign-in with git's credential helper once git accepts it."
+                "Glowfly saves this sign-in with git's credential helper once git accepts it."
             } else {
-                "Trellis doesn't save what you type here."
+                "Glowfly doesn't save what you type here."
             };
             ui.add_space(6.0);
             ui.label(RichText::new(saved).color(color::weak()).size(type_scale::SMALL));

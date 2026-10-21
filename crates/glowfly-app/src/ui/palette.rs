@@ -22,7 +22,7 @@ const LABEL_SIZE: f32 = type_scale::BODY;
 const _: () = assert!(PAGE_ROWS == (LIST_MAX_H / ROW_H) as usize);
 
 /// The id of the palette's modal area (its rect is in egui's memory under this id).
-pub(crate) const AREA_ID: &str = "trellis-palette";
+pub(crate) const AREA_ID: &str = "glowfly-palette";
 
 /// The palette's rect on screen while it is open (tests and the smoke probe find its rows
 /// inside it).
@@ -118,7 +118,7 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
         let r = controls::field(
             ui,
             egui::TextEdit::singleline(&mut p.query)
-                .id(Id::new("trellis-palette-query"))
+                .id(Id::new("glowfly-palette-query"))
                 .hint_text(hint)
                 .desired_width(f32::INFINITY)
                 .font(type_scale::font(type_scale::SUBHEAD)),
@@ -170,7 +170,7 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
         note(ui, "No matching commands", color::weak());
         return;
     }
-    egui::ScrollArea::vertical().id_salt("trellis-palette-list").max_height(LIST_MAX_H).show(ui, |ui| {
+    egui::ScrollArea::vertical().id_salt("glowfly-palette-list").max_height(LIST_MAX_H).show(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for (i, shown) in list.iter().enumerate() {
             let selected = sel == Some(i);
@@ -210,7 +210,7 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
                 if run_selected && let Some(c) = pk.command(r.hits[sel].index) {
                     msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(c)));
                 }
-                egui::ScrollArea::vertical().id_salt("trellis-palette-items").max_height(LIST_MAX_H).show(ui, |ui| {
+                egui::ScrollArea::vertical().id_salt("glowfly-palette-items").max_height(LIST_MAX_H).show(ui, |ui| {
                     ui.spacing_mut().item_spacing.y = 0.0;
                     for (i, hit) in r.hits.iter().enumerate() {
                         let label = pk.label(hit.index);

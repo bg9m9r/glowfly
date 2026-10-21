@@ -3,7 +3,7 @@
 //! Every path read from libgit2 or git's output goes through here. git2's `DiffFile::path()`
 //! (and every other accessor that returns a `&Path`) panics on Windows when the bytes aren't
 //! UTF-8, so only the `*_bytes()` accessors are used, and a name that isn't UTF-8 becomes a
-//! row Trellis shows but won't act on (`Hazard::NotUtf8`), never a lossy path that could name
+//! row Glowfly shows but won't act on (`Hazard::NotUtf8`), never a lossy path that could name
 //! another file.
 
 use super::{FileEntry, Hazard};

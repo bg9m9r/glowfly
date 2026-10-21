@@ -120,7 +120,7 @@ fn stash_changes_and_undo_a_hard_reset() {
     assert_eq!(read(&dir, "a.txt"), "before the reset\n");
     assert!(has_undo_stash(&st));
     assert!(st.toasts.last().is_some_and(|t| t.ok && t.text.starts_with("Stash changes and undo hard reset")));
-    assert!(st.log.iter().any(|l| l.text.contains("Your changes were stashed as \"Trellis: changes before undo\".")));
+    assert!(st.log.iter().any(|l| l.text.contains("Your changes were stashed as \"Glowfly: changes before undo\".")));
     cleanup(&[&dir]);
 }
 

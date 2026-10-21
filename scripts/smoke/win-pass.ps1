@@ -101,7 +101,7 @@ function Invoke-Check([string] $Nn, [string] $Id, [scriptblock] $Body) {
 # The app's and git's files all inside the pass folder, and settings that keep the welcome,
 # release notes and update check away.
 function Initialize-PassEnv {
-    $names = 'APPDATA', 'LOCALAPPDATA', 'HOME', 'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM', 'TRELLIS_SMOKE_PROBE', 'RUST_LOG', 'GALLIUM_DRIVER'
+    $names = 'APPDATA', 'LOCALAPPDATA', 'HOME', 'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM', 'GLOWFLY_SMOKE_PROBE', 'RUST_LOG', 'GALLIUM_DRIVER'
     if ($script:SavedEnv.Count -eq 0) {
         foreach ($name in $names) { $script:SavedEnv[$name] = [Environment]::GetEnvironmentVariable($name) }
     }
@@ -110,14 +110,14 @@ function Initialize-PassEnv {
     $script:Probe = Join-Path $script:PassDir 'probe.json'
     $home_ = Join-Path $script:PassDir 'home'
     $gitconfig = Join-Path $script:PassDir 'gitconfig'
-    New-Item -ItemType Directory -Force (Join-Path $script:AppData 'Trellis'), $script:LocalAppData, $home_ | Out-Null
+    New-Item -ItemType Directory -Force (Join-Path $script:AppData 'Glowfly'), $script:LocalAppData, $home_ | Out-Null
     $env:APPDATA = $script:AppData
     $env:LOCALAPPDATA = $script:LocalAppData
     $env:HOME = $home_
     $env:GIT_CONFIG_GLOBAL = $gitconfig
     $env:GIT_CONFIG_NOSYSTEM = '1'
-    $env:TRELLIS_SMOKE_PROBE = $script:Probe
-    $env:RUST_LOG = 'trellis=debug'
+    $env:GLOWFLY_SMOKE_PROBE = $script:Probe
+    $env:RUST_LOG = 'glowfly=debug'
     $env:GALLIUM_DRIVER = if ($script:MesaStaged) { 'llvmpipe' } else { $null }
     $config = [ordered]@{
         'user.name' = 'Smoke'; 'user.email' = 'smoke@example.com'; 'init.defaultBranch' = 'main'
@@ -126,7 +126,7 @@ function Initialize-PassEnv {
     foreach ($key in $config.Keys) { Invoke-FixtureGit config --file $gitconfig $key $config[$key] }
     $version = (Get-Content -Raw -LiteralPath (Join-Path $script:Root 'version.txt')).Trim()
     $settings = Get-SeedSetting $script:ZoomPercent $version
-    [IO.File]::WriteAllText((Join-Path $script:AppData 'Trellis\settings.json'), $settings, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $script:AppData 'Glowfly\settings.json'), $settings, [Text.UTF8Encoding]::new($false))
 }
 
 # Puts back the environment from before the first pass.
@@ -178,7 +178,7 @@ function Start-App {
     $script:App = Start-Process -FilePath $script:RunBinary -ArgumentList "`"$($script:Repo)`"" -PassThru `
         -RedirectStandardOutput $log -RedirectStandardError $err
     $clock = [Diagnostics.Stopwatch]::StartNew()
-    while (($script:Hwnd = [TrellisSmoke.Native]::FindMainWindow($script:App.Id)) -eq [IntPtr]::Zero) {
+    while (($script:Hwnd = [GlowflySmoke.Native]::FindMainWindow($script:App.Id)) -eq [IntPtr]::Zero) {
         if ($script:App.HasExited) {
             $hint = if ($script:MesaStaged) { '' } else { '; without SMOKE_MESA_DIR a machine with no OpenGL 2+ (the hosted runner) cannot start it' }
             Invoke-SmokeFailure 'startup' "the app exited with code $($script:App.ExitCode) before its window appeared (see app.log, app.err.log)$hint"
@@ -187,10 +187,10 @@ function Start-App {
         Start-Sleep -Milliseconds 200
     }
     # At the work area's top-left, leaving the bottom-right corner to the thief.
-    $wa = [TrellisSmoke.Native]::WorkArea()
+    $wa = [GlowflySmoke.Native]::WorkArea()
     $w = [Math]::Min(1440, $wa[2])
     $h = [Math]::Min(880, $wa[3] - 100)
-    [TrellisSmoke.Native]::Place($script:Hwnd, $wa[0], $wa[1], $w, $h)
+    [GlowflySmoke.Native]::Place($script:Hwnd, $wa[0], $wa[1], $w, $h)
     Write-SmokeLog "window placed at $($wa[0]), $($wa[1]), $w x $h (work area $($wa[2]) x $($wa[3]))"
     $p = Wait-Probe "the repository to load with the row 'Add notes'" {
         param($p)
@@ -201,19 +201,19 @@ function Start-App {
 
     # A second window to take the foreground away, in the work area's bottom-right corner.
     $thief = Join-Path $script:SmokeDir 'win-thief.ps1'
-    $title = 'Trellis smoke focus thief'
+    $title = 'Glowfly smoke focus thief'
     $thiefArgs = '-NoProfile', '-WindowStyle', 'Hidden', '-File', "`"$thief`"", '-X', ($wa[0] + $wa[2] - 220), '-Y', ($wa[1] + $wa[3] - 90), '-Title', "`"$title`""
     $script:Thief = Start-Process -FilePath ([Environment]::ProcessPath) -ArgumentList $thiefArgs -PassThru
     $clock = [Diagnostics.Stopwatch]::StartNew()
     while ($true) {
-        $script:ThiefHwnd = [TrellisSmoke.Native]::FindMainWindow($script:Thief.Id)
-        if ($script:ThiefHwnd -ne [IntPtr]::Zero -and [TrellisSmoke.Native]::Title($script:ThiefHwnd) -eq $title) { break }
+        $script:ThiefHwnd = [GlowflySmoke.Native]::FindMainWindow($script:Thief.Id)
+        if ($script:ThiefHwnd -ne [IntPtr]::Zero -and [GlowflySmoke.Native]::Title($script:ThiefHwnd) -eq $title) { break }
         if ($script:Thief.HasExited -or $clock.Elapsed.TotalSeconds -ge 20) {
             Invoke-SmokeFailure 'startup' 'the focus thief window (win-thief.ps1) did not appear within 20 s'
         }
         Start-Sleep -Milliseconds 200
     }
-    if (-not [TrellisSmoke.Native]::BringToFront($script:Hwnd)) { Write-SmokeLog 'SetForegroundWindow did not make Trellis the foreground window' }
+    if (-not [GlowflySmoke.Native]::BringToFront($script:Hwnd)) { Write-SmokeLog 'SetForegroundWindow did not make Glowfly the foreground window' }
     Wait-Probe 'the window to have the focus' { param($p) $p.focused -eq $true } | Out-Null
 }
 
@@ -271,9 +271,9 @@ function Invoke-DryRun {
     }
     Write-SmokeLog "parsed $($files.Count) scripts"
     $want = if ([IntPtr]::Size -eq 8) { 40 } else { 28 }
-    if ([TrellisSmoke.Native]::InputSize() -ne $want) { throw "INPUT is $([TrellisSmoke.Native]::InputSize()) bytes, not $want" }
-    $v = [TrellisSmoke.Native]::VirtualScreen()
-    $wa = [TrellisSmoke.Native]::WorkArea()
+    if ([GlowflySmoke.Native]::InputSize() -ne $want) { throw "INPUT is $([GlowflySmoke.Native]::InputSize()) bytes, not $want" }
+    $v = [GlowflySmoke.Native]::VirtualScreen()
+    $wa = [GlowflySmoke.Native]::WorkArea()
     if ($v[2] -le 0 -or $wa[2] -le 0) { throw "no screen: virtual screen $($v -join ','), work area $($wa -join ',')" }
     Write-SmokeLog "WinInput.cs compiled; virtual screen $($v[2]) x $($v[3]), work area $($wa[2]) x $($wa[3])"
     . (Join-Path $script:SmokeDir 'win-selftest.ps1')
@@ -297,7 +297,7 @@ function Invoke-DryRun {
         $got = (Invoke-Git @($cmd -split ' ')).Out
         if ($got -cne $shape[$cmd]) { throw "fixture: git $cmd gives '$got', not '$($shape[$cmd])'" }
     }
-    $seeded = Read-JsonFile (Join-Path $script:AppData 'Trellis\settings.json')
+    $seeded = Read-JsonFile (Join-Path $script:AppData 'Glowfly\settings.json')
     if ($seeded.zoom_percent -ne 150) { throw "seeded settings: zoom_percent is $($seeded.zoom_percent)" }
     Restore-PassEnv
     Write-SmokeLog "fixture checked: $((Invoke-Git log --format='%h %s').Out -replace "`n", ', ')"

@@ -3,12 +3,12 @@
 # after scripts/package-windows.ps1 built an older MSI (tag v0.0.1) and the current one from the
 # same program.
 #
-#   pwsh scripts/installer-check-windows.ps1 -Msi dist/trellis-v0.1.0-x86_64-pc-windows-msvc.msi `
-#     -OldMsi <dir>/trellis-v0.0.1-x86_64-pc-windows-msvc.msi `
-#     -Zip dist/trellis-v0.1.0-x86_64-pc-windows-msvc.zip -Version 0.1.0 -Out <work folder>
+#   pwsh scripts/installer-check-windows.ps1 -Msi dist/glowfly-v0.1.0-x86_64-pc-windows-msvc.msi `
+#     -OldMsi <dir>/glowfly-v0.0.1-x86_64-pc-windows-msvc.msi `
+#     -Zip dist/glowfly-v0.1.0-x86_64-pc-windows-msvc.zip -Version 0.1.0 -Out <work folder>
 #
 # It changes the user's installed programs, shortcuts and registry, so it refuses to run outside
-# GitHub Actions unless given -AllowLocal, and always refuses when Trellis is already installed.
+# GitHub Actions unless given -AllowLocal, and always refuses when Glowfly is already installed.
 # The installs are per-user and need no administrator rights. msiexec logs and every program
 # run's output go to -Out.
 param(
@@ -23,7 +23,7 @@ $ErrorActionPreference = 'Stop'
 
 if (-not $IsWindows) { throw 'installer-check-windows.ps1 runs only on Windows' }
 if ($env:GITHUB_ACTIONS -ne 'true' -and -not $AllowLocal) {
-    throw 'installer-check-windows.ps1 installs and uninstalls Trellis; run it on CI or pass -AllowLocal'
+    throw 'installer-check-windows.ps1 installs and uninstalls Glowfly; run it on CI or pass -AllowLocal'
 }
 $Msi = (Resolve-Path -LiteralPath $Msi).Path
 $OldMsi = (Resolve-Path -LiteralPath $OldMsi).Path
@@ -32,25 +32,25 @@ New-Item -ItemType Directory -Force $Out | Out-Null
 $Out = (Resolve-Path -LiteralPath $Out).Path
 $root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 
-$wxs = Get-Content -Raw -LiteralPath (Join-Path $root 'packaging/windows/trellis.wxs')
+$wxs = Get-Content -Raw -LiteralPath (Join-Path $root 'packaging/windows/glowfly.wxs')
 $m = [regex]::Match($wxs, 'UpgradeCode="(?<code>[0-9A-Fa-f-]{36})"')
-if (-not $m.Success) { throw "no UpgradeCode in trellis.wxs" }
+if (-not $m.Success) { throw "no UpgradeCode in glowfly.wxs" }
 $upgradeCode = '{' + $m.Groups['code'].Value.ToUpperInvariant() + '}'
 
-$installDir = Join-Path $env:LOCALAPPDATA 'Programs\Trellis'
+$installDir = Join-Path $env:LOCALAPPDATA 'Programs\Glowfly'
 $exe = Join-Path $installDir 'glowfly.exe'
-$startLnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'Trellis.lnk'
-$desktopLnk = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Trellis.lnk'
-$installerKey = 'HKCU:\Software\Trellis\Installer'
-$schemeKey = 'HKCU:\Software\Classes\trellis'
-$folderKey = 'HKCU:\Software\Classes\Directory\shell\Trellis'
-$backgroundKey = 'HKCU:\Software\Classes\Directory\Background\shell\Trellis'
-$userDirs = @((Join-Path $env:APPDATA 'Trellis'), (Join-Path $env:LOCALAPPDATA 'Trellis'))
+$startLnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'Glowfly.lnk'
+$desktopLnk = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Glowfly.lnk'
+$installerKey = 'HKCU:\Software\Glowfly\Installer'
+$schemeKey = 'HKCU:\Software\Classes\glowfly'
+$folderKey = 'HKCU:\Software\Classes\Directory\shell\Glowfly'
+$backgroundKey = 'HKCU:\Software\Classes\Directory\Background\shell\Glowfly'
+$userDirs = @((Join-Path $env:APPDATA 'Glowfly'), (Join-Path $env:LOCALAPPDATA 'Glowfly'))
 
 $wi = New-Object -ComObject WindowsInstaller.Installer
 $shell = New-Object -ComObject WScript.Shell
 
-# The product codes installed under Trellis's upgrade code.
+# The product codes installed under Glowfly's upgrade code.
 function Get-RelatedProduct {
     $list = $wi.RelatedProducts($upgradeCode)
     @(for ($i = 0; $i -lt $list.Count; $i++) { $list.Item($i) })
@@ -60,10 +60,10 @@ function Assert-That([bool]$Condition, [string]$Message) {
     if (-not $Condition) { throw "check failed: $Message" }
 }
 
-# Exactly one Trellis installed, at $Want.
+# Exactly one Glowfly installed, at $Want.
 function Assert-Product([string]$Want) {
     $codes = @(Get-RelatedProduct)
-    Assert-That ($codes.Count -eq 1) "expected one installed Trellis, found $($codes.Count)"
+    Assert-That ($codes.Count -eq 1) "expected one installed Glowfly, found $($codes.Count)"
     $got = $wi.ProductInfo($codes[0], 'VersionString')
     Assert-That ($got -eq $Want) "installed version is $got, expected $Want"
 }
@@ -106,7 +106,7 @@ function Assert-Installed {
         Assert-That ($got -eq 1) "$installerKey has no $value = 1"
     }
     $open = Get-DefaultValue "$schemeKey\shell\open\command"
-    Assert-That ($open -eq "`"$exe`" `"%1`"") "the trellis:// command is $open"
+    Assert-That ($open -eq "`"$exe`" `"%1`"") "the glowfly:// command is $open"
     foreach ($key in $folderKey, $backgroundKey) {
         $command = Get-DefaultValue "$key\command"
         Assert-That ($command -eq "`"$exe`" `"%V`"") "$key\command is $command"
@@ -122,12 +122,12 @@ function Assert-Removed {
         Assert-That (-not (Test-Path -LiteralPath $key)) "$key is still there"
     }
     $codes = @(Get-RelatedProduct)
-    Assert-That ($codes.Count -eq 0) "$($codes.Count) Trellis products are still installed"
+    Assert-That ($codes.Count -eq 0) "$($codes.Count) Glowfly products are still installed"
 }
 
 # --- Guards: never touch a real install ------------------------------------------------------
 if (@(Get-RelatedProduct).Count -gt 0 -or (Test-Path -LiteralPath $installDir)) {
-    throw 'Trellis is already installed; uninstall it first'
+    throw 'Glowfly is already installed; uninstall it first'
 }
 $core = ($Version -split '[-+]')[0]
 Assert-That ([version]$core -gt [version]'0.0.1') "the current version $Version must be newer than the old package's 0.0.1"
@@ -153,13 +153,13 @@ try {
         $target = $shell.CreateShortcut($lnk).TargetPath
         $run = Invoke-Program $target @('--version') "version-$n"
         Assert-That ($run.Code -eq 0) "$target --version exited with $($run.Code): $($run.Err)"
-        Assert-That ($run.Out.Trim() -eq "trellis $Version") "$target --version printed '$($run.Out.Trim())'"
+        Assert-That ($run.Out.Trim() -eq "glowfly $Version") "$target --version printed '$($run.Out.Trim())'"
     }
     Write-Host 'ok --version from both shortcuts'
 
     # --- The update check, with the installed program --------------------------------------
     $feedCheck = Join-Path $PSScriptRoot 'update-feed-check.ps1'
-    pwsh -NoProfile -File $feedCheck -Trellis $exe -Version $Version -Installer $Msi -Archive $Zip -Expect installer -Out (Join-Path $Out 'feed')
+    pwsh -NoProfile -File $feedCheck -Glowfly $exe -Version $Version -Installer $Msi -Archive $Zip -Expect installer -Out (Join-Path $Out 'feed')
     if ($LASTEXITCODE -ne 0) { throw "update-feed-check.ps1 failed (exit $LASTEXITCODE)" }
     foreach ($dir in $missingBefore) {
         Assert-That (-not (Test-Path -LiteralPath $dir)) "the command-line modes created $dir"

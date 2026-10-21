@@ -1,6 +1,6 @@
 //! The signed-in user's own repositories on a hosting service (theirs, ones they collaborate on
 //! and their organizations' or groups'), newest activity first, for the Clone dialog. Every
-//! repository passes the same check as forks (`forks::checked`) before Trellis shows or clones it.
+//! repository passes the same check as forks (`forks::checked`) before Glowfly shows or clones it.
 
 use super::forks::{Fork, checked};
 use super::{Account, Auth, Provider, Target, page};
@@ -18,11 +18,11 @@ pub type HostedRepo = Fork;
 pub struct MyRepos {
     /// Newest activity first.
     pub repos: Vec<HostedRepo>,
-    /// The service had more than Trellis lists (`page::MAX_ITEMS`).
+    /// The service had more than Glowfly lists (`page::MAX_ITEMS`).
     pub truncated: bool,
 }
 
-/// Whether Trellis can list the user's repositories on `p`.
+/// Whether Glowfly can list the user's repositories on `p`.
 pub fn lists_my_repos(p: Provider) -> bool {
     matches!(p, Provider::GitHub | Provider::GitHubEnterprise | Provider::GitLab | Provider::GitLabSelfManaged | Provider::Bitbucket)
 }

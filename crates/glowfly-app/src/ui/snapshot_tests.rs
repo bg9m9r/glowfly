@@ -39,7 +39,7 @@ pub(super) fn try_git(dir: &Path, a: &[&str], date: &str) -> (bool, String) {
 /// A small repository with a merged feature branch, an open branch, a tag and a modified file.
 /// Each test passes its own `name`: tests run in parallel and must not share a folder.
 fn fixture_repo(name: &str) -> PathBuf {
-    let dir = glowfly_core::paths::temp_dir().join(format!("trellis-snap-{}-{name}", std::process::id())).join("demo");
+    let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-snap-{}-{name}", std::process::id())).join("demo");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     copy_dir(fixture_template(), &dir);
@@ -55,7 +55,7 @@ fn fixture_repo(name: &str) -> PathBuf {
 fn fixture_template() -> &'static Path {
     static TEMPLATE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
     TEMPLATE.get_or_init(|| {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-snap-{}-template", std::process::id())).join("demo");
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-snap-{}-template", std::process::id())).join("demo");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         build_fixture(&dir);
@@ -254,7 +254,7 @@ fn preferences_commit_signing() {
     h.check_snapshot("prefs_signing");
     // The passphrase-prompt choice is edited in place.
     assert!(h.state().0.settings.gpg_prompts_in_app);
-    h.get_by_label("Ask for the key's passphrase in Trellis").click();
+    h.get_by_label("Ask for the key's passphrase in Glowfly").click();
     h.run();
     assert!(!h.state().0.settings.gpg_prompts_in_app);
 }

@@ -25,7 +25,7 @@ pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &mut KeysPage, keys: &Keymap, m
     ui.add_space(8.0);
     ui.horizontal(|ui| {
         let field = TextEdit::singleline(&mut page.filter)
-            .id(Id::new("trellis-keys-filter"))
+            .id(Id::new("glowfly-keys-filter"))
             .hint_text("Filter by action or key")
             .desired_width(320.0)
             .margin(vec2(8.0, 5.0));

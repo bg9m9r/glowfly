@@ -14,9 +14,9 @@ use std::process::{Command, Stdio};
 pub struct ShellMissing;
 
 /// The variable holding the script.
-pub const SCRIPT_VAR: &str = "TRELLIS_COMMAND";
+pub const SCRIPT_VAR: &str = "GLOWFLY_COMMAND";
 /// sh's arguments: run the script, its errors with its output.
-pub const SH_ARGS: [&str; 2] = ["-c", "eval \"$TRELLIS_COMMAND\" 2>&1"];
+pub const SH_ARGS: [&str; 2] = ["-c", "eval \"$GLOWFLY_COMMAND\" 2>&1"];
 /// How much of a command's output is kept: its end.
 pub const MAX_OUTPUT_BYTES: usize = 512 * 1024;
 
@@ -45,7 +45,7 @@ pub fn find_sh() -> Result<PathBuf, ShellMissing> {
 }
 
 /// Runs `script` with sh in `cwd`, stdin closed, with git kept from waiting on an editor or a
-/// terminal and credential prompts going to Trellis's dialog. Returns whether it exited with 0
+/// terminal and credential prompts going to Glowfly's dialog. Returns whether it exited with 0
 /// and its output (`$ <script>`, then what it printed, stderr merged, at most the last
 /// `MAX_OUTPUT_BYTES`). Runner threads only.
 pub fn run_shell(cwd: &Path, script: &str) -> (bool, String) {

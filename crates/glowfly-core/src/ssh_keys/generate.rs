@@ -142,7 +142,7 @@ pub fn generate(keygen: &Path, new: &NewKey, overwrite: bool) -> Result<SshKeyPa
         return Err(Error::Other(format!("{} is not a file path", path.display())));
     };
     create_private_dir(parent)?;
-    let tmp = parent.join(format!(".{}.trellis-new-{}", name.to_string_lossy(), std::process::id()));
+    let tmp = parent.join(format!(".{}.glowfly-new-{}", name.to_string_lossy(), std::process::id()));
     let tmp_pub = pub_path(&tmp);
     let clean = || {
         let _ = std::fs::remove_file(&tmp);

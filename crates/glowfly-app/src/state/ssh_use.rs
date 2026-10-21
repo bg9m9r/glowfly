@@ -9,7 +9,7 @@ use glowfly_core::paths::same_spelling;
 use glowfly_core::ssh_keys::KeyChoice;
 use std::path::{Path, PathBuf};
 
-pub const AGENT_TOAST: &str = "Trellis doesn't choose a key in core.sshCommand; ssh uses your agent.";
+pub const AGENT_TOAST: &str = "Glowfly doesn't choose a key in core.sshCommand; ssh uses your agent.";
 pub const REPLACE_COMMAND_TITLE: &str = "Replace SSH command";
 pub const REMOVE_COMMAND_TITLE: &str = "Remove SSH command";
 
@@ -87,7 +87,7 @@ pub fn level_label(repo: Option<&str>) -> String {
     }
 }
 
-/// The levels (`false` global, `true` the repository) whose choice is `key` in Trellis's form.
+/// The levels (`false` global, `true` the repository) whose choice is `key` in Glowfly's form.
 pub fn chosen_at(choices: Option<&Choices>, key: &Path) -> Vec<bool> {
     let Some(c) = choices else { return Vec::new() };
     [false, true].into_iter().filter(|&repo| matches!(c.at(repo), Some(KeyChoice::Key(p)) if same_spelling(p, key))).collect()
@@ -95,14 +95,14 @@ pub fn chosen_at(choices: Option<&Choices>, key: &Path) -> Vec<bool> {
 
 pub fn replace_command_body(level: &str, value: &str) -> String {
     format!(
-        "core.sshCommand for {level} is \u{201c}{}\u{201d}, which Trellis didn't write. Replace it with the chosen key?",
+        "core.sshCommand for {level} is \u{201c}{}\u{201d}, which Glowfly didn't write. Replace it with the chosen key?",
         shown_value(value)
     )
 }
 
 pub fn remove_command_body(level: &str, value: &str) -> String {
     format!(
-        "core.sshCommand for {level} is \u{201c}{}\u{201d}, which Trellis didn't write. Remove it, so git runs plain ssh?",
+        "core.sshCommand for {level} is \u{201c}{}\u{201d}, which Glowfly didn't write. Remove it, so git runs plain ssh?",
         shown_value(value)
     )
 }

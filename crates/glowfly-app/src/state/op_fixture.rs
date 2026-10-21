@@ -6,7 +6,7 @@ use std::path::Path;
 
 /// A repository with a.txt committed, loaded; `name` keeps each test's folder apart.
 pub fn snapshot(name: &str) -> Snapshot {
-    let dir = glowfly_core::paths::temp_dir().join(format!("trellis-op-{name}-{}", std::process::id()));
+    let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-op-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let repo = git2::Repository::init(&dir).unwrap();
     std::fs::write(dir.join("a.txt"), "a").unwrap();

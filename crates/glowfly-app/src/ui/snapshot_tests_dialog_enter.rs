@@ -20,7 +20,7 @@ fn started(h: &H) -> bool {
 
 #[test]
 fn init_dialog_enter_in_folder_creates() {
-    let path = glowfly_core::paths::temp_dir().join("trellis-init-enter");
+    let path = glowfly_core::paths::temp_dir().join("glowfly-init-enter");
     let folder = path.display().to_string();
     let facts = FolderFacts { path, exists: false, repo: false, has_files: false, gitignore: false, license: None };
     let form = InitForm { folder_checked: Some((folder.clone(), Some(facts))), ..InitForm::new(folder.clone(), "main".into()) };

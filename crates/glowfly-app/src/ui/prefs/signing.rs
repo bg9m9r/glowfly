@@ -121,7 +121,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
 
     if format == SigningFormat::OpenPgp {
         row(ui, "Passphrase prompt", |ui| {
-            controls::checkbox(ui, &mut settings.gpg_prompts_in_app, "Ask for the key's passphrase in Trellis");
+            controls::checkbox(ui, &mut settings.gpg_prompts_in_app, "Ask for the key's passphrase in Glowfly");
             help(ui, PROMPT_HELP);
         });
         row(ui, "Generate new GPG key", |ui| {
@@ -171,7 +171,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
     if check_row(ui, "Sign commits", &mut git.gpgsign, "Sign new commits by default", None).changed() {
         set(msgs, "commit.gpgsign", &git.gpgsign.to_string());
     }
-    let help = Some("Trellis commits and tags through git, so these settings also apply on the command line.");
+    let help = Some("Glowfly commits and tags through git, so these settings also apply on the command line.");
     if check_row(ui, "Sign tags", &mut git.tag_gpgsign, "Sign new tags by default", help).changed() {
         set(msgs, "tag.gpgsign", &git.tag_gpgsign.to_string());
     }

@@ -1,6 +1,6 @@
-# Trellis on every OS and file system
+# Glowfly on every OS and file system
 
-Trellis runs on Windows (NTFS, FAT32 and exFAT, network shares, WSL through `\\wsl$`), macOS
+Glowfly runs on Windows (NTFS, FAT32 and exFAT, network shares, WSL through `\\wsl$`), macOS
 (APFS, including case-sensitive volumes, and HFS+) and Linux (ext4, btrfs, tmpfs, vfat,
 NFS and SMB). These platforms differ in ways that are easy to miss on one developer's machine
 and expensive when they bite: the wrong file deleted, a repository opened twice, a crash on a
@@ -30,7 +30,7 @@ second one next to it.
 | Timestamps | NTFS 100 ns; FAT 2 s | APFS ns; HFS+ 1 s | ns on ext4 and btrfs; network attribute caches lag |
 | Notifications | WinRT toasts; Focus Assist can hide them | Notification Center; Do Not Disturb can hide them | freedesktop notifications over D-Bus; needs a notification server |
 | git builds | Git for Windows (MinGW), often a newer version | Apple's `/usr/bin/git` (older) or Homebrew's | Whatever the distribution ships, sometimes old |
-| Window frame | Drawn by Trellis: no system decorations; its own title bar, window buttons, resize edges and border, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Trellis's title bar | The system frame, with Trellis's menu bar and tab bar below it |
+| Window frame | Drawn by Glowfly: no system decorations; its own title bar, window buttons, resize edges and border, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Glowfly's title bar | The system frame, with Glowfly's menu bar and tab bar below it |
 
 ## Rules
 
@@ -105,13 +105,13 @@ second one next to it.
     spelling (`safe_directory::config_value`: forward slashes, `%(prefix)///server/share` for a
     share).
 
-### Names Trellis creates or accepts
+### Names Glowfly creates or accepts
 
-1. **One rule set for every name Trellis creates:** `names::win_name_problem` (and
+1. **One rule set for every name Glowfly creates:** `names::win_name_problem` (and
    `names::path_problem`, `names::ref_name_problem`) for files, folders, renames, branches,
    tags, clone and worktree folders, patches and SSH keys. Typed names Windows can't use are
    errors on Windows and "won't check out on Windows" warnings elsewhere (`names::blocks_here`).
-2. **Names Trellis makes up go through `names::portable`** (`con` becomes `con-repo`, `aux`
+2. **Names Glowfly makes up go through `names::portable`** (`con` becomes `con-repo`, `aux`
    becomes `aux-wt`), so they work everywhere without asking.
 3. **Decide "same file" by identity, never by spelling or OS.** Use `Disk::same_file`
    (`same-file`, or device and inode) in `repo/workfile_disk.rs`, and check the parent's
@@ -139,7 +139,7 @@ second one next to it.
    matters; a crash must leave the old file or the new one. Append-only logs are the one
    exception: they grow through `persist::append` (or a handle from `persist::open_append`),
    and their readers skip a torn last line.
-2. **Links:** Trellis's own files follow a symlink to its real file and keep the link
+2. **Links:** Glowfly's own files follow a symlink to its real file and keep the link
    (`atomic_write`). Working-tree writes set `WriteOptions::refuse_links` and never write
    through a link, which can point anywhere.
 3. **A replaced file keeps its permissions and read-only attribute.** Set the exec bit only
@@ -196,18 +196,18 @@ second one next to it.
 6. **Search PATH like the OS does** (`external_tools.rs`): on Unix the file needs an exec bit;
    on Windows match names in any case by listing the folder and try `PATHEXT`. Never search the
    cwd.
-7. **Copies for external tools go only under `external_tools::temp::root()`:** `trellis-tools` in
+7. **Copies for external tools go only under `external_tools::temp::root()`:** `glowfly-tools` in
    the temporary folder, used on Unix only when it is a real folder this user owns with mode
    0700, else `tool-files` in the cache folder. Copies are written through `persist`, marked
    read-only, and keep the file's name (`names::portable`) so tools can highlight it. They hold
    the stored bytes unless the repository is trusted, when `git cat-file --filters` gives the
-   checkout form. A macOS application bundle that Trellis waits for runs through `open -W`.
+   checkout form. A macOS application bundle that Glowfly waits for runs through `open -W`.
 8. **A downloaded update is opened only after its SHA-256 matches the release's published
    checksum, and only on the user's click** (`app_update::download`, `runner/updates.rs`). The
    file's name comes from the server, so it is checked first (`app_update::asset_name_ok`: 1 to
    128 characters of `A-Za-z0-9._-`, no leading dot) and can't leave the downloads folder; the
    bytes are held in memory, checked, and only then written with `persist::write_file`. An
-   existing file with other content is never replaced (`free_name`: `name (1).msi`). Trellis never
+   existing file with other content is never replaced (`free_name`: `name (1).msi`). Glowfly never
    replaces its own running program.
 9. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
    Windows, Notification Center on macOS, freedesktop notifications over D-Bus (zbus, no
@@ -263,7 +263,7 @@ second one next to it.
 7. **A path written into a git config value that a shell runs (`core.sshCommand`) goes through
    `native_path::native` and `rebase::shell_quote_for`** (`ssh_keys/command.rs`): no `\\?\`
    prefix, sh-quoted, and forward slashes on Windows. Git for Windows' bundled ssh doesn't read
-   keys from the Windows OpenSSH agent service; only Windows' own `ssh.exe` does. Trellis's value
+   keys from the Windows OpenSSH agent service; only Windows' own `ssh.exe` does. Glowfly's value
    for that one (`ssh_keys/windows_ssh.rs`) is the program alone, resolved from `SystemRoot`
    (`paths::resolve`, so it has the on-disk spelling), written the same way
    (`'C:/Windows/System32/OpenSSH/ssh.exe'`), and recognised only by that exact spelling (a drive,
@@ -273,9 +273,9 @@ second one next to it.
    and never use `Path::is_absolute` on such text.
 8. **The gpg.program wrapper runs the gpg git would have run** (`gpg_prompt/`): the last
    `gpg.program` / `gpg.openpgp.program` from any scope (system, global, repository, worktree)
-   that isn't Trellis, else `gpg` on the PATH git passes on (on Windows that is Git for Windows'
+   that isn't Glowfly, else `gpg` on the PATH git passes on (on Windows that is Git for Windows'
    bundled gpg or a Gpg4win install, whichever git itself would find), read through the git in
-   `TRELLIS_GIT_PROGRAM` (the one that ran the wrapper). It keeps git's PATH (no
+   `GLOWFLY_GIT_PROGRAM` (the one that ran the wrapper). It keeps git's PATH (no
    `env_path::apply` in the wrapper), starts its gpg children with `CREATE_NO_WINDOW`, and feeds
    the passphrase on fd 0 (`--passphrase-fd 0`), never in argv, a file or the environment. It
    needs git 2.31 (`GIT_CONFIG_COUNT`) and GnuPG 2.1.12 (loopback allowed by default); with
@@ -284,16 +284,17 @@ second one next to it.
    into the install found from `GIT_EXEC_PATH` (git exports it to the wrapper; else
    `git --exec-path`): `<root>/<msystem>/libexec/git-core` or `<root>/usr/lib/git-core`, with
    `/bin` read as `/usr/bin` (`gpg_prompt/program.rs`). For `gpg.format=ssh`, git runs
-   ssh-keygen directly; it asks through `SSH_ASKPASS`, and gitcli adds `TRELLIS_SSH_SIGNING_KEY`
+   ssh-keygen directly; it asks through `SSH_ASKPASS`, and gitcli adds `GLOWFLY_SSH_SIGNING_KEY`
    (the user.signingKey file) for commands that may sign (`gpg_prompt/ssh_env.rs`).
 9. **The UI language comes only from `i18n::detect_system_language`**, called once in `main.rs`
    before the window opens: sys-locale's ordered list (Windows: the user's preferred UI
    languages; macOS: the preferred languages; Unix: `LANGUAGE`, then `LC_ALL`, `LC_MESSAGES`,
    `LANG`); the first supported language wins, and `C`/`POSIX` first or nothing supported means
-   English. Never read `env::var("LANG")` for it, and never read it again while Trellis runs. It
+   English. Never read `env::var("LANG")` for it, and never read it again while Glowfly runs. It
    is independent of the `LANGUAGE=C` that `gitcli` gives git children (rule 5).
-10. **`TRELLIS_UPDATE_FEED` replaces the release feed with a local folder** (`app_update::Feed`).
-    Unset or empty means the hosting service over https, as always. Set, it must be an absolute
+10. **`GLOWFLY_UPDATE_FEED` replaces the release feed with a local folder** (`app_update::Feed`).
+    The old name, `TRELLIS_UPDATE_FEED`, is read when the new one is unset or empty
+    (`app_update::feed::feed_var`). Unset or empty means the hosting service over https, as always. Set, it must be an absolute
     path (`Path::is_absolute`, so `/feed` counts as relative on Windows, which needs a drive or
     UNC prefix); a relative value is an error, never resolved against the working folder. The
     folder holds `release.json` in the hosting service's release shape next to the files it
@@ -302,9 +303,9 @@ second one next to it.
     release yet; a missing folder or bad JSON is a failed check. Checksums still come from the
     folder's `SHA256SUMS` or `<file>.sha256` and are always enforced, and nothing reaches the
     network. The variable is read on every check, by the app's checks and downloads and by
-    `trellis --check-update`.
+    `glowfly --check-update`.
 11. **Release builds on Windows are GUI-subsystem programs** (`windows_subsystem = "windows"`),
-    so `trellis --version` and `trellis --check-update` print only to a caller that redirects
+    so `glowfly --version` and `glowfly --check-update` print only to a caller that redirects
     their output (`Start-Process -RedirectStandardOutput … -Wait -PassThru`); a terminal shows
     nothing. Both modes run before logging, settings and the smoke probe, and write no file of
     their own.
@@ -323,7 +324,7 @@ second one next to it.
     characters. Linked worktrees and submodules match by their real git dir
     (`<main>/.git/worktrees/<name>`, `<super>/.git/modules/<name>`), so Use for this repository
     adds the common git dir. Which identity applies, and from where, comes from git
-    (`repo_identity::read`, `--show-origin`), not from Trellis's own matching.
+    (`repo_identity::read`, `--show-origin`), not from Glowfly's own matching.
 
 ### Key labels
 
@@ -335,16 +336,20 @@ second one next to it.
 
 ### Links and the running window
 
-1. **Register the `trellis` scheme for this user only:** `HKEY_CURRENT_USER\Software\Classes\trellis`
-   on Windows, never HKLM; on XDG desktops `trellis-links.desktop` in `$XDG_DATA_HOME/applications`
+1. **Register the `glowfly` scheme for this user only:** `HKEY_CURRENT_USER\Software\Classes\glowfly`
+   on Windows, never HKLM; on XDG desktops `glowfly-links.desktop` in `$XDG_DATA_HOME/applications`
    (else `~/.local/share/applications`), made the default with `xdg-mime` (run with
    `env_path::apply`). The Windows command quotes the program and `"%1"` through
    `native_path::native` (`url_scheme::windows_command`: no `\\?\` prefix); a desktop entry's
    `Exec` argument is quoted by `url_scheme::desktop_exec_arg` (reserved characters, `%%`, and the
-   desktop-file string escaping of `\`).
+   desktop-file string escaping of `\`). The old `trellis` scheme (the app was called Trellis) is
+   registered for the same program beside it (`url_scheme::OLD_SCHEME`: a second class key, a
+   second `MimeType` in the same desktop entry, and the MSI writes both), so links made before
+   the rename still open; unregistering removes the `trellis` key only while it points at this
+   copy. `link::parse` accepts both schemes and links are always made with `glowfly://`.
 2. **The instance file is private:** it is written with `persist::WriteOptions { private: true }`
    (mode 0600, and 0700 for a folder the write creates, on Unix) under `settings::runtime_dir`
-   (`$XDG_RUNTIME_DIR/trellis` on Linux, else the cache folder). A file left by a window that
+   (`$XDG_RUNTIME_DIR/glowfly` on Linux, else the cache folder). A file left by a window that
    crashed names a closed port, which the second process treats as no window.
 3. **Windows refuses the foreground to a window its user didn't just use:** the process handing a
    link over calls `AllowSetForegroundWindow` with the running window's process id first
@@ -357,7 +362,7 @@ second one next to it.
 ### Window frame
 
 1. **The frame follows `Chrome::for_os`, tested for every OS:** Windows gets `Chrome::Windows`
-   (Trellis draws the title bar, window buttons, resize edges and border), macOS `Chrome::MacOs`
+   (Glowfly draws the title bar, window buttons, resize edges and border), macOS `Chrome::MacOs`
    (a full-size content view; the title bar leaves `TRAFFIC_LIGHTS_W` for the system's buttons
    and draws no window buttons or edges), and everything else `Chrome::System` (the system frame,
    the menu bar and the tab bar). Ask the `Chrome` value what to draw (`drawn`, `window_buttons`,
@@ -429,8 +434,8 @@ second one next to it.
 5. **Put caches in the cache folder** (`%LOCALAPPDATA%`, `~/Library/Caches`, `$XDG_CACHE_HOME`;
    `settings/paths.rs`), not the roaming config folder, and take the home folder from
    `settings::home_dir`, which ignores an empty or relative `HOME`.
-6. **Put logs in `settings::log_dir`** (`%LOCALAPPDATA%\Trellis\logs`, `~/Library/Logs/Trellis`,
-   `$XDG_STATE_HOME/trellis/logs`): local, never the roaming config or cache folder. Append
+6. **Put logs in `settings::log_dir`** (`%LOCALAPPDATA%\Glowfly\logs`, `~/Library/Logs/Glowfly`,
+   `$XDG_STATE_HOME/glowfly/logs`): local, never the roaming config or cache folder. Append
    through `persist::append` / `persist::open_append`, and keep every log bounded: trim it
    (the activity log, `logs::ActivityFile`) or rotate it by size (the error and performance
    logs, `logs::RotatingFile`). With no folder, logs stay in memory.
@@ -439,22 +444,30 @@ second one next to it.
    `~/Downloads` on macOS, and `XDG_DOWNLOAD_DIR` from `user-dirs.dirs` (else `~/Downloads`) on
    XDG desktops; when that isn't a folder, the cache folder's `updates`.
 8. **Per-repository records go in the repository's own git dir**, never the config folder: the
-   operation journal's notes are `<git dir>/trellis/journal.jsonl` (`journal::notes::path`, a
+   operation journal's notes are `<git dir>/glowfly/journal.jsonl` (`journal::notes::path`, a
    linked worktree's own git dir, since HEAD is per worktree), appended through
    `persist::append` and trimmed through `persist::atomic_write`, bounded like a log.
 
+9. **Folders from the app's earlier names move once, at start** (`settings::migrate_old_dirs`,
+   `settings/migrate.rs`), before logging creates anything: the settings folder Trellis used
+   (else an older `<XDG config>/Trellis` or Riffle one), and Trellis's cache and logs folders,
+   each only when Glowfly's own isn't there yet. Every location is spelled by one function of the
+   name (`settings/paths.rs`, `AppName`), so the old folders follow the same OS rules. A move is a
+   rename, or a copy and then a removal across volumes. Saved tokens move the same way, from the
+   `trellis` (or `riffle`) keyring service on first use, and the journal notes from
+   `<git dir>/trellis` the first time a repository's notes are read.
 12. **Custom shell commands run under POSIX sh on every OS, found by `custom_commands::find_sh`
     on the runner thread only:** `/bin/sh` on Unix; on Windows the `sh.exe` beside the git in use
     (`<Git>\bin` or `<Git>\usr\bin`, from `<Git>\cmd`, `<Git>\bin` or `<Git>\mingw64\bin`),
     else `sh.exe` on PATH, else a clear error (never cmd.exe or PowerShell). The script goes in
-    the `TRELLIS_COMMAND` variable with argv `-c 'eval "$TRELLIS_COMMAND" 2>&1'`, because the
+    the `GLOWFLY_COMMAND` variable with argv `-c 'eval "$GLOWFLY_COMMAND" 2>&1'`, because the
     MSYS runtime re-parses a command line with its own quoting and globbing. Placeholder values
     are single-quoted (`shell_quote_for`), `{repo}` with forward slashes on Windows; git
     commands get each value as one argument. The child runs with `CREATE_NO_WINDOW`, stdin
-    closed, `GIT_EDITOR` set to `true` and credential prompts sent to Trellis's dialog, so
+    closed, `GIT_EDITOR` set to `true` and credential prompts sent to Glowfly's dialog, so
     nothing waits on a terminal. git config's diff and merge tool commands (`difftool.<name>.cmd`,
     `mergetool.<name>.cmd`) run the same way (`external_tools/shell_tool.rs`): `find_sh`, the
-    command in `TRELLIS_COMMAND` (argv `-c 'eval "$TRELLIS_COMMAND"'`, stderr kept apart), and
+    command in `GLOWFLY_COMMAND` (argv `-c 'eval "$GLOWFLY_COMMAND"'`, stderr kept apart), and
     `LOCAL`, `REMOTE`, `BASE` and `MERGED` in the environment, with native paths for the copies
     and the repo-relative path for `MERGED`, in the repository's top folder. Which tool runs is
     read by `external_tools/git_config.rs` on the runner thread, through `gitcli` (`git config -z
@@ -486,7 +499,7 @@ making the decision a pure function and testing it for every OS on every machine
 - **No hard-coded `C:/` paths in tests that resolve or touch them.** On Unix `C:/work` is a
   relative path, which resolves against the cwd; this broke CI twice. Build paths from
   `paths::temp_dir()`; a `C:/` string is fine only as a label a view shows.
-- **Case-sensitive volumes.** Tests that need one read `TRELLIS_TEST_CS_DIR` and skip with a
+- **Case-sensitive volumes.** Tests that need one read `GLOWFLY_TEST_CS_DIR` and skip with a
   note when it's unset. CI provides it: a case-sensitive APFS image (`hdiutil create -fs
   "Case-sensitive APFS"`) on macOS, and `fsutil file setCaseSensitiveInfo <dir> enable` on
   Windows; both run the `case_twins` tests. Gate real-volume tests by a live probe, not by
@@ -513,7 +526,7 @@ making the decision a pure function and testing it for every OS on every machine
   checked (files, shortcuts or desktop entries, registry, icons), started, update-checked with
   `scripts/update-feed-check.ps1` against local feeds, and uninstalled. The install scripts
   refuse to run outside GitHub Actions unless given `-AllowLocal` / `--allow-local`, and always
-  refuse when Trellis is already installed, so they never replace or remove a developer's own
+  refuse when Glowfly is already installed, so they never replace or remove a developer's own
   copy. `update-feed-check.ps1` installs nothing and opens no window, so it runs anywhere.
 
 ## Known gaps and things only a real machine can confirm
@@ -532,16 +545,16 @@ Gaps that are accepted for now:
   network mounts.
 - **Windows file watching can drop events** without an error (`notify` sends no rescan on
   overflow); the 30 s poll covers it.
-- **Desktop notifications don't carry Trellis's name yet:** on Windows they are attributed to
-  PowerShell's app id until Trellis registers its own AppUserModelID; on macOS an unbundled
+- **Desktop notifications don't carry Glowfly's name yet:** on Windows they are attributed to
+  PowerShell's app id until Glowfly registers its own AppUserModelID; on macOS an unbundled
   binary posts under another app's identity through the deprecated NSUserNotification API.
-- **Trellis started with `GIT_CONFIG_COUNT` already set keeps GnuPG's own passphrase window:**
+- **Glowfly started with `GIT_CONFIG_COUNT` already set keeps GnuPG's own passphrase window:**
   the user's command-scope config is left alone rather than appended to.
 - **macOS doesn't receive links or folders yet:** an application gets them as Apple events, with
-  the scheme and the folder document type declared in its bundle's Info.plist. Trellis.app
+  the scheme and the folder document type declared in its bundle's Info.plist. Glowfly.app
   declares neither until it handles those events (declaring them would start it without the link
   or folder). Preferences says so.
-- **Windows 11's modern context menu has no "Open in Trellis":** that menu needs an
+- **Windows 11's modern context menu has no "Open in Glowfly":** that menu needs an
   `IExplorerCommand` in a packaged (sparse) app; the MSI's entry is in the classic menu, under
   "Show more options".
 - **Wayland compositors may refuse to raise the window** for a link from another process; it
@@ -549,7 +562,7 @@ Gaps that are accepted for now:
 - **`xdg-mime` can't unset a default:** Unregister removes the desktop entry, and desktops ignore
   a default whose file is gone.
 - **Keychain-backed pinentries (pinentry-mac and the like) are bypassed** while "Ask for the
-  key's passphrase in Trellis" is on, since loopback skips the pinentry.
+  key's passphrase in Glowfly" is on, since loopback skips the pinentry.
 - **Detecting a terminal's running program is approximate:** macOS gives no program name, so
   the close confirmation asks about "a program"; background jobs (`cmd &`) don't count; a custom
   shell that is itself a launcher with a differently named child (`wsl.exe`) can look busy; and
@@ -592,5 +605,5 @@ Unverified, needs a real machine:
 - where Alt+Space opens the system menu, and its keyboard Move and Size;
 - the `MICA_DARK` and `MICA_LIGHT` stand-ins against a colour picker on the real backdrop over
   light, dark and busy wallpapers;
-- turning transparency effects or high contrast on and off while Trellis runs;
-- on macOS, the system titlebar strip's own drag and double-click against Trellis's.
+- turning transparency effects or high contrast on and off while Glowfly runs;
+- on macOS, the system titlebar strip's own drag and double-click against Glowfly's.

@@ -1,4 +1,4 @@
-//! SSH key pairs in `~/.ssh` and how git reaches SSH remotes with them. Trellis keeps no key
+//! SSH key pairs in `~/.ssh` and how git reaches SSH remotes with them. Glowfly keeps no key
 //! material; it reads the files ssh uses and runs ssh's own tools.
 //!
 //! - `listing`: the pairs in a folder, their public key lines and `ssh-keygen` fingerprints, a

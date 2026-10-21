@@ -1,4 +1,4 @@
-//! Which git Trellis runs and what it can do. Checked at startup and again whenever another git
+//! Which git Glowfly runs and what it can do. Checked at startup and again whenever another git
 //! is chosen in Preferences > Git: the program ([`crate::git_program`]: the chosen one, else the
 //! one found on the PATH children get) and its version, and from that the features that need a
 //! newer git than the one installed, which are then turned off with a reason instead of failing
@@ -109,7 +109,7 @@ pub fn missing_for(version: Option<Version>) -> Vec<Feature> {
     Feature::ALL.into_iter().filter(|f| (v.0, v.1) < f.min()).collect()
 }
 
-/// What is known about the git Trellis runs.
+/// What is known about the git Glowfly runs.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GitInfo {
     /// Where the `git` program is: the chosen one, or the one found on PATH.
@@ -138,11 +138,11 @@ impl GitInfo {
         let Some(v) = self.version else {
             return Some(match &self.path {
                 Some(p) if self.chosen => format!(
-                    "Trellis couldn't run git at {}, the git chosen in Preferences > Git. Choose another there.",
+                    "Glowfly couldn't run git at {}, the git chosen in Preferences > Git. Choose another there.",
                     crate::native_path::shown(p)
                 ),
-                Some(p) => format!("Trellis couldn't run git at {}. Commits, fetches and pushes need it.", crate::native_path::shown(p)),
-                None => "Trellis couldn't find git on your PATH. Commits, fetches and pushes need it: install git, then choose it in Preferences > Git or restart Trellis."
+                Some(p) => format!("Glowfly couldn't run git at {}. Commits, fetches and pushes need it.", crate::native_path::shown(p)),
+                None => "Glowfly couldn't find git on your PATH. Commits, fetches and pushes need it: install git, then choose it in Preferences > Git or restart Glowfly."
                     .to_owned(),
             });
         };
@@ -152,7 +152,7 @@ impl GitInfo {
         }
         let names: Vec<&str> = missing.iter().map(|f| f.label()).collect();
         Some(format!(
-            "Your git is {}; Trellis needs {major}.{minor} or newer for everything to work. Until you update git, these are off: {}.",
+            "Your git is {}; Glowfly needs {major}.{minor} or newer for everything to work. Until you update git, these are off: {}.",
             show(v),
             names.join(", ")
         ))

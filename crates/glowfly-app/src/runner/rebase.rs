@@ -1,5 +1,5 @@
 //! Interactive rebase effects: loading the list, preparing a graph edit, running a rebase with
-//! Trellis as the sequence editor, resuming a stopped one (each recording what undo needs), and
+//! Glowfly as the sequence editor, resuming a stopped one (each recording what undo needs), and
 //! reading and editing the remaining steps of a running one.
 
 use super::err;

@@ -1,4 +1,4 @@
-//! What Trellis tells about Git LFS outside the preferences page: the main window's banner when
+//! What Glowfly tells about Git LFS outside the preferences page: the main window's banner when
 //! a repository stores files in LFS but git-lfs is missing, the badge on file rows that hold
 //! pointers, and the summary a diff shows instead of pointer text (ui/lfs_banner.rs,
 //! ui/lfs_badge.rs, ui/diff/lfs_note.rs; the state is `lfs::LfsSession`).

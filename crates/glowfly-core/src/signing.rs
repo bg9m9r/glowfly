@@ -1,6 +1,6 @@
 //! Commit-signing keys: listing GPG secret keys and SSH public keys, generating a GPG key, and
 //! exporting public keys. Everything shells out to `gpg` / reads files; no key material is
-//! stored by Trellis.
+//! stored by Glowfly.
 
 use crate::error::{Error, Result};
 use std::path::{Path, PathBuf};
@@ -248,7 +248,7 @@ uid:u::::1700000000::HASH::Encrypt Only <enc@example.com>::::::::::0:\n";
 
     #[test]
     fn lists_ssh_public_keys() {
-        let home = crate::paths::temp_dir().join(format!("trellis-ssh-{}", std::process::id()));
+        let home = crate::paths::temp_dir().join(format!("glowfly-ssh-{}", std::process::id()));
         let ssh = home.join(".ssh");
         std::fs::create_dir_all(&ssh).unwrap();
         std::fs::write(ssh.join("id_ed25519.pub"), "ssh-ed25519 AAAAC3Nz ada@laptop\n").unwrap();

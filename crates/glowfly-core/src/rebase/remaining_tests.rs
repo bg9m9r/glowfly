@@ -1,4 +1,4 @@
-//! Reading the remaining steps of a running rebase (also one started outside Trellis) and
+//! Reading the remaining steps of a running rebase (also one started outside Glowfly) and
 //! replacing them with `git rebase --edit-todo`.
 
 use super::plan_tests::{commit, linear};
@@ -89,7 +89,7 @@ fn lists_a_rebase_started_elsewhere() {
 }
 
 #[test]
-fn trellis_rewords_fold_back() {
+fn glowfly_rewords_fold_back() {
     let (dir, [_, c2, ..]) = linear("rebase-remaining-fold");
     let req = request(&dir, RebaseBase::FromCommit(c2), |items| {
         items[0].action = RebaseAction::Edit;

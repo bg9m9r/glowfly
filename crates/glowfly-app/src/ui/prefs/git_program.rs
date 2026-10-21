@@ -1,4 +1,4 @@
-//! Preferences > Git: which git program Trellis runs, the gits found on this machine and the
+//! Preferences > Git: which git program Glowfly runs, the gits found on this machine and the
 //! version in use. The page only asks (`GitEnvMsg`); update checks a choice, saves it and
 //! follows the new git everywhere.
 
@@ -20,7 +20,7 @@ use glowfly_core::paths::same_spelling;
 use glowfly_core::settings::Settings;
 use std::path::PathBuf;
 
-const HELP: &str = "Trellis runs this git for commits, fetches, pushes, hooks and signing. The built-in terminal and external \
+const HELP: &str = "Glowfly runs this git for commits, fetches, pushes, hooks and signing. The built-in terminal and external \
                     tools still use whatever git your PATH finds.";
 
 pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Vec<Msg>) {

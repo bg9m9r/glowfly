@@ -51,12 +51,12 @@ fn ssh_aliases_are_their_public_hosts() {
     assert_eq!(parse_remote("D:/backups/app.git", &[conn]), None);
 }
 
-/// Read-only check against a real service, using whatever credentials Trellis would find.
-/// Run with: TRELLIS_LIVE_REMOTE=<remote url> cargo test live_remote -- --ignored --nocapture
+/// Read-only check against a real service, using whatever credentials Glowfly would find.
+/// Run with: GLOWFLY_LIVE_REMOTE=<remote url> cargo test live_remote -- --ignored --nocapture
 #[test]
 #[ignore]
 fn live_remote() {
-    let url = std::env::var("TRELLIS_LIVE_REMOTE").expect("set TRELLIS_LIVE_REMOTE");
+    let url = std::env::var("GLOWFLY_LIVE_REMOTE").expect("set GLOWFLY_LIVE_REMOTE");
     let t = parse_remote(&url, &[]).expect("unrecognized remote");
     let account = t.account();
     let auth = resolve_auth(&account, &crate::paths::temp_dir(), false, true).expect("no credentials");

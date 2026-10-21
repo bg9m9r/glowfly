@@ -197,7 +197,7 @@ fn a_drive_without_a_usable_trash_offers_the_home_trash() {
             assert_eq!(
                 o.body,
                 format!(
-                    "a.txt is on a drive whose trash folder Trellis can't use: /mnt/usb has no trash folder you can use.\n\nMove it to the Trash in your home folder instead? It is copied there, which can take a while for a large file. Or delete it permanently; Undo ({}) can still bring it back while this tab is open.",
+                    "a.txt is on a drive whose trash folder Glowfly can't use: /mnt/usb has no trash folder you can use.\n\nMove it to the Trash in your home folder instead? It is copied there, which can take a while for a large file. Or delete it permanently; Undo ({}) can still bring it back while this tab is open.",
                     keys("Ctrl+Z")
                 )
             );

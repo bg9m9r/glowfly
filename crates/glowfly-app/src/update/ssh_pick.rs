@@ -1,6 +1,6 @@
 //! Preferences > SSH: Use existing (pick a key pair outside the .ssh folder in the OS file
 //! dialog, list it and remember it in `Settings::ssh_extra_keys`) and Remove from list (forget
-//! one again). Trellis never copies, moves or deletes key files.
+//! one again). Glowfly never copies, moves or deletes key files.
 
 use crate::effect::Effect;
 use crate::ssh::SshEffect;

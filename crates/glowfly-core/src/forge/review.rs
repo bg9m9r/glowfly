@@ -14,7 +14,7 @@ mod thread;
 
 pub use thread::*;
 
-/// Whether comments, reviews and merging work inside Trellis for this service.
+/// Whether comments, reviews and merging work inside Glowfly for this service.
 pub fn reviews_in_app(p: Provider) -> bool {
     matches!(p, Provider::GitHub | Provider::GitHubEnterprise)
 }
@@ -36,7 +36,7 @@ pub enum MergeMethod {
 impl MergeMethod {
     pub const ALL: [MergeMethod; 3] = [MergeMethod::Merge, MergeMethod::Squash, MergeMethod::Rebase];
 
-    /// The name the service's API and Trellis's log use.
+    /// The name the service's API and Glowfly's log use.
     pub fn api_name(self) -> &'static str {
         match self {
             MergeMethod::Merge => "merge",
@@ -164,7 +164,7 @@ pub struct Merged {
 }
 
 fn unsupported(t: &Target) -> Error {
-    Error::Unsupported(format!("{} reviews aren't supported in Trellis yet", t.provider.name()))
+    Error::Unsupported(format!("{} reviews aren't supported in Glowfly yet", t.provider.name()))
 }
 
 fn checked(t: &Target, mut e: Entry) -> Entry {

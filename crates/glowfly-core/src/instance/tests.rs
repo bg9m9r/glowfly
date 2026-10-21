@@ -6,7 +6,7 @@ use std::time::Instant;
 
 /// A fresh folder for one test's instance file.
 fn scratch(tag: &str) -> PathBuf {
-    let dir = crate::paths::temp_dir().join(format!("trellis-instance-{tag}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-instance-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     dir
 }
@@ -25,10 +25,10 @@ fn a_link_reaches_the_running_window() {
     let dir = scratch("deliver");
     let path = dir.join(FILE_NAME);
     let (listener, rx) = listen(&path);
-    hand_off_via(&path, "trellis://repo?root=abc").unwrap();
-    assert_eq!(rx.recv_timeout(REQUEST_TIMEOUT).unwrap(), "trellis://repo?root=abc");
-    hand_off_via(&path, "trellis://tag/v1?root=abc").unwrap();
-    assert_eq!(rx.recv_timeout(REQUEST_TIMEOUT).unwrap(), "trellis://tag/v1?root=abc");
+    hand_off_via(&path, "glowfly://repo?root=abc").unwrap();
+    assert_eq!(rx.recv_timeout(REQUEST_TIMEOUT).unwrap(), "glowfly://repo?root=abc");
+    hand_off_via(&path, "glowfly://tag/v1?root=abc").unwrap();
+    assert_eq!(rx.recv_timeout(REQUEST_TIMEOUT).unwrap(), "glowfly://tag/v1?root=abc");
     let info = file::read(&path).unwrap();
     assert_eq!(info.addr, listener.addr().to_string());
     assert_eq!(info.pid, std::process::id());
@@ -50,7 +50,7 @@ fn a_wrong_token_is_refused() {
     let mut info = file::read(&path).unwrap();
     info.token = "0".repeat(32);
     file::write(&path, &info).unwrap();
-    assert!(matches!(hand_off_via(&path, "trellis://repo?root=abc"), Err(HandOffError::Rejected)));
+    assert!(matches!(hand_off_via(&path, "glowfly://repo?root=abc"), Err(HandOffError::Rejected)));
     assert!(rx.recv_timeout(std::time::Duration::from_millis(200)).is_err(), "nothing was opened");
     // The file now holds another token: dropping the listener leaves it.
     drop(listener);
@@ -62,7 +62,7 @@ fn a_wrong_token_is_refused() {
 fn no_window_means_not_running() {
     let dir = scratch("none");
     let path = dir.join(FILE_NAME);
-    assert!(matches!(hand_off_via(&path, "trellis://repo?root=abc"), Err(HandOffError::NotRunning)));
+    assert!(matches!(hand_off_via(&path, "glowfly://repo?root=abc"), Err(HandOffError::NotRunning)));
 
     // A file left by a window that is gone: its port is closed.
     let closed = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -70,7 +70,7 @@ fn no_window_means_not_running() {
     drop(closed);
     file::write(&path, &InstanceFile { addr, token: "1".repeat(32), pid: 1 }).unwrap();
     let start = Instant::now();
-    assert!(matches!(hand_off_via(&path, "trellis://repo?root=abc"), Err(HandOffError::NotRunning)));
+    assert!(matches!(hand_off_via(&path, "glowfly://repo?root=abc"), Err(HandOffError::NotRunning)));
     assert!(start.elapsed() < CONNECT_TIMEOUT * 3, "gave up in {:?}", start.elapsed());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -83,8 +83,8 @@ fn a_newer_windows_file_is_left_alone() {
     let (newer, rx) = listen(&path);
     drop(old);
     assert!(path.exists(), "the newer window's file stays");
-    hand_off_via(&path, "trellis://repo?root=abc").unwrap();
-    assert_eq!(rx.recv_timeout(REQUEST_TIMEOUT).unwrap(), "trellis://repo?root=abc");
+    hand_off_via(&path, "glowfly://repo?root=abc").unwrap();
+    assert_eq!(rx.recv_timeout(REQUEST_TIMEOUT).unwrap(), "glowfly://repo?root=abc");
     drop(newer);
     assert!(!path.exists());
     let _ = std::fs::remove_dir_all(&dir);

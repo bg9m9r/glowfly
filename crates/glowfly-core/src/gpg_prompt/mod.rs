@@ -1,15 +1,15 @@
-//! Signing passphrases: Trellis as git's `gpg.program`.
+//! Signing passphrases: Glowfly as git's `gpg.program`.
 //!
 //! git signs commits and tags by running its OpenPGP program as `<program> --status-fd=2 -bsau
 //! <key>`, writing the payload on stdin, reading the signature from stdout and checking stderr
 //! for `[GNUPG:] SIG_CREATED`. When gpg-agent needs the key's passphrase it starts the pinentry
-//! it was configured with, shared by every client of the long-running agent, so Trellis can't
+//! it was configured with, shared by every client of the long-running agent, so Glowfly can't
 //! swap in its own per call. GnuPG's per-call alternative is `--pinentry-mode loopback`: gpg
 //! reads the passphrase itself and hands it to the agent.
 //!
-//! For git commands that may prompt, `gitcli` sets `gpg.program` to the Trellis executable
+//! For git commands that may prompt, `gitcli` sets `gpg.program` to the Glowfly executable
 //! through command-scope config ([`env::vars`]), which wins over every config file. Run that
-//! way ([`is_wrapper_call`]), Trellis:
+//! way ([`is_wrapper_call`]), Glowfly:
 //!
 //! 1. finds the program the user configured ([`program::user_program`]; `gpg` by default),
 //!    mapping MSYS-style paths (`/usr/bin/gpg`) into the Git for Windows install on Windows;
@@ -28,7 +28,7 @@
 //!
 //! With `gpg.format=ssh` git runs `gpg.ssh.program` (ssh-keygen) itself, not the wrapper.
 //! ssh-keygen asks for a protected key's passphrase through `SSH_ASKPASS`, which gitcli already
-//! sets, and gitcli adds `TRELLIS_SSH_SIGNING_KEY` for commands that may sign, so the helper
+//! sets, and gitcli adds `GLOWFLY_SSH_SIGNING_KEY` for commands that may sign, so the helper
 //! sends an [`crate::askpass::SshSignAsk`] ([`ssh_env`], [`crate::askpass::ssh_sign`]).
 
 pub mod args;
@@ -57,18 +57,18 @@ mod tests;
 use std::ffi::{OsStr, OsString};
 
 /// Marks a process git started as the wrapper (`1`), and the wrapper's own gpg children
-/// (`nested`), so a `gpg.program` that leads back to Trellis stops instead of looping.
-pub const ENV_WRAPPER: &str = "TRELLIS_GPG_WRAPPER";
+/// (`nested`), so a `gpg.program` that leads back to Glowfly stops instead of looping.
+pub const ENV_WRAPPER: &str = "GLOWFLY_GPG_WRAPPER";
 
-/// The git program Trellis ran (the one chosen in Preferences > Git, or `git`), so the wrapper
+/// The git program Glowfly ran (the one chosen in Preferences > Git, or `git`), so the wrapper
 /// reads `gpg.program` with the same git that started it.
-pub const ENV_GIT: &str = "TRELLIS_GIT_PROGRAM";
+pub const ENV_GIT: &str = "GLOWFLY_GIT_PROGRAM";
 
 /// How many passphrases are tried before git is told signing failed.
 pub const MAX_TRIES: usize = 3;
 
 /// What a nested call prints before exiting 2.
-pub const LOOP_MESSAGE: &str = "Trellis: gpg.program points back at Trellis";
+pub const LOOP_MESSAGE: &str = "Glowfly: gpg.program points back at Glowfly";
 
 /// Whether this process was started as git's gpg.program: the marker is set and the first
 /// argument is an option. Askpass prompt texts never start with `-`, and the other command-line
@@ -79,7 +79,7 @@ pub fn is_wrapper_call(argv: &[OsString], marker: Option<&OsStr>) -> bool {
 }
 
 /// Whether the marker says this process is the wrapper's own gpg child: `gpg.program` resolved
-/// back to Trellis.
+/// back to Glowfly.
 pub fn is_nested(marker: Option<&OsStr>) -> bool {
     marker.is_some_and(|m| m == "nested")
 }

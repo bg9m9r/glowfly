@@ -18,7 +18,7 @@ use glowfly_core::undo::UndoKind;
 use std::collections::HashSet;
 
 /// Where a long selection's paths are written for `--pathspec-from-file`.
-const PATHSPEC_FILE: &str = "TRELLIS_STASH_PATHS";
+const PATHSPEC_FILE: &str = "GLOWFLY_STASH_PATHS";
 
 /// Opens the Stash dialog on `scope`, with only `path` ticked when given. Nothing opens on a
 /// clean tree.

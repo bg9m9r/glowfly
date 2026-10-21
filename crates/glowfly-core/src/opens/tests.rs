@@ -75,7 +75,7 @@ fn the_current_system_is_one_of_the_three() {
 
 #[test]
 fn facts_come_from_the_file_system() {
-    let dir = crate::paths::temp_dir().join(format!("trellis-opens-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-opens-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("run");
     std::fs::write(&file, "#!/bin/sh\n").unwrap();

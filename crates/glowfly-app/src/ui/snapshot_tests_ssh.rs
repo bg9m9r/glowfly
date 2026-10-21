@@ -94,8 +94,8 @@ pub(super) fn home_key(name: &str) -> PathBuf {
     PathBuf::from(HOME).join(".ssh").join(name)
 }
 
-fn trellis_repo() -> RepoTarget {
-    RepoTarget { name: "trellis".into(), workdir: "C:/src/trellis".into(), real: "C:/src/trellis".into(), trusted: true }
+fn glowfly_repo() -> RepoTarget {
+    RepoTarget { name: "glowfly".into(), workdir: "C:/src/glowfly".into(), real: "C:/src/glowfly".into(), trusted: true }
 }
 
 #[test]
@@ -115,11 +115,11 @@ fn prefs_ssh() {
 fn prefs_ssh_light() {
     let mut st = ssh_page(ThemeChoice::Light, Some(listing(two_keys(), true)));
     let p = ssh_mut(&mut st);
-    p.repo = Some(trellis_repo());
+    p.repo = Some(glowfly_repo());
     p.choice =
         Some(Choices { global: Ok(KeyChoice::Key(home_key("id_ed25519"))), repo: Some(Ok(KeyChoice::Key(home_key("id_rsa_work")))) });
     let mut h = tall(st, false);
-    for label in ["All repositories: id_ed25519", "trellis only: id_rsa_work", "Default", "Used in trellis"] {
+    for label in ["All repositories: id_ed25519", "glowfly only: id_rsa_work", "Default", "Used in glowfly"] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert_eq!(h.query_all_by_label("Tried by default").count(), 0, "a key is chosen for all repositories");
@@ -151,7 +151,7 @@ fn prefs_ssh_loading() {
 fn prefs_ssh_git_choice() {
     let mut st = ssh_page(ThemeChoice::Dark, Some(listing(two_keys(), true)));
     let p = ssh_mut(&mut st);
-    p.repo = Some(trellis_repo());
+    p.repo = Some(glowfly_repo());
     p.choice = Some(Choices {
         global: Ok(KeyChoice::Key(home_key("id_ed25519"))),
         repo: Some(Ok(KeyChoice::Other { value: "ssh -v".into(), key: None })),
@@ -174,8 +174,8 @@ fn prefs_ssh_git_choice() {
         assert_eq!(h.query_all_by_label(label).count(), count, "{label}");
     }
     assert!(h.query_all_by_label("Add to agent").all(|n| !n.is_disabled()), "an agent is running");
-    assert!(h.query_by_label_contains("Set outside Trellis: ssh -v").is_some());
-    assert!(h.query_by_label("trellis only: Custom command").is_some());
+    assert!(h.query_by_label_contains("Set outside Glowfly: ssh -v").is_some());
+    assert!(h.query_by_label("glowfly only: Custom command").is_some());
     assert!(h.query_by_label("Running, 1 key").is_some());
     h.check_snapshot("prefs_ssh_git_choice");
 }

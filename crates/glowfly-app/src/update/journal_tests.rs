@@ -207,7 +207,7 @@ fn a_result_for_an_inactive_tab_is_dropped() {
     let (mut st, dir) = opened("journal-inactive");
     run(&mut st, JournalMsg::Open);
     let g = st.journal_gen;
-    let other = glowfly_core::paths::temp_dir().join("trellis-journal-elsewhere");
+    let other = glowfly_core::paths::temp_dir().join("glowfly-journal-elsewhere");
     let msg = Msg::Journal(JournalMsg::Loaded { generation: g, result: Ok(timeline(&dir)) });
     update(&mut st, Msg::Scoped { workdir: other, msg: Box::new(msg) }, Instant::now());
     assert!(st.journal.as_ref().unwrap().timeline.is_none());

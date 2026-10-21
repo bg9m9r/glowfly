@@ -46,7 +46,7 @@ mod tests {
     use std::path::PathBuf;
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = crate::paths::temp_dir().join(format!("trellis-tail-{name}-{}", std::process::id()));
+        let dir = crate::paths::temp_dir().join(format!("glowfly-tail-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir

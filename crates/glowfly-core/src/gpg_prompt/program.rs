@@ -4,10 +4,10 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-/// The program git would run without Trellis's override, from
+/// The program git would run without Glowfly's override, from
 /// `git config -z --type=path --get-regexp '^gpg\.(openpgp\.)?program$'` output (`key\nvalue\0`
 /// entries, in the order git reads them): the last non-empty value that isn't `self_exe`. git
-/// lets the last of `gpg.program` and `gpg.openpgp.program` win, and Trellis's own
+/// lets the last of `gpg.program` and `gpg.openpgp.program` win, and Glowfly's own
 /// command-scope entry comes last of all. The value is as git has it; [`user_program`] maps an
 /// MSYS-style path on Windows. Pure.
 pub fn from_config(z_output: &str, self_exe: &Path) -> Option<String> {
@@ -122,7 +122,7 @@ fn windows_spelling(p: String) -> String {
     p
 }
 
-/// The git the wrapper asks: the one that ran it, from [`super::ENV_GIT`] (set by Trellis next to
+/// The git the wrapper asks: the one that ran it, from [`super::ENV_GIT`] (set by Glowfly next to
 /// `gpg.program`), so a git chosen in Preferences > Git reads its own system config and gives
 /// the same answer it would give itself. `git` from PATH when the variable is unset or empty.
 pub fn wrapper_git() -> OsString {

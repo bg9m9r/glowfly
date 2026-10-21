@@ -179,11 +179,11 @@ fn a_branch_moved_with_update_ref_undoes_and_redoes() {
     assert_eq!(action.describe(), format!("move of branch x to {}", &c1.to_string()[..7]));
 
     let undo = plan(&dir, &action, false).unwrap();
-    assert_eq!(undo, cmds(&[&["update-ref", "-m", "Trellis: undo move of x", "refs/heads/x", &c2.to_string(), &c1.to_string()]]));
+    assert_eq!(undo, cmds(&[&["update-ref", "-m", "Glowfly: undo move of x", "refs/heads/x", &c2.to_string(), &c1.to_string()]]));
     run_plan(&dir, undo);
     assert_eq!(tip(&dir, "x"), Some(c2));
     let redo = plan(&dir, &action, true).unwrap();
-    assert_eq!(redo, cmds(&[&["update-ref", "-m", "Trellis: redo move of x", "refs/heads/x", &c1.to_string(), &c2.to_string()]]));
+    assert_eq!(redo, cmds(&[&["update-ref", "-m", "Glowfly: redo move of x", "refs/heads/x", &c1.to_string(), &c2.to_string()]]));
     run_plan(&dir, redo);
     assert_eq!(tip(&dir, "x"), Some(c1));
 

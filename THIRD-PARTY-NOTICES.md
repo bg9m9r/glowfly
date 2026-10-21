@@ -1,6 +1,6 @@
 # Third-party notices
 
-Trellis's binaries embed two font families and a set of syntax definitions.
+Glowfly's binaries embed two font families and a set of syntax definitions.
 
 ## Fonts
 
@@ -227,7 +227,7 @@ The syntax definitions (grammars) highlight diffs. They come from:
   curated set of syntax definitions, including syntect's default set. Its
   [full listing](https://codeberg.org/CosmicHarper/two-face/src/tag/v0.5.2+bat-0.26.1/generated/acknowledgements_full.md)
   names the license of every definition in the set.
-- `crates/glowfly-core/syntaxes/PowerShell.sublime-syntax`, written for Trellis and licensed
+- `crates/glowfly-core/syntaxes/PowerShell.sublime-syntax`, written for Glowfly and licensed
   MIT OR Apache-2.0 like the rest of the project.
 
 The licenses below are those of the bundled definitions that require acknowledgement. They are

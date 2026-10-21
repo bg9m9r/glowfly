@@ -41,7 +41,7 @@ fn parses_every_message_shape() {
         ("fetch origin: fast-forward", Event::Fetch),
         ("fetch: fast-forward", Event::Fetch),
         ("am: Apply the patch", Event::Am { subject: s("Apply the patch") }),
-        ("Trellis: restore main to 1a2b3c4", Event::Other),
+        ("Glowfly: restore main to 1a2b3c4", Event::Other),
         ("something else entirely", Event::Other),
         ("", Event::Other),
     ];

@@ -52,7 +52,7 @@ fn staged_rename_case_only() {
     rename_file_staged(&dir, "readme.md", "README.md").unwrap();
     let listed = names(&dir);
     assert!(listed.contains(&"README.md".to_owned()) && !listed.contains(&"readme.md".to_owned()), "{listed:?}");
-    assert!(!listed.iter().any(|n| n.contains("trellis-rename")), "{listed:?}");
+    assert!(!listed.iter().any(|n| n.contains("glowfly-rename")), "{listed:?}");
     let index = Repository::open(&dir).unwrap().index().unwrap();
     let paths: Vec<String> = index.iter().map(|e| String::from_utf8_lossy(&e.path).into_owned()).collect();
     assert_eq!(paths, ["README.md"]);

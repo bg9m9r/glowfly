@@ -209,7 +209,7 @@ fn create_issue_azure_dark() {
 fn trello_asks_for_a_board_and_a_write_token() {
     let account = Account { provider: Provider::Trello, host: "trello.com".into(), org: String::new() };
     let mut form = IssueForm::new(Target::trello(&account, "", ""));
-    let url = "https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&name=Trellis&key=k";
+    let url = "https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&name=Glowfly&key=k";
     form.options_loaded(CreateOptions {
         boards: vec![named("5f1a2b3c4d5e6f7a8b9c0d1e", "Website")],
         write_token_url: Some(url.into()),

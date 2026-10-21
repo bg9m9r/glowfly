@@ -70,13 +70,13 @@ mod tests {
     fn string_reads_the_build_number() {
         let build = string(HKEY_LOCAL_MACHINE, VERSION, "CurrentBuildNumber").expect("every Windows has it");
         assert!(!build.is_empty() && build.chars().all(|c| c.is_ascii_digit()), "{build:?}");
-        assert_eq!(string(HKEY_LOCAL_MACHINE, VERSION, "TrellisNoSuchValue"), None);
+        assert_eq!(string(HKEY_LOCAL_MACHINE, VERSION, "GlowflyNoSuchValue"), None);
     }
 
     #[test]
     fn a_missing_value_is_none() {
-        assert_eq!(dword(HKEY_CURRENT_USER, r"Software\TrellisNoSuchKey", "Value"), None);
-        assert_eq!(dword(HKEY_LOCAL_MACHINE, VERSION, "TrellisNoSuchValue"), None);
+        assert_eq!(dword(HKEY_CURRENT_USER, r"Software\GlowflyNoSuchKey", "Value"), None);
+        assert_eq!(dword(HKEY_LOCAL_MACHINE, VERSION, "GlowflyNoSuchValue"), None);
         // A string isn't a DWORD.
         assert_eq!(dword(HKEY_LOCAL_MACHINE, VERSION, "CurrentBuildNumber"), None);
     }

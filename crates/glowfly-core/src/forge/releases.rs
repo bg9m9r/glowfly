@@ -1,4 +1,4 @@
-//! Trellis's own releases on GitHub: the newest release of its repository (one unauthenticated
+//! Glowfly's own releases on GitHub: the newest release of its repository (one unauthenticated
 //! request, nothing about the user sent) and the public files attached to it.
 
 use super::http::{call_get, public_request, read_capped};
@@ -22,7 +22,7 @@ pub fn releases_api(repository: &str) -> Option<String> {
 
 /// The newest published release of `repository`; None when it has none yet.
 pub fn latest_release(repository: &str) -> Result<Option<Release>> {
-    let url = releases_api(repository).ok_or_else(|| Error::Unsupported(format!("Trellis can't check {repository} for releases")))?;
+    let url = releases_api(repository).ok_or_else(|| Error::Unsupported(format!("Glowfly can't check {repository} for releases")))?;
     let req = public_request(&url, false)?.set("Accept", "application/vnd.github+json").set("X-GitHub-Api-Version", "2022-11-28");
     match call_get(req) {
         Ok(resp) => Ok(Some(parse_release(&read_capped(resp.into_reader(), MAX_RELEASE_JSON)?)?)),

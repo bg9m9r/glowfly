@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 
 target="$1"
 tag="$2"
-name="trellis-$tag-$target"
+name="glowfly-$tag-$target"
 bin="target/$target/release/glowfly"
 dist="dist"
 mkdir -p "$dist"
@@ -19,7 +19,7 @@ sum() {
 
 # The desktop entries, when the validator is installed.
 if command -v desktop-file-validate > /dev/null; then
-  desktop-file-validate packaging/linux/trellis.desktop packaging/linux/trellis-links.desktop
+  desktop-file-validate packaging/linux/glowfly.desktop packaging/linux/glowfly-links.desktop
 fi
 
 # --- The tar.gz --------------------------------------------------------------------------------

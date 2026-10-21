@@ -1,4 +1,4 @@
-//! A local feed folder (TRELLIS_UPDATE_FEED) and the headless check. No mock server runs in the
+//! A local feed folder (GLOWFLY_UPDATE_FEED) and the headless check. No mock server runs in the
 //! folder tests, so any network call would fail them.
 
 use super::*;
@@ -7,8 +7,8 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 const WIN: Platform = Platform { os: TargetOs::Windows, arch: Arch::X86_64 };
-const MSI: &str = "trellis-v0.1.1-x86_64-pc-windows-msvc.msi";
-const ZIP: &str = "trellis-v0.1.1-x86_64-pc-windows-msvc.zip";
+const MSI: &str = "glowfly-v0.1.1-x86_64-pc-windows-msvc.msi";
+const ZIP: &str = "glowfly-v0.1.1-x86_64-pc-windows-msvc.zip";
 const MSI_BYTES: &[u8] = b"pretend msi bytes";
 const ZIP_BYTES: &[u8] = b"pretend zip archive bytes";
 
@@ -18,7 +18,7 @@ fn v(s: &str) -> Version {
 
 /// A fresh, empty folder under the temp folder.
 fn scratch(tag: &str) -> PathBuf {
-    let dir = crate::paths::temp_dir().join(format!("trellis-feed-{tag}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-feed-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -45,7 +45,7 @@ fn write_feed(dir: &Path, tag: &str, files: &[(&str, &[u8])], sums: Option<Strin
         names.push("SHA256SUMS");
     }
     let assets: Vec<serde_json::Value> = names.iter().map(|n| serde_json::json!({ "name": n })).collect();
-    let json = serde_json::json!({ "tag_name": tag, "name": format!("Trellis {tag}"), "body": "notes", "assets": assets });
+    let json = serde_json::json!({ "tag_name": tag, "name": format!("Glowfly {tag}"), "body": "notes", "assets": assets });
     std::fs::write(dir.join(FEED_RELEASE), serde_json::to_vec(&json).unwrap()).unwrap();
 }
 
@@ -65,13 +65,23 @@ fn offer_for(feed: &Feed, kind: InstallKind) -> Offer {
 }
 
 #[test]
+fn the_old_trellis_variable_is_read_when_the_new_one_is_unset() {
+    let env = |vars: &'static [(&'static str, &'static str)]| move |k: &str| vars.iter().find(|(n, _)| *n == k).map(|(_, v)| v.into());
+    assert_eq!(feed::feed_var(env(&[])), None);
+    assert_eq!(feed::feed_var(env(&[("TRELLIS_UPDATE_FEED", "/old")])), Some("/old".into()));
+    assert_eq!(feed::feed_var(env(&[("GLOWFLY_UPDATE_FEED", "/new"), ("TRELLIS_UPDATE_FEED", "/old")])), Some("/new".into()));
+    assert_eq!(feed::feed_var(env(&[("GLOWFLY_UPDATE_FEED", ""), ("TRELLIS_UPDATE_FEED", "/old")])), Some("/old".into()));
+    assert_eq!(feed::feed_var(env(&[("TRELLIS_UPDATE_FEED", "")])), None);
+}
+
+#[test]
 fn the_feed_comes_from_the_variable() {
     let hosted = Ok(Feed::Hosted(REPOSITORY.to_owned()));
     assert_eq!(Feed::from_value(None, REPOSITORY), hosted);
     assert_eq!(Feed::from_value(Some(OsStr::new("")), REPOSITORY), hosted);
     let err = Feed::from_value(Some(OsStr::new("feed")), REPOSITORY).unwrap_err();
-    assert!(err.contains("TRELLIS_UPDATE_FEED") && err.contains("absolute") && err.contains("\"feed\""), "{err}");
-    let dir = crate::paths::temp_dir().join("trellis-feed");
+    assert!(err.contains("GLOWFLY_UPDATE_FEED") && err.contains("absolute") && err.contains("\"feed\""), "{err}");
+    let dir = crate::paths::temp_dir().join("glowfly-feed");
     assert_eq!(Feed::from_value(Some(dir.as_os_str()), REPOSITORY), Ok(Feed::Folder(dir.clone())));
     let rooted = Feed::from_value(Some(OsStr::new("/feed")), REPOSITORY);
     if cfg!(windows) {
@@ -90,18 +100,18 @@ fn a_folder_feed_lists_files_from_disk() {
     std::fs::write(dir.join(ZIP), ZIP_BYTES).unwrap();
     std::fs::write(dir.join("SHA256SUMS"), "x").unwrap();
     std::fs::write(dir.join(".hidden"), "x").unwrap();
-    std::fs::create_dir_all(dir.join("trellis-sub")).unwrap();
+    std::fs::create_dir_all(dir.join("glowfly-sub")).unwrap();
     let json = serde_json::json!({
-        "tag_name": "v0.1.1", "name": "Trellis v0.1.1", "body": "## Notes", "html_url": "http://example.com/r",
+        "tag_name": "v0.1.1", "name": "Glowfly v0.1.1", "body": "## Notes", "html_url": "http://example.com/r",
         "assets": [
             { "name": MSI, "size": 1, "browser_download_url": "https://github.com/d/a.msi" },
             { "name": ZIP }, { "name": "SHA256SUMS" }, { "name": "missing.zip" },
-            { "name": "../evil.msi" }, { "name": ".hidden" }, { "name": "trellis-sub" }
+            { "name": "../evil.msi" }, { "name": ".hidden" }, { "name": "glowfly-sub" }
         ]
     });
     std::fs::write(dir.join(FEED_RELEASE), serde_json::to_vec(&json).unwrap()).unwrap();
     let r = Feed::Folder(dir.clone()).latest().unwrap().expect("a release");
-    assert_eq!((r.tag.as_str(), r.name.as_str(), r.body.as_str()), ("v0.1.1", "Trellis v0.1.1", "## Notes"));
+    assert_eq!((r.tag.as_str(), r.name.as_str(), r.body.as_str()), ("v0.1.1", "Glowfly v0.1.1", "## Notes"));
     assert_eq!(r.html_url, "", "not https");
     let got: Vec<(&str, u64, &str)> = r.assets.iter().map(|a| (a.name.as_str(), a.size, a.url.as_str())).collect();
     assert_eq!(got, [(MSI, MSI_BYTES.len() as u64, ""), (ZIP, ZIP_BYTES.len() as u64, ""), ("SHA256SUMS", 1, "")]);

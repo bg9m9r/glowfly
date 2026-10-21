@@ -1,4 +1,4 @@
-//! The user's Downloads folder, where a Trellis update is saved:
+//! The user's Downloads folder, where a Glowfly update is saved:
 //!
 //! - Windows: the Downloads known folder (moved or not), else `%USERPROFILE%\Downloads`
 //! - macOS: `~/Downloads`
@@ -51,7 +51,7 @@ fn known_downloads() -> Option<PathBuf> {
     }
 }
 
-/// Where a Trellis update is downloaded to (see the module docs); None without any folder.
+/// Where a Glowfly update is downloaded to (see the module docs); None without any folder.
 pub fn downloads_dir() -> Option<PathBuf> {
     let env = |k: &str| std::env::var_os(k);
     #[cfg(windows)]
@@ -77,7 +77,7 @@ mod tests {
     use super::*;
 
     fn root() -> PathBuf {
-        crate::paths::temp_dir().join("trellis-downloads-home")
+        crate::paths::temp_dir().join("glowfly-downloads-home")
     }
 
     fn env_of(vars: Vec<(&'static str, PathBuf)>) -> impl Fn(&str) -> Option<OsString> {

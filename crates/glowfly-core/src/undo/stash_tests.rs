@@ -40,7 +40,7 @@ fn base(name: &str) -> (PathBuf, Oid) {
     (dir, head)
 }
 
-/// Runs `git <a>` as Trellis would and returns what it recorded, checking `irreversible` first.
+/// Runs `git <a>` as Glowfly would and returns what it recorded, checking `irreversible` first.
 fn record_kind(dir: &Path, a: &[&str]) -> (bool, Option<Action>) {
     let kind = UndoKind::classify(&args(a)).expect("an undoable command");
     let b = before(dir, &kind).unwrap();

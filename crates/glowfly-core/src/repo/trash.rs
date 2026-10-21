@@ -18,7 +18,7 @@ pub enum TrashProblem {
     AccessDenied,
     /// Anything else. Retrying may help; nothing says the trash is missing.
     Other,
-    /// Linux and the BSDs: the file's drive has no trash folder Trellis can use; the Trash in
+    /// Linux and the BSDs: the file's drive has no trash folder Glowfly can use; the Trash in
     /// the home folder can take a copy (`home_trash`), which the user is asked about first.
     HomeTrashOnly,
 }
@@ -47,7 +47,7 @@ impl std::fmt::Display for TrashRefusal {
 /// unless the trash itself failed halfway.
 pub fn os_trash(full: &Path) -> Result<(), TrashRefusal> {
     // This crate's unit tests use stand-ins; the real trash only when asked for by hand.
-    if cfg!(test) && std::env::var_os("TRELLIS_REAL_TRASH").is_none() {
+    if cfg!(test) && std::env::var_os("GLOWFLY_REAL_TRASH").is_none() {
         return Err(TrashRefusal::new(TrashProblem::Other, "tests never use the real trash"));
     }
     #[cfg(windows)]
@@ -93,7 +93,7 @@ pub fn os_trash(full: &Path) -> Result<(), TrashRefusal> {
 /// `Trasher` signature. A refusal leaves the file and the trash as they were.
 pub fn home_trash(full: &Path) -> Result<(), TrashRefusal> {
     // As in `os_trash`: tests use stand-ins unless asked for by hand.
-    if cfg!(test) && std::env::var_os("TRELLIS_REAL_TRASH").is_none() {
+    if cfg!(test) && std::env::var_os("GLOWFLY_REAL_TRASH").is_none() {
         return Err(TrashRefusal::new(TrashProblem::Other, "tests never use the real trash"));
     }
     #[cfg(not(any(windows, target_os = "macos")))]

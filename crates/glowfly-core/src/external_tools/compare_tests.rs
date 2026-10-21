@@ -7,7 +7,7 @@ use crate::testutil::*;
 
 /// A fresh session root for one test.
 fn root(name: &str) -> PathBuf {
-    let r = crate::paths::temp_dir().join(format!("trellis-test-toolroot-{name}-{}", std::process::id()));
+    let r = crate::paths::temp_dir().join(format!("glowfly-test-toolroot-{name}-{}", std::process::id()));
     let _ = crate::persist::remove_tree(&r);
     std::fs::create_dir_all(&r).unwrap();
     r

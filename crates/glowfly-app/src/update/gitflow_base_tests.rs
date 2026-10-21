@@ -167,7 +167,7 @@ fn remote_and_pull_request_deletes_warn() {
 fn worktree_remove_warns_for_bases() {
     let (mut st, dir) = initialized("base-worktree");
     git(&dir, &["branch", "feature/x", "develop"]);
-    let root = glowfly_core::paths::temp_dir().join(format!("trellis-test-base-worktrees-{}", std::process::id()));
+    let root = glowfly_core::paths::temp_dir().join(format!("glowfly-test-base-worktrees-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     for (folder, branch) in [("dev", "develop"), ("x", "feature/x")] {
         git(&dir, &["worktree", "add", "-q", &root.join(folder).display().to_string(), branch]);

@@ -1,4 +1,4 @@
-//! The spelling of a path that leaves Trellis. libgit2 reports folders its own way (`C:/x/y/`
+//! The spelling of a path that leaves Glowfly. libgit2 reports folders its own way (`C:/x/y/`
 //! on Windows: forward slashes and a trailing slash), and joining a repository-relative path
 //! onto that keeps the slashes. That spelling stays internal, as a matching key; whatever goes
 //! to the operating system (Explorer, a terminal, an editor's arguments) or onto the screen is

@@ -1,4 +1,4 @@
-//! The listener for links that a second Trellis process hands to this window
+//! The listener for links that a second Glowfly process hands to this window
 //! (`glowfly_core::instance`): started once with the app, it reports each link as
 //! `DeepLinkMsg::Open`.
 

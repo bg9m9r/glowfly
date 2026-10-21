@@ -153,7 +153,7 @@ impl<W: Waker + Clone> Runner<W> {
                 let report = Reporter { tx: self.tx.clone(), waker: self.waker.clone() };
                 let failed = report.clone();
                 let spawned = std::thread::Builder::new()
-                    .name("trellis-terminal".into())
+                    .name("glowfly-terminal".into())
                     .spawn(move || session(id, &cwd, (rows, cols), &shell, Channels { rx, ctl, kill, probe }, report));
                 if let Err(e) = spawned {
                     self.terminals.map().remove(&id);
@@ -184,7 +184,7 @@ fn check_activity<W: Waker + Clone>(id: u64, then: AfterCheck, probe: Option<She
     };
     let thread_report = report.clone();
     let spawned = std::thread::Builder::new()
-        .name("trellis-terminal-probe".into())
+        .name("glowfly-terminal-probe".into())
         .spawn(move || thread_report.send(TerminalMsg::Activity { id, activity: probe.activity(), then }));
     if spawned.is_err() {
         report.send(TerminalMsg::Activity { id, activity: ShellActivity::Unknown, then });

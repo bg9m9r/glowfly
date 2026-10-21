@@ -1,5 +1,5 @@
 //! Running the diff and merge tools git config names (Preferences > External tools sets none).
-//! A configured command runs in sh on copies Trellis writes, as in `compare`; a built-in tool
+//! A configured command runs in sh on copies Glowfly writes, as in `compare`; a built-in tool
 //! runs through `git difftool` (on those copies) or `git mergetool` (which writes and removes its
 //! own, and stages the file itself). The diff tool is left running and only a failure is
 //! reported; the merge tool is waited for and reported as `MergeToolExited`.
@@ -54,7 +54,7 @@ pub(super) fn open_diff(req: GitDiffRequest) -> Option<Msg> {
 }
 
 /// Starts `git difftool` with the built-in tool on `local` and `remote`, watching it as a
-/// program Trellis starts: a quick failure is the error, with git's most telling line.
+/// program Glowfly starts: a quick failure is the error, with git's most telling line.
 fn git_difftool(req: &GitDiffRequest, local: &Path, remote: &Path) -> Result<()> {
     let tool = format!("--tool={}", req.tool.name);
     let (local, remote) = (native(local).to_string_lossy().into_owned(), native(remote).to_string_lossy().into_owned());

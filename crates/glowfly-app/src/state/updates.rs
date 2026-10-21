@@ -1,4 +1,4 @@
-//! Trellis's own updates: the check's and download's status, the texts it shows, and when the
+//! Glowfly's own updates: the check's and download's status, the texts it shows, and when the
 //! next automatic check may run (update/updates.rs). Nothing here is saved except through
 //! `settings.updates`.
 
@@ -148,7 +148,7 @@ impl UpdatesState {
         })
     }
 
-    /// Preferences' "Trellis 0.2.0 · Last checked 2 hours ago" (`last_checked` already formatted).
+    /// Preferences' "Glowfly 0.2.0 · Last checked 2 hours ago" (`last_checked` already formatted).
     pub fn prefs_line(&self, t: Lang, last_checked: Option<&str>) -> String {
         match last_checked {
             Some(when) => t.trf("updates.prefs_line.checked", &[("version", &self.current), ("when", &when)]),

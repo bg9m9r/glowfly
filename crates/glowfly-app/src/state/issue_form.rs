@@ -249,7 +249,7 @@ pub fn create_blocked(st: &AppState) -> Option<String> {
         return none();
     };
     if !issues_in_app(t.provider) {
-        return Some(format!("Creating {} {}s in Trellis isn't supported yet", fs.tracker_name(), fs.issue_noun()));
+        return Some(format!("Creating {} {}s in Glowfly isn't supported yet", fs.tracker_name(), fs.issue_noun()));
     }
     if !st.runs_git_unasked() {
         return Some("Trust this repository to create issues".into());

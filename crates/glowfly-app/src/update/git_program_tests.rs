@@ -80,7 +80,7 @@ fn choosing_a_git_checks_then_saves_and_redetects() {
     let banner = st.git.banner().expect("a too-old banner, shown again");
     assert!(banner.contains("2.34.1"), "{banner}");
     assert!(!st.git.has(Feature::MergeTree), "gating follows at once");
-    assert!(st.log.iter().any(|l| l.ok && l.text.starts_with("Trellis now runs git 2.34.1 at ")), "logged");
+    assert!(st.log.iter().any(|l| l.ok && l.text.starts_with("Glowfly now runs git 2.34.1 at ")), "logged");
 
     run(&mut st, GitEnvMsg::Choose(None));
     let info = GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 45, 0)), chosen: false };

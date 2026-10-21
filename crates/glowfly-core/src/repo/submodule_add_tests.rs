@@ -36,7 +36,7 @@ fn index_entries_refuse() {
 fn an_existing_gitlink_refuses() {
     let (parent, _sub) = with_submodule("sm-add-gitlink");
     assert_eq!(check(&parent, "libs/lib"), Err(P::InIndex { gitlink: true }));
-    let lib = parent.with_file_name(format!("trellis-test-sm-add-gitlink-lib-{}", std::process::id()));
+    let lib = parent.with_file_name(format!("glowfly-test-sm-add-gitlink-lib-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&lib);
     let _ = std::fs::remove_dir_all(&parent);
 }
@@ -99,6 +99,6 @@ fn windows_names_warn_elsewhere() {
 
 #[test]
 fn a_missing_repository_is_unreadable() {
-    let dir = crate::paths::temp_dir().join(format!("trellis-test-sm-add-none-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-test-sm-add-none-{}", std::process::id()));
     assert!(matches!(check(&dir, "lib"), Err(P::Unreadable(_))));
 }

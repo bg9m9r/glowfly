@@ -59,7 +59,7 @@ pub enum Finish {
 /// Runs gpg, turning a failure to start it into a failed run.
 fn attempt(gpg: &mut impl Gpg, args: &[OsString], input: &[u8]) -> GpgRun {
     gpg.run(args, input)
-        .unwrap_or_else(|e| GpgRun { stderr: format!("Trellis: could not run {}: {e}\n", gpg.program()).into_bytes(), ..GpgRun::default() })
+        .unwrap_or_else(|e| GpgRun { stderr: format!("Glowfly: could not run {}: {e}\n", gpg.program()).into_bytes(), ..GpgRun::default() })
 }
 
 fn result(run: &GpgRun) -> SignResult {
@@ -115,7 +115,7 @@ pub fn run(args: &[OsString], real: &mut Real) -> i32 {
     };
     let mut payload = Vec::new();
     if let Err(e) = io::stdin().lock().read_to_end(&mut payload) {
-        eprintln!("Trellis: could not read what git asked to sign: {e}");
+        eprintln!("Glowfly: could not read what git asked to sign: {e}");
         return 2;
     }
     match sign(&call, &payload, real, &mut EnvAsker) {
@@ -126,11 +126,11 @@ pub fn run(args: &[OsString], real: &mut Real) -> i32 {
             run.code.unwrap_or(2)
         }
         Finish::Cancelled => {
-            eprintln!("Trellis: signing stopped: the passphrase prompt was cancelled.");
+            eprintln!("Glowfly: signing stopped: the passphrase prompt was cancelled.");
             1
         }
         Finish::TimedOut => {
-            eprintln!("Trellis: signing stopped: the passphrase prompt timed out.");
+            eprintln!("Glowfly: signing stopped: the passphrase prompt timed out.");
             1
         }
     }

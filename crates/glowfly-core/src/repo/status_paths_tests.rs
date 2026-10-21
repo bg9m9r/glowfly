@@ -328,7 +328,7 @@ fn a_path_inside_a_submodule_reads_its_row() {
         assert!(ps.submodule_touched);
         let after = check(&parent, &before, &["libs/lib/lib.txt"], git_status);
         assert_eq!(rows(&after.0), [("libs/lib", 'M')]);
-        let lib = parent.with_file_name(format!("trellis-test-{name}-lib-{}", std::process::id()));
+        let lib = parent.with_file_name(format!("glowfly-test-{name}-lib-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&lib);
         let _ = std::fs::remove_dir_all(&parent);
     }

@@ -17,6 +17,7 @@ mod graph_columns;
 mod graph_filter;
 mod history;
 mod language;
+mod migrate;
 mod panel_sizes;
 mod paths;
 mod profile_rules;
@@ -43,8 +44,9 @@ pub use forge_filters::RepoForgeFilters;
 pub use graph_columns::GraphColumns;
 pub use graph_filter::{FilterOp, GraphFilter};
 pub use history::{HistoryPane, HistoryPrefs};
+pub use migrate::migrate_old_dirs;
 pub use panel_sizes::{PanelSizes, SizedPanel};
-pub use paths::{cache_dir, config_dir, home_dir, log_dir, migrate_old_config_dir, runtime_dir, xdg_data_dir};
+pub use paths::{cache_dir, config_dir, home_dir, log_dir, runtime_dir, xdg_data_dir};
 pub use profile_rules::{RuleProblem, profile_for_git_dir, rule_for_git_dir, rule_matches, shown_folder};
 pub use profiles::{DEFAULT_PROFILE_NAME, FolderRule, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
@@ -150,7 +152,7 @@ pub struct Settings {
     /// Index large repositories' whole history for search (Preferences > General).
     pub index_history: bool,
     pub reopen_last_repo: bool,
-    /// Refresh when files change outside Trellis (Preferences > General).
+    /// Refresh when files change outside Glowfly (Preferences > General).
     pub watch_files: bool,
     /// Dry-run merge the current branch against its upstream or default branch after loads and
     /// fetches (Preferences > General).
@@ -315,7 +317,7 @@ pub struct Settings {
     /// Key pairs outside ~/.ssh that Preferences > SSH lists (Use existing).
     #[serde(default)]
     pub ssh_extra_keys: Vec<PathBuf>,
-    /// Ask for OpenPGP signing passphrases in Trellis rather than GnuPG's own window
+    /// Ask for OpenPGP signing passphrases in Glowfly rather than GnuPG's own window
     /// (Preferences > Commit Signing).
     pub gpg_prompts_in_app: bool,
     /// Save HTTPS sign-ins typed in the credential prompt with git's credential helper
@@ -330,7 +332,7 @@ pub struct Settings {
     /// ignores what it can't use.
     #[serde(default)]
     pub keybindings: BTreeMap<String, Vec<String>>,
-    /// The git program Trellis runs (Preferences > Git): an absolute path, or None for git from
+    /// The git program Glowfly runs (Preferences > Git): an absolute path, or None for git from
     /// PATH.
     pub git_program: Option<String>,
     /// The first-run welcome was finished or closed. Files written before it existed lack it and

@@ -1,4 +1,4 @@
-//! The built-in palettes. DARK and LIGHT are the standard Trellis themes: the icon's lattice
+//! The built-in palettes. DARK and LIGHT are the standard Glowfly themes: the icon's lattice
 //! green as the accent, sand tags, and neutrals tinted green (Dark) or warm paper (Light). The
 //! high-contrast and Sand palettes are in `builtin_extra.rs`. The values and the rules they meet
 //! are in docs/COLOUR.md.

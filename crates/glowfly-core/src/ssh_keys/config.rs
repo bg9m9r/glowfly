@@ -1,8 +1,8 @@
 //! Reading one ssh config file's text (ssh_config(5)): its lines split into a keyword and
-//! arguments the way OpenSSH splits them, and the lines Trellis needs from it: the `Host` and
+//! arguments the way OpenSSH splits them, and the lines Glowfly needs from it: the `Host` and
 //! `Match` lines that start sections, `IdentityFile` and `Include`. Pure.
 
-/// One line of a config file that Trellis reads.
+/// One line of a config file that Glowfly reads.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Directive {
     /// `Host …` or `Match …`: the arguments joined by one space, after the keyword in its usual
@@ -72,7 +72,7 @@ fn split_args(s: &str) -> Option<Vec<String>> {
     }
 }
 
-/// The lines Trellis reads from a config file's `text`, with 1-based line numbers.
+/// The lines Glowfly reads from a config file's `text`, with 1-based line numbers.
 pub fn parse_config(text: &str) -> Vec<Directive> {
     let mut out = Vec::new();
     for (i, line) in text.lines().enumerate() {

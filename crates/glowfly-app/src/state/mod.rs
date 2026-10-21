@@ -334,7 +334,7 @@ pub enum Modal {
     /// Reword a commit chosen in the graph, or type the message of commits it squashes
     /// (`ui/rebase/reword_dialog.rs`).
     RewordCommit(Box<rebase_quick::RewordForm>),
-    /// Help > About Trellis: version, licence, git and links.
+    /// Help > About Glowfly: version, licence, git and links.
     About,
     /// Help > About > Third-party notices: the bundled fonts' and syntax definitions' licenses.
     Notices,
@@ -380,7 +380,7 @@ pub struct AppState {
     /// (`RecentMsg::FoldersChecked`).
     pub missing_repos: Vec<PathBuf>,
     /// A listed folder that failed to open, waiting for the folder check to say whether it is
-    /// gone (then Trellis offers to remove it from the lists; update/recent.rs).
+    /// gone (then Glowfly offers to remove it from the lists; update/recent.rs).
     pub missing_offer: Option<PathBuf>,
     /// The Find repositories dialog's scan of the project folders: global, never parked.
     pub repo_scan: repo_scan::RepoScan,
@@ -505,7 +505,7 @@ pub struct AppState {
     pub submodules: submodules::batch::SubmoduleSession,
     /// Git LFS: whether git-lfs is installed and banner dismissals (global), the open diff's LFS summary (parked with the tab).
     pub lfs: lfs::LfsSession,
-    /// The git Trellis runs and what it can do (global): checked at startup.
+    /// The git Glowfly runs and what it can do (global): checked at startup.
     pub git: git_env::GitState,
     /// The theme files in the themes folder (global): read at startup and on Reload.
     pub themes: crate::themes::ThemeState,
@@ -526,7 +526,7 @@ pub struct AppState {
     pub tag_checkout: Option<tags::TagCheckoutJob>,
     /// The running Apply patch job (update/patch.rs), for its headline.
     pub patch_apply: Option<patch::PendingApply>,
-    /// The trellis:// link being opened and the scheme registration (global).
+    /// The glowfly:// link being opened and the scheme registration (global).
     pub deep_link: deep_link::DeepLinkState,
     /// The profile a switch is writing to the global git config (app-wide: the config is
     /// global).
@@ -550,7 +550,7 @@ pub struct AppState {
     pub dashboard: dashboard::Dashboard,
     /// Auto-stashes being made or waiting to be put back, per workdir: global, not parked.
     pub auto_stash: auto_stash::AutoStashes,
-    /// Trellis's own update check and download (global; nothing saved but `settings.updates`).
+    /// Glowfly's own update check and download (global; nothing saved but `settings.updates`).
     pub updates: updates::UpdatesState,
     pub view: ViewState,
 }

@@ -42,7 +42,7 @@ pub fn new_worktree(ui: &mut egui::Ui, cx: Cx, form: &mut WorktreeForm, snap: Op
     };
     let d = Dialog::new(cx, form.title.clone().unwrap_or(heading)).guide(dialog_guides::worktree_add(cx.t)).begin(ui);
 
-    let folder_id = Id::new("trellis-worktree-folder");
+    let folder_id = Id::new("glowfly-worktree-folder");
     let mut enter = false;
     let folder_was_bad = folder_bad(form, snap);
     let folder_msg = match &folder_was_bad {
@@ -76,7 +76,7 @@ pub fn new_worktree(ui: &mut egui::Ui, cx: Cx, form: &mut WorktreeForm, snap: Op
     } else {
         group.message(&form.touched, "branch", branch_was_bad.as_deref().map(Message::error))
     };
-    let r = group.show(ui, |ui| ui.add(TextField::new(&mut form.branch).id(Id::new("trellis-worktree-branch"))));
+    let r = group.show(ui, |ui| ui.add(TextField::new(&mut form.branch).id(Id::new("glowfly-worktree-branch"))));
     if r.changed()
         && !form.folder_edited
         && let Some(s) = snap

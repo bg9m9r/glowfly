@@ -56,9 +56,9 @@ fn body(ui: &mut Ui, p: &TrustPrompt) {
         ui.add(egui::Label::new("Nothing in its settings or hooks runs programs right now.").wrap());
     } else {
         let intro = if p.gained.is_some() {
-            "These settings or hooks that make git run programs appeared since you trusted it. So far Trellis has only read its files."
+            "These settings or hooks that make git run programs appeared since you trusted it. So far Glowfly has only read its files."
         } else {
-            "This repository's own settings or hooks make git run programs. So far Trellis has only read its files."
+            "This repository's own settings or hooks make git run programs. So far Glowfly has only read its files."
         };
         ui.add(egui::Label::new(intro).wrap());
         ui.add_space(8.0);
@@ -74,7 +74,7 @@ fn body(ui: &mut Ui, p: &TrustPrompt) {
     ui.add_space(8.0);
     ui.add(
         egui::Label::new(
-            "Trust it only if you know where it came from. Until then, Trellis won't fetch in the background, \
+            "Trust it only if you know where it came from. Until then, Glowfly won't fetch in the background, \
              ask its credential helper for sign-ins or let git read its status, and it asks before running git \
              commands you start.",
         )

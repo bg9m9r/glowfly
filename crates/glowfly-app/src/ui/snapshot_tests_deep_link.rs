@@ -1,6 +1,6 @@
-//! The trellis:// link dialogs (a link Trellis can't open, Repository not found with and
+//! The glowfly:// link dialogs (a link Glowfly can't open, Repository not found with and
 //! without a URL to clone, a located folder that doesn't match, choosing among several copies)
-//! and Preferences > General's Trellis Links row. Each test clicks a button and checks the
+//! and Preferences > General's Glowfly Links row. Each test clicks a button and checks the
 //! message it sends.
 
 use super::snapshot_tests::{harness, harness_sized, settings};
@@ -48,7 +48,7 @@ fn branch(url: Option<&str>) -> Link {
 #[test]
 fn deep_link_invalid() {
     let mut st = app(ThemeChoice::Dark);
-    send(&mut st, DeepLinkMsg::Open("trellis://draft/42?root=0123".into()));
+    send(&mut st, DeepLinkMsg::Open("glowfly://draft/42?root=0123".into()));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("deep_link_invalid");
@@ -123,10 +123,10 @@ fn deep_link_choose() {
     assert!(!sent(&h, &|m| matches!(m, Msg::CloseModal)), "Open doesn't close first");
 }
 
-/// The height that shows all of Preferences > General, the Trellis Links row at its end.
+/// The height that shows all of Preferences > General, the Glowfly Links row at its end.
 const GENERAL_HEIGHT: f32 = 1800.0;
 
-/// Preferences > General, tall enough to show the Trellis Links row at its end.
+/// Preferences > General, tall enough to show the Glowfly Links row at its end.
 fn general(view: SchemeView) -> egui_kittest::Harness<'static, (AppState, Vec<Msg>)> {
     let mut st = app(ThemeChoice::Dark);
     st.prefs = Some(PrefsState::new(PrefPage::General));

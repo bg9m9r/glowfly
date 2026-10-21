@@ -28,7 +28,7 @@ pub enum SshMsg {
     /// Remove from list: forget a key added with Use existing (its files stay).
     ForgetKey(PathBuf),
     /// Which key: make git use this key for SSH remotes, for every repository or (`repo`)
-    /// the open one; `confirmed` once the user agreed to replace a command Trellis didn't write.
+    /// the open one; `confirmed` once the user agreed to replace a command Glowfly didn't write.
     UseKey {
         key: PathBuf,
         repo: bool,

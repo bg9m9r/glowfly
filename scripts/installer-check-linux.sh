@@ -3,15 +3,15 @@
 # leaves behind. Run by the Installers workflow (.github/workflows/installers.yml) after
 # scripts/package-linux.sh built an older package (tag v0.0.1) and the current one from the same
 # program. The window is started from the desktop entry's Exec on its own X server (Xvfb, never
-# the caller's display) and is seen through the smoke probe (TRELLIS_SMOKE_PROBE).
+# the caller's display) and is seen through the smoke probe (GLOWFLY_SMOKE_PROBE).
 #
 # Usage: scripts/installer-check-linux.sh [--allow-local] <deb> <old deb> <tar.gz> <version>
 # Environment:
 #   INSTALLER_OUT      logs, program output and the probe (default: ${RUNNER_TEMP:-/tmp}/installers)
 #   INSTALLER_TIMEOUT  seconds to wait for the window (default: 60)
 #
-# It installs and removes the system's trellis package (with sudo), so it refuses to run outside
-# GitHub Actions unless given --allow-local, and always refuses when trellis is already installed.
+# It installs and removes the system's glowfly package (with sudo), so it refuses to run outside
+# GitHub Actions unless given --allow-local, and always refuses when glowfly is already installed.
 set -Eeuo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,14 +41,14 @@ if [ "$(uname -s)" != Linux ]; then
   exit 2
 fi
 if [ "${GITHUB_ACTIONS:-}" != true ] && [ "$allow_local" -ne 1 ]; then
-  echo "installer-check-linux.sh installs and removes the trellis package; run it on CI or pass --allow-local" >&2
+  echo "installer-check-linux.sh installs and removes the glowfly package; run it on CI or pass --allow-local" >&2
   exit 2
 fi
 installed_status() {
-  dpkg-query -W -f="\${Status}" trellis 2>/dev/null || true
+  dpkg-query -W -f="\${Status}" glowfly 2>/dev/null || true
 }
 if installed_status | grep -q 'install ok installed'; then
-  echo "Trellis is already installed; remove it first (sudo dpkg --purge trellis)" >&2
+  echo "Glowfly is already installed; remove it first (sudo dpkg --purge glowfly)" >&2
   exit 2
 fi
 missing=()
@@ -67,7 +67,7 @@ INSTALLER_OUT="${INSTALLER_OUT:-${RUNNER_TEMP:-/tmp}/installers}"
 INSTALLER_TIMEOUT="${INSTALLER_TIMEOUT:-60}"
 mkdir -p "$INSTALLER_OUT"
 INSTALLER_OUT="$(cd "$INSTALLER_OUT" && pwd)"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/trellis-installer.XXXXXX")"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/glowfly-installer.XXXXXX")"
 XVFB_PID="" APP_PID="" INSTALLED=0
 
 as_root() {
@@ -94,7 +94,7 @@ cleanup() {
   [ -f "$WORK/probe.json" ] && cp "$WORK/probe.json" "$INSTALLER_OUT/probe.json"
   # Leave no install behind on a local run.
   if [ "$INSTALLED" -eq 1 ]; then
-    as_root dpkg --purge trellis >"$INSTALLER_OUT/cleanup.log" 2>&1
+    as_root dpkg --purge glowfly >"$INSTALLER_OUT/cleanup.log" 2>&1
   fi
   rm -rf "$WORK"
   exit "$status"
@@ -102,7 +102,7 @@ cleanup() {
 trap cleanup EXIT
 
 installed_version() {
-  dpkg-query -W -f="\${Version}" trellis 2>/dev/null || true
+  dpkg-query -W -f="\${Version}" glowfly 2>/dev/null || true
 }
 
 # The package's version is the tag's, possibly with a Debian revision.
@@ -117,26 +117,26 @@ assert_version() {
 
 PATHS=(
   /usr/bin/glowfly
-  /usr/share/applications/trellis.desktop
-  /usr/share/applications/trellis-links.desktop
-  /usr/share/doc/trellis/LICENSE-MIT
-  /usr/share/doc/trellis/LICENSE-APACHE
-  /usr/share/doc/trellis/README.md
-  /usr/share/doc/trellis/THIRD-PARTY-NOTICES.md
+  /usr/share/applications/glowfly.desktop
+  /usr/share/applications/glowfly-links.desktop
+  /usr/share/doc/glowfly/LICENSE-MIT
+  /usr/share/doc/glowfly/LICENSE-APACHE
+  /usr/share/doc/glowfly/README.md
+  /usr/share/doc/glowfly/THIRD-PARTY-NOTICES.md
 )
 for size in 16 24 32 48 64 128 256 512; do
-  PATHS+=("/usr/share/icons/hicolor/${size}x${size}/apps/trellis.png")
+  PATHS+=("/usr/share/icons/hicolor/${size}x${size}/apps/glowfly.png")
 done
 
 assert_installed() {
   local listed
-  listed="$(dpkg -L trellis)"
+  listed="$(dpkg -L glowfly)"
   for p in "${PATHS[@]}"; do
     [ -f "$p" ] || fail "$p isn't installed"
-    grep -qxF "$p" <<<"$listed" || fail "dpkg -L trellis doesn't list $p"
+    grep -qxF "$p" <<<"$listed" || fail "dpkg -L glowfly doesn't list $p"
   done
   [ -x /usr/bin/glowfly ] || fail "/usr/bin/glowfly isn't executable"
-  desktop-file-validate /usr/share/applications/trellis.desktop /usr/share/applications/trellis-links.desktop ||
+  desktop-file-validate /usr/share/applications/glowfly.desktop /usr/share/applications/glowfly-links.desktop ||
     fail "the installed desktop entries don't validate"
 }
 
@@ -145,7 +145,7 @@ assert_removed() {
     [ ! -e "$p" ] || fail "$p is still there after the purge"
   done
   if installed_status | grep -q 'install ok installed'; then
-    fail "trellis is still installed after the purge"
+    fail "glowfly is still installed after the purge"
   fi
 }
 
@@ -153,12 +153,12 @@ assert_removed() {
 # Xvfb with fresh HOME and XDG folders, and waits until the probe shows a drawn frame.
 window_start() {
   local exec_line prog display deadline probe app
-  exec_line="$(sed -n 's/^Exec=//p' /usr/share/applications/trellis.desktop | head -n1)"
+  exec_line="$(sed -n 's/^Exec=//p' /usr/share/applications/glowfly.desktop | head -n1)"
   # Field codes (%f, %U, ...) stand for files a launcher passes; there are none here.
   exec_line="$(sed -E 's/%[a-zA-Z]//g' <<<"$exec_line")"
   local -a cmd
   read -r -a cmd <<<"$exec_line"
-  [ "${#cmd[@]}" -gt 0 ] || fail "trellis.desktop has no Exec"
+  [ "${#cmd[@]}" -gt 0 ] || fail "glowfly.desktop has no Exec"
   prog="$(command -v "${cmd[0]}" || true)"
   [ "$prog" = /usr/bin/glowfly ] || fail "Exec=${cmd[0]} resolves to '$prog', not /usr/bin/glowfly"
 
@@ -181,7 +181,7 @@ window_start() {
   probe="$WORK/probe.json"
   env DISPLAY="$display" LIBGL_ALWAYS_SOFTWARE=1 HOME="$app/home" XDG_CONFIG_HOME="$app/config" \
     XDG_CACHE_HOME="$app/cache" XDG_DATA_HOME="$app/data" XDG_RUNTIME_DIR="$app/run" \
-    TRELLIS_SMOKE_PROBE="$probe" "$prog" "${cmd[@]:1}" >"$INSTALLER_OUT/window.out" 2>"$INSTALLER_OUT/window.err" &
+    GLOWFLY_SMOKE_PROBE="$probe" "$prog" "${cmd[@]:1}" >"$INSTALLER_OUT/window.out" 2>"$INSTALLER_OUT/window.err" &
   APP_PID=$!
   deadline=$((SECONDS + INSTALLER_TIMEOUT))
   until [ -s "$probe" ] && jq -e '.v == 1 and .seq >= 1 and .screen[0] > 0' "$probe" >/dev/null 2>&1; do
@@ -213,13 +213,13 @@ log "ok files, desktop entries, icons and docs"
 cli="$WORK/cli"
 mkdir -p "$cli/home" "$cli/config" "$cli/cache" "$cli/data"
 cli_env=("HOME=$cli/home" "XDG_CONFIG_HOME=$cli/config" "XDG_CACHE_HOME=$cli/cache" "XDG_DATA_HOME=$cli/data")
-got="$(env "${cli_env[@]}" /usr/bin/glowfly --version)" || fail "trellis --version failed"
-[ "$got" = "trellis $version" ] || fail "trellis --version printed '$got'"
+got="$(env "${cli_env[@]}" /usr/bin/glowfly --version)" || fail "glowfly --version failed"
+[ "$got" = "glowfly $version" ] || fail "glowfly --version printed '$got'"
 log "ok --version"
-env "${cli_env[@]}" pwsh -NoProfile -File "$here/update-feed-check.ps1" -Trellis /usr/bin/glowfly -Version "$version" \
+env "${cli_env[@]}" pwsh -NoProfile -File "$here/update-feed-check.ps1" -Glowfly /usr/bin/glowfly -Version "$version" \
   -Installer "$deb" -Archive "$tgz" -Expect installer -Out "$INSTALLER_OUT/feed" || fail "update-feed-check.ps1 failed"
 for d in "$cli/config" "$cli/cache" "$cli/data" "$cli/home/.config"; do
-  [ ! -e "$d/trellis" ] || fail "the command-line modes created $d/trellis"
+  [ ! -e "$d/glowfly" ] || fail "the command-line modes created $d/glowfly"
 done
 
 # --- The window --------------------------------------------------------------------------------
@@ -227,7 +227,7 @@ window_start
 log "ok the window drew a frame"
 
 # --- Purge -------------------------------------------------------------------------------------
-as_root dpkg --purge trellis >"$INSTALLER_OUT/purge.log" 2>&1 || fail "dpkg --purge failed; see purge.log"
+as_root dpkg --purge glowfly >"$INSTALLER_OUT/purge.log" 2>&1 || fail "dpkg --purge failed; see purge.log"
 INSTALLED=0
 assert_removed
 log "ok purge removed everything"

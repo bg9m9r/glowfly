@@ -21,7 +21,7 @@ pub type CommandKey = (Chord, CommandRef, String);
 pub struct CustomCommands {
     /// From the user's own file.
     pub user: Vec<Command>,
-    /// From the repository's `.trellis/commands.toml`.
+    /// From the repository's `.glowfly/commands.toml`.
     pub repo: Vec<Command>,
     /// The working folder `repo` was read for.
     pub repo_for: Option<PathBuf>,

@@ -11,7 +11,7 @@ fn short(oid: Oid) -> String {
 /// Moves branch `name` (not checked out anywhere) from `from` to `to`; git's old-value check
 /// refuses it when the branch moved meanwhile.
 pub fn move_branch(name: &str, to: Oid, from: Oid) -> Vec<String> {
-    let reason = format!("Trellis: restore {name} to {}", short(to));
+    let reason = format!("Glowfly: restore {name} to {}", short(to));
     args(&["update-ref", "-m", &reason, &format!("refs/heads/{name}"), &to.to_string(), &from.to_string()])
 }
 
@@ -46,7 +46,7 @@ mod tests {
         let (t, f) = (to.to_string(), from.to_string());
         assert_eq!(
             move_branch("feature/x", to, from),
-            args(&["update-ref", "-m", "Trellis: restore feature/x to 1a2b3c4", "refs/heads/feature/x", &t, &f])
+            args(&["update-ref", "-m", "Glowfly: restore feature/x to 1a2b3c4", "refs/heads/feature/x", &t, &f])
         );
         assert_eq!(reset_to(to), args(&["reset", "--hard", &t]));
         assert_eq!(checkout_branch("main"), args(&["checkout", "main", "--"]));

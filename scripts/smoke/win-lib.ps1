@@ -1,6 +1,6 @@
 # Helpers for scripts/smoke-windows.ps1: logging and the failure report, waiting on the app's
 # probe file, its settings and the disk, finding widgets by their accessible names, and real
-# input through TrellisSmoke.Native (WinInput.cs, SendInput only). Defines functions only.
+# input through GlowflySmoke.Native (WinInput.cs, SendInput only). Defines functions only.
 #
 # Uses the $script: state smoke-windows.ps1 and win-pass.ps1 set: SmokeTimeout, ExpectFail,
 # Pass, PassOut, Check, Probe, Repo, App, Hwnd, AppData, LocalAppData, Reporting, ClientOrigin.
@@ -57,11 +57,11 @@ function Save-FailureReport([string] $Dir) {
             }
         },
         {
-            $logs = Join-Path $script:LocalAppData 'Trellis\logs'
+            $logs = Join-Path $script:LocalAppData 'Glowfly\logs'
             if ($script:LocalAppData -and (Test-Path -LiteralPath $logs)) { Copy-Item -Path (Join-Path $logs '*') -Destination $Dir }
         },
         {
-            $file = Join-Path $script:AppData 'Trellis\settings.json'
+            $file = Join-Path $script:AppData 'Glowfly\settings.json'
             if ($script:AppData -and (Test-Path -LiteralPath $file)) { Copy-Item -LiteralPath $file (Join-Path $Dir 'settings.json') }
         },
         {
@@ -78,13 +78,13 @@ function Save-FailureReport([string] $Dir) {
 
 # The window's client area as composed (even while covered) into a PNG.
 function Save-WindowShot([IntPtr] $Hwnd, [string] $Path) {
-    $r = [TrellisSmoke.Native]::ClientOnScreen($Hwnd)
+    $r = [GlowflySmoke.Native]::ClientOnScreen($Hwnd)
     if ($r[2] -le 0 -or $r[3] -le 0) { return }
     $bmp = [System.Drawing.Bitmap]::new($r[2], $r[3])
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     try {
         $hdc = $g.GetHdc()
-        $ok = [TrellisSmoke.Native]::PrintTo($Hwnd, $hdc)
+        $ok = [GlowflySmoke.Native]::PrintTo($Hwnd, $hdc)
         $g.ReleaseHdc($hdc)
         if (-not $ok) { $g.CopyFromScreen($r[0], $r[1], 0, 0, $bmp.Size) }
         $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
@@ -96,7 +96,7 @@ function Save-WindowShot([IntPtr] $Hwnd, [string] $Path) {
 
 # The whole virtual screen into a PNG.
 function Save-ScreenShot([string] $Path) {
-    $v = [TrellisSmoke.Native]::VirtualScreen()
+    $v = [GlowflySmoke.Native]::VirtualScreen()
     $bmp = [System.Drawing.Bitmap]::new($v[2], $v[3])
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     try {
@@ -171,7 +171,7 @@ function Wait-Probe([string] $Desc, [scriptblock] $Test, [int] $Seconds = 0) {
 
 # Waits until & $Test <settings.json> is true.
 function Wait-SettingsFile([string] $Desc, [scriptblock] $Test) {
-    $file = Join-Path $script:AppData 'Trellis\settings.json'
+    $file = Join-Path $script:AppData 'Glowfly\settings.json'
     Wait-Until $Desc { Read-JsonFile $file } $Test { ' in settings.json' } 0 | Out-Null
 }
 
@@ -234,7 +234,7 @@ function Select-Widget($Probe, [string] $Label, [string] $Region, [string] $Role
 
 # Where client point (x, y) in points is on screen, in pixels.
 function ConvertTo-ScreenPoint($Probe, [double] $X, [double] $Y) {
-    $origin = if ($script:ClientOrigin) { $script:ClientOrigin } else { [TrellisSmoke.Native]::ClientOnScreen($script:Hwnd) }
+    $origin = if ($script:ClientOrigin) { $script:ClientOrigin } else { [GlowflySmoke.Native]::ClientOnScreen($script:Hwnd) }
     $ppp = [double] $Probe.pixels_per_point
     return @{ X = $origin[0] + [int][Math]::Floor($X * $ppp + 0.5); Y = $origin[1] + [int][Math]::Floor($Y * $ppp + 0.5) }
 }
@@ -262,31 +262,31 @@ function Wait-Widget([string] $Label, [string] $Region, [string] $Role = '') {
 # Moves the pointer onto the widget.
 function Move-PointerTo([string] $Label, [string] $Region, [string] $Role = '') {
     $at = Find-Widget $Label $Region $Role
-    [TrellisSmoke.Native]::MoveTo($at.X, $at.Y)
+    [GlowflySmoke.Native]::MoveTo($at.X, $at.Y)
 }
 
 # Moves onto the widget and clicks it with $Button (1 left, 3 right).
 function Invoke-WidgetClick([string] $Label, [string] $Region, [int] $Button = 1, [string] $Role = '') {
     Move-PointerTo $Label $Region $Role
     Start-Sleep -Milliseconds 100
-    [TrellisSmoke.Native]::Button($Button, $true)
+    [GlowflySmoke.Native]::Button($Button, $true)
     Start-Sleep -Milliseconds 50
-    [TrellisSmoke.Native]::Button($Button, $false)
+    [GlowflySmoke.Native]::Button($Button, $false)
 }
 
 # Presses the left button at screen pixel (x, y), moves by (dx, dy) in $Steps moves 50 ms apart,
 # releases.
 function Invoke-PointerDrag([int] $X, [int] $Y, [int] $Dx, [int] $Dy, [int] $Steps, [int] $PauseAfterPress = 100) {
-    [TrellisSmoke.Native]::MoveTo($X, $Y)
+    [GlowflySmoke.Native]::MoveTo($X, $Y)
     Start-Sleep -Milliseconds 200
-    [TrellisSmoke.Native]::Button(1, $true)
+    [GlowflySmoke.Native]::Button(1, $true)
     Start-Sleep -Milliseconds $PauseAfterPress
     for ($i = 1; $i -le $Steps; $i++) {
-        [TrellisSmoke.Native]::MoveTo($X + [int][Math]::Truncate($Dx * $i / $Steps), $Y + [int][Math]::Truncate($Dy * $i / $Steps))
+        [GlowflySmoke.Native]::MoveTo($X + [int][Math]::Truncate($Dx * $i / $Steps), $Y + [int][Math]::Truncate($Dy * $i / $Steps))
         Start-Sleep -Milliseconds 50
     }
     Start-Sleep -Milliseconds 100
-    [TrellisSmoke.Native]::Button(1, $false)
+    [GlowflySmoke.Native]::Button(1, $false)
 }
 
 # Pixels for a length in points, rounded as the Linux script's px.
@@ -296,10 +296,10 @@ function ConvertTo-Px([double] $Points, $Probe = $null) {
 }
 
 # Types $Text as real key presses, 40 ms apart.
-function Send-Text([string] $Text) { [TrellisSmoke.Native]::Text($Text, 40) }
+function Send-Text([string] $Text) { [GlowflySmoke.Native]::Text($Text, 40) }
 
 # Presses the virtual keys as a chord (down in order, up in reverse).
-function Send-Chord([uint16[]] $Keys) { [TrellisSmoke.Native]::Chord($Keys) }
+function Send-Chord([uint16[]] $Keys) { [GlowflySmoke.Native]::Chord($Keys) }
 
 # git in the fixture repository: @{ Out = trimmed output; Code = exit code }, never throwing.
 function Invoke-Git {

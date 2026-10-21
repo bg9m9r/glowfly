@@ -49,7 +49,7 @@ pub fn init() -> LogSetup {
     LogSetup { dir, file_detail }
 }
 
-/// What the error log takes: warnings and errors, or with extended logging Trellis's debug
+/// What the error log takes: warnings and errors, or with extended logging Glowfly's debug
 /// messages and everything else's informational ones.
 pub fn file_targets(extended: bool) -> Targets {
     if extended {

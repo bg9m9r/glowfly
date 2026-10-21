@@ -1,5 +1,5 @@
 //! The author identity git writes into commits (user.name, user.email, user.signingkey), reading
-//! the global identity, and the one path Trellis uses to write a git config value through the
+//! the global identity, and the one path Glowfly uses to write a git config value through the
 //! git CLI.
 
 use crate::gitcli::{self, args};

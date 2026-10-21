@@ -1,6 +1,6 @@
 //! Repository trust: a trusted repository that gains settings or hooks since it was trusted is
 //! asked about again (only what is new), and held like an undecided one until then; decisions
-//! saved before prints were kept, and what Trellis's own `git lfs install` adds, don't ask.
+//! saved before prints were kept, and what Glowfly's own `git lfs install` adds, don't ask.
 
 use super::jobs::{JobSpec, start_job};
 use super::tests::{finish, finish_keeping, git, state};
@@ -171,7 +171,7 @@ fn a_changed_repository_holds_jobs_and_offers_the_review() {
 }
 
 #[test]
-fn lfs_install_from_trellis_doesn_t_ask_again() {
+fn lfs_install_from_glowfly_doesn_t_ask_again() {
     let (mut st, dir) = trusted_repo("print-lfs-install");
     let mut fx = Vec::new();
     start_job(&mut st, JobSpec::new("Initialize Git LFS".into(), vec![glowfly_core::lfs::install_args()]), &mut fx);

@@ -182,7 +182,7 @@ fn unchanged_paths_are_dropped_and_none_left_is_refused() {
 }
 
 #[test]
-fn paths_trellis_cannot_name_safely_are_never_stashed() {
+fn paths_glowfly_cannot_name_safely_are_never_stashed() {
     let (mut st, dir) = wip_repo("stash-push-hazards");
     let snap = st.snap.as_mut().unwrap();
     let odd = Hazard::NotUtf8(b"caf\xe9.txt".to_vec());
@@ -253,7 +253,7 @@ fn a_long_selection_writes_the_pathspec_file() {
     let refs: Vec<&str> = paths.iter().map(String::as_str).collect();
     let fx = run(&mut st, push(StashScope::Files, "", &refs));
     let (cmds, file) = git_run(&fx);
-    let pathspec = git_dir.join("TRELLIS_STASH_PATHS");
+    let pathspec = git_dir.join("GLOWFLY_STASH_PATHS");
     assert_eq!(file, Some((pathspec.clone(), paths.join("\0"))));
     assert!(cmds[0].contains(&format!("--pathspec-from-file={}", pathspec.display())), "{cmds:?}");
     assert!(cmds[0].contains(&"--pathspec-file-nul".to_owned()));

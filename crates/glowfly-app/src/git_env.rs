@@ -13,7 +13,7 @@ use std::path::PathBuf;
 pub enum GitEnvMsg {
     /// At startup: find git and ask its version.
     Detect,
-    /// Hides the banner until Trellis restarts.
+    /// Hides the banner until Glowfly restarts.
     DismissBanner,
     /// The user agreed to list `root` in `safe.directory` (then it opens again).
     AddSafeDirectory(PathBuf),

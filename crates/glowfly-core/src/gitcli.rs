@@ -4,11 +4,11 @@
 //! `git` from the PATH children get.
 //!
 //! Once the app has started its credential-prompt listener ([`enable_askpass`]), every git
-//! child also gets Trellis as its `GIT_ASKPASS` / `SSH_ASKPASS` program (see
+//! child also gets Glowfly as its `GIT_ASKPASS` / `SSH_ASKPASS` program (see
 //! [`crate::askpass`]), so prompts no credential helper answers open a dialog instead of
-//! failing, and Trellis as its `gpg.program` (see [`crate::gpg_prompt`]), so signing
+//! failing, and Glowfly as its `gpg.program` (see [`crate::gpg_prompt`]), so signing
 //! passphrases are asked the same way, and, for SSH-format signing, the key file ssh-keygen will
-//! ask about (`TRELLIS_SSH_SIGNING_KEY`). A command that must never prompt passes [`NO_PROMPTS`]
+//! ask about (`GLOWFLY_SSH_SIGNING_KEY`). A command that must never prompt passes [`NO_PROMPTS`]
 //! (or [`BACKGROUND`]) as its environment, which also leaves `gpg.program` alone. With OpenSSH
 //! before 8.4 on Unix, children also start in a new session ([`crate::ssh_version::prepare`]).
 //!
@@ -27,7 +27,7 @@ pub use wait::Stop;
 /// What git children need to reach the app's credential prompts.
 #[derive(Clone)]
 pub struct AskpassEnv {
-    /// The Trellis executable, run by git and ssh as the askpass program.
+    /// The Glowfly executable, run by git and ssh as the askpass program.
     pub exe: PathBuf,
     /// The listener's `127.0.0.1:<port>`.
     pub addr: String,
@@ -282,7 +282,7 @@ fn base_command(program: &OsStr, cwd: &Path, args: &[String], env: &[(&str, &str
         .env("GIT_EDITOR", "true")
         .env("GIT_SEQUENCE_EDITOR", "true")
         .env("GIT_MERGE_AUTOEDIT", "no")
-        // Untranslated messages, so the text Trellis matches is the same in every locale. Only
+        // Untranslated messages, so the text Glowfly matches is the same in every locale. Only
         // the messages: `LC_ALL=C` would also give hooks, gpg and pinentry an ASCII-only
         // character set. gettext reads `LANGUAGE` first whenever the message locale isn't C,
         // so this holds even when the user sets `LC_ALL`.
@@ -326,7 +326,7 @@ fn raw_inner(
         Err(e) => return (GitOutput::failed(format!("{SPAWN_FAILED}{e}")), Vec::new()),
     };
     // Feed stdin and drain both pipes on their own threads, so a large input or output can't
-    // leave git and Trellis each waiting for the other.
+    // leave git and Glowfly each waiting for the other.
     if let Some(mut stdin) = child.stdin.take() {
         let input = input.as_bytes().to_vec();
         std::thread::spawn(move || {

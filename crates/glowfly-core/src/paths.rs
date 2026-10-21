@@ -3,7 +3,7 @@
 //! on a volume that ignores case. libgit2 and git report the resolved form, while a typed path,
 //! `%TEMP%` or a recent-list entry may use any other.
 //!
-//! Two questions, two answers, and nothing else in Trellis compares folders:
+//! Two questions, two answers, and nothing else in Glowfly compares folders:
 //!
 //! - **Is it the same folder?** Asked of the disk: `FolderId` (device and inode on Unix, volume
 //!   serial and file id on Windows) through `same_folder`, or a `FolderId` cached when a

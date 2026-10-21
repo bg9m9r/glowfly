@@ -23,7 +23,7 @@ fn start(st: &mut AppState, kind: SyncKind, scope: SyncScope) -> Vec<Effect> {
 
 /// A folder that is absolute on every system (nothing is read from it).
 fn abs(rel: &str) -> PathBuf {
-    glowfly_core::paths::temp_dir().join(format!("trellis-sync-none-{}", std::process::id())).join(rel)
+    glowfly_core::paths::temp_dir().join(format!("glowfly-sync-none-{}", std::process::id())).join(rel)
 }
 
 /// The Sync effects in `fx`: (generation, row, path, op, trusted).

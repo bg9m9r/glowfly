@@ -1,4 +1,4 @@
-//! Headless tests for trellis:// links: which URL and name a copied link carries, the toast and
+//! Headless tests for glowfly:// links: which URL and name a copied link carries, the toast and
 //! clipboard after the runner builds it, reading a link that arrives (refused text, the search
 //! candidates, a dialog in the way, a newer link), and the scheme registration's status.
 
@@ -133,18 +133,18 @@ fn focuses(fx: &[Effect]) -> bool {
 }
 
 pub(super) fn link_text(target: &str) -> String {
-    format!("trellis://{target}?root={ROOT}")
+    format!("glowfly://{target}?root={ROOT}")
 }
 
 #[test]
 fn invalid_text_explains_itself() {
     let mut st = state();
-    let fx = send(&mut st, DeepLinkMsg::Open("trellis://draft/7?root=abc".into()));
+    let fx = send(&mut st, DeepLinkMsg::Open("glowfly://draft/7?root=abc".into()));
     assert!(focuses(&fx));
     assert!(!fx.iter().any(|e| matches!(e, Effect::DeepLink(_))), "no search");
     match &st.modal {
         Some(Modal::DeepLink(LinkDialog::Invalid { text, reason })) => {
-            assert_eq!(text, "trellis://draft/7?root=abc");
+            assert_eq!(text, "glowfly://draft/7?root=abc");
             assert!(reason.contains("draft"), "{reason}");
         }
         _ => panic!("expected the invalid-link dialog"),
@@ -154,7 +154,7 @@ fn invalid_text_explains_itself() {
 
 #[test]
 fn a_link_is_looked_for_in_tabs_favorites_and_recent() {
-    let base = glowfly_core::paths::temp_dir().join(format!("trellis-link-candidates-{}", std::process::id()));
+    let base = glowfly_core::paths::temp_dir().join(format!("glowfly-link-candidates-{}", std::process::id()));
     let p = |n: &str| base.join(n);
     let mut st = state();
     st.tabs = vec![Tab::unloaded(p("other-tab")), Tab::unloaded(p("active"))];

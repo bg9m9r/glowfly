@@ -11,7 +11,7 @@ use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use std::time::Instant;
 
-const LABEL: &str = "Show system notifications while Trellis is in the background";
+const LABEL: &str = "Show system notifications while Glowfly is in the background";
 
 fn page(on: bool) -> AppState {
     let mut s = settings(ThemeChoice::Dark);

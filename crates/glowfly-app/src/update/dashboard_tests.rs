@@ -16,7 +16,7 @@ use std::time::Instant;
 
 /// A path that is absolute on every OS; never touched.
 pub(super) fn path(name: &str) -> PathBuf {
-    glowfly_core::paths::temp_dir().join("trellis-dashboard-tests").join(name)
+    glowfly_core::paths::temp_dir().join("glowfly-dashboard-tests").join(name)
 }
 
 fn run(st: &mut AppState, m: DashboardMsg) -> Vec<Effect> {

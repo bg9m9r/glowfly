@@ -93,7 +93,7 @@ fn a_checked_out_submodule_s_findings_are_in_the_print() {
     assert_eq!(gained.submodules.len(), 1);
     assert_eq!(gained.submodules[0].scan.config, [setting("core.sshCommand", "ssh -v")]);
     let _ = std::fs::remove_dir_all(&parent);
-    let _ = std::fs::remove_dir_all(crate::paths::temp_dir().join(format!("trellis-test-print-sub-lib-{}", std::process::id())));
+    let _ = std::fs::remove_dir_all(crate::paths::temp_dir().join(format!("glowfly-test-print-sub-lib-{}", std::process::id())));
 }
 
 #[test]

@@ -89,7 +89,7 @@ fn a_live_shell_reports_its_program() {
         let name = cfg!(target_os = "linux").then_some("sleep");
         (ShellCommand { program: "/bin/bash".into(), args }, "sleep 30\n", name)
     };
-    let dir = crate::paths::temp_dir().join(format!("trellis-activity-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-activity-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let (out_tx, out_rx) = mpsc::channel();
     let mut session = spawn(

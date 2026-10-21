@@ -1,7 +1,7 @@
 //! Recording a rebase as one undoable action: where its branch was before it started (git's
 //! orig-head while one is in progress, HEAD otherwise) and, once it has finished, where the
 //! branch is now. Covers interactive rebases, the graph's history edits and rebases continued
-//! from the banner, also ones started outside Trellis.
+//! from the banner, also ones started outside Glowfly.
 
 use super::{Action, MoveOp};
 use git2::{Oid, Repository, RepositoryState};

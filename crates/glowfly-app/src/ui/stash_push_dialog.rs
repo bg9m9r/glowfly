@@ -91,7 +91,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
 }
 
 /// Select all / Select none, the ticked count, and one row per working-tree file: its box,
-/// status letter and path (a click on the path also toggles it). A row Trellis can't stash
+/// status letter and path (a click on the path also toggles it). A row Glowfly can't stash
 /// safely (`stashable`) has its box off and says why after the path.
 fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
     let files = wip_files(snap);

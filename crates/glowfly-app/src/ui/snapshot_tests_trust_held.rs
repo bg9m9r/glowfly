@@ -89,7 +89,7 @@ fn prefs_sparse_held() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("prefs_sparse_held");
-    assert!(h.query_by_label_contains("Trellis lists the sparse paths with git").is_some());
+    assert!(h.query_by_label_contains("Glowfly lists the sparse paths with git").is_some());
     assert!(h.query_by_label("Folders (cone mode)").is_none() && h.query_by_label("Reapply").is_none());
     h.get_by_label("Review trust…").click();
     h.run();

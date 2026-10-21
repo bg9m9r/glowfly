@@ -117,7 +117,7 @@ pub(super) fn sync_dir(dir: &Path) {
 
 /// How old a temporary file must be before it counts as left behind by a crash. A write takes
 /// milliseconds, so a younger one may belong to a write still running in another thread or
-/// another Trellis.
+/// another Glowfly.
 const STALE_AFTER: Duration = Duration::from_secs(10 * 60);
 
 /// Removes temporary files for `name` in `dir` that a crashed write left behind.

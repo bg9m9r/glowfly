@@ -1,5 +1,5 @@
 //! The conflict view: opening a conflicted file, stepping between chunks, saving (write and
-//! stage), saving with markers left (write only) or resolving with a whole side. After Trellis
+//! stage), saving with markers left (write only) or resolving with a whole side. After Glowfly
 //! resolves the open file the view steps to the next conflicted one. Picking sides and lines
 //! and editing the output are in update/conflict_edit.rs; Mark resolved and Mark conflicted in
 //! update/conflict_files.rs. Undoing a saved resolution opens (or reloads) the view on the file
@@ -203,7 +203,7 @@ pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// The working-tree status changed: the conflict lists are read again, and once the open file
-/// is no longer conflicted the view moves on. Resolved by Trellis (saved, a whole side, marked
+/// is no longer conflicted the view moves on. Resolved by Glowfly (saved, a whole side, marked
 /// resolved) it opens the next conflicted file; otherwise (outside the app) it closes. Picks
 /// are otherwise kept.
 pub(super) fn status_changed(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {

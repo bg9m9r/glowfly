@@ -1,4 +1,4 @@
-//! The UI's translations: the languages Trellis ships, their bundled catalogs (English is the
+//! The UI's translations: the languages Glowfly ships, their bundled catalogs (English is the
 //! base; each other language is a JSON file of the same keys, `locales/`), lookups that fall
 //! back to English and then to the key itself, `{name}` placeholders filled in one pass, and the
 //! OS language, read once at startup (`system.rs`).
@@ -50,7 +50,7 @@ impl Lang {
         }
     }
 
-    /// The language saved as `code` (exact, lowercase), if Trellis has it.
+    /// The language saved as `code` (exact, lowercase), if Glowfly has it.
     pub fn from_code(code: &str) -> Option<Lang> {
         Lang::ALL.into_iter().find(|l| l.code() == code)
     }

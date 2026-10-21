@@ -1,4 +1,4 @@
-//! Azure Boards work items in Trellis: details with the HTML description as text, the parent and
+//! Azure Boards work items in Glowfly: details with the HTML description as text, the parent and
 //! paged comments; the Create dialog's types, tags, people and parents; and creating a work item
 //! with a JSON Patch.
 

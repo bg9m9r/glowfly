@@ -24,7 +24,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, md: &mut MarkdownCache, msgs: &mu
     egui::ScrollArea::vertical().id_salt("issue-conversation").auto_shrink([false, false]).show(ui, |ui| match &v.details {
         Details::Unsupported => {
             let text =
-                format!("{} details aren't available in Trellis for this tracker. Open it in the browser to see more.", capital(v.noun));
+                format!("{} details aren't available in Glowfly for this tracker. Open it in the browser to see more.", capital(v.noun));
             note(ui, text, color::weak());
         }
         Details::Held => note(ui, "Trust this repository to load its issue.", color::weak()),

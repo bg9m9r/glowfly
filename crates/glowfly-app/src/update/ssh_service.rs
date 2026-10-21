@@ -24,7 +24,7 @@ fn connected(st: &AppState, account: &Account) -> bool {
 }
 
 /// Add to service… picked an account: the form under the key, or straight to the fallback for
-/// a service Trellis can't add keys to.
+/// a service Glowfly can't add keys to.
 pub(super) fn choose(st: &mut AppState, key: &Path, account: Account, now: Instant, fx: &mut Vec<Effect>) {
     let Some((_, file, comment)) = listed(st, key) else { return };
     if !connected(st, &account) || account.provider.is_tracker_only() {

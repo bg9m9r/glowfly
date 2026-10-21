@@ -1,18 +1,18 @@
-# Contributing to Trellis
+# Contributing to Glowfly
 
 Thanks for your interest! Bug reports, ideas and pull requests are all welcome.
 
 ## Before you start
 
 - **Bugs**: open an issue with the steps to reproduce, what you expected, and what happened.
-  The activity log (bottom panel) shows the exact git commands Trellis ran, which helps a lot.
+  The activity log (bottom panel) shows the exact git commands Glowfly ran, which helps a lot.
 - **Features**: check [TODO.md](TODO.md) first, then open an issue to agree on the approach
   before writing a large change.
 - **Security problems**: don't open a public issue; see [SECURITY.md](SECURITY.md).
 
 ## Building and checking
 
-You need a recent stable Rust toolchain, Git, and PowerShell 7 (`pwsh`). Trellis is developed on
+You need a recent stable Rust toolchain, Git, and PowerShell 7 (`pwsh`). Glowfly is developed on
 Windows; CI also builds it on macOS and Linux, where it is less tested. On Debian or Ubuntu,
 `scripts/linux-deps.sh` installs the system libraries the build needs.
 
@@ -43,7 +43,7 @@ Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before structural changes. The
 
 ## Original work only
 
-Trellis implements features that many Git clients share, but every line of code, text, icon and
+Glowfly implements features that many Git clients share, but every line of code, text, icon and
 image must be your own or come from a dependency with a compatible license. Don't copy code,
 strings, screenshots or assets from other Git clients, including closed-source ones.
 

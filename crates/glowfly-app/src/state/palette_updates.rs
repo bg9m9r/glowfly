@@ -1,5 +1,5 @@
 //! The palette's update entries: "View release notes" and "Check for updates" always, plus
-//! "Download Trellis x.y.z" while a newer release is on offer and "Install Trellis x.y.z" once
+//! "Download Glowfly x.y.z" while a newer release is on offer and "Install Glowfly x.y.z" once
 //! its installer has downloaded.
 
 use super::AppState;
@@ -13,10 +13,10 @@ pub(super) fn entries(st: &AppState, out: &mut Vec<Entry>) {
     out.push(with_detail(check, st.updates.busy().then(|| "checking…".to_owned())));
     match st.updates.settled() {
         UpdateStatus::Available(o) | UpdateStatus::DownloadFailed { offer: o, .. } => {
-            out.push(entry(C::Updates(UpdateMsg::Download), format!("Download Trellis {}", o.version), "update upgrade new version"));
+            out.push(entry(C::Updates(UpdateMsg::Download), format!("Download Glowfly {}", o.version), "update upgrade new version"));
         }
         UpdateStatus::Downloaded { offer, installer: true, .. } => {
-            out.push(entry(C::Updates(UpdateMsg::Install), format!("Install Trellis {}", offer.version), "update upgrade new version"));
+            out.push(entry(C::Updates(UpdateMsg::Install), format!("Install Glowfly {}", offer.version), "update upgrade new version"));
         }
         _ => {}
     }

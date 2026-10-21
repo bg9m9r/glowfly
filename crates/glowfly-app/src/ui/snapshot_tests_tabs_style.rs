@@ -22,7 +22,7 @@ const LONG: &str = "a-repository-whose-folder-name-runs-on-past-what-a-tab-holds
 fn five_tabs(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     st.settings.reduce_motion = true;
-    let base = glowfly_core::paths::temp_dir().join("trellis-tabs-style");
+    let base = glowfly_core::paths::temp_dir().join("glowfly-tabs-style");
     st.tabs.push(Tab::unloaded(base.join("docs")));
     st.tabs.push(Tab::unloaded(base.join(LONG)));
     st.tabs.push(Tab::unloaded(base.join("web")));

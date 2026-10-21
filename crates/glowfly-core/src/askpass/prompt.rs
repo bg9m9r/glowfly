@@ -19,7 +19,7 @@ pub enum PromptKind {
     /// `key`. Only built from a structured request ([`super::Prompt::ssh_sign`]), never by
     /// [`classify`].
     SshSigningPassphrase { key: String },
-    /// A yes/no question that isn't in a wording Trellis reads, such as an agent's "Allow use
+    /// A yes/no question that isn't in a wording Glowfly reads, such as an agent's "Allow use
     /// of key?".
     Confirm,
     /// ssh's question about a server it has no host key for, read into fields

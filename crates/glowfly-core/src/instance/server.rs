@@ -50,7 +50,7 @@ pub fn serve_at(file: &Path, on_open: impl Fn(String) + Send + Sync + 'static) -
     file::write(file, &InstanceFile { addr: addr.to_string(), token: token.clone(), pid: std::process::id() })?;
     let closed = Arc::new(AtomicBool::new(false));
     let (stop, expected) = (closed.clone(), token.clone());
-    let started = std::thread::Builder::new().name("trellis-instance".into()).spawn(move || {
+    let started = std::thread::Builder::new().name("glowfly-instance".into()).spawn(move || {
         for stream in listener.incoming() {
             if stop.load(Ordering::SeqCst) {
                 return;

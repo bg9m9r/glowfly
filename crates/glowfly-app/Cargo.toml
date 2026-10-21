@@ -1,6 +1,6 @@
 [package]
 name = "glowfly"
-description = "Trellis: a native Git client."
+description = "Glowfly: a native Git client."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -46,26 +46,30 @@ winresource = "0.1"
 # The Linux package (scripts/package-linux.sh runs `cargo deb -p glowfly --no-build`).
 [package.metadata.deb]
 name = "glowfly"
-maintainer = "Trellis contributors <https://github.com/bg9m9r/trellis/issues>"
-copyright = "Trellis contributors"
+maintainer = "Glowfly contributors <https://github.com/bg9m9r/trellis/issues>"
+copyright = "Glowfly contributors"
 section = "vcs"
 priority = "optional"
 depends = "$auto, git"
-extended-description = """Trellis is a native Git client: a commit graph, diffs, staging by file, hunk or line, branches, stashes, rebases and pull requests from the hosting service."""
+# Glowfly was called Trellis: installing it replaces the trellis package instead of joining it.
+conflicts = "trellis"
+replaces = "trellis"
+provides = "trellis"
+extended-description = """Glowfly is a native Git client: a commit graph, diffs, staging by file, hunk or line, branches, stashes, rebases and pull requests from the hosting service."""
 assets = [
     ["target/release/glowfly", "usr/bin/", "755"],
-    ["../../packaging/linux/trellis.desktop", "usr/share/applications/", "644"],
-    ["../../packaging/linux/trellis-links.desktop", "usr/share/applications/", "644"],
-    ["../../assets/icon/trellis-16.png", "usr/share/icons/hicolor/16x16/apps/trellis.png", "644"],
-    ["../../assets/icon/trellis-24.png", "usr/share/icons/hicolor/24x24/apps/trellis.png", "644"],
-    ["../../assets/icon/trellis-32.png", "usr/share/icons/hicolor/32x32/apps/trellis.png", "644"],
-    ["../../assets/icon/trellis-48.png", "usr/share/icons/hicolor/48x48/apps/trellis.png", "644"],
-    ["../../assets/icon/trellis-64.png", "usr/share/icons/hicolor/64x64/apps/trellis.png", "644"],
-    ["../../assets/icon/trellis-128.png", "usr/share/icons/hicolor/128x128/apps/trellis.png", "644"],
-    ["../../assets/icon/trellis-256.png", "usr/share/icons/hicolor/256x256/apps/trellis.png", "644"],
-    ["../../assets/icon/trellis-512.png", "usr/share/icons/hicolor/512x512/apps/trellis.png", "644"],
-    ["../../LICENSE-MIT", "usr/share/doc/trellis/", "644"],
-    ["../../LICENSE-APACHE", "usr/share/doc/trellis/", "644"],
-    ["../../README.md", "usr/share/doc/trellis/", "644"],
-    ["../../THIRD-PARTY-NOTICES.md", "usr/share/doc/trellis/", "644"],
+    ["../../packaging/linux/glowfly.desktop", "usr/share/applications/", "644"],
+    ["../../packaging/linux/glowfly-links.desktop", "usr/share/applications/", "644"],
+    ["../../assets/icon/glowfly-16.png", "usr/share/icons/hicolor/16x16/apps/glowfly.png", "644"],
+    ["../../assets/icon/glowfly-24.png", "usr/share/icons/hicolor/24x24/apps/glowfly.png", "644"],
+    ["../../assets/icon/glowfly-32.png", "usr/share/icons/hicolor/32x32/apps/glowfly.png", "644"],
+    ["../../assets/icon/glowfly-48.png", "usr/share/icons/hicolor/48x48/apps/glowfly.png", "644"],
+    ["../../assets/icon/glowfly-64.png", "usr/share/icons/hicolor/64x64/apps/glowfly.png", "644"],
+    ["../../assets/icon/glowfly-128.png", "usr/share/icons/hicolor/128x128/apps/glowfly.png", "644"],
+    ["../../assets/icon/glowfly-256.png", "usr/share/icons/hicolor/256x256/apps/glowfly.png", "644"],
+    ["../../assets/icon/glowfly-512.png", "usr/share/icons/hicolor/512x512/apps/glowfly.png", "644"],
+    ["../../LICENSE-MIT", "usr/share/doc/glowfly/", "644"],
+    ["../../LICENSE-APACHE", "usr/share/doc/glowfly/", "644"],
+    ["../../README.md", "usr/share/doc/glowfly/", "644"],
+    ["../../THIRD-PARTY-NOTICES.md", "usr/share/doc/glowfly/", "644"],
 ]

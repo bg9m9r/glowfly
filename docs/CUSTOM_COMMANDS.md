@@ -1,7 +1,7 @@
 # Custom commands
 
 Your own git and shell actions, run from the command palette, from a Commands submenu in the
-commit, branch and file menus, and from keys you choose. They run like Trellis's own jobs: the
+commit, branch and file menus, and from keys you choose. They run like Glowfly's own jobs: the
 toolbar shows them running, the activity log keeps their output, and the repository is
 reloaded when they finish.
 
@@ -11,12 +11,16 @@ Two files, both optional, with the same format:
 
 | File | For |
 | --- | --- |
-| `commands.toml` in Trellis's config folder (`%APPDATA%\Trellis` on Windows, `~/Library/Application Support/Trellis` on macOS, `$XDG_CONFIG_HOME/trellis`, usually `~/.config/trellis`, on Linux) | Your own commands, in every repository. |
-| `.trellis/commands.toml` in a repository's working tree | A repository's commands, committed so a team can share them. |
+| `commands.toml` in Glowfly's config folder (`%APPDATA%\Glowfly` on Windows, `~/Library/Application Support/Glowfly` on macOS, `$XDG_CONFIG_HOME/glowfly`, usually `~/.config/glowfly`, on Linux) | Your own commands, in every repository. |
+| `.glowfly/commands.toml` in a repository's working tree | A repository's commands, committed so a team can share them. |
 
-The palette lists your commands first, then the repository's. Trellis reads both files when a
+The palette lists your commands first, then the repository's. Glowfly reads both files when a
 repository opens and on Refresh. It reads the repository's file again when anything under
-`.trellis/` changes. Use **Reload custom commands** in the palette after editing your own file.
+`.glowfly/` changes. Use **Reload custom commands** in the palette after editing your own file.
+
+Glowfly was called Trellis, and a repository may still keep its commands in
+`.trellis/commands.toml`. That file is read when the repository has no `.glowfly` folder; once
+`.glowfly/` exists, only it counts.
 
 ## The format
 
@@ -49,7 +53,7 @@ show = ["file"]
 - **confirm**: `true` asks "Run <name>?" and shows what will run. A string asks that question
   instead, with the placeholders filled in.
 - **key**: a key with Mod, Ctrl or Alt, written as in Preferences > Keyboard (`Mod` is Ctrl on
-  Windows and Linux and Cmd on macOS). A key that is already bound to a Trellis action or to an
+  Windows and Linux and Cmd on macOS). A key that is already bound to a Glowfly action or to an
   earlier command is ignored and reported.
 
 A file holds at most 200 commands and 256 KiB. An unknown field or a value of the wrong type is
@@ -72,7 +76,7 @@ Values are passed safely:
 - In a git command, every value is one argument, so spaces and quotes in a branch or file name
   can't split it. `{files}` must stand alone as a word.
 - In a shell command, every value is single-quoted for you. Don't put quotes around a
-  placeholder; Trellis reports that as a problem.
+  placeholder; Glowfly reports that as a problem.
 - A file name starting with `-` (or `:` for git) gets `./` in front, so it is never read as an
   option.
 
@@ -82,7 +86,7 @@ work as usual. Any other `{word}` that isn't a placeholder is reported.
 ## Running
 
 Commands run in the repository's working folder, one job at a time like other operations.
-Credential prompts appear in Trellis's dialog. Git never waits for an editor, and a shell
+Credential prompts appear in Glowfly's dialog. Git never waits for an editor, and a shell
 command's input is closed. A shell command's output and errors are kept together; for long
 output, the activity log keeps the last 512 KiB.
 
@@ -92,7 +96,7 @@ A repository's own commands are code from whoever wrote the file:
 
 - **Trusted repository**: they run like your own.
 - **Any other repository**: running one first asks you to confirm it, naming
-  `.trellis/commands.toml` as its source and showing the exact command or script it runs (its
+  `.glowfly/commands.toml` as its source and showing the exact command or script it runs (its
   own `confirm` question, if it has one, is asked in the same dialog).
 - **Repository you haven't decided on**: once confirmed, the trust prompt opens. The command
   runs once you trust the repository, and is dropped if you don't.
@@ -100,8 +104,8 @@ A repository's own commands are code from whoever wrote the file:
   custom command, yours included, waits for the trust prompt, like the other operations that
   run the repository's hooks or filters.
 
-The palette and the menus say when a command will ask first. A `.trellis` folder or
-`commands.toml` that is a link is never read, so a repository can't point Trellis at a file
+The palette and the menus say when a command will ask first. A `.glowfly` folder or
+`commands.toml` that is a link is never read, so a repository can't point Glowfly at a file
 outside it.
 
 ## Problems

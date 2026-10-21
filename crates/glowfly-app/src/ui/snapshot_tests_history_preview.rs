@@ -21,11 +21,11 @@ use glowfly_core::settings::ThemeChoice;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-const README: &str = "# Trellis notes
+const README: &str = "# Glowfly notes
 
 ## Getting started
 
-Read the **guide** first, then *try* the `trellis` command. See [the docs](https://example.com/docs) \
+Read the **guide** first, then *try* the `glowfly` command. See [the docs](https://example.com/docs) \
 or [the changelog](CHANGELOG.md) for ~~older~~ newer notes.
 
 - Install

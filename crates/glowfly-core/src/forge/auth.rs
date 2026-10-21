@@ -60,9 +60,10 @@ impl Auth {
     }
 }
 
-const KEYRING_SERVICE: &str = "trellis";
-/// Where tokens were saved while the app was called Riffle; moved on first use.
-const OLD_KEYRING_SERVICE: &str = "riffle";
+const KEYRING_SERVICE: &str = "glowfly";
+/// Where tokens were saved under the app's earlier names, newest first (Trellis, then Riffle);
+/// moved on first use.
+const OLD_KEYRING_SERVICES: [&str; 2] = ["trellis", "riffle"];
 
 #[derive(Serialize, Deserialize)]
 struct Secret {
@@ -75,8 +76,8 @@ fn keyring_entry(account: &Account) -> Result<keyring::Entry> {
     Ok(keyring::Entry::new(KEYRING_SERVICE, &account.key())?)
 }
 
-fn old_keyring_entry(account: &Account) -> Option<keyring::Entry> {
-    keyring::Entry::new(OLD_KEYRING_SERVICE, &account.key()).ok()
+fn old_keyring_entries(account: &Account) -> impl Iterator<Item = keyring::Entry> + '_ {
+    OLD_KEYRING_SERVICES.into_iter().filter_map(|service| keyring::Entry::new(service, &account.key()).ok())
 }
 
 pub fn save_token(account: &Account, user: Option<&str>, token: &str) -> Result<()> {
@@ -86,7 +87,7 @@ pub fn save_token(account: &Account, user: Option<&str>, token: &str) -> Result<
 }
 
 pub fn delete_token(account: &Account) -> Result<()> {
-    if let Some(old) = old_keyring_entry(account) {
+    for old in old_keyring_entries(account) {
         let _ = old.delete_credential();
     }
     match keyring_entry(account)?.delete_credential() {
@@ -99,10 +100,9 @@ fn saved_token(account: &Account) -> Option<Secret> {
     let entry = keyring_entry(account).ok()?;
     let raw = match entry.get_password() {
         Ok(raw) => raw,
-        // Saved under the old name: copy it across, then remove the old entry.
+        // Saved under an old name: copy it across, then remove the old entry.
         Err(keyring::Error::NoEntry) => {
-            let old = old_keyring_entry(account)?;
-            let raw = old.get_password().ok()?;
+            let (old, raw) = old_keyring_entries(account).find_map(|old| old.get_password().ok().map(|raw| (old, raw)))?;
             if entry.set_password(&raw).is_ok() {
                 let _ = old.delete_credential();
             }
@@ -124,7 +124,7 @@ pub fn is_public_host(account: &Account) -> bool {
     }
 }
 
-/// Whether Trellis may call this account's API: a public host, or one the user connected in
+/// Whether Glowfly may call this account's API: a public host, or one the user connected in
 /// Preferences. A self-hosted server guessed from a remote URL alone is never contacted.
 pub fn may_contact(account: &Account, connections: &[Connection]) -> bool {
     is_public_host(account) || is_connected(account, connections)
@@ -190,7 +190,7 @@ fn credential_request(account: &Account) -> String {
 
 /// Asks Git Credential Manager (or whichever git credential helper is configured) for a token.
 pub fn from_credential_manager(account: &Account, cwd: &Path, interactive: bool) -> Result<Auth> {
-    // Sign-in never opens Trellis's own credential prompt; GCM shows its own window.
+    // Sign-in never opens Glowfly's own credential prompt; GCM shows its own window.
     let mut env = crate::gitcli::NO_PROMPTS.to_vec();
     if !interactive {
         env.push(("GCM_INTERACTIVE", "never"));

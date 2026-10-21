@@ -55,7 +55,7 @@ pub(super) fn plan(workdir: &Path, repo: &Repository, action: &Action, redo: boo
     let Action::Restacked { moves, .. } = action else { unreachable!("a restack") };
     let here = branch_name(&head(repo).0);
     let elsewhere: Vec<String> = crate::repo::worktrees_at(workdir)?.into_iter().filter(|w| !w.current).filter_map(|w| w.branch).collect();
-    let reason = if redo { "Trellis: redo restack" } else { "Trellis: undo restack" };
+    let reason = if redo { "Glowfly: redo restack" } else { "Glowfly: undo restack" };
     let mut cmds = Vec::new();
     let mut reset = None;
     for m in moves {

@@ -13,8 +13,8 @@ pub const ADD_FOLDER_BUTTON: &str = "Add folder…";
 pub const USE_REPO_BUTTON: &str = "Use for this repository";
 pub const ALREADY_HERE: &str = "This repository already uses this profile";
 pub const NEEDS_EMAIL: &str = "Set an author email for this profile first";
-pub const NO_RULES: &str = "Not tied to any folder. Repositories in a folder you add here commit with this profile's identity, in Trellis and on the command line.";
-pub const RULES_HELP: &str = "Trellis adds an includeIf entry for each folder to your global Git config, pointing at a file it writes for this profile. Your global identity stays as it is. An identity set in a repository's own config still comes first.";
+pub const NO_RULES: &str = "Not tied to any folder. Repositories in a folder you add here commit with this profile's identity, in Glowfly and on the command line.";
+pub const RULES_HELP: &str = "Glowfly adds an includeIf entry for each folder to your global Git config, pointing at a file it writes for this profile. Your global identity stays as it is. An identity set in a repository's own config still comes first.";
 pub const PICK_FOLDER_TITLE: &str = "Choose a folder for this profile";
 
 /// A rule's path as shown, and its second line.

@@ -1,6 +1,6 @@
 //! What a dashboard refresh reads and asks (pure): the repositories in order (open tabs,
 //! favorites, recent), and from their scanned remotes the targets, grouped by account, with
-//! the calls for the accounts Trellis may contact.
+//! the calls for the accounts Glowfly may contact.
 
 use super::AppState;
 use super::dashboard::{AccountRow, AccountState, LocalRepo, MAX_REPOS, MAX_TARGETS, TargetData};

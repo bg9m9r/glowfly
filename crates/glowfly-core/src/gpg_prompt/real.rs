@@ -21,8 +21,8 @@ pub(super) fn no_window(cmd: &mut Command) {
     let _ = cmd;
 }
 
-/// A command for the user's program, marked so a loop back into Trellis stops. PATH and the
-/// rest of the environment are git's, as gpg would have had them without Trellis.
+/// A command for the user's program, marked so a loop back into Glowfly stops. PATH and the
+/// rest of the environment are git's, as gpg would have had them without Glowfly.
 fn command(program: &str, args: &[OsString]) -> Command {
     let mut cmd = Command::new(program);
     cmd.args(args).env(ENV_WRAPPER, "nested");
@@ -99,7 +99,7 @@ pub fn passthrough(program: &str, args: &[OsString]) -> i32 {
     match command(program, args).status() {
         Ok(status) => status.code().unwrap_or(2),
         Err(e) => {
-            eprintln!("Trellis: could not run {program}: {e}");
+            eprintln!("Glowfly: could not run {program}: {e}");
             2
         }
     }

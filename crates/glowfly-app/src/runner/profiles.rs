@@ -23,7 +23,7 @@ pub(super) fn run(e: ProfileEffect) -> Msg {
         ProfileEffect::SyncIncludes { cwd, plan, place } => {
             let result = match profile_includes::default_dir() {
                 Some(dir) => profile_includes::sync(&cwd, &dir, &plan, place, &[]),
-                None => Err("Trellis has no settings folder.".into()),
+                None => Err("Glowfly has no settings folder.".into()),
             };
             Msg::Profile(ProfileMsg::IncludesSynced(result))
         }

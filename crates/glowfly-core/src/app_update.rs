@@ -1,4 +1,4 @@
-//! Trellis's own updates: whether a check is due, which release is newer than this copy, which
+//! Glowfly's own updates: whether a check is due, which release is newer than this copy, which
 //! of its files fits this system and how this copy was installed, and downloading that file
 //! after checking it against the release's published SHA-256 checksums.
 //!
@@ -9,10 +9,10 @@
 //! - `sums.rs`: `SHA256SUMS` and `<file>.sha256` files.
 //! - `download.rs`: fetching, verifying and saving a file (I/O).
 //! - `feed.rs`: where releases are read from: the hosting service, or a local folder named by
-//!   TRELLIS_UPDATE_FEED.
-//! - `check.rs`: the headless check behind `trellis --check-update`.
+//!   GLOWFLY_UPDATE_FEED.
+//! - `check.rs`: the headless check behind `glowfly --check-update`.
 //!
-//! The release itself is read through `Feed` (by default `forge::latest_release`). Trellis never replaces its own
+//! The release itself is read through `Feed` (by default `forge::latest_release`). Glowfly never replaces its own
 //! running program: a downloaded installer is opened only when the user asks.
 
 mod assets;

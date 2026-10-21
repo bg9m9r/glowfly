@@ -5,7 +5,7 @@
 use super::{Feed, Offer, SumsSource, sums};
 use std::path::{Path, PathBuf};
 
-/// The largest file Trellis downloads.
+/// The largest file Glowfly downloads.
 pub const MAX_DOWNLOAD: u64 = 512 * 1024 * 1024;
 /// The largest checksum file read.
 const MAX_SUMS: u64 = 64 * 1024;

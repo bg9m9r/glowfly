@@ -34,7 +34,7 @@ pub fn show(ui: &mut Ui, cx: Cx, page: &mut SshPage, msgs: &mut Vec<Msg>) -> boo
         None => page.location_taken().then(|| Message::warning(t.tr("prefs.ssh.generate.location.taken.warn"))),
     };
     let group = FieldGroup::new(t.tr("prefs.ssh.generate.location.label")).message(&page.touched, "location", location);
-    let (location_r, enter_location) = field(ui, group, &mut page.location, "trellis-ssh-keygen-location", &hint, false);
+    let (location_r, enter_location) = field(ui, group, &mut page.location, "glowfly-ssh-keygen-location", &hint, false);
     form_message::track(&mut page.touched, "location", &location_r);
     if cx.keyboard && ui.memory(|m| m.focused().is_none()) {
         location_r.request_focus();
@@ -46,19 +46,19 @@ pub fn show(ui: &mut Ui, cx: Cx, page: &mut SshPage, msgs: &mut Vec<Msg>) -> boo
         page.comment_problem(t).map(Message::error),
     );
     let hint = t.tr("prefs.ssh.generate.comment.hint");
-    let (comment_r, enter_comment) = field(ui, group, &mut page.comment, "trellis-ssh-keygen-comment", hint, false);
+    let (comment_r, enter_comment) = field(ui, group, &mut page.comment, "glowfly-ssh-keygen-comment", hint, false);
     form_message::track(&mut page.touched, "comment", &comment_r);
 
     let group = FieldGroup::new(t.tr("prefs.ssh.generate.passphrase.label"))
         .optional(t.tr("dialog.field.optional"))
         .help(t.tr("prefs.ssh.generate.passphrase.help"));
     // The group's Optional marker says what a hint would.
-    let (pass_r, enter_pass) = field(ui, group, &mut page.passphrase, "trellis-ssh-keygen-passphrase", "", true);
+    let (pass_r, enter_pass) = field(ui, group, &mut page.passphrase, "glowfly-ssh-keygen-passphrase", "", true);
     form_message::track(&mut page.touched, "passphrase", &pass_r);
 
     let mismatch = page.passphrase_mismatch().then(|| Message::error(t.tr("prefs.ssh.generate.mismatch.warn")));
     let group = FieldGroup::new(t.tr("prefs.ssh.generate.confirm.label")).message(&page.touched, "confirm", mismatch);
-    let (confirm_r, enter_confirm) = field(ui, group, &mut page.confirm, "trellis-ssh-keygen-confirm", "", true);
+    let (confirm_r, enter_confirm) = field(ui, group, &mut page.confirm, "glowfly-ssh-keygen-confirm", "", true);
     form_message::track(&mut page.touched, "confirm", &confirm_r);
 
     if let Some(e) = &page.form_error {

@@ -79,7 +79,7 @@ fn read_repo_applies_instead_of() {
 
 #[test]
 fn read_repo_refuses_missing_plain_and_bare_folders() {
-    let base = paths::temp_dir().join(format!("trellis-test-dash-folders-{}", std::process::id()));
+    let base = paths::temp_dir().join(format!("glowfly-test-dash-folders-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);
     let plain = base.join("plain");
     std::fs::create_dir_all(&plain).unwrap();

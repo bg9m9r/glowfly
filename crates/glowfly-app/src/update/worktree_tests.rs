@@ -265,7 +265,7 @@ fn busy_and_stale_tab() {
 
     // The dialog is waiting for a request whose tab is no longer the active one.
     let request = NewWorktree {
-        repo: glowfly_core::paths::temp_dir().join("trellis-elsewhere"),
+        repo: glowfly_core::paths::temp_dir().join("glowfly-elsewhere"),
         base: WorktreeBase::Branch("side".into()),
         folder: wt_root(&dir).join("side"),
         branch: None,

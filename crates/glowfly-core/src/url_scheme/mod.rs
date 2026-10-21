@@ -1,13 +1,16 @@
-//! Registering Trellis as the program for `trellis://` links, for this user only.
+//! Registering Glowfly as the program for `glowfly://` links, for this user only. Links made
+//! while the app was called Trellis use `trellis://`, so that scheme is registered for this
+//! copy too ([`OLD_SCHEME`]); the status reads only `glowfly://`.
 //!
-//! - Windows: the per-user class key `HKEY_CURRENT_USER\Software\Classes\trellis`, whose
-//!   `shell\open\command` runs `"<glowfly.exe>" "%1"`.
-//! - Linux and the other XDG desktops: a hidden desktop entry, `trellis-links.desktop` in the
+//! - Windows: the per-user class keys `HKEY_CURRENT_USER\Software\Classes\glowfly` (and
+//!   `...\trellis`), whose `shell\open\command` runs `"<glowfly.exe>" "%1"`.
+//! - Linux and the other XDG desktops: a hidden desktop entry, `glowfly-links.desktop` in the
 //!   data folder's `applications` (`$XDG_DATA_HOME`, else `~/.local/share`), declaring
-//!   `x-scheme-handler/trellis`, made the default with `xdg-mime default`. The Linux package
-//!   installs the same file for [`PACKAGED_EXE`] in `/usr/share/applications`, which counts too.
+//!   `x-scheme-handler/glowfly` and `x-scheme-handler/trellis`, made the default for both with
+//!   `xdg-mime default`. The Linux package installs the same file for [`PACKAGED_EXE`] in
+//!   `/usr/share/applications`, which counts too.
 //! - macOS: links reach an application bundle through its Info.plist and Apple events, which
-//!   Trellis.app doesn't handle yet; until then [`status`] says so.
+//!   Glowfly.app doesn't handle yet; until then [`status`] says so.
 //!
 //! The decisions (what a registry value or `xdg-mime` answer means, how the command line is
 //! quoted) are pure functions, tested on every OS.
@@ -29,23 +32,25 @@ mod tests;
 use std::path::Path;
 
 /// The scheme.
-pub const SCHEME: &str = "trellis";
+pub const SCHEME: &str = "glowfly";
+/// The scheme from before the app was renamed: its links still open here.
+pub const OLD_SCHEME: &str = "trellis";
 /// The desktop entry's file name on XDG desktops.
-pub const DESKTOP_FILE: &str = "trellis-links.desktop";
-/// Where the Linux package installs Trellis; its packaged `trellis-links.desktop` (in
+pub const DESKTOP_FILE: &str = "glowfly-links.desktop";
+/// Where the Linux package installs Glowfly; its packaged `glowfly-links.desktop` (in
 /// `/usr/share/applications`) is `desktop_entry` for this path.
 pub const PACKAGED_EXE: &str = "/usr/bin/glowfly";
 /// Why the scheme can't be registered on macOS yet.
-pub const MACOS_NOTE: &str = "On macOS, links will open Trellis once it is installed as an application.";
+pub const MACOS_NOTE: &str = "On macOS, links will open Glowfly once it is installed as an application.";
 /// The desktop's handler query lacks its program.
 pub const NO_XDG_MIME: &str = "xdg-mime wasn't found; install xdg-utils to register links.";
 
-/// Which program opens `trellis://` links for this user.
+/// Which program opens `glowfly://` links for this user.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SchemeStatus {
-    /// This copy of Trellis.
+    /// This copy of Glowfly.
     Registered,
-    /// Another program, or another copy of Trellis: its command line or desktop file.
+    /// Another program, or another copy of Glowfly: its command line or desktop file.
     OtherProgram(String),
     NotRegistered,
     /// This system can't be registered with yet; the reason.
@@ -57,16 +62,16 @@ pub fn windows_command(exe: &Path) -> String {
     format!("\"{}\" \"%1\"", crate::native_path::native(exe).display())
 }
 
-/// The desktop entry that hands `trellis://` links to `exe`. Refuses a path that isn't UTF-8 or
+/// The desktop entry that hands `glowfly://` links to `exe`. Refuses a path that isn't UTF-8 or
 /// holds control characters, which a desktop file can't carry.
 pub fn desktop_entry(exe: &Path) -> Result<String, String> {
     let exe = exe.to_str().ok_or_else(|| format!("{} isn't valid UTF-8, which a desktop file needs", exe.display()))?;
     if exe.chars().any(char::is_control) {
-        return Err("Trellis's path contains control characters, which a desktop file can't hold".to_owned());
+        return Err("Glowfly's path contains control characters, which a desktop file can't hold".to_owned());
     }
     Ok(format!(
-        "[Desktop Entry]\nType=Application\nName=Trellis\nComment=Opens trellis:// links in Trellis\nExec={} %u\n\
-         Terminal=false\nNoDisplay=true\nMimeType=x-scheme-handler/{SCHEME};\n",
+        "[Desktop Entry]\nType=Application\nName=Glowfly\nComment=Opens glowfly:// links in Glowfly\nExec={} %u\n\
+         Terminal=false\nNoDisplay=true\nMimeType=x-scheme-handler/{SCHEME};x-scheme-handler/{OLD_SCHEME};\n",
         desktop_exec_arg(exe)
     ))
 }
@@ -98,7 +103,7 @@ fn exec_line(text: &str) -> Option<&str> {
     text.lines().find_map(|l| l.trim_start().strip_prefix("Exec="))
 }
 
-/// What `xdg-mime query default x-scheme-handler/trellis` printed, read with Trellis's own
+/// What `xdg-mime query default x-scheme-handler/glowfly` printed, read with Glowfly's own
 /// desktop file (None when it isn't there), means for `exe`.
 #[cfg_attr(not(all(unix, not(target_os = "macos"))), allow(dead_code))]
 pub(crate) fn decide_xdg(query_default: &str, our_file: Option<&str>, exe: &Path) -> SchemeStatus {
@@ -140,12 +145,12 @@ pub fn register(exe: &Path) -> Result<SchemeStatus, String> {
     imp::register(exe)
 }
 
-/// Removes Trellis's registration, then reads the status again (`exe` is only compared with).
+/// Removes Glowfly's registration, then reads the status again (`exe` is only compared with).
 pub fn unregister(exe: &Path) -> Result<SchemeStatus, String> {
     imp::unregister(exe)
 }
 
-/// Systems without a per-user registration Trellis can write yet (macOS).
+/// Systems without a per-user registration Glowfly can write yet (macOS).
 #[cfg(not(any(windows, all(unix, not(target_os = "macos")))))]
 mod imp {
     use super::{MACOS_NOTE, SchemeStatus};

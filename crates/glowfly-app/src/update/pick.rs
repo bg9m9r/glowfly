@@ -61,7 +61,7 @@ pub(super) fn run(st: &mut AppState, op: PickOp, oids: Vec<Oid>, mainline: Optio
 
 /// After the active tab's snapshot state was replaced (it was `before`): when a cherry-pick or
 /// revert has just started (a multi-commit one stopped on a conflict, a single pick, or one run
-/// outside Trellis), the WIP row is selected so its banner shows.
+/// outside Glowfly), the WIP row is selected so its banner shows.
 pub(super) fn state_changed(st: &mut AppState, before: Option<RepositoryState>) {
     use RepositoryState as R;
     let Some(now) = st.snap.as_ref().map(|s| s.state) else { return };

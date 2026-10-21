@@ -48,7 +48,7 @@ impl QueryWorker {
         }
         let worker = self.clone();
         let (tx2, waker2) = (tx.clone(), waker.clone());
-        if let Err(e) = std::thread::Builder::new().name("trellis-index-query".into()).spawn(move || worker.work(&tx2, &waker2)) {
+        if let Err(e) = std::thread::Builder::new().name("glowfly-index-query".into()).spawn(move || worker.work(&tx2, &waker2)) {
             tracing::error!("could not start the index query thread: {e}");
             let mut s = self.slot();
             s.running = false;
@@ -78,7 +78,7 @@ impl QueryWorker {
                 Ok(Some(positions)) => Ok(positions),
                 // A newer request is waiting.
                 Ok(None) => continue,
-                Err(_) => Err("Trellis hit an internal error (index-query)".to_owned()),
+                Err(_) => Err("Glowfly hit an internal error (index-query)".to_owned()),
             };
             if newer() {
                 continue;

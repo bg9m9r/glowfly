@@ -2,7 +2,7 @@ use super::*;
 use std::ffi::{OsStr, OsString};
 
 fn argv(first: &str) -> Vec<OsString> {
-    vec![OsString::from("trellis"), OsString::from(first)]
+    vec![OsString::from("glowfly"), OsString::from(first)]
 }
 
 #[test]
@@ -15,7 +15,7 @@ fn only_marked_option_calls_are_wrapper_calls() {
     assert!(!is_wrapper_call(&argv("Username for 'https://x': "), one), "an askpass prompt");
     assert!(!is_wrapper_call(&argv("--askpass"), one));
     assert!(!is_wrapper_call(&argv("--write-todo"), one));
-    assert!(!is_wrapper_call(&[OsString::from("trellis")], one));
+    assert!(!is_wrapper_call(&[OsString::from("glowfly")], one));
 }
 
 #[test]

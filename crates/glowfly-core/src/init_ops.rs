@@ -1,11 +1,11 @@
-//! Starting a new repository: the files Trellis can add to it (a `.gitignore` from a short
+//! Starting a new repository: the files Glowfly can add to it (a `.gitignore` from a short
 //! template per language plus an optional section for operating system and editor files, and a
 //! license from the usual set), what is already in the chosen folder, and the init job itself:
 //! create the folder, `git init`, write each chosen file only if it isn't there yet, and commit
 //! what was written. git runs through `gitcli`, so the user's config, hooks and signing apply.
 //!
 //! The texts live next to this file (`init_ops/gitignore`, `init_ops/licenses`). The license
-//! texts are the official ones; the templates are Trellis's own.
+//! texts are the official ones; the templates are Glowfly's own.
 
 use crate::gitcli::{self, args};
 use std::io::Write;

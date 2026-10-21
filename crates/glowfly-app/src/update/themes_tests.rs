@@ -46,7 +46,7 @@ fn create_from_current_names_and_bases_the_copy() {
     st.settings.theme = ThemeChoice::Dark;
     let colors = vec![("bg", [1, 2, 3])];
     let f = created(&run(&mut st, ThemeMsg::CreateFromCurrent { colors: colors.clone(), dark: true }));
-    assert_eq!((f.name.as_str(), f.base, f.colors.len()), ("Trellis Dark (copy)", BuiltinTheme::Dark, 1));
+    assert_eq!((f.name.as_str(), f.base, f.colors.len()), ("Glowfly Dark (copy)", BuiltinTheme::Dark, 1));
     assert!(f.problems.is_empty());
 
     st.themes.catalog = catalog(vec![file("ocean", r#"{"name": "Ocean", "base": "light"}"#)]);
@@ -56,7 +56,7 @@ fn create_from_current_names_and_bases_the_copy() {
 
     st.settings.theme = ThemeChoice::System;
     let f = created(&run(&mut st, ThemeMsg::CreateFromCurrent { colors, dark: false }));
-    assert_eq!((f.name.as_str(), f.base), ("Trellis Light (copy)", BuiltinTheme::Light), "the theme the system picked");
+    assert_eq!((f.name.as_str(), f.base), ("Glowfly Light (copy)", BuiltinTheme::Light), "the theme the system picked");
 }
 
 /// How many failure toasts are up.
@@ -101,7 +101,7 @@ fn loaded_logs_problems_and_announces_once() {
     assert!(!st.view.show_log && crate::update::logs_tabs::tests::failure_with_details(&st));
     assert_eq!(failures(&st), 1);
     let last = &st.log.last().unwrap().text;
-    assert!(last.contains("ocean.json") && last.contains("Trellis Dark"), "{last}");
+    assert!(last.contains("ocean.json") && last.contains("Glowfly Dark"), "{last}");
     let count = st.log.len();
 
     run(&mut st, ThemeMsg::Loaded(catalog(vec![bad()])));
@@ -115,7 +115,7 @@ fn a_missing_selected_file_is_logged() {
     st.settings.theme = ThemeChoice::Custom("gone".into());
     run(&mut st, ThemeMsg::Loaded(ThemeCatalog::default()));
     let last = &st.log.last().unwrap().text;
-    assert!(last.contains("gone.json") && last.contains("Trellis Dark"), "{last}");
+    assert!(last.contains("gone.json") && last.contains("Glowfly Dark"), "{last}");
     assert!(!st.view.show_log && crate::update::logs_tabs::tests::failure_with_details(&st));
     run(&mut st, ThemeMsg::Loaded(ThemeCatalog::default()));
     assert_eq!(failures(&st), 1, "announced once");

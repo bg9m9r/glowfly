@@ -1,4 +1,4 @@
-//! Fetching or pulling a listed repository that may not be open in Trellis (fetch or pull
+//! Fetching or pulling a listed repository that may not be open in Glowfly (fetch or pull
 //! across many repositories). Git never prompts here: a repository that needs a password the
 //! credential helper doesn't have fails, and one whose own config or hooks would make git run
 //! programs is skipped unless the user trusts it.

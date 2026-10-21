@@ -23,7 +23,7 @@ fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 
 /// An absolute path on every system; nothing is created there.
 fn repo(name: &str) -> PathBuf {
-    glowfly_core::paths::temp_dir().join(format!("trellis-logs-tabs-{name}"))
+    glowfly_core::paths::temp_dir().join(format!("glowfly-logs-tabs-{name}"))
 }
 
 /// Tabs for `a` (active) and `b`, neither loaded.

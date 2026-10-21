@@ -159,7 +159,7 @@ fn trello_words_and_refs() {
     assert_eq!(fs.issue_refs("Fix login\n\nCard: https://trello.com/c/AbCd1234/7-fix-login"), ["AbCd1234"]);
     assert_eq!(fs.branch_issue("feature/AbCd1234-x").as_deref(), Some("AbCd1234"));
     assert_eq!(fs.issue_url("Zz9Yy8Xx"), "https://trello.com/c/Zz9Yy8Xx");
-    // The commit box links a card branch's card by its URL, which Trellis then reads back.
+    // The commit box links a card branch's card by its URL, which Glowfly then reads back.
     let linked = fs.message_ref("AbCd1234");
     assert_eq!(linked, "https://trello.com/c/AbCd1234");
     assert_eq!(fs.issue_refs(&format!("Fix login\n\n{linked}")), ["AbCd1234"]);

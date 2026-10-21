@@ -1,4 +1,4 @@
-//! Markdown parsed into the few block and inline kinds Trellis draws (pull request and issue
+//! Markdown parsed into the few block and inline kinds Glowfly draws (pull request and issue
 //! descriptions and comments): headings, paragraphs, code, lists (with task items), quotes,
 //! tables and rules, with text runs that are strong, emphasised, struck, code, an image's alt
 //! text or a link. Bare `https://` addresses in text become links. HTML is dropped and an

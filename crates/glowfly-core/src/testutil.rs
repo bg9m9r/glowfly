@@ -12,7 +12,7 @@ pub(crate) fn git(dir: &Path, a: &[&str]) {
 /// An empty repository on `main` with a fixed identity, in a fresh temporary folder.
 pub(crate) fn scratch_repo(name: &str) -> PathBuf {
     crate::partial::allow_extension();
-    let dir = crate::paths::temp_dir().join(format!("trellis-test-{name}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-b", "main"]);

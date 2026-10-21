@@ -26,18 +26,18 @@ jobs:
       - name: Case-sensitive folder tests
         shell: pwsh
         run: |
-          $dir = Join-Path $env:RUNNER_TEMP "trellis-cs"
+          $dir = Join-Path $env:RUNNER_TEMP "glowfly-cs"
           New-Item -ItemType Directory -Force $dir | Out-Null
           fsutil file setCaseSensitiveInfo $dir enable
           if ($LASTEXITCODE -eq 0) {
-            $env:TRELLIS_TEST_CS_DIR = $dir
+            $env:GLOWFLY_TEST_CS_DIR = $dir
           } else {
             Write-Host "note: could not turn on case sensitivity for $dir; the case-sensitive checks skip"
           }
           cargo test --workspace case_twins -- --nocapture
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
-  # Trellis is developed on Windows. These run the same lint and tests on macOS and Linux;
+  # Glowfly is developed on Windows. These run the same lint and tests on macOS and Linux;
   # only the image comparisons in the view tests are skipped (the approved images are rendered
   # on Windows), and the rest of each view test still runs.
   build:
@@ -48,7 +48,7 @@ jobs:
         os: [ubuntu-22.04, macos-14]
     runs-on: ${{ matrix.os }}
     env:
-      TRELLIS_SKIP_SNAPSHOTS: "1"
+      GLOWFLY_SKIP_SNAPSHOTS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -73,7 +73,7 @@ jobs:
         run: |
           hdiutil create -size 200m -fs "Case-sensitive APFS" -volname cs "$RUNNER_TEMP/cs.dmg"
           hdiutil attach "$RUNNER_TEMP/cs.dmg" -mountpoint "$RUNNER_TEMP/cs"
-          TRELLIS_TEST_CS_DIR="$RUNNER_TEMP/cs" cargo test --workspace --locked case_twins -- --nocapture
+          GLOWFLY_TEST_CS_DIR="$RUNNER_TEMP/cs" cargo test --workspace --locked case_twins -- --nocapture
 
   # Real X11 input on the release build: clicks, typing, a shortcut, a context menu, a drag, a
   # resize, at scale 1 and 1.5 (scripts/smoke-linux.sh). Screenshots and logs on failure.

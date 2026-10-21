@@ -57,7 +57,7 @@ pub struct ProviderInfo {
     /// Reads checks or votes with one call per pull request, so the list carries them only for
     /// the first `CHECKED_PRS` (the rest come from `pr_details`).
     pub details_per_pr: bool,
-    /// Issue details and creating issues work inside Trellis.
+    /// Issue details and creating issues work inside Glowfly.
     pub issues_in_app: bool,
     /// Request headers only this service understands.
     pub api_headers: &'static [(&'static str, &'static str)],

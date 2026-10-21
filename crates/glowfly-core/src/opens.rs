@@ -2,7 +2,7 @@
 //!
 //! Files that come from a repository carry no Mark of the Web (Windows) or quarantine flag
 //! (macOS), so the system runs a program, script, shortcut or installer from one without any
-//! warning of its own. Trellis asks first for those. The rules are per operating system, and
+//! warning of its own. Glowfly asks first for those. The rules are per operating system, and
 //! take the system as a parameter so every system's table is tested everywhere.
 
 use std::path::Path;

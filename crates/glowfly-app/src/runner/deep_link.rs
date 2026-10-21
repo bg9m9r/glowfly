@@ -1,4 +1,4 @@
-//! trellis:// links off the UI thread: building one (the root commit), checking candidate
+//! glowfly:// links off the UI thread: building one (the root commit), checking candidate
 //! folders for the linked repository, and the scheme registration.
 
 use crate::deep_link::{DeepLinkEffect, DeepLinkMsg};
@@ -45,7 +45,7 @@ fn matches(link: &Link, candidates: &[std::path::PathBuf]) -> Vec<find::Found> {
 
 /// Runs a registration step for this executable.
 fn with_exe(step: fn(&std::path::Path) -> Result<url_scheme::SchemeStatus, String>) -> Result<url_scheme::SchemeStatus, String> {
-    let exe = std::env::current_exe().map_err(|e| format!("Trellis's own path is unknown: {e}"))?;
+    let exe = std::env::current_exe().map_err(|e| format!("Glowfly's own path is unknown: {e}"))?;
     step(&exe)
 }
 

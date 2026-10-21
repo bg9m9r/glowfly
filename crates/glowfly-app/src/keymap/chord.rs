@@ -110,7 +110,7 @@ impl KeyName {
         }
     }
 
-    /// The key named `s` (any case; the settings-file names and a few aliases), if Trellis can
+    /// The key named `s` (any case; the settings-file names and a few aliases), if Glowfly can
     /// bind it.
     pub fn parse(s: &str) -> Option<KeyName> {
         let mut chars = s.chars();
@@ -149,7 +149,7 @@ pub enum KeyLabels {
 }
 
 impl KeyLabels {
-    /// The style of the system Trellis runs on.
+    /// The style of the system Glowfly runs on.
     pub const fn native() -> Self {
         if cfg!(target_os = "macos") { KeyLabels::Mac } else { KeyLabels::Pc }
     }

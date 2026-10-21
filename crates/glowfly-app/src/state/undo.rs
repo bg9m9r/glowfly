@@ -1,4 +1,4 @@
-//! Per-tab undo history: Trellis's own recent operations that can be reversed, most recent last.
+//! Per-tab undo history: Glowfly's own recent operations that can be reversed, most recent last.
 //! In memory only, so it ends with the tab or the app. Also the form of the dialog that asks
 //! whether undoing a checkout should delete the branch it created (`Modal::UndoCreated`).
 

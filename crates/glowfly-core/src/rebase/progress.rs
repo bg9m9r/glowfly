@@ -1,6 +1,6 @@
 //! Where a rebase in progress stands: how many of its commits are done, the commit it stopped
 //! at and why, and whether git holds an autostash. Read from git's own state files, so it also
-//! describes rebases started outside Trellis.
+//! describes rebases started outside Glowfly.
 
 use super::todo::{listed_oids, own_line};
 use super::{Stop, StopKind};
@@ -11,7 +11,7 @@ use std::path::Path;
 pub struct RebaseProgress {
     /// Commits done, the one it stopped at included.
     pub step: usize,
-    /// Commits in the list (the `exec` lines Trellis adds aren't counted); 0 when unknown.
+    /// Commits in the list (the `exec` lines Glowfly adds aren't counted); 0 when unknown.
     pub total: usize,
     pub stop: Stop,
     /// The stopped commit's summary; empty when the commit is unknown.

@@ -16,7 +16,7 @@ fn move_cmd_form() {
 
 #[test]
 fn targets_on_disk() {
-    let root = crate::paths::temp_dir().join(format!("trellis-wt-move-target-{}", std::process::id()));
+    let root = crate::paths::temp_dir().join(format!("glowfly-wt-move-target-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).unwrap();
     assert_eq!(check_move_target(&root.join("missing")), Ok(()));

@@ -2,7 +2,7 @@ use super::program::{from_config, git_from, install_root, msys_candidates, pick,
 use std::path::Path;
 
 fn me() -> &'static Path {
-    if cfg!(windows) { Path::new(r"C:\Apps\Trellis\glowfly.exe") } else { Path::new("/opt/trellis/bin/trellis") }
+    if cfg!(windows) { Path::new(r"C:\Apps\Glowfly\glowfly.exe") } else { Path::new("/opt/glowfly/bin/glowfly") }
 }
 
 fn me_text() -> String {
@@ -10,7 +10,7 @@ fn me_text() -> String {
 }
 
 #[test]
-fn the_users_program_is_the_last_that_isnt_trellis() {
+fn the_users_program_is_the_last_that_isnt_glowfly() {
     let out = format!("gpg.program\nC:/GnuPG/bin/gpg.exe\0gpg.program\n{}\0", me_text());
     assert_eq!(from_config(&out, me()).as_deref(), Some("C:/GnuPG/bin/gpg.exe"));
     let out = format!("gpg.program\ngpg2\0gpg.openpgp.program\n/usr/local/bin/gpg\0gpg.program\n{}\0", me_text());
@@ -34,8 +34,8 @@ fn nothing_usable_gives_none() {
 
 #[test]
 #[cfg(windows)]
-fn trellis_is_recognised_in_another_spelling() {
-    let out = "gpg.program\ngpg2\0gpg.program\nC:/Apps/Trellis/glowfly.exe\0";
+fn glowfly_is_recognised_in_another_spelling() {
+    let out = "gpg.program\ngpg2\0gpg.program\nC:/Apps/Glowfly/glowfly.exe\0";
     assert_eq!(from_config(out, me()).as_deref(), Some("gpg2"));
 }
 
@@ -43,7 +43,7 @@ fn trellis_is_recognised_in_another_spelling() {
 /// path rather than look for a file literally named `~`.
 #[test]
 fn a_home_relative_program_is_expanded_like_git_does() {
-    let dir = crate::paths::temp_dir().join(format!("trellis-gpg-program-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-gpg-program-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let (home, repo) = (dir.join("home"), dir.join("repo"));
     std::fs::create_dir_all(&home).unwrap();
@@ -116,7 +116,7 @@ fn pick_prefers_an_existing_candidate() {
 #[cfg(windows)]
 fn resolve_msys_finds_gpg_in_the_install() {
     use super::program::resolve_msys;
-    let root = crate::paths::temp_dir().join(format!("trellis-msys-root-{}", std::process::id()));
+    let root = crate::paths::temp_dir().join(format!("glowfly-msys-root-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     let bin = root.join("usr").join("bin");
     std::fs::create_dir_all(&bin).unwrap();

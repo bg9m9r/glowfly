@@ -7,5 +7,5 @@ crates/glowfly-core/src/init_ops/** text eol=lf
 *.ico binary
 *.icns binary
 *.ttf binary
-# The packaged desktop entries are compared byte for byte with what Trellis writes.
+# The packaged desktop entries are compared byte for byte with what Glowfly writes.
 packaging/linux/*.desktop text eol=lf

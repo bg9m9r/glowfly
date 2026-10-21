@@ -1,4 +1,4 @@
-//! Headless tests for the git Trellis runs (the startup check, the banner, features an old git
+//! Headless tests for the git Glowfly runs (the startup check, the banner, features an old git
 //! lacks) and for repositories git refuses because another user owns them.
 
 use super::branch_tests::with_origin;

@@ -41,7 +41,7 @@ impl CommitTemplate {
 
 /// The repository's `commit.template`, read with the configured comment char. None when it is
 /// unset, missing, unreadable or larger than `MAX_TEMPLATE_BYTES`, as `git commit` ignores it
-/// then too. A relative path is resolved against `workdir`, where Trellis runs git.
+/// then too. A relative path is resolved against `workdir`, where Glowfly runs git.
 pub fn commit_template(repo: &Repository, workdir: &Path) -> Option<CommitTemplate> {
     let cfg = repo.config().ok()?.snapshot().ok()?;
     // get_path expands a leading ~/.

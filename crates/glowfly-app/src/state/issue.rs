@@ -12,7 +12,7 @@ use glowfly_core::settings::Settings;
 /// The service's details of the issue.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Details {
-    /// The tracker has no issue details in Trellis.
+    /// The tracker has no issue details in Glowfly.
     Unsupported,
     /// The repository isn't trusted, so nothing is asked.
     Held,
@@ -70,7 +70,7 @@ impl IssueView {
     }
 
     /// Whether the description and comments are Markdown (GitHub, GitLab, Bitbucket, Trello),
-    /// not text Trellis made from a rich text format (Azure Boards' HTML, Jira Cloud's
+    /// not text Glowfly made from a rich text format (Azure Boards' HTML, Jira Cloud's
     /// documents) or Jira Data Center's own markup, which are shown as they are.
     pub fn markdown(&self) -> bool {
         !matches!(self.provider(), Provider::AzureDevOps | Provider::JiraCloud | Provider::JiraDataCenter)
@@ -186,7 +186,7 @@ pub fn linked_branches<'a>(snap: &'a Snapshot, fs: &ForgeState, key: &str) -> Ve
 }
 
 /// The details a newly opened panel starts with: loading, or none for a tracker without
-/// issue details in Trellis.
+/// issue details in Glowfly.
 pub fn initial_details(fs: &ForgeState) -> Details {
     if fs.tracker.as_ref().is_some_and(|t| issues_in_app(t.provider)) { Details::Loading } else { Details::Unsupported }
 }

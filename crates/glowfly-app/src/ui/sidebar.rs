@@ -285,7 +285,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
     }
 }
 
-/// The ISSUES rows. Where the tracker has issue details in Trellis (`in_app`), a click opens
+/// The ISSUES rows. Where the tracker has issue details in Glowfly (`in_app`), a click opens
 /// the issue panel (and its row shows selected while `open`); elsewhere a double-click opens
 /// the issue's page.
 fn issues(

@@ -1,4 +1,4 @@
-//! Undo and redo for Trellis's own git operations. `before`/`after` record the repository state
+//! Undo and redo for Glowfly's own git operations. `before`/`after` record the repository state
 //! around an operation and turn it into an `Action`; `plan` checks that the repository still
 //! matches it and returns the git commands that reverse (or re-apply) it. Reads use libgit2; the
 //! planned commands are meant to run through `gitcli`, so hooks and user config apply.
@@ -9,7 +9,7 @@
 //! cherry-pick, revert, rebase), `stash`, `reset`, `saved` and `deleted` (Delete and Unstage and
 //! delete).
 //! Rebases, also interactive ones and graph edits, are recorded around their run instead
-//! (`rebased.rs`): they finish in steps, possibly outside Trellis. A merge, cherry-pick or revert
+//! (`rebased.rs`): they finish in steps, possibly outside Glowfly. A merge, cherry-pick or revert
 //! that stopped for conflicts and was finished later (Continue, Skip or a commit) is recorded as
 //! one move from the HEAD it started at (`resumed.rs`). `resolved` handles conflict resolutions
 //! saved in the conflict view: the conflict's stages come back from git's resolve-undo record.
@@ -52,10 +52,10 @@ pub use reverted::revert_saving;
 pub use saved::{RestoreFailed, Saved, discard_saving, restore_saving, write as write_saved};
 
 /// The message of the stash that "Discard all" moves uncommitted changes into.
-pub const DISCARD_STASH_MESSAGE: &str = "Trellis: discarded changes";
+pub const DISCARD_STASH_MESSAGE: &str = "Glowfly: discarded changes";
 
 /// The message of the stash "Stash changes and undo" moves local changes into first.
-pub const UNDO_STASH_MESSAGE: &str = "Trellis: changes before undo";
+pub const UNDO_STASH_MESSAGE: &str = "Glowfly: changes before undo";
 
 /// Why an undo or redo can't run now.
 #[derive(Debug, Clone, PartialEq)]
@@ -128,7 +128,7 @@ pub fn stash_first_command() -> Vec<String> {
 
 /// The message of the stash an abort keeps the resolved changes of a merge, cherry-pick or
 /// revert in, so Undo brings them back.
-pub const ABORT_STASH_MESSAGE: &str = "Trellis: resolved changes before abort";
+pub const ABORT_STASH_MESSAGE: &str = "Glowfly: resolved changes before abort";
 
 /// The commands that abort a merge, single cherry-pick or single revert while keeping its
 /// resolved changes. The stash comes first: git can't stash unmerged entries (so every conflict
@@ -138,7 +138,7 @@ pub fn abort_keeping_commands() -> Vec<Vec<String>> {
     vec![args(&["stash", "push", "-m", ABORT_STASH_MESSAGE]), args(&["reset", "--merge"])]
 }
 
-/// The command Trellis runs for "Discard all".
+/// The command Glowfly runs for "Discard all".
 pub fn discard_command() -> Vec<String> {
     args(&["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE])
 }

@@ -1,5 +1,5 @@
 //! The note after a slow whole status read, shown once per repository: what would speed git's
-//! read up, with a button that turns the untracked cache on. Trellis never turns the file system
+//! read up, with a button that turns the untracked cache on. Glowfly never turns the file system
 //! monitor on itself: that starts a daemon or needs a hook.
 
 use super::jobs::{JobSpec, start_job};
@@ -10,7 +10,7 @@ use crate::state::toasts::ToastAction;
 use glowfly_core::repo::{self, SlowStatus, StatusSpeedups};
 use std::time::{Duration, Instant};
 
-/// After a whole status read: shows the note if `slow` says it was slow, Trellis may run git's
+/// After a whole status read: shows the note if `slow` says it was slow, Glowfly may run git's
 /// own status here, and the note hasn't been shown for this repository.
 pub(super) fn check(st: &mut AppState, slow: Option<&SlowStatus>, now: Instant, fx: &mut Vec<Effect>) {
     let Some(slow) = slow else { return };

@@ -1,5 +1,5 @@
 //! The todo list: checking a list before it runs, writing it in git's format (with the reword
-//! and combined message files), recognising the lines Trellis adds, and installing it over the
+//! and combined message files), recognising the lines Glowfly adds, and installing it over the
 //! list git generated.
 
 use super::{
@@ -11,7 +11,7 @@ use git2::Oid;
 use std::path::{Path, PathBuf};
 
 /// The folder in the git directory that holds the message files and the prepared todo.
-pub(crate) const MSG_DIR: &str = "trellis-rebase";
+pub(crate) const MSG_DIR: &str = "glowfly-rebase";
 
 /// A kept commit row that can head a group: neither dropped nor melded into the one before.
 fn heads(step: &TodoStep) -> Option<&TodoItem> {
@@ -225,7 +225,7 @@ pub(crate) enum OwnLine {
     Amend { oid: Oid, file: MessageFile },
 }
 
-/// Recognises Trellis's own exec lines (with or without the `exec`/`x` keyword) by the message
+/// Recognises Glowfly's own exec lines (with or without the `exec`/`x` keyword) by the message
 /// folder's file names in them; `shell_quote` writes their paths with forward slashes on every
 /// OS.
 pub(crate) fn own_line(line: &str) -> Option<OwnLine> {

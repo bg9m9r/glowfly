@@ -47,7 +47,7 @@ mod tests {
     use super::*;
 
     fn fixture(name: &str) -> (std::path::PathBuf, Snapshot) {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-stash-confirm-{name}-{}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-stash-confirm-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = git2::Repository::init(&dir).unwrap();
         std::fs::write(dir.join("a.txt"), "a").unwrap();

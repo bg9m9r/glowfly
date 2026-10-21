@@ -83,7 +83,7 @@ mod tests {
     use super::*;
 
     fn read_with(text: &str) -> GitConfigValues {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-config-bools-{}-{}", std::process::id(), text.len()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-config-bools-{}-{}", std::process::id(), text.len()));
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("gitconfig");
         std::fs::write(&file, text).unwrap();

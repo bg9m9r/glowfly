@@ -29,7 +29,7 @@ pub struct InitForm {
     pub license: Option<License>,
     /// The copyright holder (MIT and BSD).
     pub holder: String,
-    /// The name Trellis filled in (git's user.name); replaced by a later suggestion only while
+    /// The name Glowfly filled in (git's user.name); replaced by a later suggestion only while
     /// the field still shows it.
     pub holder_suggested: String,
     /// Commit the files written as "Initial commit".

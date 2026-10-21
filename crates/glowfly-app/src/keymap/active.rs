@@ -49,7 +49,7 @@ impl Keymap {
             let mut chords: Vec<Chord> = Vec::new();
             for text in list {
                 match Chord::parse(text) {
-                    None => ignore(format!("\"{text}\" is not a key Trellis knows")),
+                    None => ignore(format!("\"{text}\" is not a key Glowfly knows")),
                     Some(c) => match rebind::refusal(id, c) {
                         Some(r) => ignore(r.text(c)),
                         None if rebind::fixed_clash(id, c, fold).is_some() => ignore(format!("{} belongs to a fixed shortcut", c.text())),

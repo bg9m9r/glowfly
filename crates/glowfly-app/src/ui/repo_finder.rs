@@ -1,4 +1,4 @@
-//! The Find repositories dialog (`Modal::FindRepos`): the project folders Trellis looks in, a
+//! The Find repositories dialog (`Modal::FindRepos`): the project folders Glowfly looks in, a
 //! filter, and the repositories found under them, grouped by project folder. Each row stars the
 //! repository or opens it; the scan itself runs in the runner (`ReposMsg`).
 

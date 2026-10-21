@@ -27,7 +27,7 @@ pub struct Attention {
     pub warn: Color32,
     /// The fill of banners.
     pub banner: Color32,
-    /// The coral "needs you" (a conflict, a decision Trellis waits on): the one solid-filled
+    /// The coral "needs you" (a conflict, a decision Glowfly waits on): the one solid-filled
     /// status, always drawn with the warning mark (`ui::needs_you`).
     pub needs_you: Color32,
     /// The ink on a `needs_you` fill.

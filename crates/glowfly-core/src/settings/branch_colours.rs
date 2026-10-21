@@ -75,7 +75,7 @@ mod tests {
         let repo = PathBuf::from("/w/repo");
         assert!(s.set_branch_pin(&repo, "topic", Some(9)));
         s.branch_palette = BranchPalette::ColourBlind;
-        let dir = crate::paths::temp_dir().join(format!("trellis-settings-pins-{}", std::process::id()));
+        let dir = crate::paths::temp_dir().join(format!("glowfly-settings-pins-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("settings.json");

@@ -16,7 +16,7 @@ use std::path::PathBuf;
 const TIP: &str = "All tabs and recently closed tabs";
 
 fn place(name: &str) -> PathBuf {
-    glowfly_core::paths::temp_dir().join("trellis-tab-list").join(name)
+    glowfly_core::paths::temp_dir().join("glowfly-tab-list").join(name)
 }
 
 /// The fixture's two tabs, a third one labelled "Frontend", and two closed tabs (the newer one

@@ -58,7 +58,7 @@ pub struct ShellRun {
 /// Reading the commands files, and running a shell command (runner/custom_commands.rs).
 #[derive(Debug)]
 pub enum CustomCommandEffect {
-    /// Reads the user's file and `workdir`'s `.trellis/commands.toml`.
+    /// Reads the user's file and `workdir`'s `.glowfly/commands.toml`.
     Load { generation: u64, workdir: PathBuf },
     /// Runs a shell command as the active job; ends with `JobMsg::JobDone`.
     RunShell(ShellRun),

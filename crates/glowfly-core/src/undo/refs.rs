@@ -74,7 +74,7 @@ pub(super) fn set_branch(repo: &Repository, pos: &Option<HeadPos>, name: &str, f
         }
         _ if repo.find_commit(target).is_err() => gone(),
         _ => {
-            let reason = format!("Trellis: {} move of {name}", if redo { "redo" } else { "undo" });
+            let reason = format!("Glowfly: {} move of {name}", if redo { "redo" } else { "undo" });
             Plan::Run(vec![args(&["update-ref", "-m", &reason, &format!("refs/heads/{name}"), &target.to_string(), &expect.to_string()])])
         }
     }

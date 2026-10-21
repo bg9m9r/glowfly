@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn no_baseline_when_detached_or_without_upstream() {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-notify-baseline-{}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-notify-baseline-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = git2::Repository::init(&dir).unwrap();
         std::fs::write(dir.join("a.txt"), "a").unwrap();

@@ -56,7 +56,7 @@ fn asset(name: &str) -> Asset {
 fn release(tag: &str, names: &[&str]) -> Release {
     Release {
         tag: tag.to_owned(),
-        name: format!("Trellis {tag}"),
+        name: format!("Glowfly {tag}"),
         html_url: format!("https://github.com/bg9m9r/trellis/releases/tag/{tag}"),
         body: String::new(),
         published_at: None,
@@ -74,8 +74,8 @@ fn full_release() -> Release {
         ("x86_64-unknown-linux-gnu", &["tar.gz", "deb"]),
     ] {
         for ext in exts {
-            names.push(format!("trellis-v0.3.0-{triple}.{ext}"));
-            names.push(format!("trellis-v0.3.0-{triple}.{ext}.sha256"));
+            names.push(format!("glowfly-v0.3.0-{triple}.{ext}"));
+            names.push(format!("glowfly-v0.3.0-{triple}.{ext}.sha256"));
         }
     }
     release("v0.3.0", &names.iter().map(String::as_str).collect::<Vec<_>>())
@@ -89,7 +89,7 @@ fn picked(r: &Release, p: Platform, k: InstallKind) -> Option<String> {
 fn the_file_for_each_platform_and_install() {
     use InstallKind::{Installer, Portable};
     let r = full_release();
-    let name = |s: &str| Some(format!("trellis-v0.3.0-{s}"));
+    let name = |s: &str| Some(format!("glowfly-v0.3.0-{s}"));
     assert_eq!(picked(&r, WIN, Installer), name("x86_64-pc-windows-msvc.msi"));
     assert_eq!(picked(&r, WIN, Portable), name("x86_64-pc-windows-msvc.zip"));
     assert_eq!(picked(&r, MAC_ARM, Installer), name("aarch64-apple-darwin.dmg"));
@@ -105,19 +105,19 @@ fn the_file_for_each_platform_and_install() {
 #[test]
 fn picking_falls_back_and_ignores_other_files() {
     use InstallKind::{Installer, Portable};
-    let zip_only = release("v0.3.0", &["trellis-v0.3.0-x86_64-pc-windows-msvc.zip", "trellis-v0.3.0-x86_64-pc-windows-msvc.msi.sha256"]);
-    assert_eq!(picked(&zip_only, WIN, Installer).as_deref(), Some("trellis-v0.3.0-x86_64-pc-windows-msvc.zip"));
-    let deb_only = release("v0.3.0", &["trellis-v0.3.0-x86_64-unknown-linux-gnu.deb"]);
-    assert_eq!(picked(&deb_only, LINUX, Portable).as_deref(), Some("trellis-v0.3.0-x86_64-unknown-linux-gnu.deb"));
+    let zip_only = release("v0.3.0", &["glowfly-v0.3.0-x86_64-pc-windows-msvc.zip", "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi.sha256"]);
+    assert_eq!(picked(&zip_only, WIN, Installer).as_deref(), Some("glowfly-v0.3.0-x86_64-pc-windows-msvc.zip"));
+    let deb_only = release("v0.3.0", &["glowfly-v0.3.0-x86_64-unknown-linux-gnu.deb"]);
+    assert_eq!(picked(&deb_only, LINUX, Portable).as_deref(), Some("glowfly-v0.3.0-x86_64-unknown-linux-gnu.deb"));
     // Checksums, other tags and other triples never count.
     let other = release(
         "v0.3.0",
         &[
             "SHA256SUMS",
-            "trellis-v0.3.0-x86_64-unknown-linux-gnu.deb.sha256",
-            "trellis-v0.2.0-x86_64-unknown-linux-gnu.deb",
-            "trellis-v0.3.0-aarch64-unknown-linux-gnu.deb",
-            "trellis-v0.3.0-x86_64-unknown-linux-gnu.rpm",
+            "glowfly-v0.3.0-x86_64-unknown-linux-gnu.deb.sha256",
+            "glowfly-v0.2.0-x86_64-unknown-linux-gnu.deb",
+            "glowfly-v0.3.0-aarch64-unknown-linux-gnu.deb",
+            "glowfly-v0.3.0-x86_64-unknown-linux-gnu.rpm",
         ],
     );
     assert_eq!(picked(&other, LINUX, Installer), None);
@@ -125,13 +125,23 @@ fn picking_falls_back_and_ignores_other_files() {
 }
 
 #[test]
+fn files_named_for_trellis_are_picked_too() {
+    use InstallKind::Installer;
+    let old = release("v0.3.0", &["trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "trellis-v0.3.0-x86_64-pc-windows-msvc.zip"]);
+    assert_eq!(picked(&old, WIN, Installer).as_deref(), Some("trellis-v0.3.0-x86_64-pc-windows-msvc.msi"));
+    // The new name wins when a release has both.
+    let both = release("v0.3.0", &["trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"]);
+    assert_eq!(picked(&both, WIN, Installer).as_deref(), Some("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"));
+}
+
+#[test]
 fn how_a_copy_was_installed() {
     use InstallKind::{Installer, Portable};
     let win = [
-        (r"C:\Users\ada\AppData\Local\Programs\Trellis\glowfly.exe", Installer),
-        (r"c:\users\ada\appdata\local\PROGRAMS\trellis\GLOWFLY.EXE", Installer),
-        ("C:/Users/ada/AppData/Local/Programs/Trellis/glowfly.exe", Installer),
-        (r"D:\tools\trellis\glowfly.exe", Portable),
+        (r"C:\Users\ada\AppData\Local\Programs\Glowfly\glowfly.exe", Installer),
+        (r"c:\users\ada\appdata\local\PROGRAMS\glowfly\GLOWFLY.EXE", Installer),
+        ("C:/Users/ada/AppData/Local/Programs/Glowfly/glowfly.exe", Installer),
+        (r"D:\tools\glowfly\glowfly.exe", Portable),
         (r"C:\Programs\Other\glowfly.exe", Portable),
         ("glowfly.exe", Portable),
     ];
@@ -139,17 +149,17 @@ fn how_a_copy_was_installed() {
         assert_eq!(install_kind_for(exe, TargetOs::Windows), want, "{exe}");
     }
     let mac = [
-        ("/Applications/Trellis.app/Contents/MacOS/trellis", Installer),
-        ("/Users/ada/Applications/Trellis.app/Contents/MacOS/trellis", Installer),
-        ("/Users/ada/bin/trellis", Portable),
-        ("/Users/ada/.app/Contents/MacOS/trellis", Portable),
+        ("/Applications/Glowfly.app/Contents/MacOS/glowfly", Installer),
+        ("/Users/ada/Applications/Glowfly.app/Contents/MacOS/glowfly", Installer),
+        ("/Users/ada/bin/glowfly", Portable),
+        ("/Users/ada/.app/Contents/MacOS/glowfly", Portable),
     ];
     for (exe, want) in mac {
         assert_eq!(install_kind_for(exe, TargetOs::Mac), want, "{exe}");
     }
     assert_eq!(install_kind_for("/usr/bin/glowfly", TargetOs::Linux), Installer);
-    assert_eq!(install_kind_for("/home/u/.local/bin/trellis", TargetOs::Linux), Portable);
-    assert_eq!(install_kind_for("/usr/local/bin/trellis", TargetOs::Linux), Portable);
+    assert_eq!(install_kind_for("/home/u/.local/bin/glowfly", TargetOs::Linux), Portable);
+    assert_eq!(install_kind_for("/usr/local/bin/glowfly", TargetOs::Linux), Portable);
     // Each OS's rule only applies on that OS.
     assert_eq!(install_kind_for("/usr/bin/glowfly", TargetOs::Mac), Portable);
 }
@@ -159,7 +169,7 @@ fn offers_only_newer_releases() {
     let r = full_release();
     let o = offer(&r, &v("0.2.0"), Some(WIN), InstallKind::Installer).expect("newer");
     assert_eq!(o.version, v("0.3.0"));
-    assert_eq!(o.asset.as_ref().map(|a| a.name.as_str()), Some("trellis-v0.3.0-x86_64-pc-windows-msvc.msi"));
+    assert_eq!(o.asset.as_ref().map(|a| a.name.as_str()), Some("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"));
     assert!(matches!(&o.sums, SumsSource::Combined(a) if a.name == "SHA256SUMS"));
     assert_eq!(offer(&r, &v("0.3.0"), Some(WIN), InstallKind::Installer), None, "the same version");
     assert_eq!(offer(&r, &v("0.4.0"), Some(WIN), InstallKind::Installer), None, "an older one");
@@ -172,11 +182,11 @@ fn offers_only_newer_releases() {
 #[test]
 fn where_checksums_come_from() {
     let r = full_release();
-    let a = asset("trellis-v0.3.0-x86_64-pc-windows-msvc.msi");
+    let a = asset("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
     assert!(matches!(sums_source(&r, &a), SumsSource::Combined(s) if s.name == "SHA256SUMS"));
-    let single = release("v0.3.0", &["trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "trellis-v0.3.0-x86_64-pc-windows-msvc.msi.sha256"]);
-    assert!(matches!(sums_source(&single, &a), SumsSource::Single(s) if s.name == "trellis-v0.3.0-x86_64-pc-windows-msvc.msi.sha256"));
-    assert_eq!(sums_source(&release("v0.3.0", &["trellis-v0.3.0-x86_64-pc-windows-msvc.msi"]), &a), SumsSource::None);
+    let single = release("v0.3.0", &["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi.sha256"]);
+    assert!(matches!(sums_source(&single, &a), SumsSource::Single(s) if s.name == "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi.sha256"));
+    assert_eq!(sums_source(&release("v0.3.0", &["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"]), &a), SumsSource::None);
 }
 
 const HASH_A: &str = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
@@ -206,7 +216,7 @@ fn release_json_is_parsed_and_cleaned() {
         "tag_name": "v0.3.0", "name": "", "html_url": "https://github.com/bg9m9r/trellis/releases/tag/v0.3.0",
         "body": "## Notes", "published_at": "2026-10-20T10:00:00Z", "draft": false,
         "assets": [
-            {"name": "trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "size": 1234, "browser_download_url": "https://github.com/d/a.msi"},
+            {"name": "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "size": 1234, "browser_download_url": "https://github.com/d/a.msi"},
             {"name": "plain.zip", "size": 1, "browser_download_url": "http://github.com/d/plain.zip"},
             {"name": "../x", "size": 1, "browser_download_url": "https://github.com/d/x"},
             {"name": ".hidden", "size": 1, "browser_download_url": "https://github.com/d/h"},
@@ -218,7 +228,7 @@ fn release_json_is_parsed_and_cleaned() {
     assert_eq!(r.html_url, "https://github.com/bg9m9r/trellis/releases/tag/v0.3.0");
     assert_eq!(r.published_at.as_deref(), Some("2026-10-20T10:00:00Z"));
     let names: Vec<&str> = r.assets.iter().map(|a| a.name.as_str()).collect();
-    assert_eq!(names, ["trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "SHA256SUMS"]);
+    assert_eq!(names, ["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "SHA256SUMS"]);
     assert_eq!(r.assets[0].size, 1234);
     let r = parse_release(br#"{"tag_name": "v1.0.0", "html_url": "javascript:alert(1)"}"#).unwrap();
     assert_eq!((r.html_url.as_str(), r.assets.len()), ("", 0));
@@ -226,7 +236,7 @@ fn release_json_is_parsed_and_cleaned() {
     for bad in ["", ".", "..", "a/b", r"a\b", "C:x", "a b", &"x".repeat(129)] {
         assert!(!asset_name_ok(bad), "{bad:?}");
     }
-    assert!(asset_name_ok("trellis-v0.3.0-x86_64-unknown-linux-gnu.tar.gz") && asset_name_ok(&"x".repeat(128)));
+    assert!(asset_name_ok("glowfly-v0.3.0-x86_64-unknown-linux-gnu.tar.gz") && asset_name_ok(&"x".repeat(128)));
 }
 
 #[test]
@@ -237,14 +247,14 @@ fn free_names_count_up_before_the_extension() {
     assert_eq!(free_name("n.msi", taken(&["n.msi", "n (1).msi"])), "n (2).msi");
     assert_eq!(free_name("x.tar.gz", taken(&["x.tar.gz"])), "x (1).tar.gz");
     assert_eq!(free_name("SHA256SUMS", taken(&["SHA256SUMS"])), "SHA256SUMS (1)");
-    assert_eq!(split_extension("trellis-v0.3.0-x86_64-pc-windows-msvc.msi"), ("trellis-v0.3.0-x86_64-pc-windows-msvc", ".msi"));
+    assert_eq!(split_extension("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"), ("glowfly-v0.3.0-x86_64-pc-windows-msvc", ".msi"));
     assert_eq!(split_extension("a.b.tar.gz"), ("a.b", ".tar.gz"));
     assert_eq!(split_extension("SHA256SUMS"), ("SHA256SUMS", ""));
 }
 
 /// A fresh, empty folder under the temp folder.
 fn scratch(tag: &str) -> PathBuf {
-    let dir = crate::paths::temp_dir().join(format!("trellis-update-{tag}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-update-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     dir
 }
@@ -253,7 +263,7 @@ fn hosted() -> Feed {
     Feed::Hosted(REPOSITORY.to_owned())
 }
 
-const NAME: &str = "trellis-v0.3.0-x86_64-pc-windows-msvc.msi";
+const NAME: &str = "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi";
 const BODY: &str = "pretend installer bytes";
 
 /// An offer for `NAME` (of `size` bytes) with the checksum published as `sums`.
@@ -301,7 +311,7 @@ fn a_verified_download_is_saved() {
     assert_eq!(download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap(), dir.join(NAME));
     std::fs::write(dir.join(NAME), "something else").unwrap();
     let again = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap();
-    assert_eq!(again, dir.join("trellis-v0.3.0-x86_64-pc-windows-msvc (1).msi"));
+    assert_eq!(again, dir.join("glowfly-v0.3.0-x86_64-pc-windows-msvc (1).msi"));
     assert_eq!(std::fs::read_to_string(dir.join(NAME)).unwrap(), "something else", "never overwritten");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -364,7 +374,7 @@ fn the_latest_release_is_asked_for_without_credentials() {
     assert_eq!(r.tag, "v0.3.0");
     let req = &mock.requests()[0];
     assert_eq!(req.route(), "GET api.github.com/repos/bg9m9r/trellis/releases/latest");
-    assert_eq!(req.header("User-Agent"), Some(concat!("Trellis/", env!("CARGO_PKG_VERSION"))));
+    assert_eq!(req.header("User-Agent"), Some(concat!("Glowfly/", env!("CARGO_PKG_VERSION"))));
     assert_eq!(req.header("Accept"), Some("application/vnd.github+json"));
     assert_eq!(req.header("X-GitHub-Api-Version"), Some("2022-11-28"));
     assert_eq!(req.header("Authorization"), None);

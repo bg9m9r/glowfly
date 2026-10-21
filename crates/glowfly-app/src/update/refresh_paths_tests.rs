@@ -105,7 +105,7 @@ fn reports_while_a_read_runs_queue_one_union() {
     st.refresh.status_busy = false;
     st.refresh.status_queued = None;
 
-    // So does Trellis's own operation.
+    // So does Glowfly's own operation.
     let first = update(&mut st, changed(&workdir, false, Some(&["a.txt"])), Instant::now());
     update(&mut st, changed(&workdir, false, Some(&["b.txt"])), Instant::now());
     update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))), Instant::now());
@@ -251,7 +251,7 @@ fn a_deferred_whole_read_has_the_next_path_read_cover_the_open_file() {
 }
 
 #[test]
-fn trellis_s_own_operations_and_polls_read_everything() {
+fn glowfly_s_own_operations_and_polls_read_everything() {
     let (mut st, dir, _workdir) = opened("paths-own");
     std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
     let fx = update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now());

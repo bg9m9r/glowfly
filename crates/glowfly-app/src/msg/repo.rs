@@ -165,7 +165,7 @@ impl LoadMsg {
 
 /// The file watcher's reports (update/watch.rs).
 pub enum WatchMsg {
-    /// Files changed outside Trellis (debounced). Sent wrapped in `Msg::Scoped` for the watched
+    /// Files changed outside Glowfly (debounced). Sent wrapped in `Msg::Scoped` for the watched
     /// repository; `full` when HEAD, refs or a merge/rebase state changed; `paths`: the
     /// work-tree paths that changed, when nothing else did; None re-reads the whole status;
     /// `last_event` is when the burst's last relevant event arrived.

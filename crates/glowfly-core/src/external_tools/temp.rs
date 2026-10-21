@@ -2,9 +2,9 @@
 //! folder per opening, each version in a folder named after it (`base/`, `ours/`, `abc1234/`)
 //! under the file's own name, so tools show which is which and highlight by extension.
 //!
-//! The root is `trellis-tools` in the system's temporary folder. On Unix that folder is shared,
+//! The root is `glowfly-tools` in the system's temporary folder. On Unix that folder is shared,
 //! so it is used only when it is a real folder (not a link) that this user owns and nobody else
-//! can open (mode 0700); otherwise the copies go to Trellis's cache folder instead. Copies are
+//! can open (mode 0700); otherwise the copies go to Glowfly's cache folder instead. Copies are
 //! read-only, except the merge tool's output, which is the working file itself.
 
 use crate::persist::{WriteOptions, remove_tree, write_file};
@@ -18,10 +18,10 @@ use std::time::{Duration, SystemTime};
 /// program exits; this is when it goes.
 pub const SWEEP_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 
-/// The folder sessions are made in: `trellis-tools` in the temporary folder when it is private
-/// (see the module docs), else `tool-files` in Trellis's cache folder.
+/// The folder sessions are made in: `glowfly-tools` in the temporary folder when it is private
+/// (see the module docs), else `tool-files` in Glowfly's cache folder.
 pub fn root() -> io::Result<PathBuf> {
-    root_in(&crate::paths::temp_dir().join("trellis-tools"), crate::settings::cache_dir().map(|c| c.join("tool-files")).as_deref())
+    root_in(&crate::paths::temp_dir().join("glowfly-tools"), crate::settings::cache_dir().map(|c| c.join("tool-files")).as_deref())
 }
 
 /// `shared` when [`private_root`] accepts it, else `fallback`.

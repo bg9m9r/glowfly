@@ -51,7 +51,7 @@ fn clone_sparse_pattern() {
 #[test]
 fn clone_missing_folder_waits() {
     // The last repository's parent folder is gone: the check found no folder there.
-    let parent = glowfly_core::paths::temp_dir().join("trellis-clone-gone").display().to_string();
+    let parent = glowfly_core::paths::temp_dir().join("glowfly-clone-gone").display().to_string();
     let f = CloneForm {
         url: "https://example.com/team/app.git".into(),
         parent_checked: Some((parent.clone(), None)),

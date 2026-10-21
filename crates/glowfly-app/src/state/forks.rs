@@ -24,7 +24,7 @@ pub struct ForkPicker {
     /// Index into `list.forks`.
     pub picked: Option<usize>,
     pub name: String,
-    /// The last name Trellis suggested; a pick replaces `name` only while it still equals this.
+    /// The last name Glowfly suggested; a pick replaces `name` only while it still equals this.
     pub suggested: String,
     pub fetch_after: bool,
     /// Whether the name was edited or Add remote tried, so its problem waits for them.
@@ -68,14 +68,14 @@ pub enum ForkAction {
     Create,
 }
 
-/// The hosting-service repository behind `info` for `action`, or why Trellis can't do it.
+/// The hosting-service repository behind `info` for `action`, or why Glowfly can't do it.
 pub fn fork_target(info: &RemoteInfo, connections: &[Connection], action: ForkAction) -> Result<Target, String> {
     let url = info.fetch_url();
     if url.is_empty() {
         return Err("This remote has no fetch URL.".into());
     }
     let Some(t) = forge::parse_remote(url, connections) else {
-        return Err("Trellis doesn't recognize a hosting service in this remote's URL.".into());
+        return Err("Glowfly doesn't recognize a hosting service in this remote's URL.".into());
     };
     let p = t.provider;
     match action {

@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 /// The stand-in trash: a folder in the temp dir, one per process.
 fn bin() -> PathBuf {
-    crate::paths::temp_dir().join(format!("trellis-undo-delete-bin-{}", std::process::id()))
+    crate::paths::temp_dir().join(format!("glowfly-undo-delete-bin-{}", std::process::id()))
 }
 
 fn to_bin(full: &Path) -> std::result::Result<(), TrashRefusal> {

@@ -29,7 +29,7 @@ pub enum WindowsOffer {
         bundled: PathBuf,
         why: &'static str,
     },
-    /// The global core.sshCommand is Trellis's Windows' OpenSSH value: offer the undo.
+    /// The global core.sshCommand is Glowfly's Windows' OpenSSH value: offer the undo.
     On {
         windows: PathBuf,
         service_running: bool,

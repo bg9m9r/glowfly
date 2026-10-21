@@ -49,7 +49,7 @@ pub(super) fn request(st: &AppState) -> Result<IssueRequest, String> {
     let (Some(workdir), Some(fs)) = (st.workdir(), st.forge.as_ref()) else { return Err(none()) };
     let Some(target) = fs.tracker.clone() else { return Err(none()) };
     if !forge::issues_in_app(target.provider) {
-        return Err(format!("{} issues aren't supported in Trellis yet", target.provider.name()));
+        return Err(format!("{} issues aren't supported in Glowfly yet", target.provider.name()));
     }
     let account = target.account();
     if !forge::may_contact(&account, &st.settings.connections) {
@@ -61,7 +61,7 @@ pub(super) fn request(st: &AppState) -> Result<IssueRequest, String> {
 }
 
 /// Loads the open panel's details (again); the last ones stay on screen meanwhile. Nothing is
-/// asked of a tracker without issue details in Trellis, nor while the repository isn't trusted
+/// asked of a tracker without issue details in Glowfly, nor while the repository isn't trusted
 /// (signing in may run its credential helper).
 pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(v) = st.issue.as_ref() else { return };

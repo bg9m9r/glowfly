@@ -95,7 +95,7 @@ pub(super) fn rename_file_on(workdir: &Path, from: &str, to: &str, disk: &Disk) 
 /// The temporary name a change of spelling goes through, in the same folder as `from`.
 pub(super) fn temp_name(from: &str) -> String {
     let (dir, name) = from.rsplit_once('/').map_or(("", from), |(d, n)| (d, n));
-    let temp = format!(".{name}.trellis-rename-{}", std::process::id());
+    let temp = format!(".{name}.glowfly-rename-{}", std::process::id());
     if dir.is_empty() { temp } else { format!("{dir}/{temp}") }
 }
 

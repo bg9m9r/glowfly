@@ -20,7 +20,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         RepoMsg::InitRepo => super::init::open(st, fx),
         RepoMsg::Open(path) => super::tabs::open(st, path, fx),
         RepoMsg::Refresh => {
-            // Keys or allowed signers may have changed outside Trellis.
+            // Keys or allowed signers may have changed outside Glowfly.
             st.signatures.clear();
             st.conflict_checks.invalidate();
             super::refresh::reload(st, fx);
@@ -296,7 +296,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             let missing = std::mem::take(&mut st.missing_repos);
             st.missing_repos = missing.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
             let label = st.tabs.get(st.active_tab).and_then(|t| t.label.as_deref());
-            fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Trellis", label.unwrap_or(&snap.name)))));
+            fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Glowfly", label.unwrap_or(&snap.name)))));
             st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
             st.detail = None;
             close_diff(st);

@@ -1,6 +1,6 @@
 //! Rules and texts for git config's diff and merge tools, used when Preferences > External
 //! tools sets no program: what the log and toasts say, how a merge tool run ended (a command
-//! Trellis ran in sh, or `git mergetool`), git's most telling line, and what the External tools
+//! Glowfly ran in sh, or `git mergetool`), git's most telling line, and what the External tools
 //! page shows about the tool git config names.
 
 use crate::tools::MergeEnd;
@@ -52,7 +52,7 @@ pub fn inactive_text(mode: ToolMode) -> String {
     format!("{entry} wasn't run: its repository is no longer the active tab.")
 }
 
-/// How a merge command Trellis ran in sh ended (the file still conflicted), as git judges it:
+/// How a merge command Glowfly ran in sh ended (the file still conflicted), as git judges it:
 /// by the exit code with `trust_exit_code`, else by whether the working file `changed`.
 pub fn command_end(r: &ExitReport, changed: bool, trust_exit_code: bool) -> MergeEnd {
     let exited = || MergeEnd::Exited { code: r.code, said: r.said.clone(), changed };

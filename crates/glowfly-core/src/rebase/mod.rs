@@ -1,4 +1,4 @@
-//! Interactive rebase: the commits a rebase would replay (`plan`), the todo list Trellis
+//! Interactive rebase: the commits a rebase would replay (`plan`), the todo list Glowfly
 //! writes for git in place of the one git generates (`todo`), running and resuming it (`run`),
 //! history edits chosen in the graph (`quick`), where a rebase in progress stands
 //! (`progress`), and the steps a running rebase has left, edited with `git rebase --edit-todo`
@@ -7,7 +7,7 @@
 //! steps name the commits later lines start from or merge.
 //!
 //! Git is started with `GIT_SEQUENCE_EDITOR` set to a command that replaces git's todo with
-//! the prepared one (Trellis itself in `--write-todo` mode, after checking that both list the
+//! the prepared one (Glowfly itself in `--write-todo` mode, after checking that both list the
 //! same commits). Rewording is done by `exec git commit --amend -F <file>` lines, so no
 //! interactive editor ever opens. The list can also hold `exec` and `break` steps, and a
 //! typed message for the commit a squash group combines into.
@@ -272,7 +272,7 @@ pub struct StartRequest {
 /// The command git runs as `GIT_SEQUENCE_EDITOR` (git appends the todo file's path).
 #[derive(Debug)]
 pub enum SequenceEditor {
-    /// Trellis's own executable in `--write-todo` mode: checks, then installs the todo.
+    /// Glowfly's own executable in `--write-todo` mode: checks, then installs the todo.
     Helper(PathBuf),
     /// `cp`: installs the todo without checking (tests).
     Copy,
@@ -287,7 +287,7 @@ pub enum StopKind {
     Edit,
     /// A pick or squash conflicted.
     Conflict,
-    /// Trellis's reword amend failed.
+    /// Glowfly's reword amend failed.
     Exec,
     /// An `exec` step the user added failed.
     Command,

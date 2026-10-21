@@ -41,8 +41,8 @@ fn cleanup(parent: &Path) {
     let _ = std::fs::remove_dir_all(parent);
 }
 
-/// The fixture names the sibling `trellis-test-<name>-lib-<pid>`; the parent is
-/// `trellis-test-<name>-<pid>`.
+/// The fixture names the sibling `glowfly-test-<name>-lib-<pid>`; the parent is
+/// `glowfly-test-<name>-<pid>`.
 fn lib_stem(parent: &Path) -> String {
     let file = parent.file_name().unwrap().to_string_lossy().into_owned();
     let pid = format!("-{}", std::process::id());

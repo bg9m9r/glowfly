@@ -6,7 +6,7 @@ use super::theme::{color, type_scale};
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::askpass::HostKey;
 
-const EXPLAIN: &str = "Trellis hasn't connected to this server before: compare the fingerprint with the one the \
+const EXPLAIN: &str = "Glowfly hasn't connected to this server before: compare the fingerprint with the one the \
 server's owner publishes before you trust it.";
 
 /// Draws the host-key fields for prompt `id`, with `raw` (ssh's text) under Details.

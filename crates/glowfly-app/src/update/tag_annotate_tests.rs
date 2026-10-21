@@ -119,7 +119,7 @@ fn annotate_refusals_keep_dialog() {
     refuse(&mut st, annotate(&sha, "notes"), "Another operation is still running.");
     st.job = None;
 
-    // Deleted behind Trellis's back, then refreshed: the dialog still shows, but nothing runs.
+    // Deleted behind Glowfly's back, then refreshed: the dialog still shows, but nothing runs.
     git(&dir, &["tag", "-d", "v1"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(dialog_open(&st));

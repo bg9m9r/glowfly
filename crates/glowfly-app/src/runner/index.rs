@@ -1,4 +1,4 @@
-//! The whole-history search index's builds (`IndexEffect`). One "trellis-index" thread works
+//! The whole-history search index's builds (`IndexEffect`). One "glowfly-index" thread works
 //! through them, one at a time across every tab and the newest request first: a build for a
 //! repository replaces that repository's waiting one and stops its running one, and Forget stops
 //! both. A stopped build reports nothing; its tab has asked for a newer one or no longer wants it.
@@ -69,7 +69,7 @@ impl IndexWorker {
                 };
                 if start {
                     let worker = self.clone();
-                    let spawned = std::thread::Builder::new().name("trellis-index".into()).spawn(move || worker.work(&tx, &waker));
+                    let spawned = std::thread::Builder::new().name("glowfly-index".into()).spawn(move || worker.work(&tx, &waker));
                     if let Err(e) = spawned {
                         tracing::error!("could not start the index thread: {e}");
                         let mut b = self.builds();
@@ -117,7 +117,7 @@ impl IndexWorker {
                 Ok(Ok(Some(index))) => Ok(Arc::new(index)),
                 Ok(Ok(None)) => continue,
                 Ok(Err(e)) => Err(e.to_string()),
-                Err(_) => Err("Trellis hit an internal error (index)".to_owned()),
+                Err(_) => Err("Glowfly hit an internal error (index)".to_owned()),
             };
             send(tx, waker, &workdir, SearchMsg::IndexBuilt { build, result });
         }
@@ -163,7 +163,7 @@ mod tests {
     }
 
     fn repo(name: &str) -> (PathBuf, IndexKey) {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-index-worker-{name}-{}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-index-worker-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let steps: [&[&str]; 2] = [

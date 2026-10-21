@@ -102,7 +102,7 @@ fn inspected_elsewhere_or_unreadable() {
     run(&mut st, PatchMsg::Inspected { workdir: workdir.clone(), path: p.clone(), result: Err("access denied".into()) });
     assert_eq!(last_toast(&st), (false, "Can't read p.patch: access denied".to_owned()));
     assert_eq!(last_log(&st), "Can't read p.patch: access denied");
-    let big = "p.patch is larger than 64 MB; Trellis doesn't open patches that large.";
+    let big = "p.patch is larger than 64 MB; Glowfly doesn't open patches that large.";
     run(&mut st, PatchMsg::Inspected { workdir, path: p, result: Err(big.into()) });
     assert_eq!(last_toast(&st), (false, big.to_owned()));
     assert!(st.modal.is_none());

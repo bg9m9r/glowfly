@@ -22,7 +22,7 @@ fn logs(st: &mut AppState, m: LogsMsg) -> Vec<Effect> {
 }
 
 fn dir() -> PathBuf {
-    glowfly_core::paths::temp_dir().join("trellis-logs")
+    glowfly_core::paths::temp_dir().join("glowfly-logs")
 }
 
 fn earlier(n: usize) -> Vec<ActivityEntry> {
@@ -54,7 +54,7 @@ fn appends(fx: &[Effect]) -> Vec<Vec<(bool, String)>> {
 
 fn git_run(code: Option<i32>) -> GitRun {
     GitRun {
-        cwd: dir().join("trellis"),
+        cwd: dir().join("glowfly"),
         args: vec!["status".into(), "--porcelain=v2".into()],
         took: Duration::from_millis(34),
         code,

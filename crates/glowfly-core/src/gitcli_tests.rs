@@ -19,8 +19,8 @@ fn askpass_variables() {
     assert_eq!(get("GIT_ASKPASS").as_deref(), Some("C:/x/glowfly.exe"));
     assert_eq!(get("SSH_ASKPASS").as_deref(), Some("C:/x/glowfly.exe"));
     assert_eq!(get("SSH_ASKPASS_REQUIRE").as_deref(), Some("force"));
-    assert_eq!(get("TRELLIS_ASKPASS").as_deref(), Some("127.0.0.1:1"));
-    assert_eq!(get("TRELLIS_ASKPASS_TOKEN").as_deref(), Some("ab"));
+    assert_eq!(get("GLOWFLY_ASKPASS").as_deref(), Some("127.0.0.1:1"));
+    assert_eq!(get("GLOWFLY_ASKPASS_TOKEN").as_deref(), Some("ab"));
 }
 
 #[test]
@@ -92,7 +92,7 @@ fn old_openssh_gets_a_display_to_use_askpass() {
 #[test]
 fn only_old_openssh_gets_the_display_placeholder() {
     use std::ffi::OsStr;
-    let a = AskpassEnv { exe: "trellis".into(), addr: "127.0.0.1:1".into(), token: "ab".into() };
+    let a = AskpassEnv { exe: "glowfly".into(), addr: "127.0.0.1:1".into(), token: "ab".into() };
     let display = |legacy, d: Option<&str>| {
         let vars = askpass_vars_for(&a, legacy, d.map(OsStr::new));
         assert_eq!(vars.iter().filter(|(n, _)| *n == "SSH_ASKPASS_REQUIRE").count(), 1);

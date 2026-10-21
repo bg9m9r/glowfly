@@ -1,6 +1,6 @@
 //! The banner under the toolbar while git is missing (an error) or too old for some features (a
 //! warning; see `glowfly_core::git_version`), with a way to choose another git (Preferences >
-//! Git). It can be closed until Trellis restarts or another git is chosen.
+//! Git). It can be closed until Glowfly restarts or another git is chosen.
 
 use crate::git_env::GitEnvMsg;
 use crate::msg::Msg;

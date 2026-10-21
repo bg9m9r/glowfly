@@ -7,7 +7,7 @@ use super::{Connection, enc, links, parse_remote};
 /// A repository's home page on its hosting service.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WebPage {
-    /// "GitHub", "Codeberg"…; empty for an https host Trellis doesn't know ("in browser").
+    /// "GitHub", "Codeberg"…; empty for an https host Glowfly doesn't know ("in browser").
     pub service: String,
     pub url: String,
 }
@@ -18,9 +18,9 @@ pub enum NoWebPage {
     NoUrl,
     /// A folder path or a file:// URL.
     Local,
-    /// Plain http on a host Trellis doesn't know.
+    /// Plain http on a host Glowfly doesn't know.
     PlainHttp,
-    /// An SSH address on this host, which Trellis doesn't know.
+    /// An SSH address on this host, which Glowfly doesn't know.
     UnknownSsh(String),
     /// The URL fails the link safety check.
     Unsafe,
@@ -31,8 +31,8 @@ impl NoWebPage {
         match self {
             NoWebPage::NoUrl => "This remote has no fetch URL.".into(),
             NoWebPage::Local => "This remote is a folder on disk, not a web page.".into(),
-            NoWebPage::PlainHttp => "This remote uses plain http; Trellis opens only https pages.".into(),
-            NoWebPage::UnknownSsh(host) => format!("Trellis can't tell which web page belongs to the SSH address on {host}."),
+            NoWebPage::PlainHttp => "This remote uses plain http; Glowfly opens only https pages.".into(),
+            NoWebPage::UnknownSsh(host) => format!("Glowfly can't tell which web page belongs to the SSH address on {host}."),
             NoWebPage::Unsafe => "This remote's URL can't be opened safely in a browser.".into(),
         }
     }

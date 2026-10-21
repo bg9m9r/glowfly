@@ -200,7 +200,7 @@ fn refusals_say_why_and_open_nothing() {
     let why = crate::state::journal_restore::plan(st.snap.as_ref().unwrap(), &gone, false, st.settings.lang()).unwrap_err();
     assert_eq!(why, "This commit is no longer in the repository.");
 
-    let wt = glowfly_core::paths::temp_dir().join(format!("trellis-journal-wt-{}", std::process::id()));
+    let wt = glowfly_core::paths::temp_dir().join(format!("glowfly-journal-wt-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&wt);
     git(&dir, &["branch", "-f", "topic", "main"]);
     git(&dir, &["worktree", "add", "-q", &wt.to_string_lossy(), "topic"]);

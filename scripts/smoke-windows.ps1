@@ -9,7 +9,7 @@ Drives the release build on the desktop it runs on with real input through SendI
 committing, a context menu, a keyboard shortcut, a drag of the sidebar's edge and a drag of the
 window's own resize corner. It runs one full pass per scale in SMOKE_SCALES, each through the
 app's zoom on a fresh fixture repository, settings and git config. The app reports what it shows
-through its opt-in probe file (TRELLIS_SMOKE_PROBE, crates/glowfly-app/src/ui/probe.rs).
+through its opt-in probe file (GLOWFLY_SMOKE_PROBE, crates/glowfly-app/src/ui/probe.rs).
 
 Real input goes to the desktop in use, so the real pass runs only in CI (GITHUB_ACTIONS=true) or
 with -OnThisDesktop. -DryRun never starts the app or sends input: it parses the scripts, compiles
@@ -27,7 +27,7 @@ Exit codes: 0 all passed, 1 a check failed, 2 a usage, setup or environment erro
 #>
 [CmdletBinding()]
 param(
-    # The Trellis executable (default: <CARGO_TARGET_DIR or target>\release\glowfly.exe).
+    # The Glowfly executable (default: <CARGO_TARGET_DIR or target>\release\glowfly.exe).
     [string] $Binary,
     # Checks the scripts, the helpers and the fixture without a window or input.
     [switch] $DryRun,
@@ -56,7 +56,7 @@ $script:ExpectFail = "$env:SMOKE_EXPECT_FAIL"
 $script:MesaDir = "$env:SMOKE_MESA_DIR"
 
 # The state the helpers share; every name is set here, as strict mode wants.
-$script:Work = Join-Path ([IO.Path]::GetTempPath()) "trellis-smoke-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+$script:Work = Join-Path ([IO.Path]::GetTempPath()) "glowfly-smoke-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
 $script:RunBinary = $script:Binary
 $script:MesaStaged = $false
 $script:Pass = 'setup'
@@ -82,7 +82,7 @@ $script:ClientOrigin = $null
 . (Join-Path $script:SmokeDir 'win-lib.ps1')
 . (Join-Path $script:SmokeDir 'win-pass.ps1')
 . (Join-Path $script:SmokeDir 'win-checks.ps1')
-if (-not ('TrellisSmoke.Native' -as [type])) {
+if (-not ('GlowflySmoke.Native' -as [type])) {
     Add-Type -Path (Join-Path $script:SmokeDir 'WinInput.cs')
 }
 Add-Type -AssemblyName System.Drawing.Common
@@ -113,7 +113,7 @@ if ($env:GITHUB_ACTIONS -ne 'true' -and -not $OnThisDesktop) {
     exit 2
 }
 if (-not (Test-Path -LiteralPath $script:Binary -PathType Leaf)) {
-    [Console]::Error.WriteLine("no Trellis at $($script:Binary) (build it with cargo build --release -p glowfly)")
+    [Console]::Error.WriteLine("no Glowfly at $($script:Binary) (build it with cargo build --release -p glowfly)")
     exit 2
 }
 try {
@@ -136,16 +136,16 @@ $status = 0
 $oldLockTimeout = $null
 try {
     if ($env:GITHUB_ACTIONS -eq 'true') {
-        if (-not [TrellisSmoke.Native]::SetScreenSize(1920, 1080, 1280, 900)) {
+        if (-not [GlowflySmoke.Native]::SetScreenSize(1920, 1080, 1280, 900)) {
             Write-SmokeLog 'no display mode of at least 1280 x 900 up to 1920 x 1080; going on with the window sizes clamped'
         }
-        $v = [TrellisSmoke.Native]::VirtualScreen()
+        $v = [GlowflySmoke.Native]::VirtualScreen()
         Write-SmokeLog "screen $($v[2]) x $($v[3])"
     }
     # SetForegroundWindow from a background process needs this; the system may refuse it.
     try {
-        $oldLockTimeout = [TrellisSmoke.Native]::ForegroundLockTimeout
-        [TrellisSmoke.Native]::ForegroundLockTimeout = 0
+        $oldLockTimeout = [GlowflySmoke.Native]::ForegroundLockTimeout
+        [GlowflySmoke.Native]::ForegroundLockTimeout = 0
     } catch {
         Write-SmokeLog "could not turn off the foreground lock timeout ($_); bringing windows to the front may fail"
     }
@@ -165,9 +165,9 @@ try {
 } finally {
     Stop-App
     Restore-PassEnv
-    try { [TrellisSmoke.Native]::RestoreScreen() } catch { Write-SmokeLog "could not restore the display mode: $_" }
+    try { [GlowflySmoke.Native]::RestoreScreen() } catch { Write-SmokeLog "could not restore the display mode: $_" }
     if ($null -ne $oldLockTimeout) {
-        try { [TrellisSmoke.Native]::ForegroundLockTimeout = $oldLockTimeout } catch { Write-SmokeLog "could not restore the foreground lock timeout: $_" }
+        try { [GlowflySmoke.Native]::ForegroundLockTimeout = $oldLockTimeout } catch { Write-SmokeLog "could not restore the foreground lock timeout: $_" }
     }
     if ($status -ne 0) {
         # Kept for the artifact, minus the copied binary and Mesa.

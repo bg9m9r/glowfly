@@ -194,8 +194,8 @@ fn switch(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
 /// The window title while tab `i` is active.
 pub(super) fn title(st: &AppState, i: usize) -> String {
     match st.tabs.get(i) {
-        Some(tab) if tab.path.is_some() => format!("{} - Trellis", tab.shown_name()),
-        _ => "Trellis".to_owned(),
+        Some(tab) if tab.path.is_some() => format!("{} - Glowfly", tab.shown_name()),
+        _ => "Glowfly".to_owned(),
     }
 }
 

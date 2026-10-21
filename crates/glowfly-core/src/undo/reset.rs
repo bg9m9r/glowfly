@@ -8,9 +8,9 @@ use git2::{Oid, Repository};
 use std::path::Path;
 
 /// The message of the stash a hard reset moves uncommitted changes into.
-pub const HARD_RESET_STASH_MESSAGE: &str = "Trellis: changes before hard reset";
+pub const HARD_RESET_STASH_MESSAGE: &str = "Glowfly: changes before hard reset";
 
-/// The commands Trellis runs for a hard reset to `rev`: stash the changes to tracked files
+/// The commands Glowfly runs for a hard reset to `rev`: stash the changes to tracked files
 /// (git saves nothing and goes on when there are none), then reset.
 pub fn hard_reset_commands(rev: &str) -> Vec<Vec<String>> {
     vec![args(&["stash", "push", "-m", HARD_RESET_STASH_MESSAGE]), args(&["reset", "--hard", rev])]

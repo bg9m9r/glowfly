@@ -8,7 +8,7 @@ use std::io::Read;
 use std::sync::OnceLock;
 use std::time::Duration;
 
-/// The most of an API response Trellis reads; a larger answer is refused.
+/// The most of an API response Glowfly reads; a larger answer is refused.
 const MAX_JSON: u64 = 10 * 1024 * 1024;
 /// The most of an error response read, for its message.
 const MAX_ERROR: u64 = 64 * 1024;
@@ -53,7 +53,7 @@ pub(crate) fn enc_path(s: &str) -> String {
 fn agent() -> &'static ureq::Agent {
     static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
     AGENT.get_or_init(|| {
-        ureq::AgentBuilder::new().timeout(Duration::from_secs(20)).user_agent(concat!("Trellis/", env!("CARGO_PKG_VERSION"))).build()
+        ureq::AgentBuilder::new().timeout(Duration::from_secs(20)).user_agent(concat!("Glowfly/", env!("CARGO_PKG_VERSION"))).build()
     })
 }
 
@@ -89,7 +89,7 @@ fn download_agent() -> &'static ureq::Agent {
             .timeout_connect(Duration::from_secs(15))
             .timeout_read(Duration::from_secs(60))
             .redirects(5)
-            .user_agent(concat!("Trellis/", env!("CARGO_PKG_VERSION")));
+            .user_agent(concat!("Glowfly/", env!("CARGO_PKG_VERSION")));
         // A redirect may not drop to plain http (the tests' mock server is plain http).
         #[cfg(not(test))]
         let builder = builder.https_only(true);

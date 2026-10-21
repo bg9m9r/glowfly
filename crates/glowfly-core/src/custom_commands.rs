@@ -2,7 +2,7 @@
 //! the command palette, the commit, branch and file menus, and keys.
 //!
 //! Two files are read, both optional: the user's own `<config dir>/commands.toml`
-//! (`user_file`) and the open repository's `<workdir>/.trellis/commands.toml` (`repo_file`,
+//! (`user_file`) and the open repository's `<workdir>/.glowfly/commands.toml` (`repo_file`,
 //! the working-tree file, so a team can commit and share it). Each is an array of tables:
 //!
 //! ```toml
@@ -75,7 +75,7 @@ pub enum Confirm {
 pub enum Source {
     /// The user's own file in the config folder.
     User,
-    /// The open repository's `.trellis/commands.toml`.
+    /// The open repository's `.glowfly/commands.toml`.
     Repo,
 }
 
@@ -134,7 +134,7 @@ pub enum ProblemKind {
     NotUtf8,
     /// The file couldn't be read: the system's error.
     Unreadable(String),
-    /// The file, or the `.trellis` folder holding it, is a link (never followed).
+    /// The file, or the `.glowfly` folder holding it, is a link (never followed).
     Link,
     TooMany,
     EmptyName,
@@ -165,9 +165,23 @@ pub fn user_file() -> Option<PathBuf> {
     crate::settings::config_dir().map(|d| d.join(FILE_NAME))
 }
 
-/// The repository's commands file under its working folder `workdir`.
+/// The folder in a working folder that holds the repository's commands file.
+pub const REPO_DIR: &str = ".glowfly";
+/// The same folder's name from before the app was renamed (it was called Trellis), read when a
+/// repository has no `.glowfly`.
+pub const OLD_REPO_DIR: &str = ".trellis";
+
+/// The repository's commands folder under its working folder `workdir`: `.glowfly`, or
+/// `.trellis` when only that one is there. Looks at the disk: runner threads only.
+pub fn repo_dir(workdir: &Path) -> PathBuf {
+    let (new, old) = (workdir.join(REPO_DIR), workdir.join(OLD_REPO_DIR));
+    // `symlink_metadata`: a link in either place counts as there (and is refused when read).
+    if std::fs::symlink_metadata(&new).is_err() && std::fs::symlink_metadata(&old).is_ok() { old } else { new }
+}
+
+/// The repository's commands file under its working folder `workdir` (see [`repo_dir`]).
 pub fn repo_file(workdir: &Path) -> PathBuf {
-    workdir.join(".trellis").join(FILE_NAME)
+    repo_dir(workdir).join(FILE_NAME)
 }
 
 /// Reads the user's commands file. Runner threads only.
@@ -179,9 +193,10 @@ pub fn read_user() -> FileRead {
 }
 
 /// Reads the commands file of the repository at `workdir`, refusing a link for the file or
-/// its `.trellis` folder. Runner threads only.
+/// its `.glowfly` (or `.trellis`) folder. Runner threads only.
 pub fn read_repo(workdir: &Path) -> FileRead {
-    read_file(repo_file(workdir), Some(&workdir.join(".trellis")))
+    let dir = repo_dir(workdir);
+    read_file(dir.join(FILE_NAME), Some(&dir))
 }
 
 /// Reads `path`; with `folder`, neither it nor the file may be a link.

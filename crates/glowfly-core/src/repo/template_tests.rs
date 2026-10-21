@@ -35,7 +35,7 @@ fn commit_template_reads_config() {
     git(&dir, &["config", "commit.template", "tmpl.txt"]);
     assert_eq!(read(), tmpl("fix:", "# why", '#'), "relative to the working directory");
 
-    let abs = dir.with_file_name(format!("trellis-test-template-abs-{}.txt", std::process::id()));
+    let abs = dir.with_file_name(format!("glowfly-test-template-abs-{}.txt", std::process::id()));
     std::fs::write(&abs, "docs: \n").unwrap();
     git(&dir, &["config", "commit.template", &abs.display().to_string().replace('\\', "/")]);
     assert_eq!(read(), tmpl("docs:", "", '#'), "absolute path");

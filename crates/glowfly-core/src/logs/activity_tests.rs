@@ -1,7 +1,7 @@
 use super::*;
 
 fn scratch(name: &str) -> PathBuf {
-    let dir = crate::paths::temp_dir().join(format!("trellis-activity-{name}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-activity-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir

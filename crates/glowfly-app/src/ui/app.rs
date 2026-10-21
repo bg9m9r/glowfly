@@ -49,7 +49,7 @@ pub struct GlowflyApp {
 
 impl GlowflyApp {
     /// `mica`: the viewport was made transparent for the Mica backdrop. `probe`: the smoke
-    /// tests' state file, when `TRELLIS_SMOKE_PROBE` asked for one.
+    /// tests' state file, when `GLOWFLY_SMOKE_PROBE` asked for one.
     pub fn new(
         cc: &eframe::CreationContext<'_>,
         start: Option<crate::StartArg>,

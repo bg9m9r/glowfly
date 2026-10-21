@@ -48,7 +48,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
     }
     if let Some(var) = provider.env_var() {
         row(ui, "", |ui| {
-            help(ui, &format!("If the {var} environment variable is set, Trellis uses it ahead of connections made here."));
+            help(ui, &format!("If the {var} environment variable is set, Glowfly uses it ahead of connections made here."));
         });
     }
     if let Some(t) = fs.and_then(|f| f.host.as_ref()).filter(|t| t.provider == provider) {

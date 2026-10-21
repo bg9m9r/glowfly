@@ -3,9 +3,9 @@
 use eframe::egui::IconData;
 use std::sync::Arc;
 
-/// Trellis's icon at 256 px (`assets/icon`, drawn by `tests/app_icon.rs`).
+/// Glowfly's icon at 256 px (`assets/icon`, drawn by `tests/app_icon.rs`).
 pub fn app_icon() -> Arc<IconData> {
-    let png = include_bytes!("../../../../assets/icon/trellis-256.png");
+    let png = include_bytes!("../../../../assets/icon/glowfly-256.png");
     Arc::new(eframe::icon_data::from_png_bytes(png).unwrap_or_default())
 }
 

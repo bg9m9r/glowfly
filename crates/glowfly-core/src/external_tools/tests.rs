@@ -19,7 +19,7 @@ fn program_trims_and_unquotes() {
 
 /// Two PATH folders in a fresh temporary folder: the first empty, the second holding `files`.
 fn path_fixture(name: &str, files: &[&str]) -> (PathBuf, OsString) {
-    let root = crate::paths::temp_dir().join(format!("trellis-tools-{name}-{}", std::process::id()));
+    let root = crate::paths::temp_dir().join(format!("glowfly-tools-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     let (a, b) = (root.join("one"), root.join("two"));
     std::fs::create_dir_all(&a).unwrap();
@@ -173,14 +173,14 @@ fn an_editor_gets_no_input_output_or_wrapper_window() {
 #[test]
 fn spawn_reports_a_missing_program() {
     let l = Launch {
-        program: PathBuf::from(format!("trellis-no-such-program-{}", std::process::id())),
+        program: PathBuf::from(format!("glowfly-no-such-program-{}", std::process::id())),
         args: Vec::new(),
         cwd: crate::paths::temp_dir(),
         own_console: false,
     };
     let e = spawn(&l).unwrap_err();
     assert!(e.is_not_found(), "{e}");
-    let l = Launch { program: crate::paths::temp_dir().join("trellis-no-such-dir").join("ed.exe"), ..l };
+    let l = Launch { program: crate::paths::temp_dir().join("glowfly-no-such-dir").join("ed.exe"), ..l };
     assert!(spawn(&l).unwrap_err().is_not_found());
 }
 
@@ -221,7 +221,7 @@ fn run_to_exit_reports_the_exit_code_and_what_it_said() {
     let r = run_to_exit(&Launch { args: os(&["no-such-command"]), ..l.clone() }).unwrap();
     assert!(!r.success() && r.code.is_some(), "{r:?}");
     assert!(!r.said.is_empty() && !r.said.contains('\n'), "{r:?}");
-    let missing = Launch { program: PathBuf::from(format!("trellis-no-such-tool-{}", std::process::id())), ..l };
+    let missing = Launch { program: PathBuf::from(format!("glowfly-no-such-tool-{}", std::process::id())), ..l };
     assert!(run_to_exit(&missing).unwrap_err().is_not_found());
     let _ = std::fs::remove_dir_all(&dir);
 }

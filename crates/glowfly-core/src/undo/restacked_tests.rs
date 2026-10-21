@@ -53,7 +53,7 @@ fn a_restack_is_undone_and_redone_branch_by_branch() {
     assert_eq!(action.describe(), DETAIL);
 
     let undo = plan(&dir, &action, false).unwrap();
-    let reason = "Trellis: undo restack";
+    let reason = "Glowfly: undo restack";
     let (m, t, nm, nt) = (mid.to_string(), top.to_string(), new_mid.to_string(), new_top.to_string());
     assert_eq!(
         undo,
@@ -76,7 +76,7 @@ fn the_checked_out_branch_is_reset_last() {
     let (t, nt) = (top.to_string(), new_top.to_string());
     assert_eq!(
         undo,
-        cmds(&[&["update-ref", "-m", "Trellis: undo restack", "refs/heads/top", &t, &nt], &["reset", "--keep", &mid.to_string()]])
+        cmds(&[&["update-ref", "-m", "Glowfly: undo restack", "refs/heads/top", &t, &nt], &["reset", "--keep", &mid.to_string()]])
     );
 
     write(&dir, "m.txt", "dirty\n");

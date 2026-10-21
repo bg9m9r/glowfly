@@ -1,5 +1,5 @@
 # View tests compare images through `CheckSnapshot::check_snapshot` (ui/snapshot_check.rs),
-# which TRELLIS_SKIP_SNAPSHOTS can turn off on CI runners without the approved renderer.
+# which GLOWFLY_SKIP_SNAPSHOTS can turn off on CI runners without the approved renderer.
 disallowed-methods = [
   { path = "egui_kittest::Harness::snapshot", reason = "use CheckSnapshot::check_snapshot" },
 ]

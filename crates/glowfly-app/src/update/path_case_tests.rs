@@ -1,6 +1,6 @@
 //! `App` and `app`: two repositories on a volume that tells case apart (ext4, case-sensitive
 //! APFS, a Windows folder with case sensitivity on), one repository under two spellings on one
-//! that doesn't (NTFS, APFS and FAT by default). Trellis asks the disk, never the OS, so tabs,
+//! that doesn't (NTFS, APFS and FAT by default). Glowfly asks the disk, never the OS, so tabs,
 //! the recent list and trust follow the volume either way.
 
 use super::tests::{drive, git, state};
@@ -55,7 +55,7 @@ fn open_case_twins(parent: &Path) -> bool {
 }
 
 fn fresh(base: &Path, tag: &str) -> PathBuf {
-    let root = base.join(format!("trellis-case-{tag}-{}", std::process::id()));
+    let root = base.join(format!("glowfly-case-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).unwrap();
     root
@@ -71,12 +71,12 @@ fn case_twins_on_the_temp_volume() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
-/// `TRELLIS_TEST_CS_DIR` names a case-sensitive volume or folder (CI makes one on macOS and
+/// `GLOWFLY_TEST_CS_DIR` names a case-sensitive volume or folder (CI makes one on macOS and
 /// Windows).
 #[test]
 fn case_twins_on_a_case_sensitive_volume() {
-    let Some(base) = std::env::var_os("TRELLIS_TEST_CS_DIR").map(PathBuf::from) else {
-        eprintln!("note: TRELLIS_TEST_CS_DIR is not set; skipping the case-sensitive volume check");
+    let Some(base) = std::env::var_os("GLOWFLY_TEST_CS_DIR").map(PathBuf::from) else {
+        eprintln!("note: GLOWFLY_TEST_CS_DIR is not set; skipping the case-sensitive volume check");
         return;
     };
     let root = fresh(&base, "cs");

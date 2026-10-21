@@ -1,6 +1,6 @@
 //! Partial clones (`git clone --filter=blob:none`): file contents the object store doesn't have
 //! yet, which the remote sends on request. git fetches them lazily; libgit2 can't, so the reads
-//! Trellis makes with libgit2 (diffs, the File view, blame's file) check first ([`require`]) and
+//! Glowfly makes with libgit2 (diffs, the File view, blame's file) check first ([`require`]) and
 //! report what is missing as [`Error::MissingContent`]. The app then downloads exactly those
 //! objects ([`fetch_cmds`], the same fetch git's own lazy fetch runs) and reads again.
 //!

@@ -62,7 +62,7 @@ fn a_clone_made_under_another_name_is_trusted() {
     st.job = Some(job((alias.clone(), Created::Clone)));
     done(&mut st, true, "$ git clone https://github.com/o/r.git");
     let snap = st.snap.as_ref().expect("the clone opened");
-    assert!(st.modal.is_none(), "not asked about a repository Trellis made");
+    assert!(st.modal.is_none(), "not asked about a repository Glowfly made");
     assert_eq!(recorded(&st.settings, &snap.real_workdir), Some(RepoTrust::Trusted));
     assert!(st.trust.created.is_empty());
     remove(&dir, &alias);

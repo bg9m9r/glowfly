@@ -1,10 +1,10 @@
-//! Which of a release's files suits this system and this copy of Trellis, and where its checksum
-//! is published. File names follow the Release workflow: `trellis-<tag>-<target triple>.<ext>`.
+//! Which of a release's files suits this system and this copy of Glowfly, and where its checksum
+//! is published. File names follow the Release workflow: `glowfly-<tag>-<target triple>.<ext>`.
 
 use super::{Asset, Release};
 use std::path::Path;
 
-/// The operating systems Trellis is built for.
+/// The operating systems Glowfly is built for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TargetOs {
     Windows,
@@ -47,7 +47,7 @@ const fn current_arch() -> Option<Arch> {
     }
 }
 
-/// The platform this build runs on, when it is one Trellis knows.
+/// The platform this build runs on, when it is one Glowfly knows.
 pub const CURRENT_PLATFORM: Option<Platform> = match (current_os(), current_arch()) {
     (Some(os), Some(arch)) => Some(Platform { os, arch }),
     _ => None,
@@ -66,7 +66,7 @@ impl Platform {
     }
 }
 
-/// How this copy of Trellis was installed, which decides the kind of file it is offered.
+/// How this copy of Glowfly was installed, which decides the kind of file it is offered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InstallKind {
     /// By the MSI, the .app bundle or the .deb package.
@@ -80,10 +80,10 @@ pub fn install_kind_for(exe: &str, os: TargetOs) -> InstallKind {
     let installer = match os {
         TargetOs::Windows => {
             let parts: Vec<&str> = exe.split(['\\', '/']).filter(|p| !p.is_empty()).collect();
-            // Windows paths ignore case: ...\Programs\Trellis\glowfly.exe.
+            // Windows paths ignore case: ...\Programs\Glowfly\glowfly.exe.
             parts.len() >= 3
                 && parts[parts.len() - 3].eq_ignore_ascii_case("Programs")
-                && parts[parts.len() - 2].eq_ignore_ascii_case("Trellis")
+                && parts[parts.len() - 2].eq_ignore_ascii_case("Glowfly")
         }
         TargetOs::Mac => {
             let parts: Vec<&str> = exe.split('/').filter(|p| !p.is_empty()).collect();
@@ -118,7 +118,9 @@ fn archive_ext(os: TargetOs) -> &'static str {
 
 /// The file of `release` to fetch on `platform`: an installer copy prefers the installer
 /// (msi, dmg or deb) and falls back to the archive, a portable copy the other way round. None
-/// when the release has neither for this platform, or there is no build for it.
+/// when the release has neither for this platform, or there is no build for it. Files are named
+/// `glowfly-<tag>-<triple>.<ext>`; a release that still names them `trellis-...` (the app's name
+/// before Glowfly) is read too.
 pub fn pick(release: &Release, platform: Platform, kind: InstallKind) -> Option<Asset> {
     let triple = platform.triple()?;
     let (installer, archive) = (installer_ext(platform.os), archive_ext(platform.os));
@@ -127,8 +129,10 @@ pub fn pick(release: &Release, platform: Platform, kind: InstallKind) -> Option<
         InstallKind::Portable => [archive, installer],
     };
     order.iter().find_map(|ext| {
-        let want = format!("trellis-{}-{triple}.{ext}", release.tag);
-        release.assets.iter().find(|a| a.name == want).cloned()
+        ["glowfly", "trellis"].iter().find_map(|name| {
+            let want = format!("{name}-{}-{triple}.{ext}", release.tag);
+            release.assets.iter().find(|a| a.name == want).cloned()
+        })
     })
 }
 

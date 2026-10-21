@@ -105,7 +105,7 @@ pub fn prepare(cmd: &mut Command) {
 pub fn prepare(_cmd: &mut Command) {}
 
 /// Starts `cmd`'s child in a new session (`setsid`), without a controlling terminal: ssh can't
-/// open `/dev/tty`, and a background job can't block on the terminal Trellis was started from.
+/// open `/dev/tty`, and a background job can't block on the terminal Glowfly was started from.
 #[cfg(unix)]
 pub fn detach_from_terminal(cmd: &mut Command) {
     use std::os::unix::process::CommandExt;

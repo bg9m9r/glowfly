@@ -91,7 +91,7 @@ fn dirty_tree_asks_naming_operation_and_count() {
     assert!(!a.always);
     assert_eq!(button(Lang::En, &a.op), "Stash and check out");
     let body = crate::state::auto_stash::body(Lang::En, &a.op, a.files);
-    assert_eq!(body, "You have 2 changed files. Trellis stashes them, checks out feature and puts them back afterwards.");
+    assert_eq!(body, "You have 2 changed files. Glowfly stashes them, checks out feature and puts them back afterwards.");
 
     up(&mut st, Msg::CloseModal);
     assert!(st.modal.is_none() && st.job.is_none());

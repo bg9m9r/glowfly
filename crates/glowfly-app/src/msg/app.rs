@@ -8,7 +8,7 @@ pub enum AppMsg {
     /// File > Quit: close the window like its title-bar close button (tabs and settings are
     /// already saved when they change).
     Quit,
-    /// Help > About Trellis: open the About dialog.
+    /// Help > About Glowfly: open the About dialog.
     ShowAbout,
     /// About's Third-party notices…: open the notices dialog in About's place.
     ShowNotices,

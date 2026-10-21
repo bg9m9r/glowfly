@@ -1,4 +1,4 @@
-//! Trellis's icon, drawn in unit coordinates (0..1, y down) and rendered with 4x4 supersampling:
+//! Glowfly's icon, drawn in unit coordinates (0..1, y down) and rendered with 4x4 supersampling:
 //! a rounded green square with a faint diagonal lattice and a cream commit-graph vine (a trunk,
 //! one branch curving off it, and round commit nodes). Only `+ - * /` and `sqrt` are used, so
 //! every system renders the same pixels.

@@ -1,4 +1,4 @@
-//! The coral "needs you" mark: the one solid-filled status, for moments Trellis waits on you
+//! The coral "needs you" mark: the one solid-filled status, for moments Glowfly waits on you
 //! (a conflicted file, a merge stopped on conflicts, a repository whose trust is undecided, a
 //! sign-in). Every coral surface is painted here and carries the warning triangle in the
 //! coral's ink, so the colour never stands alone. This is the only module that reads

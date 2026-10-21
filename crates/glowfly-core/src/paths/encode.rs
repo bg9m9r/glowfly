@@ -1,4 +1,4 @@
-//! Paths saved in Trellis's own files (recent.txt, tabs.txt, settings keys), without losing any
+//! Paths saved in Glowfly's own files (recent.txt, tabs.txt, settings keys), without losing any
 //! (a Unix name needn't be UTF-8, a Windows one may hold a lone UTF-16 surrogate) and one per
 //! line. A path that is plain text without control characters is saved as it is, as earlier
 //! versions did, so their files still read; any other is marked and percent-encoded: the bytes

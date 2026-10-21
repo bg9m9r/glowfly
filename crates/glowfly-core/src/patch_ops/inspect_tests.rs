@@ -93,13 +93,13 @@ fn nothing_to_read() {
 
 #[test]
 fn inspect_refuses_huge_files() {
-    let path = crate::paths::temp_dir().join(format!("trellis-test-huge-{}.patch", std::process::id()));
+    let path = crate::paths::temp_dir().join(format!("glowfly-test-huge-{}.patch", std::process::id()));
     let f = std::fs::File::create(&path).unwrap();
     f.set_len(MAX_INSPECT + 1).unwrap();
     drop(f);
     let err = inspect(&path).unwrap_err().to_string();
     let name = path.file_name().unwrap().to_string_lossy().into_owned();
-    assert_eq!(err, format!("{name} is larger than 64 MB; Trellis doesn't open patches that large."));
+    assert_eq!(err, format!("{name} is larger than 64 MB; Glowfly doesn't open patches that large."));
     std::fs::write(&path, SERIES).unwrap();
     assert_eq!(inspect(&path).unwrap().commits, 3);
     let _ = std::fs::remove_file(&path);

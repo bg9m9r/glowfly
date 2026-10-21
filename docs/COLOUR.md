@@ -1,6 +1,6 @@
 # Colour
 
-How Trellis uses colour: the families every palette is built from, what each colour is for,
+How Glowfly uses colour: the families every palette is built from, what each colour is for,
 the hue bands and contrast floors the tests hold every built-in theme to, and how to add a
 colour. The palettes live in `crates/glowfly-app/src/ui/theme/` (`color.rs` declares
 `Palette`, `families.rs` the token families, `builtin.rs` and `builtin_extra.rs` the five
@@ -57,7 +57,7 @@ share in `faint`, on the `border` track.
 |---|---|---|
 | warn | `warn` | Warnings. Until each job has its own colour it also marks favourites and pending checks. |
 | banner | `banner` | The fill of banners. |
-| needs you | (none) | The coral: the one solid-filled status, for moments Trellis waits on you (a conflicted file, a merge stopped on conflicts, a repository whose trust is undecided, a sign-in). Always drawn with the warning mark, by `ui/needs_you.rs` alone: a 16 px badge on conflicted rows and in the conflicted operation banner (`BannerKind::NeedsYou`, with a coral stripe), a pill for the toolbar's conflict and Untrusted chips (shaded 10% toward white in dark themes and black in light ones on hover), a 12 px badge before a status-bar sign-in error. |
+| needs you | (none) | The coral: the one solid-filled status, for moments Glowfly waits on you (a conflicted file, a merge stopped on conflicts, a repository whose trust is undecided, a sign-in). Always drawn with the warning mark, by `ui/needs_you.rs` alone: a 16 px badge on conflicted rows and in the conflicted operation banner (`BannerKind::NeedsYou`, with a coral stripe), a pill for the toolbar's conflict and Untrusted chips (shaded 10% toward white in dark themes and black in light ones on hover), a 12 px badge before a status-bar sign-in error. |
 | ink on needs you | (none) | The warning mark and text on the coral. |
 
 The attention band (below) belongs to the coral. `needs_you` and `on_needs_you` are not
@@ -181,7 +181,7 @@ only).
 
 ## 3. Contrast floors
 
-WCAG contrast ratio, with Trellis's 0.03928 linearisation threshold. Where two values are
+WCAG contrast ratio, with Glowfly's 0.03928 linearisation threshold. Where two values are
 given, the second is for the high-contrast themes.
 
 | What | On | Floor |

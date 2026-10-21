@@ -263,7 +263,7 @@ fn rename_case_only() {
     let listed = names(&dir);
     assert!(listed.contains(&"README.md".to_owned()) && !listed.contains(&"readme.md".to_owned()), "{listed:?}");
     assert_eq!(text(&dir, "README.md"), "hi\n");
-    assert!(!listed.iter().any(|n| n.contains("trellis-rename")), "{listed:?}");
+    assert!(!listed.iter().any(|n| n.contains("glowfly-rename")), "{listed:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -333,7 +333,7 @@ fn deletes_a_read_only_file() {
 
 #[test]
 fn bare_repository_is_unsupported() {
-    let dir = crate::paths::temp_dir().join(format!("trellis-test-wf-bare-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-test-wf-bare-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-q", "--bare"]);

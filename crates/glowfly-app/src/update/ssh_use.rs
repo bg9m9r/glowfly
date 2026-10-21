@@ -1,7 +1,7 @@
 //! Preferences > SSH: the key git uses for SSH remotes (core.sshCommand, globally or for the
 //! open, trusted repository), the Use local SSH agent setting, and adding a key to the agent.
 //! The Windows' OpenSSH value (`KeyChoice::WindowsSsh`, see `ssh_windows`) needs nothing of its
-//! own here: Trellis wrote it, so choosing a key replaces it and Let ssh decide unsets it without
+//! own here: Glowfly wrote it, so choosing a key replaces it and Let ssh decide unsets it without
 //! asking, and Use local SSH agent leaves it alone (it unsets only the key form).
 
 use crate::effect::Effect;
@@ -110,7 +110,7 @@ pub(super) fn use_key(st: &mut AppState, key: PathBuf, repo: bool, confirmed: bo
     write(st, repo, Some(private), fx);
 }
 
-/// Stop using: unsets the level's choice, asking first for a command Trellis didn't write. It
+/// Stop using: unsets the level's choice, asking first for a command Glowfly didn't write. It
 /// runs with the agent setting on too: an unset core.sshCommand is what that setting wants.
 pub(super) fn stop_using(st: &mut AppState, repo: bool, confirmed: bool, fx: &mut Vec<Effect>) {
     let Some((current, level)) = check(st, repo, false) else { return };
@@ -128,8 +128,8 @@ pub(super) fn stop_using(st: &mut AppState, repo: bool, confirmed: bool, fx: &mu
     }
 }
 
-/// The Use local SSH agent checkbox. Turning it on unsets the choices Trellis wrote (the
-/// repository's only when it is trusted); a command Trellis didn't write stays, flagged.
+/// The Use local SSH agent checkbox. Turning it on unsets the choices Glowfly wrote (the
+/// repository's only when it is trusted); a command Glowfly didn't write stays, flagged.
 pub(super) fn set_use_agent(st: &mut AppState, on: bool, now: Instant, fx: &mut Vec<Effect>) {
     st.settings.use_ssh_agent = on;
     fx.push(super::prefs::save_settings(st));

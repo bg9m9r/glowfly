@@ -26,7 +26,7 @@ const NOW: i64 = 1_769_947_200;
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 fn path(name: &str) -> PathBuf {
-    glowfly_core::paths::temp_dir().join("trellis-dashboard-snapshots").join(name)
+    glowfly_core::paths::temp_dir().join("glowfly-dashboard-snapshots").join(name)
 }
 
 fn account(provider: Provider, host: &str) -> Account {

@@ -15,7 +15,7 @@ fn recent_file() -> Option<PathBuf> {
 }
 
 /// Recently opened repositories, newest first, including folders that no longer exist. Reads
-/// only Trellis's own file: nothing in the list is looked at (a network share may not answer).
+/// only Glowfly's own file: nothing in the list is looked at (a network share may not answer).
 pub fn load_recent() -> Vec<PathBuf> {
     recent_file().and_then(|f| std::fs::read_to_string(f).ok()).map(|s| parse_recent(&s)).unwrap_or_default()
 }
@@ -62,7 +62,7 @@ fn tabs_file() -> Option<PathBuf> {
 /// index of the active one.
 pub type SavedTabs = (Vec<PathBuf>, Vec<Option<String>>, usize);
 
-/// The tabs open when Trellis last closed, their labels and the index of the active one.
+/// The tabs open when Glowfly last closed, their labels and the index of the active one.
 /// Nothing is looked at here (this runs before the window opens, and a network share may not
 /// answer): a tab whose folder is gone fails to load when selected, like any other.
 pub fn load_tabs() -> SavedTabs {
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn saves_to_a_named_file_round_trip() {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-platform-saves-{}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-platform-saves-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let paths = vec![dir.join("web"), dir.join("api")];
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn restored_tabs_keep_folders_that_are_gone() {
-        let gone = glowfly_core::paths::temp_dir().join(format!("trellis-gone-tab-{}", std::process::id()));
+        let gone = glowfly_core::paths::temp_dir().join(format!("glowfly-gone-tab-{}", std::process::id()));
         let (paths, _, active) = parse_tabs(&format_tabs(std::slice::from_ref(&gone), &[], 0));
         assert_eq!((paths, active), (vec![gone.clone()], 0), "not checked on the UI thread");
         let checks = check_folders(std::slice::from_ref(&gone));

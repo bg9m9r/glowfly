@@ -8,7 +8,7 @@
 //!   reaped, so a recycled process id is never signalled.
 //! - Windows: the child is put in a job object right after it starts, and a stop terminates
 //!   the job (there is no graceful signal for a windowless child). If the assignment fails the
-//!   child alone is killed. The job is not killed when Trellis exits.
+//!   child alone is killed. The job is not killed when Glowfly exits.
 
 use std::process::{Child, Command};
 #[cfg(unix)]

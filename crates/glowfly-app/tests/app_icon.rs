@@ -1,5 +1,5 @@
 //! The app icon in `assets/icon/`: `UPDATE_ICONS=1 cargo test -p glowfly --test app_icon`
-//! renders it (`app_icon/draw.rs`) and rewrites the PNGs, `trellis.ico` and `trellis.icns`
+//! renders it (`app_icon/draw.rs`) and rewrites the PNGs, `glowfly.ico` and `glowfly.icns`
 //! (`app_icon/containers.rs`), and the Windows installer's bitmaps in `assets/installer/`
 //! (`app_icon/installer.rs`). Without the variable it checks that every checked-in image
 //! matches the drawing, within 2 per channel (PNG encoders and float edge cases may differ a
@@ -17,9 +17,9 @@ use std::path::PathBuf;
 
 /// The PNG files, by size.
 const PNG_SIZES: [u32; 9] = [16, 24, 32, 48, 64, 128, 256, 512, 1024];
-/// The sizes inside trellis.ico.
+/// The sizes inside glowfly.ico.
 const ICO_SIZES: [u32; 8] = [16, 20, 24, 32, 40, 48, 64, 256];
-/// The chunks of trellis.icns and the size each holds.
+/// The chunks of glowfly.icns and the size each holds.
 const ICNS_TYPES: [(&str, u32); 10] = [
     ("icp4", 16),
     ("icp5", 32),
@@ -80,25 +80,25 @@ fn the_app_icon_matches_its_drawing() {
     if std::env::var_os("UPDATE_ICONS").is_some() {
         std::fs::create_dir_all(&dir).unwrap();
         for s in PNG_SIZES {
-            std::fs::write(dir.join(format!("trellis-{s}.png")), png(s, &images[&s])).unwrap();
+            std::fs::write(dir.join(format!("glowfly-{s}.png")), png(s, &images[&s])).unwrap();
         }
-        std::fs::write(dir.join("trellis.ico"), ico()).unwrap();
-        std::fs::write(dir.join("trellis.icns"), icns()).unwrap();
+        std::fs::write(dir.join("glowfly.ico"), ico()).unwrap();
+        std::fs::write(dir.join("glowfly.icns"), icns()).unwrap();
     }
     let read = |name: &str| std::fs::read(dir.join(name)).unwrap_or_else(|e| panic!("assets/icon/{name}: {e}"));
     for s in PNG_SIZES {
-        let name = format!("trellis-{s}.png");
+        let name = format!("glowfly-{s}.png");
         assert_matches(&name, &read(&name), s, &images[&s]);
     }
-    let entries = containers::read_ico(&read("trellis.ico"));
+    let entries = containers::read_ico(&read("glowfly.ico"));
     assert_eq!(entries.iter().map(|(s, _)| *s).collect::<Vec<_>>(), ICO_SIZES);
     for (s, data) in &entries {
-        assert_matches(&format!("trellis.ico ({s} px)"), data, *s, &images[s]);
+        assert_matches(&format!("glowfly.ico ({s} px)"), data, *s, &images[s]);
     }
-    let chunks = containers::read_icns(&read("trellis.icns"));
+    let chunks = containers::read_icns(&read("glowfly.icns"));
     assert_eq!(chunks.iter().map(|(t, _)| t.as_str()).collect::<Vec<_>>(), ICNS_TYPES.map(|(t, _)| t));
     for ((kind, data), (_, s)) in chunks.iter().zip(ICNS_TYPES) {
-        assert_matches(&format!("trellis.icns ({kind})"), data, s, &images[&s]);
+        assert_matches(&format!("glowfly.icns ({kind})"), data, s, &images[&s]);
     }
 }
 

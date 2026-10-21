@@ -1,4 +1,4 @@
-//! Repository trust: whether Trellis may let git run the programs a repository's own config and
+//! Repository trust: whether Glowfly may let git run the programs a repository's own config and
 //! hooks name without asking (auto-fetch, hosting-service sign-in, git's own status read). The
 //! decisions live in `Settings::repo_trust`, each Trusted one with the print of the scan it was
 //! made on (`Settings::repo_trust_prints`); the scan comes with each full load
@@ -13,14 +13,14 @@ use glowfly_core::settings::{RepoTrust, SavedTrust, Settings, repo_keys};
 use glowfly_core::trust::{TrustPrint, TrustScan};
 use std::path::{Path, PathBuf};
 
-/// How a repository Trellis is about to open came to be.
+/// How a repository Glowfly is about to open came to be.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Created {
-    /// Cloned by Trellis: trusted when it first opens.
+    /// Cloned by Glowfly: trusted when it first opens.
     Clone,
-    /// Made by `git init` from Trellis: trusted when it first opens, if git made a new one.
+    /// Made by `git init` from Glowfly: trusted when it first opens, if git made a new one.
     Init,
-    /// A linked worktree Trellis created: it has its own decision, like any other repository,
+    /// A linked worktree Glowfly created: it has its own decision, like any other repository,
     /// trusted when it was made from a trusted repository (update/trust_inherit.rs).
     Worktree,
 }
@@ -45,7 +45,7 @@ pub enum Standing {
 pub struct TrustSession {
     /// Repositories (real paths) asked about this session: refreshes don't ask again.
     pub asked: Vec<PathBuf>,
-    /// Repositories Trellis just cloned or initialised, recorded as trusted when they load.
+    /// Repositories Glowfly just cloned or initialised, recorded as trusted when they load.
     pub created: Vec<PathBuf>,
     /// The job waiting for the open trust prompt.
     pub held: Option<HeldJob>,
@@ -75,7 +75,7 @@ pub struct Inherit {
 pub enum InheritKind {
     /// A linked worktree: trusted only while what it runs is in the source's print.
     Worktree,
-    /// A submodule checked out for the first time: trusted like a clone Trellis made.
+    /// A submodule checked out for the first time: trusted like a clone Glowfly made.
     Submodule,
 }
 
@@ -185,7 +185,7 @@ impl AppState {
         matches!(self.trust_standing(), Some(Standing::Undecided | Standing::NotTrusted | Standing::Changed))
     }
 
-    /// Whether Trellis may run git in the active repository without being asked (Trusted or
+    /// Whether Glowfly may run git in the active repository without being asked (Trusted or
     /// Clean). True without a repository: there is nothing of its own to run.
     pub fn runs_git_unasked(&self) -> bool {
         !self.held()
@@ -212,24 +212,24 @@ impl AppState {
     }
 }
 
-/// What the Untrusted chip's tooltip says is paused, and why. Only what Trellis really holds:
+/// What the Untrusted chip's tooltip says is paused, and why. Only what Glowfly really holds:
 /// background fetch, hosting-service calls and git's status read wait, and git commands the
 /// user starts ask first. Empty for Trusted and Clean.
 pub fn paused_note(standing: Standing) -> &'static str {
     match standing {
         Standing::Undecided => {
             "This repository's own settings or hooks make git run programs, and you haven't said whether to trust it. \
-             Until you do, Trellis won't fetch in the background, contact its hosting service or let git read its status, \
+             Until you do, Glowfly won't fetch in the background, contact its hosting service or let git read its status, \
              and it asks before running Pull, Push, Commit or any other git command you start. Click to review."
         }
         Standing::NotTrusted => {
-            "You chose not to trust this repository. Trellis won't fetch in the background, contact its hosting service \
+            "You chose not to trust this repository. Glowfly won't fetch in the background, contact its hosting service \
              or let git read its status, and it asks again before running Pull, Push, Commit or any other git command you \
              start. Click to review."
         }
         Standing::Changed => {
             "Since you trusted this repository, it gained settings or hooks that make git run programs. Until you review \
-             them, Trellis won't fetch in the background, contact its hosting service or let git read its status, and it \
+             them, Glowfly won't fetch in the background, contact its hosting service or let git read its status, and it \
              asks before running Pull, Push, Commit or any other git command you start. Click to review."
         }
         Standing::Trusted | Standing::Clean => "",

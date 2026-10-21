@@ -1,5 +1,5 @@
 //! Repository trust: asking on open, holding auto-fetch, hosting-service calls and git's status
-//! read until the user trusts the repository, and trusting repositories Trellis made.
+//! read until the user trusts the repository, and trusting repositories Glowfly made.
 
 use super::tests::{finish, git, scratch_repo, state};
 use super::update;

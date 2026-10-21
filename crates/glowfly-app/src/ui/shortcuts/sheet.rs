@@ -14,7 +14,7 @@ use eframe::egui::{Align, Id, Layout, RichText, Sense, Ui, vec2};
 /// field the keyboard (not under a credential prompt). Returns true when Close is clicked.
 pub fn show(ui: &mut Ui, cx: Cx, filter: &mut String, keys: &Keymap) -> bool {
     let mut d = Dialog::new(cx, "Keyboard shortcuts").size(Size::Wide).resizable("shortcut-sheet").begin(ui);
-    let r = ui.add(TextField::new(filter).id(Id::new("trellis-shortcut-filter")).hint("Filter by action or key"));
+    let r = ui.add(TextField::new(filter).id(Id::new("glowfly-shortcut-filter")).hint("Filter by action or key"));
     if cx.keyboard {
         r.request_focus();
     }

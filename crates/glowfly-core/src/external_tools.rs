@@ -124,7 +124,7 @@ pub fn locate_here(p: &Path) -> Option<PathBuf> {
     locate(p, cfg!(windows), cfg!(target_os = "macos"))
 }
 
-/// Where `program` is on this system's PATH (see [`resolve`]), honouring the PATH Trellis
+/// Where `program` is on this system's PATH (see [`resolve`]), honouring the PATH Glowfly
 /// gives its children ([`crate::env_path`]).
 pub fn find_on_path(program: &Path) -> Option<PathBuf> {
     let path_var = crate::env_path::path();
@@ -244,8 +244,8 @@ pub fn watch_for(mut child: Child, window: Duration) -> Watched {
             Err(_) => break,
         }
     }
-    // Trellis doesn't wait for the program.
-    let _ = std::thread::Builder::new().name("trellis-tool-wait".into()).spawn(move || {
+    // Glowfly doesn't wait for the program.
+    let _ = std::thread::Builder::new().name("glowfly-tool-wait".into()).spawn(move || {
         let _ = child.wait();
     });
     Watched::Running
@@ -277,7 +277,7 @@ fn start(l: &Launch, wait: bool) -> Result<Child> {
     })
 }
 
-/// How a program Trellis waited for ended.
+/// How a program Glowfly waited for ended.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExitReport {
     /// The exit code; None when it was stopped by a signal.
@@ -313,7 +313,7 @@ pub fn wait_report(mut child: Child) -> Result<ExitReport> {
 /// on a full pipe), keeping the first few kilobytes.
 fn drain_stderr(mut pipe: std::process::ChildStderr) -> std::sync::mpsc::Receiver<String> {
     let (tx, rx) = std::sync::mpsc::channel();
-    let _ = std::thread::Builder::new().name("trellis-tool-stderr".into()).spawn(move || {
+    let _ = std::thread::Builder::new().name("glowfly-tool-stderr".into()).spawn(move || {
         use std::io::Read;
         let (mut kept, mut buf) = (Vec::new(), [0u8; 4096]);
         while let Ok(n) = pipe.read(&mut buf) {

@@ -55,20 +55,20 @@ pub fn start_with(timeout: Duration, on_event: impl Fn(Event) + Send + Sync + 's
         active: AtomicUsize::new(0),
         on_event: Arc::new(on_event),
     });
-    std::thread::Builder::new().name("trellis-askpass".into()).spawn(move || {
+    std::thread::Builder::new().name("glowfly-askpass".into()).spawn(move || {
         for stream in listener.incoming().flatten() {
             if shared.active.fetch_add(1, Ordering::SeqCst) >= MAX_CONNECTIONS {
                 shared.active.fetch_sub(1, Ordering::SeqCst);
                 continue; // dropping the stream closes it
             }
             let conn = shared.clone();
-            let spawned = std::thread::Builder::new().name("trellis-askpass-conn".into()).spawn(move || {
+            let spawned = std::thread::Builder::new().name("glowfly-askpass-conn".into()).spawn(move || {
                 conn.serve(stream);
                 conn.active.fetch_sub(1, Ordering::SeqCst);
             });
             if let Err(e) = spawned {
                 shared.active.fetch_sub(1, Ordering::SeqCst);
-                eprintln!("trellis: could not start a thread for a credential prompt: {e}");
+                eprintln!("glowfly: could not start a thread for a credential prompt: {e}");
             }
         }
     })?;

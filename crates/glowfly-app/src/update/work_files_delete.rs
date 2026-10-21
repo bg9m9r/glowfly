@@ -43,7 +43,7 @@ pub(super) fn ask_delete(st: &mut AppState, path: String) {
             format!("{path} isn't tracked by git. It goes to the {TRASH}, so you can restore it from there.")
         }
         Some(f) if f.status == '?' => format!(
-            "{path} isn't tracked by git. Trellis keeps a copy so Undo{hint} can bring it back while this tab is open (files up to 64 MB)."
+            "{path} isn't tracked by git. Glowfly keeps a copy so Undo{hint} can bring it back while this tab is open (files up to 64 MB)."
         ),
         Some(_) if trash => format!(
             "{path} goes to the {TRASH} with your uncommitted changes. Discarding the deletion afterwards brings back its staged or committed version instead."
@@ -167,7 +167,7 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal
         TrashProblem::AccessDenied => retry(
             format!("Can't move to {TRASH}"),
             format!(
-                "Trellis isn't allowed to move {path} to the {TRASH}: {detail}.\n\nCheck that the file isn't locked and that you may change its folder, then try again."
+                "Glowfly isn't allowed to move {path} to the {TRASH}: {detail}.\n\nCheck that the file isn't locked and that you may change its folder, then try again."
             ),
         ),
         TrashProblem::Other => retry(
@@ -183,7 +183,7 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal
                 "Or delete it permanently, which can't be undone.".to_owned()
             };
             let body = format!(
-                "{path} is on a drive whose trash folder Trellis can't use: {detail}.\n\nMove it to the Trash in your home folder instead? It is copied there, which can take a while for a large file. {permanent}"
+                "{path} is on a drive whose trash folder Glowfly can't use: {detail}.\n\nMove it to the Trash in your home folder instead? It is copied there, which can take a while for a large file. {permanent}"
             );
             Modal::TrashOffer(TrashOffer { op: op.clone(), path, body })
         }

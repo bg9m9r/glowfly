@@ -1,5 +1,5 @@
-//! Trellis's own updates: asking for the newest release, downloading and verifying its file,
-//! and handing a downloaded installer to the system. Trellis never replaces its own program.
+//! Glowfly's own updates: asking for the newest release, downloading and verifying its file,
+//! and handing a downloaded installer to the system. Glowfly never replaces its own program.
 
 use crate::effect::UpdateEffect;
 use crate::msg::{CheckedRelease, Msg, UpdateMsg};
@@ -20,7 +20,7 @@ pub(super) fn run(e: UpdateEffect) -> Option<Msg> {
     }
 }
 
-/// The newest release (from the hosting service, or the folder TRELLIS_UPDATE_FEED names), and
+/// The newest release (from the hosting service, or the folder GLOWFLY_UPDATE_FEED names), and
 /// how this copy was installed.
 fn check() -> Result<Option<CheckedRelease>, String> {
     let feed = app_update::Feed::from_env()?;
@@ -28,7 +28,7 @@ fn check() -> Result<Option<CheckedRelease>, String> {
         tracing::info!("checking for updates in the {}", feed.describe());
     }
     let release = feed.latest()?;
-    let exe = std::env::current_exe().map_err(|e| format!("Couldn't find Trellis's own program: {e}"))?;
+    let exe = std::env::current_exe().map_err(|e| format!("Couldn't find Glowfly's own program: {e}"))?;
     let install = app_update::install_kind(&exe);
     Ok(release.map(|release| CheckedRelease { release, install }))
 }

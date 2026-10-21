@@ -1,4 +1,4 @@
-//! The window frame Trellis draws itself: the viewport builder for each `Chrome`, the viewport
+//! The window frame Glowfly draws itself: the viewport builder for each `Chrome`, the viewport
 //! command for each `WindowCmd` (sent by the shell), and the overlay drawn above every dialog on
 //! Windows: the window buttons, the resize edges and corners, a 1 px border, and a drag zone
 //! over the title bar while a dialog blocks it. Everything here pushes `AppMsg::Window`; only
@@ -60,7 +60,7 @@ pub(super) fn to_px(r: Rect, ppp: f32) -> PxRect {
     }
 }
 
-/// Where the drawn caption parts are for the OS, in client pixels: only while Trellis draws
+/// Where the drawn caption parts are for the OS, in client pixels: only while Glowfly draws
 /// the window buttons. Full screen leaves the Maximize button out, so Windows offers no Snap
 /// Layouts there and egui handles the button (Restore, which leaves full screen).
 pub(crate) fn caption_geometry(ctx: &egui::Context, st: &AppState) -> Option<CaptionGeometry> {
@@ -117,7 +117,7 @@ pub(super) fn resize_zones(screen: Rect, edge: f32, corner: f32) -> [(ResizeEdge
     ]
 }
 
-/// The overlay above every dialog (call last): only on Windows, where Trellis draws the frame.
+/// The overlay above every dialog (call last): only on Windows, where Glowfly draws the frame.
 pub(super) fn overlay(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     if !st.view.chrome.window_buttons() {
         return;
@@ -242,10 +242,10 @@ mod tests {
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         let mut st = AppState::new(glowfly_core::settings::Settings::default(), Vec::new(), std::time::Instant::now());
         st.view.chrome = Chrome::Windows;
-        let windowed = caption_geometry(&ctx, &st).expect("Trellis draws the buttons");
+        let windowed = caption_geometry(&ctx, &st).expect("Glowfly draws the buttons");
         assert_ne!(windowed.max_button, PxRect::default(), "Snap Layouts while windowed");
         st.view.window.fullscreen = true;
-        let full = caption_geometry(&ctx, &st).expect("Trellis draws the buttons");
+        let full = caption_geometry(&ctx, &st).expect("Glowfly draws the buttons");
         assert_eq!(full.max_button, PxRect::default(), "no Snap Layouts in full screen");
         assert_eq!(full.menu_at, windowed.menu_at, "Alt+Space still opens the system menu");
     }

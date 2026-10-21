@@ -81,7 +81,7 @@ fn generates_and_replaces_keys() {
     let again = generate(&keygen, &NewKey { passphrase: String::new(), ..key.clone() }, true).unwrap();
     assert_ne!(again.public_key, pair.public_key, "a new key replaced the old one");
     let leftovers: Vec<_> =
-        std::fs::read_dir(&ssh).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().contains(".trellis-new")).collect();
+        std::fs::read_dir(&ssh).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().contains(".glowfly-new")).collect();
     assert!(leftovers.is_empty(), "{leftovers:?}");
 
     let folder = generate(&keygen, &NewKey { path: ssh.clone(), ..key }, true).unwrap_err();

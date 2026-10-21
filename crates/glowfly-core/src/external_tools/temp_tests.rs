@@ -5,7 +5,7 @@ use super::*;
 
 /// A fresh scratch root in the temporary folder.
 fn scratch(name: &str) -> PathBuf {
-    let root = crate::paths::temp_dir().join(format!("trellis-test-tooltemp-{name}-{}", std::process::id()));
+    let root = crate::paths::temp_dir().join(format!("glowfly-test-tooltemp-{name}-{}", std::process::id()));
     let _ = remove_tree(&root);
     fs::create_dir_all(&root).unwrap();
     root

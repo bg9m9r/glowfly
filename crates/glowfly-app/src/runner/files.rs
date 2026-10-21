@@ -120,7 +120,7 @@ mod tests {
         let home = glowfly_core::paths::temp_dir();
         assert_eq!(clone_parent(" ~ ", Some(&home)), Some(home.clone()));
         assert_eq!(clone_parent(&home.display().to_string(), None), Some(home.clone()));
-        assert_eq!(clone_parent("~/no-such-folder-for-trellis", Some(&home)), None);
+        assert_eq!(clone_parent("~/no-such-folder-for-glowfly", Some(&home)), None);
         // A relative path would be the process's working folder (System32 for a GUI start).
         assert_eq!(clone_parent(".", Some(&home)), None);
         assert_eq!(clone_parent("~", None), None);

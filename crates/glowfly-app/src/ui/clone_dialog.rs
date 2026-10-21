@@ -58,7 +58,7 @@ fn shallow_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate) {
     if !form.shallow {
         return;
     }
-    ui.indent("trellis-clone-shallow", |ui| {
+    ui.indent("glowfly-clone-shallow", |ui| {
         ui.horizontal(|ui| {
             ui.label("History to download");
             controls::radio_value(ui, &mut form.limit, LimitKind::Depth, "Latest commits");
@@ -69,18 +69,18 @@ fn shallow_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate) {
             LimitKind::Depth => {
                 let help = "How many of the newest commits on the branch to download.";
                 let group = FieldGroup::new("Commits").help(help).message(&form.touched, "depth", problems.depth.map(Message::error));
-                ("depth", short_field(ui, group, &mut form.depth, "trellis-clone-depth", "", 90.0))
+                ("depth", short_field(ui, group, &mut form.depth, "glowfly-clone-depth", "", 90.0))
             }
             LimitKind::Since => {
                 let help = "Commits made before this day are left out.";
                 let group = FieldGroup::new("Since").help(help).message(&form.touched, "since", problems.since.map(Message::error));
-                ("since", short_field(ui, group, &mut form.since, "trellis-clone-since", "YYYY-MM-DD", 130.0))
+                ("since", short_field(ui, group, &mut form.since, "glowfly-clone-since", "YYYY-MM-DD", 130.0))
             }
         };
         form_message::track(&mut form.touched, key, &r);
         let help = "Only this branch is downloaded. Leave it empty for the remote's default branch.";
         let group = FieldGroup::new("Branch").help(help).message(&form.touched, "branch", problems.branch.map(Message::error));
-        let r = short_field(ui, group, &mut form.branch, "trellis-clone-branch", "Remote's default branch", 240.0);
+        let r = short_field(ui, group, &mut form.branch, "glowfly-clone-branch", "Remote's default branch", 240.0);
         form_message::track(&mut form.touched, "branch", &r);
     });
 }
@@ -94,15 +94,15 @@ fn sparse_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, blo
     if !form.sparse {
         return;
     }
-    ui.indent("trellis-clone-sparse-options", |ui| {
+    ui.indent("glowfly-clone-sparse-options", |ui| {
         let shown = form.problems_now(today).sparse.map(Message::error);
         let group = FieldGroup::new("Folders to check out, one per line")
             .help("Files at the top of the repository are always checked out. Leave the list empty to check out only those.")
             .message(&form.touched, "sparse", shown);
-        let r = group.show(ui, |ui| ui.add(TextField::multiline(&mut form.sparse_folders, 4).id(Id::new("trellis-clone-sparse"))));
+        let r = group.show(ui, |ui| ui.add(TextField::multiline(&mut form.sparse_folders, 4).id(Id::new("glowfly-clone-sparse"))));
         form_message::track(&mut form.touched, "sparse", &r);
         controls::checkbox(ui, &mut form.partial, "Download file contents only for these folders (partial clone)");
-        note(ui, "Faster for large repositories. Trellis can't show changes to files that weren't downloaded.");
+        note(ui, "Faster for large repositories. Glowfly can't show changes to files that weren't downloaded.");
     });
 }
 
@@ -156,7 +156,7 @@ fn body(
             let shown = form.problems(today, true).url.map(Message::error);
             let group = FieldGroup::new("Repository URL").message(&form.touched, "url", shown);
             let hint = "https://github.com/owner/repo.git";
-            let url = group.show(ui, |ui| ui.add(TextField::new(&mut form.url).id(Id::new("trellis-clone-url")).hint(hint)));
+            let url = group.show(ui, |ui| ui.add(TextField::new(&mut form.url).id(Id::new("glowfly-clone-url")).hint(hint)));
             form_message::track(&mut form.touched, "url", &url);
         }
         CloneSource::Service => close |= super::clone_service::show(ui, cx.t, form, connections, cx.keyboard, msgs),
@@ -164,7 +164,7 @@ fn body(
     let shown = form.problems_now(today).folder.map(Message::error);
     let mut browse = false;
     let edit = FieldGroup::new("Clone into folder").message(&form.touched, "folder", shown).show(ui, |ui| {
-        let field = TextField::new(&mut form.parent).id(Id::new("trellis-clone-parent")).hint("Folder the clone goes in");
+        let field = TextField::new(&mut form.parent).id(Id::new("glowfly-clone-parent")).hint("Folder the clone goes in");
         let (r, b) = text_field::with_button(ui, field, buttons::secondary("Browse…"));
         browse = b.clicked();
         r

@@ -62,7 +62,7 @@ const LOGGING_HELPER: &str = "!f() { echo \"$1\" >> log.txt; cat >> log.txt; }; 
 /// from the developer's real credential store).
 fn isolated(name: &str) -> (PathBuf, String) {
     let dir = scratch_repo(name);
-    let global = crate::paths::temp_dir().join(format!("trellis-test-{name}-{}.gitconfig", std::process::id()));
+    let global = crate::paths::temp_dir().join(format!("glowfly-test-{name}-{}.gitconfig", std::process::id()));
     let _ = std::fs::remove_file(&global);
     (dir, global.to_string_lossy().into_owned())
 }

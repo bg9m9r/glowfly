@@ -1,4 +1,4 @@
-//! What repository trust asks the runner (runner/trust.rs): reading repositories Trellis just
+//! What repository trust asks the runner (runner/trust.rs): reading repositories Glowfly just
 //! made from a trusted one, so they can be trusted too (update/trust_inherit.rs).
 
 use crate::state::trust::InheritKind;

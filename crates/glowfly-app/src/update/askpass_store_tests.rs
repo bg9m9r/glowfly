@@ -69,7 +69,7 @@ fn sign_in(st: &mut AppState, id: u64, host: &str, password: &str) {
 
 #[test]
 fn a_sign_in_that_worked_is_saved_once() {
-    let workdir = glowfly_core::paths::temp_dir().join("trellis-remember-repo");
+    let workdir = glowfly_core::paths::temp_dir().join("glowfly-remember-repo");
     for cwd in [Some(workdir.clone()), None] {
         let mut st = state();
         start_job(&mut st, cwd.clone());

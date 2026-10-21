@@ -10,7 +10,7 @@ use glowfly_core::external_tools::compare::{diff_files, fingerprint, merge_files
 use glowfly_core::external_tools::{self, DiffVars, Launch, MergeVars, temp};
 use glowfly_core::repo;
 
-/// What to say about a failure to prepare the files: the bare reason for the ones Trellis
+/// What to say about a failure to prepare the files: the bare reason for the ones Glowfly
 /// words itself ("no changes in a.txt", "a.txt is a submodule; …").
 pub(super) fn reason(e: &Error) -> String {
     match e {
@@ -105,7 +105,7 @@ mod tests {
         assert_eq!(merge(&dir, "git", "--version"), MergeEnd::Unchanged);
         let e = merge(&dir, "git", "no-such-command {output}");
         assert!(matches!(&e, MergeEnd::Exited { code: Some(c), changed: false, .. } if *c != 0), "{e:?}");
-        let missing = format!("trellis-no-such-merge-tool-{}", std::process::id());
+        let missing = format!("glowfly-no-such-merge-tool-{}", std::process::id());
         assert_eq!(merge(&dir, &missing, "{output}"), MergeEnd::Failed(LaunchFailure::NotFound));
         // Writes theirs into the working file without resolving the index entry.
         assert_eq!(merge(&dir, "git", "checkout --theirs -- {output}"), MergeEnd::Saved);
@@ -133,7 +133,7 @@ mod tests {
             Some(Msg::Tools(ToolsMsg::LaunchFailed { kind: ToolKind::DiffTool, target, failure, .. })) => (target, failure),
             _ => panic!("expected a diff tool failure"),
         };
-        let missing = format!("trellis-no-such-diff-tool-{}", std::process::id());
+        let missing = format!("glowfly-no-such-diff-tool-{}", std::process::id());
         assert_eq!(failure(open_diff(req(&missing))), ("a.txt".to_owned(), LaunchFailure::NotFound));
         let nothing = DiffToolRequest { target: DiffTarget::Staged("missing.txt".into()), ..req("git") };
         assert_eq!(failure(open_diff(nothing)), ("missing.txt".to_owned(), LaunchFailure::Files("no changes in missing.txt".into())));

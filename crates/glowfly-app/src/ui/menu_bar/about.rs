@@ -1,4 +1,4 @@
-//! Help > About Trellis (`Modal::About`): the version, licence and git in use and the project's
+//! Help > About Glowfly (`Modal::About`): the version, licence and git in use and the project's
 //! website. Third-party notices… opens the bundled licenses in their own dialog
 //! (`notices.rs`).
 
@@ -9,12 +9,12 @@ use crate::ui::dialog_frame::{Cx, Dialog, Footer};
 use crate::ui::widgets::buttons;
 use eframe::egui;
 
-/// Draws the dialog for Trellis `version` (`menu_bar::VERSION`; tests pass a fixed one so a
+/// Draws the dialog for Glowfly `version` (`menu_bar::VERSION`; tests pass a fixed one so a
 /// release doesn't change their images) in `cx.t`; true when it should close. The copied version
 /// info stays English, for bug reports.
 pub(crate) fn about(ui: &mut egui::Ui, cx: Cx, git: &GitState, version: &str, msgs: &mut Vec<Msg>) -> bool {
     let t = cx.t;
-    let mut d = Dialog::new(cx, "Trellis").subtitle(t.trf("about.version", &[("version", &version)])).begin(ui);
+    let mut d = Dialog::new(cx, "Glowfly").subtitle(t.trf("about.version", &[("version", &version)])).begin(ui);
     d.body(ui, |ui| {
         ui.label(t.tr("about.tagline"));
         ui.label(t.trf("about.license", &[("license", &LICENSE)]));

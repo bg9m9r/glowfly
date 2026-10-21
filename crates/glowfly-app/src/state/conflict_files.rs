@@ -43,7 +43,7 @@ impl ConflictFiles {
     }
 }
 
-/// The conflicted paths Trellis can name to git (not `Hazard::NotUtf8`), in list order.
+/// The conflicted paths Glowfly can name to git (not `Hazard::NotUtf8`), in list order.
 pub fn conflicted_paths(snap: &Snapshot) -> Vec<String> {
     snap.unstaged.iter().filter(|f| f.status == '!' && !matches!(f.hazard, Some(Hazard::NotUtf8(_)))).map(|f| f.path.clone()).collect()
 }

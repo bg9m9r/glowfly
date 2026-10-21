@@ -25,7 +25,7 @@ impl DesktopNote {
         Self {
             kind: NoteKind::Confirm,
             title: "Desktop notifications are on".into(),
-            body: "Trellis will show finished jobs and behind alerts here while its window is in the background.".into(),
+            body: "Glowfly will show finished jobs and behind alerts here while its window is in the background.".into(),
         }
     }
 }

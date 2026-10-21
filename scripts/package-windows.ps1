@@ -14,7 +14,7 @@ $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
 $version = $Tag -replace '^[vV]', ''
-$name = "trellis-$Tag-$Target"
+$name = "glowfly-$Tag-$Target"
 $bin = "target/$Target/release"
 $dist = "dist"
 New-Item -ItemType Directory -Force $dist | Out-Null
@@ -22,7 +22,7 @@ New-Item -ItemType Directory -Force $dist | Out-Null
 # --- Signing ---------------------------------------------------------------------------------
 $pfx = $null
 if ($env:WINDOWS_CERTIFICATE -and $env:WINDOWS_CERTIFICATE_PASSWORD) {
-    $pfx = Join-Path $env:RUNNER_TEMP "trellis-signing.pfx"
+    $pfx = Join-Path $env:RUNNER_TEMP "glowfly-signing.pfx"
     [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
 } else {
     Write-Host "::notice::Windows code signing skipped (no WINDOWS_CERTIFICATE)"
@@ -40,7 +40,7 @@ function Find-SignTool {
 function Add-Signature([string]$path) {
     if (-not $pfx) { return }
     $signtool = Find-SignTool
-    & $signtool sign /f $pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 /d Trellis $path
+    & $signtool sign /f $pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 /d Glowfly $path
     if ($LASTEXITCODE -ne 0) { throw "signtool failed for $path" }
 }
 
@@ -88,7 +88,7 @@ function ConvertTo-Rtf([string]$text) {
     $body = ($paras | Where-Object { $_ }) -join "\par\par`n"
     "{\rtf1\ansi\deff0{\fonttbl{\f0 Segoe UI;}}\fs18`n$body\par`n}"
 }
-$intro = "Trellis is available under the MIT License or the Apache License, Version 2.0, at your option. " +
+$intro = "Glowfly is available under the MIT License or the Apache License, Version 2.0, at your option. " +
     "Both are installed with it (LICENSE-MIT and LICENSE-APACHE), and THIRD-PARTY-NOTICES.md lists the licenses " +
     "of the code it includes."
 $rtf = Join-Path $root "$dist\license.rtf"
@@ -103,7 +103,7 @@ $defines = @(
 )
 if (Test-Path CHANGELOG.md) { $defines += @("-d", "HasChangelog=1") }
 $exts = @("-ext", "WixToolset.UI.wixext/$wixVersion", "-ext", "WixToolset.Util.wixext/$wixVersion")
-wix build -arch x64 @exts @defines -o $msi packaging/windows/trellis.wxs packaging/windows/pages.wxs
+wix build -arch x64 @exts @defines -o $msi packaging/windows/glowfly.wxs packaging/windows/pages.wxs
 if ($LASTEXITCODE -ne 0) { throw "wix build failed" }
 Remove-Item -ErrorAction SilentlyContinue (Join-Path $dist "$name.wixpdb"), $rtf
 Add-Signature $msi

@@ -251,7 +251,7 @@ fn check_resume_problems() {
     assert_eq!(check(&dir, &r), Err(P::TagExists("v1.2.0".into())));
     git(&dir, &["tag", "-d", "v1.2.0"]);
 
-    let linked = crate::paths::temp_dir().join(format!("trellis-test-gitflow-resume-linked-{}", std::process::id()));
+    let linked = crate::paths::temp_dir().join(format!("glowfly-test-gitflow-resume-linked-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&linked);
     git(&dir, &["worktree", "add", "-q", &linked.display().to_string(), "develop"]);
     assert_eq!(check(&dir, &r), Err(P::CheckedOutElsewhere("develop".into())));

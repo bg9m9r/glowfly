@@ -7,7 +7,7 @@ use crate::state::git_env::GitState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS};
 
-/// Help > Trellis website.
+/// Help > Glowfly website.
 pub const WEBSITE: &str = env!("CARGO_PKG_REPOSITORY");
 /// Help > Report an issue.
 pub const ISSUES: &str = concat!(env!("CARGO_PKG_REPOSITORY"), "/issues");
@@ -87,10 +87,10 @@ pub fn git_line(git: &GitState) -> Option<String> {
     Some(format!("Git {}", glowfly_core::git_version::show(v)))
 }
 
-/// About's Copy version info: "Trellis 0.1.0" and the git line with where git is, for bug
+/// About's Copy version info: "Glowfly 0.1.0" and the git line with where git is, for bug
 /// reports.
 pub fn version_info(git: &GitState) -> String {
-    let mut out = format!("Trellis {VERSION}");
+    let mut out = format!("Glowfly {VERSION}");
     if let Some(line) = git_line(git) {
         out.push('\n');
         out.push_str(&line);

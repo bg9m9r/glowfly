@@ -39,7 +39,7 @@ impl Patterns {
 /// the table doesn't know.
 const ISO: Patterns = Patterns::new("YYYY-MM-DD", "YYYY-MM-DD", "YYYY-MM-DD HH:mm", "YYYY-MM-DD HH:mm:ss");
 
-/// Trellis's own choice of each language's usual order and separators, keyed "lang_REGION" (a
+/// Glowfly's own choice of each language's usual order and separators, keyed "lang_REGION" (a
 /// regional override, looked up first) or "lang" (every other region of that language).
 /// Japanese, Chinese and Korean use digits only: the bundled fonts have no CJK or Hangul glyphs.
 const TABLE: &[(&str, Patterns)] = &[

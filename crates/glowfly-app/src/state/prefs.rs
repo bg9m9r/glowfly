@@ -8,7 +8,7 @@ use glowfly_core::i18n::Lang;
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PrefPage {
     General,
-    /// Which git program Trellis runs.
+    /// Which git program Glowfly runs.
     Git,
     Profile,
     Integrations,

@@ -50,7 +50,7 @@ fn name_field(
     let shown = check(&f.name).filter(|p| *p != RemoteNameProblem::Empty).and_then(|p| problem(p.message()));
     ui.add_enabled_ui(enabled, |ui| {
         let group = FieldGroup::new("Remote name").message(&f.touched, "name", shown);
-        let (r, e) = field(ui, group, &mut f.name, "trellis-fork-create-name", "fork");
+        let (r, e) = field(ui, group, &mut f.name, "glowfly-fork-create-name", "fork");
         form_message::track(&mut f.touched, "name", &r);
         if focus && ui.memory(|m| m.focused().is_none()) {
             r.request_focus();

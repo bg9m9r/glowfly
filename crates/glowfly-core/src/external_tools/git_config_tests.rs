@@ -115,7 +115,7 @@ fn repository_values_are_marked() {
 
 #[test]
 fn builtin_names_follow_gits_tool_folder() {
-    let dir = crate::paths::temp_dir().join(format!("trellis-mergetools-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-mergetools-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("a")).unwrap();
     for f in ["meld", "vimdiff", "a/meld"] {
@@ -164,7 +164,7 @@ fn read_honours_includes_and_scopes() {
     let exec = gitcli::read(&outside, &gitcli::args(&["--exec-path"])).stdout.trim().to_owned();
     if PathBuf::from(&exec).join("mergetools").is_dir() {
         // libgit2 won't set a key an included file sets; git does.
-        crate::testutil::git(&dir, &["config", "merge.tool", "trellis-no-such-tool"]);
+        crate::testutil::git(&dir, &["config", "merge.tool", "glowfly-no-such-tool"]);
         let merge = read(&dir, true, &env).unwrap().merge.unwrap();
         assert_eq!(merge.run, GitToolRun::Unknown);
     } else {

@@ -18,7 +18,7 @@ fn run_all(dir: &Path, cmds: &[Vec<String>]) {
     }
 }
 
-/// Runs a hard reset to `rev` the way Trellis does and returns what it recorded.
+/// Runs a hard reset to `rev` the way Glowfly does and returns what it recorded.
 fn hard_reset(dir: &Path, rev: &str) -> Option<Action> {
     let kind = UndoKind::Reset(ResetMode::Hard);
     let b = before(dir, &kind).unwrap();

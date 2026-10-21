@@ -8,7 +8,7 @@ fn finder(known: Vec<PathBuf>) -> impl Fn(&Path) -> Option<PathBuf> {
 
 #[test]
 fn sh_is_bin_sh_or_the_one_beside_git() {
-    let root = crate::paths::temp_dir().join("trellis-sh-git");
+    let root = crate::paths::temp_dir().join("glowfly-sh-git");
     assert_eq!(sh_for(false, None, &finder(vec![])), Ok(PathBuf::from("/bin/sh")));
     let bin_sh = root.join("bin").join("sh.exe");
     for git in [root.join("cmd").join("git.exe"), root.join("bin").join("git.exe"), root.join("mingw64").join("bin").join("git.exe")] {
@@ -23,7 +23,7 @@ fn sh_is_bin_sh_or_the_one_beside_git() {
 
 /// A fresh folder for a run.
 fn folder(name: &str) -> PathBuf {
-    let dir = crate::paths::temp_dir().join(format!("trellis-sh-{name}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-sh-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir

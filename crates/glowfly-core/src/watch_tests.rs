@@ -42,7 +42,7 @@ fn git_internals_are_classified() {
         "FETCH_HEAD",
         "ORIG_HEAD",
         "COMMIT_EDITMSG",
-        "TRELLIS_COMMIT_EDITMSG",
+        "GLOWFLY_COMMIT_EDITMSG",
         "config.lock",
         "config.worktree.lock",
         "worktrees/wt/config.worktree",
@@ -72,7 +72,7 @@ fn submodule_repositories_change_the_status() {
         assert_eq!(c(none), Change::None, "{none}");
     }
 
-    let wd = crate::paths::temp_dir().join("trellis-watch-nested-git-missing").join("wd");
+    let wd = crate::paths::temp_dir().join("glowfly-watch-nested-git-missing").join("wd");
     let paths = WatchPaths::new(&wd, &wd.join(".git"));
     let x = wd.join("vendor").join("x").join(".git");
     let mut never = |_: &str| false;
@@ -106,9 +106,9 @@ fn a_linked_worktree_follows_the_refs_it_shares() {
         assert_eq!(c(none), Change::None, "{none}");
     }
     // Classified through WatchPaths: the linked worktree's own git dir first, then the common one.
-    let common = crate::paths::temp_dir().join("trellis-watch-common-missing").join(".git");
+    let common = crate::paths::temp_dir().join("glowfly-watch-common-missing").join(".git");
     let git_dir = common.join("worktrees").join("wt");
-    let wd = crate::paths::temp_dir().join("trellis-watch-common-missing-wt");
+    let wd = crate::paths::temp_dir().join("glowfly-watch-common-missing-wt");
     let paths = WatchPaths::new(&wd, &git_dir).with_common(&common);
     let mut never = |_: &str| false;
     assert_eq!(paths.classify(&common.join("refs/heads/x"), Touch::Other, &mut never), Change::Full);
@@ -165,7 +165,7 @@ fn the_shallow_file_reloads_everything() {
 
 #[test]
 fn worktree_paths_are_classified() {
-    let wd = crate::paths::temp_dir().join("trellis-watch-classify-missing").join("wd");
+    let wd = crate::paths::temp_dir().join("glowfly-watch-classify-missing").join("wd");
     let paths = WatchPaths::new(&wd, &wd.join(".git"));
     let mut seen = Vec::new();
     let mut ignored = |rel: &str| {
@@ -177,12 +177,12 @@ fn worktree_paths_are_classified() {
     assert_eq!(paths.classify(&wd.join("vendor/sub/.git/index"), Touch::Modified, &mut ignored), Change::None);
     assert_eq!(paths.classify(&wd.join(".git").join("index"), Touch::Modified, &mut ignored), Change::Status, "the git rule wins");
     assert_eq!(paths.classify(&wd.join("target").join("debug").join("x.o"), Touch::Modified, &mut ignored), Change::None);
-    let outside = crate::paths::temp_dir().join("trellis-watch-elsewhere").join("a.rs");
+    let outside = crate::paths::temp_dir().join("glowfly-watch-elsewhere").join("a.rs");
     assert_eq!(paths.classify(&outside, Touch::Modified, &mut ignored), Change::None);
     assert_eq!(seen, ["src/a.rs", "target/debug/x.o"], "relative and '/'-separated");
 
     // A linked worktree: the git dir lives elsewhere and `.git` is a file in the workdir.
-    let gd = crate::paths::temp_dir().join("trellis-watch-classify-missing").join("main").join(".git").join("worktrees").join("wd");
+    let gd = crate::paths::temp_dir().join("glowfly-watch-classify-missing").join("main").join(".git").join("worktrees").join("wd");
     let linked = WatchPaths::new(&wd, &gd);
     assert_eq!(linked.classify(&gd.join("HEAD"), Touch::Modified, &mut |_| false), Change::Full);
     assert_eq!(linked.classify(&wd.join(".git"), Touch::Modified, &mut |_| false), Change::None);
@@ -194,7 +194,7 @@ fn worktree_paths_are_classified() {
 
 #[test]
 fn ignore_and_attribute_files_read_the_whole_status() {
-    let wd = crate::paths::temp_dir().join("trellis-watch-whole-missing").join("wd");
+    let wd = crate::paths::temp_dir().join("glowfly-watch-whole-missing").join("wd");
     let paths = WatchPaths::new(&wd, &wd.join(".git"));
     let mut never = |_: &str| false;
     for rel in [".gitignore", "sub/.gitignore", ".gitattributes", "a/b/.gitattributes", ".gitmodules"] {
@@ -211,7 +211,7 @@ fn ignore_and_attribute_files_read_the_whole_status() {
 #[test]
 fn a_name_that_is_not_utf8_reads_the_whole_status() {
     use std::os::unix::ffi::OsStrExt;
-    let wd = crate::paths::temp_dir().join("trellis-watch-bytes-missing").join("wd");
+    let wd = crate::paths::temp_dir().join("glowfly-watch-bytes-missing").join("wd");
     let paths = WatchPaths::new(&wd, &wd.join(".git"));
     let name = std::ffi::OsStr::from_bytes(b"caf\xe9.txt");
     assert_eq!(paths.classify_path(&wd.join("dir").join(name), Touch::Modified, &mut |_| false), (Change::Status, None));
@@ -238,7 +238,7 @@ fn ignores_follow_gitignore() {
     ig.clear();
     assert!(ig.dirs.is_empty());
 
-    let plain = crate::paths::temp_dir().join(format!("trellis-watch-plain-{}", std::process::id()));
+    let plain = crate::paths::temp_dir().join(format!("glowfly-watch-plain-{}", std::process::id()));
     std::fs::create_dir_all(&plain).unwrap();
     let mut none = Ignores::open(&plain);
     assert!(!none.is_ignored("target/debug/x.o"));
@@ -249,7 +249,7 @@ fn ignores_follow_gitignore() {
 
 #[test]
 fn journal_notes_never_reload() {
-    for p in ["trellis", "trellis/journal.jsonl", "worktrees/wt/trellis", "worktrees/wt/trellis/journal.jsonl"] {
+    for p in ["glowfly", "glowfly/journal.jsonl", "worktrees/wt/glowfly", "worktrees/wt/glowfly/journal.jsonl"] {
         for touch in [Touch::Other, Touch::Modified] {
             assert_eq!(git_change(Path::new(p), touch), Change::None, "{p} {touch:?}");
         }

@@ -6,7 +6,7 @@ use crate::paths::temp_dir;
 
 /// A fresh folder for one test.
 fn fixture(name: &str) -> PathBuf {
-    let dir = temp_dir().join(format!("trellis-git-program-{name}-{}", std::process::id()));
+    let dir = temp_dir().join(format!("glowfly-git-program-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir

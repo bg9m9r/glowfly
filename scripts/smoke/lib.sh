@@ -57,8 +57,8 @@ collect() {
   import -window root "$dir/screen.png" 2>/dev/null
   [ -f "${PROBE:-}" ] && cp "$PROBE" "$dir/probe.json"
   [ -f "$PASS_OUT/app.log" ] && [ "$dir" != "$PASS_OUT" ] && cp "$PASS_OUT/app.log" "$dir/app.log"
-  [ -n "${XDG_STATE_HOME:-}" ] && cp "$XDG_STATE_HOME"/trellis/logs/* "$dir/" 2>/dev/null
-  [ -n "${XDG_CONFIG_HOME:-}" ] && cp "$XDG_CONFIG_HOME/trellis/settings.json" "$dir/settings.json" 2>/dev/null
+  [ -n "${XDG_STATE_HOME:-}" ] && cp "$XDG_STATE_HOME"/glowfly/logs/* "$dir/" 2>/dev/null
+  [ -n "${XDG_CONFIG_HOME:-}" ] && cp "$XDG_CONFIG_HOME/glowfly/settings.json" "$dir/settings.json" 2>/dev/null
   if [ -d "${REPO:-}/.git" ]; then
     git -C "$REPO" log --all --oneline >"$dir/git-log.txt" 2>&1
     git -C "$REPO" status >"$dir/git-status.txt" 2>&1
@@ -101,7 +101,7 @@ probe_wait() {
 
 # settings_wait <description> <jq filter> [jq args...]: the same on settings.json.
 settings_wait() {
-  local desc=$1 filter=$2 file="$XDG_CONFIG_HOME/trellis/settings.json"
+  local desc=$1 filter=$2 file="$XDG_CONFIG_HOME/glowfly/settings.json"
   shift 2
   local deadline=$((SECONDS + SMOKE_TIMEOUT))
   until [ -s "$file" ] && jq -e "$@" "$filter" "$file" >/dev/null 2>&1; do

@@ -94,7 +94,7 @@ fn ctrl_only_chords_want_real_ctrl_everywhere() {
         assert_eq!(press(&mut h, shift(m), Key::Tab), ["cycle -1"], "{m:?}");
         assert_eq!(press(&mut h, m, Key::Backtick), ["terminal"], "{m:?}");
     }
-    // Cmd+Tab switches apps and Cmd+` windows on macOS; Trellis leaves them alone.
+    // Cmd+Tab switches apps and Cmd+` windows on macOS; Glowfly leaves them alone.
     assert_eq!(press(&mut h, MAC_CMD, Key::Tab), Vec::<String>::new());
     assert_eq!(press(&mut h, MAC_CMD, Key::Backtick), Vec::<String>::new());
 }

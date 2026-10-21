@@ -52,7 +52,7 @@ pub(in crate::ui) fn staged_header_items(ui: &mut egui::Ui, t: Lang, msgs: &mut 
 }
 
 /// Opens the Create patch dialog on this working-tree row alone (its staged or unstaged
-/// changes); none for a conflicted row, disabled for a row Trellis can't name safely.
+/// changes); none for a conflicted row, disabled for a row Glowfly can't name safely.
 pub(in crate::ui) fn patch_file_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, f: &FileEntry, staged: bool) {
     if f.status == '!' {
         return;
@@ -63,7 +63,7 @@ pub(in crate::ui) fn patch_file_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<
 }
 
 /// Opens the Stash dialog on Selected files with only `f` ticked; disabled while any file is
-/// conflicted, since git can't stash then, and for a row Trellis can't stash safely.
+/// conflicted, since git can't stash then, and for a row Glowfly can't stash safely.
 pub(in crate::ui) fn stash_file_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, snap: &Snapshot, f: &FileEntry) {
     let conflicted = snap.unstaged.iter().any(|f| f.status == '!').then(|| t.tr("files.menu.resolve_conflicted"));
     let unsafe_path = f.hazard.as_ref().map(|_| t.tr("files.menu.unsafe_stash"));

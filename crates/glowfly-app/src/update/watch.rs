@@ -1,5 +1,5 @@
 //! Live working-tree updates: keeping the file watcher on the active tab's repository, and
-//! refreshing when it reports changes made outside Trellis.
+//! refreshing when it reports changes made outside Glowfly.
 
 use crate::effect::{Effect, WatchTarget};
 use crate::keymap::{BindingId, Keymap};
@@ -13,10 +13,10 @@ pub(super) fn refresh_by_hand(keys: &Keymap) -> String {
     keys.hint(BindingId::Refresh).map_or_else(|| "choose Refresh".to_owned(), |k| format!("press {k}"))
 }
 
-/// What Trellis says when it can't watch a repository.
+/// What Glowfly says when it can't watch a repository.
 pub(super) fn failed_text(keys: &Keymap) -> String {
     format!(
-        "Trellis can't watch this repository for changes, so changes made outside Trellis show up when its window regains focus or you {}.",
+        "Glowfly can't watch this repository for changes, so changes made outside Glowfly show up when its window regains focus or you {}.",
         refresh_by_hand(keys)
     )
 }
@@ -28,7 +28,7 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
             if !st.settings.watch_files || st.snap.is_none() {
                 return;
             }
-            // Trellis' own job refreshes when it is done.
+            // Glowfly's own job refreshes when it is done.
             let here = st.workdir();
             if let (Some(job), Some(here)) = (st.job.as_ref().and_then(|j| j.workdir.as_deref()), here.as_deref())
                 && glowfly_core::paths::same_spelling(job, here)
@@ -84,11 +84,11 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
 }
 
-/// What Trellis says about a repository on a network or virtual file system.
+/// What Glowfly says about a repository on a network or virtual file system.
 pub(super) fn remote_text(workdir: &std::path::Path, kind: &str, keys: &Keymap) -> String {
     let secs = crate::state::watch::REMOTE_POLL.as_secs();
     format!(
-        "{} is on {kind}, which may not report changes made from another computer or system. Trellis re-reads it every {secs} seconds while its window is focused, when the window regains focus and when you {}.",
+        "{} is on {kind}, which may not report changes made from another computer or system. Glowfly re-reads it every {secs} seconds while its window is focused, when the window regains focus and when you {}.",
         glowfly_core::native_path::shown(workdir),
         refresh_by_hand(keys)
     )
@@ -111,7 +111,7 @@ pub(super) fn poll(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     }
 }
 
-/// Trellis just changed the repository itself (and refreshes): events up to now are its own.
+/// Glowfly just changed the repository itself (and refreshes): events up to now are its own.
 pub(super) fn settled(st: &mut AppState, now: Instant) {
     st.watch.quiet_until = Some(now + WATCH_SETTLE);
 }

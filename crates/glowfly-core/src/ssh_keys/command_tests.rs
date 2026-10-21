@@ -1,4 +1,4 @@
-//! core.sshCommand: the value Trellis writes, reading values back, and writing them with git.
+//! core.sshCommand: the value Glowfly writes, reading values back, and writing them with git.
 
 use super::tests::temp;
 use super::*;
@@ -40,7 +40,7 @@ fn reads_the_written_form_back() {
         (r"/home/ada/odd\name", false),
     ] {
         let value = ssh_command_for_os(Path::new(path), windows).unwrap();
-        let KeyChoice::Key(back) = parse_ssh_command(&value) else { panic!("{value}: not the Trellis form") };
+        let KeyChoice::Key(back) = parse_ssh_command(&value) else { panic!("{value}: not the Glowfly form") };
         let want = if windows { PathBuf::from(path.replace('\\', "/")) } else { PathBuf::from(path) };
         assert!(same_spelling(&back, &want), "{value}: {back:?}");
     }
@@ -57,7 +57,7 @@ fn other_commands_are_flagged() {
     };
     assert_eq!(other("ssh -v"), None);
     assert_eq!(other("ssh -i ~/.ssh/k"), Some(PathBuf::from("~/.ssh/k")));
-    assert_eq!(other("ssh -i ~/.ssh/k -o IdentitiesOnly=yes"), Some(PathBuf::from("~/.ssh/k")), "an unquoted ~ isn't Trellis's");
+    assert_eq!(other("ssh -i ~/.ssh/k -o IdentitiesOnly=yes"), Some(PathBuf::from("~/.ssh/k")), "an unquoted ~ isn't Glowfly's");
     assert_eq!(other("ssh -i 'a' -o IdentitiesOnly=yes -v"), Some(PathBuf::from("a")));
     assert_eq!(other("ssh -i 'a"), None, "unbalanced quote");
     assert_eq!(other("ssh -i $HOME/.ssh/k -o IdentitiesOnly=yes"), None, "expanded by sh");

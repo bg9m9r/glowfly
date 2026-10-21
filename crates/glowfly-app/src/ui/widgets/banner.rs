@@ -29,7 +29,7 @@ pub enum BannerKind {
     Error,
     /// Something is running.
     Progress,
-    /// Trellis waits on you (files are conflicted): the coral, with the warning mark.
+    /// Glowfly waits on you (files are conflicted): the coral, with the warning mark.
     NeedsYou,
 }
 

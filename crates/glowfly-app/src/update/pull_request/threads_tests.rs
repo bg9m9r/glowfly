@@ -174,7 +174,7 @@ fn thread_reply_for_other_workdir_is_only_logged() {
     let before = view(&st).loaded().cloned();
     let mut msg = reply_msg(&st, PrReply::RepliedToThread { thread: "T1".into(), result: Ok(comment(77, 9)) });
     if let PullRequestMsg::Replied { workdir, .. } = &mut msg {
-        *workdir = glowfly_core::paths::temp_dir().join("trellis-elsewhere");
+        *workdir = glowfly_core::paths::temp_dir().join("glowfly-elsewhere");
     }
     run(&mut st, msg);
     assert_eq!(view(&st).loaded().cloned(), before, "the page is unchanged");

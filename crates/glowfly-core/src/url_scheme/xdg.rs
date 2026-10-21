@@ -1,6 +1,6 @@
 //! The desktop entry and `xdg-mime` on Linux and the other XDG desktops.
 
-use super::{DESKTOP_FILE, NO_XDG_MIME, SCHEME, SchemeStatus};
+use super::{DESKTOP_FILE, NO_XDG_MIME, OLD_SCHEME, SCHEME, SchemeStatus};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -45,8 +45,8 @@ fn refresh_database(apps: &Path) {
     let _ = cmd.output();
 }
 
-fn mime_type() -> String {
-    format!("x-scheme-handler/{SCHEME}")
+fn mime_type(scheme: &str) -> String {
+    format!("x-scheme-handler/{scheme}")
 }
 
 /// The applications folders of `XDG_DATA_DIRS` (default `/usr/local/share:/usr/share`), where
@@ -57,7 +57,7 @@ fn system_apps_dirs() -> Vec<PathBuf> {
 }
 
 pub(super) fn status(exe: &Path) -> Result<SchemeStatus, String> {
-    let default = xdg_mime(&["query", "default", &mime_type()])?;
+    let default = xdg_mime(&["query", "default", &mime_type(SCHEME)])?;
     // The user's own entry wins over a packaged one, as desktops look it up.
     let ours = apps_dir().into_iter().chain(system_apps_dirs()).find_map(|a| std::fs::read_to_string(a.join(DESKTOP_FILE)).ok());
     Ok(super::decide_xdg(&default, ours.as_deref(), exe))
@@ -67,7 +67,8 @@ pub(super) fn register(exe: &Path) -> Result<SchemeStatus, String> {
     let apps = apps_dir().ok_or("There is no data folder for desktop entries (HOME isn't set).")?;
     write_desktop_file(&apps, exe).map_err(|e| format!("Couldn't write {}: {e}", apps.join(DESKTOP_FILE).display()))?;
     refresh_database(&apps);
-    xdg_mime(&["default", DESKTOP_FILE, &mime_type()])?;
+    // Both schemes: trellis:// links from before the rename open here too.
+    xdg_mime(&["default", DESKTOP_FILE, &mime_type(SCHEME), &mime_type(OLD_SCHEME)])?;
     status(exe)
 }
 
@@ -86,12 +87,12 @@ mod tests {
 
     #[test]
     fn the_desktop_file_is_written_and_removed() {
-        let apps = crate::paths::temp_dir().join(format!("trellis-xdg-apps-{}", std::process::id()));
+        let apps = crate::paths::temp_dir().join(format!("glowfly-xdg-apps-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&apps);
-        let exe = crate::paths::temp_dir().join("my tools").join("trellis");
+        let exe = crate::paths::temp_dir().join("my tools").join("glowfly");
         write_desktop_file(&apps, &exe).unwrap();
         let text = std::fs::read_to_string(apps.join(DESKTOP_FILE)).unwrap();
-        assert!(text.contains("MimeType=x-scheme-handler/trellis;"), "{text}");
+        assert!(text.contains("MimeType=x-scheme-handler/glowfly;x-scheme-handler/trellis;"), "{text}");
         assert_eq!(super::super::decide_xdg(DESKTOP_FILE, Some(&text), &exe), SchemeStatus::Registered);
         remove_desktop_file(&apps).unwrap();
         assert!(!apps.join(DESKTOP_FILE).exists());

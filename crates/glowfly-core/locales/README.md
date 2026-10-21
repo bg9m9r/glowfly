@@ -1,6 +1,6 @@
 # Translations
 
-Each file here is one language's text for the UI, compiled into Trellis
+Each file here is one language's text for the UI, compiled into Glowfly
 (`src/i18n/catalog.rs`). `en.json` is the base: a text missing from another language is shown
 in English, and a key missing from English too is shown as the key itself (the tests make sure
 neither happens in shipped code).

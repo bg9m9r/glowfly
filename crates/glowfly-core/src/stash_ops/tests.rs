@@ -20,7 +20,7 @@ fn split_message_cases() {
     assert_eq!(split_message("On main: login"), (Some("main"), "login"));
     assert_eq!(split_message("WIP on feature/a: 1a2b3c4 Add x"), (Some("feature/a"), "1a2b3c4 Add x"));
     assert_eq!(split_message("On (no branch): x"), (Some("(no branch)"), "x"));
-    assert_eq!(split_message("Trellis: discarded changes"), (None, "Trellis: discarded changes"));
+    assert_eq!(split_message("Glowfly: discarded changes"), (None, "Glowfly: discarded changes"));
     assert_eq!(split_message("On main:x"), (None, "On main:x"), "no space after the colon");
     assert_eq!(split_message("On : x"), (None, "On : x"), "no branch");
 }
@@ -29,7 +29,7 @@ fn split_message_cases() {
 fn edited_message_cases() {
     assert_eq!(edited_message("On main: a", "b").as_deref(), Some("On main: b"));
     assert_eq!(edited_message("WIP on main: abc s", "new").as_deref(), Some("On main: new"));
-    assert_eq!(edited_message("Trellis: discarded changes", "kept").as_deref(), Some("kept"));
+    assert_eq!(edited_message("Glowfly: discarded changes", "kept").as_deref(), Some("kept"));
     assert_eq!(edited_message("plain", "  a\n b\t c \r\n").as_deref(), Some("a b c"));
     assert_eq!(edited_message("On main: a", "").as_deref(), None);
     assert_eq!(edited_message("On main: a", " \n\t ").as_deref(), None);

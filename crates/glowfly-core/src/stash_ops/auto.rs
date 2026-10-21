@@ -1,4 +1,4 @@
-//! The stash Trellis makes before an operation that needs the uncommitted changes out of the way,
+//! The stash Glowfly makes before an operation that needs the uncommitted changes out of the way,
 //! and putting it back afterwards.
 //!
 //! The stash's message is fixed English text kept in the repository ("Auto-stash before checking
@@ -139,7 +139,7 @@ fn short(rev: &str) -> String {
     if rev.len() == 40 && rev.bytes().all(|b| b.is_ascii_hexdigit()) { rev[..7].to_owned() } else { rev.to_owned() }
 }
 
-/// Whether a stash list text was made by Trellis before an operation, or is git's own kept
+/// Whether a stash list text was made by Glowfly before an operation, or is git's own kept
 /// "autostash".
 pub fn is_auto_stash(list_text: &str) -> bool {
     split_message(list_text).1.starts_with(AUTO_STASH_PREFIX) || list_text == GIT_AUTOSTASH

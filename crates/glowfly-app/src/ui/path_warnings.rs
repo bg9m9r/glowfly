@@ -1,4 +1,4 @@
-//! Paths Trellis won't act on: the working-tree banner about paths one file system can't keep
+//! Paths Glowfly won't act on: the working-tree banner about paths one file system can't keep
 //! apart (and a `core.ignorecase` that disagrees with the disk), and the note after a file
 //! row's path saying why its actions are off.
 

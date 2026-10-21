@@ -54,7 +54,7 @@ fn a_fixture_repo_gets_the_marker_for_signing_commands() {
     let env = owned.as_slice();
     let commit = args(&["commit", "-m", "x"]);
 
-    let key = crate::paths::temp_dir().join("trellis-ssh-sign-env-key.pub");
+    let key = crate::paths::temp_dir().join("glowfly-ssh-sign-env-key.pub");
     let key_text = key.display().to_string();
     set_config(&dir, &[("gpg.format", "ssh"), ("user.signingkey", &key_text)]);
     let got = marker(&vars_for(&dir, &commit, env)).expect("a marker for commit");

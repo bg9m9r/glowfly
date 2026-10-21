@@ -1,4 +1,4 @@
-//! Trellis's journal notes: the file, its lines, trimming, and capturing the refs around an
+//! Glowfly's journal notes: the file, its lines, trimming, and capturing the refs around an
 //! operation.
 
 use super::notes::*;
@@ -52,7 +52,22 @@ fn every_kind_round_trips_through_the_file() {
         append(&dir, n).unwrap();
     }
     assert_eq!(read(&dir), notes);
-    assert!(dir.join(".git").join("trellis").join("journal.jsonl").is_file(), "in the git dir");
+    assert!(dir.join(".git").join("glowfly").join("journal.jsonl").is_file(), "in the git dir");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn notes_written_as_trellis_move_to_the_glowfly_folder() {
+    let dir = scratch_repo("journal-notes-trellis");
+    let first = note(1, every_op().remove(0));
+    append(&dir, &first).unwrap();
+    let (new, old) = (dir.join(".git").join("glowfly"), dir.join(".git").join("trellis"));
+    std::fs::rename(&new, &old).unwrap();
+    assert_eq!(read(&dir), vec![first.clone()], "read from the old folder, moving it");
+    assert!(new.join("journal.jsonl").is_file() && !old.exists());
+    let second = note(2, every_op().remove(1));
+    append(&dir, &second).unwrap();
+    assert_eq!(read(&dir), vec![first, second]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -100,7 +115,7 @@ fn a_linked_worktree_keeps_its_notes_in_its_own_git_dir() {
     git(&dir, &["worktree", "add", "-q", "-b", "side", &wt.display().to_string()]);
     append(&wt, &note(5, Op::Amend)).unwrap();
     let name = wt.file_name().unwrap();
-    assert!(dir.join(".git").join("worktrees").join(name).join("trellis").join("journal.jsonl").is_file());
+    assert!(dir.join(".git").join("worktrees").join(name).join("glowfly").join("journal.jsonl").is_file());
     assert!(read(&dir).is_empty(), "the main worktree has its own notes");
     assert_eq!(read(&wt), vec![note(5, Op::Amend)]);
     let _ = std::fs::remove_dir_all(&wt);

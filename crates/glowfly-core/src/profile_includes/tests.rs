@@ -28,11 +28,11 @@ fn get(dir: &Path, env: &[(&str, &str)], a: &[&str]) -> Option<String> {
 
 #[test]
 fn patterns_end_in_a_slash_and_choose_the_case_form() {
-    let base = paths::temp_dir().join("trellis-pattern");
+    let base = paths::temp_dir().join("glowfly-pattern");
     let plain = gitdir_pattern(&rule_at(&base, false)).unwrap();
-    assert!(plain.starts_with("gitdir:") && plain.ends_with("trellis-pattern/"), "{plain}");
+    assert!(plain.starts_with("gitdir:") && plain.ends_with("glowfly-pattern/"), "{plain}");
     let folded = gitdir_pattern(&rule_at(&base.join("x/"), true)).unwrap();
-    assert!(folded.starts_with("gitdir/i:") && folded.ends_with("trellis-pattern/x/") && !folded.ends_with("//"), "{folded}");
+    assert!(folded.starts_with("gitdir/i:") && folded.ends_with("glowfly-pattern/x/") && !folded.ends_with("//"), "{folded}");
     let globs = gitdir_pattern(&rule_at(&base.join("a[1]*b?"), false)).unwrap();
     assert!(globs.ends_with(r"a\[1\]\*b\?/"), "{globs}");
     let control = base.join("line\nbreak");
@@ -62,7 +62,7 @@ fn windows_paths_use_forward_slashes() {
 
 #[test]
 fn include_files_read_back_exactly() {
-    let dir = paths::temp_dir().join(format!("trellis-include-text-{}", std::process::id()));
+    let dir = paths::temp_dir().join(format!("glowfly-include-text-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("profile.gitconfig");
     let name = r#"  Ada "the" \ Count # ; "#;
@@ -108,7 +108,7 @@ fn cleanup(repo: &Path, includes: &Path) {
     let _ = std::fs::remove_dir_all(includes);
 }
 
-/// Trellis's sections in the global file (`--get-regexp` lines).
+/// Glowfly's sections in the global file (`--get-regexp` lines).
 fn include_count(repo: &Path, env: &[(&str, &str)]) -> usize {
     get(repo, env, &["--global", "--get-regexp", r"^includeif\."]).map_or(0, |t| t.lines().count())
 }
@@ -158,7 +158,7 @@ fn syncs_are_idempotent_and_leave_other_sections_alone() {
     sync(&repo, &includes, &plan, true, &env).unwrap();
     sync(&repo, &includes, &plan, true, &env).unwrap();
     assert_eq!(include_count(&repo, &env), 3, "one per entry, plus the user's");
-    // A user key in one of Trellis's sections keeps that section where it is.
+    // A user key in one of Glowfly's sections keeps that section where it is.
     let shared = format!("includeIf.{}.condition", plan.entries[0].0);
     assert!(gitcli::output(&repo, &args(&["config", "--global", &shared, "mine"]), "", &env, None).ok);
     let empty = IncludePlan { files: Vec::new(), entries: Vec::new() };
@@ -191,7 +191,7 @@ fn without_placing_only_the_files_change() {
 fn checking_a_folder() {
     assert!(check_folder(Path::new("relative/folder"), false).is_err());
     let base = paths::temp_dir();
-    assert!(check_folder(&base.join(format!("trellis-missing-{}", std::process::id())), false).is_err());
+    assert!(check_folder(&base.join(format!("glowfly-missing-{}", std::process::id())), false).is_err());
     let rule = check_folder(&std::env::temp_dir(), true).unwrap();
     assert_eq!(paths::decode(&rule.path), base, "resolved");
     assert!(rule.repository && gitdir_pattern(&rule).is_ok());
@@ -206,7 +206,7 @@ fn the_case_probe_flips_the_deepest_part_with_letters() {
 
 #[test]
 fn include_files_are_known_by_name() {
-    let dir = paths::temp_dir().join("trellis-profiles");
+    let dir = paths::temp_dir().join("glowfly-profiles");
     assert_eq!(profile_of_file(&dir, &dir.join("profile-12.gitconfig")), Some(ProfileId(12)));
     assert_eq!(profile_of_file(&dir, &dir.join("profile-x.gitconfig")), None);
     assert_eq!(profile_of_file(&dir, &dir.join("sub").join("profile-1.gitconfig")), None);

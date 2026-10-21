@@ -64,7 +64,7 @@ pub enum PrTab {
 /// The service's page for the pull request.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Page {
-    /// The service has no conversation, reviews or merging in Trellis.
+    /// The service has no conversation, reviews or merging in Glowfly.
     Unsupported,
     /// The repository isn't trusted, so nothing is asked.
     Held,

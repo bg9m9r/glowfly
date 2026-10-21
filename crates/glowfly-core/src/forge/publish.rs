@@ -90,7 +90,7 @@ mod tests {
     #[test]
     fn names_from_folders() {
         assert_eq!(repo_name_for("my project"), "my-project");
-        assert_eq!(repo_name_for("trellis"), "trellis");
+        assert_eq!(repo_name_for("glowfly"), "glowfly");
         assert_eq!(repo_name_for("Café (old)"), "Caf---old");
         assert_eq!(repo_name_for("###"), "repository");
         assert!(valid_repo_name("api-server_2.0"));

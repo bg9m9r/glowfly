@@ -1,4 +1,4 @@
-//! Trellis's own updates: the daily automatic check (armed by `Startup`, then driven by `Tick`),
+//! Glowfly's own updates: the daily automatic check (armed by `Startup`, then driven by `Tick`),
 //! Check now, downloading the offered file, and opening or showing it. Automatic checks never
 //! toast a failure; they log it quietly and wait `RETRY_AFTER`. Only `settings.updates` is
 //! saved.
@@ -140,7 +140,7 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
     }
 }
 
-/// "Downloaded Trellis x.y.z." with Install for an installer, else Show file.
+/// "Downloaded Glowfly x.y.z." with Install for an installer, else Show file.
 fn downloaded_toast(st: &mut AppState, version: &app_update::Version, installer: bool, now: Instant) {
     let t = st.settings.lang();
     let (label, msg) = if installer {

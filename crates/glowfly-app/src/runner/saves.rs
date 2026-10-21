@@ -1,4 +1,4 @@
-//! Saving Trellis's own files (settings, recent repositories, open tabs). Each save runs on its
+//! Saving Glowfly's own files (settings, recent repositories, open tabs). Each save runs on its
 //! own thread, so each file's saves are ordered: one that was requested before a save that has
 //! already been written is dropped, and the newest snapshot always lands last.
 
@@ -35,7 +35,7 @@ impl<W: Waker + Clone> Runner<W> {
         let name = effect.name();
         #[cfg(test)]
         let busy = self.tally.begin(name);
-        let spawned = std::thread::Builder::new().name(format!("trellis-{name}")).spawn(move || {
+        let spawned = std::thread::Builder::new().name(format!("glowfly-{name}")).spawn(move || {
             if let Some(msg) = order.write(ticket, || save_now(effect)).flatten()
                 && tx.send(msg).is_ok()
             {

@@ -1,5 +1,5 @@
 //! Preferences > External tools: the editor, terminal, diff tool and merge tool programs
-//! Trellis starts, and the argument templates it passes them (expanded by `external_tools`).
+//! Glowfly starts, and the argument templates it passes them (expanded by `external_tools`).
 
 use serde::{Deserialize, Serialize};
 

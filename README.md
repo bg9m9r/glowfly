@@ -1,11 +1,14 @@
-# Trellis
+# Glowfly
 
 A fast, native Git GUI written in Rust (egui + libgit2): a central commit graph, a
 branch/remote/tag/stash sidebar, and a right-hand panel for commit details or staging and
 committing. It connects to GitHub, GitLab, Bitbucket, Azure DevOps, Jira and Trello for pull
 requests and issues.
 
-Trellis is an independent project. It is not affiliated with or endorsed by any other Git client
+Glowfly was formerly called Trellis. An existing Trellis install upgrades in place, and its
+settings, saved sign-ins, `trellis://` links and `.trellis/commands.toml` files keep working.
+
+Glowfly is an independent project. It is not affiliated with or endorsed by any other Git client
 or hosting service; product names are used only to describe compatibility.
 
 ## Install
@@ -14,15 +17,15 @@ Builds for Windows, macOS (Apple silicon and Intel) and Linux are on the
 [Releases](https://github.com/bg9m9r/trellis/releases) page. Git must be installed and on your
 `PATH`.
 
-- **Windows**: `trellis-vX.Y.Z-x86_64-pc-windows-msvc.msi` installs for your user only (no
-  administrator rights) into `%LOCALAPPDATA%\Programs\Trellis`, with a Start menu shortcut.
-  Its Options page adds a desktop shortcut, "Open in Trellis" on folders in Explorer (on
-  Windows 11 under "Show more options") and `trellis://` links, each of which you can turn off.
+- **Windows**: `glowfly-vX.Y.Z-x86_64-pc-windows-msvc.msi` installs for your user only (no
+  administrator rights) into `%LOCALAPPDATA%\Programs\Glowfly`, with a Start menu shortcut.
+  Its Options page adds a desktop shortcut, "Open in Glowfly" on folders in Explorer (on
+  Windows 11 under "Show more options") and `glowfly://` links, each of which you can turn off.
   Uninstall it from Settings > Apps.
-- **macOS**: open `trellis-vX.Y.Z-<arch>-apple-darwin.dmg` and drag Trellis to Applications.
-- **Debian and Ubuntu**: `sudo apt install ./trellis-vX.Y.Z-x86_64-unknown-linux-gnu.deb`. It
-  adds Trellis to the applications menu, "Open with Trellis" on folders in the file manager, and
-  `trellis://` links.
+- **macOS**: open `glowfly-vX.Y.Z-<arch>-apple-darwin.dmg` and drag Glowfly to Applications.
+- **Debian and Ubuntu**: `sudo apt install ./glowfly-vX.Y.Z-x86_64-unknown-linux-gnu.deb`. It
+  adds Glowfly to the applications menu, "Open with Glowfly" on folders in the file manager, and
+  `glowfly://` links.
 - **Anywhere**: the `.zip` (Windows) and `.tar.gz` (macOS, Linux) hold the program on its own;
   unpack it wherever you like.
 
@@ -31,13 +34,13 @@ Each download has a `.sha256` file, and `SHA256SUMS` lists them all: check a dow
 certificates are set up (see [docs/RELEASING.md](docs/RELEASING.md)); until then Windows
 SmartScreen and macOS Gatekeeper warn the first time you open them.
 
-Trellis checks GitHub for a newer release once a day (Preferences > General > Updates, where you
+Glowfly checks GitHub for a newer release once a day (Preferences > General > Updates, where you
 can turn it off) and downloads it only when you ask, after checking it against the published
 checksums. "View release notes" in the command palette shows what changed.
 
 ## Building from source
 
-Trellis is developed and tested on Windows; macOS and Linux builds are less tested. You need a
+Glowfly is developed and tested on Windows; macOS and Linux builds are less tested. You need a
 recent stable Rust toolchain and Git on your `PATH` (on Debian or Ubuntu, also run
 `scripts/linux-deps.sh`).
 
@@ -71,7 +74,7 @@ is going and [TODO.md](TODO.md) for the backlog.
 - **Activity log** with the exact git commands run and their output. Auto-refreshes when the
   window regains focus, or on F5.
 - **Custom commands**: your own git and shell actions from a `commands.toml` file, yours or one
-  committed in the repository's `.trellis/` folder. They appear in the command palette, in a
+  committed in the repository's `.glowfly/` folder. They appear in the command palette, in a
   Commands submenu of the commit, branch and file menus, and on keys you choose. A repository's
   own commands run only once you trust it. See [docs/CUSTOM_COMMANDS.md](docs/CUSTOM_COMMANDS.md).
 
@@ -109,7 +112,7 @@ board) under Repo-Specific Preferences > Issue Tracker.
 - **Credentials**: an environment variable, then a token saved in the Windows Credential Manager,
   then Git Credential Manager (the same sign-in `git push` uses). Background refreshes (every 5
   minutes) never show a sign-in window.
-- **Live check**: `TRELLIS_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture` runs
+- **Live check**: `GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture` runs
   read-only API calls against a real service.
 
 ## Preferences
@@ -138,9 +141,9 @@ sub-list, and forms with right-aligned labels.
 - **Repo-specific**: identity override (local `user.name` / `user.email`), `core.hooksPath`, and
   the issue tracker.
 
-App settings live in `settings.json` in `%APPDATA%\Trellis` on Windows,
-`~/Library/Application Support/Trellis` on macOS and `$XDG_CONFIG_HOME/trellis` (usually
-`~/.config/trellis`) on Linux. Git settings are written straight to git
+App settings live in `settings.json` in `%APPDATA%\Glowfly` on Windows,
+`~/Library/Application Support/Glowfly` on macOS and `$XDG_CONFIG_HOME/glowfly` (usually
+`~/.config/glowfly`) on Linux. Git settings are written straight to git
 config. Tokens go to the Windows Credential Manager.
 
 ## Architecture

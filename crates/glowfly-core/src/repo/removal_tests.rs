@@ -9,7 +9,7 @@ use crate::testutil::*;
 use std::path::{Path, PathBuf};
 
 pub(super) fn test_bin() -> PathBuf {
-    crate::paths::temp_dir().join(format!("trellis-test-bin-{}", std::process::id()))
+    crate::paths::temp_dir().join(format!("glowfly-test-bin-{}", std::process::id()))
 }
 
 /// Moves the file into this process's stand-in bin under a unique name.
@@ -140,7 +140,7 @@ fn staged_rename_refusal_keeps_rename() {
 
 #[test]
 fn os_trash_refuses_under_test() {
-    if std::env::var_os("TRELLIS_REAL_TRASH").is_some() {
+    if std::env::var_os("GLOWFLY_REAL_TRASH").is_some() {
         return;
     }
     let dir = scratch_repo("rm-os-guard");
@@ -151,15 +151,15 @@ fn os_trash_refuses_under_test() {
 }
 
 /// Moves a file to the real Recycle Bin / Trash: check it arrived there by hand. Run with
-/// `TRELLIS_REAL_TRASH=1 cargo test -p glowfly-core real_os_trash -- --ignored --nocapture`.
+/// `GLOWFLY_REAL_TRASH=1 cargo test -p glowfly-core real_os_trash -- --ignored --nocapture`.
 #[test]
-#[ignore = "uses the real trash; run by hand with TRELLIS_REAL_TRASH=1"]
+#[ignore = "uses the real trash; run by hand with GLOWFLY_REAL_TRASH=1"]
 fn real_os_trash() {
     let dir = scratch_repo("rm-os-real");
-    write(&dir, "trellis-real-trash-check.txt", "check\n");
-    os_trash(&dir.join("trellis-real-trash-check.txt")).unwrap();
-    assert!(!dir.join("trellis-real-trash-check.txt").exists());
-    println!("look for trellis-real-trash-check.txt in the trash");
+    write(&dir, "glowfly-real-trash-check.txt", "check\n");
+    os_trash(&dir.join("glowfly-real-trash-check.txt")).unwrap();
+    assert!(!dir.join("glowfly-real-trash-check.txt").exists());
+    println!("look for glowfly-real-trash-check.txt in the trash");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

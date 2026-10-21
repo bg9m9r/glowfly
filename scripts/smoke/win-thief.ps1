@@ -1,10 +1,10 @@
-# A small window for scripts/smoke-windows.ps1 to give the foreground to, so Trellis loses the
+# A small window for scripts/smoke-windows.ps1 to give the foreground to, so Glowfly loses the
 # focus. The caller places it at (X, Y), in the work area's bottom-right corner, away from the
 # rows the checks click, and stops it when the pass ends.
 param(
     [int] $X,
     [int] $Y,
-    [string] $Title = 'Trellis smoke focus thief'
+    [string] $Title = 'Glowfly smoke focus thief'
 )
 
 Set-StrictMode -Version Latest

@@ -4,7 +4,7 @@ use std::fs;
 
 /// A fresh, empty folder for one test.
 fn fixture(name: &str) -> PathBuf {
-    let dir = paths::temp_dir().join(format!("trellis-scan-{name}-{}", std::process::id()));
+    let dir = paths::temp_dir().join(format!("glowfly-scan-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     dir

@@ -103,7 +103,7 @@ fn graph_search_no_matches_truncated() {
 
 #[test]
 fn graph_no_commits() {
-    let dir = glowfly_core::paths::temp_dir().join(format!("trellis-snap-{}-no-commits", std::process::id())).join("empty");
+    let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-snap-{}-no-commits", std::process::id())).join("empty");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let (ok, out) = try_git(&dir, &["init", "-q", "-b", "main"], "2026-01-05T10:00:00+00:00");

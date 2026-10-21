@@ -273,7 +273,7 @@ fn partial_sparse_clone_of_a_folder_falls_back_cleanly() {
 
 #[test]
 fn a_failed_sparse_clone_runs_no_second_step() {
-    let src = crate::paths::temp_dir().join(format!("trellis-test-clone-missing-{}", std::process::id()));
+    let src = crate::paths::temp_dir().join(format!("glowfly-test-clone-missing-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&src);
     let parent = into(&src);
     let opts = CloneOptions { sparse: sparse(false), ..CloneOptions::default() };

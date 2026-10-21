@@ -1,17 +1,17 @@
-# Checks `trellis --check-update` against local update feeds (TRELLIS_UPDATE_FEED): a folder
+# Checks `glowfly --check-update` against local update feeds (GLOWFLY_UPDATE_FEED): a folder
 # holding release.json, the packages and SHA256SUMS, built here from the given package files.
 # Installs nothing and opens no window, so it runs on any build; the installer checks
 # (installer-check-windows.ps1, installer-check-linux.sh) run it with the installed program.
 #
-#   pwsh -NoProfile -File scripts/update-feed-check.ps1 -Trellis <program> -Version 0.1.0 `
-#     -Installer <dir>/trellis-v0.1.0-<triple>.msi -Archive <dir>/trellis-v0.1.0-<triple>.zip `
+#   pwsh -NoProfile -File scripts/update-feed-check.ps1 -Glowfly <program> -Version 0.1.0 `
+#     -Installer <dir>/glowfly-v0.1.0-<triple>.msi -Archive <dir>/glowfly-v0.1.0-<triple>.zip `
 #     -Expect installer -Out <work folder>
 #
 # -Expect names the file the program should choose: `installer` for an installed copy,
 # `archive` for any other (a cargo-built debug program counts as portable). The packages may be
 # stand-in files: only their names and bytes matter. Each case's output is kept in -Out.
 param(
-    [Parameter(Mandatory = $true)][string]$Trellis,
+    [Parameter(Mandatory = $true)][string]$Glowfly,
     [Parameter(Mandatory = $true)][string]$Version,
     [Parameter(Mandatory = $true)][string]$Installer,
     [Parameter(Mandatory = $true)][string]$Archive,
@@ -20,20 +20,20 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$Trellis = (Resolve-Path -LiteralPath $Trellis).Path
+$Glowfly = (Resolve-Path -LiteralPath $Glowfly).Path
 $Installer = (Resolve-Path -LiteralPath $Installer).Path
 $Archive = (Resolve-Path -LiteralPath $Archive).Path
 $Out = [IO.Path]::GetFullPath($Out)
 New-Item -ItemType Directory -Force $Out | Out-Null
 $utf8 = [Text.UTF8Encoding]::new($false)
 
-$namePattern = '^trellis-v(?<ver>[^-]+)-(?<triple>[^.]+)\.(?<ext>msi|deb|dmg|zip|tar\.gz)$'
+$namePattern = '^glowfly-v(?<ver>[^-]+)-(?<triple>[^.]+)\.(?<ext>msi|deb|dmg|zip|tar\.gz)$'
 
-# The triple and extension of a package file named trellis-v<Version>-<triple>.<ext>.
+# The triple and extension of a package file named glowfly-v<Version>-<triple>.<ext>.
 function Get-PackageName([string]$Path) {
     $leaf = Split-Path -Leaf $Path
     $m = [regex]::Match($leaf, $namePattern)
-    if (-not $m.Success) { throw "$leaf isn't named trellis-v<version>-<triple>.<ext>" }
+    if (-not $m.Success) { throw "$leaf isn't named glowfly-v<version>-<triple>.<ext>" }
     if ($m.Groups['ver'].Value -ne $Version) { throw "$leaf isn't version $Version" }
     @{ Path = $Path; Triple = $m.Groups['triple'].Value; Ext = $m.Groups['ext'].Value }
 }
@@ -56,7 +56,7 @@ function Get-Sha256([string]$Path) {
 }
 
 function Get-FeedName([hashtable]$Package, [string]$Tag) {
-    "trellis-$Tag-$($Package.Triple).$($Package.Ext)"
+    "glowfly-$Tag-$($Package.Triple).$($Package.Ext)"
 }
 
 # Stops when a feed file the script wrote starts with a BOM or holds a carriage return.
@@ -96,7 +96,7 @@ function New-Feed {
     }
     [IO.File]::WriteAllText((Join-Path $Dir 'SHA256SUMS'), (-join $lines), $utf8)
     $assets = @($sorted + 'SHA256SUMS' | ForEach-Object { @{ name = $_ } })
-    $release = [ordered]@{ tag_name = $Tag; name = "Trellis $Tag"; body = 'Installer check feed'; assets = $assets }
+    $release = [ordered]@{ tag_name = $Tag; name = "Glowfly $Tag"; body = 'Installer check feed'; assets = $assets }
     # ConvertTo-Json separates lines with the system's newline (CRLF on Windows).
     $json = ($release | ConvertTo-Json -Depth 4) -replace "`r`n", "`n"
     [IO.File]::WriteAllText((Join-Path $Dir 'release.json'), $json, $utf8)
@@ -107,18 +107,18 @@ function New-Feed {
     }
 }
 
-# Runs `trellis --check-update <Dl>` with TRELLIS_UPDATE_FEED set to $Feed (unset for $null),
+# Runs `glowfly --check-update <Dl>` with GLOWFLY_UPDATE_FEED set to $Feed (unset for $null),
 # keeping its output as <Out>/<Name>.out and .err.
 function Invoke-Check([AllowNull()][string]$Feed, [string]$Dl, [string]$Name) {
     $outFile = Join-Path $Out "$Name.out"
     $errFile = Join-Path $Out "$Name.err"
-    $saved = $env:TRELLIS_UPDATE_FEED
+    $saved = $env:GLOWFLY_UPDATE_FEED
     try {
-        if ($Feed) { $env:TRELLIS_UPDATE_FEED = $Feed } else { Remove-Item Env:TRELLIS_UPDATE_FEED -ErrorAction SilentlyContinue }
-        $p = Start-Process -FilePath $Trellis -ArgumentList '--check-update', "`"$Dl`"" -Wait -PassThru -NoNewWindow `
+        if ($Feed) { $env:GLOWFLY_UPDATE_FEED = $Feed } else { Remove-Item Env:GLOWFLY_UPDATE_FEED -ErrorAction SilentlyContinue }
+        $p = Start-Process -FilePath $Glowfly -ArgumentList '--check-update', "`"$Dl`"" -Wait -PassThru -NoNewWindow `
             -RedirectStandardOutput $outFile -RedirectStandardError $errFile
     } finally {
-        if ($null -eq $saved) { Remove-Item Env:TRELLIS_UPDATE_FEED -ErrorAction SilentlyContinue } else { $env:TRELLIS_UPDATE_FEED = $saved }
+        if ($null -eq $saved) { Remove-Item Env:GLOWFLY_UPDATE_FEED -ErrorAction SilentlyContinue } else { $env:GLOWFLY_UPDATE_FEED = $saved }
     }
     @{ Code = $p.ExitCode; Out = "$(Get-Content -Raw -LiteralPath $outFile)"; Err = "$(Get-Content -Raw -LiteralPath $errFile)" }
 }

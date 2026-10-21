@@ -1,4 +1,4 @@
-//! Repository trust's reads (`Effect::Trust`): resolving and scanning the repositories Trellis
+//! Repository trust's reads (`Effect::Trust`): resolving and scanning the repositories Glowfly
 //! just made from a trusted one, so they can be trusted on the same terms.
 
 use crate::effect::TrustEffect;

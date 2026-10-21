@@ -37,7 +37,7 @@ pub struct ConflictView {
     pub current: usize,
     /// A save (or whole-side resolve) is running.
     pub saving: bool,
-    /// Trellis itself is resolving this path (Save, a whole side, Mark resolved): once it is no
+    /// Glowfly itself is resolving this path (Save, a whole side, Mark resolved): once it is no
     /// longer conflicted the view opens the next conflicted file instead of closing.
     pub step_on_resolve: bool,
     /// The output as text, while it is being edited.

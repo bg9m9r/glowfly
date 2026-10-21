@@ -22,7 +22,7 @@ pub const MAX_INSPECT: u64 = 64 << 20;
 pub fn inspect(path: &Path) -> Result<PatchSummary> {
     if std::fs::metadata(path)?.len() > MAX_INSPECT {
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.display().to_string());
-        return Err(Error::Other(format!("{name} is larger than 64 MB; Trellis doesn't open patches that large.")));
+        return Err(Error::Other(format!("{name} is larger than 64 MB; Glowfly doesn't open patches that large.")));
     }
     Ok(summarize(&std::fs::read(path)?))
 }

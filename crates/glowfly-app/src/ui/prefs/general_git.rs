@@ -1,4 +1,4 @@
-//! Preferences > General > Git: the git program Trellis runs (chosen on the Git page), the
+//! Preferences > General > Git: the git program Glowfly runs (chosen on the Git page), the
 //! default branch name for new repositories, and two global git config values, long paths and
 //! line endings. Those two are edited in place and written by the Save / Revert bar.
 

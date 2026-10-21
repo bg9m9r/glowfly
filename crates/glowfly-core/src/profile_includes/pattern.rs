@@ -1,4 +1,4 @@
-//! The text Trellis writes for folder rules: the `gitdir:` pattern of a rule, a path as a git
+//! The text Glowfly writes for folder rules: the `gitdir:` pattern of a rule, a path as a git
 //! config value, and the include file of a profile (git's value quoting). Pure.
 
 use crate::identity::Identity;
@@ -61,7 +61,7 @@ fn slashes(text: &str) -> String {
 }
 
 /// The first line of every include file. It names no profile, so a rename writes nothing.
-pub const FILE_HEADER: &str = "# Written by Trellis for a profile's folder rules. Trellis rewrites this file: edit the profile in Trellis.";
+pub const FILE_HEADER: &str = "# Written by Glowfly for a profile's folder rules. Glowfly rewrites this file: edit the profile in Glowfly.";
 
 /// A profile's include file: the header, then `[user]` with the name, email and signing key
 /// that aren't blank, each quoted as git reads it (no section when all are blank).

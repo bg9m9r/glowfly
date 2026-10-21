@@ -155,7 +155,7 @@ fn line_counts_results_for_another_tab_are_dropped() {
     let oid = head(&st);
     st.line_counts.start_commit(oid);
     let msg = Msg::Repo(RepoMsg::CommitLineCountsLoaded { oid, result: Ok(Default::default()) });
-    let elsewhere = glowfly_core::paths::temp_dir().join("trellis-lc-elsewhere");
+    let elsewhere = glowfly_core::paths::temp_dir().join("glowfly-lc-elsewhere");
     run(&mut st, Msg::Scoped { workdir: elsewhere, msg: Box::new(msg) });
     assert!(st.line_counts.commit(oid).is_none());
     let _ = std::fs::remove_dir_all(&dir);

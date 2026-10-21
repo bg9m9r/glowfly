@@ -25,7 +25,7 @@ fn next(rx: &Receiver<Msg>) -> LogsMsg {
 
 #[test]
 fn worker_keeps_the_activity_log_across_sessions() {
-    let dir = glowfly_core::paths::temp_dir().join(format!("trellis-log-worker-{}", std::process::id()));
+    let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-log-worker-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let before = chrono::Utc::now().timestamp();
 
@@ -71,7 +71,7 @@ fn worker_keeps_the_activity_log_across_sessions() {
 
 #[test]
 fn appended_runs_load_again() {
-    let dir = glowfly_core::paths::temp_dir().join(format!("trellis-log-worker-runs-{}", std::process::id()));
+    let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-log-worker-runs-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let run = logs::RunInfo { title: "Push".into(), summary: "Everything up-to-date".into(), took_ms: Some(1250), routine: false };
     let (w, rx) = worker(&dir);

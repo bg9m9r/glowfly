@@ -1,4 +1,4 @@
-//! The window frame on each OS and the pure parts of a title bar Trellis draws itself: which
+//! The window frame on each OS and the pure parts of a title bar Glowfly draws itself: which
 //! frame applies (`Chrome`), the window actions the bar asks for and full screen (`WindowCmd`),
 //! what the shell
 //! knows about the window (`WindowInfo`, with the Maximize button as Windows tracks it; full
@@ -16,13 +16,13 @@ pub const TRAFFIC_LIGHTS_W: f32 = 78.0;
 /// Who draws the window's frame.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Chrome {
-    /// The system frame and title bar, with Trellis's menu bar and tab bar under it (Linux,
+    /// The system frame and title bar, with Glowfly's menu bar and tab bar under it (Linux,
     /// and every test that doesn't pick another).
     #[default]
     System,
-    /// No system frame: Trellis draws the title bar, the window buttons and the resize edges.
+    /// No system frame: Glowfly draws the title bar, the window buttons and the resize edges.
     Windows,
-    /// The system frame with a transparent, full-size title bar: Trellis's bar sits under the
+    /// The system frame with a transparent, full-size title bar: Glowfly's bar sits under the
     /// traffic lights.
     MacOs,
 }
@@ -36,22 +36,22 @@ impl Chrome {
         }
     }
 
-    /// The frame of the OS Trellis was built for.
+    /// The frame of the OS Glowfly was built for.
     pub const fn current() -> Chrome {
         Self::for_os(Os::current())
     }
 
-    /// Whether Trellis draws the title bar (with the menu button and the tabs).
+    /// Whether Glowfly draws the title bar (with the menu button and the tabs).
     pub const fn drawn(self) -> bool {
         matches!(self, Chrome::Windows | Chrome::MacOs)
     }
 
-    /// Whether Trellis draws Minimize, Maximize and Close.
+    /// Whether Glowfly draws Minimize, Maximize and Close.
     pub const fn window_buttons(self) -> bool {
         matches!(self, Chrome::Windows)
     }
 
-    /// Whether Trellis provides the resize edges and corners.
+    /// Whether Glowfly provides the resize edges and corners.
     pub const fn resize_edges(self) -> bool {
         matches!(self, Chrome::Windows)
     }

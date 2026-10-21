@@ -1,4 +1,4 @@
-//! The window procedure Trellis puts in front of winit's (a plain `GWLP_WNDPROC` subclass, which
+//! The window procedure Glowfly puts in front of winit's (a plain `GWLP_WNDPROC` subclass, which
 //! needs no common-controls manifest). It answers Windows' hit test with `HTMAXBUTTON` over the
 //! drawn Maximize button, so Windows 11 shows Snap Layouts there, and tracks that button's
 //! hover, press and click itself, since egui sees no pointer there then. It opens the system

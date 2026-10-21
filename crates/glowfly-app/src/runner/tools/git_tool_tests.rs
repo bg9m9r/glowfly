@@ -55,10 +55,10 @@ fn a_configured_merge_command_runs_with_gits_variables() {
 #[test]
 fn a_builtin_merge_tool_runs_through_git_mergetool() {
     let dir = conflicted("git-mergetool");
-    let e = merge(&dir, builtin("trellis-no-such-tool"));
+    let e = merge(&dir, builtin("glowfly-no-such-tool"));
     match &e {
         MergeEnd::Exited { code: Some(c), said, changed: false } => {
-            assert!(*c != 0 && said.contains("trellis-no-such-tool"), "{e:?}");
+            assert!(*c != 0 && said.contains("glowfly-no-such-tool"), "{e:?}");
         }
         other => panic!("expected an exit with an error, got {other:?}"),
     }
@@ -68,7 +68,7 @@ fn a_builtin_merge_tool_runs_through_git_mergetool() {
 #[test]
 fn git_mergetool_never_reads_the_file_name_as_a_pattern() {
     // `git mergetool` runs a tool git config names: here a command git itself runs, so this
-    // needs no sh of Trellis's own.
+    // needs no sh of Glowfly's own.
     let dir = conflicted_files("git-mergetool-pattern", &["a.txt", "[ab].txt", "b c.txt"]);
     git(&dir, &["config", "mergetool.t.cmd", "cp \"$REMOTE\" \"$MERGED\""]);
     git(&dir, &["config", "mergetool.keepBackup", "false"]);
@@ -120,8 +120,8 @@ fn git_diff_tools_report_only_failures() {
         assert_eq!((program.as_str(), target.as_str()), ("t", "a.txt"));
         assert!(matches!(&f, LaunchFailure::Other(t) if t.contains("code 5")), "{f:?}");
     }
-    let (program, _, f) = failure(open(builtin("trellis-no-such-tool")));
-    assert_eq!(program, "trellis-no-such-tool");
-    assert!(matches!(&f, LaunchFailure::Other(t) if t.contains("difftool.trellis-no-such-tool.cmd not set")), "{f:?}");
+    let (program, _, f) = failure(open(builtin("glowfly-no-such-tool")));
+    assert_eq!(program, "glowfly-no-such-tool");
+    assert!(matches!(&f, LaunchFailure::Other(t) if t.contains("difftool.glowfly-no-such-tool.cmd not set")), "{f:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

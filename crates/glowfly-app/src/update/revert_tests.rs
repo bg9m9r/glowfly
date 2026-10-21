@@ -243,7 +243,7 @@ fn scoped_failure_for_inactive_tab_is_logged() {
     let fx = run(&mut st, Msg::Scoped { workdir: "C:/elsewhere".into(), msg: Box::new(msg) });
     assert!(fx.is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("x") && l.text.contains("a.txt")));
-    let elsewhere = glowfly_core::paths::temp_dir().join("trellis-elsewhere");
+    let elsewhere = glowfly_core::paths::temp_dir().join("glowfly-elsewhere");
     let msg = reverted("a.txt", RevertWhat::File, Ok(Reverted::Conflicts));
     assert!(run(&mut st, Msg::Scoped { workdir: elsewhere.clone(), msg: Box::new(msg) }).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("with conflicts")));

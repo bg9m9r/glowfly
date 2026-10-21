@@ -1,7 +1,7 @@
 //! Preferences > SSH: the Which key section. One row per level (all repositories, and the open
 //! repository), each a dropdown of the listed keys plus Let ssh decide, showing what
 //! core.sshCommand says there. A pick sends the existing `SshMsg::UseKey` / `SshMsg::StopUsing`
-//! (unconfirmed, so a command Trellis didn't write still asks first); the view never writes
+//! (unconfirmed, so a command Glowfly didn't write still asks first); the view never writes
 //! config itself.
 
 use super::ssh::SshContext;

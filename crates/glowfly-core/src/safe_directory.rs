@@ -1,7 +1,7 @@
 //! Repositories git refuses because another user owns them: a folder on a Windows share or
 //! under `\\wsl$`, a FAT/exFAT drive, another account's folder, a Docker volume or an NFS mount
 //! with another uid. libgit2 and git both refuse to open these (CVE-2022-24765) until the folder
-//! is listed in the global `safe.directory` setting. Trellis says so, instead of "not a
+//! is listed in the global `safe.directory` setting. Glowfly says so, instead of "not a
 //! repository", and can add the folder there in git's own spelling.
 
 use crate::error::{Error, Result};

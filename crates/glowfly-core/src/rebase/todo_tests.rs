@@ -40,13 +40,13 @@ fn exec(cmd: &str) -> TodoStep {
 /// The message folder in this OS's own spelling, and how it appears in the todo for `sh`
 /// (backslashes become slashes only on Windows; on Unix a backslash is part of a name).
 #[cfg(windows)]
-const MSG_DIR: &str = "C:\\repo\\.git\\trellis-rebase";
+const MSG_DIR: &str = "C:\\repo\\.git\\glowfly-rebase";
 #[cfg(windows)]
-const QUOTED_DIR: &str = "C:/repo/.git/trellis-rebase";
+const QUOTED_DIR: &str = "C:/repo/.git/glowfly-rebase";
 #[cfg(not(windows))]
-const MSG_DIR: &str = "/repo/.git/trellis-rebase";
+const MSG_DIR: &str = "/repo/.git/glowfly-rebase";
 #[cfg(not(windows))]
-const QUOTED_DIR: &str = "/repo/.git/trellis-rebase";
+const QUOTED_DIR: &str = "/repo/.git/glowfly-rebase";
 
 fn base_line(n: u8) -> String {
     format!("exec git rev-parse HEAD >'{QUOTED_DIR}/reword-{}.base'", oid(n))
@@ -177,20 +177,20 @@ fn unchanged_lists() {
 
 #[test]
 fn quoting_and_editor_commands() {
-    assert_eq!(shell_quote_for("C:\\Program Files\\Trellis\\glowfly.exe", true), "'C:/Program Files/Trellis/glowfly.exe'");
+    assert_eq!(shell_quote_for("C:\\Program Files\\Glowfly\\glowfly.exe", true), "'C:/Program Files/Glowfly/glowfly.exe'");
     // On Unix a backslash is part of a name: `/tmp/a\b` is not `/tmp/a/b`.
     assert_eq!(shell_quote_for("/tmp/a\\b/todo", false), "'/tmp/a\\b/todo'");
     assert_eq!(shell_quote("it's"), "'it'\\''s'");
     assert_eq!(shell_quote("/repo/x"), "'/repo/x'");
     if cfg!(windows) {
-        let prepared = Path::new("C:\\repo\\.git\\trellis-rebase\\todo");
+        let prepared = Path::new("C:\\repo\\.git\\glowfly-rebase\\todo");
         let exe = SequenceEditor::Helper("C:\\Apps\\glowfly.exe".into());
-        assert_eq!(editor_command(&exe, prepared), "'C:/Apps/glowfly.exe' --write-todo 'C:/repo/.git/trellis-rebase/todo'");
-        assert_eq!(editor_command(&SequenceEditor::Copy, prepared), "cp 'C:/repo/.git/trellis-rebase/todo'");
+        assert_eq!(editor_command(&exe, prepared), "'C:/Apps/glowfly.exe' --write-todo 'C:/repo/.git/glowfly-rebase/todo'");
+        assert_eq!(editor_command(&SequenceEditor::Copy, prepared), "cp 'C:/repo/.git/glowfly-rebase/todo'");
     }
-    let prepared = Path::new("/repo/.git/trellis-rebase/todo");
-    let exe = SequenceEditor::Helper("/opt/trellis/trellis".into());
-    assert_eq!(editor_command(&exe, prepared), "'/opt/trellis/trellis' --write-todo '/repo/.git/trellis-rebase/todo'");
+    let prepared = Path::new("/repo/.git/glowfly-rebase/todo");
+    let exe = SequenceEditor::Helper("/opt/glowfly/glowfly".into());
+    assert_eq!(editor_command(&exe, prepared), "'/opt/glowfly/glowfly' --write-todo '/repo/.git/glowfly-rebase/todo'");
     assert_eq!(editor_command(&SequenceEditor::Shell("false".into()), prepared), "false");
 }
 
@@ -215,7 +215,7 @@ d 6f7a8b9 Sixth
 
 #[test]
 fn install_todo_checks_the_commits() {
-    let dir = crate::paths::temp_dir().join(format!("trellis-test-install-todo-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-test-install-todo-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let (prepared, git_todo) = (dir.join("todo"), dir.join("git-rebase-todo"));
@@ -340,7 +340,7 @@ fn own_lines_are_recognised() {
     ];
     let (text, _) = build(&list, Path::new(MSG_DIR), false);
     // The lines as a Windows folder (backslashes turned to slashes) and a Unix one quote.
-    for (dir, windows) in [("C:\\repo\\.git\\trellis-rebase", true), ("/home/u/repo/.git/trellis-rebase", false)] {
+    for (dir, windows) in [("C:\\repo\\.git\\glowfly-rebase", true), ("/home/u/repo/.git/glowfly-rebase", false)] {
         let quoted = shell_quote_for(dir, windows);
         let text = text.replace(QUOTED_DIR, quoted.trim_matches('\''));
         let found: Vec<Option<OwnLine>> = text.lines().map(own_line).collect();
@@ -360,5 +360,5 @@ fn own_lines_are_recognised() {
         assert_eq!(found, want, "{text}");
     }
     assert_eq!(own_line("exec make test"), None);
-    assert_eq!(own_line("exec cat trellis-rebase/reword-1234.base"), None);
+    assert_eq!(own_line("exec cat glowfly-rebase/reword-1234.base"), None);
 }

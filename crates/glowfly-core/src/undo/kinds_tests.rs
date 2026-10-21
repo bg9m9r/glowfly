@@ -3,7 +3,7 @@
 use super::*;
 
 #[test]
-fn classify_recognises_trellis_commands() {
+fn classify_recognises_glowfly_commands() {
     let sha = "0123456789abcdef0123456789abcdef01234567";
     let table: &[(&[&str], Option<UndoKind>)] = &[
         (&["checkout", "main"], Some(UndoKind::Checkout)),

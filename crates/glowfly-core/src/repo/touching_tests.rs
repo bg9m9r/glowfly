@@ -107,7 +107,7 @@ fn commits_touching_stops_and_skips_what_it_cannot_read() {
     let t = commits_touching(&h.dir, &[unknown, h.root], &terms, &|| false).unwrap();
     assert_eq!(t, Touching { gone_through: 2, touching: vec![h.root] });
 
-    let not_repo = crate::paths::temp_dir().join(format!("trellis-touching-none-{}", std::process::id()));
+    let not_repo = crate::paths::temp_dir().join(format!("glowfly-touching-none-{}", std::process::id()));
     std::fs::create_dir_all(&not_repo).unwrap();
     assert!(commits_touching(&not_repo, &[h.root], &terms, &|| false).is_err());
     let _ = std::fs::remove_dir_all(&not_repo);

@@ -1,9 +1,9 @@
-//! Passing trust on to the repositories Trellis makes from a trusted one: a worktree it creates
+//! Passing trust on to the repositories Glowfly makes from a trusted one: a worktree it creates
 //! (whose config and hooks are its repository's) and submodules it checks out for the first time
-//! (like a clone Trellis made). The job's caller says what it will make (`expect`); when the job
+//! (like a clone Glowfly made). The job's caller says what it will make (`expect`); when the job
 //! succeeds and the source is still trusted, the runner reads the new repositories
 //! (`Effect::Trust`) and `inherited` records them, never over a decision already saved. Also
-//! keeps a `git lfs install` from Trellis from asking again about the settings and hooks it adds.
+//! keeps a `git lfs install` from Glowfly from asking again about the settings and hooks it adds.
 
 use crate::effect::{Effect, TrustEffect};
 use crate::msg::InheritedRepo;

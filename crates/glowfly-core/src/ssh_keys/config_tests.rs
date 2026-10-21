@@ -1,4 +1,4 @@
-//! ssh config lines: splitting them as ssh does, the directives Trellis reads, and expanding an
+//! ssh config lines: splitting them as ssh does, the directives Glowfly reads, and expanding an
 //! IdentityFile value by both Windows' and Unix rules (on every OS).
 
 use super::*;
@@ -33,7 +33,7 @@ fn splits_lines_like_ssh() {
 }
 
 #[test]
-fn parses_the_directives_trellis_reads() {
+fn parses_the_directives_glowfly_reads() {
     let text = "IdentityFile ~/.ssh/top\n\
                 # comment\n\
                 Host github.com *.corp\n\

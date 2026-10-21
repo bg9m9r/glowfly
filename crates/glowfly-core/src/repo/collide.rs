@@ -140,7 +140,7 @@ pub(super) fn folding(git_dir: &Path) -> Folding {
 /// names. Named `*.lock` so the file watcher ignores it, like git's own lock files.
 pub fn probe(git_dir: &Path) -> Folding {
     let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or_default();
-    let name = format!("trellis-probe-{}-{stamp}-\u{e9}.lock", std::process::id());
+    let name = format!("glowfly-probe-{}-{stamp}-\u{e9}.lock", std::process::id());
     let made = git_dir.join(&name);
     if std::fs::OpenOptions::new().write(true).create_new(true).open(&made).is_err() {
         return Folding::default();

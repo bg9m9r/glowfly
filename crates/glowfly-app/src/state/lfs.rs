@@ -23,7 +23,7 @@ pub struct LfsSession {
     /// Whether git-lfs is installed: checked at startup and whenever Preferences > Git LFS reads
     /// its status.
     pub install: LfsInstall,
-    /// Workdirs whose "git-lfs missing" banner was dismissed, until Trellis restarts.
+    /// Workdirs whose "git-lfs missing" banner was dismissed, until Glowfly restarts.
     pub banner_dismissed: Vec<PathBuf>,
     /// The LFS sides of the diff last loaded, when either is a pointer.
     pub diff: Option<LfsDiffNote>,

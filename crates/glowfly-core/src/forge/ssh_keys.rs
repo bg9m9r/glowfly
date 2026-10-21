@@ -8,7 +8,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 const CLOUD_API: &str = "https://api.bitbucket.org/2.0";
-/// The longest title Trellis suggests.
+/// The longest title Glowfly suggests.
 const TITLE_CHARS: usize = 100;
 
 /// A key the account already has.

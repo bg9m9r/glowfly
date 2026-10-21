@@ -249,7 +249,7 @@ fn menu_items_send_their_messages() {
         }),
         ("menu-click-full-screen", "View", "Full screen", |m| matches!(m, Msg::Layout(LayoutMsg::ToggleFullscreen))),
         ("menu-click-journal", "View", "Operation journal", |m| matches!(m, Msg::Journal(JournalMsg::Toggle))),
-        ("menu-click-about", "Help", "About Trellis…", |m| matches!(m, Msg::App(AppMsg::ShowAbout))),
+        ("menu-click-about", "Help", "About Glowfly…", |m| matches!(m, Msg::App(AppMsg::ShowAbout))),
         ("menu-click-check-updates", "Help", "Check for updates", |m| matches!(m, Msg::Updates(UpdateMsg::CheckNow))),
     ];
     for (name, title, item, want) in cases {
@@ -296,7 +296,7 @@ fn dialog_harness(git: GitState, draw: DrawDialog) -> Harness<'static, (GitState
             theme::apply_style(ctx, &theme::DARK);
             ctx.set_theme(theme::egui_theme(&theme::DARK));
             egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |_| {});
-            let id = egui::Id::new("trellis-modal");
+            let id = egui::Id::new("glowfly-modal");
             let cx = crate::ui::dialog_frame::Cx { t: glowfly_core::i18n::Lang::En, keyboard: true, key: id.with("about") };
             let resp = theme::dialog(ctx, id).show(ctx, |ui| draw(ui, cx, git, msgs));
             ctx.data_mut(|d| d.insert_temp(egui::Id::new("about-rect"), resp.response.rect));
@@ -317,7 +317,7 @@ fn about_dialog() {
     assert!(h.query_by_label("Git 2.47.1").is_some());
     h.get_by_label("Copy version info").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Copy(t) if t.starts_with("Trellis ") && t.ends_with("\nGit 2.47.1"))));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Copy(t) if t.starts_with("Glowfly ") && t.ends_with("\nGit 2.47.1"))));
     assert!(h.query_by_label("Rust").is_none(), "the notices have their own dialog");
     h.get_by_label("Third-party notices…").click();
     h.run();

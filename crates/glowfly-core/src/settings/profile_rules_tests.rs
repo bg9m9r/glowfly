@@ -8,7 +8,7 @@ const PERSONAL: ProfileId = ProfileId(2);
 
 /// A path under the temporary folder: absolute on every OS, never touched.
 fn at(rest: &str) -> PathBuf {
-    paths::temp_dir().join("trellis-rules").join(rest)
+    paths::temp_dir().join("glowfly-rules").join(rest)
 }
 
 fn folder(rest: &str) -> FolderRule {

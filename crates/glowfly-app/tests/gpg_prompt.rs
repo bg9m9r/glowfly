@@ -1,4 +1,4 @@
-//! Trellis as git's gpg.program: the built executable stops a loop back into itself, still
+//! Glowfly as git's gpg.program: the built executable stops a loop back into itself, still
 //! answers askpass prompts with the wrapper marker set, and (on Unix, with a fake gpg script)
 //! asks a listener started here for the signing passphrase while git commits; with a protected
 //! SSH key, ssh-keygen's prompt reaches the listener as an SSH signing prompt.
@@ -37,7 +37,7 @@ fn listener(answers: Vec<Option<&'static str>>) -> (Arc<Server>, Receiver<Prompt
     (server, seen)
 }
 
-fn trellis(argv: &[&str], env: &[(&str, &str)]) -> Output {
+fn glowfly(argv: &[&str], env: &[(&str, &str)]) -> Output {
     let mut cmd = Command::new(EXE);
     cmd.args(argv);
     for var in [ENV_ADDR, ENV_TOKEN, SSH_HINT_ENV, ENV_WRAPPER] {
@@ -48,8 +48,8 @@ fn trellis(argv: &[&str], env: &[(&str, &str)]) -> Output {
 }
 
 #[test]
-fn a_gpg_program_that_leads_back_to_trellis_stops() {
-    let out = trellis(&["--status-fd=2", "-bsau", "K"], &[(ENV_WRAPPER, "nested")]);
+fn a_gpg_program_that_leads_back_to_glowfly_stops() {
+    let out = glowfly(&["--status-fd=2", "-bsau", "K"], &[(ENV_WRAPPER, "nested")]);
     assert_eq!(out.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&out.stderr).contains(LOOP_MESSAGE), "{}", String::from_utf8_lossy(&out.stderr));
     assert!(out.stdout.is_empty());
@@ -60,7 +60,7 @@ fn askpass_prompts_still_work_with_the_marker_set() {
     let (s, seen) = listener(vec![Some("hunter2")]);
     let (addr, token) = (s.addr(), s.token().to_owned());
     let env = [(ENV_ADDR, addr.as_str()), (ENV_TOKEN, token.as_str()), (ENV_WRAPPER, "1")];
-    let out = trellis(&["Password for 'https://ada@example.com': "], &env);
+    let out = glowfly(&["Password for 'https://ada@example.com': "], &env);
     assert_eq!(out.status.code(), Some(0), "{}", String::from_utf8_lossy(&out.stderr));
     assert_eq!(String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n"), "hunter2\n");
     assert!(matches!(seen.recv_timeout(Duration::from_secs(10)).unwrap(), PromptKind::Password { .. }));
@@ -114,7 +114,7 @@ esac
 "#;
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-gpg-{}-{name}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-gpg-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let fake = dir.join("fake-gpg");
@@ -189,7 +189,7 @@ esac
     /// A repository signing with a new ed25519 key protected by the passphrase "right": the
     /// repository and the key's public file, or None (after saying so) without ssh-keygen.
     fn ssh_scratch(name: &str) -> Option<(PathBuf, PathBuf)> {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-gpg-{}-{name}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-gpg-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let made = Command::new("ssh-keygen")

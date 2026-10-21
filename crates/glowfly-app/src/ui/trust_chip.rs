@@ -1,6 +1,6 @@
 //! The toolbar's "Untrusted" chip: shown while the open repository's git is held; its tooltip
 //! says what is paused and why, and a click brings the trust prompt back (update/trust.rs).
-//! While Trellis waits on your decision (Undecided, or Changed: trusted before but it gained
+//! While Glowfly waits on your decision (Undecided, or Changed: trusted before but it gained
 //! settings or hooks since) it is the coral needs-you pill with the warning mark; after you
 //! chose not to trust the repository it is a neutral chip.
 

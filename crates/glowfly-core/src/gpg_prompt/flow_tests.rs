@@ -157,5 +157,5 @@ fn a_program_that_cannot_run_reports_why() {
     let (mut gpg, mut asker) = scripted(vec![], vec![]);
     let Finish::Done(run) = sign(&call(), PAYLOAD, &mut gpg, &mut asker) else { panic!("expected a run") };
     assert!(!run.ok && run.code.is_none());
-    assert!(String::from_utf8_lossy(&run.stderr).starts_with("Trellis: could not run gpg: "));
+    assert!(String::from_utf8_lossy(&run.stderr).starts_with("Glowfly: could not run gpg: "));
 }

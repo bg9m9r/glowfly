@@ -31,7 +31,7 @@ impl Default for Motion {
 }
 
 fn key() -> Id {
-    Id::new("trellis-tooltip-motion")
+    Id::new("glowfly-tooltip-motion")
 }
 
 /// How far below its place a tooltip `age` seconds old is drawn: `RISE` at first, easing

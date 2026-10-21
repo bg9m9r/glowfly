@@ -16,7 +16,7 @@ $script:CreateBranchLabel = "Create branch here$([char] 0x2026)"
 # is GetDpiForWindow / 96.
 function Test-Scale {
     $zoom = $script:ZoomPercent
-    $dpi = [TrellisSmoke.Native]::Dpi($script:Hwnd)
+    $dpi = [GlowflySmoke.Native]::Dpi($script:Hwnd)
     $native = $dpi / 96.0
     Wait-Probe "zoom_percent $zoom, native_pixels_per_point $native (GetDpiForWindow $dpi / 96) and pixels_per_point $native x $($zoom / 100)" {
         param($p)
@@ -63,20 +63,20 @@ function Invoke-FirstClickCase([string] $Case, [scriptblock] $Body) {
 function Test-FirstClick {
     $results = [ordered]@{}
     $results['click to focus'] = Invoke-FirstClickCase 'click to focus' {
-        $null = [TrellisSmoke.Native]::BringToFront($script:ThiefHwnd)
+        $null = [GlowflySmoke.Native]::BringToFront($script:ThiefHwnd)
         Wait-Probe '(a) the window to lose the focus to the thief' { param($p) $p.focused -eq $false } | Out-Null
         Move-PointerTo 'Add b.txt' 'central'
         Start-Sleep -Milliseconds 200
-        [TrellisSmoke.Native]::Button(1, $true)
+        [GlowflySmoke.Native]::Button(1, $true)
         Start-Sleep -Milliseconds 50
-        [TrellisSmoke.Native]::Button(1, $false)
+        [GlowflySmoke.Native]::Button(1, $false)
         Measure-Click "commit:$($script:BOid)"
     }
 
     $results['click after SetForegroundWindow'] = Invoke-FirstClickCase 'click after SetForegroundWindow' {
-        $null = [TrellisSmoke.Native]::BringToFront($script:ThiefHwnd)
+        $null = [GlowflySmoke.Native]::BringToFront($script:ThiefHwnd)
         Wait-Probe '(b) the window to lose the focus to the thief' { param($p) $p.focused -eq $false } | Out-Null
-        if (-not [TrellisSmoke.Native]::BringToFront($script:Hwnd)) { Write-SmokeLog '(b) SetForegroundWindow did not make Trellis the foreground window' }
+        if (-not [GlowflySmoke.Native]::BringToFront($script:Hwnd)) { Write-SmokeLog '(b) SetForegroundWindow did not make Glowfly the foreground window' }
         Wait-Probe '(b) focus from SetForegroundWindow' { param($p) $p.focused -eq $true } | Out-Null
         Wait-Settled
         Invoke-WidgetClick 'Add a.txt' 'central'
@@ -174,12 +174,12 @@ function Test-SidebarDrag {
     }
 }
 
-# Dragging Trellis's own bottom-right resize corner resizes the window; it lays out to its new
+# Dragging Glowfly's own bottom-right resize corner resizes the window; it lays out to its new
 # size and still maps the pointer right.
 function Test-WindowResize {
-    $c = [TrellisSmoke.Native]::ClientOnScreen($script:Hwnd)
-    $wa = [TrellisSmoke.Native]::WorkArea()
-    $dpiScale = [TrellisSmoke.Native]::Dpi($script:Hwnd) / 96.0
+    $c = [GlowflySmoke.Native]::ClientOnScreen($script:Hwnd)
+    $wa = [GlowflySmoke.Native]::WorkArea()
+    $dpiScale = [GlowflySmoke.Native]::Dpi($script:Hwnd) / 96.0
     $minW = [Math]::Ceiling(960 * $dpiScale)
     $minH = [Math]::Ceiling(540 * $dpiScale)
     if ($c[2] - 240 -ge $minW -and $c[3] - 160 -ge $minH) {
@@ -193,13 +193,13 @@ function Test-WindowResize {
     $wantH = $c[3] + $dy
     # The corner zone is 12 physical pixels at 96 DPI; winit's sizing loop follows the moves.
     Invoke-PointerDrag ($c[0] + $c[2] - 4) ($c[1] + $c[3] - 4) $dx $dy 6 -PauseAfterPress 200
-    Wait-Until "the client area to be $wantW x $wantH (within 4)" { [TrellisSmoke.Native]::ClientOnScreen($script:Hwnd) } {
+    Wait-Until "the client area to be $wantW x $wantH (within 4)" { [GlowflySmoke.Native]::ClientOnScreen($script:Hwnd) } {
         param($r)
         [Math]::Abs($r[2] - $wantW) -le 4 -and [Math]::Abs($r[3] - $wantH) -le 4
-    } { "; client area: $([TrellisSmoke.Native]::ClientOnScreen($script:Hwnd) -join ', ')" } 0 | Out-Null
+    } { "; client area: $([GlowflySmoke.Native]::ClientOnScreen($script:Hwnd) -join ', ')" } 0 | Out-Null
     Wait-Probe 'probe.screen x pixels_per_point to equal the client size (within 2)' {
         param($p)
-        $r = [TrellisSmoke.Native]::ClientOnScreen($script:Hwnd)
+        $r = [GlowflySmoke.Native]::ClientOnScreen($script:Hwnd)
         [Math]::Abs($p.screen[0] * $p.pixels_per_point - $r[2]) -le 2 -and [Math]::Abs($p.screen[1] * $p.pixels_per_point - $r[3]) -le 2
     } | Out-Null
     Wait-Settled

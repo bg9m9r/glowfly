@@ -1,7 +1,7 @@
 //! Builds the syntax set used for diff highlighting and dumps it to `OUT_DIR/syntaxes.packdump`,
 //! which `highlight::syntaxes` embeds with `include_bytes!`.
 //!
-//! The set is the curated two-face set (a superset of syntect's defaults) plus Trellis's own
+//! The set is the curated two-face set (a superset of syntect's defaults) plus Glowfly's own
 //! grammars in `syntaxes/`. It is merged and dumped here, at build time, because building a
 //! merged set at runtime takes about 0.2 s in a release build and over 1 s in a debug build,
 //! while loading the finished dump takes under 1 ms.

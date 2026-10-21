@@ -188,7 +188,7 @@ mod tests {
         let r = Err("git log failed: fatal: bad object\u{202E}".to_owned());
         let b = badge(Lang::En, SigningFormat::X509, BadgeState::Done(&r));
         assert_eq!((b.verdict, b.label), (Verdict::Signed, "Signed"));
-        assert_eq!(b.tooltip, "Signed · X.509 signature\n\nTrellis couldn't check this signature: git log failed: fatal: bad object");
+        assert_eq!(b.tooltip, "Signed · X.509 signature\n\nGlowfly couldn't check this signature: git log failed: fatal: bad object");
     }
 
     #[test]

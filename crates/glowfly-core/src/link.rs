@@ -1,12 +1,13 @@
-//! `trellis://` links: a repository, a branch, a commit or a tag that someone else can open in
-//! their own copy of the repository.
+//! `glowfly://` links: a repository, a branch, a commit or a tag that someone else can open in
+//! their own copy of the repository. Links made while the app was called Trellis
+//! (`trellis://`) open the same way.
 //!
 //! The format:
 //!
-//! - `trellis://repo?url=<url>&root=<sha>`
-//! - `trellis://branch/<name>?url=<url>&root=<sha>`
-//! - `trellis://commit/<full sha>?url=<url>&root=<sha>`
-//! - `trellis://tag/<name>?url=<url>&root=<sha>`
+//! - `glowfly://repo?url=<url>&root=<sha>`
+//! - `glowfly://branch/<name>?url=<url>&root=<sha>`
+//! - `glowfly://commit/<full sha>?url=<url>&root=<sha>`
+//! - `glowfly://tag/<name>?url=<url>&root=<sha>`
 //!
 //! Names and values are percent-encoded, everything but letters, digits and `-._~` escaped, so
 //! a `/` in a branch name is `%2F` and the name stays one path segment.
@@ -17,7 +18,7 @@
 //! which every full clone of the repository shares whatever its remotes are called. A link never
 //! carries a folder path.
 //!
-//! [`parse`] refuses: another scheme, a kind this version doesn't know (a newer Trellis made
+//! [`parse`] refuses: another scheme, a kind this version doesn't know (a newer Glowfly made
 //! it), a missing name or sha, a sha that isn't 7 to 64 hex digits, a root that isn't 40 or 64,
 //! a known parameter given twice, a link with neither url nor root, bad percent-encoding or
 //! UTF-8, control characters, a ref name git would refuse, a url that is empty, starts with `-`
@@ -45,7 +46,7 @@ pub enum Target {
     Repository,
     /// A branch name, without `refs/heads/` (or a remote's name for it).
     Branch(String),
-    /// A commit's sha in lowercase hex: full in links Trellis makes, abbreviated (7 or more
+    /// A commit's sha in lowercase hex: full in links Glowfly makes, abbreviated (7 or more
     /// digits) in typed ones.
     Commit(String),
     /// A tag name, without `refs/tags/`.
@@ -62,13 +63,13 @@ pub struct Link {
     pub target: Target,
 }
 
-/// Why a text isn't a link Trellis can open. Decide behaviour from the variant, never the
+/// Why a text isn't a link Glowfly can open. Decide behaviour from the variant, never the
 /// message.
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum LinkError {
-    #[error("it isn't a trellis:// link")]
+    #[error("it isn't a glowfly:// link")]
     NotALink,
-    #[error("it points at a \"{0}\", which this version of Trellis doesn't know (was it made by a newer Trellis?)")]
+    #[error("it points at a \"{0}\", which this version of Glowfly doesn't know (was it made by a newer Glowfly?)")]
     UnknownKind(String),
     #[error("it doesn't say which branch, commit or tag it points at")]
     MissingName,
@@ -119,7 +120,7 @@ impl Link {
     /// The link's text. `url` comes before `root`, and a missing one is left out, so building,
     /// parsing and building again gives the same text.
     pub fn to_uri(&self) -> String {
-        let mut s = String::from("trellis://");
+        let mut s = String::from("glowfly://");
         match &self.target {
             Target::Repository => s.push_str("repo"),
             Target::Branch(n) => s.push_str(&format!("branch/{}", enc(n))),
@@ -156,10 +157,15 @@ impl Link {
     }
 }
 
-/// Whether a command-line argument is a link rather than a path: it starts with `trellis:`, in
-/// any case. An argument that isn't UTF-8 is a path.
+/// Whether `scheme` is one of ours: `glowfly`, or `trellis` from before the rename, in any case.
+fn is_our_scheme(scheme: &str) -> bool {
+    [crate::url_scheme::SCHEME, crate::url_scheme::OLD_SCHEME].iter().any(|s| scheme.eq_ignore_ascii_case(s))
+}
+
+/// Whether a command-line argument is a link rather than a path: it starts with `glowfly:` (or
+/// the old `trellis:`), in any case. An argument that isn't UTF-8 is a path.
 pub fn looks_like_link(arg: &std::ffi::OsStr) -> bool {
-    arg.to_str().is_some_and(|s| s.get(..8).is_some_and(|p| p.eq_ignore_ascii_case("trellis:")))
+    arg.to_str().and_then(|s| s.split_once(':')).is_some_and(|(scheme, _)| is_our_scheme(scheme))
 }
 
 /// Reads a link's text (see the module docs for what is refused).
@@ -172,7 +178,7 @@ pub fn parse(text: &str) -> Result<Link, LinkError> {
         return Err(LinkError::BadEncoding);
     }
     let (scheme, rest) = text.split_once("://").ok_or(LinkError::NotALink)?;
-    if !scheme.eq_ignore_ascii_case("trellis") {
+    if !is_our_scheme(scheme) {
         return Err(LinkError::NotALink);
     }
     let rest = rest.split_once('#').map_or(rest, |(before, _)| before);
@@ -189,7 +195,7 @@ pub fn parse(text: &str) -> Result<Link, LinkError> {
         let slot = match key {
             "url" => &mut url,
             "root" => &mut root,
-            _ => continue, // from a newer Trellis
+            _ => continue, // from a newer Glowfly
         };
         if slot.is_some() {
             return Err(LinkError::Duplicate(if key == "url" { "url" } else { "root" }));

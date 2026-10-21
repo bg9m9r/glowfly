@@ -54,7 +54,7 @@ impl WorktreeForm {
             touched: Default::default(),
         };
         form.folder = default_folder(snap, &form.slug());
-        // The folder starts as Trellis's own choice: a problem with it shows from the start.
+        // The folder starts as Glowfly's own choice: a problem with it shows from the start.
         form.touched.mark("folder");
         form
     }

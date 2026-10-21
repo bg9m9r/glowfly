@@ -1,6 +1,6 @@
 %YAML 1.2
 ---
-# PowerShell syntax for diff highlighting, written for Trellis.
+# PowerShell syntax for diff highlighting, written for Glowfly.
 # Licensed under MIT OR Apache-2.0, like the rest of the project.
 #
 # It covers what diff coloring needs: comments, strings with interpolation, keywords,

@@ -91,7 +91,7 @@ try {
 
     # first-click records each case as soon as it is known; a case whose setup fails is recorded
     # as not run and does not stop the next case from running and being recorded.
-    $script:SmokeOut = Join-Path ([IO.Path]::GetTempPath()) "trellis-smoke-selftest-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+    $script:SmokeOut = Join-Path ([IO.Path]::GetTempPath()) "glowfly-smoke-selftest-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
     New-Item -ItemType Directory -Force $script:SmokeOut | Out-Null
     $script:Pass = 'scale-1'
     $record = Join-Path $script:SmokeOut 'first-click.txt'

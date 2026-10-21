@@ -68,7 +68,7 @@ fn held(ui: &mut Ui, real: &Path, patterns: &[LfsPattern], msgs: &mut Vec<Msg>) 
         ui.label(RichText::new("Paused until you trust this repository.").color(color::text()));
         help(
             ui,
-            "Trellis reads the LFS setup with git, and git would run the programs this repository's own settings and hooks name. \
+            "Glowfly reads the LFS setup with git, and git would run the programs this repository's own settings and hooks name. \
              LFS commands wait for your decision too.",
         );
         ui.add_space(4.0);
@@ -89,7 +89,7 @@ fn held(ui: &mut Ui, real: &Path, patterns: &[LfsPattern], msgs: &mut Vec<Msg>) 
 /// git-lfs isn't installed: say so, and warn when the repository already uses LFS.
 fn missing(ui: &mut Ui, status: &LfsStatus, msgs: &mut Vec<Msg>) {
     row(ui, "Status", |ui| {
-        warn(ui, "Git LFS isn't installed, so Trellis can't run LFS commands here.");
+        warn(ui, "Git LFS isn't installed, so Glowfly can't run LFS commands here.");
         help(ui, "Install it from git-lfs.com, then choose Check again.");
         ui.add_space(4.0);
         ui.horizontal(|ui| {

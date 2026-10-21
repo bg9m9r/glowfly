@@ -5,7 +5,7 @@
 //! file watcher (`Effect::Watch`), credential-prompt answers, the terminal's shell sessions and
 //! the search index's builds and queries (`index`) are run by the runner itself, the log files
 //! have one ordered worker (`logs`), effects are timed for the performance log, and saves of
-//! Trellis's own files are kept in order (`saves`).
+//! Glowfly's own files are kept in order (`saves`).
 //! `execute.rs` maps each effect to its work; work longer than a line lives in this folder's
 //! per-area files (`files`, `worktrees`, `rebase`, `highlight`, …); the git, file and
 //! network code itself lives in `glowfly-core`.
@@ -107,7 +107,7 @@ pub struct Runner<W: Waker + Clone> {
     watch: crate::watcher::WatchSlot,
     /// The credential-prompt listener, once started (never in tests).
     askpass: Option<Arc<glowfly_core::askpass::Server>>,
-    /// The listener for links a second Trellis process hands over, once started (never in
+    /// The listener for links a second Glowfly process hands over, once started (never in
     /// tests); dropping it removes the instance file.
     instance: Option<glowfly_core::instance::Listener>,
     /// Counts HighlightDiff jobs started: a job whose number is no longer the latest stops.
@@ -238,7 +238,7 @@ impl<W: Waker + Clone> Runner<W> {
             },
             None => job,
         };
-        if let Err(e) = std::thread::Builder::new().name(format!("trellis-{name}")).spawn(job) {
+        if let Err(e) = std::thread::Builder::new().name(format!("glowfly-{name}")).spawn(job) {
             tracing::error!("could not start a worker thread for {name}: {e}");
         }
     }

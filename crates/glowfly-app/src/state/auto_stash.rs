@@ -1,4 +1,4 @@
-//! Stash and carry on: the auto-stash prompt (`Modal::AutoStash`), the stashes Trellis made
+//! Stash and carry on: the auto-stash prompt (`Modal::AutoStash`), the stashes Glowfly made
 //! before an operation and still has to put back (`AppState::auto_stash`, global and never
 //! parked), and the pure rules and texts around them. The flow is in update/auto_stash.rs.
 
@@ -127,7 +127,7 @@ pub fn title(t: Lang) -> &'static str {
     t.tr("auto_stash.title")
 }
 
-/// The prompt's text: how many files, what Trellis does, and for an operation that can stop,
+/// The prompt's text: how many files, what Glowfly does, and for an operation that can stop,
 /// when the changes come back.
 pub fn body(t: Lang, op: &AutoStashFor, files: usize) -> String {
     let what = match op {

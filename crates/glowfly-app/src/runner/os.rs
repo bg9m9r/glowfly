@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn missing_paths_are_logged_without_launching_anything() {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-no-such-file-{}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-no-such-file-{}", std::process::id()));
         let p = dir.join("gone.txt");
         for m in [open_path(&dir, "gone.txt", false), open_path(&dir, "gone.txt", true), reveal(&p)] {
             let (ok, text) = logged(m);
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn a_folder_that_is_gone_is_reported_not_opened() {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-no-such-folder-{}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-no-such-folder-{}", std::process::id()));
         let (ok, text) = logged(open_folder(&dir));
         assert!(!ok);
         assert!(text.contains("the folder is gone") && text.contains(&glowfly_core::native_path::shown(&dir)), "{text}");
@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn files_the_system_would_run_are_found_on_disk() {
-        let dir = std::env::temp_dir().join(format!("trellis-runs-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("glowfly-runs-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("notes.txt"), "text").unwrap();
         assert_eq!(runs(&dir.join("notes.txt")), None);

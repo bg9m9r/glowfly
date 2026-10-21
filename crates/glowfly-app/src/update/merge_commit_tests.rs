@@ -54,8 +54,8 @@ fn merge_msg_prefills_the_draft() {
 #[test]
 fn prefill_cleared_when_merge_aborted() {
     let dir = conflicted_repo("merge-prefill-clear");
-    std::fs::write(dir.join(".git/trellis-template.txt"), "feat: \n\n# why\n").unwrap();
-    git(&dir, &["config", "commit.template", ".git/trellis-template.txt"]);
+    std::fs::write(dir.join(".git/glowfly-template.txt"), "feat: \n\n# why\n").unwrap();
+    git(&dir, &["config", "commit.template", ".git/glowfly-template.txt"]);
     let mut st = opened(&dir);
     assert_eq!(st.draft.summary, "Merge branch 'other'", "the merge's message wins over the template");
     git(&dir, &["merge", "--abort"]);

@@ -21,7 +21,7 @@ fn deliver(note: DesktopNote, send: impl FnOnce(&DesktopNote) -> Result<(), Stri
 /// here depends on the OS.
 fn show(note: &DesktopNote) -> Result<(), String> {
     notify_rust::Notification::new()
-        .appname("Trellis")
+        .appname("Glowfly")
         .summary(&note.title)
         .body(&note.body)
         .timeout(notify_rust::Timeout::Default)

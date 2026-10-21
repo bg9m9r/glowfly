@@ -40,7 +40,7 @@ pub(super) fn section(
         if widgets::list_row_hidden(ui) {
             continue;
         }
-        // Made before an operation (by Trellis, or git's own kept autostash): a weak "auto".
+        // Made before an operation (by Glowfly, or git's own kept autostash): a weak "auto".
         let auto = stash_ops::is_auto_stash(&s.message);
         let mark = auto.then(|| (t.tr("sidebar.stashes.auto"), color::weak()));
         let mut r = widgets::list_row(ui, widgets::ROW_INDENT, &s.message, mark, *sel == Selection::Commit(s.oid), false);

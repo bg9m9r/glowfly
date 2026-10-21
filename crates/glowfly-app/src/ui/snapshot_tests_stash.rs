@@ -185,12 +185,12 @@ fn rename_stash_dialog_blank_light() {
 fn rename_stash_dialog_without_branch() {
     let (mut st, dir) = with_stashes(ThemeChoice::Dark, "rename-stash-dialog-plain");
     let mut s = st.snap.as_ref().unwrap().stashes[2].clone();
-    s.message = "Trellis: discarded changes".into();
+    s.message = "Glowfly: discarded changes".into();
     st.modal = Some(Modal::RenameStash(RenameStashForm::new(&s)));
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("stash@{2}").is_some());
-    assert_eq!(form(&h).message, "Trellis: discarded changes", "no prefix: the whole text");
+    assert_eq!(form(&h).message, "Glowfly: discarded changes", "no prefix: the whole text");
     drop(h);
     remove_fixture(&dir);
 }

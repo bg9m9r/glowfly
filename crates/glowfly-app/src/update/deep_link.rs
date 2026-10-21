@@ -1,4 +1,4 @@
-//! `trellis://` links: copying one, reading one that arrives, the search's answer, the
+//! `glowfly://` links: copying one, reading one that arrives, the search's answer, the
 //! deep-link dialogs and the scheme registration. Opening the matched repository and selecting
 //! the target is `deep_link_open.rs`.
 

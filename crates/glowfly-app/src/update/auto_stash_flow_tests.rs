@@ -16,7 +16,7 @@ use glowfly_core::stash_ops::AutoStashFor;
 use glowfly_core::undo::UndoKind;
 use std::path::Path;
 
-/// a.txt edited, so the tree has one changed file Trellis can stash.
+/// a.txt edited, so the tree has one changed file Glowfly can stash.
 fn dirty(st: &mut AppState, dir: &Path) {
     std::fs::write(dir.join("a.txt"), "one\nmine\n").unwrap();
     drive(st, Msg::Repo(RepoMsg::Refresh));

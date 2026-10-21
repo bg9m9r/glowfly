@@ -1,6 +1,6 @@
 //! What a trust decision was made on: a fingerprint of the scan the user saw. When a later scan
 //! finds something the fingerprint lacks (a new setting or hook, a changed value), the decision
-//! no longer covers the repository and Trellis asks again. Each item is kept only as a short
+//! no longer covers the repository and Glowfly asks again. Each item is kept only as a short
 //! hash, so the saved settings hold no command lines.
 
 use super::{ConfigCommand, TrustScan, hook_base};

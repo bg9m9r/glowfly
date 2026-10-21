@@ -1,5 +1,5 @@
-//! Preferences > General: the Trellis Links row (which program opens trellis:// links, and
-//! registering this copy of Trellis for them).
+//! Preferences > General: the Glowfly Links row (which program opens glowfly:// links, and
+//! registering this copy of Glowfly for them).
 
 use super::{help, row};
 use crate::deep_link::DeepLinkMsg;

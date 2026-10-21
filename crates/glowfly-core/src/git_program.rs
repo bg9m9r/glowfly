@@ -1,6 +1,6 @@
 //! Which git program every git child runs: the one chosen in Preferences > Git, else `git`
 //! looked up on the PATH children get ([`crate::env_path`]). Unlike the askpass environment in
-//! [`crate::gitcli`], this can change while Trellis runs; a job already running keeps the git it
+//! [`crate::gitcli`], this can change while Glowfly runs; a job already running keeps the git it
 //! started with. The chosen program's folder is never added to any PATH: the built-in terminal
 //! and external tools keep finding whatever git the user's PATH finds.
 //!
@@ -71,7 +71,7 @@ impl Refusal {
             Refusal::Missing => "there is no file there".to_owned(),
             Refusal::Folder => "it's a folder, not a program".to_owned(),
             Refusal::Launcher => "it starts a window, not git; choose cmd/git.exe (Windows) or bin/git".to_owned(),
-            Refusal::NotUnicode => "Trellis can only save paths that are valid Unicode".to_owned(),
+            Refusal::NotUnicode => "Glowfly can only save paths that are valid Unicode".to_owned(),
             Refusal::CantRun(why) => format!("it can't be started ({why})"),
             Refusal::NotGit(line) if line.is_empty() => "it isn't a working git: it printed no git version".to_owned(),
             Refusal::NotGit(line) => format!("it isn't a working git: it printed \"{line}\""),

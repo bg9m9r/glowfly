@@ -1,11 +1,11 @@
 //! Repository trust: asking once whether to trust a repository whose own config or hooks make
 //! git run programs (and again when a trusted one gains more), recording the answer with the
 //! print of what the user saw, bringing the prompt back on request (the toolbar's Untrusted chip,
-//! the palette), and trusting repositories Trellis cloned or created. What is held until then is
+//! the palette), and trusting repositories Glowfly cloned or created. What is held until then is
 //! checked where it starts (`AppState::runs_git_unasked`); a job the user starts is gated on the
 //! repository it runs in (`gate`): one where git is held waits here for the decision (`hold`),
 //! runs on Trust and run, and is dropped on Cancel. Passing trust on to worktrees and submodules
-//! Trellis makes from a trusted repository is in trust_inherit.rs.
+//! Glowfly makes from a trusted repository is in trust_inherit.rs.
 
 use super::jobs::Started;
 use crate::effect::{Effect, LoadKind};
@@ -96,7 +96,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
             release(st, h, real, named, fx);
         }
     } else {
-        st.log(true, format!("{name} isn't trusted. Trellis won't fetch or contact its hosting service for it on its own."));
+        st.log(true, format!("{name} isn't trusted. Glowfly won't fetch or contact its hosting service for it on its own."));
         if let Some(h) = held {
             forget(st, h, false);
         }
@@ -131,7 +131,7 @@ pub(super) enum Gate {
 /// Whether `job`, about to run in `cwd`, may run, by the decision of the repository at `cwd`:
 /// the active one (held while it is Undecided, NotTrusted or Changed), another one open in a
 /// tab (its parked snapshot's standing), or one open nowhere (its saved decision: only Trusted
-/// runs, as nothing says what its settings and hooks run now). Clones and `git init`s Trellis
+/// runs, as nothing says what its settings and hooks run now). Clones and `git init`s Glowfly
 /// trusts when they open always run.
 pub(super) fn gate(st: &AppState, job: &RunningJob, cwd: &Path) -> Gate {
     if matches!(job.then_open, Some((_, Created::Clone | Created::Init))) {
@@ -149,7 +149,7 @@ pub(super) fn gate(st: &AppState, job: &RunningJob, cwd: &Path) -> Gate {
         Some(RepoTrust::Trusted) => Gate::Run,
         Some(RepoTrust::NotTrusted) => Gate::Refuse(format!("{} wasn't run: you chose not to trust {name}.", job.label)),
         None => Gate::Refuse(format!(
-            "{} wasn't run: {name} isn't open, so Trellis can't check what its settings and hooks run. Open it and start it again.",
+            "{} wasn't run: {name} isn't open, so Glowfly can't check what its settings and hooks run. Open it and start it again.",
             job.label
         )),
     }
@@ -222,12 +222,12 @@ fn forget(st: &mut AppState, h: HeldJob, trusted: bool) {
     let text = if trusted {
         format!("{label} wasn't run: {} is trusted now, so start it again.", h.name)
     } else {
-        format!("{label} wasn't run. Trellis runs git commands in {} only after you trust it.", h.name)
+        format!("{label} wasn't run. Glowfly runs git commands in {} only after you trust it.", h.name)
     };
     st.log(true, text);
 }
 
-/// A job that made the repository at `path` succeeded and Trellis is about to open it: a clone,
+/// A job that made the repository at `path` succeeded and Glowfly is about to open it: a clone,
 /// or a `git init` whose `output` says it made a new repository, is trusted when it loads. (A
 /// worktree made from a trusted repository is trusted by trust_inherit.rs.)
 pub(super) fn created(st: &mut AppState, path: &Path, how: Created, output: &str) {
@@ -241,9 +241,9 @@ pub(super) fn created(st: &mut AppState, path: &Path, how: Created, output: &str
     }
 }
 
-/// The active tab's snapshot was just replaced by a full load of `kind`: a repository Trellis
+/// The active tab's snapshot was just replaced by a full load of `kind`: a repository Glowfly
 /// made is trusted on what this load found, a decision saved before prints were kept takes this
-/// load's print, and one a `git lfs install` from Trellis changed adopts it; then it may ask.
+/// load's print, and one a `git lfs install` from Glowfly changed adopts it; then it may ask.
 pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     let (real, workdir, print) = (snap.real_workdir.clone(), snap.workdir.clone(), snap.trust_print.clone());

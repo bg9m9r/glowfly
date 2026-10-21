@@ -2,7 +2,7 @@
 //! keys from the OpenSSH Authentication Agent service (Git for Windows' bundled ssh doesn't).
 //!
 //! git runs `GIT_SSH_COMMAND`, else `core.sshCommand`, else `GIT_SSH`, else `ssh` from its PATH,
-//! where Git for Windows puts its bundled `usr/bin` first. Trellis writes one form for Windows'
+//! where Git for Windows puts its bundled `usr/bin` first. Glowfly writes one form for Windows'
 //! ssh, the program alone, sh-quoted with forward slashes
 //! (`'C:/Windows/System32/OpenSSH/ssh.exe'`), and recognises it by that exact spelling. Every
 //! decision here is pure or reads only a folder tree, so it is tested on every OS; only
@@ -24,7 +24,7 @@ pub struct WinSshFacts {
     pub windows_version: Option<(u32, u32)>,
     /// Git for Windows' own `<git root>/usr/bin/ssh.exe`, when it exists.
     pub bundled: Option<PathBuf>,
-    /// The first `ssh.exe` in Trellis's PATH.
+    /// The first `ssh.exe` in Glowfly's PATH.
     pub on_path: Option<PathBuf>,
     /// GIT_SSH from the environment (non-empty).
     pub git_ssh: Option<String>,
@@ -47,7 +47,7 @@ pub enum GitSsh {
     Unknown,
 }
 
-/// Whether `word` is the spelling Trellis writes for Windows' ssh: a drive (`X:` and a
+/// Whether `word` is the spelling Glowfly writes for Windows' ssh: a drive (`X:` and a
 /// separator) and the last three parts exactly `System32`, `OpenSSH`, `ssh.exe`.
 pub fn is_windows_ssh_word(word: &str) -> bool {
     let b = word.as_bytes();

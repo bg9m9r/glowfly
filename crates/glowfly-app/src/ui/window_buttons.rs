@@ -1,5 +1,5 @@
 //! Minimize, Maximize (Restore while maximized) and Close, flush with the window's top-right
-//! corner when Trellis draws the frame. The glyphs are painted, and the buttons never take the
+//! corner when Glowfly draws the frame. The glyphs are painted, and the buttons never take the
 //! keyboard focus (the window keeps its own keys for these). While Windows tracks the Maximize
 //! button for Snap Layouts, egui sees no pointer over it: its hover and press then come from
 //! the OS (`CaptionButton`), and its click reaches the shell from there.

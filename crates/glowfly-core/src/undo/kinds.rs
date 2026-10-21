@@ -1,4 +1,4 @@
-//! Recognising the command lines Trellis builds for undoable operations.
+//! Recognising the command lines Glowfly builds for undoable operations.
 
 use super::DISCARD_STASH_MESSAGE;
 
@@ -100,7 +100,7 @@ fn plain(s: &str) -> bool {
 }
 
 impl UndoKind {
-    /// Recognises the command lines Trellis builds for undoable operations.
+    /// Recognises the command lines Glowfly builds for undoable operations.
     pub fn classify(argv: &[String]) -> Option<UndoKind> {
         let a: Vec<&str> = argv.iter().map(String::as_str).collect();
         match a.as_slice() {

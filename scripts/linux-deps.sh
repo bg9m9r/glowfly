@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# System libraries needed to build Trellis on Debian/Ubuntu: windowing and input (eframe), the
+# System libraries needed to build Glowfly on Debian/Ubuntu: windowing and input (eframe), the
 # file dialog (rfd, GTK 3) and the desktop keyring (Secret Service over D-Bus).
 set -e
 sudo apt-get update

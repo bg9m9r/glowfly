@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The installer's pages, from WiX's standard dialogs (WixToolset.UI.wixext) plus Trellis's
+  The installer's pages, from WiX's standard dialogs (WixToolset.UI.wixext) plus Glowfly's
   Options page:
 
     first install or upgrade: Welcome > License > Options > Ready > progress > Finish
     installed copy:           Welcome > Repair or Remove > Ready > progress > Finish
 
-  Finish has "Launch Trellis" (trellis.wxs's LaunchTrellis) after an install.
+  Finish has "Launch Glowfly" (glowfly.wxs's LaunchGlowfly) after an install.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
-    <UI Id="TrellisPages">
+    <UI Id="GlowflyPages">
       <TextStyle Id="WixUI_Font_Normal" FaceName="Segoe UI" Size="9" />
       <TextStyle Id="WixUI_Font_Bigger" FaceName="Segoe UI" Size="12" />
       <TextStyle Id="WixUI_Font_Title" FaceName="Segoe UI" Size="9" Bold="yes" />
@@ -37,7 +37,7 @@
       <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
       <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg" />
       <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
-      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchTrellis" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchGlowfly" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
       <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
 
       <!-- The same frame as WiX's inner pages: banner, title and description, buttons. -->
@@ -48,9 +48,9 @@
         <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose what else Setup adds to Windows." />
 
         <Control Id="Desktop" Type="CheckBox" X="20" Y="60" Width="330" Height="17" Property="DESKTOPSHORTCUT" CheckBoxValue="1" Text="Create a &amp;desktop shortcut" />
-        <Control Id="Folders" Type="CheckBox" X="20" Y="82" Width="330" Height="17" Property="FOLDERMENU" CheckBoxValue="1" Text="Add &quot;Open in Trellis&quot; to &amp;folders in File Explorer" />
-        <Control Id="Links" Type="CheckBox" X="20" Y="104" Width="330" Height="17" Property="LINKSCHEME" CheckBoxValue="1" Text="Open trellis:// &amp;links with Trellis" />
-        <Control Id="Note" Type="Text" X="20" Y="134" Width="330" Height="30" NoPrefix="yes" Text="Trellis is installed for you only, in [INSTALLFOLDER], with a Start menu shortcut. It doesn't need administrator rights." />
+        <Control Id="Folders" Type="CheckBox" X="20" Y="82" Width="330" Height="17" Property="FOLDERMENU" CheckBoxValue="1" Text="Add &quot;Open in Glowfly&quot; to &amp;folders in File Explorer" />
+        <Control Id="Links" Type="CheckBox" X="20" Y="104" Width="330" Height="17" Property="LINKSCHEME" CheckBoxValue="1" Text="Open glowfly:// &amp;links with Glowfly" />
+        <Control Id="Note" Type="Text" X="20" Y="134" Width="330" Height="30" NoPrefix="yes" Text="Glowfly is installed for you only, in [INSTALLFOLDER], with a Start menu shortcut. It doesn't need administrator rights." />
 
         <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">

@@ -1,4 +1,4 @@
-//! `trellis --version` and `trellis --check-update <folder>`: the command-line modes the
+//! `glowfly --version` and `glowfly --check-update <folder>`: the command-line modes the
 //! installer checks in CI use (scripts/update-feed-check.ps1). They exit before logging,
 //! settings and the window.
 
@@ -12,11 +12,11 @@ pub const VERSION_FLAG: &str = "--version";
 pub const CHECK_FLAG: &str = "--check-update";
 /// `--check-update`'s exit status when there is no newer release.
 pub const EXIT_UP_TO_DATE: i32 = 3;
-const USAGE: &str = "usage: trellis --check-update <absolute folder to download into>";
+const USAGE: &str = "usage: glowfly --check-update <absolute folder to download into>";
 
-/// Prints `trellis <version>`; a closed stdout is ignored.
+/// Prints `glowfly <version>`; a closed stdout is ignored.
 pub fn print_version() -> i32 {
-    print_lines(&[format!("trellis {CURRENT_VERSION}")]);
+    print_lines(&[format!("glowfly {CURRENT_VERSION}")]);
     0
 }
 
@@ -59,7 +59,7 @@ pub fn check_update(args: &[OsString]) -> i32 {
     let kind = match std::env::current_exe() {
         Ok(exe) => app_update::install_kind(&exe),
         Err(e) => {
-            eprintln!("error: Couldn't find Trellis's own program: {e}");
+            eprintln!("error: Couldn't find Glowfly's own program: {e}");
             return 1;
         }
     };
@@ -114,7 +114,7 @@ mod tests {
 
     #[test]
     fn reports_lines_and_exit_codes() {
-        let dir = glowfly_core::paths::temp_dir().join("trellis-feed");
+        let dir = glowfly_core::paths::temp_dir().join("glowfly-feed");
         let feed = Feed::Folder(dir.clone());
         let head = |kind: &str| vec!["current 0.1.0".to_owned(), format!("install {kind}"), format!("feed folder {}", shown(&dir))];
 
@@ -124,7 +124,7 @@ mod tests {
         assert_eq!((code, out, err), (3, want, None));
         assert_eq!(EXIT_UP_TO_DATE, 3);
 
-        let name = "trellis-v0.1.1-x86_64-pc-windows-msvc.msi";
+        let name = "glowfly-v0.1.1-x86_64-pc-windows-msvc.msi";
         let asset = Asset { name: name.into(), size: 1, url: String::new() };
         let release = Release {
             tag: "v0.1.1".into(),

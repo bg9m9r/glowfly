@@ -66,7 +66,7 @@ pub enum Cause {
 }
 
 /// Why `output` (a failed job's combined output, untranslated) says git failed, when it is a
-/// cause Trellis can explain. `$ git …` echo lines and `hint:` lines are never matched.
+/// cause Glowfly can explain. `$ git …` echo lines and `hint:` lines are never matched.
 pub fn classify(output: &str) -> Option<Cause> {
     let lines: Vec<&str> = meaningful(output).collect();
     let text = lines.join("\n");

@@ -1,6 +1,6 @@
 //! Linux and the BSDs: whether the trash folder on a file's drive can be used, checked the way
 //! the trash crate picks one before it is called. When it can't, the crate would copy the file
-//! into the home Trash without saying so (or fail); Trellis asks first instead
+//! into the home Trash without saying so (or fail); Glowfly asks first instead
 //! (`TrashProblem::HomeTrashOnly`). The decision itself is the pure `volume_trash_usable`.
 
 use super::home::{AdminTrash, UserTrash, VolumeTrashFacts, home_trash_dir, parse_mounts, topdir_of, volume_trash_usable};

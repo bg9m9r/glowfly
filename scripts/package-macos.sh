@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Packages a macOS release build into dist/: Trellis.app in a disk image (with a link to
+# Packages a macOS release build into dist/: Glowfly.app in a disk image (with a link to
 # /Applications), the tar.gz, and a .sha256 file for each. Run by the Release workflow after
 # `cargo build --release --target <target>`.
 #
@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 target="$1"
 tag="$2"
 version="${tag#[vV]}"
-name="trellis-$tag-$target"
+name="glowfly-$tag-$target"
 bin="target/$target/release/glowfly"
 dist="dist"
 mkdir -p "$dist"
@@ -25,21 +25,21 @@ sum() {
 }
 
 # --- The app bundle ----------------------------------------------------------------------------
-app="$dist/Trellis.app"
+app="$dist/Glowfly.app"
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 sed "s/@VERSION@/$version/g" packaging/macos/Info.plist > "$app/Contents/Info.plist"
-cp "$bin" "$app/Contents/MacOS/trellis"
-cp assets/icon/trellis.icns "$app/Contents/Resources/trellis.icns"
+cp "$bin" "$app/Contents/MacOS/glowfly"
+cp assets/icon/glowfly.icns "$app/Contents/Resources/glowfly.icns"
 printf 'APPL????' > "$app/Contents/PkgInfo"
 
 # --- Signing -----------------------------------------------------------------------------------
 identity=""
 keychain=""
 if [ -n "${APPLE_CERTIFICATE:-}" ] && [ -n "${APPLE_CERTIFICATE_PASSWORD:-}" ] && [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
-  keychain="$RUNNER_TEMP/trellis-signing.keychain-db"
+  keychain="$RUNNER_TEMP/glowfly-signing.keychain-db"
   keychain_password="$(uuidgen)"
-  p12="$RUNNER_TEMP/trellis-signing.p12"
+  p12="$RUNNER_TEMP/glowfly-signing.p12"
   echo "$APPLE_CERTIFICATE" | base64 --decode > "$p12"
   security create-keychain -p "$keychain_password" "$keychain"
   security set-keychain-settings -lut 21600 "$keychain"
@@ -64,7 +64,7 @@ cp -R "$app" "$root/"
 ln -s /Applications "$root/Applications"
 dmg="$dist/$name.dmg"
 rm -f "$dmg"
-hdiutil create -volname Trellis -srcfolder "$root" -ov -format UDZO "$dmg"
+hdiutil create -volname Glowfly -srcfolder "$root" -ov -format UDZO "$dmg"
 rm -rf "$root"
 
 if [ -n "$identity" ]; then

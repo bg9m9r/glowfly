@@ -1,4 +1,4 @@
-//! Effects of Trellis's own updates, run by runner/updates.rs.
+//! Effects of Glowfly's own updates, run by runner/updates.rs.
 
 use glowfly_core::app_update::Offer;
 use std::path::PathBuf;

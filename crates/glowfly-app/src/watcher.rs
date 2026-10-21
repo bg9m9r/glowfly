@@ -38,7 +38,7 @@ impl WatchSlot {
         drop(old);
         let Some(target) = target else { return };
         let slot = Arc::clone(&self.0);
-        let spawned = std::thread::Builder::new().name("trellis-watch-start".into()).spawn(move || {
+        let spawned = std::thread::Builder::new().name("glowfly-watch-start".into()).spawn(move || {
             // A network or virtual file system may never report changes made elsewhere.
             if let Some(kind) = glowfly_core::volume::remote_kind(&target.workdir) {
                 let msg = Msg::Watch(WatchMsg::RemoteVolume { workdir: target.workdir.clone(), kind });
@@ -96,7 +96,7 @@ fn start<W: Waker + Clone>(target: &WatchTarget, tx: Sender<Msg>, waker: W) -> R
     }
     let target = target.clone();
     std::thread::Builder::new()
-        .name("trellis-watch".into())
+        .name("glowfly-watch".into())
         .spawn(move || event_loop(raw_rx, target, common, tx, waker))
         .map_err(|e| format!("could not start the file watcher thread: {e}"))?;
     Ok(RepoWatcher { _inner: inner })
@@ -140,7 +140,7 @@ fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarge
             // Paths with none named (only folders' own modifications): read everything.
             let paths = (change == Change::Paths && !changed.is_empty()).then_some(changed);
             let count = paths.as_ref().map_or(0, Vec::len);
-            tracing::debug!(workdir = %target.workdir.display(), full, paths = count, "files changed outside Trellis");
+            tracing::debug!(workdir = %target.workdir.display(), full, paths = count, "files changed outside Glowfly");
             let msg = Msg::Watch(WatchMsg::RepoChanged { full, paths, last_event });
             if tx.send(Msg::Scoped { workdir: target.workdir.clone(), msg: Box::new(msg) }).is_err() {
                 return;

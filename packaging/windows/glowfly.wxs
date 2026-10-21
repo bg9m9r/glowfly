@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Windows installer (WiX 5). A per-user install, without administrator rights, into
+  %LOCALAPPDATA%\Programs\Glowfly, with a Start menu shortcut and, as the Options page chooses,
+  a desktop shortcut, "Open in Glowfly" on folders and the glowfly:// scheme (and trellis://, for
+  links made before the rename) in HKEY_CURRENT_USER. Its pages: Welcome, License, Options, Ready, progress, then Finish with
+  "Launch Glowfly".
+
+  The folder is fixed: Glowfly tells an installed copy from a portable one by its path
+  (app_update::install_kind_for).
+
+  Built by scripts/package-windows.ps1:
+    wix build -arch x64 -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -d Version=0.2.0
+      -d BinDir=<folder of glowfly.exe> -d SourceDir=<repository> -d AssetsDir=<repository>\assets
+      -d LicenseRtf=<license.rtf> [-d HasChangelog=1] -o glowfly.msi glowfly.wxs pages.wxs
+
+  Glowfly was called Trellis. The UpgradeCode below is the one the Trellis installer used and must
+  never change: it is how this installer finds an installed Trellis (or Glowfly) and replaces it
+  instead of installing beside it. An upgrade from Trellis also carries over its Options page
+  choices (the OLD_* searches under HKCU\Software\Trellis\Installer).
+
+  The scheme's values must match what url_scheme::windows writes (a core test checks the
+  commands), so Preferences > General shows this copy as registered.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Glowfly" Manufacturer="Glowfly contributors" Version="$(var.Version)" UpgradeCode="cd5d11a3-a0e0-4c62-9de1-5b1ad7e200d1" Scope="perUser" Compressed="yes" Language="1033">
+    <!-- Same-version upgrades let a rebuilt copy replace the installed one instead of joining it. -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of Glowfly is already installed. Uninstall it first to install this one." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="GlowflyIcon" SourceFile="$(var.AssetsDir)\icon\glowfly.ico" />
+    <Property Id="ARPPRODUCTICON" Value="GlowflyIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/bg9m9r/trellis" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/bg9m9r/trellis/issues" />
+    <!-- Settings > Apps offers Uninstall only; there is nothing to modify. -->
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <!-- The Options page's choices, all on for a first install. An upgrade starts from what the
+         installed copy chose: each choice's component leaves a value under
+         HKCU\Software\Glowfly\Installer, and a missing value turns the choice off. -->
+    <Property Id="DESKTOPSHORTCUT" Value="1" />
+    <Property Id="FOLDERMENU" Value="1" />
+    <Property Id="LINKSCHEME" Value="1" />
+    <Property Id="HAD_DESKTOP">
+      <RegistrySearch Root="HKCU" Key="Software\Glowfly\Installer" Name="desktop" Type="raw" />
+    </Property>
+    <Property Id="HAD_FOLDERS">
+      <RegistrySearch Root="HKCU" Key="Software\Glowfly\Installer" Name="folders" Type="raw" />
+    </Property>
+    <Property Id="HAD_LINKS">
+      <RegistrySearch Root="HKCU" Key="Software\Glowfly\Installer" Name="links" Type="raw" />
+    </Property>
+    <!-- The same choices as an installed Trellis recorded them. -->
+    <Property Id="OLD_DESKTOP">
+      <RegistrySearch Root="HKCU" Key="Software\Trellis\Installer" Name="desktop" Type="raw" />
+    </Property>
+    <Property Id="OLD_FOLDERS">
+      <RegistrySearch Root="HKCU" Key="Software\Trellis\Installer" Name="folders" Type="raw" />
+    </Property>
+    <Property Id="OLD_LINKS">
+      <RegistrySearch Root="HKCU" Key="Software\Trellis\Installer" Name="links" Type="raw" />
+    </Property>
+    <SetProperty Id="DESKTOPSHORTCUT" Value="{}" After="AppSearch" Sequence="first" Condition="WIX_UPGRADE_DETECTED AND NOT HAD_DESKTOP AND NOT OLD_DESKTOP" />
+    <SetProperty Id="FOLDERMENU" Value="{}" After="AppSearch" Sequence="first" Condition="WIX_UPGRADE_DETECTED AND NOT HAD_FOLDERS AND NOT OLD_FOLDERS" />
+    <SetProperty Id="LINKSCHEME" Value="{}" After="AppSearch" Sequence="first" Condition="WIX_UPGRADE_DETECTED AND NOT HAD_LINKS AND NOT OLD_LINKS" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Glowfly" />
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Per-user components keep their key path in HKCU (ICE38), and remove the folders they made.
+         WiX can't generate the GUID of a component with files and a registry key path, so the
+         two with files have fixed ones; never reuse them for different contents (Trellis's
+         installer used others, for trellis.exe in another folder). -->
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Component Id="GlowflyExe" Guid="6b9f8815-d0ce-4a62-81e9-dd8ce7a32e76">
+        <File Id="GlowflyExeFile" Source="$(var.BinDir)\glowfly.exe" KeyPath="no" />
+        <RegistryValue Root="HKCU" Key="Software\Glowfly\Installer" Name="program" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+        <RemoveFolder Id="RemoveProgramsFolder" Directory="ProgramsFolder" On="uninstall" />
+      </Component>
+      <Component Id="Docs" Guid="5e90b41d-577f-48b7-8a71-d4909a8004b7">
+        <File Id="LicenseMit" Source="$(var.SourceDir)\LICENSE-MIT" KeyPath="no" />
+        <File Id="LicenseApache" Source="$(var.SourceDir)\LICENSE-APACHE" KeyPath="no" />
+        <File Id="Readme" Source="$(var.SourceDir)\README.md" KeyPath="no" />
+        <File Id="Notices" Source="$(var.SourceDir)\THIRD-PARTY-NOTICES.md" KeyPath="no" />
+        <?ifdef HasChangelog ?>
+        <File Id="Changelog" Source="$(var.SourceDir)\CHANGELOG.md" KeyPath="no" />
+        <?endif ?>
+        <RegistryValue Root="HKCU" Key="Software\Glowfly\Installer" Name="docs" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+
+      <!-- "Open in Glowfly" on a folder and on a folder's background (Windows 11: Show more options). -->
+      <Component Id="FolderMenu" Condition="FOLDERMENU = 1">
+        <RegistryKey Root="HKCU" Key="Software\Classes\Directory\shell\Glowfly">
+          <RegistryValue Type="string" Value="Open in Glowfly" />
+          <RegistryValue Name="Icon" Type="string" Value="[INSTALLFOLDER]glowfly.exe,0" />
+          <RegistryKey Key="command">
+            <RegistryValue Type="string" Value='"[INSTALLFOLDER]glowfly.exe" "%V"' />
+          </RegistryKey>
+        </RegistryKey>
+        <RegistryKey Root="HKCU" Key="Software\Classes\Directory\Background\shell\Glowfly">
+          <RegistryValue Type="string" Value="Open in Glowfly" />
+          <RegistryValue Name="Icon" Type="string" Value="[INSTALLFOLDER]glowfly.exe,0" />
+          <RegistryKey Key="command">
+            <RegistryValue Type="string" Value='"[INSTALLFOLDER]glowfly.exe" "%V"' />
+          </RegistryKey>
+        </RegistryKey>
+        <RegistryValue Root="HKCU" Key="Software\Glowfly\Installer" Name="folders" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+
+      <!-- glowfly:// links, and trellis:// links made before the rename, as url_scheme::windows
+           registers them. -->
+      <Component Id="LinkScheme" Condition="LINKSCHEME = 1">
+        <RegistryKey Root="HKCU" Key="Software\Classes\glowfly">
+          <RegistryValue Type="string" Value="URL:Glowfly link" />
+          <RegistryValue Name="URL Protocol" Type="string" Value="" />
+          <RegistryKey Key="DefaultIcon">
+            <RegistryValue Type="string" Value='"[INSTALLFOLDER]glowfly.exe",0' />
+          </RegistryKey>
+          <RegistryKey Key="shell\open\command">
+            <RegistryValue Type="string" Value='"[INSTALLFOLDER]glowfly.exe" "%1"' />
+          </RegistryKey>
+        </RegistryKey>
+        <RegistryKey Root="HKCU" Key="Software\Classes\trellis">
+          <RegistryValue Type="string" Value="URL:Glowfly link" />
+          <RegistryValue Name="URL Protocol" Type="string" Value="" />
+          <RegistryKey Key="DefaultIcon">
+            <RegistryValue Type="string" Value='"[INSTALLFOLDER]glowfly.exe",0' />
+          </RegistryKey>
+          <RegistryKey Key="shell\open\command">
+            <RegistryValue Type="string" Value='"[INSTALLFOLDER]glowfly.exe" "%1"' />
+          </RegistryKey>
+        </RegistryKey>
+        <RegistryValue Root="HKCU" Key="Software\Glowfly\Installer" Name="links" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut">
+        <Shortcut Id="GlowflyShortcut" Name="Glowfly" Description="A Git client" Target="[INSTALLFOLDER]glowfly.exe" WorkingDirectory="INSTALLFOLDER" Icon="GlowflyIcon" />
+        <RegistryValue Root="HKCU" Key="Software\Glowfly\Installer" Name="shortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Condition="DESKTOPSHORTCUT = 1">
+        <Shortcut Id="GlowflyDesktopShortcut" Name="Glowfly" Description="A Git client" Target="[INSTALLFOLDER]glowfly.exe" WorkingDirectory="INSTALLFOLDER" Icon="GlowflyIcon" />
+        <RegistryValue Root="HKCU" Key="Software\Glowfly\Installer" Name="desktop" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Glowfly" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+
+    <!-- The pages. -->
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)\installer\banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)\installer\dialog.bmp" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch Glowfly" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <Property Id="WixShellExecTarget" Value="[#GlowflyExeFile]" />
+    <CustomAction Id="LaunchGlowfly" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixShellExec" Impersonate="yes" />
+    <!-- The page order and the Options page: pages.wxs. -->
+    <UIRef Id="GlowflyPages" />
+  </Package>
+</Wix>

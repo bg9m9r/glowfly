@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 pub(super) fn fake(name: &str) -> PathBuf {
-    glowfly_core::paths::temp_dir().join("trellis-close-tabs").join(name)
+    glowfly_core::paths::temp_dir().join("glowfly-close-tabs").join(name)
 }
 
 /// Unloaded tabs for made-up folders, tab `active` active.

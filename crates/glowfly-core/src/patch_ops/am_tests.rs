@@ -1,6 +1,6 @@
 //! Applying a series as commits with `git am`: the command, a clean series, a series that stops
 //! (with and without the three-way fallback), a plain diff, and what a stopped am shows to the
-//! rest of Trellis (the snapshot, the refs fingerprint, the conflict view's labels).
+//! rest of Glowfly (the snapshot, the refs fingerprint, the conflict view's labels).
 
 use super::super::{export, gitcli};
 use super::*;

@@ -57,7 +57,7 @@ fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut Vec<Effect>
         return;
     }
     let Some(snap) = &st.snap else { return };
-    let file = snap.git_dir.join("TRELLIS_COMMIT_EDITMSG");
+    let file = snap.git_dir.join("GLOWFLY_COMMIT_EDITMSG");
     let cmds = st.draft.commit_cmds(&file, stage_all);
     let amend = st.draft.amend;
     let label = if amend {
@@ -85,7 +85,7 @@ pub(super) fn prefill(st: &mut AppState) {
 
 /// Fills a blank, non-amend draft from MERGE_MSG when a merge starts (or swaps in a new merge's
 /// message while the old one is untouched), and clears the untouched message once the merge
-/// ends any other way than a Trellis commit. A draft the user wrote is never replaced.
+/// ends any other way than a Glowfly commit. A draft the user wrote is never replaced.
 fn merge_message(st: &mut AppState) {
     let m = st.snap.as_ref().and_then(|s| s.merge_message.clone());
     let d = &mut st.draft;

@@ -101,7 +101,7 @@ pub fn spawn(
     let pid = child.process_id();
     let mut reader = pair.master.try_clone_reader().map_err(other)?;
     let writer = pair.master.take_writer().map_err(other)?;
-    std::thread::Builder::new().name("trellis-pty-read".into()).spawn(move || {
+    std::thread::Builder::new().name("glowfly-pty-read".into()).spawn(move || {
         let mut buf = vec![0u8; 64 * 1024];
         loop {
             match reader.read(&mut buf) {
@@ -110,7 +110,7 @@ pub fn spawn(
             }
         }
     })?;
-    std::thread::Builder::new().name("trellis-pty-wait".into()).spawn(move || {
+    std::thread::Builder::new().name("glowfly-pty-wait".into()).spawn(move || {
         on_exit(child.wait().ok().map(|s| s.exit_code()));
     })?;
     Ok(PtySession { master: Arc::new(Mutex::new(pair.master)), writer, killer, pid })
@@ -124,12 +124,12 @@ mod tests {
 
     #[test]
     fn spawns_a_command_and_reports_output_and_exit() {
-        let dir = crate::paths::temp_dir().join(format!("trellis-pty-{}", std::process::id()));
+        let dir = crate::paths::temp_dir().join(format!("glowfly-pty-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let shell = if cfg!(windows) {
-            ShellCommand { program: "cmd.exe".into(), args: vec!["/C".into(), "echo trellis-pty".into()] }
+            ShellCommand { program: "cmd.exe".into(), args: vec!["/C".into(), "echo glowfly-pty".into()] }
         } else {
-            ShellCommand { program: "/bin/sh".into(), args: vec!["-c".into(), "printf trellis-pty".into()] }
+            ShellCommand { program: "/bin/sh".into(), args: vec!["-c".into(), "printf glowfly-pty".into()] }
         };
         let (out_tx, out_rx) = mpsc::channel();
         let (exit_tx, exit_rx) = mpsc::channel();
@@ -150,7 +150,7 @@ mod tests {
         // The screen answers the pseudoconsole's cursor position query, as the app does.
         let mut screen = crate::terminal::TermScreen::new(24, 80);
         let mut text = Vec::new();
-        while !String::from_utf8_lossy(&text).contains("trellis-pty") {
+        while !String::from_utf8_lossy(&text).contains("glowfly-pty") {
             let left = deadline.saturating_duration_since(Instant::now());
             match out_rx.recv_timeout(left) {
                 Ok(b) => {

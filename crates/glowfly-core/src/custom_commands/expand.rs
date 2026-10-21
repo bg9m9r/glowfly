@@ -40,7 +40,7 @@ fn placeholders(s: &str) -> impl Iterator<Item = (usize, &str)> {
 
 /// Which placeholders `template` names, or why it can't be used: an unknown placeholder, an
 /// unmatched quote, `{files}` inside a longer git argument, or (shell) a placeholder inside the
-/// template's own quotes, where Trellis's quoting would end them.
+/// template's own quotes, where Glowfly's quoting would end them.
 pub(super) fn check(kind: Kind, template: &str) -> Result<Needs, ProblemKind> {
     let mut needs = Needs::default();
     for (_, p) in placeholders(template) {

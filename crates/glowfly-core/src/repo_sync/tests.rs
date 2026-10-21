@@ -46,7 +46,7 @@ fn a_repository_that_runs_programs_is_skipped_unless_trusted() {
 
 #[test]
 fn failures_say_why() {
-    let gone = crate::paths::temp_dir().join(format!("trellis-sync-gone-{}", std::process::id()));
+    let gone = crate::paths::temp_dir().join(format!("glowfly-sync-gone-{}", std::process::id()));
     assert_eq!(sync(&gone, SyncOp::Pull, T), Outcome::Failed { reason: "The folder can't be found.".into(), detail: String::new() });
     let (work, bare) = with_origin("sync-fails");
     git(&work, &["remote", "set-url", "origin", &bare.with_file_name("no-such-origin.git").display().to_string()]);
@@ -54,7 +54,7 @@ fn failures_say_why() {
     assert!(!reason.is_empty() && !reason.contains('\n'), "{reason}");
     assert!(detail.contains(&reason) && !detail.contains('\r'), "{detail}");
     // A folder that isn't a repository.
-    let plain = crate::paths::temp_dir().join(format!("trellis-sync-plain-folder-{}", std::process::id()));
+    let plain = crate::paths::temp_dir().join(format!("glowfly-sync-plain-folder-{}", std::process::id()));
     std::fs::create_dir_all(&plain).unwrap();
     assert!(matches!(sync(&plain, SyncOp::Fetch { prune: true }, T), Outcome::Failed { .. }));
     let _ = std::fs::remove_dir_all(&plain);

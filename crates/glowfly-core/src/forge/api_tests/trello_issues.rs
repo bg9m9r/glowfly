@@ -1,4 +1,4 @@
-//! Trello cards in Trellis: a card with its labels, members and comments; the Create dialog's
+//! Trello cards in Glowfly: a card with its labels, members and comments; the Create dialog's
 //! boards, lists, labels and members; creating a card; and a token that may only read.
 
 use super::issues::new_issue;

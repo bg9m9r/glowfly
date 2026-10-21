@@ -24,7 +24,7 @@ use glowfly_core::submodule_ops::default_path;
 pub fn add(ui: &mut egui::Ui, cx: Cx, form: &mut AddForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let focus = cx.keyboard;
     let (url_id, path_id, branch_id) =
-        (Id::new("trellis-submodule-url"), Id::new("trellis-submodule-path"), Id::new("trellis-submodule-branch"));
+        (Id::new("glowfly-submodule-url"), Id::new("glowfly-submodule-path"), Id::new("glowfly-submodule-branch"));
     let (mut enter, mut edited) = (false, false);
     let d = Dialog::new(cx, "Add submodule").guide(dialog_guides::submodule_add(cx.t)).begin(ui);
 
@@ -126,7 +126,7 @@ const BRANCH_HINT: &str = "The branch an update with --remote follows. Empty mea
 /// is disabled while nothing changed, a field is invalid or a job runs (`idle` false).
 pub fn edit(ui: &mut egui::Ui, cx: Cx, form: &mut EditForm, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let focus = cx.keyboard;
-    let (url_id, branch_id) = (Id::new("trellis-submodule-edit-url"), Id::new("trellis-submodule-edit-branch"));
+    let (url_id, branch_id) = (Id::new("glowfly-submodule-edit-url"), Id::new("glowfly-submodule-edit-branch"));
     let mut enter = false;
     let mut d = Dialog::new(cx, format!("Edit submodule {}", form.path)).guide(dialog_guides::submodule_edit(cx.t));
     if form.name != form.path {
@@ -173,7 +173,7 @@ pub fn remove(ui: &mut egui::Ui, cx: Cx, form: &mut RemoveForm, idle: bool, msgs
     let mut d = Dialog::new(cx, format!("Remove submodule {}", form.path)).guide(dialog_guides::submodule_remove(cx.t)).begin(ui);
     d.body(ui, |ui| {
         ui.label("This deletes:");
-        ui.indent("trellis-submodule-remove-lines", |ui| {
+        ui.indent("glowfly-submodule-remove-lines", |ui| {
             for line in form.deleted_lines() {
                 ui.label(line);
             }

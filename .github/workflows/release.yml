@@ -53,7 +53,7 @@ jobs:
           TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag }}
         run: |
           gh api "repos/$GH_REPO/git/ref/tags/$TAG" > /dev/null || { echo "::error::Tag $TAG doesn't exist"; exit 1; }
-          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "Trellis $TAG" --generate-notes
+          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "Glowfly $TAG" --generate-notes
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
   build:
@@ -114,15 +114,15 @@ jobs:
           bash scripts/package-linux.sh ${{ matrix.target }} "$TAG"
       - name: Upload to the release
         shell: bash
-        # Regular files only: dist/ also holds the assembled Trellis.app folder on macOS.
+        # Regular files only: dist/ also holds the assembled Glowfly.app folder on macOS.
         run: find dist -maxdepth 1 -type f -print0 | xargs -0 gh release upload "$TAG" --clobber
       - name: Remove signing material
         if: always()
         shell: bash
         run: |
-          rm -f "$RUNNER_TEMP/trellis-signing.pfx" "$RUNNER_TEMP/trellis-signing.p12"
-          if [ "$RUNNER_OS" = macOS ] && [ -f "$RUNNER_TEMP/trellis-signing.keychain-db" ]; then
-            security delete-keychain "$RUNNER_TEMP/trellis-signing.keychain-db" || true
+          rm -f "$RUNNER_TEMP/glowfly-signing.pfx" "$RUNNER_TEMP/glowfly-signing.p12"
+          if [ "$RUNNER_OS" = macOS ] && [ -f "$RUNNER_TEMP/glowfly-signing.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/glowfly-signing.keychain-db" || true
           fi
 
   # SHA256SUMS over every file of the release, for `sha256sum -c SHA256SUMS --ignore-missing`
@@ -139,7 +139,7 @@ jobs:
       - name: Publish SHA256SUMS
         run: |
           mkdir dist
-          gh release download "$TAG" --dir dist --pattern 'trellis-*'
+          gh release download "$TAG" --dir dist --pattern 'glowfly-*'
           rm -f dist/*.sha256
           (cd dist && sha256sum -- * | sort -k2 > SHA256SUMS)
           cat dist/SHA256SUMS

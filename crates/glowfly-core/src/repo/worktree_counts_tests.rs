@@ -85,7 +85,7 @@ fn a_trusted_worktree_is_counted_through_git() {
     let count = count_worktree(&wt, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
 
-    let plain = crate::paths::temp_dir().join(format!("trellis-wtcount-plain-{}", std::process::id()));
+    let plain = crate::paths::temp_dir().join(format!("glowfly-wtcount-plain-{}", std::process::id()));
     std::fs::create_dir_all(&plain).unwrap();
     let none = count_worktree(&plain, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
     assert_eq!((none.read, none.changes), (ChangesRead::Counted, ChangeCounts::default()), "not a repository");

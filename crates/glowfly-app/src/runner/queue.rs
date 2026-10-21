@@ -63,7 +63,7 @@ impl RepoQueues {
         }
         let (tx, rx) = mpsc::channel::<(PathBuf, Job)>();
         let identify = self.identify;
-        let started = std::thread::Builder::new().name("trellis-repo-queues".into()).spawn(move || route(rx, identify));
+        let started = std::thread::Builder::new().name("glowfly-repo-queues".into()).spawn(move || route(rx, identify));
         if started.is_err() {
             return Err(job);
         }
@@ -89,7 +89,7 @@ fn route(rx: mpsc::Receiver<(PathBuf, Job)>, identify: Identify) {
             }
         }
         let (tx, worker_rx) = mpsc::channel::<Job>();
-        let name = format!("trellis-repo-{}", repo.file_name().map(|n| n.to_string_lossy()).unwrap_or_default());
+        let name = format!("glowfly-repo-{}", repo.file_name().map(|n| n.to_string_lossy()).unwrap_or_default());
         let started = std::thread::Builder::new().name(name).spawn(move || {
             for job in worker_rx {
                 job();
@@ -97,7 +97,7 @@ fn route(rx: mpsc::Receiver<(PathBuf, Job)>, identify: Identify) {
         });
         if started.is_err() {
             tracing::error!("could not start a queue for {}", repo.display());
-            if let Err(e) = std::thread::Builder::new().name("trellis-repo-job".into()).spawn(job) {
+            if let Err(e) = std::thread::Builder::new().name("glowfly-repo-job".into()).spawn(job) {
                 tracing::error!("could not start a thread for a job: {e}");
             }
             continue;
@@ -133,7 +133,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         // A script may change the index, files and refs.
         Effect::CustomCommand(CustomCommandEffect::RunShell(r)) => Some(&r.cwd),
         Effect::Repos(ReposEffect::Sync { path, op: SyncOp::Pull, .. }) => Some(path),
-        // Reads, network calls, Trellis's own files (ordered by `saves`), git config (which no
+        // Reads, network calls, Glowfly's own files (ordered by `saves`), git config (which no
         // queued job reads mid-way) and work outside the process. Listed one by one so a new
         // effect has to decide.
         Effect::LoadRepo { .. }

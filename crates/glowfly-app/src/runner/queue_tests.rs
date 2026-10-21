@@ -76,9 +76,9 @@ fn assert_queues(q: &RepoQueues, first: &Path, second: &Path, same: bool) {
 
 #[test]
 fn one_folder_under_two_names_has_one_queue() {
-    let dir = glowfly_core::paths::temp_dir().join(format!("trellis-queue-alias-{}", std::process::id()));
+    let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-queue-alias-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let link = dir.with_file_name(format!("trellis-queue-alias-{}-link", std::process::id()));
+    let link = dir.with_file_name(format!("glowfly-queue-alias-{}-link", std::process::id()));
     let _ = std::fs::remove_dir(&link).or_else(|_| std::fs::remove_file(&link));
     #[cfg(unix)]
     let made = std::os::unix::fs::symlink(&dir, &link).is_ok();
@@ -89,7 +89,7 @@ fn one_folder_under_two_names_has_one_queue() {
     let q = RepoQueues::default();
     assert_queues(&q, &dir, &link, true);
     assert_queues(&q, &dir, &dir.join("."), true);
-    let other = dir.with_file_name(format!("trellis-queue-other-{}", std::process::id()));
+    let other = dir.with_file_name(format!("glowfly-queue-other-{}", std::process::id()));
     std::fs::create_dir_all(&other).unwrap();
     assert_queues(&q, &dir, &other, false);
     let _ = std::fs::remove_dir(&link).or_else(|_| std::fs::remove_file(&link));

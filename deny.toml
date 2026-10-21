@@ -3,11 +3,11 @@
 
 [advisories]
 # Vulnerabilities and unsound code always fail unless listed below with why they don't reach
-# Trellis. Unmaintained crates fail too unless listed with why they are still in the tree.
+# Glowfly. Unmaintained crates fail too unless listed with why they are still in the tree.
 unmaintained = "all"
 ignore = [
     # git2 0.20: Remote::list() on a remote with no refs, and Signatures from a BlameHunk of
-    # Blame::blame_buffer(). Trellis calls neither (networking goes through the git CLI, and
+    # Blame::blame_buffer(). Glowfly calls neither (networking goes through the git CLI, and
     # blame isn't built from buffers). Fixed in git2 0.21; drop these when upgrading.
     { id = "RUSTSEC-2026-0183", reason = "Remote::list() is not called" },
     { id = "RUSTSEC-2026-0184", reason = "Blame::blame_buffer() is not called" },
@@ -21,14 +21,14 @@ ignore = [
     { id = "RUSTSEC-2024-0436", reason = "paste: a proc-macro of accesskit_windows (eframe 0.31)" },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser: ab_glyph, epaint's font rasterizer (egui 0.31)" },
     # Merged into zbus 6; zbus 4 (accesskit_unix, eframe 0.31's Linux accessibility) and zbus 5
-    # (rfd, notify-rust), in the versions Trellis uses, still depend on them.
+    # (rfd, notify-rust), in the versions Glowfly uses, still depend on them.
     { id = "RUSTSEC-2026-0370", reason = "zvariant: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
 ]
 
 [licenses]
-# Trellis is MIT OR Apache-2.0. These are the licenses its dependencies use (all permissive;
+# Glowfly is MIT OR Apache-2.0. These are the licenses its dependencies use (all permissive;
 # OFL-1.1 and Ubuntu-font-1.0 are epaint's bundled fonts).
 allow = [
     "MIT",

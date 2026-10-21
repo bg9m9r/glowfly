@@ -51,7 +51,7 @@ fn cap_chars(text: String, max: usize) -> String {
     }
 }
 
-/// The activity line for a git command: "git status --porcelain=v2 · trellis · 34 ms", with
+/// The activity line for a git command: "git status --porcelain=v2 · glowfly · 34 ms", with
 /// " · exit 1" for a non-zero exit code and " · timed out"; at most 300 characters.
 pub fn git_run_line(run: &GitRun) -> String {
     let args: Vec<Cow<str>> = run.args.iter().map(|a| redact_url_userinfo(a)).collect();
@@ -84,7 +84,7 @@ mod tests {
 
     fn run(args: &[&str]) -> GitRun {
         GitRun {
-            cwd: crate::paths::temp_dir().join("trellis"),
+            cwd: crate::paths::temp_dir().join("glowfly"),
             args: args.iter().map(|s| s.to_string()).collect(),
             took: Duration::from_millis(34),
             code: Some(0),
@@ -104,13 +104,13 @@ mod tests {
 
     #[test]
     fn git_run_line_text() {
-        assert_eq!(git_run_line(&run(&["status", "--porcelain=v2", "-z"])), "git status --porcelain=v2 -z · trellis · 34 ms");
+        assert_eq!(git_run_line(&run(&["status", "--porcelain=v2", "-z"])), "git status --porcelain=v2 -z · glowfly · 34 ms");
         let failed = GitRun { code: Some(1), ..run(&["config", "--get", "x.y"]) };
-        assert_eq!(git_run_line(&failed), "git config --get x.y · trellis · 34 ms · exit 1");
+        assert_eq!(git_run_line(&failed), "git config --get x.y · glowfly · 34 ms · exit 1");
         let slow = GitRun { code: None, ok: false, timed_out: true, took: Duration::from_millis(30_000), ..run(&["fetch"]) };
-        assert_eq!(git_run_line(&slow), "git fetch · trellis · 30.0 s · timed out");
+        assert_eq!(git_run_line(&slow), "git fetch · glowfly · 30.0 s · timed out");
         let secret = run(&["push", "https://me:secret@example.com/r.git"]);
-        assert_eq!(git_run_line(&secret), "git push https://***@example.com/r.git · trellis · 34 ms");
+        assert_eq!(git_run_line(&secret), "git push https://***@example.com/r.git · glowfly · 34 ms");
         let long = git_run_line(&run(&["add", &"é".repeat(400)]));
         assert_eq!(long.chars().count(), 300);
         assert!(long.ends_with('…'));

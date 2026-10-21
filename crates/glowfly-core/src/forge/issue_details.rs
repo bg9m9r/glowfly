@@ -1,4 +1,4 @@
-//! Issue details and creating issues inside Trellis: one issue with its description, people and
+//! Issue details and creating issues inside Glowfly: one issue with its description, people and
 //! comments, the choices the Create issue dialog offers (labels, people, types, epics), and
 //! creating an issue. GitHub and GitHub Enterprise Server (`github_issues.rs`), GitLab
 //! (`gitlab_issues.rs`), Jira Cloud and Data Center (`jira_issues.rs`), Bitbucket Cloud
@@ -84,7 +84,7 @@ pub struct NewIssue {
     pub epic: Option<String>,
 }
 
-/// The longest title (Jira: summary; Trello: name) Trellis sends.
+/// The longest title (Jira: summary; Trello: name) Glowfly sends.
 pub const MAX_TITLE: usize = 255;
 
 /// The longest description the service takes, in characters.
@@ -184,7 +184,7 @@ impl NewIssue {
     }
 }
 
-/// Whether issue details and creating issues work inside Trellis for this service.
+/// Whether issue details and creating issues work inside Glowfly for this service.
 pub fn issues_in_app(p: Provider) -> bool {
     p.issues_in_app()
 }
@@ -193,7 +193,7 @@ fn unsupported(t: &Target) -> Error {
     if t.provider == Provider::BitbucketDataCenter {
         return Error::Unsupported("Bitbucket Data Center has no issue tracker of its own; use Jira for its issues".into());
     }
-    Error::Unsupported(format!("{} issues aren't supported in Trellis yet", t.provider.name()))
+    Error::Unsupported(format!("{} issues aren't supported in Glowfly yet", t.provider.name()))
 }
 
 /// "Issue #8 wasn't found", "Card AbCd1234 wasn't found": in the tracker's words.

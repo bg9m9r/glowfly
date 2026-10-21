@@ -13,7 +13,7 @@ pub struct PendingPrompt {
     /// The answer to the same prompt earlier in this job didn't work (for a signing passphrase:
     /// the wrapper said so).
     pub retry: bool,
-    /// The last job that used credentials Trellis supplied for this host failed.
+    /// The last job that used credentials Glowfly supplied for this host failed.
     pub rejected_before: bool,
 }
 
@@ -44,9 +44,9 @@ pub struct CredentialPrompts {
     pub carry: Option<Carry>,
     /// Prompt texts answered during the current job.
     pub answered: Vec<String>,
-    /// Hosts Trellis supplied credentials for during the current job.
+    /// Hosts Glowfly supplied credentials for during the current job.
     pub answered_hosts: HashSet<String>,
-    /// Hosts whose last job failed after Trellis supplied credentials (kept across jobs).
+    /// Hosts whose last job failed after Glowfly supplied credentials (kept across jobs).
     pub failed_hosts: HashSet<String>,
     pub ended: Option<PromptEnd>,
     /// The prompt that ended the job early asked for a signing passphrase.

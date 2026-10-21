@@ -59,7 +59,7 @@ pub fn show(
 
     let shown = name_problem(snap, form).filter(|p| *p != RemoteNameProblem::Empty).and_then(|p| problem(p.message()));
     let group = FieldGroup::new("Name").message(&form.touched, "name", shown);
-    let (name_r, enter_name) = field(ui, group, &mut form.name, "trellis-remote-name", "upstream");
+    let (name_r, enter_name) = field(ui, group, &mut form.name, "glowfly-remote-name", "upstream");
     form_message::track(&mut form.touched, "name", &name_r);
     if focus && ui.memory(|m| m.focused().is_none()) {
         name_r.request_focus();
@@ -67,13 +67,13 @@ pub fn show(
 
     let shown = url_problem(form).filter(|p| *p != UrlProblem::Empty).and_then(|p| problem(p.message(false)));
     let group = FieldGroup::new("Fetch URL").message(&form.touched, "url", shown);
-    let (url_r, enter_url) = field(ui, group, &mut form.url, "trellis-remote-url", "https://example.com/owner/repo.git or a folder path");
+    let (url_r, enter_url) = field(ui, group, &mut form.url, "glowfly-remote-url", "https://example.com/owner/repo.git or a folder path");
     form_message::track(&mut form.touched, "url", &url_r);
 
     let shown = push_problem(form).and_then(|p| problem(p.message(true)));
     let help = if push_same_as_fetch(form) { "Same as the fetch URL." } else { "Leave empty to push to the fetch URL." };
     let group = FieldGroup::new("Push URL").optional(cx.t.tr("dialog.field.optional")).help(help).message(&form.touched, "push", shown);
-    let (push_r, enter_push) = field(ui, group, &mut form.push_url, "trellis-remote-push", "Same as the fetch URL");
+    let (push_r, enter_push) = field(ui, group, &mut form.push_url, "glowfly-remote-push", "Same as the fetch URL");
     form_message::track(&mut form.touched, "push", &push_r);
     let (name_p, url_p, push_p) = (name_problem(snap, form), url_problem(form), push_problem(form));
 

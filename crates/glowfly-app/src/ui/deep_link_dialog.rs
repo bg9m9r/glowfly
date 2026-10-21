@@ -1,4 +1,4 @@
-//! The dialogs a trellis:// link may need (`Modal::DeepLink`): a link Trellis can't open, a
+//! The dialogs a glowfly:// link may need (`Modal::DeepLink`): a link Glowfly can't open, a
 //! repository not found here (locate it on disk or clone it), and several copies to choose
 //! from. Esc closes them through the usual `CloseModal`, which gives the link up.
 
@@ -20,7 +20,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, d: &LinkDialog, msgs: &mut Vec<Msg>) -> b
     match d {
         LinkDialog::Invalid { text, reason } => {
             let d = Dialog::new(cx, "Can't open this link").size(Size::Small).begin(ui);
-            ui.add(egui::Label::new(format!("Trellis can't open this link: {reason}.")).wrap());
+            ui.add(egui::Label::new(format!("Glowfly can't open this link: {reason}.")).wrap());
             ui.add_space(6.0);
             ui.add(egui::Label::new(RichText::new(text.as_str()).monospace().color(color::weak())).wrap());
             d.finish(ui, Footer::new().close()).dismiss

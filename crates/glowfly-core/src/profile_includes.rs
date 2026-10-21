@@ -1,12 +1,12 @@
 //! Profile folder rules in the global git config: for each rule an `[includeIf "gitdir:<folder>/"]`
-//! entry whose `path` is the profile's include file, which Trellis writes in its own
+//! entry whose `path` is the profile's include file, which Glowfly writes in its own
 //! `git-profiles` folder with the profile's `[user]` identity. Repositories under the folder
-//! then commit as the profile, in Trellis and on the command line, while the global identity
+//! then commit as the profile, in Glowfly and on the command line, while the global identity
 //! and every repository's own config stay as they are.
 //!
 //! Entries are written shallow-first, so git's last include gives the deepest folder, as
 //! `settings::profile_for_git_dir` expects. A sync rewrites the files that changed and, when
-//! asked to place the entries, removes Trellis's own sections (those whose every key is a path
+//! asked to place the entries, removes Glowfly's own sections (those whose every key is a path
 //! into the folder) and adds the plan's at the end of the global file, which is also what puts
 //! them back after a later `[user]` section. Sections pointing anywhere else are never touched.
 //! Writes go through the git CLI, one process at a time (they share the file's lock).
@@ -23,7 +23,7 @@ use crate::settings::{FolderRule, ProfileId, Settings};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-/// The folder of the include files: `git-profiles` in Trellis's settings folder.
+/// The folder of the include files: `git-profiles` in Glowfly's settings folder.
 pub fn default_dir() -> Option<PathBuf> {
     crate::settings::config_dir().map(|d| d.join("git-profiles"))
 }
@@ -66,7 +66,7 @@ pub fn plan(settings: &Settings) -> IncludePlan {
 const SYNC_FAILED: &str = "Could not update the profile folder rules in your Git config";
 
 /// Writes the plan's include files into `dir` (only those whose text changed) and, with
-/// `place`, puts the plan's entries at the end of the global config in place of Trellis's
+/// `place`, puts the plan's entries at the end of the global config in place of Glowfly's
 /// earlier ones, then removes include files no profile has any more. Stops at the first
 /// failure; the next sync does everything again.
 pub fn sync(cwd: &Path, dir: &Path, plan: &IncludePlan, place: bool, env: &[(&str, &str)]) -> Result<(), String> {

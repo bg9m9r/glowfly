@@ -22,7 +22,7 @@ const PROPER: &[&str] = &[
     "LFS",
     "Credential",
     "Manager",
-    "Trellis",
+    "Glowfly",
     "Azure",
     "Boards",
     "Bitbucket",
@@ -52,7 +52,7 @@ const PROSE_ROLES: &[&str] = &["tip", "help", "warn", "hint", "body", "intro", "
 
 /// Key prefixes whose values are names, each with why. Each must still match a key.
 const EXEMPT_KEYS: &[(&str, &str)] = &[
-    ("prefs.ui.theme.name.", "theme names are proper names (Trellis Dark, High Contrast Light)"),
+    ("prefs.ui.theme.name.", "theme names are proper names (Glowfly Dark, High Contrast Light)"),
     ("prefs.terminal.shell.", "shell names are product names (Command Prompt, Git Bash)"),
 ];
 

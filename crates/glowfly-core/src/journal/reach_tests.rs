@@ -60,7 +60,7 @@ fn a_tag_a_remote_branch_or_another_worktree_keeps_it() {
     git(&dir, &["update-ref", "-d", "refs/remotes/origin/x"]);
     assert!(marked(&dir, two));
 
-    let wt = crate::paths::temp_dir().join(format!("trellis-test-journal-reach-wt-{}", std::process::id()));
+    let wt = crate::paths::temp_dir().join(format!("glowfly-test-journal-reach-wt-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&wt);
     git(&dir, &["worktree", "add", "-q", "--detach", &wt.display().to_string(), &id]);
     assert!(!marked(&dir, two), "another worktree's HEAD keeps it");

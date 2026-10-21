@@ -6,7 +6,7 @@ use glowfly_core::ssh_keys::AgentKey;
 use std::path::{Path, PathBuf};
 
 fn home() -> PathBuf {
-    glowfly_core::paths::temp_dir().join("trellis-ssh-marks")
+    glowfly_core::paths::temp_dir().join("glowfly-ssh-marks")
 }
 
 fn key(dir: &Path, name: &str) -> SshKeyPair {
@@ -42,9 +42,9 @@ fn key_marks_rules() {
     assert_eq!(marks(&page, &listing, 0), [KeyMark::Default]);
     assert!((0..3).all(|i| !marks(&page, &listing, i).contains(&KeyMark::TriedByDefault)), "a key is chosen");
 
-    page.repo = Some(RepoTarget { name: "trellis".into(), workdir: home(), real: home(), trusted: true });
+    page.repo = Some(RepoTarget { name: "glowfly".into(), workdir: home(), real: home(), trusted: true });
     page.choice = Some(Choices { global: Ok(KeyChoice::Key(ed)), repo: Some(Ok(KeyChoice::Key(rsa))) });
-    assert_eq!(marks(&page, &listing, 1), [KeyMark::Repo("trellis".into())]);
+    assert_eq!(marks(&page, &listing, 1), [KeyMark::Repo("glowfly".into())]);
 
     page.choice = Some(Choices { global: Ok(KeyChoice::Unset), repo: None });
     assert_eq!(marks(&page, &listing, 0), [KeyMark::TriedByDefault]);

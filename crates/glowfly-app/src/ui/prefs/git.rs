@@ -35,7 +35,7 @@ pub fn hooks_page(ui: &mut Ui, git: &mut GitConfigValues, msgs: &mut Vec<Msg>) {
         });
         help(
             ui,
-            "Sets core.hooksPath for this repository. Trellis commits, pushes and merges through git, so hooks in this folder run automatically. Leave empty to use .git/hooks.",
+            "Sets core.hooksPath for this repository. Glowfly commits, pushes and merges through git, so hooks in this folder run automatically. Leave empty to use .git/hooks.",
         );
     });
 }

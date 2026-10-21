@@ -1,6 +1,6 @@
 //! Undoing a merge, pull, cherry-pick, revert or rebase: `reset --keep` back to the commit HEAD
 //! was on before (redo: forward to the one it moved to). `--keep` keeps local changes to files
-//! the reset doesn't touch and refuses rather than overwrite one that it does, but Trellis asks
+//! the reset doesn't touch and refuses rather than overwrite one that it does, but Glowfly asks
 //! for tracked files to be committed or stashed first so the result is the recorded one exactly.
 //! Untracked files may stay: git refuses (and says why) if one is in the way.
 

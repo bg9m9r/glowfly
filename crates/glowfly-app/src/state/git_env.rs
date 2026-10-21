@@ -1,4 +1,4 @@
-//! The git Trellis runs, as `update` and the views see it: found and asked its version at
+//! The git Glowfly runs, as `update` and the views see it: found and asked its version at
 //! startup and whenever another one is chosen, then shown in Preferences and, while it is missing
 //! or too old, in a banner. Also the Preferences > Git page's scan and check.
 
@@ -10,7 +10,7 @@ use std::path::PathBuf;
 pub struct GitState {
     /// None until the startup check answers.
     pub info: Option<GitInfo>,
-    /// The banner was closed (until Trellis restarts or another git is chosen).
+    /// The banner was closed (until Glowfly restarts or another git is chosen).
     pub banner_dismissed: bool,
     pub page: GitPage,
 }

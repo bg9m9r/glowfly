@@ -135,7 +135,7 @@ fn delete_module(git_dir: &Path, name: &str) -> std::result::Result<Option<PathB
         }
         match at.symlink_metadata() {
             Ok(m) if m.file_type().is_symlink() => {
-                return Err((dir, format!("{} is a link; Trellis doesn't delete through links", shown(&at))));
+                return Err((dir, format!("{} is a link; Glowfly doesn't delete through links", shown(&at))));
             }
             Ok(m) if !m.is_dir() => return Err((dir, format!("{} is not a folder", shown(&at)))),
             Ok(_) => {}

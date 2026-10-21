@@ -2,12 +2,12 @@
 //!
 //! git and ssh ask for missing credentials by running the program named in `GIT_ASKPASS` /
 //! `SSH_ASKPASS` with the prompt text as its only argument, and read the answer from its
-//! standard output. Trellis names its own executable there:
+//! standard output. Glowfly names its own executable there:
 //!
 //! 1. At startup the app opens a loopback listener ([`server::start`]) with a random token.
 //! 2. `gitcli` passes the executable, the listener's address and the token to every git child
 //!    through environment variables ([`protocol::ENV_ADDR`], [`protocol::ENV_TOKEN`]).
-//! 3. git or ssh runs `trellis "<prompt>"`. Seeing the address variable, the executable runs as
+//! 3. git or ssh runs `glowfly "<prompt>"`. Seeing the address variable, the executable runs as
 //!    a helper instead of opening a window: it connects ([`client::ask_from_env`]), sends one
 //!    JSON line with the token and the prompt, waits for one JSON line back, prints the answer
 //!    and exits 0, or exits non-zero when the prompt was cancelled or timed out.

@@ -20,30 +20,30 @@ fn every_kind_survives_a_round_trip() {
     let url = Some("https://github.com/o/r.git");
     assert_eq!(
         round_trip(&link(url, Some(ROOT), Target::Repository)),
-        format!("trellis://repo?url=https%3A%2F%2Fgithub.com%2Fo%2Fr.git&root={ROOT}")
+        format!("glowfly://repo?url=https%3A%2F%2Fgithub.com%2Fo%2Fr.git&root={ROOT}")
     );
     let uri = round_trip(&link(url, Some(ROOT), Target::Branch("feature/x".into())));
-    assert!(uri.starts_with("trellis://branch/feature%2Fx?url="), "{uri}");
+    assert!(uri.starts_with("glowfly://branch/feature%2Fx?url="), "{uri}");
     let uri = round_trip(&link(url, None, Target::Branch("café".into())));
-    assert!(uri.starts_with("trellis://branch/caf%C3%A9?"), "{uri}");
+    assert!(uri.starts_with("glowfly://branch/caf%C3%A9?"), "{uri}");
     round_trip(&link(url, Some(ROOT), Target::Commit(ROOT.into())));
     round_trip(&link(None, Some(ROOT), Target::Commit("ab".repeat(32))));
     round_trip(&link(url, Some(ROOT), Target::Tag("v1.0".into())));
     let uri = round_trip(&link(Some("/srv/my repos/r#1"), Some(ROOT), Target::Repository));
     assert!(uri.contains("url=%2Fsrv%2Fmy%20repos%2Fr%231&"), "{uri}");
-    assert_eq!(round_trip(&link(url, None, Target::Repository)), "trellis://repo?url=https%3A%2F%2Fgithub.com%2Fo%2Fr.git");
-    assert_eq!(round_trip(&link(None, Some(ROOT), Target::Repository)), format!("trellis://repo?root={ROOT}"));
+    assert_eq!(round_trip(&link(url, None, Target::Repository)), "glowfly://repo?url=https%3A%2F%2Fgithub.com%2Fo%2Fr.git");
+    assert_eq!(round_trip(&link(None, Some(ROOT), Target::Repository)), format!("glowfly://repo?root={ROOT}"));
 }
 
 #[test]
 fn lenient_forms_are_accepted() {
     let want = link(None, Some(ROOT), Target::Repository);
-    assert_eq!(parse(&format!("TRELLIS://repo?root={ROOT}")), Ok(want.clone()));
-    assert_eq!(parse(&format!("trellis://repo/?root={ROOT}")), Ok(want.clone()));
-    assert_eq!(parse(&format!("trellis://repo?future=1&root={ROOT}&x")), Ok(want.clone()));
-    assert_eq!(parse(&format!("trellis://repo?root={ROOT}#line-3")), Ok(want.clone()));
-    assert_eq!(parse(&format!("trellis://repo?root={}", ROOT.to_uppercase())), Ok(want));
-    let c = parse(&format!("trellis://commit/ABCDEF1?root={ROOT}")).unwrap();
+    assert_eq!(parse(&format!("GLOWFLY://repo?root={ROOT}")), Ok(want.clone()));
+    assert_eq!(parse(&format!("glowfly://repo/?root={ROOT}")), Ok(want.clone()));
+    assert_eq!(parse(&format!("glowfly://repo?future=1&root={ROOT}&x")), Ok(want.clone()));
+    assert_eq!(parse(&format!("glowfly://repo?root={ROOT}#line-3")), Ok(want.clone()));
+    assert_eq!(parse(&format!("glowfly://repo?root={}", ROOT.to_uppercase())), Ok(want));
+    let c = parse(&format!("glowfly://commit/ABCDEF1?root={ROOT}")).unwrap();
     assert_eq!(c.target, Target::Commit("abcdef1".into()));
     assert_eq!(c.describe(), "commit abcdef1");
 }
@@ -53,36 +53,36 @@ fn malformed_links_are_refused_with_their_reason() {
     let r = format!("root={ROOT}");
     assert_eq!(parse(&format!("https://repo?{r}")), Err(LinkError::NotALink));
     assert_eq!(parse("not a link"), Err(LinkError::NotALink));
-    assert_eq!(parse(&format!("trellis://draft/1?{r}")), Err(LinkError::UnknownKind("draft".into())));
-    assert_eq!(parse(&format!("trellis://branch?{r}")), Err(LinkError::MissingName));
-    assert_eq!(parse(&format!("trellis://branch/?{r}")), Err(LinkError::MissingName));
-    assert_eq!(parse(&format!("trellis://commit/xyz?{r}")), Err(LinkError::BadSha("xyz".into())));
-    assert_eq!(parse(&format!("trellis://commit/abc12?{r}")), Err(LinkError::BadSha("abc12".into())));
+    assert_eq!(parse(&format!("glowfly://draft/1?{r}")), Err(LinkError::UnknownKind("draft".into())));
+    assert_eq!(parse(&format!("glowfly://branch?{r}")), Err(LinkError::MissingName));
+    assert_eq!(parse(&format!("glowfly://branch/?{r}")), Err(LinkError::MissingName));
+    assert_eq!(parse(&format!("glowfly://commit/xyz?{r}")), Err(LinkError::BadSha("xyz".into())));
+    assert_eq!(parse(&format!("glowfly://commit/abc12?{r}")), Err(LinkError::BadSha("abc12".into())));
     let long = "a".repeat(65);
-    assert_eq!(parse(&format!("trellis://commit/{long}?{r}")), Err(LinkError::BadSha(long)));
+    assert_eq!(parse(&format!("glowfly://commit/{long}?{r}")), Err(LinkError::BadSha(long)));
     let root39 = &ROOT[..39];
-    assert_eq!(parse(&format!("trellis://repo?root={root39}")), Err(LinkError::BadRoot));
-    assert_eq!(parse("trellis://repo"), Err(LinkError::NoRepository));
-    assert_eq!(parse("trellis://repo?url=a&url=b"), Err(LinkError::Duplicate("url")));
-    assert_eq!(parse(&format!("trellis://repo?{r}&{r}")), Err(LinkError::Duplicate("root")));
-    assert_eq!(parse(&format!("trellis://branch/%FF?{r}")), Err(LinkError::BadEncoding));
-    assert_eq!(parse(&format!("trellis://branch/a%2?{r}")), Err(LinkError::BadEncoding));
-    assert_eq!(parse(&format!("trellis://branch/a%0Ab?{r}")), Err(LinkError::BadEncoding));
-    assert_eq!(parse(&format!("trellis://repo?{r}\u{7}")), Err(LinkError::BadEncoding));
-    assert_eq!(parse(&format!("trellis://branch/a%E2%80%AEb?{r}")), Err(LinkError::BadEncoding));
+    assert_eq!(parse(&format!("glowfly://repo?root={root39}")), Err(LinkError::BadRoot));
+    assert_eq!(parse("glowfly://repo"), Err(LinkError::NoRepository));
+    assert_eq!(parse("glowfly://repo?url=a&url=b"), Err(LinkError::Duplicate("url")));
+    assert_eq!(parse(&format!("glowfly://repo?{r}&{r}")), Err(LinkError::Duplicate("root")));
+    assert_eq!(parse(&format!("glowfly://branch/%FF?{r}")), Err(LinkError::BadEncoding));
+    assert_eq!(parse(&format!("glowfly://branch/a%2?{r}")), Err(LinkError::BadEncoding));
+    assert_eq!(parse(&format!("glowfly://branch/a%0Ab?{r}")), Err(LinkError::BadEncoding));
+    assert_eq!(parse(&format!("glowfly://repo?{r}\u{7}")), Err(LinkError::BadEncoding));
+    assert_eq!(parse(&format!("glowfly://branch/a%E2%80%AEb?{r}")), Err(LinkError::BadEncoding));
     for bad in ["a..b", "x.lock", "feature%2F"] {
-        let text = format!("trellis://branch/{bad}?{r}");
+        let text = format!("glowfly://branch/{bad}?{r}");
         assert!(matches!(parse(&text), Err(LinkError::BadRefName(_))), "{text}");
     }
-    assert!(matches!(parse(&format!("trellis://tag/x.lock?{r}")), Err(LinkError::BadRefName(_))));
+    assert!(matches!(parse(&format!("glowfly://tag/x.lock?{r}")), Err(LinkError::BadRefName(_))));
     for bad in ["-oProxy", "ext%3A%3Ash%20-c%20x", "FD%3A%3A3", ""] {
-        let text = format!("trellis://repo?url={bad}&{r}");
+        let text = format!("glowfly://repo?url={bad}&{r}");
         assert_eq!(parse(&text), Err(LinkError::BadUrl), "{text}");
     }
-    let huge = format!("trellis://repo?{r}&pad={}", "x".repeat(MAX_LINK));
+    let huge = format!("glowfly://repo?{r}&pad={}", "x".repeat(MAX_LINK));
     assert_eq!(parse(&huge), Err(LinkError::TooLong));
-    // Every reason reads as a sentence fragment of Trellis's own.
-    assert!(LinkError::UnknownKind("draft".into()).to_string().contains("newer Trellis"));
+    // Every reason reads as a sentence fragment of Glowfly's own.
+    assert!(LinkError::UnknownKind("draft".into()).to_string().contains("newer Glowfly"));
 }
 
 #[test]
@@ -106,11 +106,26 @@ fn urls_of_one_repository_match() {
 
 #[test]
 fn links_are_told_from_paths() {
+    assert!(looks_like_link(OsStr::new(&format!("glowfly://repo?root={ROOT}"))));
+    assert!(looks_like_link(OsStr::new("GLOWFLY://commit/abc")));
+    assert!(!looks_like_link(OsStr::new("glowfly")));
+    assert!(!looks_like_link(OsStr::new("glowfly-repo")));
+    assert!(!looks_like_link(OsStr::new("/home/me/glowfly")));
+    assert!(!looks_like_link(OsStr::new(r"C:\src\glowfly")));
+    // Links from before the rename.
     assert!(looks_like_link(OsStr::new(&format!("trellis://repo?root={ROOT}"))));
-    assert!(looks_like_link(OsStr::new("TRELLIS://commit/abc")));
+    assert!(looks_like_link(OsStr::new("Trellis://commit/abc")));
     assert!(!looks_like_link(OsStr::new("trellis")));
-    assert!(!looks_like_link(OsStr::new("trellis-repo")));
-    assert!(!looks_like_link(OsStr::new("/home/me/trellis")));
+}
+
+#[test]
+fn trellis_links_from_before_the_rename_still_open() {
+    let old = parse(&format!("trellis://branch/feature%2Fx?root={ROOT}")).unwrap();
+    assert_eq!(old, parse(&format!("glowfly://branch/feature%2Fx?root={ROOT}")).unwrap());
+    assert_eq!(parse(&format!("TRELLIS://repo?root={ROOT}")).map(|l| l.target), Ok(Target::Repository));
+    // What we make is always the new scheme.
+    assert!(old.to_uri().starts_with("glowfly://branch/"), "{}", old.to_uri());
+    assert_eq!(parse(&format!("trelli://repo?root={ROOT}")), Err(LinkError::NotALink));
 }
 
 #[test]

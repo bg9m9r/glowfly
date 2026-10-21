@@ -54,7 +54,7 @@ and another
     let generation = st.line_counts.start_wip().unwrap();
     st.line_counts.finish_wip(generation, Some(repo::wip_line_counts(&dir).unwrap()));
     st.settings.set_repo_colour(&dir, Some(RepoColour::Teal));
-    let third = glowfly_core::paths::temp_dir().join("trellis-vivid-tabs").join("docs");
+    let third = glowfly_core::paths::temp_dir().join("glowfly-vivid-tabs").join("docs");
     st.settings.set_repo_colour(&third, Some(RepoColour::Plum));
     st.tabs.push(Tab::unloaded(third));
     (st, dir)

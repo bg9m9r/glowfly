@@ -92,7 +92,7 @@ fn key_bodies_ignore_the_comment() {
 }
 
 /// A key made with ssh-keygen once, and the fingerprint `ssh-keygen -lf` printed for it.
-const VECTOR: &str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHPd7mBMr2aPPHDZfeH1Y5iDjDim+AgCEZtNDHuzkwxC vector@trellis";
+const VECTOR: &str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHPd7mBMr2aPPHDZfeH1Y5iDjDim+AgCEZtNDHuzkwxC vector@glowfly";
 const VECTOR_FP: &str = "SHA256:HmAVaqVHVQgdAe2Kcq2GRNUyFYDZipDHmBV+Z1cVE1I";
 
 #[test]

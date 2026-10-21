@@ -154,7 +154,7 @@ pub(super) fn check_parents(root: &Path, rel: &str) -> Result<()> {
             Err(_) => return Ok(()),
             // Junctions count as symbolic links too.
             Ok(m) if m.file_type().is_symlink() => {
-                return Err(Error::Unsupported(format!("{shown} is a symbolic link; Trellis won't write through it")));
+                return Err(Error::Unsupported(format!("{shown} is a symbolic link; Glowfly won't write through it")));
             }
             Ok(m) if !m.is_dir() => return Err(Error::Other(format!("{shown} is a file, so {rel} can't be written"))),
             Ok(_) => {}

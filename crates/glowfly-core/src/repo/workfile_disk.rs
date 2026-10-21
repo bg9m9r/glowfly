@@ -149,7 +149,7 @@ fn inside_by_walk(root: &Path, dir: &Path) -> Result<()> {
         let m = at.symlink_metadata()?;
         if m.file_type().is_symlink() {
             return Err(Error::Unsupported(format!(
-                "{} is a link, and this volume can't say where it leads; Trellis won't write through it",
+                "{} is a link, and this volume can't say where it leads; Glowfly won't write through it",
                 at.display()
             )));
         }

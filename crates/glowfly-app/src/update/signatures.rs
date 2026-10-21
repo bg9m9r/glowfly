@@ -19,7 +19,7 @@ pub(super) fn want(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
 }
 
 /// Forgets what is known about `oid`'s signature and checks it again (after importing a key or
-/// editing the allowed signers file outside Trellis).
+/// editing the allowed signers file outside Glowfly).
 pub(super) fn again(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     st.signatures.forget(oid);
     want(st, oid, fx);

@@ -1,4 +1,4 @@
-//! `trellis://` links: the link being opened and what it waits for, the dialogs a link may need,
+//! `glowfly://` links: the link being opened and what it waits for, the dialogs a link may need,
 //! the scheme registration's status, and the pure rules (which remote a copied link names,
 //! where to look for the linked repository, which match wins, the messages).
 
@@ -15,7 +15,7 @@ use std::path::PathBuf;
 /// The Clone… button's hover text when the link carries no URL.
 pub const NO_CLONE_URL: &str = "The link doesn't include a remote URL to clone from";
 /// The toast for a link that arrives while another dialog is open.
-pub const LINK_WAITING: &str = "A Trellis link is waiting. Close the open dialog, then open it.";
+pub const LINK_WAITING: &str = "A Glowfly link is waiting. Close the open dialog, then open it.";
 /// The toast for a linked commit past the loaded history.
 pub const OLDER_THAN_LOADED: &str = "This commit is older than the loaded history; Load more to see it in the graph.";
 /// Why a link can't be made for a repository.
@@ -77,7 +77,7 @@ pub enum SchemeView {
 /// The deep-link dialogs (`Modal::DeepLink`, ui/deep_link_dialog.rs).
 #[derive(Clone, Debug, PartialEq)]
 pub enum LinkDialog {
-    /// The text isn't a link Trellis can open: why, and the text as shown.
+    /// The text isn't a link Glowfly can open: why, and the text as shown.
     Invalid { text: String, reason: String },
     /// No copy of the repository was found. `what` is the target ("branch feature/x"), `repo`
     /// what the link names the repository by, `problem` why the located folder didn't match.
@@ -186,7 +186,7 @@ pub fn missing_text(link: &Link, repo_name: &str, remote: Option<&str>, has_remo
     }
 }
 
-/// The Trellis Links row's status line, and whether it is an error.
+/// The Glowfly Links row's status line, and whether it is an error.
 pub fn status_text(t: Lang, view: &SchemeView) -> (String, bool) {
     match view {
         SchemeView::Unknown | SchemeView::Checking => (t.tr("prefs.links.status.checking").to_owned(), false),
@@ -210,7 +210,7 @@ pub fn shown_link(text: &str) -> String {
     }
 }
 
-/// Whether Unregister can change anything: Trellis's own registration (this copy's or another
+/// Whether Unregister can change anything: Glowfly's own registration (this copy's or another
 /// copy's), not another program's desktop file.
 pub fn can_unregister(view: &SchemeView) -> bool {
     match view {

@@ -1,7 +1,7 @@
-// Win32 helpers for scripts/smoke-windows.ps1: finding and placing Trellis's window, bringing a
+// Win32 helpers for scripts/smoke-windows.ps1: finding and placing Glowfly's window, bringing a
 // window to the front, and real mouse and keyboard input. Every input goes through SendInput,
 // the same path as hardware input; nothing here posts or sends window messages. No Alt key is
-// ever pressed: a lone Alt tap opens Trellis's title bar menu on Windows.
+// ever pressed: a lone Alt tap opens Glowfly's title bar menu on Windows.
 //
 // Every method that reads or sets coordinates first makes its thread per-monitor DPI aware, so
 // GetClientRect, ClientToScreen, SetWindowPos and the cursor all work in physical pixels.
@@ -12,7 +12,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-namespace TrellisSmoke
+namespace GlowflySmoke
 {
     public static class Native
     {

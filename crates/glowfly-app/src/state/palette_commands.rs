@@ -175,7 +175,7 @@ pub enum PaletteCommand {
     /// `TagMsg::Checkout`: the tagged commit, detached.
     CheckoutTag(String),
     OpenRecent(PathBuf),
-    /// Copy a trellis:// link to the repository or a branch.
+    /// Copy a glowfly:// link to the repository or a branch.
     CopyLink(crate::deep_link::LinkTarget),
     /// Enter the file finder; picking a file runs `OpenFileHistory`, a folder `OpenFolderHistory`.
     FileHistory,
@@ -213,7 +213,7 @@ pub enum PaletteCommand {
     Onboarding(crate::onboarding::OnboardingMsg),
     /// Open the cross-repository dashboard.
     Dashboard,
-    /// Release notes and Trellis's own updates (update/updates.rs).
+    /// Release notes and Glowfly's own updates (update/updates.rs).
     Updates(crate::msg::UpdateMsg),
     /// Favorites and recent repositories (palette_commands_repos.rs).
     RepoList(RepoListCommand),

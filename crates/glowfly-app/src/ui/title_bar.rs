@@ -1,4 +1,4 @@
-//! The title bar Trellis draws on Windows and macOS: one bar on the chrome colour with the menu
+//! The title bar Glowfly draws on Windows and macOS: one bar on the chrome colour with the menu
 //! button (File, Edit, View, Window and Help as submenus), the repository tabs along its bottom
 //! edge and empty space to grab, before the window buttons (`window_frame.rs` draws those above
 //! every dialog) or after the macOS traffic lights. Dragging the empty space moves the window,

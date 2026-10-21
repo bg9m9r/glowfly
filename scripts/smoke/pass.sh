@@ -67,7 +67,7 @@ isolate() {
   export HOME="$PASS_DIR/home"
   export XDG_CONFIG_HOME="$PASS_DIR/config" XDG_CACHE_HOME="$PASS_DIR/cache"
   export XDG_STATE_HOME="$PASS_DIR/state" XDG_DATA_HOME="$PASS_DIR/data" XDG_RUNTIME_DIR="$PASS_DIR/run"
-  mkdir -p "$HOME" "$XDG_CONFIG_HOME/trellis" "$XDG_CACHE_HOME" "$XDG_STATE_HOME" "$XDG_DATA_HOME"
+  mkdir -p "$HOME" "$XDG_CONFIG_HOME/glowfly" "$XDG_CACHE_HOME" "$XDG_STATE_HOME" "$XDG_DATA_HOME"
   mkdir -m 700 "$XDG_RUNTIME_DIR"
   export GIT_CONFIG_GLOBAL="$PASS_DIR/gitconfig" GIT_CONFIG_NOSYSTEM=1
   git config --file "$GIT_CONFIG_GLOBAL" user.name Smoke
@@ -81,7 +81,7 @@ isolate() {
   version=$(tr -d '[:space:]' <"$ROOT/version.txt")
   jq -n --arg v "$version" \
     '{welcome_done: true, reopen_last_repo: false, updates: {check: false, last_checked: null, notes_seen: $v}}' \
-    >"$XDG_CONFIG_HOME/trellis/settings.json"
+    >"$XDG_CONFIG_HOME/glowfly/settings.json"
 }
 
 # fixture_commit <second> <file> <text> <message>: one commit at a fixed time.
@@ -104,19 +104,19 @@ make_fixture() {
 }
 
 start_app() {
-  WINIT_X11_SCALE_FACTOR="$SCALE" TRELLIS_SMOKE_PROBE="$PROBE" RUST_LOG=glowfly=debug \
+  WINIT_X11_SCALE_FACTOR="$SCALE" GLOWFLY_SMOKE_PROBE="$PROBE" RUST_LOG=glowfly=debug \
     "$BIN" "$REPO" >"$PASS_OUT/app.log" 2>&1 &
   APP_PID=$!
   WID=$(timeout 60 xdotool search --sync --onlyvisible --pid "$APP_PID" 2>/dev/null | head -n1 || true)
   if [ -z "$WID" ]; then
-    WID=$(xdotool search --onlyvisible --class trellis 2>/dev/null | head -n1 || true)
+    WID=$(xdotool search --onlyvisible --class glowfly 2>/dev/null | head -n1 || true)
   fi
   [ -n "$WID" ] || fail startup "no window of the app appeared within 60 s"
   xdotool windowmove "$WID" 0 0
   probe_wait "the repository to load with the row 'Add notes'" \
     '.repo != null and .busy == false and any(.widgets[]; (.label // .value) == "Add notes" and .region == "central")'
   [ "$(probe .modal)" = false ] || fail startup "a startup dialog is in the way"
-  # A second client to take the focus away: placed off Trellis's window.
+  # A second client to take the focus away: placed off Glowfly's window.
   xmessage -geometry +2350+1400 "focus thief" &
   THIEF_PID=$!
   THIEF=$(timeout 20 xdotool search --sync --onlyvisible --class xmessage 2>/dev/null | head -n1 || true)

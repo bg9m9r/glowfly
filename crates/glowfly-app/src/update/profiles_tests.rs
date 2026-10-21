@@ -121,7 +121,7 @@ fn show_page_syncs_an_outside_change() {
     assert_eq!(saves(&fx), 1);
     assert_eq!(st.settings.profiles.len(), 1);
 
-    // git config changed outside Trellis: the current profile follows it.
+    // git config changed outside Glowfly: the current profile follows it.
     st.prefs.as_mut().unwrap().git = Some(values("Ada", "ada@new.example"));
     let fx = profile(&mut st, ProfileMsg::ShowPage);
     assert_eq!(saves(&fx), 1);

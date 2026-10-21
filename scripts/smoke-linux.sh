@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Real-input smoke tests for the Linux build. Starts its own X server (Xvfb, on a free display
 # it picks with -displayfd) with the openbox window manager, never the caller's display, and
-# drives Trellis there only with real X11 input through xdotool (XTEST): a click that focuses
+# drives Glowfly there only with real X11 input through xdotool (XTEST): a click that focuses
 # the window, typing in the commit box and committing, a context menu, a keyboard shortcut, a
 # drag of the sidebar's edge and a window resize. It runs one full pass per scale factor in
 # SMOKE_SCALES, each on a fresh fixture repository, config and HOME. The app reports what it
-# shows through its opt-in probe file (TRELLIS_SMOKE_PROBE, crates/glowfly-app/src/ui/probe.rs).
+# shows through its opt-in probe file (GLOWFLY_SMOKE_PROBE, crates/glowfly-app/src/ui/probe.rs).
 #
-# Usage: scripts/smoke-linux.sh [trellis binary]   (default: $CARGO_TARGET_DIR/release/glowfly)
+# Usage: scripts/smoke-linux.sh [glowfly binary]   (default: $CARGO_TARGET_DIR/release/glowfly)
 # Environment:
 #   SMOKE_OUT          screenshots and, on failure, logs (default: $CARGO_TARGET_DIR/smoke)
 #   SMOKE_SCALES       scale factors to run (default: "1 1.5")
@@ -48,7 +48,7 @@ if [ "${#missing[@]}" -gt 0 ]; then
   exit 2
 fi
 if [ ! -x "$BIN" ]; then
-  echo "no executable Trellis at $BIN (build it with cargo build --release -p glowfly)" >&2
+  echo "no executable Glowfly at $BIN (build it with cargo build --release -p glowfly)" >&2
   exit 2
 fi
 
@@ -58,7 +58,7 @@ exec 9>&1
 # Only this script's own results are cleared: SMOKE_OUT may be a folder holding other files.
 mkdir -p "$SMOKE_OUT"
 rm -rf "$SMOKE_OUT"/scale-* "$SMOKE_OUT/work" "$SMOKE_OUT/xvfb.log" "$SMOKE_OUT/openbox.log"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/trellis-smoke.XXXXXX")"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/glowfly-smoke.XXXXXX")"
 XVFB_PID="" WM_PID="" APP_PID="" THIEF_PID="" WID="" PASS="setup" PASS_OUT="$SMOKE_OUT" CHECK="setup"
 PROBE="$WORK/none.json"
 

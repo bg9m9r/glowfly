@@ -61,7 +61,7 @@ pub struct AgentStatus {
     /// A Pageant named pipe exists (Windows).
     pub pageant: bool,
     pub auth_sock_set: bool,
-    /// "GIT_SSH_COMMAND" or "GIT_SSH", whichever is set in Trellis's environment.
+    /// "GIT_SSH_COMMAND" or "GIT_SSH", whichever is set in Glowfly's environment.
     pub git_ssh_env: Option<String>,
     /// GIT_SSH_COMMAND is set: it overrides core.sshCommand for every git command.
     pub git_ssh_command_set: bool,

@@ -42,7 +42,7 @@ pub(super) fn speedups_of(config: &git2::Config) -> StatusSpeedups {
     }
 }
 
-/// Whether turning the untracked cache on would help Trellis's read (`--untracked-files=all`):
+/// Whether turning the untracked cache on would help Glowfly's read (`--untracked-files=all`):
 /// git uses the cache for that read only while `status.showUntrackedFiles` is unset (the job
 /// sets it to `all`) or `all`.
 pub fn untracked_cache_helps(s: StatusSpeedups) -> bool {
@@ -53,14 +53,14 @@ pub fn untracked_cache_helps(s: StatusSpeedups) -> bool {
 /// `status.showUntrackedFiles=all` is set; older ones keep it only for the folder form.
 pub const UNTRACKED_CACHE_ALL: (u32, u32) = (2, 37);
 
-/// Whether a git of `version` can use the untracked cache for Trellis's read (an unknown version
+/// Whether a git of `version` can use the untracked cache for Glowfly's read (an unknown version
 /// counts as able, as for `git_version::Feature`).
 pub fn untracked_cache_works(version: Option<crate::git_version::Version>) -> bool {
     version.is_none_or(|v| (v.0, v.1) >= UNTRACKED_CACHE_ALL)
 }
 
 /// The job's command lines (gitcli arguments, without "git"): turn the cache on, keep it in the
-/// `all` form Trellis reads, add it to the index, and have git's status fill it in. That last
+/// `all` form Glowfly reads, add it to the index, and have git's status fill it in. That last
 /// read takes optional locks, so the cache is written to the index.
 pub fn untracked_cache_cmds(s: StatusSpeedups) -> Vec<Vec<String>> {
     let line = |a: &[&str]| a.iter().map(|x| x.to_string()).collect::<Vec<_>>();

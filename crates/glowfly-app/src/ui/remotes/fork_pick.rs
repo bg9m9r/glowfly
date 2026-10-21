@@ -1,6 +1,6 @@
 //! The Add a fork dialog: the forks of a remote's repository on its hosting service, filtered as
 //! the user types, with the ones already added as remotes marked; the picked fork is added as a
-//! remote under a name Trellis suggests. `update` checks the request again and closes the dialog
+//! remote under a name Glowfly suggests. `update` checks the request again and closes the dialog
 //! once the job starts.
 
 use super::super::dialog_frame::{Cx, Dialog, Footer};
@@ -31,7 +31,7 @@ fn rows(ui: &mut egui::Ui, p: &ForkPicker, snap: Option<&Snapshot>, connections:
         return;
     }
     let row_height = ui.spacing().interact_size.y;
-    let area = egui::ScrollArea::vertical().id_salt("trellis-fork-list").max_height(220.0).auto_shrink([false, true]);
+    let area = egui::ScrollArea::vertical().id_salt("glowfly-fork-list").max_height(220.0).auto_shrink([false, true]);
     area.show_rows(ui, row_height, shown.len(), |ui, range| {
         for &i in &shown[range] {
             let fork = &p.list.forks[i];
@@ -88,7 +88,7 @@ pub fn show(
         }
     } else {
         listed = true;
-        let r = ui.add(TextField::new(&mut p.filter).id(Id::new("trellis-fork-filter")).hint("Filter forks"));
+        let r = ui.add(TextField::new(&mut p.filter).id(Id::new("glowfly-fork-filter")).hint("Filter forks"));
         if focus && ui.memory(|m| m.focused().is_none()) {
             r.request_focus();
         }
@@ -104,7 +104,7 @@ pub fn show(
             .filter(|n| *n != RemoteNameProblem::Empty)
             .and_then(|n| problem(n.message()));
         let group = FieldGroup::new("Remote name").message(&p.touched, "name", shown);
-        let (r, enter) = field(ui, group, &mut p.name, "trellis-fork-name", "teammate");
+        let (r, enter) = field(ui, group, &mut p.name, "glowfly-fork-name", "teammate");
         form_message::track(&mut p.touched, "name", &r);
         submit = enter;
     }

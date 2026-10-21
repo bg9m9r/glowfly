@@ -35,7 +35,7 @@ fn worktrees_of_one_repository_share_it() {
     assert!(!common(&other).same(&a), "another repository");
 
     assert_eq!(CommonDir::at(Path::new("relative/folder")), None, "never resolved against the working folder");
-    let gone = main.with_file_name("trellis-common-no-such-repo");
+    let gone = main.with_file_name("glowfly-common-no-such-repo");
     assert_eq!(CommonDir::at(&gone), None, "a missing folder");
     for d in [&linked, &main, &other] {
         let _ = std::fs::remove_dir_all(d);

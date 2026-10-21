@@ -117,7 +117,7 @@ fn an_unmerged_branch_keeps_its_remote_copy() {
 fn a_failed_push_is_reported_and_the_local_delete_stays_undoable() {
     let (mut st, work, bare, linked) = feature_worktree("wtrr-push-fails");
     tick_both(&mut st);
-    let broken = work.with_file_name("trellis-no-such-remote.git");
+    let broken = work.with_file_name("glowfly-no-such-remote.git");
     git(&work, &["remote", "set-url", "origin", &broken.display().to_string()]);
     drive(&mut st, wt(WorktreeMsg::Remove));
     assert!(!linked.exists() && !has_branch(&st, "feature"));

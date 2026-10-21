@@ -46,7 +46,7 @@ fn url_checks() {
 
 #[test]
 fn parse_add_path_table() {
-    let work = crate::paths::temp_dir().join("trellis-parse-add-path").join("repo");
+    let work = crate::paths::temp_dir().join("glowfly-parse-add-path").join("repo");
     let sibling = work.with_file_name("other");
     let inside = work.join("libs").join("x");
     let (inside, root, sibling) = (inside.display().to_string(), work.display().to_string(), sibling.display().to_string());

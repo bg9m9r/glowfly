@@ -1,6 +1,6 @@
 [package]
 name = "glowfly-core"
-description = "Git, hosting-service and settings logic for Trellis (no UI)."
+description = "Git, hosting-service and settings logic for Glowfly (no UI)."
 version.workspace = true
 edition.workspace = true
 license.workspace = true

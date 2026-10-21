@@ -82,7 +82,7 @@ fn holder_and_init_command() {
 
 /// A fresh, empty temporary folder for `name`.
 fn temp(name: &str) -> PathBuf {
-    let dir = crate::paths::temp_dir().join(format!("trellis-test-init-{name}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-test-init-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir

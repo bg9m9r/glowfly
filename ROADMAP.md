@@ -1,6 +1,6 @@
-# Trellis roadmap
+# Glowfly roadmap
 
-What Trellis is for, the milestones it is working towards, and where it stands. This file is the
+What Glowfly is for, the milestones it is working towards, and where it stands. This file is the
 source of truth for direction and status; [TODO.md](TODO.md) is the backlog of items that get it
 there. When a milestone's scope, exit criteria or status changes, update this file in the same
 commit.
@@ -46,7 +46,7 @@ Exit criteria:
 2. **Real input works**: smoke tests send real OS mouse and keyboard events to the release build
    on CI machines (Linux under Xvfb, Windows on the runner's desktop), including the first click
    after the window gains focus. This closes Input reliability.
-3. **Installers work**: CI installs the MSI and DEB it built, starts Trellis from them, and
+3. **Installers work**: CI installs the MSI and DEB it built, starts Glowfly from them, and
    checks the update path from an older build against the published checksums.
 4. **No known crash or data-loss bug** is open.
 5. **The UI review's blockers and major findings are fixed**: the

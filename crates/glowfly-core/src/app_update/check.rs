@@ -1,4 +1,4 @@
-//! The headless update check behind `trellis --check-update`: the same feed, offer and
+//! The headless update check behind `glowfly --check-update`: the same feed, offer and
 //! verified download as the app's Check now and Download, in one call.
 
 use super::{Feed, InstallKind, Offer, Platform, Version, download, offer};

@@ -1,4 +1,4 @@
-//! Reading and writing `settings.json`, without ever losing a file Trellis can't read.
+//! Reading and writing `settings.json`, without ever losing a file Glowfly can't read.
 
 use super::{Settings, config_dir};
 use serde_json::{Map, Value};
@@ -90,12 +90,12 @@ impl Settings {
 }
 
 /// The serde default of `welcome_done`: a file without the key was written before the welcome
-/// existed, by someone who already uses Trellis.
+/// existed, by someone who already uses Glowfly.
 pub(super) fn seen() -> bool {
     true
 }
 
-/// Defaults for a settings file that existed but couldn't be read: its owner has seen Trellis
+/// Defaults for a settings file that existed but couldn't be read: its owner has seen Glowfly
 /// before, so the first-run welcome stays away.
 fn existing_defaults() -> Settings {
     Settings { welcome_done: true, ..Settings::default() }
@@ -127,7 +127,7 @@ fn forget_old_date_defaults(date: &mut String, word: &mut String, time: &mut Str
 }
 
 /// Reads a JSON object one setting at a time, so a value this version doesn't understand (an
-/// option added by a newer Trellis, a hand edit) resets only that setting. Returns the names
+/// option added by a newer Glowfly, a hand edit) resets only that setting. Returns the names
 /// of the settings that were reset, or `None` when the file isn't a JSON object at all.
 fn lenient(bytes: &[u8]) -> Option<(Settings, Vec<String>)> {
     let Ok(Value::Object(file)) = serde_json::from_slice::<Value>(bytes) else { return None };

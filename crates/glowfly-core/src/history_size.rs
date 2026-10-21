@@ -127,7 +127,7 @@ mod tests {
         assert_eq!(local_store_bytes(&here, &relative), Some(want), "relative to the work tree");
         assert_eq!(local_store_bytes(&here, "https://github.com/o/r.git"), None);
         assert_eq!(local_store_bytes(&here, "git@github.com:o/r.git"), None);
-        let plain = crate::paths::temp_dir().join(format!("trellis-test-history-size-plain-{}", std::process::id()));
+        let plain = crate::paths::temp_dir().join(format!("glowfly-test-history-size-plain-{}", std::process::id()));
         std::fs::create_dir_all(&plain).unwrap();
         assert_eq!(local_store_bytes(&here, &plain.display().to_string()), None, "not a repository");
         for d in [&src, &here, &plain] {

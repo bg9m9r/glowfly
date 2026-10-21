@@ -166,7 +166,7 @@ fn choices_and_builtins() {
         assert_eq!(BuiltinTheme::from_id(t.id()), Some(t));
     }
     assert_eq!(ThemeChoice::System.label(), "Match system");
-    assert_eq!(ThemeChoice::Sand.label(), "Trellis Sand");
+    assert_eq!(ThemeChoice::Sand.label(), "Glowfly Sand");
     assert_eq!(ThemeChoice::Custom("ocean".into()).label(), "ocean");
     assert_eq!(ThemeChoice::HighContrastDark.palette_label(), "High contrast dark");
     let cat = ThemeCatalog { files: vec![p(r#"{"base": "light"}"#)], ..ThemeCatalog::default() };
@@ -192,7 +192,7 @@ fn starter_json_round_trips() {
 }
 
 fn scratch(name: &str) -> PathBuf {
-    let dir = crate::paths::temp_dir().join(format!("trellis-themes-{name}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-themes-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     dir
 }

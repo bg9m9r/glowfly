@@ -147,7 +147,7 @@ fn repository_commands_wait_for_trust_in_a_clean_repository() {
     let fx = run(&mut st, Source::Repo, "Mine", Target::Palette);
     assert!(fx.is_empty(), "{fx:?}");
     // It first says where it comes from and what it runs, which the trust prompt doesn't.
-    let from = "It comes from this repository's .trellis/commands.toml, not from your own commands file.";
+    let from = "It comes from this repository's .glowfly/commands.toml, not from your own commands file.";
     assert_eq!(
         confirm_body(&st),
         format!(
@@ -203,7 +203,7 @@ fn a_repository_command_that_confirms_asks_once_with_its_source() {
         body.starts_with(
             "Say hi?
 
-It comes from this repository's .trellis/commands.toml"
+It comes from this repository's .glowfly/commands.toml"
         ),
         "{body}"
     );
@@ -233,7 +233,7 @@ fn in_a_held_repository_every_command_waits() {
     st.modal = None;
     super::trust::dismissed(&mut st);
     assert!(run(&mut st, Source::Repo, "Mine", Target::Palette).is_empty());
-    assert!(confirm_body(&st).contains(".trellis/commands.toml"), "{}", confirm_body(&st));
+    assert!(confirm_body(&st).contains(".glowfly/commands.toml"), "{}", confirm_body(&st));
     assert!(update(&mut st, Msg::ConfirmAccepted, Instant::now()).is_empty());
     assert_eq!(held(&st), Some("Mine"));
     let _ = std::fs::remove_dir_all(&dir);

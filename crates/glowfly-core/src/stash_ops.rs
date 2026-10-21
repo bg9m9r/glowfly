@@ -11,7 +11,7 @@
 //! (`rename_sources`) and builds the commands that put it back from HEAD after the stash
 //! (`restore_commands`), refusing beforehand when something already sits there (`restore_blocked`).
 //!
-//! `auto` names the stash Trellis makes before an operation that needs a clean work tree
+//! `auto` names the stash Glowfly makes before an operation that needs a clean work tree
 //! (checkout, pull, merge, rebase, cherry-pick, revert, hard reset), recognises it and git's own
 //! kept "autostash" in the list, and puts it back with `git stash pop` once nothing is in progress.
 

@@ -42,13 +42,13 @@ fn zoom_limits_follow_the_language() {
 fn a_new_tab_is_named_in_the_language() {
     let s = glowfly_core::settings::Settings { language: "de".into(), ..Default::default() };
     let mut st = AppState::new(s, Vec::new(), std::time::Instant::now());
-    let dir = glowfly_core::paths::temp_dir().join("trellis-tab-name");
+    let dir = glowfly_core::paths::temp_dir().join("glowfly-tab-name");
     st.tabs = vec![crate::state::Tab::empty(), crate::state::Tab::unloaded(dir)];
     st.active_tab = 0;
     assert_eq!(tab_name(&st, 0), Lang::De.tr("tabs.new_tab.name"));
     assert_ne!(tab_name(&st, 0), "New tab");
     assert_eq!(st.tabs[0].name, "New tab", "the stored placeholder stays English");
-    assert_eq!(tab_name(&st, 1), "trellis-tab-name");
+    assert_eq!(tab_name(&st, 1), "glowfly-tab-name");
 }
 
 #[test]
@@ -68,17 +68,17 @@ fn links_point_at_the_project() {
 }
 
 #[test]
-fn version_info_names_trellis_and_git() {
+fn version_info_names_glowfly_and_git() {
     let mut git = GitState::default();
-    assert_eq!(version_info(&git), format!("Trellis {VERSION}"));
+    assert_eq!(version_info(&git), format!("Glowfly {VERSION}"));
     assert_eq!(git_line(&git), None);
     git.info = Some(GitInfo { path: None, version: None, chosen: false });
     assert_eq!(git_line(&git), None, "git didn't say its version");
     git.info = Some(GitInfo { path: None, version: Some((2, 47, 1)), chosen: false });
     assert_eq!(git_line(&git).as_deref(), Some("Git 2.47.1"));
-    assert_eq!(version_info(&git), format!("Trellis {VERSION}\nGit 2.47.1"));
+    assert_eq!(version_info(&git), format!("Glowfly {VERSION}\nGit 2.47.1"));
     let program = glowfly_core::paths::temp_dir().join("git");
     git.info = Some(GitInfo { path: Some(program.clone()), version: Some((2, 47, 1)), chosen: true });
     let shown = glowfly_core::native_path::shown(&program);
-    assert_eq!(version_info(&git), format!("Trellis {VERSION}\nGit 2.47.1 ({shown})"));
+    assert_eq!(version_info(&git), format!("Glowfly {VERSION}\nGit 2.47.1 ({shown})"));
 }

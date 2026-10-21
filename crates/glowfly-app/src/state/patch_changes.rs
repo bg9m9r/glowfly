@@ -43,7 +43,7 @@ impl SaveChangesForm {
 }
 
 /// The files of `scope` the dialog lists: every working-tree file for All, else the staged or
-/// unstaged ones. Conflicted rows and rows Trellis can't name safely are left out.
+/// unstaged ones. Conflicted rows and rows Glowfly can't name safely are left out.
 pub fn rows(snap: &Snapshot, scope: WipScope) -> Vec<FileEntry> {
     let all = match scope {
         WipScope::All => wip_files(snap),

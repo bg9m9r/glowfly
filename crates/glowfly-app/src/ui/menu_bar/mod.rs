@@ -2,7 +2,7 @@
 //! menu bar above the tab bar (`show`, while `settings.show_menu_bar` is on); a drawn title bar
 //! opens them as submenus of its menu button instead. Every item pushes the message the
 //! toolbar, palette or key already sends, with the key it has in the keymap; a disabled item
-//! says why on hover. `about.rs` draws Help > About Trellis (`Modal::About`), and `notices.rs` its
+//! says why on hover. `about.rs` draws Help > About Glowfly (`Modal::About`), and `notices.rs` its
 //! Third-party notices (`Modal::Notices`), the bundled licenses.
 
 use super::theme::color;

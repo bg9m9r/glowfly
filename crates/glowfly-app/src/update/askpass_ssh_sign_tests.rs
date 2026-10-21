@@ -1,5 +1,5 @@
 //! Headless tests for ssh-keygen's signing-passphrase prompts (git signing with an SSH key):
-//! always shown in Trellis, never a retry, and what a cancel, a timeout or a wrong passphrase
+//! always shown in Glowfly, never a retry, and what a cancel, a timeout or a wrong passphrase
 //! says about the job.
 
 use super::askpass_gpg_tests::{finish, last_toast, send, start_job};
@@ -95,7 +95,7 @@ fn a_wrong_ssh_passphrase_gets_its_own_headline() {
     assert_eq!(last_toast(&st), Some("Commit failed: the passphrase didn't unlock the SSH signing key"));
     assert!(!st.askpass.answered_ssh_signing, "reset with the job");
 
-    // The same failure without a passphrase from Trellis keeps git's own text.
+    // The same failure without a passphrase from Glowfly keeps git's own text.
     st.toasts.clear();
     start_job(&mut st, "Commit");
     done(&mut st, false, WRONG);

@@ -1,4 +1,4 @@
-//! The title bar Trellis draws on Windows and macOS: snapshots of the bar (dark, light,
+//! The title bar Glowfly draws on Windows and macOS: snapshots of the bar (dark, light,
 //! maximized, full screen, macOS, Close hovered, the menu and its File submenu, Preferences, German, many
 //! tabs), and what its parts send: the window buttons, moving and maximizing from the empty
 //! bar, resizing from the edges, all of it over a dialog, and the Alt tap. With the system
@@ -102,7 +102,7 @@ fn title_bar_snapshots() {
 #[test]
 fn title_bar_many_tabs() {
     let (mut st, dir) = fixture(Chrome::Windows, ThemeChoice::Dark, "title-bar-many-tabs");
-    let base = glowfly_core::paths::temp_dir().join("trellis-title-bar-tabs");
+    let base = glowfly_core::paths::temp_dir().join("glowfly-title-bar-tabs");
     for name in ["docs", "api-server", "a-repository-with-a-very-long-folder-name", "web", "infra", "tools", "notes"] {
         st.tabs.push(Tab::unloaded(base.join(name)));
     }

@@ -190,7 +190,7 @@ pub(super) fn begin_job(
     launch(st, job, None, effect, fx)
 }
 
-/// `begin_job` for work Trellis starts on its own (putting an auto-stash back): quiet (no toast,
+/// `begin_job` for work Glowfly starts on its own (putting an auto-stash back): quiet (no toast,
 /// a quiet log line, no credential prompts), skipped silently while another job runs, and
 /// dropped by the trust gate rather than held. It keeps the undo history.
 pub(super) fn begin_background_job(

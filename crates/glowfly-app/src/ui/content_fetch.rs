@@ -39,7 +39,7 @@ pub fn show(ui: &mut Ui, st: &AppState, p: &PendingContent, msgs: &mut Vec<Msg>)
         ContentPhase::Waiting(Wait::Trust) => {
             let hint = format!(
                 "This repository is a partial clone and isn't trusted yet. Downloading them from {remote} runs git in it, so \
-                 Trellis asks first."
+                 Glowfly asks first."
             );
             let list = [PaneButton { text: "Download", primary: true }];
             let head = title(ui, format!("The contents of {path} haven't been downloaded"));

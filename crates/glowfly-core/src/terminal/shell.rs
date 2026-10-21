@@ -155,7 +155,7 @@ mod tests {
         let err = for_choice(&setting(ShellChoice::Pwsh), true, env(&[]), finder(vec![]), None).unwrap_err();
         assert_eq!(err, "pwsh was not found on PATH");
 
-        let pf = crate::paths::temp_dir().join("trellis-shell-pf");
+        let pf = crate::paths::temp_dir().join("glowfly-shell-pf");
         let installed = path(&pf.join("PowerShell").join("7").join("pwsh.exe"));
         let vars = env(&[("ProgramFiles", &path(&pf))]);
         let s = for_choice(&setting(ShellChoice::Pwsh), true, vars, finder(vec![installed.clone()]), None).unwrap();
@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn git_bash_next_to_git() {
-        let root = crate::paths::temp_dir().join("trellis-shell-git");
+        let root = crate::paths::temp_dir().join("glowfly-shell-git");
         let bash = path(&root.join("bin").join("bash.exe"));
         let login = vec!["--login".to_owned(), "-i".to_owned()];
         for git in [root.join("cmd").join("git.exe"), root.join("bin").join("git.exe"), root.join("mingw64").join("bin").join("git.exe")] {

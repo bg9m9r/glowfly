@@ -1,4 +1,4 @@
-//! Rows Trellis won't act on (`glowfly_core::repo::Hazard`): names that aren't UTF-8, and paths
+//! Rows Glowfly won't act on (`glowfly_core::repo::Hazard`): names that aren't UTF-8, and paths
 //! that share one file on disk with another index path. Which messages act on a path, and
 //! whether the action destroys something; `update::hazards` refuses them before any effect.
 

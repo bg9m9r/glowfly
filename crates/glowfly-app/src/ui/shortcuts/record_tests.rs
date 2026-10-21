@@ -1,5 +1,5 @@
 //! Recording a key for Preferences > Keyboard: the press goes only to the recording (no
-//! shortcut, no Esc closing Preferences, no text for a focused field), repeats and keys Trellis
+//! shortcut, no Esc closing Preferences, no text for a focused field), repeats and keys Glowfly
 //! can't bind are skipped, and presses become chords the same way on every system.
 
 use super::chords::{chord_from_press, egui_key, key_name};
@@ -59,7 +59,7 @@ fn the_press_goes_only_to_the_recording() {
     assert_eq!(recorded(&press(&mut h, Modifiers::NONE, Key::F5, false)), Some(Chord::plain(K::F(5))));
     // Still held down (no release came): egui marks the second press a repeat.
     assert!(press(&mut h, Modifiers::NONE, Key::F5, true).is_empty(), "a repeat is ignored");
-    assert!(press(&mut h, Modifiers::NONE, Key::F13, false).is_empty(), "a key Trellis can't bind is swallowed");
+    assert!(press(&mut h, Modifiers::NONE, Key::F13, false).is_empty(), "a key Glowfly can't bind is swallowed");
     assert!(h.state().st.prefs.as_ref().unwrap().keys.recording.is_some(), "update ends the recording, not the view");
 }
 

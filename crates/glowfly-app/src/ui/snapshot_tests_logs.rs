@@ -28,7 +28,7 @@ fn activity_log_earlier_sessions() {
     st.log = vec![
         earlier(FIRST, 1, true, "Fetched origin"),
         // A run line an older build wrote: shown as a run.
-        earlier(FIRST, 2, true, "Fetch done\n$ git fetch origin\nFrom example.com:team/trellis"),
+        earlier(FIRST, 2, true, "Fetch done\n$ git fetch origin\nFrom example.com:team/glowfly"),
         earlier(FIRST, 4, false, "Push failed: the remote has commits you don't have"),
         earlier(SECOND, 2, true, "Checked out main"),
         LogEntry { at: NOW - 300, ..LogEntry::new(true, "Pulled origin/main") },
@@ -47,9 +47,9 @@ fn activity_log_error_tab() {
     st.view.show_log = true;
     st.logs.tab = LogKind::Errors;
     let lines = [
-        "2026-10-16 09:30:01.120 +00:00 ERROR trellis-load-repo glowfly::runner::guard: effect panicked: index out of bounds",
+        "2026-10-16 09:30:01.120 +00:00 ERROR glowfly-load-repo glowfly::runner::guard: effect panicked: index out of bounds",
         "2026-10-16 09:30:04.481 +00:00  WARN main glowfly::themes: theme file sand-dark.json: unknown color \"glow\"",
-        "2026-10-16 09:31:12.007 +00:00  INFO trellis-git glowfly::runner: fetch finished",
+        "2026-10-16 09:31:12.007 +00:00  INFO glowfly-git glowfly::runner: fetch finished",
         "2026-10-16 09:31:12.010 +00:00  INFO main glowfly::ui: window focused",
     ];
     let tail = LogTail { lines: lines.iter().map(|l| l.to_string()).collect(), truncated: true };
@@ -76,7 +76,7 @@ fn preferences_general_logging() {
     let mut h = super::snapshot_tests::harness_sized(st, true, eframe::egui::vec2(1400.0, 1340.0));
     h.run();
     h.check_snapshot("prefs_general_logging");
-    h.get_by_label("Add the git commands Trellis runs, with their timings, to the activity log").click();
+    h.get_by_label("Add the git commands Glowfly runs, with their timings, to the activity log").click();
     h.run();
     h.get_by_label("Open logs folder").click();
     h.run();

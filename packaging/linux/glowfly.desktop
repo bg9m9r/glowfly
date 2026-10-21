@@ -1,12 +1,12 @@
 [Desktop Entry]
 Type=Application
-Name=Trellis
+Name=Glowfly
 GenericName=Git Client
 Comment=Browse, commit and share changes in Git repositories
-Exec=trellis %f
-Icon=trellis
+Exec=glowfly %f
+Icon=glowfly
 Terminal=false
 MimeType=inode/directory;
 Categories=Development;RevisionControl;
 Keywords=git;repository;commit;branch;version control;
-StartupWMClass=trellis
+StartupWMClass=glowfly

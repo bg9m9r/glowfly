@@ -114,7 +114,7 @@ fn a_repository_open_in_no_tab_runs_only_when_trusted() {
     let fx = run(&mut st, published(&a));
     assert!(run_git_cwds(&fx).is_empty() && st.job.is_none() && !asking(&st));
     let text = msg_log(&st);
-    assert!(text.starts_with("Publish to GitHub wasn't run:") && text.contains("isn't open, so Trellis can't check"), "{text}");
+    assert!(text.starts_with("Publish to GitHub wasn't run:") && text.contains("isn't open, so Glowfly can't check"), "{text}");
     assert!(text.ends_with("Open it and start it again."), "{text}");
 
     record(&mut st.settings, &a, RepoTrust::NotTrusted);

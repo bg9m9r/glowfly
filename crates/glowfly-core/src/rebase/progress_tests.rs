@@ -117,11 +117,11 @@ fn apply_backend() {
 }
 
 #[test]
-fn exec_stops_tell_trellis_amends_from_commands() {
+fn exec_stops_tell_glowfly_amends_from_commands() {
     use super::remaining_tests::rebase_i;
     let (dir, [c1, c2, c3, c4]) = linear("rebase-progress-exec-kinds");
-    // A failing amend of Trellis's own (recognised by its message file's name).
-    let own = format!("exec h=$(git rev-parse -q --verify HEAD); false /x/trellis-rebase/reword-{c2}.txt");
+    // A failing amend of Glowfly's own (recognised by its message file's name).
+    let own = format!("exec h=$(git rev-parse -q --verify HEAD); false /x/glowfly-rebase/reword-{c2}.txt");
     let todo = format!("pick {c2} c2\n{own}\npick {c3} c3\nexec echo hi && false\npick {c4} c4\nbreak\n");
     assert!(!rebase_i(&dir, &c1.to_string(), &todo));
     let p = progress(&dir).unwrap();

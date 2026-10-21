@@ -1,4 +1,4 @@
-//! Trellis's log files, all in `settings::log_dir`:
+//! Glowfly's log files, all in `settings::log_dir`:
 //!
 //! - `activity.jsonl`: the activity panel's lines across sessions, one JSON object per line
 //!   (`{"v":1,"session":…,"at":…,"ok":…,"text":…,"repo":…,"run":{…}}`, times in Unix seconds,

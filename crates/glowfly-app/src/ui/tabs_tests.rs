@@ -124,7 +124,7 @@ fn tab_menu_says_why_items_are_off() {
 /// of group B. The linked and B tabs are unloaded, with their groups set by hand.
 pub(super) fn grouped_tabs(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
-    let base = glowfly_core::paths::temp_dir().join(format!("trellis-tab-groups-{name}"));
+    let base = glowfly_core::paths::temp_dir().join(format!("glowfly-tab-groups-{name}"));
     let a = st.snap.as_ref().unwrap().common.clone();
     let b = CommonDir { dir: base.join("api").join(".git"), folder: None, name: "api".into() };
     let tab = |n: &str, group: Option<&CommonDir>| Tab { group: group.cloned(), ..Tab::unloaded(base.join(n)) };

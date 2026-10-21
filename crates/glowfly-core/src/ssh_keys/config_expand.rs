@@ -1,6 +1,6 @@
 //! Expanding one `IdentityFile` value as ssh does (ssh_config(5) TOKENS): a leading `~`, then
 //! `%` tokens and `${VAR}` environment variables in one pass. Values that depend on the host ssh
-//! connects to, or that Trellis can't fill in, are reported instead of guessed. Whether the
+//! connects to, or that Glowfly can't fill in, are reported instead of guessed. Whether the
 //! result is a full path follows a per-OS rule on the text, never the running system's
 //! `Path::is_absolute`. Pure, apart from [`from_env`].
 
@@ -12,7 +12,7 @@ pub enum Unresolved {
     /// A token that depends on the host ssh connects to (`%h`, `%r`, `%p`, `%n`, `%C`, `%k`,
     /// `%j`).
     HostToken(char),
-    /// A token Trellis doesn't fill in (`%L`, `%l`, `%i` without a user id, an unknown one, a
+    /// A token Glowfly doesn't fill in (`%L`, `%l`, `%i` without a user id, an unknown one, a
     /// trailing `%`), or `$` for an unterminated `${`.
     Unsupported(char),
     /// `~name/…` for a user other than the current one.

@@ -106,7 +106,7 @@ fn the_system_drive_has_readable_bin_settings() {
 #[test]
 fn a_file_another_program_holds_is_in_use() {
     use std::os::windows::fs::OpenOptionsExt;
-    let dir = crate::paths::temp_dir().join(format!("trellis-trash-in-use-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("glowfly-trash-in-use-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("held.txt");
     std::fs::write(&file, "x").unwrap();

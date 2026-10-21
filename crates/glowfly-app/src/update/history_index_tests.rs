@@ -188,7 +188,7 @@ fn parked_with_index(path: &std::path::Path) -> Tab {
 #[test]
 fn closing_the_tab_forgets_its_build() {
     let (mut st, dir, _) = opened_long("index-close");
-    let other = glowfly_core::paths::temp_dir().join("trellis-index-close-other");
+    let other = glowfly_core::paths::temp_dir().join("glowfly-index-close-other");
     st.tabs.push(parked_with_index(&other));
     let fx = update(&mut st, Msg::Tabs(TabsMsg::CloseTab(1)), Instant::now());
     assert_eq!(forgets(&fx), std::slice::from_ref(&other), "a parked tab");
@@ -249,7 +249,7 @@ fn an_index_built_for_a_parked_tab_is_kept() {
 fn turning_the_preference_off_drops_the_index() {
     let (mut st, dir, kept) = opened_long("index-pref");
     run_build(&mut st, kept);
-    st.tabs.push(parked_with_index(&glowfly_core::paths::temp_dir().join("trellis-index-pref-other")));
+    st.tabs.push(parked_with_index(&glowfly_core::paths::temp_dir().join("glowfly-index-pref-other")));
     st.settings.index_history = false;
     let mut fx = Vec::new();
     super::prefs::sync_live_settings(&mut st, &mut fx);

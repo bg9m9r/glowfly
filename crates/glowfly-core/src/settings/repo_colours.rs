@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn colours_round_trip_through_the_file() {
-        let dir = crate::paths::temp_dir().join(format!("trellis-settings-colours-{}", std::process::id()));
+        let dir = crate::paths::temp_dir().join(format!("glowfly-settings-colours-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let repo = dir.join("repo");
@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn an_unknown_colour_name_keeps_the_file_loading() {
-        let dir = crate::paths::temp_dir().join(format!("trellis-settings-colour-junk-{}", std::process::id()));
+        let dir = crate::paths::temp_dir().join(format!("glowfly-settings-colour-junk-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("settings.json");

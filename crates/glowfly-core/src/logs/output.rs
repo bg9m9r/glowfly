@@ -21,7 +21,7 @@ pub fn output_lines(text: &str) -> impl Iterator<Item = &str> {
 /// What kind of line a job's output line is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputLine {
-    /// Trellis's echo of the command it ran (`$ git push`).
+    /// Glowfly's echo of the command it ran (`$ git push`).
     Command,
     /// git's `fatal:` and `error:` lines.
     Error,

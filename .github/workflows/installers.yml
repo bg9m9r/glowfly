@@ -4,7 +4,7 @@ name: Installers
 # starts, update-checks and uninstalls them on a clean runner: the MSI on Windows
 # (scripts/installer-check-windows.ps1) and the .deb on Linux (scripts/installer-check-linux.sh).
 # Both run scripts/update-feed-check.ps1 with the installed program against local update feeds
-# (TRELLIS_UPDATE_FEED). The "older" package is the same program packaged as v0.0.1.
+# (GLOWFLY_UPDATE_FEED). The "older" package is the same program packaged as v0.0.1.
 
 on:
   push:
@@ -40,10 +40,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $old = Join-Path $env:RUNNER_TEMP old
           New-Item -ItemType Directory -Force $old | Out-Null
-          Move-Item dist/trellis-v0.0.1-* $old
+          Move-Item dist/glowfly-v0.0.1-* $old
           pwsh scripts/package-windows.ps1 -Target x86_64-pc-windows-msvc -Tag "v$v"
           if ($LASTEXITCODE -ne 0) { exit 1 }
-          "TRELLIS_VERSION=$v" >> $env:GITHUB_ENV
+          "GLOWFLY_VERSION=$v" >> $env:GITHUB_ENV
       - name: Lint the scripts
         shell: pwsh
         run: |
@@ -58,10 +58,10 @@ jobs:
         run: |
           $triple = 'x86_64-pc-windows-msvc'
           pwsh scripts/installer-check-windows.ps1 `
-            -Msi "dist/trellis-v$env:TRELLIS_VERSION-$triple.msi" `
-            -OldMsi "$env:RUNNER_TEMP/old/trellis-v0.0.1-$triple.msi" `
-            -Zip "dist/trellis-v$env:TRELLIS_VERSION-$triple.zip" `
-            -Version $env:TRELLIS_VERSION -Out "$env:RUNNER_TEMP/installers"
+            -Msi "dist/glowfly-v$env:GLOWFLY_VERSION-$triple.msi" `
+            -OldMsi "$env:RUNNER_TEMP/old/glowfly-v0.0.1-$triple.msi" `
+            -Zip "dist/glowfly-v$env:GLOWFLY_VERSION-$triple.zip" `
+            -Version $env:GLOWFLY_VERSION -Out "$env:RUNNER_TEMP/installers"
           if ($LASTEXITCODE -ne 0) { exit 1 }
       - name: Upload logs
         if: failure()
@@ -97,9 +97,9 @@ jobs:
           version="$(cargo metadata --no-deps --format-version 1 --locked | jq -r '.packages[] | select(.name=="glowfly") | .version')"
           bash scripts/package-linux.sh x86_64-unknown-linux-gnu v0.0.1
           mkdir -p "$RUNNER_TEMP/old"
-          mv dist/trellis-v0.0.1-* "$RUNNER_TEMP/old/"
+          mv dist/glowfly-v0.0.1-* "$RUNNER_TEMP/old/"
           bash scripts/package-linux.sh x86_64-unknown-linux-gnu "v$version"
-          echo "TRELLIS_VERSION=$version" >> "$GITHUB_ENV"
+          echo "GLOWFLY_VERSION=$version" >> "$GITHUB_ENV"
       - name: Lint the scripts
         run: shellcheck -x scripts/installer-check-linux.sh scripts/package-linux.sh
       - name: Install, upgrade, start, update-check and purge
@@ -107,8 +107,8 @@ jobs:
           INSTALLER_OUT: ${{ runner.temp }}/installers
         run: |
           triple=x86_64-unknown-linux-gnu
-          bash scripts/installer-check-linux.sh "dist/trellis-v$TRELLIS_VERSION-$triple.deb" \
-            "$RUNNER_TEMP/old/trellis-v0.0.1-$triple.deb" "dist/trellis-v$TRELLIS_VERSION-$triple.tar.gz" "$TRELLIS_VERSION"
+          bash scripts/installer-check-linux.sh "dist/glowfly-v$GLOWFLY_VERSION-$triple.deb" \
+            "$RUNNER_TEMP/old/glowfly-v0.0.1-$triple.deb" "dist/glowfly-v$GLOWFLY_VERSION-$triple.tar.gz" "$GLOWFLY_VERSION"
       - name: Upload logs
         if: failure()
         uses: actions/upload-artifact@v4

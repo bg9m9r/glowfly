@@ -16,7 +16,7 @@
 //! repository trust prompt (drawn by `trust_dialog.rs`), a conflict check's report (drawn by
 //! `conflict_check.rs`), what an operation would do before it runs (drawn by
 //! `op_preview_dialog.rs`), a pull request or issue filter (drawn by `forge_filter_dialog.rs`), the
-//! trellis:// link dialogs (drawn by `deep_link_dialog.rs`), creating an issue (drawn by
+//! glowfly:// link dialogs (drawn by `deep_link_dialog.rs`), creating an issue (drawn by
 //! `issue/create_dialog.rs`), rewording a commit from the graph (drawn by
 //! `rebase/reword_dialog.rs`), the About dialog and its third-party notices (drawn by `menu_bar/about.rs` and
 //! `menu_bar/notices.rs`), the release notes
@@ -72,9 +72,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let repo_filters = snap.map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
     let mut close = false;
     let first = msgs.len();
-    let resp = super::theme::dialog(ctx, egui::Id::new("trellis-modal")).show(ctx, |ui| {
+    let resp = super::theme::dialog(ctx, egui::Id::new("glowfly-modal")).show(ctx, |ui| {
         // A dialog's key in egui's memory: the first frame of each kind takes the focus.
-        let cx = Cx { t, keyboard, key: egui::Id::new("trellis-dialog").with(std::mem::discriminant(&*modal)) };
+        let cx = Cx { t, keyboard, key: egui::Id::new("glowfly-dialog").with(std::mem::discriminant(&*modal)) };
         match modal {
             Modal::Confirm { title, body, button, .. } => {
                 close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Normal, None, None, msgs)

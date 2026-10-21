@@ -16,7 +16,7 @@ pub(super) struct Fixture {
 impl Fixture {
     /// A fresh folder for the journey `name` (an earlier run's is removed first).
     pub fn new(name: &str) -> Self {
-        let root = glowfly_core::paths::temp_dir().join(format!("trellis-journey-{}-{name}", std::process::id()));
+        let root = glowfly_core::paths::temp_dir().join(format!("glowfly-journey-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         for sub in ["remote", "work", "config"] {
             std::fs::create_dir_all(root.join(sub)).unwrap();

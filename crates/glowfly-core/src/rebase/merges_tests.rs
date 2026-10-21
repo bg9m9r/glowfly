@@ -85,7 +85,7 @@ fn the_script_replays_each_line_after_a_reset() {
     assert_eq!(steps[6].oid(), Some(f.m));
     assert!(merges::has_structure(&steps));
 
-    let (text, files) = build(&steps, Path::new("/repo/.git/trellis-rebase"), false);
+    let (text, files) = build(&steps, Path::new("/repo/.git/glowfly-rebase"), false);
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines[..3], ["label onto", "reset onto", &format!("pick {} s1", f.s1)]);
     assert_eq!(lines[4], format!("label {s2}"));

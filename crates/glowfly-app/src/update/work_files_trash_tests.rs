@@ -68,7 +68,7 @@ fn permanent_preference_keeps_old_texts() {
     assert_eq!(
         body,
         format!(
-            "u.txt isn't tracked by git. Trellis keeps a copy so Undo ({}) can bring it back while this tab is open (files up to 64 MB).",
+            "u.txt isn't tracked by git. Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open (files up to 64 MB).",
             keys("Ctrl+Z")
         )
     );
@@ -273,7 +273,7 @@ fn trash_refused_for_other_reasons_offers_retry_never_a_permanent_delete() {
             "Permission denied (os error 13)",
             format!("Can't move to {TRASH}"),
             format!(
-                "Trellis isn't allowed to move a.txt to the {TRASH}: Permission denied (os error 13).\n\nCheck that the file isn't locked and that you may change its folder, then try again."
+                "Glowfly isn't allowed to move a.txt to the {TRASH}: Permission denied (os error 13).\n\nCheck that the file isn't locked and that you may change its folder, then try again."
             ),
         ),
         (

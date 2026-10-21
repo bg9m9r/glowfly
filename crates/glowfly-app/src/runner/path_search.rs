@@ -55,7 +55,7 @@ impl PathSearchWorker {
         }
         let worker = self.clone();
         let (tx2, waker2) = (tx.clone(), waker.clone());
-        if let Err(e) = std::thread::Builder::new().name("trellis-search-paths".into()).spawn(move || worker.work(&tx2, &waker2)) {
+        if let Err(e) = std::thread::Builder::new().name("glowfly-search-paths".into()).spawn(move || worker.work(&tx2, &waker2)) {
             tracing::error!("could not start the path search thread: {e}");
             let mut s = self.slot();
             s.running = false;
@@ -104,7 +104,7 @@ impl PathSearchWorker {
                         break;
                     }
                     Err(_) => {
-                        report(tx, waker, workdir.clone(), request, Err("Trellis hit an internal error (search-paths)".into()));
+                        report(tx, waker, workdir.clone(), request, Err("Glowfly hit an internal error (search-paths)".into()));
                         break;
                     }
                 }
@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn a_newer_request_replaces_one_still_waiting() {
-        let dir = glowfly_core::paths::temp_dir().join(format!("trellis-path-search-{}", std::process::id()));
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-path-search-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("docs")).unwrap();
         git(&dir, &["init", "-q", "-b", "main"]);

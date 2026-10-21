@@ -1,4 +1,4 @@
-//! Repository trust passed on: a worktree Trellis creates and submodules it checks out for the
+//! Repository trust passed on: a worktree Glowfly creates and submodules it checks out for the
 //! first time, from a trusted repository, are trusted too; never over a decision already saved,
 //! and never from a repository that isn't trusted.
 

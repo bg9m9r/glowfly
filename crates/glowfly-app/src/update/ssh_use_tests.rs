@@ -1,5 +1,5 @@
 //! Headless tests for the key git uses (Preferences > SSH): choosing a key and Let ssh decide
-//! at each level, the confirmations for a command Trellis didn't write, the trust rule for a
+//! at each level, the confirmations for a command Glowfly didn't write, the trust rule for a
 //! repository's own setting, and the Use local SSH agent setting.
 
 use super::ssh_tests::{listing, loaded, page, page_mut, pair, run, ssh};
@@ -144,13 +144,13 @@ fn refusals() {
 }
 
 #[test]
-fn turning_the_agent_on_unsets_only_trellis_choices() {
+fn turning_the_agent_on_unsets_only_glowfly_choices() {
     let mut st = chosen(KeyChoice::Key(key().private), Some((other("ssh -v"), true)));
     let fx = ssh(&mut st, SshMsg::SetUseAgent(true));
     assert!(st.settings.use_ssh_agent);
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
     assert_eq!(sets(&fx), [(None, None)], "the foreign command stays");
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Trellis doesn't choose a key in core.sshCommand; ssh uses your agent."));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Glowfly doesn't choose a key in core.sshCommand; ssh uses your agent."));
 
     let mut st = chosen(other("ssh -v"), Some((KeyChoice::Key(key().private), false)));
     assert!(sets(&ssh(&mut st, SshMsg::SetUseAgent(true))).is_empty(), "an untrusted repository's config is left alone");

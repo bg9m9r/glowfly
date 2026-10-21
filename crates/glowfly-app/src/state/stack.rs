@@ -23,7 +23,7 @@ pub fn plan_for(snap: &Snapshot, scope: &RestackScope, autostash: bool) -> Resta
 
 /// The branches a restack dropped after a stop didn't get to: the top of the step it stopped
 /// in, when a layer of that step is still behind on `snap` (its rebase was aborted rather than
-/// finished outside Trellis), then the tops of the steps left.
+/// finished outside Glowfly), then the tops of the steps left.
 pub fn not_restacked(snap: &Snapshot, job: &RestackJob) -> Vec<String> {
     let unfinished = |s: &&RestackStep| {
         let one = RestackPlan { steps: vec![(*s).clone()], ..RestackPlan::default() };

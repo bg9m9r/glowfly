@@ -1,4 +1,4 @@
-//! The working tree with paths Trellis won't act on: the banner about index paths that share
+//! The working tree with paths Glowfly won't act on: the banner about index paths that share
 //! one file on this disk (and a core.ignorecase that disagrees with it), and the notes after a
 //! case twin's and a non-UTF-8 name's paths.
 
