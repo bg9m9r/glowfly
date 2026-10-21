@@ -106,12 +106,17 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
                 st.log(false, STILL_SWITCHING);
                 return;
             }
-            let Some(identity) = st.settings.profile(id).map(|p| p.identity()) else {
+            if st.settings.profile(id).is_none() {
                 st.log(false, ProfileProblem::Missing.message());
                 return;
-            };
+            }
             st.profile_switch = Some(id);
-            fx.push(Effect::Profile(ProfileEffect::Apply { cwd: st.any_dir(), has_repo: st.snap.is_some(), id, identity }));
+            // A placing sync writes the global config too: the switch waits for it to end.
+            if st.includes.running {
+                st.includes.held_switch = Some(id);
+                return;
+            }
+            start_switch(st, id, fx);
         }
         ProfileMsg::Applied { id, result } => applied(st, id, result, now, fx),
         ProfileMsg::Rewritten { id, result } => rewritten(st, id, result, now, fx),
@@ -125,6 +130,16 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
         ProfileMsg::IdentityRead { git_dir, result } => super::profile_rules::identity_read(st, git_dir, result, fx),
         ProfileMsg::LocalCleared { git_dir, result } => super::profile_rules::local_cleared(st, git_dir, result, now, fx),
     }
+}
+
+/// Writes the switch's target identity to the global config (`profile_switch` is already set).
+pub(super) fn start_switch(st: &mut AppState, id: ProfileId, fx: &mut Vec<Effect>) {
+    let Some(identity) = st.settings.profile(id).map(|p| p.identity()) else {
+        st.log(false, ProfileProblem::Missing.message());
+        finish_switch(st, fx);
+        return;
+    };
+    fx.push(Effect::Profile(ProfileEffect::Apply { cwd: st.any_dir(), has_repo: st.snap.is_some(), id, identity }));
 }
 
 /// Fresh git config reached the open Profile page: seed the first profile or bring the current

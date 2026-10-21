@@ -87,6 +87,10 @@ pub(super) fn synced(st: &mut AppState, result: Result<(), String>, now: Instant
     }
     st.includes.error = result.err();
     want_identity(st, fx);
+    // A switch chosen meanwhile goes first; a sync asked for since then waits for it.
+    if let Some(id) = st.includes.held_switch.take() {
+        super::profiles::start_switch(st, id, fx);
+    }
     run_deferred(st, fx);
 }
 

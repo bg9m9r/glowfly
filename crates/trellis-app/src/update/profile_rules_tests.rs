@@ -1,5 +1,5 @@
 //! Headless tests for profile folder rules: adding (picked folder or the open repository) after
-//! the runner's check, removing, the one-at-a-time include syncs (waiting for a switch too),
+//! the runner's check, removing, the one-at-a-time include syncs (waiting for a switch, and holding one),
 //! deleting and editing a ruled profile, the identity reads with their one repair, and Use
 //! <profile> here behind its confirmation. No effect runs: syncs write the global git config.
 
@@ -140,6 +140,30 @@ fn a_switch_holds_the_sync_until_it_ends() {
     assert!(syncs(&fx).is_empty());
     let fx = profile(&mut st, ProfileMsg::Applied { id: PERSONAL, result: Ok(super::profiles_tests::values("Ada L", "ada@home.example")) });
     assert_eq!(syncs(&fx), [true]);
+}
+
+#[test]
+fn a_sync_holds_the_switch_until_it_ends() {
+    let applies = |fx: &[Effect]| fx.iter().filter(|e| matches!(e, Effect::Profile(ProfileEffect::Apply { id: PERSONAL, .. }))).count();
+    let mut st = two_profiles();
+    let fx = profile(&mut st, ProfileMsg::FolderChecked { id: WORK, result: Ok(rule("a")) });
+    assert_eq!(syncs(&fx), [true]);
+    // Chosen while the placing sync writes the global config: busy, but nothing written yet.
+    let fx = profile(&mut st, ProfileMsg::Switch(PERSONAL));
+    assert_eq!(applies(&fx), 0, "{fx:?}");
+    assert_eq!(st.profile_switch, Some(PERSONAL));
+    let fx = profile(&mut st, ProfileMsg::Switch(WORK));
+    assert_eq!(applies(&fx), 0, "a second switch is refused while the first waits");
+    // A sync asked for meanwhile waits for the switch.
+    let fx = profile(&mut st, ProfileMsg::FolderChecked { id: WORK, result: Ok(rule("b")) });
+    assert!(syncs(&fx).is_empty());
+    let fx = profile(&mut st, ProfileMsg::IncludesSynced(Ok(())));
+    assert_eq!(applies(&fx), 1, "{fx:?}");
+    assert!(syncs(&fx).is_empty(), "not alongside the switch: {fx:?}");
+    assert!(!st.includes.running && st.includes.held_switch.is_none());
+    let fx = profile(&mut st, ProfileMsg::Applied { id: PERSONAL, result: Ok(super::profiles_tests::values("Ada L", "ada@home.example")) });
+    assert_eq!(syncs(&fx), [true]);
+    assert_eq!(st.settings.active_profile, Some(PERSONAL));
 }
 
 #[test]

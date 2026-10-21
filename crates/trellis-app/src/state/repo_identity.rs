@@ -18,6 +18,9 @@ pub struct IncludeSync {
     /// A sync asked for while one ran (or a switch did): whether any of those asked to place
     /// the entries.
     pub again: Option<bool>,
+    /// A switch chosen while a sync ran: it is already busy (`AppState::profile_switch`), and
+    /// its writes start when the sync ends.
+    pub held_switch: Option<ProfileId>,
     /// The git dirs whose identity disagreed with their rule and got a placing sync this
     /// session (at most one each).
     pub healed: HashSet<PathBuf>,
