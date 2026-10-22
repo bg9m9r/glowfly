@@ -85,8 +85,16 @@ fn sizes_meet_the_minimums() {
             assert_eq!(r.rect.height(), HEIGHT, "{name}: default height at body size");
             assert_eq!(r.rect.width(), make(name).desired_width(ui), "{name}: the width it said");
             let r = ui.add(make(name).small());
-            assert_eq!(r.rect.height(), SMALL_HEIGHT, "{name}: small height at body size");
+            assert_eq!(r.rect.height(), SMALL_HEIGHT, "{name}: small height at the small step");
+            assert!(make(name).small().desired_width(ui) < make(name).desired_width(ui), "{name}: small text is narrower");
         }
+        let text_h = |b: StyledButton| b.galley(ui).size().y;
+        let room = |h: f32, b: StyledButton| (h - text_h(b)) / 2.0;
+        assert!(room(SMALL_HEIGHT, secondary("Retry").small()) >= 3.5, "a small button's text has room inside its edge");
+        assert!(
+            (room(SMALL_HEIGHT, secondary("Retry").small()) - room(HEIGHT, secondary("Retry"))).abs() <= 1.0,
+            "small and default buttons give their text about the same room"
+        );
         let r = ui.add(secondary("Stage hunk").height(17.0).min_width(120.0));
         assert_eq!(r.rect.height(), 17.0, "an exact height");
         assert_eq!(r.rect.width(), 120.0, "the least width still applies");

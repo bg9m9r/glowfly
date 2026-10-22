@@ -177,9 +177,10 @@ fn account_name(a: &Account) -> String {
     format!("{} · {}", a.provider.name(), a.display())
 }
 
-/// One "Not loaded" line: the text, then its buttons.
+/// One "Not loaded" line: the text, then its buttons, centred on a small button's height.
 fn problem(ui: &mut Ui, text: String, add_buttons: impl FnOnce(&mut Ui)) {
-    ui.horizontal(|ui| {
+    let size = egui::vec2(ui.available_width(), buttons::SMALL_HEIGHT);
+    ui.allocate_ui_with_layout(size, Layout::left_to_right(Align::Center), |ui| {
         ui.add_space(26.0);
         ui.label(RichText::new(text).size(type_scale::SMALL).color(color::text()));
         add_buttons(ui);

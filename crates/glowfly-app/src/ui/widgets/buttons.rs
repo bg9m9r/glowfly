@@ -19,27 +19,34 @@
 //! `blocked`). A focused filled button gets the 2 px accent ring 2 px outside its edge
 //! (`tokens::focus_ring`); a quiet one, packed among others, the inset ring.
 //!
-//! Sizes: 28 px high by default, 24 px `small` (both at body-size text), taller with
-//! `min_height`, or an exact `height` inside a fixed-height row. Corners are `radius::MD`.
+//! Sizes: 28 px high at body-size text (14 px) by default; `small` is 24 px high at the small
+//! text step (12 px) with 10 px beside the text and a 14 px leading icon, so its text keeps about
+//! 4 px above and below inside the edge, the same room a 28 px button gives body text. Taller
+//! with `min_height`, or an exact `height` inside a fixed-height row. Corners are `radius::MD`.
 
 use super::button_look::{self, Press};
 use super::icon::{self, Icon};
 use crate::ui::theme::tokens::{self, radius};
+use crate::ui::theme::type_scale;
 use eframe::egui::{self, Color32, CornerRadius, Response, Sense, StrokeKind, TextStyle, Ui, Widget, WidgetText, pos2, vec2};
 use std::borrow::Cow;
 
 pub use super::button_split::split;
 
-/// Padding beside the text.
-const PADDING: egui::Vec2 = vec2(12.0, 5.0);
-/// The least room above and below the text. Body text lays out about 20 px tall, so the
-/// minimum heights decide a button's height, not `PADDING.y`.
+/// Room beside the text, and beside a small button's.
+const PAD_X: f32 = 12.0;
+const SMALL_PAD_X: f32 = 10.0;
+/// The least room above and below the text. Body text lays out about 20 px tall and small text
+/// about 16 px, so the minimum heights decide a button's height, not this.
 const MIN_PAD_Y: f32 = 2.0;
 /// The least height of a button, and of a small one (inline Browse…, Retry).
 const HEIGHT: f32 = 28.0;
-const SMALL_HEIGHT: f32 = 24.0;
-/// Between a leading icon and the text.
+pub const SMALL_HEIGHT: f32 = 24.0;
+/// A small button's text step: one step under the body text the 28 px button carries.
+const SMALL_TEXT: f32 = type_scale::SMALL;
+/// Between a leading icon and the text, and in a small button.
 const ICON_GAP: f32 = 6.0;
+const SMALL_ICON_GAP: f32 = 4.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
@@ -154,7 +161,8 @@ impl<'a> StyledButton<'a> {
         self
     }
 
-    /// 24 px high, for buttons inline with a field or a row (Browse…, Retry).
+    /// 24 px high at the small text step, for buttons inline with a field, a row or a line of
+    /// chips (Browse…, Retry, Compare with working directory).
     pub fn small(mut self) -> Self {
         self.small = true;
         self
@@ -199,21 +207,32 @@ impl<'a> StyledButton<'a> {
         self.kind
     }
 
+    /// The room beside the text.
+    fn pad_x(&self) -> f32 {
+        if self.small { SMALL_PAD_X } else { PAD_X }
+    }
+
+    /// A leading icon's size, or an icon-only button's (which keeps 16 px in 24 px).
+    fn icon_size(&self) -> f32 {
+        if self.small && !self.icon_only { icon::SIZE_SM } else { icon::SIZE_MD }
+    }
+
     /// The room a leading icon takes before the text.
     fn icon_w(&self) -> f32 {
-        if self.icon.is_some() && !self.icon_only { icon::SIZE_MD + ICON_GAP } else { 0.0 }
+        let gap = if self.small { SMALL_ICON_GAP } else { ICON_GAP };
+        if self.icon.is_some() && !self.icon_only { self.icon_size() + gap } else { 0.0 }
     }
 
     /// The text laid out in the placeholder colour, so painting gives it the state's ink.
     fn galley(&self, ui: &Ui) -> std::sync::Arc<egui::Galley> {
         let shown = if self.icon_only { "" } else { self.text.as_ref() };
         let mut text = egui::RichText::new(shown).color(Color32::PLACEHOLDER);
-        if let Some(px) = self.text_size {
+        if let Some(px) = self.text_size.or(self.small.then_some(SMALL_TEXT)) {
             text = text.size(px);
         }
         match self.max_width {
             Some(max) => {
-                let room = (max - 2.0 * PADDING.x - self.icon_w()).max(0.0);
+                let room = (max - 2.0 * self.pad_x() - self.icon_w()).max(0.0);
                 WidgetText::from(text).into_galley(ui, Some(egui::TextWrapMode::Truncate), room, TextStyle::Button)
             }
             None => WidgetText::from(text).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, TextStyle::Button),
@@ -226,7 +245,7 @@ impl<'a> StyledButton<'a> {
             let side = self.height.unwrap_or(h_min);
             return vec2(side.max(self.min_width), side);
         }
-        let w = (galley.size().x + 2.0 * PADDING.x + self.icon_w()).max(self.min_width);
+        let w = (galley.size().x + 2.0 * self.pad_x() + self.icon_w()).max(self.min_width);
         if let Some(h) = self.height {
             return vec2(w, h);
         }
@@ -254,8 +273,11 @@ impl<'a> StyledButton<'a> {
             p.rect(rect, corners, look.fill, look.edge, StrokeKind::Inside);
             let left = rect.center().x - (galley.size().x + self.icon_w()) / 2.0;
             match self.icon {
-                Some(i) if self.icon_only => icon::paint_icon_sized(p, rect.center(), i, look.ink, icon::SIZE_MD),
-                Some(i) => icon::paint_icon_sized(p, pos2(left + icon::SIZE_MD / 2.0, rect.center().y), i, look.ink, icon::SIZE_MD),
+                Some(i) if self.icon_only => icon::paint_icon_sized(p, rect.center(), i, look.ink, self.icon_size()),
+                Some(i) => {
+                    let side = self.icon_size();
+                    icon::paint_icon_sized(p, pos2(left + side / 2.0, rect.center().y), i, look.ink, side);
+                }
                 None => {}
             }
             if !self.icon_only {
