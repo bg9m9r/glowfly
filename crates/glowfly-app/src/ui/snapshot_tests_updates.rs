@@ -16,21 +16,21 @@ use std::time::Instant;
 
 const NOTES: &str = "# Changelog
 
-## [0.2.0](https://github.com/bg9m9r/trellis/compare/v0.1.0...v0.2.0) (2026-01-20)
+## [0.2.0](https://github.com/bg9m9r/glowfly/compare/v0.1.0...v0.2.0) (2026-01-20)
 
 
 ### ⚠ BREAKING CHANGES
 
-* **settings:** themes saved by 0.1 load as Dark ([abc1234](https://github.com/bg9m9r/trellis/commit/abc1234))
+* **settings:** themes saved by 0.1 load as Dark ([abc1234](https://github.com/bg9m9r/glowfly/commit/abc1234))
 
 ### Features
 
-* **diff:** a split view for wide windows ([def5678](https://github.com/bg9m9r/trellis/commit/def5678))
-* **palette:** `View release notes` lists what changed in each version ([0a1b2c3](https://github.com/bg9m9r/trellis/commit/0a1b2c3))
+* **diff:** a split view for wide windows ([def5678](https://github.com/bg9m9r/glowfly/commit/def5678))
+* **palette:** `View release notes` lists what changed in each version ([0a1b2c3](https://github.com/bg9m9r/glowfly/commit/0a1b2c3))
 
 ### Bug Fixes
 
-* keep the selected commit after a refresh ([4d5e6f7](https://github.com/bg9m9r/trellis/commit/4d5e6f7))
+* keep the selected commit after a refresh ([4d5e6f7](https://github.com/bg9m9r/glowfly/commit/4d5e6f7))
 
 ## 0.1.0 (2026-01-05)
 
@@ -55,13 +55,13 @@ fn app(theme: ThemeChoice) -> AppState {
 
 fn release(with_files: bool) -> Release {
     let names = ["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "SHA256SUMS"];
-    let url = |n: &str| format!("https://github.com/bg9m9r/trellis/releases/download/v0.3.0/{n}");
+    let url = |n: &str| format!("https://github.com/bg9m9r/glowfly/releases/download/v0.3.0/{n}");
     Release {
         tag: "v0.3.0".into(),
         name: "v0.3.0".into(),
-        html_url: "https://github.com/bg9m9r/trellis/releases/tag/v0.3.0".into(),
-        body: "## [0.3.0](https://github.com/bg9m9r/trellis/compare/v0.2.0...v0.3.0) (2026-02-01)\n\n### Features\n\n\
-               * **updates:** check for a new version once a day ([1a2b3c4](https://github.com/bg9m9r/trellis/commit/1a2b3c4))\n"
+        html_url: "https://github.com/bg9m9r/glowfly/releases/tag/v0.3.0".into(),
+        body: "## [0.3.0](https://github.com/bg9m9r/glowfly/compare/v0.2.0...v0.3.0) (2026-02-01)\n\n### Features\n\n\
+               * **updates:** check for a new version once a day ([1a2b3c4](https://github.com/bg9m9r/glowfly/commit/1a2b3c4))\n"
             .into(),
         published_at: None,
         assets: if with_files { names.iter().map(|n| Asset { name: (*n).into(), size: 10, url: url(n) }).collect() } else { Vec::new() },

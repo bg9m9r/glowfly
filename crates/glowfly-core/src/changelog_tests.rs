@@ -4,16 +4,16 @@ use super::*;
 /// the three section kinds and items with a scope, code, a commit link and a continuation line.
 const FIXTURE: &str = "# Changelog
 
-## [0.2.0](https://github.com/bg9m9r/trellis/compare/v0.1.0...v0.2.0) (2026-10-20)
+## [0.2.0](https://github.com/bg9m9r/glowfly/compare/v0.1.0...v0.2.0) (2026-10-20)
 
 
 ### ⚠ BREAKING CHANGES
 
-* **settings:** drop the old `theme.json` format ([abc1234](https://github.com/bg9m9r/trellis/commit/abc1234))
+* **settings:** drop the old `theme.json` format ([abc1234](https://github.com/bg9m9r/glowfly/commit/abc1234))
 
 ### Features
 
-* **diff:** split view for wide windows ([def5678](https://github.com/bg9m9r/trellis/commit/def5678))
+* **diff:** split view for wide windows ([def5678](https://github.com/bg9m9r/glowfly/commit/def5678))
 * blame view, with a long description that
   continues on the next line ([0a1b2c3](http://example.com/commit/0a1b2c3))
 
@@ -42,7 +42,7 @@ fn a_release_please_changelog_is_parsed() {
     let r = &notes[0];
     assert_eq!(r.version, "0.2.0");
     assert_eq!(r.date.as_deref(), Some("2026-10-20"));
-    assert_eq!(r.url.as_deref(), Some("https://github.com/bg9m9r/trellis/compare/v0.1.0...v0.2.0"));
+    assert_eq!(r.url.as_deref(), Some("https://github.com/bg9m9r/glowfly/compare/v0.1.0...v0.2.0"));
     let titles: Vec<(&str, bool)> = r.sections.iter().map(|s| (s.title.as_str(), s.breaking)).collect();
     assert_eq!(titles, [("Breaking changes", true), ("Features", false), ("Bug Fixes", false)]);
     assert_eq!(
@@ -52,7 +52,7 @@ fn a_release_please_changelog_is_parsed() {
             plain(" drop the old "),
             Span { text: "theme.json".into(), style: SpanStyle::Code },
             plain(" format ("),
-            Span { text: "abc1234".into(), style: SpanStyle::Link("https://github.com/bg9m9r/trellis/commit/abc1234".into()) },
+            Span { text: "abc1234".into(), style: SpanStyle::Link("https://github.com/bg9m9r/glowfly/commit/abc1234".into()) },
             plain(")"),
         ]
     );

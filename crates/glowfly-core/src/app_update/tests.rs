@@ -50,14 +50,14 @@ const MAC_X86: Platform = Platform { os: TargetOs::Mac, arch: Arch::X86_64 };
 const LINUX: Platform = Platform { os: TargetOs::Linux, arch: Arch::X86_64 };
 
 fn asset(name: &str) -> Asset {
-    Asset { name: name.to_owned(), size: 10, url: format!("https://github.com/bg9m9r/trellis/releases/download/v0.3.0/{name}") }
+    Asset { name: name.to_owned(), size: 10, url: format!("https://github.com/bg9m9r/glowfly/releases/download/v0.3.0/{name}") }
 }
 
 fn release(tag: &str, names: &[&str]) -> Release {
     Release {
         tag: tag.to_owned(),
         name: format!("Glowfly {tag}"),
-        html_url: format!("https://github.com/bg9m9r/trellis/releases/tag/{tag}"),
+        html_url: format!("https://github.com/bg9m9r/glowfly/releases/tag/{tag}"),
         body: String::new(),
         published_at: None,
         assets: names.iter().map(|n| asset(n)).collect(),
@@ -213,7 +213,7 @@ fn checksum_files_are_read() {
 #[test]
 fn release_json_is_parsed_and_cleaned() {
     let json = br###"{
-        "tag_name": "v0.3.0", "name": "", "html_url": "https://github.com/bg9m9r/trellis/releases/tag/v0.3.0",
+        "tag_name": "v0.3.0", "name": "", "html_url": "https://github.com/bg9m9r/glowfly/releases/tag/v0.3.0",
         "body": "## Notes", "published_at": "2026-10-20T10:00:00Z", "draft": false,
         "assets": [
             {"name": "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "size": 1234, "browser_download_url": "https://github.com/d/a.msi"},
@@ -225,7 +225,7 @@ fn release_json_is_parsed_and_cleaned() {
         ]}"###;
     let r = parse_release(json).unwrap();
     assert_eq!((r.tag.as_str(), r.name.as_str(), r.body.as_str()), ("v0.3.0", "v0.3.0", "## Notes"));
-    assert_eq!(r.html_url, "https://github.com/bg9m9r/trellis/releases/tag/v0.3.0");
+    assert_eq!(r.html_url, "https://github.com/bg9m9r/glowfly/releases/tag/v0.3.0");
     assert_eq!(r.published_at.as_deref(), Some("2026-10-20T10:00:00Z"));
     let names: Vec<&str> = r.assets.iter().map(|a| a.name.as_str()).collect();
     assert_eq!(names, ["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "SHA256SUMS"]);
@@ -268,7 +268,7 @@ const BODY: &str = "pretend installer bytes";
 
 /// An offer for `NAME` (of `size` bytes) with the checksum published as `sums`.
 fn download_offer(size: usize, sums: &str) -> Offer {
-    let host = "https://github.com/bg9m9r/trellis/releases/download/v0.3.0";
+    let host = "https://github.com/bg9m9r/glowfly/releases/download/v0.3.0";
     let asset = Asset { name: NAME.into(), size: size as u64, url: format!("{host}/{NAME}") };
     let sums = match sums {
         "combined" => SumsSource::Combined(Asset { name: "SHA256SUMS".into(), size: 0, url: format!("{host}/SHA256SUMS") }),
@@ -368,12 +368,12 @@ fn a_download_of_the_wrong_size_is_refused() {
 
 #[test]
 fn the_latest_release_is_asked_for_without_credentials() {
-    let json = r#"{"tag_name": "v0.3.0", "html_url": "https://github.com/bg9m9r/trellis/releases/tag/v0.3.0", "body": "x", "assets": []}"#;
+    let json = r#"{"tag_name": "v0.3.0", "html_url": "https://github.com/bg9m9r/glowfly/releases/tag/v0.3.0", "body": "x", "assets": []}"#;
     let mock = Mock::start(move |_| Reply::json(json));
-    let r = crate::forge::latest_release("https://github.com/bg9m9r/trellis").unwrap().expect("a release");
+    let r = crate::forge::latest_release("https://github.com/bg9m9r/glowfly").unwrap().expect("a release");
     assert_eq!(r.tag, "v0.3.0");
     let req = &mock.requests()[0];
-    assert_eq!(req.route(), "GET api.github.com/repos/bg9m9r/trellis/releases/latest");
+    assert_eq!(req.route(), "GET api.github.com/repos/bg9m9r/glowfly/releases/latest");
     assert_eq!(req.header("User-Agent"), Some(concat!("Glowfly/", env!("CARGO_PKG_VERSION"))));
     assert_eq!(req.header("Accept"), Some("application/vnd.github+json"));
     assert_eq!(req.header("X-GitHub-Api-Version"), Some("2022-11-28"));
@@ -381,10 +381,10 @@ fn the_latest_release_is_asked_for_without_credentials() {
     drop(mock);
 
     let _mock = Mock::start(|_| Reply::not_found());
-    assert_eq!(crate::forge::latest_release("https://github.com/bg9m9r/trellis").unwrap(), None, "no releases yet");
+    assert_eq!(crate::forge::latest_release("https://github.com/bg9m9r/glowfly").unwrap(), None, "no releases yet");
     drop(_mock);
     let _mock = Mock::start(|_| Reply::status(403, r#"{"message":"API rate limit exceeded for 1.2.3.4."}"#));
-    let err = crate::forge::latest_release("https://github.com/bg9m9r/trellis").unwrap_err().to_string();
+    let err = crate::forge::latest_release("https://github.com/bg9m9r/glowfly").unwrap_err().to_string();
     assert!(err.contains("rate limit") && err.contains("API rate limit exceeded"), "{err}");
     drop(_mock);
     assert!(crate::forge::latest_release("https://gitlab.com/o/r").is_err());

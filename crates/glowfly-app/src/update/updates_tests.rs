@@ -32,7 +32,7 @@ pub(super) fn app() -> AppState {
 }
 
 fn asset(name: &str) -> Asset {
-    Asset { name: name.into(), size: 100, url: format!("https://github.com/bg9m9r/trellis/releases/download/v0.3.0/{name}") }
+    Asset { name: name.into(), size: 100, url: format!("https://github.com/bg9m9r/glowfly/releases/download/v0.3.0/{name}") }
 }
 
 /// Release `tag` with the Windows files; `files: false` publishes none.
@@ -41,7 +41,7 @@ pub(super) fn release(tag: &str, files: bool) -> Release {
     Release {
         tag: tag.into(),
         name: tag.into(),
-        html_url: format!("https://github.com/bg9m9r/trellis/releases/tag/{tag}"),
+        html_url: format!("https://github.com/bg9m9r/glowfly/releases/tag/{tag}"),
         body: "### Features\n\n* **ui:** something new\n".into(),
         published_at: None,
         assets: if files { names.iter().map(|n| asset(n)).collect() } else { Vec::new() },
@@ -238,13 +238,13 @@ fn without_a_build_for_this_system_download_opens_the_page() {
     let t = Instant::now();
     send(&mut st, U::Checked { manual: true, result: found("v0.3.0", InstallKind::Installer) }, t);
     let fx = send(&mut st, U::Download, t);
-    assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::OpenUrl(u))] if u == "https://github.com/bg9m9r/trellis/releases/tag/v0.3.0"));
+    assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::OpenUrl(u))] if u == "https://github.com/bg9m9r/glowfly/releases/tag/v0.3.0"));
     assert!(matches!(st.updates.status, UpdateStatus::Available(_)));
     let fx = send(&mut st, U::OpenReleasePage, t);
     assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::OpenUrl(u))] if u.ends_with("/releases/tag/v0.3.0")));
     let mut st = app();
     let fx = send(&mut st, U::OpenReleasePage, t);
-    assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::OpenUrl(u))] if u == "https://github.com/bg9m9r/trellis/releases"));
+    assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::OpenUrl(u))] if u == "https://github.com/bg9m9r/glowfly/releases"));
 }
 
 #[test]

@@ -46,7 +46,7 @@ winresource = "0.1"
 # The Linux package (scripts/package-linux.sh runs `cargo deb -p glowfly --no-build`).
 [package.metadata.deb]
 name = "glowfly"
-maintainer = "Glowfly contributors <https://github.com/bg9m9r/trellis/issues>"
+maintainer = "Glowfly contributors <https://github.com/bg9m9r/glowfly/issues>"
 copyright = "Glowfly contributors"
 section = "vcs"
 priority = "optional"

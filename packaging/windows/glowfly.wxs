@@ -30,8 +30,8 @@
 
     <Icon Id="GlowflyIcon" SourceFile="$(var.AssetsDir)\icon\glowfly.ico" />
     <Property Id="ARPPRODUCTICON" Value="GlowflyIcon" />
-    <Property Id="ARPURLINFOABOUT" Value="https://github.com/bg9m9r/trellis" />
-    <Property Id="ARPHELPLINK" Value="https://github.com/bg9m9r/trellis/issues" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/bg9m9r/glowfly" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/bg9m9r/glowfly/issues" />
     <!-- Settings > Apps offers Uninstall only; there is nothing to modify. -->
     <Property Id="ARPNOMODIFY" Value="1" />
 

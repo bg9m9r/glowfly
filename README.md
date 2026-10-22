@@ -14,7 +14,7 @@ or hosting service; product names are used only to describe compatibility.
 ## Install
 
 Builds for Windows, macOS (Apple silicon and Intel) and Linux are on the
-[Releases](https://github.com/bg9m9r/trellis/releases) page. Git must be installed and on your
+[Releases](https://github.com/bg9m9r/glowfly/releases) page. Git must be installed and on your
 `PATH`.
 
 - **Windows**: `glowfly-vX.Y.Z-x86_64-pc-windows-msvc.msi` installs for your user only (no

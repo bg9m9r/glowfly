@@ -260,8 +260,8 @@ fn check_and_download_outcomes() {
 fn a_hosted_feed_asks_the_hosting_service() {
     let json = r#"{"tag_name": "v0.1.1", "assets": [{"name": "SHA256SUMS", "size": 5, "browser_download_url": "https://github.com/d/SHA256SUMS"}]}"#;
     let mock = Mock::start(move |_| Reply::json(json));
-    let r = Feed::Hosted("https://github.com/bg9m9r/trellis".into()).latest().unwrap().expect("a release");
-    assert_eq!(mock.requests()[0].route(), "GET api.github.com/repos/bg9m9r/trellis/releases/latest");
+    let r = Feed::Hosted("https://github.com/bg9m9r/glowfly".into()).latest().unwrap().expect("a release");
+    assert_eq!(mock.requests()[0].route(), "GET api.github.com/repos/bg9m9r/glowfly/releases/latest");
     let got: Vec<(&str, u64, &str)> = r.assets.iter().map(|a| (a.name.as_str(), a.size, a.url.as_str())).collect();
     assert_eq!(got, [("SHA256SUMS", 5, "https://github.com/d/SHA256SUMS")], "the API's size and https link");
 }

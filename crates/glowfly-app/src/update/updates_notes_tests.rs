@@ -11,13 +11,13 @@ use std::time::Instant;
 
 const NOTES: &str = "# Changelog
 
-## [0.2.0](https://github.com/bg9m9r/trellis/compare/v0.1.0...v0.2.0) (2026-10-20)
+## [0.2.0](https://github.com/bg9m9r/glowfly/compare/v0.1.0...v0.2.0) (2026-10-20)
 
 ### Features
 
 * **ui:** the new thing
 
-## [0.1.5](https://github.com/bg9m9r/trellis/compare/v0.1.0...v0.1.5) (2026-10-10)
+## [0.1.5](https://github.com/bg9m9r/glowfly/compare/v0.1.0...v0.1.5) (2026-10-10)
 
 ### Bug Fixes
 
