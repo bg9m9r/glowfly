@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-22 07:46 · **Cross-repo dashboard**: The dashboard's Assigned section also lists open pull requests assigned to the user across their connected services (`59f591cf`)
 - 2026-10-22 07:32 · **Performance: watcher and status reads for huge trees**: An outside index change re-reads only the changed status rows against a memo of the last index, edits to tracked files matching an ignore pattern are kept, and the Windows safety poll sweeps only the changed folders (`d4903925`)
 - 2026-10-22 07:16 · **UI review polish**: The git-too-old banner says in one sentence what is off, with How to update git (the download page for this OS), Remind me later and Don't show again (kept per git version; never for a git that can't run), the owned-by-another-user question uses plain words with the git config command under Details, Publish to GitHub rewrites the service's refusals as one sentence with its own words under Details, and fetch, pull and push toasts and the repository rows say why the remote couldn't be reached or read (`19983e6c`)
 - 2026-10-22 05:53 · **Logs**: copy an activity entry or the whole log, and export all logs as one text bundle (`c5d13bbe`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-21 12:30 · **GPG passphrase prompts**: A protected SSH signing key (gpg.format=ssh) gets Trellis's Unlock signing key dialog when a commit, merge, rebase, cherry-pick, revert, tag or pull signs, always in Trellis and never as a retry, with its own headline when ssh-keygen rejects the passphrase; on Windows an MSYS-style gpg.program such as /usr/bin/gpg or /c/Tools/gpg.exe is mapped into the Git for Windows install (`6a061dbb`)
 - 2026-10-21 12:06 · **SSH key management**: Preferences > SSH lists the keys ~/.ssh/config and its Includes name (with an In ssh config chip, and the entries it can't list with the reason), shows keys only the agent holds with Copy public key, and on Windows offers Use Windows' OpenSSH (global core.sshCommand) when git runs its bundled ssh, with Use Git's own ssh to undo (`d817ddba`)
 - 2026-10-21 11:49 · **Rebind keyboard shortcuts**: Preferences > Keyboard gets a Repository commands group where fetch, pull, push, create branch or tag, stash, pop, file history, blame, the operation journal, open in terminal and show folder can each be given a key that runs the palette command while no text field has focus, with blocked commands logging the toolbar's reason (`f39befe2`)
-- 2026-10-21 11:09 · **Stacked branches**: Push stack and Create pull requests for the stack land on main, with each layer's push outcome logged to the pushed repository's tab rather than the active one (`989e237b`)
 
 ---
 
