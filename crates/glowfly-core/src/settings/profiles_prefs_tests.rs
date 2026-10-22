@@ -16,7 +16,7 @@ fn json(s: &Settings) -> String {
     serde_json::to_string(s).unwrap()
 }
 
-/// A (current, Dark, GitHub) and B (saved Light, GitLab).
+/// A (current, Graphite, GitHub) and B (saved Light, GitLab).
 fn two() -> Settings {
     let mut light = ProfilePrefs { theme: ThemeChoice::Light, ..ProfilePrefs::default() };
     light.tab_size = 2;
@@ -82,7 +82,7 @@ fn apply_leaves_global_fields() {
     prefs.theme = ThemeChoice::Light;
     prefs.apply_to(&mut s);
     assert_eq!(s.theme, ThemeChoice::Light);
-    s.theme = ThemeChoice::Dark;
+    s.theme = ThemeChoice::Graphite;
     assert_eq!(json(&s), before, "only the profile's fields changed");
 }
 

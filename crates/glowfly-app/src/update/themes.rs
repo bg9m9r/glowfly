@@ -23,7 +23,7 @@ pub(super) fn handle(st: &mut AppState, msg: ThemeMsg, now: Instant, fx: &mut Ve
                 }
                 // The view sent the colors in use, so "Match system" copies the theme it shows.
                 ThemeChoice::System => {
-                    let base = if dark { BuiltinTheme::Dark } else { BuiltinTheme::Light };
+                    let base = if dark { BuiltinTheme::DEFAULT_DARK } else { BuiltinTheme::DEFAULT_LIGHT };
                     (base.label().to_owned(), base)
                 }
                 other => (other.label(), st.themes.catalog.base_of(other, dark)),
@@ -80,7 +80,7 @@ fn loaded(st: &mut AppState, cat: ThemeCatalog) {
         return;
     };
     let (problems, text) = match st.themes.catalog.get(id) {
-        None => (missing_marker(), format!("Theme {id}.json is not in the themes folder; using {}.", BuiltinTheme::Dark.label())),
+        None => (missing_marker(), format!("Theme {id}.json is not in the themes folder; using {}.", BuiltinTheme::DEFAULT_DARK.label())),
         Some(f) if f.problems.is_empty() => {
             st.themes.reported = None;
             return;

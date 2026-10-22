@@ -6,23 +6,30 @@ use eframe::egui::Color32;
 use glowfly_core::settings::BuiltinTheme;
 use std::ops::RangeInclusive;
 
-/// The green accent's band: the Garden pair, high contrast and Sand.
+/// The green accent's band: the Garden pair, high contrast, Sand, and the sea glass of Midnight
+/// and Mist.
 pub const GREEN_BAND: RangeInclusive<f64> = 145.0..=175.0;
-/// The lantern gold's band: Dusk and Dawn. Narrower than the green's, as the warm side of the
-/// wheel is crowded (the coral, `modified` and `warn`, Orange); there the gold also keeps its
-/// distance by lightness (`branch_colour_cb_tests.rs`, `the_gold_needs_its_own_dark_set`).
+/// The lantern gold's band: Dusk, Dawn and Pine. Narrower than the green's, as the warm side of
+/// the wheel is crowded (the coral, `modified` and `warn`, Orange); there the gold also keeps
+/// its distance by lightness (`branch_colour_cb_tests.rs`, `the_gold_needs_its_own_dark_set`).
 pub const GOLD_BAND: RangeInclusive<f64> = 72.0..=92.0;
+/// Ember's flame orange, just above the attention band and below the gold: Orange makes room for Jade, and
+/// `modified` and `warn` move up to the amber side (hue about 90).
+pub const FLAME_BAND: RangeInclusive<f64> = 61.0..=75.0;
+/// The cobalt of Graphite and Linen, between the Sky and Slate repository hues: Azure makes
+/// room for Jade, and `info` moves to hue about 228.
+pub const COBALT_BAND: RangeInclusive<f64> = 243.0..=259.0;
 /// The attention band: the coral "needs you" colour's alone.
 pub const ATTENTION_BAND: RangeInclusive<f64> = 35.0..=60.0;
 
-/// Whether `t`'s accent is the lantern gold (Dusk and Dawn).
-pub fn gold(t: BuiltinTheme) -> bool {
-    matches!(t, BuiltinTheme::Dark | BuiltinTheme::Light)
-}
-
 /// `t`'s accent band.
 pub fn accent_band(t: BuiltinTheme) -> RangeInclusive<f64> {
-    if gold(t) { GOLD_BAND } else { GREEN_BAND }
+    match t {
+        BuiltinTheme::Dark | BuiltinTheme::Light | BuiltinTheme::Pine => GOLD_BAND,
+        BuiltinTheme::Ember => FLAME_BAND,
+        BuiltinTheme::Graphite | BuiltinTheme::Linen => COBALT_BAND,
+        _ => GREEN_BAND,
+    }
 }
 
 pub fn hue(c: Color32) -> f64 {

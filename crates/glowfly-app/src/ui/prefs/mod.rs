@@ -33,6 +33,7 @@ mod ssh_sources;
 mod ssh_windows;
 pub(super) mod terminal;
 mod terminal_colours;
+mod theme_picker;
 mod theme_row;
 mod tools;
 mod trello;

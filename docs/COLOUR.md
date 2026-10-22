@@ -3,21 +3,36 @@
 How Glowfly uses colour: the families every palette is built from, what each colour is for,
 the hue bands and contrast floors the tests hold every built-in theme to, and how to add a
 colour. The palettes live in `crates/glowfly-app/src/ui/theme/` (`color.rs` declares
-`Palette`, `families.rs` the token families, `builtin_dusk.rs`, `builtin_garden.rs` and
-`builtin_extra.rs` the seven built-ins, `builtin.rs` which theme takes which); the tests that
-check this page are `theme/tests.rs`, `theme/family_tests.rs`, `theme/vivid_tests.rs` and the
-branch tests, with the shared hue bands in `theme/bands.rs`.
+`Palette`, `families.rs` the token families, `builtin_dusk.rs`, `builtin_garden.rs`,
+`builtin_extra.rs`, `builtin_sea.rs`, `builtin_warm.rs` and `builtin_cobalt.rs` the thirteen
+built-ins, `builtin.rs` which theme takes which); the tests that check this page are
+`theme/tests.rs`, `theme/family_tests.rs`, `theme/vivid_tests.rs`, `theme/more_themes_tests.rs`
+and the branch tests, with the shared hue bands in `theme/bands.rs`.
 
 ## 0. The built-in themes
 
 | Theme | Kind | Character | bg / panel / accent / text |
 |---|---|---|---|
-| Dusk (the default dark; `dark`) | dark | The icon's dusk tile: indigo neutrals under the lantern gold | #1b1829 / #221f31 / #f6c159 / #e6e5ef |
+| Dusk (`dark`) | dark | The icon's dusk tile: indigo neutrals under the lantern gold | #1b1829 / #221f31 / #f6c159 / #e6e5ef |
 | Dawn (the default light; `light`) | light | Faintly lavender paper, indigo ink, a deep gold accent and lantern-gold buttons | #f7f6fc / #fbfafe / #714900 / #211f38 |
 | Garden Dark (`garden-dark`) | dark | The earlier standard dark: green-tinted neutrals, lattice green | #151b18 / #1b221e / #4dc588 / #e0e6e3 |
 | Garden Light (`garden-light`) | light | The earlier standard light: warm paper, deep green | #f9f7f1 / #fdfcf9 / #14764a / #161c19 |
 | High Contrast Dark, High Contrast Light | | White on black and black on white, the green accent at 7:1 text | |
 | Sand | light | Brown ink on sand, a green accent | |
+| Midnight (`midnight`) | dark | Deep blue-black night under a cool sea-glass accent | #0d1827 / #14202f / #6eddb2 / #e2e8f0 |
+| Mist (`mist`) | light | Midnight's light twin: cool fog paper, blue-grey ink, deep sea glass | #f2f8fc / #f8fcfe / #007258 / #142533 |
+| Graphite (the default dark; `graphite`) | dark | Near-neutral graphite greys (a hair cool) under a cobalt accent | #191a1d / #202225 / #7ebbff / #e6e7e9 |
+| Ember (`ember`) | dark | Oxblood charcoal under a vivid flame-orange accent | #261517 / #2e1c1e / #ff9b2a / #efe4e5 |
+| Pine (`pine`) | dark | Blue-green charcoal, a hint of the woods, under the lantern gold | #0a1e1f / #112527 / #f6c159 / #e0e9ea |
+| Linen (`linen`) | light | Clean warm-white paper, soft charcoal ink and deep cobalt | #f9f7f3 / #fcfbf9 / #004da8 / #28211c |
+
+Graphite is the default dark theme and Dawn the default light one: new settings start in
+Graphite, and Match the system shows Graphite or Dawn. Preferences > UI customization shows the
+built-ins as cards in two groups, Dark and Light (the default one first in each, then Dusk and
+the menu order), each a small picture of the main window in
+that theme with its name under it and its description on hover; Match the system sits above
+them, and theme files in a dropdown below (`ui/prefs/theme_picker.rs`). View > Theme lists the
+same groups under small Dark and Light labels.
 
 Why Dusk and Dawn look as they do:
 
@@ -38,13 +53,43 @@ Why Dusk and Dawn look as they do:
   Dawn's accent is a deep gold (#714900, L 0.44), a step darker than everything near its hue,
   and the lantern gold itself fills primary buttons (#efb146 with indigo ink) and tints the
   selected row (#f8e4bb).
-- Old settings files say `Dark` and `Light`, and theme files `"base": "dark"` / `"light"`: they
-  stay the standard pair's names, so they open in Dusk and Dawn. The Garden pair is there for
+- Old settings files say `Dark` and `Light`. `Dark` always meant "the default dark theme" (the
+  green one, then Dusk), so it now opens in Graphite, the default; Dusk picked today is saved as
+  `Dusk`. `Light` stays Dawn. Theme files' `"base": "dark"` / `"light"` stay Dusk and Dawn, so a
+  file keeps the colours it was written against. The Garden pair is there for
   anyone who prefers the green. A theme file on Dusk or Dawn whose accent isn't the base's (a
   file written from the green Dark, say) takes the Garden branch families, which leave a green
   accent's band free.
 - View snapshots draw in the Garden pair (so a palette change doesn't redraw every image); the
-  theme snapshots (`lineup_*`, `vivid_*`, the design and controls sheets) show each palette.
+  theme snapshots (`lineup_*`, `vivid_*`, `theme_*`, the design and controls sheets) show each
+  palette.
+
+Why the six newer themes look as they do (each follows the same recipe as Dusk: one quiet hue
+for every surface, stepped in lightness, and one accent across the wheel from it):
+
+- Midnight and Mist: a deep blue-black (OKLCH hue 255, chroma up to 0.045) and a cool fog paper
+  (hue 235, chroma under 0.02 under blue-grey ink), with a sea-glass accent (#6eddb2, hue 166;
+  Mist's deep #007258) at the cool edge of the green band, so the Garden branch families fit as
+  they are. Midnight is darker than Dusk (base L 0.21) and lifted just enough that the dialog
+  backdrop still dims it.
+- Graphite and Linen: for people who want almost no tint. Graphite's greys sit under chroma
+  0.008 (hue 265, a hair cool so they never read warm-grey); Linen's paper is warm by a hair
+  (chroma at most 0.012, hue 80) so it reads as clean white, not cream or sepia, under charcoal
+  ink. Both take a cobalt accent (#7ebbff, #004da8) in its own band, with Jade in the Azure
+  slot and `info` moved to hue about 224.
+- Ember: red and orange, never brown. The field is an oxblood charcoal (hue 12, chroma up to
+  0.04): red-leaning, below the 40 to 125 deg where dark colours turn brown. The accent is a
+  vivid flame orange (#ff9b2a, hue 63, chroma 0.165) in its own band just above the coral's, a
+  step lighter than the coral (L 0.78 against 0.72) and 23 deg round from it. The selected row
+  is a deep ember red (#692726, hue 24) rather than the accent's dark wash, which would be brown;
+  the field's hue is low enough that a tint toward the flame (the toolbar groups' backing, the
+  main lane's row band) turns at most to hue 33, still red.
+  `modified` and `warn` move up to amber (hue about 90), Jade takes the Orange slot, and tags
+  are a wine rose.
+- Pine: green as a hint, not a wash. The field is a blue-green charcoal (hue 200, nudged toward
+  teal; chroma 0.026, under Dusk's, where it was 0.032 at hue 178 and read as a green wash)
+  under the lantern gold, so the gold is the one vivid thing. It takes Dusk's gold families and
+  status colours; its selection is the gold's amber wash, as in Dusk.
 
 Views never name a hex value: they read the active palette through `color::text()`,
 `color::added()` and so on (see "Rules" in [ARCHITECTURE.md](ARCHITECTURE.md)).
@@ -131,7 +176,9 @@ Lime, Violet, Orange, Cyan, Magenta, Olive, Azure, Red, Teal, Orchid, Gold, Sky,
 keep out of the theme's accent band and the attention band, and neighbouring hues alternate
 between two lightness tiers (OKLCH L 0.70 / 0.80 in the dark tones). Beside Dusk and Dawn's gold
 accent, Jade (hue 165, at Gold's tier) takes the Gold slot, in the green the gold leaves free
-(`theme/branch_palette_gold.rs`); each family names its own slots for the Color submenu.
+(`theme/branch_palette_gold.rs`); Pine takes the same families. Beside Ember's flame, Jade takes
+the Orange slot, and beside Graphite's and Linen's cobalt the Azure slot
+(`theme/branch_palette_more.rs`); each family names its own slots for the Color submenu.
 
 - `branch.lanes`: line tones, for lines, dots and bands (3:1 on bg and panel).
 - `branch.chips`: chip tones, which ref chips are tinted with and their text pushed from.
@@ -261,9 +308,11 @@ outside the families and unchanged by the brand colour.
   cream, not brown. `theme/tint_tests.rs` checks both.
 - The selected row's message is drawn in `strong`, in the graph as in the side panels.
 - The accent never marks status. Running operations use `progress`, not the accent.
-- Only the accent family (`accent`, `primary`, `primary_border`, `selected`) sits in the
-  theme's accent band: the gold band, 72 to 92 deg OKLCH hue, in Dusk and Dawn; the green band,
-  145 to 175 deg, in the others. The gold band is narrower as the warm side of the wheel is
+- Only the accent family (`accent`, `primary`, `primary_border`, `selected`; Ember's `selected`
+  is its deep ember red instead, outside both bands) sits in the
+  theme's accent band: the gold band, 72 to 92 deg OKLCH hue, in Dusk, Dawn and Pine; the flame
+  band, 61 to 75 deg, in Ember; the cobalt band, 243 to 259 deg (between the Sky and Slate
+  repository hues), in Graphite and Linen; the green band, 145 to 175 deg, in the others. The gold band is narrower as the warm side of the wheel is
   crowded; there the gold keeps its distance by lightness too (Orange at 70 deg is 0.12 OKLab
   from Dusk's gold, and Dawn's deep gold sits 0.12 to 0.15 in L below `warn` and Orange).
 - Status, branch and repository colours stay out of the theme's accent band and out of the
@@ -271,7 +320,15 @@ outside the families and unchanged by the brand colour.
   also keep OKLCH chroma at 0.08 or more; repository hues sit at 0.08 and at least 30 deg apart.
 - Neutrals: Garden dark and light keep OKLCH chroma at or below 0.015, tinted green (hue about
   160) and warm paper (hue about 90). Dusk's and Dawn's take the icon's indigo (hue 280 to 300):
-  Dusk's at up to 0.045 chroma, Dawn's paper at up to 0.018 under indigo ink of up to 0.05.
+  Dusk's at up to 0.045 chroma, Dawn's paper at up to 0.018 under indigo ink of up to 0.05. The
+  six newer themes keep their surfaces and greys within 12 deg of one hue each (Midnight 255,
+  Mist 235 under ink at 245, Ember 12, Pine 200, Linen 80 under ink at 55; Graphite's are under
+  chroma 0.008 for surfaces and 0.012 for greys).
+- No brown or olive dark surface: in every dark theme, a surface with chroma 0.008 or more keeps
+  its hue out of 40 to 125 deg, where dark colours read as brown, mud or olive. Warmth comes from
+  the accent (Ember's flame over oxblood); a selected row is the accent's own wash, or (Ember)
+  a deep red where an orange wash would turn brown.
+  Linen's paper keeps chroma at or under 0.012 so it reads white, not cream.
 - In Dusk, Dawn and the Garden pair, chrome is darker than the base, and raised is at least
   1.08:1 off the panel in every theme.
 
@@ -443,6 +500,38 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | added / removed / modified / info / progress | #357518 / #b63132 / #a06604 / #1f68bc / #6d47b8 | modified is 3.9 to 4.1:1 on chrome and hover (status letters need 3:1) |
 | warn / banner | #a86b00 / #fbecc8 | |
 
+### The six newer themes
+
+Surfaces, text and brand (`theme/builtin_sea.rs`, `builtin_warm.rs`, `builtin_cobalt.rs`). Their
+diff colours are Dusk's (dark) or Dawn's (light), their syntax colours Garden dark's or Garden
+light's with `syn_comment` in their own grey, and `danger` Dusk's or Dawn's.
+
+| Token | Midnight | Mist | Graphite | Ember | Pine | Linen |
+|---|---|---|---|---|---|---|
+| chrome (`toolbar`) | #08111d | #dee9f0 | #121315 | #1c0e10 | #061617 | #ebe7e0 |
+| base (`bg`) | #0d1827 | #f2f8fc | #191a1d | #261517 | #0a1e1f | #f9f7f3 |
+| panel | #14202f | #f8fcfe | #202225 | #2e1c1e | #112527 | #fcfbf9 |
+| raised | #222f40 | #e5eff5 | #2f3134 | #3e2b2d | #203536 | #f0ede7 |
+| input | #0a1421 | #ffffff | #141618 | #201112 | #07191a | #ffffff |
+| hairline (`border`) | #283545 | #cfdae1 | #35373a | #443133 | #263b3c | #dcd7d1 |
+| input_border, dialog_border | #798ba2 | #687683 | #868990 | #9d8183 | #738f91 | #7a736f |
+| hover | #213044 | #e2eef5 | #303236 | #412b2d | #1d3738 | #efebe3 |
+| selected | #174a39 | #c7eddd | #1f3d62 | #692726 | #5b3d0a | #d6e8fe |
+| text | #e2e8f0 | #142533 | #e6e7e9 | #efe4e5 | #e0e9ea | #28211c |
+| weak / faint | #adbacc / #8f9eb3 | #475867 / #5e6f7d | #b7b9bc / #9a9da2 | #c8b3b5 / #ae9698 | #a9bebe / #8aa2a4 | #5c544f / #726b66 |
+| accent, primary | #6eddb2 | #007258 | #7ebbff | #ff9b2a | #f6c159 | #004da8 |
+| on_primary | #08121f | #ffffff | #0a1018 | #210d10 | #021819 | #ffffff |
+| primary_border | #4eb891 | #005641 | #5695e0 | #d97f01 | #d5a13c | #003a7f |
+| tag_bg / tag_fg | #3d2d4e / #e0cef8 | #e7dbf7 / #5e3d80 | #3e314d / #e0cff5 | #4f2a3c / #f7c8dd | #4a283f / #f4c9e4 | #f8dae2 / #813450 |
+| added / removed | Garden dark's | Garden light's | Garden dark's | Garden dark's | Dusk's | Garden light's |
+| modified / warn | #edb345 / #e8b339 | #a06604 / #a86b00 | #edb345 / #e8b339 | #e3b842 / #e9c447 | Dusk's | #a06604 / #a86b00 |
+| info / progress | #60aaf3 / #a689f1 | #1f68bc / #6d47b8 | #4fc0e7 / #a689f1 | #60aaf3 / #a689f1 | Dusk's | #006e91 / #6d47b8 |
+| banner | #4a3812 | #fbecc8 | #4a3812 | #3b2f0a | #46290b | #fbecc8 |
+
+Text on the panel reaches 12.8 to 13.3:1 in the dark ones and 15.2 to 15.3:1 in the light ones;
+the accent 5.7 to 9.9:1. The branch families: Midnight takes Garden dark's, Mist Garden light's,
+Pine Dusk's, Ember the flame ones and Graphite and Linen the cobalt ones (below).
+
 ### Branch
 
 Slot by slot (`theme/branch_palette.rs`): dark tones (Dusk, Garden dark and High contrast
@@ -489,7 +578,12 @@ deutan vision). Chips carry the branch name, so text tones have no distance floo
 
 Dusk's colour-blind set swaps two dark tones: slot 2 is Orange #eb8f13 (hue 65) and slot 5 a
 paler Lime #c8feac (hue 135), as Yellow and Lime fall within 0.08 of the gold under protan and
-deutan vision. Dawn keeps the light tones above.
+deutan vision. Dawn keeps the light tones above. Pine takes Dusk's set. Beside the flame,
+Yellow falls within 0.04 of Ember's accent under deutan vision, so Ember's set has a light Jade
+(#57dcb4, hue 170) in slot 2. Beside the cobalt, Periwinkle falls within 0.05 of the accent under
+protan and deutan vision, so Graphite's set has a light Rose (#f49194, hue 18) in slot 7 and
+Linen's a deep Wine (#800953, hue 350) as both line and chip tone. Midnight and Mist take the
+standard sets.
 
 High contrast dark, High contrast light and Sand keep their own surfaces, text, diff and syntax
 colours (their `raised` is their `toolbar`); their accent family is green at their own
@@ -511,6 +605,8 @@ In slot order Rose, Ochre, Fern, Teal, Sky, Slate, Iris, Plum, as `#rrggbb` with
 | High contrast dark | e5a2ac c7b77c a9c28a 76c7cc 84c0e4 9eb7eb bdade5 d8a4cc | 7.09 |
 | High contrast light | 814750 695a1f 4e6330 00686c 256281 455a88 605182 76496d | 5.15 |
 | Sand | 9d606a 83743a 677e49 2d8387 417c9d 5d74a4 7a6a9e 926287 | 3.36 |
+| Midnight, Ember, Pine, Graphite | Dusk's | 4.58 |
+| Mist, Linen | Dawn's | 3.47 |
 
 The coral (OKLCH hue about 40 deg) and its ink, with the ink's contrast at rest and on hover:
 
@@ -520,6 +616,8 @@ The coral (OKLCH hue about 40 deg) and its ink, with the ink's contrast at rest 
 | Dawn, Garden light, Sand | #bf4306 / #ffffff | 5.22, 6.17 |
 | High contrast dark | #ff8a5c / #22110b | 7.84, 8.53 |
 | High contrast light | #9c3604 / #ffffff | 7.14, 8.22 |
+| Midnight, Ember, Pine, Graphite | #fb794a / #22110b | 6.88, 7.52 |
+| Mist, Linen | #bf4306 / #ffffff | 5.22, 6.17 |
 
 The coral reads at least 3.89:1 on its surroundings (lowest: Dusk's selected row). The tool
 backing is #281f32 (Dusk, a violet step: the plain mix was the grey-brown #272225), #dcd7d9 (Dawn), #15261d (Garden dark), #d9dfd3 (Garden light),
@@ -540,6 +638,12 @@ and selection are its `input`, `text`, `accent` and `accent`:
 | High contrast dark | 303030 ff6b6b 5fe36a ffd84a 7ab4ff e08aff 4fe0e0 e6e6e6 | a6a6a6 ff9c9c 9cf0a2 ffec96 a8ccff eeb5ff 96f0f0 ffffff |
 | High contrast light | 000000 a31515 08621a 6b4c00 0646a8 6a1fa0 005f63 d0d0d0 | 55595f 7f0d0d 084f15 523900 043682 52157d 004a4d e5e5e5 |
 | Sand | 2e2519 b23a2b 4a7a1a 8a6200 2d65a8 84429e 1b7570 e3d9c6 | 76695a 93291c 3a6312 6d4c00 1f4f8a 6a2f82 0f5d59 eae2d2 |
+| Midnight | 253141 f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 c7cfd9 | 8793a3 ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f1f5fb |
+| Mist | 10212f c0362f 2f7d1c 8a6400 2a5fc4 8a3fb8 087c80 d0dbe2 | 606e79 a3241e 226614 6e5000 1d4ba3 70299b 006468 dae4ea |
+| Ember | 3d2b2c f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 d7cacb | 9f8d8e ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede faf3f4 |
+| Pine | 203435 f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 c5d0d1 | 849697 ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f0f6f7 |
+| Graphite | 2f3033 f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 cdced0 | 919295 ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f4f5f6 |
+| Linen | 251e19 c0362f 2f7d1c 8a6400 2a5fc4 8a3fb8 087c80 ddd8d1 | 716a66 a3241e 226614 6e5000 1d4ba3 70299b 006468 e5e1db |
 
 The lowest ratios of a chromatic colour on `input` are 4.99 (Dawn and Garden light 6) and 5.01 (Sand 2), and
 7.36 in High contrast light.
@@ -587,3 +691,10 @@ writes every key, the terminal's included.
 A new built-in theme also needs a terminal table in `ui/theme/ansi.rs` (its `input`, `text` and
 `accent`, then 16 basic colours: start from Dusk's or Dawn's and adjust them until
 `theme/ansi_tests.rs` passes), set as the palette's `ansi`.
+
+The rest of a new built-in: a `BuiltinTheme` variant with its id, label and kind and a
+`ThemeChoice` variant listed in `ThemeChoice::BUILT_IN` (`glowfly-core/src/settings/builtin_themes.rs`),
+its name and one-line description (`prefs.ui.theme.name.*`, `prefs.ui.theme.hint.*`) in every
+locale, its accent band in `theme/bands.rs` (and a branch family that keeps out of it), its
+palette in `builtin.rs`, its values in the pinned tables of the colour tests, and a `theme_*`
+snapshot. The Theme menu and Preferences' cards pick it up from `BUILT_IN`.

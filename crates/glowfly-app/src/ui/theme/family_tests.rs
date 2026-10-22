@@ -61,6 +61,11 @@ fn accent_family_sits_in_the_accent_band() {
     for t in BuiltinTheme::ALL {
         let p = builtin(t);
         for (key, c) in [("accent", p.accent), ("primary", p.primary), ("primary_border", p.primary_border), ("selected", p.selected)] {
+            // Ember's selected row is a deep ember red, not a dark wash of its orange, which
+            // would read as brown (docs/COLOUR.md); it stays out of the attention band.
+            if t == BuiltinTheme::Ember && key == "selected" {
+                continue;
+            }
             let h = hue(c);
             if !accent_band(t).contains(&h) {
                 failures.push(format!("{t:?}: {key}'s OKLCH hue is {h:.1}"));

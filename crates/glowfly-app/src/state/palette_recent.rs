@@ -139,6 +139,12 @@ impl PaletteCommand {
             C::Theme(ThemeChoice::HighContrastDark) => "theme-high-contrast-dark",
             C::Theme(ThemeChoice::HighContrastLight) => "theme-high-contrast-light",
             C::Theme(ThemeChoice::Sand) => "theme-sand",
+            C::Theme(ThemeChoice::Midnight) => "theme-midnight",
+            C::Theme(ThemeChoice::Mist) => "theme-mist",
+            C::Theme(ThemeChoice::Ember) => "theme-ember",
+            C::Theme(ThemeChoice::Pine) => "theme-pine",
+            C::Theme(ThemeChoice::Graphite) => "theme-graphite",
+            C::Theme(ThemeChoice::Linen) => "theme-linen",
             C::Theme(ThemeChoice::Custom(_)) => return None,
             C::Checkout(_) | C::CheckoutRemote { .. } | C::CheckoutTag(_) | C::OpenRecent(_) => return None,
             // Names are the user's own data.

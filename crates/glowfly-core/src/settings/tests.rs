@@ -471,7 +471,7 @@ fn keybindings_default_and_roundtrip() {
 
 #[test]
 fn theme_choices_old_and_new() {
-    for (text, theme) in [("Dark", ThemeChoice::Dark), ("Light", ThemeChoice::Light), ("System", ThemeChoice::System)] {
+    for (text, theme) in [("Dark", ThemeChoice::Graphite), ("Light", ThemeChoice::Light), ("System", ThemeChoice::System)] {
         let s: Settings = serde_json::from_str(&format!(r#"{{"theme": "{text}"}}"#)).unwrap();
         assert_eq!(s.theme, theme, "files written before custom themes");
     }
@@ -491,18 +491,18 @@ fn unreadable_theme_resets_only_theme() {
     for text in [&br#"{"theme": {"Custom": 5}, "tab_size": 3}"#[..], br#"{"theme": "Neon", "tab_size": 3}"#] {
         let (dir, file) = scratch_settings("theme-bad", text);
         let (s, problem) = Settings::load_from(&file);
-        assert_eq!((s.theme, s.tab_size), (ThemeChoice::Dark, 3));
+        assert_eq!((s.theme, s.tab_size), (ThemeChoice::Graphite, 3));
         assert_eq!(problem.unwrap().reset, Some(vec!["theme".to_owned()]));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
 
 #[test]
-fn old_theme_choices_load_as_the_standard_pair() {
-    // Settings written when Dark and Light were the green pair open in Dusk and Dawn; the Garden
-    // pair has its own names.
+fn old_theme_choices_load_as_the_default_pair() {
+    // "Dark" was always the default dark theme (green, then Dusk), so it opens in today's default,
+    // Graphite; "Light" stays Dawn. The Garden pair has its own names.
     let s: Settings = serde_json::from_str(r#"{"theme": "Dark"}"#).unwrap();
-    assert_eq!(s.theme, ThemeChoice::Dark);
+    assert_eq!(s.theme, ThemeChoice::Graphite);
     let s: Settings = serde_json::from_str(r#"{"theme": "Light"}"#).unwrap();
     assert_eq!(s.theme, ThemeChoice::Light);
     let json = serde_json::to_string(&ThemeChoice::GardenDark).unwrap();
@@ -513,7 +513,7 @@ fn old_theme_choices_load_as_the_standard_pair() {
 #[test]
 fn theme_choice_builtin_mapping() {
     use super::themes::BuiltinTheme as B;
-    assert_eq!(ThemeChoice::System.builtin(true), Some(B::Dark));
+    assert_eq!(ThemeChoice::System.builtin(true), Some(B::Graphite));
     assert_eq!(ThemeChoice::System.builtin(false), Some(B::Light));
     assert_eq!(ThemeChoice::Dark.builtin(false), Some(B::Dark));
     assert_eq!(ThemeChoice::Light.builtin(true), Some(B::Light));
@@ -566,4 +566,19 @@ fn old_graph_columns_load_without_resets() {
     assert!(s.columns.commit);
     assert_eq!(s.column_widths.get(ResizableColumn::Commit), 210.0);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn graphite_is_the_default_dark_theme_and_dusk_keeps_its_own_name() {
+    use super::themes::BuiltinTheme as B;
+    assert_eq!(Settings::default().theme, ThemeChoice::Graphite);
+    assert_eq!((B::DEFAULT_DARK, B::DEFAULT_LIGHT), (B::Graphite, B::Light));
+    assert_eq!(ThemeChoice::BUILT_IN[0], ThemeChoice::Graphite, "the default dark theme leads the menus");
+    // Dusk, picked on purpose, saves under its own name and comes back as Dusk.
+    let json = serde_json::to_string(&ThemeChoice::Dark).unwrap();
+    assert_eq!(json, r#""Dusk""#);
+    assert_eq!(serde_json::from_str::<ThemeChoice>(&json).unwrap(), ThemeChoice::Dark);
+    assert_eq!(serde_json::to_string(&ThemeChoice::Graphite).unwrap(), r#""Graphite""#);
+    let cat = super::ThemeCatalog::default();
+    assert_eq!(cat.base_of(&ThemeChoice::Custom("gone".into()), true), B::Graphite, "a missing file shows the default");
 }

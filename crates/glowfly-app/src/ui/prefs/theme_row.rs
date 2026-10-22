@@ -1,5 +1,5 @@
-//! Preferences > UI Customization > Theme: the built-in themes and the theme files, the
-//! themes folder's buttons, and the selected file's problems.
+//! Preferences > UI Customization > Theme: the built-in themes' cards (`theme_picker.rs`), the
+//! theme files' dropdown, the themes folder's buttons, and the selected file's problems.
 
 use super::{help, row};
 use crate::msg::Msg;
@@ -14,15 +14,16 @@ use glowfly_core::settings::{BuiltinTheme, Settings, ThemeCatalog, ThemeChoice};
 
 pub fn theme_row(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, msgs: &mut Vec<Msg>) {
     let t = s.lang();
+    // The cards take a wider column than a form row's fields, up to four to a row.
+    let wide = (ui.available_width() - super::form::field_left(ui)).clamp(0.0, PICKER_W);
     row(ui, t.tr("prefs.ui.theme.label"), |ui| {
+        ui.set_max_width(wide.max(ui.available_width()));
+        super::theme_picker::picker(ui, t, &mut s.theme);
+        ui.add_space(14.0);
         ui.horizontal(|ui| {
+            ui.label(RichText::new(t.tr("prefs.ui.theme.files.label")).color(color::text()));
             let shown = selected_text(t, &s.theme, &themes.catalog);
-            egui::ComboBox::from_id_salt("theme").selected_text(shown).width(230.0).show_ui(ui, |ui| {
-                for choice in ThemeChoice::BUILT_IN {
-                    let label = theme_names::choice(t, &choice);
-                    ui.selectable_value(&mut s.theme, choice, label);
-                }
-                ui.separator();
+            egui::ComboBox::from_id_salt("theme").selected_text(shown).width(200.0).show_ui(ui, |ui| {
                 if themes.catalog.files.is_empty() {
                     ui.label(RichText::new(t.tr("prefs.ui.theme.no_files")).color(color::weak()));
                 }
@@ -46,11 +47,14 @@ pub fn theme_row(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, msgs: &mut 
     });
 }
 
-/// The dropdown's text: a built-in's name, a file's name, or "<id> (missing)".
+/// The widest the theme cards' column gets: four cards and their gaps.
+const PICKER_W: f32 = 660.0;
+
+/// The theme file dropdown's text: the file's name, "<id> (missing)", or None for a built-in.
 fn selected_text(t: Lang, choice: &ThemeChoice, cat: &ThemeCatalog) -> String {
     match choice {
         ThemeChoice::Custom(id) => cat.get(id).map_or_else(|| t.trf("prefs.ui.theme.missing", &[("id", id)]), |f| f.name.clone()),
-        other => theme_names::choice(t, other),
+        _ => t.tr("prefs.ui.theme.files.none").to_owned(),
     }
 }
 
@@ -66,7 +70,7 @@ fn problems(ui: &mut Ui, t: Lang, choice: &ThemeChoice, cat: &ThemeCatalog) {
     }
     let ThemeChoice::Custom(id) = choice else { return };
     let Some(f) = cat.get(id) else {
-        let dark = theme_names::builtin(t, BuiltinTheme::Dark);
+        let dark = theme_names::builtin(t, BuiltinTheme::DEFAULT_DARK);
         line(ui, t.trf("prefs.ui.theme.not_in_folder", &[("file", &format!("{id}.json")), ("theme", &dark)]), color::warn());
         return;
     };

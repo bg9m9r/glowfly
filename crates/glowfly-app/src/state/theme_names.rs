@@ -15,6 +15,31 @@ pub(crate) fn builtin(t: Lang, b: BuiltinTheme) -> &'static str {
         BuiltinTheme::HighContrastDark => t.tr("prefs.ui.theme.name.high_contrast_dark"),
         BuiltinTheme::HighContrastLight => t.tr("prefs.ui.theme.name.high_contrast_light"),
         BuiltinTheme::Sand => t.tr("prefs.ui.theme.name.sand"),
+        BuiltinTheme::Midnight => t.tr("prefs.ui.theme.name.midnight"),
+        BuiltinTheme::Mist => t.tr("prefs.ui.theme.name.mist"),
+        BuiltinTheme::Ember => t.tr("prefs.ui.theme.name.ember"),
+        BuiltinTheme::Pine => t.tr("prefs.ui.theme.name.pine"),
+        BuiltinTheme::Graphite => t.tr("prefs.ui.theme.name.graphite"),
+        BuiltinTheme::Linen => t.tr("prefs.ui.theme.name.linen"),
+    }
+}
+
+/// A built-in theme's one-line description, for the theme picker.
+pub(crate) fn hint(t: Lang, b: BuiltinTheme) -> &'static str {
+    match b {
+        BuiltinTheme::Dark => t.tr("prefs.ui.theme.hint.dark"),
+        BuiltinTheme::Light => t.tr("prefs.ui.theme.hint.light"),
+        BuiltinTheme::GardenDark => t.tr("prefs.ui.theme.hint.garden_dark"),
+        BuiltinTheme::GardenLight => t.tr("prefs.ui.theme.hint.garden_light"),
+        BuiltinTheme::HighContrastDark => t.tr("prefs.ui.theme.hint.high_contrast_dark"),
+        BuiltinTheme::HighContrastLight => t.tr("prefs.ui.theme.hint.high_contrast_light"),
+        BuiltinTheme::Sand => t.tr("prefs.ui.theme.hint.sand"),
+        BuiltinTheme::Midnight => t.tr("prefs.ui.theme.hint.midnight"),
+        BuiltinTheme::Mist => t.tr("prefs.ui.theme.hint.mist"),
+        BuiltinTheme::Ember => t.tr("prefs.ui.theme.hint.ember"),
+        BuiltinTheme::Pine => t.tr("prefs.ui.theme.hint.pine"),
+        BuiltinTheme::Graphite => t.tr("prefs.ui.theme.hint.graphite"),
+        BuiltinTheme::Linen => t.tr("prefs.ui.theme.hint.linen"),
     }
 }
 

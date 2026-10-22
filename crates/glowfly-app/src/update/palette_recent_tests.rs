@@ -83,10 +83,10 @@ fn query_ranking_beats_recency() {
 fn recency_breaks_score_ties() {
     let mut st = state();
     let before = labels(&st, "theme");
-    assert_eq!(before[..3], ["Theme: Dusk", "Theme: Dawn", "Theme: Sand"]);
-    run_cmd(&mut st, C::Theme(ThemeChoice::Light));
+    assert_eq!(before[..3], ["Theme: Dawn", "Theme: Dusk", "Theme: Pine"]);
+    run_cmd(&mut st, C::Theme(ThemeChoice::Dark));
     let after = labels(&st, "theme");
-    assert_eq!(after[..3], ["Theme: Dawn", "Theme: Dusk", "Theme: Sand"]);
+    assert_eq!(after[..3], ["Theme: Dusk", "Theme: Dawn", "Theme: Pine"]);
     assert_eq!(after.len(), before.len());
 }
 

@@ -12,7 +12,7 @@ use glowfly_core::settings::ThemeChoice;
 use std::path::PathBuf;
 
 /// The fixture with the four pinned branches, a commit on main selected.
-fn with_bands(name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_bands(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     // (branch, pinned slot, commits): Orange, Red, Lime and Cyan in the standard palette.
     let branches = [("tidy-me", 3u8, 3), ("stepwise", 8, 2), ("lime-work", 1, 2), ("cyan-work", 4, 2)];

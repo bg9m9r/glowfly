@@ -81,7 +81,7 @@ fn switch_applies_incoming_setup() {
     profile(&mut st, ProfileMsg::Switch(PERSONAL));
     assert_eq!(
         (st.settings.theme.clone(), st.settings.connections.clone()),
-        (ThemeChoice::Dark, vec![github()]),
+        (ThemeChoice::Graphite, vec![github()]),
         "unchanged while pending"
     );
 
@@ -90,7 +90,7 @@ fn switch_applies_incoming_setup() {
     assert_eq!(st.settings.connections, vec![gitlab()]);
     assert!(!st.watch.enabled, "the watcher follows the new General settings");
     let work = st.settings.profile(WORK).unwrap();
-    assert_eq!(work.prefs.as_ref().map(|p| p.theme.clone()), Some(ThemeChoice::Dark));
+    assert_eq!(work.prefs.as_ref().map(|p| p.theme.clone()), Some(ThemeChoice::Graphite));
     assert_eq!(work.connections, Some(vec![github()]));
     assert_eq!(saves(&fx), 1);
     let saved = fx.iter().find_map(|e| if let Effect::SaveSettings(s) = e { Some(s) } else { None }).unwrap();
@@ -104,7 +104,7 @@ fn switching_back_restores_work() {
     switch(&mut st, PERSONAL);
     switch(&mut st, WORK);
     assert_eq!(st.settings.active_profile, Some(WORK));
-    assert_eq!((st.settings.theme.clone(), st.settings.connections.clone()), (ThemeChoice::Dark, vec![github()]));
+    assert_eq!((st.settings.theme.clone(), st.settings.connections.clone()), (ThemeChoice::Graphite, vec![github()]));
     assert!(st.watch.enabled);
     let personal = st.settings.profile(PERSONAL).unwrap();
     assert_eq!(personal.prefs.as_ref().map(|p| (p.theme.clone(), p.watch_files)), Some((ThemeChoice::Light, false)));
@@ -131,7 +131,7 @@ fn unsaved_profile_keeps_current_prefs_and_accounts() {
     st.forge.as_mut().unwrap().prs = vec![pr(1)];
     let fx = switch(&mut st, PERSONAL);
     assert_eq!(st.settings.active_profile, Some(PERSONAL));
-    assert_eq!((st.settings.theme.clone(), st.settings.connections.clone()), (ThemeChoice::Dark, vec![github()]));
+    assert_eq!((st.settings.theme.clone(), st.settings.connections.clone()), (ThemeChoice::Graphite, vec![github()]));
     assert_eq!(forge_calls(&fx), 0, "{fx:?}");
     assert_eq!(st.forge.as_ref().unwrap().prs.len(), 1, "pull requests stay");
     assert_eq!(st.settings.profile(WORK).unwrap().connections, Some(vec![github()]), "Work keeps its own");

@@ -3,7 +3,7 @@
 use super::builtin::garden_twin;
 use super::color::Palette;
 use super::contrast::ratio;
-use super::{DARK, builtin};
+use super::{DEFAULT_DARK, builtin};
 use crate::themes::ThemeState;
 use eframe::egui::Color32;
 use glowfly_core::settings::{ColorValue, ThemeChoice, ThemeFile};
@@ -60,12 +60,12 @@ fn primary_ink(ink: Color32, primary: Color32) -> Color32 {
     if ratio(Color32::WHITE, primary) >= ratio(Color32::BLACK, primary) { Color32::WHITE } else { Color32::BLACK }
 }
 
-/// The palette `choice` shows: a built-in, a loaded theme file, or Dark for a file that isn't
-/// in the folder.
+/// The palette `choice` shows: a built-in, a loaded theme file, or the default dark theme
+/// (Graphite) for a file that isn't in the folder.
 pub fn resolve(choice: &ThemeChoice, themes: &ThemeState, system_dark: bool) -> Palette {
     match choice {
-        ThemeChoice::Custom(id) => themes.catalog.get(id).map_or(DARK, build),
-        other => other.builtin(system_dark).map_or(DARK, |t| *builtin(t)),
+        ThemeChoice::Custom(id) => themes.catalog.get(id).map_or(DEFAULT_DARK, build),
+        other => other.builtin(system_dark).map_or(DEFAULT_DARK, |t| *builtin(t)),
     }
 }
 

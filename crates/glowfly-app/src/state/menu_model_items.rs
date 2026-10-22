@@ -204,7 +204,8 @@ fn panel_label(t: Lang, panel: Panel) -> &'static str {
     }
 }
 
-/// The built-in themes, then the theme files, then the Preferences page.
+/// The built-in themes (the standard pair and Match system, then the other dark themes under a
+/// heading, then the other light ones), then the theme files, then the Preferences page.
 fn themes(st: &AppState) -> Vec<Entry> {
     let t = st.settings.lang();
     let keys = &st.keymap;
@@ -213,7 +214,17 @@ fn themes(st: &AppState) -> Vec<Entry> {
         let on = *current == choice;
         marked(keys, label, Mark::Radio(on), None, None, MenuAction::send(Msg::Prefs(PrefsMsg::SetTheme(choice))))
     };
-    let mut out: Vec<Entry> = ThemeChoice::BUILT_IN.into_iter().map(|c| pick(c.clone(), theme_names::choice(t, &c))).collect();
+    let first_light = ThemeChoice::BUILT_IN.iter().skip(3).position(|c| c.builtin(true).is_some_and(|b| !b.is_dark())).map(|n| n + 3);
+    let mut out = Vec::new();
+    for (i, c) in ThemeChoice::BUILT_IN.into_iter().enumerate() {
+        if i == 3 {
+            out.push(Entry::Separator);
+            out.push(Entry::Heading(t.tr("prefs.ui.theme.group.dark").to_owned()));
+        } else if Some(i) == first_light {
+            out.push(Entry::Heading(t.tr("prefs.ui.theme.group.light").to_owned()));
+        }
+        out.push(pick(c.clone(), theme_names::choice(t, &c)));
+    }
     let files = &st.themes.catalog.files;
     if !files.is_empty() {
         out.push(Entry::Separator);

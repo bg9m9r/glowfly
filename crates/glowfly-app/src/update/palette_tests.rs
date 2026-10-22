@@ -76,7 +76,7 @@ fn toggle_ignored_under_dialogs() {
 #[test]
 fn entries_without_repo() {
     let mut st = state();
-    st.settings.theme = ThemeChoice::Dark;
+    st.settings.theme = ThemeChoice::Graphite;
     assert_eq!(
         labels(&st, ""),
         [
@@ -96,14 +96,20 @@ fn entries_without_repo() {
             "Hide commit details panel",
             "Hide toolbar",
             "Hide menu bar",
-            "Theme: Dusk",
+            "Theme: Graphite",
             "Theme: Dawn",
             "Theme: Follow system",
+            "Theme: Dusk",
+            "Theme: Midnight",
+            "Theme: Ember",
+            "Theme: Pine",
             "Theme: Garden dark",
-            "Theme: Garden light",
             "Theme: High contrast dark",
-            "Theme: High contrast light",
+            "Theme: Mist",
+            "Theme: Linen",
             "Theme: Sand",
+            "Theme: Garden light",
+            "Theme: High contrast light",
             "Configure external tools",
             "Configure terminal",
             "View activity log",
@@ -172,22 +178,22 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 33);
+    assert_eq!(shown(&st, "").len(), 39);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 32);
+    assert_eq!(p.selected, 38);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
 
-    // Eight theme entries and "Show the welcome" match "theme".
+    // Fourteen theme entries and "Show the welcome" match "theme".
     st.palette.as_mut().unwrap().query = "theme".into();
-    for _ in 0..9 {
+    for _ in 0..15 {
         run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     }
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
     // A selection past the end is clamped to the last row, then moved.
-    st.palette.as_mut().unwrap().selected = 9;
+    st.palette.as_mut().unwrap().selected = 15;
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
     // No matches: stays on 0.

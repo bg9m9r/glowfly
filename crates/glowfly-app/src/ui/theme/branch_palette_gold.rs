@@ -20,7 +20,7 @@ const fn hex(c: u32) -> Color32 {
 }
 
 /// `t` with slot `i` set to `c`.
-const fn with<T: Copy, const N: usize>(mut t: [T; N], i: usize, c: T) -> [T; N] {
+pub(super) const fn with<T: Copy, const N: usize>(mut t: [T; N], i: usize, c: T) -> [T; N] {
     t[i] = c;
     t
 }

@@ -36,7 +36,7 @@ fn hexes(p: &Palette) -> Vec<u32> {
 
 #[test]
 fn repository_hues_take_the_values() {
-    let want: [(BuiltinTheme, [u32; 8]); 7] = [
+    let want: [(BuiltinTheme, [u32; 8]); 13] = [
         (BuiltinTheme::Dark, [0xcb8a93, 0xae9e64, 0x90a872, 0x5caeb2, 0x6ba7c9, 0x869ed1, 0xa494ca, 0xbe8cb2]),
         (BuiltinTheme::Light, [0xa0636d, 0x86773d, 0x6a814c, 0x31868a, 0x447fa0, 0x6077a7, 0x7d6da1, 0x95658a]),
         (BuiltinTheme::GardenDark, [0xcb8a93, 0xae9e64, 0x90a872, 0x5caeb2, 0x6ba7c9, 0x869ed1, 0xa494ca, 0xbe8cb2]),
@@ -44,6 +44,12 @@ fn repository_hues_take_the_values() {
         (BuiltinTheme::HighContrastDark, [0xe5a2ac, 0xc7b77c, 0xa9c28a, 0x76c7cc, 0x84c0e4, 0x9eb7eb, 0xbdade5, 0xd8a4cc]),
         (BuiltinTheme::HighContrastLight, [0x814750, 0x695a1f, 0x4e6330, 0x00686c, 0x256281, 0x455a88, 0x605182, 0x76496d]),
         (BuiltinTheme::Sand, [0x9d606a, 0x83743a, 0x677e49, 0x2d8387, 0x417c9d, 0x5d74a4, 0x7a6a9e, 0x926287]),
+        (BuiltinTheme::Midnight, [0xcb8a93, 0xae9e64, 0x90a872, 0x5caeb2, 0x6ba7c9, 0x869ed1, 0xa494ca, 0xbe8cb2]),
+        (BuiltinTheme::Mist, [0xa0636d, 0x86773d, 0x6a814c, 0x31868a, 0x447fa0, 0x6077a7, 0x7d6da1, 0x95658a]),
+        (BuiltinTheme::Ember, [0xcb8a93, 0xae9e64, 0x90a872, 0x5caeb2, 0x6ba7c9, 0x869ed1, 0xa494ca, 0xbe8cb2]),
+        (BuiltinTheme::Pine, [0xcb8a93, 0xae9e64, 0x90a872, 0x5caeb2, 0x6ba7c9, 0x869ed1, 0xa494ca, 0xbe8cb2]),
+        (BuiltinTheme::Graphite, [0xcb8a93, 0xae9e64, 0x90a872, 0x5caeb2, 0x6ba7c9, 0x869ed1, 0xa494ca, 0xbe8cb2]),
+        (BuiltinTheme::Linen, [0xa0636d, 0x86773d, 0x6a814c, 0x31868a, 0x447fa0, 0x6077a7, 0x7d6da1, 0x95658a]),
     ];
     for (t, hues) in want {
         assert_eq!(hexes(builtin(t)), hues, "{t:?}");
@@ -145,6 +151,12 @@ fn needs_you_takes_the_given_values() {
         (BuiltinTheme::HighContrastDark, 0xff8a5c, 0x22110b),
         (BuiltinTheme::HighContrastLight, 0x9c3604, 0xffffff),
         (BuiltinTheme::Sand, 0xbf4306, 0xffffff),
+        (BuiltinTheme::Midnight, 0xfb794a, 0x22110b),
+        (BuiltinTheme::Mist, 0xbf4306, 0xffffff),
+        (BuiltinTheme::Ember, 0xfb794a, 0x22110b),
+        (BuiltinTheme::Pine, 0xfb794a, 0x22110b),
+        (BuiltinTheme::Graphite, 0xfb794a, 0x22110b),
+        (BuiltinTheme::Linen, 0xbf4306, 0xffffff),
     ];
     for (t, fill, ink) in want {
         let a = builtin(t).attention;

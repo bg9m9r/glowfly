@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 mod blame;
 mod branch_colours;
+mod builtin_themes;
 mod column_widths;
 mod date_fmt;
 mod downloads;
@@ -62,15 +63,18 @@ pub use trust::{RepoTrust, SavedTrust};
 pub use updates::UpdatePrefs;
 pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_out_from};
 
-/// The theme in use (Preferences > UI Customization > Theme). Old files' "Dark", "Light" and
-/// "System" load unchanged; a theme file is saved as `{"Custom": "ocean"}`.
+/// The theme in use (Preferences > UI Customization > Theme). A theme file is saved as
+/// `{"Custom": "ocean"}`. `"Dark"` in older files was "the default dark theme", so it loads as
+/// the default dark theme today (Graphite); Dusk saves as `"Dusk"`. `"Light"` and `"System"`
+/// load unchanged.
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum ThemeChoice {
-    /// Dusk, the standard dark theme (still saved as `Dark`, so older settings keep the default).
+    /// Dusk, the dark theme from the app icon (saved as `Dusk`; see the enum's note on `Dark`).
+    #[serde(rename = "Dusk")]
     Dark,
-    /// Dawn, the standard light theme (saved as `Light`).
+    /// Dawn, the default light theme (saved as `Light`).
     Light,
-    /// Follow the operating system: Dusk or Dawn.
+    /// Follow the operating system: the default dark or light theme, Graphite or Dawn.
     System,
     /// The earlier green pair.
     GardenDark,
@@ -78,6 +82,16 @@ pub enum ThemeChoice {
     HighContrastDark,
     HighContrastLight,
     Sand,
+    /// The themes added beside the standard pair: Midnight and Mist (sea glass), Ember (flame),
+    /// Pine (lantern gold), Graphite and Linen (cobalt).
+    Midnight,
+    Mist,
+    Ember,
+    Pine,
+    /// The default dark theme; older files' `"Dark"` loads as it.
+    #[serde(alias = "Dark")]
+    Graphite,
+    Linen,
     /// A theme file in the themes folder, by file stem ("ocean" for themes/ocean.json).
     Custom(String),
 }
@@ -376,7 +390,7 @@ impl Default for Settings {
             conflict_check: true,
             submodules: SubmodulePrefs::default(),
             language: crate::i18n::SYSTEM.into(),
-            theme: ThemeChoice::Dark,
+            theme: ThemeChoice::Graphite,
             notification_location: Corner::BottomLeft,
             behind_alerts: true,
             desktop_notifications: false,

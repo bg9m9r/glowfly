@@ -21,10 +21,14 @@ pub mod branch_colours;
 pub mod branch_names;
 mod branch_palette;
 mod branch_palette_gold;
+mod branch_palette_more;
 mod builtin;
+mod builtin_cobalt;
 mod builtin_dusk;
 mod builtin_extra;
 mod builtin_garden;
+mod builtin_sea;
+mod builtin_warm;
 pub mod color;
 pub mod contrast;
 pub mod controls;
@@ -39,9 +43,12 @@ pub mod type_scale;
 
 #[cfg(test)]
 pub use branch_palette::applied;
-pub use builtin::{DARK, LIGHT, builtin};
 #[cfg(test)]
-pub use builtin::{DAWN, DUSK, GARDEN_DARK, GARDEN_LIGHT, HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, SAND};
+pub use builtin::{
+    DARK, DAWN, DUSK, EMBER, GARDEN_DARK, GARDEN_LIGHT, GRAPHITE, HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, LINEN, MIDNIGHT, MIST, PINE,
+    SAND,
+};
+pub use builtin::{DEFAULT_DARK, LIGHT, builtin};
 use color::Palette;
 use eframe::egui::CornerRadius;
 use tokens::{Elevation, radius, shadow};
@@ -52,11 +59,11 @@ pub fn egui_theme(p: &Palette) -> egui::Theme {
 }
 
 /// Styles egui's built-in widgets from `p`, in the egui theme `p` uses, and installs the bundled
-/// fonts (`fonts::install`, a cheap no-op once they are in). The other egui theme gets DARK or
-/// LIGHT, so a stray switch never shows egui's own defaults.
+/// fonts (`fonts::install`, a cheap no-op once they are in). The other egui theme gets
+/// DEFAULT_DARK or LIGHT, so a stray switch never shows egui's own defaults.
 pub fn apply_style(ctx: &egui::Context, p: &Palette) {
     fonts::install(ctx);
-    let other = if p.dark { &LIGHT } else { &DARK };
+    let other = if p.dark { &LIGHT } else { &DEFAULT_DARK };
     for p in [p, other] {
         ctx.style_mut_of(egui_theme(p), |style| {
             let v = &mut style.visuals;
@@ -164,7 +171,7 @@ impl ThemeCache {
 
     /// Makes the terminal colours `choice` picks active for this frame (`color::set_terminal`).
     pub fn select_terminal(&mut self, choice: &TerminalColours, themes: &ThemeState) {
-        let palette = self.palette.unwrap_or(DARK);
+        let palette = self.palette.unwrap_or(DEFAULT_DARK);
         let fresh = matches!(&self.terminal_key, Some((c, g, p)) if c == choice && *g == themes.generation && *p == palette);
         if !fresh {
             self.terminal = terminal_scheme::override_for(choice, &palette, &themes.catalog.terminal);
@@ -186,7 +193,7 @@ impl ThemeCache {
             self.palette = Some(palette);
             self.key = Some((choice.clone(), themes.generation, system_dark, branches));
         }
-        let palette = self.palette.unwrap_or(DARK);
+        let palette = self.palette.unwrap_or(DEFAULT_DARK);
         color::set_palette(&palette);
         if self.applied != Some(palette) {
             apply_style(ctx, &palette);
@@ -218,6 +225,8 @@ mod controls_tests;
 mod diff_select_tests;
 #[cfg(test)]
 mod family_tests;
+#[cfg(test)]
+mod more_themes_tests;
 #[cfg(test)]
 mod snapshot_tests_controls;
 #[cfg(test)]

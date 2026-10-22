@@ -35,7 +35,7 @@ fn builtins() {
         (DAWN.bg, DAWN.panel, DAWN.accent, DAWN.primary, DAWN.text),
         (rgb(0xf7f6fc), rgb(0xfbfafe), rgb(0x714900), rgb(0xefb146), rgb(0x211f38))
     );
-    assert_eq!((DARK, LIGHT), (DUSK, DAWN), "Dusk and Dawn are the standard pair");
+    assert_eq!((DARK, LIGHT, DEFAULT_DARK), (DUSK, DAWN, GRAPHITE), "Graphite is the default dark theme, Dawn the light");
     let g = (&GARDEN_DARK, &GARDEN_LIGHT);
     assert_eq!((g.0.bg, g.0.text, g.0.syn_attr, g.0.diff_del_word), (rgb(0x151b18), rgb(0xe0e6e3), rgb(0x8ac6d0), rgb(0x76303a)));
     assert_eq!((g.1.bg, g.1.text, g.1.syn_attr, g.1.diff_del_word), (rgb(0xf9f7f1), rgb(0x161c19), rgb(0x006b75), rgb(0xf2b4b4)));
@@ -213,6 +213,12 @@ fn backdrop_dims_light_and_dark_alike() {
         ("garden light", GARDEN_LIGHT),
         ("sand", SAND),
         ("high contrast light", HIGH_CONTRAST_LIGHT),
+        ("midnight", MIDNIGHT),
+        ("mist", MIST),
+        ("ember", EMBER),
+        ("pine", PINE),
+        ("graphite", GRAPHITE),
+        ("linen", LINEN),
     ] {
         let dimmed = contrast::dimmed(p.panel, backdrop(&p));
         let drop = contrast::lightness(p.panel) - contrast::lightness(dimmed);
@@ -301,14 +307,17 @@ fn resolve_each_choice() {
     let r = |c: ThemeChoice, sys| custom::resolve(&c, &themes, sys);
     assert_eq!(r(ThemeChoice::Dark, false), DARK);
     assert_eq!(r(ThemeChoice::Light, true), LIGHT);
-    assert_eq!((r(ThemeChoice::System, true), r(ThemeChoice::System, false)), (DARK, LIGHT));
+    assert_eq!((r(ThemeChoice::System, true), r(ThemeChoice::System, false)), (GRAPHITE, LIGHT));
     assert_eq!(r(ThemeChoice::HighContrastDark, false), HIGH_CONTRAST_DARK);
     assert_eq!(r(ThemeChoice::HighContrastLight, true), HIGH_CONTRAST_LIGHT);
     assert_eq!(r(ThemeChoice::Sand, true), SAND);
     assert_eq!((r(ThemeChoice::GardenDark, false), r(ThemeChoice::GardenLight, true)), (GARDEN_DARK, GARDEN_LIGHT));
+    assert_eq!((r(ThemeChoice::Midnight, false), r(ThemeChoice::Mist, true)), (MIDNIGHT, MIST));
+    assert_eq!((r(ThemeChoice::Ember, false), r(ThemeChoice::Pine, true)), (EMBER, PINE));
+    assert_eq!((r(ThemeChoice::Graphite, false), r(ThemeChoice::Linen, true)), (GRAPHITE, LINEN));
     let found = r(ThemeChoice::Custom("ocean".into()), true);
     assert_eq!((found.bg, found.text, found.dark), (Color32::from_rgb(9, 9, 9), LIGHT.text, false));
-    assert_eq!(r(ThemeChoice::Custom("gone".into()), false), DARK);
+    assert_eq!(r(ThemeChoice::Custom("gone".into()), false), GRAPHITE, "a missing file shows the default dark theme");
 }
 
 #[test]

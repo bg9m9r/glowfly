@@ -1093,12 +1093,18 @@ here, under the item they grew from.
   have plural keys
 - Update-failed chip: open Preferences scrolled to the Updates row
 - Glowfly themes (Dusk and Dawn): redraw the view snapshots in Dusk and Dawn once the pair is
-  settled (they draw in the Garden pair for now); a Midnight or Ember variant only if it reads
-  clearly apart from Dusk; theme-file keys for the colour-blind branch set; a gold distance test
+  settled (they draw in the Garden pair for now); theme-file keys for the colour-blind branch set; a gold distance test
   for custom theme files whose accent lands near Orange or Gold; Dusk's warm ref chips
   (main's 40% gold #735c3c, Orange's #503825, Lime's #414b3a) are dark tints of warm hues and
   still read tan or olive: try an indigo chip with a lane-coloured edge and text for warm lanes
   (row bands, toolbar groups and the selected row came out of brown in fix/dusk-no-brown)
+- Glowfly themes (six more built-ins): a light twin for Ember and a dark twin for Linen if
+  owners ask; theme files as cards in the picker (drawn from the file's own colours); repository
+  colour hues tuned per theme (the new six reuse the standard repo set); a picker filter once
+  there are more than ~16 themes; base-theme hints in the theme file help as a list, not a sentence;
+  Graphite became the default dark theme (old "Dark" settings follow it): a light partner
+  for it if Dawn reads mismatched beside it under Match system, and theme-file `base` falling
+  back to Graphite rather than Dusk if owners want files to follow the default
 
 ### New directions
 

@@ -8,6 +8,7 @@
 use super::bands::{ATTENTION_BAND, GOLD_BAND, GREEN_BAND};
 use super::branch_palette::{BRANCH_CB_DARK, BRANCH_CB_LIGHT, BRANCH_DARK, CB_DARK_TONES, CB_LIGHT_LINES, CB_LIGHT_TEXT, DARK_TONES, pad};
 use super::branch_palette_gold::{BRANCH_CB_DAWN, BRANCH_CB_DUSK, GOLD_CB_DARK_TONES};
+use super::branch_palette_more::{BRANCH_CB_EMBER, BRANCH_CB_GRAPHITE, BRANCH_CB_LINEN};
 use super::contrast::{oklch, ratio};
 use super::*;
 use eframe::egui::Color32;
@@ -205,9 +206,12 @@ fn applied_picks_the_family_by_kind() {
         assert_eq!(applied(base, BranchPalette::Standard), base, "{t:?} keeps its own");
         let p = applied(base, BranchPalette::ColourBlind);
         let want = match t {
-            BuiltinTheme::Dark => BRANCH_CB_DUSK,
+            BuiltinTheme::Dark | BuiltinTheme::Pine => BRANCH_CB_DUSK,
             BuiltinTheme::Light => BRANCH_CB_DAWN,
-            BuiltinTheme::GardenDark | BuiltinTheme::HighContrastDark => BRANCH_CB_DARK,
+            BuiltinTheme::GardenDark | BuiltinTheme::HighContrastDark | BuiltinTheme::Midnight => BRANCH_CB_DARK,
+            BuiltinTheme::Ember => BRANCH_CB_EMBER,
+            BuiltinTheme::Graphite => BRANCH_CB_GRAPHITE,
+            BuiltinTheme::Linen => BRANCH_CB_LINEN,
             _ => BRANCH_CB_LIGHT,
         };
         assert_eq!(p.branch, want, "{t:?}");

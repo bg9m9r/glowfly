@@ -115,7 +115,7 @@ fn a_missing_selected_file_is_logged() {
     st.settings.theme = ThemeChoice::Custom("gone".into());
     run(&mut st, ThemeMsg::Loaded(ThemeCatalog::default()));
     let last = &st.log.last().unwrap().text;
-    assert!(last.contains("gone.json") && last.contains("Dusk"), "{last}");
+    assert!(last.contains("gone.json") && last.contains("Graphite"), "{last}");
     assert!(!st.view.show_log && crate::update::logs_tabs::tests::failure_with_details(&st));
     run(&mut st, ThemeMsg::Loaded(ThemeCatalog::default()));
     assert_eq!(failures(&st), 1, "announced once");

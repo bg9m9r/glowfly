@@ -18,6 +18,7 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
+pub use super::builtin_themes::BuiltinTheme;
 pub use super::themes_io::{MAX_FILE_BYTES, create, load_all, load_dir, themes_dir};
 
 /// Every color a theme sets, in the palette's order.
@@ -46,119 +47,6 @@ fn color_key(s: &str) -> Option<&'static str> {
     COLOR_KEYS.iter().copied().find(|k| *k == s).or_else(|| LEGACY_COLOR_KEYS.iter().find(|(old, _)| *old == s).map(|(_, k)| *k))
 }
 
-/// A palette that ships with Glowfly; theme files start from one. `Dark` and `Light` are the
-/// standard pair, Dusk and Dawn (from the app icon); the Garden pair is the earlier green look.
-/// The ids `dark` and `light` (and the settings' `Dark` and `Light`) stay the standard pair's, so
-/// files written before the pair was renamed open in Dusk and Dawn.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum BuiltinTheme {
-    /// Dusk.
-    Dark,
-    /// Dawn.
-    Light,
-    GardenDark,
-    GardenLight,
-    HighContrastDark,
-    HighContrastLight,
-    Sand,
-}
-
-impl BuiltinTheme {
-    pub const ALL: [Self; 7] =
-        [Self::Dark, Self::Light, Self::GardenDark, Self::GardenLight, Self::HighContrastDark, Self::HighContrastLight, Self::Sand];
-
-    /// The name a theme file's `base` uses.
-    pub fn id(self) -> &'static str {
-        match self {
-            Self::Dark => "dark",
-            Self::Light => "light",
-            Self::GardenDark => "garden-dark",
-            Self::GardenLight => "garden-light",
-            Self::HighContrastDark => "high-contrast-dark",
-            Self::HighContrastLight => "high-contrast-light",
-            Self::Sand => "sand",
-        }
-    }
-
-    /// The theme for a `base` value, spelled exactly as `id` gives it.
-    pub fn from_id(id: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|t| t.id() == id)
-    }
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Dark => "Dusk",
-            Self::Light => "Dawn",
-            Self::GardenDark => "Garden Dark",
-            Self::GardenLight => "Garden Light",
-            Self::HighContrastDark => "High Contrast Dark",
-            Self::HighContrastLight => "High Contrast Light",
-            Self::Sand => "Sand",
-        }
-    }
-
-    /// Light text on a dark background.
-    pub fn is_dark(self) -> bool {
-        matches!(self, Self::Dark | Self::GardenDark | Self::HighContrastDark)
-    }
-}
-
-impl ThemeChoice {
-    /// The built-in choices, in the order Preferences lists them.
-    pub const BUILT_IN: [ThemeChoice; 8] = [
-        ThemeChoice::Dark,
-        ThemeChoice::Light,
-        ThemeChoice::System,
-        ThemeChoice::GardenDark,
-        ThemeChoice::GardenLight,
-        ThemeChoice::HighContrastDark,
-        ThemeChoice::HighContrastLight,
-        ThemeChoice::Sand,
-    ];
-
-    /// The built-in palette this choice shows (`System` follows `system_dark`); None for a
-    /// theme file.
-    pub fn builtin(&self, system_dark: bool) -> Option<BuiltinTheme> {
-        Some(match self {
-            Self::Dark => BuiltinTheme::Dark,
-            Self::Light => BuiltinTheme::Light,
-            Self::System if system_dark => BuiltinTheme::Dark,
-            Self::System => BuiltinTheme::Light,
-            Self::GardenDark => BuiltinTheme::GardenDark,
-            Self::GardenLight => BuiltinTheme::GardenLight,
-            Self::HighContrastDark => BuiltinTheme::HighContrastDark,
-            Self::HighContrastLight => BuiltinTheme::HighContrastLight,
-            Self::Sand => BuiltinTheme::Sand,
-            Self::Custom(_) => return None,
-        })
-    }
-
-    /// The name Preferences shows; a theme file's id (its name is in the catalog).
-    pub fn label(&self) -> String {
-        match self {
-            Self::System => "Match system".to_owned(),
-            Self::Custom(id) => id.clone(),
-            other => other.builtin(true).map(BuiltinTheme::label).unwrap_or_default().to_owned(),
-        }
-    }
-
-    /// The short name the command palette shows after "Theme: ".
-    pub fn palette_label(&self) -> String {
-        match self {
-            Self::Dark => "Dusk",
-            Self::Light => "Dawn",
-            Self::System => "Follow system",
-            Self::GardenDark => "Garden dark",
-            Self::GardenLight => "Garden light",
-            Self::HighContrastDark => "High contrast dark",
-            Self::HighContrastLight => "High contrast light",
-            Self::Sand => "Sand",
-            Self::Custom(id) => return id.clone(),
-        }
-        .to_owned()
-    }
-}
-
 /// One color a theme file sets, aliases resolved.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ColorValue {
@@ -183,7 +71,7 @@ pub enum ThemeProblem {
     #[error("\"{0}\" is not a theme file field; ignored")]
     UnknownField(String),
     #[error(
-        "\"{0}\" is not a base theme (dark, light, garden-dark, garden-light, high-contrast-dark, high-contrast-light or sand); using dark"
+        "\"{0}\" is not a base theme (dark, light, midnight, mist, graphite, ember, pine, linen, sand, garden-dark, garden-light, high-contrast-dark or high-contrast-light); using dark"
     )]
     UnknownBase(String),
     #[error("\"{0}\" is not a theme color; ignored")]
@@ -262,11 +150,12 @@ impl ThemeCatalog {
         self.files.iter().find(|f| f.id == id)
     }
 
-    /// The built-in palette `choice` starts from: a file's base, or Dark for a missing file.
+    /// The built-in palette `choice` starts from: a file's base, or the default dark theme for a
+    /// missing file.
     pub fn base_of(&self, choice: &ThemeChoice, system_dark: bool) -> BuiltinTheme {
         match choice {
-            ThemeChoice::Custom(id) => self.get(id).map_or(BuiltinTheme::Dark, |f| f.base),
-            other => other.builtin(system_dark).unwrap_or(BuiltinTheme::Dark),
+            ThemeChoice::Custom(id) => self.get(id).map_or(BuiltinTheme::DEFAULT_DARK, |f| f.base),
+            other => other.builtin(system_dark).unwrap_or(BuiltinTheme::DEFAULT_DARK),
         }
     }
 }

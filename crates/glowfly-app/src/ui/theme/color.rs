@@ -85,10 +85,10 @@ pub struct Palette {
     pub ansi: Ansi,
 }
 
-/// The palette a thread starts with, before the shell sets one: the standard dark (Dusk), and in
+/// The palette a thread starts with, before the shell sets one: the default dark (Graphite), and in
 /// tests Garden dark, the palette view snapshots draw in (`snapshot_tests::harness_sized`).
 #[cfg(not(test))]
-const START: Palette = super::builtin::DARK;
+const START: Palette = super::builtin::DEFAULT_DARK;
 #[cfg(test)]
 const START: Palette = super::builtin::GARDEN_DARK;
 

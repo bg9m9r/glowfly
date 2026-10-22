@@ -40,11 +40,17 @@ fn theme_entries_list_built_ins_and_files() {
         "Theme: High contrast dark",
         "Theme: High contrast light",
         "Theme: Sand",
+        "Theme: Midnight",
+        "Theme: Mist",
+        "Theme: Ember",
+        "Theme: Pine",
+        "Theme: Graphite",
+        "Theme: Linen",
         "Theme: Ocean",
     ] {
         assert!(labels.contains(&want), "{want} in {labels:?}");
     }
-    assert_eq!(labels.len(), 9);
+    assert_eq!(labels.len(), 15);
     let current: Vec<&str> = themes.iter().filter(|(_, d)| d.as_deref() == Some("current")).map(|(l, _)| l.as_str()).collect();
     assert_eq!(current, ["Theme: Ocean"]);
     assert!(shown(&st, "custom").iter().any(|s| s.entry.label == "Theme: Ocean"), "files match \"custom\"");

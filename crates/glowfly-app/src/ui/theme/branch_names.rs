@@ -4,7 +4,7 @@
 use super::families::{Branch, LANE_COUNT};
 use glowfly_core::i18n::Lang;
 
-/// A branch hue's name. Red, Lime, Plum and Orange appear in more than one family.
+/// A branch hue's name. Red, Lime, Plum, Orange, Jade and Rose appear in more than one family.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Hue {
     Rose,
@@ -28,6 +28,7 @@ pub enum Hue {
     Plum,
     Purple,
     Periwinkle,
+    Wine,
 }
 
 impl Hue {
@@ -55,6 +56,7 @@ impl Hue {
             Hue::Plum => t.tr("branch.hue.plum"),
             Hue::Purple => t.tr("branch.hue.purple"),
             Hue::Periwinkle => t.tr("branch.hue.periwinkle"),
+            Hue::Wine => t.tr("branch.hue.wine"),
         }
     }
 }

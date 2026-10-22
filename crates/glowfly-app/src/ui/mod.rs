@@ -334,6 +334,8 @@ mod snapshot_tests_menu_header;
 #[cfg(test)]
 mod snapshot_tests_mica;
 #[cfg(test)]
+mod snapshot_tests_more_themes;
+#[cfg(test)]
 mod snapshot_tests_onboarding;
 #[cfg(test)]
 mod snapshot_tests_op_preview;
