@@ -265,30 +265,6 @@ fn preferences_commit_signing() {
 }
 
 #[test]
-fn publish_to_github_dialog() {
-    use crate::state::{Modal, publish::PublishForm};
-    use glowfly_core::forge::{Account, Provider};
-    let (mut st, dir) = with_repo(ThemeChoice::Dark, "publish");
-    st.modal = Some(Modal::Publish(Box::new(PublishForm {
-        workdir: dir.clone(),
-        branch: "main".into(),
-        accounts: vec![Account { provider: Provider::GitHub, host: "github.com".into(), org: String::new() }],
-        account: 0,
-        user: Some("ada".into()),
-        owners: vec!["ada".into(), "acme".into()],
-        owner: "ada".into(),
-        name: "demo".into(),
-        description: "A small demo project".into(),
-        private: true,
-        loading: false,
-        creating: false,
-        error: Some("Repository creation failed. name already exists on this account".into()),
-        touched: Default::default(),
-    })));
-    render("publish_dialog", st, true);
-}
-
-#[test]
 fn ghost_branch_on_the_current_commit() {
     // Selecting the checked-out commit shows the New branch… ghost button after its labels;
     // other rows show none.

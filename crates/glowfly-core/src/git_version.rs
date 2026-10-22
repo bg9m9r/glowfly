@@ -142,21 +142,11 @@ impl GitInfo {
         missing_for(self.version)
     }
 
-    /// The banner shown while something is wrong with git: it can't be run, or it is too old
-    /// for some features (each named). None when all is well.
-    pub fn banner(&self) -> Option<String> {
+    /// What is wrong with git, in full: it can't be run, or it is too old for some features
+    /// (each named). For the activity log and the welcome step. None when all is well.
+    pub fn problem(&self) -> Option<String> {
         let (major, minor) = full_support();
-        let Some(v) = self.version else {
-            return Some(match &self.path {
-                Some(p) if self.chosen => format!(
-                    "Glowfly couldn't run git at {}, the git chosen in Preferences > Git. Choose another there.",
-                    crate::native_path::shown(p)
-                ),
-                Some(p) => format!("Glowfly couldn't run git at {}. Commits, fetches and pushes need it.", crate::native_path::shown(p)),
-                None => "Glowfly couldn't find git on your PATH. Commits, fetches and pushes need it: install git, then choose it in Preferences > Git or restart Glowfly."
-                    .to_owned(),
-            });
-        };
+        let Some(v) = self.version else { return Some(self.unusable_text()) };
         let missing = self.missing();
         if missing.is_empty() {
             return None;
@@ -168,6 +158,66 @@ impl GitInfo {
             names.join(", ")
         ))
     }
+
+    /// The banner shown while something is wrong with git, in one sentence: it can't be run
+    /// (as [`GitInfo::problem`] says it), or it is too old, naming up to three of the features
+    /// that are off. None when all is well.
+    pub fn banner(&self) -> Option<String> {
+        let Some(v) = self.version else { return Some(self.unusable_text()) };
+        let missing = self.missing();
+        let names: Vec<&str> = missing.iter().map(|f| f.label()).collect();
+        (!names.is_empty()).then(|| too_old_text(v, &names))
+    }
+
+    /// Why git can't be used: not found, or it didn't run (the chosen one, or the PATH one).
+    fn unusable_text(&self) -> String {
+        match &self.path {
+            Some(p) if self.chosen => format!(
+                "Glowfly couldn't run git at {}, the git chosen in Preferences > Git. Choose another there.",
+                crate::native_path::shown(p)
+            ),
+            Some(p) => format!("Glowfly couldn't run git at {}. Commits, fetches and pushes need it.", crate::native_path::shown(p)),
+            None => "Glowfly couldn't find git on your PATH. Commits, fetches and pushes need it: install git, then choose it in Preferences > Git or restart Glowfly."
+                .to_owned(),
+        }
+    }
+}
+
+/// "Git 2.34.1 is older than 2.38, so … are off.", naming the features when there are at most
+/// three of them.
+fn too_old_text(v: Version, names: &[&str]) -> String {
+    let (major, minor) = full_support();
+    match names.len() {
+        n @ 0..=3 => {
+            let verb = if n == 1 { "is" } else { "are" };
+            format!("Git {} is older than {major}.{minor}, so {} {verb} off.", show(v), and_list(names))
+        }
+        n => format!("Git {} is older than {major}.{minor}, so {n} features are off. Preferences > Git lists them.", show(v)),
+    }
+}
+
+/// "a", "a and b", "a, b and c".
+fn and_list(items: &[&str]) -> String {
+    match items {
+        [] => String::new(),
+        [one] => (*one).to_owned(),
+        [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
+    }
+}
+
+/// The Git project's download page for `os`, which says how to install or update git there.
+pub fn download_url_for(os: crate::opens::Os) -> &'static str {
+    match os {
+        crate::opens::Os::Windows => "https://git-scm.com/download/win",
+        crate::opens::Os::MacOs => "https://git-scm.com/download/mac",
+        // That page also covers the other Unix systems.
+        crate::opens::Os::Linux => "https://git-scm.com/download/linux",
+    }
+}
+
+/// The Git project's download page for this OS.
+pub fn download_url() -> &'static str {
+    download_url_for(crate::opens::Os::current())
 }
 
 /// Which git runs (the one chosen in Preferences > Git, else the one looked up on the PATH
@@ -218,22 +268,69 @@ mod tests {
     }
 
     #[test]
-    fn the_banner_names_the_minimum_and_what_is_off() {
+    fn the_problem_names_the_minimum_and_what_is_off() {
         let old = GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 34, 1)), chosen: false };
-        let b = old.banner().unwrap();
+        let b = old.problem().unwrap();
         assert!(b.contains("2.34.1") && b.contains("2.38 or newer") && b.contains("sparse checkout, predicting merge conflicts"), "{b}");
         assert!(!old.has(Feature::MergeTree) && old.has(Feature::Restore) && old.has(Feature::SubmoduleEdit));
-        let older = GitInfo { version: Some((2, 24, 1)), ..old.clone() }.banner().unwrap();
+        let older = GitInfo { version: Some((2, 24, 1)), ..old.clone() }.problem().unwrap();
         assert!(older.contains("these are off: editing a submodule's URL and branch, downloading file contents"), "{older}");
-        assert_eq!(GitInfo { path: None, version: Some((2, 45, 0)), chosen: false }.banner(), None);
-        let none = GitInfo::default().banner().unwrap();
+        assert_eq!(GitInfo { path: None, version: Some((2, 45, 0)), chosen: false }.problem(), None);
+        let none = GitInfo::default().problem().unwrap();
         assert!(none.contains("couldn't find git") && none.contains("Preferences > Git"), "{none}");
         assert!(!none.contains("  "), "no runs of spaces in the text: {none}");
-        let broken = GitInfo { path: Some("/x/git".into()), version: None, chosen: false }.banner().unwrap();
+        let broken = GitInfo { path: Some("/x/git".into()), version: None, chosen: false }.problem().unwrap();
         assert!(broken.contains("couldn't run git") && !broken.contains("Preferences > Git"), "{broken}");
-        let chosen = GitInfo { path: Some("/x/git".into()), version: None, chosen: true }.banner().unwrap();
+        let chosen = GitInfo { path: Some("/x/git".into()), version: None, chosen: true }.problem().unwrap();
         assert!(chosen.contains("couldn't run git") && chosen.contains("chosen in Preferences > Git"), "{chosen}");
         assert_eq!(Feature::SparseCheckout.needs_text(Some((2, 30, 1))), "Sparse checkout needs git 2.35 or newer (you have 2.30.1).");
+    }
+
+    #[test]
+    fn the_banner_is_one_short_sentence() {
+        let at = |v| GitInfo { path: Some("/usr/bin/git".into()), version: Some(v), chosen: false };
+        assert_eq!(
+            at((2, 34, 1)).banner().unwrap(),
+            "Git 2.34.1 is older than 2.38, so sparse checkout, predicting merge conflicts and restacking branches are off."
+        );
+        assert_eq!(
+            at((2, 37, 7)).banner().unwrap(),
+            "Git 2.37.7 is older than 2.38, so predicting merge conflicts and restacking branches are off."
+        );
+        assert_eq!(at((2, 24, 1)).banner().unwrap(), "Git 2.24.1 is older than 2.38, so 6 features are off. Preferences > Git lists them.");
+        assert_eq!(at((2, 45, 0)).banner(), None);
+        for unusable in [
+            GitInfo::default(),
+            GitInfo { path: Some("/x/git".into()), version: None, chosen: false },
+            GitInfo { path: Some("/x/git".into()), version: None, chosen: true },
+        ] {
+            assert_eq!(unusable.banner(), unusable.problem(), "{unusable:?}");
+            assert!(unusable.banner().is_some());
+        }
+        assert_eq!(and_list(&["a"]), "a");
+        assert_eq!(and_list(&["a", "b"]), "a and b");
+        assert_eq!(and_list(&["a", "b", "c"]), "a, b and c");
+        assert_eq!(and_list(&[]), "");
+        let one = GitInfo { version: Some((2, 37, 7)), ..GitInfo::default() };
+        assert!(one.missing().len() == 2 && one.banner().unwrap().ends_with("are off."));
+    }
+
+    #[test]
+    fn one_missing_feature_is_off() {
+        // No released git lacks exactly one feature today, so check the wording directly.
+        assert_eq!(too_old_text((2, 37, 0), &["sparse checkout"]), "Git 2.37.0 is older than 2.38, so sparse checkout is off.");
+    }
+
+    #[test]
+    fn download_pages_per_os() {
+        use crate::opens::Os;
+        assert_eq!(download_url_for(Os::Windows), "https://git-scm.com/download/win");
+        assert_eq!(download_url_for(Os::MacOs), "https://git-scm.com/download/mac");
+        assert_eq!(download_url_for(Os::Linux), "https://git-scm.com/download/linux");
+        for os in [Os::Windows, Os::MacOs, Os::Linux] {
+            assert!(download_url_for(os).starts_with("https://git-scm.com/download/"));
+        }
+        assert_eq!(download_url(), download_url_for(Os::current()));
     }
 
     #[test]

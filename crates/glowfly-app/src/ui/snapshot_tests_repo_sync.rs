@@ -51,7 +51,6 @@ fn repo_sync_running() {
         "Fetching: 5 of 8 done",
         "Fetched: 3 branches or tags moved",
         "Up to date",
-        "Failed: Could not read from remote repository.",
         "Nothing to fetch: no remotes",
         "Skipped: not trusted. Open it to review its trust.",
         "Waiting",
@@ -59,6 +58,7 @@ fn repo_sync_running() {
     ] {
         assert!(h.query_by_label(label).is_some(), "{label} is shown");
     }
+    assert!(h.query_by_label_contains("Failed: Couldn't read from the remote repository.").is_some(), "in plain words");
     assert_eq!(h.query_all_by_label("Running…").count(), 2);
     // Finished rows (five) have Open; only the failed one has Retry.
     assert_eq!(h.query_all_by_label("Open").count(), 5);
@@ -124,12 +124,13 @@ fn repo_sync_error_tip() {
     ];
     let mut h = harness(dialog(ThemeChoice::Dark, SyncKind::Fetch, rows), true);
     h.run();
-    h.get_by_label("Failed: Could not read from remote repository.").hover();
+    h.get_by_label_contains("Failed: Couldn't reach example.com.").hover();
     for _ in 0..4 {
         h.step();
     }
     h.run_ok();
-    assert!(h.query_by_label_contains("Could not resolve host: example.com").is_some(), "the whole error shows");
+    assert!(h.query_by_label_contains("Could not resolve host: example.com").is_some(), "git's whole output shows");
+    assert!(h.query_all_by_label_contains("Couldn't reach example.com.").count() >= 2, "the sentence leads the tip");
     h.check_snapshot("repo_sync_error_tip");
 }
 

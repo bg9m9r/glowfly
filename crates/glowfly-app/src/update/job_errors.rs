@@ -78,6 +78,7 @@ pub(super) fn explain(st: &AppState, job: &RunningJob, retry: Option<StashRetry>
         Cause::Locked { file } => (t.trf("git_errors.locked", &[("file", &file)]), None),
         Cause::SignIn(need) => sign_in(t, need, fix),
         Cause::HostKeyChanged => (t.tr("git_errors.host_key_changed").to_owned(), None),
+        Cause::Remote(f) => (crate::state::error_words::remote(t, &f), None),
     };
     Some(Explained { text, fix })
 }

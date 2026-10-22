@@ -71,8 +71,9 @@ fn trash_home_offer() {
     remove_fixture(&dir);
 }
 
-/// The banner while git is older than every feature needs; Choose git… opens Preferences > Git
-/// and Dismiss closes it.
+/// The banner while git is older than every feature needs; Choose git… opens Preferences > Git,
+/// How to update git the download page, Remind me later closes it for now and Don't show again
+/// for good.
 #[test]
 fn git_too_old_banner() {
     use crate::git_env::GitEnvMsg;
@@ -83,12 +84,20 @@ fn git_too_old_banner() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("git_too_old_banner");
-    h.get_by_label("Choose git…").click();
-    h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::GitEnv(GitEnvMsg::ShowPage))), "opens Preferences > Git");
-    h.get_by_label("Dismiss").click();
-    h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::GitEnv(GitEnvMsg::DismissBanner))));
+    for label in ["Choose git…", "How to update git", "Remind me later", "Don't show again"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    let mut click = |label: &str| {
+        h.state_mut().1.clear();
+        h.get_by_label(label).click();
+        h.run();
+        std::mem::take(&mut h.state_mut().1)
+    };
+    assert!(matches!(&click("Choose git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]), "opens Preferences > Git");
+    let url = glowfly_core::git_version::download_url();
+    assert!(matches!(&click("How to update git")[..], [Msg::OpenUrl(u)] if u == url), "the download page");
+    assert!(matches!(&click("Remind me later")[..], [Msg::GitEnv(GitEnvMsg::DismissBanner)]));
+    assert!(matches!(&click("Don't show again")[..], [Msg::GitEnv(GitEnvMsg::HideBannerForGood)]));
     drop(h);
     remove_fixture(&dir);
 }
@@ -104,9 +113,17 @@ fn repository_owned_by_another_user() {
     crate::update::update(&mut st, Msg::Repo(RepoMsg::Open(root.clone())), std::time::Instant::now());
     let generation = st.load_gen;
     crate::update::update(&mut st, Msg::GitEnv(GitEnvMsg::NotOwned { generation, kind: LoadKind::Open, root }), std::time::Instant::now());
+    // The refusal's toast has a Details button of its own; this checks the dialog's.
+    st.toasts.clear();
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("repository_owned_by_another_user");
+    assert!(h.query_by_label_contains("Git asks first because").is_some());
+    assert!(h.query_by_label_contains("git config --global").is_none(), "the command waits under Details");
+    h.get_by_label("Details").click();
+    h.run();
+    assert!(h.query_by_label_contains("git config --global --add safe.directory").is_some());
+    h.check_snapshot("repository_owned_by_another_user_details");
     h.get_by_label("Trust and open").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmAccepted)));

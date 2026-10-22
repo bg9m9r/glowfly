@@ -284,6 +284,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
                 tracing::debug!("confirmation not ready (no confirm open, or its acknowledgement isn't ticked)");
             } else if let Some(
                 crate::state::Modal::Confirm { then, .. }
+                | crate::state::Modal::ConfirmDetails { then, .. }
                 | crate::state::Modal::ConfirmDanger { then, .. }
                 | crate::state::Modal::ConfirmChoice { then, .. },
             ) = st.modal.take()

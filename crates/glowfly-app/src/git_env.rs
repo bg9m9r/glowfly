@@ -14,8 +14,11 @@ use std::path::PathBuf;
 pub enum GitEnvMsg {
     /// At startup: find git and ask its version.
     Detect,
-    /// Hides the banner until Glowfly restarts.
+    /// Remind me later: hides the banner until Glowfly restarts or another git is chosen.
     DismissBanner,
+    /// The banner's Don't show again: hide the too-old banner for this git version, saved in
+    /// settings.
+    HideBannerForGood,
     /// The user agreed to list `root` in `safe.directory` (then it opens again).
     AddSafeDirectory(PathBuf),
     /// Open Preferences on the Git page (opening Preferences when closed) and look for gits.
@@ -68,6 +71,7 @@ impl GitEnvMsg {
             // The rest is about git itself, the same for every tab.
             Self::Detect
             | Self::DismissBanner
+            | Self::HideBannerForGood
             | Self::AddSafeDirectory(_)
             | Self::ShowPage
             | Self::Rescan
@@ -87,7 +91,7 @@ impl GitEnvMsg {
 /// The log line for a repository git refuses for its owner.
 pub fn not_owned_text(root: &std::path::Path) -> String {
     format!(
-        "Could not open {}: git won't open a repository another user owns until it is listed in safe.directory.",
+        "Could not open {}: it belongs to another user account, and git opens such folders only once they are marked as safe (safe.directory).",
         glowfly_core::native_path::shown(root)
     )
 }

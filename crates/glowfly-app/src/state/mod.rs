@@ -30,6 +30,7 @@ pub mod dialog_kind;
 pub mod diff_header;
 pub mod diff_nav;
 pub mod diff_preview;
+pub mod error_words;
 pub mod files;
 mod forge;
 pub mod forge_filter_form;
@@ -267,6 +268,15 @@ pub enum Modal {
     Confirm {
         title: String,
         body: String,
+        button: String,
+        then: Box<Msg>,
+    },
+    /// `Confirm` with a collapsed Details under the body (the literal values behind a
+    /// plain-words question).
+    ConfirmDetails {
+        title: String,
+        body: String,
+        details: String,
         button: String,
         then: Box<Msg>,
     },

@@ -121,13 +121,13 @@ fn state(ui: &mut egui::Ui, t: Lang, kind: SyncKind, s: &RowState, width: f32) {
             ui.label(RichText::new(t.tr("repo_sync.row.stopped")).color(color::weak()));
         }
         RowState::Done(o) => {
-            let (text, bad) = outcome_text(kind, o);
+            let (text, bad) = outcome_text(t, kind, o);
             let col = match o {
                 Outcome::Untrusted => color::warn(),
                 _ if bad => color::removed(),
                 _ => color::text(),
             };
-            match failure_tip(o) {
+            match failure_tip(t, o) {
                 Some(tip) => {
                     truncate::cut_label(ui, RichText::new(&text).color(col), width).0.on_hover_text(tip);
                 }

@@ -343,6 +343,10 @@ pub struct Settings {
     /// The git program Glowfly runs (Preferences > Git): an absolute path, or None for git from
     /// PATH.
     pub git_program: Option<String>,
+    /// The git version ("2.34.1") whose too-old banner was hidden with Don't show again. Another
+    /// version shows the banner again, and it never hides the banner for a git that can't run.
+    #[serde(default)]
+    pub git_banner_hidden_for: Option<String>,
     /// The first-run welcome was finished or closed. Files written before it existed lack it and
     /// read as true, so only a new install shows the welcome.
     #[serde(default = "file::seen")]
@@ -438,6 +442,7 @@ impl Default for Settings {
             extended_logging: false,
             keybindings: BTreeMap::new(),
             git_program: None,
+            git_banner_hidden_for: None,
             welcome_done: false,
             updates: UpdatePrefs::default(),
             terminal: TerminalPrefs::default(),

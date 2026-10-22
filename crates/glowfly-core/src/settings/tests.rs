@@ -81,6 +81,16 @@ fn git_program_defaults_to_path() {
 }
 
 #[test]
+fn git_banner_hidden_for_defaults_to_none() {
+    // Files written before the setting existed show the too-old banner.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert_eq!(s.git_banner_hidden_for, None);
+    let hidden = Settings { git_banner_hidden_for: Some("2.34.1".into()), ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&hidden).unwrap()).unwrap();
+    assert_eq!(back.git_banner_hidden_for.as_deref(), Some("2.34.1"));
+}
+
+#[test]
 fn remember_https_credentials_default_on() {
     // Files written before the setting existed remember HTTPS sign-ins.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

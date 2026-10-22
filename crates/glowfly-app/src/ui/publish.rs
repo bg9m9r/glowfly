@@ -3,7 +3,7 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::{FieldGroup, TextField, buttons};
+use super::widgets::{FieldGroup, TextField, buttons, details};
 use crate::msg::Msg;
 use crate::msg::PublishMsg;
 use crate::state::publish::PublishForm;
@@ -57,6 +57,9 @@ pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &m
             .inner
         });
         form_message::track(&mut f.touched, "name", &r);
+        if r.changed() {
+            f.clear_error();
+        }
     }
     let name = f.name.trim();
     let description = FieldGroup::new("Description").optional(cx.t.tr("dialog.field.optional"));
@@ -68,6 +71,9 @@ pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &m
     if let Some(e) = &f.error {
         ui.add_space(6.0);
         form_message::form(ui, Message::error(e.as_str()));
+        if let Some(raw) = &f.error_detail {
+            details::disclosure(ui, "publish-error-details", cx.t.tr("common.details.button"), raw);
+        }
     }
     if f.creating {
         ui.horizontal(|ui| {

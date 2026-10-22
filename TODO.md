@@ -69,7 +69,7 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
 The [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md) found these before a first
 release; each finding there names the snapshots and code it was seen in. Its minor findings
-are in Later > UI review polish.
+have landed too (see Recent changes, UI review polish).
 
 The look comes first: the open items below are in the order to build them, the visual
 foundation (spacing, fonts, palette, type) and the views built on it before the rest.
@@ -1022,15 +1022,6 @@ follow-ups go to Ideas, not here.
 ### New directions
 
 Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
-
-### UI review polish
-
-The minor findings of the [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md); its
-blockers and major findings are Milestone 1 items.
-
-- The git-too-old banner links to how to update and says whether Dismiss is for good
-- Plain-language errors instead of git internals (safe.directory values; hosting-service errors
-  rewritten as a sentence saying what to do)
 
 ### File history and blame
 
@@ -3390,3 +3381,14 @@ here, under the item they grew from.
 - Git Flow Finish: a choice to leave the auto-stash in the stash list instead of putting it back on the development branch
 - Git Flow Finish: offer stashing when the dialog is reached with conflicted files (resolve or stash them first)
 - Submodules: a legend of the status dots in the section header menu
+- Git-not-found banner: a How to install git link to the per-OS download page, like the welcome step's Download git
+- Preferences > Git: a way to show the too-old banner again after Don't show again
+- Offer git's own updater (update-git-for-windows) from the banner when Git for Windows is the git in use
+- Translate the git banner's core texts (GitInfo::banner/problem) and the feature labels
+- Use error::advice for the other hosting-service errors (fork, create pull request, create issue, comments, dashboard, sign-in status)
+- An Edit remote… fix on the remote-not-found and unreadable toasts
+- Repository rows: plain sentences for more git failures (diverged pull, locked index)
+- Recognise TLS certificate failures ("SSL certificate problem") with a next step
+- Translate the safe.directory dialog and the Publish dialog strings
+- A Copy button inside Details disclosures
+- Use the shared Details disclosure in the SSH host-key prompt

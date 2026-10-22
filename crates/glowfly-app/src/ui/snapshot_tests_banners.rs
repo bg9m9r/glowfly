@@ -41,7 +41,10 @@ fn banner_git_missing() {
     h.check_snapshot("banner_git_missing");
     assert!(h.query_by_label_contains("couldn't find git on your PATH").is_some());
     assert!(h.query_by_label_contains("Use the git on PATH").is_none(), "nothing to offer");
-    assert!(matches!(&click(&mut h, "Dismiss")[..], [Msg::GitEnv(GitEnvMsg::DismissBanner)]));
+    assert!(matches!(&click(&mut h, "Remind me later")[..], [Msg::GitEnv(GitEnvMsg::DismissBanner)]));
+    for label in ["Don't show again", "How to update git"] {
+        assert!(h.query_by_label(label).is_none(), "{label}: not while git can't run");
+    }
     assert!(matches!(&click(&mut h, "Choose git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]));
     drop(h);
     remove_fixture(&dir);
@@ -61,7 +64,10 @@ fn banner_git_path_fallback() {
     let label = "Use the git on PATH (version 2.45.1)";
     assert!(h.query_by_label(label).is_some());
     assert!(matches!(&click(&mut h, label)[..], [Msg::GitEnv(GitEnvMsg::UsePathGit)]));
-    assert!(matches!(&click(&mut h, "Dismiss")[..], [Msg::GitEnv(GitEnvMsg::DismissBanner)]));
+    assert!(matches!(&click(&mut h, "Remind me later")[..], [Msg::GitEnv(GitEnvMsg::DismissBanner)]));
+    for label in ["Don't show again", "How to update git"] {
+        assert!(h.query_by_label(label).is_none(), "{label}: not while git can't run");
+    }
     assert!(matches!(&click(&mut h, "Choose git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]));
     h.state_mut().0.git.page.checking = Some(Checking { program: None, from_banner: true });
     h.run();
@@ -78,7 +84,7 @@ fn banner_git_too_old_light() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("banner_git_too_old_light");
-    assert!(h.query_by_label_contains("Your git is 2.34.1").is_some());
+    assert!(h.query_by_label_contains("Git 2.34.1 is older than 2.38").is_some());
     drop(h);
     remove_fixture(&dir);
 }

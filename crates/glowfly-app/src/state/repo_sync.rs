@@ -5,6 +5,7 @@
 
 use super::AppState;
 use super::repo_lists::{favorites, is_missing};
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo_sync::Outcome;
 use std::path::PathBuf;
 
@@ -129,13 +130,15 @@ pub fn can_open(r: &SyncRow) -> bool {
     matches!(r.state, RowState::Done(_) | RowState::Stopped)
 }
 
-/// What hovering a failed row shows: git's whole output, or the reason when there is no more.
-pub fn failure_tip(o: &Outcome) -> Option<&str> {
-    match o {
-        Outcome::Failed { detail, .. } if !detail.is_empty() => Some(detail),
-        Outcome::Failed { reason, .. } => Some(reason),
-        _ => None,
-    }
+/// What hovering a failed row shows: git's whole output, or the reason when there is no more;
+/// after the row's plain-words sentence and a blank line when it has one (the row can be cut).
+pub fn failure_tip(t: Lang, o: &Outcome) -> Option<String> {
+    let Outcome::Failed { reason, detail } = o else { return None };
+    let raw = if detail.is_empty() { reason } else { detail };
+    Some(match super::error_words::sync_failure(t, raw) {
+        Some(sentence) => format!("{sentence}\n\n{raw}"),
+        None => raw.clone(),
+    })
 }
 
 /// The verb of `kind`, lower case.
@@ -146,8 +149,10 @@ pub fn verb(kind: SyncKind) -> &'static str {
     }
 }
 
-/// What a finished repository's row says, and whether it is bad news.
-pub fn outcome_text(kind: SyncKind, o: &Outcome) -> (String, bool) {
+/// What a finished repository's row says, and whether it is bad news. A failure reaching the
+/// remote or signing in is said in plain words (`error_words::sync_failure`), others with
+/// git's last line.
+pub fn outcome_text(t: Lang, kind: SyncKind, o: &Outcome) -> (String, bool) {
     match o {
         Outcome::Updated { .. } if kind == SyncKind::Pull => ("Pulled".into(), false),
         Outcome::Updated { changed: 1 } => ("Fetched: 1 branch or tag moved".into(), false),
@@ -156,7 +161,11 @@ pub fn outcome_text(kind: SyncKind, o: &Outcome) -> (String, bool) {
         Outcome::NoRemotes => (format!("Nothing to {}: no remotes", verb(kind)), false),
         Outcome::NoUpstream => ("Nothing to pull: the branch has no upstream".into(), false),
         Outcome::Untrusted => ("Skipped: not trusted. Open it to review its trust.".into(), true),
-        Outcome::Failed { reason, .. } => (format!("Failed: {reason}"), true),
+        Outcome::Failed { reason, detail } => {
+            let raw = if detail.is_empty() { reason } else { detail };
+            let sentence = super::error_words::sync_failure(t, raw);
+            (format!("Failed: {}", sentence.as_deref().unwrap_or(reason)), true)
+        }
     }
 }
 
@@ -234,9 +243,13 @@ mod tests {
         }
         assert!(can_open(&row(RowState::Stopped)) && can_open(&row(RowState::Done(Outcome::Untrusted))));
         assert!(!can_open(&row(RowState::Waiting)) && !can_open(&row(RowState::Running)));
-        assert_eq!(failure_tip(&failed("boom", "fatal: x\nboom")), Some("fatal: x\nboom"));
-        assert_eq!(failure_tip(&failed("The folder can't be found.", "")), Some("The folder can't be found."));
-        assert_eq!(failure_tip(&Outcome::UpToDate), None);
+        let tip = |o: &Outcome| failure_tip(Lang::En, o);
+        assert_eq!(tip(&failed("boom", "fatal: x\nboom")).as_deref(), Some("fatal: x\nboom"));
+        assert_eq!(tip(&failed("The folder can't be found.", "")).as_deref(), Some("The folder can't be found."));
+        assert_eq!(tip(&Outcome::UpToDate), None);
+        let raw = "fatal: unable to access 'https://example.com/r/': Could not resolve host: example.com";
+        let rewritten = tip(&failed("fatal: unable to access …", raw)).unwrap();
+        assert!(rewritten.starts_with("Couldn't reach example.com. ") && rewritten.ends_with(&format!(".\n\n{raw}")), "{rewritten}");
     }
 
     #[test]
@@ -274,11 +287,24 @@ mod tests {
 
     #[test]
     fn rows_say_how_each_went() {
-        assert_eq!(outcome_text(SyncKind::Fetch, &Outcome::Updated { changed: 1 }).0, "Fetched: 1 branch or tag moved");
-        assert_eq!(outcome_text(SyncKind::Pull, &Outcome::Updated { changed: 3 }).0, "Pulled");
-        assert_eq!(outcome_text(SyncKind::Fetch, &Outcome::NoRemotes).0, "Nothing to fetch: no remotes");
-        assert!(outcome_text(SyncKind::Pull, &Outcome::Untrusted).1);
-        assert_eq!(outcome_text(SyncKind::Pull, &failed("boom", "fatal: x\nboom")), ("Failed: boom".into(), true));
+        let text = |kind, o: &Outcome| outcome_text(Lang::En, kind, o);
+        assert_eq!(text(SyncKind::Fetch, &Outcome::Updated { changed: 1 }).0, "Fetched: 1 branch or tag moved");
+        assert_eq!(text(SyncKind::Pull, &Outcome::Updated { changed: 3 }).0, "Pulled");
+        assert_eq!(text(SyncKind::Fetch, &Outcome::NoRemotes).0, "Nothing to fetch: no remotes");
+        assert!(text(SyncKind::Pull, &Outcome::Untrusted).1);
+        assert_eq!(text(SyncKind::Pull, &failed("boom", "fatal: x\nboom")), ("Failed: boom".into(), true));
+        assert_eq!(
+            text(SyncKind::Fetch, &failed("Could not read from remote repository.", "")).0,
+            "Failed: Couldn't read from the remote repository. Check the remote's URL, your network and your access, then try again."
+        );
+        let resolve = "fatal: unable to access 'https://example.com/r/': Could not resolve host: example.com";
+        assert!(text(SyncKind::Fetch, &failed("fatal: unable to access …", resolve)).0.starts_with("Failed: Couldn't reach example.com. "));
+        let prompts = "fatal: could not read Username for 'https://example.com': terminal prompts disabled";
+        assert!(
+            text(SyncKind::Pull, &failed("terminal prompts disabled", prompts)).0.starts_with("Failed: The server needs you to sign in.")
+        );
+        let diverged = "fatal: Not possible to fast-forward, aborting.";
+        assert_eq!(text(SyncKind::Pull, &failed(diverged, diverged)).0, format!("Failed: {diverged}"), "git's own words");
         assert_eq!(nothing_to_sync(SyncKind::Fetch, SyncScope::Favorites), "No repositories to fetch: no favorite can be found.");
     }
 }

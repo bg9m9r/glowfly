@@ -59,6 +59,8 @@ pub enum Cause {
         file: String,
     },
     SignIn(AuthNeed),
+    /// git couldn't reach or read the remote.
+    Remote(crate::remote_failure::RemoteFailure),
     /// ssh reports that the server's host key changed.
     HostKeyChanged,
     /// Only "Merge with strategy <s> failed." was recognised.
@@ -79,6 +81,9 @@ pub fn classify(output: &str) -> Option<Cause> {
     }
     if let Some(need) = auth_failure::need(&text) {
         return Some(Cause::SignIn(need));
+    }
+    if let Some(f) = crate::remote_failure::read(&text) {
+        return Some(Cause::Remote(f));
     }
     let untracked = |l: &str| {
         l.contains("untracked working tree files would be overwritten by") || l.contains("untracked working tree files would be removed by")

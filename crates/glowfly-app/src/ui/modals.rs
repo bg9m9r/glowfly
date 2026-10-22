@@ -77,14 +77,21 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let cx = Cx { t, keyboard, key: egui::Id::new("glowfly-dialog").with(std::mem::discriminant(&*modal)) };
         match modal {
             Modal::Confirm { title, body, button, .. } => {
-                close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Normal, None, None, msgs)
+                let texts = confirm_dialog::Texts { title, body, button, details: None };
+                close = confirm_dialog::show(ui, cx, texts, Tone::Normal, None, None, msgs)
+            }
+            Modal::ConfirmDetails { title, body, details, button, .. } => {
+                let texts = confirm_dialog::Texts { title, body, button, details: Some(details) };
+                close = confirm_dialog::show(ui, cx, texts, Tone::Normal, None, None, msgs)
             }
             Modal::ConfirmDanger { title, body, button, ack, acked, .. } => {
                 let ack = ack.as_deref().map(|label| (label, acked));
-                close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Danger, ack, None, msgs);
+                let texts = confirm_dialog::Texts { title, body, button, details: None };
+                close = confirm_dialog::show(ui, cx, texts, Tone::Danger, ack, None, msgs);
             }
             Modal::ConfirmChoice { title, body, button, alt, .. } => {
-                close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Normal, None, Some(alt), msgs)
+                let texts = confirm_dialog::Texts { title, body, button, details: None };
+                close = confirm_dialog::show(ui, cx, texts, Tone::Normal, None, Some(alt), msgs)
             }
             Modal::NewBranch { start, name, checkout, touched } => {
                 // Not under a credential prompt or the discard question: its fields need the keyboard.

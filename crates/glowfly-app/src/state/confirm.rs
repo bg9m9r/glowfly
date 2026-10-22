@@ -31,7 +31,7 @@ impl Modal {
     /// `ConfirmDanger` whose acknowledgement (if it has one) is ticked.
     pub fn confirm_ready(&self) -> bool {
         match self {
-            Modal::Confirm { .. } | Modal::ConfirmChoice { .. } => true,
+            Modal::Confirm { .. } | Modal::ConfirmDetails { .. } | Modal::ConfirmChoice { .. } => true,
             Modal::ConfirmDanger { ack, acked, .. } => ack.is_none() || *acked,
             _ => false,
         }

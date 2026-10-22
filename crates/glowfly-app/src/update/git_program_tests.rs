@@ -110,7 +110,7 @@ fn choosing_a_git_checks_then_saves_and_redetects() {
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.git_program == st.settings.git_program)), "{fx:?}");
     assert!(fx.iter().any(|e| matches!(e, Effect::DetectLfs { .. })), "another git may bring another git-lfs: {fx:?}");
     assert!(st.git.page.checking.is_none());
-    let banner = st.git.banner().expect("a too-old banner, shown again");
+    let banner = st.git_banner().expect("a too-old banner, shown again");
     assert!(banner.contains("2.34.1"), "{banner}");
     assert!(!st.git.has(Feature::MergeTree), "gating follows at once");
     assert!(st.log.iter().any(|l| l.ok && l.text.starts_with("Glowfly now runs git 2.34.1 at ")), "logged");
@@ -119,7 +119,7 @@ fn choosing_a_git_checks_then_saves_and_redetects() {
     let info = GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 45, 0)), chosen: false };
     run(&mut st, GitEnvMsg::Switched { program: None, result: Ok(info) });
     assert_eq!(st.settings.git_program, None);
-    assert_eq!(st.git.banner(), None);
+    assert_eq!(st.git_banner(), None);
     assert!(st.git.has(Feature::MergeTree));
 }
 
@@ -193,7 +193,7 @@ fn a_missing_saved_git_offers_the_path_git() {
     let fx = saved_git_gone(&mut st);
     assert_eq!(check_path_gits(&fx), 1, "{fx:?}");
     assert!(st.git.path_offer().is_none(), "nothing to offer before the check answers");
-    assert!(st.git.banner().is_some_and(|b| b.contains("chosen in Preferences > Git")));
+    assert!(st.git_banner().is_some_and(|b| b.contains("chosen in Preferences > Git")));
     run(&mut st, GitEnvMsg::PathGitChecked(Some(found(tools_git()))));
     assert_eq!(st.git.path_offer(), Some((tools_git().as_path(), (2, 45, 1))));
 
@@ -222,7 +222,7 @@ fn a_missing_saved_git_with_no_path_git_keeps_the_explanation() {
     saved_git_gone(&mut st);
     run(&mut st, GitEnvMsg::PathGitChecked(None));
     assert!(st.git.path_offer().is_none());
-    assert!(st.git.banner().is_some_and(|b| b.contains("Choose another there")));
+    assert!(st.git_banner().is_some_and(|b| b.contains("Choose another there")));
     let broken = Candidate { check: Err("there is no file there".into()), ..found(tools_git()) };
     run(&mut st, GitEnvMsg::PathGitChecked(Some(broken)));
     assert!(st.git.path_offer().is_none(), "a PATH git that doesn't run isn't offered");
@@ -257,7 +257,7 @@ fn the_banner_button_switches_to_the_path_git() {
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.git_program.is_none())), "{fx:?}");
     assert!(fx.iter().any(|e| matches!(e, Effect::DetectLfs { .. })), "{fx:?}");
     assert!(discover_gen(&fx).is_some(), "the open page shows the PATH git in use: {fx:?}");
-    assert_eq!(st.git.banner(), None);
+    assert_eq!(st.git_banner(), None);
     assert!(st.git.path_offer().is_none() && st.git.path_git.is_none());
     assert_eq!(st.toasts.len(), toasts + 1);
     let toast = st.toasts.last().expect("a toast");
@@ -287,7 +287,7 @@ fn rescan_without_a_saved_git_only_scans() {
     // A changed answer shows the banner again after a Dismiss.
     run(&mut st, GitEnvMsg::DismissBanner);
     run(&mut st, GitEnvMsg::Detected { generation: 0, info: GitInfo { path: Some(tools_git()), version: None, chosen: false } });
-    assert!(st.git.banner().is_some());
+    assert!(st.git_banner().is_some());
 }
 
 #[test]
@@ -307,13 +307,13 @@ fn a_check_started_before_a_switch_is_dropped() {
     run(&mut st, GitEnvMsg::UsePathGit);
     let path_git = GitInfo { path: Some(tools_git()), version: Some((2, 45, 1)), chosen: false };
     run(&mut st, GitEnvMsg::Switched { program: None, result: Ok(path_git.clone()) });
-    assert_eq!(st.git.banner(), None);
+    assert_eq!(st.git_banner(), None);
 
     let stale = GitInfo { path: Some(gone()), version: None, chosen: true };
     let fx = run(&mut st, GitEnvMsg::Detected { generation, info: stale.clone() });
     assert!(fx.is_empty(), "{fx:?}");
     assert_eq!(st.git.info.as_ref(), Some(&path_git), "the PATH git stays in use");
-    assert_eq!(st.git.banner(), None);
+    assert_eq!(st.git_banner(), None);
     assert!(st.git.has(Feature::MergeTree));
 
     // A check started after the switch is applied.

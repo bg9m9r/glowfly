@@ -1,5 +1,8 @@
 //! Typed errors for everything in `glowfly-core`, so callers can react to the kind of failure
-//! (for example, prompt to sign in on `Auth`) rather than inspecting messages.
+//! (for example, prompt to sign in on `Auth`) rather than inspecting messages. A hosting
+//! service's refusal in plain words is in `advice`.
+
+pub mod advice;
 
 /// Errors returned by repository access and hosting-service calls.
 #[derive(Debug, thiserror::Error)]

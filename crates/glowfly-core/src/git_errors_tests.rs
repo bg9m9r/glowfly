@@ -136,6 +136,23 @@ fn locks_sign_in_and_merge_refused() {
 }
 
 #[test]
+fn remote_failures_come_after_sign_in() {
+    use crate::remote_failure::RemoteFailure;
+    let resolve = "fatal: unable to access 'https://git.example.com/a.git/': Could not resolve host: git.example.com";
+    assert_eq!(classify(resolve), Some(Cause::Remote(RemoteFailure::Unreachable { host: Some(s("git.example.com")) })));
+    let bare =
+        "fatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.";
+    assert_eq!(classify(bare), Some(Cause::Remote(RemoteFailure::Unreadable)));
+    let ssh = "git@example.com: Permission denied (publickey).\nfatal: Could not read from remote repository.";
+    assert_eq!(classify(ssh), Some(Cause::SignIn(AuthNeed::Ssh)), "the sign-in cause wins");
+    let host_key = "Host key verification failed.\nfatal: Could not read from remote repository.";
+    assert_eq!(classify(host_key), Some(Cause::SignIn(AuthNeed::HostKey)));
+    let changed = "@@@@\n@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @\n@@@@\nfatal: Could not read from remote repository.";
+    assert_eq!(classify(changed), Some(Cause::HostKeyChanged));
+    assert_eq!(classify("fatal: offline"), None);
+}
+
+#[test]
 fn unrecognised_echoes_and_hints() {
     assert_eq!(classify("fatal: offline"), None);
     assert_eq!(classify(""), None);

@@ -21,6 +21,8 @@ pub struct PublishForm {
     pub loading: bool,
     pub creating: bool,
     pub error: Option<String>,
+    /// The service's own words behind Details when `error` was rewritten.
+    pub error_detail: Option<String>,
     /// Whether the name was edited or Create tried, so its problem waits for them.
     pub touched: super::touched::Touched,
 }
@@ -28,5 +30,25 @@ pub struct PublishForm {
 impl PublishForm {
     pub fn account(&self) -> Option<&Account> {
         self.accounts.get(self.account)
+    }
+
+    /// Shows `sentence` (the plain-words rewrite of `raw`), with `raw` under Details; without a
+    /// sentence, `raw` as it is.
+    pub fn set_error(&mut self, sentence: Option<String>, raw: String) {
+        match sentence {
+            Some(s) => {
+                self.error = Some(s);
+                self.error_detail = Some(raw);
+            }
+            None => {
+                self.error = Some(raw);
+                self.error_detail = None;
+            }
+        }
+    }
+
+    pub fn clear_error(&mut self) {
+        self.error = None;
+        self.error_detail = None;
     }
 }

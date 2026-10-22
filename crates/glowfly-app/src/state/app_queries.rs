@@ -20,6 +20,12 @@ impl AppState {
         (self.settings.diff_mode == DiffMode::WholeFile).then_some(WHOLE_FILE_BLOCKS_LINE_OPS)
     }
 
+    /// The git banner's text: [`super::git_env::GitState::banner`] with the version hidden by
+    /// Don't show again.
+    pub fn git_banner(&self) -> Option<String> {
+        self.git.banner(self.settings.git_banner_hidden_for.as_deref())
+    }
+
     pub fn workdir(&self) -> Option<PathBuf> {
         self.snap.as_ref().map(|s| s.workdir.clone())
     }

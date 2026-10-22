@@ -25,18 +25,85 @@ fn startup_finds_git_and_an_old_one_shows_a_banner_until_dismissed() {
     let mut st = state();
     let fx = run(&mut st, GitEnvMsg::Detect);
     assert!(matches!(&fx[..], [Effect::GitEnv(GitEnvEffect::Detect { .. })]), "{fx:?}");
-    assert_eq!(st.git.banner(), None, "nothing to say before the answer");
+    assert_eq!(st.git_banner(), None, "nothing to say before the answer");
     git_version(&mut st, (2, 45, 0));
-    assert_eq!(st.git.banner(), None);
+    assert_eq!(st.git_banner(), None);
     git_version(&mut st, (2, 34, 1));
-    let banner = st.git.banner().expect("a banner");
+    let banner = st.git_banner().expect("a banner");
     assert!(banner.contains("2.34.1") && banner.contains("2.38"), "{banner}");
-    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == banner), "logged too");
+    let problem = st.git.info.as_ref().and_then(GitInfo::problem).unwrap();
+    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == problem), "logged in full");
     run(&mut st, GitEnvMsg::DismissBanner);
-    assert_eq!(st.git.banner(), None);
-    for m in [GitEnvMsg::Detect, GitEnvMsg::DismissBanner, GitEnvMsg::Detected { generation: 0, info: GitInfo::default() }] {
+    assert_eq!(st.git_banner(), None);
+    for m in [
+        GitEnvMsg::Detect,
+        GitEnvMsg::DismissBanner,
+        GitEnvMsg::HideBannerForGood,
+        GitEnvMsg::Detected { generation: 0, info: GitInfo::default() },
+    ] {
         assert!(m.on_inactive().is_none());
     }
+}
+
+#[test]
+fn remind_me_later_is_for_the_session_and_dont_show_again_saves_the_version() {
+    let mut st = state();
+    git_version(&mut st, (2, 34, 1));
+    let banner = st.git_banner().expect("a banner");
+    assert!(banner.starts_with("Git 2.34.1 is older than 2.38"), "{banner}");
+    assert!(
+        st.log.last().is_some_and(|l| l.text.starts_with("Your git is 2.34.1;") && l.text.contains("these are off:")),
+        "full text logged"
+    );
+
+    let fx = run(&mut st, GitEnvMsg::HideBannerForGood);
+    assert_eq!(st.settings.git_banner_hidden_for.as_deref(), Some("2.34.1"));
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.git_banner_hidden_for.as_deref() == Some("2.34.1"))), "{fx:?}");
+    assert_eq!(st.git_banner(), None);
+    assert!(!st.git.banner_dismissed, "hidden through the setting");
+    let log = st.log.last().expect("a log line");
+    assert!(log.ok && log.text.contains("won't show again for this version"), "{}", log.text);
+    assert!(!st.git.has(glowfly_core::git_version::Feature::MergeTree), "features stay off");
+
+    // A restart with the same settings and the same git.
+    let mut again = AppState::new(st.settings.clone(), Vec::new(), Instant::now());
+    git_version(&mut again, (2, 34, 1));
+    assert_eq!(again.git_banner(), None);
+    // Another (still too old) git shows it again.
+    git_version(&mut again, (2, 37, 7));
+    assert!(again.git_banner().is_some_and(|b| b.starts_with("Git 2.37.7 is older")));
+
+    // Remind me later only hides it until a restart.
+    run(&mut again, GitEnvMsg::DismissBanner);
+    assert!(again.git.banner_dismissed && again.git_banner().is_none());
+    assert_eq!(again.settings.git_banner_hidden_for.as_deref(), Some("2.34.1"), "unchanged");
+    let mut restarted = AppState::new(again.settings.clone(), Vec::new(), Instant::now());
+    git_version(&mut restarted, (2, 37, 7));
+    assert!(restarted.git_banner().is_some());
+}
+
+#[test]
+fn dont_show_again_never_hides_a_git_that_cant_run() {
+    let mut st = state();
+    run(&mut st, GitEnvMsg::Detected { generation: 0, info: GitInfo::default() });
+    let before = st.git_banner().expect("the can't-run banner");
+    assert!(run(&mut st, GitEnvMsg::HideBannerForGood).is_empty());
+    assert_eq!(st.settings.git_banner_hidden_for, None);
+    assert_eq!(st.git_banner(), Some(before.clone()));
+
+    let mut fine = state();
+    git_version(&mut fine, (2, 45, 0));
+    assert!(run(&mut fine, GitEnvMsg::HideBannerForGood).is_empty(), "nothing is missing");
+    assert_eq!(fine.settings.git_banner_hidden_for, None);
+
+    // A saved version never hides the banner of a git that can't run.
+    let mut hidden = AppState::new(
+        glowfly_core::settings::Settings { git_banner_hidden_for: Some("2.34.1".into()), ..Default::default() },
+        Vec::new(),
+        Instant::now(),
+    );
+    run(&mut hidden, GitEnvMsg::Detected { generation: 0, info: GitInfo::default() });
+    assert_eq!(hidden.git_banner(), Some(before));
 }
 
 #[test]
@@ -84,14 +151,21 @@ fn a_repository_owned_by_another_user_is_explained_and_can_be_trusted() {
     assert!(!st.loading);
     let log = st.log.last().expect("a log line");
     assert!(!log.ok && log.text.contains("safe.directory") && !log.text.contains("not a git repository"), "{}", log.text);
-    let Some(Modal::Confirm { body, then, .. }) = &st.modal else { panic!("expected the question") };
-    assert!(body.contains("another user") && body.contains("safe.directory"), "{body}");
+    let value = glowfly_core::safe_directory::config_value(&root, cfg!(windows));
+    let Some(Modal::ConfirmDetails { body, details, then, .. }) = &st.modal else { panic!("expected the question") };
+    assert!(body.contains("another user account") && body.contains("mark it as safe"), "{body}");
+    assert!(!body.contains("safe.directory") && !body.contains(&value), "plain words only: {body}");
+    assert!(details.contains("git config --global --add safe.directory") && details.contains(&value), "{details}");
     assert!(matches!(&**then, Msg::GitEnv(GitEnvMsg::AddSafeDirectory(p)) if *p == root));
+    let fx = update(&mut st, Msg::ConfirmAccepted, Instant::now());
+    assert!(matches!(&fx[..], [Effect::GitEnv(GitEnvEffect::AddSafeDirectory(p))] if *p == root), "{fx:?}");
+    assert!(st.modal.is_none());
 
     let fx = run(&mut st, GitEnvMsg::AddSafeDirectory(root.clone()));
     assert!(matches!(&fx[..], [Effect::GitEnv(GitEnvEffect::AddSafeDirectory(p))] if *p == root), "{fx:?}");
     let fx = run(&mut st, GitEnvMsg::SafeDirectoryAdded { root: root.clone(), result: Ok(()) });
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, .. } if *path == root)), "opens again: {fx:?}");
+    assert!(st.log.iter().any(|l| l.ok && l.text.starts_with("Marked ") && l.text.contains("safe.directory")), "logged");
     run(&mut st, GitEnvMsg::SafeDirectoryAdded { root: root.clone(), result: Err("locked".into()) });
     assert!(st.toasts.last().is_some_and(|t| !t.ok && t.text.contains("locked")));
 }

@@ -6,6 +6,7 @@ use crate::effect::{AccountEffect, Effect};
 use crate::msg::PublishMsg;
 use crate::state::publish::PublishForm;
 use crate::state::{AppState, Modal};
+use glowfly_core::error::advice::{self, Ask};
 use glowfly_core::forge::{self, Account, NewRepo, Provider};
 use glowfly_core::gitcli::args;
 use glowfly_core::paths::same_spelling;
@@ -34,9 +35,16 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
                         f.owner = owners.first().cloned().unwrap_or_default();
                     }
                     f.owners = owners;
-                    f.error = None;
+                    f.clear_error();
                 }
-                Err(e) => f.error = Some(format!("Couldn't sign in to {}: {e}", account.display())),
+                Err(e) => {
+                    let sentence = advice::service(account.provider.name(), Ask::Owners, &e);
+                    let raw = format!("Couldn't sign in to {}: {e}", account.display());
+                    match sentence {
+                        Some(s) => f.set_error(Some(s), e),
+                        None => f.set_error(None, raw),
+                    }
+                }
             }
         }
         PublishMsg::Publish => {
@@ -48,7 +56,7 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
                 return;
             }
             f.creating = true;
-            f.error = None;
+            f.clear_error();
             let repo = NewRepo { owner: f.owner.clone(), name, description: f.description.trim().to_owned(), private: f.private };
             let (workdir, branch) = (f.workdir.clone(), f.branch.clone());
             let cwd = credentials_dir(st, &workdir);
@@ -67,8 +75,11 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
             }
             Err(e) => match form(st).filter(|f| same_spelling(&f.workdir, &workdir)) {
                 Some(f) => {
+                    let (owner, name) = (f.owner.clone(), f.name.trim().to_owned());
+                    let service = f.account().map_or("GitHub", |a| a.provider.name());
+                    let sentence = advice::service(service, Ask::CreateRepo { owner: &owner, name: &name }, &e);
                     f.creating = false;
-                    f.error = Some(e);
+                    f.set_error(sentence, e);
                 }
                 None => st.log(false, format!("Creating the GitHub repository failed: {e}")),
             },
@@ -120,6 +131,7 @@ pub(super) fn open(st: &mut AppState, fx: &mut Vec<Effect>) {
         loading: false,
         creating: false,
         error: None,
+        error_detail: None,
         touched: Default::default(),
     })));
     load_owners(st, fx);
@@ -129,7 +141,7 @@ fn load_owners(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(f) = form(st) else { return };
     let Some(account) = f.account().cloned() else { return };
     f.loading = true;
-    f.error = None;
+    f.clear_error();
     let workdir = f.workdir.clone();
     let cwd = credentials_dir(st, &workdir);
     fx.push(Effect::Account(AccountEffect::Owners { account, cwd }));

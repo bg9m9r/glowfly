@@ -51,6 +51,7 @@ impl Modal {
             // Create fork mostly asks "fork it?"; its one field is filled in by the service
             // lookup after it opens.
             Modal::Confirm { .. }
+            | Modal::ConfirmDetails { .. }
             | Modal::ConfirmDanger { .. }
             | Modal::ConfirmChoice { .. }
             | Modal::Trust(_)
@@ -133,6 +134,7 @@ impl Modal {
             // loses nothing and needs no question.
             Modal::SshKeygen => return None,
             Modal::Confirm { .. }
+            | Modal::ConfirmDetails { .. }
             | Modal::ConfirmDanger { .. }
             | Modal::ConfirmChoice { .. }
             | Modal::Trust(_)

@@ -83,9 +83,20 @@ impl GitState {
         }
     }
 
-    /// The banner's text, unless it was closed or all is well.
-    pub fn banner(&self) -> Option<String> {
+    /// The version of a git that runs but lacks some features.
+    pub fn too_old(&self) -> Option<Version> {
+        let info = self.info.as_ref()?;
+        info.version.filter(|_| !info.missing().is_empty())
+    }
+
+    /// The banner's text, unless it was closed, all is well, or this too-old git's banner was
+    /// hidden for good (`hidden_for`: the version saved by Don't show again). A git that can't
+    /// run always has its banner.
+    pub fn banner(&self, hidden_for: Option<&str>) -> Option<String> {
         if self.banner_dismissed {
+            return None;
+        }
+        if self.too_old().is_some_and(|v| hidden_for == Some(git_version::show(v).as_str())) {
             return None;
         }
         self.info.as_ref().and_then(GitInfo::banner)

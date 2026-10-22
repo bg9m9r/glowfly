@@ -56,6 +56,7 @@ fn publish(owners: &[&str], owner: &str) -> Modal {
         loading: false,
         creating: false,
         error: None,
+        error_detail: None,
         touched: Default::default(),
     }))
 }

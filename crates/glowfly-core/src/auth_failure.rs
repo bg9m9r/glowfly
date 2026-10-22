@@ -67,7 +67,7 @@ pub fn credentials_rejected(output: &str) -> bool {
 }
 
 /// The text between `prefix` and the next `'` in `line`.
-fn quoted_after<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
+pub(crate) fn quoted_after<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
     let rest = &line[line.find(prefix)? + prefix.len()..];
     rest.split_once('\'').map(|(q, _)| q)
 }
@@ -86,7 +86,7 @@ pub fn url_host(url: &str) -> Option<String> {
 }
 
 /// `host` without a `:port`.
-fn bare(host: &str) -> &str {
+pub(crate) fn bare(host: &str) -> &str {
     match host.rsplit_once(':') {
         Some((h, port)) if !h.is_empty() && port.chars().all(|c| c.is_ascii_digit()) => h,
         _ => host,

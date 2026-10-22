@@ -133,7 +133,7 @@ fn causes_get_their_fix() {
         matches!(action_msg(&st, t), Msg::Job(JobMsg::Git { label, cmds }) if label == "Pull" && *cmds == vec![args(&["pull", "--ff"])])
     );
 
-    let cases: [(&str, &str, &str); 5] = [
+    let cases: [(&str, &str, &str); 8] = [
         (
             "CONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.",
             "Stopped on conflicts in 1 file.",
@@ -153,6 +153,21 @@ fn causes_get_their_fix() {
         (
             "fatal: Unable to create '/tmp/r/.git/index.lock': File exists.",
             "Another git program is using this repository (index.lock exists).",
+            "Details",
+        ),
+        (
+            "fatal: unable to access 'https://git.example.com/a.git/': Could not resolve host: git.example.com",
+            "Couldn't reach git.example.com.",
+            "Details",
+        ),
+        (
+            "remote: Repository not found.\nfatal: repository 'https://github.com/ada/x.git/' not found",
+            "The remote repository wasn't found.",
+            "Details",
+        ),
+        (
+            "fatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.",
+            "Couldn't read from the remote repository.",
             "Details",
         ),
     ];

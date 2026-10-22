@@ -75,7 +75,42 @@ fn push_without_a_remote_offers_github() {
     let workdir = form(&st).workdir.clone();
     run(&mut st, Msg::Publish(PublishMsg::Published { workdir, branch: "main".into(), result: Err("name already exists".into()) }));
     let f = form(&st);
-    assert!(!f.creating && f.error.as_deref() == Some("name already exists"));
+    assert!(!f.creating, "creating again is possible");
+    assert_eq!(f.error.as_deref(), Some("A repository called demo already exists on acme. Choose another name."));
+    assert_eq!(f.error_detail.as_deref(), Some("name already exists"), "the service's words under Details");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn service_refusals_are_explained_with_the_raw_text_under_details() {
+    let (mut st, dir, _) = pushed_without_remote("publish-advice");
+    let raw = "authentication failed: bad token";
+    run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: github(), result: Err(raw.into()) }));
+    let f = form(&st);
+    assert!(f.error.as_deref().is_some_and(|e| e.starts_with("GitHub didn't accept your sign-in.")), "{:?}", f.error);
+    assert_eq!(f.error_detail.as_deref(), Some(raw));
+
+    run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: github(), result: Ok(vec!["ada".into()]) }));
+    assert!(form(&st).error.is_none() && form(&st).error_detail.is_none());
+    form_mut(&mut st).name = "demo".into();
+    run(&mut st, Msg::Publish(PublishMsg::Publish));
+    let workdir = form(&st).workdir.clone();
+    let raw = "HTTP 422: the server said “Repository creation failed. name already exists on this account”";
+    let published = |result: Result<CreatedRepo, String>| {
+        Msg::Publish(PublishMsg::Published { workdir: workdir.clone(), branch: "main".into(), result })
+    };
+    run(&mut st, published(Err(raw.into())));
+    let f = form(&st);
+    assert_eq!(f.error.as_deref(), Some("A repository called demo already exists on ada. Choose another name."));
+    assert_eq!(f.error_detail.as_deref(), Some(raw));
+
+    // Creating again clears both.
+    run(&mut st, Msg::Publish(PublishMsg::Publish));
+    assert!(form(&st).error.is_none() && form(&st).error_detail.is_none());
+    // Text Glowfly doesn't recognise is shown as it is, with no Details.
+    run(&mut st, published(Err("unexpected response: x".into())));
+    let f = form(&st);
+    assert_eq!((f.error.as_deref(), f.error_detail.as_deref()), (Some("unexpected response: x"), None));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

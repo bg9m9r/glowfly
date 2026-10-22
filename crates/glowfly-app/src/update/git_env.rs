@@ -24,7 +24,7 @@ pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut V
             // Look again detects again: an unchanged answer isn't logged twice, and a changed
             // one shows the banner again even after a Dismiss.
             if st.git.info.as_ref() != Some(&info) {
-                if let Some(text) = info.banner() {
+                if let Some(text) = info.problem() {
                     st.log_quiet(false, text);
                 }
                 if st.git.info.is_some() {
@@ -40,6 +40,19 @@ pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut V
             }
         }
         GitEnvMsg::DismissBanner => st.git.banner_dismissed = true,
+        GitEnvMsg::HideBannerForGood => {
+            // Only a git that runs but is too old: the can't-run banner must stay findable.
+            let Some(v) = st.git.too_old() else { return };
+            st.settings.git_banner_hidden_for = Some(show(v));
+            fx.push(super::prefs::save_settings(st));
+            st.log(
+                true,
+                format!(
+                    "The banner about git {} being too old won't show again for this version. Preferences > Git lists what is off.",
+                    show(v)
+                ),
+            );
+        }
         GitEnvMsg::NotOwned { generation, kind, root } => {
             let current = generation == st.load_gen;
             super::repo::handle(st, RepoMsg::RepoLoaded { generation, kind, result: Err(not_owned_text(&root)) }, now, fx);
@@ -50,11 +63,11 @@ pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut V
         GitEnvMsg::AddSafeDirectory(root) => fx.push(Effect::GitEnv(GitEnvEffect::AddSafeDirectory(root))),
         GitEnvMsg::SafeDirectoryAdded { root, result: Ok(()) } => {
             let value = glowfly_core::safe_directory::config_value(&root, cfg!(windows));
-            st.log(true, format!("Added {value} to safe.directory in your global git config"));
+            st.log(true, format!("Marked {} as safe in your global git config (safe.directory {value})", shown(&root)));
             super::repo::handle(st, RepoMsg::Open(root), now, fx);
         }
         GitEnvMsg::SafeDirectoryAdded { root, result: Err(e) } => {
-            let text = format!("Could not add {} to safe.directory: {e}", glowfly_core::native_path::shown(&root));
+            let text = format!("Couldn't mark {} as safe in your git settings: {e}", shown(&root));
             st.toast(false, text.clone(), now);
             st.log(false, text);
         }
@@ -156,7 +169,7 @@ fn switched(st: &mut AppState, program: Option<PathBuf>, info: GitInfo, from_ban
     // A picked path was refused unless it is valid Unicode, so nothing is lost here.
     st.settings.git_program = program.map(|p| p.to_string_lossy().into_owned());
     fx.push(super::prefs::save_settings(st));
-    if let Some(text) = info.banner() {
+    if let Some(text) = info.problem() {
         st.log_quiet(false, text);
     }
     let what = match (info.version, info.path.as_deref()) {
@@ -199,18 +212,20 @@ fn refused_text(st: &mut AppState, shown: String, why: String, now: Instant) {
     st.git.page.refusal = Some((shown, why));
 }
 
-/// The question for a repository git refuses because another user owns it.
+/// The question for a repository git refuses because another user owns it, in plain words; the
+/// command Glowfly runs is under Details.
 pub(super) fn owner_prompt(root: &Path) -> Modal {
-    let shown = glowfly_core::native_path::shown(root);
+    let shown = shown(root);
     let value = glowfly_core::safe_directory::config_value(root, cfg!(windows));
-    Modal::Confirm {
+    Modal::ConfirmDetails {
         title: "Repository owned by another user".into(),
         body: format!(
             "Git won't open {shown} because the folder belongs to another user account. This is usual for folders on a \
-             network share or in WSL, on a FAT or exFAT drive, or copied from another computer. Git refuses them because a \
-             repository's own settings can make git run programs.\n\nIf you trust this folder, Glowfly can list it in \
-             safe.directory in your global git config (as {value}) and open it."
+             network share or in WSL, on a FAT or exFAT drive, or copied from another computer.\n\nGit asks first because \
+             a repository's own settings can make it run programs. If you trust this folder, Glowfly will mark it as safe \
+             in your git settings and open it."
         ),
+        details: format!("Glowfly runs:\ngit config --global --add safe.directory {value}"),
         button: "Trust and open".into(),
         then: Box::new(Msg::GitEnv(GitEnvMsg::AddSafeDirectory(root.to_path_buf()))),
     }

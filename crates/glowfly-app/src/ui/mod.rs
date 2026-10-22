@@ -385,6 +385,8 @@ mod snapshot_tests_profile_rules;
 #[cfg(test)]
 mod snapshot_tests_profiles;
 #[cfg(test)]
+mod snapshot_tests_publish;
+#[cfg(test)]
 mod snapshot_tests_pull_request;
 #[cfg(test)]
 mod snapshot_tests_pull_request_markdown;

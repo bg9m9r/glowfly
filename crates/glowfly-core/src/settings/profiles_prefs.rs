@@ -136,6 +136,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "keybindings",
     // The git program belongs to the machine, not to whoever is committing.
     "git_program",
+    // Follows the machine's git program.
+    "git_banner_hidden_for",
     // Whether this install has shown the first-run welcome.
     "welcome_done",
     // The machine's update check and the release notes seen.

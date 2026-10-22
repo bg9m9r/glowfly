@@ -17,12 +17,14 @@
 //! colours `button_look.rs`, and the split button (an action and its menu caret as one pill)
 //! `button_split.rs`. The always-visible thin scroll bar and the edge fades of dialog bodies,
 //! Preferences and the File view are `scroll_cue.rs`. Right-click menus that open below the row
-//! they belong to are `row_menu.rs`.
+//! they belong to are `row_menu.rs`, and the collapsed Details disclosure under a plain-words
+//! message `details.rs`.
 
 pub mod banner;
 mod button_look;
 pub mod button_split;
 pub mod buttons;
+pub mod details;
 pub mod field_group;
 pub mod form_message;
 pub mod ghost;

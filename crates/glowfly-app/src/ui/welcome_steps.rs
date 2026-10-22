@@ -18,7 +18,6 @@ use glowfly_core::forge::Connection;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 
-const DOWNLOAD_GIT: &str = "https://git-scm.com/downloads";
 /// The identity fields' width (less when the content is narrower).
 const FIELD_W: f32 = 360.0;
 
@@ -125,7 +124,7 @@ pub fn git(ui: &mut egui::Ui, t: Lang, git: &GitState, msgs: &mut Vec<Msg>) {
         });
         return;
     };
-    match info.banner() {
+    match info.problem() {
         None => {
             let version = info.version.map(glowfly_core::git_version::show).unwrap_or_default();
             ui.label(
@@ -141,7 +140,7 @@ pub fn git(ui: &mut egui::Ui, t: Lang, git: &GitState, msgs: &mut Vec<Msg>) {
             form_message::form(ui, Message::warning(problem));
             ui.add_space(6.0);
             if ui.link(t.tr("welcome.git.download.button")).clicked() {
-                msgs.push(Msg::OpenUrl(DOWNLOAD_GIT.into()));
+                msgs.push(Msg::OpenUrl(glowfly_core::git_version::download_url().into()));
             }
         }
     }

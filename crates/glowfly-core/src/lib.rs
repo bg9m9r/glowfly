@@ -66,6 +66,7 @@ pub mod profile_includes;
 mod quoted;
 pub mod range_diff;
 pub mod rebase;
+pub mod remote_failure;
 pub mod remote_ops;
 pub mod repo;
 pub mod repo_identity;
