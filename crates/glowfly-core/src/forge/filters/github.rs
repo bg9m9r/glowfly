@@ -1,4 +1,5 @@
-//! Issue searches, the signed-in user and picker options on GitHub and GitHub Enterprise Server.
+//! Issue searches, the signed-in user, their teams and picker options on GitHub and GitHub
+//! Enterprise Server.
 
 use super::super::github::{self as gh, ApiIssue, Label, repo_api, to_issue};
 use super::super::{Auth, Issue, Target, enc, page};
@@ -35,7 +36,42 @@ pub(crate) fn issue_params(c: &Conditions, login: &str) -> String {
 pub(crate) fn me(t: &Target, auth: &Auth) -> Result<Me> {
     let u = gh::me(&t.host, t.provider, auth)?;
     let name = u.name.filter(|n| !n.is_empty()).unwrap_or_else(|| u.login.clone());
-    Ok(Me { id: u.login, name })
+    Ok(Me { id: u.login, name, ..Me::default() })
+}
+
+/// A team's identity in team review requests and `Me::teams`: "org/slug".
+pub(crate) fn team_key(org: &str, slug: &str) -> String {
+    format!("{org}/{slug}")
+}
+
+/// A team named in a pull request's `requested_teams`, or a team's parent.
+#[derive(Deserialize)]
+pub(crate) struct TeamRef {
+    pub(crate) slug: String,
+}
+
+/// The teams the signed-in user belongs to, and each one's direct parent (a request to a parent
+/// team reaches its child teams' members), as "org/slug". Needs a token that can read org
+/// membership; otherwise the call fails and the caller treats that as no teams.
+pub(crate) fn my_teams(t: &Target, auth: &Auth) -> Result<Vec<String>> {
+    #[derive(Deserialize)]
+    struct ApiTeam {
+        slug: String,
+        organization: gh::Login,
+        #[serde(default)]
+        parent: Option<TeamRef>,
+    }
+    let teams: Vec<ApiTeam> = page::by_link(auth, format!("{}/user/teams?per_page=100", gh::api(&t.host, t.provider)))?;
+    let mut out: Vec<String> = Vec::new();
+    for team in teams {
+        let org = &team.organization.login;
+        for key in std::iter::once(team_key(org, &team.slug)).chain(team.parent.map(|p| team_key(org, &p.slug))) {
+            if !out.iter().any(|k| k.eq_ignore_ascii_case(&key)) {
+                out.push(key);
+            }
+        }
+    }
+    Ok(out)
 }
 
 pub(crate) fn find_issues(t: &Target, auth: &Auth, c: &Conditions, known: Option<&Me>) -> Result<Vec<Issue>> {

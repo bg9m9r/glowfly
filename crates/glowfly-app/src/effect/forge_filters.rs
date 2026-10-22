@@ -9,8 +9,8 @@ pub enum FilterCall {
     /// The signed-in user, for conditions on "me"; `epoch` is the code host's account epoch.
     Me { epoch: u32 },
     /// Open issues matching `conditions` (the filter `choice`); `me` saves looking the user up.
-    /// `epoch` is the tracker's account epoch.
-    Issues { choice: FilterChoice, conditions: Conditions, me: Option<Me>, epoch: u32 },
+    /// `epoch` is the tracker's account epoch. `me` is boxed to keep the call small.
+    Issues { choice: FilterChoice, conditions: Conditions, me: Option<Box<Me>>, epoch: u32 },
     /// Labels, milestones and sprints for the filter dialog.
     Options(FilterKind),
 }

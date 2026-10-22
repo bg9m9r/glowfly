@@ -1,4 +1,4 @@
-//! Work item searches (WIQL), the signed-in user and tags on Azure DevOps.
+//! Work item searches (WIQL), the signed-in user, their groups and tags on Azure DevOps.
 
 use super::super::azure::{List, Name, project_base, wiql};
 use super::super::{Auth, Issue, Target, enc, get};
@@ -52,7 +52,65 @@ pub(crate) fn me(t: &Target, auth: &Auth) -> Result<Me> {
     }
     let url = format!("https://dev.azure.com/{}/_apis/connectionData?api-version=7.1-preview", enc(&t.owner));
     let user = get::<ConnectionData>(auth, &url)?.authenticated_user;
-    Ok(Me { id: user.id, name: user.provider_display_name })
+    Ok(Me { id: user.id, name: user.provider_display_name, ..Me::default() })
+}
+
+/// Descriptors asked about per identities call (keeps URLs around 3 KB).
+const GROUPS_PER_CALL: usize = 25;
+/// Group and team memberships read at most.
+const MAX_GROUPS: usize = 200;
+
+fn identities_url(t: &Target) -> String {
+    format!("https://vssps.dev.azure.com/{}/_apis/identities", enc(&t.owner))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Ident {
+    #[serde(default)]
+    id: String,
+    #[serde(default)]
+    member_of: Vec<serde_json::Value>,
+}
+
+/// A membership descriptor: usually "type;identifier" as a string, sometimes split in an object.
+fn descriptor(v: serde_json::Value) -> Option<String> {
+    match v {
+        serde_json::Value::String(s) if !s.is_empty() => Some(s),
+        serde_json::Value::Object(o) => match (o.get("identityType")?.as_str()?, o.get("identifier")?.as_str()?) {
+            (kind, id) if !kind.is_empty() && !id.is_empty() => Some(format!("{kind};{id}")),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// The identity ids of the groups and teams the identity `me_id` belongs to, directly or
+/// through other groups: the ids container reviewers carry. Needs the Identity (Read) scope;
+/// the first failed call is returned and the caller treats it as no groups.
+pub(crate) fn my_groups(t: &Target, auth: &Auth, me_id: &str) -> Result<Vec<String>> {
+    if me_id.is_empty() {
+        return Ok(Vec::new());
+    }
+    let url = format!("{}?identityIds={}&queryMembership=expanded&api-version=7.1", identities_url(t), enc(me_id));
+    let mut descriptors: Vec<String> = Vec::new();
+    for d in get::<List<Option<Ident>>>(auth, &url)?.value.into_iter().flatten().flat_map(|i| i.member_of).filter_map(descriptor) {
+        if !descriptors.contains(&d) {
+            descriptors.push(d);
+        }
+    }
+    descriptors.truncate(MAX_GROUPS);
+    let mut ids: Vec<String> = Vec::new();
+    for chunk in descriptors.chunks(GROUPS_PER_CALL) {
+        let list: Vec<String> = chunk.iter().map(|d| enc(d)).collect();
+        let url = format!("{}?descriptors={}&queryMembership=none&api-version=7.1", identities_url(t), list.join(","));
+        for id in get::<List<Option<Ident>>>(auth, &url)?.value.into_iter().flatten().map(|i| i.id) {
+            if !id.is_empty() && !ids.contains(&id) {
+                ids.push(id);
+            }
+        }
+    }
+    Ok(ids)
 }
 
 /// The project's work item tags; pull request labels are only those seen on loaded ones.

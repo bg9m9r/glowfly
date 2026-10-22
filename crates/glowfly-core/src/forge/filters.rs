@@ -183,6 +183,9 @@ pub struct PrFacets {
     pub reviewer_ids: Vec<String>,
     /// Reviewers asked for who haven't voted yet (or were asked again).
     pub awaiting_ids: Vec<String>,
+    /// Teams or groups asked for a review that haven't given one yet, by the ids `Me::teams`
+    /// carry. Never listed in `reviewer_ids` or `awaiting_ids`.
+    pub awaiting_team_ids: Vec<String>,
     pub labels: Vec<String>,
     /// The milestone's title.
     pub milestone: Option<String>,
@@ -197,10 +200,14 @@ pub struct IssueFacets {
 
 /// The signed-in user: `id` is what pull requests carry in their facets (a login, a username,
 /// an account uuid or an identity id).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Me {
     pub id: String,
     pub name: String,
+    /// The teams or groups the user belongs to, by the ids `PrFacets::awaiting_team_ids` carry
+    /// (GitHub "org/slug", Azure DevOps group identity ids). Empty where the service has none
+    /// or they couldn't be read.
+    pub teams: Vec<String>,
 }
 
 /// A milestone, fix version or sprint offered in a picker.
@@ -231,9 +238,21 @@ pub(crate) fn esc_quoted(s: &str, quote: char) -> String {
     out
 }
 
-/// The signed-in user on `t`'s service.
+/// The signed-in user on `t`'s service, with the teams or groups they belong to.
 pub fn me(t: &Target, auth: &Auth) -> Result<Me> {
-    service(t.provider).me(t, auth)
+    let mut m = service(t.provider).me(t, auth)?;
+    // A token that can't read teams (a missing scope answers 401/403 or a sign-in page) must
+    // neither fail the lookup nor sign the account out: personal review requests still work.
+    if !m.id.is_empty() {
+        m.teams = my_teams(t, auth, &m).unwrap_or_default();
+    }
+    Ok(m)
+}
+
+/// The teams or groups `me` belongs to on `t`'s service, by the ids pull requests'
+/// `awaiting_team_ids` carry; empty where the service has no team review requests.
+pub fn my_teams(t: &Target, auth: &Auth, me: &Me) -> Result<Vec<String>> {
+    service(t.provider).my_teams(t, auth, me)
 }
 
 /// Open issues on `t`'s tracker matching `c`. `me`, when known, saves looking the user up.

@@ -29,13 +29,13 @@ pub(crate) fn cloud_q(c: &Conditions, uuid: &str) -> String {
 
 pub(crate) fn me(auth: &Auth) -> Result<Me> {
     let u: CloudUser = get(auth, &format!("{CLOUD}/user"))?;
-    Ok(Me { id: u.uuid, name: u.display_name })
+    Ok(Me { id: u.uuid, name: u.display_name, ..Me::default() })
 }
 
 /// Data Center has no "current user" resource; whoami gives the username pull requests carry.
 pub(crate) fn dc_me(t: &Target, auth: &Auth) -> Result<Me> {
     let name = BitbucketDc.verify(&t.account(), auth)?;
-    Ok(Me { id: name.clone(), name })
+    Ok(Me { id: name.clone(), name, ..Me::default() })
 }
 
 /// Repositories with the issue tracker turned off answer 404: no issues.

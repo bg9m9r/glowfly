@@ -138,7 +138,8 @@ pub fn fetch_target(t: &Target, auth: &Auth, prs: bool, issues: bool) -> Fetched
     Fetched { prs: prs.then(|| super::pull_requests(t, auth)), issues: issues.then(|| super::my_issues(t, auth)) }
 }
 
-/// The pull requests `me` opened, and those waiting for `me`'s review, in order.
+/// The pull requests `me` opened, and those waiting for the review of `me` or a team `me`
+/// belongs to, in order.
 pub fn mine_and_review<'a>(prs: &'a [PullRequest], me: &Me) -> (Vec<&'a PullRequest>, Vec<&'a PullRequest>) {
     let pick = |b: Builtin| matching::matching_prs(prs, &b.conditions(), Some(me)).unwrap_or_default();
     (pick(Builtin::MyPrs), pick(Builtin::NeedsMyReview))

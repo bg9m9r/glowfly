@@ -107,6 +107,7 @@ fn convert(m: ApiMr, approved: Approved, checks: Option<Checks>) -> PullRequest 
         reviewer_ids,
         labels: m.labels,
         milestone: m.milestone.map(|t| t.title),
+        awaiting_team_ids: Vec::new(),
     };
     let reviewers = m.reviewers.into_iter().map(|r| Reviewer { name: r.name, state: "no vote".into(), required: false }).collect();
     let mut pr = PullRequest {

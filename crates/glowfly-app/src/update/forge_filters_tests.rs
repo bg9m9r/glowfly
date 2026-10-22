@@ -66,7 +66,7 @@ fn fs(st: &AppState) -> &ForgeState {
     st.forge.as_ref().unwrap()
 }
 
-fn pr(id: u64, author: &str) -> PullRequest {
+pub(super) fn pr(id: u64, author: &str) -> PullRequest {
     PullRequest {
         id,
         title: format!("P{id}"),
@@ -97,7 +97,7 @@ fn issue(key: &str) -> Issue {
 }
 
 fn ada() -> Me {
-    Me { id: "ada".into(), name: "Ada".into() }
+    Me { id: "ada".into(), name: "Ada".into(), ..Default::default() }
 }
 
 fn error(auth: bool) -> ForgeError {
@@ -131,6 +131,29 @@ fn choosing_mine_saves_it_and_asks_who_i_am_once() {
     let view = pr_view(fs(&st), &filters);
     assert_eq!(view.rows.iter().map(|p| p.id).collect::<Vec<_>>(), [1, 3]);
     assert_eq!(view.hint, Some(Hint::Faint("Mine · 2 of 3".into())));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn team_review_requests_count_as_needs_my_review() {
+    let (mut st, dir) = open("ff-teams");
+    let fx = send(&mut st, choose(FilterKind::Prs, Builtin::NeedsMyReview));
+    assert!(matches!(filter_calls(&fx)[..], [(t, FilterCall::Me { .. })] if *t == host(&st)));
+    let with = |id, f: PrFacets| PullRequest { facets: PrFacets { author_id: "grace".into(), ..f }, ..pr(id, "grace") };
+    st.forge.as_mut().unwrap().prs = vec![
+        with(1, PrFacets { awaiting_team_ids: vec!["o/core".into()], ..Default::default() }),
+        with(2, PrFacets { awaiting_team_ids: vec!["o/docs".into()], ..Default::default() }),
+        with(3, PrFacets { awaiting_ids: vec!["ada".into()], ..Default::default() }),
+    ];
+    let h = host(&st);
+    reply(&mut st, h, FilterResult::Me { epoch: 0, result: Ok(Me { teams: vec!["O/Core".into()], ..ada() }) });
+    let filters = st.settings.forge_filters_for(&st.snap.as_ref().unwrap().real_workdir);
+    let view = pr_view(fs(&st), &filters);
+    assert_eq!(view.rows.iter().map(|p| p.id).collect::<Vec<_>>(), [1, 3]);
+    assert_eq!(view.hint, Some(Hint::Faint("Needs my review · 2 of 3".into())));
+    // Signing in again forgets the teams with the user.
+    st.forge.as_mut().unwrap().filters.account_changed(true, false);
+    assert_eq!(fs(&st).filters.me, MeState::Unknown);
     let _ = std::fs::remove_dir_all(dir);
 }
 

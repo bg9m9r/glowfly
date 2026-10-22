@@ -237,6 +237,12 @@ pub trait Forge: Sync {
         Err(Error::Unsupported("finding your account isn't supported on this service".into()))
     }
 
+    /// The teams or groups `me` belongs to, by the ids pull requests' `awaiting_team_ids`
+    /// carry; empty where the service has no team review requests.
+    fn my_teams(&self, _t: &Target, _auth: &Auth, _me: &Me) -> Result<Vec<String>> {
+        Ok(Vec::new())
+    }
+
     /// Open issues matching `c` (conditions the service can't apply are refused earlier).
     fn find_issues(&self, _t: &Target, _auth: &Auth, _c: &Conditions, _me: Option<&Me>) -> Result<Vec<Issue>> {
         Err(Error::Unsupported("searching issues isn't supported on this service".into()))

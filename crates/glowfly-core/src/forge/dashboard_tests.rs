@@ -152,10 +152,56 @@ fn mine_and_review_split_by_author_and_awaited_reviewer() {
         pr(3, "linus", &[], &["ada"]),
         pr(4, "ada", &["grace"], &["grace"]),
     ];
-    let me = Me { id: "ada".into(), name: "Ada L".into() };
+    let me = Me { id: "ada".into(), name: "Ada L".into(), ..Default::default() };
     let (mine, review) = mine_and_review(&prs, &me);
     assert_eq!(mine.iter().map(|p| p.id).collect::<Vec<_>>(), [1, 4]);
     assert_eq!(review.iter().map(|p| p.id).collect::<Vec<_>>(), [2], "#3 was reviewed already");
+}
+
+#[test]
+fn review_counts_team_requests() {
+    let team = |id, author| {
+        let mut p = pr(id, author, &[], &[]);
+        p.facets.awaiting_team_ids = vec!["acme/core".into()];
+        p
+    };
+    let prs = vec![team(1, "grace"), team(2, "ada")];
+    let me = Me { id: "ada".into(), name: "Ada L".into(), teams: vec!["acme/core".into()] };
+    let (mine, review) = mine_and_review(&prs, &me);
+    assert_eq!(mine.iter().map(|p| p.id).collect::<Vec<_>>(), [2]);
+    assert_eq!(review.iter().map(|p| p.id).collect::<Vec<_>>(), [1], "not the author's own pull request");
+}
+
+#[test]
+fn dashboard_review_uses_the_teams_read_with_the_user() {
+    const PULLS: &str = r#"[
+        {"number":1,"title":"T","html_url":"u","user":{"login":"grace"},"head":{"ref":"a","sha":""},
+         "base":{"ref":"main","sha":"","user":{"login":"acme"}},"requested_teams":[{"slug":"core"}]},
+        {"number":2,"title":"T","html_url":"u","user":{"login":"grace"},"head":{"ref":"b","sha":""},
+         "base":{"ref":"main","sha":"","user":{"login":"acme"}},"requested_reviewers":[{"login":"ada"}]},
+        {"number":3,"title":"T","html_url":"u","user":{"login":"grace"},"head":{"ref":"c","sha":""},
+         "base":{"ref":"main","sha":"","user":{"login":"acme"}},"requested_teams":[{"slug":"docs"}]}]"#;
+    let (t, auth) = (gh("acme", "widgets"), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    for teams_readable in [true, false] {
+        let _m = Mock::start(move |r| match r.route().as_str() {
+            "GET api.github.com/user" => Reply::json(r#"{"login":"ada","name":"Ada"}"#),
+            "GET api.github.com/user/teams?per_page=100" if teams_readable => {
+                Reply::json(r#"[{"slug":"core","organization":{"login":"acme"}}]"#)
+            }
+            "GET api.github.com/user/teams?per_page=100" => Reply::status(403, r#"{"message":"Must have admin rights"}"#),
+            "GET api.github.com/repos/acme/widgets/pulls?state=open&per_page=100" => Reply::json(PULLS),
+            _ => Reply::not_found(),
+        });
+        let me = crate::forge::filters::me(&t, &auth).unwrap();
+        let prs = fetch_target(&t, &auth, true, false).prs.unwrap().unwrap();
+        let (_, review) = mine_and_review(&prs, &me);
+        let ids: Vec<u64> = review.iter().map(|p| p.id).collect();
+        if teams_readable {
+            assert_eq!((me.teams.as_slice(), ids.as_slice()), (&["acme/core".to_owned()][..], &[1, 2][..]));
+        } else {
+            assert_eq!((me.teams.len(), ids.as_slice()), (0, &[2][..]), "personal requests only");
+        }
+    }
 }
 
 #[test]

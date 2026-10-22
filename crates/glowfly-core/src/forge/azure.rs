@@ -21,7 +21,7 @@ use std::collections::HashMap;
 pub(super) static AZURE_DEVOPS: ProviderInfo = ProviderInfo {
     name: "Azure DevOps",
     host_hint: "e.g., dev.azure.com/mycompany",
-    token_help: "Needs the Code (Read & write) and Work Items (Read & write, to create work items) scopes, Project and Team (Read)                  for assignees, and Build (Read) for build status on branches.",
+    token_help: "Needs the Code (Read & write) and Work Items (Read & write, to create work items) scopes, Project and Team (Read) for assignees, Identity (Read) to count review requests to your groups, and Build (Read) for build status on branches.",
     env_var: Some("AZURE_DEVOPS_EXT_PAT"),
     pr_prefix: "!",
     ref_style: RefStyle::AzureBoards,
@@ -85,6 +85,8 @@ struct ApiReviewer {
     vote: i32,
     #[serde(default)]
     is_required: bool,
+    #[serde(default)]
+    has_declined: bool,
 }
 
 #[derive(Deserialize)]
@@ -154,7 +156,14 @@ fn convert(t: &Target, p: ApiPr, checks: Option<Checks>) -> PullRequest {
     let facets = PrFacets {
         author_id: p.created_by.id.clone(),
         reviewer_ids: people().map(|r| r.id.clone()).collect(),
-        awaiting_ids: people().filter(|r| r.vote == 0).map(|r| r.id.clone()).collect(),
+        awaiting_ids: people().filter(|r| r.vote == 0 && !r.has_declined).map(|r| r.id.clone()).collect(),
+        // A group's vote changes when a member votes for it, so 0 means it is still pending.
+        awaiting_team_ids: p
+            .reviewers
+            .iter()
+            .filter(|r| r.is_container && r.vote == 0 && !r.has_declined && !r.id.is_empty())
+            .map(|r| r.id.clone())
+            .collect(),
         labels: p.labels.iter().map(|l| l.name.clone()).collect(),
         ..PrFacets::default()
     };
@@ -297,6 +306,10 @@ impl super::Forge for AzureDevOps {
         super::filters::azure::me(t, auth)
     }
 
+    fn my_teams(&self, t: &Target, auth: &Auth, me: &Me) -> Result<Vec<String>> {
+        super::filters::azure::my_groups(t, auth, &me.id)
+    }
+
     fn find_issues(&self, t: &Target, auth: &Auth, c: &Conditions, _me: Option<&Me>) -> Result<Vec<Issue>> {
         super::filters::azure::find_issues(t, auth, c)
     }
@@ -346,13 +359,17 @@ mod tests {
         // Filter facets: identity ids (not groups) and labels.
         let p: ApiPr = serde_json::from_str(
             r#"{"pullRequestId":1,"title":"T","sourceRefName":"refs/heads/x","targetRefName":"refs/heads/main","createdBy":{"id":"a-1"},
-            "reviewers":[{"id":"g-1","vote":0},{"id":"l-1","vote":10},{"id":"team","vote":0,"isContainer":true}],"labels":[{"name":"ux"}]}"#,
+            "reviewers":[{"id":"g-1","vote":0},{"id":"l-1","vote":10},{"id":"team","vote":0,"isContainer":true},
+            {"id":"grp","vote":0,"isContainer":true},{"id":"done","vote":10,"isContainer":true},
+            {"id":"no","vote":0,"isContainer":true,"hasDeclined":true},{"id":"d-1","vote":0,"hasDeclined":true}],"labels":[{"name":"ux"}]}"#,
         )
         .unwrap();
         let f = convert(&t, p, None).facets;
         assert_eq!(
-            (f.author_id.as_str(), f.awaiting_ids, f.reviewer_ids.len(), f.labels),
-            ("a-1", vec!["g-1".to_owned()], 2, vec!["ux".to_owned()])
+            (f.author_id.as_str(), f.awaiting_ids, f.reviewer_ids, f.labels),
+            ("a-1", vec!["g-1".to_owned()], vec!["g-1".to_owned(), "l-1".into(), "d-1".into()], vec!["ux".to_owned()]),
+            "people only; a declined reviewer isn't awaited"
         );
+        assert_eq!(f.awaiting_team_ids, ["team", "grp"], "pending groups that haven't declined");
     }
 }

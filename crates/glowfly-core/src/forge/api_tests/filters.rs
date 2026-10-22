@@ -27,7 +27,7 @@ fn github_searches_issues_as_the_signed_in_user() {
         "GET api.github.com/repos/o/r/issues?state=open&per_page=100&sort=updated&creator=ada" => Reply::json("[]"),
         _ => Reply::not_found(),
     });
-    let me = Me { id: "ada".into(), name: "Ada".into() };
+    let me = Me { id: "ada".into(), name: "Ada".into(), ..Default::default() };
     assert!(filters::find_issues(&t, &auth, &created_by_me(), Some(&me)).unwrap().is_empty());
     assert_eq!(routes(&m), ["GET api.github.com/repos/o/r/issues?state=open&per_page=100&sort=updated&creator=ada"]);
 }

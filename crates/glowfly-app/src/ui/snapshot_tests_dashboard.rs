@@ -82,7 +82,7 @@ fn issue(key: &str, title: &str, state: &str) -> Issue {
 }
 
 fn ok(a: Account) -> AccountRow {
-    AccountRow { me: Some(Me { id: "ada".into(), name: "Ada".into() }), ..AccountRow::new(a, AccountState::Ok) }
+    AccountRow { me: Some(Me { id: "ada".into(), name: "Ada".into(), ..Default::default() }), ..AccountRow::new(a, AccountState::Ok) }
 }
 
 /// GitHub with two repositories (one cloned twice), GitLab with one, a GitHub Enterprise server

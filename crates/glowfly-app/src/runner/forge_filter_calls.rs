@@ -20,7 +20,7 @@ pub(super) fn call(t: &Target, auth: &Auth, c: FilterCall) -> FilterResult {
                 Some(Ok(m)) => Some(m),
                 None => None,
             };
-            let result = find_issues(t, auth, &conditions, known.as_ref().or(looked_up.as_ref())).map_err(ForgeError::from);
+            let result = find_issues(t, auth, &conditions, known.as_deref().or(looked_up.as_ref())).map_err(ForgeError::from);
             FilterResult::Issues { choice, conditions, epoch, me: looked_up, result }
         }
         FilterCall::Options(kind) => FilterResult::Options(kind, filter_options(t, auth, kind).map_err(ForgeError::from)),

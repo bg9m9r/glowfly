@@ -19,7 +19,7 @@ pub(super) fn path(name: &str) -> PathBuf {
     glowfly_core::paths::temp_dir().join("glowfly-dashboard-tests").join(name)
 }
 
-fn run(st: &mut AppState, m: DashboardMsg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, m: DashboardMsg) -> Vec<Effect> {
     update(st, Msg::Dashboard(m), Instant::now())
 }
 
@@ -30,7 +30,7 @@ fn scan_of(fx: &[Effect]) -> Option<(u64, Vec<PathBuf>)> {
     })
 }
 
-fn fetch_of(fx: Vec<Effect>) -> Option<Box<FetchJob>> {
+pub(super) fn fetch_of(fx: Vec<Effect>) -> Option<Box<FetchJob>> {
     fx.into_iter().find_map(|e| match e {
         Effect::Dashboard(DashboardEffect::Fetch(j)) => Some(j),
         _ => None,
@@ -42,7 +42,7 @@ pub(super) fn gh(owner: &str, repo: &str) -> Target {
 }
 
 /// What reading the folder `name` with these remotes would find.
-fn scanned(name: &str, remotes: &[(&str, &str)], conns: &[Connection]) -> (PathBuf, Result<ScannedRepo, String>) {
+pub(super) fn scanned(name: &str, remotes: &[(&str, &str)], conns: &[Connection]) -> (PathBuf, Result<ScannedRepo, String>) {
     let p = path(name);
     let urls: Vec<(String, String)> = remotes.iter().map(|(n, u)| (n.to_string(), u.to_string())).collect();
     let remotes = recognized(&urls, conns);
@@ -51,7 +51,7 @@ fn scanned(name: &str, remotes: &[(&str, &str)], conns: &[Connection]) -> (PathB
     (p, Ok(s))
 }
 
-fn deliver(st: &mut AppState, repos: Vec<(PathBuf, Result<ScannedRepo, String>)>) -> Vec<Effect> {
+pub(super) fn deliver(st: &mut AppState, repos: Vec<(PathBuf, Result<ScannedRepo, String>)>) -> Vec<Effect> {
     let generation = st.dashboard.generation;
     run(st, DashboardMsg::Scanned { generation, repos })
 }
@@ -204,11 +204,11 @@ fn issue(key: &str, title: &str) -> Issue {
     Issue { key: key.into(), title: title.into(), state: "open".into(), kind: "Issue".into(), assignee: None, url: String::new(), facets }
 }
 
-fn token(p: Provider) -> Auth {
+pub(super) fn token(p: Provider) -> Auth {
     Auth::from_token(p, None, "t", "test")
 }
 
-fn reply(generation: u64, partial: bool, accounts: Vec<AccountReply>) -> DashboardMsg {
+pub(super) fn reply(generation: u64, partial: bool, accounts: Vec<AccountReply>) -> DashboardMsg {
     DashboardMsg::Fetched(Box::new(FetchReply { generation, partial, fetched_at: 1_000, accounts }))
 }
 
@@ -233,7 +233,7 @@ fn filled(st: &mut AppState) {
     let github = AccountReply {
         account: gh("acme", "widgets").account(),
         auth: Ok(token(Provider::GitHub)),
-        me: Some(Ok(Me { id: "ada".into(), name: "Ada".into() })),
+        me: Some(Ok(Me { id: "ada".into(), name: "Ada".into(), ..Default::default() })),
         targets: vec![
             t(gh("acme", "widgets"), Ok(widgets), Ok(vec![issue("7", "Crash on start")])),
             t(gh("acme", "api"), Err(ForgeError { message: "HTTP 502: bad gateway".into(), auth: false }), Ok(vec![issue("9", "Slow")])),
@@ -292,7 +292,7 @@ fn sign_in_asks_one_account_and_replaces_only_its_targets() {
     assert_eq!((job.accounts.len(), job.accounts[0].targets[0].target.host.as_str()), (1, "gitlab.com"));
     assert_eq!(st.dashboard.account(&gitlab()).unwrap().state, AccountState::Pending);
     let app = job.accounts[0].targets[0].target.clone();
-    let me = Some(Ok(Me { id: "ada".into(), name: "Ada".into() }));
+    let me = Some(Ok(Me { id: "ada".into(), name: "Ada".into(), ..Default::default() }));
     let targets = vec![TargetReply { target: app, prs: Some(Ok(vec![pr(5, "Add cache", "ada", &[])])), issues: Some(Ok(Vec::new())) }];
     let gl = AccountReply { account: gitlab(), auth: Ok(token(Provider::GitLab)), me, targets };
     run(&mut st, DashboardMsg::Fetched(Box::new(FetchReply { generation: 1, partial: true, fetched_at: 5_000, accounts: vec![gl] })));
@@ -314,7 +314,7 @@ fn connecting_or_disconnecting_drops_the_credential_and_refreshes_while_open() {
     let cached = |st: &mut AppState| {
         st.dashboard.auth.insert(account.key(), token(Provider::GitHub));
         st.dashboard.fetched = Some(Instant::now());
-        let me = Some(Me { id: "ada".into(), name: "Ada".into() });
+        let me = Some(Me { id: "ada".into(), name: "Ada".into(), ..Default::default() });
         st.dashboard.accounts = vec![AccountRow { me, ..AccountRow::new(account.clone(), AccountState::Ok) }];
     };
     // The credential, the signed-in user (the new connection may be someone else) and the

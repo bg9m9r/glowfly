@@ -1,13 +1,15 @@
 //! Pull request and issue filters across changes of service or account: answers from a tracker
 //! no longer used, a new sign-in, and looking the signed-in user up only once.
 
-use super::forge_filters_tests::{filter_calls, open, reply, send};
+use super::forge_filters_tests::{filter_calls, open, pr, reply, send};
 use super::update;
 use crate::effect::{FilterCall, FilterResult};
 use crate::msg::{FilterMsg, ForgeMsg, Msg};
-use crate::state::forge_filters::{MeState, OptionsState};
+use crate::state::forge_filters::{MeState, OptionsState, pr_view};
 use crate::state::{AppState, Status};
-use glowfly_core::forge::{Account, Builtin, FilterChoice, FilterKind, FilterOptions, Issue, IssueFacets, Me, Provider, Target};
+use glowfly_core::forge::{
+    Account, Auth, Builtin, FilterChoice, FilterKind, FilterOptions, Issue, IssueFacets, Me, PrFacets, Provider, PullRequest, Target,
+};
 use glowfly_core::settings::TrackerChoice;
 use std::time::Instant;
 
@@ -20,7 +22,7 @@ fn host(st: &AppState) -> Target {
 }
 
 fn user(id: &str) -> Me {
-    Me { id: id.into(), name: id.into() }
+    Me { id: id.into(), name: id.into(), ..Default::default() }
 }
 
 fn issue(key: &str) -> Issue {
@@ -102,5 +104,27 @@ fn an_issue_search_that_looked_up_the_user_saves_asking_again() {
     let calls = filter_calls(&fx);
     assert!(matches!(calls[..], [(_, FilterCall::Issues { me: Some(m), .. })] if m.id == "ada"), "{calls:?}");
     assert!(filter_calls(&send(&mut st, choose(FilterKind::Prs, Builtin::MyPrs))).is_empty(), "known");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn a_user_without_teams_keeps_the_sign_in_and_personal_requests() {
+    let (mut st, dir) = open("ffa-no-teams");
+    let h = host(&st);
+    let key = h.account().key();
+    st.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    send(&mut st, choose(FilterKind::Prs, Builtin::NeedsMyReview));
+    let asked = |id, f: PrFacets| PullRequest { facets: PrFacets { author_id: "grace".into(), ..f }, ..pr(id, "grace") };
+    st.forge.as_mut().unwrap().prs = vec![
+        asked(1, PrFacets { awaiting_team_ids: vec!["o/core".into()], ..Default::default() }),
+        asked(2, PrFacets { awaiting_ids: vec!["ada".into()], ..Default::default() }),
+    ];
+    // The teams couldn't be read: the user comes back without any.
+    reply(&mut st, h, FilterResult::Me { epoch: 0, result: Ok(Me { teams: vec![], ..user("ada") }) });
+    let fs = st.forge.as_ref().unwrap();
+    assert_eq!(fs.filters.me, MeState::Known(user("ada")));
+    assert!(fs.auth.contains_key(&key), "still signed in");
+    let filters = st.settings.forge_filters_for(&st.snap.as_ref().unwrap().real_workdir);
+    assert_eq!(pr_view(fs, &filters).rows.iter().map(|p| p.id).collect::<Vec<_>>(), [2], "the team-only request isn't listed");
     let _ = std::fs::remove_dir_all(dir);
 }

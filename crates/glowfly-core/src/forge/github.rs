@@ -1,5 +1,6 @@
 //! GitHub and GitHub Enterprise Server (REST API v3).
 
+use super::filters::github::{TeamRef, team_key};
 use super::github_checks;
 pub(super) use super::github_issues::{ApiIssue, to_issue};
 use super::provider::{DEFAULTS, ProviderInfo};
@@ -62,6 +63,8 @@ struct Ref {
     name: String,
     #[serde(default)]
     sha: String,
+    #[serde(default)]
+    user: Option<Login>,
 }
 
 #[derive(Deserialize)]
@@ -88,6 +91,8 @@ struct ApiPr {
     base: Ref,
     #[serde(default)]
     requested_reviewers: Vec<Login>,
+    #[serde(default)]
+    requested_teams: Vec<TeamRef>,
     #[serde(default)]
     labels: Vec<Label>,
     #[serde(default)]
@@ -126,6 +131,9 @@ fn convert(p: ApiPr, d: Details) -> PullRequest {
         states.push((user.login, label.into()));
     }
     let awaiting_ids: Vec<String> = p.requested_reviewers.iter().map(|r| r.login.clone()).collect();
+    // Teams belong to the base repository's owner; a personal repository has none.
+    let org = p.base.user.as_ref().map(|u| u.login.as_str()).unwrap_or_default();
+    let awaiting_team_ids = if org.is_empty() { Vec::new() } else { p.requested_teams.iter().map(|t| team_key(org, &t.slug)).collect() };
     for r in p.requested_reviewers {
         if !states.iter().any(|(u, _)| *u == r.login) {
             states.push((r.login, "requested".into()));
@@ -136,6 +144,7 @@ fn convert(p: ApiPr, d: Details) -> PullRequest {
         assignee_ids: p.assignees.into_iter().map(|a| a.login).collect(),
         reviewer_ids: states.iter().map(|(u, _)| u.clone()).collect(),
         awaiting_ids,
+        awaiting_team_ids,
         labels: p.labels.into_iter().map(|l| l.name).collect(),
         milestone: p.milestone.map(|m| m.title),
     };
@@ -262,6 +271,10 @@ impl super::Forge for GitHub {
         super::filters::github::me(t, auth)
     }
 
+    fn my_teams(&self, t: &Target, auth: &Auth, _me: &Me) -> Result<Vec<String>> {
+        super::filters::github::my_teams(t, auth)
+    }
+
     fn find_issues(&self, t: &Target, auth: &Auth, c: &Conditions, me: Option<&Me>) -> Result<Vec<Issue>> {
         super::filters::github::find_issues(t, auth, c, me)
     }
@@ -325,7 +338,7 @@ mod tests {
         let p: ApiPr = serde_json::from_str(
             r#"{"number":4,"title":"Add search","body":null,"draft":false,"html_url":"https://github.com/o/r/pull/4",
             "user":{"login":"ada"},"head":{"ref":"feature/search","sha":"abcdef1234567"},"base":{"ref":"main","sha":"x"},
-            "requested_reviewers":[{"login":"linus"}]}"#,
+            "requested_reviewers":[{"login":"linus"}],"requested_teams":[{"slug":"core"}]}"#,
         )
         .unwrap();
         let reviews: Vec<Review> = serde_json::from_str(
@@ -337,6 +350,7 @@ mod tests {
         assert_eq!(pr.approvals(), 1);
         assert_eq!(pr.reviewers.len(), 2);
         assert!(pr.head_matches("abcdef1234567"));
+        assert!(pr.facets.awaiting_team_ids.is_empty(), "no base owner, so no organization to name the team by");
         let issues: Vec<ApiIssue> = serde_json::from_str(
             r#"[{"number":9,"title":"Crash","state":"open","html_url":"u","labels":[{"name":"bug"}],"assignee":{"login":"ada"}},
             {"number":4,"title":"PR","state":"open","html_url":"u","pull_request":{"url":"x"}}]"#,
@@ -362,8 +376,9 @@ mod tests {
     #[test]
     fn fills_filter_facets() {
         let p: ApiPr = serde_json::from_str(
-            r#"{"number":4,"title":"T","html_url":"u","user":{"login":"ada"},"head":{"ref":"x","sha":""},"base":{"ref":"main","sha":""},
-            "requested_reviewers":[{"login":"linus"}],"labels":[{"name":"bug"}],"assignees":[{"login":"grace"}],"milestone":{"title":"v1"}}"#,
+            r#"{"number":4,"title":"T","html_url":"u","user":{"login":"ada"},"head":{"ref":"x","sha":""},
+            "base":{"ref":"main","sha":"","user":{"login":"Acme"}},"requested_reviewers":[{"login":"linus"}],
+            "requested_teams":[{"slug":"core"}],"labels":[{"name":"bug"}],"assignees":[{"login":"grace"}],"milestone":{"title":"v1"}}"#,
         )
         .unwrap();
         let reviews: Vec<Review> = serde_json::from_str(r#"[{"user":{"login":"bob"},"state":"APPROVED"}]"#).unwrap();
@@ -374,8 +389,10 @@ mod tests {
         );
         assert_eq!(
             (f.reviewer_ids, f.awaiting_ids, f.labels),
-            (vec!["bob".into(), "linus".into()], vec!["linus".into()], vec!["bug".into()])
+            (vec!["bob".into(), "linus".into()], vec!["linus".into()], vec!["bug".into()]),
+            "teams stay out of the people"
         );
+        assert_eq!(f.awaiting_team_ids, ["Acme/core"]);
         let i: ApiIssue = serde_json::from_str(
             r#"{"number":9,"title":"C","state":"open","html_url":"u","labels":[{"name":"bug"},{"name":"ui"}],"milestone":{"title":"v2"}}"#,
         )

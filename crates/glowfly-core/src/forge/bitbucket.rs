@@ -19,7 +19,7 @@ pub(super) static BITBUCKET: ProviderInfo = ProviderInfo {
     name: "Bitbucket",
     fixed_host: Some("bitbucket.org"),
     username_label: Some("Username"),
-    token_help: "Your Bitbucket username and an app password with Repositories, Pull requests and Issues (Read and Write to create                  issues) permissions, and Workspace membership (Read) for assignees.",
+    token_help: "Your Bitbucket username and an app password with Repositories, Pull requests and Issues (Read and Write to create issues) permissions, and Workspace membership (Read) for assignees.",
     close_keyword: Some("Resolves"),
     lists_forks: true,
     adds_ssh_keys: true,

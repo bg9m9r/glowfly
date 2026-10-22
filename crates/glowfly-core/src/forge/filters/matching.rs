@@ -1,7 +1,7 @@
 //! Which conditions each service can apply, the problems that keep a filter from being saved,
 //! and matching loaded pull requests against conditions. Pure: nothing here calls a service.
 
-use super::{Conditions, Draft, FilterKind, Me, Milestone, Review, Sprint, Who};
+use super::{Conditions, Draft, FilterKind, Me, Milestone, PrFacets, Review, Sprint, Who};
 use crate::forge::{Provider, PullRequest};
 
 /// One condition of a filter.
@@ -153,6 +153,18 @@ fn same_id(a: &str, b: &str) -> bool {
     a.eq_ignore_ascii_case(b)
 }
 
+/// Whether a pull request with facets `f` waits for `me`'s review: they were asked themselves
+/// (or asked again), or a team or group they belong to was asked and hasn't reviewed yet. A
+/// team request doesn't count for the author, nor for a member who already reviewed.
+pub fn waiting_for(f: &PrFacets, me: &Me) -> bool {
+    if f.awaiting_ids.iter().any(|a| same_id(a, &me.id)) {
+        return true;
+    }
+    !same_id(&f.author_id, &me.id)
+        && !f.reviewer_ids.iter().any(|r| same_id(r, &me.id))
+        && f.awaiting_team_ids.iter().any(|t| me.teams.iter().any(|m| same_id(t, m)))
+}
+
 fn same_text(a: &str, b: &str) -> bool {
     a.trim().to_lowercase() == b.trim().to_lowercase()
 }
@@ -172,7 +184,7 @@ fn matches(pr: &PullRequest, c: &Conditions, me: Option<&Me>) -> bool {
     };
     let review = match c.review {
         Review::Any => true,
-        Review::WaitingForMe => f.awaiting_ids.iter().any(|a| same_id(a, me_id)),
+        Review::WaitingForMe => me.is_some_and(|m| waiting_for(f, m)),
     };
     let labels = c.labels.iter().all(|l| f.labels.iter().any(|have| same_text(have, l)));
     let milestone = match &c.milestone {

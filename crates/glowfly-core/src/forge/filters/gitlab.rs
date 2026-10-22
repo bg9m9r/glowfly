@@ -32,7 +32,7 @@ pub(crate) fn issue_params(c: &Conditions, username: &str) -> String {
 pub(crate) fn me(t: &Target, auth: &Auth) -> Result<Me> {
     let u: User = get(auth, &format!("https://{}/api/v4/user", t.host))?;
     let name = if u.name.is_empty() { u.username.clone() } else { u.name };
-    Ok(Me { id: u.username, name })
+    Ok(Me { id: u.username, name, ..Me::default() })
 }
 
 pub(crate) fn find_issues(t: &Target, auth: &Auth, c: &Conditions, known: Option<&Me>) -> Result<Vec<Issue>> {

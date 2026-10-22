@@ -70,7 +70,7 @@ fn showing(kind: FilterKind, b: Builtin) -> RepoForgeFilters {
 }
 
 fn ada() -> Me {
-    Me { id: "ada".into(), name: "Ada".into() }
+    Me { id: "ada".into(), name: "Ada".into(), ..Default::default() }
 }
 
 #[test]

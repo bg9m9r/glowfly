@@ -21,7 +21,7 @@ fn pr(id: u64, facets: PrFacets) -> PullRequest {
 }
 
 fn me() -> Me {
-    Me { id: "ada".into(), name: "Ada".into() }
+    Me { id: "ada".into(), name: "Ada".into(), ..Default::default() }
 }
 
 fn ids(found: Option<Vec<&PullRequest>>) -> Vec<u64> {
@@ -107,6 +107,31 @@ fn matches_loaded_pull_requests() {
     assert!(matching_prs(&prs, &Builtin::MyPrs.conditions(), None).is_none(), "waits for the signed-in user");
     assert!(needs_me(FilterKind::Prs, &Builtin::NeedsMyReview.conditions()));
     assert!(!needs_me(FilterKind::Prs, &Conditions { labels: vec!["x".into()], ..Default::default() }));
+}
+
+#[test]
+fn team_requests_wait_for_members() {
+    let team = |t: &str| vec![t.to_owned()];
+    let facets = [
+        PrFacets { author_id: "grace".into(), awaiting_team_ids: team("acme/core"), ..Default::default() },
+        PrFacets { author_id: "grace".into(), awaiting_team_ids: team("acme/core"), reviewer_ids: team("ada"), ..Default::default() },
+        PrFacets { author_id: "ada".into(), awaiting_team_ids: team("acme/core"), ..Default::default() },
+        PrFacets { author_id: "grace".into(), awaiting_team_ids: team("acme/docs"), ..Default::default() },
+        PrFacets { author_id: "grace".into(), awaiting_ids: team("ada"), reviewer_ids: team("ada"), ..Default::default() },
+    ];
+    let prs: Vec<PullRequest> = facets.iter().zip(1..).map(|(f, id)| pr(id, f.clone())).collect();
+    let member = Me { teams: team("Acme/Core"), ..me() };
+    let c = Builtin::NeedsMyReview.conditions();
+    // 2 was reviewed by Ada already, 3 is her own and 4 asks another team; 5 asks her again.
+    assert_eq!(ids(matching_prs(&prs, &c, Some(&member))), [1, 5], "team names ignore case");
+    assert_eq!(ids(matching_prs(&prs, &c, Some(&me()))), [5], "no teams, personal requests only");
+    assert!(super::matching::waiting_for(&facets[0], &member));
+    assert!(!super::matching::waiting_for(&facets[1], &member));
+    // A saved filter waiting for my review counts team requests too, with its other conditions.
+    let labelled = PrFacets { labels: vec!["ui".into()], ..facets[0].clone() };
+    let saved = Conditions { review: Review::WaitingForMe, labels: vec!["ui".into()], ..Default::default() };
+    let prs = [pr(1, labelled), pr(2, facets[0].clone())];
+    assert_eq!(ids(matching_prs(&prs, &saved, Some(&member))), [1], "only the one with the label");
 }
 
 #[test]

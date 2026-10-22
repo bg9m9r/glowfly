@@ -104,7 +104,7 @@ fn run_issue_query(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     };
     fs.filters.issues = Some(IssueList { choice, conditions: conditions.clone(), items, status: Status::Idle });
     // The code host's user is the tracker's only when they are the same service.
-    let me = fs.filters.known_me().filter(|_| fs.host.as_ref() == Some(&tracker)).cloned();
+    let me = fs.filters.known_me().filter(|_| fs.host.as_ref() == Some(&tracker)).cloned().map(Box::new);
     let epoch = fs.filters.tracker_epoch;
     request(st, tracker, false, ForgeCall::Filter(FilterCall::Issues { choice, conditions, me, epoch }), fx);
 }

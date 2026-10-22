@@ -250,7 +250,7 @@ fn the_dashboard_forgets_the_previous_profiles_sign_ins() {
     let account = github().account;
     let d = &mut st.dashboard;
     d.auth.insert(account.key(), glowfly_core::forge::Auth::from_token(Provider::GitHub, None, "t", "test"));
-    let me = Some(glowfly_core::forge::Me { id: "work-user".into(), name: "Work User".into() });
+    let me = Some(glowfly_core::forge::Me { id: "work-user".into(), name: "Work User".into(), ..Default::default() });
     d.accounts = vec![AccountRow { me, ..AccountRow::new(account.clone(), AccountState::Ok) }];
     d.fetched = Some(std::time::Instant::now());
     switch(&mut st, PERSONAL);
