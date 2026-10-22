@@ -154,7 +154,12 @@ fn a_repository_owned_by_another_user_is_explained_and_can_be_trusted() {
     let value = glowfly_core::safe_directory::config_value(&root, cfg!(windows));
     let Some(Modal::ConfirmDetails { body, details, then, .. }) = &st.modal else { panic!("expected the question") };
     assert!(body.contains("another user account") && body.contains("mark it as safe"), "{body}");
-    assert!(!body.contains("safe.directory") && !body.contains(&value), "plain words only: {body}");
+    assert!(!body.contains("safe.directory") && !body.contains("git config"), "plain words only: {body}");
+    // On Windows the config value uses forward slashes while the body shows the folder the
+    // native way; elsewhere the two spellings are the same, so only Windows can tell them apart.
+    if cfg!(windows) {
+        assert!(!body.contains(&value), "the body names the folder, not the config value: {body}");
+    }
     assert!(details.contains("git config --global --add safe.directory") && details.contains(&value), "{details}");
     assert!(matches!(&**then, Msg::GitEnv(GitEnvMsg::AddSafeDirectory(p)) if *p == root));
     let fx = update(&mut st, Msg::ConfirmAccepted, Instant::now());
