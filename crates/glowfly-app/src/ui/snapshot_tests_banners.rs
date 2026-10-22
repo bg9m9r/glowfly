@@ -1,17 +1,20 @@
-//! The shared banner style (`widgets/banner.rs`) in its kinds: git missing (an error), git too
-//! old (a warning, light), and the operation strip while a job runs (progress, with its
+//! The shared banner style (`widgets/banner.rs`) in its kinds: git missing (an error), the saved
+//! git gone with the git on PATH offered, git too old (a warning, light), and the operation strip while a job runs (progress, with its
 //! spinner). The sign-in, Git LFS and older git banners in dark are in their own areas' tests.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::git_env::GitEnvMsg;
 use crate::msg::{Msg, RepoMsg};
+use crate::state::git_env::Checking;
 use crate::state::{AppState, RunningJob};
 use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
+use glowfly_core::git_program::Candidate;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::settings::ThemeChoice;
+use std::path::PathBuf;
 use std::time::Instant;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -37,8 +40,32 @@ fn banner_git_missing() {
     h.run();
     h.check_snapshot("banner_git_missing");
     assert!(h.query_by_label_contains("couldn't find git on your PATH").is_some());
+    assert!(h.query_by_label_contains("Use the git on PATH").is_none(), "nothing to offer");
     assert!(matches!(&click(&mut h, "Dismiss")[..], [Msg::GitEnv(GitEnvMsg::DismissBanner)]));
     assert!(matches!(&click(&mut h, "Choose git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn banner_git_path_fallback() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "banner-git-path-fallback");
+    let saved = PathBuf::from("/opt/portable-git/bin/git");
+    st.settings.git_program = Some(saved.to_string_lossy().into_owned());
+    detected(&mut st, GitInfo { path: Some(saved), version: None, chosen: true });
+    let path_git = Candidate { path: PathBuf::from("/usr/bin/git"), first_on_path: true, check: Ok((2, 45, 1)) };
+    crate::update::update(&mut st, Msg::GitEnv(GitEnvMsg::PathGitChecked(Some(path_git))), Instant::now());
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("banner_git_path_fallback");
+    let label = "Use the git on PATH (version 2.45.1)";
+    assert!(h.query_by_label(label).is_some());
+    assert!(matches!(&click(&mut h, label)[..], [Msg::GitEnv(GitEnvMsg::UsePathGit)]));
+    assert!(matches!(&click(&mut h, "Dismiss")[..], [Msg::GitEnv(GitEnvMsg::DismissBanner)]));
+    assert!(matches!(&click(&mut h, "Choose git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]));
+    h.state_mut().0.git.page.checking = Some(Checking { program: None, from_banner: true });
+    h.run();
+    assert!(click(&mut h, label).is_empty(), "disabled while the check runs");
     drop(h);
     remove_fixture(&dir);
 }

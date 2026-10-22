@@ -97,6 +97,17 @@ pub fn full_support() -> (u32, u32) {
     Feature::ALL.iter().map(|f| f.min()).max().unwrap_or((0, 0))
 }
 
+/// The oldest of the features' minimums. A git older than this has every gated feature off,
+/// so it isn't offered as a fallback when the chosen git can't run.
+pub fn oldest_gated() -> (u32, u32) {
+    Feature::ALL.iter().map(|f| f.min()).min().unwrap_or((0, 0))
+}
+
+/// Whether `v` is at least [`oldest_gated`]: new enough to offer as a fallback.
+pub fn new_enough(v: Version) -> bool {
+    (v.0, v.1) >= oldest_gated()
+}
+
 /// "2.39.3".
 pub fn show(v: Version) -> String {
     format!("{}.{}.{}", v.0, v.1, v.2)
@@ -260,6 +271,14 @@ mod tests {
             Feature::RangeDiff.needs_text(Some((2, 18, 0))),
             "Comparing two versions of a branch needs git 2.19 or newer (you have 2.18.0)."
         );
+    }
+
+    #[test]
+    fn oldest_gated_is_the_first_feature_minimum() {
+        assert_eq!(oldest_gated(), (2, 19));
+        assert_eq!(oldest_gated(), Feature::RangeDiff.min());
+        assert!(!new_enough((2, 18, 9)));
+        assert!(new_enough((2, 19, 0)) && new_enough((2, 34, 1)));
     }
 
     #[test]

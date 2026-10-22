@@ -3,8 +3,8 @@
 //! or too old, in a banner. Also the Preferences > Git page's scan and check.
 
 use glowfly_core::git_program::Candidate;
-use glowfly_core::git_version::{Feature, GitInfo};
-use std::path::PathBuf;
+use glowfly_core::git_version::{self, Feature, GitInfo, Version};
+use std::path::{Path, PathBuf};
 
 #[derive(Default)]
 pub struct GitState {
@@ -12,6 +12,9 @@ pub struct GitState {
     pub info: Option<GitInfo>,
     /// The banner was closed (until Glowfly restarts or another git is chosen).
     pub banner_dismissed: bool,
+    /// The PATH git checked while the saved git can't run (from the background check, or from
+    /// the latest scan), for the banner's offer.
+    pub path_git: Option<Candidate>,
     pub page: GitPage,
 }
 
@@ -31,6 +34,8 @@ pub struct GitPage {
 pub struct Checking {
     /// None: git from PATH.
     pub program: Option<PathBuf>,
+    /// The check came from the banner's offer, so its success is toasted.
+    pub from_banner: bool,
 }
 
 impl GitPage {
@@ -55,6 +60,24 @@ impl GitState {
     /// The check answered and git couldn't be run at all (no version), not merely too old.
     pub fn git_unusable(&self) -> bool {
         self.info.as_ref().is_some_and(|i| i.version.is_none())
+    }
+
+    /// The git saved in Preferences > Git can't run (missing, a folder, broken).
+    pub fn saved_git_unusable(&self) -> bool {
+        self.info.as_ref().is_some_and(|i| i.chosen && i.version.is_none())
+    }
+
+    /// The PATH git the banner offers, with its version: only while the saved git can't run and
+    /// the PATH git works and is new enough ([`git_version::new_enough`]).
+    pub fn path_offer(&self) -> Option<(&Path, Version)> {
+        if !self.saved_git_unusable() {
+            return None;
+        }
+        let c = self.path_git.as_ref()?;
+        match c.check {
+            Ok(v) if git_version::new_enough(v) => Some((c.path.as_path(), v)),
+            _ => None,
+        }
     }
 
     /// The banner's text, unless it was closed or all is well.

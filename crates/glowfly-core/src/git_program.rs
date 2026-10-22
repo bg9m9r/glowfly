@@ -203,6 +203,12 @@ pub fn apple_shim_usable(exists: &dyn Fn(&Path) -> bool) -> bool {
     APPLE_TOOLS_GITS.iter().any(|p| exists(Path::new(p)))
 }
 
+/// Whether `p` may be run unasked to check it: false only for Apple's `/usr/bin/git` on macOS
+/// while the developer tools are missing (running it would open their install dialog). Pure.
+pub fn safe_to_probe(p: &Path, macos: bool, exists: &dyn Fn(&Path) -> bool) -> bool {
+    !(macos && p == Path::new(APPLE_SHIM)) || apple_shim_usable(exists)
+}
+
 /// The gits to list: `on_path` first (the first of them flagged as the PATH git), then those of
 /// `known` that `locate` finds. An entry `same` as one already listed is skipped, keeping the
 /// spelling found first.
@@ -250,9 +256,7 @@ pub fn discover(cwd: &Path) -> Vec<Candidate> {
     let on_path = all_on_path(crate::env_path::path().as_deref(), pathext.as_deref(), cfg!(windows), &find);
     let known = known_locations(Os::current(), &|k| std::env::var_os(k), crate::settings::home_dir().as_deref());
     let mut found = gather(on_path, known, &external_tools::locate_here, &|a, b| crate::paths::resolve(a) == crate::paths::resolve(b));
-    if cfg!(target_os = "macos") && !apple_shim_usable(&|p| p.is_file()) {
-        found.retain(|(p, _)| p != Path::new(APPLE_SHIM));
-    }
+    found.retain(|(p, _)| safe_to_probe(p, cfg!(target_os = "macos"), &|p| p.is_file()));
     std::thread::scope(|s| {
         let checks: Vec<_> = found
             .into_iter()
@@ -265,6 +269,18 @@ pub fn discover(cwd: &Path) -> Vec<Candidate> {
             .collect();
         checks.into_iter().filter_map(|h| h.join().ok()).collect()
     })
+}
+
+/// The git a bare `git` runs (looked up on the PATH children get), checked with [`probe`] in
+/// `cwd`: what the banner offers when the chosen git can't run. None when there is no git on
+/// PATH, or it is the macOS shim without developer tools (see [`safe_to_probe`]).
+pub fn path_git(cwd: &Path) -> Option<Candidate> {
+    let path = external_tools::find_on_path(Path::new("git")).map(as_listed)?;
+    if !safe_to_probe(&path, cfg!(target_os = "macos"), &|p| p.is_file()) {
+        return None;
+    }
+    let check = probe(&path, cwd).map_err(|r| r.text());
+    Some(Candidate { path, first_on_path: true, check })
 }
 
 /// `p` with its file name spelled as its folder lists it: Windows finds `git.exe` when asked for

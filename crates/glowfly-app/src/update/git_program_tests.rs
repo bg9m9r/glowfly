@@ -1,5 +1,6 @@
 //! Headless tests for Preferences > Git: the scan when the page opens, checking a chosen git
-//! before it is saved and used, refusals, and Browse….
+//! before it is saved and used, refusals, Browse…, and the banner's offer of the PATH git when
+//! the saved git can't run.
 
 use super::tests::state;
 use super::update;
@@ -25,6 +26,32 @@ fn discover_gen(fx: &[Effect]) -> Option<u64> {
 
 fn tools_git() -> PathBuf {
     glowfly_core::paths::temp_dir().join("tools").join("git")
+}
+
+/// A saved git that is no longer there.
+fn gone() -> PathBuf {
+    glowfly_core::paths::temp_dir().join("gone").join("git")
+}
+
+fn check_path_gits(fx: &[Effect]) -> usize {
+    fx.iter().filter(|e| matches!(e, Effect::GitEnv(GitEnvEffect::CheckPathGit { .. }))).count()
+}
+
+fn detects(fx: &[Effect]) -> bool {
+    fx.iter().any(|e| matches!(e, Effect::GitEnv(GitEnvEffect::Detect { .. })))
+}
+
+/// The saved git is gone, as the startup check finds; returns what that pushed.
+fn saved_git_gone(st: &mut AppState) -> Vec<Effect> {
+    st.settings.git_program = Some(gone().to_string_lossy().into_owned());
+    run(st, GitEnvMsg::Detected(GitInfo { path: Some(gone()), version: None, chosen: true }))
+}
+
+/// The saved git is gone and the git on PATH works: the banner offers it.
+fn offered(st: &mut AppState) {
+    saved_git_gone(st);
+    run(st, GitEnvMsg::PathGitChecked(Some(found(tools_git()))));
+    assert!(st.git.path_offer().is_some());
 }
 
 fn found(path: PathBuf) -> Candidate {
@@ -147,7 +174,109 @@ fn choosing_a_git_is_the_same_for_every_tab() {
         GitEnvMsg::Discovered { generation: 1, candidates: Vec::new() },
         GitEnvMsg::Picked(Some(p.clone())),
         GitEnvMsg::Switched { program: None, result: Err("no".into()) },
+        GitEnvMsg::UsePathGit,
+        GitEnvMsg::PathGitChecked(None),
     ] {
         assert!(m.on_inactive().is_none());
     }
+}
+
+#[test]
+fn a_missing_saved_git_offers_the_path_git() {
+    let mut st = state();
+    let fx = saved_git_gone(&mut st);
+    assert_eq!(check_path_gits(&fx), 1, "{fx:?}");
+    assert!(st.git.path_offer().is_none(), "nothing to offer before the check answers");
+    assert!(st.git.banner().is_some_and(|b| b.contains("chosen in Preferences > Git")));
+    run(&mut st, GitEnvMsg::PathGitChecked(Some(found(tools_git()))));
+    assert_eq!(st.git.path_offer(), Some((tools_git().as_path(), (2, 45, 1))));
+
+    let fx = run(&mut st, GitEnvMsg::Rescan);
+    let generation = discover_gen(&fx).expect("a scan");
+    assert!(detects(&fx), "Look again checks the saved git again: {fx:?}");
+    let other = glowfly_core::paths::temp_dir().join("other").join("git");
+    let candidates = vec![
+        Candidate { path: other.clone(), first_on_path: true, check: Ok((2, 46, 0)) },
+        Candidate { first_on_path: false, ..found(tools_git()) },
+    ];
+    run(&mut st, GitEnvMsg::Discovered { generation, candidates });
+    assert_eq!(st.git.path_offer(), Some((other.as_path(), (2, 46, 0))), "the scan is fresher");
+
+    let fx = run(&mut st, GitEnvMsg::Detected(GitInfo { path: Some(tools_git()), version: Some((2, 45, 1)), chosen: false }));
+    assert_eq!(check_path_gits(&fx), 0, "{fx:?}");
+    assert!(st.git.path_git.is_none() && st.git.path_offer().is_none());
+}
+
+#[test]
+fn a_missing_saved_git_with_no_path_git_keeps_the_explanation() {
+    let mut st = state();
+    saved_git_gone(&mut st);
+    run(&mut st, GitEnvMsg::PathGitChecked(None));
+    assert!(st.git.path_offer().is_none());
+    assert!(st.git.banner().is_some_and(|b| b.contains("Choose another there")));
+    let broken = Candidate { check: Err("there is no file there".into()), ..found(tools_git()) };
+    run(&mut st, GitEnvMsg::PathGitChecked(Some(broken)));
+    assert!(st.git.path_offer().is_none(), "a PATH git that doesn't run isn't offered");
+    let old = Candidate { check: Ok((2, 18, 0)), ..found(tools_git()) };
+    run(&mut st, GitEnvMsg::PathGitChecked(Some(old)));
+    assert!(st.git.path_offer().is_none(), "too old to offer");
+    assert!(run(&mut st, GitEnvMsg::UsePathGit).is_empty(), "a stale offer does nothing");
+    assert!(st.git.page.checking.is_none());
+
+    // The saved git works again: a late answer is dropped.
+    run(&mut st, GitEnvMsg::Detected(GitInfo { path: Some(gone()), version: Some((2, 45, 0)), chosen: true }));
+    run(&mut st, GitEnvMsg::PathGitChecked(Some(found(tools_git()))));
+    assert!(st.git.path_git.is_none() && st.git.path_offer().is_none());
+}
+
+#[test]
+fn the_banner_button_switches_to_the_path_git() {
+    let mut st = state();
+    offered(&mut st);
+    run(&mut st, GitEnvMsg::ShowPage);
+    assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Git));
+    let toasts = st.toasts.len();
+    let fx = run(&mut st, GitEnvMsg::UsePathGit);
+    assert!(matches!(&fx[..], [Effect::GitEnv(GitEnvEffect::Use { program: None, .. })]), "{fx:?}");
+    assert!(st.git.page.checking.as_ref().is_some_and(|c| c.program.is_none() && c.from_banner));
+    assert!(run(&mut st, GitEnvMsg::UsePathGit).is_empty(), "one check at a time");
+    assert!(run(&mut st, GitEnvMsg::Choose(Some(tools_git()))).is_empty());
+
+    let info = GitInfo { path: Some(tools_git()), version: Some((2, 45, 1)), chosen: false };
+    let fx = run(&mut st, GitEnvMsg::Switched { program: None, result: Ok(info) });
+    assert_eq!(st.settings.git_program, None, "git from your PATH, following later PATH changes");
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.git_program.is_none())), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::DetectLfs { .. })), "{fx:?}");
+    assert!(discover_gen(&fx).is_some(), "the open page shows the PATH git in use: {fx:?}");
+    assert_eq!(st.git.banner(), None);
+    assert!(st.git.path_offer().is_none() && st.git.path_git.is_none());
+    assert_eq!(st.toasts.len(), toasts + 1);
+    let toast = st.toasts.last().expect("a toast");
+    assert!(toast.ok && toast.text.starts_with("Glowfly now runs git 2.45.1 from your PATH"), "{}", toast.text);
+    assert!(st.log.iter().any(|l| l.ok && l.text.starts_with("Glowfly now runs git 2.45.1 at ")), "logged as before");
+
+    // A switch made on the page isn't toasted.
+    let toasts = st.toasts.len();
+    run(&mut st, GitEnvMsg::Choose(None));
+    let info = GitInfo { path: Some(tools_git()), version: Some((2, 45, 1)), chosen: false };
+    run(&mut st, GitEnvMsg::Switched { program: None, result: Ok(info) });
+    assert_eq!(st.toasts.len(), toasts);
+}
+
+#[test]
+fn rescan_without_a_saved_git_only_scans() {
+    let mut st = state();
+    let fx = run(&mut st, GitEnvMsg::Rescan);
+    assert!(discover_gen(&fx).is_some() && !detects(&fx), "{fx:?}");
+
+    let old = GitInfo { path: Some(tools_git()), version: Some((2, 34, 1)), chosen: false };
+    run(&mut st, GitEnvMsg::Detected(old.clone()));
+    run(&mut st, GitEnvMsg::Detected(old));
+    let logged = st.log.iter().filter(|l| l.text.starts_with("Your git is 2.34.1")).count();
+    assert_eq!(logged, 1, "an unchanged answer isn't logged again");
+
+    // A changed answer shows the banner again after a Dismiss.
+    run(&mut st, GitEnvMsg::DismissBanner);
+    run(&mut st, GitEnvMsg::Detected(GitInfo { path: Some(tools_git()), version: None, chosen: false }));
+    assert!(st.git.banner().is_some());
 }

@@ -136,7 +136,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(_)
             | Effect::Trust(_)
-            | Effect::GitEnv(GitEnvEffect::Detect { .. } | GitEnvEffect::Discover { .. })
+            | Effect::GitEnv(GitEnvEffect::Detect { .. } | GitEnvEffect::Discover { .. } | GitEnvEffect::CheckPathGit { .. })
             | Effect::Watch(_)
             | Effect::AnswerPrompt { .. }
             | Effect::Partial(crate::effect::partial::PartialEffect::FetchContent(_))

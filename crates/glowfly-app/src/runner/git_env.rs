@@ -16,6 +16,7 @@ pub(super) fn run(effect: GitEnvEffect) -> Msg {
             GitEnvMsg::SafeDirectoryAdded { root, result }
         }
         GitEnvEffect::Discover { generation, cwd } => GitEnvMsg::Discovered { generation, candidates: git_program::discover(&cwd) },
+        GitEnvEffect::CheckPathGit { cwd } => GitEnvMsg::PathGitChecked(git_program::path_git(&cwd)),
         // Checked before it is put into effect: a git that doesn't work is never run for a job.
         GitEnvEffect::Use { program: Some(p), cwd } => match git_program::probe(&p, &cwd) {
             Ok(v) => {

@@ -1066,10 +1066,6 @@ blockers and major findings are Milestone 1 items.
 - Place comments on their lines when the local source branch differs from the head (map the line
   numbers across the newer commits)
 
-### Git engine choice
-
-- Offer to fall back to the PATH git when the saved one disappears, instead of only explaining it in the banner
-
 ### Logs
 
 - Copy one log entry or the whole log to the clipboard, and export all logs as one archive for a bug report
@@ -2656,6 +2652,11 @@ here, under the item they grew from.
 - Choose a git per repository (e.g. a WSL git for repositories under `\\wsl$`)
 - Re-check the chosen git's version automatically when it is upgraded while Glowfly runs (Look again covers it by hand)
 - Run every command of a multi-command job with the git it started with, even when another git is chosen meanwhile
+- Offer other discovered gits in the banner, not only the PATH one, when the saved git is gone
+- Offer the PATH git when the saved git runs but is older than the PATH one
+- Translate the git banner's own text (GitInfo::banner in glowfly-core is English)
+- Notice the saved git disappearing during a session without Look again (e.g. when a job fails to start it)
+- Return to the saved git automatically when it comes back (e.g. a removable drive is reconnected)
 
 ### Logs
 

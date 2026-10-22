@@ -207,3 +207,21 @@ fn the_chosen_program_is_what_git_children_run() {
     set(None);
     assert_eq!(program(), "git");
 }
+
+#[test]
+fn the_apple_shim_is_probed_only_with_developer_tools() {
+    let shim = Path::new("/usr/bin/git");
+    assert!(!safe_to_probe(shim, true, &|_| false), "it would open the install dialog");
+    assert!(safe_to_probe(shim, true, &|_| true));
+    assert!(safe_to_probe(shim, false, &|_| false), "elsewhere it is an ordinary git");
+    assert!(safe_to_probe(Path::new("/opt/homebrew/bin/git"), true, &|_| false));
+}
+
+#[test]
+fn the_path_git_is_found_and_checked() {
+    let c = path_git(&temp_dir()).expect("git is on PATH");
+    assert!(c.first_on_path);
+    assert!(c.path.file_stem().is_some_and(|s| s.eq_ignore_ascii_case("git")), "{}", c.path.display());
+    let v = c.check.expect("the PATH git works");
+    assert_eq!(Some(v), gitcli::version(&temp_dir()));
+}

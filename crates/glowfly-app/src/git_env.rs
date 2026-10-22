@@ -1,7 +1,8 @@
 //! Messages and effects about git itself (update/git_env.rs, runner/git_env.rs,
 //! ui/git_banner.rs, ui/prefs/git_program.rs): which git runs and what it can do, checked at
 //! startup and shown in Preferences and, when it is missing or too old, in a banner; choosing
-//! another git in Preferences > Git; and repositories git refuses because another user owns
+//! another git in Preferences > Git or, when the saved one can't run, the git on PATH from the
+//! banner; and repositories git refuses because another user owns
 //! them, which can be added to `safe.directory`.
 
 use crate::effect::LoadKind;
@@ -25,8 +26,12 @@ pub enum GitEnvMsg {
     Choose(Option<PathBuf>),
     /// Pick a git program with a file dialog.
     Browse,
+    /// The banner's offer: use the git on PATH from now on, once it is checked.
+    UsePathGit,
     // ---- from the runner
     Detected(GitInfo),
+    /// The PATH git, checked because the saved git can't run (None: no git on PATH).
+    PathGitChecked(Option<Candidate>),
     /// A load was refused because another user owns the repository at `root`.
     NotOwned {
         generation: u64,
@@ -64,7 +69,9 @@ impl GitEnvMsg {
             | Self::Rescan
             | Self::Choose(_)
             | Self::Browse
+            | Self::UsePathGit
             | Self::Detected(_)
+            | Self::PathGitChecked(_)
             | Self::SafeDirectoryAdded { .. }
             | Self::Discovered { .. }
             | Self::Picked(_)
@@ -100,6 +107,10 @@ pub enum GitEnvEffect {
     },
     /// The file dialog that picks a git program.
     PickProgram,
+    /// Find and check the git a bare `git` runs (the saved git can't run).
+    CheckPathGit {
+        cwd: PathBuf,
+    },
 }
 
 impl GitEnvEffect {
@@ -111,6 +122,7 @@ impl GitEnvEffect {
             GitEnvEffect::Discover { .. } => "discover-git",
             GitEnvEffect::Use { .. } => "use-git",
             GitEnvEffect::PickProgram => "pick-git",
+            GitEnvEffect::CheckPathGit { .. } => "check-path-git",
         }
     }
 }
