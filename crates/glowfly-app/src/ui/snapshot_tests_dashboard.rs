@@ -1,6 +1,6 @@
-//! The cross-repository dashboard: Mine and Assigned with rows from several services, the
-//! Not loaded section, the dashboard over an open repository, the reading state, and the
-//! messages its controls and row menus push. Its empty states are in
+//! The cross-repository dashboard: Mine and Assigned (pull requests and issues) with rows from
+//! several services, the Not loaded section, the dashboard over an open repository, the reading
+//! state, and the messages its controls and row menus push. Its empty states are in
 //! `snapshot_tests_empty_panes`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, settings, with_repo};
@@ -67,6 +67,11 @@ fn pr(id: u64, title: &str, author: &str, checks: Option<Checks>) -> PullRequest
 
 fn awaiting(mut p: PullRequest) -> PullRequest {
     p.facets.awaiting_ids = vec!["ada".into()];
+    p
+}
+
+fn assigned_to_ada(mut p: PullRequest) -> PullRequest {
+    p.facets.assignee_ids = vec!["ada".into()];
     p
 }
 
@@ -137,6 +142,13 @@ fn dashboard_assigned_light() {
     let d = &mut st.dashboard;
     d.show = DashShow::Assigned;
     d.filter = "search".into();
+    // Assigned to Ada: her own #42 on GitHub and Sam's !5 on GitLab.
+    if let Some(Ok(prs)) = &mut d.targets[0].prs {
+        prs[0] = assigned_to_ada(prs[0].clone());
+    }
+    if let Some(Ok(prs)) = &mut d.targets[2].prs {
+        prs.push(assigned_to_ada(pr(5, "Search results paging", "sam", None)));
+    }
     d.targets[1].issues = Some(Ok(vec![issue("12", "Crash on start", "open"), issue("15", "Search ignores accents", "open")]));
     let jira_issues = vec![issue("PROJ-3", "Search index rebuild", "In Progress"), issue("PROJ-5", "Billing export", "To Do")];
     let mut cards = vec![issue("c1", "Search page copy", "Doing"), issue("c2", "Team offsite", "Doing")];
@@ -231,8 +243,13 @@ fn dashboard_controls_and_menus_push_messages() {
 
     let mut st = state(ThemeChoice::Dark);
     st.dashboard.show = DashShow::Assigned;
+    if let Some(Ok(prs)) = &mut st.dashboard.targets[0].prs {
+        prs[0] = assigned_to_ada(prs[0].clone());
+    }
     let mut h = harness(st, true);
     h.run();
+    let m = menu_item(&mut h, "Speed up search", "Show pull request");
+    assert!(m.iter().any(|m| matches!(m, Msg::Dashboard(DashboardMsg::OpenPr { id: 42, path: p, .. }) if *p == path("widgets"))));
     let b = h.get_by_label("#12  Crash on start").bounding_box().expect("the issue row");
     double_click(&mut h, pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32));
     assert!(pushed(&mut h).iter().any(|m| matches!(m, Msg::OpenUrl(u) if u == "https://example.com/issues/12")));

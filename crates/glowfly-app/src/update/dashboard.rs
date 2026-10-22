@@ -25,6 +25,10 @@ mod open_tests;
 #[path = "dashboard_team_tests.rs"]
 mod team_tests;
 
+#[cfg(test)]
+#[path = "dashboard_assigned_tests.rs"]
+mod assigned_tests;
+
 pub(super) fn handle(st: &mut AppState, msg: DashboardMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         DashboardMsg::Open => open(st, now, fx),

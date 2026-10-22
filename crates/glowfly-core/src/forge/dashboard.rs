@@ -3,8 +3,9 @@
 //! libgit2 rewrites them with `insteadOf`), so nothing in it runs; the services are then asked
 //! with a bounded number of calls in flight.
 
-use super::filters::{Builtin, Me, matching};
-use super::{Auth, Connection, Issue, PullRequest, Target, parse_remote};
+use super::filters::matching::{self, Field};
+use super::filters::{Builtin, FilterKind, Me};
+use super::{Auth, Connection, Issue, Provider, PullRequest, Target, parse_remote};
 use crate::error::{Error, Result};
 use crate::paths::{self, FolderId};
 use std::path::{Path, PathBuf};
@@ -132,8 +133,8 @@ pub struct Fetched {
     pub issues: Option<Result<Vec<Issue>>>,
 }
 
-/// Asks `t` for its open pull requests (`prs`) and the issues assigned to the signed-in user
-/// (`issues`).
+/// Asks `t` for its open pull requests (`prs`, which serve Mine, Review requested and Assigned)
+/// and the issues assigned to the signed-in user (`issues`).
 pub fn fetch_target(t: &Target, auth: &Auth, prs: bool, issues: bool) -> Fetched {
     Fetched { prs: prs.then(|| super::pull_requests(t, auth)), issues: issues.then(|| super::my_issues(t, auth)) }
 }
@@ -143,6 +144,16 @@ pub fn fetch_target(t: &Target, auth: &Auth, prs: bool, issues: bool) -> Fetched
 pub fn mine_and_review<'a>(prs: &'a [PullRequest], me: &Me) -> (Vec<&'a PullRequest>, Vec<&'a PullRequest>) {
     let pick = |b: Builtin| matching::matching_prs(prs, &b.conditions(), Some(me)).unwrap_or_default();
     (pick(Builtin::MyPrs), pick(Builtin::NeedsMyReview))
+}
+
+/// The pull requests assigned to `me`, in order.
+pub fn assigned_prs<'a>(prs: &'a [PullRequest], me: &Me) -> Vec<&'a PullRequest> {
+    matching::matching_prs(prs, &Builtin::PrsAssignedToMe.conditions(), Some(me)).unwrap_or_default()
+}
+
+/// Whether `p`'s pull requests carry assignees (GitHub and GitLab).
+pub fn lists_pr_assignees(p: Provider) -> bool {
+    matching::unsupported_field(p, FilterKind::Prs, Field::Assignee).is_none()
 }
 
 #[cfg(test)]

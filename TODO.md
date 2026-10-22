@@ -1056,10 +1056,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 
 - macOS: receive links and folders as Apple events (GURL and odoc) and declare the scheme and the folder document type in Glowfly.app's Info.plist, so links, Finder's Open With and dropping a folder on the Dock icon open them
 
-### Cross-repo dashboard
-
-- Show pull requests assigned to the user under Assigned
-
 ### Menu bar
 
 - Alt-letter mnemonics and keyboard navigation of the menus (Alt+F, arrow keys between menus)
@@ -2704,6 +2700,10 @@ here, under the item they grew from.
 - Check out a pull request's branch from the dashboard
 - Created/updated dates on pull request and issue rows (the service models don't carry them yet)
 - Show the requesting team on Review requested rows
+- Say which list failed (pull requests or issues) on a repository's error line under Assigned
+- List assignees in the pull request tooltip and mark rows assigned to someone besides the user
+- Mark Assigned rows that are also the user's own or wait for the user's review
+- Find assigned pull requests past the first page of the open list with the services' assignee search
 
 ### Automatically group worktree tabs together
 

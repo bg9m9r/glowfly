@@ -157,7 +157,7 @@ fn controls(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     const TIPS: [&str; 3] = [
         "Open pull requests you opened",
         "Open pull requests waiting for your review",
-        "Open issues, work items and cards assigned to you",
+        "Open pull requests, issues, work items and cards assigned to you",
     ];
     let labels = DashShow::ALL.map(|s| format!("{} ({})", s.label(), n[s.index()]));
     let options = DashShow::ALL.map(|s| Segment::new(s, labels[s.index()].as_str(), TIPS[s.index()]));

@@ -24,7 +24,7 @@ pub enum DashShow {
     Mine,
     /// Open pull requests waiting for the user's review.
     Review,
-    /// Open issues, work items and cards assigned to the user.
+    /// Open pull requests, issues, work items and cards assigned to the user.
     Assigned,
 }
 

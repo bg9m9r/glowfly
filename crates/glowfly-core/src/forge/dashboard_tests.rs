@@ -231,3 +231,54 @@ fn fetch_target_asks_merge_requests_and_assigned_issues() {
     assert!(f.prs.is_some_and(|r| r.is_err_and(|e| e.is_auth())));
     assert!(f.issues.is_some_and(|r| r.is_err_and(|e| e.is_auth())));
 }
+
+fn assigned(mut p: PullRequest, ids: &[&str]) -> PullRequest {
+    p.facets.assignee_ids = ids.iter().map(|s| s.to_string()).collect();
+    p
+}
+
+#[test]
+fn assigned_prs_match_the_user_among_the_assignees() {
+    let prs = vec![
+        assigned(pr(1, "grace", &[], &[]), &["ADA", "linus"]),
+        assigned(pr(2, "ada", &[], &[]), &["ada"]),
+        assigned(pr(3, "grace", &[], &[]), &["grace"]),
+        pr(4, "grace", &[], &[]),
+    ];
+    let me = Me { id: "ada".into(), name: "Ada L".into(), ..Default::default() };
+    let ids: Vec<u64> = assigned_prs(&prs, &me).iter().map(|p| p.id).collect();
+    assert_eq!(ids, [1, 2], "case-insensitive, and the user's own pull request counts too");
+    let (mine, _) = mine_and_review(&prs, &me);
+    assert_eq!(mine.iter().map(|p| p.id).collect::<Vec<_>>(), [2]);
+}
+
+#[test]
+fn only_github_and_gitlab_list_pr_assignees() {
+    for p in [Provider::GitHub, Provider::GitHubEnterprise, Provider::GitLab, Provider::GitLabSelfManaged] {
+        assert!(lists_pr_assignees(p), "{p:?}");
+    }
+    for p in [Provider::AzureDevOps, Provider::Bitbucket, Provider::BitbucketDataCenter, Provider::JiraCloud, Provider::Trello] {
+        assert!(!lists_pr_assignees(p), "{p:?}");
+    }
+}
+
+#[test]
+fn dashboard_assigned_reads_assignees_from_the_pull_request_list() {
+    const PULLS: &str = r#"[
+        {"number":1,"title":"T","html_url":"u","user":{"login":"grace"},"head":{"ref":"a","sha":""},
+         "base":{"ref":"main","sha":"","user":{"login":"acme"}},"assignees":[{"login":"Ada"}]},
+        {"number":2,"title":"T","html_url":"u","user":{"login":"grace"},"head":{"ref":"b","sha":""},
+         "base":{"ref":"main","sha":"","user":{"login":"acme"}},"assignees":[{"login":"grace"}]}]"#;
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET api.github.com/repos/acme/widgets/pulls?state=open&per_page=100" => Reply::json(PULLS),
+        _ => Reply::not_found(),
+    });
+    let (t, auth) = (gh("acme", "widgets"), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    let prs = fetch_target(&t, &auth, true, false).prs.unwrap().unwrap();
+    let me = Me { id: "ada".into(), ..Default::default() };
+    assert_eq!(assigned_prs(&prs, &me).iter().map(|p| p.id).collect::<Vec<_>>(), [1]);
+    let reqs = m.requests();
+    let gets: Vec<String> = reqs.iter().filter(|r| r.method == "GET").map(|r| r.route()).collect();
+    assert_eq!(gets, ["GET api.github.com/repos/acme/widgets/pulls?state=open&per_page=100"], "the one list Mine uses");
+    assert!(reqs.iter().all(|r| !r.path.contains("assignee")), "{:?}", reqs.iter().map(|r| r.route()).collect::<Vec<_>>());
+}

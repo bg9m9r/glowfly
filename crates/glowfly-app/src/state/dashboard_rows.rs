@@ -2,7 +2,7 @@
 //! repository, the pull requests or issues the switch and the filter keep.
 
 use super::dashboard::{AccountRow, AccountState, DashShow, Dashboard, TargetData, pr_label, target_name};
-use glowfly_core::forge::dashboard::mine_and_review;
+use glowfly_core::forge::dashboard::{assigned_prs, lists_pr_assignees, mine_and_review};
 use glowfly_core::forge::{self, Issue, Provider, PullRequest, Target};
 use glowfly_core::matching::contains_lower;
 
@@ -15,7 +15,8 @@ pub enum Row<'a> {
 pub struct RepoSection<'a> {
     pub data: &'a TargetData,
     pub rows: Vec<Row<'a>>,
-    /// Why this repository's pull requests (or, under Assigned, issues) couldn't be read.
+    /// Why this repository's pull requests (or, under Assigned, its issues, then its pull requests)
+    /// couldn't be read.
     pub error: Option<&'a str>,
 }
 
@@ -87,20 +88,42 @@ fn repo_rows<'a>(data: &'a TargetData, account: &'a AccountRow, show: DashShow, 
             }
             _ => (Vec::new(), None),
         },
-        DashShow::Assigned => match &data.issues {
-            Some(Err(e)) => (Vec::new(), Some(e.as_str())),
-            Some(Ok(items)) => (items.iter().map(Row::Issue).collect(), None),
-            None => (Vec::new(), None),
-        },
+        DashShow::Assigned => assigned_rows(data, account),
     };
     let rows = rows.into_iter().filter(|r| keeps(data, *r, filter_lower)).collect();
     RepoSection { data, rows, error }
 }
 
+/// Whether Assigned lists `t`'s pull requests: it wants them and its service has assignees.
+fn assigned_prs_wanted(t: &TargetData) -> bool {
+    t.wants_prs && lists_pr_assignees(t.target.provider)
+}
+
+/// Under Assigned: the pull requests assigned to the user, then the assigned issues; the issues'
+/// error first, else the pull requests'.
+fn assigned_rows<'a>(data: &'a TargetData, account: &'a AccountRow) -> (Vec<Row<'a>>, Option<&'a str>) {
+    let with_prs = assigned_prs_wanted(data);
+    let prs = match (with_prs, &data.prs, &account.me) {
+        (true, Some(Ok(prs)), Some(me)) => assigned_prs(prs, me),
+        _ => Vec::new(),
+    };
+    let issues = match &data.issues {
+        Some(Ok(items)) => items.as_slice(),
+        _ => &[],
+    };
+    let rows = prs.into_iter().map(Row::Pr).chain(issues.iter().map(Row::Issue)).collect();
+    let error = match (&data.issues, &data.prs) {
+        (Some(Err(e)), _) => Some(e.as_str()),
+        (_, Some(Err(e))) if with_prs => Some(e.as_str()),
+        _ => None,
+    };
+    (rows, error)
+}
+
 /// The body: accounts that answered, each with the repositories the switch is about. While a
 /// filter is typed, repositories with nothing to show are left out, and so are empty accounts.
 pub fn sections<'a>(d: &'a Dashboard, show: DashShow, filter_lower: &str) -> Vec<ServiceSection<'a>> {
-    let wanted = |t: &TargetData| if show == DashShow::Assigned { t.wants_issues } else { t.wants_prs };
+    let wanted = |t: &TargetData| if show == DashShow::Assigned { t.wants_issues || assigned_prs_wanted(t) } else { t.wants_prs };
     d.accounts
         .iter()
         .filter(|a| a.state == AccountState::Ok)

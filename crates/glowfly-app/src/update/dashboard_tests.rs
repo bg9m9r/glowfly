@@ -199,7 +199,7 @@ pub(super) fn pr(id: u64, title: &str, author: &str, awaiting: &[&str]) -> PullR
     }
 }
 
-fn issue(key: &str, title: &str) -> Issue {
+pub(super) fn issue(key: &str, title: &str) -> Issue {
     let facets = Default::default();
     Issue { key: key.into(), title: title.into(), state: "open".into(), kind: "Issue".into(), assignee: None, url: String::new(), facets }
 }
