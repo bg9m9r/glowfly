@@ -179,11 +179,49 @@ Branch names always appear beside their colour, and main keeps the accent.
 
 ### Terminal
 
-`ansi.colors`: the built-in terminal's 16 basic colours (0-7 and their bright 8-15), one fixed
-table per built-in theme in `ui/theme/ansi.rs`, drawn on `input`. Bold text in 0-7 uses 8-15;
-the 256-colour cube, the grey ramp and truecolour are not themed. Not a theme-file key yet:
-theme files take their base theme's table. See section 6 for the values and section 3 for the
-floors.
+`ansi`: the built-in terminal's colours, one table per built-in theme in `ui/theme/ansi.rs`:
+its background (`ansi.background`, the theme's `input`), default text (`ansi.foreground`,
+`text`), cursor and selection (`ansi.cursor`, `ansi.selection`, both the accent; the selection is
+drawn at 35% over the background, a filled block cursor at 60%), and its 16 basic colours
+(`ansi.colors`, 0-7 and their bright 8-15). Bold text in 0-7 uses 8-15; the 256-colour cube,
+the grey ramp and truecolour are not themed. Theme files set them with the `terminal_*` keys
+(section 7). See section 6 for the values and section 3 for the floors.
+
+Preferences > Terminal > Colors chooses what the terminal draws in: **Match app theme** (the
+default: the palette's own `ansi`), any built-in theme's terminal colours, or a scheme imported
+with **Import scheme…** (settings: `terminal.colours`, `MatchTheme`, `Theme("<id>")` or
+`Scheme("<stem>")`). The view reads them through `color::term()`, which the shell's
+`ThemeCache` points at the chosen colours each frame (`ui/theme/terminal_scheme.rs`); a scheme or
+theme that is gone falls back to the app theme's. When the chosen colours break the text rules
+of section 3 (at 4.5:1, and 3:1 for 8, against the scheme's own background, with dark or light
+decided by that background), a quiet line under the picker names the colours that are hard to
+read (`ansi::hard_to_read`); the scheme can still be used.
+
+Imported schemes live in the themes folder's `terminal` folder, one JSON file each, holding a
+name and the `terminal_*` keys it sets; keys it leaves out come from the app theme's terminal
+colours:
+
+```json
+{ "name": "Harbour Night", "colors": { "terminal_background": "#101820", "terminal_red": "#e0565b" } }
+```
+
+Import reads (in `glowfly-core`, `settings/terminal_schemes/`):
+
+- a Windows Terminal scheme: a JSON object with `name`, `background`, `foreground`,
+  `cursorColor`, `selectionBackground` and `black`, `red`, `green`, `yellow`, `blue`, `purple`
+  (or `magenta`), `cyan`, `white`, `brightBlack` … `brightWhite`, as `#rrggbb`, `#rgb` or
+  `#rrggbbaa` (alpha ignored); a list of such objects; or a whole `settings.json` (comments and
+  trailing commas allowed) whose `schemes` list is imported scheme by scheme, passing over the
+  ones with a colour that isn't one;
+- an iTerm2 `.itermcolors` XML property list: `Ansi 0 Color` … `Ansi 15 Color`, `Background
+  Color`, `Foreground Color`, `Cursor Color` and `Selection Color`, each with `Red`, `Green` and
+  `Blue Component` from 0 to 1 (a colour whose components go above 1 is read as 0-255; alpha
+  and the colour space are ignored). Binary property lists are refused with a note to export as
+  XML.
+
+Each scheme is saved under a name made from its own (`harbour-night.json`, then `-2`…, never
+over an existing file) and the first one becomes the terminal's colours. Files over 1 MiB,
+empty files, other formats and schemes without a usable colour are refused with the reason.
 
 ### Diff and syntax
 
@@ -261,9 +299,9 @@ given, the second is for the high-contrast themes.
 | Colour-blind dark tones, light line tones | each other and the accents, in OKLab under normal, protan, deutan and tritan vision | distance 0.08 (dark), 0.05 (light lines) |
 | Change chip text | its chip tint | 4.5 |
 | Every `syn_*` | panel, diff_add, diff_del, diff_add_word, diff_del_word | 2.4 / 4.5 |
-| Terminal text colours (below) | input | 4.5 / 7 |
-| Terminal 8 (bright black, dim hints) | input | 3 / 4.5 |
-| Terminal background colours (below) | input | 1.25 off it, with `text` on them at 4.5 / 7 |
+| Terminal text colours (below) and `ansi.foreground` | `ansi.background` (input) | 4.5 / 7 |
+| Terminal 8 (bright black, dim hints) | `ansi.background` (input) | 3 / 4.5 |
+| Terminal background colours (below) | `ansi.background` (input) | 1.25 off it, with `text` on them at 4.5 / 7 |
 
 The terminal's text colours are 1-7 and 9-15 in dark themes, and 0-6 and 9-14 in light ones;
 its background colours are 0 (black) in dark themes, and 7 and 15 (white) in light ones.
@@ -476,7 +514,8 @@ chroma 0.030.
 
 ### Terminal colours
 
-0-7 then 8-15, as `#rrggbb` without the `#`:
+0-7 then 8-15, as `#rrggbb` without the `#`. Every built-in's terminal background, text, cursor
+and selection are its `input`, `text`, `accent` and `accent`:
 
 | Theme | 0-7 | 8-15 |
 |---|---|---|
@@ -503,14 +542,23 @@ order, to `#rrggbb` or to another key's name; `glowfly-core`'s `COLOR_KEYS` and
 `diff_add_word`, `diff_del_word`, `hunk_bg`, `hunk_fg`, `warn`, `banner`, `primary`,
 `on_primary`, `primary_off`, `primary_border`, `danger`, `danger_off`, `tag_bg`, `tag_fg`,
 `syn_comment`, `syn_string`, `syn_number`, `syn_constant`, `syn_keyword`, `syn_type`,
-`syn_function`, `syn_attr`.
+`syn_function`, `syn_attr`, then the terminal's: `terminal_background`, `terminal_foreground`,
+`terminal_cursor`, `terminal_selection`, `terminal_black`, `terminal_red`, `terminal_green`,
+`terminal_yellow`, `terminal_blue`, `terminal_magenta`, `terminal_cyan`, `terminal_white`,
+`terminal_bright_black`, `terminal_bright_red`, `terminal_bright_green`,
+`terminal_bright_yellow`, `terminal_bright_blue`, `terminal_bright_magenta`,
+`terminal_bright_cyan`, `terminal_bright_white` (`glowfly-core`'s `TERMINAL_KEYS`).
 
 The older names still load, as keys and as values: `green` is `added`, `red` is `removed`,
 `amber` is `modified`, `blue` is `info` and `purple` is `progress`. When a file sets both the
 old and the new name, the new name wins. Keys a file leaves out (including `raised`,
 `on_primary` and `warn` in older files) come from its base theme, with one exception: a file
 that sets its own `primary` but no `on_primary` keeps the base's ink only while it reaches 4.5:1
-on that primary, and otherwise gets white or black, whichever reads better.
+on that primary, and otherwise gets white or black, whichever reads better. The terminal's body
+keys follow the file's own surfaces when it leaves them out: `terminal_background` is its
+`input`, `terminal_foreground` its `text`, and `terminal_cursor` and `terminal_selection` its
+`accent`, as the built-ins' are; the 16 basic colours come from the base. Create from current
+writes every key, the terminal's included.
 
 ## 8. Adding a colour
 
@@ -522,5 +570,6 @@ on that primary, and otherwise gets white or black, whichever reads better.
 3. Add a contrast or band rule for it to `theme/tests.rs` or `theme/family_tests.rs`.
 4. Describe its job on this page.
 
-A new built-in theme also needs a terminal table in `ui/theme/ansi.rs` (start from Dusk's or
-Dawn's and adjust it until `theme/ansi_tests.rs` passes), set as the palette's `ansi`.
+A new built-in theme also needs a terminal table in `ui/theme/ansi.rs` (its `input`, `text` and
+`accent`, then 16 basic colours: start from Dusk's or Dawn's and adjust them until
+`theme/ansi_tests.rs` passes), set as the palette's `ansi`.

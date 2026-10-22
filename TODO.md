@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-21 22:45 · **Terminal colour themes**: Theme files get 20 terminal_* keys (background, text, cursor, selection and the 16 basic colours) that the built-ins define with their current values, and Preferences > Terminal > Colors picks Match app theme, any built-in theme's terminal colours or an imported Windows Terminal (scheme or settings.json) or iTerm2 .itermcolors scheme, with a quiet line naming the colours that are hard to read on its background (`e0e27c43`)
 - 2026-10-21 16:26 · **Stash improvements**: The Stash dialog gets Keep staged changes (git stash push --keep-index) for All changes and Selected files, and a chosen staged rename is stashed whole, its old path put back from HEAD after the stash and refused beforehand when something is on disk there, with Undo and redo covering both (`e05b9715`)
 - 2026-10-21 14:46 · **CI / build status**: per-check list with states, durations and Required tags in the pull request panel (`718a895c`)
 - 2026-10-21 13:46 · **Search and filter**: background commit index of large repositories' whole history, so search counts, Enter, Filter and Keep searching cover every commit and load straight to the next match, with review fixes applied (`b733326f`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-21 03:49 · **Keyboard shortcuts**: The Unstaged and Staged lists take the keyboard focus as one Tab stop with a ringed current row, Up/Down open the file above or below, S and U work there and on a file still opening, and after S or U stages or unstages the open file the view moves on to the next file in its list (`7cf3838e`)
 - 2026-10-21 02:56 · **Multi-select commits**: A selection that isn't one line of history lists each commit's own changes newest first with the gap named in the details panel, picks and reverts that include merges ask for one mainline parent for all, a commit that changes nothing is skipped and named, and Cmd/Ctrl+Shift+A goes back from a multi-selection to the focused commit (`4d0edecd`)
 - 2026-10-21 01:55 · **Graph columns and loading**: A failed load for more history stays in the row below the last commit with its reason and Try again, and runs again by itself after 3 s and 10 s; while a failure is held, Load more tries the same load again. A filtering search whose matches don't fill the graph loads older history by itself in doubling batches (five per query, only with Load more while scrolling on), and the no-matches pane says how far it looked, with Keep searching (`e172a79c`)
-- 2026-10-21 00:49 · **Design system**: One set of tokens for every theme, custom ones included: a corner scale (2 to 12 px, pills, nested radii), Float and Dialog shadows, an outside accent focus ring (inset in packed rows, a halo on text fields), hover, pressed and latched layers, an overlay surface for menus, tooltips and toasts, five semantic tones and motion timings; the button family (primary, tonal, secondary, quiet, danger, icon-only, split) is built on them, Commit and its menu become one split button whose caret turns amber while hooks are skipped, Stage all turns tonal, every view's radii, focus rings and icon sizes move onto the tokens with a lint keeping them there, and docs/COLOUR.md lists the derived colours and their contrast floors (`a201c080`)
 
 ---
 
@@ -356,6 +356,11 @@ until this list says which option was chosen.
       rename; + opens a terminal and its ▾ picks the shell. On the right, icon buttons with
       tooltips: Clear, Kill terminal (asks only while a program runs), ⋯ (Kill all, Rename),
       Settings, maximise and hide.
+- [x] **Terminal colour themes**: the terminal's background, text, cursor, selection and 16
+      basic colours are theme-file keys (`terminal_*`), and Preferences > Terminal > Colors picks
+      Match app theme, a built-in theme's terminal colours or a scheme imported from Windows
+      Terminal (a scheme or settings.json) or iTerm2 (.itermcolors), warning quietly when its
+      colours are hard to read on its background.
 - [x] **SSH preferences**: key cards with Copy public key, key generation in a dialog, a key
       picker for all repositories and this one, and an agent status pill. Chosen 2026-10-19
       (option A): one column of three titled sections; each key is a card with its
@@ -422,7 +427,7 @@ The pages a full-featured Git client offers, and where Glowfly stands:
 | UI Customization | ✔ UI Customization | Repo group colors (wait on repository groups) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
 | Diff viewer | ◐ Diff viewer (font size, tab size, line numbers, syntax and word highlights, word wrap) | Font family, EOL character |
-| Terminal | ✔ Terminal page (built-in: shell, font size, cursor style, dim when unfocused, copy on select, middle-click paste (Linux), Open in terminal in the panel; external: program and arguments) | Font family, line height (Ideas > Built-in terminal) |
+| Terminal | ✔ Terminal page (built-in: shell, font size, colors (app theme, a built-in's or an imported scheme), cursor style, dim when unfocused, copy on select, middle-click paste (Linux), Open in terminal in the panel; external: program and arguments) | Font family, line height (Ideas > Built-in terminal) |
 | Experimental | ✘ | Git executable selection and version (P3) |
 | *Repo:* Encoding | ✘ | Per-repo file encoding for diffs |
 | *Repo:* Gitflow | ✔ Git Flow page, Start and Finish, Git Flow panel, branch from issue | Finish options (Ideas > Git Flow) |
@@ -1922,6 +1927,20 @@ here, under the item they grew from.
 - Split palette_commands.rs's entry builders by area (the binding map moved to
   state/palette_bindings.rs)
 
+### Terminal colour themes
+
+- Manage imported schemes in Preferences: open the terminal schemes folder, rename and delete
+- Swatches of the chosen scheme's colours beside the Colors picker, and a live preview while
+  the menu is open
+- Import more formats: Alacritty (TOML), kitty, Ghostty, Xresources and base16 schemes; read
+  binary iTerm2 property lists too
+- Drop a scheme file on Preferences (or the terminal) to import it
+- A "Terminal colors: <scheme>" palette entry
+- An option to lift hard-to-read colours to the readability floor automatically, as some
+  terminals do, instead of only warning
+- Selection text colour and cursor text colour keys (Windows Terminal's selection and cursor
+  text), and a selection opacity
+
 ### Built-in terminal
 
 - Mouse reporting (xterm mouse modes) and the window or tab title from the shell (OSC 0/2)
@@ -2587,7 +2606,7 @@ here, under the item they grew from.
 - Suggest the closest color name for an unknown key ("acent" -> "accent")
 - Warn when a theme file's text or syntax colors fall below the contrast rules
 - Translucent colors (#rrggbbaa) in theme files
-- Theme the graph lane colors, avatar initials colors and the terminal's ANSI palette from theme files
+- Theme the graph lane colors and avatar initials colors from theme files
 - Import or share a theme file from Preferences (copy it into the themes folder)
 - A toast with an Open Preferences button when the selected theme is missing or broken at startup
 - A per-repository theme
