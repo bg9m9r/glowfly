@@ -16,29 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 
 ## Recent changes
 
-The last 20 completed TODO items, newest first: when (local time), which item, and what was
-done. Add a line at the top when ticking an item, and drop the oldest past 20.
-
-- 2026-10-22 13:47 · **In-app pull request view: place comments on their lines when the local source branch differs from the head**: Pull request code comments sit on their mapped lines in the diff even when the local source branch tip differs from the pull request head (`83496631`)
-- 2026-10-22 13:02 · **Menu bar: the native macOS application menu instead of the in-window bar**: On macOS Glowfly's menus sit in the system menu bar with the standard application menu, built from the same menu model that draws the in-window bar elsewhere (`d405ada6`)
-- 2026-10-22 12:08 · **Packaging and updates**: Releases add Windows ARM64 and Linux aarch64 builds, an .rpm and an AppImage that in-app updates install in kind (the AppImage swapped in place), and fill a Homebrew cask and winget manifests from the checksums (`5f65d69c`)
-- 2026-10-22 11:40 · **In-app pull request view**: Start a code comment on a pull request diff line or range (a single comment, or one added to the pending review, starting a review when there is none) with Suggest a change, from a hovered line's button or the hunk header's Comment on N lines, on GitHub and GitHub Enterprise Server (`6de92a83`)
-- 2026-10-22 11:05 · **Deep links: receive links and folders as Apple events on macOS**: Glowfly.app declares the glowfly:// scheme and folders in its Info.plist and answers the Get URL and Open Documents Apple events, so links, Open With, a Dock drop and `open -a Glowfly <folder>` open in the running window (`7804ce96`)
-- 2026-10-22 10:20 · **Language**: On Linux and other Unix, the System language follows gettext's order and ignores LANGUAGE when the message locale is C or POSIX (including C.UTF-8), so LANG=C.UTF-8 LANGUAGE=de stays English (`514834b7`)
-- 2026-10-22 09:43 · **Packaging and updates**: Install and restart checks the download's SHA-256 again, then runs the verified MSI or swaps the portable program in place through a small helper and relaunches Glowfly, asking first about unsaved work and a running job (`959db2dc`)
-- 2026-10-22 09:39 · **Menu bar**: Alt+letter opens a menu with underlined mnemonics and arrow-key navigation, a rebindable Quit key sits on File > Quit, and quitting asks first while a git operation or sync runs (`f30153f7`)
-- 2026-10-22 08:35 · **Performance: turn on git's built-in fsmonitor from Glowfly**: The slow-status note's Turn on button starts git's built-in file system monitor (git 2.36+ on Windows and macOS) beside the untracked cache, setting core.fsmonitor=true once the daemon is watching and saying plainly why when it can't (`b7a78149`)
-- 2026-10-22 08:16 · **In-app pull request view**: The pull request view compares from the listed head commit or the remote-tracking source, fetches the service's head ref for forks on demand, adds a Commits tab between Overview and Files changed, and posts comments, replies and reviews with Command+Enter (Ctrl+Enter off macOS) (`de33f6cc`)
-- 2026-10-22 07:46 · **Cross-repo dashboard**: The dashboard's Assigned section also lists open pull requests assigned to the user across their connected services (`59f591cf`)
-- 2026-10-22 07:32 · **Performance: watcher and status reads for huge trees**: An outside index change re-reads only the changed status rows against a memo of the last index, edits to tracked files matching an ignore pattern are kept, and the Windows safety poll sweeps only the changed folders (`d4903925`)
-- 2026-10-22 07:16 · **UI review polish**: The git-too-old banner says in one sentence what is off, with How to update git (the download page for this OS), Remind me later and Don't show again (kept per git version; never for a git that can't run), the owned-by-another-user question uses plain words with the git config command under Details, Publish to GitHub rewrites the service's refusals as one sentence with its own words under Details, and fetch, pull and push toasts and the repository rows say why the remote couldn't be reached or read (`19983e6c`)
-- 2026-10-22 05:53 · **Logs**: copy an activity entry or the whole log, and export all logs as one text bundle (`c5d13bbe`)
-- 2026-10-22 05:40 · **UI review polish**: The trust prompt and Git Hooks get a drawn hook icon on the text margin, the dashboard sits in a centred column at most 900 px wide, Clone with no connected service shows only the connect prompt with Open integrations and a link back to the URL tab, Git Flow Finish blocked only by uncommitted changes offers Stash changes and finish (put back on the development branch, held through a conflict until Continue finish or Forget), Choose a repository says why its first entry is preselected and an unknown link kind offers Check for updates, clean submodules say "up to date" with a tooltip on each status dot, and the tab list follows + while worktree groups get a named chip (`9076b41c`)
-- 2026-10-22 05:09 · **"Push and start a PR"**: The create dialog opens pull requests across forks, with From and Into repository pickers when the code host's account has several remotes, the fork head sent to GitHub, GitLab, Bitbucket and Azure DevOps, branches tracking a fork pushed there, and Create pull request… on a fork remote's row (`541c17a1`)
-- 2026-10-22 04:53 · **Git engine choice**: the banner offers the git on PATH when the saved git is gone (`75c5733d`)
-- 2026-10-22 04:09 · **PR and issue filters**: Needs my review, saved Waiting for my review filters and the dashboard's Review requested also count requests to the user's GitHub teams (and their parent teams) and Azure DevOps groups, skipping the author and members who already reviewed; a token that can't read teams falls back to personal requests without signing out (`900210fa`)
-- 2026-10-22 04:08 · **UI review polish**: Row menus open below their row (above when they don't fit), the checked-out commit's + branch chip is a small New branch… ghost button on hover or the anchor row, Load more and the shallow-clone notes move to a full-width row under the last commit, the multi-selection header reads "N commits selected · Esc to clear" with inline reasons and a from → to row with a Swap button, the View menu labels Diff layout and Diff shows, one verb per action (Open, Clone, New repository…, Delete stash), the palette's empty list groups Recent, Suggested and All commands, and step 3's Continue is a split button holding Skip and Edit remaining steps (`221ab27e`)
-- 2026-10-22 03:35 · **Create and view issues**: The issue panel gets a comment box pinned under the conversation that posts to GitHub, GitLab, Jira, Bitbucket Cloud, Azure Boards and Trello, appends the posted comment at once and keeps the draft with the service's words when a post fails (also for a parked tab), and each comment gets Reply, which quotes it into the draft (`fc49c916`)
+Not kept here: `git log --oneline main` lists what landed, in the Conventional Commit subjects.
 
 ---
 
@@ -69,7 +47,7 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
 The [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md) found these before a first
 release; each finding there names the snapshots and code it was seen in. Its minor findings
-have landed too (see Recent changes, UI review polish).
+have landed too (see `git log`).
 
 The look comes first: the open items below are in the order to build them, the visual
 foundation (spacing, fonts, palette, type) and the views built on it before the rest.

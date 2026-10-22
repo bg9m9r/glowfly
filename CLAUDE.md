@@ -54,10 +54,8 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
   `ci:`, `chore:`); release-please derives versions and the CHANGELOG from them. Don't edit
   the version in `Cargo.toml`, `version.txt` or `CHANGELOG.md` by hand.
 
-- When you tick an item in `TODO.md`, add a line at the top of its "Recent changes" list, in
-  local time, and drop the oldest line past 20. Format:
-  `- YYYY-MM-DD HH:MM · **<top-level TODO item>**: <what was done> (<short commit sha>)`, with
-  the sha in backticks.
+- Tick an item's box in `TODO.md` in the same commit as the feature. Recent landings come from
+  `git log` (the commit subjects), so there is no changelog list to keep in `TODO.md`.
 - Follow-ups, polish and edge cases found while building go to `TODO.md`'s Ideas section under
   the item they grew from, never to Later (Later holds only triaged milestone work).
 - Keep files under ~400 lines; split by responsibility rather than growing a file.
