@@ -182,15 +182,17 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     let trust_scan = crate::trust::scan(&repo);
     let trust_print = trust_scan.print();
     let git_status = trust_scan.is_empty() || (opts.trusted && opts.trusted_print.as_ref().is_none_or(|p| p.covers(&trust_print)));
+    // Found once per load, before the status read that marks its rows with them.
+    let collisions = tracing::debug_span!("load.collisions").in_scope(|| repo.index().map(|mut i| super::collide::collisions(&mut i)))?;
     let started = std::time::Instant::now();
     // Read before the status, so a change made during the read shows up in the next comparison.
     let index_memo = repo.index().ok().and_then(|i| super::IndexMemo::of(&i)).map(std::sync::Arc::new);
-    let (unstaged, staged) = tracing::debug_span!("load.status").in_scope(|| super::status::load_status(&repo, git_status))?;
+    let (unstaged, staged) =
+        tracing::debug_span!("load.status").in_scope(|| super::status::load_status_with(&repo, git_status, &collisions))?;
     let slow_status = super::status_speed::slow(started.elapsed(), &workdir);
     let changes = ChangeCounts::of(&staged, &unstaged);
     let folding = super::collide::folding(repo.path());
     let ignorecase = super::collide::ignorecase(&repo);
-    let collisions = tracing::debug_span!("load.collisions").in_scope(|| repo.index().map(|i| super::collide::collisions(&i)))?;
     let submodules = submodules::list(&repo);
     let mut worktrees = worktrees::list(&repo);
     if opts.worktree_wips {

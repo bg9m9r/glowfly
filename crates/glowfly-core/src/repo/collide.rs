@@ -10,11 +10,16 @@
 
 use super::{FileEntry, Hazard};
 use crate::error::{Error, Result};
-use git2::{Index, Repository};
+use git2::Repository;
 use icu_normalizer::{ComposingNormalizerBorrowed, DecomposingNormalizerBorrowed};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+
+/// Finding the collisions without scanning an unchanged index again.
+#[path = "collide_scan.rs"]
+mod scan;
+pub(super) use scan::collisions;
 
 /// What the work tree's file system treats as the same name, as probed; `None` when the probe
 /// couldn't run (a read-only git dir).
@@ -51,7 +56,7 @@ pub(super) fn nfc(s: &str) -> String {
 }
 
 /// The name a case- and normalization-insensitive file system would see.
-fn key(path: &str) -> String {
+pub(super) fn key(path: &str) -> String {
     nfc(&nfc(path).to_lowercase())
 }
 
@@ -59,24 +64,6 @@ fn key(path: &str) -> String {
 /// same key can name one file there.
 pub fn name_key(path: &str) -> String {
     key(path)
-}
-
-/// The groups of index paths (any stage, UTF-8 names only) that share a `key`, sorted.
-pub(super) fn collisions(index: &Index) -> Vec<Collision> {
-    let mut by_key: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    for e in index.iter() {
-        if let Ok(path) = String::from_utf8(e.path) {
-            by_key.entry(key(&path)).or_default().insert(path);
-        }
-    }
-    by_key
-        .into_values()
-        .filter(|set| set.len() > 1)
-        .map(|set| {
-            let composed: BTreeSet<String> = set.iter().map(|p| nfc(p)).collect();
-            Collision { case: composed.len() > 1, unicode: composed.len() < set.len(), paths: set.into_iter().collect() }
-        })
-        .collect()
 }
 
 /// Marks each of `rows` that is in a collision sharing one file here with `Hazard::Twins`.
@@ -106,9 +93,9 @@ pub(super) fn ignorecase(repo: &Repository) -> bool {
 /// Runs again at the moment of acting, so a stale view can't get past it.
 pub(crate) fn refuse(workdir: &Path, path: &str, doing: &str) -> Result<()> {
     let repo = Repository::open(workdir)?;
-    let index = super::exact::index(&repo)?;
+    let mut index = super::exact::index(&repo)?;
     let k = key(path);
-    let found = collisions(&index);
+    let found = collisions(&mut index);
     let Some(c) = found.iter().find(|c| c.paths.iter().any(|p| key(p) == k)) else {
         // Not tracked under any spelling of this name, or no other spelling.
         return Ok(());

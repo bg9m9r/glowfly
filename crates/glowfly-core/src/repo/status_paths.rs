@@ -51,7 +51,7 @@ pub(super) fn read_paths(
         return Ok(None);
     }
     let repo = Repository::open(workdir)?;
-    let index = repo.index()?;
+    let mut index = repo.index()?;
     // Git composes the paths it is given on such a system; so does this read.
     let precompose = repo.config().and_then(|c| c.get_bool("core.precomposeunicode")).unwrap_or(false);
     let mut submodule_touched = false;
@@ -65,7 +65,7 @@ pub(super) fn read_paths(
         })
         .collect();
     // Index paths one file holds here (twins) are read together: a change to one is a change to all.
-    let twins = collide::collisions(&index);
+    let twins = collide::collisions(&mut index);
     let more: Vec<String> =
         twins.iter().filter(|c| c.paths.iter().any(|p| covers(&covered, p, false))).flat_map(|c| c.paths.iter().cloned()).collect();
     covered.extend(more);

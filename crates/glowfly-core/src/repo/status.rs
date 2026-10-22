@@ -70,34 +70,44 @@ pub fn status_and_index(
 /// `git_status` false: libgit2 only, so no fsmonitor hook or filter runs (repositories not
 /// trusted).
 pub(super) fn load_status(repo: &Repository, git_status: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
+    let found = repo.index().map(|mut i| super::collide::collisions(&mut i)).unwrap_or_default();
+    load_status_with(repo, git_status, &found)
+}
+
+/// `load_status` with the index's collisions already found (a full load finds them once).
+pub(super) fn load_status_with(
+    repo: &Repository,
+    git_status: bool,
+    found: &[super::Collision],
+) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     if let Some(workdir) = repo.workdir()
         && git_status
         && wants_git(repo)
         && let Some(lists) = super::status_cli::status(workdir)
     {
-        return Ok(mark_rows(repo, lists));
+        return Ok(mark_rows(repo, lists, found));
     }
-    libgit2_status(repo).map(|lists| mark_rows(repo, lists))
+    libgit2_status(repo).map(|lists| mark_rows(repo, lists, found))
 }
 
 /// Marks a whole read's rows: twins, then LFS pointers.
-fn mark_rows(repo: &Repository, lists: (Vec<FileEntry>, Vec<FileEntry>)) -> (Vec<FileEntry>, Vec<FileEntry>) {
-    let (mut unstaged, mut staged) = mark_twins(repo, lists);
+fn mark_rows(repo: &Repository, lists: (Vec<FileEntry>, Vec<FileEntry>), found: &[super::Collision]) -> (Vec<FileEntry>, Vec<FileEntry>) {
+    let (mut unstaged, mut staged) = mark_twins(repo, lists, found);
     super::lfs_marks::mark_wip(repo, &mut unstaged, &mut staged);
     (unstaged, staged)
 }
 
 /// Marks the rows whose path shares one file on disk with another index path.
-pub(super) fn mark_twins(
+fn mark_twins(
     repo: &Repository,
     (mut unstaged, mut staged): (Vec<FileEntry>, Vec<FileEntry>),
+    found: &[super::Collision],
 ) -> (Vec<FileEntry>, Vec<FileEntry>) {
     use super::collide;
-    let found = repo.index().map(|i| collide::collisions(&i)).unwrap_or_default();
     if !found.is_empty() {
         let (folding, ignorecase) = (collide::folding(repo.path()), collide::ignorecase(repo));
-        collide::mark(&mut unstaged, &found, folding, ignorecase);
-        collide::mark(&mut staged, &found, folding, ignorecase);
+        collide::mark(&mut unstaged, found, folding, ignorecase);
+        collide::mark(&mut staged, found, folding, ignorecase);
     }
     (unstaged, staged)
 }

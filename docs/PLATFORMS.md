@@ -98,6 +98,8 @@ second one next to it.
 9. **Index paths equal under NFC plus lowercase are a collision** (`repo/collide.rs`). Always
    warn (the "File names" banner and row notes). Refuse discard, delete and restore only when
    the probe says they share one file here, and check again in core at the moment of acting.
+   The scan is kept per index file (`repo/collide_scan.rs`, by its length, time and checksum,
+   trusted only once the file is `RACY_WINDOW` old), so reads of an unchanged index don't rescan.
 10. **Turn libgit2's `C:/x/y/` into the OS spelling** before it reaches the OS, another program
     or the screen: `native_path::native` for arguments, `native_path::shown` for text. Keep the
     raw form only as a matching key.
