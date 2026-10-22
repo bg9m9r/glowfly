@@ -26,7 +26,7 @@ fn files(list: &[(&str, char)]) -> Vec<FileEntry> {
 }
 
 /// The fixture on the WIP panel with these unstaged and staged files.
-fn with_files(theme: ThemeChoice, name: &str, unstaged: &[(&str, char)], staged: &[(&str, char)]) -> (AppState, PathBuf) {
+pub(super) fn with_files(theme: ThemeChoice, name: &str, unstaged: &[(&str, char)], staged: &[(&str, char)]) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let snap = st.snap.as_mut().unwrap();
     snap.unstaged = files(unstaged);

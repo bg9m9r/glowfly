@@ -68,6 +68,7 @@ pub mod op_confirm;
 #[cfg(test)]
 pub(crate) mod op_fixture;
 pub mod op_preview;
+pub mod op_steps;
 pub mod op_strip;
 pub mod palette;
 pub mod palette_bindings;

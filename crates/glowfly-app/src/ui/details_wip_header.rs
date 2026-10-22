@@ -1,7 +1,8 @@
-//! The Unstaged and Staged Files lists' headers: the title, cut with "…" (whole on hover), and
-//! the list's buttons on the right. The buttons are never cut: those that don't fit beside the
-//! title move into a more-actions menu at the header's right end, New file… first, then Discard
-//! all, then Stage all.
+//! The Unstaged and Staged Files lists' headers (and the plain header row every list of the WIP
+//! panel shares, `frame`): the title, cut with "…" (whole on hover), and the list's quiet
+//! buttons on the right. Unstaged Files shows Stage all, with Discard all and New file… in its
+//! more-actions menu; and a button that doesn't fit beside the title moves into that menu too
+//! (Stage all last), so none is ever cut.
 
 use super::{RowContext, discard_all_text};
 use crate::keymap::{BindingId, Keymap};
@@ -9,7 +10,6 @@ use crate::msg::{Msg, StageMsg, WorkFileMsg};
 use crate::ui::access;
 use crate::ui::common::menu_item;
 use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons::{self, StyledButton};
 use crate::ui::widgets::{self, Icon, truncate};
@@ -21,6 +21,8 @@ use glowfly_core::undo::DISCARD_STASH_MESSAGE;
 const MORE_W: f32 = 24.0;
 /// The most of the title's width the buttons keep free before moving into the menu.
 const TITLE_MIN: f32 = 72.0;
+/// A list header's height.
+pub(super) const HEADER_H: f32 = 32.0;
 
 /// One of the header's buttons.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -50,13 +52,9 @@ impl HeaderAction {
         }
     }
 
-    /// The button: tonal for Stage all and Unstage all, secondary for the rest; small.
+    /// The button: quiet and small, as every action in a list header.
     fn button<'a>(self, t: Lang, tip: Option<&'a str>) -> StyledButton<'a> {
-        let b = match self {
-            Self::StageAll | Self::UnstageAll => buttons::tonal(self.label(t)),
-            Self::DiscardAll | Self::NewFile => buttons::secondary(self.label(t)),
-        };
-        let b = b.small();
+        let b = buttons::quiet(self.label(t)).small();
         match tip {
             Some(tip) => b.tip(tip),
             None => b,
@@ -116,22 +114,28 @@ pub(super) fn header(ui: &mut Ui, title: String, staged: bool, count: usize, ctx
     // they keep their own clicks.
     let sense = if staged { Sense::click() } else { Sense::hover() };
     let scope = ui.scope_builder(egui::UiBuilder::new().sense(sense), |ui| {
-        egui::Frame::new().fill(color::raised()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(radius::SM).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    buttons(ui, &title, staged, count, ctx, msgs);
-                    // Drawn after the buttons, so a long title is cut short (whole on hover)
-                    // instead of running under them. Not selectable, so a right-click on the
-                    // title reaches the header's menu.
-                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        let text = type_scale::section_text(ui, title);
-                        truncate::truncate_label(ui, text, ui.available_width());
-                    });
-                });
+        frame(ui, |ui| {
+            buttons(ui, &title, staged, count, ctx, msgs);
+            // Drawn after the buttons, so a long title is cut short (whole on hover) instead of
+            // running under them. Not selectable, so a right-click on the title reaches the
+            // header's menu.
+            ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                let text = type_scale::section_text(ui, title);
+                truncate::truncate_label(ui, text, ui.available_width());
             });
         });
     });
     scope.response
+}
+
+/// A list header's row: plain on the panel (no bar), `HEADER_H` tall, laid out right to left so
+/// `add` places the buttons first and the title in the room left.
+pub(in crate::ui) fn frame(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
+    let size = vec2(ui.available_width(), HEADER_H);
+    ui.allocate_ui_with_layout(size, Layout::right_to_left(Align::Center), |ui| {
+        ui.set_min_size(size);
+        add(ui);
+    });
 }
 
 /// The header's buttons, right to left, with the more-actions button rightmost when some don't
@@ -147,6 +151,8 @@ fn buttons(ui: &mut Ui, title: &str, staged: bool, count: usize, ctx: RowContext
     let avail = ui.available_width();
     let cut = shown_count(avail, title_w.min(TITLE_MIN), &widths, MORE_W + gap, gap);
     let shown = whole_title_count(cut, shown_count(avail, title_w, &widths, MORE_W + gap, gap), widths.len());
+    // Unstaged Files keeps only Stage all out: Discard all and New file… wait in the menu.
+    let shown = if staged || actions.len() == 1 { shown } else { shown.min(1) };
     if shown < actions.len() {
         more_button(ui, &actions[shown..], ctx, msgs);
     }
@@ -165,12 +171,17 @@ fn widths(ui: &Ui, actions: &[HeaderAction], t: Lang) -> Vec<f32> {
 /// The more-actions button (a painted icon) and its menu, listing `moved` in reading order.
 fn more_button(ui: &mut Ui, moved: &[HeaderAction], ctx: RowContext, msgs: &mut Vec<Msg>) {
     let (keys, t) = (ctx.keys, ctx.lang);
-    let button = egui::Button::new("").small().min_size(vec2(MORE_W, 0.0));
-    let menu = egui::menu::menu_custom_button(ui, button, |ui| {
+    more_menu(ui, t, |ui| {
         for a in moved.iter().rev() {
             menu_item(msgs, ui, a.label(t), a.msg(t, keys));
         }
     });
+}
+
+/// A header's more-actions button (a painted icon) opening a menu of `items`.
+pub(in crate::ui) fn more_menu(ui: &mut Ui, t: Lang, items: impl FnOnce(&mut Ui)) {
+    let button = egui::Button::new("").small().frame(false).min_size(vec2(MORE_W, 0.0));
+    let menu = egui::menu::menu_custom_button(ui, button, items);
     let tip = t.tr("details.wip.more.tip");
     let r = menu.response.on_hover_text(tip);
     widgets::paint_icon(ui.painter(), r.rect.center(), Icon::More, color::text());

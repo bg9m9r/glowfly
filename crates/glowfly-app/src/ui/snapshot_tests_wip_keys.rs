@@ -34,7 +34,8 @@ fn with_open(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
 /// moves the pointer away so no hover shows.
 fn click_row(h: &mut H, name: &str) {
     let b = h.get_all_by_role_and_label(Role::Button, name).find_map(|n| n.bounding_box()).expect("the row has bounds");
-    click(h, pos2(b.x1 as f32 - 12.0, ((b.y0 + b.y1) / 2.0) as f32), PointerButton::Primary);
+    // The middle: the row's end holds Stage or Unstage while the pointer is over it.
+    click(h, pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32), PointerButton::Primary);
     h.input_mut().events.push(eframe::egui::Event::PointerMoved(pos2(1.0, 1.0)));
     h.run_ok();
     h.state_mut().1.clear();

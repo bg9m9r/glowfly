@@ -63,6 +63,9 @@ fn wip_row_button_click_only_stages() {
     let mut h = harness(st, true);
     h.run();
     let (x0, x1, y) = row(&h, "README.md");
+    // The row's Stage shows while the pointer is over the row.
+    h.input_mut().events.push(eframe::egui::Event::PointerMoved(pos2((x0 + x1) / 2.0, y)));
+    h.run_ok();
     let stage = h
         .get_all_by_role_and_label(Role::Button, "Stage")
         .filter_map(|n| n.bounding_box())

@@ -3,6 +3,7 @@
 
 use super::Inactive;
 use crate::state::layout::Panel;
+use crate::state::op_steps::OpStep;
 use glowfly_core::settings::SizedPanel;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -23,6 +24,8 @@ pub enum LayoutMsg {
     PanelSize { panel: SizedPanel, size: f32 },
     /// Draw the commit panel in full for the tool view open now (the rail's expand control).
     ExpandDetails,
+    /// Open a folded step of the WIP panel's operation steps, or fold an open one.
+    ToggleOpStep(OpStep),
 }
 
 impl LayoutMsg {
@@ -36,7 +39,8 @@ impl LayoutMsg {
             | Self::TogglePanel(_)
             | Self::SetPanel { .. }
             | Self::PanelSize { .. }
-            | Self::ExpandDetails => None,
+            | Self::ExpandDetails
+            | Self::ToggleOpStep(_) => None,
         }
     }
 }

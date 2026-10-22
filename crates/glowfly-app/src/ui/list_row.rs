@@ -197,13 +197,8 @@ pub fn file_row_with_end<R>(
     file_row_ended(ui, selected, name, Sense::click(), end, add)
 }
 
-/// `file_row` for a list that takes the keyboard focus as a whole (`ui/wip_keys.rs`): the row
-/// takes clicks but is no Tab stop of its own.
-pub fn keyed_file_row<R>(ui: &mut Ui, selected: bool, name: &str, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    file_row_in(ui, selected, name, Sense::CLICK, Layout::left_to_right(Align::Center), add)
-}
-
-/// `file_row_with_end` for a list that takes the keyboard focus as a whole, as `keyed_file_row`.
+/// `file_row_with_end` for a list that takes the keyboard focus as a whole (`ui/wip_keys.rs`):
+/// the row takes clicks but is no Tab stop of its own.
 pub fn keyed_file_row_with_end<R>(
     ui: &mut Ui,
     selected: bool,

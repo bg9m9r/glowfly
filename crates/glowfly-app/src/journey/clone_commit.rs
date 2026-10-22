@@ -52,10 +52,13 @@ fn clone_stage_commit_push_pull() {
     assert_eq!(j.count("notes.txt", Region::Details), 2, "in both lists");
     j.see("Staged files (1)", Region::Details);
 
-    // step 4: stage the whole new file from its row.
+    // step 4: stage the whole new file from its row (its Stage shows once the row is current).
+    j.click("todo.txt", Region::Details, Pick::Only);
     j.click("Stage", Region::Details, Pick::InRowOf("todo.txt"));
     assert_eq!(disk::index_text(&clone, "todo.txt").as_deref(), Some("buy milk\n"));
     j.see("Staged files (2)", Region::Details);
+    // Back to notes.txt's unstaged hunk, which stays open after the commit.
+    j.click("notes.txt", Region::Details, Pick::First);
 
     // step 5: commit the staged changes; the second hunk stays in the working tree.
     j.type_into("Commit summary", "Edit notes and add a todo list");

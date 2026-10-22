@@ -1,22 +1,20 @@
-//! The top of the rebase banner on the WIP row: "<name> in progress · step N of M", the
-//! stopped commit (its short SHA a link to it in the graph, the summary, and why it stopped), a
-//! failed command, and the autostash note; plus the "Edit remaining steps…" button. The
-//! conflicted-files row and the other buttons are drawn by `details_banner::op_banner` (for
-//! `details_wip::wip_panel`).
+//! The rebase's lines under the WIP panel's step heading (`op_steps`): the stopped commit (its
+//! short SHA a link to it in the graph, the summary, and why it stopped), a failed command, and
+//! the autostash note; plus the "Edit remaining steps…" button of step 3.
 
 use crate::msg::{Msg, RebaseMsg, RepoMsg};
 use crate::state::rebase_banner::lines;
 use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText};
 use git2::RepositoryState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::RebaseProgress;
 
-pub fn progress(ui: &mut egui::Ui, t: Lang, title: &str, p: &RebaseProgress, conflicts_left: bool, msgs: &mut Vec<Msg>) {
+/// The lines under the title: where the rebase stopped (the SHA a link to it), a failed
+/// command, and the autostash note; also under the WIP panel's step heading (`op_steps`).
+pub fn details(ui: &mut egui::Ui, t: Lang, p: &RebaseProgress, conflicts_left: bool, msgs: &mut Vec<Msg>) {
     let text = lines(t, p, conflicts_left);
-    ui.label(RichText::new(title).font(type_scale::strong(ui, type_scale::BODY)));
     if let Some(stop) = &text.stop {
         // Word by word, so the line wraps between words like plain text.
         ui.horizontal_wrapped(|ui| {

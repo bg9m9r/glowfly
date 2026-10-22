@@ -2,7 +2,8 @@
 //! all are settings, saved when they change; the shell applies them on the next frame. Expanding
 //! the commit panel collapsed beside a tool view is view state only (`view.details_expanded_for`),
 //! never saved, and lasts while that tool view stays open. Full screen is the window's own
-//! state, read each frame into `view.window` and never saved: the toggle only asks the shell.
+//! state, read each frame into `view.window` and never saved: the toggle only asks the shell. Opening or folding a step of the WIP panel's operation steps
+//! (`view.op_steps`) is view state too, kept until the operation moves on.
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::{LayoutMsg, Msg};
@@ -33,6 +34,11 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
             }
         }
         LayoutMsg::ExpandDetails => st.view.details_expanded_for = tool_view(st),
+        LayoutMsg::ToggleOpStep(step) => {
+            if let Some(snap) = &st.snap {
+                st.view.op_steps.toggle(snap, step);
+            }
+        }
     }
 }
 

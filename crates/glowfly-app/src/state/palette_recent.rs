@@ -185,7 +185,9 @@ impl PaletteCommand {
                 LayoutMsg::SetPanel { panel: Panel::Details, .. } => "details-panel",
                 LayoutMsg::SetPanel { panel: Panel::Toolbar, .. } => "toolbar",
                 LayoutMsg::SetPanel { panel: Panel::MenuBar, .. } => "menu-bar",
-                LayoutMsg::TogglePanel(_) | LayoutMsg::PanelSize { .. } | LayoutMsg::ExpandDetails => return None,
+                LayoutMsg::TogglePanel(_) | LayoutMsg::PanelSize { .. } | LayoutMsg::ExpandDetails | LayoutMsg::ToggleOpStep(_) => {
+                    return None;
+                }
             },
             C::Logs(m) => match m {
                 LogsMsg::Show(LogKind::Activity) => "view-activity-log",

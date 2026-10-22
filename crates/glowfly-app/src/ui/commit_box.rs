@@ -1,5 +1,6 @@
-//! The commit box under the WIP file lists: the title row with the author identity git gives
-//! (state/repo_identity.rs), the summary with its length to its right (weak up to 50
+//! The commit box pinned under the WIP file lists, or inside step 3 of an operation's steps
+//! (`BoxStyle`: titled "Commit" in the plain panel; a secondary button beside Continue): the
+//! Amend option with the author identity git gives (state/repo_identity.rs), the summary with its length to its right (weak up to 50
 //! characters, amber to 72, red past it: `state::commit::summary_length`), the description, the
 //! Amend and "Push after committing" options, the commit button with why it is disabled centred
 //! under it (that line's height is always kept, so the box doesn't change height), the button's
@@ -42,14 +43,28 @@ pub(super) fn shortcuts_tip(t: Lang, keys: &Keymap) -> String {
     }
 }
 
-pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+/// How the commit box is drawn: on its own under the file lists (`titled`, with its Commit
+/// title over a rule), or inside step 3 of an operation in progress, whose title it takes; and
+/// whether its button is the view's primary (not beside an operation's Continue).
+#[derive(Clone, Copy)]
+pub(super) struct BoxStyle {
+    pub titled: bool,
+    pub primary: bool,
+}
+
+pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, style: BoxStyle, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
     let t = st.settings.lang();
-    ui.add_space(6.0);
-    ui.separator();
+    if style.titled {
+        ui.add_space(8.0);
+        ui.separator();
+        ui.add_space(4.0);
+    }
     let identity = st.identities.get(&snap.git_dir).map(|id| commit_identity_line(t, id, &st.settings));
     ui.horizontal(|ui| {
-        ui.label(type_scale::section_text(ui, t.tr("commit.title")));
+        if style.titled {
+            ui.label(type_scale::section_text(ui, t.tr("commit.title")));
+        }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if controls::checkbox(ui, &mut st.draft.amend, t.tr("commit.amend")).changed() && st.draft.amend {
                 msgs.push(Msg::Commit(CommitMsg::PrefillAmend));
@@ -132,13 +147,15 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
         }
     });
 
-    let label = st.draft.button_label(t, snap.staged.len(), pushes_after(st), snap.state == git2::RepositoryState::Merge);
+    let merging = snap.state == git2::RepositoryState::Merge;
+    let label = st.draft.button_label(t, snap.staged.len(), pushes_after(st), merging);
     let blocked = commit_blocked(st, false);
     let enabled = blocked.is_none();
     let tip = shortcuts_tip(t, &st.keymap);
     ui.horizontal(|ui| {
-        if commit_split(ui, label, enabled, blocked, &tip, &mut st.draft, t).clicked() {
-            msgs.push(Msg::Commit(CommitMsg::Commit));
+        if commit_split(ui, label, (enabled, style.primary), blocked, &tip, &mut st.draft, t).clicked() {
+            // A merge commits through Commit merge, which fills a blank message with git's.
+            msgs.push(Msg::Commit(if merging { CommitMsg::CommitMerge } else { CommitMsg::Commit }));
         }
     });
     reason::line(ui, blocked, Align::Center);
@@ -168,7 +185,7 @@ const MENU_W: f32 = 160.0;
 fn commit_split(
     ui: &mut egui::Ui,
     label: String,
-    enabled: bool,
+    (enabled, primary): (bool, bool),
     blocked: Option<&str>,
     tip: &str,
     draft: &mut CommitDraft,
@@ -178,7 +195,8 @@ fn commit_split(
     let open = ui.memory(|m| m.is_popup_open(popup));
     let skip = draft.skip_hooks;
     let w = ui.available_width() - CARET_W;
-    let button = buttons::primary(label).enabled(enabled).why(blocked).tip(tip).min_width(w).max_width(w).min_height(BUTTON_H);
+    let button = if primary { buttons::primary(label) } else { buttons::secondary(label) };
+    let button = button.enabled(enabled).why(blocked).tip(tip).min_width(w).max_width(w).min_height(BUTTON_H);
     // The caret's name stays the same either way, so it is always found by it.
     let (commit, caret) = buttons::split(button, t.tr("commit.more.tip")).open(open).menu_tone(skip.then_some(Tone::Warning)).show(ui);
     let caret = caret.on_hover_text(if skip { t.tr("commit.more.skipping_tip") } else { t.tr("commit.more.tip") });

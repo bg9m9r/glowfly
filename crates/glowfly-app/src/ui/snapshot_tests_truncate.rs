@@ -75,16 +75,18 @@ fn wip_header_german_narrow() {
 
 #[test]
 fn wip_header_german_wide() {
-    // Wide enough for every button beside the whole title, in a wider window so the graph keeps
+    // Wide enough for Stage all beside the whole title (Discard all and New file… keep to the
+    // menu), in a wider window so the graph keeps
     // its columns.
     let (st, dir) = german_wip("truncate-wip-wide", 600.0);
     let de = Lang::De;
     let mut h = harness_sized(st, true, vec2(1600.0, 820.0));
     h.run();
-    for key in ["details.wip.stage_all.button", "details.wip.discard_all.button", "details.wip.new_file.button"] {
-        assert!(h.query_by_label(de.tr(key)).is_some(), "{key}");
+    assert!(h.query_by_label(de.tr("details.wip.stage_all.button")).is_some());
+    for key in ["details.wip.discard_all.button", "details.wip.new_file.button"] {
+        assert!(h.query_by_label(de.tr(key)).is_none(), "{key} waits in the menu");
     }
-    assert!(h.query_by_label(de.tr("details.wip.more.tip")).is_none());
+    assert!(h.query_by_label(de.tr("details.wip.more.tip")).is_some());
     h.check_snapshot("wip_header_german_wide");
     drop(h);
     remove_fixture(&dir);

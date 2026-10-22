@@ -1,14 +1,21 @@
-//! The WIP panel: the in-progress banner, the Conflicted, Resolved, Unstaged and Staged Files
-//! lists with their rows' actions, and the commit box. The Unstaged and Staged Files headers are
-//! in `details_wip_header.rs`; those two lists' keyboard focus and arrows are in `wip_keys.rs`.
+//! The WIP panel: the file lists in a scrolling area over the commit box, which stays at the
+//! bottom (its height measured the frame before). While an operation is in progress the lists
+//! sit in its numbered steps (`op_steps.rs`); else Unstaged, then Staged Files, under the card of
+//! an operation without steps (`details_banner.rs`). A row's Stage, Unstage or Mark resolved
+//! sits at its end while the row is hovered or current; the S and U keys and its menu reach it too.
+//! The Unstaged and Staged Files headers are in `details_wip_header.rs`; those two lists'
+//! keyboard focus and arrows are in `wip_keys.rs`.
 
 #[path = "details_wip_header.rs"]
-mod header;
+pub(super) mod header;
 
 use super::UiCache;
+use super::commit_box::BoxStyle;
 use super::common::{menu_item, status_color, status_label};
 use super::file_menu::{self, ToolItem};
+use super::op_steps::TopArgs;
 use super::theme::color;
+use super::widgets::buttons;
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
@@ -18,6 +25,7 @@ use crate::msg::WorkFileMsg;
 use crate::state::AppState;
 use crate::state::custom_commands::MenuCommands;
 use crate::state::lfs::{TrackContext, track_items};
+use crate::state::op_steps::op_kind;
 use crate::state::tool_compare::ToolAvail;
 use crate::tools::ToolsMsg;
 use crate::ui::theme::type_scale;
@@ -34,26 +42,47 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
 
     let conflicted: Vec<&FileEntry> = snap.unstaged.iter().filter(|f| f.status == '!').collect();
     let resolved = st.conflict_files.resolved_rows(snap);
-    super::details_banner::op_banner(ui, st, snap, &conflicted, resolved.len(), msgs);
-    super::path_warnings::banner(ui, st.settings.lang(), snap);
-
-    // The lists shown share what the commit box leaves: Unstaged and Staged, plus Conflicted
-    // and Resolved Files while there are any.
-    let lists = 2 + usize::from(!conflicted.is_empty()) + usize::from(!resolved.is_empty());
-    let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / lists as f32).max(60.0);
+    let kind = op_kind(snap);
     let tools = ToolAvail::of(st);
     let lines = st.line_counts.wip();
     let commands = MenuCommands::for_state(st);
     let (lfs, keys, lang) = (TrackContext::of(st), &st.keymap, st.settings.lang());
     let ctx = RowContext { lfs, tools: &tools, keys, lang, lines, commands: &commands, keyed: false };
-    let lists = super::conflict_files::Lists { conflicted: &conflicted, resolved: &resolved, height: list_h };
-    super::conflict_files::show(ui, st, lists, &open, ctx, msgs);
     let reveal = st.view.file_reveal.as_ref();
-    file_list(ui, snap, false, (&open, reveal), list_h, ctx, msgs);
-    ui.add_space(8.0);
-    file_list(ui, snap, true, (&open, reveal), list_h, ctx, msgs);
-    super::commit_box::show(ui, st, cache, msgs);
+
+    // The commit box (or step 3) is pinned at the bottom at the height it took last frame; the
+    // lists scroll in the room above it.
+    let bottom_id = ui.id().with("wip-bottom");
+    let bottom_h = ui.data(|d| d.get_temp::<f32>(bottom_id)).unwrap_or(super::commit_box::RESERVED_HEIGHT);
+    let top_h = (ui.available_height() - bottom_h).max(TOP_MIN);
+    let size = egui::vec2(ui.available_width(), top_h);
+    ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Min), |ui| {
+        ui.set_min_size(size);
+        egui::ScrollArea::vertical().id_salt("wip-top").auto_shrink([false, false]).show(ui, |ui| match kind {
+            Some(kind) => {
+                let a = TopArgs { kind, conflicted: &conflicted, resolved: &resolved, open: &open, reveal, ctx, height: top_h };
+                super::op_steps::top(ui, st, snap, a, msgs);
+            }
+            None => {
+                super::details_banner::op_banner(ui, st, snap, msgs);
+                super::path_warnings::banner(ui, lang, snap);
+                // The two lists share the room left by their headers.
+                let list_h = ((top_h - 2.0 * header::HEADER_H - 24.0) / 2.0).max(60.0);
+                file_list(ui, snap, false, (&open, reveal), list_h, ctx, msgs);
+                ui.add_space(12.0);
+                file_list(ui, snap, true, (&open, reveal), list_h, ctx, msgs);
+            }
+        });
+    });
+    let bottom = ui.scope(|ui| match kind {
+        Some(kind) => super::op_steps::bottom(ui, st, cache, kind, msgs),
+        None => super::commit_box::show(ui, st, cache, BoxStyle { titled: true, primary: true }, msgs),
+    });
+    ui.data_mut(|d| d.insert_temp(bottom_id, bottom.response.rect.height()));
 }
+
+/// The least height the lists keep above the pinned commit box.
+const TOP_MIN: f32 = 120.0;
 
 /// What every working-tree row needs, built once per frame: Track in Git LFS's context and
 /// the diff and merge tools' availability, the keymap for the header buttons' tips, the
@@ -87,14 +116,14 @@ pub(super) fn discard_all_text(t: Lang, keys: &Keymap) -> String {
 }
 
 /// The file a step landed on, for its list to scroll to (`ViewState::file_reveal`).
-type Reveal<'a> = Option<&'a (DiffTarget, u64)>;
+pub(super) type Reveal<'a> = Option<&'a (DiffTarget, u64)>;
 
 /// The Unstaged or Staged Files list of the working tree. Conflicted files have their own list
 /// (`conflict_files::show`), so Unstaged Files leaves them out. It scrolls to the file a step
 /// landed on. The list takes the keyboard focus as one Tab stop, or by a click on a row; while
 /// it has it, Up/Down step between its files and its current row (or, with none, the list) is
 /// ringed.
-fn file_list(
+pub(super) fn file_list(
     ui: &mut egui::Ui,
     snap: &Snapshot,
     staged: bool,
@@ -207,6 +236,25 @@ pub(super) fn wip_file_row(
         Some(DiffTarget::Unstaged(p)) => !staged && *p == f.path,
         _ => false,
     };
+    // The row's action sits at its end while the row is hovered or current, in place of its line
+    // counts. The S and U keys, the conflict view's Save and mark resolved and the row's menu
+    // reach it too.
+    let at = egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), super::widgets::LIST_ROW_H));
+    let show_action = selected || ui.rect_contains_pointer(at);
+    // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).
+    let usable = !matches!(f.hazard, Some(glowfly_core::repo::Hazard::NotUtf8(_)));
+    let end = |ui: &mut egui::Ui| {
+        if show_action {
+            if ui.add(buttons::quiet(action).small().enabled(usable)).clicked() {
+                msgs.push(toggle());
+            }
+        } else if let Some((n, w)) = count.zip(lines) {
+            super::line_counts::row_end(ui, n, w.largest());
+        }
+        if let Some((text, green)) = &note {
+            ui.label(RichText::new(text).size(type_scale::SMALL).color(if *green { color::text() } else { color::weak() }));
+        }
+    };
     let row = |ui: &mut egui::Ui| {
         if conflicted {
             let (rect, _) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover());
@@ -216,27 +264,14 @@ pub(super) fn wip_file_row(
                 RichText::new(status_label(f.status).to_string()).font(type_scale::mono(type_scale::BODY)).color(status_color(f.status)),
             );
         }
-        // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).
-        let usable = !matches!(f.hazard, Some(glowfly_core::repo::Hazard::NotUtf8(_)));
-        if ui.add_enabled(usable, egui::Button::new(action).small()).clicked() {
-            msgs.push(toggle());
-        }
         super::widgets::row_text(ui, RichText::new(&f.path).monospace(), selected);
         super::path_warnings::mark(ui, ctx.lang, f);
         super::lfs_badge::badge(ui, f);
-        if let Some((text, green)) = note {
-            ui.label(RichText::new(text).size(type_scale::SMALL).color(if green { color::text() } else { color::weak() }));
-        }
     };
-    let r = match (count.zip(lines), ctx.keyed) {
-        (Some((n, w)), false) => {
-            super::widgets::file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::row_end(ui, n, w.largest()), row)
-        }
-        (Some((n, w)), true) => {
-            super::widgets::keyed_file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::row_end(ui, n, w.largest()), row)
-        }
-        (None, false) => super::widgets::file_row(ui, selected, &f.path, row),
-        (None, true) => super::widgets::keyed_file_row(ui, selected, &f.path, row),
+    let r = if ctx.keyed {
+        super::widgets::keyed_file_row_with_end(ui, selected, &f.path, end, row)
+    } else {
+        super::widgets::file_row_with_end(ui, selected, &f.path, end, row)
     }
     .response;
     if r.clicked() {

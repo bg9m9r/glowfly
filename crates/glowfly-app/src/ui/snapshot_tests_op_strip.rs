@@ -67,7 +67,7 @@ fn wip_merge_banner() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("wip_merge_banner");
-    assert!(h.get_all_by_label("Commit merge").all(|n| n.is_disabled()), "conflicts remain");
+    assert!(h.query_by_label("Commit merge").is_none(), "step 3 stays folded while conflicts remain");
     assert!(!h.get_by_label("Abort merge").is_disabled());
     drop(h);
     remove_fixture(&dir);
@@ -86,8 +86,8 @@ fn wip_merge_banner_ready() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("wip_merge_banner_ready");
-    assert_eq!(h.get_all_by_label("Commit merge").filter(|n| !n.is_disabled()).count(), 2, "the banner's and the commit button");
-    assert_eq!(h.get_all_by_label("All conflicts resolved").count(), 2, "the strip and the card");
+    assert_eq!(h.get_all_by_label("Commit merge").filter(|n| !n.is_disabled()).count(), 1, "step 3's commit button only");
+    assert_eq!(h.get_all_by_label("All conflicts resolved").count(), 1, "the strip; step 1 says Conflicts resolved");
     drop(h);
     remove_fixture(&dir);
 }

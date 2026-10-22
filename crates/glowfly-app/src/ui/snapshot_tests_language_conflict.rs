@@ -173,6 +173,7 @@ fn conflict_lists_german() {
     let (mut st, dir) = merging("lang-conflict-lists", true);
     fill_lists(&mut st, &dir);
     german(&mut st);
+    st.settings.panel_sizes.details = Some(520.0);
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label(de.tr("conflict.files.mark_all_resolved.button")).is_some());

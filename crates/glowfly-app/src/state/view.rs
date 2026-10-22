@@ -168,6 +168,9 @@ pub struct ViewState {
     /// What the title bar, toolbar and sidebar are painted on: set by the shell each frame;
     /// views read it through `ui::backdrop::fill`.
     pub backdrop: Backdrop,
+    /// The WIP panel's steps opened or folded by hand while an operation is in progress (set
+    /// only by update, `LayoutMsg::ToggleOpStep`).
+    pub op_steps: super::op_steps::StepFolds,
 }
 
 impl Default for ViewState {
@@ -221,6 +224,7 @@ impl Default for ViewState {
             window: WindowInfo::default(),
             alt_tap: AltTap::default(),
             backdrop: Backdrop::Solid,
+            op_steps: Default::default(),
         }
     }
 }

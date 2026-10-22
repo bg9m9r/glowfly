@@ -44,6 +44,7 @@ const ICON_GAP: f32 = 6.0;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
     Primary,
+    #[allow(dead_code)]
     Tonal,
     Secondary,
     Quiet,
@@ -74,7 +75,9 @@ pub fn primary<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
     StyledButton::new(text.into(), Kind::Primary)
 }
 
-/// An important action that isn't the view's main one (Stage all).
+/// An important action that isn't the view's main one. Part of the family before a view needs
+/// it again (the WIP lists' header actions became quiet).
+#[allow(dead_code)]
 pub fn tonal<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
     StyledButton::new(text.into(), Kind::Tonal)
 }
@@ -84,9 +87,8 @@ pub fn secondary<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
     StyledButton::new(text.into(), Kind::Secondary)
 }
 
-/// An action in a toolbar, header or row: no fill until hovered. Part of the family before a
-/// view needs it (the ghost controls share its look through `button_look::paint_quiet`).
-#[allow(dead_code)]
+/// An action in a toolbar, header or row: no fill until hovered (the ghost controls share its
+/// look through `button_look::paint_quiet`).
 pub fn quiet<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
     StyledButton::new(text.into(), Kind::Quiet)
 }

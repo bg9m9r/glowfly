@@ -207,6 +207,8 @@ pub(super) mod onboarding_tests;
 pub(super) mod op_preview_tests;
 #[path = "op_progress_tests.rs"]
 pub(super) mod op_progress_tests;
+#[path = "op_steps_tests.rs"]
+pub(super) mod op_steps_tests;
 #[path = "palette_blame_tests.rs"]
 pub(super) mod palette_blame_tests;
 #[path = "palette_checkout_tests.rs"]
