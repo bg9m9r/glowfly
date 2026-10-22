@@ -1051,7 +1051,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 ### Performance
 
 - Turn on git's built-in fsmonitor from Glowfly (suggest watchman on Linux), checking that the daemon runs
-- Make the Windows 30 s safety poll cheaper for huge trees (read only folders changed since the last read)
 
 ### Deep links
 
@@ -2675,6 +2674,8 @@ here, under the item they grew from.
 - Word the slow-status note for another worktree's background count by that worktree's name
 - Use the index comparison for Glowfly's own stage, unstage and discard refreshes instead of a whole status read
 - Pack the index memo's paths into one buffer so indexes past `MAX_INDEX_MEMO` entries can be compared too
+- Sweep submodules' and nested repositories' work trees in the Windows safety poll (it skips nested `.git` folders)
+- Report the Windows sweep's duration and counts in the activity log (debug)
 
 ### Deep links
 

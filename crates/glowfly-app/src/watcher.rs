@@ -2,13 +2,16 @@
 //! own drops the ones that don't matter (`glowfly_core::watch`), coalesces the rest into bursts
 //! and sends one message per burst: `WatchMsg::RepoChanged`, with the work-tree paths it saw when
 //! nothing else changed, or `WatchMsg::IndexChanged` when the index changed too (with those
-//! paths). Owned by the runner (`Effect::Watch`).
+//! paths). Owned by the runner (`Effect::Watch`). On Windows the safety poll asks the same
+//! thread to sweep the tree (`Effect::SweepWatch`, `glowfly_core::watch_sweep`) for changes the
+//! watcher may have dropped; what it finds goes through the same classification and bursts.
 
 use crate::effect::WatchTarget;
 use crate::msg::Msg;
 use crate::msg::WatchMsg;
 use crate::runner::Waker;
 use glowfly_core::watch::{Change, Ignores, MAX_WATCH_PATHS, Touch, WatchPaths};
+use glowfly_core::watch_sweep::Sweep;
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Watcher};
 use std::collections::BTreeSet;
@@ -66,11 +69,26 @@ impl WatchSlot {
             tracing::error!("could not start the file watcher thread: {e}");
         }
     }
+
+    /// Asks the live watcher of `workdir` to sweep its tree; false when no watcher of that
+    /// repository is running (it failed or is still starting).
+    pub fn sweep(&self, workdir: &Path) -> bool {
+        let slot = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        slot.1.as_ref().is_some_and(|w| glowfly_core::paths::same_spelling(&w.workdir, workdir) && w.input.send(Input::Sweep).is_ok())
+    }
 }
 
-/// A running watcher. Dropping it stops notify, which ends the event thread.
+/// What the event thread receives: notify's events, and sweep requests.
+enum Input {
+    Event(notify::Result<Event>),
+    Sweep,
+}
+
+/// A running watcher. Dropping it stops notify and the sender, which ends the event thread.
 pub struct RepoWatcher {
     _inner: notify::RecommendedWatcher,
+    input: Sender<Input>,
+    workdir: PathBuf,
 }
 
 /// Watches the work tree and git dir of `target` and, for a linked worktree, the refs, packed
@@ -78,10 +96,14 @@ pub struct RepoWatcher {
 /// pointing at a home folder would use up Linux's inotify watches, and what it points to isn't
 /// part of the repository.
 fn start<W: Waker + Clone>(target: &WatchTarget, tx: Sender<Msg>, waker: W) -> Result<RepoWatcher, String> {
-    let (raw_tx, raw_rx) = std::sync::mpsc::channel::<notify::Result<Event>>();
+    let (raw_tx, raw_rx) = std::sync::mpsc::channel::<Input>();
     let describe = |p: &Path, e: notify::Error| format!("could not watch {}: {e}", glowfly_core::native_path::shown(p));
     let config = notify::Config::default().with_follow_symlinks(false);
-    let mut inner = notify::RecommendedWatcher::new(raw_tx, config).map_err(|e| format!("could not start a file watcher: {e}"))?;
+    let events = raw_tx.clone();
+    let handler = move |r| {
+        let _ = events.send(Input::Event(r));
+    };
+    let mut inner = notify::RecommendedWatcher::new(handler, config).map_err(|e| format!("could not start a file watcher: {e}"))?;
     inner.watch(&target.workdir, RecursiveMode::Recursive).map_err(|e| describe(&target.workdir, e))?;
     if !target.git_dir.starts_with(&target.workdir) {
         inner.watch(&target.git_dir, RecursiveMode::Recursive).map_err(|e| describe(&target.git_dir, e))?;
@@ -95,20 +117,22 @@ fn start<W: Waker + Clone>(target: &WatchTarget, tx: Sender<Msg>, waker: W) -> R
         // HEAD and packed-refs sit in the folder itself.
         inner.watch(common, RecursiveMode::NonRecursive).map_err(|e| describe(common, e))?;
     }
+    let workdir = target.workdir.clone();
     let target = target.clone();
     std::thread::Builder::new()
         .name("glowfly-watch".into())
         .spawn(move || event_loop(raw_rx, target, common, tx, waker))
         .map_err(|e| format!("could not start the file watcher thread: {e}"))?;
-    Ok(RepoWatcher { _inner: inner })
+    Ok(RepoWatcher { _inner: inner, input: raw_tx, workdir })
 }
 
-fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarget, common: Option<PathBuf>, tx: Sender<Msg>, waker: W) {
+fn event_loop<W: Waker>(raw: Receiver<Input>, target: WatchTarget, common: Option<PathBuf>, tx: Sender<Msg>, waker: W) {
     let mut paths = WatchPaths::new(&target.workdir, &target.git_dir);
     if let Some(c) = &common {
         paths = paths.with_common(c);
     }
     let mut ignores = Ignores::open(&target.workdir);
+    let mut sweep = Sweep::new(&target.workdir, &target.git_dir, common.as_deref());
     let mut burst = Burst::default();
     let mut reported = false;
     loop {
@@ -117,11 +141,12 @@ fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarge
             Some(d) => raw.recv_timeout(d),
         };
         match next {
-            Ok(Ok(ev)) => {
+            Ok(Input::Sweep) => swept(&mut sweep, &paths, &mut ignores, &mut burst),
+            Ok(Input::Event(Ok(ev))) => {
                 let (change, changed) = classify(&ev, &paths, &mut ignores);
                 burst.add(change, changed, Instant::now());
             }
-            Ok(Err(e)) => {
+            Ok(Input::Event(Err(e))) => {
                 if !reported {
                     reported = true;
                     let msg = Msg::Watch(WatchMsg::WatchFailed { workdir: target.workdir.clone(), error: e.to_string() });
@@ -149,6 +174,23 @@ fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarge
                 return;
             }
             waker.wake();
+        }
+    }
+}
+
+/// Runs one sweep of the tree into `burst`: the paths it found as events, or a whole read when
+/// it has nothing to compare with (its first run, or a tree too large to sweep).
+fn swept(sweep: &mut Sweep, paths: &WatchPaths, ignores: &mut Ignores, burst: &mut Burst) {
+    let started = Instant::now();
+    let found = sweep.sweep(ignores, std::time::SystemTime::now());
+    tracing::debug!(took = ?started.elapsed(), found = found.as_ref().map(Vec::len), "swept the work tree");
+    match found {
+        None => burst.add(Change::Status, Vec::new(), Instant::now()),
+        Some(found) => {
+            for p in found {
+                let (change, changed) = classify(&Event::new(EventKind::Any).add_path(p), paths, ignores);
+                burst.add(change, changed, Instant::now());
+            }
         }
     }
 }
@@ -254,5 +296,8 @@ impl Burst {
     }
 }
 
+#[cfg(test)]
+#[path = "watcher/sweep_tests.rs"]
+mod sweep_tests;
 #[cfg(test)]
 mod tests;

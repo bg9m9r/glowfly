@@ -106,8 +106,10 @@ pub(super) fn remote_text(workdir: &std::path::Path, kind: &str, keys: &Keymap) 
     )
 }
 
-/// On the timer `poll_every` sets (a network or virtual file system, or Windows), re-reads the
-/// status while the window is focused and nothing else is reading or changing the repository.
+/// On the timer `poll_every` sets (a network or virtual file system, or Windows), checks for
+/// missed changes while the window is focused and nothing else is reading or changing the
+/// repository: a local Windows repository's watcher sweeps its tree (`Effect::SweepWatch`), the
+/// others read the whole status.
 pub(super) fn poll(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let Some(every) = st.watch.poll_interval() else { return };
     if !st.view.was_focused || st.snap.is_none() || st.job.is_some() || st.loading {
@@ -117,7 +119,10 @@ pub(super) fn poll(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
         Some(last) if now.saturating_duration_since(last) < every => {}
         Some(_) => {
             st.watch.last_poll = Some(now);
-            super::repo::refresh_status(st, fx);
+            match st.watch.target.clone().filter(|_| st.watch.sweeps()) {
+                Some(workdir) => fx.push(Effect::SweepWatch { workdir }),
+                None => super::repo::refresh_status(st, fx),
+            }
         }
         None => st.watch.last_poll = Some(now),
     }

@@ -237,7 +237,7 @@ fn execute_unscoped(
         }
         // The save dialog waits on the user, so it runs here rather than on the log worker.
         Effect::Logs(crate::logs::LogsEffect::PickExport { name }) => Some(logs::pick_export(&name)),
-        Effect::Watch(_) | Effect::AnswerPrompt { .. } | Effect::Terminal(_) | Effect::Logs(_) => {
+        Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. } | Effect::Terminal(_) | Effect::Logs(_) => {
             tracing::warn!("watch, prompt, terminal or log effect reached a worker; it is handled by Runner::run");
             None
         }

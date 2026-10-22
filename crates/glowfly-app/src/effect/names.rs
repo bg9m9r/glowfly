@@ -61,6 +61,7 @@ impl Effect {
             Effect::Ssh(e) => e.name(),
             Effect::Profile(e) => e.name(),
             Effect::Watch(_) => "watch",
+            Effect::SweepWatch { .. } => "sweep-watch",
             Effect::AnswerPrompt { .. } => "answer-prompt",
             Effect::Credential(e) => e.name(),
             Effect::Terminal(_) => "terminal",
@@ -172,6 +173,7 @@ impl Effect {
             // They wait on the user, hand work to the system, or never run on a worker thread.
             Effect::Os(_)
             | Effect::Watch(_)
+            | Effect::SweepWatch { .. }
             | Effect::AnswerPrompt { .. }
             // A keychain may ask the user to allow saving the sign-in.
             | Effect::Credential(_)

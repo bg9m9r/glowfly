@@ -140,6 +140,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::Trust(_)
             | Effect::GitEnv(GitEnvEffect::Detect { .. } | GitEnvEffect::Discover { .. } | GitEnvEffect::CheckPathGit { .. })
             | Effect::Watch(_)
+            | Effect::SweepWatch { .. }
             | Effect::AnswerPrompt { .. }
             | Effect::Partial(crate::effect::partial::PartialEffect::FetchContent(_))
             | Effect::StopGit(_)
@@ -259,6 +260,19 @@ mod tests {
         let note = DesktopNote { kind: NoteKind::Job, title: "t".into(), body: "b".into(), workdir: None };
         assert!(runner.admit(Effect::Notify(note)).is_none());
         assert_eq!(runner.dropped(), ["open-url", "desktop-note"]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_sweep_without_a_watcher_reads_the_whole_status() {
+        let dir = folder("sweep");
+        let (tx, rx) = mpsc::channel();
+        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        runner.run(Effect::SweepWatch { workdir: dir.clone() });
+        let msg = rx.recv_timeout(std::time::Duration::from_secs(5)).expect("a message");
+        let Msg::Scoped { workdir, msg } = msg else { panic!("scoped to the repository") };
+        assert_eq!(workdir, dir);
+        assert!(matches!(*msg, Msg::Watch(crate::msg::WatchMsg::RepoChanged { full: false, paths: None, .. })));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

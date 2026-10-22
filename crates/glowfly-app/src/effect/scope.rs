@@ -72,6 +72,7 @@ impl Effect {
             | Effect::Ssh(_)
             | Effect::Profile(_)
             | Effect::Watch(_)
+            | Effect::SweepWatch { .. }
             | Effect::AnswerPrompt { .. }
             | Effect::Credential(_)
             | Effect::Terminal(_)

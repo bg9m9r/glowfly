@@ -344,6 +344,10 @@ pub enum Effect {
     /// Watch this repository for outside changes, replacing any previous watch; None stops
     /// watching. Handled by `Runner::run` itself (the watcher outlives a worker thread).
     Watch(Option<WatchTarget>),
+    /// Check the watched tree for changes the watcher may have missed (Windows poll); `Runner::run`.
+    SweepWatch {
+        workdir: PathBuf,
+    },
     /// Answers credential prompt `id`. Handled by `Runner::run` itself, which owns the
     /// listener the helper is waiting on. The answer's `Debug` output is redacted.
     AnswerPrompt {

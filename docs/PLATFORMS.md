@@ -407,9 +407,13 @@ second one next to it.
    recursively, `HEAD` and `packed-refs`.
 3. **Assume the watcher can be silent.** Detect remote and virtual file systems with
    `volume::remote_kind` (statfs magic on Linux, `MNT_LOCAL` on macOS, `DRIVE_REMOTE` on
-   Windows), tell the user once, and poll every `REMOTE_POLL` (10 s) while focused. On Windows
-   poll every `WINDOWS_POLL` (30 s) while focused (`state/watch.rs`, `poll_every`). Keep the
-   refresh on focus and F5.
+   Windows), tell the user once, and read the whole status every `REMOTE_POLL` (10 s) while
+   focused. On Windows poll every `WINDOWS_POLL` (30 s) while focused (`state/watch.rs`,
+   `poll_every`): a local repository's watcher sweeps its tree (`watch_sweep`: every folder
+   stat'd, the changed and racy ones and a rotating tenth listed again, the git dir's refs, index
+   and exclude and attributes files compared) and feeds what changed through the usual
+   classification; a failed watcher, a tree past `SWEEP_MAX_ENTRIES` and the first sweep read the
+   whole status. Keep the refresh on focus and F5.
 4. **Never trust size plus mtime alone.** Hash files up to 64 KiB, and treat a stamp taken
    within `refs_key::RACY_WINDOW` (2 s) of the modification time as untrustworthy
    (`refs_key::stamp_trustworthy`): FAT has 2 s timestamps and HFS+ 1 s.
@@ -548,7 +552,9 @@ Gaps that are accepted for now:
   file is copied synchronously into the home Trash, which takes a while for large files on
   network mounts.
 - **Windows file watching can drop events** without an error (`notify` sends no rescan on
-  overflow); the 30 s poll covers it.
+  overflow); the 30 s poll's sweep finds files created, removed or renamed at once, but a
+  content-only edit lost that way shows only within about 5 minutes (when its folder's turn in
+  the rotation comes), or on F5.
 - **Some desktop notifications still post under another app's identity:** a portable Windows
   copy's are attributed to PowerShell, and an unbundled macOS binary's (cargo run) to another
   app, through the deprecated NSUserNotification API. A Windows toast clicked in the

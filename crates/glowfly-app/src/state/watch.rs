@@ -42,11 +42,22 @@ pub fn poll_every(watching: bool, windows: bool, remote: bool) -> Option<Duratio
     }
 }
 
+/// Whether the poll sweeps the tree (`Effect::SweepWatch`) rather than reading the whole status:
+/// on Windows, for a local repository whose watcher hasn't failed.
+pub fn sweep_poll(windows: bool, remote: bool, failed: bool) -> bool {
+    windows && !remote && !failed
+}
+
 impl WatchState {
     /// `poll_every` for the watched repository on this system.
     pub fn poll_interval(&self) -> Option<Duration> {
         let target = self.target.as_ref()?;
         poll_every(true, cfg!(windows), self.remote.contains_key(target))
+    }
+
+    /// `sweep_poll` for the watched repository on this system.
+    pub fn sweeps(&self) -> bool {
+        self.target.as_ref().is_some_and(|t| sweep_poll(cfg!(windows), self.remote.contains_key(t), self.failed.contains(t)))
     }
 }
 
@@ -61,5 +72,13 @@ mod tests {
         assert_eq!(poll_every(true, false, true), Some(REMOTE_POLL));
         assert_eq!(poll_every(true, true, true), Some(REMOTE_POLL));
         assert_eq!(poll_every(false, true, true), None, "watching is off: focus and F5 only");
+    }
+
+    #[test]
+    fn only_a_local_windows_watcher_is_swept() {
+        assert!(sweep_poll(true, false, false));
+        assert!(!sweep_poll(true, true, false), "a network volume reads everything");
+        assert!(!sweep_poll(true, false, true), "a failed watcher can't sweep");
+        assert!(!sweep_poll(false, false, false), "no poll elsewhere");
     }
 }

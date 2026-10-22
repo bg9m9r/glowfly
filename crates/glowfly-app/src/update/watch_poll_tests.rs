@@ -1,5 +1,6 @@
 //! Headless tests for the watcher's safety nets: the notice for a repository on a network or
-//! virtual file system, and re-reading the status on a timer where the watcher can be silent.
+//! virtual file system, and checking again on a timer where the watcher can be silent (a sweep of
+//! the tree on Windows, the whole status on a network volume).
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
@@ -54,5 +55,47 @@ fn windows_rereads_a_local_repository_too_and_nothing_polls_when_watching_is_off
     st.settings.watch_files = false;
     super::watch::sync(&mut st, &mut Vec::new());
     assert_eq!(st.watch.poll_interval(), None);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn sweeps(fx: &[Effect]) -> usize {
+    fx.iter().filter(|e| matches!(e, Effect::SweepWatch { .. })).count()
+}
+
+/// The effects of a tick when the poll is due.
+fn due_tick(st: &mut AppState) -> Vec<Effect> {
+    let t0 = Instant::now();
+    update(st, Msg::Tick(t0), t0);
+    let t1 = t0 + WINDOWS_POLL;
+    update(st, Msg::Tick(t1), t1)
+}
+
+#[test]
+fn windows_sweeps_a_local_repository_instead_of_reading_it() {
+    let (mut st, dir) = opened("watch-poll-sweep");
+    let workdir = st.workdir().unwrap();
+    let fx = due_tick(&mut st);
+    if !cfg!(windows) {
+        assert!(fx.is_empty(), "no poll elsewhere: {fx:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+        return;
+    }
+    assert!(matches!(&fx[..], [Effect::SweepWatch { workdir: w }] if *w == workdir), "{fx:?}");
+    assert_eq!(statuses(&fx), 0);
+
+    st.watch.failed.insert(workdir.clone());
+    st.watch.last_poll = None;
+    let fx = due_tick(&mut st);
+    assert_eq!((sweeps(&fx), statuses(&fx)), (0, 1), "a failed watcher: the whole status");
+    st.refresh.status_busy = false;
+    st.watch.failed.clear();
+
+    st.watch.remote.insert(workdir, "SMB");
+    st.watch.last_poll = None;
+    let t0 = Instant::now();
+    update(&mut st, Msg::Tick(t0), t0);
+    let t1 = t0 + REMOTE_POLL;
+    let fx = update(&mut st, Msg::Tick(t1), t1);
+    assert_eq!((sweeps(&fx), statuses(&fx)), (0, 1), "a network volume: the whole status");
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -175,6 +175,7 @@ impl<W: Waker + Clone> Runner<W> {
         let Some(effect) = self.admit(effect) else { return };
         let effect = match effect {
             Effect::Watch(target) => return self.watch.set(target, self.tx.clone(), self.waker.clone()),
+            Effect::SweepWatch { workdir } => return self.sweep_watch(workdir),
             Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
             Effect::Terminal(t) => return self.terminal(t),
             Effect::Stats { workdir, oids } => return self.stats.submit(workdir, oids, self.tx.clone(), self.waker.clone()),
@@ -240,6 +241,18 @@ impl<W: Waker + Clone> Runner<W> {
         };
         if let Err(e) = std::thread::Builder::new().name(format!("glowfly-{name}")).spawn(job) {
             tracing::error!("could not start a worker thread for {name}: {e}");
+        }
+    }
+
+    /// Has the watcher of `workdir` sweep its tree; with none running there, reads the whole
+    /// status instead (as the poll did before the sweep).
+    fn sweep_watch(&self, workdir: std::path::PathBuf) {
+        if self.watch.sweep(&workdir) {
+            return;
+        }
+        let msg = crate::msg::WatchMsg::RepoChanged { full: false, paths: None, last_event: std::time::Instant::now() };
+        if self.tx.send(Msg::Scoped { workdir, msg: Box::new(Msg::Watch(msg)) }).is_ok() {
+            self.waker.wake();
         }
     }
 }

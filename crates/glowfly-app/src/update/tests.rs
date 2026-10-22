@@ -161,7 +161,7 @@ pub(super) fn skipped(effect: &Effect) -> bool {
         Effect::Ui(_)
             | Effect::Os(OsEffect::PickFolder { .. } | OsEffect::OpenUrl(_) | OsEffect::OpenTerminal(_) | OsEffect::OpenFolder(_))
             | Effect::Forge { .. } | Effect::Account(_) | Effect::SaveSettings(_) | Effect::SaveRecent(_)
-            | Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::AnswerPrompt { .. }
+            | Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. }
             // Shells are never started by these tests.
             | Effect::Terminal(_)
             | Effect::Os(OsEffect::OpenPath { .. } | OsEffect::RevealPath(_))

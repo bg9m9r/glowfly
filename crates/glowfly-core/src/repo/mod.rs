@@ -126,7 +126,7 @@ pub use lines::{apply_lines, apply_shown};
 pub use load::{load, load_cached, messages_between};
 pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
 pub use merge_msg::merge_message;
-pub use refs_key::{open_file_stamp, refs_key};
+pub use refs_key::{RACY_WINDOW, open_file_stamp, refs_key, stamp_trustworthy};
 pub use remotes::RemoteInfo;
 pub(crate) use removal::TRASH_NAME;
 pub use removal::{Deleted, Removal, Trasher};

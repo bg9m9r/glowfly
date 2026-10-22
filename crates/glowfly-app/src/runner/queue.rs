@@ -185,6 +185,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Os(_)
         | Effect::Ssh(_)
         | Effect::Watch(_)
+        | Effect::SweepWatch { .. }
         | Effect::AnswerPrompt { .. }
         | Effect::Credential(_)
         | Effect::Terminal(_)

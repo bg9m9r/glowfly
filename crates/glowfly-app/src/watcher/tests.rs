@@ -138,7 +138,7 @@ fn events_name_their_work_tree_paths() {
 }
 
 #[derive(Clone)]
-struct NoWake;
+pub(super) struct NoWake;
 impl Waker for NoWake {
     fn wake(&self) {}
 }
@@ -172,7 +172,7 @@ fn next_any(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<Rep
 
 /// The next report for `workdir` within `timeout`, as (`full`, `paths`); an index change reads
 /// as `(false, None)`.
-fn next_report(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<(bool, Option<Vec<String>>)> {
+pub(super) fn next_report(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<(bool, Option<Vec<String>>)> {
     next_any(rx, workdir, timeout).map(|r| match r {
         Report::Changed(full, paths) => (full, paths),
         Report::Index(_) => (false, None),
@@ -180,12 +180,12 @@ fn next_report(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<
 }
 
 /// The next report for `workdir` within `timeout`, as `full`.
-fn next_change(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<bool> {
+pub(super) fn next_change(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<bool> {
     next_report(rx, workdir, timeout).map(|(full, _)| full)
 }
 
 /// A fresh repository at `dir` with `a.txt` and a `.gitignore` for `target/` committed.
-fn init_repo(dir: &Path) {
+pub(super) fn init_repo(dir: &Path) {
     let _ = std::fs::remove_dir_all(dir);
     std::fs::create_dir_all(dir).unwrap();
     git(dir, &["init", "-q", "-b", "main"]);
