@@ -24,6 +24,7 @@ pub mod diff_rows;
 pub mod env_path;
 pub mod error;
 pub mod external_tools;
+pub mod flatpak;
 pub mod forge;
 pub mod fuzzy;
 pub mod git_credential;

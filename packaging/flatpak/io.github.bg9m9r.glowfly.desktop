@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Glowfly
+GenericName=Git Client
+Comment=Browse, commit and share changes in Git repositories
+Exec=glowfly %f
+Icon=io.github.bg9m9r.glowfly
+Terminal=false
+MimeType=inode/directory;
+Categories=Development;RevisionControl;
+Keywords=git;repository;commit;branch;version control;
+StartupWMClass=io.github.bg9m9r.glowfly

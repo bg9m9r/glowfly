@@ -243,3 +243,6 @@ fn an_offer_without_files_opens_its_page() {
     h.run();
     assert!(sent(&h, &UpdateMsg::OpenReleasePage));
 }
+
+#[path = "snapshot_tests_update_flatpak.rs"]
+mod flatpak;

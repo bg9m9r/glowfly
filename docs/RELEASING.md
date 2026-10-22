@@ -11,6 +11,8 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 3. The **build** job runs once per target. It builds `glowfly` in release mode, then the
    packaging script for its OS (`scripts/package-windows.ps1`, `scripts/package-macos.sh`,
    `scripts/package-linux.sh`) writes the files below into `dist/` and uploads them.
+   The **flatpak** job builds the Flatpak bundle (`scripts/package-flatpak.sh`, see
+   [Building the Flatpak locally](#building-the-flatpak-locally)) and uploads it too.
 4. The **checksums** job downloads every `glowfly-*` file of the release and publishes
    `SHA256SUMS` over them.
 5. The **manifests** job fills in the Homebrew cask and the winget manifests from `SHA256SUMS`
@@ -39,6 +41,7 @@ a new version starts.
 | `glowfly-vX.Y.Z-<linux target>.deb` | For `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`: `/usr/bin/glowfly`, `glowfly.desktop` (folders open with Glowfly), the hidden `glowfly-links.desktop` for `glowfly://` links, hicolor icons from 16 to 512 px, the licences and README in `/usr/share/doc/glowfly`, and `/usr/share/glowfly/package-format` reading `deb`; depends on git |
 | `glowfly-vX.Y.Z-<linux target>.rpm` | The same files (cargo-generate-rpm, `[package.metadata.generate-rpm]` in `crates/glowfly-app/Cargo.toml`), with `package-format` reading `rpm`; requires git and the libraries the program links. A pre-release's version uses `~` for `-` (`0.3.0~rc.1`), so it sorts before the release |
 | `glowfly-vX.Y.Z-<linux target>.AppImage` | The program, its desktop entry and icons in one file that runs from anywhere (type-2 runtime; appimagetool and the runtime are pinned by version and SHA-256 in `scripts/package-linux.sh`). It needs glibc 2.35 or newer (it is built on Ubuntu 22.04), GTK 3 and git on the system; without FUSE, run it with `--appimage-extract-and-run` |
+| `glowfly-vX.Y.Z-x86_64-unknown-linux-gnu.flatpak` | A Flatpak bundle with the app id `io.github.bg9m9r.glowfly` (`packaging/flatpak/`): the program, its own git (`/app/bin/git`), the desktop entries and icons named for the app id, and AppStream metadata, on the `org.freedesktop.Platform` 25.08 runtime, which installs from Flathub. Built by the `flatpak` job in the Flathub builder image; x86_64 only |
 | `glowfly-vX.Y.Z-<linux target>.tar.gz` | The Linux program on its own |
 | `<file>.sha256` | The SHA-256 of each file above |
 | `SHA256SUMS` | Every file's SHA-256, in `sha256sum` format |
@@ -135,6 +138,7 @@ falling back to the other one when the release lacks it:
 | The .deb (`/usr/bin/glowfly`, `package-format` reading `deb` or missing) | deb, tar.gz | Open installer and quit (the software installer) |
 | The .rpm (`/usr/bin/glowfly`, `package-format` reading `rpm`) | rpm, tar.gz | Open installer and quit (the software installer) |
 | An AppImage (`APPIMAGE` and `APPDIR` set, the program inside `APPDIR`) | AppImage, tar.gz | Install and restart: the AppImage file is swapped in place and started again from the same path |
+| Flatpak (`/.flatpak-info`, or `FLATPAK_ID` with the program under `/app`) | nothing; says to update with Flatpak or the software centre | Nothing: Release notes and Open release page only |
 
 The machine's real processor decides the build: an x64 Glowfly emulated on Windows on Arm, or an
 x86_64 one under Rosetta, is offered the aarch64 file. When a release has no aarch64 file for
@@ -146,7 +150,13 @@ A download happens only when you click Download: it is fetched into your Downloa
 checked against `SHA256SUMS` (or the file's `.sha256`), and discarded if the checksum is missing
 or doesn't match. Install checks it again before anything runs or is replaced; an AppImage swap
 also checks that the file is an AppImage. A file the copy can't install (an archive for an
-installed copy, for example) is only shown.
+installed copy, for example) is only shown. No copy ever takes the `.flatpak` bundle: file
+formats are matched by their exact extension.
+
+Inside Flatpak, Glowfly still checks for releases and says when one is out, but never downloads
+one: Flatpak (`flatpak update`, or the software centre) installs updates. A copy installed from a
+downloaded `.flatpak` file updates by installing the next release's `.flatpak` the same way,
+since the bundle comes from no hosted Flatpak repository.
 
 Turn the check off in Preferences > General > Updates ("Check for updates once a day"). The
 release notes dialog keeps working without it.
@@ -176,6 +186,14 @@ version), and on a clean runner:
 - **The AppImage**: run with `APPIMAGE_EXTRACT_AND_RUN=1` (no FUSE on the runner), it must print
   its version and, against an empty feed, exit 3 with `install appimage`, which shows the
   runtime's `APPIMAGE` and `APPDIR` reach the program.
+- **The Flatpak** (`scripts/installer-check-flatpak.sh`, its own job on Ubuntu 22.04, since
+  newer runners restrict the user namespaces bubblewrap needs): the bundle is built in the
+  Flathub builder image, installed with `flatpak install --user` (the runtime comes from
+  Flathub), and checked: the exported desktop entries (`desktop-file-validate`) and icon,
+  `--version`, `--check-update` against an empty feed (exit 3, `install flatpak`) and against a
+  newer release (exit 4, `update-with flatpak`, nothing downloaded), the bundled git and the
+  runtime's ssh; then `flatpak uninstall` and no exported entry left. Its feed folders are under
+  `$RUNNER_TEMP`, never `/tmp`, which the sandbox has its own of.
 
 The Linux checks share `scripts/installer-lib-linux.sh`. MSI logs, every run's output and the
 probe are uploaded when a job fails. The scripts refuse to run outside GitHub Actions unless
@@ -205,3 +223,21 @@ pwsh -NoProfile -File scripts/update-feed-check.ps1 -Glowfly target/debug/glowfl
   -Installer <dir>/glowfly-v0.1.0-x86_64-pc-windows-msvc.msi `
   -Archive <dir>/glowfly-v0.1.0-x86_64-pc-windows-msvc.zip -Expect archive -Out <work folder>
 ```
+
+The `--check-update` exit codes: 0 when a newer release's file was downloaded and verified, 3
+when there is no newer release, 4 inside Flatpak when there is one (it prints `offer <version>`
+and `update-with flatpak`, and writes nothing to the folder), 1 when the check or download
+failed and 2 on a usage or configuration error. Inside Flatpak the feed and the folder must be
+somewhere the sandbox sees: `/tmp` is the sandbox's own.
+
+## Building the Flatpak locally
+
+The Flatpak build has no network, so `scripts/package-flatpak.sh` works in two steps. On a
+machine with cargo, `bash scripts/package-flatpak.sh vendor` copies every crate into `vendor/`
+and writes the cargo config that points at it to `packaging/flatpak/generated/` (both ignored by
+git). Then, where `flatpak` and `flatpak-builder` are installed (or in the
+`ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08` image the workflows use, run
+with `--privileged`), `bash scripts/package-flatpak.sh bundle v0.3.0` fills in the AppStream
+metadata, builds `packaging/flatpak/io.github.bg9m9r.glowfly.yml` (git from its pinned tarball,
+then Glowfly offline) and writes `dist/glowfly-v0.3.0-x86_64-unknown-linux-gnu.flatpak` and its
+`.sha256`. Install it with `flatpak install --user ./dist/glowfly-…flatpak`.

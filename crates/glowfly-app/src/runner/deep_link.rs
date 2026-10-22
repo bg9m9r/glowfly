@@ -6,6 +6,7 @@ use crate::msg::Msg;
 use crate::state::deep_link::NOTHING_TO_LINK;
 use glowfly_core::link::{Link, find};
 use glowfly_core::url_scheme;
+use std::path::PathBuf;
 
 pub(super) fn run(e: DeepLinkEffect) -> Msg {
     let msg = match e {
@@ -43,12 +44,29 @@ fn matches(link: &Link, candidates: &[std::path::PathBuf]) -> Vec<find::Found> {
         .collect()
 }
 
+type SchemeStep = fn(&std::path::Path) -> Result<url_scheme::SchemeStatus, String>;
+
 /// Runs a registration step for this executable: for an AppImage copy, the AppImage file
-/// rather than the program inside its temporary mount.
-fn with_exe(step: fn(&std::path::Path) -> Result<url_scheme::SchemeStatus, String>) -> Result<url_scheme::SchemeStatus, String> {
-    let exe = std::env::current_exe().map_err(|e| format!("Glowfly's own path is unknown: {e}"))?;
-    let exe = glowfly_core::app_update::appimage_file(&exe).unwrap_or(exe);
-    step(&exe)
+/// rather than the program inside its temporary mount. Inside Flatpak the exported desktop file
+/// handles links, so nothing is checked or registered.
+fn with_exe(step: SchemeStep) -> Result<url_scheme::SchemeStatus, String> {
+    let exe = || {
+        let exe = std::env::current_exe().map_err(|e| format!("Glowfly's own path is unknown: {e}"))?;
+        Ok(glowfly_core::app_update::appimage_file(&exe).unwrap_or(exe))
+    };
+    scheme_step(glowfly_core::flatpak::in_flatpak(), exe, step)
+}
+
+/// [`with_exe`] with its inputs: whether this copy runs in Flatpak, and how to find its program.
+fn scheme_step(
+    in_flatpak: bool,
+    exe: impl FnOnce() -> Result<PathBuf, String>,
+    step: impl FnOnce(&std::path::Path) -> Result<url_scheme::SchemeStatus, String>,
+) -> Result<url_scheme::SchemeStatus, String> {
+    if in_flatpak {
+        return Ok(url_scheme::SchemeStatus::Unsupported(url_scheme::FLATPAK_NOTE));
+    }
+    step(&exe()?)
 }
 
 #[cfg(test)]
@@ -56,6 +74,23 @@ mod tests {
     use super::*;
     use crate::deep_link::FindOrigin;
     use glowfly_core::link;
+
+    #[test]
+    fn flatpak_never_registers_links() {
+        let told = scheme_step(true, || panic!("no program path inside Flatpak"), |_| panic!("no step inside Flatpak"));
+        assert_eq!(told, Ok(url_scheme::SchemeStatus::Unsupported(url_scheme::FLATPAK_NOTE)));
+        let exe = glowfly_core::paths::temp_dir().join("glowfly");
+        let mut seen = None;
+        let ran = scheme_step(
+            false,
+            || Ok(exe.clone()),
+            |p| {
+                seen = Some(p.to_path_buf());
+                Ok(url_scheme::SchemeStatus::NotRegistered)
+            },
+        );
+        assert_eq!((ran, seen), (Ok(url_scheme::SchemeStatus::NotRegistered), Some(exe)));
+    }
 
     #[test]
     fn a_repository_without_commits_or_remotes_has_no_link() {

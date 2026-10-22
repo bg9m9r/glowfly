@@ -1,6 +1,7 @@
 //! Preferences > General's Updates row: the daily check, this version and when it last checked,
 //! Check now, and the check's or download's status with what can be done next (Download, Install
-//! and restart, Show file).
+//! and restart, Show file). A Flatpak copy's offer says how Flatpak updates it instead of
+//! offering a download.
 
 use super::{help, row};
 use crate::msg::{Msg, UpdateMsg};
@@ -11,6 +12,7 @@ use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::app_update::InstallMethod;
+use glowfly_core::app_update::Offer;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 use std::path::Path;
@@ -45,6 +47,7 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
                     send(msgs, UpdateMsg::CheckNow);
                 }
             }
+            UpdateStatus::Available(o) if o.through_flatpak() => flatpak_available(ui, t, o, msgs),
             UpdateStatus::Available(o) => {
                 ui.label(RichText::new(available_text(t, &o.version)).font(type_scale::strong(ui, type_scale::BODY)).color(color::info()));
                 ui.horizontal(|ui| {
@@ -67,6 +70,21 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
             }
         }
         help(ui, t.tr("prefs.general.updates.help"));
+    });
+}
+
+/// A newer release for a Flatpak copy: how Flatpak updates it, Release notes and Open release
+/// page; nothing to download.
+fn flatpak_available(ui: &mut Ui, t: Lang, o: &Offer, msgs: &mut Vec<Msg>) {
+    ui.label(RichText::new(available_text(t, &o.version)).font(type_scale::strong(ui, type_scale::BODY)).color(color::info()));
+    ui.add(egui::Label::new(RichText::new(t.tr("updates.flatpak.how")).color(color::text())).wrap());
+    ui.horizontal(|ui| {
+        if ui.add(buttons::secondary(t.tr("updates.release_notes.button"))).clicked() {
+            msgs.push(Msg::Updates(UpdateMsg::ShowNotes));
+        }
+        if ui.add(buttons::secondary(t.tr("updates.open_release_page.button"))).clicked() {
+            msgs.push(Msg::Updates(UpdateMsg::OpenReleasePage));
+        }
     });
 }
 

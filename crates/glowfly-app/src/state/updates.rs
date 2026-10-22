@@ -96,6 +96,11 @@ pub fn available_text(t: Lang, v: &Version) -> String {
     t.trf("updates.available", &[("version", v)])
 }
 
+/// "Glowfly x.y.z is available. Update it with Flatpak or your software centre."
+pub fn flatpak_available_text(t: Lang, v: &Version) -> String {
+    t.trf("updates.flatpak.available", &[("version", v)])
+}
+
 pub fn downloaded_text(t: Lang, v: &Version) -> String {
     t.trf("updates.downloaded", &[("version", v)])
 }

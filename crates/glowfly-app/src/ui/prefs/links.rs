@@ -13,8 +13,14 @@ use glowfly_core::url_scheme::SchemeStatus;
 
 pub fn links_row(ui: &mut Ui, t: Lang, view: &SchemeView, msgs: &mut Vec<Msg>) {
     row(ui, t.tr("prefs.links.label"), |ui| {
-        if cfg!(target_os = "macos") || matches!(view, SchemeView::Known(SchemeStatus::Unsupported(_))) {
+        if cfg!(target_os = "macos") {
             ui.add(egui::Label::new(RichText::new(t.tr("prefs.links.macos_note")).color(color::text())).wrap());
+            help(ui, t.tr("prefs.links.help"));
+            return;
+        }
+        // Nothing to register here (inside Flatpak, say): only why.
+        if matches!(view, SchemeView::Known(SchemeStatus::Unsupported(_))) {
+            ui.add(egui::Label::new(RichText::new(status_text(t, view).0).color(color::text())).wrap());
             help(ui, t.tr("prefs.links.help"));
             return;
         }
@@ -41,10 +47,15 @@ pub fn links_row(ui: &mut Ui, t: Lang, view: &SchemeView, msgs: &mut Vec<Msg>) {
 #[cfg(test)]
 mod tests {
     use glowfly_core::i18n::Lang;
-    use glowfly_core::url_scheme::MACOS_NOTE;
+    use glowfly_core::url_scheme::{FLATPAK_NOTE, MACOS_NOTE};
 
     #[test]
     fn the_macos_note_reads_as_core_wrote_it_in_english() {
         assert_eq!(Lang::En.tr("prefs.links.macos_note"), MACOS_NOTE);
+    }
+
+    #[test]
+    fn the_flatpak_note_reads_as_core_wrote_it_in_english() {
+        assert_eq!(Lang::En.tr("prefs.links.flatpak_note"), FLATPAK_NOTE);
     }
 }

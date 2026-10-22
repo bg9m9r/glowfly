@@ -13,6 +13,9 @@
 //!   events (glowfly-app's platform/macos_events.rs); LaunchServices registers the bundle when it
 //!   is installed, so there is nothing to register here, and [`status`] says so.
 //!
+//! - Inside Flatpak: the exported `io.github.bg9m9r.glowfly.links.desktop` declares both schemes,
+//!   so nothing is registered ([`FLATPAK_NOTE`]; glowfly-app's runner/deep_link.rs).
+//!
 //! The decisions (what a registry value or `xdg-mime` answer means, how the command line is
 //! quoted) are pure functions, tested on every OS.
 
@@ -43,6 +46,8 @@ pub const DESKTOP_FILE: &str = "glowfly-links.desktop";
 pub const PACKAGED_EXE: &str = "/usr/bin/glowfly";
 /// Why macOS has nothing to register: Glowfly.app's Info.plist declares the scheme.
 pub const MACOS_NOTE: &str = "On macOS, links will open Glowfly once it is installed as an application.";
+/// Why a Flatpak copy has nothing to register: its exported desktop file declares the schemes.
+pub const FLATPAK_NOTE: &str = "Flatpak registers glowfly:// links for Glowfly when it is installed.";
 /// The desktop's handler query lacks its program.
 pub const NO_XDG_MIME: &str = "xdg-mime wasn't found; install xdg-utils to register links.";
 

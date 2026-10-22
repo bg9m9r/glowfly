@@ -22,6 +22,28 @@ fn the_home_trash_is_under_xdg_data_home_or_home() {
 }
 
 #[test]
+fn inside_flatpak_the_home_trash_is_the_hosts() {
+    let root = crate::paths::temp_dir().join("glowfly-trash-flatpak");
+    let (home, host_data, sandbox_data) = (root.join("home"), root.join("host-data"), root.join("home/.var/app/x/data"));
+    let vars = move |host: bool| {
+        let mut v: Vec<(&'static str, OsString)> = vec![("HOME", home.clone().into()), ("XDG_DATA_HOME", sandbox_data.clone().into())];
+        if host {
+            v.push(("HOST_XDG_DATA_HOME", host_data.clone().into()));
+        }
+        move |k: &str| v.iter().find(|(n, _)| *n == k).map(|(_, x)| x.clone())
+    };
+    let host = vars(true);
+    assert_eq!(home_trash_dir(|k| crate::flatpak::host_var_with(k, true, &host)), Some(root.join("host-data").join("Trash")));
+    let sandbox_only = vars(false);
+    let under_home = root.join("home").join(".local").join("share").join("Trash");
+    assert_eq!(home_trash_dir(|k| crate::flatpak::host_var_with(k, true, &sandbox_only)), Some(under_home));
+    assert_eq!(
+        home_trash_dir(|k| crate::flatpak::host_var_with(k, false, &sandbox_only)),
+        Some(root.join("home/.var/app/x/data").join("Trash"))
+    );
+}
+
+#[test]
 fn trashinfo_encodes_the_path() {
     let text = trashinfo("/home/ada/my notes/100%#ü~a-b_c.txt".as_bytes(), "2026-10-18T09:05:01");
     assert_eq!(text, "[Trash Info]\nPath=/home/ada/my%20notes/100%25%23%C3%BC~a-b_c.txt\nDeletionDate=2026-10-18T09:05:01\n");

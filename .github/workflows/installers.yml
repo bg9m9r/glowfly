@@ -6,7 +6,9 @@ name: Installers
 # the .rpm in a Fedora container (scripts/installer-check-rpm.sh). The MSI and .deb checks run
 # scripts/update-feed-check.ps1 with the installed program against local update feeds
 # (GLOWFLY_UPDATE_FEED); the .rpm check and the AppImage step ask --check-update with an empty
-# feed. The "older" package is the same program packaged as v0.0.1.
+# feed. The "older" package is the same program packaged as v0.0.1. The Flatpak job builds the
+# bundle in the Flathub builder image and installs, update-checks and uninstalls it with
+# `flatpak --user` (scripts/installer-check-flatpak.sh).
 
 on:
   push:
@@ -17,6 +19,10 @@ on:
 concurrency:
   group: installers-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  # The Flathub builder image, as in the Release workflow.
+  FLATPAK_IMAGE: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
 
 jobs:
   windows:
@@ -107,7 +113,7 @@ jobs:
       - name: Lint the scripts
         run: |
           shellcheck -x scripts/installer-check-linux.sh scripts/installer-check-rpm.sh scripts/installer-lib-linux.sh \
-            scripts/package-linux.sh scripts/fill-manifests.sh
+            scripts/package-linux.sh scripts/fill-manifests.sh scripts/package-flatpak.sh scripts/installer-check-flatpak.sh
       - name: Install, upgrade, start, update-check and purge
         env:
           INSTALLER_OUT: ${{ runner.temp }}/installers
@@ -154,5 +160,37 @@ jobs:
           path: |
             ${{ runner.temp }}/installers
             ${{ runner.temp }}/installers-rpm
+          if-no-files-found: ignore
+          retention-days: 14
+
+  flatpak:
+    name: Installers (Flatpak)
+    # Ubuntu 24.04 runners restrict the unprivileged user namespaces bubblewrap needs.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install flatpak and the check's tools
+        run: sudo apt-get install -y --no-install-recommends flatpak desktop-file-utils shellcheck
+      - name: Lint the scripts
+        run: shellcheck -x scripts/package-flatpak.sh scripts/installer-check-flatpak.sh
+      - name: Build the bundle
+        run: |
+          version="$(cargo metadata --no-deps --format-version 1 --locked | jq -r '.packages[] | select(.name=="glowfly") | .version')"
+          echo "GLOWFLY_VERSION=$version" >> "$GITHUB_ENV"
+          bash scripts/package-flatpak.sh vendor
+          docker run --rm --privileged -v "$PWD:/src" -w /src "$FLATPAK_IMAGE" bash scripts/package-flatpak.sh bundle "v$version"
+      - name: Install, start, update-check and uninstall
+        env:
+          INSTALLER_OUT: ${{ runner.temp }}/installers-flatpak
+        run: |
+          bash scripts/installer-check-flatpak.sh "dist/glowfly-v$GLOWFLY_VERSION-x86_64-unknown-linux-gnu.flatpak" "$GLOWFLY_VERSION"
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-flatpak
+          path: ${{ runner.temp }}/installers-flatpak
           if-no-files-found: ignore
           retention-days: 14

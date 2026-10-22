@@ -2,7 +2,7 @@
 
 use super::tests::{WIN, full_release, release};
 use super::*;
-use InstallKind::{AppImage, Installer, Portable, RpmPackage};
+use InstallKind::{AppImage, Flatpak, Installer, Portable, RpmPackage};
 
 const WIN_ARM: Platform = Platform { os: TargetOs::Windows, arch: Arch::Aarch64 };
 const MAC_ARM: Platform = Platform { os: TargetOs::Mac, arch: Arch::Aarch64 };
@@ -141,7 +141,7 @@ fn how_a_copy_was_installed() {
 
 #[test]
 fn linux_hints_name_the_package_and_the_appimage() {
-    let format = |f: Option<&'static str>| InstallHints { appimage: false, package_format: f };
+    let format = |f: Option<&'static str>| InstallHints { package_format: f, ..InstallHints::default() };
     let linux = |exe: &str, hints| install_kind_with(exe, TargetOs::Linux, hints);
     assert_eq!(linux("/usr/bin/glowfly", format(Some("rpm"))), RpmPackage);
     assert_eq!(linux("/usr/bin/glowfly", format(Some("rpm\n"))), RpmPackage);
@@ -149,11 +149,17 @@ fn linux_hints_name_the_package_and_the_appimage() {
         assert_eq!(linux("/usr/bin/glowfly", format(other)), Installer, "{other:?}");
     }
     assert_eq!(linux("/home/u/bin/glowfly", format(Some("rpm"))), Portable, "only the packaged program");
-    let image = InstallHints { appimage: true, package_format: None };
+    let image = InstallHints { appimage: true, ..InstallHints::default() };
     for exe in ["/tmp/.mount_ab/usr/bin/glowfly", "/usr/bin/glowfly", "/home/u/bin/glowfly"] {
         assert_eq!(linux(exe, image), AppImage, "{exe}");
     }
-    let both = InstallHints { appimage: true, package_format: Some("rpm") };
+    let sandboxed = InstallHints { flatpak: true, ..InstallHints::default() };
+    let everything = InstallHints { flatpak: true, appimage: true, package_format: Some("rpm") };
+    for exe in ["/app/bin/glowfly", "/usr/bin/glowfly", "/home/u/bin/glowfly"] {
+        assert_eq!(linux(exe, sandboxed), Flatpak, "{exe}");
+        assert_eq!(linux(exe, everything), Flatpak, "Flatpak wins over the AppImage and rpm hints ({exe})");
+    }
+    let both = InstallHints { flatpak: true, appimage: true, package_format: Some("rpm") };
     let windows = r"C:\Users\ada\AppData\Local\Programs\Glowfly\glowfly.exe";
     assert_eq!(install_kind_with(windows, TargetOs::Windows, both), Installer, "ignored on Windows");
     assert_eq!(install_kind_with(r"D:\tools\glowfly.exe", TargetOs::Windows, both), Portable);
@@ -179,5 +185,32 @@ fn platforms_triples_fallbacks_and_labels() {
     for p in [WIN, MAC_X86, LINUX, LINUX_ARM] {
         assert_eq!(p.fallback(), None, "{p:?}");
     }
-    assert_eq!([Installer, RpmPackage, AppImage, Portable].map(InstallKind::label), ["installer", "rpm", "appimage", "portable"]);
+    let kinds = [Installer, RpmPackage, AppImage, Portable, Flatpak];
+    assert_eq!(kinds.map(InstallKind::label), ["installer", "rpm", "appimage", "portable", "flatpak"]);
+    assert_eq!(kinds.map(InstallKind::downloads), [true, true, true, true, false]);
+}
+
+#[test]
+fn flatpak_copies_are_offered_no_file() {
+    let r = full_release();
+    for p in [LINUX, LINUX_ARM] {
+        assert_eq!(picked(&r, p, Flatpak), None, "{p:?}");
+    }
+    let o = offer(&r, &Version::parse("0.2.0").unwrap(), Some(LINUX), Flatpak).expect("newer");
+    assert_eq!((o.asset.clone(), o.sums.clone(), o.install), (None, SumsSource::None, Flatpak));
+    assert!(o.through_flatpak());
+    let installed = offer(&r, &Version::parse("0.2.0").unwrap(), Some(LINUX), Installer).expect("newer");
+    assert!(!installed.through_flatpak());
+}
+
+#[test]
+fn the_flatpak_bundle_is_never_picked() {
+    let bundle = "glowfly-v0.3.0-x86_64-unknown-linux-gnu.flatpak";
+    let tar = "glowfly-v0.3.0-x86_64-unknown-linux-gnu.tar.gz";
+    let only = release("v0.3.0", &[bundle]);
+    let with_tar = release("v0.3.0", &[bundle, tar]);
+    for kind in [Installer, RpmPackage, AppImage, Portable] {
+        assert_eq!(picked(&only, LINUX, kind), None, "{kind:?}");
+        assert_eq!(picked(&with_tar, LINUX, kind).as_deref(), Some(tar), "{kind:?}");
+    }
 }

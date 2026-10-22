@@ -7,6 +7,7 @@ source file, update its line here.
 
 - `git_version.rs`: which git runs (found on the PATH children get) and the features its version lacks.
 - `env_path.rs`: that PATH, which on macOS merges in the login shell's.
+- `flatpak.rs`: running inside a Flatpak sandbox: detecting it (`/.flatpak-info`, or a valid `FLATPAK_ID` with the program under `/app`), the host's XDG folders (`host_var`, `child_config_home`) for what Glowfly shares with the host (git's XDG config, the home Trash), and pointing libgit2's XDG config search path at the host's at start (`init`).
 - `git_program.rs`: the git program every git child runs (chosen in Preferences > Git, else `git` from PATH), checking a program before it is used, and finding the installed gits.
 - `safe_directory.rs`: repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling.
 - `native_path.rs`: the spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`).

@@ -5,7 +5,8 @@
 //! - `version.rs`: semantic versions and their precedence.
 //! - `release.rs`: the hosting service's release (tag, notes, files), with unsafe links and file
 //!   names dropped.
-//! - `assets.rs`: this system's platform, how this copy was installed, and which file to fetch.
+//! - `assets.rs`: this system's platform, how this copy was installed (a Flatpak copy too, which
+//!   is offered no file), and which file to fetch.
 //! - `host.rs`: the machine's real processor (an emulated x64 or Rosetta build is on Arm).
 //! - `appimage.rs`: whether this copy runs from an AppImage, and which file that is.
 //! - `sums.rs`: `SHA256SUMS` and `<file>.sha256` files.
@@ -93,13 +94,22 @@ pub fn due(enabled: bool, last_checked: Option<i64>, now: i64) -> bool {
 }
 
 /// A release newer than this copy, with the file to fetch for this system (None when there is
-/// no build for it) and where its checksum is published.
+/// no build for it, or for a Flatpak copy), where its checksum is published, and the kind of
+/// copy it was made for.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Offer {
     pub release: Release,
     pub version: Version,
     pub asset: Option<Asset>,
     pub sums: SumsSource,
+    pub install: InstallKind,
+}
+
+impl Offer {
+    /// Whether Flatpak installs this update (nothing is downloaded).
+    pub fn through_flatpak(&self) -> bool {
+        self.install == InstallKind::Flatpak
+    }
 }
 
 /// The offer `release` makes to a copy at `current`: Some only when its tag is a version newer
@@ -111,7 +121,7 @@ pub fn offer(release: &Release, current: &Version, platform: Option<Platform>, k
     }
     let asset = platform.and_then(|p| pick(release, p, kind));
     let sums = asset.as_ref().map_or(SumsSource::None, |a| sums_source(release, a));
-    Some(Offer { release: release.clone(), version, asset, sums })
+    Some(Offer { release: release.clone(), version, asset, sums, install: kind })
 }
 
 /// The releases page of `repository` (`https://github.com/o/r/releases`), when it is an https

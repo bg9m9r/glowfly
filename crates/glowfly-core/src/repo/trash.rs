@@ -1,8 +1,9 @@
 //! The system trash (the Recycle Bin on Windows, the Trash elsewhere), the home Trash for a
 //! Linux drive without a usable trash folder (`home.rs`, checked in `xdg.rs`), and why the trash
-//! refused a file. Only [`TrashProblem::NoTrash`] means a permanent delete is the way out
-//! ([`TrashProblem::HomeTrashOnly`] offers the home Trash too); a file in use or a permission
-//! problem is worth fixing and retrying instead.
+//! refused a file. Inside Flatpak the home Trash is the host's (`flatpak::host_var`), never the
+//! sandbox's own, which the file manager doesn't show. Only [`TrashProblem::NoTrash`] means a
+//! permanent delete is the way out ([`TrashProblem::HomeTrashOnly`] offers the home Trash too); a
+//! file in use or a permission problem is worth fixing and retrying instead.
 
 use std::path::Path;
 
@@ -76,11 +77,15 @@ pub fn os_trash(full: &Path) -> Result<(), TrashRefusal> {
     #[cfg(not(any(windows, target_os = "macos")))]
     {
         // Ask before the crate would copy the file into the home trash without saying so.
-        xdg::check_volume(full)?;
+        let on_home_drive = xdg::check_volume(full)?;
+        // The crate's home Trash would be the sandbox's own: move it into the host's instead.
+        if on_home_drive && crate::flatpak::in_flatpak() {
+            return move_to_home_trash(full);
+        }
         trash::delete(full).map_err(|e| {
             let problem = match &e {
                 trash::Error::FileSystem { source, .. } => problem_of_io(source.kind()),
-                _ if no_home_trash(|k| std::env::var_os(k)) => Some(TrashProblem::NoTrash),
+                _ if no_home_trash(crate::flatpak::host_var) => Some(TrashProblem::NoTrash),
                 _ => None,
             };
             TrashRefusal::new(problem.unwrap_or(TrashProblem::Other), detail_of(&e))
@@ -98,18 +103,24 @@ pub fn home_trash(full: &Path) -> Result<(), TrashRefusal> {
     }
     #[cfg(not(any(windows, target_os = "macos")))]
     {
-        let dir = home::home_trash_dir(|k| std::env::var_os(k))
-            .ok_or_else(|| TrashRefusal::new(TrashProblem::NoTrash, "neither XDG_DATA_HOME nor HOME is set, so there is no Trash"))?;
-        let date = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
-        home::move_into(full, &dir, &date, |a, b| std::fs::rename(a, b))
-            .map(|_| ())
-            .map_err(|e| TrashRefusal::new(problem_of_io(e.kind()).unwrap_or(TrashProblem::Other), e.to_string()))
+        move_to_home_trash(full)
     }
     #[cfg(any(windows, target_os = "macos"))]
     {
         let _ = full;
         Err(TrashRefusal::new(TrashProblem::NoTrash, "this system has no home trash"))
     }
+}
+
+/// Moves `full` into the home Trash (the host's inside Flatpak), copying it across drives.
+#[cfg(not(any(windows, target_os = "macos")))]
+fn move_to_home_trash(full: &Path) -> Result<(), TrashRefusal> {
+    let dir = home::home_trash_dir(crate::flatpak::host_var)
+        .ok_or_else(|| TrashRefusal::new(TrashProblem::NoTrash, "neither XDG_DATA_HOME nor HOME is set, so there is no Trash"))?;
+    let date = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+    home::move_into(full, &dir, &date, |a, b| std::fs::rename(a, b))
+        .map(|_| ())
+        .map_err(|e| TrashRefusal::new(problem_of_io(e.kind()).unwrap_or(TrashProblem::Other), e.to_string()))
 }
 
 /// What an I/O error from the trash means.

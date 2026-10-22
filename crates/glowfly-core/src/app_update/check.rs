@@ -11,10 +11,13 @@ pub enum Checked {
     UpToDate { latest: Option<String> },
     /// A newer release's file, verified and saved at `path`.
     Downloaded { offer: Box<Offer>, path: PathBuf },
+    /// A newer release that Flatpak installs; nothing was downloaded.
+    UpdateWithFlatpak { offer: Box<Offer> },
 }
 
 /// Reads `feed`, and when it has a release newer than `current`, downloads this system's file
-/// for a `kind` copy into `dir` once it matches its published checksum.
+/// for a `kind` copy into `dir` once it matches its published checksum. A Flatpak copy is only
+/// told about it.
 pub fn check_and_download(
     feed: &Feed,
     current: &Version,
@@ -25,6 +28,7 @@ pub fn check_and_download(
     let Some(release) = feed.latest()? else { return Ok(Checked::UpToDate { latest: None }) };
     match offer(&release, current, platform, kind) {
         None => Ok(Checked::UpToDate { latest: Some(release.tag) }),
+        Some(o) if !kind.downloads() => Ok(Checked::UpdateWithFlatpak { offer: Box::new(o) }),
         Some(o) => {
             let path = download(feed, &o, dir)?;
             Ok(Checked::Downloaded { offer: Box::new(o), path })

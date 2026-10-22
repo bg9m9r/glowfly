@@ -114,6 +114,10 @@ fn main() -> eframe::Result {
     // Before eframe starts AppKit: the Apple event that started Glowfly.app comes before the
     // window exists.
     platform::open_events::install(start.as_ref());
+    // Inside Flatpak, libgit2 reads the host's ~/.config/git like the git it starts does.
+    if let Err(e) = glowfly_core::flatpak::init() {
+        tracing::warn!("{e}");
+    }
     // Before any window exists: an installed Windows copy takes the id its shortcuts carry.
     platform::claim_app_id();
     let chrome = state::window_chrome::Chrome::current();
@@ -129,8 +133,9 @@ fn main() -> eframe::Result {
                 .with_inner_size([1440.0, 880.0])
                 .with_min_inner_size([960.0, 540.0])
                 .with_icon(crate::platform::app_icon())
-                // The Wayland app id: matches glowfly.desktop (and its StartupWMClass).
-                .with_app_id(glowfly_core::app_identity::DESKTOP_ENTRY),
+                // The Wayland app id: matches glowfly.desktop (and its StartupWMClass), or the
+                // Flatpak's io.github.bg9m9r.glowfly.desktop.
+                .with_app_id(glowfly_core::app_identity::desktop_entry()),
         ),
         // On macOS, no default app menu: Glowfly's own replaces it (`platform::native_menu`).
         event_loop_builder: platform::native_menu::event_loop_hook(),

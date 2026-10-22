@@ -17,7 +17,8 @@ pub enum InstallMethod {
     /// copy):
     /// it is opened, and Glowfly quits without starting again.
     OpenAndQuit,
-    /// Anything else: the file is only shown.
+    /// Anything else: the file is only shown. Always for a Flatpak copy, which installs nothing
+    /// itself.
     ShowOnly,
 }
 
@@ -36,10 +37,11 @@ impl InstallMethod {
 /// How the downloaded `file_name` is installed for a `kind` copy on `os`. Extensions are
 /// compared without regard to case.
 pub fn install_method_for(file_name: &str, kind: InstallKind, os: TargetOs) -> InstallMethod {
-    use InstallKind::{AppImage, Installer, Portable};
+    use InstallKind::{AppImage, Flatpak, Installer, Portable};
     use InstallMethod::{OpenAndQuit, RunMsi, ShowOnly, SwapAppImage, SwapPortable};
     let lower = file_name.to_ascii_lowercase();
     match (split_extension(&lower).1, os, kind) {
+        (_, _, Flatpak) => ShowOnly,
         (".msi", TargetOs::Windows, Installer) => RunMsi,
         (".msi", TargetOs::Windows, Portable) => OpenAndQuit,
         (".dmg", TargetOs::Mac, _) | (".deb" | ".rpm", TargetOs::Linux, _) => OpenAndQuit,
@@ -54,7 +56,7 @@ pub fn install_method_for(file_name: &str, kind: InstallKind, os: TargetOs) -> I
 mod tests {
     use super::InstallMethod::*;
     use super::*;
-    use InstallKind::{AppImage, Installer, Portable, RpmPackage};
+    use InstallKind::{AppImage, Flatpak, Installer, Portable, RpmPackage};
     use TargetOs::{Linux, Mac, Windows};
 
     #[test]
@@ -95,6 +97,16 @@ mod tests {
             ("glowfly.deb", RpmPackage, Linux, OpenAndQuit),
             ("glowfly.tar.gz", AppImage, Linux, ShowOnly),
             ("glowfly.tar.gz", RpmPackage, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.flatpak", Installer, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.flatpak", Portable, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.flatpak", RpmPackage, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.flatpak", AppImage, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.flatpak", Flatpak, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.deb", Flatpak, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.rpm", Flatpak, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.AppImage", Flatpak, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.tar.gz", Flatpak, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", Flatpak, Linux, ShowOnly),
         ];
         for (name, kind, os, want) in cases {
             assert_eq!(install_method_for(name, kind, os), want, "{name} {kind:?} {os:?}");

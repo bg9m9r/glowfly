@@ -9,5 +9,6 @@ crates/glowfly-core/src/init_ops/** text eol=lf
 *.ttf binary
 # The packaged desktop entries are compared byte for byte with what Glowfly writes.
 packaging/linux/*.desktop text eol=lf
+packaging/flatpak/*.desktop text eol=lf
 # The package-format markers are read as text; keep them LF everywhere.
 packaging/linux/package-format.* text eol=lf

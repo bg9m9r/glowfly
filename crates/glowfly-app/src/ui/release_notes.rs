@@ -40,6 +40,15 @@ fn body(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) {
                     }
                 }
                 ui.add_space(8.0);
+                if offer.through_flatpak() {
+                    // Flatpak installs it: say how, and link the release page.
+                    ui.add(egui::Label::new(RichText::new(t.tr("updates.flatpak.how")).color(color::weak())).wrap());
+                    ui.add_space(6.0);
+                    if ui.add(buttons::secondary(t.tr("updates.open_release_page.button"))).clicked() {
+                        msgs.push(Msg::Updates(UpdateMsg::OpenReleasePage));
+                    }
+                    return;
+                }
                 let (label, msg) = if offer.asset.is_some() {
                     (t.tr("updates.download.button"), UpdateMsg::Download)
                 } else {

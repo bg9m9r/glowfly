@@ -11,3 +11,8 @@
 
 # WiX extensions scripts/package-windows.ps1 fetches
 /.wix/
+
+# The Flatpak build's vendored crates and generated files (scripts/package-flatpak.sh)
+/vendor/
+/packaging/flatpak/generated/
+/.flatpak-builder/

@@ -69,7 +69,7 @@ pub(super) fn full_release() -> Release {
         ("aarch64-pc-windows-msvc", &["zip", "msi"]),
         ("aarch64-apple-darwin", &["tar.gz", "dmg"]),
         ("x86_64-apple-darwin", &["tar.gz", "dmg"]),
-        ("x86_64-unknown-linux-gnu", &["tar.gz", "deb", "rpm", "AppImage"]),
+        ("x86_64-unknown-linux-gnu", &["tar.gz", "deb", "rpm", "AppImage", "flatpak"]),
         ("aarch64-unknown-linux-gnu", &["tar.gz", "deb", "rpm", "AppImage"]),
     ] {
         for ext in exts {
@@ -191,7 +191,7 @@ fn download_offer(size: usize, sums: &str) -> Offer {
         "single" => SumsSource::Single(Asset { name: format!("{NAME}.sha256"), size: 0, url: format!("{host}/{NAME}.sha256") }),
         _ => SumsSource::None,
     };
-    Offer { release: release("v0.3.0", &[]), version: v("0.3.0"), asset: Some(asset), sums }
+    Offer { release: release("v0.3.0", &[]), version: v("0.3.0"), asset: Some(asset), sums, install: InstallKind::Installer }
 }
 
 fn line_for(body: &str) -> String {

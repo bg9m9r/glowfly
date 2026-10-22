@@ -107,8 +107,9 @@ fn dress(_n: &mut Notification) {
 /// click on the body come back.
 #[cfg(all(unix, not(target_os = "macos")))]
 fn dress(n: &mut Notification) {
-    use glowfly_core::app_identity::DESKTOP_ENTRY;
-    n.icon(DESKTOP_ENTRY).hint(notify_rust::Hint::DesktopEntry(DESKTOP_ENTRY.into())).action("default", "Show");
+    // The Flatpak's desktop file and icon are named for the app id.
+    let entry = glowfly_core::app_identity::desktop_entry();
+    n.icon(entry).hint(notify_rust::Hint::DesktopEntry(entry.into())).action("default", "Show");
 }
 
 #[cfg(test)]

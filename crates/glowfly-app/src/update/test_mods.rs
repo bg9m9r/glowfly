@@ -503,6 +503,8 @@ pub(super) mod undo_revert_tests;
 pub(super) mod undo_stash_tests;
 #[path = "undo_tests.rs"]
 pub(super) mod undo_tests;
+#[path = "updates_flatpak_tests.rs"]
+pub(super) mod updates_flatpak_tests;
 #[path = "updates_notes_tests.rs"]
 pub(super) mod updates_notes_tests;
 #[path = "updates_recheck_tests.rs"]

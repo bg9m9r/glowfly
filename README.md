@@ -26,6 +26,15 @@ Builds for Windows, macOS (Apple silicon and Intel) and Linux are on the
 - **Debian and Ubuntu**: `sudo apt install ./glowfly-vX.Y.Z-x86_64-unknown-linux-gnu.deb`. It
   adds Glowfly to the applications menu, "Open with Glowfly" on folders in the file manager, and
   `glowfly://` links.
+- **Fedora and openSUSE**: `sudo dnf install ./glowfly-vX.Y.Z-x86_64-unknown-linux-gnu.rpm` (on
+  openSUSE, `sudo zypper install` the same file) adds the same.
+- **AppImage**: `glowfly-vX.Y.Z-x86_64-unknown-linux-gnu.AppImage` runs from wherever you put it
+  (make it executable first) and updates itself in place.
+- **Flatpak**: `flatpak install --user ./glowfly-vX.Y.Z-x86_64-unknown-linux-gnu.flatpak`. The
+  runtime it needs comes from Flathub. It brings its own git, sees your files outside the system
+  folders, and uses your SSH agent; it adds Glowfly to the applications menu, "Open with Glowfly"
+  on folders and `glowfly://` links. Glowfly tells you when a release is out but never downloads
+  one inside Flatpak: install the next release's `.flatpak` file the same way to update.
 - **Anywhere**: the `.zip` (Windows) and `.tar.gz` (macOS, Linux) hold the program on its own;
   unpack it wherever you like.
 

@@ -87,6 +87,9 @@ pub enum InstallKind {
     AppImage,
     /// Unpacked from a zip or tar.gz anywhere else.
     Portable,
+    /// Running inside a Flatpak sandbox, where Flatpak or the software centre installs updates
+    /// and nothing is downloaded.
+    Flatpak,
 }
 
 impl InstallKind {
@@ -97,7 +100,13 @@ impl InstallKind {
             Self::RpmPackage => "rpm",
             Self::AppImage => "appimage",
             Self::Portable => "portable",
+            Self::Flatpak => "flatpak",
         }
+    }
+
+    /// Whether an update for this kind is a file Glowfly downloads: not for a Flatpak copy.
+    pub fn downloads(self) -> bool {
+        self != Self::Flatpak
     }
 }
 
@@ -108,6 +117,8 @@ pub const PACKAGE_FORMAT_FILE: &str = "/usr/share/glowfly/package-format";
 /// What else is known about a Linux copy besides its program's path.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InstallHints<'a> {
+    /// The program runs inside a Flatpak sandbox (`flatpak::in_flatpak_with`).
+    pub flatpak: bool,
     /// The program runs from inside an AppImage.
     pub appimage: bool,
     /// The text of [`PACKAGE_FORMAT_FILE`], when it was read.
@@ -117,6 +128,9 @@ pub struct InstallHints<'a> {
 /// How a copy whose program is at `exe` was installed on `os`; a pure function of the spelling
 /// and, on Linux, of `hints` (ignored elsewhere).
 pub fn install_kind_with(exe: &str, os: TargetOs, hints: InstallHints) -> InstallKind {
+    if os == TargetOs::Linux && hints.flatpak {
+        return InstallKind::Flatpak;
+    }
     if os == TargetOs::Linux && hints.appimage {
         return InstallKind::AppImage;
     }
@@ -151,8 +165,9 @@ pub fn install_kind_for(exe: &str, os: TargetOs) -> InstallKind {
     install_kind_with(exe, os, InstallHints::default())
 }
 
-/// How the copy at `exe` (the running program) was installed. On Linux this reads the
-/// AppImage variables and, for the packaged program, [`PACKAGE_FORMAT_FILE`].
+/// How the copy at `exe` (the running program) was installed. On Linux this looks for the
+/// Flatpak sandbox, reads the AppImage variables and, for the packaged program,
+/// [`PACKAGE_FORMAT_FILE`].
 pub fn install_kind(exe: &Path) -> InstallKind {
     let os = super::CURRENT_PLATFORM.map_or(TargetOs::Linux, |p| p.os);
     let spelled = exe.to_string_lossy();
@@ -160,13 +175,16 @@ pub fn install_kind(exe: &Path) -> InstallKind {
         return install_kind_for(&spelled, os);
     }
     let format = if spelled == crate::url_scheme::PACKAGED_EXE { std::fs::read_to_string(PACKAGE_FORMAT_FILE).ok() } else { None };
-    let hints = InstallHints { appimage: super::appimage::appimage_file(exe).is_some(), package_format: format.as_deref() };
+    let info_file = Path::new(crate::flatpak::INFO_FILE).exists();
+    let flatpak = crate::flatpak::in_flatpak_with(exe, info_file, std::env::var_os("FLATPAK_ID").as_deref());
+    let hints = InstallHints { flatpak, appimage: super::appimage::appimage_file(exe).is_some(), package_format: format.as_deref() };
     install_kind_with(&spelled, os, hints)
 }
 
 /// The extensions a `kind` copy on `os` takes, preferred first: its installer (msi, dmg, deb,
 /// rpm or AppImage, matched exactly as published) and the archive (zip or tar.gz). A portable
-/// copy prefers the archive.
+/// copy prefers the archive. A Flatpak copy falls under the Linux wildcard but never gets this
+/// far ([`pick`] offers it nothing).
 fn formats(os: TargetOs, kind: InstallKind) -> [&'static str; 2] {
     let installer = match (os, kind) {
         (TargetOs::Windows, _) => "msi",
@@ -185,8 +203,12 @@ fn formats(os: TargetOs, kind: InstallKind) -> [&'static str; 2] {
 /// on Windows and macOS on Arm, in the x86_64 build (both run it); so the format decides before
 /// the processor. None when the release has none of these. Files are named
 /// `glowfly-<tag>-<triple>.<ext>`; a release that still names them `trellis-...` (the app's name
-/// before Glowfly) is read too.
+/// before Glowfly) is read too. A Flatpak copy is offered no file (Flatpak updates it), and no
+/// kind takes the `.flatpak` bundle, since extensions match exactly.
 pub fn pick(release: &Release, platform: Platform, kind: InstallKind) -> Option<Asset> {
+    if !kind.downloads() {
+        return None;
+    }
     let triples: Vec<&str> = [Some(platform), platform.fallback()].into_iter().flatten().filter_map(Platform::triple).collect();
     formats(platform.os, kind).iter().find_map(|ext| {
         triples.iter().find_map(|triple| {

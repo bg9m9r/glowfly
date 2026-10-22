@@ -382,7 +382,8 @@ second one next to it.
    copy. `link::parse` accepts both schemes and links are always made with `glowfly://`.
 2. **The instance file is private:** it is written with `persist::WriteOptions { private: true }`
    (mode 0600, and 0700 for a folder the write creates, on Unix) under `settings::runtime_dir`
-   (`$XDG_RUNTIME_DIR/glowfly` on Linux, else the cache folder). A file left by a window that
+   (`$XDG_RUNTIME_DIR/glowfly` on Linux, `$XDG_RUNTIME_DIR/app/<FLATPAK_ID>/glowfly` inside
+   Flatpak, else the cache folder). A file left by a window that
    crashed names a closed port, which the second process treats as no window.
 3. **Windows refuses the foreground to a window its user didn't just use:** the process handing a
    link over calls `AllowSetForegroundWindow` with the running window's process id first
@@ -406,6 +407,34 @@ second one next to it.
    (Finder's process serial number) is ignored on macOS. LaunchServices registers the bundle
    when it is copied into /Applications or first opened (`lsregister -f` registers a hand-built
    one); an unbundled binary has no Info.plist and gets no events.
+
+### Flatpak sandbox
+
+1. **Detect the sandbox only with `flatpak::in_flatpak`** (the pure `in_flatpak_with` in tests):
+   `/.flatpak-info`, or a valid `FLATPAK_ID` with the program under `/app`. A `FLATPAK_ID` alone
+   can be inherited by a host program, and one holding `/`, `..`, a leading `.` or other bad
+   characters is ignored (`flatpak::app_id_ok`). It is never true outside Linux.
+2. **Locations shared with the host go through `flatpak::host_var` or
+   `flatpak::child_config_home`:** inside Flatpak the XDG variables point into
+   `~/.var/app/<id>/`, so the home Trash (`repo/trash`) and git's XDG config, ignore and
+   attributes files (children get `XDG_CONFIG_HOME` through `env_path::apply`; libgit2's XDG
+   search path is set by `flatpak::init` at start) use the host's `HOST_XDG_*` values or the
+   XDG default under `HOME`. Glowfly's own settings, cache and logs stay in the sandbox's folders,
+   separate from a host install.
+3. **The runtime folder is `$XDG_RUNTIME_DIR/app/<id>/glowfly`** (`settings::paths::runtime_dir_for`),
+   the part every instance of the app shares, so a link opened in a second launch finds the
+   running window; the rest of `/run/user/<uid>` is per instance.
+4. **The window's identity comes from `app_identity::desktop_entry()`:** the Wayland app id, the
+   X11 class, the notification icon and its desktop-entry hint are `io.github.bg9m9r.glowfly`
+   inside Flatpak (the exported desktop file's name), else `glowfly`.
+5. **Never self-register links inside Flatpak:** the exported
+   `io.github.bg9m9r.glowfly.links.desktop` declares both schemes, so the scheme effects answer
+   `SchemeStatus::Unsupported(url_scheme::FLATPAK_NOTE)` without touching `xdg-mime` or the
+   applications folder (`runner/deep_link.rs`). Updates are only announced (`InstallKind::Flatpak`).
+6. **Programs Glowfly starts run in the sandbox:** the bundled git (`/app/bin/git`, first on
+   PATH) and the runtime's ssh, with the host's ssh-agent and gpg-agent sockets. `/tmp` is the
+   sandbox's own, so a path handed to or from the host (an update feed, `--check-update`'s
+   folder) must be elsewhere.
 
 ### Window frame
 
@@ -657,6 +686,11 @@ Gaps that are accepted for now:
   4.5:1 over the lightest dark Mica stand-ins at any tint step (the title bar does sit on Mica).
 - **macOS's traffic lights aren't centred on the title bar,** which is taller than the system's.
 - **An Alt press and release within one frame isn't seen as a tap,** so it doesn't open the menu.
+- **Inside Flatpak, host programs are out of reach:** editors, diff and merge tools, terminal
+  shells and hook interpreters that only the host has aren't found in the sandbox.
+- **Inside Flatpak, a folder handed over by file forwarding may arrive as a
+  `/run/user/<uid>/doc/...` path** (the Documents portal) rather than its host path.
+- **Whether the Flatpak runtime has gpg** for commit signing is unconfirmed.
 
 Unverified, needs a real machine:
 

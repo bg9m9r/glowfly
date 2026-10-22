@@ -120,11 +120,21 @@ pub fn log_dir() -> Option<PathBuf> {
 
 /// Where Glowfly keeps files that only matter while it runs (the running window's address for
 /// links, `instance`): `$XDG_RUNTIME_DIR/glowfly` on Linux (a private, per-login folder), else
-/// the cache folder.
+/// the cache folder. Inside Flatpak (a valid `FLATPAK_ID`) it is
+/// `$XDG_RUNTIME_DIR/app/<id>/glowfly`, the part of the runtime folder every instance of the app
+/// shares, so a second launch finds the running window.
 pub(crate) fn runtime_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
     match os {
         Os::Windows | Os::Mac => cache_dir_for(os, env),
-        Os::Xdg => abs_var(&env, "XDG_RUNTIME_DIR").map(|r| r.join(GLOWFLY.lower)).or_else(|| cache_dir_for(os, env)),
+        Os::Xdg => {
+            let shared = env("FLATPAK_ID").filter(|id| crate::flatpak::app_id_ok(id));
+            abs_var(&env, "XDG_RUNTIME_DIR")
+                .map(|r| match shared {
+                    Some(id) => r.join("app").join(id).join(GLOWFLY.lower),
+                    None => r.join(GLOWFLY.lower),
+                })
+                .or_else(|| cache_dir_for(os, env))
+        }
     }
 }
 
@@ -256,5 +266,23 @@ pub(crate) mod tests {
         assert_eq!(data_dir_for(Os::Xdg, &env), Some(r.join("home").join(".local").join("share")));
         let env = env_of(vec![("HOME", r.join("home")), ("XDG_DATA_HOME", r.join("data"))]);
         assert_eq!(data_dir_for(Os::Xdg, &env), Some(r.join("data")));
+    }
+
+    #[test]
+    fn flatpak_runtime_dir_is_the_shared_app_folder() {
+        let r = root("flatpak-runtime");
+        let id = PathBuf::from("io.github.bg9m9r.glowfly");
+        let vars = |id: &str| {
+            vec![("HOME", r.join("home")), ("LOCALAPPDATA", r.join("local")), ("XDG_RUNTIME_DIR", r.join("run")), ("FLATPAK_ID", id.into())]
+        };
+        let env = env_of(vars("io.github.bg9m9r.glowfly"));
+        assert_eq!(runtime_dir_for(Os::Xdg, &env), Some(r.join("run").join("app").join(&id).join("glowfly")));
+        for os in [Os::Windows, Os::Mac] {
+            assert_eq!(runtime_dir_for(os, &env), cache_dir_for(os, &env), "{os:?}");
+        }
+        let env = env_of(vars("../x"));
+        assert_eq!(runtime_dir_for(Os::Xdg, &env), Some(r.join("run").join("glowfly")), "a bad id is ignored");
+        let env = env_of(vec![("HOME", r.join("home")), ("FLATPAK_ID", id)]);
+        assert_eq!(runtime_dir_for(Os::Xdg, &env), Some(r.join("home").join(".cache").join("glowfly")), "no runtime folder");
     }
 }

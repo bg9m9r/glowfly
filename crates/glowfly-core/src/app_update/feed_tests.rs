@@ -265,6 +265,29 @@ fn check_and_download_outcomes() {
 }
 
 #[test]
+fn a_flatpak_copy_is_told_and_downloads_nothing() {
+    let dir = scratch("flatpak");
+    let (feed_dir, dl) = (dir.join("feed"), dir.join("dl"));
+    std::fs::create_dir_all(&feed_dir).unwrap();
+    let files: [(&str, &[u8]); 2] = [
+        ("glowfly-v0.1.1-x86_64-unknown-linux-gnu.tar.gz", b"pretend tar"),
+        ("glowfly-v0.1.1-x86_64-unknown-linux-gnu.flatpak", b"bundle"),
+    ];
+    let sums: String = files.iter().map(|(n, b)| sum_line(n, b)).collect();
+    write_feed(&feed_dir, "v0.1.1", &files, Some(sums));
+    let feed = Feed::Folder(feed_dir);
+    let linux = Some(Platform { os: TargetOs::Linux, arch: Arch::X86_64 });
+    match check_and_download(&feed, &v("0.1.0"), linux, InstallKind::Flatpak, &dl) {
+        Ok(Checked::UpdateWithFlatpak { offer }) => assert_eq!((offer.version, offer.asset), (v("0.1.1"), None)),
+        other => panic!("{other:?}"),
+    }
+    assert!(is_empty(&dl), "nothing is downloaded");
+    let up_to_date = check_and_download(&feed, &v("0.1.1"), linux, InstallKind::Flatpak, &dl);
+    assert_eq!(up_to_date, Ok(Checked::UpToDate { latest: Some("v0.1.1".into()) }));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_hosted_feed_asks_the_hosting_service() {
     let json = r#"{"tag_name": "v0.1.1", "assets": [{"name": "SHA256SUMS", "size": 5, "browser_download_url": "https://github.com/d/SHA256SUMS"}]}"#;
     let mock = Mock::start(move |_| Reply::json(json));

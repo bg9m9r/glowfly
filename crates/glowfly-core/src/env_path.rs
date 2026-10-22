@@ -1,4 +1,5 @@
-//! The PATH Glowfly gives the programs it starts (git, ssh-keygen, gpg, editors, terminals).
+//! The PATH (and, inside Flatpak, the host's XDG_CONFIG_HOME) Glowfly gives the programs it
+//! starts (git, ssh-keygen, gpg, editors, terminals).
 //!
 //! An app started from the macOS Dock or Finder gets launchd's minimal PATH
 //! (`/usr/bin:/bin:/usr/sbin:/sbin`), not the one the user's shell sets up, so Apple's
@@ -6,7 +7,9 @@
 //! would appear), and `git-lfs`, `gpg` or `code` wouldn't be found. On macOS the login shell's
 //! PATH is read once, on first use (never on the UI thread: only workers start programs), and
 //! merged in front of the inherited one; if the shell can't say, Homebrew's folders are put in
-//! front instead. Elsewhere the inherited PATH is used as it is.
+//! front instead. Elsewhere the inherited PATH is used as it is. Inside Flatpak, git would read
+//! the sandbox's `XDG_CONFIG_HOME` and miss `~/.config/git`, so children get the host's
+//! (`flatpak::child_config_home`).
 //!
 //! Like the askpass environment in `gitcli`, this is set once and never changed afterwards. It
 //! is only ever applied through `Command::env`; the process's own environment is not touched.
@@ -44,11 +47,15 @@ pub fn override_path() -> Option<OsString> {
     CHILD_PATH.clone()
 }
 
-/// Gives `cmd` the PATH children get, when it differs from the inherited one. A program named
-/// without a folder is then also looked up on that PATH.
+/// Gives `cmd` the PATH children get, when it differs from the inherited one, and inside
+/// Flatpak the host's `XDG_CONFIG_HOME`. A program named without a folder is then also looked up
+/// on that PATH.
 pub fn apply(cmd: &mut Command) {
     if let Some(p) = CHILD_PATH.as_ref() {
         cmd.env("PATH", p);
+    }
+    if let Some(config) = crate::flatpak::child_config_home() {
+        cmd.env("XDG_CONFIG_HOME", config);
     }
 }
 

@@ -10,25 +10,30 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-/// Checks that the trash can take `full` without a silent copy across drives. Anything this
-/// can't find out (no mount table, a path that won't resolve) is left to the crate, as before.
-pub(super) fn check_volume(full: &Path) -> Result<(), TrashRefusal> {
-    if no_home_trash(|k| std::env::var_os(k)) {
+/// Checks that the trash can take `full` without a silent copy across drives, and says whether
+/// `full` is on the home Trash's drive (the host's inside Flatpak, `flatpak::host_var`). Anything
+/// this can't find out (no mount table, a path that won't resolve) is left to the crate, as
+/// before, and answers false.
+pub(super) fn check_volume(full: &Path) -> Result<bool, TrashRefusal> {
+    if no_home_trash(crate::flatpak::host_var) {
         return Err(TrashRefusal::new(TrashProblem::NoTrash, "neither XDG_DATA_HOME nor HOME is set, so there is no Trash"));
     }
     let table = std::fs::read_to_string("/proc/self/mounts").or_else(|_| std::fs::read_to_string("/etc/mtab"));
-    let Ok(table) = table else { return Ok(()) };
+    let Ok(table) = table else { return Ok(false) };
     let mounts = parse_mounts(&table);
-    let (Some(parent), Some(name)) = (full.parent(), full.file_name()) else { return Ok(()) };
-    let Ok(parent) = parent.canonicalize() else { return Ok(()) };
+    let (Some(parent), Some(name)) = (full.parent(), full.file_name()) else { return Ok(false) };
+    let Ok(parent) = parent.canonicalize() else { return Ok(false) };
     if !writable(&parent) {
         return Err(TrashRefusal::new(TrashProblem::AccessDenied, format!("you may not change {}", parent.display())));
     }
     let file = parent.join(name);
-    let Some(home) = home_trash_dir(|k| std::env::var_os(k)).and_then(|d| existing_ancestor(&d)) else { return Ok(()) };
-    let (Some(file_top), Some(home_top)) = (topdir_of(&file, &mounts), topdir_of(&home, &mounts)) else { return Ok(()) };
-    if file_top == home_top || volume_trash_usable(&facts(file_top)) {
-        return Ok(());
+    let Some(home) = home_trash_dir(crate::flatpak::host_var).and_then(|d| existing_ancestor(&d)) else { return Ok(false) };
+    let (Some(file_top), Some(home_top)) = (topdir_of(&file, &mounts), topdir_of(&home, &mounts)) else { return Ok(false) };
+    if file_top == home_top {
+        return Ok(true);
+    }
+    if volume_trash_usable(&facts(file_top)) {
+        return Ok(false);
     }
     Err(TrashRefusal::new(TrashProblem::HomeTrashOnly, format!("{} has no trash folder you can use", file_top.display())))
 }

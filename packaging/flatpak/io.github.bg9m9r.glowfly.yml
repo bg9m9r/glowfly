@@ -1,0 +1,80 @@
+# The flatpak-builder manifest for Glowfly's Flatpak bundle. scripts/package-flatpak.sh builds
+# it: run its `vendor` mode first (on a host with cargo; the build itself has no network), then
+# `bundle <tag>` where flatpak-builder is installed.
+id: io.github.bg9m9r.glowfly
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: glowfly
+finish-args:
+  # X11 shared memory, for the X11 fallback.
+  - --share=ipc
+  # The window, on Wayland.
+  - --socket=wayland
+  # The window, on X11 when there is no Wayland.
+  - --socket=fallback-x11
+  # The GPU, for wgpu and OpenGL drawing.
+  - --device=dri
+  # Fetching, pushing, hosting services, update checks and the running window's loopback port.
+  - --share=network
+  # Repositories anywhere on the host's file system (not /tmp, /usr or /etc).
+  - --filesystem=host
+  # gpg-agent's socket, for signing commits and tags.
+  - --filesystem=xdg-run/gnupg:ro
+  # The host's ssh-agent (SSH_AUTH_SOCK).
+  - --socket=ssh-auth
+  # Desktop notifications.
+  - --talk-name=org.freedesktop.Notifications
+  # Tokens in the Secret Service keyring (GNOME Keyring, KWallet).
+  - --talk-name=org.freedesktop.secrets
+modules:
+  # git itself, at /app/bin/git, first on PATH inside the sandbox. No configure step: the make
+  # flags leave out gitk, git-gui, translations, Perl and Python.
+  - name: git
+    buildsystem: simple
+    build-commands:
+      - make -j${FLATPAK_BUILDER_N_JOBS} prefix=/app NO_TCLTK=YesPlease NO_GETTEXT=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease USE_LIBPCRE2=YesPlease INSTALL_SYMLINKS=YesPlease all
+      - make prefix=/app NO_TCLTK=YesPlease NO_GETTEXT=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease USE_LIBPCRE2=YesPlease INSTALL_SYMLINKS=YesPlease install
+    cleanup:
+      - /share/man
+      - /share/gitweb
+      - /share/git-gui
+      - /share/gitk
+    sources:
+      - type: archive
+        url: https://www.kernel.org/pub/software/scm/git/git-2.56.0.tar.xz
+        sha256: 26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3
+
+  - name: glowfly
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/glowfly/cargo
+        CARGO_NET_OFFLINE: 'true'
+    sources:
+      # The repository as it is, with the vendored crates. build.rs bundles CHANGELOG.md, so it
+      # stays in.
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - .git
+          - dist
+          - .flatpak-builder
+          - temp
+          - .claude
+          - .wix
+    build-commands:
+      # cargo's [source] config for vendor/ (written by `package-flatpak.sh vendor`).
+      - mkdir -p .cargo
+      - cp packaging/flatpak/generated/cargo-vendor.toml .cargo/config.toml
+      - cargo --offline build --release --locked -p glowfly
+      - install -Dm755 target/release/glowfly /app/bin/glowfly
+      - install -Dm644 packaging/flatpak/io.github.bg9m9r.glowfly.desktop /app/share/applications/io.github.bg9m9r.glowfly.desktop
+      - install -Dm644 packaging/flatpak/io.github.bg9m9r.glowfly.links.desktop /app/share/applications/io.github.bg9m9r.glowfly.links.desktop
+      - install -Dm644 packaging/flatpak/generated/io.github.bg9m9r.glowfly.metainfo.xml /app/share/metainfo/io.github.bg9m9r.glowfly.metainfo.xml
+      - for size in 16 24 32 48 64 128 256 512; do install -Dm644 assets/icon/glowfly-$size.png /app/share/icons/hicolor/${size}x${size}/apps/io.github.bg9m9r.glowfly.png; done
+      - install -Dm644 -t /app/share/doc/glowfly LICENSE-MIT LICENSE-APACHE README.md THIRD-PARTY-NOTICES.md

@@ -238,6 +238,9 @@ pub fn status_text(t: Lang, view: &SchemeView) -> (String, bool) {
         SchemeView::Known(SchemeStatus::Unsupported(why)) if *why == glowfly_core::url_scheme::MACOS_NOTE => {
             (t.tr("prefs.links.macos_note").to_owned(), false)
         }
+        SchemeView::Known(SchemeStatus::Unsupported(why)) if *why == glowfly_core::url_scheme::FLATPAK_NOTE => {
+            (t.tr("prefs.links.flatpak_note").to_owned(), false)
+        }
         SchemeView::Known(SchemeStatus::Unsupported(why)) => ((*why).to_owned(), false),
         SchemeView::Failed(e) => (e.clone(), true),
     }
@@ -259,5 +262,21 @@ pub fn can_unregister(view: &SchemeView) -> bool {
         SchemeView::Known(SchemeStatus::Registered) => true,
         SchemeView::Known(SchemeStatus::OtherProgram(p)) => !(p.ends_with(".desktop") && p != glowfly_core::url_scheme::DESKTOP_FILE),
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use glowfly_core::url_scheme::{FLATPAK_NOTE, MACOS_NOTE};
+
+    #[test]
+    fn notes_for_nothing_to_register_are_translated_not_errors() {
+        let flatpak = SchemeView::Known(SchemeStatus::Unsupported(FLATPAK_NOTE));
+        assert_eq!(status_text(Lang::En, &flatpak), (Lang::En.tr("prefs.links.flatpak_note").to_owned(), false));
+        assert_eq!(status_text(Lang::De, &flatpak).0, Lang::De.tr("prefs.links.flatpak_note"));
+        let mac = SchemeView::Known(SchemeStatus::Unsupported(MACOS_NOTE));
+        assert_eq!(status_text(Lang::En, &mac), (Lang::En.tr("prefs.links.macos_note").to_owned(), false));
+        assert!(!can_unregister(&flatpak));
     }
 }

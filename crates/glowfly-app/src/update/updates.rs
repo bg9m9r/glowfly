@@ -1,15 +1,16 @@
 //! Glowfly's own updates: the daily automatic check (armed by `Startup`, then driven by `Tick`),
 //! Check now, downloading the offered file, and showing it or installing it (Install and
 //! restart, update/updates_restart.rs). Automatic checks never toast a failure; they log it
-//! quietly and wait `RETRY_AFTER`. Only `settings.updates` is saved.
+//! quietly and wait `RETRY_AFTER`. A Flatpak copy is only told about a release (Flatpak installs
+//! it) and never downloads one. Only `settings.updates` is saved.
 
 use super::release_notes::{open_notes, startup_notes};
 use crate::effect::OsEffect;
 use crate::effect::{Effect, UpdateEffect};
 use crate::msg::{CheckedRelease, Msg, UpdateMsg};
 use crate::state::updates::{
-    RETRY_AFTER, STARTUP_DELAY, UpdateStatus, available_text, check_failed_text, download_failed_text, downloaded_text, install_label,
-    latest_text,
+    RETRY_AFTER, STARTUP_DELAY, UpdateStatus, available_text, check_failed_text, download_failed_text, downloaded_text,
+    flatpak_available_text, install_label, latest_text,
 };
 use crate::state::{AppState, ToastAction};
 use glowfly_core::app_update::{self, InstallKind, InstallMethod, Saved};
@@ -79,6 +80,11 @@ fn download_action(t: Lang) -> ToastAction {
     ToastAction { label: t.tr("updates.download.button").into(), msg: Box::new(Msg::Updates(UpdateMsg::Download)), workdir: None }
 }
 
+/// Release notes, the action of a Flatpak copy's toast (it has nothing to download).
+fn notes_action(t: Lang) -> ToastAction {
+    ToastAction { label: t.tr("updates.release_notes.button").into(), msg: Box::new(Msg::Updates(UpdateMsg::ShowNotes)), workdir: None }
+}
+
 fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease>, String>, now: Instant, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     // What the status was before the check: a downloaded file or an offer outlives the answer.
@@ -124,12 +130,16 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
     }
     match offer {
         Some(o) => {
-            let text = available_text(t, &o.version);
+            let (text, action) = if o.through_flatpak() {
+                (flatpak_available_text(t, &o.version), notes_action(t))
+            } else {
+                (available_text(t, &o.version), download_action(t))
+            };
             st.log_quiet(true, text.clone());
             // An automatic check toasts a release once, not again each day.
             let known = prior.offer().is_some_and(|p| p.version >= o.version);
             if manual || !known {
-                st.toast_action(true, text, download_action(t), now);
+                st.toast_action(true, text, action, now);
             }
             st.updates.status = UpdateStatus::Available(Box::new(o));
         }
@@ -170,6 +180,10 @@ fn download(st: &mut AppState, fx: &mut Vec<Effect>) {
             return;
         }
     };
+    // Flatpak installs it; nothing is downloaded or opened (a stale toast, say).
+    if offer.through_flatpak() {
+        return;
+    }
     if offer.asset.is_none() {
         // No build for this system: its page lists what there is.
         if !offer.release.html_url.is_empty() {

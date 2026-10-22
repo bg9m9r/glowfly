@@ -30,6 +30,17 @@ Journey and real-input smoke tests, packaging, installers and updates. Untriaged
 - Debian version for pre-release tags: map '-' to '~' in --deb-version as the rpm does
 - Automate the Homebrew tap and winget-pkgs submissions from the release job with a token
 - Rename a swapped AppImage whose file name carries the old version to the new release's name
+- An aarch64 Flatpak bundle (a native arm64 builder image, or a QEMU build if it fits the time)
+- Publish Glowfly on Flathub (cargo-sources.json from the lock file, screenshots, submission) so flatpak update and software centres bring new releases
+- Host a Flatpak repository (or use build-bundle --repo-url) so bundle installs update with flatpak update
+- Run editors, diff tools, the terminal and custom commands on the host through flatpak-spawn --host, as an opt-in
+- git-credential-libsecret and git-lfs in the Flatpak's bundled git
+- Bring settings, recent repositories and tabs over from a host install (~/.config/glowfly) on a Flatpak copy's first start
+- Turn a folder handed over as a /run/user/<uid>/doc path back into its host path through the Documents portal
+- Screenshots and a fuller description in the AppStream metainfo
+- Post desktop notifications through the notification portal instead of talking to org.freedesktop.Notifications
+- Confirm gpg is in the Flatpak runtime for commit signing, and bundle it when it isn't
+- A narrower Flatpak file-system choice (home only) for users who want a tighter sandbox
 
 ### Installer and update checks in CI
 

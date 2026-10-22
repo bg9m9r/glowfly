@@ -88,6 +88,13 @@ fn the_packaged_link_handler_is_glowfly_own_entry() {
 }
 
 #[test]
+fn the_flatpak_link_handler_is_glowfly_own_entry() {
+    let exported = packaging("flatpak/io.github.bg9m9r.glowfly.links.desktop");
+    assert_eq!(exported, desktop_entry(std::path::Path::new("glowfly")).unwrap(), "regenerate it from url_scheme::desktop_entry");
+    assert!(FLATPAK_NOTE.contains("Flatpak"));
+}
+
+#[test]
 fn the_installer_registers_what_glowfly_registers() {
     let wxs = packaging("windows/glowfly.wxs");
     // The installed program, as the registry sees it once the installer fills in the folder.

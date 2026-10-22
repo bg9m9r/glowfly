@@ -22,6 +22,11 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  # The Flathub builder image the Flatpak bundle is built in. Its tag pins the freedesktop
+  # runtime (packaging/flatpak/io.github.bg9m9r.glowfly.yml) and the flatpak-builder generation.
+  FLATPAK_IMAGE: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+
 jobs:
   release-please:
     if: github.event_name == 'push'
@@ -134,10 +139,37 @@ jobs:
             security delete-keychain "$RUNNER_TEMP/glowfly-signing.keychain-db" || true
           fi
 
+  # The Flatpak bundle (scripts/package-flatpak.sh): the crates are vendored on the runner, since
+  # the Flatpak build has no network, then the bundle is built in the pinned builder image.
+  # x86_64 only: the builder image runs natively only on x86_64 runners, and an aarch64 build
+  # under emulation (the whole workspace and git) would run far past the job's time.
+  flatpak:
+    name: Build (Flatpak bundle, x86_64)
+    needs: prepare
+    if: ${{ !cancelled() && needs.prepare.result == 'success' }}
+    # Ubuntu 24.04 runners restrict the unprivileged user namespaces bubblewrap needs.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Vendor the crates
+        run: bash scripts/package-flatpak.sh vendor
+      - name: Build the bundle
+        run: docker run --rm --privileged -v "$PWD:/src" -w /src "$FLATPAK_IMAGE" bash scripts/package-flatpak.sh bundle "$TAG"
+      - name: Upload to the release
+        run: gh release upload "$TAG" dist/*.flatpak dist/*.flatpak.sha256 --clobber
+
   # SHA256SUMS over every file of the release, for `sha256sum -c SHA256SUMS --ignore-missing`
   # and the app's update check.
   checksums:
-    needs: [prepare, build]
+    needs: [prepare, build, flatpak]
     if: ${{ !cancelled() && needs.prepare.result == 'success' }}
     runs-on: ubuntu-latest
     env:

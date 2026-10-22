@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata for the Flatpak. scripts/package-flatpak.sh fills in @VERSION@ and
+     @DATE@ and writes the result to packaging/flatpak/generated/. -->
+<component type="desktop-application">
+  <id>io.github.bg9m9r.glowfly</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+  <name>Glowfly</name>
+  <summary>Browse, commit and share changes in Git repositories</summary>
+  <developer id="io.github.bg9m9r">
+    <name>Glowfly contributors</name>
+  </developer>
+  <description>
+    <p>
+      Glowfly is a fast, native Git client. It shows a repository's history as a commit graph,
+      lists its branches, remotes, tags and stashes, and lets you stage, commit, merge, rebase
+      and share your changes.
+    </p>
+    <p>
+      It connects to hosting services for pull requests and issues, and opens glowfly:// links
+      to a repository, branch, tag or commit.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.bg9m9r.glowfly.desktop</launchable>
+  <url type="homepage">https://github.com/bg9m9r/glowfly</url>
+  <url type="bugtracker">https://github.com/bg9m9r/glowfly/issues</url>
+  <content_rating type="oars-1.1" />
+  <provides>
+    <binary>glowfly</binary>
+  </provides>
+  <categories>
+    <category>Development</category>
+    <category>RevisionControl</category>
+  </categories>
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </recommends>
+  <releases>
+    <release version="@VERSION@" date="@DATE@" />
+  </releases>
+</component>
