@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-22 08:35 · **Performance: turn on git's built-in fsmonitor from Glowfly**: The slow-status note's Turn on button starts git's built-in file system monitor (git 2.36+ on Windows and macOS) beside the untracked cache, setting core.fsmonitor=true once the daemon is watching and saying plainly why when it can't (`b7a78149`)
 - 2026-10-22 08:16 · **In-app pull request view**: The pull request view compares from the listed head commit or the remote-tracking source, fetches the service's head ref for forks on demand, adds a Commits tab between Overview and Files changed, and posts comments, replies and reviews with Command+Enter (Ctrl+Enter off macOS) (`de33f6cc`)
 - 2026-10-22 07:46 · **Cross-repo dashboard**: The dashboard's Assigned section also lists open pull requests assigned to the user across their connected services (`59f591cf`)
 - 2026-10-22 07:32 · **Performance: watcher and status reads for huge trees**: An outside index change re-reads only the changed status rows against a memo of the last index, edits to tracked files matching an ignore pattern are kept, and the Windows safety poll sweeps only the changed folders (`d4903925`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-21 13:46 · **Search and filter**: background commit index of large repositories' whole history, so search counts, Enter, Filter and Keep searching cover every commit and load straight to the next match, with review fixes applied (`b733326f`)
 - 2026-10-21 13:41 · **SSH key management**: Keys named in ~/.ssh/config or by Use existing are matched against the listed keys on disk so a link, short name or other case lists once, and the Windows OpenSSH switch lands on main (`d817ddba`)
 - 2026-10-21 12:30 · **GPG passphrase prompts**: A protected SSH signing key (gpg.format=ssh) gets Trellis's Unlock signing key dialog when a commit, merge, rebase, cherry-pick, revert, tag or pull signs, always in Trellis and never as a retry, with its own headline when ssh-keygen rejects the passphrase; on Windows an MSYS-style gpg.program such as /usr/bin/gpg or /c/Tools/gpg.exe is mapped into the Git for Windows install (`6a061dbb`)
-- 2026-10-21 12:06 · **SSH key management**: Preferences > SSH lists the keys ~/.ssh/config and its Includes name (with an In ssh config chip, and the entries it can't list with the reason), shows keys only the agent holds with Copy public key, and on Windows offers Use Windows' OpenSSH (global core.sshCommand) when git runs its bundled ssh, with Use Git's own ssh to undo (`d817ddba`)
 
 ---
 
