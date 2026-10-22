@@ -87,6 +87,8 @@ fn stage_unstage_discard_hunks() {
     assert_eq!(s.changes, ChangeCounts::of(&s.staged, &s.unstaged), "kept with the lists");
     assert_eq!((s.changes.modified, s.changes.added), (1, 1));
     assert_eq!(s.slow_status, None, "a small repository reads quickly");
+    let entries = git2::Repository::open(&dir).unwrap().index().unwrap().len();
+    assert_eq!(s.index_memo.as_ref().map(|m| m.len()), Some(entries), "the index the lists were read from");
 
     let diff = load_diff(&dir, &DiffTarget::Unstaged("f.txt".into())).unwrap();
     assert_eq!(diff.hunks.len(), 2);

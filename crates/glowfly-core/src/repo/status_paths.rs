@@ -1,6 +1,7 @@
 //! Re-reading the unstaged rows under a few work-tree paths, for a file watcher that saw only
 //! those change. The staged list (HEAD against the index) can't change without the index
-//! changing, and an index change always reads the whole status, so only the work tree is read.
+//! changing, so only the work tree is read; an index change reads both lists under its paths
+//! through the same code (`read_paths` with `staged`, see `status_index`).
 //!
 //! Paths that can't be read on their own give `Ok(None)`, and the caller reads the whole status:
 //! none or more than `watch::MAX_WATCH_PATHS`; one that is empty, absolute or has empty, `.` or
@@ -35,6 +36,17 @@ pub const CLI_PATH_BYTES: usize = 16 * 1024;
 
 /// None: these paths can't be read on their own (see the module doc); read the whole status.
 pub fn status_of_paths(workdir: &Path, paths: &[String], git_status: bool) -> Result<Option<PathsStatus>> {
+    Ok(read_paths(workdir, paths, git_status, false)?.map(|(ps, _)| ps))
+}
+
+/// The rows under `paths`: a `PathsStatus` and, with `staged`, the staged rows under its
+/// `covered` too (else none), sorted, twins and LFS pointers marked. None as for `status_of_paths`.
+pub(super) fn read_paths(
+    workdir: &Path,
+    paths: &[String],
+    git_status: bool,
+    staged: bool,
+) -> Result<Option<(PathsStatus, Vec<FileEntry>)>> {
     if paths.is_empty() || paths.len() > MAX_WATCH_PATHS || !paths.iter().all(|p| readable(p)) {
         return Ok(None);
     }
@@ -58,24 +70,31 @@ pub fn status_of_paths(workdir: &Path, paths: &[String], git_status: bool) -> Re
         twins.iter().filter(|c| c.paths.iter().any(|p| covers(&covered, p, false))).flat_map(|c| c.paths.iter().cloned()).collect();
     covered.extend(more);
     normalize(&mut covered);
-    let mut rows = if git_status && status::wants_git(&repo) {
+    let (mut rows, mut staged_rows) = if git_status && status::wants_git(&repo) {
         // git matches pathspecs case-sensitively even under core.ignorecase, while the watcher
         // reports the name on disk: the index's spelling is asked for too.
         let asked = if collide::ignorecase(&repo) { with_index_spellings(&index, &covered) } else { covered.clone() };
         match status_cli::status_of(workdir, &asked) {
-            Some((unstaged, _staged)) => unstaged,
+            Some(lists) => lists,
             None => return Ok(None),
         }
     } else {
-        libgit2_rows(&repo, &covered)?
+        libgit2_rows(&repo, &covered, staged)?
     };
+    if !staged {
+        staged_rows.clear();
+    }
     // Conflicted paths are listed once, from the index, by the whole read.
     rows.retain(|r| r.status != '!' && !(1..=3).any(|stage| index.get_path(Path::new(&r.path), stage).is_some()));
     // Marked as a whole read marks them (`status::mark_twins`), from the index scanned above.
-    collide::mark(&mut rows, &twins, collide::folding(repo.path()), collide::ignorecase(&repo));
+    let (folding, ignorecase) = (collide::folding(repo.path()), collide::ignorecase(&repo));
+    collide::mark(&mut rows, &twins, folding, ignorecase);
+    collide::mark(&mut staged_rows, &twins, folding, ignorecase);
     super::lfs_marks::mark_unstaged(&repo, &index, &mut rows);
+    super::lfs_marks::mark_staged(&repo, &index, &mut staged_rows);
     rows.sort_by(|a, b| a.path.cmp(&b.path));
-    Ok(Some(PathsStatus { covered, unstaged: rows, state: repo.state(), submodule_touched }))
+    staged_rows.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(Some((PathsStatus { covered, unstaged: rows, state: repo.state(), submodule_touched }, staged_rows)))
 }
 
 /// Whether `p` is a plain relative, '/'-separated work-tree path that can be read on its own.
@@ -141,12 +160,23 @@ fn normalize(paths: &mut Vec<String>) {
     paths.retain(|p| !prefixes(p).any(|a| all.binary_search_by(|x| x.as_str().cmp(a)).is_ok()));
 }
 
-/// The unstaged rows under `covered`, read by libgit2 alone (as `status::libgit2_status` does).
-/// The paths go to libgit2's iterators as a literal path list: no globbing, a folder covers
-/// everything below it, and other folders aren't walked.
-fn libgit2_rows(repo: &Repository, covered: &[String]) -> Result<Vec<FileEntry>> {
+/// The (unstaged, staged) rows under `covered`, read by libgit2 alone (as `status::libgit2_status`
+/// does); the staged ones only with `staged`. The paths go to libgit2's iterators as a literal
+/// path list: no globbing, a folder covers everything below it, and other folders aren't walked.
+/// Rename detection sees only these paths, so both halves of a staged rename must be in it.
+fn libgit2_rows(repo: &Repository, covered: &[String], staged: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     let mut opts = StatusOptions::new();
-    opts.show(StatusShow::Workdir).include_untracked(true).recurse_untracked_dirs(true).include_ignored(false).disable_pathspec_match(true);
+    let show = if staged { StatusShow::IndexAndWorkdir } else { StatusShow::Workdir };
+    opts.show(show).include_untracked(true).recurse_untracked_dirs(true).include_ignored(false).disable_pathspec_match(true);
+    if staged {
+        opts.renames_head_to_index(true);
+        for p in covered {
+            opts.pathspec(p);
+        }
+        let (mut unstaged, staged) = status::libgit2_lists(repo, &mut opts)?;
+        status::drop_skipped(repo, &mut unstaged)?;
+        return Ok((unstaged, staged));
+    }
     for p in covered {
         opts.pathspec(p);
     }
@@ -166,7 +196,7 @@ fn libgit2_rows(repo: &Repository, covered: &[String]) -> Result<Vec<FileEntry>>
         }
     }
     status::drop_skipped(repo, &mut rows)?;
-    Ok(rows)
+    Ok((rows, Vec::new()))
 }
 
 #[cfg(test)]

@@ -4,7 +4,7 @@
 use crate::effect::LoadKind;
 use crate::effect::StatusRead;
 use git2::Oid;
-use glowfly_core::repo::{CommitDetail, DiffTarget, FileDiff, FileEntry, FileLineCounts, SlowStatus, Snapshot, WipLineCounts};
+use glowfly_core::repo::{CommitDetail, DiffTarget, FileDiff, FileEntry, FileLineCounts, IndexMemo, SlowStatus, Snapshot, WipLineCounts};
 use glowfly_core::signature_check::SignatureCheck;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -127,6 +127,8 @@ pub enum LoadMsg {
         slow: Option<SlowStatus>,
         /// The root .gitattributes' LFS patterns, read with a whole status; None for a read of some paths.
         lfs_patterns: Option<Vec<glowfly_core::lfs::LfsPattern>>,
+        /// The index the whole or index read was taken from.
+        index: Option<Arc<IndexMemo>>,
     },
     StatusLoaded {
         generation: u64,
@@ -141,6 +143,8 @@ pub enum LoadMsg {
         slow: Option<SlowStatus>,
         /// The root .gitattributes' LFS patterns, read with a whole status; None for a read of some paths.
         lfs_patterns: Option<Vec<glowfly_core::lfs::LfsPattern>>,
+        /// The index the whole or index read was taken from.
+        index: Option<Arc<IndexMemo>>,
     },
     /// Turn on git's untracked cache for the active repository (the slow-status note's button),
     /// whose speed-ups were these when the note was shown.
@@ -170,6 +174,9 @@ pub enum WatchMsg {
     /// work-tree paths that changed, when nothing else did; None re-reads the whole status;
     /// `last_event` is when the burst's last relevant event arrived.
     RepoChanged { full: bool, paths: Option<Vec<String>>, last_event: Instant },
+    /// The index changed (debounced, `Msg::Scoped` as `RepoChanged`); `paths`: work-tree paths
+    /// named in the same burst.
+    IndexChanged { paths: Vec<String>, last_event: Instant },
     /// The file watcher could not start or stopped working for `workdir`.
     WatchFailed { workdir: PathBuf, error: String },
     /// `workdir` is on a network or virtual file system of this `kind` ("SMB", "WSL"…), which
@@ -182,7 +189,7 @@ impl WatchMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::RepoChanged { .. } | Self::WatchFailed { .. } | Self::RemoteVolume { .. } => None,
+            Self::RepoChanged { .. } | Self::IndexChanged { .. } | Self::WatchFailed { .. } | Self::RemoteVolume { .. } => None,
         }
     }
 }

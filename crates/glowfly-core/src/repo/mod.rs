@@ -50,6 +50,7 @@ mod graph_cache;
 mod history;
 mod history_forward;
 mod index;
+mod index_memo;
 mod lfs_marks;
 mod line_counts;
 mod lines;
@@ -73,6 +74,7 @@ mod snapshot_impl;
 mod stacked;
 mod status;
 mod status_cli;
+mod status_index;
 mod status_merge;
 mod status_paths;
 mod status_speed;
@@ -118,6 +120,7 @@ pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use history_forward::name_at_head;
 pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
+pub use index_memo::{IndexDelta, IndexMemo, MAX_INDEX_MEMO};
 pub use line_counts::{FileLineCounts, LineCount, MAX_COUNTED_FILES, WipLineCounts, commit_line_counts, wip_line_counts};
 pub use lines::{apply_lines, apply_shown};
 pub use load::{load, load_cached, messages_between};
@@ -133,8 +136,9 @@ pub use restore::{RestoredFrom, restore_file};
 pub use revert::{ALREADY_REVERTED, RevertPart, RevertRequest, Reverted, revert};
 pub(crate) use rpath::shown as shown_path;
 pub use stacked::*;
-pub use status::{ChangeCounts, status_at};
-pub use status_merge::{covers, merge_unstaged};
+pub use status::{ChangeCounts, status_and_index, status_at};
+pub use status_index::{IndexStatus, status_after_index_change};
+pub use status_merge::{covers, merge_staged, merge_unstaged};
 pub use status_paths::{CLI_PATH_BYTES, PathsStatus, status_of_paths};
 pub use status_speed::{
     SLOW_STATUS, SlowStatus, StatusSpeedups, UNTRACKED_CACHE_ALL, slow, status_speedups, untracked_cache_cmds, untracked_cache_helps,
@@ -301,6 +305,8 @@ pub struct Snapshot {
     pub staged: Vec<FileEntry>,
     /// The counts of `staged` and `unstaged`, kept with them.
     pub changes: ChangeCounts,
+    /// The index entries the staged list was read from; None when unknown.
+    pub index_memo: Option<std::sync::Arc<IndexMemo>>,
     /// The status read took long (`SLOW_STATUS`); what could speed it up.
     pub slow_status: Option<SlowStatus>,
     /// What the work tree's file system treats as one name (probed in the git dir).

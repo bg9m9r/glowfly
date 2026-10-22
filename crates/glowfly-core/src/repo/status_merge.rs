@@ -1,5 +1,5 @@
-//! Putting a re-read of some work-tree paths (`status_paths`) into the unstaged list a whole
-//! read gave, so the list looks as a whole read would.
+//! Putting a re-read of some work-tree paths (`status_paths`, `status_index`) into the lists a
+//! whole read gave, so they look as a whole read would.
 
 use super::FileEntry;
 use std::collections::HashSet;
@@ -31,6 +31,21 @@ pub fn merge_unstaged(rows: &mut Vec<FileEntry>, covered: &[String], fresh: Vec<
         }
         let path = fold(&r.path);
         !dirs.iter().any(|d| under(d, &path)) && !fresh_paths.contains(&path)
+    });
+    rows.extend(fresh);
+    rows.sort_by(|a, b| a.path.cmp(&b.path));
+}
+
+/// Replaces the staged rows under `covered` with `fresh` (an index read's), keeping the sort
+/// order. A row whose rename source (`renamed_from`) is covered goes too, since the read paired
+/// that path afresh, as does a row with the same path as a fresh row.
+pub fn merge_staged(rows: &mut Vec<FileEntry>, covered: &[String], fresh: Vec<FileEntry>, fold_case: bool) {
+    let fold = |s: &str| if fold_case { s.to_lowercase() } else { s.to_owned() };
+    let dirs: Vec<String> = covered.iter().map(|c| fold(c)).collect();
+    let fresh_paths: HashSet<String> = fresh.iter().map(|f| fold(&f.path)).collect();
+    let covered_path = |p: &str| dirs.iter().any(|d| under(d, &fold(p)));
+    rows.retain(|r| {
+        !covered_path(&r.path) && !r.renamed_from.as_deref().is_some_and(covered_path) && !fresh_paths.contains(&fold(&r.path))
     });
     rows.extend(fresh);
     rows.sort_by(|a, b| a.path.cmp(&b.path));
@@ -95,5 +110,31 @@ mod tests {
         let mut rows = vec![e("README.md", 'M')];
         merge_unstaged(&mut rows, &covered, Vec::new(), false);
         assert_eq!(shown(&rows), [("README.md", 'M')]);
+    }
+
+    fn renamed(path: &str, from: &str) -> FileEntry {
+        FileEntry { renamed_from: Some(from.to_owned()), ..e(path, 'R') }
+    }
+
+    #[test]
+    fn staged_rows_follow_their_rename_source() {
+        let mut rows = vec![e("a.txt", 'M'), renamed("new.txt", "old.txt"), e("z.txt", 'A')];
+        // old.txt was read again: the rename it was half of is paired afresh.
+        merge_staged(&mut rows, &["old.txt".into()], vec![e("old.txt", 'D')], false);
+        assert_eq!(shown(&rows), [("a.txt", 'M'), ("old.txt", 'D'), ("z.txt", 'A')]);
+        merge_staged(&mut rows, &["a.txt".into(), "old.txt".into(), "new.txt".into()], vec![renamed("new.txt", "old.txt")], false);
+        assert_eq!(shown(&rows), [("new.txt", 'R'), ("z.txt", 'A')], "uncovered rows stay, in order");
+        merge_staged(&mut rows, &["dir".into()], vec![e("dir/b.txt", 'A'), e("dir/a.txt", 'A')], false);
+        assert_eq!(shown(&rows), [("dir/a.txt", 'A'), ("dir/b.txt", 'A'), ("new.txt", 'R'), ("z.txt", 'A')]);
+    }
+
+    #[test]
+    fn staged_rows_fold_case_only_under_ignorecase() {
+        let mut rows = vec![e("README.md", 'M'), renamed("b.txt", "A.txt")];
+        merge_staged(&mut rows, &["Readme.md".into(), "a.txt".into()], Vec::new(), true);
+        assert!(rows.is_empty(), "{:?}", shown(&rows));
+        let mut rows = vec![e("README.md", 'M'), renamed("b.txt", "A.txt")];
+        merge_staged(&mut rows, &["Readme.md".into(), "a.txt".into()], Vec::new(), false);
+        assert_eq!(shown(&rows), [("README.md", 'M'), ("b.txt", 'R')]);
     }
 }

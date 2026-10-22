@@ -91,7 +91,7 @@ fn stale_and_paths_reads_leave_the_patterns_alone() {
     };
     let (result, lfs_patterns) = whole();
     let old = st.load_gen.wrapping_sub(1);
-    let msg = LoadMsg::StatusLoaded { generation: old, result, submodules: None, open_stamp: None, slow: None, lfs_patterns };
+    let msg = LoadMsg::StatusLoaded { generation: old, result, submodules: None, open_stamp: None, slow: None, lfs_patterns, index: None };
     update(&mut st, Msg::Load(msg), Instant::now());
     assert!(raws(&st).is_empty(), "an older generation changes nothing");
     let paths = glowfly_core::repo::status_of_paths(&dir, &["a.txt".into()], false).unwrap().expect("a paths read");
@@ -103,11 +103,12 @@ fn stale_and_paths_reads_leave_the_patterns_alone() {
         open_stamp: None,
         slow: None,
         lfs_patterns: None,
+        index: None,
     };
     update(&mut st, Msg::Load(msg), Instant::now());
     assert!(raws(&st).is_empty(), "a read of some paths brings no patterns");
     let (result, lfs_patterns) = whole();
-    let msg = LoadMsg::StatusLoaded { generation, result, submodules: None, open_stamp: None, slow: None, lfs_patterns };
+    let msg = LoadMsg::StatusLoaded { generation, result, submodules: None, open_stamp: None, slow: None, lfs_patterns, index: None };
     update(&mut st, Msg::Load(msg), Instant::now());
     assert_eq!(raws(&st), ["*.bin"], "a current whole read does");
     let _ = std::fs::remove_dir_all(&dir);
@@ -122,8 +123,15 @@ fn an_open_lfs_page_reads_its_status_again_in_place() {
     let read = |st: &mut AppState, patterns: Vec<LfsPattern>| {
         let generation = st.load_gen;
         let result = Ok(StatusRead::Whole(Vec::new(), Vec::new(), git2::RepositoryState::Clean));
-        let msg =
-            LoadMsg::StatusLoaded { generation, result, submodules: None, open_stamp: None, slow: None, lfs_patterns: Some(patterns) };
+        let msg = LoadMsg::StatusLoaded {
+            generation,
+            result,
+            submodules: None,
+            open_stamp: None,
+            slow: None,
+            lfs_patterns: Some(patterns),
+            index: None,
+        };
         update(st, Msg::Load(msg), Instant::now())
     };
     let fx = read(&mut st, vec![pattern("*.bin")]);

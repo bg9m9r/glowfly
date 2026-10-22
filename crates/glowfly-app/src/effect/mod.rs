@@ -59,7 +59,7 @@ pub use os::OsEffect;
 pub use pick::PickJob;
 pub use prefs::PrefsEffect;
 pub use rebase::{RebaseEffect, RestackJob};
-pub use repo::{ConflictRead, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
+pub use repo::{ConflictRead, IndexRequest, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;
 pub use selection::StackRequest;
 pub use stack::{StackEffect, StackPushJob};
@@ -92,6 +92,15 @@ pub enum Effect {
         git_status: bool,
         /// Re-read only these work-tree paths' unstaged rows; None reads everything.
         paths: Option<Vec<String>>,
+    },
+    /// After an index change: both lists' rows of the changed paths, else the whole status.
+    LoadIndexStatus {
+        workdir: PathBuf,
+        generation: u64,
+        submodules: bool,
+        open: Option<String>,
+        git_status: bool,
+        read: IndexRequest,
     },
     LoadDetail {
         workdir: PathBuf,

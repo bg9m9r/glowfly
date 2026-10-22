@@ -26,6 +26,7 @@ fn refresh(st: &mut AppState, keep: impl Fn(&FileEntry) -> bool) -> Vec<Effect> 
             open_stamp: None,
             slow: None,
             lfs_patterns: None,
+            index: None,
         }),
     )
 }

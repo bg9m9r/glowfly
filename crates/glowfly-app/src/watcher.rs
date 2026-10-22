@@ -1,7 +1,8 @@
 //! The file watcher for the active tab's repository: notify reports raw events, a thread of its
 //! own drops the ones that don't matter (`glowfly_core::watch`), coalesces the rest into bursts
-//! and sends one `WatchMsg::RepoChanged` per burst, with the work-tree paths it saw when nothing
-//! else changed. Owned by the runner (`Effect::Watch`).
+//! and sends one message per burst: `WatchMsg::RepoChanged`, with the work-tree paths it saw when
+//! nothing else changed, or `WatchMsg::IndexChanged` when the index changed too (with those
+//! paths). Owned by the runner (`Effect::Watch`).
 
 use crate::effect::WatchTarget;
 use crate::msg::Msg;
@@ -136,12 +137,14 @@ fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarge
             Err(RecvTimeoutError::Disconnected) => return,
         }
         if let Some((change, changed, last_event)) = burst.take_due(Instant::now()) {
-            let full = change == Change::Full;
-            // Paths with none named (only folders' own modifications): read everything.
-            let paths = (change == Change::Paths && !changed.is_empty()).then_some(changed);
-            let count = paths.as_ref().map_or(0, Vec::len);
-            tracing::debug!(workdir = %target.workdir.display(), full, paths = count, "files changed outside Glowfly");
-            let msg = Msg::Watch(WatchMsg::RepoChanged { full, paths, last_event });
+            let count = changed.len();
+            tracing::debug!(workdir = %target.workdir.display(), ?change, paths = count, "files changed outside Glowfly");
+            let msg = Msg::Watch(match change {
+                Change::Index => WatchMsg::IndexChanged { paths: changed, last_event },
+                // Paths with none named (only folders' own modifications): read everything.
+                Change::Paths if !changed.is_empty() => WatchMsg::RepoChanged { full: false, paths: Some(changed), last_event },
+                _ => WatchMsg::RepoChanged { full: change == Change::Full, paths: None, last_event },
+            });
             if tx.send(Msg::Scoped { workdir: target.workdir.clone(), msg: Box::new(msg) }).is_err() {
                 return;
             }
@@ -150,8 +153,8 @@ fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarge
     }
 }
 
-/// What one raw event calls for, with the work-tree paths it names while that is only
-/// `Change::Paths`.
+/// What one raw event calls for, with the work-tree paths it names while that is at most
+/// `Change::Index`.
 fn classify(ev: &Event, paths: &WatchPaths, ignores: &mut Ignores) -> (Change, Vec<String>) {
     if matches!(ev.kind, EventKind::Access(_)) {
         return (Change::None, Vec::new());
@@ -171,20 +174,20 @@ fn classify(ev: &Event, paths: &WatchPaths, ignores: &mut Ignores) -> (Change, V
         let (c, rel) = paths.classify_path(p, what, &mut |rel| ignores.is_ignored(rel, what));
         // The index may have changed (a force-add makes an ignored file tracked): read it again
         // before the next ignored path is checked.
-        if c >= Change::Status {
+        if c >= Change::Index {
             ignores.index_changed();
         }
         change = change.max(c);
         // A folder's own modification (Windows reports one whenever an entry inside is written)
         // names no change of its own: the entry's event does.
-        if let Some(rel) = rel.filter(|_| change == Change::Paths && !(what == Touch::Modified && p.is_dir())) {
+        if let Some(rel) = rel.filter(|_| change <= Change::Index && !(what == Touch::Modified && p.is_dir())) {
             changed.push(rel);
         }
         if change == Change::Full {
             break;
         }
     }
-    if change != Change::Paths {
+    if change > Change::Index {
         changed.clear();
     }
     (change, changed)
@@ -205,14 +208,14 @@ struct Burst {
     first: Option<Instant>,
     last: Option<Instant>,
     change: Change,
-    /// The work-tree paths seen while the burst is only `Change::Paths`.
+    /// The work-tree paths seen while the burst is at most `Change::Index`.
     paths: BTreeSet<String>,
 }
 
 impl Burst {
     /// Adds an event naming `paths` at `at`; `Change::None` neither starts nor extends a burst.
-    /// Past `MAX_WATCH_PATHS` paths, or once anything but paths changed, the burst re-reads the
-    /// whole status and keeps no paths.
+    /// Past `MAX_WATCH_PATHS` paths, or once anything but paths or the index changed, the burst
+    /// re-reads the whole status and keeps no paths.
     fn add(&mut self, change: Change, paths: Vec<String>, at: Instant) {
         if change == Change::None {
             return;
@@ -220,7 +223,7 @@ impl Burst {
         self.first.get_or_insert(at);
         self.last = Some(at);
         self.change = self.change.max(change);
-        if self.change != Change::Paths {
+        if self.change > Change::Index {
             self.paths.clear();
             return;
         }

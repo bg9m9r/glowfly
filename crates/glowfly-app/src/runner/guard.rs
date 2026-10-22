@@ -116,7 +116,7 @@ impl Recovery {
             Effect::Rebase(RebaseEffect::EditTodo { .. }) => Kind::EditTodo,
             Effect::LocalOp { .. } => Kind::LocalOp,
             Effect::LoadRepo { generation, kind, .. } => Kind::Load(*generation, *kind),
-            Effect::LoadStatus { generation, .. } => Kind::Status(*generation),
+            Effect::LoadStatus { generation, .. } | Effect::LoadIndexStatus { generation, .. } => Kind::Status(*generation),
             Effect::Ssh(e) => Kind::Ssh(e.failure()),
             Effect::Remote(e) => Kind::Fork(FailedFork::of(e)),
             Effect::LoadBlame(r) => Kind::Blame { path: r.path.clone(), generation: r.generation },
@@ -143,7 +143,15 @@ impl Recovery {
             Kind::Load(generation, kind) => Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Err(text) }),
             Kind::Status(generation) => {
                 let result = Err(text);
-                Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules: None, open_stamp: None, slow: None, lfs_patterns: None })
+                Msg::Load(LoadMsg::StatusLoaded {
+                    generation,
+                    result,
+                    submodules: None,
+                    open_stamp: None,
+                    slow: None,
+                    lfs_patterns: None,
+                    index: None,
+                })
             }
             Kind::Ssh(f) => Msg::Ssh(f.message(text)),
             Kind::Fork(f) => f.message(text),
@@ -380,6 +388,14 @@ mod tests {
         let msg = guarded(Recovery::of(&effect, "load-status"), || panic!("boom")).unwrap();
         let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
         assert!(matches!(*msg, Msg::Load(LoadMsg::StatusLoaded { generation: 3, result: Err(_), .. })));
+
+        let old = std::sync::Arc::new(glowfly_core::repo::IndexMemo::of(&git2::Index::new().unwrap()).unwrap());
+        let read = crate::effect::IndexRequest { old, partners: Vec::new(), paths: Vec::new() };
+        let effect =
+            Effect::LoadIndexStatus { workdir: "C:/r".into(), generation: 3, submodules: false, open: None, git_status: true, read };
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
+        let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
+        assert!(matches!(*msg, Msg::Load(LoadMsg::StatusLoaded { generation: 3, result: Err(_), index: None, .. })));
     }
 
     #[test]

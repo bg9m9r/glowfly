@@ -53,11 +53,15 @@ fn execute_unscoped(
             {
                 let open_stamp = k.open.and_then(|p| repo::open_file_stamp(&path, &p));
                 let started = std::time::Instant::now();
-                let result = repo::status_at(&path, k.git_status).map_err(err);
+                let read = repo::status_and_index(&path, k.git_status).map_err(err);
                 let slow = repo::slow(started.elapsed(), &path);
                 let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
                 let lfs_patterns = Some(glowfly_core::lfs::root_patterns(&path));
-                return Some(Msg::Load(LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow, lfs_patterns }));
+                let (result, index) = match read {
+                    Ok((u, s, state, memo)) => (Ok((u, s, state)), memo.map(std::sync::Arc::new)),
+                    Err(e) => (Err(e), None),
+                };
+                return Some(Msg::Load(LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow, lfs_patterns, index }));
             }
             let result = match repo::load_cached(&path, &opts, graph_cache) {
                 Err(glowfly_core::error::Error::NotOwned(root)) => return Some(git_env::not_owned(generation, kind, root)),
@@ -67,6 +71,9 @@ fn execute_unscoped(
         }
         Effect::LoadStatus { workdir, generation, submodules, open, git_status, paths } => {
             Some(status::load(&workdir, generation, submodules, open, git_status, paths))
+        }
+        Effect::LoadIndexStatus { workdir, generation, submodules, open, git_status, read } => {
+            Some(status::load_index(&workdir, generation, submodules, open, git_status, read))
         }
         Effect::LoadDetail { workdir, oid } => {
             Some(Msg::Repo(RepoMsg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }))

@@ -1050,7 +1050,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 
 ### Performance
 
-- Read the staged list incrementally on index changes (compare the old and new index) instead of a whole status read
 - Turn on git's built-in fsmonitor from Glowfly (suggest watchman on Linux), checking that the daemon runs
 - Make the Windows 30 s safety poll cheaper for huge trees (read only folders changed since the last read)
 
@@ -2674,6 +2673,8 @@ here, under the item they grew from.
 - Read the open tab's own status after its graph for very large working trees, showing the WIP
   panel as loading meanwhile
 - Word the slow-status note for another worktree's background count by that worktree's name
+- Use the index comparison for Glowfly's own stage, unstage and discard refreshes instead of a whole status read
+- Pack the index memo's paths into one buffer so indexes past `MAX_INDEX_MEMO` entries can be compared too
 
 ### Deep links
 

@@ -71,7 +71,7 @@ fn linked_worktree_folder_modifies_are_quiet() {
     assert_eq!(c(EventKind::Modify(ModifyKind::Name(RenameMode::Any)), "worktrees/wt"), Change::Full);
     assert_eq!(c(EventKind::Any, "worktrees/wt"), Change::Full);
     assert_eq!(c(EventKind::Modify(ModifyKind::Any), "worktrees/wt/locked"), Change::Full);
-    assert_eq!(c(EventKind::Modify(ModifyKind::Any), "index"), Change::Status);
+    assert_eq!(c(EventKind::Modify(ModifyKind::Any), "index"), Change::Index);
 }
 
 fn owned(p: &[&str]) -> Vec<String> {
@@ -102,6 +102,25 @@ fn bursts_collect_paths_until_something_else_changes() {
 }
 
 #[test]
+fn an_index_change_keeps_the_burst_s_paths() {
+    let t0 = Instant::now();
+    let mut b = Burst::default();
+    b.add(Change::Paths, owned(&["a.txt"]), t0);
+    b.add(Change::Index, Vec::new(), t0);
+    b.add(Change::Paths, owned(&["b.txt"]), t0);
+    assert_eq!(b.take_due(t0 + 400 * MS), Some((Change::Index, owned(&["a.txt", "b.txt"]), t0)), "Paths + Index keeps them");
+
+    b.add(Change::Index, owned(&["a.txt"]), t0);
+    b.add(Change::Status, Vec::new(), t0);
+    assert_eq!(b.take_due(t0 + 400 * MS), Some((Change::Status, Vec::new(), t0)), "Index + Status drops them");
+
+    let many: Vec<String> = (0..=MAX_WATCH_PATHS).map(|i| format!("f{i}.txt")).collect();
+    b.add(Change::Index, Vec::new(), t0);
+    b.add(Change::Paths, many, t0);
+    assert_eq!(b.take_due(t0 + 400 * MS), Some((Change::Status, Vec::new(), t0)), "past the cap: the whole status");
+}
+
+#[test]
 fn events_name_their_work_tree_paths() {
     use notify::event::{CreateKind, ModifyKind, RenameMode};
     let wd = glowfly_core::paths::temp_dir().join("glowfly-watch-names-missing");
@@ -111,7 +130,7 @@ fn events_name_their_work_tree_paths() {
         Event::new(EventKind::Modify(ModifyKind::Name(RenameMode::Both))).add_path(wd.join("a.txt")).add_path(wd.join("dir").join("b.txt"));
     assert_eq!(classify(&rename, &paths, &mut ignores), (Change::Paths, owned(&["a.txt", "dir/b.txt"])));
     let with_index = Event::new(EventKind::Create(CreateKind::Any)).add_path(wd.join("a.txt")).add_path(wd.join(".git").join("index"));
-    assert_eq!(classify(&with_index, &paths, &mut ignores), (Change::Status, Vec::new()), "the index reads everything");
+    assert_eq!(classify(&with_index, &paths, &mut ignores), (Change::Index, owned(&["a.txt"])), "the index keeps the named paths");
     let ignore = Event::new(EventKind::Create(CreateKind::Any)).add_path(wd.join(".gitignore"));
     assert_eq!(classify(&ignore, &paths, &mut ignores), (Change::Status, Vec::new()));
     let rescan = Event::new(EventKind::Any).add_path(wd.join("a.txt")).set_flag(notify::event::Flag::Rescan);
@@ -129,11 +148,21 @@ fn git(dir: &Path, a: &[&str]) {
     assert!(ok, "git {a:?} failed: {out}");
 }
 
-/// The next `RepoChanged` for `workdir` within `timeout`, as (`full`, `paths`).
-fn next_report(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<(bool, Option<Vec<String>>)> {
+/// A report the watcher sent.
+#[derive(Debug, PartialEq)]
+enum Report {
+    /// `RepoChanged`, as (`full`, `paths`).
+    Changed(bool, Option<Vec<String>>),
+    /// `IndexChanged`, with its paths.
+    Index(Vec<String>),
+}
+
+/// The next report for `workdir` within `timeout`.
+fn next_any(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<Report> {
     match rx.recv_timeout(timeout).ok()? {
         Msg::Scoped { workdir: w, msg } if w == workdir => match *msg {
-            Msg::Watch(WatchMsg::RepoChanged { full, paths, .. }) => Some((full, paths)),
+            Msg::Watch(WatchMsg::RepoChanged { full, paths, .. }) => Some(Report::Changed(full, paths)),
+            Msg::Watch(WatchMsg::IndexChanged { paths, .. }) => Some(Report::Index(paths)),
             _ => panic!("unexpected scoped message"),
         },
         Msg::Watch(WatchMsg::WatchFailed { error, .. }) => panic!("watcher failed: {error}"),
@@ -141,12 +170,21 @@ fn next_report(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<
     }
 }
 
-/// A fresh repository at `dir` with `a.txt` and a `.gitignore` for `target/` committed.
-/// The next `RepoChanged` for `workdir` within `timeout`, as `full`.
+/// The next report for `workdir` within `timeout`, as (`full`, `paths`); an index change reads
+/// as `(false, None)`.
+fn next_report(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<(bool, Option<Vec<String>>)> {
+    next_any(rx, workdir, timeout).map(|r| match r {
+        Report::Changed(full, paths) => (full, paths),
+        Report::Index(_) => (false, None),
+    })
+}
+
+/// The next report for `workdir` within `timeout`, as `full`.
 fn next_change(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<bool> {
     next_report(rx, workdir, timeout).map(|(full, _)| full)
 }
 
+/// A fresh repository at `dir` with `a.txt` and a `.gitignore` for `target/` committed.
 fn init_repo(dir: &Path) {
     let _ = std::fs::remove_dir_all(dir);
     std::fs::create_dir_all(dir).unwrap();
@@ -226,6 +264,35 @@ more
     )
     .unwrap();
     assert_eq!(next_report(&rx, &dir, Duration::from_secs(10)), Some((false, Some(owned(&["target/keep.txt"])))), "the tracked file's row");
+
+    drop(watcher);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_terminal_add_reports_an_index_change() {
+    let dir: PathBuf = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-watch-add-{}", std::process::id()));
+    init_repo(&dir);
+    std::fs::write(
+        dir.join("a.txt"),
+        "edited
+",
+    )
+    .unwrap();
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
+    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    std::thread::sleep(Duration::from_millis(300));
+    while next_change(&rx, &dir, Duration::from_millis(500)).is_some() {}
+
+    git(&dir, &["add", "a.txt"]);
+    let mut seen = Vec::new();
+    while let Some(r) = next_any(&rx, &dir, Duration::from_secs(if seen.is_empty() { 10 } else { 1 })) {
+        seen.push(r);
+    }
+    assert!(matches!(seen.first(), Some(Report::Index(_))), "{seen:?}");
+    assert!(seen.iter().all(|r| matches!(r, Report::Index(_))), "no whole read: {seen:?}");
 
     drop(watcher);
     let _ = std::fs::remove_dir_all(&dir);

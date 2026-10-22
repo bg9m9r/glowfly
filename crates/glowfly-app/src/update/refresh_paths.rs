@@ -1,6 +1,7 @@
 //! Status reads of only the work-tree paths the file watcher reported (`WatchMsg::RepoChanged`
 //! with `paths`): only the unstaged rows under them are read again and merged into the lists on
-//! screen; the staged list stays, since only an index change (a whole read) can change it.
+//! screen; the staged list stays, since only an index change can change it (an index read,
+//! `refresh_index.rs`, or a whole read).
 
 use super::refresh::{diff_changed, must_reload, open_file, set_status, status_set};
 use crate::effect::{Effect, StatusRead};
@@ -50,11 +51,12 @@ pub(super) fn show_deferred(
     let fold = snap.ignorecase;
     let open = open.filter(|p| match &read {
         StatusRead::Whole(..) => true,
-        StatusRead::Paths(ps) => repo::covers(&ps.covered, p, fold),
+        StatusRead::Paths(ps) | StatusRead::Index { paths: ps, .. } => repo::covers(&ps.covered, p, fold),
     });
     match read {
         StatusRead::Whole(u, s, state) => set_status(snap, (u, s, state), submodules),
         StatusRead::Paths(ps) => merge_into(snap, ps, submodules),
+        StatusRead::Index { paths, staged } => super::refresh_index::merge_into(snap, paths, staged, submodules),
     }
     match open {
         Some(p) => Wanted::queue(Some(queued), Wanted::Paths([p].into())),

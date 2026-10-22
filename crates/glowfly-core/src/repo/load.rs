@@ -180,6 +180,8 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     let trust_print = trust_scan.print();
     let git_status = trust_scan.is_empty() || (opts.trusted && opts.trusted_print.as_ref().is_none_or(|p| p.covers(&trust_print)));
     let started = std::time::Instant::now();
+    // Read before the status, so a change made during the read shows up in the next comparison.
+    let index_memo = repo.index().ok().and_then(|i| super::IndexMemo::of(&i)).map(std::sync::Arc::new);
     let (unstaged, staged) = super::status::load_status(&repo, git_status)?;
     let slow_status = super::status_speed::slow(started.elapsed(), &workdir);
     let changes = ChangeCounts::of(&staged, &unstaged);
@@ -263,6 +265,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         staged,
         changes,
         slow_status,
+        index_memo,
         folding,
         ignorecase,
         collisions,

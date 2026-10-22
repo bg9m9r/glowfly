@@ -8,6 +8,7 @@ impl Effect {
         match self {
             Effect::LoadRepo { .. } => "load-repo",
             Effect::LoadStatus { .. } => "load-status",
+            Effect::LoadIndexStatus { .. } => "load-index-status",
             Effect::LoadDetail { .. } => "load-detail",
             Effect::LoadCompare { .. } => "load-compare",
             Effect::LoadStacked(_) => "load-stacked",
@@ -98,6 +99,7 @@ impl Effect {
             Effect::Index(e) => e.timed(),
             Effect::LoadRepo { .. }
             | Effect::LoadStatus { .. }
+            | Effect::LoadIndexStatus { .. }
             | Effect::CountWorktreeChanges(_)
             | Effect::LoadDetail { .. }
             | Effect::LoadCompare { .. }

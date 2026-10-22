@@ -123,6 +123,53 @@ fn own_job_suppresses_watch_events() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+fn index_changed(workdir: &Path, paths: &[&str], last_event: Instant) -> Msg {
+    let msg = WatchMsg::IndexChanged { paths: paths.iter().map(|s| s.to_string()).collect(), last_event };
+    Msg::Scoped { workdir: workdir.to_path_buf(), msg: Box::new(Msg::Watch(msg)) }
+}
+
+#[test]
+fn an_index_change_reads_the_index() {
+    use crate::state::refresh::Wanted;
+    use glowfly_core::repo::FileEntry;
+    let (mut st, dir, workdir) = opened("watch-index");
+    let snap = st.snap.as_mut().unwrap();
+    let old = snap.index_memo.clone().expect("a memo");
+    let renamed = FileEntry { renamed_from: Some("old.txt".into()), ..FileEntry::new("new.txt", 'R') };
+    snap.staged = vec![FileEntry::new("added.txt", 'A'), FileEntry::new("edited.txt", 'M'), renamed];
+    let fx = update(&mut st, index_changed(&workdir, &["a.txt"], Instant::now()), Instant::now());
+    match &fx[..] {
+        [Effect::LoadIndexStatus { workdir: w, generation, read, .. }] => {
+            assert!(w == &workdir && *generation == st.load_gen);
+            assert!(std::sync::Arc::ptr_eq(&read.old, &old), "compared with the memo on screen");
+            assert_eq!(read.paths, ["a.txt"]);
+            assert_eq!(read.partners, ["added.txt", "new.txt", "old.txt"], "the rows a rename may pair with");
+        }
+        other => panic!("one index read expected: {other:?}"),
+    }
+    // While it runs, another index change queues, merging with a queued path read.
+    st.refresh.status_queued = Some(Wanted::Paths(["b.txt".to_string()].into()));
+    assert!(update(&mut st, index_changed(&workdir, &["c.txt"], Instant::now()), Instant::now()).is_empty());
+    assert_eq!(st.refresh.status_queued, Some(Wanted::Index(["b.txt".to_string(), "c.txt".to_string()].into())));
+    st.refresh.status_busy = false;
+    st.refresh.status_queued = None;
+
+    // Ignored while a job runs here, and for Glowfly's own changes.
+    st.job = Some(job(Some(dir.clone())));
+    assert!(update(&mut st, index_changed(&workdir, &[], Instant::now()), Instant::now()).is_empty());
+    st.job = None;
+    let t = Instant::now();
+    st.watch.quiet_until = Some(t);
+    assert!(update(&mut st, index_changed(&workdir, &[], t), t).is_empty());
+    st.watch.quiet_until = None;
+
+    // Without a memo of the index on screen: the whole status.
+    st.snap.as_mut().unwrap().index_memo = None;
+    let fx = update(&mut st, index_changed(&workdir, &[], Instant::now()), Instant::now());
+    assert!(matches!(&fx[..], [Effect::LoadStatus { paths: None, .. }]), "{fx:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Runs `msg`, then every effect it returns, collecting all the effects along the way.
 fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     let mut all = Vec::new();

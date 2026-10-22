@@ -51,6 +51,20 @@ pub fn status_at(workdir: &Path, git_status: bool) -> Result<(Vec<FileEntry>, Ve
     Ok((unstaged, staged, repo.state()))
 }
 
+/// `status_at`, plus the memo of the index the read started from (`IndexMemo`), read just
+/// before the status so a change made during the read shows up in the next comparison. The memo
+/// is None past `MAX_INDEX_MEMO` entries or when the index can't be read.
+#[allow(clippy::type_complexity)]
+pub fn status_and_index(
+    workdir: &Path,
+    git_status: bool,
+) -> Result<(Vec<FileEntry>, Vec<FileEntry>, RepositoryState, Option<super::IndexMemo>)> {
+    let repo = Repository::open(workdir)?;
+    let memo = repo.index().ok().and_then(|i| super::IndexMemo::of(&i));
+    let (unstaged, staged) = load_status(&repo, git_status)?;
+    Ok((unstaged, staged, repo.state(), memo))
+}
+
 /// (unstaged, staged), each sorted by path. Read by git itself when the repository is set up for
 /// a fast status (fsmonitor, the untracked cache) or its index is large: libgit2 uses neither.
 /// `git_status` false: libgit2 only, so no fsmonitor hook or filter runs (repositories not
@@ -102,11 +116,22 @@ pub(super) fn wants_git(repo: &Repository) -> bool {
 pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     let mut opts = StatusOptions::new();
     opts.include_untracked(true).recurse_untracked_dirs(true).renames_head_to_index(true).include_ignored(false);
+    let (mut unstaged, mut staged) = libgit2_lists(repo, &mut opts)?;
+    drop_skipped(repo, &mut unstaged)?;
+    unstaged.sort_by(|a, b| a.path.cmp(&b.path));
+    staged.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok((unstaged, staged))
+}
+
+/// The (unstaged, staged) rows libgit2's status gives with `opts`, unsorted: a conflicted path
+/// once, as an unstaged '!' row; a staged rename under its new path with the old one in
+/// `renamed_from`.
+pub(super) fn libgit2_lists(repo: &Repository, opts: &mut StatusOptions) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     let mut unstaged = Vec::new();
     let mut staged = Vec::new();
     // A .gitmodules that can't be parsed fails the status of every gitlink; read it again
     // without submodules rather than failing the whole load.
-    let statuses = match repo.statuses(Some(&mut opts)) {
+    let statuses = match repo.statuses(Some(opts)) {
         Ok(s) => s,
         Err(_) => repo.statuses(Some(opts.exclude_submodules(true)))?,
     };
@@ -119,37 +144,37 @@ pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<F
             unstaged.push(row('!'));
             continue;
         }
-        // A rename whose content changed too carries the modified flag as well; git still calls
-        // it a rename, so the rename is checked first.
-        let index = if s.is_index_new() {
-            Some('A')
-        } else if s.is_index_renamed() {
-            Some('R')
-        } else if s.is_index_modified() {
-            Some('M')
-        } else if s.is_index_deleted() {
-            Some('D')
-        } else if s.is_index_typechange() {
-            Some('T')
-        } else {
-            None
-        };
-        let worktree = worktree_char(s);
-        if let Some(c) = index {
+        if let Some(c) = index_char(s) {
             let mut row = row(c);
             if c == 'R' {
                 row.renamed_from = e.head_to_index().and_then(|d| d.old_file().path_bytes()).and_then(super::rpath::text);
             }
             staged.push(row);
         }
-        if let Some(c) = worktree {
+        if let Some(c) = worktree_char(s) {
             unstaged.push(row(c));
         }
     }
-    drop_skipped(repo, &mut unstaged)?;
-    unstaged.sort_by(|a, b| a.path.cmp(&b.path));
-    staged.sort_by(|a, b| a.path.cmp(&b.path));
     Ok((unstaged, staged))
+}
+
+/// The staged row's status letter for libgit2's flags (None: nothing staged). A rename whose
+/// content changed too carries the modified flag as well; git still calls it a rename, so the
+/// rename is checked first.
+pub(super) fn index_char(s: Status) -> Option<char> {
+    if s.is_index_new() {
+        Some('A')
+    } else if s.is_index_renamed() {
+        Some('R')
+    } else if s.is_index_modified() {
+        Some('M')
+    } else if s.is_index_deleted() {
+        Some('D')
+    } else if s.is_index_typechange() {
+        Some('T')
+    } else {
+        None
+    }
 }
 
 /// The unstaged row's status letter for libgit2's flags (None: nothing changed in the work tree).

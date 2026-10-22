@@ -9,6 +9,7 @@ impl Effect {
     pub fn scope(&self) -> Option<&PathBuf> {
         match self {
             Effect::LoadStatus { workdir, .. }
+            | Effect::LoadIndexStatus { workdir, .. }
             | Effect::LoadDetail { workdir, .. }
             | Effect::LoadCompare { workdir, .. }
             | Effect::LoadWorkdirCompare { workdir, .. }

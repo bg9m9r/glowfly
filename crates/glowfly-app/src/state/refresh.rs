@@ -27,18 +27,24 @@ pub enum Wanted {
     Whole,
     /// Only the unstaged rows under these work-tree paths (the file watcher's).
     Paths(BTreeSet<String>),
+    /// The rows the index change can have changed, with these work-tree paths (an index read).
+    Index(BTreeSet<String>),
 }
 
 impl Wanted {
-    /// One read covering both: a whole read absorbs any paths, path sets unite, and a union past
-    /// `MAX_WATCH_PATHS` becomes a whole read.
+    /// One read covering both: a whole read absorbs anything, path sets unite (an index read
+    /// with them stays one), and a union past `MAX_WATCH_PATHS` becomes a whole read.
     pub fn merge(self, other: Wanted) -> Wanted {
-        match (self, other) {
-            (Wanted::Paths(mut a), Wanted::Paths(b)) => {
-                a.extend(b);
-                if a.len() > MAX_WATCH_PATHS { Wanted::Whole } else { Wanted::Paths(a) }
-            }
-            _ => Wanted::Whole,
+        let (index, mut a, b) = match (self, other) {
+            (Wanted::Paths(a), Wanted::Paths(b)) => (false, a, b),
+            (Wanted::Index(a) | Wanted::Paths(a), Wanted::Index(b) | Wanted::Paths(b)) => (true, a, b),
+            _ => return Wanted::Whole,
+        };
+        a.extend(b);
+        match (a.len() > MAX_WATCH_PATHS, index) {
+            (true, _) => Wanted::Whole,
+            (false, true) => Wanted::Index(a),
+            (false, false) => Wanted::Paths(a),
         }
     }
 
@@ -124,5 +130,17 @@ mod tests {
         assert_eq!(half(0).merge(half(MAX_WATCH_PATHS)), Wanted::Whole, "over the cap");
         let exact = Wanted::Paths((0..MAX_WATCH_PATHS).map(|i| format!("f{i}")).collect());
         assert!(matches!(exact.merge(paths(&["f0"])), Wanted::Paths(p) if p.len() == MAX_WATCH_PATHS));
+    }
+
+    #[test]
+    fn queued_index_reads_merge() {
+        let index = |p: &[&str]| Wanted::Index(p.iter().map(|s| s.to_string()).collect());
+        assert_eq!(index(&["a"]).merge(index(&["b"])), index(&["a", "b"]));
+        assert_eq!(index(&["a"]).merge(paths(&["b"])), index(&["a", "b"]), "Index + Paths");
+        assert_eq!(paths(&["a"]).merge(index(&[])), index(&["a"]), "Paths + Index");
+        assert_eq!(index(&["a"]).merge(Wanted::Whole), Wanted::Whole);
+        assert_eq!(Wanted::Whole.merge(index(&["a"])), Wanted::Whole);
+        let half = |from: usize| Wanted::Index((from..from + MAX_WATCH_PATHS / 2 + 1).map(|i| format!("f{i}")).collect());
+        assert_eq!(half(0).merge(half(MAX_WATCH_PATHS)), Wanted::Whole, "over the cap");
     }
 }

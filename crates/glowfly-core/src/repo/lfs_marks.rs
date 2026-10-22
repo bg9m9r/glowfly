@@ -38,17 +38,22 @@ fn file_is_pointer(workdir: Option<&Path>, path: &str) -> bool {
 /// deletion), unstaged ones as `mark_unstaged` does.
 pub(super) fn mark_wip(repo: &Repository, unstaged: &mut [FileEntry], staged: &mut [FileEntry]) {
     let Ok(index) = repo.index() else { return };
+    mark_staged(repo, &index, staged);
+    mark_unstaged(repo, &index, unstaged);
+}
+
+/// Marks staged rows by the index blob (HEAD's for a staged deletion).
+pub(super) fn mark_staged(repo: &Repository, index: &Index, staged: &mut [FileEntry]) {
     let mut head: Option<Option<Tree<'_>>> = None;
     for f in staged.iter_mut().take(MAX_LFS_CHECKS).filter(|f| checkable(f)) {
         let id = if f.status == 'D' {
             let tree = head.get_or_insert_with(|| super::diff::head_tree(repo));
             tree.as_ref().and_then(|t| t.get_path(Path::new(&f.path)).ok()).filter(|e| e.kind() == Some(ObjectType::Blob)).map(|e| e.id())
         } else {
-            index_blob(&index, &f.path)
+            index_blob(index, &f.path)
         };
         f.lfs = blob_is_pointer(repo, id);
     }
-    mark_unstaged(repo, &index, unstaged);
 }
 
 /// Marks unstaged rows: the index blob or the working copy is a pointer (only the working copy

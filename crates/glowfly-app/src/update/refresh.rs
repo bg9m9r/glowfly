@@ -16,7 +16,7 @@ pub(super) type Status = (Vec<FileEntry>, Vec<FileEntry>, RepositoryState);
 
 pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow, lfs_patterns } => {
+        LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow, lfs_patterns, index } => {
             if generation != st.load_gen {
                 return; // superseded by a newer load
             }
@@ -31,6 +31,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 super::selection::refreshed(st, &snap, fx);
                 st.snap = Some(snap);
             }
+            remember_index(st, result.is_ok(), index);
             apply_status(st, result, submodules, open_stamp, now, fx);
             super::lfs::patterns_read(st, lfs_patterns, fx);
             super::pick::state_changed(st, state_before);
@@ -43,11 +44,15 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             super::worktree_counts::want(st, fx);
             load_finished(st, fx);
         }
-        LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow, lfs_patterns } => {
+        LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow, lfs_patterns, index } => {
             if generation != st.load_gen {
                 return;
             }
             st.refresh.status_busy = false;
+            // A read of some paths keeps the index it was merged into.
+            if !matches!(result, Ok(StatusRead::Paths(_))) {
+                remember_index(st, result.is_ok(), index);
+            }
             // Applied even when the status itself is out of date and deferred.
             super::lfs::patterns_read(st, lfs_patterns, fx);
             let state_before = st.snap.as_ref().map(|s| s.state);
@@ -56,10 +61,14 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 match super::refresh_paths::show_deferred(st, result, submodules, queued) {
                     Wanted::Whole => refresh_status(st, fx),
                     Wanted::Paths(set) => super::refresh_paths::refresh_paths(st, set.into_iter().collect(), fx),
+                    Wanted::Index(set) => super::refresh_index::refresh_index(st, set.into_iter().collect(), fx),
                 }
             } else {
                 match result {
                     Ok(StatusRead::Paths(ps)) => super::refresh_paths::apply(st, ps, submodules, open_stamp, now, fx),
+                    Ok(StatusRead::Index { paths, staged }) => {
+                        super::refresh_index::apply(st, paths, staged, submodules, open_stamp, now, fx)
+                    }
                     Ok(StatusRead::Whole(u, s, state)) => apply_status(st, Ok((u, s, state)), submodules, open_stamp, now, fx),
                     Err(e) => apply_status(st, Err(e), submodules, open_stamp, now, fx),
                 }
@@ -231,6 +240,14 @@ pub(super) fn status_set(snap: &mut Snapshot, was_dirty: bool, submodules: Optio
     // and every branch's colour.
     if was_dirty != snap.is_dirty() {
         snap.lay_out_graph();
+    }
+}
+
+/// Keeps the memo of the index a whole or index read was taken from with the lists it gave;
+/// after a failed read (`ok` false) none is known.
+fn remember_index(st: &mut AppState, ok: bool, index: Option<std::sync::Arc<glowfly_core::repo::IndexMemo>>) {
+    if let Some(snap) = st.snap.as_mut() {
+        snap.index_memo = if ok { index } else { None };
     }
 }
 

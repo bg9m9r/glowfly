@@ -2,9 +2,10 @@
 //! against, the watcher's target, and what a git job means for the undo history.
 
 use git2::RepositoryState;
-use glowfly_core::repo::{ConflictIds, FileEntry, Hunk, HunkOp, PathsStatus, Side};
+use glowfly_core::repo::{ConflictIds, FileEntry, Hunk, HunkOp, IndexMemo, PathsStatus, Side};
 use glowfly_core::undo::Action;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 /// Quick index/working-tree edits (through libgit2, or git where filters must run).
 #[derive(Debug, PartialEq)]
@@ -75,6 +76,19 @@ pub enum StatusRead {
     Whole(Vec<FileEntry>, Vec<FileEntry>, RepositoryState),
     /// Only the unstaged rows under some work-tree paths, to merge into the lists on screen.
     Paths(PathsStatus),
+    /// After an index change: both lists' rows under `paths.covered` (`repo::status_after_index_change`).
+    Index { paths: PathsStatus, staged: Vec<FileEntry> },
+}
+
+/// What an index read compares and reads (`Effect::LoadIndexStatus`).
+#[derive(Debug)]
+pub struct IndexRequest {
+    /// The memo of the index the lists on screen were read from.
+    pub old: Arc<IndexMemo>,
+    /// The staged additions, deletions and renames on screen, with the renames' old paths.
+    pub partners: Vec<String>,
+    /// The work-tree paths the watcher named with the change.
+    pub paths: Vec<String>,
 }
 
 /// What a refresh compares against before loading everything again.

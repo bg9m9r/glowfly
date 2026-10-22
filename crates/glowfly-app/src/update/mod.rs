@@ -97,6 +97,7 @@ mod rebase_remaining;
 mod rebase_resume;
 mod recent;
 mod refresh;
+mod refresh_index;
 mod refresh_paths;
 mod release_notes;
 mod remote_forks;

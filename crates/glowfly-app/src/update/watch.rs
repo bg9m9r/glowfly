@@ -25,18 +25,8 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
     match msg {
         // Only arrives through `Msg::Scoped`, so it is for the active tab.
         WatchMsg::RepoChanged { full, paths, last_event } => {
-            if !st.settings.watch_files || st.snap.is_none() {
+            if !wanted(st, last_event) {
                 return;
-            }
-            // Glowfly's own job refreshes when it is done.
-            let here = st.workdir();
-            if let (Some(job), Some(here)) = (st.job.as_ref().and_then(|j| j.workdir.as_deref()), here.as_deref())
-                && glowfly_core::paths::same_spelling(job, here)
-            {
-                return;
-            }
-            if st.watch.quiet_until.is_some_and(|q| last_event <= q) {
-                return; // caused by a job or local op that already refreshed
             }
             // A full refresh reads the commands files anyway.
             if !full {
@@ -47,6 +37,12 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
                 // Only these work-tree paths changed: re-read just their rows.
                 (false, Some(paths)) => super::refresh_paths::refresh_paths(st, paths, fx),
                 (false, None) => super::repo::refresh_status(st, fx),
+            }
+        }
+        WatchMsg::IndexChanged { paths, last_event } => {
+            if wanted(st, last_event) {
+                super::custom_commands::watched(st, Some(paths.as_slice()), fx);
+                super::refresh_index::refresh_index(st, paths, fx);
             }
         }
         WatchMsg::RemoteVolume { workdir, kind } => {
@@ -66,6 +62,22 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
             }
         }
     }
+}
+
+/// Whether a burst whose last event came at `last_event` should refresh the active tab: watching
+/// is on, a repository is open, no job of Glowfly's runs there (it refreshes when it is done),
+/// and the burst wasn't caused by a job or local op that already refreshed.
+fn wanted(st: &AppState, last_event: Instant) -> bool {
+    if !st.settings.watch_files || st.snap.is_none() {
+        return false;
+    }
+    let here = st.workdir();
+    if let (Some(job), Some(here)) = (st.job.as_ref().and_then(|j| j.workdir.as_deref()), here.as_deref())
+        && glowfly_core::paths::same_spelling(job, here)
+    {
+        return false;
+    }
+    !st.watch.quiet_until.is_some_and(|q| last_event <= q)
 }
 
 /// Points the watcher at the active tab's repository, or stops it (no repository, or the

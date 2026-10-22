@@ -6,7 +6,7 @@ use crate::testutil::{git, scratch_repo, write};
 #[test]
 fn git_internals_are_classified() {
     let c = |p: &str| git_change(Path::new(p), Touch::Modified);
-    assert_eq!(c("index"), Change::Status);
+    assert_eq!(c("index"), Change::Index);
     assert_eq!(c("info/exclude"), Change::Status);
     assert_eq!(c("info/attributes"), Change::Status);
     assert_eq!(c("info/other"), Change::None);
@@ -113,7 +113,7 @@ fn a_linked_worktree_follows_the_refs_it_shares() {
     let mut never = |_: &str| false;
     assert_eq!(paths.classify(&common.join("refs/heads/x"), Touch::Other, &mut never), Change::Full);
     assert_eq!(paths.classify(&common.join("index"), Touch::Modified, &mut never), Change::None);
-    assert_eq!(paths.classify(&git_dir.join("index"), Touch::Modified, &mut never), Change::Status);
+    assert_eq!(paths.classify(&git_dir.join("index"), Touch::Modified, &mut never), Change::Index);
     assert_eq!(paths.classify(&git_dir.join("HEAD"), Touch::Modified, &mut never), Change::Full);
     assert_eq!(paths.classify(&common.join("config"), Touch::Modified, &mut never), Change::Full, "the shared config");
     assert_eq!(paths.classify(&git_dir.join("config.worktree"), Touch::Modified, &mut never), Change::Full, "its own config");
@@ -151,7 +151,7 @@ fn linked_worktree_folders_count_only_when_they_come_or_go() {
         assert_eq!(c("worktrees/wt/index", touch), Change::None);
         assert_eq!(c("worktrees/wt/index.lock", touch), Change::None);
         assert_eq!(c("refs/heads/main", touch), Change::Full);
-        assert_eq!(c("index", touch), Change::Status);
+        assert_eq!(c("index", touch), Change::Index);
     }
 }
 
@@ -175,7 +175,7 @@ fn worktree_paths_are_classified() {
     assert_eq!(paths.classify_path(&wd.join("src").join("a.rs"), Touch::Modified, &mut ignored), (Change::Paths, Some("src/a.rs".into())));
     assert_eq!(paths.classify(&wd, Touch::Modified, &mut ignored), Change::None);
     assert_eq!(paths.classify(&wd.join("vendor/sub/.git/index"), Touch::Modified, &mut ignored), Change::None);
-    assert_eq!(paths.classify(&wd.join(".git").join("index"), Touch::Modified, &mut ignored), Change::Status, "the git rule wins");
+    assert_eq!(paths.classify(&wd.join(".git").join("index"), Touch::Modified, &mut ignored), Change::Index, "the git rule wins");
     assert_eq!(paths.classify(&wd.join("target").join("debug").join("x.o"), Touch::Modified, &mut ignored), Change::None);
     let outside = crate::paths::temp_dir().join("glowfly-watch-elsewhere").join("a.rs");
     assert_eq!(paths.classify(&outside, Touch::Modified, &mut ignored), Change::None);
@@ -189,7 +189,9 @@ fn worktree_paths_are_classified() {
 
     assert_eq!(Change::Status.max(Change::Full), Change::Full);
     assert_eq!(Change::None.max(Change::Status), Change::Status);
-    assert!(Change::None < Change::Paths && Change::Paths < Change::Status && Change::Status < Change::Full);
+    assert!(
+        Change::None < Change::Paths && Change::Paths < Change::Index && Change::Index < Change::Status && Change::Status < Change::Full
+    );
 }
 
 #[test]
@@ -201,9 +203,10 @@ fn ignore_and_attribute_files_read_the_whole_status() {
         assert_eq!(paths.classify_path(&wd.join(rel), Touch::Modified, &mut never), (Change::Status, None), "{rel}");
     }
     assert_eq!(paths.classify_path(&wd.join("sub/.gitmodules"), Touch::Modified, &mut never).0, Change::Paths, "only the root's counts");
-    for rel in ["index", "info/exclude", "info/attributes"] {
+    for rel in ["info/exclude", "info/attributes"] {
         assert_eq!(paths.classify_path(&wd.join(".git").join(rel), Touch::Modified, &mut never), (Change::Status, None), "{rel}");
     }
+    assert_eq!(paths.classify_path(&wd.join(".git/index"), Touch::Modified, &mut never), (Change::Index, None), "the index names no path");
     assert_eq!(paths.classify_path(&wd.join(".git/HEAD"), Touch::Modified, &mut never), (Change::Full, None));
 }
 
