@@ -18,8 +18,10 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Component, Path, PathBuf};
 
 mod encode;
+mod file_url;
 mod identity;
 pub use encode::{decode, encode};
+pub use file_url::from_file_url;
 pub use identity::FolderId;
 
 /// `path` as it really is on disk: links, junctions and short 8.3 names followed, in its plain

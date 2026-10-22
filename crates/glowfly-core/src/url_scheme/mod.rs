@@ -9,8 +9,9 @@
 //!   `x-scheme-handler/glowfly` and `x-scheme-handler/trellis`, made the default for both with
 //!   `xdg-mime default`. The Linux package installs the same file for [`PACKAGED_EXE`] in
 //!   `/usr/share/applications`, which counts too.
-//! - macOS: links reach an application bundle through its Info.plist and Apple events, which
-//!   Glowfly.app doesn't handle yet; until then [`status`] says so.
+//! - macOS: Glowfly.app declares both schemes in its Info.plist and receives links as Apple
+//!   events (glowfly-app's platform/macos_events.rs); LaunchServices registers the bundle when it
+//!   is installed, so there is nothing to register here, and [`status`] says so.
 //!
 //! The decisions (what a registry value or `xdg-mime` answer means, how the command line is
 //! quoted) are pure functions, tested on every OS.
@@ -40,7 +41,7 @@ pub const DESKTOP_FILE: &str = "glowfly-links.desktop";
 /// Where the Linux package installs Glowfly; its packaged `glowfly-links.desktop` (in
 /// `/usr/share/applications`) is `desktop_entry` for this path.
 pub const PACKAGED_EXE: &str = "/usr/bin/glowfly";
-/// Why the scheme can't be registered on macOS yet.
+/// Why macOS has nothing to register: Glowfly.app's Info.plist declares the scheme.
 pub const MACOS_NOTE: &str = "On macOS, links will open Glowfly once it is installed as an application.";
 /// The desktop's handler query lacks its program.
 pub const NO_XDG_MIME: &str = "xdg-mime wasn't found; install xdg-utils to register links.";

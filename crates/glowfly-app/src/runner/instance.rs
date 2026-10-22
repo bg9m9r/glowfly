@@ -1,6 +1,6 @@
-//! The listener for links that a second Glowfly process hands to this window
-//! (`glowfly_core::instance`): started once with the app, it reports each link as
-//! `DeepLinkMsg::Open`.
+//! What reaches this window from outside once it runs: the links a second Glowfly process hands
+//! to it (`glowfly_core::instance`), reported as `DeepLinkMsg::Open`, and what the OS hands over
+//! as events (`platform::open_events`), reported as their command-line form would be.
 
 use super::{Runner, Waker};
 use crate::deep_link::DeepLinkMsg;
@@ -20,5 +20,16 @@ impl<W: Waker + Clone> Runner<W> {
             Ok(listener) => self.instance = Some(listener),
             Err(e) => tracing::warn!("links won't reach this window: {e}"),
         }
+    }
+
+    /// Folders and links the OS hands this process as events (macOS Apple events), including
+    /// those that came before the window: each becomes the message its command-line form would.
+    pub fn start_open_events(&mut self) {
+        let (tx, waker) = (self.tx.clone(), self.waker.clone());
+        crate::platform::open_events::attach(Box::new(move |item| {
+            if tx.send(item.into_msg()).is_ok() {
+                waker.wake();
+            }
+        }));
     }
 }

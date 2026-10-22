@@ -379,6 +379,21 @@ second one next to it.
 4. **A link names its repository by root commit and remote URL, never by the folder it is in
    here,** and opening one runs no git command until the user clicks Fetch or Clone; the
    repository is found with libgit2 reads only.
+5. **macOS hands links and folders to Glowfly.app as Apple events,** never on the command line.
+   packaging/macos/Info.plist declares both schemes in `CFBundleURLTypes` (Get URL events) and
+   `public.folder` in `CFBundleDocumentTypes` as an Alternate-rank Viewer (Open Documents events:
+   Finder's Open With, a Dock drop, `open -a Glowfly <folder>`), never with an Editor role or an
+   `NSDocumentClass`, so Finder keeps opening folders itself and AppKit never makes an untitled
+   document. `platform/macos_events.rs` installs its handlers before eframe starts and again at
+   `NSApplicationWillFinishLaunchingNotification`, since AppKit installs its own Open Documents
+   handler while launching and dispatches the launch event right after. Items wait in
+   `platform/open_events.rs` until `Runner::start_open_events` attaches, then become the same
+   messages as the command line (`StartArg::into_msg`); an event repeating the command line's
+   item within 10 s of startup (`paths::same_spelling`, links as exact text) is dropped once. An
+   Open Documents item is a `file:` URL, read with `paths::from_file_url`. A `-psn_...` argument
+   (Finder's process serial number) is ignored on macOS. LaunchServices registers the bundle
+   when it is copied into /Applications or first opened (`lsregister -f` registers a hand-built
+   one); an unbundled binary has no Info.plist and gets no events.
 
 ### Window frame
 
@@ -586,10 +601,6 @@ Gaps that are accepted for now:
   the window instead of raising it.
 - **Glowfly started with `GIT_CONFIG_COUNT` already set keeps GnuPG's own passphrase window:**
   the user's command-scope config is left alone rather than appended to.
-- **macOS doesn't receive links or folders yet:** an application gets them as Apple events, with
-  the scheme and the folder document type declared in its bundle's Info.plist. Glowfly.app
-  declares neither until it handles those events (declaring them would start it without the link
-  or folder). Preferences says so.
 - **Windows 11's modern context menu has no "Open in Glowfly":** that menu needs an
   `IExplorerCommand` in a packaged (sparse) app; the MSI's entry is in the classic menu, under
   "Show more options".
@@ -645,3 +656,5 @@ Unverified, needs a real machine:
   light, dark and busy wallpapers;
 - turning transparency effects or high contrast on and off while Glowfly runs;
 - on macOS, the system titlebar strip's own drag and double-click against Glowfly's.
+- on macOS, a link that cold-starts Glowfly.app, Finder's Open With on a folder, a folder dropped
+  on the Dock icon, and `open -a Glowfly <folder>`.

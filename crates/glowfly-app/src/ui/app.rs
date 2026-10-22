@@ -94,12 +94,10 @@ impl GlowflyApp {
         if !paths.is_empty() {
             app.dispatch(ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, labels, active }));
         }
-        match start {
-            Some(crate::StartArg::Path(path)) => app.dispatch(ctx, Msg::Repo(RepoMsg::Open(path))),
-            Some(crate::StartArg::Link(text)) => {
-                app.dispatch(ctx, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Open(text)));
-            }
-            None => {}
+        // Folders and links the OS handed over before the window came reach the results
+        // channel at `Step::OpenEvents`, so they are opened on the first frame, after this.
+        if let Some(start) = start {
+            app.dispatch(ctx, start.into_msg());
         }
         app
     }
@@ -160,6 +158,7 @@ impl GlowflyApp {
                 }
                 // Links opened while this window runs come here instead of a new window.
                 Step::Instance => self.runner.start_instance(),
+                Step::OpenEvents => self.runner.start_open_events(),
                 Step::Lfs => self.dispatch(ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect)),
                 Step::GitEnv => self.dispatch(ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect)),
                 Step::Onboarding => self.dispatch(ctx, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup)),
@@ -313,6 +312,9 @@ enum Step {
     Askpass,
     Logs,
     Instance,
+    /// Folders and links the OS hands over (macOS Apple events), including those that came
+    /// before the window.
+    OpenEvents,
     Lfs,
     GitEnv,
     /// The welcome's first step.
@@ -323,12 +325,13 @@ enum Step {
 }
 
 /// Startup, in order; a test app runs the same order minus the `outside` steps.
-const STARTUP: [Step; 10] = [
+const STARTUP: [Step; 11] = [
     Step::Theme,
     Step::Layout,
     Step::Askpass,
     Step::Logs,
     Step::Instance,
+    Step::OpenEvents,
     Step::Lfs,
     Step::GitEnv,
     Step::Onboarding,
@@ -337,9 +340,10 @@ const STARTUP: [Step; 10] = [
 ];
 
 impl Step {
-    /// Whether the step starts a server or a worker, or leads to a network call.
+    /// Whether the step starts a server or a worker, leads to a network call, or touches
+    /// process-wide state (the OS events' inbox).
     fn outside(self) -> bool {
-        matches!(self, Step::Askpass | Step::Logs | Step::Instance | Step::Updates)
+        matches!(self, Step::Askpass | Step::Logs | Step::Instance | Step::OpenEvents | Step::Updates)
     }
 }
 
@@ -362,7 +366,7 @@ mod tests {
     #[test]
     fn startup_keeps_the_app_order_and_a_test_app_skips_only_outside_steps() {
         use Step::*;
-        let app = [Theme, Layout, Askpass, Logs, Instance, Lfs, GitEnv, Onboarding, Updates, RecentFolders];
+        let app = [Theme, Layout, Askpass, Logs, Instance, OpenEvents, Lfs, GitEnv, Onboarding, Updates, RecentFolders];
         assert_eq!(steps(true).collect::<Vec<_>>(), app);
         assert_eq!(steps(false).collect::<Vec<_>>(), [Theme, Layout, Lfs, GitEnv, Onboarding, RecentFolders]);
     }

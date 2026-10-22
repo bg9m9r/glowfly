@@ -108,6 +108,27 @@ fn the_installer_registers_what_glowfly_registers() {
     assert!(wxs.contains(r#"Name="URL Protocol""#));
     assert!(wxs.contains(r#"Value='"[INSTALLFOLDER]glowfly.exe",0'"#), "the default icon");
     assert!(!wxs.contains("HKLM"), "nothing machine-wide");
+}
+
+#[test]
+fn the_bundle_declares_the_scheme_and_folders() {
     let plist = packaging("macos/Info.plist");
-    assert!(!plist.contains("CFBundleDocumentTypes") && !plist.contains("CFBundleURLTypes"), "no Apple event types yet");
+    let lines: Vec<&str> = plist.lines().map(str::trim).collect();
+    let after = |key: &str, n: usize| -> Vec<&str> {
+        let at = lines.iter().position(|l| *l == format!("<key>{key}</key>")).unwrap_or_else(|| panic!("{key} in Info.plist"));
+        lines.iter().skip(at + 1).take(n).copied().collect()
+    };
+    let schemes = [format!("<string>{SCHEME}</string>"), format!("<string>{OLD_SCHEME}</string>")];
+    assert_eq!(after("CFBundleURLSchemes", 4), ["<array>", schemes[0].as_str(), schemes[1].as_str(), "</array>"]);
+    let name = after("CFBundleURLName", 1);
+    assert!(name[0].starts_with(&format!("<string>{}", crate::app_identity::APP_ID)), "{name:?}");
+    assert_eq!(after("LSItemContentTypes", 3), ["<array>", "<string>public.folder</string>", "</array>"]);
+    assert_eq!(after("CFBundleTypeRole", 1), ["<string>Viewer</string>"]);
+    assert_eq!(after("LSHandlerRank", 1), ["<string>Alternate</string>"]);
+    assert_eq!(plist.matches("<string>@VERSION@</string>").count(), 2, "both versions are filled in");
+    let count = |tag: &str| lines.iter().filter(|l| **l == tag).count();
+    assert_eq!(count("<dict>"), count("</dict>"), "dicts balance");
+    assert_eq!(count("<array>"), count("</array>"), "arrays balance");
+    let (open, close) = (plist.find("<!--").expect("a comment"), plist.find("-->").expect("its end"));
+    assert!(!plist[open + 4..close].contains("--"), "an XML comment may not hold two dashes");
 }

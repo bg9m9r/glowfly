@@ -1,13 +1,18 @@
 //! Operating-system integration: the recent-repositories and tabs files, what is at the listed
 //! folders, terminals, file managers (opening a folder, or showing a file selected in it), the
-//! window icon, the drawn Windows frame's glue with the OS (`native_window`), and the app id an
-//! installed Windows copy takes before its window opens (`claim_app_id`).
+//! window icon, the drawn Windows frame's glue with the OS (`native_window`), the app id an
+//! installed Windows copy takes before its window opens (`claim_app_id`), and the folders and
+//! links macOS hands Glowfly.app as Apple events (`macos_events`), which wait in `open_events`
+//! until the runner attaches.
 
 use std::path::{Path, PathBuf};
 
 mod app_id;
 mod icon;
+#[cfg(target_os = "macos")]
+mod macos_events;
 pub mod native_window;
+pub mod open_events;
 mod terminal;
 pub use app_id::claim as claim_app_id;
 pub use icon::app_icon;

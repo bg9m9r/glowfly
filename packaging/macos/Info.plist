@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Glowfly.app's Info.plist; scripts/package-macos.sh replaces @VERSION@. No document or URL
-  types yet: Glowfly can't receive Apple events, so declaring them would start it without the
-  folder or link. The bundle id is what desktop notifications post under
-  (glowfly_core::app_identity::APP_ID; a core test checks they agree).
+  Glowfly.app's Info.plist; scripts/package-macos.sh replaces @VERSION@. The bundle id is what
+  desktop notifications post under (glowfly_core::app_identity::APP_ID; a core test checks they
+  agree). CFBundleURLTypes sends glowfly: and trellis: links (url_scheme::SCHEME, OLD_SCHEME) as
+  GURL Apple events; CFBundleDocumentTypes offers Glowfly under Open With for folders and takes a
+  folder dropped on its Dock icon, as odoc Apple events.
+  crates/glowfly-app/src/platform/macos_events.rs receives both. Folders are an Alternate-rank
+  Viewer type: offered, never Finder's default.
 -->
 <plist version="1.0">
 <dict>
@@ -34,5 +37,32 @@
   <string>public.app-category.developer-tools</string>
   <key>NSHumanReadableCopyright</key>
   <string>Copyright © Glowfly contributors. MIT or Apache-2.0.</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>io.github.bg9m9r.glowfly.link</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>glowfly</string>
+        <string>trellis</string>
+      </array>
+    </dict>
+  </array>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Folder</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.folder</string>
+      </array>
+    </dict>
+  </array>
 </dict>
 </plist>

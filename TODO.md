@@ -1042,10 +1042,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 - Place comments on their lines when the local source branch differs from the head (map the line
   numbers across the newer commits)
 
-### Deep links
-
-- macOS: receive links and folders as Apple events (GURL and odoc) and declare the scheme and the folder document type in Glowfly.app's Info.plist, so links, Finder's Open With and dropping a folder on the Dock icon open them
-
 ### Menu bar
 
 - The native macOS application menu (the global menu bar with the standard app menu) instead of the in-window bar. winit's default app menu binds Cmd+Q to `terminate:`, which may exit without a close request, so the quit question can be skipped there
@@ -2687,6 +2683,11 @@ here, under the item they grew from.
 - Linux fallback that edits mimeapps.list when xdg-mime isn't installed
 - Show machine-wide or packaged registrations in the Preferences status on Windows
 - An https redirect page so links can be shared where custom schemes aren't clickable
+- Show which app opens glowfly:// links on macOS in Preferences (LaunchServices' default handler for the scheme)
+- Hand a link that starts Glowfly.app over to an unbundled glowfly window already running, instead of opening a second window
+- A folder macOS hands over while a dialog or Preferences is open waits behind a toast, as a link does
+- Open the repository holding a file dropped on the Dock icon (declare files too, as an Alternate viewer)
+- An Open in Glowfly Finder Quick Action or Services menu entry for folders
 
 ### Cross-repo dashboard
 

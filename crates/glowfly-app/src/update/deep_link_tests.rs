@@ -178,6 +178,16 @@ fn a_link_is_looked_for_in_tabs_favorites_and_recent() {
 }
 
 #[test]
+fn an_os_link_opens_like_the_command_line() {
+    let mut st = state();
+    let fx = update(&mut st, crate::StartArg::Link(link_text("tag/v1")).into_msg(), Instant::now());
+    assert!(focuses(&fx));
+    let (_, seq, origin) = find(&fx);
+    assert_eq!((seq, origin), (st.deep_link.seq, FindOrigin::Search));
+    assert_eq!(st.deep_link.pending.as_ref().map(|p| p.link.target.clone()), Some(Target::Tag("v1".into())));
+}
+
+#[test]
 fn a_link_waits_while_another_dialog_is_open() {
     let mut st = state();
     st.modal = Some(Modal::Shortcuts { filter: String::new() });

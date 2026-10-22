@@ -47,7 +47,7 @@ mod worktree;
 
 use eframe::egui;
 use glowfly_core::askpass::{self, HelperError, Outcome};
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
 fn main() -> eframe::Result {
@@ -103,7 +103,7 @@ fn main() -> eframe::Result {
     // The OS language, read once: "system" in the Language setting follows it.
     glowfly_core::i18n::detect_system_language();
     // `args_os`: a path needn't be UTF-8 (`env::args` would panic on one).
-    let start = argv.get(1).cloned().map(start_arg);
+    let start = argv.get(1).filter(|a| !is_process_serial(a, cfg!(target_os = "macos"))).cloned().map(start_arg);
     // A link goes to the window already running, when there is one.
     if let Some(StartArg::Link(text)) = &start {
         match glowfly_core::instance::hand_off(text) {
@@ -111,6 +111,9 @@ fn main() -> eframe::Result {
             Err(e) => tracing::debug!("opening a window for the link: {e}"),
         }
     }
+    // Before eframe starts AppKit: the Apple event that started Glowfly.app comes before the
+    // window exists.
+    platform::open_events::install(start.as_ref());
     // Before any window exists: an installed Windows copy takes the id its shortcuts carry.
     platform::claim_app_id();
     let chrome = state::window_chrome::Chrome::current();
@@ -135,11 +138,29 @@ fn main() -> eframe::Result {
 }
 
 /// What the command line asks the new window to open.
+#[derive(Clone, Debug, PartialEq)]
 pub enum StartArg {
     /// A repository folder, made absolute.
     Path(PathBuf),
     /// A `glowfly://` link (forwarded to a running window first).
     Link(String),
+}
+
+impl StartArg {
+    /// The message that opens it: the same message for the command line and for what the OS
+    /// hands over.
+    pub fn into_msg(self) -> msg::Msg {
+        match self {
+            StartArg::Path(p) => msg::Msg::Repo(msg::RepoMsg::Open(p)),
+            StartArg::Link(t) => msg::Msg::DeepLink(deep_link::DeepLinkMsg::Open(t)),
+        }
+    }
+}
+
+/// Finder's process serial number argument (`-psn_0_12345`), which macOS puts on the command
+/// line of some launches, such as the first one after a download. It never names a path.
+fn is_process_serial(arg: &OsStr, macos: bool) -> bool {
+    macos && arg.to_str().is_some_and(|s| s.starts_with("-psn_"))
 }
 
 /// Reads the command-line argument: a link (`glowfly:` in any case), else a repository path. A
@@ -258,6 +279,25 @@ mod start_path_tests {
         let dir = glowfly_core::paths::temp_dir().join("glowfly-start-arg");
         assert!(matches!(start_arg(dir.clone().into_os_string()), StartArg::Path(p) if p == dir));
         assert!(matches!(start_arg(OsString::from("glowfly")), StartArg::Path(p) if p.is_absolute()));
+    }
+
+    #[test]
+    fn start_arguments_become_the_open_messages() {
+        use crate::deep_link::DeepLinkMsg;
+        use crate::msg::{Msg, RepoMsg};
+        let p = glowfly_core::paths::temp_dir().join("glowfly-start-msg");
+        assert!(matches!(StartArg::Path(p.clone()).into_msg(), Msg::Repo(RepoMsg::Open(q)) if q == p));
+        let t = "glowfly://tag/v1?url=x".to_owned();
+        assert!(matches!(StartArg::Link(t.clone()).into_msg(), Msg::DeepLink(DeepLinkMsg::Open(u)) if u == t));
+    }
+
+    #[test]
+    fn finders_process_serial_argument_is_not_a_path() {
+        let psn = OsStr::new("-psn_0_12345");
+        assert!(is_process_serial(psn, true));
+        assert!(!is_process_serial(psn, false), "only macOS adds it");
+        assert!(!is_process_serial(OsStr::new("/w/-psn_x"), true));
+        assert!(!is_process_serial(OsStr::new("glowfly://repo?root=x"), true));
     }
 
     #[cfg(unix)]
