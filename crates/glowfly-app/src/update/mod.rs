@@ -138,6 +138,7 @@ mod tag_checkout;
 mod tags;
 mod terminal;
 mod terminal_header;
+mod terminal_schemes;
 mod terminal_tabs;
 mod terminal_view;
 mod themes;

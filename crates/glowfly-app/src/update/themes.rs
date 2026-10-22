@@ -1,5 +1,6 @@
 //! Theme files: reloading the themes folder, opening it, creating a file from the theme in use,
-//! and reporting the problems of what was loaded.
+//! importing terminal colour schemes (terminal_schemes.rs), and reporting the problems of what
+//! was loaded.
 
 use crate::effect::Effect;
 use crate::effect::OsEffect;
@@ -40,6 +41,10 @@ pub(super) fn handle(st: &mut AppState, msg: ThemeMsg, now: Instant, fx: &mut Ve
             st.toast(true, format!("Created theme {file}. Edit it, then press Reload."), now);
         }
         ThemeMsg::Created(Err(e)) => st.log(false, format!("Could not create a theme file: {e}")),
+        ThemeMsg::PickScheme => fx.push(Effect::Theme(ThemeEffect::PickScheme)),
+        ThemeMsg::SchemePicked(None) => {}
+        ThemeMsg::SchemePicked(Some(path)) => fx.push(Effect::Theme(ThemeEffect::ImportScheme { path })),
+        ThemeMsg::SchemesImported { file, result } => super::terminal_schemes::imported(st, &file, result, now, fx),
     }
 }
 
@@ -59,8 +64,17 @@ fn loaded(st: &mut AppState, cat: ThemeCatalog) {
     for note in cat.error.iter().chain(&cat.skipped) {
         st.log_quiet(false, format!("Themes: {note}"));
     }
+    for f in &cat.terminal.files {
+        for p in &f.problems {
+            st.log_quiet(false, format!("Terminal color scheme {}: {p}", f.file_name()));
+        }
+    }
+    if let Some(note) = &cat.terminal.error {
+        st.log_quiet(false, format!("Terminal color schemes: {note}"));
+    }
     st.themes.catalog = cat;
     st.themes.generation += 1;
+    super::terminal_schemes::check_selected(st);
     let ThemeChoice::Custom(id) = &st.settings.theme else {
         st.themes.reported = None;
         return;

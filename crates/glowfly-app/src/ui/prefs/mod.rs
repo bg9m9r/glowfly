@@ -32,6 +32,7 @@ mod ssh_service;
 mod ssh_sources;
 mod ssh_windows;
 pub(super) mod terminal;
+mod terminal_colours;
 mod theme_row;
 mod tools;
 mod trello;
@@ -153,7 +154,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         let git = tools::GitToolsView { tools: prefs.git_tools.as_ref(), held: tools_held };
                         tools::tools_page(ui, settings, &git, msgs)
                     }
-                    PrefPage::Terminal => terminal::terminal_page(ui, settings, msgs),
+                    PrefPage::Terminal => terminal::terminal_page(ui, settings, themes, msgs),
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
                     PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),
                     PrefPage::RepoSparse => sparse::sparse_page(ui, &mut prefs.sparse, &sparse_cx, msgs),

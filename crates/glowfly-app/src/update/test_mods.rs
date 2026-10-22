@@ -429,6 +429,8 @@ pub(super) mod terminal_close_tests;
 pub(super) mod terminal_header_tests;
 #[path = "terminal_kill_tests.rs"]
 pub(super) mod terminal_kill_tests;
+#[path = "terminal_schemes_tests.rs"]
+pub(super) mod terminal_schemes_tests;
 #[path = "terminal_tabs_tests.rs"]
 pub(super) mod terminal_tabs_tests;
 #[path = "terminal_tests.rs"]

@@ -3,7 +3,9 @@
 //! (`spacing.rs`), the design tokens (`tokens.rs`: corners, elevations, focus, motion) and the
 //! colour tokens worked out from a palette (`surfaces.rs`: overlay, state layers, tones).
 //!
-//! Views read colors through `color::text()` etc. The active palette is a per-thread copy: the
+//! Views read colors through `color::text()` etc.; the terminal reads `color::term()`, which
+//! Preferences > Terminal > Colours can point at another theme's or an imported scheme
+//! (`terminal_scheme.rs`). The active palette is a per-thread copy: the
 //! shell's [`ThemeCache`] works out the palette for the chosen theme (again only when the
 //! choice, the theme files or the OS setting change) and sets it by reference with
 //! `color::set_palette` at the start of each frame, on the thread that draws it. Tests rendering
@@ -12,9 +14,9 @@
 use crate::state::window_native::MicaTint;
 use crate::themes::ThemeState;
 use eframe::egui::{self, Stroke};
-use glowfly_core::settings::{BranchPalette, BuiltinTheme, ThemeChoice};
+use glowfly_core::settings::{BranchPalette, BuiltinTheme, TerminalColours, ThemeChoice};
 
-mod ansi;
+pub mod ansi;
 pub mod branch_colours;
 pub mod branch_names;
 mod branch_palette;
@@ -31,6 +33,7 @@ pub mod families;
 pub mod fonts;
 pub mod spacing;
 pub mod surfaces;
+pub mod terminal_scheme;
 pub mod tokens;
 pub mod type_scale;
 
@@ -145,6 +148,10 @@ pub struct ThemeCache {
     applied: Option<Palette>,
     /// The palette's Mica tints (`backdrop::mica_tint`); None for a high-contrast theme.
     mica: Option<MicaTint>,
+    /// (terminal colours setting, theme files generation, palette) the terminal's colours were
+    /// worked out for, and those colours (None: the palette's own).
+    terminal_key: Option<(TerminalColours, u64, Palette)>,
+    terminal: Option<families::Ansi>,
 }
 
 impl ThemeCache {
@@ -152,6 +159,18 @@ impl ThemeCache {
     pub fn apply(&mut self, ctx: &egui::Context, settings: &glowfly_core::settings::Settings, themes: &ThemeState) {
         let system_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
         self.select(ctx, &settings.theme, settings.branch_palette, themes, system_dark);
+        self.select_terminal(&settings.terminal.colours, themes);
+    }
+
+    /// Makes the terminal colours `choice` picks active for this frame (`color::set_terminal`).
+    pub fn select_terminal(&mut self, choice: &TerminalColours, themes: &ThemeState) {
+        let palette = self.palette.unwrap_or(DARK);
+        let fresh = matches!(&self.terminal_key, Some((c, g, p)) if c == choice && *g == themes.generation && *p == palette);
+        if !fresh {
+            self.terminal = terminal_scheme::override_for(choice, &palette, &themes.catalog.terminal);
+            self.terminal_key = Some((choice.clone(), themes.generation, palette));
+        }
+        color::set_terminal(self.terminal);
     }
 
     /// Makes the chosen theme's palette, with the branch preset `branches`, active for this frame

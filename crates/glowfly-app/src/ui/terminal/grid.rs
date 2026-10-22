@@ -77,7 +77,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
     }
 
     let painter = ui.painter_at(rect);
-    painter.rect_filled(rect, 0.0, color::input());
+    painter.rect_filled(rect, 0.0, color::term().background);
     let cell = |r: u16, c: u16| origin + vec2(f32::from(c) * cw, f32::from(r) * rh);
     let screen_rows = session.screen.rows();
     for (r, row) in screen_rows.iter().enumerate() {

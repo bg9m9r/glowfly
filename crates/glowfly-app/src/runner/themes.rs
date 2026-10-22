@@ -1,9 +1,10 @@
 //! Theme files (`Effect::Theme`): reading the themes folder, showing it in the file manager and
-//! writing a new theme file.
+//! writing a new theme file, and importing terminal schemes (a file dialog, then reading the
+//! file and writing its schemes to the themes folder's `terminal` folder).
 
 use crate::msg::Msg;
 use crate::themes::{ThemeEffect, ThemeMsg};
-use glowfly_core::settings::themes;
+use glowfly_core::settings::{terminal_schemes, themes};
 
 pub(super) fn run(effect: ThemeEffect) -> Option<Msg> {
     match effect {
@@ -28,6 +29,22 @@ pub(super) fn run(effect: ThemeEffect) -> Option<Msg> {
                 None => Err("no config folder".into()),
             };
             Some(Msg::Theme(ThemeMsg::Created(result)))
+        }
+        ThemeEffect::PickScheme => {
+            let path = rfd::FileDialog::new()
+                .set_title("Import terminal color scheme")
+                .add_filter("Terminal schemes (Windows Terminal, iTerm2)", &["json", "itermcolors"])
+                .add_filter("All files", &["*"])
+                .pick_file();
+            Some(Msg::Theme(ThemeMsg::SchemePicked(path)))
+        }
+        ThemeEffect::ImportScheme { path } => {
+            let file = path.file_name().map_or_else(|| glowfly_core::native_path::shown(&path), |n| n.to_string_lossy().into_owned());
+            let result = match themes::themes_dir() {
+                Some(dir) => terminal_schemes::import_path(&path, &terminal_schemes::schemes_dir(&dir)).map_err(|e| e.to_string()),
+                None => Err("there is no config folder to keep it in".into()),
+            };
+            Some(Msg::Theme(ThemeMsg::SchemesImported { file, result }))
         }
     }
 }

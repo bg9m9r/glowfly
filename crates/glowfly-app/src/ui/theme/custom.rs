@@ -8,10 +8,17 @@ use crate::themes::ThemeState;
 use eframe::egui::Color32;
 use glowfly_core::settings::{ColorValue, ThemeChoice, ThemeFile};
 
+/// The terminal's body keys and the colours they follow when a file leaves them out: a built-in
+/// terminal draws on `input` in `text` with the accent's cursor and selection.
+const TERMINAL_BODY: [(&str, &str); 4] =
+    [("terminal_background", "input"), ("terminal_foreground", "text"), ("terminal_cursor", "accent"), ("terminal_selection", "accent")];
+
 /// The contrast the primary button's text needs.
 const PRIMARY_INK_MIN: f64 = 4.5;
 
-/// The palette of a loaded theme file: its base, with every color it sets. A file that sets its
+/// The palette of a loaded theme file: its base, with every color it sets. The terminal's
+/// background, text, cursor and selection follow the file's `input`, `text` and `accent` unless
+/// it sets them; its 16 basic colours come from the base. A file that sets its
 /// own `primary` but no `on_primary` keeps the base's ink only while it reads on that primary;
 /// otherwise the button text is white or black, whichever reads better. A file on Dusk or Dawn
 /// whose accent isn't the base's (one written from the green Dark or Light before Dusk and Dawn,
@@ -27,6 +34,13 @@ pub fn build(file: &ThemeFile) -> Palette {
         };
         if let (Some(slot), Some(c)) = (p.get_mut(key), color) {
             *slot = c;
+        }
+    }
+    // The terminal's body follows the file's own surfaces, as it did before it had keys.
+    for (key, from) in TERMINAL_BODY {
+        if !file.colors.contains_key(key) {
+            let c = p.get(from).expect("a palette key");
+            *p.get_mut(key).expect("a terminal key") = c;
         }
     }
     if let Some(g) = garden_twin(file.base).filter(|_| p.accent != base.accent) {

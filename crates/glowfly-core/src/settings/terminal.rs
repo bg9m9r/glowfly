@@ -1,4 +1,4 @@
-//! Preferences > Terminal (the shell, text size, cursor and dimming, copy on select,
+//! Preferences > Terminal (the shell, text size, colours, cursor and dimming, copy on select,
 //! middle-click paste, and whether Open in terminal uses the panel), and the panel's remembered
 //! state.
 
@@ -51,6 +51,20 @@ pub enum CursorStyle {
     Bar,
 }
 
+/// The colours the built-in terminal draws in.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TerminalColours {
+    /// The app theme's own terminal colours (a theme file's `terminal_*` keys, or its base's).
+    #[default]
+    MatchTheme,
+    /// A built-in theme's terminal colours, by its id (`BuiltinTheme::id`); an unknown id
+    /// matches the app theme.
+    Theme(String),
+    /// An imported scheme in the themes folder's `terminal` folder, by its file stem; one that
+    /// isn't there matches the app theme.
+    Scheme(String),
+}
+
 /// The terminal's text size when nothing else is set.
 pub const DEFAULT_TERMINAL_FONT_SIZE: f32 = 12.5;
 /// The terminal text sizes Preferences offers.
@@ -73,6 +87,7 @@ pub struct TerminalPrefs {
     pub middle_click_paste: bool,
     /// Open in terminal (palette, toolbar right-click) uses the panel.
     pub open_in_panel: bool,
+    pub colours: TerminalColours,
     /// Window state, not on the page: whether the panel was open, and its height in points.
     pub panel_open: bool,
     pub panel_height: Option<f32>,
@@ -88,6 +103,7 @@ impl Default for TerminalPrefs {
             copy_on_select: false,
             middle_click_paste: true,
             open_in_panel: false,
+            colours: TerminalColours::MatchTheme,
             panel_open: false,
             panel_height: None,
         }
@@ -133,6 +149,7 @@ mod tests {
         assert_eq!(s.terminal.shell.choice, ShellChoice::Auto);
         assert!(!s.terminal.copy_on_select);
         assert!(s.terminal.middle_click_paste);
+        assert_eq!(s.terminal.colours, TerminalColours::MatchTheme);
         let p: TerminalPrefs = serde_json::from_str(r#"{"font_size":14.0,"dim_unfocused":true}"#).unwrap();
         assert!(!p.copy_on_select);
         assert!(p.middle_click_paste);
@@ -159,6 +176,7 @@ mod tests {
             copy_on_select: true,
             middle_click_paste: false,
             open_in_panel: true,
+            colours: TerminalColours::Scheme("campbell".into()),
             panel_open: true,
             panel_height: Some(301.0),
         };
@@ -168,6 +186,8 @@ mod tests {
 
         let p: TerminalPrefs = serde_json::from_str(r#"{"cursor":"Bar"}"#).unwrap();
         assert_eq!(p, TerminalPrefs { cursor: CursorStyle::Bar, ..TerminalPrefs::default() });
+        let p: TerminalPrefs = serde_json::from_str(r#"{"colours":{"Theme":"sand"}}"#).unwrap();
+        assert_eq!(p.colours, TerminalColours::Theme("sand".into()));
         let p: TerminalPrefs = serde_json::from_str(r#"{"shell":{"choice":"Bash"}}"#).unwrap();
         assert_eq!(p.shell, ShellSetting { choice: ShellChoice::Bash, ..Default::default() });
     }
@@ -189,6 +209,7 @@ mod tests {
             copy_on_select: true,
             middle_click_paste: false,
             open_in_panel: true,
+            colours: TerminalColours::Theme("sand".into()),
             panel_open: true,
             panel_height: Some(250.0),
             ..Default::default()

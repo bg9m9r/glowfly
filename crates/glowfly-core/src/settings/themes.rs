@@ -29,6 +29,12 @@ pub const COLOR_KEYS: &[&str] = &[
     "diff_add", "diff_del", "diff_add_sel", "diff_del_sel", "diff_add_word", "diff_del_word", "hunk_bg", "hunk_fg",
     "warn", "banner", "primary", "on_primary", "primary_off", "primary_border", "danger", "danger_off", "tag_bg", "tag_fg",
     "syn_comment", "syn_string", "syn_number", "syn_constant", "syn_keyword", "syn_type", "syn_function", "syn_attr",
+    // The terminal's (`terminal_schemes::TERMINAL_KEYS`).
+    "terminal_background", "terminal_foreground", "terminal_cursor", "terminal_selection",
+    "terminal_black", "terminal_red", "terminal_green", "terminal_yellow",
+    "terminal_blue", "terminal_magenta", "terminal_cyan", "terminal_white",
+    "terminal_bright_black", "terminal_bright_red", "terminal_bright_green", "terminal_bright_yellow",
+    "terminal_bright_blue", "terminal_bright_magenta", "terminal_bright_cyan", "terminal_bright_white",
 ];
 
 /// Older color names and the keys they now stand for.
@@ -247,6 +253,8 @@ pub struct ThemeCatalog {
     pub error: Option<String>,
     /// Entries passed over that the user may have meant as themes (names that aren't UTF-8).
     pub skipped: Vec<String>,
+    /// The terminal schemes in the `terminal` folder inside it.
+    pub terminal: super::terminal_schemes::SchemeCatalog,
 }
 
 impl ThemeCatalog {

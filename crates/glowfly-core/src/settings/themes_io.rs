@@ -1,4 +1,5 @@
-//! Reading and writing theme files in `<config dir>/themes`. Called only by the app shell at
+//! Reading and writing theme files in `<config dir>/themes` (and, through `terminal_schemes`,
+//! the terminal schemes in its `terminal` folder). Called only by the app shell at
 //! startup and by the runner; the parsing itself is in `themes.rs`.
 
 use super::themes::{ThemeCatalog, ThemeFile, ThemeProblem, parse};
@@ -52,6 +53,7 @@ pub fn load_dir(dir: &Path) -> ThemeCatalog {
         }
     }
     cat.files.sort_by(|a, b| (a.name.to_lowercase(), &a.id).cmp(&(b.name.to_lowercase(), &b.id)));
+    cat.terminal = super::terminal_schemes::load_dir(&super::terminal_schemes::schemes_dir(dir));
     cat
 }
 

@@ -1,7 +1,9 @@
 //! Messages and effects for theme files (update/themes.rs, runner/themes.rs,
 //! ui/prefs/theme_row.rs): the catalog of files in the themes folder, reloading it, opening the
-//! folder and creating a file from the theme in use.
+//! folder, creating a file from the theme in use, and importing terminal colour schemes
+//! (Preferences > Terminal > Colours).
 
+use glowfly_core::settings::terminal_schemes::ImportReport;
 use glowfly_core::settings::{ThemeCatalog, ThemeProblem};
 use std::path::PathBuf;
 
@@ -27,17 +29,33 @@ pub enum ThemeMsg {
         colors: Vec<(&'static str, [u8; 3])>,
         dark: bool,
     },
+    /// Import scheme…: ask for a Windows Terminal or iTerm2 file.
+    PickScheme,
     // ---- from the runner or the shell
     Loaded(ThemeCatalog),
     /// A new theme file: its id and path, or why it couldn't be written.
     Created(Result<(String, PathBuf), String>),
+    /// The file picked to import a scheme from; None when the dialog was cancelled.
+    SchemePicked(Option<PathBuf>),
+    /// What importing `file` (its name, for messages) wrote, or why nothing could be used.
+    SchemesImported {
+        file: String,
+        result: Result<ImportReport, String>,
+    },
 }
 
 impl ThemeMsg {
     /// Themes are global: nothing is scoped to a tab.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::Reload | Self::OpenFolder | Self::CreateFromCurrent { .. } | Self::Loaded(_) | Self::Created(_) => None,
+            Self::Reload
+            | Self::OpenFolder
+            | Self::CreateFromCurrent { .. }
+            | Self::PickScheme
+            | Self::Loaded(_)
+            | Self::Created(_)
+            | Self::SchemePicked(_)
+            | Self::SchemesImported { .. } => None,
         }
     }
 }
@@ -63,6 +81,12 @@ pub enum ThemeEffect {
     Create {
         json: String,
     },
+    /// Shows a file dialog for a scheme to import.
+    PickScheme,
+    /// Reads `path` and writes the schemes in it to the themes folder's `terminal` folder.
+    ImportScheme {
+        path: PathBuf,
+    },
 }
 
 impl ThemeEffect {
@@ -72,6 +96,8 @@ impl ThemeEffect {
             ThemeEffect::Load => "load-themes",
             ThemeEffect::OpenFolder => "open-themes-folder",
             ThemeEffect::Create { .. } => "create-theme",
+            ThemeEffect::PickScheme => "pick-terminal-scheme",
+            ThemeEffect::ImportScheme { .. } => "import-terminal-scheme",
         }
     }
 }

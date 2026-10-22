@@ -1,13 +1,15 @@
-//! Preferences > Terminal. Built-in terminal: the shell new terminals start, the text size, the
-//! cursor, dimming without the keyboard, copy on select, middle-click paste (shown only on
+//! Preferences > Terminal. Built-in terminal: the shell new terminals start, the text size, its
+//! colours (`terminal_colours.rs`), the cursor, dimming without the keyboard, copy on select, middle-click paste (shown only on
 //! Linux, where it acts), and whether Open in terminal opens a tab there. External terminal: the
 //! program Open in terminal starts otherwise, with its arguments. Edits apply at once (the view
 //! edits the settings in place and the shell saves them); a new shell choice applies to
 //! terminals started afterwards, and Browse… asks update to show a file dialog.
 
+use super::terminal_colours::colours_row;
 use super::tools::{program_field, warnings};
 use super::{check_row, help, row, section, text_field, warn};
 use crate::msg::Msg;
+use crate::themes::ThemeState;
 use crate::tools::ToolKind;
 use crate::ui::theme::controls;
 use crate::ui::widgets::buttons;
@@ -16,21 +18,21 @@ use glowfly_core::external_tools::{self, EDITOR_PLACEHOLDERS};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{CursorStyle, Settings, ShellChoice, TERMINAL_FONT_SIZES};
 
-pub fn terminal_page(ui: &mut Ui, s: &mut Settings, msgs: &mut Vec<Msg>) {
-    page_for(ui, s, cfg!(target_os = "linux"), msgs);
+pub fn terminal_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, msgs: &mut Vec<Msg>) {
+    page_for(ui, s, themes, cfg!(target_os = "linux"), msgs);
 }
 
 /// The page as drawn on Linux (`linux`, with the middle-click row) or elsewhere.
-pub(crate) fn page_for(ui: &mut Ui, s: &mut Settings, linux: bool, msgs: &mut Vec<Msg>) {
+pub(crate) fn page_for(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, linux: bool, msgs: &mut Vec<Msg>) {
     let t = s.lang();
     section(ui, t.tr("prefs.terminal.builtin.section"));
-    built_in(ui, t, s, linux);
+    built_in(ui, t, s, themes, linux, msgs);
     section(ui, t.tr("prefs.terminal.external.section"));
     external(ui, t, s, msgs);
 }
 
 /// The built-in terminal's rows, ending with its Reset (which resets only these).
-fn built_in(ui: &mut Ui, t: Lang, s: &mut Settings, linux: bool) {
+fn built_in(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, linux: bool, msgs: &mut Vec<Msg>) {
     let windows = cfg!(windows);
     let p = &mut s.terminal;
     row(ui, t.tr("prefs.terminal.shell.label"), |ui| {
@@ -63,6 +65,7 @@ fn built_in(ui: &mut Ui, t: Lang, s: &mut Settings, linux: bool) {
         ui.add(size.suffix(t.tr("prefs.terminal.font_size.suffix")));
         help(ui, t.tr("prefs.terminal.font_size.help"));
     });
+    colours_row(ui, t, &mut p.colours, themes, msgs);
     row(ui, t.tr("prefs.terminal.cursor.label"), |ui| {
         ui.horizontal(|ui| {
             controls::radio_value(ui, &mut p.cursor, CursorStyle::Block, t.tr("prefs.terminal.cursor.block"));

@@ -161,7 +161,8 @@ fn fatal_problems() {
 
 #[test]
 fn choices_and_builtins() {
-    assert_eq!(COLOR_KEYS.len(), 46);
+    assert_eq!(COLOR_KEYS.len(), 66);
+    assert!(COLOR_KEYS.ends_with(&crate::settings::terminal_schemes::TERMINAL_KEYS), "the terminal's keys come last");
     for t in BuiltinTheme::ALL {
         assert_eq!(BuiltinTheme::from_id(t.id()), Some(t));
     }

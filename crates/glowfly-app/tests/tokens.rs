@@ -29,7 +29,6 @@ const ICON_FILES: &[&str] = &["ui/widgets/icon.rs", "ui/icons.rs", "ui/icons_pan
 /// (file, text on the line, reason) for each deliberate exception. Each must still match.
 const ALLOWED: &[(&str, &str, &str)] = &[
     ("ui/tour.rs", "rect_stroke(t.shrink(1.0)", "the tour's spotlight outline, not a focus ring"),
-    ("ui/terminal/paint.rs", "CursorStyle::Block => painter.rect_stroke", "the terminal's block cursor, not a focus ring"),
     ("ui/welcome_cards.rs", "CornerRadius::same(2), s, StrokeKind::Middle", "a corner of the painted folder glyph"),
 ];
 

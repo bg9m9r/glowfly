@@ -1,0 +1,23 @@
+{
+    "name": "Harbour Night",
+    "background": "#101820",
+    "foreground": "#D6DAE2",
+    "cursorColor": "#FFCC66",
+    "selectionBackground": "#2A3A55",
+    "black": "#101820",
+    "red": "#E0565B",
+    "green": "#6AC46A",
+    "yellow": "#E6C06A",
+    "blue": "#5A9CF0",
+    "purple": "#B47CE8",
+    "cyan": "#4EC2C8",
+    "white": "#C8CCD4",
+    "brightBlack": "#5C6370",
+    "brightRed": "#FF7A80",
+    "brightGreen": "#8FE08F",
+    "brightYellow": "#FFD88A",
+    "brightBlue": "#82B8FF",
+    "brightPurple": "#D2A0FF",
+    "brightCyan": "#7EE0E6",
+    "brightWhite": "#F2F4F8"
+}

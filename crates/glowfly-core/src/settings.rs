@@ -27,6 +27,7 @@ mod repo_colours;
 pub mod repo_keys;
 mod submodules;
 mod terminal;
+pub mod terminal_schemes;
 pub mod themes;
 mod themes_io;
 mod tools;
@@ -52,7 +53,9 @@ pub use profiles::{DEFAULT_PROFILE_NAME, FolderRule, Profile, ProfileId, Profile
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
 pub use repo_colours::RepoColour;
 pub use submodules::{SubmodulePrefs, SubmoduleUpdates};
-pub use terminal::{CursorStyle, DEFAULT_TERMINAL_FONT_SIZE, ShellChoice, ShellSetting, TERMINAL_FONT_SIZES, TerminalPrefs};
+pub use terminal::{
+    CursorStyle, DEFAULT_TERMINAL_FONT_SIZE, ShellChoice, ShellSetting, TERMINAL_FONT_SIZES, TerminalColours, TerminalPrefs,
+};
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use trust::{RepoTrust, SavedTrust};

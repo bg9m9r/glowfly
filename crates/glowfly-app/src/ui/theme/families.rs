@@ -63,8 +63,16 @@ pub struct Branch {
 /// How many branch hues the standard preset has (`glowfly_core::branch_colour::SLOTS`).
 pub const LANE_COUNT: usize = glowfly_core::branch_colour::SLOTS as usize;
 
-/// The terminal's 16 basic colours (ANSI 0-7 and their bright 8-15), drawn on `input`.
+/// The terminal's colours: its background, default text, cursor and selection, and its 16 basic
+/// colours (ANSI 0-7 and their bright 8-15). The built-ins draw on `input` in `text`, with the
+/// accent for the cursor and selection.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Ansi {
+    pub background: Color32,
+    pub foreground: Color32,
+    /// Drawn as is for a focused block cursor's outline and lines, faded for a filled block.
+    pub cursor: Color32,
+    /// Drawn at 35% over the background, so text stays readable through it.
+    pub selection: Color32,
     pub colors: [Color32; 16],
 }

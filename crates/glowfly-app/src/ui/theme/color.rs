@@ -80,7 +80,8 @@ pub struct Palette {
     pub branch: Branch,
     /// The branch family the colour-blind safe preset puts in `branch` (`branch_palette::applied`).
     pub colour_blind: Branch,
-    /// The terminal's 16 basic colours; not theme-file keys yet either.
+    /// The theme's own terminal colours (the `terminal_*` keys). The terminal draws in
+    /// [`term`], which Preferences > Terminal > Colours can point elsewhere.
     pub ansi: Ansi,
 }
 
@@ -93,6 +94,23 @@ const START: Palette = super::builtin::GARDEN_DARK;
 
 thread_local! {
     static ACTIVE: RefCell<Palette> = const { RefCell::new(START) };
+    /// The terminal colours chosen in Preferences in place of the palette's own, if any.
+    static TERMINAL: RefCell<Option<Ansi>> = const { RefCell::new(None) };
+}
+
+/// Draws the terminal in `t` rather than the palette's own colours (`None`: the palette's), on
+/// this thread (the shell, once per frame).
+pub fn set_terminal(t: Option<Ansi>) {
+    TERMINAL.with_borrow_mut(|a| {
+        if *a != t {
+            *a = t;
+        }
+    });
+}
+
+/// The colours the terminal draws in: the ones Preferences chose, else the palette's own.
+pub fn term() -> Ansi {
+    TERMINAL.with_borrow(|t| *t).unwrap_or_else(|| ACTIVE.with_borrow(|p| p.ansi))
 }
 
 /// Makes `p` this thread's palette (the shell, once per frame).
@@ -129,9 +147,9 @@ pub fn set_dark(dark: bool) {
 /// Declares an accessor per color and `Palette`'s by-name access, from one list of
 /// `key => field path` pairs (in theme-file key order).
 macro_rules! palette_fields {
-    ($($name:ident => $($field:ident).+),* $(,)?) => {
+    ($($name:ident => $($field:ident).+ $([$idx:literal])?),* $(,)?) => {
         // Every color gets one; a few are only read through a `Palette` (ref chips, controls).
-        $(#[allow(dead_code)] pub fn $name() -> Color32 { ACTIVE.with_borrow(|p| p.$($field).+) })*
+        $(#[allow(dead_code)] pub fn $name() -> Color32 { ACTIVE.with_borrow(|p| p.$($field).+ $([$idx])?) })*
 
         impl Palette {
             /// The color names, in theme-file order.
@@ -139,14 +157,14 @@ macro_rules! palette_fields {
 
             pub fn get(&self, key: &str) -> Option<Color32> {
                 match key {
-                    $(stringify!($name) => Some(self.$($field).+),)*
+                    $(stringify!($name) => Some(self.$($field).+ $([$idx])?),)*
                     _ => None,
                 }
             }
 
             pub fn get_mut(&mut self, key: &str) -> Option<&mut Color32> {
                 match key {
-                    $(stringify!($name) => Some(&mut self.$($field).+),)*
+                    $(stringify!($name) => Some(&mut self.$($field).+ $([$idx])?),)*
                     _ => None,
                 }
             }
@@ -206,6 +224,26 @@ palette_fields!(
     syn_type => syn_type,
     syn_function => syn_function,
     syn_attr => syn_attr,
+    terminal_background => ansi.background,
+    terminal_foreground => ansi.foreground,
+    terminal_cursor => ansi.cursor,
+    terminal_selection => ansi.selection,
+    terminal_black => ansi.colors[0],
+    terminal_red => ansi.colors[1],
+    terminal_green => ansi.colors[2],
+    terminal_yellow => ansi.colors[3],
+    terminal_blue => ansi.colors[4],
+    terminal_magenta => ansi.colors[5],
+    terminal_cyan => ansi.colors[6],
+    terminal_white => ansi.colors[7],
+    terminal_bright_black => ansi.colors[8],
+    terminal_bright_red => ansi.colors[9],
+    terminal_bright_green => ansi.colors[10],
+    terminal_bright_yellow => ansi.colors[11],
+    terminal_bright_blue => ansi.colors[12],
+    terminal_bright_magenta => ansi.colors[13],
+    terminal_bright_cyan => ansi.colors[14],
+    terminal_bright_white => ansi.colors[15],
 );
 
 /// The active palette's branch preset (how many hues branches and people pick from).
@@ -218,9 +256,9 @@ pub fn lane(i: usize) -> Color32 {
     ACTIVE.with_borrow(|p| p.branch.lanes[i % LANE_COUNT])
 }
 
-/// The terminal's basic colour `i` (0-15, repeating after) in the active palette.
+/// The terminal's basic colour `i` (0-15, repeating after) in the colours it draws in ([`term`]).
 pub fn ansi(i: u8) -> Color32 {
-    ACTIVE.with_borrow(|p| p.ansi.colors[usize::from(i % 16)])
+    term().colors[usize::from(i % 16)]
 }
 
 /// The order worktree tab groups take the repository hues in: each hue is far from the next

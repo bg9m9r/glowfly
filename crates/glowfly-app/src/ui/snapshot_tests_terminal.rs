@@ -22,7 +22,7 @@ use glowfly_core::terminal::{KeyMods, TermInput, TermKey, TermScreen};
 
 /// A short session: a prompt, `git status` with a green and a red line, bold, 256-colour and
 /// inverse text, and a prompt waiting with the cursor after it.
-const OUTPUT: &str = "PS C:\\work\\demo> git status\r\n\
+pub(super) const OUTPUT: &str = "PS C:\\work\\demo> git status\r\n\
 On branch main\r\n\
 Changes to be committed:\r\n\
 \x1b[32m        modified:   README.md\x1b[0m\r\n\
