@@ -2,9 +2,11 @@ name: Installers
 
 # Builds the release packages the way the Release workflow does, then installs, upgrades,
 # starts, update-checks and uninstalls them on a clean runner: the MSI on Windows
-# (scripts/installer-check-windows.ps1) and the .deb on Linux (scripts/installer-check-linux.sh).
-# Both run scripts/update-feed-check.ps1 with the installed program against local update feeds
-# (GLOWFLY_UPDATE_FEED). The "older" package is the same program packaged as v0.0.1.
+# (scripts/installer-check-windows.ps1), the .deb on Linux (scripts/installer-check-linux.sh) and
+# the .rpm in a Fedora container (scripts/installer-check-rpm.sh). The MSI and .deb checks run
+# scripts/update-feed-check.ps1 with the installed program against local update feeds
+# (GLOWFLY_UPDATE_FEED); the .rpm check and the AppImage step ask --check-update with an empty
+# feed. The "older" package is the same program packaged as v0.0.1.
 
 on:
   push:
@@ -73,7 +75,7 @@ jobs:
           retention-days: 14
 
   linux:
-    name: Installers (Linux DEB)
+    name: Installers (Linux DEB, RPM, AppImage)
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     steps:
@@ -90,9 +92,11 @@ jobs:
           sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 libegl1 jq shellcheck desktop-file-utils
       - name: Build (release)
         run: cargo build --release --locked -p glowfly --target x86_64-unknown-linux-gnu
-      - name: Install cargo-deb
-        run: cargo install cargo-deb --locked --version 2.12.1
-      - name: Package an old and the current .deb
+      - name: Install cargo-deb and cargo-generate-rpm
+        run: |
+          cargo install cargo-deb --locked --version 2.12.1
+          cargo install cargo-generate-rpm --locked --version 0.21.0
+      - name: Package an old and the current .deb, .rpm and AppImage
         run: |
           version="$(cargo metadata --no-deps --format-version 1 --locked | jq -r '.packages[] | select(.name=="glowfly") | .version')"
           bash scripts/package-linux.sh x86_64-unknown-linux-gnu v0.0.1
@@ -101,7 +105,9 @@ jobs:
           bash scripts/package-linux.sh x86_64-unknown-linux-gnu "v$version"
           echo "GLOWFLY_VERSION=$version" >> "$GITHUB_ENV"
       - name: Lint the scripts
-        run: shellcheck -x scripts/installer-check-linux.sh scripts/package-linux.sh
+        run: |
+          shellcheck -x scripts/installer-check-linux.sh scripts/installer-check-rpm.sh scripts/installer-lib-linux.sh \
+            scripts/package-linux.sh scripts/fill-manifests.sh
       - name: Install, upgrade, start, update-check and purge
         env:
           INSTALLER_OUT: ${{ runner.temp }}/installers
@@ -109,11 +115,44 @@ jobs:
           triple=x86_64-unknown-linux-gnu
           bash scripts/installer-check-linux.sh "dist/glowfly-v$GLOWFLY_VERSION-$triple.deb" \
             "$RUNNER_TEMP/old/glowfly-v0.0.1-$triple.deb" "dist/glowfly-v$GLOWFLY_VERSION-$triple.tar.gz" "$GLOWFLY_VERSION"
+      # Without FUSE: the runtime extracts the image and still sets APPIMAGE and APPDIR, so the
+      # program finds itself an AppImage copy.
+      - name: Start the AppImage
+        run: |
+          image="$PWD/dist/glowfly-v$GLOWFLY_VERSION-x86_64-unknown-linux-gnu.AppImage"
+          app="$(mktemp -d)"
+          mkdir -p "$app/home" "$app/config" "$app/cache" "$app/data"
+          feed="$(mktemp -d)"
+          dl="$(mktemp -d)"
+          # Fresh HOME and XDG folders, and an empty update feed.
+          run() {
+            env APPIMAGE_EXTRACT_AND_RUN=1 HOME="$app/home" XDG_CONFIG_HOME="$app/config" XDG_CACHE_HOME="$app/cache" \
+              XDG_DATA_HOME="$app/data" GLOWFLY_UPDATE_FEED="$feed" "$image" "$@"
+          }
+          got="$(run --version)"
+          [ "$got" = "glowfly $GLOWFLY_VERSION" ] || { echo "::error::--version printed '$got'"; exit 1; }
+          status=0
+          out="$(run --check-update "$dl")" || status=$?
+          echo "$out"
+          [ "$status" -eq 3 ] || { echo "::error::--check-update exited $status, expected 3"; exit 1; }
+          grep -qxF 'install appimage' <<<"$out" || { echo "::error::--check-update didn't print 'install appimage'"; exit 1; }
+      - name: Install, upgrade, start, update-check and remove the .rpm (Fedora)
+        run: |
+          mkdir -p "$RUNNER_TEMP/installers-rpm"
+          # The check's tools; dnf then pulls git, GTK 3 and the libraries the package requires.
+          docker run --rm -e GITHUB_ACTIONS -e GLOWFLY_VERSION -e INSTALLER_OUT=/out \
+            -v "$PWD:/src:ro" -v "$RUNNER_TEMP/old:/old:ro" -v "$RUNNER_TEMP/installers-rpm:/out" fedora:43 bash -c '
+              dnf install -y --setopt=install_weak_deps=False rpm xorg-x11-server-Xvfb mesa-dri-drivers mesa-libGL \
+                mesa-libEGL libxkbcommon-x11 jq desktop-file-utils procps-ng findutils > /out/tools.log 2>&1 &&
+              bash /src/scripts/installer-check-rpm.sh "/src/dist/glowfly-v$GLOWFLY_VERSION-x86_64-unknown-linux-gnu.rpm" \
+                /old/glowfly-v0.0.1-x86_64-unknown-linux-gnu.rpm "$GLOWFLY_VERSION"'
       - name: Upload logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: installers-linux
-          path: ${{ runner.temp }}/installers
+          path: |
+            ${{ runner.temp }}/installers
+            ${{ runner.temp }}/installers-rpm
           if-no-files-found: ignore
           retention-days: 14

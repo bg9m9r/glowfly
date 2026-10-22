@@ -91,10 +91,10 @@ fn downloaded_row(ui: &mut Ui, t: Lang, u: &UpdatesState, file: &Path, method: I
     let ext = file.extension().map(|x| x.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
     let note = match method {
         InstallMethod::OpenAndQuit if ext == "dmg" => t.tr("prefs.general.updates.open_quit_dmg.help"),
-        InstallMethod::OpenAndQuit if ext == "deb" => t.tr("prefs.general.updates.open_quit_deb.help"),
+        InstallMethod::OpenAndQuit if ext == "deb" || ext == "rpm" => t.tr("prefs.general.updates.open_quit_deb.help"),
         InstallMethod::OpenAndQuit => t.tr("prefs.general.updates.open_quit_msi.help"),
         InstallMethod::ShowOnly => t.tr("prefs.general.updates.show_only.help"),
-        InstallMethod::RunMsi | InstallMethod::SwapPortable => return,
+        InstallMethod::RunMsi | InstallMethod::SwapPortable | InstallMethod::SwapAppImage => return,
     };
     help(ui, note);
 }

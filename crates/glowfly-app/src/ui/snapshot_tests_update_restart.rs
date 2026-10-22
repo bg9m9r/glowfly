@@ -1,6 +1,7 @@
-//! Install and restart in Preferences > General's Updates row (an MSI that restarts, a disk
-//! image that is opened, an archive that is only shown, and the update being prepared) and the
-//! status bar's Installing chip. Click tests check the message each button sends.
+//! Install and restart in Preferences > General's Updates row (an MSI or AppImage that
+//! restarts, a disk image or .rpm that is opened, an archive that is only shown, and the update
+//! being prepared) and the status bar's Installing chip. Click tests check the message each
+//! button sends.
 
 use super::snapshot_tests::harness;
 use super::snapshot_tests_updates::{prefs, sent, status_bar, the_offer};
@@ -43,6 +44,25 @@ fn prefs_updates_downloaded_open_quit() {
     h.get_by_label("Open installer and quit").click();
     h.run();
     assert!(sent(&h, &UpdateMsg::InstallAndRestart));
+}
+
+#[test]
+fn prefs_updates_downloaded_open_quit_rpm() {
+    let mut h = harness(prefs(downloaded("glowfly-v0.3.0-x86_64-unknown-linux-gnu.rpm", InstallMethod::OpenAndQuit)), true);
+    h.run();
+    assert!(h.query_by_label_contains("opens the package in your software installer").is_some());
+    assert!(h.query_by_label("Open installer and quit").is_some());
+    h.check_snapshot("prefs_updates_downloaded_open_quit_rpm");
+}
+
+#[test]
+fn prefs_updates_downloaded_appimage() {
+    let mut h = harness(prefs(downloaded("glowfly-v0.3.0-x86_64-unknown-linux-gnu.AppImage", InstallMethod::SwapAppImage)), true);
+    h.run();
+    assert!(h.query_by_label("Install and restart").is_some());
+    for help in ["opens the package", "Drag Glowfly", "by hand", "wasn't installed with the MSI"] {
+        assert!(h.query_by_label_contains(help).is_none(), "{help}");
+    }
 }
 
 #[test]

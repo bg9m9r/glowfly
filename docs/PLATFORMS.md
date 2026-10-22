@@ -214,6 +214,11 @@ second one next to it.
      beside it are replaced, through `persist::move_aside` and `persist::write_file`, and a
      failure rolls back everything done so far. No target is built from a name in the archive
      (`app_update::archive` takes only fixed names).
+   - An AppImage copy's swap target is the file `APPIMAGE` names, and only when the running
+     program lies inside `APPDIR` (`app_update::appimage_file`; an `APPIMAGE` inherited by an
+     unrelated program is ignored). The download must start like an AppImage (the ELF magic, then
+     `AI` and 2 at byte 8) before it replaces that file, which is then started again from the
+     same path; the helper is still a copy of the running program.
    - The helper is a copy of the running program in a private staging folder under
      `paths::temp_dir()` (`glowfly-update-<16 hex>`, created fresh with mode 0700; stale ones are
      removed at the next start). It is started detached (Windows: a new process group, out of
@@ -222,7 +227,11 @@ second one next to it.
    - The MSI runs only after Glowfly has exited, as
      `%SystemRoot%\System32\msiexec.exe /i <msi> /passive /norestart /l*v <log>` (never searched
      for on PATH), and Glowfly is started again from the same path afterwards.
-   - A .dmg, a .deb, or an MSI for a portable copy is only opened, and Glowfly quits.
+   - A .dmg, .deb, .rpm, or an MSI for a portable copy is only opened, and Glowfly quits.
+   - The file offered is for the machine's real processor (`app_update::current_platform`):
+     Windows asks `IsWow64Process2`, so an x64 build emulated on Arm counts as Arm, and macOS reads
+     `sysctl.proc_translated`, 1 under Rosetta. Other systems, and a failed query, use the build's
+     processor.
 9. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
    Windows, Notification Center on macOS, freedesktop notifications over D-Bus (zbus, no
    libdbus) on Linux. A missing notification server is an error the confirmation reports;

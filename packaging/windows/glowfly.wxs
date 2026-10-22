@@ -10,7 +10,7 @@
   (app_update::install_kind_for).
 
   Built by scripts/package-windows.ps1:
-    wix build -arch x64 -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -d Version=0.2.0
+    wix build -arch x64|arm64 -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -d Version=0.2.0
       -d BinDir=<folder of glowfly.exe> -d SourceDir=<repository> -d AssetsDir=<repository>\assets
       -d LicenseRtf=<license.rtf> [-d HasChangelog=1] -o glowfly.msi glowfly.wxs pages.wxs
 

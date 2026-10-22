@@ -44,16 +44,13 @@ fn checks_are_due_once_a_day() {
     assert!(!due(true, None, 0), "no clock yet");
 }
 
-const WIN: Platform = Platform { os: TargetOs::Windows, arch: Arch::X86_64 };
-const MAC_ARM: Platform = Platform { os: TargetOs::Mac, arch: Arch::Aarch64 };
-const MAC_X86: Platform = Platform { os: TargetOs::Mac, arch: Arch::X86_64 };
-const LINUX: Platform = Platform { os: TargetOs::Linux, arch: Arch::X86_64 };
+pub(super) const WIN: Platform = Platform { os: TargetOs::Windows, arch: Arch::X86_64 };
 
-fn asset(name: &str) -> Asset {
+pub(super) fn asset(name: &str) -> Asset {
     Asset { name: name.to_owned(), size: 10, url: format!("https://github.com/bg9m9r/glowfly/releases/download/v0.3.0/{name}") }
 }
 
-fn release(tag: &str, names: &[&str]) -> Release {
+pub(super) fn release(tag: &str, names: &[&str]) -> Release {
     Release {
         tag: tag.to_owned(),
         name: format!("Glowfly {tag}"),
@@ -65,13 +62,15 @@ fn release(tag: &str, names: &[&str]) -> Release {
 }
 
 /// Every file the Release workflow publishes for v0.3.0.
-fn full_release() -> Release {
+pub(super) fn full_release() -> Release {
     let mut names = vec!["SHA256SUMS".to_owned()];
     for (triple, exts) in [
         ("x86_64-pc-windows-msvc", &["zip", "msi"][..]),
+        ("aarch64-pc-windows-msvc", &["zip", "msi"]),
         ("aarch64-apple-darwin", &["tar.gz", "dmg"]),
         ("x86_64-apple-darwin", &["tar.gz", "dmg"]),
-        ("x86_64-unknown-linux-gnu", &["tar.gz", "deb"]),
+        ("x86_64-unknown-linux-gnu", &["tar.gz", "deb", "rpm", "AppImage"]),
+        ("aarch64-unknown-linux-gnu", &["tar.gz", "deb", "rpm", "AppImage"]),
     ] {
         for ext in exts {
             names.push(format!("glowfly-v0.3.0-{triple}.{ext}"));
@@ -79,89 +78,6 @@ fn full_release() -> Release {
         }
     }
     release("v0.3.0", &names.iter().map(String::as_str).collect::<Vec<_>>())
-}
-
-fn picked(r: &Release, p: Platform, k: InstallKind) -> Option<String> {
-    pick(r, p, k).map(|a| a.name)
-}
-
-#[test]
-fn the_file_for_each_platform_and_install() {
-    use InstallKind::{Installer, Portable};
-    let r = full_release();
-    let name = |s: &str| Some(format!("glowfly-v0.3.0-{s}"));
-    assert_eq!(picked(&r, WIN, Installer), name("x86_64-pc-windows-msvc.msi"));
-    assert_eq!(picked(&r, WIN, Portable), name("x86_64-pc-windows-msvc.zip"));
-    assert_eq!(picked(&r, MAC_ARM, Installer), name("aarch64-apple-darwin.dmg"));
-    assert_eq!(picked(&r, MAC_X86, Installer), name("x86_64-apple-darwin.dmg"));
-    assert_eq!(picked(&r, MAC_ARM, Portable), name("aarch64-apple-darwin.tar.gz"));
-    assert_eq!(picked(&r, LINUX, Installer), name("x86_64-unknown-linux-gnu.deb"));
-    assert_eq!(picked(&r, LINUX, Portable), name("x86_64-unknown-linux-gnu.tar.gz"));
-    // No build for these.
-    assert_eq!(picked(&r, Platform { os: TargetOs::Linux, arch: Arch::Aarch64 }, Installer), None);
-    assert_eq!(picked(&r, Platform { os: TargetOs::Windows, arch: Arch::Aarch64 }, Portable), None);
-}
-
-#[test]
-fn picking_falls_back_and_ignores_other_files() {
-    use InstallKind::{Installer, Portable};
-    let zip_only = release("v0.3.0", &["glowfly-v0.3.0-x86_64-pc-windows-msvc.zip", "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi.sha256"]);
-    assert_eq!(picked(&zip_only, WIN, Installer).as_deref(), Some("glowfly-v0.3.0-x86_64-pc-windows-msvc.zip"));
-    let deb_only = release("v0.3.0", &["glowfly-v0.3.0-x86_64-unknown-linux-gnu.deb"]);
-    assert_eq!(picked(&deb_only, LINUX, Portable).as_deref(), Some("glowfly-v0.3.0-x86_64-unknown-linux-gnu.deb"));
-    // Checksums, other tags and other triples never count.
-    let other = release(
-        "v0.3.0",
-        &[
-            "SHA256SUMS",
-            "glowfly-v0.3.0-x86_64-unknown-linux-gnu.deb.sha256",
-            "glowfly-v0.2.0-x86_64-unknown-linux-gnu.deb",
-            "glowfly-v0.3.0-aarch64-unknown-linux-gnu.deb",
-            "glowfly-v0.3.0-x86_64-unknown-linux-gnu.rpm",
-        ],
-    );
-    assert_eq!(picked(&other, LINUX, Installer), None);
-    assert_eq!(picked(&other, LINUX, Portable), None);
-}
-
-#[test]
-fn files_named_for_trellis_are_picked_too() {
-    use InstallKind::Installer;
-    let old = release("v0.3.0", &["trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "trellis-v0.3.0-x86_64-pc-windows-msvc.zip"]);
-    assert_eq!(picked(&old, WIN, Installer).as_deref(), Some("trellis-v0.3.0-x86_64-pc-windows-msvc.msi"));
-    // The new name wins when a release has both.
-    let both = release("v0.3.0", &["trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"]);
-    assert_eq!(picked(&both, WIN, Installer).as_deref(), Some("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"));
-}
-
-#[test]
-fn how_a_copy_was_installed() {
-    use InstallKind::{Installer, Portable};
-    let win = [
-        (r"C:\Users\ada\AppData\Local\Programs\Glowfly\glowfly.exe", Installer),
-        (r"c:\users\ada\appdata\local\PROGRAMS\glowfly\GLOWFLY.EXE", Installer),
-        ("C:/Users/ada/AppData/Local/Programs/Glowfly/glowfly.exe", Installer),
-        (r"D:\tools\glowfly\glowfly.exe", Portable),
-        (r"C:\Programs\Other\glowfly.exe", Portable),
-        ("glowfly.exe", Portable),
-    ];
-    for (exe, want) in win {
-        assert_eq!(install_kind_for(exe, TargetOs::Windows), want, "{exe}");
-    }
-    let mac = [
-        ("/Applications/Glowfly.app/Contents/MacOS/glowfly", Installer),
-        ("/Users/ada/Applications/Glowfly.app/Contents/MacOS/glowfly", Installer),
-        ("/Users/ada/bin/glowfly", Portable),
-        ("/Users/ada/.app/Contents/MacOS/glowfly", Portable),
-    ];
-    for (exe, want) in mac {
-        assert_eq!(install_kind_for(exe, TargetOs::Mac), want, "{exe}");
-    }
-    assert_eq!(install_kind_for("/usr/bin/glowfly", TargetOs::Linux), Installer);
-    assert_eq!(install_kind_for("/home/u/.local/bin/glowfly", TargetOs::Linux), Portable);
-    assert_eq!(install_kind_for("/usr/local/bin/glowfly", TargetOs::Linux), Portable);
-    // Each OS's rule only applies on that OS.
-    assert_eq!(install_kind_for("/usr/bin/glowfly", TargetOs::Mac), Portable);
 }
 
 #[test]

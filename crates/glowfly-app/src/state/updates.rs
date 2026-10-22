@@ -77,7 +77,7 @@ impl Default for UpdatesState {
         Self {
             status: UpdateStatus::Idle,
             current: Version::parse(app_update::CURRENT_VERSION).unwrap_or(Version { major: 0, minor: 0, patch: 0, pre: Vec::new() }),
-            platform: app_update::CURRENT_PLATFORM,
+            platform: app_update::current_platform(),
             auto_from: None,
             retry_at: None,
             notes_pending: None,
@@ -126,7 +126,7 @@ pub fn opened_text(t: Lang, v: &Version) -> String {
 /// installer and quit, or Show file.
 pub fn install_label(t: Lang, method: InstallMethod) -> &'static str {
     match method {
-        InstallMethod::RunMsi | InstallMethod::SwapPortable => t.tr("updates.install_restart.button"),
+        InstallMethod::RunMsi | InstallMethod::SwapPortable | InstallMethod::SwapAppImage => t.tr("updates.install_restart.button"),
         InstallMethod::OpenAndQuit => t.tr("updates.open_quit.button"),
         InstallMethod::ShowOnly => t.tr("updates.show_file.button"),
     }

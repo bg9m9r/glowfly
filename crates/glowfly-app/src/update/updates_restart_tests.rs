@@ -163,6 +163,31 @@ fn linux_packages_open_and_archives_swap() {
     assert_eq!((name.as_str(), method(&st)), (deb, Some(InstallMethod::OpenAndQuit)));
     let (st, _, name) = downloaded_on(LINUX, InstallKind::Portable, &[deb, tgz]);
     assert_eq!((name.as_str(), method(&st)), (tgz, Some(InstallMethod::SwapPortable)));
+    let rpm = "glowfly-v0.3.0-x86_64-unknown-linux-gnu.rpm";
+    let image = "glowfly-v0.3.0-x86_64-unknown-linux-gnu.AppImage";
+    let all = [deb, rpm, image, tgz];
+    let (st, _, name) = downloaded_on(LINUX, InstallKind::RpmPackage, &all);
+    assert_eq!((name.as_str(), method(&st)), (rpm, Some(InstallMethod::OpenAndQuit)));
+    let (st, _, name) = downloaded_on(LINUX, InstallKind::AppImage, &all);
+    assert_eq!((name.as_str(), method(&st)), (image, Some(InstallMethod::SwapAppImage)));
+}
+
+#[test]
+fn an_appimage_install_restarts() {
+    let image = "glowfly-v0.3.0-x86_64-unknown-linux-gnu.AppImage";
+    let (mut st, t, _) = downloaded_on(LINUX, InstallKind::AppImage, &[image]);
+    assert_eq!(toast_action(&st), Some("Install and restart"));
+    assert_eq!(restart_job(&send(&mut st, U::InstallAndRestart, t)).map(|j| j.method), Some(InstallMethod::SwapAppImage));
+    send(&mut st, U::RestartReady(Ok(())), t);
+    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some("Restarting to install Glowfly 0.3.0."));
+}
+
+#[test]
+fn windows_arm_gets_the_arm64_msi() {
+    let arm = "glowfly-v0.3.0-aarch64-pc-windows-msvc.msi";
+    let win_arm = Platform { os: TargetOs::Windows, arch: Arch::Aarch64 };
+    let (st, _, name) = downloaded_on(win_arm, InstallKind::Installer, &[arm, MSI]);
+    assert_eq!((name.as_str(), method(&st)), (arm, Some(InstallMethod::RunMsi)));
 }
 
 #[test]

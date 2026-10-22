@@ -1,0 +1,29 @@
+cask "glowfly" do
+  arch arm: "aarch64", intel: "x86_64"
+
+  version "@VERSION@"
+  sha256 arm:   "@SHA256_MAC_ARM64@",
+         intel: "@SHA256_MAC_X86_64@"
+
+  url "https://github.com/@REPO@/releases/download/v#{version}/glowfly-v#{version}-#{arch}-apple-darwin.dmg"
+  name "Glowfly"
+  desc "Native Git client"
+  homepage "https://github.com/@REPO@"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  # Glowfly checks for and installs its own updates.
+  auto_updates true
+  depends_on macos: ">= :big_sur"
+
+  app "Glowfly.app"
+
+  zap trash: [
+    "~/Library/Application Support/Glowfly",
+    "~/Library/Caches/Glowfly",
+    "~/Library/Logs/Glowfly",
+  ]
+end

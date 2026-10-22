@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
+PackageIdentifier: Glowfly.Glowfly
+PackageVersion: "@VERSION@"
+PackageLocale: en-US
+Publisher: Glowfly contributors
+PublisherUrl: https://github.com/@REPO@
+PublisherSupportUrl: https://github.com/@REPO@/issues
+PackageName: Glowfly
+PackageUrl: https://github.com/@REPO@
+License: MIT OR Apache-2.0
+LicenseUrl: https://github.com/@REPO@/blob/@TAG@/LICENSE-MIT
+ShortDescription: A native Git client.
+Description: Glowfly is a native Git client with a commit graph, diffs, staging by file, hunk or line, branches, stashes, rebases and pull requests from the hosting service.
+Moniker: glowfly
+Tags:
+  - git
+  - version-control
+ReleaseNotesUrl: https://github.com/@REPO@/releases/tag/@TAG@
+ManifestType: defaultLocale
+ManifestVersion: 1.12.0

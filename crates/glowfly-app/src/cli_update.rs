@@ -3,7 +3,7 @@
 //! <plan>`, the helper Install and restart starts. They exit before logging, settings and the
 //! window.
 
-use glowfly_core::app_update::{self, CURRENT_PLATFORM, CURRENT_VERSION, Checked, Feed, InstallKind, Version, check_and_download};
+use glowfly_core::app_update::{self, CURRENT_VERSION, Checked, Feed, InstallKind, Version, check_and_download};
 use glowfly_core::native_path::shown;
 use std::ffi::OsString;
 use std::io::Write;
@@ -76,7 +76,7 @@ pub fn check_update(args: &[OsString]) -> i32 {
             return 1;
         }
     };
-    let result = check_and_download(&feed, &current, CURRENT_PLATFORM, kind, &dir);
+    let result = check_and_download(&feed, &current, app_update::current_platform(), kind, &dir);
     let (code, out, err) = report(&feed, &current, kind, &result);
     print_lines(&out);
     if let Some(err) = err {
@@ -87,11 +87,7 @@ pub fn check_update(args: &[OsString]) -> i32 {
 
 /// The exit status, stdout lines and stderr line for a check's `result`.
 fn report(feed: &Feed, current: &Version, kind: InstallKind, result: &Result<Checked, String>) -> (i32, Vec<String>, Option<String>) {
-    let install = match kind {
-        InstallKind::Installer => "installer",
-        InstallKind::Portable => "portable",
-    };
-    let mut out = vec![format!("current {current}"), format!("install {install}"), format!("feed {}", feed.describe())];
+    let mut out = vec![format!("current {current}"), format!("install {}", kind.label()), format!("feed {}", feed.describe())];
     match result {
         Ok(Checked::UpToDate { .. }) => {
             out.push("up-to-date".to_owned());
@@ -168,5 +164,10 @@ mod tests {
             report(&feed, &v("0.1.0"), InstallKind::Portable, &Err("This release has no download for this system.".into()));
         assert_eq!((code, out), (1, head("portable")));
         assert_eq!(err.as_deref(), Some("error: This release has no download for this system."));
+
+        for (kind, word) in [(InstallKind::RpmPackage, "rpm"), (InstallKind::AppImage, "appimage")] {
+            let (code, out, _) = report(&feed, &v("0.1.0"), kind, &Ok(Checked::UpToDate { latest: None }));
+            assert_eq!((code, out[1].as_str()), (3, format!("install {word}").as_str()));
+        }
     }
 }

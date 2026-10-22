@@ -39,6 +39,7 @@ fn request(f: &Fixture, file: &Path, bytes: &[u8], method: InstallMethod) -> Res
         method,
         version: "0.3.0".into(),
         exe: f.exe.clone(),
+        target: f.exe.clone(),
         temp: f.temp.clone(),
         os: TargetOs::Windows,
     }
@@ -112,6 +113,55 @@ fn a_failed_swap_leaves_nothing_behind() {
     // A method that doesn't install in place.
     let req = request(&f, &f.downloads.join("glowfly.dmg"), b"dmg", InstallMethod::OpenAndQuit);
     assert_eq!(prepare(&req).unwrap_err(), "This update can't be installed in place.");
+    assert!(staging_folders(&f).is_empty());
+    let _ = persist::remove_tree(&f.root);
+}
+
+/// The start of a type-2 AppImage, then some payload.
+const APPIMAGE: &[u8] = b"\x7fELF\x02\x01\x01\0AI\x02\0\0\0\0\0new appimage";
+
+/// A Linux AppImage copy: the program runs from the image's mount, and the image sits in
+/// `apps`.
+fn appimage_request(f: &Fixture, bytes: &[u8]) -> RestartRequest {
+    let (mount, apps) = (f.root.join("mount").join("usr").join("bin"), f.root.join("apps"));
+    std::fs::create_dir_all(&mount).unwrap();
+    std::fs::create_dir_all(&apps).unwrap();
+    let exe = mount.join("glowfly");
+    std::fs::write(&exe, "old program").unwrap();
+    let target = apps.join("Glowfly.AppImage");
+    std::fs::write(&target, "old appimage").unwrap();
+    let mut req = request(f, &f.downloads.join("glowfly-v0.3.0-x86_64-unknown-linux-gnu.AppImage"), bytes, InstallMethod::SwapAppImage);
+    (req.exe, req.target, req.os) = (exe, target, TargetOs::Linux);
+    req
+}
+
+#[test]
+fn an_appimage_is_swapped_in_place() {
+    let f = fixture("appimage");
+    let req = appimage_request(&f, APPIMAGE);
+    let p = prepare(&req).unwrap();
+    assert_eq!(std::fs::read(&req.target).unwrap(), APPIMAGE);
+    let bak = req.target.with_file_name("Glowfly.AppImage.bak");
+    assert_eq!(std::fs::read(&bak).unwrap(), b"old appimage");
+    assert_eq!(p.helper, p.staging.join("glowfly-update"));
+    assert_eq!(std::fs::read(&p.helper).unwrap(), b"old program", "the helper is the running program, not the image");
+    assert_eq!(std::fs::read(&req.exe).unwrap(), b"old program");
+    let plan = Plan::read(&p.plan_path).unwrap();
+    assert_eq!((plan.remove.clone(), plan.relaunch.clone(), plan.msi.clone()), (vec![bak.clone()], req.target.clone(), None));
+    p.abandon().unwrap();
+    assert_eq!(std::fs::read(&req.target).unwrap(), b"old appimage");
+    assert!(!bak.exists());
+    assert!(staging_folders(&f).is_empty());
+    let _ = persist::remove_tree(&f.root);
+}
+
+#[test]
+fn a_download_that_isnt_an_appimage_prepares_nothing() {
+    let f = fixture("notappimage");
+    let req = appimage_request(&f, b"not an appimage");
+    assert_eq!(prepare(&req).unwrap_err(), "The download isn't an AppImage.");
+    assert_eq!(std::fs::read(&req.target).unwrap(), b"old appimage");
+    assert!(!req.target.with_file_name("Glowfly.AppImage.bak").exists());
     assert!(staging_folders(&f).is_empty());
     let _ = persist::remove_tree(&f.root);
 }

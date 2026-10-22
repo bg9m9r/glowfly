@@ -65,7 +65,10 @@ jobs:
       matrix:
         include:
           - { os: windows-latest, target: x86_64-pc-windows-msvc }
+          # Cross-compiled on the x64 runner with the image's ARM64 build tools.
+          - { os: windows-latest, target: aarch64-pc-windows-msvc }
           - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-22.04-arm, target: aarch64-unknown-linux-gnu }
           - { os: macos-14, target: aarch64-apple-darwin }
           - { os: macos-14, target: x86_64-apple-darwin }
     runs-on: ${{ matrix.os }}
@@ -96,6 +99,11 @@ jobs:
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: ./scripts/linux-deps.sh
+      # ring builds its Arm assembly with clang for aarch64-pc-windows-msvc.
+      - name: Put LLVM on PATH (ring, Windows ARM64)
+        if: matrix.target == 'aarch64-pc-windows-msvc'
+        shell: pwsh
+        run: Add-Content -Path $env:GITHUB_PATH -Value 'C:/Program Files/LLVM/bin'
       - name: Build
         run: cargo build --release --locked -p glowfly --target ${{ matrix.target }}
       - name: Package (Windows)
@@ -111,6 +119,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           cargo install cargo-deb --locked --version 2.12.1
+          cargo install cargo-generate-rpm --locked --version 0.21.0
           bash scripts/package-linux.sh ${{ matrix.target }} "$TAG"
       - name: Upload to the release
         shell: bash
@@ -144,3 +153,27 @@ jobs:
           (cd dist && sha256sum -- * | sort -k2 > SHA256SUMS)
           cat dist/SHA256SUMS
           gh release upload "$TAG" dist/SHA256SUMS --clobber
+
+  # The Homebrew cask and the winget manifests for this release, filled in from SHA256SUMS
+  # (scripts/fill-manifests.sh) and attached to the release for submitting (docs/RELEASING.md).
+  # A pre-release gets none. Its files (glowfly.rb, Glowfly.Glowfly.*.yaml) stay out of the
+  # checksums job's 'glowfly-*' pattern.
+  manifests:
+    needs: [prepare, checksums]
+    if: ${{ !cancelled() && needs.checksums.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - name: Fill in and attach the manifests
+        run: |
+          gh release download "$TAG" --pattern SHA256SUMS --dir "$RUNNER_TEMP/sums"
+          bash scripts/fill-manifests.sh "$TAG" "$RUNNER_TEMP/sums/SHA256SUMS" "$RUNNER_TEMP/manifests" "$GH_REPO"
+          if [ -d "$RUNNER_TEMP/manifests" ]; then
+            find "$RUNNER_TEMP/manifests" -type f -print0 | xargs -0 -r gh release upload "$TAG" --clobber
+          fi

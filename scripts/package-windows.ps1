@@ -2,6 +2,7 @@
 # each. Run by the Release workflow after `cargo build --release --target <Target>`.
 #
 #   pwsh scripts/package-windows.ps1 -Target x86_64-pc-windows-msvc -Tag v0.2.0
+#   pwsh scripts/package-windows.ps1 -Target aarch64-pc-windows-msvc -Tag v0.2.0
 #
 # Signing (both optional): when WINDOWS_CERTIFICATE (a base64 PFX) and
 # WINDOWS_CERTIFICATE_PASSWORD are set, signtool signs glowfly.exe before it is packed and then
@@ -14,6 +15,13 @@ $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
 $version = $Tag -replace '^[vV]', ''
+# The MSI's processor: an Arm64 MSI upgrades an x64 per-user install (same UpgradeCode and
+# folder).
+$wixArch = switch ($Target) {
+    'x86_64-pc-windows-msvc' { 'x64' }
+    'aarch64-pc-windows-msvc' { 'arm64' }
+    default { throw "Unsupported target $Target" }
+}
 $name = "glowfly-$Tag-$Target"
 $bin = "target/$Target/release"
 $dist = "dist"
@@ -104,7 +112,7 @@ $defines = @(
 )
 if (Test-Path CHANGELOG.md) { $defines += @("-d", "HasChangelog=1") }
 $exts = @("-ext", "WixToolset.UI.wixext/$wixVersion", "-ext", "WixToolset.Util.wixext/$wixVersion")
-wix build -arch x64 @exts @defines -o $msi packaging/windows/glowfly.wxs packaging/windows/pages.wxs
+wix build -arch $wixArch @exts @defines -o $msi packaging/windows/glowfly.wxs packaging/windows/pages.wxs
 if ($LASTEXITCODE -ne 0) { throw "wix build failed" }
 Remove-Item -ErrorAction SilentlyContinue (Join-Path $dist "$name.wixpdb"), $rtf
 Add-Signature $msi

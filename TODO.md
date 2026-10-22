@@ -1046,7 +1046,7 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 
 ### Packaging and updates
 
-- More formats and targets: .rpm, AppImage or Flatpak, a Homebrew cask, a winget manifest, Linux aarch64 and Windows ARM64 builds
+- More formats: Flatpak
 
 ## Ideas
 
@@ -2774,6 +2774,15 @@ here, under the item they grew from.
 - Offer Download again when the downloaded file is gone or no longer matches its checksum
 - A CI check of Install and restart: swap a portable copy from a local feed and run --finish-update on the runners
 - Allow Install and restart when Windows Smart App Control or AppLocker blocks programs in the temp folder
+- Installer checks for the ARM64 MSI and the aarch64 .deb and .rpm on Arm runners (windows-11-arm, ubuntu-22.04-arm)
+- AppStream metainfo (usr/share/metainfo) for the AppImage and the Linux packages
+- AppImage desktop integration: offer to add a menu entry and icon for an AppImage copy
+- Embedded AppImage update information (zsync) for external AppImage updaters
+- Build the Linux packages on an older glibc baseline so the AppImage and packages run on older distributions
+- Sign the .rpm (rpm --addsign) and the AppImage, and publish apt and dnf repositories
+- Debian version for pre-release tags: map '-' to '~' in --deb-version as the rpm does
+- Automate the Homebrew tap and winget-pkgs submissions from the release job with a token
+- Rename a swapped AppImage whose file name carries the old version to the new release's name
 
 ### Installer and update checks in CI
 

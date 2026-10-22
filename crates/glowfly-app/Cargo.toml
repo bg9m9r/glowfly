@@ -78,4 +78,35 @@ assets = [
     ["../../LICENSE-APACHE", "usr/share/doc/glowfly/", "644"],
     ["../../README.md", "usr/share/doc/glowfly/", "644"],
     ["../../THIRD-PARTY-NOTICES.md", "usr/share/doc/glowfly/", "644"],
+    # Which package installed Glowfly (app_update::PACKAGE_FORMAT_FILE).
+    ["../../packaging/linux/package-format.deb", "usr/share/glowfly/package-format", "644"],
 ]
+
+# The .rpm (cargo-generate-rpm, scripts/package-linux.sh): the same files as the .deb. The
+# version is set from the tag at packaging time.
+[package.metadata.generate-rpm]
+name = "glowfly"
+summary = "A native Git client"
+license = "MIT OR Apache-2.0"
+url = "https://github.com/bg9m9r/glowfly"
+assets = [
+    { source = "target/release/glowfly", dest = "/usr/bin/glowfly", mode = "755" },
+    { source = "../../packaging/linux/glowfly.desktop", dest = "/usr/share/applications/glowfly.desktop", mode = "644" },
+    { source = "../../packaging/linux/glowfly-links.desktop", dest = "/usr/share/applications/glowfly-links.desktop", mode = "644" },
+    { source = "../../assets/icon/glowfly-16.png", dest = "/usr/share/icons/hicolor/16x16/apps/glowfly.png", mode = "644" },
+    { source = "../../assets/icon/glowfly-24.png", dest = "/usr/share/icons/hicolor/24x24/apps/glowfly.png", mode = "644" },
+    { source = "../../assets/icon/glowfly-32.png", dest = "/usr/share/icons/hicolor/32x32/apps/glowfly.png", mode = "644" },
+    { source = "../../assets/icon/glowfly-48.png", dest = "/usr/share/icons/hicolor/48x48/apps/glowfly.png", mode = "644" },
+    { source = "../../assets/icon/glowfly-64.png", dest = "/usr/share/icons/hicolor/64x64/apps/glowfly.png", mode = "644" },
+    { source = "../../assets/icon/glowfly-128.png", dest = "/usr/share/icons/hicolor/128x128/apps/glowfly.png", mode = "644" },
+    { source = "../../assets/icon/glowfly-256.png", dest = "/usr/share/icons/hicolor/256x256/apps/glowfly.png", mode = "644" },
+    { source = "../../assets/icon/glowfly-512.png", dest = "/usr/share/icons/hicolor/512x512/apps/glowfly.png", mode = "644" },
+    { source = "../../LICENSE-MIT", dest = "/usr/share/doc/glowfly/LICENSE-MIT", mode = "644", doc = true },
+    { source = "../../LICENSE-APACHE", dest = "/usr/share/doc/glowfly/LICENSE-APACHE", mode = "644", doc = true },
+    { source = "../../README.md", dest = "/usr/share/doc/glowfly/README.md", mode = "644", doc = true },
+    { source = "../../THIRD-PARTY-NOTICES.md", dest = "/usr/share/doc/glowfly/THIRD-PARTY-NOTICES.md", mode = "644", doc = true },
+    { source = "../../packaging/linux/package-format.rpm", dest = "/usr/share/glowfly/package-format", mode = "644" },
+]
+
+[package.metadata.generate-rpm.requires]
+git = "*"

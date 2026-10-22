@@ -273,3 +273,32 @@ fn a_hosted_feed_asks_the_hosting_service() {
     let got: Vec<(&str, u64, &str)> = r.assets.iter().map(|a| (a.name.as_str(), a.size, a.url.as_str())).collect();
     assert_eq!(got, [("SHA256SUMS", 5, "https://github.com/d/SHA256SUMS")], "the API's size and https link");
 }
+
+#[test]
+fn a_folder_feed_serves_arm_files() {
+    let dir = scratch("arm");
+    let (feed_dir, dl) = (dir.join("feed"), dir.join("dl"));
+    std::fs::create_dir_all(&feed_dir).unwrap();
+    let files: [(&str, &[u8]); 4] = [
+        ("glowfly-v0.1.1-aarch64-pc-windows-msvc.msi", b"pretend arm64 msi"),
+        ("glowfly-v0.1.1-aarch64-pc-windows-msvc.zip", b"pretend arm64 zip"),
+        (MSI, MSI_BYTES),
+        ("glowfly-v0.1.1-aarch64-unknown-linux-gnu.AppImage", b"\x7fELF\x02\x01\x01\0AI\x02 pretend appimage"),
+    ];
+    let sums: String = files.iter().map(|(n, b)| sum_line(n, b)).collect();
+    write_feed(&feed_dir, "v0.1.1", &files, Some(sums));
+    let feed = Feed::Folder(feed_dir);
+    let release = feed.latest().unwrap().expect("a release");
+    let wanted = [
+        (Platform { os: TargetOs::Windows, arch: Arch::Aarch64 }, InstallKind::Installer, files[0]),
+        (Platform { os: TargetOs::Linux, arch: Arch::Aarch64 }, InstallKind::AppImage, files[3]),
+    ];
+    for (platform, kind, (name, bytes)) in wanted {
+        let o = offer(&release, &v("0.1.0"), Some(platform), kind).expect("newer");
+        assert_eq!(o.asset.as_ref().map(|a| a.name.as_str()), Some(name));
+        let path = download(&feed, &o, &dl).unwrap();
+        assert_eq!(path, dl.join(name));
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

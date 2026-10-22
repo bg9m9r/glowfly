@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
+PackageIdentifier: Glowfly.Glowfly
+PackageVersion: "@VERSION@"
+InstallerType: wix
+Scope: user
+UpgradeBehavior: install
+AppsAndFeaturesEntries:
+  - DisplayName: Glowfly
+    Publisher: Glowfly contributors
+    UpgradeCode: "{CD5D11A3-A0E0-4C62-9DE1-5B1AD7E200D1}"
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/@REPO@/releases/download/@TAG@/glowfly-@TAG@-x86_64-pc-windows-msvc.msi
+    InstallerSha256: "@SHA256_WIN_X64@"
+  - Architecture: arm64
+    InstallerUrl: https://github.com/@REPO@/releases/download/@TAG@/glowfly-@TAG@-aarch64-pc-windows-msvc.msi
+    InstallerSha256: "@SHA256_WIN_ARM64@"
+ManifestType: installer
+ManifestVersion: 1.12.0

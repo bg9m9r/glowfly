@@ -6,13 +6,15 @@
 //! - `release.rs`: the hosting service's release (tag, notes, files), with unsafe links and file
 //!   names dropped.
 //! - `assets.rs`: this system's platform, how this copy was installed, and which file to fetch.
+//! - `host.rs`: the machine's real processor (an emulated x64 or Rosetta build is on Arm).
+//! - `appimage.rs`: whether this copy runs from an AppImage, and which file that is.
 //! - `sums.rs`: `SHA256SUMS` and `<file>.sha256` files.
 //! - `download.rs`: fetching, verifying and saving a file (I/O).
 //! - `feed.rs`: where releases are read from: the hosting service, or a local folder named by
 //!   GLOWFLY_UPDATE_FEED.
 //! - `check.rs`: the headless check behind `glowfly --check-update`.
-//! - `method.rs`: how a downloaded file is installed (run the MSI, swap the portable program,
-//!   open the installer and quit, or only show it).
+//! - `method.rs`: how a downloaded file is installed (run the MSI, swap the portable program or
+//!   the AppImage, open the installer and quit, or only show it).
 //! - `archive.rs`: the program and doc files of a portable copy's zip or tar.gz.
 //! - `swap.rs`: replacing a portable copy's program in place, with rollback.
 //! - `staging.rs`: the private temporary folder an update is prepared in, and tidying it.
@@ -22,15 +24,17 @@
 //! - `finish.rs`: the helper itself (`glowfly --finish-update <plan>`).
 //!
 //! The release itself is read through `Feed` (by default `forge::latest_release`). A
-//! downloaded installer runs, or a portable copy's program is swapped, only when the user asks
-//! (Install and restart), and only after its SHA-256 matches again.
+//! downloaded installer runs, or a portable copy's program or an AppImage is swapped, only when
+//! the user asks (Install and restart), and only after its SHA-256 matches again.
 
+mod appimage;
 mod archive;
 mod assets;
 mod check;
 mod download;
 mod feed;
 mod finish;
+mod host;
 mod launch;
 mod method;
 mod plan;
@@ -42,15 +46,22 @@ mod swap;
 mod version;
 
 #[cfg(test)]
+mod assets_tests;
+#[cfg(test)]
 mod feed_tests;
 #[cfg(test)]
 mod tests;
 
-pub use assets::{Arch, CURRENT_PLATFORM, InstallKind, Platform, SumsSource, TargetOs, install_kind, install_kind_for, pick, sums_source};
+pub use appimage::appimage_file;
+pub use assets::{
+    Arch, CURRENT_PLATFORM, InstallHints, InstallKind, PACKAGE_FORMAT_FILE, Platform, SumsSource, TargetOs, install_kind, install_kind_for,
+    install_kind_with, pick, sums_source,
+};
 pub use check::{Checked, check_and_download};
 pub use download::{MAX_DOWNLOAD, Saved, download, download_saved, free_name, read_verified, split_extension};
 pub use feed::{FEED_ENV, FEED_RELEASE, Feed};
 pub use finish::run as finish_update;
+pub use host::current_platform;
 pub use method::{InstallMethod, install_method_for};
 pub use release::{Asset, Release, asset_name_ok, parse_release};
 pub use restart::{RestartRequest, start as start_restart};

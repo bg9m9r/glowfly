@@ -114,7 +114,7 @@ pub const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("persist", &["append", "open_append"]),
     ("ActivityFile", &["open"]),
     ("settings", &["log_dir", "downloads_dir"]),
-    ("app_update", &["download", "install_kind"]),
+    ("app_update", &["download", "install_kind", "appimage_file", "current_platform"]),
     ("conflict_check", &["predict"]),
     (
         "forge",
@@ -186,5 +186,10 @@ pub const ALLOWED: &[(&str, &str, &str)] = &[
     ("ui/app.rs", "send_viewport_cmd", "the shell turns window effects into viewport commands"),
     ("ui/app.rs", "platform::native_window", "the shell installs the native window glue once, at startup"),
     ("ui/app_native.rs", "platform::native_window", "the shell trades caption geometry and window state with the OS each frame"),
+    (
+        "state/updates.rs",
+        "app_update::current_platform",
+        "the default update state asks the processor once (cached, no disk), so an emulated build is offered the Arm file",
+    ),
     ("state/app_queries.rs", "std::env", "`outside_dir` (and `any_dir` without a repository) is the temp folder's path; nothing is read"),
 ];

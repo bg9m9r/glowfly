@@ -1,9 +1,10 @@
 //! Install and restart, on Glowfly's side: the downloaded file is checked again, a private
 //! staging folder gets a copy of this program as the helper, and then either the MSI's copy is
-//! staged or the portable program is swapped in place. Only once all of that worked is the
+//! staged or the portable program (or the AppImage file) is swapped in place. Only once all of that worked is the
 //! helper started and told to go; any failure first undoes what was done, so a helper that
 //! never hears "go" has nothing to undo.
 
+use super::appimage;
 use super::archive;
 use super::finish::GO;
 use super::plan::{FORMAT, MsiStep, Plan};
@@ -24,8 +25,11 @@ pub struct RestartRequest {
     pub sha256: [u8; 32],
     pub method: InstallMethod,
     pub version: String,
-    /// The running program, resolved.
+    /// The running program, resolved: copied as the helper.
     pub exe: PathBuf,
+    /// The file Install replaces and starts again: `exe` for an MSI or portable copy, the
+    /// AppImage file for an AppImage copy.
+    pub target: PathBuf,
     /// Where the staging folder goes (`paths::temp_dir()`).
     pub temp: PathBuf,
     pub os: TargetOs,
@@ -90,14 +94,25 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
         InstallMethod::SwapPortable => {
             let file_name = req.file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
             let entries = archive::read(&file_name, bytes, archive::wanted(req.os))?;
-            let plan = swap::plan(&entries, &req.exe, req.os, Path::exists)?;
+            let plan = swap::plan(&entries, &req.target, req.os, Path::exists)?;
+            let applied = swap::apply(&plan, &entries)?;
+            remove.clone_from(&applied.backups);
+            prepared.applied = Some(applied);
+        }
+        InstallMethod::SwapAppImage => {
+            if !appimage::is_appimage(bytes) {
+                return Err("The download isn't an AppImage.".to_owned());
+            }
+            // The image is the whole program; no doc files sit beside it.
+            let entries = vec![archive::Entry { name: archive::program_name(TargetOs::Linux).to_owned(), bytes: bytes.to_vec() }];
+            let plan = swap::plan(&entries, &req.target, req.os, |_| false)?;
             let applied = swap::apply(&plan, &entries)?;
             remove.clone_from(&applied.backups);
             prepared.applied = Some(applied);
         }
         InstallMethod::OpenAndQuit | InstallMethod::ShowOnly => return Err("This update can't be installed in place.".to_owned()),
     }
-    let plan = Plan { format: FORMAT, version: req.version.clone(), msi, remove, relaunch: req.exe.clone(), staging: staging.clone() };
+    let plan = Plan { format: FORMAT, version: req.version.clone(), msi, remove, relaunch: req.target.clone(), staging: staging.clone() };
     plan.write(&prepared.plan_path)
 }
 
@@ -105,7 +120,7 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
 /// the helper waits for that.
 pub fn start(req: &RestartRequest) -> Result<(), String> {
     let prepared = prepare(req)?;
-    let cwd = req.exe.parent().unwrap_or(&req.temp);
+    let cwd = req.target.parent().unwrap_or(&req.temp);
     let mut child = match super::launch::start_helper(&prepared.helper, &prepared.plan_path, cwd) {
         Ok(c) => c,
         Err(e) => {

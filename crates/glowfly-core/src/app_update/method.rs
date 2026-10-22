@@ -11,7 +11,10 @@ pub enum InstallMethod {
     RunMsi,
     /// An archive for a portable copy: its program replaces this one, then Glowfly starts again.
     SwapPortable,
-    /// An installer that can't run in place (a disk image, a .deb, an MSI for a portable copy):
+    /// An AppImage for an AppImage copy: the file replaces this one, then Glowfly starts again.
+    SwapAppImage,
+    /// An installer that can't run in place (a disk image, a .deb or .rpm, an MSI for a portable
+    /// copy):
     /// it is opened, and Glowfly quits without starting again.
     OpenAndQuit,
     /// Anything else: the file is only shown.
@@ -21,7 +24,7 @@ pub enum InstallMethod {
 impl InstallMethod {
     /// Whether Glowfly starts again by itself afterwards.
     pub fn restarts(self) -> bool {
-        matches!(self, Self::RunMsi | Self::SwapPortable)
+        matches!(self, Self::RunMsi | Self::SwapPortable | Self::SwapAppImage)
     }
 
     /// Whether Install does anything beyond showing the file.
@@ -33,13 +36,14 @@ impl InstallMethod {
 /// How the downloaded `file_name` is installed for a `kind` copy on `os`. Extensions are
 /// compared without regard to case.
 pub fn install_method_for(file_name: &str, kind: InstallKind, os: TargetOs) -> InstallMethod {
-    use InstallKind::{Installer, Portable};
-    use InstallMethod::{OpenAndQuit, RunMsi, ShowOnly, SwapPortable};
+    use InstallKind::{AppImage, Installer, Portable};
+    use InstallMethod::{OpenAndQuit, RunMsi, ShowOnly, SwapAppImage, SwapPortable};
     let lower = file_name.to_ascii_lowercase();
     match (split_extension(&lower).1, os, kind) {
         (".msi", TargetOs::Windows, Installer) => RunMsi,
         (".msi", TargetOs::Windows, Portable) => OpenAndQuit,
-        (".dmg", TargetOs::Mac, _) | (".deb", TargetOs::Linux, _) => OpenAndQuit,
+        (".dmg", TargetOs::Mac, _) | (".deb" | ".rpm", TargetOs::Linux, _) => OpenAndQuit,
+        (".appimage", TargetOs::Linux, AppImage) => SwapAppImage,
         (".zip", TargetOs::Windows, Portable) => SwapPortable,
         (".tar.gz", TargetOs::Linux | TargetOs::Mac, Portable) => SwapPortable,
         _ => ShowOnly,
@@ -50,7 +54,7 @@ pub fn install_method_for(file_name: &str, kind: InstallKind, os: TargetOs) -> I
 mod tests {
     use super::InstallMethod::*;
     use super::*;
-    use InstallKind::{Installer, Portable};
+    use InstallKind::{AppImage, Installer, Portable, RpmPackage};
     use TargetOs::{Linux, Mac, Windows};
 
     #[test]
@@ -76,6 +80,21 @@ mod tests {
             ("glowfly.tar.gz", Portable, Windows, ShowOnly),
             ("glowfly.exe", Portable, Windows, ShowOnly),
             ("glowfly", Portable, Linux, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.AppImage", AppImage, Linux, SwapAppImage),
+            ("glowfly.APPIMAGE", AppImage, Linux, SwapAppImage),
+            ("glowfly.appimage", AppImage, Linux, SwapAppImage),
+            ("glowfly.AppImage", Installer, Linux, ShowOnly),
+            ("glowfly.AppImage", RpmPackage, Linux, ShowOnly),
+            ("glowfly.AppImage", Portable, Linux, ShowOnly),
+            ("glowfly.AppImage", AppImage, Mac, ShowOnly),
+            ("glowfly.AppImage", AppImage, Windows, ShowOnly),
+            ("glowfly-v0.3.0-x86_64-unknown-linux-gnu.rpm", RpmPackage, Linux, OpenAndQuit),
+            ("glowfly.rpm", Installer, Linux, OpenAndQuit),
+            ("glowfly.RPM", Portable, Linux, OpenAndQuit),
+            ("glowfly.rpm", RpmPackage, Mac, ShowOnly),
+            ("glowfly.deb", RpmPackage, Linux, OpenAndQuit),
+            ("glowfly.tar.gz", AppImage, Linux, ShowOnly),
+            ("glowfly.tar.gz", RpmPackage, Linux, ShowOnly),
         ];
         for (name, kind, os, want) in cases {
             assert_eq!(install_method_for(name, kind, os), want, "{name} {kind:?} {os:?}");
@@ -84,8 +103,8 @@ mod tests {
 
     #[test]
     fn what_each_method_does() {
-        let all = [RunMsi, SwapPortable, OpenAndQuit, ShowOnly];
-        assert_eq!(all.map(InstallMethod::restarts), [true, true, false, false]);
-        assert_eq!(all.map(InstallMethod::acts), [true, true, true, false]);
+        let all = [RunMsi, SwapPortable, SwapAppImage, OpenAndQuit, ShowOnly];
+        assert_eq!(all.map(InstallMethod::restarts), [true, true, true, false, false]);
+        assert_eq!(all.map(InstallMethod::acts), [true, true, true, true, false]);
     }
 }
