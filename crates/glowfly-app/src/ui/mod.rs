@@ -322,6 +322,8 @@ mod snapshot_tests_logs;
 #[cfg(test)]
 mod snapshot_tests_menu_copy;
 #[cfg(test)]
+mod snapshot_tests_menu_header;
+#[cfg(test)]
 mod snapshot_tests_mica;
 #[cfg(test)]
 mod snapshot_tests_onboarding;

@@ -126,11 +126,17 @@ pub fn commit_menu_header(ui: &mut egui::Ui, summary: &str, oid: Oid) {
     header(ui, job);
 }
 
-/// The header row: wrapped at `MENU_HEADER_W`, not clickable, then a separator.
+/// The header row: as wide as the menu allows up to `MENU_HEADER_W` (which keeps short menus
+/// roomy), wrapped there, not clickable, then a separator. Menus lay out their items justified,
+/// and a wrapped label in a justified layout stretches every line but the last to the full
+/// width, so the header gets a plain left-aligned layout of its own.
 fn header(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) {
     ui.scope(|ui| {
         ui.set_max_width(MENU_HEADER_W);
-        ui.add(egui::Label::new(text).wrap().selectable(false));
+        ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.add(egui::Label::new(text).wrap().selectable(false));
+        });
     });
     ui.separator();
 }
