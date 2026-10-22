@@ -59,7 +59,7 @@ pub fn host_branch(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Option<H
 /// Where `b` stands on `remote`; None without a code host or when `remote` isn't loaded.
 pub fn host_branch_on(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -> Option<HostBranch> {
     let host = branches_on(snap, fs, remote)?;
-    if branches::remote_tracking(b).is_some_and(|t| t.remote == remote) {
+    if pr_repos::own_tracking(b, fs, remote).is_some() {
         let exists = b.upstream_ref.as_deref().is_some_and(|r| r.starts_with("refs/remotes/"));
         return Some(match (exists, b.ahead, b.behind) {
             (false, _, _) => HostBranch::Missing,
@@ -68,7 +68,8 @@ pub fn host_branch_on(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: 
             (true, _, _) => HostBranch::Blocked(branches::push_blocked(b, true).unwrap_or_default()),
         });
     }
-    // Tracking nothing, a local branch or another remote: the push goes to the same name.
+    // Tracking nothing, a local branch, another remote or a base branch: the push goes to the
+    // same name.
     let Some(remote_tip) = host_tip(host, &b.name) else { return Some(HostBranch::Missing) };
     let Some(local) = b.oid.filter(|o| *o != remote_tip) else { return Some(HostBranch::Pushed) };
     match snap.commits_between(local, Some(remote_tip)).len() {
@@ -131,50 +132,49 @@ pub fn push_item(snap: &Snapshot, fs: &ForgeState) -> Result<String, String> {
 /// The local branch a pull request from `source` comes from: the one named `source`, else the
 /// one whose upstream on the code host's remote is `source`.
 pub fn local_for<'a>(snap: &'a Snapshot, fs: &ForgeState, source: &str) -> Option<&'a BranchInfo> {
-    local_for_on(snap, &fs.remote, source)
+    local_for_on(snap, fs, &fs.remote, source)
 }
 
-/// `local_for` with the source on `remote`.
-pub fn local_for_on<'a>(snap: &'a Snapshot, remote: &str, source: &str) -> Option<&'a BranchInfo> {
+/// `local_for` with the source on `remote` (tracked as the branch's own, `pr_repos::own_tracking`).
+pub fn local_for_on<'a>(snap: &'a Snapshot, fs: &ForgeState, remote: &str, source: &str) -> Option<&'a BranchInfo> {
     snap.locals
         .iter()
         .find(|b| b.name == source)
-        .or_else(|| snap.locals.iter().find(|b| branches::remote_tracking(b).is_some_and(|t| t.remote == remote && t.merge == source)))
+        .or_else(|| snap.locals.iter().find(|b| pr_repos::own_tracking(b, fs, remote).is_some_and(|t| t.merge == source)))
 }
 
 /// The push the create dialog offers for `source` on `remote` (its From repository): its local
 /// branch and where that stands.
 pub fn dialog_push_on<'a>(snap: &'a Snapshot, fs: &ForgeState, remote: &str, source: &str) -> Option<(&'a BranchInfo, HostBranch)> {
-    let b = local_for_on(snap, remote, source)?;
+    let b = local_for_on(snap, fs, remote, source)?;
     Some((b, host_branch_on(b, snap, fs, remote)?))
 }
 
 /// The name the code host knows branch `name` by: its upstream's name when it tracks a branch
 /// on the code host's remote, otherwise `name` (also for a branch that is only on the remote).
 pub fn pr_source(snap: &Snapshot, fs: &ForgeState, name: &str) -> String {
-    pr_source_on(snap, &fs.remote, name)
+    pr_source_on(snap, fs, &fs.remote, name)
 }
 
 /// `pr_source` on `remote`.
-pub fn pr_source_on(snap: &Snapshot, remote: &str, name: &str) -> String {
-    local_for_on(snap, remote, name)
-        .and_then(branches::remote_tracking)
-        .filter(|t| t.remote == remote)
+pub fn pr_source_on(snap: &Snapshot, fs: &ForgeState, remote: &str, name: &str) -> String {
+    local_for_on(snap, fs, remote, name)
+        .and_then(|b| pr_repos::own_tracking(b, fs, remote))
         .map(|t| t.merge.clone())
         .unwrap_or_else(|| name.to_owned())
 }
 
 /// The push of local branch `b` to `remote` for a pull request: (remote, branch there, -u). A
-/// branch tracking a branch on `remote` pushes there; otherwise to its own name, with -u when
-/// it tracks nothing or `remote` is a fork (not the base repository), so later pushes follow.
-/// None when `remote` isn't configured.
+/// branch tracking its own branch on `remote` (`pr_repos::own_tracking`) pushes there; otherwise
+/// to its own name, with -u when it tracks nothing or `remote` is a fork, so later pushes
+/// follow. None when `remote` isn't configured.
 pub fn pr_push(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -> Option<(String, String, bool)> {
     if !snap.remotes.iter().any(|(n, _)| n == remote) {
         return None;
     }
-    match branches::remote_tracking(b) {
-        Some(t) if t.remote == remote => Some((remote.to_owned(), t.merge.clone(), false)),
-        _ => Some((remote.to_owned(), b.name.clone(), b.tracking.is_none() || remote != pr_repos::base_remote(fs))),
+    match pr_repos::own_tracking(b, fs, remote) {
+        Some(t) => Some((remote.to_owned(), t.merge.clone(), false)),
+        None => Some((remote.to_owned(), b.name.clone(), b.tracking.is_none() || pr_repos::is_fork(fs, remote))),
     }
 }
 

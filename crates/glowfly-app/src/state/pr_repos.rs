@@ -7,7 +7,7 @@ use super::ForgeState;
 use super::branches;
 use git2::Oid;
 use glowfly_core::forge::{self, Connection, Target};
-use glowfly_core::repo::{BranchInfo, Snapshot};
+use glowfly_core::repo::{BranchInfo, Snapshot, Tracking};
 
 /// A configured remote whose repository is on the code host's account.
 #[derive(Clone, Debug, PartialEq)]
@@ -80,10 +80,25 @@ pub fn is_pr_remote(fs: &ForgeState, remote: &str) -> bool {
     repo(fs, remote).is_some()
 }
 
-/// The remote a pull request from `b` is pushed to: the one it tracks when that is a PR
-/// repository, else the code host's.
+/// Whether `remote` is a fork: a PR repository that is neither the code host's remote nor the
+/// base.
+pub fn is_fork(fs: &ForgeState, remote: &str) -> bool {
+    remote != fs.remote && remote != base_remote(fs) && is_pr_remote(fs, remote)
+}
+
+/// The remote a pull request from `b` is pushed to: the fork it tracks, else the code host's. A
+/// branch started from the base repository (tracking `upstream/main`) still goes to the code
+/// host's remote, never onto the branch it was started from.
 pub fn push_remote(b: &BranchInfo, fs: &ForgeState) -> String {
-    branches::remote_tracking(b).filter(|t| is_pr_remote(fs, &t.remote)).map(|t| t.remote.clone()).unwrap_or_else(|| fs.remote.clone())
+    branches::remote_tracking(b).filter(|t| is_fork(fs, &t.remote)).map(|t| t.remote.clone()).unwrap_or_else(|| fs.remote.clone())
+}
+
+/// The branch on `remote` that `b` tracks as its own: any on the code host's remote or a fork,
+/// but on a separate base repository only one of the same name (a branch tracking
+/// `upstream/main` was started from it, and its pushes don't go there).
+pub fn own_tracking<'a>(b: &'a BranchInfo, fs: &ForgeState, remote: &str) -> Option<&'a Tracking> {
+    let base_only = remote != fs.remote && remote == base_remote(fs);
+    branches::remote_tracking(b).filter(|t| t.remote == remote && (!base_only || t.merge == b.name))
 }
 
 /// `remote`'s remote-tracking branches (none when it isn't loaded).

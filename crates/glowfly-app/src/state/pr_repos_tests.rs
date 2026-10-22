@@ -83,6 +83,24 @@ fn a_branch_is_pushed_to_the_pr_repository_it_tracks() {
 }
 
 #[test]
+fn a_branch_started_from_the_base_is_pushed_to_the_code_hosts_remote() {
+    let remotes = [
+        ("origin", "https://github.com/ada/app.git"),
+        ("upstream", "https://github.com/team/app.git"),
+        ("zed", "https://github.com/zed/app.git"),
+    ];
+    let fs = forge_with(&remotes, "origin");
+    let from_base = branch(Some(("upstream", "main")));
+    assert_eq!(push_remote(&from_base, &fs), "origin", "never onto upstream's main");
+    assert_eq!(own_tracking(&from_base, &fs, "upstream"), None);
+    assert_eq!(push_remote(&branch(Some(("upstream", "topic"))), &fs), "origin");
+    assert!(own_tracking(&branch(Some(("upstream", "topic"))), &fs, "upstream").is_some(), "the same name is its own");
+    assert_eq!(push_remote(&branch(Some(("zed", "feature"))), &fs), "zed");
+    assert!(own_tracking(&branch(Some(("origin", "main"))), &fs, "origin").is_some(), "the code host's as before");
+    assert_eq!((is_fork(&fs, "origin"), is_fork(&fs, "upstream"), is_fork(&fs, "zed")), (false, false, true));
+}
+
+#[test]
 fn the_target_default_order() {
     let names = |l: &[&str]| l.iter().map(|s| s.to_string()).collect::<Vec<_>>();
     let all = names(&["develop", "main", "release", "trunk"]);

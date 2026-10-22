@@ -258,3 +258,43 @@ fn a_stack_layer_on_the_fork_targets_the_fork() {
     cleanup(&work, &bare);
     let _ = std::fs::remove_dir_all(&ada);
 }
+
+/// origin is the user's fork (the code host's remote), upstream the base repository.
+fn with_upstream(name: &str) -> (AppState, PathBuf, PathBuf, PathBuf) {
+    let (mut st, work, bare) = with_host(name);
+    git(&work, &["remote", "set-url", "origin", "https://github.com/ada/r.git"]);
+    let up = bare_next_to(&work, "upstream");
+    add_remote(&work, "upstream", "https://github.com/o/r.git", &up);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert_eq!(st.forge.as_ref().map(|f| f.pr_repos.len()), Some(2));
+    (st, work, bare, up)
+}
+
+#[test]
+fn a_branch_started_from_upstream_is_pushed_to_the_code_hosts_remote() {
+    let (mut st, work, bare, up) = with_upstream("pr-fork-from-base");
+    commit_on(&work, "main", "started", "Started");
+    git(&work, &["branch", "-q", "--set-upstream-to=upstream/main", "started"]);
+    commit_on(&work, "main", "local", "Local");
+    git(&work, &["branch", "-q", "--set-upstream-to=main", "local"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    let fx = update(&mut st, msg(ForgeMsg::PushAndStartPr { branch: "started".into(), target: None }), Instant::now());
+    assert_eq!(run_git(&fx), [&vec![args(&["push", "origin", "refs/heads/started:refs/heads/started"])]], "not onto upstream's main");
+    st.job = None;
+    // Tracking a local branch: as before, no -u even with upstream present.
+    let fx = update(&mut st, msg(ForgeMsg::PushAndStartPr { branch: "local".into(), target: None }), Instant::now());
+    assert_eq!(run_git(&fx), [&vec![args(&["push", "origin", "refs/heads/local:refs/heads/local"])]]);
+    st.job = None;
+    // The dialog opens from origin with the branch's own name, into upstream.
+    drive(&mut st, msg(ForgeMsg::CreatePrDialog { source: "started".into(), target: None }));
+    let (source, _, _, picked) = dialog(&st).expect("the create dialog");
+    assert_eq!((source.as_str(), picked.from.as_str(), picked.into.as_str()), ("started", "origin", "upstream"));
+    // Picking upstream as From keeps the name: upstream's main isn't this branch.
+    drive(&mut st, msg(ForgeMsg::PickPrRepo { side: RepoSide::From, remote: "upstream".into() }));
+    assert_eq!(dialog(&st).map(|d| d.0), Some("started".into()));
+    let fx =
+        update(&mut st, msg(ForgeMsg::PushToForPr { branch: "started".into(), remote: "upstream".into(), target: None }), Instant::now());
+    assert_eq!(run_git(&fx), [&vec![args(&["push", "upstream", "refs/heads/started:refs/heads/started"])]]);
+    cleanup(&work, &bare);
+    let _ = std::fs::remove_dir_all(&up);
+}

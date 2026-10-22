@@ -23,8 +23,8 @@ pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<Str
         .or_else(|| push_pr::local_for(snap, fs, &name).map(|b| pr_repos::push_remote(b, fs)))
         .filter(|r| pr_repos::is_pr_remote(fs, r))
         .unwrap_or_else(|| fs.remote.clone());
-    let local = push_pr::local_for_on(snap, &from, &name);
-    let source = push_pr::pr_source_on(snap, &from, &name);
+    let local = push_pr::local_for_on(snap, fs, &from, &name);
+    let source = push_pr::pr_source_on(snap, fs, &from, &name);
     let into = pr_repos::default_into(snap, fs, &from, preferred.as_deref());
     let targets = pr_repos::target_branches(snap, fs, &into, &from, &source);
     let target = pr_repos::default_target(snap, fs, &into, &targets, &source, &from, preferred.as_deref());
@@ -71,7 +71,7 @@ pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, rem
         HostBranch::Blocked(why) => st.log(false, why),
         // A dialog already open for this branch and repository keeps what was typed in it.
         HostBranch::Pushed => {
-            let source = push_pr::pr_source_on(snap, &remote, &b.name);
+            let source = push_pr::pr_source_on(snap, fs, &remote, &b.name);
             let open =
                 matches!(&st.modal, Some(Modal::CreatePr { source: s, repos, .. }) if *s == source && repos.remote_from(fs) == remote);
             if !open {

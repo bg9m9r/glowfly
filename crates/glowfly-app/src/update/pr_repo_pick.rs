@@ -17,7 +17,7 @@ pub(super) fn pick(st: &mut AppState, side: RepoSide, remote: &str) {
     match side {
         RepoSide::From => {
             repos.from = remote.to_owned();
-            *source = push_pr::pr_source_on(snap, remote, &repos.branch);
+            *source = push_pr::pr_source_on(snap, fs, remote, &repos.branch);
         }
         RepoSide::Into => repos.into = remote.to_owned(),
     }
