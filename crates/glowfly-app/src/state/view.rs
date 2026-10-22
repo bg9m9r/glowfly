@@ -10,6 +10,10 @@ use glowfly_core::settings::{ResizableColumn, SizedPanel};
 use std::collections::HashSet;
 use std::time::Instant;
 
+/// The shell's frame timing, which fills `ViewState::frame_times`.
+#[path = "frame_times.rs"]
+pub mod frame_times;
+
 /// Each left-panel section's open state; views toggle them directly.
 pub struct Sections {
     pub local: bool,
@@ -144,6 +148,8 @@ pub struct ViewState {
     pub frame_at: Option<Instant>,
     /// UTC offset (seconds) used to display times; the local zone in the app, fixed in tests.
     pub utc_offset: i32,
+    /// The recent frames' times, set by the shell after each frame, for the frame-time overlay.
+    pub frame_times: crate::state::frame_times::FrameSummary,
     /// Fetched avatars waiting for the shell to turn them into textures.
     pub avatars_loaded: Vec<(String, Option<glowfly_core::avatars::Image>)>,
     /// Lines selected in the open diff for line-level staging (changed only by `update`).
@@ -227,6 +233,7 @@ impl Default for ViewState {
             now: 0,
             frame_at: None,
             utc_offset: 0,
+            frame_times: Default::default(),
             avatars_loaded: Vec::new(),
             diff_lines: lines::LineSelection::default(),
             conflict_scroll_to: None,

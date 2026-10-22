@@ -169,6 +169,14 @@ impl<W: Waker + Clone> Runner<W> {
         self.logs.attach(setup, self.tx.clone(), self.waker.clone());
     }
 
+    /// Adds a line to the performance log (with the log worker running): `what` took `took`.
+    /// The shell's slow frames come this way.
+    pub fn log_perf(&self, took: std::time::Duration, what: &str, detail: String) {
+        if let Some(probe) = self.logs.perf_probe() {
+            let _ = probe.send(logs::Job::Perf { took, what: what.to_owned(), detail });
+        }
+    }
+
     /// Starts `effect` on a worker thread, or queues it behind the earlier effects that change the
     /// same repository. UI effects must be handled by the caller instead. A panic in the effect
     /// is reported as its failure, so a job it was running ends.

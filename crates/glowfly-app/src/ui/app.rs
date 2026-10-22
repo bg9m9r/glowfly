@@ -23,8 +23,10 @@ use glowfly_core::settings::{Settings, ThemeCatalog};
 use glowfly_core::spell::Speller;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
+#[path = "app_frame.rs"]
+mod frame_timing;
 #[cfg(test)]
 #[path = "app_testing.rs"]
 mod testing;
@@ -46,6 +48,8 @@ pub struct GlowflyApp {
     /// The real-input smoke tests' state file (`smoke_probe.rs`); None unless asked for, and in
     /// tests.
     probe: Option<crate::smoke_probe::ProbeWriter>,
+    /// How long recent frames took, and where this one's time goes (`state/frame_times.rs`).
+    frames: crate::state::frame_times::FrameTimes,
     /// Results taken from the runner's channel so far (the journeys wait for this to stop
     /// changing).
     #[cfg(test)]
@@ -134,6 +138,7 @@ impl GlowflyApp {
             native: None,
             menu: None,
             probe: None,
+            frames: Default::default(),
             #[cfg(test)]
             drained: 0,
         }
@@ -175,7 +180,11 @@ impl GlowflyApp {
     }
 
     fn dispatch(&mut self, ctx: &egui::Context, msg: Msg) {
-        for effect in update(&mut self.st, msg, Instant::now()) {
+        let area = msg.area();
+        let _span = tracing::trace_span!("update", area).entered();
+        let started = Instant::now();
+        let effects = update(&mut self.st, msg, started);
+        for effect in effects {
             match effect {
                 Effect::Ui(UiEffect::CopyText(text)) => ctx.copy_text(text),
                 Effect::Ui(UiEffect::SetTitle(title)) => ctx.send_viewport_cmd(egui::ViewportCommand::Title(title)),
@@ -202,6 +211,7 @@ impl GlowflyApp {
                 other => self.runner.run(other),
             }
         }
+        self.frames.area(area, started.elapsed());
     }
 
     /// Keyboard shortcuts and window events, turned into messages or view-state changes.
@@ -220,6 +230,9 @@ impl GlowflyApp {
     /// One frame: the runner's results, then the window drawn from the state and the
     /// messages it pushed.
     pub(crate) fn frame(&mut self, ctx: &egui::Context) {
+        let started = Instant::now();
+        let span = tracing::trace_span!("frame").entered();
+        self.frames.begin();
         self.theme.apply(ctx, &self.st.settings, &self.st.themes);
         layout::apply_zoom(ctx, &self.st);
         self.st.view.focused = ctx.input(|i| i.focused);
@@ -235,13 +248,15 @@ impl GlowflyApp {
         if let Some(menu) = &mut self.menu {
             app_menu::picked(menu, &mut self.st, &mut native_msgs);
         }
-        while let Ok(msg) = self.results.try_recv() {
-            #[cfg(test)]
-            {
-                self.drained += 1;
+        self.phase("results", |app| {
+            while let Ok(msg) = app.results.try_recv() {
+                #[cfg(test)]
+                {
+                    app.drained += 1;
+                }
+                app.dispatch(ctx, msg);
             }
-            self.dispatch(ctx, msg);
-        }
+        });
         for (email, img) in self.st.view.avatars_loaded.drain(..) {
             self.cache.avatars.insert(ctx, email, img);
         }
@@ -253,8 +268,11 @@ impl GlowflyApp {
         self.st.view.frame_at = Some(now);
         let mut msgs = vec![Msg::Tick(now)];
         msgs.append(&mut native_msgs);
-        self.input(ctx, &mut msgs);
-        super::draw(ctx, &mut self.st, &mut self.cache, &mut msgs);
+        self.phase("draw", |app| {
+            app.input(ctx, &mut msgs);
+            super::draw(ctx, &mut app.st, &mut app.cache, &mut msgs);
+            app.draw_overlay(ctx);
+        });
         if let Some(native) = &self.native {
             app_native::after_draw(native, ctx, &self.st);
         }
@@ -268,9 +286,11 @@ impl GlowflyApp {
             msgs.push(Msg::Prefs(PrefsMsg::SettingsEdited));
         }
 
-        for msg in msgs {
-            self.dispatch(ctx, msg);
-        }
+        self.phase("messages", |app| {
+            for msg in msgs {
+                app.dispatch(ctx, msg);
+            }
+        });
         if let Some(menu) = &mut self.menu {
             app_menu::sync(menu, &self.st);
         }
@@ -282,24 +302,9 @@ impl GlowflyApp {
         {
             ctx.request_repaint();
         }
-        // Keep polling while work is in flight or toasts are fading.
-        if self.st.job.is_some() || self.st.loading || !self.st.toasts.is_empty() {
-            ctx.request_repaint_after(Duration::from_millis(150));
-        } else if self.st.settings.auto_fetch_minutes > 0 {
-            ctx.request_repaint_after(Duration::from_secs(5));
-        }
-        // The "Saved" tick beside a Preferences title fades out.
-        if self.st.prefs.as_ref().is_some_and(|p| p.saved.showing() || p.saved.pending) {
-            ctx.request_repaint_after(Duration::from_millis(100));
-        }
-        // The status is re-read on a timer where the watcher can be silent (see `poll_every`).
-        if let Some(every) = self.st.watch.poll_interval() {
-            ctx.request_repaint_after(every);
-        }
-        // A failed load for more tries again by itself (`Msg::Tick`) at this time.
-        if let Some(at) = self.st.refresh.more_retry_at {
-            ctx.request_repaint_after(at.saturating_duration_since(now));
-        }
+        self.schedule_repaints(ctx, now);
+        drop(span);
+        self.end_frame(started);
     }
 }
 

@@ -41,9 +41,13 @@ pub fn init() -> LogSetup {
             .with_writer(writer)
             .with_filter(filter)
     });
-    // RUST_LOG=glowfly=debug shows background effects as they run.
-    let stderr =
-        fmt::layer().with_writer(std::io::stderr).with_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "glowfly=info".into()));
+    // RUST_LOG=glowfly=debug shows background effects as they run, and how long each effect and
+    // each phase of a repository load or an index build took (a line as its span closes);
+    // glowfly=trace adds every frame, its phases and each message's handling.
+    let stderr = fmt::layer()
+        .with_writer(std::io::stderr)
+        .with_span_events(fmt::format::FmtSpan::CLOSE)
+        .with_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "glowfly=info".into()));
     tracing_subscriber::registry().with(file_layer).with(stderr).init();
     install_panic_hook();
     LogSetup { dir, file_detail }

@@ -15,6 +15,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
 
 /// `load`, reusing (and adding to) the ahead/behind and containment answers in `cache`.
 pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Result<Snapshot> {
+    let _span = tracing::debug_span!("load", path = %path.display(), max = opts.max_commits).entered();
     let loaded_with = opts.clone();
     let max_commits = opts.max_commits.max(1);
     let mut repo = Repository::discover(path).map_err(|e| crate::safe_directory::open_error(path, &e))?;
@@ -102,6 +103,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         labels.sort_by(|a, b| (!a.is_head, a.kind, &a.name).cmp(&(!b.is_head, b.kind, &b.name)));
     }
 
+    let refs_span = tracing::debug_span!("load.refs").entered();
     let mut locals = Vec::new();
     for b in repo.branches(Some(BranchType::Local))? {
         let (b, _) = b?;
@@ -176,18 +178,19 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
 
     // Git's own status read can run the repository's fsmonitor hook or filters: only once the
     // user trusts it (and nothing was added since), or when nothing in it would run.
+    drop(refs_span);
     let trust_scan = crate::trust::scan(&repo);
     let trust_print = trust_scan.print();
     let git_status = trust_scan.is_empty() || (opts.trusted && opts.trusted_print.as_ref().is_none_or(|p| p.covers(&trust_print)));
     let started = std::time::Instant::now();
     // Read before the status, so a change made during the read shows up in the next comparison.
     let index_memo = repo.index().ok().and_then(|i| super::IndexMemo::of(&i)).map(std::sync::Arc::new);
-    let (unstaged, staged) = super::status::load_status(&repo, git_status)?;
+    let (unstaged, staged) = tracing::debug_span!("load.status").in_scope(|| super::status::load_status(&repo, git_status))?;
     let slow_status = super::status_speed::slow(started.elapsed(), &workdir);
     let changes = ChangeCounts::of(&staged, &unstaged);
     let folding = super::collide::folding(repo.path());
     let ignorecase = super::collide::ignorecase(&repo);
-    let collisions = super::collide::collisions(&repo.index()?);
+    let collisions = tracing::debug_span!("load.collisions").in_scope(|| repo.index().map(|i| super::collide::collisions(&i)))?;
     let submodules = submodules::list(&repo);
     let mut worktrees = worktrees::list(&repo);
     if opts.worktree_wips {
@@ -226,7 +229,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         }
         refs.retain(|_, v| !v.is_empty());
     }
-    let (commits, truncated) = super::walk::newest_commits(&repo, &starts, max_commits)?;
+    let (commits, truncated) = tracing::debug_span!("load.walk").in_scope(|| super::walk::newest_commits(&repo, &starts, max_commits))?;
     let row_of = commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();
 
     let mut snap = Snapshot {
@@ -280,7 +283,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         refs_key,
         loaded_with,
     };
-    snap.lay_out_graph();
+    tracing::debug_span!("load.layout").in_scope(|| snap.lay_out_graph());
     snap.stacks = crate::stack::read(&repo, &snap);
     Ok(snap)
 }

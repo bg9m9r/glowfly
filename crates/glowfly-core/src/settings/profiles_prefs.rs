@@ -132,6 +132,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "remember_https_credentials",
     // A diagnostic switch, not a profile preference.
     "extended_logging",
+    "show_frame_times",
     // Preferences > Keyboard is not one of the pages a profile keeps.
     "keybindings",
     // The git program belongs to the machine, not to whoever is committing.

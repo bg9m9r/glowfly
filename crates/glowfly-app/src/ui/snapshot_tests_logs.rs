@@ -84,6 +84,11 @@ fn preferences_general_logging() {
     assert!(msgs.iter().any(|m| matches!(m, Msg::Logs(LogsMsg::SetExtended(false)))), "the checkbox sends a message");
     assert!(h.state().0.settings.extended_logging, "and doesn't change the setting itself");
     assert!(msgs.iter().any(|m| matches!(m, Msg::Logs(LogsMsg::OpenFolder))));
+    // The frame-time overlay is a plain setting, off by default.
+    assert!(!h.state().0.settings.show_frame_times);
+    h.get_by_label("Show how long each frame takes, in a corner of the window").click();
+    h.run();
+    assert!(h.state().0.settings.show_frame_times);
 }
 
 /// A failure announced by a toast with Details instead of opening the panel: red, with a

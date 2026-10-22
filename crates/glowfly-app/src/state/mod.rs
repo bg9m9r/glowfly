@@ -189,7 +189,7 @@ pub use logs::{LOG_LIMIT, LogEntry};
 pub use prefs::{PrefPage, PrefsState, host_text};
 pub use tabs::Tab;
 pub use toasts::{Toast, ToastAction};
-pub use view::{ColumnDrag, ViewState};
+pub use view::{ColumnDrag, ViewState, frame_times};
 
 use crate::msg::Msg;
 use git2::Oid;

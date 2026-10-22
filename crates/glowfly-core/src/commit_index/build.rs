@@ -75,6 +75,7 @@ pub(crate) fn build_paced(
     stop: &dyn Fn() -> bool,
     pace: &Pace,
 ) -> Result<Option<CommitIndex>> {
+    let _span = tracing::debug_span!("index.build", reuse = base.is_some()).entered();
     let repo = Repository::discover(workdir)?;
     // A capped base lacks parents of its oldest commits, and a deepened or unshallowed clone has
     // parents where the base found none.

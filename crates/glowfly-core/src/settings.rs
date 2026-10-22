@@ -29,6 +29,7 @@ pub mod repo_keys;
 mod submodules;
 mod terminal;
 pub mod terminal_schemes;
+mod theme_choice;
 pub mod themes;
 mod themes_io;
 mod tools;
@@ -57,44 +58,12 @@ pub use submodules::{SubmodulePrefs, SubmoduleUpdates};
 pub use terminal::{
     CursorStyle, DEFAULT_TERMINAL_FONT_SIZE, ShellChoice, ShellSetting, TERMINAL_FONT_SIZES, TerminalColours, TerminalPrefs,
 };
+pub use theme_choice::ThemeChoice;
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use trust::{RepoTrust, SavedTrust};
 pub use updates::UpdatePrefs;
 pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_out_from};
-
-/// The theme in use (Preferences > UI Customization > Theme). A theme file is saved as
-/// `{"Custom": "ocean"}`. `"Dark"` in older files was "the default dark theme", so it loads as
-/// the default dark theme today (Graphite); Dusk saves as `"Dusk"`. `"Light"` and `"System"`
-/// load unchanged.
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub enum ThemeChoice {
-    /// Dusk, the dark theme from the app icon (saved as `Dusk`; see the enum's note on `Dark`).
-    #[serde(rename = "Dusk")]
-    Dark,
-    /// Dawn, the default light theme (saved as `Light`).
-    Light,
-    /// Follow the operating system: the default dark or light theme, Graphite or Dawn.
-    System,
-    /// The earlier green pair.
-    GardenDark,
-    GardenLight,
-    HighContrastDark,
-    HighContrastLight,
-    Sand,
-    /// The themes added beside the standard pair: Midnight and Mist (sea glass), Ember (flame),
-    /// Pine (lantern gold), Graphite and Linen (cobalt).
-    Midnight,
-    Mist,
-    Ember,
-    Pine,
-    /// The default dark theme; older files' `"Dark"` loads as it.
-    #[serde(alias = "Dark")]
-    Graphite,
-    Linen,
-    /// A theme file in the themes folder, by file stem ("ocean" for themes/ocean.json).
-    Custom(String),
-}
 
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum Corner {
@@ -348,6 +317,10 @@ pub struct Settings {
     /// Add git commands and their timings to the activity log and write details to the error log (Preferences > General).
     #[serde(default)]
     pub extended_logging: bool,
+    /// Show the last, average and slowest frame times in a corner of the window
+    /// (Preferences > General > Diagnostics).
+    #[serde(default)]
+    pub show_frame_times: bool,
     /// Keyboard shortcuts the user changed (Preferences > Keyboard): a binding's stable id
     /// ("new-tab") -> its keys as text ("Mod+Shift+N"; Mod is Ctrl, or Cmd on macOS). An empty list
     /// leaves the action without a key; ids not listed keep their defaults. The app's keymap
@@ -454,6 +427,7 @@ impl Default for Settings {
             gpg_prompts_in_app: true,
             remember_https_credentials: true,
             extended_logging: false,
+            show_frame_times: false,
             keybindings: BTreeMap::new(),
             git_program: None,
             git_banner_hidden_for: None,

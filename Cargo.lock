@@ -1695,6 +1695,7 @@ dependencies = [
  "tar",
  "thiserror 2.0.21",
  "toml",
+ "tracing",
  "trash",
  "two-face",
  "ureq",

@@ -112,8 +112,8 @@ fn repositories(ui: &mut Ui, t: Lang, s: &mut Settings, cx: &GeneralContext) {
     });
 }
 
-/// Extended logging and the logs folder.
-fn diagnostics(ui: &mut Ui, t: Lang, s: &Settings, msgs: &mut Vec<Msg>) {
+/// Extended logging, the frame-time overlay and the logs folder.
+fn diagnostics(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
     row(ui, t.tr("prefs.general.extended_logging.label"), |ui| {
         // Through a message, so the runner hears of it (the error log's level changes too).
         let mut on = s.extended_logging;
@@ -121,6 +121,10 @@ fn diagnostics(ui: &mut Ui, t: Lang, s: &Settings, msgs: &mut Vec<Msg>) {
             msgs.push(Msg::Logs(LogsMsg::SetExtended(on)));
         }
         help(ui, t.tr("prefs.general.extended_logging.help"));
+    });
+    row(ui, t.tr("prefs.general.frame_times.label"), |ui| {
+        controls::checkbox(ui, &mut s.show_frame_times, t.tr("prefs.general.frame_times.check"));
+        help(ui, t.tr("prefs.general.frame_times.help"));
     });
     row(ui, t.tr("prefs.general.logs.label"), |ui| {
         if ui.add(buttons::secondary(t.tr("prefs.general.logs.button"))).clicked() {

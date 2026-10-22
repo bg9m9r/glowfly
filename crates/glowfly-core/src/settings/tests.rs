@@ -124,6 +124,15 @@ fn extended_logging_defaults_off_and_old_files_load() {
 }
 
 #[test]
+fn frame_times_overlay_defaults_off_and_old_files_load() {
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.show_frame_times);
+    let on = Settings { show_frame_times: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.show_frame_times);
+}
+
+#[test]
 fn menu_bar_defaults_shown_and_old_files_load() {
     // Files written before the setting existed show the menu bar.
     assert!(Settings::default().show_menu_bar);

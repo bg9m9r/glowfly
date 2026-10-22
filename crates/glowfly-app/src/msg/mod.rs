@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 mod app;
+mod area;
 mod blame;
 mod branch;
 mod dashboard;

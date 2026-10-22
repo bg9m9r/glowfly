@@ -185,6 +185,7 @@ pub const ALLOWED: &[(&str, &str, &str)] = &[
     ("ui/app.rs", "platform::load_recent", "the shell loads the recent list once, at startup"),
     ("ui/app.rs", "platform::load_tabs", "the shell loads the last session's tabs once, at startup"),
     ("ui/app.rs", "Instant::now", "the shell stamps each frame and message with the time"),
+    ("ui/app_frame.rs", "Instant::now", "the shell times each frame and each of its phases"),
     ("ui/app.rs", "Local::now", "the shell sets `st.view.now` once per frame"),
     ("ui/app.rs", "send_viewport_cmd", "the shell turns window effects into viewport commands"),
     ("ui/app.rs", "platform::native_window", "the shell installs the native window glue once, at startup"),
