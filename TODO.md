@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-22 09:43 · **Packaging and updates**: Install and restart checks the download's SHA-256 again, then runs the verified MSI or swaps the portable program in place through a small helper and relaunches Glowfly, asking first about unsaved work and a running job (`959db2dc`)
 - 2026-10-22 09:39 · **Menu bar**: Alt+letter opens a menu with underlined mnemonics and arrow-key navigation, a rebindable Quit key sits on File > Quit, and quitting asks first while a git operation or sync runs (`f30153f7`)
 - 2026-10-22 08:35 · **Performance: turn on git's built-in fsmonitor from Glowfly**: The slow-status note's Turn on button starts git's built-in file system monitor (git 2.36+ on Windows and macOS) beside the untracked cache, setting core.fsmonitor=true once the daemon is watching and saying plainly why when it can't (`b7a78149`)
 - 2026-10-22 08:16 · **In-app pull request view**: The pull request view compares from the listed head commit or the remote-tracking source, fetches the service's head ref for forks on demand, adds a Commits tab between Overview and Files changed, and posts comments, replies and reviews with Command+Enter (Ctrl+Enter off macOS) (`de33f6cc`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-21 16:26 · **Stash improvements**: The Stash dialog gets Keep staged changes (git stash push --keep-index) for All changes and Selected files, and a chosen staged rename is stashed whole, its old path put back from HEAD after the stash and refused beforehand when something is on disk there, with Undo and redo covering both (`e05b9715`)
 - 2026-10-21 14:46 · **CI / build status**: per-check list with states, durations and Required tags in the pull request panel (`718a895c`)
 - 2026-10-21 13:46 · **Search and filter**: background commit index of large repositories' whole history, so search counts, Enter, Filter and Keep searching cover every commit and load straight to the next match, with review fixes applied (`b733326f`)
-- 2026-10-21 13:41 · **SSH key management**: Keys named in ~/.ssh/config or by Use existing are matched against the listed keys on disk so a link, short name or other case lists once, and the Windows OpenSSH switch lands on main (`d817ddba`)
 
 ---
 
