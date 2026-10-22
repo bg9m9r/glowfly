@@ -4,6 +4,7 @@
 
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
+use std::sync::LazyLock;
 use std::time::{Duration, SystemTime};
 
 const SIZE: u32 = 64;
@@ -64,6 +65,15 @@ fn decode(bytes: &[u8]) -> Option<Image> {
     Some(Image { width: img.width() as usize, height: img.height() as usize, rgba: img.into_raw() })
 }
 
+/// The one HTTP agent every avatar download shares, so connections to Gravatar and GitHub stay
+/// open between downloads (keep-alive) instead of a new TCP and TLS handshake each time. A few
+/// idle connections per host, since batches of downloads run on several threads.
+fn agent() -> &'static ureq::Agent {
+    static AGENT: LazyLock<ureq::Agent> =
+        LazyLock::new(|| ureq::AgentBuilder::new().timeout(Duration::from_secs(10)).max_idle_connections_per_host(4).build());
+    &AGENT
+}
+
 /// Downloads (or loads from the disk cache) the avatar for `email`. Blocking: call from a
 /// worker thread.
 pub fn fetch(email: &str) -> Option<Image> {
@@ -83,8 +93,7 @@ pub fn fetch(email: &str) -> Option<Image> {
             return None;
         }
     }
-    let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(10)).build();
-    let bytes = match agent.get(&url_for(email)).call() {
+    let bytes = match agent().get(&url_for(email)).call() {
         // Oversized images are treated as "no avatar" (and cached as such).
         Ok(resp) => crate::forge::read_capped(resp.into_reader(), MAX_BYTES).ok(),
         Err(ureq::Error::Status(404, _)) => None,

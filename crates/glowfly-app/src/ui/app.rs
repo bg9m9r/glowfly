@@ -277,6 +277,7 @@ impl GlowflyApp {
             app_native::after_draw(native, ctx, &self.st);
         }
         build_status::after_draw(&mut self.st, ctx, now, &mut msgs);
+        self.cache.avatars.end_frame();
         let wanted = self.cache.avatars.take_wanted();
         if !wanted.is_empty() {
             msgs.push(Msg::Avatars(AvatarMsg::WantAvatars(wanted)));
