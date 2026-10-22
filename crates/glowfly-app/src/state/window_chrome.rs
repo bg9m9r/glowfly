@@ -46,6 +46,11 @@ impl Chrome {
         matches!(self, Chrome::Windows | Chrome::MacOs)
     }
 
+    /// Whether the OS menu bar shows Glowfly's menus (`platform::native_menu`).
+    pub const fn native_menu(self) -> bool {
+        matches!(self, Chrome::MacOs)
+    }
+
     /// Whether Glowfly draws Minimize, Maximize and Close.
     pub const fn window_buttons(self) -> bool {
         matches!(self, Chrome::Windows)
@@ -206,6 +211,13 @@ mod tests {
             assert_eq!(c.system_menu(), menu, "{c:?}");
             assert_eq!(c.mnemonics(), c != Chrome::MacOs, "{c:?}");
         }
+    }
+
+    #[test]
+    fn native_menu_is_macos_only() {
+        assert!(Chrome::for_os(Os::MacOs).native_menu());
+        assert!(!Chrome::for_os(Os::Windows).native_menu());
+        assert!(!Chrome::for_os(Os::Linux).native_menu());
     }
 
     #[test]

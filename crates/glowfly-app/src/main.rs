@@ -132,6 +132,8 @@ fn main() -> eframe::Result {
                 // The Wayland app id: matches glowfly.desktop (and its StartupWMClass).
                 .with_app_id(glowfly_core::app_identity::DESKTOP_ENTRY),
         ),
+        // On macOS, no default app menu: Glowfly's own replaces it (`platform::native_menu`).
+        event_loop_builder: platform::native_menu::event_loop_hook(),
         ..Default::default()
     };
     eframe::run_native("Glowfly", options, Box::new(move |cc| Ok(Box::new(ui::GlowflyApp::new(cc, start, logs, mica, probe)))))

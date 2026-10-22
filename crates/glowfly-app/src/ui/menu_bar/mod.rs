@@ -1,5 +1,6 @@
-//! The menus: File, Edit, View, Window and Help, each drawing its items (`file.rs` …
-//! `help.rs`). With the system frame they form a menu bar above the tab bar (`show`, drawn by
+//! The menus: File, Edit, View, Window and Help, drawn from the menu model
+//! (`state/menu_model.rs`, which the macOS system menu bar shows too) by `draw.rs`. With the
+//! system frame they form a menu bar above the tab bar (`show`, drawn by
 //! `bar.rs` while `settings.show_menu_bar` is on); a drawn title bar opens them from its menu
 //! button instead (`main_menu`): as a list of the five as submenus, or, opened from the
 //! keyboard, one menu under a row of the five titles. Each menu has an Alt+letter mnemonic,
@@ -14,19 +15,16 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::menu_keys::TopMenu;
+use crate::state::menu_model;
 use eframe::egui::{self, Button, Frame, Id, Key, Margin, Modifiers};
 
 mod about;
 mod bar;
-mod edit;
-mod file;
-mod help;
+mod draw;
 mod items;
 mod keys;
 mod nav;
 mod notices;
-mod view;
-mod window;
 
 pub(super) use about::about;
 #[cfg(test)]
@@ -76,13 +74,9 @@ pub(in crate::ui) fn main_menu(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut 
 
 /// `m`'s items.
 fn contents(m: TopMenu, ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    match m {
-        TopMenu::File => file::items(ui, st, msgs),
-        TopMenu::Edit => edit::items(ui, st, msgs),
-        TopMenu::View => view::items(ui, st, msgs),
-        TopMenu::Window => window::items(ui, st, msgs),
-        TopMenu::Help => help::items(ui, st, msgs),
-    }
+    ui.set_min_width(draw::min_width(m));
+    let entries = menu_model::entries(st, m);
+    draw::entries(ui, st, entries, msgs);
 }
 
 /// The five menus as submenus, opening on hover. From the keyboard, Enter, Space or Right on
@@ -138,6 +132,8 @@ fn single(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>, m: TopMenu)
 
 #[cfg(test)]
 pub(in crate::ui) mod keys_tests;
+#[cfg(test)]
+mod model_tests;
 #[cfg(test)]
 mod quit_tests;
 #[cfg(test)]

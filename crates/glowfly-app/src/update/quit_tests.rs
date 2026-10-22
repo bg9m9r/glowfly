@@ -47,7 +47,7 @@ fn job(label: &str, workdir: Option<PathBuf>, quiet: bool) -> RunningJob {
 }
 
 /// A state with a tab at `api-server` labelled "api" and a Push running there.
-fn pushing() -> AppState {
+pub(in crate::update) fn pushing() -> AppState {
     let mut st = state();
     let mut tab = Tab::unloaded(folder("api-server"));
     tab.label = Some("api".into());

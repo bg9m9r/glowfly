@@ -3,7 +3,8 @@
 //! window icon, the drawn Windows frame's glue with the OS (`native_window`), the app id an
 //! installed Windows copy takes before its window opens (`claim_app_id`), and the folders and
 //! links macOS hands Glowfly.app as Apple events (`macos_events`), which wait in `open_events`
-//! until the runner attaches.
+//! until the runner attaches, and the macOS system menu bar showing Glowfly's menus
+//! (`native_menu`, built in AppKit by `macos_menu`).
 
 use std::path::{Path, PathBuf};
 
@@ -11,6 +12,9 @@ mod app_id;
 mod icon;
 #[cfg(target_os = "macos")]
 mod macos_events;
+#[cfg(target_os = "macos")]
+mod macos_menu;
+pub mod native_menu;
 pub mod native_window;
 pub mod open_events;
 mod terminal;

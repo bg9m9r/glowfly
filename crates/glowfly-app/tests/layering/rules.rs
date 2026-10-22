@@ -58,6 +58,7 @@ pub const DENIED: &[(&str, &str)] = &[
     (".save()", "the settings file"),
     ("send_viewport_cmd", "the window (views push AppMsg::Window; the shell sends viewport commands)"),
     ("platform::native_window", "the OS window (only the shell talks to it)"),
+    ("platform::native_menu", "the OS menu bar (only the shell talks to it)"),
     ("windows::Win32", "the OS (Win32 calls belong in platform/)"),
 ];
 
@@ -191,5 +192,7 @@ pub const ALLOWED: &[(&str, &str, &str)] = &[
         "app_update::current_platform",
         "the default update state asks the processor once (cached, no disk), so an emulated build is offered the Arm file",
     ),
+    ("ui/app.rs", "platform::native_menu", "the shell installs the system menu bar once, at startup"),
+    ("ui/app_menu.rs", "platform::native_menu", "the shell trades picks and menus with the system menu bar each frame"),
     ("state/app_queries.rs", "std::env", "`outside_dir` (and `any_dir` without a repository) is the temp folder's path; nothing is read"),
 ];

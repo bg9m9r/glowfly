@@ -2,33 +2,15 @@
 //! (the reason in a tooltip on hover or focus), and check items with a check box in the gutter
 //! before the label. A disabled submenu is drawn as a disabled item: it can't open.
 
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::Msg;
+use crate::keymap::Chord;
 use crate::ui::theme::controls::paint_check_box;
 use crate::ui::widgets::reason::{self, ItemState};
 use eframe::egui::{self, Color32, Rect, TextStyle, WidgetInfo, WidgetText, WidgetType, pos2, vec2};
 
-/// One item: `label`, the current key of `key` right-aligned, disabled with `blocked` as its
-/// reason, pushing `msg` and closing the menu when clicked.
-pub(super) fn item(
-    ui: &mut egui::Ui,
-    keys: &Keymap,
-    label: impl Into<WidgetText>,
-    key: Option<BindingId>,
-    blocked: Option<&str>,
-    msg: Msg,
-    msgs: &mut Vec<Msg>,
-) {
-    if clicked(ui, label, hint(keys, key), blocked) {
-        msgs.push(msg);
-        ui.close_menu();
-    }
-}
-
-/// A check item: a check box showing `on`, then `label`, with `key`'s current key on the right;
+/// A check item: a check box showing `on`, then `label`, with the key `hint` on the right;
 /// disabled with `blocked` as its reason. Returns whether it was clicked (the caller acts and
 /// closes the menu). Screen readers get a checkbox with its state.
-pub(super) fn check_item(ui: &mut egui::Ui, keys: &Keymap, label: &str, on: bool, key: Option<BindingId>, blocked: Option<&str>) -> bool {
+pub(super) fn check_item(ui: &mut egui::Ui, label: &str, on: bool, hint: String, blocked: Option<&str>) -> bool {
     let font = TextStyle::Button.resolve(ui.style());
     // Placeholder colour: the button paints the text in its own interaction colour.
     let mut job = egui::text::LayoutJob::simple_singleline(label.to_owned(), font, Color32::PLACEHOLDER);
@@ -37,7 +19,7 @@ pub(super) fn check_item(ui: &mut egui::Ui, keys: &Keymap, label: &str, on: bool
         first.leading_space = gutter;
     }
     let enabled = blocked.is_none();
-    let r = reason::menu_button(ui, job, hint(keys, key), ItemState::blocked_by(blocked));
+    let r = reason::menu_button(ui, job, hint, ItemState::blocked_by(blocked));
     let pad = ui.spacing().button_padding.x;
     let gutter_rect = Rect::from_min_size(pos2(r.rect.left() + pad, r.rect.top()), vec2(ui.spacing().icon_width, r.rect.height()));
     paint_check_box(ui, gutter_rect, on, r.hovered() && enabled);
@@ -51,9 +33,10 @@ pub(super) fn clicked(ui: &mut egui::Ui, label: impl Into<WidgetText>, shortcut:
     reason::menu_button(ui, label, shortcut, ItemState::blocked_by(blocked)).clicked()
 }
 
-/// The key text an item shows for `key`: its first key in the keymap, or nothing.
-pub(in crate::ui) fn hint(keys: &Keymap, key: Option<BindingId>) -> String {
-    key.and_then(|k| keys.hint(k)).unwrap_or_default().to_owned()
+/// The key text an item shows for its `chord` (the binding's first key, `menu_model::Item`), or
+/// nothing.
+pub(in crate::ui) fn hint(chord: Option<Chord>) -> String {
+    chord.map(|c| c.text()).unwrap_or_default()
 }
 
 /// A submenu, or while `blocked` a disabled plain item with the info mark and no arrow (it

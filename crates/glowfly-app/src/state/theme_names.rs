@@ -6,7 +6,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{BuiltinTheme, ThemeChoice, ThemeFile};
 
 /// A built-in theme's name.
-pub(in crate::ui) fn builtin(t: Lang, b: BuiltinTheme) -> &'static str {
+pub(crate) fn builtin(t: Lang, b: BuiltinTheme) -> &'static str {
     match b {
         BuiltinTheme::Dark => t.tr("prefs.ui.theme.name.dark"),
         BuiltinTheme::Light => t.tr("prefs.ui.theme.name.light"),
@@ -19,7 +19,7 @@ pub(in crate::ui) fn builtin(t: Lang, b: BuiltinTheme) -> &'static str {
 }
 
 /// A choice's name: Match system, a built-in's name or a theme file's id.
-pub(in crate::ui) fn choice(t: Lang, c: &ThemeChoice) -> String {
+pub(crate) fn choice(t: Lang, c: &ThemeChoice) -> String {
     match c {
         ThemeChoice::System => t.tr("prefs.ui.theme.name.system").to_owned(),
         ThemeChoice::Custom(id) => id.clone(),
@@ -28,7 +28,7 @@ pub(in crate::ui) fn choice(t: Lang, c: &ThemeChoice) -> String {
 }
 
 /// A theme file's entry: its name, marked when it has problems.
-pub(in crate::ui) fn file_entry(t: Lang, f: &ThemeFile) -> String {
+pub(crate) fn file_entry(t: Lang, f: &ThemeFile) -> String {
     if f.problems.is_empty() { f.name.clone() } else { t.trf("prefs.ui.theme.has_problems", &[("name", &f.name)]) }
 }
 

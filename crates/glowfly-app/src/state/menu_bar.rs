@@ -1,6 +1,7 @@
-//! What the menu bar's items say and whether they are enabled (ui/menu_bar/ draws them): the
+//! What the menu bar's items say and whether they are enabled (`menu_model.rs` gathers them): the
 //! Window menu's key hints, the zoom limits, the Edit menu's copy items and About's version text.
 
+use super::selection::MultiSelection;
 use super::{AppState, Selection};
 use crate::keymap::{BindingId, Chord, KeyName, Keymap};
 use crate::state::git_env::GitState;
@@ -18,12 +19,23 @@ pub const LICENSE: &str = env!("CARGO_PKG_LICENSE");
 
 /// The Window menu's key for tab `i` of `len`: Go to tab's key with the tab's digit for the first
 /// eight, the Go to the last tab key for a last tab beyond them, else none.
-pub fn tab_hint(keys: &Keymap, i: usize, len: usize) -> Option<String> {
+pub fn tab_chord(keys: &Keymap, i: usize, len: usize) -> Option<Chord> {
     if i < 8 {
         let first = keys.chords(BindingId::GoToTab).first()?;
-        return Some(Chord { key: KeyName::Digit(i as u8 + 1), ..*first }.text());
+        return Some(Chord { key: KeyName::Digit(i as u8 + 1), ..*first });
     }
-    if i + 1 == len { keys.hint(BindingId::LastTab).map(str::to_owned) } else { None }
+    if i + 1 == len { keys.chords(BindingId::LastTab).first().copied() } else { None }
+}
+
+/// The binding whose key `tab_chord` shows for tab `i` of `len`.
+pub fn tab_binding(i: usize, len: usize) -> Option<BindingId> {
+    if i < 8 {
+        Some(BindingId::GoToTab)
+    } else if i + 1 == len {
+        Some(BindingId::LastTab)
+    } else {
+        None
+    }
 }
 
 /// Why Zoom in, Zoom out and Reset zoom are disabled at zoom `level`, in that order.
@@ -41,7 +53,7 @@ pub fn zoom_blocked(t: Lang, level: u16) -> [Option<String>; 3] {
 pub enum ShaCopy {
     /// One commit's full SHA.
     One(String),
-    /// A multi-selection of this many commits (`ui::menus::copy_shas` joins them).
+    /// A multi-selection of this many commits (`shas_text` joins them).
     Many(usize),
 }
 
@@ -52,6 +64,14 @@ impl ShaCopy {
             ShaCopy::Many(n) => t.trn("menu.edit.copy_shas", *n, &[]),
         }
     }
+}
+
+/// The selected commits' full SHAs, one per line, newest first.
+pub fn shas_text(m: &MultiSelection) -> String {
+    m.oids.iter().map(|o| o.to_string()).collect::<Vec<_>>().join(
+        "
+",
+    )
 }
 
 /// Copy commit SHA for the selection, or why it is disabled.

@@ -5,6 +5,25 @@ use super::*;
 use crate::state::git_env::GitState;
 use glowfly_core::git_version::GitInfo;
 
+/// The key text the Window menu shows for tab `i` of `len`.
+fn tab_hint(keys: &Keymap, i: usize, len: usize) -> Option<String> {
+    tab_chord(keys, i, len).map(|c| c.text())
+}
+
+#[test]
+fn tab_chords_follow_the_binding_they_name() {
+    let keys = Keymap::default();
+    for len in [9, 12] {
+        for i in 0..12 {
+            let first = tab_binding(i, len).and_then(|b| keys.chords(b).first().copied());
+            let want = if i < 8 { first.map(|c| Chord { key: KeyName::Digit(i as u8 + 1), ..c }) } else { first };
+            assert_eq!(tab_chord(&keys, i, len), want, "tab {i} of {len}");
+        }
+    }
+    assert_eq!(tab_binding(8, 9), Some(BindingId::LastTab));
+    assert_eq!(tab_binding(8, 12), None);
+}
+
 #[test]
 fn tab_hints_come_from_the_go_to_tab_keys() {
     let mut keys = Keymap::default();

@@ -31,6 +31,7 @@ second one next to it.
 | Notifications | WinRT toasts; Focus Assist can hide them | Notification Center; Do Not Disturb can hide them | freedesktop notifications over D-Bus; needs a notification server |
 | git builds | Git for Windows (MinGW), often a newer version | Apple's `/usr/bin/git` (older) or Homebrew's | Whatever the distribution ships, sometimes old |
 | Window frame | Drawn by Glowfly: no system decorations; its own title bar, window buttons, resize edges and border, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Glowfly's title bar | The system frame, with Glowfly's menu bar and tab bar below it |
+| Menus | The drawn title bar's menu button | The system menu bar (the app menu, then File, Edit, View, Window and Help) and the title bar's menu button | The in-window menu bar, which can be hidden |
 
 ## Rules
 
@@ -439,6 +440,27 @@ second one next to it.
    drops moves and resizes and turns Maximize or Restore into leaving full screen, the middle
    window button reads Restore, and `caption_geometry` leaves out the Maximize rect (no Snap
    Layouts). View > Full screen stays reachable on every OS.
+
+### Menus
+
+1. **macOS shows Glowfly's menus in the system menu bar** (`Chrome::native_menu`), planned by
+   `state/menu_native.rs` from the same `state/menu_model.rs` the drawn menus come from, with
+   winit's default app menu turned off (`native_menu::event_loop_hook`). No AppKit item ends the
+   app without a close request: the app menu's Quit sends `AppMsg::Quit`, which asks first while
+   a git operation or sync runs.
+2. **The native menus show the keymap's keys but never act on a key.** Every menu's delegate
+   answers `menuHasKeyEquivalent:forEvent:target:action:` with NO, so each press reaches the
+   window and the keymap, whose context rules and text fields decide (Cmd+Z in the commit message
+   undoes text; Preferences > Keyboard can record Cmd+Q). Only Cmd+H and Option+Cmd+H go to
+   AppKit's Hide and Hide Others, so a Glowfly binding on those keys can't fire on macOS.
+3. **A click is queued by tag** (`platform/native_menu.rs`, tag = generation << 32 | item index)
+   and becomes the drawn item's action on the next frame. The menus are updated in place while
+   only titles, states and keys change; a change of rows builds them anew under a new
+   generation, and clicks on the old menus are dropped.
+4. **The in-window menu bar and its Show menu bar setting exist only with the system frame**
+   (`Chrome::drawn` hides them); a drawn title bar opens the same menus from its menu button.
+5. **Known gap:** the Dock menu's Quit and logging out end the app through AppKit's `terminate:`
+   without the quit question (winit's application delegate owns `applicationShouldTerminate:`).
 
 ### Watching and refresh
 

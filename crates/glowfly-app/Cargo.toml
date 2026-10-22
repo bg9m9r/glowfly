@@ -34,11 +34,14 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter", "chrono"] }
 windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_System_Registry", "Win32_UI_Accessibility", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 raw-window-handle = "0.6"
 
-# Folders and links macOS hands Glowfly.app as Apple events (src/platform/macos_events.rs).
+# Folders and links macOS hands Glowfly.app as Apple events (src/platform/macos_events.rs), and
+# the system menu bar showing Glowfly's menus (src/platform/macos_menu.rs).
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSAppleEventDescriptor", "NSAppleEventManager", "NSNotification", "NSString", "NSURL"] }
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSMenu", "NSMenuItem", "NSEvent", "NSCell"] }
+# Turns off winit's default app menu (src/platform/native_menu.rs).
+winit = { version = "0.30", default-features = false }
 
 [dev-dependencies]
 egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"] }

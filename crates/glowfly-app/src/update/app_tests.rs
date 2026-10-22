@@ -170,3 +170,29 @@ fn edit_menu_copy_items_follow_the_selection() {
     assert_eq!(copy_branch(&st), Err(NO_BRANCH), "detached HEAD");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn the_app_menus_quit_asks_while_a_push_runs() {
+    use crate::state::menu_model::build;
+    use crate::state::menu_native::{NEntry, plan, take_picked};
+    // Chooses the macOS app menu's Quit and handles what it sends.
+    let pick = |st: &mut AppState| -> Vec<Effect> {
+        let p = plan(&build(st), st.settings.lang(), 1);
+        let Some(NEntry::Item { tag, title, .. }) = p.app.last() else { panic!("Quit ends the app menu") };
+        assert_eq!(title, "Quit Glowfly");
+        let mut menus = build(st);
+        let mut msgs = Vec::new();
+        for action in take_picked(&mut menus, 1, &[*tag]) {
+            action.run(st, &mut msgs);
+        }
+        assert!(matches!(&msgs[..], [Msg::App(AppMsg::Quit)]));
+        msgs.into_iter().flat_map(|m| run(st, m)).collect()
+    };
+    let mut st = super::super::test_mods::quit_tests::pushing();
+    let fx = pick(&mut st);
+    assert!(crate::state::quit_confirm::asking(&st), "the quit question shows");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Ui(UiEffect::CloseWindow))), "{fx:?}");
+    let mut st = state();
+    let fx = pick(&mut st);
+    assert!(matches!(&fx[..], [Effect::Ui(UiEffect::CloseWindow)]), "{fx:?}");
+}

@@ -1,9 +1,10 @@
 //! The shell: owns the state, the UI-thread caches and the runner, feeds the views' messages and
 //! the runner's results through `update`, runs the resulting effects, and handles the few
 //! effects that need the window. On the drawn Windows frame it also trades state with the OS
-//! glue each frame (`app_native.rs`).
+//! glue each frame (`app_native.rs`), and on macOS it runs the system menu bar's picks and
+//! hands it the menus (`app_menu.rs`).
 
-use super::{UiCache, app_native, avatars, build_status, layout, shortcuts, theme};
+use super::{UiCache, app_menu, app_native, avatars, build_status, layout, shortcuts, theme};
 use crate::effect::{Effect, UiEffect};
 use crate::msg::AppMsg;
 use crate::msg::AvatarMsg;
@@ -12,6 +13,7 @@ use crate::msg::PrefsMsg;
 use crate::msg::RecentMsg;
 use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
+use crate::platform::native_menu::NativeMenu;
 use crate::platform::native_window::NativeWindow;
 use crate::runner::Runner;
 use crate::state::AppState;
@@ -39,6 +41,8 @@ pub struct GlowflyApp {
     /// The drawn Windows frame's glue with the OS (Snap Layouts, the system menu, Mica); None
     /// elsewhere and in tests.
     native: Option<NativeWindow>,
+    /// The macOS system menu bar showing Glowfly's menus; None elsewhere and in tests.
+    menu: Option<NativeMenu>,
     /// The real-input smoke tests' state file (`smoke_probe.rs`); None unless asked for, and in
     /// tests.
     probe: Option<crate::smoke_probe::ProbeWriter>,
@@ -77,6 +81,7 @@ impl GlowflyApp {
         // Only the real app draws its own frame where the OS calls for it; test apps keep System.
         app.st.view.chrome = crate::state::window_chrome::Chrome::current();
         app.native = NativeWindow::install(cc, app.st.view.chrome, mica, ctx.clone());
+        app.menu = NativeMenu::install(app.st.view.chrome, ctx.clone());
         if probe.is_some() {
             // Before the first frame, so the probe sees named widgets from the start.
             super::probe::enable(ctx);
@@ -127,6 +132,7 @@ impl GlowflyApp {
             results,
             theme: theme::ThemeCache::default(),
             native: None,
+            menu: None,
             probe: None,
             #[cfg(test)]
             drained: 0,
@@ -226,6 +232,9 @@ impl GlowflyApp {
         if let Some(native) = &mut self.native {
             app_native::before_draw(native, &mut self.st, self.theme.mica_tint(), &mut native_msgs);
         }
+        if let Some(menu) = &mut self.menu {
+            app_menu::picked(menu, &mut self.st, &mut native_msgs);
+        }
         while let Ok(msg) = self.results.try_recv() {
             #[cfg(test)]
             {
@@ -261,6 +270,9 @@ impl GlowflyApp {
 
         for msg in msgs {
             self.dispatch(ctx, msg);
+        }
+        if let Some(menu) = &mut self.menu {
+            app_menu::sync(menu, &self.st);
         }
         // The smoke tests' opt-in state file: a snapshot of this pass, written by its own
         // thread (`smoke_probe.rs`), never by a view. A changed one asks for one more frame, so

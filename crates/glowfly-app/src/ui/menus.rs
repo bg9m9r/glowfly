@@ -210,8 +210,5 @@ pub(super) fn patch_button(
 
 /// Copies the selected commits' full SHAs, one per line, newest first.
 pub(super) fn copy_shas(m: &MultiSelection) -> Msg {
-    Msg::Copy(m.oids.iter().map(|o| o.to_string()).collect::<Vec<_>>().join(
-        "
-",
-    ))
+    Msg::Copy(crate::state::menu_bar::shas_text(m))
 }

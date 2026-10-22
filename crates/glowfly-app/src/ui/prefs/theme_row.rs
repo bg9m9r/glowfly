@@ -3,10 +3,10 @@
 
 use super::{help, row};
 use crate::msg::Msg;
+use crate::state::theme_names;
 use crate::themes::{ThemeMsg, ThemeState};
 use crate::ui::theme::type_scale;
 use crate::ui::theme::{color, custom};
-use crate::ui::theme_names;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;

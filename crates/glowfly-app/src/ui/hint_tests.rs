@@ -58,10 +58,11 @@ fn commit_tip_reads_the_keymap() {
 #[test]
 fn menu_bar_items_name_the_current_key() {
     let mut keys = Keymap::default();
-    assert_eq!(super::menu_bar::hint(&keys, Some(I::Undo)), keys.hint(I::Undo).unwrap());
+    let hint = |keys: &Keymap| super::menu_bar::hint(keys.chords(I::Undo).first().copied());
+    assert_eq!(hint(&keys), keys.hint(I::Undo).unwrap());
     keys.set(I::Undo, f8());
-    assert_eq!(super::menu_bar::hint(&keys, Some(I::Undo)), "F8");
+    assert_eq!(hint(&keys), "F8");
     keys.set(I::Undo, Vec::new());
-    assert_eq!(super::menu_bar::hint(&keys, Some(I::Undo)), "");
-    assert_eq!(super::menu_bar::hint(&keys, None), "");
+    assert_eq!(hint(&keys), "");
+    assert_eq!(super::menu_bar::hint(None), "");
 }

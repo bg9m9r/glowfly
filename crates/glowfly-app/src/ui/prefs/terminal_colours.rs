@@ -5,9 +5,9 @@
 
 use super::{fit, help, row};
 use crate::msg::Msg;
+use crate::state::theme_names;
 use crate::themes::{ThemeMsg, ThemeState};
 use crate::ui::theme::{ansi, color, terminal_scheme, type_scale};
-use crate::ui::theme_names;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;

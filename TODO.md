@@ -1040,10 +1040,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 - Place comments on their lines when the local source branch differs from the head (map the line
   numbers across the newer commits)
 
-### Menu bar
-
-- The native macOS application menu (the global menu bar with the standard app menu) instead of the in-window bar. winit's default app menu binds Cmd+Q to `terminate:`, which may exit without a close request, so the quit question can be skipped there
-
 ### Packaging and updates
 
 - More formats: Flatpak
@@ -2753,7 +2749,15 @@ here, under the item they grew from.
 - Quit anyway stops a stoppable job (fetch) first, so its lock files are cleaned up
 - Also ask before quitting while a sparse clone, a terminal program or other background work runs
 - Keep the open dialog under the quit question instead of replacing it
-- On macOS, send the app menu's Quit (Cmd+Q) through the quit question
+- On macOS, the Dock menu's Quit and logging out go through the quit question (needs `applicationShouldTerminate:`, which winit's application delegate owns)
+- macOS menu keys (Cmd+Q, Cmd+T…) work while the window is minimized and there is no key window
+- Cut, Copy, Paste and Select All in the macOS Edit menu, sent to the focused text field
+- Minimize (Cmd+M), Zoom and Bring All to Front in the macOS Window menu
+- Keep AppKit from adding its own Enter Full Screen, dictation or emoji items beside Glowfly's
+- Mark folders that are gone in the macOS Open recent menu (the drawn rows' "not found" tooltip), and remove a recent entry from it
+- Preferences > Keyboard warns on macOS that Cmd+H and Option+Cmd+H hide Glowfly instead of running a binding
+- Section headers (macOS 14's `NSMenuItem.sectionHeader`) instead of disabled title items for Diff layout, Diff shows, Favorites and Recent
+- A Dock menu listing the open tabs and recent repositories
 
 ### Packaging and updates
 

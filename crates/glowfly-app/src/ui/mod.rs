@@ -150,7 +150,6 @@ mod tag_dialog;
 mod tags;
 mod terminal;
 pub mod theme;
-mod theme_names;
 mod title_bar;
 mod toasts;
 mod toolbar;
@@ -542,6 +541,7 @@ use glowfly_core::spell::Speller;
 
 mod app;
 mod app_mark;
+mod app_menu;
 mod app_native;
 pub use app::GlowflyApp;
 #[cfg(test)]

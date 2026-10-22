@@ -13,7 +13,7 @@ use crate::msg::{Msg, RecentMsg, RepoMsg};
 use crate::state::AppState;
 use crate::state::repo_colours::listed_colour;
 use crate::state::repo_lists::{
-    clear_recent_confirm, favorite_keys_note, favorite_label, favorites, is_favorite, is_missing, is_open, missing_counts, recent_rows,
+    clear_recent_msg, favorite_keys_note, favorite_label, favorites, is_favorite, is_missing, is_open, missing_counts, recent_rows,
     remove_missing_msg, unopened_favorites,
 };
 use crate::ui::theme::type_scale;
@@ -94,7 +94,7 @@ pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                     header(ui, t.tr("repos.recent.header"));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if small_link(ui, t.tr("repos.clear.link")) {
-                            msgs.push(clear_confirm(st));
+                            msgs.push(clear_recent_msg(st));
                         }
                         if missing_recent > 0 {
                             remove_missing_link(ui, st, msgs);
@@ -119,11 +119,6 @@ pub fn recent_submenu(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     sections(ui, st, msgs, false);
 }
 
-/// Whether there is a favorite or a recent repository to list.
-pub fn has_entries(st: &AppState) -> bool {
-    !favorites(&st.settings).is_empty() || !recent_rows(st).is_empty()
-}
-
 fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separator: bool) {
     let t = st.settings.lang();
     let favs = favorites(&st.settings);
@@ -145,7 +140,7 @@ fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separato
         for p in recent {
             row(ui, st, p, Place::Menu, Section::Recent, false, msgs);
         }
-        menu_item(msgs, ui, t.tr("repos.menu.clear_recent"), clear_confirm(st));
+        menu_item(msgs, ui, t.tr("repos.menu.clear_recent"), clear_recent_msg(st));
     }
 }
 
@@ -161,13 +156,6 @@ fn remove_missing_link(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     if small_link(ui, st.settings.lang().tr("repos.remove_missing.link")) {
         msgs.extend(remove_missing_msg(st));
     }
-}
-
-/// The question asked before the Recent list is emptied.
-fn clear_confirm(st: &AppState) -> Msg {
-    let t = st.settings.lang();
-    let (title, body) = clear_recent_confirm(t, st.recent.len());
-    Msg::confirm(&title, body, t.tr("repos.clear_recent.button"), Msg::Recent(RecentMsg::ClearRecent))
 }
 
 /// A weak "open" tag; clicking it switches to the tab showing the repository (`open`).

@@ -120,6 +120,19 @@ pub fn clear_recent_confirm(t: Lang, n: usize) -> (String, String) {
     (t.tr("repos.clear_recent.title").to_owned(), t.trn("repos.clear_recent.body", n, &[]))
 }
 
+/// The question asked before the Recent list is emptied.
+pub fn clear_recent_msg(st: &AppState) -> crate::msg::Msg {
+    use crate::msg::{Msg, RecentMsg};
+    let t = st.settings.lang();
+    let (title, body) = clear_recent_confirm(t, st.recent.len());
+    Msg::confirm(&title, body, t.tr("repos.clear_recent.button"), Msg::Recent(RecentMsg::ClearRecent))
+}
+
+/// Whether there is a favorite or a recent repository to list.
+pub fn has_entries(st: &AppState) -> bool {
+    !favorites(&st.settings).is_empty() || !recent_rows(st).is_empty()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -202,6 +215,13 @@ mod tests {
         assert_eq!(favorite_keys_note(Lang::En, &keys).as_deref(), Some("The first opens with Ctrl+Alt+1."));
         keys.set(FAVORITE_BINDINGS[0], Vec::new());
         assert_eq!(favorite_keys_note(Lang::En, &keys), None);
+    }
+
+    #[test]
+    fn has_entries_needs_a_favorite_or_a_recent_row() {
+        assert!(!has_entries(&state(&[], &[])));
+        assert!(has_entries(&state(&["/w/a"], &[])));
+        assert!(has_entries(&state(&[], &["/w/b"])));
     }
 
     #[test]

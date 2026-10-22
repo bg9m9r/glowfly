@@ -54,6 +54,7 @@ const PROSE_ROLES: &[&str] = &["tip", "help", "warn", "hint", "body", "intro", "
 const EXEMPT_KEYS: &[(&str, &str)] = &[
     ("prefs.ui.theme.name.", "theme names are proper names (Garden Dark, High Contrast Light)"),
     ("prefs.terminal.shell.", "shell names are product names (Command Prompt, Git Bash)"),
+    ("menu.app.", "the macOS app menu keeps the titles macOS gives those items in every app (Hide Others, Show All)"),
 ];
 
 /// Label call sites under `src/ui/`; the first string literal after each is checked.
