@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-22 11:05 · **Deep links: receive links and folders as Apple events on macOS**: Glowfly.app declares the glowfly:// scheme and folders in its Info.plist and answers the Get URL and Open Documents Apple events, so links, Open With, a Dock drop and `open -a Glowfly <folder>` open in the running window (`7804ce96`)
 - 2026-10-22 10:20 · **Language**: On Linux and other Unix, the System language follows gettext's order and ignores LANGUAGE when the message locale is C or POSIX (including C.UTF-8), so LANG=C.UTF-8 LANGUAGE=de stays English (`514834b7`)
 - 2026-10-22 09:43 · **Packaging and updates**: Install and restart checks the download's SHA-256 again, then runs the verified MSI or swaps the portable program in place through a small helper and relaunches Glowfly, asking first about unsaved work and a running job (`959db2dc`)
 - 2026-10-22 09:39 · **Menu bar**: Alt+letter opens a menu with underlined mnemonics and arrow-key navigation, a rebindable Quit key sits on File > Quit, and quitting asks first while a git operation or sync runs (`f30153f7`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-21 23:13 · **Working-changes panel, step by step**: While a merge, rebase, cherry-pick, revert or patch series is in progress the WIP panel shows numbered steps, Resolve conflicts, Check what goes in, and Commit the merge or Continue pinned at the bottom with Skip and Edit remaining steps, under a heading with a quiet Abort; finished steps fold to one line and reopen with a chevron, and the plain panel gets plain headers with counts, row actions at the row end on hover or for the current row, no pill before the name and the commit box with Amend pinned at the bottom (`c5cd5746`)
 - 2026-10-21 22:45 · **Terminal colour themes**: Theme files get 20 terminal_* keys (background, text, cursor, selection and the 16 basic colours) that the built-ins define with their current values, and Preferences > Terminal > Colors picks Match app theme, any built-in theme's terminal colours or an imported Windows Terminal (scheme or settings.json) or iTerm2 .itermcolors scheme, with a quiet line naming the colours that are hard to read on its background (`e0e27c43`)
 - 2026-10-21 16:26 · **Stash improvements**: The Stash dialog gets Keep staged changes (git stash push --keep-index) for All changes and Selected files, and a chosen staged rename is stashed whole, its old path put back from HEAD after the stash and refused beforehand when something is on disk there, with Undo and redo covering both (`e05b9715`)
-- 2026-10-21 14:46 · **CI / build status**: per-check list with states, durations and Required tags in the pull request panel (`718a895c`)
 
 ---
 
