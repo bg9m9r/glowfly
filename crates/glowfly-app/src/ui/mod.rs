@@ -325,6 +325,8 @@ mod snapshot_tests_mica;
 #[cfg(test)]
 mod snapshot_tests_onboarding;
 #[cfg(test)]
+mod snapshot_tests_op_card;
+#[cfg(test)]
 mod snapshot_tests_op_preview;
 #[cfg(test)]
 mod snapshot_tests_palette;

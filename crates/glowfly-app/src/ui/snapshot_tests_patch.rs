@@ -171,7 +171,7 @@ fn am_banner_conflict() {
     {
         assert!(h.query_by_label(text).is_some(), "{text}");
     }
-    assert!(h.get_by_label("Continue").is_disabled(), "conflicted files remain");
+    assert!(h.query_by_label("Continue").is_none(), "no Continue while conflicted files remain");
     assert!(!h.get_by_label("Skip patch").is_disabled());
     assert!(h.query_by_label("View conflicts").is_some());
     h.check_snapshot("am_banner_conflict");

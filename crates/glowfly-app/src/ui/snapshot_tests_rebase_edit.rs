@@ -171,7 +171,7 @@ fn rebase_banner_conflict() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("rebase_banner_conflict");
-    assert!(h.get_by_label("Continue").is_disabled(), "conflicted files remain");
+    assert!(h.query_by_label("Continue").is_none(), "no Continue while conflicted files remain");
     assert!(!h.get_by_label("Skip commit").is_disabled());
     drop(h);
     remove_fixture(&dir);

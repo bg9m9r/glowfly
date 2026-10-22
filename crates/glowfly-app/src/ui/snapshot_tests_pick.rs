@@ -48,7 +48,7 @@ fn mainline_radio_then_enter() {
 
 /// The fixture stopped in a cherry-pick: "Fix build on Windows" picked onto a branch from "Add
 /// app skeleton" that changed app.txt too.
-fn stopped_pick(name: &str) -> (AppState, PathBuf) {
+pub(super) fn stopped_pick(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     let d = "2026-01-11T10:00:00+00:00";
     let snap = st.snap.as_ref().unwrap();

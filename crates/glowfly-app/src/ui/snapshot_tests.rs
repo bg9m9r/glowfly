@@ -133,7 +133,7 @@ pub(super) fn harness_sized(st: AppState, dark: bool, size: egui::Vec2) -> Harne
     harness_palette_sized(st, if dark { theme::GARDEN_DARK } else { theme::GARDEN_LIGHT }, size)
 }
 
-fn harness_palette_sized(mut st: AppState, p: Palette, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
+pub(super) fn harness_palette_sized(mut st: AppState, p: Palette, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;

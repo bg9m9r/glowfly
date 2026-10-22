@@ -33,12 +33,12 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let open = OpenFile { diff: opening.or(st.diff.as_ref().map(|(t, _)| t)), conflict: st.conflict.as_ref().map(|c| c.path.as_str()) };
 
     let conflicted: Vec<&FileEntry> = snap.unstaged.iter().filter(|f| f.status == '!').collect();
-    super::details_banner::op_banner(ui, st, snap, &conflicted, msgs);
+    let resolved = st.conflict_files.resolved_rows(snap);
+    super::details_banner::op_banner(ui, st, snap, &conflicted, resolved.len(), msgs);
     super::path_warnings::banner(ui, st.settings.lang(), snap);
 
     // The lists shown share what the commit box leaves: Unstaged and Staged, plus Conflicted
     // and Resolved Files while there are any.
-    let resolved = st.conflict_files.resolved_rows(snap);
     let lists = 2 + usize::from(!conflicted.is_empty()) + usize::from(!resolved.is_empty());
     let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / lists as f32).max(60.0);
     let tools = ToolAvail::of(st);

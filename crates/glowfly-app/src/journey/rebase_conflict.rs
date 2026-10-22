@@ -31,12 +31,12 @@ fn rebase_conflict_resolved_in_merge_view() {
     assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);
     assert!(disk::work_text(&repo, "f.txt").unwrap().contains("<<<<<<<"));
 
-    // step 2: the working tree's banner names the conflict and holds Continue back; viewing it
-    // changes nothing on disk.
+    // step 2: the working tree's card names the conflict and leads with View conflicts, with no
+    // Continue until it is resolved; viewing it changes nothing on disk.
     j.click("View uncommitted changes", Region::Details, Pick::Only);
-    j.see("1 conflicted file", Region::Details);
+    j.see("1 conflicted file left", Region::Details);
     j.see("View conflicts", Region::Details);
-    j.disabled("Continue", Region::Details);
+    j.absent("Continue", Region::Details);
     j.see("Abort rebase", Region::Details);
     assert!(rebasing(&repo));
     assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);
@@ -56,7 +56,7 @@ fn rebase_conflict_resolved_in_merge_view() {
     assert!(disk::conflicted_paths(&repo).is_empty());
     assert_eq!(disk::index_text(&repo, "f.txt").as_deref(), Some("topic\n"));
     assert!(rebasing(&repo));
-    j.absent("1 conflicted file", Region::Details);
+    j.absent("1 conflicted file left", Region::Details);
     j.enabled("Continue", Region::Details);
 
     // step 4: continuing finishes the rebase: topic's commit now sits on main's tip.

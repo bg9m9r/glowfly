@@ -87,7 +87,7 @@ fn wip_merge_banner_ready() {
     h.run();
     h.check_snapshot("wip_merge_banner_ready");
     assert_eq!(h.get_all_by_label("Commit merge").filter(|n| !n.is_disabled()).count(), 2, "the banner's and the commit button");
-    assert!(h.query_by_label("All conflicts resolved").is_some());
+    assert_eq!(h.get_all_by_label("All conflicts resolved").count(), 2, "the strip and the card");
     drop(h);
     remove_fixture(&dir);
 }
