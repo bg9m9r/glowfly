@@ -268,6 +268,8 @@ mod snapshot_tests_gitflow;
 #[cfg(test)]
 mod snapshot_tests_gitflow_resume;
 #[cfg(test)]
+mod snapshot_tests_graph_bands;
+#[cfg(test)]
 mod snapshot_tests_graph_double_click;
 #[cfg(test)]
 mod snapshot_tests_graph_ref_menu;

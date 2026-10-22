@@ -251,7 +251,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     }
                 }
 
-                let fg = if dim { color::text().gamma_multiply(0.35) } else { color::text() };
+                // A selected row's message is in `strong`, as the sidebar's selected rows are.
+                let ink = if selected { color::strong() } else { color::text() };
+                let fg = if dim { ink.gamma_multiply(0.35) } else { ink };
                 let weak = if dim { color::weak().gamma_multiply(0.35) } else { color::weak() };
                 let show_body = match cols_cfg.description {
                     DescriptionMode::Always => true,

@@ -26,7 +26,7 @@ pub const DUSK: Palette = Palette {
     input_border: hex(0x89839e),
     dialog_border: hex(0x89839e),
     hover: hex(0x332d44),
-    selected: hex(0x503e1d),
+    selected: hex(0x573b11),
     text: hex(0xe6e5ef),
     strong: hex(0xffffff),
     weak: hex(0xb6b3c8),

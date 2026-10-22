@@ -1192,7 +1192,10 @@ here, under the item they grew from.
 - Glowfly themes (Dusk and Dawn): redraw the view snapshots in Dusk and Dawn once the pair is
   settled (they draw in the Garden pair for now); a Midnight or Ember variant only if it reads
   clearly apart from Dusk; theme-file keys for the colour-blind branch set; a gold distance test
-  for custom theme files whose accent lands near Orange or Gold
+  for custom theme files whose accent lands near Orange or Gold; Dusk's warm ref chips
+  (main's 40% gold #735c3c, Orange's #503825, Lime's #414b3a) are dark tints of warm hues and
+  still read tan or olive: try an indigo chip with a lane-coloured edge and text for warm lanes
+  (row bands, toolbar groups and the selected row came out of brown in fix/dusk-no-brown)
 
 ### New directions
 

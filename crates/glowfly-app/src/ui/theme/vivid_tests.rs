@@ -3,7 +3,7 @@
 
 use super::bands::{ATTENTION_BAND, accent_band};
 use super::color::{self, Palette};
-use super::contrast::{mix, oklch, ratio};
+use super::contrast::{self, mix, oklch, ratio};
 use super::tests::rgb;
 use super::*;
 use eframe::egui::Color32;
@@ -219,9 +219,10 @@ fn toolbar_backing_is_a_quiet_accent_tint() {
     for t in BuiltinTheme::ALL {
         let p = builtin(t);
         let (back, hover, pressed) = (p.tool_backing(), p.tool_hover(), p.tool_pressed());
-        assert_eq!(back, mix(p.toolbar, p.accent, 0.09), "{t:?}");
+        assert_eq!(back, contrast::tint(p.toolbar, p.accent, 0.09, p.dark), "{t:?}");
+        // Quiet: no more colourful than Dusk's own neutrals (its hover is 0.041).
         let chroma = oklch(back).1;
-        if chroma > 0.035 {
+        if chroma > 0.04 {
             failures.push(format!("{t:?}: the backing's chroma is {chroma:.3}"));
         }
         let min = if high(t) { 7.0 } else { 4.5 };

@@ -32,7 +32,6 @@ pub fn lightness(c: Color32) -> f64 {
 }
 
 /// OKLCH (lightness 0 to 1, chroma, hue in degrees 0 to 360) of an sRGB colour.
-#[cfg(test)]
 pub fn oklch(c: Color32) -> (f64, f64, f64) {
     let lin = |v: u8| {
         let s = f64::from(v) / 255.0;
@@ -48,11 +47,58 @@ pub fn oklch(c: Color32) -> (f64, f64, f64) {
     (lightness, a.hypot(bb), bb.atan2(a).to_degrees().rem_euclid(360.0))
 }
 
+/// The opaque sRGB colour of OKLCH (`l`, `c`, `h` in degrees), each channel clipped to the gamut.
+pub fn from_oklch(l: f64, c: f64, h: f64) -> Color32 {
+    let (a, b) = (c * h.to_radians().cos(), c * h.to_radians().sin());
+    let l_ = (l + 0.396_337_777_4 * a + 0.215_803_757_3 * b).powi(3);
+    let m_ = (l - 0.105_561_345_8 * a - 0.063_854_172_8 * b).powi(3);
+    let s_ = (l - 0.089_484_177_5 * a - 1.291_485_548_0 * b).powi(3);
+    let r = 4.076_741_662_1 * l_ - 3.307_711_591_3 * m_ + 0.230_969_929_2 * s_;
+    let g = -1.268_438_004_6 * l_ + 2.609_757_401_1 * m_ - 0.341_319_396_5 * s_;
+    let bl = -0.004_196_086_3 * l_ - 0.703_418_614_7 * m_ + 1.707_614_701_0 * s_;
+    let enc = |v: f64| {
+        let v = v.clamp(0.0, 1.0);
+        let s = if v <= 0.003_130_8 { 12.92 * v } else { 1.055 * v.powf(1.0 / 2.4) - 0.055 };
+        (s * 255.0).round() as u8
+    };
+    Color32::from_rgb(enc(r), enc(g), enc(bl))
+}
+
 /// `a` moved `t` (0 to 1) of the way to `b`, byte by byte in gamma space as egui blends. Opaque.
 pub fn mix(a: Color32, b: Color32, t: f32) -> Color32 {
     let t = t.clamp(0.0, 1.0);
     let lerp = |x: u8, y: u8| (f32::from(x) + (f32::from(y) - f32::from(x)) * t).round() as u8;
     Color32::from_rgb(lerp(a.r(), b.r()), lerp(a.g(), b.g()), lerp(a.b(), b.b()))
+}
+
+/// The least OKLCH chroma that makes a dark surface a coloured field (Dusk's indigo is 0.028 to
+/// 0.036; Garden's green-grey and the high-contrast greys sit under 0.015).
+const COLOURED_FIELD: f64 = 0.02;
+/// How far a tint may turn a coloured dark field's hue, in degrees.
+const HUE_FENCE: f64 = 20.0;
+
+/// Surface `base` tinted `t` (0 to 1) toward `toward`, for the faint tints of a surface: graph
+/// row bands, the toolbar groups' backing, the dialog guide and field fills (docs/COLOUR.md,
+/// "Tinting a surface"). It is [`mix`], except on a dark palette whose `base` is a coloured
+/// field: there a tint toward a far hue (the gold on indigo) would cancel the field's colour and
+/// leave a grey-brown, so the tint keeps the mix's lightness, moves the field's chroma `t` of
+/// the way toward `toward`'s and turns the field's hue at most `HUE_FENCE` degrees toward the
+/// mix's. Light palettes keep the plain mix (a warm tint on pale paper reads as cream, not
+/// brown).
+pub fn tint(base: Color32, toward: Color32, t: f32, dark: bool) -> Color32 {
+    let m = mix(base, toward, t);
+    let (_, bc, bh) = oklch(base);
+    if !dark || bc < COLOURED_FIELD {
+        return m;
+    }
+    let (ml, mc, mh) = oklch(m);
+    let turn = (mh - bh + 540.0).rem_euclid(360.0) - 180.0;
+    if mc >= bc && turn.abs() <= HUE_FENCE {
+        return m;
+    }
+    // The chroma moves `t` of the way toward the tint colour's, as an OKLCH mix would.
+    let c = bc + (oklch(toward).1 - bc).max(0.0) * f64::from(t);
+    from_oklch(ml, mc.max(c), bh + turn.clamp(-HUE_FENCE, HUE_FENCE))
 }
 
 /// `c` seen through a black `backdrop` (only its alpha matters).

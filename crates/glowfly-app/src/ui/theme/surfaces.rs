@@ -47,18 +47,19 @@ impl Tone {
 impl Palette {
     /// The fill of a dialog's text field: `input` with a faint accent tint.
     pub fn field_fill(&self) -> Color32 {
-        mix(self.input, self.accent, FIELD_TINT)
+        contrast::tint(self.input, self.accent, FIELD_TINT, self.dark)
     }
 
     /// The fill of a dialog's side pane (`dialog_frame`'s guide): `panel` tinted toward the
     /// accent.
     pub fn guide_fill(&self) -> Color32 {
-        mix(self.panel, self.accent, GUIDE_TINT)
+        contrast::tint(self.panel, self.accent, GUIDE_TINT, self.dark)
     }
 
-    /// The neutral backing of the toolbar's groups: `toolbar` with a quiet accent tint.
+    /// The neutral backing of the toolbar's groups: `toolbar` with a quiet accent tint (on Dusk,
+    /// a violet step: `contrast::tint` keeps it in the indigo family).
     pub fn tool_backing(&self) -> Color32 {
-        mix(self.toolbar, self.accent, TOOL_TINT)
+        contrast::tint(self.toolbar, self.accent, TOOL_TINT, self.dark)
     }
 
     /// A hovered tool button on the backing.

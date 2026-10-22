@@ -235,8 +235,8 @@ outside the families and unchanged by the brand colour.
   colours to letter badges and counts, branch colours to lines, dots and name pills, repository
   colours to the window chrome, and the coral to "needs you" moments.
 - The coral is the only solid-filled status, and it always comes with the warning mark.
-- The toolbar's groups sit on a neutral backing, `toolbar` mixed 9% toward the accent
-  (`Palette::tool_backing`); a hovered tool is the backing mixed 8% toward `text`, a pressed or
+- The toolbar's groups sit on a neutral backing, `toolbar` tinted 9% toward the accent
+  (`Palette::tool_backing`, a tint as below); a hovered tool is the backing mixed 8% toward `text`, a pressed or
   open one 16% (`tool_hover`, `tool_pressed`). Icons are `text`, or `faint` when disabled; no
   icon has its own colour.
 - The chrome's own marks (fills, icons, chips, strips, lines) use at most three hue families at
@@ -246,6 +246,20 @@ outside the families and unchanged by the brand colour.
   Branch picker's dot) belongs to the branch, not the chrome; banners under the toolbar are
   messages, not chrome. `theme/vivid_tests.rs` keeps status, attention and lane colours out of
   the chrome's files.
+- Tinting a surface: the faint tints of a surface (graph row bands up to 7% toward the row's
+  lane, the toolbar groups' backing 9% toward the accent, the dialog guide 7% and text fields
+  4%) go through `contrast::tint`. It is a plain mix, except on a dark palette whose surface is
+  a coloured field (OKLCH chroma 0.02 or more: Dusk's indigo). There a tint toward a far hue
+  would cancel the field's colour: gold, orange, lime or olive mixed into indigo comes out a
+  warm grey of chroma 0.01 to 0.02, which reads as brown or mud. So the tint keeps the mix's
+  lightness, moves the field's chroma the same fraction toward the tint colour's, and turns the
+  field's hue at most 20 deg toward the mix's. In Dusk every band, the toolbar groups and the
+  guide and field fills stay in the indigo-violet family (hue 270 to 315): warm lanes give a
+  plum-violet band, cool lanes a blue-indigo one, and only the gold accent, the selected row
+  and the lanes' own marks are warm. Light palettes, and dark ones on a near-grey field
+  (Garden dark, high contrast dark), keep the plain mix: a warm tint on pale paper reads as
+  cream, not brown. `theme/tint_tests.rs` checks both.
+- The selected row's message is drawn in `strong`, in the graph as in the side panels.
 - The accent never marks status. Running operations use `progress`, not the accent.
 - Only the accent family (`accent`, `primary`, `primary_border`, `selected`) sits in the
   theme's accent band: the gold band, 72 to 92 deg OKLCH hue, in Dusk and Dawn; the green band,
@@ -261,8 +275,8 @@ outside the families and unchanged by the brand colour.
 - In Dusk, Dawn and the Garden pair, chrome is darker than the base, and raised is at least
   1.08:1 off the panel in every theme.
 
-OKLCH is computed from sRGB with Björn Ottosson's OKLab matrices (`contrast::oklch`, test
-only).
+OKLCH is computed from sRGB with Björn Ottosson's OKLab matrices (`contrast::oklch`, and back
+with `contrast::from_oklch` for `contrast::tint`).
 
 ## 3. Contrast floors
 
@@ -348,7 +362,7 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | hairline (`border`) | #373347 | |
 | input_border, dialog_border | #89839e | |
 | hover | #332d44 | |
-| selected | #503e1d | A bronze wash of the gold |
+| selected | #573b11 | A bronze wash of the gold, turned to the amber edge of the gold band (hue 73, chroma 0.069): a darker straight gold (#503e1d, hue 81) read olive against the indigo |
 | text / strong | #e6e5ef / #ffffff | text 12.9:1 on panel |
 | weak / faint | #b6b3c8 / #9b96ae | 7.9 and 5.6:1 on panel |
 | accent, primary | #f6c159 | The lantern gold, OKLCH 0.84 0.135 82; 9.7:1 on panel |
@@ -507,10 +521,10 @@ The coral (OKLCH hue about 40 deg) and its ink, with the ink's contrast at rest 
 | High contrast dark | #ff8a5c / #22110b | 7.84, 8.53 |
 | High contrast light | #9c3604 / #ffffff | 7.14, 8.22 |
 
-The coral reads at least 3.88:1 on its surroundings (lowest: Dusk's selected row). The tool
-backing is #272225 (Dusk), #dcd7d9 (Dawn), #15261d (Garden dark), #d9dfd3 (Garden light),
+The coral reads at least 3.89:1 on its surroundings (lowest: Dusk's selected row). The tool
+backing is #281f32 (Dusk, a violet step: the plain mix was the grey-brown #272225), #dcd7d9 (Dawn), #15261d (Garden dark), #d9dfd3 (Garden light),
 #1d2a27 (High contrast dark), #d4dedd (High contrast light) and #d7d5bf (Sand), at most OKLCH
-chroma 0.030.
+chroma 0.040.
 
 ### Terminal colours
 

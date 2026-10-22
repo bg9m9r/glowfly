@@ -3,7 +3,7 @@
 //! of a hovered row come from `widgets::row_fill`.
 
 use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::contrast::{mix, ratio};
+use crate::ui::theme::contrast::{ratio, tint};
 use eframe::egui::{Color32, Painter, Rect};
 
 /// How far the band moves from the background toward the lane colour, at most.
@@ -29,7 +29,8 @@ pub(super) fn paint(p: &Painter, rect: Rect, look: RowLook) {
     crate::ui::widgets::row_fill::paint(p, rect, look.selected, look.hovered);
 }
 
-/// The opaque band for a row on a `lane`: the strongest tint up to `BAND_T` that keeps `weak`
+/// The opaque band for a row on a `lane`: the strongest tint (`contrast::tint`, so on Dusk a warm
+/// lane gives a plum-violet step, never a grey-brown) up to `BAND_T` that keeps `weak`
 /// text at 4.5:1, `text` as readable as on the background (up to 7:1) and `faint` text as
 /// readable as on the background (up to 4.5:1). The background itself when no tint does.
 pub(in crate::ui) fn band_color(lane: Color32, pal: &Palette) -> Color32 {
@@ -39,7 +40,7 @@ pub(in crate::ui) fn band_color(lane: Color32, pal: &Palette) -> Color32 {
             && ratio(pal.text, band) >= ratio(pal.text, pal.bg).min(7.0)
             && ratio(pal.faint, band) >= ratio(pal.faint, pal.bg).min(4.5)
     };
-    (1..=steps).rev().map(|i| mix(pal.bg, lane, i as f32 / 100.0)).find(|&b| keeps(b)).unwrap_or(pal.bg)
+    (1..=steps).rev().map(|i| tint(pal.bg, lane, i as f32 / 100.0, pal.dark)).find(|&b| keeps(b)).unwrap_or(pal.bg)
 }
 
 #[cfg(test)]
