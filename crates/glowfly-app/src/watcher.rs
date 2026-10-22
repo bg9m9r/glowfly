@@ -168,7 +168,12 @@ fn classify(ev: &Event, paths: &WatchPaths, ignores: &mut Ignores) -> (Change, V
         if name == Some(".gitignore") || (name == Some("exclude") && parent == Some("info")) {
             ignores.clear();
         }
-        let (c, rel) = paths.classify_path(p, what, &mut |rel| ignores.is_ignored(rel));
+        let (c, rel) = paths.classify_path(p, what, &mut |rel| ignores.is_ignored(rel, what));
+        // The index may have changed (a force-add makes an ignored file tracked): read it again
+        // before the next ignored path is checked.
+        if c >= Change::Status {
+            ignores.index_changed();
+        }
         change = change.max(c);
         // A folder's own modification (Windows reports one whenever an entry inside is written)
         // names no change of its own: the entry's event does.

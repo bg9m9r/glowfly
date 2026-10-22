@@ -225,25 +225,88 @@ fn ignores_follow_gitignore() {
     write(&dir, "target/debug/x.o", "obj");
     git(&dir, &["add", ".gitignore"]);
     let mut ig = Ignores::open(&dir);
-    assert!(ig.is_ignored("target/debug/x.o"));
+    assert!(ig.is_ignored("target/debug/x.o", Touch::Modified));
     assert!(ig.dirs.contains("target"), "{:?}", ig.dirs);
     assert_eq!(ig.dirs.len(), 1);
     // Answered from the cache: even a repository-less lookup would say no.
     let repo = ig.repo.take();
-    assert!(ig.is_ignored("target/release/y.o"));
+    assert!(ig.is_ignored("target/release/y.o", Touch::Modified));
     ig.repo = repo;
-    assert!(ig.is_ignored("a.log"));
-    assert!(!ig.is_ignored("src/main.rs"));
-    assert!(!ig.is_ignored(".gitignore"));
+    assert!(ig.is_ignored("a.log", Touch::Modified));
+    assert!(!ig.is_ignored("src/main.rs", Touch::Modified));
+    assert!(!ig.is_ignored(".gitignore", Touch::Modified));
     ig.clear();
     assert!(ig.dirs.is_empty());
 
     let plain = crate::paths::temp_dir().join(format!("glowfly-watch-plain-{}", std::process::id()));
     std::fs::create_dir_all(&plain).unwrap();
     let mut none = Ignores::open(&plain);
-    assert!(!none.is_ignored("target/debug/x.o"));
-    assert!(!none.is_ignored("a.log"));
+    assert!(!none.is_ignored("target/debug/x.o", Touch::Modified));
+    assert!(!none.is_ignored("a.log", Touch::Modified));
     let _ = std::fs::remove_dir_all(&plain);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn tracked_files_under_ignore_patterns_are_kept() {
+    let dir = scratch_repo("watch-tracked-ignored");
+    write(
+        &dir,
+        ".gitignore",
+        "build/
+*.log
+",
+    );
+    std::fs::create_dir_all(dir.join("build")).unwrap();
+    write(&dir, "build/keep.txt", "keep");
+    write(&dir, "build/out.o", "obj");
+    write(&dir, "app.log", "log");
+    write(&dir, "other.log", "log");
+    git(&dir, &["add", ".gitignore"]);
+    git(&dir, &["add", "-f", "build/keep.txt", "app.log"]);
+    git(&dir, &["commit", "-q", "-m", "forced"]);
+    let mut ig = Ignores::open(&dir);
+    assert!(ig.is_ignored("build/out.o", Touch::Modified));
+    assert!(ig.dirs.contains("build"), "{:?}", ig.dirs);
+    assert!(!ig.is_ignored("build/keep.txt", Touch::Modified), "a cache hit doesn't hide a tracked file");
+    assert!(!ig.is_ignored("app.log", Touch::Modified));
+    assert!(ig.is_ignored("other.log", Touch::Modified));
+    assert!(ig.is_ignored("build", Touch::Modified), "Windows' folder noise stays quiet");
+    assert!(!ig.is_ignored("build", Touch::Other), "the folder holds tracked files");
+
+    // Force-added in a terminal: tracked once the index is read again.
+    write(&dir, "build/late.txt", "late");
+    assert!(ig.is_ignored("build/late.txt", Touch::Modified));
+    git(&dir, &["add", "-f", "build/late.txt"]);
+    assert!(ig.is_ignored("build/late.txt", Touch::Modified), "the index view is kept until it changes");
+    ig.index_changed();
+    assert!(!ig.is_ignored("build/late.txt", Touch::Modified));
+    ig.clear();
+    assert!(!ig.is_ignored("build/keep.txt", Touch::Modified), "clearing the folders keeps the index");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn tracked_paths_fold_case_under_ignorecase() {
+    let dir = scratch_repo("watch-tracked-case");
+    crate::testutil::set_config(&dir, &[("core.ignorecase", "true")]);
+    write(
+        &dir,
+        ".gitignore",
+        "build/
+",
+    );
+    std::fs::create_dir_all(dir.join("build")).unwrap();
+    write(&dir, "build/keep.txt", "keep");
+    git(&dir, &["add", ".gitignore"]);
+    git(&dir, &["add", "-f", "build/keep.txt"]);
+    let mut ig = Ignores::open(&dir);
+    // libgit2 folds case in both the ignore rules and the index lookups once core.ignorecase is
+    // read from the repository; where it doesn't match the pattern at all, there is nothing to check.
+    if ig.repo.as_ref().unwrap().is_path_ignored("Build/Keep.txt").unwrap_or(false) {
+        assert!(!ig.is_ignored("Build/Keep.txt", Touch::Modified), "the index's spelling differs only in case");
+    }
+    assert!(!ig.is_ignored("build/keep.txt", Touch::Modified));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

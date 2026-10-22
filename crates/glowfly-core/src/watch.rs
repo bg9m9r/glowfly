@@ -1,5 +1,6 @@
 //! Which file changes in a repository matter to the app: path classification for a file
-//! watcher, plus a cache of ignored folders read through libgit2. No watching happens here.
+//! watcher, plus a cache of ignored folders read through libgit2 (paths the index holds are
+//! never ignored). No watching happens here.
 //! Submodules' repositories (in `<git dir>/modules` or a nested `.git` folder) count only when
 //! their HEAD or refs move, which changes the parent's status. The config (`config`, and a
 //! worktree's own `config.worktree`) reloads everything: remotes, upstreams and the settings
@@ -88,7 +89,8 @@ impl WatchPaths {
     }
 
     /// What `touch` on `path` calls for. `ignored` answers whether a work-tree path (relative,
-    /// '/'-separated) is ignored by `.gitignore` or `info/exclude`.
+    /// '/'-separated) is ignored by `.gitignore` or `info/exclude` and not tracked
+    /// (`Ignores::is_ignored`).
     pub fn classify(&self, path: &Path, touch: Touch, ignored: &mut impl FnMut(&str) -> bool) -> Change {
         self.classify_path(path, touch, ignored).0
     }
@@ -194,38 +196,71 @@ pub fn common_change(rel: &Path) -> Change {
 const MAX_IGNORED_DIRS: usize = 4096;
 
 /// Answers whether work-tree paths are ignored, remembering ignored folders so a build writing
-/// thousands of files under `target/` costs a set lookup each.
+/// thousands of files under `target/` costs a set lookup each. A path the index holds is never
+/// ignored, whatever the patterns say (git's rule: tracked files aren't affected), so an edit to
+/// a force-added file, or one committed before a pattern covered it, still counts. The cache
+/// says only which folders match a pattern; the index is asked after it, for ignored paths only.
 pub struct Ignores {
     repo: Option<git2::Repository>,
     dirs: HashSet<String>,
+    /// The repository's index, loaded the first time an ignored path is seen.
+    index: Option<git2::Index>,
+    /// The index must be (re-)read before it is asked: not loaded yet, or changed on disk since.
+    index_stale: bool,
 }
 
 impl Ignores {
     /// When `workdir` is not a repository, nothing is ignored.
     pub fn open(workdir: &Path) -> Self {
-        Self { repo: git2::Repository::open(workdir).ok(), dirs: HashSet::new() }
+        Self { repo: git2::Repository::open(workdir).ok(), dirs: HashSet::new(), index: None, index_stale: true }
     }
 
-    /// Whether `rel` (relative to the workdir, '/'-separated) is ignored. Errors count as not.
-    pub fn is_ignored(&mut self, rel: &str) -> bool {
-        if prefixes(rel).any(|p| self.dirs.contains(p)) || self.dirs.contains(rel) {
-            return true;
-        }
-        let Some(repo) = &self.repo else { return false };
-        if !repo.is_path_ignored(rel).unwrap_or(false) {
-            return false;
-        }
-        // Remember the shallowest ignored folder, so later paths below it skip libgit2.
-        if let Some(dir) = prefixes(rel).find(|p| repo.is_path_ignored(format!("{p}/")).unwrap_or(false)) {
-            if self.dirs.len() >= MAX_IGNORED_DIRS {
-                self.dirs.clear();
+    /// Whether `rel` (relative to the workdir, '/'-separated) is ignored and not tracked. Errors
+    /// count as not ignored; an index that can't be read counts as holding nothing. A folder
+    /// counts as tracked when some index path is below it, but only for `Touch::Other` (it came,
+    /// went or was renamed): Windows' modification of a folder whenever an entry inside is
+    /// written says nothing about the files below it.
+    pub fn is_ignored(&mut self, rel: &str, touch: Touch) -> bool {
+        if !(prefixes(rel).any(|p| self.dirs.contains(p)) || self.dirs.contains(rel)) {
+            let Some(repo) = &self.repo else { return false };
+            if !repo.is_path_ignored(rel).unwrap_or(false) {
+                return false;
             }
-            self.dirs.insert(dir.to_owned());
+            // Remember the shallowest ignored folder, so later paths below it skip libgit2.
+            if let Some(dir) = prefixes(rel).find(|p| repo.is_path_ignored(format!("{p}/")).unwrap_or(false)) {
+                if self.dirs.len() >= MAX_IGNORED_DIRS {
+                    self.dirs.clear();
+                }
+                self.dirs.insert(dir.to_owned());
+            }
         }
-        true
+        !self.tracked(rel, touch)
     }
 
-    /// Forgets the cached folders (after a `.gitignore` or `info/exclude` changed).
+    /// Whether the index holds `rel` at any stage or, for `Touch::Other`, some path below it.
+    fn tracked(&mut self, rel: &str, touch: Touch) -> bool {
+        if self.index_stale {
+            self.index_stale = false;
+            match self.index.as_mut() {
+                // Re-read only when the file changed on disk.
+                Some(index) => {
+                    let _ = index.read(false);
+                }
+                None => self.index = self.repo.as_ref().and_then(|r| r.index().ok()),
+            }
+        }
+        let Some(index) = &self.index else { return false };
+        (0..=3).any(|stage| index.get_path(Path::new(rel), stage).is_some())
+            || (touch == Touch::Other && index.find_prefix(format!("{rel}/")).is_ok())
+    }
+
+    /// The index changed on disk: read it again before it is next asked.
+    pub fn index_changed(&mut self) {
+        self.index_stale = true;
+    }
+
+    /// Forgets the cached folders (after a `.gitignore` or `info/exclude` changed). The index
+    /// stays.
     pub fn clear(&mut self) {
         self.dirs.clear();
     }

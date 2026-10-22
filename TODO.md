@@ -1050,7 +1050,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 
 ### Performance
 
-- Edits to tracked files that match an ignore pattern are dropped by the watcher; check the index before dropping
 - Read the staged list incrementally on index changes (compare the old and new index) instead of a whole status read
 - Turn on git's built-in fsmonitor from Glowfly (suggest watchman on Linux), checking that the daemon runs
 - Make the Windows 30 s safety poll cheaper for huge trees (read only folders changed since the last read)

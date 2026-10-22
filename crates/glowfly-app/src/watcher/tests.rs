@@ -197,6 +197,41 @@ fn watcher_reports_an_outside_edit() {
 }
 
 #[test]
+fn edits_to_a_force_added_ignored_file_are_reported() {
+    let dir: PathBuf = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-watch-forced-{}", std::process::id()));
+    init_repo(&dir);
+    std::fs::create_dir_all(dir.join("target")).unwrap();
+    std::fs::write(
+        dir.join("target/keep.txt"),
+        "keep
+",
+    )
+    .unwrap();
+    git(&dir, &["add", "-f", "target/keep.txt"]);
+    git(&dir, &["commit", "-q", "-m", "forced"]);
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
+    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    std::thread::sleep(Duration::from_millis(300));
+    while next_change(&rx, &dir, Duration::from_millis(500)).is_some() {}
+
+    std::fs::write(dir.join("target/out.o"), "obj").unwrap();
+    assert_eq!(next_change(&rx, &dir, Duration::from_secs(1)), None, "untracked ignored files stay quiet");
+    std::fs::write(
+        dir.join("target/keep.txt"),
+        "keep
+more
+",
+    )
+    .unwrap();
+    assert_eq!(next_report(&rx, &dir, Duration::from_secs(10)), Some((false, Some(owned(&["target/keep.txt"])))), "the tracked file's row");
+
+    drop(watcher);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn index_writes_in_a_linked_worktree_stay_quiet() {
     let dir: PathBuf = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-watch-wt-{}", std::process::id()));
     let linked = dir.with_file_name(format!("glowfly-app-test-watch-wt-{}-linked", std::process::id()));
