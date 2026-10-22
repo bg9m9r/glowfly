@@ -1,9 +1,11 @@
 //! What closing tabs would lose: work that exists only in memory (a commit message draft, or
-//! conflict choices not saved yet), and the confirmation that names it. Pure: the close itself
-//! is in `update/tabs_close.rs`.
+//! conflict choices not saved yet), and the confirmations that name it, before closing tabs or
+//! restarting to update. Pure: the close itself is in `update/tabs_close.rs`.
 
+use super::updates::install_label;
 use super::{AppState, Modal};
 use crate::msg::Msg;
+use glowfly_core::app_update::InstallMethod;
 
 /// The unsaved work in one tab.
 #[derive(Debug, PartialEq)]
@@ -46,16 +48,14 @@ pub fn loss_of(st: &AppState, i: usize) -> Option<Loss> {
     (draft || conflict.is_some()).then(|| Loss { tab: super::menu_bar::tab_name(st, i).to_owned(), draft, conflict })
 }
 
-/// The confirmation before closing the tabs at `closing`, running `then` when accepted; `None`
-/// when none of them would lose anything.
-pub fn close_confirm(st: &AppState, closing: &[usize], then: Msg) -> Option<Modal> {
+/// The lines naming what closing the tabs at `closing` would lose; None when nothing.
+fn losses_body(st: &AppState, closing: &[usize]) -> Option<String> {
     let losses: Vec<Loss> = closing.iter().filter_map(|&i| loss_of(st, i)).collect();
     if losses.is_empty() {
         return None;
     }
-    let n = closing.len();
     let mut body = Vec::new();
-    if n == 1 {
+    if closing.len() == 1 {
         body.push(format!("{} holds work that isn't saved anywhere:", losses[0].tab));
         body.extend(losses[0].lines(""));
     } else {
@@ -64,7 +64,27 @@ pub fn close_confirm(st: &AppState, closing: &[usize], then: Msg) -> Option<Moda
             body.extend(l.lines(&format!("{}: ", l.tab)));
         }
     }
+    Some(body.join("\n"))
+}
+
+/// The confirmation before closing the tabs at `closing`, running `then` when accepted; `None`
+/// when none of them would lose anything.
+pub fn close_confirm(st: &AppState, closing: &[usize], then: Msg) -> Option<Modal> {
+    let body = losses_body(st, closing)?;
+    let n = closing.len();
     let (title, button) =
         if n == 1 { ("Close tab?".to_owned(), "Close tab".to_owned()) } else { (format!("Close {n} tabs?"), format!("Close {n} tabs")) };
-    Some(Modal::danger(title, body.join("\n"), button, then))
+    Some(Modal::danger(title, body, button, then))
+}
+
+/// The confirmation before Install and restart (or, for `OpenAndQuit`, quitting to install)
+/// closes every tab, running `then` when accepted; `None` when no tab would lose anything.
+pub fn restart_confirm(st: &AppState, method: InstallMethod, then: Msg) -> Option<Modal> {
+    let all: Vec<usize> = (0..st.tabs.len()).collect();
+    let losses = losses_body(st, &all)?;
+    let t = st.settings.lang();
+    let quits = method == InstallMethod::OpenAndQuit;
+    let first = if quits { "Quitting closes every tab." } else { "Restarting closes every tab." };
+    let title = if quits { t.tr("updates.restart_confirm.quit_title") } else { t.tr("updates.restart_confirm.title") };
+    Some(Modal::danger(title, format!("{first}\n{losses}"), install_label(t, method), then))
 }

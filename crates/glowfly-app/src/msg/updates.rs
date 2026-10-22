@@ -1,8 +1,7 @@
 //! Messages of Glowfly's own updates and release notes (update/updates.rs).
 
 use super::Inactive;
-use glowfly_core::app_update::{InstallKind, Release};
-use std::path::PathBuf;
+use glowfly_core::app_update::{InstallKind, Release, Saved};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum UpdateMsg {
@@ -12,8 +11,12 @@ pub enum UpdateMsg {
     CheckNow,
     /// Download the offered release's file (or open its page when there is none for this system).
     Download,
-    /// Open the downloaded installer.
-    Install,
+    /// Install the downloaded update and restart, or open its installer and quit, after the
+    /// unsaved-work checks.
+    InstallAndRestart,
+    /// The restart confirmation's button: as `InstallAndRestart`, without asking about the
+    /// tabs' unsaved work again.
+    InstallAndRestartConfirmed,
     /// Show the downloaded archive in the file manager.
     ShowFile,
     /// Open the offered release's page, or the releases page.
@@ -23,8 +26,10 @@ pub enum UpdateMsg {
     // ---- from the runner
     /// A check finished: the newest release (None when there is none yet).
     Checked { manual: bool, result: Result<Option<CheckedRelease>, String> },
-    /// A download finished: where the verified file was saved.
-    Downloaded(Result<PathBuf, String>),
+    /// A download finished: where the verified file was saved, and its checksum.
+    Downloaded(Result<Saved, String>),
+    /// Install and restart was prepared (the window closes now) or failed (nothing changed).
+    RestartReady(Result<(), String>),
 }
 
 /// The newest release, and how this copy was installed (which decides the file it is offered).
@@ -42,12 +47,14 @@ impl UpdateMsg {
             Self::Startup
             | Self::CheckNow
             | Self::Download
-            | Self::Install
+            | Self::InstallAndRestart
+            | Self::InstallAndRestartConfirmed
             | Self::ShowFile
             | Self::OpenReleasePage
             | Self::ShowNotes
             | Self::Checked { .. }
-            | Self::Downloaded(_) => None,
+            | Self::Downloaded(_)
+            | Self::RestartReady(_) => None,
         }
     }
 }

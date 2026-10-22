@@ -501,6 +501,8 @@ pub(super) mod undo_tests;
 pub(super) mod updates_notes_tests;
 #[path = "updates_recheck_tests.rs"]
 pub(super) mod updates_recheck_tests;
+#[path = "updates_restart_tests.rs"]
+pub(super) mod updates_restart_tests;
 #[path = "updates_tests.rs"]
 pub(super) mod updates_tests;
 #[path = "watch_poll_tests.rs"]

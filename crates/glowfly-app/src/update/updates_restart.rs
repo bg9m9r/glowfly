@@ -1,0 +1,65 @@
+//! Install and restart: after Preferences' unsaved edits (prefs_leave), a running operation and
+//! the tabs' unsaved work have been dealt with, the downloaded update is prepared on a worker
+//! (runner/update_restart.rs). Once it is ready the window closes, the same way as Quit;
+//! a failure changes nothing and says why.
+
+use crate::effect::{Effect, RestartJob, UiEffect, UpdateEffect};
+use crate::msg::{Msg, UpdateMsg};
+use crate::state::updates::{UpdateStatus, opened_text, restart_failed_text, restarting_text};
+use crate::state::{AppState, ToastAction, tab_losses};
+use glowfly_core::app_update::InstallMethod;
+use std::time::Instant;
+
+/// `InstallAndRestart` (`confirmed`: from the confirmation, which already named the losses).
+pub(super) fn ask(st: &mut AppState, confirmed: bool, now: Instant, fx: &mut Vec<Effect>) {
+    let Some((_, method)) = st.updates.downloaded() else { return };
+    if !method.acts() || st.updates.blocked() {
+        return;
+    }
+    let t = st.settings.lang();
+    if st.job.is_some() {
+        st.toast(false, t.tr("updates.restart_busy"), now);
+        return;
+    }
+    if !confirmed && let Some(modal) = tab_losses::restart_confirm(st, method, Msg::Updates(UpdateMsg::InstallAndRestartConfirmed)) {
+        st.palette = None;
+        st.modal = Some(modal);
+        return;
+    }
+    let UpdateStatus::Downloaded { offer, file, sha256, method } = st.updates.settled() else { return };
+    let job = RestartJob { file: file.clone(), sha256: *sha256, method: *method, version: offer.version.clone() };
+    st.updates.restarting = true;
+    fx.push(Effect::Updates(UpdateEffect::Restart(Box::new(job))));
+}
+
+/// The worker's answer: the window closes, or the failure is said and nothing else changes.
+pub(super) fn ready(st: &mut AppState, result: Result<(), String>, now: Instant, fx: &mut Vec<Effect>) {
+    if !st.updates.restarting {
+        return;
+    }
+    st.updates.restarting = false;
+    let t = st.settings.lang();
+    let Some((version, method)) = st.updates.offer().map(|o| o.version.clone()).zip(st.updates.downloaded().map(|d| d.1)) else {
+        return;
+    };
+    match result {
+        Ok(()) => {
+            let text = if method == InstallMethod::OpenAndQuit { opened_text(t, &version) } else { restarting_text(t, &version) };
+            st.log_quiet(true, text);
+            // Nothing else starts while the window closes. Tabs and settings are saved as they
+            // change.
+            st.updates.restarting = true;
+            fx.push(Effect::Ui(UiEffect::CloseWindow));
+        }
+        Err(e) => {
+            let text = restart_failed_text(t, &e);
+            st.log_quiet(false, text.clone());
+            let action = ToastAction {
+                label: t.tr("updates.show_file.button").into(),
+                msg: Box::new(Msg::Updates(UpdateMsg::ShowFile)),
+                workdir: None,
+            };
+            st.toast_action(false, text, action, now);
+        }
+    }
+}

@@ -207,8 +207,22 @@ second one next to it.
    file's name comes from the server, so it is checked first (`app_update::asset_name_ok`: 1 to
    128 characters of `A-Za-z0-9._-`, no leading dot) and can't leave the downloads folder; the
    bytes are held in memory, checked, and only then written with `persist::write_file`. An
-   existing file with other content is never replaced (`free_name`: `name (1).msi`). Glowfly never
-   replaces its own running program.
+   existing file with other content is never replaced (`free_name`: `name (1).msi`). Install and
+   restart (`app_update::restart`, `runner/update_restart.rs`) follows these rules:
+   - The file is verified again (`read_verified`) before it is run, copied or unpacked.
+   - Only a portable copy's program (the resolved `current_exe`) and the doc files already
+     beside it are replaced, through `persist::move_aside` and `persist::write_file`, and a
+     failure rolls back everything done so far. No target is built from a name in the archive
+     (`app_update::archive` takes only fixed names).
+   - The helper is a copy of the running program in a private staging folder under
+     `paths::temp_dir()` (`glowfly-update-<16 hex>`, created fresh with mode 0700; stale ones are
+     removed at the next start). It is started detached (Windows: a new process group, out of
+     the job when allowed; Unix: `setsid`) and waits for Glowfly to exit through its stdin: "go"
+     once everything is prepared, then the end of input.
+   - The MSI runs only after Glowfly has exited, as
+     `%SystemRoot%\System32\msiexec.exe /i <msi> /passive /norestart /l*v <log>` (never searched
+     for on PATH), and Glowfly is started again from the same path afterwards.
+   - A .dmg, a .deb, or an MSI for a portable copy is only opened, and Glowfly quits.
 9. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
    Windows, Notification Center on macOS, freedesktop notifications over D-Bus (zbus, no
    libdbus) on Linux. A missing notification server is an error the confirmation reports;
@@ -500,7 +514,9 @@ making the decision a pure function and testing it for every OS on every machine
   (`check_new_path_for`, `check_branch_name_for`, `shell_quote_for`, `config_dir_for`,
   `opens_as_program` with `opens::Os`, `volume::linux_remote_kind`, `trash::bin_refuses`,
   `trash::volume_trash_usable`, `home::move_into` with an injected rename,
-  `git_version::missing_for`, `poll_every`, `custom_commands::sh_for`, `repo::monitor_offer_for`) and test every OS's rows on every runner. The
+  `git_version::missing_for`, `poll_every`, `custom_commands::sh_for`, `repo::monitor_offer_for`,
+  `app_update::install_method_for`, `swap::plan` with an injected `exists`) and test every OS's
+  rows on every runner. The
   wrapper that passes `cfg!(windows)` or `Os::current()` stays one line.
 - **Fixtures that no file system has to allow.** Build trees with names that aren't UTF-8,
   NFC/NFD pairs and case twins with `git mktree` or `git update-index --cacheinfo` /

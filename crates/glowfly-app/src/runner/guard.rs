@@ -55,6 +55,8 @@ enum Kind {
     /// An update check (`Some(manual)`) or download (None): the status shows a spinner until
     /// its result arrives.
     Update(Option<bool>),
+    /// Install and restart: `restarting` holds until its answer arrives.
+    UpdateRestart,
     /// A scan of the project folders: the Find repositories dialog shows a spinner until it ends.
     RepoScan(u64, Vec<PathBuf>),
     /// One repository of a fetch or pull across repositories (generation, row): it fails, so
@@ -123,6 +125,7 @@ impl Recovery {
             Effect::LoadBlame(r) => Kind::Blame { path: r.path.clone(), generation: r.generation },
             Effect::Updates(UpdateEffect::Check { manual }) => Kind::Update(Some(*manual)),
             Effect::Updates(UpdateEffect::Download(_)) => Kind::Update(None),
+            Effect::Updates(UpdateEffect::Restart(_)) => Kind::UpdateRestart,
             Effect::Repos(ReposEffect::Scan { generation, roots }) => Kind::RepoScan(*generation, roots.clone()),
             Effect::Repos(ReposEffect::Sync { generation, index, .. }) => Kind::RepoSync(*generation, *index),
             Effect::LineCounts(e) => Kind::LineCounts(e.failure()),
@@ -163,6 +166,7 @@ impl Recovery {
             Kind::Blame { path, generation } => Msg::Blame(BlameMsg::Loaded { path, generation, result: Err(text) }),
             Kind::Update(Some(manual)) => Msg::Updates(UpdateMsg::Checked { manual, result: Err(text) }),
             Kind::Update(None) => Msg::Updates(UpdateMsg::Downloaded(Err(text))),
+            Kind::UpdateRestart => Msg::Updates(UpdateMsg::RestartReady(Err(text))),
             Kind::RepoScan(generation, roots) => {
                 let unreadable = roots.into_iter().map(|r| (r, text.clone())).collect();
                 let report = Box::new(crate::msg::ScanFound { unreadable, ..Default::default() });
@@ -477,5 +481,18 @@ mod tests {
         update(&mut st, msg, Instant::now());
         let state = &st.prefs.as_ref().unwrap().ssh.upload.as_ref().expect("the form stays").state;
         assert!(matches!(state, UploadState::Failed { message, fallback: false } if message.contains("boom")), "{state:?}");
+    }
+
+    #[test]
+    fn a_panicking_restart_reports_a_failed_restart() {
+        let job = crate::effect::RestartJob {
+            file: glowfly_core::paths::temp_dir().join("glowfly.msi"),
+            sha256: [0; 32],
+            method: glowfly_core::app_update::InstallMethod::RunMsi,
+            version: glowfly_core::app_update::Version::parse("0.3.0").unwrap(),
+        };
+        let effect = Effect::Updates(UpdateEffect::Restart(Box::new(job)));
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
+        assert!(matches!(&msg, Msg::Updates(UpdateMsg::RestartReady(Err(e))) if e.contains("boom") && e.contains("update-restart")));
     }
 }

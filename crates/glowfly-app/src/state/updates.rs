@@ -3,7 +3,7 @@
 //! `settings.updates`.
 
 use super::release_notes::NotesOpen;
-use glowfly_core::app_update::{self, Offer, Platform, Version};
+use glowfly_core::app_update::{self, InstallKind, InstallMethod, Offer, Platform, Version};
 use glowfly_core::i18n::Lang;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -28,11 +28,12 @@ pub enum UpdateStatus {
     CheckFailed(String),
     Available(Box<Offer>),
     Downloading(Box<Offer>),
-    /// The verified file; `installer` for an msi, dmg or deb (else an archive).
+    /// The verified file, the SHA-256 it matched, and how Install and restart puts it in place.
     Downloaded {
         offer: Box<Offer>,
         file: PathBuf,
-        installer: bool,
+        sha256: [u8; 32],
+        method: InstallMethod,
     },
     DownloadFailed {
         offer: Box<Offer>,
@@ -46,6 +47,8 @@ pub enum ChipKind {
     Available,
     Downloading,
     Downloaded,
+    /// Install and restart is preparing the update.
+    Installing,
     Failed,
 }
 
@@ -63,6 +66,10 @@ pub struct UpdatesState {
     pub notes_pending: Option<NotesOpen>,
     /// The bundled CHANGELOG.md (tests put a fixture here).
     pub bundled_notes: &'static str,
+    /// How this copy was installed, as the last successful check found.
+    pub install: Option<InstallKind>,
+    /// Install and restart is preparing (or the window is closing for it): nothing else starts.
+    pub restarting: bool,
 }
 
 impl Default for UpdatesState {
@@ -75,13 +82,10 @@ impl Default for UpdatesState {
             retry_at: None,
             notes_pending: None,
             bundled_notes: super::release_notes::BUNDLED,
+            install: None,
+            restarting: false,
         }
     }
-}
-
-/// The installer kinds a downloaded file is opened as (anything else is shown in the folder).
-pub fn is_installer(file: &std::path::Path) -> bool {
-    file.extension().and_then(|x| x.to_str()).is_some_and(|x| ["msi", "dmg", "deb"].iter().any(|k| x.eq_ignore_ascii_case(k)))
 }
 
 pub fn latest_text(t: Lang, current: &Version) -> String {
@@ -102,6 +106,30 @@ pub fn check_failed_text(t: Lang, e: &str) -> String {
 
 pub fn download_failed_text(t: Lang, e: &str) -> String {
     t.trf("updates.download_failed", &[("error", &e)])
+}
+
+pub fn restart_failed_text(t: Lang, e: &str) -> String {
+    t.trf("updates.restart_failed", &[("error", &e)])
+}
+
+/// "Restarting to install Glowfly x.y.z."
+pub fn restarting_text(t: Lang, v: &Version) -> String {
+    t.trf("updates.restarting", &[("version", v)])
+}
+
+/// "Opened the Glowfly x.y.z installer."
+pub fn opened_text(t: Lang, v: &Version) -> String {
+    t.trf("updates.opened_installer", &[("version", v)])
+}
+
+/// The button that installs a file downloaded for `method`: Install and restart, Open
+/// installer and quit, or Show file.
+pub fn install_label(t: Lang, method: InstallMethod) -> &'static str {
+    match method {
+        InstallMethod::RunMsi | InstallMethod::SwapPortable => t.tr("updates.install_restart.button"),
+        InstallMethod::OpenAndQuit => t.tr("updates.open_quit.button"),
+        InstallMethod::ShowOnly => t.tr("updates.show_file.button"),
+    }
 }
 
 impl UpdateStatus {
@@ -132,6 +160,12 @@ impl UpdatesState {
         matches!(self.status, UpdateStatus::Checking { .. } | UpdateStatus::Downloading(_))
     }
 
+    /// A check, a download or Install and restart is running: no check, download or install
+    /// starts.
+    pub fn blocked(&self) -> bool {
+        self.busy() || self.restarting
+    }
+
     /// The newer release on offer, in whatever state its download is.
     pub fn offer(&self) -> Option<&Offer> {
         self.settled().offer()
@@ -142,6 +176,9 @@ impl UpdatesState {
         Some(match self.settled() {
             UpdateStatus::Available(o) => (t.trf("updates.chip.available", &[("version", &o.version)]), ChipKind::Available),
             UpdateStatus::Downloading(o) => (t.trf("updates.chip.downloading", &[("version", &o.version)]), ChipKind::Downloading),
+            UpdateStatus::Downloaded { offer, .. } if self.restarting => {
+                (t.trf("updates.chip.installing", &[("version", &offer.version)]), ChipKind::Installing)
+            }
             UpdateStatus::Downloaded { .. } => (t.tr("updates.chip.downloaded").to_owned(), ChipKind::Downloaded),
             UpdateStatus::DownloadFailed { .. } => (t.tr("updates.chip.failed").to_owned(), ChipKind::Failed),
             UpdateStatus::Idle | UpdateStatus::Checking { .. } | UpdateStatus::UpToDate | UpdateStatus::CheckFailed(_) => return None,
@@ -156,10 +193,10 @@ impl UpdatesState {
         }
     }
 
-    /// The downloaded installer, when there is one to open.
-    pub fn installer(&self) -> Option<&PathBuf> {
+    /// The downloaded file and how it is installed, once there is one.
+    pub fn downloaded(&self) -> Option<(&PathBuf, InstallMethod)> {
         match self.settled() {
-            UpdateStatus::Downloaded { file, installer: true, .. } => Some(file),
+            UpdateStatus::Downloaded { file, method, .. } => Some((file, *method)),
             _ => None,
         }
     }

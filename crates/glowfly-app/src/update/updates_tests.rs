@@ -11,7 +11,7 @@ use crate::state::AppState;
 use crate::state::palette::PaletteCommand as C;
 use crate::state::palette::entries;
 use crate::state::updates::{RETRY_AFTER, STARTUP_DELAY, UpdateStatus};
-use glowfly_core::app_update::{Arch, Asset, InstallKind, Platform, Release, TargetOs, Version};
+use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, Platform, Release, Saved, TargetOs, Version};
 use glowfly_core::i18n::Lang;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -46,6 +46,11 @@ pub(super) fn release(tag: &str, files: bool) -> Release {
         published_at: None,
         assets: if files { names.iter().map(|n| asset(n)).collect() } else { Vec::new() },
     }
+}
+
+/// A verified download of `name` in the Downloads folder.
+pub(super) fn saved(name: &str) -> Saved {
+    Saved { path: PathBuf::from("Downloads").join(name), sha256: [7; 32] }
 }
 
 pub(super) fn send(st: &mut AppState, m: U, now: Instant) -> Vec<Effect> {
@@ -196,14 +201,27 @@ fn downloads_and_what_follows() {
     assert!(checks(&send(&mut st, U::CheckNow, t)).is_empty(), "not while downloading");
     assert!(send(&mut st, U::Download, t).is_empty(), "nor a second download");
 
-    let file = PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
-    send(&mut st, U::Downloaded(Ok(file.clone())), t);
-    assert_eq!(st.updates.status, UpdateStatus::Downloaded { offer: Box::new(o.as_ref().clone()), file: file.clone(), installer: true });
+    let s = saved("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
+    let file = s.path.clone();
+    send(&mut st, U::Downloaded(Ok(s)), t);
+    let want = UpdateStatus::Downloaded {
+        offer: Box::new(o.as_ref().clone()),
+        file: file.clone(),
+        sha256: [7; 32],
+        method: InstallMethod::RunMsi,
+    };
+    assert_eq!(st.updates.status, want);
     let toast = st.toasts.last().unwrap();
-    assert_eq!((toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())), ("Downloaded Glowfly 0.3.0.", Some("Install")));
+    assert_eq!(
+        (toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())),
+        ("Downloaded Glowfly 0.3.0.", Some("Install and restart"))
+    );
     assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update downloaded"));
-    let fx = send(&mut st, U::Install, t);
-    assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Install(p))] if *p == file));
+    let fx = send(&mut st, U::ShowFile, t);
+    assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::RevealPath(p))] if *p == file));
+    let fx = send(&mut st, U::InstallAndRestart, t);
+    assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Restart(j))] if j.file == file));
+    // Show file still works while it prepares.
     let fx = send(&mut st, U::ShowFile, t);
     assert!(matches!(fx.as_slice(), [Effect::Os(OsEffect::RevealPath(p))] if *p == file));
 }
@@ -212,11 +230,11 @@ fn downloads_and_what_follows() {
 fn an_archive_is_shown_not_installed() {
     let (mut st, t) = offered();
     send(&mut st, U::Download, t);
-    let zip = PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.zip");
-    send(&mut st, U::Downloaded(Ok(zip.clone())), t);
-    assert!(matches!(&st.updates.status, UpdateStatus::Downloaded { installer: false, .. }));
+    send(&mut st, U::Downloaded(Ok(saved("glowfly-v0.3.0-x86_64-pc-windows-msvc.zip"))), t);
+    // An installed copy offered an archive: it can't be swapped in place.
+    assert!(matches!(&st.updates.status, UpdateStatus::Downloaded { method: InstallMethod::ShowOnly, .. }));
     assert_eq!(st.toasts.last().and_then(|t| t.action.as_ref()).map(|a| a.label.as_str()), Some("Show file"));
-    assert!(send(&mut st, U::Install, t).is_empty(), "an archive isn't opened");
+    assert!(send(&mut st, U::InstallAndRestart, t).is_empty(), "an archive isn't installed");
 }
 
 #[test]
@@ -253,7 +271,7 @@ fn palette_entries_follow_the_status() {
     let mut st = app();
     let l = labels(&st);
     assert!(l.contains(&"View release notes".to_owned()) && l.contains(&"Check for updates".to_owned()), "no repository needed");
-    assert!(!l.iter().any(|l| l.starts_with("Download Glowfly") || l.starts_with("Install Glowfly")));
+    assert!(!l.iter().any(|l| l.starts_with("Download Glowfly") || l.starts_with("Install Glowfly") || l.starts_with("Open the Glowfly")));
     let t = Instant::now();
     update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Updates(U::CheckNow))), t);
     assert!(matches!(st.updates.status, UpdateStatus::Checking { manual: true, .. }));
@@ -265,10 +283,11 @@ fn palette_entries_follow_the_status() {
     update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Updates(U::Download))), t);
     assert!(matches!(st.updates.status, UpdateStatus::Downloading(_)));
     assert!(!labels(&st).iter().any(|l| l.contains("Glowfly 0.3.0")));
-    send(&mut st, U::Downloaded(Ok(PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"))), t);
-    assert!(labels(&st).contains(&"Install Glowfly 0.3.0".to_owned()));
-    let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Updates(U::Install))), t);
-    assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Install(_))]));
+    send(&mut st, U::Downloaded(Ok(saved("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"))), t);
+    assert!(labels(&st).contains(&"Install Glowfly 0.3.0 and restart".to_owned()));
+    let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Updates(U::InstallAndRestart))), t);
+    assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Restart(_))]));
+    st.updates.restarting = false;
     update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Updates(U::ShowNotes))), t);
     assert_eq!(st.palette_recent.keys(), &["release-notes", "check-updates"]);
 }

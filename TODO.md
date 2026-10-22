@@ -1052,7 +1052,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 
 ### Packaging and updates
 
-- Install and restart: quit Glowfly and run the downloaded installer, or swap the portable program in place
 - More formats and targets: .rpm, AppImage or Flatpak, a Homebrew cask, a winget manifest, Linux aarch64 and Windows ARM64 builds
 
 ### Language
@@ -2756,6 +2755,15 @@ here, under the item they grew from.
 - Azure Trusted Signing as an alternative to a PFX certificate for Windows signing
 - A beta channel that offers pre-releases to users who opt in
 - A per-machine (all users) MSI
+- Ask before Install and restart ends terminal tabs that are running a program
+- Stage the update helper beside the program when /tmp is mounted noexec on Linux or macOS
+- Replace a macOS Glowfly.app in place from the disk image (hdiutil attach, ditto, detach) instead of opening it
+- Install a .deb in place through pkexec and apt instead of opening the software installer
+- After a restart, say when the installer failed or was cancelled (read update.log on the next start)
+- Remove a .bak program left behind when a second window kept the old program running
+- Offer Download again when the downloaded file is gone or no longer matches its checksum
+- A CI check of Install and restart: swap a portable copy from a local feed and run --finish-update on the runners
+- Allow Install and restart when Windows Smart App Control or AppLocker blocks programs in the temp folder
 
 ### Installer and update checks in CI
 

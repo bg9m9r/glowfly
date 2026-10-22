@@ -6,7 +6,7 @@
 use crate::git_env::GitEnvMsg;
 use crate::gitflow::GitFlowMsg;
 use crate::lfs::LfsMsg;
-use crate::msg::{ForgeMsg, Msg, PrefsMsg, SparseMsg, TabsMsg};
+use crate::msg::{ForgeMsg, Msg, PrefsMsg, SparseMsg, TabsMsg, UpdateMsg};
 use crate::profile::ProfileMsg;
 use crate::ssh::SshMsg;
 use crate::state::prefs_save::{repo_page, unsaved};
@@ -61,6 +61,8 @@ fn leaves(st: &AppState, msg: &Msg) -> bool {
     let other = |target: PrefPage| target != page;
     match msg {
         Msg::Prefs(PrefsMsg::ClosePrefs | PrefsMsg::OpenPrefs(_)) => true,
+        // Restarting closes the window.
+        Msg::Updates(UpdateMsg::InstallAndRestart) => true,
         Msg::Prefs(PrefsMsg::Navigate(target)) => other(*target),
         Msg::GitEnv(GitEnvMsg::ShowPage) => other(PrefPage::Git),
         Msg::Profile(ProfileMsg::ShowPage) => other(PrefPage::Profile),

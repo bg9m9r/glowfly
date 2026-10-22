@@ -1,6 +1,7 @@
 //! The palette's update entries: "View release notes" and "Check for updates" always, plus
-//! "Download Glowfly x.y.z" while a newer release is on offer and "Install Glowfly x.y.z" once
-//! its installer has downloaded.
+//! "Download Glowfly x.y.z" while a newer release is on offer and, once it has downloaded,
+//! "Install Glowfly x.y.z and restart" or "Open the Glowfly x.y.z installer and quit" when it
+//! can be installed.
 
 use super::AppState;
 use super::palette_commands::{Entry, PaletteCommand as C, entry, with_detail};
@@ -15,8 +16,13 @@ pub(super) fn entries(st: &AppState, out: &mut Vec<Entry>) {
         UpdateStatus::Available(o) | UpdateStatus::DownloadFailed { offer: o, .. } => {
             out.push(entry(C::Updates(UpdateMsg::Download), format!("Download Glowfly {}", o.version), "update upgrade new version"));
         }
-        UpdateStatus::Downloaded { offer, installer: true, .. } => {
-            out.push(entry(C::Updates(UpdateMsg::Install), format!("Install Glowfly {}", offer.version), "update upgrade new version"));
+        UpdateStatus::Downloaded { offer, method, .. } if method.acts() => {
+            let label = if method.restarts() {
+                format!("Install Glowfly {} and restart", offer.version)
+            } else {
+                format!("Open the Glowfly {} installer and quit", offer.version)
+            };
+            out.push(entry(C::Updates(UpdateMsg::InstallAndRestart), label, "update upgrade new version"));
         }
         _ => {}
     }

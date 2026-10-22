@@ -30,10 +30,23 @@ pub fn free_name(name: &str, taken: impl Fn(&str) -> bool) -> String {
     (1..).map(|n| format!("{stem} ({n}){ext}")).find(|n| !taken(n)).unwrap_or_else(|| name.to_owned())
 }
 
+/// A verified download: where it was saved and its SHA-256.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Saved {
+    pub path: PathBuf,
+    pub sha256: [u8; 32],
+}
+
 /// Downloads `offer`'s file from `feed` into `dir` once its SHA-256 matches the release's
 /// published checksum (read from the same feed); returns where it was saved. Nothing is written
 /// when the checksum is missing or doesn't match, or the file isn't the announced size.
 pub fn download(feed: &Feed, offer: &Offer, dir: &Path) -> Result<PathBuf, String> {
+    download_saved(feed, offer, dir).map(|s| s.path)
+}
+
+/// [`download`], also returning the checksum the file matched, which Install and restart
+/// checks again ([`read_verified`]) before it runs or unpacks the file.
+pub fn download_saved(feed: &Feed, offer: &Offer, dir: &Path) -> Result<Saved, String> {
     let Some(asset) = &offer.asset else { return Err("This release has no download for this system.".to_owned()) };
     let no_sum = || format!("This release doesn't publish a checksum for {}, so it wasn't downloaded.", asset.name);
     let sums_asset = match &offer.sums {
@@ -55,10 +68,25 @@ pub fn download(feed: &Feed, offer: &Offer, dir: &Path) -> Result<PathBuf, Strin
     std::fs::create_dir_all(dir).map_err(|e| format!("Couldn't create {}: {e}", crate::native_path::shown(dir)))?;
     let same = dir.join(&asset.name);
     if std::fs::read(&same).is_ok_and(|old| sums::sha256(&old) == want) {
-        return Ok(same);
+        return Ok(Saved { path: same, sha256: want });
     }
     let path = dir.join(free_name(&asset.name, |n| dir.join(n).symlink_metadata().is_ok()));
     crate::persist::write_file(&path, &bytes, crate::persist::WriteOptions::default())
         .map_err(|e| format!("Couldn't save {}: {e}", crate::native_path::shown(&path)))?;
-    Ok(path)
+    Ok(Saved { path, sha256: want })
+}
+
+/// The bytes of the downloaded file at `path` (at most [`MAX_DOWNLOAD`]), once their SHA-256
+/// is still `want`: the file may have changed since it was checked.
+pub fn read_verified(path: &Path, want: &[u8; 32]) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+    let shown = crate::native_path::shown(path);
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .and_then(|f| f.take(MAX_DOWNLOAD + 1).read_to_end(&mut bytes))
+        .map_err(|e| format!("Couldn't read {shown}: {e}"))?;
+    if bytes.len() as u64 > MAX_DOWNLOAD || sums::sha256(&bytes) != *want {
+        return Err("The downloaded file changed after it was checked, so it wasn't installed. Download it again.".to_owned());
+    }
+    Ok(bytes)
 }

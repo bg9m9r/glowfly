@@ -499,6 +499,8 @@ mod snapshot_tests_trust_held;
 #[cfg(test)]
 mod snapshot_tests_undo;
 #[cfg(test)]
+mod snapshot_tests_update_restart;
+#[cfg(test)]
 mod snapshot_tests_updates;
 #[cfg(test)]
 mod snapshot_tests_vivid;

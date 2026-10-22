@@ -1,14 +1,14 @@
 //! Headless tests of checking again once an update is on offer or downloaded: the downloaded
-//! file, its Install entry and chip outlast later checks, automatic or manual, and a failed
+//! file, its Install and restart entry and chip outlast later checks, automatic or manual, and a failed
 //! check doesn't lose the offer.
 
-use super::updates_tests::{NOW, app, checks, found, offered, send, tick};
+use super::updates_tests::{NOW, app, checks, found, offered, saved, send, tick};
 use crate::effect::{Effect, UpdateEffect};
 use crate::msg::UpdateMsg as U;
 use crate::state::AppState;
 use crate::state::palette::entries;
 use crate::state::updates::{STARTUP_DELAY, UpdateStatus};
-use glowfly_core::app_update::InstallKind;
+use glowfly_core::app_update::{InstallKind, InstallMethod};
 use glowfly_core::i18n::Lang;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -17,14 +17,15 @@ use std::time::{Duration, Instant};
 fn downloaded() -> (AppState, Instant, PathBuf) {
     let (mut st, t) = offered();
     send(&mut st, U::Download, t);
-    let file = PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
-    send(&mut st, U::Downloaded(Ok(file.clone())), t);
-    assert!(matches!(st.updates.status, UpdateStatus::Downloaded { installer: true, .. }));
+    let s = saved("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
+    let file = s.path.clone();
+    send(&mut st, U::Downloaded(Ok(s)), t);
+    assert!(matches!(st.updates.status, UpdateStatus::Downloaded { method: InstallMethod::RunMsi, .. }));
     (st, t, file)
 }
 
 fn has_install(st: &AppState) -> bool {
-    entries(st).into_iter().any(|e| e.label == "Install Glowfly 0.3.0")
+    entries(st).into_iter().any(|e| e.label == "Install Glowfly 0.3.0 and restart")
 }
 
 #[test]
@@ -32,19 +33,23 @@ fn check_now_after_a_download_keeps_the_file() {
     let (mut st, t, file) = downloaded();
     let toasts = st.toasts.len();
     assert_eq!(checks(&send(&mut st, U::CheckNow, t)), [true]);
-    // While the check runs, the chip and Install still work.
+    // While the check runs, the chip and the Install and restart entry still show.
     assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update downloaded"));
     assert!(has_install(&st));
-    let fx = send(&mut st, U::Install, t);
-    assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Install(p))] if *p == file));
+    assert_eq!(st.updates.downloaded(), Some((&file, InstallMethod::RunMsi)));
 
     send(&mut st, U::Checked { manual: true, result: found("v0.3.0", InstallKind::Installer) }, t);
-    assert!(matches!(&st.updates.status, UpdateStatus::Downloaded { file: f, installer: true, .. } if *f == file));
+    assert!(matches!(&st.updates.status, UpdateStatus::Downloaded { file: f, method: InstallMethod::RunMsi, .. } if *f == file));
     assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update downloaded"));
     assert!(has_install(&st));
     assert_eq!(st.toasts.len(), toasts + 1);
     let toast = st.toasts.last().unwrap();
-    assert_eq!((toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())), ("Downloaded Glowfly 0.3.0.", Some("Install")));
+    assert_eq!(
+        (toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())),
+        ("Downloaded Glowfly 0.3.0.", Some("Install and restart"))
+    );
+    let fx = send(&mut st, U::InstallAndRestart, t);
+    assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Restart(j))] if j.file == file));
 }
 
 #[test]

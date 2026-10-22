@@ -32,6 +32,11 @@ trash = "5.2"
 portable-pty = "0.9"
 vt100 = "0.16"
 toml = "1.1"
+# Reading a portable update's zip or tar.gz (app_update/archive.rs): decompression only, with
+# flate2's pure-Rust inflate.
+zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
+tar = { version = "0.4", default-features = false }
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 
 [build-dependencies]
 syntect = { version = "5.3", default-features = false, features = ["parsing", "yaml-load", "dump-create", "regex-fancy"] }

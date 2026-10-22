@@ -55,6 +55,7 @@ function Write-Sum([string]$path) {
 Add-Signature "$bin/glowfly.exe"
 
 # --- The zip -----------------------------------------------------------------------------------
+# Install and restart reads this layout (crates/glowfly-core/src/app_update/archive.rs).
 $stage = Join-Path $dist $name
 New-Item -ItemType Directory -Force $stage | Out-Null
 Copy-Item "$bin/glowfly.exe", LICENSE-MIT, LICENSE-APACHE, README.md, THIRD-PARTY-NOTICES.md $stage

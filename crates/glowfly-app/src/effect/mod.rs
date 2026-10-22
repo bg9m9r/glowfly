@@ -67,7 +67,7 @@ pub use stash::{PutBackRequest, StashEffect};
 pub use submodule::SubmoduleEffect;
 pub use trust::TrustEffect;
 pub use ui::UiEffect;
-pub use updates::UpdateEffect;
+pub use updates::{RestartJob, UpdateEffect};
 
 #[derive(Debug)]
 pub enum Effect {
@@ -406,7 +406,7 @@ pub enum Effect {
     Dashboard(DashboardEffect),
     /// The issue panel's and the Create issue dialog's calls to the tracker (unscoped; issue.rs).
     Issue(IssueEffect),
-    /// Update checks, downloads and opening a downloaded installer (runner/updates.rs); unscoped.
+    /// Update checks, downloads, Install and restart and tidying (runner/updates.rs); unscoped.
     Updates(UpdateEffect),
     /// Finding repositories in project folders (runner/repos.rs); unscoped, reads folder listings only.
     Repos(ReposEffect),

@@ -33,6 +33,10 @@ a new version starts.
 | `<file>.sha256` | The SHA-256 of each file above |
 | `SHA256SUMS` | Every file's SHA-256, in `sha256sum` format |
 
+Install and restart reads the zip and tar.gz layout (`glowfly-<tag>-<target>/` holding the
+program and the doc files) to swap a portable copy in place (`app_update/archive.rs`), so keep
+it when the packaging scripts change.
+
 The app icon is drawn by `crates/glowfly-app/tests/app_icon.rs`; `UPDATE_ICONS=1 cargo test -p
 glowfly --test app_icon` redraws the files in `assets/icon/`. The Windows build embeds
 `glowfly.ico` in `glowfly.exe` (`build.rs`, through winresource).

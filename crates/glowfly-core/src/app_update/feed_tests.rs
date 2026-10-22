@@ -169,6 +169,14 @@ fn a_folder_feed_download_is_verified() {
         let path = download(&feed, &o, &dl).unwrap();
         assert_eq!(path, dl.join(name));
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        // The same file again: found where it is, with the digest it matched.
+        let saved = download_saved(&feed, &o, &dl).unwrap();
+        assert_eq!(saved, Saved { path: path.clone(), sha256: sha256(bytes) });
+        assert_eq!(read_verified(&path, &saved.sha256).unwrap(), bytes);
+        std::fs::write(&path, b"changed").unwrap();
+        let err = read_verified(&path, &saved.sha256).unwrap_err();
+        assert_eq!(err, "The downloaded file changed after it was checked, so it wasn't installed. Download it again.");
+        assert!(read_verified(&dl.join("missing"), &saved.sha256).unwrap_err().starts_with("Couldn't read "));
     }
     let _ = std::fs::remove_dir_all(&dir);
 }

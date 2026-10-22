@@ -54,7 +54,8 @@ fn main() -> eframe::Result {
     // Besides the window, git runs Glowfly in three modes that exit without opening one: as the
     // sequence editor of an interactive rebase (`--write-todo`), as gpg.program when it signs
     // (marked by `GLOWFLY_GPG_WRAPPER`), and as the askpass program. Scripts have two more:
-    // `--version` and `--check-update <folder>` (`cli_update`).
+    // `--version` and `--check-update <folder>` (`cli_update`), and Install and restart starts a
+    // copy of Glowfly as its helper with `--finish-update <plan>`.
     let argv: Vec<OsString> = std::env::args_os().collect();
     // Checked first: the sequence editor runs under git, so it inherits the other modes'
     // variables.
@@ -68,6 +69,10 @@ fn main() -> eframe::Result {
     }
     if argv.get(1).is_some_and(|a| a == cli_update::CHECK_FLAG) {
         std::process::exit(cli_update::check_update(&argv[2..]));
+    }
+    // The update helper writes only its own log.
+    if argv.get(1).is_some_and(|a| a == cli_update::FINISH_FLAG) {
+        std::process::exit(cli_update::finish_update(&argv[2..]));
     }
     // git signs with its gpg.program: ask for the key's passphrase through the running app.
     // Before the askpass checks, since git passes the askpass variables on to it too.

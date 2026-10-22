@@ -1,6 +1,7 @@
 //! `glowfly --version` and `glowfly --check-update <folder>`: the command-line modes the
-//! installer checks in CI use (scripts/update-feed-check.ps1). They exit before logging,
-//! settings and the window.
+//! installer checks in CI use (scripts/update-feed-check.ps1); and `glowfly --finish-update
+//! <plan>`, the helper Install and restart starts. They exit before logging, settings and the
+//! window.
 
 use glowfly_core::app_update::{self, CURRENT_PLATFORM, CURRENT_VERSION, Checked, Feed, InstallKind, Version, check_and_download};
 use glowfly_core::native_path::shown;
@@ -10,9 +11,11 @@ use std::path::{Path, PathBuf};
 
 pub const VERSION_FLAG: &str = "--version";
 pub const CHECK_FLAG: &str = "--check-update";
+pub const FINISH_FLAG: &str = app_update::FINISH_FLAG;
 /// `--check-update`'s exit status when there is no newer release.
 pub const EXIT_UP_TO_DATE: i32 = 3;
 const USAGE: &str = "usage: glowfly --check-update <absolute folder to download into>";
+const FINISH_USAGE: &str = "usage: glowfly --finish-update <absolute path of the update plan>";
 
 /// Prints `glowfly <version>`; a closed stdout is ignored.
 pub fn print_version() -> i32 {
@@ -30,18 +33,28 @@ fn print_lines(lines: &[String]) {
     let _ = out.flush();
 }
 
-/// The folder to download into: exactly one argument, an absolute path.
-fn download_dir(args: &[OsString]) -> Result<PathBuf, ()> {
+/// The one argument of a mode that takes a folder or file: an absolute path.
+fn one_absolute_path(args: &[OsString]) -> Result<PathBuf, ()> {
     let [arg] = args else { return Err(()) };
     let dir = PathBuf::from(arg);
     if dir.is_absolute() { Ok(dir) } else { Err(()) }
+}
+
+/// `--finish-update <plan>`: the update helper, which waits for Glowfly to quit on its stdin
+/// and then carries out the plan. Exits 2 on a usage error.
+pub fn finish_update(args: &[OsString]) -> i32 {
+    let Ok(plan) = one_absolute_path(args) else {
+        eprintln!("{FINISH_USAGE}");
+        return 2;
+    };
+    app_update::finish_update(&plan, std::io::stdin())
 }
 
 /// `--check-update <folder>`: checks the feed and downloads a newer release's file for this
 /// copy into `<folder>`. Exits 0 when one was downloaded and verified, 3 when there is no newer
 /// release, 1 when the check or download failed and 2 on a usage or configuration error.
 pub fn check_update(args: &[OsString]) -> i32 {
-    let Ok(dir) = download_dir(args) else {
+    let Ok(dir) = one_absolute_path(args) else {
         eprintln!("{USAGE}");
         return 2;
     };
@@ -106,10 +119,18 @@ mod tests {
     #[test]
     fn the_download_folder_is_one_absolute_path() {
         let dl = glowfly_core::paths::temp_dir().join("dl");
-        assert_eq!(download_dir(&[]), Err(()));
-        assert_eq!(download_dir(&[dl.clone().into(), dl.clone().into()]), Err(()));
-        assert_eq!(download_dir(&["dl".into()]), Err(()));
-        assert_eq!(download_dir(&[dl.clone().into()]), Ok(dl));
+        assert_eq!(one_absolute_path(&[]), Err(()));
+        assert_eq!(one_absolute_path(&[dl.clone().into(), dl.clone().into()]), Err(()));
+        assert_eq!(one_absolute_path(&["dl".into()]), Err(()));
+        assert_eq!(one_absolute_path(&[dl.clone().into()]), Ok(dl));
+    }
+
+    #[test]
+    fn the_update_plan_is_one_absolute_path() {
+        let plan = glowfly_core::paths::temp_dir().join("plan.json");
+        assert_eq!(finish_update(&[]), 2);
+        assert_eq!(finish_update(&[plan.clone().into(), plan.into()]), 2);
+        assert_eq!(finish_update(&["plan.json".into()]), 2);
     }
 
     #[test]

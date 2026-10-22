@@ -9,7 +9,7 @@ use crate::state::updates::UpdateStatus;
 use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
-use glowfly_core::app_update::{Arch, Asset, InstallKind, Offer, Platform, Release, TargetOs, Version, offer};
+use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, Offer, Platform, Release, TargetOs, Version, offer};
 use glowfly_core::settings::ThemeChoice;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -86,7 +86,7 @@ fn notes(theme: ThemeChoice, offer: Option<&Offer>, bundled: &str) -> AppState {
     st
 }
 
-fn prefs(status: UpdateStatus) -> AppState {
+pub(super) fn prefs(status: UpdateStatus) -> AppState {
     let mut st = app(ThemeChoice::Dark);
     st.settings.updates.last_checked = Some(CHECKED);
     st.updates.status = status;
@@ -187,12 +187,13 @@ fn status_update_available() {
 #[test]
 fn status_update_downloaded() {
     let file = PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
-    let mut h = harness(status_bar(UpdateStatus::Downloaded { offer: Box::new(the_offer()), file, installer: true }), true);
+    let status = UpdateStatus::Downloaded { offer: Box::new(the_offer()), file, sha256: [0; 32], method: InstallMethod::RunMsi };
+    let mut h = harness(status_bar(status), true);
     h.run();
     h.check_snapshot("status_update_downloaded");
     h.get_by_label("Update downloaded").click();
     h.run();
-    assert!(sent(&h, &UpdateMsg::Install));
+    assert!(sent(&h, &UpdateMsg::InstallAndRestart));
 }
 
 #[test]

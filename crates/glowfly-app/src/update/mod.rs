@@ -156,6 +156,7 @@ mod trust;
 mod trust_inherit;
 mod undo;
 mod updates;
+mod updates_restart;
 mod watch;
 mod wip_list;
 mod work_files;

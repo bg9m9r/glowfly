@@ -28,6 +28,7 @@ rm -rf "$stage"
 mkdir -p "$stage"
 cp "$bin" LICENSE-MIT LICENSE-APACHE README.md THIRD-PARTY-NOTICES.md "$stage/"
 if [ -f CHANGELOG.md ]; then cp CHANGELOG.md "$stage/"; fi
+# Install and restart reads this layout (crates/glowfly-core/src/app_update/archive.rs).
 tar -C "$dist" -czf "$dist/$name.tar.gz" "$name"
 rm -rf "$stage"
 sum "$dist/$name.tar.gz"

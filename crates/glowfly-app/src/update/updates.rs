@@ -1,20 +1,19 @@
 //! Glowfly's own updates: the daily automatic check (armed by `Startup`, then driven by `Tick`),
-//! Check now, downloading the offered file, and opening or showing it. Automatic checks never
-//! toast a failure; they log it quietly and wait `RETRY_AFTER`. Only `settings.updates` is
-//! saved.
+//! Check now, downloading the offered file, and showing it or installing it (Install and
+//! restart, update/updates_restart.rs). Automatic checks never toast a failure; they log it
+//! quietly and wait `RETRY_AFTER`. Only `settings.updates` is saved.
 
 use super::release_notes::{open_notes, startup_notes};
 use crate::effect::OsEffect;
 use crate::effect::{Effect, UpdateEffect};
 use crate::msg::{CheckedRelease, Msg, UpdateMsg};
 use crate::state::updates::{
-    RETRY_AFTER, STARTUP_DELAY, UpdateStatus, available_text, check_failed_text, download_failed_text, downloaded_text, is_installer,
+    RETRY_AFTER, STARTUP_DELAY, UpdateStatus, available_text, check_failed_text, download_failed_text, downloaded_text, install_label,
     latest_text,
 };
 use crate::state::{AppState, ToastAction};
-use glowfly_core::app_update;
+use glowfly_core::app_update::{self, InstallKind, InstallMethod, Saved};
 use glowfly_core::i18n::Lang;
-use std::path::PathBuf;
 use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, msg: UpdateMsg, now: Instant, fx: &mut Vec<Effect>) {
@@ -22,20 +21,19 @@ pub(super) fn handle(st: &mut AppState, msg: UpdateMsg, now: Instant, fx: &mut V
         UpdateMsg::Startup => {
             st.updates.auto_from = Some(now + STARTUP_DELAY);
             startup_notes(st, fx);
+            fx.push(Effect::Updates(UpdateEffect::Tidy));
         }
         UpdateMsg::CheckNow => {
-            if !st.updates.busy() {
+            if !st.updates.blocked() {
                 check(st, true, fx);
             }
         }
         UpdateMsg::Checked { manual, result } => checked(st, manual, result, now, fx),
         UpdateMsg::Download => download(st, fx),
         UpdateMsg::Downloaded(result) => downloaded(st, result, now),
-        UpdateMsg::Install => {
-            if let Some(file) = st.updates.installer() {
-                fx.push(Effect::Updates(UpdateEffect::Install(file.clone())));
-            }
-        }
+        UpdateMsg::InstallAndRestart => super::updates_restart::ask(st, false, now, fx),
+        UpdateMsg::InstallAndRestartConfirmed => super::updates_restart::ask(st, true, now, fx),
+        UpdateMsg::RestartReady(result) => super::updates_restart::ready(st, result, now, fx),
         UpdateMsg::ShowFile => {
             if let UpdateStatus::Downloaded { file, .. } = st.updates.settled() {
                 fx.push(Effect::Os(OsEffect::RevealPath(file.clone())));
@@ -65,7 +63,7 @@ pub(super) fn tick(st: &mut AppState, t: Instant, fx: &mut Vec<Effect>) {
     }
     let u = &st.updates;
     let armed = u.auto_from.is_some_and(|from| t >= from) && u.retry_at.is_none_or(|at| t >= at);
-    if armed && !u.busy() && app_update::due(st.settings.updates.check, st.settings.updates.last_checked, st.view.now) {
+    if armed && !u.blocked() && app_update::due(st.settings.updates.check, st.settings.updates.last_checked, st.view.now) {
         check(st, false, fx);
     }
 }
@@ -89,7 +87,12 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
         other => other,
     };
     let found = match result {
-        Ok(found) => found,
+        Ok(found) => {
+            if let Some(f) = &found {
+                st.updates.install = Some(f.install);
+            }
+            found
+        }
         Err(e) => {
             st.log_quiet(false, check_failed_text(t, &e));
             if manual {
@@ -108,13 +111,13 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
     let offer = found.as_ref().and_then(|f| app_update::offer(&f.release, &u.current, u.platform, f.install));
     // A file already downloaded for this release (or a newer one) stays.
     let kept = match (&offer, &prior) {
-        (Some(o), UpdateStatus::Downloaded { offer: d, installer, .. }) if d.version >= o.version => Some((d.version.clone(), *installer)),
+        (Some(o), UpdateStatus::Downloaded { offer: d, method, .. }) if d.version >= o.version => Some((d.version.clone(), *method)),
         _ => None,
     };
-    if let Some((version, installer)) = kept {
+    if let Some((version, method)) = kept {
         st.log_quiet(true, available_text(t, &version));
         if manual {
-            downloaded_toast(st, &version, installer, now);
+            downloaded_toast(st, &version, method, now);
         }
         st.updates.status = prior;
         return;
@@ -140,19 +143,23 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
     }
 }
 
-/// "Downloaded Glowfly x.y.z." with Install for an installer, else Show file.
-fn downloaded_toast(st: &mut AppState, version: &app_update::Version, installer: bool, now: Instant) {
+/// "Downloaded Glowfly x.y.z." with Install and restart or Open installer when the file can
+/// be installed, else Show file.
+fn downloaded_toast(st: &mut AppState, version: &app_update::Version, method: InstallMethod, now: Instant) {
     let t = st.settings.lang();
-    let (label, msg) = if installer {
-        (t.tr("updates.install.button"), UpdateMsg::Install)
-    } else {
-        (t.tr("updates.show_file.button"), UpdateMsg::ShowFile)
+    let (label, msg) = match method {
+        InstallMethod::OpenAndQuit => (t.tr("updates.open_installer.button"), UpdateMsg::InstallAndRestart),
+        m if m.acts() => (install_label(t, m), UpdateMsg::InstallAndRestart),
+        _ => (t.tr("updates.show_file.button"), UpdateMsg::ShowFile),
     };
     let action = ToastAction { label: label.into(), msg: Box::new(Msg::Updates(msg)), workdir: None };
     st.toast_action(true, downloaded_text(t, version), action, now);
 }
 
 fn download(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if st.updates.restarting {
+        return;
+    }
     let offer = match &st.updates.status {
         UpdateStatus::Available(o) | UpdateStatus::DownloadFailed { offer: o, .. } | UpdateStatus::Downloaded { offer: o, .. } => o.clone(),
         UpdateStatus::Idle
@@ -174,21 +181,31 @@ fn download(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::Updates(UpdateEffect::Download(offer)));
 }
 
-fn downloaded(st: &mut AppState, result: Result<PathBuf, String>, now: Instant) {
+fn downloaded(st: &mut AppState, result: Result<Saved, String>, now: Instant) {
     let t = st.settings.lang();
     let UpdateStatus::Downloading(offer) = std::mem::take(&mut st.updates.status) else { return };
     match result {
-        Ok(file) => {
-            let installer = is_installer(&file);
+        Ok(Saved { path: file, sha256 }) => {
+            let method = method_for(st, &file);
             let text = downloaded_text(t, &offer.version);
             st.log_quiet(true, format!("{text} {}", glowfly_core::native_path::shown(&file)));
-            downloaded_toast(st, &offer.version, installer, now);
-            st.updates.status = UpdateStatus::Downloaded { offer, file, installer };
+            downloaded_toast(st, &offer.version, method, now);
+            st.updates.status = UpdateStatus::Downloaded { offer, file, sha256, method };
         }
         Err(error) => {
             st.log_quiet(false, download_failed_text(t, &error));
             st.toast(false, download_failed_text(t, &error), now);
             st.updates.status = UpdateStatus::DownloadFailed { offer, error };
         }
+    }
+}
+
+/// How the downloaded `file` is installed on this system, for this copy (portable when no
+/// check has said); only shown when the system isn't one Glowfly knows.
+fn method_for(st: &AppState, file: &std::path::Path) -> InstallMethod {
+    let name = file.file_name().map(|n| n.to_string_lossy()).unwrap_or_default();
+    match st.updates.platform {
+        Some(p) => app_update::install_method_for(&name, st.updates.install.unwrap_or(InstallKind::Portable), p.os),
+        None => InstallMethod::ShowOnly,
     }
 }
