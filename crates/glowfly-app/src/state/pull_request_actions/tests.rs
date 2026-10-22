@@ -15,9 +15,10 @@ pub(crate) fn detail() -> PrDetail {
         author: "ada".into(),
         me: "grace".into(),
         can_merge: Some(true),
-        methods: MergeMethod::ALL.to_vec(),
+        methods: MergeMethod::GITHUB.to_vec(),
         deletes_merged_branches: false,
         pending_review: None,
+        style: ReviewStyle::Verdicts,
     }
 }
 

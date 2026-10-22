@@ -86,6 +86,8 @@ pub enum PrCall {
         event: ReviewEvent,
         body: String,
         pending: Option<u64>,
+        /// The head the page showed; GitLab approves only that head.
+        head_sha: String,
     },
     /// Merge; once merged, `source` is deleted on `remote` (when `delete`) and `remote` fetched.
     Merge {

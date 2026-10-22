@@ -1,5 +1,5 @@
-//! The "Merge" section: whether the service would merge now, the merge methods the repository
-//! allows, the commit title and message, deleting the source branch afterwards, and the Merge
+//! The "Merge" section: whether the service would merge now, the merge methods the service
+//! offers, the commit title and message, deleting the source branch afterwards, and the Merge
 //! button (with a confirmation, and why it is disabled under it). A merged pull request offers to delete its source branch.
 
 use super::super::theme::color;
@@ -7,8 +7,8 @@ use super::{heading, note, tone_color};
 use crate::msg::Msg;
 use crate::state::pull_request::{PrAction, PrView};
 use crate::state::pull_request_actions::{
-    delete_after_merge_blocked, delete_branch_offer, error_for, merge_blocked, merge_confirm, mergeability, method_blocked, method_help,
-    method_label,
+    delete_after_merge_blocked, delete_branch_offer, error_for, merge_blocked, merge_button, merge_choices, merge_confirm, mergeability,
+    method_blocked, method_help, method_label,
 };
 use crate::ui::theme::controls;
 use crate::ui::widgets::{buttons, reason};
@@ -46,7 +46,7 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
     }
     let Some(detail) = v.loaded().map(|p| p.detail.clone()) else { return };
     let target = printable(&v.pr.target);
-    for m in MergeMethod::ALL {
+    for m in merge_choices(&detail) {
         let blocked = method_blocked(&detail, m);
         let mut r = ui.add_enabled(blocked.is_none(), controls::Radio::new(v.forms.merge_method == Some(m), method_label(m)));
         if let Some(why) = blocked {
@@ -90,7 +90,7 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
     }
     ui.add_space(4.0);
     let blocked = merge_blocked(v);
-    let r = ui.add(buttons::secondary(format!("Merge {}", v.noun)).enabled(blocked.is_none()).why(blocked.as_deref()));
+    let r = ui.add(buttons::secondary(merge_button(v)).enabled(blocked.is_none()).why(blocked.as_deref()));
     if r.clicked() {
         msgs.push(merge_confirm(v, default_branch));
     }

@@ -103,7 +103,12 @@ pub(super) fn post_comment(st: &mut AppState, fx: &mut Vec<Effect>) {
 pub(super) fn submit_review(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(v) = st.pull_request.as_ref().filter(|v| review_blocked(v).is_none()) else { return };
     let Some(page) = v.loaded() else { return };
-    let call = PrCall::Review { event: v.forms.review_event, body: v.forms.review_body.clone(), pending: page.detail.pending_review };
+    let call = PrCall::Review {
+        event: v.forms.review_event,
+        body: v.forms.review_body.clone(),
+        pending: page.detail.pending_review,
+        head_sha: page.detail.head_sha.clone(),
+    };
     act(st, PrAction::Review, call, fx);
 }
 
@@ -132,6 +137,7 @@ pub(super) fn action_text(label: &str, into: &str, reply: &PrReply) -> (bool, St
         PrReply::Reviewed(ReviewEvent::Approve, Ok(())) => (true, format!("Approved {label}")),
         PrReply::Reviewed(ReviewEvent::RequestChanges, Ok(())) => (true, format!("Requested changes on {label}")),
         PrReply::Reviewed(ReviewEvent::Comment, Ok(())) => (true, format!("Reviewed {label}")),
+        PrReply::Reviewed(ReviewEvent::Unapprove, Ok(())) => (true, format!("Removed your approval from {label}")),
         PrReply::Reviewed(_, Err(e)) => fail("Reviewing", e),
         PrReply::Merged { result: Ok(_), method, .. } if into.is_empty() => (true, format!("Merged {label} ({})", method.api_name())),
         PrReply::Merged { result: Ok(_), method, .. } => (true, format!("Merged {label} into {into} ({})", method.api_name())),

@@ -12,7 +12,9 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::diff_rows::LineSide;
-use glowfly_core::forge::{Entry, EntryKind, MergeMethod, MergeState, PrDetail, PrPage, PrState, ReviewThread, ThreadComment, Verdict};
+use glowfly_core::forge::{
+    Entry, EntryKind, MergeMethod, MergeState, PrDetail, PrPage, PrState, ReviewStyle, ReviewThread, ThreadComment, Verdict,
+};
 use glowfly_core::repo::{self, DiffTarget, FileDiff};
 use glowfly_core::settings::ThemeChoice;
 use std::sync::Arc;
@@ -38,6 +40,7 @@ pub(super) fn detail(head: String) -> PrDetail {
         methods: vec![MergeMethod::Merge, MergeMethod::Squash],
         deletes_merged_branches: false,
         pending_review: None,
+        style: ReviewStyle::Verdicts,
     }
 }
 

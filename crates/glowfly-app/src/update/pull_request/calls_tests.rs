@@ -10,7 +10,7 @@ use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
 use crate::state::AppState;
 use crate::state::pull_request::{Page, PrAction, PrTab};
 use glowfly_core::forge::{
-    Auth, Entry, EntryKind, MergeMethod, MergeState, Merged, PrDetail, PrPage, PrState, Provider, ReviewEvent, Target,
+    Auth, Entry, EntryKind, MergeMethod, MergeState, Merged, PrDetail, PrPage, PrState, Provider, ReviewEvent, ReviewStyle, Target,
 };
 use glowfly_core::settings::RepoTrust;
 use std::path::PathBuf;
@@ -64,6 +64,7 @@ pub(super) fn detail(head: &str) -> PrDetail {
         methods: vec![MergeMethod::Squash, MergeMethod::Rebase],
         deletes_merged_branches: false,
         pending_review: None,
+        style: ReviewStyle::Verdicts,
     }
 }
 
@@ -125,10 +126,10 @@ fn open_github_pr_requests_the_page() {
 }
 
 #[test]
-fn open_on_gitlab_sends_no_call() {
-    let (mut st, work, bare, _) = setup("prc-gitlab", &[]);
-    let gl = Target { provider: Provider::GitLab, host: "gitlab.com".into(), ..github() };
-    st.forge.as_mut().unwrap().host = Some(gl);
+fn open_on_bitbucket_sends_no_call() {
+    let (mut st, work, bare, _) = setup("prc-bitbucket", &[]);
+    let bb = Target { provider: Provider::Bitbucket, host: "bitbucket.org".into(), ..github() };
+    st.forge.as_mut().unwrap().host = Some(bb);
     let fx = run(&mut st, PullRequestMsg::Open(7));
     assert!(calls(&fx).is_empty());
     assert_eq!(view(&st).page, Page::Unsupported);
@@ -267,7 +268,7 @@ fn review_needs_summary_for_request_changes() {
     let fx = run(&mut st, PullRequestMsg::SubmitReview);
     let jobs = calls(&fx);
     let [job] = &jobs[..] else { panic!("one call: {jobs:?}") };
-    assert!(matches!(&job.call, PrCall::Review { event: ReviewEvent::RequestChanges, body, pending: None } if body == "Rename it"));
+    assert!(matches!(&job.call, PrCall::Review { event: ReviewEvent::RequestChanges, body, pending: None, .. } if body == "Rename it"));
     done(st, dirs);
 }
 

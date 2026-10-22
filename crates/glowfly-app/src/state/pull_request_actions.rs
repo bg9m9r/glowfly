@@ -5,7 +5,7 @@
 use super::gitflow_base::Deleting;
 use super::pull_request::{PrAction, PrView, Tone};
 use crate::msg::Msg;
-use glowfly_core::forge::{EntryKind, MergeMethod, MergeState, PrDetail, PrPage, PrState, ReviewEvent, Verdict};
+use glowfly_core::forge::{EntryKind, MergeMethod, MergeState, PrDetail, PrPage, PrState, ReviewEvent, ReviewStyle, Verdict};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 
@@ -85,16 +85,51 @@ pub fn comment_blocked(v: &PrView) -> Option<String> {
     }
 }
 
-/// Why review choice `ev` is unavailable: the author can't judge their own changes, and only
-/// an open pull request is reviewed.
+/// The review form's choices: GitHub's verdicts, or GitLab's comment and approval (taken back
+/// once given).
+pub fn review_choices(d: &PrDetail) -> Vec<ReviewEvent> {
+    match d.style {
+        ReviewStyle::Verdicts => vec![ReviewEvent::Comment, ReviewEvent::Approve, ReviewEvent::RequestChanges],
+        ReviewStyle::Approvals { by_me: false, .. } => vec![ReviewEvent::Comment, ReviewEvent::Approve],
+        ReviewStyle::Approvals { by_me: true, .. } => vec![ReviewEvent::Comment, ReviewEvent::Unapprove],
+    }
+}
+
+/// A review choice's label and the line under it.
+pub fn review_choice_text(ev: ReviewEvent) -> (&'static str, &'static str) {
+    match ev {
+        ReviewEvent::Comment => ("Comment", "General feedback, without approving."),
+        ReviewEvent::Approve => ("Approve", "Approve these changes for merging."),
+        ReviewEvent::RequestChanges => ("Request changes", "Feedback that must be addressed before this can merge."),
+        ReviewEvent::Unapprove => ("Remove approval", "Take back your approval of these changes."),
+    }
+}
+
+/// Why review choice `ev` is unavailable: the author can't judge their own changes (unless
+/// GitLab's approval rules let them), an approval is given or taken back once, and only an
+/// open pull request is reviewed.
 pub fn review_choice_blocked(v: &PrView, ev: ReviewEvent) -> Option<String> {
     let d = &v.loaded()?.detail;
-    if d.is_author() {
-        match ev {
-            ReviewEvent::Approve => return Some(format!("You opened this {}, so you can't approve it.", v.noun)),
-            ReviewEvent::RequestChanges => return Some(format!("You opened this {}, so you can't request changes on it.", v.noun)),
-            ReviewEvent::Comment => {}
-        }
+    let own = || format!("You opened this {}, so you can't approve it.", v.noun);
+    match d.style {
+        ReviewStyle::Verdicts => match ev {
+            ReviewEvent::Approve if d.is_author() => return Some(own()),
+            ReviewEvent::RequestChanges if d.is_author() => {
+                return Some(format!("You opened this {}, so you can't request changes on it.", v.noun));
+            }
+            ReviewEvent::Unapprove => return Some("Approvals can't be taken back on this service".to_owned()),
+            _ => {}
+        },
+        ReviewStyle::Approvals { by_me, can_approve } => match ev {
+            ReviewEvent::Approve if by_me => return Some("You've approved this already".to_owned()),
+            ReviewEvent::Approve if can_approve == Some(false) => {
+                return Some(if d.is_author() { own() } else { "The project's approval rules don't let you approve this".to_owned() });
+            }
+            ReviewEvent::Approve if can_approve.is_none() && d.is_author() => return Some(own()),
+            ReviewEvent::Unapprove if !by_me => return Some("You haven't approved this".to_owned()),
+            ReviewEvent::RequestChanges => return Some("GitLab has no Request changes".to_owned()),
+            _ => {}
+        },
     }
     not_open(v, d)
 }
@@ -110,7 +145,8 @@ pub fn review_blocked(v: &PrView) -> Option<String> {
         return Some(why);
     }
     let finishing = page.detail.pending_review.is_some() && ev == ReviewEvent::Comment;
-    if v.forms.review_body.trim().is_empty() && ev != ReviewEvent::Approve && !finishing {
+    let optional = matches!(ev, ReviewEvent::Approve | ReviewEvent::Unapprove) || finishing;
+    if v.forms.review_body.trim().is_empty() && !optional {
         Some("Write a summary for this choice".to_owned())
     } else if too_long(&v.forms.review_body, MAX_BODY) {
         Some("A summary can have at most 65,536 characters".to_owned())
@@ -149,6 +185,15 @@ pub fn mergeability(v: &PrView) -> Option<(Tone, String)> {
     })
 }
 
+/// The merge form's methods: every one GitHub has (the repository's choice decides which are
+/// enabled), or only the GitLab project's own.
+pub fn merge_choices(d: &PrDetail) -> Vec<MergeMethod> {
+    match d.style {
+        ReviewStyle::Verdicts => MergeMethod::GITHUB.to_vec(),
+        ReviewStyle::Approvals { .. } => d.methods.clone(),
+    }
+}
+
 /// Why merge method `m` can't be chosen.
 pub fn method_blocked(d: &PrDetail, m: MergeMethod) -> Option<&'static str> {
     (!d.methods.contains(&m)).then_some("Not enabled in this repository's settings")
@@ -159,6 +204,7 @@ pub fn method_label(m: MergeMethod) -> &'static str {
         MergeMethod::Merge => "Merge commit",
         MergeMethod::Squash => "Squash and merge",
         MergeMethod::Rebase => "Rebase and merge",
+        MergeMethod::FastForward => "Fast-forward",
     }
 }
 
@@ -168,7 +214,13 @@ pub fn method_help(m: MergeMethod, target: &str) -> String {
         MergeMethod::Merge => format!("All commits are added to {target} through a merge commit."),
         MergeMethod::Squash => format!("The commits are combined into one commit on {target}."),
         MergeMethod::Rebase => format!("Each commit is replayed onto {target}, with no merge commit."),
+        MergeMethod::FastForward => format!("{target} moves forward to the source branch's last commit, with no merge commit."),
     }
+}
+
+/// The Merge button's label: "Merge pull request", or just "Merge" for a merge request.
+pub fn merge_button(v: &PrView) -> String {
+    if v.noun == "merge request" { "Merge".to_owned() } else { format!("Merge {}", v.noun) }
 }
 
 /// Why the Merge button is disabled; the first reason that applies.
@@ -231,6 +283,7 @@ pub fn merge_confirm(v: &PrView, default_branch: Option<&str>) -> Msg {
     let how = match v.forms.merge_method {
         Some(MergeMethod::Squash) => "squashing its commits",
         Some(MergeMethod::Rebase) => "rebasing its commits",
+        Some(MergeMethod::FastForward) => "a fast-forward",
         _ => "a merge commit",
     };
     let title = glowfly_core::text::printable(&v.pr.title);
@@ -238,7 +291,7 @@ pub fn merge_confirm(v: &PrView, default_branch: Option<&str>) -> Msg {
     if deletes_after_merge(v, default_branch) {
         body.push_str(&format!(" Then delete {} on {}.", v.pr.source, v.remote));
     }
-    Msg::confirm("Merge pull request", body, "Merge", Msg::PullRequest(crate::pull_request::PullRequestMsg::Merge))
+    Msg::confirm(&merge_button(v), body, "Merge", Msg::PullRequest(crate::pull_request::PullRequestMsg::Merge))
 }
 
 /// After a merge: the Delete button's confirmation, when the source branch is still on the
@@ -268,16 +321,18 @@ pub fn verdict_text(kind: &EntryKind) -> (&'static str, Tone) {
         EntryKind::Review(Verdict::ChangesRequested) => ("requested changes", Tone::Bad),
         EntryKind::Review(Verdict::Commented) => ("reviewed", Tone::Neutral),
         EntryKind::Review(Verdict::Dismissed) => ("review dismissed", Tone::Neutral),
+        EntryKind::Review(Verdict::ApprovalRemoved) => ("removed their approval", Tone::Neutral),
     }
 }
 
-/// Fits the forms to a freshly loaded page: a merge method the repository allows, and no
-/// verdict the author can't give.
+/// Fits the forms to a freshly loaded page: a merge method the repository allows, and a review
+/// choice the service lists (on GitHub, no verdict the author can't give).
 pub fn prefill(forms: &mut PrForms, d: &PrDetail) {
     if forms.merge_method.is_none_or(|m| !d.methods.contains(&m)) {
         forms.merge_method = d.methods.first().copied();
     }
-    if d.is_author() {
+    let own = d.style == ReviewStyle::Verdicts && d.is_author();
+    if own || !review_choices(d).contains(&forms.review_event) {
         forms.review_event = ReviewEvent::Comment;
     }
 }
@@ -287,5 +342,7 @@ pub fn error_for<'a>(v: &'a PrView, action: &PrAction) -> Option<&'a str> {
     v.action_error.as_ref().filter(|(a, _)| a == action).map(|(_, e)| e.as_str())
 }
 
+#[cfg(test)]
+mod gitlab_tests;
 #[cfg(test)]
 pub(crate) mod tests;

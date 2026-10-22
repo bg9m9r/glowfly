@@ -11,7 +11,7 @@ use crate::state::pull_request::{Page, PrTab, PrView};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
-use glowfly_core::forge::{Entry, EntryKind, MergeMethod, MergeState, PrDetail, PrPage, PrState, Provider, Target, Verdict};
+use glowfly_core::forge::{Entry, EntryKind, MergeMethod, MergeState, PrDetail, PrPage, PrState, Provider, ReviewStyle, Target, Verdict};
 use glowfly_core::settings::ThemeChoice;
 
 pub(super) fn detail() -> PrDetail {
@@ -30,6 +30,7 @@ pub(super) fn detail() -> PrDetail {
         methods: vec![MergeMethod::Merge, MergeMethod::Squash],
         deletes_merged_branches: false,
         pending_review: None,
+        style: ReviewStyle::Verdicts,
     }
 }
 
@@ -134,12 +135,12 @@ fn pull_request_merged_light() {
 }
 
 #[test]
-fn pull_request_gitlab_light() {
-    let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-gitlab", true);
+fn pull_request_unsupported_light() {
+    let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-unsupported", true);
     let fs = st.forge.as_mut().unwrap();
     fs.host = Some(Target {
-        provider: Provider::GitLab,
-        host: "gitlab.com".into(),
+        provider: Provider::Bitbucket,
+        host: "bitbucket.org".into(),
         owner: "acme".into(),
         project: String::new(),
         repo: "demo".into(),
@@ -150,8 +151,8 @@ fn pull_request_gitlab_light() {
     st.pull_request = Some(view);
     let mut h = harness(st, false);
     h.run();
-    h.check_snapshot("pull_request_gitlab_light");
-    assert!(h.query_by_label_contains("work with GitHub for now").is_some());
+    h.check_snapshot("pull_request_unsupported_light");
+    assert!(h.query_by_label_contains("work with GitHub and GitLab for now").is_some());
     assert!(h.query_by_label("Your review").is_none() && h.query_by_label("Write a comment").is_none());
     drop(h);
     remove_fixture(&dir);
@@ -202,3 +203,6 @@ fn command_enter_posts_the_comment_and_the_review() {
     drop(h);
     remove_fixture(&dir);
 }
+
+#[path = "snapshot_tests_pull_request_gitlab.rs"]
+mod gitlab;

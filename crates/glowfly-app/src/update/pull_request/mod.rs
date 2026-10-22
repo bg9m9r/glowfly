@@ -26,6 +26,8 @@ mod checks_tests;
 mod commits;
 #[cfg(test)]
 mod commits_tests;
+#[cfg(test)]
+mod gitlab_tests;
 mod line_comment;
 #[cfg(test)]
 mod line_comment_reply_tests;

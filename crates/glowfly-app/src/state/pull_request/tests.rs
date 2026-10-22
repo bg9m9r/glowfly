@@ -1,5 +1,5 @@
 use super::*;
-use glowfly_core::forge::{MergeState, PrDetail, Provider, Reviewer, Target};
+use glowfly_core::forge::{MergeState, PrDetail, Provider, ReviewStyle, Reviewer, Target};
 
 pub(crate) fn oid(n: u8) -> Oid {
     Oid::from_bytes(&[n; 20]).unwrap()
@@ -107,7 +107,9 @@ fn only_services_with_in_app_reviews_load_a_page() {
     };
     assert_eq!(initial_page(&fs(Provider::GitHub)), Page::Loading);
     assert_eq!(initial_page(&fs(Provider::GitHubEnterprise)), Page::Loading);
-    assert_eq!(initial_page(&fs(Provider::GitLab)), Page::Unsupported);
+    assert_eq!(initial_page(&fs(Provider::GitLab)), Page::Loading);
+    assert_eq!(initial_page(&fs(Provider::GitLabSelfManaged)), Page::Loading);
+    assert_eq!(initial_page(&fs(Provider::Bitbucket)), Page::Unsupported);
     assert_eq!(initial_page(&fs(Provider::AzureDevOps)), Page::Unsupported);
     assert_eq!(initial_page(&ForgeState::new(None, "origin".into(), None)), Page::Unsupported);
 }
@@ -128,5 +130,6 @@ pub(crate) fn merged_detail() -> PrDetail {
         methods: Vec::new(),
         deletes_merged_branches: false,
         pending_review: None,
+        style: ReviewStyle::Verdicts,
     }
 }

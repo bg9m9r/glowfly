@@ -3,7 +3,7 @@
 //! pull request panel.
 
 use super::super::{Auth, Target, links};
-use super::{github_threads, reviews_in_app, unsupported};
+use super::{github_threads, threads_in_app, unsupported};
 use crate::diff_rows::LineSide;
 use crate::error::Result;
 
@@ -78,7 +78,7 @@ pub(super) fn checked_thread(t: &Target, mut th: ReviewThread) -> ReviewThread {
 /// Replies to thread `comment` (its first comment's id) of pull request `id`; returns the reply
 /// as the service stored it.
 pub fn reply_to_thread(t: &Target, auth: &Auth, id: u64, comment: u64, body: &str) -> Result<ThreadComment> {
-    if !reviews_in_app(t.provider) {
+    if !threads_in_app(t.provider) {
         return Err(unsupported(t));
     }
     github_threads::reply(t, auth, id, comment, body).map(|c| checked_comment(t, c))
@@ -87,7 +87,7 @@ pub fn reply_to_thread(t: &Target, auth: &Auth, id: u64, comment: u64, body: &st
 /// Resolves (`resolve`) or reopens the thread with service id `thread`; returns whether it is
 /// resolved now.
 pub fn resolve_thread(t: &Target, auth: &Auth, thread: &str, resolve: bool) -> Result<bool> {
-    if !reviews_in_app(t.provider) {
+    if !threads_in_app(t.provider) {
         return Err(unsupported(t));
     }
     github_threads::resolve(t, auth, thread, resolve)

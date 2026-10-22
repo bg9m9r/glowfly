@@ -191,6 +191,17 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
   now)
 - Map outdated comments' original lines onto the local version when that commit is here
 - Say on the Files changed rows which files have comments not on the local lines
+- GitLab draft notes: write several comments and submit them at once as one review
+- GitLab's Request changes reviewer state (newer servers) in the review form and the timeline
+- Rebase the source branch on GitLab from the merge form when the project needs it (need_rebase)
+- Say which GitLab rule blocks a merge (approvals left, unresolved threads, pipeline, merge time)
+  instead of the generic blocked line
+- Ask for the GitLab password when the project requires re-authentication to approve
+- Merge when the pipeline succeeds (GitLab auto-merge) from the merge form
+- Show approvals required and approvals left from GitLab's approvals endpoint in the details
+- Say in the Squash help whether GitLab also adds a merge commit (the project's merge method)
+- Log a GitLab Comment-choice review as "Commented on !N" rather than "Reviewed !N"
+- GitLab code comment threads (discussions) and new code comments on diff lines in the panel
 
 ### Deep links
 

@@ -80,6 +80,7 @@ fn pr_page_reads_detail_settings_comments_and_reviews() {
     assert_eq!(d.can_merge, Some(false));
     assert!(d.same_repo, "same repository, whatever the case");
     assert_eq!(d.pending_review, Some(2), "only my own pending review");
+    assert_eq!(d.style, ReviewStyle::Verdicts);
     let summary: Vec<(&str, EntryKind)> = page.entries.iter().map(|e| (e.author.as_str(), e.kind)).collect();
     assert_eq!(
         summary,
@@ -118,7 +119,7 @@ fn enterprise_uses_the_api_v3_prefix() {
 fn absent_merge_settings_allow_every_method() {
     let _m = page_server("api.github.com", "{}", pull("null", "unknown", "null"));
     let d = pr_page(&gh(), &token(Provider::GitHub), 7).unwrap().detail;
-    assert_eq!(d.methods, MergeMethod::ALL);
+    assert_eq!(d.methods, MergeMethod::GITHUB);
     assert!(!d.deletes_merged_branches);
     assert_eq!(d.can_merge, None);
 }
@@ -163,7 +164,7 @@ fn submit_review_creates_a_review() {
         "POST api.github.com/repos/o/r/pulls/7/reviews" => Reply::json(r#"{"id":5}"#),
         _ => Reply::not_found(),
     });
-    submit_review(&gh(), &token(Provider::GitHub), 7, ReviewEvent::Approve, "", None).unwrap();
+    submit_review(&gh(), &token(Provider::GitHub), 7, &review(ReviewEvent::Approve, "", None)).unwrap();
     assert_eq!(find(&m, "POST").json(), serde_json::json!({ "event": "APPROVE", "body": "" }));
 }
 
@@ -173,8 +174,21 @@ fn submit_review_finishes_a_pending_review() {
         "POST api.github.com/repos/o/r/pulls/7/reviews/99/events" => Reply::json(r#"{"id":99}"#),
         _ => Reply::not_found(),
     });
-    submit_review(&gh(), &token(Provider::GitHub), 7, ReviewEvent::Comment, "Done", Some(99)).unwrap();
+    submit_review(&gh(), &token(Provider::GitHub), 7, &review(ReviewEvent::Comment, "Done", Some(99))).unwrap();
     assert_eq!(find(&m, "POST").json(), serde_json::json!({ "event": "COMMENT", "body": "Done" }));
+}
+
+fn review(event: ReviewEvent, body: &str, pending: Option<u64>) -> ReviewRequest {
+    ReviewRequest { event, body: body.into(), pending, head_sha: "h1".into() }
+}
+
+#[test]
+fn github_sends_no_unapprove_or_fast_forward() {
+    let m = Mock::start(|_| Reply::json("{}"));
+    let (t, auth) = (gh(), token(Provider::GitHub));
+    assert!(matches!(submit_review(&t, &auth, 7, &review(ReviewEvent::Unapprove, "", None)), Err(Error::Unsupported(_))));
+    assert!(matches!(merge(&t, &auth, 7, &merge_req(MergeMethod::FastForward, "", "")), Err(Error::Unsupported(_))));
+    assert!(m.requests().is_empty());
 }
 
 fn merge_req(method: MergeMethod, title: &str, message: &str) -> MergeRequest {

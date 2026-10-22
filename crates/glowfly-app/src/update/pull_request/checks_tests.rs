@@ -77,9 +77,9 @@ fn opening_asks_for_checks_with_the_head() {
 }
 
 #[test]
-fn gitlab_host_asks_for_checks_without_a_page() {
-    let (mut st, work, bare, _) = setup("prk-gitlab", &[]);
-    st.forge.as_mut().unwrap().host = Some(Target { provider: Provider::GitLab, host: "gitlab.com".into(), ..github() });
+fn unsupported_host_asks_for_checks_without_a_page() {
+    let (mut st, work, bare, _) = setup("prk-unsupported", &[]);
+    st.forge.as_mut().unwrap().host = Some(Target { provider: Provider::Bitbucket, host: "bitbucket.org".into(), ..github() });
     let fx = run(&mut st, PullRequestMsg::Open(7));
     assert_eq!((checks_calls(&fx).len(), loads(&fx)), (1, 0));
     assert_eq!(view(&st).page, Page::Unsupported);

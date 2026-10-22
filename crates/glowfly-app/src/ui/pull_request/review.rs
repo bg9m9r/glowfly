@@ -1,4 +1,5 @@
-//! The "Your review" section: the verdict (comment, approve, request changes), a summary, and
+//! The "Your review" section: the verdict (comment, approve, request changes; on GitLab,
+//! comment, approve or remove approval), a summary, and
 //! the Submit review button, or Finish review for a review already started on the service, with
 //! why it is disabled under it.
 
@@ -8,24 +9,21 @@ use crate::keymap::{BindingId, Keymap};
 use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::pull_request::{PrAction, PrView};
-use crate::state::pull_request_actions::{error_for, review_blocked, review_button, review_choice_blocked};
+use crate::state::pull_request_actions::{
+    error_for, review_blocked, review_button, review_choice_blocked, review_choice_text, review_choices,
+};
 use crate::ui::theme::controls;
 use crate::ui::widgets::{buttons, reason};
 use eframe::egui::{self, Ui};
-use glowfly_core::forge::ReviewEvent;
-
-const CHOICES: [(ReviewEvent, &str, &str); 3] = [
-    (ReviewEvent::Comment, "Comment", "General feedback, without approving."),
-    (ReviewEvent::Approve, "Approve", "Approve these changes for merging."),
-    (ReviewEvent::RequestChanges, "Request changes", "Feedback that must be addressed before this can merge."),
-];
 
 /// Shown once the page is loaded. Command+Enter in the summary submits too.
 pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Msg>) {
     let Some(page) = v.loaded() else { return };
     let pending = page.detail.pending_review.is_some();
+    let detail = page.detail.clone();
     heading(ui, "Your review");
-    for (ev, label, help) in CHOICES {
+    for ev in review_choices(&detail) {
+        let (label, help) = review_choice_text(ev);
         let blocked = review_choice_blocked(v, ev);
         let checked = v.forms.review_event == ev;
         let mut r = ui.add_enabled(blocked.is_none(), controls::Radio::new(checked, label));

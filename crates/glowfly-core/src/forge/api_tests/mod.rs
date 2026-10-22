@@ -16,6 +16,7 @@ mod fork_prs;
 mod forks;
 mod github;
 mod gitlab;
+mod gitlab_review;
 mod issue_comments;
 mod issues;
 mod jira_issues;

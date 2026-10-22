@@ -26,17 +26,21 @@ struct ApiIssueFull {
 }
 
 #[derive(Deserialize)]
-struct ApiNote {
-    id: u64,
+pub(super) struct ApiNote {
+    pub(super) id: u64,
     #[serde(default)]
-    body: String,
+    pub(super) body: String,
     #[serde(default)]
-    author: Option<User>,
+    pub(super) author: Option<User>,
     #[serde(default)]
-    created_at: String,
+    pub(super) created_at: String,
     /// Written by GitLab itself ("changed the description", "added label …").
     #[serde(default)]
-    system: bool,
+    pub(super) system: bool,
+    /// None for a plain note; "DiscussionNote" for one in a thread, "DiffNote" for a comment
+    /// on the changes.
+    #[serde(default, rename = "type")]
+    pub(super) note_type: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -49,13 +53,13 @@ struct Member {
 }
 
 /// A user's name, else their username.
-fn shown(u: Option<User>) -> String {
+pub(super) fn shown(u: Option<User>) -> String {
     u.map(|u| if u.name.is_empty() { u.username } else { u.name }).unwrap_or_default()
 }
 
 /// A note as a comment; `page_url` is the issue's checked page (the API sends no note links,
 /// so a note's page is the issue's with an anchor).
-fn note_entry(n: ApiNote, page_url: &str) -> Entry {
+pub(super) fn note_entry(n: ApiNote, page_url: &str) -> Entry {
     Entry {
         author: shown(n.author),
         time: api_time(&n.created_at),

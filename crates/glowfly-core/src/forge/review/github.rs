@@ -4,7 +4,10 @@
 use super::super::github::{me, repo_api};
 use super::super::http::put;
 use super::super::{Auth, Target, get, page, post};
-use super::{Entry, EntryKind, MergeMethod, MergeRequest, MergeState, Merged, PrDetail, PrPage, PrState, ReviewEvent, Verdict};
+use super::{
+    Entry, EntryKind, MergeMethod, MergeRequest, MergeState, Merged, PrDetail, PrPage, PrState, ReviewEvent, ReviewRequest, ReviewStyle,
+    Verdict,
+};
 use crate::error::{Error, Result};
 use serde::Deserialize;
 use serde_json::json;
@@ -174,7 +177,7 @@ pub(super) fn pr_page(t: &Target, auth: &Auth, id: u64) -> Result<PrPage> {
 
     let allowed = |flag: Option<bool>| flag.unwrap_or(true);
     let flags = [repo.allow_merge_commit, repo.allow_squash_merge, repo.allow_rebase_merge];
-    let methods = MergeMethod::ALL.into_iter().zip(flags).filter(|(_, f)| allowed(*f)).map(|(m, _)| m).collect();
+    let methods = MergeMethod::GITHUB.into_iter().zip(flags).filter(|(_, f)| allowed(*f)).map(|(m, _)| m).collect();
     let base_repo = pull.base.repo.as_ref().map(|r| r.full_name.to_lowercase());
     let head_repo = pull.head.repo.as_ref().map(|r| r.full_name.to_lowercase());
     let detail = PrDetail {
@@ -192,6 +195,7 @@ pub(super) fn pr_page(t: &Target, auth: &Auth, id: u64) -> Result<PrPage> {
         deletes_merged_branches: repo.delete_branch_on_merge.unwrap_or(false),
         pending_review: pending_of(&reviews, &me),
         me,
+        style: ReviewStyle::Verdicts,
     };
     let mut entries: Vec<Entry> = comments.into_iter().map(comment_entry).chain(reviews.into_iter().filter_map(review_entry)).collect();
     entries.sort_by_key(|e| e.time);
@@ -204,17 +208,23 @@ pub(super) fn post_comment(t: &Target, auth: &Auth, id: u64, body: &str) -> Resu
     Ok(comment_entry(c))
 }
 
-pub(super) fn submit_review(t: &Target, auth: &Auth, id: u64, event: ReviewEvent, body: &str, pending: Option<u64>) -> Result<()> {
-    let url = match pending {
+pub(super) fn submit_review(t: &Target, auth: &Auth, id: u64, req: &ReviewRequest) -> Result<()> {
+    if req.event == ReviewEvent::Unapprove {
+        return Err(Error::Unsupported("GitHub has no approvals to take back".into()));
+    }
+    let url = match req.pending {
         Some(p) => format!("{}/reviews/{p}/events", pull_api(t, id)),
         None => format!("{}/reviews", pull_api(t, id)),
     };
-    post::<serde_json::Value>(auth, &url, json!({ "event": event.api_name(), "body": body })).map(drop)
+    post::<serde_json::Value>(auth, &url, json!({ "event": req.event.api_name(), "body": req.body })).map(drop)
 }
 
 pub(super) fn merge(t: &Target, auth: &Auth, id: u64, req: &MergeRequest) -> Result<Merged> {
+    if req.method == MergeMethod::FastForward {
+        return Err(Error::Unsupported("GitHub merges with a merge commit, a squash or a rebase".into()));
+    }
     let mut body = json!({ "merge_method": req.method.api_name(), "sha": req.head_sha });
-    if req.method != MergeMethod::Rebase {
+    if !matches!(req.method, MergeMethod::Rebase | MergeMethod::FastForward) {
         if !req.title.is_empty() {
             body["commit_title"] = json!(req.title);
         }
@@ -253,9 +263,10 @@ pub(super) mod tests {
             author: "ada".into(),
             me: "grace".into(),
             can_merge: Some(true),
-            methods: MergeMethod::ALL.to_vec(),
+            methods: MergeMethod::GITHUB.to_vec(),
             deletes_merged_branches: false,
             pending_review: None,
+            style: ReviewStyle::Verdicts,
         }
     }
 

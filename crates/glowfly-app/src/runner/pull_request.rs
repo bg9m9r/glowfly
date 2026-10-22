@@ -10,7 +10,7 @@
 use crate::effect::ForgeError;
 use crate::msg::Msg;
 use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
-use glowfly_core::forge::{self, Auth, CheckQuery};
+use glowfly_core::forge::{self, Auth, CheckQuery, ReviewRequest};
 use glowfly_core::repo;
 
 pub(super) fn run(e: PrEffect) -> Msg {
@@ -49,8 +49,9 @@ fn call(job: CallJob) -> Msg {
             PrReply::Checks(auth.and_then(|a| forge::check_list(t, &a, &CheckQuery { id, head }).map_err(ForgeError::from)))
         }
         PrCall::Comment(body) => PrReply::Commented(auth.and_then(|a| forge::post_comment(t, &a, id, &body).map_err(ForgeError::from))),
-        PrCall::Review { event, body, pending } => {
-            PrReply::Reviewed(event, auth.and_then(|a| forge::submit_review(t, &a, id, event, &body, pending).map_err(ForgeError::from)))
+        PrCall::Review { event, body, pending, head_sha } => {
+            let req = ReviewRequest { event, body, pending, head_sha };
+            PrReply::Reviewed(event, auth.and_then(|a| forge::submit_review(t, &a, id, &req).map_err(ForgeError::from)))
         }
         PrCall::Merge { req: merge, remote, source, delete } => {
             let result = auth.and_then(|a| forge::merge(t, &a, id, &merge).map_err(ForgeError::from));
