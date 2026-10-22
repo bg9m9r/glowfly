@@ -146,9 +146,12 @@ pub enum LoadMsg {
         /// The index the whole or index read was taken from.
         index: Option<Arc<IndexMemo>>,
     },
-    /// Turn on git's untracked cache for the active repository (the slow-status note's button),
-    /// whose speed-ups were these when the note was shown.
-    SpeedUpStatus(glowfly_core::repo::StatusSpeedups),
+    /// The slow-status note's Turn on, for the active repository: what the note offered (the
+    /// untracked cache, git's built-in file system monitor) and the speed-ups set when it showed.
+    SpeedUpStatus { speedups: glowfly_core::repo::StatusSpeedups, cache: bool, monitor: bool },
+    /// The file system monitor job ended (runner/monitor.rs); unscoped, it ends the active job.
+    /// `cache`: None when the untracked cache wasn't asked for, else whether its commands worked.
+    StatusSpedUp { output: String, monitor: glowfly_core::repo::MonitorOutcome, cache: Option<bool> },
 }
 
 impl LoadMsg {
@@ -162,7 +165,8 @@ impl LoadMsg {
             | Self::NearHistoryEnd
             | Self::RepoUnchanged { .. }
             | Self::StatusLoaded { .. }
-            | Self::SpeedUpStatus(_) => None,
+            | Self::SpeedUpStatus { .. }
+            | Self::StatusSpedUp { .. } => None,
         }
     }
 }

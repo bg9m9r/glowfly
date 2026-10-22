@@ -1042,10 +1042,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 - Place comments on their lines when the local source branch differs from the head (map the line
   numbers across the newer commits)
 
-### Performance
-
-- Turn on git's built-in fsmonitor from Glowfly (suggest watchman on Linux), checking that the daemon runs
-
 ### Deep links
 
 - macOS: receive links and folders as Apple events (GURL and odoc) and declare the scheme and the folder document type in Glowfly.app's Info.plist, so links, Finder's Open With and dropping a folder on the Dock icon open them
@@ -2679,6 +2675,14 @@ here, under the item they grew from.
 - Pack the index memo's paths into one buffer so indexes past `MAX_INDEX_MEMO` entries can be compared too
 - Sweep submodules' and nested repositories' work trees in the Windows safety poll (it skips nested `.git` folders)
 - Report the Windows sweep's duration and counts in the activity log (debug)
+- Turn the file system monitor off again (`git fsmonitor--daemon stop` and unset core.fsmonitor), e.g. on a repository Preferences page
+- Probe `git version --build-options` for the fsmonitor daemon when git is detected, so builds without it get no Turn on button
+- Stop the repository's fsmonitor daemon before Glowfly removes or moves a worktree on Windows
+- Check that Glowfly's libgit2 index writes (staging, discard) keep git's fsmonitor token and untracked cache extensions, and re-record them if not
+- Say in the slow-status note that the monitor setting applies to every worktree of the repository, or set it per worktree under extensions.worktreeConfig
+- Link to Watchman's install page in the Linux slow-status note
+- Offer the monitor when a later status read is slow after the untracked cache was turned on (the note shows once per repository)
+- Show whether the fsmonitor daemon is watching in the status bar or Preferences
 
 ### Deep links
 

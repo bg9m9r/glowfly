@@ -271,6 +271,7 @@ fn every_effect_that_changes_a_repository_queues() {
         }),
         Effect::Stash(StashEffect::Rename { cwd: w.clone(), index: 0, oid: git2::Oid::zero(), message: "On main: x".into() }),
         Effect::SparseCheckout { cwd: w.clone(), command: glowfly_core::sparse_ops::SparseCommand::Reapply },
+        Effect::TurnOnMonitor { cwd: w.clone(), then: vec![] },
     ];
     for e in &changing {
         assert_eq!(repo_of(e), Some(w.as_path()), "{} must run on its repository's queue", e.name());

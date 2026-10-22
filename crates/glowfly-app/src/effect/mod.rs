@@ -238,6 +238,11 @@ pub enum Effect {
         cwd: PathBuf,
         command: glowfly_core::sparse_ops::SparseCommand,
     },
+    /// Git's file system monitor started and set (`repo::turn_on_monitor`), then `then` (the cache's commands); unscoped like RunGit.
+    TurnOnMonitor {
+        cwd: PathBuf,
+        then: Vec<Vec<String>>,
+    },
     /// The commits that changed `path` (anything under it with `folder`), examining at most `limit`.
     LoadFileHistory {
         workdir: PathBuf,

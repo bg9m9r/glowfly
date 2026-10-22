@@ -56,6 +56,7 @@ impl Effect {
             | Effect::MoveWorktree(_)
             | Effect::Stash(_)
             | Effect::SparseCheckout { .. }
+            | Effect::TurnOnMonitor { .. }
             | Effect::RunGit { .. }
             | Effect::Pick(_)
             | Effect::Stack(_)

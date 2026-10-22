@@ -204,6 +204,8 @@ impl<W: Waker + Clone> Runner<W> {
             // May ask a hosting service.
             | Effect::Partial(crate::effect::partial::PartialEffect::SizeHistory(_))
             | Effect::Terminal(_)
+            // Starts a git daemon that outlives the run.
+            | Effect::TurnOnMonitor { .. }
             | Effect::GitEnv(GitEnvEffect::AddSafeDirectory(_) | GitEnvEffect::Use { .. } | GitEnvEffect::PickProgram) => false,
         };
         if run {

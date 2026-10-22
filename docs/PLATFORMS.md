@@ -426,6 +426,11 @@ second one next to it.
    isn't UTF-8, or any sign of lost events (a notify error, a rescan flag), reads the whole
    status. Keep a git command line's paths under `CLI_PATH_BYTES` (16 KiB), well inside
    Windows' command-line limit.
+6. **Git's built-in file system monitor runs only on Windows and macOS** (git 2.36 or newer,
+   `repo::monitor_offer_for`). Set core.fsmonitor only to `true`, and only after
+   `git fsmonitor--daemon status` says it is watching (`repo::turn_on_monitor`). Never set
+   fsmonitor.allowRemote or fsmonitor.socketDir for the user, nor a hook path (the trust check
+   flags one). On Linux, suggest Watchman with git's fsmonitor-watchman hook in text only.
 
 ### Persistence
 
@@ -495,7 +500,7 @@ making the decision a pure function and testing it for every OS on every machine
   (`check_new_path_for`, `check_branch_name_for`, `shell_quote_for`, `config_dir_for`,
   `opens_as_program` with `opens::Os`, `volume::linux_remote_kind`, `trash::bin_refuses`,
   `trash::volume_trash_usable`, `home::move_into` with an injected rename,
-  `git_version::missing_for`, `poll_every`, `custom_commands::sh_for`) and test every OS's rows on every runner. The
+  `git_version::missing_for`, `poll_every`, `custom_commands::sh_for`, `repo::monitor_offer_for`) and test every OS's rows on every runner. The
   wrapper that passes `cfg!(windows)` or `Os::current()` stays one line.
 - **Fixtures that no file system has to allow.** Build trees with names that aren't UTF-8,
   NFC/NFD pairs and case twins with `git mktree` or `git update-index --cacheinfo` /

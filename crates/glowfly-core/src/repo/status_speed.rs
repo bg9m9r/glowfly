@@ -1,6 +1,7 @@
 //! How fast git can read a repository's status: the settings that speed git's own read up
 //! (the untracked cache, the file system monitor), whether a read was slow enough to mention
-//! them, and the commands that turn the untracked cache on.
+//! them, and the commands that turn the untracked cache on; the file system monitor's are in
+//! fsmonitor.rs.
 
 use std::path::Path;
 use std::time::Duration;
@@ -69,7 +70,7 @@ pub fn untracked_cache_cmds(s: StatusSpeedups) -> Vec<Vec<String>> {
         cmds.push(line(&["config", "status.showUntrackedFiles", "all"]));
     }
     cmds.push(line(&["update-index", "--untracked-cache"]));
-    cmds.push(line(&["status", "--porcelain", "--untracked-files=all"]));
+    cmds.push(super::monitor_record_cmd());
     cmds
 }
 

@@ -5,7 +5,8 @@
 //! The types are here (the diff ones in `diff_types`, `Snapshot`'s queries in `snapshot_impl`);
 //! the work is split by area: `load` (history, refs, status), `branch_colours` (laying the graph
 //! out with each lane's owner and colour), `status_paths` and `status_merge`
-//! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`
+//! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up) and `fsmonitor`
+//! (git's built-in file system monitor), `diff`
 //! (and `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per
 //! file of a commit or of the working tree),
 //! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit) and `file_bytes` (its bytes, binary or not, for the image preview), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
@@ -46,6 +47,7 @@ mod fetch_time;
 mod file_at;
 mod file_bytes;
 mod folder_history;
+mod fsmonitor;
 mod graph_cache;
 mod history;
 mod history_forward;
@@ -117,6 +119,10 @@ pub use entry::{FileEntry, Hazard};
 pub use file_at::{BINARY_NOT_SHOWN, FILE_VIEW_MAX_BYTES, FileAt, FileAtOptions, LfsState, file_at, file_at_with};
 pub use file_bytes::{FileBytes, file_bytes_at};
 pub use folder_history::{folder_file_today, folder_history};
+pub use fsmonitor::{
+    FSMONITOR_DAEMON, MonitorOffer, MonitorOutcome, MonitorTrouble, monitor_enable_cmd, monitor_offer, monitor_offer_for,
+    monitor_record_cmd, monitor_start_cmd, monitor_status_cmd, turn_on_monitor,
+};
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use history_forward::name_at_head;

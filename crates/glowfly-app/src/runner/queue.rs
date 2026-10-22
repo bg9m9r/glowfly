@@ -130,6 +130,8 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         Effect::Submodule(SubmoduleEffect::Remove(r)) => Some(&r.repo),
         Effect::Stash(e) => Some(e.cwd()),
         Effect::SparseCheckout { cwd, .. } => Some(cwd),
+        // It writes the repository's config and its index.
+        Effect::TurnOnMonitor { cwd, .. } => Some(cwd),
         // A script may change the index, files and refs.
         Effect::CustomCommand(CustomCommandEffect::RunShell(r)) => Some(&r.cwd),
         Effect::Repos(ReposEffect::Sync { path, op: SyncOp::Pull, .. }) => Some(path),

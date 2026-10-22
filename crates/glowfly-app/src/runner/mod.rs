@@ -49,6 +49,7 @@ mod journal;
 mod keys;
 mod line_counts;
 mod logs;
+mod monitor;
 mod notify;
 mod onboarding;
 mod op_preview;

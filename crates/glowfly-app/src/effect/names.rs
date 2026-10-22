@@ -38,6 +38,7 @@ impl Effect {
             Effect::LoadLfs { .. } => "lfs-status",
             Effect::LoadSparse { .. } => "sparse-status",
             Effect::SparseCheckout { .. } => "sparse-checkout",
+            Effect::TurnOnMonitor { .. } => "turn-on-monitor",
             Effect::RunGit { .. } => "git",
             Effect::Pick(_) => "pick",
             Effect::UndoRedo { .. } => "undo-redo",
@@ -130,6 +131,7 @@ impl Effect {
             | Effect::LoadLfs { .. }
             | Effect::LoadSparse { .. }
             | Effect::SparseCheckout { .. }
+            | Effect::TurnOnMonitor { .. }
             | Effect::RunGit { .. }
             | Effect::Pick(_)
             | Effect::UndoRedo { .. }

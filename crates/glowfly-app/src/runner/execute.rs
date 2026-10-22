@@ -3,7 +3,7 @@
 
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, custom_commands, dashboard, deep_link, diff_gaps, expect, files,
-    forge_calls, forks, git_env, git_ops, highlight, history, index, init, issues, journal, line_counts, logs, notify, onboarding,
+    forge_calls, forks, git_env, git_ops, highlight, history, index, init, issues, journal, line_counts, logs, monitor, notify, onboarding,
     op_preview, os, partial, patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures,
     sparse, ssh, stack, stashes, status, submodules, themes, tools, trust, updates, worktrees,
 };
@@ -112,6 +112,7 @@ fn execute_unscoped(
         }
         Effect::LoadSparse { workdir, generation, run_git } => Some(sparse::load(&workdir, generation, run_git)),
         Effect::SparseCheckout { cwd, command } => Some(sparse::run(&cwd, &command)),
+        Effect::TurnOnMonitor { cwd, then } => Some(monitor::turn_on(&cwd, &then)),
         Effect::LoadFileHistory { workdir, path, start, limit, folder, generation } => {
             Some(history::walk(&workdir, path, &start, limit, folder, generation))
         }

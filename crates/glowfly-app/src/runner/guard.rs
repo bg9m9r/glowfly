@@ -107,6 +107,7 @@ impl Recovery {
             | Effect::Submodule(SubmoduleEffect::Remove(_))
             | Effect::Stash(StashEffect::Rename { .. })
             | Effect::SparseCheckout { .. }
+            | Effect::TurnOnMonitor { .. }
             | Effect::Stack(_)
             | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(InitEffect::Run { .. })
@@ -294,12 +295,15 @@ mod tests {
     }
 
     #[test]
-    fn a_panicking_sparse_job_ends_its_job() {
-        let effect = Effect::SparseCheckout { cwd: "C:/r".into(), command: glowfly_core::sparse_ops::SparseCommand::Disable };
-        assert!(effect.scope().is_none(), "unscoped: the job ends whichever tab is active");
-        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
-        let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };
-        assert!(output.contains("boom") && output.contains("sparse-checkout"), "{output}");
+    fn a_panicking_sparse_or_monitor_job_ends_its_job() {
+        let sparse = Effect::SparseCheckout { cwd: "C:/r".into(), command: glowfly_core::sparse_ops::SparseCommand::Disable };
+        let monitor = Effect::TurnOnMonitor { cwd: "C:/r".into(), then: vec![] };
+        for effect in [sparse, monitor] {
+            assert!(effect.scope().is_none(), "unscoped: the job ends whichever tab is active");
+            let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
+            let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };
+            assert!(output.contains("boom") && output.contains(effect.name()), "{output}");
+        }
     }
 
     #[test]
