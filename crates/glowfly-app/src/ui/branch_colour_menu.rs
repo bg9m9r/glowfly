@@ -29,8 +29,8 @@ pub fn items(ui: &mut egui::Ui, t: Lang, key: &str, snap: &Snapshot, msgs: &mut 
         menu_item_if(msgs, ui, t.tr("branch.menu.color"), Some(MAIN_USES_ACCENT), pin(key, None));
         return;
     }
-    let preset = color::branch_preset();
-    let n = preset.slots();
+    let branch = color::current().branch;
+    let n = branch.preset.slots();
     let current = snap.graph.colouring.pins.get(key).map(|p| p % n);
     ui.menu_button(t.tr("branch.menu.color"), |ui| {
         let auto = branch_dot::menu_row(ui, &checked(t.tr("branch.color.automatic"), current.is_none()), None, true)
@@ -41,7 +41,7 @@ pub fn items(ui: &mut egui::Ui, t: Lang, key: &str, snap: &Snapshot, msgs: &mut 
         }
         ui.separator();
         for i in 0..n {
-            let label = checked(branch_names::hue(t, preset, i), current == Some(i));
+            let label = checked(branch_names::hue(t, &branch, i), current == Some(i));
             if branch_dot::menu_row(ui, &label, Some(line(Swatch::Slot(i))), true).clicked() {
                 msgs.push(pin(key, Some(i)));
                 ui.close_menu();

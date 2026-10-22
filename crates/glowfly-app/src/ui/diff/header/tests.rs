@@ -296,9 +296,9 @@ fn themed(m: HeaderModel, width: f32, height: f32) -> Harness<'static, Vec<Msg>>
     let keys = Keymap::default();
     let mut h = Harness::builder().with_size(egui::vec2(width, height)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
-            color::set_palette(&theme::DARK);
-            theme::apply_style(ui.ctx(), &theme::DARK);
-            ui.ctx().set_theme(theme::egui_theme(&theme::DARK));
+            color::set_palette(&theme::GARDEN_DARK);
+            theme::apply_style(ui.ctx(), &theme::GARDEN_DARK);
+            ui.ctx().set_theme(theme::egui_theme(&theme::GARDEN_DARK));
             ui.painter().rect_filled(ui.max_rect(), 0.0, color::bg());
             show(ui, &m, &keys, Lang::En, msgs);
         },

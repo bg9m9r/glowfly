@@ -18,8 +18,11 @@ mod ansi;
 pub mod branch_colours;
 pub mod branch_names;
 mod branch_palette;
+mod branch_palette_gold;
 mod builtin;
+mod builtin_dusk;
 mod builtin_extra;
+mod builtin_garden;
 pub mod color;
 pub mod contrast;
 pub mod controls;
@@ -35,7 +38,7 @@ pub mod type_scale;
 pub use branch_palette::applied;
 pub use builtin::{DARK, LIGHT, builtin};
 #[cfg(test)]
-pub use builtin::{HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, SAND};
+pub use builtin::{DAWN, DUSK, GARDEN_DARK, GARDEN_LIGHT, HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, SAND};
 use color::Palette;
 use eframe::egui::CornerRadius;
 use tokens::{Elevation, radius, shadow};
@@ -184,6 +187,8 @@ impl ThemeCache {
 
 #[cfg(test)]
 mod ansi_tests;
+#[cfg(test)]
+mod bands;
 #[cfg(test)]
 mod branch_colour_cb_tests;
 #[cfg(test)]

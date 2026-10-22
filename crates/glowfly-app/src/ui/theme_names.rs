@@ -10,6 +10,8 @@ pub(in crate::ui) fn builtin(t: Lang, b: BuiltinTheme) -> &'static str {
     match b {
         BuiltinTheme::Dark => t.tr("prefs.ui.theme.name.dark"),
         BuiltinTheme::Light => t.tr("prefs.ui.theme.name.light"),
+        BuiltinTheme::GardenDark => t.tr("prefs.ui.theme.name.garden_dark"),
+        BuiltinTheme::GardenLight => t.tr("prefs.ui.theme.name.garden_light"),
         BuiltinTheme::HighContrastDark => t.tr("prefs.ui.theme.name.high_contrast_dark"),
         BuiltinTheme::HighContrastLight => t.tr("prefs.ui.theme.name.high_contrast_light"),
         BuiltinTheme::Sand => t.tr("prefs.ui.theme.name.sand"),

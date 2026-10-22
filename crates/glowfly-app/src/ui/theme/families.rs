@@ -56,6 +56,8 @@ pub struct Branch {
     pub chips: [Color32; LANE_COUNT],
     /// The preset these tones come from; its `slots()` is how many distinct hues there are.
     pub preset: BranchPalette,
+    /// Each slot's hue name (`branch_names`), repeating like the tones.
+    pub names: [super::branch_names::Hue; LANE_COUNT],
 }
 
 /// How many branch hues the standard preset has (`glowfly_core::branch_colour::SLOTS`).

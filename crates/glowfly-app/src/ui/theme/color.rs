@@ -78,12 +78,21 @@ pub struct Palette {
     /// strips). Not theme-file keys yet: always the base palette's.
     pub repository: Repository,
     pub branch: Branch,
+    /// The branch family the colour-blind safe preset puts in `branch` (`branch_palette::applied`).
+    pub colour_blind: Branch,
     /// The terminal's 16 basic colours; not theme-file keys yet either.
     pub ansi: Ansi,
 }
 
+/// The palette a thread starts with, before the shell sets one: the standard dark (Dusk), and in
+/// tests Garden dark, the palette view snapshots draw in (`snapshot_tests::harness_sized`).
+#[cfg(not(test))]
+const START: Palette = super::builtin::DARK;
+#[cfg(test)]
+const START: Palette = super::builtin::GARDEN_DARK;
+
 thread_local! {
-    static ACTIVE: RefCell<Palette> = const { RefCell::new(super::builtin::DARK) };
+    static ACTIVE: RefCell<Palette> = const { RefCell::new(START) };
 }
 
 /// Makes `p` this thread's palette (the shell, once per frame).
@@ -110,10 +119,11 @@ pub fn is_dark() -> bool {
     ACTIVE.with_borrow(|p| p.dark)
 }
 
-/// Selects the built-in Dark or Light palette (tests that draw without the shell).
+/// Selects the Garden dark or light palette, the one view snapshots draw in (tests that draw
+/// without the shell).
 #[cfg(test)]
 pub fn set_dark(dark: bool) {
-    set_palette(if dark { &super::builtin::DARK } else { &super::builtin::LIGHT });
+    set_palette(if dark { &super::builtin::GARDEN_DARK } else { &super::builtin::GARDEN_LIGHT });
 }
 
 /// Declares an accessor per color and `Palette`'s by-name access, from one list of

@@ -1,5 +1,6 @@
 //! Palettes from theme files: the base theme with the file's colors on top.
 
+use super::builtin::garden_twin;
 use super::color::Palette;
 use super::contrast::ratio;
 use super::{DARK, builtin};
@@ -12,7 +13,10 @@ const PRIMARY_INK_MIN: f64 = 4.5;
 
 /// The palette of a loaded theme file: its base, with every color it sets. A file that sets its
 /// own `primary` but no `on_primary` keeps the base's ink only while it reads on that primary;
-/// otherwise the button text is white or black, whichever reads better.
+/// otherwise the button text is white or black, whichever reads better. A file on Dusk or Dawn
+/// whose accent isn't the base's (one written from the green Dark or Light before Dusk and Dawn,
+/// say) takes the Garden branch families of its kind: Dusk and Dawn's make room for their gold,
+/// and only the Garden ones keep out of the way of a green accent.
 pub fn build(file: &ThemeFile) -> Palette {
     let base = *builtin(file.base);
     let mut p = base;
@@ -24,6 +28,9 @@ pub fn build(file: &ThemeFile) -> Palette {
         if let (Some(slot), Some(c)) = (p.get_mut(key), color) {
             *slot = c;
         }
+    }
+    if let Some(g) = garden_twin(file.base).filter(|_| p.accent != base.accent) {
+        (p.branch, p.colour_blind) = (g.branch, g.colour_blind);
     }
     if file.colors.contains_key("primary") && !file.colors.contains_key("on_primary") {
         p.on_primary = primary_ink(base.on_primary, p.primary);

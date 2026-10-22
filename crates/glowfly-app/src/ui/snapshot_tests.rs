@@ -124,8 +124,13 @@ pub(super) fn harness_palette(st: AppState, p: Palette) -> Harness<'static, (App
 }
 
 /// `harness` with a window of `size` (a tall one shows a long page without scrolling).
+///
+/// Views draw in the Garden pair, the standard themes before Dusk and Dawn: the images check
+/// layout, and a palette change shouldn't redraw every one of them. The theme snapshots
+/// (`snapshot_tests_vivid.rs`, `snapshot_tests_lineup.rs`, `snapshot_tests_design.rs`) show
+/// each built-in palette.
 pub(super) fn harness_sized(st: AppState, dark: bool, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
-    harness_palette_sized(st, if dark { theme::DARK } else { theme::LIGHT }, size)
+    harness_palette_sized(st, if dark { theme::GARDEN_DARK } else { theme::GARDEN_LIGHT }, size)
 }
 
 fn harness_palette_sized(mut st: AppState, p: Palette, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {

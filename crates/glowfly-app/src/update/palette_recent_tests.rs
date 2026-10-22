@@ -43,7 +43,7 @@ fn recent_commands_list_first_for_empty_query() {
     run_cmd(&mut st, C::KeyboardShortcuts);
     reopen(&mut st);
     let all = labels(&st, "");
-    assert_eq!(all[0..2], ["Keyboard shortcuts", "Theme: Light"]);
+    assert_eq!(all[0..2], ["Keyboard shortcuts", "Theme: Dawn"]);
     let open = all.iter().position(|l| l == "Open repository…").unwrap();
     assert!(open > 1, "{all:?}");
     assert_eq!(all.len(), entries(&st).len());
@@ -83,10 +83,10 @@ fn query_ranking_beats_recency() {
 fn recency_breaks_score_ties() {
     let mut st = state();
     let before = labels(&st, "theme");
-    assert_eq!(before[..3], ["Theme: Dark", "Theme: Sand", "Theme: Light"]);
+    assert_eq!(before[..3], ["Theme: Dusk", "Theme: Dawn", "Theme: Sand"]);
     run_cmd(&mut st, C::Theme(ThemeChoice::Light));
     let after = labels(&st, "theme");
-    assert_eq!(after[..3], ["Theme: Light", "Theme: Dark", "Theme: Sand"]);
+    assert_eq!(after[..3], ["Theme: Dawn", "Theme: Dusk", "Theme: Sand"]);
     assert_eq!(after.len(), before.len());
 }
 

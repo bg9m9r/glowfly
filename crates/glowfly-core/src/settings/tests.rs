@@ -488,6 +488,19 @@ fn unreadable_theme_resets_only_theme() {
 }
 
 #[test]
+fn old_theme_choices_load_as_the_standard_pair() {
+    // Settings written when Dark and Light were the green pair open in Dusk and Dawn; the Garden
+    // pair has its own names.
+    let s: Settings = serde_json::from_str(r#"{"theme": "Dark"}"#).unwrap();
+    assert_eq!(s.theme, ThemeChoice::Dark);
+    let s: Settings = serde_json::from_str(r#"{"theme": "Light"}"#).unwrap();
+    assert_eq!(s.theme, ThemeChoice::Light);
+    let json = serde_json::to_string(&ThemeChoice::GardenDark).unwrap();
+    assert_eq!(json, r#""GardenDark""#);
+    assert_eq!(serde_json::from_str::<ThemeChoice>(&json).unwrap(), ThemeChoice::GardenDark);
+}
+
+#[test]
 fn theme_choice_builtin_mapping() {
     use super::themes::BuiltinTheme as B;
     assert_eq!(ThemeChoice::System.builtin(true), Some(B::Dark));
@@ -497,6 +510,11 @@ fn theme_choice_builtin_mapping() {
     assert_eq!(ThemeChoice::HighContrastDark.builtin(false), Some(B::HighContrastDark));
     assert_eq!(ThemeChoice::HighContrastLight.builtin(true), Some(B::HighContrastLight));
     assert_eq!(ThemeChoice::Sand.builtin(true), Some(B::Sand));
+    assert_eq!(
+        (ThemeChoice::GardenDark.builtin(false), ThemeChoice::GardenLight.builtin(true)),
+        (Some(B::GardenDark), Some(B::GardenLight))
+    );
+    assert!(B::GardenDark.is_dark() && !B::GardenLight.is_dark());
     assert_eq!(ThemeChoice::Custom("ocean".into()).builtin(true), None);
 }
 

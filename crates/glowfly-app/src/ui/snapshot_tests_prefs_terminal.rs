@@ -62,9 +62,9 @@ fn prefs_terminal_linux() {
     s.terminal = TerminalPrefs::default();
     let mut h = Harness::builder().with_size(egui::vec2(900.0, 640.0)).build_state(
         |ctx, s: &mut glowfly_core::settings::Settings| {
-            color::set_palette(&theme::DARK);
-            theme::apply_style(ctx, &theme::DARK);
-            ctx.set_theme(theme::egui_theme(&theme::DARK));
+            color::set_palette(&theme::GARDEN_DARK);
+            theme::apply_style(ctx, &theme::GARDEN_DARK);
+            ctx.set_theme(theme::egui_theme(&theme::GARDEN_DARK));
             egui::CentralPanel::default().show(ctx, |ui| page_for(ui, s, true, &mut Vec::new()));
         },
         s,

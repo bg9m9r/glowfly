@@ -37,6 +37,6 @@ fn selected_lines_stand_out_and_stay_readable() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
     // Pinned for the standard themes, so a change is deliberate.
     let fills = |t| (diff_line_selected(builtin(t), true), diff_line_selected(builtin(t), false));
-    assert_eq!(fills(BuiltinTheme::Dark), (rgb(0x316d44), rgb(0x8f373e)));
-    assert_eq!(fills(BuiltinTheme::Light), (rgb(0x8cd69b), rgb(0xef9e9e)));
+    assert_eq!(fills(BuiltinTheme::GardenDark), (rgb(0x316d44), rgb(0x8f373e)));
+    assert_eq!(fills(BuiltinTheme::GardenLight), (rgb(0x8cd69b), rgb(0xef9e9e)));
 }

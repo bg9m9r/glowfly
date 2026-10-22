@@ -35,12 +35,12 @@ fn render(name: &str, p: Palette) {
 
 #[test]
 fn fonts_dark() {
-    render("fonts_dark", super::DARK);
+    render("fonts_dark", super::GARDEN_DARK);
 }
 
 #[test]
 fn fonts_light() {
-    render("fonts_light", super::LIGHT);
+    render("fonts_light", super::GARDEN_LIGHT);
 }
 
 fn render_scale(name: &str, p: Palette) {
@@ -70,10 +70,10 @@ fn render_scale(name: &str, p: Palette) {
 
 #[test]
 fn type_scale_specimen_dark() {
-    render_scale("type_scale_specimen_dark", super::DARK);
+    render_scale("type_scale_specimen_dark", super::GARDEN_DARK);
 }
 
 #[test]
 fn type_scale_specimen_light() {
-    render_scale("type_scale_specimen_light", super::LIGHT);
+    render_scale("type_scale_specimen_light", super::GARDEN_LIGHT);
 }

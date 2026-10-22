@@ -1173,6 +1173,10 @@ here, under the item they grew from.
 - Status bar: name the filter with its section ("2 issues in Current sprint") once tracker nouns
   have plural keys
 - Update-failed chip: open Preferences scrolled to the Updates row
+- Glowfly themes (Dusk and Dawn): redraw the view snapshots in Dusk and Dawn once the pair is
+  settled (they draw in the Garden pair for now); a Midnight or Ember variant only if it reads
+  clearly apart from Dusk; theme-file keys for the colour-blind branch set; a gold distance test
+  for custom theme files whose accent lands near Orange or Gold
 
 ### New directions
 
@@ -2577,7 +2581,7 @@ here, under the item they grew from.
 ### Custom themes
 
 - Reload theme files automatically when they change on disk (watch the themes folder)
-- Follow system with a chosen dark and light theme pair (today it picks Glowfly Dark or Glowfly Light)
+- Follow system with a chosen dark and light theme pair (today it picks Dusk or Dawn, never the Garden pair)
 - A theme file based on another theme file (inheritance, with loops detected across files)
 - Edit colors in Preferences with a color picker and live preview, saved to the theme file
 - Suggest the closest color name for an unknown key ("acent" -> "accent")

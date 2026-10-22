@@ -147,7 +147,7 @@ fn looks_follow_the_kind_and_state() {
     }
     let tonal = look_for(&p, Kind::Tonal, true, Press::Rest);
     assert_eq!((tonal.fill, tonal.ink), (p.tonal_fill(), p.tonal_ink(p.tonal_fill())));
-    color::set_dark(true);
+    color::set_palette(&p);
     assert_eq!(look(Kind::Secondary, true, Press::Rest).fill, p.panel, "the active palette");
 }
 

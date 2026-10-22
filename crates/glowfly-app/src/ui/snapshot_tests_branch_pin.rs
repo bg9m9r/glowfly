@@ -121,7 +121,7 @@ fn colour_blind(theme: ThemeChoice, name: &str) {
     st.settings.branch_palette = BranchPalette::ColourBlind;
     let snap = st.snap.as_mut().unwrap();
     snap.set_colouring(st.settings.colouring_for(&snap.real_workdir));
-    let base = if theme == ThemeChoice::Dark { theme::DARK } else { theme::LIGHT };
+    let base = if theme == ThemeChoice::Dark { theme::GARDEN_DARK } else { theme::GARDEN_LIGHT };
     let mut h = harness_palette(st, theme::applied(base, BranchPalette::ColourBlind));
     h.run();
     h.check_snapshot(name);
@@ -158,7 +158,7 @@ fn tip(dir: &Path, branch: &str) -> git2::Oid {
 
 fn person_colours(theme: ThemeChoice, name: &str, dark: bool) {
     let (st, dir) = with_grace(theme, name);
-    color::set_palette(if dark { &theme::DARK } else { &theme::LIGHT });
+    color::set_palette(if dark { &theme::GARDEN_DARK } else { &theme::GARDEN_LIGHT });
     let ada = initials_tones("ada@example.com", "Ada Lovelace");
     let grace = initials_tones("grace@example.com", "Grace Hopper");
     assert_ne!(ada.0, grace.0, "two people, two fills");

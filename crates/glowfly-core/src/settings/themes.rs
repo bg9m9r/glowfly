@@ -40,24 +40,34 @@ fn color_key(s: &str) -> Option<&'static str> {
     COLOR_KEYS.iter().copied().find(|k| *k == s).or_else(|| LEGACY_COLOR_KEYS.iter().find(|(old, _)| *old == s).map(|(_, k)| *k))
 }
 
-/// A palette that ships with Glowfly; theme files start from one.
+/// A palette that ships with Glowfly; theme files start from one. `Dark` and `Light` are the
+/// standard pair, Dusk and Dawn (from the app icon); the Garden pair is the earlier green look.
+/// The ids `dark` and `light` (and the settings' `Dark` and `Light`) stay the standard pair's, so
+/// files written before the pair was renamed open in Dusk and Dawn.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BuiltinTheme {
+    /// Dusk.
     Dark,
+    /// Dawn.
     Light,
+    GardenDark,
+    GardenLight,
     HighContrastDark,
     HighContrastLight,
     Sand,
 }
 
 impl BuiltinTheme {
-    pub const ALL: [Self; 5] = [Self::Dark, Self::Light, Self::HighContrastDark, Self::HighContrastLight, Self::Sand];
+    pub const ALL: [Self; 7] =
+        [Self::Dark, Self::Light, Self::GardenDark, Self::GardenLight, Self::HighContrastDark, Self::HighContrastLight, Self::Sand];
 
     /// The name a theme file's `base` uses.
     pub fn id(self) -> &'static str {
         match self {
             Self::Dark => "dark",
             Self::Light => "light",
+            Self::GardenDark => "garden-dark",
+            Self::GardenLight => "garden-light",
             Self::HighContrastDark => "high-contrast-dark",
             Self::HighContrastLight => "high-contrast-light",
             Self::Sand => "sand",
@@ -71,26 +81,30 @@ impl BuiltinTheme {
 
     pub fn label(self) -> &'static str {
         match self {
-            Self::Dark => "Glowfly Dark",
-            Self::Light => "Glowfly Light",
+            Self::Dark => "Dusk",
+            Self::Light => "Dawn",
+            Self::GardenDark => "Garden Dark",
+            Self::GardenLight => "Garden Light",
             Self::HighContrastDark => "High Contrast Dark",
             Self::HighContrastLight => "High Contrast Light",
-            Self::Sand => "Glowfly Sand",
+            Self::Sand => "Sand",
         }
     }
 
     /// Light text on a dark background.
     pub fn is_dark(self) -> bool {
-        matches!(self, Self::Dark | Self::HighContrastDark)
+        matches!(self, Self::Dark | Self::GardenDark | Self::HighContrastDark)
     }
 }
 
 impl ThemeChoice {
     /// The built-in choices, in the order Preferences lists them.
-    pub const BUILT_IN: [ThemeChoice; 6] = [
+    pub const BUILT_IN: [ThemeChoice; 8] = [
         ThemeChoice::Dark,
         ThemeChoice::Light,
         ThemeChoice::System,
+        ThemeChoice::GardenDark,
+        ThemeChoice::GardenLight,
         ThemeChoice::HighContrastDark,
         ThemeChoice::HighContrastLight,
         ThemeChoice::Sand,
@@ -104,6 +118,8 @@ impl ThemeChoice {
             Self::Light => BuiltinTheme::Light,
             Self::System if system_dark => BuiltinTheme::Dark,
             Self::System => BuiltinTheme::Light,
+            Self::GardenDark => BuiltinTheme::GardenDark,
+            Self::GardenLight => BuiltinTheme::GardenLight,
             Self::HighContrastDark => BuiltinTheme::HighContrastDark,
             Self::HighContrastLight => BuiltinTheme::HighContrastLight,
             Self::Sand => BuiltinTheme::Sand,
@@ -123,9 +139,11 @@ impl ThemeChoice {
     /// The short name the command palette shows after "Theme: ".
     pub fn palette_label(&self) -> String {
         match self {
-            Self::Dark => "Dark",
-            Self::Light => "Light",
+            Self::Dark => "Dusk",
+            Self::Light => "Dawn",
             Self::System => "Follow system",
+            Self::GardenDark => "Garden dark",
+            Self::GardenLight => "Garden light",
             Self::HighContrastDark => "High contrast dark",
             Self::HighContrastLight => "High contrast light",
             Self::Sand => "Sand",
@@ -158,7 +176,9 @@ pub enum ThemeProblem {
     WrongType { field: String, expected: &'static str },
     #[error("\"{0}\" is not a theme file field; ignored")]
     UnknownField(String),
-    #[error("\"{0}\" is not a base theme (dark, light, high-contrast-dark, high-contrast-light or sand); using dark")]
+    #[error(
+        "\"{0}\" is not a base theme (dark, light, garden-dark, garden-light, high-contrast-dark, high-contrast-light or sand); using dark"
+    )]
     UnknownBase(String),
     #[error("\"{0}\" is not a theme color; ignored")]
     UnknownColor(String),

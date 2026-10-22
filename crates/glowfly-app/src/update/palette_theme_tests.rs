@@ -32,9 +32,11 @@ fn theme_entries_list_built_ins_and_files() {
         list.into_iter().filter(|s| s.entry.label.starts_with("Theme: ")).map(|s| (s.entry.label, s.entry.detail)).collect();
     let labels: Vec<&str> = themes.iter().map(|(l, _)| l.as_str()).collect();
     for want in [
-        "Theme: Dark",
-        "Theme: Light",
+        "Theme: Dusk",
+        "Theme: Dawn",
         "Theme: Follow system",
+        "Theme: Garden dark",
+        "Theme: Garden light",
         "Theme: High contrast dark",
         "Theme: High contrast light",
         "Theme: Sand",
@@ -42,7 +44,7 @@ fn theme_entries_list_built_ins_and_files() {
     ] {
         assert!(labels.contains(&want), "{want} in {labels:?}");
     }
-    assert_eq!(labels.len(), 7);
+    assert_eq!(labels.len(), 9);
     let current: Vec<&str> = themes.iter().filter(|(_, d)| d.as_deref() == Some("current")).map(|(l, _)| l.as_str()).collect();
     assert_eq!(current, ["Theme: Ocean"]);
     assert!(shown(&st, "custom").iter().any(|s| s.entry.label == "Theme: Ocean"), "files match \"custom\"");

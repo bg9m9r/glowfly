@@ -30,8 +30,15 @@ fn builtins() {
         assert_eq!(builtin(t).dark, t.is_dark(), "{t:?}");
     }
     // A few values pinned, so a palette change is deliberate.
-    assert_eq!((DARK.bg, DARK.text, DARK.syn_attr, DARK.diff_del_word), (rgb(0x151b18), rgb(0xe0e6e3), rgb(0x8ac6d0), rgb(0x76303a)));
-    assert_eq!((LIGHT.bg, LIGHT.text, LIGHT.syn_attr, LIGHT.diff_del_word), (rgb(0xf9f7f1), rgb(0x161c19), rgb(0x006b75), rgb(0xf2b4b4)));
+    assert_eq!((DUSK.bg, DUSK.panel, DUSK.accent, DUSK.text), (rgb(0x1b1829), rgb(0x221f31), rgb(0xf6c159), rgb(0xe6e5ef)));
+    assert_eq!(
+        (DAWN.bg, DAWN.panel, DAWN.accent, DAWN.primary, DAWN.text),
+        (rgb(0xf7f6fc), rgb(0xfbfafe), rgb(0x714900), rgb(0xefb146), rgb(0x211f38))
+    );
+    assert_eq!((DARK, LIGHT), (DUSK, DAWN), "Dusk and Dawn are the standard pair");
+    let g = (&GARDEN_DARK, &GARDEN_LIGHT);
+    assert_eq!((g.0.bg, g.0.text, g.0.syn_attr, g.0.diff_del_word), (rgb(0x151b18), rgb(0xe0e6e3), rgb(0x8ac6d0), rgb(0x76303a)));
+    assert_eq!((g.1.bg, g.1.text, g.1.syn_attr, g.1.diff_del_word), (rgb(0xf9f7f1), rgb(0x161c19), rgb(0x006b75), rgb(0xf2b4b4)));
 }
 
 pub(super) fn rgb(c: u32) -> Color32 {
@@ -198,8 +205,15 @@ fn ref_chips_are_soft() {
 fn backdrop_dims_light_and_dark_alike() {
     assert!(backdrop(&DARK).a() > backdrop(&LIGHT).a());
     // High contrast dark is left out: its surfaces are already black, so there is little to dim.
-    // Dark's panel is near black too (L* about 12), so it drops by a little less.
-    for (name, p) in [("dark", DARK), ("light", LIGHT), ("sand", SAND), ("high contrast light", HIGH_CONTRAST_LIGHT)] {
+    // The dark panels are near black too (L* about 12), so they drop by a little less.
+    for (name, p) in [
+        ("dusk", DUSK),
+        ("dawn", DAWN),
+        ("garden dark", GARDEN_DARK),
+        ("garden light", GARDEN_LIGHT),
+        ("sand", SAND),
+        ("high contrast light", HIGH_CONTRAST_LIGHT),
+    ] {
         let dimmed = contrast::dimmed(p.panel, backdrop(&p));
         let drop = contrast::lightness(p.panel) - contrast::lightness(dimmed);
         assert!((8.0..=25.0).contains(&drop), "{name}: panel L* drops by {drop:.1}");
@@ -215,7 +229,7 @@ fn panels_are_lifted() {
         let p = builtin(t);
         let l = contrast::lightness;
         assert!(l(p.panel) > l(p.bg), "{t:?}: panel is lighter than the canvas");
-        if matches!(t, BuiltinTheme::Dark | BuiltinTheme::Light) {
+        if matches!(t, BuiltinTheme::Dark | BuiltinTheme::Light | BuiltinTheme::GardenDark | BuiltinTheme::GardenLight) {
             assert!(l(p.toolbar) < l(p.bg), "{t:?}: the chrome is darker than the canvas");
         }
         let r = ratio(p.raised, p.panel);
@@ -291,6 +305,7 @@ fn resolve_each_choice() {
     assert_eq!(r(ThemeChoice::HighContrastDark, false), HIGH_CONTRAST_DARK);
     assert_eq!(r(ThemeChoice::HighContrastLight, true), HIGH_CONTRAST_LIGHT);
     assert_eq!(r(ThemeChoice::Sand, true), SAND);
+    assert_eq!((r(ThemeChoice::GardenDark, false), r(ThemeChoice::GardenLight, true)), (GARDEN_DARK, GARDEN_LIGHT));
     let found = r(ThemeChoice::Custom("ocean".into()), true);
     assert_eq!((found.bg, found.text, found.dark), (Color32::from_rgb(9, 9, 9), LIGHT.text, false));
     assert_eq!(r(ThemeChoice::Custom("gone".into()), false), DARK);

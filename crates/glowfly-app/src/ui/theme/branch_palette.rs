@@ -12,7 +12,11 @@
 //! normal vision (Red, Aqua, Yellow, Blue, Plum, Lime, Purple, Periwinkle), out of the same
 //! bands. Dark themes take the dark tones for lines and chips; every light theme takes the line
 //! tones for lines and the text tones for chips. `applied` puts the chosen preset into a palette.
+//!
+//! These are the families of the green-accent themes (Garden, high contrast, Sand); Dusk and
+//! Dawn's gold accent takes the families in `branch_palette_gold.rs`.
 
+use super::branch_names::Hue;
 use super::color::Palette;
 use super::families::{Branch, LANE_COUNT};
 use eframe::egui::Color32;
@@ -76,12 +80,30 @@ pub const LIGHT_LINES: [Color32; LANE_COUNT] = [
     hex(0x646fd1), // 13 Indigo
 ];
 
-/// Dark and High contrast dark.
-pub const BRANCH_DARK: Branch = Branch { lanes: DARK_TONES, chips: DARK_TONES, preset: BranchPalette::Standard };
-/// Light.
-pub const BRANCH_LIGHT: Branch = Branch { lanes: LIGHT_LINES, chips: LIGHT_TEXT, preset: BranchPalette::Standard };
+/// The standard hues' names, slot by slot.
+pub const NAMES: [Hue; LANE_COUNT] = [
+    Hue::Rose,
+    Hue::Lime,
+    Hue::Violet,
+    Hue::Orange,
+    Hue::Cyan,
+    Hue::Magenta,
+    Hue::Olive,
+    Hue::Azure,
+    Hue::Red,
+    Hue::Teal,
+    Hue::Orchid,
+    Hue::Gold,
+    Hue::Sky,
+    Hue::Indigo,
+];
+
+/// Garden dark and High contrast dark.
+pub const BRANCH_DARK: Branch = Branch { lanes: DARK_TONES, chips: DARK_TONES, preset: BranchPalette::Standard, names: NAMES };
+/// Garden light.
+pub const BRANCH_LIGHT: Branch = Branch { lanes: LIGHT_LINES, chips: LIGHT_TEXT, preset: BranchPalette::Standard, names: NAMES };
 /// High contrast light and Sand, whose surfaces need the stronger text tones for lines too.
-pub const BRANCH_LIGHT_STRONG: Branch = Branch { lanes: LIGHT_TEXT, chips: LIGHT_TEXT, preset: BranchPalette::Standard };
+pub const BRANCH_LIGHT_STRONG: Branch = Branch { lanes: LIGHT_TEXT, chips: LIGHT_TEXT, preset: BranchPalette::Standard, names: NAMES };
 
 /// How many hues the colour-blind safe preset has.
 const CB: usize = glowfly_core::branch_colour::COLOUR_BLIND_SLOTS as usize;
@@ -124,9 +146,12 @@ pub const CB_LIGHT_TEXT: [Color32; CB] = [
     hex(0x4158bd), // 7 Periwinkle
 ];
 
+/// The colour-blind safe hues' names, slot by slot.
+pub const CB_NAMES: [Hue; CB] = [Hue::Red, Hue::Aqua, Hue::Yellow, Hue::Blue, Hue::Plum, Hue::Lime, Hue::Purple, Hue::Periwinkle];
+
 /// `t` repeated to fill every lane, so a slot past the preset's hues still reads a colour.
-pub const fn pad(t: [Color32; CB]) -> [Color32; LANE_COUNT] {
-    let mut out = [Color32::BLACK; LANE_COUNT];
+pub const fn pad<T: Copy>(t: [T; CB]) -> [T; LANE_COUNT] {
+    let mut out = [t[0]; LANE_COUNT];
     let mut i = 0;
     while i < LANE_COUNT {
         out[i] = t[i % CB];
@@ -135,16 +160,18 @@ pub const fn pad(t: [Color32; CB]) -> [Color32; LANE_COUNT] {
     out
 }
 
-/// Colour-blind safe, on Dark and High contrast dark.
-pub const BRANCH_CB_DARK: Branch = Branch { lanes: pad(CB_DARK_TONES), chips: pad(CB_DARK_TONES), preset: BranchPalette::ColourBlind };
-/// Colour-blind safe, on Light, High contrast light and Sand.
-pub const BRANCH_CB_LIGHT: Branch = Branch { lanes: pad(CB_LIGHT_LINES), chips: pad(CB_LIGHT_TEXT), preset: BranchPalette::ColourBlind };
+/// Colour-blind safe, on Garden dark and High contrast dark.
+pub const BRANCH_CB_DARK: Branch =
+    Branch { lanes: pad(CB_DARK_TONES), chips: pad(CB_DARK_TONES), preset: BranchPalette::ColourBlind, names: pad(CB_NAMES) };
+/// Colour-blind safe, on Garden light, High contrast light and Sand.
+pub const BRANCH_CB_LIGHT: Branch =
+    Branch { lanes: pad(CB_LIGHT_LINES), chips: pad(CB_LIGHT_TEXT), preset: BranchPalette::ColourBlind, names: pad(CB_NAMES) };
 
 /// `p` with the branch preset `b`: Standard keeps its own family; the colour-blind safe preset
-/// takes the dark or light family by the palette's kind (a theme file's through its base).
+/// takes the palette's own colour-blind family (a theme file's from its base).
 pub fn applied(mut p: Palette, b: BranchPalette) -> Palette {
     if b == BranchPalette::ColourBlind {
-        p.branch = if p.dark { BRANCH_CB_DARK } else { BRANCH_CB_LIGHT };
+        p.branch = p.colour_blind;
     }
     p
 }

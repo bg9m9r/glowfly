@@ -18,7 +18,7 @@ fn palette_recent_dark() {
     }
     st.palette = Some(Palette::default());
     let first: Vec<String> = shown(&st, "").into_iter().take(2).map(|s| s.entry.label).collect();
-    assert_eq!(first, ["Theme: Light", "Refresh"]);
+    assert_eq!(first, ["Theme: Dawn", "Refresh"]);
     render("palette_recent", st, true);
     remove_fixture(&dir);
 }

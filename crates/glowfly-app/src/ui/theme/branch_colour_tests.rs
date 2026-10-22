@@ -1,14 +1,13 @@
 //! The branch hues (P1): out of the reserved bands, one hue per slot across the three tone sets,
 //! alternating lightness tiers, and contrast on each built-in's surfaces.
 
+use super::bands::{ATTENTION_BAND, GOLD_BAND, GREEN_BAND};
 use super::branch_palette::{BRANCH_DARK, BRANCH_LIGHT, BRANCH_LIGHT_STRONG, DARK_TONES, LIGHT_LINES, LIGHT_TEXT};
+use super::branch_palette_gold::{BRANCH_DAWN, BRANCH_DUSK, GOLD_DARK_TONES, GOLD_LIGHT_LINES, GOLD_LIGHT_TEXT, JADE_SLOT};
 use super::contrast::{oklch, ratio};
 use super::*;
 use eframe::egui::Color32;
 use glowfly_core::settings::BuiltinTheme;
-
-const ACCENT_BAND: std::ops::RangeInclusive<f64> = 145.0..=175.0;
-const ATTENTION_BAND: std::ops::RangeInclusive<f64> = 35.0..=60.0;
 
 fn report(failures: &[String]) {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
@@ -24,14 +23,20 @@ fn tone_sets() -> [(&'static str, [Color32; 14]); 3] {
     [("dark", DARK_TONES), ("light text", LIGHT_TEXT), ("light line", LIGHT_LINES)]
 }
 
+fn gold_tone_sets() -> [(&'static str, [Color32; 14]); 3] {
+    [("gold dark", GOLD_DARK_TONES), ("gold light text", GOLD_LIGHT_TEXT), ("gold light line", GOLD_LIGHT_LINES)]
+}
+
 #[test]
 fn p1_outside_reserved_bands() {
     let mut failures = Vec::new();
-    for (set, tones) in tone_sets() {
-        for (i, c) in tones.iter().enumerate() {
-            let h = oklch(*c).2;
-            if ACCENT_BAND.contains(&h) || ATTENTION_BAND.contains(&h) {
-                failures.push(format!("{set} slot {i}: hue {h:.1}"));
+    for (sets, band) in [(tone_sets(), GREEN_BAND), (gold_tone_sets(), GOLD_BAND)] {
+        for (set, tones) in sets {
+            for (i, c) in tones.iter().enumerate() {
+                let h = oklch(*c).2;
+                if band.contains(&h) || ATTENTION_BAND.contains(&h) {
+                    failures.push(format!("{set} slot {i}: hue {h:.1}"));
+                }
             }
         }
     }
@@ -41,16 +46,31 @@ fn p1_outside_reserved_bands() {
 #[test]
 fn tones_share_one_hue_per_slot() {
     let mut failures = Vec::new();
-    for i in 0..14 {
-        let dark = oklch(DARK_TONES[i]).2;
-        for (set, tones) in &tone_sets()[1..] {
-            let h = oklch(tones[i]).2;
-            if hue_gap(dark, h) > 1.5 {
-                failures.push(format!("slot {i}: dark {dark:.1} deg, {set} {h:.1} deg"));
+    for sets in [tone_sets(), gold_tone_sets()] {
+        for i in 0..14 {
+            let dark = oklch(sets[0].1[i]).2;
+            for (set, tones) in &sets[1..] {
+                let h = oklch(tones[i]).2;
+                if hue_gap(dark, h) > 1.5 {
+                    failures.push(format!("slot {i}: dark {dark:.1} deg, {set} {h:.1} deg"));
+                }
             }
         }
     }
     report(&failures);
+}
+
+#[test]
+fn jade_takes_the_gold_slot_and_nothing_else_changes() {
+    for ((_, std), (set, gold)) in tone_sets().iter().zip(gold_tone_sets()) {
+        for i in (0..14).filter(|i| *i != JADE_SLOT) {
+            assert_eq!(std[i], gold[i], "{set} slot {i}");
+        }
+        let (l, c, h) = oklch(gold[JADE_SLOT]);
+        assert!((160.0..=170.0).contains(&h) && c >= 0.08, "{set}: Jade at L {l:.2} C {c:.3} H {h:.1}");
+    }
+    let (std_l, gold_l) = (oklch(DARK_TONES[JADE_SLOT]).0, oklch(GOLD_DARK_TONES[JADE_SLOT]).0);
+    assert!((std_l - gold_l).abs() <= 0.03, "Jade keeps Gold's tier: {std_l:.3} and {gold_l:.3}");
 }
 
 #[test]
@@ -87,15 +107,21 @@ fn lines_reach_3_to_1() {
 
 #[test]
 fn light_chip_tones_reach_4_5() {
-    let p = &LIGHT;
     let mut failures = Vec::new();
-    for (i, c) in p.branch.chips.iter().enumerate() {
-        for (name, bg) in
-            [("bg", p.bg), ("panel", p.panel), ("toolbar", p.toolbar), ("hover", p.hover), ("selected", p.selected), ("raised", p.raised)]
-        {
-            let r = ratio(*c, bg);
-            if r < 4.5 {
-                failures.push(format!("chip {i} on {name}: {r:.2}:1"));
+    for (theme, p) in [("Garden light", &GARDEN_LIGHT), ("Dawn", &DAWN)] {
+        for (i, c) in p.branch.chips.iter().enumerate() {
+            for (name, bg) in [
+                ("bg", p.bg),
+                ("panel", p.panel),
+                ("toolbar", p.toolbar),
+                ("hover", p.hover),
+                ("selected", p.selected),
+                ("raised", p.raised),
+            ] {
+                let r = ratio(*c, bg);
+                if r < 4.5 {
+                    failures.push(format!("{theme} chip {i} on {name}: {r:.2}:1"));
+                }
             }
         }
     }
@@ -104,9 +130,11 @@ fn light_chip_tones_reach_4_5() {
 
 #[test]
 fn builtins_use_their_family() {
-    assert_eq!(DARK.branch, BRANCH_DARK);
+    assert_eq!(DUSK.branch, BRANCH_DUSK);
+    assert_eq!(DAWN.branch, BRANCH_DAWN);
+    assert_eq!(GARDEN_DARK.branch, BRANCH_DARK);
     assert_eq!(HIGH_CONTRAST_DARK.branch, BRANCH_DARK);
-    assert_eq!(LIGHT.branch, BRANCH_LIGHT);
+    assert_eq!(GARDEN_LIGHT.branch, BRANCH_LIGHT);
     assert_eq!(HIGH_CONTRAST_LIGHT.branch, BRANCH_LIGHT_STRONG);
     assert_eq!(SAND.branch, BRANCH_LIGHT_STRONG);
 }
@@ -116,6 +144,7 @@ fn main_is_the_accent_and_slots_read_their_tones() {
     use super::branch_colours::{chip_in, line_in};
     use glowfly_core::branch_colour::Swatch;
     assert_eq!((line_in(Swatch::Main, &LIGHT), chip_in(Swatch::Main, &LIGHT)), (LIGHT.accent, LIGHT.accent));
-    assert_eq!((line_in(Swatch::Slot(4), &LIGHT), chip_in(Swatch::Slot(4), &LIGHT)), (LIGHT_LINES[4], LIGHT_TEXT[4]));
-    assert_eq!(line_in(Swatch::Slot(13), &DARK), DARK_TONES[13]);
+    assert_eq!((line_in(Swatch::Slot(4), &GARDEN_LIGHT), chip_in(Swatch::Slot(4), &GARDEN_LIGHT)), (LIGHT_LINES[4], LIGHT_TEXT[4]));
+    assert_eq!(line_in(Swatch::Slot(13), &GARDEN_DARK), DARK_TONES[13]);
+    assert_eq!(line_in(Swatch::Slot(11), &DUSK), GOLD_DARK_TONES[11]);
 }

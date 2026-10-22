@@ -90,7 +90,7 @@ fn terminal_shell_menu() {
     prefs.shell.choice = ShellChoice::Pwsh;
     prefs.shell.program = "nu".into();
     let items = shell_items(Lang::En, &prefs, true);
-    let p = theme::DARK;
+    let p = theme::GARDEN_DARK;
     let mut h = Harness::builder().with_size(vec2(280.0, 220.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_palette(&p);

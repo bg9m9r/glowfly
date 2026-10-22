@@ -267,7 +267,7 @@ pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     ui.vertical_centered(|ui| {
         ui.add_space(ui.available_height() * 0.2);
-        ui.label(RichText::new("Glowfly").font(type_scale::strong(ui, type_scale::WORDMARK)).color(color::text()));
+        super::app_mark::show(ui);
         ui.label(RichText::new(t.tr("welcome_screen.tagline")).color(color::weak()));
         ui.add_space(20.0);
         if st.loading {

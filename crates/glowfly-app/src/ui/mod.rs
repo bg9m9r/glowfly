@@ -313,6 +313,8 @@ mod snapshot_tests_lfs_notes;
 #[cfg(test)]
 mod snapshot_tests_line_counts;
 #[cfg(test)]
+mod snapshot_tests_lineup;
+#[cfg(test)]
 mod snapshot_tests_load_more;
 #[cfg(test)]
 mod snapshot_tests_logs;
@@ -511,6 +513,7 @@ use eframe::egui;
 use glowfly_core::spell::Speller;
 
 mod app;
+mod app_mark;
 mod app_native;
 pub use app::GlowflyApp;
 #[cfg(test)]

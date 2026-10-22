@@ -3,9 +3,48 @@
 How Glowfly uses colour: the families every palette is built from, what each colour is for,
 the hue bands and contrast floors the tests hold every built-in theme to, and how to add a
 colour. The palettes live in `crates/glowfly-app/src/ui/theme/` (`color.rs` declares
-`Palette`, `families.rs` the token families, `builtin.rs` and `builtin_extra.rs` the five
-built-ins); the tests that check this page are `theme/tests.rs`, `theme/family_tests.rs` and
-`theme/vivid_tests.rs`.
+`Palette`, `families.rs` the token families, `builtin_dusk.rs`, `builtin_garden.rs` and
+`builtin_extra.rs` the seven built-ins, `builtin.rs` which theme takes which); the tests that
+check this page are `theme/tests.rs`, `theme/family_tests.rs`, `theme/vivid_tests.rs` and the
+branch tests, with the shared hue bands in `theme/bands.rs`.
+
+## 0. The built-in themes
+
+| Theme | Kind | Character | bg / panel / accent / text |
+|---|---|---|---|
+| Dusk (the default dark; `dark`) | dark | The icon's dusk tile: indigo neutrals under the lantern gold | #1b1829 / #221f31 / #f6c159 / #e6e5ef |
+| Dawn (the default light; `light`) | light | Faintly lavender paper, indigo ink, a deep gold accent and lantern-gold buttons | #f7f6fc / #fbfafe / #714900 / #211f38 |
+| Garden Dark (`garden-dark`) | dark | The earlier standard dark: green-tinted neutrals, lattice green | #151b18 / #1b221e / #4dc588 / #e0e6e3 |
+| Garden Light (`garden-light`) | light | The earlier standard light: warm paper, deep green | #f9f7f1 / #fdfcf9 / #14764a / #161c19 |
+| High Contrast Dark, High Contrast Light | | White on black and black on white, the green accent at 7:1 text | |
+| Sand | light | Brown ink on sand, a green accent | |
+
+Why Dusk and Dawn look as they do:
+
+- The app icon is a dusk tile (indigo into plum) with a gold lantern-glowfly and branch lanes in
+  gold, magenta and azure, the branch palette's own Gold, Magenta and Azure. Dusk takes the
+  tile for its neutrals and the lantern for its accent, so the main branch runs in gold as the
+  icon's first lane does, and the other lanes keep their colours.
+- One accent, not gold plus a second colour for links and focus: a second accent hue would be a
+  fourth hue family on the chrome (see Rules) and would take one more slot from the branch hues.
+  The magenta and azure of the icon appear as branch lanes, where the icon shows them.
+- The gold sits in the crowded warm side of the wheel, beside the coral, the amber `modified`
+  and `warn` and the Orange and Gold branch hues. So in Dusk and Dawn `modified` and `warn`
+  move to the orange side (OKLCH hue about 64, out of the gold band, 25 deg off the coral), Jade
+  takes the Gold branch slot, the colour-blind preset swaps two dark hues (below), and tags take
+  the plum of the tile's lower edge instead of sand.
+- Gold can't be a line or text colour on a light background without turning brown, and between
+  `warn` (L 0.58) and the colour-blind hues (L 0.47 to 0.60) there is no room for a mid gold.
+  Dawn's accent is a deep gold (#714900, L 0.44), a step darker than everything near its hue,
+  and the lantern gold itself fills primary buttons (#efb146 with indigo ink) and tints the
+  selected row (#f8e4bb).
+- Old settings files say `Dark` and `Light`, and theme files `"base": "dark"` / `"light"`: they
+  stay the standard pair's names, so they open in Dusk and Dawn. The Garden pair is there for
+  anyone who prefers the green. A theme file on Dusk or Dawn whose accent isn't the base's (a
+  file written from the green Dark, say) takes the Garden branch families, which leave a green
+  accent's band free.
+- View snapshots draw in the Garden pair (so a palette change doesn't redraw every image); the
+  theme snapshots (`lineup_*`, `vivid_*`, the design and controls sheets) show each palette.
 
 Views never name a hex value: they read the active palette through `color::text()`,
 `color::added()` and so on (see "Rules" in [ARCHITECTURE.md](ARCHITECTURE.md)).
@@ -16,7 +55,7 @@ Views never name a hex value: they read the active palette through `color::text(
 
 | Token | Theme key | What it is for |
 |---|---|---|
-| chrome | `toolbar` | The frame around the content: title bar (and the system frame's tab bar), status bar, terminal header, Preferences side panel and save bar. In Dark it is the darkest surface. |
+| chrome | `toolbar` | The frame around the content: title bar (and the system frame's tab bar), status bar, terminal header, Preferences side panel and save bar. In dark themes it is the darkest surface. |
 | base | `bg` | The canvas behind panels. |
 | panel | `panel` | Panels, dialogs, list backgrounds; the toolbar and the active repository tab, which runs into it. |
 | raised | `raised` | Controls and small fills a step off the panel: egui buttons and combo boxes, disabled styled buttons, chips, cards, tooltips, toasts, segmented tracks, keycaps, pane header strips. |
@@ -30,11 +69,11 @@ Views never name a hex value: they read the active palette through `color::text(
 
 | Token | Theme key | What it is for |
 |---|---|---|
-| accent | `accent` | The icon's lattice green: focus rings, links, checked controls, the selected row's bar, the active tab's line, column-resize lines, header highlights. |
+| accent | `accent` | The theme's own colour: the lantern gold in Dusk and Dawn, the lattice green in the Garden pair, high contrast and Sand. Focus rings, links, checked controls, the selected row's bar, the active tab's line, the main branch's line, column-resize lines, header highlights. |
 | primary | `primary`, `primary_border`, `primary_off` | The fill and edge of primary buttons. |
-| primary ink | `on_primary` | Text and icons on a primary fill (dark ink in Dark, white elsewhere). |
+| primary ink | `on_primary` | Text and icons on a primary fill (dark ink on the gold of Dusk and Dawn and the green of Garden dark, white elsewhere). |
 | danger | `danger`, `danger_off` | Destructive buttons. |
-| sand | `tag_bg`, `tag_fg` | Tag chips in the graph: the icon's sand as the second brand colour. |
+| tag | `tag_bg`, `tag_fg` | Tag chips in the graph: the plum of the icon's lower edge in Dusk and Dawn, sand in the Garden pair, high contrast and Sand. |
 
 ### Status
 
@@ -89,15 +128,17 @@ branch row. Branch colours appear only as lines, dots and name pills: the Branch
 icon. The repository's main branch (the home remote's recorded HEAD, else `main`, then
 `master`) takes `accent`; every other branch takes one of 14 hues (P1), in slot order Rose,
 Lime, Violet, Orange, Cyan, Magenta, Olive, Azure, Red, Teal, Orchid, Gold, Sky, Indigo. They
-keep out of the accent and attention bands, and neighbouring hues alternate between two
-lightness tiers (OKLCH L 0.70 / 0.80 in the dark tones).
+keep out of the theme's accent band and the attention band, and neighbouring hues alternate
+between two lightness tiers (OKLCH L 0.70 / 0.80 in the dark tones). Beside Dusk and Dawn's gold
+accent, Jade (hue 165, at Gold's tier) takes the Gold slot, in the green the gold leaves free
+(`theme/branch_palette_gold.rs`); each family names its own slots for the Color submenu.
 
 - `branch.lanes`: line tones, for lines, dots and bands (3:1 on bg and panel).
 - `branch.chips`: chip tones, which ref chips are tinted with and their text pushed from.
 
-Dark and High contrast dark use the dark tones for both. Light uses bright line tones and
-darker text tones for chips. High contrast light and Sand use the text tones for both, as the
-line tones fall below 3:1 on their surfaces. Not a theme-file key: theme files get their base
+Dusk, Garden dark and High contrast dark use the dark tones for both. Dawn and Garden light use
+bright line tones and darker text tones for chips. High contrast light and Sand use the text
+tones for both, as the line tones fall below 3:1 on their surfaces. Not a theme-file key: theme files get their base
 theme's family.
 
 A branch's slot comes from its name: FNV-1a (32-bit) of its UTF-8 bytes, mod 14, the same in
@@ -129,10 +170,12 @@ image, stays the branch's colour.
 
 Colour-blind safe preset (Preferences > UI Customization > Commit graph > Branch colors): 8
 hues that stay apart under protan, deutan and tritan vision as well as normal vision, and keep
-out of the accent and attention bands. Dark and High contrast dark use its dark tones for lines
-and chips; Light, High contrast light and Sand use its line tones for lines and its text tones
-for chips. Theme files take the family of their kind (dark or light). The preset switches with
-the profile. Branch names always appear beside their colour, and main keeps the accent.
+out of the accent and attention bands. Dark themes use its dark tones for lines and chips;
+light ones use its line tones for lines and its text tones for chips. Under protan or deutan
+vision Yellow and Lime pass for Dusk's gold, so Dusk's set (`Palette::colour_blind`) has Orange
+(#eb8f13) and a paler Lime (#c8feac) in their slots; Dawn's deep gold stays clear of the light
+tones, which it keeps. Theme files take their base's set. The preset switches with the profile.
+Branch names always appear beside their colour, and main keeps the accent.
 
 ### Terminal
 
@@ -167,14 +210,18 @@ outside the families and unchanged by the brand colour.
   the chrome's files.
 - The accent never marks status. Running operations use `progress`, not the accent.
 - Only the accent family (`accent`, `primary`, `primary_border`, `selected`) sits in the
-  accent band, about 145 to 175 deg OKLCH hue.
-- Status, branch and repository colours stay out of the accent band and out of the attention
-  band (about 35 to 60 deg), which belongs to the coral `needs_you`. Status colours also keep
-  OKLCH chroma at 0.08 or more; repository hues sit at 0.08 and at least 30 deg apart.
-- Neutrals in Dark and Light keep OKLCH chroma at or below 0.015: Dark is tinted green (hue
-  about 160), Light's surfaces are warm paper (hue about 90).
-- In Dark and Light, chrome is darker than the base, and raised is at least 1.08:1 off the
-  panel in every theme.
+  theme's accent band: the gold band, 72 to 92 deg OKLCH hue, in Dusk and Dawn; the green band,
+  145 to 175 deg, in the others. The gold band is narrower as the warm side of the wheel is
+  crowded; there the gold keeps its distance by lightness too (Orange at 70 deg is 0.12 OKLab
+  from Dusk's gold, and Dawn's deep gold sits 0.12 to 0.15 in L below `warn` and Orange).
+- Status, branch and repository colours stay out of the theme's accent band and out of the
+  attention band (about 35 to 60 deg), which belongs to the coral `needs_you`. Status colours
+  also keep OKLCH chroma at 0.08 or more; repository hues sit at 0.08 and at least 30 deg apart.
+- Neutrals: Garden dark and light keep OKLCH chroma at or below 0.015, tinted green (hue about
+  160) and warm paper (hue about 90). Dusk's and Dawn's take the icon's indigo (hue 280 to 300):
+  Dusk's at up to 0.045 chroma, Dawn's paper at up to 0.018 under indigo ink of up to 0.05.
+- In Dusk, Dawn and the Garden pair, chrome is darker than the base, and raised is at least
+  1.08:1 off the panel in every theme.
 
 OKLCH is computed from sRGB with Björn Ottosson's OKLab matrices (`contrast::oklch`, test
 only).
@@ -246,12 +293,59 @@ built-in and two custom palettes with odd colours.
 A change chip (the WIP row's M / A / D) is an opaque tint of its status colour over the base:
 22% in dark palettes and 10% in light ones (`contrast::change_chip`). The chip text is the
 status colour itself wherever that reaches 4.5:1 on the tint; otherwise `readable_on` pushes it
-5% at a time toward white (dark) or black (light) until it does. In Light that is only
-modified (3.9:1 unpushed); in Dark, removed and progress are pushed.
+5% at a time toward white (dark) or black (light) until it does. In Garden light that is
+only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 
 ## 6. Values
 
-### Dark
+### Dusk
+
+| Token | Value | Notes |
+|---|---|---|
+| chrome (`toolbar`) | #131220 | |
+| base (`bg`) | #1b1829 | The icon tile's indigo, lifted so the backdrop dim still reads |
+| panel | #221f31 | |
+| raised | #312d41 | |
+| input | #161423 | |
+| hairline (`border`) | #373347 | |
+| input_border, dialog_border | #89839e | |
+| hover | #332d44 | |
+| selected | #503e1d | A bronze wash of the gold |
+| text / strong | #e6e5ef / #ffffff | text 12.9:1 on panel |
+| weak / faint | #b6b3c8 / #9b96ae | 7.9 and 5.6:1 on panel |
+| accent, primary | #f6c159 | The lantern gold, OKLCH 0.84 0.135 82; 9.7:1 on panel |
+| on_primary | #151229 | 11.0:1 on the gold |
+| primary_border | #d5a13c | |
+| tag_bg / tag_fg | #4a283f / #f4c9e4 | Plum, 8.6:1 |
+| added / removed / modified / info / progress | #7bc85f / #ea6a64 / #f69d3d / #60aaf3 / #a689f1 | modified on the orange side (hue 64), out of the gold band |
+| warn / banner | #fba541 / #46290b | |
+| syn_comment | #a29eb6 | The other syntax colours are Garden dark's |
+
+### Dawn
+
+| Token | Value | Notes |
+|---|---|---|
+| chrome (`toolbar`) | #e7e5ef | |
+| base (`bg`) | #f7f6fc | |
+| panel | #fbfafe | |
+| raised | #edebf4 | |
+| input | #ffffff | |
+| hairline (`border`) | #d8d6e1 | |
+| input_border, dialog_border | #747188 | |
+| hover | #ece9f5 | |
+| selected | #f8e4bb | The lantern gold as a wash; branch chips keep 4.5:1 on it |
+| text / strong | #211f38 / #100d26 | text 15.3:1 on panel |
+| weak / faint | #54526d / #6b6882 | 7.2 and 5.1:1 on panel |
+| accent | #714900 | Deep gold, OKLCH 0.44 0.094 73; 7.6:1 on panel |
+| primary / on_primary | #efb146 / #1b1933 | The lantern gold with indigo ink, 9.0:1 |
+| primary_border | #bf851e | |
+| tag_bg / tag_fg | #f5d8ea / #763463 | Plum, 6.5:1 |
+| added / removed / modified / info / progress | #357518 / #b63132 / #a96000 / #1f68bc / #6d47b8 | |
+| warn / banner | #ae6704 / #fee3c5 | |
+| danger / danger_off | #c0332a / #fedadc | |
+| syn_comment | #5f5d78 | The other syntax colours are Garden light's |
+
+### Garden dark
 
 | Token | Value | Notes |
 |---|---|---|
@@ -274,7 +368,7 @@ modified (3.9:1 unpushed); in Dark, removed and progress are pushed.
 | added / removed / modified / info / progress | #7bc85f / #ea6a64 / #edb345 / #60aaf3 / #a689f1 | |
 | warn / banner | #e8b339 / #4a3812 | |
 
-### Light
+### Garden light
 
 | Token | Value | Notes |
 |---|---|---|
@@ -299,9 +393,11 @@ modified (3.9:1 unpushed); in Dark, removed and progress are pushed.
 
 ### Branch
 
-Slot by slot (`theme/branch_palette.rs`): dark tones (Dark and High contrast dark), light text
-and chip tones (Light's chips; every line and chip in High contrast light and Sand) and light
-line tones (Light's lines, dots and bands).
+Slot by slot (`theme/branch_palette.rs`): dark tones (Dusk, Garden dark and High contrast
+dark), light text and chip tones (Dawn's and Garden light's chips; every line and chip in High
+contrast light and Sand) and light line tones (Dawn's and Garden light's lines, dots and
+bands). In Dusk and Dawn slot 11 is Jade (#56d1a3 dark, #176449 light text, #2d9570 light line,
+hue 165) in place of Gold.
 
 | Slot | Hue | Dark | Light text | Light line |
 |---|---|---|---|---|
@@ -339,6 +435,10 @@ deutan vision). Chips carry the branch name, so text tones have no distance floo
 | 6 | Purple | #9d62f4 | #9169d5 | #482b74 | 299 |
 | 7 | Periwinkle | #a2b5f2 | #3a45cf | #4158bd | 271 |
 
+Dusk's colour-blind set swaps two dark tones: slot 2 is Orange #eb8f13 (hue 65) and slot 5 a
+paler Lime #c8feac (hue 135), as Yellow and Lime fall within 0.08 of the gold under protan and
+deutan vision. Dawn keeps the light tones above.
+
 High contrast dark, High contrast light and Sand keep their own surfaces, text, diff and syntax
 colours (their `raised` is their `toolbar`); their accent family is green at their own
 contrast: accent #5fe0a0 / #00613a / #2a7550 and primary #003d26 / #005c36 / #236a48, all
@@ -352,8 +452,10 @@ In slot order Rose, Ochre, Fern, Teal, Sky, Slate, Iris, Plum, as `#rrggbb` with
 
 | Theme | Hues | Lowest on chrome |
 |---|---|---|
-| Dark | cb8a93 ae9e64 90a872 5caeb2 6ba7c9 869ed1 a494ca be8cb2 | 4.83 |
-| Light | a0636d 86773d 6a814c 31868a 447fa0 6077a7 7d6da1 95658a | 3.49 |
+| Dusk | cb8a93 ae9e64 90a872 5caeb2 6ba7c9 869ed1 a494ca be8cb2 | 6.68 |
+| Dawn | a0636d 86773d 6a814c 31868a 447fa0 6077a7 7d6da1 95658a | 3.43 |
+| Garden dark | cb8a93 ae9e64 90a872 5caeb2 6ba7c9 869ed1 a494ca be8cb2 | 4.83 |
+| Garden light | a0636d 86773d 6a814c 31868a 447fa0 6077a7 7d6da1 95658a | 3.49 |
 | High contrast dark | e5a2ac c7b77c a9c28a 76c7cc 84c0e4 9eb7eb bdade5 d8a4cc | 7.09 |
 | High contrast light | 814750 695a1f 4e6330 00686c 256281 455a88 605182 76496d | 5.15 |
 | Sand | 9d606a 83743a 677e49 2d8387 417c9d 5d74a4 7a6a9e 926287 | 3.36 |
@@ -362,14 +464,15 @@ The coral (OKLCH hue about 40 deg) and its ink, with the ink's contrast at rest 
 
 | Theme | needs_you / on_needs_you | Ink contrast |
 |---|---|---|
-| Dark | #fb794a / #22110b | 6.88, 7.52 |
-| Light, Sand | #bf4306 / #ffffff | 5.22, 6.17 |
+| Dusk, Garden dark | #fb794a / #22110b | 6.88, 7.52 |
+| Dawn, Garden light, Sand | #bf4306 / #ffffff | 5.22, 6.17 |
 | High contrast dark | #ff8a5c / #22110b | 7.84, 8.53 |
 | High contrast light | #9c3604 / #ffffff | 7.14, 8.22 |
 
-The coral reads at least 3.94:1 on its surroundings (lowest: Sand's toolbar). The tool backing
-is #15261d (Dark), #d9dfd3 (Light), #1d2a27 (High contrast dark), #d4dedd (High contrast light)
-and #d7d5bf (Sand), at most OKLCH chroma 0.030.
+The coral reads at least 3.88:1 on its surroundings (lowest: Dusk's selected row). The tool
+backing is #272225 (Dusk), #dcd7d9 (Dawn), #15261d (Garden dark), #d9dfd3 (Garden light),
+#1d2a27 (High contrast dark), #d4dedd (High contrast light) and #d7d5bf (Sand), at most OKLCH
+chroma 0.030.
 
 ### Terminal colours
 
@@ -377,13 +480,15 @@ and #d7d5bf (Sand), at most OKLCH chroma 0.030.
 
 | Theme | 0-7 | 8-15 |
 |---|---|---|
-| Dark | 2a322d f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 c9d1cc | 86918a ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f4f7f5 |
-| Light | 1c2420 c0362f 2f7d1c 8a6400 2a5fc4 8a3fb8 087c80 d3d9d5 | 6b746f a3241e 226614 6e5000 1d4ba3 70299b 006468 e2e7e4 |
+| Dusk | 2b2939 f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 ceccda | 8c899d ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f5f4fa |
+| Dawn | 1d1c31 c0362f 2f7d1c 8a6400 2a5fc4 8a3fb8 087c80 d8d6e1 | 686679 a3241e 226614 6e5000 1d4ba3 70299b 006468 e3e2ec |
+| Garden dark | 2a322d f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 c9d1cc | 86918a ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f4f7f5 |
+| Garden light | 1c2420 c0362f 2f7d1c 8a6400 2a5fc4 8a3fb8 087c80 d3d9d5 | 6b746f a3241e 226614 6e5000 1d4ba3 70299b 006468 e2e7e4 |
 | High contrast dark | 303030 ff6b6b 5fe36a ffd84a 7ab4ff e08aff 4fe0e0 e6e6e6 | a6a6a6 ff9c9c 9cf0a2 ffec96 a8ccff eeb5ff 96f0f0 ffffff |
 | High contrast light | 000000 a31515 08621a 6b4c00 0646a8 6a1fa0 005f63 d0d0d0 | 55595f 7f0d0d 084f15 523900 043682 52157d 004a4d e5e5e5 |
 | Sand | 2e2519 b23a2b 4a7a1a 8a6200 2d65a8 84429e 1b7570 e3d9c6 | 76695a 93291c 3a6312 6d4c00 1f4f8a 6a2f82 0f5d59 eae2d2 |
 
-The lowest ratios of a chromatic colour on `input` are 4.99 (Light 6) and 5.01 (Sand 2), and
+The lowest ratios of a chromatic colour on `input` are 4.99 (Dawn and Garden light 6) and 5.01 (Sand 2), and
 7.36 in High contrast light.
 
 ## 7. Theme-file keys
@@ -417,5 +522,5 @@ on that primary, and otherwise gets white or black, whichever reads better.
 3. Add a contrast or band rule for it to `theme/tests.rs` or `theme/family_tests.rs`.
 4. Describe its job on this page.
 
-A new built-in theme also needs a terminal table in `ui/theme/ansi.rs` (start from Dark's or
-Light's and adjust it until `theme/ansi_tests.rs` passes), set as the palette's `ansi`.
+A new built-in theme also needs a terminal table in `ui/theme/ansi.rs` (start from Dusk's or
+Dawn's and adjust it until `theme/ansi_tests.rs` passes), set as the palette's `ansi`.

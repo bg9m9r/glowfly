@@ -63,10 +63,15 @@ pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_o
 /// "System" load unchanged; a theme file is saved as `{"Custom": "ocean"}`.
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum ThemeChoice {
+    /// Dusk, the standard dark theme (still saved as `Dark`, so older settings keep the default).
     Dark,
+    /// Dawn, the standard light theme (saved as `Light`).
     Light,
-    /// Follow the operating system.
+    /// Follow the operating system: Dusk or Dawn.
     System,
+    /// The earlier green pair.
+    GardenDark,
+    GardenLight,
     HighContrastDark,
     HighContrastLight,
     Sand,

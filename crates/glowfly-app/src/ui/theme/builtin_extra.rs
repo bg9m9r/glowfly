@@ -1,7 +1,7 @@
 //! The high-contrast and Sand palettes (see docs/COLOUR.md for the rules they meet). They keep
 //! their own surfaces; their accent family sits in the green accent band at their own contrast.
 
-use super::branch_palette::{BRANCH_DARK, BRANCH_LIGHT_STRONG};
+use super::branch_palette::{BRANCH_CB_DARK, BRANCH_CB_LIGHT, BRANCH_DARK, BRANCH_LIGHT_STRONG};
 use super::color::Palette;
 use super::families::{Attention, REPO_HUES, Repository, Status};
 use eframe::egui::Color32;
@@ -75,6 +75,7 @@ pub const HIGH_CONTRAST_DARK: Palette = Palette {
     syn_attr: hex(0xa6e4ec),
     repository: REPO_HC_DARK,
     branch: BRANCH_DARK,
+    colour_blind: BRANCH_CB_DARK,
     ansi: super::ansi::HIGH_CONTRAST_DARK,
 };
 
@@ -124,6 +125,7 @@ pub const HIGH_CONTRAST_LIGHT: Palette = Palette {
     syn_attr: hex(0x004d55),
     repository: REPO_HC_LIGHT,
     branch: BRANCH_LIGHT_STRONG,
+    colour_blind: BRANCH_CB_LIGHT,
     ansi: super::ansi::HIGH_CONTRAST_LIGHT,
 };
 
@@ -173,5 +175,6 @@ pub const SAND: Palette = Palette {
     syn_attr: hex(0x2f6f6a),
     repository: REPO_SAND,
     branch: BRANCH_LIGHT_STRONG,
+    colour_blind: BRANCH_CB_LIGHT,
     ansi: super::ansi::SAND,
 };

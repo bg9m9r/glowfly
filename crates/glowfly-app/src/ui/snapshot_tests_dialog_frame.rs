@@ -56,9 +56,9 @@ fn button_styles() {
 fn own_header(size: Vec2) -> Harness<'static, u32> {
     Harness::builder().with_size(size).build_state(
         |ctx, closes: &mut u32| {
-            color::set_palette(&theme::DARK);
-            apply_style(ctx, &theme::DARK);
-            ctx.set_theme(egui_theme(&theme::DARK));
+            color::set_palette(&theme::GARDEN_DARK);
+            apply_style(ctx, &theme::GARDEN_DARK);
+            ctx.set_theme(egui_theme(&theme::GARDEN_DARK));
             let id = Id::new("own-header");
             let cx = Cx { t: Lang::En, keyboard: true, key: id.with("dialog") };
             let resp = theme::dialog(ctx, id).show(ctx, |ui| {

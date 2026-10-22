@@ -5,14 +5,14 @@
 //! Vision is simulated with Machado, Oliveira and Fernandes (2009) at severity 1.0, applied to
 //! linear sRGB and clamped; distance is Euclidean in OKLab.
 
+use super::bands::{ATTENTION_BAND, GOLD_BAND, GREEN_BAND};
 use super::branch_palette::{BRANCH_CB_DARK, BRANCH_CB_LIGHT, BRANCH_DARK, CB_DARK_TONES, CB_LIGHT_LINES, CB_LIGHT_TEXT, DARK_TONES, pad};
+use super::branch_palette_gold::{BRANCH_CB_DAWN, BRANCH_CB_DUSK, GOLD_CB_DARK_TONES};
 use super::contrast::{oklch, ratio};
 use super::*;
 use eframe::egui::Color32;
 use glowfly_core::settings::{BranchPalette, BuiltinTheme};
 
-const ACCENT_BAND: std::ops::RangeInclusive<f64> = 145.0..=175.0;
-const ATTENTION_BAND: std::ops::RangeInclusive<f64> = 35.0..=60.0;
 /// The least OKLab distance between dark tones, and between light line tones, in every vision.
 const DARK_FLOOR: f64 = 0.08;
 const LIGHT_FLOOR: f64 = 0.05;
@@ -63,7 +63,7 @@ fn distance(a: Color32, b: Color32, vision: &Matrix) -> f64 {
 
 /// Every pair of `tones` closer than `floor` in some vision, and every tone that close to an
 /// accent in `accents`.
-fn too_close(set: &str, tones: &[Color32], accents: &[Color32], floor: f64) -> Vec<String> {
+pub(super) fn too_close(set: &str, tones: &[Color32], accents: &[Color32], floor: f64) -> Vec<String> {
     let mut out = Vec::new();
     for (vision, m) in &VISIONS {
         for i in 0..tones.len() {
@@ -84,14 +84,6 @@ fn too_close(set: &str, tones: &[Color32], accents: &[Color32], floor: f64) -> V
     out
 }
 
-fn dark_accents() -> Vec<Color32> {
-    vec![DARK.accent, HIGH_CONTRAST_DARK.accent]
-}
-
-fn light_accents() -> Vec<Color32> {
-    vec![LIGHT.accent, HIGH_CONTRAST_LIGHT.accent, SAND.accent]
-}
-
 fn hue_gap(a: f64, b: f64) -> f64 {
     let d = (a - b).rem_euclid(360.0);
     d.min(360.0 - d)
@@ -100,10 +92,18 @@ fn hue_gap(a: f64, b: f64) -> f64 {
 #[test]
 fn cb_tones_outside_reserved_bands() {
     let mut failures = Vec::new();
-    for (set, tones) in [("dark", CB_DARK_TONES), ("light line", CB_LIGHT_LINES), ("light text", CB_LIGHT_TEXT)] {
+    // The green-accent sets keep out of the green band, the gold one (Dusk's) out of the gold;
+    // Dawn's light tones are the green-accent ones and keep out of both.
+    let sets = [
+        ("dark", CB_DARK_TONES, &[GREEN_BAND][..]),
+        ("light line", CB_LIGHT_LINES, &[GREEN_BAND, GOLD_BAND][..]),
+        ("light text", CB_LIGHT_TEXT, &[GREEN_BAND, GOLD_BAND][..]),
+        ("gold dark", GOLD_CB_DARK_TONES, &[GOLD_BAND][..]),
+    ];
+    for (set, tones, bands) in sets {
         for (i, c) in tones.iter().enumerate() {
             let h = oklch(*c).2;
-            if ACCENT_BAND.contains(&h) || ATTENTION_BAND.contains(&h) {
+            if bands.iter().any(|b| b.contains(&h)) || ATTENTION_BAND.contains(&h) {
                 failures.push(format!("{set} slot {i}: hue {h:.1}"));
             }
         }
@@ -114,6 +114,9 @@ fn cb_tones_outside_reserved_bands() {
 #[test]
 fn cb_tones_share_one_hue_per_slot() {
     let mut failures = Vec::new();
+    for i in (0..8).filter(|i| ![2, 5].contains(i)) {
+        assert_eq!(CB_DARK_TONES[i], GOLD_CB_DARK_TONES[i], "Dusk's set changes only Yellow and Lime");
+    }
     for i in 0..8 {
         let dark = oklch(CB_DARK_TONES[i]).2;
         for (set, tones) in [("light line", CB_LIGHT_LINES), ("light text", CB_LIGHT_TEXT)] {
@@ -158,9 +161,25 @@ fn applied_cb_lines_reach_3_to_1_and_light_chips_4_5() {
 
 #[test]
 fn cb_tones_stay_apart_in_every_vision() {
-    let mut failures = too_close("dark", &CB_DARK_TONES, &dark_accents(), DARK_FLOOR);
-    failures.extend(too_close("light line", &CB_LIGHT_LINES, &light_accents(), LIGHT_FLOOR));
+    // Each built-in's colour-blind lines against each other and its own accent (main's line).
+    let mut failures = Vec::new();
+    for t in BuiltinTheme::ALL {
+        let p = builtin(t);
+        let floor = if p.dark { DARK_FLOOR } else { LIGHT_FLOOR };
+        failures.extend(too_close(&format!("{t:?}"), &p.colour_blind.lanes[..8], &[p.accent], floor));
+    }
     report(&failures);
+}
+
+#[test]
+fn the_gold_needs_its_own_dark_set() {
+    // Yellow and Lime pass for Dusk's gold under protan or deutan vision, which is why Dusk
+    // takes Orange and a paler Lime in their slots.
+    let yellow_and_lime = too_close("standard", &CB_DARK_TONES, &[DARK.accent], DARK_FLOOR);
+    assert!(
+        yellow_and_lime.iter().any(|f| f.contains("slot 2")) && yellow_and_lime.iter().any(|f| f.contains("slot 5")),
+        "{yellow_and_lime:?}"
+    );
 }
 
 #[test]
@@ -185,11 +204,16 @@ fn applied_picks_the_family_by_kind() {
         let base = *builtin(t);
         assert_eq!(applied(base, BranchPalette::Standard), base, "{t:?} keeps its own");
         let p = applied(base, BranchPalette::ColourBlind);
-        let want = if matches!(t, BuiltinTheme::Dark | BuiltinTheme::HighContrastDark) { BRANCH_CB_DARK } else { BRANCH_CB_LIGHT };
+        let want = match t {
+            BuiltinTheme::Dark => BRANCH_CB_DUSK,
+            BuiltinTheme::Light => BRANCH_CB_DAWN,
+            BuiltinTheme::GardenDark | BuiltinTheme::HighContrastDark => BRANCH_CB_DARK,
+            _ => BRANCH_CB_LIGHT,
+        };
         assert_eq!(p.branch, want, "{t:?}");
         assert_eq!(p.branch.preset.slots(), 8);
         assert_eq!(Palette { branch: base.branch, ..p }, base, "only the branch family changes");
     }
-    assert_eq!(DARK.branch, BRANCH_DARK);
+    assert_eq!(GARDEN_DARK.branch, BRANCH_DARK);
     assert_eq!(BRANCH_DARK.preset, BranchPalette::Standard);
 }

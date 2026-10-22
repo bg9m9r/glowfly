@@ -60,7 +60,7 @@ and another
     (st, dir)
 }
 
-fn whole(name: &str, p: Palette) {
+pub(super) fn whole(name: &str, p: Palette) {
     let (st, dir) = coloured(name);
     let mut h = harness_palette(st, p);
     h.run();
@@ -87,6 +87,16 @@ fn vivid_high_contrast_dark() {
 #[test]
 fn vivid_high_contrast_light() {
     whole("vivid_high_contrast_light", theme::HIGH_CONTRAST_LIGHT);
+}
+
+#[test]
+fn vivid_garden_dark() {
+    whole("vivid_garden_dark", theme::GARDEN_DARK);
+}
+
+#[test]
+fn vivid_garden_light() {
+    whole("vivid_garden_light", theme::GARDEN_LIGHT);
 }
 
 #[test]

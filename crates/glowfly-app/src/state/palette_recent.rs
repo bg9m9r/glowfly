@@ -134,6 +134,8 @@ impl PaletteCommand {
             C::Theme(ThemeChoice::Dark) => "theme-dark",
             C::Theme(ThemeChoice::Light) => "theme-light",
             C::Theme(ThemeChoice::System) => "theme-system",
+            C::Theme(ThemeChoice::GardenDark) => "theme-garden-dark",
+            C::Theme(ThemeChoice::GardenLight) => "theme-garden-light",
             C::Theme(ThemeChoice::HighContrastDark) => "theme-high-contrast-dark",
             C::Theme(ThemeChoice::HighContrastLight) => "theme-high-contrast-light",
             C::Theme(ThemeChoice::Sand) => "theme-sand",

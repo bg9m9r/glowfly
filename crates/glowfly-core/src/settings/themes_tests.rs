@@ -166,7 +166,9 @@ fn choices_and_builtins() {
         assert_eq!(BuiltinTheme::from_id(t.id()), Some(t));
     }
     assert_eq!(ThemeChoice::System.label(), "Match system");
-    assert_eq!(ThemeChoice::Sand.label(), "Glowfly Sand");
+    assert_eq!(ThemeChoice::Sand.label(), "Sand");
+    assert_eq!((ThemeChoice::Dark.label(), ThemeChoice::Light.label()), ("Dusk".to_owned(), "Dawn".to_owned()));
+    assert_eq!(BuiltinTheme::from_id("garden-dark"), Some(BuiltinTheme::GardenDark));
     assert_eq!(ThemeChoice::Custom("ocean".into()).label(), "ocean");
     assert_eq!(ThemeChoice::HighContrastDark.palette_label(), "High contrast dark");
     let cat = ThemeCatalog { files: vec![p(r#"{"base": "light"}"#)], ..ThemeCatalog::default() };
