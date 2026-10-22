@@ -44,6 +44,8 @@ objc2-app-kit = { version = "0.3", default-features = false, features = ["std", 
 egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"] }
 # tests/app_icon.rs renders the app icon and checks the PNGs in assets/icon.
 image = { version = "0.25", default-features = false, features = ["png"] }
+# tests/linux_packages.rs reads the package metadata below.
+toml = "1.1"
 
 # The icon and version details of glowfly.exe (build.rs).
 [target.'cfg(windows)'.build-dependencies]
@@ -83,7 +85,9 @@ assets = [
 ]
 
 # The .rpm (cargo-generate-rpm, scripts/package-linux.sh): the same files as the .deb. The
-# version is set from the tag at packaging time.
+# version is set from the tag at packaging time. No asset is marked `doc`: systems set to skip
+# documentation (Fedora's container images use dnf's tsflags=nodocs) would then leave the
+# licenses out, and the install check expects every file (tests/linux_packages.rs).
 [package.metadata.generate-rpm]
 name = "glowfly"
 summary = "A native Git client"
@@ -101,10 +105,10 @@ assets = [
     { source = "../../assets/icon/glowfly-128.png", dest = "/usr/share/icons/hicolor/128x128/apps/glowfly.png", mode = "644" },
     { source = "../../assets/icon/glowfly-256.png", dest = "/usr/share/icons/hicolor/256x256/apps/glowfly.png", mode = "644" },
     { source = "../../assets/icon/glowfly-512.png", dest = "/usr/share/icons/hicolor/512x512/apps/glowfly.png", mode = "644" },
-    { source = "../../LICENSE-MIT", dest = "/usr/share/doc/glowfly/LICENSE-MIT", mode = "644", doc = true },
-    { source = "../../LICENSE-APACHE", dest = "/usr/share/doc/glowfly/LICENSE-APACHE", mode = "644", doc = true },
-    { source = "../../README.md", dest = "/usr/share/doc/glowfly/README.md", mode = "644", doc = true },
-    { source = "../../THIRD-PARTY-NOTICES.md", dest = "/usr/share/doc/glowfly/THIRD-PARTY-NOTICES.md", mode = "644", doc = true },
+    { source = "../../LICENSE-MIT", dest = "/usr/share/doc/glowfly/LICENSE-MIT", mode = "644" },
+    { source = "../../LICENSE-APACHE", dest = "/usr/share/doc/glowfly/LICENSE-APACHE", mode = "644" },
+    { source = "../../README.md", dest = "/usr/share/doc/glowfly/README.md", mode = "644" },
+    { source = "../../THIRD-PARTY-NOTICES.md", dest = "/usr/share/doc/glowfly/THIRD-PARTY-NOTICES.md", mode = "644" },
     { source = "../../packaging/linux/package-format.rpm", dest = "/usr/share/glowfly/package-format", mode = "644" },
 ]
 
