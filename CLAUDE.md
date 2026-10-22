@@ -2,7 +2,7 @@
 
 Native Git client in Rust (egui + libgit2). Read `docs/ARCHITECTURE.md`
 before structural changes. `ROADMAP.md` is the source of truth for the goal, milestones and
-status; `TODO.md` is the backlog of items, the current milestone first.
+status; the work is GitHub issues on the [Glowfly Project](https://github.com/users/bg9m9r/projects/2).
 
 ## Commands
 
@@ -31,6 +31,19 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
 
 `git worktree list` should show only the main checkout when nothing is in progress.
 
+## Tracking work
+
+- Pick work from the Project's **Ready** column, highest Priority first (within a priority, the
+  current milestone first). Never pick a `needs-decision` issue: those are the owner's to decide.
+- One branch (and worktree) per issue, e.g. `issue/<n>-<slug>`. On starting, move its card:
+  `pwsh scripts/track.ps1 <n> 'In progress'`. Done is set automatically when the issue closes.
+- Commit subjects stay Conventional Commits; the landing commit's body says `Closes #<n>`
+  (`Refs #<n>` for a partial landing, with a comment on the issue saying what is left).
+- Follow-ups, polish and edge cases found while building: one line in the matching
+  `docs/ideas/<area>.md` file, under the heading of the feature they grew from. Never open
+  issues for them unless the owner asks. A substantial new feature becomes a new issue in
+  Inbox: `gh issue create`, then `pwsh scripts/track.ps1 <n> Inbox`.
+
 ## Where code goes
 
 - Git reads/writes and CLI calls: `glowfly-core` (`repo.rs`, `gitcli.rs`). Network APIs:
@@ -53,11 +66,6 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
 - Commit messages use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`,
   `ci:`, `chore:`); release-please derives versions and the CHANGELOG from them. Don't edit
   the version in `Cargo.toml`, `version.txt` or `CHANGELOG.md` by hand.
-
-- Tick an item's box in `TODO.md` in the same commit as the feature. Recent landings come from
-  `git log` (the commit subjects), so there is no changelog list to keep in `TODO.md`.
-- Follow-ups, polish and edge cases found while building go to `TODO.md`'s Ideas section under
-  the item they grew from, never to Later (Later holds only triaged milestone work).
 - Keep files under ~400 lines; split by responsibility rather than growing a file.
 - `tests/hygiene.rs` ratchets these: a new file over 400 lines, a file without a `//!` doc, a
   new English log/toast text in `update/` or `state/` (use `t.tr`) or a copied fixture helper

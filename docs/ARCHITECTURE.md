@@ -701,4 +701,4 @@ binary (package `glowfly`).
 - [x] 4. Split `AppState` / `Msg` / `update` out of the `GlowflyApp` struct, area by area
 - [x] 5. Move views into `ui/` modules; remove global atomics (the palette flag is per thread)
 - [x] 6. Headless `update` tests, `egui_kittest` snapshots, CI enforcing clippy
-- [ ] 7. Resume `TODO.md`, one feature per commit with tests
+- [x] 7. Resume the backlog, one feature per commit with tests (now GitHub issues)

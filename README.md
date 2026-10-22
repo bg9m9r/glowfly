@@ -49,7 +49,8 @@ cargo run --release -- C:\path\to\repo
 ```
 
 With no path it reopens the last repository. See [ROADMAP.md](ROADMAP.md) for where the project
-is going and [TODO.md](TODO.md) for the backlog.
+is going, the [issues](https://github.com/bg9m9r/glowfly/issues) for planned work and
+[docs/ideas](docs/ideas/README.md) for untriaged ideas.
 
 ## What it does
 

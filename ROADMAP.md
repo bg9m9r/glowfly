@@ -1,8 +1,9 @@
 # Glowfly roadmap
 
 What Glowfly is for, the milestones it is working towards, and where it stands. This file is the
-source of truth for direction and status; [TODO.md](TODO.md) is the backlog of items that get it
-there. When a milestone's scope, exit criteria or status changes, update this file in the same
+source of truth for direction and status. The work that gets it there is tracked as
+[issues](https://github.com/bg9m9r/glowfly/issues) on the
+[Glowfly Project](https://github.com/users/bg9m9r/projects/2). When a milestone's scope, exit criteria or status changes, update this file in the same
 commit.
 
 ## Goal
@@ -12,16 +13,30 @@ macOS and Linux: the commit graph, staging and committing, branch and history wo
 resolution, and pull requests and issues on the common hosting services, without a vendor
 account.
 
+## Out of scope
+
+These need a vendor account or cloud service rather than git:
+
+- Sharing patches and code suggestions through a cloud service (local `.patch` files are
+  supported)
+- Cloud workspaces, teams and organizations
+- Accounts, trials, licensing, surveys and analytics
+- Status hooks for coding agents
+- **Possible later:** AI features, such as generating commit messages and PR descriptions,
+  explaining a commit or branch, and composing commits. These could be built on the Claude API
+  as an opt-in.
+
 ## How planning works
 
 - A **milestone** is a state of the project with exit criteria that can be checked. It is done
   when every criterion is met, not when its items are ticked.
-- **TODO.md** holds the items. The items a milestone needs sit in that milestone's section at the
-  top of TODO.md, so they are built first; then come the priority sections and
-  [Later](TODO.md#later), which holds Milestone 2's triaged follow-ups.
-- **Follow-ups go to [Ideas](TODO.md#ideas)**, which is not planned work. Finishing an item tends
-  to suggest more follow-ups than it closes, so nothing in Ideas is built until a triage moves it
-  to Later or a milestone. Triage when a milestone closes.
+- **Issues** hold the items, each in a [GitHub milestone](https://github.com/bg9m9r/glowfly/milestones)
+  when a milestone needs it. The Project's columns are Inbox (not triaged), Ready, In progress,
+  In review and Done, and its Priority field (P0 to P3) orders Ready. Issues labelled
+  `needs-decision` wait on the owner.
+- **Follow-ups go to [docs/ideas](docs/ideas/README.md)**, which is not planned work. Finishing an
+  item tends to suggest more follow-ups than it closes, so nothing there is built until a triage
+  promotes it to an issue. Triage when a milestone closes.
 - Criteria marked *(you)* need a person: hands-on use, an account, or a release decision. The
   rest are checked by automated tests or CI.
 
@@ -29,12 +44,13 @@ account.
 
 ### Feature build-out: done
 
-The daily-driver, power-user, integration and polish items of TODO.md (P0 to P3 and Preferences
-parity) are built, with tests on all three CI systems. Open leftovers: issues on Bitbucket, Azure
+The daily-driver, power-user, integration and polish items (P0 to P3 and Preferences parity;
+the [Feature build-out](https://github.com/bg9m9r/glowfly/milestone/3) milestone) are built, with tests on all three CI systems. Open leftovers: issues on Bitbucket, Azure
 DevOps and Trello (Create and view issues) and Default group color (waits for repository groups).
 
 ### Milestone 1: first release (in progress)
 
+[Its issues](https://github.com/bg9m9r/glowfly/milestone/1).
 The first build people are asked to install. release-please picks the version (0.2.0 from the
 `feat:` commits since v0.1.0).
 
@@ -50,24 +66,25 @@ Exit criteria:
    checks the update path from an older build against the published checksums.
 4. **No known crash or data-loss bug** is open.
 5. **The UI review's blockers and major findings are fixed**: the
-   [2026-10-18 review](docs/reviews/ui-2026-10-18.md)'s items in TODO.md's Milestone 1 section
+   [2026-10-18 review](docs/reviews/ui-2026-10-18.md)'s items in the Milestone 1 milestone
    (operations that stay visible and ask before losing work, dialogs that keep typed text,
    consistent dialogs, buttons and controls, readable text and contrast in every theme,
    truncation with ellipses, complete translations).
-6. **A few days of daily use** on real repositories *(you)*; what turns up goes into TODO.md
-   under this milestone.
+6. **A few days of daily use** on real repositories *(you)*; what turns up becomes issues
+   in this milestone.
 7. **The release pull request is merged** *(you)*.
 
 ### Milestone 2: daily-driver polish
 
-The [Later](TODO.md#later) queue: 124 follow-ups kept by the 2026-10-18 triage because a daily
+[Its issues](https://github.com/bg9m9r/glowfly/milestone/2): the 124 follow-ups kept by the 2026-10-18 triage because a daily
 user would miss them (data safety, correctness, platform behaviour, and gaps in common
 workflows), plus the feedback from Milestone 1's users and hands-on use on macOS and Linux *(you
 or a volunteer)*.
 
 Exit criteria:
 
-1. Later is empty: every bullet built, or moved to Ideas with a reason.
+1. The milestone has no open issues: every one built, or closed with its idea moved to
+   docs/ideas and a reason.
 2. Every bug reported from Milestone 1's daily use is fixed or deliberately deferred.
 3. A day of hands-on use on macOS and on Linux *(you or a volunteer)*, with what turns up fixed.
 
@@ -100,6 +117,9 @@ As of 2026-10-18. Recompute from git history when a milestone closes.
 
 ## Status
 
+- 2026-10-22: Work moved from TODO.md to GitHub issues on the
+  [Glowfly Project](https://github.com/users/bg9m9r/projects/2) and GitHub milestones; the
+  1,610 untriaged ideas moved to [docs/ideas](docs/ideas/README.md).
 - 2026-10-18: UI review of every snapshot (visual design and UX): 16 Milestone 1 items from its
   blockers and major findings, and its minor findings in Later. A batch of 17 landings
   (whole-app journey tests and Later work). The MSI's install pages built and checked by hand.

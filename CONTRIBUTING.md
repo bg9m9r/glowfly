@@ -6,8 +6,9 @@ Thanks for your interest! Bug reports, ideas and pull requests are all welcome.
 
 - **Bugs**: open an issue with the steps to reproduce, what you expected, and what happened.
   The activity log (bottom panel) shows the exact git commands Glowfly ran, which helps a lot.
-- **Features**: check [TODO.md](TODO.md) first, then open an issue to agree on the approach
-  before writing a large change.
+- **Features**: check the [issues](https://github.com/bg9m9r/glowfly/issues) and
+  [docs/ideas](docs/ideas/README.md) first, then open an issue to agree on the approach before
+  writing a large change.
 - **Security problems**: don't open a public issue; see [SECURITY.md](SECURITY.md).
 
 ## Building and checking
