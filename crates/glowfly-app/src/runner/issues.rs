@@ -1,6 +1,7 @@
 //! The issue panel's and the Create issue dialog's calls to the tracker (`Effect::Issue`): an
-//! issue's details, the dialog's choices and creating an issue. They sign in the way the
-//! ISSUES list does; only creating, which the user asked for, may prompt for credentials.
+//! issue's details, the dialog's choices, creating an issue and posting a comment. They sign in
+//! the way the ISSUES list does; only creating and commenting, which the user asked for, may
+//! prompt for credentials.
 
 use crate::effect::{ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply};
 use crate::msg::{IssueMsg, Msg};
@@ -14,7 +15,7 @@ pub(super) fn run(e: IssueEffect) -> Msg {
 
 fn call(job: IssueJob) -> Msg {
     let IssueJob { req, generation, call } = job;
-    let interactive = matches!(call, IssueCall::Create(_));
+    let interactive = matches!(call, IssueCall::Create(_) | IssueCall::Comment { .. });
     let auth: Result<Auth, ForgeError> = match req.auth {
         Some(a) => Ok(a),
         None => forge::resolve_auth(&req.target.account(), &req.workdir, interactive, req.connected).map_err(ForgeError::from),
@@ -30,6 +31,10 @@ fn call(job: IssueJob) -> Msg {
             IssueReply::Options { project, result }
         }
         IssueCall::Create(new) => IssueReply::Created(auth.and_then(|a| forge::create_issue(t, &a, &new).map_err(ForgeError::from))),
+        IssueCall::Comment { key, body } => {
+            let result = auth.and_then(|a| forge::post_issue_comment(t, &a, &key, &body).map_err(ForgeError::from));
+            IssueReply::Commented { key, result }
+        }
     };
     Msg::Issue(IssueMsg::Replied { workdir: req.workdir, target: req.target, generation, reply: Box::new(reply) })
 }

@@ -23,6 +23,7 @@ mod gitlab;
 mod gitlab_checks;
 mod gitlab_issues;
 mod html_text;
+mod issue_comments;
 mod issue_details;
 mod jira;
 mod jira_adf;
@@ -65,6 +66,7 @@ pub use filters::{Builtin, Conditions, FilterChoice, FilterKind, FilterOptions, 
 pub use forks::{CreatedFork, Fork, ForkList, ForkLookup, Wait, create_fork, find_my_fork, list_forks, remote_name_for, same_repository};
 pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
+pub use issue_comments::{comment_problem, comment_text, max_comment, post_issue_comment, quote_comment};
 pub use issue_details::{
     CreateOptions, IssueDetails, IssueField, NewIssue, Person, create_issue, issue_create_options, issue_details, issues_in_app, noun,
     project_problem, title_word, type_problem, type_required,
@@ -264,6 +266,12 @@ pub trait Forge: Sync {
     /// Creates an issue (already checked by `NewIssue::problems`) and returns it as listed.
     fn create_issue(&self, _t: &Target, _auth: &Auth, _new: &NewIssue) -> Result<Issue> {
         Err(Error::Unsupported("creating issues isn't supported on this service".into()))
+    }
+
+    /// Posts a comment (already normalised and checked by `comment_problem`) on issue `key` and
+    /// returns it as the service has it.
+    fn post_issue_comment(&self, _t: &Target, _auth: &Auth, _key: &str, _body: &str) -> Result<Entry> {
+        Err(Error::Unsupported("commenting on issues isn't supported on this service".into()))
     }
 }
 

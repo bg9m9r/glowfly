@@ -1,7 +1,7 @@
 //! Trello cards in the issue panel and the Create dialog: one card with its description,
 //! labels, members and comments; the member's open boards, and a board's lists, labels and
-//! members to choose from; and creating a card. A token allowed only to read is told how to
-//! get one that can also write.
+//! members to choose from; creating a card; and posting a comment. A token allowed only to read
+//! is told how to get one that can also write.
 
 use super::filters::Named;
 use super::issue_details::{CreateOptions, IssueDetails, NewIssue, Person, api_time, not_found};
@@ -12,9 +12,21 @@ use crate::error::{Error, Result};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 
-/// Why a token that may only read can't create a card, and what to do.
-const READ_ONLY: &str = "this Trello token can read cards but not create them (or you only observe this board). Allow a token that \
-                         can also write, then paste it in Preferences > Integrations.";
+/// Why a token that may only read can't `verb` ("create them"), and what to do.
+fn read_only(verb: &str) -> String {
+    format!(
+        "this Trello token can read cards but not {verb} (or you only observe this board). Allow a token that can also write, then \
+         paste it in Preferences > Integrations."
+    )
+}
+
+/// A refusal to write: a token that can still read may only read; else Trello's own words.
+fn refused(auth: &Auth, e: Error, verb: &str) -> Error {
+    match get::<Member>(auth, &format!("{API}/{ME}")) {
+        Ok(_) => Error::Forbidden(read_only(verb)),
+        Err(_) => trello_error(e),
+    }
+}
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
@@ -67,6 +79,17 @@ fn creator(a: &Action) -> String {
     a.member_creator.as_ref().map(Member::display).unwrap_or_default()
 }
 
+/// A comment action on card `key` as an entry, linked to its place on the card.
+fn action_entry(key: &str, a: &Action) -> Entry {
+    Entry {
+        author: creator(a),
+        time: api_time(&a.date),
+        kind: EntryKind::Comment,
+        body: a.data.text.clone(),
+        url: format!("{}#comment-{}", card_url(key), enc(&a.id)),
+    }
+}
+
 /// The time encoded in a Trello object id: its first 8 hex digits are Unix seconds.
 fn id_time(id: &str) -> i64 {
     id.get(..8).and_then(|h| i64::from_str_radix(h, 16).ok()).unwrap_or(0)
@@ -100,17 +123,7 @@ pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails
         Some(a) => (creator(a), api_time(&a.date)),
         None => (String::new(), id_time(&full.id)),
     };
-    let comments = actions
-        .iter()
-        .filter(|a| a.kind == "commentCard")
-        .map(|a| Entry {
-            author: creator(a),
-            time: api_time(&a.date),
-            kind: EntryKind::Comment,
-            body: a.data.text.clone(),
-            url: format!("{}#comment-{}", card_url(key), enc(&a.id)),
-        })
-        .collect();
+    let comments = actions.iter().filter(|a| a.kind == "commentCard").map(|a| action_entry(key, a)).collect();
     Ok(IssueDetails { issue, body: full.desc, author, created: time, assignees, priority: None, epic: None, comments })
 }
 
@@ -198,12 +211,7 @@ pub(super) fn create(t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
     }
     let created: Created = match post(auth, &format!("{API}/cards"), body(new, &ids)) {
         Ok(c) => c,
-        Err(e @ (Error::Auth(_) | Error::Forbidden(_))) => {
-            return Err(match get::<Member>(auth, &format!("{API}/{ME}")) {
-                Ok(_) => Error::Forbidden(READ_ONLY.into()),
-                Err(_) => trello_error(e),
-            });
-        }
+        Err(e @ (Error::Auth(_) | Error::Forbidden(_))) => return Err(refused(auth, e, "create them")),
         Err(e) => return Err(trello_error(e)),
     };
     if !is_short_link(&created.short_link) {
@@ -219,6 +227,21 @@ pub(super) fn create(t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
         assignee: None,
         facets: Default::default(),
     }))
+}
+
+/// Posts `body` as a comment on card `key`. A refusal while the token can still read means it
+/// may only read.
+pub(super) fn post_comment(t: &Target, auth: &Auth, key: &str, body: &str) -> Result<Entry> {
+    if !is_short_link(key) {
+        return Err(not_found(t, key));
+    }
+    let a: Action = match post(auth, &format!("{API}/cards/{}/actions/comments", enc(key)), json!({ "text": body })) {
+        Ok(a) => a,
+        Err(e @ (Error::Auth(_) | Error::Forbidden(_))) => return Err(refused(auth, e, "comment on them")),
+        Err(e) if unreadable_card(&e) => return Err(not_found(t, key)),
+        Err(e) => return Err(trello_error(e)),
+    };
+    Ok(action_entry(key, &a))
 }
 
 #[cfg(test)]

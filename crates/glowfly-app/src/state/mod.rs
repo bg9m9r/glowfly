@@ -44,6 +44,7 @@ pub mod history_index;
 pub mod history_text;
 pub mod init;
 pub mod issue;
+pub mod issue_comment;
 pub mod issue_form;
 pub mod issue_words;
 pub mod job_stop;

@@ -2,7 +2,8 @@
 //! the file history and blame), loading its details from the tracker, following tab switches
 //! and tracker changes, and closing it. The calls are unscoped effects whose replies name
 //! their repository and tracker: a stale or misplaced reply is dropped, and a failed reload
-//! keeps the details on screen. The Create issue dialog is in issue_create.rs.
+//! keeps the details on screen. The Create issue dialog is in issue_create.rs, the comment box
+//! in issue_comment.rs.
 
 use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply, IssueRequest};
 use crate::msg::IssueMsg;
@@ -20,10 +21,13 @@ pub(super) fn handle(st: &mut AppState, msg: IssueMsg, now: Instant, fx: &mut Ve
         IssueMsg::CreateDialog => super::issue_create::open_dialog(st, fx),
         IssueMsg::SetProject(p) => super::issue_create::set_project(st, p, fx),
         IssueMsg::Create => super::issue_create::create(st, fx),
+        IssueMsg::PostComment => super::issue_comment::post(st, fx),
+        IssueMsg::Quote(i) => super::issue_comment::quote(st, i),
         IssueMsg::Replied { workdir, target, generation, reply } => match *reply {
             IssueReply::Loaded { key, result } => loaded(st, &workdir, &target, generation, &key, result),
             IssueReply::Options { project, result } => super::issue_create::options_replied(st, &workdir, &target, &project, result),
             IssueReply::Created(result) => super::issue_create::created(st, &workdir, &target, result, now, fx),
+            IssueReply::Commented { key, result } => super::issue_comment::commented(st, &workdir, &target, &key, result, now, fx),
         },
     }
 }

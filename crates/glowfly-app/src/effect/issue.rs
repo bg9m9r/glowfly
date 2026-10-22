@@ -1,9 +1,9 @@
 //! The issue panel's and the Create issue dialog's calls to the issue tracker
 //! (`Effect::Issue`, run by runner/issues.rs): one issue's details, the dialog's choices, and
-//! creating an issue. Unscoped: the reply names its repository and tracker.
+//! creating an issue and posting a comment. Unscoped: the reply names its repository and tracker.
 
 use super::ForgeError;
-use glowfly_core::forge::{Auth, CreateOptions, Issue, IssueDetails, NewIssue, Target};
+use glowfly_core::forge::{Auth, CreateOptions, Entry, Issue, IssueDetails, NewIssue, Target};
 use std::path::PathBuf;
 
 /// Where a call goes, with this session's credential for it, if any; `Debug` hides the
@@ -27,6 +27,11 @@ pub enum IssueCall {
     /// board (Trello, empty: the boards to choose from).
     Options(String),
     Create(Box<NewIssue>),
+    /// Post body as a comment on the issue with this key.
+    Comment {
+        key: String,
+        body: String,
+    },
 }
 
 #[derive(Debug)]
@@ -55,6 +60,7 @@ impl IssueEffect {
                 IssueCall::Load(_) => "load-issue",
                 IssueCall::Options(_) => "load-issue-options",
                 IssueCall::Create(_) => "create-issue",
+                IssueCall::Comment { .. } => "post-issue-comment",
             },
         }
     }
@@ -63,9 +69,20 @@ impl IssueEffect {
 /// What a call answered.
 #[derive(Clone, Debug, PartialEq)]
 pub enum IssueReply {
-    Loaded { key: String, result: Result<IssueDetails, ForgeError> },
-    Options { project: String, result: Result<CreateOptions, ForgeError> },
+    Loaded {
+        key: String,
+        result: Result<IssueDetails, ForgeError>,
+    },
+    Options {
+        project: String,
+        result: Result<CreateOptions, ForgeError>,
+    },
     Created(Result<Issue, ForgeError>),
+    /// The comment posted on the issue with this key, as the service has it.
+    Commented {
+        key: String,
+        result: Result<Entry, ForgeError>,
+    },
 }
 
 #[cfg(test)]
@@ -87,7 +104,12 @@ mod tests {
             priority: None,
             epic: None,
         };
-        let calls = [IssueCall::Load("1".into()), IssueCall::Options(String::new()), IssueCall::Create(Box::new(new))];
+        let calls = [
+            IssueCall::Load("1".into()),
+            IssueCall::Options(String::new()),
+            IssueCall::Create(Box::new(new)),
+            IssueCall::Comment { key: "1".into(), body: "Thanks".into() },
+        ];
         let effects: Vec<IssueEffect> = calls
             .into_iter()
             .map(|call| {
@@ -96,7 +118,7 @@ mod tests {
             })
             .collect();
         let names: Vec<&str> = effects.iter().map(IssueEffect::name).collect();
-        assert_eq!(names, ["load-issue", "load-issue-options", "create-issue"]);
+        assert_eq!(names, ["load-issue", "load-issue-options", "create-issue", "post-issue-comment"]);
         assert!(effects.iter().all(|e| e.scope().is_none()));
         let e = crate::effect::Effect::Issue(effects.into_iter().next().unwrap());
         assert_eq!((e.name(), e.scope(), e.timed()), ("load-issue", None, true));

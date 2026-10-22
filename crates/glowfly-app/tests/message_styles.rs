@@ -26,7 +26,7 @@ const BANNER_ALLOWED: &[&str] = &["ui/widgets/banner.rs", "ui/diff/lfs_note.rs"]
 const ROW_STATUS: &[&str] = &["ui/conflict_check.rs", "ui/release_notes.rs", "ui/repo_finder.rs", "ui/repo_sync.rs"];
 
 /// Forms outside the dialogs whose messages go through `form_message`.
-const PAGE_FORMS: &[&str] = &["ui/prefs/gitflow.rs", "ui/prefs/profiles.rs", "ui/prefs/trello.rs"];
+const PAGE_FORMS: &[&str] = &["ui/issue/comment_box.rs", "ui/prefs/gitflow.rs", "ui/prefs/profiles.rs", "ui/prefs/trello.rs"];
 
 /// The dialog that may show a field message at once: a credential prompt's retry note answers
 /// the last try.

@@ -1,7 +1,7 @@
 //! Bitbucket Cloud issues in the issue panel and the Create dialog: one issue with its raw
 //! (Markdown) description, priority and comments; the kinds, priorities and workspace members
-//! to choose from; and creating an issue. A repository whose issue tracker is turned off says
-//! so in one sentence.
+//! to choose from; creating an issue; and posting a comment. A repository whose issue tracker is
+//! turned off says so in one sentence.
 
 use super::bitbucket::{CLOUD, CloudIssue, CloudUser, Links, cloud_list, cloud_repo, to_issue};
 use super::filters::Named;
@@ -59,25 +59,23 @@ fn raw(c: Option<Content>) -> String {
     c.and_then(|c| c.raw).unwrap_or_default()
 }
 
+fn comment_entry(c: Comment) -> Entry {
+    Entry {
+        author: c.user.map(|u| u.display_name).unwrap_or_default(),
+        time: api_time(&c.created_on),
+        kind: EntryKind::Comment,
+        body: raw(c.content),
+        url: c.links.map(|l| l.html.href).unwrap_or_default(),
+    }
+}
+
 /// Issue `key` with its description and comments, oldest first; comments that only changed
 /// the issue (no text) are left out.
 pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails> {
     let Ok(n) = key.parse::<u64>() else { return Err(not_found(t, key)) };
     let full: Full = get(auth, &format!("{}/issues/{n}", cloud_repo(t))).map_err(tracker_off).map_err(missing(t, key))?;
     let comments: Vec<Comment> = cloud_list(auth, format!("{}/issues/{n}/comments?sort=created_on&pagelen=100", cloud_repo(t)))?;
-    let comments = comments
-        .into_iter()
-        .filter_map(|c| {
-            let body = raw(c.content);
-            (!body.trim().is_empty()).then(|| Entry {
-                author: c.user.map(|u| u.display_name).unwrap_or_default(),
-                time: api_time(&c.created_on),
-                kind: EntryKind::Comment,
-                body,
-                url: c.links.map(|l| l.html.href).unwrap_or_default(),
-            })
-        })
-        .collect();
+    let comments = comments.into_iter().map(comment_entry).filter(|c| !c.body.trim().is_empty()).collect();
     let issue = to_issue(full.base);
     Ok(IssueDetails {
         assignees: issue.assignee.iter().filter(|a| !a.is_empty()).cloned().collect(),
@@ -162,4 +160,12 @@ fn body(new: &NewIssue) -> Value {
 pub(super) fn create(t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
     let created: CloudIssue = post(auth, &format!("{}/issues", cloud_repo(t)), body(new)).map_err(tracker_off)?;
     Ok(to_issue(created))
+}
+
+/// Posts `body` as a comment on issue `key`.
+pub(super) fn post_comment(t: &Target, auth: &Auth, key: &str, body: &str) -> Result<Entry> {
+    let Ok(n) = key.parse::<u64>() else { return Err(not_found(t, key)) };
+    let url = format!("{}/issues/{n}/comments", cloud_repo(t));
+    let c: Comment = post(auth, &url, json!({ "content": { "raw": body } })).map_err(tracker_off).map_err(missing(t, key))?;
+    Ok(comment_entry(c))
 }

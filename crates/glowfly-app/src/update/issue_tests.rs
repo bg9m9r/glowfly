@@ -67,7 +67,7 @@ fn loads(fx: &[Effect]) -> Vec<&IssueJob> {
     jobs(fx).into_iter().filter(|j| matches!(j.call, IssueCall::Load(_))).collect()
 }
 
-fn details(key: &str) -> IssueDetails {
+pub(super) fn details(key: &str) -> IssueDetails {
     IssueDetails {
         issue: Issue { title: "Crash on start (fresh)".into(), ..listed(key) },
         body: "It crashes.".into(),

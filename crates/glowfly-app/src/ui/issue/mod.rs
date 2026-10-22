@@ -1,8 +1,10 @@
 //! The issue panel, in the pull request panel's place: a header with the title and links and a
 //! line with its type, author and time; the details, linked branches and actions on the left
-//! (`info`) and the description and comments in the middle (`conversation`). The Create issue
-//! dialog is `create_dialog` (with its pickers in `picker`).
+//! (`info`) and the description and comments in the middle (`conversation`), with the comment
+//! box (`comment_box`) pinned under them. The Create issue dialog is `create_dialog` (with its
+//! pickers in `picker`).
 
+mod comment_box;
 mod conversation;
 pub mod create_dialog;
 mod info;

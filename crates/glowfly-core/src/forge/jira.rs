@@ -3,8 +3,8 @@
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, Conditions, CreateOptions, FilterKind, FilterOptions, Issue, IssueDetails, IssueFacets, Me, NewIssue, NewPullRequest,
-    Provider, PullRequest, RefStyle, Target, enc, get, jira_issues,
+    Account, Auth, Conditions, CreateOptions, Entry, FilterKind, FilterOptions, Issue, IssueDetails, IssueFacets, Me, NewIssue,
+    NewPullRequest, Provider, PullRequest, RefStyle, Target, enc, get, jira_issues,
 };
 use crate::error::{Error, Result};
 use serde::Deserialize;
@@ -198,6 +198,10 @@ impl super::Forge for Jira {
 
     fn create_issue(&self, t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
         jira_issues::create(t, auth, new)
+    }
+
+    fn post_issue_comment(&self, t: &Target, auth: &Auth, key: &str, body: &str) -> Result<Entry> {
+        jira_issues::post_comment(t, auth, key, body)
     }
 
     /// Looks keys up one by one: a JQL `key in (...)` fails entirely if any key doesn't exist.

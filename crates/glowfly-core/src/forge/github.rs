@@ -4,7 +4,7 @@ use super::github_checks;
 pub(super) use super::github_issues::{ApiIssue, to_issue};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, Checks, Conditions, CreateOptions, FilterKind, FilterOptions, Issue, IssueDetails, Me, NewIssue, NewPullRequest,
+    Account, Auth, Checks, Conditions, CreateOptions, Entry, FilterKind, FilterOptions, Issue, IssueDetails, Me, NewIssue, NewPullRequest,
     PrFacets, Provider, PullRequest, Reviewer, Target, enc, get, github_issues, page, post,
 };
 use crate::error::Result;
@@ -308,6 +308,10 @@ impl super::Forge for GitHub {
 
     fn create_issue(&self, t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
         github_issues::create(t, auth, new)
+    }
+
+    fn post_issue_comment(&self, t: &Target, auth: &Auth, key: &str, body: &str) -> Result<Entry> {
+        github_issues::post_comment(t, auth, key, body)
     }
 }
 

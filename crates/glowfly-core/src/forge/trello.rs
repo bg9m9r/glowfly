@@ -5,7 +5,7 @@
 use super::issue_details::{CreateOptions, IssueDetails, NewIssue};
 use super::page;
 use super::provider::{DEFAULTS, ProviderInfo};
-use super::{Account, Auth, Issue, NewPullRequest, PullRequest, RefStyle, Target, enc, get, trello_issues};
+use super::{Account, Auth, Entry, Issue, NewPullRequest, PullRequest, RefStyle, Target, enc, get, trello_issues};
 use crate::error::{Error, Result};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -269,6 +269,10 @@ impl super::Forge for Trello {
 
     fn create_issue(&self, t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
         trello_issues::create(t, auth, new)
+    }
+
+    fn post_issue_comment(&self, t: &Target, auth: &Auth, key: &str, body: &str) -> Result<Entry> {
+        trello_issues::post_comment(t, auth, key, body)
     }
 }
 

@@ -36,6 +36,8 @@ pub struct IssueView {
     pub details: Details,
     /// The details are loading again while the last ones stay on screen.
     pub reloading: bool,
+    /// The comment box's draft, its touched state, whether it is posting and the last failure.
+    pub comment: super::issue_comment::CommentDraft,
 }
 
 impl IssueView {
@@ -48,6 +50,7 @@ impl IssueView {
             noun: fs.issue_noun(),
             details: initial_details(fs),
             reloading: false,
+            comment: Default::default(),
             issue,
             target,
         })

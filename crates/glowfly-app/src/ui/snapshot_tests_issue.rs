@@ -61,14 +61,14 @@ pub(super) fn with_issue(theme: ThemeChoice, name: &str, tracker: Target, issue:
     (st, dir)
 }
 
-fn set_details(st: &mut AppState, d: IssueDetails) {
+pub(super) fn set_details(st: &mut AppState, d: IssueDetails) {
     let v = st.issue.as_mut().unwrap();
     v.issue = d.issue.clone();
     v.details = Details::Loaded(Box::new(d));
 }
 
 /// The GitHub issue's loaded details: opened by grace on January 24, 2026, with two comments.
-fn crash_details() -> IssueDetails {
+pub(super) fn crash_details() -> IssueDetails {
     IssueDetails {
         issue: crash(),
         body: "Starting the app without ~/.config/demo panics.\n\nSteps:\n1. Remove the folder\n2. Start the app".into(),

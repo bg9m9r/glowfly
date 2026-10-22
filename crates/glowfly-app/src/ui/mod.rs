@@ -290,6 +290,8 @@ mod snapshot_tests_init;
 #[cfg(test)]
 mod snapshot_tests_issue;
 #[cfg(test)]
+mod snapshot_tests_issue_comment;
+#[cfg(test)]
 mod snapshot_tests_issue_create;
 #[cfg(test)]
 mod snapshot_tests_journal;

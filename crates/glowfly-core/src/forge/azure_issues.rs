@@ -1,7 +1,7 @@
 //! Azure Boards work items in the issue panel and the Create dialog: one work item with its
 //! description (HTML, shown as text), parent and comments; the project's work item types,
-//! tags, default team members and open epics and features to file a work item under; and
-//! creating a work item with a JSON Patch.
+//! tags, default team members and open epics and features to file a work item under; creating
+//! a work item with a JSON Patch; and posting a comment (sent as HTML, like descriptions).
 
 use super::azure::{List, Name, V, project_base};
 use super::azure_work_items::{Fields, WorkItem, to_issue, wiql, work_items};
@@ -10,7 +10,7 @@ use super::html_text::{from_text, to_text};
 use super::http::post_json_patch;
 use super::issue_details::{CreateOptions, IssueDetails, NewIssue, Person, api_time, missing, not_found};
 use super::page::{self, Page};
-use super::{Auth, Entry, EntryKind, Issue, Target, enc, get};
+use super::{Auth, Entry, EntryKind, Issue, Target, enc, get, post};
 use crate::error::{Error, Result};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -55,6 +55,27 @@ fn text_of(fields: &Value, name: &str) -> String {
     to_text(fields[name].as_str().unwrap_or_default())
 }
 
+fn comment_entry(c: &Value) -> Entry {
+    Entry {
+        author: display_name(&c["createdBy"]),
+        time: api_time(c["createdDate"].as_str().unwrap_or_default()),
+        kind: EntryKind::Comment,
+        body: to_text(c["text"].as_str().unwrap_or_default()),
+        url: String::new(),
+    }
+}
+
+/// A refusal that names the scope a token needs for `doing` ("creating work items").
+fn needs_write(doing: &str) -> impl FnOnce(Error) -> Error + '_ {
+    move |e| match e {
+        Error::Forbidden(m) => {
+            let hint = format!("{doing} needs a token with the Work Items (Read & write) scope");
+            Error::Forbidden(if m.is_empty() { hint } else { format!("{m}; {hint}") })
+        }
+        e => e,
+    }
+}
+
 /// Work item `key` with its description, people, parent and comments, oldest first.
 pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails> {
     let Ok(id) = key.parse::<u32>() else { return Err(not_found(t, key)) };
@@ -80,17 +101,7 @@ pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails
         let next = p.continuation_token.filter(|c| !c.is_empty()).map(|c| page::with_param(&first, "continuationToken", &c));
         Ok(Page { items: p.comments, next })
     })?;
-    let comments = comments
-        .iter()
-        .filter(|c| !c["isDeleted"].as_bool().unwrap_or(false))
-        .map(|c| Entry {
-            author: display_name(&c["createdBy"]),
-            time: api_time(c["createdDate"].as_str().unwrap_or_default()),
-            kind: EntryKind::Comment,
-            body: to_text(c["text"].as_str().unwrap_or_default()),
-            url: String::new(),
-        })
-        .collect();
+    let comments = comments.iter().filter(|c| !c["isDeleted"].as_bool().unwrap_or(false)).map(comment_entry).collect();
     Ok(IssueDetails {
         issue,
         body,
@@ -228,12 +239,16 @@ pub(super) fn create(t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
         return Err(Error::Other("Choose a work item type.".into()));
     };
     let url = format!("{}/_apis/wit/workitems/${}?api-version={V}", project_base(t), enc(kind));
-    let created: WorkItem = post_json_patch(auth, &url, operations(t, kind, new)).map_err(|e| match e {
-        Error::Forbidden(m) => {
-            let hint = "creating work items needs a token with the Work Items (Read & write) scope";
-            Error::Forbidden(if m.is_empty() { hint.to_owned() } else { format!("{m}; {hint}") })
-        }
-        e => e,
-    })?;
+    let created: WorkItem = post_json_patch(auth, &url, operations(t, kind, new)).map_err(needs_write("creating work items"))?;
     Ok(to_issue(t, created))
+}
+
+/// Posts `body` as a comment on work item `key`, as HTML; a token that may only read is told
+/// which scope it needs.
+pub(super) fn post_comment(t: &Target, auth: &Auth, key: &str, body: &str) -> Result<Entry> {
+    let Ok(id) = key.parse::<u32>() else { return Err(not_found(t, key)) };
+    let url = format!("{}/_apis/wit/workItems/{id}/comments?api-version={COMMENTS_V}", project_base(t));
+    let c: Value =
+        post(auth, &url, json!({ "text": from_text(body) })).map_err(needs_write("commenting on work items")).map_err(missing(t, key))?;
+    Ok(comment_entry(&c))
 }

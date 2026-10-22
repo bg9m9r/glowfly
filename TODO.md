@@ -1063,10 +1063,6 @@ blockers and major findings are Milestone 1 items.
 
 - Team and group review requests counting as Needs my review (GitHub teams, Azure groups)
 
-### Create and view issues
-
-- Post a comment and reply from the issue panel
-
 ### Limits found while building integrations
 
 - Live-test GitLab, Bitbucket Cloud and Data Center, Azure DevOps and Jira against real accounts, including the Azure DevOps sign-in through Git Credential Manager (Microsoft Entra Bearer token)
@@ -2534,6 +2530,16 @@ here, under the item they grew from.
 
 - Change an issue's state (Jira: its status, through a transition), assignees and labels from the panel
 - Threaded replies with show and collapse (GitLab discussions, Jira comment threads)
+- Keep a comment draft per issue when the panel closes or another issue opens (now discarded with the panel)
+- Post the comment with the commit shortcut (Ctrl+Enter, Cmd+Enter on macOS) from the comment box
+- Show a GitHub issue's locked conversation in the panel and disable Comment before posting
+- GitLab comments made only of quick actions (/close, /assign): show the summary GitLab answers with and reload the issue instead of a failed post
+- Quote as a real block quote in Jira Cloud's rich text and Azure Boards' HTML (now plain "> " lines)
+- Quote the description, or only the selected part of a comment
+- Edit and delete your own comments from the issue panel
+- Preview a Markdown comment before posting
+- Suggest people to @-mention while typing a comment
+- A palette command to comment on the open issue (focuses the comment box)
 - Choose the base branch when creating a branch from an issue
 - GitHub issue types and milestones when creating an issue
 - GitLab milestones, epics and several assignees (paid tiers) when creating an issue

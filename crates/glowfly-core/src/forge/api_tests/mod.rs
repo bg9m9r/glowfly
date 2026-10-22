@@ -14,6 +14,7 @@ mod filters;
 mod forks;
 mod github;
 mod gitlab;
+mod issue_comments;
 mod issues;
 mod jira_issues;
 mod paging;

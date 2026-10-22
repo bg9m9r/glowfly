@@ -147,6 +147,8 @@ pub(super) mod history_refresh_tests;
 pub(super) mod history_tests;
 #[path = "init_tests.rs"]
 pub(super) mod init_tests;
+#[path = "issue_comment_tests.rs"]
+pub(super) mod issue_comment_tests;
 #[path = "issue_create_tests.rs"]
 pub(super) mod issue_create_tests;
 #[path = "issue_services_tests.rs"]

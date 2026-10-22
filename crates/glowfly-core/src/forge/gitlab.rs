@@ -4,7 +4,7 @@ use super::checks::per_pr;
 use super::details::{self, PrDetails};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, CHECKED_PRS, Checks, Conditions, CreateOptions, FilterKind, FilterOptions, Issue, IssueDetails, IssueFacets, Me,
+    Account, Auth, CHECKED_PRS, Checks, Conditions, CreateOptions, Entry, FilterKind, FilterOptions, Issue, IssueDetails, IssueFacets, Me,
     NewIssue, NewPullRequest, PrFacets, PullRequest, Reviewer, Target, TipQuery, enc, enc_path, get, gitlab_checks, gitlab_issues, page,
     post,
 };
@@ -287,6 +287,10 @@ impl super::Forge for GitLab {
 
     fn create_issue(&self, t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
         gitlab_issues::create(t, auth, new)
+    }
+
+    fn post_issue_comment(&self, t: &Target, auth: &Auth, key: &str, body: &str) -> Result<Entry> {
+        gitlab_issues::post_comment(t, auth, key, body)
     }
 }
 

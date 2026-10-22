@@ -1,7 +1,8 @@
 //! Issues on Jira Cloud (REST v3, rich text as ADF) and Jira Data Center (REST v2, plain
 //! strings): one issue with its comments and epic, the Create issue dialog's issue types,
-//! assignable people, epics and labels, and creating an issue. Cloud links an epic as the
-//! issue's `parent`; Data Center through its Epic Link custom field, found by its schema.
+//! assignable people, epics and labels, creating an issue, and posting a comment. Cloud links an
+//! epic as the issue's `parent`; Data Center through its Epic Link custom field, found by its
+//! schema.
 
 use super::filters::{Named, esc_quoted};
 use super::issue_details::{CreateOptions, IssueDetails, NewIssue, Person, api_time, missing};
@@ -55,6 +56,17 @@ fn name_of(v: &Value) -> String {
     v["displayName"].as_str().unwrap_or_default().to_owned()
 }
 
+/// A comment as Cloud (ADF) or Data Center (plain text) sends it.
+fn comment_entry(c: &Value) -> Entry {
+    Entry {
+        author: name_of(&c["author"]),
+        time: api_time(c["created"].as_str().unwrap_or_default()),
+        kind: EntryKind::Comment,
+        body: jira_adf::to_text(&c["body"]),
+        url: String::new(),
+    }
+}
+
 /// Issue `key` with its description, reporter, epic and comments, oldest first.
 pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails> {
     let base = api(&t.host, t.provider);
@@ -81,16 +93,7 @@ pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails
         let next = p.total.filter(|total| read < *total).map(|_| page::with_param(&first, "startAt", &read.to_string()));
         Ok(Page { items: p.comments, next })
     })?;
-    let comments = comments
-        .iter()
-        .map(|c| Entry {
-            author: name_of(&c["author"]),
-            time: api_time(c["created"].as_str().unwrap_or_default()),
-            kind: EntryKind::Comment,
-            body: jira_adf::to_text(&c["body"]),
-            url: String::new(),
-        })
-        .collect();
+    let comments = comments.iter().map(comment_entry).collect();
     let assignee = name_of(&fields["assignee"]);
     Ok(IssueDetails {
         issue,
@@ -206,4 +209,12 @@ pub(super) fn create(t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
         assignee: None,
         facets: Default::default(),
     }))
+}
+
+/// Posts `body` as a comment on issue `key`: rich text on Cloud, a plain string on Data Center.
+pub(super) fn post_comment(t: &Target, auth: &Auth, key: &str, body: &str) -> Result<Entry> {
+    let text = if cloud(t) { jira_adf::from_text(body) } else { json!(body) };
+    let url = format!("{}/issue/{}/comment", api(&t.host, t.provider), enc(key));
+    let c: Value = post(auth, &url, json!({ "body": text })).map_err(missing(t, key))?;
+    Ok(comment_entry(&c))
 }

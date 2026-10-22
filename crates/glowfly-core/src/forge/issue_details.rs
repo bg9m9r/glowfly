@@ -1,11 +1,11 @@
 //! Issue details and creating issues inside Glowfly: one issue with its description, people and
 //! comments, the choices the Create issue dialog offers (labels, people, types, epics), and
-//! creating an issue. GitHub and GitHub Enterprise Server (`github_issues.rs`), GitLab
-//! (`gitlab_issues.rs`), Jira Cloud and Data Center (`jira_issues.rs`), Bitbucket Cloud
-//! (`bitbucket_issues.rs`), Azure DevOps work items (`azure_issues.rs`) and Trello cards
-//! (`trello_issues.rs`). Bitbucket Data Center has no issue tracker of its own, so it answers
-//! `Error::Unsupported` without sending anything. Links in the answers are checked here, once
-//! for every service.
+//! creating an issue (posting a comment is in `issue_comments.rs`). GitHub and GitHub Enterprise
+//! Server (`github_issues.rs`), GitLab (`gitlab_issues.rs`), Jira Cloud and Data Center
+//! (`jira_issues.rs`), Bitbucket Cloud (`bitbucket_issues.rs`), Azure DevOps work items
+//! (`azure_issues.rs`) and Trello cards (`trello_issues.rs`), each also posting a comment.
+//! Bitbucket Data Center has no issue tracker of its own, so it answers `Error::Unsupported`
+//! without sending anything. Links in the answers are checked here, once for every service.
 
 use super::filters::Named;
 use super::{Auth, Entry, Issue, Provider, Target, links, mention, service};
@@ -189,7 +189,7 @@ pub fn issues_in_app(p: Provider) -> bool {
     p.issues_in_app()
 }
 
-fn unsupported(t: &Target) -> Error {
+pub(super) fn unsupported(t: &Target) -> Error {
     if t.provider == Provider::BitbucketDataCenter {
         return Error::Unsupported("Bitbucket Data Center has no issue tracker of its own; use Jira for its issues".into());
     }

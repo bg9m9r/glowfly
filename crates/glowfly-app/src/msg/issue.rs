@@ -21,6 +21,10 @@ pub enum IssueMsg {
     SetProject(String),
     /// Create the issue the dialog describes.
     Create,
+    /// Post the comment box's draft (its Comment button).
+    PostComment,
+    /// Quote the conversation's comment at this index into the draft (its Reply button).
+    Quote(usize),
     /// A call's answer, for the tracker `target` of the repository at `workdir`.
     Replied { workdir: PathBuf, target: Target, generation: u64, reply: Box<IssueReply> },
 }
@@ -28,12 +32,19 @@ pub enum IssueMsg {
 impl IssueMsg {
     /// Nothing is kept for an inactive tab: the intents belong to the active tab, and Replied
     /// comes from an unscoped effect, so it never arrives scoped (its handler matches the
-    /// repository itself and logs a created issue for another tab).
+    /// repository itself and logs a created issue for another tab). Replied { Commented } is
+    /// unscoped too: its handler applies it to the parked tab's panel itself.
     pub fn on_inactive(self) -> Option<super::Inactive> {
         match self {
-            Self::Open(_) | Self::Close | Self::Reload | Self::CreateDialog | Self::SetProject(_) | Self::Create | Self::Replied { .. } => {
-                None
-            }
+            Self::Open(_)
+            | Self::Close
+            | Self::Reload
+            | Self::CreateDialog
+            | Self::SetProject(_)
+            | Self::Create
+            | Self::PostComment
+            | Self::Quote(_)
+            | Self::Replied { .. } => None,
         }
     }
 }

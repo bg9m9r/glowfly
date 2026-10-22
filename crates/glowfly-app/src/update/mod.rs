@@ -47,6 +47,7 @@ mod history_view;
 mod inactive;
 mod init;
 mod issue;
+mod issue_comment;
 mod issue_create;
 mod job_errors;
 mod job_stop;

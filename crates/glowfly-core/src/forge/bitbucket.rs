@@ -6,8 +6,8 @@ use super::issue_details::{CreateOptions, IssueDetails, NewIssue};
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, Checks, Conditions, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets, PullRequest, Reviewer,
-    Target, TipQuery, bitbucket_checks, bitbucket_issues, enc, get, post,
+    Account, Auth, Checks, Conditions, Entry, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets, PullRequest,
+    Reviewer, Target, TipQuery, bitbucket_checks, bitbucket_issues, enc, get, post,
 };
 use crate::error::Result;
 use serde::Deserialize;
@@ -293,6 +293,10 @@ impl super::Forge for Bitbucket {
 
     fn create_issue(&self, t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
         bitbucket_issues::create(t, auth, new)
+    }
+
+    fn post_issue_comment(&self, t: &Target, auth: &Auth, key: &str, body: &str) -> Result<Entry> {
+        bitbucket_issues::post_comment(t, auth, key, body)
     }
 }
 

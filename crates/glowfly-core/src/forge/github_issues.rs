@@ -1,10 +1,10 @@
 //! Issues on GitHub and GitHub Enterprise Server (REST API v3): the listed issue model, one
-//! issue with its comments, the Create issue dialog's labels and assignees, and creating an
-//! issue.
+//! issue with its comments, the Create issue dialog's labels and assignees, creating an issue
+//! and posting a comment.
 
 use super::filters::github::labels;
 use super::github::{Label, Login, Title, repo_api};
-use super::issue_details::{CreateOptions, IssueDetails, NewIssue, Person, api_time, missing};
+use super::issue_details::{CreateOptions, IssueDetails, NewIssue, Person, api_time, missing, not_found};
 use super::{Auth, Entry, EntryKind, Issue, IssueFacets, Target, get, page, post};
 use crate::error::{Error, Result};
 use serde::Deserialize;
@@ -76,10 +76,20 @@ fn author(user: Option<Login>) -> String {
     user.map_or_else(|| GHOST.to_owned(), |u| u.login)
 }
 
+fn entry(c: ApiComment) -> Entry {
+    Entry {
+        author: author(c.user),
+        time: api_time(&c.created_at),
+        kind: EntryKind::Comment,
+        body: c.body.unwrap_or_default(),
+        url: c.html_url,
+    }
+}
+
 /// Issue `key` and its comments, oldest first. A pull request (which GitHub also answers for
 /// as an issue) is refused.
 pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails> {
-    let Ok(n) = key.parse::<u64>() else { return Err(Error::NotFound(format!("Issue #{key} wasn't found"))) };
+    let Ok(n) = key.parse::<u64>() else { return Err(not_found(t, key)) };
     let full: ApiIssueFull = get(auth, &format!("{}/issues/{n}", repo_api(t))).map_err(missing(t, key))?;
     if full.base.pull_request.is_some() {
         return Err(Error::NotFound(format!("#{n} is a pull request")));
@@ -90,16 +100,7 @@ pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails
     if not_planned && issue.state == "closed" {
         issue.state = "closed (not planned)".into();
     }
-    let comments = comments
-        .into_iter()
-        .map(|c| Entry {
-            author: author(c.user),
-            time: api_time(&c.created_at),
-            kind: EntryKind::Comment,
-            body: c.body.unwrap_or_default(),
-            url: c.html_url,
-        })
-        .collect();
+    let comments = comments.into_iter().map(entry).collect();
     Ok(IssueDetails {
         issue,
         body: full.body.unwrap_or_default(),
@@ -144,4 +145,11 @@ fn body(new: &NewIssue) -> Value {
 pub(super) fn create(t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
     let created: ApiIssue = post(auth, &format!("{}/issues", repo_api(t)), body(new))?;
     Ok(to_issue(created))
+}
+
+/// Posts `body` as a comment on issue `key`. A locked issue's refusal carries GitHub's message.
+pub(super) fn post_comment(t: &Target, auth: &Auth, key: &str, body: &str) -> Result<Entry> {
+    let Ok(n) = key.parse::<u64>() else { return Err(not_found(t, key)) };
+    let c: ApiComment = post(auth, &format!("{}/issues/{n}/comments", repo_api(t)), json!({ "body": body })).map_err(missing(t, key))?;
+    Ok(entry(c))
 }
