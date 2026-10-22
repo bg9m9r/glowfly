@@ -39,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-21 22:45 · **Terminal colour themes**: Theme files get 20 terminal_* keys (background, text, cursor, selection and the 16 basic colours) that the built-ins define with their current values, and Preferences > Terminal > Colors picks Match app theme, any built-in theme's terminal colours or an imported Windows Terminal (scheme or settings.json) or iTerm2 .itermcolors scheme, with a quiet line naming the colours that are hard to read on its background (`e0e27c43`)
 - 2026-10-21 16:26 · **Stash improvements**: The Stash dialog gets Keep staged changes (git stash push --keep-index) for All changes and Selected files, and a chosen staged rename is stashed whole, its old path put back from HEAD after the stash and refused beforehand when something is on disk there, with Undo and redo covering both (`e05b9715`)
 - 2026-10-21 14:46 · **CI / build status**: per-check list with states, durations and Required tags in the pull request panel (`718a895c`)
-- 2026-10-21 13:46 · **Search and filter**: background commit index of large repositories' whole history, so search counts, Enter, Filter and Keep searching cover every commit and load straight to the next match, with review fixes applied (`b733326f`)
 
 ---
 
