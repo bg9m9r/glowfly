@@ -1,15 +1,19 @@
 //! The activity tab of the logs panel: one 32 px row per run or note (result mark, title, weak
 //! summary, duration and relative time on the right, a chevron when it folds), routine
 //! auto-fetches folded into one grey row, and earlier sessions under their headers, drawn
-//! dimmer. The rows come from `state::activity_rows::rows`; the open part is in
+//! dimmer. Right-clicking a run, a note or a routine group opens its row menu (Copy entry, Copy
+//! log). The rows come from `state::activity_rows::rows`; the open part is in
 //! ui/activity_fold.rs. Newest at the bottom, where the scroll sticks.
 
+use super::common::{menu_item, menu_item_if};
 use super::theme::{color, type_scale};
+use super::widgets::row_menu::RowMenuExt;
 use super::widgets::severity::{self, Severity};
 use super::widgets::{self, Icon, paint_cut_text, paint_icon_sized, row_fill};
 use crate::logs::LogsMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
+use crate::state::activity_copy::copy_log_blocked;
 use crate::state::activity_rows::{ActivityRow, SessionHead, foldable, rows, title_of};
 use crate::state::logs::EntryId;
 use eframe::egui::{self, Align, Align2, Color32, FontId, Pos2, Rect, Response, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
@@ -105,10 +109,10 @@ pub(super) struct RowLook<'a> {
 }
 
 /// Allocates and paints one row; `mark` paints its result mark centred on the point given.
-/// Returns its response, which senses clicks when it folds.
+/// Returns its response, which senses clicks (a row that doesn't fold still has its row menu).
 pub(super) fn paint_row(ui: &mut Ui, st: &AppState, look: &RowLook, mark: impl FnOnce(&egui::Painter, Pos2)) -> Response {
     let t = st.settings.lang();
-    let sense = if look.open.is_some() { Sense::click() } else { Sense::hover() };
+    let sense = if look.sub { Sense::hover() } else { Sense::click() };
     let height = if look.sub { SUB_ROW_H } else { ROW_H };
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), height), sense);
     if !ui.is_rect_visible(rect) {
@@ -200,9 +204,10 @@ fn entry(ui: &mut Ui, st: &AppState, i: usize, msgs: &mut Vec<Msg>) -> Rect {
     let name = spoken(t, look.title, ok, summary);
     let kind = if open.is_some() { WidgetType::Button } else { WidgetType::Label };
     resp.widget_info(|| WidgetInfo::labeled(kind, true, &name));
-    if resp.clicked() {
+    if resp.clicked() && open.is_some() {
         msgs.push(Msg::Logs(LogsMsg::Fold(e.id)));
     }
+    row_menu(&resp, st, e.id, msgs);
     if open == Some(true) {
         super::activity_fold::show(ui, st, e, msgs);
     }
@@ -243,10 +248,21 @@ fn routine(ui: &mut Ui, st: &AppState, first: usize, last: usize, count: u32, ms
     if resp.clicked() {
         msgs.push(Msg::Logs(LogsMsg::Fold(id)));
     }
+    row_menu(&resp, st, id, msgs);
     if open {
         for e in &st.log[first..=last] {
             super::activity_fold::sub_row(ui, st, e);
         }
     }
     resp.rect
+}
+
+/// A row's right-click menu, below the row: Copy entry (a routine group's `id` copies the whole
+/// group) and Copy log.
+fn row_menu(resp: &Response, st: &AppState, id: EntryId, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
+    resp.row_menu(|ui| {
+        menu_item(msgs, ui, t.tr("logs.activity.menu.copy"), Msg::Logs(LogsMsg::CopyEntry(id)));
+        menu_item_if(msgs, ui, t.tr("logs.activity.menu.copy_log"), copy_log_blocked(st), Msg::Logs(LogsMsg::CopyLog));
+    });
 }

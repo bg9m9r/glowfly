@@ -242,7 +242,7 @@ type Case = (&'static str, &'static str, &'static str, fn(&Msg) -> bool);
 
 #[test]
 fn menu_items_send_their_messages() {
-    let cases: [Case; 9] = [
+    let cases: [Case; 10] = [
         ("menu-click-new-tab", "File", "New tab", |m| matches!(m, Msg::Tabs(TabsMsg::NewTab))),
         ("menu-click-quit", "File", "Quit", |m| matches!(m, Msg::App(AppMsg::Quit))),
         ("menu-click-zoom", "View", "Zoom in", |m| matches!(m, Msg::Layout(LayoutMsg::ZoomIn))),
@@ -256,6 +256,7 @@ fn menu_items_send_their_messages() {
         ("menu-click-journal", "View", "Operation journal", |m| matches!(m, Msg::Journal(JournalMsg::Toggle))),
         ("menu-click-about", "Help", "About Glowfly…", |m| matches!(m, Msg::App(AppMsg::ShowAbout))),
         ("menu-click-check-updates", "Help", "Check for updates", |m| matches!(m, Msg::Updates(UpdateMsg::CheckNow))),
+        ("menu-click-export-logs", "Help", "Export logs…", |m| matches!(m, Msg::Logs(crate::logs::LogsMsg::Export))),
     ];
     for (name, title, item, want) in cases {
         let (h, dir) = click(name, title, item, |_| {});

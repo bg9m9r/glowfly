@@ -1,7 +1,8 @@
 //! The activity panel's rows, worked out from a tab's log: session headers, one row per run or
 //! note, and consecutive successful auto-fetches (routine runs) folded into one group. Also what
-//! a row shows and copies, and the cap that keeps a long streak of routine runs from pushing
-//! everything else out of the log. Pure; ui/activity_rows.rs draws the rows.
+//! a row shows, and the cap that keeps a long streak of routine runs from pushing everything
+//! else out of the log. Pure; ui/activity_rows.rs draws the rows, and what Copy entry and Copy
+//! log copy is in state/activity_copy.rs.
 
 use super::logs::LogEntry;
 use super::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
@@ -135,16 +136,6 @@ pub fn title_of(e: &LogEntry) -> &str {
 /// Whether the row folds open: a run, or a note of more than one line.
 pub fn foldable(e: &LogEntry) -> bool {
     e.run.is_some() || e.text.lines().filter(|l| !l.trim().is_empty()).count() > 1
-}
-
-/// What Copy puts on the clipboard: "<title>: <summary>" and the whole output for a run, the
-/// text for a note.
-pub fn copy_text(e: &LogEntry) -> String {
-    match &e.run {
-        Some(r) if r.summary.is_empty() => format!("{}\n{}", r.title, output_of(e)),
-        Some(r) => format!("{}: {}\n{}", r.title, r.summary, output_of(e)),
-        None => e.text.clone(),
-    }
 }
 
 #[cfg(test)]

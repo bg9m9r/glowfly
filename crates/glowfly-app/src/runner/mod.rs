@@ -178,7 +178,7 @@ impl<W: Waker + Clone> Runner<W> {
             Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
             Effect::Terminal(t) => return self.terminal(t),
             Effect::Stats { workdir, oids } => return self.stats.submit(workdir, oids, self.tx.clone(), self.waker.clone()),
-            Effect::Logs(e) => return self.logs.submit(e),
+            Effect::Logs(e) if e.on_log_worker() => return self.logs.submit(e),
             Effect::StopGit(key) => {
                 let asked = self.stops.stop(key);
                 tracing::debug!(?key, asked, "stop git");

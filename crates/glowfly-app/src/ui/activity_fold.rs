@@ -1,6 +1,7 @@
 //! The open part of an activity row, under its title: a failure's cause in a full sentence,
-//! its fix (once) and Copy, then the output in a quiet monospace block coloured by kind of line
-//! (the last `OUTPUT_LINES` of it); and the sub-rows of an open routine group.
+//! its fix (once) and Copy (the row menu's Copy entry), then the output in a quiet monospace
+//! block coloured by kind of line (the last `OUTPUT_LINES` of it); and the sub-rows of an open
+//! routine group.
 
 use super::activity_rows::{RowLook, TITLE_X, paint_row};
 use super::theme::{color, type_scale};
@@ -8,7 +9,7 @@ use super::widgets::buttons;
 use crate::logs::LogsMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::activity_rows::{copy_text, output_of};
+use crate::state::activity_rows::output_of;
 use crate::state::logs::LogEntry;
 use crate::ui::theme::tokens::radius;
 use eframe::egui::text::{LayoutJob, TextFormat};
@@ -40,7 +41,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>
                     msgs.push(Msg::Logs(LogsMsg::Fix(e.id)));
                 }
                 if ui.add(buttons::secondary(t.tr("logs.activity.copy.button")).small()).clicked() {
-                    msgs.push(Msg::Copy(copy_text(e)));
+                    msgs.push(Msg::Logs(LogsMsg::CopyEntry(e.id)));
                 }
             });
             output(ui, st, output_of(e));

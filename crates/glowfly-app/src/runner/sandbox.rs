@@ -8,6 +8,7 @@
 use super::{Runner, Waker};
 use crate::effect::{CloneEffect, Effect, PrefsEffect};
 use crate::git_env::GitEnvEffect;
+use crate::logs::LogsEffect;
 use crate::msg::Msg;
 use crate::patch::PatchEffect;
 use crate::profile::ProfileEffect;
@@ -143,8 +144,16 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::StopGit(_)
             // A repository's own config, read or (asked first) its identity removed.
             | Effect::Profile(ProfileEffect::ReadIdentity { .. } | ProfileEffect::ClearLocalIdentity { .. })
-            // A no-op: the log worker is never attached in a test.
-            | Effect::Logs(_)
+            // A no-op: the log worker is never attached in a test. The save dialog is dropped.
+            | Effect::Logs(
+                LogsEffect::LoadActivity
+                | LogsEffect::Append(_)
+                | LogsEffect::ClearActivity { .. }
+                | LogsEffect::ReadFile { .. }
+                | LogsEffect::OpenFolder
+                | LogsEffect::SetExtended(_)
+                | LogsEffect::Export { .. },
+            )
             // Handled by the shell; it never gets here.
             | Effect::Ui(_) => true,
             Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. } => {
@@ -167,6 +176,7 @@ impl<W: Waker + Clone> Runner<W> {
             )
             | Effect::Os(_)
             | Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. })
+            | Effect::Logs(LogsEffect::PickExport { .. })
             | Effect::Clone(CloneEffect::ListRepos { .. })
             | Effect::Ssh(_)
             // The global git config, Glowfly's config folder or a picked folder.

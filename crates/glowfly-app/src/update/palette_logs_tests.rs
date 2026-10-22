@@ -22,7 +22,9 @@ fn labels(st: &AppState) -> Vec<String> {
 fn log_entries_without_a_repository() {
     let mut st = state();
     let all = labels(&st);
-    for label in ["View activity log", "View error log", "View performance log", "Open logs folder", "Turn on extended logging"] {
+    for label in
+        ["View activity log", "View error log", "View performance log", "Open logs folder", "Export logs…", "Turn on extended logging"]
+    {
         assert!(all.iter().any(|l| l == label), "{label} missing from {all:?}");
     }
     // After the external tools entries.
@@ -43,6 +45,8 @@ fn running_log_entries() {
     assert_eq!(st.logs.tab, LogKind::Performance);
     let fx = run_cmd(&mut st, C::Logs(LogsMsg::OpenFolder));
     assert!(fx.iter().any(|e| matches!(e, Effect::Logs(LogsEffect::OpenFolder))), "{fx:?}");
+    let fx = run_cmd(&mut st, C::Logs(LogsMsg::Export));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Logs(LogsEffect::PickExport { .. }))), "{fx:?}");
     let fx = run_cmd(&mut st, C::Logs(LogsMsg::SetExtended(true)));
     assert!(fx.iter().any(|e| matches!(e, Effect::Logs(LogsEffect::SetExtended(true)))), "{fx:?}");
     assert!(st.settings.extended_logging);
@@ -55,6 +59,7 @@ fn log_recall_keys() {
     assert_eq!(key(LogsMsg::Show(LogKind::Errors)), Some("view-error-log"));
     assert_eq!(key(LogsMsg::Show(LogKind::Performance)), Some("view-performance-log"));
     assert_eq!(key(LogsMsg::OpenFolder), Some("open-logs-folder"));
+    assert_eq!(key(LogsMsg::Export), Some("export-logs"));
     assert_eq!(key(LogsMsg::SetExtended(true)), key(LogsMsg::SetExtended(false)));
     assert_eq!(key(LogsMsg::SetExtended(true)), Some("extended-logging"));
     assert_eq!(key(LogsMsg::Start), None);
@@ -62,4 +67,7 @@ fn log_recall_keys() {
     let mut st = state();
     run_cmd(&mut st, C::Logs(LogsMsg::Show(LogKind::Errors)));
     assert_eq!(shown(&st, "")[0].entry.label, "View error log", "a recorded command ranks first");
+    run_cmd(&mut st, C::Logs(LogsMsg::Export));
+    assert_eq!(shown(&st, "")[0].entry.label, "Export logs…", "Export logs is remembered too");
+    assert!(shown(&st, "bug report").iter().any(|s| s.entry.label == "Export logs…"), "keywords match");
 }

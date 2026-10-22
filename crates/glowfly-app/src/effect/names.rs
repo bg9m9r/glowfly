@@ -77,7 +77,7 @@ impl Effect {
             Effect::Clone(e) => e.name(),
             Effect::Init(e) => e.name(),
             Effect::Notify(_) => "desktop-note",
-            Effect::Logs(_) => "logs",
+            Effect::Logs(e) => e.name(),
             Effect::PullRequest(e) => e.name(),
             Effect::DeepLink(e) => e.name(),
             Effect::Dashboard(e) => e.name(),
@@ -216,6 +216,9 @@ mod tests {
         let pick = SshEffect::PickKey { title: "Choose a private key".into(), start: dir.clone(), keygen: None };
         assert_eq!(pick.name(), "ssh-pick-key");
         assert!(!Effect::Ssh(pick).timed(), "waits on the user");
+        let export = Effect::Logs(crate::logs::LogsEffect::PickExport { name: "x".into() });
+        assert_eq!(export.name(), "pick-logs-export");
+        assert!(!export.timed(), "waits on the user");
     }
 
     #[test]

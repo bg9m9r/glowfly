@@ -92,6 +92,38 @@ fn appended_runs_load_again() {
 }
 
 #[test]
+fn worker_exports_after_queued_appends() {
+    let base = glowfly_core::paths::temp_dir().join(format!("glowfly-log-worker-export-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let (dir, out) = (base.join("logs"), base.join("out"));
+    let (w, rx) = worker(&dir);
+    w.submit(LogsEffect::LoadActivity);
+    next(&rx);
+    w.submit(LogsEffect::Append(vec![NewLine { ok: true, text: "Fetched origin".into(), repo: None, run: None }]));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join(logs::ERROR_FILE), "an error line\n").unwrap();
+    let dest = out.join("bundle.txt");
+    let header = vec![("Glowfly".to_owned(), "0.1.0".to_owned())];
+    w.submit(LogsEffect::Export { dest: dest.clone(), header });
+    let LogsMsg::Exported { dest: answered, result: Ok(r) } = next(&rx) else { panic!("not exported") };
+    assert_eq!(answered, dest);
+    assert_eq!(r.files, 2);
+    let text = std::fs::read_to_string(&dest).unwrap();
+    assert!(text.starts_with("Glowfly logs\nGlowfly: 0.1.0\n"), "{text}");
+    assert!(text.contains("\"text\":\"Fetched origin\""), "the append queued before it is in: {text}");
+    assert!(text.contains("an error line"), "{text}");
+    drop(w);
+
+    let (tx, rx) = channel();
+    let mut w = LogWorker::default();
+    assert!(w.start(LogSetup { dir: None, file_detail: None }, tx, NoWake).is_some());
+    w.submit(LogsEffect::Export { dest: dest.clone(), header: Vec::new() });
+    assert_eq!(next(&rx), LogsMsg::Exported { dest, result: Err(NO_FOLDER.to_owned()) });
+    drop(w);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+#[test]
 fn unattached_worker_does_nothing() {
     let w = LogWorker::default();
     w.submit(LogsEffect::LoadActivity);

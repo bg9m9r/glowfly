@@ -61,6 +61,8 @@ mod lfs;
 mod line_counts;
 mod load_more;
 mod logs;
+mod logs_copy;
+mod logs_export;
 mod logs_runs;
 mod logs_tabs;
 mod notify;

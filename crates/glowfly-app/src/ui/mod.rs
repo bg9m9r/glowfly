@@ -327,6 +327,8 @@ mod snapshot_tests_load_more;
 #[cfg(test)]
 mod snapshot_tests_logs;
 #[cfg(test)]
+mod snapshot_tests_logs_copy;
+#[cfg(test)]
 mod snapshot_tests_menu_copy;
 #[cfg(test)]
 mod snapshot_tests_menu_header;

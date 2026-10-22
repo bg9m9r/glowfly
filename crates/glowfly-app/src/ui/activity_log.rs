@@ -1,27 +1,30 @@
 //! The logs panel at the bottom, on the panel surface: a 40 px header (the Activity, Errors and
-//! Performance tabs on the left, quiet icon buttons on the right, a hairline under it), then
+//! Performance tabs on the left, quiet icon buttons on the right with the More menu's Copy log
+//! and Export logs, a hairline under it), then
 //! the active tab's activity log (ui/activity_rows.rs) or the end of the error or performance
 //! log, read by the runner.
 
+use super::common::menu_item_if;
 use super::pane_status::{self, Failure};
 use super::panel_size;
 use super::theme::color;
 use crate::logs::{LogKind, LogsMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
+use crate::state::activity_copy::copy_log_blocked;
 use crate::state::panel_layout::{self, ACTIVITY, MAIN_MIN_HEIGHT};
 use crate::state::tip::Tip;
 use crate::ui::widgets::Icon;
 use crate::ui::widgets::ghost::{self, divider, ghost, icon_tip};
 use crate::ui::widgets::segmented::segmented;
-use eframe::egui::{self, Align, Layout, Rect, RichText, Sense, Stroke, TextStyle, Ui, UiBuilder, pos2, vec2};
+use eframe::egui::{self, Align, Layout, PopupCloseBehavior, Rect, RichText, Sense, Stroke, TextStyle, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::settings::SizedPanel;
 
 pub(super) const HEADER_H: f32 = 40.0;
 /// The panel's side margin, which the hairline runs through.
 pub(super) const SIDE: f32 = 8.0;
-/// The right cluster: three buttons, the gaps between its four items and the divider.
-const RIGHT_W: f32 = 3.0 * ghost::HEIGHT + 3.0 * ghost::SPACE + ghost::DIVIDER_W;
+/// The right cluster: four buttons, the gaps between its five items and the divider.
+const RIGHT_W: f32 = 4.0 * ghost::HEIGHT + 4.0 * ghost::SPACE + ghost::DIVIDER_W;
 
 /// The panel's frame: its surface, 8 px at the sides and 6 px under the list; the header starts
 /// at the top edge.
@@ -69,14 +72,15 @@ fn header(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     ui.painter().hline(x, rect.bottom() - 0.5, Stroke::new(1.0_f32, color::border()));
 }
 
-/// The right-hand buttons, drawn right to left: Hide panel | Open folder, then Clear on the
-/// activity tab or Reload on a file tab.
+/// The right-hand buttons, drawn right to left: Hide panel | More, Open folder, then Clear on
+/// the activity tab or Reload on a file tab.
 fn buttons(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let keys = &st.keymap;
     let hide = t.tr("logs.header.hide");
     let hide_clicked = icon_tip(ghost(ui, Some(Icon::ChevronDown), None, hide, true), keys, t, Tip::new(hide)).clicked();
     divider(ui);
+    more(ui, st, msgs);
     let open = t.tr("logs.header.open_folder");
     let body = match &st.logs.dir {
         Some(dir) => glowfly_core::native_path::shown(dir),
@@ -95,6 +99,26 @@ fn buttons(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if hide_clicked {
         st.view.show_log = false;
     }
+}
+
+/// The More button and its menu: Copy log (what the current tab shows) and Export logs.
+fn more(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
+    let name = t.tr("logs.header.more");
+    let id = ui.make_persistent_id("logs-more");
+    let r = icon_tip(ghost(ui, Some(Icon::More), None, name, true), &st.keymap, t, Tip::new(name));
+    if r.clicked() {
+        ui.memory_mut(|m| m.toggle_popup(id));
+    }
+    egui::popup::popup_below_widget(ui, id, &r, PopupCloseBehavior::CloseOnClickOutside, |ui| {
+        ui.set_min_width(200.0);
+        let before = msgs.len();
+        menu_item_if(msgs, ui, t.tr("logs.header.copy_log"), copy_log_blocked(st), Msg::Logs(LogsMsg::CopyLog));
+        menu_item_if(msgs, ui, t.tr("logs.header.export"), None, Msg::Logs(LogsMsg::Export));
+        if msgs.len() > before {
+            ui.memory_mut(|m| m.close_popup());
+        }
+    });
 }
 
 /// The end of the error or performance log, one monospace row per line.

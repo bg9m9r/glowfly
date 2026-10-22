@@ -194,6 +194,7 @@ impl PaletteCommand {
                 LogsMsg::Show(LogKind::Errors) => "view-error-log",
                 LogsMsg::Show(LogKind::Performance) => "view-performance-log",
                 LogsMsg::OpenFolder => "open-logs-folder",
+                LogsMsg::Export => "export-logs",
                 LogsMsg::SetExtended(_) => "extended-logging",
                 _ => return None,
             },

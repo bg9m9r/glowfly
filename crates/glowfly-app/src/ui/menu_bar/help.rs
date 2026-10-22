@@ -30,6 +30,7 @@ pub(super) fn menu(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             item(ui, keys, label, None, None, Msg::Logs(LogsMsg::Show(kind)), msgs);
         }
         item(ui, keys, t.tr("menu.help.logs_folder"), None, None, Msg::Logs(LogsMsg::OpenFolder), msgs);
+        item(ui, keys, t.tr("menu.help.export_logs"), None, None, Msg::Logs(LogsMsg::Export), msgs);
         ui.separator();
         item(ui, keys, t.tr("menu.help.website"), None, None, Msg::OpenUrl(WEBSITE.to_owned()), msgs);
         item(ui, keys, t.tr("menu.help.report_issue"), None, None, Msg::OpenUrl(ISSUES.to_owned()), msgs);

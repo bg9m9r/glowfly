@@ -29,7 +29,7 @@ fn note(ok: bool, text: &str, minutes: i64) -> LogEntry {
 
 /// This session: a Push, five auto-fetches, a failed Pull (opened, with its fix) and two notes.
 /// Returns the state and the ids of the Push, the first auto-fetch and the Pull.
-fn session(theme: ThemeChoice) -> (AppState, [EntryId; 3]) {
+pub(super) fn session(theme: ThemeChoice) -> (AppState, [EntryId; 3]) {
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     st.view.show_log = true;
     st.logs.persist = Persist::On;
@@ -50,7 +50,7 @@ fn session(theme: ThemeChoice) -> (AppState, [EntryId; 3]) {
 }
 
 /// A harness with the logs panel dragged as tall as it goes, so every row shows.
-fn tall(mut st: AppState, dark: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
+pub(super) fn tall(mut st: AppState, dark: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
     st.settings.panel_sizes.set(glowfly_core::settings::SizedPanel::Activity, 470.0);
     let mut h = harness_sized(st, dark, eframe::egui::vec2(1400.0, 1000.0));
     h.run();
@@ -70,15 +70,8 @@ fn activity_runs_dark() {
     h.run();
     let msgs = &h.state().1;
     assert!(msgs.iter().any(|m| matches!(m, Msg::Logs(LogsMsg::Fix(id)) if *id == pull)), "the fix button");
-    let copied = msgs.iter().find_map(|m| match m {
-        Msg::Copy(text) => Some(text.as_str()),
-        _ => None,
-    });
-    assert_eq!(
-        copied,
-        Some(&*format!("Pull: Your changes to 1 file would be overwritten.\n{PULL_OUTPUT}")),
-        "Copy has the title and output"
-    );
+    assert!(msgs.iter().any(|m| matches!(m, Msg::Logs(LogsMsg::CopyEntry(id)) if *id == pull)), "Copy copies the entry");
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Copy(_))));
     assert!(msgs.iter().any(|m| matches!(m, Msg::Logs(LogsMsg::Fold(id)) if *id == push)), "a click folds the row");
 }
 

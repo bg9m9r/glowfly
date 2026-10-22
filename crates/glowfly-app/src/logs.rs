@@ -1,12 +1,13 @@
 //! Messages and effects of the logs: the activity log kept across sessions, the error and
-//! performance log tabs, the logs folder and extended logging (state/logs.rs, update/logs.rs,
-//! runner/logs.rs, logging.rs, ui/activity_log.rs).
+//! performance log tabs, the logs folder, extended logging, copying an entry or a whole log and
+//! exporting every log as one bundle (state/logs.rs, state/activity_copy.rs, update/logs.rs,
+//! update/logs_copy.rs, update/logs_export.rs, runner/logs.rs, logging.rs, ui/activity_log.rs).
 
 use crate::state::logs::EntryId;
 use crate::state::tabs::TabId;
 use glowfly_core::gitcli::GitRun;
 use glowfly_core::i18n::Lang;
-use glowfly_core::logs::{ActivityEntry, LogTail, RunInfo};
+use glowfly_core::logs::{ActivityEntry, BundleReport, LogTail, RunInfo};
 use std::path::PathBuf;
 
 /// The activity panel's tabs.
@@ -84,6 +85,19 @@ pub enum LogsMsg {
     Fold(EntryId),
     /// Run a failed run's fix: the panel's button, and the failure toast's.
     Fix(EntryId),
+    /// Copy an activity entry: the row menu's Copy entry and the open row's Copy button. A
+    /// routine group's first entry copies the whole group.
+    CopyEntry(EntryId),
+    /// Copy what the panel's current tab shows.
+    CopyLog,
+    /// Export every log as one bundle: ask where to save it (the More menu, the palette, Help).
+    Export,
+    /// The save dialog's answer; None: it was cancelled.
+    ExportTo(Option<PathBuf>),
+    /// The log worker wrote the bundle to `dest`, or failed to.
+    Exported { dest: PathBuf, result: Result<BundleReport, String> },
+    /// The export toast's action: show the bundle in the file manager.
+    ShowExported(PathBuf),
 }
 
 impl LogsMsg {
@@ -100,12 +114,19 @@ impl LogsMsg {
             | Self::GitRan(_)
             | Self::Details { .. }
             | Self::Fold(_)
-            | Self::Fix(_) => None,
+            | Self::Fix(_)
+            | Self::CopyEntry(_)
+            | Self::CopyLog
+            | Self::Export
+            | Self::ExportTo(_)
+            | Self::Exported { .. }
+            | Self::ShowExported(_) => None,
         }
     }
 }
 
-/// Work on the log files, run in order by the runner's log worker (runner/logs.rs).
+/// Work on the log files, run in order by the runner's log worker (runner/logs.rs), except the
+/// save dialog, which waits on the user on a worker thread of its own.
 #[derive(Debug)]
 pub enum LogsEffect {
     /// Read the activity file; reported as `LogsMsg::ActivityLoaded`.
@@ -122,4 +143,29 @@ pub enum LogsEffect {
     /// Turn extended logging on or off: git commands reach the activity log, and the error log
     /// takes debug messages.
     SetExtended(bool),
+    /// Ask where to save the bundle, suggesting `name`; reported as `LogsMsg::ExportTo`.
+    PickExport { name: String },
+    /// Write every log to `dest` as one bundle under `header`; reported as `LogsMsg::Exported`.
+    Export { dest: PathBuf, header: Vec<(String, String)> },
+}
+
+impl LogsEffect {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::LoadActivity => "load-activity",
+            Self::Append(_) => "append-activity",
+            Self::ClearActivity { .. } => "clear-activity",
+            Self::ReadFile { .. } => "read-log",
+            Self::OpenFolder => "open-logs-folder",
+            Self::SetExtended(_) => "extended-logging",
+            Self::PickExport { .. } => "pick-logs-export",
+            Self::Export { .. } => "export-logs",
+        }
+    }
+
+    /// Whether the log worker runs it (in order with the other log work). The save dialog waits
+    /// on the user, so it runs on a worker thread instead and holds nothing up.
+    pub fn on_log_worker(&self) -> bool {
+        !matches!(self, Self::PickExport { .. })
+    }
 }

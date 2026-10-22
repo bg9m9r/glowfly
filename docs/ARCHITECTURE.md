@@ -71,7 +71,7 @@ binary (package `glowfly`).
 | `identity.rs` | The author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; reading the global identity; writing an identity to the global config in order. |
 | `profile_includes.rs`, `profile_includes/`, `repo_identity.rs` | Profile folder rules in the global git config: an `[includeIf "gitdir:<folder>/"]` entry per rule pointing at the profile's include file in Glowfly's `git-profiles` folder (`[user]` only, no profile name); the patterns and the file's quoting (`pattern.rs`), the plan (entries shallow-first), the sync (files rewritten when changed; with `place`, Glowfly's own sections removed and added again at the end of the file, sections pointing elsewhere or shared with the user's keys left alone), and checking a picked folder (resolved, valid text, case folding probed). A repository's effective identity and where git read it (`git config --show-origin`): a profile's include file, the repository's own config or elsewhere, plus what the rules expect; removing the repository's own name and email. |
 | `persist.rs` | Crash-safe writes of Glowfly's own files and of files saved for the user (patches); appends to logs. |
-| `logs.rs`, `logs/` | Glowfly's log files: the activity log's file format and trimming (`activity.rs`), the size-rotating writer of the error and performance logs (`rotate.rs`), reading a log's end (`tail.rs`), the text of performance and git command lines (`lines.rs`), and reading a job's output: its lines as a terminal shows them, their kinds and the last meaningful one (`output.rs`). |
+| `logs.rs`, `logs/` | Glowfly's log files: the activity log's file format and trimming (`activity.rs`), the size-rotating writer of the error and performance logs (`rotate.rs`), reading a log's end (`tail.rs`), the text of performance and git command lines (`lines.rs`), reading a job's output: its lines as a terminal shows them, their kinds and the last meaningful one (`output.rs`), and the bug-report bundle: every log file verbatim under a short header, written in one go (`bundle.rs`). |
 | `i18n.rs`, `i18n/`, `locales/` | The UI's translations: languages, the bundled catalogs (English base, per-language JSON), lookups with {name} placeholders and English fallback, the OS language read once at startup. |
 | `quoted.rs` | Decoding git's C-quoted paths (`"caf\303\251.txt"`), for blame's porcelain and sparse checkout lists. |
 | `dates.rs`, `dates/locale_patterns.rs` | Dates: moment.js-style patterns, localized month and weekday words, relative ages, and each language's usual patterns for the date locale (ISO 8601 otherwise), keyed by a normalised locale tag with the OS locale read once per run. |
@@ -481,7 +481,10 @@ binary (package `glowfly`).
   times, so `update` reads no clock. `Runner::run` times every effect that doesn't wait on the
   user (`Effect::timed`) and gitcli's run observer times every git command; those taking
   `logs::SLOW` or more go to `performance.log`, and with extended logging each git command
-  also comes back as `LogsMsg::GitRan` for a quiet activity line.
+  also comes back as `LogsMsg::GitRan` for a quiet activity line. Copy entry and Copy log build
+  plain text in `state/activity_copy.rs`; Export logs picks a file on a worker thread
+  (`LogsEffect::PickExport`), then the log worker writes the bundle in order after the pending
+  appends (`LogsEffect::Export`, answered by `LogsMsg::Exported`).
 - **Deep links** (`deep_link.rs`, `state/deep_link.rs`, `update/deep_link.rs`,
   `update/deep_link_open.rs`): `main.rs` first hands a `glowfly://` argument to a running window
   (`glowfly_core::instance`; `Runner::start_instance` listens, next to the askpass listener) and

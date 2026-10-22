@@ -3,9 +3,9 @@
 
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, custom_commands, dashboard, deep_link, diff_gaps, expect, files,
-    forge_calls, forks, git_env, git_ops, highlight, history, index, init, issues, journal, line_counts, notify, onboarding, op_preview,
-    os, partial, patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures, sparse, ssh,
-    stack, stashes, status, submodules, themes, tools, trust, updates, worktrees,
+    forge_calls, forks, git_env, git_ops, highlight, history, index, init, issues, journal, line_counts, logs, notify, onboarding,
+    op_preview, os, partial, patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos, revert, saves, signatures,
+    sparse, ssh, stack, stashes, status, submodules, themes, tools, trust, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
@@ -228,6 +228,8 @@ fn execute_unscoped(
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None
         }
+        // The save dialog waits on the user, so it runs here rather than on the log worker.
+        Effect::Logs(crate::logs::LogsEffect::PickExport { name }) => Some(logs::pick_export(&name)),
         Effect::Watch(_) | Effect::AnswerPrompt { .. } | Effect::Terminal(_) | Effect::Logs(_) => {
             tracing::warn!("watch, prompt, terminal or log effect reached a worker; it is handled by Runner::run");
             None

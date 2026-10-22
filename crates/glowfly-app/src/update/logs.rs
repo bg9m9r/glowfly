@@ -1,7 +1,8 @@
 //! The logs: loading the earlier sessions' activity, writing new lines to the activity file,
 //! the panel's tabs, the logs folder and extended logging. The runner's log worker does the
 //! file work and stamps the times (runner/logs.rs). Finished jobs, open rows and fixes are in
-//! update/logs_runs.rs.
+//! update/logs_runs.rs; Copy entry and Copy log in update/logs_copy.rs; Export logs in
+//! update/logs_export.rs.
 
 use crate::effect::Effect;
 use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg};
@@ -55,6 +56,12 @@ pub(super) fn handle(st: &mut AppState, m: LogsMsg, now: Instant, fx: &mut Vec<E
         LogsMsg::Details { tab, entry } => super::logs_tabs::details(st, tab, entry, fx),
         LogsMsg::Fold(id) => super::logs_runs::fold(st, id),
         LogsMsg::Fix(id) => super::logs_runs::fix(st, id, now, fx),
+        LogsMsg::CopyEntry(id) => super::logs_copy::copy_entry(st, id, fx),
+        LogsMsg::CopyLog => super::logs_copy::copy_log(st, now, fx),
+        LogsMsg::Export => super::logs_export::export(st, fx),
+        LogsMsg::ExportTo(dest) => super::logs_export::export_to(st, dest, fx),
+        LogsMsg::Exported { dest, result } => super::logs_export::exported(st, dest, result, now),
+        LogsMsg::ShowExported(dest) => super::logs_export::show_exported(dest, fx),
     }
 }
 

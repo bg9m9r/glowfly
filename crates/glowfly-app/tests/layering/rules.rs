@@ -109,7 +109,7 @@ pub const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("gitcli", &["run", "run_with_input", "version", "observe_runs"]),
     ("dashboard", &["read_repo", "fetch_target", "run_bounded"]),
     ("git_program", &["set", "probe", "discover", "precheck"]),
-    ("logs", &["read_tail"]),
+    ("logs", &["read_tail", "bundle_text", "write_bundle"]),
     ("i18n", &["detect_system_language"]),
     ("persist", &["append", "open_append"]),
     ("ActivityFile", &["open"]),

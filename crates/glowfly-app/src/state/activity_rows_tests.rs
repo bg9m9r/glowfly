@@ -93,19 +93,15 @@ fn legacy_run_reads_older_plain_lines() {
 }
 
 #[test]
-fn what_a_row_shows_and_copies() {
+fn what_a_row_shows() {
     let mut push = run("Push", true);
     push.text = "Push done\n$ git push\nEverything up-to-date".into();
     push.run.as_mut().unwrap().summary = "Everything up-to-date".into();
     assert_eq!(title_of(&push), "Push");
     assert_eq!(output_of(&push), "$ git push\nEverything up-to-date");
     assert!(foldable(&push));
-    assert_eq!(copy_text(&push), "Push: Everything up-to-date\n$ git push\nEverything up-to-date");
-    let bare = run("Fetch", true);
-    assert_eq!(copy_text(&bare), "Fetch\n$ git fetch");
     let one = note("Another operation is still running.");
     assert_eq!((title_of(&one), output_of(&one), foldable(&one)), ("Another operation is still running.", "", false));
-    assert_eq!(copy_text(&one), "Another operation is still running.");
     let two = note("Couldn't save:\npermission denied\n");
     assert_eq!((title_of(&two), output_of(&two), foldable(&two)), ("Couldn't save:", "permission denied\n", true));
     assert!(!foldable(&note("One line\n\n")), "blank lines don't count");

@@ -14,14 +14,18 @@
 //! A rotated file moves to `<name>.1.log`, the older ones up by one, keeping [`KEEP_ROTATED`].
 //! Every write goes through `persist`; [`read_tail`] reads the end of a text log for the panel,
 //! and [`output_lines`], [`classify_line`] and [`last_message`] read a job's output for it.
+//! [`write_bundle`] writes the bug-report bundle: every log file verbatim under a short header,
+//! in one plain-text file.
 
 mod activity;
+mod bundle;
 mod lines;
 mod output;
 mod rotate;
 mod tail;
 
 pub use activity::{ActivityEntry, ActivityFile, MAX_ENTRY_BYTES, RunInfo, activity_line, parse_activity, same_repo};
+pub use bundle::{BUNDLE_EXT, BundleReport, bundle_name, bundle_sources, bundle_text, platform, stamp, write_bundle};
 pub use lines::{git_run_line, perf_line, redact_url_userinfo};
 pub use output::{OutputLine, classify_line, last_message, output_lines};
 pub use rotate::{RotatingFile, rotated_path};

@@ -1057,10 +1057,6 @@ blockers and major findings are Milestone 1 items.
 - Place comments on their lines when the local source branch differs from the head (map the line
   numbers across the newer commits)
 
-### Logs
-
-- Copy one log entry or the whole log to the clipboard, and export all logs as one archive for a bug report
-
 ### Performance
 
 - Edits to tracked files that match an ignore pattern are dropped by the watcher; check the index before dropping
@@ -2660,6 +2656,13 @@ here, under the item they grew from.
 - Rotate the error and performance logs by day as well as by size
 - Keep two Glowfly instances' activity logs apart (one file per instance or a lock during trims)
 - Open a log file in the system's text editor from the panel
+- Compress the exported logs bundle (zip) when the logs grow large
+- Offer to leave repository paths and command output out of an exported bundle before sharing it publicly
+- Name the OS release and the graphics backend in the export header, not only the platform and architecture
+- Copy a single line of the error and performance tabs from a row menu
+- Copy one run from an open routine group's sub-rows
+- A palette entry to copy the current log tab
+- Offer to attach the exported bundle when choosing Help > Report an issue
 
 ### Onboarding
 

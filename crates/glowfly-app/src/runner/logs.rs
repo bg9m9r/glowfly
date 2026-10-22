@@ -1,7 +1,8 @@
 //! The log worker: one thread that does every log file's work in order (`Effect::Logs`, slow
 //! effects timed by `Runner::run`, and git commands reported by gitcli's run observer). It owns
-//! the activity file and the performance log, and stamps activity lines with this session's
-//! start and the time.
+//! the activity file and the performance log, stamps activity lines with this session's start
+//! and the time, and writes the logs bundle after the appends queued before it. The bundle's
+//! save dialog runs on an ordinary worker thread (`pick_export`), so it holds no log work up.
 
 use super::Waker;
 use crate::effect::Effect;
@@ -87,6 +88,14 @@ impl LogWorker {
     pub(super) fn perf_probe(&self) -> Option<Sender<Job>> {
         self.jobs.clone()
     }
+}
+
+/// The save dialog for the logs bundle, suggesting `name`. It waits on the user, so it runs on a
+/// worker thread (runner/execute.rs), never on the log worker.
+pub(super) fn pick_export(name: &str) -> Msg {
+    let path =
+        rfd::FileDialog::new().set_title("Export logs").set_file_name(name).add_filter("Text files", &[logs::BUNDLE_EXT]).save_file();
+    Msg::Logs(LogsMsg::ExportTo(path))
 }
 
 /// The repository folder an effect works in, for its performance line ("" for none).
@@ -190,8 +199,17 @@ impl<W: Waker> Worker<W> {
                     self.send(msg);
                 }
             }
+            LogsEffect::Export { dest, header } => {
+                let result = match &self.dir {
+                    None => Err(NO_FOLDER.to_owned()),
+                    Some(dir) => logs::write_bundle(dir, &header, &dest).map_err(|e| e.to_string()),
+                };
+                self.send(Msg::Logs(LogsMsg::Exported { dest, result }));
+            }
             // Handled by `LogWorker::submit` on the UI thread.
             LogsEffect::SetExtended(_) => {}
+            // A worker thread runs it (runner/execute.rs): it waits on the user.
+            LogsEffect::PickExport { .. } => {}
         }
     }
 
