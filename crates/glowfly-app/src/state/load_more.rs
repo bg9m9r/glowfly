@@ -1,12 +1,17 @@
 //! A load for more history that failed, its automatic retries, and a filtering search loading
 //! further back. The fields live in `RefreshState` (`refresh.rs`); update/load_more.rs and
 //! update/search_deeper.rs change them, and the graph reads them through `more_row` and
-//! `search_reach`.
+//! `search_reach`. Also the history's notes for the graph's end row (`HistoryNotes`, `end_row`):
+//! how many commits a truncated history shows with Load more, and a shallow clone's Fetch full
+//! history.
 
 use crate::state::history_index::HistoryCount;
 use crate::state::refresh::can_load_more;
+use crate::state::shallow::history_remote;
 use crate::state::{AppState, MAX_COMMITS};
 use glowfly_core::commit_query::CommitQuery;
+use glowfly_core::i18n::Lang;
+use glowfly_core::repo::Snapshot;
 use std::time::Duration;
 
 /// How long after a failed load for more each automatic retry waits; after the last one only
@@ -35,6 +40,55 @@ pub enum MoreRow<'a> {
     SearchingOlder,
     /// The last load for more failed with `error`; `retrying` while an automatic retry waits.
     Failed { error: &'a str, retrying: bool },
+}
+
+/// What the end row says when nothing is loading: the history stops short of the repository's
+/// whole history, because of the commit limit (`truncated`) or a shallow clone.
+#[derive(Debug, PartialEq)]
+pub struct HistoryNotes {
+    /// The commits loaded.
+    pub commits: usize,
+    /// Load more raises the commit limit.
+    pub load_more: bool,
+    /// Fetch full history can fetch the rest of a shallow clone.
+    pub fetch_full: bool,
+    pub shallow: bool,
+    pub truncated: bool,
+}
+
+impl HistoryNotes {
+    /// The notes for `snap`, if its history is cut short and it has commits.
+    pub fn of(snap: &Snapshot) -> Option<Self> {
+        let shallow = snap.is_shallow();
+        if !(snap.truncated || shallow) || snap.commits.is_empty() {
+            return None;
+        }
+        Some(Self {
+            commits: snap.commits.len(),
+            load_more: can_load_more(snap),
+            fetch_full: shallow && history_remote(snap).is_some(),
+            shallow,
+            truncated: snap.truncated,
+        })
+    }
+
+    /// The end row's sentence in `t`.
+    pub fn sentence(&self, t: Lang) -> String {
+        match (self.shallow, self.truncated) {
+            (true, true) => t.trn("graph.end.shallow_newest", self.commits, &[]),
+            (true, false) => t.trn("graph.end.shallow", self.commits, &[]),
+            (false, _) => t.trn("graph.end.newest", self.commits, &[]),
+        }
+    }
+}
+
+/// The one row the graph shows after its last commit.
+#[derive(Debug, PartialEq)]
+pub enum EndRow<'a> {
+    /// More history loads, a search looks further back, or the load for more failed.
+    More(MoreRow<'a>),
+    /// The history's end: how much shows, and what loads more.
+    Notes(HistoryNotes),
 }
 
 /// How far a filtering search with no matches has looked.
@@ -90,6 +144,15 @@ impl AppState {
         }
         let error = self.refresh.more_failed.as_deref().filter(|_| self.loading_more())?;
         Some(MoreRow::Failed { error, retrying: self.refresh.more_retry_at.is_some() })
+    }
+
+    /// The row the graph shows after its last commit, if any: the `more_row`, else the history's
+    /// notes.
+    pub fn end_row(&self) -> Option<EndRow<'_>> {
+        if let Some(r) = self.more_row() {
+            return Some(EndRow::More(r));
+        }
+        self.snap.as_ref().and_then(HistoryNotes::of).map(EndRow::Notes)
     }
 
     /// How far the filtering search has looked, for the pane shown when nothing matches.
@@ -215,6 +278,44 @@ mod tests {
         assert_eq!(st.search_reach(), Reach::PastCap { matches: 2 });
         st.search.matches = vec![0];
         assert_eq!(st.search_reach(), Reach::Newest(Further::KeepSearching), "a loaded match: as before");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn history_notes_say_why_the_history_stops() {
+        use glowfly_core::repo::RemoteInfo;
+        let mut snap = crate::state::op_fixture::snapshot("history-notes");
+        let dir = snap.workdir.clone();
+        assert_eq!(HistoryNotes::of(&snap), None, "the whole history");
+        snap.truncated = true;
+        snap.loaded_with.max_commits = 2000;
+        let n = HistoryNotes::of(&snap).unwrap();
+        assert!(n.load_more && !n.fetch_full && n.truncated && !n.shallow);
+        assert_eq!(n.sentence(Lang::En), "Showing the newest 1 commit.");
+        snap.loaded_with.max_commits = MAX_COMMITS;
+        assert!(!HistoryNotes::of(&snap).unwrap().load_more, "at the cap");
+        snap.truncated = false;
+        snap.shallow_roots = vec![snap.commits[0].oid];
+        let n = HistoryNotes::of(&snap).unwrap();
+        assert!(n.shallow && !n.fetch_full && !n.load_more, "shallow without a remote");
+        assert_eq!(n.sentence(Lang::En), "Shallow clone: the history stops after 1 commit.");
+        snap.remote_info = vec![RemoteInfo { name: "origin".into(), urls: vec!["u".into()], ..RemoteInfo::default() }];
+        assert!(HistoryNotes::of(&snap).unwrap().fetch_full, "shallow with a remote");
+        snap.truncated = true;
+        snap.loaded_with.max_commits = 2000;
+        let n = HistoryNotes::of(&snap).unwrap();
+        assert!(n.fetch_full && n.load_more);
+        assert_eq!(n.sentence(Lang::En), "Shallow clone: showing the newest 1 commit.");
+
+        let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
+        st.snap = Some(snap);
+        assert!(matches!(st.end_row(), Some(EndRow::Notes(_))));
+        st.refresh.extra_commits = st.settings.commit_limit();
+        st.loading = true;
+        assert_eq!(st.end_row(), Some(EndRow::More(MoreRow::Loading)), "a pending load");
+        st.loading = false;
+        st.refresh.more_failed = Some("walk failed".into());
+        assert!(matches!(st.end_row(), Some(EndRow::More(MoreRow::Failed { .. }))), "a failed load");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

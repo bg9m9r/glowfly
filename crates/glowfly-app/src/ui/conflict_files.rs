@@ -15,6 +15,7 @@ use crate::state::path_hazards::hazard_of;
 use crate::state::tool_compare::merging;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align, Layout, Sense, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, FileEntry, Hazard, ResolvedFile, Snapshot};
@@ -158,7 +159,7 @@ fn resolved_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, r: &ResolvedF
     if row.clicked() && staged {
         msgs.push(Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged(path.clone()))));
     }
-    row.context_menu(|ui| {
+    row.row_menu(|ui| {
         super::common::menu_item_if(msgs, ui, mark, why.as_deref(), confirm());
         menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(path.clone()));
         if r.entry.hazard.is_none() {

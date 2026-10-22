@@ -32,8 +32,8 @@ fn dashboard_empty() {
         h.run();
         h.check_snapshot(name);
         assert!(h.query_by_label("No repositories yet").is_some());
-        assert!(matches!(&click(&mut h, "Open a repository")[..], [Msg::Repo(RepoMsg::PickRepo)]));
-        assert!(matches!(&click(&mut h, "Clone a repository")[..], [Msg::Clone(CloneMsg::Dialog)]));
+        assert!(matches!(&click(&mut h, "Open repository…")[..], [Msg::Repo(RepoMsg::PickRepo)]));
+        assert!(matches!(&click(&mut h, "Clone repository…")[..], [Msg::Clone(CloneMsg::Dialog)]));
         let msgs = click(&mut h, "Connect a service…");
         assert!(matches!(&msgs[..], [Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations))]));
     }

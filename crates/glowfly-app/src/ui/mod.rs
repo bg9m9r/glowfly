@@ -264,6 +264,8 @@ mod snapshot_tests_forks;
 #[cfg(test)]
 mod snapshot_tests_form_messages;
 #[cfg(test)]
+mod snapshot_tests_ghost_branch;
+#[cfg(test)]
 mod snapshot_tests_gitflow;
 #[cfg(test)]
 mod snapshot_tests_gitflow_resume;
@@ -415,6 +417,8 @@ mod snapshot_tests_repo_list;
 mod snapshot_tests_repo_sync;
 #[cfg(test)]
 mod snapshot_tests_revert;
+#[cfg(test)]
+mod snapshot_tests_row_menu;
 #[cfg(test)]
 mod snapshot_tests_search;
 #[cfg(test)]

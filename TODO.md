@@ -1028,32 +1028,18 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 The minor findings of the [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md); its
 blockers and major findings are Milestone 1 items.
 
-- Row context menus open below the row so its status text stays visible
 - The trust prompt's "{ } Hooks" heading becomes a drawn icon on the text margin, with space
   before the first message
-- Toolbar split buttons: the caret 2–4 px from its button inside one hover background
-- The "+ branch" ghost on the selected row is a small ghost button, only on the anchor row, on
-  hover or focus, and hidden while a ref menu is open
-- Load more, Fetch full history and the shallow count move to a full-width row at the end of the
-  graph
-- The multi-selection header: "3 commits selected · Esc to clear", the cherry-pick reason inline,
-  and the compare direction shown as "7e24110 → 222c0ad ⇄"
 - The dashboard caps its content width (about 900 px) or tints alternate rows
 - Clone with no connected service shows only the connect prompt and a link back to the URL tab
 - Git Flow's blocked Finish offers "Stash changes and finish"
 - The git-too-old banner links to how to update and says whether Dismiss is for good
 - Deep-link dialogs say why an entry is preselected, and an unknown link kind offers Check for
   updates
-- The View menu separates its two Diff radio groups
-- One verb per action across menus, the palette and the welcome screen ("New repository…",
-  "Open repository…", "Delete stash")
-- The command palette's empty list shows Recent, then Suggested, then the rest
 - Plain-language errors instead of git internals (safe.directory values; hosting-service errors
   rewritten as a sentence saying what to do)
 - Submodule status dots have tooltips, and clean rows say "up to date"
 - The tab list button sits after the last tab, and tab groups get a named chip
-- The rebase banner keeps Continue as the primary button with Skip, Abort and Edit steps in a
-  split button, so it fits the panel
 
 ### File history and blame
 
@@ -2240,7 +2226,6 @@ here, under the item they grew from.
 
 ### Graph columns and loading
 
-- Hide or disable the header's Load more link while a load for more is already running
 - A per-repository commit limit, or remembering the extra loaded commits across tab switches
   and restarts
 - Keep the top visible commit in place when a load-more refresh also brings new commits above it
@@ -3379,3 +3364,15 @@ here, under the item they grew from.
   conflicted, like the WIP panel's banner
 - Name the conflicted rows' coral badge for screen readers and on hover ("Conflicted"), now that
   the "!" letter is gone
+
+### UI review polish
+
+- Palette entries for New repository… and Clone repository… (and suggesting them when no repository is open)
+- Translate the command palette's command labels, step titles, prompts and footers (the palette is English-only today)
+- Translate the shallow-clone tooltip on Fetch full history (state::shallow::header_tooltip)
+- Open a row's menu from the keyboard (Menu key / Shift+F10) below the focused row
+- Make the multi-selection direction row's SHAs clickable to jump to each end commit
+- Reach the graph's New branch… ghost button with Tab when its row has keyboard focus
+- Rename the repository picker's empty placeholder "Open…" in the toolbar
+- Suggested palette commands from more state (Pop stash on a clean tree with stashes, Create pull request for a pushed branch without one)
+- A key for step 3's Skip (the Continue menu) alongside Continue's

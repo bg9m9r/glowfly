@@ -41,7 +41,7 @@ fn info(path: &str, state: SubmoduleState, url: Option<&str>) -> SubmoduleInfo {
 }
 
 /// The shared fixture with one submodule per state.
-fn with_submodules(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_submodules(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     st.snap.as_mut().unwrap().submodules = vec![
         info("libs/core", SubmoduleState::InSync, Some("../core.git")),

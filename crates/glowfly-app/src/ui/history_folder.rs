@@ -7,6 +7,7 @@ use super::theme::color;
 use super::widgets;
 use crate::msg::{HistoryMsg, Msg};
 use crate::state::AppState;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::repo::HistoryEntry;
 
@@ -41,7 +42,7 @@ pub(super) fn files(ui: &mut Ui, st: &AppState, e: &HistoryEntry, scroll: Option
             if r.clicked() {
                 msgs.push(Msg::History(HistoryMsg::SelectHistoryFile(i)));
             }
-            r.context_menu(|ui| {
+            r.row_menu(|ui| {
                 let deleted = (f.status == 'D').then_some("This commit deletes the file");
                 file_menu::history_items(ui, st.settings.lang(), msgs, &f.path, Some(e.oid), deleted);
                 menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));

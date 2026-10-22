@@ -1,29 +1,21 @@
-//! The graph's column header: the column titles with their draggable dividers (resize.rs), the
-//! least width each column gets so its title fits (for the rows as well), and
-//! the history notes (how many commits a truncated history shows, Load more, and a shallow
-//! clone's note with its Fetch full history link). The notes sit at the right end of the message
-//! column; a shallow clone's notes that don't fit there get their own line under the titles, so
-//! the note is always visible.
+//! The graph's column header: the column titles with their draggable dividers (resize.rs), and
+//! the least width each column gets so its title fits (for the rows as well). The history's
+//! notes (Load more, a shallow clone's Fetch full history) are in the end row (`more.rs`).
 
 use super::LANE_W;
 use super::layout::{CELL_PAD, Columns, EDGE_INSET};
 use super::resize;
-use crate::msg::{JobMsg, LoadMsg, Msg};
+use crate::msg::Msg;
 use crate::state::ColumnDrag;
-use crate::state::shallow::{header_tooltip, history_remote};
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::paint_cut_text;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use eframe::egui::{self, Align2, FontId, Pos2, Rect, Response, Sense, Stroke, pos2, vec2};
+use eframe::egui::{self, Align2, FontId, Rect, Sense, Stroke, pos2, vec2};
 use glowfly_core::i18n::Lang;
-use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
-use glowfly_core::shallow_ops::Deepen;
 
-/// Space between the notes at the right of the message column.
-const GAP: f32 = 10.0;
-/// Height of the header row, and of the notes line under it.
+/// Height of the header row.
 const ROW_H: f32 = 22.0;
 
 /// The titles' font size.
@@ -126,13 +118,12 @@ fn floored(w: ColumnWidths, floors: &[(ResizableColumn, f32)]) -> ColumnWidths {
     floors.iter().fold(w, |w, &(col, f)| if w.get(col) < f { w.with(col, f) } else { w })
 }
 
-/// Draws the header row and returns the column widths to lay the rows out with this frame (the
-/// saved widths, or the preview of a divider being dragged), so header and rows line up.
-#[allow(clippy::too_many_arguments)]
+/// Draws the header row (the titles and dividers only) and returns the column widths to lay the
+/// rows out with this frame (the saved widths, or the preview of a divider being dragged), so
+/// header and rows line up.
 pub(super) fn column_header(
     ui: &mut egui::Ui,
     t: Lang,
-    snap: &Snapshot,
     graph_w: f32,
     cols_cfg: &GraphColumns,
     saved: ColumnWidths,
@@ -151,20 +142,6 @@ pub(super) fn column_header(
     let cols = Columns::new(hdr, graph_w, cols_cfg, &widths);
     titles(ui, hdr, &cols, cols_cfg, &font, t);
     resize::paint_active(ui, hdr, &cols, cols_cfg, active);
-
-    let notes = Notes::of(t, snap);
-    if !notes.any() {
-        return widths;
-    }
-    let title_end = cols.msg.0 + text_w(ui, Title::Msg.text(t), &font) + 12.0;
-    if notes.shallow && cols.msg.1 - notes.width(ui, snap, &font) <= title_end {
-        // Too narrow for the whole set beside the title: a line of its own, under the titles.
-        let (line, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
-        ui.painter().line_segment([line.left_bottom(), line.right_bottom()], Stroke::new(1.0_f32, color::border()));
-        notes.draw(ui, snap, &font, pos2(line.right() - EDGE_INSET, line.center().y), line.left() + EDGE_INSET, msgs);
-    } else {
-        notes.draw(ui, snap, &font, pos2(cols.msg.1, hdr.center().y), title_end, msgs);
-    }
     widths
 }
 
@@ -200,114 +177,8 @@ fn titles(ui: &egui::Ui, hdr: Rect, cols: &Columns, cols_cfg: &GraphColumns, fon
     }
 }
 
-/// Which history notes the header shows, and in which language.
-struct Notes {
-    t: Lang,
-    load_more: bool,
-    fetch_full: bool,
-    count: bool,
-    shallow: bool,
-}
-
-impl Notes {
-    fn of(t: Lang, snap: &Snapshot) -> Self {
-        let shallow = snap.is_shallow();
-        Self {
-            t,
-            load_more: crate::state::refresh::can_load_more(snap),
-            fetch_full: shallow && history_remote(snap).is_some(),
-            count: snap.truncated,
-            shallow,
-        }
-    }
-
-    fn any(&self) -> bool {
-        self.count || self.shallow
-    }
-
-    /// Width of every note at full length, with the gaps between them.
-    fn width(&self, ui: &egui::Ui, snap: &Snapshot, font: &FontId) -> f32 {
-        let t = self.t;
-        let widths = [
-            self.load_more.then(|| text_w(ui, t.tr("graph.header.load_more.link"), font)),
-            self.fetch_full.then(|| text_w(ui, t.tr("graph.header.fetch_full.link"), font)),
-            self.count.then(|| text_w(ui, &count_text(t, snap), font)),
-            self.shallow.then(|| text_w(ui, t.tr("graph.header.shallow"), font)),
-        ];
-        let shown: Vec<f32> = widths.into_iter().flatten().collect();
-        shown.iter().sum::<f32>() + GAP * shown.len().saturating_sub(1) as f32
-    }
-
-    /// Lays the notes out right to left from `right`. The links always show; the notes only
-    /// where they stay right of `left`.
-    fn draw(&self, ui: &egui::Ui, snap: &Snapshot, font: &FontId, right: Pos2, left: f32, msgs: &mut Vec<Msg>) {
-        let p = ui.painter();
-        let t = self.t;
-        let (load_more, fetch_full, shallow) =
-            (t.tr("graph.header.load_more.link"), t.tr("graph.header.fetch_full.link"), t.tr("graph.header.shallow"));
-        let y = right.y;
-        let mut x = right.x;
-        if self.load_more {
-            let (resp, w) = link(ui, font, pos2(x, y), "load-more", load_more, load_more);
-            x -= w + GAP;
-            if resp.clicked() {
-                msgs.push(Msg::Load(LoadMsg::LoadMoreCommits));
-            }
-        }
-        let tooltip = self.shallow.then(|| header_tooltip(snap));
-        if let Some(tip) = tooltip.as_ref().filter(|_| self.fetch_full) {
-            // Where even the line of its own is too narrow, the link shows the shorter text; the
-            // tooltip and the link's accessible name still say what it does.
-            let text = if x - text_w(ui, fetch_full, font) > left { fetch_full } else { t.tr("graph.header.fetch_full_short.link") };
-            let (resp, w) = link(ui, font, pos2(x, y), "fetch-full-history", fetch_full, text);
-            x -= w + GAP;
-            if resp.on_hover_text(tip).clicked() {
-                msgs.push(Msg::Job(JobMsg::Deepen(Deepen::Full)));
-            }
-        }
-        if self.count {
-            let count = p.layout_no_wrap(count_text(t, snap), font.clone(), color::faint());
-            let count_x = x - count.size().x;
-            if count_x > left {
-                p.galley(pos2(count_x, y - count.size().y / 2.0), count, color::faint());
-            }
-            x = count_x - GAP;
-        }
-        if let Some(tip) = tooltip {
-            let label = p.layout_no_wrap(shallow.into(), font.clone(), color::faint());
-            let rect = Align2::RIGHT_CENTER.anchor_size(pos2(x, y), label.size());
-            if rect.left() > left {
-                p.galley(rect.min, label, color::faint());
-                let resp = ui.interact(rect, ui.id().with("shallow-clone"), Sense::hover());
-                resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, shallow));
-                let _ = resp.on_hover_text(tip);
-            }
-        }
-    }
-}
-
-fn count_text(t: Lang, snap: &Snapshot) -> String {
-    t.trn("graph.header.newest", snap.commits.len(), &[])
-}
-
 fn text_w(ui: &egui::Ui, text: &str, font: &FontId) -> f32 {
     ui.painter().layout_no_wrap(text.into(), font.clone(), color::weak()).size().x
-}
-
-/// An accent text link showing `text` with its right end at `right`, underlined on hover and
-/// named `label` for accessibility. Returns its response and width.
-fn link(ui: &egui::Ui, font: &FontId, right: Pos2, id: &str, label: &str, text: &str) -> (Response, f32) {
-    let p = ui.painter();
-    let g = p.layout_no_wrap(text.into(), font.clone(), color::accent());
-    let rect = Align2::RIGHT_CENTER.anchor_size(right, g.size());
-    let resp = ui.interact(rect, ui.id().with(id), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-    let name = label.to_owned();
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Link, true, &name));
-    if resp.hovered() {
-        p.line_segment([rect.left_bottom(), rect.right_bottom()], Stroke::new(1.0_f32, color::accent()));
-    }
-    p.galley(rect.min, g, color::accent());
-    (resp, rect.width())
 }
 
 #[cfg(test)]

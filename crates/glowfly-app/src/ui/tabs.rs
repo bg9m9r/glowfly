@@ -25,6 +25,7 @@ use crate::state::menu_bar::tab_name;
 use crate::state::repo_colours;
 use crate::state::tab_groups::{self, new_index, shown_at};
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::tab_glyph::{self, TabGlyph};
 use eframe::egui::{self, Align, Color32, Layout, Response, Sense, WidgetInfo, WidgetType, vec2};
 use glowfly_core::i18n::Lang;
@@ -168,7 +169,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                     } else if r.clicked() {
                         msgs.push(Msg::Tabs(TabsMsg::SelectTab(i)));
                     }
-                    r.context_menu(|ui| tab_menu(ui, t, i, st, msgs));
+                    r.row_menu(|ui| tab_menu(ui, t, i, st, msgs));
                 }
             }
         }

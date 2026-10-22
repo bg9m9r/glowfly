@@ -9,6 +9,7 @@ use crate::ui::branch_menu::local_branch_menu;
 use crate::ui::menus::{commit_menu, multi_commit_menu};
 use crate::ui::remote_branch_menu::{RemoteMenu, remote_branch_menu};
 use crate::ui::tags::tag_menu;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Rect, Response};
 use glowfly_core::repo::{CommitInfo, RefKind, RefLabel, Snapshot};
 use glowfly_core::settings::Settings;
@@ -37,7 +38,7 @@ pub(super) fn context_menu(ui: &mut egui::Ui, resp: &Response, m: RowMenu, msgs:
         ui.ctx().data_mut(|d| d.insert_temp(id, on_labels));
     }
     let t = m.settings.lang();
-    resp.context_menu(|ui| {
+    resp.row_menu(|ui| {
         let on_labels = ui.ctx().data(|d| d.get_temp::<bool>(id)).unwrap_or(false);
         match m.snap.refs.get(&m.commit.oid).filter(|l| on_labels && !l.is_empty()) {
             Some(labels) => labels_menu(ui, labels, &m, msgs),

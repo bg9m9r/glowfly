@@ -18,6 +18,7 @@ use crate::state::submodules::{
 };
 use crate::submodule::{Batch, SubmoduleMsg};
 use crate::ui::theme::controls;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Painter, Pos2, Stroke, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Snapshot, SubmoduleInfo, SubmoduleState};
@@ -60,7 +61,7 @@ pub(super) fn section(
         if r.double_clicked() && open_blocked(sm).is_none() {
             msgs.push(Msg::Submodule(SubmoduleMsg::Open(sm.path.clone())));
         }
-        r.context_menu(|ui| menu(ui, sm, snap, cx, msgs));
+        r.row_menu(|ui| menu(ui, sm, snap, cx, msgs));
     }
 }
 

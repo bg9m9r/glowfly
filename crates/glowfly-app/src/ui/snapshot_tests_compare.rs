@@ -2,6 +2,7 @@
 //! line of commits combined, Swap direction, the branch tips of a selection in the sidebar, and
 //! Shift+arrows in the graph. Shares the fixture repository and renderer with `snapshot_tests`.
 
+use super::common::short;
 use super::snapshot_tests::{remove_fixture, render, with_repo};
 use super::snapshot_tests_esc::app_harness;
 use crate::msg::{Msg, RepoMsg, SelectionMsg, StageMsg};
@@ -101,7 +102,21 @@ fn a_line_from_the_first_commit_combined() {
     let Selection::Commits(m) = &st.selection else { unreachable!() };
     assert_eq!(m.span, Span::Range { base: repo::empty_tree(), newest: commit(&st, "Fix build on Windows") });
     assert!(m.changes.as_ref().is_some_and(|c| c.as_ref().is_ok_and(|c| c.files.iter().all(|f| f.status == 'A'))));
-    render("graph_range_from_root", st, true);
+    assert!(m.pick_blocked.is_some(), "the commits are on the current branch");
+    let newest = short(commit(&st, "Fix build on Windows"));
+    let mut h = super::snapshot_tests::harness(st, true);
+    h.run();
+    h.check_snapshot("graph_range_from_root");
+    assert!(h.query_by_label("3 commits selected · Esc to clear").is_some(), "one heading with the Esc hint");
+    // The disabled action says why on a line of its own, not only in its tooltip.
+    assert!(h.query_by_label("Some selected commits are already on the current branch.").is_some());
+    assert!(h.query_by_label("empty repository").is_some(), "the line starts at the empty tree");
+    assert!(h.query_all_by_label(&newest).count() >= 2, "the newest commit ends the direction row (and is listed)");
+    assert!(h.query_by_label("3 commits combined").is_some());
+    h.get_by_label("Swap direction").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Selection(SelectionMsg::SwapCompare))));
+    drop(h);
     remove_fixture(&dir);
 }
 
@@ -181,7 +196,12 @@ fn two_commits_swapped() {
     let (st, dir) = selected(ThemeChoice::Dark, "compare-swapped", &["Add login page", "Search results page"], true);
     let Selection::Commits(m) = &st.selection else { unreachable!() };
     assert_eq!(m.compare_ends(), Some((commit(&st, "Search results page"), commit(&st, "Add login page"))));
-    render("graph_two_commits_swapped", st, true);
+    let mut h = super::snapshot_tests::harness(st, true);
+    h.run();
+    h.check_snapshot("graph_two_commits_swapped");
+    assert!(h.query_by_label_contains("combined").is_none(), "a pair has no count line");
+    assert!(h.query_by_label("Swap direction").is_some());
+    drop(h);
     remove_fixture(&dir);
 }
 

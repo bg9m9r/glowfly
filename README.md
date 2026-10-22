@@ -130,7 +130,7 @@ sub-list, and forms with right-aligned labels.
   Trello).
   Each has a connection card with "Connect to …" (signs in through Git Credential Manager), or a
   host domain plus token. Credentials are verified before being saved.
-- **UI Customization**: graph columns, the quick-branch chip, trace a branch on hover, and
+- **UI Customization**: graph columns, the quick-branch button, trace a branch on hover, and
   branch visibility (All branches / Relevant branches).
 - **Language & region**: interface language, date/time locale and four patterns (Date, Long
   date, Date and time and Full date and time) that follow the locale until you type your own,

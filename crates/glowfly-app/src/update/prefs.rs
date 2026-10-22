@@ -197,7 +197,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::PickFolder(purpose) => {
             let title = match purpose {
                 FolderPurpose::OpenRepo => "Open a Git repository",
-                FolderPurpose::InitRepo => "Initialize a repository in…",
+                FolderPurpose::InitRepo => "New repository in…",
                 FolderPurpose::CloneParent => "Clone into folder",
                 FolderPurpose::HooksPath => "Hooks folder",
                 FolderPurpose::WorktreeParent => "Create the worktree in…",

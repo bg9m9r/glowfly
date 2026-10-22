@@ -162,7 +162,7 @@ fn start_runs_one_init_job() {
     let [Effect::Init(InitEffect::Run { folder, plan })] = fx.as_slice() else { panic!("unexpected effects {fx:?}") };
     assert_eq!((folder, plan), (&req.folder, &req.plan));
     let job = st.job.as_ref().unwrap();
-    assert_eq!(job.label, "Init");
+    assert_eq!(job.label, "New repository");
     assert_eq!(job.then_open, Some((req.folder.clone(), Created::Init)));
     assert!(st.modal.is_none());
 

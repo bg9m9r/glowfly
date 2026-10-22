@@ -57,8 +57,14 @@ pub(super) fn handle(st: &mut AppState, msg: InitMsg, now: Instant, fx: &mut Vec
             }
             let (folder, plan) = (req.folder, req.plan);
             let then_open = Some((folder.clone(), Created::Init));
-            let started =
-                super::jobs::start_effect_job(st, "Init", folder, then_open, |cwd| Effect::Init(InitEffect::Run { folder: cwd, plan }), fx);
+            let started = super::jobs::start_effect_job(
+                st,
+                "New repository",
+                folder,
+                then_open,
+                |cwd| Effect::Init(InitEffect::Run { folder: cwd, plan }),
+                fx,
+            );
             if matches!(started, Started::Now | Started::Held) && matches!(st.modal, Some(Modal::Init(_))) {
                 st.modal = None;
             }

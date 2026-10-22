@@ -9,7 +9,6 @@ use super::snapshot_tests_palette_nav::palette_row;
 use crate::msg::Msg;
 use crate::msg::PaletteMsg;
 use crate::msg::RepoMsg;
-use crate::remote::RemoteMsg;
 use crate::state::AppState;
 use crate::state::palette::{Items, Mode, Palette, PaletteCommand, Pick, PickKind};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -27,7 +26,26 @@ fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&Msg) -> bool) ->
 fn palette_dark() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette");
     st.palette = Some(Palette::default());
-    render("palette", st, true);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("palette");
+    // An empty query groups the list under headings; the fixture suggests Stage all files.
+    assert!(h.query_by_label("Suggested").is_some() && h.query_by_label("All commands").is_some());
+    assert!(h.query_by_label("Recent").is_none(), "nothing run yet");
+    drop(h);
+
+    // The headings are translated.
+    let (mut st, _) = with_repo(ThemeChoice::Dark, "palette");
+    st.settings.language = "de".into();
+    st.palette_recent.record(PaletteCommand::Refresh.recall_key().unwrap());
+    st.palette = Some(Palette::default());
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("palette_groups_german");
+    for heading in ["Zuletzt verwendet", "Vorschläge", "Alle Befehle"] {
+        assert!(h.query_by_label(heading).is_some(), "{heading}");
+    }
+    drop(h);
     remove_fixture(&dir);
 }
 
@@ -94,7 +112,8 @@ fn palette_many_refs_footer() {
     assert!(h.query_by_label_contains("Showing 200 of").is_some());
     h.press_key(Key::Enter);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog))))));
+    // The first suggested command: the fixture has unstaged changes and no remote.
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::StageAll)))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -164,11 +183,17 @@ fn palette_keys_and_clicks() {
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteMove(-1)))));
 
-    // The fixture has no remote, so the first row is Add remote… (Fetch and Pull need one).
+    // The first row is the first suggestion: the fixture has no remote, so nothing to pull,
+    // push or fetch, and it has unstaged changes, so Stage all files.
     h.state_mut().1.clear();
     h.press_key(Key::Enter);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog))))));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::StageAll)))));
+    // A group heading isn't a row: clicking it runs nothing.
+    h.state_mut().1.clear();
+    h.get_by_label("All commands").click();
+    h.run();
+    assert!(!pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(_)))));
 
     h.state_mut().1.clear();
     h.press_key(Key::Escape);

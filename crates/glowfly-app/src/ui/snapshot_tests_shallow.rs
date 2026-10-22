@@ -1,7 +1,8 @@
-//! A shallow clone in the graph header (its note and the Fetch full history link, also beside
-//! Load more, and without a remote) and the palette's commit count step for fetching more.
+//! A shallow clone in the graph's end row (its sentence and Fetch full history, also beside Load
+//! more, cut in a narrow window, and without a remote) and the palette's commit count step for
+//! fetching more.
 
-use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use super::snapshot_tests::{harness, harness_sized, remove_fixture, render, with_repo};
 use crate::msg::{JobMsg, Msg};
 use crate::state::AppState;
 use crate::state::palette::{InputKind, Mode, Palette};
@@ -25,13 +26,15 @@ fn make_shallow(st: &mut AppState) {
 }
 
 #[test]
-fn graph_header_shallow() {
+fn graph_end_row_shallow() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "shallow");
     make_shallow(&mut st);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("graph_shallow");
-    assert_note_and_full_link(&h);
+    let n = h.state().0.snap.as_ref().unwrap().commits.len();
+    assert_sentence_and_button(&h, &format!("Shallow clone: the history stops after {n} commits."), "Fetch full history");
+    assert!(h.query_by_label("Load more").is_none(), "the whole of what the clone has is loaded");
     h.get_by_label("Fetch full history").hover();
     h.run();
     h.check_snapshot("graph_shallow_tooltip");
@@ -42,7 +45,7 @@ fn graph_header_shallow() {
 }
 
 #[test]
-fn graph_header_shallow_and_truncated() {
+fn graph_end_row_shallow_and_truncated() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "shallow-truncated");
     make_shallow(&mut st);
     st.snap.as_mut().unwrap().truncated = true;
@@ -51,39 +54,41 @@ fn graph_header_shallow_and_truncated() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("graph_shallow_load_more_light");
-    assert!(h.query_by_label("Load more").is_some());
-    assert_note_and_full_link(&h);
+    let n = h.state().0.snap.as_ref().unwrap().commits.len();
+    assert_sentence_and_button(&h, &format!("Shallow clone: showing the newest {n} commits."), "Fetch full history");
+    let fetch = h.get_by_label("Fetch full history").bounding_box().unwrap();
+    let more = h.get_by_label("Load more").bounding_box().unwrap();
+    assert!(more.x0 > fetch.x1, "Load more is rightmost");
     remove_fixture(&dir);
 }
 
-/// The "Shallow clone" note shows on the link's line, and the link reads in full: it is wider
-/// than the note, which the short "Full history" would not be.
-fn assert_note_and_full_link<S>(h: &egui_kittest::Harness<'_, S>) {
-    let note = h.get_by_label("Shallow clone").bounding_box().expect("the note is laid out");
-    let link = h.get_by_label("Fetch full history").bounding_box().expect("the link is laid out");
-    assert!((note.y0 - link.y0).abs() < 1.0, "note {note:?} and link {link:?} share a line");
-    assert!(note.x1 < link.x0, "the note sits left of the link");
-    assert!(link.width() > note.width(), "the link shows its full text: {link:?} vs {note:?}");
+/// The end row (named by its sentence) after the last commit's row, with `button` in it.
+fn assert_sentence_and_button(h: &egui_kittest::Harness<'_, (AppState, Vec<crate::msg::Msg>)>, sentence: &str, button: &str) {
+    let last = h.state().0.snap.as_ref().unwrap().commits.last().unwrap().summary.clone();
+    let row = h.get_by_label(sentence).bounding_box().expect("the end row is laid out");
+    let b = h.get_by_label(button).bounding_box().expect("the button is laid out");
+    let commit = h.get_by_label(&last).bounding_box().expect("the last commit's row");
+    assert!(row.y0 >= commit.y1 - 0.5, "the end row {row:?} follows the last commit {commit:?}");
+    assert!(b.y0 >= row.y0 && b.y1 <= row.y1, "{button} {b:?} is in the end row {row:?}");
 }
 
-/// With every column on, a shallow truncated history's notes still all show, on a line of their
-/// own under the titles.
+/// With every column on, the sentence is cut to the room left and the buttons stay whole.
 #[test]
-fn graph_header_shallow_narrow_message_column() {
+fn graph_end_row_narrow() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "shallow-narrow");
     make_shallow(&mut st);
     st.snap.as_mut().unwrap().truncated = true;
     st.settings.columns.changes = true;
-    let mut h = harness(st, true);
+    let mut h = harness_sized(st, true, eframe::egui::vec2(1240.0, 820.0));
     h.run();
-    h.check_snapshot("graph_shallow_notes_line");
+    h.check_snapshot("graph_end_row_narrow");
     assert!(h.query_by_label("Load more").is_some());
-    assert_note_and_full_link(&h);
+    assert!(h.query_by_label("Fetch full history").is_some());
     remove_fixture(&dir);
 }
 
 #[test]
-fn graph_header_shallow_no_remote() {
+fn graph_end_row_shallow_no_remote() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "shallow-no-remote");
     make_shallow(&mut st);
     st.snap.as_mut().unwrap().remote_info.clear();
@@ -91,6 +96,8 @@ fn graph_header_shallow_no_remote() {
     h.run();
     h.check_snapshot("graph_shallow_no_remote");
     assert!(h.query_by_label("Fetch full history").is_none());
+    let n = h.state().0.snap.as_ref().unwrap().commits.len();
+    assert!(h.query_by_label(&format!("Shallow clone: the history stops after {n} commits.")).is_some());
     remove_fixture(&dir);
 }
 

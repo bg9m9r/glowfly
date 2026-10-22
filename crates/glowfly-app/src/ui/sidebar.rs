@@ -24,6 +24,7 @@ use crate::state::forge_filters::{self, IssueView, PrView};
 use crate::state::panel_layout::Fit;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use crate::ui::theme::controls;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::forge::{self, FilterKind};
 use glowfly_core::repo::Snapshot;
@@ -158,7 +159,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
             }
             ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &format!("refs/heads/{}", b.name), &b.name, graph, t, msgs);
-            r.context_menu(|ui| local_branch_menu(ui, t, b, snap, fs, graph, sel, &commands, msgs));
+            r.row_menu(|ui| local_branch_menu(ui, t, b, snap, fs, graph, sel, &commands, msgs));
         }
     }
 
@@ -261,7 +262,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
         {
             msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
         }
-        r.context_menu(|ui| {
+        r.row_menu(|ui| {
             menu_item(msgs, ui, format!("Show {}", f.pr_noun()), Msg::PullRequest(PullRequestMsg::Open(pr.id)));
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(pr.url.clone()));
             super::build_status::pr_menu_item(ui, pr, msgs);
@@ -322,7 +323,7 @@ fn issues(
         } else if !in_app && r.double_clicked() {
             msgs.push(Msg::OpenUrl(issue.url.clone()));
         }
-        r.context_menu(|ui| {
+        r.row_menu(|ui| {
             if in_app {
                 menu_item(msgs, ui, format!("View {}", f.issue_noun()), Msg::Issue(IssueMsg::Open(issue.key.clone())));
             }

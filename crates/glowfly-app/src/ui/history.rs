@@ -23,6 +23,7 @@ use crate::state::tool_compare::{OPEN_IN_DIFF_TOOL, ToolSetup};
 use crate::tools::ToolsMsg;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align, Align2, CursorIcon, Key, Layout, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, HistoryEntry};
@@ -125,7 +126,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
             if resp.clicked() {
                 msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(i)));
             }
-            resp.context_menu(|ui| match view.kind {
+            resp.row_menu(|ui| match view.kind {
                 HistoryKind::File => entry_menu(ui, st.settings.lang(), msgs, e, view.today_path(), in_wd, tools),
                 HistoryKind::Folder => commit_items(ui, msgs, e),
             });

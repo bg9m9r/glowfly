@@ -4,8 +4,10 @@
 //! most `MAX_COMMAND_ROWS` of the ranked matches; the commands themselves are
 //! in `palette_commands`. Some commands open a second step: a list of items for that command
 //! (`Mode::Pick`), such as tracked files, stashes, profiles or assigned issues, or a free-text field (`Mode::Input`), such
-//! as a stash message. The steps' texts are in `palette_kinds`. With an empty query, recently
-//! run commands (`palette_recent`) come first; with a query, recency only breaks score ties.
+//! as a stash message. The steps' texts are in `palette_kinds`. With an empty query the list is
+//! grouped: recently run commands (`palette_recent`), then the commands the state suggests
+//! (`palette_suggested`), then all the others, each under a heading (`Listed::groups`); with a
+//! query, recency only breaks score ties and there are no headings.
 
 pub use super::palette_commands::{Entry, PaletteCommand, entries};
 pub use super::palette_kinds::{InputKind, PickKind, StashAction};
@@ -13,7 +15,9 @@ pub use super::palette_kinds::{InputKind, PickKind, StashAction};
 use super::AppState;
 use super::forge::ForgeState;
 use super::palette_profiles::{ProfileRow, profile_rows};
+use super::palette_suggested::grouped;
 use glowfly_core::fuzzy;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::StashInfo;
 use glowfly_core::settings::Settings;
 
@@ -256,10 +260,34 @@ pub struct Shown {
     pub matched: Vec<usize>,
 }
 
+/// A heading over part of the command list for an empty query.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Group {
+    /// Recently run commands, most recent first.
+    Recent,
+    /// What the repository's state suggests (`palette_suggested`).
+    Suggested,
+    /// Every other command.
+    All,
+}
+
+impl Group {
+    pub fn title(self, t: Lang) -> &'static str {
+        match self {
+            Self::Recent => t.tr("palette.group.recent"),
+            Self::Suggested => t.tr("palette.group.suggested"),
+            Self::All => t.tr("palette.group.all"),
+        }
+    }
+}
+
 /// The command list for a query: the first `MAX_COMMAND_ROWS` matches, and how many match.
 pub struct Listed {
     pub rows: Vec<Shown>,
     pub total: usize,
+    /// Each group's heading and the index of its first row. Only for an empty query, and only
+    /// when more than one group has rows; headings aren't rows.
+    pub groups: Vec<(Group, usize)>,
 }
 
 /// `entries` filtered and ranked for `query`, cut to `MAX_COMMAND_ROWS`.
@@ -278,12 +306,17 @@ pub fn listed(st: &AppState, query: &str) -> Listed {
         ranked.sort_by(|a, b| b.1.score.cmp(&a.1.score).then(recency[a.0].cmp(&recency[b.0])));
     }
     let total = ranked.len();
+    let mut groups = Vec::new();
+    if query.trim().is_empty() {
+        (ranked, groups) = grouped(st, &all, ranked);
+    }
     let rows = ranked
         .into_iter()
         .take(MAX_COMMAND_ROWS)
         .filter_map(|(i, m)| Some(Shown { entry: all[i].take()?, matched: m.positions }))
         .collect();
-    Listed { rows, total }
+    groups.retain(|&(_, first)| first < MAX_COMMAND_ROWS);
+    Listed { rows, total, groups }
 }
 
 /// The rows of `listed`.

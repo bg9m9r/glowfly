@@ -19,8 +19,8 @@ fn clone_stage_commit_push_pull() {
     let mut j = Journey::start(fx, None, vec![clone.clone()]);
 
     // step 1: the welcome offers a clone; the dialog takes the bare remote and the folder.
-    j.see("Clone a repository", Region::Central);
-    j.click("Clone a repository", Region::Central, Pick::Only);
+    j.see("Clone repository…", Region::Central);
+    j.click("Clone repository…", Region::Central, Pick::Only);
     j.type_into("Repository URL", &shown(&bare));
     j.type_into("Clone into folder", &shown(&work));
     j.click("Clone", Region::Anywhere, Pick::Only);

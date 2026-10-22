@@ -31,12 +31,12 @@ fn rebase_conflict_resolved_in_merge_view() {
     assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);
     assert!(disk::work_text(&repo, "f.txt").unwrap().contains("<<<<<<<"));
 
-    // step 2: the working tree's steps name the conflict and leads with View conflicts, with no
-    // Continue until it is resolved; viewing it changes nothing on disk.
+    // step 2: the working tree's steps name the conflict and leads with View conflicts, with
+    // Continue disabled until it is resolved; viewing it changes nothing on disk.
     j.click("View uncommitted changes", Region::Details, Pick::Only);
     j.see("1 left", Region::Details);
     j.see("View conflicts", Region::Details);
-    j.absent("Continue", Region::Details);
+    j.disabled("Continue", Region::Details);
     j.see("Abort rebase", Region::Details);
     assert!(rebasing(&repo));
     assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);

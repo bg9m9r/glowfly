@@ -21,7 +21,7 @@ use glowfly_core::settings::ThemeChoice;
 use std::path::PathBuf;
 
 /// The fixture with the made-up stashes in its snapshot and STASHES in view.
-fn with_stashes(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_stashes(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let stashes = fixture_stashes(&st);
     st.snap.as_mut().unwrap().stashes = stashes;
@@ -61,7 +61,9 @@ fn stash_menu() {
     let mut h = harness(st, true);
     h.run();
     open_menu(&mut h, "On main: login form tweaks");
-    for item in ["Apply", "Pop", "Rename…", "Delete"] {
+    // The menu's header names the stash; the row's own label is still found.
+    assert_eq!(h.query_all_by_label("On main: login form tweaks").count(), 2, "the row and the menu header");
+    for item in ["Apply", "Pop", "Rename…", "Delete…"] {
         // The toolbar's Pop is "Pop the latest stash".
         assert_eq!(h.query_all_by_label(item).count(), 1, "{item}");
     }

@@ -290,7 +290,8 @@ fn publish_to_github_dialog() {
 
 #[test]
 fn ghost_branch_on_the_current_commit() {
-    // Selecting the checked-out commit shows "+ branch" after its labels; other rows show none.
+    // Selecting the checked-out commit shows the New branch… ghost button after its labels;
+    // other rows show none.
     let (mut st, _dir) = with_repo(ThemeChoice::Dark, "ghost");
     let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("HEAD");
     st.selection = Selection::Commit(head);

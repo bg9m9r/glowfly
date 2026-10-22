@@ -248,7 +248,7 @@ fn welcome_start() {
         assert!(h.query_by_label(Lang::En.tr(key)).is_some(), "{key} is shown");
     }
     // The welcome screen's own buttons are behind the dialog; the dialog's cards are drawn last.
-    for label in ["Open a repository", "Clone a repository", "Start a new repository"] {
+    for label in ["Open repository…", "Clone repository…", "New repository…"] {
         h.get_all_by_label(label).last().unwrap().click();
         h.run();
     }

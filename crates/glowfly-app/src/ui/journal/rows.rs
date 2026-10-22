@@ -12,6 +12,7 @@ use crate::state::journal::{row_label, short, subject_name};
 use crate::state::journal_restore;
 use crate::ui::common::{menu_header, menu_item, menu_item_if};
 use crate::ui::theme::{color, type_scale};
+use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::{paint_cut_text, row_fill};
 use eframe::egui::{self, Align2, CursorIcon, Rect, Sense, Ui, pos2, vec2};
 use glowfly_core::journal::Row;
@@ -62,7 +63,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             if resp.clicked() {
                 msgs.push(Msg::Journal(JournalMsg::Select(key.clone())));
             }
-            resp.context_menu(|ui| menu(ui, st, snap, row, &label, msgs));
+            resp.row_menu(|ui| menu(ui, st, snap, row, &label, msgs));
             ui.painter().hline(rect.x_range(), rect.bottom() - 0.5, (1.0, color::border()));
         }
     });

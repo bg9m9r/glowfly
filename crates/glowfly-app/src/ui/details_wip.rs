@@ -20,6 +20,7 @@ use super::file_menu::{self, ToolItem};
 use super::op_steps::TopArgs;
 use super::theme::color;
 use super::widgets::{Icon, buttons};
+use crate::ui::widgets::row_menu::RowMenuExt;
 
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::ConflictMsg;
@@ -151,7 +152,7 @@ pub(super) fn file_list(
     };
     let header = header::header(ui, title.clone(), staged, count, ctx, msgs);
     if staged {
-        header.context_menu(|ui| file_menu::staged_header_items(ui, t, msgs, snap));
+        header.row_menu(|ui| file_menu::staged_header_items(ui, t, msgs, snap));
     }
     let row_h = super::widgets::LIST_ROW_H;
     // The list's area, for its focus target: registered before the rows, after the header.
@@ -290,7 +291,7 @@ pub(super) fn wip_file_row(
             Msg::Repo(RepoMsg::OpenDiff(target()))
         });
     }
-    r.context_menu(|ui| {
+    r.row_menu(|ui| {
         if conflicted {
             menu_item(msgs, ui, t.tr("details.wip.open_conflict"), Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));
         }

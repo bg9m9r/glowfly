@@ -17,6 +17,7 @@ use crate::state::section_actions::SectionAction;
 use crate::state::worktree_manage::{manage_blocked, open_elsewhere, prune_blocked, remove_blocked, row_prune_blocked};
 use crate::state::worktree_move::move_refused;
 use crate::state::worktrees::{listed, open_blocked, right_text, tooltip};
+use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use git2::Oid;
@@ -88,7 +89,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         {
             msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
         }
-        r.context_menu(|ui| row_menu(ui, wt, msgs));
+        r.row_menu(|ui| row_menu(ui, wt, msgs));
     }
 }
 

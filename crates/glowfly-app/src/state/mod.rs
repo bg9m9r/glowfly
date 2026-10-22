@@ -82,6 +82,7 @@ pub mod palette_onboarding;
 pub mod palette_profiles;
 pub mod palette_recent;
 pub mod palette_selected;
+pub mod palette_suggested;
 pub mod palette_tabs;
 pub mod palette_tools;
 pub mod palette_updates;

@@ -151,6 +151,11 @@ fn menu_bar_view_dark_and_light() {
     let (st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-view");
     let mut h = opened(st, true, "View");
     h.check_snapshot("menu_bar_view");
+    // The two diff choices each under their own label.
+    let top = |label: &str| h.get_by_label(label).bounding_box().expect(label).y0;
+    assert!(top("Diff layout") < top("Inline"), "Diff layout heads the layout choices");
+    assert!(top("Inline") < top("Diff shows"), "Diff shows comes after them");
+    assert!(top("Diff shows") < top("Changed lines only"), "and heads the mode choices");
     drop(h);
     // With the journal open: its item is ticked.
     let (mut st, _) = with_bar(ThemeChoice::Light, "menu-bar-view");

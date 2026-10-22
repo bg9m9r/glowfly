@@ -29,6 +29,17 @@ pub(super) fn wip_click(m: egui::Modifiers) -> Msg {
     if m.command && !m.shift { Msg::Selection(SelectionMsg::ToggleWip) } else { Msg::Repo(RepoMsg::SelectWip) }
 }
 
+/// The commit the selection is anchored on: the selected commit, the commit compared with the
+/// working directory, or a multi-selection's focus.
+pub(super) fn anchor(sel: &Selection) -> Option<Oid> {
+    match sel {
+        Selection::Commit(o) => Some(*o),
+        Selection::VsWorkdir(w) => Some(w.oid),
+        Selection::Commits(m) => Some(m.focus()),
+        Selection::Wip | Selection::None => None,
+    }
+}
+
 /// The graph row (counting the WIP row) that keyboard navigation starts from.
 pub(super) fn current_row(sel: &Selection, rows: &GraphRows) -> Option<usize> {
     match sel {

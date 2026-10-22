@@ -1,7 +1,8 @@
-//! The graph of a history longer than the commit limit: the header's count and Load more link,
-//! asking for more near the end, and the row shown while more loads or after loading it failed.
+//! The graph of a history longer than the commit limit: the end row's count and Load more,
+//! asking for more near the end, and the row shown instead while more loads or after loading it
+//! failed.
 
-use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::{LoadMsg, Msg, SearchMsg};
 use crate::state::AppState;
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -11,23 +12,41 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 #[test]
-fn graph_header_offers_more_commits() {
+fn graph_end_row_offers_more_commits() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "load-more");
     st.snap.as_mut().unwrap().truncated = true;
+    let last = st.snap.as_ref().unwrap().commits.last().unwrap().summary.clone();
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("graph_load_more");
+    let n = st_commits(&h);
+    let sentence = format!("Showing the newest {n} commits.");
+    let end = h.get_by_label(&sentence).bounding_box().expect("the end row's sentence");
+    let button = h.get_by_label("Load more").bounding_box().unwrap();
+    let row = h.get_by_label(&last).bounding_box().unwrap();
+    assert!(end.y0 >= row.y1 - 0.5, "the end row is after the last commit: {end:?} {row:?}");
+    assert!(button.y0 >= end.y0 && button.y1 <= end.y1 && button.x0 > end.x0 + end.width() / 2.0, "Load more at the end row's right");
     h.get_by_label("Load more").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Load(LoadMsg::LoadMoreCommits))));
+    drop(h);
 
-    // With room in the message column, the count shows too.
+    // At the cap only the sentence shows.
     let (mut st, _) = with_repo(ThemeChoice::Dark, "load-more");
-    st.snap.as_mut().unwrap().truncated = true;
-    st.settings.columns.commit = false;
-    st.settings.columns.date = false;
-    render("graph_load_more_count", st, true);
+    let snap = st.snap.as_mut().unwrap();
+    snap.truncated = true;
+    snap.loaded_with.max_commits = crate::state::MAX_COMMITS;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label(&sentence).is_some());
+    assert!(h.query_by_label("Load more").is_none(), "nothing more can load");
+    drop(h);
     remove_fixture(&dir);
+}
+
+/// How many commits the harness's snapshot holds.
+fn st_commits(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>) -> usize {
+    h.state().0.snap.as_ref().map_or(0, |s| s.commits.len())
 }
 
 /// The fixture as a history cut at the commit limit: `truncated`, loaded with exactly the limit.
@@ -58,6 +77,7 @@ fn graph_loading_more() {
     h.run_steps(4);
     h.check_snapshot("graph_loading_more");
     let _ = h.get_by_label("Loading more commits…");
+    assert!(h.query_by_label("Load more").is_none(), "the spinner row replaces the end row");
     assert!(!asks_for_more(&h.state().1), "a load for more is running");
     remove_fixture(&dir);
 }

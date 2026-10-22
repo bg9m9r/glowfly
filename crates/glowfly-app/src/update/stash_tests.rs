@@ -53,7 +53,7 @@ fn a_drop_logs_the_commit_so_it_can_be_recovered() {
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.stashes.len(), 1);
     assert!(snap.stashes[0].message.contains("second"));
-    let log = st.log.iter().rev().find(|l| l.text.starts_with("Drop stash")).map(|l| l.text.clone()).unwrap();
+    let log = st.log.iter().rev().find(|l| l.text.starts_with("Delete stash")).map(|l| l.text.clone()).unwrap();
     assert!(log.contains("Dropped") && log.contains(&first.oid.to_string()), "{log}");
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -136,7 +136,8 @@ fn entries_with_repo() {
     assert!(has(&st, "Create branch at HEAD…"));
     assert!(has(&st, "Create tag at HEAD…"));
     assert!(has(&st, "Create annotated tag at HEAD…"));
-    let all = labels(&st, "");
+    // In entry order (the empty query lists Create branch under Suggested).
+    let all: Vec<String> = crate::state::palette::entries(&st).into_iter().map(|e| e.label).collect();
     let at = all.iter().position(|l| l == "Create branch at HEAD…").unwrap();
     assert_eq!(all[at + 1..at + 3], ["Create tag at HEAD…", "Create annotated tag at HEAD…"]);
     assert!(has(&st, "Search commits"));

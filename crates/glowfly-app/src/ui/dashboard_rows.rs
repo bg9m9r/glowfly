@@ -11,6 +11,7 @@ use crate::state::dashboard::{Dashboard, TargetData, pr_label, target_name};
 use crate::state::dashboard_rows::issue_text;
 use crate::state::forge_filters;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Color32, FontId, Rect, Response, Sense, Ui, pos2, vec2};
 use glowfly_core::forge::{self, Issue, Provider, PullRequest};
 
@@ -56,7 +57,7 @@ pub(super) fn repo_row(ui: &mut Ui, st: &AppState, data: &TargetData, msgs: &mut
     };
     let page =
         data.locals.iter().filter(|l| !l.remote_url.is_empty()).find_map(|l| forge::web_page(&l.remote_url, &st.settings.connections).ok());
-    r.context_menu(|ui| {
+    r.row_menu(|ui| {
         for l in data.locals.iter().take(5) {
             menu_item(msgs, ui, format!("Open {}", l.name), dash(DashboardMsg::OpenRepo(l.path.clone())));
         }
@@ -121,7 +122,7 @@ pub(super) fn pr_row(ui: &mut Ui, st: &AppState, data: &TargetData, pr: &PullReq
             (Err(_), None) => {}
         }
     }
-    r.context_menu(|ui| {
+    r.row_menu(|ui| {
         let label = format!("Show {}", t.provider.pr_noun());
         match &show {
             Ok(path) => menu_item(msgs, ui, label, open_pr(path)),
@@ -153,7 +154,7 @@ pub(super) fn issue_row(ui: &mut Ui, st: &AppState, data: &TargetData, issue: &I
     {
         msgs.push(Msg::OpenUrl(u.to_owned()));
     }
-    r.context_menu(|ui| {
+    r.row_menu(|ui| {
         let open = if t.provider == Provider::Trello { "View card in Trello" } else { "Open in browser" };
         let blocked = link.is_none().then_some(NO_LINK);
         menu_item_if(msgs, ui, open, blocked, Msg::OpenUrl(issue.url.clone()));

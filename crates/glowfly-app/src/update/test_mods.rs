@@ -221,6 +221,8 @@ pub(super) mod palette_checkout_tests;
 pub(super) mod palette_compare_tests;
 #[path = "palette_folder_tests.rs"]
 pub(super) mod palette_folder_tests;
+#[path = "palette_groups_tests.rs"]
+pub(super) mod palette_groups_tests;
 #[path = "palette_issue_tests.rs"]
 pub(super) mod palette_issue_tests;
 #[path = "palette_keys_tests.rs"]

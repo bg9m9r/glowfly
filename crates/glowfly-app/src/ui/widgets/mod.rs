@@ -16,7 +16,8 @@
 //! family (primary, tonal, secondary, quiet, danger, icon-only) is `buttons.rs`, each state's
 //! colours `button_look.rs`, and the split button (an action and its menu caret as one pill)
 //! `button_split.rs`. The always-visible thin scroll bar and the edge fades of dialog bodies,
-//! Preferences and the File view are `scroll_cue.rs`.
+//! Preferences and the File view are `scroll_cue.rs`. Right-click menus that open below the row
+//! they belong to are `row_menu.rs`.
 
 pub mod banner;
 mod button_look;
@@ -30,6 +31,7 @@ pub mod menu_reason;
 pub mod quiet_chip;
 pub mod reason;
 pub mod row_fill;
+pub mod row_menu;
 pub mod scroll_cue;
 pub mod section_header;
 pub mod segmented;

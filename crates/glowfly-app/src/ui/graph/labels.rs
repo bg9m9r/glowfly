@@ -1,7 +1,7 @@
 //! A commit row's BRANCH / TAG cell: one soft chip per label (`ref_group::chips`) with its
 //! painted marks, as many as fit whole, then a "+N" chip for the rest; the line joining them to
 //! the node; which tip the pointer over them asks for; where each chip is, for a double-click;
-//! and the ghost "+ branch" chip.
+//! and where the New branch… ghost button goes.
 
 use super::layout::Columns;
 use super::marks::{MARK_W, paint_cloud, paint_local, paint_tag};
@@ -12,8 +12,9 @@ use crate::ui::theme::contrast::{self, ChipStyle, readable_on};
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets;
+use crate::ui::widgets::ghost;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
+use eframe::egui::{Color32, CornerRadius, FontId, Painter, Pos2, Rect, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::forge::CheckState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::RefKind;
@@ -168,15 +169,17 @@ pub(super) struct RefsRow<'a> {
     pub chips: &'a [Chip<'a>],
     /// Each chip's branch tone (`lane_colours::chip_tones`).
     pub tones: &'a [Color32],
-    /// The node's colour: the joining line and the ghost chip.
+    /// The node's colour: the joining line.
     pub lane: Color32,
     /// The tip's build state, shown on the first chip.
     pub build: Option<CheckState>,
     /// The node's left edge, when the GRAPH column shows: the joining line ends there.
     pub node_edge_x: Option<f32>,
     pub pointer: Option<Pos2>,
-    /// Show the ghost "+ branch" chip after the labels.
+    /// Leave room for the New branch… ghost button after the labels.
     pub ghost: bool,
+    /// The ghost button's width (`ghost::small_width`).
+    pub ghost_w: f32,
 }
 
 /// Where a row's BRANCH / TAG cell drew, and what the pointer over it asks for.
@@ -184,8 +187,9 @@ pub(super) struct RefsRow<'a> {
 pub(super) struct RefsCell {
     /// From the first chip through the "+N" chip, for the labels menu.
     pub labels_hit: Option<Rect>,
-    /// The ghost "+ branch" chip.
-    pub ghost: Option<Rect>,
+    /// Where the New branch… ghost button goes, when it shows and fits, and whether its label
+    /// fits too (else it is its plus alone).
+    pub ghost_at: Option<(Rect, bool)>,
     pub hovered_tip: Option<Tip>,
     /// The pointer is over the drawn chips or the "+N" chip.
     pub on_chip: bool,
@@ -230,9 +234,6 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
             hit.max.x = end;
         }
         out.labels_hit = Some(hit);
-        if let Some(edge) = row.node_edge_x {
-            painter.line_segment([pos2(end, mid), pos2(edge, mid)], Stroke::new(1.5_f32, row.lane));
-        }
         out.chip_rects = drawn;
         if let Some(p) = row.pointer {
             out.on_chip = hit.contains(p);
@@ -244,20 +245,20 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
             };
         }
     }
-    // A faded "+ branch" after the checked-out commit's labels: click it to branch from the
-    // current branch (other commits: right-click > Create branch here).
-    let r = Rect::from_min_size(pos2(end + 6.0, mid - 11.0), vec2(80.0, 22.0));
-    if row.ghost && r.right() <= cols.refs.1 {
-        rp.rect_filled(r, CornerRadius::same(radius::SM), color::bg());
-        rp.rect_stroke(r, CornerRadius::same(radius::SM), Stroke::new(1.0_f32, row.lane.gamma_multiply(0.6)), StrokeKind::Inside);
-        rp.text(
-            pos2(r.left() + 8.0, mid),
-            Align2::LEFT_CENTER,
-            "+ branch",
-            type_scale::font(type_scale::SMALL),
-            row.lane.gamma_multiply(0.8),
-        );
-        out.ghost = Some(r);
+    // Room for the New branch… ghost button after the checked-out commit's labels (the graph
+    // draws it there; other commits: right-click > Create branch here): labelled, or its plus
+    // alone where the label doesn't fit.
+    if row.ghost {
+        let at = |w: f32| Rect::from_min_size(pos2(end + GAP, mid - ghost::SMALL_HEIGHT / 2.0), vec2(w, ghost::SMALL_HEIGHT));
+        out.ghost_at = [(row.ghost_w, true), (ghost::SMALL_HEIGHT, false)]
+            .into_iter()
+            .map(|(w, labelled)| (at(w), labelled))
+            .find(|(r, _)| r.right() <= cols.refs.1);
+    }
+    // The line joining the labels (and the ghost button after them) to the node.
+    if let (Some(edge), false) = (row.node_edge_x, row.chips.is_empty()) {
+        let from = out.ghost_at.map_or(end, |(r, _)| r.right());
+        painter.line_segment([pos2(from, mid), pos2(edge, mid)], Stroke::new(1.5_f32, row.lane));
     }
     out
 }

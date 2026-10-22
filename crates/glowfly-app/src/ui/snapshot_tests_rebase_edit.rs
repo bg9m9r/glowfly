@@ -18,6 +18,8 @@ use glowfly_core::settings::ThemeChoice;
 use std::path::PathBuf;
 
 const EDIT_STEPS: &str = "Edit remaining steps…";
+/// The caret of step 3's Continue, which opens Skip and Edit remaining steps.
+const MORE: &str = "More ways to go on";
 
 /// The fixture with three more commits on main after the merge, newest first in the result, so
 /// main's tip is a linear run. `clean` restores the modified README first.
@@ -171,8 +173,14 @@ fn rebase_banner_conflict() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("rebase_banner_conflict");
-    assert!(h.query_by_label("Continue").is_none(), "no Continue while conflicted files remain");
+    assert!(h.get_by_label("Continue").is_disabled(), "Continue waits while conflicted files remain");
+    assert!(!h.get_by_label(MORE).is_disabled(), "its menu still opens");
+    h.get_by_label(MORE).click();
+    h.run();
     assert!(!h.get_by_label("Skip commit").is_disabled());
+    h.get_by_label("Skip commit").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmDanger { .. })), "Skip asks first, as before");
     drop(h);
     remove_fixture(&dir);
 }
@@ -197,6 +205,8 @@ fn rebase_banner_command() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("rebase_banner_command");
+    h.get_by_label(MORE).click();
+    h.run();
     h.get_by_label(EDIT_STEPS).click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::OpenRemaining))));
@@ -223,6 +233,9 @@ fn no_step_editing_for_a_plain_rebase() {
     st.snap.as_mut().unwrap().state = RepositoryState::RebaseMerge;
     let mut h = harness(st, true);
     h.run();
+    h.get_by_label(MORE).click();
+    h.run();
+    assert!(h.query_by_label("Skip commit").is_some());
     assert!(h.query_by_label(EDIT_STEPS).is_none());
     drop(h);
     remove_fixture(&dir);

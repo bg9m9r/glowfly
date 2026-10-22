@@ -1,7 +1,8 @@
 //! The command palette (Ctrl+P): a search field over the commands available now, ranked by a
 //! fuzzy match, or over a two-step command's items (tracked files for File history, stashes to
 //! apply, pop or delete), or a free-text step (the message for a new stash). The lists come
-//! from `state::palette`; this file only draws them and turns keys and clicks into messages.
+//! from `state::palette`; this file only draws them (with the empty query's group headings) and
+//! turns keys and clicks into messages.
 
 use super::theme::color;
 use super::widgets::{self, Icon};
@@ -12,11 +13,16 @@ use crate::state::palette::{self, InputKind, Items, Mode, Palette};
 use crate::state::palette_nav::{Jump, PAGE_ROWS};
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
-use eframe::egui::{self, Align2, Color32, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, pos2, text::LayoutJob, vec2};
+use eframe::egui::{
+    self, Align2, Color32, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2, text::LayoutJob,
+    vec2,
+};
 
 const WIDTH: f32 = 560.0;
 const ROW_H: f32 = 28.0;
 const LIST_MAX_H: f32 = 360.0;
+/// A group heading's height (Recent, Suggested, All commands).
+const GROUP_HEADING_H: f32 = 22.0;
 const LABEL_SIZE: f32 = type_scale::BODY;
 // A page (PageUp/PageDown) is the rows the list shows at its full height.
 const _: () = assert!(PAGE_ROWS == (LIST_MAX_H / ROW_H) as usize);
@@ -161,6 +167,7 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
     let Some(query) = st.palette.as_ref().map(|p| p.query.clone()) else { return };
     let listed = palette::listed(st, &query);
     let list = &listed.rows;
+    let t = st.settings.lang();
     let Some(p) = st.palette.as_mut() else { return };
     let sel = p.selected_in(list.len());
     if run_selected && let Some(s) = sel {
@@ -173,6 +180,9 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
     egui::ScrollArea::vertical().id_salt("glowfly-palette-list").max_height(LIST_MAX_H).show(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for (i, shown) in list.iter().enumerate() {
+            if let Some(&(g, _)) = listed.groups.iter().find(|&&(_, first)| first == i) {
+                group_heading(ui, g.title(t));
+            }
             let selected = sel == Some(i);
             let e = &shown.entry;
             let key = e.shortcut(&st.keymap).or_else(|| st.custom_commands.key_hint(&e.command));
@@ -192,6 +202,14 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
         let more = format!("Showing {} of {} commands. Type more to narrow the list.", list.len(), listed.total);
         ui.label(RichText::new(more).size(type_scale::SMALL).color(color::weak()));
     }
+}
+
+/// A group's small weak heading over its commands. It isn't a row: it can't be selected or run.
+fn group_heading(ui: &mut Ui, title: &str) {
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), GROUP_HEADING_H), Sense::hover());
+    let font = type_scale::font(type_scale::SMALL);
+    ui.painter().text(pos2(rect.left() + 10.0, rect.center().y), Align2::LEFT_CENTER, title, font, color::weak());
+    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, title));
 }
 
 /// A sub-list's items matching the query (at most `MAX_PICK_ROWS`). Returns the footer.

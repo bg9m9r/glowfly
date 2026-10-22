@@ -8,6 +8,7 @@ use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase_steps::NewStep;
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::{Icon, paint_cut_text};
 use eframe::egui::{Rect, Response, Ui, pos2};
 use glowfly_core::rebase::TodoStep;
@@ -47,7 +48,7 @@ pub(super) fn step_controls(ui: &mut Ui, rect: Rect, at: Place, step: &TodoStep,
 
 /// The row's right-click menu: add a step after it, and edit or remove an exec or break step.
 pub(super) fn row_menu(r: &Response, i: usize, step: &TodoStep, msgs: &mut Vec<Msg>) {
-    r.context_menu(|ui| {
+    r.row_menu(|ui| {
         let mut send = |ui: &mut Ui, m: RebaseMsg| {
             msgs.push(Msg::Rebase(m));
             ui.close_menu();

@@ -54,7 +54,7 @@ impl StashAction {
         match self {
             StashAction::Apply => "Apply stash",
             StashAction::Pop => "Pop stash",
-            StashAction::Drop => "Drop stash",
+            StashAction::Drop => "Delete stash",
         }
     }
 }

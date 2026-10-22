@@ -23,6 +23,7 @@ use crate::state::remotes::{fetch_blocked, find, tooltip};
 use crate::state::section_actions::SectionAction;
 use crate::state::{ForgeState, Selection};
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, Response, Sense, pos2, vec2};
 use git2::Oid;
 use glowfly_core::forge::Connection;
@@ -87,7 +88,7 @@ pub(in crate::ui) fn section(
             }
         };
         let r = group_row(ui, remote).on_hover_text(tooltip(info));
-        r.context_menu(|ui| group_menu(ui, info, c.idle, c.connections, msgs));
+        r.row_menu(|ui| group_menu(ui, info, c.idle, c.connections, msgs));
         if branches.is_empty() && !c.filtering {
             hint_row(ui, c.t.tr("sidebar.remote.no_branches.hint").to_owned());
         }
@@ -114,7 +115,7 @@ pub(in crate::ui) fn section(
             }
             ref_visibility::row_marker(ui, &r, widgets::NESTED_GUTTER_X, &format!("refs/remotes/{full}"), &full, c.graph, c.t, msgs);
             let m = RemoteMenu { current: c.current, fs: c.fs, graph: c.graph, sel: c.sel, t: c.t };
-            r.context_menu(|ui| remote_branch_menu(ui, remote, name, *oid, snap, &m, msgs));
+            r.row_menu(|ui| remote_branch_menu(ui, remote, name, *oid, snap, &m, msgs));
         }
     }
 }

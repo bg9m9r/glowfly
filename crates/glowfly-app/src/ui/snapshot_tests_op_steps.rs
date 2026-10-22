@@ -90,10 +90,16 @@ fn op_steps_merge() {
 #[test]
 fn op_steps_rebase() {
     let (st, dir) = rebasing(ThemeChoice::Dark, "op-steps-rebase", StopKind::Conflict, true);
-    let h = shot(st, theme::DUSK, "op_steps_rebase_conflicted");
-    assert!(h.query_by_label("Continue").is_none(), "no Continue while a file is conflicted");
-    assert!(!h.get_by_label("Skip commit").is_disabled(), "Skip stays at hand");
+    let mut h = shot(st, theme::DUSK, "op_steps_rebase_conflicted");
+    assert!(h.get_by_label("Continue").is_disabled(), "Continue waits while a file is conflicted");
     assert!(h.query_by_label("Continue rebase \u{b7} step 2 of 4").is_some());
+    // Skip stays at hand, in Continue's menu, which opens above the button.
+    let caret = h.get_by_label("More ways to go on").bounding_box().unwrap();
+    h.get_by_label("More ways to go on").click();
+    h.run();
+    assert!(!h.get_by_label("Skip commit").is_disabled(), "Skip stays at hand");
+    assert!(h.get_by_label("Edit remaining steps…").bounding_box().unwrap().y1 <= caret.y0, "the menu opens above");
+    h.check_snapshot("op_steps_rebase_menu");
     drop(h);
     remove_fixture(&dir);
 

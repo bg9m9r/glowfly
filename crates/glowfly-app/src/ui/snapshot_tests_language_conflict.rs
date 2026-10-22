@@ -239,9 +239,15 @@ fn banners_german() {
     h.run();
     let title = de.trf("details.banner.title.interactive_step", &[("step", &2), ("total", &4)]);
     assert!(shows_containing(&h, &title), "{title}");
-    assert!(h.query_by_label(de.tr("details.banner.edit_steps.button")).is_some());
+    // Step 3 is one split button; Edit remaining steps… is in its menu.
+    let more = h.get_by_label(de.tr("details.steps.finish.more.button")).bounding_box().unwrap();
+    let cont = h.get_by_label(de.tr("details.banner.action.continue")).bounding_box().unwrap();
+    assert!((more.y0 - cont.y0).abs() < 1.0, "Continue and its caret on one row");
     assert_no_english(&h, "the rebase banner");
     h.check_snapshot("rebase_banner_german");
+    h.get_by_label(de.tr("details.steps.finish.more.button")).click();
+    h.run();
+    assert!(h.query_by_label(de.tr("details.banner.edit_steps.button")).is_some());
     drop(h);
     remove_fixture(&dir);
 

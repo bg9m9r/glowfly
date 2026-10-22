@@ -3,18 +3,19 @@
 //! three numbered steps (`state::op_steps`). 1 Resolve conflicts holds the Conflicted and
 //! Resolved Files lists with View conflicts; 2 Check what goes in holds Staged, then Unstaged
 //! Files under a note that other changes stay out; 3, pinned at the bottom (`bottom`), commits
-//! the merge or continues the operation, with Skip and Edit remaining steps beside Continue and
-//! the commit form a click away. The step now is marked and open; done steps fold to their one
+//! the merge or continues the operation (Continue as a split button with Skip and Edit remaining
+//! steps in its menu), with the commit form a click away. The step now is marked and open; done steps fold to their one
 //! line and reopen with Show (`LayoutMsg::ToggleOpStep`).
 
 use super::UiCache;
 use super::commit_box::{self, BoxStyle};
-use super::common::state_actions;
+use super::common::{menu_item, menu_item_state, state_actions};
 use super::conflict_files::{self, Lists};
 use super::details_wip::{OpenFile, Reveal, RowContext, file_list};
 use super::theme::{color, type_scale};
+use super::widgets::reason::ItemState;
 use super::widgets::{Icon, buttons, paint_icon};
-use crate::msg::{ConflictMsg, LayoutMsg, Msg};
+use crate::msg::{ConflictMsg, LayoutMsg, Msg, RebaseMsg};
 use crate::state::AppState;
 use crate::state::op_actions::action_text;
 use crate::state::op_confirm::{Risky, banner_msg};
@@ -35,6 +36,8 @@ const INDENT: f32 = 40.0;
 const STEP_GAP: f32 = 12.0;
 /// The gap between step 3's buttons.
 const BUTTON_GAP: egui::Vec2 = egui::vec2(8.0, 8.0);
+/// The least width of Continue's menu.
+const MORE_MENU_W: f32 = 200.0;
 
 /// What steps 1 and 2 show: the conflicted and resolved files, and the lists' shared parts.
 pub(super) struct TopArgs<'a> {
@@ -121,7 +124,7 @@ pub(super) fn bottom(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, kind: 
                 commit_box::show(ui, st, cache, BoxStyle { titled: false, primary: false }, msgs);
                 ui.add_space(4.0);
             }
-            ui.horizontal_wrapped(|ui| {
+            ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing = BUTTON_GAP;
                 finish_buttons(ui, st, repo_state, n, skip_blocked.as_deref(), msgs);
             });
@@ -129,23 +132,64 @@ pub(super) fn bottom(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, kind: 
     });
 }
 
-/// Continue (once nothing is conflicted: git refuses it before), Skip and Edit remaining steps.
+/// Continue as one primary split button (disabled while files are conflicted: git refuses it
+/// before), whose caret opens a menu above it with Skip and, for an interactive rebase, Edit
+/// remaining steps…. Without a Continue the other actions are plain buttons.
 fn finish_buttons(ui: &mut Ui, st: &AppState, state: RepositoryState, conflicted: usize, skip_blocked: Option<&str>, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let Some(steps) = state_actions(state) else { return };
-    for (label, a) in steps.iter().filter(|(_, a)| !destructive(a)) {
-        let cont = *label == "Continue";
-        if cont && conflicted > 0 {
-            continue;
-        }
-        let old_git = (*a == CHERRY_PICK_SKIP || *a == REVERT_SKIP).then_some(skip_blocked).flatten();
-        let text = action_text(t, label);
-        let button = if cont { buttons::primary(text) } else { buttons::secondary(text) };
-        if ui.add(button.enabled(old_git.is_none()).why(old_git)).clicked() {
-            msgs.push(if cont { action_msg(state, label, a) } else { banner_msg(st, label, a) });
+    let mut cont = None;
+    let mut others = Vec::new();
+    for &(label, a) in steps.iter().filter(|(_, a)| !destructive(a)) {
+        if label == "Continue" {
+            cont = Some((label, a));
+        } else {
+            let old_git = (a == CHERRY_PICK_SKIP || a == REVERT_SKIP).then_some(skip_blocked).flatten();
+            others.push((label, a, old_git));
         }
     }
-    super::rebase::banner::edit_steps_button(ui, t, state, msgs);
+    let edit_steps = state == RepositoryState::RebaseInteractive;
+    let Some((label, a)) = cont else {
+        for (label, a, old_git) in others {
+            if ui.add(buttons::secondary(action_text(t, label)).enabled(old_git.is_none()).why(old_git)).clicked() {
+                msgs.push(banner_msg(st, label, a));
+            }
+        }
+        return;
+    };
+    let waiting = (conflicted > 0).then(|| t.tr("details.steps.finish.waiting_continue"));
+    let button = buttons::primary(action_text(t, label)).enabled(waiting.is_none()).why(waiting);
+    if others.is_empty() && !edit_steps {
+        if ui.add(button).clicked() {
+            msgs.push(action_msg(state, label, a));
+        }
+        return;
+    }
+    let popup = ui.make_persistent_id("op-finish-more");
+    let open = ui.memory(|m| m.is_popup_open(popup));
+    let more = t.tr("details.steps.finish.more.button");
+    let (main, caret) = buttons::split(button, more).open(open).show(ui);
+    if main.clicked() {
+        msgs.push(action_msg(state, label, a));
+    }
+    let caret = if open { caret } else { caret.on_hover_text(more) };
+    if caret.clicked() {
+        ui.memory_mut(|m| m.toggle_popup(popup));
+    }
+    let close = egui::PopupCloseBehavior::CloseOnClickOutside;
+    egui::popup::popup_above_or_below_widget(ui, popup, &caret, egui::AboveOrBelow::Above, close, |ui| {
+        ui.set_min_width(MORE_MENU_W);
+        let before = msgs.len();
+        for (label, a, old_git) in others {
+            menu_item_state(msgs, ui, action_text(t, label), ItemState::blocked_by(old_git), banner_msg(st, label, a));
+        }
+        if edit_steps {
+            menu_item(msgs, ui, t.tr("details.banner.edit_steps.button"), Msg::Rebase(RebaseMsg::OpenRemaining));
+        }
+        if msgs.len() > before {
+            ui.memory_mut(|m| m.close_popup());
+        }
+    });
 }
 
 /// Abort and Reset bisect, which the heading carries.

@@ -300,6 +300,15 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             line(pos2(l + 4.0, t), pos2(l + 4.0, b));
             line(pos2(c.x, c.y - 3.0), pos2(r - 3.0, c.y - 3.0));
         }
+        Icon::Swap => {
+            // The upper arrow points right, the lower one left.
+            line(pos2(c.x - 7.0, c.y - 3.0), pos2(c.x + 7.0, c.y - 3.0));
+            line(pos2(c.x + 7.0, c.y - 3.0), pos2(c.x + 3.0, c.y - 7.0));
+            line(pos2(c.x + 7.0, c.y - 3.0), pos2(c.x + 3.0, c.y + 1.0));
+            line(pos2(c.x + 7.0, c.y + 3.0), pos2(c.x - 7.0, c.y + 3.0));
+            line(pos2(c.x - 7.0, c.y + 3.0), pos2(c.x - 3.0, c.y - 1.0));
+            line(pos2(c.x - 7.0, c.y + 3.0), pos2(c.x - 3.0, c.y + 7.0));
+        }
         _ => return false,
     }
     true

@@ -22,7 +22,7 @@ pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// What this item's areas showed in English. A `*` stands for a name or number ("Merge into *").
 const ENGLISH: &[&str] = &[
-    // Graph header and history notes.
+    // Graph header, the end row and the ghost button.
     "Branch / tag",
     "Graph",
     "Message",
@@ -31,10 +31,11 @@ const ENGLISH: &[&str] = &[
     "Date",
     "Load more",
     "Fetch full history",
-    "Full history",
-    "Shallow clone",
-    "newest * commits",
+    "Showing the newest * commits.",
+    "Shallow clone: the history stops after * commits.",
+    "Shallow clone: showing the newest * commits.",
     "Loading more commits…",
+    "New branch…",
     // Left panel.
     "Filter (branches, PRs, issues)",
     "Local",

@@ -20,6 +20,7 @@ use crate::msg::RepoMsg;
 use crate::state::gitflow::{group_title, row_tooltip, start_blocked};
 use crate::state::{ForgeState, PrefPage, Selection};
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, Rect, Response, Sense, Stroke, pos2, vec2};
 use git2::Oid;
 use glowfly_core::forge::{self, Issue};
@@ -126,7 +127,7 @@ pub(super) fn section(
                 rows.t,
                 msgs,
             );
-            r.context_menu(|ui| {
+            r.row_menu(|ui| {
                 let finish = format!("Finish {} {}…", g.kind.noun(), b.short);
                 menu_item(msgs, ui, finish, Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
                 ui.separator();
@@ -158,7 +159,7 @@ fn group(ui: &mut egui::Ui, snap: &Snapshot, s: &GitFlowSettings, g: &FlowGroup,
     let kind = g.kind;
     let blocked = start_blocked(snap, kind);
     let (row, plus) = group_row(ui, group_title(kind), g.len(), &format!("Start {}", kind.noun()), blocked.is_none());
-    row.context_menu(|ui| start_item(ui, snap, kind, msgs));
+    row.row_menu(|ui| start_item(ui, snap, kind, msgs));
     let tip = format!("Start a {} from {}", kind.noun(), s.base(kind));
     let plus = match &blocked {
         Some(why) => plus.on_hover_text(why),

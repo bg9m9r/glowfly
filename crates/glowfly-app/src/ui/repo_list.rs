@@ -17,6 +17,7 @@ use crate::state::repo_lists::{
     remove_missing_msg, unopened_favorites,
 };
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align, Color32, Layout, Response, RichText, Sense, Stroke};
 use glowfly_core::i18n::Lang;
 use std::path::Path;
@@ -252,7 +253,7 @@ fn row(
                 if r.clicked() {
                     msgs.push(open());
                 }
-                r.context_menu(|ui| {
+                r.row_menu(|ui| {
                     row_menu(ui, t, &text, section, fav, [open(), favorite(), remove()], msgs);
                     ui.separator();
                     super::repo_colour_menu::items(ui, t, Some(path), swatch, msgs);

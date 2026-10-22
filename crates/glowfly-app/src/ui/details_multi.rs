@@ -1,7 +1,8 @@
 //! Right panel for several selected commits: the list, actions on all of them, and for a pair or
 //! one unbroken line of commits (from the empty tree when it starts at the first commit), the
-//! files that differ across them (either way round) and their file actions; otherwise why there
-//! is no combined diff, and each commit's own changes stacked (`details_stacked.rs`).
+//! comparison's direction with Swap direction, and the files that differ across them (either way
+//! round) with their file actions; otherwise why there is no combined diff, and each commit's own
+//! changes stacked (`details_stacked.rs`). Under the actions, why a disabled one can't run.
 
 use super::common::short;
 use super::details::file_reveal::reveal;
@@ -10,6 +11,7 @@ use super::file_menu::RowSource;
 use super::menus::{cherry_pick_button, copy_shas, patch_button, revert_button};
 use super::theme::color;
 use super::widgets;
+use super::widgets::{Icon, buttons, icon, reason};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
@@ -18,16 +20,15 @@ use crate::state::selection::MultiSelection;
 use crate::state::selection_span::Span;
 use crate::state::{AppState, Selection};
 use crate::ui::theme::type_scale;
-use eframe::egui::{self, RichText};
+use eframe::egui::text::{LayoutJob, TextFormat};
+use eframe::egui::{self, Align, RichText, Sense, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, DiffTarget};
 
 pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (Some(snap), Selection::Commits(m)) = (&st.snap, &st.selection) else { return };
     let t = st.settings.lang();
-    ui.label(
-        RichText::new(t.trn("details.multi.selected", m.len(), &[])).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()),
-    );
+    title(ui, t, m.len());
     gap_note(ui, t, m, snap);
     ui.horizontal_wrapped(|ui| {
         cherry_pick_button(ui, t, t.trn("details.multi.cherry_pick.button", m.len(), &[]), m, false, msgs);
@@ -36,8 +37,11 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         if ui.button(t.tr("details.multi.copy_shas.button")).clicked() {
             msgs.push(copy_shas(m));
         }
-        ui.label(RichText::new(t.tr("details.multi.esc_hint")).size(type_scale::SMALL).color(color::weak()));
     });
+    // Why a disabled action can't run, on a line of its own.
+    for why in [m.pick_blocked, m.export_blocked].into_iter().flatten() {
+        reason::line(ui, Some(why.text(t)), Align::Min);
+    }
     ui.add_space(6.0);
 
     let list_h = if m.compare_ends().is_some() || m.stack_oids().is_some() { 160.0 } else { ui.available_height() };
@@ -68,7 +72,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         super::details_stacked::show(ui, t, st, m, snap, msgs);
         return;
     };
-    heading(ui, t, m, from, to, msgs);
+    direction(ui, t, m, from, to, msgs);
     files(ui, t, st, m, from, to, msgs);
 }
 
@@ -88,33 +92,45 @@ fn gap_note(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &glowfly_core:
     ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap());
 }
 
-/// "Changes from X to Y" (with the count for a line of commits; a line from the first commit is
-/// compared with an empty repository) and Swap direction, whose tip names the other way.
-fn heading(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, from: git2::Oid, to: git2::Oid, msgs: &mut Vec<Msg>) {
+/// "3 commits selected", then " · Esc to clear" in small weak text, wrapping as one text.
+fn title(ui: &mut egui::Ui, t: Lang, count: usize) {
+    let mut job = LayoutJob::default();
+    let strong = TextFormat { font_id: type_scale::strong(ui, type_scale::SUBHEAD), color: color::text(), ..Default::default() };
+    job.append(&t.trn("details.multi.selected", count, &[]), 0.0, strong);
+    let hint = TextFormat { font_id: type_scale::font(type_scale::SMALL), color: color::weak(), ..Default::default() };
+    job.append(&format!(" · {}", t.tr("details.multi.esc_clear")), 0.0, hint);
+    ui.add(egui::Label::new(job).wrap());
+}
+
+/// The comparison's direction: from, an arrow, to (a SHA each, or "empty repository" for the
+/// empty tree a line from the first commit starts at), and Swap direction, whose tip names the
+/// other way. A line of commits says how many it combines under it.
+fn direction(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, from: git2::Oid, to: git2::Oid, msgs: &mut Vec<Msg>) {
     let (f, o) = (short(from), short(to));
-    let count = m.len();
-    let (text, tip) = match m.span {
-        Span::Range { .. } if repo::is_empty_tree(from) => (
-            t.trf("details.multi.changes_from_root", &[("to", &o), ("count", &count)]),
-            t.trf("details.multi.swap.tip_to_root", &[("from", &o)]),
-        ),
-        Span::Range { .. } if repo::is_empty_tree(to) => (
-            t.trf("details.multi.changes_to_root", &[("from", &f), ("count", &count)]),
-            t.trf("details.multi.swap.tip_from_root", &[("to", &f)]),
-        ),
-        Span::Range { .. } => (
-            t.trf("details.multi.changes_combined", &[("from", &f), ("to", &o), ("count", &count)]),
-            t.trf("details.multi.swap.tip", &[("from", &o), ("to", &f)]),
-        ),
-        _ => (t.trf("details.multi.changes", &[("from", &f), ("to", &o)]), t.trf("details.multi.swap.tip", &[("from", &o), ("to", &f)])),
+    let tip = match m.span {
+        Span::Range { .. } if repo::is_empty_tree(from) => t.trf("details.multi.swap.tip_to_root", &[("from", &o)]),
+        Span::Range { .. } if repo::is_empty_tree(to) => t.trf("details.multi.swap.tip_from_root", &[("to", &f)]),
+        _ => t.trf("details.multi.swap.tip", &[("from", &o), ("to", &f)]),
     };
-    // The button goes to its own line when the heading leaves no room for it.
+    let end = |ui: &mut egui::Ui, oid: git2::Oid| {
+        if repo::is_empty_tree(oid) {
+            ui.label(RichText::new(t.tr("details.multi.direction.empty")).color(color::weak()));
+        } else {
+            ui.label(RichText::new(short(oid)).monospace().color(color::text()));
+        }
+    };
     ui.horizontal_wrapped(|ui| {
-        ui.label(type_scale::section_text(ui, text));
-        if ui.small_button(t.tr("details.multi.swap.button")).on_hover_text(tip).clicked() {
+        end(ui, from);
+        let (r, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
+        widgets::paint_icon_sized(ui.painter(), r.center(), Icon::Into, color::weak(), icon::SIZE_SM);
+        end(ui, to);
+        if ui.add(buttons::icon_only(Icon::Swap, t.tr("details.multi.swap.button")).small().tip(&tip)).clicked() {
             msgs.push(Msg::Selection(SelectionMsg::SwapCompare));
         }
     });
+    if let Span::Range { .. } = m.span {
+        ui.label(RichText::new(t.trn("details.multi.combined", m.len(), &[])).size(type_scale::SMALL).color(color::weak()));
+    }
 }
 
 /// The files that differ from `from` to `to`, each opening its diff between them.

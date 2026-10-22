@@ -16,6 +16,7 @@ use crate::state::rebase::JOB_RUNNING;
 use crate::state::section_actions::SectionAction;
 use crate::state::tags::delete_remote_confirm;
 use crate::tag::TagMsg;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
@@ -56,7 +57,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         }
         let full = format!("refs/tags/{name}");
         ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &full, name, graph, t, msgs);
-        r.context_menu(|ui| tag_menu(ui, t, name, snap, graph, idle, msgs));
+        r.row_menu(|ui| tag_menu(ui, t, name, snap, graph, idle, msgs));
     }
 }
 

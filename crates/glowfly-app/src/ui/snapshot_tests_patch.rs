@@ -171,7 +171,11 @@ fn am_banner_conflict() {
     {
         assert!(h.query_by_label(text).is_some(), "{text}");
     }
-    assert!(h.query_by_label("Continue").is_none(), "no Continue while conflicted files remain");
+    assert!(h.get_by_label("Continue").is_disabled(), "Continue waits while conflicted files remain");
+    // Skip is in Continue's menu, a click on its caret away.
+    assert!(!h.get_by_label("More ways to go on").is_disabled());
+    h.get_by_label("More ways to go on").click();
+    h.run();
     assert!(!h.get_by_label("Skip patch").is_disabled());
     assert!(h.query_by_label("View conflicts").is_some());
     h.check_snapshot("am_banner_conflict");
@@ -187,6 +191,8 @@ fn am_banner_stopped() {
     assert!(h.query_by_label(glowfly_core::i18n::Lang::En.tr("details.banner.am.hint.by_hand")).is_some());
     assert!(!h.get_by_label("Continue").is_disabled());
     h.check_snapshot("am_banner_stopped");
+    h.get_by_label("More ways to go on").click();
+    h.run();
     h.get_by_label("Skip patch").click();
     h.run();
     // It asks first, then runs the plain skip.

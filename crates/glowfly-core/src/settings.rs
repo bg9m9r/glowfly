@@ -207,7 +207,7 @@ pub struct Settings {
     pub spellcheck: bool,
     /// Initials instead of Gravatar / hosting-service avatars.
     pub use_initials: bool,
-    /// The quick-branch chip on the checked-out commit (Preferences > UI Customization).
+    /// The quick-branch (New branch) button on the checked-out commit (Preferences > UI Customization).
     pub ghost_refs: bool,
     /// Trace a branch on hover: light up its commits while the pointer is on its graph label.
     pub highlight_ref_rows: bool,

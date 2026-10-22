@@ -15,6 +15,7 @@ use crate::state::custom_commands::MenuCommands;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::panel_layout::Fit;
 use crate::state::{AppState, Selection};
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, RichText};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
@@ -107,7 +108,7 @@ pub(super) fn changed_file_row(
     if r.clicked() {
         msgs.push(Msg::Repo(RepoMsg::OpenDiff(target)));
     }
-    r.context_menu(|ui| {
+    r.row_menu(|ui| {
         // Blame needs the file at `history_at`: a commit compared with the working tree
         // lacks the files added since; another commit lacks the ones it deleted.
         let a = actions;

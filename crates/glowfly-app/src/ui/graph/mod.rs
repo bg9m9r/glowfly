@@ -1,7 +1,9 @@
 //! The commit graph: a table with configurable, resizable columns (branch / tag, graph, message,
 //! changes, commit, date), rows banded in their branch's colour (`lane_colours`), author nodes, ref chips
 //! (double-click a branch chip to check it out), ghost refs, branch highlighting, this tab's WIP
-//! row (`wip_row`: its label, change chips and line total) and other worktrees' WIP rows.
+//! row (`wip_row`: its label, change chips and line total), other worktrees' WIP rows, the New
+//! branch… ghost button on the checked-out commit, and the end row below the last commit
+//! (`more`).
 
 mod cells;
 mod header;
@@ -28,6 +30,7 @@ pub(in crate::ui) use row_look::band_color;
 
 use super::UiCache;
 use super::theme::color;
+use crate::keymap::BindingId;
 use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
 use crate::msg::LoadMsg;
@@ -36,13 +39,16 @@ use crate::msg::RepoMsg;
 use crate::state::AppState;
 use crate::state::build_status::MAX_SEEN;
 use crate::state::graph_rows::{DisplayRow, GraphRows};
+use crate::state::tip::Tip;
 use crate::state::worktrees::{open_blocked, wip_tooltip};
+use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::ui::widgets::{Icon, ghost, tooltip};
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Rect, Sense, pos2, vec2};
 use git2::Oid;
 use glowfly_core::repo::RefKind;
 use glowfly_core::settings::DescriptionMode;
-use labels::Tip;
+use labels::Tip as ChipTip;
 use lane_colours::RowColours;
 use layout::Columns;
 use nodes::NodeKind;
@@ -81,7 +87,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
         select::keyboard_nav(ui, &st.selection, snap, &rows, &mut st.view, msgs);
 
-        let widths = header::column_header(ui, t, snap, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
+        let widths = header::column_header(ui, t, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
         // How many matches fill the graph, for a filtering search loading further back.
         st.view.graph_fit_rows = (ui.available_height() / ROW_H).floor() as usize;
         if filtered && total == 0 {
@@ -135,18 +141,25 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let tips = st.forge.as_ref().map(|f| &f.tips);
         let mut tips_seen: Vec<Oid> = Vec::new();
         let pointer = ui.ctx().pointer_hover_pos();
-        // While more history loads, or after loading it failed, one more row below the last
-        // commit says so.
-        let more = st.more_row();
-        let shown_rows = total + more.is_some() as usize;
+        // One more row below the last commit: more history loading, loading it failed, or the
+        // history's end notes (Load more, a shallow clone's Fetch full history).
+        let end = st.end_row();
+        let shown_rows = total + end.is_some() as usize;
+        // The New branch… ghost button: on the checked-out commit when hovered or anchoring the
+        // selection, and never while a menu is open.
+        let menu_open = ui.ctx().is_context_menu_open();
+        let anchor = select::anchor(selection);
+        let keymap = &st.keymap;
+        let ghost_text = t.tr("graph.ghost_branch.button");
+        let ghost_w = ghost::small_width(ui, true, ghost_text);
         let out = area.show_rows(ui, ROW_H, shown_rows, |ui, range| {
             let last = range.end.min(total);
             for row in range {
                 if row == total
-                    && let Some(r) = &more
+                    && let Some(r) = &end
                 {
                     let line = Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), ROW_H));
-                    more::row(ui, t, ROW_H, Columns::new(line, graph_w, &cols_cfg, &widths).msg.0, r, msgs);
+                    more::row(ui, t, ROW_H, Columns::new(line, graph_w, &cols_cfg, &widths).msg.0, r, snap, msgs);
                     continue;
                 }
                 let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
@@ -184,7 +197,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     (s, Some(c)) => s.includes(c.oid),
                     _ => false,
                 };
-                let hovered = resp.hovered();
+                // The pointer over the row's ghost button still hovers the row.
+                let hovered = resp.hovered() || ui.rect_contains_pointer(rect);
                 let lane_col = colours.node();
                 let highlighted = commit.is_some_and(|c| highlight.is_some_and(|h| h.contains(&c.oid)));
                 row_look::paint(&painter, rect, row_look::RowLook { lane: lane_col, highlighted, selected, hovered });
@@ -201,7 +215,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     if resp.clicked() && open_blocked(wt).is_none() {
                         msgs.push(Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));
                     }
-                    resp.context_menu(|ui| super::worktrees::row_menu(ui, wt, msgs));
+                    resp.row_menu(|ui| super::worktrees::row_menu(ui, wt, msgs));
                     continue;
                 }
                 if cols_cfg.tree && !filtered {
@@ -242,10 +256,20 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         tips_seen.push(c.oid);
                         build = tips.and_then(|t| t.checks(c.oid)).map(|c| c.state);
                     }
-                    let ghost = settings.ghost_refs && snap.head_oid == Some(c.oid) && (hovered || selected);
+                    let ghost = settings.ghost_refs && !menu_open && snap.head_oid == Some(c.oid) && (hovered || anchor == Some(c.oid));
                     let node_edge_x = cols_cfg.tree.then(|| node_x - nodes::radius(kind));
-                    let row = labels::RefsRow { chips: &chips, tones: &tones, lane: lane_col, build, node_edge_x, pointer, ghost };
+                    let row = labels::RefsRow { chips: &chips, tones: &tones, lane: lane_col, build, node_edge_x, pointer, ghost, ghost_w };
                     refs = labels::refs_cell(&painter, &cols, rect, row);
+                    if let Some((r, labelled)) = refs.ghost_at {
+                        let id = ui.id().with(("ghost-branch", c.oid));
+                        let clip = cols.rect(cols.cell.refs, rect);
+                        let label = labelled.then_some(ghost_text);
+                        let g = ghost::small_ghost_at(ui, id, r, clip, Icon::Plus, label, ghost_text);
+                        let tip = || Tip::new(t.tr("graph.ghost_branch.tip")).keys(BindingId::CreateBranch);
+                        if tooltip::attach(g, keymap, t, tip).clicked() {
+                            msgs.push(Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() }));
+                        }
+                    }
                     if refs.on_chip {
                         hover_tip_next = Some(c.oid);
                     }
@@ -279,8 +303,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
                 let in_date = cols_cfg.date && pointer.is_some_and(|p| cols.rect(cols.cell.date, rect).contains(p));
                 let resp = match refs.hovered_tip {
-                    Some(Tip::All) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_list(ui, t, &chips, &tones)),
-                    Some(Tip::One(i)) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_row(ui, t, &chips[i], tones[i])),
+                    Some(ChipTip::All) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_list(ui, t, &chips, &tones)),
+                    Some(ChipTip::One(i)) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_row(ui, t, &chips[i], tones[i])),
                     _ if hovered && text.msg.hovered(pointer) => resp.on_hover_ui_at_pointer(|ui| cells::message_tip(ui, c, show_body)),
                     _ if hovered && text.sha.hovered(pointer) => resp.on_hover_text_at_pointer(&c.oid.to_string()[..7]),
                     _ if hovered && text.author.hovered(pointer) => resp.on_hover_text_at_pointer(&c.author),
@@ -298,12 +322,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 if let Some(m) = checkout {
                     msgs.push(m);
                 } else if resp.clicked() {
-                    let on_ghost = refs.ghost.zip(pointer).is_some_and(|(r, p)| r.contains(p));
-                    msgs.push(if on_ghost && mods.is_none() {
-                        Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() })
-                    } else {
-                        select::row_click(c.oid, mods)
-                    });
+                    msgs.push(select::row_click(c.oid, mods));
                 }
                 let menu = ref_menu::RowMenu {
                     commit: c,

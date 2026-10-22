@@ -11,6 +11,7 @@ use crate::msg::Msg;
 use crate::state::section_actions::SectionAction;
 use crate::ui::theme::tokens::{self, radius};
 use crate::ui::theme::{color, type_scale};
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::menu::BarState;
 use eframe::egui::{
     self, Align2, CornerRadius, FontId, Id, Rect, Response, RichText, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2,
@@ -158,7 +159,7 @@ pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> Hea
     }
     if let Some(items) = h.menu {
         for r in [Some(&header), add.as_ref(), more.as_ref()].into_iter().flatten() {
-            r.context_menu(|ui| items(ui, msgs));
+            r.row_menu(|ui| items(ui, msgs));
         }
     }
 

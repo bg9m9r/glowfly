@@ -36,7 +36,7 @@ fn welcome_start_narrow() {
     h.run();
     h.check_snapshot("welcome_start_narrow");
     let card = |label: &str| h.get_all_by_label(label).last().and_then(|n| n.bounding_box()).expect(label);
-    let cards = ["Open a repository", "Clone a repository", "Start a new repository"].map(card);
+    let cards = ["Open repository…", "Clone repository…", "New repository…"].map(card);
     assert!(cards.iter().all(|c| (c.x0 - cards[0].x0).abs() < 0.5), "the cards share a left edge: {cards:?}");
     assert!(cards[0].y0 < cards[1].y0 && cards[1].y0 < cards[2].y0, "stacked: {cards:?}");
     let back = h.get_by_label("Back").bounding_box().unwrap();

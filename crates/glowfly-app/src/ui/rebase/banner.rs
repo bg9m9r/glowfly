@@ -1,13 +1,12 @@
 //! The rebase's lines under the WIP panel's step heading (`op_steps`): the stopped commit (its
 //! short SHA a link to it in the graph, the summary, and why it stopped), a failed command, and
-//! the autostash note; plus the "Edit remaining steps…" button of step 3.
+//! the autostash note. The "Edit remaining steps…" item of step 3's Continue menu is drawn by
+//! `op_steps`.
 
-use crate::msg::{Msg, RebaseMsg, RepoMsg};
+use crate::msg::{Msg, RepoMsg};
 use crate::state::rebase_banner::lines;
 use crate::ui::theme::color;
-use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText};
-use git2::RepositoryState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::RebaseProgress;
 
@@ -43,12 +42,5 @@ pub fn details(ui: &mut egui::Ui, t: Lang, p: &RebaseProgress, conflicts_left: b
 fn words(ui: &mut egui::Ui, text: &str) {
     for word in text.split_inclusive(' ') {
         ui.add(egui::Label::new(word).wrap_mode(egui::TextWrapMode::Extend));
-    }
-}
-
-/// "Edit remaining steps…", only while an interactive rebase is in progress.
-pub fn edit_steps_button(ui: &mut egui::Ui, t: Lang, state: RepositoryState, msgs: &mut Vec<Msg>) {
-    if state == RepositoryState::RebaseInteractive && ui.add(buttons::secondary(t.tr("details.banner.edit_steps.button"))).clicked() {
-        msgs.push(Msg::Rebase(RebaseMsg::OpenRemaining));
     }
 }

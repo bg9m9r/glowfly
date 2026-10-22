@@ -1,19 +1,23 @@
-//! Loading more of a truncated history from the graph: the near-end check, and the row below
-//! the last commit while more loads (or a filtering search looks further back) or after the
-//! load failed.
+//! Loading more of a truncated history from the graph: the near-end check, and the one row
+//! below the last commit (the end row). It says more is loading (or a filtering search looks
+//! further back), that the load failed with Try again, or, otherwise, why the history stops:
+//! the newest commits only, with Load more, or a shallow clone's end, with Fetch full history.
 
-use crate::msg::{LoadMsg, Msg};
+use crate::msg::{JobMsg, LoadMsg, Msg};
 use crate::state::AppState;
-use crate::state::load_more::MoreRow;
+use crate::state::load_more::{EndRow, HistoryNotes, MoreRow};
 use crate::state::refresh::can_load_more;
+use crate::state::shallow::header_tooltip;
 use crate::ui::pane_status::plain_error;
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::severity::{self, Severity};
 use crate::ui::widgets::truncate::paint_cut_text;
-use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Sense, UiBuilder, WidgetInfo, WidgetType, pos2, vec2};
+use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Sense, Stroke, UiBuilder, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_core::repo::Snapshot;
+use glowfly_core::shallow_ops::Deepen;
 
 /// How close to the last loaded row the graph's last visible row gets before more is loaded.
 pub(super) const NEAR_END_ROWS: usize = 40;
@@ -40,12 +44,54 @@ pub(super) fn wants_more(st: &AppState, last_visible: usize, total: usize, filte
 
 /// The row below the last commit, starting at the message column's left edge `text_x`. It is
 /// one `row_h` allocation, so the graph's rows stay uniform.
-pub(super) fn row(ui: &mut egui::Ui, t: Lang, row_h: f32, text_x: f32, r: &MoreRow, msgs: &mut Vec<Msg>) {
+pub(super) fn row(ui: &mut egui::Ui, t: Lang, row_h: f32, text_x: f32, r: &EndRow, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     match r {
-        MoreRow::Loading => spinner_row(ui, t.tr("graph.loading_more"), row_h, text_x),
-        MoreRow::SearchingOlder => spinner_row(ui, t.tr("graph.searching_older"), row_h, text_x),
-        MoreRow::Failed { error, retrying } => failed_row(ui, t, row_h, text_x, error, *retrying, msgs),
+        EndRow::More(MoreRow::Loading) => spinner_row(ui, t.tr("graph.loading_more"), row_h, text_x),
+        EndRow::More(MoreRow::SearchingOlder) => spinner_row(ui, t.tr("graph.searching_older"), row_h, text_x),
+        EndRow::More(MoreRow::Failed { error, retrying }) => failed_row(ui, t, row_h, text_x, error, *retrying, msgs),
+        EndRow::Notes(n) => notes_row(ui, t, (row_h, text_x), n, snap, msgs),
     }
+}
+
+/// Why the history stops: a line across the top, the sentence (cut to the room left, whole on
+/// hover), and Fetch full history and Load more at the right, Load more rightmost.
+fn notes_row(ui: &mut egui::Ui, t: Lang, (row_h, text_x): (f32, f32), n: &HistoryNotes, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), row_h), Sense::hover());
+    let painter = ui.painter_at(rect);
+    painter.line_segment([rect.left_top(), rect.right_top()], Stroke::new(1.0_f32, color::border()));
+    let mid = rect.center().y;
+    let tooltip = n.shallow.then(|| header_tooltip(snap));
+    let right =
+        Rect::from_min_max(pos2(text_x.min(rect.right() - RIGHT_INSET), rect.top()), pos2(rect.right() - RIGHT_INSET, rect.bottom()));
+    let mut side = ui.new_child(UiBuilder::new().max_rect(right).layout(Layout::right_to_left(Align::Center)));
+    if n.load_more && side.add(buttons::secondary(t.tr("graph.end.load_more.button")).small()).clicked() {
+        msgs.push(Msg::Load(LoadMsg::LoadMoreCommits));
+    }
+    if let Some(tip) = tooltip.as_deref().filter(|_| n.fetch_full)
+        && side.add(buttons::secondary(t.tr("graph.end.fetch_full.button")).small().tip(tip)).clicked()
+    {
+        msgs.push(Msg::Job(JobMsg::Deepen(Deepen::Full)));
+    }
+    let sentence = n.sentence(t);
+    let room = side.min_rect().left() - SPACE - text_x;
+    let font = type_scale::font(type_scale::BODY);
+    let cut = paint_cut_text(&painter, pos2(text_x, mid), &sentence, font, color::weak(), room);
+    let on_text = ui.ctx().pointer_hover_pos().is_some_and(|p| cut.rect.contains(p));
+    // Without Fetch full history, the shallow clone's tooltip goes on the sentence.
+    let resp = match tooltip.filter(|_| !n.fetch_full) {
+        Some(tip) if on_text => resp.on_hover_text(if cut.cut {
+            format!(
+                "{sentence}
+
+{tip}"
+            )
+        } else {
+            tip
+        }),
+        _ if on_text && cut.cut => resp.on_hover_text(&sentence),
+        _ => resp,
+    };
+    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, &sentence));
 }
 
 /// A spinner and a weak note. It can't be clicked or selected.

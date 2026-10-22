@@ -47,7 +47,7 @@ fn welcome_screen_german() {
     for key in ["common.open_repo.button", "repos.favorites.header", "repos.recent.header", "repos.not_found.label"] {
         assert!(h.query_by_label(Lang::De.tr(key)).is_some(), "{key} is shown in German");
     }
-    assert!(h.query_by_label("Open a repository").is_none(), "no English button is left");
+    assert!(h.query_by_label("Open repository…").is_none(), "no English button is left");
     h.check_snapshot("welcome_screen_german");
 }
 
@@ -155,12 +155,14 @@ fn details_multi_german() {
     st.settings.language = "de".into();
     let Selection::Commits(m) = &st.selection else { unreachable!() };
     let (from, to) = m.compare_ends().expect("a line of commits");
-    let heading = Lang::De.trf("details.multi.changes_combined", &[("from", &short(from)), ("to", &short(to)), ("count", &3)]);
     let mut h = harness(st, true);
     h.run();
-    for text in [heading, Lang::De.tr("details.multi.swap.button").to_owned(), Lang::De.trn("details.multi.selected", 3, &[])] {
-        assert!(h.query_by_label(&text).is_some(), "{text} is shown");
+    let combined = Lang::De.trn("details.multi.combined", 3, &[]);
+    for text in [short(from).to_string(), short(to).to_string(), Lang::De.tr("details.multi.swap.button").to_owned(), combined] {
+        assert!(h.query_all_by_label(&text).next().is_some(), "{text} is shown");
     }
+    let title = format!("{} · {}", Lang::De.trn("details.multi.selected", 3, &[]), Lang::De.tr("details.multi.esc_clear"));
+    assert!(h.query_by_label(&title).is_some(), "{title} is shown");
     h.check_snapshot("details_multi_german");
     drop(h);
     remove_fixture(&dir);

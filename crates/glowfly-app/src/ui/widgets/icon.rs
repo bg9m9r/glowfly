@@ -115,6 +115,9 @@ pub enum Icon {
     Info,
     /// A bound ledger with a label on its cover: a repository (the repository tabs).
     Repo,
+    /// Two arrows pointing opposite ways, one above the other: swap a comparison's direction
+    /// (the fonts lack ⇄).
+    Swap,
 }
 
 /// Every icon's line width: they are outlines only.
@@ -301,7 +304,7 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
         Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check | Icon::More => {} // icons.rs
         Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
-        Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu | Icon::Info | Icon::Repo => {} // icons.rs
+        Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu | Icon::Info | Icon::Repo | Icon::Swap => {} // icons.rs
         Icon::Eraser | Icon::Stop | Icon::PanelMaximize | Icon::PanelRestore | Icon::ChevronDown => {} // icons_panel.rs
     }
 }

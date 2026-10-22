@@ -135,7 +135,8 @@ fn graph_multi_menu() {
     h.run();
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.check_snapshot("graph_multi_menu");
-    assert_eq!(h.get_all_by_label("2 commits selected").count(), 2, "the details panel's title and the menu's header");
+    assert_eq!(h.get_all_by_label("2 commits selected").count(), 1, "the menu's header");
+    assert!(h.query_by_label("2 commits selected · Esc to clear").is_some(), "the details panel's title");
     h.get_by_label("Cherry-pick").click();
     h.run();
     let picked = h.state().1.iter().find_map(|m| if let Msg::Selection(SelectionMsg::CherryPick(o)) = m { Some(o.clone()) } else { None });
@@ -169,7 +170,7 @@ fn graph_multi_menu() {
     // Any other row gets the single-commit menu.
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
     assert!(h.query_by_label("Cherry-pick").is_some());
-    assert_eq!(h.get_all_by_label("2 commits selected").count(), 1, "the single-commit menu has its own header");
+    assert!(h.query_by_label("2 commits selected").is_none(), "the single-commit menu has its own header");
     assert_eq!(h.query_all_by_label("Cherry-pick 2 commits").count(), 1, "only the details panel's button");
     drop(h);
     remove_fixture(&dir);

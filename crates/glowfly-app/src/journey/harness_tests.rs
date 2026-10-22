@@ -15,8 +15,8 @@ fn names(dir: &std::path::Path) -> Vec<String> {
 #[test]
 fn starts_on_the_welcome_screen_and_settles() {
     let j = Journey::start(Fixture::new("welcome"), None, Vec::new());
-    j.see("Clone a repository", Region::Central);
-    j.see("Open a repository", Region::Central);
+    j.see("Clone repository…", Region::Central);
+    j.see("Open repository…", Region::Central);
     assert!(j.dropped().is_empty(), "nothing reached outside the test: {:?}", j.dropped());
     let saved = names(&j.fx.config());
     assert!(saved.iter().all(|n| ["settings.json", "recent.txt", "tabs.txt"].contains(&n.as_str())), "{saved:?}");
@@ -26,7 +26,7 @@ fn starts_on_the_welcome_screen_and_settles() {
 #[test]
 fn os_effects_are_dropped() {
     let mut j = Journey::start(Fixture::new("dropped"), None, Vec::new());
-    j.click("Open a repository", Region::Central, Pick::Only);
+    j.click("Open repository…", Region::Central, Pick::Only);
     assert_eq!(j.dropped(), ["pick-folder"], "the folder picker never opens");
     assert!(j.state().job.is_none());
 }
@@ -48,7 +48,7 @@ fn saves_land_in_the_test_folder() {
 }
 
 #[test]
-#[should_panic(expected = "Clone a repository")]
+#[should_panic(expected = "Clone repository…")]
 fn lookup_failure_lists_visible_labels() {
     let mut j = Journey::start(Fixture::new("lookup"), None, Vec::new());
     j.click("No such button", Region::Anywhere, Pick::Only);

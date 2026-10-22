@@ -10,6 +10,7 @@ use crate::msg::{Msg, RepoMsg, StashMsg};
 use crate::state::Selection;
 use crate::state::palette::StashAction;
 use crate::state::section_actions::SectionAction;
+use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
@@ -51,11 +52,12 @@ pub(super) fn section(
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
         }
-        r.context_menu(|ui| {
-            menu_item(msgs, ui, "Apply", stash(StashAction::Apply));
-            menu_item(msgs, ui, "Pop", stash(StashAction::Pop));
-            menu_item(msgs, ui, "Rename…", Msg::Stash(StashMsg::RenameDialog { oid: s.oid }));
-            menu_item(msgs, ui, "Delete", stash(StashAction::Drop));
+        r.row_menu(|ui| {
+            super::common::menu_header(ui, &s.message);
+            menu_item(msgs, ui, t.tr("sidebar.stashes.menu.apply"), stash(StashAction::Apply));
+            menu_item(msgs, ui, t.tr("sidebar.stashes.menu.pop"), stash(StashAction::Pop));
+            menu_item(msgs, ui, t.tr("sidebar.stashes.menu.rename"), Msg::Stash(StashMsg::RenameDialog { oid: s.oid }));
+            menu_item(msgs, ui, t.tr("sidebar.stashes.menu.delete"), stash(StashAction::Drop));
         });
     }
 }

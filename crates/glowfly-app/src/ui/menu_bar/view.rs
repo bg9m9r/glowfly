@@ -1,5 +1,5 @@
-//! View: zoom, the panels, full screen, the terminal and the activity log, the diff settings, the theme and
-//! Refresh.
+//! View: zoom, the panels, full screen, the terminal and the activity log, the diff settings
+//! (under "Diff layout" and "Diff shows"), the theme and Refresh.
 
 use super::items::{check_item, item};
 use crate::keymap::BindingId as I;
@@ -77,7 +77,7 @@ fn panel_label(t: Lang, panel: Panel) -> &'static str {
 /// The diff viewer's saved settings: they apply whether or not a diff is open.
 fn diff_items(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
     let s = &st.settings;
-    ui.label(RichText::new(t.tr("menu.view.diff")).size(type_scale::SMALL).color(color::weak()));
+    sub_label(ui, t.tr("menu.view.diff_layout"));
     let mut push = |ui: &mut egui::Ui, m: DiffMsg| {
         msgs.push(Msg::Diff(m));
         ui.close_menu();
@@ -87,6 +87,8 @@ fn diff_items(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
             push(ui, DiffMsg::SetDiffLayout(layout));
         }
     }
+    ui.add_space(4.0);
+    sub_label(ui, t.tr("menu.view.diff_show"));
     for (mode, label) in [(DiffMode::Hunks, t.tr("menu.view.hunks")), (DiffMode::WholeFile, t.tr("menu.view.whole_file"))] {
         if controls::radio(ui, s.diff_mode == mode, label).clicked() {
             push(ui, DiffMsg::SetDiffMode(mode));
@@ -100,6 +102,11 @@ fn diff_items(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
     if controls::checkbox(ui, &mut wrap, t.tr("menu.view.wrap")).clicked() {
         push(ui, DiffMsg::SetWordWrap(wrap));
     }
+}
+
+/// A small weak label over a group of the menu's items.
+fn sub_label(ui: &mut egui::Ui, text: &str) {
+    ui.label(RichText::new(text).size(type_scale::SMALL).color(color::weak()));
 }
 
 /// The built-in themes, then the theme files, then the Preferences page.
