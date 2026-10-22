@@ -1,0 +1,125 @@
+# Ideas: Branches, tags and remotes
+
+Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](README.md).
+
+### Branch operations
+
+- Pin a branch to the left (graph lane order, per-repo persistence, jump to the pinned branch)
+- Force push (with lease) of a non-HEAD branch, and push to all remotes
+- Rename the remote branch too when renaming (push the new name, delete the old one, move the
+  upstream)
+- Choose a local branch as the upstream in the Set upstream dialog
+- A shortcut for renaming the checked-out branch, and renaming any branch through a two-step
+  palette entry
+- Delete local + remote when the branch isn't merged into HEAD (force), in one step
+- A "Commit 1a2b3c4" submenu in the graph's label menu, so a row with labels reaches the commit
+  menu from the chips too
+- Checkout and fast-forward in one step from a remote branch row
+- Create a tracking branch under another name (New branch dialog with a remote start point that
+  sets the upstream)
+- Push the current branch to a chosen remote branch from its row
+- Warn in Delete remote branch's confirmation when a local branch tracks it, and offer to unset
+  that upstream
+- Show the remote branch's name (not a commit) in the interactive rebase dialog started from a
+  remote row
+- Compare with the current branch from the local branch and tag menus too
+- Route the palette's remote checkout through the remote branch checkout message
+- An entry per local branch when several track the same remote branch (only one is offered now)
+
+### Double-click a branch to check it out
+
+- Double-click a tag (graph chip and TAGS row) to check it out detached, through the existing
+  tag checkout and its detached-HEAD warning
+- Double-click the "+N" chip to choose which hidden branch to check out
+- Double-clicking a branch that another worktree has checked out opens that worktree's tab
+  instead of logging the refusal
+- Branch chip and row tooltips mention that a double-click checks the branch out
+- Double-clicking the checked-out branch does nothing instead of logging that it is already
+  checked out
+- Enter on a selected graph row whose commit carries one branch checks that branch out
+
+### Git Flow
+
+- Finish options: rebase on develop first, squash, and push after finishing
+- Finish options: skip the tag, sign it with a chosen key, delete the remote branch,
+  force-delete
+- Branch-menu and graph-menu entries for flow branches (finish this feature, start a hotfix
+  from here)
+- Bugfix and support branch types on the page (their default prefixes are already written)
+- Fetch before Start, and publish or track flow branches on the remote
+- Read the newer per-branch config layout (gitflow.branch.<name>.type / parent) and
+  gitflow.origin
+- Show how far each flow branch is ahead of or behind its base in the panel and the GIT FLOW
+  section
+- Bugfix and support branch groups in the panel and the GIT FLOW section
+- List flow branches that exist only on a remote, with a track and checkout action
+- Link a branch started from an issue back to the issue (mention it in the merge or tag
+  message, move the issue to in progress)
+- Publish, pull and rebase actions for flow branches in the panel and the section
+- Order release and hotfix rows by version (1.10.0 after 1.9.0)
+- Hide or show the GIT FLOW section from a left-panel context menu
+- Show which issue a flow branch was started from in the Start dialog
+- Remember a stopped Finish across restarts (stored in the repository's git dir), not only for
+  the session's tab
+- Continue a Finish that stopped for a reason other than a conflict (a refused checkout, a
+  branch -d that refused, a tag that failed)
+- Offer Continue finish from the Finish dialog of a branch whose Finish stopped, instead of
+  planning all the steps again
+- Recognise the committed merge when the target's history isn't in the loaded graph (hidden
+  refs, smart branch mode), e.g. with an ancestry check in the runner
+- Warn in the pull request merge's "delete the source branch" option when the source is the
+  production or development branch
+- Ask before renaming the production or development branch, and offer to update the Git Flow
+  config to the new name
+- Offer to pick a new production or development branch in Preferences > Git Flow right after
+  one is deleted
+- Translate the rest of Git Flow: Finish step texts, job headlines and refusals, the page, the
+  Start and Finish dialogs and the panel (English today, shown inside the translated sentences)
+- Show the base-branch warning in the delete confirmation in the warning style (a form
+  message) instead of a plain paragraph, if the shared danger dialog gains a slot for one
+
+### Remote management
+
+- Publish to GitLab, Bitbucket and Azure DevOps
+- Add an existing remote URL from the Publish dialog
+- Undo removing or renaming a remote (re-add it with its URLs and fetch, or rename it back)
+- Rewrite the saved graph filter's hidden or shown-only refs when a remote is renamed or removed
+- Edit remotes defined outside the repository's config, and every URL of a remote with several
+  fetch or push URLs
+- Per-remote options: fetch refspecs, tag fetching, prune on fetch, the default branch
+- Offer Add remote… when fetch, pull or push finds no remote
+- Fork on Bitbucket Cloud and Bitbucket Data Center (find the user's fork and create one)
+- List forks and fork on Azure DevOps
+- Fork into an organization or group, under another name, or with only the default branch
+- Show the user's own fork first in the Add a fork list, with a one-click Add
+- View on service for self-hosted servers whose web pages use another port than their SSH address
+- After forking, offer to make the fork the push remote of the current branch, or to rename
+  origin to upstream
+- View a remote branch or commit on its hosting service from the branch and commit menus
+- Search a service's forks on the server, beyond the newest 1000
+
+### Tag management
+
+- After deleting a tag locally, offer to delete it from the remotes too
+- Offer Annotate… from the graph's tag labels and from the command palette (two steps: pick a
+  lightweight tag, then the message)
+- Edit the message of an already annotated tag (re-annotate with the old message prefilled)
+- Push the annotated tag over a remote's lightweight copy (force-push one tag, after a
+  confirmation)
+- Honour tag.forceSignAnnotated too (git applies it only without -a), and say in the Annotate
+  dialog when the tag will be signed
+- Show annotated tags' tagger date on tag rows (needs the tag time in the snapshot)
+
+### One label for a branch and its copies on every remote
+
+- Honour `checkout.defaultRemote` (and `remote.pushDefault`) when picking the lead copy of a
+  remote-only chip
+- Also fold copies named like the upstream's branch when it differs from the local name (main
+  tracking origin/trunk, with fork/trunk on the commit)
+- A small count or distinct mark on a chip that folds copies on more than one remote
+- Group a folded chip's refs under one submenu in the right-click menu, with actions such as
+  delete on every remote
+- Map remote-tracking refs to remotes through each remote's fetch refspec instead of the name
+  prefix
+- Say in the tooltip when a local chip's own upstream is at another commit while a copy on
+  another remote is level with it

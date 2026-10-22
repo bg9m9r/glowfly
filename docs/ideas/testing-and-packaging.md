@@ -1,0 +1,96 @@
+# Ideas: Testing and packaging
+
+Journey and real-input smoke tests, packaging, installers and updates. Untriaged; see [README.md](README.md).
+
+### Packaging and updates
+
+- A download progress bar (bytes and percent) with Cancel, streaming the file to disk instead of holding it in memory
+- Skip this version: don't offer a release again until a newer one is out
+- "Open in Glowfly" in Windows 11's modern context menu (an IExplorerCommand with a sparse package)
+- "Open in Glowfly" on drives as well as folders
+- Sign SHA256SUMS (minisign or GPG) and check that signature in the app before trusting the checksums
+- Azure Trusted Signing as an alternative to a PFX certificate for Windows signing
+- A beta channel that offers pre-releases to users who opt in
+- A per-machine (all users) MSI
+- Ask before Install and restart ends terminal tabs that are running a program
+- Stage the update helper beside the program when /tmp is mounted noexec on Linux or macOS
+- Replace a macOS Glowfly.app in place from the disk image (hdiutil attach, ditto, detach) instead of opening it
+- Install a .deb in place through pkexec and apt instead of opening the software installer
+- After a restart, say when the installer failed or was cancelled (read update.log on the next start)
+- Remove a .bak program left behind when a second window kept the old program running
+- Offer Download again when the downloaded file is gone or no longer matches its checksum
+- A CI check of Install and restart: swap a portable copy from a local feed and run --finish-update on the runners
+- Allow Install and restart when Windows Smart App Control or AppLocker blocks programs in the temp folder
+- Installer checks for the ARM64 MSI and the aarch64 .deb and .rpm on Arm runners (windows-11-arm, ubuntu-22.04-arm)
+- AppStream metainfo (usr/share/metainfo) for the AppImage and the Linux packages
+- AppImage desktop integration: offer to add a menu entry and icon for an AppImage copy
+- Embedded AppImage update information (zsync) for external AppImage updaters
+- Build the Linux packages on an older glibc baseline so the AppImage and packages run on older distributions
+- Sign the .rpm (rpm --addsign) and the AppImage, and publish apt and dnf repositories
+- Debian version for pre-release tags: map '-' to '~' in --deb-version as the rpm does
+- Automate the Homebrew tap and winget-pkgs submissions from the release job with a token
+- Rename a swapped AppImage whose file name carries the old version to the new release's name
+
+### Installer and update checks in CI
+
+- Start the installed MSI copy's window with the smoke probe on the Windows runner once it has OpenGL 2 (Mesa llvmpipe or the Windows smoke job's setup)
+- Run the installer checks from the Release workflow (workflow_call) against the files it uploads, before SHA256SUMS is published
+- A macOS DMG check: mount the image, copy Glowfly.app to a temporary Applications folder, start it, and check that the update check picks the .dmg
+- Attach to the parent console on Windows so `glowfly --version` and `--check-update` print in a terminal without redirection
+- Show in Preferences > Updates when a local update feed (GLOWFLY_UPDATE_FEED) is in use
+- Accept an https mirror URL in GLOWFLY_UPDATE_FEED besides a local folder
+- Validate the MSI with `wix msi validate` (ICE checks) in the Installers workflow
+- Check the MSI's Options page choices (no desktop shortcut, no folder menu, no scheme) with silent installs that set DESKTOPSHORTCUT, FOLDERMENU and LINKSCHEME to empty, and that an upgrade keeps them off
+- Install the .deb through apt (`apt-get install ./file.deb`) to check dependency resolution on a minimal image
+- Test the `<file>.sha256` single-checksum fallback end to end in the feed script (it is unit-tested)
+
+### Whole-app journey tests
+
+- Journey through an external merge tool, using a scripted fake tool that works on every OS
+- Credential-prompt journey: the askpass server answering a password-protected local remote
+- Journeys with the file watcher on, so outside edits show up without Refresh
+- Interactive rebase journey, with the built executable as the sequence editor
+- Multi-tab journeys: switching tabs while a job runs and checking each result reaches its tab
+- Keyboard-driven journeys that press each OS's own shortcut keys
+- Hosting-service journeys against a local fake API (pull requests, issues, build status)
+- On a journey failure, save a rendered screenshot where wgpu is available, to make CI failures easier to read
+- Accessible names for the remaining painted widgets (section headers, graph ref chips, sidebar ahead/behind counts), plus a test that every clickable widget has one
+- Offer stash-and-retry when a checkout is refused because of local changes
+
+### Real-input smoke tests (Linux)
+
+- A Wayland pass (weston --backend=headless with wtype or ydotool) beside the X11 one
+- More scale factors: 1.25 (fractional rounding) and 2.0
+- More real-input gestures: a double-click on a branch chip, mouse-wheel scrolling of the graph,
+  hover tooltips, dragging a repository tab and a graph column's resize handle
+- Typing non-ASCII text and dead keys (a remapped keycode, a German layout through setxkbmap)
+  and an IME pass
+- A clipboard round trip with real Ctrl+C / Ctrl+V between Glowfly and another X client
+- Keep each step's screenshots as an artifact on success too, for visual review of release
+  builds
+- Share the probe's region_of with journey/find.rs so the journeys and the smoke test name
+  regions the same way
+- Run the smoke job against the packaged .deb (installed binary and desktop entry) instead of
+  target/release
+
+### Real-input smoke tests (Windows)
+
+- A real per-monitor DPI pass at 150% (the runner's one virtual monitor is fixed at 96 DPI; it
+  needs a second virtual display or a sign-out), including dragging the window across monitors
+  with different DPI (WM_DPICHANGED)
+- A UI Automation pass over the AccessKit tree beside SendInput (Invoke and Value patterns, and
+  checking the names a screen reader gets)
+- Alt+Tab back into Glowfly with real keys (releasing Alt must not open the title bar menu), and
+  Alt+Space opening the system menu
+- The drawn title bar with real input: dragging the window by it, a double-click to maximize,
+  Snap Layouts over Maximize, and the Minimize, Maximize and Close buttons
+- Typing through another keyboard layout (German via LoadKeyboardLayout), dead keys,
+  KEYEVENTF_UNICODE text and an IME pass
+- A clipboard round trip with real Ctrl+C and Ctrl+V between Glowfly and another window
+- Run the Windows smoke job against the installed MSI instead of target/release
+- Keep each step's screenshots as an artifact on success too
+- One shared list of the labels and checks both smoke scripts read, so Linux and Windows can't
+  drift apart
+- A Windows ARM64 runner pass
+- A fallback in the app when a transparent (Mica) OpenGL window can't be created, if the
+  software renderer ever refuses it

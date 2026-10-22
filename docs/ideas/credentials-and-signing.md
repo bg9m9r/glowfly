@@ -1,0 +1,132 @@
+# Ideas: Credentials, SSH and signing
+
+Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; see [README.md](README.md).
+
+### Credential prompts
+
+- Caps Lock warning on password fields (egui doesn't expose Caps Lock state yet)
+- Choose between a password, personal access token or app password per hosting service, with a
+  link to create a token
+- A non-blocking notice for SSH security-key touch requests (`SSH_ASKPASS_PROMPT=none`)
+- Hosting-service sign-in without Git Credential Manager through the prompt (Preferences >
+  Integrations)
+- Approve the sign-ins for the remotes that worked in a multi-remote fetch that failed overall
+- End an auto-fetch pause after a pull or a dashboard fetch of the remote works, not only fetch
+  jobs
+- Keep paused auto-fetch remotes across restarts
+- A desktop notification when a remote needs a sign-in
+- A status-bar chip listing paused remotes once their banner lines are dismissed
+- Read the OpenSSH version of a repository's `core.sshCommand`, not only `GIT_SSH_COMMAND`,
+  `GIT_SSH` or `ssh` on PATH
+- Start every git child in its own session on Unix, not only with OpenSSH before 8.4
+- Fall back to git's in-memory `cache` helper on Linux when no keyring helper is installed
+- Let the dialog's Remember choice update the default in Preferences > General
+- Remember sign-ins typed for git LFS endpoints and for clones whose remote isn't known yet
+- Log quietly instead of toasting when a sign-in isn't saved because `credential.helper` is
+  turned off on purpose
+
+### Signing beyond config
+
+- Signature badges on graph rows (batch-check visible signed commits, cached by oid, throttled
+  like Stats)
+- Signature status in multi-commit views (details_multi, compare) and the file history list
+- Flag a verified signature whose signer identity doesn't match the committer's email
+- Verify signed tags in the TAGS section and tag tooltips
+- Show signatures on merged tags (mergetag headers) of merge commits
+- Show the SSH key type and GPG primary user ID / primary-key fingerprint in the badge tooltip
+- Warn on the Commit Signing page when gpg.ssh.allowedSignersFile points to a missing file or a
+  repository-local value overrides the global one
+
+### SSH key management
+
+- Generate RSA or ECDSA keys, and change an existing key's passphrase or comment (ssh-keygen -p
+  / -c)
+- A Browse button for the Generate SSH key dialog's save location
+- Show in folder and delete a key locally from its row
+- Flag encrypted private keys and keys whose file permissions are too open for ssh on their row
+- Palette entry for the SSH page (palette_commands.rs needs splitting first)
+- Start the Windows OpenSSH Authentication Agent service (needs an administrator) or an ssh-agent on Unix from the SSH page
+- Per-repository key choice in a repository with no trust decision (trust it and choose the key in one step)
+- Remove a key from the agent (ssh-add -d), and add with a lifetime (-t) or confirmation (-c)
+- Add keys to Bitbucket Data Center and Azure DevOps through their APIs
+- List and delete the keys registered on a connected service, and show on each key row which services have it
+- Per-host key choice through ~/.ssh/config Host entries instead of core.sshCommand
+- Palette entries for Use for git, Add to agent and Add to service (after palette_commands.rs is split)
+- Link from the add-key fallback to reconnect a service with a token that may write SSH keys (Integrations, preselected)
+- Resolve host-dependent IdentityFile tokens (%h, %r, %p, %n, %C, %k, %j) per literal Host pattern, or ask `ssh -G <host>`
+- Read IdentityFile entries from the system ssh_config (/etc/ssh/ssh_config, %ProgramData%\ssh\ssh_config)
+- Include patterns with wildcards in folder names, and tokens or environment variables in Include
+- List CertificateFile entries next to their keys
+- Keep Windows' OpenSSH when choosing a key for all repositories (`<Windows ssh> -i <key> -o IdentitiesOnly=yes`)
+- Offer Windows' OpenSSH for one repository's own core.sshCommand
+- Warn on Windows when HOME and USERPROFILE differ (Windows' OpenSSH reads USERPROFILE\.ssh, Git's ssh HOME/.ssh)
+- Set up prompts for Windows' OpenSSH older than 8.4 instead of only warning
+- Fill in fingerprints from the .pub file (SHA-256 of the key blob) when ssh-keygen is missing
+- Match agent keys when the user's FingerprintHash is md5
+- Open ~/.ssh/config in the editor from the SSH page
+- Show which ~/.ssh/config Host entry and key ssh would use for the open repository's remote
+
+### SSH preferences
+
+- Translate the page's remaining English: the toasts, log lines and confirmations in update/ssh.rs, ssh_use.rs and ssh_service.rs
+- Cancel on the Replace SSH key confirmation goes back to the Generate SSH key dialog instead of closing
+- Suggest a free file name (id_ed25519_2, …) as the save location when the default key already exists
+- Show remembered keys whose files have gone, with Remove from list, instead of skipping them silently
+- Show the key core.sshCommand names as a card when it lives outside .ssh and wasn't added with Use existing
+- Cut a long repository name in the "{repo} only" row label with … and a hover tip
+- Move the section header with a right-hand slot (title, pill, button) into prefs/form.rs once another page needs it
+- Offer to recreate the .pub (ssh-keygen -y) when a picked private key has none
+- Key type choice (RSA 4096, ECDSA, security keys) in the Generate SSH key dialog
+- Click the agent pill to check the agent again or jump to its detail lines
+- Remember a picked key whose path isn't valid Unicode (settings.json keeps paths as text; such a key is listed until the page reloads)
+
+### Profiles
+
+- Per-profile signing format and program (gpg.format, gpg.program, commit.gpgsign) and SSH key
+  (core.sshCommand)
+- Profile icon or avatar picker, and a profile switcher in the toolbar or status bar
+- Import and export of profiles, and sharing them between machines
+- A keyboard shortcut for Switch profile
+- Separate stored sign-ins per profile for the same service account (e.g. two GitHub users on github.com)
+- Warn when connecting an account another profile already uses with a different user
+- Per-profile diff header toggles (inline/split layout, hunks/whole file, ignore whitespace, word wrap)
+- Per-profile External Tools (editor and terminal programs)
+- Per-profile repository-specific settings (issue tracker, hidden and shown-only refs)
+- A "Saved with profile X" caption on the General, UI Customization and Editor pages
+- Copy or reset one profile's preferences from another profile on the Profile page
+- Refresh an open Clone dialog's account list when the profile switches
+- Show a profile's folder-rule count on its row in the profile list (e.g. "Ada <a@b> · 2 folders")
+- Offer to unset a repository's own user.signingkey too when using a profile there, and name it in the confirmation
+- Clean up Glowfly's includeIf entries and include files from the global config (a "Remove all folder rules" action, or on uninstall)
+- Handle an includeIf section the user shares with a Glowfly entry (extra keys in the same subsection) instead of leaving it in place
+- Rules on other conditions git offers (hasconfig:remote.*.url for a hosting-service account, onbranch:)
+- Show which profile applies in the tab bar or the repository list, not only in the commit box and the Profile page
+- Warn when GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL or GIT_COMMITTER_* in the environment override the identity a rule gives
+- Re-read the effective identity when the repository's .git/config changes on disk (watcher), not only on open and focus
+- A "Pick a profile for this folder" prompt when cloning or initializing into a folder no rule covers
+- Per-rule signing settings (gpg.format, commit.gpgsign) written into the profile's include file
+- Remove a repository's own identity from config.worktree too (extensions.worktreeConfig) when using a profile there
+
+### GPG passphrase prompts
+
+- Passphrase prompts for X.509 (gpgsm) signing through gpg.x509.program
+- A git banner reason saying git older than 2.31 keeps GnuPG's own passphrase window
+- Use Glowfly's prompt when Glowfly was started with GIT_CONFIG_COUNT set (append at the next
+  index)
+- Wording for smartcard PIN and touch requests (loopback with a card is unverified)
+- Show the key's expiry date in the passphrase dialog
+- Signing passphrase prompts for git commands typed in the terminal panel
+- Ask again after a wrong SSH signing passphrase (ssh-keygen stops at the first; would need
+  Glowfly as gpg.ssh.program re-running -Y sign on git's payload file)
+- Reuse the SSH signing passphrase for the rest of a job that signs many commits (rebase,
+  cherry-pick of a range)
+- Offer to add the signing key to ssh-agent from the SSH signing passphrase dialog
+- Wording for FIDO (sk) SSH signing keys: ssh-keygen's PIN prompt and touch notice
+- Check that Windows' own OpenSSH ssh-keygen (System32) honours SSH_ASKPASS when set as
+  gpg.ssh.program
+- SSH signing passphrase marker for push --signed (push certificates)
+- Map MSYS-style gpg.ssh.program and gpg.x509.program values on Windows (git runs those itself,
+  not the wrapper)
+- Find an MSYS2 or Cygwin git's install root from the git program or PATH when GIT_EXEC_PATH
+  arrives in POSIX form
+- Map MSYS /tmp in gpg.program to the user's temp folder
