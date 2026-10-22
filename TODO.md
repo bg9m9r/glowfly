@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-22 04:09 · **PR and issue filters**: Needs my review, saved Waiting for my review filters and the dashboard's Review requested also count requests to the user's GitHub teams (and their parent teams) and Azure DevOps groups, skipping the author and members who already reviewed; a token that can't read teams falls back to personal requests without signing out (`1036bbe3`)
 - 2026-10-22 04:08 · **UI review polish**: Row menus open below their row (above when they don't fit), the checked-out commit's + branch chip is a small New branch… ghost button on hover or the anchor row, Load more and the shallow-clone notes move to a full-width row under the last commit, the multi-selection header reads "N commits selected · Esc to clear" with inline reasons and a from → to row with a Swap button, the View menu labels Diff layout and Diff shows, one verb per action (Open, Clone, New repository…, Delete stash), the palette's empty list groups Recent, Suggested and All commands, and step 3's Continue is a split button holding Skip and Edit remaining steps (`221ab27e`)
 - 2026-10-22 03:35 · **Create and view issues**: The issue panel gets a comment box pinned under the conversation that posts to GitHub, GitLab, Jira, Bitbucket Cloud, Azure Boards and Trello, appends the posted comment at once and keeps the draft with the service's words when a post fails (also for a parked tab), and each comment gets Reply, which quotes it into the draft (`fc49c916`)
 - 2026-10-22 03:19 · **Notifications**: Every toast gets a painted x (Dismiss) and stays up while the pointer is over it (2 s once let go, and the limit spares it); a click on a desktop notification brings Glowfly forward on that repository's tab, reopening it if closed or offering Show while a dialog is open; installed copies post under Glowfly's own app id (MSI shortcuts' AppUserModelID, the macOS bundle id, the Linux desktop entry) (`53ae60a1`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-21 06:34 · **Stacked branches**: Trellis recognises which local branches are built on which, draws them as an indented tree in LOCAL with a restack hint on layers that are behind, and restacks them with `git rebase --update-refs` from the branch menu or after an amend, undoable as one entry (`afec3859`)
 - 2026-10-21 06:13 · **Zoom**: Full screen toggles with F11 (Ctrl+Cmd+F on macOS), a palette entry and a View > Full screen item, with the drawn title bar adapting while full screen, and a hidden side panel comes back from a thin edge strip with the panel widths kept across restarts (`65d505fa`)
 - 2026-10-21 05:58 · **Profiles**: Folder rules give every repository under a folder a profile's identity through includeIf.gitdir entries in the global git config pointing at include files Trellis writes, and Preferences > Profile, the commit box and Repo > Identity show where the open repository's identity comes from (`9053f2a0`)
-- 2026-10-21 05:05 · **Clone and init options**: Fetch full history sizes the download and asks before 500 MiB or more, a running fetch gets Cancel in the status bar that stops git's whole process tree and cleans up its locks and temporary packs, and diffs, the File view and blame in a partial clone report missing contents and download exactly those objects (`a38b630b`)
 
 ---
 
@@ -1045,10 +1045,6 @@ blockers and major findings are Milestone 1 items.
 
 - Open folder history from a folder row once file lists can show a tree
 
-### PR and issue filters
-
-- Team and group review requests counting as Needs my review (GitHub teams, Azure groups)
-
 ### Limits found while building integrations
 
 - Live-test GitLab, Bitbucket Cloud and Data Center, Azure DevOps and Jira against real accounts, including the Azure DevOps sign-in through Git Credential Manager (Microsoft Entra Bearer token)
@@ -1095,7 +1091,6 @@ blockers and major findings are Milestone 1 items.
 
 ### Cross-repo dashboard
 
-- Count review requests made to a team the user belongs to
 - Show pull requests assigned to the user under Assigned
 
 ### Menu bar
@@ -2510,6 +2505,13 @@ here, under the item they grew from.
 - Label suggestions on Jira Data Center; fix versions and sprints without a Jira project set
 - Mentions on trackers that can't search by them (GitLab to-dos, Jira watchers or comments)
 - A fuller search for Azure's Mentioning me, which covers only the last 30 days
+- Count requests to grandparent and higher GitHub teams (walk parent chains past the direct parent)
+- GitLab approval rules and Bitbucket default-reviewer groups that name the user's groups as eligible reviewers
+- Read the user's teams again on Refresh, so a team joined or a scope granted mid-session counts without signing in again
+- Say on a row which team or group a review request came through (e.g. "via acme/core")
+- A choice to count only personal review requests in Needs my review
+- A quiet hint when the token can't read teams or groups, naming the scope to add (read:org or Members for GitHub fine-grained tokens, Identity (Read) on Azure DevOps)
+- Azure DevOps memberships past 200 groups, and Azure DevOps Server (on-premises) identity lookups
 
 ### Create and view issues
 
@@ -2707,6 +2709,7 @@ here, under the item they grew from.
 - Apply saved PR and issue filters (labels, milestones) across repositories
 - Check out a pull request's branch from the dashboard
 - Created/updated dates on pull request and issue rows (the service models don't carry them yet)
+- Show the requesting team on Review requested rows
 
 ### Automatically group worktree tabs together
 
