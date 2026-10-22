@@ -17,8 +17,10 @@ use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        GitEnvMsg::Detect => fx.push(Effect::GitEnv(GitEnvEffect::Detect { cwd: st.any_dir() })),
-        GitEnvMsg::Detected(info) => {
+        GitEnvMsg::Detect => detect(st, fx),
+        // Started before a switch, it describes the git used before.
+        GitEnvMsg::Detected { generation, .. } if generation != st.git.switches => {}
+        GitEnvMsg::Detected { info, .. } => {
             // Look again detects again: an unchanged answer isn't logged twice, and a changed
             // one shows the banner again even after a Dismiss.
             if st.git.info.as_ref() != Some(&info) {
@@ -67,7 +69,7 @@ pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut V
             discover(st, fx);
             // A saved git deleted while Glowfly runs is noticed here.
             if glowfly_core::git_program::from_setting(st.settings.git_program.as_deref()).is_some() {
-                fx.push(Effect::GitEnv(GitEnvEffect::Detect { cwd: st.any_dir() }));
+                detect(st, fx);
             }
         }
         GitEnvMsg::Discovered { generation, candidates } => {
@@ -123,6 +125,11 @@ pub(super) fn discover(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::GitEnv(GitEnvEffect::Discover { generation: page.generation, cwd: AppState::outside_dir() }));
 }
 
+/// Checks the git in effect and its version.
+fn detect(st: &AppState, fx: &mut Vec<Effect>) {
+    fx.push(Effect::GitEnv(GitEnvEffect::Detect { generation: st.git.switches, cwd: st.any_dir() }));
+}
+
 /// Starts the check of the PATH git when `info` says the saved git can't run; any other answer
 /// drops the last one.
 fn look_for_path_git(path_git: &mut Option<Candidate>, info: &GitInfo, fx: &mut Vec<Effect>) {
@@ -165,6 +172,7 @@ fn switched(st: &mut AppState, program: Option<PathBuf>, info: GitInfo, from_ban
         _ => None,
     };
     st.git.info = Some(info);
+    st.git.switches += 1;
     st.git.banner_dismissed = false;
     st.git.path_git = None;
     st.log(true, format!("Glowfly now runs {what}"));

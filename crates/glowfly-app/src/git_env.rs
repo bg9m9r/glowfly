@@ -29,7 +29,11 @@ pub enum GitEnvMsg {
     /// The banner's offer: use the git on PATH from now on, once it is checked.
     UsePathGit,
     // ---- from the runner
-    Detected(GitInfo),
+    /// The check started when `generation` switches to another git had been made.
+    Detected {
+        generation: u64,
+        info: GitInfo,
+    },
     /// The PATH git, checked because the saved git can't run (None: no git on PATH).
     PathGitChecked(Option<Candidate>),
     /// A load was refused because another user owns the repository at `root`.
@@ -70,7 +74,7 @@ impl GitEnvMsg {
             | Self::Choose(_)
             | Self::Browse
             | Self::UsePathGit
-            | Self::Detected(_)
+            | Self::Detected { .. }
             | Self::PathGitChecked(_)
             | Self::SafeDirectoryAdded { .. }
             | Self::Discovered { .. }
@@ -91,7 +95,9 @@ pub fn not_owned_text(root: &std::path::Path) -> String {
 /// Run by runner/git_env.rs.
 #[derive(Debug)]
 pub enum GitEnvEffect {
+    /// Find the git in effect and ask its version; `generation` is `GitState::switches` now.
     Detect {
+        generation: u64,
         cwd: PathBuf,
     },
     AddSafeDirectory(PathBuf),

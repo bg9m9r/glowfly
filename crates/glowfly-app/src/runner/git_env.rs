@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 pub(super) fn run(effect: GitEnvEffect) -> Msg {
     Msg::GitEnv(match effect {
-        GitEnvEffect::Detect { cwd } => GitEnvMsg::Detected(git_version::detect(&cwd)),
+        GitEnvEffect::Detect { generation, cwd } => GitEnvMsg::Detected { generation, info: git_version::detect(&cwd) },
         GitEnvEffect::AddSafeDirectory(root) => {
             let result = glowfly_core::safe_directory::add(&root).map_err(|e| e.to_string());
             GitEnvMsg::SafeDirectoryAdded { root, result }

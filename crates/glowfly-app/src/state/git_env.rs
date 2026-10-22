@@ -15,6 +15,9 @@ pub struct GitState {
     /// The PATH git checked while the saved git can't run (from the background check, or from
     /// the latest scan), for the banner's offer.
     pub path_git: Option<Candidate>,
+    /// Counts the switches to another git, so a check of the git in effect started before one
+    /// is dropped.
+    pub switches: u64,
     pub page: GitPage,
 }
 

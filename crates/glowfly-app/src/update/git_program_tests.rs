@@ -44,7 +44,7 @@ fn detects(fx: &[Effect]) -> bool {
 /// The saved git is gone, as the startup check finds; returns what that pushed.
 fn saved_git_gone(st: &mut AppState) -> Vec<Effect> {
     st.settings.git_program = Some(gone().to_string_lossy().into_owned());
-    run(st, GitEnvMsg::Detected(GitInfo { path: Some(gone()), version: None, chosen: true }))
+    run(st, GitEnvMsg::Detected { generation: 0, info: GitInfo { path: Some(gone()), version: None, chosen: true } })
 }
 
 /// The saved git is gone and the git on PATH works: the banner offers it.
@@ -88,7 +88,13 @@ fn the_git_page_scans_when_it_opens() {
 #[test]
 fn choosing_a_git_checks_then_saves_and_redetects() {
     let mut st = state();
-    run(&mut st, GitEnvMsg::Detected(GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 45, 0)), chosen: false }));
+    run(
+        &mut st,
+        GitEnvMsg::Detected {
+            generation: 0,
+            info: GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 45, 0)), chosen: false },
+        },
+    );
     let p = tools_git();
     let fx = run(&mut st, GitEnvMsg::Choose(Some(p.clone())));
     assert!(matches!(&fx[..], [Effect::GitEnv(GitEnvEffect::Use { program: Some(q), .. })] if *q == p), "{fx:?}");
@@ -121,7 +127,7 @@ fn choosing_a_git_checks_then_saves_and_redetects() {
 fn a_program_that_isnt_git_is_refused() {
     let mut st = state();
     let before = GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 45, 0)), chosen: false };
-    run(&mut st, GitEnvMsg::Detected(before.clone()));
+    run(&mut st, GitEnvMsg::Detected { generation: 0, info: before.clone() });
     let p = tools_git();
     run(&mut st, GitEnvMsg::Choose(Some(p.clone())));
     // An answer for a program that isn't being checked is dropped.
@@ -202,7 +208,10 @@ fn a_missing_saved_git_offers_the_path_git() {
     run(&mut st, GitEnvMsg::Discovered { generation, candidates });
     assert_eq!(st.git.path_offer(), Some((other.as_path(), (2, 46, 0))), "the scan is fresher");
 
-    let fx = run(&mut st, GitEnvMsg::Detected(GitInfo { path: Some(tools_git()), version: Some((2, 45, 1)), chosen: false }));
+    let fx = run(
+        &mut st,
+        GitEnvMsg::Detected { generation: 0, info: GitInfo { path: Some(tools_git()), version: Some((2, 45, 1)), chosen: false } },
+    );
     assert_eq!(check_path_gits(&fx), 0, "{fx:?}");
     assert!(st.git.path_git.is_none() && st.git.path_offer().is_none());
 }
@@ -224,7 +233,7 @@ fn a_missing_saved_git_with_no_path_git_keeps_the_explanation() {
     assert!(st.git.page.checking.is_none());
 
     // The saved git works again: a late answer is dropped.
-    run(&mut st, GitEnvMsg::Detected(GitInfo { path: Some(gone()), version: Some((2, 45, 0)), chosen: true }));
+    run(&mut st, GitEnvMsg::Detected { generation: 0, info: GitInfo { path: Some(gone()), version: Some((2, 45, 0)), chosen: true } });
     run(&mut st, GitEnvMsg::PathGitChecked(Some(found(tools_git()))));
     assert!(st.git.path_git.is_none() && st.git.path_offer().is_none());
 }
@@ -270,13 +279,47 @@ fn rescan_without_a_saved_git_only_scans() {
     assert!(discover_gen(&fx).is_some() && !detects(&fx), "{fx:?}");
 
     let old = GitInfo { path: Some(tools_git()), version: Some((2, 34, 1)), chosen: false };
-    run(&mut st, GitEnvMsg::Detected(old.clone()));
-    run(&mut st, GitEnvMsg::Detected(old));
+    run(&mut st, GitEnvMsg::Detected { generation: 0, info: old.clone() });
+    run(&mut st, GitEnvMsg::Detected { generation: 0, info: old });
     let logged = st.log.iter().filter(|l| l.text.starts_with("Your git is 2.34.1")).count();
     assert_eq!(logged, 1, "an unchanged answer isn't logged again");
 
     // A changed answer shows the banner again after a Dismiss.
     run(&mut st, GitEnvMsg::DismissBanner);
-    run(&mut st, GitEnvMsg::Detected(GitInfo { path: Some(tools_git()), version: None, chosen: false }));
+    run(&mut st, GitEnvMsg::Detected { generation: 0, info: GitInfo { path: Some(tools_git()), version: None, chosen: false } });
     assert!(st.git.banner().is_some());
+}
+
+#[test]
+fn a_check_started_before_a_switch_is_dropped() {
+    let mut st = state();
+    offered(&mut st);
+    // Look again checks the saved git again; that check can take seconds.
+    let fx = run(&mut st, GitEnvMsg::Rescan);
+    let generation = fx
+        .iter()
+        .find_map(|e| match e {
+            Effect::GitEnv(GitEnvEffect::Detect { generation, .. }) => Some(*generation),
+            _ => None,
+        })
+        .expect("a check of the saved git");
+    // Meanwhile the banner's button switches to the PATH git.
+    run(&mut st, GitEnvMsg::UsePathGit);
+    let path_git = GitInfo { path: Some(tools_git()), version: Some((2, 45, 1)), chosen: false };
+    run(&mut st, GitEnvMsg::Switched { program: None, result: Ok(path_git.clone()) });
+    assert_eq!(st.git.banner(), None);
+
+    let stale = GitInfo { path: Some(gone()), version: None, chosen: true };
+    let fx = run(&mut st, GitEnvMsg::Detected { generation, info: stale.clone() });
+    assert!(fx.is_empty(), "{fx:?}");
+    assert_eq!(st.git.info.as_ref(), Some(&path_git), "the PATH git stays in use");
+    assert_eq!(st.git.banner(), None);
+    assert!(st.git.has(Feature::MergeTree));
+
+    // A check started after the switch is applied.
+    let fx = run(&mut st, GitEnvMsg::Detect);
+    let Some(Effect::GitEnv(GitEnvEffect::Detect { generation, .. })) = fx.first() else { panic!("{fx:?}") };
+    let newer = GitInfo { version: Some((2, 46, 0)), ..path_git };
+    run(&mut st, GitEnvMsg::Detected { generation: *generation, info: newer.clone() });
+    assert_eq!(st.git.info.as_ref(), Some(&newer));
 }

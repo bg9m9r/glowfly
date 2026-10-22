@@ -17,7 +17,7 @@ fn run(st: &mut AppState, m: GitEnvMsg) -> Vec<Effect> {
 }
 
 fn git_version(st: &mut AppState, v: (u32, u32, u32)) {
-    run(st, GitEnvMsg::Detected(GitInfo { path: Some("/usr/bin/git".into()), version: Some(v), chosen: false }));
+    run(st, GitEnvMsg::Detected { generation: 0, info: GitInfo { path: Some("/usr/bin/git".into()), version: Some(v), chosen: false } });
 }
 
 #[test]
@@ -34,7 +34,7 @@ fn startup_finds_git_and_an_old_one_shows_a_banner_until_dismissed() {
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == banner), "logged too");
     run(&mut st, GitEnvMsg::DismissBanner);
     assert_eq!(st.git.banner(), None);
-    for m in [GitEnvMsg::Detect, GitEnvMsg::DismissBanner, GitEnvMsg::Detected(GitInfo::default())] {
+    for m in [GitEnvMsg::Detect, GitEnvMsg::DismissBanner, GitEnvMsg::Detected { generation: 0, info: GitInfo::default() }] {
         assert!(m.on_inactive().is_none());
     }
 }

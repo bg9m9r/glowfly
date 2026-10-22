@@ -79,7 +79,7 @@ fn git_too_old_banner() {
     use glowfly_core::git_version::GitInfo;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "git-too-old");
     let info = GitInfo { path: Some("C:/Program Files/Git/cmd/git.exe".into()), version: Some((2, 34, 1)), chosen: false };
-    crate::update::update(&mut st, Msg::GitEnv(GitEnvMsg::Detected(info)), std::time::Instant::now());
+    crate::update::update(&mut st, Msg::GitEnv(GitEnvMsg::Detected { generation: 0, info }), std::time::Instant::now());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("git_too_old_banner");

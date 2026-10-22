@@ -28,7 +28,7 @@ fn click(h: &mut H, label: &str) -> Vec<Msg> {
 }
 
 fn detected(st: &mut AppState, info: GitInfo) {
-    crate::update::update(st, Msg::GitEnv(GitEnvMsg::Detected(info)), Instant::now());
+    crate::update::update(st, Msg::GitEnv(GitEnvMsg::Detected { generation: 0, info }), Instant::now());
 }
 
 #[test]
