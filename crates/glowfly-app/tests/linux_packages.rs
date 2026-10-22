@@ -24,22 +24,10 @@ fn rpm_assets() -> Vec<toml::Table> {
 /// The paths the install checks require, with the icon loop's sizes expanded.
 fn checked_paths() -> Vec<String> {
     let lib = workspace_file("scripts/installer-lib-linux.sh");
-    let block = lib
-        .split_once("PATHS=(")
-        .and_then(|(_, rest)| rest.split_once(')'))
-        .map(|(block, _)| block)
-        .expect("a PATHS=( ... ) list");
-    let mut paths: Vec<String> = block
-        .lines()
-        .map(str::trim)
-        .filter(|l| l.starts_with('/'))
-        .map(str::to_owned)
-        .collect();
-    let sizes = lib
-        .lines()
-        .find_map(|l| l.trim().strip_prefix("for size in "))
-        .and_then(|l| l.strip_suffix("; do"))
-        .expect("the icon sizes loop");
+    let block = lib.split_once("PATHS=(").and_then(|(_, rest)| rest.split_once(')')).map(|(block, _)| block).expect("a PATHS=( ... ) list");
+    let mut paths: Vec<String> = block.lines().map(str::trim).filter(|l| l.starts_with('/')).map(str::to_owned).collect();
+    let sizes =
+        lib.lines().find_map(|l| l.trim().strip_prefix("for size in ")).and_then(|l| l.strip_suffix("; do")).expect("the icon sizes loop");
     assert!(lib.contains(r#"PATHS+=("/usr/share/icons/hicolor/${size}x${size}/apps/glowfly.png")"#));
     for size in sizes.split_whitespace() {
         paths.push(format!("/usr/share/icons/hicolor/{size}x{size}/apps/glowfly.png"));
@@ -61,10 +49,7 @@ fn rpm_assets_are_never_marked_doc() {
 
 #[test]
 fn rpm_installs_exactly_the_files_the_install_checks_expect() {
-    let mut dests: Vec<String> = rpm_assets()
-        .iter()
-        .map(|a| a["dest"].as_str().expect("an asset dest").to_owned())
-        .collect();
+    let mut dests: Vec<String> = rpm_assets().iter().map(|a| a["dest"].as_str().expect("an asset dest").to_owned()).collect();
     let mut checked = checked_paths();
     dests.sort();
     checked.sort();
