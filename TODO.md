@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-22 10:20 · **Language**: On Linux and other Unix, the System language follows gettext's order and ignores LANGUAGE when the message locale is C or POSIX (including C.UTF-8), so LANG=C.UTF-8 LANGUAGE=de stays English (`514834b7`)
 - 2026-10-22 09:43 · **Packaging and updates**: Install and restart checks the download's SHA-256 again, then runs the verified MSI or swaps the portable program in place through a small helper and relaunches Glowfly, asking first about unsaved work and a running job (`959db2dc`)
 - 2026-10-22 09:39 · **Menu bar**: Alt+letter opens a menu with underlined mnemonics and arrow-key navigation, a rebindable Quit key sits on File > Quit, and quitting asks first while a git operation or sync runs (`f30153f7`)
 - 2026-10-22 08:35 · **Performance: turn on git's built-in fsmonitor from Glowfly**: The slow-status note's Turn on button starts git's built-in file system monitor (git 2.36+ on Windows and macOS) beside the untracked cache, setting core.fsmonitor=true once the daemon is watching and saying plainly why when it can't (`b7a78149`)
