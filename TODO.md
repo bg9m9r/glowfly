@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-21 23:13 · **Working-changes panel, step by step**: While a merge, rebase, cherry-pick, revert or patch series is in progress the WIP panel shows numbered steps, Resolve conflicts, Check what goes in, and Commit the merge or Continue pinned at the bottom with Skip and Edit remaining steps, under a heading with a quiet Abort; finished steps fold to one line and reopen with a chevron, and the plain panel gets plain headers with counts, row actions at the row end on hover or for the current row, no pill before the name and the commit box with Amend pinned at the bottom (`5a58298c`)
 - 2026-10-21 22:45 · **Terminal colour themes**: Theme files get 20 terminal_* keys (background, text, cursor, selection and the 16 basic colours) that the built-ins define with their current values, and Preferences > Terminal > Colors picks Match app theme, any built-in theme's terminal colours or an imported Windows Terminal (scheme or settings.json) or iTerm2 .itermcolors scheme, with a quiet line naming the colours that are hard to read on its background (`e0e27c43`)
 - 2026-10-21 16:26 · **Stash improvements**: The Stash dialog gets Keep staged changes (git stash push --keep-index) for All changes and Selected files, and a chosen staged rename is stashed whole, its old path put back from HEAD after the stash and refused beforehand when something is on disk there, with Undo and redo covering both (`e05b9715`)
 - 2026-10-21 14:46 · **CI / build status**: per-check list with states, durations and Required tags in the pull request panel (`718a895c`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-21 05:04 · **External diff and merge tools**: With no program set in Preferences, Open in external diff tool and Resolve in external merge tool run the tool git config names (diff.tool, merge.tool, their cmd or path, or a built-in one through git difftool and git mergetool), gated by repository trust, and Preferences > External Tools shows which tool that is (`492a939a`)
 - 2026-10-21 03:49 · **Keyboard shortcuts**: The Unstaged and Staged lists take the keyboard focus as one Tab stop with a ringed current row, Up/Down open the file above or below, S and U work there and on a file still opening, and after S or U stages or unstages the open file the view moves on to the next file in its list (`7cf3838e`)
 - 2026-10-21 02:56 · **Multi-select commits**: A selection that isn't one line of history lists each commit's own changes newest first with the gap named in the details panel, picks and reverts that include merges ask for one mainline parent for all, a commit that changes nothing is skipped and named, and Cmd/Ctrl+Shift+A goes back from a multi-selection to the focused commit (`4d0edecd`)
-- 2026-10-21 01:55 · **Graph columns and loading**: A failed load for more history stays in the row below the last commit with its reason and Try again, and runs again by itself after 3 s and 10 s; while a failure is held, Load more tries the same load again. A filtering search whose matches don't fill the graph loads older history by itself in doubling batches (five per query, only with Load more while scrolling on), and the no-matches pane says how far it looked, with Keep searching (`e172a79c`)
 
 ---
 
@@ -384,6 +384,11 @@ until this list says which option was chosen.
 What [Milestone 1](ROADMAP.md#milestone-1-first-release-in-progress) needs that tests and CI can
 check. Its hands-on criteria (daily use, merging the release pull request) are in ROADMAP.md.
 
+- [x] **Working-changes panel, step by step** (direction B, chosen 2026-10-21): while a merge,
+      rebase, cherry-pick, revert or patch series is in progress the WIP panel shows numbered steps
+      (Resolve conflicts, Check what goes in, Commit or Continue pinned at the bottom) under a heading
+      with a quiet Abort; done steps fold to a line and reopen; the plain panel shares the look:
+      plain headers with counts, row actions at the row end, no pill before the name
 - [x] **Whole-app journey tests**: headless tests that start the whole app (state, update,
       views and the real effect runner with git) on a fixture repository and drive it through
       the UI by visible labels, checking the screen and the repository on disk at each step;
@@ -1139,6 +1144,14 @@ blockers and major findings are Milestone 1 items.
 Polish, edge cases and power-user extras that are not planned work. Nothing here is built
 until a triage moves it to Later or a milestone. New follow-ups from finished items go
 here, under the item they grew from.
+
+### Working-changes panel, step by step
+- "Commit or amend first…" in step 3 of a rebase or pick reads like text; a disclosure row may
+  read better
+- Bisect keeps its card: give it the steps' heading look (title with Reset bisect at the right)
+- The pinned commit box is measured the frame before, so a resize settles one frame late
+- Touch and pen have no hover: the row's action then needs the row selected first
+- A key to open the next step or run step 3's primary (see Keyboard shortcuts for Continue)
 
 ### Design system
 - Underline panel tabs (an underline, no boxes) with an Errors count badge; the activity panel
