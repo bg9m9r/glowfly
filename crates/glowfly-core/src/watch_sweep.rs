@@ -119,8 +119,8 @@ impl Sweep {
                 found.push(p.clone());
             }
         }
-        self.sweep_tree(&mut seen, ignores, now, &mut found);
-        if entries(&seen.folders) > self.max_entries {
+        let fits = self.sweep_tree(&mut seen, ignores, now, &mut found);
+        if !fits || entries(&seen.folders) > self.max_entries {
             self.gave_up = true;
             return None;
         }
@@ -190,7 +190,9 @@ impl Sweep {
         Some(Folder { stamp, racy, entries })
     }
 
-    fn sweep_tree(&self, seen: &mut Seen, ignores: &mut Ignores, now: SystemTime, found: &mut Vec<PathBuf>) {
+    /// Lists the folders due this time and walks the new ones; false once a new folder would take
+    /// the tree past the limit (it isn't recorded, so the caller must give up).
+    fn sweep_tree(&self, seen: &mut Seen, ignores: &mut Ignores, now: SystemTime, found: &mut Vec<PathBuf>) -> bool {
         let keys: Vec<PathBuf> = seen.folders.keys().cloned().collect();
         let n = keys.len();
         let share = n.div_ceil(SWEEP_ROUNDS);
@@ -234,13 +236,13 @@ impl Sweep {
             });
             seen.folders.insert(rel.clone(), fresh);
             for child in walk {
-                // Past the limit the caller gives up; what was walked is counted there.
-                if self.walked(&child, ignores) {
-                    let _ = self.walk(child, &mut seen.folders, ignores, now);
+                if self.walked(&child, ignores) && self.walk(child, &mut seen.folders, ignores, now).is_none() {
+                    return false;
                 }
             }
         }
         seen.cursor = start + share;
+        true
     }
 }
 

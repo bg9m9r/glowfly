@@ -153,3 +153,26 @@ fn a_tree_past_the_limit_reads_everything_every_time() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_new_folder_that_crosses_the_limit_reads_everything_from_then_on() {
+    // The root (a.txt, d00) and d00 (x.txt) hold 3 entries, under the limit of 5.
+    let dir = repo("sweep-limit-later", 1);
+    let mut s = Sweep::with_limit(&dir, &dir.join(".git"), None, 5);
+    let mut ig = Ignores::open(&dir);
+    assert_eq!(s.sweep(&mut ig, later()), None, "the baseline");
+    assert_eq!(s.sweep(&mut ig, later()), Some(Vec::new()), "the baseline fits");
+    std::fs::create_dir_all(dir.join("n")).unwrap();
+    for f in ["1", "2", "3"] {
+        write(
+            &dir,
+            &format!("n/{f}.txt"),
+            "x
+",
+        );
+    }
+    for _ in 0..3 {
+        assert_eq!(s.sweep(&mut ig, later()), None, "n's 3 entries take it past the limit");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
