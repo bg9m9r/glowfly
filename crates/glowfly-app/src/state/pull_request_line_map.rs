@@ -4,6 +4,7 @@
 //! thread lands. Pure; the map is made by `PrEffect::LineMaps` (update/pull_request/line_map.rs).
 
 use super::pull_request::{Files, PrView};
+use super::pull_request_threads::on_file;
 use git2::Oid;
 use glowfly_core::diff_rows::LineSide;
 use glowfly_core::forge::ReviewThread;
@@ -102,7 +103,13 @@ pub fn spot(v: &PrView, t: &ReviewThread) -> Option<Spot> {
         return None;
     }
     let m = files.get(&t.path)?;
-    let path = m.path.clone()?;
+    let path = match (&m.path, t.side, t.line) {
+        (Some(p), ..) => p.clone(),
+        // A file the head doesn't have (one the pull request deletes) keeps its deleted lines,
+        // which are the merge base's, under its own name while the base is the same.
+        (None, LineSide::Old, Some(_)) if old_kept => t.path.clone(),
+        _ => return None,
+    };
     let Some(n) = t.line else { return Some(Spot { path, side: t.side, start_line: None, line: None }) };
     match t.side {
         LineSide::New => {
@@ -133,6 +140,12 @@ pub fn head_path<'a>(v: &'a PrView, local: &'a str) -> &'a str {
         return local;
     }
     v.loaded().and_then(|p| p.threads.iter().map(|t| t.path.as_str()).find(|p| lands(p))).unwrap_or(local)
+}
+
+/// How many threads (hidden ones included) the pane under the local file `local` lists: those
+/// on its `head_path`.
+pub fn on_local_file(v: &PrView, local: &str) -> usize {
+    v.loaded().map_or(0, |p| on_file(p, head_path(v, local)))
 }
 
 fn short(sha: &str) -> &str {

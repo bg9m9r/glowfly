@@ -25,7 +25,7 @@ use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
 use crate::state::pull_request::{Files, PrTab, PrView, Tone};
 use crate::state::pull_request_commits::tab_label;
-use crate::state::pull_request_threads::on_file;
+use crate::state::pull_request_line_map::on_local_file;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Sense, Ui, vec2};
@@ -86,9 +86,10 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             center.show_inside(ui, |ui| {
                 if shows_file {
                     let path = st.diff.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
-                    let commented = st.pull_request.as_ref().is_some_and(|v| {
-                        v.loaded().is_some_and(|p| on_file(p, &path) > 0) || crate::state::pull_request_line_comment::draft_on(v, &path)
-                    });
+                    let commented = st
+                        .pull_request
+                        .as_ref()
+                        .is_some_and(|v| on_local_file(v, &path) > 0 || crate::state::pull_request_line_comment::draft_on(v, &path));
                     if commented {
                         let room = ui.available_height();
                         let threads = egui::TopBottomPanel::bottom("pr-file-threads");

@@ -15,10 +15,10 @@ use crate::state::AppState;
 use crate::state::pull_request::{PrAction, PrView, description_text};
 use crate::state::pull_request_actions::error_for;
 use crate::state::pull_request_line_comment::draft_on;
-use crate::state::pull_request_line_map::head_path;
+use crate::state::pull_request_line_map::{head_path, on_local_file};
 use crate::state::pull_request_threads::{
-    file_threads, go_to_open, hidden, hidden_text, is_open, kind_counts, on_file, outdated_toggle, placement, reply_blocked,
-    resolve_blocked, resolve_label, resolved_toggle, where_text,
+    file_threads, go_to_open, hidden, hidden_text, is_open, kind_counts, outdated_toggle, placement, reply_blocked, resolve_blocked,
+    resolve_label, resolved_toggle, where_text,
 };
 use crate::ui::theme::controls;
 use crate::ui::theme::tokens::radius;
@@ -241,8 +241,8 @@ pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, md: &mut Mar
     let Some(v) = st.pull_request.as_mut() else { return };
     let drafted = draft_on(v, path);
     let shown = head_path(v, path).to_owned();
+    let n = on_local_file(v, path);
     let Some(p) = v.loaded() else { return };
-    let n = on_file(p, &shown);
     let ids: Vec<String> = file_threads(p, &v.threads, &shown).iter().map(|t| t.id.clone()).collect();
     ui.add_space(6.0);
     // A draft alone opens the pane: no heading over an empty list then.

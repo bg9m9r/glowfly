@@ -122,6 +122,17 @@ fn spots_shift_collapse_and_keep_old_lines() {
 }
 
 #[test]
+fn deleted_lines_of_a_file_the_head_deletes_keep_their_place() {
+    let files = [("d.txt", LineMap::gone())];
+    let mut old = thread("T", "d.txt", Some(5));
+    old.side = LineSide::Old;
+    let s = spot(&mapped(Vec::new(), true, &files), &old).unwrap();
+    assert_eq!((s.path.as_str(), s.side, s.line), ("d.txt", LineSide::Old, Some(5)), "the merge base's file, by its own name");
+    assert_eq!(spot(&mapped(Vec::new(), false, &files), &old), None, "the merge base moved");
+    assert_eq!(spot(&mapped(Vec::new(), true, &files), &thread("T", "d.txt", Some(5))), None, "an added line of a gone file");
+}
+
+#[test]
 fn head_path_finds_a_renamed_files_threads() {
     let threads = vec![thread("R", "src/new.rs", Some(1)), thread("A", "src/a.rs", Some(1))];
     let files = [("src/new.rs", LineMap::same("src/old.rs")), ("src/a.rs", LineMap::same("src/a.rs"))];
@@ -129,7 +140,12 @@ fn head_path_finds_a_renamed_files_threads() {
     assert_eq!(head_path(&v, "src/old.rs"), "src/new.rs");
     assert_eq!(head_path(&v, "src/a.rs"), "src/a.rs");
     assert_eq!(head_path(&v, "src/other.rs"), "src/other.rs");
-    assert_eq!(head_path(&at(oid(4), threads), "src/old.rs"), "src/old.rs", "nothing mapped yet");
+    assert_eq!(head_path(&at(oid(4), threads.clone()), "src/old.rs"), "src/old.rs", "nothing mapped yet");
+    // The Files changed pane opens for the local path's threads, so a renamed file's opens.
+    assert_eq!(on_local_file(&v, "src/old.rs"), 1, "a renamed file's threads open its pane");
+    assert_eq!(on_local_file(&v, "src/a.rs"), 1);
+    assert_eq!(on_local_file(&v, "src/new.rs"), 1, "no local file takes the head's name, so it keeps its threads");
+    assert_eq!(on_local_file(&at(oid(4), threads), "src/old.rs"), 0, "nothing mapped yet");
     assert_eq!(
         mapped_note(&v, oid(4)),
         format!(
