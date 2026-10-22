@@ -1,7 +1,7 @@
 //! The common model every service maps to: pull requests with their reviewers, issues, and
 //! a pull request to create.
 
-use super::{Checks, IssueFacets, PrFacets};
+use super::{Checks, IssueFacets, PrFacets, Target};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Reviewer {
@@ -65,4 +65,22 @@ pub struct NewPullRequest {
     pub draft: bool,
     /// Issue keys to link.
     pub issues: Vec<String>,
+    /// The repository the source branch is on when it isn't the one the pull request is opened
+    /// on (a fork); None for a branch of the same repository.
+    pub source_repo: Option<Target>,
+}
+
+impl NewPullRequest {
+    /// The fork the source branch is on when the pull request is opened on `t`; None when there
+    /// is none or it names `t` itself (owner, project and repository compare ignoring case).
+    pub fn fork_source(&self, t: &Target) -> Option<&Target> {
+        let same = |a: &str, b: &str| a.eq_ignore_ascii_case(b);
+        self.source_repo.as_ref().filter(|s| {
+            !(s.provider == t.provider
+                && same(&s.host, &t.host)
+                && same(&s.owner, &t.owner)
+                && same(&s.project, &t.project)
+                && same(&s.repo, &t.repo))
+        })
+    }
 }

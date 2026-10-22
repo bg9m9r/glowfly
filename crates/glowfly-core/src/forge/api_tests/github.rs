@@ -215,6 +215,7 @@ fn creates_a_pull_request() {
         description: "Body".into(),
         draft: true,
         issues: vec!["3".into()],
+        source_repo: None,
     };
     let pr = create_pull_request(&remote("https://github.com/o/r"), &token(Provider::GitHub), &new).unwrap();
     assert_eq!((pr.id, pr.url.as_str(), pr.draft), (12, "https://github.com/o/r/pull/12", true));

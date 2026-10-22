@@ -1,6 +1,7 @@
 //! The Fork dialog: looks for the user's own fork of a remote's repository first (offering to add
 //! it), says when the repository is the user's own, and otherwise is the confirmation to fork it
-//! into the user's account, add the fork as a remote and fetch it.
+//! into the user's account, add the fork as a remote and fetch it. Opened from the create pull
+//! request dialog (`then_pr`), it also pushes the branch to the fork.
 
 use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::pane_status::{self, Failure};
@@ -77,8 +78,14 @@ pub fn show(
     let service = f.target.provider.name();
     let d = Dialog::new(cx, format!("Fork {repo} on {service}")).begin(ui);
     // (primary button label, enabled, why not, message) when the step has one.
-    let mut primary: Option<(&str, bool, Option<String>, RemoteMsg)> = None;
+    let mut primary: Option<(String, bool, Option<String>, RemoteMsg)> = None;
     let mut submit = false;
+    let then = f.then_pr.as_ref().map(|t| t.branch.clone());
+    if let Some(branch) = &then {
+        let noun = f.target.provider.pr_noun();
+        note(ui, format!("Then pushes {branch} to the fork and opens the Create {noun} dialog."));
+        ui.add_space(6.0);
+    }
     match f.step.clone() {
         ForkStep::Checking => match &f.error {
             None => spinner_line(ui, format!("Looking for your fork of {repo}…")),
@@ -94,6 +101,10 @@ pub fn show(
                 Some(r) => {
                     ui.add_space(4.0);
                     note(ui, format!("It is already the remote {r}."));
+                    if let Some(branch) = &then {
+                        let why = (!idle).then(|| BUSY.to_owned());
+                        primary = Some((format!("Push {branch} to {r}"), idle, why, RemoteMsg::AddMyFork));
+                    }
                 }
                 None => {
                     ui.add_space(6.0);
@@ -102,7 +113,8 @@ pub fn show(
                     controls::checkbox(ui, &mut f.fetch_after, "Fetch its branches after adding");
                     submit = enter;
                     let why = if idle { name_why(problem.as_ref(), &f.touched) } else { Some(BUSY.to_owned()) };
-                    primary = Some(("Add as remote", problem.is_none() && idle, why, RemoteMsg::AddMyFork));
+                    let label = if then.is_some() { "Add as remote and push" } else { "Add as remote" };
+                    primary = Some((label.to_owned(), problem.is_none() && idle, why, RemoteMsg::AddMyFork));
                 }
             }
         }
@@ -125,12 +137,13 @@ pub fn show(
             submit = enter;
             // While creating, the spinner says why.
             let why = if creating { None } else { name_why(problem.as_ref(), &f.touched) };
-            primary = Some(("Fork and add remote", problem.is_none() && !creating, why, RemoteMsg::CreateFork));
+            let label = if then.is_some() { "Fork, add remote and push" } else { "Fork and add remote" };
+            primary = Some((label.to_owned(), problem.is_none() && !creating, why, RemoteMsg::CreateFork));
         }
     }
     let footer = match &primary {
         Some((label, enabled, why, _)) => {
-            Footer::new().cancel().primary(buttons::primary(*label).enabled(*enabled).why(why.as_deref())).submit(submit)
+            Footer::new().cancel().primary(buttons::primary(label.as_str()).enabled(*enabled).why(why.as_deref())).submit(submit)
         }
         // While it looks for the fork, nothing has happened yet to close.
         None if matches!(f.step, ForkStep::Checking) => Footer::new().cancel(),

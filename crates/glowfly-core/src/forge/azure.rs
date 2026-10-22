@@ -134,7 +134,9 @@ struct ApiProject {
 /// The repository resource: its default branch and the project it belongs to.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct RepoInfo {
+pub(super) struct RepoInfo {
+    #[serde(default)]
+    pub(super) id: String,
     #[serde(default)]
     default_branch: Option<String>,
     #[serde(default)]
@@ -273,7 +275,8 @@ impl super::Forge for AzureDevOps {
 
     fn create_pull_request(&self, t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
         let work_items: Vec<_> = pr.issues.iter().filter(|k| k.parse::<u32>().is_ok()).map(|id| json!({ "id": id })).collect();
-        let body = json!({
+        let fork = super::pr_heads::azure_fork_source(t, auth, pr)?;
+        let mut body = json!({
             "sourceRefName": format!("refs/heads/{}", pr.source),
             "targetRefName": format!("refs/heads/{}", pr.target),
             "title": pr.title,
@@ -281,6 +284,9 @@ impl super::Forge for AzureDevOps {
             "isDraft": pr.draft,
             "workItemRefs": work_items,
         });
+        if let Some(f) = fork {
+            body["forkSource"] = f;
+        }
         let created: ApiPr = post(auth, &format!("{}/pullrequests?api-version={V}", repo_api(t)), body)?;
         Ok(convert(t, created, None))
     }

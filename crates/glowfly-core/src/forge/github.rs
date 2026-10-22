@@ -251,7 +251,11 @@ impl super::Forge for GitHub {
     }
 
     fn create_pull_request(&self, t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
-        let body = json!({ "title": pr.title, "head": pr.source, "base": pr.target, "body": pr.description, "draft": pr.draft });
+        let (head, head_repo) = super::pr_heads::github_head(t, pr);
+        let mut body = json!({ "title": pr.title, "head": head, "base": pr.target, "body": pr.description, "draft": pr.draft });
+        if let Some(r) = head_repo {
+            body["head_repo"] = r.into();
+        }
         let created: ApiPr = post(auth, &format!("{}/pulls", repo_api(t)), body)?;
         Ok(convert(created, Details::default()))
     }

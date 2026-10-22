@@ -2,7 +2,8 @@
 //! and the remote-branch labels in the graph, in groups: checkout (the local branch tracking it,
 //! or a new one), a new branch and a worktree; fast-forward of that local branch, merge, rebase,
 //! conflict check, compare and set upstream against the checked-out branch, and comparing it
-//! with its version before the last force-push (Range-diff); pull requests; hide
+//! with its version before the last force-push (Range-diff); pull requests (also from a fork
+//! remote into the base repository); hide
 //! or solo, and its colour; the Copy submenu; and delete on the remote. The branch's name heads
 //! the menu once; the items leave it out. Disabled items say why on hover, with the same text
 //! `update` logs when it refuses a late message.
@@ -11,10 +12,10 @@ use super::common::{menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
-use crate::msg::{BranchMsg, Msg, OpPreviewMsg, RebaseMsg, SelectionMsg};
+use crate::msg::{BranchMsg, ForgeMsg, Msg, OpPreviewMsg, RebaseMsg, SelectionMsg};
 use crate::state::gitflow_base::{Deleting, guard};
 use crate::state::rebase_onto::onto_commit_blocker;
-use crate::state::{ForgeState, Selection, branches, remote_branch, worktree_branches};
+use crate::state::{ForgeState, Selection, branches, pr_repos, remote_branch, worktree_branches};
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use git2::Oid;
@@ -63,6 +64,12 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
                 }
                 None => super::pr_menu_items::remote(ui, t, (name, oid), snap, fs, c.sel, msgs),
             }
+        }
+        // A fork on the code host's account: a pull request from it into the base repository.
+        Some(fs) if pr_repos::is_pr_remote(fs, remote) => {
+            ui.separator();
+            let create = Msg::Forge(ForgeMsg::CreatePrFrom { remote: remote.to_owned(), source: name.to_owned() });
+            menu_item(msgs, ui, t.trf("pr.menu.create", &[("noun", &fs.pr_word(t))]), create);
         }
         // Another remote of a repository on a code host: pull requests go through the host's.
         Some(_) => {}

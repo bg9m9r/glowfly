@@ -2,6 +2,7 @@
 //! update/publish.rs, update/askpass.rs).
 
 use crate::effect::ForgeReply;
+use crate::state::pr_repos::RepoSide;
 use glowfly_core::forge::{Account, CreatedRepo, NewPullRequest, TrelloBoard};
 use glowfly_core::settings::TrackerChoice;
 use std::path::PathBuf;
@@ -67,12 +68,41 @@ pub enum ForgeMsg {
         source: String,
         target: Option<String>,
     },
-    /// Push local `branch` to the code host's remote, then open the create dialog.
+    /// Open the create dialog for branch `source` on fork remote `remote` (its REMOTE row).
+    CreatePrFrom {
+        remote: String,
+        source: String,
+    },
+    /// The create dialog's From / Into repository choice.
+    PickPrRepo {
+        side: RepoSide,
+        remote: String,
+    },
+    /// Push local `branch` to the remote its pull request goes through (a fork it tracks, else
+    /// the code host's), then open the create dialog.
     PushAndStartPr {
         branch: String,
         target: Option<String>,
     },
-    CreatePr(NewPullRequest),
+    /// Push local `branch` to `remote` (the create dialog's From), then open or keep the dialog.
+    PushToForPr {
+        branch: String,
+        remote: String,
+        target: Option<String>,
+    },
+    /// The create dialog's Push to your fork…: open the Fork dialog for the base repository,
+    /// which then pushes `branch` to the fork.
+    PushToMyFork {
+        branch: String,
+        target: Option<String>,
+    },
+    /// Create the pull request; `from` and `into` are the remotes of its source and target
+    /// repositories ("" means the code host's).
+    CreatePr {
+        pr: NewPullRequest,
+        from: String,
+        into: String,
+    },
     ForgeReplied(ForgeReply),
     /// The branch tips drawn this frame (LOCAL and REMOTE rows, graph ref labels), sent by the
     /// shell when the set changes.
@@ -105,8 +135,12 @@ impl ForgeMsg {
             | Self::ForgetTokens { .. }
             | Self::SetTracker(..)
             | Self::CreatePrDialog { .. }
+            | Self::CreatePrFrom { .. }
+            | Self::PickPrRepo { .. }
             | Self::PushAndStartPr { .. }
-            | Self::CreatePr(..)
+            | Self::PushToForPr { .. }
+            | Self::PushToMyFork { .. }
+            | Self::CreatePr { .. }
             | Self::ForgeReplied(..)
             | Self::TipsShown(..)
             | Self::Connected { .. }

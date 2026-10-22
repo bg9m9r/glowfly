@@ -12,6 +12,7 @@ mod bitbucket_issues;
 mod check_list;
 mod filter_teams;
 mod filters;
+mod fork_prs;
 mod forks;
 mod github;
 mod gitlab;

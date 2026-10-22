@@ -1049,10 +1049,6 @@ blockers and major findings are Milestone 1 items.
 
 - Live-test GitLab, Bitbucket Cloud and Data Center, Azure DevOps and Jira against real accounts, including the Azure DevOps sign-in through Git Credential Manager (Microsoft Entra Bearer token)
 
-### "Push and start a PR"
-
-- Pull requests across forks: a source on a fork remote, or pushing to your own fork and opening the pull request against the upstream repository
-
 ### In-app pull request view
 
 - GitLab merge request notes, approve / unapprove and merge (merge, squash, fast-forward) in the
@@ -2579,6 +2575,17 @@ here, under the item they grew from.
 - For a diverged branch, offer a force push with lease and then the pull request (today it is refused with the reason)
 - A Preferences setting to create pull requests as drafts by default
 - Push-and-create entries in the graph's commit and ref-label menus
+- Read branch.<name>.pushRemote and remote.pushDefault to pick the remote a branch's pull request is pushed from
+- Find the upstream repository under any remote name by asking the service for a fork's parent, not only `upstream` or the code host's remote
+- When the code host's remote is the user's fork, also list the upstream repository's pull requests, so a fork pull request shows on its branch
+- Tell a fork's pull request apart from a same-named branch on the code host (head repository on PullRequest)
+- Push to your fork… in the branch menus, the toolbar's Push dropdown and the palette, not only in the create dialog
+- Keep the create dialog's typed title, description and linked issues across the Fork dialog detour
+- On a fork remote's REMOTE row, create a pull request from the checked-out branch into it, and open the branch's existing pull request
+- Push a stack's layers to a fork and open their pull requests against the upstream repository
+- A remote that fetches the upstream repository but pushes to a fork (remote.<name>.pushurl) as the source repository
+- An Allow edits by maintainers choice for fork pull requests on GitHub
+- Remember the last target repository per repository and preselect it
 
 ### In-app pull request view
 

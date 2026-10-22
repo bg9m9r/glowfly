@@ -85,7 +85,7 @@ fn advance(st: &mut AppState, fx: &mut Vec<Effect>) {
         fs.stack_prs = Some(StackPrs::Running(run));
         match why {
             Some(why) => stop_with(st, Some(why)),
-            None => super::push_pr::open_dialog(st, layer.branch, layer.target, fx),
+            None => super::push_pr::open_dialog(st, layer.branch, layer.target, None, fx),
         }
         return;
     }

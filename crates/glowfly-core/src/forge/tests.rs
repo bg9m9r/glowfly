@@ -192,3 +192,23 @@ fn trello_card_links_and_branches() {
     let account = Account { provider: Provider::Trello, host: "trello.com".into(), org: String::new() };
     assert_eq!(Target::token_url(&account).as_deref(), Some("https://trello.com/power-ups/admin"));
 }
+
+#[test]
+fn a_fork_source_is_another_repository() {
+    let target = t(Provider::GitHub, "github.com", "team", "app");
+    let pr = |src: Option<Target>| NewPullRequest {
+        source: "topic".into(),
+        target: "main".into(),
+        title: String::new(),
+        description: String::new(),
+        draft: false,
+        issues: Vec::new(),
+        source_repo: src,
+    };
+    assert_eq!(pr(None).fork_source(&target), None);
+    assert_eq!(pr(Some(t(Provider::GitHub, "github.com", "TEAM", "App"))).fork_source(&target), None);
+    let fork = t(Provider::GitHub, "github.com", "ada", "app");
+    assert_eq!(pr(Some(fork.clone())).fork_source(&target), Some(&fork));
+    let renamed = t(Provider::GitHub, "github.com", "team", "app-fork");
+    assert_eq!(pr(Some(renamed.clone())).fork_source(&target), Some(&renamed));
+}

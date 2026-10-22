@@ -102,12 +102,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             Modal::RemoveSubmodule(form) => close = super::submodule_dialogs::remove(ui, cx, form, idle, msgs),
             Modal::Clone(form) => close = super::clone_dialog::show(ui, cx, form, today, sparse_blocked.as_deref(), connections, msgs),
             Modal::Init(form) => close = super::init_dialog::show(ui, cx, form, chrono::Datelike::year(&today), msgs),
-            Modal::CreatePr { source, target, targets, title, description, draft, items } => {
+            Modal::CreatePr { source, target, targets, title, description, draft, items, repos } => {
                 let Some(fs) = fs.filter(|f| f.host.is_some()) else {
                     close = true;
                     return;
                 };
-                let form = super::create_pr_dialog::PrForm { source, target, targets, title, description, draft, items };
+                let form = super::create_pr_dialog::PrForm { source, target, targets, title, description, draft, items, repos };
                 close = super::create_pr_dialog::show(ui, cx, form, fs, snap, idle, msgs);
             }
             Modal::Publish(f) => close = super::publish::form(ui, cx, f, idle, msgs),

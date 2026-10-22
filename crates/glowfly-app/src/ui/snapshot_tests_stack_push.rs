@@ -77,6 +77,7 @@ fn create_pr_stack_step() {
         description: String::new(),
         draft: false,
         items: String::new(),
+        repos: Default::default(),
     });
     let mut h = harness(st, true);
     h.run();

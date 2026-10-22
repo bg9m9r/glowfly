@@ -50,6 +50,7 @@ fn creates_a_pull_request_linking_work_items() {
         description: "AB#5".into(),
         draft: true,
         issues: vec!["5".into(), "PROJ-1".into()],
+        source_repo: None,
     };
     let pr = create_pull_request(&t(), &token(Provider::AzureDevOps), &new).unwrap();
     assert_eq!(pr.id, 17);

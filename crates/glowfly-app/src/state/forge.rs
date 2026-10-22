@@ -44,6 +44,9 @@ pub struct ForgeState {
     pub host: Option<Target>,
     /// Git remote that points at `host`.
     pub remote: String,
+    /// Repositories of remotes on the code host's account (the code host's first), for pull
+    /// requests across forks; set by detect.
+    pub pr_repos: Vec<super::pr_repos::PrRepo>,
     pub tracker: Option<Target>,
     /// Credentials by account key.
     pub auth: HashMap<String, Auth>,
@@ -78,6 +81,7 @@ impl ForgeState {
         Self {
             host,
             remote,
+            pr_repos: Vec::new(),
             tracker,
             auth: HashMap::new(),
             host_status: Status::Idle,

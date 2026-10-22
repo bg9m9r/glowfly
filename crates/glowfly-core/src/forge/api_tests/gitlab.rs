@@ -52,6 +52,7 @@ fn creates_a_draft_merge_request() {
         description: "Body".into(),
         draft: true,
         issues: Vec::new(),
+        source_repo: None,
     };
     let pr = create_pull_request(&remote("https://gitlab.com/g/app"), &token(Provider::GitLab), &new).unwrap();
     assert_eq!((pr.id, pr.draft, pr.url.as_str()), (8, true, "https://gitlab.com/g/app/-/merge_requests/8"));

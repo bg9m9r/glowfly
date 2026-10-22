@@ -56,7 +56,7 @@ fn check_out_search(st: &mut AppState) {
 }
 
 /// Right-clicks the left panel's `search` row: the LOCAL one (topmost) or the REMOTE one.
-fn open_row_menu(h: &mut Harness<'_, (AppState, Vec<Msg>)>, local: bool) {
+pub(super) fn open_row_menu(h: &mut Harness<'_, (AppState, Vec<Msg>)>, local: bool) {
     let rows = h.get_all_by_label("search").filter_map(|n| n.bounding_box()).filter(|r| r.x0 < 250.0);
     let rect = if local { rows.min_by(|a, b| a.y0.total_cmp(&b.y0)) } else { rows.max_by(|a, b| a.y0.total_cmp(&b.y0)) };
     let rect = rect.expect("the sidebar row");
@@ -64,7 +64,7 @@ fn open_row_menu(h: &mut Harness<'_, (AppState, Vec<Msg>)>, local: bool) {
     click(h, center, PointerButton::Secondary);
 }
 
-fn sent(h: &Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&ForgeMsg) -> bool) -> bool {
+pub(super) fn sent(h: &Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&ForgeMsg) -> bool) -> bool {
     h.state().1.iter().any(|m| matches!(m, Msg::Forge(f) if want(f)))
 }
 
@@ -112,6 +112,7 @@ fn create_pr_dialog_push() {
         description: String::new(),
         draft: false,
         items: String::new(),
+        repos: Default::default(),
     });
     let mut h = harness(st, true);
     h.run();
@@ -119,7 +120,9 @@ fn create_pr_dialog_push() {
     assert!(h.query_by_label("search has 2 commits that aren't on origin.").is_some());
     h.get_by_label("Push search").click();
     h.run();
-    assert!(sent(&h, |f| matches!(f, ForgeMsg::PushAndStartPr { branch, target: Some(t) } if branch == "search" && t == "main")));
+    let push = |f: &ForgeMsg| matches!(f, ForgeMsg::PushToForPr { branch, remote, target: Some(t) } if branch == "search" && remote == "origin" && t == "main");
+    assert!(sent(&h, push));
+    assert!(h.query_by_label("Push to your fork…").is_none(), "only offered with the code host's repository known");
     assert!(matches!(h.state().0.modal, Some(Modal::CreatePr { .. })), "the dialog stays open");
     drop(h);
     remove_fixture(&dir);
@@ -142,6 +145,7 @@ fn create_pr_dialog_linked_issues() {
         description: String::new(),
         draft: false,
         items: "12".into(),
+        repos: Default::default(),
     });
     let mut h = harness(st, false);
     h.run();
@@ -166,10 +170,11 @@ fn create_pr_dialog_ctrl_enter() {
         description: String::new(),
         draft: false,
         items: String::new(),
+        repos: Default::default(),
     });
     let mut h = harness(st, true);
     h.run();
-    let created = |h: &Harness<'_, (AppState, Vec<Msg>)>| sent(h, |f| matches!(f, ForgeMsg::CreatePr(_)));
+    let created = |h: &Harness<'_, (AppState, Vec<Msg>)>| sent(h, |f| matches!(f, ForgeMsg::CreatePr { .. }));
     // The commit box under the dialog has a Description too; the dialog's is drawn last.
     h.get_all_by_label("Description").last().expect("the dialog's description").focus();
     h.run();

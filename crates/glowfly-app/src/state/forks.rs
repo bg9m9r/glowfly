@@ -58,6 +58,17 @@ pub struct ForkCreate {
     pub error: Option<ForgeError>,
     /// Whether the name was edited or a submit tried, so its problem waits for them.
     pub touched: super::touched::Touched,
+    /// Push this local branch to the fork and open the create dialog once it is added (the
+    /// create dialog's Push to your fork…).
+    pub then_pr: Option<ForkThenPr>,
+}
+
+/// What the Fork dialog does after adding the fork, when opened from the create dialog.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ForkThenPr {
+    pub branch: String,
+    /// The target to preselect in the create dialog.
+    pub target: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

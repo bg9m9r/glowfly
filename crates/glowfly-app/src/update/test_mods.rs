@@ -103,6 +103,8 @@ pub(super) mod forge_filters_account_tests;
 pub(super) mod forge_filters_tests;
 #[path = "forge_tests.rs"]
 pub(super) mod forge_tests;
+#[path = "fork_pr_tests.rs"]
+pub(super) mod fork_pr_tests;
 #[path = "git_env_tests.rs"]
 pub(super) mod git_env_tests;
 #[path = "git_job_tests.rs"]
@@ -289,6 +291,8 @@ pub(super) mod profile_setup_tests;
 pub(super) mod profiles_tests;
 #[path = "publish_tests.rs"]
 pub(super) mod publish_tests;
+#[path = "push_pr_fork_tests.rs"]
+pub(super) mod push_pr_fork_tests;
 #[path = "push_pr_state_tests.rs"]
 pub(super) mod push_pr_state_tests;
 #[path = "push_pr_tests.rs"]

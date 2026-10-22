@@ -226,7 +226,7 @@ impl super::Forge for Bitbucket {
             "title": pr.title,
             "description": pr.description,
             "draft": pr.draft,
-            "source": { "branch": { "name": pr.source } },
+            "source": super::pr_heads::bitbucket_source(pr, t),
             "destination": { "branch": { "name": pr.target } },
         });
         Ok(convert_cloud(post(auth, &format!("{}/pullrequests", cloud_repo(t)), body)?, None))

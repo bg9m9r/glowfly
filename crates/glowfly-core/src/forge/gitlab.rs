@@ -221,14 +221,18 @@ impl super::Forge for GitLab {
 
     fn create_pull_request(&self, t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
         let title = if pr.draft { format!("Draft: {}", pr.title) } else { pr.title.clone() };
-        let body = json!({
+        let (url, target_project) = super::pr_heads::gitlab_post(t, auth, pr)?;
+        let mut body = json!({
             "source_branch": pr.source,
             "target_branch": pr.target,
             "title": title,
             "description": pr.description,
             "remove_source_branch": false,
         });
-        let created: ApiMr = post(auth, &format!("{}/merge_requests", project_api(t)), body)?;
+        if let Some(id) = target_project {
+            body["target_project_id"] = id.into();
+        }
+        let created: ApiMr = post(auth, &url, body)?;
         Ok(convert(created, Approved::default(), None))
     }
 

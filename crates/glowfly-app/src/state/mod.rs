@@ -93,6 +93,7 @@ pub mod patch;
 pub mod path_hazards;
 pub mod pick;
 pub mod pr_details;
+pub mod pr_repos;
 pub mod prefs;
 pub mod prefs_save;
 pub mod profile_rules;
@@ -298,6 +299,8 @@ pub enum Modal {
         description: String,
         draft: bool,
         items: String,
+        /// The From / Into repositories (shown with two or more PR repositories).
+        repos: pr_repos::PrRepoPick,
     },
     Publish(Box<publish::PublishForm>),
     RenameBranch {

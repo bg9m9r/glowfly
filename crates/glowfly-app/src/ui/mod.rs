@@ -32,6 +32,7 @@ mod conflict_output;
 mod conflict_panes;
 mod content_fetch;
 mod create_pr_dialog;
+mod create_pr_repos;
 mod custom_menu;
 mod dashboard;
 mod dashboard_rows;
@@ -361,6 +362,8 @@ mod snapshot_tests_platform_dialogs;
 mod snapshot_tests_pr_check_list;
 #[cfg(test)]
 mod snapshot_tests_pr_checks;
+#[cfg(test)]
+mod snapshot_tests_pr_fork;
 #[cfg(test)]
 mod snapshot_tests_pr_no_host;
 #[cfg(test)]

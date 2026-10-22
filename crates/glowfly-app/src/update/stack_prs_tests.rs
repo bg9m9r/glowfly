@@ -78,8 +78,16 @@ fn pr(id: u64, source: &str, target: &str) -> PullRequest {
 fn create(st: &mut AppState) -> Vec<Effect> {
     let (source, target) = dialog(st).expect("a create dialog");
     drive(st, Msg::CloseModal);
-    let new = NewPullRequest { source, target, title: "t".into(), description: String::new(), draft: false, issues: Vec::new() };
-    update(st, Msg::Forge(ForgeMsg::CreatePr(new)), Instant::now())
+    let new = NewPullRequest {
+        source,
+        target,
+        title: "t".into(),
+        description: String::new(),
+        draft: false,
+        issues: Vec::new(),
+        source_repo: None,
+    };
+    update(st, Msg::Forge(ForgeMsg::CreatePr { pr: new, from: String::new(), into: String::new() }), Instant::now())
 }
 
 fn reply(st: &mut AppState, result: ForgeResult) {

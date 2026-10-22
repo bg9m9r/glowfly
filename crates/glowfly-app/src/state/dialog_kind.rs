@@ -103,8 +103,8 @@ impl Modal {
                 let holder = (f.holder != f.holder_suggested).then_some(&f.holder);
                 format!("{:?}", (&f.folder, &f.branch, &f.gitignore, f.os_editor, &f.license, holder, f.commit))
             }
-            Modal::CreatePr { target, title, description, draft, items, .. } => {
-                format!("{:?}", (target, title, description, draft, items))
+            Modal::CreatePr { target, title, description, draft, items, repos, .. } => {
+                format!("{:?}", (target, title, description, draft, items, &repos.from, &repos.into))
             }
             Modal::Publish(f) => {
                 let owner = (!f.owner.is_empty() && f.owners.first() != Some(&f.owner)).then_some(&f.owner);

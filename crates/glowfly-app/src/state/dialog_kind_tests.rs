@@ -74,6 +74,7 @@ fn forms_info_and_confirms_are_told_apart() {
             description: String::new(),
             draft: false,
             items: String::new(),
+            repos: Default::default(),
         },
     ];
     let request = CheckRequest {
@@ -106,6 +107,7 @@ fn forms_info_and_confirms_are_told_apart() {
         fetch_after: true,
         error: None,
         touched: Default::default(),
+        then_pr: None,
     };
     let confirms = [
         Modal::Confirm { title: "T".into(), body: "B".into(), button: "Go".into(), then: Box::new(Msg::ClearLog) },

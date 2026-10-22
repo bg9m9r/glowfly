@@ -198,6 +198,15 @@ binary (package `glowfly`).
   on the repository run only while the job's tab is active and are logged otherwise. A follow-up that needs the refreshed snapshot waits for the
   reload: a push for a pull request sets `ForgeState::open_after_load`, and the next snapshot
   load opens the create dialog (`update/push_pr.rs::loaded`), never replacing another dialog.
+- **Pull requests across forks**: detect lists the remotes on the code host's account as PR
+  repositories (`ForgeState::pr_repos`, built by `state/pr_repos.rs`: the code host's first, one
+  per repository); the base is a remote named `upstream`, else the code host's. A branch tracking
+  a fork remote is pushed and measured there (`pr_repos::push_remote`, `state/push_pr.rs`'s
+  `*_on` functions). The create dialog picks From / Into (`ui/create_pr_repos.rs`,
+  `update/pr_repo_pick.rs`), and `update/push_pr.rs::create` sends the request to the Into
+  repository with `NewPullRequest::source_repo` set to the fork; each service's head on a fork is
+  in `glowfly-core/src/forge/pr_heads.rs`. Push to your fork… goes through the Fork dialog with
+  `ForkCreate::then_pr`, whose add job also pushes the branch (`update/fork_pr.rs`).
 - **Operation journal**: the timeline is git's reflogs plus Glowfly's notes. Only the runner
   writes notes, and only around the work that rewrites history: a `RunGit` whose job carries a
   `journal` op (worked out from the command as the user gave it, before the auto-stash wrap, in

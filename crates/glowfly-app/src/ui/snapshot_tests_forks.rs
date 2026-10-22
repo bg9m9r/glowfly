@@ -8,7 +8,7 @@ use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, center, dialog_button, pushed};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
-use crate::state::forks::{ForkCreate, ForkPicker, ForkStep};
+use crate::state::forks::{ForkCreate, ForkPicker, ForkStep, ForkThenPr};
 use crate::state::remotes::RemoteForm;
 use crate::state::{AppState, Modal};
 use crate::ui::remotes::fork_pick::PICK_FIRST;
@@ -85,6 +85,7 @@ fn create(st: &AppState, step: ForkStep, name: &str) -> ForkCreate {
         fetch_after: true,
         error: None,
         touched: Default::default(),
+        then_pr: None,
     }
 }
 
@@ -193,6 +194,25 @@ fn fork_create_found() {
     assert!(!button_disabled(&h, "Add as remote"));
     h.check_snapshot("fork_create_found");
     h.get_by_role_and_label(Role::Button, "Add as remote").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::Remote(RemoteMsg::AddMyFork))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Opened from the create dialog's Push to your fork…: the fork is also pushed to.
+#[test]
+fn fork_dialog_then_push() {
+    let (mut st, dir) = with_github(ThemeChoice::Dark, "fork-dialog-then-push");
+    let step = ForkStep::Mine { user: "ada".into(), fork: fork("ada", false) };
+    let mut f = create(&st, step, "ada");
+    f.then_pr = Some(ForkThenPr { branch: "search".into(), target: None });
+    st.modal = Some(Modal::CreateFork(Box::new(f)));
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Then pushes search to the fork and opens the Create pull request dialog.").is_some());
+    h.check_snapshot("fork_dialog_then_push");
+    h.get_by_role_and_label(Role::Button, "Add as remote and push").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Remote(RemoteMsg::AddMyFork))));
     drop(h);

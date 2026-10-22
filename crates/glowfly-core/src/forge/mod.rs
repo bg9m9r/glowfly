@@ -43,6 +43,7 @@ mod http;
 mod links;
 mod model;
 mod page;
+mod pr_heads;
 mod provider;
 mod publish;
 mod refs;
@@ -308,7 +309,12 @@ pub fn default_branch(t: &Target, auth: &Auth) -> Result<Option<String>> {
     service(t.provider).default_branch(t, auth)
 }
 
+/// Opens a pull request on `t`; a source on a fork (`NewPullRequest::source_repo`) must be on
+/// the same service account, or nothing is sent.
 pub fn create_pull_request(t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
+    if pr.fork_source(t).is_some_and(|s| s.account() != t.account()) {
+        return Err(Error::Other("a pull request's source repository must be on the same service account as its target".into()));
+    }
     service(t.provider).create_pull_request(t, auth, pr).map(|p| links::pr(t, p))
 }
 

@@ -150,6 +150,7 @@ pub(super) fn open_create(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
         fetch_after: true,
         error: None,
         touched: Default::default(),
+        then_pr: None,
     })));
     fx.push(Effect::Remote(RemoteEffect::FindMyFork(req(st, workdir, target))));
 }
@@ -181,6 +182,11 @@ pub(super) fn my_fork_found(st: &mut AppState, workdir: &Path, target: &Target, 
 }
 
 pub(super) fn add_my_fork(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if let Some(Modal::CreateFork(f)) = st.modal.as_ref()
+        && let Some(then) = f.then_pr.clone()
+    {
+        return super::fork_pr::add_mine(st, then, fx);
+    }
     let job = {
         let (Some(snap), Some(Modal::CreateFork(f))) = (st.snap.as_ref(), st.modal.as_ref()) else { return };
         let ForkStep::Mine { fork, .. } = &f.step else { return };
@@ -239,9 +245,12 @@ pub(super) fn fork_created(
             return;
         }
     };
-    if creator(st, &workdir, target).is_some() {
+    // Opened from the create dialog: the branch is pushed to the fork too (update/fork_pr.rs).
+    let then_pr = creator(st, &workdir, target).map(|f| f.then_pr.take());
+    if then_pr.is_some() {
         st.modal = None;
     }
+    let then_pr = then_pr.flatten();
     let fork = created.fork;
     let link = if fork.web_url.is_empty() { String::new() } else { format!(" ({})", fork.web_url) };
     st.log(true, format!("Created the fork {} on {service}{link}.", fork.full_name));
@@ -258,12 +267,26 @@ pub(super) fn fork_created(
     if let Err(p) = check_url(&url) {
         return st.log(false, p.message(false));
     }
+    // With the fork ready and its repository still active, the branch is pushed in the same job.
+    let push = then_pr.as_ref().filter(|_| created.ready).and_then(|t| Some((t, active?)));
+    let push_job = push.and_then(|(t, snap)| super::fork_pr::add_and_push_job(snap, &name, &url, true, t));
+    let (pushes, here) = (push_job.is_some(), active.is_some());
     // It runs in the forked repository even if another tab is active now, as that repository's
     // trust decision allows (update/trust.rs).
-    let spec = JobSpec { cwd: Some(workdir), ..JobSpec::new(format!("Add remote {name}"), add_cmds(&name, &url, None, created.ready)) };
+    let plain = || JobSpec::new(format!("Add remote {name}"), add_cmds(&name, &url, None, created.ready));
+    let spec = JobSpec { cwd: Some(workdir), ..push_job.unwrap_or_else(plain) };
     start_job(st, spec, fx);
-    if !created.ready {
-        st.log(true, format!("{service} is still preparing the fork; fetch {name} in a minute."));
+    let noun = st.forge.as_ref().map_or("pull request", |f| f.pr_noun());
+    match then_pr {
+        Some(t) if !created.ready => {
+            st.log(true, format!("{service} is still preparing the fork; push {} to {name} in a minute, then create the {noun}.", t.branch))
+        }
+        Some(t) if !pushes && here => st.log(false, format!("Branch {} no longer exists, so nothing was pushed to {name}.", t.branch)),
+        Some(t) if !pushes => {
+            st.log(true, format!("Added the fork as {name}. Its tab is no longer active, so {} wasn't pushed.", t.branch))
+        }
+        None if !created.ready => st.log(true, format!("{service} is still preparing the fork; fetch {name} in a minute.")),
+        _ => {}
     }
 }
 

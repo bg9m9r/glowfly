@@ -85,6 +85,7 @@ fn cloud_creates_a_pull_request() {
         description: "Body".into(),
         draft: false,
         issues: Vec::new(),
+        source_repo: None,
     };
     let pr = create_pull_request(&remote("https://bitbucket.org/team/app"), &token(Provider::Bitbucket), &new).unwrap();
     assert_eq!((pr.id, pr.url.as_str()), (20, "https://bitbucket.org/team/app/pull-requests/20"));
@@ -124,6 +125,7 @@ fn data_center_pull_requests_verify_and_create() {
         description: String::new(),
         draft: false,
         issues: Vec::new(),
+        source_repo: None,
     };
     create_pull_request(&t, &auth, &new).unwrap();
     let sent = find(&m, "POST bitbucket.acme.io/").json();

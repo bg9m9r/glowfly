@@ -1,46 +1,43 @@
-//! Starting a pull request: the create dialog (source, target, title, linked issues), pushing
-//! the branch to the code host first, and opening the dialog once that push has landed.
+//! Starting a pull request: the create dialog (source and target repositories and branches,
+//! title, linked issues), pushing the branch first (to the code host's remote, or to the fork it
+//! comes from), and opening the dialog once that push has landed.
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::{Effect, ForgeCall};
+use crate::state::pr_repos::{self, PrRepoPick};
 use crate::state::push_pr::{self, HostBranch, PrStart};
-use crate::state::{AppState, Modal, branches};
+use crate::state::{AppState, Modal};
+use git2::Oid;
 use glowfly_core::branch_ops;
-use glowfly_core::forge::NewPullRequest;
+use glowfly_core::forge::{NewPullRequest, Target};
 
-/// Opens the create dialog for `name` (a local branch or a branch on the code host's remote),
-/// with `preferred` as the target when it is one.
-pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<String>, fx: &mut Vec<Effect>) {
+/// Opens the create dialog for `name` (a local branch or a branch on a PR repository's remote),
+/// with `preferred` as the target when it is one. `from` is the remote the source is on; None
+/// takes the branch's push remote (`pr_repos::push_remote`), else the code host's.
+pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<String>, from: Option<String>, fx: &mut Vec<Effect>) {
     let (Some(snap), Some(fs)) = (&st.snap, &st.forge) else { return };
     if fs.host.is_none() {
         return;
     }
-    let local = push_pr::local_for(snap, fs, &name);
-    let source = push_pr::pr_source(snap, fs, &name);
-    let remote_branches: &[(String, git2::Oid)] =
-        snap.remotes.iter().find(|(r, _)| *r == fs.remote).map(|(_, b)| b.as_slice()).unwrap_or_default();
-    let remote_tip = |n: &str| remote_branches.iter().find(|(b, _)| b == n).map(|(_, o)| *o);
+    let from = from
+        .or_else(|| push_pr::local_for(snap, fs, &name).map(|b| pr_repos::push_remote(b, fs)))
+        .filter(|r| pr_repos::is_pr_remote(fs, r))
+        .unwrap_or_else(|| fs.remote.clone());
+    let local = push_pr::local_for_on(snap, &from, &name);
+    let source = push_pr::pr_source_on(snap, &from, &name);
+    let into = pr_repos::default_into(snap, fs, &from, preferred.as_deref());
+    let targets = pr_repos::target_branches(snap, fs, &into, &from, &source);
+    let target = pr_repos::default_target(snap, fs, &into, &targets, &source, &from, preferred.as_deref());
+    let tip = |remote: &str, n: &str| pr_repos::remote_branches(snap, remote).iter().find(|(b, _)| b == n).map(|(_, o)| *o);
     let local_tip = |n: &str| snap.locals.iter().find(|b| b.name == n).and_then(|b| b.oid);
-    let mut targets: Vec<String> = if remote_branches.is_empty() {
-        snap.locals.iter().map(|b| b.name.clone()).collect()
-    } else {
-        remote_branches.iter().map(|(n, _)| n.clone()).collect()
-    };
-    targets.retain(|b| *b != source);
-    targets.sort();
-    let target = preferred
-        .filter(|t| targets.contains(t))
-        .or_else(|| fs.default_branch.clone().filter(|b| *b != source))
-        .or_else(|| ["main", "master", "develop"].iter().find(|b| remote_tip(b).is_some() && **b != source).map(|b| b.to_string()))
-        .unwrap_or_else(|| "main".into());
     // The commit the pull request ends at: the local tip, else the remote branch's.
-    let from = local.and_then(|b| b.oid).or_else(|| remote_tip(&source));
-    let title = from.and_then(|o| snap.row_of.get(&o)).map(|&r| snap.commits[r].summary.clone()).unwrap_or_else(|| source.clone());
+    let end: Option<Oid> = local.and_then(|b| b.oid).or_else(|| tip(&from, &source));
+    let title = end.and_then(|o| snap.row_of.get(&o)).map(|&r| snap.commits[r].summary.clone()).unwrap_or_else(|| source.clone());
     // Issues mentioned on the branch: from its name and from commits not yet on the target.
     let branch = local.map(|b| b.name.as_str()).unwrap_or(&source);
     let mut keys: Vec<String> = fs.branch_issue(branch).into_iter().collect();
-    if let Some(from) = from {
-        for c in snap.commits_between(from, remote_tip(&target).or_else(|| local_tip(&target))) {
+    if let Some(end) = end {
+        for c in snap.commits_between(end, tip(&into, &target).or_else(|| local_tip(&target))) {
             for k in fs.issue_refs(&c.summary).into_iter().chain(fs.issue_refs(&c.body)) {
                 if !keys.contains(&k) {
                     keys.push(k);
@@ -49,13 +46,14 @@ pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<Str
         }
     }
     let items = keys.join(", ");
-    st.modal = Some(Modal::CreatePr { source, target, targets, title, description: String::new(), draft: false, items });
+    let repos = PrRepoPick { branch: name, from, into };
+    st.modal = Some(Modal::CreatePr { source, target, targets, title, description: String::new(), draft: false, items, repos });
     super::forge::want_issues(st, keys, fx);
 }
 
-/// Pushes local `branch` to the code host's remote, then opens the create dialog (at once
-/// when the remote already has everything). A diverged branch is refused, never forced.
-pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, fx: &mut Vec<Effect>) {
+/// Pushes local `branch` to `remote` (None: its push remote), then opens the create dialog (at
+/// once when the remote already has everything). A diverged branch is refused, never forced.
+pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, remote: Option<String>, fx: &mut Vec<Effect>) {
     let (Some(snap), Some(fs)) = (&st.snap, &st.forge) else { return };
     if fs.host.is_none() {
         return;
@@ -64,47 +62,64 @@ pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, fx:
         st.log(false, format!("Branch {branch} no longer exists."));
         return;
     };
-    let Some(state) = push_pr::host_branch(&b, snap, fs) else {
-        let msg = format!("There is no remote named {}.", fs.remote);
-        st.log(false, msg);
+    let remote = remote.unwrap_or_else(|| pr_repos::push_remote(&b, fs));
+    let Some(state) = push_pr::host_branch_on(&b, snap, fs, &remote) else {
+        st.log(false, format!("There is no remote named {remote}."));
         return;
     };
     match state {
         HostBranch::Blocked(why) => st.log(false, why),
-        // A dialog already open for this branch keeps what was typed in it.
+        // A dialog already open for this branch and repository keeps what was typed in it.
         HostBranch::Pushed => {
-            let source = push_pr::pr_source(snap, fs, &b.name);
-            if !matches!(&st.modal, Some(Modal::CreatePr { source: s, .. }) if *s == source) {
-                open_dialog(st, b.name, target, fx);
+            let source = push_pr::pr_source_on(snap, &remote, &b.name);
+            let open =
+                matches!(&st.modal, Some(Modal::CreatePr { source: s, repos, .. }) if *s == source && repos.remote_from(fs) == remote);
+            if !open {
+                open_dialog(st, b.name, target, Some(remote), fx);
             }
         }
         HostBranch::Missing | HostBranch::Ahead(_) => {
-            let Some((remote, dest, set_upstream)) = branches::push_target(&b, snap, Some(&fs.remote)) else { return };
-            let cmd = branch_ops::push_cmd(&b.name, &remote, &dest, set_upstream);
-            let spec = JobSpec { then_pr: Some(PrStart { source: dest, target }), ..JobSpec::new("Push".into(), vec![cmd]) };
-            start_job(st, spec, fx);
+            let Some((to, dest, set_upstream)) = push_pr::pr_push(&b, snap, fs, &remote) else { return };
+            let cmd = branch_ops::push_cmd(&b.name, &to, &dest, set_upstream);
+            let then = PrStart { source: dest, target, remote: (to != fs.remote).then_some(to) };
+            start_job(st, JobSpec { then_pr: Some(then), ..JobSpec::new("Push".into(), vec![cmd]) }, fx);
         }
     }
 }
 
-/// Sends a filled-in create dialog to the code host, unless its source isn't on the host's
-/// remote (the service would refuse it).
-pub(super) fn create(st: &mut AppState, pr: NewPullRequest, fx: &mut Vec<Effect>) {
+/// Sends a filled-in create dialog to the Into repository (`into`, a remote; "" is the code
+/// host's), unless its source isn't on the From remote (the service would refuse it). A source
+/// on another repository goes as `source_repo`.
+pub(super) fn create(st: &mut AppState, mut pr: NewPullRequest, from: &str, into: &str, fx: &mut Vec<Effect>) {
     let Some(fs) = st.forge.as_ref() else { return };
     let Some(host) = fs.host.clone() else { return };
+    let resolve = |r: &str| -> Option<(String, Target)> {
+        if r.is_empty() || r == fs.remote {
+            return Some((fs.remote.clone(), host.clone()));
+        }
+        pr_repos::repo(fs, r).map(|p| (p.remote.clone(), p.target.clone()))
+    };
+    let (Some((from, from_t)), Some((_, into_t))) = (resolve(from), resolve(into)) else {
+        let gone = if resolve(from).is_none() { from } else { into };
+        let msg = format!("{gone} is no longer a remote on {}. Pick another repository.", host.provider.name());
+        st.log(false, msg);
+        super::stack_prs::refused(st, &pr.source);
+        return;
+    };
     let missing = st
         .snap
         .as_ref()
-        .and_then(|s| s.remotes.iter().find(|(r, _)| *r == fs.remote))
+        .and_then(|s| s.remotes.iter().find(|(r, _)| *r == from))
         .is_some_and(|(_, bs)| !bs.iter().any(|(n, _)| *n == pr.source));
     if missing {
-        let msg = format!("{} isn't on {} yet. Push it first, then create the {}.", pr.source, fs.remote, fs.pr_noun());
+        let msg = format!("{} isn't on {from} yet. Push it first, then create the {}.", pr.source, fs.pr_noun());
         st.log(false, msg);
         super::stack_prs::refused(st, &pr.source);
         return;
     }
+    pr.source_repo = (from_t != into_t).then_some(from_t);
     super::stack_prs::sending(st, &pr.source);
-    super::forge::request(st, host, false, ForgeCall::Create(pr), fx);
+    super::forge::request(st, into_t, false, ForgeCall::Create(pr), fx);
 }
 
 /// A job with a create dialog to open (`then_pr`) ended. A push that worked in the active tab
@@ -131,10 +146,11 @@ fn open_after_load(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(fs) = st.forge.as_mut() else { return };
     let Some(p) = fs.open_after_load.take() else { return };
     let noun = fs.pr_noun();
+    let from = p.remote.as_deref().unwrap_or(&fs.remote);
     match &st.modal {
-        Some(Modal::CreatePr { source, .. }) if *source == p.source => {}
+        Some(Modal::CreatePr { source, repos, .. }) if *source == p.source && repos.remote_from(fs) == from => {}
         Some(_) => st.log(true, format!("Pushed {}. Use Create {noun}… to continue.", p.source)),
-        None => open_dialog(st, p.source, p.target, fx),
+        None => open_dialog(st, p.source, p.target, p.remote, fx),
     }
 }
 

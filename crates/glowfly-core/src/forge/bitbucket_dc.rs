@@ -174,7 +174,7 @@ impl super::Forge for BitbucketDc {
             "title": pr.title,
             "description": pr.description,
             "draft": pr.draft,
-            "fromRef": { "id": format!("refs/heads/{}", pr.source), "repository": repo },
+            "fromRef": { "id": format!("refs/heads/{}", pr.source), "repository": super::pr_heads::dc_from_repo(pr, t) },
             "toRef": { "id": format!("refs/heads/{}", pr.target), "repository": repo },
         });
         Ok(convert_dc(post(auth, &format!("{}/pull-requests", dc_repo(t)), body)?, None))
