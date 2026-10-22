@@ -305,11 +305,14 @@ second one next to it.
    ssh-keygen directly; it asks through `SSH_ASKPASS`, and gitcli adds `GLOWFLY_SSH_SIGNING_KEY`
    (the user.signingKey file) for commands that may sign (`gpg_prompt/ssh_env.rs`).
 9. **The UI language comes only from `i18n::detect_system_language`**, called once in `main.rs`
-   before the window opens: sys-locale's ordered list (Windows: the user's preferred UI
-   languages; macOS: the preferred languages; Unix: `LANGUAGE`, then `LC_ALL`, `LC_MESSAGES`,
-   `LANG`); the first supported language wins, and `C`/`POSIX` first or nothing supported means
-   English. Never read `env::var("LANG")` for it, and never read it again while Glowfly runs. It
-   is independent of the `LANGUAGE=C` that `gitcli` gives git children (rule 5).
+   before the window opens. On Windows and macOS it is sys-locale's ordered list (the user's
+   preferred UI languages / the preferred languages). On Linux and other Unix it follows
+   gettext's rule through `i18n::message_locales`: `LANGUAGE`'s list ahead of the first
+   non-empty `LC_ALL`, `LC_MESSAGES`, `LANG`, with `LANGUAGE` ignored when that locale is
+   `C`/`POSIX` (including `C.UTF-8`) or unset. The first supported language wins, and
+   `C`/`POSIX` first or nothing supported means English. Nothing else reads these variables for
+   it, and it is never read again while Glowfly runs. It is independent of the `LANGUAGE=C`
+   that `gitcli` gives git children (rule 5).
 10. **`GLOWFLY_UPDATE_FEED` replaces the release feed with a local folder** (`app_update::Feed`).
     The old name, `TRELLIS_UPDATE_FEED`, is read when the new one is unset or empty
     (`app_update::feed::feed_var`). Unset or empty means the hosting service over https, as always. Set, it must be an absolute

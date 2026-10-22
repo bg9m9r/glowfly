@@ -115,6 +115,52 @@ fn pick_reads_os_locale_tags() {
     assert_eq!(pick(["ES"]), Lang::Es);
 }
 
+fn env<'a>(lc_all: Option<&'a str>, lc_messages: Option<&'a str>, lang: Option<&'a str>, language: Option<&'a str>) -> LocaleEnv<'a> {
+    LocaleEnv { lc_all, lc_messages, lang, language }
+}
+
+#[test]
+fn message_locales_follow_gettext() {
+    // LANGUAGE's entries come first, empty ones skipped, then the effective locale.
+    assert_eq!(message_locales(env(None, None, Some("de_DE.UTF-8"), Some("es:fr"))), ["es", "fr", "de_DE.UTF-8"]);
+    assert_eq!(message_locales(env(None, None, Some("en_US"), Some("de::es"))), ["de", "es", "en_US"]);
+    assert_eq!(message_locales(env(None, None, Some("de_DE"), Some(""))), ["de_DE"]);
+    assert_eq!(message_locales(env(None, None, Some("es_ES.UTF-8"), None)), ["es_ES.UTF-8"]);
+
+    // A C or POSIX locale ignores LANGUAGE.
+    let c_cases = [
+        (env(None, None, Some("C"), Some("de")), "C"),
+        (env(None, None, Some("C.UTF-8"), Some("de")), "C.UTF-8"),
+        (env(None, None, Some("C.utf8"), Some("de")), "C.utf8"),
+        (env(None, None, Some("POSIX"), Some("de")), "POSIX"),
+        (env(None, None, Some("POSIX.UTF-8"), None), "POSIX.UTF-8"),
+        (env(None, None, Some("c@x"), Some("de")), "c@x"),
+        (env(Some("C"), None, Some("de_DE.UTF-8"), Some("de")), "C"),
+        (env(None, Some("POSIX"), Some("de_DE.UTF-8"), Some("es")), "POSIX"),
+    ];
+    for (e, want) in c_cases {
+        let got = message_locales(e);
+        assert_eq!(got, [want], "{e:?}");
+        assert_eq!(pick(&got), Lang::En, "{e:?}");
+    }
+
+    // LC_ALL, then LC_MESSAGES, then LANG; empty values count as unset.
+    assert_eq!(message_locales(env(Some(""), Some(""), Some("es_ES.UTF-8"), None)), ["es_ES.UTF-8"]);
+    assert_eq!(message_locales(env(Some("de_DE"), None, Some("C"), Some("es"))), ["es", "de_DE"]);
+    assert_eq!(message_locales(env(None, Some("de_AT"), Some("es_ES"), None)), ["de_AT"]);
+
+    // Nothing set is the C locale, which ignores LANGUAGE too.
+    assert_eq!(message_locales(LocaleEnv::default()), ["C"]);
+    assert_eq!(pick(message_locales(LocaleEnv::default())), Lang::En);
+    assert_eq!(message_locales(env(None, None, None, Some("de"))), ["C"]);
+    assert_eq!(pick(message_locales(env(None, None, None, Some("de")))), Lang::En);
+
+    // Through pick: an unsupported LANGUAGE entry falls through to the locale.
+    assert_eq!(pick(message_locales(env(None, None, Some("de_DE.UTF-8"), Some("es:de")))), Lang::Es);
+    assert_eq!(pick(message_locales(env(None, None, Some("de_DE.UTF-8"), Some("fr")))), Lang::De);
+    assert_eq!(pick(message_locales(env(None, None, Some("fr_FR"), Some("fr")))), Lang::En);
+}
+
 #[test]
 fn from_setting_resolves_codes() {
     assert_eq!(Lang::from_setting("de"), Lang::De);

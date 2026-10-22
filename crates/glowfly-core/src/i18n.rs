@@ -1,7 +1,7 @@
 //! The UI's translations: the languages Glowfly ships, their bundled catalogs (English is the
 //! base; each other language is a JSON file of the same keys, `locales/`), lookups that fall
 //! back to English and then to the key itself, `{name}` placeholders filled in one pass, and the
-//! OS language, read once at startup (`system.rs`).
+//! OS language, read once at startup, in gettext's order on Linux (`system.rs`).
 //!
 //! Views and update build text with `settings.lang()` and `tr` / `trf` / `trn`. Translated text
 //! is shown, never matched against git output or used as an id.
@@ -14,7 +14,7 @@ mod tests;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Display;
 
-pub use system::{detect_system_language, pick, system};
+pub use system::{LocaleEnv, detect_system_language, message_locales, pick, system};
 
 /// The Language setting's value for "follow the OS".
 pub const SYSTEM: &str = "system";

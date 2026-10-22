@@ -1054,10 +1054,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 
 - More formats and targets: .rpm, AppImage or Flatpak, a Homebrew cask, a winget manifest, Linux aarch64 and Windows ARM64 builds
 
-### Language
-
-- Honour gettext's rule that LANGUAGE is ignored when the locale is C on Linux
-
 ## Ideas
 
 Polish, edge cases and power-user extras that are not planned work. Nothing here is built
@@ -2780,6 +2776,8 @@ here, under the item they grew from.
 
 ### Language
 
+- On Linux, base the date locale (dates/locale_patterns.rs) on LC_ALL/LC_TIME/LANG and the spell-check language on gettext's order, instead of sys_locale::get_locale(), which prefers LANGUAGE's first entry
+- Say in Preferences > Language which OS setting or variable the System choice came from
 - Key names in shortcut hints follow the language (e.g. "Strg" on German keyboards)
 - Plural rules beyond one/other (needed if a language with other forms is added)
 - Wrap or shrink right-aligned Preferences labels that are too long in a translation
