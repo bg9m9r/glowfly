@@ -19,7 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
-- 2026-10-22 05:53 · **Logs**: copy an activity entry or the whole log, and export all logs as one text bundle (`8d67713d`)
+- 2026-10-22 05:53 · **Logs**: copy an activity entry or the whole log, and export all logs as one text bundle (`c5d13bbe`)
 - 2026-10-22 05:40 · **UI review polish**: The trust prompt and Git Hooks get a drawn hook icon on the text margin, the dashboard sits in a centred column at most 900 px wide, Clone with no connected service shows only the connect prompt with Open integrations and a link back to the URL tab, Git Flow Finish blocked only by uncommitted changes offers Stash changes and finish (put back on the development branch, held through a conflict until Continue finish or Forget), Choose a repository says why its first entry is preselected and an unknown link kind offers Check for updates, clean submodules say "up to date" with a tooltip on each status dot, and the tab list follows + while worktree groups get a named chip (`9076b41c`)
 - 2026-10-22 05:09 · **"Push and start a PR"**: The create dialog opens pull requests across forks, with From and Into repository pickers when the code host's account has several remotes, the fork head sent to GitHub, GitLab, Bitbucket and Azure DevOps, branches tracking a fork pushed there, and Create pull request… on a fork remote's row (`541c17a1`)
 - 2026-10-22 04:53 · **Git engine choice**: the banner offers the git on PATH when the saved git is gone (`75c5733d`)
