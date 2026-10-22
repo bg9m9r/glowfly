@@ -55,7 +55,8 @@ pub(super) fn quote(st: &mut AppState, i: usize) {
 /// A comment's answer for issue `key` on `target` in the repository at `workdir`. It is matched
 /// by repository, tracker and key only, never by generation: a details reload in the meantime
 /// must not make a posted comment's answer stale. It goes to the active panel, else to the
-/// parked panel of the tab showing `workdir`; without a panel it is logged and toasted.
+/// parked panel of the tab showing `workdir`, and only while that panel is posting: a panel
+/// closed and reopened meanwhile has a new draft to keep. Without one it is logged and toasted.
 pub(super) fn commented(
     st: &mut AppState,
     workdir: &Path,
@@ -80,7 +81,7 @@ pub(super) fn commented(
     {
         fs.auth.remove(&target.account().key());
     }
-    let mine = |v: &&mut IssueView| v.key == key && &v.target == target;
+    let mine = |v: &&mut IssueView| v.comment.posting && v.key == key && &v.target == target;
     let view = if active {
         st.issue.as_mut().filter(mine)
     } else {

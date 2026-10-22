@@ -1,6 +1,6 @@
 //! Headless tests for the issue panel's comment box: posting the draft and why it can't be
-//! posted, the answer appended or the draft kept, answers that find no panel, one for a parked
-//! tab, a reload in flight, and Reply quoting a comment into the draft.
+//! posted, the answer appended or the draft kept, answers that find no panel or a reopened one,
+//! one for a parked tab, a reload in flight, and Reply quoting a comment into the draft.
 
 use super::issue_tests::{details, done, err, github, jobs, open_repo, reply, run};
 use super::update;
@@ -173,6 +173,32 @@ fn replies_without_their_panel_are_logged_and_toasted() {
         },
     );
     assert_eq!(view(&st).loaded().unwrap().comments.last(), Some(&posted("Seen")));
+    done(st, dir);
+}
+
+#[test]
+fn a_reply_leaves_a_reopened_panel_alone() {
+    let (mut st, dir) = loaded_panel("issue-comment-reopened");
+    let workdir = st.workdir().unwrap();
+    post(&mut st, "Thanks");
+    run(&mut st, IssueMsg::Close);
+    run(&mut st, IssueMsg::Open("12".into()));
+    let msg = reply(&st, IssueReply::Loaded { key: "12".into(), result: Ok(details("12")) });
+    run(&mut st, msg);
+    if let Details::Loaded(d) = &mut view_mut(&mut st).details {
+        d.comments.push(posted("Thanks"));
+    }
+    view_mut(&mut st).comment.text = "New draft".into();
+    answer(&mut st, &workdir, "12", Ok(posted("Thanks")));
+    let v = view(&st);
+    assert_eq!(v.comment.text, "New draft", "the reopened panel's draft is kept");
+    assert_eq!(v.loaded().unwrap().comments, vec![posted("Thanks")], "the comment isn't shown twice");
+    assert!(st.toasts.iter().any(|t| t.ok && t.text == "Commented on issue #12"));
+
+    answer(&mut st, &workdir, "12", Err(err("timed out")));
+    let v = view(&st);
+    assert_eq!((v.comment.text.as_str(), v.comment.error.as_deref()), ("New draft", None));
+    assert!(st.toasts.iter().any(|t| !t.ok && t.text == "Couldn't post the comment on #12: timed out"));
     done(st, dir);
 }
 
