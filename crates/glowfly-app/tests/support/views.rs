@@ -1,6 +1,6 @@
-//! Reading the view sources for the source checks (`controls.rs`, `message_styles.rs`): every
-//! non-test file under `src/ui/`, and each file's code with comments and inline test modules
-//! blanked out.
+//! Reading the sources for the source checks (`controls.rs`, `message_styles.rs`, `hygiene.rs`):
+//! every file of a crate marked test or not, the non-test files under `src/ui/`, and each file's
+//! code with comments and inline test modules blanked out.
 
 // Each check uses only some of these.
 #![allow(dead_code)]
@@ -71,24 +71,38 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Every non-test file under `src/ui/`, as (path under `src/` with `/`, text).
-pub fn view_sources() -> Vec<(String, String)> {
-    // Read at run time: a binary built in another worktree (shared target dir) keeps that
-    // worktree's compile-time path.
-    let src =
-        std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into())).join("src");
+/// Every `.rs` file under `src`, as (path under `src` with `/`, text, whether it is test code:
+/// a test file by name, or a module declared only for tests and everything under it).
+pub fn crate_sources(src: &Path) -> Vec<(String, String, bool)> {
     let mut files = Vec::new();
-    rust_files(&src.join("ui"), &mut files);
-    assert!(files.len() > 10, "found the files under src/ui");
-    let rel = |f: &Path| f.strip_prefix(&src).unwrap().to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/");
+    rust_files(src, &mut files);
+    let rel = |f: &Path| f.strip_prefix(src).unwrap().to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/");
     let sources: Vec<(String, String)> = files.iter().map(|f| (rel(f), std::fs::read_to_string(f).unwrap())).collect();
     let test_only: Vec<String> =
         sources.iter().flat_map(|(rel, text)| test_only_modules(text).into_iter().map(|m| child_module(rel, &m))).collect();
     sources
         .into_iter()
-        .filter(|(rel, _)| {
+        .map(|(rel, text)| {
             let module = rel.trim_end_matches(".rs").trim_end_matches("/mod");
-            !is_test_file(rel) && !test_only.iter().any(|t| module == t || module.starts_with(&format!("{t}/")))
+            let test = is_test_file(&rel) || test_only.iter().any(|t| module == t || module.starts_with(&format!("{t}/")));
+            (rel, text, test)
         })
         .collect()
+}
+
+/// This crate's `src` folder, read at run time: a binary built in another worktree (shared
+/// target dir) keeps that worktree's compile-time path.
+pub fn app_src() -> PathBuf {
+    PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into())).join("src")
+}
+
+/// Every non-test file under `src/ui/`, as (path under `src/` with `/`, text).
+pub fn view_sources() -> Vec<(String, String)> {
+    let sources: Vec<(String, String)> = crate_sources(&app_src())
+        .into_iter()
+        .filter(|(rel, _, test)| rel.starts_with("ui/") && !test)
+        .map(|(rel, text, _)| (rel, text))
+        .collect();
+    assert!(sources.len() > 10, "found the files under src/ui");
+    sources
 }

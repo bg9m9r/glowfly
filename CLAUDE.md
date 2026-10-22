@@ -59,6 +59,9 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
 - Follow-ups, polish and edge cases found while building go to `TODO.md`'s Ideas section under
   the item they grew from, never to Later (Later holds only triaged milestone work).
 - Keep files under ~400 lines; split by responsibility rather than growing a file.
+- `tests/hygiene.rs` ratchets these: a new file over 400 lines, a file without a `//!` doc, a
+  new English log/toast text in `update/` or `state/` (use `t.tr`) or a copied fixture helper
+  fails it. Its allowlists and counts only shrink; lower them when you fix one, never raise them.
 - Tests: core logic uses fixture repos (see the `scratch_repo` helper); behavior uses headless
   `update` tests; views use `egui_kittest` snapshots.
 - egui 0.31 APIs (e.g. `CornerRadius`, `Modal`, `ui.close_menu()`). The bundled fonts lack some
