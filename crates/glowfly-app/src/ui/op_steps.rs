@@ -158,22 +158,7 @@ fn destructive(args: &[&str]) -> bool {
 fn heading(ui: &mut Ui, st: &AppState, snap: &Snapshot, conflicts_left: bool, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let title = op_steps::heading(t, snap);
-    // Abort at the top right; the title wraps in the room left.
-    beside(
-        ui,
-        |ui| {
-            for (label, a) in state_actions(snap.state).into_iter().flatten().filter(|(_, a)| destructive(a)) {
-                if ui.add(buttons::quiet(action_text(t, label)).small()).clicked() {
-                    msgs.push(banner_msg(st, label, a));
-                }
-            }
-        },
-        |ui| {
-            ui.add_space(2.0);
-            let text = RichText::new(title).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text());
-            ui.add(egui::Label::new(text).wrap());
-        },
-    );
+    title_row(ui, st, snap, &title, msgs);
     ui.add_space(2.0);
     if let Some(p) = &snap.rebase {
         super::rebase::banner::details(ui, t, p, conflicts_left, msgs);
@@ -187,6 +172,40 @@ fn heading(ui: &mut Ui, st: &AppState, snap: &Snapshot, conflicts_left: bool, ms
         ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
     }
     ui.add_space(12.0);
+}
+
+/// The operation's title in the subhead style with its quiet Abort (or Reset bisect) at the
+/// right; when the two don't fit on one line (a narrow panel, German), the title takes the whole
+/// width and the buttons go on their own line under it. Shared with bisect's card.
+pub(super) fn title_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, title: &str, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
+    let actions: Vec<_> = state_actions(snap.state).into_iter().flatten().filter(|(_, a)| destructive(a)).collect();
+    let quiet = |label: &'static str| buttons::quiet(action_text(t, label)).small();
+    let gap = ui.spacing().item_spacing.x;
+    let buttons_w: f32 = actions.iter().map(|(label, _)| quiet(label).desired_width(ui) + gap).sum();
+    let font = type_scale::strong(ui, type_scale::SUBHEAD);
+    let title_w = ui.fonts(|f| f.layout_no_wrap(title.to_owned(), font.clone(), color::text()).size().x);
+    let text = RichText::new(title).font(font).color(color::text());
+    let mut add_buttons = |ui: &mut Ui| {
+        for (label, a) in &actions {
+            if ui.add(quiet(label)).clicked() {
+                msgs.push(banner_msg(st, label, a));
+            }
+        }
+    };
+    if title_w + buttons_w <= ui.available_width() {
+        beside(ui, add_buttons, |ui| {
+            ui.add_space(2.0);
+            ui.add(egui::Label::new(text).wrap());
+        });
+    } else {
+        ui.add(egui::Label::new(text).wrap());
+        ui.add_space(2.0);
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = BUTTON_GAP;
+            add_buttons(ui);
+        });
+    }
 }
 
 /// A step's row: its number (or a check once done), title and one line.

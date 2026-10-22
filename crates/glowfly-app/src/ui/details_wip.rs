@@ -1,10 +1,14 @@
 //! The WIP panel: the file lists in a scrolling area over the commit box, which stays at the
 //! bottom (its height measured the frame before). While an operation is in progress the lists
 //! sit in its numbered steps (`op_steps.rs`); else Unstaged, then Staged Files, under the card of
-//! an operation without steps (`details_banner.rs`). A row's Stage, Unstage or Mark resolved
-//! sits at its end while the row is hovered or current; the S and U keys and its menu reach it too.
+//! an operation without steps (`details_banner.rs`). A conflicted row's Mark resolved always sits
+//! at its end, a row's Stage or Unstage while the row is hovered or current; the S and U keys
+//! and the row's menu reach them too.
 //! The Unstaged and Staged Files headers are in `details_wip_header.rs`; those two lists'
 //! keyboard focus and arrows are in `wip_keys.rs`.
+
+/// Narrower than this, a row's action is an icon and its note is left out.
+const NARROW_ROW: f32 = 300.0;
 
 #[path = "details_wip_header.rs"]
 pub(super) mod header;
@@ -15,7 +19,8 @@ use super::common::{menu_item, status_color, status_label};
 use super::file_menu::{self, ToolItem};
 use super::op_steps::TopArgs;
 use super::theme::color;
-use super::widgets::buttons;
+use super::widgets::{Icon, buttons};
+
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
@@ -236,22 +241,26 @@ pub(super) fn wip_file_row(
         Some(DiffTarget::Unstaged(p)) => !staged && *p == f.path,
         _ => false,
     };
-    // The row's action sits at its end while the row is hovered or current, in place of its line
-    // counts. The S and U keys, the conflict view's Save and mark resolved and the row's menu
-    // reach it too.
+    // The row's action sits at its end: always on a conflicted row (Mark resolved), else while the
+    // row is hovered or current, in place of its line counts. The S and U keys, the conflict
+    // view's Save and mark resolved and the row's menu reach it too.
     let at = egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), super::widgets::LIST_ROW_H));
-    let show_action = selected || ui.rect_contains_pointer(at);
+    let show_action = conflicted || selected || ui.rect_contains_pointer(at);
     // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).
     let usable = !matches!(f.hazard, Some(glowfly_core::repo::Hazard::NotUtf8(_)));
+    // In a narrow panel the action is a check mark named by it, and the conflict count waits
+    // for the conflict view, so the file's name keeps its room.
+    let narrow = at.width() < NARROW_ROW;
     let end = |ui: &mut egui::Ui| {
+        let button = if narrow { buttons::icon_only(Icon::Check, action) } else { buttons::quiet(action).small() };
         if show_action {
-            if ui.add(buttons::quiet(action).small().enabled(usable)).clicked() {
+            if ui.add(button.enabled(usable)).clicked() {
                 msgs.push(toggle());
             }
         } else if let Some((n, w)) = count.zip(lines) {
             super::line_counts::row_end(ui, n, w.largest());
         }
-        if let Some((text, green)) = &note {
+        if let Some((text, green)) = note.as_ref().filter(|_| !narrow) {
             ui.label(RichText::new(text).size(type_scale::SMALL).color(if *green { color::text() } else { color::weak() }));
         }
     };

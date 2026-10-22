@@ -1148,9 +1148,7 @@ here, under the item they grew from.
 ### Working-changes panel, step by step
 - "Commit or amend first…" in step 3 of a rebase or pick reads like text; a disclosure row may
   read better
-- Bisect keeps its card: give it the steps' heading look (title with Reset bisect at the right)
 - The pinned commit box is measured the frame before, so a resize settles one frame late
-- Touch and pen have no hover: the row's action then needs the row selected first
 - A key to open the next step or run step 3's primary (see Keyboard shortcuts for Continue)
 
 ### Design system

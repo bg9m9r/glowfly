@@ -70,6 +70,7 @@ fn op_steps_merge() {
         }
         assert!(h.query_by_label("Commit merge").is_none(), "step 3 waits, folded, for the conflicts");
         assert!(!h.get_by_label("Abort merge").is_disabled());
+        assert_eq!(h.get_all_by_label("Mark resolved").count(), 2, "every conflicted row shows Mark resolved");
         h.get_by_label("Show: Commit the merge").click();
         h.run();
         assert!(h.state().1.iter().any(|m| matches!(m, Msg::Layout(LayoutMsg::ToggleOpStep(OpStep::Finish)))));
@@ -174,4 +175,25 @@ fn op_steps_german_narrow() {
         drop(shot(st, theme::DUSK, name));
         remove_fixture(&dir);
     }
+}
+
+#[test]
+fn bisect_heading() {
+    // Bisect has no steps: the steps' heading, with Reset bisect at the right, over the plain lists.
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "op-steps-bisect");
+    st.snap.as_mut().unwrap().state = RepositoryState::Bisect;
+    let h = shot(st, theme::DUSK, "op_steps_bisect");
+    assert_eq!(h.get_all_by_label("Bisect in progress").count(), 2, "the strip and the heading");
+    assert!(!h.get_by_label("Reset bisect").is_disabled());
+    assert!(h.query_by_label("Resolve conflicts").is_none());
+    drop(h);
+    remove_fixture(&dir);
+
+    // German at the narrowest panel: Reset bisect goes on its own line under the title.
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "op-steps-bisect-german");
+    st.snap.as_mut().unwrap().state = RepositoryState::Bisect;
+    german(&mut st);
+    st.settings.panel_sizes.details = Some(DETAILS.min);
+    drop(shot(st, theme::DUSK, "op_steps_bisect_german"));
+    remove_fixture(&dir);
 }
