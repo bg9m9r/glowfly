@@ -6,7 +6,7 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::{self, Icon, buttons};
+use super::widgets::{self, Icon, buttons, icon};
 use crate::msg::{Msg, TrustMsg};
 use crate::state::trust::{TrustPrompt, hooks_label, shown_value};
 use crate::ui::theme::type_scale;
@@ -38,6 +38,9 @@ pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
 fn body(ui: &mut Ui, p: &TrustPrompt) {
     ui.label(RichText::new(printable(&p.name)).font(type_scale::strong(ui, type_scale::BODY)));
     ui.add(egui::Label::new(RichText::new(glowfly_core::native_path::shown(&p.workdir)).color(color::weak())).wrap());
+    if p.held.is_some() || p.terminal || p.refused {
+        ui.add_space(8.0);
+    }
     if let Some(label) = &p.held {
         let what = format!("{} needs git to run this repository's settings and hooks.", printable(label));
         ui.add(egui::Label::new(RichText::new(what).font(type_scale::strong(ui, type_scale::BODY))).wrap());
@@ -94,8 +97,10 @@ fn findings(ui: &mut Ui, scan: &TrustScan, workdir: &Path) {
     }
     if !scan.hooks.is_empty() {
         ui.horizontal(|ui| {
-            let (rect, _) = ui.allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::hover());
-            widgets::paint_icon(ui.painter(), rect.center(), Icon::Hook, color::text());
+            // The icon starts at the cursor, which is the text margin.
+            ui.spacing_mut().item_spacing.x = 6.0;
+            let (rect, _) = ui.allocate_exact_size(egui::vec2(icon::SIZE_MD, icon::SIZE_MD), egui::Sense::hover());
+            widgets::paint_icon_sized(ui.painter(), rect.center(), Icon::Hook, color::text(), icon::SIZE_MD);
             ui.label(type_scale::section_text(ui, "Hooks"));
             if let Some(dir) = &scan.hooks_dir {
                 ui.label(RichText::new(format!("in {}", hooks_label(dir, workdir))).color(color::weak()));

@@ -18,6 +18,9 @@ pub enum GitFlowMsg {
     FinishDialog(String),
     /// Merge, tag and delete as planned by core::gitflow::check_finish.
     Finish { branch: String, options: glowfly_core::gitflow::FinishOptions },
+    /// Finish with the uncommitted changes stashed first and put back afterwards (Finish
+    /// dialog).
+    StashAndFinish { branch: String, options: glowfly_core::gitflow::FinishOptions },
     /// Show the Git Flow panel in place of the graph (section header menu, palette).
     OpenPanel,
     /// Close the panel (Close button, Esc).
@@ -43,6 +46,7 @@ impl GitFlowMsg {
             | Self::Start { .. }
             | Self::FinishDialog(..)
             | Self::Finish { .. }
+            | Self::StashAndFinish { .. }
             | Self::OpenPanel
             | Self::ClosePanel
             | Self::StartFromIssue { .. }

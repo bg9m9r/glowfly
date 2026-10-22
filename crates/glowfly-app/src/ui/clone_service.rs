@@ -5,11 +5,10 @@
 use super::clone_dialog::note;
 use super::pane_status::{self, Failure};
 use super::theme::color;
-use super::widgets::{TextField, buttons};
-use crate::msg::{CloneMsg, Msg, PrefsMsg};
-use crate::state::PrefPage;
+use super::widgets::TextField;
+use crate::msg::{CloneMsg, Msg};
 use crate::state::clone::CloneForm;
-use crate::state::clone_service::{ServicePicker, account_label, visible};
+use crate::state::clone_service::{CloneSource, ServicePicker, account_label, visible};
 use crate::state::forks::error_text;
 use crate::ui::theme::controls;
 use eframe::egui::{self, Id, Layout, RichText};
@@ -61,16 +60,22 @@ fn account(ui: &mut egui::Ui, p: &ServicePicker, connections: &[Connection], msg
     );
 }
 
-/// The tab's contents; returns true when Open Integrations closes the dialog. The filter takes
-/// the focus when nothing has it, unless `focus` is false (a credential prompt is open above).
+/// No listing service is connected: what to connect, and a link back to the URL tab. The
+/// dialog's footer holds Open integrations.
+pub(super) fn connect_prompt(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>) {
+    ui.add(egui::Label::new(t.tr("clone.service.connect")).wrap());
+    ui.add_space(6.0);
+    if ui.link(t.tr("clone.service.use_url.link")).clicked() {
+        msgs.push(Msg::Clone(CloneMsg::Source(CloneSource::Url)));
+    }
+}
+
+/// The tab's contents; returns true when the dialog should close. The filter takes the focus
+/// when nothing has it, unless `focus` is false (a credential prompt is open above).
 pub fn show(ui: &mut egui::Ui, t: Lang, form: &mut CloneForm, connections: &[Connection], focus: bool, msgs: &mut Vec<Msg>) -> bool {
     let p = &mut form.service;
     if p.accounts.is_empty() {
-        ui.label("Connect GitHub, GitLab or Bitbucket in Preferences > Integrations to pick from your repositories.");
-        if ui.add(buttons::secondary("Open integrations").small()).clicked() {
-            msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
-            return true;
-        }
+        connect_prompt(ui, t, msgs);
         return false;
     }
     account(ui, p, connections, msgs);

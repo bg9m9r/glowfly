@@ -7,9 +7,10 @@ use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::buttons;
 use crate::deep_link::DeepLinkMsg;
-use crate::msg::Msg;
-use crate::state::deep_link::{LinkDialog, NO_CLONE_URL};
+use crate::msg::{Msg, UpdateMsg};
+use crate::state::deep_link::{LinkDialog, NO_CLONE_URL, pick_reason_text};
 use crate::ui::theme::controls;
+use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 
@@ -18,7 +19,19 @@ use eframe::egui::{self, RichText};
 pub fn show(ui: &mut egui::Ui, cx: Cx, d: &LinkDialog, msgs: &mut Vec<Msg>) -> bool {
     let link = |m: DeepLinkMsg| Msg::DeepLink(m);
     match d {
-        LinkDialog::Invalid { text, reason } => {
+        LinkDialog::Invalid { text, unknown_kind: Some(kind), .. } => {
+            let t = cx.t;
+            let d = Dialog::new(cx, t.tr("deep_link.newer.title")).size(Size::Small).begin(ui);
+            ui.add(egui::Label::new(t.trf("deep_link.newer.body", &[("kind", kind)])).wrap());
+            ui.add_space(6.0);
+            ui.add(egui::Label::new(RichText::new(text.as_str()).monospace().color(color::weak())).wrap());
+            let out = d.finish(ui, Footer::new().close().primary(buttons::primary(t.tr("deep_link.newer.check.button"))));
+            if out.primary {
+                msgs.push(Msg::Updates(UpdateMsg::CheckNow));
+            }
+            out.dismiss || out.primary
+        }
+        LinkDialog::Invalid { text, reason, unknown_kind: None } => {
             let d = Dialog::new(cx, "Can't open this link").size(Size::Small).begin(ui);
             ui.add(egui::Label::new(format!("Glowfly can't open this link: {reason}.")).wrap());
             ui.add_space(6.0);
@@ -47,13 +60,26 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, d: &LinkDialog, msgs: &mut Vec<Msg>) -> b
             }
             out.dismiss
         }
-        LinkDialog::Choose { what, paths, picked } => {
+        LinkDialog::Choose { what, paths, picked, reason } => {
             let mut d = Dialog::new(cx, "Choose a repository").begin(ui);
             ui.add(egui::Label::new(format!("These folders are all copies of the repository with {what}. Which one should open?")).wrap());
             ui.add_space(6.0);
             d.body(ui, |ui| {
                 for (i, p) in paths.iter().enumerate() {
-                    if controls::radio(ui, *picked == i, glowfly_core::native_path::shown(p)).clicked() {
+                    let why = reason.filter(|_| i == 0);
+                    let radio = |ui: &mut egui::Ui| controls::radio(ui, *picked == i, glowfly_core::native_path::shown(p));
+                    let r = match why {
+                        Some(r) => {
+                            ui.horizontal(|ui| {
+                                let radio = radio(ui);
+                                ui.label(RichText::new(pick_reason_text(cx.t, r)).size(type_scale::SMALL).color(color::weak()));
+                                radio
+                            })
+                            .inner
+                        }
+                        None => radio(ui),
+                    };
+                    if r.clicked() {
                         msgs.push(link(DeepLinkMsg::Choose(i)));
                     }
                 }

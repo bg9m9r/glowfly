@@ -94,6 +94,9 @@ pub struct FinishJob {
     pub tips: Option<StartTips>,
     /// It runs the steps left after a conflict (Continue finish).
     pub resuming: bool,
+    /// It starts with an auto-stash (Stash changes and finish): its first echoed command is the
+    /// stash.
+    pub stashed: bool,
 }
 
 /// "Features", "Releases" or "Hotfixes".

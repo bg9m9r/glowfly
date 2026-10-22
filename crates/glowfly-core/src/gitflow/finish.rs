@@ -133,6 +133,15 @@ impl FinishPlan {
         format!("Finish {} {}", self.kind.noun(), self.short)
     }
 
+    /// The branch Finish ends checked out on: the last one it checks out (the development
+    /// branch).
+    pub fn ends_on(&self) -> Option<&str> {
+        self.steps.iter().rev().find_map(|s| match &s.action {
+            StepAction::Checkout(name) => Some(name.as_str()),
+            _ => None,
+        })
+    }
+
     /// "Continue finish feature login": the job that runs the steps left after a conflict.
     pub fn resume_label(&self) -> String {
         format!("Continue finish {} {}", self.kind.noun(), self.short)
@@ -159,6 +168,24 @@ impl FinishPlan {
 pub fn failed_step(output: &str, steps: usize) -> usize {
     let echoes = output.lines().filter(|l| l.starts_with("$ git ")).count();
     echoes.clamp(1, steps.max(1)) - 1
+}
+
+/// The job's output from its (`skip`+1)th echoed command on ("$ git …" lines, as
+/// `failed_step` counts them), so the output of commands run before a plan's own (an
+/// auto-stash) is left out; None when it echoed no more than `skip` commands.
+pub fn after_commands(output: &str, skip: usize) -> Option<&str> {
+    let mut seen = 0;
+    let mut at = 0;
+    for line in output.split_inclusive('\n') {
+        if line.starts_with("$ git ") {
+            if seen == skip {
+                return Some(&output[at..]);
+            }
+            seen += 1;
+        }
+        at += line.len();
+    }
+    None
 }
 
 /// Whether the job's output reports a merge conflict.

@@ -113,6 +113,8 @@ pub(super) mod git_job_tests;
 pub(super) mod git_program_tests;
 #[path = "gitflow_base_tests.rs"]
 pub(super) mod gitflow_base_tests;
+#[path = "gitflow_finish_stash_tests.rs"]
+pub(super) mod gitflow_finish_stash_tests;
 #[path = "gitflow_finish_tests.rs"]
 pub(super) mod gitflow_finish_tests;
 #[path = "gitflow_panel_tests.rs"]

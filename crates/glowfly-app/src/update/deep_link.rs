@@ -78,7 +78,13 @@ fn open(st: &mut AppState, text: String, now: Instant, fx: &mut Vec<Effect>) {
     st.deep_link.seq += 1;
     st.deep_link.pending = None;
     match link::parse(&text) {
-        Err(e) => st.modal = Some(Modal::DeepLink(LinkDialog::Invalid { text: dl::shown_link(&text), reason: e.to_string() })),
+        Err(e) => {
+            let unknown_kind = match &e {
+                link::LinkError::UnknownKind(k) => Some(k.clone()),
+                _ => None,
+            };
+            st.modal = Some(Modal::DeepLink(LinkDialog::Invalid { text: dl::shown_link(&text), reason: e.to_string(), unknown_kind }));
+        }
         Ok(link) => {
             if matches!(st.modal, Some(Modal::DeepLink(_))) {
                 st.modal = None;
@@ -156,11 +162,12 @@ fn not_found(st: &mut AppState, problem: Option<String>) {
 }
 
 fn choose(st: &mut AppState, list: Vec<Found>) {
+    let reason = list.first().and_then(|f| dl::pick_reason(st, f));
     let Some(p) = st.deep_link.pending.as_mut() else { return };
     p.awaiting = Awaiting::Dialog;
     let paths = list.iter().map(|f| f.workdir.clone()).collect();
     p.chosen = list;
-    st.modal = Some(Modal::DeepLink(LinkDialog::Choose { what: p.link.describe(), paths, picked: 0 }));
+    st.modal = Some(Modal::DeepLink(LinkDialog::Choose { what: p.link.describe(), paths, picked: 0, reason }));
 }
 
 /// The folder Locate on disk… picked: checked like the search's candidates.

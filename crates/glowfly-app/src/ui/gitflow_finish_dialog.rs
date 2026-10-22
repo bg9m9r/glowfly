@@ -1,6 +1,7 @@
 //! The Git Flow Finish dialog: the branch, the tag name and message (release and hotfix), Keep
 //! the branch, and a live check against the snapshot: the numbered steps Finish will run, or
-//! the problem stopping it.
+//! the problem stopping it. When the only problem is uncommitted changes the auto-stash can
+//! take, it shows the steps with them out of the way and offers Stash changes and finish.
 
 use super::common::capitalize;
 use super::dialog_frame::{Cx, Dialog, Footer};
@@ -10,12 +11,14 @@ use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
+use crate::state::auto_stash;
 use crate::state::gitflow::FinishForm;
 use crate::ui::theme::controls;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use glowfly_core::gitflow::{Branches, FinishProblem, WorkState, check_finish, short_name};
 use glowfly_core::repo::Snapshot;
+use glowfly_core::stash_ops::AutoStashFor;
 
 /// Draws the dialog; returns true when it should close. `cx.keyboard` is false under a
 /// credential prompt, whose fields need the keyboard. Ctrl/Cmd+Enter in the message finishes.
@@ -26,10 +29,16 @@ pub fn finish(ui: &mut egui::Ui, cx: Cx, form: &mut FinishForm, snap: Option<&Sn
     let title = format!("Finish {} {}", kind.noun(), short_name(&s, kind, &form.branch));
     let d = Dialog::new(cx, title).subtitle(format!("Branch {}", form.branch)).guide(dialog_guides::gitflow_finish(cx.t)).begin(ui);
     let mut submit = false;
+    // Changes the auto-stash can take don't stop Finish: they are stashed first.
+    let mut work = WorkState::of(snap);
+    let stashing = auto_stash::blocks(snap) && work.tracked_changes;
+    if stashing {
+        work.tracked_changes = false;
+    }
     if kind.versioned() {
         let hint = glowfly_core::gitflow::default_tag(&s, kind, &form.branch).unwrap_or_default();
         // The tag's own problem, under it, once it was edited or Finish was tried.
-        let checked = check_finish(&s, &form.branch, &form.options(), &Branches::of(snap), &WorkState::of(snap));
+        let checked = check_finish(&s, &form.branch, &form.options(), &Branches::of(snap), &work);
         let shown = checked.err().filter(tag_problem).map(|p| Message::error(p.message()));
         let group = FieldGroup::new("Tag").message(&form.touched, "tag", shown);
         let r = group.show(ui, |ui| ui.add(TextField::new(&mut form.tag).hint(hint)));
@@ -43,12 +52,17 @@ pub fn finish(ui: &mut egui::Ui, cx: Cx, form: &mut FinishForm, snap: Option<&Sn
     }
     controls::checkbox(ui, &mut form.keep, format!("Keep {} after finishing", form.branch));
     ui.add_space(4.0);
-    let result = check_finish(&s, &form.branch, &form.options(), &Branches::of(snap), &WorkState::of(snap));
+    let result = check_finish(&s, &form.branch, &form.options(), &Branches::of(snap), &work);
     match &result {
         Ok(plan) => {
             ui.label(RichText::new("Steps:").color(color::weak()));
             for (i, step) in plan.steps.iter().enumerate() {
                 ui.label(RichText::new(format!("{}. {}", i + 1, capitalize(&step.what))).color(color::weak()));
+            }
+            if stashing {
+                ui.add_space(4.0);
+                let note = auto_stash::finish_note(cx.t, auto_stash::changed_files(snap), plan.ends_on().unwrap_or(&s.development));
+                ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap());
             }
         }
         // An empty tag or message only disables Finish; the tag's problem is under it.
@@ -58,13 +72,20 @@ pub fn finish(ui: &mut egui::Ui, cx: Cx, form: &mut FinishForm, snap: Option<&Sn
         Err(p) => form_message::form(ui, Message::error(p.message())),
     }
     let valid = result.is_ok() && idle;
-    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Finish").enabled(valid)).submit(submit));
+    let op = AutoStashFor::GitFlowFinish { branch: form.branch.clone() };
+    let label = if stashing { auto_stash::button(cx.t, &op) } else { "Finish" };
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(valid)).submit(submit));
     if out.attempted {
         form.touched.attempt();
     }
     // Update closes the dialog once the job starts.
     if out.primary {
-        msgs.push(Msg::GitFlow(GitFlowMsg::Finish { branch: form.branch.clone(), options: form.options() }));
+        let (branch, options) = (form.branch.clone(), form.options());
+        msgs.push(Msg::GitFlow(if stashing {
+            GitFlowMsg::StashAndFinish { branch, options }
+        } else {
+            GitFlowMsg::Finish { branch, options }
+        }));
     }
     out.dismiss
 }

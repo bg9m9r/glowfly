@@ -4,11 +4,13 @@
 //! stands 2 px taller on the toolbar's own fill, so it runs into the toolbar below, with one
 //! 2 px band in its checked-out branch's colour along its rounded top. The × fades in on the
 //! active and hovered tabs without ever changing the layout. Neighbouring quiet tabs are parted
-//! by a short line, and a worktree group's tabs share a strip along their bottom.
+//! by a short line, and a worktree group's tabs share a strip along their bottom, after a
+//! rounded chip naming the group when there is room for it.
 
 use super::repo_swatch;
 use super::theme::color;
 use super::theme::tokens::radius;
+use super::theme::type_scale;
 use super::widgets::tab_glyph::{self, TabGlyph};
 use super::widgets::{Cut, Icon, icon, paint_cut_text, paint_icon_sized};
 use eframe::egui::{self, Color32, FontId, Rect, Stroke, StrokeKind, pos2, vec2};
@@ -30,6 +32,12 @@ pub(super) const CHROME_W: f32 = PAD_L + ICON + ICON_GAP + CLOSE_GAP + tab_glyph
 /// The repository swatch's size, and the room it adds before the icon.
 const SWATCH: f32 = 8.0;
 pub(super) const SWATCH_ROOM: f32 = 14.0;
+/// A group chip: its height, the padding either side of its name, its widest and the gap
+/// between it and the group's first tab.
+pub(super) const CHIP_H: f32 = 18.0;
+const CHIP_PAD: f32 = 8.0;
+const CHIP_MAX: f32 = 96.0;
+pub(super) const CHIP_GAP: f32 = 6.0;
 
 /// What a tab shows this frame.
 #[derive(Clone, Copy)]
@@ -155,6 +163,22 @@ pub(super) fn paint_group_strip(p: &egui::Painter, rect: Rect, color: Color32, f
     p.rect_filled(Rect::from_min_max(pos2(left, rect.bottom() - 3.0), pos2(right, rect.bottom() - 1.0)), 1.0, color);
 }
 
+/// The room a group chip for a name `text_w` wide takes before its group's first tab: the
+/// chip (at most `CHIP_MAX`) and the gap after it.
+pub(super) fn chip_room(text_w: f32) -> f32 {
+    (text_w + 2.0 * CHIP_PAD).min(CHIP_MAX) + CHIP_GAP
+}
+
+/// A group chip in `rect`: a pill of the group's colour `col`, with its outline, holding the
+/// group's `name` (cut with an ellipsis when long).
+pub(super) fn paint_group_chip(p: &egui::Painter, rect: Rect, name: &str, col: Color32) -> Cut {
+    let r = CHIP_H / 2.0;
+    p.rect_filled(rect, r, col.gamma_multiply(0.2));
+    p.rect_stroke(rect, r, Stroke::new(1.0_f32, col), StrokeKind::Inside);
+    let font = type_scale::font(type_scale::SMALL);
+    paint_cut_text(p, pos2(rect.left() + CHIP_PAD, rect.center().y), name, font, color::text(), rect.width() - 2.0 * CHIP_PAD)
+}
+
 /// Where a tab's close × sits: its box `PAD_R` from the tab's right edge.
 pub(super) fn close_rect(tab: Rect) -> Rect {
     let x = tab.right() - PAD_R - tab_glyph::BOX / 2.0;
@@ -171,6 +195,12 @@ mod tests {
         assert_eq!(tab_width(100.0), 168.0);
         assert_eq!(tab_width(10.0), 96.0, "the narrowest");
         assert_eq!(tab_width(400.0), 220.0, "the widest");
+    }
+
+    #[test]
+    fn a_chip_is_its_name_padded_up_to_its_widest() {
+        assert_eq!(chip_room(30.0), 30.0 + 16.0 + CHIP_GAP);
+        assert_eq!(chip_room(300.0), CHIP_MAX + CHIP_GAP);
     }
 
     #[test]

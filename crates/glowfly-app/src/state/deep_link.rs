@@ -77,13 +77,55 @@ pub enum SchemeView {
 /// The deep-link dialogs (`Modal::DeepLink`, ui/deep_link_dialog.rs).
 #[derive(Clone, Debug, PartialEq)]
 pub enum LinkDialog {
-    /// The text isn't a link Glowfly can open: why, and the text as shown.
-    Invalid { text: String, reason: String },
+    /// The text isn't a link Glowfly can open: why, and the text as shown. `unknown_kind` is
+    /// the kind of link this version doesn't know ("draft"), which a newer version may open.
+    Invalid { text: String, reason: String, unknown_kind: Option<String> },
     /// No copy of the repository was found. `what` is the target ("branch feature/x"), `repo`
     /// what the link names the repository by, `problem` why the located folder didn't match.
     NotFound { what: String, repo: String, can_clone: bool, problem: Option<String> },
-    /// Several copies: the folders, and the one picked.
-    Choose { what: String, paths: Vec<PathBuf>, picked: usize },
+    /// Several copies: the folders, and the one picked. `reason` is why the first one is
+    /// preselected, when something says so.
+    Choose { what: String, paths: Vec<PathBuf>, picked: usize, reason: Option<PickReason> },
+}
+
+/// Why the Choose a repository dialog preselects its first entry.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PickReason {
+    /// It is the active tab's repository.
+    Active,
+    /// Another tab shows it.
+    OpenTab,
+    Favorite,
+    /// It is in the recent list (the most recently opened of the matches: the search looks
+    /// through the list newest first).
+    Recent,
+}
+
+/// Why `f` would be picked first, checked in the search's order: the active tab, another tab,
+/// the favorites, the recent list.
+pub fn pick_reason(st: &AppState, f: &Found) -> Option<PickReason> {
+    let here = |p: &std::path::Path| st.same_folder(p, &f.workdir);
+    if st.snap.as_ref().is_some_and(|s| here(&s.workdir)) {
+        Some(PickReason::Active)
+    } else if st.tab_showing(&f.workdir).is_some() {
+        Some(PickReason::OpenTab)
+    } else if super::repo_lists::favorites(&st.settings).iter().any(|p| here(p)) {
+        Some(PickReason::Favorite)
+    } else if st.recent.iter().any(|p| here(p)) {
+        Some(PickReason::Recent)
+    } else {
+        None
+    }
+}
+
+/// The weak words after the preselected entry ("open now").
+pub fn pick_reason_text(t: Lang, r: PickReason) -> &'static str {
+    match r {
+        PickReason::Active => t.tr("deep_link.choose.reason.active"),
+        PickReason::OpenTab => t.tr("deep_link.choose.reason.tab"),
+        PickReason::Favorite => t.tr("deep_link.choose.reason.favorite"),
+        PickReason::Recent => t.tr("deep_link.choose.reason.recent"),
+    }
 }
 
 /// The URL of remote `name` in `snap` (libgit2's, with url.insteadOf applied), without any

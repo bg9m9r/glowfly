@@ -111,9 +111,10 @@ fn gitflow_finish_release() {
     remove_fixture(&dir);
 }
 
+/// The fixture's work tree has uncommitted changes: Finish offers to stash them first.
 #[test]
-fn gitflow_finish_feature_blocked() {
-    let (mut st, dir) = initialized(ThemeChoice::Light, "gitflow-finish-blocked");
+fn gitflow_finish_feature_stash() {
+    let (mut st, dir) = initialized(ThemeChoice::Light, "gitflow-finish-stash");
     git(&dir, &["branch", "feature/search", "search"], "2026-01-05T10:00:00+00:00");
     reload(&mut st, &dir, &LoadOptions::all(500));
     st.modal = Some(Modal::GitFlowFinish(FinishForm {
@@ -125,7 +126,13 @@ fn gitflow_finish_feature_blocked() {
         focus_tag: false,
         touched: Default::default(),
     }));
-    render("gitflow_finish_feature_blocked", st, false);
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("gitflow_finish_feature_stash");
+    assert!(h.query_by_label_contains("stashed first and put back on develop once Finish is done").is_some());
+    h.get_by_label("Stash changes and finish").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::GitFlow(GitFlowMsg::StashAndFinish { branch, .. }) if branch == "feature/search")));
     remove_fixture(&dir);
 }
 

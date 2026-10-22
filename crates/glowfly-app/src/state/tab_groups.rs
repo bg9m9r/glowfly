@@ -91,6 +91,23 @@ pub fn shown_groups(tabs: &[Tab], on: bool) -> Vec<(Range<usize>, usize)> {
     blocks(tabs, on).into_iter().filter(|b| b.len() >= 2).enumerate().map(|(n, b)| (b, n)).collect()
 }
 
+/// The room before each of `n` tabs for its group's chip: `rooms[k]` before the first tab of
+/// shown group `k`, nothing elsewhere. Nothing anywhere unless the tabs (`needed` wide with
+/// their gaps) and every chip fit in `room` together: when tabs have to shrink, the strips
+/// alone mark the groups.
+pub fn chip_rooms(n: usize, shown: &[(Range<usize>, usize)], rooms: &[f32], needed: f32, room: f32) -> Vec<f32> {
+    let mut out = vec![0.0; n];
+    if needed + rooms.iter().sum::<f32>() > room {
+        return out;
+    }
+    for ((members, _), &w) in shown.iter().zip(rooms) {
+        if let Some(slot) = out.get_mut(members.start) {
+            *slot = w;
+        }
+    }
+    out
+}
+
 /// The shown group tab `i` belongs to.
 pub fn shown_at(shown: &[(Range<usize>, usize)], i: usize) -> Option<&(Range<usize>, usize)> {
     shown.iter().find(|(b, _)| b.contains(&i))
@@ -132,6 +149,16 @@ mod tests {
         assert_eq!(shown_groups(&t, true), vec![(0..2, 0), (3..5, 1)], "only groups of 2+, numbered");
         assert!(shown_groups(&t, false).is_empty());
         assert_eq!(shown_at(&shown_groups(&t, true), 4), Some(&(3..5, 1)));
+    }
+
+    #[test]
+    fn chips_go_before_each_groups_first_tab_when_all_fit() {
+        let t = tabs(&["a1", "a2", "x", "b1", "b2"]);
+        let shown = shown_groups(&t, true);
+        assert_eq!(chip_rooms(5, &shown, &[40.0, 50.0], 500.0, 600.0), [40.0, 0.0, 0.0, 50.0, 0.0]);
+        assert_eq!(chip_rooms(5, &shown, &[40.0, 50.0], 500.0, 589.0), [0.0; 5], "no room for both chips: none");
+        let none = tabs(&["x", "y"]);
+        assert_eq!(chip_rooms(2, &shown_groups(&none, true), &[], 100.0, 600.0), [0.0; 2]);
     }
 
     #[test]

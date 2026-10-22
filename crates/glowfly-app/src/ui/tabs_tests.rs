@@ -1,6 +1,6 @@
 //! Tab bar interaction tests: dragging a tab to reorder it, the tab context menu (and why its
-//! items are off with one tab and none closed), and worktree tab groups (their strip, dragging a
-//! group, the repository line in the tooltip).
+//! items are off with one tab and none closed), and worktree tab groups (their strip and chip,
+//! dragging a group, the repository line in the tooltip).
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
@@ -144,6 +144,13 @@ fn grouped_tabs_have_a_strip() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("tabs_grouped");
+    // The chip before the first group's first tab names the group on hover.
+    let slot = super::tabs::tab_rects(&h.ctx)[0];
+    pointer(&mut h, pos2(slot.left() + 10.0, slot.center().y), None);
+    for _ in 0..4 {
+        h.run();
+    }
+    assert!(h.query_by_label("demo: 2 worktree tabs").is_some(), "the chip's tooltip");
     drop(h);
     remove_fixture(&dir);
 }

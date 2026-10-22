@@ -19,7 +19,7 @@ use glowfly_core::gitflow::{FinishOptions, FlowKind};
 use std::path::{Path, PathBuf};
 
 /// Set up, with a clean working tree, and HEAD on feature/login (one commit ahead of develop).
-fn ready(name: &str) -> (AppState, PathBuf) {
+pub(super) fn ready(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = initialized(&format!("finish-{name}"));
     git(&dir, &["config", "tag.gpgsign", "false"]);
     git(&dir, &["checkout", "--", "a.txt"]);
@@ -29,7 +29,7 @@ fn ready(name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn commit(dir: &Path, file: &str, text: &str) {
+pub(super) fn commit(dir: &Path, file: &str, text: &str) {
     std::fs::write(dir.join(file), text).unwrap();
     git(dir, &["add", "."]);
     git(dir, &["commit", "-q", "-m", &format!("change {file}")]);
@@ -47,7 +47,7 @@ fn finish_open(st: &AppState) -> bool {
     matches!(st.modal, Some(Modal::GitFlowFinish(_)))
 }
 
-fn exists(dir: &Path, r: &str) -> bool {
+pub(super) fn exists(dir: &Path, r: &str) -> bool {
     git_run(dir, &args(&["rev-parse", "--verify", "--quiet", r])).0
 }
 

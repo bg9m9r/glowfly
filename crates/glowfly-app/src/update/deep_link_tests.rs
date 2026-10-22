@@ -143,13 +143,19 @@ fn invalid_text_explains_itself() {
     assert!(focuses(&fx));
     assert!(!fx.iter().any(|e| matches!(e, Effect::DeepLink(_))), "no search");
     match &st.modal {
-        Some(Modal::DeepLink(LinkDialog::Invalid { text, reason })) => {
+        Some(Modal::DeepLink(LinkDialog::Invalid { text, reason, unknown_kind })) => {
             assert_eq!(text, "glowfly://draft/7?root=abc");
             assert!(reason.contains("draft"), "{reason}");
+            assert_eq!(unknown_kind.as_deref(), Some("draft"), "a newer version may know it");
         }
         _ => panic!("expected the invalid-link dialog"),
     }
     assert!(st.deep_link.pending.is_none());
+    send(&mut st, DeepLinkMsg::Open("not a link".into()));
+    match &st.modal {
+        Some(Modal::DeepLink(LinkDialog::Invalid { unknown_kind, .. })) => assert_eq!(*unknown_kind, None),
+        _ => panic!("expected the invalid-link dialog"),
+    }
 }
 
 #[test]

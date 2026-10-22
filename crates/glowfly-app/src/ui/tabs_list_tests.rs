@@ -1,4 +1,4 @@
-//! The tab list at the end of the tab bar: shown only when there are closed tabs (or too many
+//! The tab list after the tab bar's + button: shown only when there are closed tabs (or too many
 //! tabs to fit), its popup of open and recently closed tabs, and what its rows send.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -45,6 +45,11 @@ fn tabs_list() {
     let (st, dir) = with_list("tabs-list");
     let mut h = harness(st, true);
     h.run();
+    // Right after the + (a gap, the + and a gap after the last tab), not at the bar's far end.
+    let list = h.get_by_label(TIP).bounding_box().expect("the list button has bounds");
+    let last = super::tabs::tab_rects(&h.ctx)[2];
+    let after = list.x0 as f32 - last.right();
+    assert!((0.0..=4.0 + 32.0 + 4.0 + 0.5).contains(&after), "{after} px after the last tab");
     open_list(&mut h);
     h.check_snapshot("tabs_list");
 

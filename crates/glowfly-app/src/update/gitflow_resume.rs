@@ -106,6 +106,6 @@ pub(super) fn continue_finish(st: &mut AppState, now: Instant, fx: &mut Vec<Effe
     let label = plan.resume_label();
     if start_job(st, JobSpec::new(label.clone(), plan.cmds()), fx) != Started::No {
         let done = plan.summary(&s);
-        st.gitflow_finish = Some(FinishJob { label, plan, done, tips, resuming: true });
+        st.gitflow_finish = Some(FinishJob { label, plan, done, tips, resuming: true, stashed: false });
     }
 }

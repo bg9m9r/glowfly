@@ -18,7 +18,9 @@ pub const AUTO_STASH_PREFIX: &str = "Auto-stash before ";
 /// The list text of the entry git keeps when its own `--autostash` can't be applied.
 pub const GIT_AUTOSTASH: &str = "autostash";
 
-/// The operation an auto-stash was made for, with the names its message shows.
+/// The operation an auto-stash was made for, with the names its message shows. Most come
+/// from the command about to run (`of_command`); a Git Flow finish (its full branch name, such
+/// as "feature/login") runs several and is asked for by its dialog.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AutoStashFor {
     Checkout { target: String },
@@ -28,6 +30,7 @@ pub enum AutoStashFor {
     CherryPick { commits: String, onto: String },
     Revert { commits: String, on: String },
     HardReset { branch: String, to: String },
+    GitFlowFinish { branch: String },
 }
 
 /// Flags that carry on, end or edit an operation already started, or make a rebase interactive.
@@ -72,6 +75,7 @@ impl AutoStashFor {
             Self::CherryPick { commits, onto } => format!("cherry-picking {commits} onto {onto}"),
             Self::Revert { commits, on } => format!("reverting {commits} on {on}"),
             Self::HardReset { branch, to } => format!("resetting {branch} to {to}"),
+            Self::GitFlowFinish { branch } => format!("finishing {branch}"),
         };
         format!("{AUTO_STASH_PREFIX}{what}")
     }
@@ -83,7 +87,15 @@ impl AutoStashFor {
 
     /// Whether the operation can stop on conflicts and wait for Continue or Abort.
     pub fn can_stop(&self) -> bool {
-        matches!(self, Self::Pull { .. } | Self::Merge { .. } | Self::Rebase { .. } | Self::CherryPick { .. } | Self::Revert { .. })
+        matches!(
+            self,
+            Self::Pull { .. }
+                | Self::Merge { .. }
+                | Self::Rebase { .. }
+                | Self::CherryPick { .. }
+                | Self::Revert { .. }
+                | Self::GitFlowFinish { .. }
+        )
     }
 
     pub fn is_hard_reset(&self) -> bool {

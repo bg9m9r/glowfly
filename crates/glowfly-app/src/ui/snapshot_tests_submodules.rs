@@ -1,6 +1,6 @@
-//! The SUBMODULES section: one row per state with its marker and word, the left-panel filter,
-//! and the row menu with its disabled items. The submodules are injected into the shared
-//! fixture's snapshot, which keeps the images deterministic and needs no clones.
+//! The SUBMODULES section: one row per state with its marker and word, the marker's tooltip,
+//! the left-panel filter, and the row menu with its disabled items. The submodules are injected
+//! into the shared fixture's snapshot, which keeps the images deterministic and needs no clones.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::click;
@@ -75,6 +75,31 @@ fn submodules_section() {
     drop(h);
     let (st, _) = with_submodules(ThemeChoice::Light, "submodules");
     render("submodules_section_light", st, false);
+    remove_fixture(&dir);
+}
+
+/// Hovers `at` until the tooltip shows.
+fn hover(h: &mut Harness<'_, (AppState, Vec<Msg>)>, at: eframe::egui::Pos2) {
+    h.input_mut().events.push(eframe::egui::Event::PointerMoved(at));
+    for _ in 0..4 {
+        h.run();
+    }
+}
+
+#[test]
+fn submodule_dot_tooltip() {
+    let (st, dir) = with_submodules(ThemeChoice::Dark, "submodule-dot-tip");
+    let mut h = harness(st, true);
+    h.run();
+    let row = h.get_by_label("libs/core").bounding_box().expect("the row");
+    let y = ((row.y0 + row.y1) / 2.0) as f32;
+    hover(&mut h, pos2(row.x0 as f32 + super::widgets::GUTTER_X, y));
+    assert!(h.query_by_label_contains("Up to date: checked out at the commit").is_some(), "the dot says what it means");
+    h.check_snapshot("submodule_dot_tooltip");
+    hover(&mut h, pos2(((row.x0 + row.x1) / 2.0) as f32, y));
+    assert!(h.query_by_label_contains("Up to date:").is_none());
+    assert!(h.query_by_label_contains("Recorded commit:").is_some(), "the rest of the row keeps the long tooltip");
+    drop(h);
     remove_fixture(&dir);
 }
 

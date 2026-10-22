@@ -1028,18 +1028,9 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 The minor findings of the [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md); its
 blockers and major findings are Milestone 1 items.
 
-- The trust prompt's "{ } Hooks" heading becomes a drawn icon on the text margin, with space
-  before the first message
-- The dashboard caps its content width (about 900 px) or tints alternate rows
-- Clone with no connected service shows only the connect prompt and a link back to the URL tab
-- Git Flow's blocked Finish offers "Stash changes and finish"
 - The git-too-old banner links to how to update and says whether Dismiss is for good
-- Deep-link dialogs say why an entry is preselected, and an unknown link kind offers Check for
-  updates
 - Plain-language errors instead of git internals (safe.directory values; hosting-service errors
   rewritten as a sentence saying what to do)
-- Submodule status dots have tooltips, and clean rows say "up to date"
-- The tab list button sits after the last tab, and tab groups get a named chip
 
 ### File history and blame
 
@@ -3387,3 +3378,12 @@ here, under the item they grew from.
 - Rename the repository picker's empty placeholder "Open…" in the toolbar
 - Suggested palette commands from more state (Pop stash on a clean tree with stashes, Create pull request for a pushed branch without one)
 - A key for step 3's Skip (the Continue menu) alongside Continue's
+- Deep-link Choose a repository: a "Remember for this repository" choice so the same link opens the same copy next time
+- Tab groups: collapse and expand a group from its chip
+- Tab groups: the chip follows its group while a tab is dragged (it hides during a drag now)
+- Clone dialog: on Your repositories, hide the folder and clone options until a repository is picked
+- Dashboard: alternate-row tint as an option alongside the width cap
+- Translate the existing English strings of the trust prompt, the Clone dialog, the Git Flow Finish dialog and the deep-link dialogs
+- Git Flow Finish: a choice to leave the auto-stash in the stash list instead of putting it back on the development branch
+- Git Flow Finish: offer stashing when the dialog is reached with conflicted files (resolve or stash them first)
+- Submodules: a legend of the status dots in the section header menu

@@ -33,25 +33,61 @@ fn icon(ui: &mut Ui, icon: Icon, label: &str) -> egui::Response {
     r
 }
 
+/// The widest the dashboard's content gets: on a wide window it sits in a centred column.
+pub(super) const MAX_W: f32 = 900.0;
+
+/// The column in `avail` px: `(pad, w)`, its left padding and width.
+pub(super) fn column(avail: f32) -> (f32, f32) {
+    let w = avail.min(MAX_W);
+    (((avail - w) / 2.0).max(0.0), w)
+}
+
+/// `add` laid out in a column `w` px wide, `pad` px in from the left.
+fn in_column(ui: &mut Ui, pad: f32, w: f32, add: impl FnOnce(&mut Ui)) {
+    let gap = ui.spacing().item_spacing.x;
+    ui.horizontal_top(|ui| {
+        ui.spacing_mut().item_spacing.x = 0.0;
+        ui.add_space(pad);
+        ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing.x = gap;
+            ui.set_width(w);
+            add(ui)
+        });
+    });
+}
+
 pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     egui::Frame::new().inner_margin(Margin { left: 16, right: 16, top: 12, bottom: 4 }).show(ui, |ui| {
-        header(ui, st, msgs);
-        ui.add_space(10.0);
-        let d = &st.dashboard;
-        if d.basis.is_none() && !d.is_busy() {
-            return no_repositories(ui, st, msgs);
+        let (pad, w) = column(ui.available_width());
+        let mut listed = false;
+        in_column(ui, pad, w, |ui| {
+            header(ui, st, msgs);
+            ui.add_space(10.0);
+            let d = &st.dashboard;
+            if d.basis.is_none() && !d.is_busy() {
+                return no_repositories(ui, st, msgs);
+            }
+            controls(ui, st, msgs);
+            ui.add_space(6.0);
+            ui.separator();
+            listed = true;
+        });
+        if !listed {
+            return;
         }
-        controls(ui, st, msgs);
-        ui.add_space(6.0);
-        ui.separator();
         let filter = st.dashboard.filter.trim().to_lowercase();
         let st: &AppState = st;
+        // The scroll area spans the whole width (its bar at the right edge, the wheel working
+        // anywhere); only its content sits in the column.
         egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-            ui.spacing_mut().item_spacing.y = 0.0;
-            body(ui, st, &filter, msgs);
-            not_loaded(ui, st, msgs);
-            ui.add_space(12.0);
+            let w = w.min((ui.available_width() - pad).max(0.0));
+            in_column(ui, pad, w, |ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+                ui.spacing_mut().item_spacing.y = 0.0;
+                body(ui, st, &filter, msgs);
+                not_loaded(ui, st, msgs);
+                ui.add_space(12.0);
+            });
         });
     });
 }
@@ -259,5 +295,17 @@ fn not_loaded(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         let n = d.over_limit;
         let what = if n == 1 { "1 more repository wasn't".to_owned() } else { format!("{n} more repositories weren't") };
         problem(ui, format!("{what} asked (limit {})", crate::state::dashboard::MAX_TARGETS), |_| {});
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::column;
+
+    #[test]
+    fn the_column_is_capped_and_centred() {
+        assert_eq!(column(600.0), (0.0, 600.0));
+        assert_eq!(column(900.0), (0.0, 900.0));
+        assert_eq!(column(1400.0), (250.0, 900.0));
     }
 }

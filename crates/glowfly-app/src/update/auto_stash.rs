@@ -1,5 +1,6 @@
 //! Stash and carry on: one guard for checkout, pull, merge, rebase, cherry-pick, revert and hard
-//! reset on a dirty work tree.
+//! reset on a dirty work tree, and the stash a Git Flow Finish makes when its dialog's Stash
+//! changes and finish asks for one (`wrap` directly, without the gate).
 //!
 //! Each entry point calls `gate` with the command it would run and a retry message. On a dirty
 //! tree the gate opens the prompt (`Modal::AutoStash`) holding the retry; its answer sets
@@ -174,6 +175,11 @@ pub(super) fn seen(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Eff
             let text = made(t, &p.job.message);
             st.toast_action(true, text, show_action(t, oid, workdir), now);
         }
+        return;
+    }
+    // A stopped Git Flow finish still has steps that need a clean tree (a checkout): its
+    // changes wait for Continue finish, or for its steps to be forgotten or dropped.
+    if matches!(p.job.op, AutoStashFor::GitFlowFinish { .. }) && st.gitflow_resume.is_some() {
         return;
     }
     let effect = move |cwd| Effect::Stash(StashEffect::PutBack(PutBackRequest { cwd, oid }));

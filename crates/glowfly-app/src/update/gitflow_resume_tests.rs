@@ -231,7 +231,7 @@ fn pending_job(st: &AppState, snap: &glowfly_core::repo::Snapshot, workdir: Path
     };
     assert!(st.gitflow_finish.is_none());
     let done = plan.summary(&s);
-    (job, FinishJob { label, tips: StartTips::of(snap, &plan), plan, done, resuming: false })
+    (job, FinishJob { label, tips: StartTips::of(snap, &plan), plan, done, resuming: false, stashed: false })
 }
 
 #[test]

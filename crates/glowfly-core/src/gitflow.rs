@@ -27,8 +27,8 @@ mod version;
 pub use base::FlowBase;
 pub use checks::{SettingsProblem, check_settings};
 pub use finish::{
-    FinishOptions, FinishPlan, FinishProblem, FinishStep, StepAction, WorkState, check_finish, default_tag, default_tag_message,
-    failed_step, flow_branches, flow_kind, short_name, stopped_by_conflict, targets,
+    FinishOptions, FinishPlan, FinishProblem, FinishStep, StepAction, WorkState, after_commands, check_finish, default_tag,
+    default_tag_message, failed_step, flow_branches, flow_kind, short_name, stopped_by_conflict, targets,
 };
 pub use groups::{FlowBranch, FlowGroup, grouped, total};
 pub use resume::{FinishResume, ResumeGone, ResumeState, StartTips, check_resume, resume_state};

@@ -25,12 +25,12 @@ fn info(state: SubmoduleState, name: &str, url: Option<&str>) -> SubmoduleInfo {
 fn word(state: SubmoduleState, added: bool) -> Option<String> {
     let mut sm = info(state, "libs/core", Some("u"));
     sm.added = added;
-    row_word(&sm)
+    row_word(Lang::En, &sm)
 }
 
 #[test]
 fn state_words() {
-    assert_eq!(word(SubmoduleState::InSync, false), None);
+    assert_eq!(word(SubmoduleState::InSync, false).as_deref(), Some("up to date"));
     assert_eq!(word(SubmoduleState::OutOfSync, false).as_deref(), Some("out of sync"));
     assert_eq!(word(SubmoduleState::Dirty, false).as_deref(), Some("changes"));
     assert_eq!(word(SubmoduleState::DirtyOutOfSync, false).as_deref(), Some("changes · out of sync"));
@@ -38,6 +38,22 @@ fn state_words() {
     assert_eq!(word(SubmoduleState::Missing, false).as_deref(), Some("folder missing"));
     assert_eq!(word(SubmoduleState::InSync, true).as_deref(), Some("new"));
     assert_eq!(word(SubmoduleState::Uninitialized, true).as_deref(), Some("new · not initialized"));
+}
+
+#[test]
+fn dot_tips_name_the_state() {
+    let tip = |state, added| {
+        let mut sm = info(state, "libs/core", Some("u"));
+        sm.added = added;
+        dot_tip(Lang::En, &sm)
+    };
+    assert_eq!(tip(SubmoduleState::InSync, false), "Up to date: checked out at the commit this repository records");
+    assert_eq!(tip(SubmoduleState::OutOfSync, false), "Out of sync: checked out at another commit than this repository records");
+    assert_eq!(tip(SubmoduleState::Dirty, false), "Changes inside");
+    assert_eq!(tip(SubmoduleState::DirtyOutOfSync, false), "Changes inside, and out of sync");
+    assert_eq!(tip(SubmoduleState::Uninitialized, false), "Not initialized");
+    assert_eq!(tip(SubmoduleState::Missing, false), "Folder missing");
+    assert_eq!(tip(SubmoduleState::Uninitialized, true), "Not initialized\nAdded, not committed yet");
 }
 
 #[test]

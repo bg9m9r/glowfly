@@ -25,8 +25,9 @@ pub(super) fn submodule_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<En
         out.push(entry(m, "Update all submodules", "submodule sync recorded commit checkout every nested repository"));
     }
     let edit_git = st.git.blocked(Feature::SubmoduleEdit);
+    let t = st.settings.lang();
     for sm in list {
-        let detail = row_word(sm);
+        let detail = row_word(t, sm);
         let path = &sm.path;
         if open_blocked(sm).is_none() {
             let e = entry(sub(SubmoduleMsg::Open(path.clone())), format!("Open submodule {path}"), "submodule nested repository open tab");

@@ -4,9 +4,10 @@
 
 use super::snapshot_tests::{harness, render, settings};
 use crate::effect::ForgeError;
+use crate::msg::{CloneMsg, Msg, PrefsMsg};
 use crate::state::clone::CloneForm;
 use crate::state::clone_service::{CloneSource, ServicePicker};
-use crate::state::{AppState, Modal};
+use crate::state::{AppState, Modal, PrefPage};
 use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Connection, HostedRepo, MyRepos, Provider};
@@ -59,7 +60,19 @@ fn clone_service_list() {
 
 #[test]
 fn clone_service_no_accounts() {
-    render("clone_service_no_accounts", with_picker(ThemeChoice::Light, ServicePicker::default()), false);
+    let mut h = harness(with_picker(ThemeChoice::Light, ServicePicker::default()), false);
+    h.run();
+    h.check_snapshot("clone_service_no_accounts");
+    assert!(h.query_by_label_contains("Clone into folder").is_none(), "no folder until a service is connected");
+    assert!(h.query_by_label_contains("Shallow clone").is_none());
+    assert!(h.query_by_label_contains("Sparse checkout").is_none());
+    h.get_by_label("Enter a URL instead").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Clone(CloneMsg::Source(CloneSource::Url)))));
+    h.get_by_label("Open integrations").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)))));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::CloseModal)), "and the dialog closes");
 }
 
 #[test]

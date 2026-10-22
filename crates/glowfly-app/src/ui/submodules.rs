@@ -1,5 +1,5 @@
 //! The SUBMODULES section of the left panel: one row per submodule with a painted status
-//! marker, a status word and an explanatory tooltip; double-click opens it, and the row menu
+//! marker (with its own short tooltip), a status word and an explanatory tooltip; double-click opens it, and the row menu
 //! opens, initializes, updates or restores it, copies its URL, edits or removes it. The header's
 //! menu adds one, initializes or updates them all, and chooses whether this repository updates
 //! them after checkouts and pulls; its + adds one too. The section always shows: without
@@ -14,12 +14,12 @@ use crate::state::section_actions::SectionAction;
 use crate::state::submodules::batch::{init_all_blocked, update_all_blocked};
 use crate::state::submodules::remove::remove_blocked;
 use crate::state::submodules::{
-    SectionCx, copy_url_blocked, copy_url_text, edit_blocked, open_blocked, row_word, tooltip, update_blocked, update_label,
+    SectionCx, copy_url_blocked, copy_url_text, dot_tip, edit_blocked, open_blocked, row_word, tooltip, update_blocked, update_label,
 };
 use crate::submodule::{Batch, SubmoduleMsg};
 use crate::ui::theme::controls;
 use crate::ui::widgets::row_menu::RowMenuExt;
-use eframe::egui::{self, Painter, Pos2, Stroke, pos2, vec2};
+use eframe::egui::{self, Painter, Pos2, Rect, Stroke, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Snapshot, SubmoduleInfo, SubmoduleState};
 use glowfly_core::settings::SubmoduleUpdates;
@@ -48,16 +48,26 @@ pub(super) fn section(
     }
     for sm in snap.submodules.iter().filter(|s| shown(&s.path) || shown(&s.name)) {
         let col = match sm.state {
+            SubmoduleState::InSync if !sm.added => color::weak(),
             SubmoduleState::Uninitialized => color::weak(),
             SubmoduleState::Missing => color::removed(),
             _ => color::warn(),
         };
-        let word = row_word(sm);
+        let word = row_word(t, sm);
         let right = word.as_deref().map(|w| [widgets::Part::Text(w)]);
         let (r, _, cut) =
             widgets::list_row_cut(ui, widgets::ROW_INDENT, &sm.path, right.as_ref().map(|p| (&p[..], col)), 0.0, false, false);
-        marker(ui.painter(), pos2(r.rect.left() + widgets::GUTTER_X, r.rect.center().y), sm);
-        let r = r.on_hover_text(widgets::truncate::full_tip(cut, &sm.path, Some(tooltip(sm))).unwrap_or_default());
+        let centre = pos2(r.rect.left() + widgets::GUTTER_X, r.rect.center().y);
+        marker(ui.painter(), centre, sm);
+        // Over the dot, what it means; over the rest of the row, the long explanation. Chosen
+        // from the row's own hover (a separate hover area over it would fight its clicks).
+        let dot = Rect::from_center_size(centre, vec2(16.0, 16.0));
+        let tip = if r.hover_pos().is_some_and(|p| dot.contains(p)) {
+            dot_tip(t, sm)
+        } else {
+            widgets::truncate::full_tip(cut, &sm.path, Some(tooltip(sm))).unwrap_or_default()
+        };
+        let r = r.on_hover_text(tip);
         if r.double_clicked() && open_blocked(sm).is_none() {
             msgs.push(Msg::Submodule(SubmoduleMsg::Open(sm.path.clone())));
         }

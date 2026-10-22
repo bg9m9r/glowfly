@@ -1,5 +1,5 @@
 //! The SUBMODULES section's text and rules, shared by the view and `update`: the status word,
-//! the tooltip, why open, update, copy and edit are blocked, the update confirmation (with the
+//! the status dot's and the row's tooltips, why open, update, copy and edit are blocked, the update confirmation (with the
 //! commits it would leave behind) and the update command. The Add submodule dialog's rules are in
 //! `add.rs`, the Edit dialog's in `edit.rs`, the Remove submodule confirmation's in `remove.rs`,
 //! and batch updates (Initialize all, Update all, updating after checkouts) in `batch.rs`.
@@ -8,6 +8,7 @@ use super::AppState;
 use git2::Oid;
 use glowfly_core::git_version::Feature;
 use glowfly_core::gitcli::args;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState};
 use glowfly_core::settings::SubmoduleUpdates;
 use glowfly_core::submodule_ops::is_relative_url;
@@ -25,22 +26,36 @@ pub(crate) fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
-/// The word at the right of a row; None when in sync (and committed). An added submodule's
-/// starts with "new".
-pub fn row_word(sm: &SubmoduleInfo) -> Option<String> {
+/// The word at the right of a row ("up to date" when in sync). An added submodule's starts
+/// with "new", and is only that when in sync.
+pub fn row_word(t: Lang, sm: &SubmoduleInfo) -> Option<String> {
     let word = match sm.state {
         SubmoduleState::InSync => None,
-        SubmoduleState::OutOfSync => Some("out of sync"),
-        SubmoduleState::Dirty => Some("changes"),
-        SubmoduleState::DirtyOutOfSync => Some("changes · out of sync"),
-        SubmoduleState::Uninitialized => Some("not initialized"),
-        SubmoduleState::Missing => Some("folder missing"),
+        SubmoduleState::OutOfSync => Some(t.tr("sidebar.submodules.state.out_of_sync")),
+        SubmoduleState::Dirty => Some(t.tr("sidebar.submodules.state.changes")),
+        SubmoduleState::DirtyOutOfSync => Some(t.tr("sidebar.submodules.state.changes_out_of_sync")),
+        SubmoduleState::Uninitialized => Some(t.tr("sidebar.submodules.state.not_initialized")),
+        SubmoduleState::Missing => Some(t.tr("sidebar.submodules.state.missing")),
     };
-    match (sm.added, word) {
-        (true, Some(w)) => Some(format!("new · {w}")),
-        (true, None) => Some("new".to_owned()),
-        (false, w) => w.map(str::to_owned),
-    }
+    Some(match (sm.added, word) {
+        (true, Some(w)) => t.trf("sidebar.submodules.state.new_with", &[("state", &w)]),
+        (true, None) => t.tr("sidebar.submodules.state.new").to_owned(),
+        (false, Some(w)) => w.to_owned(),
+        (false, None) => t.tr("sidebar.submodules.state.up_to_date").to_owned(),
+    })
+}
+
+/// The status dot's hover text: its state in a few words, and whether it is newly added.
+pub fn dot_tip(t: Lang, sm: &SubmoduleInfo) -> String {
+    let state = match sm.state {
+        SubmoduleState::InSync => t.tr("sidebar.submodules.dot.in_sync"),
+        SubmoduleState::OutOfSync => t.tr("sidebar.submodules.dot.out_of_sync"),
+        SubmoduleState::Dirty => t.tr("sidebar.submodules.dot.dirty"),
+        SubmoduleState::DirtyOutOfSync => t.tr("sidebar.submodules.dot.dirty_out_of_sync"),
+        SubmoduleState::Uninitialized => t.tr("sidebar.submodules.dot.uninitialized"),
+        SubmoduleState::Missing => t.tr("sidebar.submodules.dot.missing"),
+    };
+    if sm.added { format!("{state}\n{}", t.tr("sidebar.submodules.dot.added")) } else { state.to_owned() }
 }
 
 /// A row's hover text: what its state means, then its name, URL and commits.

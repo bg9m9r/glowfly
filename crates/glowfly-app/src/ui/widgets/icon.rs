@@ -7,7 +7,7 @@
 
 use eframe::egui::emath::TSTransform;
 use eframe::egui::layers::ShapeIdx;
-use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Stroke, pos2, vec2};
+use eframe::egui::{self, Color32, Painter, Pos2, Stroke, pos2, vec2};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Icon {
@@ -27,6 +27,7 @@ pub enum Icon {
     Plug,
     Brush,
     Key,
+    /// A hook with an eye: hooks (Preferences > Git Hooks, the trust prompt).
     Hook,
     Back,
     Identity,
@@ -281,8 +282,20 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
             line(pos2(c.x + 6.0, c.y), pos2(c.x + 6.0, c.y + 4.0));
             line(pos2(c.x + 9.0, c.y), pos2(c.x + 9.0, c.y + 3.0));
         }
+        // Eye at the top, a straight shank, a J bend and a barb on its point.
         Icon::Hook => {
-            p.text(c, Align2::CENTER_CENTER, "{ }", FontId::monospace(13.0), col);
+            p.circle_stroke(c + vec2(3.0, -7.0), 2.0, s);
+            line(pos2(c.x + 3.0, c.y - 5.0), pos2(c.x + 3.0, c.y + 3.0));
+            let centre = pos2(c.x - 1.0, c.y + 3.0);
+            let bend: Vec<Pos2> = (0..=8)
+                .map(|i| {
+                    let a = std::f32::consts::PI * i as f32 / 8.0;
+                    centre + vec2(4.0 * a.cos(), 4.0 * a.sin())
+                })
+                .collect();
+            p.add(egui::Shape::line(bend, s));
+            line(pos2(c.x - 5.0, c.y + 3.0), pos2(c.x - 5.0, c.y - 1.0));
+            line(pos2(c.x - 5.0, c.y - 1.0), pos2(c.x - 2.5, c.y + 1.5));
         }
         Icon::Back => {
             line(pos2(c.x + 7.0, c.y), pos2(c.x - 7.0, c.y));

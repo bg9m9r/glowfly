@@ -31,11 +31,16 @@ pub(super) fn handle(st: &mut AppState, m: GitFlowMsg, now: Instant, fx: &mut Ve
         GitFlowMsg::StartFromIssue { kind, name } => start_dialog(st, kind, Some(name)),
         GitFlowMsg::Start { kind, name } => start(st, kind, &name, now, fx),
         GitFlowMsg::FinishDialog(b) => super::gitflow_finish::dialog(st, &b),
-        GitFlowMsg::Finish { branch, options } => super::gitflow_finish::finish(st, &branch, options, now, fx),
+        GitFlowMsg::Finish { branch, options } => super::gitflow_finish::finish(st, &branch, options, false, now, fx),
+        GitFlowMsg::StashAndFinish { branch, options } => super::gitflow_finish::finish(st, &branch, options, true, now, fx),
         GitFlowMsg::OpenPanel => open_panel(st),
         GitFlowMsg::ClosePanel => st.gitflow_panel = false,
         GitFlowMsg::ContinueFinish => super::gitflow_resume::continue_finish(st, now, fx),
-        GitFlowMsg::ForgetFinish => st.gitflow_resume = None,
+        GitFlowMsg::ForgetFinish => {
+            st.gitflow_resume = None;
+            // A stash held for the forgotten steps comes back at once.
+            super::auto_stash::seen(st, false, now, fx);
+        }
     }
 }
 

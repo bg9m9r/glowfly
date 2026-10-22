@@ -9,6 +9,7 @@ use super::widgets::{FieldGroup, buttons};
 use crate::msg::CloneMsg;
 use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
+use crate::state::PrefPage;
 use crate::state::clone::{CloneForm, LimitKind};
 use crate::state::clone_service::CloneSource;
 use crate::ui::theme::controls;
@@ -119,8 +120,17 @@ pub fn show(
     connections: &[Connection],
     msgs: &mut Vec<Msg>,
 ) -> bool {
+    // Your repositories with no listing service connected: only the way to connect one.
+    let connect_only = form.source == CloneSource::Service && form.service.accounts.is_empty();
     let mut d = Dialog::new(cx, "Clone a repository").size(Size::Wide).begin(ui);
-    let mut close = d.body(ui, |ui| body(ui, cx, form, today, sparse_blocked, connections, msgs));
+    let mut close = d.body(ui, |ui| body(ui, cx, form, today, sparse_blocked, connections, connect_only, msgs));
+    if connect_only {
+        let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(cx.t.tr("clone.service.open_integrations.button"))));
+        if out.primary {
+            msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
+        }
+        return close || out.primary || out.dismiss;
+    }
     let p = form.problems_now(today);
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Clone").enabled(!p.blocked)));
     if out.attempted {
@@ -135,8 +145,9 @@ pub fn show(
     close || out.dismiss
 }
 
-/// The tabs, the URL or the repository list, the folder and the options; returns true when
-/// Open Integrations closes the dialog.
+/// The tabs, the URL or the repository list, the folder and the options (only the connect
+/// prompt when `connect_only`); returns true when the dialog should close.
+#[allow(clippy::too_many_arguments)]
 fn body(
     ui: &mut egui::Ui,
     cx: Cx,
@@ -144,12 +155,17 @@ fn body(
     today: NaiveDate,
     sparse_blocked: Option<&str>,
     connections: &[Connection],
+    connect_only: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
     let mut close = false;
     tabs(ui, form, msgs);
     ui.add_space(4.0);
     ui.add_space(8.0);
+    if connect_only {
+        super::clone_service::connect_prompt(ui, cx.t, msgs);
+        return false;
+    }
     match form.source {
         CloneSource::Url => {
             // The folder check doesn't affect the URL's line.

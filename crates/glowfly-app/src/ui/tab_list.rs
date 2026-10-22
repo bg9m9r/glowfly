@@ -1,4 +1,4 @@
-//! The tab list at the far end of the tab bar: a chevron button whose popup lists the open tabs
+//! The tab list right after the tab bar's + button: a chevron button whose popup lists the open tabs
 //! (click one to select it) and the recently closed ones, newest first (click one to reopen it).
 //! It shows only when it adds something: closed tabs to reopen, or tabs too many to show at
 //! their own widths.

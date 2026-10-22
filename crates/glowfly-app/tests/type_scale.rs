@@ -21,12 +21,11 @@ use views::{code_lines, view_sources};
 /// The file that defines the scale.
 const SCALE_FILE: &str = "ui/theme/type_scale.rs";
 
-/// (file, text on the line, reason) for each deliberate exception. Each must still match.
-const ALLOWED: &[(&str, &str, &str)] = &[(
-    "ui/widgets/icon.rs",
-    "\"{ }\", FontId::monospace(13.0)",
-    "the braces are a glyph inside a painted icon, sized to the icon, not text",
-)];
+/// A deliberate exception: (file, text on the line, reason).
+type Allowed = (&'static str, &'static str, &'static str);
+
+/// The deliberate exceptions. Each must still match. None today: icons are drawn with lines.
+const ALLOWED: &[Allowed] = &[];
 
 /// Calls that must take a type-scale step, not a number.
 const SIZED_CALLS: &[&str] = &["FontId::proportional(", "FontId::monospace(", "FontId::new(", "semibold(ui, ", ".text_size(", ".size("];
@@ -78,21 +77,26 @@ fn line_problems(line: &str) -> Vec<String> {
     found
 }
 
-/// Problems in the file at `rel` (under `src/`), as "line: message", with the lines `ALLOWED`
+/// Problems in the file at `rel` (under `src/`), as "line: message", with the lines `allowed`
 /// lets through counted in `used`.
-fn violations(rel: &str, src: &str, used: &mut Vec<usize>) -> Vec<String> {
+fn violations_with(rel: &str, src: &str, allowed: &[Allowed], used: &mut Vec<usize>) -> Vec<String> {
     if rel == SCALE_FILE {
         return Vec::new();
     }
     let mut found = Vec::new();
     for (i, line) in code_lines(src).iter().enumerate() {
-        if let Some(k) = ALLOWED.iter().position(|(f, pat, _)| *f == rel && line.contains(pat)) {
+        if let Some(k) = allowed.iter().position(|(f, pat, _)| *f == rel && line.contains(pat)) {
             used.push(k);
             continue;
         }
         found.extend(line_problems(line).into_iter().map(|m| format!("{}: {m}", i + 1)));
     }
     found
+}
+
+/// `violations_with` the `ALLOWED` exceptions.
+fn violations(rel: &str, src: &str, used: &mut Vec<usize>) -> Vec<String> {
+    violations_with(rel, src, ALLOWED, used)
 }
 
 #[test]
@@ -132,8 +136,9 @@ fn the_check_catches_font_constants_small_strong_and_coloured_links() {
 #[test]
 fn allowed_entries_let_their_line_through() {
     let src = "fn a(p: &Painter) {\n    p.text(c, Align2::CENTER_CENTER, \"{ }\", FontId::monospace(13.0), col);\n}\n";
+    let allowed: &[Allowed] = &[("ui/widgets/icon.rs", "\"{ }\", FontId::monospace(13.0)", "a glyph sized to its icon")];
     let mut used = Vec::new();
-    assert!(violations("ui/widgets/icon.rs", src, &mut used).is_empty());
+    assert!(violations_with("ui/widgets/icon.rs", src, allowed, &mut used).is_empty());
     assert_eq!(used, [0]);
-    assert_eq!(violations("ui/other.rs", src, &mut Vec::new()).len(), 1);
+    assert_eq!(violations_with("ui/other.rs", src, allowed, &mut Vec::new()).len(), 1);
 }

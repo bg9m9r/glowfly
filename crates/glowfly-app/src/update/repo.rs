@@ -345,6 +345,8 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     st.snap = Some(snap);
     super::line_counts::status_changed(st, fx);
     super::pick::state_changed(st, state_before);
+    // Before the auto-stash: remembered Git Flow steps dropped by this load release its stash.
+    super::gitflow::snapshot_changed(st);
     super::auto_stash::seen(st, true, now, fx);
     super::search::snapshot_changed(st, fx);
     super::trust::loaded(st, kind, fx);
@@ -352,7 +354,6 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     super::submodule_batch::opened(st, kind, now, fx);
     super::conflict_check::want(st, fx);
     super::worktree_counts::want(st, fx);
-    super::gitflow::snapshot_changed(st);
     super::commit::prefill(st);
     super::watch::sync(st, fx);
     super::terminal::sync(st, fx);

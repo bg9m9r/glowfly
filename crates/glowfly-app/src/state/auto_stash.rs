@@ -138,6 +138,7 @@ pub fn body(t: Lang, op: &AutoStashFor, files: usize) -> String {
         AutoStashFor::CherryPick { commits, onto } => t.trf("auto_stash.body.cherry_pick", &[("commits", commits), ("onto", onto)]),
         AutoStashFor::Revert { commits, on } => t.trf("auto_stash.body.revert", &[("commits", commits), ("branch", on)]),
         AutoStashFor::HardReset { branch, to } => t.trf("auto_stash.body.reset", &[("branch", branch), ("commit", to)]),
+        AutoStashFor::GitFlowFinish { branch } => t.trf("auto_stash.body.gitflow_finish", &[("branch", branch)]),
     };
     let mut text = format!("{} {what}", t.trn("auto_stash.files", files, &[]));
     if op.can_stop() {
@@ -157,7 +158,14 @@ pub fn button(t: Lang, op: &AutoStashFor) -> &'static str {
         AutoStashFor::CherryPick { .. } => t.tr("auto_stash.button.cherry_pick"),
         AutoStashFor::Revert { .. } => t.tr("auto_stash.button.revert"),
         AutoStashFor::HardReset { .. } => t.tr("auto_stash.button.reset"),
+        AutoStashFor::GitFlowFinish { .. } => t.tr("auto_stash.button.gitflow_finish"),
     }
+}
+
+/// The Git Flow Finish dialog's note under its steps when Finish stashes the `files` changed
+/// files first and puts them back on `ends_on`.
+pub fn finish_note(t: Lang, files: usize, ends_on: &str) -> String {
+    t.trn("gitflow.finish.stash_note", files, &[("branch", &ends_on)])
 }
 
 /// The hard reset's danger alternative.

@@ -29,6 +29,28 @@ fn failed_step_and_conflict() {
 }
 
 #[test]
+fn output_after_a_stash_command() {
+    let out = "$ git stash push -m x\nSaved\n$ git checkout develop --\nerr";
+    assert_eq!(after_commands(out, 1), Some("$ git checkout develop --\nerr"));
+    assert_eq!(after_commands(out, 0), Some(out));
+    assert_eq!(after_commands("$ git stash push -m x\nerror: no luck", 1), None, "the stash itself failed");
+    assert_eq!(after_commands("", 0), None);
+}
+
+#[test]
+fn finish_ends_on_the_development_branch() {
+    let s = defaults();
+    let b = branches(&["main", "develop", "feature/login", "release/1.2.0", "hotfix/1.0.1"]);
+    for keep in [false, true] {
+        let o = FinishOptions { keep, ..FinishOptions::default() };
+        assert_eq!(check_finish(&s, "feature/login", &o, &b, &clean()).unwrap().ends_on(), Some("develop"), "keep {keep}");
+    }
+    assert_eq!(check_finish(&s, "release/1.2.0", &release_opts(false), &b, &clean()).unwrap().ends_on(), Some("develop"));
+    let o = FinishOptions { tag: "v1.0.1".into(), message: "Hotfix 1.0.1".into(), keep: false };
+    assert_eq!(check_finish(&s, "hotfix/1.0.1", &o, &b, &clean()).unwrap().ends_on(), Some("develop"));
+}
+
+#[test]
 fn rest_after_conflict_cuts_after_merges() {
     let s = defaults();
     let b = branches(&["main", "develop", "feature/login", "release/1.2.0"]);

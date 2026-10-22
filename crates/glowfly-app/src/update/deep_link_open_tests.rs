@@ -11,8 +11,8 @@ use crate::deep_link::{DeepLinkEffect, DeepLinkMsg, FindOrigin};
 use crate::effect::OsEffect;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::{FolderPurpose, JobMsg, Msg, PrefsMsg, RepoMsg};
-use crate::state::deep_link::LinkDialog;
-use crate::state::{AppState, Modal, Selection};
+use crate::state::deep_link::{LinkDialog, PickReason, pick_reason};
+use crate::state::{AppState, Modal, Selection, Tab};
 use git2::Oid;
 use glowfly_core::link::find::{Found, TargetState};
 use glowfly_core::link::{Link, Target};
@@ -109,10 +109,12 @@ fn several_copies_ask_which_one() {
     let (a, b) = (base.join("a"), base.join("b"));
     let oid = Oid::from_str("0123456789abcdef0123456789abcdef01234567").unwrap();
     let mut st = state();
+    st.recent = vec![a.clone(), b.clone()];
     answer(&mut st, &link_text("repo"), vec![found(&a, present(oid)), found(&b, present(oid))]);
     match &st.modal {
-        Some(Modal::DeepLink(LinkDialog::Choose { paths, picked, what })) => {
+        Some(Modal::DeepLink(LinkDialog::Choose { paths, picked, what, reason })) => {
             assert_eq!((paths.clone(), *picked, what.as_str()), (vec![a.clone(), b.clone()], 0, "repository"));
+            assert_eq!(*reason, Some(PickReason::Recent), "the first was opened last");
         }
         _ => panic!("expected the Choose dialog"),
     }
@@ -294,4 +296,22 @@ fn a_search_answer_waits_for_a_dialog_opened_meanwhile() {
     assert_eq!(loads(&fx, LoadKind::Open), None);
     assert!(st.tabs.iter().all(|t| t.path.as_deref() != Some(a.as_path())));
     waits(&st);
+}
+
+#[test]
+fn the_preselected_copy_says_why() {
+    let (mut st, work, bare) = with_origin("link-pick-reason");
+    let oid = tip(&work, "feature");
+    let base = work.with_file_name("link-pick-reason-others");
+    let (tab, fav, recent, none) = (base.join("tab"), base.join("fav"), base.join("recent"), base.join("none"));
+    st.tabs.push(Tab::unloaded(tab.clone()));
+    st.settings.favorite_repos = vec![glowfly_core::paths::encode(&fav)];
+    st.recent = vec![recent.clone()];
+    let why = |st: &AppState, dir: &Path| pick_reason(st, &found(dir, present(oid)));
+    assert_eq!(why(&st, &work), Some(PickReason::Active));
+    assert_eq!(why(&st, &tab), Some(PickReason::OpenTab));
+    assert_eq!(why(&st, &fav), Some(PickReason::Favorite));
+    assert_eq!(why(&st, &recent), Some(PickReason::Recent));
+    assert_eq!(why(&st, &none), None);
+    cleanup(&[&work, &bare]);
 }

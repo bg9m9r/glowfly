@@ -1,12 +1,12 @@
-//! The glowfly:// link dialogs (a link Glowfly can't open, Repository not found with and
-//! without a URL to clone, a located folder that doesn't match, choosing among several copies)
-//! and Preferences > General's Glowfly Links row. Each test clicks a button and checks the
-//! message it sends.
+//! The glowfly:// link dialogs (a link Glowfly can't open, one of a kind only a newer version
+//! knows, Repository not found with and without a URL to clone, a located folder that doesn't
+//! match, choosing among several copies) and Preferences > General's Glowfly Links row. Each
+//! test clicks a button and checks the message it sends.
 
 use super::snapshot_tests::{harness, harness_sized, settings};
 use crate::deep_link::{DeepLinkMsg, FindOrigin};
-use crate::msg::Msg;
-use crate::state::deep_link::{LinkDialog, SchemeView};
+use crate::msg::{Msg, UpdateMsg};
+use crate::state::deep_link::{LinkDialog, PickReason, SchemeView};
 use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
@@ -48,12 +48,26 @@ fn branch(url: Option<&str>) -> Link {
 #[test]
 fn deep_link_invalid() {
     let mut st = app(ThemeChoice::Dark);
-    send(&mut st, DeepLinkMsg::Open("glowfly://draft/42?root=0123".into()));
+    send(&mut st, DeepLinkMsg::Open("glowfly://branch/feature?root=0123".into()));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("deep_link_invalid");
     h.get_by_label("Close").click();
     h.run();
+    assert!(sent(&h, &|m| matches!(m, Msg::CloseModal)));
+}
+
+#[test]
+fn deep_link_newer() {
+    let mut st = app(ThemeChoice::Dark);
+    send(&mut st, DeepLinkMsg::Open("glowfly://draft/42?root=0123".into()));
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("deep_link_newer");
+    assert!(h.query_by_label("This link needs a newer Glowfly").is_some());
+    h.get_by_label("Check for updates").click();
+    h.run();
+    assert!(sent(&h, &|m| matches!(m, Msg::Updates(UpdateMsg::CheckNow))));
     assert!(sent(&h, &|m| matches!(m, Msg::CloseModal)));
 }
 
@@ -110,13 +124,15 @@ fn deep_link_choose() {
     } else {
         vec!["/home/me/src/app".into(), "/mnt/backup/app".into()]
     };
-    st.modal = Some(Modal::DeepLink(LinkDialog::Choose { what: "tag v1.4.0".into(), paths: paths.clone(), picked: 1 }));
+    let reason = Some(PickReason::OpenTab);
+    st.modal = Some(Modal::DeepLink(LinkDialog::Choose { what: "tag v1.4.0".into(), paths: paths.clone(), picked: 0, reason }));
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("deep_link_choose");
-    h.get_by_label(&glowfly_core::native_path::shown(&paths[0])).click();
+    assert!(h.query_by_label("open in a tab").is_some(), "the preselected copy says why");
+    h.get_by_label(&glowfly_core::native_path::shown(&paths[1])).click();
     h.run();
-    assert!(sent(&h, &|m| matches!(m, Msg::DeepLink(DeepLinkMsg::Choose(0)))));
+    assert!(sent(&h, &|m| matches!(m, Msg::DeepLink(DeepLinkMsg::Choose(1)))));
     h.get_by_label("Open").click();
     h.run();
     assert!(sent(&h, &|m| matches!(m, Msg::DeepLink(DeepLinkMsg::OpenChosen))));

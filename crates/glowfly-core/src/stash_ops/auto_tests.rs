@@ -75,6 +75,25 @@ fn messages_are_fixed_english_and_recognised() {
     assert!(Merge { from: s("x"), into: s("main") }.can_stop());
 }
 
+#[test]
+fn a_git_flow_finish_stash_is_asked_for_by_its_dialog() {
+    let op = AutoStashFor::GitFlowFinish { branch: s("feature/login") };
+    let want = "Auto-stash before finishing feature/login";
+    assert_eq!(op.message(), want);
+    assert_eq!(op.stash_command(), args(&["stash", "push", "-m", want]));
+    assert!(op.can_stop(), "a merge step can stop on conflicts");
+    assert!(is_auto_stash(&format!("On feature/login: {want}")));
+    // The finish's own commands are never classified as a finish.
+    for cmd in [
+        &["checkout", "develop", "--"][..],
+        &["merge", "--no-ff", "--no-edit", "refs/heads/feature/login"],
+        &["tag", "-a", "-m", "v1", "v1", "refs/heads/release/1"],
+        &["branch", "-d", "feature/login"],
+    ] {
+        assert!(!matches!(of(cmd), Some(AutoStashFor::GitFlowFinish { .. })), "{cmd:?}");
+    }
+}
+
 /// A repository on `main` with a.txt committed ("one\n") and then edited and stashed with
 /// `message`. Returns the folder and the stash's commit.
 fn stashed(name: &str, message: &str) -> (PathBuf, Oid) {
