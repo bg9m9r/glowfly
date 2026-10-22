@@ -5,6 +5,7 @@
 
 use super::{UiCache, app_native, avatars, build_status, layout, shortcuts, theme};
 use crate::effect::{Effect, UiEffect};
+use crate::msg::AppMsg;
 use crate::msg::AvatarMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
@@ -175,6 +176,8 @@ impl GlowflyApp {
                 Effect::Ui(UiEffect::SetTitle(title)) => ctx.send_viewport_cmd(egui::ViewportCommand::Title(title)),
                 Effect::Ui(UiEffect::RequestAttention) => request_attention(ctx),
                 Effect::Ui(UiEffect::CloseWindow) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                // In the pass that saw the close request, so eframe keeps the window.
+                Effect::Ui(UiEffect::CancelClose) => ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose),
                 Effect::Ui(UiEffect::RequestPaste) => ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste),
                 Effect::Ui(UiEffect::Window(cmd)) => match super::window_frame::viewport_cmd(cmd) {
                     Some(c) => ctx.send_viewport_cmd(c),
@@ -203,6 +206,9 @@ impl GlowflyApp {
             msgs.push(Msg::Repo(RepoMsg::WindowFocused));
         }
         self.st.view.was_focused = focused;
+        if ctx.input(|i| i.viewport().close_requested()) {
+            msgs.push(Msg::App(AppMsg::CloseRequested));
+        }
         shortcuts::input(ctx, &mut self.st, msgs);
     }
 

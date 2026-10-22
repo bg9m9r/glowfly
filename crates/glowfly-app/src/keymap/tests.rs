@@ -105,7 +105,7 @@ fn ids_are_stable() {
     }
     assert_eq!(BindingId::from_key("New-Tab"), None);
     assert_eq!(BindingId::from_key("send-pull-request-text"), Some(BindingId::SendPrText));
-    assert_eq!(BindingId::ALL.last(), Some(&BindingId::SendPrText));
+    assert_eq!(BindingId::ALL[BindingId::ALL.len() - 2..], [BindingId::SendPrText, BindingId::Quit]);
 }
 
 #[test]
@@ -164,6 +164,7 @@ fn rebindable_set() {
         I::OpenFold,
         I::CloseFold,
         I::ToggleFullscreen,
+        I::Quit,
     ];
     assert_eq!(rebindable, want);
 }

@@ -9,27 +9,25 @@ use crate::state::{AppState, Selection};
 use crate::ui::menus::copy_shas;
 use eframe::egui;
 
-pub(super) fn menu(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn items(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
-    ui.menu_button(t.tr("menu.edit.title"), |ui| {
-        ui.set_min_width(250.0);
-        let idle = st.job.is_none();
-        let (label, why) = st.undo.undo_entry(t, idle);
-        item(ui, &st.keymap, label, Some(I::Undo), why.as_deref(), Msg::Job(JobMsg::Undo), msgs);
-        let (label, why) = st.undo.redo_entry(t, idle);
-        item(ui, &st.keymap, label, Some(I::Redo), why.as_deref(), Msg::Job(JobMsg::Redo), msgs);
-        ui.separator();
-        let no_repo = st.snap.is_none().then_some(t.tr("menu.common.no_repo"));
-        item(ui, &st.keymap, t.tr("menu.edit.find"), Some(I::Search), no_repo, Msg::Search(SearchMsg::Open), msgs);
-        // What the key does: show the bar and flip the filter.
-        if clicked(ui, t.tr("menu.edit.filter"), hint(&st.keymap, Some(I::SearchFilter)), no_repo) {
-            st.view.show_search = true;
-            msgs.push(Msg::Search(SearchMsg::ToggleFilter));
-            ui.close_menu();
-        }
-        ui.separator();
-        copy_items(ui, st, msgs);
-    });
+    ui.set_min_width(250.0);
+    let idle = st.job.is_none();
+    let (label, why) = st.undo.undo_entry(t, idle);
+    item(ui, &st.keymap, label, Some(I::Undo), why.as_deref(), Msg::Job(JobMsg::Undo), msgs);
+    let (label, why) = st.undo.redo_entry(t, idle);
+    item(ui, &st.keymap, label, Some(I::Redo), why.as_deref(), Msg::Job(JobMsg::Redo), msgs);
+    ui.separator();
+    let no_repo = st.snap.is_none().then_some(t.tr("menu.common.no_repo"));
+    item(ui, &st.keymap, t.tr("menu.edit.find"), Some(I::Search), no_repo, Msg::Search(SearchMsg::Open), msgs);
+    // What the key does: show the bar and flip the filter.
+    if clicked(ui, t.tr("menu.edit.filter"), hint(&st.keymap, Some(I::SearchFilter)), no_repo) {
+        st.view.show_search = true;
+        msgs.push(Msg::Search(SearchMsg::ToggleFilter));
+        ui.close_menu();
+    }
+    ui.separator();
+    copy_items(ui, st, msgs);
 }
 
 fn copy_items(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {

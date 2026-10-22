@@ -18,6 +18,8 @@ mod chord_tests;
 #[cfg(test)]
 mod command_tests;
 #[cfg(test)]
+mod quit_tests;
+#[cfg(test)]
 mod rebind_tests;
 #[cfg(test)]
 mod tests;

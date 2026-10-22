@@ -5,9 +5,14 @@ use crate::state::window_chrome::WindowCmd;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AppMsg {
-    /// File > Quit: close the window like its title-bar close button (tabs and settings are
-    /// already saved when they change).
+    /// File > Quit, the Quit key or a drawn title bar's Close: close the window (tabs and
+    /// settings are already saved when they change), asking first while git work runs.
     Quit,
+    /// The OS asked to close the window (Alt+F4, the system frame's close button, the taskbar,
+    /// the window manager): the shell saw `close_requested` this frame.
+    CloseRequested,
+    /// The quit question's Quit anyway.
+    QuitConfirmed,
     /// Help > About Glowfly: open the About dialog.
     ShowAbout,
     /// About's Third-party notices…: open the notices dialog in About's place.
@@ -21,7 +26,7 @@ impl AppMsg {
     /// UI intents, never results of background work: nothing to keep for an inactive tab.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::Quit | Self::ShowAbout | Self::ShowNotices | Self::Window(_) => None,
+            Self::Quit | Self::CloseRequested | Self::QuitConfirmed | Self::ShowAbout | Self::ShowNotices | Self::Window(_) => None,
         }
     }
 }

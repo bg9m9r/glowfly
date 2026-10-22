@@ -25,13 +25,15 @@ use eframe::egui::{self, Key};
 /// rebase panel (its message editor first), the Range-diff view, the operation journal, the Git
 /// Flow panel, then a multi-selection or a
 /// commit compared with the working directory, and
-/// finally the search bar. Dialogs (a credential prompt and the welcome included) and the command
-/// palette handle Esc themselves. In a text field Esc only leaves the field, and in the terminal it goes to the
+/// finally the search bar. Dialogs (a credential prompt and the welcome included), the command
+/// palette and an open menu of the menu bar or title bar handle Esc themselves. In a text field Esc only leaves the field, and in the terminal it goes to the
 /// shell.
 pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !ctx.input(|i| i.key_pressed(Key::Escape))
         // That Esc cancels the tab drag (`tabs.rs`) and nothing else.
         || super::tabs::dragging(ctx)
+        // That Esc closes the open menu (`menu_bar`) and nothing else.
+        || super::menu_bar::any_open(ctx)
         || st.modal.is_some()
         || st.askpass.showing()
         || st.palette.is_some()

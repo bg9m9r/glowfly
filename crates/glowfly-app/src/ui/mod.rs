@@ -485,6 +485,8 @@ mod snapshot_tests_themes;
 #[cfg(test)]
 mod snapshot_tests_title_bar;
 #[cfg(test)]
+mod snapshot_tests_title_bar_keys;
+#[cfg(test)]
 mod snapshot_tests_toasts;
 #[cfg(test)]
 mod snapshot_tests_tools;

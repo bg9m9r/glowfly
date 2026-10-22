@@ -172,6 +172,11 @@ pub struct ViewState {
     pub window: WindowInfo,
     /// The Alt tap that opens a drawn title bar's menu (`ui/title_bar.rs`).
     pub alt_tap: AltTap,
+    /// The menus' keyboard state: a mnemonic pressed, a menu opened from the keyboard
+    /// (`ui/menu_bar`).
+    pub menu_keys: super::menu_keys::MenuKeys,
+    /// Quit went ahead (update/app.rs): the close request that follows isn't asked about again.
+    pub quitting: bool,
     /// What the title bar, toolbar and sidebar are painted on: set by the shell each frame;
     /// views read it through `ui::backdrop::fill`.
     pub backdrop: Backdrop,
@@ -232,6 +237,8 @@ impl Default for ViewState {
             chrome: Chrome::System,
             window: WindowInfo::default(),
             alt_tap: AltTap::default(),
+            menu_keys: Default::default(),
+            quitting: false,
             backdrop: Backdrop::Solid,
             op_steps: Default::default(),
         }

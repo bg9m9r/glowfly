@@ -142,7 +142,7 @@ fn part(
     let w = 2.0 * PAD_X + icon_w + slot + CARET_ROOM;
     let caption = cut_galley(ui.ctx(), cut_job(caption.to_owned(), type_scale::font(CAPTION), color::weak()), w - 2.0 * PAD_X);
     let (rect, r) = ui.allocate_exact_size(vec2(w, PART_H), Sense::click());
-    let open = menu_anchor::menu_below(ui, Id::new(MENU_ID), &r, false, menu);
+    let open = menu_anchor::menu_below(ui, Id::new(MENU_ID), &r, menu_anchor::MenuCmd::None, menu);
     let p = ui.painter();
     if open {
         p.rect_filled(rect, CornerRadius::same(PART_RADIUS), color::tool_pressed());

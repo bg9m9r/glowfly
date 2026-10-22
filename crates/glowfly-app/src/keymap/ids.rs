@@ -93,12 +93,13 @@ pub enum BindingId {
     OpenTerminal,
     ShowRepoFolder,
     SendPrText,
+    Quit,
 }
 
 use BindingId as I;
 
 /// How many ids there are.
-const COUNT: usize = 91;
+const COUNT: usize = 92;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
 const KEYS: [(BindingId, &str); COUNT] = [
@@ -193,6 +194,7 @@ const KEYS: [(BindingId, &str); COUNT] = [
     (I::OpenTerminal, "open-in-terminal"),
     (I::ShowRepoFolder, "show-repo-folder"),
     (I::SendPrText, "send-pull-request-text"),
+    (I::Quit, "quit"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.

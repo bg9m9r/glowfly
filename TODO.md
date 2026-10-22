@@ -1048,10 +1048,7 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
 
 ### Menu bar
 
-- Alt-letter mnemonics and keyboard navigation of the menus (Alt+F, arrow keys between menus)
-- The native macOS application menu (the global menu bar with the standard app menu) instead of the in-window bar
-- Ask before quitting (from the menu or the window's close button) while a git operation is still running
-- A Quit key in the keymap (Cmd+Q on macOS, Ctrl+Q elsewhere)
+- The native macOS application menu (the global menu bar with the standard app menu) instead of the in-window bar. winit's default app menu binds Cmd+Q to `terminate:`, which may exit without a close request, so the quit question can be skipped there
 
 ### Packaging and updates
 
@@ -2736,6 +2733,18 @@ here, under the item they grew from.
 - Repository and Branch menus (fetch, pull, push, stash, new branch and tag)
 - Recently closed tabs as a submenu, to reopen any of them
 - The OS and architecture in the About dialog's copied version info
+- Open the submenus (Open recent, Theme) from the keyboard
+- F10 focuses the first menu
+- Mnemonics for the items inside menus
+- Let translators pick each menu's mnemonic in the catalog
+- Preferences > Keyboard warns when an Alt+letter key hides a menu's mnemonic
+- Hide the underlines once the pointer is used in a menu opened from the keyboard
+- Ask before quitting when tabs hold unsaved work (reuse `state/tab_losses.rs`) or Preferences has unsaved repository settings
+- Quit by itself once the running operation ends while the quit question shows
+- Quit anyway stops a stoppable job (fetch) first, so its lock files are cleaned up
+- Also ask before quitting while a sparse clone, a terminal program or other background work runs
+- Keep the open dialog under the quit question instead of replacing it
+- On macOS, send the app menu's Quit (Cmd+Q) through the quit question
 
 ### Packaging and updates
 

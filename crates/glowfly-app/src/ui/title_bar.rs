@@ -3,19 +3,23 @@
 //! edge and empty space to grab, before the window buttons (`window_frame.rs` draws those above
 //! every dialog) or after the macOS traffic lights. Dragging the empty space moves the window,
 //! double-clicking it maximizes or restores, and on Windows a tap of Alt opens the menu and a
-//! right-click on the empty space the window's system menu. On Mica the bar is tinted.
+//! right-click on the empty space the window's system menu. A menu's Alt+letter opens the menu
+//! showing that menu alone under a row of the five titles (Left and Right switch, Esc goes back
+//! to the list of five); a click on the button always shows the list. On Mica the bar is tinted.
 
 use super::backdrop::{self, Surface};
+use super::menu_anchor::{self, MenuCmd};
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};
 use super::window_buttons::BUTTON_W;
-use super::{menu_anchor, menu_bar, tabs};
+use super::{menu_bar, tabs};
 use crate::msg::{AppMsg, Msg};
 use crate::state::AppState;
 use crate::state::window_chrome::{AltFrame, WindowCmd};
 use crate::ui::theme::tokens::radius;
 use eframe::egui::{
-    self, Align, CornerRadius, Event, Id, LayerId, Layout, PointerButton, Pos2, Rect, Sense, UiBuilder, WidgetInfo, WidgetType, pos2, vec2,
+    self, Align, CornerRadius, Event, Id, Key, LayerId, Layout, Modifiers, PointerButton, Pos2, Rect, Sense, UiBuilder, WidgetInfo,
+    WidgetType, pos2, vec2,
 };
 
 /// The bar's height, and its tabs' (along its bottom edge).
@@ -57,6 +61,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
                 msgs.push(Msg::App(AppMsg::Window(WindowCmd::SystemMenu)));
             }
             if st.prefs.is_some() {
+                menu_anchor::close(ctx, Id::new(menu_bar::MAIN_MENU));
                 return;
             }
             menu_button(ui, st, pos2(x, bar.center().y), msgs);
@@ -88,18 +93,48 @@ fn tab_room(bar_w: f32, inset: f32, buttons_w: f32) -> f32 {
     bar_w - inset - 8.0 - MENU_W - 8.0 - buttons_w - MIN_DRAG
 }
 
-/// The menu button with its left edge at `at.x`, centred on `at.y`; a click or an Alt tap opens
-/// the menu below it.
+/// The menu button with its left edge at `at.x`, centred on `at.y`; a click, an Alt tap or a
+/// menu's Alt+letter opens the menu below it.
 fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
+    let ctx = ui.ctx().clone();
+    let id = Id::new(menu_bar::MAIN_MENU);
+    menu_bar::keep_inside(&ctx);
     let rect = Rect::from_min_size(pos2(at.x, at.y - MENU_H / 2.0), vec2(MENU_W, MENU_H));
     let r = ui.interact(rect, Id::new("title-bar-menu"), Sense::click());
-    let (tap, fired) = st.view.alt_tap.step(alt_frame(ui.ctx()));
+    // The pointer always gets the list of five.
+    if r.clicked() {
+        st.view.menu_keys.only = None;
+        st.view.menu_keys.keyboard = false;
+    }
+    let (tap, fired) = st.view.alt_tap.step(alt_frame(&ctx));
     st.view.alt_tap = tap;
+    let wanted = st.view.chrome.mnemonics().then(|| st.view.menu_keys.request.take()).flatten();
     // Not while a dialog blocks the bar or the terminal has the keyboard.
-    let toggle =
-        fired && st.view.chrome.alt_opens_menu() && !st.terminal.focused && ui.ctx().memory(|m| m.allows_interaction(ui.layer_id()));
-    let open = menu_anchor::menu_below(ui, Id::new("main-menu"), &r, toggle, |ui| menu_bar::menus(ui, st, msgs));
+    let toggle = fired && st.view.chrome.alt_opens_menu() && !st.terminal.focused && ctx.memory(|m| m.allows_interaction(ui.layer_id()));
+    let was_open = menu_anchor::open_id(&ctx, id).is_some();
+    let cmd = if let Some(m) = wanted {
+        // Alt was used: letting go of it is no tap.
+        st.view.alt_tap = tap.cancel();
+        st.view.menu_keys.opened_by_key(m);
+        MenuCmd::Open
+    } else if toggle {
+        if !was_open {
+            let k = &mut st.view.menu_keys;
+            (k.keyboard, k.focus_first, k.only) = (true, true, None);
+        }
+        MenuCmd::Toggle
+    } else {
+        MenuCmd::None
+    };
+    if was_open && let Some(m) = st.view.menu_keys.only {
+        single_keys(&ctx, st, m);
+    }
+    let open = menu_anchor::menu_below(ui, id, &r, cmd, |ui| menu_bar::main_menu(ui, st, msgs));
+    if !open {
+        st.view.menu_keys.closed();
+        menu_bar::forget(&ctx);
+    }
     let p = ui.painter();
     if open {
         p.rect_filled(rect, CornerRadius::same(radius::MD), color::selected());
@@ -110,6 +145,21 @@ fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Ms
     let name = t.tr("title_bar.menu.tip");
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, name));
     r.on_hover_text(name);
+}
+
+/// Esc, Left and Right while the menu shows menu `m` alone: Esc goes back to the list of five
+/// with `m`'s row focused (instead of closing), Left and Right show the menu before or after it.
+fn single_keys(ctx: &egui::Context, st: &mut AppState, m: crate::state::menu_keys::TopMenu) {
+    let k = &mut st.view.menu_keys;
+    if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape)) {
+        (k.only, k.back_to) = (None, Some(m));
+    } else if menu_bar::may_step(ctx) {
+        if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::ArrowLeft)) {
+            k.stepped(-1);
+        } else if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::ArrowRight)) {
+            k.stepped(1);
+        }
+    }
 }
 
 /// This frame's input as the Alt tap reads it.

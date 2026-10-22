@@ -284,6 +284,7 @@ pub const BINDINGS: &[Binding] = &[
     b(I::ToggleTerminal, G::View, "Show or hide the terminal", &[C::ctrl(K::Backtick)], W::Anywhere),
     b(I::Sheet, G::General, "Keyboard shortcuts", &[C::cmd(K::Slash)], W::Anywhere),
     b(I::Prefs, G::General, "Preferences", &[C::cmd(K::Comma)], W::Anywhere),
+    b(I::Quit, G::General, "Quit Glowfly", &[C::cmd(K::Letter('Q'))], W::Anywhere),
     b(I::Refresh, G::General, "Refresh", &[C::plain(K::F(5))], W::Anywhere),
     b(I::Undo, G::General, "Undo", &[C::cmd(K::Letter('Z'))], W::NotTyping),
     b(I::Redo, G::General, "Redo", &[C::cmd(K::Letter('Y')), C::cmd_shift(K::Letter('Z'))], W::NotTyping),

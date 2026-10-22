@@ -411,11 +411,35 @@ binary (package `glowfly`).
   palette or key already sends, shows its key from the keymap (`Keymap::hint`, never a literal)
   and explains a disabled state on hover; the texts and reasons are pure helpers in
   `state/menu_bar.rs` and `UndoHistory::undo_entry`. Its own window actions are `AppMsg`
-  (`update/app.rs`): Quit returns `UiEffect::CloseWindow`, which the shell's `dispatch` turns
-  into a viewport close, and About opens `Modal::About`, whose Third-party notices… button
+  (`update/app.rs`), and About opens `Modal::About`, whose Third-party notices… button
   opens `Modal::Notices` in its place (`ui/menu_bar/notices.rs`, with Back to About), which lists
   the licenses `glowfly_core::notices` parses from THIRD-PARTY-NOTICES.md (embedded at build
-  time).
+  time). Each menu's items are drawn by its file's `items`, so the bar (`bar.rs`: the titles as
+  buttons, each menu opened below its title through `menu_anchor.rs`) and the title bar's menu
+  button (the five titles as submenus, or one menu alone under a row of titles when opened
+  from the keyboard) share them.
+- **Menu keys** (not on macOS, `Chrome::mnemonics`): `state/menu_keys.rs` (egui-free) picks
+  each title's mnemonic from the translated title, skipping letters a plain Alt key of the
+  keymap or a custom command uses, and holds `ViewState::menu_keys` (`MenuKeys`: the menu an
+  Alt+letter asked for this frame, whether a menu was opened from the keyboard, which item
+  takes focus and which single menu the title bar shows). `ui/shortcuts/global.rs` takes the
+  Alt+letter press, and the text it types, out of the input before the views run
+  (`ui/menu_bar/keys.rs::take`, which also underlines the letters while Alt is held or a
+  keyboard-opened menu shows); the bar or the title bar's menu button opens that menu.
+  `ui/menu_bar/nav.rs` keeps the keyboard inside an open menu: the first item takes focus, Up
+  and Down step through the menu's own items (egui's spatial arrow moves are locked out on
+  them, since they could land on a widget behind the menu), focus that leaks out is put back
+  (`keep_inside`), and Left and Right switch menus while the focus is in the menu
+  (`may_step`). Enter and Space click the focused item (egui's own), and Esc closes the menu
+  before the central Esc chain (`central::escape_key` waits while `menu_bar::any_open`).
+- **Quitting**: Quit (the menu item or the rebindable Quit key, `BindingId::Quit`, Cmd+Q or
+  Ctrl+Q, kept by a focused terminal on Windows and Linux) sends `AppMsg::Quit`, and the
+  window's close button reaches `update` as `AppMsg::CloseRequested` (the shell reads egui's
+  `close_requested` in `input`). `update/app.rs::quit` asks first while a non-quiet job or a
+  repository sync runs (`state/quit_confirm.rs` builds the danger confirmation naming it and
+  its tab; Cancel is focused) and cancels the OS close with `UiEffect::CancelClose`; Quit
+  anyway sends `AppMsg::QuitConfirmed`, which sets `view.quitting` and returns
+  `UiEffect::CloseWindow`, and the close that follows is let through.
 - **Desktop notifications**: `update/notify.rs::desktop` returns `Effect::Notify` (a
   `DesktopNote`, `effect/notify.rs`) only while `settings.desktop_notifications` is on and
   `st.view.focused` is false; the shell sets `view.focused` from egui at the start of each frame,

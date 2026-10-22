@@ -61,6 +61,12 @@ impl Chrome {
         matches!(self, Chrome::Windows)
     }
 
+    /// Whether the menus answer to Alt+letter mnemonics and show their letters: not on macOS,
+    /// where Option+letter types characters and menus have none.
+    pub const fn mnemonics(self) -> bool {
+        !matches!(self, Chrome::MacOs)
+    }
+
     /// Whether a right-click on the empty bar opens the window's system menu (Alt+Space opens
     /// it too, in the OS glue).
     pub const fn system_menu(self) -> bool {
@@ -198,6 +204,7 @@ mod tests {
             assert_eq!(c.resize_edges(), edges, "{c:?}");
             assert_eq!(c.alt_opens_menu(), alt, "{c:?}");
             assert_eq!(c.system_menu(), menu, "{c:?}");
+            assert_eq!(c.mnemonics(), c != Chrome::MacOs, "{c:?}");
         }
     }
 

@@ -21,7 +21,7 @@ use std::path::PathBuf;
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// The fixture with the menu bar shown (the shared settings hide it).
-fn with_bar(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_bar(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     st.settings.show_menu_bar = true;
     (st, dir)

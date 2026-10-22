@@ -11,8 +11,10 @@ pub enum UiEffect {
     RequestAttention,
     /// A link arrived: un-minimize, raise and focus the window (or flash it when that fails).
     FocusWindow,
-    /// File > Quit: close the main window.
+    /// Quit went ahead: close the main window.
     CloseWindow,
+    /// Keep the window open after the OS asked to close it (the quit question opened instead).
+    CancelClose,
     /// Read the clipboard into an Event::Paste for the focused widget on the next frame.
     RequestPaste,
     /// Move, resize, minimise or maximise the window, or show the system menu (the drawn

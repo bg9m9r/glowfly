@@ -5,16 +5,18 @@
 //! shell (`terminal_keeps`). The Repository commands keys run palette commands: a held key runs
 //! its command once (repeats are swallowed), and a focused terminal keeps every press of theirs
 //! that would reach its shell. Then the keys of custom commands (`custom_keys.rs`), only while
-//! nothing covers the main window. Presses no binding takes are left for the views; Esc goes on to
-//! the Esc chain in `ui/central.rs`.
+//! nothing covers the main window, then the menus' Alt+letter mnemonics (`ui/menu_bar/keys.rs`),
+//! which the view drawing the menus opens. Quit works anywhere but under a credential prompt.
+//! Presses no binding takes are left for the views; Esc goes on to the Esc chain in
+//! `ui/central.rs`.
 
 use super::chords::take_press;
 use super::record;
 use crate::custom_commands::{CustomCommandMsg, Target};
 use crate::keymap::{BindingId, Chord, KeyAction, KeyName, runs_command};
 use crate::msg::{
-    BlameMsg, ConflictMsg, DiffMsg, HistoryMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg, SearchMsg,
-    SelectionMsg, TabsMsg,
+    AppMsg, BlameMsg, ConflictMsg, DiffMsg, HistoryMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg,
+    SearchMsg, SelectionMsg, TabsMsg,
 };
 use crate::state::history::HistoryPane;
 use crate::state::layout::Panel;
@@ -44,6 +46,14 @@ pub(crate) fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>)
         while let Some(command) = ctx.input_mut(|i| super::custom_keys::take(i, &st.custom_commands.keys)) {
             msgs.push(Msg::CustomCommand(CustomCommandMsg::Run { command, at: Target::Palette, confirmed: false }));
         }
+    }
+    // A menu's Alt+letter, after the bindings and custom keys (they win), while a menu bar is
+    // reachable and nothing covers the window or holds the keyboard.
+    st.view.menu_keys.request = None;
+    let bar = st.view.chrome.drawn() || st.settings.show_menu_bar;
+    if st.view.chrome.mnemonics() && bar && !(live.prefs || live.askpass || live.palette || live.dialog || live.sheet || live.terminal) {
+        let marks = crate::ui::menu_bar::marks(st);
+        st.view.menu_keys.request = ctx.input_mut(|i| crate::ui::menu_bar::take(i, &marks));
     }
     central::escape_key(ctx, st, msgs);
 }
@@ -104,10 +114,10 @@ impl Live {
 }
 
 /// The actions whose keys a focused terminal keeps for its shell when pressed without Shift,
-/// Alt or Cmd (Ctrl+W, Ctrl+P, F5…); their shifted keys still act.
+/// Alt or Cmd (Ctrl+W, Ctrl+P, Ctrl+Q, F5…); their shifted keys still act.
 fn terminal_keeps(id: BindingId) -> bool {
     use BindingId as I;
-    matches!(id, I::NewTab | I::CloseTab | I::NextTab | I::GoToTab | I::LastTab | I::Palette | I::Search | I::Refresh)
+    matches!(id, I::NewTab | I::CloseTab | I::NextTab | I::GoToTab | I::LastTab | I::Palette | I::Search | I::Refresh | I::Quit)
 }
 
 /// Whether `id` applies with what is open; `shell` says whether the press would reach a focused
@@ -169,6 +179,7 @@ fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         I::Refresh => true,
         I::Search | I::SearchFilter => !l.palette && !l.prefs,
         I::Prefs => !l.prefs && !l.palette,
+        I::Quit => !l.askpass,
         I::Commit
         | I::StageAllAndCommit
         | I::SelectRow
@@ -221,6 +232,7 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::Sheet => Msg::Shortcut(KeyAction::ToggleSheet),
         I::Palette => Msg::Palette(PaletteMsg::TogglePalette),
         I::Prefs => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)),
+        I::Quit => Msg::App(AppMsg::Quit),
         I::Refresh => Msg::Repo(RepoMsg::Refresh),
         I::Undo => Msg::Job(JobMsg::Undo),
         I::Redo => Msg::Job(JobMsg::Redo),

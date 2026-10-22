@@ -299,6 +299,8 @@ pub(super) mod push_pr_fork_tests;
 pub(super) mod push_pr_state_tests;
 #[path = "push_pr_tests.rs"]
 pub(super) mod push_pr_tests;
+#[path = "quit_tests.rs"]
+pub(super) mod quit_tests;
 #[path = "range_diff_flow_tests.rs"]
 pub(super) mod range_diff_flow_tests;
 #[path = "range_diff_tests.rs"]
