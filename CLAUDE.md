@@ -20,13 +20,13 @@ status; `TODO.md` is the backlog of items, the current milestone first.
 
 ## Worktrees
 
-Make every change in a git worktree, never in the main checkout (`C:/projects/trellis`):
+Make every change in a git worktree, never in the main checkout (`C:/projects/glowfly`):
 
-1. `git worktree add ../trellis-worktrees/<slug> -b <branch>` from the main checkout's HEAD.
-2. Work, run `scripts/check.ps1` and commit there. Set `CARGO_TARGET_DIR=C:/projects/trellis/target`
+1. `git worktree add ../glowfly-worktrees/<slug> -b <branch>` from the main checkout's HEAD.
+2. Work, run `scripts/check.ps1` and commit there. Set `CARGO_TARGET_DIR=C:/projects/glowfly/target`
    to reuse the main build output (one build at a time).
-3. When done: `git -C C:/projects/trellis merge --ff-only <branch>`, then
-   `git worktree remove ../trellis-worktrees/<slug>` and `git branch -d <branch>`.
+3. When done: `git -C C:/projects/glowfly merge --ff-only <branch>`, then
+   `git worktree remove ../glowfly-worktrees/<slug>` and `git branch -d <branch>`.
    Unfinished work: commit it as WIP on its branch, remove the worktree, keep the branch.
 
 `git worktree list` should show only the main checkout when nothing is in progress.
