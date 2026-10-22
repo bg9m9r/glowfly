@@ -1,8 +1,8 @@
 //! Headless tests for Git Flow's Stash changes and finish: the job's stash command in front of
 //! the plan, the changes put back on the development branch, a plain Finish still refused, a
 //! clean tree finishing without a stash, a merge conflict holding the stash until Continue
-//! finish or Forget, and the headline when the stash itself fails, end to end against real
-//! repositories.
+//! finish or Forget (but not another branch's stash), and the headline when the stash itself
+//! fails, end to end against real repositories.
 
 use super::gitflow_finish::headline;
 use super::gitflow_finish_tests::{commit, exists, ready};
@@ -148,6 +148,39 @@ fn forget_puts_a_held_stash_back() {
     finish(&mut st, fx);
     assert_eq!(read(&dir, "a.txt"), "edited\n");
     assert_eq!(stash_list(&dir).trim(), "");
+    cleanup(&dir);
+}
+
+#[test]
+fn another_branch_finish_puts_its_stash_back_while_one_is_stopped() {
+    let (mut st, dir) = conflicted("stash-other");
+    commit_merge(&mut st, &dir);
+    assert!(st.gitflow_resume.as_ref().is_some_and(|r| r.ready && r.resume.plan.branch == "feature/login"));
+    git(&dir, &["checkout", "-q", "-b", "feature/b", "develop"]);
+    commit(
+        &dir, "b.txt", "b
+",
+    );
+    std::fs::write(
+        dir.join("a.txt"),
+        "other
+",
+    )
+    .unwrap();
+    refresh(&mut st);
+    let msg = GitFlowMsg::StashAndFinish { branch: "feature/b".into(), options: FinishOptions::default() };
+    drive(&mut st, Msg::GitFlow(msg));
+    assert!(!exists(&dir, "refs/heads/feature/b"), "feature/b finished");
+    assert!(st.gitflow_resume.as_ref().is_some_and(|r| r.resume.plan.branch == "feature/login"), "still stopped");
+    assert_eq!(
+        read(&dir, "a.txt"),
+        "other
+",
+        "feature/b's changes are back"
+    );
+    let list = stash_list(&dir);
+    assert!(!list.contains("Auto-stash before finishing feature/b"), "{list}");
+    assert!(list.contains(STASH), "feature/login's stash stays: {list}");
     cleanup(&dir);
 }
 

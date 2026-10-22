@@ -178,8 +178,11 @@ pub(super) fn seen(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Eff
         return;
     }
     // A stopped Git Flow finish still has steps that need a clean tree (a checkout): its
-    // changes wait for Continue finish, or for its steps to be forgotten or dropped.
-    if matches!(p.job.op, AutoStashFor::GitFlowFinish { .. }) && st.gitflow_resume.is_some() {
+    // changes wait for Continue finish, or for its steps to be forgotten or dropped. Only that
+    // branch's stash waits; one from finishing another flow branch goes back as usual.
+    if let AutoStashFor::GitFlowFinish { branch } = &p.job.op
+        && st.gitflow_resume.as_ref().is_some_and(|r| r.resume.plan.branch == *branch)
+    {
         return;
     }
     let effect = move |cwd| Effect::Stash(StashEffect::PutBack(PutBackRequest { cwd, oid }));
