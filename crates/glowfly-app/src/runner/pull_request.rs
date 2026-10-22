@@ -2,7 +2,8 @@
 //! (`repo::pr_compare`, from the target's remote-tracking tip to the listed head when it is
 //! here, else to the remote-tracking source branch), the fetch of the service's head ref for
 //! its objects (writing no ref), and its calls to the hosting service (the page, a comment, a
-//! review, its checks, a merge, a thread reply or resolve). The calls sign in the way the pull
+//! review, its checks, a merge, a thread reply or resolve, a new code comment on diff lines,
+//! alone or in the pending review). The calls sign in the way the pull
 //! request list does, in the panel's repository.
 
 use crate::effect::ForgeError;
@@ -57,6 +58,14 @@ fn call(job: CallJob) -> Msg {
             let result = auth.and_then(|a| forge::resolve_thread(t, &a, &thread, resolve).map_err(ForgeError::from));
             PrReply::Resolved { thread, resolve, result }
         }
+        PrCall::LineComment(c) => PrReply::LineCommented {
+            review: false,
+            result: auth.and_then(|a| forge::post_line_comment(t, &a, id, &c).map_err(ForgeError::from)),
+        },
+        PrCall::ReviewComment { comment, pending } => PrReply::LineCommented {
+            review: true,
+            result: auth.and_then(|a| forge::add_review_comment(t, &a, id, pending, &comment).map_err(ForgeError::from)),
+        },
     };
     Msg::PullRequest(PullRequestMsg::Replied { workdir: req.workdir, target: req.target, id, generation, reply: Box::new(reply) })
 }

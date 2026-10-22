@@ -1,6 +1,6 @@
 //! The pull request panel's calls to its hosting service: loading the page (detail and
 //! conversation; the checks are in checks.rs), posting a comment, submitting a review, replying to and resolving code
-//! comment threads (threads.rs) and merging, then deleting the source branch and fetching. The calls are unscoped effects whose replies name their repository,
+//! comment threads (threads.rs), starting a code comment on diff lines (line_comment.rs) and merging, then deleting the source branch and fetching. The calls are unscoped effects whose replies name their repository,
 //! service and pull request: a reply for another tab is only logged, a stale page is dropped,
 //! and an action's result is logged even when the panel has closed, since it happened on the
 //! service.
@@ -11,9 +11,11 @@ use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PrRequest};
 use crate::state::AppState;
 use crate::state::pull_request::{Page, PrAction};
 use crate::state::pull_request_actions::{comment_blocked, deletes_after_merge, merge_blocked, prefill, review_blocked};
+use crate::state::pull_request_line_comment::adopt_new_threads;
 use glowfly_core::forge::{self, MergeRequest, PrPage, ReviewEvent, Target};
 use glowfly_core::gitcli::args;
 use glowfly_core::remote_ops::fetch_cmd;
+use glowfly_core::text::printable;
 use std::path::Path;
 use std::time::Instant;
 
@@ -121,7 +123,7 @@ pub(super) fn merge(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// The log line for an action's reply; `into` names the target branch of a merge, if known.
-fn action_text(label: &str, into: &str, reply: &PrReply) -> (bool, String) {
+pub(super) fn action_text(label: &str, into: &str, reply: &PrReply) -> (bool, String) {
     let fail = |what: &str, e: &ForgeError| (false, format!("{what} {label} failed: {}", e.message));
     match reply {
         PrReply::Loaded(_) | PrReply::Checks(_) => (true, String::new()),
@@ -140,6 +142,11 @@ fn action_text(label: &str, into: &str, reply: &PrReply) -> (bool, String) {
         PrReply::Resolved { result: Ok(false), .. } => (true, format!("Reopened a thread on {label}")),
         PrReply::Resolved { resolve: true, result: Err(e), .. } => fail("Resolving a thread on", e),
         PrReply::Resolved { resolve: false, result: Err(e), .. } => fail("Reopening a thread on", e),
+        PrReply::LineCommented { review: false, result: Ok(n) } => (true, format!("Commented on {} in {label}", printable(&n.thread.path))),
+        PrReply::LineCommented { review: true, result: Ok(n) } => {
+            (true, format!("Added a review comment on {} in {label}", printable(&n.thread.path)))
+        }
+        PrReply::LineCommented { result: Err(e), .. } => fail("Commenting on", e),
     }
 }
 
@@ -159,7 +166,8 @@ pub(super) fn replied(
         PrReply::Loaded(Err(e)) | PrReply::Checks(Err(e)) | PrReply::Commented(Err(e)) | PrReply::Reviewed(_, Err(e)) => e.auth,
         PrReply::Merged { result: Err(e), .. }
         | PrReply::RepliedToThread { result: Err(e), .. }
-        | PrReply::Resolved { result: Err(e), .. } => e.auth,
+        | PrReply::Resolved { result: Err(e), .. }
+        | PrReply::LineCommented { result: Err(e), .. } => e.auth,
         _ => false,
     };
     if active && failed_auth {
@@ -184,6 +192,10 @@ pub(super) fn replied(
             if open && generation == st.pull_request_checks_gen {
                 super::checks::loaded(st, result, now);
             }
+            return;
+        }
+        r @ PrReply::LineCommented { .. } => {
+            super::line_comment::replied(st, workdir, target, id, active, &label, r, now, fx);
             return;
         }
         other => other,
@@ -256,6 +268,7 @@ fn reply_error(reply: &PrReply) -> Option<&ForgeError> {
         PrReply::Merged { result, .. } => result.as_ref().err(),
         PrReply::RepliedToThread { result, .. } => result.as_ref().err(),
         PrReply::Resolved { result, .. } => result.as_ref().err(),
+        PrReply::LineCommented { result, .. } => result.as_ref().err(),
     }
 }
 
@@ -267,6 +280,7 @@ fn page_loaded(st: &mut AppState, result: Result<PrPage, ForgeError>) {
     let failed = match result {
         Ok(page) => {
             prefill(&mut v.forms, &page.detail);
+            adopt_new_threads(v, &page);
             // Reply drafts stay; a focus on a thread that is gone doesn't.
             if v.threads.focus.as_ref().is_some_and(|f| !page.threads.iter().any(|t| &t.id == f)) {
                 v.threads.focus = None;

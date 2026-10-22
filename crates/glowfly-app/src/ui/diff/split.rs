@@ -5,7 +5,9 @@
 use super::style::DiffStyle;
 use super::syntax::paint_line;
 use super::wrap::{RowMetrics, Wrap};
-use super::{DiffView, LineHover, drag_over, fold, gutter_sign, hunk_header, line_click, line_sense, paint_mark, thread_marks};
+use super::{
+    DiffView, LineHover, comment_add, drag_over, fold, gutter_sign, hunk_header, line_click, line_sense, paint_mark, thread_marks,
+};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
@@ -84,6 +86,9 @@ pub(super) fn show(
                 if line == 0 {
                     fold::fold_back_key(ui, left, v, g.key, g.len, st.split_cols().sign, msgs);
                 }
+                for (r, side) in [(left, LineSide::Old), (right, LineSide::New)] {
+                    comment_add::button(ui, v, r, ui.clip_rect().right().min(r.right()), st.row_h, &dl, Some(side), false, 0.0, msgs);
+                }
             }
             SplitRow::Pair { hunk, old, new } => {
                 let lines = &diff.hunks[hunk].lines;
@@ -123,9 +128,13 @@ pub(super) fn show(
                     cell(ui, r, Some((dl, spans(idx), diff.intraline.line(hunk, idx))), side, st, v.wrap, mark);
                     paint_mark(ui, r, selected, hover.row);
                     let key = if side == Side::Old { LineSide::Old } else { LineSide::New };
-                    if let Some(mark) = v.marks.and_then(|m| thread_marks::find(m, dl, Some(key))) {
-                        thread_marks::paint(ui, r, ui.clip_rect().right().min(r.right()), st.row_h, mark, msgs);
-                    }
+                    let edge = ui.clip_rect().right().min(r.right());
+                    let mut taken = match v.marks.and_then(|m| thread_marks::find(m, dl, Some(key))) {
+                        Some(mark) => thread_marks::paint(ui, r, edge, st.row_h, mark, msgs),
+                        None => 0.0,
+                    };
+                    taken += comment_add::draft_marks(ui, v, r, edge, st.row_h, dl, Some(key), taken, msgs);
+                    comment_add::button(ui, v, r, edge, st.row_h, dl, Some(key), true, taken, msgs);
                 }
                 ui.painter().vline(left.right(), rect.y_range(), Stroke::new(1.0_f32, color::border()));
                 // An opened run folds back from its first line, at the fold row's mark position.

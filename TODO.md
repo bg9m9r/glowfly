@@ -1037,8 +1037,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
   panel
 - Bitbucket Cloud and Data Center comments, approve / request changes and merge strategies in the
   panel
-- Start a new code comment on a diff line (a single comment or one added to a pending review),
-  with suggested changes
 - Place comments on their lines when the local source branch differs from the head (map the line
   numbers across the newer commits)
 
@@ -2577,6 +2575,21 @@ here, under the item they grew from.
   branch and compare in the row menu
 - Command+Enter in the merge form to open its confirmation
 - Hide the Commits tab's center hint when the pull request brings no commits
+- Comment on a whole file (subject_type file) from the Files changed row or the pane header
+- Draw the new comment box between the diff rows under its line instead of in the pane under the
+  diff
+- Start code comments from the Commits tab's per-commit diffs
+- Keep several unposted line comments at once (one per line), and keep them across closing the
+  panel or restarting
+- Ask before closing the panel or opening another pull request while a line comment is unposted
+- A key to start a comment on the line at the diff cursor, and one to extend it
+- Show how many comments the pending review holds on Finish review, and discard a pending review
+- Edit or delete a pending review comment before the review is submitted
+- Suggestions that span deleted lines, and applying or batching suggestions from the panel
+- Map a draft's lines onto the new head when the files are compared again, instead of asking to
+  pick the line again
+- Grow the Files changed comment pane to fit the new comment box when a draft opens it (it keeps
+  its 220 px default and scrolls today)
 
 ### Custom themes
 

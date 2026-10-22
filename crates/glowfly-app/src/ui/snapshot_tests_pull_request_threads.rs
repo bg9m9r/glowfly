@@ -22,7 +22,7 @@ fn day(day: i64) -> i64 {
     1_767_225_600 + (day - 1) * 86_400 + 36_000
 }
 
-fn detail(head: String) -> PrDetail {
+pub(super) fn detail(head: String) -> PrDetail {
     PrDetail {
         state: PrState::Open,
         draft: false,
@@ -41,11 +41,11 @@ fn detail(head: String) -> PrDetail {
     }
 }
 
-fn comment(id: u64, author: &str, on: i64, body: &str, pending: bool) -> ThreadComment {
+pub(super) fn comment(id: u64, author: &str, on: i64, body: &str, pending: bool) -> ThreadComment {
     ThreadComment { id: Some(id), author: author.into(), time: day(on), body: body.into(), url: String::new(), pending }
 }
 
-fn thread(id: &str, line: u32, comments: Vec<ThreadComment>) -> ReviewThread {
+pub(super) fn thread(id: &str, line: u32, comments: Vec<ThreadComment>) -> ReviewThread {
     ReviewThread {
         id: id.into(),
         path: "search.txt".into(),
@@ -67,7 +67,7 @@ fn thread(id: &str, line: u32, comments: Vec<ThreadComment>) -> ReviewThread {
 
 /// The search.txt diff, its files loaded in the panel; returns the diff and its first added
 /// line's number.
-fn files_loaded(st: &mut AppState, dir: &std::path::Path) -> (DiffTarget, FileDiff, u32) {
+pub(super) fn files_loaded(st: &mut AppState, dir: &std::path::Path) -> (DiffTarget, FileDiff, u32) {
     super::snapshot_tests_pull_request::compare(st, dir);
     let target = st.pull_request.as_ref().unwrap().diff_target("search.txt").unwrap();
     let d = repo::load_diff(dir, &target).unwrap();
@@ -96,7 +96,7 @@ fn threads(line: u32) -> Vec<ReviewThread> {
     vec![t1, t2, t3]
 }
 
-fn load(st: &mut AppState, d: PrDetail, threads: Vec<ReviewThread>) {
+pub(super) fn load(st: &mut AppState, d: PrDetail, threads: Vec<ReviewThread>) {
     let entries = vec![
         Entry {
             author: "linus".into(),

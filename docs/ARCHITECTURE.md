@@ -218,6 +218,16 @@ binary (package `glowfly`).
   compares again; the notes and their buttons are in `state/pull_request_source.rs`. A Commits
   tab row selects its commit into the commit panel without closing the pull request panel
   (`update/pull_request/commits.rs`), and that commit's file diffs open inside the tab.
+- **New code comments on diff lines**: a pull request file's diff (`DiffView::comments`, from
+  `state/pull_request_line_comment.rs::diff_comments`) offers a comment button on hovered lines
+  (`ui/diff/comment_add.rs`). The draft (`PrView::line_draft`, one per panel) is anchored by file
+  line numbers and the source tip it was started on, never by row indexes, so a diff reload keeps
+  it; only lines the normal hunks show can take one, because the service compares within the
+  same hunks. Posting goes through `calls::act` like the panel's other actions
+  (`update/pull_request/line_comment.rs`); `forge::line_comments_in_app` gates the service apart
+  from `reviews_in_app`. A single comment's thread gets a provisional `new:<comment id>` id until
+  the page reloads, when `adopt_new_threads` hands its reply draft, open state and focus to the
+  real thread; an answer for a parked tab is applied to that tab's parked panel.
 - **Operation journal**: the timeline is git's reflogs plus Glowfly's notes. Only the runner
   writes notes, and only around the work that rewrites history: a `RunGit` whose job carries a
   `journal` op (worked out from the command as the user gave it, before the auto-stash wrap, in

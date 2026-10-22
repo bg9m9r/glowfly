@@ -1,15 +1,21 @@
 //! Messages and effects of the pull request panel (state/pull_request.rs,
 //! state/pull_request_source.rs, state/pull_request_commits.rs, state/pull_request_actions.rs,
-//! state/pull_request_threads.rs, update/pull_request/,
-//! runner/pull_request.rs, ui/pull_request/). Its files open through `RepoMsg::OpenDiff`, its
+//! state/pull_request_threads.rs, state/pull_request_line_comment.rs, update/pull_request/,
+//! runner/pull_request.rs, ui/pull_request/); a new code comment on diff lines has its own
+//! messages in `line_comment`. Its files open through `RepoMsg::OpenDiff`, its
 //! Fetch button sends `RemoteMsg::Fetch`, and the browser and copy actions are `Msg::OpenUrl`
 //! and `Msg::Copy`.
+
+pub mod line_comment;
 
 use crate::effect::ForgeError;
 use crate::state::pull_request::PrTab;
 use git2::Oid;
-use glowfly_core::forge::{Auth, CheckList, Entry, MergeMethod, MergeRequest, Merged, PrPage, ReviewEvent, Target, ThreadComment};
+use glowfly_core::forge::{
+    Auth, CheckList, Entry, MergeMethod, MergeRequest, Merged, NewComment, NewThread, PrPage, ReviewEvent, Target, ThreadComment,
+};
 use glowfly_core::repo::PrCompare;
+use line_comment::LineCommentMsg;
 use std::path::PathBuf;
 
 /// The files and commits pull request `id` brings, compared from the target's
@@ -83,6 +89,14 @@ pub enum PrCall {
         thread: String,
         resolve: bool,
     },
+    /// Start a code comment on diff lines, alone.
+    LineComment(NewComment),
+    /// Add a code comment to the user's pending review (`pending`, when the page knows it),
+    /// starting one when there is none.
+    ReviewComment {
+        comment: NewComment,
+        pending: Option<u64>,
+    },
 }
 
 #[derive(Debug)]
@@ -124,6 +138,8 @@ impl PrEffect {
                 PrCall::Merge { .. } => "merge-pr",
                 PrCall::Reply { .. } => "reply-pr-thread",
                 PrCall::Resolve { .. } => "resolve-pr-thread",
+                PrCall::LineComment(_) => "post-pr-line-comment",
+                PrCall::ReviewComment { .. } => "add-pr-review-comment",
             },
         }
     }
@@ -152,6 +168,11 @@ pub enum PrReply {
         thread: String,
         resolve: bool,
         result: Result<bool, ForgeError>,
+    },
+    /// A new code comment's thread, alone or in the pending review (`review`).
+    LineCommented {
+        review: bool,
+        result: Result<NewThread, ForgeError>,
     },
 }
 
@@ -199,6 +220,8 @@ pub enum PullRequestMsg {
     FocusThread(String),
     /// Open thread .0's file in Files changed, at its line.
     GoToThread(String),
+    /// A new code comment on diff lines.
+    LineComment(LineCommentMsg),
     /// A service call's answer, for pull request `id` of `target` in `workdir`.
     Replied { workdir: PathBuf, target: Target, id: u64, generation: u64, reply: Box<PrReply> },
 }
@@ -207,8 +230,9 @@ impl PullRequestMsg {
     /// Nothing is kept for an inactive tab: intents (the thread and Checks ones too) are for the
     /// active tab; a dropped FilesLoaded is asked for again by `reload_pending` when its tab
     /// becomes active (as are the checks); a dropped HeadFetched leaves its fetch running, so
-    /// `reload_pending` starts it again; and
-    /// Replied comes from an unscoped effect, so it never arrives scoped (its handler matches
+    /// `reload_pending` starts it again; a new code comment's intents (LineComment) are for the
+    /// active tab too, their answers come in Replied, which its handler applies to a parked
+    /// panel; and Replied comes from an unscoped effect, so it never arrives scoped (its handler matches
     /// the repository itself and logs results for other tabs).
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
@@ -233,6 +257,7 @@ impl PullRequestMsg {
             | Self::ToggleThread(_)
             | Self::FocusThread(_)
             | Self::GoToThread(_)
+            | Self::LineComment(_)
             | Self::Replied { .. } => None,
         }
     }

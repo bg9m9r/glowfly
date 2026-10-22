@@ -4,11 +4,13 @@
 //! are loaded by `Effect::PullRequest`; where the files and commits come from (and the notes on
 //! it) is in pull_request_source.rs, the Commits tab's texts in pull_request_commits.rs, the
 //! action forms' rules in pull_request_actions.rs, the code comment threads' in
-//! pull_request_threads.rs, and the Checks section's in pull_request_checks.rs.
+//! pull_request_threads.rs, a new code comment on diff lines in pull_request_line_comment.rs,
+//! and the Checks section's in pull_request_checks.rs.
 
 use super::ForgeState;
 use super::pull_request_actions::PrForms;
 use super::pull_request_checks::PrChecks;
+use super::pull_request_line_comment::LineDraft;
 use super::pull_request_source::{FilesKey, HeadFetch, Shown, files_key};
 use super::pull_request_threads::ThreadView;
 use git2::Oid;
@@ -81,6 +83,8 @@ pub enum PrAction {
     Reply(String),
     /// Resolving or reopening the code comment thread with this id.
     Resolve(String),
+    /// Posting the new code comment on diff lines (`PrView::line_draft`).
+    LineComment,
 }
 
 /// The open pull request panel.
@@ -117,6 +121,8 @@ pub struct PrView {
     pub threads: ThreadView,
     /// Every check on its head commit.
     pub checks: PrChecks,
+    /// The unposted code comment on lines of a file's diff, if any.
+    pub line_draft: Option<LineDraft>,
 }
 
 impl PrView {
@@ -143,6 +149,7 @@ impl PrView {
             forms: PrForms::default(),
             threads: ThreadView::default(),
             checks: PrChecks::new(fs),
+            line_draft: None,
         }
     }
 

@@ -4,7 +4,9 @@
 
 use super::syntax::paint_line;
 use super::wrap::RowMetrics;
-use super::{DiffView, LineHover, drag_over, fold, gutter_sign, hunk_header, line_click, line_sense, paint_mark, thread_marks};
+use super::{
+    DiffView, LineHover, comment_add, drag_over, fold, gutter_sign, hunk_header, line_click, line_sense, paint_mark, thread_marks,
+};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Rect, Sense, Ui, pos2, vec2};
@@ -60,6 +62,15 @@ pub(super) fn show(
                 if line == 0 {
                     fold::fold_back_key(ui, rect, v, g.key, g.len, cols.sign, msgs);
                 }
+                let n = line as u32;
+                let dl = glowfly_core::repo::DiffLine {
+                    origin: ' ',
+                    old: Some(g.old_start + n),
+                    new: Some(g.new_start + n),
+                    text: String::new(),
+                };
+                let right = ui.clip_rect().right().min(rect.right());
+                comment_add::button(ui, v, rect, right, st.row_h, &dl, None, false, 0.0, msgs);
             }
             DiffRow::Line { hunk, line } => {
                 let dl = &diff.hunks[hunk].lines[line];
@@ -105,9 +116,13 @@ pub(super) fn show(
                 };
                 paint_line(p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab, v.wrap);
                 paint_mark(ui, rect, selected, hover.row);
-                if let Some(mark) = v.marks.and_then(|m| thread_marks::find(m, dl, None)) {
-                    thread_marks::paint(ui, rect, ui.clip_rect().right().min(rect.right()), st.row_h, mark, msgs);
-                }
+                let right = ui.clip_rect().right().min(rect.right());
+                let mut taken = match v.marks.and_then(|m| thread_marks::find(m, dl, None)) {
+                    Some(mark) => thread_marks::paint(ui, rect, right, st.row_h, mark, msgs),
+                    None => 0.0,
+                };
+                taken += comment_add::draft_marks(ui, v, rect, right, st.row_h, dl, None, taken, msgs);
+                comment_add::button(ui, v, rect, right, st.row_h, dl, None, true, taken, msgs);
                 if let Some(f) = fold::opened_at(&v.opened, line) {
                     fold::fold_back(ui, rect, v, f, cols.sign, msgs);
                 }

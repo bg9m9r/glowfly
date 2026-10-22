@@ -72,6 +72,8 @@ pub enum Icon {
     Into,
     /// A speech bubble: code comment threads (pull request panel).
     Comment,
+    /// A speech bubble with a plus inside: start a code comment on a diff line.
+    CommentAdd,
     /// A pencil: edit an entry (the font lacks a pencil glyph).
     Pencil,
     /// A cross of two strokes: add an item (the ISSUES header's Create issue).
@@ -315,6 +317,7 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         }
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
+        Icon::CommentAdd => {}                                                                                                 // icons.rs
         Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check | Icon::More => {} // icons.rs
         Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
         Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu | Icon::Info | Icon::Repo | Icon::Swap => {} // icons.rs

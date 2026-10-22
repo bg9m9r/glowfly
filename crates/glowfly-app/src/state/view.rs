@@ -105,6 +105,9 @@ pub struct ViewState {
     /// Focus the issue panel's comment field, with the cursor at the end, on the next frame
     /// (set by `update` after a Reply quoted a comment, taken by the view).
     pub issue_comment_focus: bool,
+    /// Focus the pull request's new code comment box and scroll its pane to it on the next
+    /// frame (set by `update`, taken by the view).
+    pub pr_line_comment_focus: bool,
     /// The change row next/previous change last moved to. Steps continue from it while it is
     /// on screen, because a change near the end can't scroll to the top.
     pub diff_cursor: Option<usize>,
@@ -209,6 +212,7 @@ impl Default for ViewState {
             diff_open_line: None,
             pr_thread_scroll: None,
             issue_comment_focus: false,
+            pr_line_comment_focus: false,
             diff_cursor: None,
             diff_expanded: Default::default(),
             diff_visible_rows: 0,

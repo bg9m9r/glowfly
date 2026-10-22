@@ -20,7 +20,8 @@ use crate::state::AppState;
 use eframe::egui::{self, Key};
 
 /// Esc closes the innermost thing open: a maximised terminal panel (restored first, while the
-/// keyboard is outside the shell), Preferences, the tour, the dashboard, the conflict view, the blame view, the
+/// keyboard is outside the shell), Preferences, the tour, the dashboard, the conflict view, the blame view, a
+/// pull request's unposted code comment (cancelled, with a confirmation once edited), the
 /// file history (a line selection first), the diff (a line selection first), the pull request panel, the issue panel, the interactive
 /// rebase panel (its message editor first), the Range-diff view, the operation journal, the Git
 /// Flow panel, then a multi-selection or a
@@ -63,6 +64,8 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     } else if st.blame.is_some() {
         msgs.push(Msg::Blame(BlameMsg::Close));
+    } else if crate::state::pull_request_line_comment::esc_cancels(st) {
+        msgs.push(Msg::PullRequest(PullRequestMsg::LineComment(crate::pull_request::line_comment::LineCommentMsg::Cancel)));
     } else if st.history.is_some() && !st.view.diff_lines.is_empty() {
         // In File history too, Esc first drops a line selection of the entry's diff.
         msgs.push(Msg::Diff(DiffMsg::ClearLineSelection));

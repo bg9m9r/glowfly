@@ -181,13 +181,20 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             p.line_segment([tip, pos2(tip.x - 3.5, tip.y)], arrow);
             p.line_segment([tip, pos2(tip.x, tip.y + 3.5)], arrow);
         }
-        Icon::Comment => {
+        Icon::Comment | Icon::CommentAdd => {
             // A rounded bubble about 12x9 with a short tail at its bottom left.
             let body = Rect::from_center_size(pos2(c.x, c.y - 1.0), vec2(12.0, 9.0));
             p.rect_stroke(body, 2.5, s, egui::StrokeKind::Middle);
             let (x, y) = (body.left() + 3.0, body.bottom());
             line(pos2(x, y), pos2(x - 1.0, y + 3.5));
             line(pos2(x - 1.0, y + 3.5), pos2(x + 3.5, y));
+            if icon == Icon::CommentAdd {
+                // A 5 px plus in the bubble.
+                let m = body.center();
+                let thin = Stroke::new(s.width * 0.875, s.color);
+                p.line_segment([pos2(m.x - 2.5, m.y), pos2(m.x + 2.5, m.y)], thin);
+                p.line_segment([pos2(m.x, m.y - 2.5), pos2(m.x, m.y + 2.5)], thin);
+            }
         }
         Icon::Into => {
             line(pos2(c.x - 5.0, c.y), pos2(c.x + 5.0, c.y));

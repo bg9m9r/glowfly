@@ -18,10 +18,16 @@ pub(super) fn find<'a>(m: &'a Marks, dl: &DiffLine, side: Option<LineSide>) -> O
     line_keys(dl).into_iter().flatten().filter(|(s, _)| side.is_none_or(|w| w == *s)).find_map(|k| m.get(&k))
 }
 
+/// How wide `mark` is drawn.
+fn width(mark: &Mark) -> f32 {
+    if mark.count > 1 { 28.0 } else { 18.0 }
+}
+
 /// Paints `mark` on the line drawn in `row`, ending at `right` (the visible right edge), on
-/// its first visual line of height `row_h`.
-pub(super) fn paint(ui: &Ui, row: Rect, right: f32, row_h: f32, mark: &Mark, msgs: &mut Vec<Msg>) {
-    let w = if mark.count > 1 { 28.0 } else { 18.0 };
+/// its first visual line of height `row_h`. Returns the width it took, with a gap, so the
+/// controls drawn beside it go to its left.
+pub(super) fn paint(ui: &Ui, row: Rect, right: f32, row_h: f32, mark: &Mark, msgs: &mut Vec<Msg>) -> f32 {
+    let w = width(mark);
     let r = Rect::from_min_size(pos2(right - 6.0 - w, row.top()), vec2(w, row_h));
     let label = if mark.count == 1 { "1 comment on this line".to_owned() } else { format!("{} comments on this line", mark.count) };
     let resp = ui.interact(r, Id::new(("thread-mark", &mark.thread)), Sense::click());
@@ -41,4 +47,5 @@ pub(super) fn paint(ui: &Ui, row: Rect, right: f32, row_h: f32, mark: &Mark, msg
     if resp.clicked() {
         msgs.push(Msg::PullRequest(PullRequestMsg::FocusThread(mark.thread.clone())));
     }
+    w + 2.0
 }

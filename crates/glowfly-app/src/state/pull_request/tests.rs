@@ -44,6 +44,7 @@ pub(crate) fn view(pr: PullRequest, tips: Tips) -> PrView {
         forms: Default::default(),
         threads: Default::default(),
         checks: crate::state::pull_request_checks::PrChecks::new(&crate::state::ForgeState::new(None, String::new(), None)),
+        line_draft: None,
     }
 }
 

@@ -22,6 +22,7 @@ mod jira_issues;
 mod paging;
 mod repo_size;
 mod review;
+mod review_comments;
 mod review_threads;
 mod trello;
 mod trello_issues;

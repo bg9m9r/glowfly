@@ -2,8 +2,8 @@
 //! and of the service's list, switching tabs, and closing it. Where its files and commits come
 //! from (and the head ref fetch) is in source.rs, the Commits tab's selection in commits.rs. Its
 //! diffs are the shared `st.diff`, opened through `RepoMsg::OpenDiff`; its page and actions on
-//! the service are in calls.rs, its Checks section in checks.rs, and its code comment threads in
-//! threads.rs.
+//! the service are in calls.rs, its Checks section in checks.rs, its code comment threads in
+//! threads.rs, and a new code comment on diff lines in line_comment.rs.
 
 use crate::effect::Effect;
 use crate::pull_request::PullRequestMsg;
@@ -24,6 +24,11 @@ mod checks_tests;
 mod commits;
 #[cfg(test)]
 mod commits_tests;
+mod line_comment;
+#[cfg(test)]
+mod line_comment_reply_tests;
+#[cfg(test)]
+mod line_comment_tests;
 #[cfg(test)]
 mod merge_tests;
 mod source;
@@ -78,6 +83,7 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
         PullRequestMsg::ToggleThread(id) => threads::toggle(st, id),
         PullRequestMsg::FocusThread(id) => threads::focus(st, id),
         PullRequestMsg::GoToThread(id) => threads::go_to_thread(st, id, fx),
+        PullRequestMsg::LineComment(m) => line_comment::handle(st, m, now, fx),
         PullRequestMsg::Replied { workdir, target, id, generation, reply } => {
             calls::replied(st, &workdir, &target, id, generation, *reply, now, fx)
         }

@@ -239,6 +239,9 @@ pub fn reply_blocked(v: &PrView, t: &ReviewThread) -> Option<String> {
 
 /// Why the Resolve or Unresolve button is disabled.
 pub fn resolve_blocked(v: &PrView, t: &ReviewThread) -> Option<String> {
+    if glowfly_core::forge::new_thread_comment(&t.id).is_some() {
+        return Some("This new thread can be resolved once the page has reloaded".to_owned());
+    }
     if let Err(why) = ready(v) {
         return Some(why);
     }

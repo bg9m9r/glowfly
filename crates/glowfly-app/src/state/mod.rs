@@ -106,6 +106,7 @@ pub mod pull_request;
 pub mod pull_request_actions;
 pub mod pull_request_checks;
 pub mod pull_request_commits;
+pub mod pull_request_line_comment;
 pub mod pull_request_source;
 pub mod pull_request_threads;
 pub mod push_pr;

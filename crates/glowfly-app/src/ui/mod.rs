@@ -391,6 +391,8 @@ mod snapshot_tests_pull_request;
 #[cfg(test)]
 mod snapshot_tests_pull_request_commits;
 #[cfg(test)]
+mod snapshot_tests_pull_request_line_comment;
+#[cfg(test)]
 mod snapshot_tests_pull_request_markdown;
 #[cfg(test)]
 mod snapshot_tests_pull_request_review;

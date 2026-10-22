@@ -3,13 +3,15 @@
 //! `checks`, `review`, `merge`) and the conversation in the middle (`conversation`); Commits has
 //! the commits on the left (`commits`) and the diff of a file of the one selected in the commit
 //! panel in the middle; Files changed has the changed files on the left (`files`) and the open
-//! file's diff in the middle, with its code comment threads (`threads`) in a pane below it.
+//! file's diff in the middle, with its code comment threads (`threads`) in a pane below it,
+//! led by the box of a new code comment on its lines (`line_comment`).
 
 mod checks;
 mod commits;
 mod conversation;
 mod files;
 mod info;
+mod line_comment;
 mod merge;
 mod review;
 mod threads;
@@ -84,7 +86,9 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             center.show_inside(ui, |ui| {
                 if shows_file {
                     let path = st.diff.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
-                    let commented = st.pull_request.as_ref().and_then(|v| v.loaded()).is_some_and(|p| on_file(p, &path) > 0);
+                    let commented = st.pull_request.as_ref().is_some_and(|v| {
+                        v.loaded().is_some_and(|p| on_file(p, &path) > 0) || crate::state::pull_request_line_comment::draft_on(v, &path)
+                    });
                     if commented {
                         let room = ui.available_height();
                         let threads = egui::TopBottomPanel::bottom("pr-file-threads");

@@ -1,7 +1,8 @@
 //! A pull request's conversation, reviews and merging on its hosting service: the page the
 //! pull request panel shows (state, mergeability, the repository's merge settings, comments and
 //! submitted reviews, code comment threads), posting a comment, submitting a review, replying
-//! to and resolving threads (`thread.rs`), and merging. Only GitHub and
+//! to and resolving threads (`thread.rs`), starting a code comment on diff lines, alone or in
+//! the user's pending review (`line_anchor.rs`, `new_comment.rs`), and merging. Only GitHub and
 //! GitHub Enterprise Server for now; every other service answers `Error::Unsupported` without
 //! sending anything.
 
@@ -9,9 +10,14 @@ use super::{Auth, Provider, Target, links};
 use crate::error::{Error, Result};
 
 mod github;
+mod github_new_comment;
 pub(super) mod github_threads;
+mod line_anchor;
+mod new_comment;
 mod thread;
 
+pub use line_anchor::*;
+pub use new_comment::*;
 pub use thread::*;
 
 /// Whether comments, reviews and merging work inside Glowfly for this service.

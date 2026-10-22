@@ -17,7 +17,7 @@ pub(in super::super) const MAX_THREAD_PAGES: usize = 20;
 /// The lines of the first comment's diff kept as the thread's snippet.
 const CONTEXT_LINES: usize = 4;
 
-const THREADS_QUERY: &str = "query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:50,after:$after){pageInfo{hasNextPage endCursor} nodes{id isResolved isOutdated path line originalLine startLine diffSide viewerCanReply viewerCanResolve viewerCanUnresolve resolvedBy{login} comments(first:100){totalCount nodes{databaseId author{login} body createdAt url state diffHunk}}}}}}}";
+pub(super) const THREADS_QUERY: &str = "query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:50,after:$after){pageInfo{hasNextPage endCursor} nodes{id isResolved isOutdated path line originalLine startLine diffSide viewerCanReply viewerCanResolve viewerCanUnresolve resolvedBy{login} comments(first:100){totalCount nodes{databaseId author{login} body createdAt url state diffHunk}}}}}}}";
 
 const RESOLVE: &str = "mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}";
 const UNRESOLVE: &str = "mutation($id:ID!){unresolveReviewThread(input:{threadId:$id}){thread{isResolved}}}";
@@ -33,17 +33,17 @@ const PENDING_REVIEW: &str = "You have a review in progress on the service. Fini
 const GHOST: &str = "ghost";
 
 #[derive(Deserialize)]
-struct Login {
+pub(super) struct Login {
     login: String,
 }
 
-fn login(user: Option<Login>) -> String {
+pub(super) fn login(user: Option<Login>) -> String {
     user.map_or_else(|| GHOST.to_owned(), |u| u.login)
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Node {
+pub(super) struct Node {
     #[serde(default)]
     id: String,
     #[serde(default)]
@@ -114,7 +114,7 @@ struct ApiReviewComment {
     html_url: String,
 }
 
-fn graphql(t: &Target, auth: &Auth, query: &str, vars: Value) -> Result<Value> {
+pub(super) fn graphql(t: &Target, auth: &Auth, query: &str, vars: Value) -> Result<Value> {
     post(auth, &graphql_url(t), json!({ "query": query, "variables": vars }))
 }
 
@@ -125,7 +125,7 @@ fn snippet_line(l: &str) -> String {
 }
 
 /// The last few lines of a diff hunk, as plain text.
-fn context(hunk: &str) -> String {
+pub(super) fn context(hunk: &str) -> String {
     let lines: Vec<&str> = hunk.lines().collect();
     lines[lines.len().saturating_sub(CONTEXT_LINES)..].iter().map(|l| snippet_line(l)).collect::<Vec<_>>().join("\n")
 }
@@ -142,7 +142,7 @@ fn comment(c: CommentNode) -> ThreadComment {
 }
 
 /// A thread from its GraphQL node; `None` when it has no comments.
-fn thread(n: Node) -> Option<ReviewThread> {
+pub(super) fn thread(n: Node) -> Option<ReviewThread> {
     let comments = n.comments.unwrap_or(Comments { total_count: 0, nodes: Vec::new() });
     let more = comments.total_count.saturating_sub(comments.nodes.len());
     let context = comments.nodes.first().and_then(|c| c.diff_hunk.as_deref()).map(context).unwrap_or_default();

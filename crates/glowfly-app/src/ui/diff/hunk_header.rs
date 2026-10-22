@@ -3,6 +3,8 @@
 
 use super::{DiffView, fold, syntax};
 use crate::msg::{Msg, StageMsg};
+use crate::pull_request::PullRequestMsg;
+use crate::pull_request::line_comment::LineCommentMsg;
 use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::buttons;
 use eframe::egui::{Rect, Stroke, Ui, pos2, vec2};
@@ -23,6 +25,8 @@ enum HunkButton {
     /// Apply the inverse of the hunk, or of its selected lines, to the working tree (commit and
     /// comparison diffs, and a commit compared with the working tree).
     Revert,
+    /// Start a code comment on the selected lines (a pull request's file).
+    Comment,
 }
 
 /// The buttons' text size in a `row_h` tall row: body size, smaller only where the smallest diff
@@ -36,7 +40,8 @@ fn text_px(row_h: f32) -> f32 {
 /// scrolled sideways: on working-tree diffs Stage hunk at the edge and Discard hunk (in the
 /// danger style) to its left behind a wider gap with a divider, Unstage hunk on staged diffs
 /// (each "N lines" when the hunk has selected lines), Revert hunk (or Revert N lines) on commit and
-/// comparison diffs and on a commit compared with the working tree (none the other way round).
+/// comparison diffs and on a commit compared with the working tree (none the other way round),
+/// and left of it Comment on N lines on a pull request's file with selected lines.
 /// The buttons are disabled while a reload is on its way (`hunk_gen` is
 /// `None`), since the hunk indexes may no longer match the file. With whitespace changes hidden
 /// they apply only the changes shown.
@@ -55,13 +60,17 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     let path = v.target.path();
     let selected = v.sel.map_or(0, |s| s.count_in(v.target, h));
     // Laid out right to left: Stage at the edge, then Discard set apart.
-    let list: &[HunkButton] = match v.target {
-        DiffTarget::Unstaged(_) => &[HunkButton::Op(HunkOp::Stage), HunkButton::Op(HunkOp::Discard)],
-        DiffTarget::Staged(_) => &[HunkButton::Op(HunkOp::Unstage)],
-        DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) => &[HunkButton::Revert],
+    let mut list: Vec<HunkButton> = match v.target {
+        DiffTarget::Unstaged(_) => vec![HunkButton::Op(HunkOp::Stage), HunkButton::Op(HunkOp::Discard)],
+        DiffTarget::Staged(_) => vec![HunkButton::Op(HunkOp::Unstage)],
+        DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) => vec![HunkButton::Revert],
         // From the working tree to a commit: nothing to stage or revert per hunk.
-        DiffTarget::FromWorkdir(..) => &[],
+        DiffTarget::FromWorkdir(..) => Vec::new(),
     };
+    let commentable = comment_lines(v, h);
+    if commentable > 0 {
+        list.push(HunkButton::Comment);
+    }
     let (row_h, mid_y) = (v.style.row_h, rect.top() + v.style.row_h / 2.0);
     let body = text_px(row_h);
     let t = v.t;
@@ -80,12 +89,16 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     let updating = t.tr("diff.hunk.updating");
     let mut x = ui.clip_rect().right() - 8.0;
     for (i, &b) in list.iter().enumerate() {
-        let label = button_label(t, b, selected);
+        let label =
+            if let HunkButton::Comment = b { t.trn("diff.hunk.comment_lines", commentable, &[]) } else { button_label(t, b, selected) };
         let discard = matches!(b, HunkButton::Op(HunkOp::Discard));
         let styled = if discard { buttons::danger(label) } else { buttons::secondary(label) };
         let mut styled = styled.text_size(body).height(row_h - 2.0).min_width(MIN_W).enabled(v.hunk_gen.is_some()).why(Some(updating));
-        if let HunkButton::Revert = b {
-            styled = styled.tip(&revert_tip);
+        let comment_tip = t.tr("diff.hunk.comment_lines.tip");
+        match b {
+            HunkButton::Revert => styled = styled.tip(&revert_tip),
+            HunkButton::Comment => styled = styled.tip(comment_tip),
+            HunkButton::Op(_) => {}
         }
         if discard && i > 0 {
             // Set apart from Stage: a wider gap with a divider in its middle.
@@ -100,6 +113,10 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         x -= w + GAP;
         let (true, Some(generation)) = (button.clicked(), v.hunk_gen) else { continue };
         let op = match b {
+            HunkButton::Comment => {
+                msgs.push(Msg::PullRequest(PullRequestMsg::LineComment(LineCommentMsg::OnSelection)));
+                continue;
+            }
             HunkButton::Revert => {
                 msgs.push(Msg::Stage(if selected > 0 { StageMsg::RevertLines } else { StageMsg::RevertHunk { index: h, generation } }));
                 continue;
@@ -125,10 +142,22 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     }
 }
 
+/// How many lines Comment on N lines covers in hunk `h`: the commentable lines from the first
+/// selected one to the last; 0 when comments can't start here or nothing is selected.
+fn comment_lines(v: &DiffView, h: usize) -> usize {
+    if !v.comments.is_some_and(|c| c.blocked.is_none()) {
+        return 0;
+    }
+    let Some(sel) = v.sel.filter(|s| s.count_in(v.target, h) > 0) else { return 0 };
+    let (Some(&a), Some(&b), Some(hunk)) = (sel.lines.first(), sel.lines.last(), v.diff.hunks.get(h)) else { return 0 };
+    hunk.lines.iter().take(b + 1).skip(a).filter(|l| glowfly_core::forge::line_key(l).is_some()).count()
+}
+
 /// A button's text in `t`: "Stage hunk", or "Stage N lines" with `selected` lines.
 fn button_label(t: Lang, b: HunkButton, selected: usize) -> String {
     if selected == 0 {
         return match b {
+            HunkButton::Comment => t.tr("diff.hunk.comment_lines.tip"),
             HunkButton::Revert => t.tr("diff.hunk.revert"),
             HunkButton::Op(HunkOp::Stage) => t.tr("diff.hunk.stage"),
             HunkButton::Op(HunkOp::Unstage) => t.tr("diff.hunk.unstage"),
@@ -137,6 +166,7 @@ fn button_label(t: Lang, b: HunkButton, selected: usize) -> String {
         .to_owned();
     }
     match b {
+        HunkButton::Comment => t.trn("diff.hunk.comment_lines", selected, &[]),
         HunkButton::Revert => t.trn("diff.hunk.revert_lines", selected, &[]),
         HunkButton::Op(HunkOp::Stage) => t.trn("diff.hunk.stage_lines", selected, &[]),
         HunkButton::Op(HunkOp::Unstage) => t.trn("diff.hunk.unstage_lines", selected, &[]),

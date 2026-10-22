@@ -11,8 +11,10 @@
 //! rows grow to fit. Changed lines are selected by click, Shift-click and Ctrl/Cmd-click, or by
 //! pressing on one and dragging across the lines of its hunk; a click in a changed line's gutter
 //! adds it to the selection or takes it out (`line_check`). A changed PNG or JPEG shows its
-//! before and after images (`preview`).
+//! before and after images (`preview`). On a pull request's file, a hovered line offers a
+//! button that starts a code comment on it (`comment_add`), and the unposted one is marked.
 
+mod comment_add;
 pub(in crate::ui) mod fold;
 mod header;
 mod hunk_header;
@@ -33,6 +35,7 @@ use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::lines::{LineClick, LineSelection};
+use crate::state::pull_request_line_comment::{self, DiffComments};
 use crate::state::pull_request_threads::{self, Marks};
 use eframe::egui::{CursorIcon, FontId, Pos2, Rect, Response, Sense, Ui};
 use glowfly_core::diff_rows::{GapLines, GapSpan};
@@ -88,6 +91,8 @@ pub(super) struct DiffView<'a> {
     /// Code comment markers by file line, for a pull request's file whose threads can be
     /// placed on its lines.
     pub marks: Option<&'a Marks>,
+    /// Starting code comments on lines, for a pull request's file on a service that takes them.
+    pub comments: Option<&'a DiffComments>,
     /// The language of the hunk buttons and their confirmations.
     pub t: Lang,
 }
@@ -169,9 +174,11 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
     let m = cache.row_metrics(style.row_h);
     let marks = st.pull_request.as_ref().filter(|v| v.shows_file(target)).and_then(|v| pull_request_threads::marks(v, target.path()));
     let marks = marks.as_ref();
+    let comments = pull_request_line_comment::diff_comments(st, target);
+    let comments = comments.as_ref();
     let hunk_gen = st.hunk_ops_gen();
     let t = st.settings.lang();
-    let view = DiffView { target, diff, whole, opened, gaps, gap_lines, hl, header_hl, hunk_gen, sel, style, wrap, marks, t };
+    let view = DiffView { target, diff, whole, opened, gaps, gap_lines, hl, header_hl, hunk_gen, sel, style, wrap, marks, comments, t };
     Some(match layout {
         DiffLayout::Inline => inline::show(ui, &view, &cache.inline, cache.widest, m, scroll_to, msgs),
         DiffLayout::Split => split::show(ui, &view, &cache.split, cache.widest, m, scroll_to, msgs),

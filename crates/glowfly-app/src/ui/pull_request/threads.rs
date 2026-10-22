@@ -14,6 +14,7 @@ use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
 use crate::state::pull_request::{PrAction, PrView, description_text};
 use crate::state::pull_request_actions::error_for;
+use crate::state::pull_request_line_comment::draft_on;
 use crate::state::pull_request_threads::{
     Placement, file_threads, go_to_open, hidden, hidden_text, is_open, kind_counts, on_file, outdated_toggle, placement, reply_blocked,
     resolve_blocked, resolve_label, resolved_toggle, where_text,
@@ -224,23 +225,33 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
     });
 }
 
-/// The pane under a pull request file's diff: its threads, with the filter bar, and a note
-/// when they can't be placed on the local lines.
+/// The pane under a pull request file's diff: the new comment's box when its draft is on this
+/// file, then the file's threads, with the filter bar, and a note when they can't be placed on
+/// the local lines.
 pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let go_to = go_to_reasons(st);
     let scroll = st.view.pr_thread_scroll.take();
+    let reasons = super::line_comment::reasons(st);
+    let focus = std::mem::take(&mut st.view.pr_line_comment_focus);
     let ctx = Ctx { settings: &st.settings, keys: &st.keymap, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
     let Some(v) = st.pull_request.as_mut() else { return };
+    let drafted = draft_on(v, path);
     let Some(p) = v.loaded() else { return };
     let n = on_file(p, path);
     let ids: Vec<String> = file_threads(p, &v.threads, path).iter().map(|t| t.id.clone()).collect();
     ui.add_space(6.0);
-    ui.label(type_scale::section_text(ui, format!("Comments on this file  {n}")));
+    // A draft alone opens the pane: no heading over an empty list then.
+    if n > 0 || !drafted {
+        ui.label(type_scale::section_text(ui, format!("Comments on this file  {n}")));
+    }
     if let Placement::Elsewhere(why) = placement(v) {
         note(ui, why, color::weak());
     }
     filter_bar(ui, v, Some(path), msgs);
     egui::ScrollArea::vertical().id_salt("pr-file-threads").auto_shrink([false, false]).show(ui, |ui| {
+        if drafted {
+            super::line_comment::card(ui, ctx.settings.lang(), v, &reasons, ctx.keys, focus, msgs);
+        }
         for id in &ids {
             card(ui, v, id, Place::File, &ctx, md, msgs);
         }
