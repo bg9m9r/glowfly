@@ -39,13 +39,8 @@ pub fn quit_confirm(st: &AppState) -> Option<Modal> {
     let first = match running(st)? {
         Running::Job { label, repo: Some(repo) } => t.trf("quit.confirm.job", &[("job", &label), ("repo", &repo)]),
         Running::Job { label, repo: None } => t.trf("quit.confirm.job_no_repo", &[("job", &label)]),
-        Running::Sync { kind, done, all } => {
-            let key = match kind {
-                SyncKind::Fetch => "quit.confirm.sync_fetch",
-                SyncKind::Pull => "quit.confirm.sync_pull",
-            };
-            t.trf(key, &[("done", &done), ("all", &all)])
-        }
+        Running::Sync { kind: SyncKind::Fetch, done, all } => t.trf("quit.confirm.sync_fetch", &[("done", &done), ("all", &all)]),
+        Running::Sync { kind: SyncKind::Pull, done, all } => t.trf("quit.confirm.sync_pull", &[("done", &done), ("all", &all)]),
     };
     let body = format!("{first}\n\n{}", t.tr("quit.confirm.risk"));
     Some(Modal::danger(t.tr("quit.confirm.title"), body, t.tr("quit.confirm.button"), Msg::App(AppMsg::QuitConfirmed)))

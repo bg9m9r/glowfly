@@ -5,6 +5,7 @@
 
 use crate::keymap::{BindingId, KeyName, Keymap, Mods};
 use crate::state::custom_commands::CommandKey;
+use glowfly_core::i18n::Lang;
 
 /// A top-level menu, in the order the bar shows them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -19,14 +20,14 @@ pub enum TopMenu {
 impl TopMenu {
     pub const ALL: [TopMenu; 5] = [TopMenu::File, TopMenu::Edit, TopMenu::View, TopMenu::Window, TopMenu::Help];
 
-    /// The catalog key of its title.
-    pub fn title_key(self) -> &'static str {
+    /// Its title in `t`.
+    pub fn title(self, t: Lang) -> &'static str {
         match self {
-            TopMenu::File => "menu.file.title",
-            TopMenu::Edit => "menu.edit.title",
-            TopMenu::View => "menu.view.title",
-            TopMenu::Window => "menu.window.title",
-            TopMenu::Help => "menu.help.title",
+            TopMenu::File => t.tr("menu.file.title"),
+            TopMenu::Edit => t.tr("menu.edit.title"),
+            TopMenu::View => t.tr("menu.view.title"),
+            TopMenu::Window => t.tr("menu.window.title"),
+            TopMenu::Help => t.tr("menu.help.title"),
         }
     }
 

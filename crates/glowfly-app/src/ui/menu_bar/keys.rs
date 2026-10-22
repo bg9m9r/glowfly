@@ -23,7 +23,7 @@ fn alt_held(ctx: &egui::Context) -> bool {
 /// Each menu's mnemonic, in `TopMenu::ALL` order, in the current language.
 pub(in crate::ui) fn marks(st: &AppState) -> [Option<Mnemonic>; 5] {
     let t = st.settings.lang();
-    menu_keys::mnemonics(TopMenu::ALL.map(|m| t.tr(m.title_key())), &menu_keys::reserved(&st.keymap, &st.custom_commands.keys))
+    menu_keys::mnemonics(TopMenu::ALL.map(|m| m.title(t)), &menu_keys::reserved(&st.keymap, &st.custom_commands.keys))
 }
 
 /// Whether the titles show their letters now.
@@ -34,7 +34,7 @@ pub(super) fn shown(ctx: &egui::Context, st: &AppState) -> bool {
 /// `m`'s title; with `show`, its mnemonic underlined. The text, and so the widget's id and
 /// accessible name, is the same either way.
 pub(super) fn title(ui: &egui::Ui, t: Lang, m: TopMenu, marks: &[Option<Mnemonic>; 5], show: bool) -> WidgetText {
-    let text = t.tr(m.title_key());
+    let text = m.title(t);
     let mark = TopMenu::ALL.iter().position(|&x| x == m).and_then(|i| marks[i]);
     let Some(mark) = mark.filter(|_| show) else { return text.into() };
     let Some((start, c)) = text.char_indices().nth(mark.index) else { return text.into() };

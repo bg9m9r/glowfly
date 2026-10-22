@@ -76,7 +76,7 @@ fn stepping_wraps_both_ways() {
     assert_eq!(TopMenu::File.step(-1), TopMenu::Help);
     assert_eq!(TopMenu::Edit.step(1), TopMenu::View);
     assert_eq!(TopMenu::View.step(-2), TopMenu::File);
-    assert_eq!(TopMenu::ALL.map(TopMenu::title_key)[4], "menu.help.title");
+    assert_eq!(TopMenu::ALL.map(|m| m.title(glowfly_core::i18n::Lang::En)), ["File", "Edit", "View", "Window", "Help"]);
 }
 
 #[test]
