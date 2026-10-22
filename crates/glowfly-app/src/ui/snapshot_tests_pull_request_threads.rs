@@ -7,7 +7,7 @@ use super::snapshot_tests_pull_request::with_pr;
 use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
-use crate::state::pull_request::{Files, Page, PrTab};
+use crate::state::pull_request::{Page, PrTab};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
@@ -68,11 +68,8 @@ fn thread(id: &str, line: u32, comments: Vec<ThreadComment>) -> ReviewThread {
 /// The search.txt diff, its files loaded in the panel; returns the diff and its first added
 /// line's number.
 fn files_loaded(st: &mut AppState, dir: &std::path::Path) -> (DiffTarget, FileDiff, u32) {
-    let v = st.pull_request.as_mut().unwrap();
-    let (main, search) = v.tips.pair().expect("both branches are on origin");
-    let changes = repo::branch_changes(dir, main, search).unwrap().unwrap();
-    let target = DiffTarget::Between(changes.base, search, "search.txt".into());
-    v.files = Files::Loaded(changes);
+    super::snapshot_tests_pull_request::compare(st, dir);
+    let target = st.pull_request.as_ref().unwrap().diff_target("search.txt").unwrap();
     let d = repo::load_diff(dir, &target).unwrap();
     let added = d.hunks.iter().flat_map(|h| &h.lines).find(|l| l.origin == '+').and_then(|l| l.new).expect("an added line");
     (target, d, added)
@@ -129,7 +126,7 @@ fn sent(h: &egui_kittest::Harness<'static, (AppState, Vec<Msg>)>, f: impl Fn(&Pu
 fn pull_request_threads_light() {
     let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-threads", true);
     let (_, _, line) = files_loaded(&mut st, &dir);
-    let head = st.pull_request.as_ref().unwrap().tips.source.unwrap().to_string();
+    let head = st.pull_request.as_ref().unwrap().source_tip().unwrap().to_string();
     load(&mut st, detail(head), threads(line));
     let mut h = harness(st, false);
     h.run();
@@ -156,7 +153,7 @@ fn pull_request_threads_light() {
 fn pull_request_threads_pending_dark() {
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "pr-threads-pending", true);
     let (_, _, line) = files_loaded(&mut st, &dir);
-    let head = st.pull_request.as_ref().unwrap().tips.source.unwrap().to_string();
+    let head = st.pull_request.as_ref().unwrap().source_tip().unwrap().to_string();
     let mut d = detail(head);
     d.pending_review = Some(9);
     load(&mut st, d, threads(line));
@@ -193,7 +190,7 @@ fn pull_request_threads_pending_dark() {
 fn pull_request_file_threads_dark() {
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "pr-file-threads", true);
     let (target, d, line) = files_loaded(&mut st, &dir);
-    let head = st.pull_request.as_ref().unwrap().tips.source.unwrap().to_string();
+    let head = st.pull_request.as_ref().unwrap().source_tip().unwrap().to_string();
     let mut t1 = threads(line).remove(0);
     t1.comments[1].pending = false;
     load(&mut st, detail(head), vec![t1]);
@@ -214,6 +211,26 @@ fn pull_request_file_threads_dark() {
     h.get_by_label(&format!("line {line}")).click();
     h.run();
     assert!(sent(&h, |m| matches!(m, PullRequestMsg::GoToThread(id) if id == "T1")));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Command+Enter in a thread's reply box posts the reply, once and without a newline.
+#[test]
+fn command_enter_posts_a_reply() {
+    let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-threads-key", true);
+    let (_, _, line) = files_loaded(&mut st, &dir);
+    let head = st.pull_request.as_ref().unwrap().source_tip().unwrap().to_string();
+    load(&mut st, detail(head), threads(line));
+    let mut h = harness(st, false);
+    h.run();
+    h.get_all_by_label("Reply").find(|n| n.role() == Role::MultilineTextInput).expect("T1's reply box").type_text("Done.");
+    h.run();
+    h.press_key_modifiers(eframe::egui::Modifiers::COMMAND, eframe::egui::Key::Enter);
+    h.run();
+    let replies = h.state().1.iter().filter(|m| matches!(m, Msg::PullRequest(PullRequestMsg::Reply(id)) if id == "T1")).count();
+    assert_eq!(replies, 1);
+    assert_eq!(h.state().0.pull_request.as_ref().unwrap().forms.replies["T1"], "Done.", "no newline added");
     drop(h);
     remove_fixture(&dir);
 }

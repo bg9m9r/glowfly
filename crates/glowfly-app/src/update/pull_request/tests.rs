@@ -9,11 +9,12 @@ use crate::effect::{Effect, ForgeReply, ForgeResult};
 use crate::msg::{ForgeMsg, HistoryMsg, Msg, RepoMsg, TabsMsg};
 use crate::pull_request::{PrEffect, PullRequestMsg};
 use crate::remote::RemoteMsg;
-use crate::state::pull_request::{Files, OutOfSync, fetch_blocked, out_of_sync};
+use crate::state::pull_request::Files;
+use crate::state::pull_request_source::{OutOfSync, fetch_blocked, out_of_sync};
 use crate::state::{AppState, ForgeState};
 use git2::Oid;
 use glowfly_core::forge::{Provider, PullRequest, Target};
-use glowfly_core::repo::DiffTarget;
+use glowfly_core::repo::{DiffTarget, PrCompare, SourceFrom};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -69,7 +70,7 @@ pub(in crate::update) fn setup(name: &str, more: &[&str]) -> (AppState, PathBuf,
     (st, work, bare, base)
 }
 
-fn set_pr(st: &mut AppState, f: impl FnOnce(&mut PullRequest)) {
+pub(super) fn set_pr(st: &mut AppState, f: impl FnOnce(&mut PullRequest)) {
     f(&mut st.forge.as_mut().unwrap().prs[0]);
 }
 
@@ -77,7 +78,7 @@ pub(in crate::update) fn open(st: &mut AppState) {
     drive(st, Msg::PullRequest(PullRequestMsg::Open(7)));
 }
 
-fn paths(st: &AppState) -> Vec<String> {
+pub(super) fn paths(st: &AppState) -> Vec<String> {
     match &st.pull_request.as_ref().unwrap().files {
         Files::Loaded(c) => c.comparison.files.iter().map(|f| f.path.clone()).collect(),
         other => panic!("not loaded: {other:?}"),
@@ -143,9 +144,20 @@ fn a_file_opens_inside_the_panel() {
 #[test]
 fn missing_refs_are_noted_and_nothing_loads() {
     let (mut st, work, bare, _) = setup("pr-missing", &[]);
+    // The source branch isn't on origin, but the listed head is here: it is shown.
     set_pr(&mut st, |p| p.source = "from-a-fork".into());
+    open(&mut st);
+    let v = st.pull_request.as_ref().unwrap();
+    assert_eq!(v.shown.as_ref().map(|s| s.source.from), Some(SourceFrom::Head));
+    assert_eq!(paths(&st), ["f.txt"]);
+    let head = rev(&work, "feature");
+    assert_eq!(out_of_sync(v), [OutOfSync::HeadUsed { branch: None, head, fork: false }]);
+    drive(&mut st, Msg::PullRequest(PullRequestMsg::Close));
+
+    // With the head unknown there is nothing to compare.
+    set_pr(&mut st, |p| p.head = None);
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::Open(7)), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::PullRequest(PrEffect::Files(_)))));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::PullRequest(PrEffect::Files(_) | PrEffect::FetchHead(_)))));
     let v = st.pull_request.as_ref().unwrap();
     assert_eq!(v.files, Files::Missing);
     assert_eq!(out_of_sync(v), [OutOfSync::SourceMissing]);
@@ -198,16 +210,15 @@ fn close_returns_and_drops_stale_results() {
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(f)));
     assert!(st.diff.is_some());
     let old = st.pull_request_gen;
-    let tips = st.pull_request.as_ref().unwrap().tips.pair().unwrap();
     drive(&mut st, Msg::PullRequest(PullRequestMsg::Close));
     assert!(st.pull_request.is_none() && st.diff.is_none());
 
     open(&mut st);
-    let stale = PullRequestMsg::FilesLoaded { id: 7, tips, generation: old, result: Ok(None) };
+    let stale = PullRequestMsg::FilesLoaded { id: 7, generation: old, result: Ok(PrCompare::NoSource) };
     update(&mut st, Msg::PullRequest(stale), Instant::now());
     assert!(matches!(st.pull_request.as_ref().unwrap().files, Files::Loaded(_)), "the stale result changed nothing");
-    // A result for other tips is stale too.
-    let other = PullRequestMsg::FilesLoaded { id: 7, tips: (tips.1, tips.0), generation: st.pull_request_gen, result: Ok(None) };
+    // A result for another pull request is dropped too.
+    let other = PullRequestMsg::FilesLoaded { id: 8, generation: st.pull_request_gen, result: Ok(PrCompare::NoSource) };
     update(&mut st, Msg::PullRequest(other), Instant::now());
     assert!(matches!(st.pull_request.as_ref().unwrap().files, Files::Loaded(_)));
 
@@ -249,7 +260,7 @@ fn parked_tab_reloads_a_pending_list() {
     assert_eq!(st.pull_request.as_ref().unwrap().files, Files::Loading);
 
     // A result for another repository's tab is dropped.
-    let loaded = |generation| PullRequestMsg::FilesLoaded { id: 7, tips: job.tips, generation, result: Ok(None) };
+    let loaded = |generation| PullRequestMsg::FilesLoaded { id: 7, generation, result: Ok(PrCompare::NoSource) };
     assert!(loaded(job.generation).on_inactive().is_none());
     let scoped = Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(Msg::PullRequest(loaded(job.generation))) };
     update(&mut st, scoped, Instant::now());
@@ -266,7 +277,8 @@ fn parked_tab_reloads_a_pending_list() {
         _ => None,
     });
     let again = again.expect("asked for again");
-    assert_eq!((again.id, again.tips, again.generation), (7, job.tips, st.pull_request_gen));
+    assert_eq!((again.id, again.target, again.branch, &again.head), (7, job.target, job.branch, &job.head));
+    assert_eq!(again.generation, st.pull_request_gen);
     // The first request's result is stale now.
     update(&mut st, Msg::PullRequest(loaded(job.generation)), Instant::now());
     assert_eq!(st.pull_request.as_ref().unwrap().files, Files::Loading);

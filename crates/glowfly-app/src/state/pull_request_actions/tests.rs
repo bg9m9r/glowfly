@@ -45,6 +45,10 @@ pub(crate) fn view(d: Option<PrDetail>) -> PrView {
         listed: true,
         tips: Tips { target: None, source: None },
         files: Files::Missing,
+        head_ref: None,
+        shown: None,
+        head_fetch: Default::default(),
+        asked: None,
         tab: PrTab::Overview,
         page: d.map_or(Page::Loading, |detail| {
             Page::Loaded(Box::new(PrPage { detail, entries: Vec::new(), threads: Vec::new(), threads_note: None }))

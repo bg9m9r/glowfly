@@ -167,6 +167,18 @@ impl Provider {
     pub fn issues_in_app(self) -> bool {
         self.info().issues_in_app
     }
+
+    /// The ref the service keeps at pull request `id`'s head commit, fetchable from the target
+    /// repository even when the source branch is on a fork or deleted (a service convention, not
+    /// git's). None where the service publishes no head ref.
+    pub fn pr_head_ref(self, id: u64) -> Option<String> {
+        match self {
+            Provider::GitHub | Provider::GitHubEnterprise => Some(format!("refs/pull/{id}/head")),
+            Provider::GitLab | Provider::GitLabSelfManaged => Some(format!("refs/merge-requests/{id}/head")),
+            Provider::BitbucketDataCenter => Some(format!("refs/pull-requests/{id}/from")),
+            Provider::Bitbucket | Provider::AzureDevOps | Provider::JiraCloud | Provider::JiraDataCenter | Provider::Trello => None,
+        }
+    }
 }
 
 /// The settings most services share; each `ProviderInfo` overrides what differs.
@@ -260,6 +272,20 @@ mod tests {
             let per_pr = matches!(p, GitLab | GitLabSelfManaged | Bitbucket | BitbucketDataCenter | AzureDevOps);
             assert_eq!(p.details_per_pr(), per_pr, "{p:?}");
             assert_eq!(p.issues_in_app(), p != BitbucketDataCenter, "{p:?}");
+        }
+    }
+
+    #[test]
+    fn pull_request_head_refs() {
+        use Provider::*;
+        for p in Provider::ALL {
+            let want = match p {
+                GitHub | GitHubEnterprise => Some("refs/pull/7/head"),
+                GitLab | GitLabSelfManaged => Some("refs/merge-requests/7/head"),
+                BitbucketDataCenter => Some("refs/pull-requests/7/from"),
+                Bitbucket | AzureDevOps | JiraCloud | JiraDataCenter | Trello => None,
+            };
+            assert_eq!(p.pr_head_ref(7).as_deref(), want, "{p:?}");
         }
     }
 }

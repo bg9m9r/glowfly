@@ -13,9 +13,9 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{CheckList, Provider, PullRequest, Reviewer, Target};
-use glowfly_core::repo::{self, DiffTarget, LoadOptions};
+use glowfly_core::repo::{self, LoadOptions, PrCompare};
 use glowfly_core::settings::ThemeChoice;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 const DESCRIPTION: &str = "Adds a page that lists search results.\n\nPaging and filters come in a later change.";
@@ -71,15 +71,23 @@ pub(super) fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) -> (App
     (st, dir)
 }
 
+/// Compares the open panel as the runner does (`repo::pr_compare`) and stores the result.
+pub(super) fn compare(st: &mut AppState, dir: &Path) {
+    let v = st.pull_request.as_mut().unwrap();
+    let key = v.files_key();
+    match repo::pr_compare(dir, key.target.expect("origin/main"), key.branch, key.head.as_deref()).unwrap() {
+        PrCompare::Loaded { source, changes, commits } => v.set_loaded(changes, source, commits),
+        other => panic!("not loaded: {other:?}"),
+    }
+}
+
 #[test]
 fn pull_request_dark() {
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "pr-view", true);
+    compare(&mut st, &dir);
     let v = st.pull_request.as_mut().unwrap();
     v.tab = PrTab::Files;
-    let (main, search) = v.tips.pair().expect("both branches are on origin");
-    let changes = repo::branch_changes(&dir, main, search).unwrap().unwrap();
-    let target = DiffTarget::Between(changes.base, search, "search.txt".into());
-    v.files = Files::Loaded(changes);
+    let target = v.diff_target("search.txt").unwrap();
     assert!(v.shows(&target));
     let d = repo::load_diff(&dir, &target).unwrap();
     st.diff = Some((target, Arc::new(d)));

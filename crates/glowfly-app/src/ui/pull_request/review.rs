@@ -3,7 +3,8 @@
 //! why it is disabled under it.
 
 use super::super::theme::color;
-use super::{heading, note};
+use super::{heading, note, send_key};
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::pull_request::{PrAction, PrView};
@@ -19,8 +20,8 @@ const CHOICES: [(ReviewEvent, &str, &str); 3] = [
     (ReviewEvent::RequestChanges, "Request changes", "Feedback that must be addressed before this can merge."),
 ];
 
-/// Shown once the page is loaded.
-pub(super) fn show(ui: &mut Ui, v: &mut PrView, msgs: &mut Vec<Msg>) {
+/// Shown once the page is loaded. Command+Enter in the summary submits too.
+pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Msg>) {
     let Some(page) = v.loaded() else { return };
     let pending = page.detail.pending_review.is_some();
     heading(ui, "Your review");
@@ -44,12 +45,18 @@ pub(super) fn show(ui: &mut Ui, v: &mut PrView, msgs: &mut Vec<Msg>) {
         .hint_text("Summary (optional when approving)")
         .desired_rows(3)
         .desired_width(f32::INFINITY);
-    controls::field(ui, summary);
+    let field = controls::field(ui, summary);
+    crate::ui::access::name_field(&field, "Review summary");
+    if send_key(ui, &field) && review_blocked(v).is_none() {
+        msgs.push(Msg::PullRequest(PullRequestMsg::SubmitReview));
+    }
     if pending {
         note(ui, "You have a review in progress on the service; this submits it with its comments.", color::weak());
     }
     let blocked = review_blocked(v);
-    let r = ui.add(buttons::secondary(review_button(v)).enabled(blocked.is_none()).why(blocked.as_deref()));
+    let label = review_button(v);
+    let tip = keys.tip(label, BindingId::SendPrText);
+    let r = ui.add(buttons::secondary(label).enabled(blocked.is_none()).why(blocked.as_deref()).tip(&tip));
     if blocked.is_some() {
         reason::line(ui, blocked.as_deref(), egui::Align::Min);
     }

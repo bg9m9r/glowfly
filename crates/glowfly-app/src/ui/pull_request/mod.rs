@@ -1,10 +1,12 @@
-//! The pull request panel, in place of the graph: a header with the title and links, then two
+//! The pull request panel, in place of the graph: a header with the title and links, then three
 //! tabs. Overview has the details, the checks, the review and merge forms on the left (`info`,
-//! `checks`, `review`, `merge`) and the conversation in the middle (`conversation`); Files changed has the changed
-//! files on the left (`files`) and the open file's diff in the middle, with its code comment
-//! threads (`threads`) in a pane below it.
+//! `checks`, `review`, `merge`) and the conversation in the middle (`conversation`); Commits has
+//! the commits on the left (`commits`) and the diff of a file of the one selected in the commit
+//! panel in the middle; Files changed has the changed files on the left (`files`) and the open
+//! file's diff in the middle, with its code comment threads (`threads`) in a pane below it.
 
 mod checks;
+mod commits;
 mod conversation;
 mod files;
 mod info;
@@ -20,17 +22,23 @@ use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
 use crate::state::pull_request::{Files, PrTab, PrView, Tone};
+use crate::state::pull_request_commits::tab_label;
 use crate::state::pull_request_threads::on_file;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_core::repo::DiffTarget;
 use glowfly_core::text::printable;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.pull_request else { return };
-    // Also while the file being opened waits for contents a partial clone hasn't downloaded.
-    let shows_diff = st.diff.as_ref().is_some_and(|(t, _)| view.shows(t)) || st.for_diff().is_some();
+    // Also while the file being opened waits for contents a partial clone hasn't downloaded (in
+    // the tab it opened in).
+    let waiting = st.for_diff().is_some();
+    let diff = st.diff.as_ref().map(|(t, _)| t);
+    let shows_file = waiting || diff.is_some_and(|t| view.shows_file(t));
+    let shows_commit = waiting || diff.is_some_and(|t| matches!(t, DiffTarget::Commit(..)) && view.shows(t));
     let tab = view.tab;
     ui.add_space(6.0);
     header(ui, st.settings.lang(), &st.keymap, view, msgs);
@@ -49,11 +57,24 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                     let Some(view) = st.pull_request.as_mut() else { return };
                     info::show(ui, view);
                     checks::show(ui, view, lang, now, msgs);
-                    review::show(ui, view, msgs);
+                    review::show(ui, &st.keymap, view, msgs);
                     merge::show(ui, st.settings.lang(), view, st.snap.as_ref(), default_branch.as_deref(), msgs);
                 });
             });
             center.show_inside(ui, |ui| conversation::show(ui, st, &mut cache.markdown, msgs));
+        }
+        PrTab::Commits => {
+            side.show_inside(ui, |ui| {
+                let Some(view) = &st.pull_request else { return };
+                commits::show(ui, st, view, msgs);
+            });
+            center.show_inside(ui, |ui| {
+                if shows_commit {
+                    super::diff::show(ui, st, cache, msgs);
+                } else {
+                    weak_hint(ui, commits::HINT);
+                }
+            });
         }
         PrTab::Files => {
             side.show_inside(ui, |ui| {
@@ -61,7 +82,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                 files::show(ui, st, view, msgs);
             });
             center.show_inside(ui, |ui| {
-                if shows_diff {
+                if shows_file {
                     let path = st.diff.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
                     let commented = st.pull_request.as_ref().and_then(|v| v.loaded()).is_some_and(|p| on_file(p, &path) > 0);
                     if commented {
@@ -73,18 +94,22 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                     }
                     super::diff::show(ui, st, cache, msgs);
                 } else {
-                    ui.add_space(12.0);
-                    ui.horizontal(|ui| {
-                        ui.add_space(12.0);
-                        ui.label(RichText::new("Select a file to see its changes.").color(color::weak()));
-                    });
+                    weak_hint(ui, "Select a file to see its changes.");
                 }
             });
         }
     }
 }
 
-/// Overview and Files changed (with the count once known), and a note while the page reloads.
+/// A tab center's hint while nothing is open in it, wrapped to the center's width.
+fn weak_hint(ui: &mut Ui, text: &str) {
+    egui::Frame::new().inner_margin(Margin { left: 12, right: 12, top: 12, bottom: 0 }).show(ui, |ui| {
+        ui.add(egui::Label::new(RichText::new(text).color(color::weak())).wrap());
+    });
+}
+
+/// Overview, Commits and Files changed (with their counts once known), and a note while the
+/// page reloads.
 fn tabs(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
     ui.add_space(2.0);
     ui.horizontal(|ui| {
@@ -93,7 +118,8 @@ fn tabs(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
             Files::Loaded(c) => format!("Files changed  {}", c.comparison.files.len()),
             _ => "Files changed".to_owned(),
         };
-        for (tab, label) in [(PrTab::Overview, "Overview".to_owned()), (PrTab::Files, files)] {
+        let tabs = [(PrTab::Overview, "Overview".to_owned()), (PrTab::Commits, tab_label(v)), (PrTab::Files, files)];
+        for (tab, label) in tabs {
             if ui.selectable_label(v.tab == tab, label).clicked() && v.tab != tab {
                 msgs.push(Msg::PullRequest(PullRequestMsg::Tab(tab)));
             }
@@ -103,6 +129,12 @@ fn tabs(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new("Updating…").color(color::weak()));
         }
     });
+}
+
+/// Whether Command+Enter (Ctrl on Windows and Linux) was pressed in the focused box `field`:
+/// it posts the box's text (`BindingId::SendPrText`), and is consumed so nothing else sees it.
+pub(super) fn send_key(ui: &mut Ui, field: &egui::Response) -> bool {
+    field.has_focus() && ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter))
 }
 
 /// The color of a tone.

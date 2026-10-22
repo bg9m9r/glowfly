@@ -1,15 +1,18 @@
-//! The pull request panel: opening it for a listed pull request, loading the files it changes
-//! from the local remote-tracking branches, following refreshes of the refs and of the
-//! service's list, switching tabs, and closing it. Its files' diffs are the shared `st.diff`,
-//! opened through `RepoMsg::OpenDiff`; its page and actions on the service are in
-//! calls.rs, its Checks section in checks.rs, and its code comment threads in threads.rs.
+//! The pull request panel: opening it for a listed pull request, following refreshes of the refs
+//! and of the service's list, switching tabs, and closing it. Where its files and commits come
+//! from (and the head ref fetch) is in source.rs, the Commits tab's selection in commits.rs. Its
+//! diffs are the shared `st.diff`, opened through `RepoMsg::OpenDiff`; its page and actions on
+//! the service are in calls.rs, its Checks section in checks.rs, and its code comment threads in
+//! threads.rs.
 
 use crate::effect::Effect;
-use crate::pull_request::{FilesJob, PrEffect, PullRequestMsg};
+use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
-use crate::state::pull_request::{Files, PrTab, PrView, Tips};
+use crate::state::pull_request::{Files, PrTab, PrView};
+use crate::state::pull_request_source::HeadFetch;
 use calls::load;
 use glowfly_core::repo::DiffTarget;
+use source::{request, retip, shows_diff};
 use std::time::Instant;
 
 pub(super) mod calls;
@@ -18,8 +21,14 @@ mod calls_tests;
 mod checks;
 #[cfg(test)]
 mod checks_tests;
+mod commits;
+#[cfg(test)]
+mod commits_tests;
 #[cfg(test)]
 mod merge_tests;
+mod source;
+#[cfg(test)]
+mod source_tests;
 #[cfg(test)]
 pub(in crate::update) mod tests;
 mod threads;
@@ -46,25 +55,15 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
             checks::load(st, fx);
         }
         PullRequestMsg::Close => close(st),
-        PullRequestMsg::FilesLoaded { id, tips, generation, result } => {
-            if generation != st.pull_request_gen {
-                return; // superseded: closed, reopened, the tips moved, or parked with its tab
-            }
-            let Some(view) = st.pull_request.as_mut().filter(|v| v.pr.id == id && v.tips.pair() == Some(tips)) else { return };
-            match result {
-                Ok(Some(c)) => view.files = Files::Loaded(c),
-                Ok(None) => view.files = Files::Unrelated,
-                Err(e) => {
-                    view.files = Files::Failed(e.clone());
-                    st.log(false, e);
-                }
-            }
-        }
+        PullRequestMsg::FilesLoaded { id, generation, result } => source::files_loaded(st, id, generation, result, fx),
         PullRequestMsg::Tab(t) => {
             if let Some(v) = st.pull_request.as_mut() {
                 v.tab = t;
             }
         }
+        PullRequestMsg::SelectCommit(oid) => commits::select(st, oid, fx),
+        PullRequestMsg::FetchHead => source::fetch_clicked(st, fx),
+        PullRequestMsg::HeadFetched { id, head, result } => source::head_fetched(st, id, head, result, fx),
         PullRequestMsg::Reload => load(st, fx),
         PullRequestMsg::ReloadFiles => request(st, fx),
         PullRequestMsg::ToggleChecks => checks::toggle(st),
@@ -85,30 +84,6 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
     }
 }
 
-/// Asks for the file list of the open view's tips; older results are ignored from now on.
-/// Without both tips there is nothing to compare.
-fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
-    st.pull_request_gen += 1;
-    let generation = st.pull_request_gen;
-    let workdir = st.workdir();
-    let Some(view) = st.pull_request.as_mut() else { return };
-    match (view.tips.pair(), workdir) {
-        (Some(tips), Some(workdir)) => {
-            view.files = Files::Loading;
-            fx.push(Effect::PullRequest(PrEffect::Files(FilesJob { workdir, id: view.pr.id, tips, generation })));
-        }
-        _ => view.files = Files::Missing,
-    }
-}
-
-/// Whether the diff on screen is one of the open pull request's files.
-fn shows_diff(st: &AppState) -> bool {
-    match (&st.pull_request, &st.diff) {
-        (Some(v), Some((t, _))) => v.shows(t),
-        _ => false,
-    }
-}
-
 /// Closes the panel, and the diff when it is one of its files; a list or page still in flight
 /// must not reopen it.
 pub(super) fn close(st: &mut AppState) {
@@ -123,10 +98,11 @@ pub(super) fn close(st: &mut AppState) {
     }
 }
 
-/// A diff is opening: the panel stays only when it is one of its files, and then shows them.
+/// A diff is opening: the panel stays only when it is one of its files (shown in Files
+/// changed) or of one of its commits (shown in Commits).
 pub(super) fn keep_for(st: &mut AppState, target: &DiffTarget) {
     match st.pull_request.as_mut() {
-        Some(v) if v.shows(target) => v.tab = PrTab::Files,
+        Some(v) if v.shows(target) => v.tab = if matches!(target, DiffTarget::Commit(..)) { PrTab::Commits } else { PrTab::Files },
         _ => close(st),
     }
 }
@@ -142,16 +118,18 @@ pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
     retip(st, fx, false);
 }
 
-/// The service's list was replaced: the panel's copy follows it, or notes that it is gone.
-/// When the listed head moved past the loaded page's, the page loads again (its mergeability
+/// The service's list was replaced: the panel's copy follows it, or notes that it is gone. A
+/// newly listed head may be here already, so the files are compared again (and its head ref
+/// may be fetched again). When the listed head moved past the loaded page's, the page loads again (its mergeability
 /// and head belong to the old one); the checks load again then too, and when the listed
 /// summary of them changed (a check finished, say).
 pub(super) fn prs_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(view) = st.pull_request.as_mut() else { return };
-    let (mut stale, mut checks_stale) = (false, false);
+    let (mut stale, mut checks_stale, mut head_changed) = (false, false, false);
     match st.forge.as_ref().and_then(|f| f.prs.iter().find(|p| p.id == view.pr.id)) {
         Some(pr) => {
             let summary_changed = view.pr.checks != pr.checks;
+            head_changed = view.pr.head != pr.head;
             let head_moved = pr.head.is_some() && view.checks.loaded().is_some_and(|l| !l.sha.is_empty() && !pr.head_matches(&l.sha));
             view.pr = pr.clone();
             view.listed = true;
@@ -159,6 +137,10 @@ pub(super) fn prs_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
             checks_stale = summary_changed || head_moved;
         }
         None => view.listed = false,
+    }
+    if head_changed {
+        view.head_fetch = HeadFetch::Idle;
+        source::rekey(st, fx, false);
     }
     if stale {
         load(st, fx);
@@ -174,32 +156,19 @@ pub(super) fn checks_tick(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>)
 }
 
 /// After a tab switch: a list dropped while the tab was parked, or one whose tips moved, is
-/// asked for again, and the page and the checks load again in the background. An action's reply that came
+/// asked for again (a head fetch whose result was dropped starts again once nothing is found),
+/// and the page and the checks load again in the background. An action's reply that came
 /// while the tab was parked was only logged, so the panel no longer waits for it.
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let loading = st.pull_request.as_ref().is_some_and(|v| v.files == Files::Loading);
+    let mut again = false;
     if let Some(v) = st.pull_request.as_mut() {
         v.busy = None;
+        again = v.files == Files::Loading || v.head_fetch == HeadFetch::Running;
+        if v.head_fetch == HeadFetch::Running {
+            v.head_fetch = HeadFetch::Idle;
+        }
     }
-    retip(st, fx, loading);
+    retip(st, fx, again);
     load(st, fx);
     checks::load(st, fx);
-}
-
-/// Reads the tips again from the snapshot; requests the list when they changed or `again`.
-fn retip(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
-    let (Some(snap), Some(view)) = (&st.snap, &st.pull_request) else { return };
-    let tips = Tips::of(snap, &view.remote, &view.pr);
-    let moved = tips != view.tips;
-    if moved {
-        if shows_diff(st) {
-            super::repo::close_diff(st);
-        }
-        if let Some(v) = st.pull_request.as_mut() {
-            v.tips = tips;
-        }
-    }
-    if moved || again {
-        request(st, fx);
-    }
 }

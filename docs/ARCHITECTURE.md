@@ -208,6 +208,16 @@ binary (package `glowfly`).
   repository with `NewPullRequest::source_repo` set to the fork; each service's head on a fork is
   in `glowfly-core/src/forge/pr_heads.rs`. Push to your fork… goes through the Fork dialog with
   `ForkCreate::then_pr`, whose add job also pushes the branch (`update/fork_pr.rs`).
+- **Pull request source tip**: the pull request panel compares from the target's remote-tracking
+  tip to a source tip the runner picks (`glowfly-core/src/repo/pr_compare.rs`): the head commit
+  the service listed when it is already in the object database, else the remote-tracking source
+  branch (never a same-named branch once the page says the source is on a fork). The files and
+  the commits in `target..source` come from one load. With no source here at all, the panel
+  fetches the service's head ref once in the background, without prompts and writing no ref
+  (`update/pull_request/source.rs`, `Provider::pr_head_ref`, `remote_ops::fetch_ref_cmd`), then
+  compares again; the notes and their buttons are in `state/pull_request_source.rs`. A Commits
+  tab row selects its commit into the commit panel without closing the pull request panel
+  (`update/pull_request/commits.rs`), and that commit's file diffs open inside the tab.
 - **Operation journal**: the timeline is git's reflogs plus Glowfly's notes. Only the runner
   writes notes, and only around the work that rewrites history: a `RunGit` whose job carries a
   `journal` op (worked out from the command as the user gave it, before the auto-stash wrap, in

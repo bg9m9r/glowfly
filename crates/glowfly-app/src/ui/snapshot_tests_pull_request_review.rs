@@ -156,3 +156,49 @@ fn pull_request_gitlab_light() {
     drop(h);
     remove_fixture(&dir);
 }
+
+fn count(h: &egui_kittest::Harness<'static, (AppState, Vec<Msg>)>, f: impl Fn(&PullRequestMsg) -> bool) -> usize {
+    h.state().1.iter().filter(|m| matches!(m, Msg::PullRequest(p) if f(p))).count()
+}
+
+/// Command+Enter (Ctrl on Windows and Linux) posts the focused comment box and submits the
+/// focused review summary, only when allowed; the Comment button's tooltip names the key.
+#[test]
+fn command_enter_posts_the_comment_and_the_review() {
+    use crate::keymap::{Chord, KeyName};
+    use eframe::egui::{Key, Modifiers};
+    let (mut st, dir) = with_pr(ThemeChoice::Dark, "pr-command-enter", true);
+    load(&mut st, detail(), Vec::new());
+    let mut h = harness(st, true);
+    h.run();
+    // No box has focus: nothing is sent.
+    h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
+    h.run();
+    assert_eq!(count(&h, |m| matches!(m, PullRequestMsg::PostComment | PullRequestMsg::SubmitReview)), 0);
+    // An empty comment box can't post.
+    h.get_by_label("Write a comment").type_text("");
+    h.run();
+    h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
+    h.run();
+    assert_eq!(count(&h, |m| matches!(m, PullRequestMsg::PostComment)), 0);
+    h.get_by_label("Write a comment").type_text("Thanks!");
+    h.run();
+    h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
+    h.run();
+    assert_eq!(count(&h, |m| matches!(m, PullRequestMsg::PostComment)), 1);
+    assert_eq!(h.state().0.pull_request.as_ref().unwrap().forms.comment, "Thanks!", "no newline added");
+    // The button names the key.
+    h.get_by_role_and_label(Role::Button, "Comment").hover();
+    h.run();
+    let key = Chord::cmd(KeyName::Enter).text();
+    assert!(h.query_by_label_contains(&format!("Comment ({key})")).is_some(), "the tooltip names {key}");
+
+    h.get_by_label("Review summary").type_text("Looks good.");
+    h.run();
+    h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
+    h.run();
+    assert_eq!(count(&h, |m| matches!(m, PullRequestMsg::SubmitReview)), 1);
+    assert_eq!(count(&h, |m| matches!(m, PullRequestMsg::PostComment)), 1, "only the focused box sends");
+    drop(h);
+    remove_fixture(&dir);
+}

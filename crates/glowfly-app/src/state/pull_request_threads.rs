@@ -120,12 +120,12 @@ fn short(sha: &str) -> &str {
     sha.get(..7).unwrap_or(sha)
 }
 
-/// OnLines when the files are loaded from the local source tip and that tip is the head the
-/// service reported.
+/// OnLines when the files are loaded and their source tip (the remote-tracking branch, or the
+/// listed head when it was used) is the head the service reported.
 pub fn placement(v: &PrView) -> Placement {
     let head = v.loaded().map(|p| p.detail.head_sha.as_str()).unwrap_or_default();
     let synced =
-        matches!(v.files, Files::Loaded(_)) && !head.is_empty() && v.tips.source.is_some_and(|s| s.to_string().eq_ignore_ascii_case(head));
+        matches!(v.files, Files::Loaded(_)) && !head.is_empty() && v.source_tip().is_some_and(|s| s.to_string().eq_ignore_ascii_case(head));
     if synced {
         Placement::OnLines
     } else {

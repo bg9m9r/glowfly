@@ -7,7 +7,8 @@ use super::super::markdown;
 use super::super::markdown_cache::MarkdownCache;
 use super::super::theme::color;
 use super::super::widgets::{self, Icon};
-use super::note;
+use super::{note, send_key};
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
@@ -38,6 +39,8 @@ pub(super) enum Place {
 /// What every card of a frame shares.
 pub(super) struct Ctx<'a> {
     pub settings: &'a Settings,
+    /// For the Reply button's key (Command+Enter in the reply box).
+    pub keys: &'a Keymap,
     pub now: i64,
     pub offset: i32,
     /// Why going to each thread's line is unavailable (None when it is available).
@@ -193,10 +196,15 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
     }
     ui.add_space(4.0);
     let draft = v.forms.replies.entry(t.id.clone()).or_default();
-    controls::field(ui, egui::TextEdit::multiline(draft).desired_rows(2).hint_text("Reply…").desired_width(f32::INFINITY));
+    let field = controls::field(ui, egui::TextEdit::multiline(draft).desired_rows(2).hint_text("Reply…").desired_width(f32::INFINITY));
+    crate::ui::access::name_field(&field, "Reply");
+    if send_key(ui, &field) && reply_blocked(v, t).is_none() {
+        msgs.push(Msg::PullRequest(PullRequestMsg::Reply(t.id.clone())));
+    }
+    let tip = ctx.keys.tip("Reply", BindingId::SendPrText);
     ui.horizontal(|ui| {
         let blocked = reply_blocked(v, t);
-        let r = ui.add(buttons::secondary("Reply").enabled(blocked.is_none()));
+        let r = ui.add(buttons::secondary("Reply").enabled(blocked.is_none()).tip(&tip));
         let r = match &blocked {
             Some(why) => r.on_hover_text(why),
             None => r,
@@ -221,7 +229,7 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
 pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let go_to = go_to_reasons(st);
     let scroll = st.view.pr_thread_scroll.take();
-    let ctx = Ctx { settings: &st.settings, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
+    let ctx = Ctx { settings: &st.settings, keys: &st.keymap, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
     let Some(v) = st.pull_request.as_mut() else { return };
     let Some(p) = v.loaded() else { return };
     let n = on_file(p, path);

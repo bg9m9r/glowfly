@@ -156,7 +156,7 @@ fn pull_request_files_try_again_compares_again() {
     super::pull_request::tests::open(&mut st);
     let view = st.pull_request.as_ref().unwrap();
     assert!(matches!(view.files, Files::Loaded(_)));
-    let (id, tips) = (view.pr.id, view.tips.pair().unwrap());
+    let id = view.pr.id;
     let old = st.pull_request_gen;
     let fx = up(&mut st, Msg::PullRequest(PullRequestMsg::ReloadFiles));
     let jobs: Vec<u64> = fx
@@ -169,7 +169,7 @@ fn pull_request_files_try_again_compares_again() {
     assert_eq!(jobs, [old + 1]);
     assert!(matches!(st.pull_request.as_ref().unwrap().files, Files::Loading));
     // The answer to the earlier request changes nothing.
-    up(&mut st, Msg::PullRequest(PullRequestMsg::FilesLoaded { id, tips, generation: old, result: Err("late".into()) }));
+    up(&mut st, Msg::PullRequest(PullRequestMsg::FilesLoaded { id, generation: old, result: Err("late".into()) }));
     assert!(matches!(st.pull_request.as_ref().unwrap().files, Files::Loading));
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);

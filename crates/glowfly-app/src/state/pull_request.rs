@@ -1,17 +1,19 @@
 //! The pull request panel (update/pull_request/, ui/pull_request/): a copy of the pull
 //! request, the remote-tracking tips it is compared from, the files it changes, the service's
 //! page with its conversation, and the texts that describe them. Pure: the files and the page
-//! are loaded by `Effect::PullRequest`; the action forms' rules are in pull_request_actions.rs,
-//! the code comment threads' in pull_request_threads.rs, and the Checks section's in
-//! pull_request_checks.rs.
+//! are loaded by `Effect::PullRequest`; where the files and commits come from (and the notes on
+//! it) is in pull_request_source.rs, the Commits tab's texts in pull_request_commits.rs, the
+//! action forms' rules in pull_request_actions.rs, the code comment threads' in
+//! pull_request_threads.rs, and the Checks section's in pull_request_checks.rs.
 
 use super::ForgeState;
 use super::pull_request_actions::PrForms;
 use super::pull_request_checks::PrChecks;
+use super::pull_request_source::{FilesKey, HeadFetch, Shown, files_key};
 use super::pull_request_threads::ThreadView;
 use git2::Oid;
 use glowfly_core::forge::{PrPage, PrState, PullRequest, reviews_in_app};
-use glowfly_core::repo::{BranchChanges, DiffTarget, FileEntry, Snapshot};
+use glowfly_core::repo::{BranchChanges, DiffTarget, FileEntry, RangeCommits, Snapshot, SourceTip};
 use glowfly_core::text::is_bidi_control;
 
 /// The local tips of a pull request's branches: `refs/remotes/<remote>/<target>` and
@@ -34,14 +36,9 @@ impl Tips {
         let tip = |name: &str| branches.iter().find(|(b, _)| b == name).map(|(_, oid)| *oid);
         Tips { target: tip(&pr.target), source: tip(&pr.source) }
     }
-
-    /// (target, source) when both are present.
-    pub fn pair(&self) -> Option<(Oid, Oid)> {
-        Some((self.target?, self.source?))
-    }
 }
 
-/// The files the pull request changes.
+/// The files the pull request changes (the Commits tab follows the same load).
 #[derive(Clone, PartialEq, Debug)]
 pub enum Files {
     /// A tip is missing: nothing to compare (see `out_of_sync`).
@@ -58,6 +55,7 @@ pub enum Files {
 pub enum PrTab {
     #[default]
     Overview,
+    Commits,
     Files,
 }
 
@@ -100,6 +98,13 @@ pub struct PrView {
     pub listed: bool,
     pub tips: Tips,
     pub files: Files,
+    /// The service's head ref for it (`Provider::pr_head_ref`), when it keeps one.
+    pub head_ref: Option<String>,
+    /// The source tip and commits the loaded (or unrelated) files were compared to.
+    pub shown: Option<Shown>,
+    pub head_fetch: HeadFetch,
+    /// The key the files were last asked for.
+    pub asked: Option<FilesKey>,
     pub tab: PrTab,
     pub page: Page,
     /// The page is loading again while the last one stays on screen.
@@ -125,6 +130,10 @@ impl PrView {
             listed: true,
             tips,
             files: Files::Missing,
+            head_ref: fs.host_provider().and_then(|p| p.pr_head_ref(pr.id)),
+            shown: None,
+            head_fetch: HeadFetch::Idle,
+            asked: None,
             pr,
             tab: PrTab::Overview,
             page,
@@ -150,10 +159,39 @@ impl PrView {
         self.loaded().map(|p| p.detail.state)
     }
 
-    /// Whether `t` is the diff of one of this view's files.
+    /// The source tip the files were compared to, while they are loaded or unrelated.
+    pub fn source_tip(&self) -> Option<Oid> {
+        matches!(self.files, Files::Loaded(_) | Files::Unrelated).then(|| self.shown.as_ref().map(|s| s.source.oid)).flatten()
+    }
+
+    /// Whether `oid` is one of the commits the Commits tab lists.
+    pub fn has_commit(&self, oid: Oid) -> bool {
+        self.shown.as_ref().is_some_and(|s| s.commits.commits.iter().any(|c| c.oid == oid))
+    }
+
+    /// The files and commits are loaded, compared to `source`.
+    pub fn set_loaded(&mut self, changes: BranchChanges, source: SourceTip, commits: RangeCommits) {
+        self.files = Files::Loaded(changes);
+        self.shown = Some(Shown { source, commits });
+    }
+
+    /// The key the panel compares from now.
+    pub fn files_key(&self) -> FilesKey {
+        files_key(self)
+    }
+
+    /// Whether `t` is the diff of one of this view's files or of one of its commits.
     pub fn shows(&self, t: &DiffTarget) -> bool {
+        match t {
+            DiffTarget::Commit(o, _) => self.has_commit(*o),
+            _ => self.shows_file(t),
+        }
+    }
+
+    /// Whether `t` is the diff of one of the files Files changed lists.
+    pub fn shows_file(&self, t: &DiffTarget) -> bool {
         match (t, &self.files) {
-            (DiffTarget::Between(a, b, _), Files::Loaded(c)) => c.base == *a && self.tips.source == Some(*b),
+            (DiffTarget::Between(a, b, _), Files::Loaded(c)) => c.base == *a && self.source_tip() == Some(*b),
             _ => false,
         }
     }
@@ -161,14 +199,14 @@ impl PrView {
     /// The loaded files in list order, when (`a`, `b`) is (merge base, source tip).
     pub fn diff_files(&self, a: Oid, b: Oid) -> Option<&[FileEntry]> {
         let Files::Loaded(c) = &self.files else { return None };
-        (c.base == a && self.tips.source == Some(b)).then_some(c.comparison.files.as_slice())
+        (c.base == a && self.source_tip() == Some(b)).then_some(c.comparison.files.as_slice())
     }
 
     /// The diff of `path` from the merge base to the source tip, once the files are loaded
     /// (the target its row opens).
     pub fn diff_target(&self, path: &str) -> Option<DiffTarget> {
         let Files::Loaded(c) = &self.files else { return None };
-        Some(DiffTarget::Between(c.base, self.tips.source?, path.to_owned()))
+        Some(DiffTarget::Between(c.base, self.source_tip()?, path.to_owned()))
     }
 }
 
@@ -176,61 +214,6 @@ impl PrView {
 /// reviews.
 pub fn initial_page(fs: &ForgeState) -> Page {
     if fs.host_provider().is_some_and(reviews_in_app) { Page::Loading } else { Page::Unsupported }
-}
-
-/// Why the local branches may not show the pull request as the service has it.
-#[derive(Clone, PartialEq, Debug)]
-pub enum OutOfSync {
-    TargetMissing,
-    SourceMissing,
-    /// The source branch is gone because it was deleted once merged.
-    SourceDeleted,
-    /// The local source tip is not the head the service reported.
-    SourceDiffers {
-        local: Oid,
-        head: String,
-    },
-}
-
-impl OutOfSync {
-    pub fn text(&self, v: &PrView) -> String {
-        let (r, pr) = (&v.remote, &v.pr);
-        match self {
-            OutOfSync::TargetMissing => format!("{r}/{} isn't in this repository. Fetch {r} to compare.", pr.target),
-            OutOfSync::SourceMissing => {
-                format!("{r}/{} isn't in this repository. Fetch {r} to compare. A branch on a fork can't be fetched from {r}.", pr.source)
-            }
-            OutOfSync::SourceDeleted => format!("{r}/{} was deleted after the merge.", pr.source),
-            OutOfSync::SourceDiffers { local, head } => format!(
-                "{r}/{} is at {}, but the {} is at {}. Fetch {r} to see its latest changes.",
-                pr.source,
-                short(&local.to_string()),
-                v.noun,
-                short(head)
-            ),
-        }
-    }
-}
-
-fn short(sha: &str) -> &str {
-    sha.get(..7).unwrap_or(sha)
-}
-
-/// The notes to show above the file list, one per problem.
-pub fn out_of_sync(v: &PrView) -> Vec<OutOfSync> {
-    let mut notes = Vec::new();
-    if v.tips.target.is_none() {
-        notes.push(OutOfSync::TargetMissing);
-    }
-    match (v.tips.source, &v.pr.head) {
-        (None, _) if v.state() == Some(PrState::Merged) => notes.push(OutOfSync::SourceDeleted),
-        (None, _) => notes.push(OutOfSync::SourceMissing),
-        (Some(local), Some(head)) if !v.pr.head_matches(&local.to_string()) => {
-            notes.push(OutOfSync::SourceDiffers { local, head: head.clone() })
-        }
-        _ => {}
-    }
-    notes
 }
 
 pub fn files_heading(n: usize) -> String {
@@ -282,13 +265,5 @@ pub fn description_text(s: &str) -> String {
     s.chars().filter(|&c| !is_bidi_control(c) && (!c.is_control() || c == '\n' || c == '\t')).collect()
 }
 
-/// Why the panel's Fetch button is disabled.
-pub fn fetch_blocked(snap: &Snapshot, remote: &str, idle: bool) -> Option<String> {
-    match super::remotes::find(snap, remote) {
-        None => Some(format!("{remote} is no longer a remote")),
-        Some(info) => super::remotes::fetch_blocked(info, idle).map(str::to_owned),
-    }
-}
-
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;

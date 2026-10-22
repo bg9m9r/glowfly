@@ -61,8 +61,21 @@ fn synced(threads: Vec<ReviewThread>) -> PrView {
     }
     v.tips = Tips { target: Some(oid(1)), source: Some(oid(2)) };
     let files = vec![FileEntry::new("src/a.rs", 'M'), FileEntry::new("src/b.rs", 'A')];
-    v.files = Files::Loaded(BranchChanges { base: oid(3), comparison: Comparison { files, absent: Default::default() } });
+    let changes = BranchChanges { base: oid(3), comparison: Comparison { files, absent: Default::default() } };
+    v.set_loaded(changes, tip(oid(2)), Default::default());
     v
+}
+
+fn tip(oid: Oid) -> glowfly_core::repo::SourceTip {
+    glowfly_core::repo::SourceTip { oid, from: glowfly_core::repo::SourceFrom::Branch }
+}
+
+/// Moves the shown source tip (None: nothing shown).
+fn shown_at(v: &mut PrView, source: Option<Oid>) {
+    match source {
+        Some(o) => v.shown.as_mut().unwrap().source = tip(o),
+        None => v.shown = None,
+    }
 }
 
 fn page(v: &PrView) -> &PrPage {
@@ -149,13 +162,13 @@ fn file_threads_order() {
 fn placement_needs_the_head_locally() {
     let mut v = synced(Vec::new());
     assert_eq!(placement(&v), Placement::OnLines, "the head matched ignoring case");
-    v.tips.source = Some(oid(4));
+    shown_at(&mut v, Some(oid(4)));
     let Placement::Elsewhere(note) = placement(&v) else { panic!("out of sync") };
     assert_eq!(
         note,
         format!("These comments are on {}; fetch origin to see them on their lines.", &oid(2).to_string().to_uppercase()[..7])
     );
-    v.tips.source = None;
+    shown_at(&mut v, None);
     assert!(matches!(placement(&v), Placement::Elsewhere(_)), "no source tip");
     let mut v = synced(Vec::new());
     v.files = Files::Loading;
@@ -186,7 +199,7 @@ fn marks_for_listed_current_threads() {
     assert_eq!(m[&(LineSide::New, 8)], Mark { thread: "T3".into(), count: 1, resolved: true });
     v.threads.show_outdated = true;
     assert!(!marks(&v, "src/a.rs").unwrap().contains_key(&(LineSide::New, 9)), "outdated threads have no line");
-    v.tips.source = Some(oid(9));
+    shown_at(&mut v, Some(oid(9)));
     assert_eq!(marks(&v, "src/a.rs"), None, "out of sync");
 }
 
@@ -216,7 +229,7 @@ fn go_to_reasons() {
     assert_eq!(go_to(&v, &outdated(t.clone())).unwrap_err(), "This comment is on an earlier version of the file");
     assert_eq!(go_to(&v, &thread("T", "src/A.rs", Some(1), 0)).unwrap_err(), "src/A.rs isn't among the files changed here");
     let mut away = v.clone();
-    away.tips.source = Some(oid(5));
+    shown_at(&mut away, Some(oid(5)));
     assert!(go_to(&away, &t).unwrap_err().starts_with("These comments are on"));
 }
 

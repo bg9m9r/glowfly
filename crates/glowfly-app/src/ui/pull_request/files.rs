@@ -1,5 +1,6 @@
 //! The pull request panel's changed files: the heading, notes on local branches that are
-//! missing or behind (with a Fetch button), and the list, whose rows open their diff.
+//! missing or behind, or on the head commit shown instead (with Fetch buttons; the Commits tab
+//! shows the same notes), and the list, whose rows open their diff.
 
 use super::super::details::file_reveal::reveal;
 use super::super::details::{RowActions, changed_file_row};
@@ -12,7 +13,10 @@ use crate::pull_request::PullRequestMsg;
 use crate::remote::RemoteMsg;
 use crate::state::AppState;
 use crate::state::lfs::TrackContext;
-use crate::state::pull_request::{Files, PrView, empty_text, fetch_blocked, files_heading, out_of_sync, unrelated_text};
+use crate::state::pull_request::{Files, PrView, empty_text, files_heading, unrelated_text};
+use crate::state::pull_request_source::{
+    NoteTone, fetch_blocked, head_button, head_fetch_blocked, offers_fetch, offers_head_fetch, out_of_sync, tone,
+};
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::banner::{self, BannerKind};
 use crate::ui::widgets::buttons;
@@ -46,7 +50,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
             empty_state(ui, EmptyIcon::File, NO_FILES, &empty_text(v), &[]);
         }
         Files::Loaded(c) => {
-            let Some(tip) = v.tips.source else { return };
+            let Some(tip) = v.source_tip() else { return };
             let (base, files) = (c.base, &c.comparison.files);
             let open = st.diff.as_ref().map(|(t, _)| t);
             let lfs = TrackContext::of(st);
@@ -69,22 +73,40 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
     }
 }
 
-/// One note per local branch that is missing or behind, and a Fetch button.
-fn notes(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) {
+/// One note per local branch that is missing or behind (or on the head shown instead), with
+/// "Fetch <remote>" and, when the service keeps a head ref, "Fetch #7's head".
+pub(super) fn notes(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) {
     let notes = out_of_sync(v);
     let Some(snap) = st.snap.as_ref().filter(|_| !notes.is_empty()) else { return };
-    banner::frame(ui, BannerKind::Warning, None, |ui| {
+    let kind = match tone(&notes) {
+        NoteTone::Info => BannerKind::Info,
+        NoteTone::Progress => BannerKind::Progress,
+        NoteTone::Warning => BannerKind::Warning,
+    };
+    banner::frame(ui, kind, None, |ui| {
         for n in &notes {
             ui.add(egui::Label::new(RichText::new(n.text(v)).color(color::text())).wrap());
         }
-        let blocked = fetch_blocked(snap, &v.remote, st.job.is_none());
-        let mut r = ui.add(buttons::secondary(format!("Fetch {}", v.remote)).enabled(blocked.is_none()));
-        if let Some(why) = &blocked {
-            r = r.on_hover_text(why);
+        let (fetch, head) = (offers_fetch(&notes), offers_head_fetch(v, &notes));
+        if !fetch && !head {
+            return;
         }
-        if r.clicked() {
-            msgs.push(Msg::Remote(RemoteMsg::Fetch(v.remote.clone())));
-        }
+        ui.horizontal_wrapped(|ui| {
+            if fetch {
+                let blocked = fetch_blocked(snap, &v.remote, st.job.is_none());
+                let r = ui.add(buttons::secondary(format!("Fetch {}", v.remote)).enabled(blocked.is_none()).why(blocked.as_deref()));
+                if r.clicked() {
+                    msgs.push(Msg::Remote(RemoteMsg::Fetch(v.remote.clone())));
+                }
+            }
+            if head {
+                let blocked = head_fetch_blocked(snap, v, st.runs_git_unasked());
+                let r = ui.add(buttons::secondary(head_button(v)).enabled(blocked.is_none()).why(blocked.as_deref()));
+                if r.clicked() {
+                    msgs.push(Msg::PullRequest(PullRequestMsg::FetchHead));
+                }
+            }
+        });
     });
     ui.add_space(4.0);
 }

@@ -175,6 +175,8 @@ pub(super) fn replied(
         PrReply::Loaded(result) => {
             if open && generation == st.pull_request_page_gen {
                 page_loaded(st, result);
+                // A fork the page names isn't compared from a same-named branch.
+                super::source::rekey(st, fx, false);
             }
             return;
         }

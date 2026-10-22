@@ -1037,12 +1037,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
   panel
 - Bitbucket Cloud and Data Center comments, approve / request changes and merge strategies in the
   panel
-- Fork pull requests: fetch the head ref (e.g. refs/pull/N/head) when the source branch isn't on
-  the remote
-- Use the head SHA directly when that commit is already here but the remote-tracking branch is
-  missing or behind
-- A Commits tab: the commits between the merge base and the source tip
-- Ctrl+Enter to post a comment or submit a review
 - Start a new code comment on a diff line (a single comment or one added to a pending review),
   with suggested changes
 - Place comments on their lines when the local source branch differs from the head (map the line
@@ -2586,6 +2580,19 @@ here, under the item they grew from.
 - Remember the Checks section's collapsed state per repository
 - Load the checks (and page) by itself once the repository is trusted, instead of on the next open
   or tab switch
+- Up/Down keys to move through the Commits tab's list
+- A commit's own file list inside the Commits tab (Files changed scoped to one commit or a range)
+- Compare from the loaded page's head SHA when it is newer than the listed head
+- Know fork pull requests from the service's list (the head repository), so a same-named remote
+  branch is never taken for the source before the page loads
+- Keep a fetched pull request head from being pruned by gc (a ref in a private namespace, removed
+  when the panel closes)
+- Fork pull requests on Azure DevOps and Bitbucket Cloud: fetch the source branch from the fork's
+  URL (they publish no head ref)
+- Commits tab rows: avatars, signature badges, each commit's checks, and cherry-pick, create
+  branch and compare in the row menu
+- Command+Enter in the merge form to open its confirmation
+- Hide the Commits tab's center hint when the pull request brings no commits
 
 ### Custom themes
 

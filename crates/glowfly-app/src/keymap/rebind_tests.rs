@@ -8,7 +8,7 @@ use super::*;
 use BindingId as I;
 use KeyName as K;
 
-const WHENS: [When; 14] = [
+const WHENS: [When; 15] = [
     When::Anywhere,
     When::NotTyping,
     When::WorkingDiff,
@@ -23,6 +23,7 @@ const WHENS: [When; 14] = [
     When::Blame,
     When::Graph,
     When::RebasePanel,
+    When::PrText,
 ];
 
 #[test]
@@ -42,6 +43,10 @@ fn overlaps_is_symmetric() {
     assert!(!When::Search.overlaps(When::Dialog));
     assert!(!When::Lists.overlaps(When::InPalette));
     assert!(When::Blame.overlaps(When::NotTyping) && !When::Blame.overlaps(When::Search));
+    // A pull request's text boxes overlap only themselves and Anywhere.
+    for other in WHENS {
+        assert_eq!(When::PrText.overlaps(other), matches!(other, When::PrText | When::Anywhere), "{other:?}");
+    }
 }
 
 #[test]

@@ -1,11 +1,11 @@
 use super::*;
 use glowfly_core::forge::{MergeState, PrDetail, Provider, Reviewer, Target};
 
-fn oid(n: u8) -> Oid {
+pub(crate) fn oid(n: u8) -> Oid {
     Oid::from_bytes(&[n; 20]).unwrap()
 }
 
-fn pr(head: Option<&str>) -> PullRequest {
+pub(crate) fn pr(head: Option<&str>) -> PullRequest {
     PullRequest {
         id: 7,
         title: "Add search".into(),
@@ -23,7 +23,7 @@ fn pr(head: Option<&str>) -> PullRequest {
     }
 }
 
-fn view(pr: PullRequest, tips: Tips) -> PrView {
+pub(crate) fn view(pr: PullRequest, tips: Tips) -> PrView {
     PrView {
         pr,
         label: "#7".into(),
@@ -32,6 +32,10 @@ fn view(pr: PullRequest, tips: Tips) -> PrView {
         listed: true,
         tips,
         files: Files::Missing,
+        head_ref: None,
+        shown: None,
+        head_fetch: Default::default(),
+        asked: None,
         tab: PrTab::Overview,
         page: Page::Loading,
         reloading: false,
@@ -57,30 +61,6 @@ fn tips_come_from_the_named_remote_only() {
     assert_eq!(Tips::in_remotes(&remotes, "up", &p), Tips { target: Some(oid(1)), source: None });
     assert_eq!(Tips::in_remotes(&remotes, "up/stream", &p), Tips { target: Some(oid(2)), source: Some(oid(3)) });
     assert_eq!(Tips::in_remotes(&remotes, "gone", &p), Tips { target: None, source: None });
-    assert_eq!(Tips::in_remotes(&remotes, "up/stream", &p).pair(), Some((oid(2), oid(3))));
-    assert_eq!(Tips::in_remotes(&remotes, "up", &p).pair(), None);
-}
-
-#[test]
-fn out_of_sync_notes_each_problem() {
-    let both = Tips { target: Some(oid(1)), source: Some(oid(2)) };
-    assert_eq!(out_of_sync(&view(pr(None), Tips { target: None, ..both })), [OutOfSync::TargetMissing]);
-    assert_eq!(out_of_sync(&view(pr(None), Tips { source: None, ..both })), [OutOfSync::SourceMissing]);
-    assert_eq!(out_of_sync(&view(pr(None), Tips { target: None, source: None })), [OutOfSync::TargetMissing, OutOfSync::SourceMissing]);
-    // No head from the service: nothing to compare with.
-    assert!(out_of_sync(&view(pr(None), both)).is_empty());
-    let local = oid(2).to_string();
-    assert!(out_of_sync(&view(pr(Some(&local)), both)).is_empty());
-    // A 12-character prefix (Bitbucket Cloud) matches.
-    assert!(out_of_sync(&view(pr(Some(&local[..12])), both)).is_empty());
-    let other = oid(9).to_string();
-    let v = view(pr(Some(&other)), both);
-    assert_eq!(out_of_sync(&v), [OutOfSync::SourceDiffers { local: oid(2), head: other.clone() }]);
-    assert_eq!(
-        out_of_sync(&v)[0].text(&v),
-        "origin/feature is at 0202020, but the pull request is at 0909090. Fetch origin to see its latest changes."
-    );
-    assert_eq!(OutOfSync::TargetMissing.text(&v), "origin/main isn't in this repository. Fetch origin to compare.");
 }
 
 #[test]
@@ -118,19 +98,6 @@ fn files_texts_name_the_branches() {
 }
 
 #[test]
-fn a_merged_source_reads_as_deleted() {
-    let both = Tips { target: Some(oid(1)), source: Some(oid(2)) };
-    let mut v = view(pr(None), Tips { source: None, ..both });
-    let mut detail = merged_detail();
-    v.page = Page::Loaded(Box::new(PrPage { detail: detail.clone(), entries: Vec::new(), threads: Vec::new(), threads_note: None }));
-    assert_eq!(out_of_sync(&v), [OutOfSync::SourceDeleted]);
-    assert_eq!(OutOfSync::SourceDeleted.text(&v), "origin/feature was deleted after the merge.");
-    detail.state = PrState::Open;
-    v.page = Page::Loaded(Box::new(PrPage { detail, entries: Vec::new(), threads: Vec::new(), threads_note: None }));
-    assert_eq!(out_of_sync(&v), [OutOfSync::SourceMissing]);
-}
-
-#[test]
 fn only_services_with_in_app_reviews_load_a_page() {
     let fs = |provider| {
         let t = Target { provider, host: "example.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
@@ -143,7 +110,7 @@ fn only_services_with_in_app_reviews_load_a_page() {
     assert_eq!(initial_page(&ForgeState::new(None, "origin".into(), None)), Page::Unsupported);
 }
 
-fn merged_detail() -> PrDetail {
+pub(crate) fn merged_detail() -> PrDetail {
     PrDetail {
         state: PrState::Merged,
         draft: false,

@@ -1,6 +1,9 @@
-//! The pull request panel's work (`Effect::PullRequest`): the files it changes, from its local
-//! remote-tracking tips, and its calls to the hosting service (the page, a comment, a review,
-//! its checks, a merge, a thread reply or resolve). The calls sign in the way the pull request list does, in the panel's repository.
+//! The pull request panel's work (`Effect::PullRequest`): the files and commits it brings
+//! (`repo::pr_compare`, from the target's remote-tracking tip to the listed head when it is
+//! here, else to the remote-tracking source branch), the fetch of the service's head ref for
+//! its objects (writing no ref), and its calls to the hosting service (the page, a comment, a
+//! review, its checks, a merge, a thread reply or resolve). The calls sign in the way the pull
+//! request list does, in the panel's repository.
 
 use crate::effect::ForgeError;
 use crate::msg::Msg;
@@ -11,8 +14,13 @@ use glowfly_core::repo;
 pub(super) fn run(e: PrEffect) -> Msg {
     match e {
         PrEffect::Files(job) => {
-            let result = repo::branch_changes(&job.workdir, job.tips.0, job.tips.1).map_err(|e| e.to_string());
-            Msg::PullRequest(PullRequestMsg::FilesLoaded { id: job.id, tips: job.tips, generation: job.generation, result })
+            let result = repo::pr_compare(&job.workdir, job.target, job.branch, job.head.as_deref()).map_err(|e| e.to_string());
+            Msg::PullRequest(PullRequestMsg::FilesLoaded { id: job.id, generation: job.generation, result })
+        }
+        PrEffect::FetchHead(job) => {
+            let (ok, output) = super::git_ops::run_git(&job.workdir, std::slice::from_ref(&job.cmd), None, job.prompts);
+            let result = if ok { Ok(()) } else { Err(glowfly_core::logs::last_message(&output)) };
+            Msg::PullRequest(PullRequestMsg::HeadFetched { id: job.id, head: job.head, result })
         }
         PrEffect::Call(job) => call(*job),
     }

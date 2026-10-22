@@ -75,6 +75,8 @@ pub enum When {
     Graph,
     /// The interactive rebase panel is the central view.
     RebasePanel,
+    /// A pull request's comment, reply or review box has focus.
+    PrText,
 }
 
 impl When {
@@ -95,13 +97,14 @@ impl When {
             When::Blame => Some("in the blame view"),
             When::Graph => Some("in the commit graph"),
             When::RebasePanel => Some("in the interactive rebase panel"),
+            When::PrText => Some("in a pull request's comment, reply or review box"),
         }
     }
 
     /// Whether a key could reach bindings of both places at once, so they can't share it.
     /// The places that need no text field (`NotTyping`, the diff, the lists, the graph, blame)
     /// overlap one another; each place with its own text field (the commit message, the search
-    /// field, the palette, a dialog) overlaps only itself, and the palette's two lists overlap.
+    /// field, the palette, a dialog, a pull request's text boxes) overlaps only itself, and the palette's two lists overlap.
     /// The rebase panel is drawn only when no diff, list, graph or blame view is, so it
     /// overlaps only itself, `Anywhere` and `NotTyping`.
     pub fn overlaps(self, other: When) -> bool {
@@ -160,7 +163,7 @@ const FULL_SCREEN: &[Chord] = if cfg!(target_os = "macos") { &[C::cmd_ctrl(K::Le
 
 /// Every binding, in display order within its group. Rebindable rows are matched through the
 /// effective keymap (`ui/shortcuts/global.rs`); fixed rows document context keys their views
-/// match themselves (dialogs, the palette, lists, the commit box, Esc in `ui/central.rs`, the
+/// match themselves (dialogs, the palette, lists, the commit box, a pull request's text boxes, Esc in `ui/central.rs`, the
 /// rebase panel's keys in `ui/rebase/keys.rs`), except Go to tab 1 to 8, matched with the
 /// rebindable rows. Change a fixed key there, change it here. The Repository commands rows have
 /// no default keys; each runs a palette command (`state/palette_bindings.rs`).
@@ -285,6 +288,7 @@ pub const BINDINGS: &[Binding] = &[
     b(I::Undo, G::General, "Undo", &[C::cmd(K::Letter('Z'))], W::NotTyping),
     b(I::Redo, G::General, "Redo", &[C::cmd(K::Letter('Y')), C::cmd_shift(K::Letter('Z'))], W::NotTyping),
     fixed(I::DialogSubmit, G::General, "Confirm a dialog's name field", &[C::plain(K::Enter)], W::Dialog),
+    fixed(I::SendPrText, G::General, "Post the comment, reply or review", &[C::cmd(K::Enter)], W::PrText),
 ];
 
 /// Whether `id` is a Repository commands row, which runs a palette command.

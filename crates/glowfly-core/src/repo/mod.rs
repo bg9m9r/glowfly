@@ -17,7 +17,7 @@
 //! `removal` (working-tree files), `tracked`,
 //! `attrs` (gitattributes), `submodules` (and `submodule_add`, the checks on a new submodule's
 //! folder), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
-//! `shallow`; `divergence` (the commits on each side of a branch and its upstream, from the
+//! `shallow`; `pr_compare` (a pull request's source tip, files and commits), `divergence` (the commits on each side of a branch and its upstream, from the
 //! loaded graph) and `fetch_time` (when FETCH_HEAD was written). Paths: `entry`
 //! (file rows and their hazards), `rpath` (git's path bytes), `exact` (index edits that match
 //! one path exactly) and `collide` (paths a file system can't keep apart).
@@ -58,6 +58,7 @@ mod load;
 mod markers;
 mod merge_msg;
 mod noclobber;
+mod pr_compare;
 mod refs_key;
 mod remotes;
 mod removal;
@@ -126,6 +127,7 @@ pub use lines::{apply_lines, apply_shown};
 pub use load::{load, load_cached, messages_between};
 pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
 pub use merge_msg::merge_message;
+pub use pr_compare::{PR_COMMITS_MAX, PrCompare, RangeCommit, RangeCommits, SourceFrom, SourceTip, is_commit_prefix, pr_compare};
 pub use refs_key::{RACY_WINDOW, open_file_stamp, refs_key, stamp_trustworthy};
 pub use remotes::RemoteInfo;
 pub(crate) use removal::TRASH_NAME;
@@ -444,6 +446,8 @@ mod load_filter_tests;
 mod markers_tests;
 #[cfg(test)]
 mod merge_msg_tests;
+#[cfg(test)]
+mod pr_compare_tests;
 #[cfg(test)]
 mod refs_key_tests;
 #[cfg(test)]

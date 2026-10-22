@@ -204,6 +204,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Trust(_)
         | Effect::Notify(_)
         | Effect::Logs(_)
+        // Reads and calls, and a pull request head fetch that writes no ref.
         | Effect::PullRequest(_)
         | Effect::DeepLink(_)
         | Effect::Dashboard(_)

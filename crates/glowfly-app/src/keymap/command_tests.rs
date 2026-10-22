@@ -31,12 +31,13 @@ fn command_ids_are_stable() {
         "open-in-terminal",
         "show-repo-folder",
     ];
-    let keys: Vec<&str> = BindingId::ALL[OLDER..].iter().map(|id| id.key()).collect();
+    let commands = &BindingId::ALL[OLDER..OLDER + FROZEN.len()];
+    let keys: Vec<&str> = commands.iter().map(|id| id.key()).collect();
     assert_eq!(keys, FROZEN);
     for id in COMMAND_BINDINGS {
         assert_eq!(BindingId::from_key(id.key()), Some(id));
     }
-    assert_eq!(COMMAND_BINDINGS[..], BindingId::ALL[OLDER..]);
+    assert_eq!(COMMAND_BINDINGS[..], *commands);
 }
 
 #[test]

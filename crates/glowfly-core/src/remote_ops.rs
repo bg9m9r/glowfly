@@ -200,6 +200,18 @@ pub fn fetch_cmd(name: &str) -> Vec<String> {
     args(&["fetch", "--prune", name])
 }
 
+/// Fetches `refname` from `remote` (a pull request's head ref) for its objects only: no tags,
+/// no submodules, and with an empty refmap, so no remote-tracking ref changes. Without
+/// `write_fetch_head` (git 2.29 and later) FETCH_HEAD isn't written either.
+pub fn fetch_ref_cmd(remote: &str, refname: &str, write_fetch_head: bool) -> Vec<String> {
+    let mut cmd = args(&["fetch", "--no-tags", "--recurse-submodules=no", "--refmap="]);
+    if !write_fetch_head {
+        cmd.push("--no-write-fetch-head".into());
+    }
+    cmd.extend([remote.to_owned(), refname.to_owned()]);
+    cmd
+}
+
 /// `git remote remove <name>`.
 pub fn remove_cmd(name: &str) -> Vec<String> {
     args(&["remote", "remove", name])

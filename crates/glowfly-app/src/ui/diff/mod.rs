@@ -167,7 +167,7 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
     let anchor = cache.refresh_heights(lines, &gap_lines, style.row_h, style.tab, wrap);
     let scroll_to = scroll_to.or(anchor.then_some(st.view.diff_top_row));
     let m = cache.row_metrics(style.row_h);
-    let marks = st.pull_request.as_ref().filter(|v| v.shows(target)).and_then(|v| pull_request_threads::marks(v, target.path()));
+    let marks = st.pull_request.as_ref().filter(|v| v.shows_file(target)).and_then(|v| pull_request_threads::marks(v, target.path()));
     let marks = marks.as_ref();
     let hunk_gen = st.hunk_ops_gen();
     let t = st.settings.lang();

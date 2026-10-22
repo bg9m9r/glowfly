@@ -322,7 +322,9 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             super::history::head_moved(st, &snap, fx);
             super::blame::head_moved(st, &snap, fx);
             if let Selection::Commit(oid) = st.selection {
-                let still_there = snap.row_of.contains_key(&oid) || snap.stashes.iter().any(|s| s.oid == oid);
+                // A pull request's commit (a fork's head, say) may be on no branch of the graph.
+                let in_pr = st.pull_request.as_ref().is_some_and(|v| v.has_commit(oid));
+                let still_there = snap.row_of.contains_key(&oid) || snap.stashes.iter().any(|s| s.oid == oid) || in_pr;
                 if !still_there {
                     st.selection = Selection::None;
                     st.detail = None;

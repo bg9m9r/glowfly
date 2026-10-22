@@ -104,6 +104,8 @@ fn ids_are_stable() {
         assert_eq!(BindingId::from_key(id.key()), Some(id));
     }
     assert_eq!(BindingId::from_key("New-Tab"), None);
+    assert_eq!(BindingId::from_key("send-pull-request-text"), Some(BindingId::SendPrText));
+    assert_eq!(BindingId::ALL.last(), Some(&BindingId::SendPrText));
 }
 
 #[test]

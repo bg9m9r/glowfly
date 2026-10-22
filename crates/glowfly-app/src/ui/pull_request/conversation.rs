@@ -7,7 +7,9 @@ use super::super::markdown;
 use super::super::markdown_cache::MarkdownCache;
 use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
+use super::send_key;
 use super::{note, threads, tone_color};
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
@@ -28,13 +30,14 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs:
     let go_to = threads::go_to_reasons(st);
     let scroll = st.view.pr_thread_scroll.take();
     let t = st.settings.lang();
-    let ctx = threads::Ctx { settings: &st.settings, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
+    let keys = &st.keymap;
+    let ctx = threads::Ctx { settings: &st.settings, keys, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
     let Some(v) = st.pull_request.as_mut() else { return };
     let supported = !matches!(v.page, Page::Unsupported);
     if supported {
         egui::TopBottomPanel::bottom("pr-comment-box")
             .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(16, 8)))
-            .show_inside(ui, |ui| comment_box(ui, v, msgs));
+            .show_inside(ui, |ui| comment_box(ui, keys, v, msgs));
     }
     egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(16, 10))).show_inside(
         ui,
@@ -133,16 +136,22 @@ fn entry(ui: &mut Ui, i: usize, e: &Entry, ctx: &threads::Ctx, md: &mut Markdown
     ui.separator();
 }
 
-/// The comment box and its button, with the last post's failure above it.
-fn comment_box(ui: &mut Ui, v: &mut PrView, msgs: &mut Vec<Msg>) {
+/// The comment box and its button, with the last post's failure above it. Command+Enter in
+/// the box posts too.
+fn comment_box(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Msg>) {
     if let Some(e) = error_for(v, &PrAction::Comment) {
         note(ui, e.to_owned(), color::removed());
     }
     let edit = egui::TextEdit::multiline(&mut v.forms.comment).hint_text("Write a comment").desired_rows(3).desired_width(f32::INFINITY);
-    controls::field(ui, edit);
+    let field = controls::field(ui, edit);
+    crate::ui::access::name_field(&field, "Write a comment");
     let blocked = comment_blocked(v);
+    if send_key(ui, &field) && blocked.is_none() {
+        msgs.push(Msg::PullRequest(PullRequestMsg::PostComment));
+    }
+    let tip = keys.tip("Comment", BindingId::SendPrText);
     ui.horizontal(|ui| {
-        let mut r = ui.add(buttons::secondary("Comment").enabled(blocked.is_none()));
+        let mut r = ui.add(buttons::secondary("Comment").enabled(blocked.is_none()).tip(&tip));
         if let Some(why) = &blocked {
             r = r.on_hover_text(why);
         }

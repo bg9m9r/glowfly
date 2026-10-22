@@ -180,6 +180,7 @@ fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         | I::PaletteClose
         | I::SearchNext
         | I::DialogSubmit
+        | I::SendPrText
         | I::RebaseStepSelect
         | I::RebaseStepMove
         | I::RebasePick
@@ -322,6 +323,7 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         | I::PaletteClose
         | I::SearchNext
         | I::DialogSubmit
+        | I::SendPrText
         | I::RebaseStepSelect
         | I::RebaseStepMove
         | I::RebasePick
