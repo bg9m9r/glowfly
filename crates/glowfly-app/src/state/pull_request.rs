@@ -4,13 +4,15 @@
 //! are loaded by `Effect::PullRequest`; where the files and commits come from (and the notes on
 //! it) is in pull_request_source.rs, the Commits tab's texts in pull_request_commits.rs, the
 //! action forms' rules in pull_request_actions.rs, the code comment threads' in
-//! pull_request_threads.rs, a new code comment on diff lines in pull_request_line_comment.rs,
+//! pull_request_threads.rs (placed on the local version's lines by pull_request_line_map.rs
+//! when the files aren't of the service's head), a new code comment on diff lines in pull_request_line_comment.rs,
 //! and the Checks section's in pull_request_checks.rs.
 
 use super::ForgeState;
 use super::pull_request_actions::PrForms;
 use super::pull_request_checks::PrChecks;
 use super::pull_request_line_comment::LineDraft;
+use super::pull_request_line_map::LineMaps;
 use super::pull_request_source::{FilesKey, HeadFetch, Shown, files_key};
 use super::pull_request_threads::ThreadView;
 use git2::Oid;
@@ -123,6 +125,8 @@ pub struct PrView {
     pub checks: PrChecks,
     /// The unposted code comment on lines of a file's diff, if any.
     pub line_draft: Option<LineDraft>,
+    /// The threads' lines mapped onto the local source tip, when it isn't the service's head.
+    pub lines: LineMaps,
 }
 
 impl PrView {
@@ -150,6 +154,7 @@ impl PrView {
             threads: ThreadView::default(),
             checks: PrChecks::new(fs),
             line_draft: None,
+            lines: LineMaps::default(),
         }
     }
 

@@ -76,7 +76,7 @@ fn side_tree(repo: &Repository, oid: Oid) -> Result<Option<Tree<'_>>> {
 
 /// The tree-to-tree diff from commit `from` to commit `to` (either may be the empty tree), with
 /// renames detected.
-fn trees_diff<'r>(repo: &'r Repository, from: Oid, to: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
+pub(super) fn trees_diff<'r>(repo: &'r Repository, from: Oid, to: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
     renamed(repo, trees_plain(repo, from, to, opts)?)
 }
 

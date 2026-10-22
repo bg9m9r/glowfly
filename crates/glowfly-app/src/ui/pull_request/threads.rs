@@ -15,8 +15,9 @@ use crate::state::AppState;
 use crate::state::pull_request::{PrAction, PrView, description_text};
 use crate::state::pull_request_actions::error_for;
 use crate::state::pull_request_line_comment::draft_on;
+use crate::state::pull_request_line_map::head_path;
 use crate::state::pull_request_threads::{
-    Placement, file_threads, go_to_open, hidden, hidden_text, is_open, kind_counts, on_file, outdated_toggle, placement, reply_blocked,
+    file_threads, go_to_open, hidden, hidden_text, is_open, kind_counts, on_file, outdated_toggle, placement, reply_blocked,
     resolve_blocked, resolve_label, resolved_toggle, where_text,
 };
 use crate::ui::theme::controls;
@@ -106,6 +107,7 @@ fn go_link(ui: &mut Ui, text: String, id: &str, blocked: Option<&String>, msgs: 
 pub(super) fn card(ui: &mut Ui, v: &mut PrView, id: &str, place: Place, ctx: &Ctx, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let Some(t) = v.loaded().and_then(|p| p.threads.iter().find(|t| t.id == id)).cloned() else { return };
     let open = is_open(&v.threads, &t);
+    let at = where_text(v, &t);
     let focused = v.threads.focus.as_deref() == Some(id);
     let border = if focused { color::accent() } else { color::border() };
     let frame = egui::Frame::new()
@@ -116,7 +118,7 @@ pub(super) fn card(ui: &mut Ui, v: &mut PrView, id: &str, place: Place, ctx: &Ct
     let resp = frame
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            header(ui, &t, place, open, ctx, msgs);
+            header(ui, &t, &at, place, open, ctx, msgs);
             if open {
                 body(ui, v, &t, place, ctx, md, msgs);
             }
@@ -132,7 +134,8 @@ pub(super) fn card(ui: &mut Ui, v: &mut PrView, id: &str, place: Place, ctx: &Ct
     ui.add_space(6.0);
 }
 
-fn header(ui: &mut Ui, t: &ReviewThread, place: Place, open: bool, ctx: &Ctx, msgs: &mut Vec<Msg>) {
+/// `at` says where the thread is (`where_text`).
+fn header(ui: &mut Ui, t: &ReviewThread, at: &str, place: Place, open: bool, ctx: &Ctx, msgs: &mut Vec<Msg>) {
     let blocked = ctx.go_to.get(&t.id).cloned().flatten();
     // Show/Hide keeps its place on the right; the rest wraps in the width left of it.
     ui.horizontal(|ui| {
@@ -148,7 +151,7 @@ fn header(ui: &mut Ui, t: &ReviewThread, place: Place, open: bool, ctx: &Ctx, ms
                     go_link(ui, printable(&t.path), &t.id, blocked.as_ref(), msgs);
                 }
                 ui.label(RichText::new("on").color(color::weak()));
-                go_link(ui, where_text(t), &t.id, blocked.as_ref(), msgs);
+                go_link(ui, at.to_owned(), &t.id, blocked.as_ref(), msgs);
                 if t.outdated {
                     chip(ui, "Outdated", color::warn());
                 }
@@ -227,7 +230,8 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
 
 /// The pane under a pull request file's diff: the new comment's box when its draft is on this
 /// file, then the file's threads, with the filter bar, and a note when they can't be placed on
-/// the local lines.
+/// the local lines (or are placed on the local version's). A file the head names otherwise (a
+/// rename) lists the threads under the head's name.
 pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let go_to = go_to_reasons(st);
     let scroll = st.view.pr_thread_scroll.take();
@@ -236,18 +240,19 @@ pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, md: &mut Mar
     let ctx = Ctx { settings: &st.settings, keys: &st.keymap, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
     let Some(v) = st.pull_request.as_mut() else { return };
     let drafted = draft_on(v, path);
+    let shown = head_path(v, path).to_owned();
     let Some(p) = v.loaded() else { return };
-    let n = on_file(p, path);
-    let ids: Vec<String> = file_threads(p, &v.threads, path).iter().map(|t| t.id.clone()).collect();
+    let n = on_file(p, &shown);
+    let ids: Vec<String> = file_threads(p, &v.threads, &shown).iter().map(|t| t.id.clone()).collect();
     ui.add_space(6.0);
     // A draft alone opens the pane: no heading over an empty list then.
     if n > 0 || !drafted {
         ui.label(type_scale::section_text(ui, format!("Comments on this file  {n}")));
     }
-    if let Placement::Elsewhere(why) = placement(v) {
-        note(ui, why, color::weak());
+    if let Some(text) = placement(v).note() {
+        note(ui, text.to_owned(), color::weak());
     }
-    filter_bar(ui, v, Some(path), msgs);
+    filter_bar(ui, v, Some(&shown), msgs);
     egui::ScrollArea::vertical().id_salt("pr-file-threads").auto_shrink([false, false]).show(ui, |ui| {
         if drafted {
             super::line_comment::card(ui, ctx.settings.lang(), v, &reasons, ctx.keys, focus, msgs);

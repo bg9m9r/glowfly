@@ -185,6 +185,8 @@ pub(super) fn replied(
                 page_loaded(st, result);
                 // A fork the page names isn't compared from a same-named branch.
                 super::source::rekey(st, fx, false);
+                // A new head or new threads' paths ask for new line maps.
+                super::line_map::sync(st, fx, false);
             }
             return;
         }

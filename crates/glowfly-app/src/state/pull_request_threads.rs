@@ -1,14 +1,16 @@
 //! The pull request panel's code comment threads: which are listed and open, their place in
 //! the conversation and in a file's diff, the line markers, the texts that locate them, and
 //! why replying, resolving or going to one is unavailable. Pure; the calls are made by
-//! update/pull_request/threads.rs.
+//! update/pull_request/threads.rs. When the files aren't of the service's head, the threads'
+//! lines are mapped onto the local version (pull_request_line_map.rs).
 
 use super::AppState;
 use super::pull_request::{Files, PrView};
 use super::pull_request_actions::{MAX_BODY, ready};
+use super::pull_request_line_map::{LineMaps, Spot, current, mapped_note, spot, unmapped_why, wanted};
 use glowfly_core::diff_rows::{LineSide, row_of_file_line};
 use glowfly_core::forge::{Entry, PrPage, ReviewThread};
-use glowfly_core::repo::DiffTarget;
+use glowfly_core::repo::{DiffTarget, PrLineMaps};
 use glowfly_core::settings::DiffMode;
 use std::collections::HashMap;
 
@@ -112,8 +114,21 @@ pub fn on_file(page: &PrPage, path: &str) -> usize {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Placement {
     OnLines,
+    /// The local files are of another commit, and the threads' lines are mapped onto it; the
+    /// text says so.
+    Mapped(String),
     /// The local files are of another commit (or not loaded); the text says how to fix it.
     Elsewhere(String),
+}
+
+impl Placement {
+    /// The note over the threads; None when they are on their lines.
+    pub fn note(&self) -> Option<&str> {
+        match self {
+            Placement::OnLines => None,
+            Placement::Mapped(s) | Placement::Elsewhere(s) => Some(s),
+        }
+    }
 }
 
 fn short(sha: &str) -> &str {
@@ -121,15 +136,23 @@ fn short(sha: &str) -> &str {
 }
 
 /// OnLines when the files are loaded and their source tip (the remote-tracking branch, or the
-/// listed head when it was used) is the head the service reported.
+/// listed head when it was used) is the head the service reported; Mapped once the threads'
+/// lines are mapped onto another source tip; else Elsewhere, saying why.
 pub fn placement(v: &PrView) -> Placement {
     let head = v.loaded().map(|p| p.detail.head_sha.as_str()).unwrap_or_default();
     let synced =
         matches!(v.files, Files::Loaded(_)) && !head.is_empty() && v.source_tip().is_some_and(|s| s.to_string().eq_ignore_ascii_case(head));
     if synced {
-        Placement::OnLines
-    } else {
-        Placement::Elsewhere(format!("These comments are on {}; fetch {} to see them on their lines.", short(head), v.remote))
+        return Placement::OnLines;
+    }
+    let fetch = || Placement::Elsewhere(format!("These comments are on {}; fetch {} to see them on their lines.", short(head), v.remote));
+    match (wanted(v), current(v)) {
+        (None, _) | (_, Some(LineMaps::Loaded { maps: PrLineMaps::HeadMissing, .. })) => fetch(),
+        (Some(key), Some(LineMaps::Loaded { .. })) => Placement::Mapped(mapped_note(v, key.local)),
+        (_, Some(LineMaps::Failed { .. })) => {
+            Placement::Elsewhere(format!("These comments are on {}; their lines couldn't be found in the local version.", short(head)))
+        }
+        _ => Placement::Elsewhere("Placing these comments on the local version…".to_owned()),
     }
 }
 
@@ -147,55 +170,81 @@ pub struct Mark {
 pub type Marks = HashMap<(LineSide, u32), Mark>;
 
 /// The markers for `path`'s diff lines: listed, current threads with a line, by (side, line).
-/// None unless the threads can be placed on the local lines.
+/// While Mapped, on the local lines (and path) they map to. None unless the threads can be
+/// placed on the local lines.
 pub fn marks(v: &PrView, path: &str) -> Option<Marks> {
-    if placement(v) != Placement::OnLines {
-        return None;
-    }
+    let mapped = match placement(v) {
+        Placement::OnLines => false,
+        Placement::Mapped(_) => true,
+        Placement::Elsewhere(_) => return None,
+    };
     let mut out = Marks::new();
-    for t in v.loaded()?.threads.iter().filter(|t| t.path == path && listed(&v.threads, t) && !t.outdated) {
-        let Some(line) = t.line else { continue };
-        let m = out.entry((t.side, line)).or_insert_with(|| Mark { thread: t.id.clone(), count: 0, resolved: true });
+    for t in v.loaded()?.threads.iter().filter(|t| listed(&v.threads, t) && !t.outdated) {
+        let at = if mapped {
+            spot(v, t).filter(|s| s.path == path).and_then(|s| s.line.map(|n| (s.side, n)))
+        } else {
+            t.line.filter(|_| t.path == path).map(|n| (t.side, n))
+        };
+        let Some(at) = at else { continue };
+        let m = out.entry(at).or_insert_with(|| Mark { thread: t.id.clone(), count: 0, resolved: true });
         m.count += t.comments.len();
         m.resolved &= t.resolved;
     }
     Some(out)
 }
 
+/// "line 42", "lines 40–42", "deleted line 12", or "the file" (no line).
+fn lines_text(side: LineSide, start: Option<u32>, line: Option<u32>) -> String {
+    let Some(line) = line else { return "the file".to_owned() };
+    let deleted = if side == LineSide::Old { "deleted " } else { "" };
+    match start.filter(|&s| s < line) {
+        Some(s) => format!("{deleted}lines {s}\u{2013}{line}"),
+        None => format!("{deleted}line {line}"),
+    }
+}
+
 /// Where the thread is: "line 42", "lines 40–42", "deleted line 12", "the file", or "line 7 of
-/// an earlier version".
-pub fn where_text(t: &ReviewThread) -> String {
+/// an earlier version"; while Mapped, its local lines then the head's ("line 40 (line 42 on
+/// abc1234)"), or "line 42 on abc1234, not in the local version".
+pub fn where_text(v: &PrView, t: &ReviewThread) -> String {
     if t.outdated {
         return match t.original_line {
             Some(n) => format!("line {n} of an earlier version"),
             None => "an earlier version".to_owned(),
         };
     }
-    let Some(line) = t.line else { return "the file".to_owned() };
-    let deleted = if t.side == LineSide::Old { "deleted " } else { "" };
-    match t.start_line.filter(|&s| s < line) {
-        Some(s) => format!("{deleted}lines {s}\u{2013}{line}"),
-        None => format!("{deleted}line {line}"),
+    let head = lines_text(t.side, t.start_line, t.line);
+    if !matches!(placement(v), Placement::Mapped(_)) {
+        return head;
+    }
+    let short = short(v.loaded().map(|p| p.detail.head_sha.as_str()).unwrap_or_default());
+    match spot(v, t).map(|s| lines_text(s.side, s.start_line, s.line)) {
+        Some(local) if local == head => head,
+        Some(local) => format!("{local} ({head} on {short})"),
+        None => format!("{head} on {short}, not in the local version"),
     }
 }
 
 /// Where going to `t` opens: its file's diff in Files changed, and its side and line (0 for a
 /// comment on the whole file, which no row has, so the diff opens where it usually does).
-/// Paths are matched exactly against the loaded file list; nothing else builds a diff.
+/// Paths are matched exactly against the loaded file list; nothing else builds a diff. While
+/// Mapped, it opens the local file and line the thread maps to.
 pub fn go_to(v: &PrView, t: &ReviewThread) -> Result<(DiffTarget, LineSide, u32), String> {
     if t.outdated {
         return Err("This comment is on an earlier version of the file".to_owned());
     }
+    let s = match placement(v) {
+        Placement::Elsewhere(why) => return Err(why),
+        Placement::Mapped(_) => spot(v, t).ok_or_else(|| unmapped_why(t))?,
+        Placement::OnLines => Spot { path: t.path.clone(), side: t.side, start_line: t.start_line, line: t.line },
+    };
     if let Files::Loaded(c) = &v.files
-        && !c.comparison.files.iter().any(|f| f.path == t.path)
+        && !c.comparison.files.iter().any(|f| f.path == s.path)
     {
-        return Err(format!("{} isn't among the files changed here", glowfly_core::text::printable(&t.path)));
+        return Err(format!("{} isn't among the files changed here", glowfly_core::text::printable(&s.path)));
     }
-    if let Placement::Elsewhere(why) = placement(v) {
-        return Err(why);
-    }
-    let target = v.diff_target(&t.path).ok_or_else(|| format!("{} isn't among the files changed here", t.path))?;
-    Ok((target, t.side, t.line.unwrap_or(0)))
+    let target = v.diff_target(&s.path).ok_or_else(|| format!("{} isn't among the files changed here", s.path))?;
+    Ok((target, s.side, s.line.unwrap_or(0)))
 }
 
 /// `go_to`, also refused when that diff is open in the hunk view and its hunks don't show the
@@ -256,5 +305,7 @@ pub fn resolve_label(t: &ReviewThread) -> &'static str {
     if t.resolved { "Unresolve" } else { "Resolve" }
 }
 
+#[cfg(test)]
+mod mapped_tests;
 #[cfg(test)]
 mod tests;

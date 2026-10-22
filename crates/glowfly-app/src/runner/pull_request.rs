@@ -1,7 +1,8 @@
 //! The pull request panel's work (`Effect::PullRequest`): the files and commits it brings
 //! (`repo::pr_compare`, from the target's remote-tracking tip to the listed head when it is
 //! here, else to the remote-tracking source branch), the fetch of the service's head ref for
-//! its objects (writing no ref), and its calls to the hosting service (the page, a comment, a
+//! its objects (writing no ref), the threads' lines mapped from the service's head onto the
+//! local source tip (`repo::pr_line_maps`), and its calls to the hosting service (the page, a comment, a
 //! review, its checks, a merge, a thread reply or resolve, a new code comment on diff lines,
 //! alone or in the pending review). The calls sign in the way the pull
 //! request list does, in the panel's repository.
@@ -22,6 +23,11 @@ pub(super) fn run(e: PrEffect) -> Msg {
             let (ok, output) = super::git_ops::run_git(&job.workdir, std::slice::from_ref(&job.cmd), None, job.prompts);
             let result = if ok { Ok(()) } else { Err(glowfly_core::logs::last_message(&output)) };
             Msg::PullRequest(PullRequestMsg::HeadFetched { id: job.id, head: job.head, result })
+        }
+        PrEffect::LineMaps(job) => {
+            let result =
+                repo::pr_line_maps(&job.workdir, &job.head, job.local, job.target, job.base, &job.paths).map_err(|e| e.to_string());
+            Msg::PullRequest(PullRequestMsg::LinesMapped { id: job.id, generation: job.generation, result })
         }
         PrEffect::Call(job) => call(*job),
     }

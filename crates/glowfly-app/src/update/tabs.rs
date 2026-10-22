@@ -332,6 +332,8 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.pull_request = p.pull_request;
     // File lists for this tab were dropped while it was parked.
     st.pull_request_gen += 1;
+    // Line maps for this tab were dropped while it was parked.
+    st.pull_request_lines_gen += 1;
     st.issue = p.issue;
     super::issue_create::unpark(st, p.issue_form);
     // Details for this tab were dropped while it was parked.

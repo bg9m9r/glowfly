@@ -72,7 +72,7 @@ pub fn is_commit_prefix(s: &str) -> bool {
 
 /// The commit `prefix` names, when it names exactly one commit here. Not found, ambiguous and
 /// another kind of object all count as not here.
-fn find_commit(repo: &Repository, prefix: &str) -> Option<Oid> {
+pub(super) fn find_commit(repo: &Repository, prefix: &str) -> Option<Oid> {
     if !is_commit_prefix(prefix) {
         return None;
     }

@@ -228,6 +228,15 @@ binary (package `glowfly`).
   from `reviews_in_app`. A single comment's thread gets a provisional `new:<comment id>` id until
   the page reloads, when `adopt_new_threads` hands its reply draft, open state and focus to the
   real thread; an answer for a parked tab is applied to that tab's parked panel.
+- **Code comments on the local version's lines**: when the files were loaded from a source tip
+  that isn't the service's head, the threads' lines are mapped from the head onto it in the
+  background (`glowfly-core/src/repo/line_map.rs`: a zero-context tree-to-tree diff that follows
+  renames; `PrEffect::LineMaps`, `update/pull_request/line_map.rs`). The map is kept with the key
+  it was made for (`state/pull_request_line_map.rs::MapKey`: head, local tip, base, target and the
+  threads' paths) and used only while that key is still wanted, so a moved tip or new threads ask
+  again; `Placement::Mapped` then puts the markers, location texts and go-to on the mapped lines
+  (`state/pull_request_threads.rs`). Deleted-line numbers are kept only while the head's merge
+  base with the target is the local diff's base.
 - **Operation journal**: the timeline is git's reflogs plus Glowfly's notes. Only the runner
   writes notes, and only around the work that rewrites history: a `RunGit` whose job carries a
   `journal` op (worked out from the command as the user gave it, before the auto-stash wrap, in

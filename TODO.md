@@ -1037,8 +1037,6 @@ Chosen on 2026-10-19 as the features that make Glowfly its own, in this order.
   panel
 - Bitbucket Cloud and Data Center comments, approve / request changes and merge strategies in the
   panel
-- Place comments on their lines when the local source branch differs from the head (map the line
-  numbers across the newer commits)
 
 ### Packaging and updates
 
@@ -2586,6 +2584,14 @@ here, under the item they grew from.
   pick the line again
 - Grow the Files changed comment pane to fit the new comment box when a draft opens it (it keeps
   its 220 px default and scrolls today)
+- Start a code comment on a mapped line when the local branch differs from the service's head
+  (post it against the head's line number)
+- Map deleted-line comments across a changed merge base (a line map between the service's base
+  and the local base)
+- Map a multi-line comment's range when its first line changed locally (it shows as its last line
+  now)
+- Map outdated comments' original lines onto the local version when that commit is here
+- Say on the Files changed rows which files have comments not on the local lines
 
 ### Custom themes
 

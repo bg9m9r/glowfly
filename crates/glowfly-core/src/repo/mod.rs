@@ -18,7 +18,7 @@
 //! `removal` (working-tree files), `tracked`,
 //! `attrs` (gitattributes), `submodules` (and `submodule_add`, the checks on a new submodule's
 //! folder), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
-//! `shallow`; `pr_compare` (a pull request's source tip, files and commits), `divergence` (the commits on each side of a branch and its upstream, from the
+//! `shallow`; `pr_compare` (a pull request's source tip, files and commits), `line_map` (a file's lines mapped across commits, following renames, for pull request threads), `divergence` (the commits on each side of a branch and its upstream, from the
 //! loaded graph) and `fetch_time` (when FETCH_HEAD was written). Paths: `entry`
 //! (file rows and their hazards), `rpath` (git's path bytes), `exact` (index edits that match
 //! one path exactly) and `collide` (paths a file system can't keep apart).
@@ -55,6 +55,7 @@ mod index;
 mod index_memo;
 mod lfs_marks;
 mod line_counts;
+mod line_map;
 mod lines;
 mod load;
 mod markers;
@@ -129,6 +130,7 @@ pub use history_forward::name_at_head;
 pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
 pub use index_memo::{IndexDelta, IndexMemo, MAX_INDEX_MEMO};
 pub use line_counts::{FileLineCounts, LineCount, MAX_COUNTED_FILES, WipLineCounts, commit_line_counts, wip_line_counts};
+pub use line_map::{LineChange, LineMap, PrLineMaps, line_maps, pr_line_maps};
 pub use lines::{apply_lines, apply_shown};
 pub use load::{load, load_cached, messages_between};
 pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
@@ -442,6 +444,8 @@ mod folder_history_tests;
 mod history_forward_tests;
 #[cfg(test)]
 mod history_tests;
+#[cfg(test)]
+mod line_map_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]

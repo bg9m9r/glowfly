@@ -3,12 +3,14 @@
 //! from (and the head ref fetch) is in source.rs, the Commits tab's selection in commits.rs. Its
 //! diffs are the shared `st.diff`, opened through `RepoMsg::OpenDiff`; its page and actions on
 //! the service are in calls.rs, its Checks section in checks.rs, its code comment threads in
-//! threads.rs, and a new code comment on diff lines in line_comment.rs.
+//! threads.rs (placed on the local version's lines by line_map.rs when the files aren't of the
+//! service's head), and a new code comment on diff lines in line_comment.rs.
 
 use crate::effect::Effect;
 use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
 use crate::state::pull_request::{Files, PrTab, PrView};
+use crate::state::pull_request_line_map::LineMaps;
 use crate::state::pull_request_source::HeadFetch;
 use calls::load;
 use glowfly_core::repo::DiffTarget;
@@ -29,6 +31,9 @@ mod line_comment;
 mod line_comment_reply_tests;
 #[cfg(test)]
 mod line_comment_tests;
+mod line_map;
+#[cfg(test)]
+mod line_map_tests;
 #[cfg(test)]
 mod merge_tests;
 mod source;
@@ -69,6 +74,7 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
         PullRequestMsg::SelectCommit(oid) => commits::select(st, oid, fx),
         PullRequestMsg::FetchHead => source::fetch_clicked(st, fx),
         PullRequestMsg::HeadFetched { id, head, result } => source::head_fetched(st, id, head, result, fx),
+        PullRequestMsg::LinesMapped { id, generation, result } => line_map::mapped(st, id, generation, result),
         PullRequestMsg::Reload => load(st, fx),
         PullRequestMsg::ReloadFiles => request(st, fx),
         PullRequestMsg::ToggleChecks => checks::toggle(st),
@@ -98,6 +104,7 @@ pub(super) fn close(st: &mut AppState) {
         st.pull_request_gen += 1;
         st.pull_request_page_gen += 1;
         st.pull_request_checks_gen += 1;
+        st.pull_request_lines_gen += 1;
         if shown {
             super::repo::close_diff(st);
         }
@@ -163,18 +170,21 @@ pub(super) fn checks_tick(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>)
 
 /// After a tab switch: a list dropped while the tab was parked, or one whose tips moved, is
 /// asked for again (a head fetch whose result was dropped starts again once nothing is found),
-/// and the page and the checks load again in the background. An action's reply that came
+/// the line maps are asked for again while they were loading, and the page and the checks
+/// load again in the background. An action's reply that came
 /// while the tab was parked was only logged, so the panel no longer waits for it.
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let mut again = false;
+    let (mut again, mut lines_again) = (false, false);
     if let Some(v) = st.pull_request.as_mut() {
         v.busy = None;
+        lines_again = matches!(v.lines, LineMaps::Loading(_));
         again = v.files == Files::Loading || v.head_fetch == HeadFetch::Running;
         if v.head_fetch == HeadFetch::Running {
             v.head_fetch = HeadFetch::Idle;
         }
     }
     retip(st, fx, again);
+    line_map::sync(st, fx, lines_again);
     load(st, fx);
     checks::load(st, fx);
 }

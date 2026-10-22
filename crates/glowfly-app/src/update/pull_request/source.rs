@@ -87,6 +87,7 @@ pub(super) fn files_loaded(st: &mut AppState, id: u64, generation: u64, result: 
             st.log(false, e);
         }
     }
+    super::line_map::sync(st, fx, false);
 }
 
 /// Fetches the head ref without prompts when the service keeps one, the head is known, the

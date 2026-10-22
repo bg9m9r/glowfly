@@ -60,6 +60,7 @@ pub(crate) fn view(d: Option<PrDetail>) -> PrView {
         threads: Default::default(),
         checks: crate::state::pull_request_checks::PrChecks::new(&crate::state::ForgeState::new(None, String::new(), None)),
         line_draft: None,
+        lines: Default::default(),
     }
 }
 

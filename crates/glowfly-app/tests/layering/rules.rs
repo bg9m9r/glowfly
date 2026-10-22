@@ -105,6 +105,8 @@ pub const IO_FUNCTIONS: &[(&str, &[&str])] = &[
             "os_trash",
             "submodules_at",
             "worktrees_at",
+            "line_maps",
+            "pr_line_maps",
         ],
     ),
     ("gitcli", &["run", "run_with_input", "version", "observe_runs"]),

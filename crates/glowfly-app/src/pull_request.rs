@@ -1,6 +1,7 @@
 //! Messages and effects of the pull request panel (state/pull_request.rs,
 //! state/pull_request_source.rs, state/pull_request_commits.rs, state/pull_request_actions.rs,
-//! state/pull_request_threads.rs, state/pull_request_line_comment.rs, update/pull_request/,
+//! state/pull_request_threads.rs, state/pull_request_line_map.rs, state/pull_request_line_comment.rs,
+//! update/pull_request/,
 //! runner/pull_request.rs, ui/pull_request/); a new code comment on diff lines has its own
 //! messages in `line_comment`. Its files open through `RepoMsg::OpenDiff`, its
 //! Fetch button sends `RemoteMsg::Fetch`, and the browser and copy actions are `Msg::OpenUrl`
@@ -14,7 +15,7 @@ use git2::Oid;
 use glowfly_core::forge::{
     Auth, CheckList, Entry, MergeMethod, MergeRequest, Merged, NewComment, NewThread, PrPage, ReviewEvent, Target, ThreadComment,
 };
-use glowfly_core::repo::PrCompare;
+use glowfly_core::repo::{PrCompare, PrLineMaps};
 use line_comment::LineCommentMsg;
 use std::path::PathBuf;
 
@@ -42,6 +43,21 @@ pub struct HeadJob {
     pub head: String,
     pub cmd: Vec<String>,
     pub prompts: bool,
+}
+
+/// Maps pull request `id`'s threads' lines (on `paths`) from the service's head (`head`) onto
+/// the local source tip (`local`), the files' tip; `base` is the local diff's base and `target`
+/// the target's tip. Reads only.
+#[derive(Debug)]
+pub struct LineMapJob {
+    pub workdir: PathBuf,
+    pub id: u64,
+    pub head: String,
+    pub local: Oid,
+    pub base: Oid,
+    pub target: Oid,
+    pub paths: Vec<String>,
+    pub generation: u64,
 }
 
 /// Where a service call goes, with this session's credential for it, if any; `Debug` hides
@@ -115,6 +131,8 @@ pub enum PrEffect {
     FetchHead(HeadJob),
     /// A call to the hosting service (unscoped: its reply names its repository).
     Call(Box<CallJob>),
+    /// The threads' lines mapped onto the local source tip (scoped; reads only).
+    LineMaps(LineMapJob),
 }
 
 impl PrEffect {
@@ -122,6 +140,7 @@ impl PrEffect {
         match self {
             PrEffect::Files(j) => Some(&j.workdir),
             PrEffect::FetchHead(j) => Some(&j.workdir),
+            PrEffect::LineMaps(j) => Some(&j.workdir),
             PrEffect::Call(_) => None,
         }
     }
@@ -130,6 +149,7 @@ impl PrEffect {
         match self {
             PrEffect::Files(_) => "load-pr-files",
             PrEffect::FetchHead(_) => "fetch-pr-head",
+            PrEffect::LineMaps(_) => "map-pr-lines",
             PrEffect::Call(j) => match j.call {
                 PrCall::Load => "load-pr-page",
                 PrCall::Checks { .. } => "load-pr-checks",
@@ -190,6 +210,9 @@ pub enum PullRequestMsg {
     SelectCommit(Oid),
     /// Fetch the pull request's head ref, with prompts (the notes' button).
     FetchHead,
+    /// The threads' lines of pull request `id` mapped onto the local source tip (the generation
+    /// tells a stale answer).
+    LinesMapped { id: u64, generation: u64, result: Result<PrLineMaps, String> },
     /// The head ref fetch for pull request `id`, which should have brought `head`.
     HeadFetched { id: u64, head: String, result: Result<(), String> },
     /// Load the page from the service again (Try again).
@@ -229,7 +252,8 @@ pub enum PullRequestMsg {
 impl PullRequestMsg {
     /// Nothing is kept for an inactive tab: intents (the thread and Checks ones too) are for the
     /// active tab; a dropped FilesLoaded is asked for again by `reload_pending` when its tab
-    /// becomes active (as are the checks); a dropped HeadFetched leaves its fetch running, so
+    /// becomes active (as are the checks); a dropped LinesMapped leaves its state Loading, so
+    /// reload_pending asks again; a dropped HeadFetched leaves its fetch running, so
     /// `reload_pending` starts it again; a new code comment's intents (LineComment) are for the
     /// active tab too, their answers come in Replied, which its handler applies to a parked
     /// panel; and Replied comes from an unscoped effect, so it never arrives scoped (its handler matches
@@ -243,6 +267,7 @@ impl PullRequestMsg {
             | Self::SelectCommit(_)
             | Self::FetchHead
             | Self::HeadFetched { .. }
+            | Self::LinesMapped { .. }
             | Self::Reload
             | Self::ReloadFiles
             | Self::ToggleChecks

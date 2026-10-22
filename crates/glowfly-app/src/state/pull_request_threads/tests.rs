@@ -1,15 +1,17 @@
 use super::*;
 use crate::state::pull_request::{Page, PrAction, Tips};
 use crate::state::pull_request_actions::tests::{detail, view};
+use crate::state::pull_request_line_map::LineMaps;
 use git2::Oid;
 use glowfly_core::forge::{EntryKind, ThreadComment};
+use glowfly_core::repo::PrLineMaps;
 use glowfly_core::repo::{BranchChanges, Comparison, FileEntry};
 
-fn oid(n: u8) -> Oid {
+pub(super) fn oid(n: u8) -> Oid {
     Oid::from_bytes(&[n; 20]).unwrap()
 }
 
-fn comment(id: Option<u64>, time: i64) -> ThreadComment {
+pub(super) fn comment(id: Option<u64>, time: i64) -> ThreadComment {
     ThreadComment { id, author: "ada".into(), time, body: "Hm".into(), url: String::new(), pending: false }
 }
 
@@ -33,13 +35,13 @@ pub(crate) fn thread(id: &str, path: &str, line: Option<u32>, time: i64) -> Revi
     }
 }
 
-fn resolved(mut t: ReviewThread) -> ReviewThread {
+pub(super) fn resolved(mut t: ReviewThread) -> ReviewThread {
     t.resolved = true;
     t.can_unresolve = true;
     t
 }
 
-fn outdated(mut t: ReviewThread) -> ReviewThread {
+pub(super) fn outdated(mut t: ReviewThread) -> ReviewThread {
     t.outdated = true;
     t.original_line = t.line.take();
     t
@@ -51,7 +53,7 @@ fn entry(time: i64) -> Entry {
 
 /// A loaded view whose files (`src/a.rs`, `src/b.rs`) are loaded from source tip 2, which the
 /// service also reports as the head.
-fn synced(threads: Vec<ReviewThread>) -> PrView {
+pub(super) fn synced(threads: Vec<ReviewThread>) -> PrView {
     let mut d = detail();
     d.head_sha = oid(2).to_string().to_uppercase();
     let mut v = view(Some(d));
@@ -71,7 +73,7 @@ fn tip(oid: Oid) -> glowfly_core::repo::SourceTip {
 }
 
 /// Moves the shown source tip (None: nothing shown).
-fn shown_at(v: &mut PrView, source: Option<Oid>) {
+pub(super) fn shown_at(v: &mut PrView, source: Option<Oid>) {
     match source {
         Some(o) => v.shown.as_mut().unwrap().source = tip(o),
         None => v.shown = None,
@@ -163,11 +165,24 @@ fn placement_needs_the_head_locally() {
     let mut v = synced(Vec::new());
     assert_eq!(placement(&v), Placement::OnLines, "the head matched ignoring case");
     shown_at(&mut v, Some(oid(4)));
+    assert_eq!(placement(&v), Placement::Elsewhere("Placing these comments on the local version…".into()), "nothing mapped yet");
+    assert!(placement(&v).note().is_some());
+    let key = super::super::pull_request_line_map::wanted(&v).unwrap();
+    v.lines = LineMaps::Loaded { key: key.clone(), maps: PrLineMaps::HeadMissing };
+    let short = &oid(2).to_string().to_uppercase()[..7];
     let Placement::Elsewhere(note) = placement(&v) else { panic!("out of sync") };
+    assert_eq!(note, format!("These comments are on {short}; fetch origin to see them on their lines."));
+    v.lines = LineMaps::Failed { key: key.clone(), error: "boom".into() };
     assert_eq!(
-        note,
-        format!("These comments are on {}; fetch origin to see them on their lines.", &oid(2).to_string().to_uppercase()[..7])
+        placement(&v),
+        Placement::Elsewhere(format!("These comments are on {short}; their lines couldn't be found in the local version."))
     );
+    v.lines = LineMaps::Loaded { key, maps: PrLineMaps::Mapped { old_kept: true, files: Default::default() } };
+    let mapped = placement(&v);
+    let local = &oid(4).to_string()[..7];
+    assert_eq!(mapped, Placement::Mapped(format!("These comments were made on {short} and are shown on the local version ({local}).")));
+    assert!(mapped.note().is_some());
+    assert_eq!(Placement::OnLines.note(), None);
     shown_at(&mut v, None);
     assert!(matches!(placement(&v), Placement::Elsewhere(_)), "no source tip");
     let mut v = synced(Vec::new());
@@ -205,17 +220,18 @@ fn marks_for_listed_current_threads() {
 
 #[test]
 fn where_text_forms() {
+    let v = synced(Vec::new());
     let mut t = thread("T", "a", Some(42), 0);
-    assert_eq!(where_text(&t), "line 42");
+    assert_eq!(where_text(&v, &t), "line 42");
     t.start_line = Some(40);
-    assert_eq!(where_text(&t), "lines 40\u{2013}42");
+    assert_eq!(where_text(&v, &t), "lines 40\u{2013}42");
     t.start_line = Some(42);
-    assert_eq!(where_text(&t), "line 42", "a range of one line");
+    assert_eq!(where_text(&v, &t), "line 42", "a range of one line");
     let mut d = thread("T", "a", Some(12), 0);
     d.side = LineSide::Old;
-    assert_eq!(where_text(&d), "deleted line 12");
-    assert_eq!(where_text(&thread("T", "a", None, 0)), "the file");
-    assert_eq!(where_text(&outdated(thread("T", "a", Some(7), 0))), "line 7 of an earlier version");
+    assert_eq!(where_text(&v, &d), "deleted line 12");
+    assert_eq!(where_text(&v, &thread("T", "a", None, 0)), "the file");
+    assert_eq!(where_text(&v, &outdated(thread("T", "a", Some(7), 0))), "line 7 of an earlier version");
 }
 
 #[test]
@@ -230,7 +246,7 @@ fn go_to_reasons() {
     assert_eq!(go_to(&v, &thread("T", "src/A.rs", Some(1), 0)).unwrap_err(), "src/A.rs isn't among the files changed here");
     let mut away = v.clone();
     shown_at(&mut away, Some(oid(5)));
-    assert!(go_to(&away, &t).unwrap_err().starts_with("These comments are on"));
+    assert_eq!(go_to(&away, &t).unwrap_err(), "Placing these comments on the local version…");
 }
 
 #[test]
