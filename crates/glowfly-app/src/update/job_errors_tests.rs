@@ -16,7 +16,7 @@ use glowfly_core::gitcli::args;
 use std::path::{Path, PathBuf};
 
 /// main and feature, where feature changes the first of f.txt's eight lines; opened clean.
-fn two_branches(name: &str) -> (AppState, PathBuf) {
+pub(super) fn two_branches(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     clean_tree(&dir);
     std::fs::write(dir.join("f.txt"), "1\n2\n3\n4\n5\n6\n7\n8\n").unwrap();

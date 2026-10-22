@@ -106,6 +106,8 @@ fn main() -> eframe::Result {
             Err(e) => tracing::debug!("opening a window for the link: {e}"),
         }
     }
+    // Before any window exists: an installed Windows copy takes the id its shortcuts carry.
+    platform::claim_app_id();
     let chrome = state::window_chrome::Chrome::current();
     // Mica behind the drawn Windows frame needs a transparent window, made only where it shows.
     let mica = chrome == state::window_chrome::Chrome::Windows && platform::native_window::mica_capable();
@@ -120,7 +122,7 @@ fn main() -> eframe::Result {
                 .with_min_inner_size([960.0, 540.0])
                 .with_icon(crate::platform::app_icon())
                 // The Wayland app id: matches glowfly.desktop (and its StartupWMClass).
-                .with_app_id("glowfly"),
+                .with_app_id(glowfly_core::app_identity::DESKTOP_ENTRY),
         ),
         ..Default::default()
     };

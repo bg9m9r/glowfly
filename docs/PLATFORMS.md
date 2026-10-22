@@ -212,7 +212,11 @@ second one next to it.
 9. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
    Windows, Notification Center on macOS, freedesktop notifications over D-Bus (zbus, no
    libdbus) on Linux. A missing notification server is an error the confirmation reports;
-   never call it from update or views (`tests/layering.rs`).
+   never call it from update or views (`tests/layering.rs`). A click comes back through the same
+   worker thread, which waits for the answer (Linux notes declare the "default" action so a
+   click on the body is reported). Glowfly's own app id (`app_identity::APP_ID`) is used on
+   Windows only by the installed copy, whose shortcuts register it (an id nothing registers makes
+   toasts vanish); on macOS `set_application` runs only inside Glowfly.app.
 10. **The built-in terminal's shell comes from `terminal::shell::resolve`, on the runner thread
     only.** Automatic is PowerShell 7, else Windows PowerShell, else `COMSPEC` on Windows, and
     `$SHELL`, else `/bin/sh`, elsewhere. Windows PowerShell and Command Prompt are offered only on
@@ -545,9 +549,11 @@ Gaps that are accepted for now:
   network mounts.
 - **Windows file watching can drop events** without an error (`notify` sends no rescan on
   overflow); the 30 s poll covers it.
-- **Desktop notifications don't carry Glowfly's name yet:** on Windows they are attributed to
-  PowerShell's app id until Glowfly registers its own AppUserModelID; on macOS an unbundled
-  binary posts under another app's identity through the deprecated NSUserNotification API.
+- **Some desktop notifications still post under another app's identity:** a portable Windows
+  copy's are attributed to PowerShell, and an unbundled macOS binary's (cargo run) to another
+  app, through the deprecated NSUserNotification API. A Windows toast clicked in the
+  notification centre after its popup closed does nothing, and on Wayland a click may only flash
+  the window instead of raising it.
 - **Glowfly started with `GIT_CONFIG_COUNT` already set keeps GnuPG's own passphrase window:**
   the user's command-scope config is left alone rather than appended to.
 - **macOS doesn't receive links or folders yet:** an application gets them as Apple events, with
@@ -592,6 +598,8 @@ Unverified, needs a real machine:
   land while it is focused and only toast);
 - desktop notifications while Focus Assist or Do Not Disturb is on (expected: hidden, no
   error).
+- clicking a desktop notification on each OS (expected: the window comes forward on the note's
+  repository), and that the MSI install and Glowfly.app show Glowfly's name and icon on them.
 - signing passphrases through Gpg4win and through Git for Windows' bundled gpg on a real
   machine (the codes `gpg_prompt/status.rs` reads come from GnuPG's documentation);
 - smartcard PINs through loopback pinentry.

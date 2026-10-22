@@ -428,7 +428,7 @@ The pages a full-featured Git client offers, and where Glowfly stands:
 | Integrations | ✔ 10 services | PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
 | External Tools | ✔ Editor, diff tool and merge tool (the external terminal is on the Terminal page) | Follow-ups in Later > External tools and Ideas > External diff and merge tools |
-| Notifications | ✔ location, behind alerts and desktop notifications under UI Customization | Per-kind choices, click to focus (Later > Notifications) |
+| Notifications | ✔ location, behind alerts and desktop notifications under UI Customization | Per-kind choices (Ideas > Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors (wait on repository groups) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
 | Diff viewer | ◐ Diff viewer (font size, tab size, line numbers, syntax and word highlights, word wrap) | Font family, EOL character |
@@ -1058,13 +1058,6 @@ blockers and major findings are Milestone 1 items.
 ### File history and blame
 
 - Open folder history from a folder row once file lists can show a tree
-
-### Notifications
-
-- Keep a toast up while the pointer is over it, and a close button on toasts
-- Click a desktop notification to bring Glowfly to the front and switch to that repository's tab
-- Show desktop notifications under Glowfly's own name and icon: register an app id on Windows
-  (now attributed to PowerShell) and set the bundle id on macOS once Glowfly ships as an app bundle
 
 ### PR and issue filters
 
@@ -2456,6 +2449,22 @@ here, under the item they grew from.
   and other hosting-service calls)
 - Turn desktop notifications off automatically, or offer to, when the OS refuses the confirming
   notification
+- Click a Windows notification from the notification centre after its popup closed (needs a
+  registered COM activator, ToastActivatorCLSID on the shortcut)
+- Portable Windows copies: register Glowfly's app id (an HKCU AppUserModelId key with name and
+  icon) so their notifications stop showing PowerShell
+- A taskbar pin made from an install before the app id doesn't group with the running window
+  until re-pinned; offer to fix the pin
+- On Wayland, raise the window with the notification's xdg-activation token instead of only
+  flashing it
+- Wait for clicks on more than 8 desktop notifications still on screen (later ones aren't
+  waited on)
+- Post macOS notifications through UNUserNotificationCenter instead of the deprecated
+  NSUserNotification API
+- Select the commit or open the log entry a desktop notification was about, not just its
+  repository's tab
+- Close a toast with Esc or a shortcut while its x has keyboard focus or the pointer is over it
+- Report macOS notification delivery errors (the synchronous send's error is only logged)
 
 ### GPG passphrase prompts
 
@@ -2735,7 +2744,6 @@ here, under the item they grew from.
 - Skip this version: don't offer a release again until a newer one is out
 - "Open in Glowfly" in Windows 11's modern context menu (an IExplorerCommand with a sparse package)
 - "Open in Glowfly" on drives as well as folders
-- Register an AppUserModelID on the Start menu shortcut and the process, so notifications carry Glowfly's name
 - Sign SHA256SUMS (minisign or GPG) and check that signature in the app before trusting the checksums
 - Azure Trusted Signing as an alternative to a PFX certificate for Windows signing
 - A beta channel that offers pre-releases to users who opt in

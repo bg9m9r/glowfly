@@ -92,8 +92,9 @@ fn open(st: &mut AppState, text: String, now: Instant, fx: &mut Vec<Effect>) {
 }
 
 /// Whether another dialog or Preferences is open, which a link's dialogs and tab switch must not
-/// replace or happen under.
-fn busy(st: &AppState) -> bool {
+/// replace or happen under. A click on a desktop notification (update/notify.rs) waits for the
+/// same.
+pub(super) fn busy(st: &AppState) -> bool {
     st.prefs.is_some() || st.modal.as_ref().is_some_and(|m| !matches!(m, Modal::DeepLink(_)))
 }
 

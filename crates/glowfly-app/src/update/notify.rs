@@ -3,19 +3,50 @@
 //! Pull button comes back as `Msg::ToastAction` (`toast_action`). The LFS download that may
 //! follow an auto-fetch leaves the watch alone.
 //!
+//! Toasts: the pointer over one holds it (`NotifyMsg::HoldToast`, state/toasts.rs) and its x
+//! closes it without running its action (`NotifyMsg::CloseToast`).
+//!
 //! Desktop notifications: while the setting is on and the window is in the background, behind
 //! alerts and finished jobs also go to the OS (`desktop`); turning the setting on sends one to
-//! confirm (`set_desktop`), and a refusal comes back to `desktop_failed`.
+//! confirm (`set_desktop`), and a refusal comes back to `desktop_failed`. A click on one brings
+//! the window forward and shows the repository it was about (`desktop_clicked`).
 
-use crate::effect::{DesktopNote, Effect, LoadKind, NoteKind};
-use crate::msg::Msg;
+use crate::effect::{DesktopNote, Effect, LoadKind, NoteKind, UiEffect};
+use crate::msg::{Msg, NotifyMsg};
 use crate::state::{AppState, ToastAction, notify};
 use glowfly_core::paths::same_spelling;
 use glowfly_core::repo::Snapshot;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 pub(super) use crate::state::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
+
+pub(super) fn handle(st: &mut AppState, msg: NotifyMsg, now: Instant, fx: &mut Vec<Effect>) {
+    match msg {
+        NotifyMsg::HoldToast(id) => st.hold_toast(id, now),
+        NotifyMsg::CloseToast(id) => st.toasts.retain(|t| t.id != id),
+        NotifyMsg::DesktopClicked { workdir } => desktop_clicked(st, workdir, now, fx),
+    }
+}
+
+/// A desktop notification was clicked: brings the window forward and shows the repository it
+/// was about, switching to its tab or opening it again (`tabs::open`). Under a dialog or
+/// Preferences the tab doesn't change; a toast offers to show it once that is closed.
+fn desktop_clicked(st: &mut AppState, workdir: Option<PathBuf>, now: Instant, fx: &mut Vec<Effect>) {
+    fx.push(Effect::Ui(UiEffect::FocusWindow));
+    let Some(dir) = workdir else { return };
+    if super::deep_link::busy(st) {
+        let text = format!("Close the open dialog to show {}.", repo_label(st, Some(&dir)));
+        let msg = Box::new(Msg::Notify(NotifyMsg::DesktopClicked { workdir: Some(dir) }));
+        st.toast_action(true, text, ToastAction { label: "Show".into(), msg, workdir: None }, now);
+        return;
+    }
+    // Already showing: no reload, only out of the dashboard.
+    if st.snap.is_some() && st.tab_showing(&dir) == Some(st.active_tab) {
+        return super::dashboard::leave(st);
+    }
+    super::tabs::open(st, dir, fx);
+}
 
 /// A job in the active tab ended, before its refresh is requested. A successful auto-fetch
 /// records the baseline; any other job clears an older one.
@@ -87,7 +118,7 @@ pub(super) fn desktop(st: &AppState, kind: NoteKind, title: &str, workdir: Optio
     if !st.settings.desktop_notifications || st.view.focused {
         return;
     }
-    fx.push(Effect::Notify(notify::desktop_note(kind, title, &repo_label(st, workdir))));
+    fx.push(Effect::Notify(notify::desktop_note(kind, title, &repo_label(st, workdir), workdir)));
 }
 
 /// The name of the tab showing `workdir`, else its folder name, else nothing.

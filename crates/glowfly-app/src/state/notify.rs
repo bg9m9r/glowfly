@@ -5,7 +5,7 @@
 use super::branches::commits;
 use crate::effect::{DesktopNote, NoteKind};
 use glowfly_core::repo::{BranchInfo, Snapshot};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// The background fetch's job label (update/ops.rs `auto_fetch`).
 pub const AUTO_FETCH: &str = "Auto-fetch";
@@ -65,9 +65,10 @@ pub fn clip(text: &str, max: usize) -> String {
     cut
 }
 
-/// A desktop notification with its title and body clipped to what notification centres show.
-pub fn desktop_note(kind: NoteKind, title: &str, body: &str) -> DesktopNote {
-    DesktopNote { kind, title: clip(title, 120), body: clip(body, 200) }
+/// A desktop notification about the repository at `workdir`, with its title and body clipped to
+/// what notification centres show.
+pub fn desktop_note(kind: NoteKind, title: &str, body: &str, workdir: Option<&Path>) -> DesktopNote {
+    DesktopNote { kind, title: clip(title, 120), body: clip(body, 200), workdir: workdir.map(Path::to_path_buf) }
 }
 
 #[cfg(test)]
@@ -86,8 +87,9 @@ mod tests {
         let cjk = clip(&"変更を取得しました".repeat(30), 200);
         assert_eq!(cjk.chars().count(), 200);
         assert!(cjk.starts_with("変更"));
-        let note = desktop_note(NoteKind::Job, &"x".repeat(500), &"y\n".repeat(500));
+        let note = desktop_note(NoteKind::Job, &"x".repeat(500), &"y\n".repeat(500), Some(Path::new("repo")));
         assert_eq!(note.title.chars().count(), 120);
+        assert_eq!(note.workdir.as_deref(), Some(Path::new("repo")));
         assert!(note.body.chars().count() <= 200 && !note.body.contains('\n'));
     }
 

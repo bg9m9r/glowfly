@@ -3,7 +3,7 @@
 //! what a refusal from the OS does.
 
 use super::branch_tests::{remote_commit, with_origin};
-use super::tests::{drive, finish_keeping, scratch_repo, state};
+use super::tests::{drive, finish_keeping, same_place, scratch_repo, state};
 use super::update;
 use crate::effect::{DesktopNote, Effect, NoteKind};
 use crate::msg::{JobMsg, Msg, PrefsMsg, RepoMsg};
@@ -60,6 +60,7 @@ fn turning_on_saves_and_sends_one_confirmation() {
     assert_eq!(n.len(), 1, "the confirmation goes out even though the window is focused");
     assert_eq!(n[0].kind, NoteKind::Confirm);
     assert_eq!(*n[0], DesktopNote::confirmation());
+    assert_eq!(n[0].workdir, None, "about no repository");
 }
 
 #[test]
@@ -88,6 +89,7 @@ fn finished_job_notifies_while_unfocused() {
     let n = notes(&fx);
     assert_eq!(n.len(), 1, "{fx:?}");
     assert_eq!((n[0].kind, n[0].title.as_str(), n[0].body.as_str()), (NoteKind::Job, "Fetch succeeded", name.as_str()));
+    assert!(n[0].workdir.as_deref().is_some_and(|w| same_place(w, &dir)), "a click shows its repository: {:?}", n[0].workdir);
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Fetch succeeded"), "the toast is still shown");
 
     let fx = fetch_ends(&mut st, false, "$ git fetch\nfatal: offline");
@@ -138,6 +140,7 @@ fn behind_alert_also_goes_to_the_desktop() {
         (n[0].kind, n[0].title.as_str(), n[0].body.as_str()),
         (NoteKind::BehindAlert, "main is 1 commit behind origin/main", name.as_str())
     );
+    assert!(n[0].workdir.as_deref().is_some_and(|w| same_place(w, &work)), "{:?}", n[0].workdir);
     let t = st.toasts.last().expect("the in-app alert");
     assert_eq!(t.text, "main is 1 commit behind origin/main");
     assert!(t.action.is_some(), "still with its Pull button");

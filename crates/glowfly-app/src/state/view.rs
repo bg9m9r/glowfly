@@ -8,6 +8,7 @@ use git2::Oid;
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::{ResizableColumn, SizedPanel};
 use std::collections::HashSet;
+use std::time::Instant;
 
 /// Each left-panel section's open state; views toggle them directly.
 pub struct Sections {
@@ -132,6 +133,9 @@ pub struct ViewState {
     pub was_typing: bool,
     /// Wall-clock time (Unix seconds) for this frame, set by the shell; fixed in tests.
     pub now: i64,
+    /// The shell's time stamp for this frame (ui/app.rs); toasts fade and expire by it. None in
+    /// snapshot tests: toasts stay at full opacity.
+    pub frame_at: Option<Instant>,
     /// UTC offset (seconds) used to display times; the local zone in the app, fixed in tests.
     pub utc_offset: i32,
     /// Fetched avatars waiting for the shell to turn them into textures.
@@ -208,6 +212,7 @@ impl Default for ViewState {
             focused: true,
             was_typing: false,
             now: 0,
+            frame_at: None,
             utc_offset: 0,
             avatars_loaded: Vec::new(),
             diff_lines: lines::LineSelection::default(),

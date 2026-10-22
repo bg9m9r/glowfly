@@ -28,6 +28,7 @@ mod init;
 mod issue;
 mod keys;
 mod layout;
+mod notify;
 mod op_preview;
 mod partial;
 mod prefs;
@@ -57,6 +58,7 @@ pub use init::InitMsg;
 pub use issue::IssueMsg;
 pub use keys::KeysMsg;
 pub use layout::LayoutMsg;
+pub use notify::NotifyMsg;
 pub use op_preview::{OpPreviewMsg, ResetMode};
 pub use partial::{ContentFailure, PartialMsg};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
@@ -197,6 +199,8 @@ pub enum Msg {
     DeepLink(crate::deep_link::DeepLinkMsg),
     /// The cross-repository dashboard (update/dashboard.rs).
     Dashboard(DashboardMsg),
+    /// Holding and closing toasts, and clicks on desktop notifications (update/notify.rs).
+    Notify(NotifyMsg),
     /// A click on a dialog's backdrop or Esc, and the discard question (update/dialog.rs).
     Dialog(DialogMsg),
     /// Quitting and the About dialog (update/app.rs).
@@ -340,6 +344,7 @@ impl Msg {
             Msg::Onboarding(m) => m.on_inactive(),
             Msg::DeepLink(m) => m.on_inactive(),
             Msg::Dashboard(m) => m.on_inactive(),
+            Msg::Notify(m) => m.on_inactive(),
             Msg::Dialog(m) => m.on_inactive(),
             Msg::App(m) => m.on_inactive(),
             Msg::Updates(m) => m.on_inactive(),

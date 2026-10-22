@@ -245,7 +245,7 @@ mod tests {
             Effect::LoadStatus { workdir: dir.clone(), generation: 1, submodules: false, open: None, git_status: false, paths: None };
         assert!(matches!(runner.admit(status), Some(Effect::LoadStatus { .. })));
         assert!(runner.admit(Effect::Os(OsEffect::OpenUrl("https://example.invalid".into()))).is_none());
-        let note = DesktopNote { kind: NoteKind::Job, title: "t".into(), body: "b".into() };
+        let note = DesktopNote { kind: NoteKind::Job, title: "t".into(), body: "b".into(), workdir: None };
         assert!(runner.admit(Effect::Notify(note)).is_none());
         assert_eq!(runner.dropped(), ["open-url", "desktop-note"]);
         let _ = std::fs::remove_dir_all(&dir);

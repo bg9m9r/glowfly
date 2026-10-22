@@ -59,6 +59,8 @@ pub(super) mod custom_commands_tests;
 pub(super) mod deep_link_open_tests;
 #[path = "deep_link_tests.rs"]
 pub(super) mod deep_link_tests;
+#[path = "desktop_click_tests.rs"]
+pub(super) mod desktop_click_tests;
 #[path = "desktop_notify_tests.rs"]
 pub(super) mod desktop_notify_tests;
 #[path = "dialog_tests.rs"]
@@ -441,6 +443,8 @@ pub(super) mod terminal_tests;
 pub(super) mod terminal_view_tests;
 #[path = "themes_tests.rs"]
 pub(super) mod themes_tests;
+#[path = "toast_hold_tests.rs"]
+pub(super) mod toast_hold_tests;
 #[path = "tool_compare_tests.rs"]
 pub(super) mod tool_compare_tests;
 #[path = "tool_git_tests.rs"]

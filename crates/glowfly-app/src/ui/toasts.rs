@@ -1,15 +1,16 @@
 //! The toasts in the corner chosen in Preferences, anchored to the window's chrome: below the
 //! last top panel or above the status bar (`ToastBounds`, measured by `frame_layout`), all one
 //! width so a stack lines up on both edges. Each floats on the overlay with `LG` corners and the
-//! Float shadow, outlined in its outcome's tone.
+//! Float shadow, outlined in its outcome's tone, with a small x top right that closes it. The
+//! pointer over a toast holds it (`NotifyMsg::HoldToast`): it neither fades nor expires.
 
 use super::theme::color;
 use super::theme::surfaces::Tone;
 use super::theme::tokens::{self, Elevation, radius};
-use super::widgets::buttons;
-use crate::msg::Msg;
+use super::widgets::{self, buttons};
+use crate::msg::{Msg, NotifyMsg};
 use crate::state::AppState;
-use eframe::egui::{self, Align2, Rect, RichText, Stroke, Vec2, vec2};
+use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Stroke, Vec2, vec2};
 use glowfly_core::settings::Corner;
 
 /// Where the window's chrome ends: the bottom of the last top panel and the top of the status
@@ -28,6 +29,8 @@ pub const TOAST_MARGIN: f32 = 12.0;
 const TOAST_GAP: f32 = 6.0;
 /// The frame's inner margin, left and right.
 const PAD_X: i8 = 12;
+/// What the x takes beside the text: its 20 px box and a 4 px gap.
+const CLOSE_SLOT: f32 = 24.0;
 
 /// The toast area's anchor in `corner`, `TOAST_MARGIN` inside the chrome `b` and the `screen`'s
 /// edges.
@@ -43,21 +46,24 @@ pub(super) fn anchor(corner: Corner, b: ToastBounds, screen: Rect) -> (Align2, V
     }
 }
 
-/// The toasts, newest last. The area takes clicks only while a toast has a button, so plain
-/// toasts let clicks through to what is under them. A failure's fix and its Details sit side by
-/// side, the fix first.
+/// The toasts, newest last. Every toast has its x, so the area always takes clicks. A failure's
+/// fix and its Details sit side by side under the text, the fix first. They fade and expire by
+/// the frame's time stamp; without one (snapshot tests) they stay at full strength.
 pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, msgs: &mut Vec<Msg>) {
-    st.toasts.retain(|t| t.at.elapsed() < t.lifetime());
+    let now = st.view.frame_at;
+    if let Some(now) = now {
+        st.expire_toasts(now);
+    }
     if st.toasts.is_empty() {
         return;
     }
     let (align, offset) = anchor(st.settings.notification_location, bounds, ctx.screen_rect());
-    let interactable = st.toasts.iter().any(|t| t.action.is_some() || t.details.is_some());
     let p = color::current();
-    egui::Area::new(egui::Id::new("toasts")).anchor(align, offset).interactable(interactable).show(ctx, |ui| {
+    let (lang, held) = (st.settings.lang(), st.held_toast());
+    let mut over = None;
+    egui::Area::new(egui::Id::new("toasts")).anchor(align, offset).interactable(true).show(ctx, |ui| {
         for t in &st.toasts {
-            // Fade out over the last second.
-            let fade = 1.0 - (t.at.elapsed().as_secs_f32() - (t.lifetime().as_secs_f32() - 1.0)).clamp(0.0, 1.0);
+            let fade = now.map_or(1.0, |n| t.opacity(n));
             // A failure stays red with a button too (Details); other toasts with one are blue.
             let tone = if !t.ok {
                 Tone::Danger
@@ -68,7 +74,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
             };
             let mut shadow = tokens::shadow(Elevation::Float, &p);
             shadow.color = shadow.color.gamma_multiply(fade);
-            egui::Frame::new()
+            let frame = egui::Frame::new()
                 .fill(p.overlay().gamma_multiply(fade))
                 .stroke(Stroke::new(1.0_f32, p.tone(tone).gamma_multiply(fade)))
                 .corner_radius(radius::LG)
@@ -76,7 +82,21 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                 .inner_margin(egui::Margin::symmetric(PAD_X, 8))
                 .show(ui, |ui| {
                     ui.set_width(TOAST_W - 2.0 * f32::from(PAD_X));
-                    ui.add(egui::Label::new(RichText::new(&t.text).color(color::text().gamma_multiply(fade))).wrap());
+                    ui.horizontal_top(|ui| {
+                        ui.spacing_mut().item_spacing.x = CLOSE_SLOT - 20.0;
+                        ui.vertical(|ui| {
+                            ui.set_width(TOAST_W - 2.0 * f32::from(PAD_X) - CLOSE_SLOT);
+                            ui.add(egui::Label::new(RichText::new(&t.text).color(color::text().gamma_multiply(fade))).wrap());
+                        });
+                        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+                            ui.scope(|ui| {
+                                ui.multiply_opacity(fade);
+                                if widgets::remove_icon(ui, lang.tr("common.dismiss.button")).clicked() {
+                                    msgs.push(Msg::Notify(NotifyMsg::CloseToast(t.id)));
+                                }
+                            });
+                        });
+                    });
                     if t.action.is_some() || t.details.is_some() {
                         ui.add_space(4.0);
                         ui.scope(|ui| {
@@ -93,9 +113,15 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                         });
                     }
                 });
+            if frame.response.contains_pointer() {
+                over = Some(t.id);
+            }
             ui.add_space(TOAST_GAP);
         }
     });
+    if over != held {
+        msgs.push(Msg::Notify(NotifyMsg::HoldToast(over)));
+    }
 }
 
 #[cfg(test)]

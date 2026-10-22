@@ -14,6 +14,10 @@
       -d BinDir=<folder of glowfly.exe> -d SourceDir=<repository> -d AssetsDir=<repository>\assets
       -d LicenseRtf=<license.rtf> [-d HasChangelog=1] -o glowfly.msi glowfly.wxs pages.wxs
 
+  Both shortcuts carry Glowfly's app id (System.AppUserModel.ID), which the installed program
+  also takes at startup (platform/app_id.rs), so its notifications and taskbar button show Glowfly.
+  A core test checks the id (app_identity::APP_ID).
+
   Glowfly was called Trellis. The UpgradeCode below is the one the Trellis installer used and must
   never change: it is how this installer finds an installed Trellis (or Glowfly) and replaces it
   instead of installing beside it. An upgrade from Trellis also carries over its Options page
@@ -140,14 +144,18 @@
 
     <StandardDirectory Id="ProgramMenuFolder">
       <Component Id="StartMenuShortcut">
-        <Shortcut Id="GlowflyShortcut" Name="Glowfly" Description="A Git client" Target="[INSTALLFOLDER]glowfly.exe" WorkingDirectory="INSTALLFOLDER" Icon="GlowflyIcon" />
+        <Shortcut Id="GlowflyShortcut" Name="Glowfly" Description="A Git client" Target="[INSTALLFOLDER]glowfly.exe" WorkingDirectory="INSTALLFOLDER" Icon="GlowflyIcon">
+          <ShortcutProperty Key="System.AppUserModel.ID" Value="io.github.bg9m9r.glowfly" />
+        </Shortcut>
         <RegistryValue Root="HKCU" Key="Software\Glowfly\Installer" Name="shortcut" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </StandardDirectory>
 
     <StandardDirectory Id="DesktopFolder">
       <Component Id="DesktopShortcut" Condition="DESKTOPSHORTCUT = 1">
-        <Shortcut Id="GlowflyDesktopShortcut" Name="Glowfly" Description="A Git client" Target="[INSTALLFOLDER]glowfly.exe" WorkingDirectory="INSTALLFOLDER" Icon="GlowflyIcon" />
+        <Shortcut Id="GlowflyDesktopShortcut" Name="Glowfly" Description="A Git client" Target="[INSTALLFOLDER]glowfly.exe" WorkingDirectory="INSTALLFOLDER" Icon="GlowflyIcon">
+          <ShortcutProperty Key="System.AppUserModel.ID" Value="io.github.bg9m9r.glowfly" />
+        </Shortcut>
         <RegistryValue Root="HKCU" Key="Software\Glowfly\Installer" Name="desktop" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </StandardDirectory>

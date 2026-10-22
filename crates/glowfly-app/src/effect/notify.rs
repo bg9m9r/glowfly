@@ -1,5 +1,7 @@
 //! Desktop (OS) notifications: what `update` asks the runner to show (runner/notify.rs).
 
+use std::path::PathBuf;
+
 /// What kind of event a desktop notification reports: decides what a failure to show it does.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum NoteKind {
@@ -17,6 +19,8 @@ pub struct DesktopNote {
     pub kind: NoteKind,
     pub title: String,
     pub body: String,
+    /// The repository the note is about, which a click on it shows.
+    pub workdir: Option<PathBuf>,
 }
 
 impl DesktopNote {
@@ -26,6 +30,7 @@ impl DesktopNote {
             kind: NoteKind::Confirm,
             title: "Desktop notifications are on".into(),
             body: "Glowfly will show finished jobs and behind alerts here while its window is in the background.".into(),
+            workdir: None,
         }
     }
 }

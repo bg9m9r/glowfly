@@ -1,12 +1,15 @@
 //! Operating-system integration: the recent-repositories and tabs files, what is at the listed
 //! folders, terminals, file managers (opening a folder, or showing a file selected in it), the
-//! window icon, and the drawn Windows frame's glue with the OS (`native_window`).
+//! window icon, the drawn Windows frame's glue with the OS (`native_window`), and the app id an
+//! installed Windows copy takes before its window opens (`claim_app_id`).
 
 use std::path::{Path, PathBuf};
 
+mod app_id;
 mod icon;
 pub mod native_window;
 mod terminal;
+pub use app_id::claim as claim_app_id;
 pub use icon::app_icon;
 pub use terminal::open_terminal;
 

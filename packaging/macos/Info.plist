@@ -3,7 +3,8 @@
 <!--
   Glowfly.app's Info.plist; scripts/package-macos.sh replaces @VERSION@. No document or URL
   types yet: Glowfly can't receive Apple events, so declaring them would start it without the
-  folder or link.
+  folder or link. The bundle id is what desktop notifications post under
+  (glowfly_core::app_identity::APP_ID; a core test checks they agree).
 -->
 <plist version="1.0">
 <dict>

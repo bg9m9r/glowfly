@@ -236,6 +236,7 @@ impl GlowflyApp {
         self.st.view.utc_offset = glowfly_core::dates::local_offset();
 
         let now = Instant::now();
+        self.st.view.frame_at = Some(now);
         let mut msgs = vec![Msg::Tick(now)];
         msgs.append(&mut native_msgs);
         self.input(ctx, &mut msgs);

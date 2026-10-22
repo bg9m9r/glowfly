@@ -295,6 +295,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         }
         Msg::ToastAction(id) => notify::toast_action(st, id, false, now, &mut fx),
         Msg::ToastDetails(id) => notify::toast_action(st, id, true, now, &mut fx),
+        Msg::Notify(m) => notify::handle(st, m, now, &mut fx),
         Msg::CloseModal => dialog::close(st),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::Os(OsEffect::OpenUrl(url))),
