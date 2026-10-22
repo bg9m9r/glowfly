@@ -26,6 +26,8 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
     if st.prefs.is_some() {
         // The terminal isn't drawn, so it can't hold the keyboard (and Esc closes Preferences).
         st.terminal.focused = false;
+        // Nor is the menu bar, so its menu closes (a drawn title bar closes its own).
+        menu_bar::hide(ctx);
         let top = ctx.available_rect().top();
         prefs::show(ctx, st, msgs);
         return ToastBounds { top, bottom };

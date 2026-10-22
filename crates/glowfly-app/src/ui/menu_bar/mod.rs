@@ -44,8 +44,7 @@ pub(in crate::ui) const MAIN_MENU: &str = "main-menu";
 /// frame only.
 pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if st.view.chrome.drawn() || !st.settings.show_menu_bar {
-        // A menu of a bar no longer drawn can't stay open (Esc would only close it).
-        menu_anchor::close(ctx, Id::new(BAR));
+        hide(ctx);
         return;
     }
     egui::TopBottomPanel::top("menu-bar").frame(Frame::new().fill(color::toolbar()).inner_margin(Margin::symmetric(6, 2))).show(
@@ -54,6 +53,12 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
             egui::menu::bar(ui, |ui| bar::draw(ui, st, msgs));
         },
     );
+}
+
+/// Closes the bar's menu for a frame that doesn't draw the bar (Preferences in its place, a
+/// hidden bar or a drawn title bar): a menu not drawn can't stay open, or Esc would only close it.
+pub(super) fn hide(ctx: &egui::Context) {
+    menu_anchor::close(ctx, Id::new(BAR));
 }
 
 /// Whether a menu of the bar or of the title bar is open (as of the last frame's drawing).

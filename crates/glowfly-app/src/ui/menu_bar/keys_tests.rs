@@ -9,7 +9,7 @@ use super::snapshot_tests::with_bar;
 use crate::msg::{Msg, PrefsMsg, RebaseMsg, RepoMsg};
 use crate::state::menu_keys::{TopMenu, mnemonics};
 use crate::state::window_chrome::Chrome;
-use crate::state::{AppState, PrefPage, Selection};
+use crate::state::{AppState, PrefPage, PrefsState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::{NOW, remove_fixture};
 use eframe::egui::{self, Event, InputState, Key, Modifiers};
@@ -197,6 +197,26 @@ fn esc_closes_the_menu_and_nothing_else() {
     // With no menu open, Esc closes the diff as before.
     key(&mut h, Key::Escape);
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn preferences_close_an_open_menu_so_esc_still_leaves_them() {
+    let (st, dir) = fixture("menu-keys-prefs");
+    let mut h = keys_harness(st, SIZE);
+    press(&mut h, Modifiers::ALT, Key::F);
+    assert!(file_open(&h));
+    // Ctrl+, opens Preferences with the menu still open; the bar isn't drawn behind them.
+    h.state_mut().0.prefs = Some(PrefsState::new(PrefPage::General));
+    h.run_ok();
+    assert!(!super::any_open(&h.ctx), "the bar's menu closed with Preferences shown");
+    h.state_mut().1.clear();
+    key(&mut h, Key::Escape);
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::ClosePrefs))), "Esc closes Preferences");
+    h.state_mut().0.prefs = None;
+    h.run_ok();
+    assert!(!file_open(&h), "the menu doesn't come back with the window");
     drop(h);
     remove_fixture(&dir);
 }
