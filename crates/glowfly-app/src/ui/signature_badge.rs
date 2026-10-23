@@ -51,8 +51,8 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mu
     let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 30.0, HEIGHT), Sense::click());
     let p = ui.painter();
     let radius = CornerRadius::same((HEIGHT / 2.0) as u8);
-    p.rect_filled(rect, radius, tint.gamma_multiply(if resp.hovered() { 0.28 } else { 0.16 }));
-    p.rect_stroke(rect, radius, Stroke::new(1.0_f32, tint.gamma_multiply(0.6)), StrokeKind::Inside);
+    p.rect_filled(rect, radius, color::wash(tint, if resp.hovered() { 0.28 } else { 0.16 }));
+    p.rect_stroke(rect, radius, Stroke::new(1.0_f32, tint), StrokeKind::Inside);
     paint_glyph(p, pos2(rect.left() + 12.0, rect.center().y), glyph, tint);
     p.galley(pos2(rect.left() + 21.0, rect.center().y - galley.size().y / 2.0), galley, color::text());
 

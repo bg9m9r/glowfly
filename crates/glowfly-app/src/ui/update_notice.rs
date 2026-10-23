@@ -46,7 +46,7 @@ pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (fill, stroke) = if failed {
         (if resp.hovered() { color::hover() } else { color::raised() }, color::border())
     } else {
-        (accent.gamma_multiply(if resp.hovered() { 0.26 } else { 0.14 }), accent.gamma_multiply(0.6))
+        (color::wash(accent, if resp.hovered() { 0.26 } else { 0.14 }), accent)
     };
     p.rect_filled(rect, radius, fill);
     p.rect_stroke(rect, radius, Stroke::new(1.0_f32, stroke), StrokeKind::Inside);

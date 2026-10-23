@@ -76,10 +76,19 @@ pub fn chevron(p: &Painter, c: Pos2, open: bool, col: Color32) {
 
 /// A pill-shaped label chip drawn with the painter; returns its width.
 pub fn chip(p: &Painter, x: f32, y: f32, text: &str, fill: Color32, fg: Color32) -> f32 {
+    chip_with_edge(p, x, y, text, fill, None, fg)
+}
+
+/// `chip` with a 1 px `edge` inside its outline, when there is one.
+pub fn chip_with_edge(p: &Painter, x: f32, y: f32, text: &str, fill: Color32, edge: Option<Color32>, fg: Color32) -> f32 {
     let g = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::CAPTION), fg);
     let w = g.size().x + 12.0;
     let r = Rect::from_min_size(pos2(x, y - 10.0), vec2(w, 20.0));
-    p.rect_filled(r, CornerRadius::same(radius::pill(r.height())), fill);
+    let radius = CornerRadius::same(radius::pill(r.height()));
+    p.rect_filled(r, radius, fill);
+    if let Some(edge) = edge {
+        p.rect_stroke(r, radius, Stroke::new(1.0_f32, edge), egui::StrokeKind::Inside);
+    }
     let gh = g.size().y;
     p.galley(pos2(x + 6.0, y - gh / 2.0), g, fg);
     w

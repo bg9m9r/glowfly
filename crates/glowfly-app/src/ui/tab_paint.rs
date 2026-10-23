@@ -173,7 +173,7 @@ pub(super) fn chip_room(text_w: f32) -> f32 {
 /// group's `name` (cut with an ellipsis when long).
 pub(super) fn paint_group_chip(p: &egui::Painter, rect: Rect, name: &str, col: Color32) -> Cut {
     let r = CHIP_H / 2.0;
-    p.rect_filled(rect, r, col.gamma_multiply(0.2));
+    p.rect_filled(rect, r, color::wash(col, 0.2));
     p.rect_stroke(rect, r, Stroke::new(1.0_f32, col), StrokeKind::Inside);
     let font = type_scale::font(type_scale::SMALL);
     paint_cut_text(p, pos2(rect.left() + CHIP_PAD, rect.center().y), name, font, color::text(), rect.width() - 2.0 * CHIP_PAD)

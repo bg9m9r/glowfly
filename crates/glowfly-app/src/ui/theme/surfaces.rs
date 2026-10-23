@@ -153,15 +153,42 @@ impl Palette {
         contrast::readable_on(self.accent, fill, self.dark, min)
     }
 
+    /// The colour a wash of `c` at `t` is painted in: `c`, unless over one of the palette's
+    /// surfaces it would read brown (`contrast::brownish`: a warm wash on a dark field, or a
+    /// strong one on paper); then a colour of `c`'s lightness in the background's own hue and
+    /// chroma, so the wash lifts the surface without tinting it and the colour stays on the
+    /// text, edge or mark beside it (docs/COLOUR.md, "No brown").
+    pub fn wash_colour(&self, c: Color32, t: f32) -> Color32 {
+        let surfaces = [self.bg, self.panel, self.toolbar, self.raised, self.input];
+        if !surfaces.iter().any(|&s| contrast::brownish(mix(s, c, t))) {
+            return c;
+        }
+        contrast::field_at(self.bg, contrast::oklch(c).0)
+    }
+
+    /// `c` washed over surface `s` at `t` (0 to 1): the opaque colour `wash` shows there.
+    #[cfg(test)]
+    pub fn wash_on(&self, s: Color32, c: Color32, t: f32) -> Color32 {
+        mix(s, self.wash_colour(c, t), t)
+    }
+
+    /// A translucent wash of `c` at `t` (a badge's, a cell's or a selection's fill), for a view
+    /// that paints it over the surface under it. Never `c.gamma_multiply(t)` on a status,
+    /// accent or repository colour: that is how a gold or amber turns brown on a dark field.
+    pub fn wash(&self, c: Color32, t: f32) -> Color32 {
+        self.wash_colour(c, t).gamma_multiply(t)
+    }
+
     /// `fill` shaded `t` of the way toward white on dark palettes, or black on light ones (a
     /// filled button's hover and press).
     pub fn shade_fill(&self, fill: Color32, t: f32) -> Color32 {
         mix(fill, if self.dark { Color32::WHITE } else { Color32::BLACK }, t)
     }
 
-    /// The tonal fill hovered or pressed: moved toward the accent.
+    /// The tonal fill hovered or pressed: moved toward the accent (`contrast::unbrown`ed).
     pub fn tonal_state(&self, pressed: bool) -> Color32 {
-        mix(self.tonal_fill(), self.accent, if pressed { FILL_PRESSED } else { FILL_HOVER })
+        let fill = self.tonal_fill();
+        contrast::unbrown(fill, mix(fill, self.accent, if pressed { FILL_PRESSED } else { FILL_HOVER }))
     }
 }
 
@@ -184,3 +211,8 @@ macro_rules! active {
 }
 
 active!(field_fill, guide_fill, tool_backing, tool_hover, tool_press, tool_pressed, inset, hover_layer);
+
+/// [`Palette::wash`] in the active palette.
+pub fn wash(c: Color32, t: f32) -> Color32 {
+    color::with(|p| p.wash(c, t))
+}

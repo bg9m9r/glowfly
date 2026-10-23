@@ -24,9 +24,11 @@ mod select;
 mod wip_row;
 mod worktree_wip;
 
+#[cfg(test)]
+pub(in crate::ui) use labels::paint_box;
 pub use paint::draw_avatar;
 #[cfg(test)]
-pub(in crate::ui) use row_look::band_color;
+pub(in crate::ui) use row_look::{band_color, highlight_color};
 
 use super::UiCache;
 use super::theme::color;

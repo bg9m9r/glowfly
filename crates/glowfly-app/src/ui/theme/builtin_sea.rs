@@ -40,7 +40,7 @@ pub const MIDNIGHT: Palette = Palette {
     tag_bg: hex(0x3d2d4e),
     tag_fg: hex(0xe0cef8),
     status: Status { added: hex(0x7bc85f), removed: hex(0xea6a64), modified: hex(0xedb345), info: hex(0x60aaf3), progress: hex(0xa689f1) },
-    attention: Attention { warn: hex(0xe8b339), banner: hex(0x4a3812), needs_you: hex(0xfb794a), on_needs_you: hex(0x22110b) },
+    attention: Attention { warn: hex(0xe8b339), banner: hex(0x1c2939), needs_you: hex(0xfb794a), on_needs_you: hex(0x22110b) },
     diff_add: hex(0x1c3723),
     diff_del: hex(0x472024),
     diff_add_sel: hex(0x2a5c3a),

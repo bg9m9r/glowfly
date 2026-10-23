@@ -8,7 +8,7 @@ use glowfly_core::highlight::TokenKind;
 use glowfly_core::settings::{BranchPalette, RepoColour};
 use std::cell::RefCell;
 
-pub use super::surfaces::{field_fill, guide_fill, hover_layer, inset, tool_backing, tool_hover, tool_press, tool_pressed};
+pub use super::surfaces::{field_fill, guide_fill, hover_layer, inset, tool_backing, tool_hover, tool_press, tool_pressed, wash};
 
 /// The colors of one theme, in families: neutrals, brand, status, attention, diff, syntax,
 /// repository, branch and the terminal's basic colours. Every built-in meets the contrast floors and hue bands that the theme

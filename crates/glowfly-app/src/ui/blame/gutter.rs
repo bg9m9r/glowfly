@@ -42,9 +42,9 @@ pub(super) fn text(ui: &Ui, st: &AppState, fonts: &Fonts, c: &BlameCommit, first
 /// a light tint over it, both stronger for newer commits.
 pub(super) fn paint_age(painter: &Painter, gutter: Rect, t: f32) {
     let t = t.clamp(0.0, 1.0);
-    painter.rect_filled(gutter, 0.0, color::accent().gamma_multiply(0.03 + 0.12 * t));
+    painter.rect_filled(gutter, 0.0, color::wash(color::accent(), 0.03 + 0.12 * t));
     let strip = Rect::from_min_size(gutter.min, vec2(STRIP_W, gutter.height()));
-    painter.rect_filled(strip, 0.0, color::accent().gamma_multiply(0.25 + 0.75 * t));
+    painter.rect_filled(strip, 0.0, color::wash(color::accent(), 0.25 + 0.75 * t));
 }
 
 /// The body cut to `BODY_LINES` lines and `BODY_CHARS` characters, with "…" when cut.

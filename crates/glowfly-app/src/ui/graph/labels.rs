@@ -14,7 +14,7 @@ use crate::ui::theme::type_scale;
 use crate::ui::widgets;
 use crate::ui::widgets::ghost;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use eframe::egui::{Color32, CornerRadius, FontId, Painter, Pos2, Rect, Sense, Stroke, Ui, pos2, vec2};
+use eframe::egui::{Color32, CornerRadius, FontId, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 use glowfly_core::forge::CheckState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::RefKind;
@@ -122,13 +122,22 @@ pub(super) fn fit(widths: &[f32], room: f32, plus_w: impl Fn(usize) -> f32, gap:
     Fit { shown, first_w, first_cut, plus: shown < n }
 }
 
-/// Draws a chip of width `w` from `x`, centred on `y`, and returns its rect: a soft fill with no
-/// outline, the tag mark, the name (cut to leave its marks room), then the local mark, the remote
+/// A ref chip's box in `r`: its fill, and its edge 1 px inside it.
+pub(in crate::ui) fn paint_box(p: &Painter, r: Rect, look: contrast::ChipLook) {
+    p.rect_filled(r, CornerRadius::same(radius::SM), look.fill);
+    if let Some(edge) = look.edge {
+        p.rect_stroke(r, CornerRadius::same(radius::SM), Stroke::new(1.0_f32, edge), StrokeKind::Inside);
+    }
+}
+
+/// Draws a chip of width `w` from `x`, centred on `y`, and returns its rect: its box
+/// (`contrast::ref_chip`), the tag mark, the name (cut to leave its marks room), then the local mark, the remote
 /// mark and the build marker, tinted from its branch's `tone`.
 fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: Color32, w: f32) -> Rect {
-    let (fill, fg) = contrast::ref_chip(spec.style, tone, &color::current());
+    let look = contrast::ref_chip(spec.style, tone, &color::current());
+    let fg = look.text;
     let r = Rect::from_min_size(pos2(x, y - CHIP_H / 2.0), vec2(w, CHIP_H));
-    p.rect_filled(r, CornerRadius::same(radius::SM), fill);
+    paint_box(p, r, look);
     let cp = p.with_clip_rect(r.intersect(p.clip_rect()));
     let mut text_x = x + TEXT_PAD;
     if spec.lead_tag {
@@ -271,7 +280,7 @@ type PaintMark = fn(&Painter, Pos2, Color32);
 pub(super) fn tip_row(ui: &mut Ui, t: Lang, chip: &Chip, tone: Color32) {
     let spec = ChipSpec::of(chip, None);
     let pal = color::current();
-    let (_, fg) = contrast::ref_chip(spec.style, tone, &pal);
+    let fg = contrast::ref_chip(spec.style, tone, &pal).text;
     let ink = readable_on(fg, ui.visuals().window_fill, pal.dark, 3.0);
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 2.0;

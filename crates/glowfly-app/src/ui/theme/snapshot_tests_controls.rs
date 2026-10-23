@@ -62,12 +62,12 @@ fn render_controls(name: &str, p: Palette) {
             chips.extend(swatches().skip(1).map(|lane| (ChipStyle::Branch, lane, "topic")));
             chips.extend([(ChipStyle::Remote, Swatch::Main, "origin/main"), (ChipStyle::Tag, Swatch::Main, "v1.2.0")]);
             for (style, lane, text) in chips {
-                let (fill, fg) = contrast::ref_chip(style, chip_in(lane, &p), &p);
+                let look = contrast::ref_chip(style, chip_in(lane, &p), &p);
                 if x > rect.right() - 90.0 {
                     x = rect.left();
                     y += 26.0;
                 }
-                x += widgets::chip(painter, x, y, text, fill, fg) + 6.0;
+                x += widgets::chip_with_edge(painter, x, y, text, look.fill, look.edge, look.text) + 6.0;
             }
         },
         form,

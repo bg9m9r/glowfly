@@ -121,7 +121,7 @@ fn ref_chips_are_readable() {
         let p = builtin(t);
         for lane in super::branch_colours::swatches() {
             for style in ChipStyle::ALL {
-                let (fill, fg) = contrast::ref_chip(style, super::branch_colours::chip_in(lane, p), p);
+                let contrast::ChipLook { fill, text: fg, .. } = contrast::ref_chip(style, super::branch_colours::chip_in(lane, p), p);
                 let r = ratio(fg, fill);
                 if fill.a() != 255 || r < 4.5 {
                     failures.push(format!("{t:?} {lane:?} {style:?}: {r:.2}:1, fill alpha {}", fill.a()));
@@ -179,8 +179,9 @@ fn ref_chips_are_soft() {
         let p = builtin(t);
         for lane in super::branch_colours::swatches() {
             let lane_col = super::branch_colours::chip_in(lane, p);
-            let fill = |style| contrast::ref_chip(style, lane_col, p).0;
-            for style in [ChipStyle::Branch, ChipStyle::Remote, ChipStyle::CurrentBranch] {
+            let fill = |style| contrast::ref_chip(style, lane_col, p).fill;
+            // The checked-out branch's chip may stand out (a solid fill on dark palettes).
+            for style in [ChipStyle::Branch, ChipStyle::Remote] {
                 let r = ratio(fill(style), p.bg);
                 if r >= 3.0 {
                     failures.push(format!("{t:?} {lane:?} {style:?}: {r:.2}:1 against the background"));

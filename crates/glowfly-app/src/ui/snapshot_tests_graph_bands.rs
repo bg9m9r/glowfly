@@ -11,6 +11,9 @@ use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::ThemeChoice;
 use std::path::PathBuf;
 
+#[path = "snapshot_tests_colour_sheet.rs"]
+mod colour_sheet;
+
 /// The fixture with the four pinned branches, a commit on main selected.
 pub(super) fn with_bands(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);

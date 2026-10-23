@@ -20,7 +20,7 @@ pub(super) fn selection(
     (cw, rh): (f32, f32),
     cell: impl Fn(u16, u16) -> egui::Pos2,
 ) {
-    let fill = color::term().selection.gamma_multiply(0.35);
+    let fill = color::wash(color::term().selection, 0.35);
     for r in 0..rows {
         let line = top + u64::from(r);
         if line < start.line || line > end.line {
@@ -40,7 +40,7 @@ pub(super) fn cursor(painter: &egui::Painter, block: Rect, style: CursorStyle, f
     let c = color::term().cursor;
     let line = if focused { c } else { c.gamma_multiply(0.5) };
     match style {
-        CursorStyle::Block if focused => painter.rect_filled(block, 0.0, c.gamma_multiply(0.6)),
+        CursorStyle::Block if focused => painter.rect_filled(block, 0.0, color::wash(c, 0.6)),
         CursorStyle::Block => painter.rect_stroke(block, 0.0, Stroke::new(1.0_f32, c), StrokeKind::Inside),
         CursorStyle::Underline => painter.rect_filled(Rect::from_min_max(pos2(block.left(), block.bottom() - 2.0), block.max), 0.0, line),
         CursorStyle::Bar => painter.rect_filled(Rect::from_min_size(block.min, vec2(2.0, block.height())), 0.0, line),

@@ -68,7 +68,7 @@ fn pill_widget(ui: &mut Ui, t: Lang, p: AgentPill) {
     let w = PILL_PAD + DOT + DOT_GAP + galley.size().x + PILL_PAD;
     let (rect, resp) = ui.allocate_exact_size(vec2(w, PILL_H), Sense::hover());
     let painter = ui.painter();
-    painter.rect_filled(rect, CornerRadius::same((PILL_H / 2.0) as u8), tint.gamma_multiply(0.18));
+    painter.rect_filled(rect, CornerRadius::same((PILL_H / 2.0) as u8), color::wash(tint, 0.18));
     let cy = rect.center().y;
     painter.circle_filled(pos2(rect.left() + PILL_PAD + DOT / 2.0, cy), DOT / 2.0, tint);
     let text_pos = pos2(rect.left() + PILL_PAD + DOT + DOT_GAP, cy - galley.size().y / 2.0);

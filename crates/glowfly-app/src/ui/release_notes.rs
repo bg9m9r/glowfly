@@ -92,7 +92,7 @@ fn release(ui: &mut egui::Ui, t: Lang, r: &ReleaseNotes, new: bool, msgs: &mut V
             let text = t.tr("release_notes.new_chip");
             let text_w = ui.painter().layout_no_wrap(text.into(), type_scale::font(type_scale::CAPTION), color::added()).size().x;
             let (rect, _) = ui.allocate_exact_size(vec2(36.0_f32.max(text_w + 12.0), 18.0), Sense::hover());
-            widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::added().gamma_multiply(0.25), color::added());
+            widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::wash(color::added(), 0.25), color::added());
         }
     });
     for s in &r.sections {

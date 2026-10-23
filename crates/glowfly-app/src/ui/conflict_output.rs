@@ -145,7 +145,7 @@ fn painted(ui: &mut Ui, t: Lang, view: &ConflictView, scroll_to: Option<usize>, 
             }
             OutRow::Unresolved(k) => {
                 let text = t.trf("conflict.output.placeholder", &[("number", &(k + 1))]);
-                cell(ui, rect, 0.0, None, &text, (color::warn().gamma_multiply(0.18), color::warn()), None);
+                cell(ui, rect, 0.0, None, &text, (color::wash(color::warn(), 0.18), color::warn()), None);
                 if k == current {
                     current_bar(ui, rect);
                 }

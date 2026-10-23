@@ -67,7 +67,7 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
         let mut x = cols.msg.0;
         if let Some((label, draft)) = row.pr {
             let col = if *draft { color::weak() } else { color::progress() };
-            x += widgets::chip(&mp, x, mid, label, col.gamma_multiply(0.35), col) + 6.0;
+            x += widgets::chip(&mp, x, mid, label, color::wash(col, 0.35), col) + 6.0;
         }
         let body = row.show_body.then_some(c.body.as_str());
         text.msg = paint_cut(&mp, pos2(x, mid), message_job(&c.summary, body, fg, weak), cols.msg.1 - x);

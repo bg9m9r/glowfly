@@ -41,7 +41,7 @@ pub const DUSK: Palette = Palette {
     tag_bg: hex(0x4a283f),
     tag_fg: hex(0xf4c9e4),
     status: Status { added: hex(0x7bc85f), removed: hex(0xea6a64), modified: hex(0xf69d3d), info: hex(0x60aaf3), progress: hex(0xa689f1) },
-    attention: Attention { warn: hex(0xfba541), banner: hex(0x46290b), needs_you: hex(0xfb794a), on_needs_you: hex(0x22110b) },
+    attention: Attention { warn: hex(0xfba541), banner: hex(0x2b273b), needs_you: hex(0xfb794a), on_needs_you: hex(0x22110b) },
     diff_add: hex(0x1c3723),
     diff_del: hex(0x472024),
     diff_add_sel: hex(0x2a5c3a),

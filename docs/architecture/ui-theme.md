@@ -10,7 +10,9 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 ## Colours
 
-- `theme/contrast.rs`: contrast maths and the graph's ref chip colours.
+- `theme/contrast.rs`: contrast maths, the brown zone (`brownish`) with `unbrown` and `clear` that keep tints, edges and fills out of it, and the graph's ref chip colours (neutral, edged chips).
+- `theme/no_brown_tests.rs`: every built-in's surfaces, bands, chips, tints and washes, composited, stay out of the brown zone (Dusk's bronze selection excepted).
+- `snapshot_tests_colour_sheet.rs`: an ignored test that renders every built-in's main window and chip strip into `GLOWFLY_SHEET_DIR`, for judging colour by eye.
 - `theme/families.rs`: the token families: status, branch, repository, attention, and the terminal's colours.
 - `theme/ansi.rs`: the terminal's colours, one table per built-in, with the readability check Preferences warns from.
 - `theme/terminal_scheme.rs`: which colours the terminal draws in (the app theme's, another built-in's or an imported scheme over the app theme's), read through `color::term()`.
@@ -21,7 +23,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/branch_names.rs`: the branch hues' names in the language.
 - `theme/branch_colours.rs`: a branch swatch's line and chip tones, with a person's initials colours.
 - The branch colours are read by the graph's per-row colours (`graph/lane_colours.rs`) and the branch dots (`branch_dot.rs`).
-- `theme/surfaces.rs`: the colour tokens worked out from a palette, so theme files get them with no keys of their own: the field, guide and toolbar-group fills, the overlay surface with its edge and inset, the hover, pressed and latched layers, the semantic tones with their tints, and the tonal fill and ink.
+- `theme/surfaces.rs`: the colour tokens worked out from a palette, so theme files get them with no keys of their own: the field, guide and toolbar-group fills, the overlay surface with its edge and inset, the hover, pressed and latched layers, the semantic tones with their tints, the tonal fill and ink, and the brown-safe wash (`color::wash`) views use for translucent colour fills.
 - `ui::theme::color` holds the active palette (a thread-local, see Rules); `ThemeCache` owns palettes built from theme files.
 - `ui/backdrop.rs`: the Mica tints (see Window chrome in [flow-shell.md](flow-shell.md)).
 

@@ -34,7 +34,7 @@ fn the_hue_maths() {
 fn garden_takes_the_brand_values() {
     let d = &GARDEN_DARK;
     assert_eq!((d.accent, d.primary, d.on_primary), (rgb(0x4dc588), rgb(0x4dc588), rgb(0x0f1a14)));
-    assert_eq!((d.tag_bg, d.tag_fg), (rgb(0x3d3628), rgb(0xe4d6b6)));
+    assert_eq!((d.tag_bg, d.tag_fg), (rgb(0x4a283f), rgb(0xf4c9e4)));
     assert_eq!((d.toolbar, d.bg, d.panel, d.raised, d.border), (rgb(0x0f1612), rgb(0x151b18), rgb(0x1b221e), rgb(0x262e29), rgb(0x2d3530)));
     // faint is the review's #7f8983 nudged one step, so it reaches 4.5:1 on the panel.
     assert_eq!((d.selected, d.text, d.weak, d.faint), (rgb(0x244534), rgb(0xe0e6e3), rgb(0xa4aea8), rgb(0x808a84)));
@@ -45,7 +45,7 @@ fn garden_takes_the_brand_values() {
     );
     let l = &GARDEN_LIGHT;
     assert_eq!((l.accent, l.primary, l.on_primary), (rgb(0x14764a), rgb(0x14764a), Color32::WHITE));
-    assert_eq!((l.tag_bg, l.tag_fg), (rgb(0xe3dac2), rgb(0x6f562a)));
+    assert_eq!((l.tag_bg, l.tag_fg), (rgb(0xf5d8ea), rgb(0x763463)));
     assert_eq!((l.toolbar, l.bg, l.panel, l.border), (rgb(0xece9e1), rgb(0xf9f7f1), rgb(0xfdfcf9), rgb(0xdcd9d0)));
     assert_eq!((l.selected, l.text, l.weak, l.faint), (rgb(0xcfeddb), rgb(0x161c19), rgb(0x4c5550), rgb(0x68716c)));
     let s = l.status;
@@ -61,9 +61,9 @@ fn accent_family_sits_in_the_accent_band() {
     for t in BuiltinTheme::ALL {
         let p = builtin(t);
         for (key, c) in [("accent", p.accent), ("primary", p.primary), ("primary_border", p.primary_border), ("selected", p.selected)] {
-            // Ember's selected row is a deep ember red, not a dark wash of its orange, which
-            // would read as brown (docs/COLOUR.md); it stays out of the attention band.
-            if t == BuiltinTheme::Ember && key == "selected" {
+            // Ember's selected row is a deep red and Pine's a petrol blue, not a dark wash of
+            // their orange or gold, which would read as brown (docs/COLOUR.md, "No brown").
+            if matches!(t, BuiltinTheme::Ember | BuiltinTheme::Pine) && key == "selected" {
                 continue;
             }
             let h = hue(c);
@@ -192,7 +192,7 @@ fn status_chips_are_readable() {
             if fill.a() != 255 || r < 4.5 {
                 failures.push(format!("{t:?} {key} chip: {r:.2}:1, fill alpha {}", fill.a()));
             }
-            if !p.dark && fill != contrast::mix(p.bg, col, 0.10) {
+            if !p.dark && fill != contrast::unbrown(p.bg, contrast::mix(p.bg, col, 0.10)) {
                 failures.push(format!("{t:?} {key} chip: not a 10% tint"));
             }
         }
@@ -205,13 +205,15 @@ fn status_chips_are_readable() {
 }
 
 #[test]
-fn tags_are_sand_and_plum() {
-    // Sand in the Garden pair; Dusk and Dawn take the plum of the icon's lower edge.
-    let (sand, plum) = (70.0..=100.0, 330.0..=350.0);
+fn tags_are_plum() {
+    // The plum of the icon's lower edge (the Garden pair's sand tags read brown: docs/COLOUR.md,
+    // "No brown").
+    let plum = 330.0..=350.0;
     for (name, p, band) in
-        [("Garden dark", &GARDEN_DARK, &sand), ("Garden light", &GARDEN_LIGHT, &sand), ("Dusk", &DUSK, &plum), ("Dawn", &DAWN, &plum)]
+        [("Garden dark", &GARDEN_DARK, &plum), ("Garden light", &GARDEN_LIGHT, &plum), ("Dusk", &DUSK, &plum), ("Dawn", &DAWN, &plum)]
     {
-        assert_eq!(contrast::ref_chip(ChipStyle::Tag, p.branch.chips[0], p), (p.tag_bg, p.tag_fg), "{name}");
+        let tag = contrast::ref_chip(ChipStyle::Tag, p.branch.chips[0], p);
+        assert_eq!((tag.fill, tag.text), (p.tag_bg, p.tag_fg), "{name}");
         let r = ratio(p.tag_fg, p.tag_bg);
         assert!(r >= 4.5, "{name}: tag text is {r:.2}:1");
         let h = hue(p.tag_bg);

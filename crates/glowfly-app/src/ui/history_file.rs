@@ -230,7 +230,7 @@ fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, data: Arc<FileTextD
         nav.scroll_to.take().map(|l| l.saturating_sub(nav.visible / 2))
     };
     let (cursor, query, hits) = (nav.cursor, nav.find.query.clone(), nav.find.hits.clone());
-    let marks_col = color::warn().gamma_multiply(0.45);
+    let marks_col = color::warn();
     let bg = ui.available_rect_before_wrap();
     ui.painter().rect_filled(bg, 0.0, color::bg());
     let mut clicked = None;
@@ -246,7 +246,7 @@ fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, data: Arc<FileTextD
             ui.painter().rect_filled(rect, 0.0, color::selected());
             ui.painter().rect_filled(Rect::from_min_size(rect.min, vec2(3.0, h)), 0.0, color::accent());
         } else if hits.binary_search(&i).is_ok() {
-            ui.painter().rect_filled(rect, 0.0, color::warn().gamma_multiply(0.08));
+            ui.painter().rect_filled(rect, 0.0, color::wash(color::warn(), 0.08));
         }
         let y = rect.top() + style.row_h / 2.0;
         if style.numbers {

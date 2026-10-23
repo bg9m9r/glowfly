@@ -100,7 +100,7 @@ pub(super) fn chip(ui: &mut Ui, text: &str, tip: &str, tint: Color32) {
     let font = type_scale::font(type_scale::CAPTION);
     let w = ui.painter().layout_no_wrap(text.to_owned(), font, Color32::WHITE).size().x + 12.0;
     let (rect, resp) = ui.allocate_exact_size(vec2(w, 20.0), Sense::hover());
-    widgets::chip(ui.painter(), rect.left(), rect.center().y, text, tint.gamma_multiply(0.25), color::text());
+    widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::wash(tint, 0.25), color::text());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, text));
     resp.on_hover_text(tip);
 }

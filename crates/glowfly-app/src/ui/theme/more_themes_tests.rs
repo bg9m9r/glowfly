@@ -31,8 +31,8 @@ fn the_new_themes_take_their_values() {
     let want = [
         (&MIDNIGHT, 0x0d1827, 0x14202f, 0x6eddb2, 0xe2e8f0),
         (&MIST, 0xf2f8fc, 0xf8fcfe, 0x007258, 0x142533),
-        (&EMBER, 0x261517, 0x2e1c1e, 0xff9b2a, 0xefe4e5),
-        (&PINE, 0x0a1e1f, 0x112527, 0xf6c159, 0xe0e9ea),
+        (&EMBER, 0x211819, 0x281f20, 0xff9b2a, 0xebe6e6),
+        (&PINE, 0x111d1f, 0x182426, 0xf6c159, 0xe3e8ea),
         (&GRAPHITE, 0x191a1d, 0x202225, 0x7ebbff, 0xe6e7e9),
         (&LINEN, 0xf9f7f3, 0xfcfbf9, 0x004da8, 0x28211c),
     ];
@@ -60,8 +60,8 @@ fn the_new_neutrals_sit_on_one_hue() {
     let themes: [(&str, &Palette, f64, f64, f64, f64); 6] = [
         ("Midnight", &MIDNIGHT, 255.0, 255.0, 0.045, 0.045),
         ("Mist", &MIST, 235.0, 245.0, 0.02, 0.05),
-        ("Ember", &EMBER, 12.0, 12.0, 0.04, 0.035),
-        ("Pine", &PINE, 200.0, 200.0, 0.035, 0.035),
+        ("Ember", &EMBER, 10.0, 10.0, 0.025, 0.025),
+        ("Pine", &PINE, 212.0, 212.0, 0.025, 0.025),
         ("Graphite", &GRAPHITE, 265.0, 265.0, 0.008, 0.012),
         ("Linen", &LINEN, 80.0, 55.0, 0.012, 0.016),
     ];
@@ -188,17 +188,20 @@ fn the_flame_sits_apart_from_the_coral() {
 
 #[test]
 fn ember_is_red_not_brown_and_pine_is_a_hint_of_green() {
-    // Ember's field leans red (hue under 35, below the browns), its selected row is a deep ember
-    // red, not a dark orange, and its accent is a vivid flame. Pine's field is a quiet
-    // blue-green charcoal, about as coloured as Dusk's, so the gold is the one vivid thing.
+    // Ember's field is a charcoal leaning red (hue under 30, chroma under 0.02, so it never reads
+    // chocolate), its selected row a clean deep red, not a dark orange or a brick, and its accent
+    // a vivid flame. Pine's field is a quiet spruce slate, less coloured than Dusk's, so the gold
+    // is the one vivid thing, and its selected row a petrol blue, not the gold's brown wash.
     for key in ["bg", "panel", "toolbar", "raised", "hover"] {
         let (_, c, h) = oklch(EMBER.get(key).unwrap());
-        assert!((0.0..=30.0).contains(&h) && c <= 0.04, "Ember {key}: {c:.3} at {h:.0}");
+        assert!((0.0..=30.0).contains(&h) && c <= 0.02, "Ember {key}: {c:.3} at {h:.0}");
         let (_, c, h) = oklch(PINE.get(key).unwrap());
-        assert!((190.0..=210.0).contains(&h) && c <= 0.035, "Pine {key}: {c:.3} at {h:.0}");
+        assert!((200.0..=225.0).contains(&h) && c <= 0.025, "Pine {key}: {c:.3} at {h:.0}");
     }
     let (_, sc, sh) = oklch(EMBER.selected);
-    assert!(sh < 35.0 && sc >= 0.06, "Ember's selected row at {sh:.0}, chroma {sc:.3}");
+    assert!(sh < 35.0 && sc >= 0.12, "Ember's selected row at {sh:.0}, chroma {sc:.3}");
+    let (_, pc, ph) = oklch(PINE.selected);
+    assert!((200.0..=240.0).contains(&ph) && pc >= 0.05, "Pine's selected row at {ph:.0}, chroma {pc:.3}");
     let (_, ac, _) = oklch(EMBER.accent);
     assert!(ac >= 0.15, "Ember's accent chroma {ac:.3}");
     // A tint toward the flame (toolbar groups, the main lane's band) stays red, not brown.

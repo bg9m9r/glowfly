@@ -64,6 +64,30 @@ pub fn from_oklch(l: f64, c: f64, h: f64) -> Color32 {
     Color32::from_rgb(enc(r), enc(g), enc(bl))
 }
 
+/// Whether `c` reads as brown, tan, khaki, olive or rust (docs/COLOUR.md, "No brown"), judged
+/// from a rendered grid of OKLCH swatches. Greys (chroma under 0.025, or 0.010 darker than
+/// lightness 0.5) and pale cream or ivory
+/// (lightness 0.90 and up) never do. A warm hue, orange through olive (40 to 125 deg; from 55
+/// at lightness 0.75 and up, where 40 to 55 is peach) does unless it is a clear, saturated
+/// orange, amber, gold or yellow: chroma at least 0.15 at lightness 0.60, falling to 0.074 at
+/// 0.88, and never under lightness 0.55, where every warm colour is brown. The rust side of
+/// red (20 to 40 deg) does when it is dull (chroma under 0.08) and darker than 0.62. So a warm
+/// tint or wash on a dark surface is always brown, whatever its strength.
+pub fn brownish(c: Color32) -> bool {
+    let (l, ch, h) = oklch(c);
+    // A dark warm grey turns taupe sooner than a light one.
+    let grey = if l < 0.5 { 0.010 } else { 0.025 };
+    if ch < grey || l >= 0.90 {
+        return false;
+    }
+    let warm_from = if l >= 0.75 { 55.0 } else { 40.0 };
+    if (warm_from..=125.0).contains(&h) {
+        let clear = l >= 0.55 && ch >= (0.15 - (l - 0.60) * 0.27).clamp(0.074, 0.16);
+        return !clear;
+    }
+    (20.0..40.0).contains(&h) && ch < 0.08 && l < 0.62
+}
+
 /// `a` moved `t` (0 to 1) of the way to `b`, byte by byte in gamma space as egui blends. Opaque.
 pub fn mix(a: Color32, b: Color32, t: f32) -> Color32 {
     let t = t.clamp(0.0, 1.0);
@@ -72,8 +96,10 @@ pub fn mix(a: Color32, b: Color32, t: f32) -> Color32 {
 }
 
 /// The least OKLCH chroma that makes a dark surface a coloured field (Dusk's indigo is 0.028 to
-/// 0.036; Garden's green-grey and the high-contrast greys sit under 0.015).
-const COLOURED_FIELD: f64 = 0.02;
+/// 0.036, Pine's slate and Ember's charcoal about 0.015; Garden's green-grey and the greys of
+/// Graphite and high contrast sit under 0.012). On one, a gold tint mixed in gamma space would
+/// turn olive-green or grey against the field's own colour.
+const COLOURED_FIELD: f64 = 0.012;
 /// How far a tint may turn a coloured dark field's hue, in degrees.
 const HUE_FENCE: f64 = 20.0;
 
@@ -83,22 +109,37 @@ const HUE_FENCE: f64 = 20.0;
 /// field: there a tint toward a far hue (the gold on indigo) would cancel the field's colour and
 /// leave a grey-brown, so the tint keeps the mix's lightness, moves the field's chroma `t` of
 /// the way toward `toward`'s and turns the field's hue at most `HUE_FENCE` degrees toward the
-/// mix's. Light palettes keep the plain mix (a warm tint on pale paper reads as cream, not
-/// brown).
+/// mix's. Whatever would still read brown (a warm tint on a dark grey) is [`unbrown`]ed.
 pub fn tint(base: Color32, toward: Color32, t: f32, dark: bool) -> Color32 {
     let m = mix(base, toward, t);
     let (_, bc, bh) = oklch(base);
     if !dark || bc < COLOURED_FIELD {
-        return m;
+        return unbrown(base, m);
     }
     let (ml, mc, mh) = oklch(m);
     let turn = (mh - bh + 540.0).rem_euclid(360.0) - 180.0;
     if mc >= bc && turn.abs() <= HUE_FENCE {
-        return m;
+        return unbrown(base, m);
     }
     // The chroma moves `t` of the way toward the tint colour's, as an OKLCH mix would.
     let c = bc + (oklch(toward).1 - bc).max(0.0) * f64::from(t);
-    from_oklch(ml, mc.max(c), bh + turn.clamp(-HUE_FENCE, HUE_FENCE))
+    unbrown(base, from_oklch(ml, mc.max(c), bh + turn.clamp(-HUE_FENCE, HUE_FENCE)))
+}
+
+/// `c`, a tint or wash painted on surface `base`, unless it reads brown ([`brownish`]): then a
+/// colour of its lightness in `base`'s own hue and chroma, so the tint still lifts (or sinks)
+/// the surface as much but takes no colour. Warm colours on a dark surface go this way: the
+/// colour moves to the tint's edge, text or mark instead (docs/COLOUR.md, "No brown").
+pub fn unbrown(base: Color32, c: Color32) -> Color32 {
+    if brownish(c) { field_at(base, oklch(c).0) } else { c }
+}
+
+/// The colour of OKLCH lightness `l` in surface `base`'s hue and chroma; a grey when that
+/// would read brown (a warm paper's tint at a darker step).
+pub fn field_at(base: Color32, l: f64) -> Color32 {
+    let (_, bc, bh) = oklch(base);
+    let c = from_oklch(l, bc, bh);
+    if brownish(c) { from_oklch(l, 0.0, 0.0) } else { c }
 }
 
 /// `c` seen through a black `backdrop` (only its alpha matters).
@@ -142,29 +183,74 @@ impl ChipStyle {
     pub const ALL: [ChipStyle; 5] = [Self::Head, Self::CurrentBranch, Self::Branch, Self::Remote, Self::Tag];
 }
 
-/// A ref chip's (fill, text) colours for a ref on a lane of colour `lane`: soft tints of the
-/// lane (a little stronger for the checked-out branch), the palette's tag colours, and a neutral
-/// tint for a detached HEAD. Every fill is opaque, so the text reaches 4.5:1 on selected and
-/// hovered rows too.
-pub fn ref_chip(style: ChipStyle, lane: Color32, p: &Palette) -> (Color32, Color32) {
-    let tint = |dark_t: f32, light_t: f32| {
-        let fill = mix(p.bg, lane, if p.dark { dark_t } else { light_t });
-        (fill, readable_on(lane, fill, p.dark, 4.5))
-    };
-    match style {
-        ChipStyle::Head => (mix(p.bg, p.text, 0.16), p.text),
-        ChipStyle::Tag => (p.tag_bg, p.tag_fg),
-        ChipStyle::Branch | ChipStyle::Remote => tint(0.28, 0.20),
-        ChipStyle::CurrentBranch => tint(0.40, 0.30),
+/// How far a dark palette's branch chip lifts from the background toward `text`.
+const CHIP_LIFT: f32 = 0.10;
+/// How far a branch chip's edge moves from its fill toward the branch colour.
+const CHIP_EDGE: f32 = 0.70;
+/// A light palette's branch chip: a pale wash of the branch's hue, OKLCH lightness and the most
+/// chroma it takes; the checked-out branch's is a step deeper.
+const PALE: (f64, f64) = (0.955, 0.035);
+const PALE_CURRENT: (f64, f64) = (0.90, 0.09);
+/// The lightness and chroma [`clear`] lifts a brown colour to at least: a clear orange, gold or
+/// lime, never a tan.
+const CLEAR: (f64, f64) = (0.80, 0.13);
+
+/// `c`, a line, edge or solid fill, unless it reads brown ([`brownish`]): then lifted in its own
+/// hue to a clear, saturated colour (OKLCH lightness 0.80 and chroma 0.13 at least).
+pub fn clear(c: Color32) -> Color32 {
+    if !brownish(c) {
+        return c;
+    }
+    let (l, ch, h) = oklch(c);
+    from_oklch(l.max(CLEAR.0), ch.max(CLEAR.1), h)
+}
+
+/// A ref chip's colours for a ref on a lane of colour `lane` (docs/COLOUR.md, "Ref chips").
+/// A branch or remote branch: on a dark palette a neutral chip a step off the background with
+/// an edge and text in the branch colour (a tint of a warm colour on a dark field reads brown,
+/// so no chip is tinted); on a light one a pale wash of the branch's hue, edged and lettered in
+/// it. The checked-out branch: on a dark palette a solid fill of the branch colour with dark
+/// text, on a light one a deeper wash with a full-colour edge. Tags take the palette's tag
+/// colours, a detached HEAD a neutral fill. Every fill is opaque and its text reaches 4.5:1.
+pub fn ref_chip(style: ChipStyle, lane: Color32, p: &Palette) -> ChipLook {
+    let (_, lc, lh) = oklch(lane);
+    let pale = |(l, c): (f64, f64)| from_oklch(l, lc.min(c), lh);
+    let edged = |fill: Color32, edge: Color32| ChipLook { fill, edge: Some(edge), text: readable_on(lane, fill, p.dark, 4.5) };
+    match (style, p.dark) {
+        (ChipStyle::Head, _) => ChipLook { fill: mix(p.bg, p.text, 0.16), edge: None, text: p.text },
+        (ChipStyle::Tag, _) => ChipLook { fill: p.tag_bg, edge: None, text: p.tag_fg },
+        (ChipStyle::Branch | ChipStyle::Remote, true) => {
+            let fill = mix(p.bg, p.text, CHIP_LIFT);
+            edged(fill, clear(mix(fill, lane, CHIP_EDGE)))
+        }
+        (ChipStyle::Branch | ChipStyle::Remote, false) => {
+            let fill = pale(PALE);
+            edged(fill, clear(mix(fill, lane, CHIP_EDGE)))
+        }
+        (ChipStyle::CurrentBranch, true) => {
+            let fill = clear(lane);
+            ChipLook { fill, edge: None, text: readable_on(p.bg, fill, false, 4.5) }
+        }
+        (ChipStyle::CurrentBranch, false) => edged(pale(PALE_CURRENT), clear(lane)),
     }
 }
 
+/// How a ref chip is painted: its opaque fill, the 1 px edge drawn inside it (if any) and its
+/// text and marks.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct ChipLook {
+    pub fill: Color32,
+    pub edge: Option<Color32>,
+    pub text: Color32,
+}
+
 /// A change-kind chip's (fill, text) colours for a change of colour `col` (the WIP row's M / A / D
-/// chips): a soft opaque tint of it, with the text pushed until it reaches 4.5:1 on the tint.
+/// chips): a soft opaque tint of it ([`unbrown`]ed: a warm one on a dark palette is a neutral
+/// step), with the text pushed until it reaches 4.5:1 on the tint.
 /// Light palettes tint at 10%, so the status colour itself reads at 4.5:1 there and only the
 /// odd one (Light's modified) is pushed; dark ones at 22%.
 pub fn change_chip(col: Color32, p: &Palette) -> (Color32, Color32) {
-    let fill = mix(p.bg, col, if p.dark { 0.22 } else { 0.10 });
+    let fill = unbrown(p.bg, mix(p.bg, col, if p.dark { 0.22 } else { 0.10 }));
     (fill, readable_on(col, fill, p.dark, 4.5))
 }
 

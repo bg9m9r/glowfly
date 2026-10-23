@@ -3,7 +3,7 @@
 //! of a hovered row come from `widgets::row_fill`.
 
 use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::contrast::{ratio, tint};
+use crate::ui::theme::contrast::{mix, ratio, tint, unbrown};
 use eframe::egui::{Color32, Painter, Rect};
 
 /// How far the band moves from the background toward the lane colour, at most.
@@ -22,11 +22,21 @@ pub(super) struct RowLook {
 /// Paints the row's background in `rect`, under everything else in the row.
 pub(super) fn paint(p: &Painter, rect: Rect, look: RowLook) {
     let pal = color::current();
-    p.rect_filled(rect, 0.0, band_color(look.lane, &pal));
+    let band = band_color(look.lane, &pal);
+    p.rect_filled(rect, 0.0, band);
     if look.highlighted {
-        p.rect_filled(rect, 0.0, look.lane.gamma_multiply(0.16));
+        p.rect_filled(rect, 0.0, highlight_color(band, look.lane));
     }
     crate::ui::widgets::row_fill::paint(p, rect, look.selected, look.hovered);
+}
+
+/// How far a highlighted row (its branch hovered) moves from its band toward the lane colour.
+const HIGHLIGHT_T: f32 = 0.16;
+
+/// The opaque fill of a highlighted row on `band`, a row of a `lane`: the band moved toward the
+/// lane colour, `contrast::unbrown`ed (a warm lane on a dark palette lifts the band instead).
+pub(in crate::ui) fn highlight_color(band: Color32, lane: Color32) -> Color32 {
+    unbrown(band, mix(band, lane, HIGHLIGHT_T))
 }
 
 /// The opaque band for a row on a `lane`: the strongest tint (`contrast::tint`, so on Dusk a warm

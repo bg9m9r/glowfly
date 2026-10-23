@@ -75,7 +75,7 @@ pub(super) fn body(
     if let Some(y) = offset(land, &m, n, ui.available_height()) {
         area = area.vertical_scroll_offset(y);
     }
-    let marks_col = color::warn().gamma_multiply(0.45);
+    let marks_col = color::warn();
     let menu_id = ui.id().with("blame-gutter-menu-line");
     area.show_viewport(ui, |ui, vp| {
         ui.set_min_size(vec2(content_w, m.total(n)));
@@ -103,7 +103,7 @@ pub(super) fn body(
                 let bar = Rect::from_min_size(pos2(sticky + GUTTER_W + 1.0, r.top()), vec2(3.0, style.row_h));
                 painter.rect_filled(bar, 0.0, color::accent());
             } else if view.find.hits.binary_search(&i).is_ok() {
-                painter.rect_filled(r, 0.0, color::warn().gamma_multiply(0.08));
+                painter.rect_filled(r, 0.0, color::wash(color::warn(), 0.08));
             }
         }
         for (k, run) in blame.runs.iter().enumerate().take(last_run + 1).skip(first_run) {

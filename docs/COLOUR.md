@@ -18,12 +18,12 @@ and the branch tests, with the shared hue bands in `theme/bands.rs`.
 | Garden Dark (`garden-dark`) | dark | The earlier standard dark: green-tinted neutrals, lattice green | #151b18 / #1b221e / #4dc588 / #e0e6e3 |
 | Garden Light (`garden-light`) | light | The earlier standard light: warm paper, deep green | #f9f7f1 / #fdfcf9 / #14764a / #161c19 |
 | High Contrast Dark, High Contrast Light | | White on black and black on white, the green accent at 7:1 text | |
-| Sand | light | Brown ink on sand, a green accent | |
+| Sand | light | Warm charcoal ink on cream sand paper, a green accent | |
 | Midnight (`midnight`) | dark | Deep blue-black night under a cool sea-glass accent | #0d1827 / #14202f / #6eddb2 / #e2e8f0 |
 | Mist (`mist`) | light | Midnight's light twin: cool fog paper, blue-grey ink, deep sea glass | #f2f8fc / #f8fcfe / #007258 / #142533 |
 | Graphite (the default dark; `graphite`) | dark | Near-neutral graphite greys (a hair cool) under a cobalt accent | #191a1d / #202225 / #7ebbff / #e6e7e9 |
-| Ember (`ember`) | dark | Oxblood charcoal under a vivid flame-orange accent | #261517 / #2e1c1e / #ff9b2a / #efe4e5 |
-| Pine (`pine`) | dark | Blue-green charcoal, a hint of the woods, under the lantern gold | #0a1e1f / #112527 / #f6c159 / #e0e9ea |
+| Ember (`ember`) | dark | Red-leaning charcoal under a vivid flame-orange accent, a clean deep-red selection | #211819 / #281f20 / #ff9b2a / #ebe6e6 |
+| Pine (`pine`) | dark | Spruce-slate charcoal under the lantern gold, a petrol-blue selection | #111d1f / #182426 / #f6c159 / #e3e8ea |
 | Linen (`linen`) | light | Clean warm-white paper, soft charcoal ink and deep cobalt | #f9f7f3 / #fcfbf9 / #004da8 / #28211c |
 
 Graphite is the default dark theme and Dawn the default light one: new settings start in
@@ -77,19 +77,17 @@ for every surface, stepped in lightness, and one accent across the wheel from it
   (chroma at most 0.012, hue 80) so it reads as clean white, not cream or sepia, under charcoal
   ink. Both take a cobalt accent (#7ebbff, #004da8) in its own band, with Jade in the Azure
   slot and `info` moved to hue about 224.
-- Ember: red and orange, never brown. The field is an oxblood charcoal (hue 12, chroma up to
-  0.04): red-leaning, below the 40 to 125 deg where dark colours turn brown. The accent is a
-  vivid flame orange (#ff9b2a, hue 63, chroma 0.165) in its own band just above the coral's, a
-  step lighter than the coral (L 0.78 against 0.72) and 23 deg round from it. The selected row
-  is a deep ember red (#692726, hue 24) rather than the accent's dark wash, which would be brown;
-  the field's hue is low enough that a tint toward the flame (the toolbar groups' backing, the
-  main lane's row band) turns at most to hue 33, still red.
-  `modified` and `warn` move up to amber (hue about 90), Jade takes the Orange slot, and tags
-  are a wine rose.
-- Pine: green as a hint, not a wash. The field is a blue-green charcoal (hue 200, nudged toward
-  teal; chroma 0.026, under Dusk's, where it was 0.032 at hue 178 and read as a green wash)
-  under the lantern gold, so the gold is the one vivid thing. It takes Dusk's gold families and
-  status colours; its selection is the gold's amber wash, as in Dusk.
+- Ember: red and orange, never brown. The field is a charcoal with a faint red lean (hue 10,
+  chroma about 0.014): an earlier oxblood field (chroma 0.03) read as chocolate brown, and so
+  did every warm tint on it. The accent is a vivid flame orange (#ff9b2a, hue 63, chroma 0.165)
+  in its own band just above the coral's, a step lighter than the coral (L 0.78 against 0.72)
+  and 23 deg round from it. The selected row is a clean deep red (#7c1d1e, hue 25, chroma
+  0.13), saturated enough to read red, not brick. `modified` and `warn` move up to amber (hue
+  about 90), Jade takes the Orange slot, and tags are a wine rose.
+- Pine: green as a hint, not a wash. The field is a spruce-slate charcoal (hue 212, chroma
+  about 0.017; it was a teal at 0.026 and read too green) under the lantern gold, so the gold
+  is the one vivid thing. It takes Dusk's gold families and status colours; its selected row is
+  a petrol blue (#0e4b5c) under the gold accent bar: a gold wash on a dark field is brown.
 
 Views never name a hex value: they read the active palette through `color::text()`,
 `color::added()` and so on (see "Rules" in [ARCHITECTURE.md](ARCHITECTURE.md)).
@@ -118,7 +116,7 @@ Views never name a hex value: they read the active palette through `color::text(
 | primary | `primary`, `primary_border`, `primary_off` | The fill and edge of primary buttons. |
 | primary ink | `on_primary` | Text and icons on a primary fill (dark ink on the gold of Dusk and Dawn and the green of Garden dark, white elsewhere). |
 | danger | `danger`, `danger_off` | Destructive buttons. |
-| tag | `tag_bg`, `tag_fg` | Tag chips in the graph: the plum of the icon's lower edge in Dusk and Dawn, sand in the Garden pair, high contrast and Sand. |
+| tag | `tag_bg`, `tag_fg` | Tag chips in the graph: the plum of the icon's lower edge in Dusk and Dawn, and in the Garden pair, high contrast and Sand too (their sand tags read brown). |
 
 ### Status
 
@@ -181,7 +179,7 @@ the Orange slot, and beside Graphite's and Linen's cobalt the Azure slot
 (`theme/branch_palette_more.rs`); each family names its own slots for the Color submenu.
 
 - `branch.lanes`: line tones, for lines, dots and bands (3:1 on bg and panel).
-- `branch.chips`: chip tones, which ref chips are tinted with and their text pushed from.
+- `branch.chips`: chip tones, which ref chips are edged and lettered in (see Chip tints).
 
 Dusk, Garden dark and High contrast dark use the dark tones for both. Dawn and Garden light use
 bright line tones and darker text tones for chips. High contrast light and Sand use the text
@@ -293,19 +291,43 @@ outside the families and unchanged by the brand colour.
   Branch picker's dot) belongs to the branch, not the chrome; banners under the toolbar are
   messages, not chrome. `theme/vivid_tests.rs` keeps status, attention and lane colours out of
   the chrome's files.
+- No brown (#26): nothing a built-in theme paints reads as brown, tan, khaki, olive or rust.
+  `contrast::brownish` defines the zone in OKLCH, judged from a rendered grid of swatches: a
+  warm hue (40 to 125 deg; 55 to 125 at lightness 0.75 and up, where 40 to 55 is peach) with
+  chroma 0.025 or more (0.010 darker than lightness 0.5) and lightness under 0.90 (paler is
+  cream), unless it is a clear, saturated orange, amber, gold or yellow (chroma 0.15 at
+  lightness 0.60, falling to 0.074 at 0.88; never under lightness 0.55); and the dull rust side
+  of red (20 to 40 deg, chroma under 0.08, darker than 0.62). The consequence: a warm colour
+  washed or tinted onto a dark surface is brown at any strength, and so is a strong warm tint
+  on paper. So no view paints one:
+  - Tints and washes go through `contrast::tint`, `contrast::unbrown` and `Palette::wash` /
+    `color::wash` (never `gamma_multiply` of a status, accent or repository colour). A result
+    in the zone keeps its lightness and takes the surface's own hue and chroma (a grey where
+    that is warm too): the fill lifts the surface, and the colour moves to the text, edge,
+    stripe or mark beside it.
+  - Lines, edges and solid fills that would land in the zone go through `contrast::clear`,
+    which lifts them in their own hue to a clear colour (OKLCH lightness 0.80, chroma 0.13).
+  - Branch chips are neutral, edged and lettered in the branch colour (see Chip tints), never
+    tinted.
+  - Banners sit on a neutral `banner` fill; the stripe carries the kind's colour.
+  - `theme/no_brown_tests.rs` composites every surface, band, highlighted band, chip and chip
+    edge, initials fill, change chip, tone tint, tonal state and wash (each semantic and
+    repository colour at 3% to 80% on bg, panel, toolbar and raised) and fails on any in the
+    zone. Dusk's bronze selected row (#573b11) is the one allowed exception (the owner's call
+    on #25). Text colours are not checked: a gold or amber dark enough to read on paper is
+    ochre, which the light themes keep for `warn` and `modified`.
+  - `snapshot_tests_colour_sheet.rs` renders every theme for judging by eye
+    (`GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly colour_sheet -- --ignored`).
 - Tinting a surface: the faint tints of a surface (graph row bands up to 7% toward the row's
   lane, the toolbar groups' backing 9% toward the accent, the dialog guide 7% and text fields
   4%) go through `contrast::tint`. It is a plain mix, except on a dark palette whose surface is
-  a coloured field (OKLCH chroma 0.02 or more: Dusk's indigo). There a tint toward a far hue
-  would cancel the field's colour: gold, orange, lime or olive mixed into indigo comes out a
-  warm grey of chroma 0.01 to 0.02, which reads as brown or mud. So the tint keeps the mix's
-  lightness, moves the field's chroma the same fraction toward the tint colour's, and turns the
-  field's hue at most 20 deg toward the mix's. In Dusk every band, the toolbar groups and the
-  guide and field fills stay in the indigo-violet family (hue 270 to 315): warm lanes give a
-  plum-violet band, cool lanes a blue-indigo one, and only the gold accent, the selected row
-  and the lanes' own marks are warm. Light palettes, and dark ones on a near-grey field
-  (Garden dark, high contrast dark), keep the plain mix: a warm tint on pale paper reads as
-  cream, not brown. `theme/tint_tests.rs` checks both.
+  a coloured field (OKLCH chroma 0.012 or more: Dusk's indigo, Midnight's blue, Pine's slate,
+  Ember's charcoal). There a tint toward a far hue would cancel the field's colour into mud or
+  an olive-green, so the tint keeps the mix's lightness, moves the field's chroma the same
+  fraction toward the tint colour's, and turns the field's hue at most 20 deg toward the
+  mix's. Whatever still lands in the brown zone is `unbrown`ed. A highlighted row (its branch
+  hovered) is its band 16% toward the lane, `unbrown`ed the same way. `theme/tint_tests.rs`
+  checks the family rule.
 - The selected row's message is drawn in `strong`, in the graph as in the side panels.
 - The accent never marks status. Running operations use `progress`, not the accent.
 - Only the accent family (`accent`, `primary`, `primary_border`, `selected`; Ember's `selected`
@@ -322,12 +344,12 @@ outside the families and unchanged by the brand colour.
   160) and warm paper (hue about 90). Dusk's and Dawn's take the icon's indigo (hue 280 to 300):
   Dusk's at up to 0.045 chroma, Dawn's paper at up to 0.018 under indigo ink of up to 0.05. The
   six newer themes keep their surfaces and greys within 12 deg of one hue each (Midnight 255,
-  Mist 235 under ink at 245, Ember 12, Pine 200, Linen 80 under ink at 55; Graphite's are under
+  Mist 235 under ink at 245, Ember 10, Pine 212, Linen 80 under ink at 55; Graphite's are under
   chroma 0.008 for surfaces and 0.012 for greys).
 - No brown or olive dark surface: in every dark theme, a surface with chroma 0.008 or more keeps
-  its hue out of 40 to 125 deg, where dark colours read as brown, mud or olive. Warmth comes from
-  the accent (Ember's flame over oxblood); a selected row is the accent's own wash, or (Ember)
-  a deep red where an orange wash would turn brown.
+  its hue out of 40 to 125 deg (see "No brown" above). Warmth comes from the accent; a selected
+  row is a clean colour of its own (Graphite's cobalt, Ember's deep red, Pine's petrol blue),
+  never a dark wash of a warm accent, except Dusk's bronze.
   Linen's paper keeps chroma at or under 0.012 so it reads white, not cream.
 - In Dusk, Dawn and the Garden pair, chrome is darker than the base, and raised is at least
   1.08:1 off the panel in every theme.
@@ -399,8 +421,24 @@ built-in and two custom palettes with odd colours.
 
 ## 5. Chip tints
 
+Ref chips in the graph (`contrast::ref_chip`, painted by `graph/labels.rs`'s `paint_box`), every
+fill opaque with its text at 4.5:1 or more:
+
+- A branch or remote branch on a dark palette: a neutral fill, the background 10% toward
+  `text`, with a 1 px edge (the fill 70% toward the branch's chip tone, `clear`ed) and text in
+  the chip tone. A tint of the branch colour would be brown for every warm branch (orange,
+  gold, lime, olive), so no chip is tinted, and all chips look alike whatever their hue.
+- On a light palette: a pale wash of the branch's hue (OKLCH lightness 0.955, chroma at most
+  0.035), with the same edge and text. Paler than 0.90, a warm wash reads cream.
+- The checked-out branch: on a dark palette a solid fill of its chip tone (`clear`ed, so a
+  warm one is a bright orange or gold) with dark text; on a light one a deeper wash (lightness
+  0.90, chroma at most 0.09) with a full-colour edge.
+- Tags keep the palette's `tag_bg` / `tag_fg` (plum in most themes), a detached HEAD the
+  background 16% toward `text`.
+
 A change chip (the WIP row's M / A / D) is an opaque tint of its status colour over the base:
-22% in dark palettes and 10% in light ones (`contrast::change_chip`). The chip text is the
+22% in dark palettes and 10% in light ones (`contrast::change_chip`), `unbrown`ed: a warm one
+(modified) on a dark palette is a neutral step with the amber letters. The chip text is the
 status colour itself wherever that reaches 4.5:1 on the tint; otherwise `readable_on` pushes it
 5% at a time toward white (dark) or black (light) until it does. In Garden light that is
 only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
@@ -427,7 +465,7 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | primary_border | #d5a13c | |
 | tag_bg / tag_fg | #4a283f / #f4c9e4 | Plum, 8.6:1 |
 | added / removed / modified / info / progress | #7bc85f / #ea6a64 / #f69d3d / #60aaf3 / #a689f1 | modified on the orange side (hue 64), out of the gold band |
-| warn / banner | #fba541 / #46290b | |
+| warn / banner | #fba541 / #2b273b | |
 | syn_comment | #a29eb6 | The other syntax colours are Garden dark's |
 
 ### Dawn
@@ -473,9 +511,9 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | accent, primary | #4dc588 | OKLCH 0.74 0.14 158 |
 | on_primary | #0f1a14 | 8.2:1 on the accent |
 | primary_border | #3fae76 | |
-| tag_bg / tag_fg | #3d3628 / #e4d6b6 | 8.3:1 |
+| tag_bg / tag_fg | #4a283f / #f4c9e4 | 8.6:1 |
 | added / removed / modified / info / progress | #7bc85f / #ea6a64 / #edb345 / #60aaf3 / #a689f1 | |
-| warn / banner | #e8b339 / #4a3812 | |
+| warn / banner | #e8b339 / #222925 | |
 
 ### Garden light
 
@@ -496,7 +534,7 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | accent, primary | #14764a | OKLCH 0.50 0.11 158; white on it 5.65:1 |
 | on_primary | #ffffff | |
 | primary_border | #0f5c3a | |
-| tag_bg / tag_fg | #e3dac2 / #6f562a | 4.96:1 |
+| tag_bg / tag_fg | #f5d8ea / #763463 | 6.5:1 |
 | added / removed / modified / info / progress | #357518 / #b63132 / #a06604 / #1f68bc / #6d47b8 | modified is 3.9 to 4.1:1 on chrome and hover (status letters need 3:1) |
 | warn / banner | #a86b00 / #fbecc8 | |
 
@@ -508,25 +546,25 @@ light's with `syn_comment` in their own grey, and `danger` Dusk's or Dawn's.
 
 | Token | Midnight | Mist | Graphite | Ember | Pine | Linen |
 |---|---|---|---|---|---|---|
-| chrome (`toolbar`) | #08111d | #dee9f0 | #121315 | #1c0e10 | #061617 | #ebe7e0 |
-| base (`bg`) | #0d1827 | #f2f8fc | #191a1d | #261517 | #0a1e1f | #f9f7f3 |
-| panel | #14202f | #f8fcfe | #202225 | #2e1c1e | #112527 | #fcfbf9 |
-| raised | #222f40 | #e5eff5 | #2f3134 | #3e2b2d | #203536 | #f0ede7 |
-| input | #0a1421 | #ffffff | #141618 | #201112 | #07191a | #ffffff |
-| hairline (`border`) | #283545 | #cfdae1 | #35373a | #443133 | #263b3c | #dcd7d1 |
-| input_border, dialog_border | #798ba2 | #687683 | #868990 | #9d8183 | #738f91 | #7a736f |
-| hover | #213044 | #e2eef5 | #303236 | #412b2d | #1d3738 | #efebe3 |
-| selected | #174a39 | #c7eddd | #1f3d62 | #692726 | #5b3d0a | #d6e8fe |
-| text | #e2e8f0 | #142533 | #e6e7e9 | #efe4e5 | #e0e9ea | #28211c |
-| weak / faint | #adbacc / #8f9eb3 | #475867 / #5e6f7d | #b7b9bc / #9a9da2 | #c8b3b5 / #ae9698 | #a9bebe / #8aa2a4 | #5c544f / #726b66 |
+| chrome (`toolbar`) | #08111d | #dee9f0 | #121315 | #181112 | #0b1517 | #ebe7e0 |
+| base (`bg`) | #0d1827 | #f2f8fc | #191a1d | #211819 | #111d1f | #f9f7f3 |
+| panel | #14202f | #f8fcfe | #202225 | #281f20 | #182426 | #fcfbf9 |
+| raised | #222f40 | #e5eff5 | #2f3134 | #372e2f | #273336 | #f0ede7 |
+| input | #0a1421 | #ffffff | #141618 | #1b1415 | #0d181a | #ffffff |
+| hairline (`border`) | #283545 | #cfdae1 | #35373a | #3e3435 | #2c393c | #dcd7d1 |
+| input_border, dialog_border | #798ba2 | #687683 | #868990 | #938587 | #7b8c90 | #7a736f |
+| hover | #213044 | #e2eef5 | #303236 | #3a2e30 | #263538 | #efebe3 |
+| selected | #174a39 | #c7eddd | #1f3d62 | #7c1d1e | #0e4b5c | #d6e8fe |
+| text | #e2e8f0 | #142533 | #e6e7e9 | #ebe6e6 | #e3e8ea | #28211c |
+| weak / faint | #adbacc / #8f9eb3 | #475867 / #5e6f7d | #b7b9bc / #9a9da2 | #c0b6b7 / #a5999b | #afbcbf / #91a0a3 | #5c544f / #726b66 |
 | accent, primary | #6eddb2 | #007258 | #7ebbff | #ff9b2a | #f6c159 | #004da8 |
-| on_primary | #08121f | #ffffff | #0a1018 | #210d10 | #021819 | #ffffff |
+| on_primary | #08121f | #ffffff | #0a1018 | #1b1113 | #091619 | #ffffff |
 | primary_border | #4eb891 | #005641 | #5695e0 | #d97f01 | #d5a13c | #003a7f |
 | tag_bg / tag_fg | #3d2d4e / #e0cef8 | #e7dbf7 / #5e3d80 | #3e314d / #e0cff5 | #4f2a3c / #f7c8dd | #4a283f / #f4c9e4 | #f8dae2 / #813450 |
 | added / removed | Garden dark's | Garden light's | Garden dark's | Garden dark's | Dusk's | Garden light's |
 | modified / warn | #edb345 / #e8b339 | #a06604 / #a86b00 | #edb345 / #e8b339 | #e3b842 / #e9c447 | Dusk's | #a06604 / #a86b00 |
 | info / progress | #60aaf3 / #a689f1 | #1f68bc / #6d47b8 | #4fc0e7 / #a689f1 | #60aaf3 / #a689f1 | Dusk's | #006e91 / #6d47b8 |
-| banner | #4a3812 | #fbecc8 | #4a3812 | #3b2f0a | #46290b | #fbecc8 |
+| banner | #1c2939 | #fbecc8 | #292b2e | #312829 | #212d30 | #fbecc8 |
 
 Text on the panel reaches 12.8 to 13.3:1 in the dark ones and 15.2 to 15.3:1 in the light ones;
 the accent 5.7 to 9.9:1. The branch families: Midnight takes Garden dark's, Mist Garden light's,
@@ -621,7 +659,7 @@ The coral (OKLCH hue about 40 deg) and its ink, with the ink's contrast at rest 
 
 The coral reads at least 3.89:1 on its surroundings (lowest: Dusk's selected row). The tool
 backing is #281f32 (Dusk, a violet step: the plain mix was the grey-brown #272225), #dcd7d9 (Dawn), #15261d (Garden dark), #d9dfd3 (Garden light),
-#1d2a27 (High contrast dark), #d4dedd (High contrast light) and #d7d5bf (Sand), at most OKLCH
+#1d2a27 (High contrast dark), #d4dedd (High contrast light) and Sand's near-grey step, at most OKLCH
 chroma 0.040.
 
 ### Terminal colours

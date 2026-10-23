@@ -94,7 +94,7 @@ fn change_pill(ui: &mut egui::Ui, count: usize, name: &str) -> egui::Response {
     let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
     let p = ui.painter();
     let radius = CornerRadius::same(radius::pill(rect.height()));
-    let fill = accent.gamma_multiply(if resp.hovered() { 0.3 } else { 0.18 });
+    let fill = color::wash(accent, if resp.hovered() { 0.3 } else { 0.18 });
     p.rect(rect, radius, fill, Stroke::new(1.0_f32, accent), StrokeKind::Inside);
     p.galley(rect.center() - galley.size() / 2.0, galley, color::text());
     access::name_button(&resp, true, name);

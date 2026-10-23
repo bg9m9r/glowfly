@@ -148,3 +148,17 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
   conflicted, like the WIP panel's banner
 - Name the conflicted rows' coral badge for screen readers and on hover ("Conflicted"), now that
   the "!" letter is gone
+
+### No brown
+
+- Dawn's deep-gold accent (#714900: main's line, the selection bar, links) and the gold branch
+  lines on light themes read brown; a gold at 3:1 on paper is ochre at best (#c37a00, OKLCH
+  0.64 / 0.14 / 69, is the clearest), which would crowd Orange and `warn`: needs a decision
+- Light themes' amber and gold text (`warn`, `modified`, Linen's and Mist's `syn_type`) is ochre
+  at the darkness 4.5:1 needs on paper; try an orange-leaning amber, or a mark beside the text
+- Sand is still a cream-and-greige theme by name; consider re-toning it to clean cream with
+  neutral chrome, or retiring it for Linen
+- A hygiene check that flags `gamma_multiply` on a status, accent or repository colour in `ui/`
+  (they should go through `color::wash`)
+- Pine's gold-lane row bands now step toward teal (the field's own hue); judge whether a plain
+  neutral lift reads better there

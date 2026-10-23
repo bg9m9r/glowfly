@@ -104,7 +104,7 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
                 name.right() + 8.0,
                 rect.top() + 15.0,
                 CURRENT_CHIP,
-                color::primary().gamma_multiply(0.25),
+                color::wash(color::primary(), 0.25),
                 color::text(),
             );
         }

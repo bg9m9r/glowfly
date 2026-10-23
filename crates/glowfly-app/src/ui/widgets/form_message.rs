@@ -74,8 +74,8 @@ pub fn line(ui: &mut Ui, msg: Message) {
 pub fn form(ui: &mut Ui, msg: Message) {
     let tint = msg.kind.color();
     egui::Frame::new()
-        .fill(tint.gamma_multiply(0.12))
-        .stroke(Stroke::new(1.0_f32, tint.gamma_multiply(0.5)))
+        .fill(color::wash(tint, 0.12))
+        .stroke(Stroke::new(1.0_f32, tint))
         .corner_radius(CornerRadius::same(radius::SM))
         .inner_margin(egui::Margin::symmetric(10, 8))
         .show(ui, |ui| {
