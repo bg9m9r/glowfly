@@ -212,6 +212,7 @@ impl<W: Waker + Clone> Runner<W> {
         let epoch = &self.highlight_epoch;
         let ticket = matches!(effect, Effect::HighlightDiff { .. }).then(|| (epoch.clone(), epoch.fetch_add(1, Ordering::SeqCst) + 1));
         let repo = queue::repo_of(&effect).map(Path::to_owned);
+        let hold = queue::holds(&effect).map(Path::to_owned);
         let recovery = guard::Recovery::of(&effect, name);
         let graph_cache = Arc::clone(&self.graph_cache);
         // Registered now, so a stop asked while it waits in its repository's queue is kept.
@@ -223,6 +224,7 @@ impl<W: Waker + Clone> Runner<W> {
         let busy = self.tally.begin(name);
         let job: queue::Job = Box::new(move || {
             let _span = tracing::debug_span!("effect", name).entered();
+            let _hold = hold.as_deref().map(glowfly_core::repo_pool::hold);
             let cancelled = || ticket.as_ref().is_some_and(|(e, mine)| e.load(Ordering::Relaxed) != *mine);
             let started = std::time::Instant::now();
             let msg = guard::guarded(recovery, || execute_with(effect, &cancelled, &graph_cache, stop.as_ref().map(|(_, s)| s)));

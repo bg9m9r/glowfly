@@ -144,6 +144,9 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Link to Watchman's install page in the Linux slow-status note
 - Offer the monitor when a later status read is slow after the untracked cache was turned on (the note shows once per repository)
 - Show whether the fsmonitor daemon is watching in the status bar or Preferences
+- Lend pooled repositories to more reads (full load, blame, file history, compare, conflicts) once their costs are measured
+- Notice changes to config files pulled in by `include.path` / `includeIf` before lending a pooled repository (only the main config files are stamped; the 5 s idle limit covers the rest)
+- Hold the repository pool for git commands typed into the built-in terminal (`git gc` there within 5 s of a read leaves the old pack on Windows)
 
 ### Welcome screen
 

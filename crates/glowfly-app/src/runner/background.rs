@@ -1,5 +1,6 @@
-//! Whole-history work handed off by `update` (`BackgroundEffect`): a large history's graph
-//! layout, the default branch's ancestry for hover highlighting, and freeing replaced snapshots.
+//! Work handed off by `update` (`BackgroundEffect`): a large history's graph layout, the default
+//! branch's ancestry for hover highlighting, freeing replaced snapshots, and letting go of a
+//! closed tab's pooled repository handles.
 
 use crate::effect::BackgroundEffect;
 use crate::msg::{GraphMsg, Msg};
@@ -17,6 +18,10 @@ pub(super) fn run(e: BackgroundEffect) -> Option<Msg> {
         BackgroundEffect::Free(d) => {
             let _span = tracing::trace_span!("free", what = d.0).entered();
             drop(d.1);
+            None
+        }
+        BackgroundEffect::Forget(workdir) => {
+            glowfly_core::repo_pool::forget(&workdir);
             None
         }
     }

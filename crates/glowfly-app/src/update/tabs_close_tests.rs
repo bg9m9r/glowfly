@@ -4,7 +4,7 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::Effect;
+use crate::effect::{BackgroundEffect, Effect};
 use crate::msg::{CloseRequest, Msg, TabsMsg};
 use crate::state::conflict::ConflictView;
 use crate::state::tabs::{ClosedTab, Parked};
@@ -246,4 +246,30 @@ fn reopen_a_chosen_closed_tab() {
     send(&mut st, TabsMsg::ReopenClosed(fake("x")));
     assert_eq!((st.tabs.len(), st.active_tab), (2, 0));
     assert_eq!(closed(&st), [fake("a"), fake("c")]);
+}
+
+#[test]
+fn a_closed_tab_lets_go_of_its_repository_handles() {
+    let mut st = fake_tabs(&["a", "b"], 0);
+    let fx = send(&mut st, TabsMsg::CloseTab(1));
+    let forgets: Vec<_> =
+        fx.iter().filter_map(|e| if let Effect::Background(BackgroundEffect::Forget(p)) = e { Some(p) } else { None }).collect();
+    assert_eq!(forgets, [&fake("b")]);
+}
+
+/// The runner drops the handles the repository pool keeps for a closed tab's repository, and
+/// one lent at the time when it comes back.
+#[test]
+fn forgetting_a_repository_drops_its_pooled_handles() {
+    use glowfly_core::repo_pool::{Use, kept, lend};
+    let dir = super::tests::scratch_repo("forget-pooled");
+    let forget = || crate::runner::execute(Effect::Background(BackgroundEffect::Forget(dir.clone())));
+    let lent = lend(&dir, Use::Workdir).unwrap();
+    assert!(forget().is_none());
+    drop(lent);
+    assert_eq!(kept(&dir), 0, "lent before the forget: not kept");
+    glowfly_core::repo::status_at(&dir, false).unwrap();
+    assert_eq!(kept(&dir), 1);
+    forget();
+    assert_eq!(kept(&dir), 0);
 }

@@ -1,6 +1,7 @@
-//! Whole-history work moved off the UI thread (runner/background.rs): laying out a large
-//! history's graph, the default branch's ancestry for hover highlighting, and freeing a replaced
-//! snapshot. Reads only what it is handed; never touches the repository.
+//! Work moved off the UI thread (runner/background.rs): laying out a large history's graph, the
+//! default branch's ancestry for hover highlighting, freeing a replaced snapshot, and letting go
+//! of a closed tab's open repository handles. Reads only what it is handed; never reads or
+//! changes the repository.
 
 use super::Shared;
 use git2::Oid;
@@ -18,6 +19,9 @@ pub enum BackgroundEffect {
     /// Frees what it holds (a replaced snapshot: about a million allocations at 200k commits).
     /// Reports nothing.
     Free(Discard),
+    /// Lets go of the open handles the repository pool keeps for the repository at `.0`
+    /// (`repo_pool::forget`): its tab closed. Reports nothing.
+    Forget(PathBuf),
 }
 
 /// Something to free on a worker; its `Debug` names only what it is.
@@ -33,7 +37,7 @@ impl BackgroundEffect {
     pub fn scope(&self) -> Option<&PathBuf> {
         match self {
             BackgroundEffect::Relayout { workdir, .. } | BackgroundEffect::Ancestry { workdir, .. } => Some(workdir),
-            BackgroundEffect::Free(_) => None,
+            BackgroundEffect::Free(_) | BackgroundEffect::Forget(_) => None,
         }
     }
 
@@ -42,6 +46,7 @@ impl BackgroundEffect {
             BackgroundEffect::Relayout { .. } => "relayout",
             BackgroundEffect::Ancestry { .. } => "ancestry",
             BackgroundEffect::Free(_) => "free",
+            BackgroundEffect::Forget(_) => "forget-repo",
         }
     }
 }

@@ -50,7 +50,7 @@ pub(super) fn read_paths(
     if paths.is_empty() || paths.len() > MAX_WATCH_PATHS || !paths.iter().all(|p| readable(p)) {
         return Ok(None);
     }
-    let repo = Repository::open(workdir)?;
+    let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
     let mut index = repo.index()?;
     // Git composes the paths it is given on such a system; so does this read.
     let precompose = repo.config().and_then(|c| c.get_bool("core.precomposeunicode")).unwrap_or(false);

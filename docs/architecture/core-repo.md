@@ -16,6 +16,7 @@ source file, update its line here.
 - `repo/walk_order.rs`: the history walk's order (newest committer time first, ties in the order found, each commit once, parents as git2's `parents()` yields them), shared by the graph's walk (`repo/walk.rs`) and the search index, so an index position says how many commits the graph must load to show it.
 - `Snapshot::lay_out_graph` (`repo/branch_colours.rs`) lays the graph out with its owners and colours, at load and when the work tree turns clean or dirty. `Snapshot::commits` is shared (`Arc<[CommitInfo]>`) so workers read it without a copy.
 - Paths go through `repo/rpath.rs` (see `docs/PLATFORMS.md`).
+- `repo_pool.rs` (in `src/`): the workers' pool of open repositories, so the refs fingerprint, status, path status, commit detail, diffs and line counts don't open the repository and parse its index each time. Lent to one thread at a time, keyed by the path as given and how it was opened; `repo_pool/fresh.rs` checks a handle before lending it again (config files, `.git` link, git dir, alternates, the index file). Idle handles go after 5 s, past 8 (2 per key), on `forget` (a tab closed) and during a `hold` (an effect that changes the repository, or a fetch): on Windows an open handle keeps old packs from being deleted and folders from being removed.
 
 ## Diffs
 

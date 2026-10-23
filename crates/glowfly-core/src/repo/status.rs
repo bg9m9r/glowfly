@@ -46,7 +46,7 @@ impl ChangeCounts {
 /// Working-tree status only: (unstaged, staged, repository state). `git_status` false: libgit2
 /// only, so no fsmonitor hook or filter runs (repositories not trusted).
 pub fn status_at(workdir: &Path, git_status: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>, RepositoryState)> {
-    let repo = Repository::open(workdir)?;
+    let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
     let (unstaged, staged) = load_status(&repo, git_status)?;
     Ok((unstaged, staged, repo.state()))
 }
@@ -59,7 +59,7 @@ pub fn status_and_index(
     workdir: &Path,
     git_status: bool,
 ) -> Result<(Vec<FileEntry>, Vec<FileEntry>, RepositoryState, Option<super::IndexMemo>)> {
-    let repo = Repository::open(workdir)?;
+    let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
     let memo = repo.index().ok().and_then(|i| super::IndexMemo::of(&i));
     let (unstaged, staged) = load_status(&repo, git_status)?;
     Ok((unstaged, staged, repo.state(), memo))

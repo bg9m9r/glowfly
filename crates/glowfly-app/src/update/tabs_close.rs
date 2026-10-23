@@ -3,7 +3,7 @@
 //! confirmation names its tabs by id, so it closes the right ones if they moved meanwhile.
 
 use super::tabs::{activate, open, park, save};
-use crate::effect::Effect;
+use crate::effect::{BackgroundEffect, Effect};
 use crate::msg::{CloseRequest, Msg, TabsMsg};
 use crate::state::AppState;
 use crate::state::tab_losses::close_confirm;
@@ -49,6 +49,9 @@ fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         return;
     }
     if let Some(path) = st.tabs[i].path.clone() {
+        // The repository pool lets go of its open handles (on Windows they keep packs and
+        // folders from being deleted).
+        fx.push(Effect::Background(BackgroundEffect::Forget(path.clone())));
         super::terminal::tab_closed(st, &path, &[i], fx);
         super::history_index::tab_closed(st, i, fx);
         remember_closed(st, ClosedTab { path, label: st.tabs[i].label.clone() });
@@ -101,6 +104,7 @@ fn close_where(st: &mut AppState, keep: impl Fn(usize) -> bool, survivor: usize,
     // their original order.
     for &j in closing.iter().rev() {
         if let Some(path) = st.tabs[j].path.clone() {
+            fx.push(Effect::Background(BackgroundEffect::Forget(path.clone())));
             super::terminal::tab_closed(st, &path, &closing, fx);
             super::history_index::tab_closed(st, j, fx);
             remember_closed(st, ClosedTab { path, label: st.tabs[j].label.clone() });

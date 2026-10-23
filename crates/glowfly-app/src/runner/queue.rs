@@ -223,6 +223,17 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
     }
 }
 
+/// The repository `effect` keeps out of the repository pool while it runs (`repo_pool::hold`):
+/// one it can change, and a fetch's or a push's too, after which git may repack. On Windows an
+/// open handle keeps the old packs from being deleted.
+pub(super) fn holds(effect: &Effect) -> Option<&Path> {
+    repo_of(effect).or(match effect {
+        Effect::RunGit { cwd, .. } => Some(cwd),
+        Effect::Repos(ReposEffect::Sync { path, .. }) => Some(path),
+        _ => None,
+    })
+}
+
 /// Fetch and push update remote-tracking refs at most; they never touch the index or files.
 fn network_only(cmd: &[String]) -> bool {
     matches!(glowfly_core::gitcli::subcommand(cmd), Some("fetch" | "push")) && !cmd.iter().any(|a| a == ".")

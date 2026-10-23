@@ -94,6 +94,7 @@ source file, update its line here. Features that span every layer are in
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.
 - `pick.rs`: runs a cherry-pick or revert, skipping the commits that change nothing, and reports `JobMsg::PickDone`.
 - `logs.rs`: the one ordered worker for the log files.
+- Effects that change a repository, and fetches, keep it out of the repository pool while they run (`queue::holds`, `repo_pool::hold`); a closed tab lets go of its handles (`BackgroundEffect::Forget`).
 - `sandbox.rs` (tests only): keeps the journeys' runner inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight.
 - `watcher.rs` (in `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`).
 

@@ -16,7 +16,7 @@ pub fn commit_stats(workdir: &Path, oids: &[Oid]) -> Vec<(Oid, usize, usize, usi
 /// `commit_stats`, stopping before the next commit once `stop` returns true. Also returns how
 /// many of `oids` were gone through (those that failed included).
 pub fn commit_stats_until(workdir: &Path, oids: &[Oid], stop: &dyn Fn() -> bool) -> (Vec<(Oid, usize, usize, usize)>, usize) {
-    let Ok(repo) = Repository::open(workdir) else { return (Vec::new(), oids.len()) };
+    let Ok(repo) = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir) else { return (Vec::new(), oids.len()) };
     let mut out = Vec::new();
     for (i, &oid) in oids.iter().enumerate() {
         if i > 0 && stop() {
@@ -222,7 +222,7 @@ pub(super) fn workdir_opts(path: &str) -> DiffOptions {
 }
 
 pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
-    let repo = Repository::open(workdir)?;
+    let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
     let c = repo.find_commit(oid)?;
     let diff = commit_diff(&repo, oid, None)?;
     let mut files = file_entries(&diff, false);
@@ -292,7 +292,7 @@ pub fn load_diff_for_view(workdir: &Path, target: &DiffTarget, opts: LoadDiffOpt
 }
 
 fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bool) -> Result<ViewDiff> {
-    let repo = Repository::open(workdir)?;
+    let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
     let path = target.path();
     let mut diff = plain_target_diff(&repo, target, opts, None)?;
     // A partial clone may not have the blobs yet; libgit2 can't fetch them.

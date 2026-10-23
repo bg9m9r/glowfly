@@ -13,7 +13,7 @@ use std::time::{Duration, SystemTime};
 /// The fingerprint of the repository at `workdir` (see the module docs). Only meaningful when
 /// compared with another taken in the same run of the app.
 pub fn refs_key(workdir: &Path) -> Result<u64> {
-    key_of(&Repository::discover(workdir)?)
+    key_of(&*crate::repo_pool::lend(workdir, crate::repo_pool::Use::Refs)?)
 }
 
 pub(super) fn key_of(repo: &Repository) -> Result<u64> {
@@ -69,7 +69,7 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
 /// while it stays the same, a working-tree or index diff of that file can't have changed.
 /// Taken before reading the status, so a change made meanwhile shows up next time.
 pub fn open_file_stamp(workdir: &Path, path: &str) -> Option<u64> {
-    let repo = Repository::open(workdir).ok()?;
+    let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir).ok()?;
     let now = SystemTime::now();
     let mut h = DefaultHasher::new();
     path.hash(&mut h);

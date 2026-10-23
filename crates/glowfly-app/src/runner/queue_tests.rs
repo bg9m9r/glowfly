@@ -131,6 +131,10 @@ fn which_effects_queue() {
     let sync = |op| Effect::Repos(ReposEffect::Sync { generation: 1, index: 0, path: w.clone(), op, trust: None });
     assert_eq!(repo_of(&sync(SyncOp::Pull)), Some(w.as_path()));
     assert_eq!(repo_of(&sync(SyncOp::Fetch { prune: true })), None);
+    // A fetch doesn't queue, but keeps the repository's handles out of the pool (git may repack).
+    assert_eq!(holds(&git(&[&["fetch", "--all"]])), Some(w.as_path()));
+    assert_eq!(holds(&sync(SyncOp::Fetch { prune: true })), Some(w.as_path()));
+    assert_eq!(holds(&git(&[&["pull"]])), Some(w.as_path()));
     // A custom shell command may change anything; reading the commands files changes nothing.
     use crate::custom_commands::{CustomCommandEffect, ShellRun};
     let shell = Effect::CustomCommand(CustomCommandEffect::RunShell(ShellRun { cwd: w.clone(), script: "make".into() }));

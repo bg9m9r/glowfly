@@ -70,6 +70,7 @@ pub mod remote_failure;
 pub mod remote_ops;
 pub mod repo;
 pub mod repo_identity;
+pub mod repo_pool;
 pub mod repo_scan;
 pub mod repo_sync;
 pub mod safe_directory;
