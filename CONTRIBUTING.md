@@ -30,7 +30,8 @@ UI changes are covered by snapshot tests. Re-render them with
 
 ## How the code is organized
 
-Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before structural changes. The short version:
+Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before structural changes; what each file holds
+is listed per area in [docs/architecture/](docs/architecture/). The short version:
 
 - Git, CLI and network code lives in `glowfly-core`, which must not depend on egui.
 - New behaviour is a `Msg` handled in `update/<area>.rs`. Anything slow returns an `Effect` that

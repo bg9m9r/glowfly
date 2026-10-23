@@ -1,0 +1,46 @@
+# Tests outside `src/`
+
+Part of [ARCHITECTURE.md](../ARCHITECTURE.md). One line per file or topic: when you add or move a
+test file or script, update its line here. Tests inside `src/` (update tests, snapshots, journeys,
+the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-views.md).
+
+## Source checks (`crates/glowfly-app/tests/`)
+
+- `crates/glowfly-app/tests/layering.rs`: no I/O in `ui/`, `update/` or `state/` (see Rules; its `ALLOWED` table is in `tests/layering/rules.rs`).
+- `crates/glowfly-app/tests/controls.rs`: views under `ui/` draw text fields, checkboxes, radio buttons and modals with `theme/controls.rs` and `theme::modal`, not egui's own.
+- `controls.rs`: dialogs (and the first-run welcome) draw their title and buttons through `dialog_frame` (no headings, egui buttons or English Cancel / Close) and their text fields as `widgets::TextField` (no `controls::field(` or `TextEdit::`).
+- `controls.rs`: the dialogs for less familiar operations each have a guide side pane, and no other dialog has one.
+- `controls.rs`: preference pages and panels use `widgets::buttons` with translated Cancel and Close; nothing wraps a styled button in `add_enabled`.
+- `crates/glowfly-app/tests/type_scale.rs`: view text stays on the type scale: no pixel sizes in `FontId`, `.size(` or font constants, no egui small text or `RichText::strong()` (headers use `type_scale::section`, emphasis `type_scale::strong`), and no link coloured by hand; `ALLOWED` names the exceptions.
+- `crates/glowfly-app/tests/tokens.rs`: views stay on the design tokens (`ui/theme/tokens.rs`): no number in `CornerRadius::same(`, `.corner_radius(`, a `CornerRadius { nw: … }` or a `*RADIUS*` constant, no hand-made `Shadow` or `popup_shadow` (outside `theme/mod.rs`), and no accent `rect_stroke` (focus rings go through `tokens::focus_ring`); the icon shapes are exempt and `ALLOWED` names the exceptions.
+- `crates/glowfly-app/tests/sentence_case.rs`: English labels are in sentence case: `en.json`'s label values (not tips, help or other prose) and the first literal at the views' label calls, with proper nouns and acronyms keeping their capitals.
+- `crates/glowfly-app/tests/message_styles.rs`: only `widgets/banner.rs` fills with the banner colour (the diff's Git LFS note keeps it as a box), and the forms converted to `widgets/form_message.rs` don't colour problem lines red or amber themselves; shares the source reading with `controls.rs` (`tests/support/views.rs`).
+- `crates/glowfly-app/tests/hygiene.rs`: ratchets across both crates: non-test files stay under 400 lines (`LONG_FILES` holds today's longer files at their length as a ceiling) and open with a `//!` doc.
+- `hygiene.rs`: `update/` and `state/` add no log or toast call with English text (`ENGLISH_LOG_CALLS` only goes down).
+- `hygiene.rs`: the fixture builders (`scratch_repo`, `long_repo`, `with_repo`, …) are not redefined or handed one folder name twice.
+- `crates/glowfly-app/tests/i18n_keys.rs`: every translation key the code looks up exists in English, and every English key is used.
+
+## The built executable
+
+- `crates/glowfly-app/tests/sequence_editor.rs`: a rebase with the built executable as the sequence editor.
+- `crates/glowfly-app/tests/askpass.rs`: the built executable as the askpass helper.
+- `crates/glowfly-app/tests/gpg_prompt.rs`: the built executable as gpg.program: the loop guard, (Unix) `git commit -S` through a fake gpg, and (Unix) `git commit -S` with a protected SSH key.
+
+## Images
+
+- `crates/glowfly-app/tests/app_icon.rs`: the app icon: draws it (`app_icon/draw.rs`) and checks every PNG in `assets/icon/` and inside `glowfly.ico` and `glowfly.icns` (`app_icon/containers.rs`); `UPDATE_ICONS=1` rewrites them.
+- `crates/glowfly-app/tests/snapshots/`: approved UI images.
+
+## Real-input smoke tests
+
+- `scripts/smoke-linux.sh` (+ `scripts/smoke/`), CI job `smoke`: real X11 input on the release build under its own Xvfb and openbox, at scale 1 and 1.5.
+- The Linux smoke test checks the first click after a focus change, typing in the commit box and committing, a context menu, a shortcut, a drag and a resize, read back through the probe file and the disk; `src/journey/probe.rs` dry-runs its labels on every OS.
+- `scripts/smoke-windows.ps1` (+ `scripts/smoke/win-*.ps1`, `WinInput.cs`), CI job `smoke-windows`: real input on the Windows runner's desktop through SendInput, at zoom 100 and 150 (the runner's DPI is fixed, so the scale is the app's zoom), with Mesa llvmpipe staged beside a copy of the exe for OpenGL.
+- The Windows smoke test makes the same checks, with the resize done by dragging the drawn bottom-right corner.
+- `smoke-windows.ps1` refuses to run outside CI without `-OnThisDesktop`; `-DryRun` checks the scripts, the Win32 helpers and the fixture without a window; `src/journey/probe.rs` dry-runs its labels with the drawn Windows frame.
+
+## Installers
+
+- `.github/workflows/installers.yml`: `scripts/installer-check-windows.ps1`, `scripts/installer-check-linux.sh`, `scripts/update-feed-check.ps1`: the packaged builds on clean runners.
+- The MSI and the .deb are installed over a v0.0.1 package, and their files, shortcuts or desktop entries, registry and icons checked.
+- The program is started (`--version`; on Linux also the window under its own Xvfb), update-checked against local feeds (up to date, newer, wrong or missing checksum, relative feed), and uninstalled with nothing left behind.

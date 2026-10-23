@@ -1,7 +1,8 @@
 # Glowfly: notes for AI assistants
 
 Native Git client in Rust (egui + libgit2). Read `docs/ARCHITECTURE.md`
-before structural changes. `ROADMAP.md` is the source of truth for the goal, milestones and
+before structural changes; what each file holds is in `docs/architecture/<area>.md`, one line per
+file. `ROADMAP.md` is the source of truth for the goal, milestones and
 status; the work is GitHub issues on the [Glowfly Project](https://github.com/users/bg9m9r/projects/2).
 
 ## Commands
@@ -67,6 +68,8 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
   `ci:`, `chore:`); release-please derives versions and the CHANGELOG from them. Don't edit
   the version in `Cargo.toml`, `version.txt` or `CHANGELOG.md` by hand.
 - Keep files under ~400 lines; split by responsibility rather than growing a file.
+- Adding, moving or removing a source file: update its line in the matching
+  `docs/architecture/<area>.md` (one line per file or topic, never long table cells).
 - `tests/hygiene.rs` ratchets these: a new file over 400 lines, a file without a `//!` doc, a
   new English log/toast text in `update/` or `state/` (use `t.tr`) or a copied fixture helper
   fails it. Its allowlists and counts only shrink; lower them when you fix one, never raise them.
