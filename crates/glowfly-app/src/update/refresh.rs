@@ -238,8 +238,8 @@ pub(super) fn status_set(snap: &mut Snapshot, was_dirty: bool, submodules: Optio
     }
     // Clean <-> dirty adds or removes the WIP row above HEAD: lay the graph out again, keeping
     // the other worktrees' rows with the counts of the last full load or its background count,
-    // and every branch's colour.
-    if was_dirty != snap.is_dirty() {
+    // and every branch's colour. A large history is laid out on a worker (large_graph::settle).
+    if was_dirty != snap.is_dirty() && !crate::state::refresh::large(snap) {
         snap.lay_out_graph();
     }
 }

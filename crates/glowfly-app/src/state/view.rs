@@ -129,10 +129,10 @@ pub struct ViewState {
     pub tips_seen: Vec<Oid>,
     /// The hovered ref's tip and the commits on its branch, for row highlighting. Set by
     /// `update` (`GraphMsg::HoverRef`); the graph only reads it.
-    pub highlight: Option<(Oid, HashSet<Oid>)>,
-    /// The commits reachable from the default branch, walked on the first hover after a load
-    /// (`ref_rows::default_ancestry`); cleared when a new snapshot or tab arrives.
-    pub base_set: Option<HashSet<Oid>>,
+    pub highlight: Option<(Oid, std::sync::Arc<HashSet<Oid>>)>,
+    /// The walks behind `highlight`, kept for the snapshot (`ref_rows::RefRows`); reset when a
+    /// new snapshot or tab arrives.
+    pub ref_rows: crate::state::ref_rows::RefRows,
     /// The window had the keyboard focus last frame (for the WindowFocused transition).
     pub was_focused: bool,
     /// The window has the keyboard focus this frame. The shell sets it before handling results;
@@ -226,7 +226,7 @@ impl Default for ViewState {
             hover_tip_next: None,
             tips_seen: Vec::new(),
             highlight: None,
-            base_set: None,
+            ref_rows: Default::default(),
             was_focused: true,
             focused: true,
             was_typing: false,

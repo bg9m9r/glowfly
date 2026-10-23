@@ -72,6 +72,7 @@ fn search_msgs(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Vec<String> {
                 SearchMsg::IndexProgress { build, .. } => format!("IndexProgress({build})"),
                 SearchMsg::IndexBuilt { build, .. } => format!("IndexBuilt({build})"),
                 SearchMsg::IndexQueried { request, .. } => format!("IndexQueried({request})"),
+                SearchMsg::LoadedMatched { request, .. } => format!("LoadedMatched({request})"),
             }),
             _ => None,
         })

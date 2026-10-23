@@ -6,8 +6,11 @@
 use crate::state::pick::PickOp;
 use git2::Oid;
 use glowfly_core::commit_index::CommitIndex;
+use glowfly_core::graph::Layout;
+use glowfly_core::repo::branch_colours::LayoutFit;
 use glowfly_core::repo::{Comparison, StackedCommit};
 use glowfly_core::settings::{FilterOp, ResizableColumn};
+use std::collections::HashSet;
 use std::sync::Arc;
 
 /// Selecting several graph rows, comparing commits (with each other or the working directory),
@@ -97,6 +100,11 @@ pub enum GraphMsg {
     ResizeColumn { col: ResizableColumn, width: f32 },
     /// A header divider was double-clicked: restore that column's default width.
     ResetColumnWidth(ResizableColumn),
+    /// The layout of relayout request `request` (`BackgroundEffect::Relayout`), with what it was
+    /// made for.
+    LaidOut { request: u64, fit: Box<LayoutFit>, layout: Box<Layout> },
+    /// The default branch's ancestry for ancestry request `request` (`BackgroundEffect::Ancestry`).
+    AncestryFound { request: u64, base: HashSet<Oid> },
 }
 
 impl GraphMsg {
@@ -109,6 +117,9 @@ impl GraphMsg {
             | Self::PinColour { .. }
             | Self::ResizeColumn { .. }
             | Self::ResetColumnWidth(..) => None,
+            // A tab is laid out again and walks again when it is shown (its refresh state and
+            // walks are reset on the switch).
+            Self::LaidOut { .. } | Self::AncestryFound { .. } => None,
         }
     }
 }
@@ -145,6 +156,8 @@ pub enum SearchMsg {
     IndexBuilt { build: u64, result: Result<Arc<CommitIndex>, String> },
     /// The walk positions of the index's matches for query request `request` (`IndexEffect::Query`).
     IndexQueried { request: u64, result: Result<Vec<u32>, String> },
+    /// The loaded rows matching the query of request `request` (`IndexEffect::MatchLoaded`).
+    LoadedMatched { request: u64, result: Result<Vec<usize>, String> },
 }
 
 /// Part of the answer to a path search (`SearchMsg::PathsSearched`).
@@ -179,6 +192,8 @@ impl SearchMsg {
             // The status bar shows progress for the active tab only, and the tab asks for its
             // query's matches again when it is shown (tabs::activate → search_index::resume).
             Self::IndexProgress { .. } | Self::IndexQueried { .. } => None,
+            // Matched again when the tab is shown (tabs::activate → search_index::resume).
+            Self::LoadedMatched { .. } => None,
         }
     }
 }

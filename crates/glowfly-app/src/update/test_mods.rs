@@ -175,6 +175,8 @@ pub(super) mod keys_tests;
 pub(super) mod language_override_tests;
 #[path = "language_tests.rs"]
 pub(super) mod language_tests;
+#[path = "large_graph_tests.rs"]
+pub(super) mod large_graph_tests;
 #[path = "layout_rail_tests.rs"]
 pub(super) mod layout_rail_tests;
 #[path = "layout_tests.rs"]
@@ -269,6 +271,8 @@ pub(super) mod path_case_tests;
 pub(super) mod path_hazards_tests;
 #[path = "perf_tests.rs"]
 pub(super) mod perf_tests;
+#[path = "perf_timing_tests.rs"]
+pub(super) mod perf_timing_tests;
 #[path = "pick_empty_tests.rs"]
 pub(super) mod pick_empty_tests;
 #[path = "pick_mainline_tests.rs"]
@@ -355,6 +359,8 @@ pub(super) mod revert_workdir_tests;
 pub(super) mod search_deeper_tests;
 #[path = "search_index_tests.rs"]
 pub(super) mod search_index_tests;
+#[path = "search_loaded_tests.rs"]
+pub(super) mod search_loaded_tests;
 #[path = "search_paths_tests.rs"]
 pub(super) mod search_paths_tests;
 #[path = "search_tests.rs"]

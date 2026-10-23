@@ -55,7 +55,7 @@ fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     }
     st.tab_return = None;
     if i != st.active_tab {
-        st.tabs.remove(i);
+        super::large_graph::free(fx, "tab", Box::new(st.tabs.remove(i)));
         if i < st.active_tab {
             st.active_tab -= 1;
         }
@@ -63,7 +63,8 @@ fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         return;
     }
     super::partial_content::leave(st, fx);
-    park(st); // discarded with the tab
+    // Discarded with the tab, on a worker (a large history is many allocations).
+    super::large_graph::free(fx, "tab", Box::new(park(st)));
     if st.tabs.len() == 1 {
         st.tabs[0] = Tab::empty();
         activate(st, 0, fx);

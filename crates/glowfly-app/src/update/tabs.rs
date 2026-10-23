@@ -366,7 +366,7 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.view.scroll_offset = Some(p.graph_scroll);
     st.view.scroll_to_row = None;
     st.view.highlight = None;
-    st.view.base_set = None;
+    st.view.ref_rows.reset();
     st.view.hover_tip = None;
     st.view.hover_tip_next = None;
 }

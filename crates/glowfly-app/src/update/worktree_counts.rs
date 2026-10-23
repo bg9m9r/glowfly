@@ -36,7 +36,7 @@ pub(super) fn counted(st: &mut AppState, refs_key: u64, counts: Vec<WorktreeCoun
     if st.refresh.counting == Some(refs_key) {
         st.refresh.counting = None;
     }
-    let mut slow = None;
+    let (mut slow, mut relayout) = (None, false);
     if let Some(snap) = st.snap.as_mut().filter(|s| s.refs_key == refs_key) {
         let rows_before = worktree_wip_heads(&snap.worktrees);
         for wt in snap.worktrees.iter_mut().filter(|w| w.read == ChangesRead::Pending) {
@@ -49,10 +49,11 @@ pub(super) fn counted(st: &mut AppState, refs_key: u64, counts: Vec<WorktreeCoun
                 None => wt.read = ChangesRead::TooLarge,
             }
         }
-        if worktree_wip_heads(&snap.worktrees) != rows_before {
-            snap.lay_out_graph();
-        }
+        relayout = worktree_wip_heads(&snap.worktrees) != rows_before;
         slow = counts.iter().find_map(|c| c.slow.clone());
+    }
+    if relayout {
+        super::large_graph::relayout(st, fx);
     }
     super::status_tip::check(st, slow.as_ref(), now, fx);
     want(st, fx);

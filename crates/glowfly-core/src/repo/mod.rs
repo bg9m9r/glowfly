@@ -32,7 +32,7 @@ mod attrs;
 mod binary_sides;
 mod blame;
 mod blame_porcelain;
-mod branch_colours;
+pub mod branch_colours;
 mod collide;
 mod common_dir;
 mod conflict;
@@ -289,7 +289,7 @@ pub struct Snapshot {
     /// Where an in-progress `git am` stopped (patch, subject, conflicts); None otherwise. Read by
     /// every full load.
     pub am: Option<crate::patch_ops::AmProgress>,
-    pub commits: Vec<CommitInfo>,
+    pub commits: std::sync::Arc<[CommitInfo]>,
     pub row_of: HashMap<Oid, usize>,
     pub truncated: bool,
     /// The commits the history walk starts from, in the order pushed (HEAD, then the visible

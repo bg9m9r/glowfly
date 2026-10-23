@@ -1,11 +1,13 @@
-//! Asking a whole-history index for a query's matches (`IndexEffect::Query`). One worker thread,
-//! newest request first: a request replaces one still waiting (update ignores its id from then
-//! on) and stops one being matched.
+//! Matching a query off the UI thread: against a whole-history index (`IndexEffect::Query`) or a
+//! large loaded history (`IndexEffect::MatchLoaded`), each kind on a `QueryWorker` of its own. One
+//! worker thread, newest request first: a request replaces one still waiting (update ignores its
+//! id from then on) and stops one being matched.
 
 use super::Waker;
 use crate::msg::{Msg, SearchMsg};
 use glowfly_core::commit_index::CommitIndex;
 use glowfly_core::commit_query::CommitQuery;
+use glowfly_core::repo::CommitInfo;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
@@ -14,8 +16,34 @@ use std::sync::{Arc, Mutex, MutexGuard};
 pub(super) struct QueryRequest {
     pub workdir: PathBuf,
     pub request: u64,
-    pub index: Arc<CommitIndex>,
+    pub haystack: Haystack,
     pub query: CommitQuery,
+}
+
+/// What a query is matched against.
+pub(super) enum Haystack {
+    Index(Arc<CommitIndex>),
+    Loaded(Arc<[CommitInfo]>),
+}
+
+impl Haystack {
+    /// The answer to request `request`, or `None` when `stop` said a newer one is waiting.
+    pub(super) fn answer(&self, query: &CommitQuery, request: u64, stop: &dyn Fn() -> bool) -> Option<SearchMsg> {
+        Some(match self {
+            Haystack::Index(index) => SearchMsg::IndexQueried { request, result: Ok(index.matching(query, stop)?) },
+            Haystack::Loaded(commits) => {
+                SearchMsg::LoadedMatched { request, result: Ok(query.matching_rows_until(commits, &Default::default(), stop)?) }
+            }
+        })
+    }
+
+    /// The report of request `request` failing with `error`.
+    fn failed(&self, request: u64, error: String) -> SearchMsg {
+        match self {
+            Haystack::Index(_) => SearchMsg::IndexQueried { request, result: Err(error) },
+            Haystack::Loaded(_) => SearchMsg::LoadedMatched { request, result: Err(error) },
+        }
+    }
 }
 
 #[derive(Default)]
@@ -54,7 +82,7 @@ impl QueryWorker {
             s.running = false;
             if let Some(r) = s.next.take() {
                 drop(s);
-                let msg = SearchMsg::IndexQueried { request: r.request, result: Err(format!("could not start a thread: {e}")) };
+                let msg = r.haystack.failed(r.request, format!("could not start a thread: {e}"));
                 super::index::send(&tx, &waker, &r.workdir, msg);
             }
         }
@@ -63,7 +91,7 @@ impl QueryWorker {
     /// Works through requests until none is waiting.
     fn work<W: Waker>(&self, tx: &Sender<Msg>, waker: &W) {
         loop {
-            let QueryRequest { workdir, request, index, query } = {
+            let QueryRequest { workdir, request, haystack, query } = {
                 let mut s = self.slot();
                 match s.next.take() {
                     Some(r) => r,
@@ -74,16 +102,16 @@ impl QueryWorker {
                 }
             };
             let newer = || self.slot().next.is_some();
-            let result = match catch_unwind(AssertUnwindSafe(|| index.matching(&query, &newer))) {
-                Ok(Some(positions)) => Ok(positions),
+            let msg = match catch_unwind(AssertUnwindSafe(|| haystack.answer(&query, request, &newer))) {
+                Ok(Some(msg)) => msg,
                 // A newer request is waiting.
                 Ok(None) => continue,
-                Err(_) => Err("Glowfly hit an internal error (index-query)".to_owned()),
+                Err(_) => haystack.failed(request, "Glowfly hit an internal error (index-query)".to_owned()),
             };
             if newer() {
                 continue;
             }
-            super::index::send(tx, waker, &workdir, SearchMsg::IndexQueried { request, result });
+            super::index::send(tx, waker, &workdir, msg);
         }
     }
 }
@@ -119,7 +147,12 @@ mod tests {
         let w = QueryWorker::default();
         // Hold the worker off so both requests are waiting together.
         w.slot().running = true;
-        let req = |request, q: &str| QueryRequest { workdir: "r".into(), request, index: Arc::clone(&index), query: CommitQuery::parse(q) };
+        let req = |request, q: &str| QueryRequest {
+            workdir: "r".into(),
+            request,
+            haystack: Haystack::Index(Arc::clone(&index)),
+            query: CommitQuery::parse(q),
+        };
         w.submit(req(1, "other"), tx.clone(), NoWake);
         w.submit(req(2, "fix"), tx.clone(), NoWake);
         assert!(rx.recv_timeout(Duration::from_millis(50)).is_err(), "the replaced request is dropped silently");

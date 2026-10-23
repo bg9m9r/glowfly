@@ -46,6 +46,12 @@ source file, update its line here. Each section lists one feature's files in eve
 - Files: `effect/index.rs`, `runner/index.rs`, `runner/index_query.rs`, `state/history_index.rs`, `update/history_index.rs`, `update/search_index.rs`.
 - `update/history_index.rs`: the index of a large repository: one build at a time across tabs, newest request first, kept with its tab while parked and updated from the previous index after a reload.
 - `update/search_index.rs`: the index's answer for the query, the search bar's whole-history count, and loads that go straight to the next matches for Enter, Filter and Keep searching.
+- `update/search_loaded.rs`: a query typed into a large loaded history (`refresh::LARGE_HISTORY`) waits for a pause in typing, then is matched on the query worker's second slot (`IndexEffect::MatchLoaded`, `SearchMsg::LoadedMatched`); Enter, a new history and smaller histories match on the UI thread.
+
+## Large histories off the UI thread (`BackgroundEffect`, `GraphMsg::LaidOut`, `GraphMsg::AncestryFound`)
+
+- Files: `effect/background.rs`, `runner/background.rs`, `update/large_graph.rs`, `state/ref_rows.rs`.
+- `update/large_graph.rs`: a large history's relayout when its WIP rows change (`LayoutJob` on a worker, swapped in when it still fits), the default branch's ancestry for hover highlighting (each hovered tip's rows kept per snapshot in `RefRows`), and freeing replaced snapshots, layouts and closed tabs on a worker.
 
 ## Range-diff view (`RangeDiffMsg`, `RangeDiffJob`)
 

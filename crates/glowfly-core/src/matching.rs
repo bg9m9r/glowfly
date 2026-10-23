@@ -16,7 +16,19 @@ pub fn contains_lower(hay: &str, needle: &str) -> bool {
         return false;
     }
     let (h, n) = (hay.as_bytes(), needle.as_bytes());
-    h.len() >= n.len() && h.windows(n.len()).any(|w| w.iter().zip(n).all(|(a, b)| a.to_ascii_lowercase() == *b))
+    let Some(last) = h.len().checked_sub(n.len()) else { return false };
+    // The places the needle's first byte starts, in either case (a SIMD scan), each compared
+    // with the rest of the needle ignoring ASCII case.
+    let (first, rest) = (n[0], &n[1..]);
+    let mut from = 0;
+    while let Some(i) = memchr::memchr2(first, first.to_ascii_uppercase(), &h[from..=last]) {
+        let at = from + i;
+        if h[at + 1..at + n.len()].eq_ignore_ascii_case(rest) {
+            return true;
+        }
+        from = at + 1;
+    }
+    false
 }
 
 /// Whether the lowercase hex spelling of `id` (an object id's bytes) starts with `prefix`,
@@ -49,9 +61,33 @@ mod tests {
             ("ÄNDERUNG am Löser", "lose"),
             ("plain ascii", "ü"),
             ("feature/ABC-12", "abc-1"),
+            ("feature/ABC-12", "feature/abc-12"),
+            ("feature/ABC-12", "feature/abc-123"),
+            ("aaab", "aab"),
+            ("AaAb", "aab"),
+            ("ab", "b"),
+            ("ab", "abc"),
+            ("12 [x]", "[x]"),
         ];
         for (hay, needle) in cases {
             assert_eq!(contains_lower(hay, needle), hay.to_lowercase().contains(needle), "{hay:?} / {needle:?}");
+        }
+    }
+
+    #[test]
+    fn contains_lower_agrees_with_lowercasing_on_many_strings() {
+        // Every needle cut from every haystack, and their near misses, over a small alphabet
+        // with repeats (where a naive first-byte search goes wrong).
+        let hays = ["aAbAab", "AAAA", "xYzXyZ x", "ab-AB_ab", "[Fix] fIX fix", "a", "-ab-"];
+        for hay in hays {
+            let low = hay.to_lowercase();
+            for i in 0..low.len() {
+                for j in i..=low.len() {
+                    for needle in [low[i..j].to_owned(), format!("{}a", &low[i..j]), format!("b{}", &low[i..j])] {
+                        assert_eq!(contains_lower(hay, &needle), low.contains(&needle), "{hay:?} / {needle:?}");
+                    }
+                }
+            }
         }
     }
 

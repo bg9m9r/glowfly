@@ -7,6 +7,7 @@ use git2::Oid;
 use glowfly_core::commit_query::{AuthorCount, CommitQuery};
 use glowfly_core::path_query::PathTerm;
 use std::collections::HashSet;
+use std::time::Instant;
 
 /// The active tab's commit search (parked with the tab). Changed only by update; the view edits
 /// the query's text buffer (`ViewState::search`) and sends `SearchMsg`s.
@@ -31,6 +32,19 @@ pub struct CommitSearch {
     /// The whole-history index of a large repository and its answer for the query (parked with
     /// the tab).
     pub index: HistoryIndex,
+    /// Matching a large loaded history off the UI thread (update/search_loaded.rs).
+    pub loaded: LoadedMatch,
+}
+
+/// A typed query waiting for a pause in typing, and the match asked of the query worker.
+#[derive(Default)]
+pub struct LoadedMatch {
+    /// When the typed query is matched, if it is waiting for the pause.
+    pub due: Option<Instant>,
+    /// The request whose answer is wanted, if any.
+    pub pending: Option<u64>,
+    /// Counts requests, so an older answer can't pass for a newer request.
+    pub requests: u64,
 }
 
 /// Answers for the query's path terms, found off the UI thread (update/search_paths.rs). A

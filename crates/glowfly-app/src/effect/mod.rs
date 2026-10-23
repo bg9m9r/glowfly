@@ -11,6 +11,7 @@ use glowfly_core::undo::{Action, UndoKind};
 use std::path::PathBuf;
 
 mod account;
+mod background;
 mod blame;
 mod clone;
 mod credential;
@@ -42,6 +43,7 @@ mod ui;
 mod updates;
 
 pub use account::AccountEffect;
+pub use background::{BackgroundEffect, Discard};
 pub use blame::BlameRequest;
 pub use clone::CloneEffect;
 pub use credential::CredentialEffect;
@@ -49,7 +51,7 @@ pub use dashboard::*;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use forge_filters::{FilterCall, FilterResult};
 pub use history::FileTextRequest;
-pub use index::IndexEffect;
+pub use index::{IndexEffect, Shared};
 pub use init::InitEffect;
 pub use issue::*;
 pub use line_counts::{FailedLineCounts, LineCountsEffect};
@@ -296,8 +298,7 @@ pub enum Effect {
         connected: bool,
         call: ForgeCall,
     },
-    /// Connected accounts: signing in, tokens, creating a repository, owners and boards
-    /// (account.rs); unscoped.
+    /// Connected accounts: signing in, tokens, creating a repository, owners and boards (account.rs); unscoped.
     Account(AccountEffect),
     Stats {
         workdir: PathBuf,
@@ -317,6 +318,8 @@ pub enum Effect {
     /// The whole-history search index: build, query, forget (index.rs). Handled by Runner::run's
     /// index worker: one build at a time across tabs, newest request first, and one query.
     Index(IndexEffect),
+    /// Whole-history work off the UI thread: relayout, ancestry, freeing a snapshot (background.rs).
+    Background(BackgroundEffect),
     /// Checks commit `oid`'s signature (in `format`) with git, for the details panel's badge.
     VerifySignature {
         workdir: PathBuf,
@@ -346,15 +349,15 @@ pub enum Effect {
     Os(OsEffect),
     /// Git config values and signing keys for Preferences (prefs.rs); unscoped.
     Prefs(PrefsEffect),
-    /// Watch this repository for outside changes, replacing any previous watch; None stops
-    /// watching. Handled by `Runner::run` itself (the watcher outlives a worker thread).
+    /// Watch this repository for outside changes, replacing any previous watch; None stops watching. Handled by
+    /// `Runner::run` itself (the watcher outlives a worker thread).
     Watch(Option<WatchTarget>),
     /// Check the watched tree for changes the watcher may have missed (Windows poll); `Runner::run`.
     SweepWatch {
         workdir: PathBuf,
     },
-    /// Answers credential prompt `id`. Handled by `Runner::run` itself, which owns the
-    /// listener the helper is waiting on. The answer's `Debug` output is redacted.
+    /// Answers credential prompt `id`. Handled by `Runner::run` itself, which owns the listener the helper is waiting on.
+    /// The answer's `Debug` output is redacted.
     AnswerPrompt {
         id: u64,
         reply: Reply,
@@ -401,8 +404,7 @@ pub enum Effect {
     PullRequest(crate::pull_request::PrEffect),
     /// Building and finding glowfly:// links, and the scheme registration (deep_link.rs); unscoped.
     DeepLink(crate::deep_link::DeepLinkEffect),
-    /// The cross-repository dashboard (runner/dashboard.rs); unscoped; reads repositories with
-    /// libgit2 and asks services.
+    /// The cross-repository dashboard (runner/dashboard.rs); unscoped; reads repositories with libgit2 and asks services.
     Dashboard(DashboardEffect),
     /// The issue panel's and the Create issue dialog's calls to the tracker (unscoped; issue.rs).
     Issue(IssueEffect),
@@ -412,11 +414,9 @@ pub enum Effect {
     Repos(ReposEffect),
     /// Reads repositories just made from a trusted one, to trust them (runner/trust.rs; unscoped).
     Trust(TrustEffect),
-    /// A shallow clone's size check and a partial clone's missing contents (runner/partial.rs);
-    /// unscoped.
+    /// A shallow clone's size check and a partial clone's missing contents (runner/partial.rs); unscoped.
     Partial(partial::PartialEffect),
-    /// Stops the running git command registered under this key, if any. Handled by
-    /// `Runner::run` itself, which holds the stops.
+    /// Stops the running git command registered under this key, if any. Handled by `Runner::run` itself, which holds the stops.
     StopGit(partial::StopKey),
     Ui(UiEffect),
 }

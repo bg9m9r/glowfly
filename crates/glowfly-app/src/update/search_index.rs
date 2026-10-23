@@ -56,9 +56,10 @@ pub(super) fn queried(st: &mut AppState, request: u64, result: Result<Vec<u32>, 
     super::search_deeper::pump(st, fx);
 }
 
-/// The tab was shown again: answers in flight were dropped while it was parked, and its history
-/// may need a build.
+/// The tab was shown again: answers in flight were dropped while it was parked (a loaded match is
+/// asked for again), and its history may need a build.
 pub(super) fn resume(st: &mut AppState, fx: &mut Vec<Effect>) {
+    super::search_loaded::resume(st, fx);
     st.search.index.pending = None;
     st.search.index.asked = None;
     super::history_index::want_build(st, fx);

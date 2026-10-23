@@ -19,6 +19,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 
 mod askpass;
+mod background;
 mod blame;
 mod clone;
 mod config;

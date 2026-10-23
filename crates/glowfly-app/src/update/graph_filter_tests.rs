@@ -244,12 +244,12 @@ fn hovering_a_ref_highlights_its_branch_rows_in_update() {
     let (tip, rows) = st.view.highlight.clone().expect("the hovered branch is highlighted");
     assert_eq!(tip, topic);
     assert!(rows.contains(&topic) && !rows.contains(&main), "only the branch's own commits: {rows:?}");
-    assert!(st.view.base_set.as_ref().is_some_and(|b| b.contains(&main)), "the default branch's history is kept");
+    assert!(st.view.ref_rows.base.as_ref().is_some_and(|b| b.contains(&main)), "the default branch's history is kept");
     update(&mut st, Msg::Graph(GraphMsg::HoverRef(None)), Instant::now());
     assert!(st.view.highlight.is_none());
     // A reload walks the default branch again on the next hover.
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(st.view.base_set.is_none());
+    assert!(st.view.ref_rows.base.is_none() && st.view.ref_rows.rows.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

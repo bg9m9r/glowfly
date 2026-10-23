@@ -253,7 +253,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         state,
         rebase,
         am,
-        commits,
+        commits: commits.into(),
         row_of,
         truncated,
         starts,

@@ -114,6 +114,9 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Offer Keep searching under a short filtered list whose batch budget is spent
 - Keep a deeper search's loaded history and budget across a tab switch
 - Search older history for matches only, without laying out every commit (past the 200,000 cap)
+- Lay out a large history with HEAD's lane kept for the WIP row, so a clean/dirty flip changes one row instead of a worker relayout
+- Show a large history's WIP row at once (before the worker's relayout lands), drawn as a stub above HEAD
+- Walk a hovered branch's rows on the worker too (still up to 5,000 first-parent steps on the UI thread, once per tip)
 
 ### Search and filter
 
@@ -136,6 +139,9 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Show a match older than the graph's 200,000-commit cap in the details panel without loading it
 - Translate the search bar's count and hover texts
 - Limit index memory by a byte budget as well as the commit cap, and say so in the hover
+- Match path: queries in a large loaded history on the query worker too (they still match on the UI thread once files are searched)
+- Work out the author picker's list on a worker for a large history (it groups every loaded commit on the UI thread)
+- Match a large history from the index's answer when it is current (the loaded commits are its first positions) instead of a second scan
 
 ### History table that carries more information
 

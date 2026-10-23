@@ -1,6 +1,6 @@
 //! Hidden and soloed refs in the graph, saved per repository: changing them saves the settings
 //! and reloads; each load drops refs that no longer exist. Also the rows highlighted for the ref
-//! under the pointer.
+//! under the pointer, and the off-thread results for a large history's graph (large_graph.rs).
 
 use crate::effect::{Effect, LoadKind};
 use crate::msg::GraphMsg;
@@ -8,11 +8,14 @@ use crate::state::AppState;
 use crate::state::branches::HEAD_ALWAYS_SHOWN;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::FilterOp;
+use std::sync::Arc;
 
 pub(super) fn handle(st: &mut AppState, msg: GraphMsg, fx: &mut Vec<Effect>) {
     match msg {
         GraphMsg::GraphFilter(op) => filter(st, op, fx),
-        GraphMsg::HoverRef(tip) => hover_ref(st, tip),
+        GraphMsg::HoverRef(tip) => hover_ref(st, tip, fx),
+        GraphMsg::LaidOut { request, fit, layout } => super::large_graph::laid_out(st, request, &fit, *layout, fx),
+        GraphMsg::AncestryFound { request, base } => super::large_graph::ancestry_found(st, request, base),
         GraphMsg::PinColour { key, slot } => super::branch_colour::pin(st, &key, slot, fx),
         GraphMsg::ResizeColumn { col, width } => super::graph_columns::resize(st, col, width, fx),
         GraphMsg::ResetColumnWidth(col) => super::graph_columns::reset(st, col, fx),
@@ -82,12 +85,19 @@ fn ref_exists(snap: &Snapshot, r: &str) -> bool {
 }
 
 /// Highlights the rows of the branch whose tip is `tip` (none for `None`). The default branch's
-/// history is walked once per snapshot, on the first hover.
-fn hover_ref(st: &mut AppState, tip: Option<git2::Oid>) {
-    let (Some(tip), Some(snap)) = (tip, st.snap.as_ref()) else {
+/// history is walked once per snapshot, on the first hover (on a worker for a large history,
+/// highlighting once it answers), and each tip's rows once per snapshot.
+fn hover_ref(st: &mut AppState, tip: Option<git2::Oid>, fx: &mut Vec<Effect>) {
+    let Some(tip) = tip.filter(|_| st.snap.is_some()) else {
         st.view.highlight = None;
         return;
     };
-    let base = st.view.base_set.get_or_insert_with(|| crate::state::ref_rows::default_ancestry(snap).1);
-    st.view.highlight = Some((tip, crate::state::ref_rows::branch_rows(snap, tip, base)));
+    if !super::large_graph::ancestry_ready(st, fx) {
+        st.view.highlight = None;
+        return;
+    }
+    let (Some(snap), rows) = (st.snap.as_ref(), &mut st.view.ref_rows) else { return };
+    let Some(base) = &rows.base else { return };
+    let branch = rows.rows.entry(tip).or_insert_with(|| Arc::new(crate::state::ref_rows::branch_rows(snap, tip, base)));
+    st.view.highlight = Some((tip, Arc::clone(branch)));
 }

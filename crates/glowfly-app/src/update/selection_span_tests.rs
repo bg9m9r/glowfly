@@ -73,7 +73,7 @@ fn a_root_commit_is_never_the_gap() {
     assert_eq!(span_of(&oids, snap), Span::Gaps { gap: Some(f.c(3)) }, "c3's parent c2 isn't selected");
     // With c3 a root (as in a repository with two histories), nothing above c1 has a gap.
     let row = snap.row_of[&f.c(3)];
-    snap.commits[row].parents.clear();
+    std::sync::Arc::get_mut(&mut snap.commits).unwrap()[row].parents.clear();
     assert_eq!(span_of(&oids, snap), Span::Gaps { gap: None });
     let _ = std::fs::remove_dir_all(&f.dir);
 }

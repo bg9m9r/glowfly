@@ -49,6 +49,7 @@ impl Effect {
             Effect::LineCounts(e) => e.name(),
             Effect::SearchPaths { .. } => "search-paths",
             Effect::Index(e) => e.name(),
+            Effect::Background(e) => e.name(),
             Effect::VerifySignature { .. } => "verify-signature",
             Effect::FetchAvatars(_) => "avatars",
             Effect::SaveSettings(_) => "save-settings",
@@ -99,6 +100,7 @@ impl Effect {
     pub fn timed(&self) -> bool {
         match self {
             Effect::Index(e) => e.timed(),
+            Effect::Background(_) => true,
             Effect::LoadRepo { .. }
             | Effect::LoadStatus { .. }
             | Effect::LoadIndexStatus { .. }

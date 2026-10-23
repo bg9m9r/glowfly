@@ -82,6 +82,19 @@ pub struct RefreshState {
     pub more_retries: u8,
     /// The filtering search loading older history by itself; carried across loads.
     pub deeper: Option<DeeperSearch>,
+    /// The graph layout asked of a worker for a large history (update/large_graph.rs), if any.
+    pub relayout: Option<u64>,
+    /// Counts those requests.
+    pub relayouts: u64,
+}
+
+/// From this many loaded commits, whole-history work runs off the UI thread: matching a typed
+/// search, laying the graph out again, the default branch's ancestry.
+pub const LARGE_HISTORY: usize = 20_000;
+
+/// Whether `snap` holds a large history (`LARGE_HISTORY`).
+pub fn large(snap: &Snapshot) -> bool {
+    snap.commits.len() >= LARGE_HISTORY
 }
 
 /// Whether `snap` stops short of the whole history and may load more of it (below the cap). A

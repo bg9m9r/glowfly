@@ -93,7 +93,7 @@ fn walk_positions_match_the_graph_load() {
         assert_eq!(first, loaded, "the first {k} positions are what a load of {k} shows");
     }
     // The texts are the graph's.
-    for c in &all.commits {
+    for c in all.commits.iter() {
         let p = ix.position(c.oid).unwrap() as usize;
         assert_eq!((ix.summary_at(p).unwrap(), ix.body_at(p).unwrap()), (c.summary.as_str(), c.body.as_str()));
         assert_eq!(ix.person_at(p).unwrap(), (c.author.as_str(), c.email.as_str()));

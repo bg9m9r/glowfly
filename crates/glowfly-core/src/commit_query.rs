@@ -25,6 +25,9 @@ mod tests;
 const AUTHOR: &str = "author:";
 const PATH_PREFIXES: [&str; 2] = ["path:", "file:"];
 
+/// How often (in commits) a match on a worker asks whether it should stop.
+const STOP_CHECK: usize = 8192;
+
 /// A parsed search query. The text parts are lowercase, so matching never allocates for ASCII
 /// text.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -178,11 +181,26 @@ impl CommitQuery {
     /// commit must also be in `touching` (the commits found to change a matching path); without
     /// them `touching` is ignored.
     pub fn matching_rows(&self, commits: &[CommitInfo], touching: &HashSet<Oid>) -> Vec<usize> {
+        self.matching_rows_until(commits, touching, &|| false).unwrap_or_default()
+    }
+
+    /// [`matching_rows`](Self::matching_rows) on a worker thread: `None` when `stop` (asked every
+    /// few thousand commits) says a newer request is waiting.
+    pub fn matching_rows_until(&self, commits: &[CommitInfo], touching: &HashSet<Oid>, stop: &dyn Fn() -> bool) -> Option<Vec<usize>> {
+        let mut out = Vec::new();
         if self.is_empty() {
-            return Vec::new();
+            return Some(out);
         }
         let paths = |c: &CommitInfo| self.paths.is_empty() || touching.contains(&c.oid);
-        commits.iter().enumerate().filter(|(_, c)| self.matches(c) && paths(c)).map(|(i, _)| i).collect()
+        for (i, c) in commits.iter().enumerate() {
+            if i % STOP_CHECK == STOP_CHECK - 1 && stop() {
+                return None;
+            }
+            if self.matches(c) && paths(c) {
+                out.push(i);
+            }
+        }
+        Some(out)
     }
 }
 

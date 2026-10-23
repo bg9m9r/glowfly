@@ -40,8 +40,9 @@ fn commit(oid: Oid, parent: Oid, summary: &str) -> CommitInfo {
 /// origin/main main's upstream with those counts. `loaded` false leaves origin/main's commits
 /// out of the graph. Each call starts again from the fixture's own commit ("one").
 pub(crate) fn diverge(snap: &mut Snapshot, ahead: u8, behind: u8, loaded: bool) {
-    snap.commits.retain(|c| c.summary == "one");
-    let base = snap.commits[0].oid;
+    let mut kept = snap.commits.to_vec();
+    kept.retain(|c| c.summary == "one");
+    let base = kept[0].oid;
     let mut rows = Vec::new();
     let mut tip = base;
     for n in 1..=ahead {
@@ -59,8 +60,8 @@ pub(crate) fn diverge(snap: &mut Snapshot, ahead: u8, behind: u8, loaded: bool) 
     }
     let upstream = tip;
     rows.reverse();
-    rows.append(&mut snap.commits);
-    snap.commits = rows;
+    rows.append(&mut kept);
+    snap.commits = rows.into();
     snap.row_of = snap.commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();
     snap.head_oid = Some(main);
     snap.remotes = vec![("origin".into(), vec![("main".into(), upstream)])];

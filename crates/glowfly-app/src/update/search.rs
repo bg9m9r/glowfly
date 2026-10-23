@@ -1,7 +1,7 @@
 //! The graph's search bar: parsing the query, its matches over the loaded history, stepping
 //! through them, filtering the graph to them, and the author picker. Text and author terms
-//! scan the loaded commits in memory; path terms need each commit's changed files, which
-//! update/search_paths.rs asks the runner for.
+//! scan the loaded commits in memory (a large history off the UI thread, update/search_loaded.rs);
+//! path terms need each commit's changed files, which update/search_paths.rs asks the runner for.
 
 use crate::effect::Effect;
 use crate::msg::SearchMsg;
@@ -10,8 +10,9 @@ use crate::state::search::PathSearch;
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::commit_query::{self, CommitQuery};
+use std::time::Instant;
 
-pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: SearchMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         SearchMsg::Open => {
             if st.diff.is_some() {
@@ -20,8 +21,11 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
             st.view.show_search = true;
             st.view.focus_search = true;
         }
-        SearchMsg::QueryChanged => query_changed(st, fx),
-        SearchMsg::Next => next(st, fx),
+        SearchMsg::QueryChanged => super::search_loaded::typed(st, now, fx),
+        SearchMsg::Next => {
+            super::search_loaded::flush(st, fx);
+            next(st, fx);
+        }
         SearchMsg::ToggleFilter => {
             st.search.filter = !st.search.filter;
             keep_selection_in_view(st);
@@ -30,6 +34,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
         SearchMsg::Close => {
             st.view.show_search = false;
             st.view.search.clear();
+            st.search.loaded.due = None;
             st.search.filter = false;
             st.search.paths = PathSearch { requests: st.search.paths.requests, ..Default::default() };
             st.search.index.drop_answer();
@@ -38,6 +43,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
         }
         SearchMsg::Clear => {
             st.view.search.clear();
+            st.search.loaded.due = None;
             st.view.author_filter.clear();
             st.search.paths = PathSearch { requests: st.search.paths.requests, ..Default::default() };
             st.search.index.drop_answer();
@@ -55,23 +61,37 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
         SearchMsg::PickAuthor(author) => {
             st.view.search = commit_query::with_author(&st.view.search, author.as_deref());
             st.view.author_filter.clear();
-            query_changed(st, fx);
+            query_changed(st, false, fx);
         }
         SearchMsg::PathsSearched { request, result } => super::search_paths::searched(st, request, result, fx),
         SearchMsg::IndexProgress { build, indexed, estimate } => super::history_index::progress(st, build, indexed, estimate),
         SearchMsg::IndexBuilt { build, result } => super::history_index::built(st, build, result, fx),
         SearchMsg::IndexQueried { request, result } => super::search_index::queried(st, request, result, fx),
+        SearchMsg::LoadedMatched { request, result } => super::search_loaded::matched(st, request, result, fx),
     }
 }
 
-fn query_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
-    recompute(st);
+/// The query changed: its matches (on the query worker for a large history unless `now`), the
+/// path and index answers it needs, and the next Enter's starting point.
+pub(super) fn query_changed(st: &mut AppState, now: bool, fx: &mut Vec<Effect>) {
+    st.search.query = CommitQuery::parse(&st.view.search);
+    let asked = !now && super::search_loaded::ask(st, fx);
+    if !asked {
+        recompute(st);
+    }
     super::search_paths::want(st, fx);
     super::search_index::want(st, fx);
     // The next Enter lands on the first (newest) match.
     st.search.cursor = st.snap.as_ref().map_or(0, |s| s.commits.len().saturating_sub(1));
     st.search.stepped = false;
     st.search.index.jump = None;
+    if !asked {
+        matches_changed(st, fx);
+    }
+}
+
+/// The matches changed: a filtered graph keeps the selection in view and may load further back.
+pub(super) fn matches_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.search.filter {
         keep_selection_in_view(st);
     }
@@ -80,6 +100,7 @@ fn query_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// Parses the query and finds its matches in the loaded history (path terms as far as found).
 pub(super) fn recompute(st: &mut AppState) {
+    st.search.loaded.pending = None;
     st.search.query = CommitQuery::parse(&st.view.search);
     let touching = &st.search.paths.touching;
     st.search.matches = st.snap.as_ref().map(|s| st.search.query.matching_rows(&s.commits, touching)).unwrap_or_default();

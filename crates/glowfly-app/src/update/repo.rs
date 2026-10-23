@@ -282,7 +282,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
         super::deep_link_open::ready(st, now, fx);
         return;
     }
-    st.view.base_set = None;
+    st.view.ref_rows.reset();
     st.view.highlight = None;
     match kind {
         LoadKind::Open => {
@@ -344,7 +344,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     super::notify::loaded(st, &snap, kind, now, fx);
     // After the filter, which adopts the repository's keys: the pins are found under its own.
     super::branch_colour::apply(&st.settings, &mut snap);
-    st.snap = Some(snap);
+    super::large_graph::show(st, snap, fx);
     super::line_counts::status_changed(st, fx);
     super::pick::state_changed(st, state_before);
     // Before the auto-stash: remembered Git Flow steps dropped by this load release its stash.

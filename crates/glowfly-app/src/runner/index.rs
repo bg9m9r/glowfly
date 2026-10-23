@@ -5,7 +5,7 @@
 //! Queries go to their own worker (`index_query.rs`).
 
 use super::Waker;
-use super::index_query::{QueryRequest, QueryWorker};
+use super::index_query::{Haystack, QueryRequest, QueryWorker};
 use crate::effect::IndexEffect;
 use crate::msg::{Msg, SearchMsg};
 use glowfly_core::commit_index::{self, CommitIndex, IndexKey};
@@ -49,6 +49,8 @@ impl Builds {
 pub(super) struct IndexWorker {
     builds: Arc<Mutex<Builds>>,
     query: QueryWorker,
+    /// Matches over loaded histories: apart from `query`, so neither replaces the other.
+    loaded: QueryWorker,
 }
 
 impl IndexWorker {
@@ -80,7 +82,10 @@ impl IndexWorker {
             }
             IndexEffect::Forget { workdir } => self.builds().forget(&workdir),
             IndexEffect::Query { workdir, request, index, query } => {
-                self.query.submit(QueryRequest { workdir, request, index, query }, tx, waker);
+                self.query.submit(QueryRequest { workdir, request, haystack: Haystack::Index(index), query }, tx, waker);
+            }
+            IndexEffect::MatchLoaded { workdir, request, commits, query } => {
+                self.loaded.submit(QueryRequest { workdir, request, haystack: Haystack::Loaded(commits.0), query }, tx, waker);
             }
         }
     }
@@ -132,7 +137,7 @@ pub(super) fn send<W: Waker>(tx: &Sender<Msg>, waker: &W, workdir: &std::path::P
 }
 
 /// Runs `e` to the end at once (the test path, `runner::execute`): a build without progress
-/// reports, a query, and nothing for Forget.
+/// reports, a query or match, and nothing for Forget.
 pub(super) fn once(e: IndexEffect) -> Option<Msg> {
     let msg = match e {
         IndexEffect::Build { workdir, build, key, base } => {
@@ -141,9 +146,8 @@ pub(super) fn once(e: IndexEffect) -> Option<Msg> {
                 .and_then(|i| i.map(Arc::new).ok_or_else(|| "stopped".to_owned()));
             SearchMsg::IndexBuilt { build, result }
         }
-        IndexEffect::Query { request, index, query, .. } => {
-            SearchMsg::IndexQueried { request, result: index.matching(&query, &|| false).ok_or_else(|| "stopped".to_owned()) }
-        }
+        IndexEffect::Query { request, index, query, .. } => Haystack::Index(index).answer(&query, request, &|| false)?,
+        IndexEffect::MatchLoaded { request, commits, query, .. } => Haystack::Loaded(commits.0).answer(&query, request, &|| false)?,
         IndexEffect::Forget { .. } => return None,
     };
     Some(Msg::Search(msg))

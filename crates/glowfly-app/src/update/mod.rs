@@ -56,6 +56,7 @@ mod jobs;
 mod journal;
 mod journal_lost;
 mod keys;
+mod large_graph;
 mod layout;
 mod lfs;
 mod line_counts;
@@ -111,6 +112,7 @@ pub(crate) mod revert;
 mod search;
 mod search_deeper;
 mod search_index;
+mod search_loaded;
 mod search_paths;
 mod selection;
 mod selection_focus;
@@ -200,7 +202,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Watch(m) => watch::handle(st, m, now, &mut fx),
         Msg::Selection(m) => selection::handle(st, m, now, &mut fx),
         Msg::Graph(m) => graph_filter::handle(st, m, &mut fx),
-        Msg::Search(m) => search::handle(st, m, &mut fx),
+        Msg::Search(m) => search::handle(st, m, now, &mut fx),
         Msg::Avatars(m) => avatars::handle(st, m, &mut fx),
         Msg::Diff(m) => diff::handle(st, m, &mut fx),
         Msg::Conflict(m) => conflict::handle(st, m, &mut fx),
@@ -268,6 +270,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             updates::tick(st, t, &mut fx);
             prefs_save::tick(st, t);
             load_more::tick(st, t, &mut fx);
+            search_loaded::tick(st, t, &mut fx);
         }
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {
@@ -321,5 +324,6 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     logs_runs::stamp(st, now);
     logs_tabs::announce(st, toast_mark, now);
     logs::flush(st, &mut fx);
+    large_graph::settle(st, &mut fx);
     fx
 }

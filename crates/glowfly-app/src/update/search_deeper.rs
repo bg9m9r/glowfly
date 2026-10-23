@@ -18,9 +18,11 @@ pub(super) fn pump(st: &mut AppState, fx: &mut Vec<Effect>) {
         st.refresh.deeper = None;
         return;
     }
-    // The matches aren't final while path terms are searched, and only one load runs at a time.
+    // The matches aren't final while path terms are searched or the query worker matches, and
+    // only one load runs at a time.
     if !st.settings.load_more_on_scroll
         || st.search.searching_files()
+        || st.search.loaded.pending.is_some()
         || st.loading_more()
         || st.refresh.more_failed.is_some()
         || st.snap.is_none()
