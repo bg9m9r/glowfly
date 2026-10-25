@@ -15,6 +15,7 @@ source file, update its line here. Features that span every layer are in
 ## `msg/`: messages
 
 - `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, …), one file per few areas.
+- `areas.rs`: the table of message areas (variant, enum, short name, handler and its arguments) that builds `Msg`, `Msg::on_inactive`, `Msg::area` and `update`'s routing (`area_router!` in update/mod.rs).
 - `init.rs`: `InitMsg`.
 - `forge_filters.rs`: `FilterMsg`.
 - `issue.rs`: `IssueMsg`, for the issue panel and the Create issue dialog.
@@ -26,18 +27,25 @@ source file, update its line here. Features that span every layer are in
 
 ## `effect/`: effects
 
-- `Effect`: everything slow or outside the process (`mod.rs`).
+- `Effect`: everything slow or outside the process (`mod.rs`): one variant per effect area, from the table in `areas.rs`, and the older flat variants.
+- `meta.rs`: `EffectMeta`, what each area decides for its effects beside its type (name, scope, timing, queue, pool hold, stop key, the tests' sandbox rule); tests in `meta_tests.rs`.
+- `areas.rs`: the table of effect areas; `effect_match!` runs one body for every area in `Effect`'s metadata, the sandbox's rule and the runner's dispatch.
 - The data some effects carry: `repo.rs` (with `LoadKind`: opening, a refresh, or a load for more that goes on from the walk), `forge.rs`, `forge_filters.rs` (PR and issue filter calls), `issue.rs` (the issue panel's and the Create issue dialog's tracker calls and posting a comment), `blame.rs`, `notify.rs` (desktop notifications).
 - Grouped effects: the Clone dialog (`clone.rs`), the Init dialog (`init.rs`), the SUBMODULES section (`submodule.rs`), interactive rebase (`rebase.rs`), connected accounts (`account.rs`) and the stash list (`stash.rs`).
 - `ui.rs`: the effects the UI shell carries out.
 - `os.rs`: `OsEffect`, what is handed to the operating system: links, terminals, the file manager, file pickers.
 - `prefs.rs`: `PrefsEffect`, the git config values and signing keys of Preferences.
 - `op_preview.rs`: `OpPreviewJob`, the operation preview's job: the work folder and the request.
-- `selection.rs`: `StackRequest`, a multi-selection's stacked list request.
+- `selection.rs`: `SelectionEffect`: comparing two commits or a commit and the working tree, and a multi-selection's stacked list (`StackRequest`).
+- `lfs.rs`: `LfsEffect`: whether git-lfs is installed and the LFS page's status.
+- `sparse.rs`: `SparseEffect`: the Sparse Checkout page's state and `git sparse-checkout`.
+- `conflict.rs`: `ConflictEffect`: loading a conflicted file and counting the markers in working files.
+- `worktree.rs`: `WorktreeEffect`: the worktree folder check, removing, moving and counting other worktrees' changes.
+- `monitor.rs`: `MonitorJob`, turning on git's file system monitor.
 - `pick.rs`: `PickJob`, a cherry-pick or revert run that skips commits changing nothing.
 - `stack.rs`: `StackEffect`, `StackPushJob`: a stack's push with the remote tips it saw and whether pull requests follow.
-- `names.rs`: `Effect::name`.
-- `scope.rs`: `Effect::scope`.
+- `names.rs`: `Effect::name`, `timed` (flat variants; areas delegate).
+- `scope.rs`: `Effect::scope`, `queue`, `holds` (flat variants, with the fetch and push rule; areas delegate).
 
 ## Per-area message and effect types
 
@@ -93,13 +101,15 @@ source file, update its line here. Features that span every layer are in
 
 ## `runner/`: background work
 
-- `mod.rs`: runs effects on worker threads and reports back with `Msg`s; `execute.rs` maps each effect to its work; one file per kind of work.
+- `mod.rs`: runs effects on worker threads and reports back with `Msg`s; one file per kind of work.
+- `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner, with the flat variants' arms.
+- `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
 - `load.rs`: a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.
 - `pick.rs`: runs a cherry-pick or revert, skipping the commits that change nothing, and reports `JobMsg::PickDone`.
 - `logs.rs`: the one ordered worker for the log files.
 - `guard.rs`: panic recovery: a panicking effect still sends the result that ends its job or loading state (`Recovery::of`); tests in `guard_tests.rs`.
-- Effects that change a repository, and fetches, keep it out of the repository pool while they run (`queue::holds`, `repo_pool::hold`); a closed tab lets go of its handles (`BackgroundEffect::Forget`).
+- Effects that change a repository, and fetches, keep it out of the repository pool while they run (`Effect::holds`, `repo_pool::hold`); a closed tab lets go of its handles (`BackgroundEffect::Forget`).
 - `sandbox.rs` (tests only): keeps the journeys' runner inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight.
 - `watcher.rs` (in `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`).
 

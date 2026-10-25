@@ -116,17 +116,20 @@ source file, update its line in the matching file.
 ## Recipe: adding a feature
 
 1. **Message.** Add a variant for the user's intent to the area's message enum (`RepoMsg` in
-   `msg/repo.rs`, `LfsMsg` in `lfs.rs`, …). A new area gets its own enum, one `Msg` variant
-   carrying it, and an arm in `Msg::on_inactive`; only messages no area owns go in `Msg`
-   itself.
+   `msg/repo.rs`, `LfsMsg` in `lfs.rs`, …). A new area gets its own enum and one row in
+   `msg/areas.rs` (the variant, the enum, the area's short name and its handler with the
+   arguments it takes), which builds `Msg`, `Msg::on_inactive`, `Msg::area` and the `update`
+   routing; only messages no area owns go in `Msg` itself.
 2. **Update.** Handle it in the area's handler in `update/<area>.rs`, which matches its enum
    exhaustively (no `_` arm, so nothing is dropped silently); `update/mod.rs` only routes each
    `Msg` variant to its handler. Change state there. Keep pure rules (checks, labels, why
    something is blocked) in `state/<area>.rs`.
-3. **Effect.** If the work is slow or leaves the process, add an `Effect` variant in
-   `effect/mod.rs`, give it a name in `effect/names.rs`, decide in `Effect::scope` and the
-   runner's `queue::repo_of` whether it is scoped to a tab and whether it changes the
-   repository (both list every effect), and return it from `update`. An effect that runs git
+3. **Effect.** If the work is slow or leaves the process, add a variant to the area's effect
+   type in `effect/<area>.rs` (or the area's own module) and decide its name, scope (whether
+   its result belongs to a tab), timing, queue (whether it changes the repository; holds and
+   the stop key when they differ) and sandbox rule in that file's `EffectMeta` impl, whose
+   matches list every variant. A new effect area is one row in `effect/areas.rs`. Never add a
+   flat `Effect` variant. Return the effect from `update`. An effect that runs git
    as the single active job starts through `start_job` or `begin_job` (`update/jobs.rs`),
    which checks that no job is running and gates it on the trust decision of the repository it
    runs in, the active one or another (`trust::gate` in `update/trust.rs`): it may wait for the
@@ -136,13 +139,15 @@ source file, update its line in the matching file.
    the job gate for the active repository to be trusted, held built-in terminal shells
    (`SessionStatus::Held`) and the LFS and Sparse Checkout pages' git reads (`LfsPage::held`,
    `SparseStatus::held`), starts in `trust::released`.
-4. **Runner.** Execute it in `runner/mod.rs`, or in `runner/<area>.rs` for more than a line.
-   The real work (git, files, HTTP) goes in `glowfly-core`.
+4. **Runner.** Execute it in the area's `Execute` impl in `runner/<area>.rs`. The real work
+   (git, files, HTTP) goes in `glowfly-core`.
 5. **Result.** The runner sends a result message back. Handle it in the same `update` file.
    Drop stale results: compare a generation number, or the request with what is still open.
    Say in the enum's `on_inactive` what the result still needs if its tab is no longer active.
 6. **View.** Draw it in `ui/<region>.rs`: read state, push `Msg`s.
-7. **Tests.** Write an `update` test (`update/tests/<area>_tests.rs`). Add a core test on a fixture
+7. **Tests.** Write an `update` test in `update/tests/<area>_tests.rs`, registered with one
+   `mod` line in `update/tests/mod.rs`; snapshot tests go in `ui/snapshot_tests/`, registered
+   in its `mod.rs`. Add a core test on a fixture
    repository (see `scratch_repo`; build fixtures with the test kit's `git`, `testkit/`) for new
    git logic, and an `egui_kittest` snapshot for a new view (harnesses from
    `ui::snapshot_check::builder()`). A flow that crosses views, the runner and git gets a

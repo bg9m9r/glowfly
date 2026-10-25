@@ -160,7 +160,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 ## Other worktrees' changes
 
 - Their WIP rows never hold up a load: `repo::worktree_counts` counts them during the load only while their index is small (`LOAD_COUNT_INDEX` entries, read from the index header) and the load's budget (`LOAD_COUNT_BUDGET`) lasts, and marks the rest `ChangesRead::Pending`.
-- Right after the load `update/worktree_counts.rs` asks for one `Effect::CountWorktreeChanges` (scoped; one per tab at a time, `RefreshState::counting`, kept across unchanged refreshes).
+- Right after the load `update/worktree_counts.rs` asks for one `WorktreeEffect::CountChanges` (scoped; one per tab at a time, `RefreshState::counting`, kept across unchanged refreshes).
 - The runner reads each through git with `COUNT_TIMEOUT` when git may run there, otherwise through libgit2.
 - `WorktreeMsg::ChangesCounted` fills in the counts for the same `refs_key` and lays the graph out again.
 - A read that times out, or one libgit2 would have to make of a huge index, is `TooLarge` and shown as not counted until the next full load.

@@ -166,3 +166,18 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
   idea under Dialogs and text fields)
 - A dialog whose footer has only its dismiss button grows by the item spacing on the right
   (the empty space after it); the welcome leaves it out (set width), the others still have it
+
+### Per-area effect metadata and generated dispatch
+
+- Fold the diff effects (LoadDiff, HighlightDiff, LoadDiffGaps, LoadBinarySides) into a `DiffEffect` area, with HighlightDiff's cancel ticket from `Runner::run`
+- Fold RunGit, Pick and UndoRedo into a job effect area, with the fetch-and-push queue rule and RunGit's stop key beside it
+- Fold LoadRepo, LoadStatus, LoadIndexStatus and LoadDetail into a load effect area
+- Fold LocalOp, Revert, RestoreFile, WorkFile and LoadTrackedPaths into a working-tree effect area
+- Fold SaveSettings, SaveRecent, SaveTabs, CheckRepoFolders and ReadTabGroups into an app-files effect area beside runner/saves.rs, with the Save sandbox rule on it
+- Fold the remaining flat effects (Watch, SweepWatch, AnswerPrompt, StopGit, Forge, Stats, SearchPaths, VerifySignature, FetchAvatars, LoadFileHistory) into areas, so the flat arms in names.rs, scope.rs, sandbox.rs and execute.rs go away
+- Move panic recovery (`Recovery::of` in runner/guard.rs) into a per-area hook beside each `Execute` impl
+- Move `Runner::run`'s special routing (terminal, index worker, stats, path search, log worker, stops, watcher, prompts) into an `Execute`-side route hook
+- Give every update handler the same (st, msg, now, fx) signature, so the message table needs no argument tags
+- The module lists in update/mod.rs, runner/mod.rs and effect/mod.rs are still one-line merge hotspots: folders per area or generated lists
+- Move state/*_tests.rs, runner/*_tests.rs and ui/*_tests.rs (tabs, toolbar, list rows) into test folders the same way
+- Move the test files declared from their handler or view with `#[path]` (app, blame, dashboard, logs, patch, status_tip; ui layout, sidebar, widgets) under the folders' `mod.rs` lists where their parent's private items allow

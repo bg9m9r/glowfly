@@ -128,7 +128,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 
 - Files: `state/lfs.rs`'s `LfsSession`, `state/lfs_notes.rs`, `ui/lfs_banner.rs`, `ui/lfs_badge.rs`, `ui/diff/lfs_note.rs`.
 - The root .gitattributes' LFS patterns ride on every whole status read (`LoadMsg::StatusLoaded` and `RepoUnchanged` carry them; `update::lfs::patterns_read` applies them), so hand edits reach the Track in Git LFS entries, the banner and the auto-fetch LFS download without a full reload.
-- The banner shows while git-lfs is known missing (the startup `Effect::DetectLfs`) in a repository with patterns, until dismissed for that workdir this session.
+- The banner shows while git-lfs is known missing (the startup `LfsEffect::Detect`) in a repository with patterns, until dismissed for that workdir this session.
 - File rows marked `lfs` get a badge.
 - A diff whose `RepoMsg::DiffLoaded` brings an `LfsChange` shows a summary instead of the pointer text (`LfsDiffNote`, keyed by target, parked with its tab) until "Show pointer text".
 

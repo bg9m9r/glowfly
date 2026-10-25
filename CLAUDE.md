@@ -55,9 +55,11 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
   `glowfly-core/src/forge/`. Nothing in `glowfly-core` may depend on egui.
 - New behaviour: add a variant to the area's message enum (`msg/<area>.rs`, e.g. `RepoMsg`;
   its handler in `update/<area>.rs` matches it exhaustively, and its `on_inactive` decides
-  what a result needs for an inactive tab), return an `Effect` for anything slow (add the
-  effect to `effect/mod.rs` and execute it in `runner/mod.rs`), and have the runner report
-  back with a result message. Test it in `update/tests/` (one `<area>_tests.rs` per area).
+  what a result needs for an inactive tab; a new area is one row in `msg/areas.rs`), return an
+  `Effect` for anything slow (a variant of the area's effect type in `effect/<area>.rs`, with
+  its `EffectMeta`, run by its `Execute` impl in `runner/<area>.rs`; a new effect area is one
+  row in `effect/areas.rs`), and have the runner report back with a result message. Test it
+  in `update/tests/` (one `<area>_tests.rs` per area, listed in its `mod.rs`).
 - Drawing: `ui/<region>.rs`. Views take `&mut AppState` only for text buffers and `view`
   state, plus `UiCache` for textures, and push `Msg`s for everything else. No I/O in views;
   `tests/layering.rs` checks.
