@@ -155,3 +155,44 @@ fn an_empty_history_has_no_owners() {
     let o = owners_of(&[], &names(&[], Some("main")));
     assert!(o.list.is_empty() && o.commit.is_empty() && o.neighbours.is_empty());
 }
+
+#[test]
+fn owners_extended_match_owners_assigned_at_once() {
+    // main merges feature (named by its message) and an octopus of two unnamed lines; a second
+    // root comes in; worktrees sit at rows 0, 3 and 6, one of them on no branch.
+    let commits = [
+        c(1, &[2, 5], "Merge branch 'feature'"),
+        c(2, &[3, 7, 8], "Merge commits"),
+        c(5, &[6], ""),
+        c(3, &[4], ""),
+        c(7, &[4], ""),
+        c(8, &[9], ""),
+        c(6, &[4], ""),
+        c(4, &[10, 11], "Merge branch 'docs'"),
+        c(9, &[10], ""),
+        c(11, &[], ""),
+        c(10, &[], ""),
+    ];
+    let mut n = names(&[(1, &["main"]), (5, &["topic"]), (9, &["old"])], Some("main"));
+    n.head_branch = Some("main");
+    n.head = Some(oid(1));
+    n.worktree_branches = vec![Some("wt".into()), None, Some("topic".into())];
+    let worktrees = [(0, oid(1)), (1, oid(3)), (2, oid(6))];
+    let lay = crate::graph::lanes::layout(&commits, Some(oid(1)), true, &worktrees);
+    let whole = assign(&lay, &commits, &n);
+    assert!(whole.neighbours.len() > 2 && whole.worktree_wips.len() == 3, "{whole:?}");
+    for s in 0..=commits.len() {
+        for t in s..=commits.len() {
+            let mut parts = Owners::begin(&lay, &n);
+            // The layout only as far as the rows replayed so far, as a page would have it.
+            let mut part = crate::graph::lanes::start(Some(oid(1)), true, &worktrees);
+            part.extend(&commits[..s], 0);
+            parts.extend(&part, &commits[..s], 0, &n);
+            part.extend(&commits[s..t], s);
+            parts.extend(&part, &commits[..t], s, &n);
+            part.extend(&commits[t..], t);
+            parts.extend(&part, &commits, t, &n);
+            assert_eq!(parts, whole, "split at {s} and {t}");
+        }
+    }
+}

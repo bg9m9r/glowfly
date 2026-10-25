@@ -1,11 +1,13 @@
 //! Reloading the active tab's repository without piling up work: a refresh first checks
 //! whether refs, HEAD, config or worktrees changed and only then walks the history again, a
-//! refresh asked for while a load runs waits for it (requests merge into one), and so do status
-//! reads.
+//! load for more goes on from where the walk stopped while the refs are unchanged
+//! (`load_more.rs`), a full reload takes the commits on screen instead of reading them again
+//! (except F5 and opening), a refresh asked for while a load runs waits for it (requests merge
+//! into one), and so do status reads.
 
 use crate::effect::{Effect, KnownRepo, LoadKind, StatusRead};
 use crate::msg::LoadMsg;
-use crate::state::refresh::{Depth, RefreshState, Wanted, can_load_more};
+use crate::state::refresh::{Depth, RefreshState, Wanted, can_load_more, only_more};
 use crate::state::{AppState, Selection};
 use git2::RepositoryState;
 use glowfly_core::repo::{ChangeCounts, FileEntry, Snapshot, SubmoduleInfo};
@@ -100,22 +102,28 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
         LoadMsg::LoadMoreCommits | LoadMsg::NearHistoryEnd => {}
         LoadMsg::RetryLoadMore => super::load_more::retry(st, fx),
         LoadMsg::SearchFurther => super::search_deeper::further(st, fx),
+        LoadMsg::HistoryExtended { generation, result } => super::load_more::extended(st, generation, result, now, fx),
     }
 }
 
-/// Loads `step` more commits of history into the active tab (a full walk, since the load
-/// options change), after any load still running.
+/// Loads `step` more commits of history into the active tab, after any load still running.
 pub(super) fn more_commits(st: &mut AppState, step: usize, fx: &mut Vec<Effect>) {
     st.refresh.extra_commits += step;
-    refresh(st, fx);
+    more(st, fx);
+}
+
+/// Loads the history through `commits_wanted`, going on from the walk when nothing else changed.
+pub(super) fn more(st: &mut AppState, fx: &mut Vec<Effect>) {
+    request(st, Depth::More, fx);
 }
 
 /// Loads the repository at `path` into the active tab, superseding any load in flight.
 pub(super) fn load(st: &mut AppState, path: PathBuf, kind: LoadKind, fx: &mut Vec<Effect>) {
-    start(st, path, kind, None, fx);
+    start(st, path, kind, None, false, fx);
 }
 
-fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRepo>, fx: &mut Vec<Effect>) {
+/// Starts a load of `path`; `reuse`: it may take the commits on screen.
+fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRepo>, reuse: bool, fx: &mut Vec<Effect>) {
     st.load_gen += 1;
     st.loading = true;
     // Status reads of the older generation are dropped, and the load reads the status anyway.
@@ -131,8 +139,9 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
         ..Default::default()
     };
     let opts = st.load_options(&path);
-    let known = known.filter(|_| st.snap.as_ref().is_some_and(|s| s.loaded_with == opts));
-    fx.push(Effect::LoadRepo { path, opts, generation: st.load_gen, kind, known });
+    let known = known.filter(|_| kind == LoadKind::More || st.snap.as_ref().is_some_and(|s| s.loaded_with == opts));
+    let prior = reuse.then(|| st.snap.as_ref().filter(|s| st.names_repo(s, &path)).map(Snapshot::prior)).flatten();
+    fx.push(Effect::LoadRepo { path, opts, generation: st.load_gen, kind, known, prior });
 }
 
 /// Refreshes the active tab, walking the history again only if refs, HEAD, config, worktrees or
@@ -145,7 +154,7 @@ pub(super) fn refresh(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// load still running.
 pub(super) fn reload(st: &mut AppState, fx: &mut Vec<Effect>) {
     if let Some(path) = st.workdir() {
-        start(st, path, LoadKind::Refresh, None, fx);
+        start(st, path, LoadKind::Refresh, None, false, fx);
     }
 }
 
@@ -160,8 +169,10 @@ fn request(st: &mut AppState, depth: Depth, fx: &mut Vec<Effect>) {
         st.refresh.queued = st.refresh.queued.max(Some(depth));
         return;
     }
+    let opts = st.load_options(&path);
+    let more = depth <= Depth::Checked && st.snap.as_ref().is_some_and(|s| only_more(s, &opts));
     let known = match depth {
-        Depth::Checked => {
+        Depth::More | Depth::Checked => {
             let git_status = st.runs_git_unasked();
             st.snap.as_ref().map(|s| KnownRepo {
                 refs_key: s.refs_key,
@@ -172,7 +183,10 @@ fn request(st: &mut AppState, depth: Depth, fx: &mut Vec<Effect>) {
         }
         Depth::Full => None,
     };
-    start(st, path, LoadKind::Refresh, known, fx);
+    start(st, path, if more { LoadKind::More } else { LoadKind::Refresh }, known, true, fx);
+    if more && depth == Depth::Checked {
+        st.refresh.status_after = true;
+    }
 }
 
 /// A load of the current generation ended: runs the refresh asked for meanwhile, if any.

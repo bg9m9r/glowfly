@@ -130,6 +130,8 @@ pub enum LoadMsg {
         /// The index the whole or index read was taken from.
         index: Option<Arc<IndexMemo>>,
     },
+    /// A load for more went on from the walk: the next commits, or why reading them failed.
+    HistoryExtended { generation: u64, result: Result<Box<glowfly_core::repo::HistoryPage>, String> },
     StatusLoaded {
         generation: u64,
         /// The whole status, or only some work-tree paths' unstaged rows.
@@ -164,6 +166,8 @@ impl LoadMsg {
             | Self::SearchFurther
             | Self::NearHistoryEnd
             | Self::RepoUnchanged { .. }
+            // Dropped: the tab loads again when it is shown.
+            | Self::HistoryExtended { .. }
             | Self::StatusLoaded { .. }
             | Self::SpeedUpStatus { .. }
             | Self::StatusSpedUp { .. } => None,

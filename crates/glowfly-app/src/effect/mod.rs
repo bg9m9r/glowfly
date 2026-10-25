@@ -78,9 +78,10 @@ pub enum Effect {
         opts: LoadOptions,
         generation: u64,
         kind: LoadKind,
-        /// The snapshot on screen: when its `refs_key` still matches, only the status is read
-        /// (`LoadMsg::RepoUnchanged`).
+        /// The snapshot on screen: when its `refs_key` still matches, only the status is read (`LoadMsg::RepoUnchanged`).
         known: Option<KnownRepo>,
+        /// The history on screen: commits a full load takes instead of reading them again, and for `More` the walk's frontier.
+        prior: Option<glowfly_core::repo::Prior>,
     },
     LoadStatus {
         workdir: PathBuf,
@@ -89,8 +90,7 @@ pub enum Effect {
         submodules: bool,
         /// The file whose working-tree or index diff is open, for `LoadMsg::StatusLoaded::open_stamp`.
         open: Option<String>,
-        /// Let git read the status (fsmonitor, untracked cache); false while the repository
-        /// isn't trusted.
+        /// Let git read the status (fsmonitor, untracked cache); false while the repository isn't trusted.
         git_status: bool,
         /// Re-read only these work-tree paths' unstaged rows; None reads everything.
         paths: Option<Vec<String>>,

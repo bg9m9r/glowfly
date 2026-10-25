@@ -385,7 +385,7 @@ mod tests {
         st.load_gen = 3;
         st.loading = true;
         let effect =
-            Effect::LoadRepo { path: "C:/r".into(), opts: Default::default(), generation: 3, kind: LoadKind::Refresh, known: None };
+            Effect::LoadRepo { path: "r".into(), opts: Default::default(), generation: 3, kind: LoadKind::More, known: None, prior: None };
         let msg = guarded(Recovery::of(&effect, "load-repo"), || panic!("boom")).unwrap();
         assert!(matches!(&msg, Msg::Repo(RepoMsg::RepoLoaded { generation: 3, result: Err(e), .. }) if e.contains("boom")));
         update(&mut st, msg, Instant::now());

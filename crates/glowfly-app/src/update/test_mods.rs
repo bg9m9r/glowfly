@@ -203,6 +203,8 @@ pub(super) mod lines_drag_tests;
 pub(super) mod lines_gutter_tests;
 #[path = "lines_tests.rs"]
 pub(super) mod lines_tests;
+#[path = "load_more_resume_tests.rs"]
+pub(super) mod load_more_resume_tests;
 #[path = "load_more_retry_tests.rs"]
 pub(super) mod load_more_retry_tests;
 #[path = "load_more_tests.rs"]

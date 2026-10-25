@@ -206,6 +206,14 @@ impl Authors {
         a
     }
 
+    /// Adds `a` itself, so later lookups of that name and email share its copy; an equal author
+    /// already held is kept.
+    pub fn seed(&mut self, a: &Author) {
+        if !self.known.contains(a) {
+            self.known.insert(a.clone());
+        }
+    }
+
     /// How many distinct authors it holds.
     pub fn len(&self) -> usize {
         self.known.len()

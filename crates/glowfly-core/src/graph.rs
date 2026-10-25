@@ -7,17 +7,19 @@
 //! Other worktrees with uncommitted changes get a WIP row directly above their HEAD commit: each
 //! is laid out as a commit whose only parent is that HEAD and which nothing waits for.
 //!
-//! `owners` works out which branch owns each node and lane, and `branch_colour::resolve` their
-//! colours; `Snapshot::lay_out_graph` runs all three.
+//! `lanes` lays the rows out (and goes on below the last row for more commits), `owners` works
+//! out which branch owns each node and lane, and `branch_colour::resolve` their colours;
+//! `Snapshot::lay_out_graph` runs all three.
 
+mod lanes;
 mod merge_names;
 pub mod owners;
 
+pub(crate) use lanes::LaneTail;
+pub use lanes::layout;
+
 use crate::branch_colour::{Colouring, Swatch, preferred};
-use crate::repo::CommitInfo;
-use git2::Oid;
 use smallvec::SmallVec;
-use std::collections::HashMap;
 
 /// A row's lines into or out of its node; up to two are kept in the row itself.
 pub type Edges = SmallVec<[(usize, usize); 2]>;
@@ -102,7 +104,7 @@ pub struct WorktreeWipRow {
     pub row: GraphRow,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, PartialEq)]
 pub struct Layout {
     /// Row for uncommitted changes, drawn above HEAD.
     pub wip: Option<GraphRow>,
@@ -118,6 +120,8 @@ pub struct Layout {
     pub swatches: Vec<Swatch>,
     /// How the swatches were picked; kept when the graph is laid out again.
     pub colouring: Colouring,
+    /// Where the lanes stand below the last row: what `Layout::extend` goes on from.
+    pub(crate) tail: LaneTail,
 }
 
 impl Layout {
@@ -131,91 +135,11 @@ impl Layout {
     }
 }
 
-fn free_slot(lanes: &mut Vec<Option<Oid>>) -> usize {
-    match lanes.iter().position(Option::is_none) {
-        Some(i) => i,
-        None => {
-            lanes.push(None);
-            lanes.len() - 1
-        }
-    }
-}
-
-/// Lays out `commits` (topological order), with this worktree's WIP row above `head` when `wip`,
-/// and a WIP row for each (worktree index, HEAD commit) in `worktrees` whose commit is loaded.
-pub fn layout(commits: &[CommitInfo], head: Option<Oid>, wip: bool, worktrees: &[(usize, Oid)]) -> Layout {
-    let mut lanes: Vec<Option<Oid>> = Vec::new();
-    let mut out = Layout::default();
-    let mut waiting: HashMap<Oid, Vec<usize>> = HashMap::new();
-    for &(k, oid) in worktrees {
-        waiting.entry(oid).or_default().push(k);
-    }
-
-    if wip {
-        let mut row = GraphRow::default();
-        if let Some(h) = head {
-            // Reserve lane 0 for HEAD so the WIP node connects straight down to it.
-            lanes.push(Some(h));
-            row.bottom.push((0, 0));
-        }
-        out.wip = Some(row);
-        out.max_width = 1;
-    }
-
-    for (idx, c) in commits.iter().enumerate() {
-        // Other worktrees at this commit: a node in a free lane whose only parent is `c`.
-        if !waiting.is_empty()
-            && let Some(here) = waiting.remove(&c.oid)
-        {
-            for worktree in here {
-                let col = free_slot(&mut lanes);
-                let through = (0..lanes.len()).filter(|&i| lanes[i].is_some()).collect();
-                lanes[col] = Some(c.oid);
-                let row = GraphRow { col, top: Edges::new(), bottom: Edges::from_slice(&[(col, col)]), through };
-                out.worktree_wips.push(WorktreeWipRow { worktree, before: idx, row });
-                out.max_width = out.max_width.max(lanes.len());
-            }
-        }
-        let matches: SmallVec<[usize; 4]> = (0..lanes.len()).filter(|&i| lanes[i] == Some(c.oid)).collect();
-        let col = match matches.first() {
-            Some(&i) => i,
-            None => free_slot(&mut lanes),
-        };
-        let through: LaneSet = (0..lanes.len()).filter(|&i| lanes[i].is_some() && lanes[i] != Some(c.oid)).collect();
-        let top = matches.iter().map(|&i| (i, col)).collect();
-        for &i in &matches {
-            lanes[i] = None;
-        }
-
-        let mut bottom = Edges::new();
-        if let Some(&first) = c.parents.first() {
-            lanes[col] = Some(first);
-            bottom.push((col, col));
-        }
-        for p in c.parents.iter().skip(1) {
-            let lane = match lanes.iter().position(|l| *l == Some(*p)) {
-                Some(j) => j,
-                None => {
-                    let k = free_slot(&mut lanes);
-                    lanes[k] = Some(*p);
-                    k
-                }
-            };
-            bottom.push((col, lane));
-        }
-
-        out.max_width = out.max_width.max(lanes.len()).max(col + 1);
-        while lanes.last() == Some(&None) {
-            lanes.pop();
-        }
-        out.rows.push(GraphRow { col, top, bottom, through });
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::repo::CommitInfo;
+    use git2::Oid;
 
     fn oid(n: u8) -> Oid {
         Oid::from_bytes(&[n; 20]).unwrap()

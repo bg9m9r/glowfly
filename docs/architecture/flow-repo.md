@@ -147,6 +147,16 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - On Windows and macOS with git 2.36 or newer, the note's button also turns on git's built-in file system monitor (`Effect::TurnOnMonitor`: `git fsmonitor--daemon` started and confirmed, core.fsmonitor=true set only once it is watching, reported as `LoadMsg::StatusSpedUp`).
 - On Linux the note suggests Watchman with git's fsmonitor-watchman hook, in words only.
 
+## Loading more history and reloads
+
+- Load more, scrolling near the end, Try again, the automatic retries, Keep searching, a filtering search's batches and the index's `load_through` raise `extra_commits` and ask for `Depth::More` (`update/refresh.rs::more`).
+- When nothing but the commit count changed (`state::refresh::only_more`: the snapshot has a walk frontier), the load is `LoadKind::More` with the snapshot's `known` refs and its `Snapshot::prior`.
+- The runner (`runner/load.rs`) checks `refs_key`: unchanged, it calls `repo::load_more`, which resumes the walk from the frontier for the next commits only, and answers `LoadMsg::HistoryExtended`.
+- `update/load_more.rs::extended` applies the page with `Snapshot::extend_history`: the commits and rows appended, the lanes and owners laid out on from the last row, colours resolved again; the selection, scroll and search cursor stay. A large history's old commit list is freed on a worker, and a worker relayout in flight is asked for again.
+- A refresh merged into the load for more (`RefreshState::status_after`) reads the status once the page lands.
+- Moved refs, or a new commit that is a child of a loaded one (`NeedsFullLoad`, clock skew), give a full load at the larger count, reported as `RepoLoaded` with `Refresh`.
+- Every full load for a refresh passes `Snapshot::prior`: the walk takes commits already on screen by oid (`repo::load_reusing`) instead of reading them again. F5 and opening a repository read everything fresh.
+
 ## Other worktrees' changes
 
 - Their WIP rows never hold up a load: `repo::worktree_counts` counts them during the load only while their index is small (`LOAD_COUNT_INDEX` entries, read from the index header) and the load's budget (`LOAD_COUNT_BUDGET`) lasts, and marks the rest `ChangesRead::Pending`.

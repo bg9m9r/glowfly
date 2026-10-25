@@ -141,4 +141,8 @@ pub struct UndoOpts {
 pub enum LoadKind {
     Open,
     Refresh,
+    /// A load for more history: goes on from the snapshot's walk (`repo::load_more`, reported as
+    /// `LoadMsg::HistoryExtended`) while its refs are as loaded; otherwise a full refresh,
+    /// reported as `RepoLoaded` with `Refresh`.
+    More,
 }

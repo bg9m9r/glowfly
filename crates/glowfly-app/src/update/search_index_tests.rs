@@ -32,10 +32,11 @@ fn search(st: &mut AppState, q: &str, filter: bool) -> Vec<Effect> {
     fx
 }
 
+/// The commit counts loads in `fx` walk to (a load for more goes on from the walk).
 fn loads(fx: &[Effect]) -> Vec<usize> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::LoadRepo { opts, kind: LoadKind::Refresh, .. } => Some(opts.max_commits),
+            Effect::LoadRepo { opts, kind: LoadKind::Refresh | LoadKind::More, .. } => Some(opts.max_commits),
             _ => None,
         })
         .collect()

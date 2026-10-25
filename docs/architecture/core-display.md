@@ -6,7 +6,8 @@ source file, update its line here.
 ## Commit graph and branch colours
 
 - `graph.rs`, `graph/`: lane layout for the commit graph, with WIP rows for this worktree and for other worktrees with uncommitted changes.
-- `owners.rs`: which branch owns each node and lane, naming a merge's other parents from its message: `merge_names.rs`.
+- `graph/lanes.rs`: the lane layout itself (`layout`), kept with where the lanes stand below the last row so `Layout::extend` lays more commits out under it.
+- `owners.rs`: which branch owns each node and lane, naming a merge's other parents from its message: `merge_names.rs`. `Owners::extend` goes on from the last row's lane owners for more rows.
 - `Snapshot::lay_out_graph` (`repo/branch_colours.rs`) lays the graph out with its owners and colours, at load and when the work tree turns clean or dirty; `Snapshot::layout_job` hands the same work to a worker (`LayoutJob`, `LayoutFit`) for a large history.
 - `branch_colour.rs`: branch colours: a branch's key (its name, without the remote), its hue slot from an FNV-1a hash of the key, and a person's slot from their email (`person_slot`).
 - `resolve` gives main the accent, holds pinned branches and keeps side-by-side branches on different hues.

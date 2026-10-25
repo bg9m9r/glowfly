@@ -2,7 +2,7 @@ use super::conflict::{marker_size, parse_merged};
 use super::*;
 use crate::gitcli::{args, run};
 use crate::testutil::*;
-use git2::Repository;
+use git2::{Repository, RepositoryState};
 use std::path::{Path, PathBuf};
 
 fn base_lines() -> String {

@@ -2,7 +2,13 @@
 //! search index (`commit_index`): newest by committer time first, ties in the order the commits
 //! were found, each commit once. Both must agree exactly, so a commit's place in the index's walk
 //! says how many commits the graph has to load to show it.
+//!
+//! A walk cut short can be resumed: its queue is kept as a `Frontier` (the queued commits with
+//! their places, and the push counter) and `TimeQueue::resume` rebuilds it, so the resumed walk
+//! pops exactly what a longer walk from the same tips would have popped next. Nothing is lost in
+//! between, as every commit pushed is either loaded or still queued.
 
+use super::walk_reuse::Frontier;
 use git2::Oid;
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashSet};
@@ -29,6 +35,25 @@ impl TimeQueue {
     /// The next commit to visit.
     pub(crate) fn pop(&mut self) -> Option<Oid> {
         self.queue.pop().map(|(_, _, oid)| oid)
+    }
+
+    /// Whether every commit found has been visited.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    /// The commits still queued, with their places, and the push counter: what `resume` needs.
+    pub(crate) fn frontier(&self) -> Frontier {
+        Frontier::new(self.queue.iter().map(|(t, Reverse(o), oid)| (*t, *o, *oid)).collect(), self.order)
+    }
+
+    /// The queue a walk stopped with at `f`, having visited `loaded`: each of them and each
+    /// queued commit counts as seen, so none is queued again.
+    pub(crate) fn resume(f: &Frontier, loaded: impl Iterator<Item = Oid>) -> TimeQueue {
+        let mut seen: HashSet<Oid> = loaded.collect();
+        seen.extend(f.queued().iter().map(|e| e.2));
+        let queue = f.queued().iter().map(|&(t, o, oid)| (t, Reverse(o), oid)).collect();
+        TimeQueue { queue, seen, order: f.order() }
     }
 }
 

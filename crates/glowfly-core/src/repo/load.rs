@@ -15,6 +15,12 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
 
 /// `load`, reusing (and adding to) the ahead/behind and containment answers in `cache`.
 pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Result<Snapshot> {
+    load_reusing(path, opts, cache, None)
+}
+
+/// `load_cached`, taking the commits of `prior` (the snapshot on screen's history) instead of
+/// reading them again (`walk_reuse`); the result is the same as without it.
+pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: Option<&Prior>) -> Result<Snapshot> {
     let _span = tracing::debug_span!("load", path = %path.display(), max = opts.max_commits).entered();
     let loaded_with = opts.clone();
     let max_commits = opts.max_commits.max(1);
@@ -231,7 +237,10 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         }
         refs.retain(|_, v| !v.is_empty());
     }
-    let (commits, truncated) = tracing::debug_span!("load.walk").in_scope(|| super::walk::newest_commits(&repo, &starts, max_commits))?;
+    let reuse = prior.and_then(|p| super::walk_reuse::CommitCache::new(p, &repo, &shallow_roots));
+    let walked = tracing::debug_span!("load.walk").in_scope(|| super::walk::newest_commits(&repo, &starts, max_commits, reuse.as_ref()))?;
+    drop(reuse);
+    let (commits, truncated) = (walked.commits, walked.truncated);
     let row_of = commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();
 
     let mut snap = Snapshot {
@@ -256,6 +265,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         commits: commits.into(),
         row_of,
         truncated,
+        frontier: walked.frontier.map(std::sync::Arc::new),
         starts,
         refs,
         locals,

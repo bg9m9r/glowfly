@@ -5,7 +5,7 @@
 
 use crate::state::load_more::DeeperSearch;
 use crate::state::{AppState, MAX_COMMITS};
-use glowfly_core::repo::Snapshot;
+use glowfly_core::repo::{LoadOptions, Snapshot};
 use glowfly_core::watch::MAX_WATCH_PATHS;
 use std::collections::BTreeSet;
 use std::time::Instant;
@@ -13,6 +13,8 @@ use std::time::Instant;
 /// How much a refresh reads.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Depth {
+    /// Only more of the history; read like `Checked` when it can't go on from the walk.
+    More,
     /// The status, plus everything else only if refs, HEAD, config or worktrees changed (or the
     /// load options did) since the snapshot was loaded.
     Checked,
@@ -86,6 +88,9 @@ pub struct RefreshState {
     pub relayout: Option<u64>,
     /// Counts those requests.
     pub relayouts: u64,
+    /// The load for more running now was also asked to check the status (a refresh merged into
+    /// it): read it when the page lands.
+    pub status_after: bool,
 }
 
 /// From this many loaded commits, whole-history work runs off the UI thread: matching a typed
@@ -101,6 +106,14 @@ pub fn large(snap: &Snapshot) -> bool {
 /// truncated walk loads exactly `max_commits` commits.
 pub fn can_load_more(snap: &Snapshot) -> bool {
     snap.truncated && snap.loaded_with.max_commits < MAX_COMMITS
+}
+
+/// Whether loading with `opts` only asks `snap` for more of its history: its walk was cut short
+/// and every other option is as it was loaded with.
+pub fn only_more(snap: &Snapshot, opts: &LoadOptions) -> bool {
+    snap.frontier.is_some()
+        && opts.max_commits > snap.loaded_with.max_commits
+        && LoadOptions { max_commits: snap.loaded_with.max_commits, ..opts.clone() } == snap.loaded_with
 }
 
 impl AppState {

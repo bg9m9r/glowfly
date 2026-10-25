@@ -102,3 +102,39 @@ fn commit_stats_stop_between_commits() {
     assert_eq!(commit_stats(&dir, &oids).len(), 3);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn the_walk_keeps_the_commit_it_stopped_at() {
+    use super::load_more_tests::{point, raw_commit};
+    use super::walk::newest_commits;
+    use super::walk_order::TimeQueue;
+    let dir = scratch_repo("walk-frontier");
+    let repo = git2::Repository::open(&dir).unwrap();
+    // Two tips over one root, every commit at the same time: only the push order breaks ties.
+    let t = 1_600_000_000;
+    let root = raw_commit(&repo, &[], t, "root");
+    let mut tips = Vec::new();
+    for side in ["one", "two"] {
+        let mut at = root;
+        for i in 0..3 {
+            at = raw_commit(&repo, &[at], t, &format!("{side} {i}"));
+        }
+        point(&repo, &format!("refs/heads/{side}"), at);
+        tips.push(at);
+    }
+    let total = 7;
+    for k in 0..total {
+        let w = newest_commits(&repo, &tips, k, None).unwrap();
+        let next = newest_commits(&repo, &tips, k + 1, None).unwrap();
+        let loaded: Vec<Oid> = w.commits.iter().map(|c| c.oid).collect();
+        let want: Vec<Oid> = next.commits.iter().map(|c| c.oid).filter(|o| !loaded.contains(o)).collect();
+        let frontier = w.frontier.expect("cut short");
+        let mut q = TimeQueue::resume(&frontier, loaded.iter().copied());
+        assert_eq!(q.pop(), Some(want[0]), "commit {k} of the walk");
+        assert_eq!(next.truncated, k + 1 < total);
+        assert_eq!(next.frontier.as_ref().map(|f| f.len()).unwrap_or(0) > 0, k + 1 < total);
+    }
+    let all = newest_commits(&repo, &tips, total, None).unwrap();
+    assert!(!all.truncated && all.frontier.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}

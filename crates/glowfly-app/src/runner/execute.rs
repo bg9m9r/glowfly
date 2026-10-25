@@ -3,13 +3,13 @@
 
 use super::{
     background, blame, clone, config, conflict_check, conflict_files, credentials, custom_commands, dashboard, deep_link, diff_gaps,
-    expect, files, forge_calls, forks, git_env, git_ops, highlight, history, index, init, issues, journal, line_counts, logs, monitor,
-    notify, onboarding, op_preview, os, partial, patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos, revert,
-    saves, signatures, sparse, ssh, stack, stashes, status, submodules, themes, tools, trust, updates, worktrees,
+    expect, files, forge_calls, forks, git_env, git_ops, highlight, history, index, init, issues, journal, line_counts, load, logs,
+    monitor, notify, onboarding, op_preview, os, partial, patches, path_search, pick, profiles, pull_request, range_diff, rebase, repos,
+    revert, saves, signatures, sparse, ssh, stack, stashes, status, submodules, themes, tools, trust, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
-use crate::msg::{AvatarMsg, ConflictMsg, DiffMsg, ForgeMsg, JobMsg, LoadMsg, Msg, RecentMsg, RepoMsg, SelectionMsg, StageMsg};
+use crate::msg::{AvatarMsg, ConflictMsg, DiffMsg, ForgeMsg, JobMsg, Msg, RecentMsg, RepoMsg, SelectionMsg, StageMsg};
 use glowfly_core::{avatars, repo, undo};
 
 pub(super) fn err(e: glowfly_core::error::Error) -> String {
@@ -47,27 +47,8 @@ fn execute_unscoped(
     stop: Option<&glowfly_core::gitcli::Stop>,
 ) -> Option<Msg> {
     match effect {
-        Effect::LoadRepo { path, opts, generation, kind, known } => {
-            if let Some(k) = known
-                && repo::refs_key(&path).is_ok_and(|key| key == k.refs_key)
-            {
-                let open_stamp = k.open.and_then(|p| repo::open_file_stamp(&path, &p));
-                let started = std::time::Instant::now();
-                let read = repo::status_and_index(&path, k.git_status).map_err(err);
-                let slow = repo::slow(started.elapsed(), &path);
-                let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
-                let lfs_patterns = Some(glowfly_core::lfs::root_patterns(&path));
-                let (result, index) = match read {
-                    Ok((u, s, state, memo)) => (Ok((u, s, state)), memo.map(std::sync::Arc::new)),
-                    Err(e) => (Err(e), None),
-                };
-                return Some(Msg::Load(LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow, lfs_patterns, index }));
-            }
-            let result = match repo::load_cached(&path, &opts, graph_cache) {
-                Err(glowfly_core::error::Error::NotOwned(root)) => return Some(git_env::not_owned(generation, kind, root)),
-                r => r.map(Box::new).map_err(|e| format!("Could not open {}: {e}", glowfly_core::native_path::shown(&path))),
-            };
-            Some(Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result }))
+        Effect::LoadRepo { path, opts, generation, kind, known, prior } => {
+            Some(load::load_repo(path, opts, generation, kind, known, prior, graph_cache))
         }
         Effect::LoadStatus { workdir, generation, submodules, open, git_status, paths } => {
             Some(status::load(&workdir, generation, submodules, open, git_status, paths))

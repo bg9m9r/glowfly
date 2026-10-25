@@ -286,8 +286,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     st.view.highlight = None;
     match kind {
         LoadKind::Open => {
-            // Any spelling of this folder (a short 8.3 name, a link, another case where the
-            // volume ignores it) gives way to libgit2's.
+            // Any spelling of this folder (a short 8.3 name, a link, another case where the volume ignores it) gives way to libgit2's.
             let recent = std::mem::take(&mut st.recent);
             st.recent = recent.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
             st.recent.insert(0, snap.workdir.clone());
@@ -314,7 +313,8 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             st.view.scroll_to_row = Some(0);
             super::tabs::forget_repo_reads(st);
         }
-        LoadKind::Refresh => {
+        LoadKind::Refresh | LoadKind::More => {
+            // (A load for more that loaded everything comes back as a refresh: runner/load.rs.)
             super::history::head_moved(st, &snap, fx);
             super::blame::head_moved(st, &snap, fx);
             if let Selection::Commit(oid) = st.selection {

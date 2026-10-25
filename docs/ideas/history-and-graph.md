@@ -122,6 +122,18 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Share one `Authors` table between a tab's reloads and its search index, so an author is stored once per tab rather than once per load
 - Graph edge lanes as `u32` (or `u16`) pairs would take a row from 104 to about 72 bytes
 
+### Resumed history loads
+
+- A child older than a loaded parent past a page boundary: re-sort only the affected rows instead of walking it all again
+- Keep loaded commits in chunks, so a page doesn't copy every loaded commit (O(page) instead of O(loaded))
+- Reference-counted commit texts, so reusing a cached commit is a refcount bump rather than two small copies (measure the memory first)
+- After a fetch that only adds commits on top, walk only the new commits and lay out from the first changed row
+- Reuse the commits when a parked tab is shown again or a repository is reopened
+- Share the commit cache with the whole-history index build
+- Raising the commit limit in Preferences could go on from the walk instead of a full reload
+- Allow commit reuse with `info/grafts` by keying the cache on that file's stamp
+- A refresh merged into a load for more reads only the status after the page; it could also re-check the forge and other worktrees' counts as an unchanged refresh does
+
 ### Search and filter
 
 - Path picker beside the author picker (tracked files and folders) that writes a path: term

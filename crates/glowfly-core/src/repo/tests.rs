@@ -1,6 +1,7 @@
 use super::*;
 use crate::gitcli::{args, run};
 use crate::testutil::*;
+use git2::RepositoryState;
 
 #[test]
 fn history_graph_and_refs() {

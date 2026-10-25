@@ -59,7 +59,7 @@ pub struct LaneNames<'a> {
 }
 
 /// The owners of a laid-out graph. Owners are numbered in order of first appearance from the top.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq)]
 pub struct Owners {
     pub list: Vec<Owner>,
     pub mainline: Option<String>,
@@ -74,6 +74,8 @@ pub struct Owners {
     /// Pairs of owners that sit in side-by-side lanes somewhere, (lower, higher), sorted.
     pub neighbours: Vec<(u32, u32)>,
     pub(crate) by_key: HashMap<String, u32>,
+    /// Each lane's owner below the last row: what `extend` goes on from.
+    pub(crate) tail: Tail,
 }
 
 /// A run's owner where the lane's line stops.
@@ -122,133 +124,153 @@ impl Owners {
     }
 }
 
-/// The replay's lanes: each lane's owner and whether a branch label (not a merge message) named it.
-struct Replay {
-    out: Owners,
-    lanes: Vec<Option<(u32, bool)>>,
-    pairs: Vec<(u32, u32)>,
-}
+/// The lanes' owners, as `Owners::extend` replays the rows: lane `tail[l]`'s owner below the last
+/// row, and whether a branch label (not a merge message) named it.
+type Tail = Vec<Option<(u32, bool)>>;
 
-impl Replay {
-    fn set(&mut self, lane: usize, owner: u32, by_label: bool, p: RowPos) {
-        if lane >= self.lanes.len() {
-            self.lanes.resize(lane + 1, None);
-            self.out.runs.resize_with(lane + 1, Vec::new);
+impl Owners {
+    /// The owners of `layout`'s WIP row and of the lane it starts, before any commit row.
+    pub(crate) fn begin(layout: &Layout, names: &LaneNames) -> Owners {
+        let mut out = Owners { mainline: names.mainline.clone(), ..Owners::default() };
+        if let Some(w) = &layout.wip {
+            let owner = match (names.head_branch, names.head) {
+                (Some(b), _) => Some((out.branch(b), true)),
+                (None, Some(h)) => Some((out.unnamed(h), false)),
+                (None, None) => None,
+            };
+            out.wip = owner.map(|o| o.0);
+            if let Some((o, by_label)) = owner
+                && w.bottom.contains(&(0, 0))
+            {
+                let mut pairs = Vec::new();
+                out.set(0, o, by_label, RowPos::wip());
+                out.meet(0, o, &mut pairs);
+                out.add_neighbours(pairs);
+            }
         }
-        self.lanes[lane] = Some((owner, by_label));
-        let runs = &mut self.out.runs[lane];
+        out
+    }
+
+    /// Works out the owners of `layout`'s rows from `from` on (laid out from `commits`, the
+    /// whole history), going on from the rows before it.
+    pub fn extend(&mut self, layout: &Layout, commits: &[CommitInfo], from: usize, names: &LaneNames) {
+        let main = names.mainline.as_deref();
+        let mut pairs = Vec::new();
+        let mut wts = layout.worktree_wips[self.worktree_wips.len().min(layout.worktree_wips.len())..].iter().peekable();
+        let commits = commits.get(from..).unwrap_or_default();
+        for (k, (g, c)) in layout.rows.get(from..).unwrap_or_default().iter().zip(commits).enumerate() {
+            let i = from + k;
+            while let Some(w) = wts.next_if(|w| w.before == i) {
+                let branch = names.worktree_branches.get(w.worktree).cloned().flatten();
+                let (o, by_label) = match branch {
+                    Some(b) => (self.branch(&b), true),
+                    None => (self.unnamed(c.oid), false),
+                };
+                self.worktree_wips.push(o);
+                self.set(w.row.col, o, by_label, RowPos::worktree(i));
+                self.meet(w.row.col, o, &mut pairs);
+            }
+            let p = RowPos::commit(i);
+            let tips = names.tips.get(&c.oid).map_or(&[][..], Vec::as_slice);
+            let main_top = g.top.iter().find_map(|&(l, _)| self.owner(l).filter(|(o, _)| main.is_some() && self.key(*o) == main));
+            let col_lane = self.owner(g.col);
+            let (node, by_label) = if let Some(m) = main.filter(|m| tips.iter().any(|t| t == m)) {
+                (self.branch(m), true)
+            } else if let Some((o, _)) = main_top {
+                (o, true)
+            } else if let Some((o, true)) = col_lane {
+                (o, true)
+            } else if let Some(first) = tips.first() {
+                (self.branch(first), true)
+            } else if let (false, Some(lane)) = (g.top.is_empty(), col_lane) {
+                lane
+            } else {
+                (self.unnamed(c.oid), false)
+            };
+            self.commit.push(node);
+            for &(l, _) in &g.top {
+                if let Some(slot) = self.tail.get_mut(l) {
+                    *slot = None;
+                }
+            }
+            let merged = if c.parents.len() > 1 { merged_names(&c.summary, &names.remotes) } else { Vec::new() };
+            let mut k = 0;
+            for &(_, j) in &g.bottom {
+                if j == g.col {
+                    self.set(j, node, by_label, p);
+                } else {
+                    k += 1;
+                    if self.owner(j).is_some() {
+                        continue;
+                    }
+                    let (o, by) = match merged.get(k - 1) {
+                        Some(name) => (self.branch(name), false),
+                        None => match c.parents.get(k) {
+                            Some(&parent) => (self.unnamed(parent), false),
+                            None => continue,
+                        },
+                    };
+                    self.set(j, o, by, p);
+                    self.meet(j, o, &mut pairs);
+                }
+            }
+            if g.bottom.iter().any(|&(_, j)| j == g.col) || c.parents.is_empty() {
+                self.meet(g.col, node, &mut pairs);
+            }
+            for &(l, _) in &g.top {
+                if self.owner(l).is_none()
+                    && let Some(runs) = self.runs.get_mut(l)
+                    && runs.last().is_some_and(|run| run.1 != ENDED)
+                {
+                    runs.push((p.0, ENDED));
+                }
+            }
+        }
+        self.add_neighbours(pairs);
+    }
+
+    fn set(&mut self, lane: usize, owner: u32, by_label: bool, p: RowPos) {
+        if lane >= self.tail.len() {
+            self.tail.resize(lane + 1, None);
+            self.runs.resize_with(lane + 1, Vec::new);
+        }
+        self.tail[lane] = Some((owner, by_label));
+        let runs = &mut self.runs[lane];
         if runs.last().is_none_or(|r| r.1 != owner) {
             runs.push((p.0, owner));
         }
     }
 
     fn owner(&self, lane: usize) -> Option<(u32, bool)> {
-        self.lanes.get(lane).copied().flatten()
+        self.tail.get(lane).copied().flatten()
     }
 
-    /// Records `owner` (in `lane`) as a neighbour of whoever holds the lanes either side.
-    fn meet(&mut self, lane: usize, owner: u32) {
+    /// Records `owner` (in `lane`) in `pairs` as a neighbour of whoever holds the lanes either side.
+    fn meet(&self, lane: usize, owner: u32, pairs: &mut Vec<(u32, u32)>) {
         for j in [lane.checked_sub(1), Some(lane + 1)].into_iter().flatten() {
             if let Some((other, _)) = self.owner(j)
                 && other != owner
             {
-                self.pairs.push((owner.min(other), owner.max(other)));
+                pairs.push((owner.min(other), owner.max(other)));
             }
         }
+    }
+
+    /// Adds `pairs` to `neighbours`, keeping it sorted without repeats.
+    fn add_neighbours(&mut self, pairs: Vec<(u32, u32)>) {
+        if pairs.is_empty() {
+            return;
+        }
+        self.neighbours.extend(pairs);
+        self.neighbours.sort_unstable();
+        self.neighbours.dedup();
     }
 }
 
 /// Works out the owners of `layout` (laid out from `commits`) with the lane names `names`.
 pub fn assign(layout: &Layout, commits: &[CommitInfo], names: &LaneNames) -> Owners {
-    let mut r = Replay { out: Owners { mainline: names.mainline.clone(), ..Owners::default() }, lanes: Vec::new(), pairs: Vec::new() };
-    let main = names.mainline.as_deref();
-    if let Some(w) = &layout.wip {
-        let owner = match (names.head_branch, names.head) {
-            (Some(b), _) => Some((r.out.branch(b), true)),
-            (None, Some(h)) => Some((r.out.unnamed(h), false)),
-            (None, None) => None,
-        };
-        r.out.wip = owner.map(|o| o.0);
-        if let Some((o, by_label)) = owner
-            && w.bottom.contains(&(0, 0))
-        {
-            r.set(0, o, by_label, RowPos::wip());
-            r.meet(0, o);
-        }
-    }
-    let mut wts = layout.worktree_wips.iter().peekable();
-    for (i, (g, c)) in layout.rows.iter().zip(commits).enumerate() {
-        while let Some(w) = wts.next_if(|w| w.before == i) {
-            let branch = names.worktree_branches.get(w.worktree).cloned().flatten();
-            let (o, by_label) = match branch {
-                Some(b) => (r.out.branch(&b), true),
-                None => (r.out.unnamed(c.oid), false),
-            };
-            r.out.worktree_wips.push(o);
-            r.set(w.row.col, o, by_label, RowPos::worktree(i));
-            r.meet(w.row.col, o);
-        }
-        let p = RowPos::commit(i);
-        let tips = names.tips.get(&c.oid).map_or(&[][..], Vec::as_slice);
-        let main_top = g.top.iter().find_map(|&(l, _)| r.owner(l).filter(|(o, _)| main.is_some() && r.out.key(*o) == main));
-        let col_lane = r.owner(g.col);
-        let (node, by_label) = if let Some(m) = main.filter(|m| tips.iter().any(|t| t == m)) {
-            (r.out.branch(m), true)
-        } else if let Some((o, _)) = main_top {
-            (o, true)
-        } else if let Some((o, true)) = col_lane {
-            (o, true)
-        } else if let Some(first) = tips.first() {
-            (r.out.branch(first), true)
-        } else if let (false, Some(lane)) = (g.top.is_empty(), col_lane) {
-            lane
-        } else {
-            (r.out.unnamed(c.oid), false)
-        };
-        r.out.commit.push(node);
-        for &(l, _) in &g.top {
-            if let Some(slot) = r.lanes.get_mut(l) {
-                *slot = None;
-            }
-        }
-        let merged = if c.parents.len() > 1 { merged_names(&c.summary, &names.remotes) } else { Vec::new() };
-        let mut k = 0;
-        for &(_, j) in &g.bottom {
-            if j == g.col {
-                r.set(j, node, by_label, p);
-            } else {
-                k += 1;
-                if r.owner(j).is_some() {
-                    continue;
-                }
-                let (o, by) = match merged.get(k - 1) {
-                    Some(name) => (r.out.branch(name), false),
-                    None => match c.parents.get(k) {
-                        Some(&parent) => (r.out.unnamed(parent), false),
-                        None => continue,
-                    },
-                };
-                r.set(j, o, by, p);
-                r.meet(j, o);
-            }
-        }
-        if g.bottom.iter().any(|&(_, j)| j == g.col) || c.parents.is_empty() {
-            r.meet(g.col, node);
-        }
-        for &(l, _) in &g.top {
-            if r.owner(l).is_none()
-                && let Some(runs) = r.out.runs.get_mut(l)
-                && runs.last().is_some_and(|run| run.1 != ENDED)
-            {
-                runs.push((p.0, ENDED));
-            }
-        }
-    }
-    let mut out = r.out;
-    let mut pairs = r.pairs;
-    pairs.sort_unstable();
-    pairs.dedup();
-    out.neighbours = pairs;
+    let mut out = Owners::begin(layout, names);
+    out.extend(layout, commits, 0, names);
     out
 }
 

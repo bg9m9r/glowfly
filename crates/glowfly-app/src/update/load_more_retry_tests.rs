@@ -27,6 +27,8 @@ fn near_end(st: &mut AppState) -> Vec<Effect> {
     update(st, Msg::Load(LoadMsg::NearHistoryEnd), Instant::now())
 }
 
+/// Makes the snapshot look cut short. It has no walk frontier, so a load for more of it is a
+/// full refresh (`LoadKind::Refresh`); load_more_resume_tests.rs has real truncated histories.
 fn truncate(st: &mut AppState) {
     st.snap.as_mut().unwrap().truncated = true;
 }

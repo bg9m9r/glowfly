@@ -76,7 +76,7 @@ pub(super) fn load_through(st: &mut AppState, count: usize, fx: &mut Vec<Effect>
     }
     st.refresh.extra_commits = extra;
     st.refresh.more_retries = 0;
-    super::refresh::refresh(st, fx);
+    super::refresh::more(st, fx);
     true
 }
 

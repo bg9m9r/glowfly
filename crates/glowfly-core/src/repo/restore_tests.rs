@@ -6,6 +6,7 @@ use super::*;
 use crate::gitcli::{args, run};
 use crate::testutil::*;
 use git2::{Oid, Repository};
+use std::collections::HashSet;
 use std::path::Path;
 
 fn head(dir: &Path) -> Oid {

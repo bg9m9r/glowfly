@@ -11,6 +11,9 @@ use git2::Oid;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// (tips, HEAD's branch, main branch, remotes, worktree branches): `Snapshot::lane_names_parts`.
+type LaneParts = (HashMap<Oid, Vec<String>>, Option<String>, Option<String>, Vec<String>, Vec<Option<String>>);
+
 /// Everything a graph layout depends on, taken from a snapshot (`Snapshot::layout_job`).
 pub struct LayoutJob {
     fit: LayoutFit,
@@ -85,21 +88,53 @@ impl Snapshot {
 
     /// What laying the graph out needs, owned (the commits shared), so a worker can do it.
     pub fn layout_job(&self) -> LayoutJob {
-        let remotes = self.remote_names();
         let fit = LayoutFit {
             commits: Arc::clone(&self.commits),
             wip: self.is_dirty(),
             head: self.head_oid,
             worktrees: worktree_wip_heads(&self.worktrees),
         };
-        LayoutJob {
-            fit,
-            tips: self.lane_tips(&remotes),
-            head_branch: self.head_branch.clone(),
-            mainline: self.mainline(),
-            remotes: remotes.into_iter().map(str::to_owned).collect(),
-            worktree_branches: self.worktrees.iter().map(|w| w.branch.clone()).collect(),
+        let (tips, head_branch, mainline, remotes, worktree_branches) = self.lane_names_parts();
+        LayoutJob { fit, tips, head_branch, mainline, remotes, worktree_branches }
+    }
+
+    /// Lays the commits from `from` on out below the graph's rows and works out their owners,
+    /// going on from where the lanes stood, then colours the graph again (the colouring kept).
+    /// The graph must have exactly `from` rows, else it is laid out again whole.
+    pub(crate) fn extend_graph(&mut self, from: usize) {
+        if self.graph.rows.len() != from {
+            self.lay_out_graph();
+            return;
         }
+        let (tips, head_branch, mainline, remotes, worktree_branches) = self.lane_names_parts();
+        let names = owners::LaneNames {
+            tips,
+            head_branch: head_branch.as_deref(),
+            head: self.head_oid,
+            mainline,
+            remotes: remotes.iter().map(String::as_str).collect(),
+            worktree_branches,
+        };
+        let mut g = std::mem::take(&mut self.graph);
+        g.extend(&self.commits[from..], from);
+        let mut o = std::mem::take(&mut g.owners);
+        o.extend(&g, &self.commits, from, &names);
+        g.owners = o;
+        g.swatches = resolve(&g.owners, &g.colouring);
+        self.graph = g;
+    }
+
+    /// What names the lanes: the branch keys at each commit, HEAD's branch, the main branch, the
+    /// remotes and each worktree's branch.
+    fn lane_names_parts(&self) -> LaneParts {
+        let remotes = self.remote_names();
+        (
+            self.lane_tips(&remotes),
+            self.head_branch.clone(),
+            self.mainline(),
+            remotes.into_iter().map(str::to_owned).collect(),
+            self.worktrees.iter().map(|w| w.branch.clone()).collect(),
+        )
     }
 
     /// Shows `layout` (from [`LayoutJob::run`]), coloured the way colours are picked now, and

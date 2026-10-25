@@ -31,6 +31,8 @@ fn load_more(st: &mut AppState) -> Vec<Effect> {
     update(st, Msg::Load(LoadMsg::LoadMoreCommits), Instant::now())
 }
 
+/// Makes the snapshot look cut short. It has no walk frontier, so a load for more of it is a
+/// full refresh (`LoadKind::Refresh`); load_more_resume_tests.rs has real truncated histories.
 fn truncate(st: &mut AppState) {
     st.snap.as_mut().unwrap().truncated = true;
 }
@@ -97,7 +99,7 @@ fn scrolling_while_a_refresh_runs_queues_one_load() {
     assert!(st.loading);
     truncate(&mut st);
     assert!(loads(&near_end(&mut st)).is_empty(), "waits for the running load");
-    assert_eq!(st.refresh.queued, Some(Depth::Checked));
+    assert_eq!(st.refresh.queued, Some(Depth::More));
     assert!(st.loading_more());
     assert!(near_end(&mut st).is_empty());
     assert_eq!(st.refresh.extra_commits, limit);

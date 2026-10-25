@@ -49,6 +49,7 @@ mod issues;
 mod journal;
 mod keys;
 mod line_counts;
+mod load;
 mod logs;
 mod monitor;
 mod notify;

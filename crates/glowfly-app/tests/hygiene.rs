@@ -35,7 +35,6 @@ const LONG_FILES: &[(&str, usize)] = &[
     ("crates/glowfly-app/src/ui/mod.rs", 591),
     ("crates/glowfly-app/src/update/repo.rs", 407),
     ("crates/glowfly-core/src/forge/github.rs", 406),
-    ("crates/glowfly-core/src/repo/mod.rs", 514),
     ("crates/glowfly-core/src/settings.rs", 410),
 ];
 

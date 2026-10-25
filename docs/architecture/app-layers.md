@@ -27,7 +27,7 @@ source file, update its line here. Features that span every layer are in
 ## `effect/`: effects
 
 - `Effect`: everything slow or outside the process (`mod.rs`).
-- The data some effects carry: `repo.rs` (with `LoadKind`), `forge.rs`, `forge_filters.rs` (PR and issue filter calls), `issue.rs` (the issue panel's and the Create issue dialog's tracker calls and posting a comment), `blame.rs`, `notify.rs` (desktop notifications).
+- The data some effects carry: `repo.rs` (with `LoadKind`: opening, a refresh, or a load for more that goes on from the walk), `forge.rs`, `forge_filters.rs` (PR and issue filter calls), `issue.rs` (the issue panel's and the Create issue dialog's tracker calls and posting a comment), `blame.rs`, `notify.rs` (desktop notifications).
 - Grouped effects: the Clone dialog (`clone.rs`), the Init dialog (`init.rs`), the SUBMODULES section (`submodule.rs`), interactive rebase (`rebase.rs`), connected accounts (`account.rs`) and the stash list (`stash.rs`).
 - `ui.rs`: the effects the UI shell carries out.
 - `os.rs`: `OsEffect`, what is handed to the operating system: links, terminals, the file manager, file pickers.
@@ -86,7 +86,7 @@ source file, update its line here. Features that span every layer are in
 - `branch_colour.rs`: pinned branch colours and the preset's hue count brought into the snapshot at load, on Preferences edits and on a tab's return.
 - `repo_colour.rs`: repository colours from the Color submenus.
 - `op_preview.rs`: opening the operation preview, its result for the dialog that asked only, Preview again and Apply, with a merge on a git without `merge-tree` answered at once.
-- `load_more.rs`: a failed load for more history kept with its automatic retries (its row in `ui/graph/more.rs`).
+- `load_more.rs`: a load for more history going on from the walk (the page taken in below the rows on screen), and a failed one kept with its automatic retries (its row in `ui/graph/more.rs`).
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
 - `wip_list.rs`: Up/Down between the Unstaged or Staged Files, moving on to the neighbouring file after S or U, and asking again for a file still opening (`renew_open`).
 - `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it).
@@ -94,6 +94,7 @@ source file, update its line here. Features that span every layer are in
 ## `runner/`: background work
 
 - `mod.rs`: runs effects on worker threads and reports back with `Msg`s; `execute.rs` maps each effect to its work; one file per kind of work.
+- `load.rs`: a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.
 - `pick.rs`: runs a cherry-pick or revert, skipping the commits that change nothing, and reports `JobMsg::PickDone`.
 - `logs.rs`: the one ordered worker for the log files.
