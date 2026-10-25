@@ -1,0 +1,9 @@
+Dialog
+  Label "Choose a repository"
+  Button "Close this dialog"
+  Label "These folders are all copies of the repository with tag v1.4.0. Which one should open?"
+  RadioButton "C:\\src\\app" [on]
+  Label "open in a tab"
+  RadioButton "D:\\backup\\app" [off]
+  Button "Cancel"
+  Button "Open" [focused]

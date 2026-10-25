@@ -1,0 +1,16 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "New tab"
+Button "Open…"
+Label "Dashboard"
+Label "Pull requests and issues across your repositories"
+Button "Close"
+Button "Refresh"
+Label "Asking 1 service…"
+Button "Mine (0)" [on]
+Button "Review requested (0)" [off]
+Button "Assigned (0)" [off]
+TextInput
+painted:
+  "Repository"
+  "Filter by title, number, author or repository"

@@ -1,0 +1,9 @@
+window 520x300
+Button "Copy path"
+Button "Unlock" [disabled]
+Button "Compare…" [disabled]
+Label "Choose the branch you want to compare against before starting"
+Button "Create pull request…" [disabled]
+Button "Open in external diff tool"
+painted:
+  "Set up…"

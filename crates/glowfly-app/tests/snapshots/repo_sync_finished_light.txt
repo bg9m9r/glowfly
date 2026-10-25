@@ -1,0 +1,16 @@
+Dialog
+  Label "Pull all listed repositories"
+  Button "Close this dialog"
+  Label "Pull of 3 repositories: 1 updated, 1 with nothing to pull, 1 failed."
+  Label "Git doesn't ask for passwords here: a repository whose remote needs one that isn't saved fails."
+  Label "api-server"
+  Label "Pulled"
+  Button "Open"
+  Label "billing"
+  Label "Nothing to pull: the branch has no upstream"
+  Button "Open"
+  Label "docs"
+  Label "Failed: Not possible to fast-forward, aborting."
+  Button "Open"
+  Button "Retry"
+  Button "Close" [focused]

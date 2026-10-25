@@ -1,0 +1,20 @@
+Dialog
+  Label "Choose the mainline parent"
+  Button "Close this dialog"
+  Label "Revert 2 commits, including 2 merge commits. Count each merge's changes against:"
+  RadioButton "Parent 1" [on]
+  Label "a67bade: f0d635c Merge branch 'login-page' (v0.1.0)"
+  Label "f0d635c: 275189b Fix build on Windows"
+  RadioButton "Parent 2" [off]
+  Label "a67bade: 222c0ad Search results page (search)"
+  Label "f0d635c: 7e24110 Add login page (login-page)"
+  Button "Cancel"
+  Button "Revert" [focused]
+  Label "How it works"
+  Label "A merge commit has more than one parent, so what it changed depends on which parent it is compared with."
+  Label "The mainline is the parent the changes are counted against: usually the first, the branch that was merged into."
+  Label "The cherry-pick or revert then uses the changes the other side brought in."
+painted:
+  "1"
+  "2"
+  "3"

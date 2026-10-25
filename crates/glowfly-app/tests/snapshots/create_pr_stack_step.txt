@@ -1,0 +1,20 @@
+Dialog
+  Label "Create pull request"
+  Label "GitHub · o/r"
+  Button "Close this dialog"
+  Label "Branch 2 of 2 in the stack. Its base is the branch below it."
+  Label "login-page"
+  Label "into"
+  ComboBox
+  Label "Title"
+  TextInput "Title" = "Login page"
+  Label "Description"
+  Label "Optional"
+  MultilineTextInput "Description"
+  Label "Markdown is supported."
+  CheckBox "Create as draft" [off]
+  Button "Cancel"
+  Button "Skip"
+  Button "Create pull request" [focused]
+painted:
+  "search"

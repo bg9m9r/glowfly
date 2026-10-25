@@ -1,0 +1,6 @@
+Dialog
+  Label "Delete tag from all remotes"
+  Button "Close this dialog"
+  Label "Delete tag v0.1.0 from origin and backup? Your local tag stays, and anyone who already fetched it keeps their copy."
+  Button "Cancel" [focused]
+  Button "Delete from all remotes"

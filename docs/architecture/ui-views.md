@@ -86,5 +86,9 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 ## Snapshot tests
 
 - `snapshot_tests*.rs`: the views' snapshot tests.
-- `snapshot_check.rs`: comparing with the approved image (`check_snapshot`, skipped with `GLOWFLY_SKIP_SNAPSHOTS`), and `builder()`, which every test harness starts from so harnesses render on pooled wgpu devices.
+- `snapshot_check/mod.rs`: `check_snapshot` (the text snapshot, plus the image for a golden, cropped as listed; skipped with `GLOWFLY_SKIP_SNAPSHOTS`), and `builder()`, which every test harness starts from so harnesses render on pooled wgpu devices.
+- `snapshot_check/text.rs`: a frame's text snapshot: the accessibility tree's roles, labels, values and states, then the painted text no widget carries; only the dialogs when one is open.
+- `snapshot_check/compare.rs`: comparing a text snapshot with `tests/snapshots/<name>.txt` (`.new.txt` always, `.diff.txt` on a mismatch, `UPDATE_SNAPSHOTS=1` accepts).
+- `snapshot_check/goldens.rs`: the ~110 pixel goldens and their crop (window, dialog, top strip), checked against the PNGs on disk.
+- `snapshot_check/tests.rs`: the tolerance, the skip variable, cropping and the text comparison's files.
 - `menu_testing.rs`: opens a submenu and finds its entries.

@@ -1,0 +1,9 @@
+Dialog
+  Label "Blame"
+  TextInput [focused]
+  Button "README.md"
+  Button "app.txt"
+  Button "login.txt"
+  Label "Up/Down to choose, Enter to blame, Backspace or Esc to go back"
+painted:
+  "Find a file to blame"

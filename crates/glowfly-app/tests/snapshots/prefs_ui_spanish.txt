@@ -1,0 +1,107 @@
+window 1400x2400
+Label "Glowfly 0.1.0"
+Button "Volver"
+Label "Preferencias"
+Label "Interfaz"
+CheckBox "Según el sistema (Grafito en modo oscuro, Amanecer en modo claro)" [off]
+Label "Oscuros"
+RadioButton "Grafito" [off]
+RadioButton "Anochecer" [on]
+RadioButton "Medianoche" [off]
+RadioButton "Brasa" [off]
+RadioButton "Pino" [off]
+RadioButton "Jardín oscuro" [off]
+RadioButton "Alto contraste oscuro" [off]
+Label "Claros"
+RadioButton "Amanecer" [off]
+RadioButton "Niebla" [off]
+RadioButton "Lino" [off]
+RadioButton "Arena" [off]
+RadioButton "Jardín claro" [off]
+RadioButton "Alto contraste claro" [off]
+Label "Anochecer: Anochecer índigo bajo un acento dorado de farol, del icono de la app."
+Label "Archivo de tema"
+ComboBox
+Button "Abrir la carpeta de temas"
+Button "Recargar"
+Button "Crear a partir del actual"
+Label "Los archivos de tema son archivos JSON en la carpeta de temas. Cada uno nombra un tema base (dark para Anochecer, light para Amanecer, o midnight, mist, graphite, ember, pine, linen, sand, garden-dark, garden-light, high-contrast-dark o high-contrast-light) y define los colores que cambia, como #rrggbb o como el nombre de otro color; cada color que omite viene de la base. Crear a partir del actual escribe un archivo con todos los colores del tema en uso. Pulsa Recargar después de editar un archivo."
+ComboBox
+CheckBox "Avisar cuando la rama se queda por detrás de su upstream" [on]
+Label "Tras una obtención en segundo plano, avisa cuando la rama activa se ha quedado por detrás de su upstream, con un botón para traer."
+CheckBox "Mostrar notificaciones del sistema mientras Glowfly está en segundo plano" [off]
+Label "Las operaciones terminadas y los avisos de retraso también aparecen como notificaciones de escritorio cuando la ventana de Glowfly no tiene el foco. Las obtenciones en segundo plano no avisan. Al activarlo se envía una notificación para que compruebes que te llegan."
+Label "Interfaz"
+ComboBox
+CheckBox "Mostrar el panel izquierdo" [on]
+CheckBox "Mostrar los detalles del commit" [on]
+CheckBox "Mostrar la barra de herramientas" [on]
+Label "Mientras la barra de herramientas está oculta, la barra de estado tiene un botón Mostrar barra, y la paleta de comandos y los atajos de teclado siguen funcionando."
+CheckBox "Mostrar la barra de menús" [off]
+Label "Mientras la barra de menús está oculta, la paleta de comandos y los atajos de teclado siguen llegando a todo, y Show menu bar en la paleta la vuelve a mostrar."
+CheckBox "Mostrar texto bajo los iconos" [on]
+CheckBox "Desactivar fundidos y deslizamientos" [off]
+Label "Las descripciones y ventanas emergentes aparecen sin fundidos ni deslizamientos"
+CheckBox "Revisar la ortografía de los mensajes de commit" [on]
+Label "Subraya las faltas de ortografía en el resumen y la descripción del commit; haz clic derecho para ver sugerencias. Usa el corrector ortográfico de Windows en el idioma del sistema."
+CheckBox "Mostrar iniciales en lugar de avatares" [on]
+Label "Los avatares vienen de GitHub para las direcciones noreply y de Gravatar en los demás casos (se buscan por un hash del correo). Se guardan en caché en el disco."
+CheckBox "Mostrar un botón Nueva rama… en el commit activo" [on]
+Label "Mientras señalas el commit activo, o es el commit seleccionado, un botón discreto Nueva rama… sigue a sus etiquetas de rama; haz clic en él para crear una rama desde la actual. Para cualquier otro commit, usa Crear una rama aquí… en su menú contextual."
+CheckBox "Iluminar los commits de una rama mientras el puntero está sobre su etiqueta en el grafo" [on]
+CheckBox "Mostrar los cambios de otros worktrees en el grafo" [on]
+Label "Añade una fila sobre el commit activo de un worktree mientras tenga cambios sin confirmar, con recuentos. Haz clic en ella para abrir ese worktree. Los recuentos se leen al cargar el repositorio."
+CheckBox "Mantener juntas las pestañas de los worktrees de un repositorio" [on]
+Label "Las pestañas de worktrees del mismo repositorio (su carpeta principal y cada worktree vinculado) quedan juntas, con una línea de color debajo. Arrastra una pestaña dentro de su grupo para reordenarla; suéltala fuera del grupo para mover el grupo entero."
+ComboBox
+Label "Ramas relevantes limita el grafo a la rama activa, su upstream, la rama predeterminada y las ramas con una pull request abierta."
+Label "Grafo de commits"
+CheckBox "Ramas y etiquetas" [on]
+CheckBox "Árbol" [on]
+CheckBox "Mensaje" [on]
+CheckBox "Cambios" [off]
+Label "Líneas añadidas y eliminadas por commit, calculadas en segundo plano."
+CheckBox "Autor" [on]
+CheckBox "SHA corto bajo el autor" [on]
+CheckBox "Fecha y hora" [on]
+ComboBox
+ComboBox
+Label "Apto para daltonismo usa 8 tonos elegidos para distinguirse con daltonismo rojo-verde o azul-amarillo. Los nombres de las ramas siempre aparecen junto a su color, y la rama principal mantiene el color de acento."
+Button "Restablecer la disposición estándar"
+Button "Restablecer la disposición compacta"
+Label "Ambos restablecen también el ancho estándar de cada columna. Para cambiar el tamaño de una columna, arrastra el separador junto a su título en la cabecera del grafo; haz doble clic en un separador para restablecer solo esa columna."
+painted:
+  "General"
+  "Git"
+  "Perfil"
+  "Integraciones"
+  "Idioma y región"
+  "Visor de diferencias"
+  "Teclado"
+  "Herramientas externas"
+  "Terminal"
+  "Firma de commits"
+  "SSH"
+  "Tema"
+  "Ninguno"
+  "Ubicación de los avisos"
+  "Abajo a la izquierda"
+  "Avisos de retraso"
+  "Notificaciones de escritorio"
+  "Zoom"
+  "100%"
+  "Panel izquierdo"
+  "Detalles del commit"
+  "Barra de herramientas"
+  "Barra de menús"
+  "Etiquetas de la barra"
+  "Reducir movimiento"
+  "Corrector ortográfico"
+  "Imágenes de autor"
+  "Botón de rama rápida"
+  "Seguir una rama al pasar el puntero"
+  "Cambios de worktrees"
+  "Agrupar pestañas de worktrees"
+  "Ramas visibles"
+  "Todas las ramas"
+  "Columnas del grafo"

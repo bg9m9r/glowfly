@@ -1,0 +1,7 @@
+Dialog
+  Label "Find repositories"
+  Button "Close this dialog"
+  Label "Project folders"
+  Label "Add a folder you keep repositories in, and Glowfly lists the Git repositories under it."
+  Button "Add folder…"
+  Button "Close" [focused]

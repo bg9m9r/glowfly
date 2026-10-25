@@ -1,0 +1,25 @@
+Dialog
+  Label "Start a new repository"
+  Button "Close this dialog"
+  Label "Folder"
+  TextInput "Folder" = "C:\\src\\tool" [focused]
+  Button "Browse…"
+  Label "C:\\src\\tool"
+  Label "Initial branch"
+  Label "Optional"
+  TextInput "Initial branch" = "a..b"
+  Label "Not a valid branch name."
+  Label ".gitignore"
+  ComboBox ".gitignore"
+  CheckBox "Also ignore operating system and editor files (macOS, Windows, common editors)" [off]
+  Label "License"
+  ComboBox "License"
+  Label "Copyright holder"
+  TextInput "Copyright holder"
+  Label "Enter the name for the copyright line."
+  CheckBox "Commit these files as \"Initial commit\"" [on]
+  Button "Cancel"
+  Button "Create repository" [disabled]
+painted:
+  "None"
+  "BSD 3-Clause"

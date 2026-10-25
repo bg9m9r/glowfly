@@ -1,0 +1,13 @@
+Dialog
+  Label "Upstream for search"
+  Label "Pull from and push to:"
+  Button "Close this dialog"
+  Label "Remote"
+  ComboBox "Remote"
+  Label "Branch"
+  TextInput "Branch" = "search"
+  Label "origin/search doesn't exist yet. Push search to create it."
+  Button "Cancel"
+  Button "Save" [focused]
+painted:
+  "origin"

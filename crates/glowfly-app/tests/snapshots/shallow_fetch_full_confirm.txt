@@ -1,0 +1,6 @@
+Dialog
+  Label "Fetch full history?"
+  Button "Close this dialog"
+  Label "GitHub reports this repository's size as about 2.2 GB. This clone has 1 commit so far; fetching the full history downloads the rest from origin, which can take a long time and use about that much disk space. You can cancel it from the status bar while it runs."
+  Button "Cancel"
+  Button "Fetch full history" [focused]

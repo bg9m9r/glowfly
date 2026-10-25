@@ -1,0 +1,6 @@
+Dialog
+  Label "Branch löschen"
+  Button "Diesen Dialog schließen"
+  Label "Lokalen Branch search löschen?"
+  Button "Abbrechen" [focused]
+  Button "Löschen"

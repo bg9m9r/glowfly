@@ -1,0 +1,9 @@
+Dialog
+  Label "Rename README.md"
+  Button "Close this dialog"
+  Label "Path"
+  TextInput "Path" = "docs/README.md" [focused]
+  CheckBox "Stage the rename (git mv)" [on]
+  Label "The rename is staged; changes to the file stay as they are."
+  Button "Cancel"
+  Button "Rename"

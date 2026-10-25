@@ -1,0 +1,23 @@
+Dialog
+  Label "Add submodule"
+  Button "Close this dialog"
+  Label "Repository URL"
+  TextInput "Repository URL" = "https://example.com/team/lib.git" [focused]
+  Label "Path"
+  TextInput "Path" = "lib"
+  Label "Branch"
+  Label "Optional"
+  TextInput "Branch" = "dev"
+  Label "Leave empty for the remote's default branch"
+  Button "Cancel"
+  Button "Add submodule"
+  Label "How it works"
+  Label "A submodule is another repository kept inside this one, pinned to one commit."
+  Label "Glowfly clones the URL into the folder and records it in .gitmodules."
+  Label "The folder and .gitmodules are staged; commit them to add the submodule for everyone."
+  Label "After pulling, others use Update all submodules to get its files."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

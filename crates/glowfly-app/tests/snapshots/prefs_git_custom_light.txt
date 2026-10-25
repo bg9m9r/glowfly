@@ -1,0 +1,27 @@
+window 1400x900
+Label "Glowfly 0.1.0"
+Button "Back"
+Label "Preferences"
+Label "Git"
+RadioButton "Use git from your PATH" [off]
+Label "Not found on your PATH"
+RadioButton "D:\\PortableGit\\cmd\\git.exe" [on]
+Label "git 2.47.0"
+Button "Browse…"
+Button "Look again"
+Label "Glowfly runs this git for commits, fetches, pushes, hooks and signing. The built-in terminal and external tools still use whatever git your PATH finds."
+Label "git 2.47.0 at D:\\PortableGit\\cmd\\git.exe"
+painted:
+  "General"
+  "Profile"
+  "Integrations"
+  "UI customization"
+  "Language & region"
+  "Diff viewer"
+  "Keyboard"
+  "External tools"
+  "Terminal"
+  "Commit signing"
+  "SSH"
+  "Git program"
+  "Version"

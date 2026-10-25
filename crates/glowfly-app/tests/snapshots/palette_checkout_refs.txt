@@ -1,0 +1,15 @@
+Dialog
+  TextInput = "checkout" [focused]
+  Button "Checkout search"
+  Button "Checkout login-page"
+  Button "Checkout tag v0.1.0"
+  Button "Checkout upstream/release-2.0"
+  Button "Checkout origin/feature/sidebar"
+  Button "Configure sparse checkout…"
+  Button "Create worktree from main…"
+  Button "Check for updates"
+  Label "Up/Down to choose, Enter to run, Esc to close"
+painted:
+  "detached at f0d635c"
+  "creates local branch"
+  "creates local branch"

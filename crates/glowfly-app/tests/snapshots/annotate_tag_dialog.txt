@@ -1,0 +1,9 @@
+Dialog
+  Label "Annotate tag v0.1.0"
+  Button "Close this dialog"
+  Label "Replaces the lightweight tag with an annotated one on commit f0d635c. The name and commit stay the same."
+  Label "Copies already pushed to remotes stay lightweight."
+  Label "Message"
+  MultilineTextInput "Message" [focused]
+  Button "Cancel"
+  Button "Annotate" [disabled]

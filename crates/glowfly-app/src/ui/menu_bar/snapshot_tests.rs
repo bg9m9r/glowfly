@@ -304,7 +304,7 @@ fn dialog_harness(git: GitState, draw: DrawDialog) -> Harness<'static, (GitState
             egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |_| {});
             let id = egui::Id::new("glowfly-modal");
             let cx = crate::ui::dialog_frame::Cx { t: glowfly_core::i18n::Lang::En, keyboard: true, key: id.with("about") };
-            let resp = theme::dialog(ctx, id).show(ctx, |ui| draw(ui, cx, git, msgs));
+            let resp = theme::show_modal(ctx, theme::dialog(ctx, id), |ui| draw(ui, cx, git, msgs));
             ctx.data_mut(|d| d.insert_temp(egui::Id::new("about-rect"), resp.response.rect));
         },
         (git, Vec::new()),

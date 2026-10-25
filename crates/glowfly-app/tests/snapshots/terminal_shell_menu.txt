@@ -1,0 +1,7 @@
+window 280x220
+Button "Automatic"
+Button "PowerShell 7 (pwsh) (default)"
+Button "Windows PowerShell"
+Button "Command Prompt (cmd)"
+Button "Bash (Git Bash)"
+Button "Custom program (nu)"

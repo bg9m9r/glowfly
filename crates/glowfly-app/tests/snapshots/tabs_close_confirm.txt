@@ -1,0 +1,6 @@
+Dialog
+  Label "Close 2 tabs?"
+  Button "Close this dialog"
+  Label "Some of these tabs hold work that isn't saved anywhere:\n- demo: its commit message draft\n- api-server: 2 conflict choices in src/lib.rs"
+  Button "Cancel" [focused]
+  Button "Close 2 tabs"

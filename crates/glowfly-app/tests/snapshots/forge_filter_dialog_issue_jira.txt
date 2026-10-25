@@ -1,0 +1,28 @@
+Dialog
+  Label "New issue filter"
+  Label "Jira Cloud · acme.atlassian.net · PROJ"
+  Button "Close this dialog"
+  Label "Name"
+  TextInput "Name" = "This sprint" [focused]
+  Label "Assignee"
+  ComboBox "Assignee"
+  Label "Created by"
+  ComboBox "Created by"
+  Label "Fix version"
+  ComboBox "Fix version"
+  Label "Sprint"
+  ComboBox "Sprint"
+  Label "Labels"
+  TextInput "Labels"
+  Button "backend"
+  Button "ui"
+  CheckBox "Mentions me" [disabled, off]
+  Label "Jira Cloud can't filter issues by mention."
+  Button "Cancel"
+  Button "Create filter"
+painted:
+  "Me"
+  "Anyone"
+  "Any"
+  "Sprint 9"
+  "Comma-separated"

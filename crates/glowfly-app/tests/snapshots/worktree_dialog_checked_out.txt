@@ -1,0 +1,23 @@
+Dialog
+  Label "Create worktree from main"
+  Button "Close this dialog"
+  Label "Folder"
+  TextInput "Folder" = "C:\\work\\app-worktrees\\main"
+  Button "Browse…"
+  Label "New branch"
+  Label "Optional"
+  TextInput "New branch" [focused]
+  Label "main is checked out in this worktree. Enter a name for a new branch."
+  CheckBox "Open in a new tab" [on]
+  Button "Cancel"
+  Button "Create worktree" [disabled]
+  Label "How it works"
+  Label "A worktree is another folder with its own checked-out branch, sharing this repository's history."
+  Label "A branch can be checked out in only one worktree at a time, so a new branch is often easiest."
+  Label "Commits made in either folder show up in both straight away."
+  Label "Remove the worktree when you are done; its branch and commits stay."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

@@ -1,0 +1,20 @@
+Dialog
+  Label "Clone a repository"
+  Button "Close this dialog"
+  Button "URL" [off]
+  Button "Your repositories" [on]
+  ComboBox
+  Label "Couldn't list your repositories"
+  Label "GitHub didn't accept the saved token. Sign in again in Preferences > Integrations."
+  Button "Try again"
+  Button "Copy details"
+  CheckBox "Use the SSH URL" [off]
+  Label "Clone into folder"
+  TextInput "Clone into folder" = "C:\\src"
+  Button "Browse…"
+  CheckBox "Shallow clone (download only recent history)" [off]
+  CheckBox "Sparse checkout (check out only some folders)" [off]
+  Button "Cancel"
+  Button "Clone" [disabled]
+painted:
+  "GitHub · github.com (ada)"

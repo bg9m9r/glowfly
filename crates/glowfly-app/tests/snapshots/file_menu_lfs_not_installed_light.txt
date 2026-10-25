@@ -1,0 +1,4 @@
+window 440x120
+Button "Only this file" [disabled]
+Button "Every .psd file" [disabled]
+Button "Everything in assets/" [disabled]

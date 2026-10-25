@@ -26,7 +26,7 @@ pub(super) fn discard_question(ctx: &egui::Context, t: Lang, msgs: &mut Vec<Msg>
     let id = Id::new("glowfly-modal-discard");
     // It takes the keyboard over the form beneath.
     let cx = Cx { t, keyboard: true, key: id };
-    let resp = super::theme::dialog(ctx, id).show(ctx, |ui| {
+    let resp = super::theme::show_modal(ctx, super::theme::dialog(ctx, id), |ui| {
         let d = Dialog::new(cx, t.tr("dialog.discard.title")).size(Size::Small).begin(ui);
         ui.label(RichText::new(t.tr("dialog.discard.body")).color(color::weak()));
         let footer = Footer::new()

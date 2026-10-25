@@ -1,0 +1,55 @@
+window 1400x900
+Label "Glowfly 0.1.0"
+Button "Back"
+Label "Preferences"
+Label "Terminal"
+Label "Built-in terminal"
+ComboBox
+Label "Automatic starts PowerShell 7 when it is installed, else Windows PowerShell, else the Command Prompt. The shell applies to terminals started after a change; running ones keep theirs."
+SpinButton = "12.5 pt" = 12.5
+Label "The size of the terminal's text. The default is 12.5."
+ComboBox
+Button "Import scheme…"
+Label "The terminal's background, text, cursor, selection and 16 basic colors. Match app theme uses the theme's own (a theme file can set them with its terminal_ keys). Import scheme… reads a Windows Terminal scheme or settings.json, or an iTerm2 .itermcolors file, into the themes folder's terminal folder; colors a scheme leaves out come from the app theme."
+Label "Hard to read on this background: yellow, bright yellow."
+RadioButton "Block" [on]
+RadioButton "Underline" [off]
+RadioButton "Bar" [off]
+Label "How the cursor is drawn. It is fainter while the terminal doesn't have the keyboard."
+CheckBox "Dim the terminal while you work elsewhere" [off]
+Label "Shade the terminal while another part of the window has the keyboard."
+CheckBox "Copy selected text to the clipboard" [off]
+Label "Selecting text with the mouse copies it to the clipboard. The copy shortcut then goes to the shell instead."
+CheckBox "Open a tab in the built-in terminal" [off]
+Label "Open in terminal (in the command palette, and when right-clicking the toolbar's Terminal button) starts a new tab in the terminal panel instead of an external terminal."
+Button "Reset to defaults"
+Label "External terminal"
+TextInput
+Button "Browse…"
+Label "Used when Open in terminal doesn't open a built-in tab. Leave it empty to use the system's usual terminal; when set, this program starts in the repository folder."
+TextInput [disabled]
+Label "{repo} is the repository folder; the program also starts in that folder."
+painted:
+  "General"
+  "Git"
+  "Profile"
+  "Integrations"
+  "UI customization"
+  "Language & region"
+  "Diff viewer"
+  "Keyboard"
+  "External tools"
+  "Commit signing"
+  "SSH"
+  "Default shell"
+  "Automatic"
+  "Font size"
+  "Colors"
+  "Pale Paper"
+  "Cursor style"
+  "Dim when unfocused"
+  "Copy on select"
+  "Open in terminal"
+  "Terminal settings"
+  "Terminal executable"
+  "Detect automatically"

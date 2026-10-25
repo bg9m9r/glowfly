@@ -1,0 +1,99 @@
+window 1400x1640
+Label "Glowfly 0.1.0"
+Button "Back"
+Label "Preferences"
+Label "UI customization"
+CheckBox "Match the system (Graphite in dark mode, Dawn in light mode)" [off]
+Label "Dark"
+RadioButton "Graphite" [off]
+RadioButton "Dusk" [on]
+RadioButton "Midnight" [off]
+RadioButton "Ember" [off]
+RadioButton "Pine" [off]
+RadioButton "Garden Dark" [off]
+RadioButton "High Contrast Dark" [off]
+Label "Light"
+RadioButton "Dawn" [off]
+RadioButton "Mist" [off]
+RadioButton "Linen" [off]
+RadioButton "Sand" [off]
+RadioButton "Garden Light" [off]
+RadioButton "High Contrast Light" [off]
+Label "Dusk: Indigo dusk under a lantern-gold accent, from the app icon."
+Label "Theme file"
+ComboBox
+Button "Open themes folder"
+Button "Reload"
+Button "Create from current"
+Label "Theme files are JSON files in the themes folder. Each one names a base theme (dark for Dusk, light for Dawn, or midnight, mist, graphite, ember, pine, linen, sand, garden-dark, garden-light, high-contrast-dark or high-contrast-light) and sets the colors it changes, either as #rrggbb or as the name of another color; every color it leaves out comes from the base. Create from current writes a file with every color of the theme in use. Press Reload after editing a file."
+ComboBox
+CheckBox "Say when the branch falls behind its upstream" [on]
+Label "After a background fetch, say when the checked-out branch has fallen behind its upstream, with a button to pull."
+CheckBox "Show system notifications while Glowfly is in the background" [off]
+Label "Finished jobs and behind alerts also appear as desktop notifications when Glowfly's window isn't focused. Background fetches stay quiet. Turning this on sends one notification so you can check that they reach you."
+Label "Interface"
+ComboBox
+CheckBox "Show the left panel" [on]
+CheckBox "Show the commit details panel" [on]
+CheckBox "Show the toolbar" [on]
+Label "While the toolbar is hidden, the status bar has a Show toolbar button, and the command palette and keyboard shortcuts keep working."
+CheckBox "Show the menu bar" [off]
+Label "While the menu bar is hidden, the command palette and keyboard shortcuts still reach everything, and Show menu bar in the palette brings it back."
+CheckBox "Show text under toolbar icons" [on]
+CheckBox "Turn off fades and slides" [off]
+Label "Tooltips and popups appear without fading or sliding in"
+CheckBox "Check spelling in commit messages" [on]
+Label "Underlines misspellings in the commit summary and description; right-click for suggestions. Uses the Windows spell checker in your system language."
+CheckBox "Show initials instead of avatars" [on]
+Label "Avatars come from GitHub for noreply addresses and from Gravatar otherwise (looked up by a hash of the email). They are cached on disk."
+CheckBox "Show a New branch button on the checked-out commit" [on]
+Label "While you point at the checked-out commit, or it is the selected commit, a quiet New branch… button follows its branch labels; click it to start a branch from the current one. For any other commit, use Create branch here… in its right-click menu."
+CheckBox "Light up a branch's commits while the pointer is on its label in the graph" [on]
+CheckBox "Show other worktrees' changes in the graph" [on]
+Label "Adds a row above a worktree's checked-out commit while it has uncommitted changes, with counts. Click it to open that worktree. Counts are read when the repository loads."
+CheckBox "Keep a repository's worktree tabs side by side" [on]
+Label "Tabs for worktrees of the same repository (its main folder and every linked worktree) stay next to each other, with a colored line under them. Drag a tab inside its group to reorder it; drop it outside the group to move the whole group."
+ComboBox
+Label "Relevant branches keeps the graph to the checked-out branch, its upstream, the default branch and branches with an open pull request."
+Label "Commit graph"
+CheckBox "Branches and tags" [on]
+CheckBox "Tree" [on]
+CheckBox "Message" [on]
+CheckBox "Changes" [off]
+Label "Lines added and removed per commit, computed in the background."
+CheckBox "Author" [on]
+CheckBox "Short SHA under the author" [on]
+CheckBox "Date and time" [on]
+ComboBox
+ComboBox
+Label "Color-blind safe uses 8 hues picked to stay apart with red-green or blue-yellow color blindness. Branch names always appear beside their color, and the main branch keeps the accent color."
+Button "Reset to default layout"
+Button "Reset to compact layout"
+Label "Either reset also puts every column back to its standard width. To resize a column, drag the divider beside its title in the graph header; double-click a divider to reset just that column."
+painted:
+  "General"
+  "Git"
+  "Profile"
+  "Integrations"
+  "Language & region"
+  "Diff viewer"
+  "Keyboard"
+  "External tools"
+  "Terminal"
+  "Commit signing"
+  "SSH"
+  "Theme"
+  "None"
+  "Notification location"
+  "Bottom left"
+  "Behind alerts"
+  "Desktop notifications"
+  "Zoom"
+  "100%"
+  "Left panel"
+  "Commit details panel"
+  "Toolbar"
+  "Menu bar"
+  "Toolbar labels"
+  "Reduce motion"
+  "Spell checking"

@@ -1,0 +1,7 @@
+window 520x260
+Label "New branch"
+Button "Close this dialog"
+Label "The branch starts at main."
+Label "Tick the box above first"
+Button "Cancel"
+Button "Delete branch" [disabled]

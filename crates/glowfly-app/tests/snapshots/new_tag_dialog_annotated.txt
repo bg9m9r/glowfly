@@ -1,0 +1,10 @@
+Dialog
+  Label "New annotated tag at f0d635c"
+  Label "Annotated tags keep a message, the tagger and the date."
+  Button "Close this dialog"
+  Label "Name"
+  TextInput "Name" = "v1.2.0" [focused]
+  Label "Message"
+  MultilineTextInput "Message"
+  Button "Cancel"
+  Button "Create tag" [disabled]

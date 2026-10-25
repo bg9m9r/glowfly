@@ -1,0 +1,44 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "Back"
+Label "Preferences"
+Label "Diff viewer"
+SpinButton = "12.5 pt" = 12.5
+Label "The size of the text in the diff viewer: hunks, the whole-file view and file history. The default is 12.5."
+SpinButton = "4" = 4
+Label "Tabs in diff lines stop at every N columns. Only the display changes; files are never changed."
+CheckBox "Show old and new line numbers" [on]
+Label "The old and new line numbers beside each line in the inline, split and whole-file views."
+CheckBox "Color code by its language" [on]
+Label "Colors code in the diff viewer by its language, worked out from the file name or, for scripts, the first line. Diffs with more than 2,000 lines or 100 KB of text, or with very long lines, are shown without colors."
+CheckBox "Mark the words that changed" [on]
+Label "Marks the words that changed between a removed line and the added line paired with it."
+CheckBox "Wrap long lines" [off]
+Label "Long lines in the diff viewer (hunks, the whole-file view and file history) continue on the next line instead of running past the right edge. The diff header has the same toggle."
+RadioButton "Diff" [on]
+RadioButton "File" [off]
+Label "Whether file and folder histories open on the commit's changes (Diff) or the whole file as of the commit (File). The history header's toggle changes it too."
+CheckBox "Show them rendered in file history" [off]
+Label "Whether the file history's File view shows Markdown files rendered or as their text. The Text | Preview switch above the file changes it too."
+Button "Reset to defaults"
+painted:
+  "General"
+  "Git"
+  "Profile"
+  "Integrations"
+  "UI customization"
+  "Language & region"
+  "Keyboard"
+  "External tools"
+  "Terminal"
+  "Commit signing"
+  "SSH"
+  "Font size"
+  "Tab size"
+  "Line numbers"
+  "Syntax highlighting"
+  "Word highlights"
+  "Long lines"
+  "File history shows"
+  "Markdown files"
+  "Diff viewer settings"

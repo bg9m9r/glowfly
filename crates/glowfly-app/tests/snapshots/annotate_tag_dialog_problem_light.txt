@@ -1,0 +1,9 @@
+Dialog
+  Label "Annotate tag v0.1.0"
+  Button "Close this dialog"
+  Label "Replaces the lightweight tag with an annotated one on commit 0123456. The name and commit stay the same."
+  Label "Message"
+  MultilineTextInput "Message" = "Release 0.1.0" [focused]
+  Label "Tag v0.1.0 has moved to f0d635c. Open Annotate again from the TAGS list."
+  Button "Cancel"
+  Button "Annotate" [disabled]

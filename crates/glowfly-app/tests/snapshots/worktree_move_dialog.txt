@@ -1,0 +1,17 @@
+Dialog
+  Label "Move worktree feature-login"
+  Button "Close this dialog"
+  Label "New folder"
+  TextInput "New folder" = "C:\\work\\moved\\feature-login" [focused]
+  Button "Browse…"
+  Label "A tab showing it follows it to the new folder."
+  Button "Cancel"
+  Button "Move"
+  Label "How it works"
+  Label "The worktree's folder moves to the new place, with all its files."
+  Label "git updates its records, so the worktree keeps its branch and history."
+  Label "The main worktree, and worktrees that contain submodules, can't be moved this way."
+painted:
+  "1"
+  "2"
+  "3"

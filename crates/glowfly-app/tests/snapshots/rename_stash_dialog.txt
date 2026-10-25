@@ -1,0 +1,8 @@
+Dialog
+  Label "Rename stash"
+  Label "stash@{1} · made on main"
+  Button "Close this dialog"
+  Label "Message"
+  TextInput "Message" = "1a2b3c4 Add search" [focused]
+  Button "Cancel"
+  Button "Rename" [disabled]

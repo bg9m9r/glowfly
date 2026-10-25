@@ -1,0 +1,15 @@
+Dialog
+  TextInput = "deploy" [focused]
+  Button "Deploy commit"
+  Button "Deploy preview"
+  Button "Deploy with project script"
+  Button "Copy link to repository"
+  Button "Copy link to branch main"
+  Button "File history…"
+  Button "Find repositories in folders…"
+  Label "Up/Down to choose, Enter to run, Esc to close"
+painted:
+  "Your command"
+  "Ctrl+Alt+D"
+  "Your command"
+  "This repository's command, asks to trust it first"

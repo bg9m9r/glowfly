@@ -1,0 +1,6 @@
+Dialog
+  Label "Restore main?"
+  Button "Close this dialog"
+  Label "main moves from f0d635c to 222c0ad. 1 commit comes back. The working tree is reset to match. Your uncommitted changes are stashed first and put back afterwards. Undo puts it back."
+  Button "Cancel"
+  Button "Stash and restore" [focused]

@@ -1,0 +1,5 @@
+window 260x136
+Button "File history"
+Button "Blame"
+Button "History of this folder"
+Button "Copy path"

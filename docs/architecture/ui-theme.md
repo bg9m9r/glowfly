@@ -7,6 +7,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 - `theme/controls.rs`: the themed form controls: text fields with a border and focus ring, and checkboxes and radio buttons drawn as visible boxes and circles; views use these, which `tests/controls.rs` checks.
 - `theme::modal`: every modal: the themed backdrop and dialog border.
+- `theme::show_modal`: shows a modal with its contents under one accessibility node of role Dialog (what screen readers and the text snapshots see).
 
 ## Colours
 

@@ -1,0 +1,10 @@
+Dialog
+  Label "Rename tab"
+  Label "C:\\work\\api-server"
+  Button "Close this dialog"
+  Label "Name"
+  TextInput "Name" = "Frontend" [focused]
+  Label "Shown in the tab bar, the Window menu and the window title. Leave it empty to use the folder name."
+  Button "Use folder name" [disabled]
+  Button "Cancel"
+  Button "Rename"

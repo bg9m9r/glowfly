@@ -1,0 +1,5 @@
+Dialog
+  Label "Fetch more commits"
+  TextInput = "abc" [focused]
+  Label "Enter a whole number of commits, like 1 or 50."
+  Label "Enter to fetch, Backspace or Esc to go back"

@@ -1,0 +1,24 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "New tab"
+Button "Open…"
+Button "Hide panel"
+Button "More"
+Button "Copy log" [disabled]
+Button "Export logs…"
+Button "Open folder"
+Button "Reload"
+Button "Activity" [off]
+Button "Errors" [on]
+Button "Performance" [off]
+ProgressIndicator
+Label "Reading..."
+Image
+Label "Glowfly"
+Label "A fast, native Git client"
+Button "Open repository…"
+Button "Clone repository…"
+Button "New repository…"
+Button "Find repositories in folders"
+painted:
+  "Repository"

@@ -1,0 +1,5 @@
+Dialog
+  Label "Fetch more commits"
+  TextInput = "20" [focused]
+  Label "Downloads this many older commits below where each fetched branch's history now stops."
+  Label "Enter to fetch, Backspace or Esc to go back"

@@ -1,0 +1,19 @@
+Dialog
+  Label "Welcome to Glowfly"
+  Label "Nice to meet you, Ada Lovelace."
+  Button "Close the welcome"
+  ProgressIndicator "Step 2 of 4: Services"
+  Label "Connect a hosting service"
+  Label "Signing in to a hosting service such as GitHub, GitLab, Bitbucket or Azure DevOps brings its pull requests and issues into Glowfly, lets you clone from your account and publishes new repositories there."
+  Label "You can also do this later in Preferences > Integrations."
+  Label "You're connected"
+  Label "GitHub"
+  Label "ada-l"
+  Button "Connect another…"
+  Button "Back"
+  Button "Continue" [focused]
+painted:
+  "You"
+  "Services"
+  "Git"
+  "Start"

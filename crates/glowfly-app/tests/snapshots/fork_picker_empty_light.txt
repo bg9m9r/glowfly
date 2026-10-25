@@ -1,0 +1,7 @@
+Dialog
+  Label "Add a fork of team/app"
+  Label "Forks on GitHub. The one you pick is added as a remote."
+  Button "Close this dialog"
+  Label "Nobody has forked team/app yet."
+  Button "Fork it on GitHub…"
+  Button "Cancel" [focused]

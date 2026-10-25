@@ -1,0 +1,23 @@
+Dialog
+  Label "Create issue"
+  Label "GitHub · acme/demo"
+  Button "Close this dialog"
+  Label "Title"
+  TextInput "Title" = "Crash on start when the config folder is missing" [focused]
+  Label "Description"
+  Label "Optional"
+  MultilineTextInput "Description" = "Starting without ~/.config/demo panics."
+  Label "Labels"
+  TextInput
+  Label "Assignees"
+  TextInput
+  CheckBox "Create a branch for it afterwards" [on]
+  Label "Couldn't create the issue: the server said “Validation Failed: assignees is invalid”"
+  Button "Cancel"
+  Button "Create issue"
+painted:
+  "bug"
+  "ui"
+  "Search labels"
+  "ada"
+  "Search people"

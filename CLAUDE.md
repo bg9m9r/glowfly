@@ -10,7 +10,11 @@ status; the work is GitHub issues on the [Glowfly Project](https://github.com/us
 - `pwsh scripts/check.ps1`: fmt check, clippy (`-D warnings`), all tests. Run before every commit.
 - `cargo run --release -- <repo path>`: run the app. With no path it reopens the last repo.
 - `UPDATE_SNAPSHOTS=1 cargo test -p glowfly snapshot`: re-render UI snapshots into
-  `crates/glowfly-app/tests/snapshots/`. Open the PNGs and check them before committing.
+  `crates/glowfly-app/tests/snapshots/`: a `.txt` text snapshot per view test, and a PNG only for
+  the pixel goldens listed in `ui/snapshot_check/goldens.rs`. Read the changed text and open
+  the changed PNGs before committing.
+- `pwsh scripts/rerender-conflicted.ps1`: after a merge or rebase stops on snapshot conflicts,
+  re-render and stage only the conflicted snapshots.
 - `UPDATE_ICONS=1 cargo test -p glowfly --test app_icon`: redraw the app icon into `assets/icon/`
   (PNGs, `glowfly.ico`, `glowfly.icns`) after changing `tests/app_icon/draw.rs`.
 - `UPDATE_NOTICES=1 cargo test -p glowfly-core notice`: regenerate the syntax-definition licenses

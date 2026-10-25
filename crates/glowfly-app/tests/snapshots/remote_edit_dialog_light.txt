@@ -1,0 +1,14 @@
+Dialog
+  Label "Edit remote origin"
+  Button "Close this dialog"
+  Label "Name"
+  TextInput "Name" = "upstream" [focused]
+  Label "Fetch URL"
+  TextInput "Fetch URL" = "https://example.com/team/app.git"
+  Label "Push URL"
+  Label "Optional"
+  TextInput "Push URL" = "https://dev:secret@example.com/team/app-push.git"
+  Label "Leave empty to push to the fetch URL."
+  Label "Renaming also renames its remote-tracking branches and updates the branches that track it."
+  Button "Cancel"
+  Button "Save"

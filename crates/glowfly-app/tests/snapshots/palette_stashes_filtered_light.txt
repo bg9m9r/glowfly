@@ -1,0 +1,9 @@
+Dialog
+  Label "Delete stash"
+  TextInput = "login" [focused]
+  Button "On login-page: half-done validation"
+  Button "On main: login form tweaks"
+  Label "Up/Down to choose, Enter to delete, Backspace or Esc to go back"
+painted:
+  "stash@{2}"
+  "stash@{0}"

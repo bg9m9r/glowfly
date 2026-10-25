@@ -76,7 +76,7 @@ const FIXTURE_HELPERS: &[(&str, &[&str])] = &[
 
 /// The files that may build an egui_kittest harness directly: the shared builder itself, and
 /// the journeys' harness, which never renders.
-const HARNESS_MAKERS: &[&str] = &["crates/glowfly-app/src/ui/snapshot_check.rs", "crates/glowfly-app/src/journey/harness.rs"];
+const HARNESS_MAKERS: &[&str] = &["crates/glowfly-app/src/ui/snapshot_check/mod.rs", "crates/glowfly-app/src/journey/harness.rs"];
 
 /// One source file: its path from the repository root (with `/`), its text, and whether it is
 /// test code.

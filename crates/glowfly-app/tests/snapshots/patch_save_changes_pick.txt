@@ -1,0 +1,42 @@
+Dialog
+  Label "Create patch"
+  Label "From uncommitted changes on main"
+  Button "Close this dialog"
+  Label "What goes in"
+  RadioButton "All changes" [on]
+  Label "Staged and unstaged changes against HEAD."
+  RadioButton "Only staged changes" [off]
+  Label "What the next commit would contain."
+  RadioButton "Only unstaged changes" [off]
+  Label "Working-tree edits not yet staged."
+  CheckBox "Only selected files" [on]
+  Button "Select all"
+  Button "Select none"
+  Label "1 of 5 files"
+  CheckBox [off]
+  Label "M"
+  Label "a.txt"
+  CheckBox [on]
+  Label "M"
+  Label "b.txt"
+  CheckBox [off]
+  Label "A"
+  Label "c.txt"
+  CheckBox [off]
+  Label "M"
+  Label "docs/notes.md"
+  CheckBox [off]
+  Label "A"
+  Label "src/lib.rs"
+  Button "Cancel"
+  Button "Save…" [focused]
+  Label "How it works"
+  Label "A patch file writes your uncommitted changes out as text."
+  Label "Choose what goes in: all changes, only staged or only unstaged ones, and new files."
+  Label "Your files and the index are left as they are."
+  Label "The file can be applied elsewhere with Apply patch or git apply."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

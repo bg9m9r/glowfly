@@ -1,0 +1,13 @@
+window 440x230
+Button "View on graph"
+Button "Copy commit SHA"
+Button "Blame at this commit"
+Button "Restore this version…"
+Button "Revert changes to this file"
+Button "Open with default app"
+Button "Open in external editor"
+Button "Open in external diff tool"
+Button "Show in Explorer"
+painted:
+  "Set up…"
+  "Set up…"

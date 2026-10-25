@@ -1,0 +1,31 @@
+window 1400x900
+Label "Glowfly 0.1.0"
+Button "Back"
+Label "Preferences"
+Label "Git"
+RadioButton "Use git from your PATH" [on]
+Label "git 2.45.1 at C:\\Program Files\\Git\\cmd\\git.exe"
+RadioButton "C:\\Users\\ada\\scoop\\apps\\git\\current\\cmd\\git.exe" [off]
+Label "git 2.34.1"
+Label "Older than 2.38, so these will be off: sparse checkout, predicting merge conflicts, restacking branches."
+RadioButton "C:\\msys64\\usr\\bin\\git.exe" [disabled, off]
+Label "It didn't answer within 10 seconds."
+Button "Browse…"
+Button "Look again"
+Label "Can't use C:\\Downloads\\git-gui.exe: it starts a window, not git; choose cmd/git.exe (Windows) or bin/git"
+Label "Glowfly runs this git for commits, fetches, pushes, hooks and signing. The built-in terminal and external tools still use whatever git your PATH finds."
+Label "git 2.45.1 at C:\\Program Files\\Git\\cmd\\git.exe"
+painted:
+  "General"
+  "Profile"
+  "Integrations"
+  "UI customization"
+  "Language & region"
+  "Diff viewer"
+  "Keyboard"
+  "External tools"
+  "Terminal"
+  "Commit signing"
+  "SSH"
+  "Git program"
+  "Version"

@@ -155,7 +155,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // On top of everything, so it takes the keyboard.
     let cx = Cx { t: st.settings.lang(), keyboard: true, key: id };
     // The response's should_close() is deliberately ignored: the backdrop must not cancel.
-    let resp = super::theme::dialog(ctx, id).show(ctx, |ui| {
+    let resp = super::theme::show_modal(ctx, super::theme::dialog(ctx, id), |ui| {
         let mut d = Dialog::new(cx, l.title.as_str());
         if l.key_icon {
             d = d.icon(Icon::Key);

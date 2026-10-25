@@ -1,0 +1,9 @@
+Dialog
+  Label "Repository not found"
+  Button "Close this dialog"
+  Label "No open, recent or favorite repository matches this link."
+  Label "Branch feature/login in git@github.com:example/app.git"
+  Label "D:\\work\\other-app isn't a copy of this repository: its history and remotes don't match the link."
+  Button "Cancel"
+  Button "Locate on disk…"
+  Button "Clone…" [focused]

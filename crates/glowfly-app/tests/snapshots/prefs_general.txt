@@ -1,0 +1,80 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "Back"
+Label "Preferences"
+Label "General"
+Label "Updates"
+CheckBox "Check for updates once a day" [on]
+Label "Glowfly 0.1.0 · Never checked"
+Button "Check now"
+Label "Glowfly asks GitHub's releases API for the newest release of its repository once a day. Nothing about you or your repositories is sent. Downloads are checked against the release's published SHA-256 checksums."
+Label "Git"
+Label "git 2.45.1 at C:\\Program Files\\Git\\cmd\\git.exe"
+Button "Choose…"
+Label "The git program Glowfly runs for commits, fetches, pushes and hooks (Preferences > Git)."
+TextInput = "main"
+Label "Suggested as the first branch's name when you create a repository. You can still change it each time."
+CheckBox "Allow paths longer than 260 characters" [off]
+Label "Turns on core.longpaths in your global Git config. Git for Windows needs it for files whose full path is over 260 characters; macOS and Linux have no such limit."
+ComboBox
+Label "Sets core.autocrlf in your global Git config: how line endings are converted between your files and commits."
+Label "Fetching"
+SpinButton = "0 min" = 0
+Label "How many minutes Glowfly waits between background fetches of every remote of the open repository, from 1 to 60. 0 turns background fetching off."
+Label "In repositories that store files in Git LFS, it also downloads the LFS files of the checked-out commit."
+Label "Each fetch contacts every remote, so short intervals add up when there are many."
+CheckBox "Remove remote-tracking branches that no longer exist on the remote when fetching" [on]
+CheckBox "Update submodules after checkouts, pulls, merges, rebases and resets" [off]
+Label "Runs git submodule update --init --recursive when one of these succeeds, leaving out any submodule where that would strand commits that no branch or tag contains. A repository can override this in its SUBMODULES section menu."
+Label "Graph"
+SpinButton = "2000" = 2000
+Label "Minimum 500. The graph loads this many when it next refreshes."
+Label "Higher numbers make the graph slower to load."
+CheckBox "Load more commits when you scroll near the end of the graph" [on]
+Label "When off, only the graph's Load more link adds commits past the limit."
+CheckBox "Index large repositories in the background so search and Filter cover every commit" [on]
+Label "Uses about 300 bytes of memory per commit while the repository is open. When off, search covers the loaded commits and loads older ones as it needs them."
+Label "Repositories"
+CheckBox "Reopen the tabs from last time when Glowfly starts" [on]
+CheckBox "Refresh the working tree as soon as files change outside Glowfly" [on]
+Label "When off, Glowfly refreshes when its window regains focus or you press F5."
+CheckBox "Check the current branch for conflicts with its upstream or default branch" [on]
+Label "Runs after each refresh and fetch with git merge-tree, without touching your files. Needs git 2.38 or newer. Branch menus can still check on demand when this is off."
+CheckBox "Move deleted files to the Recycle Bin" [on]
+Label "When off, Delete… and discarding an untracked file remove it from disk straight away, and it can't be recovered."
+CheckBox "Always stash before checkout, pull, merge, rebase, cherry-pick and revert" [off]
+Label "Glowfly stashes your changes, runs the operation and puts them back when it ends. Off, it asks each time. A hard reset always asks."
+Label "Checking…"
+Button "Register" [disabled]
+Button "Unregister" [disabled]
+Label "Lets links from a browser or chat open a repository, branch, commit or tag in Glowfly. Only your user account is affected."
+Label "Sign-ins"
+CheckBox "Remember HTTPS sign-ins typed in Glowfly" [on]
+Label "Once git accepts a username and password or token typed in Glowfly, it is saved with git's credential helper. With no helper set up, Glowfly sets up the system's credential store for git."
+Button "Forget all" [disabled]
+Button "Forget all + Git Credential Manager" [disabled]
+Label "Glowfly has no stored connections to remove."
+Label "Diagnostics"
+CheckBox "Add the git commands Glowfly runs, with their timings, to the activity log" [off]
+Label "Also writes Glowfly's informational and debug messages to the error log. Leave it off unless you're tracking down a problem: it adds a line for every git command, background refreshes included."
+CheckBox "Show how long each frame takes, in a corner of the window" [off]
+Label "The last, average and slowest of the recent frames, in milliseconds, for tracking down a slow window. Frames of 50 ms or more go to the performance log either way."
+Button "Open logs folder"
+Label "activity.jsonl keeps the activity log across sessions, errors.log holds warnings, errors and crashes, and performance.log lists operations that took half a second or more."
+painted:
+  "Profile"
+  "Integrations"
+  "UI customization"
+  "Language & region"
+  "Diff viewer"
+  "Keyboard"
+  "External tools"
+  "Terminal"
+  "Commit signing"
+  "SSH"
+  "Git program"
+  "Default branch name"
+  "Long paths"
+  "Line endings"
+  "input: commit LF, check out as is"
+  "Auto-fetch interval"

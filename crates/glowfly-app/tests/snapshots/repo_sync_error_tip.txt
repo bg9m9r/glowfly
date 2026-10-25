@@ -1,0 +1,14 @@
+Dialog
+  Label "Fetch all listed repositories"
+  Button "Close this dialog"
+  Label "Fetch of 2 repositories: 1 up to date, 1 failed."
+  Label "Git doesn't ask for passwords here: a repository whose remote needs one that isn't saved fails."
+  Label "api-server"
+  Label "Up to date"
+  Button "Open"
+  Label "docs"
+  Label "Failed: Couldn't reach example.com. Check your network connection (and VPN or proxy), then try again."
+  Label "Couldn't reach example.com. Check your network connection (and VPN or proxy), then try again.\n\nCloning into 'docs'...\nfatal: unable to access 'https://***@example.com/docs.git/': Could not resolve host: example.com\nfatal: Could not read from remote repository."
+  Button "Open"
+  Button "Retry"
+  Button "Close" [focused]

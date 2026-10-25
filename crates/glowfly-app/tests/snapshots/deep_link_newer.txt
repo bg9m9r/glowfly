@@ -1,0 +1,7 @@
+Dialog
+  Label "This link needs a newer Glowfly"
+  Button "Close this dialog"
+  Label "It points at a \"draft\", which this version of Glowfly can't open yet. A newer version can."
+  Label "glowfly://draft/42?root=0123"
+  Button "Close"
+  Button "Check for updates" [focused]

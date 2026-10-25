@@ -1,0 +1,19 @@
+Dialog
+  Label "Start a release"
+  Button "Close this dialog"
+  Label "Name"
+  Label "release/"
+  TextInput "Name" = "0.2.0" [focused]
+  Label "Creates release/0.2.0 from develop and checks it out."
+  Button "Cancel"
+  Button "Start"
+  Label "How it works"
+  Label "Git Flow keeps released work on the production branch and ongoing work on the development branch."
+  Label "Start creates a branch named with the kind's prefix from its base branch, and checks it out."
+  Label "Commit your work there as usual."
+  Label "Finish merges it back when it is done."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

@@ -1,0 +1,8 @@
+Dialog
+  Label "Fork team/app on GitHub"
+  Button "Close this dialog"
+  Label "Creates a copy of team/app under your account (ada) on GitHub, adds it as a remote and fetches it."
+  Label "Remote name"
+  TextInput "Remote name" = "ada" [focused]
+  Button "Cancel"
+  Button "Fork and add remote"

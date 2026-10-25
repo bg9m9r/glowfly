@@ -1,0 +1,13 @@
+Dialog
+  Label "Upstream for search"
+  Label "Pull from and push to:"
+  Button "Close this dialog"
+  Label "Remote"
+  ComboBox "Remote"
+  Label "Branch"
+  TextInput "Branch" = "main"
+  Label "Tracks origin/main."
+  Button "Cancel"
+  Button "Save" [focused]
+painted:
+  "origin"

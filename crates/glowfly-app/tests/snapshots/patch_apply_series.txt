@@ -1,0 +1,27 @@
+Dialog
+  Label "Apply patch"
+  Label "login-form.patch"
+  Button "Close this dialog"
+  Label "3 commits · 7 files"
+  Label "src/login.rs"
+  Label "src/login/form.rs"
+  Label "src/login/validate.rs"
+  Label "assets/login.css"
+  Label "docs/login.md"
+  Label "How to apply"
+  RadioButton "Apply the changes to your files" [off]
+  RadioButton "Apply as commits" [on]
+  CheckBox "Three-way fallback when a patch doesn't apply" [on]
+  Label "Each patch becomes a commit on main, keeping its author and message."
+  Button "Cancel"
+  Button "Apply" [focused]
+  Label "How it works"
+  Label "A patch file is a set of changes written out as text, sometimes with whole commits."
+  Label "Applying the changes edits your files as if you had made them; nothing is committed."
+  Label "Applying as commits makes each commit again on the current branch, with its message and author."
+  Label "Parts that don't fit can be merged three-way or left in .rej files to finish by hand."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

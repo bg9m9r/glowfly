@@ -1,0 +1,28 @@
+Dialog
+  Label "Finish release 0.2.0"
+  Label "Branch release/0.2.0"
+  Button "Close this dialog"
+  Label "Tag"
+  TextInput "Tag" = "v0.2.0" [focused]
+  Label "Tag message"
+  MultilineTextInput "Tag message" = "Release 0.2.0"
+  CheckBox "Keep release/0.2.0 after finishing" [off]
+  Label "Steps:"
+  Label "1. Check out main"
+  Label "2. Merge release/0.2.0 into main"
+  Label "3. Tag main as v0.2.0"
+  Label "4. Check out develop"
+  Label "5. Merge release/0.2.0 into develop"
+  Label "6. Delete release/0.2.0"
+  Button "Cancel"
+  Button "Finish"
+  Label "How it works"
+  Label "Finish merges the branch into the branches it goes back to."
+  Label "A release or hotfix is tagged where it lands on the production branch."
+  Label "The branch is deleted afterwards, unless you keep it."
+  Label "Push the branches and the tag to share them."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

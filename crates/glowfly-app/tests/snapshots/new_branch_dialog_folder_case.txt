@@ -1,0 +1,9 @@
+Dialog
+  Label "New branch from main"
+  Button "Close this dialog"
+  Label "Branch name"
+  TextInput "Branch name" = "Feature/login" [focused]
+  Label "The folder Feature already exists as feature; use that spelling."
+  CheckBox "Check out after creating" [on]
+  Button "Cancel"
+  Button "Create" [disabled]

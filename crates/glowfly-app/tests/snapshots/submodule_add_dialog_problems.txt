@@ -1,0 +1,25 @@
+Dialog
+  Label "Add submodule"
+  Button "Close this dialog"
+  Label "Repository URL"
+  TextInput "Repository URL" = "../lib.git" [focused]
+  Label "A relative URL is resolved against this repository's default remote URL, or against its folder when it has no remote."
+  Label "Path"
+  TextInput "Path" = "README.md"
+  Label "README.md is already tracked. Choose a folder that doesn't exist yet, or an empty one."
+  Label "Branch"
+  Label "Optional"
+  TextInput "Branch" = "bad..name"
+  Label "Not a valid branch or tag name."
+  Button "Cancel"
+  Button "Add submodule" [disabled]
+  Label "How it works"
+  Label "A submodule is another repository kept inside this one, pinned to one commit."
+  Label "Glowfly clones the URL into the folder and records it in .gitmodules."
+  Label "The folder and .gitmodules are staged; commit them to add the submodule for everyone."
+  Label "After pulling, others use Update all submodules to get its files."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

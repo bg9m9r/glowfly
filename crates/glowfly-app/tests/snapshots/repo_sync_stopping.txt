@@ -1,0 +1,25 @@
+Dialog
+  Label "Fetch all listed repositories"
+  Button "Close this dialog"
+  ProgressIndicator
+  Label "Stopping: 2 still running"
+  Label "Git doesn't ask for passwords here: a repository whose remote needs one that isn't saved fails."
+  Label "api-server"
+  Label "Up to date"
+  Button "Open"
+  Label "billing"
+  ProgressIndicator
+  Label "Running…"
+  Label "docs"
+  ProgressIndicator
+  Label "Running…"
+  Label "notes"
+  Label "Stopped"
+  Button "Open"
+  Button "Retry"
+  Label "website"
+  Label "Stopped"
+  Button "Open"
+  Button "Retry"
+  Button "Stop" [disabled]
+  Button "Close (keeps running)" [focused]

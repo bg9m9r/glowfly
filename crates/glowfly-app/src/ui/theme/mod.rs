@@ -133,6 +133,23 @@ pub fn dialog(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
     egui::Modal::new(id).backdrop_color(backdrop(&p)).frame(dialog_frame_for(ctx, &p))
 }
 
+/// Shows `modal` (`modal` or `dialog`) with its contents under one accessibility node of role
+/// Dialog, bounded by the frame, so a screen reader (and the text snapshots) see the dialog as a
+/// whole rather than its widgets mixed in with the window's.
+pub fn show_modal<R>(ctx: &egui::Context, modal: egui::Modal, content: impl FnOnce(&mut egui::Ui) -> R) -> egui::ModalResponse<R> {
+    use egui::accesskit::{Rect as Bounds, Role};
+    let node = modal.area.layer().id.with("dialog-node");
+    let margin = modal.frame.map_or(egui::Margin::ZERO, |f| f.inner_margin);
+    modal.show(ctx, |ui| {
+        ctx.accesskit_node_builder(node, |b| b.set_role(Role::Dialog));
+        let inner = ctx.with_accessibility_parent(node, || content(ui));
+        let r = ui.min_rect() + margin;
+        let bounds = Bounds { x0: r.min.x.into(), y0: r.min.y.into(), x1: r.max.x.into(), y1: r.max.y.into() };
+        ctx.accesskit_node_builder(node, |b| b.set_bounds(bounds));
+        inner
+    })
+}
+
 /// The dialog frame in palette `p`.
 fn dialog_frame_for(ctx: &egui::Context, p: &Palette) -> egui::Frame {
     modal_frame(ctx, p).inner_margin(egui::Margin::same(DIALOG_PAD)).corner_radius(radius::XL)

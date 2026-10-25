@@ -1,0 +1,6 @@
+Dialog
+  Label "Conflict markers left"
+  Button "Close this dialog"
+  Label "2 files still have conflict markers: alpha.txt (2), beta.txt (1). Marking them resolved stages the markers as they are."
+  Button "Cancel"
+  Button "Mark resolved" [focused]

@@ -1,0 +1,7 @@
+Dialog
+  Label "Repository owned by another user"
+  Button "Close this dialog"
+  Label "Git won't open \\\\nas\\team\\app because the folder belongs to another user account. This is usual for folders on a network share or in WSL, on a FAT or exFAT drive, or copied from another computer.\n\nGit asks first because a repository's own settings can make it run programs. If you trust this folder, Glowfly will mark it as safe in your git settings and open it."
+  Button "Details"
+  Button "Cancel"
+  Button "Trust and open" [focused]

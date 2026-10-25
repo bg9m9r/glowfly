@@ -1,0 +1,6 @@
+Dialog
+  Label "Abort the merge?"
+  Button "Close this dialog"
+  Label "The merge stops and the working tree goes back to how it was before the merge.\n\nThe 1 file you resolved goes back to how it was. Edits in the 2 conflicted files are lost too.\n\nThis can't be undone."
+  Button "Cancel" [focused]
+  Button "Abort merge"

@@ -3,6 +3,9 @@
 *.new.png
 *.old.png
 *.diff.png
+# Text snapshot working files (approved text is the plain .txt)
+crates/glowfly-app/tests/snapshots/*.new.txt
+crates/glowfly-app/tests/snapshots/*.diff.txt
 
 # Local scratch files and assistant workflows
 /temp/

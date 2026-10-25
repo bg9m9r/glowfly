@@ -1,0 +1,10 @@
+Dialog
+  Label "Rename README.md"
+  Button "Close this dialog"
+  Label "Path"
+  TextInput "Path" = "notes.txt" [focused]
+  Label "notes.txt already exists."
+  CheckBox "Stage the rename (git mv)" [off]
+  Label "Git will show the old path deleted and the new one untracked until you stage both."
+  Button "Cancel"
+  Button "Rename" [disabled]

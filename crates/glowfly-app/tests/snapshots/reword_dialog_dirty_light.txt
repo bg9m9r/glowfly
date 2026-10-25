@@ -1,0 +1,10 @@
+Dialog
+  Label "Reword commit"
+  Label "a6efe35 on main · rewrites this commit and 1 later one"
+  Button "Close this dialog"
+  Label "Message"
+  MultilineTextInput "Message" = "Track open tasks" [focused]
+  Label "Your uncommitted changes are stashed first and put back when the rebase ends."
+  Label "The message is unchanged."
+  Button "Cancel"
+  Button "Stash and reword" [disabled]

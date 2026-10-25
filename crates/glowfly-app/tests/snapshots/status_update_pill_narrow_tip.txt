@@ -1,0 +1,15 @@
+window 240x400
+Label "Glowfly 0.1.0"
+Button "Update verfügbar (0.3.0)"
+Label "Update verfügbar (0.3.0)\nNeuerungen zeigen"
+Button "Neuer Tab"
+Button "Öffnen…"
+Image
+Label "Glowfly"
+Label "Ein schneller, nativer Git-Client"
+Button "Repository öffnen…"
+Button "Repository klonen…"
+Button "Neues Repository…"
+Button "Repositorys in Ordnern suchen"
+painted:
+  "Repository"

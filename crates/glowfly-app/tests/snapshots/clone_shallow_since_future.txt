@@ -1,0 +1,24 @@
+Dialog
+  Label "Clone a repository"
+  Button "Close this dialog"
+  Button "URL" [on]
+  Button "Your repositories" [off]
+  Label "Repository URL"
+  TextInput "Repository URL" = "https://example.com/team/app.git"
+  Label "Clone into folder"
+  TextInput "Clone into folder" = "C:\\src"
+  Button "Browse…"
+  Label "C:\\src\\app"
+  CheckBox "Shallow clone (download only recent history)" [on]
+  Label "History to download"
+  RadioButton "Latest commits" [off]
+  RadioButton "Commits since a date" [on]
+  Label "Since"
+  TextInput "Since" = "2026-03-01"
+  Label "Choose today or an earlier date."
+  Label "Branch"
+  TextInput "Branch" = "bad name"
+  Label "Not a valid branch or tag name."
+  CheckBox "Sparse checkout (check out only some folders)" [off]
+  Button "Cancel"
+  Button "Clone" [disabled]

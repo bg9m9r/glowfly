@@ -1,0 +1,6 @@
+Dialog
+  Label "Quit Glowfly?"
+  Button "Close this dialog"
+  Label "Push is still running in demo.\n\nQuitting now can cut it off partway, and Glowfly won't see how it ends."
+  Button "Cancel" [focused]
+  Button "Quit anyway"

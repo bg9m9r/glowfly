@@ -1,0 +1,28 @@
+Dialog
+  Label "Apply patch"
+  Label "login-form.patch"
+  Button "Close this dialog"
+  Label "This file holds no changes git can apply."
+  Label "How to apply"
+  RadioButton "Apply the changes to your files" [on]
+  RadioButton "Apply as commits" [disabled, off]
+  Label "Where"
+  RadioButton "Working tree only" [on]
+  RadioButton "Working tree and index (stage the changes)" [off]
+  Label "If part of the patch doesn't apply"
+  RadioButton "Change nothing" [on]
+  RadioButton "Merge with a three-way fallback (conflicts to resolve)" [off]
+  RadioButton "Apply what fits and save the rest in .rej files" [off]
+  CheckBox "Reverse: take these changes out" [off]
+  Button "Cancel"
+  Button "Apply" [disabled]
+  Label "How it works"
+  Label "A patch file is a set of changes written out as text, sometimes with whole commits."
+  Label "Applying the changes edits your files as if you had made them; nothing is committed."
+  Label "Applying as commits makes each commit again on the current branch, with its message and author."
+  Label "Parts that don't fit can be merged three-way or left in .rej files to finish by hand."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

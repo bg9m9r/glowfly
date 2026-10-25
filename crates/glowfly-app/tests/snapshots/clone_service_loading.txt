@@ -1,0 +1,16 @@
+Dialog
+  Label "Clone a repository"
+  Button "Close this dialog"
+  Button "URL" [off]
+  Button "Your repositories" [on]
+  Label "GitHub · github.com (ada)"
+  ProgressIndicator
+  Label "Loading your repositories…"
+  CheckBox "Use the SSH URL" [off]
+  Label "Clone into folder"
+  TextInput "Clone into folder" = "C:\\src"
+  Button "Browse…"
+  CheckBox "Shallow clone (download only recent history)" [off]
+  CheckBox "Sparse checkout (check out only some folders)" [off]
+  Button "Cancel"
+  Button "Clone" [disabled]

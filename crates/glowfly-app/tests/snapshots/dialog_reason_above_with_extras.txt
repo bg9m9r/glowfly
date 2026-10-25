@@ -1,0 +1,9 @@
+window 520x260
+Label "New branch"
+Button "Close this dialog"
+Label "The branch starts at main."
+Label "Enter a name for the branch."
+Button "Use folder name"
+Label "Draft saved"
+Button "Cancel"
+Button "Create branch" [disabled]

@@ -1,0 +1,30 @@
+Dialog
+  Label "Create work item"
+  Label "Azure DevOps · contoso/Fabrikam/web"
+  Button "Close this dialog"
+  Label "Type"
+  ComboBox
+  Label "Title"
+  TextInput "Title" [focused]
+  Label "Description"
+  Label "Optional"
+  MultilineTextInput "Description"
+  Label "Tags"
+  TextInput
+  Label "Assigned to"
+  TextInput
+  Label "Parent"
+  ComboBox
+  CheckBox "Create a branch for it afterwards" [off]
+  Label "Enter a title."
+  Button "Cancel"
+  Button "Create work item" [disabled]
+painted:
+  "User Story"
+  "Describe the work item"
+  "ux"
+  "sign-in"
+  "Search tags"
+  "Ada Lovelace"
+  "Search people"
+  "1  Epic · Accounts"

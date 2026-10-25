@@ -1,0 +1,44 @@
+window 1400x1000
+Label "Glowfly 0.1.0"
+Button "Back"
+Label "Preferences"
+Label "Language & region"
+Label "Language"
+ComboBox
+Label "Menus, buttons and messages are shown in this language. Parts of Glowfly that aren't translated yet stay in English."
+Label "Dates and times"
+Label "Patterns use moment.js tokens: YYYY, MM, MMMM, DD, D, dddd, HH, h, mm, ss, A. Text in [brackets] is literal. Leave a field blank to follow the locale's usual format."
+ComboBox
+TextInput
+Label "01.02.2026"
+TextInput
+Label "1. Februar 2026"
+TextInput
+Label "01.02.2026 12:00"
+TextInput
+Label "1. Februar 2026 12:00"
+CheckBox "Show \"3 hours ago\" instead of the date and time format" [off]
+painted:
+  "General"
+  "Git"
+  "Profile"
+  "Integrations"
+  "UI customization"
+  "Diff viewer"
+  "Keyboard"
+  "External tools"
+  "Terminal"
+  "Commit signing"
+  "SSH"
+  "English"
+  "Date/time locale"
+  "Deutsch"
+  "Date format"
+  "DD.MM.YYYY"
+  "Long date format"
+  "D. MMMM YYYY"
+  "Date and time format"
+  "DD.MM.YYYY HH:mm"
+  "Full date and time format"
+  "D. MMMM YYYY HH:mm"
+  "Relative dates in graph"

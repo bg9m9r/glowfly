@@ -1,0 +1,25 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "New tab"
+Button "Open…"
+Button "Hide panel"
+Button "More"
+Button "Open folder"
+Button "Reload"
+Button "Activity" [off]
+Button "Errors" [on]
+Button "Performance" [off]
+Label "Showing the end of the file. Open the logs folder for all of it."
+Label "2026-10-16 09:30:01.120 +00:00 ERROR glowfly-load-repo glowfly::runner::guard: effect panicked: index out of bounds"
+Label "2026-10-16 09:30:04.481 +00:00  WARN main glowfly::themes: theme file sand-dark.json: unknown color \"glow\""
+Label "2026-10-16 09:31:12.007 +00:00  INFO glowfly-git glowfly::runner: fetch finished"
+Label "2026-10-16 09:31:12.010 +00:00  INFO main glowfly::ui: window focused"
+Image
+Label "Glowfly"
+Label "A fast, native Git client"
+Button "Open repository…"
+Button "Clone repository…"
+Button "New repository…"
+Button "Find repositories in folders"
+painted:
+  "Repository"

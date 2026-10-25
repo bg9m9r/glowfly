@@ -1,0 +1,6 @@
+Dialog
+  Label "File in use"
+  Button "Close this dialog"
+  Label "notes/scratch.txt is open in another program, so it couldn't be moved to the Recycle Bin.\n\nClose it there, then try again."
+  Button "Cancel"
+  Button "Retry" [focused]

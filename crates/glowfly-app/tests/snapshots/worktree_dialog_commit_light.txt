@@ -1,0 +1,24 @@
+Dialog
+  Label "Create worktree at f0d635c"
+  Button "Close this dialog"
+  Label "Folder"
+  TextInput "Folder" = "C:\\work\\app\\wt"
+  Button "Browse…"
+  Label "This folder is inside the worktree at C:\\work\\app. Its files will show up there as untracked unless .gitignore covers them."
+  Label "New branch"
+  Label "Optional"
+  TextInput "New branch" = "topic" [focused]
+  Label "Leave empty for a detached HEAD"
+  CheckBox "Open in a new tab" [on]
+  Button "Cancel"
+  Button "Create worktree"
+  Label "How it works"
+  Label "A worktree is another folder with its own checked-out branch, sharing this repository's history."
+  Label "A branch can be checked out in only one worktree at a time, so a new branch is often easiest."
+  Label "Commits made in either folder show up in both straight away."
+  Label "Remove the worktree when you are done; its branch and commits stay."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

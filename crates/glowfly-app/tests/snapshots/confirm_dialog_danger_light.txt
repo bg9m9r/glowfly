@@ -1,0 +1,6 @@
+Dialog
+  Label "Delete branch"
+  Button "Close this dialog"
+  Label "Delete local branch feature/login? Commits only on it can be found again in the reflog for a while."
+  Button "Cancel" [focused]
+  Button "Delete"

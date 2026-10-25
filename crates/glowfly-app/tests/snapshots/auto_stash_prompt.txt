@@ -1,0 +1,8 @@
+Dialog
+  Label "Uncommitted changes"
+  Button "Close this dialog"
+  Label "You have 3 changed files. Glowfly stashes them, rebases login-page onto main and puts them back afterwards. If it stops on conflicts, they come back after you continue or abort."
+  CheckBox "Always stash" [off]
+  Label "You can change this in Preferences > General."
+  Button "Cancel"
+  Button "Stash and rebase" [focused]

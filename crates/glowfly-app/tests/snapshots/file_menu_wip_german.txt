@@ -1,0 +1,13 @@
+window 440x260
+Button "Bereitstellen"
+Button "Pfad kopieren"
+Button "Mit Standard-App öffnen"
+Button "In externem Editor öffnen"
+Button "In externem Diff-Werkzeug öffnen"
+Button "Im Explorer anzeigen"
+Button "Neue Datei in diesem Ordner…"
+Button "Umbenennen…"
+Button "Löschen…"
+painted:
+  "Einrichten…"
+  "Einrichten…"

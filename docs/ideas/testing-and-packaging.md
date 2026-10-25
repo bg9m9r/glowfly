@@ -121,3 +121,11 @@ Journey and real-input smoke tests, packaging, installers and updates. Untriaged
   (each links in 0.3 to 0.8 s); revisit if their number grows
 - rust-lld on Windows measured no faster than the default linker for the test builds (11 s
   either way after an app change, 14 to 15 s after a core change); revisit if link times grow
+
+### Snapshot strategy (text snapshots and pixel goldens)
+
+- Move the pixel goldens out of git history (git LFS or a separate image store) and prune the old full-window images from the pack; history was left as it is
+- Crop the text snapshots of menus, tooltips and popovers to the popup, as dialogs already are, so a toolbar label change doesn't touch them
+- Find text snapshots no test writes any more (a `.txt` with no `.new.txt` after a full run) and delete them
+- Give icon-only widgets and painted rows accessible names, so more of a view shows in its accessibility tree than in the painted-text list
+- Run the text snapshots on the macOS and Linux CI runners too, with per-platform files where labels differ (shortcut names, title bar)

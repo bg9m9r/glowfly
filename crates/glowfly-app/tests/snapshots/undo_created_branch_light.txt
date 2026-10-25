@@ -1,0 +1,8 @@
+Dialog
+  Label "Undo checkout of new branch feature/search"
+  Button "Close this dialog"
+  Label "Switches back to main."
+  CheckBox "Also delete branch feature/search" [off]
+  Label "It still points where this checkout created it, so no commits are lost."
+  Button "Cancel"
+  Button "Undo" [focused]

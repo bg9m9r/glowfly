@@ -1,0 +1,12 @@
+window 440x260
+Button "File history"
+Button "Copy path"
+Button "Restore the version from 3f2a9c4…"
+Button "Revert changes to this file"
+Button "Open with default app" [disabled]
+Button "Open in external editor" [disabled]
+Button "Open in external diff tool"
+Button "Show in Explorer" [disabled]
+Button "New file in this folder…"
+painted:
+  "Set up…"

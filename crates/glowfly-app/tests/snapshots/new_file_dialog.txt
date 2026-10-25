@@ -1,0 +1,8 @@
+Dialog
+  Label "New file"
+  Label "A path inside the repository; missing folders are created."
+  Button "Close this dialog"
+  Label "Path"
+  TextInput "Path" = "docs/notes.md" [focused]
+  Button "Cancel"
+  Button "Create"

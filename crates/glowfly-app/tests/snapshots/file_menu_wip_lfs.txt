@@ -1,0 +1,14 @@
+window 260x250
+Label "assets/a.psd"
+Button "Stage"
+Button "Copy path"
+Button "Open with default app"
+Button "Open in external editor"
+Button "Open in external diff tool"
+Button "Show in Explorer"
+Button "New file in this folder…"
+Button "Rename…"
+Button "Delete…"
+Button "Track in Git LFS"
+painted:
+  "⏵"

@@ -1,0 +1,11 @@
+Dialog
+  Label "Glowfly"
+  Label "Version 1.2.3"
+  Button "Close this dialog"
+  Label "A fast, native Git client for Windows, macOS and Linux."
+  Label "Licensed under MIT OR Apache-2.0"
+  Label "Git 2.47.1"
+  Button "Third-party notices…"
+  Button "Website"
+  Button "Copy version info"
+  Button "Close" [focused]

@@ -1,0 +1,19 @@
+Dialog
+  Label "Add remote"
+  Button "Close this dialog"
+  Label "Pick a fork of origin on GitHub…"
+  Label "Name"
+  TextInput "Name" [focused]
+  Label "Fetch URL"
+  TextInput "Fetch URL"
+  Label "Push URL"
+  Label "Optional"
+  TextInput "Push URL"
+  Label "Leave empty to push to the fetch URL."
+  CheckBox "Fetch its branches after adding" [on]
+  Button "Cancel"
+  Button "Add remote" [disabled]
+painted:
+  "upstream"
+  "https://example.com/owner/repo.git or a folder path"
+  "Same as the fetch URL"

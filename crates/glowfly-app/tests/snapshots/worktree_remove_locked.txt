@@ -1,0 +1,17 @@
+Dialog
+  Label "Remove worktree hotfix"
+  Button "Close this dialog"
+  Label "Deletes the folder C:\\work\\app-worktrees\\hotfix and everything in it, and drops git's record of the worktree. Commits and branches stay in the repository."
+  Label "This worktree is locked (on usb). Force remove ignores the lock and also deletes any uncommitted changes in it."
+  CheckBox "Delete any uncommitted changes in it for good" [off]
+  Label "Tick the box above first"
+  Button "Cancel" [focused]
+  Button "Force remove" [disabled]
+  Label "How it works"
+  Label "The worktree's folder is deleted, with everything in it."
+  Label "A worktree with changes or untracked files is removed only with force, and those changes are lost."
+  Label "Its branch and commits stay unless you choose to delete the branch."
+painted:
+  "1"
+  "2"
+  "3"

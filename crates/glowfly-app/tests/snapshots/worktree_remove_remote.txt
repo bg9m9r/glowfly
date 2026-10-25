@@ -1,0 +1,18 @@
+Dialog
+  Label "Remove worktree feature-login"
+  Button "Close this dialog"
+  Label "Deletes the folder C:\\work\\app-worktrees\\feature-login and everything in it, and drops git's record of the worktree. Commits and branches stay in the repository."
+  CheckBox "Also delete branch feature/login" [on]
+  Label "Only if it is merged (git branch -d). If it isn't, the worktree is still removed and you are told."
+  CheckBox "Also delete feature/login on origin" [on]
+  Label "feature/login is deleted on origin for everyone who uses it."
+  Button "Cancel" [focused]
+  Button "Remove and delete local and remote branch"
+  Label "How it works"
+  Label "The worktree's folder is deleted, with everything in it."
+  Label "A worktree with changes or untracked files is removed only with force, and those changes are lost."
+  Label "Its branch and commits stay unless you choose to delete the branch."
+painted:
+  "1"
+  "2"
+  "3"

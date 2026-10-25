@@ -1,0 +1,12 @@
+Dialog
+  Label "New tag at f0d635c"
+  Button "Close this dialog"
+  Label "Name"
+  TextInput "Name" = "v0.1.0" [focused]
+  Label "Tag v0.1.0 already exists."
+  Label "Message"
+  Label "Optional"
+  MultilineTextInput "Message"
+  Label "A message makes an annotated tag."
+  Button "Cancel"
+  Button "Create tag" [disabled]

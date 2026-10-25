@@ -1,0 +1,3 @@
+window 420x120
+Label "fix(sensors): gust 7 ignores negative readings from the anemometer after a reset  0b12486"
+Button "Checkout (detached)"

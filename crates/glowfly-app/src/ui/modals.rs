@@ -72,7 +72,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let repo_filters = snap.map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
     let mut close = false;
     let first = msgs.len();
-    let resp = super::theme::dialog(ctx, egui::Id::new("glowfly-modal")).show(ctx, |ui| {
+    let resp = super::theme::show_modal(ctx, super::theme::dialog(ctx, egui::Id::new("glowfly-modal")), |ui| {
         // A dialog's key in egui's memory: the first frame of each kind takes the focus.
         let cx = Cx { t, keyboard, key: egui::Id::new("glowfly-dialog").with(std::mem::discriminant(&*modal)) };
         match modal {

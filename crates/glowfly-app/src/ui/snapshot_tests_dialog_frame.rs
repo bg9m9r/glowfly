@@ -61,7 +61,7 @@ fn own_header(size: Vec2) -> Harness<'static, u32> {
             ctx.set_theme(egui_theme(&theme::GARDEN_DARK));
             let id = Id::new("own-header");
             let cx = Cx { t: Lang::En, keyboard: true, key: id.with("dialog") };
-            let resp = theme::dialog(ctx, id).show(ctx, |ui| {
+            let resp = theme::show_modal(ctx, theme::dialog(ctx, id), |ui| {
                 let header = |ui: &mut egui::Ui| {
                     ui.label("Own header");
                     let (right, top) = (ui.cursor().left() + ui.available_width(), ui.cursor().top());

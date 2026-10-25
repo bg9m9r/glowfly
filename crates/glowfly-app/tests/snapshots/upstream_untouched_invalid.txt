@@ -1,0 +1,12 @@
+Dialog
+  Label "Upstream for search"
+  Label "Pull from and push to:"
+  Button "Close this dialog"
+  Label "Remote"
+  ComboBox "Remote"
+  Label "Branch"
+  TextInput "Branch" = "bad..name"
+  Button "Cancel"
+  Button "Save" [disabled]
+painted:
+  "origin"

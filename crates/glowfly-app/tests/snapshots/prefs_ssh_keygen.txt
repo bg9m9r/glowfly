@@ -1,0 +1,17 @@
+Dialog
+  Label "Generate SSH key"
+  Label "Creates an Ed25519 key pair with ssh-keygen."
+  Button "Close this dialog"
+  Label "Save location"
+  TextInput "Save location" = "C:/Users/ada/.ssh/id_ed25519_laptop" [focused]
+  Label "Comment"
+  TextInput "Comment" = "ada@example.com"
+  Label "Stored in the public key to tell keys apart; usually your email. Empty uses ssh-keygen's default (user@host)."
+  Label "Passphrase"
+  Label "Optional"
+  PasswordInput "Passphrase"
+  Label "Encrypts the private key; ssh asks for it, or your SSH agent remembers it, when the key is used."
+  Label "Confirm passphrase"
+  PasswordInput "Confirm passphrase"
+  Button "Cancel"
+  Button "Generate key"

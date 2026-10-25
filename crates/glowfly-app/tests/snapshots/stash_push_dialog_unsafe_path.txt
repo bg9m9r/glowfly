@@ -1,0 +1,37 @@
+Dialog
+  Label "Stash changes"
+  Label "on main"
+  Button "Close this dialog"
+  Label "Message"
+  Label "Optional"
+  TextInput "Message" [focused]
+  Label "What to stash"
+  RadioButton "All changes" [off]
+  Label "Untracked files included."
+  RadioButton "Only staged changes" [off]
+  Label "Unstaged changes and untracked files stay in the working tree. Needs git 2.35 or newer."
+  RadioButton "Selected files" [on]
+  Label "Only the files you tick, tracked or untracked."
+  Button "Select all"
+  Button "Select none"
+  Label "4 of 4 files"
+  CheckBox [on]
+  Label "M"
+  Label "a.txt"
+  CheckBox [on]
+  Label "M"
+  Label "b.txt"
+  CheckBox [on]
+  Label "A"
+  Label "c.txt"
+  CheckBox [disabled, off]
+  Label "M"
+  Label "docs/notes.md"
+  Label "(same file as another path)"
+  CheckBox [on]
+  Label "A"
+  Label "src/lib.rs"
+  CheckBox "Keep staged changes" [off]
+  Label "Staged changes go into the stash and also stay staged, ready to commit."
+  Button "Cancel"
+  Button "Stash"

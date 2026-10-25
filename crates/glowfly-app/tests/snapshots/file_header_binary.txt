@@ -1,0 +1,16 @@
+window 900x48
+Label "src/ui/"
+Label "logo.png"
+Label "M 12.4 KB to 14.1 KB"
+Label "Unstaged"
+Button "Previous change"
+Button "Next change"
+Label "2 / 5"
+Button "More file actions"
+Button "Open in external diff tool"
+Button "Stage file"
+Button "Close diff"
+painted:
+  "M"
+  "12.4 KB"
+  "14.1 KB"

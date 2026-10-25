@@ -1,0 +1,35 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "Back to repository"
+Label "Preferences"
+Label "Repo-specific preferences"
+Label "Repo: demo"
+Label "Issue tracker"
+RadioButton "Automatic (remote not recognized)" [off]
+RadioButton "Trello · trello.com" [on]
+RadioButton "None" [off]
+ComboBox
+Button "All boards" [off]
+Button "Ops" [off]
+Button "Website" [on]
+Label "The ISSUES list shows open cards assigned to you on this board. Card links (trello.com/c/…) in commit messages, and branch names that start with a card id, link to Trello either way."
+painted:
+  "General"
+  "Git"
+  "Profile"
+  "Integrations"
+  "UI customization"
+  "Language & region"
+  "Diff viewer"
+  "Keyboard"
+  "External tools"
+  "Terminal"
+  "Commit signing"
+  "SSH"
+  "Identity"
+  "Git hooks"
+  "Git LFS"
+  "Git Flow"
+  "Sparse checkout"
+  "Issues come from"
+  "Board"

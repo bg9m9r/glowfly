@@ -1,0 +1,15 @@
+Dialog
+  Label "Trust this repository?"
+  Button "Close this dialog"
+  Label "tools"
+  Label "C:\\work\\tools"
+  Label "Pull needs git to run this repository's settings and hooks."
+  Label "This repository's own settings or hooks make git run programs. So far Glowfly has only read its files."
+  Label "Settings that run commands"
+  Label "core.sshCommand = ssh -v"
+  Label "Hooks"
+  Label "in .git/hooks"
+  Label "pre-commit"
+  Label "Trust it only if you know where it came from. Until then, Glowfly won't fetch in the background, ask its credential helper for sign-ins or let git read its status, and it asks before running git commands you start."
+  Button "Cancel" [focused]
+  Button "Trust and run"

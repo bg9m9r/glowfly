@@ -1,0 +1,17 @@
+Dialog
+  Label "Move worktree feature-login"
+  Button "Close this dialog"
+  Label "New folder"
+  TextInput "New folder" = "C:\\work\\elsewhere" [focused]
+  Button "Browse…"
+  Label "Something is already at C:\\work\\elsewhere. Choose a folder that doesn't exist yet."
+  Button "Cancel"
+  Button "Move" [disabled]
+  Label "How it works"
+  Label "The worktree's folder moves to the new place, with all its files."
+  Label "git updates its records, so the worktree keeps its branch and history."
+  Label "The main worktree, and worktrees that contain submodules, can't be moved this way."
+painted:
+  "1"
+  "2"
+  "3"

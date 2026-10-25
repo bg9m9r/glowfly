@@ -1,0 +1,19 @@
+Dialog
+  Label "Publish to GitHub"
+  Label "This repository has no remote. Create one and push main to it."
+  Button "Close this dialog"
+  Label "Name"
+  ComboBox
+  Label "/"
+  TextInput "Name" = "demo"
+  Label "Description"
+  Label "Optional"
+  TextInput "Description" = "A small demo project"
+  RadioButton "Private" [on]
+  RadioButton "Public" [off]
+  Label "A repository called demo already exists on ada. Choose another name."
+  Button "Details"
+  Button "Cancel"
+  Button "Create and push" [focused]
+painted:
+  "ada"

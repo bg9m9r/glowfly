@@ -1,0 +1,17 @@
+Dialog
+  Label "Find repositories"
+  Button "Close this dialog"
+  Label "Project folders"
+  Button "Stop looking in this folder"
+  Label "C:\\src"
+  Button "Stop looking in this folder"
+  Label "C:\\work"
+  Button "Add folder…"
+  Button "Look again"
+  TextInput = "api" [focused]
+  Label "C:\\src (1)"
+  Button "Add to favorites"
+  Label "api-server"
+  Label "open"
+  Label "C:\\src\\api-server"
+  Button "Close"

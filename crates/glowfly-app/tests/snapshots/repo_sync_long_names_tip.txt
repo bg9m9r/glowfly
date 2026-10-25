@@ -1,0 +1,13 @@
+Dialog
+  Label "Fetch all listed repositories"
+  Button "Close this dialog"
+  Label "Fetch of 2 repositories: 2 up to date."
+  Label "Git doesn't ask for passwords here: a repository whose remote needs one that isn't saved fails."
+  Label "api-server"
+  Label "Up to date"
+  Button "Open"
+  Label "a-repository-whose-folder-name-runs-far-past-the-name-column"
+  Label "a-repository-whose-folder-name-runs-far-past-the-name-column\nC:\\src\\a-repository-whose-folder-name-runs-far-past-the-name-column"
+  Label "Up to date"
+  Button "Open"
+  Button "Close" [focused]

@@ -1,0 +1,6 @@
+Dialog
+  Label "Delete file"
+  Button "Close this dialog"
+  Label "notes/scratch.txt isn't tracked by git. It goes to the Recycle Bin, so you can restore it from there."
+  Button "Cancel" [focused]
+  Button "Move to Recycle Bin"

@@ -1,0 +1,13 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "New tab"
+Button "Open…"
+Image
+Label "Glowfly"
+Label "A fast, native Git client"
+Button "Open repository…"
+Button "Clone repository…"
+Button "New repository…"
+Button "Find repositories in folders"
+painted:
+  "Repository"

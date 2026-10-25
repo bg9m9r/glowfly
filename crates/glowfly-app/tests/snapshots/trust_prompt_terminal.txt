@@ -1,0 +1,12 @@
+Dialog
+  Label "Trust this repository?"
+  Button "Close this dialog"
+  Label "tools"
+  Label "C:\\work\\tools"
+  Label "The terminal waits for this decision: shell prompts often run git, which runs what this repository's settings and hooks name."
+  Label "This repository's own settings or hooks make git run programs. So far Glowfly has only read its files."
+  Label "Settings that run commands"
+  Label "core.fsmonitor = .git/fsmon.sh"
+  Label "Trust it only if you know where it came from. Until then, Glowfly won't fetch in the background, ask its credential helper for sign-ins or let git read its status, and it asks before running git commands you start."
+  Button "Cancel" [focused]
+  Button "Trust and run"

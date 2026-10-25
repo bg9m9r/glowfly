@@ -1,0 +1,22 @@
+Dialog
+  Label "Finish feature search"
+  Label "Branch feature/search"
+  Button "Close this dialog"
+  CheckBox "Keep feature/search after finishing" [off]
+  Label "Steps:"
+  Label "1. Check out develop"
+  Label "2. Merge feature/search into develop"
+  Label "3. Delete feature/search"
+  Label "Your 1 changed file is stashed first and put back on develop once Finish is done."
+  Button "Cancel"
+  Button "Stash changes and finish" [focused]
+  Label "How it works"
+  Label "Finish merges the branch into the branches it goes back to."
+  Label "A release or hotfix is tagged where it lands on the production branch."
+  Label "The branch is deleted afterwards, unless you keep it."
+  Label "Push the branches and the tag to share them."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

@@ -1,0 +1,26 @@
+Dialog
+  Label "Preview: reset main to 275189b"
+  Label "Worked out without changing your files, index or branches."
+  Button "Close this dialog"
+  Label "main moves to 275189b."
+  Label "History afterwards"
+  Label "Fix build on Windows 275189b"
+  Label "Add app skeleton b9eb369"
+  Label "Initial commit dcc73f3"
+  Label "Uncommitted changes aren't part of this preview."
+  Label "The branch changed since this preview. Preview again first."
+  Button "Preview again"
+  Button "Cancel"
+  Button "Reset (soft)" [disabled]
+  Button "Reset (hard)…" [disabled]
+  Button "Reset (mixed)" [disabled]
+painted:
+  "01/08/2026 10:00 AM"
+  "275189b"
+  "Fix build on Windows"
+  "01/06/2026 10:00 AM"
+  "b9eb369"
+  "Add app skeleton"
+  "01/05/2026 10:00 AM"
+  "dcc73f3"
+  "Initial commit"

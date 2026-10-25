@@ -1,0 +1,13 @@
+window 440x330
+Label "Preferences"
+Label "Fix the login redirect"
+Label "Body: labels, buttons, menus and list rows"
+Label "Small: help lines, hints and the 0/72 counter"
+Label "Caption: badges and column titles"
+Label "Unstaged files (2)"
+Label "Commit 3f2a9c1 compared with the working directory"
+Label "Commit e0e76cb"
+Label "Open all"
+painted:
+  "Local"
+  "12"

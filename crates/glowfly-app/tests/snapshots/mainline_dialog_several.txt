@@ -1,0 +1,17 @@
+Dialog
+  Label "Choose the mainline parent"
+  Button "Close this dialog"
+  Label "Cherry-pick 2 commits, including 1 merge commit. Count its changes against:"
+  RadioButton "Parent 1" [on]
+  Label "f0d635c: 275189b Fix build on Windows"
+  Label "7e24110 isn't a merge, so git can only use parent 1 for these commits."
+  Button "Cancel"
+  Button "Cherry-pick" [focused]
+  Label "How it works"
+  Label "A merge commit has more than one parent, so what it changed depends on which parent it is compared with."
+  Label "The mainline is the parent the changes are counted against: usually the first, the branch that was merged into."
+  Label "The cherry-pick or revert then uses the changes the other side brought in."
+painted:
+  "1"
+  "2"
+  "3"

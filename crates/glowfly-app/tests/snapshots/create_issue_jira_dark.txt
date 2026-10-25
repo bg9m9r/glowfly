@@ -1,0 +1,30 @@
+Dialog
+  Label "Create issue"
+  Label "Jira Cloud · acme.atlassian.net · PROJ"
+  Button "Close this dialog"
+  Label "Project"
+  ComboBox
+  Label "Type"
+  ComboBox
+  Label "Summary"
+  TextInput "Summary" [focused]
+  Label "Enter a summary."
+  Label "Description"
+  Label "Optional"
+  MultilineTextInput "Description"
+  Label "Labels"
+  TextInput
+  Label "Assignees"
+  TextInput
+  Label "Epic"
+  ComboBox
+  CheckBox "Create a branch for it afterwards" [off]
+  Button "Cancel"
+  Button "Create issue" [disabled]
+painted:
+  "PROJ"
+  "Task"
+  "Describe the issue"
+  "Search labels"
+  "Search people"
+  "PROJ-1  Accounts and sign-in"

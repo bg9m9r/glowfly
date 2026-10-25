@@ -1,0 +1,7 @@
+Dialog
+  Label "Discard changes"
+  Button "Close this dialog"
+  Label "Delete untracked file notes.txt? This cannot be undone."
+  CheckBox "I understand this can't be undone" [on]
+  Button "Cancel"
+  Button "Discard" [focused]

@@ -1,0 +1,9 @@
+Dialog
+  Label "Clone a repository"
+  Button "Close this dialog"
+  Button "URL" [off]
+  Button "Your repositories" [on]
+  Label "Connect GitHub, GitLab or Bitbucket in Preferences > Integrations to pick from your repositories."
+  Label "Enter a URL instead"
+  Button "Cancel"
+  Button "Open integrations" [focused]

@@ -1,0 +1,5 @@
+Dialog
+  Label "Stash with message"
+  TextInput = "Half-done login" [focused]
+  Label "Stashes all changes, untracked files included."
+  Label "Enter to stash, Backspace or Esc to go back"

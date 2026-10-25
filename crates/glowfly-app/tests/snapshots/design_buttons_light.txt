@@ -1,0 +1,35 @@
+window 720x290
+Label "Rest"
+Button "Commit"
+Button "Stage all"
+Button "Cancel" [focused]
+Button "Details"
+Button "Discard"
+Button "Refresh"
+Button "Pull"
+Button "Pull options"
+Label "Disabled"
+Button "Commit" [disabled]
+Button "Stage all" [disabled]
+Button "Cancel" [disabled]
+Button "Details" [disabled]
+Button "Discard" [disabled]
+Button "Refresh" [disabled]
+Button "Pull" [disabled]
+Button "Pull options"
+Label "Hover"
+Label "Pressed"
+Label "Split"
+Button "Commit 2 files"
+Button "More"
+Button "Commit (skip hooks)"
+Button "More"
+Button "Fetch"
+Button "More"
+Label "Small"
+Button "Commit"
+Button "Stage all"
+Button "Cancel"
+Button "Details"
+Button "Discard"
+Button "Close"

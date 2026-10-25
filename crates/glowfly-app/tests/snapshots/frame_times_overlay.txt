@@ -1,0 +1,2 @@
+window 440x90
+Label "Frame 3.2 ms · average 2.1 ms · slowest 12.0 ms"

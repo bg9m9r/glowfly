@@ -1,0 +1,6 @@
+window 360x160
+Button "Create a branch"
+Button "Create a branch"
+painted:
+  "Branch"
+  "Branch"

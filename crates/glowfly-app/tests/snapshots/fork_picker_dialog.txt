@@ -1,0 +1,17 @@
+Dialog
+  Label "Add a fork of team/app"
+  Label "Forks on GitHub. The one you pick is added as a remote."
+  Button "Close this dialog"
+  TextInput [focused]
+  Button "ada/app" [on]
+  Button "grace/app" [off]
+  Label "private"
+  Button "linus/app" [disabled, off]
+  Label "added as linus"
+  Label "Remote name"
+  TextInput "Remote name" = "ada"
+  CheckBox "Fetch its branches after adding" [on]
+  Button "Cancel"
+  Button "Add remote"
+painted:
+  "Filter forks"

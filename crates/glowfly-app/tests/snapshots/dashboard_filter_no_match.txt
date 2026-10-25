@@ -1,0 +1,26 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "New tab"
+Button "Open…"
+Label "Dashboard"
+Label "Pull requests and issues across your repositories"
+Button "Close"
+Button "Refresh"
+Label "Updated 5 minutes ago"
+Button "Mine (0)" [on]
+Button "Review requested (0)" [off]
+Button "Assigned (0)" [off]
+TextInput = "nothing like this"
+Label "Nothing matches the filter"
+Label "The filter looks at each title, number, author and repository."
+Button "Clear filter"
+Label "Not loaded"
+Label "GitHub Enterprise Server · github.acme.io: not connected"
+Button "Connect…"
+Label "Bitbucket · bitbucket.org: not signed in to Bitbucket"
+Button "Sign in"
+Button "Connect…"
+Button "2 repositories have no hosting-service remote"
+Label "old-site: missing"
+painted:
+  "Repository"

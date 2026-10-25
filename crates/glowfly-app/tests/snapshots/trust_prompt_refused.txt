@@ -1,0 +1,10 @@
+Dialog
+  Label "Trust this repository?"
+  Button "Close this dialog"
+  Label "tools"
+  Label "C:\\work\\tools"
+  Label "You chose not to trust it before."
+  Label "Nothing in its settings or hooks runs programs right now."
+  Label "Trust it only if you know where it came from. Until then, Glowfly won't fetch in the background, ask its credential helper for sign-ins or let git read its status, and it asks before running git commands you start."
+  Button "Don't trust"
+  Button "Trust"

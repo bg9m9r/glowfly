@@ -1,0 +1,21 @@
+Dialog
+  Label "Te damos la bienvenida a Glowfly"
+  Label "Cuatro pasos breves para empezar."
+  Button "Cerrar la bienvenida"
+  ProgressIndicator "Paso 1 de 4: Tú"
+  Label "¿Quién eres?"
+  Label "Cada commit lleva un nombre y una dirección de correo. Glowfly los guarda en tu configuración global de git, para que todos los repositorios de este equipo los usen."
+  Label "Estos datos vienen de tu configuración global de git. Puedes cambiarlos aquí."
+  Label "Nombre"
+  TextInput "Nombre" = "Ada Lovelace"
+  Label "Aparece como autor en cada commit que hagas."
+  Label "Correo"
+  TextInput "Correo" = "ada"
+  Label "Una dirección de correo lleva una @."
+  Button "Omitir por ahora"
+  Button "Continuar" [focused]
+painted:
+  "Tú"
+  "Servicios"
+  "Git"
+  "Inicio"

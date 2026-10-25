@@ -1,0 +1,15 @@
+Dialog
+  Label "New tag at f0d635c"
+  Button "Close this dialog"
+  Label "Name"
+  TextInput "Name" = "v1.3.0" [focused]
+  Label "Message"
+  Label "Optional"
+  MultilineTextInput "Message"
+  Label "A message makes an annotated tag."
+  CheckBox "Push to" [on]
+  ComboBox
+  Button "Cancel"
+  Button "Create tag"
+painted:
+  "origin"

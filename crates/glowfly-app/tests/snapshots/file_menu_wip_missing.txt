@@ -1,0 +1,12 @@
+window 440x260
+Button "Stage"
+Button "Copy path"
+Button "Open with default app" [disabled]
+Button "Open in external editor" [disabled]
+Button "Open in external diff tool"
+Button "Show in Explorer" [disabled]
+Button "New file in this folder…"
+Button "Rename…" [disabled]
+Button "Delete…" [disabled]
+painted:
+  "Set up…"

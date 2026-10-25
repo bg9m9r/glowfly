@@ -1,0 +1,7 @@
+window 440x190
+Button "Blame vor diesem Commit" [disabled]
+Button "Diesen Commit überspringen"
+Button "Im Dateiverlauf zeigen"
+Button "Im Graphen auswählen"
+Button "Zeile kopieren"
+Button "Commit-SHA kopieren"

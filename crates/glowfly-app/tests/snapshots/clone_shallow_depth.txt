@@ -1,0 +1,24 @@
+Dialog
+  Label "Clone a repository"
+  Button "Close this dialog"
+  Button "URL" [on]
+  Button "Your repositories" [off]
+  Label "Repository URL"
+  TextInput "Repository URL" = "https://example.com/team/app.git"
+  Label "Clone into folder"
+  TextInput "Clone into folder" = "C:\\src"
+  Button "Browse…"
+  Label "C:\\src\\app"
+  CheckBox "Shallow clone (download only recent history)" [on]
+  Label "History to download"
+  RadioButton "Latest commits" [on]
+  RadioButton "Commits since a date" [off]
+  Label "Commits"
+  TextInput "Commits" = "1"
+  Label "How many of the newest commits on the branch to download."
+  Label "Branch"
+  TextInput "Branch" = "release/2.0"
+  Label "Only this branch is downloaded. Leave it empty for the remote's default branch."
+  CheckBox "Sparse checkout (check out only some folders)" [off]
+  Button "Cancel"
+  Button "Clone" [focused]

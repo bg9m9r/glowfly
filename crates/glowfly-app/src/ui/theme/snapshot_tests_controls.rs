@@ -113,7 +113,7 @@ fn render_modal(name: &str, p: Palette) {
                 ui.label(egui::RichText::new("2 hours ago").color(p.weak));
             }
         });
-        super::modal(ctx, egui::Id::new("snapshot-modal")).show(ctx, |ui| {
+        super::show_modal(ctx, super::modal(ctx, egui::Id::new("snapshot-modal")), |ui| {
             ui.set_width(300.0);
             ui.heading("New branch");
             controls::field(ui, egui::TextEdit::singleline(&mut text).desired_width(f32::INFINITY));

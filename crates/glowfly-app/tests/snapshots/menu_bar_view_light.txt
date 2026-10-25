@@ -1,0 +1,120 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "File"
+Button "Edit"
+Button "View"
+Button "Zoom in"
+Button "Zoom out"
+Button "Reset zoom to 100%" [disabled]
+CheckBox "Left panel" [on]
+CheckBox "Commit details panel" [on]
+CheckBox "Toolbar" [on]
+CheckBox "Menu bar" [on]
+CheckBox "Full screen" [off]
+CheckBox "Terminal" [off]
+CheckBox "Activity log" [off]
+CheckBox "Operation journal" [on]
+Label "Diff layout"
+RadioButton "Inline" [on]
+RadioButton "Side by side" [off]
+Label "Diff shows"
+RadioButton "Changed lines only" [on]
+RadioButton "Whole file" [off]
+CheckBox "Ignore whitespace" [off]
+CheckBox "Wrap long lines" [off]
+Button "Theme"
+Button "Refresh"
+Button "Window"
+Button "Help"
+Button "New tab"
+Button "demo"
+Button "main"
+Button "Undo the last action" [disabled]
+Button "Redo the undone action" [disabled]
+Button "Pull the current branch" [disabled]
+Button "More pull actions"
+Button "Push the current branch"
+Button "More push actions"
+Button "Create a branch"
+Button "Stash all changes"
+Button "Pop the latest stash" [disabled]
+Button "Show the terminal panel"
+Button "Open the repository folder"
+Button "Open settings"
+Button "Search and run commands"
+Button "Show or hide the commit search"
+Button "Show or hide the activity log"
+Button "Refresh the repository"
+Button "Expand the commit panel"
+Button "1 changed file"
+Button "Go to the commit message"
+TextInput
+Button "New branch"
+Button "Local actions"
+Button "login-page"
+Button "✔  main"
+Button "search"
+Button "Add remote"
+Button "Remote actions"
+Button "New tag"
+Button "Tags actions"
+Button "Stash changes"
+Button "Stashes actions"
+Button "Add worktree"
+Button "Worktrees actions"
+Label "No worktrees"
+Label " · "
+Label "Add worktree…"
+Button "Add submodule"
+Button "Submodules actions"
+Label "No submodules"
+Label " · "
+Label "Add submodule…"
+Button "Close"
+Button "Read the journal again"
+Button "States" [on]
+Button "Lost commits" [off]
+Label "Operation journal"
+Label "Every state HEAD and your branches have been in, newest first"
+Label "No states yet"
+Label "Git records a state each time HEAD or a branch moves. Commit, check out or reset, and it shows here."
+painted:
+  "api-server"
+  "Repository"
+  "Branch"
+  "Undo"
+  "Redo"
+  "Pull"
+  "Push"
+  "Branch"
+  "Stash"
+  "Pop"
+  "Folder"
+  "Settings"
+  "Commands"
+  "Search"
+  "Activity"
+  "1"
+  "Filter (branches, PRs, issues)"
+  "Local"
+  "3"
+  "Remote"
+  "0"
+  "Tags"
+  "1"
+  "Stashes"
+  "0"
+  "Worktrees"
+  "0"
+  "Submodules"
+  "0"
+  "Ctrl+="
+  "Ctrl+-"
+  "Ctrl+0"
+  "Ctrl+Shift+L"
+  "Ctrl+Shift+D"
+  "Ctrl+Shift+B"
+  "F11"
+  "Ctrl+`"
+  "⏵"
+  "F5"

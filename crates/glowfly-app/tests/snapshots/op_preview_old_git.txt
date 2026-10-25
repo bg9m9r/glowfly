@@ -1,0 +1,8 @@
+Dialog
+  Label "Preview: merge search into main"
+  Label "Worked out without changing your files, index or branches."
+  Button "Close this dialog"
+  Label "The preview couldn't be worked out: Predicting merge conflicts needs git 2.38 or newer (you have 2.37.1)."
+  Button "Preview again"
+  Button "Cancel"
+  Button "Merge" [focused]

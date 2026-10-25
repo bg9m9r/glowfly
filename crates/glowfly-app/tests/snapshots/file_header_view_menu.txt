@@ -1,0 +1,27 @@
+window 900x300
+Label "src/ui/"
+Label "app.txt"
+Label "M +24 −9"
+Label "Unstaged"
+Button "Previous change"
+Button "Next change"
+Label "1 / 3"
+Button "Inline · Whole file"
+Label "Layout"
+Button "Inline" [on]
+Button "Split" [off]
+Label "Show"
+Button "Hunks" [off]
+Button "Whole file" [on]
+CheckBox "Ignore whitespace" [off]
+CheckBox "Wrap long lines" [off]
+Button "Expand all"
+Button "Collapse all"
+Button "More file actions"
+Button "Open in external diff tool"
+Button "Stage file"
+Button "Close diff"
+painted:
+  "M"
+  "+24"
+  "−9"

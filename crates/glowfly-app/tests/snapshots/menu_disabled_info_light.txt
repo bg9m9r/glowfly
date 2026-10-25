@@ -1,0 +1,8 @@
+window 480x220
+Button "Copy path"
+Button "Unlock" [disabled]
+Button "Compare…" [disabled]
+Button "Create pull request…" [disabled]
+Button "Open in external diff tool"
+painted:
+  "Set up…"

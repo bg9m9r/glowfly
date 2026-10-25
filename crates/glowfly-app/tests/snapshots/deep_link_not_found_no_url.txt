@@ -1,0 +1,9 @@
+Dialog
+  Label "Repository not found"
+  Button "Close this dialog"
+  Label "No open, recent or favorite repository matches this link."
+  Label "Branch feature/login in the repository with root commit 0123456"
+  Label "The link doesn't include a remote URL to clone from"
+  Button "Cancel"
+  Button "Locate on disk…"
+  Button "Clone…" [disabled]

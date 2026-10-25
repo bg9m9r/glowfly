@@ -1,0 +1,9 @@
+Dialog
+  Label "Fork team/app on GitHub"
+  Button "Close this dialog"
+  Label "You already have a fork of team/app: ada/app."
+  Label "Remote name"
+  TextInput "Remote name" = "ada" [focused]
+  CheckBox "Fetch its branches after adding" [on]
+  Button "Cancel"
+  Button "Add as remote"

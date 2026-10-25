@@ -1,0 +1,20 @@
+Dialog
+  Label "Create pull request"
+  Label "GitHub · o/r"
+  Button "Close this dialog"
+  Label "search"
+  Label "into"
+  ComboBox
+  Label "search has 2 commits that aren't on origin."
+  Button "Push search"
+  Label "Title"
+  TextInput "Title" = "Search results page"
+  Label "Description"
+  Label "Optional"
+  MultilineTextInput "Description"
+  Label "Markdown is supported."
+  CheckBox "Create as draft" [off]
+  Button "Cancel"
+  Button "Create pull request" [focused]
+painted:
+  "main"

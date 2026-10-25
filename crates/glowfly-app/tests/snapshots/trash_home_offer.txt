@@ -1,0 +1,7 @@
+Dialog
+  Label "No Trash on this drive"
+  Button "Close this dialog"
+  Label "notes/scratch.txt is on a drive whose trash folder Glowfly can't use: /mnt/usb has no trash folder you can use.\n\nMove it to the Trash in your home folder instead? It is copied there, which can take a while for a large file. Or delete it permanently; Undo (Ctrl+Z) can still bring it back while this tab is open."
+  Button "Cancel"
+  Button "Delete permanently"
+  Button "Move to home Trash" [focused]

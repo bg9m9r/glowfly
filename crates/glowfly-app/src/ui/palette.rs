@@ -47,7 +47,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let listing = !matches!(p.mode, Mode::Input(_));
     let id = Id::new(AREA_ID);
     let area = egui::Modal::default_area(id).anchor(Align2::CENTER_TOP, vec2(0.0, 80.0));
-    let resp = super::theme::modal(ctx, id).area(area).show(ctx, |ui| {
+    let resp = super::theme::show_modal(ctx, super::theme::modal(ctx, id).area(area), |ui| {
         ui.set_width(WIDTH);
         let mut run_selected = false;
         if !prompting {

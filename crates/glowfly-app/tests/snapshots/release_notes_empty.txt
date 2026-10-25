@@ -1,0 +1,8 @@
+Dialog
+  Label "Release notes"
+  Label "You're running Glowfly 0.2.0"
+  Button "Close this dialog"
+  Label "No release notes are bundled with this build."
+  Button "Open releases page"
+  Label "Esc to close"
+  Button "Close" [focused]

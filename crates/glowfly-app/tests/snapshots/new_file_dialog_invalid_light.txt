@@ -1,0 +1,9 @@
+Dialog
+  Label "New file"
+  Label "A path inside the repository; missing folders are created."
+  Button "Close this dialog"
+  Label "Path"
+  TextInput "Path" = ".git/hooks/x" [focused]
+  Label "Files can't be created inside the .git folder."
+  Button "Cancel"
+  Button "Create" [disabled]

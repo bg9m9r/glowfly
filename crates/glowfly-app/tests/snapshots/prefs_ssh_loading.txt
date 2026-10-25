@@ -1,0 +1,21 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "Back"
+Label "Preferences"
+Label "SSH"
+Label "Keys"
+Button "Reload keys"
+ProgressIndicator
+Label "Reading your .ssh folder…"
+painted:
+  "General"
+  "Git"
+  "Profile"
+  "Integrations"
+  "UI customization"
+  "Language & region"
+  "Diff viewer"
+  "Keyboard"
+  "External tools"
+  "Terminal"
+  "Commit signing"

@@ -1,0 +1,20 @@
+Dialog
+  Label "Clone a repository"
+  Button "Close this dialog"
+  Button "URL" [on]
+  Button "Your repositories" [off]
+  Label "Repository URL"
+  TextInput "Repository URL" = "https://example.com/team/app.git"
+  Label "Clone into folder"
+  TextInput "Clone into folder" = "C:\\src"
+  Button "Browse…"
+  Label "C:\\src\\app"
+  CheckBox "Shallow clone (download only recent history)" [off]
+  CheckBox "Sparse checkout (check out only some folders)" [on]
+  Label "Folders to check out, one per line"
+  MultilineTextInput "Folders to check out, one per line" = "src/*.rs"
+  Label "\"src/*.rs\" looks like a pattern. List folders here; patterns can be set after cloning in Preferences > Sparse checkout."
+  CheckBox "Download file contents only for these folders (partial clone)" [off]
+  Label "Faster for large repositories. Glowfly can't show changes to files that weren't downloaded."
+  Button "Cancel"
+  Button "Clone" [disabled]

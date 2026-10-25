@@ -1,0 +1,23 @@
+Dialog
+  Label "Edit submodule libs/lib"
+  Label "Named lib in .gitmodules"
+  Button "Close this dialog"
+  Label "Repository URL"
+  TextInput "Repository URL" = "-x" [focused]
+  Label "URLs can't start with a dash."
+  Label "Branch"
+  Label "Optional"
+  TextInput "Branch" = "main"
+  Label "The branch an update with --remote follows. Empty means the remote's default branch; \".\" follows this repository's current branch name."
+  Button "Cancel"
+  Button "Save" [disabled]
+  Label "How it works"
+  Label "A submodule's URL and branch are kept in .gitmodules, which is committed with the project."
+  Label "Save writes the change there, to this repository's config, and to the submodule's origin when it is checked out."
+  Label "The branch is used only when a submodule is updated to its remote's latest commit."
+  Label "Commit .gitmodules to share the change."
+painted:
+  "1"
+  "2"
+  "3"
+  "4"

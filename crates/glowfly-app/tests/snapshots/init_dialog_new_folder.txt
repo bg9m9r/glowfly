@@ -1,0 +1,26 @@
+Dialog
+  Label "Start a new repository"
+  Button "Close this dialog"
+  Label "Folder"
+  TextInput "Folder" = "C:\\src\\new-app" [focused]
+  Button "Browse…"
+  Label "A new folder is created."
+  Label "C:\\src\\new-app"
+  Label "Initial branch"
+  Label "Optional"
+  TextInput "Initial branch" = "main"
+  Label "Leave empty for git's default branch name"
+  Label ".gitignore"
+  ComboBox ".gitignore"
+  CheckBox "Also ignore operating system and editor files (macOS, Windows, common editors)" [on]
+  Label "License"
+  ComboBox "License"
+  Label "Copyright holder"
+  TextInput "Copyright holder" = "Ada Lovelace"
+  Label "2026 and this name go in the copyright line."
+  CheckBox "Commit these files as \"Initial commit\"" [on]
+  Button "Cancel"
+  Button "Create repository"
+painted:
+  "Rust"
+  "MIT"

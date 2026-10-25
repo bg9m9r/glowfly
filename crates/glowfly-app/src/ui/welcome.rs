@@ -37,7 +37,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Under a credential prompt or another dialog the welcome reads no keys.
     let cx = Cx { t, keyboard: !prompting && !covered, key: Id::new("glowfly-welcome-dialog") };
     let no_connections = settings.connections.is_empty();
-    let resp = theme::dialog(ctx, Id::new("glowfly-welcome")).show(ctx, |ui| {
+    let resp = theme::show_modal(ctx, theme::dialog(ctx, Id::new("glowfly-welcome")), |ui| {
         let step = w.step;
         let greeting = w.greeting_name().map(str::to_owned);
         let content_w = WIDTH - 2.0 * f32::from(theme::DIALOG_PAD);

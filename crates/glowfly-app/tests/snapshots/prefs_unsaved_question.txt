@@ -1,0 +1,7 @@
+Dialog
+  Label "Save your changes?"
+  Button "Close this dialog"
+  Label "Identity has changes that aren't saved yet."
+  Button "Cancel"
+  Button "Discard"
+  Button "Save" [focused]

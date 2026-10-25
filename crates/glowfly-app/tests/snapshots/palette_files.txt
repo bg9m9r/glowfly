@@ -1,0 +1,9 @@
+Dialog
+  Label "File history"
+  TextInput [focused]
+  Button "README.md"
+  Button "app.txt"
+  Button "login.txt"
+  Label "Up/Down to choose, Enter to show history, Backspace or Esc to go back"
+painted:
+  "Find a file or folder to show its history"

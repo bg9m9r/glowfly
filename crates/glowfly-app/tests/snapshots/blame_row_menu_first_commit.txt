@@ -1,0 +1,7 @@
+window 440x190
+Button "Blame before this commit" [disabled]
+Button "Skip this commit"
+Button "Show in file history"
+Button "Select on the graph" [disabled]
+Button "Copy line"
+Button "Copy commit SHA"

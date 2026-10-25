@@ -24,9 +24,26 @@ pwsh scripts/check.ps1                 # fmt, clippy (-D warnings) and all tests
 
 `scripts/check.ps1` must pass before a pull request is merged; CI runs the same script.
 
-UI changes are covered by snapshot tests. Re-render them with
-`UPDATE_SNAPSHOTS=1 cargo test -p glowfly snapshot`, look at the changed PNGs in
-`crates/glowfly-app/tests/snapshots/`, and commit them with your change.
+UI changes are covered by snapshot tests. Every view test keeps a text snapshot (`<name>.txt`:
+the accessibility tree and the painted text) in `crates/glowfly-app/tests/snapshots/`, and about a
+hundred pixel goldens (the themes, graph, diffs, design sheets and a few dialogs, listed in
+`src/ui/snapshot_check/goldens.rs`) also keep a PNG. Re-render them with
+`UPDATE_SNAPSHOTS=1 cargo test -p glowfly snapshot`, read the changed text, look at the changed
+PNGs, and commit them with your change. A mismatch writes `<name>.diff.txt` or `<name>.diff.png`
+beside the snapshot.
+
+When a merge or rebase stops on conflicted snapshots, resolve the code first, then run
+`pwsh scripts/rerender-conflicted.ps1`: it re-renders only the conflicted snapshots and stages
+them. To have git leave conflicted snapshots alone for the script, you can set up a local merge
+driver that keeps your side (your own choice; the repository doesn't ship one):
+
+```
+git config merge.glowfly-snapshot.name "keep ours; re-render with scripts/rerender-conflicted.ps1"
+git config merge.glowfly-snapshot.driver true
+echo "crates/glowfly-app/tests/snapshots/* merge=glowfly-snapshot" >> .git/info/attributes
+```
+
+With that driver git reports no conflict, so run the snapshot tests after the merge instead.
 
 ## How the code is organized
 

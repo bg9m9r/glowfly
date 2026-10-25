@@ -1,0 +1,16 @@
+Dialog
+  Label "Release notes"
+  Label "You're running Glowfly 0.2.0"
+  Button "Close this dialog"
+  Label "Glowfly 0.3.0 is available"
+  Label "Features"
+  Label "updates:"
+  Label " check for a new version once a day ("
+  Label "1a2b3c4"
+  Label ")"
+  Label "This copy was installed with Flatpak, so Flatpak updates it: run flatpak update or use your software centre, then start Glowfly again. A copy installed from a downloaded .flatpak file updates by installing the new release's .flatpak file the same way."
+  Button "Open release page"
+  Label "No release notes are bundled with this build."
+  Button "Open releases page"
+  Label "Esc to close"
+  Button "Close" [focused]

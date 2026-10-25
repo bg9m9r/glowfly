@@ -1,0 +1,6 @@
+Dialog
+  Label "Run this file?"
+  Button "Close this dialog"
+  Label "tools/run.bat is a script. Opening it with its default app runs it, with your permissions. Files from a repository get no download warning from your system, so only run it if you trust where it came from. You haven't said whether you trust this repository.\n\nTo read or edit it instead, use Open in external editor."
+  Button "Cancel"
+  Button "Run" [focused]

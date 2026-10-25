@@ -1,0 +1,17 @@
+Dialog
+  Label "Add remote"
+  Button "Close this dialog"
+  Label "Name"
+  TextInput "Name" = "origin" [focused]
+  Label "A remote named origin already exists."
+  Label "Fetch URL"
+  TextInput "Fetch URL" = "https://example.com/team/mirror.git"
+  Label "Push URL"
+  Label "Optional"
+  TextInput "Push URL"
+  Label "Leave empty to push to the fetch URL."
+  CheckBox "Fetch its branches after adding" [on]
+  Button "Cancel"
+  Button "Add remote" [disabled]
+painted:
+  "Same as the fetch URL"

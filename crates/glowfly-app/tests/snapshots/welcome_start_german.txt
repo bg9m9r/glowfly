@@ -1,0 +1,22 @@
+Dialog
+  Label "Willkommen bei Glowfly"
+  Label "Schön, dich kennenzulernen, Ada Lovelace."
+  Button "Begrüßung schließen"
+  ProgressIndicator "Schritt 4 von 4: Start"
+  Label "Alles bereit"
+  Label "Öffne ein vorhandenes Repository, klone eines von einem Hosting-Dienst oder lege ein neues an."
+  Button "Repository öffnen…"
+  Label "Ein Ordner auf diesem Computer, der schon ein Git-Repository enthält."
+  Button "Repository klonen…"
+  Label "Kopiere ein Repository von einem Hosting-Dienst oder einer URL in einen neuen Ordner."
+  Button "Neues Repository…"
+  Label "Lege ein leeres Repository in einem neuen oder vorhandenen Ordner an."
+  CheckBox "Nach dem Öffnen herumführen" [on]
+  Label "Design und Layout änderst du unter Einstellungen > Oberfläche"
+  Button "Zurück"
+  Button "Fertig" [focused]
+painted:
+  "Du"
+  "Dienste"
+  "Git"
+  "Start"

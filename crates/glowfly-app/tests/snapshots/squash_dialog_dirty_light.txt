@@ -1,0 +1,9 @@
+Dialog
+  Label "Squash commits"
+  Label "2 commits on main become one · no later commits change"
+  Button "Close this dialog"
+  Label "Message"
+  MultilineTextInput "Message" = "Track open tasks\n\nTidy styles" [focused]
+  Label "Your uncommitted changes are stashed first and put back when the rebase ends."
+  Button "Cancel"
+  Button "Stash and squash"

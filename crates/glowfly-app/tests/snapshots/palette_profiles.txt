@@ -1,0 +1,12 @@
+Dialog
+  Label "Switch profile"
+  TextInput [focused]
+  Button "Work"
+  Button "Personal"
+  Button "Open source"
+  Label "Up/Down to choose, Enter to switch, Backspace or Esc to go back"
+painted:
+  "Find a profile to switch to"
+  "current · ada@analytical.example"
+  "ada@home.example"
+  "no email"

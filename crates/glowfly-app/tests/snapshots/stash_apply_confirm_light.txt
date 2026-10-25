@@ -1,0 +1,6 @@
+Dialog
+  Label "Apply stash"
+  Button "Close this dialog"
+  Label "Apply \"On main: login form tweaks\" on top of your uncommitted changes? If they change the same files, git may stop with conflicts or refuse to apply."
+  Button "Cancel"
+  Button "Apply" [focused]

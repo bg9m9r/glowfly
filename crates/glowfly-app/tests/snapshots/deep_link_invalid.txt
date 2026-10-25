@@ -1,0 +1,6 @@
+Dialog
+  Label "Can't open this link"
+  Button "Close this dialog"
+  Label "Glowfly can't open this link: its root commit isn't a full commit id."
+  Label "glowfly://branch/feature?root=0123"
+  Button "Close" [focused]

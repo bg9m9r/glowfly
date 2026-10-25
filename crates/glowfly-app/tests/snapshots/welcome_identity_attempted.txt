@@ -1,0 +1,23 @@
+Dialog
+  Label "Welcome to Glowfly"
+  Label "Four short steps to get you set up."
+  Button "Close the welcome"
+  ProgressIndicator "Step 1 of 4: You"
+  Label "Who are you?"
+  Label "Every commit carries a name and an email address. Glowfly saves them in your global git config, so every repository on this computer uses them."
+  Label "Git doesn't know who you are yet."
+  Label "Name"
+  TextInput "Name"
+  Label "Enter the name to put on your commits."
+  Label "Email"
+  TextInput "Email"
+  Label "Enter the email address to put on your commits."
+  Button "Skip for now"
+  Button "Continue" [focused]
+painted:
+  "You"
+  "Services"
+  "Git"
+  "Start"
+  "Ada Lovelace"
+  "ada@example.com"

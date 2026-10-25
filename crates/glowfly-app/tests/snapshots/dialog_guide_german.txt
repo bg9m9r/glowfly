@@ -1,0 +1,19 @@
+Dialog
+  Label "Remove worktree feature-login"
+  Button "Diesen Dialog schließen"
+  Label "Deletes the folder C:\\work\\app-worktrees\\feature-login and everything in it, and drops git's record of the worktree. Commits and branches stay in the repository."
+  Label "It has 3 changed or untracked files. Force remove deletes them for good."
+  CheckBox "Also delete branch feature/login" [on]
+  Label "Only if it is merged (git branch -d). If it isn't, the worktree is still removed and you are told."
+  CheckBox "Delete 3 changed or untracked files for good" [off]
+  Label "Zuerst das Kästchen oben ankreuzen"
+  Button "Abbrechen"
+  Button "Force remove and delete branch" [disabled]
+  Label "So funktioniert es"
+  Label "Der Ordner des Worktrees wird gelöscht, mit allem darin."
+  Label "Ein Worktree mit Änderungen oder nicht verfolgten Dateien wird nur erzwungen entfernt, und diese Änderungen gehen verloren."
+  Label "Sein Branch und seine Commits bleiben, außer du löschst den Branch."
+painted:
+  "1"
+  "2"
+  "3"

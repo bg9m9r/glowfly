@@ -1,0 +1,32 @@
+Dialog
+  Label "Fetch all listed repositories"
+  Button "Close this dialog"
+  ProgressIndicator
+  Label "Fetching: 5 of 8 done"
+  Label "Git doesn't ask for passwords here: a repository whose remote needs one that isn't saved fails."
+  Label "api-server"
+  Label "Fetched: 3 branches or tags moved"
+  Button "Open"
+  Label "billing"
+  Label "Up to date"
+  Button "Open"
+  Label "docs"
+  Label "Failed: Couldn't read from the remote repository. Check the remote's URL, your network and your access, then try again."
+  Button "Open"
+  Button "Retry"
+  Label "notes"
+  Label "Nothing to fetch: no remotes"
+  Button "Open"
+  Label "scripts"
+  Label "Skipped: not trusted. Open it to review its trust."
+  Button "Open"
+  Label "web-app"
+  ProgressIndicator
+  Label "Running…"
+  Label "a-repository-with-a-very-long-folder-name"
+  ProgressIndicator
+  Label "Running…"
+  Label "website"
+  Label "Waiting"
+  Button "Stop"
+  Button "Close (keeps running)" [focused]

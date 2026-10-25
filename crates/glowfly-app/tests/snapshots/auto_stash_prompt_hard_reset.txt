@@ -1,0 +1,7 @@
+Dialog
+  Label "Uncommitted changes"
+  Button "Close this dialog"
+  Label "You have 1 changed file. Stash and reset puts them back after resetting main to 1a2b3c4. Discard and reset leaves them in a stash that only Undo brings back."
+  Button "Cancel"
+  Button "Discard and reset"
+  Button "Stash and reset" [focused]

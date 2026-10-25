@@ -38,7 +38,8 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 ## Images
 
 - `crates/glowfly-app/tests/app_icon.rs`: the app icon: draws it (`app_icon/draw.rs`) and checks every PNG in `assets/icon/` and inside `glowfly.ico` and `glowfly.icns` (`app_icon/containers.rs`); `UPDATE_ICONS=1` rewrites them.
-- `crates/glowfly-app/tests/snapshots/`: approved UI images.
+- `crates/glowfly-app/tests/snapshots/`: approved view snapshots: a `<name>.txt` text snapshot for every view test, and a `<name>.png` for the pixel goldens (`src/ui/snapshot_check/goldens.rs`).
+- `scripts/rerender-conflicted.ps1`: after a merge or rebase stops on snapshot conflicts, re-renders only the conflicted snapshots (the tests that name them) and stages them; `-DryRun` lists them.
 
 ## Real-input smoke tests
 

@@ -1,0 +1,25 @@
+Dialog
+  Label "Clone a repository"
+  Button "Close this dialog"
+  Button "URL" [off]
+  Button "Your repositories" [on]
+  ComboBox
+  TextInput = "a" [focused]
+  Button "ada/app" [off]
+  Button "team/api" [on]
+  Label "private"
+  Button "ada/notes" [off]
+  Label "private"
+  Button "team/data" [off]
+  CheckBox "Use the SSH URL" [off]
+  Label "Clones https://github.com/team/api.git"
+  Label "Clone into folder"
+  TextInput "Clone into folder" = "C:\\src"
+  Button "Browse…"
+  Label "C:\\src\\api"
+  CheckBox "Shallow clone (download only recent history)" [off]
+  CheckBox "Sparse checkout (check out only some folders)" [off]
+  Button "Cancel"
+  Button "Clone"
+painted:
+  "GitHub · github.com (ada)"
