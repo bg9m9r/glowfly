@@ -151,9 +151,12 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 
 ### No brown
 
-- Dawn's deep-gold accent (#714900: main's line, the selection bar, links) and the gold branch
-  lines on light themes read brown; a gold at 3:1 on paper is ochre at best (#c37a00, OKLCH
-  0.64 / 0.14 / 69, is the clearest), which would crowd Orange and `warn`: needs a decision
+- The repository hue Ochre (quiet chroma 0.08 at hue 95) reads khaki on every theme; a quiet
+  warm hue can't be clean, so it needs a new hue or a stronger chroma (and a new name)
+- Dawn's and the light themes' ANSI yellow and `syn_type` are ochre text; judge them in the
+  terminal and editor sheets
+- Sand's toolbar backing and pressed state lean olive-grey (its beige mixed toward the green
+  accent); a neutral backing may read cleaner
 - Light themes' amber and gold text (`warn`, `modified`, Linen's and Mist's `syn_type`) is ochre
   at the darkness 4.5:1 needs on paper; try an orange-leaning amber, or a mark beside the text
 - Sand is still a cream-and-greige theme by name; consider re-toning it to clean cream with

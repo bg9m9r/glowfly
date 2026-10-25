@@ -29,6 +29,8 @@ pub enum Hue {
     Purple,
     Periwinkle,
     Wine,
+    Navy,
+    Forest,
 }
 
 impl Hue {
@@ -57,6 +59,8 @@ impl Hue {
             Hue::Purple => t.tr("branch.hue.purple"),
             Hue::Periwinkle => t.tr("branch.hue.periwinkle"),
             Hue::Wine => t.tr("branch.hue.wine"),
+            Hue::Navy => t.tr("branch.hue.navy"),
+            Hue::Forest => t.tr("branch.hue.forest"),
         }
     }
 }

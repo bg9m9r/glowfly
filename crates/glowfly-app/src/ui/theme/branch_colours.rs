@@ -3,7 +3,7 @@
 //! the graph and the commit details take a slot from the author's email (never the accent).
 
 use super::color::{self, Palette};
-use super::contrast::{mix, readable_on, unbrown};
+use super::contrast::{clean_ink, mix, unbrown};
 use super::families::LANE_COUNT;
 use eframe::egui::Color32;
 use glowfly_core::branch_colour::{Swatch, person_slot};
@@ -30,12 +30,12 @@ pub fn person(email: &str, name: &str) -> Swatch {
 }
 
 /// The (fill, ink) of a person's initials in the active palette: a muted tint of their line tone,
-/// and their chip tone pushed until it reads at 4.5:1 on that fill.
+/// and their chip tone pushed until it reads at 4.5:1 on that fill (the ink, if that is brown).
 pub fn initials_tones(email: &str, name: &str) -> (Color32, Color32) {
     let p = color::current();
     let s = person(email, name);
     let fill = initials_fill(line(s), &p);
-    (fill, readable_on(chip_in(s, &p), fill, p.dark, 4.5))
+    (fill, clean_ink(chip_in(s, &p), fill, &p))
 }
 
 /// The fill behind the initials of a person whose line tone is `lane`.

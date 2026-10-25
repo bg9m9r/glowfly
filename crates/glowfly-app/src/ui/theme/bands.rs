@@ -9,7 +9,7 @@ use std::ops::RangeInclusive;
 /// The green accent's band: the Garden pair, high contrast, Sand, and the sea glass of Midnight
 /// and Mist.
 pub const GREEN_BAND: RangeInclusive<f64> = 145.0..=175.0;
-/// The lantern gold's band: Dusk, Dawn and Pine. Narrower than the green's, as the warm side of
+/// The lantern gold's band: Dusk and Pine. Narrower than the green's, as the warm side of
 /// the wheel is crowded (the coral, `modified` and `warn`, Orange); there the gold also keeps
 /// its distance by lightness (`branch_colour_cb_tests.rs`, `the_gold_needs_its_own_dark_set`).
 pub const GOLD_BAND: RangeInclusive<f64> = 72.0..=92.0;
@@ -19,13 +19,17 @@ pub const FLAME_BAND: RangeInclusive<f64> = 61.0..=75.0;
 /// The cobalt of Graphite and Linen, between the Sky and Slate repository hues: Azure makes
 /// room for Jade, and `info` moves to hue about 228.
 pub const COBALT_BAND: RangeInclusive<f64> = 243.0..=259.0;
+/// Dawn's iris, between the Slate and Lavender repository hues: Indigo makes room for Forest,
+/// and the colour-blind Periwinkle for Wine. Dawn's buttons and selected row stay gold.
+pub const IRIS_BAND: RangeInclusive<f64> = 274.0..=292.0;
 /// The attention band: the coral "needs you" colour's alone.
 pub const ATTENTION_BAND: RangeInclusive<f64> = 35.0..=60.0;
 
 /// `t`'s accent band.
 pub fn accent_band(t: BuiltinTheme) -> RangeInclusive<f64> {
     match t {
-        BuiltinTheme::Dark | BuiltinTheme::Light | BuiltinTheme::Pine => GOLD_BAND,
+        BuiltinTheme::Dark | BuiltinTheme::Pine => GOLD_BAND,
+        BuiltinTheme::Light => IRIS_BAND,
         BuiltinTheme::Ember => FLAME_BAND,
         BuiltinTheme::Graphite | BuiltinTheme::Linen => COBALT_BAND,
         _ => GREEN_BAND,

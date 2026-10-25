@@ -1,16 +1,22 @@
-//! The branch families beside Dusk and Dawn's gold accent. The main branch's lane is the lantern
-//! gold, so the hues that would pass for it make room:
+//! The branch families beside Dusk's gold accent (and Pine's), and beside Dawn's iris. The
+//! main branch's lane is the accent, so the hues that would pass for it make room:
 //!
-//! - Standard: Jade (in the green the gold accent leaves free) takes the Gold slot, in every
-//!   tone set at the tiers Gold had.
+//! - Standard, dark: Jade (in the green the gold accent leaves free) takes the Gold slot, at the
+//!   tier Gold had.
 //! - Colour-blind safe, dark: Yellow and Lime fall within 0.08 OKLab of the gold under protan or
-//!   deutan vision, so Orange and a paler Lime take their slots. The light tones stay apart from
-//!   Dawn's deep gold and are kept.
+//!   deutan vision, so Orange and a paler Lime take their slots.
+//! - Dawn: a gold line dark enough for paper reads brown, so Dawn's accent is an iris violet
+//!   (hue 283) beside its gold buttons. Its standard light tones take Jade in the slot Navy
+//!   has elsewhere and Forest in Indigo's (the iris's neighbour); its colour-blind set takes
+//!   Linen's Wine for Periwinkle.
 //!
 //! See `branch_palette.rs` for the families these start from and docs/COLOUR.md for the rules.
 
 use super::branch_names::Hue;
-use super::branch_palette::{CB_DARK_TONES, CB_LIGHT_LINES, CB_LIGHT_TEXT, CB_NAMES, DARK_TONES, LIGHT_LINES, LIGHT_TEXT, NAMES, pad};
+use super::branch_palette::{
+    CB_DARK_TONES, CB_NAMES, DARK_TONES, FOREST_LINE, FOREST_TEXT, LIGHT_LINES, LIGHT_NAMES, LIGHT_TEXT, NAMES, pad,
+};
+use super::branch_palette_more::{COBALT_CB_LIGHT_LINES, COBALT_CB_LIGHT_NAMES, COBALT_CB_LIGHT_TEXT};
 use super::families::{Branch, LANE_COUNT};
 use eframe::egui::Color32;
 use glowfly_core::settings::BranchPalette;
@@ -38,11 +44,16 @@ pub const JADE_LIGHT_TEXT: Color32 = hex(0x176449);
 /// Jade's light line tone (lines, dots and bands on Dawn).
 pub const JADE_LIGHT_LINE: Color32 = hex(0x2d9570);
 
+/// The slot Forest takes on Dawn: Indigo, beside the iris.
+pub const DAWN_FOREST_SLOT: usize = 13;
+
 /// The standard hues with Jade.
 pub const GOLD_DARK_TONES: [Color32; LANE_COUNT] = with(DARK_TONES, JADE_SLOT, JADE_DARK);
-pub const GOLD_LIGHT_TEXT: [Color32; LANE_COUNT] = with(LIGHT_TEXT, JADE_SLOT, JADE_LIGHT_TEXT);
-pub const GOLD_LIGHT_LINES: [Color32; LANE_COUNT] = with(LIGHT_LINES, JADE_SLOT, JADE_LIGHT_LINE);
 pub const GOLD_NAMES: [Hue; LANE_COUNT] = with(NAMES, JADE_SLOT, Hue::Jade);
+/// Dawn's light tones: Jade and Forest.
+pub const DAWN_LIGHT_TEXT: [Color32; LANE_COUNT] = with(with(LIGHT_TEXT, JADE_SLOT, JADE_LIGHT_TEXT), DAWN_FOREST_SLOT, FOREST_TEXT);
+pub const DAWN_LIGHT_LINES: [Color32; LANE_COUNT] = with(with(LIGHT_LINES, JADE_SLOT, JADE_LIGHT_LINE), DAWN_FOREST_SLOT, FOREST_LINE);
+pub const DAWN_NAMES: [Hue; LANE_COUNT] = with(with(LIGHT_NAMES, JADE_SLOT, Hue::Jade), DAWN_FOREST_SLOT, Hue::Forest);
 
 const CB: usize = glowfly_core::branch_colour::COLOUR_BLIND_SLOTS as usize;
 
@@ -55,7 +66,7 @@ pub const BRANCH_DUSK: Branch =
     Branch { lanes: GOLD_DARK_TONES, chips: GOLD_DARK_TONES, preset: BranchPalette::Standard, names: GOLD_NAMES };
 /// Dawn.
 pub const BRANCH_DAWN: Branch =
-    Branch { lanes: GOLD_LIGHT_LINES, chips: GOLD_LIGHT_TEXT, preset: BranchPalette::Standard, names: GOLD_NAMES };
+    Branch { lanes: DAWN_LIGHT_LINES, chips: DAWN_LIGHT_TEXT, preset: BranchPalette::Standard, names: DAWN_NAMES };
 /// Colour-blind safe, on Dusk.
 pub const BRANCH_CB_DUSK: Branch = Branch {
     lanes: pad(GOLD_CB_DARK_TONES),
@@ -64,5 +75,9 @@ pub const BRANCH_CB_DUSK: Branch = Branch {
     names: pad(GOLD_CB_DARK_NAMES),
 };
 /// Colour-blind safe, on Dawn.
-pub const BRANCH_CB_DAWN: Branch =
-    Branch { lanes: pad(CB_LIGHT_LINES), chips: pad(CB_LIGHT_TEXT), preset: BranchPalette::ColourBlind, names: pad(CB_NAMES) };
+pub const BRANCH_CB_DAWN: Branch = Branch {
+    lanes: pad(COBALT_CB_LIGHT_LINES),
+    chips: pad(COBALT_CB_LIGHT_TEXT),
+    preset: BranchPalette::ColourBlind,
+    names: pad(COBALT_CB_LIGHT_NAMES),
+};

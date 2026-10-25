@@ -1,8 +1,11 @@
 //! Dusk and Dawn, the standard pair, drawn from the app icon: its dusk tile (indigo into plum)
-//! tints the neutrals, and the glowfly's lantern gold is the accent, so the main branch runs in
-//! gold as the icon's first lane does. Tags take the plum of the tile's lower edge. `modified`
-//! and `warn` sit on the orange side of the gold (OKLCH hue about 64), out of the gold accent's
-//! band. The values and the rules they meet are in docs/COLOUR.md.
+//! tints the neutrals, and the glowfly's lantern gold is Dusk's accent, so the main branch runs
+//! in gold as the icon's first lane does. On Dawn's paper a gold line dark enough to read is
+//! brown, so Dawn keeps the gold on its buttons and selected row and takes an iris violet (OKLCH
+//! hue 283, the dawn sky over the lavender paper) for the accent. Tags take the plum of the
+//! tile's lower edge. `modified` and `warn` sit on the orange side of the gold (OKLCH hue about
+//! 64), out of the gold accent's band. The values and the rules they meet are in
+//! docs/COLOUR.md.
 
 use super::branch_palette_gold::{BRANCH_CB_DAWN, BRANCH_CB_DUSK, BRANCH_DAWN, BRANCH_DUSK};
 use super::builtin_extra::{REPO_DARK, REPO_LIGHT};
@@ -64,8 +67,8 @@ pub const DUSK: Palette = Palette {
     ansi: super::ansi::DUSK,
 };
 
-/// The standard light theme: faintly lavender paper and indigo ink, a deep gold accent and the
-/// lantern gold on primary buttons.
+/// The standard light theme: faintly lavender paper and indigo ink, an iris accent and the
+/// lantern gold on primary buttons and the selected row.
 pub const DAWN: Palette = Palette {
     dark: false,
     bg: hex(0xf7f6fc),
@@ -82,11 +85,11 @@ pub const DAWN: Palette = Palette {
     strong: hex(0x100d26),
     weak: hex(0x54526d),
     faint: hex(0x6b6882),
-    accent: hex(0x714900),
+    accent: hex(0x5a47cf),
     primary: hex(0xefb146),
     on_primary: hex(0x1b1933),
     primary_off: hex(0xe6e5ee),
-    primary_border: hex(0xbf851e),
+    primary_border: hex(0xd19006),
     danger: hex(0xc0332a),
     danger_off: hex(0xfedadc),
     tag_bg: hex(0xf5d8ea),

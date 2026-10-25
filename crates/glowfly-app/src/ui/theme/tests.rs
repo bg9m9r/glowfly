@@ -33,7 +33,7 @@ fn builtins() {
     assert_eq!((DUSK.bg, DUSK.panel, DUSK.accent, DUSK.text), (rgb(0x1b1829), rgb(0x221f31), rgb(0xf6c159), rgb(0xe6e5ef)));
     assert_eq!(
         (DAWN.bg, DAWN.panel, DAWN.accent, DAWN.primary, DAWN.text),
-        (rgb(0xf7f6fc), rgb(0xfbfafe), rgb(0x714900), rgb(0xefb146), rgb(0x211f38))
+        (rgb(0xf7f6fc), rgb(0xfbfafe), rgb(0x5a47cf), rgb(0xefb146), rgb(0x211f38))
     );
     assert_eq!((DARK, LIGHT, DEFAULT_DARK), (DUSK, DAWN, GRAPHITE), "Graphite is the default dark theme, Dawn the light");
     let g = (&GARDEN_DARK, &GARDEN_LIGHT);

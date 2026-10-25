@@ -14,7 +14,7 @@ and the branch tests, with the shared hue bands in `theme/bands.rs`.
 | Theme | Kind | Character | bg / panel / accent / text |
 |---|---|---|---|
 | Dusk (`dark`) | dark | The icon's dusk tile: indigo neutrals under the lantern gold | #1b1829 / #221f31 / #f6c159 / #e6e5ef |
-| Dawn (the default light; `light`) | light | Faintly lavender paper, indigo ink, a deep gold accent and lantern-gold buttons | #f7f6fc / #fbfafe / #714900 / #211f38 |
+| Dawn (the default light; `light`) | light | Faintly lavender paper, indigo ink, an iris accent and lantern-gold buttons | #f7f6fc / #fbfafe / #5a47cf / #211f38 |
 | Garden Dark (`garden-dark`) | dark | The earlier standard dark: green-tinted neutrals, lattice green | #151b18 / #1b221e / #4dc588 / #e0e6e3 |
 | Garden Light (`garden-light`) | light | The earlier standard light: warm paper, deep green | #f9f7f1 / #fdfcf9 / #14764a / #161c19 |
 | High Contrast Dark, High Contrast Light | | White on black and black on white, the green accent at 7:1 text | |
@@ -48,11 +48,12 @@ Why Dusk and Dawn look as they do:
   move to the orange side (OKLCH hue about 64, out of the gold band, 25 deg off the coral), Jade
   takes the Gold branch slot, the colour-blind preset swaps two dark hues (below), and tags take
   the plum of the tile's lower edge instead of sand.
-- Gold can't be a line or text colour on a light background without turning brown, and between
-  `warn` (L 0.58) and the colour-blind hues (L 0.47 to 0.60) there is no room for a mid gold.
-  Dawn's accent is a deep gold (#714900, L 0.44), a step darker than everything near its hue,
-  and the lantern gold itself fills primary buttons (#efb146 with indigo ink) and tints the
-  selected row (#f8e4bb).
+- Gold can't be a line or text colour on a light background without turning brown (the old
+  deep-gold accent, #714900, read brown; see "No brown"), and the one clean warm line on paper,
+  a saturated amber at hue 62, would sit on top of `warn` and Orange. So Dawn's accent is an
+  iris violet (#5a47cf, OKLCH 0.50 0.20 283: the dawn sky over the lavender paper, opposite the
+  gold), and the lantern gold itself fills primary buttons (#efb146 with indigo ink, edged
+  #d19006) and tints the selected row (#f8e4bb), where the iris bar sits on it.
 - Old settings files say `Dark` and `Light`. `Dark` always meant "the default dark theme" (the
   green one, then Dusk), so it now opens in Graphite, the default; Dusk picked today is saved as
   `Dusk`. `Light` stays Dawn. Theme files' `"base": "dark"` / `"light"` stay Dusk and Dawn, so a
@@ -112,7 +113,7 @@ Views never name a hex value: they read the active palette through `color::text(
 
 | Token | Theme key | What it is for |
 |---|---|---|
-| accent | `accent` | The theme's own colour: the lantern gold in Dusk and Dawn, the lattice green in the Garden pair, high contrast and Sand. Focus rings, links, checked controls, the selected row's bar, the active tab's line, the main branch's line, column-resize lines, header highlights. |
+| accent | `accent` | The theme's own colour: the lantern gold in Dusk (Dawn's iris beside its gold buttons), the lattice green in the Garden pair, high contrast and Sand. Focus rings, links, checked controls, the selected row's bar, the active tab's line, the main branch's line, column-resize lines, header highlights. |
 | primary | `primary`, `primary_border`, `primary_off` | The fill and edge of primary buttons. |
 | primary ink | `on_primary` | Text and icons on a primary fill (dark ink on the gold of Dusk and Dawn and the green of Garden dark, white elsewhere). |
 | danger | `danger`, `danger_off` | Destructive buttons. |
@@ -172,18 +173,26 @@ icon. The repository's main branch (the home remote's recorded HEAD, else `main`
 `master`) takes `accent`; every other branch takes one of 14 hues (P1), in slot order Rose,
 Lime, Violet, Orange, Cyan, Magenta, Olive, Azure, Red, Teal, Orchid, Gold, Sky, Indigo. They
 keep out of the theme's accent band and the attention band, and neighbouring hues alternate
-between two lightness tiers (OKLCH L 0.70 / 0.80 in the dark tones). Beside Dusk and Dawn's gold
+between two lightness tiers (OKLCH L 0.70 / 0.80 in the dark tones). Beside Dusk's gold
 accent, Jade (hue 165, at Gold's tier) takes the Gold slot, in the green the gold leaves free
 (`theme/branch_palette_gold.rs`); Pine takes the same families. Beside Ember's flame, Jade takes
 the Orange slot, and beside Graphite's and Linen's cobalt the Azure slot
 (`theme/branch_palette_more.rs`); each family names its own slots for the Color submenu.
+
+On paper a gold or olive dark enough for a 3:1 line reads brown, so the light tones differ:
+Olive's slot is a deep Wine (hue 352), Gold's a Navy (hue 262), both darker than their
+neighbours, and Orange is a clear amber at hue 62 (#c47100, at the sRGB edge: the one warm line
+that stays clean at 3:1, even on Sand). Beside Linen's cobalt, Forest (hue 142) takes Navy's
+slot; on Dawn, Jade takes it and Forest takes Indigo's, beside the iris accent. A chip whose
+tone would letter it in brown (the amber's text tone) is lettered in the ink instead
+(`contrast::clean_ink`), its fill and edge keeping the hue.
 
 - `branch.lanes`: line tones, for lines, dots and bands (3:1 on bg and panel).
 - `branch.chips`: chip tones, which ref chips are edged and lettered in (see Chip tints).
 
 Dusk, Garden dark and High contrast dark use the dark tones for both. Dawn and Garden light use
 bright line tones and darker text tones for chips. High contrast light and Sand use the text
-tones for both, as the line tones fall below 3:1 on their surfaces. Not a theme-file key: theme files get their base
+tones for both (the amber line for Orange), as the line tones fall below 3:1 on their surfaces. Not a theme-file key: theme files get their base
 theme's family.
 
 A branch's slot comes from its name: FNV-1a (32-bit) of its UTF-8 bytes, mod 14, the same in
@@ -218,8 +227,10 @@ hues that stay apart under protan, deutan and tritan vision as well as normal vi
 out of the accent and attention bands. Dark themes use its dark tones for lines and chips;
 light ones use its line tones for lines and its text tones for chips. Under protan or deutan
 vision Yellow and Lime pass for Dusk's gold, so Dusk's set (`Palette::colour_blind`) has Orange
-(#eb8f13) and a paler Lime (#c8feac) in their slots; Dawn's deep gold stays clear of the light
-tones, which it keeps. Theme files take their base's set. The preset switches with the profile.
+(#eb8f13) and a paler Lime (#c8feac) in their slots. On paper a yellow line reads olive, so the
+light set's Yellow is the clear amber (named Orange) and its Lime the deeper #4d7002, which stays
+apart from the amber under protan vision; Dawn takes Linen's Wine for Periwinkle, which would pass
+for the iris. Theme files take their base's set. The preset switches with the profile.
 Branch names always appear beside their colour, and main keeps the accent.
 
 ### Terminal
@@ -313,9 +324,12 @@ outside the families and unchanged by the brand colour.
   - `theme/no_brown_tests.rs` composites every surface, band, highlighted band, chip and chip
     edge, initials fill, change chip, tone tint, tonal state and wash (each semantic and
     repository colour at 3% to 80% on bg, panel, toolbar and raised) and fails on any in the
-    zone. Dusk's bronze selected row (#573b11) is the one allowed exception (the owner's call
-    on #25). Text colours are not checked: a gold or amber dark enough to read on paper is
-    ochre, which the light themes keep for `warn` and `modified`.
+    zone, in both branch presets. Dusk's bronze selected row (#573b11) is the one allowed
+    exception (the owner's call on #25). It also checks every line, edge and letter drawn in a
+    colour of its own: the accent, `primary_border`, the field and dialog edges, each branch
+    lane, chip text and initials ink. Body and status text are not checked: a gold or amber dark
+    enough to read on paper is ochre, which the light themes keep for `warn` and `modified`
+    (their washes go through `contrast::clear` first, so they wash peach, not tan).
   - `snapshot_tests_colour_sheet.rs` renders every theme for judging by eye
     (`GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly colour_sheet -- --ignored`).
 - Tinting a surface: the faint tints of a surface (graph row bands up to 7% toward the row's
@@ -332,11 +346,13 @@ outside the families and unchanged by the brand colour.
 - The accent never marks status. Running operations use `progress`, not the accent.
 - Only the accent family (`accent`, `primary`, `primary_border`, `selected`; Ember's `selected`
   is its deep ember red instead, outside both bands) sits in the
-  theme's accent band: the gold band, 72 to 92 deg OKLCH hue, in Dusk, Dawn and Pine; the flame
+  theme's accent band: the gold band, 72 to 92 deg OKLCH hue, in Dusk and Pine; the iris band,
+  274 to 292 deg (between the Slate and Lavender repository hues), for Dawn's accent, whose
+  buttons and selected row stay in the gold band; the flame
   band, 61 to 75 deg, in Ember; the cobalt band, 243 to 259 deg (between the Sky and Slate
   repository hues), in Graphite and Linen; the green band, 145 to 175 deg, in the others. The gold band is narrower as the warm side of the wheel is
   crowded; there the gold keeps its distance by lightness too (Orange at 70 deg is 0.12 OKLab
-  from Dusk's gold, and Dawn's deep gold sits 0.12 to 0.15 in L below `warn` and Orange).
+  from Dusk's gold).
 - Status, branch and repository colours stay out of the theme's accent band and out of the
   attention band (about 35 to 60 deg), which belongs to the coral `needs_you`. Status colours
   also keep OKLCH chroma at 0.08 or more; repository hues sit at 0.08 and at least 30 deg apart.
@@ -483,9 +499,9 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | selected | #f8e4bb | The lantern gold as a wash; branch chips keep 4.5:1 on it |
 | text / strong | #211f38 / #100d26 | text 15.3:1 on panel |
 | weak / faint | #54526d / #6b6882 | 7.2 and 5.1:1 on panel |
-| accent | #714900 | Deep gold, OKLCH 0.44 0.094 73; 7.6:1 on panel |
+| accent | #5a47cf | Iris, OKLCH 0.50 0.20 283; 6.1:1 on panel, 5.2:1 on selected |
 | primary / on_primary | #efb146 / #1b1933 | The lantern gold with indigo ink, 9.0:1 |
-| primary_border | #bf851e | |
+| primary_border | #d19006 | A clear gold edge |
 | tag_bg / tag_fg | #f5d8ea / #763463 | Plum, 6.5:1 |
 | added / removed / modified / info / progress | #357518 / #b63132 / #a96000 / #1f68bc / #6d47b8 | |
 | warn / banner | #ae6704 / #fee3c5 | |
@@ -575,23 +591,25 @@ Pine Dusk's, Ember the flame ones and Graphite and Linen the cobalt ones (below)
 Slot by slot (`theme/branch_palette.rs`): dark tones (Dusk, Garden dark and High contrast
 dark), light text and chip tones (Dawn's and Garden light's chips; every line and chip in High
 contrast light and Sand) and light line tones (Dawn's and Garden light's lines, dots and
-bands). In Dusk and Dawn slot 11 is Jade (#56d1a3 dark, #176449 light text, #2d9570 light line,
-hue 165) in place of Gold.
+bands). In Dusk slot 11 is Jade (#56d1a3 dark) in place of Gold; in Dawn it is Jade (#176449
+light text, #2d9570 light line, hue 165) in place of Navy, and slot 13 Forest (#1d4f19 / #2c6b27,
+hue 142) in place of Indigo. Linen's slot 11 is Forest. The light slots 3, 6 and 11 differ in hue
+from the dark ones (see Branch above).
 
 | Slot | Hue | Dark | Light text | Light line |
 |---|---|---|---|---|
 | 0 | Rose | #e77492 | #861f43 | #c04d6e |
 | 1 | Lime | #a3cf64 | #4d7002 | #719c27 |
 | 2 | Violet | #c5aeff | #6d4ea8 | #9776db |
-| 3 | Orange | #d78c1a | #6c4302 | #a86b06 |
+| 3 | Orange | #d78c1a | #7c4600 (lettered in the ink) | #c47100 |
 | 4 | Cyan | #04d4f1 | #057080 | #0b9db3 |
 | 5 | Magenta | #fb97db | #953d7c | #c664a8 |
-| 6 | Olive | #9ea827 | #4d5201 | #7a8201 |
+| 6 | Olive (dark) / Wine (light) | #9ea827 | #6f1647 | #952c63 |
 | 7 | Azure | #93c1fe | #2462b1 | #498de5 |
 | 8 | Red | #fea195 | #a43c33 | #d86357 |
 | 9 | Teal | #0ab5b1 | #005957 | #0a8c89 |
 | 10 | Orchid | #c37fd8 | #6b2d7d | #9e59b3 |
-| 11 | Gold | #dfba3b | #786101 | #a98904 |
+| 11 | Gold (dark) / Navy (light) | #dfba3b | #17397b | #2750a2 |
 | 12 | Sky | #0aabea | #005475 | #0685b6 |
 | 13 | Indigo | #8794f7 | #3b4097 | #646fd1 |
 
@@ -607,16 +625,16 @@ deutan vision). Chips carry the branch name, so text tones have no distance floo
 |---|---|---|---|---|---|
 | 0 | Red | #ed485a | #b17272 | #8b0422 | 19 |
 | 1 | Aqua | #45fafc | #0d9295 | #0a4b4b | 196 |
-| 2 | Yellow | #d1c038 | #70640c | #474219 | 102 |
+| 2 | Yellow (dark) / Orange (light) | #d1c038 | #c47100 | #7c4600 | 102 / 62 |
 | 3 | Blue | #2898c9 | #207aa0 | #106082 | 233 |
 | 4 | Plum | #ba7294 | #b2397b | #ac1c6f | 350 |
-| 5 | Lime | #ccee6e | #668014 | #56680f | 122 |
+| 5 | Lime | #ccee6e | #4d7002 | #426101 | 122 / 128 |
 | 6 | Purple | #9d62f4 | #9169d5 | #482b74 | 299 |
 | 7 | Periwinkle | #a2b5f2 | #3a45cf | #4158bd | 271 |
 
 Dusk's colour-blind set swaps two dark tones: slot 2 is Orange #eb8f13 (hue 65) and slot 5 a
 paler Lime #c8feac (hue 135), as Yellow and Lime fall within 0.08 of the gold under protan and
-deutan vision. Dawn keeps the light tones above. Pine takes Dusk's set. Beside the flame,
+deutan vision. Dawn takes Linen's set (Wine for Periwinkle). Pine takes Dusk's set. Beside the flame,
 Yellow falls within 0.04 of Ember's accent under deutan vision, so Ember's set has a light Jade
 (#57dcb4, hue 170) in slot 2. Beside the cobalt, Periwinkle falls within 0.05 of the accent under
 protan and deutan vision, so Graphite's set has a light Rose (#f49194, hue 18) in slot 7 and

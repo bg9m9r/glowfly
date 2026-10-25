@@ -164,6 +164,13 @@ pub fn readable_on(fg: Color32, fill: Color32, dark: bool, min: f64) -> Color32 
     fg
 }
 
+/// `tone` pushed until it reads at 4.5:1 on `fill`, for a chip's or initials' letters; the
+/// palette's own text when that would read brown (a warm branch tone dark enough for paper).
+pub fn clean_ink(tone: Color32, fill: Color32, p: &Palette) -> Color32 {
+    let ink = readable_on(tone, fill, p.dark, 4.5);
+    if brownish(ink) { readable_on(p.text, fill, p.dark, 4.5) } else { ink }
+}
+
 /// What a ref chip in the graph stands for.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ChipStyle {
@@ -215,7 +222,7 @@ pub fn clear(c: Color32) -> Color32 {
 pub fn ref_chip(style: ChipStyle, lane: Color32, p: &Palette) -> ChipLook {
     let (_, lc, lh) = oklch(lane);
     let pale = |(l, c): (f64, f64)| from_oklch(l, lc.min(c), lh);
-    let edged = |fill: Color32, edge: Color32| ChipLook { fill, edge: Some(edge), text: readable_on(lane, fill, p.dark, 4.5) };
+    let edged = |fill: Color32, edge: Color32| ChipLook { fill, edge: Some(edge), text: clean_ink(lane, fill, p) };
     match (style, p.dark) {
         (ChipStyle::Head, _) => ChipLook { fill: mix(p.bg, p.text, 0.16), edge: None, text: p.text },
         (ChipStyle::Tag, _) => ChipLook { fill: p.tag_bg, edge: None, text: p.tag_fg },

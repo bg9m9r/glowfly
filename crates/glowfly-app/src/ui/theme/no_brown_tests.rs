@@ -1,14 +1,17 @@
 //! No built-in theme paints brown, tan, khaki or olive (docs/COLOUR.md, "No brown"): every
-//! surface, row band, chip, tint and wash, as composited on the surface it is drawn over, stays
-//! out of `contrast::brownish`'s zone. Dusk's selected row (its bronze wash) is the one exception.
+//! surface, row band, chip, tint and wash, as composited on the surface it is drawn over, and
+//! every line and edge (the accent, the button and field edges, each branch lane, chip edges
+//! and letters, initials) stays out of `contrast::brownish`'s zone, in both branch presets.
+//! Dusk's selected row (its bronze wash) is the one exception.
 
-use super::branch_colours::{chip_in, line_in, swatches};
+use super::branch_colours::{chip_in, initials_fill, line_in, swatches};
+use super::branch_palette::applied;
 use super::builtin;
 use super::color::Palette;
 use super::contrast::{self, ChipStyle, brownish, oklch};
 use super::surfaces::Tone;
 use eframe::egui::Color32;
-use glowfly_core::settings::BuiltinTheme;
+use glowfly_core::settings::{BranchPalette, BuiltinTheme};
 
 /// The alphas the views wash a colour over a surface at (`Palette::wash`).
 const WASHES: [f32; 10] = [0.03, 0.08, 0.12, 0.16, 0.18, 0.25, 0.28, 0.35, 0.6, 0.8];
@@ -101,6 +104,30 @@ pub(super) fn fills(p: &Palette) -> Vec<(String, Color32)> {
     v
 }
 
+/// Every line, edge and letter `p` draws in a colour of its own: (what, the colour).
+pub(super) fn lines(p: &Palette) -> Vec<(String, Color32)> {
+    let mut v: Vec<(String, Color32)> = vec![
+        ("accent".into(), p.accent),
+        ("primary_border".into(), p.primary_border),
+        ("input_border".into(), p.input_border),
+        ("dialog_border".into(), p.dialog_border),
+    ];
+    for s in swatches() {
+        let lane = line_in(s, p);
+        v.push((format!("{s:?} lane"), lane));
+        v.push((format!("{s:?} initials ink"), contrast::clean_ink(chip_in(s, p), initials_fill(lane, p), p)));
+        for style in ChipStyle::ALL {
+            v.push((format!("{s:?} {style:?} chip text"), contrast::ref_chip(style, chip_in(s, p), p).text));
+        }
+    }
+    v
+}
+
+/// `t`'s palette in each branch preset.
+fn presets(t: BuiltinTheme) -> [(&'static str, Palette); 2] {
+    [("standard", *builtin(t)), ("colour-blind", applied(*builtin(t), BranchPalette::ColourBlind))]
+}
+
 /// Whether `what` in theme `t` may sit in the zone: Dusk's bronze selected row (the owner's
 /// call on #25).
 fn allowed(t: BuiltinTheme, what: &str) -> bool {
@@ -111,14 +138,34 @@ fn allowed(t: BuiltinTheme, what: &str) -> bool {
 fn no_theme_paints_brown() {
     let mut failures = Vec::new();
     for t in BuiltinTheme::ALL {
-        for (what, c) in fills(builtin(t)) {
-            if brownish(c) && !allowed(t, &what) {
-                let (l, ch, h) = oklch(c);
-                failures.push(format!("{t:?} {what}: #{:02x}{:02x}{:02x} (L {l:.2} C {ch:.3} h {h:.0})", c.r(), c.g(), c.b()));
+        for (preset, p) in presets(t) {
+            for (what, c) in fills(&p) {
+                if brownish(c) && !allowed(t, &what) {
+                    failures.push(describe(t, preset, &what, c));
+                }
             }
         }
     }
     assert!(failures.is_empty(), "{} brown fills:\n{}", failures.len(), failures.join("\n"));
+}
+
+#[test]
+fn no_theme_draws_brown_lines() {
+    let mut failures = Vec::new();
+    for t in BuiltinTheme::ALL {
+        for (preset, p) in presets(t) {
+            // The body ink (near black, warm on Sand and Linen) letters a chip the branch's
+            // own tone can't; it is text, not a coloured line.
+            let brown = |c: Color32| brownish(c) && c != p.text;
+            failures.extend(lines(&p).into_iter().filter(|(_, c)| brown(*c)).map(|(what, c)| describe(t, preset, &what, c)));
+        }
+    }
+    assert!(failures.is_empty(), "{} brown lines:\n{}", failures.len(), failures.join("\n"));
+}
+
+fn describe(t: BuiltinTheme, preset: &str, what: &str, c: Color32) -> String {
+    let (l, ch, h) = oklch(c);
+    format!("{t:?} ({preset}) {what}: #{:02x}{:02x}{:02x} (L {l:.2} C {ch:.3} h {h:.0})", c.r(), c.g(), c.b())
 }
 
 #[test]
@@ -131,11 +178,16 @@ fn dusk_keeps_its_bronze_selection() {
 fn the_zone_holds_brown_and_spares_clean_colours() {
     let hex = |c: u32| Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8);
     // Brown, tan, khaki, olive, rust and a gold or amber wash on a dark field.
-    for c in [0x5b3d0a, 0x4a3812, 0x8b5a2b, 0xc8a878, 0x9a8f5c, 0x6b6b2a, 0x3b2f0a, 0x7a4a2a, 0x3d3020, 0x4d3a28] {
+    // Then the old paper lines: Dawn's deep-gold accent, the light Orange, Olive and Gold.
+    for c in [
+        0x5b3d0a, 0x4a3812, 0x8b5a2b, 0xc8a878, 0x9a8f5c, 0x6b6b2a, 0x3b2f0a, 0x7a4a2a, 0x3d3020, 0x4d3a28, 0x714900, 0xa86b06, 0x7a8201,
+        0xa98904,
+    ] {
         assert!(brownish(hex(c)), "#{c:06x} reads brown");
     }
-    // Clean colours: greys, cream paper, saturated orange, gold and red, cool fields, a deep red.
-    for c in [0x191a1d, 0x2f3134, 0xf9f7f3, 0xfbecc8, 0xff9b2a, 0xf6c159, 0xea6a64, 0x1f3d62, 0x0a1e1f, 0x7bc85f, 0x8a1f2c] {
+    // Clean colours: greys, cream paper, saturated orange, gold and red, cool fields, a deep red,
+    // the light tones' amber.
+    for c in [0x191a1d, 0x2f3134, 0xf9f7f3, 0xfbecc8, 0xff9b2a, 0xf6c159, 0xea6a64, 0x1f3d62, 0x0a1e1f, 0x7bc85f, 0x8a1f2c, 0xc47100] {
         assert!(!brownish(hex(c)), "#{c:06x} is not brown");
     }
 }

@@ -5,7 +5,7 @@
 use super::bands::{ATTENTION_BAND, COBALT_BAND, FLAME_BAND, GREEN_BAND, accent_band};
 use super::branch_palette::{
     BRANCH_CB_DARK, BRANCH_CB_LIGHT, BRANCH_DARK, BRANCH_LIGHT, CB_DARK_TONES, CB_LIGHT_LINES, CB_LIGHT_TEXT, DARK_TONES, LIGHT_LINES,
-    LIGHT_TEXT,
+    LIGHT_NAVY_SLOT, LIGHT_TEXT,
 };
 use super::branch_palette_gold::{BRANCH_CB_DUSK, BRANCH_DUSK};
 use super::branch_palette_more::*;
@@ -161,7 +161,9 @@ fn only_the_making_room_slots_change() {
         (&CB_DARK_TONES, &COBALT_CB_DARK_TONES, COBALT_CB_SLOT),
     ];
     for (n, (from, to, slot)) in std_sets.iter().enumerate() {
-        for i in (0..from.len()).filter(|i| i != slot) {
+        // Linen's light tones also take Forest for Navy, which would pass for the cobalt.
+        let forest = if (2..4).contains(&n) { LIGHT_NAVY_SLOT } else { *slot };
+        for i in (0..from.len()).filter(|i| i != slot && *i != forest) {
             assert_eq!(from[i], to[i], "set {n} slot {i}");
         }
         assert_ne!(from[*slot], to[*slot], "set {n} changes slot {slot}");

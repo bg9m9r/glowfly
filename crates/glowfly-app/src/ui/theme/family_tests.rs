@@ -1,7 +1,7 @@
 //! The colour families: the brand values, the reserved OKLCH hue bands, tinted neutrals, primary
 //! ink, status chips, sand tags and theme files (docs/COLOUR.md has the rules).
 
-use super::bands::{accent_band, hue, in_reserved_band};
+use super::bands::{GOLD_BAND, accent_band, hue, in_reserved_band};
 use super::color::Palette;
 use super::contrast::{self, ChipStyle, oklch, ratio};
 use super::tests::{ocean, rgb};
@@ -64,6 +64,12 @@ fn accent_family_sits_in_the_accent_band() {
             // Ember's selected row is a deep red and Pine's a petrol blue, not a dark wash of
             // their orange or gold, which would read as brown (docs/COLOUR.md, "No brown").
             if matches!(t, BuiltinTheme::Ember | BuiltinTheme::Pine) && key == "selected" {
+                continue;
+            }
+            // Dawn's accent is the iris (a gold line on paper reads brown); its buttons and
+            // selected row keep the lantern gold.
+            if t == BuiltinTheme::Light && key != "accent" {
+                assert!(GOLD_BAND.contains(&hue(c)), "Dawn's {key} stays gold");
                 continue;
             }
             let h = hue(c);

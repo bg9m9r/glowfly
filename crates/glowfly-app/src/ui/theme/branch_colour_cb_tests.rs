@@ -118,7 +118,8 @@ fn cb_tones_share_one_hue_per_slot() {
     for i in (0..8).filter(|i| ![2, 5].contains(i)) {
         assert_eq!(CB_DARK_TONES[i], GOLD_CB_DARK_TONES[i], "Dusk's set changes only Yellow and Lime");
     }
-    for i in 0..8 {
+    // On paper Yellow is the clear amber (a dark yellow reads olive) and Lime a greener one.
+    for i in (0..8).filter(|i| ![2, 5].contains(i)) {
         let dark = oklch(CB_DARK_TONES[i]).2;
         for (set, tones) in [("light line", CB_LIGHT_LINES), ("light text", CB_LIGHT_TEXT)] {
             let h = oklch(tones[i]).2;
