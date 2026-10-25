@@ -3,19 +3,19 @@
 //! `Msg` has one variant per area, each carrying that area's own enum (defined in this folder,
 //! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule`,
 //! `terminal`, `ssh`, `profile`, `patch`, `tools`, `custom_commands`, `conflict_check`, `journal`, `range_diff`, `pull_request`, `logs`, `onboarding` and `deep_link`;
-//! Glowfly's own updates are `UpdateMsg` in `updates.rs`). Each area's enum goes to one handler in `update/`, which matches it
-//! exhaustively, and says through `on_inactive` what its results still need when they arrive
-//! for a tab that is no longer active. Only a few cross-cutting messages are top-level.
+//! Glowfly's own updates are `UpdateMsg` in `updates.rs`). Each area is one row of the table in
+//! `areas.rs` (variant, enum, short name, handler), which builds `Msg`, `Msg::on_inactive`,
+//! `Msg::area` and `update`'s routing. Each area's enum goes to one handler in `update/`, which
+//! matches it exhaustively, and says through `on_inactive` what its results still need when they
+//! arrive for a tab that is no longer active. Only a few cross-cutting messages are top-level.
 
 use crate::effect::{FileOp, WorkFileOk};
-use crate::submodule::SubmoduleMsg;
-use crate::terminal::TerminalMsg;
 use glowfly_core::gitcli::args;
 use std::path::PathBuf;
 use std::time::Instant;
 
 mod app;
-mod area;
+mod areas;
 mod blame;
 mod branch;
 mod dashboard;
@@ -46,6 +46,8 @@ mod updates;
 mod work;
 
 pub use app::AppMsg;
+pub(crate) use areas::msg_areas;
+use areas::msg_enum;
 pub use blame::BlameMsg;
 pub use branch::{BranchMsg, CloneMsg};
 pub use dashboard::DashboardMsg;
@@ -75,195 +77,93 @@ pub use trust::{InheritedRepo, TrustMsg};
 pub use updates::{CheckedRelease, UpdateMsg};
 pub use work::{CommitMsg, JobMsg, RevertWhat, StageMsg};
 
-pub enum Msg {
-    /// Opening the repository, selecting a commit or the working tree, the open diff (update/repo.rs).
-    Repo(RepoMsg),
-    /// The recent and favorite repository lists (update/recent.rs).
-    Recent(RecentMsg),
-    /// Finding repositories in project folders (update/repos.rs).
-    Repos(ReposMsg),
-    /// Refresh results and loading more history (update/refresh.rs).
-    Load(LoadMsg),
-    /// The file watcher's reports (update/watch.rs).
-    Watch(WatchMsg),
-    /// Selecting several commits, comparing and cherry-picking them (update/selection.rs).
-    Selection(SelectionMsg),
-    /// Hidden and soloed refs and the hovered ref (update/graph_filter.rs).
-    Graph(GraphMsg),
-    /// The graph search: query, filter, author picker (update/search.rs).
-    Search(SearchMsg),
-    /// Author avatars (update/avatars.rs).
-    Avatars(AvatarMsg),
-    /// The open diff's layout, folds, line selection and highlighting (update/diff.rs).
-    Diff(DiffMsg),
-    /// The conflict view (update/conflict.rs).
-    Conflict(ConflictMsg),
-    /// A file's history (update/history.rs).
-    History(HistoryMsg),
-    /// The blame view (update/blame.rs).
-    Blame(BlameMsg),
-    /// The interactive rebase panel (update/rebase.rs).
-    Rebase(RebaseMsg),
-    /// Pushing a stack and creating its pull requests (update/stack_push.rs).
-    Stack(StackMsg),
-    /// The tab bar (update/tabs.rs).
-    Tabs(TabsMsg),
-    /// Staging, unstaging and discarding files, hunks and lines (update/ops.rs).
-    Stage(StageMsg),
-    /// The commit box (update/commit.rs).
-    Commit(CommitMsg),
-    /// Git jobs: commands, push, stash, undo and redo, and their end (update/ops.rs).
-    Job(JobMsg),
-    /// Renaming a stash and the Stash dialog (update/stash.rs).
-    Stash(StashMsg),
-    /// Stash and carry on: the auto-stash prompt, putting it back and Show stash (update/auto_stash.rs).
-    AutoStash(AutoStashMsg),
-    /// Restoring a file from a commit, opening or showing a working-tree file (update/files.rs).
-    Files(FilesMsg),
-    /// Creating, renaming, deleting and discarding working-tree files (update/work_files.rs).
-    WorkFile(WorkFileMsg),
-    /// Branch menus and dialogs (update/branches.rs).
-    Branch(BranchMsg),
-    /// The Clone dialog (update/clone.rs).
-    Clone(CloneMsg),
-    /// The Init dialog (update/init.rs).
-    Init(InitMsg),
-    /// The New tag dialog and the TAGS section's remote push and delete (tag.rs).
-    Tag(crate::tag::TagMsg),
-    /// The REMOTE section and the Add/Edit remote dialog (remote.rs).
-    Remote(crate::remote::RemoteMsg),
-    /// The WORKTREES section and Create worktree dialog (worktree.rs).
-    Worktree(crate::worktree::WorktreeMsg),
-    /// The SUBMODULES section (submodule.rs).
-    Submodule(SubmoduleMsg),
-    /// The built-in terminal panel (terminal.rs).
-    Terminal(TerminalMsg),
-    /// Zoom and showing or hiding the left, details and toolbar panels (update/layout.rs).
-    Layout(LayoutMsg),
-    /// Saving commits as a patch file and applying one (update/patch.rs).
-    Patch(crate::patch::PatchMsg),
-    /// External editor and terminal (update/tools.rs).
-    Tools(crate::tools::ToolsMsg),
-    /// Custom commands from commands.toml files (update/custom_commands.rs).
-    CustomCommand(crate::custom_commands::CustomCommandMsg),
-    /// Predicted merge conflicts of the current branch (update/conflict_check.rs).
-    ConflictCheck(crate::conflict_check::ConflictCheckMsg),
-    /// Previewing an operation before it runs (update/op_preview.rs).
-    OpPreview(OpPreviewMsg),
-    /// The operation journal: the states HEAD and the branches have been in, and Restore
-    /// (update/journal.rs).
-    Journal(crate::journal::JournalMsg),
-    /// Comparing two versions of a branch commit by commit (update/range_diff.rs).
-    RangeDiff(crate::range_diff::RangeDiffMsg),
-    /// The pull request panel (update/pull_request/).
-    PullRequest(crate::pull_request::PullRequestMsg),
-    /// The issue panel and the Create issue dialog (update/issue.rs, update/issue_create.rs).
-    Issue(IssueMsg),
-    /// Hosting services: pull requests, issues, connections (update/forge.rs).
-    Forge(ForgeMsg),
-    /// PR and issue filters: header pickers and the saved-filter dialog (update/forge_filters.rs,
-    /// update/forge_filter_edit.rs).
-    ForgeFilter(FilterMsg),
-    /// Publishing a repository with no remote (update/publish.rs).
-    Publish(PublishMsg),
-    /// Credential prompts from git and ssh (update/askpass.rs).
-    Credentials(CredentialMsg),
-    /// The Preferences window, pickers and signing keys (update/prefs.rs).
-    Prefs(PrefsMsg),
-    /// Preferences > Keyboard: recording, conflicts and resets (update/keys.rs).
-    Keys(KeysMsg),
-    /// The Git LFS preferences page (lfs.rs).
-    Lfs(crate::lfs::LfsMsg),
-    /// The Git Flow page and Start dialog (gitflow.rs).
-    GitFlow(crate::gitflow::GitFlowMsg),
-    /// The Sparse Checkout preferences page (update/sparse.rs).
-    Sparse(SparseMsg),
-    /// Preferences > SSH: key pairs and generating a key (ssh.rs).
-    Ssh(crate::ssh::SshMsg),
-    /// Named identity profiles: Preferences > Profile and switching (update/profiles.rs).
-    Profile(crate::profile::ProfileMsg),
-    /// The command palette (update/palette.rs).
-    Palette(PaletteMsg),
-    /// The repository trust prompt (update/trust.rs).
-    Trust(TrustMsg),
-    /// Which git runs and what it can do; repositories git refuses for their owner
-    /// (update/git_env.rs).
-    GitEnv(crate::git_env::GitEnvMsg),
-    /// Theme files: loading, reloading, the folder and new files (update/themes.rs).
-    Theme(crate::themes::ThemeMsg),
-    /// Activity, error and performance logs (update/logs.rs).
-    Logs(crate::logs::LogsMsg),
-    /// The first-run welcome and the tour of the main window (update/onboarding.rs).
-    Onboarding(crate::onboarding::OnboardingMsg),
-    /// glowfly:// links: copying, opening, their dialogs and the scheme registration
-    /// (update/deep_link.rs).
-    DeepLink(crate::deep_link::DeepLinkMsg),
-    /// The cross-repository dashboard (update/dashboard.rs).
-    Dashboard(DashboardMsg),
-    /// Holding and closing toasts, and clicks on desktop notifications (update/notify.rs).
-    Notify(NotifyMsg),
-    /// A click on a dialog's backdrop or Esc, and the discard question (update/dialog.rs).
-    Dialog(DialogMsg),
-    /// Quitting and the About dialog (update/app.rs).
-    App(AppMsg),
-    /// Glowfly's own updates and the release notes (update/updates.rs).
-    Updates(UpdateMsg),
-    /// Fetch full history's size check and a partial clone's missing contents (update/partial.rs).
-    Partial(PartialMsg),
-    /// A key from ui/shortcuts/global.rs: stage or unstage the open file or its selected lines, stage
-    /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
-    /// and turned into the usual messages in update/shortcuts.rs.
-    Shortcut(crate::keymap::KeyAction),
+// The areas' variants come from the table in areas.rs; the cross-cutting messages, which are
+// not one area's and are handled in update/mod.rs, are written here.
+msg_areas! { msg_enum! {
+    variants {
+        /// A key from ui/shortcuts/global.rs: stage or unstage the open file or its selected lines, stage
+        /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
+        /// and turned into the usual messages in update/shortcuts.rs.
+        Shortcut(crate::keymap::KeyAction),
 
-    // ---- Cross-cutting: not one area's, so handled in update/mod.rs.
-    /// Once per frame: drives auto-fetch and expiring toasts.
-    Tick(Instant),
-    /// A result for the repository at `workdir`, applied only if that is still the active tab
-    /// (otherwise see `on_inactive`). Wraps any area's result.
-    Scoped {
-        workdir: PathBuf,
-        msg: Box<Msg>,
-    },
-    /// Ask before running `then`, from any area (`Msg::confirm`).
-    Confirm {
-        title: String,
-        body: String,
-        button: String,
-        then: Box<Msg>,
-    },
-    /// Ask before running `then`, which loses work: drawn with a danger button
-    /// (`Msg::confirm_danger`). With `ack`, a checkbox with that label must be ticked first
-    /// (`Msg::confirm_danger_ack`), for a step that loses work for good.
-    ConfirmDanger {
-        title: String,
-        body: String,
-        button: String,
-        ack: Option<String>,
-        then: Box<Msg>,
-    },
-    ConfirmAccepted,
-    /// The alternative button of `Modal::ConfirmChoice`: runs its `alt_then`.
-    ConfirmAlt,
-    /// A toast's action button (state/toasts.rs): runs its message and removes the toast (update/notify.rs).
-    ToastAction(u64),
-    /// A toast's Details beside its fix (state/toasts.rs): removes the toast and shows the
-    /// activity log.
-    ToastDetails(u64),
-    /// Close whichever dialog is open.
-    CloseModal,
-    // The outside world, from menus all over the app.
-    Copy(String),
-    OpenUrl(String),
-    OpenTerminal,
-    OpenFolder(PathBuf),
-    /// The activity log's Clear button.
-    ClearLog,
-    /// A line for the activity log from a background effect of any area.
-    Logged {
-        ok: bool,
-        text: String,
-    },
-}
+        // ---- Cross-cutting: not one area's, so handled in update/mod.rs.
+        /// Once per frame: drives auto-fetch and expiring toasts.
+        Tick(Instant),
+        /// A result for the repository at `workdir`, applied only if that is still the active tab
+        /// (otherwise see `on_inactive`). Wraps any area's result.
+        Scoped {
+            workdir: PathBuf,
+            msg: Box<Msg>,
+        },
+        /// Ask before running `then`, from any area (`Msg::confirm`).
+        Confirm {
+            title: String,
+            body: String,
+            button: String,
+            then: Box<Msg>,
+        },
+        /// Ask before running `then`, which loses work: drawn with a danger button
+        /// (`Msg::confirm_danger`). With `ack`, a checkbox with that label must be ticked first
+        /// (`Msg::confirm_danger_ack`), for a step that loses work for good.
+        ConfirmDanger {
+            title: String,
+            body: String,
+            button: String,
+            ack: Option<String>,
+            then: Box<Msg>,
+        },
+        ConfirmAccepted,
+        /// The alternative button of `Modal::ConfirmChoice`: runs its `alt_then`.
+        ConfirmAlt,
+        /// A toast's action button (state/toasts.rs): runs its message and removes the toast (update/notify.rs).
+        ToastAction(u64),
+        /// A toast's Details beside its fix (state/toasts.rs): removes the toast and shows the
+        /// activity log.
+        ToastDetails(u64),
+        /// Close whichever dialog is open.
+        CloseModal,
+        // The outside world, from menus all over the app.
+        Copy(String),
+        OpenUrl(String),
+        OpenTerminal,
+        OpenFolder(PathBuf),
+        /// The activity log's Clear button.
+        ClearLog,
+        /// A line for the activity log from a background effect of any area.
+        Logged {
+            ok: bool,
+            text: String,
+        },
+    }
+    on_inactive {
+        Msg::Tick(_)
+        | Msg::Shortcut(_)
+        | Msg::Confirm { .. }
+        | Msg::ConfirmDanger { .. }
+        | Msg::ConfirmAccepted
+        | Msg::ConfirmAlt
+        | Msg::ToastAction(_)
+        | Msg::ToastDetails(_)
+        | Msg::CloseModal
+        | Msg::Copy(_)
+        | Msg::OpenUrl(_)
+        | Msg::OpenTerminal
+        | Msg::OpenFolder(_)
+        | Msg::Scoped { .. }
+        | Msg::ClearLog => None,
+        // Every runner line is a failure; it belongs to that tab's log.
+        Msg::Logged { ok, text } => (!ok).then_some(Inactive::Log(text)),
+    }
+    area {
+        Msg::Shortcut(_) => "shortcut",
+        Msg::Tick(_) => "tick",
+        Msg::Scoped { msg, .. } => msg.area(),
+        Msg::Confirm { .. } | Msg::ConfirmDanger { .. } | Msg::ConfirmAccepted | Msg::ConfirmAlt | Msg::CloseModal => "confirm",
+        Msg::ToastAction(_) | Msg::ToastDetails(_) => "toast",
+        Msg::Copy(_) | Msg::OpenUrl(_) | Msg::OpenTerminal | Msg::OpenFolder(_) => "outside",
+        Msg::ClearLog | Msg::Logged { .. } => "log",
+    }
+} }
 
 /// What a result for a tab that is no longer active still needs (`Msg::on_inactive`).
 pub enum Inactive {
@@ -280,96 +180,6 @@ pub enum Inactive {
 }
 
 impl Msg {
-    /// What a result for a tab that is no longer active still needs (`Msg::Scoped`); `None`
-    /// drops it, and the tab reloads when it is selected again. Each area decides for each of
-    /// its messages.
-    pub fn on_inactive(self) -> Option<Inactive> {
-        match self {
-            Msg::Repo(m) => m.on_inactive(),
-            Msg::Recent(m) => m.on_inactive(),
-            Msg::Repos(m) => m.on_inactive(),
-            Msg::Load(m) => m.on_inactive(),
-            Msg::Watch(m) => m.on_inactive(),
-            Msg::Selection(m) => m.on_inactive(),
-            Msg::Graph(m) => m.on_inactive(),
-            Msg::Search(m) => m.on_inactive(),
-            Msg::Avatars(m) => m.on_inactive(),
-            Msg::Diff(m) => m.on_inactive(),
-            Msg::Conflict(m) => m.on_inactive(),
-            Msg::History(m) => m.on_inactive(),
-            Msg::Blame(m) => m.on_inactive(),
-            Msg::Rebase(m) => m.on_inactive(),
-            Msg::Stack(m) => m.on_inactive(),
-            Msg::Tabs(m) => m.on_inactive(),
-            Msg::Stage(m) => m.on_inactive(),
-            Msg::Commit(m) => m.on_inactive(),
-            Msg::Job(m) => m.on_inactive(),
-            Msg::Stash(m) => m.on_inactive(),
-            Msg::AutoStash(m) => m.on_inactive(),
-            Msg::Files(m) => m.on_inactive(),
-            Msg::WorkFile(m) => m.on_inactive(),
-            Msg::Branch(m) => m.on_inactive(),
-            Msg::Clone(m) => m.on_inactive(),
-            Msg::Init(m) => m.on_inactive(),
-            Msg::Tag(m) => m.on_inactive(),
-            Msg::Remote(m) => m.on_inactive(),
-            Msg::Worktree(m) => m.on_inactive(),
-            Msg::Submodule(m) => m.on_inactive(),
-            Msg::Terminal(m) => m.on_inactive(),
-            Msg::Layout(m) => m.on_inactive(),
-            Msg::Patch(m) => m.on_inactive(),
-            Msg::Tools(m) => m.on_inactive(),
-            Msg::CustomCommand(m) => m.on_inactive(),
-            Msg::ConflictCheck(m) => m.on_inactive(),
-            Msg::OpPreview(m) => m.on_inactive(),
-            Msg::Journal(m) => m.on_inactive(),
-            Msg::RangeDiff(m) => m.on_inactive(),
-            Msg::PullRequest(m) => m.on_inactive(),
-            Msg::Issue(m) => m.on_inactive(),
-            Msg::Forge(m) => m.on_inactive(),
-            Msg::ForgeFilter(m) => m.on_inactive(),
-            Msg::Publish(m) => m.on_inactive(),
-            Msg::Credentials(m) => m.on_inactive(),
-            Msg::Prefs(m) => m.on_inactive(),
-            Msg::Keys(m) => m.on_inactive(),
-            Msg::Lfs(m) => m.on_inactive(),
-            Msg::GitFlow(m) => m.on_inactive(),
-            Msg::Sparse(m) => m.on_inactive(),
-            Msg::Ssh(m) => m.on_inactive(),
-            Msg::Profile(m) => m.on_inactive(),
-            Msg::Palette(m) => m.on_inactive(),
-            Msg::Trust(m) => m.on_inactive(),
-            Msg::GitEnv(m) => m.on_inactive(),
-            Msg::Theme(m) => m.on_inactive(),
-            Msg::Logs(m) => m.on_inactive(),
-            Msg::Onboarding(m) => m.on_inactive(),
-            Msg::DeepLink(m) => m.on_inactive(),
-            Msg::Dashboard(m) => m.on_inactive(),
-            Msg::Notify(m) => m.on_inactive(),
-            Msg::Dialog(m) => m.on_inactive(),
-            Msg::App(m) => m.on_inactive(),
-            Msg::Updates(m) => m.on_inactive(),
-            Msg::Partial(m) => m.on_inactive(),
-            Msg::Tick(_)
-            | Msg::Shortcut(_)
-            | Msg::Confirm { .. }
-            | Msg::ConfirmDanger { .. }
-            | Msg::ConfirmAccepted
-            | Msg::ConfirmAlt
-            | Msg::ToastAction(_)
-            | Msg::ToastDetails(_)
-            | Msg::CloseModal
-            | Msg::Copy(_)
-            | Msg::OpenUrl(_)
-            | Msg::OpenTerminal
-            | Msg::OpenFolder(_)
-            | Msg::Scoped { .. }
-            | Msg::ClearLog => None,
-            // Every runner line is a failure; it belongs to that tab's log.
-            Msg::Logged { ok, text } => (!ok).then_some(Inactive::Log(text)),
-        }
-    }
-
     pub fn git(label: &str, a: &[&str]) -> Msg {
         Msg::Job(JobMsg::Git { label: label.into(), cmds: vec![args(a)] })
     }

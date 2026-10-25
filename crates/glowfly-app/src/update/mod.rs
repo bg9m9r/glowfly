@@ -192,85 +192,67 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     };
     // A failure logged from here on is announced by a toast; one pushed by now isn't this one's.
     let toast_mark = st.toast_seq;
-    match msg {
-        // Each area's messages go to its handler, which matches them exhaustively.
-        Msg::Repo(m) => repo::handle(st, m, now, &mut fx),
-        Msg::Recent(m) => recent::handle(st, m, now, &mut fx),
-        Msg::Repos(m) => repos::handle(st, m, now, &mut fx),
-        Msg::Load(m) => refresh::handle(st, m, now, &mut fx),
-        Msg::Watch(m) => watch::handle(st, m, now, &mut fx),
-        Msg::Selection(m) => selection::handle(st, m, now, &mut fx),
-        Msg::Graph(m) => graph_filter::handle(st, m, &mut fx),
-        Msg::Search(m) => search::handle(st, m, now, &mut fx),
-        Msg::Avatars(m) => avatars::handle(st, m, &mut fx),
-        Msg::Diff(m) => diff::handle(st, m, &mut fx),
-        Msg::Conflict(m) => conflict::handle(st, m, &mut fx),
-        Msg::History(m) => history::handle(st, m, now, &mut fx),
-        Msg::Blame(m) => blame::handle(st, m, now, &mut fx),
-        Msg::Rebase(m) => rebase::handle(st, m, now, &mut fx),
-        Msg::Stack(m) => stack_push::handle(st, m, now, &mut fx),
-        Msg::Tabs(m) => tabs::handle(st, m, &mut fx),
-        Msg::Stage(m) => ops::stage(st, m, now, &mut fx),
-        Msg::Commit(m) => commit::handle(st, m, now, &mut fx),
-        Msg::Job(m) => ops::job(st, m, now, &mut fx),
-        Msg::Stash(m) => stash::handle(st, m, &mut fx),
-        Msg::AutoStash(m) => auto_stash::handle(st, m, now, &mut fx),
-        Msg::Files(m) => files::handle(st, m, now, &mut fx),
-        Msg::WorkFile(m) => work_files::handle(st, m, now, &mut fx),
-        Msg::Branch(m) => branches::handle(st, m, &mut fx),
-        Msg::Clone(m) => clone::handle(st, m, now, &mut fx),
-        Msg::Init(m) => init::handle(st, m, now, &mut fx),
-        Msg::Tag(m) => tags::handle(st, m, &mut fx),
-        Msg::Remote(m) => remotes::handle(st, m, &mut fx),
-        Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
-        Msg::Submodule(m) => submodules::handle(st, m, now, &mut fx),
-        Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
-        Msg::Layout(m) => layout::handle(st, m, now, &mut fx),
-        Msg::Patch(m) => patch::handle(st, m, now, &mut fx),
-        Msg::Tools(m) => tools::handle(st, m, now, &mut fx),
-        Msg::CustomCommand(m) => custom_commands::handle(st, m, now, &mut fx),
-        Msg::ConflictCheck(m) => conflict_check::handle(st, m, now, &mut fx),
-        Msg::OpPreview(m) => op_preview::handle(st, m, now, &mut fx),
-        Msg::Journal(m) => journal::handle(st, m, now, &mut fx),
-        Msg::RangeDiff(m) => range_diff::handle(st, m, now, &mut fx),
-        Msg::PullRequest(m) => pull_request::handle(st, m, now, &mut fx),
-        Msg::Issue(m) => issue::handle(st, m, now, &mut fx),
-        Msg::Forge(m) => forge::handle(st, m, now, &mut fx),
-        Msg::ForgeFilter(m) => forge_filters::handle(st, m, &mut fx),
-        Msg::Publish(m) => publish::handle(st, m, &mut fx),
-        Msg::Credentials(m) => askpass::handle(st, m, now, &mut fx),
-        Msg::Prefs(m) => prefs::handle(st, m, now, &mut fx),
-        Msg::Keys(m) => keys::handle(st, m, &mut fx),
-        Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
-        Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
-        Msg::Sparse(m) => sparse::handle(st, m, now, &mut fx),
-        Msg::Ssh(m) => ssh::handle(st, m, now, &mut fx),
-        Msg::Profile(m) => profiles::handle(st, m, now, &mut fx),
-        Msg::Palette(m) => palette::handle(st, m, now, &mut fx),
-        Msg::Trust(m) => trust::handle(st, m, now, &mut fx),
-        Msg::GitEnv(m) => git_env::handle(st, m, now, &mut fx),
-        Msg::Theme(m) => themes::handle(st, m, now, &mut fx),
-        Msg::Logs(m) => logs::handle(st, m, now, &mut fx),
-        Msg::Onboarding(m) => onboarding::handle(st, m, now, &mut fx),
-        Msg::DeepLink(m) => deep_link::handle(st, m, now, &mut fx),
-        Msg::Dashboard(m) => dashboard::handle(st, m, now, &mut fx),
-        Msg::Dialog(m) => dialog::handle(st, m),
-        Msg::App(m) => app::handle(st, m, &mut fx),
-        Msg::Updates(m) => updates::handle(st, m, now, &mut fx),
-        Msg::Partial(m) => partial::handle(st, m, &mut fx),
-        Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
+    route(st, msg, now, &mut fx);
+    prefs_leave::settle(st);
+    // Records a dialog that just opened (to tell later whether it was edited) and forgets a
+    // closed one.
+    st.dialog.track(st.modal.as_ref());
+    // An expanded commit panel lasts only for the tool view it was expanded in.
+    crate::state::layout::drop_stale_expansion(st);
+    logs_runs::stamp(st, now);
+    logs_tabs::announce(st, toast_mark, now);
+    logs::flush(st, &mut fx);
+    large_graph::settle(st, &mut fx);
+    fx
+}
+
+/// `handler_call!(f, st, m, now, fx; <args>)`: calls an area's handler with the arguments its
+/// row in msg/areas.rs names (`now, fx`, `fx` or none).
+macro_rules! handler_call {
+    ($f:path, $st:ident, $m:ident, $now:ident, $fx:ident; now, fx) => {
+        $f($st, $m, $now, $fx)
+    };
+    ($f:path, $st:ident, $m:ident, $now:ident, $fx:ident; fx) => {
+        $f($st, $m, $fx)
+    };
+    ($f:path, $st:ident, $m:ident, $now:ident, $fx:ident;) => {
+        $f($st, $m)
+    };
+}
+
+/// Declares `fn $name($st, $msg, $now, $fx)`: each area's messages go to its handler (from the
+/// rows of msg/areas.rs), then the arms given for the rest.
+macro_rules! area_router {
+    (
+        { fn $name:ident($st:ident, $msg:ident, $now:ident, $fx:ident) { $($extra:tt)* } }
+        $( $(#[$doc:meta])* $V:ident($T:ty) $area:literal => $module:ident :: $func:ident ( $($arg:ident),* ); )*
+    ) => {
+        fn $name($st: &mut AppState, $msg: Msg, $now: Instant, $fx: &mut Vec<Effect>) {
+            match $msg {
+                $( Msg::$V(m) => handler_call!($module::$func, $st, m, $now, $fx; $($arg),*), )*
+                $($extra)*
+            }
+        }
+    };
+}
+
+// Each area's messages go to its handler, which matches them exhaustively; the shortcut keys
+// and the cross-cutting messages (see `Msg`) are handled here.
+crate::msg::msg_areas! { area_router! {
+    fn route(st, msg, now, fx) {
+        Msg::Shortcut(a) => shortcuts::handle(st, a, now, fx),
 
         // Cross-cutting messages, handled here (see `Msg`).
         Msg::Tick(t) => {
-            ops::auto_fetch(st, t, &mut fx);
-            watch::poll(st, t, &mut fx);
-            build_status::tick(st, t, &mut fx);
-            pull_request::checks_tick(st, t, &mut fx);
-            updates::tick(st, t, &mut fx);
+            ops::auto_fetch(st, t, fx);
+            watch::poll(st, t, fx);
+            build_status::tick(st, t, fx);
+            pull_request::checks_tick(st, t, fx);
+            updates::tick(st, t, fx);
             prefs_save::tick(st, t);
-            load_more::tick(st, t, &mut fx);
-            search_loaded::tick(st, t, &mut fx);
-            history_index::tick(st, t, &mut fx);
+            load_more::tick(st, t, fx);
+            search_loaded::tick(st, t, fx);
+            history_index::tick(st, t, fx);
         }
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {
@@ -304,26 +286,14 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
                 fx.extend(update(st, *alt_then, now));
             }
         }
-        Msg::ToastAction(id) => notify::toast_action(st, id, false, now, &mut fx),
-        Msg::ToastDetails(id) => notify::toast_action(st, id, true, now, &mut fx),
-        Msg::Notify(m) => notify::handle(st, m, now, &mut fx),
+        Msg::ToastAction(id) => notify::toast_action(st, id, false, now, fx),
+        Msg::ToastDetails(id) => notify::toast_action(st, id, true, now, fx),
         Msg::CloseModal => dialog::close(st),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::Os(OsEffect::OpenUrl(url))),
-        Msg::OpenTerminal => tools::open_terminal(st, now, &mut fx),
+        Msg::OpenTerminal => tools::open_terminal(st, now, fx),
         Msg::OpenFolder(p) => fx.push(Effect::Os(OsEffect::OpenFolder(p))),
         Msg::Logged { ok, text } => st.log(ok, text),
-        Msg::ClearLog => logs::clear(st, &mut fx),
+        Msg::ClearLog => logs::clear(st, fx),
     }
-    prefs_leave::settle(st);
-    // Records a dialog that just opened (to tell later whether it was edited) and forgets a
-    // closed one.
-    st.dialog.track(st.modal.as_ref());
-    // An expanded commit panel lasts only for the tool view it was expanded in.
-    crate::state::layout::drop_stale_expansion(st);
-    logs_runs::stamp(st, now);
-    logs_tabs::announce(st, toast_mark, now);
-    logs::flush(st, &mut fx);
-    large_graph::settle(st, &mut fx);
-    fx
-}
+} }
