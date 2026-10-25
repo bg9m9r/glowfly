@@ -63,6 +63,8 @@ source file, update its line here. Features that span every layer are in
 - `palette_suggested.rs`: the empty query's Recent, Suggested and All commands groups and which commands the repository's state suggests.
 - `op_actions.rs`: the operation in progress: its banner commands.
 - `op_steps.rs`: the WIP panel's steps (which operation, each step's state, which are open and their words).
+- `file_tree.rs`: a changed-file list grouped in folders: the tree's rows in order (compacted folder chains, folders first), its file order and stepping past collapsed folders.
+- `file_folds.rs`: the folders collapsed in each changed-file list's tree (view state, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the resolved changes.
 - `toolbar_tips.rs`: the toolbar's rules: why each button is off, the ahead/behind and last-fetched lines and the Push, Pull, Stash and Pop previews.
@@ -87,6 +89,7 @@ source file, update its line here. Features that span every layer are in
 - `load_more.rs`: a failed load for more history kept with its automatic retries (its row in `ui/graph/more.rs`).
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
 - `wip_list.rs`: Up/Down between the Unstaged or Staged Files, moving on to the neighbouring file after S or U, and asking again for a file still opening (`renew_open`).
+- `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it).
 
 ## `runner/`: background work
 

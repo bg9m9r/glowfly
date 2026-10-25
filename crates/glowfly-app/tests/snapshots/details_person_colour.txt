@@ -55,6 +55,7 @@ Label "Parent"
 Button "Parent f58b66c"
 Button "Committed by Ada Lovelace"
 Button "Compare with working directory"
+Button "Show as tree"
 Label "1 changed file"
 Button "grace.txt" [off]
 Button "Resize branch / tag column"

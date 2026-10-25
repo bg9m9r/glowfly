@@ -3,7 +3,9 @@
 //! the commit panel collapsed beside a tool view is view state only (`view.details_expanded_for`),
 //! never saved, and lasts while that tool view stays open. Full screen is the window's own
 //! state, read each frame into `view.window` and never saved: the toggle only asks the shell. Opening or folding a step of the WIP panel's operation steps
-//! (`view.op_steps`) is view state too, kept until the operation moves on.
+//! (`view.op_steps`) is view state too, kept until the operation moves on. The changed-file
+//! lists' List / Tree choice is a setting, saved when it changes; the folders collapsed in
+//! their tree (`view.file_folds`) are view state, parked with the tab.
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::{LayoutMsg, Msg};
@@ -39,6 +41,13 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
                 st.view.op_steps.toggle(snap, step);
             }
         }
+        LayoutMsg::SetFileListMode(m) => {
+            if st.settings.file_list_mode != m {
+                st.settings.file_list_mode = m;
+                fx.push(super::prefs::save_settings(st));
+            }
+        }
+        LayoutMsg::ToggleFolder { list, path } => st.view.file_folds.toggle(list, path),
     }
 }
 

@@ -15,6 +15,11 @@ pub enum StageMsg {
     UnstageFile(String),
     StageAll,
     UnstageAll,
+    /// Stage everything under the folder `path` (no trailing '/'), from a folder row of
+    /// Unstaged Files.
+    StageFolder(String),
+    /// Unstage every staged file under the folder `path`.
+    UnstageFolder(String),
     /// Revert tracked `path` to its index version (the view has confirmed).
     DiscardFile(String),
     /// Stage, unstage or discard hunk `index` of the diff shown at `generation`
@@ -90,6 +95,8 @@ impl StageMsg {
             | Self::UnstageFile(..)
             | Self::StageAll
             | Self::UnstageAll
+            | Self::StageFolder(..)
+            | Self::UnstageFolder(..)
             | Self::DiscardFile(..)
             | Self::Hunk { .. }
             | Self::ApplyLines(..)

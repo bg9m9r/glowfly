@@ -55,6 +55,9 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 - `details_chips.rs`: the details' row of quiet chips for the SHA, parents and committer, drawn by `widgets/quiet_chip.rs`.
 - `file_status.rs`: the changed-file rows' status chip.
 - `details_wip_header.rs`: the WIP lists' headers with their more-actions menu.
+- `details_wip_list.rs`: the Unstaged and Staged Files lists, in List or Tree mode.
+- `file_tree.rs`: the changed-file lists as a tree: the rows a list draws (cached between frames), a folder row, the header's List / Tree toggle and a file row's indent.
+- `folder_menu.rs`: a folder row's menu: Folder history, Copy path, and Stage or Unstage folder in the WIP lists.
 - `wip_keys.rs`: the Unstaged and Staged Files lists' keyboard focus: one stable focus target per list with its plain Up/Down.
 - The WIP lists' rows are `keyed_file_row_with_end`s with no Tab stops of their own, and the focused list's current row gets `file_row_focus`'s ring.
 - `op_strip.rs`: the strip under the toolbar while an operation is in progress.

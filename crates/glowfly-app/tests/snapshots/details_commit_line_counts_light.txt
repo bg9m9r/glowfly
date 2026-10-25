@@ -49,9 +49,10 @@ Button "Commit 133c843"
 Label "Parent"
 Button "Parent f0d635c"
 Button "Compare with working directory"
-Label "6 changed files"
+Button "Show as tree"
 Label "−2"
 Label "+38"
+Label "6 changed files"
 Button "README.md" [off]
 Label "+2"
 Button "app.txt" [off]

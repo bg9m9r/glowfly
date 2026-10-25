@@ -57,6 +57,8 @@ Label "empty repository"
 Label "275189b"
 Button "Swap direction"
 Label "3 commits combined"
+Button "Show as tree"
+Label "2 changed files"
 Button "README.md" [off]
 Button "app.txt" [off]
 Button "Resize branch / tag column"

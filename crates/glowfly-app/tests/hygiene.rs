@@ -33,10 +33,10 @@ const LONG_FILES: &[(&str, usize)] = &[
     ("crates/glowfly-app/src/runner/guard.rs", 498),
     ("crates/glowfly-app/src/state/mod.rs", 695),
     ("crates/glowfly-app/src/ui/mod.rs", 591),
-    ("crates/glowfly-app/src/update/repo.rs", 411),
+    ("crates/glowfly-app/src/update/repo.rs", 407),
     ("crates/glowfly-core/src/forge/github.rs", 406),
     ("crates/glowfly-core/src/repo/mod.rs", 514),
-    ("crates/glowfly-core/src/settings.rs", 463),
+    ("crates/glowfly-core/src/settings.rs", 410),
 ];
 
 /// How many log and toast calls in `update/` and `state/` still pass English text. Lower it when

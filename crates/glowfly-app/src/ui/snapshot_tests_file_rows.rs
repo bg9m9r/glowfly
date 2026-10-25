@@ -149,3 +149,6 @@ fn file_rows_selected_and_hovered() {
     selected_and_hovered(ThemeChoice::Dark, true, "file_rows_selected_and_hovered");
     selected_and_hovered(ThemeChoice::Light, false, "file_rows_selected_and_hovered_light");
 }
+
+#[path = "snapshot_tests_file_tree.rs"]
+mod file_tree;

@@ -1,10 +1,11 @@
-//! Messages for the window's zoom, full screen and showing or hiding its panels
-//! (update/layout.rs).
+//! Messages for the window's zoom, full screen, showing or hiding its panels and how the
+//! changed-file lists show their files (update/layout.rs).
 
 use super::Inactive;
+use crate::state::file_folds::FileListId;
 use crate::state::layout::Panel;
 use crate::state::op_steps::OpStep;
-use glowfly_core::settings::SizedPanel;
+use glowfly_core::settings::{FileListMode, SizedPanel};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LayoutMsg {
@@ -26,6 +27,10 @@ pub enum LayoutMsg {
     ExpandDetails,
     /// Open a folded step of the WIP panel's operation steps, or fold an open one.
     ToggleOpStep(OpStep),
+    /// The list header's List / Tree toggle (saved).
+    SetFileListMode(FileListMode),
+    /// Collapse or expand a folder row of a changed-file list's tree.
+    ToggleFolder { list: FileListId, path: String },
 }
 
 impl LayoutMsg {
@@ -40,7 +45,9 @@ impl LayoutMsg {
             | Self::SetPanel { .. }
             | Self::PanelSize { .. }
             | Self::ExpandDetails
-            | Self::ToggleOpStep(_) => None,
+            | Self::ToggleOpStep(_)
+            | Self::SetFileListMode(_)
+            | Self::ToggleFolder { .. } => None,
         }
     }
 }

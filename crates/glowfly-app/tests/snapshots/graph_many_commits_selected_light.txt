@@ -55,6 +55,7 @@ Button "Fix build on Windows" [off]
 Label "275189b"
 Button "Add login page" [off]
 Label "7e24110"
+Button "Show as tree"
 Label "Each commit's own changes, newest first"
 Label "1 file"
 Label "(merge, against its first parent)"

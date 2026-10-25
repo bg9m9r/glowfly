@@ -10,6 +10,9 @@
 //! menu's `Ui`, so tests can render them without opening a popup. `file_buttons` reuses the
 //! restore label and message for the same actions as header buttons.
 
+#[path = "folder_menu.rs"]
+pub(super) mod folder_menu;
+
 #[path = "file_menu_extra.rs"]
 mod extra;
 

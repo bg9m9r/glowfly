@@ -38,6 +38,8 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             let paths = st.snap.as_ref().map(|s| s.staged.iter().map(|f| f.path.clone()).collect()).unwrap_or_default();
             local(st, LocalOp::UnstagePaths(paths), fx);
         }
+        StageMsg::StageFolder(p) => super::stage_folder::stage(st, p, now, fx),
+        StageMsg::UnstageFolder(p) => super::stage_folder::unstage(st, p, fx),
         StageMsg::DiscardFile(path) => {
             // `git restore` writes the file, so filters and attributes apply.
             if super::git_env::allows(st, glowfly_core::git_version::Feature::Restore, now) {

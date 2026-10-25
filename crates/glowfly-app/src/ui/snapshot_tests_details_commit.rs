@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
-const MESSAGE: &str =
+pub(super) const MESSAGE: &str =
     "Add the guide and search index\n\nWrites docs/guide.md and an index for search.\nThe index is rebuilt on each start.";
 const GRACE: &str = "Grace Hopper <grace@example.com>";
 
@@ -56,7 +56,7 @@ fn head(dir: &Path) -> Oid {
 
 /// The fixture with one more commit, by Ada and committed by Grace, that edits, adds, deletes
 /// and adds a binary file, selected. `message` is its message.
-fn with_commit(theme: ThemeChoice, name: &str, message: &str) -> (AppState, PathBuf, Oid) {
+pub(super) fn with_commit(theme: ThemeChoice, name: &str, message: &str) -> (AppState, PathBuf, Oid) {
     let (mut st, dir) = with_repo(theme, name);
     write(&dir, "app.txt", "app\nfixed\nrouting\nconfig\n");
     write(&dir, "docs/guide.md", &lines("Step", 24));

@@ -49,6 +49,7 @@ Button "Commit 28b27c6"
 Label "Parent"
 Button "Parent f0d635c"
 Button "Compare with working directory"
+Button "Show as tree"
 Label "61 changed files"
 Button "f44.txt" [off]
 Button "f45.txt" [off]

@@ -256,6 +256,8 @@ pub struct Parked {
     pub diff_expanded: Expanded,
     /// The open diff's LFS summary and whether it shows the pointer text instead.
     pub lfs_diff: Option<super::lfs::LfsDiffNote>,
+    /// The folders collapsed in the changed-file lists' tree.
+    pub file_folds: crate::state::file_folds::FileFolds,
 }
 
 /// Where the tab at index `i` ends up after moving the tab at `from` to `to`: what

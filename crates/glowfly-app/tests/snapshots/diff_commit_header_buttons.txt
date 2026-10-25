@@ -49,6 +49,7 @@ Button "Commit 275189b"
 Label "Parent"
 Button "Parent b9eb369"
 Button "Compare with working directory"
+Button "Show as tree"
 Label "1 changed file"
 Button "app.txt" [on]
 Label "app.txt"

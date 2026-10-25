@@ -13,6 +13,7 @@ mod date_fmt;
 mod downloads;
 mod editor;
 mod file;
+mod file_lists;
 mod forge_filters;
 mod graph_columns;
 mod graph_filter;
@@ -33,7 +34,9 @@ mod theme_choice;
 pub mod themes;
 mod themes_io;
 mod tools;
+mod tracker;
 mod trust;
+mod ui_choices;
 mod updates;
 mod zoom;
 pub use crate::dates::DateKind;
@@ -43,6 +46,7 @@ pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use downloads::downloads_dir;
 pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
 pub use file::{LoadProblem, settings_file};
+pub use file_lists::FileListMode;
 pub use forge_filters::RepoForgeFilters;
 pub use graph_columns::GraphColumns;
 pub use graph_filter::{FilterOp, GraphFilter};
@@ -61,73 +65,11 @@ pub use terminal::{
 pub use theme_choice::ThemeChoice;
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
+pub use tracker::TrackerChoice;
 pub use trust::{RepoTrust, SavedTrust};
+pub use ui_choices::{BranchVisibility, Corner, DescriptionMode, DiffLayout, DiffMode};
 pub use updates::UpdatePrefs;
 pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_out_from};
-
-#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
-pub enum Corner {
-    BottomLeft,
-    BottomRight,
-    TopLeft,
-    TopRight,
-}
-
-#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
-pub enum DescriptionMode {
-    Always,
-    OnHover,
-    Never,
-}
-
-#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
-pub enum BranchVisibility {
-    All,
-    /// "Relevant branches": the checked-out branch, its upstream, the default branch, open PRs.
-    Smart,
-}
-
-/// Where a repository's issues come from (Repo-specific preferences > Issue tracker).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
-pub enum TrackerChoice {
-    /// The code host's own issues (GitHub/GitLab/Bitbucket issues, Azure Boards).
-    #[default]
-    Auto,
-    None,
-    /// A connected Jira site, optionally limited to one project key.
-    Jira {
-        account: Account,
-        project: String,
-    },
-    /// A connected Trello account, optionally limited to one board (empty: all boards).
-    Trello {
-        account: Account,
-        #[serde(default)]
-        board: String,
-        #[serde(default)]
-        board_name: String,
-    },
-}
-
-/// How the diff viewer lays out a file's changes.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
-pub enum DiffLayout {
-    /// Changes in one column, old and new numbers side by side.
-    #[default]
-    Inline,
-    /// Old file on the left, new file on the right.
-    Split,
-}
-
-/// How much of a file the diff viewer shows.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
-pub enum DiffMode {
-    /// Only the changes, with a few lines of context.
-    #[default]
-    Hunks,
-    /// Every line of the file, changes marked in place.
-    WholeFile,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
@@ -206,6 +148,10 @@ pub struct Settings {
     /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.
     #[serde(default)]
     pub column_widths: ColumnWidths,
+    /// Changed files in one list or grouped in folders (list header toggle, Preferences > UI
+    /// Customization).
+    #[serde(default)]
+    pub file_list_mode: FileListMode,
 
     // Diff viewer
     #[serde(default)]
@@ -390,6 +336,7 @@ impl Default for Settings {
             branch_palette: BranchPalette::Standard,
             columns: GraphColumns::default(),
             column_widths: ColumnWidths::default(),
+            file_list_mode: FileListMode::List,
             diff_layout: DiffLayout::Inline,
             diff_mode: DiffMode::Hunks,
             syntax_highlighting: true,

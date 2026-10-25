@@ -42,6 +42,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `terminal/pill.rs`: its pill tabs, named by `state/terminal_names.rs`.
 - `terminal/tabs.rs`: + and the shell picker.
 - `icons_panel.rs`: the header's quiet icon buttons, painted.
+- `icons_lists.rs`: the changed-file lists' List / Tree toggle icons, painted.
 - The panel is drawn under the central area or, maximised, in its place (`terminal::show_in_main`); renaming and maximising are handled in `update/terminal_header.rs`.
 - `terminal/metrics.rs`: the terminal grid's cell size, the monospace advance rounded to whole device pixels where epaint places each glyph, so text, cursor and mouse share one grid.
 - The header's ghost buttons and dividers are shared with the diff header (`widgets/ghost.rs`, see [ui-views.md](ui-views.md)).

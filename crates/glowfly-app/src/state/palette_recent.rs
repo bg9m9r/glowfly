@@ -191,7 +191,12 @@ impl PaletteCommand {
                 LayoutMsg::SetPanel { panel: Panel::Details, .. } => "details-panel",
                 LayoutMsg::SetPanel { panel: Panel::Toolbar, .. } => "toolbar",
                 LayoutMsg::SetPanel { panel: Panel::MenuBar, .. } => "menu-bar",
-                LayoutMsg::TogglePanel(_) | LayoutMsg::PanelSize { .. } | LayoutMsg::ExpandDetails | LayoutMsg::ToggleOpStep(_) => {
+                LayoutMsg::TogglePanel(_)
+                | LayoutMsg::PanelSize { .. }
+                | LayoutMsg::ExpandDetails
+                | LayoutMsg::ToggleOpStep(_)
+                | LayoutMsg::SetFileListMode(_)
+                | LayoutMsg::ToggleFolder { .. } => {
                     return None;
                 }
             },

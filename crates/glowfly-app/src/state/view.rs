@@ -10,6 +10,10 @@ use glowfly_core::settings::{ResizableColumn, SizedPanel};
 use std::collections::HashSet;
 use std::time::Instant;
 
+#[path = "file_folds.rs"]
+pub mod file_folds;
+#[path = "file_tree.rs"]
+pub mod file_tree;
 /// The shell's frame timing, which fills `ViewState::frame_times`.
 #[path = "frame_times.rs"]
 pub mod frame_times;
@@ -192,6 +196,9 @@ pub struct ViewState {
     /// The WIP panel's steps opened or folded by hand while an operation is in progress (set
     /// only by update, `LayoutMsg::ToggleOpStep`).
     pub op_steps: super::op_steps::StepFolds,
+    /// Folders collapsed in the changed-file lists' tree, per list (changed only by update,
+    /// LayoutMsg::ToggleFolder); parked with the tab, never saved.
+    pub file_folds: file_folds::FileFolds,
 }
 
 impl Default for ViewState {
@@ -252,6 +259,7 @@ impl Default for ViewState {
             quitting: false,
             backdrop: Backdrop::Solid,
             op_steps: Default::default(),
+            file_folds: Default::default(),
         }
     }
 }

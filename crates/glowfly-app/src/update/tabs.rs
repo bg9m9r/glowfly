@@ -238,6 +238,18 @@ pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     fx.push(save(st));
 }
 
+/// Forgets what was read from the repository the tab showed before (commit statistics, line
+/// counts, signatures, conflict checks) and the folders collapsed in its file lists, when the
+/// tab opens another repository.
+pub(super) fn forget_repo_reads(st: &mut AppState) {
+    st.stats.clear();
+    st.stats_pending.clear();
+    st.line_counts.clear();
+    st.view.file_folds.clear();
+    st.signatures.clear();
+    st.conflict_checks.clear();
+}
+
 pub(super) fn park(st: &mut AppState) -> Parked {
     st.stats_pending.clear();
     // Not kept: another tab may show the same path, and its diff reloads on return anyway.
@@ -283,6 +295,7 @@ pub(super) fn park(st: &mut AppState) -> Parked {
         diff_mode: st.settings.diff_mode,
         diff_expanded: std::mem::take(&mut st.view.diff_expanded),
         lfs_diff: st.lfs.diff.take(),
+        file_folds: std::mem::take(&mut st.view.file_folds),
     }
 }
 
@@ -295,6 +308,7 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.diff = p.diff;
     st.diff_preview = p.diff_preview;
     st.lfs.diff = p.lfs_diff;
+    st.view.file_folds = p.file_folds;
     // Diff results for this tab were dropped while it was parked: its hunks stay disabled
     // until the refresh that follows the switch reloads the diff.
     st.diff_gen += 1;

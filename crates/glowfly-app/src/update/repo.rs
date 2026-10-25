@@ -312,11 +312,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             st.draft = CommitDraft::default();
             st.undo = Default::default();
             st.view.scroll_to_row = Some(0);
-            st.stats.clear();
-            st.stats_pending.clear();
-            st.line_counts.clear();
-            st.signatures.clear();
-            st.conflict_checks.clear();
+            super::tabs::forget_repo_reads(st);
         }
         LoadKind::Refresh => {
             super::history::head_moved(st, &snap, fx);

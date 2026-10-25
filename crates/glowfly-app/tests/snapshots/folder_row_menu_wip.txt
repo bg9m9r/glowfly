@@ -1,0 +1,4 @@
+window 440x160
+Button "Folder history"
+Button "Copy path"
+Button "Stage folder"

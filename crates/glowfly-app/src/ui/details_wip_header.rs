@@ -115,6 +115,8 @@ pub(super) fn header(ui: &mut Ui, title: String, staged: bool, count: usize, ctx
     let sense = if staged { Sense::click() } else { Sense::hover() };
     let scope = ui.scope_builder(egui::UiBuilder::new().sense(sense), |ui| {
         frame(ui, |ui| {
+            // Rightmost; the buttons measure the room left after it.
+            crate::ui::list_row::file_tree::mode_toggle(ui, ctx.lang, ctx.mode, msgs);
             buttons(ui, &title, staged, count, ctx, msgs);
             // Drawn after the buttons, so a long title is cut short (whole on hover) instead of
             // running under them. Not selectable, so a right-click on the title reaches the

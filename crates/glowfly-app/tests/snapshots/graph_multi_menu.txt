@@ -53,6 +53,8 @@ Label "7e24110"
 Label "7e24110"
 Label "222c0ad"
 Button "Swap direction"
+Button "Show as tree"
+Label "2 changed files"
 Button "app.txt" [off]
 Button "search.txt" [off]
 Button "Resize branch / tag column"

@@ -1,10 +1,11 @@
 //! Next/previous change across files: where a step goes, and the file list a diff came from.
 
+use super::file_tree;
 use super::history::{FileHistoryView, HistoryKind};
 use super::{AppState, Selection, ViewState};
 use glowfly_core::diff_rows::step_change;
 use glowfly_core::repo::{DiffTarget, FileDiff, FileEntry};
-use glowfly_core::settings::Settings;
+use glowfly_core::settings::{FileListMode, Settings};
 use glowfly_core::whole_file::{self, Expanded};
 
 /// The change a file opened by stepping lands on.
@@ -141,16 +142,18 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
     let of = |files: &[FileEntry], make: &dyn Fn(String) -> DiffTarget| -> Vec<(DiffTarget, char)> {
         files.iter().map(|f| (make(f.path.clone()), f.status)).collect()
     };
+    // The lists drawn as a tree walk their files in tree order.
+    let shown = |files: &[FileEntry], make: &dyn Fn(String) -> DiffTarget| tree_ordered(st, of(files, make));
     match from {
         DiffTarget::Unstaged(_) | DiffTarget::Staged(_) => {
             let snap = st.snap.as_ref()?;
             let unstaged = snap.unstaged.iter().filter(|f| f.status != '!').map(|f| (DiffTarget::Unstaged(f.path.clone()), f.status));
             let staged = snap.staged.iter().map(|f| (DiffTarget::Staged(f.path.clone()), f.status));
-            Some(unstaged.chain(staged).collect())
+            Some(tree_ordered(st, unstaged.collect()).into_iter().chain(tree_ordered(st, staged.collect())).collect())
         }
         DiffTarget::Commit(oid, _) => {
             if let Some(d) = st.detail.as_ref().filter(|d| d.oid == *oid) {
-                return Some(of(&d.files, &|p| DiffTarget::Commit(*oid, p)));
+                return Some(shown(&d.files, &|p| DiffTarget::Commit(*oid, p)));
             }
             // A stacked list: every section's files, commit by commit.
             let Selection::Commits(m) = &st.selection else { return None };
@@ -158,7 +161,7 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
             stack
                 .iter()
                 .any(|c| c.oid == *oid)
-                .then(|| stack.iter().flat_map(|c| c.files.iter().map(|f| (DiffTarget::Commit(c.oid, f.path.clone()), f.status))).collect())
+                .then(|| stack.iter().flat_map(|c| shown(&c.files, &|p| DiffTarget::Commit(c.oid, p))).collect())
         }
         DiffTarget::Between(a, b, _) => {
             if let Some(files) = st.pull_request.as_ref().and_then(|v| v.diff_files(*a, *b)) {
@@ -166,7 +169,7 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
             }
             match &st.selection {
                 Selection::Commits(m) if m.compare_ends() == Some((*a, *b)) => match &m.changes {
-                    Some(Ok(c)) => Some(of(&c.files, &|p| DiffTarget::Between(*a, *b, p))),
+                    Some(Ok(c)) => Some(shown(&c.files, &|p| DiffTarget::Between(*a, *b, p))),
                     _ => None,
                 },
                 _ => None,
@@ -182,6 +185,17 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
             _ => None,
         },
     }
+}
+
+/// `entries` (one list's files) in tree order while the lists show as a tree, else unchanged.
+fn tree_ordered(st: &AppState, entries: Vec<(DiffTarget, char)>) -> Vec<(DiffTarget, char)> {
+    if st.settings.file_list_mode != FileListMode::Tree {
+        return entries;
+    }
+    let paths: Vec<&str> = entries.iter().map(|(t, _)| t.path()).collect();
+    let order = file_tree::file_order(&paths);
+    let mut slots: Vec<Option<(DiffTarget, char)>> = entries.into_iter().map(Some).collect();
+    order.into_iter().filter_map(|i| slots[i].take()).collect()
 }
 
 /// Where the header's counter stands: change `index` of `total` in the open diff, or with no

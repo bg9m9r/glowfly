@@ -7,6 +7,9 @@
 //! `row_text` for their unnamed path; and the side panels' row heights and insets. Selection and hover look
 //! like the graph's (`widgets::row_fill`).
 
+#[path = "file_tree.rs"]
+pub(super) mod file_tree;
+
 use super::theme::{color, spacing, tokens};
 use super::widgets::{row_fill, truncate};
 use crate::ui::theme::type_scale;
@@ -268,6 +271,21 @@ pub fn row_text(ui: &mut Ui, text: RichText, selected: bool) -> Response {
 /// `row_text` that leaves `reserve` px after it for what follows on the row (a file's line
 /// counts), cutting the text sooner.
 pub fn row_text_reserving(ui: &mut Ui, text: RichText, selected: bool, reserve: f32) -> Response {
+    let (resp, elided) = paint_row_text(ui, text, selected, reserve);
+    match elided {
+        Some(whole) => resp.on_hover_text(whole),
+        None => resp,
+    }
+}
+
+/// `row_text_reserving` whose hover text is always `hover`, cut or not (a tree's file row,
+/// which shows only the file's name: its whole path).
+pub fn row_text_hover(ui: &mut Ui, text: RichText, selected: bool, reserve: f32, hover: &str) -> Response {
+    paint_row_text(ui, text, selected, reserve).0.on_hover_text(hover)
+}
+
+/// The row text painted; with its whole text when it was cut.
+fn paint_row_text(ui: &mut Ui, text: RichText, selected: bool, reserve: f32) -> (Response, Option<String>) {
     let pad = ui.spacing().button_padding;
     let wrap_w = (ui.available_width() - 2.0 * pad.x - reserve).max(0.0);
     let galley = WidgetText::from(text).into_galley(ui, Some(TextWrapMode::Truncate), wrap_w, TextStyle::Button);
@@ -279,7 +297,8 @@ pub fn row_text_reserving(ui: &mut Ui, text: RichText, selected: bool, reserve: 
         let pos = ui.layout().align_size_within_rect(galley.size(), rect.shrink2(pad)).min;
         ui.painter().galley(pos, galley.clone(), col);
     }
-    if galley.elided { resp.on_hover_text(galley.text()) } else { resp }
+    let whole = galley.elided.then(|| galley.text().to_owned());
+    (resp, whole)
 }
 
 #[cfg(test)]

@@ -51,9 +51,10 @@ Button "Parent f0d635c"
 Button "Committed by Grace Hopper"
 Button "Compare with working directory"
 Label "Writes docs/guide.md and an index for search.\nThe index is rebuilt on each start."
-Label "6 changed files"
+Button "Show as tree"
 Label "−2"
 Label "+38"
+Label "6 changed files"
 Button "README.md" [off]
 Label "+2"
 Button "app.txt" [off]

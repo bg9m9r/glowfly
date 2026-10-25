@@ -3,6 +3,9 @@
 //! the file pages, open file, the expand chevrons, commit, globe, menu, info and repository),
 //! called from `widgets::paint_icon`.
 
+#[path = "icons_lists.rs"]
+pub(super) mod lists;
+
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
 

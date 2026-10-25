@@ -4,14 +4,17 @@
 //! an operation without steps (`details_banner.rs`). A conflicted row's Mark resolved always sits
 //! at its end, a row's Stage or Unstage while the row is hovered or current; the S and U keys
 //! and the row's menu reach them too.
-//! The Unstaged and Staged Files headers are in `details_wip_header.rs`; those two lists'
-//! keyboard focus and arrows are in `wip_keys.rs`.
+//! The Unstaged and Staged Files headers are in `details_wip_header.rs`, the lists themselves in
+//! `details_wip_list.rs`; those two lists' keyboard focus and arrows are in `wip_keys.rs`.
 
 /// Narrower than this, a row's action is an icon and its note is left out.
 const NARROW_ROW: f32 = 300.0;
 
 #[path = "details_wip_header.rs"]
 pub(super) mod header;
+#[path = "details_wip_list.rs"]
+mod list;
+pub(super) use list::file_list;
 
 use super::UiCache;
 use super::commit_box::BoxStyle;
@@ -30,6 +33,7 @@ use crate::msg::StageMsg;
 use crate::msg::WorkFileMsg;
 use crate::state::AppState;
 use crate::state::custom_commands::MenuCommands;
+use crate::state::file_folds::FileFolds;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::op_steps::op_kind;
 use crate::state::tool_compare::ToolAvail;
@@ -38,6 +42,7 @@ use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, FileEntry, Snapshot, WipLineCounts};
+use glowfly_core::settings::FileListMode;
 use glowfly_core::undo::DISCARD_STASH_MESSAGE;
 
 pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
@@ -53,7 +58,8 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let lines = st.line_counts.wip();
     let commands = MenuCommands::for_state(st);
     let (lfs, keys, lang) = (TrackContext::of(st), &st.keymap, st.settings.lang());
-    let ctx = RowContext { lfs, tools: &tools, keys, lang, lines, commands: &commands, keyed: false };
+    let (mode, folds) = (st.settings.file_list_mode, &st.view.file_folds);
+    let ctx = RowContext { lfs, tools: &tools, keys, lang, lines, commands: &commands, keyed: false, depth: None, mode, folds };
     let reveal = st.view.file_reveal.as_ref();
 
     // The commit box (or step 3) is pinned at the bottom at the height it took last frame; the
@@ -105,6 +111,12 @@ pub(super) struct RowContext<'a> {
     /// The row's list takes the keyboard focus as a whole (Unstaged and Staged Files), so the
     /// row is no Tab stop of its own.
     pub keyed: bool,
+    /// The row's level in its list's tree; None in List mode and in lists never shown as one.
+    pub depth: Option<usize>,
+    /// How the Unstaged and Staged Files lists show their files.
+    pub mode: FileListMode,
+    /// The folders collapsed in those lists' trees.
+    pub folds: &'a FileFolds,
 }
 
 /// What the central panel shows, so its file row is drawn selected.
@@ -123,87 +135,6 @@ pub(super) fn discard_all_text(t: Lang, keys: &Keymap) -> String {
 
 /// The file a step landed on, for its list to scroll to (`ViewState::file_reveal`).
 pub(super) type Reveal<'a> = Option<&'a (DiffTarget, u64)>;
-
-/// The Unstaged or Staged Files list of the working tree. Conflicted files have their own list
-/// (`conflict_files::show`), so Unstaged Files leaves them out. It scrolls to the file a step
-/// landed on. The list takes the keyboard focus as one Tab stop, or by a click on a row; while
-/// it has it, Up/Down step between its files and its current row (or, with none, the list) is
-/// ringed.
-pub(super) fn file_list(
-    ui: &mut egui::Ui,
-    snap: &Snapshot,
-    staged: bool,
-    (open, want): (&OpenFile, Reveal),
-    max_h: f32,
-    ctx: RowContext,
-    msgs: &mut Vec<Msg>,
-) {
-    // The English titles stay the lists' scroll ids, whatever the language.
-    let (id, all) = if staged { ("Staged files", &snap.staged) } else { ("Unstaged files", &snap.unstaged) };
-    // Built only while files are conflicted: a working tree can have thousands of changed files.
-    let kept: Option<Vec<&FileEntry>> =
-        (!staged && all.iter().any(|f| f.status == '!')).then(|| all.iter().filter(|f| f.status != '!').collect());
-    let count = kept.as_ref().map_or(all.len(), Vec::len);
-    let t = ctx.lang;
-    let title = if staged {
-        t.trf("details.wip.staged.header", &[("count", &count)])
-    } else {
-        t.trf("details.wip.unstaged.header", &[("count", &count)])
-    };
-    let header = header::header(ui, title.clone(), staged, count, ctx, msgs);
-    if staged {
-        header.row_menu(|ui| file_menu::staged_header_items(ui, t, msgs, snap));
-    }
-    let row_h = super::widgets::LIST_ROW_H;
-    // The list's area, for its focus target: registered before the rows, after the header.
-    let h = if count == 0 { row_h } else { (count as f32 * (row_h + ui.spacing().item_spacing.y)).min(max_h) };
-    let focus =
-        super::wip_keys::target(ui, staged, egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), h)), &title);
-    super::wip_keys::arrows(ui, staged, msgs);
-    let focused = focus.has_focus();
-    let area = egui::ScrollArea::vertical().id_salt(id).max_height(max_h).auto_shrink([false, true]);
-    if count == 0 {
-        let shown = area.show(ui, |ui| ui.label(RichText::new(t.tr("details.wip.none")).color(color::faint())));
-        if focused {
-            super::widgets::file_row_focus(ui, shown_rect(&shown));
-        }
-        return;
-    }
-    let entry = |i: usize| kept.as_ref().map_or(&all[i], |k| k[i]);
-    let index = |t: &DiffTarget| {
-        let path = match t {
-            DiffTarget::Staged(p) if staged => p,
-            DiffTarget::Unstaged(p) if !staged => p,
-            _ => return None,
-        };
-        (0..count).find(|&i| entry(i).path == *path)
-    };
-    // Found in the whole list, so a current row scrolled out of view doesn't ring the list.
-    let current = open.diff.and_then(index);
-    let ctx = RowContext { keyed: true, ..ctx };
-    // Only the rows in view are drawn: a working tree can have thousands of changed files.
-    let shown = area.show_rows(ui, row_h, count, |ui, range| {
-        super::details::file_reveal::reveal(ui, id, want, index, &range, row_h);
-        for i in range {
-            let r = wip_file_row(ui, snap, entry(i), staged, open, ctx, None, msgs);
-            if r.clicked() {
-                super::wip_keys::request(ui.ctx(), staged);
-            }
-            if focused && current == Some(i) {
-                super::widgets::file_row_focus(ui, r.rect);
-            }
-        }
-    });
-    if focused && current.is_none() {
-        super::widgets::file_row_focus(ui, shown_rect(&shown));
-    }
-}
-
-/// The part of a scroll area its content fills (the viewport can be taller).
-fn shown_rect<R>(out: &egui::scroll_area::ScrollAreaOutput<R>) -> egui::Rect {
-    let r = out.inner_rect;
-    egui::Rect::from_min_size(r.min, egui::vec2(r.width(), out.content_size.y.min(r.height())))
-}
 
 /// A row of the Unstaged, Staged or Conflicted Files list: status, Stage / Unstage / Mark
 /// resolved, the path (opens its diff, or the conflict view), `note` (weak, or in text when
@@ -266,6 +197,7 @@ pub(super) fn wip_file_row(
         }
     };
     let row = |ui: &mut egui::Ui| {
+        super::list_row::file_tree::indent(ui, ctx.depth);
         if conflicted {
             let (rect, _) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover());
             super::needs_you::badge(ui.painter(), rect);
@@ -274,7 +206,7 @@ pub(super) fn wip_file_row(
                 RichText::new(status_label(f.status).to_string()).font(type_scale::mono(type_scale::BODY)).color(status_color(f.status)),
             );
         }
-        super::widgets::row_text(ui, RichText::new(&f.path).monospace(), selected);
+        super::list_row::file_tree::file_text(ui, &f.path, ctx.depth, selected, 0.0);
         super::path_warnings::mark(ui, ctx.lang, f);
         super::lfs_badge::badge(ui, f);
     };

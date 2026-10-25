@@ -105,6 +105,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     // Header toggles, like the diff's.
     "blame",
     "history",
+    // A list header toggle, like the diff's.
+    "file_list_mode",
     "push_after_commit",
     "stage_renames",
     "push_new_tags",

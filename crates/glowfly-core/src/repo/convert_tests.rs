@@ -83,6 +83,48 @@ fn stage_file_stages_a_removal_and_reads_paths_literally() {
 }
 
 #[test]
+fn stage_file_stages_a_folder_literally() {
+    let dir = scratch_repo("cv-folder");
+    for d in ["src/deep", "src2", "a[1]"] {
+        std::fs::create_dir_all(dir.join(d)).unwrap();
+    }
+    for f in ["src/a.txt", "src/c.txt", "src2/d.txt", "src.txt", "a[1]/x.txt"] {
+        write(
+            &dir, f, "one
+",
+        );
+    }
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "base"]);
+    for f in ["src/a.txt", "src2/d.txt", "src.txt", "a[1]/x.txt"] {
+        write(
+            &dir, f, "two
+",
+        );
+    }
+    write(
+        &dir,
+        "src/deep/b.txt",
+        "new
+",
+    );
+    std::fs::remove_file(dir.join("src/c.txt")).unwrap();
+    stage_file(&dir, "src").unwrap();
+    let (unstaged, staged, _) = status_at(&dir, true).unwrap();
+    let mut got: Vec<(&str, char)> = staged.iter().map(|f| (f.path.as_str(), f.status)).collect();
+    got.sort();
+    assert_eq!(got, [("src/a.txt", 'M'), ("src/c.txt", 'D'), ("src/deep/b.txt", 'A')]);
+    let left: Vec<&str> = unstaged.iter().map(|f| f.path.as_str()).collect();
+    assert!(left.contains(&"src2/d.txt") && left.contains(&"src.txt"), "{left:?}");
+    // A folder name with glob characters is taken literally.
+    stage_file(&dir, "a[1]").unwrap();
+    let (_, staged, _) = status_at(&dir, true).unwrap();
+    assert!(staged.iter().any(|f| f.path == "a[1]/x.txt"));
+    assert!(!staged.iter().any(|f| f.path == "src2/d.txt" || f.path == "src.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn hunk_and_line_edits_of_converted_files_are_refused() {
     let dir = filtered_repo("cv-refuse");
     let before = read(&dir, "a.up");

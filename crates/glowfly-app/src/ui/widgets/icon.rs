@@ -1,7 +1,8 @@
 //! The `Icon` set and `paint_icon`: the one set of UI glyphs, every one drawn in the one line
 //! width (`STROKE`) at one of three size tokens (`SIZE_SM`, `SIZE_MD`, `SIZE_LG`, through
 //! `paint_icon_sized`; `paint_icon` draws `SIZE_LG`). The first icons' shapes are here, the
-//! newer ones in `ui/icons.rs` and the terminal panel header's in `ui/icons_panel.rs`. Glyphs
+//! newer ones in `ui/icons.rs`, the terminal panel header's in `ui/icons_panel.rs` and the file
+//! lists' List / Tree toggle's in `ui/icons_lists.rs`. Glyphs
 //! the bundled fonts lack (a pencil, refresh) are icons here, never text. The 40 px empty-state
 //! illustrations (`ui/empty_state_icons.rs`) are a separate set.
 
@@ -121,6 +122,11 @@ pub enum Icon {
     /// Two arrows pointing opposite ways, one above the other: swap a comparison's direction
     /// (the fonts lack ⇄).
     Swap,
+    /// Three horizontal lines with a dot left of each: show the changed files as a list.
+    ListView,
+    /// A top row with an elbow from its left end to two indented rows: show the changed files
+    /// as a tree.
+    TreeView,
 }
 
 /// Every icon's line width: they are outlines only.
@@ -149,7 +155,10 @@ pub fn paint_icon_sized(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: f3
 
 fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
     let col = s.color;
-    if crate::ui::icons::paint(p, c, icon, s) || crate::ui::icons_panel::paint(p, c, icon, s) {
+    if crate::ui::icons::paint(p, c, icon, s)
+        || crate::ui::icons_panel::paint(p, c, icon, s)
+        || crate::ui::icons::lists::paint(p, c, icon, s)
+    {
         return;
     }
     let line = |a: Pos2, b: Pos2| p.line_segment([a, b], s);
@@ -322,6 +331,7 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
         Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu | Icon::Info | Icon::Repo | Icon::Swap => {} // icons.rs
         Icon::Eraser | Icon::Stop | Icon::PanelMaximize | Icon::PanelRestore | Icon::ChevronDown => {} // icons_panel.rs
+        Icon::ListView | Icon::TreeView => {}                                                          // icons_lists.rs
     }
 }
 

@@ -1,15 +1,19 @@
 //! The stacked list of a multi-selection with no combined diff (not one line of history, or one
 //! reaching a shallow clone's boundary): each selected commit's own changed files, newest first,
-//! under a header naming the commit. Each file opens that commit's diff of it.
+//! under a header naming the commit. Each file opens that commit's diff of it. In Tree mode each
+//! section's files are grouped in folders, each section keeping its own folds.
 
 use super::common::short;
 use super::details::file_reveal::reveal;
-use super::details::{RowActions, changed_file_row};
+use super::details::{RowActions, changed_file_row_at};
 use super::file_menu::RowSource;
+use super::file_menu::folder_menu::{self, FolderStage};
+use super::list_row::file_tree::{ListRows, Shown, folder_row, mode_toggle};
 use super::theme::color;
 use super::widgets;
 use crate::msg::{Msg, SelectionMsg};
 use crate::state::AppState;
+use crate::state::file_folds::FileListId;
 use crate::state::lfs::TrackContext;
 use crate::state::selection::{CommitBlock, MultiSelection, STACK_LIMIT};
 use crate::ui::theme::type_scale;
@@ -17,16 +21,24 @@ use eframe::egui::{self, Align, Layout, RichText, UiBuilder};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, Snapshot, StackedCommit};
 
-/// One row of the flattened list: a commit's header, one of its files, or its "No file changes".
+/// One row of the flattened list: a commit's header, one of its files (at its depth in the
+/// section's tree, None in List mode), one of its folder rows (by row of the section's tree),
+/// or its "No file changes".
 #[derive(Clone, Copy)]
 enum Row {
     Header(usize),
-    File(usize, usize),
+    File(usize, usize, Option<usize>),
+    Folder(usize, usize),
     Empty,
 }
 
 pub(super) fn show(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    ui.label(type_scale::section_text(ui, t.tr("details.multi.stacked.title")));
+    super::details_wip::header::frame(ui, |ui| {
+        mode_toggle(ui, t, st.settings.file_list_mode, msgs);
+        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+            ui.label(type_scale::section_text(ui, t.tr("details.multi.stacked.title")));
+        });
+    });
     if m.len() > STACK_LIMIT {
         let text = t.trf("details.multi.stacked.limited", &[("shown", &STACK_LIMIT), ("count", &m.len())]);
         ui.add(egui::Label::new(RichText::new(text).color(color::weak())).wrap());
@@ -42,21 +54,33 @@ pub(super) fn show(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection
     }
 }
 
-fn rows_of(stack: &[StackedCommit]) -> Vec<Row> {
+/// The flattened list, `sections` holding each commit's file rows.
+fn rows_of(stack: &[StackedCommit], sections: &[ListRows]) -> Vec<Row> {
     let mut rows = Vec::new();
-    for (i, c) in stack.iter().enumerate() {
+    for (i, (c, section)) in stack.iter().zip(sections).enumerate() {
         rows.push(Row::Header(i));
         if c.files.is_empty() {
             rows.push(Row::Empty);
         }
-        rows.extend((0..c.files.len()).map(|j| Row::File(i, j)));
+        rows.extend((0..section.len()).map(|k| match section.get(k) {
+            Shown::File { index, depth } => Row::File(i, index, depth),
+            Shown::Folder(_) => Row::Folder(i, k),
+        }));
     }
     rows
 }
 
 /// Every section in one list, headers and files sharing one row height.
 fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    let rows = rows_of(stack);
+    let mode = st.settings.file_list_mode;
+    let sections: Vec<ListRows> = stack
+        .iter()
+        .map(|c| {
+            let paths = || c.files.iter().map(|f| f.path.as_str()).collect();
+            ListRows::of(ui, mode, c.files.len(), paths, st.view.file_folds.closed(FileListId::Stacked(c.oid)))
+        })
+        .collect();
+    let rows = rows_of(stack, &sections);
     let open = st.diff.as_ref().map(|(target, _)| target);
     let lfs = TrackContext::of(st);
     let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
@@ -66,7 +90,7 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
     egui::ScrollArea::vertical().id_salt("multi-stacked").auto_shrink([false, false]).show_rows(ui, row_h, rows.len(), |ui, range| {
         let index = |want: &DiffTarget| {
             rows.iter().position(|r| match *r {
-                Row::File(i, j) => *want == DiffTarget::Commit(stack[i].oid, stack[i].files[j].path.clone()),
+                Row::File(i, j, _) => *want == DiffTarget::Commit(stack[i].oid, stack[i].files[j].path.clone()),
                 _ => false,
             })
         };
@@ -79,7 +103,14 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
                     let mut child = ui.new_child(UiBuilder::new().max_rect(rect).layout(Layout::left_to_right(Align::Center)));
                     child.label(RichText::new(t.tr("details.multi.stacked.no_files")).color(color::weak()));
                 }
-                Row::File(i, j) => {
+                Row::Folder(i, k) => {
+                    let Shown::Folder(folder) = sections[i].get(k) else { continue };
+                    let at = Some(stack[i].oid);
+                    let menu =
+                        |ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str| folder_menu::items(ui, t, msgs, path, at, FolderStage::None);
+                    folder_row(ui, folder, false, msgs, FileListId::Stacked(stack[i].oid), menu);
+                }
+                Row::File(i, j, depth) => {
                     let (c, f) = (&stack[i], &stack[i].files[j]);
                     let merge = parents(c) > 1;
                     let actions = RowActions {
@@ -92,7 +123,7 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
                         lines: None,
                         commands: &commands,
                     };
-                    changed_file_row(ui, t, f, DiffTarget::Commit(c.oid, f.path.clone()), open, actions, msgs);
+                    changed_file_row_at(ui, t, f, (DiffTarget::Commit(c.oid, f.path.clone()), open), actions, depth, msgs);
                 }
             }
         }

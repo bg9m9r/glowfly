@@ -55,6 +55,9 @@ CheckBox "Mantener juntas las pestañas de los worktrees de un repositorio" [on]
 Label "Las pestañas de worktrees del mismo repositorio (su carpeta principal y cada worktree vinculado) quedan juntas, con una línea de color debajo. Arrastra una pestaña dentro de su grupo para reordenarla; suéltala fuera del grupo para mover el grupo entero."
 ComboBox
 Label "Ramas relevantes limita el grafo a la rama activa, su upstream, la rama predeterminada y las ramas con una pull request abierta."
+RadioButton "Lista" [on]
+RadioButton "Árbol" [off]
+Label "Si las listas de archivos cambiados muestran cada ruta en su propia fila o agrupadas en carpetas. El interruptor de la cabecera de una lista también lo cambia."
 Label "Grafo de commits"
 CheckBox "Ramas y etiquetas" [on]
 CheckBox "Árbol" [on]
@@ -104,4 +107,5 @@ painted:
   "Agrupar pestañas de worktrees"
   "Ramas visibles"
   "Todas las ramas"
+  "Archivos cambiados"
   "Columnas del grafo"

@@ -50,6 +50,10 @@ pub(super) fn landing_row(d: &FileDiff, s: &Settings, l: Landing, ex: &Expanded)
 /// Opens `target`, reached by next/previous change, to land on its first or last change.
 fn open_landing(st: &mut AppState, target: DiffTarget, landing: Landing, fx: &mut Vec<Effect>) {
     super::repo::open_diff(st, target.clone(), fx);
+    // A step into a collapsed folder opens it, so the revealed row shows.
+    if let Some(list) = crate::state::file_folds::list_of(st, &target) {
+        st.view.file_folds.open_to(list, target.path());
+    }
     // After `open_diff`, which clears it.
     st.view.diff_landing = Some((target.clone(), landing));
     super::history_view::follow_step(st, &target, fx);

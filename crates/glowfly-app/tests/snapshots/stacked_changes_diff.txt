@@ -54,6 +54,7 @@ Button "Fix build on Windows" [off]
 Label "275189b"
 Button "Initial commit" [off]
 Label "dcc73f3"
+Button "Show as tree"
 Label "Each commit's own changes, newest first"
 Label "1 file"
 Label "222c0ad"

@@ -1,10 +1,14 @@
 //! The WIP lists' keyboard: Up/Down between the Unstaged or Staged Files, moving on to the
 //! neighbouring file after S or U staged or unstaged the open one, and asking again for a file
-//! still opening when a refresh would reload the old one.
+//! still opening when a refresh would reload the old one. In Tree mode the keys follow the
+//! tree's on-screen order and skip the files of collapsed folders.
 
 use crate::effect::Effect;
 use crate::state::AppState;
+use crate::state::file_folds::{FileFolds, FileListId};
+use crate::state::file_tree;
 use glowfly_core::repo::{DiffTarget, FileEntry, Snapshot};
+use glowfly_core::settings::FileListMode;
 
 /// The Unstaged (`staged: false`) or Staged Files list as it is shown: Unstaged Files leaves
 /// the conflicted entries to their own list.
@@ -32,12 +36,35 @@ fn index_in(files: &[&FileEntry], staged: bool, t: &DiffTarget) -> Option<usize>
     files.iter().position(|f| f.path == *path)
 }
 
-/// The file after `path` in its list, else the one before it, else none.
-pub(super) fn neighbour(snap: &Snapshot, staged: bool, path: &str) -> Option<DiffTarget> {
+/// The folds of that list while the lists show as a tree; None in List mode.
+fn tree_folds(st: &AppState, staged: bool) -> Option<(&FileFolds, FileListId)> {
+    let list = if staged { FileListId::Staged } else { FileListId::Unstaged };
+    (st.settings.file_list_mode == FileListMode::Tree).then_some((&st.view.file_folds, list))
+}
+
+/// The visible file after (`down`) or before file `at` of `files` (the first visible one for
+/// None): in the tree's order with `folds`, else in the list's own order.
+fn step_from(files: &[&FileEntry], folds: Option<(&FileFolds, FileListId)>, at: Option<usize>, down: bool) -> Option<usize> {
+    match folds {
+        Some((folds, list)) => {
+            let paths: Vec<&str> = files.iter().map(|f| f.path.as_str()).collect();
+            file_tree::step_visible(&paths, |f| folds.is_closed(list, f), at, down)
+        }
+        None => match at {
+            Some(i) if down => Some(i + 1).filter(|&j| j < files.len()),
+            Some(i) => i.checked_sub(1),
+            None => (!files.is_empty()).then_some(0),
+        },
+    }
+}
+
+/// The file after `path` in its list as shown, else the one before it, else none.
+pub(super) fn neighbour(st: &AppState, snap: &Snapshot, staged: bool, path: &str) -> Option<DiffTarget> {
     let files = files(snap, staged);
     let i = files.iter().position(|f| f.path == path)?;
-    let next = files.get(i + 1).or_else(|| i.checked_sub(1).and_then(|j| files.get(j)))?;
-    Some(target(staged, &next.path))
+    let folds = tree_folds(st, staged);
+    let next = step_from(&files, folds, Some(i), true).or_else(|| step_from(&files, folds, Some(i), false))?;
+    Some(target(staged, &files[next].path))
 }
 
 /// Opens `t` as a click on its row would, and has its list scroll it into view once.
@@ -56,16 +83,8 @@ pub(super) fn step(st: &mut AppState, staged: bool, down: bool, fx: &mut Vec<Eff
         return;
     }
     let at = cursor(st).and_then(|t| index_in(&files, staged, t));
-    let next = match at {
-        Some(i) if down => i + 1,
-        Some(i) => match i.checked_sub(1) {
-            Some(j) => j,
-            None => return,
-        },
-        None => 0,
-    };
-    let Some(f) = files.get(next) else { return };
-    let t = target(staged, &f.path);
+    let Some(next) = step_from(&files, tree_folds(st, staged), at, down) else { return };
+    let t = target(staged, &files[next].path);
     open(st, t, fx);
 }
 
@@ -83,7 +102,7 @@ pub(super) fn op_done(st: &mut AppState, ok: bool, fx: &mut Vec<Effect>) {
         return;
     }
     let staged = matches!(left, DiffTarget::Staged(_));
-    let next = st.snap.as_ref().and_then(|s| neighbour(s, staged, left.path()));
+    let next = st.snap.as_ref().and_then(|s| neighbour(st, s, staged, left.path()));
     if let Some(t) = next {
         open(st, t, fx);
     }

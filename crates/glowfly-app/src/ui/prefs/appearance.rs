@@ -41,8 +41,8 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, menu_bar_row:
     super::appearance_graph::graph_section(ui, t, s);
 }
 
-/// Interface: zoom, the panels, toolbar labels, reduced motion, spell checking and the graph's
-/// extras.
+/// Interface: zoom, the panels, toolbar labels, reduced motion, spell checking, the graph's
+/// extras and how changed-file lists show their files.
 fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, menu_bar_row: bool) {
     use glowfly_core::settings::BranchVisibility as BV;
     section(ui, t.tr("prefs.ui.interface.section"));
@@ -81,5 +81,13 @@ fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, menu_bar_row: bool)
         let options = [(BV::All, t.tr("prefs.ui.branch_visibility.all")), (BV::Smart, t.tr("prefs.ui.branch_visibility.smart"))];
         combo(ui, "visibility", &mut s.branch_visibility, &options);
         help(ui, t.tr("prefs.ui.branch_visibility.help"));
+    });
+    row(ui, t.tr("prefs.ui.file_lists.label"), |ui| {
+        use glowfly_core::settings::FileListMode as FL;
+        ui.horizontal(|ui| {
+            controls::radio_value(ui, &mut s.file_list_mode, FL::List, t.tr("prefs.ui.file_lists.list"));
+            controls::radio_value(ui, &mut s.file_list_mode, FL::Tree, t.tr("prefs.ui.file_lists.tree"));
+        });
+        help(ui, t.tr("prefs.ui.file_lists.help"));
     });
 }

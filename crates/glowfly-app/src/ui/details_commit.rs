@@ -6,14 +6,17 @@
 use super::UiCache;
 use super::branch_dot::{self, DOT_ROOM};
 use super::common::issue_chip;
-use super::details::{RowActions, changed_file_row, file_reveal};
+use super::details::{RowActions, changed_file_row_at, file_reveal};
 use super::file_menu::RowSource;
+use super::file_menu::folder_menu::{self, FolderStage};
 use super::graph::draw_avatar;
+use super::list_row::file_tree::{ListRows, Shown, folder_row, mode_toggle};
 use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets::{self, buttons};
 use crate::msg::{Msg, SelectionMsg};
 use crate::state::AppState;
+use crate::state::file_folds::FileListId;
 use crate::state::lfs::TrackContext;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
@@ -177,33 +180,53 @@ fn body_block(ui: &mut Ui, body: &str) {
     });
 }
 
-/// The "N changed files" header with the total on its right, then the file rows.
+/// The "N changed files" header with the List / Tree toggle and the total on its right, then
+/// the file rows (as a tree in Tree mode, its folds kept for every commit).
 fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let open = st.diff.as_ref().map(|(target, _)| target);
     let n = d.files.len();
     let counts = st.line_counts.commit(d.oid);
-    let files = ui.label(type_scale::section_text(ui, t.trn("details.commit.changed_files", n, &[])));
-    if let Some(c) = counts.filter(|c| c.complete) {
-        // On the same line, right-aligned, without moving what follows.
-        let rect = egui::Rect::from_x_y_ranges(files.rect.right()..=ui.max_rect().right(), files.rect.y_range());
-        let mut end = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(Layout::right_to_left(Align::Center)));
-        super::line_counts::total(&mut end, c.total);
-    }
+    let mode = st.settings.file_list_mode;
+    super::details_wip::header::frame(ui, |ui| {
+        mode_toggle(ui, t, mode, msgs);
+        if let Some(c) = counts.filter(|c| c.complete) {
+            super::line_counts::total(ui, c.total);
+        }
+        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+            ui.label(type_scale::section_text(ui, t.trn("details.commit.changed_files", n, &[])));
+        });
+    });
+    let rows =
+        ListRows::of(ui, mode, n, || d.files.iter().map(|f| f.path.as_str()).collect(), st.view.file_folds.closed(FileListId::Commit));
     let lfs = TrackContext::of(st);
     let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
     let commands = crate::state::custom_commands::MenuCommands::for_state(st);
     let row_h = widgets::LIST_ROW_H;
-    ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
-        let index = |t: &DiffTarget| d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()));
+    ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, rows.len(), |ui, range| {
+        let index = |t: &DiffTarget| {
+            let i = d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()))?;
+            rows.row_of_file(i)
+        };
         file_reveal::reveal(ui, "commit-files", st.view.file_reveal.as_ref(), index, &range, row_h);
-        for f in &d.files[range] {
+        for row in range {
+            let (i, depth) = match rows.get(row) {
+                Shown::File { index, depth } => (index, depth),
+                Shown::Folder(folder) => {
+                    let menu = |ui: &mut Ui, msgs: &mut Vec<Msg>, path: &str| {
+                        folder_menu::items(ui, t, msgs, path, Some(d.oid), FolderStage::None)
+                    };
+                    folder_row(ui, folder, false, msgs, FileListId::Commit, menu);
+                    continue;
+                }
+            };
+            let f = &d.files[i];
             let patch_blocked = (d.parents.len() > 1).then(|| crate::state::selection::CommitBlock::PatchMerge.text(t));
             let src = RowSource::Commit(d.oid);
             let lines = counts.and_then(|c| c.get(&f.path).map(|n| (n, c.largest)));
             let in_workdir = d.in_workdir(&f.path);
             let actions = RowActions { src, history_at: d.oid, in_workdir, lfs, tools, patch_blocked, lines, commands: &commands };
-            changed_file_row(ui, t, f, DiffTarget::Commit(d.oid, f.path.clone()), open, actions, msgs);
+            changed_file_row_at(ui, t, f, (DiffTarget::Commit(d.oid, f.path.clone()), open), actions, depth, msgs);
         }
     });
 }

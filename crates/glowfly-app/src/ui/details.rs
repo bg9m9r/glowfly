@@ -87,13 +87,28 @@ pub(super) fn changed_file_row(
     actions: RowActions<'_>,
     msgs: &mut Vec<Msg>,
 ) {
+    changed_file_row_at(ui, t, f, (target, open), actions, None, msgs);
+}
+
+/// `changed_file_row` at `depth` in a list shown as a tree (None: a flat list): indented, and
+/// showing only the file's name, its whole path on hover.
+pub(super) fn changed_file_row_at(
+    ui: &mut egui::Ui,
+    t: Lang,
+    f: &FileEntry,
+    (target, open): (DiffTarget, Option<&DiffTarget>),
+    actions: RowActions<'_>,
+    depth: Option<usize>,
+    msgs: &mut Vec<Msg>,
+) {
     let selected = open == Some(&target);
     let lines = actions.lines;
     let row = |ui: &mut egui::Ui| {
+        super::list_row::file_tree::indent(ui, depth);
         super::file_status::status_chip(ui, f.status);
         // The counts keep their width; the path is cut before them.
         let reserve = lines.map_or(0.0, |(n, _)| super::line_counts::inline_width(ui.ctx(), n) + spacing::GRID);
-        widgets::row_text_reserving(ui, RichText::new(&f.path).monospace(), selected, reserve);
+        super::list_row::file_tree::file_text(ui, &f.path, depth, selected, reserve);
         if let Some((n, _)) = lines {
             super::line_counts::inline(ui, n);
         }
