@@ -126,7 +126,15 @@ pub(super) fn load(st: &mut AppState, path: PathBuf, kind: LoadKind, fx: &mut Ve
 fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRepo>, reuse: bool, fx: &mut Vec<Effect>) {
     st.load_gen += 1;
     st.loading = true;
-    // Status reads of the older generation are dropped, and the load reads the status anyway.
+    let opts = st.load_options(&path);
+    let known = known.filter(|_| kind == LoadKind::More || st.snap.as_ref().is_some_and(|s| s.loaded_with == opts));
+    // Status reads of the older generation are dropped, and the load reads the status anyway;
+    // a load for more that goes on from the walk reads none, so it reads the status once its
+    // page lands when a read was running or waiting, or a refresh was queued. A full load queued
+    // meanwhile still runs after a load that only checks the refs.
+    let more = kind == LoadKind::More;
+    let dropped = st.refresh.status_busy || st.refresh.status_queued.is_some() || st.refresh.queued == Some(Depth::Checked);
+    let queued = st.refresh.queued.filter(|d| known.is_some() && *d == Depth::Full);
     // A background count of other worktrees keeps running: its result checks the refs it was for.
     // A failed load for more and its waiting retry give way to this load (it asks for the same
     // commits), but the retries made and a filtering search's budget carry on.
@@ -136,10 +144,10 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
         counting: st.refresh.counting,
         more_retries: st.refresh.more_retries,
         deeper: st.refresh.deeper.take(),
+        queued,
+        status_after: more && dropped,
         ..Default::default()
     };
-    let opts = st.load_options(&path);
-    let known = known.filter(|_| kind == LoadKind::More || st.snap.as_ref().is_some_and(|s| s.loaded_with == opts));
     let prior = reuse.then(|| st.snap.as_ref().filter(|s| st.names_repo(s, &path)).map(Snapshot::prior)).flatten();
     fx.push(Effect::LoadRepo { path, opts, generation: st.load_gen, kind, known, prior });
 }

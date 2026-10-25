@@ -1,14 +1,14 @@
 //! Loading more of a real truncated history (`long_repo`): it goes on from the walk
 //! (`LoadKind::More`, answered by `LoadMsg::HistoryExtended`) without a full load or a status
 //! read, falls back to a full refresh when the refs moved, reads the status after a refresh
-//! merged into it, holds a failed page, ignores an old one, frees a large history's old commits
-//! and lets an index jump land.
+//! merged into it or a status read it dropped, holds a failed page, ignores an old one, frees a
+//! large history's old commits and lets an index jump land.
 
 use super::history_index_tests::run_build;
 use super::tests::{drive, finish, finish_keeping, git, long_repo, state};
 use super::update;
 use crate::effect::{BackgroundEffect, Effect, LoadKind};
-use crate::msg::{LoadMsg, Msg, RepoMsg, SearchMsg};
+use crate::msg::{LoadMsg, Msg, RepoMsg, SearchMsg, WatchMsg};
 use crate::state::load_more::MoreRow;
 use crate::state::refresh::Depth;
 use crate::state::{AppState, Selection};
@@ -218,5 +218,49 @@ fn an_index_jump_lands_after_a_resumed_page() {
     finish(&mut st, fx);
     assert_eq!(summary(&st), "commit 0 needle beacon", "selected once its page is in");
     assert_eq!(st.search.index.jump, None);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_status_read_dropped_by_load_more_is_read_after_the_page() {
+    let (mut st, dir) = opened("resume-dropped", 1200, 500);
+    std::fs::write(dir.join("new.txt"), "x").unwrap();
+    let workdir = st.workdir().unwrap();
+    let saved = WatchMsg::RepoChanged { full: false, paths: Some(vec!["new.txt".into()]), last_event: Instant::now() };
+    let read = update(&mut st, Msg::Scoped { workdir, msg: Box::new(Msg::Watch(saved)) }, Instant::now());
+    assert_eq!(status_reads(&read), 1);
+
+    // The load for more starts before the read lands, which is then out of date.
+    let load = one_more(load_more(&mut st));
+    assert!(st.refresh.status_after);
+    let read = read.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).unwrap();
+    update(&mut st, crate::runner::execute(read).unwrap(), Instant::now());
+    let fx = update(&mut st, run_page(load), Instant::now());
+    assert_eq!(status_reads(&fx), 1, "read again: {fx:?}");
+    finish(&mut st, fx);
+    assert!(st.snap.as_ref().unwrap().unstaged.iter().any(|f| f.path == "new.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_refresh_queued_before_a_chained_load_more_reads_the_status() {
+    let (mut st, dir) = opened("resume-chained", 3000, 500);
+    st.settings.load_more_on_scroll = true;
+    st.view.show_search = true;
+    st.view.search = "needle".into();
+    let mut fx = update(&mut st, Msg::Search(SearchMsg::ToggleFilter), Instant::now());
+    fx.extend(update(&mut st, Msg::Search(SearchMsg::QueryChanged), Instant::now()));
+    // The filtering search loads further back by itself; a refresh asked meanwhile waits.
+    let load = one_more(fx);
+    update(&mut st, Msg::Repo(RepoMsg::WindowFocused), Instant::now());
+    assert_eq!(st.refresh.queued, Some(Depth::Checked));
+
+    // Its page chains the next batch, a load for more that reads the status after its page.
+    let fx = update(&mut st, run_page(load), Instant::now());
+    assert_eq!(status_reads(&fx), 0);
+    let load = one_more(fx);
+    assert!(st.refresh.status_after);
+    let fx = update(&mut st, run_page(load), Instant::now());
+    assert_eq!(status_reads(&fx), 1, "the refresh's status read: {fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
