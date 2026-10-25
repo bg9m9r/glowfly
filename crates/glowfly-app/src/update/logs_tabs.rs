@@ -111,5 +111,5 @@ pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
 }
 
 #[cfg(test)]
-#[path = "logs_tabs_tests.rs"]
+#[path = "tests/logs_tabs_tests.rs"]
 pub(super) mod tests;

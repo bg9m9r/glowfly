@@ -170,8 +170,6 @@ mod worktree_move;
 mod worktrees;
 
 #[cfg(test)]
-mod test_mods;
-#[cfg(test)]
 mod tests;
 
 use crate::effect::OsEffect;

@@ -116,5 +116,5 @@ pub(super) fn discard_edit(st: &mut AppState, k: usize) {
 }
 
 #[cfg(test)]
-#[path = "conflict_edit_tests.rs"]
+#[path = "tests/conflict_edit_tests.rs"]
 mod tests;

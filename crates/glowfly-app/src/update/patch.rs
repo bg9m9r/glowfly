@@ -10,13 +10,13 @@ mod apply;
 mod changes;
 
 #[cfg(test)]
-#[path = "patch_apply_tests.rs"]
+#[path = "tests/patch_apply_tests.rs"]
 mod apply_tests;
 #[cfg(test)]
-#[path = "patch_changes_tests.rs"]
+#[path = "tests/patch_changes_tests.rs"]
 mod changes_tests;
 #[cfg(test)]
-#[path = "patch_copy_tests.rs"]
+#[path = "tests/patch_copy_tests.rs"]
 mod copy_tests;
 
 use crate::effect::OsEffect;

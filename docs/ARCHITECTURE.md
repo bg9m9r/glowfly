@@ -142,7 +142,7 @@ source file, update its line in the matching file.
    Drop stale results: compare a generation number, or the request with what is still open.
    Say in the enum's `on_inactive` what the result still needs if its tab is no longer active.
 6. **View.** Draw it in `ui/<region>.rs`: read state, push `Msg`s.
-7. **Tests.** Write an `update` test (`update/<area>_tests.rs`). Add a core test on a fixture
+7. **Tests.** Write an `update` test (`update/tests/<area>_tests.rs`). Add a core test on a fixture
    repository (see `scratch_repo`; build fixtures with the test kit's `git`, `testkit/`) for new
    git logic, and an `egui_kittest` snapshot for a new view (harnesses from
    `ui::snapshot_check::builder()`). A flow that crosses views, the runner and git gets a

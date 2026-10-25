@@ -224,5 +224,5 @@ fn markers_blocked(t: Lang, view: &ConflictView, in_tool: bool) -> Option<&'stat
 }
 
 #[cfg(test)]
-#[path = "snapshot_tests_conflict_header.rs"]
+#[path = "snapshot_tests/snapshot_tests_conflict_header.rs"]
 mod snapshot_tests;

@@ -153,9 +153,9 @@ fn sped_up_headline(monitor: &MonitorOutcome, cache: Option<bool>) -> Option<Str
 }
 
 #[cfg(test)]
-#[path = "status_tip_tests.rs"]
+#[path = "tests/status_tip_tests.rs"]
 mod tests;
 
 #[cfg(test)]
-#[path = "status_tip_monitor_tests.rs"]
+#[path = "tests/status_tip_monitor_tests.rs"]
 mod monitor_tests;

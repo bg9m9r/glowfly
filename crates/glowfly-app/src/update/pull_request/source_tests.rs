@@ -31,7 +31,7 @@ pub(super) fn head_on_remote(bare: &Path) -> Oid {
 /// Commits `file` on top of `from` in the bare remote and moves `refs/pull/7/head` to it.
 fn move_head(bare: &Path, from: &str, file: &str) -> Oid {
     git(bare, &["branch", "tmp", from]);
-    super::super::test_mods::branch_tests::remote_commit(bare, "tmp", file);
+    super::super::tests::branch_tests::remote_commit(bare, "tmp", file);
     git(bare, &["update-ref", "refs/pull/7/head", "refs/heads/tmp"]);
     git(bare, &["branch", "-D", "tmp"]);
     git2::Repository::open_bare(bare).unwrap().refname_to_id("refs/pull/7/head").unwrap()

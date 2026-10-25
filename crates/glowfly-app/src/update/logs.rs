@@ -122,9 +122,9 @@ pub(super) fn flush(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 #[cfg(test)]
-#[path = "logs_tests.rs"]
+#[path = "tests/logs_tests.rs"]
 mod tests;
 
 #[cfg(test)]
-#[path = "palette_logs_tests.rs"]
+#[path = "tests/palette_logs_tests.rs"]
 mod palette_tests;

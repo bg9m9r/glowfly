@@ -3,8 +3,8 @@
 //! row's), graph rows by their summary ("Uncommitted changes" for
 //! the working tree) and the commit box's fields by their hint. No image comparison.
 
+use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;
 use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::ui::snapshot_tests_remotes::with_remotes;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;

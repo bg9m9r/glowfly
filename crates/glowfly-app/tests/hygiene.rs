@@ -30,9 +30,7 @@ const LINE_LIMIT: usize = 400;
 /// The non-test files over `LINE_LIMIT` today, with their length as a ceiling.
 const LONG_FILES: &[(&str, usize)] = &[
     ("crates/glowfly-app/src/effect/mod.rs", 422),
-    ("crates/glowfly-app/src/runner/guard.rs", 498),
     ("crates/glowfly-app/src/state/mod.rs", 695),
-    ("crates/glowfly-app/src/ui/mod.rs", 591),
     ("crates/glowfly-app/src/update/repo.rs", 407),
     ("crates/glowfly-core/src/forge/github.rs", 406),
     ("crates/glowfly-core/src/settings.rs", 410),
@@ -46,17 +44,17 @@ const ENGLISH_LOG_CALLS: usize = 180;
 /// signature for `harness`). A new test reuses one of these instead of writing its own copy.
 const FIXTURE_HELPERS: &[(&str, &[&str])] = &[
     ("fn git(dir: &Path, a: &[&str])", &["crates/glowfly-core/src/testkit/mod.rs"]),
-    ("fn scratch_repo(", &["crates/glowfly-app/src/update/tests.rs", "crates/glowfly-core/src/testutil.rs"]),
-    ("fn long_repo(", &["crates/glowfly-app/src/update/tests.rs"]),
-    ("fn fixture_repo(", &["crates/glowfly-app/src/ui/snapshot_tests.rs"]),
+    ("fn scratch_repo(", &["crates/glowfly-app/src/update/tests/helpers.rs", "crates/glowfly-core/src/testutil.rs"]),
+    ("fn long_repo(", &["crates/glowfly-app/src/update/tests/helpers.rs"]),
+    ("fn fixture_repo(", &["crates/glowfly-app/src/ui/snapshot_tests/helpers.rs"]),
     (
         "fn with_repo(",
         &[
             "crates/glowfly-app/src/state/menu_model_tests.rs",
-            "crates/glowfly-app/src/ui/snapshot_tests.rs",
-            "crates/glowfly-app/src/update/lines_tests.rs",
-            "crates/glowfly-app/src/update/profile_rules_tests.rs",
-            "crates/glowfly-app/src/update/shortcuts_tests.rs",
+            "crates/glowfly-app/src/ui/snapshot_tests/helpers.rs",
+            "crates/glowfly-app/src/update/tests/lines_tests.rs",
+            "crates/glowfly-app/src/update/tests/profile_rules_tests.rs",
+            "crates/glowfly-app/src/update/tests/shortcuts_tests.rs",
         ],
     ),
     (

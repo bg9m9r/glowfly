@@ -74,11 +74,11 @@ fn tabs_rename_enter() {
 
     // A click on the dialog's background, then Enter, also renames.
     let (mut h, _) = rename_open("tabs-rename-enter", "Frontend");
-    let help = super::snapshot_tests_worktrees::center(
+    let help = super::snapshot_tests::snapshot_tests_worktrees::center(
         &h,
         "Shown in the tab bar, the Window menu and the window title. Leave it empty to use the folder name.",
     );
-    super::snapshot_tests_select::click(&mut h, help, PointerButton::Primary);
+    super::snapshot_tests::snapshot_tests_select::click(&mut h, help, PointerButton::Primary);
     h.press_key(Key::Enter);
     h.run();
     assert_eq!(label_set(&h), Some(Some("Frontend".to_owned())));

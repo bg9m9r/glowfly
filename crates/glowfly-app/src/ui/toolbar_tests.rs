@@ -6,9 +6,9 @@
 
 use crate::state::AppState;
 use crate::ui::snapshot_check::CheckSnapshot;
+use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;
+use crate::ui::snapshot_tests::snapshot_tests_worktrees::H;
 use crate::ui::snapshot_tests::{NOW, harness, harness_sized, remove_fixture, with_repo};
-use crate::ui::snapshot_tests_remotes::with_remotes;
-use crate::ui::snapshot_tests_worktrees::H;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{StashInfo, Tracking};

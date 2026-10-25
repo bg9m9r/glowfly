@@ -76,5 +76,5 @@ fn quit(st: &mut AppState, os_request: bool, fx: &mut Vec<Effect>) {
 }
 
 #[cfg(test)]
-#[path = "app_tests.rs"]
+#[path = "tests/app_tests.rs"]
 mod tests;

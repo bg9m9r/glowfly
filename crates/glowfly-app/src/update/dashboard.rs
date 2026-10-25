@@ -14,19 +14,19 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 #[cfg(test)]
-#[path = "dashboard_tests.rs"]
+#[path = "tests/dashboard_tests.rs"]
 mod tests;
 
 #[cfg(test)]
-#[path = "dashboard_open_tests.rs"]
+#[path = "tests/dashboard_open_tests.rs"]
 mod open_tests;
 
 #[cfg(test)]
-#[path = "dashboard_team_tests.rs"]
+#[path = "tests/dashboard_team_tests.rs"]
 mod team_tests;
 
 #[cfg(test)]
-#[path = "dashboard_assigned_tests.rs"]
+#[path = "tests/dashboard_assigned_tests.rs"]
 mod assigned_tests;
 
 pub(super) fn handle(st: &mut AppState, msg: DashboardMsg, now: Instant, fx: &mut Vec<Effect>) {

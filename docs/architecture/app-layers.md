@@ -77,7 +77,7 @@ source file, update its line here. Features that span every layer are in
 
 ## `update/`: state changes
 
-- `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`, declared in `update/test_mods.rs`).
+- `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests in `update/tests/` (`mod.rs` lists them, `helpers.rs` holds the shared fixtures).
 - `terminal_schemes.rs`: importing terminal color schemes and switching the terminal to the first one.
 - `stack.rs`: restacking stacked branches: a rebase job whose results end in `rebase.rs::finished` and whose stopped runs wait in `st.restacks` for the banner's Continue or Skip.
 - `stack_push.rs`: pushing a stack as one job with a log line per layer.
@@ -98,6 +98,7 @@ source file, update its line here. Features that span every layer are in
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.
 - `pick.rs`: runs a cherry-pick or revert, skipping the commits that change nothing, and reports `JobMsg::PickDone`.
 - `logs.rs`: the one ordered worker for the log files.
+- `guard.rs`: panic recovery: a panicking effect still sends the result that ends its job or loading state (`Recovery::of`); tests in `guard_tests.rs`.
 - Effects that change a repository, and fetches, keep it out of the repository pool while they run (`queue::holds`, `repo_pool::hold`); a closed tab lets go of its handles (`BackgroundEffect::Forget`).
 - `sandbox.rs` (tests only): keeps the journeys' runner inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight.
 - `watcher.rs` (in `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`).

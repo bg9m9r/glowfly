@@ -34,5 +34,5 @@ pub(super) fn copy_log(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
 }
 
 #[cfg(test)]
-#[path = "logs_copy_tests.rs"]
+#[path = "tests/logs_copy_tests.rs"]
 mod tests;

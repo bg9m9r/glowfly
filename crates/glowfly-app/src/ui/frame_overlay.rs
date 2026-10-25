@@ -35,5 +35,5 @@ pub(super) fn show(ctx: &egui::Context, st: &AppState) {
 }
 
 #[cfg(test)]
-#[path = "snapshot_tests_frame_times.rs"]
+#[path = "snapshot_tests/snapshot_tests_frame_times.rs"]
 mod snapshot_tests;

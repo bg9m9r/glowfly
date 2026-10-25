@@ -176,5 +176,5 @@ pub fn remove_icon(ui: &mut Ui, name: &str) -> Response {
 }
 
 #[cfg(test)]
-#[path = "../snapshot_tests_design.rs"]
+#[path = "../snapshot_tests/snapshot_tests_design.rs"]
 mod snapshot_tests_design;

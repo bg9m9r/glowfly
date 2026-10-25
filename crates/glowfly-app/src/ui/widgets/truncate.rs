@@ -161,7 +161,7 @@ pub fn full_tip(cut: bool, text: &str, tip: Option<String>) -> Option<String> {
 }
 
 #[cfg(test)]
-#[path = "../snapshot_tests_truncate.rs"]
+#[path = "../snapshot_tests/snapshot_tests_truncate.rs"]
 mod snapshot_tests;
 
 #[cfg(test)]

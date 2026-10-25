@@ -87,5 +87,5 @@ pub(super) fn apply(
 }
 
 #[cfg(test)]
-#[path = "refresh_paths_tests.rs"]
+#[path = "tests/refresh_paths_tests.rs"]
 mod tests;

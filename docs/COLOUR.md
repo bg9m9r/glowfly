@@ -330,7 +330,7 @@ outside the families and unchanged by the brand colour.
     lane, chip text and initials ink. Body and status text are not checked: a gold or amber dark
     enough to read on paper is ochre, which the light themes keep for `warn` and `modified`
     (their washes go through `contrast::clear` first, so they wash peach, not tan).
-  - `snapshot_tests_colour_sheet.rs` renders every theme for judging by eye
+  - `snapshot_tests/snapshot_tests_colour_sheet.rs` renders every theme for judging by eye
     (`GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly colour_sheet -- --ignored`).
 - Tinting a surface: the faint tints of a surface (graph row bands up to 7% toward the row's
   lane, the toolbar groups' backing 9% toward the accent, the dialog guide 7% and text fields

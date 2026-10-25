@@ -37,7 +37,7 @@ fn open_list(h: &mut Harness<'_, (AppState, Vec<Msg>)>) {
 fn click_row(h: &mut Harness<'_, (AppState, Vec<Msg>)>, label: &str) {
     let r = h.get_by_label(label).bounding_box().expect("the row");
     let at = pos2(((r.x0 + r.x1) / 2.0) as f32, ((r.y0 + r.y1) / 2.0) as f32);
-    super::snapshot_tests_select::click(h, at, PointerButton::Primary);
+    super::snapshot_tests::snapshot_tests_select::click(h, at, PointerButton::Primary);
 }
 
 #[test]

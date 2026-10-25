@@ -123,5 +123,5 @@ pub(super) fn read_done(
 }
 
 #[cfg(test)]
-#[path = "palette_conflict_tests.rs"]
+#[path = "tests/palette_conflict_tests.rs"]
 mod palette_tests;

@@ -57,7 +57,7 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
   its handler in `update/<area>.rs` matches it exhaustively, and its `on_inactive` decides
   what a result needs for an inactive tab), return an `Effect` for anything slow (add the
   effect to `effect/mod.rs` and execute it in `runner/mod.rs`), and have the runner report
-  back with a result message. Test it in `update/tests.rs`.
+  back with a result message. Test it in `update/tests/` (one `<area>_tests.rs` per area).
 - Drawing: `ui/<region>.rs`. Views take `&mut AppState` only for text buffers and `view`
   state, plus `UiCache` for textures, and push `Msg`s for everything else. No I/O in views;
   `tests/layering.rs` checks.

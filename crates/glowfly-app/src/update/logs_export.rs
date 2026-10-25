@@ -73,5 +73,5 @@ pub(super) fn show_exported(dest: PathBuf, fx: &mut Vec<Effect>) {
 }
 
 #[cfg(test)]
-#[path = "logs_export_tests.rs"]
+#[path = "tests/logs_export_tests.rs"]
 mod tests;

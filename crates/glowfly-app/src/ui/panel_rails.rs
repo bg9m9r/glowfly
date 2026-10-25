@@ -102,5 +102,5 @@ fn change_pill(ui: &mut egui::Ui, count: usize, name: &str) -> egui::Response {
 }
 
 #[cfg(test)]
-#[path = "snapshot_tests_rails.rs"]
+#[path = "snapshot_tests/snapshot_tests_rails.rs"]
 mod snapshot_tests;

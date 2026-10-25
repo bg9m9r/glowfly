@@ -39,5 +39,5 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
 }
 
 #[cfg(test)]
-#[path = "snapshot_tests_op_strip.rs"]
+#[path = "snapshot_tests/snapshot_tests_op_strip.rs"]
 mod snapshot_tests;

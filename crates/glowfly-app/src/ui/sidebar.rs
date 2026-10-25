@@ -342,5 +342,5 @@ fn issues(
 }
 
 #[cfg(test)]
-#[path = "snapshot_tests_section_headers.rs"]
+#[path = "snapshot_tests/snapshot_tests_section_headers.rs"]
 mod snapshot_tests_section_headers;

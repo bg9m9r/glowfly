@@ -48,7 +48,7 @@ pub(super) fn status_items(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>
 }
 
 #[cfg(test)]
-#[path = "snapshot_tests_layout.rs"]
+#[path = "snapshot_tests/snapshot_tests_layout.rs"]
 mod snapshot_tests;
 
 #[cfg(test)]

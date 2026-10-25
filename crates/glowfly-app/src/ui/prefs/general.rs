@@ -162,7 +162,7 @@ fn forget_row(ui: &mut Ui, t: Lang, s: &Settings, msgs: &mut Vec<Msg>) {
 }
 
 #[cfg(test)]
-#[path = "../snapshot_tests_language.rs"]
+#[path = "../snapshot_tests/snapshot_tests_language.rs"]
 mod snapshot_tests_language;
 
 #[cfg(test)]
