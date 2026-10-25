@@ -5,6 +5,7 @@ use super::super::tests::conflict_files_tests::both_resolved;
 use super::super::tests::conflict_tests::two_conflicts;
 use super::super::tests::{drive, scratch_repo, state};
 use super::super::update;
+use crate::effect::ConflictEffect;
 use crate::effect::{ConflictRead, Effect};
 use crate::msg::{ConflictMsg, Msg, PaletteMsg, RepoMsg};
 use crate::state::palette::{PaletteCommand as C, entries};
@@ -38,7 +39,7 @@ fn conflict_entries_follow_the_lists() {
     let fx = run_cmd(&mut st, C::MarkAllResolved);
     let want = owned(&["a.txt", "b.txt"]);
     assert!(
-        matches!(&fx[..], [Effect::ReadConflictFiles { purpose: ConflictRead::BeforeMarkResolved, paths, .. }] if *paths == want),
+        matches!(&fx[..], [Effect::Conflict(ConflictEffect::ReadFiles { purpose: ConflictRead::BeforeMarkResolved, paths, .. })] if *paths == want),
         "the markers check comes first: {fx:?}"
     );
     assert_eq!(C::MarkAllResolved.recall_key(), Some("mark-all-resolved"));

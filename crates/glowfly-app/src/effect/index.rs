@@ -2,10 +2,13 @@
 //! it for a query's matches, and forgetting a tab's build. Reads only (libgit2, no program runs),
 //! apart from the index's saved copy in the cache folder, scoped to the repository's tab.
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
 use glowfly_core::commit_query::CommitQuery;
 use glowfly_core::repo::CommitInfo;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -42,17 +45,8 @@ impl std::fmt::Debug for Shared {
     }
 }
 
-impl IndexEffect {
-    pub fn scope(&self) -> Option<&PathBuf> {
-        match self {
-            IndexEffect::Build { workdir, .. }
-            | IndexEffect::Query { workdir, .. }
-            | IndexEffect::MatchLoaded { workdir, .. }
-            | IndexEffect::Forget { workdir } => Some(workdir),
-        }
-    }
-
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for IndexEffect {
+    fn name(&self) -> &'static str {
         match self {
             IndexEffect::Build { .. } => "index-build",
             IndexEffect::Query { .. } => "index-query",
@@ -61,10 +55,28 @@ impl IndexEffect {
         }
     }
 
+    fn scope(&self) -> Option<&PathBuf> {
+        match self {
+            IndexEffect::Build { workdir, .. }
+            | IndexEffect::Query { workdir, .. }
+            | IndexEffect::MatchLoaded { workdir, .. }
+            | IndexEffect::Forget { workdir } => Some(workdir),
+        }
+    }
+
     /// Whether the runner times it for the performance log.
-    pub fn timed(&self) -> bool {
+    fn timed(&self) -> bool {
         match self {
             IndexEffect::Build { .. } | IndexEffect::Query { .. } | IndexEffect::MatchLoaded { .. } | IndexEffect::Forget { .. } => true,
         }
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
     }
 }

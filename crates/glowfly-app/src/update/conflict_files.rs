@@ -2,6 +2,7 @@
 //! files, Mark resolved (checking the working files for markers first) and Mark conflicted.
 //! The palette's entries for them run the same messages (update/palette.rs).
 
+use crate::effect::ConflictEffect;
 use crate::effect::{ConflictRead, Effect, LocalOp};
 use crate::msg::{ConflictMsg, Msg};
 use crate::state::conflict_files::{ConflictFiles, conflicted_paths, markers_warning};
@@ -29,7 +30,7 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
     let files = &mut st.conflict_files;
     files.generation = generation;
     files.resolved.retain(|r| !now.contains(&r.entry.path.as_str()));
-    fx.push(Effect::ReadConflictFiles { workdir, paths, purpose: ConflictRead::Summary { generation } });
+    fx.push(Effect::Conflict(ConflictEffect::ReadFiles { workdir, paths, purpose: ConflictRead::Summary { generation } }));
 }
 
 /// The paths of `paths` that are conflicted in the status on screen and can be named to git.
@@ -52,7 +53,7 @@ pub(super) fn mark_resolved(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<
         return;
     }
     if let Some(workdir) = st.workdir() {
-        fx.push(Effect::ReadConflictFiles { workdir, paths, purpose: ConflictRead::BeforeMarkResolved });
+        fx.push(Effect::Conflict(ConflictEffect::ReadFiles { workdir, paths, purpose: ConflictRead::BeforeMarkResolved }));
     }
 }
 

@@ -6,6 +6,7 @@
 use super::tests::{drive, finish, git, same_place, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::WorktreeEffect;
 use crate::msg::{FolderPurpose, Msg, PrefsMsg, RepoMsg, TabsMsg};
 use crate::runner;
 use crate::state::tabs::ClosedTab;
@@ -53,7 +54,7 @@ fn last_log(st: &AppState) -> String {
 /// returned.
 fn submit(st: &mut AppState) -> Vec<Effect> {
     let fx = update(st, wt(WorktreeMsg::Move), Instant::now());
-    let [Effect::MoveWorktree(_)] = &fx[..] else { panic!("{fx:?} {:?}", st.log.last().map(|l| &l.text)) };
+    let [Effect::Worktree(WorktreeEffect::Move(_))] = &fx[..] else { panic!("{fx:?} {:?}", st.log.last().map(|l| &l.text)) };
     let moved = runner::execute(fx.into_iter().next().unwrap()).unwrap();
     update(st, moved, Instant::now())
 }

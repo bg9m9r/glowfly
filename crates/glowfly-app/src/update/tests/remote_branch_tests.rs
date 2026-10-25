@@ -7,6 +7,7 @@ use super::tests::{drive, git};
 use super::update;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::effect::Effect;
+use crate::effect::SelectionEffect;
 use crate::msg::{BranchMsg, Msg, RepoMsg, SelectionMsg};
 use crate::state::remote_branch::{checkout_blocked, split, tracking_local};
 use crate::state::{AppState, Selection};
@@ -152,7 +153,7 @@ fn compare_with_head() {
         Selection::Commits(m) => assert_eq!(m.compare_ends(), Some((head, tip))),
         other => panic!("not a pair: {other:?}"),
     }
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadCompare { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Selection(SelectionEffect::Compare { .. }))), "{fx:?}");
 
     assert!(update(&mut st, compare(Oid::zero()), Instant::now()).is_empty());
     assert_eq!(last_log(&st), "origin/feature's commit isn't loaded in the graph.");

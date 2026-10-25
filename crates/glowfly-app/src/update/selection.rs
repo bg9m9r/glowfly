@@ -4,6 +4,7 @@
 //! Comparing with the working directory is in `compare_wip.rs`; cherry-pick and revert in
 //! `pick.rs`.
 
+use crate::effect::SelectionEffect;
 use crate::effect::{Effect, StackRequest};
 use crate::msg::SelectionMsg;
 use crate::state::graph_rows::GraphRows;
@@ -184,8 +185,10 @@ fn request_changes(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 fn changes_effect(m: &MultiSelection, workdir: std::path::PathBuf) -> Option<Effect> {
     match (m.compare_ends(), m.stack_oids()) {
-        (Some((from, to)), _) => m.changes.is_none().then_some(Effect::LoadCompare { workdir, from, to }),
-        (None, Some(stack)) => m.stacked.is_none().then(|| Effect::LoadStacked(StackRequest { workdir, oids: stack.to_vec() })),
+        (Some((from, to)), _) => m.changes.is_none().then_some(Effect::Selection(SelectionEffect::Compare { workdir, from, to })),
+        (None, Some(stack)) => {
+            m.stacked.is_none().then(|| Effect::Selection(SelectionEffect::Stacked(StackRequest { workdir, oids: stack.to_vec() })))
+        }
         (None, None) => None,
     }
 }

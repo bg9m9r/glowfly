@@ -1,7 +1,10 @@
 //! A stack push job (`Effect::Stack`, runner/stack.rs).
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use glowfly_core::stack::PushTarget;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// A stack push job: the layers' targets, and the branch whose stack's pull requests start
 /// once it lands.
@@ -17,10 +20,29 @@ pub enum StackEffect {
     Push { cwd: PathBuf, job: StackPushJob },
 }
 
-impl StackEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for StackEffect {
+    fn name(&self) -> &'static str {
         match self {
             StackEffect::Push { .. } => "stack-push",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    /// Pushes update remote-tracking refs at most, like a push RunGit (`network_only`).
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    /// Journeys push to local bare repositories.
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
     }
 }

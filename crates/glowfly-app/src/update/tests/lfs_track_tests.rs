@@ -5,6 +5,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::LfsEffect;
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
@@ -71,7 +72,7 @@ fn detect_and_page_refresh() {
     let mut st = state();
     let fx = lfs(&mut st, LfsMsg::Detect);
     assert_eq!(st.lfs.install, LfsInstall::Checking);
-    assert!(matches!(&fx[..], [Effect::DetectLfs { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Lfs(LfsEffect::Detect { .. })]), "{fx:?}");
     lfs(&mut st, LfsMsg::Detected(Some("3.7.1".into())));
     assert_eq!(st.lfs.install, installed());
     lfs(&mut st, LfsMsg::Detected(None));

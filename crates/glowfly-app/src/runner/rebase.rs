@@ -3,6 +3,7 @@
 //! reading and editing the remaining steps of a running one.
 
 use super::err;
+use super::execute::{Cx, Execute};
 use crate::effect::{RebaseEffect, UndoResult};
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
@@ -51,6 +52,12 @@ pub(super) fn run(e: RebaseEffect) -> Msg {
             RebaseMsg::RemainingEdited { result: rebase::edit_todo(&cwd, &request, &sequence_editor()).map_err(err) }
         }
     })
+}
+
+impl Execute for RebaseEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }
 
 /// What a rebase run means for the undo history: a finished rebase is one action back to where

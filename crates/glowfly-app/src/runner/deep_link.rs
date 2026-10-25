@@ -1,6 +1,7 @@
 //! glowfly:// links off the UI thread: building one (the root commit), checking candidate
 //! folders for the linked repository, and the scheme registration.
 
+use super::execute::{Cx, Execute};
 use crate::deep_link::{DeepLinkEffect, DeepLinkMsg};
 use crate::msg::Msg;
 use crate::state::deep_link::NOTHING_TO_LINK;
@@ -27,6 +28,12 @@ pub(super) fn run(e: DeepLinkEffect) -> Msg {
         DeepLinkEffect::Unregister => DeepLinkMsg::SchemeChecked(with_exe(url_scheme::unregister)),
     };
     Msg::DeepLink(msg)
+}
+
+impl Execute for DeepLinkEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }
 
 /// The candidates that are copies of the linked repository. One that can't be read (a share

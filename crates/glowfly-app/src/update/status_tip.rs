@@ -7,6 +7,7 @@
 
 use super::jobs::{JobSpec, start_job};
 use crate::effect::Effect;
+use crate::effect::MonitorJob;
 use crate::msg::{LoadMsg, Msg};
 use crate::state::AppState;
 use crate::state::toasts::ToastAction;
@@ -129,7 +130,7 @@ pub(super) fn speed_up(st: &mut AppState, speedups: StatusSpeedups, cache: bool,
     }
     let then = if cache && repo::untracked_cache_helps(speedups) { repo::untracked_cache_cmds(speedups) } else { Vec::new() };
     let label = if then.is_empty() { "Turn on the file system monitor" } else { "Turn on the untracked cache and file system monitor" };
-    super::jobs::begin_job(st, label, true, move |cwd| Effect::TurnOnMonitor { cwd, then }, fx);
+    super::jobs::begin_job(st, label, true, move |cwd| Effect::TurnOnMonitor(MonitorJob { cwd, then }), fx);
 }
 
 /// The monitor job ended: done only when the monitor is watching and the cache, if asked for,

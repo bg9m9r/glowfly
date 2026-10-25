@@ -2,6 +2,7 @@
 //! apart the spellings that name one folder (a link, nested roots) by identity; and fetching or
 //! pulling one listed repository.
 
+use super::execute::{Cx, Execute};
 use crate::effect::ReposEffect;
 use crate::msg::{Msg, ReposMsg, ScanFound};
 use crate::state::repo_scan::FoundRepo;
@@ -31,5 +32,11 @@ pub(super) fn run(e: ReposEffect) -> Msg {
             let outcome = glowfly_core::repo_sync::sync(&path, op, trust.as_ref());
             Msg::Repos(ReposMsg::Synced { generation, index, outcome })
         }
+    }
+}
+
+impl Execute for ReposEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
     }
 }

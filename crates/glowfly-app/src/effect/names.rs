@@ -1,55 +1,32 @@
 //! Short names of effects, for the worker threads and the debug log.
 
-use super::{Effect, OpPreviewJob};
+use super::areas::{effect_areas, effect_match};
+use super::{Effect, EffectMeta};
 
 impl Effect {
-    /// A short name for the worker thread and the debug log.
+    /// A short name for the worker thread and the debug log; an area's comes from its
+    /// `EffectMeta`.
     pub fn name(&self) -> &'static str {
-        match self {
+        effect_areas! { effect_match! { self, |e| e.name(), {
             Effect::LoadRepo { .. } => "load-repo",
             Effect::LoadStatus { .. } => "load-status",
             Effect::LoadIndexStatus { .. } => "load-index-status",
             Effect::LoadDetail { .. } => "load-detail",
-            Effect::LoadCompare { .. } => "load-compare",
-            Effect::LoadStacked(_) => "load-stacked",
-            Effect::LoadWorkdirCompare { .. } => "load-workdir-compare",
             Effect::LoadDiff { .. } => "load-diff",
             Effect::HighlightDiff { .. } => "highlight",
             Effect::LoadDiffGaps { .. } => "load-diff-gaps",
             Effect::LoadBinarySides { .. } => "binary-sides",
-            Effect::LoadConflict { .. } => "load-conflict",
             Effect::LoadFileHistory { .. } => "file-history",
-            Effect::LoadBlame(_) => "blame",
-            Effect::LoadFileText(_) => "file-text",
             Effect::LocalOp { .. } => "local-op",
-            Effect::ReadConflictFiles { .. } => "conflict-files",
             Effect::Revert { .. } => "revert",
             Effect::RestoreFile { .. } => "restore-file",
             Effect::WorkFile { .. } => "work-file",
             Effect::LoadTrackedPaths { .. } => "tracked-paths",
-            Effect::Submodule(e) => e.name(),
-            Effect::CheckWorktreeFolder(_) => "check-worktree-folder",
-            Effect::CheckCloneParent { .. } => "check-clone-parent",
-            Effect::DetectLfs { .. } => "lfs-detect",
-            Effect::RemoveWorktree(_) => "remove-worktree",
-            Effect::MoveWorktree(_) => "move-worktree",
-            Effect::CountWorktreeChanges(_) => "count-worktree-changes",
-            Effect::Stash(e) => e.name(),
-            Effect::LoadLfs { .. } => "lfs-status",
-            Effect::LoadSparse { .. } => "sparse-status",
-            Effect::SparseCheckout { .. } => "sparse-checkout",
-            Effect::TurnOnMonitor { .. } => "turn-on-monitor",
             Effect::RunGit { .. } => "git",
-            Effect::Pick(_) => "pick",
             Effect::UndoRedo { .. } => "undo-redo",
-            Effect::Rebase(e) => e.name(),
             Effect::Forge { .. } => "forge",
-            Effect::Account(e) => e.name(),
             Effect::Stats { .. } => "stats",
-            Effect::LineCounts(e) => e.name(),
             Effect::SearchPaths { .. } => "search-paths",
-            Effect::Index(e) => e.name(),
-            Effect::Background(e) => e.name(),
             Effect::VerifySignature { .. } => "verify-signature",
             Effect::FetchAvatars(_) => "avatars",
             Effect::SaveSettings(_) => "save-settings",
@@ -57,92 +34,35 @@ impl Effect {
             Effect::CheckRepoFolders(_) => "check-repo-folders",
             Effect::ReadTabGroups(_) => "read-tab-groups",
             Effect::SaveTabs { .. } => "save-tabs",
-            Effect::Stack(e) => e.name(),
-            Effect::Os(e) => e.name(),
-            Effect::Prefs(e) => e.name(),
-            Effect::Ssh(e) => e.name(),
-            Effect::Profile(e) => e.name(),
             Effect::Watch(_) => "watch",
             Effect::SweepWatch { .. } => "sweep-watch",
             Effect::AnswerPrompt { .. } => "answer-prompt",
-            Effect::Credential(e) => e.name(),
-            Effect::Terminal(_) => "terminal",
-            Effect::Patch(p) => p.name(),
-            Effect::Tool(t) => t.name(),
-            Effect::CustomCommand(e) => e.name(),
-            Effect::GitEnv(e) => e.name(),
-            Effect::Onboarding(e) => e.name(),
-            Effect::Theme(e) => e.name(),
-            Effect::CheckConflicts(_) => "check-conflicts",
-            Effect::OpPreview(_) => OpPreviewJob::name(),
-            Effect::Journal(e) => e.name(),
-            Effect::RangeDiff(_) => "range-diff",
-            Effect::Remote(e) => e.name(),
-            Effect::Clone(e) => e.name(),
-            Effect::Init(e) => e.name(),
-            Effect::Notify(_) => "desktop-note",
-            Effect::Logs(e) => e.name(),
-            Effect::PullRequest(e) => e.name(),
-            Effect::DeepLink(e) => e.name(),
-            Effect::Dashboard(e) => e.name(),
-            Effect::Issue(e) => e.name(),
-            Effect::Updates(e) => e.name(),
-            Effect::Repos(e) => e.name(),
-            Effect::Trust(e) => e.name(),
-            Effect::Partial(super::partial::PartialEffect::SizeHistory(_)) => "partial-size",
-            Effect::Partial(super::partial::PartialEffect::FetchContent(_)) => "partial-content",
             Effect::StopGit(_) => "stop-git",
-            Effect::Ui(_) => "ui",
-        }
+        } } }
     }
 
-    /// Whether the runner times this effect for the performance log (runner/mod.rs).
+    /// Whether the runner times this effect for the performance log (runner/mod.rs); an area's
+    /// comes from its `EffectMeta`.
     pub fn timed(&self) -> bool {
-        match self {
-            Effect::Index(e) => e.timed(),
-            Effect::Background(_) => true,
+        effect_areas! { effect_match! { self, |e| e.timed(), {
             Effect::LoadRepo { .. }
             | Effect::LoadStatus { .. }
             | Effect::LoadIndexStatus { .. }
-            | Effect::CountWorktreeChanges(_)
             | Effect::LoadDetail { .. }
-            | Effect::LoadCompare { .. }
-            | Effect::LoadStacked(_)
-            | Effect::LoadWorkdirCompare { .. }
             | Effect::LoadDiff { .. }
             | Effect::HighlightDiff { .. }
             | Effect::LoadDiffGaps { .. }
             | Effect::LoadBinarySides { .. }
-            | Effect::LoadConflict { .. }
             | Effect::LoadFileHistory { .. }
-            | Effect::LoadBlame(_)
-            | Effect::LoadFileText(_)
             | Effect::LocalOp { .. }
-            | Effect::ReadConflictFiles { .. }
             | Effect::Revert { .. }
             | Effect::RestoreFile { .. }
             | Effect::WorkFile { .. }
             | Effect::LoadTrackedPaths { .. }
-            | Effect::Submodule(_)
-            | Effect::CheckWorktreeFolder(_)
-            | Effect::CheckCloneParent { .. }
-            | Effect::DetectLfs { .. }
-            | Effect::RemoveWorktree(_)
-            | Effect::MoveWorktree(_)
-            | Effect::Stash(_)
-            | Effect::LoadLfs { .. }
-            | Effect::LoadSparse { .. }
-            | Effect::SparseCheckout { .. }
-            | Effect::TurnOnMonitor { .. }
             | Effect::RunGit { .. }
-            | Effect::Pick(_)
             | Effect::UndoRedo { .. }
-            | Effect::Rebase(_)
-            | Effect::Stack(_)
             | Effect::Forge { .. }
-            | Effect::Account(_)
             | Effect::Stats { .. }
-            | Effect::LineCounts(_)
             | Effect::SearchPaths { .. }
             | Effect::VerifySignature { .. }
             | Effect::FetchAvatars(_)
@@ -150,52 +70,17 @@ impl Effect {
             | Effect::SaveRecent(_)
             | Effect::CheckRepoFolders(_)
             | Effect::ReadTabGroups(_)
-            | Effect::SaveTabs { .. }
-            | Effect::Profile(_)
-            | Effect::GitEnv(_)
-            | Effect::Onboarding(_)
-            | Effect::Theme(_)
-            | Effect::CheckConflicts(_)
-            | Effect::OpPreview(_)
-            | Effect::Journal(_)
-            | Effect::RangeDiff(_)
-            | Effect::Remote(_)
-            | Effect::Clone(_)
-            | Effect::Init(_)
-            | Effect::Trust(_)
-            | Effect::PullRequest(_)
-            | Effect::DeepLink(_)
-            | Effect::Issue(_) => true,
-            // Some of their variants wait on the user (a file dialog, a passphrase prompt).
-            Effect::Ssh(e) => e.timed(),
-            Effect::Patch(p) => p.timed(),
-            Effect::Dashboard(e) => e.timed(),
-            Effect::Updates(e) => e.timed(),
-            Effect::Repos(e) => e.timed(),
-            Effect::CustomCommand(e) => e.timed(),
-            Effect::Prefs(e) => e.timed(),
-            // They wait on the user, hand work to the system, or never run on a worker thread.
-            Effect::Os(_)
-            | Effect::Watch(_)
-            | Effect::SweepWatch { .. }
-            | Effect::AnswerPrompt { .. }
-            // A keychain may ask the user to allow saving the sign-in.
-            | Effect::Credential(_)
-            | Effect::Terminal(_)
-            | Effect::Tool(_)
-            | Effect::Notify(_)
-            | Effect::Logs(_)
-            // A network call and a download the user may stop; the stop never runs on a worker.
-            | Effect::Partial(_)
-            | Effect::StopGit(_)
-            | Effect::Ui(_) => false,
-        }
+            | Effect::SaveTabs { .. } => true,
+            // They wait on the system or never run on a worker thread.
+            Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. } | Effect::StopGit(_) => false,
+        } } }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Effect;
+    use crate::effect::EffectMeta;
     use crate::patch::PatchEffect;
     use crate::ssh::SshEffect;
     use std::path::PathBuf;

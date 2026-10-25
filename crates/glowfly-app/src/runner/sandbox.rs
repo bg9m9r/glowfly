@@ -6,12 +6,9 @@
 //! tell when the app is idle.
 
 use super::{Runner, Waker};
-use crate::effect::{CloneEffect, Effect, PrefsEffect};
-use crate::git_env::GitEnvEffect;
-use crate::logs::LogsEffect;
+use crate::effect::areas::{effect_areas, effect_match};
+use crate::effect::{Effect, EffectMeta, SandboxRule};
 use crate::msg::Msg;
-use crate::patch::PatchEffect;
-use crate::profile::ProfileEffect;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
@@ -82,140 +79,57 @@ impl<W: Waker + Clone> Runner<W> {
     /// effect it dropped). Without a sandbox every effect runs.
     pub(super) fn admit(&self, effect: Effect) -> Option<Effect> {
         let Some(sandbox) = &self.sandbox else { return Some(effect) };
-        // Every variant is listed, so a new effect has to be placed in one of these groups.
-        let run = match &effect {
-            Effect::LoadRepo { .. }
-            | Effect::LoadStatus { .. }
-            | Effect::LoadIndexStatus { .. }
-            | Effect::CountWorktreeChanges(_)
-            | Effect::LoadDetail { .. }
-            | Effect::LoadCompare { .. }
-            | Effect::LoadStacked(_)
-            | Effect::LoadWorkdirCompare { .. }
-            | Effect::LoadDiff { .. }
-            | Effect::HighlightDiff { .. }
-            | Effect::LoadDiffGaps { .. }
-            | Effect::LoadBinarySides { .. }
-            | Effect::LoadConflict { .. }
-            | Effect::LocalOp { .. }
-            | Effect::ReadConflictFiles { .. }
-            | Effect::Revert { .. }
-            | Effect::RestoreFile { .. }
-            | Effect::WorkFile { .. }
-            | Effect::LoadTrackedPaths { .. }
-            | Effect::Submodule(_)
-            | Effect::CheckWorktreeFolder(_)
-            | Effect::CheckCloneParent { .. }
-            | Effect::DetectLfs { .. }
-            | Effect::RemoveWorktree(_)
-            | Effect::MoveWorktree(_)
-            | Effect::Stash(_)
-            | Effect::LoadLfs { .. }
-            | Effect::LoadSparse { .. }
-            | Effect::SparseCheckout { .. }
-            | Effect::LoadFileHistory { .. }
-            | Effect::LoadFileText(_)
-            | Effect::LoadBlame(_)
-            | Effect::RunGit { .. }
-            | Effect::Pick(_)
-            | Effect::Rebase(_)
-            // Journeys push to local bare repositories.
-            | Effect::Stack(_)
-            | Effect::UndoRedo { .. }
-            | Effect::Stats { .. }
-            | Effect::LineCounts(_)
-            | Effect::SearchPaths { .. }
-            | Effect::Index(_)
-            | Effect::Background(_)
-            | Effect::VerifySignature { .. }
-            | Effect::Prefs(PrefsEffect::ReadGitConfig { .. } | PrefsEffect::SetGitConfig { global: false, .. })
-            | Effect::CheckRepoFolders(_)
-            | Effect::ReadTabGroups(_)
-            | Effect::Patch(PatchEffect::Export { .. } | PatchEffect::Inspect { .. } | PatchEffect::Copy { .. })
-            | Effect::CheckConflicts(_)
-            | Effect::OpPreview(_)
-            | Effect::Journal(_)
-            | Effect::RangeDiff(_)
-            | Effect::Clone(CloneEffect::Sparse { .. })
-            | Effect::Init(_)
-            | Effect::Trust(_)
-            | Effect::GitEnv(GitEnvEffect::Detect { .. } | GitEnvEffect::Discover { .. } | GitEnvEffect::CheckPathGit { .. })
-            | Effect::Watch(_)
-            | Effect::SweepWatch { .. }
-            | Effect::AnswerPrompt { .. }
-            | Effect::Partial(crate::effect::partial::PartialEffect::FetchContent(_))
-            | Effect::StopGit(_)
-            // A repository's own config, read or (asked first) its identity removed.
-            | Effect::Profile(ProfileEffect::ReadIdentity { .. } | ProfileEffect::ClearLocalIdentity { .. })
-            // A no-op: the log worker is never attached in a test. The save dialog is dropped.
-            | Effect::Logs(
-                LogsEffect::LoadActivity
-                | LogsEffect::Append(_)
-                | LogsEffect::ClearActivity { .. }
-                | LogsEffect::ReadFile { .. }
-                | LogsEffect::OpenFolder
-                | LogsEffect::SetExtended(_)
-                | LogsEffect::Export { .. },
-            )
-            // Handled by the shell; it never gets here.
-            | Effect::Ui(_) => true,
-            Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. } => {
+        match rule(&effect) {
+            SandboxRule::Run => Some(effect),
+            SandboxRule::Save => {
                 if let Some(msg) = save_into(&sandbox.files, effect)
                     && self.tx.send(msg).is_ok()
                 {
                     self.waker.wake();
                 }
-                return None;
+                None
             }
-            Effect::Forge { .. }
-            | Effect::Account(_)
-            | Effect::Credential(_)
-            | Effect::FetchAvatars(_)
-            | Effect::Prefs(
-                PrefsEffect::SetGitConfig { global: true, .. }
-                | PrefsEffect::ListSigningKeys { .. }
-                | PrefsEffect::GenerateGpgKey { .. }
-                | PrefsEffect::ExportPublicKey { .. },
-            )
-            | Effect::Os(_)
-            | Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. })
-            | Effect::Logs(LogsEffect::PickExport { .. })
-            | Effect::Clone(CloneEffect::ListRepos { .. })
-            | Effect::Ssh(_)
-            // The global git config, Glowfly's config folder or a picked folder.
-            | Effect::Profile(
-                ProfileEffect::Apply { .. }
-                | ProfileEffect::Rewrite { .. }
-                | ProfileEffect::CheckFolder { .. }
-                | ProfileEffect::SyncIncludes { .. },
-            )
-            | Effect::Tool(_)
-            // Reads the user's config folder; runs the OS shell.
-            | Effect::CustomCommand(_)
-            | Effect::Theme(_)
-            | Effect::Onboarding(_)
-            | Effect::Notify(_)
-            | Effect::PullRequest(_)
-            | Effect::DeepLink(_)
-            | Effect::Dashboard(_)
-            | Effect::Issue(_)
-            | Effect::Updates(_)
-            | Effect::Remote(_)
-            | Effect::Repos(_)
-            // May ask a hosting service.
-            | Effect::Partial(crate::effect::partial::PartialEffect::SizeHistory(_))
-            | Effect::Terminal(_)
-            // Starts a git daemon that outlives the run.
-            | Effect::TurnOnMonitor { .. }
-            | Effect::GitEnv(GitEnvEffect::AddSafeDirectory(_) | GitEnvEffect::Use { .. } | GitEnvEffect::PickProgram) => false,
-        };
-        if run {
-            return Some(effect);
+            SandboxRule::Drop => {
+                tracing::debug!("sandbox: dropped {}", effect.name());
+                lock(&sandbox.dropped).push(effect.name());
+                None
+            }
         }
-        tracing::debug!("sandbox: dropped {}", effect.name());
-        lock(&sandbox.dropped).push(effect.name());
-        None
     }
+}
+
+/// What the sandbox does with `effect`: an area's rule comes from its `EffectMeta`; every flat
+/// variant is listed, so a new one has to be placed.
+fn rule(effect: &Effect) -> SandboxRule {
+    effect_areas! { effect_match! { effect, |e| e.sandbox(), {
+        Effect::LoadRepo { .. }
+        | Effect::LoadStatus { .. }
+        | Effect::LoadIndexStatus { .. }
+        | Effect::LoadDetail { .. }
+        | Effect::LoadDiff { .. }
+        | Effect::HighlightDiff { .. }
+        | Effect::LoadDiffGaps { .. }
+        | Effect::LoadBinarySides { .. }
+        | Effect::LocalOp { .. }
+        | Effect::Revert { .. }
+        | Effect::RestoreFile { .. }
+        | Effect::WorkFile { .. }
+        | Effect::LoadTrackedPaths { .. }
+        | Effect::LoadFileHistory { .. }
+        | Effect::RunGit { .. }
+        | Effect::UndoRedo { .. }
+        | Effect::Stats { .. }
+        | Effect::SearchPaths { .. }
+        | Effect::VerifySignature { .. }
+        | Effect::CheckRepoFolders(_)
+        | Effect::ReadTabGroups(_)
+        | Effect::Watch(_)
+        | Effect::SweepWatch { .. }
+        | Effect::AnswerPrompt { .. }
+        | Effect::StopGit(_) => SandboxRule::Run,
+        Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. } => SandboxRule::Save,
+        Effect::Forge { .. } | Effect::FetchAvatars(_) => SandboxRule::Drop,
+    } } }
 }
 
 /// `saves::save_now`, writing into `folder`.
@@ -235,7 +149,9 @@ fn save_into(folder: &Path, effect: Effect) -> Option<Msg> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::effect::{DesktopNote, NoteKind, OsEffect};
+    use crate::effect::{CloneEffect, DesktopNote, NoteKind, OsEffect};
+    use crate::patch::PatchEffect;
+    use crate::profile::ProfileEffect;
     use std::sync::mpsc;
 
     #[derive(Clone)]
@@ -329,6 +245,38 @@ mod tests {
         let shell = CustomCommandEffect::RunShell(ShellRun { cwd: dir.clone(), script: "true".into() });
         assert!(runner.admit(Effect::CustomCommand(shell)).is_none());
         assert_eq!(runner.dropped(), ["load-custom-commands", "run-custom-command"]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn moved_effects_keep_their_sandbox_rule() {
+        use crate::effect::{ConflictEffect, ConflictRead, LfsEffect, MonitorJob, SelectionEffect, SparseEffect, WorktreeEffect};
+        let dir = folder("moved");
+        let (tx, _rx) = mpsc::channel();
+        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        assert!(runner.admit(Effect::TurnOnMonitor(MonitorJob { cwd: dir.clone(), then: Vec::new() })).is_none());
+        let oid = git2::Oid::zero();
+        let count = crate::worktree::CountRequest { workdir: dir.clone(), refs_key: 1, targets: Vec::new() };
+        let runs = [
+            Effect::Lfs(LfsEffect::Detect { cwd: dir.clone() }),
+            Effect::Lfs(LfsEffect::Load { workdir: dir.clone(), generation: 1 }),
+            Effect::Sparse(SparseEffect::Load { workdir: dir.clone(), generation: 1, run_git: false }),
+            Effect::Sparse(SparseEffect::Checkout { cwd: dir.clone(), command: glowfly_core::sparse_ops::SparseCommand::Reapply }),
+            Effect::Conflict(ConflictEffect::Load { workdir: dir.clone(), path: "a.txt".into(), generation: 1 }),
+            Effect::Conflict(ConflictEffect::ReadFiles {
+                workdir: dir.clone(),
+                paths: Vec::new(),
+                purpose: ConflictRead::BeforeMarkResolved,
+            }),
+            Effect::Selection(SelectionEffect::Compare { workdir: dir.clone(), from: oid, to: oid }),
+            Effect::Worktree(WorktreeEffect::CountChanges(count)),
+            Effect::Clone(CloneEffect::CheckParent { parent: "parent".into(), delay: std::time::Duration::ZERO }),
+        ];
+        for effect in runs {
+            let name = effect.name();
+            assert!(runner.admit(effect).is_some(), "{name} runs");
+        }
+        assert_eq!(runner.dropped(), ["turn-on-monitor"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

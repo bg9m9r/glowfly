@@ -4,13 +4,16 @@
 //! (state/profile_rules.rs, state/repo_identity.rs, update/profile_rules.rs,
 //! ui/prefs/profile_rules.rs).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use crate::msg::Inactive;
 use crate::state::prefs::GitConfigValues;
 use glowfly_core::identity::Identity;
 use glowfly_core::profile_includes::IncludePlan;
 use glowfly_core::repo_identity::RepoIdentity;
 use glowfly_core::settings::{FolderRule, ProfileId};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // `Applied` carries the config read back, as `PrefsMsg::GitConfigLoaded` does; each `Msg` is
 // that size anyway, so boxing it would only add an allocation.
@@ -125,8 +128,8 @@ pub enum ProfileEffect {
     ClearLocalIdentity { workdir: PathBuf, git_dir: PathBuf, rules: Vec<(ProfileId, FolderRule)> },
 }
 
-impl ProfileEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for ProfileEffect {
+    fn name(&self) -> &'static str {
         match self {
             ProfileEffect::Apply { .. } => "apply-profile",
             ProfileEffect::Rewrite { .. } => "rewrite-profile",
@@ -134,6 +137,31 @@ impl ProfileEffect {
             ProfileEffect::SyncIncludes { .. } => "sync-profile-includes",
             ProfileEffect::ReadIdentity { .. } => "read-repo-identity",
             ProfileEffect::ClearLocalIdentity { .. } => "clear-local-identity",
+        }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    /// A repository's own config, read or (asked first) its identity removed, runs; the global
+    /// git config, Glowfly's config folder or a picked folder is dropped.
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        match self {
+            ProfileEffect::ReadIdentity { .. } | ProfileEffect::ClearLocalIdentity { .. } => SandboxRule::Run,
+            ProfileEffect::Apply { .. }
+            | ProfileEffect::Rewrite { .. }
+            | ProfileEffect::CheckFolder { .. }
+            | ProfileEffect::SyncIncludes { .. } => SandboxRule::Drop,
         }
     }
 }

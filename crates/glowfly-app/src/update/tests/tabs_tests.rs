@@ -3,6 +3,7 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
+use crate::effect::ConflictEffect;
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::CommitMsg;
 use crate::msg::ConflictMsg;
@@ -230,7 +231,11 @@ fn conflict_view_survives_tab_switch() {
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     let generation = st.conflict_gen;
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadConflict { path, generation: g, .. } if path == "a.txt" && *g == generation)));
+    assert!(
+        fx.iter().any(
+            |e| matches!(e, Effect::Conflict(ConflictEffect::Load { path, generation: g, .. }) if path == "a.txt" && *g == generation)
+        )
+    );
     cleanup(&[&a, &b]);
 }
 

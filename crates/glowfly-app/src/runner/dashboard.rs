@@ -2,6 +2,7 @@
 //! remotes with libgit2 (nothing in them runs), then signing in to each account outside every
 //! repository and asking its targets, a few calls at a time.
 
+use super::execute::{Cx, Execute};
 use crate::effect::{AccountJob, AccountReply, DashboardEffect, FetchJob, FetchReply, ForgeError, TargetJob, TargetReply};
 use crate::msg::{DashboardMsg, Msg};
 use glowfly_core::error::Error;
@@ -19,6 +20,12 @@ pub(super) fn run(e: DashboardEffect) -> Msg {
             Msg::Dashboard(DashboardMsg::Scanned { generation, repos })
         }
         DashboardEffect::Fetch(job) => Msg::Dashboard(DashboardMsg::Fetched(Box::new(fetch(*job)))),
+    }
+}
+
+impl Execute for DashboardEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
     }
 }
 

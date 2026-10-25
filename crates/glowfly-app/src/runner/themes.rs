@@ -2,6 +2,7 @@
 //! writing a new theme file, and importing terminal schemes (a file dialog, then reading the
 //! file and writing its schemes to the themes folder's `terminal` folder).
 
+use super::execute::{Cx, Execute};
 use crate::msg::Msg;
 use crate::themes::{ThemeEffect, ThemeMsg};
 use glowfly_core::settings::{terminal_schemes, themes};
@@ -46,5 +47,11 @@ pub(super) fn run(effect: ThemeEffect) -> Option<Msg> {
             };
             Some(Msg::Theme(ThemeMsg::SchemesImported { file, result }))
         }
+    }
+}
+
+impl Execute for ThemeEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        run(self)
     }
 }

@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
+use crate::effect::SelectionEffect;
 use glowfly_core::testkit::git;
 
 /// Runs `msg` and everything it leads to, as the app would.
@@ -19,7 +20,12 @@ fn drive(st: &mut AppState, msg: Msg) {
     while let Some(m) = queue.pop() {
         for e in crate::update::update(st, m, Instant::now()) {
             if matches!(e, Effect::LoadDiff { .. } | Effect::LoadBinarySides { .. } | Effect::LoadRepo { .. } | Effect::LoadStatus { .. })
-                || matches!(e, Effect::LoadDetail { .. } | Effect::LoadCompare { .. } | Effect::LoadWorkdirCompare { .. })
+                || matches!(
+                    e,
+                    Effect::LoadDetail { .. }
+                        | Effect::Selection(SelectionEffect::Compare { .. })
+                        | Effect::Selection(SelectionEffect::WorkdirCompare { .. })
+                )
             {
                 queue.extend(crate::runner::execute(e));
             }

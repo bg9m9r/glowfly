@@ -1,11 +1,12 @@
 //! Moving a worktree (from its WORKTREES row, its WIP row in the graph or the palette): the Move
-//! dialog, the request checked again against the current snapshot, `Effect::MoveWorktree` as the
+//! dialog, the request checked again against the current snapshot, `WorktreeEffect::Move` as the
 //! active job, and what follows a move: the tabs, the recent list, the closed tabs, favorites and
 //! the known folders point at the new folder. A target found taken reopens the dialog with the
 //! error under the field.
 
 use super::ops;
 use crate::effect::Effect;
+use crate::effect::WorktreeEffect;
 use crate::state::tabs::ClosedTab;
 use crate::state::worktree_manage::gone_text;
 use crate::state::worktree_move::{MoveForm, move_refused, move_request, moved_headline};
@@ -53,7 +54,7 @@ pub(super) fn submit(st: &mut AppState, fx: &mut Vec<Effect>) {
         Ok(r) => r,
         Err(e) => return st.log(false, e),
     };
-    let effect = move |repo| Effect::MoveWorktree(MoveRequest { repo, ..req });
+    let effect = move |repo| Effect::Worktree(WorktreeEffect::Move(MoveRequest { repo, ..req }));
     if ops::begin_job(st, "Move worktree", true, effect, fx) == ops::Started::Now {
         st.modal = None;
     }

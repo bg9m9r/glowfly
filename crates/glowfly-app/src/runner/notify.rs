@@ -6,6 +6,7 @@
 //! and reports a click as `NotifyMsg::DesktopClicked`. Installed copies post under Glowfly's own
 //! app id (`dress`), so the OS shows its name and icon.
 
+use super::execute::{Cx, Execute};
 use crate::effect::{DesktopNote, NoteKind};
 use crate::msg::{Msg, NotifyMsg, PrefsMsg};
 use notify_rust::{Notification, NotificationResponse};
@@ -24,6 +25,12 @@ enum Shown {
 /// refusal as `PrefsMsg::DesktopNotificationFailed`.
 pub(super) fn run(note: DesktopNote) -> Option<Msg> {
     deliver(note, show)
+}
+
+impl Execute for DesktopNote {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        run(self)
+    }
 }
 
 /// Shows `note` with `send`, injectable so tests never reach the OS.

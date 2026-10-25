@@ -9,6 +9,7 @@
 use super::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
+use crate::effect::LfsEffect;
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
@@ -57,7 +58,7 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
         LfsMsg::Detect => {
             st.lfs.install = LfsInstall::Checking;
             // Outside a held repository, whose own config (an alias) git would read.
-            fx.push(Effect::DetectLfs { cwd: st.unasked_dir() });
+            fx.push(Effect::Lfs(LfsEffect::Detect { cwd: st.unasked_dir() }));
         }
         LfsMsg::Detected(v) => st.lfs.install = LfsInstall::from_version(v),
         LfsMsg::TrackPath(t) => track_path(st, t, fx),
@@ -119,7 +120,7 @@ fn read(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
         p.lfs.status = None;
     }
     if !held {
-        fx.push(Effect::LoadLfs { workdir, generation: p.lfs.generation });
+        fx.push(Effect::Lfs(LfsEffect::Load { workdir, generation: p.lfs.generation }));
     }
 }
 

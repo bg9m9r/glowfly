@@ -5,6 +5,7 @@
 use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::LfsEffect;
 use crate::lfs::LfsMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
@@ -73,7 +74,7 @@ fn git_cmds(fx: &[Effect]) -> Option<Vec<Vec<String>>> {
 }
 
 fn loads(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LoadLfs { .. }))
+    fx.iter().any(|e| matches!(e, Effect::Lfs(LfsEffect::Load { .. })))
 }
 
 fn last_log(st: &AppState) -> String {
@@ -88,7 +89,7 @@ fn add_remote(st: &mut AppState, name: &str) {
 fn opening_the_page_reads_the_status() {
     let (mut st, dir) = open("lfs-open");
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadLfs { workdir, generation: 1 } if *workdir == dir)));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Lfs(LfsEffect::Load { workdir, generation: 1 }) if *workdir == dir)));
     assert!(st.prefs.as_ref().unwrap().lfs.status.is_none());
     cleanup(&dir);
 

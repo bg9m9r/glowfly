@@ -7,6 +7,9 @@
 //! Fetch button sends `RemoteMsg::Fetch`, and the browser and copy actions are `Msg::OpenUrl`
 //! and `Msg::Copy`.
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 pub mod line_comment;
 
 use crate::effect::ForgeError;
@@ -17,7 +20,7 @@ use glowfly_core::forge::{
 };
 use glowfly_core::repo::{PrCompare, PrLineMaps};
 use line_comment::LineCommentMsg;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// The files and commits pull request `id` brings, compared from the target's
 /// remote-tracking tip to a source tip the runner picks: the listed `head` when it is here,
@@ -137,17 +140,8 @@ pub enum PrEffect {
     LineMaps(LineMapJob),
 }
 
-impl PrEffect {
-    pub fn scope(&self) -> Option<&PathBuf> {
-        match self {
-            PrEffect::Files(j) => Some(&j.workdir),
-            PrEffect::FetchHead(j) => Some(&j.workdir),
-            PrEffect::LineMaps(j) => Some(&j.workdir),
-            PrEffect::Call(_) => None,
-        }
-    }
-
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for PrEffect {
+    fn name(&self) -> &'static str {
         match self {
             PrEffect::Files(_) => "load-pr-files",
             PrEffect::FetchHead(_) => "fetch-pr-head",
@@ -164,6 +158,29 @@ impl PrEffect {
                 PrCall::ReviewComment { .. } => "add-pr-review-comment",
             },
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        match self {
+            PrEffect::Files(j) => Some(&j.workdir),
+            PrEffect::FetchHead(j) => Some(&j.workdir),
+            PrEffect::LineMaps(j) => Some(&j.workdir),
+            PrEffect::Call(_) => None,
+        }
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    /// Reads and calls, and a pull request head fetch that writes no ref.
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }
 

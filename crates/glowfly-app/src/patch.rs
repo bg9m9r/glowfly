@@ -3,9 +3,12 @@
 //! (state/patch*.rs, update/patch*.rs, runner/patches.rs, the graph and file menus, the Create
 //! patch and Apply patch dialogs).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use git2::Oid;
 use glowfly_core::patch_ops::{ApplyOptions, ExportReport, PatchSource, PatchSummary, SaveReport, WipScope};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum PatchMsg {
@@ -96,9 +99,9 @@ pub enum PatchEffect {
     Copy { workdir: PathBuf, oids: Vec<Oid> },
 }
 
-impl PatchEffect {
+impl EffectMeta for PatchEffect {
     /// A short name for the worker thread and the debug log.
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             PatchEffect::PickSave { .. } => "pick-patch-save",
             PatchEffect::Export { .. } => "export-patch",
@@ -108,11 +111,28 @@ impl PatchEffect {
         }
     }
 
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
     /// Whether the runner times this for the performance log: the file dialogs wait on the user.
-    pub fn timed(&self) -> bool {
+    fn timed(&self) -> bool {
         match self {
             PatchEffect::Export { .. } | PatchEffect::Inspect { .. } | PatchEffect::Copy { .. } => true,
             PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. } => false,
+        }
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    /// The file dialogs are dropped.
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        match self {
+            PatchEffect::Export { .. } | PatchEffect::Inspect { .. } | PatchEffect::Copy { .. } => SandboxRule::Run,
+            PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. } => SandboxRule::Drop,
         }
     }
 }

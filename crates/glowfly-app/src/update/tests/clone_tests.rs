@@ -3,6 +3,7 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
+use crate::effect::CloneEffect;
 use crate::effect::Effect;
 use crate::msg::CloneMsg;
 use crate::msg::PrefsMsg;
@@ -242,7 +243,7 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     let mut st = AppState::new(Settings::default(), vec![dir.join("app")], now);
     // Opening the dialog checks its prefilled folder at once.
     let fx = update(&mut st, Msg::Clone(CloneMsg::Dialog), now);
-    assert!(matches!(&fx[..], [Effect::CheckCloneParent { delay, .. }] if delay.is_zero()), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Clone(CloneEffect::CheckParent { delay, .. })] if delay.is_zero()), "{fx:?}");
     form(&mut st).url = URL.into();
     form(&mut st).parent = format!(" {} ", dir.display());
     let p = form(&mut st).problems_now(today());
@@ -250,9 +251,10 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
 
     // An edit asks again after a pause.
     let fx = update(&mut st, Msg::Clone(CloneMsg::ParentEdited), now);
-    let [Effect::CheckCloneParent { parent, delay }] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
+    let [Effect::Clone(CloneEffect::CheckParent { parent, delay })] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
     assert_eq!((parent.clone(), *delay), (dir.display().to_string(), super::clone::PARENT_CHECK_DELAY));
-    let answer = crate::runner::execute(Effect::CheckCloneParent { parent: parent.clone(), delay: Default::default() }).unwrap();
+    let answer =
+        crate::runner::execute(Effect::Clone(CloneEffect::CheckParent { parent: parent.clone(), delay: Default::default() })).unwrap();
     // An answer for text that has changed since is dropped.
     update(&mut st, Msg::Clone(CloneMsg::ParentChecked { parent: "elsewhere".into(), found: Some("elsewhere".into()) }), now);
     assert_eq!(form(&mut st).parent_is_dir(), None);
@@ -264,13 +266,14 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     let gone = dir.join("missing");
     form(&mut st).parent = gone.display().to_string();
     let fx = update(&mut st, Msg::Clone(CloneMsg::ParentEdited), now);
-    let [Effect::CheckCloneParent { parent, .. }] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
-    let answer = crate::runner::execute(Effect::CheckCloneParent { parent: parent.clone(), delay: Default::default() }).unwrap();
+    let [Effect::Clone(CloneEffect::CheckParent { parent, .. })] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
+    let answer =
+        crate::runner::execute(Effect::Clone(CloneEffect::CheckParent { parent: parent.clone(), delay: Default::default() })).unwrap();
     update(&mut st, answer, now);
     assert_eq!(form(&mut st).problems_now(today()).folder.as_deref(), Some("That folder doesn't exist."));
 
     // A picked folder is checked at once.
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::FolderPicked { purpose: FolderPurpose::CloneParent, path: Some(dir.clone()) }), now);
-    assert!(matches!(&fx[..], [Effect::CheckCloneParent { delay, .. }] if delay.is_zero()), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Clone(CloneEffect::CheckParent { delay, .. })] if delay.is_zero()), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

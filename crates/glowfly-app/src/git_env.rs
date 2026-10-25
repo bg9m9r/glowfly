@@ -5,10 +5,13 @@
 //! banner; and repositories git refuses because another user owns
 //! them, which can be added to `safe.directory`.
 
+use crate::effect::EffectMeta;
 use crate::effect::LoadKind;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use glowfly_core::git_program::Candidate;
 use glowfly_core::git_version::GitInfo;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum GitEnvMsg {
@@ -123,9 +126,9 @@ pub enum GitEnvEffect {
     },
 }
 
-impl GitEnvEffect {
+impl EffectMeta for GitEnvEffect {
     /// A short name for the worker thread and the debug log.
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             GitEnvEffect::Detect { .. } => "detect-git",
             GitEnvEffect::AddSafeDirectory(_) => "add-safe-directory",
@@ -133,6 +136,26 @@ impl GitEnvEffect {
             GitEnvEffect::Use { .. } => "use-git",
             GitEnvEffect::PickProgram => "pick-git",
             GitEnvEffect::CheckPathGit { .. } => "check-path-git",
+        }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        match self {
+            GitEnvEffect::Detect { .. } | GitEnvEffect::Discover { .. } | GitEnvEffect::CheckPathGit { .. } => SandboxRule::Run,
+            GitEnvEffect::AddSafeDirectory(_) | GitEnvEffect::Use { .. } | GitEnvEffect::PickProgram => SandboxRule::Drop,
         }
     }
 }

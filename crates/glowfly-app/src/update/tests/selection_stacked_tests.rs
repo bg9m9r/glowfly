@@ -5,6 +5,7 @@
 use super::selection_tests::{fixture, refresh, up};
 use super::tests::drive;
 use crate::effect::Effect;
+use crate::effect::SelectionEffect;
 use crate::msg::{Msg, RepoMsg, SelectionMsg};
 use crate::state::diff_nav::{Landing, Step, next_file, step};
 use crate::state::selection::{MultiSelection, STACK_LIMIT, stack_slice};
@@ -20,7 +21,7 @@ fn multi(st: &AppState) -> &MultiSelection {
 }
 
 fn stacks(fx: &[Effect]) -> Vec<Vec<Oid>> {
-    fx.iter().filter_map(|e| if let Effect::LoadStacked(r) = e { Some(r.oids.clone()) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::Selection(SelectionEffect::Stacked(r)) = e { Some(r.oids.clone()) } else { None }).collect()
 }
 
 fn commit_file(oid: Oid) -> DiffTarget {
@@ -34,7 +35,7 @@ fn a_selection_with_a_gap_lists_each_commits_changes() {
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(2))));
     assert_eq!(stacks(&fx), [vec![f.c(5), f.c(4), f.c(2)]]);
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadCompare { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Selection(SelectionEffect::Compare { .. }))), "{fx:?}");
 
     super::tests::finish(&mut st, fx);
     let stack = multi(&st).stacked.clone().expect("loaded").expect("no error");

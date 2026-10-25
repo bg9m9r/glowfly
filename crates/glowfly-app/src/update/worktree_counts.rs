@@ -1,10 +1,11 @@
 //! Counting other worktrees' changes after a load. A full load counts only the small ones and
 //! leaves the rest Pending, so one huge linked worktree doesn't hold up the graph; right after it
-//! one background effect (`Effect::CountWorktreeChanges`) counts those, and the result
+//! one background effect (`WorktreeEffect::CountChanges`) counts those, and the result
 //! (`WorktreeMsg::ChangesCounted`) fills in their counts and lays the graph out again. One count
 //! runs per tab at a time, and it outlives refreshes that find the repository unchanged.
 
 use crate::effect::Effect;
+use crate::effect::WorktreeEffect;
 use crate::state::AppState;
 use crate::worktree::CountRequest;
 use glowfly_core::paths::same_spelling;
@@ -27,7 +28,7 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
     let targets = pending.iter().map(|w| (w.path.clone(), st.saved_trust_for(&w.path))).collect();
     let request = CountRequest { workdir: snap.workdir.clone(), refs_key: snap.refs_key, targets };
     st.refresh.counting = Some(snap.refs_key);
-    fx.push(Effect::CountWorktreeChanges(request));
+    fx.push(Effect::Worktree(WorktreeEffect::CountChanges(request)));
 }
 
 /// The background count for the snapshot with `refs_key` is done: fills in the worktrees still

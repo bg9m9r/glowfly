@@ -1,5 +1,6 @@
 //! Stash list jobs (`Effect::Stash`): renaming an entry, and putting an auto-stash back.
 
+use super::execute::{Cx, Execute};
 use super::expect;
 use crate::effect::{PutBackRequest, StashEffect, UndoResult};
 use crate::msg::{AutoStashMsg, JobMsg, Msg};
@@ -12,6 +13,12 @@ pub(super) fn run(e: StashEffect) -> Msg {
     match e {
         StashEffect::Rename { cwd, index, oid, message } => rename(&cwd, index, oid, &message),
         StashEffect::PutBack(req) => put_back(req),
+    }
+}
+
+impl Execute for StashEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
     }
 }
 

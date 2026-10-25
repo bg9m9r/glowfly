@@ -3,10 +3,13 @@
 //! runner/journal.rs, the view in ui/journal/), and its Lost commits tab
 //! (state/journal_lost.rs, update/journal_lost.rs, ui/journal/lost*.rs).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use crate::state::journal_lost::JournalTab;
 use git2::Oid;
 use glowfly_core::journal::{LostCommits, Preview, RowKey, Timeline};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum JournalMsg {
@@ -119,20 +122,39 @@ pub enum JournalEffect {
 }
 
 impl JournalEffect {
-    pub fn scope(&self) -> &PathBuf {
+    pub fn workdir(&self) -> &PathBuf {
         match self {
             Self::Load { workdir, .. } | Self::Preview { workdir, .. } | Self::Lost { workdir, .. } | Self::LostPreview { workdir, .. } => {
                 workdir
             }
         }
     }
+}
 
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for JournalEffect {
+    fn name(&self) -> &'static str {
         match self {
             Self::Load { .. } => "journal-load",
             Self::Preview { .. } => "journal-preview",
             Self::Lost { .. } => "journal-lost",
             Self::LostPreview { .. } => "journal-lost-preview",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        Some(self.workdir())
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
     }
 }

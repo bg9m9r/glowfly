@@ -4,6 +4,7 @@
 //! working-tree status read, so it follows edits), and keeping it across refreshes.
 
 use crate::effect::Effect;
+use crate::effect::SelectionEffect;
 use crate::state::selection_wip::{WorkdirCompare, wip_toggled};
 use crate::state::{AppState, Selection};
 use git2::Oid;
@@ -50,7 +51,7 @@ pub(super) fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     let Selection::VsWorkdir(w) = &mut st.selection else { return };
     w.generation += 1;
-    fx.push(Effect::LoadWorkdirCompare { workdir, oid: w.oid, generation: w.generation, swapped: w.swapped });
+    fx.push(Effect::Selection(SelectionEffect::WorkdirCompare { workdir, oid: w.oid, generation: w.generation, swapped: w.swapped }));
 }
 
 /// A file list read: kept when it is the latest read for the compared commit.

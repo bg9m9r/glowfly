@@ -1,10 +1,11 @@
 //! Removing, locking, unlocking and pruning worktrees from the WORKTREES section. Every request
 //! is checked again against the current snapshot. Remove closes the other tabs showing the
-//! worktree first, then runs as its own effect (`Effect::RemoveWorktree`: a lock or changes are
+//! worktree first, then runs as its own effect (`WorktreeEffect::Remove`: a lock or changes are
 //! found before git runs, and the branch, and that branch on its remote, are deleted afterwards)
 //! and comes back as `WorktreeMsg::Removed`; the others are plain git jobs.
 
 use super::ops::{self, JobSpec};
+use crate::effect::WorktreeEffect;
 use crate::effect::{Effect, UndoResult};
 use crate::state::worktree_manage::{
     LockForm, RemoveForm, branch_failed_text, folder_left_headline, gone_text, lock_refused, needs_force_text, prune_blocked,
@@ -107,7 +108,9 @@ pub(super) fn remove(st: &mut AppState, fx: &mut Vec<Effect>) {
     let (name, force) = (form.name.clone(), form.force());
     let delete_remote = form.remote_ticked().cloned();
     let delete_branch = form.delete_branch.then(|| form.branch.clone()).flatten();
-    let effect = move |repo| Effect::RemoveWorktree(RemoveRequest { repo, path: wt.path, name, force, delete_branch, delete_remote });
+    let effect = move |repo| {
+        Effect::Worktree(WorktreeEffect::Remove(RemoveRequest { repo, path: wt.path, name, force, delete_branch, delete_remote }))
+    };
     if ops::begin_job(st, "Remove worktree", true, effect, fx) == ops::Started::Now {
         st.modal = None;
     }

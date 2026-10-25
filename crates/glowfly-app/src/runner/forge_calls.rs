@@ -2,6 +2,7 @@
 //! accounts (`Effect::Account`): signing in, tokens, owners, creating a repository and a Trello
 //! account's boards.
 
+use super::execute::{Cx, Execute};
 use crate::effect::{AccountEffect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use crate::msg::{ForgeMsg, Msg, PublishMsg};
 use glowfly_core::forge::{self, Account, Auth, Target};
@@ -33,6 +34,12 @@ pub(super) fn account(e: AccountEffect) -> Option<Msg> {
                 .collect();
             (!failures.is_empty()).then(|| Msg::Logged { ok: false, text: failures.join("\n") })
         }
+    }
+}
+
+impl Execute for AccountEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        account(self)
     }
 }
 

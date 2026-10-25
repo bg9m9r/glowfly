@@ -1,6 +1,7 @@
 //! Finding git and its version (at startup), finding the installed gits and switching to one
 //! (Preferences > Git), and listing a folder in `safe.directory` (`Effect::GitEnv`).
 
+use super::execute::{Cx, Execute};
 use crate::effect::LoadKind;
 use crate::git_env::{GitEnvEffect, GitEnvMsg};
 use crate::msg::Msg;
@@ -39,6 +40,12 @@ pub(super) fn run(effect: GitEnvEffect) -> Msg {
             GitEnvMsg::Picked(dialog.pick_file())
         }
     })
+}
+
+impl Execute for GitEnvEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }
 
 /// The answer to a load git refused because another user owns the repository at `root`.

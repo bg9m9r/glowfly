@@ -2,8 +2,11 @@
 //! manager, the default program for a file and the system's file pickers (`Effect::Os`, run by
 //! runner/os.rs). Unscoped; none of them touches the repository.
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use crate::msg::{FilePurpose, FolderPurpose};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum OsEffect {
@@ -30,9 +33,9 @@ pub enum OsEffect {
     },
 }
 
-impl OsEffect {
+impl EffectMeta for OsEffect {
     /// A short name for the worker thread and the debug log.
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             OsEffect::OpenUrl(_) => "open-url",
             OsEffect::OpenTerminal(_) => "open-terminal",
@@ -42,5 +45,23 @@ impl OsEffect {
             OsEffect::PickFolder { .. } => "pick-folder",
             OsEffect::PickFile { .. } => "pick-file",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    /// They wait on the user or hand work to the system.
+    fn timed(&self) -> bool {
+        false
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

@@ -2,6 +2,7 @@
 //! finding the user's own fork and forking into the user's account. Signs in the way the pull
 //! request calls do, in the dialog's repository.
 
+use super::execute::{Cx, Execute};
 use crate::effect::ForgeError;
 use crate::msg::Msg;
 use crate::remote::{ForkRequest, RemoteEffect, RemoteMsg};
@@ -30,4 +31,10 @@ pub(super) fn run(e: RemoteEffect) -> Msg {
         }
     };
     Msg::Remote(msg)
+}
+
+impl Execute for RemoteEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }

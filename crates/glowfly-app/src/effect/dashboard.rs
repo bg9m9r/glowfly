@@ -1,9 +1,12 @@
 //! What the cross-repository dashboard asks the runner (runner/dashboard.rs): reading the known
 //! repositories' remotes with libgit2, then one round of service calls, and what comes back.
 
+use super::EffectMeta;
 use super::ForgeError;
+#[cfg(test)]
+use super::SandboxRule;
 use glowfly_core::forge::{Account, Auth, Connection, Issue, Me, PullRequest, Target};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum DashboardEffect {
@@ -69,19 +72,32 @@ pub struct TargetReply {
     pub issues: Option<Result<Vec<Issue>, ForgeError>>,
 }
 
-impl DashboardEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for DashboardEffect {
+    fn name(&self) -> &'static str {
         match self {
             DashboardEffect::Scan { .. } => "dashboard-scan",
             DashboardEffect::Fetch(_) => "dashboard-fetch",
         }
     }
 
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
     /// Timed for the performance log, except a sign-in that may wait on the user.
-    pub fn timed(&self) -> bool {
+    fn timed(&self) -> bool {
         match self {
             DashboardEffect::Scan { .. } => true,
             DashboardEffect::Fetch(job) => !job.interactive,
         }
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

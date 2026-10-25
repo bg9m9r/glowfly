@@ -1,6 +1,7 @@
 //! Effects that hand something to the operating system: URLs, terminals, the file manager and
 //! files opened in their default program. None of them touch the repository.
 
+use super::execute::{Cx, Execute};
 use crate::effect::OsEffect;
 use crate::msg::{FilesMsg, Msg, PrefsMsg};
 use glowfly_core::opens::{FileFacts, Os, opens_as_program};
@@ -22,6 +23,12 @@ pub(super) fn run(e: OsEffect) -> Option<Msg> {
             let path = rfd::FileDialog::new().set_title(title).pick_file();
             Some(Msg::Prefs(PrefsMsg::FilePicked { purpose, path }))
         }
+    }
+}
+
+impl Execute for OsEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        run(self)
     }
 }
 

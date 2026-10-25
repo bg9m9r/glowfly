@@ -5,6 +5,7 @@
 //! Whether a shell is running a program is read on a thread of its own, since a process
 //! snapshot takes milliseconds.
 
+use super::execute::{Cx, Execute};
 use super::{Runner, Waker};
 use crate::msg::Msg;
 use crate::terminal::{AfterCheck, TerminalEffect, TerminalMsg};
@@ -34,6 +35,14 @@ struct KillSwitch(Mutex<KillState>);
 struct KillState {
     kill: Option<KillFn>,
     requested: bool,
+}
+
+/// The sessions are run by `Runner::run` itself (`Runner::terminal`), never on a worker.
+impl Execute for TerminalEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        tracing::warn!("terminal effect reached a worker; it is handled by Runner::run");
+        None
+    }
 }
 
 impl KillSwitch {

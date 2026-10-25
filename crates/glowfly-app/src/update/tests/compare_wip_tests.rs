@@ -5,6 +5,7 @@
 use super::selection_tests::{fixture, git, up};
 use super::tests::drive;
 use crate::effect::Effect;
+use crate::effect::SelectionEffect;
 use crate::msg::{Msg, RepoMsg, SelectionMsg};
 use crate::state::history::FileHistoryView;
 use crate::state::selection_wip::{WORKDIR_NEEDS_ONE, WorkdirCompare};
@@ -21,7 +22,13 @@ fn compared(st: &AppState) -> &WorkdirCompare {
 
 fn reads(fx: &[Effect]) -> Vec<(Oid, u64)> {
     fx.iter()
-        .filter_map(|e| if let Effect::LoadWorkdirCompare { oid, generation, .. } = e { Some((*oid, *generation)) } else { None })
+        .filter_map(|e| {
+            if let Effect::Selection(SelectionEffect::WorkdirCompare { oid, generation, .. }) = e {
+                Some((*oid, *generation))
+            } else {
+                None
+            }
+        })
         .collect()
 }
 
@@ -127,7 +134,9 @@ fn the_comparison_follows_the_working_tree() {
 }
 
 fn swapped_reads(fx: &[Effect]) -> Vec<bool> {
-    fx.iter().filter_map(|e| if let Effect::LoadWorkdirCompare { swapped, .. } = e { Some(*swapped) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Selection(SelectionEffect::WorkdirCompare { swapped, .. }) = e { Some(*swapped) } else { None })
+        .collect()
 }
 
 #[test]

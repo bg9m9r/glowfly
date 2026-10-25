@@ -5,10 +5,13 @@
 //! service (state/ssh*.rs, update/ssh*.rs, runner/ssh.rs, ui/prefs/ssh*.rs,
 //! ui/ssh_keygen_dialog.rs).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use crate::msg::Inactive;
 use glowfly_core::forge::{Account, AddKeyOutcome};
 use glowfly_core::ssh_keys::{AgentReach, AgentStatus, KeyChoice, KeyFileProblem, NewKey, SshKeyPair, SshListing};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub enum SshMsg {
     /// The navigation row: switch Preferences to the page and read ~/.ssh.
@@ -192,7 +195,23 @@ pub enum SshFailure {
 }
 
 impl SshEffect {
-    pub fn name(&self) -> &'static str {
+    pub fn failure(&self) -> SshFailure {
+        match self {
+            SshEffect::List { generation, .. } => SshFailure::List(*generation),
+            SshEffect::PickKey { .. } => SshFailure::PickKey,
+            SshEffect::Generate { .. } => SshFailure::Generate,
+            SshEffect::ReadChoice { generation, .. } => SshFailure::ReadChoice(*generation),
+            SshEffect::SetKeyChoice { repo, .. } => SshFailure::SetKeyChoice { repo: repo.is_some() },
+            SshEffect::Agent { generation } => SshFailure::Agent(*generation),
+            SshEffect::AddToAgent { key, .. } => SshFailure::AddToAgent(key.clone()),
+            SshEffect::AddToService { key, account, .. } => SshFailure::AddToService { key: key.clone(), account: account.clone() },
+            SshEffect::SetWindowsSsh { program } => SshFailure::SetWindowsSsh { on: program.is_some() },
+        }
+    }
+}
+
+impl EffectMeta for SshEffect {
+    fn name(&self) -> &'static str {
         match self {
             SshEffect::List { .. } => "ssh-keys",
             SshEffect::PickKey { .. } => "ssh-pick-key",
@@ -206,10 +225,14 @@ impl SshEffect {
         }
     }
 
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
     /// Whether the runner times this for the performance log. `ssh-add` waits while the user
     /// types the key's passphrase, the upload may wait on a sign-in window, and the file dialog
     /// on the user.
-    pub fn timed(&self) -> bool {
+    fn timed(&self) -> bool {
         match self {
             SshEffect::List { .. }
             | SshEffect::Generate { .. }
@@ -221,18 +244,13 @@ impl SshEffect {
         }
     }
 
-    pub fn failure(&self) -> SshFailure {
-        match self {
-            SshEffect::List { generation, .. } => SshFailure::List(*generation),
-            SshEffect::PickKey { .. } => SshFailure::PickKey,
-            SshEffect::Generate { .. } => SshFailure::Generate,
-            SshEffect::ReadChoice { generation, .. } => SshFailure::ReadChoice(*generation),
-            SshEffect::SetKeyChoice { repo, .. } => SshFailure::SetKeyChoice { repo: repo.is_some() },
-            SshEffect::Agent { generation } => SshFailure::Agent(*generation),
-            SshEffect::AddToAgent { key, .. } => SshFailure::AddToAgent(key.clone()),
-            SshEffect::AddToService { key, account, .. } => SshFailure::AddToService { key: key.clone(), account: account.clone() },
-            SshEffect::SetWindowsSsh { program } => SshFailure::SetWindowsSsh { on: program.is_some() },
-        }
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }
 

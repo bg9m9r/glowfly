@@ -2,6 +2,7 @@
 //! of a commit's patch for the clipboard (`Effect::Patch`). Applying a patch is an ordinary
 //! `RunGit` job.
 
+use super::execute::{Cx, Execute};
 use crate::msg::Msg;
 use crate::patch::{PatchEffect, PatchMsg};
 use glowfly_core::patch_ops;
@@ -33,4 +34,10 @@ pub(super) fn run(effect: PatchEffect) -> Msg {
             PatchMsg::ApplyFrom { workdir, path }
         }
     })
+}
+
+impl Execute for PatchEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }

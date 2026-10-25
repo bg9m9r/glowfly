@@ -4,11 +4,14 @@
 //! update/deep_link.rs, update/deep_link_open.rs, runner/deep_link.rs, ui/deep_link_dialog.rs,
 //! ui/prefs/links.rs).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use git2::Oid;
 use glowfly_core::link::find::Found;
 use glowfly_core::link::{self, Link};
 use glowfly_core::url_scheme::SchemeStatus;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// What a Copy link item points at, as the menus know it.
 #[derive(Clone, Debug, PartialEq)]
@@ -110,8 +113,8 @@ pub enum DeepLinkEffect {
     Unregister,
 }
 
-impl DeepLinkEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for DeepLinkEffect {
+    fn name(&self) -> &'static str {
         match self {
             Self::Build { .. } => "build-link",
             Self::Find { .. } => "find-linked-repo",
@@ -122,9 +125,22 @@ impl DeepLinkEffect {
     }
 
     /// None for every variant (see the enum).
-    pub fn scope(&self) -> Option<&PathBuf> {
+    fn scope(&self) -> Option<&PathBuf> {
         match self {
             Self::Build { .. } | Self::Find { .. } | Self::SchemeStatus | Self::Register | Self::Unregister => None,
         }
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

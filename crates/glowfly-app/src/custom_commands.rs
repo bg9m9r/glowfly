@@ -5,8 +5,11 @@
 //! update/custom_commands_run.rs, the runner's side in runner/custom_commands.rs, the menus'
 //! Commands submenu in ui/custom_menu.rs and the keys in ui/shortcuts/custom_keys.rs.
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use glowfly_core::custom_commands::{FileRead, Source};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// A command by the file it came from and its name, found again when it runs.
 #[derive(Clone, Debug, PartialEq)]
@@ -64,19 +67,38 @@ pub enum CustomCommandEffect {
     RunShell(ShellRun),
 }
 
-impl CustomCommandEffect {
+impl EffectMeta for CustomCommandEffect {
     /// A short name for the worker thread and the debug log.
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             Self::Load { .. } => "load-custom-commands",
             Self::RunShell(_) => "run-custom-command",
         }
     }
 
+    /// Jobs report to whichever tab is active, like RunGit.
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
     /// Both are timed, as git jobs are.
-    pub fn timed(&self) -> bool {
+    fn timed(&self) -> bool {
         match self {
             Self::Load { .. } | Self::RunShell(_) => true,
         }
+    }
+
+    /// A script may change the index, files and refs.
+    fn queue(&self) -> Option<&Path> {
+        match self {
+            Self::RunShell(r) => Some(&r.cwd),
+            Self::Load { .. } => None,
+        }
+    }
+
+    /// Reads the user's config folder; runs the OS shell.
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

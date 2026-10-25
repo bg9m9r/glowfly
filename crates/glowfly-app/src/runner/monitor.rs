@@ -2,10 +2,18 @@
 //! check, start, confirm and set it (`repo::turn_on_monitor`), then have git write its token (and
 //! the untracked cache, when that was offered too) into the index.
 
+use super::execute::{Cx, Execute};
 use super::git_ops;
+use crate::effect::MonitorJob;
 use crate::msg::{LoadMsg, Msg};
 use glowfly_core::repo;
 use std::path::Path;
+
+impl Execute for MonitorJob {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(turn_on(&self.cwd, &self.then))
+    }
+}
 
 /// Turns the monitor on in `cwd`, then runs `then` (the untracked cache's commands) or, once the
 /// monitor is watching, the status read that records its token.

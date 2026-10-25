@@ -3,9 +3,12 @@
 //! folder, creating a file from the theme in use, and importing terminal colour schemes
 //! (Preferences > Terminal > Colours).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use glowfly_core::settings::terminal_schemes::ImportReport;
 use glowfly_core::settings::{ThemeCatalog, ThemeProblem};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// The theme files Glowfly knows about (global, not per tab).
 #[derive(Clone, Debug, Default)]
@@ -89,9 +92,9 @@ pub enum ThemeEffect {
     },
 }
 
-impl ThemeEffect {
+impl EffectMeta for ThemeEffect {
     /// A short name for the worker thread and the debug log.
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             ThemeEffect::Load => "load-themes",
             ThemeEffect::OpenFolder => "open-themes-folder",
@@ -99,5 +102,22 @@ impl ThemeEffect {
             ThemeEffect::PickScheme => "pick-terminal-scheme",
             ThemeEffect::ImportScheme { .. } => "import-terminal-scheme",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

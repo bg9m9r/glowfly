@@ -4,9 +4,12 @@
 //! version before the last rewrite), the journal's preview (a state and now) and the
 //! multi-commit menu (two commits).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use git2::Oid;
 use glowfly_core::range_diff::{Ends, Outcome};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum RangeDiffMsg {
@@ -44,4 +47,27 @@ pub struct RangeDiffJob {
     /// The branch that cuts both ranges (name and tip), when one was found.
     pub mainline: Option<(String, Oid)>,
     pub generation: u64,
+}
+
+impl EffectMeta for RangeDiffJob {
+    fn name(&self) -> &'static str {
+        "range-diff"
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        Some(&self.workdir)
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
+    }
 }

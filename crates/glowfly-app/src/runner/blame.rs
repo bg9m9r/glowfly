@@ -1,5 +1,6 @@
 //! Blaming a file for the blame view, with its syntax spans (`Effect::LoadBlame`).
 
+use super::execute::{Cx, Execute};
 use crate::effect::BlameRequest;
 use crate::msg::{BlameMsg, Msg};
 use crate::state::blame::BlameData;
@@ -32,4 +33,10 @@ pub(super) fn load(r: BlameRequest) -> Msg {
     });
     // The requested path, so update matches it to the open view.
     Msg::Blame(BlameMsg::Loaded { path: r.path, generation: r.generation, result })
+}
+
+impl Execute for BlameRequest {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(load(self))
+    }
 }

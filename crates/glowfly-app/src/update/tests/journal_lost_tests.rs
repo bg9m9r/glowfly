@@ -5,7 +5,7 @@
 use super::journal_tests::{open_loaded, opened};
 use super::tests::{drive, finish, git};
 use super::update;
-use crate::effect::Effect;
+use crate::effect::{Effect, EffectMeta};
 use crate::journal::{JournalEffect, JournalMsg, LostMsg};
 use crate::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
 use crate::state::journal_lost::JournalTab;
@@ -98,7 +98,7 @@ fn the_lost_tab_loads_once_scoped_to_the_repository() {
     assert_eq!(st.journal.as_ref().unwrap().tab, JournalTab::States, "States first");
     let fx = run(&mut st, JournalMsg::Tab(JournalTab::Lost));
     let [Effect::Journal(e @ JournalEffect::Lost { generation, .. })] = &fx[..] else { panic!("one lost load: {fx:?}") };
-    assert!(super::tests::same_place(e.scope(), &dir), "scoped to the repository");
+    assert!(super::tests::same_place(e.workdir(), &dir), "scoped to the repository");
     assert_eq!(e.name(), "journal-lost");
     lost(&mut st, LostMsg::Loaded { generation: *generation, result: hand_built(Vec::new()) });
     assert!(run(&mut st, JournalMsg::Tab(JournalTab::States)).is_empty());

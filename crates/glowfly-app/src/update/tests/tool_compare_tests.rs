@@ -7,6 +7,7 @@
 use super::conflict_tests::conflicted_repo;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
+use crate::effect::ConflictEffect;
 use crate::effect::Effect;
 use crate::msg::{ConflictMsg, Msg, RepoMsg, StageMsg};
 use crate::state::AppState;
@@ -264,7 +265,8 @@ fn writes(fx: &[Effect]) -> bool {
 
 /// Mark resolved's first step: the working file is read for conflict markers.
 fn checks_markers(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::ReadConflictFiles { purpose: crate::effect::ConflictRead::BeforeMarkResolved, .. }))
+    fx.iter()
+        .any(|e| matches!(e, Effect::Conflict(ConflictEffect::ReadFiles { purpose: crate::effect::ConflictRead::BeforeMarkResolved, .. })))
 }
 
 #[test]

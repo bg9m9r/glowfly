@@ -3,6 +3,7 @@
 
 use super::tests::{check_on, marked, opened, speedups};
 use crate::effect::Effect;
+use crate::effect::MonitorJob;
 use crate::msg::{LoadMsg, Msg};
 use crate::state::AppState;
 use crate::update::update;
@@ -106,13 +107,13 @@ fn turn_on_starts_the_monitor_job() {
     let (mut st, dir) = opened("tip-monitor-job");
     let workdir = st.workdir().unwrap();
     let fx = turn_on(&mut st, s, false);
-    assert!(matches!(&fx[..], [Effect::TurnOnMonitor { cwd, then }] if cwd == &workdir && then.is_empty()), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::TurnOnMonitor(MonitorJob { cwd, then })] if cwd == &workdir && then.is_empty()), "{fx:?}");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Turn on the file system monitor"));
     let _ = std::fs::remove_dir_all(&dir);
 
     let (mut st, dir) = opened("tip-monitor-job-cache");
     let fx = turn_on(&mut st, s, true);
-    assert!(matches!(&fx[..], [Effect::TurnOnMonitor { then, .. }] if then == &repo::untracked_cache_cmds(s)), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::TurnOnMonitor(MonitorJob { then, .. })] if then == &repo::untracked_cache_cmds(s)), "{fx:?}");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Turn on the untracked cache and file system monitor"));
     let _ = std::fs::remove_dir_all(&dir);
 }

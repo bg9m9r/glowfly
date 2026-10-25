@@ -6,6 +6,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::trust_held_tests::held_repo;
 use super::trust_tests::{real, run};
 use crate::effect::Effect;
+use crate::effect::{LfsEffect, SparseEffect};
 use crate::lfs::LfsMsg;
 use crate::msg::{Msg, PrefsMsg, RepoMsg, SparseMsg, TrustMsg};
 use crate::state::{AppState, Modal, PrefPage};
@@ -14,13 +15,13 @@ use glowfly_core::sparse_ops::{SparseMode, SparseStatus};
 use std::path::PathBuf;
 
 fn loads_lfs(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LoadLfs { .. }))
+    fx.iter().any(|e| matches!(e, Effect::Lfs(LfsEffect::Load { .. })))
 }
 
-/// `run_git` of the one LoadSparse in `fx`.
+/// `run_git` of the one `SparseEffect::Load` in `fx`.
 fn sparse_read(fx: &[Effect]) -> Option<bool> {
     fx.iter().find_map(|e| match e {
-        Effect::LoadSparse { run_git, .. } => Some(*run_git),
+        Effect::Sparse(SparseEffect::Load { run_git, .. }) => Some(*run_git),
         _ => None,
     })
 }
@@ -40,7 +41,7 @@ fn open_clean(name: &str) -> (AppState, PathBuf) {
 
 fn detect_dir(fx: &[Effect]) -> Option<PathBuf> {
     fx.iter().find_map(|e| match e {
-        Effect::DetectLfs { cwd } => Some(cwd.clone()),
+        Effect::Lfs(LfsEffect::Detect { cwd }) => Some(cwd.clone()),
         _ => None,
     })
 }
@@ -126,7 +127,7 @@ fn turning_sparse_checkout_on_in_a_held_repository_waits_for_the_prompt() {
     run(&mut st, Msg::Sparse(SparseMsg::Loaded { generation, result: Ok(off) }));
     st.prefs.as_mut().unwrap().sparse.paths = "src".into();
     let fx = run(&mut st, Msg::Sparse(SparseMsg::Apply));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::SparseCheckout { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Sparse(SparseEffect::Checkout { .. }))), "{fx:?}");
     let Some(Modal::Trust(p)) = &st.modal else { panic!("expected the trust prompt") };
     assert_eq!(p.held.as_deref(), Some("Turn on sparse checkout"));
     let _ = std::fs::remove_dir_all(&dir);

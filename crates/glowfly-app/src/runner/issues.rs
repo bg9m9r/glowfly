@@ -3,6 +3,7 @@
 //! the way the ISSUES list does; only creating and commenting, which the user asked for, may
 //! prompt for credentials.
 
+use super::execute::{Cx, Execute};
 use crate::effect::{ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply};
 use crate::msg::{IssueMsg, Msg};
 use glowfly_core::forge::{self, Auth};
@@ -10,6 +11,12 @@ use glowfly_core::forge::{self, Auth};
 pub(super) fn run(e: IssueEffect) -> Msg {
     match e {
         IssueEffect::Call(job) => call(*job),
+    }
+}
+
+impl Execute for IssueEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
     }
 }
 
@@ -51,6 +58,6 @@ mod tests {
             Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
         let req = IssueRequest { workdir: PathBuf::from("repo"), target, auth: None, connected: false };
         let e = Effect::Issue(IssueEffect::Call(Box::new(IssueJob { req, generation: 1, call: IssueCall::Load("1".into()) })));
-        assert_eq!(super::super::queue::repo_of(&e), None);
+        assert_eq!(e.queue(), None);
     }
 }

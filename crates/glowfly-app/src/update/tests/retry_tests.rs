@@ -6,6 +6,7 @@ use super::history_tests::{oid, with_view};
 use super::selection_tests::fixture;
 use super::tests::{drive, scratch_repo, state};
 use super::update;
+use crate::effect::SelectionEffect;
 use crate::effect::{BlameRequest, Effect, FileTextRequest};
 use crate::msg::{BlameMsg, DashboardMsg, HistoryMsg, Msg, RepoMsg, SearchMsg, SelectionMsg};
 use crate::pull_request::{FilesJob, PrEffect, PullRequestMsg};
@@ -186,7 +187,10 @@ fn compare_try_again_reads_the_list_again() {
         m.changes = Some(Err("boom".into()));
     }
     let fx = up(&mut st, Msg::Selection(SelectionMsg::RetryCompare));
-    assert!(matches!(&fx[..], [Effect::LoadCompare { from, to, .. }] if (*from, *to) == (f.c(3), f.c(5))), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Selection(SelectionEffect::Compare { from, to, .. })] if (*from, *to) == (f.c(3), f.c(5))),
+        "{fx:?}"
+    );
     assert!(matches!(&st.selection, Selection::Commits(m) if m.changes.is_none()));
 
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(3))));
@@ -199,7 +203,10 @@ fn compare_try_again_reads_the_list_again() {
         other => panic!("expected a working-directory comparison, got {other:?}"),
     };
     let fx = up(&mut st, Msg::Selection(SelectionMsg::RetryCompare));
-    assert!(matches!(&fx[..], [Effect::LoadWorkdirCompare { generation: g, .. }] if *g == generation + 1), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Selection(SelectionEffect::WorkdirCompare { generation: g, .. })] if *g == generation + 1),
+        "{fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 

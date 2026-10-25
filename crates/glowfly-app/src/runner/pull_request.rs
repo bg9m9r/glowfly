@@ -7,6 +7,7 @@
 //! alone or in the pending review). The calls sign in the way the pull
 //! request list does, in the panel's repository.
 
+use super::execute::{Cx, Execute};
 use crate::effect::ForgeError;
 use crate::msg::Msg;
 use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
@@ -30,6 +31,12 @@ pub(super) fn run(e: PrEffect) -> Msg {
             Msg::PullRequest(PullRequestMsg::LinesMapped { id: job.id, generation: job.generation, result })
         }
         PrEffect::Call(job) => call(*job),
+    }
+}
+
+impl Execute for PrEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
     }
 }
 

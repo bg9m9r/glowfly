@@ -1,5 +1,6 @@
 //! Reading the git configuration values Preferences shows, and writing one.
 
+use super::execute::{Cx, Execute};
 use crate::effect::PrefsEffect;
 use crate::msg::{Msg, PrefsMsg};
 use crate::state::prefs::{Autocrlf, GitConfigValues};
@@ -16,6 +17,12 @@ pub(super) fn run(e: PrefsEffect) -> Option<Msg> {
             Some(super::keys::generate_gpg(&program, &name, &email, &passphrase))
         }
         PrefsEffect::ExportPublicKey { format, program, key } => Some(super::keys::export_public(format, &program, &key)),
+    }
+}
+
+impl Execute for PrefsEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        run(self)
     }
 }
 

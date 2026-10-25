@@ -7,6 +7,7 @@
 //! Queries go to their own worker (`index_query.rs`).
 
 use super::Waker;
+use super::execute::{Cx, Execute};
 use super::index_disk::Disk;
 use super::index_query::{Haystack, QueryRequest, QueryWorker};
 use crate::effect::IndexEffect;
@@ -168,6 +169,12 @@ pub(super) fn once(e: IndexEffect) -> Option<Msg> {
         IndexEffect::Forget { .. } => return None,
     };
     Some(Msg::Search(msg))
+}
+
+impl Execute for IndexEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        once(self)
+    }
 }
 
 #[cfg(test)]

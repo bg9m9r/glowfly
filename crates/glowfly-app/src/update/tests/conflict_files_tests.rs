@@ -4,6 +4,7 @@
 use super::conflict_tests::{conflicted_repo, two_conflicts};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
+use crate::effect::ConflictEffect;
 use crate::effect::{ConflictRead, Effect, LocalOp};
 use crate::msg::{ConflictMsg, Inactive, Msg, RepoMsg, StageMsg, TabsMsg};
 use crate::state::{AppState, Modal};
@@ -31,7 +32,7 @@ fn owned(paths: &[&str]) -> Vec<String> {
 }
 
 fn checks_markers(fx: &[Effect], want: &[&str]) -> bool {
-    matches!(fx, [Effect::ReadConflictFiles { purpose: ConflictRead::BeforeMarkResolved, paths, .. }] if *paths == owned(want))
+    matches!(fx, [Effect::Conflict(ConflictEffect::ReadFiles { purpose: ConflictRead::BeforeMarkResolved, paths, .. })] if *paths == owned(want))
 }
 
 fn markers_in(dir: &Path, path: &str) -> usize {
@@ -135,7 +136,7 @@ fn nothing_is_marked_while_the_merge_tool_has_the_file() {
 /// The summary read `fx` holds, by generation.
 fn summary(fx: &[Effect]) -> Option<u64> {
     fx.iter().find_map(|e| match e {
-        Effect::ReadConflictFiles { purpose: ConflictRead::Summary { generation }, .. } => Some(*generation),
+        Effect::Conflict(ConflictEffect::ReadFiles { purpose: ConflictRead::Summary { generation }, .. }) => Some(*generation),
         _ => None,
     })
 }

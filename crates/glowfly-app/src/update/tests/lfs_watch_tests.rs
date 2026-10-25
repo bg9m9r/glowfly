@@ -5,6 +5,7 @@
 
 use super::tests::{drive, finish, scratch_repo, state};
 use super::update;
+use crate::effect::LfsEffect;
 use crate::effect::{Effect, StatusRead};
 use crate::msg::{LoadMsg, Msg, PrefsMsg, RepoMsg, WatchMsg};
 use crate::runner;
@@ -135,9 +136,9 @@ fn an_open_lfs_page_reads_its_status_again_in_place() {
         update(st, Msg::Load(msg), Instant::now())
     };
     let fx = read(&mut st, vec![pattern("*.bin")]);
-    assert_eq!(fx.iter().filter(|e| matches!(e, Effect::LoadLfs { .. })).count(), 1, "{fx:?}");
+    assert_eq!(fx.iter().filter(|e| matches!(e, Effect::Lfs(LfsEffect::Load { .. }))).count(), 1, "{fx:?}");
     assert!(st.prefs.as_ref().unwrap().lfs.status.is_some(), "the page keeps its status on screen");
     let fx = read(&mut st, vec![pattern("*.bin")]);
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadLfs { .. })), "the same patterns: {fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Lfs(LfsEffect::Load { .. }))), "the same patterns: {fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

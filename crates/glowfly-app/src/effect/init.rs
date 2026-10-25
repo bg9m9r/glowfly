@@ -1,8 +1,11 @@
 //! Effects of the Init dialog: checking its folder, reading the name to suggest for a license,
 //! and the init job. All unscoped: the dialog and the job live outside any repository's tab.
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use glowfly_core::init_ops::InitPlan;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Debug, PartialEq)]
@@ -17,12 +20,29 @@ pub enum InitEffect {
     Run { folder: PathBuf, plan: InitPlan },
 }
 
-impl InitEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for InitEffect {
+    fn name(&self) -> &'static str {
         match self {
             InitEffect::CheckFolder { .. } => "check-init-folder",
             InitEffect::ReadAuthor { .. } => "read-author",
             InitEffect::Run { .. } => "init",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
     }
 }

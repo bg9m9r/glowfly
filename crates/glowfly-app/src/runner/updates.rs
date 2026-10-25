@@ -2,6 +2,7 @@
 //! Install and restart (runner/update_restart.rs), and removing the staging folders earlier
 //! updates left behind.
 
+use super::execute::{Cx, Execute};
 use super::update_restart;
 use crate::effect::UpdateEffect;
 use crate::msg::{CheckedRelease, Msg, UpdateMsg};
@@ -24,6 +25,12 @@ pub(super) fn run(e: UpdateEffect) -> Option<Msg> {
             tracing::debug!("removed {n} staging folders earlier updates left");
             None
         }
+    }
+}
+
+impl Execute for UpdateEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        run(self)
     }
 }
 

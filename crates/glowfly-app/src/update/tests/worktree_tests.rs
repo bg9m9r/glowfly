@@ -8,6 +8,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::effect::OsEffect;
+use crate::effect::WorktreeEffect;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
@@ -67,7 +68,7 @@ fn run(st: &mut AppState, fx: Vec<Effect>) -> Vec<Vec<String>> {
     for e in fx {
         match &e {
             Effect::RunGit { cmds, .. } => ran.extend(cmds.clone()),
-            Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::CheckWorktreeFolder(_) => {}
+            Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::Worktree(WorktreeEffect::CheckFolder(_)) => {}
             _ => continue,
         }
         if let Some(m) = runner::execute(e) {
@@ -81,7 +82,7 @@ fn run(st: &mut AppState, fx: Vec<Effect>) -> Vec<Vec<String>> {
 /// Submit, check the folder, start the job: returns the effects after the folder check.
 fn submit(st: &mut AppState) -> Vec<Effect> {
     let fx = update(st, wt(WorktreeMsg::Submit), Instant::now());
-    let [Effect::CheckWorktreeFolder(_)] = &fx[..] else { panic!("{fx:?}") };
+    let [Effect::Worktree(WorktreeEffect::CheckFolder(_))] = &fx[..] else { panic!("{fx:?}") };
     let checked = runner::execute(fx.into_iter().next().unwrap()).unwrap();
     update(st, checked, Instant::now())
 }
@@ -286,7 +287,7 @@ fn folder_check_after_cancel_is_dropped() {
     let (mut st, dir) = opened("wt-cancel");
     let checked = |st: &mut AppState| {
         let fx = update(st, wt(WorktreeMsg::Submit), Instant::now());
-        let [Effect::CheckWorktreeFolder(req)] = &fx[..] else { panic!("{fx:?}") };
+        let [Effect::Worktree(WorktreeEffect::CheckFolder(req))] = &fx[..] else { panic!("{fx:?}") };
         let req = req.clone();
         let Some(Msg::Worktree(WorktreeMsg::FolderChecked { result, .. })) = runner::execute(fx.into_iter().next().unwrap()) else {
             panic!("no folder check result")

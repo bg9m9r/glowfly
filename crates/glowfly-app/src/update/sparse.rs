@@ -4,6 +4,7 @@
 
 use super::ops;
 use crate::effect::Effect;
+use crate::effect::SparseEffect;
 use crate::msg::SparseMsg;
 use crate::state::sparse::{DISABLE_LABEL, REAPPLY_LABEL, kept_headline};
 use crate::state::{AppState, PrefPage};
@@ -51,7 +52,7 @@ fn read(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     }
     p.sparse.error = None;
     p.sparse.held = !run_git;
-    fx.push(Effect::LoadSparse { workdir, generation: p.sparse.generation, run_git });
+    fx.push(Effect::Sparse(SparseEffect::Load { workdir, generation: p.sparse.generation, run_git }));
 }
 
 /// Git runs unasked in the active repository now: an open Sparse Checkout page whose last read
@@ -101,7 +102,7 @@ fn start(st: &mut AppState, label: &str, command: SparseCommand, fx: &mut Vec<Ef
         st.log(false, why);
         return ops::Started::No;
     }
-    ops::begin_job(st, label, false, move |cwd| Effect::SparseCheckout { cwd, command }, fx)
+    ops::begin_job(st, label, false, move |cwd| Effect::Sparse(SparseEffect::Checkout { cwd, command }), fx)
 }
 
 fn loaded(st: &mut AppState, generation: u64, result: Result<SparseStatus, String>) {

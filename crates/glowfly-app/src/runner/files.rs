@@ -1,7 +1,7 @@
 //! Restoring a file from a commit with an undo entry (`Effect::RestoreFile`), creating,
 //! renaming, deleting and discarding (untracked) a working-tree file (`Effect::WorkFile`),
 //! listing the tracked files (`Effect::LoadTrackedPaths`), and checking the Clone dialog's
-//! parent folder (`Effect::CheckCloneParent`).
+//! parent folder (`CloneEffect::CheckParent`).
 
 use crate::effect::{DeleteMode, FileOp, WorkFileOk};
 use crate::msg::CloneMsg;

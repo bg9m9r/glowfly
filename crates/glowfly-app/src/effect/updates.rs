@@ -1,7 +1,10 @@
 //! Effects of Glowfly's own updates, run by runner/updates.rs.
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use glowfly_core::app_update::{InstallMethod, Offer, Version};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum UpdateEffect {
@@ -26,9 +29,9 @@ pub struct RestartJob {
     pub version: Version,
 }
 
-impl UpdateEffect {
+impl EffectMeta for UpdateEffect {
     /// A short name for the worker thread and the debug log.
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             UpdateEffect::Check { .. } => "update-check",
             UpdateEffect::Download(_) => "update-download",
@@ -37,12 +40,25 @@ impl UpdateEffect {
         }
     }
 
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
     /// Whether the runner times it: a check is one request; a download is always slow, a
     /// restart hands off to the system, and tidying runs once at start.
-    pub fn timed(&self) -> bool {
+    fn timed(&self) -> bool {
         match self {
             UpdateEffect::Check { .. } => true,
             UpdateEffect::Download(_) | UpdateEffect::Restart(_) | UpdateEffect::Tidy => false,
         }
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

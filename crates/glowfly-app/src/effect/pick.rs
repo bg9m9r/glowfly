@@ -1,11 +1,14 @@
 //! The payload of `Effect::Pick`: a cherry-pick or revert job, carried past the commits that
 //! change nothing (runner/pick.rs).
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use git2::Oid;
 use glowfly_core::journal::Op;
 use glowfly_core::pick_ops::Picking;
 use glowfly_core::undo::UndoKind;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub struct PickJob {
@@ -21,4 +24,27 @@ pub struct PickJob {
     pub oids: Vec<Oid>,
     /// git has `--skip` (2.23 or newer).
     pub can_skip: bool,
+}
+
+impl EffectMeta for PickJob {
+    fn name(&self) -> &'static str {
+        "pick"
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        Some(&self.cwd)
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
+    }
 }

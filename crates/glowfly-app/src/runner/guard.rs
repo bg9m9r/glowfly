@@ -3,8 +3,8 @@
 
 use crate::effect::partial::PartialEffect;
 use crate::effect::{
-    CloneEffect, Effect, FailedLineCounts, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, StashEffect, SubmoduleEffect,
-    UndoResult, UpdateEffect,
+    CloneEffect, Effect, FailedLineCounts, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, SparseEffect, StashEffect,
+    SubmoduleEffect, UndoResult, UpdateEffect, WorktreeEffect,
 };
 use crate::msg::BlameMsg;
 use crate::msg::CloneMsg;
@@ -104,12 +104,11 @@ impl Recovery {
             Effect::RunGit { record, .. } => Kind::Job(record.as_ref().map(|_| UndoResult::Recorded(None))),
             Effect::Pick(j) => Kind::Job(j.record.as_ref().map(|_| UndoResult::Recorded(None))),
             Effect::UndoRedo { redo, .. } => Kind::Job(Some(UndoResult::Failed { redo: *redo })),
-            Effect::RemoveWorktree(_)
-            | Effect::MoveWorktree(_)
+            Effect::Worktree(WorktreeEffect::Remove(_) | WorktreeEffect::Move(_))
             | Effect::Submodule(SubmoduleEffect::Remove(_))
             | Effect::Stash(StashEffect::Rename { .. })
-            | Effect::SparseCheckout { .. }
-            | Effect::TurnOnMonitor { .. }
+            | Effect::Sparse(SparseEffect::Checkout { .. })
+            | Effect::TurnOnMonitor(_)
             | Effect::Stack(_)
             | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(InitEffect::Run { .. })

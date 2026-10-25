@@ -1,5 +1,6 @@
 //! The welcome's read and write of the global git identity (`Effect::Onboarding`).
 
+use super::execute::{Cx, Execute};
 use crate::msg::Msg;
 use crate::onboarding::{OnboardingEffect, OnboardingMsg};
 use glowfly_core::identity;
@@ -11,4 +12,10 @@ pub(super) fn run(effect: OnboardingEffect) -> Msg {
             OnboardingMsg::IdentityWritten { result: identity::write_global(&cwd, &identity, &[]), identity }
         }
     })
+}
+
+impl Execute for OnboardingEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }

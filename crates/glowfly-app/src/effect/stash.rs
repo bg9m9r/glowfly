@@ -1,7 +1,10 @@
 //! Stash list jobs that aren't a plain git command line (`Effect::Stash`).
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use git2::Oid;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum StashEffect {
@@ -21,17 +24,36 @@ pub struct PutBackRequest {
 }
 
 impl StashEffect {
-    pub fn name(&self) -> &'static str {
+    /// The repository the job changes, for the runner's per-repository queue.
+    pub fn cwd(&self) -> &PathBuf {
+        match self {
+            StashEffect::Rename { cwd, .. } | StashEffect::PutBack(PutBackRequest { cwd, .. }) => cwd,
+        }
+    }
+}
+
+impl EffectMeta for StashEffect {
+    fn name(&self) -> &'static str {
         match self {
             StashEffect::Rename { .. } => "rename-stash",
             StashEffect::PutBack(_) => "put-back-stash",
         }
     }
 
-    /// The repository the job changes, for the runner's per-repository queue.
-    pub fn cwd(&self) -> &PathBuf {
-        match self {
-            StashEffect::Rename { cwd, .. } | StashEffect::PutBack(PutBackRequest { cwd, .. }) => cwd,
-        }
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        Some(self.cwd())
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
     }
 }

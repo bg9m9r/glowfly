@@ -5,7 +5,7 @@
 use super::submodule_tests::{PATH, cleanup, commit_detached, deinit, last_log, opened, sub};
 use super::tests::{drive, finish, git, skipped, state};
 use super::update;
-use crate::effect::{Effect, SubmoduleEffect};
+use crate::effect::{Effect, EffectMeta, SubmoduleEffect};
 use crate::msg::{Msg, RepoMsg};
 use crate::runner;
 use crate::state::submodules::batch::CONFIRM_ALL_BUTTON;

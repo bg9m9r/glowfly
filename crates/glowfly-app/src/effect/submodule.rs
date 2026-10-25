@@ -1,8 +1,11 @@
 //! Effects of the SUBMODULES section: reading a submodule (or all of them, before a batch update)
 //! again before an update or a removal is confirmed, checking the Add dialog's folder on disk, and removing a submodule.
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use crate::submodule::{Batch, RemoveRequest};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Debug, PartialEq)]
@@ -23,8 +26,8 @@ pub enum SubmoduleEffect {
     Remove(RemoveRequest),
 }
 
-impl SubmoduleEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for SubmoduleEffect {
+    fn name(&self) -> &'static str {
         match self {
             SubmoduleEffect::Check { .. } => "check-submodule",
             SubmoduleEffect::CheckAddPath { .. } => "check-submodule-path",
@@ -36,12 +39,32 @@ impl SubmoduleEffect {
 
     /// The tab the result belongs to. The Add dialog's check names its repository itself, and a
     /// removal ends the active job whichever tab is active, so both are unscoped.
-    pub fn scope(&self) -> Option<&PathBuf> {
+    fn scope(&self) -> Option<&PathBuf> {
         match self {
             SubmoduleEffect::Check { workdir, .. }
             | SubmoduleEffect::CheckRemove { workdir, .. }
             | SubmoduleEffect::CheckAll { workdir, .. } => Some(workdir),
             SubmoduleEffect::CheckAddPath { .. } | SubmoduleEffect::Remove(_) => None,
         }
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    /// Removing a submodule changes the repository; the checks only read.
+    fn queue(&self) -> Option<&Path> {
+        match self {
+            SubmoduleEffect::Remove(r) => Some(&r.repo),
+            SubmoduleEffect::Check { .. }
+            | SubmoduleEffect::CheckAddPath { .. }
+            | SubmoduleEffect::CheckRemove { .. }
+            | SubmoduleEffect::CheckAll { .. } => None,
+        }
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
     }
 }

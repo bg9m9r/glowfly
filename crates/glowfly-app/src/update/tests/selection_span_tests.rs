@@ -5,6 +5,7 @@
 use super::selection_tests::{fixture, refresh, up};
 use super::tests::drive;
 use crate::effect::Effect;
+use crate::effect::SelectionEffect;
 use crate::msg::{Msg, RepoMsg, SelectionMsg};
 use crate::state::selection::{MultiSelection, extend_from, ranged, toggled};
 use crate::state::selection_span::{Span, span_of};
@@ -21,7 +22,9 @@ fn multi(st: &AppState) -> &MultiSelection {
 }
 
 fn compares(fx: &[Effect]) -> Vec<(Oid, Oid)> {
-    fx.iter().filter_map(|e| if let Effect::LoadCompare { from, to, .. } = e { Some((*from, *to)) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Selection(SelectionEffect::Compare { from, to, .. }) = e { Some((*from, *to)) } else { None })
+        .collect()
 }
 
 fn select(st: &mut AppState, oid: Oid) {
@@ -108,7 +111,10 @@ fn a_line_from_a_shallow_boundary_has_no_combined_diff() {
     let fx = up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(1))));
     assert_eq!(multi(&st).span, Span::ShallowEnd);
     let want = [f.c(3), f.c(2), f.c(1)];
-    assert!(matches!(&fx[..], [Effect::LoadStacked(r)] if r.oids == want), "each commit's own changes instead: {fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Selection(SelectionEffect::Stacked(r))] if r.oids == want),
+        "each commit's own changes instead: {fx:?}"
+    );
     assert_eq!(multi(&st).compare_ends(), None);
     let _ = std::fs::remove_dir_all(&f.dir);
 }

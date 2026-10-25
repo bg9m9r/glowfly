@@ -2,9 +2,12 @@
 //! (state/onboarding.rs, state/onboarding_tour.rs, update/onboarding.rs, runner/onboarding.rs,
 //! ui/welcome.rs, ui/welcome_steps.rs, ui/tour.rs).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use crate::msg::{CloneMsg, Inactive, Msg, RepoMsg};
 use glowfly_core::identity::Identity;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum OnboardingMsg {
@@ -90,12 +93,29 @@ pub enum OnboardingEffect {
     WriteIdentity { cwd: PathBuf, identity: Identity },
 }
 
-impl OnboardingEffect {
+impl EffectMeta for OnboardingEffect {
     /// A short name for the worker thread and the debug log.
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             OnboardingEffect::ReadIdentity { .. } => "read-identity",
             OnboardingEffect::WriteIdentity { .. } => "write-identity",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

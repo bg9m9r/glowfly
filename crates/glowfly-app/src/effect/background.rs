@@ -3,10 +3,13 @@
 //! of a closed tab's open repository handles. Reads only what it is handed; never reads or
 //! changes the repository.
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use super::Shared;
 use git2::Oid;
 use glowfly_core::repo::branch_colours::LayoutJob;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum BackgroundEffect {
@@ -33,20 +36,33 @@ impl std::fmt::Debug for Discard {
     }
 }
 
-impl BackgroundEffect {
-    pub fn scope(&self) -> Option<&PathBuf> {
-        match self {
-            BackgroundEffect::Relayout { workdir, .. } | BackgroundEffect::Ancestry { workdir, .. } => Some(workdir),
-            BackgroundEffect::Free(_) | BackgroundEffect::Forget(_) => None,
-        }
-    }
-
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for BackgroundEffect {
+    fn name(&self) -> &'static str {
         match self {
             BackgroundEffect::Relayout { .. } => "relayout",
             BackgroundEffect::Ancestry { .. } => "ancestry",
             BackgroundEffect::Free(_) => "free",
             BackgroundEffect::Forget(_) => "forget-repo",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        match self {
+            BackgroundEffect::Relayout { workdir, .. } | BackgroundEffect::Ancestry { workdir, .. } => Some(workdir),
+            BackgroundEffect::Free(_) | BackgroundEffect::Forget(_) => None,
+        }
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
     }
 }

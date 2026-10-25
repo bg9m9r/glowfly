@@ -2,9 +2,12 @@
 //! (`Effect::Issue`, run by runner/issues.rs): one issue's details, the dialog's choices, and
 //! creating an issue and posting a comment. Unscoped: the reply names its repository and tracker.
 
+use super::EffectMeta;
 use super::ForgeError;
+#[cfg(test)]
+use super::SandboxRule;
 use glowfly_core::forge::{Auth, CreateOptions, Entry, Issue, IssueDetails, NewIssue, Target};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Where a call goes, with this session's credential for it, if any; `Debug` hides the
 /// credential (Auth's own `Debug`).
@@ -46,15 +49,8 @@ pub enum IssueEffect {
     Call(Box<IssueJob>),
 }
 
-impl IssueEffect {
-    /// Unscoped: the reply names its repository, and its handler matches it.
-    pub fn scope(&self) -> Option<&PathBuf> {
-        match self {
-            IssueEffect::Call(_) => None,
-        }
-    }
-
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for IssueEffect {
+    fn name(&self) -> &'static str {
         match self {
             IssueEffect::Call(j) => match j.call {
                 IssueCall::Load(_) => "load-issue",
@@ -63,6 +59,26 @@ impl IssueEffect {
                 IssueCall::Comment { .. } => "post-issue-comment",
             },
         }
+    }
+
+    /// Unscoped: the reply names its repository, and its handler matches it.
+    fn scope(&self) -> Option<&PathBuf> {
+        match self {
+            IssueEffect::Call(_) => None,
+        }
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }
 

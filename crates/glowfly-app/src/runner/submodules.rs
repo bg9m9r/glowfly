@@ -1,6 +1,7 @@
 //! The SUBMODULES section's effects (`Effect::Submodule`): reading one submodule (or all, for a
 //! batch update) again before its update or removal is confirmed, checking the Add dialog's folder, and removing one.
 
+use super::execute::{Cx, Execute};
 use crate::effect::SubmoduleEffect;
 use crate::msg::Msg;
 use crate::submodule::SubmoduleMsg;
@@ -31,4 +32,10 @@ pub(super) fn run(e: SubmoduleEffect) -> Msg {
             SubmoduleMsg::Removed { request: r, report }
         }
     })
+}
+
+impl Execute for SubmoduleEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }

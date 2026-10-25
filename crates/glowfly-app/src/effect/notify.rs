@@ -1,6 +1,9 @@
 //! Desktop (OS) notifications: what `update` asks the runner to show (runner/notify.rs).
 
-use std::path::PathBuf;
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
+use std::path::{Path, PathBuf};
 
 /// What kind of event a desktop notification reports: decides what a failure to show it does.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -32,5 +35,29 @@ impl DesktopNote {
             body: "Glowfly will show finished jobs and behind alerts here while its window is in the background.".into(),
             workdir: None,
         }
+    }
+}
+
+impl EffectMeta for DesktopNote {
+    fn name(&self) -> &'static str {
+        "desktop-note"
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    /// It hands work to the system.
+    fn timed(&self) -> bool {
+        false
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

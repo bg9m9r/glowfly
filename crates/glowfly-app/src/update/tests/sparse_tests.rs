@@ -5,6 +5,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SparseEffect;
 use crate::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg, SparseMsg};
 use crate::state::palette::{PaletteCommand as C, entries};
 use crate::state::sparse::SparsePage;
@@ -65,14 +66,14 @@ fn page_with(st: &mut AppState, s: SparseStatus) {
 }
 
 fn loads(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LoadSparse { .. }))
+    fx.iter().any(|e| matches!(e, Effect::Sparse(SparseEffect::Load { .. })))
 }
 
 fn command(fx: &[Effect]) -> Option<SparseCommand> {
     let commands: Vec<&SparseCommand> = fx
         .iter()
         .filter_map(|e| match e {
-            Effect::SparseCheckout { command, .. } => Some(command),
+            Effect::Sparse(SparseEffect::Checkout { command, .. }) => Some(command),
             _ => None,
         })
         .collect();
@@ -98,7 +99,7 @@ fn opening_the_page_reads_the_status() {
     let generation = page(&st).generation;
     assert_eq!(generation, 1);
     assert!(page(&st).status.is_none(), "Reading… until the status arrives");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadSparse { workdir, generation: 1, .. } if *workdir == dir)));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Sparse(SparseEffect::Load { workdir, generation: 1, .. }) if *workdir == dir)));
 
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoSparse)));
     assert!(loads(&fx));

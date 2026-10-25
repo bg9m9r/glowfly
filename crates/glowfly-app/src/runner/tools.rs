@@ -3,6 +3,7 @@
 //! failure to start one is reported. The diff and merge tools are in `compare`, and git config's
 //! (when Preferences sets none) in `git_tool`.
 
+use super::execute::{Cx, Execute};
 use crate::msg::Msg;
 use crate::tools::{LaunchFailure, ToolEffect, ToolKind, ToolsMsg};
 use glowfly_core::external_tools;
@@ -53,6 +54,12 @@ pub(super) fn run(effect: ToolEffect) -> Option<Msg> {
         }
         ToolEffect::OpenGitDiff(req) => git_tool::open_diff(req),
         ToolEffect::RunGitMerge(req) => Some(git_tool::run_merge(req)),
+    }
+}
+
+impl Execute for ToolEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        run(self)
     }
 }
 

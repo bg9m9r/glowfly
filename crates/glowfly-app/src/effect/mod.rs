@@ -11,9 +11,11 @@ use glowfly_core::undo::{Action, UndoKind};
 use std::path::PathBuf;
 
 mod account;
+pub(crate) mod areas;
 mod background;
 mod blame;
 mod clone;
+mod conflict;
 mod credential;
 mod dashboard;
 mod forge;
@@ -22,7 +24,10 @@ mod history;
 mod index;
 mod init;
 mod issue;
+mod lfs;
 mod line_counts;
+mod meta;
+mod monitor;
 mod names;
 mod notify;
 mod op_preview;
@@ -35,17 +40,21 @@ mod repo;
 mod repos;
 mod scope;
 mod selection;
+mod sparse;
 mod stack;
 mod stash;
 mod submodule;
 mod trust;
 mod ui;
 mod updates;
+mod worktree;
 
 pub use account::AccountEffect;
+use areas::{effect_areas, effect_enum};
 pub use background::{BackgroundEffect, Discard};
 pub use blame::BlameRequest;
 pub use clone::CloneEffect;
+pub use conflict::ConflictEffect;
 pub use credential::CredentialEffect;
 pub use dashboard::*;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
@@ -54,7 +63,12 @@ pub use history::FileTextRequest;
 pub use index::{IndexEffect, Shared};
 pub use init::InitEffect;
 pub use issue::*;
+pub use lfs::LfsEffect;
 pub use line_counts::{FailedLineCounts, LineCountsEffect};
+pub use meta::EffectMeta;
+#[cfg(test)]
+pub use meta::SandboxRule;
+pub use monitor::MonitorJob;
 pub use notify::{DesktopNote, NoteKind};
 pub use op_preview::OpPreviewJob;
 pub use os::OsEffect;
@@ -63,16 +77,20 @@ pub use prefs::PrefsEffect;
 pub use rebase::{RebaseEffect, RestackJob};
 pub use repo::{ConflictRead, IndexRequest, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;
-pub use selection::StackRequest;
+pub use selection::{SelectionEffect, StackRequest};
+pub use sparse::SparseEffect;
 pub use stack::{StackEffect, StackPushJob};
 pub use stash::{PutBackRequest, StashEffect};
 pub use submodule::SubmoduleEffect;
 pub use trust::TrustEffect;
 pub use ui::UiEffect;
 pub use updates::{RestartJob, UpdateEffect};
+pub use worktree::WorktreeEffect;
 
-#[derive(Debug)]
-pub enum Effect {
+// The areas' variants come from the table in areas.rs, each with its own effect type that decides
+// its metadata (`EffectMeta`). The flat variants below predate the areas: a new effect goes in an
+// area (a new variant of its type, or a new row in areas.rs), never here.
+effect_areas! { effect_enum! {
     LoadRepo {
         path: PathBuf,
         opts: LoadOptions,
@@ -107,22 +125,6 @@ pub enum Effect {
     LoadDetail {
         workdir: PathBuf,
         oid: Oid,
-    },
-    /// The files that differ from commit `from` to commit `to`.
-    LoadCompare {
-        workdir: PathBuf,
-        from: Oid,
-        to: Oid,
-    },
-    /// Each of these commits' own changes (`SelectionMsg::StackedLoaded`).
-    LoadStacked(StackRequest),
-    /// The files that differ from commit `oid` to the working tree.
-    LoadWorkdirCompare {
-        workdir: PathBuf,
-        oid: Oid,
-        generation: u64,
-        /// From the working tree to the commit instead.
-        swapped: bool,
     },
     LoadDiff {
         workdir: PathBuf,
@@ -160,21 +162,9 @@ pub enum Effect {
         target: DiffTarget,
         generation: u64,
     },
-    LoadConflict {
-        workdir: PathBuf,
-        path: String,
-        generation: u64,
-    },
     LocalOp {
         workdir: PathBuf,
         op: LocalOp,
-    },
-    /// Counts the conflict markers in the working files of `paths` (and, for a summary, lists
-    /// the resolved files): only reads.
-    ReadConflictFiles {
-        workdir: PathBuf,
-        paths: Vec<String>,
-        purpose: ConflictRead,
     },
     /// Reverts part of a commit or comparison diff (a hunk, some of its lines, or the whole
     /// file) in the working tree only (glowfly_core::repo::revert).
@@ -201,50 +191,6 @@ pub enum Effect {
         workdir: PathBuf,
         generation: u64,
     },
-    /// Reading, checking and removing submodules (submodule.rs).
-    Submodule(SubmoduleEffect),
-    /// Checks the folder of a worktree about to be created (missing, or an empty folder) before
-    /// `git worktree add` runs. Unscoped: the dialog waits for the answer even if tabs change.
-    CheckWorktreeFolder(crate::worktree::NewWorktree),
-    /// Whether the Clone dialog's parent folder `parent` exists, checked after `delay` so typing
-    /// doesn't wait on the disk. Reported as `CloneMsg::ParentChecked`.
-    CheckCloneParent {
-        parent: String,
-        delay: std::time::Duration,
-    },
-    /// Whether git-lfs is installed (`git lfs version`). Unscoped: the answer is global.
-    DetectLfs {
-        cwd: PathBuf,
-    },
-    /// `git worktree remove` then, if asked, `git branch -d`; unscoped like RunGit (ends the job).
-    RemoveWorktree(crate::worktree::RemoveRequest),
-    /// Other worktrees' changes the load left Pending (`WorktreeMsg::ChangesCounted`).
-    CountWorktreeChanges(crate::worktree::CountRequest),
-    /// `git worktree move` once the target is free; unscoped like RunGit (ends the job).
-    MoveWorktree(crate::worktree::MoveRequest),
-    /// Stash list jobs: renaming an entry, putting an auto-stash back (stash.rs).
-    Stash(StashEffect),
-    /// Git LFS status for the preferences page: installed version, set up or not, tracked patterns.
-    LoadLfs {
-        workdir: PathBuf,
-        generation: u64,
-    },
-    /// Sparse checkout state for the preferences page; its paths only with `run_git` (trust).
-    LoadSparse {
-        workdir: PathBuf,
-        generation: u64,
-        run_git: bool,
-    },
-    /// `git sparse-checkout` set, reapply or disable; unscoped like RunGit (ends the job).
-    SparseCheckout {
-        cwd: PathBuf,
-        command: glowfly_core::sparse_ops::SparseCommand,
-    },
-    /// Git's file system monitor started and set (`repo::turn_on_monitor`), then `then` (the cache's commands); unscoped like RunGit.
-    TurnOnMonitor {
-        cwd: PathBuf,
-        then: Vec<Vec<String>>,
-    },
     /// The commits that changed `path` (anything under it with `folder`), examining at most `limit`.
     LoadFileHistory {
         workdir: PathBuf,
@@ -254,10 +200,6 @@ pub enum Effect {
         folder: bool,
         generation: u64,
     },
-    /// A file as of a commit, with syntax spans, for the history's File view (`FileTextLoaded`).
-    LoadFileText(FileTextRequest),
-    /// Blames one file (`git blame`), reported as `BlameMsg::Loaded`.
-    LoadBlame(BlameRequest),
     /// Runs git commands in order, stopping at the first failure. `write_file` is written first
     /// (used for commit messages). With `record`, the state before and after is compared and
     /// the resulting undoable action reported back; with `journal`, a journal note is written
@@ -275,12 +217,6 @@ pub enum Effect {
         /// Every command only fetches: `Effect::StopGit(StopKey::Job)` can stop it.
         stoppable: bool,
     },
-    /// A cherry-pick or revert job, carried past the commits that change nothing; unscoped like RunGit.
-    Pick(PickJob),
-    /// Interactive rebase: the panel's list, graph edits, running and resuming.
-    Rebase(RebaseEffect),
-    /// Pushing a stack's layers (stack.rs).
-    Stack(StackEffect),
     /// Undoes (or redoes) `action` after checking the repository still matches it. Unscoped like
     /// `RunGit`: the job's result must reach `update` even if its tab is no longer active.
     UndoRedo {
@@ -298,14 +234,10 @@ pub enum Effect {
         connected: bool,
         call: ForgeCall,
     },
-    /// Connected accounts: signing in, tokens, creating a repository, owners and boards (account.rs); unscoped.
-    Account(AccountEffect),
     Stats {
         workdir: PathBuf,
         oids: Vec<Oid>,
     },
-    /// Per-file line counts of a commit or the working tree (runner/line_counts.rs); reads only.
-    LineCounts(LineCountsEffect),
     /// Which of `oids` (newest first) changed a path matching `terms`, for search request
     /// `request`; reported in chunks as SearchMsg::PathsSearched. Handled by Runner::run's
     /// path-search worker: a newer request replaces one waiting and stops one running.
@@ -315,11 +247,6 @@ pub enum Effect {
         terms: Vec<glowfly_core::path_query::PathTerm>,
         oids: Vec<Oid>,
     },
-    /// The whole-history search index: build, query, forget (index.rs). Handled by Runner::run's
-    /// index worker: one build at a time across tabs, newest request first, and one query.
-    Index(IndexEffect),
-    /// Whole-history work off the UI thread: relayout, ancestry, freeing a snapshot (background.rs).
-    Background(BackgroundEffect),
     /// Checks commit `oid`'s signature (in `format`) with git, for the details panel's badge.
     VerifySignature {
         workdir: PathBuf,
@@ -344,11 +271,6 @@ pub enum Effect {
         labels: Vec<Option<String>>,
         active: usize,
     },
-    /// Hands something to the operating system: a browser, a terminal, the file manager, a
-    /// picker (os.rs, runner/os.rs); unscoped, never touches the repository.
-    Os(OsEffect),
-    /// Git config values and signing keys for Preferences (prefs.rs); unscoped.
-    Prefs(PrefsEffect),
     /// Watch this repository for outside changes, replacing any previous watch; None stops watching. Handled by
     /// `Runner::run` itself (the watcher outlives a worker thread).
     Watch(Option<WatchTarget>),
@@ -362,61 +284,6 @@ pub enum Effect {
         id: u64,
         reply: Reply,
     },
-    /// Listing and generating SSH keys (ssh.rs); unscoped, outside any repository.
-    Ssh(crate::ssh::SshEffect),
-    /// Saving or dropping an HTTPS sign-in typed in the prompt (runner/credentials.rs); unscoped.
-    Credential(CredentialEffect),
-    /// Writing a profile's identity to the global git config (profile.rs); unscoped.
-    Profile(crate::profile::ProfileEffect),
-    /// The built-in terminal panel's shells; handled by Runner::run, never a worker.
-    Terminal(crate::terminal::TerminalEffect),
-    /// Patch dialogs and saving commits as a patch (patch.rs); unscoped, each carries its repository.
-    Patch(crate::patch::PatchEffect),
-    /// Launching the external editor or a custom terminal, and their program pickers (tools.rs); unscoped.
-    Tool(crate::tools::ToolEffect),
-    /// Reading the commands files and running a shell command as the job (custom_commands.rs); unscoped.
-    CustomCommand(crate::custom_commands::CustomCommandEffect),
-    /// Finding git and its version, and adding a folder to safe.directory (git_env.rs); unscoped.
-    GitEnv(crate::git_env::GitEnvEffect),
-    /// Reading the themes folder, opening it and writing a new theme file (themes.rs); unscoped.
-    Theme(crate::themes::ThemeEffect),
-    /// The welcome's git identity read and write (runner/onboarding.rs); unscoped.
-    Onboarding(crate::onboarding::OnboardingEffect),
-    /// Dry-runs a merge with git merge-tree (conflict_check.rs); reads only.
-    CheckConflicts(crate::conflict_check::CheckJob),
-    /// Works out what an operation would do without changing the repository (runner/op_preview.rs); reads only.
-    OpPreview(OpPreviewJob),
-    /// Reading the operation journal and a state's preview (journal.rs); reads only.
-    Journal(crate::journal::JournalEffect),
-    /// Comparing two versions of a branch with git range-diff (range_diff.rs); reads only.
-    RangeDiff(crate::range_diff::RangeDiffJob),
-    /// Fork lists and forking for the REMOTE section (remote.rs); unscoped.
-    Remote(crate::remote::RemoteEffect),
-    /// A sparse clone and listing the user's repositories for the Clone dialog; unscoped.
-    Clone(CloneEffect),
-    /// The Init dialog's folder checks and the init job; unscoped.
-    Init(InitEffect),
-    /// A desktop notification (runner/notify.rs); unscoped.
-    Notify(DesktopNote),
-    /// Log files: the activity log, reading the error and performance logs, extended logging (runner/logs.rs).
-    Logs(crate::logs::LogsEffect),
-    /// The pull request panel's file list (scoped) and service calls (unscoped; pull_request.rs).
-    PullRequest(crate::pull_request::PrEffect),
-    /// Building and finding glowfly:// links, and the scheme registration (deep_link.rs); unscoped.
-    DeepLink(crate::deep_link::DeepLinkEffect),
-    /// The cross-repository dashboard (runner/dashboard.rs); unscoped; reads repositories with libgit2 and asks services.
-    Dashboard(DashboardEffect),
-    /// The issue panel's and the Create issue dialog's calls to the tracker (unscoped; issue.rs).
-    Issue(IssueEffect),
-    /// Update checks, downloads, Install and restart and tidying (runner/updates.rs); unscoped.
-    Updates(UpdateEffect),
-    /// Finding repositories in project folders (runner/repos.rs); unscoped, reads folder listings only.
-    Repos(ReposEffect),
-    /// Reads repositories just made from a trusted one, to trust them (runner/trust.rs; unscoped).
-    Trust(TrustEffect),
-    /// A shallow clone's size check and a partial clone's missing contents (runner/partial.rs); unscoped.
-    Partial(partial::PartialEffect),
     /// Stops the running git command registered under this key, if any. Handled by `Runner::run` itself, which holds the stops.
     StopGit(partial::StopKey),
-    Ui(UiEffect),
-}
+} }

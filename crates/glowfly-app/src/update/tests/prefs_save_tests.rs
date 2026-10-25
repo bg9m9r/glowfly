@@ -8,6 +8,7 @@ use super::tests::state;
 use super::update;
 use crate::effect::Effect;
 use crate::effect::PrefsEffect;
+use crate::effect::SparseEffect;
 use crate::keymap::{BindingId, Slot};
 use crate::msg::{FolderPurpose, ForgeMsg, Msg, PaletteMsg, PrefsMsg};
 use crate::state::keys_page::Recording;
@@ -186,7 +187,7 @@ fn the_sparse_row_loads_its_status() {
     st.prefs = Some(PrefsState::new(PrefPage::General));
     let fx = prefs(&mut st, PrefsMsg::Navigate(PrefPage::RepoSparse));
     assert_eq!(page(&st), PrefPage::RepoSparse);
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadSparse { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Sparse(SparseEffect::Load { .. }))), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

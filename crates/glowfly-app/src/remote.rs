@@ -2,9 +2,12 @@
 //! update/remotes.rs, ui/remotes/), viewing a remote on its hosting service, and the fork
 //! dialogs (state/forks.rs, update/remote_forks.rs, runner/forks.rs).
 
+use crate::effect::EffectMeta;
 use crate::effect::ForgeError;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use glowfly_core::forge::{Auth, CreatedFork, ForkList, ForkLookup, Target};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum RemoteMsg {
@@ -89,12 +92,29 @@ pub enum RemoteEffect {
     CreateFork { req: ForkRequest, name: String },
 }
 
-impl RemoteEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for RemoteEffect {
+    fn name(&self) -> &'static str {
         match self {
             RemoteEffect::ListForks(_) => "list-forks",
             RemoteEffect::FindMyFork(_) => "find-my-fork",
             RemoteEffect::CreateFork { .. } => "create-fork",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

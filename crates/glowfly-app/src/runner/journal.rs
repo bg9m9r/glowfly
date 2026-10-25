@@ -4,6 +4,7 @@
 //! here, never in `update`. A note that can't be written is logged and never fails the run.
 
 use super::execute::err;
+use super::execute::{Cx, Execute};
 use crate::journal::{JournalEffect, JournalMsg, LostMsg};
 use crate::msg::Msg;
 use glowfly_core::journal::{self, Op, notes};
@@ -27,6 +28,12 @@ pub(super) fn run(e: JournalEffect) -> Msg {
             let result = journal::preview(&workdir, from, None).map_err(err);
             Msg::Journal(JournalMsg::Lost(LostMsg::PreviewLoaded { generation, oid, result }))
         }
+    }
+}
+
+impl Execute for JournalEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
     }
 }
 

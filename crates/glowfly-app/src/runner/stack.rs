@@ -4,6 +4,7 @@
 //! (`Effect::Stack`), which moves no local branch, so it needs no note and no undo record.
 
 use super::err;
+use super::execute::{Cx, Execute};
 use crate::effect::{RestackJob, StackEffect, UndoResult};
 use crate::msg::{Msg, RebaseMsg, StackMsg};
 use glowfly_core::error::Result;
@@ -19,6 +20,12 @@ pub(super) fn run(e: StackEffect) -> Msg {
             let result = stack::push(&cwd, &job.targets).map_err(err);
             Msg::Stack(StackMsg::Pushed { result, job: Box::new(job) })
         }
+    }
+}
+
+impl Execute for StackEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
     }
 }
 

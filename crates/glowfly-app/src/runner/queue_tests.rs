@@ -1,7 +1,8 @@
 //! Tests for the per-repository effect queue (runner/queue.rs).
 
 use super::*;
-use crate::effect::StashEffect;
+use crate::effect::{Effect, EffectMeta, MonitorJob, RebaseEffect, ReposEffect, SparseEffect, StashEffect, WorktreeEffect};
+use glowfly_core::repo_sync::SyncOp;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
@@ -124,36 +125,43 @@ fn which_effects_queue() {
         expect: None,
         stoppable: false,
     };
-    assert_eq!(repo_of(&git(&[&["pull"]])), Some(w.as_path()));
-    assert_eq!(repo_of(&git(&[&["fetch", "--all"]])), None, "auto-fetch doesn't hold up staging");
-    assert_eq!(repo_of(&git(&[&["fetch", ".", "a:b"]])), Some(w.as_path()));
+    assert_eq!(Effect::queue(&git(&[&["pull"]])), Some(w.as_path()));
+    assert_eq!(Effect::queue(&git(&[&["fetch", "--all"]])), None, "auto-fetch doesn't hold up staging");
+    assert_eq!(Effect::queue(&git(&[&["fetch", ".", "a:b"]])), Some(w.as_path()));
     // Fetch or pull across repositories: a pull waits for the repository's other jobs.
     let sync = |op| Effect::Repos(ReposEffect::Sync { generation: 1, index: 0, path: w.clone(), op, trust: None });
-    assert_eq!(repo_of(&sync(SyncOp::Pull)), Some(w.as_path()));
-    assert_eq!(repo_of(&sync(SyncOp::Fetch { prune: true })), None);
+    assert_eq!(Effect::queue(&sync(SyncOp::Pull)), Some(w.as_path()));
+    assert_eq!(Effect::queue(&sync(SyncOp::Fetch { prune: true })), None);
     // A fetch doesn't queue, but keeps the repository's handles out of the pool (git may repack).
-    assert_eq!(holds(&git(&[&["fetch", "--all"]])), Some(w.as_path()));
-    assert_eq!(holds(&sync(SyncOp::Fetch { prune: true })), Some(w.as_path()));
-    assert_eq!(holds(&git(&[&["pull"]])), Some(w.as_path()));
+    assert_eq!(Effect::holds(&git(&[&["fetch", "--all"]])), Some(w.as_path()));
+    assert_eq!(Effect::holds(&sync(SyncOp::Fetch { prune: true })), Some(w.as_path()));
+    assert_eq!(Effect::holds(&git(&[&["pull"]])), Some(w.as_path()));
     // A custom shell command may change anything; reading the commands files changes nothing.
     use crate::custom_commands::{CustomCommandEffect, ShellRun};
     let shell = Effect::CustomCommand(CustomCommandEffect::RunShell(ShellRun { cwd: w.clone(), script: "make".into() }));
-    assert_eq!(repo_of(&shell), Some(w.as_path()));
-    assert_eq!(repo_of(&Effect::CustomCommand(CustomCommandEffect::Load { generation: 1, workdir: w.clone() })), None);
+    assert_eq!(Effect::queue(&shell), Some(w.as_path()));
+    assert_eq!(Effect::queue(&Effect::CustomCommand(CustomCommandEffect::Load { generation: 1, workdir: w.clone() })), None);
     let op = Effect::LocalOp { workdir: w.clone(), op: crate::effect::LocalOp::StageAll };
-    assert_eq!(repo_of(&op), Some(w.as_path()));
+    assert_eq!(Effect::queue(&op), Some(w.as_path()));
     assert_eq!(
-        repo_of(&Effect::LoadStatus { workdir: w.clone(), generation: 0, submodules: false, open: None, git_status: true, paths: None }),
+        Effect::queue(&Effect::LoadStatus {
+            workdir: w.clone(),
+            generation: 0,
+            submodules: false,
+            open: None,
+            git_status: true,
+            paths: None
+        }),
         None
     );
     // Saving a patch only reads the repository.
     let what = glowfly_core::patch_ops::PatchSource::Commits { oids: Vec::new(), paths: Vec::new() };
     let export = crate::patch::PatchEffect::Export { workdir: w.clone(), what, dest: w.join("x.patch") };
-    assert_eq!(repo_of(&Effect::Patch(export)), None);
+    assert_eq!(Effect::queue(&Effect::Patch(export)), None);
     // Reading a patch file and copying a commit's patch only read too.
-    assert_eq!(repo_of(&Effect::Patch(crate::patch::PatchEffect::Inspect { workdir: w.clone(), path: w.join("x.patch") })), None);
-    assert_eq!(repo_of(&Effect::Patch(crate::patch::PatchEffect::Copy { workdir: w.clone(), oids: Vec::new() })), None);
-    assert_eq!(repo_of(&Effect::Tool(crate::tools::ToolEffect::PickProgram(crate::tools::ToolKind::Editor))), None);
+    assert_eq!(Effect::queue(&Effect::Patch(crate::patch::PatchEffect::Inspect { workdir: w.clone(), path: w.join("x.patch") })), None);
+    assert_eq!(Effect::queue(&Effect::Patch(crate::patch::PatchEffect::Copy { workdir: w.clone(), oids: Vec::new() })), None);
+    assert_eq!(Effect::queue(&Effect::Tool(crate::tools::ToolEffect::PickProgram(crate::tools::ToolKind::Editor))), None);
     // A conflict check writes only unreferenced objects.
     let request = crate::conflict_check::CheckRequest {
         branch: "feature".into(),
@@ -165,11 +173,11 @@ fn which_effects_queue() {
         },
     };
     let job = crate::conflict_check::CheckJob { workdir: w.clone(), request, manual: false, generation: 0 };
-    assert_eq!(repo_of(&Effect::CheckConflicts(job)), None);
+    assert_eq!(Effect::queue(&Effect::CheckConflicts(job)), None);
     // Switching profiles writes the global git config only.
     let identity = glowfly_core::identity::Identity::default();
     let apply = crate::profile::ProfileEffect::Apply { cwd: w.clone(), has_repo: true, id: glowfly_core::settings::ProfileId(1), identity };
-    assert_eq!(repo_of(&Effect::Profile(apply)), None);
+    assert_eq!(Effect::queue(&Effect::Profile(apply)), None);
     // Folder rules and a repository's identity never wait behind its jobs.
     let id = glowfly_core::settings::ProfileId(1);
     let plan = glowfly_core::profile_includes::IncludePlan { files: Vec::new(), entries: Vec::new() };
@@ -180,16 +188,16 @@ fn which_effects_queue() {
         crate::profile::ProfileEffect::ClearLocalIdentity { workdir, git_dir, rules: Vec::new() },
         crate::profile::ProfileEffect::CheckFolder { id, path: w.clone(), repository: true },
     ] {
-        assert_eq!(repo_of(&Effect::Profile(e)), None);
+        assert_eq!(Effect::queue(&Effect::Profile(e)), None);
     }
     // So does the welcome's identity step.
     let write = crate::onboarding::OnboardingEffect::WriteIdentity { cwd: w.clone(), identity: Default::default() };
-    assert_eq!(repo_of(&Effect::Onboarding(write)), None);
+    assert_eq!(Effect::queue(&Effect::Onboarding(write)), None);
     // Saving a typed sign-in talks to git's credential helper only.
     let secret = glowfly_core::askpass::Secret::new("hunter2");
     let credential = glowfly_core::git_credential::HttpsCredential::from_prompt("https://github.com", "ada", secret).unwrap();
     let remember = crate::effect::CredentialEffect::Remember { cwd: w.clone(), credential };
-    assert_eq!(repo_of(&Effect::Credential(remember)), None);
+    assert_eq!(Effect::queue(&Effect::Credential(remember)), None);
     // Fork lists and forking call the hosting service only; the remote is added by a job.
     use crate::remote::{ForkRequest, RemoteEffect};
     let target = glowfly_core::forge::parse_remote("https://github.com/team/app", &[]).unwrap();
@@ -200,7 +208,7 @@ fn which_effects_queue() {
     assert_eq!(names, ["list-forks", "find-my-fork", "create-fork"]);
     for e in remote {
         let e = Effect::Remote(e);
-        assert_eq!((repo_of(&e), e.scope()), (None, None), "{}", e.name());
+        assert_eq!((Effect::queue(&e), e.scope()), (None, None), "{}", e.name());
     }
 }
 
@@ -258,26 +266,26 @@ fn every_effect_that_changes_a_repository_queues() {
                 first_may_combine: false,
             },
         }),
-        Effect::RemoveWorktree(crate::worktree::RemoveRequest {
+        Effect::Worktree(WorktreeEffect::Remove(crate::worktree::RemoveRequest {
             repo: w.clone(),
             path: "C:/wt".into(),
             name: "wt".into(),
             force: glowfly_core::worktree_ops::RemoveForce::None,
             delete_branch: None,
             delete_remote: None,
-        }),
-        Effect::MoveWorktree(crate::worktree::MoveRequest {
+        })),
+        Effect::Worktree(WorktreeEffect::Move(crate::worktree::MoveRequest {
             repo: w.clone(),
             from: "C:/wt".into(),
             to: "C:/moved/wt".into(),
             name: "wt".into(),
             folder: None,
-        }),
+        })),
         Effect::Stash(StashEffect::Rename { cwd: w.clone(), index: 0, oid: git2::Oid::zero(), message: "On main: x".into() }),
-        Effect::SparseCheckout { cwd: w.clone(), command: glowfly_core::sparse_ops::SparseCommand::Reapply },
-        Effect::TurnOnMonitor { cwd: w.clone(), then: vec![] },
+        Effect::Sparse(SparseEffect::Checkout { cwd: w.clone(), command: glowfly_core::sparse_ops::SparseCommand::Reapply }),
+        Effect::TurnOnMonitor(MonitorJob { cwd: w.clone(), then: vec![] }),
     ];
     for e in &changing {
-        assert_eq!(repo_of(e), Some(w.as_path()), "{} must run on its repository's queue", e.name());
+        assert_eq!(Effect::queue(e), Some(w.as_path()), "{} must run on its repository's queue", e.name());
     }
 }

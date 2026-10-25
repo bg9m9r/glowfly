@@ -1,6 +1,7 @@
 //! The Init dialog's effects (`Effect::Init`): checking its folder, reading git's user.name to
 //! suggest as a license's copyright holder, and the init job.
 
+use super::execute::{Cx, Execute};
 use crate::effect::InitEffect;
 use crate::msg::{InitMsg, Msg};
 use glowfly_core::gitcli::{self, args};
@@ -21,4 +22,10 @@ pub(super) fn run(e: InitEffect) -> Msg {
         }
         InitEffect::Run { folder, plan } => InitMsg::Finished(init_ops::run(&folder, &plan)),
     })
+}
+
+impl Execute for InitEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }

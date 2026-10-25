@@ -5,6 +5,7 @@
 //! update/conflict_files.rs. Undoing a saved resolution opens (or reloads) the view on the file
 //! again (`reopen_after_undo`).
 
+use crate::effect::ConflictEffect;
 use crate::effect::{Effect, LocalOp, UndoResult};
 use crate::msg::ConflictMsg;
 use crate::state::AppState;
@@ -185,7 +186,7 @@ pub(super) fn in_tool(st: &mut AppState, path: &str) -> bool {
 fn request_load(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.conflict_gen += 1;
     if let (Some(workdir), Some(c)) = (st.workdir(), &st.conflict) {
-        fx.push(Effect::LoadConflict { workdir, path: c.path.clone(), generation: st.conflict_gen });
+        fx.push(Effect::Conflict(ConflictEffect::Load { workdir, path: c.path.clone(), generation: st.conflict_gen }));
     }
 }
 

@@ -6,9 +6,10 @@
 //! the search index's builds and queries (`index`, with its saved copies in `index_disk`) are run
 //! by the runner itself, the log files have one ordered worker (`logs`), effects are timed for
 //! the performance log, and saves of Glowfly's own files are kept in order (`saves`).
-//! `execute.rs` maps each effect to its work; work longer than a line lives in this folder's
-//! per-area files (`files`, `worktrees`, `rebase`, `highlight`, …); the git, file and
-//! network code itself lives in `glowfly-core`.
+//! `execute.rs` maps each effect to its work: an effect area's `Execute` impl lives in this
+//! folder's file for that area (`worktrees`, `rebase`, `sparse`, …), as does work longer than a
+//! line for the flat variants (`files`, `highlight`, …); the git, file and network code itself
+//! lives in `glowfly-core`.
 
 use crate::effect::Effect;
 use crate::msg::Msg;
@@ -49,6 +50,7 @@ mod instance;
 mod issues;
 mod journal;
 mod keys;
+mod lfs;
 mod line_counts;
 mod load;
 mod logs;
@@ -71,6 +73,7 @@ mod revert;
 #[cfg(test)]
 mod sandbox;
 mod saves;
+mod selection;
 mod signatures;
 mod sparse;
 mod ssh;
@@ -91,7 +94,7 @@ mod worktrees;
 
 #[cfg(test)]
 pub use execute::execute;
-use execute::{err, execute_with};
+use execute::{Cx, err, execute_with};
 #[cfg(test)]
 pub(crate) use highlight::{decorate, decorate_in_context};
 
@@ -220,8 +223,8 @@ impl<W: Waker + Clone> Runner<W> {
         let name = effect.name();
         let epoch = &self.highlight_epoch;
         let ticket = matches!(effect, Effect::HighlightDiff { .. }).then(|| (epoch.clone(), epoch.fetch_add(1, Ordering::SeqCst) + 1));
-        let repo = queue::repo_of(&effect).map(Path::to_owned);
-        let hold = queue::holds(&effect).map(Path::to_owned);
+        let repo = effect.queue().map(Path::to_owned);
+        let hold = effect.holds().map(Path::to_owned);
         let recovery = guard::Recovery::of(&effect, name);
         let graph_cache = Arc::clone(&self.graph_cache);
         // Registered now, so a stop asked while it waits in its repository's queue is kept.
@@ -236,7 +239,8 @@ impl<W: Waker + Clone> Runner<W> {
             let _hold = hold.as_deref().map(glowfly_core::repo_pool::hold);
             let cancelled = || ticket.as_ref().is_some_and(|(e, mine)| e.load(Ordering::Relaxed) != *mine);
             let started = std::time::Instant::now();
-            let msg = guard::guarded(recovery, || execute_with(effect, &cancelled, &graph_cache, stop.as_ref().map(|(_, s)| s)));
+            let cx = Cx { cancelled: &cancelled, graph_cache: &graph_cache, stop: stop.as_ref().map(|(_, s)| s) };
+            let msg = guard::guarded(recovery, || execute_with(effect, &cx));
             if let Some((key, s)) = &stop {
                 stops.release(*key, s);
             }

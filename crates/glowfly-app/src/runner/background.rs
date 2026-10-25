@@ -2,6 +2,7 @@
 //! branch's ancestry for hover highlighting, freeing replaced snapshots, and letting go of a
 //! closed tab's pooled repository handles.
 
+use super::execute::{Cx, Execute};
 use crate::effect::BackgroundEffect;
 use crate::msg::{GraphMsg, Msg};
 
@@ -24,5 +25,11 @@ pub(super) fn run(e: BackgroundEffect) -> Option<Msg> {
             glowfly_core::repo_pool::forget(&workdir);
             None
         }
+    }
+}
+
+impl Execute for BackgroundEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        run(self)
     }
 }

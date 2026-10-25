@@ -1,9 +1,12 @@
 //! What repositories across folders ask the runner (runner/repos.rs): listing the project
 //! folders, and fetching or pulling one listed repository.
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use glowfly_core::repo_sync::SyncOp;
 use glowfly_core::settings::SavedTrust;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum ReposEffect {
@@ -15,19 +18,44 @@ pub enum ReposEffect {
     Sync { generation: u64, index: usize, path: PathBuf, op: SyncOp, trust: Option<SavedTrust> },
 }
 
-impl ReposEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for ReposEffect {
+    fn name(&self) -> &'static str {
         match self {
             ReposEffect::Scan { .. } => "repo-scan",
             ReposEffect::Sync { .. } => "repo-sync",
         }
     }
 
-    pub fn timed(&self) -> bool {
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
         match self {
             ReposEffect::Scan { .. } => true,
             // Waits on the network.
             ReposEffect::Sync { .. } => false,
         }
+    }
+
+    /// A pull changes the repository; a scan reads folder listings and a fetch only adds objects.
+    fn queue(&self) -> Option<&Path> {
+        match self {
+            ReposEffect::Sync { path, op: SyncOp::Pull, .. } => Some(path),
+            ReposEffect::Scan { .. } | ReposEffect::Sync { op: SyncOp::Fetch { .. }, .. } => None,
+        }
+    }
+
+    /// A fetch too, after which git may repack.
+    fn holds(&self) -> Option<&Path> {
+        match self {
+            ReposEffect::Sync { path, .. } => Some(path),
+            ReposEffect::Scan { .. } => None,
+        }
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

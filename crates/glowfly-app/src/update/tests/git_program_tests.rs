@@ -5,6 +5,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::LfsEffect;
 use crate::git_env::{GitEnvEffect, GitEnvMsg};
 use crate::msg::{Msg, PrefsMsg};
 use crate::state::{AppState, PrefPage};
@@ -108,7 +109,7 @@ fn choosing_a_git_checks_then_saves_and_redetects() {
     let fx = run(&mut st, GitEnvMsg::Switched { program: Some(p.clone()), result: Ok(info) });
     assert_eq!(st.settings.git_program.as_deref(), Some(p.to_str().unwrap()));
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.git_program == st.settings.git_program)), "{fx:?}");
-    assert!(fx.iter().any(|e| matches!(e, Effect::DetectLfs { .. })), "another git may bring another git-lfs: {fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Lfs(LfsEffect::Detect { .. }))), "another git may bring another git-lfs: {fx:?}");
     assert!(st.git.page.checking.is_none());
     let banner = st.git_banner().expect("a too-old banner, shown again");
     assert!(banner.contains("2.34.1"), "{banner}");
@@ -255,7 +256,7 @@ fn the_banner_button_switches_to_the_path_git() {
     let fx = run(&mut st, GitEnvMsg::Switched { program: None, result: Ok(info) });
     assert_eq!(st.settings.git_program, None, "git from your PATH, following later PATH changes");
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.git_program.is_none())), "{fx:?}");
-    assert!(fx.iter().any(|e| matches!(e, Effect::DetectLfs { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Lfs(LfsEffect::Detect { .. }))), "{fx:?}");
     assert!(discover_gen(&fx).is_some(), "the open page shows the PATH git in use: {fx:?}");
     assert_eq!(st.git_banner(), None);
     assert!(st.git.path_offer().is_none() && st.git.path_git.is_none());

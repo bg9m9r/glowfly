@@ -1,7 +1,10 @@
 //! Saving and dropping HTTPS sign-ins typed in the credential prompt (runner/credentials.rs).
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use glowfly_core::git_credential::HttpsCredential;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum CredentialEffect {
@@ -12,11 +15,29 @@ pub enum CredentialEffect {
     Forget { cwd: PathBuf, credential: HttpsCredential },
 }
 
-impl CredentialEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for CredentialEffect {
+    fn name(&self) -> &'static str {
         match self {
             CredentialEffect::Remember { .. } => "remember-credential",
             CredentialEffect::Forget { .. } => "forget-credential",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    /// A keychain may ask the user to allow saving the sign-in.
+    fn timed(&self) -> bool {
+        false
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

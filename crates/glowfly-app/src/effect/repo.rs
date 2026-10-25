@@ -60,7 +60,7 @@ pub enum LocalOp {
     MarkConflicted(Vec<String>),
 }
 
-/// Why the conflicted files' working copies are read (`Effect::ReadConflictFiles`).
+/// Why the conflicted files' working copies are read (`ConflictEffect::ReadFiles`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ConflictRead {
     /// The WIP panel's counts and Resolved Files; results of older generations are dropped.

@@ -1,9 +1,12 @@
 //! The effects of a shallow clone's size check and a partial clone's missing contents
 //! (runner/partial.rs), and the keys of the git commands that can be stopped (`Effect::StopGit`).
 
-use super::Effect;
+#[cfg(test)]
+use super::SandboxRule;
+use super::areas::{effect_areas, effect_match};
+use super::{Effect, EffectMeta};
 use glowfly_core::forge::{Auth, Target};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum PartialEffect {
@@ -12,6 +15,46 @@ pub enum PartialEffect {
     /// Downloads a partial clone's missing contents in the background, without prompts
     /// (`PartialMsg::ContentFetched`); stopped by `StopGit(StopKey::Content(id))`.
     FetchContent(ContentRequest),
+}
+
+impl EffectMeta for PartialEffect {
+    fn name(&self) -> &'static str {
+        match self {
+            PartialEffect::SizeHistory(_) => "partial-size",
+            PartialEffect::FetchContent(_) => "partial-content",
+        }
+    }
+
+    /// The size check and the download carry their own workdir and id.
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    /// A network call and a download the user may stop.
+    fn timed(&self) -> bool {
+        false
+    }
+
+    /// A network call, and a fetch that only adds objects.
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    fn stop_key(&self) -> Option<StopKey> {
+        match self {
+            PartialEffect::FetchContent(r) => Some(StopKey::Content(r.id)),
+            PartialEffect::SizeHistory(_) => None,
+        }
+    }
+
+    /// The size check may ask a hosting service.
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        match self {
+            PartialEffect::FetchContent(_) => SandboxRule::Run,
+            PartialEffect::SizeHistory(_) => SandboxRule::Drop,
+        }
+    }
 }
 
 /// The size check behind Fetch full history.
@@ -52,12 +95,12 @@ pub enum StopKey {
 }
 
 impl Effect {
-    /// The key a runner registers this effect's stop under; None when it can't be stopped.
+    /// The key a runner registers this effect's stop under; None when it can't be stopped. An
+    /// area's comes from its `EffectMeta`.
     pub fn stop_key(&self) -> Option<StopKey> {
-        match self {
+        effect_areas! { effect_match! { self, |e| e.stop_key(), {
             Effect::RunGit { stoppable: true, .. } => Some(StopKey::Job),
-            Effect::Partial(PartialEffect::FetchContent(r)) => Some(StopKey::Content(r.id)),
             _ => None,
-        }
+        } } }
     }
 }

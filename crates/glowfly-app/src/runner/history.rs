@@ -3,6 +3,7 @@
 //! Markdown and images, what the File view's preview draws: a Markdown file's text (parsed by
 //! the view's `MarkdownCache` when drawn) or a decoded image (`Effect::LoadFileText`).
 
+use super::execute::{Cx, Execute};
 use crate::effect::{Effect, FileTextRequest};
 use crate::msg::{HistoryMsg, Msg, PartialMsg};
 use crate::state::history::{FileTextData, Preview, TextError};
@@ -41,6 +42,12 @@ pub(super) fn file_text(r: FileTextRequest) -> Msg {
         Ok(d) => Ok(d),
     };
     Msg::History(HistoryMsg::FileTextLoaded { oid: r.oid, path: r.path, before: r.before, result: result.map(Arc::new) })
+}
+
+impl Execute for FileTextRequest {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(file_text(self))
+    }
 }
 
 /// Why a file's text wasn't read.

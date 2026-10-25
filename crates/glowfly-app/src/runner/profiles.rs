@@ -3,6 +3,7 @@
 //! the global entries, and reading (or clearing) a repository's own identity.
 
 use super::config;
+use super::execute::{Cx, Execute};
 use crate::msg::Msg;
 use crate::profile::{ProfileEffect, ProfileMsg};
 use glowfly_core::{identity, profile_includes, repo_identity};
@@ -36,5 +37,11 @@ pub(super) fn run(e: ProfileEffect) -> Msg {
                 .and_then(|()| repo_identity::read(&workdir, &git_dir, profile_includes::default_dir().as_deref(), &rules, &[]));
             Msg::Profile(ProfileMsg::LocalCleared { git_dir, result })
         }
+    }
+}
+
+impl Execute for ProfileEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
     }
 }

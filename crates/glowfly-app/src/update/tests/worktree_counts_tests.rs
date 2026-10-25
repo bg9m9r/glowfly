@@ -6,6 +6,7 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
+use crate::effect::WorktreeEffect;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::{Msg, RepoMsg};
 use crate::runner;
@@ -51,7 +52,7 @@ fn load_pending(st: &mut AppState) -> Vec<Effect> {
 }
 
 fn counts(fx: &[Effect]) -> Vec<&crate::worktree::CountRequest> {
-    fx.iter().filter_map(|e| if let Effect::CountWorktreeChanges(r) = e { Some(r) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::Worktree(WorktreeEffect::CountChanges(r)) = e { Some(r) } else { None }).collect()
 }
 
 /// Runs `msg` and the loads it leads to, collecting every other effect on the way.
@@ -98,7 +99,7 @@ fn a_large_worktree_is_counted_after_the_graph() {
     assert!(glowfly_core::paths::same_folder(&asked[0].targets[0].0, &linked));
     assert_eq!(st.refresh.counting, Some(refs_key(&st)));
 
-    let count = fx.into_iter().find(|e| matches!(e, Effect::CountWorktreeChanges(_))).unwrap();
+    let count = fx.into_iter().find(|e| matches!(e, Effect::Worktree(WorktreeEffect::CountChanges(_)))).unwrap();
     let done = runner::execute(count).expect("a result");
     let fx = update(&mut st, done, Instant::now());
     assert!(counts(&fx).is_empty(), "nothing left to count");
@@ -227,7 +228,7 @@ fn another_worktree_is_counted_by_its_own_trust_not_the_tab_s() {
         let asked = counts(&fx);
         assert_eq!(asked.len(), 1, "{fx:?}");
         assert_eq!(asked[0].targets[0].1.as_ref().map(|t| t.trust), decision, "the worktree's own decision, not the tab's");
-        let count = fx.into_iter().find(|e| matches!(e, Effect::CountWorktreeChanges(_))).unwrap();
+        let count = fx.into_iter().find(|e| matches!(e, Effect::Worktree(WorktreeEffect::CountChanges(_)))).unwrap();
         let done = runner::execute(count).expect("a result");
         update(st, done, Instant::now());
         let wt = linked_info(st);

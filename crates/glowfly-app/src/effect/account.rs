@@ -2,8 +2,11 @@
 //! tokens, creating a repository and the lists Preferences and the Publish dialog read.
 //! Unscoped: they run outside any repository's tab.
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use glowfly_core::forge::{Account, NewRepo};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum AccountEffect {
@@ -45,8 +48,8 @@ pub enum AccountEffect {
     },
 }
 
-impl AccountEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for AccountEffect {
+    fn name(&self) -> &'static str {
         match self {
             AccountEffect::Owners { .. } => "repo-owners",
             AccountEffect::CreateRepo { .. } => "create-repo",
@@ -56,5 +59,22 @@ impl AccountEffect {
             AccountEffect::ForgetCredentialManager { .. } => "forget-gcm",
             AccountEffect::TrelloBoards { .. } => "trello-boards",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

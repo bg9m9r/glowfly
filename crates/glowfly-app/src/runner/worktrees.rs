@@ -1,14 +1,27 @@
-//! Checking the folder of a worktree about to be created (`Effect::CheckWorktreeFolder`),
+//! Checking the folder of a worktree about to be created (`WorktreeEffect::CheckFolder`),
 //! removing one, then deleting its branch (and that branch on its remote) when asked
-//! (`Effect::RemoveWorktree`), moving one (`Effect::MoveWorktree`), and counting other
-//! worktrees' changes in the background (`Effect::CountWorktreeChanges`).
+//! (`WorktreeEffect::Remove`), moving one (`WorktreeEffect::Move`), and counting other
+//! worktrees' changes in the background (`WorktreeEffect::CountChanges`).
 
+use super::execute::{Cx, Execute};
+use crate::effect::WorktreeEffect;
 use crate::msg::Msg;
 use crate::worktree::{CountRequest, MoveRequest, NewWorktree, RemoteOutcome, RemoveRequest, Removed, WorktreeMsg};
 use glowfly_core::branch_ops::delete_with_remote_cmds;
 use glowfly_core::gitcli::{self, args};
 use glowfly_core::undo::{self, UndoKind};
 use glowfly_core::worktree_ops::{self, RemoveOutcome};
+
+impl Execute for WorktreeEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(match self {
+            WorktreeEffect::CheckFolder(r) => check(r),
+            WorktreeEffect::Remove(r) => remove(r),
+            WorktreeEffect::CountChanges(r) => count(r),
+            WorktreeEffect::Move(r) => move_(r),
+        })
+    }
+}
 
 /// Whether git can create the worktree in `request.folder`, as `WorktreeMsg::FolderChecked`.
 pub(super) fn check(request: NewWorktree) -> Msg {

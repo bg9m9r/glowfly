@@ -4,6 +4,7 @@
 
 use super::selection_tests::{fixture, up};
 use crate::effect::Effect;
+use crate::effect::SelectionEffect;
 use crate::msg::{Msg, PaletteMsg, RepoMsg, SelectionMsg};
 use crate::state::palette::{PaletteCommand as C, entries, shown};
 use crate::state::selection_wip::WorkdirCompare;
@@ -61,7 +62,10 @@ fn running_it_compares_and_is_recalled_for_the_selected_commit() {
     let fx = up(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::CompareWithWorkdir(f.c(3)))));
     assert!(st.palette.is_none(), "the palette closes");
     assert!(matches!(&st.selection, Selection::VsWorkdir(w) if w.oid == f.c(3)), "{:?}", st.selection);
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadWorkdirCompare { oid, swapped: false, .. } if *oid == f.c(3))), "{fx:?}");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Selection(SelectionEffect::WorkdirCompare { oid, swapped: false, .. }) if *oid == f.c(3))),
+        "{fx:?}"
+    );
     assert_eq!(st.palette_recent.keys(), ["compare-workdir"]);
 
     // Recalled, it names the commit selected now.

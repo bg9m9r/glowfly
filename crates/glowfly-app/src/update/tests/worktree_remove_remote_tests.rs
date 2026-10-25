@@ -8,6 +8,7 @@ use super::branch_tests::with_origin;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::WorktreeEffect;
 use crate::msg::{Msg, RepoMsg, TabsMsg};
 use crate::state::worktree_manage::RemoveForm;
 use crate::state::{AppState, Modal, RunningJob};
@@ -177,7 +178,7 @@ fn remove_closes_the_other_tab_first() {
     st.job = None;
 
     let fx = update(&mut st, wt(WorktreeMsg::Remove), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::RemoveWorktree(_))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Worktree(WorktreeEffect::Remove(_)))), "{fx:?}");
     assert_eq!((st.tabs.len(), st.active_tab), (1, 0));
     assert!(st.closed_tabs.iter().any(|c| super::tests::same_place(&c.path, &linked)), "Reopen closed tab has it");
     super::tests::finish(&mut st, fx);

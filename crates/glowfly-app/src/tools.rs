@@ -4,10 +4,13 @@
 //! ui/prefs/tools.rs), with git config's tools when Preferences sets none (state/tool_git.rs,
 //! update/tool_git.rs, runner/tools/git_tool.rs).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use glowfly_core::external_tools::Launch;
 use glowfly_core::external_tools::git_config::{GitTool, GitTools};
 use glowfly_core::repo::DiffTarget;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ToolKind {
@@ -166,9 +169,9 @@ pub enum ToolEffect {
     RunGitMerge(GitMergeRequest),
 }
 
-impl ToolEffect {
+impl EffectMeta for ToolEffect {
     /// A short name for the worker thread and the debug log.
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             ToolEffect::Launch { kind: ToolKind::Editor, .. } => "launch-editor",
             ToolEffect::Launch { kind: ToolKind::Terminal, .. } => "launch-terminal",
@@ -181,5 +184,23 @@ impl ToolEffect {
             ToolEffect::OpenGitDiff(_) => "open-git-diff-tool",
             ToolEffect::RunGitMerge(_) => "run-git-merge-tool",
         }
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    /// They wait on the user or hand work to another program.
+    fn timed(&self) -> bool {
+        false
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
     }
 }

@@ -2,6 +2,7 @@
 //! journal note around it), then carried past the commits that change nothing
 //! (`glowfly_core::pick_ops::skip_empty`).
 
+use super::execute::{Cx, Execute};
 use super::git_ops::run_git;
 use super::journal;
 use crate::effect::{PickJob, UndoResult};
@@ -44,4 +45,10 @@ pub(super) fn run(j: PickJob) -> Msg {
         (ok, output, undo, result)
     });
     Msg::Job(JobMsg::PickDone { ok, output, undo, result })
+}
+
+impl Execute for PickJob {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }

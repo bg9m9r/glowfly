@@ -3,6 +3,7 @@
 //! ssh-keygen, reading and writing core.sshCommand, checking the agent and adding a key to it,
 //! adding a public key to a hosting-service account, and pointing git at Windows' OpenSSH.
 
+use super::execute::{Cx, Execute};
 use crate::msg::Msg;
 use crate::ssh::{GenerateFailure, ServiceKeyError, SshEffect, SshMsg};
 use glowfly_core::error::Error;
@@ -69,4 +70,10 @@ pub(super) fn run(e: SshEffect) -> Msg {
             SshMsg::WindowsSshSet { on: program.is_some(), result }
         }
     })
+}
+
+impl Execute for SshEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }

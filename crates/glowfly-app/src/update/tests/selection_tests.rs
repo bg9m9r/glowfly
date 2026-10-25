@@ -3,6 +3,7 @@
 
 use super::tests::{drive, state};
 use super::update;
+use crate::effect::SelectionEffect;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
@@ -96,7 +97,9 @@ pub(super) fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 }
 
 fn compares(fx: &[Effect]) -> Vec<(Oid, Oid)> {
-    fx.iter().filter_map(|e| if let Effect::LoadCompare { from, to, .. } = e { Some((*from, *to)) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Selection(SelectionEffect::Compare { from, to, .. }) = e { Some((*from, *to)) } else { None })
+        .collect()
 }
 
 fn loads_detail(fx: &[Effect], oid: Oid) -> bool {

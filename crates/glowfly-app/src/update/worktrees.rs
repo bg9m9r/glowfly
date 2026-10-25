@@ -1,6 +1,6 @@
 //! The WORKTREES section and the Create worktree dialog: opening a worktree in a tab, and
 //! creating one (from a branch, a commit, a remote branch or a pull request's source branch).
-//! Creating checks the form again, then the folder on disk (`Effect::CheckWorktreeFolder`), then
+//! Creating checks the form again, then the folder on disk (`WorktreeEffect::CheckFolder`), then
 //! runs `git worktree add` as a job. Removing, locking, unlocking and pruning are in
 //! `worktree_manage.rs`, moving in `worktree_move.rs`.
 
@@ -8,6 +8,7 @@ use super::ops::{self, JobSpec};
 use super::worktree_manage as manage;
 use super::worktree_move;
 use crate::effect::Effect;
+use crate::effect::WorktreeEffect;
 use crate::state::trust::InheritKind;
 use crate::state::worktrees::{WorktreeForm, find, open_blocked, recheck, request};
 use crate::state::{AppState, Modal};
@@ -87,7 +88,7 @@ fn submit(st: &mut AppState, fx: &mut Vec<Effect>) {
     if let Some(Modal::NewWorktree(form)) = st.modal.as_mut() {
         form.pending = Some(req.clone());
     }
-    fx.push(Effect::CheckWorktreeFolder(req));
+    fx.push(Effect::Worktree(WorktreeEffect::CheckFolder(req)));
 }
 
 /// The disk check's result. It acts only while the dialog that asked is still open and waiting

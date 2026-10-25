@@ -2,6 +2,7 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
+use crate::effect::ConflictEffect;
 use crate::effect::{Effect, LocalOp};
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
@@ -118,7 +119,9 @@ fn open_conflict_closes_the_diff_and_open_diff_closes_the_conflict() {
     ));
     let fx = update(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())), Instant::now());
     match &fx[..] {
-        [Effect::LoadConflict { path, generation, .. }] => assert_eq!((path.as_str(), *generation), ("a.txt", st.conflict_gen)),
+        [Effect::Conflict(ConflictEffect::Load { path, generation, .. })] => {
+            assert_eq!((path.as_str(), *generation), ("a.txt", st.conflict_gen))
+        }
         other => panic!("expected a conflict load, got {other:?}"),
     }
     assert!(st.diff.is_none() && st.conflict.is_some());

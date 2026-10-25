@@ -2,9 +2,12 @@
 //! (state/conflict_check.rs, update/conflict_check.rs, runner/conflict_check.rs, the toolbar
 //! chip and report in ui/conflict_check.rs, the branch menus in ui/branch_menu.rs).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use git2::Oid;
 use glowfly_core::conflict_check::{MergeTarget, Prediction};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// One check: merge `target` into the branch `branch`, whose tip is `ours`.
 #[derive(Clone, Debug, PartialEq)]
@@ -24,6 +27,29 @@ pub struct CheckJob {
     pub manual: bool,
     /// `ConflictChecks`' generation when an automatic check started (0 for manual ones).
     pub generation: u64,
+}
+
+impl EffectMeta for CheckJob {
+    fn name(&self) -> &'static str {
+        "check-conflicts"
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        Some(&self.workdir)
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

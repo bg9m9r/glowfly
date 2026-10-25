@@ -5,6 +5,7 @@
 //! save dialog runs on an ordinary worker thread (`pick_export`), so it holds no log work up.
 
 use super::Waker;
+use super::execute::{Cx, Execute};
 use crate::effect::Effect;
 use crate::logging::{FileDetail, LogSetup};
 use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg, NewLine};
@@ -90,6 +91,26 @@ impl LogWorker {
     }
 }
 
+/// The save dialog waits on the user, so it runs on a worker thread rather than on the log
+/// worker; the rest go to the log worker in `Runner::run`.
+impl Execute for LogsEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        match self {
+            LogsEffect::PickExport { name } => Some(pick_export(&name)),
+            LogsEffect::LoadActivity
+            | LogsEffect::Append(_)
+            | LogsEffect::ClearActivity { .. }
+            | LogsEffect::ReadFile { .. }
+            | LogsEffect::OpenFolder
+            | LogsEffect::SetExtended(_)
+            | LogsEffect::Export { .. } => {
+                tracing::warn!("log effect reached a worker; it is handled by Runner::run");
+                None
+            }
+        }
+    }
+}
+
 /// The save dialog for the logs bundle, suggesting `name`. It waits on the user, so it runs on a
 /// worker thread (runner/execute.rs), never on the log worker.
 pub(super) fn pick_export(name: &str) -> Msg {
@@ -102,7 +123,7 @@ pub(super) fn pick_export(name: &str) -> Msg {
 pub(super) fn folder_of(effect: &Effect) -> String {
     let path = match effect {
         Effect::LoadRepo { path, .. } => Some(path.as_path()),
-        e => e.scope().map(PathBuf::as_path).or_else(|| super::queue::repo_of(e)),
+        e => e.scope().map(PathBuf::as_path).or_else(|| e.queue()),
     };
     path.map(native_path::shown).unwrap_or_default()
 }

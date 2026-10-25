@@ -3,10 +3,13 @@
 //! of a running one; restacking stacked branches (`git rebase --update-refs`) and going on with
 //! a stopped restack.
 
+use super::EffectMeta;
+#[cfg(test)]
+use super::SandboxRule;
 use glowfly_core::rebase::{EditTodoRequest, QuickEdit, RebaseBase, Resume, StartRequest};
 use glowfly_core::stack::{RestackPlan, RestackStep};
 use glowfly_core::undo::RestackBefore;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// A restack job: the steps still to run, every branch's tip before its first run (for undo),
 /// how the undo history names it ("restack of the branches above search"), and the step a
@@ -42,8 +45,8 @@ pub enum RebaseEffect {
     ResumeRestack { cwd: PathBuf, how: Resume, job: RestackJob },
 }
 
-impl RebaseEffect {
-    pub fn name(&self) -> &'static str {
+impl EffectMeta for RebaseEffect {
+    fn name(&self) -> &'static str {
         match self {
             Self::LoadPlan { .. } => "rebase-plan",
             Self::Start { .. } => "rebase",
@@ -58,10 +61,32 @@ impl RebaseEffect {
 
     /// The tab the result belongs to: the reads answer their tab; the jobs end the active job
     /// whichever tab is active.
-    pub fn scope(&self) -> Option<&PathBuf> {
+    fn scope(&self) -> Option<&PathBuf> {
         match self {
             Self::LoadPlan { workdir, .. } | Self::PrepareEdit { workdir, .. } | Self::LoadRemaining { workdir, .. } => Some(workdir),
             Self::Start { .. } | Self::Resume { .. } | Self::EditTodo { .. } | Self::Restack { .. } | Self::ResumeRestack { .. } => None,
         }
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    /// The runs change the repository; the plan, the edit's preparation and the remaining
+    /// steps only read.
+    fn queue(&self) -> Option<&Path> {
+        match self {
+            Self::Start { cwd, .. }
+            | Self::Resume { cwd, .. }
+            | Self::EditTodo { cwd, .. }
+            | Self::Restack { cwd, .. }
+            | Self::ResumeRestack { cwd, .. } => Some(cwd),
+            Self::LoadPlan { .. } | Self::PrepareEdit { .. } | Self::LoadRemaining { .. } => None,
+        }
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
     }
 }

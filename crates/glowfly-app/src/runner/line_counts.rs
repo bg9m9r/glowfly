@@ -2,6 +2,7 @@
 //! (Effect::LineCounts), with libgit2 only.
 
 use super::execute::err;
+use super::execute::{Cx, Execute};
 use crate::effect::LineCountsEffect;
 use crate::msg::{Msg, RepoMsg};
 use glowfly_core::repo;
@@ -16,4 +17,10 @@ pub(super) fn run(e: LineCountsEffect) -> Msg {
             RepoMsg::WipLineCountsLoaded { generation, result: repo::wip_line_counts(&workdir).map(Box::new).map_err(err) }
         }
     })
+}
+
+impl Execute for LineCountsEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self))
+    }
 }

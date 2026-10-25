@@ -1,6 +1,7 @@
 //! Fetch full history's size check, and downloading a partial clone's missing contents in the
 //! background (`Effect::Partial`).
 
+use super::execute::{Cx, Execute};
 use super::git_ops;
 use crate::effect::partial::{ContentRequest, HistorySizeRequest, PartialEffect};
 use crate::msg::{ContentFailure, Msg, PartialMsg};
@@ -12,6 +13,12 @@ pub(super) fn run(e: PartialEffect, stop: Option<&Stop>) -> Msg {
     match e {
         PartialEffect::SizeHistory(r) => size(r),
         PartialEffect::FetchContent(r) => fetch(r, stop),
+    }
+}
+
+impl Execute for PartialEffect {
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self, cx.stop))
     }
 }
 

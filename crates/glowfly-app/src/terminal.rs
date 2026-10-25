@@ -1,9 +1,12 @@
 //! Messages and effects of the built-in terminal panel (state/terminal.rs, update/terminal.rs,
 //! runner/terminal.rs, ui/terminal/).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use glowfly_core::settings::{ShellChoice, ShellSetting};
 use glowfly_core::terminal::{ShellActivity, TermInput};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Carried by an `Output` message: dropping it tells the session's output thread that the
 /// message was handled (runner/terminal_out.rs). The default does nothing.
@@ -204,6 +207,31 @@ pub enum TerminalEffect {
         id: u64,
         then: AfterCheck,
     },
+}
+
+impl EffectMeta for TerminalEffect {
+    /// Only ever "terminal": `Write` bytes may be secrets.
+    fn name(&self) -> &'static str {
+        "terminal"
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    /// It never runs on a worker thread.
+    fn timed(&self) -> bool {
+        false
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Drop
+    }
 }
 
 impl std::fmt::Debug for TerminalEffect {

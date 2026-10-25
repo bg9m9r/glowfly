@@ -2,6 +2,7 @@
 //! only reads the answer), its Your repositories tab (`clone_service`), and the end of a sparse
 //! clone. A plain clone is a git job (`ops`); a sparse one is `CloneEffect::Sparse`.
 
+use crate::effect::CloneEffect;
 use crate::effect::Effect;
 use crate::msg::CloneMsg;
 use crate::state::clone::CloneForm;
@@ -66,7 +67,7 @@ pub(super) fn check_parent(st: &AppState, delay: Duration, fx: &mut Vec<Effect>)
     if let Some(Modal::Clone(form)) = &st.modal {
         let parent = form.parent.trim();
         if !parent.is_empty() {
-            fx.push(Effect::CheckCloneParent { parent: parent.to_owned(), delay });
+            fx.push(Effect::Clone(CloneEffect::CheckParent { parent: parent.to_owned(), delay }));
         }
     }
 }

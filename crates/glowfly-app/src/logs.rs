@@ -3,12 +3,15 @@
 //! exporting every log as one bundle (state/logs.rs, state/activity_copy.rs, update/logs.rs,
 //! update/logs_copy.rs, update/logs_export.rs, runner/logs.rs, logging.rs, ui/activity_log.rs).
 
+use crate::effect::EffectMeta;
+#[cfg(test)]
+use crate::effect::SandboxRule;
 use crate::state::logs::EntryId;
 use crate::state::tabs::TabId;
 use glowfly_core::gitcli::GitRun;
 use glowfly_core::i18n::Lang;
 use glowfly_core::logs::{ActivityEntry, BundleReport, LogTail, RunInfo};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// The activity panel's tabs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -150,7 +153,15 @@ pub enum LogsEffect {
 }
 
 impl LogsEffect {
-    pub fn name(&self) -> &'static str {
+    /// Whether the log worker runs it (in order with the other log work). The save dialog waits
+    /// on the user, so it runs on a worker thread instead and holds nothing up.
+    pub fn on_log_worker(&self) -> bool {
+        !matches!(self, Self::PickExport { .. })
+    }
+}
+
+impl EffectMeta for LogsEffect {
+    fn name(&self) -> &'static str {
         match self {
             Self::LoadActivity => "load-activity",
             Self::Append(_) => "append-activity",
@@ -163,9 +174,31 @@ impl LogsEffect {
         }
     }
 
-    /// Whether the log worker runs it (in order with the other log work). The save dialog waits
-    /// on the user, so it runs on a worker thread instead and holds nothing up.
-    pub fn on_log_worker(&self) -> bool {
-        !matches!(self, Self::PickExport { .. })
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    /// Glowfly's own files on the log worker, and a save dialog that waits on the user.
+    fn timed(&self) -> bool {
+        false
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    /// A no-op: the log worker is never attached in a test. The save dialog is dropped.
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        match self {
+            Self::LoadActivity
+            | Self::Append(_)
+            | Self::ClearActivity { .. }
+            | Self::ReadFile { .. }
+            | Self::OpenFolder
+            | Self::SetExtended(_)
+            | Self::Export { .. } => SandboxRule::Run,
+            Self::PickExport { .. } => SandboxRule::Drop,
+        }
     }
 }
