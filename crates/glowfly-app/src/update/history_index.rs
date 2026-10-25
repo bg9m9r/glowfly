@@ -4,13 +4,19 @@
 //! change), a finished build is kept even while the tab is parked, and closing the tab, opening
 //! another repository in it or turning the preference off forgets it. Asking the index for a
 //! query's matches is update/search_index.rs.
+//!
+//! With no index in memory, the build waits `FIRST_BUILD_DELAY` (driven by `Msg::Tick`, `tick`);
+//! an update of an index in memory starts at once. A tab parked for `PARKED_FREE_AFTER` frees a
+//! large index, and asks for it again (through the same wait) when shown. The runner reads the
+//! saved index before a build without a base and saves the result (runner/index_disk.rs).
 
 use crate::effect::{Effect, IndexEffect};
 use crate::state::AppState;
-use crate::state::history_index::{Building, HistoryIndex};
+use crate::state::history_index::{BuildDelay, Building, FIRST_BUILD_DELAY, FREE_MIN_COMMITS, HistoryIndex, PARKED_FREE_AFTER};
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Instant;
 
 /// Starts the build the loaded history needs, if any: none while the preference is off, the
 /// graph holds the whole history, the index (or a build running) already covers it, or a build
@@ -37,6 +43,13 @@ pub(super) fn want_build(st: &mut AppState, fx: &mut Vec<Effect>) {
     {
         return;
     }
+    // A first build (nothing in memory to update) waits for the tab to settle.
+    if ix.ready.is_none() && ix.delay != BuildDelay::Passed {
+        if ix.delay == BuildDelay::Idle {
+            ix.delay = BuildDelay::Wanted;
+        }
+        return;
+    }
     let key = IndexKey::of(snap);
     ix.builds += 1;
     // The core decides whether the previous index can be reused; it can't be when it was capped
@@ -45,6 +58,32 @@ pub(super) fn want_build(st: &mut AppState, fx: &mut Vec<Effect>) {
     let fresh = base.as_ref().is_none_or(|b| !b.complete() || b.key().shallow != key.shallow);
     ix.building = Some(Building { build: ix.builds, key: key.clone(), indexed: 0, estimate: None, fresh });
     fx.push(Effect::Index(IndexEffect::Build { workdir: snap.workdir.clone(), build: ix.builds, key, base }));
+}
+
+/// A tick at `t`: the active tab's delayed build starts once due, and a parked tab's large index
+/// is freed once the tab has been parked `PARKED_FREE_AFTER`. A build still running for a freed
+/// index lands through `parked_built` and is freed again on a later tick.
+pub(super) fn tick(st: &mut AppState, t: Instant, fx: &mut Vec<Effect>) {
+    let ix = &mut st.search.index;
+    ix.seen = Some(t);
+    match ix.delay {
+        BuildDelay::Wanted => ix.delay = BuildDelay::Due(t + FIRST_BUILD_DELAY),
+        BuildDelay::Due(at) if t >= at => {
+            ix.delay = BuildDelay::Passed;
+            want_build(st, fx);
+        }
+        _ => {}
+    }
+    for tab in &mut st.tabs {
+        let Some(p) = tab.parked.as_mut() else { continue };
+        let ix = &mut p.commit_search.index;
+        let since = *ix.seen.get_or_insert(t);
+        let large = ix.ready.as_ref().is_some_and(|r| r.len() >= FREE_MIN_COMMITS);
+        if large && t.saturating_duration_since(since) >= PARKED_FREE_AFTER {
+            tracing::debug!(workdir = ?ix.workdir, "freeing a long-parked tab's search index");
+            ix.free();
+        }
+    }
 }
 
 /// How far build `build` got (ignored for any other build).
@@ -120,6 +159,7 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     let parked = st.tabs.iter_mut().filter_map(|t| t.parked.as_mut()).map(|p| &mut p.commit_search.index);
     for ix in std::iter::once(&mut st.search.index).chain(parked) {
+        ix.delay = BuildDelay::Idle;
         if !ix.holds_any() && ix.answer.is_none() && ix.failed.is_none() {
             continue;
         }

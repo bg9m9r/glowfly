@@ -6,7 +6,7 @@ use super::tests::{finish, finish_keeping, git, long_repo, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, IndexEffect};
 use crate::msg::{Msg, RepoMsg, SearchMsg, TabsMsg};
-use crate::state::history_index::HistoryCount;
+use crate::state::history_index::{FIRST_BUILD_DELAY, HistoryCount};
 use crate::state::tabs::Parked;
 use crate::state::{AppState, Tab};
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
@@ -15,15 +15,34 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-/// `long_repo` opened with the smallest commit limit: its graph is cut short. Returns the
-/// effects `finish` skipped (the index build among them).
-pub(super) fn opened_long(name: &str) -> (AppState, PathBuf, Vec<Effect>) {
+/// `long_repo` opened with the smallest commit limit: its graph is cut short, and its first
+/// index build waits for its delay. Returns the effects `finish` skipped.
+pub(super) fn opened_long_waiting(name: &str) -> (AppState, PathBuf, Vec<Effect>) {
     let dir = long_repo(name, 620);
     let mut st = state();
     st.settings.initial_commits = 500;
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())), Instant::now());
     let kept = finish_keeping(&mut st, fx);
     assert!(st.snap.as_ref().is_some_and(|s| s.truncated && s.commits.len() == 500));
+    (st, dir, kept)
+}
+
+/// Ticks `st` through the first build's delay; the effects `finish` skipped.
+pub(super) fn past_the_delay(st: &mut AppState) -> Vec<Effect> {
+    let t = Instant::now();
+    let mut kept = Vec::new();
+    for tick in [t, t + FIRST_BUILD_DELAY] {
+        let fx = update(st, Msg::Tick(tick), Instant::now());
+        kept.extend(finish_keeping(st, fx));
+    }
+    kept
+}
+
+/// `opened_long_waiting` ticked past the delay: the effects `finish` skipped (the index build
+/// among them).
+pub(super) fn opened_long(name: &str) -> (AppState, PathBuf, Vec<Effect>) {
+    let (mut st, dir, mut kept) = opened_long_waiting(name);
+    kept.extend(past_the_delay(&mut st));
     (st, dir, kept)
 }
 
@@ -263,6 +282,7 @@ fn turning_the_preference_off_drops_the_index() {
     st.settings.index_history = true;
     let mut fx = Vec::new();
     super::prefs::sync_live_settings(&mut st, &mut fx);
-    assert_eq!(builds(&fx).len(), 1, "turning it on starts a build");
+    assert!(builds(&fx).is_empty(), "nothing in memory: the build waits");
+    assert_eq!(builds(&past_the_delay(&mut st)).len(), 1, "turning it on starts a build");
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -338,3 +338,28 @@ fn a_private_write_keeps_the_file_to_its_user() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_streamed_write_replaces_atomically() {
+    let dir = scratch("streamed");
+    let file = dir.join("big.idx");
+    atomic_write(&file, b"old").unwrap();
+    write_streamed(&file, WriteOptions::default(), |f| f.write_all(b"new bytes")).unwrap();
+    assert_eq!(std::fs::read(&file).unwrap(), b"new bytes");
+    // A fill that fails half way leaves the old file and no temporary sibling.
+    let failed = write_streamed(&file, WriteOptions::default(), |f| {
+        f.write_all(b"half")?;
+        Err(std::io::Error::other("disk full"))
+    });
+    assert!(failed.is_err());
+    assert_eq!(std::fs::read(&file).unwrap(), b"new bytes");
+    assert_eq!(leftovers(&dir), ["big.idx"]);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let private = dir.join("private.idx");
+        write_streamed(&private, WriteOptions { private: true, ..Default::default() }, |f| f.write_all(b"x")).unwrap();
+        assert_eq!(std::fs::metadata(&private).unwrap().permissions().mode() & 0o777, 0o600);
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

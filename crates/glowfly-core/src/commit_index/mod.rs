@@ -12,6 +12,9 @@
 //! Memory: about 110 bytes per commit plus its summary and capped body, roughly 300 to 400 bytes
 //! per commit on histories with long messages. Texts live in blocks of about 1 MiB that an
 //! updated index shares with the one it was built from.
+//!
+//! A finished index can be saved to the cache folder and read back in a later session
+//! (`store.rs`), as it is for the same history or as the base of an update.
 
 use crate::commit_query::CommitQuery;
 use crate::matching::contains_lower;
@@ -22,11 +25,15 @@ use std::sync::Arc;
 
 mod build;
 pub mod estimate;
+pub mod store;
 
 pub use build::{Progress, build};
+pub use store::{Store, StoreFile, Stored, worth_saving};
 
 #[cfg(test)]
 mod build_tests;
+#[cfg(test)]
+mod store_tests;
 #[cfg(test)]
 mod tests;
 

@@ -4,7 +4,7 @@
 //! merged into it or a status read it dropped, holds a failed page, ignores an old one, frees a
 //! large history's old commits and lets an index jump land.
 
-use super::history_index_tests::run_build;
+use super::history_index_tests::{past_the_delay, run_build};
 use super::tests::{drive, finish, finish_keeping, git, long_repo, state};
 use super::update;
 use crate::effect::{BackgroundEffect, Effect, LoadKind};
@@ -196,7 +196,8 @@ fn an_index_jump_lands_after_a_resumed_page() {
     let mut st = state();
     st.settings.initial_commits = 500;
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())), Instant::now());
-    let kept = finish_keeping(&mut st, fx);
+    let mut kept = finish_keeping(&mut st, fx);
+    kept.extend(past_the_delay(&mut st));
     let fx = run_build(&mut st, kept);
     finish(&mut st, fx);
     assert!(st.search.index.ready.is_some());

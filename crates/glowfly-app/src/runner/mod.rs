@@ -3,9 +3,9 @@
 //!
 //! `Runner::run` starts one named thread per effect. A few effects get special handling: the
 //! file watcher (`Effect::Watch`), credential-prompt answers, the terminal's shell sessions and
-//! the search index's builds and queries (`index`) are run by the runner itself, the log files
-//! have one ordered worker (`logs`), effects are timed for the performance log, and saves of
-//! Glowfly's own files are kept in order (`saves`).
+//! the search index's builds and queries (`index`, with its saved copies in `index_disk`) are run
+//! by the runner itself, the log files have one ordered worker (`logs`), effects are timed for
+//! the performance log, and saves of Glowfly's own files are kept in order (`saves`).
 //! `execute.rs` maps each effect to its work; work longer than a line lives in this folder's
 //! per-area files (`files`, `worktrees`, `rebase`, `highlight`, …); the git, file and
 //! network code itself lives in `glowfly-core`.
@@ -42,6 +42,7 @@ mod guard;
 mod highlight;
 mod history;
 mod index;
+mod index_disk;
 mod index_query;
 mod init;
 mod instance;
@@ -169,6 +170,13 @@ impl<W: Waker + Clone> Runner<W> {
     /// Starts the log worker on the folder `logging::init` chose. Once, at startup.
     pub fn attach_logs(&mut self, setup: crate::logging::LogSetup) {
         self.logs.attach(setup, self.tx.clone(), self.waker.clone());
+    }
+
+    /// The search index store, at startup (never in tests).
+    pub fn attach_index_store(&mut self, dir: Option<std::path::PathBuf>) {
+        if let Some(d) = dir {
+            self.index.attach_store(d);
+        }
     }
 
     /// Adds a line to the performance log (with the log worker running): `what` took `took`.

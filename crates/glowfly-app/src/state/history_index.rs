@@ -2,6 +2,11 @@
 //! history, the build running for it, and the index's answer for the current query. Changed by
 //! update/history_index.rs (building) and update/search_index.rs (asking it); parked with the tab
 //! inside `CommitSearch`.
+//!
+//! A tab's first build waits `FIRST_BUILD_DELAY` after its history loads with no index in memory
+//! (`BuildDelay`), so opening a large repository doesn't start indexing on the same frame. A tab
+//! parked for `PARKED_FREE_AFTER` frees an index of `FREE_MIN_COMMITS` or more (`seen` dates it);
+//! shown again, it reads the index back from the saved copy through the same delayed build.
 
 use crate::state::AppState;
 use git2::Oid;
@@ -9,6 +14,29 @@ use glowfly_core::commit_index::{CommitIndex, IndexKey};
 use glowfly_core::commit_query::CommitQuery;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+/// How long a tab's history must have been loaded, with no index in memory, before its build
+/// (or the read of its saved index) starts.
+pub const FIRST_BUILD_DELAY: Duration = Duration::from_secs(2);
+/// How long a tab must be parked before its index is freed.
+pub const PARKED_FREE_AFTER: Duration = Duration::from_secs(5 * 60);
+/// The least commits an index must hold to be freed in a parked tab.
+pub const FREE_MIN_COMMITS: usize = 50_000;
+
+/// Where a tab's wait before its first build stands.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum BuildDelay {
+    /// No wait started.
+    #[default]
+    Idle,
+    /// A build was wanted with no index in memory; the next tick says when it is due.
+    Wanted,
+    /// The build starts at this time.
+    Due(Instant),
+    /// The wait is over, until the index is freed or the tab opens another repository.
+    Passed,
+}
 
 /// A build in flight.
 #[derive(Debug)]
@@ -54,6 +82,10 @@ pub struct HistoryIndex {
     pub requests: u64,
     /// An older match Enter asked to load: selected once a load shows it.
     pub jump: Option<Oid>,
+    /// The wait before the first build.
+    pub delay: BuildDelay,
+    /// The last tick this tab was active at: how long a parked tab has been parked.
+    pub seen: Option<Instant>,
 }
 
 impl HistoryIndex {
@@ -68,6 +100,19 @@ impl HistoryIndex {
         self.pending = None;
         self.asked = None;
         self.jump = None;
+    }
+
+    /// Drops the index from memory (a long-parked tab): no index, no answer and a new wait
+    /// before the next build. The repository, a running build, a failure and the counters stay.
+    pub fn free(&mut self) {
+        self.ready = None;
+        self.drop_answer();
+        self.delay = BuildDelay::Idle;
+    }
+
+    /// Whether a first build is waiting for its delay.
+    pub fn waiting(&self) -> bool {
+        matches!(self.delay, BuildDelay::Wanted | BuildDelay::Due(_))
     }
 
     /// Whether it holds an index or a build for one.
@@ -119,10 +164,26 @@ impl AppState {
             return HistoryCount::Searching;
         }
         let truncated = self.snap.as_ref().is_some_and(|s| s.truncated);
-        if truncated && self.indexing().is_some() {
+        if truncated && (self.indexing().is_some() || (self.settings.index_history && self.search.index.waiting())) {
             return HistoryCount::Indexing;
         }
         HistoryCount::Loaded
+    }
+
+    /// When a tick must come for the index: the active tab's delayed build is due, or a parked
+    /// tab's large index is to be freed.
+    pub fn index_wake(&self, now: Instant) -> Option<Instant> {
+        let active = match self.search.index.delay {
+            BuildDelay::Wanted => Some(now),
+            BuildDelay::Due(at) => Some(at),
+            BuildDelay::Idle | BuildDelay::Passed => None,
+        };
+        let parked = self.tabs.iter().filter_map(|t| t.parked.as_ref()).filter_map(|p| {
+            let ix = &p.commit_search.index;
+            let large = ix.ready.as_ref().is_some_and(|r| r.len() >= FREE_MIN_COMMITS);
+            ix.seen.filter(|_| large).map(|s| s + PARKED_FREE_AFTER)
+        });
+        active.into_iter().chain(parked).min()
     }
 
     /// A fresh build's progress (commits indexed, about how many there are), for the status bar.
@@ -185,5 +246,57 @@ mod tests {
         st.snap.as_mut().unwrap().truncated = false;
         assert!(st.index_answer().is_none());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_waiting_build_counts_as_indexing() {
+        let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
+        let mut snap = crate::state::op_fixture::snapshot("history-count-waiting");
+        let dir = snap.workdir.clone();
+        snap.truncated = true;
+        st.snap = Some(snap);
+        st.search.query = CommitQuery::parse("fix");
+        st.search.index.delay = BuildDelay::Wanted;
+        assert_eq!(st.history_count(), HistoryCount::Indexing);
+        assert_eq!(st.indexing(), None, "nothing in the status bar yet");
+        st.settings.index_history = false;
+        assert_eq!(st.history_count(), HistoryCount::Loaded);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_index_wakes_for_its_delay_and_long_parked_tabs() {
+        let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
+        let now = Instant::now();
+        assert_eq!(st.index_wake(now), None);
+        st.search.index.delay = BuildDelay::Wanted;
+        assert_eq!(st.index_wake(now), Some(now));
+        let at = now + Duration::from_secs(1);
+        st.search.index.delay = BuildDelay::Due(at);
+        assert_eq!(st.index_wake(now), Some(at));
+        st.search.index.delay = BuildDelay::Passed;
+        assert_eq!(st.index_wake(now), None);
+
+        let key = IndexKey { starts: Vec::new(), shallow: Vec::new() };
+        let commits: Vec<CommitInfo> = (0..FREE_MIN_COMMITS as u32)
+            .map(|i| {
+                let mut c = info(0);
+                let mut id = [0u8; 20];
+                id[..4].copy_from_slice(&(i + 1).to_le_bytes());
+                c.oid = Oid::from_bytes(&id).unwrap();
+                c
+            })
+            .collect();
+        let mut parked = crate::state::tabs::Parked::default();
+        parked.commit_search.index.ready = Some(Arc::new(CommitIndex::from_commits(key, &commits)));
+        let mut tab = crate::state::Tab::unloaded(glowfly_core::paths::temp_dir().join("glowfly-index-wake"));
+        tab.parked = Some(Box::new(parked));
+        st.tabs.push(tab);
+        assert_eq!(st.index_wake(now), None, "not seen yet");
+        let seen = now + Duration::from_secs(3);
+        st.tabs.last_mut().unwrap().parked.as_mut().unwrap().commit_search.index.seen = Some(seen);
+        assert_eq!(st.index_wake(now), Some(seen + PARKED_FREE_AFTER));
+        st.search.index.delay = BuildDelay::Wanted;
+        assert_eq!(st.index_wake(now), Some(now), "the earliest");
     }
 }

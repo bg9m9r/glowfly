@@ -38,8 +38,8 @@ impl GlowflyApp {
     }
 
     /// Asks for the frames that come without input: while work runs or toasts fade, for
-    /// auto-fetch, the Saved tick, the status poll, the retry of a failed load for more and a
-    /// typed search's pause.
+    /// auto-fetch, the Saved tick, the status poll, the retry of a failed load for more, a
+    /// typed search's pause and the search index's delayed build and freeing.
     pub(super) fn schedule_repaints(&self, ctx: &egui::Context, now: Instant) {
         // Keep polling while work is in flight or toasts are fading.
         if self.st.job.is_some() || self.st.loading || !self.st.toasts.is_empty() {
@@ -61,6 +61,10 @@ impl GlowflyApp {
         }
         // A query typed into a large history is matched once typing pauses.
         if let Some(at) = self.st.search.loaded.due {
+            ctx.request_repaint_after(at.saturating_duration_since(now));
+        }
+        // A delayed index build starts, and a long-parked tab's index is freed, on a tick.
+        if let Some(at) = self.st.index_wake(now) {
             ctx.request_repaint_after(at.saturating_duration_since(now));
         }
     }

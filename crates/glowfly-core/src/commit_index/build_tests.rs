@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::time::Duration;
 
-fn dated(dir: &Path, a: &[&str], time: i64) {
+pub(super) fn dated(dir: &Path, a: &[&str], time: i64) {
     let date = format!("{} +0000", 1_600_000_000 + time);
     let env = [("GIT_COMMITTER_DATE", date.as_str()), ("GIT_AUTHOR_DATE", date.as_str())];
     let (ok, out) = crate::gitcli::run_with_input(dir, &crate::gitcli::args(a), "", &env);
@@ -18,14 +18,14 @@ fn dated(dir: &Path, a: &[&str], time: i64) {
 }
 
 /// A commit writing `file` (named after `msg`) with committer and author time `time`.
-fn commit_at(dir: &Path, msg: &str, time: i64) {
+pub(super) fn commit_at(dir: &Path, msg: &str, time: i64) {
     write(dir, &format!("{msg}.txt"), msg);
     git(dir, &["add", "."]);
     dated(dir, &["commit", "-q", "-m", msg, "-m", &format!("The body of {msg}.")], time);
 }
 
 /// Two branches merged, an octopus merge, equal timestamps and a child older than its parent.
-fn branchy(name: &str) -> std::path::PathBuf {
+pub(super) fn branchy(name: &str) -> std::path::PathBuf {
     let dir = scratch_repo(name);
     commit_at(&dir, "base", 100);
     commit_at(&dir, "m1", 200);
@@ -50,20 +50,20 @@ fn branchy(name: &str) -> std::path::PathBuf {
     dir
 }
 
-fn snapshot(dir: &Path, opts: LoadOptions) -> Snapshot {
+pub(super) fn snapshot(dir: &Path, opts: LoadOptions) -> Snapshot {
     load(dir, &opts).unwrap()
 }
 
-fn index(dir: &Path, snap: &Snapshot, base: Option<&CommitIndex>) -> CommitIndex {
+pub(super) fn index(dir: &Path, snap: &Snapshot, base: Option<&CommitIndex>) -> CommitIndex {
     build(dir, &IndexKey::of(snap), base, &mut |_| {}, &|| false).unwrap().expect("not stopped")
 }
 
-fn oids(ix: &CommitIndex) -> Vec<Oid> {
+pub(super) fn oids(ix: &CommitIndex) -> Vec<Oid> {
     (0..ix.len()).map(|p| ix.oid_at(p).unwrap()).collect()
 }
 
 /// Every position's oid, texts and author, for comparing two indexes.
-fn rows(ix: &CommitIndex) -> Vec<(Oid, String, String, (String, String))> {
+pub(super) fn rows(ix: &CommitIndex) -> Vec<(Oid, String, String, (String, String))> {
     (0..ix.len())
         .map(|p| {
             let (n, m) = ix.person_at(p).unwrap();
@@ -227,5 +227,20 @@ fn a_capped_build_is_incomplete() {
     assert_eq!(rows(&again), rows(&fresh));
     assert!(again.complete());
     assert!(!Arc::ptr_eq(&again.texts[0], &capped.texts[0]));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn git_log_date_order_matches_the_walk() {
+    // git log's default order (newest committer date first, ties in the order found, each commit
+    // once) is the walk's: the idea of building from a streamed `git log` rests on this.
+    let dir = branchy("index-git-log");
+    let snap = snapshot(&dir, LoadOptions::all(1000));
+    let ix = index(&dir, &snap, None);
+    let starts: Vec<String> = ix.key().starts.iter().map(Oid::to_string).collect();
+    let mut a = vec!["--no-replace-objects", "log", "--format=%H"];
+    a.extend(starts.iter().map(String::as_str));
+    let listed: Vec<Oid> = crate::testkit::git_out(&dir, &a).lines().map(|l| Oid::from_str(l.trim()).unwrap()).collect();
+    assert_eq!(listed, oids(&ix));
     let _ = std::fs::remove_dir_all(&dir);
 }

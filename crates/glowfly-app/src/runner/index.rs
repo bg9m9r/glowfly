@@ -2,9 +2,12 @@
 //! through them, one at a time across every tab and the newest request first: a build for a
 //! repository replaces that repository's waiting one and stops its running one, and Forget stops
 //! both. A stopped build reports nothing; its tab has asked for a newer one or no longer wants it.
+//! With the store attached (`index_disk.rs`), a build without a base reads the repository's saved
+//! index first, and a finished build is saved after it is reported, before the next request.
 //! Queries go to their own worker (`index_query.rs`).
 
 use super::Waker;
+use super::index_disk::Disk;
 use super::index_query::{Haystack, QueryRequest, QueryWorker};
 use crate::effect::IndexEffect;
 use crate::msg::{Msg, SearchMsg};
@@ -51,11 +54,18 @@ pub(super) struct IndexWorker {
     query: QueryWorker,
     /// Matches over loaded histories: apart from `query`, so neither replaces the other.
     loaded: QueryWorker,
+    /// The saved indexes, once attached.
+    disk: Arc<Disk>,
 }
 
 impl IndexWorker {
     fn builds(&self) -> MutexGuard<'_, Builds> {
         self.builds.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Reads and saves indexes in the store at `dir` from now on.
+    pub(super) fn attach_store(&self, dir: PathBuf) {
+        self.disk.attach(dir);
     }
 
     pub(super) fn submit<W: Waker + Clone>(&self, e: IndexEffect, tx: Sender<Msg>, waker: W) {
@@ -113,18 +123,25 @@ impl IndexWorker {
                 send(tx, waker, &workdir, msg);
             };
             let stopped = || stop.load(Ordering::Relaxed);
-            let result = catch_unwind(AssertUnwindSafe(|| commit_index::build(&workdir, &key, base.as_deref(), &mut progress, &stopped)));
+            let result = catch_unwind(AssertUnwindSafe(|| self.disk.build(&workdir, &key, base.as_deref(), &mut progress, &stopped)));
             self.builds().running = None;
             if stopped() {
                 continue;
             }
-            let result = match result {
-                Ok(Ok(Some(index))) => Ok(Arc::new(index)),
+            let (result, save) = match result {
+                Ok(Ok(Some(done))) => {
+                    tracing::debug!(source = ?done.source, "index ready");
+                    (Ok(Arc::new(done.index)), done.save)
+                }
                 Ok(Ok(None)) => continue,
-                Ok(Err(e)) => Err(e.to_string()),
-                Err(_) => Err("Glowfly hit an internal error (index)".to_owned()),
+                Ok(Err(e)) => (Err(e.to_string()), None),
+                Err(_) => (Err("Glowfly hit an internal error (index)".to_owned()), None),
             };
+            let index = result.as_ref().ok().map(Arc::clone);
             send(tx, waker, &workdir, SearchMsg::IndexBuilt { build, result });
+            if let (Some(file), Some(index)) = (save, index) {
+                self.disk.save(&file, &index);
+            }
         }
     }
 }
@@ -255,6 +272,34 @@ mod tests {
         assert!(w.builds().waiting.is_empty(), "the waiting build is dropped");
         w.work(&tx, &NoWake);
         assert!(built(&rx).is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_worker_reports_before_it_saves() {
+        let (dir, key) = repo("disk");
+        let store = glowfly_core::paths::temp_dir().join(format!("glowfly-index-worker-store-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&store);
+        let (tx, rx) = mpsc::channel();
+        let w = IndexWorker::default();
+        w.attach_store(store.clone());
+        w.builds().thread = true;
+        w.submit(build(&dir, 1, &key), tx.clone(), NoWake);
+        w.work(&tx, &NoWake);
+        assert_eq!(built(&rx), [1]);
+        let file = commit_index::Store::new(store.clone()).file_of(&dir).unwrap();
+        assert!(file.path.exists(), "saved once work returns");
+
+        // A Forget while the saved index is read: nothing is reported.
+        let w = IndexWorker::default();
+        w.attach_store(store.clone());
+        w.builds().thread = true;
+        w.submit(build(&dir, 2, &key), tx.clone(), NoWake);
+        w.builds().waiting[0].stop.store(true, Ordering::Relaxed);
+        w.work(&tx, &NoWake);
+        assert!(built(&rx).is_empty());
+        assert!(file.path.exists(), "a stopped read keeps the file");
+        let _ = std::fs::remove_dir_all(&store);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

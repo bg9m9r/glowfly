@@ -5,7 +5,7 @@ use super::*;
 use crate::repo::{LoadOptions, load};
 use crate::testutil::*;
 
-fn info(id: &str, summary: &str, body: &str, author: &str, email: &str) -> CommitInfo {
+pub(super) fn info(id: &str, summary: &str, body: &str, author: &str, email: &str) -> CommitInfo {
     CommitInfo {
         oid: Oid::from_str(id).unwrap(),
         summary: summary.into(),

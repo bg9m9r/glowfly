@@ -540,7 +540,9 @@ second one next to it.
    ones.
 5. **Put caches in the cache folder** (`%LOCALAPPDATA%`, `~/Library/Caches`, `$XDG_CACHE_HOME`;
    `settings/paths.rs`), not the roaming config folder, and take the home folder from
-   `settings::home_dir`, which ignores an empty or relative `HOME`.
+   `settings::home_dir`, which ignores an empty or relative `HOME`. The search index store
+   (`commit_index::Store`, `search-index`) is a cache too: private files written through
+   `persist::write_streamed`, bounded by age and total size (`Store::prune`).
 6. **Put logs in `settings::log_dir`** (`%LOCALAPPDATA%\Glowfly\logs`, `~/Library/Logs/Glowfly`,
    `$XDG_STATE_HOME/glowfly/logs`): local, never the roaming config or cache folder. Append
    through `persist::append` / `persist::open_append`, and keep every log bounded: trim it

@@ -47,6 +47,17 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
 
 /// Replaces `path` with `bytes` atomically, creating its folder if needed, as `opts` says.
 pub fn write_file(path: &Path, bytes: &[u8], opts: WriteOptions) -> std::io::Result<()> {
+    write_streamed(path, opts, |f| f.write_all(bytes))
+}
+
+/// [`write_file`] for a file too large to hold twice in memory (the search index store): `fill`
+/// writes the new content into the open temporary file (buffering is the caller's), and an error
+/// from it leaves the old file as it was.
+pub fn write_streamed(
+    path: &Path,
+    opts: WriteOptions,
+    fill: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>,
+) -> std::io::Result<()> {
     let target = if opts.refuse_links {
         if is_link(path) {
             return Err(std::io::Error::other(format!("{} is a symbolic link; Glowfly doesn't write through links", path.display())));
@@ -72,7 +83,7 @@ pub fn write_file(path: &Path, bytes: &[u8], opts: WriteOptions) -> std::io::Res
             open.mode(0o600);
         }
         let mut f = open.open(&tmp)?;
-        f.write_all(bytes)?;
+        fill(&mut f)?;
         if !opts.private {
             set_mode(&f, old.as_ref(), opts.executable);
         }

@@ -272,6 +272,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             prefs_save::tick(st, t);
             load_more::tick(st, t, &mut fx);
             search_loaded::tick(st, t, &mut fx);
+            history_index::tick(st, t, &mut fx);
         }
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {

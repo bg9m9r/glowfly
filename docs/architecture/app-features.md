@@ -43,8 +43,10 @@ source file, update its line here. Each section lists one feature's files in eve
 
 ## Whole-history search index (`IndexEffect`, `SearchMsg::Index*`)
 
-- Files: `effect/index.rs`, `runner/index.rs`, `runner/index_query.rs`, `state/history_index.rs`, `update/history_index.rs`, `update/search_index.rs`.
-- `update/history_index.rs`: the index of a large repository: one build at a time across tabs, newest request first, kept with its tab while parked and updated from the previous index after a reload.
+- Files: `effect/index.rs`, `runner/index.rs`, `runner/index_disk.rs`, `runner/index_query.rs`, `state/history_index.rs`, `update/history_index.rs`, `update/search_index.rs`.
+- `update/history_index.rs`: the index of a large repository: one build at a time across tabs, newest request first, kept with its tab while parked, updated from the previous index after a reload, the first build's delay and the freeing of long-parked tabs' indexes (`history_index::tick`).
+- The first build waits `FIRST_BUILD_DELAY` after the history loads with no index in memory (driven by `Msg::Tick`); a tab parked `PARKED_FREE_AFTER` frees an index of `FREE_MIN_COMMITS` or more and reads it back from the store when shown.
+- `runner/index_disk.rs`: the runner reads the saved index (`commit_index::Store`) before a build without a base, and saves the finished build after reporting it.
 - `update/search_index.rs`: the index's answer for the query, the search bar's whole-history count, and loads that go straight to the next matches for Enter, Filter and Keep searching.
 - `update/search_loaded.rs`: a query typed into a large loaded history (`refresh::LARGE_HISTORY`) waits for a pause in typing, then is matched on the query worker's second slot (`IndexEffect::MatchLoaded`, `SearchMsg::LoadedMatched`); Enter, a new history and smaller histories match on the UI thread.
 

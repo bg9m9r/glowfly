@@ -92,7 +92,7 @@ source file, update its line here.
 
 ## Files, logs, text and dates
 
-- `persist.rs`: crash-safe writes of Glowfly's own files and of files saved for the user (patches); appends to logs.
+- `persist.rs`: crash-safe writes of Glowfly's own files and of files saved for the user (patches), `write_streamed` for large files; appends to logs.
 - `logs.rs`, `logs/`: Glowfly's log files.
 - `activity.rs`: the activity log's file format and trimming.
 - `rotate.rs`: the size-rotating writer of the error and performance logs.

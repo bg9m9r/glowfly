@@ -167,6 +167,7 @@ impl GlowflyApp {
                         self.dispatch(ctx, Msg::Logs(crate::logs::LogsMsg::Start));
                     }
                 }
+                Step::IndexStore => self.runner.attach_index_store(glowfly_core::commit_index::Store::default_dir()),
                 // Links opened while this window runs come here instead of a new window.
                 Step::Instance => self.runner.start_instance(),
                 Step::OpenEvents => self.runner.start_open_events(),
@@ -329,6 +330,8 @@ enum Step {
     Layout,
     Askpass,
     Logs,
+    /// The search index's saved copies in the cache folder.
+    IndexStore,
     Instance,
     /// Folders and links the OS hands over (macOS Apple events), including those that came
     /// before the window.
@@ -343,11 +346,12 @@ enum Step {
 }
 
 /// Startup, in order; a test app runs the same order minus the `outside` steps.
-const STARTUP: [Step; 11] = [
+const STARTUP: [Step; 12] = [
     Step::Theme,
     Step::Layout,
     Step::Askpass,
     Step::Logs,
+    Step::IndexStore,
     Step::Instance,
     Step::OpenEvents,
     Step::Lfs,
@@ -361,7 +365,7 @@ impl Step {
     /// Whether the step starts a server or a worker, leads to a network call, or touches
     /// process-wide state (the OS events' inbox).
     fn outside(self) -> bool {
-        matches!(self, Step::Askpass | Step::Logs | Step::Instance | Step::OpenEvents | Step::Updates)
+        matches!(self, Step::Askpass | Step::Logs | Step::IndexStore | Step::Instance | Step::OpenEvents | Step::Updates)
     }
 }
 
@@ -384,7 +388,7 @@ mod tests {
     #[test]
     fn startup_keeps_the_app_order_and_a_test_app_skips_only_outside_steps() {
         use Step::*;
-        let app = [Theme, Layout, Askpass, Logs, Instance, OpenEvents, Lfs, GitEnv, Onboarding, Updates, RecentFolders];
+        let app = [Theme, Layout, Askpass, Logs, IndexStore, Instance, OpenEvents, Lfs, GitEnv, Onboarding, Updates, RecentFolders];
         assert_eq!(steps(true).collect::<Vec<_>>(), app);
         assert_eq!(steps(false).collect::<Vec<_>>(), [Theme, Layout, Lfs, GitEnv, Onboarding, RecentFolders]);
     }

@@ -143,7 +143,6 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Remember path answers across query changes (recent term sets) so going back doesn't search again
 - Match path: terms against stashes and the WIP row's changed files
 - Answer path: and file: terms from the history index (per-commit changed paths or a path-to-commits map built in the background)
-- Keep the history index on disk between runs, keyed by repository and starts, so reopening a large repository needs no rebuild
 - Share one history index between the worktree tabs of one repository
 - Compact an index's text blocks after many updates leave unreachable commits' text behind
 - Search the whole commit message, not only the summary and the body's first ~240 characters
@@ -158,6 +157,19 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Match path: queries in a large loaded history on the query worker too (they still match on the UI thread once files are searched)
 - Work out the author picker's list on a worker for a large history (it groups every loaded commit on the UI thread)
 - Match a large history from the index's answer when it is current (the loaded commits are its first positions) instead of a second scan
+
+### Saved search index
+
+- Build fresh indexes from a streamed `git --no-replace-objects log --no-use-mailmap --encoding=none --no-show-signature --no-notes --no-decorate --no-color -z --format=%H%x00%P%x00%ct%x00%at%x00%an%x00%ae%x00%B <starts>` with `GIT_NO_LAZY_FETCH=1`: its order matches the walk (a test pins it), but its texts differ from libgit2's summary and body, it dies on a missing parent, and reading every message costs the same, so it wasn't built
+- Read parents and dates from the commit-graph during the index walk once git2 exposes libgit2's commit-graph reader
+- Show "Reading the saved search index…" in the status bar while the store is read, instead of the indexing count
+- A Preferences control that shows the saved indexes' size and deletes them; delete them when "Index large repositories" is turned off
+- Keep a long-parked tab's index in memory when the store couldn't save it (no cache folder, disk full) instead of rebuilding it on return
+- Save an index changed by fewer than `RESAVE_COMMITS` commits when the app quits or the tab closes, so the next session reads fewer commits
+- Memory-map the saved file, or load entries lazily, to cut the read time and peak memory for kernel-sized repositories
+- Let a waiting build for another repository go before a large save on the index thread
+- Save only live commits' text (compact blocks on save) so dead text from many updates isn't written to disk
+- Use one saved file for two spellings of a repository on a case-insensitive volume
 
 ### History table that carries more information
 

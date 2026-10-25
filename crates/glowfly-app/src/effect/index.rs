@@ -1,6 +1,6 @@
 //! The whole-history search index (runner/index.rs): building or updating a tab's index, asking
 //! it for a query's matches, and forgetting a tab's build. Reads only (libgit2, no program runs),
-//! scoped to the repository's tab.
+//! apart from the index's saved copy in the cache folder, scoped to the repository's tab.
 
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
 use glowfly_core::commit_query::CommitQuery;
@@ -14,6 +14,11 @@ pub enum IndexEffect {
     /// it can. Reports `SearchMsg::IndexProgress` now and then and `SearchMsg::IndexBuilt` at the
     /// end, both with `build`; nothing when a newer build for the same repository or a Forget
     /// stopped it. One build runs at a time across tabs, the newest request first.
+    ///
+    /// With no `base`, the runner first reads the repository's saved index
+    /// (`commit_index::Store`): the same history saved by this version is used as it is, any
+    /// other serves as the base. A finished build is saved when `store::worth_saving` says so,
+    /// after it is reported.
     Build { workdir: PathBuf, build: u64, key: IndexKey, base: Option<Arc<CommitIndex>> },
     /// The walk positions of `index`'s commits matching `query` (no path terms), reported as
     /// `SearchMsg::IndexQueried` with `request`; a newer query replaces one still waiting.
