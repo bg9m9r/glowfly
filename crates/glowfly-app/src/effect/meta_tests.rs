@@ -134,3 +134,17 @@ fn holds_and_stop_keys_are_unchanged() {
     let pull = sync(SyncOp::Pull);
     assert_eq!((pull.queue(), pull.holds()), (Some(w.as_path()), Some(w.as_path())));
 }
+
+#[test]
+fn prefs_effects_are_timed_unless_they_wait_on_the_passphrase() {
+    use crate::effect::PrefsEffect;
+    use glowfly_core::signing::SigningFormat;
+    let cwd = folder("prefs");
+    let timed = |e: PrefsEffect| Effect::Prefs(e).timed();
+    assert!(timed(PrefsEffect::ReadGitConfig { cwd: cwd.clone(), has_repo: true }));
+    assert!(timed(PrefsEffect::SetGitConfig { cwd, global: false, key: "user.name".into(), value: None }));
+    assert!(timed(PrefsEffect::ListSigningKeys { format: SigningFormat::OpenPgp, program: "gpg".into() }));
+    assert!(timed(PrefsEffect::ExportPublicKey { format: SigningFormat::OpenPgp, program: "gpg".into(), key: "k".into() }));
+    let generate = PrefsEffect::GenerateGpgKey { program: "gpg".into(), name: "n".into(), email: "e".into(), passphrase: String::new() };
+    assert!(!timed(generate), "waits on the passphrase dialog");
+}

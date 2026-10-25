@@ -13,13 +13,6 @@ pub struct OpPreviewJob {
     pub request: glowfly_core::op_preview::Request,
 }
 
-impl OpPreviewJob {
-    /// The effect's name, for the worker thread and the debug log.
-    pub fn name() -> &'static str {
-        "op-preview"
-    }
-}
-
 impl EffectMeta for OpPreviewJob {
     fn name(&self) -> &'static str {
         "op-preview"

@@ -17,14 +17,6 @@ pub enum PrefsEffect {
     ExportPublicKey { format: SigningFormat, program: String, key: String },
 }
 
-impl PrefsEffect {
-    /// Whether its run time goes to the performance log: generating a key waits on the user's
-    /// passphrase dialog, so it doesn't.
-    pub fn timed(&self) -> bool {
-        !matches!(self, PrefsEffect::GenerateGpgKey { .. })
-    }
-}
-
 impl EffectMeta for PrefsEffect {
     /// A short name for the worker thread and the debug log.
     fn name(&self) -> &'static str {

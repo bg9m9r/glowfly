@@ -104,6 +104,7 @@ source file, update its line here. Features that span every layer are in
 - `mod.rs`: runs effects on worker threads and reports back with `Msg`s; one file per kind of work.
 - `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner, with the flat variants' arms.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
+- `ui.rs`: the `Execute` impl of `UiEffect`, which only warns: the UI shell carries those out.
 - `load.rs`: a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.
 - `pick.rs`: runs a cherry-pick or revert, skipping the commits that change nothing, and reports `JobMsg::PickDone`.

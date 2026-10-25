@@ -88,6 +88,7 @@ mod terminal_out;
 mod themes;
 mod tools;
 mod trust;
+mod ui;
 mod update_restart;
 mod updates;
 mod worktrees;

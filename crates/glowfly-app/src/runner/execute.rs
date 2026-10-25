@@ -5,7 +5,7 @@ use super::{
     diff_gaps, expect, files, forge_calls, git_ops, highlight, history, journal, load, path_search, revert, saves, signatures, status,
 };
 use crate::effect::areas::{effect_areas, effect_match};
-use crate::effect::{Effect, UiEffect, UndoResult};
+use crate::effect::{Effect, UndoResult};
 use crate::msg::{AvatarMsg, DiffMsg, ForgeMsg, JobMsg, Msg, RecentMsg, RepoMsg, StageMsg};
 use glowfly_core::{avatars, gitcli, repo, undo};
 
@@ -150,12 +150,4 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
             None
         }
     } } }
-}
-
-/// Carried out by the UI shell; it never reaches the runner.
-impl Execute for UiEffect {
-    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
-        tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
-        None
-    }
 }
