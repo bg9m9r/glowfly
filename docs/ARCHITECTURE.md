@@ -143,10 +143,11 @@ source file, update its line in the matching file.
    Say in the enum's `on_inactive` what the result still needs if its tab is no longer active.
 6. **View.** Draw it in `ui/<region>.rs`: read state, push `Msg`s.
 7. **Tests.** Write an `update` test (`update/<area>_tests.rs`). Add a core test on a fixture
-   repository (see `scratch_repo`) for new git logic, and an `egui_kittest` snapshot for a new
-   view. A flow that crosses views, the runner and git gets a journey step (`src/journey/`):
-   give a painted widget or a hint-only field an accessible name (`ui/access.rs`) so the
-   journey can find it.
+   repository (see `scratch_repo`; build fixtures with the test kit's `git`, `testkit/`) for new
+   git logic, and an `egui_kittest` snapshot for a new view (harnesses from
+   `ui::snapshot_check::builder()`). A flow that crosses views, the runner and git gets a
+   journey step (`src/journey/`): give a painted widget or a hint-only field an accessible name
+   (`ui/access.rs`) so the journey can find it.
 8. **Settings.** For a new preference, add a field with a default in `settings.rs`
    (`#[serde(default)]`) and a control on the matching Preferences page (`ui/prefs/`), built
    from `ui/prefs/form.rs` (rows, sections, labelled checkboxes). App settings apply at once.

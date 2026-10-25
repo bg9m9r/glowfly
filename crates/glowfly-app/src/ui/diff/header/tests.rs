@@ -81,7 +81,7 @@ fn harness(m: HeaderModel, width: f32) -> Harness<'static, Vec<Msg>> {
 
 fn harness_in(m: HeaderModel, width: f32, t: Lang) -> Harness<'static, Vec<Msg>> {
     let keys = Keymap::default();
-    let mut h = Harness::builder().with_size(egui::vec2(width, 360.0)).build_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(width, 360.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             let top = ui.cursor().top();
             show(ui, &m, &keys, t, msgs);
@@ -294,7 +294,7 @@ fn primary_tips_follow_the_language_and_keymap() {
 fn themed(m: HeaderModel, width: f32, height: f32) -> Harness<'static, Vec<Msg>> {
     use crate::ui::theme::{self, color};
     let keys = Keymap::default();
-    let mut h = Harness::builder().with_size(egui::vec2(width, height)).build_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(width, height)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_palette(&theme::GARDEN_DARK);
             theme::apply_style(ui.ctx(), &theme::GARDEN_DARK);

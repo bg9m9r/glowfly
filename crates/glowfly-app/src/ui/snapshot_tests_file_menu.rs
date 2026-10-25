@@ -78,7 +78,7 @@ pub(super) fn harness_in(t: Lang, f: FileEntry, menu: Menu, dark: bool, tools: b
     let setup = if tools { ToolSetup::default() } else { ToolSetup::of(t, &glowfly_core::settings::ExternalTools::default()) };
     // The menu grows to fit its widest item, a disabled one's reason included.
     let width = 440.0;
-    Harness::builder().with_size(egui::vec2(width, 260.0)).build_ui_state(
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(width, 260.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(dark);
             apply_theme(ui.ctx());

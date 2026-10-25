@@ -185,21 +185,20 @@ mod tests {
 
     #[test]
     fn attach_text_shows_on_focus_and_hover() {
-        use egui_kittest::Harness;
         use egui_kittest::kittest::Queryable;
         let app = |ui: &mut Ui| {
             let (_, r) = ui.allocate_exact_size(egui::vec2(40.0, 20.0), Sense::hover() | Sense::FOCUSABLE);
             crate::ui::access::name_button(&r, false, "Painted");
             attach_text(r, "Why it is off");
         };
-        let mut h = Harness::new_ui(app);
+        let mut h = crate::ui::snapshot_check::builder().build_ui(app);
         h.run();
         assert!(h.query_by_label("Why it is off").is_none());
         h.get_by_label("Painted").focus();
         h.run();
         assert!(h.get_by_label("Painted").is_focused());
         assert!(h.query_by_label("Why it is off").is_some(), "shown on focus");
-        let mut h = Harness::new_ui(app);
+        let mut h = crate::ui::snapshot_check::builder().build_ui(app);
         h.run();
         h.get_by_label("Painted").hover();
         h.run();

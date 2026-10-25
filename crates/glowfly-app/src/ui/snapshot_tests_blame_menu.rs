@@ -46,7 +46,7 @@ fn commit() -> BlameCommit {
 fn menu(before: bool, on_graph: bool) -> Harness<'static, Vec<Msg>> {
     let c = commit();
     // Wide enough for the disabled items' reasons after their labels.
-    Harness::builder().with_size(egui::vec2(440.0, 190.0)).build_ui_state(
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 190.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());

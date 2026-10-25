@@ -176,8 +176,7 @@ fn remote_count() {
 fn blocked_add_without_menu_keeps_section() {
     use crate::ui::widgets::section_header::{AddAction, Header, HeaderAdd, show};
     use eframe::egui;
-    use egui_kittest::Harness;
-    let mut h = Harness::builder().with_size(egui::vec2(320.0, 120.0)).build_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(320.0, 120.0)).build_ui_state(
         |ui, (open, msgs): &mut (bool, Vec<Msg>)| {
             let items = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
                 if ui.button("Probe item").clicked() {

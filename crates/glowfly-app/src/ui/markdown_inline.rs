@@ -89,15 +89,14 @@ fn one(ui: &mut Ui, run: &Inline, text: &str, look: Look, msgs: &mut Vec<Msg>) {
 mod tests {
     use super::super::markdown_cache::MarkdownCache;
     use crate::msg::Msg;
-    use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
 
     #[test]
     fn an_https_link_opens_in_the_browser_and_others_do_nothing() {
         let mut cache = MarkdownCache::default();
         let src = "[docs](https://example.com/docs) and [local](a.md)";
-        let mut h =
-            Harness::new_ui_state(move |ui, msgs: &mut Vec<Msg>| super::super::markdown::body(ui, "t", src, &mut cache, msgs), Vec::new());
+        let mut h = crate::ui::snapshot_check::builder()
+            .build_ui_state(move |ui, msgs: &mut Vec<Msg>| super::super::markdown::body(ui, "t", src, &mut cache, msgs), Vec::new());
         h.run();
         h.get_by_label("docs").click();
         h.run();

@@ -5,17 +5,13 @@ use super::*;
 use crate::effect::Effect;
 use crate::msg::{DiffMsg, Msg, RepoMsg};
 use crate::state::diff_nav::Counter;
-use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::{BinarySide, BinarySides};
 use glowfly_core::settings::Settings;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-fn git(dir: &Path, a: &[&str]) {
-    let (ok, out) = run(dir, &args(a));
-    assert!(ok, "git {a:?} failed: {out}");
-}
+use glowfly_core::testkit::git;
 
 /// Runs `msg` and everything it leads to, as the app would.
 fn drive(st: &mut AppState, msg: Msg) {

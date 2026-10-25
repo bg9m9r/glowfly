@@ -2,16 +2,12 @@ use crate::effect::{Effect, UndoOpts};
 use crate::msg::{JobMsg, Msg};
 use crate::runner::execute;
 use git2::Oid;
-use glowfly_core::gitcli::{args, run};
+use glowfly_core::gitcli::args;
 use glowfly_core::journal::{Op, notes};
 use glowfly_core::undo::{Action, ResetMode, UndoKind};
 use std::path::{Path, PathBuf};
 
-fn git(dir: &Path, a: &[&str]) -> String {
-    let (ok, out) = run(dir, &args(a));
-    assert!(ok, "git {a:?}: {out}");
-    out
-}
+use glowfly_core::testkit::git_out as git;
 
 fn head(dir: &Path) -> Oid {
     Oid::from_str(git(dir, &["rev-parse", "HEAD"]).trim()).unwrap()

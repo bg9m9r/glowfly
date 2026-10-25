@@ -1,6 +1,5 @@
 use super::*;
 use eframe::egui;
-use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 
@@ -8,7 +7,7 @@ const UNLOCK_WHY: &str = "It is locked. Unlock it first.";
 
 #[test]
 fn menu_items_keep_their_label_as_name() {
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         menu_button(ui, "Unlock", "", ItemState::Blocked(UNLOCK_WHY));
         menu_button(ui, "Open", "", ItemState::setup(Lang::En, "Opens the page"));
     });
@@ -19,7 +18,7 @@ fn menu_items_keep_their_label_as_name() {
 
 #[test]
 fn blocked_items_take_focus_and_show_why() {
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         menu_button(ui, "Unlock", "", ItemState::Blocked(UNLOCK_WHY));
     });
     h.run();
@@ -34,7 +33,7 @@ fn blocked_items_take_focus_and_show_why() {
 
 #[test]
 fn blocked_items_stay_inert() {
-    let mut h = Harness::new_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
         |ui, n: &mut u32| {
             if menu_button(ui, "Unlock", "", ItemState::Blocked(UNLOCK_WHY)).clicked() {
                 *n += 1;
@@ -62,7 +61,7 @@ fn blocked_items_stay_inert() {
 
 #[test]
 fn blocked_items_describe_why() {
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         menu_button(ui, "Unlock", "", ItemState::Blocked(UNLOCK_WHY));
         menu_button(ui, "Copy", "", ItemState::Ready);
     });
@@ -76,7 +75,7 @@ fn a_long_reason_does_not_widen_the_item() {
     let reason = "x ".repeat(60).trim_end().to_owned();
     assert!(reason.chars().count() >= 119);
     let mut widths = Vec::new();
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         let w = |r: Response| r.rect.width();
         let short = w(menu_button(ui, "Compare…", "", ItemState::Blocked("No")));
         let long = w(menu_button(ui, "Compare…", "", ItemState::Blocked(&reason)));
@@ -92,7 +91,7 @@ fn a_long_reason_does_not_widen_the_item() {
 
 #[test]
 fn setup_items_explain_on_focus() {
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         menu_button(ui, "Open", "", ItemState::setup(Lang::En, "Opens the page"));
     });
     h.run();
@@ -109,7 +108,7 @@ fn setup_items_say_set_up_in_the_language() {
     assert_eq!(note, "x");
     assert_eq!(suffix, Lang::De.tr("common.set_up.suffix"));
     assert_ne!(suffix, Lang::En.tr("common.set_up.suffix"));
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         menu_button(ui, "Öffnen", "", de);
     });
     h.run();

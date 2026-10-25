@@ -94,3 +94,19 @@ Journey and real-input smoke tests, packaging, installers and updates. Untriaged
 - A Windows ARM64 runner pass
 - A fallback in the app when a transparent (Mica) OpenGL window can't be created, if the
   software renderer ever refuses it
+
+### Faster tests (the shared test kit)
+
+- In-process forms of the next most common fixture commands still started as git (about 1,600 a
+  run): `stash push`, `merge`, `reset --hard`, `mv`/`rm`, `commit -- <paths>`, `worktree add`
+- A scheduled CI job that runs the suites with `GLOWFLY_TEST_GIT_CLI=1`, so a drift between the
+  kit and the git CLI shows up as a difference between the two runs
+- Build the app's `scratch_repo` on core's (one empty-repository builder for both crates), once
+  the app's tests no longer depend on the machine's `core.autocrlf`
+- cargo-nextest measured slower here (one process per test: 369 s against 159 s for the app's
+  tests, as each test rebuilds the snapshot fixture and its wgpu device); revisit if tests stop
+  sharing state within a process
+- Merging the source-check test files into one binary saves only 1 to 2 s of linking a build
+  (each links in 0.3 to 0.8 s); revisit if their number grows
+- rust-lld on Windows measured no faster than the default linker for the test builds (11 s
+  either way after an app change, 14 to 15 s after a core change); revisit if link times grow

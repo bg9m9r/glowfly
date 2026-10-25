@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn widths_are_the_styled_buttons_own() {
-        let mut h = egui_kittest::Harness::new_ui(|ui| {
+        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
             crate::ui::theme::apply_theme(ui.ctx());
             let t = Lang::En;
             let all = actions(false, 2);

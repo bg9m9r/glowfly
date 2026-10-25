@@ -4,7 +4,6 @@
 use super::controls::{self, Check, Field, Radio};
 use crate::ui::access;
 use eframe::egui::{self, Key, Stroke, accesskit::Role, accesskit::Toggled};
-use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 
 #[derive(Default)]
@@ -17,7 +16,7 @@ struct Form {
 
 #[test]
 fn a_check_toggles_on_click_and_reports_its_state() {
-    let mut h = Harness::new_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
         |ui, f: &mut Form| {
             f.changed |= controls::checkbox(ui, &mut f.on, "Sign commits").changed();
         },
@@ -34,7 +33,7 @@ fn a_check_toggles_on_click_and_reports_its_state() {
 
 #[test]
 fn a_disabled_check_ignores_clicks() {
-    let mut h = Harness::new_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
         |ui, f: &mut Form| {
             ui.add_enabled(false, Check::new(&mut f.on, "Locked"));
         },
@@ -49,7 +48,7 @@ fn a_disabled_check_ignores_clicks() {
 
 #[test]
 fn a_check_without_text_and_the_keyboard() {
-    let mut h = Harness::new_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
         |ui, f: &mut Form| {
             ui.add(Check::without_text(&mut f.on));
         },
@@ -68,7 +67,7 @@ fn a_check_without_text_and_the_keyboard() {
 
 #[test]
 fn radio_value_changes_only_on_a_different_option() {
-    let mut h = Harness::new_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
         |ui, f: &mut Form| {
             for (v, name) in [(0, "Merge"), (1, "Rebase")] {
                 if controls::radio_value(ui, &mut f.choice, v, name).changed() {
@@ -95,7 +94,7 @@ fn radio_value_changes_only_on_a_different_option() {
 fn a_field_keeps_its_role_and_name_and_restores_the_style() {
     let mut seen = None;
     let mut text = String::new();
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         super::apply_theme(ui.ctx());
         let r = ui.add(Field(egui::TextEdit::singleline(&mut text).hint_text("Filter")));
         access::name_field(&r, "Filter branches");

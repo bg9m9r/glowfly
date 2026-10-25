@@ -296,7 +296,7 @@ type DrawDialog = fn(&mut egui::Ui, crate::ui::dialog_frame::Cx, &GitState, &mut
 
 /// A dialog drawn by `draw` in the dark theme, its rect kept under "about-rect".
 fn dialog_harness(git: GitState, draw: DrawDialog) -> Harness<'static, (GitState, Vec<Msg>)> {
-    Harness::builder().with_size(egui::vec2(1024.0, 700.0)).build_state(
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(1024.0, 700.0)).build_state(
         move |ctx, (git, msgs): &mut (GitState, Vec<Msg>)| {
             color::set_palette(&theme::GARDEN_DARK);
             theme::apply_style(ctx, &theme::GARDEN_DARK);

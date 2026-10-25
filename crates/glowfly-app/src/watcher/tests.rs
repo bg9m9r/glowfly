@@ -2,7 +2,6 @@
 //! repositories.
 
 use super::*;
-use glowfly_core::gitcli::{args, run};
 use std::path::PathBuf;
 
 const MS: Duration = Duration::from_millis(1);
@@ -143,10 +142,8 @@ impl Waker for NoWake {
     fn wake(&self) {}
 }
 
-fn git(dir: &Path, a: &[&str]) {
-    let (ok, out) = run(dir, &args(a));
-    assert!(ok, "git {a:?} failed: {out}");
-}
+/// The git CLI itself: these tests are about how the watcher sees git's own writes.
+use glowfly_core::testkit::git_cli as git;
 
 /// A report the watcher sent.
 #[derive(Debug, PartialEq)]

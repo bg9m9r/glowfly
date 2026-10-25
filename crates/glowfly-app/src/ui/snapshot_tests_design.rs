@@ -14,7 +14,6 @@ use crate::ui::theme::surfaces::Tone;
 use crate::ui::theme::tokens::{Elevation, radius, shadow};
 use crate::ui::theme::{self, type_scale};
 use eframe::egui::{self, Align2, CornerRadius, Rect, Shape, StrokeKind, Ui, pos2, vec2};
-use egui_kittest::Harness;
 
 /// The kinds that carry text, with a label each.
 const KINDS: [(Kind, &str); 5] = [
@@ -82,7 +81,7 @@ fn painted_row(ui: &mut Ui, label: &str, press: Press) {
 }
 
 fn render_buttons(name: &str, p: Palette) {
-    let mut h = Harness::builder().with_size(vec2(720.0, 290.0)).build_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(720.0, 290.0)).build_ui_state(
         move |ui, first: &mut bool| {
             frame(ui, &p);
             ui.add_space(8.0);
@@ -149,7 +148,7 @@ fn swatch(ui: &Ui, rect: Rect, r: impl Into<CornerRadius>, fill: egui::Color32, 
 }
 
 fn render_surfaces(name: &str, p: Palette) {
-    let mut h = Harness::builder().with_size(vec2(720.0, 360.0)).build_ui(move |ui| {
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(720.0, 360.0)).build_ui(move |ui| {
         frame(ui, &p);
         let o = ui.max_rect().min + vec2(16.0, 16.0);
         let at = |x: f32, y: f32, w: f32, h: f32| Rect::from_min_size(o + vec2(x, y), vec2(w, h));

@@ -26,7 +26,7 @@ pub(in crate::ui) fn keys_harness(mut st: AppState, size: egui::Vec2) -> H {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    let mut h = Harness::builder().with_size(size).build_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_palette(&theme::GARDEN_DARK);
             theme::apply_style(ctx, &theme::GARDEN_DARK);

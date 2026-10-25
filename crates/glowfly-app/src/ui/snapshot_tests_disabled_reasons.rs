@@ -29,7 +29,7 @@ fn paint_theme(ui: &mut egui::Ui, dark: bool) {
 
 /// A Small dialog in a 520 x 260 window with a body line and the footer `footer` builds.
 fn dialog(dark: bool, footer: impl Fn() -> Footer<'static> + 'static) -> Harness<'static> {
-    Harness::builder().with_size(egui::vec2(520.0, 260.0)).build_ui(move |ui| {
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(520.0, 260.0)).build_ui(move |ui| {
         paint_theme(ui, dark);
         let cx = Cx { t: Lang::En, keyboard: false, key: egui::Id::new("reason-dialog") };
         egui::Frame::popup(ui.style()).inner_margin(18).corner_radius(8).show(ui, |ui| {
@@ -119,7 +119,7 @@ const PR: &str = "Create pull request…";
 /// Compare… blocked by `compare_why`) in a `size` window, tooltips without motion; the state is
 /// the messages sent and the frame's width.
 fn menu_in(dark: bool, reasons: bool, compare_why: &'static str, size: egui::Vec2) -> Harness<'static, (Vec<Msg>, f32)> {
-    Harness::builder().with_size(size).build_ui_state(
+    crate::ui::snapshot_check::builder().with_size(size).build_ui_state(
         move |ui, (msgs, width): &mut (Vec<Msg>, f32)| {
             paint_theme(ui, dark);
             tooltip::configure(ui.ctx(), true);

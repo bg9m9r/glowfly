@@ -24,13 +24,12 @@ pub fn describe(resp: &Response, text: &str) {
 mod tests {
     use super::*;
     use eframe::egui;
-    use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
 
     #[test]
     fn fields_and_painted_buttons_get_their_names() {
         let mut text = String::new();
-        let mut h = Harness::new_ui(|ui| {
+        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
             let r = ui.add(egui::TextEdit::singleline(&mut text).hint_text("Type here"));
             name_field(&r, "Search text");
             let (_, b) = ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());

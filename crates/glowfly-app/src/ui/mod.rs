@@ -178,7 +178,7 @@ mod hint_tests;
 #[cfg(test)]
 mod menu_testing;
 #[cfg(test)]
-mod snapshot_check;
+pub(crate) mod snapshot_check;
 #[cfg(test)]
 mod snapshot_tests;
 #[cfg(test)]

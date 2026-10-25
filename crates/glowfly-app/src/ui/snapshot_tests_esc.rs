@@ -20,7 +20,7 @@ use glowfly_core::terminal::TermScreen;
 
 pub(super) fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut cache: Option<UiCache> = None;
-    Harness::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
             escape_key(ctx, st, msgs);

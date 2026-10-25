@@ -16,7 +16,6 @@ use crate::state::lines::LineClick;
 use crate::state::selection::{CommitBlock, MultiSelection, refreshed};
 use crate::state::{AppState, Selection};
 use git2::Oid;
-use glowfly_core::gitcli::{args, run, run_with_input};
 use glowfly_core::repo::{Comparison, DiffTarget, FileDiff, FileEntry};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -35,11 +34,7 @@ impl Fixture {
     }
 }
 
-pub(super) fn git(dir: &Path, a: &[&str]) -> String {
-    let (ok, out) = run(dir, &args(a));
-    assert!(ok, "git {a:?} failed: {out}");
-    out
-}
+pub(super) use glowfly_core::testkit::git_out as git;
 
 pub(super) fn head(dir: &Path) -> Oid {
     git2::Repository::open(dir).unwrap().head().unwrap().target().unwrap()
@@ -54,8 +49,7 @@ pub(super) fn commit_on(dir: &Path, message: &str, day: u32) -> Oid {
     git(dir, &["add", "-A"]);
     let date = format!("2026-01-{day:02}T10:00:00+00:00");
     let env = [("GIT_AUTHOR_DATE", date.as_str()), ("GIT_COMMITTER_DATE", date.as_str())];
-    let (ok, out) = run_with_input(dir, &args(&["commit", "-q", "-m", message]), "", &env);
-    assert!(ok, "commit failed: {out}");
+    glowfly_core::testkit::git_env(dir, &["commit", "-q", "-m", message], &env);
     head(dir)
 }
 

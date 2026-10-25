@@ -1648,6 +1648,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "eframe",
+ "egui-wgpu",
  "egui_kittest",
  "git2",
  "glowfly-core",

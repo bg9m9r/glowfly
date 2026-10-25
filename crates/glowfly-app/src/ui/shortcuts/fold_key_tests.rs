@@ -19,7 +19,7 @@ struct Keys {
 
 fn harness(st: AppState, field: bool) -> Harness<'static, Keys> {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(|| (String::new(), true)) };
-    let mut h = Harness::new_state(
+    let mut h = crate::ui::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             super::input(ctx, &mut k.st, &mut k.msgs);
             if let Some((text, focus)) = k.field.as_mut() {

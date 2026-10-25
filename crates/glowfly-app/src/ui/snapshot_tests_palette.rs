@@ -227,7 +227,7 @@ fn palette_ignores_keys_under_a_credential_prompt() {
 #[test]
 fn shortcut_toggles() {
     let st = AppState::new(super::snapshot_tests::settings(ThemeChoice::Dark), Vec::new(), std::time::Instant::now());
-    let mut h = Harness::builder()
+    let mut h = crate::ui::snapshot_check::builder()
         .build_state(|ctx, (st, msgs): &mut (AppState, Vec<Msg>)| super::shortcuts::input(ctx, st, msgs), (st, Vec::new()));
     h.press_key_modifiers(Modifiers::COMMAND, Key::P);
     h.run();

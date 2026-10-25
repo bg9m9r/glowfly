@@ -3,15 +3,10 @@
 //! without changing the repository; the same for `git rebase --edit-todo` on a running rebase.
 
 use git2::{Oid, Repository, RepositoryState};
-use glowfly_core::gitcli::{args, run};
 use glowfly_core::rebase::{self, EditTodoRequest, Outcome, RebaseAction, RebaseBase, Resume, SequenceEditor, StartRequest, TodoStep};
 use std::path::{Path, PathBuf};
 
-fn git(dir: &Path, a: &[&str]) -> String {
-    let (ok, out) = run(dir, &args(a));
-    assert!(ok, "git {a:?} failed: {out}");
-    out
-}
+use glowfly_core::testkit::git_out as git;
 
 fn head(dir: &Path) -> Oid {
     Repository::open(dir).unwrap().head().unwrap().target().unwrap()

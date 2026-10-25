@@ -17,8 +17,17 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `crates/glowfly-app/tests/message_styles.rs`: only `widgets/banner.rs` fills with the banner colour (the diff's Git LFS note keeps it as a box), and the forms converted to `widgets/form_message.rs` don't colour problem lines red or amber themselves; shares the source reading with `controls.rs` (`tests/support/views.rs`).
 - `crates/glowfly-app/tests/hygiene.rs`: ratchets across both crates: non-test files stay under 400 lines (`LONG_FILES` holds today's longer files at their length as a ceiling) and open with a `//!` doc.
 - `hygiene.rs`: `update/` and `state/` add no log or toast call with English text (`ENGLISH_LOG_CALLS` only goes down).
-- `hygiene.rs`: the fixture builders (`scratch_repo`, `long_repo`, `with_repo`, …) are not redefined or handed one folder name twice.
+- `hygiene.rs`: the fixture builders (`scratch_repo`, `long_repo`, `with_repo`, the kit's `git`, …) are not redefined or handed one folder name twice.
+- `hygiene.rs`: view tests build their harnesses with `ui::snapshot_check::builder()` (`HARNESS_MAKERS` names the exceptions).
 - `crates/glowfly-app/tests/i18n_keys.rs`: every translation key the code looks up exists in English, and every English key is used.
+
+## The shared test kit (`crates/glowfly-core/src/testkit/`)
+
+- `testkit/mod.rs`: what both crates' tests build fixture repositories with (the app's dev-dependency turns on core's `testkit` feature): `git`, `git_out`, `git_env`, `try_git_env`, `git_cli`, `set_config`, `set_identity`, `write`. `GLOWFLY_TEST_GIT_CLI=1` sends every fixture command to the git CLI.
+- `testkit/fast.rs`: which fixture commands run in-process through libgit2 instead of starting git (`init`, `add`, `config`, `update-index -q --refresh`, `checkout -- <file>`, and the dispatch); `commit.rs`, `refs.rs` (`checkout`, `branch`, `tag`, `update-ref`, `remote`) and `push.rs` (to a bare repository in a local folder) hold the rest.
+- `testkit/guard.rs`: when a command goes to the git CLI after all: hooks, signing, filters and working-tree encodings, submodules, sparse checkout, repository extensions, an operation in progress, environment that redirects git.
+- `testkit/tests.rs`: one history built both ways (the CLI and in-process) gives the same commits, refs, reflogs, index, files and config.
+- `crates/glowfly-core/src/testutil.rs`: core's own fixtures (`scratch_repo`, origins, submodules, partial clones) on the kit.
 
 ## The built executable
 

@@ -38,7 +38,7 @@ fn harness(mut st: AppState, p: Palette, bands: &'static [Color32; 9]) -> Harnes
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    Harness::builder().with_size(vec2(1440.0, 880.0)).build_state(
+    crate::ui::snapshot_check::builder().with_size(vec2(1440.0, 880.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_palette(&p);
             theme::apply_style(ctx, &p);

@@ -136,7 +136,7 @@ mod tests {
     }
 
     fn harness() -> Harness<'static, (String, String, Seen)> {
-        Harness::builder().with_size(vec2(400.0, 200.0)).build_ui_state(
+        crate::ui::snapshot_check::builder().with_size(vec2(400.0, 200.0)).build_ui_state(
             |ui, (a, b, seen): &mut (String, String, Seen)| {
                 let r = ui.add(TextField::new(a).id(Id::new("one")).hint("Name"));
                 crate::ui::access::name_field(&r, "One");

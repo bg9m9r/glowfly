@@ -10,10 +10,9 @@ use crate::ui::common::with_code;
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::widgets::{self, Part};
 use eframe::egui::{Label, Link, RichText, vec2};
-use egui_kittest::Harness;
 
 fn render(name: &str, p: Palette) {
-    let mut h = Harness::builder().with_size(vec2(440.0, 290.0)).build_ui(move |ui| {
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(440.0, 290.0)).build_ui(move |ui| {
         color::set_palette(&p);
         apply_style(ui.ctx(), &p);
         ui.ctx().set_theme(egui_theme(&p));
@@ -44,7 +43,7 @@ fn fonts_light() {
 }
 
 fn render_scale(name: &str, p: Palette) {
-    let mut h = Harness::builder().with_size(vec2(440.0, 330.0)).build_ui(move |ui| {
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(440.0, 330.0)).build_ui(move |ui| {
         color::set_palette(&p);
         apply_style(ui.ctx(), &p);
         ui.ctx().set_theme(egui_theme(&p));

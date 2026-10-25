@@ -3,7 +3,6 @@
 use super::*;
 use git2::{Oid, RepositoryState};
 use glowfly_core::forge::{Provider, PullRequest, Target};
-use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::{BranchInfo, LoadOptions, Tracking, load};
 use glowfly_core::stack::{StackLink, Stacks};
 
@@ -20,9 +19,7 @@ fn link(branch: &str, on: &str, behind: bool) -> StackLink {
 fn git(dir: &std::path::Path, a: &[&str]) -> String {
     let mut all = vec!["-c", "user.name=T", "-c", "user.email=t@example.com"];
     all.extend(a);
-    let (ok, out) = run(dir, &args(&all));
-    assert!(ok, "{a:?}: {out}");
-    out.trim().to_owned()
+    glowfly_core::testkit::git_out(dir, &all).trim().to_owned()
 }
 
 /// main (the fixture's one commit), develop one commit past it, low one past develop and mid one

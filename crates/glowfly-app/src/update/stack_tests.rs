@@ -32,8 +32,10 @@ fn head_name(dir: &Path) -> String {
 /// rewrites low first, so mid and top need a restack.
 fn stacked(name: &str, amend: bool) -> PathBuf {
     let dir = scratch_repo(name);
-    git(&dir, &["checkout", "--", "a.txt"]);
+    // Line endings off before a.txt is checked out again, or it comes back with a CRLF the index
+    // doesn't have, and git's rebase sees an unstaged change once it re-reads the file.
     git(&dir, &["config", "core.autocrlf", "false"]);
+    git(&dir, &["checkout", "--", "a.txt"]);
     commit(&dir, "g.txt", "1\n2\n3\n", "base");
     git(&dir, &["checkout", "-q", "-b", "low"]);
     commit(&dir, "l.txt", "l\n", "l1");

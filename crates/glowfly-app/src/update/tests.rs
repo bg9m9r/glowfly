@@ -17,7 +17,7 @@ use crate::runner;
 use crate::ssh::SshEffect;
 use crate::state::{AppState, ForgeState, Modal, Selection, Status};
 use glowfly_core::forge::{CheckState, Checks, Provider, PullRequest, Target};
-use glowfly_core::gitcli::{args, run};
+use glowfly_core::gitcli::args;
 use glowfly_core::settings::Settings;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -26,23 +26,7 @@ pub(super) fn state() -> AppState {
     AppState::new(Settings::default(), Vec::new(), Instant::now())
 }
 
-pub(super) fn git(dir: &Path, a: &[&str]) {
-    let (ok, out) = run(dir, &args(a));
-    assert!(ok, "git {a:?} failed: {out}");
-}
-
-/// Sets the test identity, no signing and no automatic maintenance (which every commit would
-/// otherwise start as another git process) in `dir`'s own config, as `git config` would but
-/// without a git process per key (a few hundred ms apiece on a busy Windows machine).
-pub(super) fn set_identity(dir: &Path) {
-    let repo = git2::Repository::open(dir).unwrap();
-    let mut config = repo.config().unwrap().open_level(git2::ConfigLevel::Local).unwrap();
-    for (key, value) in
-        [("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false"), ("maintenance.auto", "false")]
-    {
-        config.set_str(key, value).unwrap();
-    }
-}
+pub(super) use glowfly_core::testkit::{git, set_identity};
 
 /// A repository with one commit and one modified file.
 pub(super) fn scratch_repo(name: &str) -> PathBuf {

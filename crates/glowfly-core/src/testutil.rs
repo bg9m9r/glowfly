@@ -1,13 +1,9 @@
-//! Fixture helpers shared by `glowfly-core` tests: throwaway repositories and git commands.
+//! Fixture helpers shared by `glowfly-core` tests: throwaway repositories (on the shared kit's
+//! `git`, `set_config` and `write`, in `testkit/`).
 
-use crate::gitcli::{args, run};
+use crate::gitcli::args;
+pub(crate) use crate::testkit::{git, set_config, write};
 use std::path::{Path, PathBuf};
-
-/// Runs `git <a>` in `dir`, failing the test if it fails.
-pub(crate) fn git(dir: &Path, a: &[&str]) {
-    let (ok, out) = run(dir, &args(a));
-    assert!(ok, "git {a:?} failed: {out}");
-}
 
 /// An empty repository on `main` with a fixed identity, in a fresh temporary folder.
 pub(crate) fn scratch_repo(name: &str) -> PathBuf {
@@ -30,16 +26,6 @@ pub(crate) fn scratch_repo(name: &str) -> PathBuf {
     dir
 }
 
-/// Writes `entries` to the repository's own config file, as `git config <key> <value>` would,
-/// without starting a git process for each (a few hundred ms apiece on a busy Windows machine).
-pub(crate) fn set_config(dir: &Path, entries: &[(&str, &str)]) {
-    let repo = git2::Repository::open(dir).unwrap();
-    let mut config = repo.config().unwrap().open_level(git2::ConfigLevel::Local).unwrap();
-    for (key, value) in entries {
-        config.set_str(key, value).unwrap();
-    }
-}
-
 /// A second name for the folder `dir`, made next to it (`<name>-alias`): a symlink, or on Windows
 /// a junction where symlinks need rights the account lacks. None when neither can be made.
 pub(crate) fn alias_of(dir: &Path) -> Option<PathBuf> {
@@ -51,10 +37,6 @@ pub(crate) fn alias_of(dir: &Path) -> Option<PathBuf> {
     let made = std::os::windows::fs::symlink_dir(dir, &link).is_ok()
         || std::process::Command::new("cmd").args(["/c", "mklink", "/J"]).arg(&link).arg(dir).output().is_ok_and(|o| o.status.success());
     made.then_some(link)
-}
-
-pub(crate) fn write(dir: &Path, file: &str, text: &str) {
-    std::fs::write(dir.join(file), text).unwrap();
 }
 
 /// `file:///srv/x` on Unix, `file:///C:/x` on Windows.

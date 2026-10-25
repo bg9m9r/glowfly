@@ -37,7 +37,7 @@ fn harness(focused: bool, rebind: impl FnOnce(&mut AppState)) -> H {
     st.terminal.focused = focused;
     rebind(&mut st);
     let keys = Keys { st, msgs: Vec::new(), left: Vec::new() };
-    let mut h = Harness::new_state(
+    let mut h = crate::ui::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             super::input(ctx, &mut k.st, &mut k.msgs);
             k.left = ctx.input(|i| {

@@ -98,7 +98,6 @@ fn badge_paint(ui: &Ui, rect: Rect, n: usize) {
 mod tests {
     use super::*;
     use eframe::egui::pos2;
-    use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
 
     #[test]
@@ -112,7 +111,7 @@ mod tests {
 
     #[test]
     fn height_matches_the_painted_steps() {
-        let mut h = Harness::builder().with_size(vec2(400.0, 600.0)).build_ui_state(
+        let mut h = crate::ui::snapshot_check::builder().with_size(vec2(400.0, 600.0)).build_ui_state(
             |ui, rect: &mut Rect| {
                 let g = Guide { steps: vec!["One short step.", "A second step, a little longer than the first.", "Three.", LAST] };
                 let height = height(ui, Lang::En, &g, PANE_W);

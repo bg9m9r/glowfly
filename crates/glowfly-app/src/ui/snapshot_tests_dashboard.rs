@@ -258,7 +258,7 @@ fn dashboard_controls_and_menus_push_messages() {
 #[test]
 fn esc_closes_the_dashboard_and_the_repository_menu_opens_it() {
     let mut cache: Option<UiCache> = None;
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
             escape_key(ctx, st, msgs);

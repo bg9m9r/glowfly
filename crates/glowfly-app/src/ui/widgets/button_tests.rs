@@ -8,7 +8,6 @@ use crate::ui::theme::tokens::FOCUS_GAP;
 use crate::ui::widgets::button_look::{Look, Press, look, look_for};
 use crate::ui::widgets::button_split::CARET_W;
 use eframe::egui::{Color32, Rect, Shape, Stroke};
-use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 
 /// Makes a button of one kind.
@@ -22,7 +21,7 @@ fn kinds() -> [(&'static str, Make); 5] {
 #[test]
 fn disabled_buttons_are_named_and_inert() {
     let mut clicks = 0;
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         if ui.add(primary("Save").enabled(false).why(Some("Nothing changed"))).clicked() {
             clicks += 1;
         }
@@ -39,7 +38,7 @@ fn disabled_buttons_are_named_and_inert() {
 
 #[test]
 fn every_kind_is_named_by_its_text() {
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         for (name, make) in kinds() {
             ui.add(make(name));
         }
@@ -53,7 +52,7 @@ fn every_kind_is_named_by_its_text() {
 #[test]
 fn disabled_tonal_and_quiet_are_inert_and_explain() {
     for make in [tonal as Make, quiet] {
-        let mut h = Harness::new_ui_state(
+        let mut h = crate::ui::snapshot_check::builder().build_ui_state(
             |ui, clicks: &mut u32| {
                 if ui.add(make("Stage all").enabled(false).why(Some("Nothing to stage"))).clicked() {
                     *clicks += 1;
@@ -75,7 +74,7 @@ fn disabled_tonal_and_quiet_are_inert_and_explain() {
 
 #[test]
 fn sizes_meet_the_minimums() {
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         crate::ui::theme::apply_theme(ui.ctx());
         ui.set_style(ui.ctx().style());
         assert_eq!(ui.style().text_styles[&TextStyle::Button].size, crate::ui::theme::type_scale::BODY);
@@ -106,7 +105,7 @@ fn sizes_meet_the_minimums() {
 
 #[test]
 fn icon_only_is_square_and_named() {
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         let r = ui.add(icon_only(Icon::Refresh, "Refresh"));
         assert_eq!(r.rect.size(), vec2(HEIGHT, HEIGHT));
         assert_eq!(icon_only(Icon::Refresh, "Refresh").desired_width(ui), HEIGHT);
@@ -122,7 +121,7 @@ fn icon_only_is_square_and_named() {
 
 #[test]
 fn buttons_in_a_disabled_ui_still_explain_on_hover() {
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         ui.add_enabled_ui(false, |ui| {
             crate::ui::widgets::icon_button(ui, Icon::Refresh, "Previous change");
             ui.add(secondary("Move up").why(Some("Already first")));
@@ -211,7 +210,7 @@ fn the_split_halves_click_apart() {
         caret: u32,
     }
     for main_on in [true, false] {
-        let mut h = Harness::new_ui_state(
+        let mut h = crate::ui::snapshot_check::builder().build_ui_state(
             move |ui, c: &mut Clicks| {
                 let (main, caret) = split(primary("Commit").enabled(main_on), "More").show(ui);
                 c.main += u32::from(main.clicked());

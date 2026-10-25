@@ -42,7 +42,7 @@ fn theme(ui: &mut egui::Ui, dark: bool) {
 
 /// A window drawing the submenu's entries inside a menu frame.
 fn body(items: Vec<TrackItem>, dark: bool) -> Harness<'static, Vec<Msg>> {
-    Harness::builder().with_size(egui::vec2(440.0, 120.0)).build_ui_state(
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 120.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, dark);
             egui::Frame::menu(ui.style()).show(ui, |ui| {
@@ -59,7 +59,7 @@ fn body(items: Vec<TrackItem>, dark: bool) -> Harness<'static, Vec<Msg>> {
 fn file_menu_wip_lfs() {
     let lfs = items(PATH, installed());
     let f = FileEntry::new(PATH, 'M');
-    let mut h = Harness::builder().with_size(egui::vec2(260.0, 250.0)).build_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(260.0, 250.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, true);
             let r = ui.add(egui::Label::new(PATH).sense(egui::Sense::click()));
@@ -135,7 +135,7 @@ fn commit_menu(in_workdir: bool) -> Harness<'static, Vec<Msg>> {
     let lfs = items(PATH, installed());
     let f = FileEntry::new(PATH, 'M');
     let oid = Oid::from_str("3f2a9c41d07be5a8c6f19e2d4b7a0c3e5f816d29").unwrap();
-    Harness::builder().with_size(egui::vec2(260.0, 240.0)).build_ui_state(
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(260.0, 240.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, true);
             commit_file_items(

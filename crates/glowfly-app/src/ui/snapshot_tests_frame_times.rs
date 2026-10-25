@@ -22,7 +22,7 @@ fn harness(on: bool) -> Harness<'static, AppState> {
     st.settings.show_frame_times = on;
     st.view.frame_times = FrameSummary { last_ms: 3.2, avg_ms: 2.1, max_ms: 12.0 };
     let p = theme::GARDEN_DARK;
-    Harness::builder().with_size(egui::vec2(440.0, 90.0)).build_state(
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 90.0)).build_state(
         move |ctx, st: &mut AppState| {
             color::set_palette(&p);
             theme::apply_style(ctx, &p);

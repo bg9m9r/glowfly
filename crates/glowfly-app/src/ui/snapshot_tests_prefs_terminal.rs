@@ -10,7 +10,6 @@ use super::theme::{self, color};
 use crate::state::{AppState, PrefPage, PrefsState};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, accesskit::Role};
-use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{ShellChoice, ShellSetting, TerminalPrefs, ThemeChoice};
@@ -61,7 +60,7 @@ fn prefs_terminal_custom_dark() {
 fn prefs_terminal_linux() {
     let mut s = settings(ThemeChoice::Dark);
     s.terminal = TerminalPrefs::default();
-    let mut h = Harness::builder().with_size(egui::vec2(900.0, 640.0)).build_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(900.0, 640.0)).build_state(
         |ctx, s: &mut glowfly_core::settings::Settings| {
             color::set_palette(&theme::GARDEN_DARK);
             theme::apply_style(ctx, &theme::GARDEN_DARK);

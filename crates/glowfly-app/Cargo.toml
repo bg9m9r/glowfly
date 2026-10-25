@@ -44,7 +44,11 @@ objc2-app-kit = { version = "0.3", default-features = false, features = ["std", 
 winit = { version = "0.30", default-features = false }
 
 [dev-dependencies]
+# The shared fixture helpers (glowfly-core's src/testkit/): repositories built in-process.
+glowfly-core = { workspace = true, features = ["testkit"] }
 egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"] }
+# One wgpu device for all view tests (ui/snapshot_check.rs); the version kittest renders with.
+egui-wgpu = { version = "0.31", default-features = false }
 # tests/app_icon.rs renders the app icon and checks the PNGs in assets/icon.
 image = { version = "0.25", default-features = false, features = ["png"] }
 # tests/linux_packages.rs reads the package metadata below.

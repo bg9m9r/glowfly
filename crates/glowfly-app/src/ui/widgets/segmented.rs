@@ -103,12 +103,11 @@ pub fn segmented_opts<T: Copy + PartialEq>(ui: &mut Ui, current: T, options: &[S
 mod tests {
     use super::*;
     use eframe::egui::accesskit::Toggled;
-    use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
 
     #[test]
     fn a_click_on_another_option_picks_it() {
-        let mut h = Harness::builder().with_size(vec2(300.0, 60.0)).build_ui_state(
+        let mut h = crate::ui::snapshot_check::builder().with_size(vec2(300.0, 60.0)).build_ui_state(
             |ui, picked: &mut Vec<u8>| {
                 if let Some(v) = segmented(ui, 1u8, &[(1, "One", "The first"), (2, "Two", "The second")]) {
                     picked.push(v);
@@ -131,7 +130,7 @@ mod tests {
 
     #[test]
     fn a_disabled_segment_is_named_and_inert() {
-        let mut h = Harness::builder().with_size(vec2(400.0, 60.0)).build_ui_state(
+        let mut h = crate::ui::snapshot_check::builder().with_size(vec2(400.0, 60.0)).build_ui_state(
             |ui, picked: &mut Vec<u8>| {
                 let options = [
                     Segment::new(1u8, "One", "The first").why(Some("Not now")),
@@ -161,7 +160,7 @@ mod tests {
 
     #[test]
     fn a_disabled_ui_disables_every_segment() {
-        let mut h = Harness::builder().with_size(vec2(300.0, 60.0)).build_ui_state(
+        let mut h = crate::ui::snapshot_check::builder().with_size(vec2(300.0, 60.0)).build_ui_state(
             |ui, picked: &mut Vec<u8>| {
                 ui.add_enabled_ui(false, |ui| {
                     if let Some(v) = segmented(ui, 1u8, &[(1, "One", "The first"), (2, "Two", "The second")]) {

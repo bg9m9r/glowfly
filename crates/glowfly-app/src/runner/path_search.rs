@@ -132,7 +132,6 @@ pub(super) fn once(r: Request) -> Msg {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use glowfly_core::gitcli::{args, run};
     use std::sync::mpsc;
 
     #[derive(Clone)]
@@ -141,10 +140,7 @@ mod tests {
         fn wake(&self) {}
     }
 
-    fn git(dir: &std::path::Path, a: &[&str]) {
-        let (ok, out) = run(dir, &args(a));
-        assert!(ok, "git {a:?} failed: {out}");
-    }
+    use glowfly_core::testkit::git;
 
     #[test]
     fn a_newer_request_replaces_one_still_waiting() {

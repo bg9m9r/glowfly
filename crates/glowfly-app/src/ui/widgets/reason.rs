@@ -82,7 +82,6 @@ pub fn in_row(ui: &mut Ui, why: &str, gap: f32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
     use glowfly_core::i18n::Lang;
 
@@ -93,7 +92,7 @@ mod tests {
 
     #[test]
     fn menu_items_and_their_setup_state_are_reachable_from_here() {
-        let mut h = Harness::new_ui(|ui| {
+        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
             menu_button(ui, "Open", "", ItemState::setup(Lang::En, "Opens the page"));
         });
         h.run();
@@ -104,7 +103,7 @@ mod tests {
     fn a_line_keeps_its_height_without_a_reason() {
         let mut heights = Vec::new();
         for why in [None, Some("Enter a summary")] {
-            let mut h = Harness::new_ui(|ui| {
+            let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
                 let top = ui.cursor().top();
                 line(ui, why, Align::Center);
                 heights.push(ui.cursor().top() - top);

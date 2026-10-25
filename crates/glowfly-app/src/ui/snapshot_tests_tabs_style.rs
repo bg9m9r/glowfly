@@ -11,7 +11,6 @@ use crate::ui::tabs_tests::{pointer, tab_centre};
 use crate::ui::theme::{self, color};
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, pos2, vec2};
-use egui_kittest::Harness;
 use glowfly_core::settings::ThemeChoice;
 use std::path::PathBuf;
 
@@ -99,7 +98,7 @@ fn active_tab_branch_line() {
 
 #[test]
 fn icon_branch() {
-    let mut h = Harness::builder().with_size(vec2(360.0, 160.0)).build_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(360.0, 160.0)).build_ui(|ui| {
         let full = ui.max_rect();
         for (row, p) in [theme::DARK, theme::LIGHT].into_iter().enumerate() {
             color::set_palette(&p);

@@ -127,7 +127,7 @@ mod tests {
 
     /// A group with help and an error, shown with `touched`, or with an info note.
     fn harness(touched: Touched, info: bool) -> Harness<'static, String> {
-        Harness::builder().with_size(vec2(400.0, 160.0)).build_ui_state(
+        crate::ui::snapshot_check::builder().with_size(vec2(400.0, 160.0)).build_ui_state(
             move |ui, text: &mut String| {
                 let mut g = FieldGroup::new("Branch name").help(HELP).message(&touched, "name", Some(Message::error(ERROR)));
                 if info {

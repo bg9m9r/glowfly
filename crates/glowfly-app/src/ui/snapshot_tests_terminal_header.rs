@@ -14,7 +14,6 @@ use crate::terminal::TerminalMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Key, vec2};
 use egui::accesskit::Role;
-use egui_kittest::Harness;
 use egui_kittest::kittest::{By, Queryable};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{ShellChoice, TerminalPrefs, ThemeChoice};
@@ -91,7 +90,7 @@ fn terminal_shell_menu() {
     prefs.shell.program = "nu".into();
     let items = shell_items(Lang::En, &prefs, true);
     let p = theme::GARDEN_DARK;
-    let mut h = Harness::builder().with_size(vec2(280.0, 220.0)).build_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(280.0, 220.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_palette(&p);
             theme::apply_style(ui.ctx(), &p);

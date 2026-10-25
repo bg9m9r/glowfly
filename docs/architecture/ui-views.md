@@ -86,4 +86,5 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 ## Snapshot tests
 
 - `snapshot_tests*.rs`: the views' snapshot tests.
+- `snapshot_check.rs`: comparing with the approved image (`check_snapshot`, skipped with `GLOWFLY_SKIP_SNAPSHOTS`), and `builder()`, which every test harness starts from so harnesses render on pooled wgpu devices.
 - `menu_testing.rs`: opens a submenu and finds its entries.

@@ -1,6 +1,5 @@
 use super::*;
 use crate::ui::access;
-use egui_kittest::Harness;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -12,7 +11,7 @@ fn named_widgets_are_listed_with_their_roles_rects_and_the_keyboard_focus() {
     let seen: Rc<RefCell<Seen>> = Rc::default();
     let out = seen.clone();
     let mut text = String::new();
-    let mut h = Harness::new_ui(move |ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(move |ui| {
         let (_, b) = ui.allocate_exact_size(egui::vec2(40.0, 20.0), egui::Sense::click());
         access::name_button(&b, true, "Painted");
         let l = ui.label("Hello");
@@ -54,7 +53,7 @@ fn named_widgets_are_listed_with_their_roles_rects_and_the_keyboard_focus() {
 fn regions_come_from_the_panels_drawn_this_pass() {
     let seen: Rc<RefCell<Vec<(&'static str, Rect)>>> = Rc::default();
     let out = seen.clone();
-    let mut h = Harness::new(move |ctx| {
+    let mut h = crate::ui::snapshot_check::builder().build(move |ctx| {
         // A panel egui remembers but that isn't drawn this pass is not a region.
         let stale = PanelState { rect: Rect::from_min_max(Pos2::ZERO, Pos2::new(2000.0, 2000.0)) };
         ctx.data_mut(|d| d.insert_persisted(Id::new("toolbar"), stale));

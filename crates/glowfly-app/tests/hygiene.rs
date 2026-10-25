@@ -10,6 +10,8 @@
 //! - The shared fixture builders are not written again: each helper in `FIXTURE_HELPERS` is
 //!   defined only in the files listed for it, and no two tests pass `scratch_repo` or `long_repo`
 //!   the same folder name (tests run in parallel and would share the folder).
+//! - View tests build their harnesses with `ui::snapshot_check::builder()`, which lends them
+//!   pooled wgpu devices, not with `Harness::builder()` or `Harness::new*` (`HARNESS_MAKERS`).
 //!
 //! Test code is what `support/views.rs` calls test code: files named `tests.rs`, `*_tests.rs` or
 //! `snapshot_tests*.rs`, modules declared under `#[cfg(test)]`, and inline `#[cfg(test)] mod`
@@ -44,6 +46,7 @@ const ENGLISH_LOG_CALLS: usize = 180;
 /// Fixture builders and the only files that may define them (as `fn <name>(`, or the full
 /// signature for `harness`). A new test reuses one of these instead of writing its own copy.
 const FIXTURE_HELPERS: &[(&str, &[&str])] = &[
+    ("fn git(dir: &Path, a: &[&str])", &["crates/glowfly-core/src/testkit/mod.rs"]),
     ("fn scratch_repo(", &["crates/glowfly-app/src/update/tests.rs", "crates/glowfly-core/src/testutil.rs"]),
     ("fn long_repo(", &["crates/glowfly-app/src/update/tests.rs"]),
     ("fn fixture_repo(", &["crates/glowfly-app/src/ui/snapshot_tests.rs"]),
@@ -70,6 +73,10 @@ const FIXTURE_HELPERS: &[(&str, &[&str])] = &[
         ],
     ),
 ];
+
+/// The files that may build an egui_kittest harness directly: the shared builder itself, and
+/// the journeys' harness, which never renders.
+const HARNESS_MAKERS: &[&str] = &["crates/glowfly-app/src/ui/snapshot_check.rs", "crates/glowfly-app/src/journey/harness.rs"];
 
 /// One source file: its path from the repository root (with `/`), its text, and whether it is
 /// test code.
@@ -293,6 +300,24 @@ fn fixture_helpers_are_shared_not_copied() {
         }
     }
     assert!(problems.is_empty(), "duplicated fixture helpers:\n{}", problems.join("\n"));
+}
+
+#[test]
+fn harnesses_come_from_the_shared_builder() {
+    let mut problems = Vec::new();
+    for s in all_sources().iter().filter(|s| !HARNESS_MAKERS.contains(&s.path.as_str())) {
+        for (i, line) in code_lines(&s.text).iter().enumerate() {
+            if line.contains("Harness::builder(") || line.contains("Harness::new") {
+                problems.push(format!("{}:{}: build the harness with crate::ui::snapshot_check::builder()", s.path, i + 1));
+            }
+        }
+    }
+    for path in HARNESS_MAKERS {
+        if !all_sources().iter().any(|s| s.path == *path && s.text.contains("Harness::builder(")) {
+            problems.push(format!("{path}: no longer builds a harness; drop it from HARNESS_MAKERS"));
+        }
+    }
+    assert!(problems.is_empty(), "harnesses built without the shared builder:\n{}", problems.join("\n"));
 }
 
 #[test]

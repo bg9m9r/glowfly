@@ -57,8 +57,7 @@ fn lookup_failure_lists_visible_labels() {
 #[test]
 fn picks_one_of_several_widgets_by_position() {
     use eframe::egui;
-    use egui_kittest::Harness;
-    let mut h = Harness::new_ui(|ui| {
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
         ui.horizontal(|ui| {
             let _ = ui.button("Go");
             ui.label("first row");

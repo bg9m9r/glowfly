@@ -89,6 +89,8 @@ pub mod submodule_ops;
 pub mod tabs;
 pub mod tag_ops;
 pub mod terminal;
+#[cfg(any(test, feature = "testkit"))]
+pub mod testkit;
 #[cfg(test)]
 pub(crate) mod testutil;
 pub mod text;

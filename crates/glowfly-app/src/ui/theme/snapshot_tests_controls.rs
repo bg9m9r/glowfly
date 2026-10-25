@@ -9,7 +9,6 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::theme::branch_colours::{chip_in, swatches};
 use crate::ui::widgets;
 use eframe::egui::{self, vec2};
-use egui_kittest::Harness;
 use glowfly_core::branch_colour::Swatch;
 
 struct Form {
@@ -23,7 +22,7 @@ struct Form {
 /// Draws one of every control in `p`, then a row of ref chips.
 fn render_controls(name: &str, p: Palette) {
     let form = Form { empty: String::new(), filled: "feature/login".into(), focused: "Focused".into(), first_frame: true, choice: 1 };
-    let mut h = Harness::builder().with_size(vec2(620.0, 300.0)).build_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(620.0, 300.0)).build_ui_state(
         move |ui, f: &mut Form| {
             color::set_palette(&p);
             apply_style(ui.ctx(), &p);
@@ -104,7 +103,7 @@ fn controls_high_contrast_light() {
 /// A window of text rows under a modal holding a label, a field and a checkbox.
 fn render_modal(name: &str, p: Palette) {
     let (mut text, mut on) = (String::from("release/2.0"), true);
-    let mut h = Harness::builder().with_size(vec2(520.0, 300.0)).build(move |ctx| {
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(520.0, 300.0)).build(move |ctx| {
         color::set_palette(&p);
         apply_style(ctx, &p);
         ctx.set_theme(egui_theme(&p));

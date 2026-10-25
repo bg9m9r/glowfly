@@ -24,7 +24,8 @@ fn harness(page: PrefPage) -> H {
     let mut prefs = PrefsState::new(page);
     prefs.keys.recording = Some(Recording { id: I::NewTab, slot: Slot::Replace(0) });
     st.prefs = Some(prefs);
-    let mut h = Harness::new_state(|ctx, k: &mut Keys| super::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
+    let mut h = crate::ui::snapshot_check::builder()
+        .build_state(|ctx, k: &mut Keys| super::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
     h.run();
     h
 }

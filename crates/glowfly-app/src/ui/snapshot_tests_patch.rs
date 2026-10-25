@@ -248,7 +248,7 @@ fn commit_row_patch_item() {
     let oid = git2::Oid::from_bytes(&[0x1a; 20]).unwrap();
     for blocked in [None, Some(crate::state::selection::CommitBlock::PatchMerge.text(glowfly_core::i18n::Lang::En))] {
         let f = FileEntry::new("src/app.txt", 'M');
-        let mut h = egui_kittest::Harness::builder().with_size(eframe::egui::vec2(300.0, 260.0)).build_ui_state(
+        let mut h = crate::ui::snapshot_check::builder().with_size(eframe::egui::vec2(300.0, 260.0)).build_ui_state(
             move |ui, msgs: &mut Vec<Msg>| {
                 super::file_menu::commit_file_items(
                     ui,

@@ -1,12 +1,8 @@
 //! A conflicted repository for the diff and merge tool runner tests.
 
 use glowfly_core::gitcli::{args, run};
+pub(super) use glowfly_core::testkit::git;
 use std::path::{Path, PathBuf};
-
-pub(super) fn git(dir: &Path, a: &[&str]) {
-    let (ok, out) = run(dir, &args(a));
-    assert!(ok, "git {a:?} failed: {out}");
-}
 
 /// A repository in the middle of a merge where a.txt conflicts ("ours" against "theirs").
 pub(super) fn conflicted(name: &str) -> PathBuf {

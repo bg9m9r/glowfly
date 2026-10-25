@@ -30,7 +30,7 @@ fn fetch_on_f8() -> AppState {
 
 fn harness(st: AppState, field: bool) -> H {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(String::new), left: Vec::new() };
-    let mut h = Harness::new_state(
+    let mut h = crate::ui::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             super::input(ctx, &mut k.st, &mut k.msgs);
             k.left = ctx.input(|i| {

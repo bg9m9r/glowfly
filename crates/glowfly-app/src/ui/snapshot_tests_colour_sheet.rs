@@ -13,7 +13,6 @@ use crate::ui::theme::contrast::{self, ChipStyle};
 use crate::ui::theme::surfaces::Tone;
 use crate::ui::theme::{self, apply_style, builtin, color, color::Palette, egui_theme};
 use eframe::egui::{self, Color32, FontId, Painter, Rect, pos2, vec2};
-use egui_kittest::Harness;
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::repo;
 use glowfly_core::settings::BuiltinTheme;
@@ -52,7 +51,7 @@ fn chips(p: &Painter, pal: &Palette, y: f32) {
 /// The strip for one palette.
 fn strip(pal: Palette, name: &str) -> image::RgbaImage {
     let name = name.to_owned();
-    let mut h = Harness::builder().with_size(vec2(W, 6.0 * ROW_H + 70.0)).build_ui(move |ui| {
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(W, 6.0 * ROW_H + 70.0)).build_ui(move |ui| {
         color::set_palette(&pal);
         apply_style(ui.ctx(), &pal);
         ui.ctx().set_theme(egui_theme(&pal));

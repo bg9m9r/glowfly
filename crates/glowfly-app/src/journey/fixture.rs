@@ -4,7 +4,6 @@
 //! libgit2, never the screen.
 
 use git2::{ConfigLevel, Oid, Repository, RepositoryState, StatusOptions};
-use glowfly_core::gitcli;
 use std::path::{Path, PathBuf};
 
 const DATE: &str = "2026-01-10T10:00:00+00:00";
@@ -91,9 +90,7 @@ pub(super) fn git(dir: &Path, args: &[&str]) {
         ("GIT_COMMITTER_EMAIL", "author@example.com"),
         ("GIT_COMMITTER_DATE", DATE),
     ];
-    let args: Vec<String> = args.iter().map(|a| (*a).to_owned()).collect();
-    let (ok, out) = gitcli::run_with_input(dir, &args, "", &env);
-    assert!(ok, "git {} in {} failed:\n{out}", args.join(" "), dir.display());
+    glowfly_core::testkit::git_env(dir, args, &env);
 }
 
 /// The repository settings every journey repository gets, so the user's global config (signing,

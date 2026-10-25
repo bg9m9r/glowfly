@@ -10,6 +10,10 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+# The fixture helpers in src/testkit/ for the app's tests (its dev-dependency turns this on).
+testkit = []
+
 [dependencies]
 chrono.workspace = true
 git2.workspace = true

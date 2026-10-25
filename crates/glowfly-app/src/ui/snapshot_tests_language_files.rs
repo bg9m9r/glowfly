@@ -127,7 +127,7 @@ fn shows_containing<S>(h: &Harness<'_, S>, text: &str) -> bool {
 fn lfs_menu(t: Lang, path: &str) -> Harness<'static, Vec<Msg>> {
     let install = LfsInstall::Installed("3.7.1".into());
     let items = track_items(t, path, TrackContext { install: &install, patterns: &[], submodules: &[] });
-    Harness::builder().with_size(egui::vec2(440.0, 120.0)).build_ui_state(
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 120.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());
@@ -227,7 +227,7 @@ fn blame_german() {
         summary: "Make Point public with float fields".into(),
         body: String::new(),
     };
-    let mut h = Harness::builder().with_size(egui::vec2(440.0, 190.0)).build_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 190.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());

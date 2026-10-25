@@ -9,7 +9,6 @@ use crate::state::{AppState, PrefPage, PrefsState, Selection, Tab};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
-use glowfly_core::gitcli::{args, run_with_input};
 use glowfly_core::repo::{self, ChangeCounts, LoadOptions};
 use glowfly_core::settings::{Settings, ThemeChoice};
 use glowfly_core::spell::Speller;
@@ -33,7 +32,7 @@ pub(super) fn try_git(dir: &Path, a: &[&str], date: &str) -> (bool, String) {
         ("GIT_AUTHOR_DATE", date),
         ("GIT_COMMITTER_DATE", date),
     ];
-    run_with_input(dir, &args(a), "", &env)
+    glowfly_core::testkit::try_git_env(dir, a, &env)
 }
 
 /// A small repository with a merged feature branch, an open branch, a tag and a modified file.
@@ -137,7 +136,7 @@ pub(super) fn harness_palette_sized(mut st: AppState, p: Palette, size: egui::Ve
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    Harness::builder().with_size(size).build_state(
+    crate::ui::snapshot_check::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             // Like the app, pick the palette at the start of every frame.
             color::set_palette(&p);

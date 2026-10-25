@@ -23,7 +23,8 @@ struct Keys {
 fn harness(change: impl FnOnce(&mut AppState)) -> Harness<'static, Keys> {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     change(&mut st);
-    let mut h = Harness::new_state(|ctx, k: &mut Keys| super::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
+    let mut h = crate::ui::snapshot_check::builder()
+        .build_state(|ctx, k: &mut Keys| super::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
     h.run();
     h
 }

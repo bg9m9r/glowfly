@@ -35,7 +35,7 @@ fn unstaged() -> AppState {
 
 fn harness(st: AppState, field: bool) -> H {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(|| (String::new(), true)) };
-    let mut h = Harness::new_state(
+    let mut h = crate::ui::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             // Like the shell: keys before the views draw.
             super::input(ctx, &mut k.st, &mut k.msgs);

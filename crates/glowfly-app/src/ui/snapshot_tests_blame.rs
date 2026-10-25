@@ -144,7 +144,7 @@ fn menu(blocked: Option<&'static str>) -> Harness<'static, Vec<Msg>> {
 
 /// `menu` for the file at `path`.
 fn menu_for(path: &'static str, blocked: Option<&'static str>) -> Harness<'static, Vec<Msg>> {
-    Harness::builder().with_size(egui::vec2(260.0, 136.0)).build_ui_state(
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(260.0, 136.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());
