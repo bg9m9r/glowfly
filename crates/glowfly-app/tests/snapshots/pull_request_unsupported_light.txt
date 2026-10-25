@@ -98,7 +98,7 @@ Label "ada"
 Label "opened this pull request"
 Label "Adds a page that lists search results."
 Label "Paging and filters come in a later change."
-Label "Comments, reviews and merging in Glowfly work with GitHub, GitLab and Bitbucket Cloud for now. Open this pull request in the browser to take part."
+Label "Comments, reviews and merging in Glowfly work with GitHub, GitLab and Bitbucket for now. Open this pull request in the browser to take part."
 painted:
   "api-server"
   "Repository"

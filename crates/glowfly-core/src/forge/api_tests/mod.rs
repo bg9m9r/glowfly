@@ -8,6 +8,7 @@ use crate::error::Error;
 mod azure;
 mod azure_issues;
 mod bitbucket;
+mod bitbucket_dc_review;
 mod bitbucket_issues;
 mod bitbucket_merge;
 mod bitbucket_review;

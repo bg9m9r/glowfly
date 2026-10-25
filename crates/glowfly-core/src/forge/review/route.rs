@@ -2,7 +2,10 @@
 //! `Error::Unsupported` without sending anything.
 
 use super::super::{Auth, Provider, Target};
-use super::{Entry, MergeRequest, Merged, PrPage, ReviewRequest, bitbucket, bitbucket_merge, checked, github, gitlab, thread, unsupported};
+use super::{
+    Entry, MergeRequest, Merged, PrPage, ReviewRequest, bitbucket, bitbucket_dc, bitbucket_merge, checked, github, gitlab, thread,
+    unsupported,
+};
 use crate::error::Result;
 
 /// The services with in-app reviews.
@@ -10,6 +13,7 @@ enum Service {
     GitHub,
     GitLab,
     Cloud,
+    DataCenter,
 }
 
 fn service(p: Provider) -> Option<Service> {
@@ -17,6 +21,7 @@ fn service(p: Provider) -> Option<Service> {
         Provider::GitHub | Provider::GitHubEnterprise => Some(Service::GitHub),
         Provider::GitLab | Provider::GitLabSelfManaged => Some(Service::GitLab),
         Provider::Bitbucket => Some(Service::Cloud),
+        Provider::BitbucketDataCenter => Some(Service::DataCenter),
         _ => None,
     }
 }
@@ -38,6 +43,7 @@ pub fn pr_page(t: &Target, auth: &Auth, id: u64) -> Result<PrPage> {
         Service::GitHub => github::pr_page(t, auth, id)?,
         Service::GitLab => gitlab::pr_page(t, auth, id)?,
         Service::Cloud => bitbucket::pr_page(t, auth, id)?,
+        Service::DataCenter => bitbucket_dc::pr_page(t, auth, id)?,
     };
     page.entries = page.entries.into_iter().map(|e| checked(t, e)).collect();
     page.threads = page.threads.into_iter().map(|th| thread::checked_thread(t, th)).collect();
@@ -50,6 +56,7 @@ pub fn post_comment(t: &Target, auth: &Auth, id: u64, body: &str) -> Result<Entr
         Service::GitHub => github::post_comment(t, auth, id, body)?,
         Service::GitLab => gitlab::post_comment(t, auth, id, body)?,
         Service::Cloud => bitbucket::post_comment(t, auth, id, body)?,
+        Service::DataCenter => bitbucket_dc::post_comment(t, auth, id, body)?,
     };
     Ok(checked(t, e))
 }
@@ -60,6 +67,7 @@ pub fn submit_review(t: &Target, auth: &Auth, id: u64, req: &ReviewRequest) -> R
         Service::GitHub => github::submit_review(t, auth, id, req),
         Service::GitLab => gitlab::submit_review(t, auth, id, req),
         Service::Cloud => bitbucket::submit_review(t, auth, id, req),
+        Service::DataCenter => bitbucket_dc::submit_review(t, auth, id, req),
     }
 }
 
@@ -68,6 +76,7 @@ pub fn merge(t: &Target, auth: &Auth, id: u64, req: &MergeRequest) -> Result<Mer
         Service::GitHub => github::merge(t, auth, id, req),
         Service::GitLab => gitlab::merge(t, auth, id, req),
         Service::Cloud => bitbucket_merge::cloud(t, auth, id, req),
+        Service::DataCenter => bitbucket_merge::data_center(t, auth, id, req),
     }
 }
 
@@ -82,7 +91,11 @@ mod tests {
     fn reviews_in_app_for_github_gitlab_and_bitbucket() {
         use Provider::*;
         for p in Provider::ALL {
-            assert_eq!(reviews_in_app(p), matches!(p, GitHub | GitHubEnterprise | GitLab | GitLabSelfManaged | Bitbucket), "{p:?}");
+            assert_eq!(
+                reviews_in_app(p),
+                matches!(p, GitHub | GitHubEnterprise | GitLab | GitLabSelfManaged | Bitbucket | BitbucketDataCenter),
+                "{p:?}"
+            );
         }
     }
 
@@ -96,7 +109,7 @@ mod tests {
     #[test]
     fn other_services_send_nothing() {
         let m = Mock::start(|_| Reply::not_found());
-        for p in [Provider::BitbucketDataCenter, Provider::AzureDevOps, Provider::JiraCloud] {
+        for p in [Provider::AzureDevOps, Provider::JiraCloud] {
             let t = Target { provider: p, host: "example.com".into(), owner: "o".into(), project: "p".into(), repo: "r".into() };
             let auth = Auth::from_token(p, None, "tok", "test");
             let req = MergeRequest { method: MergeMethod::Merge, head_sha: "abc".into(), title: String::new(), message: String::new() };
@@ -137,7 +150,7 @@ mod tests {
 
     #[test]
     fn bitbucket_threads_send_nothing() {
-        threads_send_nothing(&[Provider::Bitbucket], "bitbucket.org", "Bitbucket");
+        threads_send_nothing(&[Provider::Bitbucket, Provider::BitbucketDataCenter], "bitbucket.org", "Bitbucket");
     }
 
     #[test]

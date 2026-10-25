@@ -14,7 +14,7 @@ source file, update its line here.
 - `checks.rs`, `*_checks.rs`: CI checks on pull requests and commits.
 - `check_detail.rs`, `github_check_list.rs`, `azure_check_list.rs`, `gitlab_checks.rs`, `bitbucket_checks.rs`: each check on a pull request's head commit, for the pull request panel.
 - `details.rs`: per-PR checks and votes read after the list.
-- `review/`: pull request conversations, review threads, reviews and merging, routing in `route.rs`: GitHub's in `github.rs` and `github_threads.rs`, GitLab merge requests' notes, approvals and merging in `gitlab.rs`, Bitbucket Cloud pull requests' comments and votes in `bitbucket.rs`, and Bitbucket merging in `bitbucket_merge.rs`.
+- `review/`: pull request conversations, review threads, reviews and merging, routing in `route.rs`: GitHub's in `github.rs` and `github_threads.rs`, GitLab merge requests' notes, approvals and merging in `gitlab.rs`, Bitbucket Cloud pull requests' comments and votes in `bitbucket.rs`, Data Center's in `bitbucket_dc.rs`, and both services' merging in `bitbucket_merge.rs`.
 - `pr_heads.rs`: each service's head on a fork.
 - `repo_size.rs`: the hosting service's reported repository size (see Partial clones in [core-ops.md](core-ops.md)).
 

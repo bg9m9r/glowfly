@@ -152,7 +152,7 @@ fn pull_request_unsupported_light() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("pull_request_unsupported_light");
-    assert!(h.query_by_label_contains("work with GitHub, GitLab and Bitbucket Cloud for now").is_some());
+    assert!(h.query_by_label_contains("work with GitHub, GitLab and Bitbucket for now").is_some());
     assert!(h.query_by_label("Your review").is_none() && h.query_by_label("Write a comment").is_none());
     drop(h);
     remove_fixture(&dir);

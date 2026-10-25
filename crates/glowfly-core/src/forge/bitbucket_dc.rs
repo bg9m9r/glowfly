@@ -30,6 +30,15 @@ pub(super) fn dc_repo(t: &Target) -> String {
     format!("https://{}/rest/api/1.0/projects/{}/repos/{}", t.host, enc(&t.owner), enc(&t.repo))
 }
 
+/// The repository's web pages: `/projects/{key}/repos/{slug}`, or `/users/{user}/repos/{slug}`
+/// for a `~user` personal repository.
+pub(super) fn dc_web(t: &Target) -> String {
+    match t.owner.strip_prefix('~') {
+        Some(user) => format!("https://{}/users/{}/repos/{}", t.host, enc(user), enc(&t.repo)),
+        None => format!("https://{}/projects/{}/repos/{}", t.host, enc(&t.owner), enc(&t.repo)),
+    }
+}
+
 pub(super) fn dc_list<T: DeserializeOwned>(auth: &Auth, first: String) -> Result<Vec<T>> {
     page::collect(first.clone(), |url| {
         let v: Values<T> = get(auth, url)?;
@@ -186,10 +195,7 @@ impl super::Forge for BitbucketDc {
 
     /// `~user` owners are personal repositories, under /users/.
     fn repo_url(&self, t: &Target) -> String {
-        match t.owner.strip_prefix('~') {
-            Some(user) => format!("https://{}/users/{}/repos/{}/browse", t.host, enc(user), enc(&t.repo)),
-            None => format!("https://{}/projects/{}/repos/{}/browse", t.host, enc(&t.owner), enc(&t.repo)),
-        }
+        format!("{}/browse", dc_web(t))
     }
 
     fn commit_checks(&self, t: &Target, auth: &Auth, tips: &[TipQuery]) -> Result<HashMap<String, Checks>> {

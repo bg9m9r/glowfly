@@ -1,6 +1,6 @@
-//! Headless tests for a Bitbucket pull request in the panel: loading its page, requesting
-//! changes without a summary and taking the request back, the author's own pull request, and
-//! merging with the repository's strategy.
+//! Headless tests for a Bitbucket pull request in the panel: loading its page (Cloud and Data
+//! Center), requesting changes without a summary and taking the request back, the author's own
+//! pull request, and merging with the repository's strategy.
 
 use super::super::update;
 use super::calls_tests::{calls, detail, git_jobs, loads, refreshes, run, view};
@@ -8,7 +8,7 @@ use super::tests::{cleanup, github, setup};
 use crate::msg::Msg;
 use crate::pull_request::{PrCall, PrReply, PullRequestMsg};
 use crate::state::AppState;
-use glowfly_core::forge::{MergeMethod, Merged, PrDetail, PrPage, Provider, ReviewEvent, ReviewStyle, Target, Vote};
+use glowfly_core::forge::{Connection, MergeMethod, Merged, PrDetail, PrPage, Provider, ReviewEvent, ReviewStyle, Target, Vote};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -48,6 +48,10 @@ fn done(st: AppState, dirs: [PathBuf; 2]) {
 
 fn choose(st: &mut AppState, ev: ReviewEvent) {
     st.pull_request.as_mut().unwrap().forms.review_event = ev;
+}
+
+fn data_center() -> Target {
+    Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() }
 }
 
 #[test]
@@ -136,5 +140,24 @@ fn no_strategy_sends_nothing() {
     loaded(&mut st, |d| d.methods.clear());
     assert!(calls(&run(&mut st, PullRequestMsg::Merge)).is_empty());
     assert_eq!(view(&st).busy, None);
+    done(st, dirs);
+}
+
+#[test]
+fn data_center_pull_request_loads_and_approves() {
+    let (mut st, work, bare, _) = setup("prb-dc", &[]);
+    let (dc, dirs) = (data_center(), [work, bare]);
+    // A self-hosted server is contacted only once connected.
+    let connection = Connection { account: dc.account(), user: "ada".into(), method: "access token".into() };
+    st.settings.connections.push(connection);
+    st.forge.as_mut().unwrap().host = Some(dc);
+    let fx = run(&mut st, PullRequestMsg::Open(7));
+    let jobs = calls(&fx);
+    assert!(matches!(&jobs[..], [j] if matches!(j.call, PrCall::Load) && j.req.target == data_center()), "{jobs:?}");
+    loaded(&mut st, |_| {});
+    choose(&mut st, ReviewEvent::Approve);
+    let fx = run(&mut st, PullRequestMsg::SubmitReview);
+    let jobs = calls(&fx);
+    assert!(matches!(&jobs[..], [j] if matches!(&j.call, PrCall::Review { event: ReviewEvent::Approve, .. })), "{jobs:?}");
     done(st, dirs);
 }

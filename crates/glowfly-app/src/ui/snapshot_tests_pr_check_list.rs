@@ -126,7 +126,7 @@ fn pr_check_list_empty_light() {
     st.pull_request = Some(view);
     let mut h = harness(st, false);
     h.run();
-    assert!(h.query_by_label_contains("work with GitHub, GitLab and Bitbucket Cloud for now").is_some());
+    assert!(h.query_by_label_contains("work with GitHub, GitLab and Bitbucket for now").is_some());
     assert!(h.query_by_label("Nothing has reported a check or build on this pull request's latest commit yet.").is_some());
     drop(h);
     remove_fixture(&dir);

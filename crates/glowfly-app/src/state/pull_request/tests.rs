@@ -110,7 +110,7 @@ fn only_services_with_in_app_reviews_load_a_page() {
     assert_eq!(initial_page(&fs(Provider::GitLab)), Page::Loading);
     assert_eq!(initial_page(&fs(Provider::GitLabSelfManaged)), Page::Loading);
     assert_eq!(initial_page(&fs(Provider::Bitbucket)), Page::Loading);
-    assert_eq!(initial_page(&fs(Provider::BitbucketDataCenter)), Page::Unsupported);
+    assert_eq!(initial_page(&fs(Provider::BitbucketDataCenter)), Page::Loading);
     assert_eq!(initial_page(&fs(Provider::AzureDevOps)), Page::Unsupported);
     assert_eq!(initial_page(&ForgeState::new(None, "origin".into(), None)), Page::Unsupported);
 }

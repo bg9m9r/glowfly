@@ -4,14 +4,16 @@
 //! to and resolving threads (`thread.rs`), starting a code comment on diff lines, alone or in
 //! the user's pending review (`line_anchor.rs`, `new_comment.rs`), and merging. `route.rs` picks
 //! the service: GitHub and GitHub Enterprise Server (github.rs, github_threads.rs), GitLab
-//! (gitlab.rs) and Bitbucket Cloud (bitbucket.rs, with its merging in bitbucket_merge.rs); only
-//! GitHub has code comment threads and new code comments. Every other service answers
+//! (gitlab.rs), Bitbucket Cloud (bitbucket.rs) and Bitbucket Data Center (bitbucket_dc.rs), with
+//! both Bitbucket services' merging in bitbucket_merge.rs; only GitHub has code comment threads
+//! and new code comments. Every other service answers
 //! `Error::Unsupported` without sending anything.
 
 use super::{Target, links};
 use crate::error::Error;
 
 mod bitbucket;
+mod bitbucket_dc;
 mod bitbucket_merge;
 mod github;
 mod github_new_comment;

@@ -47,7 +47,7 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs:
                 match &v.page {
                     Page::Unsupported => {
                         let text = format!(
-                            "Comments, reviews and merging in Glowfly work with GitHub, GitLab and Bitbucket Cloud for now. Open this {} in the browser to take part.",
+                            "Comments, reviews and merging in Glowfly work with GitHub, GitLab and Bitbucket for now. Open this {} in the browser to take part.",
                             v.noun
                         );
                         note(ui, text, color::weak());
