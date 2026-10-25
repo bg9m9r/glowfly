@@ -43,6 +43,7 @@ fn approval_choice_reasons() {
     assert_eq!(blocked(&v, ReviewEvent::Approve), None);
     assert_eq!(blocked(&v, ReviewEvent::Unapprove).as_deref(), Some("You haven't approved this"));
     assert_eq!(blocked(&v, ReviewEvent::RequestChanges).as_deref(), Some("GitLab has no Request changes"));
+    assert_eq!(blocked(&v, ReviewEvent::UnrequestChanges).as_deref(), Some("GitLab has no Request changes"));
     let v = mr(|d| d.style = approvals(true, Some(true)));
     assert_eq!(blocked(&v, ReviewEvent::Approve).as_deref(), Some("You've approved this already"));
     assert_eq!(blocked(&v, ReviewEvent::Unapprove), None);

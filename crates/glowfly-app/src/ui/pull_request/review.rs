@@ -1,7 +1,7 @@
 //! The "Your review" section: the verdict (comment, approve, request changes; on GitLab,
-//! comment, approve or remove approval), a summary, and
-//! the Submit review button, or Finish review for a review already started on the service, with
-//! why it is disabled under it.
+//! comment, approve or remove approval; on Bitbucket, comment, approve or request changes,
+//! either taken back once given), a summary, and the Submit review button, or Finish review for
+//! a review already started on the service, with why it is disabled under it.
 
 use super::super::theme::color;
 use super::{heading, note, send_key};

@@ -245,6 +245,31 @@ pub(crate) fn put<T: DeserializeOwned>(auth: &Auth, url: &str, body: serde_json:
     json(call(request("PUT", auth, url)?, Some(body))?)
 }
 
+/// Sends a DELETE; any success (200, 204) will do, and the body is ignored.
+pub(crate) fn delete(auth: &Auth, url: &str) -> Result<()> {
+    call(request("DELETE", auth, url)?, None).map(drop)
+}
+
+/// A write's answer, for calls whose success status matters (202: the service carries on in the
+/// background, at `location`).
+pub(crate) struct Answer {
+    pub status: u16,
+    /// The `Location` header.
+    pub location: Option<String>,
+    /// The JSON body; for a 202 only when one came.
+    pub body: Option<serde_json::Value>,
+}
+
+/// A POST like `post`, keeping the status and the `Location` header. A 202 without a JSON body
+/// is still a success, never taken for a sign-in page.
+pub(crate) fn post_answer(auth: &Auth, url: &str, body: serde_json::Value) -> Result<Answer> {
+    let resp = call(request("POST", auth, url)?, Some(body))?;
+    let (status, location) = (resp.status(), resp.header("Location").map(str::to_owned));
+    let body =
+        if status == 202 { if resp.content_type().contains("json") { read_json(resp).ok() } else { None } } else { Some(json(resp)?) };
+    Ok(Answer { status, location, body })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -296,6 +321,20 @@ mod tests {
         for s in ["", "x y", "\u{1f600}/%", "..", "a+b"] {
             assert_eq!(dec(&enc(s)), s);
         }
+    }
+
+    #[test]
+    fn post_answer_keeps_a_background_answer() {
+        use super::super::mock::{Mock, Reply};
+        let m = Mock::start(|r| match r.method.as_str() {
+            "POST" => Reply::status(202, "").header("Location", "https://api.bitbucket.org/2.0/task/1"),
+            _ => Reply::status(204, ""),
+        });
+        let auth = Auth::from_token(Provider::Bitbucket, Some("ada"), "pass", "test");
+        let a = post_answer(&auth, "https://api.bitbucket.org/2.0/x/merge", serde_json::json!({})).unwrap();
+        assert_eq!((a.status, a.location.as_deref(), a.body), (202, Some("https://api.bitbucket.org/2.0/task/1"), None));
+        delete(&auth, "https://api.bitbucket.org/2.0/x/approve").unwrap();
+        assert_eq!(m.requests().iter().map(|r| r.method.as_str()).collect::<Vec<_>>(), ["POST", "DELETE"]);
     }
 
     #[test]

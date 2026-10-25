@@ -2,40 +2,37 @@
 //! pull request panel shows (state, mergeability, the repository's merge settings, comments and
 //! submitted reviews, code comment threads), posting a comment, submitting a review, replying
 //! to and resolving threads (`thread.rs`), starting a code comment on diff lines, alone or in
-//! the user's pending review (`line_anchor.rs`, `new_comment.rs`), and merging. GitHub and GitHub
-//! Enterprise Server (github.rs, github_threads.rs) and GitLab (gitlab.rs: no code comment threads
-//! or new code comments yet); every other service answers `Error::Unsupported` without sending
-//! anything.
+//! the user's pending review (`line_anchor.rs`, `new_comment.rs`), and merging. `route.rs` picks
+//! the service: GitHub and GitHub Enterprise Server (github.rs, github_threads.rs), GitLab
+//! (gitlab.rs) and Bitbucket Cloud (bitbucket.rs, with its merging in bitbucket_merge.rs); only
+//! GitHub has code comment threads and new code comments. Every other service answers
+//! `Error::Unsupported` without sending anything.
 
-use super::{Auth, Provider, Target, links};
-use crate::error::{Error, Result};
+use super::{Target, links};
+use crate::error::Error;
 
+mod bitbucket;
+mod bitbucket_merge;
 mod github;
 mod github_new_comment;
 pub(super) mod github_threads;
 mod gitlab;
 mod line_anchor;
 mod new_comment;
+mod route;
 mod thread;
 
 pub use line_anchor::*;
 pub use new_comment::*;
+pub use route::*;
 pub use thread::*;
 
-/// Whether comments, reviews and merging work inside Glowfly for this service.
-pub fn reviews_in_app(p: Provider) -> bool {
-    matches!(p, Provider::GitHub | Provider::GitHubEnterprise | Provider::GitLab | Provider::GitLabSelfManaged)
-}
+/// The start of the error for a merge or approval refused because the source branch moved;
+/// the caller ends it with the action (" merge.").
+pub(super) const MOVED: &str = "The source branch changed on the service since this was loaded. Reload to see the new commits, then";
 
-/// Whether code comment threads (their replies, replying and resolving) work inside Glowfly
-/// for this service.
-pub fn threads_in_app(p: Provider) -> bool {
-    matches!(p, Provider::GitHub | Provider::GitHubEnterprise)
-}
-
-fn is_gitlab(p: Provider) -> bool {
-    matches!(p, Provider::GitLab | Provider::GitLabSelfManaged)
-}
+/// The error for merging a pull request that the service no longer has open.
+pub(super) const NOT_OPEN_MERGE: &str = "This pull request isn't open any more. Reload to see its state.";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrState {
@@ -49,7 +46,7 @@ pub enum MergeMethod {
     Merge,
     Squash,
     Rebase,
-    /// The target moves to the source's last commit, with no merge commit (GitLab).
+    /// The target moves to the source's last commit, with no merge commit (GitLab, Bitbucket).
     FastForward,
 }
 
@@ -93,6 +90,17 @@ pub enum ReviewStyle {
         /// Whether the service lets the signed-in user approve, when said.
         can_approve: Option<bool>,
     },
+    /// Bitbucket: approve or request changes, each taken back once given, and comments as
+    /// comments; only the repository's merge strategies are listed.
+    Votes { mine: Vote },
+}
+
+/// The signed-in user's vote on a Bitbucket pull request.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Vote {
+    Neither,
+    Approved,
+    ChangesRequested,
 }
 
 /// The pull request as its page on the service has it, with the settings that decide how it
@@ -105,6 +113,7 @@ pub struct PrDetail {
     pub locked: bool,
     pub mergeable: Option<bool>,
     pub merge_state: MergeState,
+    /// The source's head commit, in full on every service.
     pub head_sha: String,
     /// The target's commit the changes are compared from; on GitLab, the merge base the
     /// service diffed from.
@@ -118,7 +127,7 @@ pub struct PrDetail {
     /// Whether the signed-in user may push to (and so merge into) the repository, when said.
     pub can_merge: Option<bool>,
     /// The merge methods the service allows, in its listing order (GitHub: `MergeMethod::GITHUB`
-    /// order; GitLab: the project's default first).
+    /// order; GitLab and Bitbucket: the repository's default first).
     pub methods: Vec<MergeMethod>,
     /// The repository deletes a merged pull request's branch itself.
     pub deletes_merged_branches: bool,
@@ -179,8 +188,10 @@ pub enum ReviewEvent {
     Comment,
     Approve,
     RequestChanges,
-    /// Take back the signed-in user's approval (GitLab).
+    /// Take back the signed-in user's approval (GitLab, Bitbucket).
     Unapprove,
+    /// Take back the signed-in user's request for changes (Bitbucket).
+    UnrequestChanges,
 }
 
 impl ReviewEvent {
@@ -190,6 +201,7 @@ impl ReviewEvent {
             ReviewEvent::Approve => "APPROVE",
             ReviewEvent::RequestChanges => "REQUEST_CHANGES",
             ReviewEvent::Unapprove => "UNAPPROVE",
+            ReviewEvent::UnrequestChanges => "UNREQUEST_CHANGES",
         }
     }
 }
@@ -222,115 +234,31 @@ pub struct Merged {
     pub sha: String,
 }
 
-fn unsupported(t: &Target) -> Error {
+pub(super) fn unsupported(t: &Target) -> Error {
     Error::Unsupported(format!("{} reviews aren't supported in Glowfly yet", t.provider.name()))
 }
 
-fn checked(t: &Target, mut e: Entry) -> Entry {
+pub(super) fn checked(t: &Target, mut e: Entry) -> Entry {
     e.url = links::web_url(t, std::mem::take(&mut e.url));
     e
 }
 
-/// The pull request's page: its detail and conversation.
-pub fn pr_page(t: &Target, auth: &Auth, id: u64) -> Result<PrPage> {
-    if !reviews_in_app(t.provider) {
-        return Err(unsupported(t));
-    }
-    let mut page = if is_gitlab(t.provider) { gitlab::pr_page(t, auth, id)? } else { github::pr_page(t, auth, id)? };
-    page.entries = page.entries.into_iter().map(|e| checked(t, e)).collect();
-    page.threads = page.threads.into_iter().map(|th| thread::checked_thread(t, th)).collect();
-    Ok(page)
+/// The commit message a service takes: the title, a blank line and the message, either left
+/// out when empty.
+pub(super) fn message_of(req: &MergeRequest) -> String {
+    [req.title.trim(), req.message.trim()].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(
+        "
+
+",
+    )
 }
 
-/// Adds a comment to the conversation; returns it as the service stored it.
-pub fn post_comment(t: &Target, auth: &Auth, id: u64, body: &str) -> Result<Entry> {
-    if !reviews_in_app(t.provider) {
-        return Err(unsupported(t));
+/// Whether two commit ids name the same commit: true when either is empty (nothing to compare),
+/// or when the shorter, at least 7 characters long, starts the longer (ignoring case).
+pub(super) fn same_commit(a: &str, b: &str) -> bool {
+    if a.is_empty() || b.is_empty() {
+        return true;
     }
-    let e = if is_gitlab(t.provider) { gitlab::post_comment(t, auth, id, body)? } else { github::post_comment(t, auth, id, body)? };
-    Ok(checked(t, e))
-}
-
-/// Submits a review, or finishes the user's `pending` one (with its comments).
-pub fn submit_review(t: &Target, auth: &Auth, id: u64, req: &ReviewRequest) -> Result<()> {
-    if !reviews_in_app(t.provider) {
-        return Err(unsupported(t));
-    }
-    if is_gitlab(t.provider) { gitlab::submit_review(t, auth, id, req) } else { github::submit_review(t, auth, id, req) }
-}
-
-pub fn merge(t: &Target, auth: &Auth, id: u64, req: &MergeRequest) -> Result<Merged> {
-    if !reviews_in_app(t.provider) {
-        return Err(unsupported(t));
-    }
-    if is_gitlab(t.provider) { gitlab::merge(t, auth, id, req) } else { github::merge(t, auth, id, req) }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::mock::{Mock, Reply};
-    use super::*;
-
-    #[test]
-    fn reviews_in_app_for_github_and_gitlab() {
-        use Provider::*;
-        for p in Provider::ALL {
-            assert_eq!(reviews_in_app(p), matches!(p, GitHub | GitHubEnterprise | GitLab | GitLabSelfManaged), "{p:?}");
-        }
-    }
-
-    #[test]
-    fn threads_in_app_only_for_github() {
-        for p in Provider::ALL {
-            assert_eq!(threads_in_app(p), matches!(p, Provider::GitHub | Provider::GitHubEnterprise), "{p:?}");
-        }
-    }
-
-    #[test]
-    fn other_services_send_nothing() {
-        let m = Mock::start(|_| Reply::not_found());
-        for p in [Provider::Bitbucket, Provider::BitbucketDataCenter, Provider::AzureDevOps, Provider::JiraCloud] {
-            let t = Target { provider: p, host: "example.com".into(), owner: "o".into(), project: "p".into(), repo: "r".into() };
-            let auth = Auth::from_token(p, None, "tok", "test");
-            let req = MergeRequest { method: MergeMethod::Merge, head_sha: "abc".into(), title: String::new(), message: String::new() };
-            let review = ReviewRequest { event: ReviewEvent::Approve, body: String::new(), pending: None, head_sha: "abc".into() };
-            let errors = [
-                pr_page(&t, &auth, 1).unwrap_err(),
-                post_comment(&t, &auth, 1, "hi").unwrap_err(),
-                submit_review(&t, &auth, 1, &review).unwrap_err(),
-                merge(&t, &auth, 1, &req).unwrap_err(),
-                reply_to_thread(&t, &auth, 1, 2, "hi").unwrap_err(),
-                resolve_thread(&t, &auth, "T_1", true).unwrap_err(),
-            ];
-            for e in errors {
-                assert!(matches!(&e, Error::Unsupported(m) if m.contains(p.name())), "{p:?}: {e}");
-            }
-        }
-        assert!(m.requests().is_empty());
-    }
-
-    #[test]
-    fn gitlab_threads_send_nothing() {
-        let m = Mock::start(|_| Reply::not_found());
-        for p in [Provider::GitLab, Provider::GitLabSelfManaged] {
-            let t = Target { provider: p, host: "gitlab.com".into(), owner: "g".into(), project: String::new(), repo: "app".into() };
-            let auth = Auth::from_token(p, None, "tok", "test");
-            let errors = [reply_to_thread(&t, &auth, 1, 2, "hi").unwrap_err(), resolve_thread(&t, &auth, "T_1", true).unwrap_err()];
-            for e in errors {
-                assert!(matches!(&e, Error::Unsupported(m) if m.contains("GitLab")), "{p:?}: {e}");
-            }
-        }
-        assert!(m.requests().is_empty());
-    }
-
-    #[test]
-    fn the_author_is_matched_without_case() {
-        let mut d = github::tests::detail();
-        d.author = "Ada".into();
-        d.me = "ada".into();
-        assert!(d.is_author());
-        d.me = String::new();
-        d.author = String::new();
-        assert!(!d.is_author(), "an unknown user is nobody's author");
-    }
+    let (short, long) = if a.len() <= b.len() { (a, b) } else { (b, a) };
+    short.len() >= 7 && long.get(..short.len()).is_some_and(|p| p.eq_ignore_ascii_case(short))
 }

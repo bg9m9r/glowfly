@@ -58,6 +58,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - With no source here at all, the panel fetches the service's head ref once in the background, without prompts and writing no ref (`update/pull_request/source.rs`, `Provider::pr_head_ref`, `remote_ops::fetch_ref_cmd`), then compares again.
 - The source notes and their buttons are in `state/pull_request_source.rs`.
 - A Commits tab row selects its commit into the commit panel without closing the pull request panel (`update/pull_request/commits.rs`), and that commit's file diffs open inside the tab.
+- The review and merge forms' rules are in `state/pull_request_actions.rs` (review choices in `pull_request_actions/review.rs`).
 
 ## New code comments on diff lines
 

@@ -139,6 +139,23 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Open a single comment or review in the browser
 - Code comment threads for GitLab diff discussions, Bitbucket inline comments and Azure DevOps
   file threads in the panel
+- Switch straight between Approve and Request changes on Bitbucket (now: remove one vote, then
+  cast the other)
+- Bitbucket's other merge strategies: Cloud's squash_fast_forward and rebase_merge; Data
+  Center's ff (fast-forward if possible), rebase-no-ff and squash-ff-only
+- Name Data Center merge vetoes (and Cloud's failed merge checks) in the mergeability line
+  instead of the general "rules block merging"
+- Who may merge on Bitbucket Cloud, from the user's repository permission (unknown now)
+- Delete the source branch through Bitbucket with the merge (Cloud's close_source_branch, Data
+  Center's delete-after-merge) instead of a git push
+- Word "deletes merged branches itself" for a Bitbucket Cloud pull request's own
+  close-source-branch flag
+- Merge with the server's default strategy when the Data Center merge settings can't be read
+  (now: a merge commit)
+- Data Center tasks (BLOCKER comments) shown and resolved as tasks
+- Data Center review batches (8.x pending reviews): finish a started review in the panel
+- Reload by itself later when Bitbucket Cloud is still merging after the status polls
+- Say the summary is optional for Request changes on Bitbucket in the summary box's hint
 - Comment counts on the Files changed rows
 - Highlight the whole range of a multi-line comment, and markers on folded rows of the whole-file
   view

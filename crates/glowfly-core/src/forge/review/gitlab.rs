@@ -7,8 +7,8 @@ use super::super::gitlab_issues::{ApiNote, note_entry};
 use super::super::http::put;
 use super::super::{Auth, Target, enc, enc_path, get, links, page, post};
 use super::{
-    Entry, EntryKind, MergeMethod, MergeRequest, MergeState, Merged, PrDetail, PrPage, PrState, ReviewEvent, ReviewRequest, ReviewStyle,
-    Verdict,
+    Entry, EntryKind, MOVED, MergeMethod, MergeRequest, MergeState, Merged, PrDetail, PrPage, PrState, ReviewEvent, ReviewRequest,
+    ReviewStyle, Verdict, message_of,
 };
 use crate::error::{Error, Result};
 use serde::Deserialize;
@@ -16,8 +16,6 @@ use serde_json::{Value, json};
 
 /// GitLab's Developer access level, the lowest that may merge into an unprotected branch.
 const DEVELOPER: u32 = 30;
-
-const MOVED: &str = "The source branch changed on the service since this was loaded. Reload to see the new commits, then";
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
@@ -277,7 +275,7 @@ pub(super) fn submit_review(t: &Target, auth: &Auth, iid: u64, req: &ReviewReque
     let note = |body: &str| post::<ApiNote>(auth, &format!("{}/notes", mr_api(t, iid)), json!({ "body": body })).map(drop);
     let done = match req.event {
         ReviewEvent::Comment => return note(&req.body),
-        ReviewEvent::RequestChanges => {
+        ReviewEvent::RequestChanges | ReviewEvent::UnrequestChanges => {
             return Err(Error::Unsupported("GitLab has no Request changes; leave a comment instead".into()));
         }
         ReviewEvent::Approve => {
@@ -294,12 +292,6 @@ pub(super) fn submit_review(t: &Target, auth: &Auth, iid: u64, req: &ReviewReque
         return Ok(());
     }
     note(&req.body).map_err(|e| Error::Other(format!("{done}, but the summary wasn't posted: {e}")))
-}
-
-/// The commit message GitLab takes: the title, a blank line and the message, either left out
-/// when empty.
-fn message_of(req: &MergeRequest) -> String {
-    [req.title.trim(), req.message.trim()].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join("\n\n")
 }
 
 pub(super) fn merge(t: &Target, auth: &Auth, iid: u64, req: &MergeRequest) -> Result<Merged> {

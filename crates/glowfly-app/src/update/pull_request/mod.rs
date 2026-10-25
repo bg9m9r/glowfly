@@ -17,6 +17,8 @@ use glowfly_core::repo::DiffTarget;
 use source::{request, retip, shows_diff};
 use std::time::Instant;
 
+#[cfg(test)]
+mod bitbucket_tests;
 pub(super) mod calls;
 #[cfg(test)]
 mod calls_tests;

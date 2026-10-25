@@ -209,8 +209,8 @@ pub(super) fn post_comment(t: &Target, auth: &Auth, id: u64, body: &str) -> Resu
 }
 
 pub(super) fn submit_review(t: &Target, auth: &Auth, id: u64, req: &ReviewRequest) -> Result<()> {
-    if req.event == ReviewEvent::Unapprove {
-        return Err(Error::Unsupported("GitHub has no approvals to take back".into()));
+    if matches!(req.event, ReviewEvent::Unapprove | ReviewEvent::UnrequestChanges) {
+        return Err(Error::Unsupported("GitHub has no approvals or change requests to take back".into()));
     }
     let url = match req.pending {
         Some(p) => format!("{}/reviews/{p}/events", pull_api(t, id)),

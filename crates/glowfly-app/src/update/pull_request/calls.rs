@@ -138,6 +138,7 @@ pub(super) fn action_text(label: &str, into: &str, reply: &PrReply) -> (bool, St
         PrReply::Reviewed(ReviewEvent::RequestChanges, Ok(())) => (true, format!("Requested changes on {label}")),
         PrReply::Reviewed(ReviewEvent::Comment, Ok(())) => (true, format!("Reviewed {label}")),
         PrReply::Reviewed(ReviewEvent::Unapprove, Ok(())) => (true, format!("Removed your approval from {label}")),
+        PrReply::Reviewed(ReviewEvent::UnrequestChanges, Ok(())) => (true, format!("Removed your change request from {label}")),
         PrReply::Reviewed(_, Err(e)) => fail("Reviewing", e),
         PrReply::Merged { result: Ok(_), method, .. } if into.is_empty() => (true, format!("Merged {label} ({})", method.api_name())),
         PrReply::Merged { result: Ok(_), method, .. } => (true, format!("Merged {label} into {into} ({})", method.api_name())),

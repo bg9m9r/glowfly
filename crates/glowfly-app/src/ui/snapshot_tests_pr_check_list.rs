@@ -111,14 +111,14 @@ fn pr_check_list_empty_light() {
     assert!(h.query_by_label_contains("Open build page").is_none());
     drop(h);
 
-    // A service without in-app reviews (Bitbucket) still shows its checks.
+    // A service without in-app reviews (Azure DevOps) still shows its checks.
     let (mut st, _) = with_pr(ThemeChoice::Light, "pr-check-empty", true);
     let fs = st.forge.as_mut().unwrap();
     fs.host = Some(Target {
-        provider: Provider::Bitbucket,
-        host: "bitbucket.org".into(),
+        provider: Provider::AzureDevOps,
+        host: "dev.azure.com".into(),
         owner: "acme".into(),
-        project: String::new(),
+        project: "web".into(),
         repo: "demo".into(),
     });
     let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
@@ -126,7 +126,7 @@ fn pr_check_list_empty_light() {
     st.pull_request = Some(view);
     let mut h = harness(st, false);
     h.run();
-    assert!(h.query_by_label_contains("work with GitHub and GitLab for now").is_some());
+    assert!(h.query_by_label_contains("work with GitHub, GitLab and Bitbucket Cloud for now").is_some());
     assert!(h.query_by_label("Nothing has reported a check or build on this pull request's latest commit yet.").is_some());
     drop(h);
     remove_fixture(&dir);

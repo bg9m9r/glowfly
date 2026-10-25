@@ -1,6 +1,7 @@
 //! The "Merge" section: whether the service would merge now, the merge methods the service
-//! offers, the commit title and message, deleting the source branch afterwards, and the Merge
-//! button (with a confirmation, and why it is disabled under it). A merged pull request offers to delete its source branch.
+//! offers (none when the repository allows none Glowfly can send), the commit title and
+//! message, deleting the source branch afterwards, and the Merge button (with a confirmation,
+//! and why it is disabled under it). A merged pull request offers to delete its source branch.
 
 use super::super::theme::color;
 use super::{heading, note, tone_color};

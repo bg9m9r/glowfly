@@ -126,10 +126,10 @@ fn open_github_pr_requests_the_page() {
 }
 
 #[test]
-fn open_on_bitbucket_sends_no_call() {
-    let (mut st, work, bare, _) = setup("prc-bitbucket", &[]);
-    let bb = Target { provider: Provider::Bitbucket, host: "bitbucket.org".into(), ..github() };
-    st.forge.as_mut().unwrap().host = Some(bb);
+fn open_on_azure_devops_sends_no_call() {
+    let (mut st, work, bare, _) = setup("prc-azure", &[]);
+    let azure = Target { provider: Provider::AzureDevOps, host: "dev.azure.com".into(), project: "web".into(), ..github() };
+    st.forge.as_mut().unwrap().host = Some(azure);
     let fx = run(&mut st, PullRequestMsg::Open(7));
     assert!(calls(&fx).is_empty());
     assert_eq!(view(&st).page, Page::Unsupported);

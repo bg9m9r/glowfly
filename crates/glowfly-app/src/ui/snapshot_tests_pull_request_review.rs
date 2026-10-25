@@ -139,10 +139,10 @@ fn pull_request_unsupported_light() {
     let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-unsupported", true);
     let fs = st.forge.as_mut().unwrap();
     fs.host = Some(Target {
-        provider: Provider::Bitbucket,
-        host: "bitbucket.org".into(),
+        provider: Provider::AzureDevOps,
+        host: "dev.azure.com".into(),
         owner: "acme".into(),
-        project: String::new(),
+        project: "web".into(),
         repo: "demo".into(),
     });
     let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
@@ -152,7 +152,7 @@ fn pull_request_unsupported_light() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("pull_request_unsupported_light");
-    assert!(h.query_by_label_contains("work with GitHub and GitLab for now").is_some());
+    assert!(h.query_by_label_contains("work with GitHub, GitLab and Bitbucket Cloud for now").is_some());
     assert!(h.query_by_label("Your review").is_none() && h.query_by_label("Write a comment").is_none());
     drop(h);
     remove_fixture(&dir);
@@ -204,5 +204,7 @@ fn command_enter_posts_the_comment_and_the_review() {
     remove_fixture(&dir);
 }
 
+#[path = "snapshot_tests_pull_request_bitbucket.rs"]
+mod bitbucket;
 #[path = "snapshot_tests_pull_request_gitlab.rs"]
 mod gitlab;
