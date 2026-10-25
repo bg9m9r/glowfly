@@ -41,12 +41,11 @@ pub(super) fn history(n: usize) -> Vec<CommitInfo> {
             }
             CommitInfo {
                 oid: oid_of(i),
-                summary,
-                body: if i % 2 == 0 { format!("Body of {i}") } else { String::new() },
-                author: author.into(),
-                email: email.into(),
+                summary: summary.into(),
+                body: if i % 2 == 0 { format!("Body of {i}").into() } else { Default::default() },
+                author: glowfly_core::repo::Author::new(author, email),
                 time: 1_600_000_000 - i as i64,
-                parents,
+                parents: parents.into(),
             }
         })
         .collect()

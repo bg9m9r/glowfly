@@ -32,7 +32,7 @@ pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<Str
     let local_tip = |n: &str| snap.locals.iter().find(|b| b.name == n).and_then(|b| b.oid);
     // The commit the pull request ends at: the local tip, else the remote branch's.
     let end: Option<Oid> = local.and_then(|b| b.oid).or_else(|| tip(&from, &source));
-    let title = end.and_then(|o| snap.row_of.get(&o)).map(|&r| snap.commits[r].summary.clone()).unwrap_or_else(|| source.clone());
+    let title = end.and_then(|o| snap.row_of.get(&o)).map(|&r| snap.commits[r].summary.to_string()).unwrap_or_else(|| source.clone());
     // Issues mentioned on the branch: from its name and from commits not yet on the target.
     let branch = local.map(|b| b.name.as_str()).unwrap_or(&source);
     let mut keys: Vec<String> = fs.branch_issue(branch).into_iter().collect();

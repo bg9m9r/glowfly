@@ -135,11 +135,10 @@ mod tests {
         let info = |n: u8, summary: &str| CommitInfo {
             oid: git2::Oid::from_bytes(&[n; 20]).unwrap(),
             summary: summary.into(),
-            body: String::new(),
-            author: "A".into(),
-            email: "a@example.com".into(),
+            body: Default::default(),
+            author: glowfly_core::repo::Author::new("A", "a@example.com"),
             time: 0,
-            parents: Vec::new(),
+            parents: Default::default(),
         };
         let key = IndexKey { starts: Vec::new(), shallow: Vec::new() };
         let index = Arc::new(CommitIndex::from_commits(key, &[info(1, "fix one"), info(2, "other"), info(3, "fix two")]));

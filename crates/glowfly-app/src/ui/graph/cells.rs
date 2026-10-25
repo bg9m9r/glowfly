@@ -87,7 +87,7 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
         let cp = painter.with_clip_rect(cols.rect(cols.commit, rect));
         let w = width(cols.commit);
         let author_y = if cfg.commit_sha { mid + AUTHOR_DY } else { mid };
-        text.author = paint_cut_text(&cp, pos2(cols.commit.0, author_y), &c.author, type_scale::font(type_scale::SMALL), weak, w);
+        text.author = paint_cut_text(&cp, pos2(cols.commit.0, author_y), c.author.name(), type_scale::font(type_scale::SMALL), weak, w);
         if cfg.commit_sha {
             let sha = &c.oid.to_string()[..7];
             text.sha = paint_cut_text(&cp, pos2(cols.commit.0, mid + SHA_DY), sha, type_scale::mono(type_scale::SMALL), color::faint(), w);

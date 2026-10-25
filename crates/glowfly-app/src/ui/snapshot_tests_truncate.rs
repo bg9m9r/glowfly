@@ -100,8 +100,8 @@ fn graph_columns_narrow() {
     st.settings.column_widths = ColumnWidths { refs: 100.0, changes: 60.0, commit: 80.0, date: 80.0 };
     // A name longer than the narrowest commit column.
     let snap = st.snap.as_mut().unwrap();
-    std::sync::Arc::get_mut(&mut snap.commits).unwrap().iter_mut().find(|c| c.summary == "Search results page").unwrap().author =
-        LONG_AUTHOR.into();
+    let c = std::sync::Arc::get_mut(&mut snap.commits).unwrap().iter_mut().find(|c| c.summary == "Search results page").unwrap();
+    c.author = glowfly_core::repo::Author::new(LONG_AUTHOR, c.author.email());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("graph_columns_narrow");

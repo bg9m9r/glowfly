@@ -143,12 +143,11 @@ mod tests {
         let oid = Oid::from_bytes(&[n; 20]).unwrap();
         CommitInfo {
             oid,
-            summary: format!("fix {n}"),
-            body: String::new(),
-            author: "A".into(),
-            email: "a@x.org".into(),
+            summary: format!("fix {n}").into(),
+            body: Default::default(),
+            author: glowfly_core::repo::Author::new("A", "a@x.org"),
             time: 0,
-            parents: vec![],
+            parents: Default::default(),
         }
     }
 

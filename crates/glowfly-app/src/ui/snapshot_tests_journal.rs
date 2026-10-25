@@ -97,7 +97,7 @@ pub(super) fn journal(st: &mut AppState, selected: usize) {
         .skip_while(|o| **o != from)
         .map(|o| {
             let c = snap.commits.iter().find(|c| c.oid == *o).unwrap();
-            CommitLine { oid: c.oid, summary: c.summary.clone(), author: c.author.clone(), time: c.time }
+            CommitLine { oid: c.oid, summary: c.summary.to_string(), author: c.author.name().to_owned(), time: c.time }
         })
         .collect();
     let preview = Preview { history, leaving: Some(Count { n: 0, more: false }), arriving: Some(Count { n: 1, more: false }) };

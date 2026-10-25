@@ -37,12 +37,11 @@ fn answered(st: &mut AppState, commits: usize, positions: Vec<u32>) {
         id[..8].copy_from_slice(&(i as u64 + 1).to_be_bytes());
         CommitInfo {
             oid: Oid::from_bytes(&id).unwrap(),
-            summary: format!("commit {i}"),
-            body: String::new(),
-            author: "A".into(),
-            email: "a@example.com".into(),
+            summary: format!("commit {i}").into(),
+            body: Default::default(),
+            author: glowfly_core::repo::Author::new("A", "a@example.com"),
             time: 0,
-            parents: Vec::new(),
+            parents: Default::default(),
         }
     };
     let list: Vec<CommitInfo> = (0..commits).map(info).collect();

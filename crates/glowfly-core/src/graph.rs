@@ -16,16 +16,20 @@ pub mod owners;
 use crate::branch_colour::{Colouring, Swatch, preferred};
 use crate::repo::CommitInfo;
 use git2::Oid;
+use smallvec::SmallVec;
 use std::collections::HashMap;
+
+/// A row's lines into or out of its node; up to two are kept in the row itself.
+pub type Edges = SmallVec<[(usize, usize); 2]>;
 
 #[derive(Default, Clone, Debug, PartialEq)]
 pub struct GraphRow {
     /// Lane holding this row's node.
     pub col: usize,
     /// Lines from a lane at the top of the row into the node: (lane, col).
-    pub top: Vec<(usize, usize)>,
+    pub top: Edges,
     /// Lines from the node to a lane at the bottom of the row: (col, lane).
-    pub bottom: Vec<(usize, usize)>,
+    pub bottom: Edges,
     /// Lanes passing straight through the row.
     pub through: LaneSet,
 }
@@ -167,12 +171,12 @@ pub fn layout(commits: &[CommitInfo], head: Option<Oid>, wip: bool, worktrees: &
                 let col = free_slot(&mut lanes);
                 let through = (0..lanes.len()).filter(|&i| lanes[i].is_some()).collect();
                 lanes[col] = Some(c.oid);
-                let row = GraphRow { col, top: vec![], bottom: vec![(col, col)], through };
+                let row = GraphRow { col, top: Edges::new(), bottom: Edges::from_slice(&[(col, col)]), through };
                 out.worktree_wips.push(WorktreeWipRow { worktree, before: idx, row });
                 out.max_width = out.max_width.max(lanes.len());
             }
         }
-        let matches: Vec<usize> = (0..lanes.len()).filter(|&i| lanes[i] == Some(c.oid)).collect();
+        let matches: SmallVec<[usize; 4]> = (0..lanes.len()).filter(|&i| lanes[i] == Some(c.oid)).collect();
         let col = match matches.first() {
             Some(&i) => i,
             None => free_slot(&mut lanes),
@@ -183,7 +187,7 @@ pub fn layout(commits: &[CommitInfo], head: Option<Oid>, wip: bool, worktrees: &
             lanes[i] = None;
         }
 
-        let mut bottom = Vec::new();
+        let mut bottom = Edges::new();
         if let Some(&first) = c.parents.first() {
             lanes[col] = Some(first);
             bottom.push((col, col));
@@ -221,12 +225,11 @@ mod tests {
     fn chain() -> Vec<CommitInfo> {
         let c = |n: u8, parents: Vec<Oid>| CommitInfo {
             oid: oid(n),
-            summary: String::new(),
-            body: String::new(),
-            author: String::new(),
-            email: String::new(),
+            summary: "".into(),
+            body: "".into(),
+            author: crate::repo::Author::new("", ""),
             time: 0,
-            parents,
+            parents: parents.into(),
         };
         vec![c(1, vec![oid(2)]), c(2, vec![oid(3)]), c(3, vec![])]
     }
@@ -241,7 +244,7 @@ mod tests {
         let l = layout(&commits, Some(oid(1)), false, &[(0, oid(2))]);
         let [w] = &l.worktree_wips[..] else { panic!("{:?}", l.worktree_wips) };
         assert_eq!((w.worktree, w.before), (0, 1));
-        assert_eq!((w.row.col, w.row.top.clone(), w.row.bottom.clone(), lanes(&w.row)), (1, vec![], vec![(1, 1)], vec![0]));
+        assert_eq!((w.row.col, w.row.top.to_vec(), w.row.bottom.to_vec(), lanes(&w.row)), (1, vec![], vec![(1, 1)], vec![0]));
         assert!(l.rows[1].top.contains(&(0, 0)) && l.rows[1].top.contains(&(1, 0)), "{:?}", l.rows[1]);
         assert_eq!((l.rows.len(), l.max_width), (3, 2));
         assert!(l.rows[2].through.is_empty());
@@ -251,11 +254,11 @@ mod tests {
     fn a_worktree_at_head_sits_below_the_own_wip_row() {
         let commits = chain();
         let l = layout(&commits, Some(oid(1)), true, &[(3, oid(1))]);
-        assert_eq!(l.wip.as_ref().unwrap().bottom, [(0, 0)]);
+        assert_eq!(l.wip.as_ref().unwrap().bottom[..], [(0, 0)]);
         let [w] = &l.worktree_wips[..] else { panic!() };
         assert_eq!((w.worktree, w.before, w.row.col), (3, 0, 1));
         assert!(w.row.through.contains(0));
-        assert_eq!(l.rows[0].top, [(0, 0), (1, 0)]);
+        assert_eq!(l.rows[0].top[..], [(0, 0), (1, 0)]);
     }
 
     #[test]
@@ -264,7 +267,7 @@ mod tests {
         let l = layout(&commits, Some(oid(1)), false, &[(1, oid(3)), (2, oid(3))]);
         let got: Vec<(usize, usize, usize)> = l.worktree_wips.iter().map(|w| (w.worktree, w.before, w.row.col)).collect();
         assert_eq!(got, [(1, 2, 1), (2, 2, 2)]);
-        assert_eq!(l.rows[2].top, [(0, 0), (1, 0), (2, 0)]);
+        assert_eq!(l.rows[2].top[..], [(0, 0), (1, 0), (2, 0)]);
         assert_eq!(l.max_width, 3);
     }
 
@@ -274,8 +277,12 @@ mod tests {
         let plain = layout(&commits, Some(oid(1)), true, &[]);
         let unknown = layout(&commits, Some(oid(1)), true, &[(1, oid(9))]);
         assert!(plain.worktree_wips.is_empty() && unknown.worktree_wips.is_empty(), "a head outside the history gets no row");
-        let straight =
-            |top: Vec<(usize, usize)>, bottom: Vec<(usize, usize)>| GraphRow { col: 0, top, bottom, through: LaneSet::default() };
+        let straight = |top: Vec<(usize, usize)>, bottom: Vec<(usize, usize)>| GraphRow {
+            col: 0,
+            top: top.into(),
+            bottom: bottom.into(),
+            through: LaneSet::default(),
+        };
         let want = vec![straight(vec![(0, 0)], vec![(0, 0)]), straight(vec![(0, 0)], vec![(0, 0)]), straight(vec![(0, 0)], vec![])];
         assert_eq!(plain.rows, want);
         assert_eq!(unknown.rows, want);

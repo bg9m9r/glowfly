@@ -9,7 +9,7 @@
 
 use super::{Builder, CommitIndex, IndexKey, MAX_INDEXED, Texts};
 use crate::error::Result;
-use crate::repo::walk::commit_texts;
+use crate::repo::walk::flatten_body_into;
 use crate::repo::walk_order::{TimeQueue, walk_parents};
 use git2::{Oid, Repository};
 use std::path::Path;
@@ -98,6 +98,8 @@ pub(crate) fn build_paced(
     let mut last_report = Instant::now();
     let mut complete = true;
     let mut parents: Vec<Oid> = Vec::new();
+    // The flattened body, in a buffer reused for every commit.
+    let mut body = String::new();
     while let Some(oid) = queue.pop() {
         let n = out.len();
         if n >= pace.max {
@@ -126,10 +128,12 @@ pub(crate) fn build_paced(
             queue.push(p, time);
             parents.push(p);
         }
-        let (summary, body) = commit_texts(&c);
+        body.clear();
+        flatten_body_into(c.body().unwrap_or_default(), &mut body);
+        let texts = Texts { summary: c.summary().unwrap_or_default(), body: &body };
         let author = c.author();
         let who = (author.name().unwrap_or_default(), author.email().unwrap_or_default());
-        out.push_new(oid, (c.time().seconds(), author.when().seconds()), who, Texts { summary: &summary, body: &body }, &parents);
+        out.push_new(oid, (c.time().seconds(), author.when().seconds()), who, texts, &parents);
     }
     if stop() {
         return Ok(None);

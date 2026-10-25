@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 fn head_summary(st: &AppState) -> String {
     let snap = st.snap.as_ref().expect("a repository is open");
-    snap.commits[snap.row_of[&snap.head_oid.expect("HEAD")]].summary.clone()
+    snap.commits[snap.row_of[&snap.head_oid.expect("HEAD")]].summary.to_string()
 }
 
 fn repo_state(st: &AppState) -> RepositoryState {

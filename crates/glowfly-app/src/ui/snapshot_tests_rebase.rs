@@ -34,11 +34,11 @@ pub(super) fn with_panel(theme: ThemeChoice, name: &str, actions: &[RebaseAction
         .map(|(c, a)| TodoItem {
             oid: c.oid,
             action: *a,
-            summary: c.summary.clone(),
-            message: if c.body.is_empty() { c.summary.clone() } else { format!("{}\n\n{}", c.summary, c.body) },
+            summary: c.summary.to_string(),
+            message: if c.body.is_empty() { c.summary.to_string() } else { format!("{}\n\n{}", c.summary, c.body) },
             new_message: None,
             combined_message: None,
-            author: c.author.clone(),
+            author: c.author.name().to_owned(),
             time: c.time,
         })
         .collect();

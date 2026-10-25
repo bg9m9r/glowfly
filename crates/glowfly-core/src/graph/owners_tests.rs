@@ -9,10 +9,9 @@ fn oid(n: u8) -> Oid {
 fn c(n: u8, parents: &[u8], summary: &str) -> CommitInfo {
     CommitInfo {
         oid: oid(n),
-        summary: summary.to_owned(),
-        body: String::new(),
-        author: String::new(),
-        email: String::new(),
+        summary: summary.into(),
+        body: Default::default(),
+        author: crate::repo::Author::new("", ""),
         time: 0,
         parents: parents.iter().map(|&p| oid(p)).collect(),
     }

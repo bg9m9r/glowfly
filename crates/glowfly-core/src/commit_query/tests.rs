@@ -13,11 +13,10 @@ fn commit(summary: &str, author: &str, email: &str) -> CommitInfo {
     CommitInfo {
         oid: Oid::from_str("0abcdef1234567890abcdef1234567890abcdef1").unwrap(),
         summary: summary.into(),
-        body: String::new(),
-        author: author.into(),
-        email: email.into(),
+        body: Default::default(),
+        author: crate::repo::Author::new(author, email),
         time: 0,
-        parents: Vec::new(),
+        parents: Default::default(),
     }
 }
 
@@ -103,10 +102,9 @@ fn free_text_ignores_case_and_matches_id_prefixes() {
         oid: Oid::from_str("0abcdef1234567890abcdef1234567890abcdef1").unwrap(),
         summary: "Fix the Parser".into(),
         body: "Über-long BODY text".into(),
-        author: "Ada Lovelace".into(),
-        email: "ada@example.com".into(),
+        author: crate::repo::Author::new("Ada Lovelace", "ada@example.com"),
         time: 0,
-        parents: Vec::new(),
+        parents: Default::default(),
     };
     for q in ["parser", "fix the", "über-long", "body", "lovelace", "0abc", "0abcdef1234567890abcdef1234567890abcdef1"] {
         assert!(CommitQuery::parse(q).matches(&c), "{q}");
@@ -162,8 +160,13 @@ fn authors_of_a_repository_group_by_email() {
     let rows: Vec<(&str, &str, usize)> = list.iter().map(|a| (a.name.as_str(), a.email.as_str(), a.commits)).collect();
     assert_eq!(rows, [("Grace Hopper", "Grace@Example.com", 3), ("Test", "test@example.com", 2), ("Ada", "ada@example.com", 1)]);
 
-    let grace: Vec<usize> =
-        snap.commits.iter().enumerate().filter(|(_, c)| c.email.eq_ignore_ascii_case("grace@example.com")).map(|(i, _)| i).collect();
+    let grace: Vec<usize> = snap
+        .commits
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| c.author.email().eq_ignore_ascii_case("grace@example.com"))
+        .map(|(i, _)| i)
+        .collect();
     assert_eq!(grace.len(), 3);
     assert_eq!(CommitQuery::parse("author:grace").matching_rows(&snap.commits, &none()), grace);
     let _ = std::fs::remove_dir_all(&dir);

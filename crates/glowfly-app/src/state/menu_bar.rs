@@ -93,7 +93,7 @@ pub fn copy_message(st: &AppState) -> Result<String, &'static str> {
         _ => return Err(no_commit),
     };
     let Some(snap) = &st.snap else { return Err(no_commit) };
-    snap.row_of.get(oid).map(|&row| snap.commits[row].summary.clone()).ok_or(no_commit)
+    snap.row_of.get(oid).map(|&row| snap.commits[row].summary.to_string()).ok_or(no_commit)
 }
 
 /// The checked-out branch for Copy branch name, or why it is disabled.

@@ -257,7 +257,7 @@ fn summary(st: &AppState, oid: Oid) -> Option<String> {
         return d.message.lines().next().map(str::to_owned);
     }
     let snap = st.snap.as_ref()?;
-    snap.row_of.get(&oid).and_then(|&i| snap.commits.get(i)).map(|c| c.summary.clone())
+    snap.row_of.get(&oid).and_then(|&i| snap.commits.get(i)).map(|c| c.summary.to_string())
 }
 
 fn view_group(st: &AppState, diff: &FileDiff, rows: bool) -> ViewGroup {

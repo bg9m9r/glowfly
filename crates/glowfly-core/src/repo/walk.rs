@@ -6,8 +6,8 @@
 //! the commits read are put back in topological order (children first), keeping time order
 //! wherever the history allows it.
 
-use super::CommitInfo;
 use super::walk_order::{TimeQueue, walk_parents};
+use super::{Authors, CommitInfo};
 use crate::error::Result;
 use git2::{Oid, Repository};
 use std::cmp::Reverse;
@@ -25,6 +25,8 @@ pub(super) fn newest_commits(repo: &Repository, tips: &[Oid], max: usize) -> Res
         queue.push(tip, c.time().seconds());
     }
     let mut commits = Vec::new();
+    let mut authors = Authors::default();
+    let mut body = String::new();
     while let Some(oid) = queue.pop() {
         if commits.len() >= max {
             return Ok((children_first(commits), true));
@@ -33,13 +35,16 @@ pub(super) fn newest_commits(repo: &Repository, tips: &[Oid], max: usize) -> Res
         for (p, time) in walk_parents(&c) {
             queue.push(p, time);
         }
-        let (summary, body) = commit_texts(&c);
+        // The signature is read once, and the body flattened into a reused buffer.
+        let sig = c.author();
+        let author = authors.get(sig.name().unwrap_or_default(), sig.email().unwrap_or_default());
+        body.clear();
+        flatten_body_into(c.body().unwrap_or_default(), &mut body);
         commits.push(CommitInfo {
             oid,
-            summary,
-            body,
-            author: c.author().name().unwrap_or_default().to_owned(),
-            email: c.author().email().unwrap_or_default().to_owned(),
+            summary: c.summary().unwrap_or_default().into(),
+            body: body.as_str().into(),
+            author,
             time: c.time().seconds(),
             parents: c.parent_ids().collect(),
         });
@@ -90,6 +95,12 @@ pub(super) fn children_first(commits: Vec<CommitInfo>) -> Vec<CommitInfo> {
 /// `body` on one line: its words joined by single spaces, cut with "…" after about 240 bytes.
 pub(crate) fn flatten_body(body: &str) -> String {
     let mut out = String::new();
+    flatten_body_into(body, &mut out);
+    out
+}
+
+/// `flatten_body`, appended to the empty `out`.
+pub(crate) fn flatten_body_into(body: &str, out: &mut String) {
     for word in body.split_whitespace() {
         if out.len() > 240 {
             out.push('…');
@@ -100,5 +111,4 @@ pub(crate) fn flatten_body(body: &str) -> String {
         }
         out.push_str(word);
     }
-    out
 }

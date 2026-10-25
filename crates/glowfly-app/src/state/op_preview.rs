@@ -246,12 +246,11 @@ pub fn apply_msg(t: Lang, snap: &Snapshot, op: &PreviewOp, mode: Option<ResetMod
                     let loaded = snap.row_of.get(to).map(|&r| snap.commits[r].clone());
                     let c = loaded.unwrap_or_else(|| CommitInfo {
                         oid: *to,
-                        summary: String::new(),
-                        body: String::new(),
-                        author: String::new(),
-                        email: String::new(),
+                        summary: Default::default(),
+                        body: Default::default(),
+                        author: glowfly_core::repo::Author::new("", ""),
                         time: 0,
-                        parents: Vec::new(),
+                        parents: Default::default(),
                     });
                     crate::state::commit_menu::hard_reset_msg(t, snap, &c)
                 }

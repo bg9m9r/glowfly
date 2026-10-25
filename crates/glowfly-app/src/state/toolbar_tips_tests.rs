@@ -28,11 +28,10 @@ fn commit(oid: Oid, parent: Oid, summary: &str) -> CommitInfo {
     CommitInfo {
         oid,
         summary: summary.into(),
-        body: String::new(),
-        author: "T".into(),
-        email: "t@example.com".into(),
+        body: Default::default(),
+        author: glowfly_core::repo::Author::new("T", "t@example.com"),
         time: 0,
-        parents: vec![parent],
+        parents: [parent].into_iter().collect(),
     }
 }
 

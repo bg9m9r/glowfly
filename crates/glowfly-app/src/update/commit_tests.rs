@@ -22,7 +22,7 @@ fn last_toast(st: &AppState) -> (bool, String) {
 }
 
 fn head_summary(st: &AppState) -> String {
-    st.snap.as_ref().unwrap().commits[0].summary.clone()
+    st.snap.as_ref().unwrap().commits[0].summary.to_string()
 }
 
 /// HEAD's full message, as git stores it.

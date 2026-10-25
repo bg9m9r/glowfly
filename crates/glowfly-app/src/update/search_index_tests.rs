@@ -70,7 +70,7 @@ fn indexed(name: &str) -> (AppState, PathBuf) {
 fn summary(st: &AppState) -> Option<String> {
     let Selection::Commit(oid) = st.selection else { return None };
     let snap = st.snap.as_ref()?;
-    Some(snap.commits[*snap.row_of.get(&oid)?].summary.clone())
+    Some(snap.commits[*snap.row_of.get(&oid)?].summary.to_string())
 }
 
 #[test]

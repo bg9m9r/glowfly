@@ -28,7 +28,7 @@ fn history(st: &AppState, from: Oid) -> Vec<CommitLine> {
     let mut next = Some(from);
     while let Some(o) = next.take() {
         let Some(c) = snap.commits.iter().find(|c| c.oid == o) else { break };
-        out.push(CommitLine { oid: c.oid, summary: c.summary.clone(), author: c.author.clone(), time: c.time });
+        out.push(CommitLine { oid: c.oid, summary: c.summary.to_string(), author: c.author.name().to_owned(), time: c.time });
         next = c.parents.first().copied();
     }
     out.truncate(8);

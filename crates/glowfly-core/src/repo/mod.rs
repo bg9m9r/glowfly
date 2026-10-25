@@ -2,7 +2,8 @@
 //! Reads (history, refs, status, diffs) and index/working-tree edits happen here; operations
 //! that should run hooks or talk to remotes go through `gitcli`.
 //!
-//! The types are here (the diff ones in `diff_types`, `Snapshot`'s queries in `snapshot_impl`);
+//! The types are here (the diff ones in `diff_types`, a loaded commit and its shared author in
+//! `commit_info`, `Snapshot`'s queries in `snapshot_impl`);
 //! the work is split by area: `load` (history, refs, status), `branch_colours` (laying the graph
 //! out with each lane's owner and colour), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up) and `fsmonitor`
@@ -34,6 +35,7 @@ mod blame;
 mod blame_porcelain;
 pub mod branch_colours;
 mod collide;
+mod commit_info;
 mod common_dir;
 mod conflict;
 mod conflict_saved;
@@ -172,17 +174,7 @@ pub use workfile_unrm::{StagedNew, index_clear_for, staged_new, staged_new_match
 pub use worktree_counts::{COUNT_TIMEOUT, ChangesRead, WorktreeCount, count_worktree};
 pub use worktrees::{WorktreeInfo, worktree_wip_heads, worktrees_at};
 
-#[derive(Clone)]
-pub struct CommitInfo {
-    pub oid: Oid,
-    pub summary: String,
-    /// Message body flattened to one line (shown dimmed after the summary).
-    pub body: String,
-    pub author: String,
-    pub email: String,
-    pub time: i64,
-    pub parents: Vec<Oid>,
-}
+pub use commit_info::{Author, Authors, CommitInfo, Parents, Text};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RefKind {

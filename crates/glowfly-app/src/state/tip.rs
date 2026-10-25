@@ -114,7 +114,7 @@ pub fn short_sha(oid: git2::Oid) -> String {
 pub fn commit_rows(snap: &Snapshot, oids: &[git2::Oid]) -> Vec<TipRow> {
     oids.iter()
         .map(|o| match snap.row_of.get(o) {
-            Some(&row) => TipRow::Commit { sha: short_sha(*o), summary: snap.commits[row].summary.clone() },
+            Some(&row) => TipRow::Commit { sha: short_sha(*o), summary: snap.commits[row].summary.to_string() },
             None => TipRow::Line(short_sha(*o)),
         })
         .collect()

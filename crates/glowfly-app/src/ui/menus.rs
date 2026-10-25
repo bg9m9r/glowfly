@@ -72,7 +72,7 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
     super::custom_menu::group(ui, t, cmds, Place::Commit, Target::Commit(oid), msgs);
     ui.menu_button(t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("commits.menu.copy_sha"), Msg::Copy(sha.clone()));
-        menu_item(msgs, ui, t.tr("commits.menu.copy_message"), Msg::Copy(c.summary.clone()));
+        menu_item(msgs, ui, t.tr("commits.menu.copy_message"), Msg::Copy(c.summary.to_string()));
         menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Commit(oid))));
         let blocked = merge.then(|| CommitBlock::PatchMerge.text(t));
         menu_item_if(msgs, ui, t.tr("commits.menu.copy_patch"), blocked, Msg::Patch(PatchMsg::Copy(vec![oid])));

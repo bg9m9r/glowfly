@@ -76,7 +76,7 @@ impl MainlineForm {
         for &oid in oids {
             match snap.row_of.get(&oid).map(|&r| &snap.commits[r]) {
                 Some(c) if c.parents.len() > 1 => {
-                    merges.push(MergeParents { oid, summary: c.summary.clone(), parents: parent_choices(&c.parents, snap) })
+                    merges.push(MergeParents { oid, summary: c.summary.to_string(), parents: parent_choices(&c.parents, snap) })
                 }
                 _ => plain = plain.or(Some(oid)),
             }
@@ -116,7 +116,7 @@ fn parent_choices(parents: &[Oid], snap: &Snapshot) -> Vec<ParentChoice> {
         .iter()
         .map(|&p| ParentChoice {
             oid: p,
-            summary: snap.row_of.get(&p).map(|&r| snap.commits[r].summary.clone()),
+            summary: snap.row_of.get(&p).map(|&r| snap.commits[r].summary.to_string()),
             labels: snap
                 .refs
                 .get(&p)

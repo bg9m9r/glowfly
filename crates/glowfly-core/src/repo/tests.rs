@@ -59,7 +59,7 @@ fn history_graph_and_refs() {
     assert!(hidden.refs.values().flatten().all(|l| l.name != "side"));
     let main_tip = all.locals.iter().find(|b| b.name == "main").and_then(|b| b.oid);
     let other_tip = all.locals.iter().find(|b| b.name == "other").and_then(|b| b.oid).unwrap();
-    let only_other: Vec<_> = all.commits_between(other_tip, main_tip).iter().map(|c| c.summary.as_str()).collect();
+    let only_other: Vec<_> = all.commits_between(other_tip, main_tip).iter().map(|c| &*c.summary).collect();
     assert_eq!(only_other, ["other work"]);
     assert_eq!(all.head_message.as_deref(), Some("other work"));
     let stats = commit_stats(&dir, &[all.commits[0].oid]);
@@ -328,7 +328,7 @@ fn load_reads_commit_template() {
     write(&dir, "msg.txt", "chore: \n\n# details\n");
     git(&dir, &["config", "commit.template", "msg.txt"]);
     let t = load(&dir, &LoadOptions::all(10)).unwrap().commit_template.expect("template loaded");
-    assert_eq!((t.summary.as_str(), t.description.as_str(), t.comment_char), ("chore:", "# details", '#'));
+    assert_eq!((&*t.summary, t.description.as_str(), t.comment_char), ("chore:", "# details", '#'));
 }
 
 #[test]

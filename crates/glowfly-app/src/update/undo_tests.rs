@@ -22,7 +22,7 @@ use std::time::Instant;
 fn head_summary(st: &AppState) -> String {
     let snap = st.snap.as_ref().expect("a repository is open");
     let head = snap.head_oid.expect("HEAD");
-    snap.commits[snap.row_of[&head]].summary.clone()
+    snap.commits[snap.row_of[&head]].summary.to_string()
 }
 
 fn summary_oid(st: &AppState, summary: &str) -> Oid {

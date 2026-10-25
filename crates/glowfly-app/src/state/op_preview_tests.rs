@@ -194,7 +194,7 @@ fn notes_and_pick_blockers() {
     let head = s.head_oid.unwrap();
     assert!(pick_blocker(t, &s, &[head]).is_some(), "HEAD's own commit can't be picked onto it");
     let merge = s.commits[0].oid;
-    std::sync::Arc::get_mut(&mut s.commits).unwrap()[0].parents = vec![oid(1), oid(2)];
+    std::sync::Arc::get_mut(&mut s.commits).unwrap()[0].parents = [oid(1), oid(2)].into_iter().collect();
     s.head_oid = Some(oid(9));
     assert_eq!(pick_blocker(t, &s, &[merge]).as_deref(), Some("Preview doesn't cover cherry-picking a merge commit yet."));
 }

@@ -29,10 +29,9 @@ fn commit_search_ignores_case_and_matches_id_prefixes() {
         oid: Oid::from_str("0abcdef1234567890abcdef1234567890abcdef1").unwrap(),
         summary: "Fix the Parser".into(),
         body: "Über-long BODY text".into(),
-        author: "Ada Lovelace".into(),
-        email: "ada@example.com".into(),
+        author: glowfly_core::repo::Author::new("Ada Lovelace", "ada@example.com"),
         time: 0,
-        parents: Vec::new(),
+        parents: Default::default(),
     };
     for q in ["parser", "fix the", "über-long", "body", "lovelace", "0abc", "0abcdef1234567890abcdef1234567890abcdef1"] {
         assert!(CommitQuery::parse(q).matches(&c), "{q}");

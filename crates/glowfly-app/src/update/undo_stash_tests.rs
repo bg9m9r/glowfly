@@ -22,7 +22,7 @@ fn dirty(st: &AppState) -> bool {
 
 fn head_summary(st: &AppState) -> String {
     let snap = st.snap.as_ref().unwrap();
-    snap.commits[snap.row_of[&snap.head_oid.unwrap()]].summary.clone()
+    snap.commits[snap.row_of[&snap.head_oid.unwrap()]].summary.to_string()
 }
 
 fn opened(name: &str) -> (AppState, PathBuf) {

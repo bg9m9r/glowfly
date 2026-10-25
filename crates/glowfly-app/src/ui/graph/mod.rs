@@ -241,7 +241,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         nodes::merge_dot(&gp, pos2(node_x, mid), lane_col);
                     } else {
                         let av = if settings.use_initials { None } else { Some(&mut *avatars) };
-                        nodes::commit(&gp, pos2(node_x, mid), &c.author, &c.email, lane_col, av);
+                        nodes::commit(&gp, pos2(node_x, mid), c.author.name(), c.author.email(), lane_col, av);
                     }
                 }
 
@@ -307,7 +307,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     Some(ChipTip::One(i)) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_row(ui, t, &chips[i], tones[i])),
                     _ if hovered && text.msg.hovered(pointer) => resp.on_hover_ui_at_pointer(|ui| cells::message_tip(ui, c, show_body)),
                     _ if hovered && text.sha.hovered(pointer) => resp.on_hover_text_at_pointer(&c.oid.to_string()[..7]),
-                    _ if hovered && text.author.hovered(pointer) => resp.on_hover_text_at_pointer(&c.author),
+                    _ if hovered && text.author.hovered(pointer) => resp.on_hover_text_at_pointer(c.author.name()),
                     _ if hovered && in_date => resp.on_hover_text_at_pointer(settings.date_tooltip(c.time, now, offset)),
                     _ => resp,
                 };

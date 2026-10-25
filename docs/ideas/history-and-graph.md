@@ -117,6 +117,10 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Lay out a large history with HEAD's lane kept for the WIP row, so a clean/dirty flip changes one row instead of a worker relayout
 - Show a large history's WIP row at once (before the worker's relayout lands), drawn as a stub above HEAD
 - Walk a hovered branch's rows on the worker too (still up to 5,000 first-parent steps on the UI thread, once per tip)
+- Keep each parent commit the walk reads (for its time) in the queue, so popping it doesn't look the object up again; the walk is now mostly libgit2 object reads (about 1 s per 200,000 commits)
+- Measure the walk with libgit2's strict hash verification off on read-only paths (not benchmarked with the slimmer commits)
+- Share one `Authors` table between a tab's reloads and its search index, so an author is stored once per tab rather than once per load
+- Graph edge lanes as `u32` (or `u16`) pairs would take a row from 104 to about 72 bytes
 
 ### Search and filter
 

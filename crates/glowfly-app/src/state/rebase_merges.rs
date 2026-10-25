@@ -49,7 +49,7 @@ impl RebasePanel {
     /// id alone when neither has it.
     fn described(&self, oid: Oid, snap: Option<&Snapshot>) -> String {
         let listed = self.items.iter().chain(&self.original).filter_map(TodoStep::item).find(|i| i.oid == oid).map(|i| i.summary.clone());
-        let loaded = || snap.and_then(|s| s.row_of.get(&oid).and_then(|&r| s.commits.get(r))).map(|c| c.summary.clone());
+        let loaded = || snap.and_then(|s| s.row_of.get(&oid).and_then(|&r| s.commits.get(r))).map(|c| c.summary.to_string());
         match listed.or_else(loaded) {
             Some(summary) => format!("{} {summary}", short(oid)).trim_end().to_owned(),
             None => short(oid),

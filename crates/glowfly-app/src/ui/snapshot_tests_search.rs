@@ -27,7 +27,7 @@ pub(super) fn with_two_authors(theme: ThemeChoice, name: &str) -> (AppState, Pat
     reload(&mut st, &dir, &LoadOptions::all(500));
     let snap = st.snap.as_ref().unwrap();
     let grace = snap.commits.iter().find(|c| c.summary == "Write release notes").expect("the new commit");
-    assert_eq!((grace.author.as_str(), grace.email.as_str()), ("Grace Hopper", "grace@example.com"));
+    assert_eq!((grace.author.name(), grace.author.email()), ("Grace Hopper", "grace@example.com"));
     assert!(snap.graph.wip.is_some(), "README.md is still modified");
     (st, dir)
 }

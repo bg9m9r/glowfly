@@ -70,11 +70,10 @@ mod tests {
         CommitInfo {
             oid,
             summary: summary.into(),
-            body: String::new(),
-            author: String::new(),
-            email: String::new(),
+            body: Default::default(),
+            author: glowfly_core::repo::Author::new("", ""),
             time: 0,
-            parents: Vec::new(),
+            parents: Default::default(),
         }
     }
 

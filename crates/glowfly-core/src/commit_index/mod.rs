@@ -15,7 +15,7 @@
 
 use crate::commit_query::CommitQuery;
 use crate::matching::contains_lower;
-use crate::repo::{CommitInfo, Snapshot};
+use crate::repo::{Author, CommitInfo, Snapshot};
 use git2::Oid;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -89,9 +89,9 @@ pub struct CommitIndex {
     /// Every entry's walked parents, one after another.
     parents: Vec<Oid>,
     texts: Vec<Arc<str>>,
-    /// Distinct (name, email) authors.
-    people: Vec<(String, String)>,
-    person_of: HashMap<(String, String), u32>,
+    /// Distinct (name, email) authors, looked up without allocating (`Author: Borrow<str>`).
+    people: Vec<Author>,
+    person_of: HashMap<Author, u32>,
 }
 
 impl std::fmt::Debug for CommitIndex {
@@ -143,8 +143,8 @@ impl CommitIndex {
     /// The author (name, email) of the commit at `pos`.
     pub fn person_at(&self, pos: usize) -> Option<(&str, &str)> {
         self.entries.get(pos).map(|e| {
-            let (n, m) = &self.people[e.person as usize];
-            (n.as_str(), m.as_str())
+            let a = &self.people[e.person as usize];
+            (a.name(), a.email())
         })
     }
 
@@ -173,8 +173,8 @@ impl CommitIndex {
             return Some(Vec::new());
         }
         // Each author is tested once, not once per commit.
-        let author_ok: Vec<bool> = self.people.iter().map(|(n, m)| q.author_matches(n, m)).collect();
-        let name_text: Vec<bool> = self.people.iter().map(|(n, _)| contains_lower(n, q.text())).collect();
+        let author_ok: Vec<bool> = self.people.iter().map(|a| q.author_matches(a.name(), a.email())).collect();
+        let name_text: Vec<bool> = self.people.iter().map(|a| contains_lower(a.name(), q.text())).collect();
         let text = !q.text().is_empty();
         let mut out = Vec::new();
         for (i, e) in self.entries.iter().enumerate() {
@@ -202,7 +202,7 @@ impl CommitIndex {
         let mut b = Builder::new(key, None);
         for c in commits {
             let text = Texts { summary: &c.summary, body: &c.body };
-            b.push_new(c.oid, (c.time, c.time), (&c.author, &c.email), text, &c.parents);
+            b.push_new(c.oid, (c.time, c.time), (c.author.name(), c.author.email()), text, &c.parents);
         }
         b.finish(true)
     }
@@ -227,6 +227,8 @@ struct Builder {
     ix: CommitIndex,
     /// The text block being filled; it becomes `texts[block]` when full or at the end.
     current: String,
+    /// Scratch space for an author's lookup key.
+    key: String,
 }
 
 impl Builder {
@@ -245,7 +247,7 @@ impl Builder {
             people,
             person_of,
         };
-        Builder { ix, current: String::new() }
+        Builder { ix, current: String::new(), key: String::new() }
     }
 
     fn len(&self) -> usize {
@@ -253,13 +255,14 @@ impl Builder {
     }
 
     fn person(&mut self, name: &str, email: &str) -> u32 {
-        let key = (name.to_owned(), email.to_owned());
-        if let Some(&p) = self.ix.person_of.get(&key) {
+        Author::key_into(&mut self.key, name, email);
+        if let Some(&p) = self.ix.person_of.get(self.key.as_str()) {
             return p;
         }
         let p = self.ix.people.len() as u32;
-        self.ix.people.push(key.clone());
-        self.ix.person_of.insert(key, p);
+        let a = Author::new(name, email);
+        self.ix.people.push(a.clone());
+        self.ix.person_of.insert(a, p);
         p
     }
 

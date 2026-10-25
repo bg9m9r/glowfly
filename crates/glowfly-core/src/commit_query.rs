@@ -155,7 +155,7 @@ impl CommitQuery {
     /// matches its author (see [`author_matches`](Self::author_matches)). Path terms are checked
     /// by [`matching_rows`](Self::matching_rows).
     pub fn matches(&self, c: &CommitInfo) -> bool {
-        self.text_matches(&c.oid, &c.summary, &c.body, &c.author) && self.author_matches(&c.author, &c.email)
+        self.text_matches(&c.oid, &c.summary, &c.body, c.author.name()) && self.author_matches(c.author.name(), c.author.email())
     }
 
     /// Whether the free text (if any) is in `summary`, `body` or `author` (the author's name), or
@@ -243,15 +243,26 @@ pub struct AuthorCount {
 pub fn authors(commits: &[CommitInfo]) -> Vec<AuthorCount> {
     let mut out: Vec<AuthorCount> = Vec::new();
     let mut index: HashMap<String, usize> = HashMap::new();
+    // Each distinct author is lowercased once, not once per commit.
+    let mut seen: HashMap<&crate::repo::Author, usize> = HashMap::new();
     for c in commits {
-        let key = c.email.to_lowercase();
-        match index.get(&key) {
-            Some(&i) => out[i].commits += 1,
+        if let Some(&i) = seen.get(&c.author) {
+            out[i].commits += 1;
+            continue;
+        }
+        let key = c.author.email().to_lowercase();
+        let i = match index.get(&key) {
+            Some(&i) => {
+                out[i].commits += 1;
+                i
+            }
             None => {
                 index.insert(key, out.len());
-                out.push(AuthorCount { name: c.author.clone(), email: c.email.clone(), commits: 1 });
+                out.push(AuthorCount { name: c.author.name().to_owned(), email: c.author.email().to_owned(), commits: 1 });
+                out.len() - 1
             }
-        }
+        };
+        seen.insert(&c.author, i);
     }
     out.sort_by(|a, b| b.commits.cmp(&a.commits).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));
     out

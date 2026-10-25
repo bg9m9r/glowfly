@@ -10,10 +10,9 @@ fn info(id: &str, summary: &str, body: &str, author: &str, email: &str) -> Commi
         oid: Oid::from_str(id).unwrap(),
         summary: summary.into(),
         body: body.into(),
-        author: author.into(),
-        email: email.into(),
+        author: crate::repo::Author::new(author, email),
         time: 0,
-        parents: Vec::new(),
+        parents: Default::default(),
     }
 }
 
@@ -61,9 +60,9 @@ fn from_commits_round_trips() {
     for (p, c) in commits.iter().enumerate() {
         assert_eq!(ix.oid_at(p), Some(c.oid));
         assert_eq!(ix.position(c.oid), Some(p as u32));
-        assert_eq!(ix.summary_at(p), Some(c.summary.as_str()));
-        assert_eq!(ix.body_at(p), Some(c.body.as_str()));
-        assert_eq!(ix.person_at(p), Some((c.author.as_str(), c.email.as_str())));
+        assert_eq!(ix.summary_at(p), Some(&*c.summary));
+        assert_eq!(ix.body_at(p), Some(&*c.body));
+        assert_eq!(ix.person_at(p), Some((c.author.name(), c.author.email())));
         assert_eq!(ix.times_at(p), Some((c.time, c.time)));
     }
     assert_eq!(ix.oid_at(6), None);
@@ -78,7 +77,7 @@ fn a_message_that_is_not_utf8_indexes_empty_text() {
     std::fs::write(dir.join("msg.txt"), b"Caf\xe9 au lait\n\nCr\xe8me body\n").unwrap();
     git(&dir, &["-c", "i18n.commitEncoding=latin1", "commit", "-q", "-F", "msg.txt"]);
     let snap = load(&dir, &LoadOptions::all(100)).unwrap();
-    assert_eq!((snap.commits[0].summary.as_str(), snap.commits[0].body.as_str()), ("", ""), "the graph shows no text");
+    assert_eq!((&*snap.commits[0].summary, &*snap.commits[0].body), ("", ""), "the graph shows no text");
     let ix = build(&dir, &IndexKey::of(&snap), None, &mut |_| {}, &|| false).unwrap().unwrap();
     assert_eq!((ix.summary_at(0), ix.body_at(0)), (Some(""), Some("")));
     assert_eq!(ix.matching(&CommitQuery::parse("caf"), &|| false), Some(vec![]));

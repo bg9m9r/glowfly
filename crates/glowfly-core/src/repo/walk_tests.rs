@@ -8,10 +8,9 @@ fn info(n: u8, parents: &[u8]) -> CommitInfo {
     let oid = |n: u8| Oid::from_bytes(&[n; 20]).unwrap();
     CommitInfo {
         oid: oid(n),
-        summary: String::new(),
-        body: String::new(),
-        author: String::new(),
-        email: String::new(),
+        summary: Default::default(),
+        body: Default::default(),
+        author: crate::repo::Author::new("", ""),
         time: 0,
         parents: parents.iter().map(|&p| oid(p)).collect(),
     }
@@ -56,13 +55,13 @@ fn load_stops_at_the_limit_and_keeps_skewed_children_first() {
     commit_at(&dir, "tip", 5_000);
 
     let s = load(&dir, &LoadOptions::all(100)).unwrap();
-    let order: Vec<&str> = s.commits.iter().map(|c| c.summary.as_str()).collect();
+    let order: Vec<&str> = s.commits.iter().map(|c| &*c.summary).collect();
     // By time alone "parent" would come right after "tip", above its child.
     assert_eq!(order, ["tip", "child", "parent", "base"]);
     assert!(!s.truncated);
 
     let s = load(&dir, &LoadOptions::all(2)).unwrap();
-    let order: Vec<&str> = s.commits.iter().map(|c| c.summary.as_str()).collect();
+    let order: Vec<&str> = s.commits.iter().map(|c| &*c.summary).collect();
     assert_eq!(order, ["tip", "parent"], "the newest two by time; the old child is past the limit");
     assert!(s.truncated);
     let _ = std::fs::remove_dir_all(&dir);
