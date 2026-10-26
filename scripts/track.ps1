@@ -5,7 +5,8 @@
 #   pwsh scripts/track.ps1 123 'In progress'
 #   pwsh scripts/track.ps1 123 Inbox
 #
-# Done is set automatically when the issue closes (a `Closes #123` line in the landing commit).
+# The Project doesn't move closed issues to Done, so run `pwsh scripts/track.ps1 123 Done` after the
+# landing that closes the issue (the one whose commit says `Closes #123`).
 param(
     [Parameter(Mandatory = $true)][int]$Issue,
     [Parameter(Mandatory = $true)]

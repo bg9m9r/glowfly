@@ -57,9 +57,10 @@ recent stable Rust toolchain and Git on your `PATH` (on Debian or Ubuntu, also r
 cargo run --release -- C:\path\to\repo
 ```
 
-With no path it reopens the last repository. See [ROADMAP.md](ROADMAP.md) for where the project
-is going, the [issues](https://github.com/bg9m9r/glowfly/issues) for planned work and
-[docs/ideas](docs/ideas/README.md) for untriaged ideas.
+With no path it reopens the last repository. Plans and status are on GitHub: the
+[Glowfly Project](https://github.com/users/bg9m9r/projects/2) and the
+[milestones](https://github.com/bg9m9r/glowfly/milestones). [ROADMAP.md](ROADMAP.md) gives the
+goal and scope, and [docs/ideas](docs/ideas/README.md) holds untriaged ideas.
 
 ## What it does
 

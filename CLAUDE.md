@@ -2,8 +2,9 @@
 
 Native Git client in Rust (egui + libgit2). Read `docs/ARCHITECTURE.md`
 before structural changes; what each file holds is in `docs/architecture/<area>.md`, one line per
-file. `ROADMAP.md` is the source of truth for the goal, milestones and
-status; the work is GitHub issues on the [Glowfly Project](https://github.com/users/bg9m9r/projects/2).
+file. The [Glowfly Project](https://github.com/users/bg9m9r/projects/2) and its GitHub milestones
+are the source of truth for milestones (with their exit criteria), priorities and status; the
+work is its issues. `ROADMAP.md` holds only the goal, the scope and how planning works.
 
 ## Commands
 
@@ -41,7 +42,8 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
 - Pick work from the Project's **Ready** column, highest Priority first (within a priority, the
   current milestone first). Never pick a `needs-decision` issue: those are the owner's to decide.
 - One branch (and worktree) per issue, e.g. `issue/<n>-<slug>`. On starting, move its card:
-  `pwsh scripts/track.ps1 <n> 'In progress'`. Done is set automatically when the issue closes.
+  `pwsh scripts/track.ps1 <n> 'In progress'`. The Project doesn't move closed issues, so after
+  the landing that closes the issue, move it: `pwsh scripts/track.ps1 <n> Done`.
 - Commit subjects stay Conventional Commits; the landing commit's body says `Closes #<n>`
   (`Refs #<n>` for a partial landing, with a comment on the issue saying what is left).
 - Follow-ups, polish and edge cases found while building: one line in the matching

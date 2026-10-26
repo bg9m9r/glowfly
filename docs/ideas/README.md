@@ -12,8 +12,9 @@ promoted.
   issue.
 - **Dropping an idea**: delete the line; git history keeps it.
 
-Planned work is tracked as [issues](https://github.com/bg9m9r/glowfly/issues) on the Glowfly
-Project; see [ROADMAP.md](../../ROADMAP.md) for the milestones.
+Planned work, its priority and status are tracked as [issues](https://github.com/bg9m9r/glowfly/issues)
+on the [Glowfly Project](https://github.com/users/bg9m9r/projects/2) and its
+[milestones](https://github.com/bg9m9r/glowfly/milestones).
 
 ## Files
 
