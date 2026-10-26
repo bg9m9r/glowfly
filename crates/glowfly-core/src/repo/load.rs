@@ -2,6 +2,7 @@
 
 use super::graph_cache::GraphCache;
 use super::*;
+use crate::commit_text;
 use crate::error::{Error, Result};
 use crate::graph;
 use git2::{BranchType, Oid, Repository};
@@ -75,7 +76,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     }
     let opts = &opts;
 
-    let head_message = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).and_then(|c| c.message().map(|m| m.trim_end().to_owned()));
+    let head_message = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).map(|c| commit_text::message(&c).trim_end().to_owned());
     let commit_template = template::commit_template(&repo, &workdir);
     let merge_message = (state == git2::RepositoryState::Merge).then(|| merge_msg::merge_message(&repo)).flatten();
     let gitflow = crate::gitflow::read_config(&repo);
@@ -362,9 +363,7 @@ pub fn messages_between(workdir: &Path, source: &str, target: &str) -> Result<Ve
     }
     let mut out = Vec::new();
     for oid in walk.take(500) {
-        if let Some(m) = repo.find_commit(oid?)?.message() {
-            out.push(m.to_owned());
-        }
+        out.push(commit_text::message(&repo.find_commit(oid?)?).into_owned());
     }
     Ok(out)
 }

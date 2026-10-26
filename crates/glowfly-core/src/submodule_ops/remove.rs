@@ -6,6 +6,7 @@
 //! (`.git/worktrees/<id>/modules`), not one in the common dir.
 
 use super::{deinit_cmd, module_dir, rm_cmd};
+use crate::commit_text;
 use crate::error::Result;
 use crate::gitcli;
 use crate::native_path::{native, shown};
@@ -55,7 +56,7 @@ fn unpushed(repo: &Repository) -> std::result::Result<Vec<(Oid, String)>, git2::
     walk.take(LEFT_BEHIND_MAX)
         .map(|id| {
             let id = id?;
-            let summary = repo.find_commit(id)?.summary().unwrap_or_default().to_owned();
+            let summary = commit_text::summary(&repo.find_commit(id)?).into_owned();
             Ok((id, summary))
         })
         .collect()

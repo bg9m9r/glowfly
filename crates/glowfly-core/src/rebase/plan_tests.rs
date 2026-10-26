@@ -140,3 +140,28 @@ fn onto_a_commit() {
     assert_eq!(text, format!("main has no commits that aren't already on {} c4", &tip.to_string()[..7]));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn plan_rows_read_commit_text_in_its_encoding() {
+    let dir = scratch_repo("rebase-plan-latin1");
+    let c1 = commit(&dir, "1.txt", "1\n", "c1");
+    let repo = Repository::open(&dir).unwrap();
+    let tree = repo.find_commit(c1).unwrap().tree_id();
+    let l1 = raw_commit(&repo, tree, Some(c1), LATIN1_WHO, Some("ISO-8859-1"), b"Caf\xe9 one\n");
+    let l2 = raw_commit(&repo, tree, Some(l1), LATIN1_WHO, Some("ISO-8859-1"), b"Cr\xe8me two\n\nbody \xe9\n");
+    repo.reference("refs/heads/main", l2, true, "test").unwrap();
+    git(&dir, &["reset", "-q", "--hard"]);
+    let label = format!("{} Café one", &l1.to_string()[..7]);
+
+    let p = plan(&dir, &RebaseBase::FromCommit(l2)).unwrap();
+    assert_eq!(p.onto_label, label);
+    let picks = items(&p);
+    assert_eq!(picks.len(), 1);
+    assert_eq!((picks[0].summary.as_str(), picks[0].message.as_str()), ("Crème two", "Crème two\n\nbody é\n"));
+    assert_eq!(picks[0].author, "René Müller");
+
+    git(&dir, &["checkout", "-q", "-b", "side", &c1.to_string()]);
+    commit(&dir, "s.txt", "s\n", "side");
+    assert_eq!(plan(&dir, &RebaseBase::OntoCommit(l1)).unwrap().onto_label, label);
+    let _ = std::fs::remove_dir_all(&dir);
+}

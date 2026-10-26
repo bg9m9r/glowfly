@@ -12,6 +12,7 @@ pub mod changelog;
 pub mod clone_ops;
 pub mod commit_index;
 pub mod commit_query;
+pub mod commit_text;
 pub mod conflict_check;
 pub mod conflict_edit;
 pub mod conflict_folds;

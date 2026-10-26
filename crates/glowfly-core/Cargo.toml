@@ -21,6 +21,8 @@ serde.workspace = true
 serde_json.workspace = true
 sys-locale.workspace = true
 base64 = "0.23.1"
+# Commit messages and names in the encoding their `encoding` header names (commit_text.rs).
+encoding_rs = "0.8"
 icu_normalizer = "2.3"
 # SIMD byte search for the case-insensitive commit search (matching.rs); already in the tree.
 memchr = "2.8"

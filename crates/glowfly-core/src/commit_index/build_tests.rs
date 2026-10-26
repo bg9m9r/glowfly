@@ -244,3 +244,18 @@ fn git_log_date_order_matches_the_walk() {
     assert_eq!(listed, oids(&ix));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn index_reads_commit_text_in_its_encoding() {
+    let dir = scratch_repo("index-latin1");
+    let repo = git2::Repository::open(&dir).unwrap();
+    let tree = repo.treebuilder(None).unwrap().write().unwrap();
+    let oid = raw_commit(&repo, tree, None, LATIN1_WHO, Some("ISO-8859-1"), LATIN1_MSG);
+    repo.reference("refs/heads/main", oid, true, "test").unwrap();
+    let snap = snapshot(&dir, LoadOptions::all(10));
+    let ix = index(&dir, &snap, None);
+    assert_eq!(ix.summary_at(0), Some("Café au lait"));
+    assert_eq!(ix.person_at(0), Some(("René Müller", "rené@example.com")));
+    assert_eq!(ix.matching(&crate::commit_query::CommitQuery::parse("brûlée"), &|| false), Some(vec![0]));
+    let _ = std::fs::remove_dir_all(&dir);
+}

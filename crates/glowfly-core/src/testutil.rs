@@ -182,3 +182,37 @@ pub(crate) fn ssh_signed_commit(dir: &Path, file: &str, msg: &str) -> Option<(gi
     let oid = git2::Repository::open(dir).ok()?.head().ok()?.target()?;
     Some((oid, public))
 }
+
+/// Writes a commit object by hand, byte for byte, so it can hold what git's porcelain won't
+/// make: `who` (`Name <email>`, any bytes) as author and committer at 1700000900 +0000, an
+/// optional `encoding` header and a message in any encoding. `parent` None makes a root commit.
+pub(crate) fn raw_commit(
+    repo: &git2::Repository,
+    tree: git2::Oid,
+    parent: Option<git2::Oid>,
+    who: &[u8],
+    encoding: Option<&str>,
+    msg: &[u8],
+) -> git2::Oid {
+    let mut text = format!("tree {tree}\n").into_bytes();
+    if let Some(p) = parent {
+        text.extend_from_slice(format!("parent {p}\n").as_bytes());
+    }
+    for role in ["author", "committer"] {
+        text.extend_from_slice(format!("{role} ").as_bytes());
+        text.extend_from_slice(who);
+        text.extend_from_slice(b" 1700000900 +0000\n");
+    }
+    if let Some(e) = encoding {
+        text.extend_from_slice(format!("encoding {e}\n").as_bytes());
+    }
+    text.push(b'\n');
+    text.extend_from_slice(msg);
+    repo.odb().unwrap().write(git2::ObjectType::Commit, &text).unwrap()
+}
+
+/// A Latin-1 author line for `raw_commit`: "René Müller <rené@example.com>".
+pub(crate) const LATIN1_WHO: &[u8] = b"Ren\xe9 M\xfcller <ren\xe9@example.com>";
+
+/// A Latin-1 message for `raw_commit`: "Café au lait", then "Crème brûlée for everyöne.".
+pub(crate) const LATIN1_MSG: &[u8] = b"Caf\xe9 au lait\n\nCr\xe8me br\xfbl\xe9e for every\xf6ne.\n";

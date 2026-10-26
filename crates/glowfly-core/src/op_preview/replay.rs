@@ -7,6 +7,7 @@
 //! freed with the `Repository`. Commits are made with no ref to update, and no index or
 //! working file is touched.
 
+use crate::commit_text;
 use crate::error::{Error, Result};
 use crate::rebase::{MergeParent, ResetTo};
 use git2::{Commit, Index, MergeOptions, Oid, Repository, Tree};
@@ -149,7 +150,8 @@ impl<'r> Replay<'r> {
             parents.push(self.repo.find_commit(*o)?);
         }
         let refs: Vec<&Commit<'_>> = parents.iter().collect();
-        let message = String::from_utf8_lossy(like.message_bytes());
+        // Written without an encoding header, so the preview's text must be UTF-8 to read back.
+        let message = commit_text::message(like);
         let new = self.repo.commit(None, &like.author(), &like.committer(), &message, &tree, &refs)?;
         self.made.insert(new, like.id());
         self.tip = Some(new);

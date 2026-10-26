@@ -18,6 +18,7 @@ source file, update its line here.
 - `repo/walk_reuse.rs`: what a walk takes from an earlier load: `Snapshot::prior` (the commits and where the walk stopped) and the commit cache a reload reads commits from by oid (old and new shallow roots read again, none with `info/grafts`). Tests: `walk_reuse_tests.rs`.
 - `repo/load_more.rs`: a load for more goes on from the walk's frontier for the next commits only (`load_more`, `NeedsFullLoad` when a new commit is a child of a loaded one), and `Snapshot::extend_history` takes them in below the rows, laying out only the new ones. Tests: `load_more_tests.rs` (with the `branchy` fixture).
 - `repo/commit_info.rs`: a loaded commit, about 104 bytes plus its texts. The walk reads each signature once and interns the (name, email) in an `Authors` table, so a history's commits share one `Author` per person; summary and body are boxed `Text`, one parent is kept inline (`Parents`), as are a graph row's first two edges (`graph::Edges`). The search index keeps its own author table of the same `Author`s.
+- `commit_text.rs` (in `src/`): commit messages, summaries, bodies and signature names decoded from the commit's bytes with its `encoding` header (encoding_rs), UTF-8 with U+FFFD otherwise; every reader of commit text goes through it. Tests: `commit_text_tests.rs`.
 - `Snapshot::lay_out_graph` (`repo/branch_colours.rs`) lays the graph out with its owners and colours, at load and when the work tree turns clean or dirty. `Snapshot::commits` is shared (`Arc<[CommitInfo]>`) so workers read it without a copy.
 - Paths go through `repo/rpath.rs` (see `docs/PLATFORMS.md`).
 - `repo_pool.rs` (in `src/`): the workers' pool of open repositories, so the refs fingerprint, status, path status, commit detail, diffs and line counts don't open the repository and parse its index each time. Lent to one thread at a time, keyed by the path as given and how it was opened; `repo_pool/fresh.rs` checks a handle before lending it again (config files, `.git` link, git dir, alternates, the index file). Idle handles go after 5 s, past 8 (2 per key), on `forget` (a tab closed) and during a `hold` (an effect that changes the repository, or a fetch): on Windows an open handle keeps old packs from being deleted and folders from being removed.
@@ -25,6 +26,7 @@ source file, update its line here.
 ## Diffs
 
 - A commit against its parent, another commit or the empty tree (`empty_tree`, for a line of commits reaching the first one), or the working tree either way round: `compare_workdir`, `compare_from_workdir`.
+- `repo/commit_detail.rs`: a commit's `CommitDetail` (message, author, committer, files against the first parent).
 - The `linguist-language` override read from the commit's own `.gitattributes` for commit and comparison diffs: `attrs.rs`.
 - The unchanged lines between a diff's hunks, read for the hunk view: `diff_gaps.rs`.
 - The lines added and removed per file of a commit or of the working tree's staged and unstaged files, libgit2 only and capped at 2,000 files: `line_counts.rs`.

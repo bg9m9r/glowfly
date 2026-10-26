@@ -7,6 +7,7 @@
 //! also records where its lines came from (the commit's path and the parent to blame for what
 //! came before), so the view can step back past a commit.
 
+use crate::commit_text;
 use crate::error::{Error, Result};
 use crate::gitcli;
 use crate::settings::BlameMoves;
@@ -190,7 +191,7 @@ pub fn blame_file(workdir: &Path, path: &str, at: Option<Oid>, opts: &BlameOptio
     let mut commits = parsed.commits;
     for c in commits.iter_mut().filter(|c| !c.oid.is_zero()) {
         if let Ok(found) = repo.find_commit(c.oid) {
-            c.body = String::from_utf8_lossy(found.body_bytes().unwrap_or_default()).trim_end().to_owned();
+            c.body = commit_text::body(&found).trim_end().to_owned();
         }
     }
     Ok(Blame {

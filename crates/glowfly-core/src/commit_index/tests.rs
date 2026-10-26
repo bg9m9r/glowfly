@@ -1,5 +1,5 @@
 //! Matching over an index agrees with `CommitQuery::matches`; stopping, lookups, and a message
-//! that isn't UTF-8.
+//! git wrote in Latin-1.
 
 use super::*;
 use crate::repo::{LoadOptions, load};
@@ -70,17 +70,18 @@ fn from_commits_round_trips() {
 }
 
 #[test]
-fn a_message_that_is_not_utf8_indexes_empty_text() {
-    let dir = scratch_repo("index-latin1");
+fn a_latin1_message_from_git_indexes_its_decoded_text() {
+    let dir = scratch_repo("index-latin1-git");
     write(&dir, "a.txt", "a");
     git(&dir, &["add", "."]);
     std::fs::write(dir.join("msg.txt"), b"Caf\xe9 au lait\n\nCr\xe8me body\n").unwrap();
+    // git records `encoding latin1` in the commit, and the text is read in it.
     git(&dir, &["-c", "i18n.commitEncoding=latin1", "commit", "-q", "-F", "msg.txt"]);
     let snap = load(&dir, &LoadOptions::all(100)).unwrap();
-    assert_eq!((&*snap.commits[0].summary, &*snap.commits[0].body), ("", ""), "the graph shows no text");
+    assert_eq!((&*snap.commits[0].summary, &*snap.commits[0].body), ("Café au lait", "Crème body"));
     let ix = build(&dir, &IndexKey::of(&snap), None, &mut |_| {}, &|| false).unwrap().unwrap();
-    assert_eq!((ix.summary_at(0), ix.body_at(0)), (Some(""), Some("")));
-    assert_eq!(ix.matching(&CommitQuery::parse("caf"), &|| false), Some(vec![]));
+    assert_eq!((ix.summary_at(0), ix.body_at(0)), (Some("Café au lait"), Some("Crème body")));
+    assert_eq!(ix.matching(&CommitQuery::parse("café"), &|| false), Some(vec![0]));
     assert_eq!(ix.matching(&CommitQuery::parse("test"), &|| false), Some(vec![0]), "the author still matches");
     let _ = std::fs::remove_dir_all(&dir);
 }

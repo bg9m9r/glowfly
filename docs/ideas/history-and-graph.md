@@ -198,3 +198,11 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Graph table: a keyboard focus ring on the column header dividers, to resize without a mouse
 - The search bar's controls past the query field don't shrink: in a narrow graph the field's
   floor (160 px) is reached and Close can be cut at the right edge
+
+### Commit text in other encodings
+
+- Guess Windows-1252 for headerless commit text that isn't UTF-8 (CVS/SVN imports), perhaps behind a setting
+- Detect a header naming a single-byte encoding over bytes that are valid non-ASCII UTF-8 and show the UTF-8 (git shows mojibake)
+- Write Glowfly's commit, amend, reword and squash messages in the repo's i18n.commitEncoding when it names a legacy encoding (git now labels Glowfly's UTF-8 with that header)
+- Pass `-c i18n.logOutputEncoding=UTF-8` to git CLI calls whose log or blame output Glowfly parses, for users who set a legacy output encoding
+- Show which encoding a commit declares (e.g. a small 'ISO-8859-1' note in the details panel)

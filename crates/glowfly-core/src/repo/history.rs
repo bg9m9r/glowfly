@@ -8,6 +8,7 @@
 //! walk lists a folder's commits (`folder_history.rs`).
 
 use super::FileEntry;
+use crate::commit_text::Decoder;
 use crate::error::Result;
 use git2::{Commit, Delta, Diff, DiffFindOptions, ObjectType, Oid, Repository, Tree};
 use std::cmp::Reverse;
@@ -243,11 +244,12 @@ pub(super) fn walk(workdir: &Path, path: &str, start: &HistoryStart, limit: usiz
 
 /// The entry for commit `c` with the file (or folder) at `path`.
 pub(super) fn entry_of(c: &Commit<'_>, path: &str, old_path: Option<String>, status: char, files: Vec<FileEntry>) -> HistoryEntry {
+    let (d, sig) = (Decoder::of(c), c.author());
     HistoryEntry {
         oid: c.id(),
-        summary: String::from_utf8_lossy(c.summary_bytes().unwrap_or_default()).into_owned(),
-        author: String::from_utf8_lossy(c.author().name_bytes()).into_owned(),
-        email: String::from_utf8_lossy(c.author().email_bytes()).into_owned(),
+        summary: d.summary(c).into_owned(),
+        author: d.name(&sig).into_owned(),
+        email: d.email(&sig).into_owned(),
         time: c.author().when().seconds(),
         path: path.to_owned(),
         old_path,

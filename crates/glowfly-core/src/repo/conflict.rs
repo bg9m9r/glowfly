@@ -1,6 +1,7 @@
 //! Reading an index conflict: the three stages, merged into clean runs and conflict chunks,
 //! plus names for the two sides taken from the operation in progress.
 
+use crate::commit_text;
 use crate::error::{Error, Result};
 use git2::{BranchType, ErrorCode, IndexEntry, MergeFileOptions, Oid, Repository, RepositoryState};
 use std::path::Path;
@@ -306,7 +307,7 @@ fn side_labels(repo: &Repository) -> SideLabels {
         CherryPick | CherryPickSequence => {
             let theirs = oid_in(&git_dir.join("CHERRY_PICK_HEAD"))
                 .map(|o| {
-                    let summary = repo.find_commit(o).ok().and_then(|c| c.summary().map(|s| s.chars().take(40).collect::<String>()));
+                    let summary = repo.find_commit(o).ok().map(|c| commit_text::summary(&c).chars().take(40).collect::<String>());
                     match summary {
                         Some(s) => format!("{} {s}", short(o)),
                         None => short(o),

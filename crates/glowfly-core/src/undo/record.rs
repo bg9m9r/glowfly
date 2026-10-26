@@ -2,6 +2,7 @@
 //! to be once it has.
 
 use super::{Action, Created, HeadPos, ResetMode, UndoKind, is_clean, reset, resumed, stash};
+use crate::commit_text;
 use crate::error::{Error, Result};
 use git2::{BranchType, Oid, Repository};
 use std::collections::HashSet;
@@ -156,7 +157,7 @@ pub fn after(workdir: &Path, kind: UndoKind, mut before: Before) -> Result<Optio
             Some((stash, message)) if reset::stash_index(workdir, stash)?.is_none() => {
                 let message = match message {
                     Some(m) => m,
-                    None => repo.find_commit(stash)?.summary().unwrap_or_default().to_owned(),
+                    None => commit_text::summary(&repo.find_commit(stash)?).into_owned(),
                 };
                 Some(Action::StashDrop { stash, message })
             }
@@ -164,7 +165,7 @@ pub fn after(workdir: &Path, kind: UndoKind, mut before: Before) -> Result<Optio
         },
         UndoKind::Commit { amend } => match moved {
             Some((from, to)) => {
-                let message = repo.find_commit(to)?.message().unwrap_or_default().trim().to_owned();
+                let message = commit_text::message(&repo.find_commit(to)?).trim().to_owned();
                 Some(Action::Commit { branch: branch_name(&pos), from, to, message, amend })
             }
             _ => None,
@@ -205,7 +206,7 @@ pub fn after(workdir: &Path, kind: UndoKind, mut before: Before) -> Result<Optio
         UndoKind::StashPush { replay } => match stash_top(&repo) {
             Some(stash) if Some(stash) != before.stash_top => {
                 let c = repo.find_commit(stash)?;
-                let message = c.summary().unwrap_or_default().to_owned();
+                let message = commit_text::summary(&c).into_owned();
                 Some(Action::StashPush { stash, head: c.parent_id(0)?, message, replay })
             }
             _ => None,
@@ -215,7 +216,7 @@ pub fn after(workdir: &Path, kind: UndoKind, mut before: Before) -> Result<Optio
                 let left = stash::changes(workdir)?;
                 let message = match message {
                     Some(m) => m,
-                    None => repo.find_commit(stash)?.summary().unwrap_or_default().to_owned(),
+                    None => commit_text::summary(&repo.find_commit(stash)?).into_owned(),
                 };
                 (!left.0.is_empty()).then_some(Action::StashApply { pop, stash, head, message, left })
             }

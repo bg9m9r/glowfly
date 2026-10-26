@@ -6,6 +6,7 @@
 //! the shape `git stash push` makes) is named as one. The command lines that keep a dropped
 //! stash run through gitcli, so hooks and config apply.
 
+use crate::commit_text;
 use crate::error::{Error, Result};
 use crate::gitcli::{self, args};
 use git2::{Commit, Oid, Repository};
@@ -70,7 +71,7 @@ pub fn parse(stdout: &str) -> Vec<Oid> {
 }
 
 fn message_of(c: &Commit) -> String {
-    String::from_utf8_lossy(c.message_bytes()).into_owned()
+    commit_text::message(c).into_owned()
 }
 
 /// A stash's kind when `c` has the shape `git stash push` makes: its first parent the base, its
@@ -125,7 +126,7 @@ pub fn find(workdir: &Path) -> Result<LostCommits> {
                 oid: c.id(),
                 kind: stash_shape(&c).unwrap_or(LostKind::Commit),
                 summary: message.lines().next().unwrap_or_default().to_owned(),
-                author: String::from_utf8_lossy(c.author().name_bytes()).into_owned(),
+                author: commit_text::author(&c).name,
                 time: c.committer().when().seconds(),
                 message,
             }

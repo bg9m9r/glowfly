@@ -99,9 +99,10 @@ fn shown_characters() -> (Vec<(char, String, usize)>, usize, usize) {
 fn fonts_have_what_the_ui_uses_and_lack_what_it_paints() {
     let ctx = fonts();
     // '\u{2714}' (heavy check mark) comes from egui's emoji fallback; U+200E is invisible.
-    // Monospace text (JetBrains Mono, then the same fallbacks) draws them too.
+    // Monospace text (JetBrains Mono, then the same fallbacks) draws them too. U+FFFD stands
+    // in for commit text that doesn't decode (commit_text.rs).
     let mono = egui::FontId::monospace(13.0);
-    for c in ['a', '\u{e9}', '\u{df}', '\u{2026}', '\u{b7}', '\u{201c}', '\u{2714}', '\u{200e}'] {
+    for c in ['a', '\u{e9}', '\u{df}', '\u{2026}', '\u{b7}', '\u{201c}', '\u{2714}', '\u{200e}', '\u{fffd}'] {
         assert!(drawable(&ctx, c), "U+{:04X} should be drawable", c as u32);
         assert!(drawable_in(&ctx, &mono, c), "U+{:04X} should be drawable in monospace", c as u32);
     }

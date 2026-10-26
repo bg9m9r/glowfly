@@ -8,6 +8,7 @@
 //! `repo::load` with `max_commits = p + 1` loads the commit at position `p`.
 
 use super::{Builder, CommitIndex, IndexKey, MAX_INDEXED, Texts};
+use crate::commit_text::Decoder;
 use crate::error::Result;
 use crate::repo::walk::flatten_body_into;
 use crate::repo::walk_order::{TimeQueue, walk_parents};
@@ -128,11 +129,14 @@ pub(crate) fn build_paced(
             queue.push(p, time);
             parents.push(p);
         }
+        let d = Decoder::of(&c);
         body.clear();
-        flatten_body_into(c.body().unwrap_or_default(), &mut body);
-        let texts = Texts { summary: c.summary().unwrap_or_default(), body: &body };
+        flatten_body_into(&d.body(&c), &mut body);
+        let summary = d.summary(&c);
+        let texts = Texts { summary: &summary, body: &body };
         let author = c.author();
-        let who = (author.name().unwrap_or_default(), author.email().unwrap_or_default());
+        let (name, email) = (d.name(&author), d.email(&author));
+        let who = (&*name, &*email);
         out.push_new(oid, (c.time().seconds(), author.when().seconds()), who, texts, &parents);
     }
     if stop() {

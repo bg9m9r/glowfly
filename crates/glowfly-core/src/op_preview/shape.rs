@@ -2,18 +2,14 @@
 //! commits that arrive, and the commits nothing would reach any more.
 
 use super::{AfterRow, CommitLine, Count, Gone, GoneWhy, Limits};
+use crate::commit_text;
 use crate::error::Result;
 use git2::{Commit, Oid, Repository, Sort};
 use std::collections::{HashMap, HashSet};
 
 /// A commit as the preview shows it.
 pub(super) fn line(c: &Commit<'_>) -> CommitLine {
-    CommitLine {
-        oid: c.id(),
-        summary: String::from_utf8_lossy(c.summary_bytes().unwrap_or_default()).into_owned(),
-        author: String::from_utf8_lossy(c.author().name_bytes()).into_owned(),
-        time: c.time().seconds(),
-    }
+    CommitLine { oid: c.id(), summary: commit_text::summary(c).into_owned(), author: commit_text::author(c).name, time: c.time().seconds() }
 }
 
 /// The line of the commit `oid`.

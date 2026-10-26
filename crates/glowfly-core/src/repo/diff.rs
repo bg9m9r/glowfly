@@ -1,4 +1,4 @@
-//! Commit details, comparisons between two commits, file diffs and per-commit line counts.
+//! Comparisons between two commits, file diffs and per-commit line counts.
 
 use super::*;
 use crate::error::{Error, Result};
@@ -219,29 +219,6 @@ pub(super) fn workdir_opts(path: &str) -> DiffOptions {
     let mut o = path_opts(path);
     o.include_untracked(true).recurse_untracked_dirs(true).show_untracked_content(true);
     o
-}
-
-pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
-    let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
-    let c = repo.find_commit(oid)?;
-    let diff = commit_diff(&repo, oid, None)?;
-    let mut files = file_entries(&diff, false);
-    super::lfs_marks::mark_delta_files(&repo, &diff, &mut files, false);
-    let absent = absent_paths(&repo, &files);
-    Ok(CommitDetail {
-        oid,
-        message: c.message().unwrap_or_default().trim_end().to_owned(),
-        author: c.author().name().unwrap_or_default().to_owned(),
-        email: c.author().email().unwrap_or_default().to_owned(),
-        committer: c.committer().name().unwrap_or_default().to_owned(),
-        committer_email: c.committer().email().unwrap_or_default().to_owned(),
-        time: c.time().seconds(),
-        author_time: c.author().when().seconds(),
-        parents: c.parent_ids().collect(),
-        files,
-        absent,
-        signature: crate::signature_check::signature_format(&repo, oid),
-    })
 }
 
 /// One file's hunks, with every change shown. Git only: `highlight` and `intraline` are left

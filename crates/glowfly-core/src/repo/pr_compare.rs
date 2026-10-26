@@ -4,6 +4,7 @@
 //! remote-tracking source branch. Gives the files (`branch_changes`) and the commits in
 //! `target..source` (git's two-dot range: reachable from the source tip, not from the target's).
 
+use crate::commit_text;
 use crate::error::Result;
 use git2::{ObjectType, Oid, Repository, Sort};
 use std::path::Path;
@@ -111,13 +112,13 @@ pub(super) fn range_commits(repo: &Repository, target: Oid, tip: Oid, max: usize
             continue;
         }
         let c = repo.find_commit(oid)?;
-        let author = c.author();
+        let person = commit_text::author(&c);
         commits.push(RangeCommit {
             oid,
             summary: super::walk::commit_texts(&c).0,
-            author: author.name().unwrap_or_default().to_owned(),
-            email: author.email().unwrap_or_default().to_owned(),
-            time: author.when().seconds(),
+            author: person.name,
+            email: person.email,
+            time: c.author().when().seconds(),
             merge: c.parent_count() > 1,
         });
     }

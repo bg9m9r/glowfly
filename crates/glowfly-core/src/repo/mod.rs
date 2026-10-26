@@ -35,6 +35,7 @@ mod blame;
 mod blame_porcelain;
 pub mod branch_colours;
 mod collide;
+mod commit_detail;
 mod commit_info;
 mod common_dir;
 mod conflict;
@@ -108,14 +109,15 @@ mod worktrees;
 pub use binary_sides::{BinarySide, BinarySides, PREVIEW_MAX_BYTES, binary_sides};
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
 pub use collide::{Collision, Folding, name_key, probe};
+pub use commit_detail::commit_detail;
 pub use common_dir::{CommonDir, repo_name_of};
 pub use conflict::{
     Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, Unmergeable, load_conflict, marker_size,
 };
 pub use conflict_saved::{RESTORE_MAX, saved_picks};
 pub use diff::{
-    BranchChanges, Comparison, ViewDiff, branch_changes, commit_detail, commit_stats, commit_stats_until, compare, compare_files,
-    compare_from_workdir, compare_workdir, load_diff, load_diff_for_view, load_diff_with,
+    BranchChanges, Comparison, ViewDiff, branch_changes, commit_stats, commit_stats_until, compare, compare_files, compare_from_workdir,
+    compare_workdir, load_diff, load_diff_for_view, load_diff_with,
 };
 use diff::{head_tree, path_opts, workdir_opts};
 pub use diff_gaps::load_gap_text;

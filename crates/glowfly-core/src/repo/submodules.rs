@@ -1,6 +1,7 @@
 //! The index's submodules with their recorded and checked-out commits, classified for the left
 //! panel.
 
+use crate::commit_text;
 use crate::error::Result;
 use git2::{Oid, Repository, Sort, Submodule, SubmoduleIgnore, SubmoduleStatus};
 use std::path::Path;
@@ -186,7 +187,7 @@ fn walk_unreferenced(repo: &Repository, head: Oid, recorded: Oid) -> std::result
     walk.take(LEFT_BEHIND_MAX)
         .map(|id| {
             let id = id?;
-            let summary = repo.find_commit(id)?.summary().unwrap_or_default().to_owned();
+            let summary = commit_text::summary(&repo.find_commit(id)?).into_owned();
             Ok((id, summary))
         })
         .collect()

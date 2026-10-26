@@ -6,6 +6,7 @@
 //! keeps any more, and `lost.rs` finds the commits no ref keeps at all (`git fsck`). Reads use
 //! libgit2 (fsck runs through gitcli); notes are written only by the app's runner.
 
+use crate::commit_text;
 use crate::error::Result;
 use crate::undo::HeadPos;
 use git2::{Oid, Repository};
@@ -92,7 +93,7 @@ pub fn load(workdir: &Path) -> Result<Timeline> {
     let mut summaries: HashMap<Oid, Option<String>> = HashMap::new();
     for row in &mut rows {
         let summary =
-            summaries.entry(row.oid).or_insert_with(|| repo.find_commit(row.oid).ok().map(|c| c.summary().unwrap_or_default().to_owned()));
+            summaries.entry(row.oid).or_insert_with(|| repo.find_commit(row.oid).ok().map(|c| commit_text::summary(&c).into_owned()));
         row.summary = summary.clone();
     }
     let marks = reach::unreachable(&repo, rows.iter().filter(|r| r.summary.is_some()).map(|r| r.oid));

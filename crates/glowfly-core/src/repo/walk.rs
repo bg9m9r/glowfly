@@ -13,6 +13,7 @@
 use super::walk_order::{TimeQueue, walk_parents};
 use super::walk_reuse::{CommitCache, Frontier, authors_of};
 use super::{Authors, CommitInfo};
+use crate::commit_text::Decoder;
 use crate::error::Result;
 use git2::{Oid, Repository};
 use std::cmp::Reverse;
@@ -98,14 +99,16 @@ fn walk_into(
         for (p, time) in walk_parents(&c) {
             queue.push(p, time);
         }
-        // The signature is read once, and the body flattened into a reused buffer.
+        // The encoding header and the signature are read once, and the body flattened into a
+        // reused buffer; UTF-8 text is borrowed, not copied, on its way in.
+        let d = Decoder::of(&c);
         let sig = c.author();
-        let author = authors.get(sig.name().unwrap_or_default(), sig.email().unwrap_or_default());
+        let author = authors.get(&d.name(&sig), &d.email(&sig));
         body.clear();
-        flatten_body_into(c.body().unwrap_or_default(), &mut body);
+        flatten_body_into(&d.body(&c), &mut body);
         out.push(CommitInfo {
             oid,
-            summary: c.summary().unwrap_or_default().into(),
+            summary: d.summary(&c).as_ref().into(),
             body: body.as_str().into(),
             author,
             time: c.time().seconds(),
@@ -116,9 +119,10 @@ fn walk_into(
 }
 
 /// The texts search matches in commit `c`: its summary and its body flattened to one capped line
-/// (`flatten_body`). A message that isn't UTF-8 gives empty texts, as libgit2 gives none.
+/// (`flatten_body`), decoded with the commit's encoding header (`commit_text`).
 pub(crate) fn commit_texts(c: &git2::Commit) -> (String, String) {
-    (c.summary().unwrap_or_default().to_owned(), flatten_body(c.body().unwrap_or_default()))
+    let d = Decoder::of(c);
+    (d.summary(c).into_owned(), flatten_body(&d.body(c)))
 }
 
 /// `commits` reordered so every commit comes after all of its children in the list, otherwise

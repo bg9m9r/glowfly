@@ -5,6 +5,7 @@
 
 use super::todo::{MSG_DIR, MessageFile, OwnLine, build, editor_command, listed_oids, own_line, problem_with};
 use super::{CHANGED, NOT_INTERACTIVE, RebaseAction, SequenceEditor, TODO_MOVED, TodoItem, TodoStep, UNSUPPORTED_STEPS, short};
+use crate::commit_text::{self, Decoder};
 use crate::error::{Error, Result};
 use crate::gitcli;
 use git2::{Oid, Repository, RepositoryState};
@@ -68,7 +69,7 @@ pub fn remaining(workdir: &Path) -> Result<Remaining> {
     let branch = read("head-name").trim().strip_prefix("refs/heads/").map(str::to_owned);
     let onto = read("onto");
     let onto_label = match repo.revparse_single(onto.trim()).and_then(|o| o.peel_to_commit()) {
-        Ok(c) => format!("{} {}", short(c.id()), c.summary().unwrap_or_default()).trim_end().to_owned(),
+        Ok(c) => format!("{} {}", short(c.id()), commit_text::summary(&c)).trim_end().to_owned(),
         Err(_) => onto.trim().chars().take(7).collect(),
     };
     let done_commits = listed_oids(&done).len();
@@ -125,14 +126,15 @@ fn parse(repo: &Repository, line: &str) -> Result<Option<Parsed>> {
         return Err(Error::Unsupported(UNSUPPORTED_STEPS.into()));
     }
     let c = repo.revparse_single(sha).and_then(|o| o.peel_to_commit()).map_err(|_| Error::NotFound(format!("commit {sha}")))?;
+    let (d, sig) = (Decoder::of(&c), c.author());
     Ok(Some(Parsed::Step(TodoStep::Commit(TodoItem {
         oid: c.id(),
         action,
-        summary: c.summary().unwrap_or_default().to_owned(),
-        message: c.message().unwrap_or_default().to_owned(),
+        summary: d.summary(&c).into_owned(),
+        message: d.message(&c).into_owned(),
         new_message: None,
         combined_message: None,
-        author: c.author().name().unwrap_or_default().to_owned(),
+        author: d.name(&sig).into_owned(),
         time: c.time().seconds(),
     }))))
 }

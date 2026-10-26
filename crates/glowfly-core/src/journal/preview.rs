@@ -1,6 +1,7 @@
 //! A journal state's preview: its first-parent history, and how many commits restoring it would
 //! take off its subject (leaving) and bring back (arriving), counted up to `MAX_COUNT`.
 
+use crate::commit_text;
 use crate::error::{Error, Result};
 use git2::{Oid, Repository};
 use std::path::Path;
@@ -63,8 +64,8 @@ pub fn preview(workdir: &Path, oid: Oid, against: Option<Oid>) -> Result<Preview
     while let Some(c) = next.take() {
         history.push(CommitLine {
             oid: c.id(),
-            summary: c.summary().unwrap_or_default().to_owned(),
-            author: c.author().name().unwrap_or_default().to_owned(),
+            summary: commit_text::summary(&c).into_owned(),
+            author: commit_text::author(&c).name,
             time: c.time().seconds(),
         });
         if history.len() == HISTORY {

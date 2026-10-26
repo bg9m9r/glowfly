@@ -4,6 +4,7 @@
 
 use super::todo::{listed_oids, own_line};
 use super::{Stop, StopKind};
+use crate::commit_text;
 use git2::{Repository, RepositoryState};
 use std::path::Path;
 
@@ -73,7 +74,7 @@ pub(crate) fn progress_of(repo: &Repository) -> Option<RebaseProgress> {
         _ => return None,
     };
     if let Some(c) = p.stop.oid.and_then(|o| repo.find_commit(o).ok()) {
-        p.summary = c.summary().unwrap_or_default().to_owned();
+        p.summary = commit_text::summary(&c).into_owned();
     }
     Some(p)
 }

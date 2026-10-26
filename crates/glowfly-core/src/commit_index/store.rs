@@ -27,7 +27,7 @@ use std::time::{Duration, SystemTime};
 /// The file layout's version. Bump it when the layout changes, or when what an entry holds
 /// changes (the summary, `repo::walk::flatten_body_into`'s flattening or its cap, the author
 /// fields): files written before are then ignored and overwritten.
-pub(crate) const FORMAT: u32 = 1;
+pub(crate) const FORMAT: u32 = 2;
 
 /// A file unused for this long is removed.
 const MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);

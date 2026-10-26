@@ -8,6 +8,7 @@
 pub mod bases;
 pub mod parse;
 
+use crate::commit_text;
 use crate::error::{Error, Result};
 use crate::gitcli::{self, GitOutput};
 use crate::repo::{FileDiff, LineCount};
@@ -200,7 +201,7 @@ fn count(repo: &Repository, r: Range, cap: usize) -> Result<usize> {
 /// A side git printed, its id resolved and its summary read with libgit2.
 fn side(repo: &Repository, (index, hex): (u32, String)) -> Result<Side> {
     let commit = if hex.len() == 40 { repo.find_commit(Oid::from_str(&hex)?)? } else { repo.find_commit_by_prefix(&hex)? };
-    Ok(Side { index, oid: commit.id(), summary: commit.summary().unwrap_or_default().to_owned() })
+    Ok(Side { index, oid: commit.id(), summary: commit_text::summary(&commit).into_owned() })
 }
 
 /// Whether git's run worked: a timeout, a git without range-diff (Unsupported) or git's own

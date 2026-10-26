@@ -1,6 +1,7 @@
 //! The commits an interactive rebase would replay, read with libgit2.
 
 use super::{DETACHED, RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream, in_progress_text, merges, short};
+use crate::commit_text::{self, Decoder};
 use crate::error::{Error, Result};
 use git2::{Oid, Repository, Sort};
 use std::path::Path;
@@ -21,7 +22,7 @@ pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan> {
             let commit = repo.find_commit(*c)?;
             match commit.parent_ids().next() {
                 Some(p) => {
-                    let summary = repo.find_commit(p)?.summary().unwrap_or_default().to_owned();
+                    let summary = commit_text::summary(&repo.find_commit(p)?).into_owned();
                     (Upstream::Commit(p), format!("{} {summary}", short(p)).trim_end().to_owned())
                 }
                 None => (Upstream::Root, String::new()),
@@ -37,7 +38,7 @@ pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan> {
         }
         RebaseBase::OntoCommit(o) => {
             let commit = repo.find_commit(*o).map_err(|_| Error::NotFound(format!("commit {}", short(*o))))?;
-            let label = format!("{} {}", short(*o), commit.summary().unwrap_or_default()).trim_end().to_owned();
+            let label = format!("{} {}", short(*o), commit_text::summary(&commit)).trim_end().to_owned();
             (Upstream::Commit(*o), label)
         }
     };
@@ -91,14 +92,15 @@ pub(super) fn range(repo: &Repository, head: Oid, upstream: Upstream) -> Result<
 /// A pick of the commit `oid`.
 pub(super) fn item(repo: &Repository, oid: Oid) -> Result<TodoItem> {
     let c = repo.find_commit(oid)?;
+    let (d, sig) = (Decoder::of(&c), c.author());
     Ok(TodoItem {
         oid,
         action: RebaseAction::Pick,
-        summary: c.summary().unwrap_or_default().to_owned(),
-        message: c.message().unwrap_or_default().to_owned(),
+        summary: d.summary(&c).into_owned(),
+        message: d.message(&c).into_owned(),
         new_message: None,
         combined_message: None,
-        author: c.author().name().unwrap_or_default().to_owned(),
+        author: d.name(&sig).into_owned(),
         time: c.time().seconds(),
     })
 }

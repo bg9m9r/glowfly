@@ -35,14 +35,6 @@ fn text_reads_as_a_str() {
     assert_eq!(Text::from(String::new()), Text::default());
 }
 
-/// Writes a commit object by hand, so its author can be one git's porcelain won't make.
-fn raw_commit(repo: &git2::Repository, tree: git2::Oid, parent: git2::Oid, author: &str, msg: &str) -> git2::Oid {
-    let text = format!(
-        "tree {tree}\nparent {parent}\nauthor {author} 1700000900 +0000\ncommitter Test <test@example.com> 1700000900 +0000\n\n{msg}"
-    );
-    repo.odb().unwrap().write(git2::ObjectType::Commit, text.as_bytes()).unwrap()
-}
-
 #[test]
 fn a_walk_reads_what_git_holds_and_shares_each_author() {
     let dir = scratch_repo("commit-info-walk");
@@ -60,7 +52,7 @@ fn a_walk_reads_what_git_holds_and_shares_each_author() {
         let oid = repo.commit(Some("HEAD"), &sig, &sig, &msg, &tree, &parents).unwrap();
         parent = Some(repo.find_commit(oid).unwrap());
     }
-    let no_email = raw_commit(&repo, tree.id(), parent.unwrap().id(), "Nobody <>", "no email\n");
+    let no_email = raw_commit(&repo, tree.id(), Some(parent.unwrap().id()), b"Nobody <>", None, b"no email\n");
     repo.reference("refs/heads/main", no_email, true, "test").unwrap();
     // The graph shows signatures as written; a .mailmap doesn't change them.
     write(&dir, ".mailmap", "Mapped Name <mapped@example.com> Person 0 <p0@example.com>\n");
