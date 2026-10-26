@@ -12,7 +12,6 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
   repository that was clean
 - Offer Don't trust on the prompt that holds a job, alongside Trust and run and Cancel
 - Queue several held jobs instead of refusing a second one while the prompt is open
-- Ask again when a hook's script changes, not only when a new hook or setting appears
 - Pass trust on to a worktree or submodule made by a job that waited for the prompt and ran on
   Trust and run
 - Trust nested submodules a recursive initialize checks out, not only the listed ones
@@ -24,20 +23,15 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - A preference to stop passing trust to new worktrees and submodules
 - Show the unchanged, already trusted settings and hooks under a fold in the Trust this
   repository again? prompt
-- Notice a new hook at the next refresh rather than the next full load (the change check reads
-  the config and refs, not the hooks folder)
 - Take a newly checked-out submodule's own settings into its parent's trust decision, so the
   parent isn't asked again about what the submodule brought
 - Say in the terminal when a repository with running shells stops being trusted or gains
   settings or hooks (shells already running are never stopped)
-- Hold or warn before Open in external terminal starts a shell in an untrusted repository
 - Offer Don't trust from the terminal's held panel prompt, alongside Trust and run and Cancel
 - Show the LFS setup while a repository is untrusted by reading it without git (libgit2 for the
   hooks folder and local filters, git outside the repository for the rest)
 - List the sparse paths of an untrusted repository by reading its sparse-checkout file instead
   of git sparse-checkout list
-- Run git lfs version outside the repository always, and count a repository's alias.* settings
-  for commands Glowfly runs (a repository's alias.lfs runs when git-lfs isn't installed)
 
 ### Submodules
 
@@ -59,9 +53,6 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Send a removed submodule's stored module to the OS trash instead of deleting it
 - Undo for adding or removing a submodule
 - A context-menu entry to show or hide the SUBMODULES section
-- Also update submodules after undo/redo, cherry-pick, revert and stash pop
-- A "Clone submodules too" (`--recurse-submodules`) checkbox in the Clone dialog, defaulting to
-  the keep-updated setting
 - Remember "don't offer to initialize submodules" per repository instead of once per session
 - A live "resolves to" preview of a relative URL in the Edit submodule dialog
 - Rename or move a submodule (name and path) from the Edit submodule dialog
@@ -74,8 +65,6 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - An Open folder button in the "folder couldn't be fully deleted" report, and a retry of the
   folder delete
 - A context-menu entry to show or hide the WORKTREES section
-- Refresh other worktrees' WIP counts on watcher and status-only reloads and on returning to the
-  tab (today only full loads count them)
 - A Refresh worktree changes item in the WORKTREES header menu that counts again without walking
   the history
 - Watch other worktrees' folders so their WIP rows update live
@@ -95,8 +84,6 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Carry a moved worktree's per-repository settings (graph filter, forge filters) and trust
   decision to its new folder
 - Close or move terminal sessions running in a worktree before moving it
-- Treat a branch being rebased or bisected in another worktree as checked out there (LOCAL mark
-  and refusals)
 - Offer to close the other tab before Move as well, or confirm before closing a tab that has an
   unsent commit message
 - A Count now action on a worktree row whose changes were too large to count
@@ -117,20 +104,14 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Initialize with LFS when creating or cloning a repository
 - File locking: lockable patterns (`track --lockable`), locking and unlocking files, and showing
   who holds locks
-- Read patterns from nested `.gitattributes` files and `.git/info/attributes`, and show which
-  file each pattern comes from
 - Check for a minimum git and git-lfs version and say clearly when either is too old
 - After auto-fetch, also download the LFS files of the checked-out branch's upstream, so a later
   pull doesn't wait on them
-- Detect LFS use from nested .gitattributes files too when deciding whether auto-fetch downloads
-  LFS files
 - A per-repository switch to leave LFS downloads out of auto-fetch
 - Warn in the main-window banner when git-lfs is installed but too old for the repository (no
   filter-process support), next to the not-installed case
 - Check for git-lfs again when the window regains focus, so the missing-git-lfs banner clears
   after installing it without opening Preferences
-- Count nested .gitattributes files and info/attributes patterns for the missing-git-lfs banner
-  and the auto-fetch LFS download, not only the root file
 - LFS badges in file history rows, stash file lists and the palette's file search
 - Say in the diff's LFS summary whether the object is downloaded locally, and offer to fetch it
 - Preview LFS-stored images or text (the smudged content) in the diff instead of only sizes
@@ -166,8 +147,6 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - A custom initial commit message in the Init dialog
 - Size Fetch more commits (`--deepen`) too, and Bitbucket Data Center and the other services
   that report no size (count the remote's objects some other way)
-- Cancel other network jobs (push, pull's fetch half, clone) from the status bar, and show a
-  running fetch's progress (objects received, bytes) beside its label
 - Prefetch a commit's missing contents in the background when it is selected in a partial
   clone, so its diff opens at once, and download a whole folder's contents for a folder diff
 - Download missing contents for the commit diff's line counts, the binary preview and the
@@ -225,6 +204,6 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - A modifier-drag that takes one tab out of its group or drops it into another group
 - A repository name chip at the start of each group in the tab strip
 - Strip colors chosen per repository, shared with the repository manager's group colors once
-  those exist
+  those exist (#239)
 - Save each tab's group in the tabs file so the startup read isn't needed
 - Keyboard shortcuts to jump to the next or previous tab group

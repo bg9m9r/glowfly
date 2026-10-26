@@ -5,26 +5,16 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 ### Branch operations
 
 - Pin a branch to the left (graph lane order, per-repo persistence, jump to the pinned branch)
-- Force push (with lease) of a non-HEAD branch, and push to all remotes
-- Rename the remote branch too when renaming (push the new name, delete the old one, move the
-  upstream)
 - Choose a local branch as the upstream in the Set upstream dialog
 - A shortcut for renaming the checked-out branch, and renaming any branch through a two-step
   palette entry
 - Delete local + remote when the branch isn't merged into HEAD (force), in one step
 - A "Commit 1a2b3c4" submenu in the graph's label menu, so a row with labels reaches the commit
   menu from the chips too
-- Checkout and fast-forward in one step from a remote branch row
-- Create a tracking branch under another name (New branch dialog with a remote start point that
-  sets the upstream)
 - Push the current branch to a chosen remote branch from its row
-- Warn in Delete remote branch's confirmation when a local branch tracks it, and offer to unset
-  that upstream
 - Show the remote branch's name (not a commit) in the interactive rebase dialog started from a
   remote row
 - Compare with the current branch from the local branch and tag menus too
-- Route the palette's remote checkout through the remote branch checkout message
-- An entry per local branch when several track the same remote branch (only one is offered now)
 
 ### Double-click a branch to check it out
 

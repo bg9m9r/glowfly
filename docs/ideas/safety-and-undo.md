@@ -56,7 +56,6 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Say "lost" in an unreachable row's accessible name
 - Recover dangling blobs (files staged but never committed)
 - Jump from a lost tip to its marked row in the States tab
-- Disable Apply stash while a job runs or an operation is in progress, with the reason
 
 ### Disabled actions say why
 
@@ -99,20 +98,13 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 ### Undo / Redo
 
 - Undo across restarts by rebuilding actions from the HEAD, branch and stash reflogs
-- Offer "Stash changes and undo" for merge, pull, rebase, cherry-pick, revert and stash undos
-  refused for local changes (the runner already supports it)
 - Undo of Create tag and push: also delete the tag from the remote it was pushed to
-- Keep the undo history across `rebase --abort` (HEAD goes back to where the rebase started)
 - Undo a rebase whose branch can't be known (a detached HEAD rebase continued from the banner)
 - Undo of branch rename and of the new branch made by `worktree add -b`
 - Undo of a Git Flow start or finish as one step
 - Roll back the remote-tracking refs a pull fetched when undoing it
 - Restore a popped or dropped stash at its original position in the list instead of at the top
 - Undo of a pop or apply onto a working tree that already had changes
-- Keep the undo history across merge, cherry-pick and revert `--abort` (HEAD goes back to where
-  the operation started)
-- Show the in-progress banner with Continue for a pick or revert sequence whose stopped commit
-  was committed from the commit box (libgit2 reports that state as clean)
 - Name the picked or reverted commits in the undo label of a sequence finished after conflicts
   (it now says N commits)
 - Undo of a merge, cherry-pick or revert continued in the terminal panel or outside Glowfly
@@ -122,14 +114,8 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 
 ### In-progress operations stay visible and safe
 
-- Keep resolved files recoverable when aborting with conflicts still unresolved (save the resolved files' blobs first, since git can't stash unmerged entries)
 - Undo for aborting a rebase, a patch series or a multi-commit cherry-pick or revert
 - Undo for Skip commit and Skip patch (the resolved files of the skipped step)
-- Undo of a kept abort also brings back the merge state (MERGE_HEAD), not only the changes
-- Keep the resolved changes in a stash also when unrelated edits are present (stash only the operation's paths, renames' old paths too)
-- A dedicated undo label for the abort stash ("Undo abort of merge") instead of the stash's
-- Prefill the commit draft from MERGE_MSG when a cherry-pick or revert stops for conflicts too
-- Disable the Amend checkbox during a merge, with the reason on hover
 - Bisect in the strip: the good and bad counts, and Mark good / Mark bad
 - Keyboard shortcuts for Continue and Commit merge
 - A status-bar chip variant of the strip, and a preference to hide the strip
@@ -155,18 +141,5 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 
 ### Errors say what to do
 
-- A Try again button on lock-file and HTTPS sign-in failures (needs the retry Msg for every
-  job, not just guarded ones)
-- A Delete lock file button when no git process is running in the repository
-- Network causes in plain words (Could not resolve host, repository not found, 'origin' does
-  not appear to be a git repository, timeouts)
-- Count conflicted files from the refreshed status instead of git's CONFLICT lines (rename and
-  directory conflicts are undercounted)
-- Force push with lease as a second fix on the rejected-push toast
-- Use the classifier for the auto-stash put-back failure toast (auto_stash::told still shows the
-  last line) and for other flows' "<x> failed: <reason>" headlines (clone, submodule, gitflow,
-  worktree)
-- Keep git's "LF will be replaced by CRLF" warnings out of job logs, or fold them into one line
-- Translate job labels so the fallback "<label> failed: ..." text is fully in the UI language
 - A Fetch-then-fast-forward fix for a sidebar Fast-forward that was rejected as non-fast-forward
   on a non-HEAD branch

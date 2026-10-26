@@ -16,7 +16,6 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
 
 ### Language
 
-- On Linux, base the date locale (dates/locale_patterns.rs) on LC_ALL/LC_TIME/LANG and the spell-check language on gettext's order, instead of sys_locale::get_locale(), which prefers LANGUAGE's first entry
 - Say in Preferences > Language which OS setting or variable the System choice came from
 - Key names in shortcut hints follow the language (e.g. "Strg" on German keyboards)
 - Plural rules beyond one/other (needed if a language with other forms is added)

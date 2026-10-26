@@ -4,7 +4,6 @@ Journey and real-input smoke tests, packaging, installers and updates. Untriaged
 
 ### Packaging and updates
 
-- A download progress bar (bytes and percent) with Cancel, streaming the file to disk instead of holding it in memory
 - Skip this version: don't offer a release again until a newer one is out
 - "Open in Glowfly" in Windows 11's modern context menu (an IExplorerCommand with a sparse package)
 - "Open in Glowfly" on drives as well as folders
@@ -12,13 +11,8 @@ Journey and real-input smoke tests, packaging, installers and updates. Untriaged
 - Azure Trusted Signing as an alternative to a PFX certificate for Windows signing
 - A beta channel that offers pre-releases to users who opt in
 - A per-machine (all users) MSI
-- Ask before Install and restart ends terminal tabs that are running a program
-- Stage the update helper beside the program when /tmp is mounted noexec on Linux or macOS
 - Replace a macOS Glowfly.app in place from the disk image (hdiutil attach, ditto, detach) instead of opening it
 - Install a .deb in place through pkexec and apt instead of opening the software installer
-- After a restart, say when the installer failed or was cancelled (read update.log on the next start)
-- Remove a .bak program left behind when a second window kept the old program running
-- Offer Download again when the downloaded file is gone or no longer matches its checksum
 - A CI check of Install and restart: swap a portable copy from a local feed and run --finish-update on the runners
 - Allow Install and restart when Windows Smart App Control or AppLocker blocks programs in the temp folder
 - Installer checks for the ARM64 MSI and the aarch64 .deb and .rpm on Arm runners (windows-11-arm, ubuntu-22.04-arm)
@@ -66,7 +60,6 @@ Journey and real-input smoke tests, packaging, installers and updates. Untriaged
 - Hosting-service journeys against a local fake API (pull requests, issues, build status)
 - On a journey failure, save a rendered screenshot where wgpu is available, to make CI failures easier to read
 - Accessible names for the remaining painted widgets (section headers, graph ref chips, sidebar ahead/behind counts), plus a test that every clickable widget has one
-- Offer stash-and-retry when a checkout is refused because of local changes
 
 ### Real-input smoke tests (Linux)
 

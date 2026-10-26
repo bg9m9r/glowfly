@@ -12,14 +12,8 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 
 - Interactive rebase and graph edits: use the named auto-stash instead of git's `--autostash`
 - A Show stash button on the toast when git's own autostash is kept after an interactive rebase
-- Restore the staged state on put-back (`stash pop --index`, falling back to a plain pop)
-- Guard multi-command jobs too: pull request checkout, Git Flow start and finish
-- Don't count submodule-only changes as dirty in the guard
 - An option to include untracked files in the auto-stash
-- Remember pending auto-stashes across restarts (offer to put them back on reopen)
 - Pull and Checkout tooltips say when the changes will be stashed first
-- Offer Stash and carry on from the "would be overwritten" error toast for operations started
-  outside the guard
 
 ### Line-level staging
 
@@ -28,9 +22,6 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - Keep the line selection across tab switches
 - Auto-scroll the diff while a line drag is held past the viewport's top or bottom edge
 - Drag selection in the whole-file view, once line operations work there
-- Discarding every line of an untracked file deletes it instead of leaving an empty file
-- After unstaging every line of a new file, follow the diff to its untracked view instead of
-  closing it
 - Ctrl/Cmd-drag over already selected lines removes them (toggle the range) rather than adding
 - Changed-word fills on a selected line are a step weaker than the stronger selected tint in
   Dark; derive a selected-word fill from it
@@ -38,14 +29,7 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 
 ### Live working-tree updates
 
-- Notice a watcher that started but receives no events (a probe after starting) and warn once,
-  suggesting a restart
 - Watch inactive tabs so their state updates in the background
-- Status-bar indicator showing whether live updates are active for the repository
-- Watch config files pulled in by include.path / includeIf (outside the git dir) so their edits
-  reload too
-- Ask about trust again when a trusted repository gains new command-running settings outside
-  Glowfly
 
 ### Commit panel extras
 
@@ -74,12 +58,6 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - Explain when a restored or opened path is outside a sparse checkout
 - Restore, Open and Show buttons in the diff header for two-commit comparisons (restoring the
   newer commit's version, as the comparison rows do)
-- Make discarding an untracked file undoable the same way Delete is
-- Make Unstage deleted file (a staged new file already gone from disk) undoable by keeping its
-  staged blob
-- Take the file back out of the Recycle Bin / Trash on undo instead of leaving its copy there
-- Keep an undo entry when a delete fails after the file went (the trash reported an error, or
-  Unstage and delete couldn't change the index)
 - Keep a copy for undo of files over 64 MB (outside the object database, or by restoring from
   the trash)
 - Read Recycle Bin settings for redirected known folders and subst drives, which have no volume
@@ -128,14 +106,9 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 ### Local patches
 
 - Drop a `.patch` file on the window to apply it
-- Say when a patch is already applied (a reverse check after a failed apply) instead of
-  reporting that it doesn't apply
 - Stash uncommitted changes before applying a patch and restore them afterwards
 - Choose several files of a commit for one patch (only one file from the row menu now)
 - Create a patch of one file from the rows comparing two commits
-- Keep a renamed file's rename in a one-file commit patch (include its old path)
-- git am options: keep carriage returns (`--keep-cr`) for CRLF content, Signed-off-by, and the
-  committer date
 - Remember the Apply dialog's last options
 - Undo for Apply as commits
 - Show the patch git am stopped on (`git am --show-current-patch`) from the banner

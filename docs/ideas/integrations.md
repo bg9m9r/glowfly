@@ -53,7 +53,6 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 
 - Change an issue's state (Jira: its status, through a transition), assignees and labels from the panel
 - Threaded replies with show and collapse (GitLab discussions, Jira comment threads)
-- Keep a comment draft per issue when the panel closes or another issue opens (now discarded with the panel)
 - Post the comment with the commit shortcut (Ctrl+Enter, Cmd+Enter on macOS) from the comment box
 - Show a GitHub issue's locked conversation in the panel and disable Comment before posting
 - GitLab comments made only of quick actions (/close, /assign): show the summary GitLab answers with and reload the issue instead of a failed post
@@ -84,8 +83,6 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 
 ### Limits found while building integrations
 
-- Make the branch-name issue heuristic configurable (`2024-cleanup` is currently read as issue
-  2024)
 - Pace per-PR detail lookups by each service's rate-limit headers instead of a fixed max age
 - Read per-PR details a few at a time in parallel once the test mock supports calls from other threads
 - Let users add their own words to the list of Jira non-project prefixes
@@ -111,10 +108,8 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - For a diverged branch, offer a force push with lease and then the pull request (today it is refused with the reason)
 - A Preferences setting to create pull requests as drafts by default
 - Push-and-create entries in the graph's commit and ref-label menus
-- Read branch.<name>.pushRemote and remote.pushDefault to pick the remote a branch's pull request is pushed from
 - Find the upstream repository under any remote name by asking the service for a fork's parent, not only `upstream` or the code host's remote
 - When the code host's remote is the user's fork, also list the upstream repository's pull requests, so a fork pull request shows on its branch
-- Tell a fork's pull request apart from a same-named branch on the code host (head repository on PullRequest)
 - Push to your fork… in the branch menus, the toolbar's Push dropdown and the palette, not only in the create dialog
 - Keep the create dialog's typed title, description and linked issues across the Fork dialog detour
 - On a fork remote's REMOTE row, create a pull request from the checked-out branch into it, and open the branch's existing pull request
@@ -130,8 +125,6 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - A note when the local target branch differs from the service's base (the base SHA is loaded now)
 - Show the pull request from the graph's PR chip, a local branch's menu and the command palette
 - Fetch more history from the no-common-commit note in a shallow clone
-- Delete the local branch too after a merge
-- Remember the last merge method per repository
 - Edit or delete your own comments, and reactions
 - Re-request a review, and a participants list
 - Mark a draft ready for review, and enable auto-merge
@@ -175,8 +168,6 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Up/Down keys to move through the Commits tab's list
 - A commit's own file list inside the Commits tab (Files changed scoped to one commit or a range)
 - Compare from the loaded page's head SHA when it is newer than the listed head
-- Know fork pull requests from the service's list (the head repository), so a same-named remote
-  branch is never taken for the source before the page loads
 - Keep a fetched pull request head from being pruned by gc (a ref in a private namespace, removed
   when the panel closes)
 - Fork pull requests on Azure DevOps and Bitbucket Cloud: fetch the source branch from the fork's
@@ -191,7 +182,6 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Start code comments from the Commits tab's per-commit diffs
 - Keep several unposted line comments at once (one per line), and keep them across closing the
   panel or restarting
-- Ask before closing the panel or opening another pull request while a line comment is unposted
 - A key to start a comment on the line at the diff cursor, and one to extend it
 - Show how many comments the pending review holds on Finish review, and discard a pending review
 - Edit or delete a pending review comment before the review is submitted
@@ -224,7 +214,6 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 
 - Offer to add the link's remote when the repository matched by root commit has no remote with that URL
 - Copy link to a commit or tag on a chosen remote
-- Forward `glowfly <path>` to the running window too, not only links
 - A palette step to paste and open a glowfly:// link
 - Links to a file or line at a commit, and to a stash or pull request
 - A progress toast while a link is resolved against long recent lists

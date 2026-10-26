@@ -43,8 +43,6 @@ The diff viewer, blame and file history, range-diff, conflict prediction and the
 - Colour filled-in gap lines from the in-context parse (new side's states) instead of the old
   file on its own
 - Code comment marks on filled-in gap lines of pull request diffs
-- Read gitattributes from the commit for blame at a commit and the file history's File view,
-  and from the index for staged diffs
 - Show a loading state on a gap control while its lines are read
 - Trim the bundled syntax set to the languages Glowfly wants, if the extra ~0.6 MB of binary
   size matters
@@ -96,7 +94,6 @@ The diff viewer, blame and file history, range-diff, conflict prediction and the
 - Wrap long hunk headers (their function context) instead of clipping them
 - With whitespace hidden, an option to also apply the hidden whitespace changes inside a hunk
   (stage or revert the region as the full diff has it)
-- Keep a revert's undo entry when the revert fails after changing the file (as Restore does)
 - Name the commit in a revert's undo label ("revert of a hunk of 1a2b3c4 in a.txt")
 
 ### Merge conflict tool
@@ -126,11 +123,8 @@ The diff viewer, blame and file history, range-diff, conflict prediction and the
 - A separate wrap setting for the conflict view instead of sharing the diff viewer's
 - A fold-back control in the painted output too (only the panes have one)
 - Text typed into a clean run deleted between two conflicts joins the next conflict; let it bring the run back
-- Undo of a whole-version resolve (Take ours/theirs for binary, deleted, link and submodule conflicts)
-- Undo of Mark resolved and Mark conflicted from the WIP panel and palette
 - Drop expired resolution entries from the undo history as soon as the merge or rebase step is committed or aborted, not when they are next tried
 - Reload a parked tab's conflict view when an undo there changed its open file
-- An Undo button on the Resolved / Saved-with-markers toasts
 - Undo of a resolution whose resolve-undo record was removed outside the app (restore the stages from the recorded ids with libgit2)
 
 ### Blame gutter
@@ -189,8 +183,6 @@ The diff viewer, blame and file history, range-diff, conflict prediction and the
 - Cancel a running merge tool from Glowfly
 - Option to mark the file resolved automatically when the merge tool saves it and exits with 0
 - Name the temp folders after the sides' branch names instead of ours/theirs
-- Remove the diff tool's temporary copies when Glowfly quits, not only by the 24-hour sweep
-- git config's GUI choice: diff.guitool / merge.guitool and difftool.guiDefault (git difftool --gui)
 - Name git config's tool in the file menus' hover notes and the palette's detail (needs a cached read per repository)
 - Run console merge tools (vimdiff, nvimdiff, emerge in a terminal) in a built-in terminal tab
 - Honour mergetool.keepBackup / keepTemporaries / hideResolved for commands Glowfly runs itself
@@ -198,7 +190,6 @@ The diff viewer, blame and file history, range-diff, conflict prediction and the
 - Suggest git's built-in tool names (git difftool --tool-help) on the External tools page
 - Use a built-in tool's own trusted exit code when the user overrides its cmd
 - Copy git config's tool into the External tools fields with one click
-- Report a git difftool failure that comes after its 10-second watch (git's tool scripts start slowly on Windows)
 - Run a built-in merge tool on a file whose name has *, ? or [ (refused now: git mergetool's script globs the name)
 
 ### File history and blame
@@ -222,4 +213,3 @@ The diff viewer, blame and file history, range-diff, conflict prediction and the
 - A keyboard shortcut for the File view's Text / Preview switch
 - Preview other renderable text (reStructuredText, AsciiDoc)
 - Use the editor font and size for code blocks in the File view preview (they use the body size now)
-- Rendered Markdown: an italic run followed by a space draws without the gap ("*try* the" reads "trythe")

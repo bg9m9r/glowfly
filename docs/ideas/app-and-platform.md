@@ -39,11 +39,6 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 
 ### Preferences structure
 
-- Ask before quitting the app (window close) while a Preferences page has unsaved edits
-- Ctrl/Cmd+S saves the page and Esc on the Save / Revert bar reverts
-- Commit signing text fields (program, allowed signers file) on the Save / Revert bar instead
-  of saving on leaving the field
-- "Saved" waits for the git config write to succeed and shows the error inline when it fails
 - Integrations: rename or reorder accounts, and a per-account Test connection button
 - Rename the prefs.ui.date_* and prefs.tools.terminal.* translation keys to match their new
   pages
@@ -82,7 +77,7 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 
 ### Zoom
 
-- Fine-grained zoom: Ctrl+mouse wheel, a slider in the status bar, custom percentages
+- Fine-grained zoom: a slider in the status bar, custom percentages
 - Offer to show a hidden details panel when the WIP row or a commit is selected
 - Keep the trust chip and conflict-prediction indicator visible while the toolbar is hidden
 - A palette entry and key for showing or hiding the activity log
@@ -134,19 +129,12 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Word the slow-status note for another worktree's background count by that worktree's name
 - Use the index comparison for Glowfly's own stage, unstage and discard refreshes instead of a whole status read
 - Pack the index memo's paths into one buffer so indexes past `MAX_INDEX_MEMO` entries can be compared too
-- Sweep submodules' and nested repositories' work trees in the Windows safety poll (it skips nested `.git` folders)
 - Report the Windows sweep's duration and counts in the activity log (debug)
-- Turn the file system monitor off again (`git fsmonitor--daemon stop` and unset core.fsmonitor), e.g. on a repository Preferences page
-- Probe `git version --build-options` for the fsmonitor daemon when git is detected, so builds without it get no Turn on button
-- Stop the repository's fsmonitor daemon before Glowfly removes or moves a worktree on Windows
-- Check that Glowfly's libgit2 index writes (staging, discard) keep git's fsmonitor token and untracked cache extensions, and re-record them if not
 - Say in the slow-status note that the monitor setting applies to every worktree of the repository, or set it per worktree under extensions.worktreeConfig
 - Link to Watchman's install page in the Linux slow-status note
 - Offer the monitor when a later status read is slow after the untracked cache was turned on (the note shows once per repository)
 - Show whether the fsmonitor daemon is watching in the status bar or Preferences
 - Lend pooled repositories to more reads (full load, blame, file history, compare, conflicts) once their costs are measured
-- Notice changes to config files pulled in by `include.path` / `includeIf` before lending a pooled repository (only the main config files are stamped; the 5 s idle limit covers the rest)
-- Hold the repository pool for git commands typed into the built-in terminal (`git gc` there within 5 s of a read leaves the old pack on Windows)
 
 ### Welcome screen
 

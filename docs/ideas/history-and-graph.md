@@ -11,10 +11,6 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Choose which of two branches at the same commit is the lower layer (name order for now)
 - After the lower layer is squash-merged on the host, offer to restack the next layer onto
   the base
-- Make the finished part of a restack aborted midway undoable as one entry (only the
-  operation journal has it now)
-- Stash uncommitted changes once for the whole restack instead of per step, so they always
-  land back on the original branch
 - Preference to restack automatically after amending or rewriting a lower branch, without the
   toast
 - Preview a restack (commits per layer, predicted conflicts) in the operation preview dialog
@@ -28,10 +24,6 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Push stack to a remote other than each layer's upstream (or origin), chosen per run
 - Keep a stack's create dialogs going across a tab switch instead of stopping the run
 - Toolbar Push dropdown item for Push stack when the current branch is in a stack
-- Handle rebase.updateRefs=true in the interactive rebase panel, whose todo then holds
-  update-ref lines
-- After aborting a stopped restack, check the branch that was checked out before out again
-  (HEAD stays on the step's top, where git's abort leaves it)
 - Show the git version reason (2.38 for `--update-refs`) on the branch menu's restack items
   too; today only the refusal toast says it
 
@@ -62,8 +54,6 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 
 ### Interactive rebase
 
-- Keep `update-ref` steps (`rebase.updateRefs`) so branches stacked inside the range move with
-  it
 - Move commits up/down or reword several commits from a multi-selection in the graph
 - A preference to always stash automatically, without asking, before a rebase
 - Spellcheck in the Reword dialog (needs `UiCache` in modals)
@@ -145,7 +135,6 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Answer path: and file: terms from the history index (per-commit changed paths or a path-to-commits map built in the background)
 - Share one history index between the worktree tabs of one repository
 - Compact an index's text blocks after many updates leave unreachable commits' text behind
-- Search the whole commit message, not only the summary and the body's first ~240 characters
 - List the whole history's authors (with commit counts) in the author picker from the index
 - Date terms (before:, after:) answered from the index's author and committer dates
 - Apply .mailmap to author names and emails in search and the author picker
@@ -204,7 +193,6 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Apply .mailmap to author and committer names in the details panel
 - Note when the author and committer are the same but the commit date is later than the author
   date (rebased or amended)
-- Read non-UTF-8 commit messages and names lossily instead of showing them empty
 - A monospace option for the commit body block
 - Mark the first parent of a merge (the branch merged into) on its chip
 - Graph table: a keyboard focus ring on the column header dividers, to resize without a mouse

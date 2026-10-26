@@ -4,15 +4,11 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 
 ### Tabs (multiple open repos)
 
-- Ask before quitting (window close button or File > Quit) when any tab holds a commit draft or
-  unsaved conflict choices
 - A keyboard shortcut that opens the tab list, and a search field to filter it
 - Move tab left / right entries in the Window menu and the tab context menu
 - A Clear entry for the recently closed list, and keeping that list across restarts
 - Offer a tab's custom label again when its repository is opened later from Recent or the
   dashboard
-- Ask before closing tabs with other unsaved text (a half-written pull request description,
-  issue form or stash message)
 - Show the tab list button always, not only when there are closed tabs or the tabs had to shrink
 
 ### Command palette (fuzzy finder)
@@ -46,31 +42,12 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 - macOS modifier symbols painted as shapes in the key caps (the bundled fonts lack the glyphs)
 - The toolbar buttons' keys also exposed as the accessibility keyboard-shortcut property
 - Accessible names that say what the repository and branch pickers are ("Repository: <name>")
-- The stash-apply question lists the files both the stash and the working tree change, and
-  says nothing when they don't overlap
-- A refusal with a clear reason, instead of a question, when the index has conflicts (git
-  can't apply a stash then)
-- The toolbar Pop and the palette's Pop stash name the stash by position and commit like the
-  sidebar does (stash@{0} with the revision guard)
 - Footer text listing the PgUp/PgDn and Home/End keys
 
 ### Keyboard shortcuts
 
 - Topological next/previous (the next or previous commit on the selected commit's own branch
   line) and first/last row in the graph
-- The rows' Stage/Unstage buttons and menu items also move on to the next file when they act on
-  the open one
-- The sheet and Preferences > Keyboard notes name the WIP lists for the Up/Down and S/U rows
-- Home/End and PageUp/PageDown in a focused WIP list
-- A key to move the focus between the Unstaged and Staged lists keeping the place
-- Enter to open, Space to stage or unstage, and Delete to discard the current file of a focused
-  WIP list
-- Shift+Up/Down to select several WIP files and stage or unstage them together
-- Keyboard focus and Up/Down in the commit, comparison and folder-history file lists, and in the
-  Conflicted and Resolved lists
-- Moving on to the next conflicted file after one is marked resolved from the list
-- Arrow keys in the first frame after a WIP list takes the focus still move egui's focus (the
-  lock starts on the second frame)
 
 ### Rebind keyboard shortcuts
 
@@ -109,11 +86,6 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 - Let translators pick each menu's mnemonic in the catalog
 - Preferences > Keyboard warns when an Alt+letter key hides a menu's mnemonic
 - Hide the underlines once the pointer is used in a menu opened from the keyboard
-- Ask before quitting when tabs hold unsaved work (reuse `state/tab_losses.rs`) or Preferences has unsaved repository settings
-- Quit by itself once the running operation ends while the quit question shows
-- Quit anyway stops a stoppable job (fetch) first, so its lock files are cleaned up
-- Also ask before quitting while a sparse clone, a terminal program or other background work runs
-- Keep the open dialog under the quit question instead of replacing it
 - On macOS, the Dock menu's Quit and logging out go through the quit question (needs `applicationShouldTerminate:`, which winit's application delegate owns)
 - macOS menu keys (Cmd+Q, Cmd+T…) work while the window is minimized and there is no key window
 - Cut, Copy, Paste and Select All in the macOS Edit menu, sent to the focused text field

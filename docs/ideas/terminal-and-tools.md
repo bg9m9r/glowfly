@@ -14,8 +14,6 @@ The built-in terminal, custom commands, external tools and a command-line compan
 - Stop a running custom command, and stream its output into the Activity row while it runs
 - Ask for text before running ({input:Prompt} placeholders filled from a palette step)
 - More placeholders: {short} sha, {upstream}, {remote}, {tag}, the file's folder
-- Include .glowfly/commands.toml in the trust print so a changed repository commands file asks
-  again
 - Preferences page listing loaded commands, their files and problems, with Open file, Reload
   and Create user file (with a commented example)
 - List custom command keys in the shortcut sheet and Preferences > Keyboard, and let them be
@@ -24,14 +22,9 @@ The built-in terminal, custom commands, external tools and a command-line compan
 - A setting to ignore repository commands files entirely
 - Watch the user commands file for changes (today it reloads on each repository load, focus
   refresh or Reload)
-- Literal pathspecs for {files} so glob characters in file names don't match other files
 
 ### Terminal keeps the prompt's space
 
-- BS, CUB, EL and ECH right after a write into the last column act one cell off (vt100 keeps
-  the cursor past the edge instead of on the last cell)
-- A rebuilt screen (Clear history, parser recovery) forgets which rows wrapped, so copying a
-  wrapped line afterwards splits it
 - Diff, blame, file history and conflict views measure columns with the unrounded 'M' advance;
   check long lines for the same drift against their highlights and wrap widths
 - Log the raw PTY bytes at trace level (RUST_LOG) so a shell's output can be captured for
@@ -57,29 +50,17 @@ The built-in terminal, custom commands, external tools and a command-line compan
 - Tab strip overflow: scroll-left/right buttons and a list of all tabs when they don't fit
 - Keys for new terminal tab, close tab and next/previous tab while the terminal has focus
 - Rename a terminal tab
-- Double-click selects a word and triple-click a line; dragging past the top or bottom edge
-  scrolls the history
-- Mouse wheel in full-screen programs (alternate screen) sends arrow keys
 - A preference for the history length (fixed at 5,000 rows)
-- Keep the history when the screen is rebuilt after a parser error
 - Font family and line height preferences for the terminal; draw the dim (faint) text attribute
 - Honour a program's cursor shape requests (DECSCUSR) and a blinking cursor
 - Browse… for the custom shell program, and WSL distributions as shell choices
 - Find in the terminal's history
 - Clear for cmd in step with Windows' pseudoconsole (today it only clears locally)
 - A palette entry for New terminal tab
-- On Linux, a selection also sets the PRIMARY selection and middle-click pastes PRIMARY instead
-  of the clipboard (X11 and Wayland)
-- An Option-as-Meta setting on macOS, so Option+letter sends the ESC prefix there too
-- Alt+digit and Alt+punctuation (Alt+., Alt+_) as ESC-prefixed input
-- Confirm before closing a repository tab or quitting while one of its terminals runs a
-  program, and before Kill
 - Show the running program's name in the close confirmation on macOS
 - Note in the shortcut sheet and Preferences > Keyboard which keys the focused terminal keeps
 - An option to send Shift+Home/End to the shell (PSReadLine selects with them) instead of
   scrolling the history
-- Count background jobs and a custom launcher shell's (wsl.exe) children correctly when
-  detecting a running program
 
 ### External tools
 

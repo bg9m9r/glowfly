@@ -46,7 +46,7 @@ These need a vendor account or cloud service rather than git:
 
 The daily-driver, power-user, integration and polish items (P0 to P3 and Preferences parity;
 the [Feature build-out](https://github.com/bg9m9r/glowfly/milestone/3) milestone) are built, with tests on all three CI systems. Open leftovers: issues on Bitbucket, Azure
-DevOps and Trello (Create and view issues) and Default group color (waits for repository groups).
+DevOps and Trello (Create and view issues) and Default group color (#3, which waits for repository groups, #239).
 
 ### Milestone 1: first release (in progress)
 
@@ -76,10 +76,12 @@ Exit criteria:
 
 ### Milestone 2: daily-driver polish
 
-[Its issues](https://github.com/bg9m9r/glowfly/milestone/2): the 124 follow-ups kept by the 2026-10-18 triage because a daily
-user would miss them (data safety, correctness, platform behaviour, and gaps in common
-workflows), plus the feedback from Milestone 1's users and hands-on use on macOS and Linux *(you
-or a volunteer)*.
+[Its issues](https://github.com/bg9m9r/glowfly/milestone/2). Most of the 124 follow-ups kept by
+the 2026-10-18 triage were built during Milestone 1. The 2026-10-25 triage of docs/ideas then
+promoted 54 issues on the bar of what a daily user would miss: data safety and correctness first
+(P1), then gaps in common workflows and platform behaviour (P2), and some polish (P3). The
+milestone also takes the feedback from Milestone 1's users and hands-on use on macOS and Linux
+*(you or a volunteer)*.
 
 Exit criteria:
 
@@ -109,14 +111,17 @@ As of 2026-10-18. Recompute from git history when a milestone closes.
   before it, each landing closed about 1.4 Later bullets and added about 9 (50 closed, 320 added),
   so the queue had no end date. The triage kept 124 for Milestone 2 and moved 567 to Ideas (1 was
   already built), and new follow-ups now go to Ideas.
-- **Milestone 2.** The 124 Later bullets in 46 sections. Landings on Later have closed 5 to 8
-  bullets each, so about 20 landings, or 6 to 10 hours of campaign time, plus the fixes from
-  Milestone 1's daily use. About 1 to 2 days of campaign time once Milestone 1 ships.
+- **Milestone 2** (updated 2026-10-25). About 54 issues, sized S to L. At the recent pace of
+  roughly one landing per slot every 1.5 to 2 hours, that is about 80 to 110 slot-hours (about 16 to
+  22 hours of campaign time with five slots), plus the fixes from Milestone 1's daily use. A rough
+  guess until a few have landed; L issues may take more than one landing.
 - **Ideas** (567 bullets) has no estimate on purpose. The largest groups came from Diff viewer
   upgrade, Command palette, In-app pull request view and File actions.
 
 ## Status
 
+- 2026-10-25: Milestone 2 organised: a triage of docs/ideas promoted 54 issues (12 P1, 37 P2, 5
+  P3); repository groups became #239 and Default group color (#3) left Milestone 1 to wait for it.
 - 2026-10-22: Work moved from TODO.md to GitHub issues on the
   [Glowfly Project](https://github.com/users/bg9m9r/projects/2) and GitHub milestones; the
   1,610 untriaged ideas moved to [docs/ideas](docs/ideas/README.md).

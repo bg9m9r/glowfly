@@ -20,12 +20,6 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 
 - Put the ahead/behind counts into the LOCAL row's tooltip and accessible description ("2 ahead,
   3 behind origin/search"), so the painted arrows have words for screen readers
-- A fallback font (system or bundled) for CJK, Hangul and other scripts in commit messages,
-  author names, branch names and paths, which draw as boxes today
-- Dates in the ja_JP, zh_CN and ko_KR locales use CJK month and weekday words the fonts lack, so
-  the date preview in Preferences and every date show boxes
-- A debug-build warning when a frame lays out a character with no glyph, for runtime text the
-  static check can't see (server messages, theme names, hook output)
 - Use the painted ahead/behind arrows wherever else counts appear (remote and Git Flow rows, tab
   tooltips, the dashboard)
 
@@ -88,7 +82,6 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 - Check that long context menus still fit small windows at 14 px items; scroll or regroup where they don't
 - Tune the Preferences label column for the longest translated labels at 14 px
 - The commit details' "ISSUES" / "CARDS" heading and its German and Spanish values are still all caps
-- The graph's columns overlap (lanes under the Commit column) when the centre gets narrower than about 560 px
 
 ### Brand colour and tinted neutrals
 
@@ -151,14 +144,6 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 
 ### No brown
 
-- The repository hue Ochre (quiet chroma 0.08 at hue 95) reads khaki on every theme; a quiet
-  warm hue can't be clean, so it needs a new hue or a stronger chroma (and a new name)
-- Dawn's and the light themes' ANSI yellow and `syn_type` are ochre text; judge them in the
-  terminal and editor sheets
-- Sand's toolbar backing and pressed state lean olive-grey (its beige mixed toward the green
-  accent); a neutral backing may read cleaner
-- Light themes' amber and gold text (`warn`, `modified`, Linen's and Mist's `syn_type`) is ochre
-  at the darkness 4.5:1 needs on paper; try an orange-leaning amber, or a mark beside the text
 - Sand is still a cream-and-greige theme by name; consider re-toning it to clean cream with
   neutral chrome, or retiring it for Linen
 - A hygiene check that flags `gamma_multiply` on a status, accent or repository colour in `ui/`

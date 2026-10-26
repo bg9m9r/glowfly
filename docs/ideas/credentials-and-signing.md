@@ -16,14 +16,7 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
 - Keep paused auto-fetch remotes across restarts
 - A desktop notification when a remote needs a sign-in
 - A status-bar chip listing paused remotes once their banner lines are dismissed
-- Read the OpenSSH version of a repository's `core.sshCommand`, not only `GIT_SSH_COMMAND`,
-  `GIT_SSH` or `ssh` on PATH
-- Start every git child in its own session on Unix, not only with OpenSSH before 8.4
-- Fall back to git's in-memory `cache` helper on Linux when no keyring helper is installed
 - Let the dialog's Remember choice update the default in Preferences > General
-- Remember sign-ins typed for git LFS endpoints and for clones whose remote isn't known yet
-- Log quietly instead of toasting when a sign-in isn't saved because `credential.helper` is
-  turned off on purpose
 
 ### Signing beyond config
 
@@ -101,8 +94,6 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
 - Handle an includeIf section the user shares with a Glowfly entry (extra keys in the same subsection) instead of leaving it in place
 - Rules on other conditions git offers (hasconfig:remote.*.url for a hosting-service account, onbranch:)
 - Show which profile applies in the tab bar or the repository list, not only in the commit box and the Profile page
-- Warn when GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL or GIT_COMMITTER_* in the environment override the identity a rule gives
-- Re-read the effective identity when the repository's .git/config changes on disk (watcher), not only on open and focus
 - A "Pick a profile for this folder" prompt when cloning or initializing into a folder no rule covers
 - Per-rule signing settings (gpg.format, commit.gpgsign) written into the profile's include file
 - Remove a repository's own identity from config.worktree too (extensions.worktreeConfig) when using a profile there

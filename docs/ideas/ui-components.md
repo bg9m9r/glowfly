@@ -42,10 +42,7 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Update-failed chip: open Preferences scrolled to the Updates row
 - Glowfly themes (Dusk and Dawn): redraw the view snapshots in Dusk and Dawn once the pair is
   settled (they draw in the Garden pair for now); theme-file keys for the colour-blind branch set; a gold distance test
-  for custom theme files whose accent lands near Orange or Gold; Dusk's warm ref chips
-  (main's 40% gold #735c3c, Orange's #503825, Lime's #414b3a) are dark tints of warm hues and
-  still read tan or olive: try an indigo chip with a lane-coloured edge and text for warm lanes
-  (row bands, toolbar groups and the selected row came out of brown in fix/dusk-no-brown)
+  for custom theme files whose accent lands near Orange or Gold
 - Glowfly themes (six more built-ins): a light twin for Ember and a dark twin for Linen if
   owners ask; theme files as cards in the picker (drawn from the file's own colours); repository
   colour hues tuned per theme (the new six reuse the standard repo set); a picker filter once
@@ -64,13 +61,9 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
   options fills their defaults)
 - Create fork dialog: treat a typed remote name as an edit (it is a confirm today because the
   name is filled after the lookup)
-- Ask before a trust prompt or another dialog replaces an edited form
-- Ask before closing the window or the tab while an edited form is open
 
 ### Truncation with an ellipsis and the full text on hover
 
-- Narrow windows (below about 1100 px): the graph's right-aligned columns run over BRANCH / TAG
-  and GRAPH, and the toolbar's right-hand buttons overlap the left ones; give columns way in turn
 - The untrusted LFS note could carry a Trust… link that opens the trust dialog
 - Fade out the last few pixels instead of drawing an ellipsis, as an appearance option
 - Middle ellipsis for paths (keep the file name, cut folders) in file lists, repo sync paths and
@@ -79,8 +72,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Cut a very long issue or PR state when it would leave the title less than ~40% of the row
 - Show the full 40-character SHA and the author's email in the graph cells' hover
 - Fold the Conflicted and Resolved Files headers' buttons into the same more-actions menu
-- A more-actions overflow for the main toolbar and the issue and PR panel headers when translated
-  labels don't fit
 - Translate the graph column titles (the floors already size the columns for longer titles)
 - Cut the file history row's date when the panel is narrower than the date
 - Show the whole text of a cut row when it gets keyboard focus, not only on hover
@@ -112,8 +103,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
   from one of origin
 - Menus share the tooltip's 8 px corners through egui's popup frame; give menus their own
   radius if they should stay tighter
-- A narrow window drops toolbar buttons off the right edge; move the ones that don't fit into a
-  More menu
 - Keycaps show a binding's first chord only; list a second chord when one is set
 - Undo's preview of a rebase or history edit lists the rewritten commits side by side with the
   ones it brings back
@@ -150,7 +139,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 
 ### Full-row selection in file lists
 
-- Up and Down arrow keys move the open file in the commit, WIP and pull request file lists, as the file history list already does
 - Clicks in the panel padding beside a file row (where its selection now reaches) select the row too
 - Right-click on a row's Stage / Mark resolved / Mark conflicted button opens the row's menu as well
 - Double-click a file row to open it in the external diff tool
@@ -160,7 +148,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 ### Layout that gives tool views room
 
 - Toolbar name limits that grow with the window (repository and branch names are cut at 96 and 128 px at most; wide windows could show more)
-- Toolbar groups that fold into an overflow menu, or captions that drop, when even the narrowest picker slot leaves them overlapping (with captions: under about 1250 px in English, 1330 px in German)
 - Commit rail: a collapse control on the expanded commit panel, to go back to the rail without closing the tool view
 - Commit rail: a preference for which tool views collapse the commit panel, or to never collapse it
 - Commit rail: entries for an operation in progress (conflicted count, Continue / Abort) and separate staged and unstaged counts
@@ -213,14 +200,10 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 
 ### Window chrome and toolbar
 
-- A Preferences option to keep the system title bar on Windows
-- The DWM shadow and rounded corners around the drawn Windows frame
 - Centre the macOS traffic lights on the taller title bar
 - Follow macOS's title-bar double-click setting (zoom or minimize) instead of always maximizing
 - F10 opens the title bar's menu, like an Alt tap
-- Dragging the only tab moves the window instead of the tab
 - Dim the window buttons under a dialog's backdrop
-- Toolbar groups that don't fit fold into a ⋯ menu instead of crowding the pickers
 - Cut long repository names in the middle on tabs, like the branch picker
 - Vibrancy behind the macOS title bar, toolbar and sidebar
 - Mica on Windows 11 21H2 (build 22000), which lacks the documented backdrop attribute
@@ -232,14 +215,10 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - A Preferences switch for solid surfaces where Mica is available
 - A slightly lighter Dark `faint`, so Dark's sidebar can sit on Mica too (it misses 4.5:1 over
   the lightest dark Mica stand-ins at every tint step and stays opaque)
-- Resize from the top edge above the Maximize button (the hit test gives that strip to the
-  button, for Snap Layouts)
 - The stroked dropdown caret on the other dropdowns too (the diff header's View menu, the
   pull request filter chips, the terminal's shell caret, combo-style menu buttons)
 - A quiet tab's faint repository icon on a Mica title bar: the Chrome surface's contrast checks
   leave out `faint`, so check it at 3:1 as an icon
-- In a window too narrow for every group, a chip appearing still narrows the pickers (it counts
-  in the right-hand block's width); fold the chips into the right-hand group's room instead
 - Animate the dropped tab settling into its slot, like the others slide
 - The system frame's tab bar lifts the active tab within its own 30 px (the tabs start 2 px
   lower); give it the drawn title bar's 34 px tabs
@@ -303,10 +282,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Preferences > Git: a way to show the too-old banner again after Don't show again
 - Offer git's own updater (update-git-for-windows) from the banner when Git for Windows is the git in use
 - Translate the git banner's core texts (GitInfo::banner/problem) and the feature labels
-- Use error::advice for the other hosting-service errors (fork, create pull request, create issue, comments, dashboard, sign-in status)
-- An Edit remote… fix on the remote-not-found and unreadable toasts
-- Repository rows: plain sentences for more git failures (diverged pull, locked index)
-- Recognise TLS certificate failures ("SSL certificate problem") with a next step
 - Translate the safe.directory dialog and the Publish dialog strings
 - A Copy button inside Details disclosures
 - Use the shared Details disclosure in the SSH host-key prompt
