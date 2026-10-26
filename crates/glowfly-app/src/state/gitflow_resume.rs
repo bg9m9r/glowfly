@@ -63,7 +63,7 @@ pub fn steps_left(t: Lang, n: usize) -> String {
 
 /// The stopped Finish when Continue finish can run (its merge is committed).
 pub fn offered(st: &AppState) -> Option<&StoppedFinish> {
-    st.gitflow_resume.as_ref().filter(|r| r.ready)
+    st.session.gitflow_resume.as_ref().filter(|r| r.ready)
 }
 
 /// The palette entry's label: "Continue finishing release/1.2.0".

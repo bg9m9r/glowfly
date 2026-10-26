@@ -92,7 +92,7 @@ fn push(st: &AppState, target: DiffTarget, part: RevertPart, fx: &mut Vec<Effect
 
 /// The file's current name when `target` is a File history entry under an older one.
 fn dest(st: &AppState, target: &DiffTarget) -> Option<String> {
-    st.history.as_ref().and_then(|v| v.revert_dest(target))
+    st.session.history.view.as_ref().and_then(|v| v.revert_dest(target))
 }
 
 /// A revert finished: its undo recorded, a toast for what changed (not ok when conflict markers

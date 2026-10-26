@@ -44,7 +44,7 @@ pub fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
         egui::Frame::new().inner_margin(margin).show(ui, |ui| {
             ui.spacing_mut().item_spacing.y = 2.0;
-            if st.gitflow_resume.is_some() {
+            if st.session.gitflow_resume.is_some() {
                 resume_row(ui, st, msgs);
                 ui.add_space(8.0);
             }
@@ -61,7 +61,7 @@ pub fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 /// A Finish stopped at a conflict: what is left, with Forget, and Continue finish once the merge
 /// is committed.
 fn resume_row(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let Some(r) = st.gitflow_resume.as_ref() else { return };
+    let Some(r) = st.session.gitflow_resume.as_ref() else { return };
     let t = st.settings.lang();
     let text = if r.ready { ready_text(t, &r.resume) } else { waiting_text(t, &r.resume) };
     banner::show(ui, Banner::new(BannerKind::Info).text(text), |ui| {

@@ -14,16 +14,16 @@ use std::sync::Arc;
 pub(super) fn diff_shown(st: &mut AppState, fx: &mut Vec<Effect>) {
     let binary = st.diff.as_ref().filter(|(_, d)| d.binary).map(|(t, _)| t.clone());
     let Some(target) = binary.filter(|_| crate::state::lfs_notes::summary(st).is_none()) else {
-        st.diff_preview = None;
+        st.session.diff_preview = None;
         return;
     };
-    let kept = st.diff_preview.take().filter(|p| p.target == target).and_then(|p| p.sides);
-    st.diff_preview = Some(DiffPreview { target, generation: st.diff_shown_gen, sides: kept });
+    let kept = st.session.diff_preview.take().filter(|p| p.target == target).and_then(|p| p.sides);
+    st.session.diff_preview = Some(DiffPreview { target, generation: st.diff_shown_gen, sides: kept });
     request(st, fx);
 }
 
 fn request(st: &AppState, fx: &mut Vec<Effect>) {
-    if let (Some(workdir), Some(p)) = (st.workdir(), st.diff_preview.as_ref()) {
+    if let (Some(workdir), Some(p)) = (st.workdir(), st.session.diff_preview.as_ref()) {
         fx.push(Effect::LoadBinarySides { workdir, target: p.target.clone(), generation: p.generation });
     }
 }
@@ -32,7 +32,7 @@ fn request(st: &AppState, fx: &mut Vec<Effect>) {
 /// preview is for. A failure is stored too, so the body falls back to its plain binary state.
 pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, result: Result<Arc<BinarySides>, String>) {
     let shown = st.diff.as_ref().is_some_and(|(t, _)| *t == target);
-    let Some(p) = st.diff_preview.as_mut().filter(|p| p.target == target && shown && generation == st.diff_shown_gen) else {
+    let Some(p) = st.session.diff_preview.as_mut().filter(|p| p.target == target && shown && generation == st.diff_shown_gen) else {
         return;
     };
     if let Err(e) = &result {
@@ -46,7 +46,7 @@ pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, res
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     let generation = st.diff_shown_gen;
     let on_screen = st.diff.as_ref().map(|(t, _)| t.clone());
-    let Some(p) = st.diff_preview.as_mut().filter(|p| p.sides.is_none() && on_screen.as_ref() == Some(&p.target)) else {
+    let Some(p) = st.session.diff_preview.as_mut().filter(|p| p.sides.is_none() && on_screen.as_ref() == Some(&p.target)) else {
         return;
     };
     p.generation = generation;

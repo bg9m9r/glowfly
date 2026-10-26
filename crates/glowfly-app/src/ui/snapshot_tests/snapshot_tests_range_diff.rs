@@ -91,7 +91,7 @@ fn with_phase(theme: ThemeChoice, name: &str, phase: impl FnOnce(&AppState) -> P
     view.phase = phase;
     view.selected = selected;
     view.widest = view.compared().map(|c| widest(c, 4)).unwrap_or_default();
-    st.range_diff = Some(view);
+    st.session.range_diff.view = Some(view);
     (st, dir)
 }
 
@@ -124,7 +124,7 @@ fn esc_closes_it_even_over_the_journal() {
     for journal in [false, true] {
         let (mut st, dir) = ready(ThemeChoice::Dark, &format!("range-diff-esc-{journal}"), Some(0));
         if journal {
-            st.journal = Some(JournalView::default());
+            st.session.journal.view = Some(JournalView::default());
         }
         let mut h = super::snapshot_tests_esc::app_harness(st);
         h.run();

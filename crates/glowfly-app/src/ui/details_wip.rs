@@ -49,10 +49,13 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let Some(snap) = &st.snap else { return };
     // The file being opened is highlighted at once, so a click or a step answers immediately.
     let opening = st.view.diff_opening.as_ref().filter(|t| t.is_working_tree());
-    let open = OpenFile { diff: opening.or(st.diff.as_ref().map(|(t, _)| t)), conflict: st.conflict.as_ref().map(|c| c.path.as_str()) };
+    let open = OpenFile {
+        diff: opening.or(st.diff.as_ref().map(|(t, _)| t)),
+        conflict: st.session.conflict.view.as_ref().map(|c| c.path.as_str()),
+    };
 
     let conflicted: Vec<&FileEntry> = snap.unstaged.iter().filter(|f| f.status == '!').collect();
-    let resolved = st.conflict_files.resolved_rows(snap);
+    let resolved = st.session.conflict_files.resolved_rows(snap);
     let kind = op_kind(snap);
     let tools = ToolAvail::of(st);
     let lines = st.line_counts.wip();

@@ -3,6 +3,7 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::{CloseRequest, Msg, TabsMsg};
 use crate::state::conflict::ConflictView;
+use crate::state::session::{Gen, RepoSession};
 use crate::state::tab_losses::close_confirm;
 use crate::state::tabs::{Parked, RenameTabForm};
 use crate::state::{AppState, Modal};
@@ -103,7 +104,8 @@ fn tabs_close_confirm() {
     let mut conflict = ConflictView::loading("src/lib.rs".into());
     conflict.picks = vec![ChunkPick::Sides(Choice::Ours), ChunkPick::Sides(Choice::Theirs), ChunkPick::default()];
     conflict.auto = vec![None, None, None];
-    st.tabs[1].parked = Some(Box::new(Parked { conflict: Some(conflict), ..Default::default() }));
+    st.tabs[1].parked =
+        Some(Box::new(Parked { session: RepoSession { conflict: Gen::open(conflict), ..Default::default() }, ..Default::default() }));
     let then = Msg::Tabs(TabsMsg::CloseConfirmed(CloseRequest::Others(st.tabs[0].id)));
     st.modal = close_confirm(&st, &[0, 1], then);
     assert!(st.modal.is_some());

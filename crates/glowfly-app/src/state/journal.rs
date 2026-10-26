@@ -1,4 +1,4 @@
-//! The operation journal's view state (`AppState::journal`, parked with its tab) and the pure
+//! The operation journal's view state (`RepoSession::journal`, parked with its tab) and the pure
 //! words it shows: a row's label (its note's, else its event's, else git's raw message), the
 //! subject's name, the tip a state is compared with, and the sentence saying what Restore would
 //! move (and that only the reflog keeps an unreachable state). Restore's own rules are in
@@ -12,7 +12,7 @@ use glowfly_core::repo::Snapshot;
 /// The open journal.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct JournalView {
-    /// The load in flight or last asked for (`AppState::journal_gen`).
+    /// The load in flight or last asked for (`RepoSession::journal`).
     pub generation: u64,
     pub loading: bool,
     /// The last load's result; `None` until the first arrives.

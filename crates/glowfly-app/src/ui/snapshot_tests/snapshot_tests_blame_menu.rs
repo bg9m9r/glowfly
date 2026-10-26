@@ -104,7 +104,7 @@ fn blame_row_menu_first_commit() {
 fn blame_find() {
     let (mut st, dir, grace) = with_blame(ThemeChoice::Dark, "blame-find");
     st.settings.blame = BlamePrefs { ignore_whitespace: true, moves: BlameMoves::AcrossFiles, wrap_lines: false };
-    let view = st.blame.as_mut().unwrap();
+    let view = st.session.blame.view.as_mut().unwrap();
     let lines = view.data.as_ref().unwrap().blame.lines.clone();
     view.find.query = "Point".into();
     view.find.hits = search(&lines, "Point");

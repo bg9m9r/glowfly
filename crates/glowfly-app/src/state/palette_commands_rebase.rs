@@ -54,7 +54,7 @@ impl RebaseCommand {
 
 pub(super) fn entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     let cmd = |c: RebaseCommand| C::Rebase(c);
-    if let Some(p) = st.rebase.as_ref().filter(|p| p.editable()) {
+    if let Some(p) = st.session.rebase.view.as_ref().filter(|p| p.editable()) {
         let label = if p.stale { "Reload rebase steps" } else { "Restore original order" };
         out.push(entry(cmd(RebaseCommand::RestoreOrder), label, "rebase reset undo revert original order steps todo"));
     }

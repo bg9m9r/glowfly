@@ -27,7 +27,7 @@ fn opened(name: &str, host: Target) -> (AppState, Vec<crate::effect::Effect>, [P
 fn reply_msg(st: &AppState, reply: PrReply) -> PullRequestMsg {
     let workdir = st.workdir().unwrap();
     let target = st.forge.as_ref().unwrap().host.clone().unwrap();
-    PullRequestMsg::Replied { workdir, target, id: 7, generation: st.pull_request_page_gen, reply: Box::new(reply) }
+    PullRequestMsg::Replied { workdir, target, id: 7, generation: st.session.pull_request.page_gen, reply: Box::new(reply) }
 }
 
 /// The page loaded with Bitbucket's votes style, as `f` changes it.
@@ -47,7 +47,7 @@ fn done(st: AppState, dirs: [PathBuf; 2]) {
 }
 
 fn choose(st: &mut AppState, ev: ReviewEvent) {
-    st.pull_request.as_mut().unwrap().forms.review_event = ev;
+    st.session.pull_request.view.as_mut().unwrap().forms.review_event = ev;
 }
 
 fn data_center() -> Target {
@@ -89,7 +89,7 @@ fn remove_change_request_waits_for_one() {
     assert!(calls(&run(&mut st, PullRequestMsg::SubmitReview)).is_empty(), "nothing to take back");
     loaded(&mut st, |d| d.style = ReviewStyle::Votes { mine: Vote::ChangesRequested });
     choose(&mut st, ReviewEvent::UnrequestChanges);
-    st.pull_request.as_mut().unwrap().forms.review_body = "Fixed now".into();
+    st.session.pull_request.view.as_mut().unwrap().forms.review_body = "Fixed now".into();
     let fx = run(&mut st, PullRequestMsg::SubmitReview);
     let jobs = calls(&fx);
     assert!(matches!(&jobs[..], [j] if matches!(&j.call, PrCall::Review { event: ReviewEvent::UnrequestChanges, .. })), "{jobs:?}");

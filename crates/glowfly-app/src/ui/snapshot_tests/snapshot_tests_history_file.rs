@@ -24,7 +24,7 @@ use std::sync::Arc;
 
 /// The File view's text replaced by `lines` (highlighted as Rust) with `lfs`.
 pub(in crate::ui) fn set_text(st: &mut AppState, lines: Vec<String>, lfs: LfsState) {
-    let view = st.history.as_mut().unwrap();
+    let view = st.session.history.view.as_mut().unwrap();
     let text = view.text.as_mut().unwrap();
     let spans = highlight::highlight_file(SyntaxHint { path: "lib.rs", language: None }, &lines);
     text.state = TextState::Ready(Arc::new(FileTextData { lines, spans, lfs, preview: None }));
@@ -33,7 +33,7 @@ pub(in crate::ui) fn set_text(st: &mut AppState, lines: Vec<String>, lfs: LfsSta
 /// The opened version with a long comment line in the middle.
 fn with_long_line(name: &str, wrap: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_file_view(name, ThemeChoice::Dark);
-    let TextState::Ready(d) = &st.history.as_ref().unwrap().text.as_ref().unwrap().state else { panic!("text ready") };
+    let TextState::Ready(d) = &st.session.history.view.as_ref().unwrap().text.as_ref().unwrap().state else { panic!("text ready") };
     let mut lines = d.lines.clone();
     let long = "    // Words are split on any run of whitespace, so tabs, several spaces and a final newline all \
                 count as one break between two words, and a line made only of spaces has no words at all.";
@@ -46,12 +46,12 @@ fn with_long_line(name: &str, wrap: bool) -> (AppState, PathBuf) {
 #[test]
 fn file_history_file_find() {
     let (mut st, dir) = with_file_view("history-file-find", ThemeChoice::Dark);
-    let nav = &mut st.history.as_mut().unwrap().nav;
+    let nav = &mut st.session.history.view.as_mut().unwrap().nav;
     nav.find.query = "words".into();
-    let TextState::Ready(d) = &st.history.as_ref().unwrap().text.as_ref().unwrap().state else { panic!("text ready") };
+    let TextState::Ready(d) = &st.session.history.view.as_ref().unwrap().text.as_ref().unwrap().state else { panic!("text ready") };
     let lines = d.lines.clone();
     assert_eq!(search(&lines, "words").len(), 4);
-    let nav = &mut st.history.as_mut().unwrap().nav;
+    let nav = &mut st.session.history.view.as_mut().unwrap().nav;
     let line = nav.find.refresh(&lines, 2).unwrap();
     nav.land_on(line);
     let mut h = harness(st, true);
@@ -116,7 +116,7 @@ fn file_history_file_deleted() {
     let spans = highlight::highlight_file(SyntaxHint { path: "words.rs", language: None }, &f.lines);
     let data = Arc::new(FileTextData { lines: f.lines, spans, lfs: f.lfs, preview: None });
     view.text = Some(FileText { oid, path: "words.rs".into(), before: true, state: TextState::Ready(data) });
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("file_history_file_deleted");
@@ -145,7 +145,7 @@ fn file_history_file_lfs_pointer_light() {
 #[test]
 fn folder_history_file_buttons() {
     let (mut st, dir) = with_folder("history-folder-buttons", ThemeChoice::Dark);
-    st.history.as_mut().unwrap().absent.insert("src/lib.rs".into());
+    st.session.history.view.as_mut().unwrap().absent.insert("src/lib.rs".into());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("folder_history_file_buttons");
@@ -171,7 +171,7 @@ fn folder_history_moved() {
     view.append(h);
     assert_eq!(view.entries.iter().map(|e| e.status).collect::<String>(), "RA");
     view.selected = Some(0);
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     let mut h = harness(st, true);
     h.run_steps(4);
     h.check_snapshot("folder_history_moved");

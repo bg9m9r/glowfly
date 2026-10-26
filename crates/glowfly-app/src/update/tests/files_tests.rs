@@ -140,8 +140,8 @@ fn restored_toasts_and_refreshes() {
 fn restore_marks_history_file_on_disk() {
     let (mut st, dir) = loaded("files-restored-history");
     let oid = head(&dir);
-    st.history = Some(FileHistoryView::loading("a.txt".into(), None));
-    let on_disk = |st: &AppState| st.history.as_ref().unwrap().on_disk;
+    st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
+    let on_disk = |st: &AppState| st.session.history.view.as_ref().unwrap().on_disk;
 
     run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "old.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     assert!(!on_disk(&st), "another path");

@@ -2,7 +2,7 @@
 //! lost commits only while their tab shows (a refresh while it is hidden marks the list stale
 //! instead of running `git fsck`), the selected commit's history, and its actions through the
 //! pure rules in state/journal_lost.rs. Loads and previews carry a generation from
-//! `AppState::journal_gen`, so a result for a view that was closed or parked is dropped.
+//! `RepoSession::journal`, so a result for a view that was closed or parked is dropped.
 
 use crate::effect::Effect;
 use crate::journal::{JournalEffect, LostMsg};
@@ -15,7 +15,7 @@ use std::time::Instant;
 
 /// Shows `tab`, finding the lost commits when their tab shows without a fresh list.
 pub(super) fn show_tab(st: &mut AppState, tab: JournalTab, fx: &mut Vec<Effect>) {
-    let Some(view) = st.journal.as_mut() else { return };
+    let Some(view) = st.session.journal.view.as_mut() else { return };
     view.tab = tab;
     let needs = view.lost.as_ref().is_none_or(|l| l.stale && !l.loading);
     if tab == JournalTab::Lost && needs {
@@ -52,12 +52,12 @@ pub(super) fn handle(st: &mut AppState, msg: LostMsg, now: Instant, fx: &mut Vec
 }
 
 fn lost_mut(st: &mut AppState) -> Option<&mut LostView> {
-    st.journal.as_mut().and_then(|v| v.lost.as_mut())
+    st.session.journal.view.as_mut().and_then(|v| v.lost.as_mut())
 }
 
 /// The listed lost commit `oid`.
 fn commit(st: &AppState, oid: Oid) -> Option<LostCommit> {
-    st.journal.as_ref()?.lost.as_ref()?.commit(oid).cloned()
+    st.session.journal.view.as_ref()?.lost.as_ref()?.commit(oid).cloned()
 }
 
 /// The listed dropped stash `oid`.
@@ -78,12 +78,12 @@ fn dispatch(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
 /// Finds the lost commits again (`git fsck`, off the UI thread).
 fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
-    if st.journal.is_none() {
+    if st.session.journal.view.is_none() {
         return;
     }
-    st.journal_gen += 1;
-    let generation = st.journal_gen;
-    let Some(view) = st.journal.as_mut() else { return };
+    st.session.journal.generation += 1;
+    let generation = st.session.journal.generation;
+    let Some(view) = st.session.journal.view.as_mut() else { return };
     let lost = view.lost.get_or_insert_with(LostView::default);
     lost.generation = generation;
     lost.loading = true;
@@ -92,7 +92,7 @@ fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 fn loaded(st: &mut AppState, generation: u64, result: Result<glowfly_core::journal::LostCommits, String>, fx: &mut Vec<Effect>) {
-    let Some(view) = st.journal.as_mut() else { return };
+    let Some(view) = st.session.journal.view.as_mut() else { return };
     let showing = view.tab == JournalTab::Lost;
     let Some(lost) = view.lost.as_mut().filter(|l| l.generation == generation) else { return };
     lost.loading = false;
@@ -114,8 +114,8 @@ fn loaded(st: &mut AppState, generation: u64, result: Result<glowfly_core::journ
 fn select(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     let Some(c) = commit(st, oid) else { return };
-    st.journal_gen += 1;
-    let generation = st.journal_gen;
+    st.session.journal.generation += 1;
+    let generation = st.session.journal.generation;
     let Some(lost) = lost_mut(st) else { return };
     lost.selected = Some(oid);
     lost.preview = Some(LostPreviewState { oid, generation, result: None });
@@ -140,7 +140,7 @@ fn restore(st: &mut AppState, oid: Oid, now: Instant) {
 
 /// After a refresh: finds the lost commits again while their tab shows, else marks them stale.
 pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(view) = st.journal.as_mut() else { return };
+    let Some(view) = st.session.journal.view.as_mut() else { return };
     let loading = view.lost.as_ref().is_some_and(|l| l.loading);
     if view.tab == JournalTab::Lost && !loading {
         load(st, fx);
@@ -152,7 +152,7 @@ pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// On a tab's return: asks again for a load or history that was in flight when it was parked.
 /// A load is asked for only while the Lost tab shows; on the States tab it is marked stale.
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(view) = st.journal.as_mut() else { return };
+    let Some(view) = st.session.journal.view.as_mut() else { return };
     let showing = view.tab == JournalTab::Lost;
     let Some(lost) = view.lost.as_mut() else { return };
     let pending = lost.preview.as_ref().filter(|p| p.result.is_none()).map(|p| p.oid);

@@ -15,11 +15,11 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 fn view(st: &AppState) -> &IssueView {
-    st.issue.as_ref().expect("the panel is open")
+    st.session.issue.view.as_ref().expect("the panel is open")
 }
 
 fn view_mut(st: &mut AppState) -> &mut IssueView {
-    st.issue.as_mut().expect("the panel is open")
+    st.session.issue.view.as_mut().expect("the panel is open")
 }
 
 /// Issue 12's panel with its details loaded.
@@ -43,7 +43,7 @@ fn commented(workdir: &Path, generation: u64, key: &str, result: Result<Entry, F
 
 /// Feeds `st` the answer for issue `key` from the repository at `workdir`.
 fn answer(st: &mut AppState, workdir: &Path, key: &str, result: Result<Entry, ForgeError>) -> Vec<crate::effect::Effect> {
-    let msg = commented(workdir, st.issue_gen, key, result);
+    let msg = commented(workdir, st.session.issue.generation, key, result);
     run(st, msg)
 }
 
@@ -143,7 +143,7 @@ fn replies_without_their_panel_are_logged_and_toasted() {
     post(&mut st, "Thanks");
     run(&mut st, IssueMsg::Close);
     answer(&mut st, &workdir, "12", Ok(posted("Thanks")));
-    assert!(st.issue.is_none());
+    assert!(st.session.issue.view.is_none());
     assert!(st.toasts.iter().any(|t| t.ok && t.text == "Commented on issue #12"));
     answer(&mut st, &workdir, "12", Err(err("timed out")));
     assert!(st.toasts.iter().any(|t| !t.ok && t.text == "Couldn't post the comment on #12: timed out"));
@@ -160,9 +160,9 @@ fn replies_without_their_panel_are_logged_and_toasted() {
 
     // A reload doesn't make a comment's answer stale.
     post(&mut st, "Seen");
-    let old = st.issue_gen;
+    let old = st.session.issue.generation;
     run(&mut st, IssueMsg::Reload);
-    assert!(st.issue_gen > old);
+    assert!(st.session.issue.generation > old);
     run(
         &mut st,
         IssueMsg::Replied {
@@ -208,9 +208,9 @@ fn a_reply_reaches_the_parked_tab() {
     let workdir = st.workdir().unwrap();
     post(&mut st, "Thanks");
     update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
-    assert!(st.issue.is_none());
+    assert!(st.session.issue.view.is_none());
     answer(&mut st, &workdir, "12", Ok(posted("Thanks")));
-    let parked = st.tabs[0].parked.as_ref().and_then(|p| p.issue.as_ref()).expect("the parked panel");
+    let parked = st.tabs[0].parked.as_ref().and_then(|p| p.session.issue.view.as_ref()).expect("the parked panel");
     assert_eq!(parked.loaded().unwrap().comments.last(), Some(&posted("Thanks")));
     assert_eq!((parked.comment.text.as_str(), parked.comment.posting), ("", false));
     assert!(st.tabs[0].log.last().is_some_and(|l| l.ok && l.text == "Commented on issue #12"), "logged in that tab");
@@ -220,7 +220,7 @@ fn a_reply_reaches_the_parked_tab() {
     post(&mut st, "Again");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     answer(&mut st, &workdir, "12", Err(err("timed out")));
-    let parked = st.tabs[0].parked.as_ref().and_then(|p| p.issue.as_ref()).expect("the parked panel");
+    let parked = st.tabs[0].parked.as_ref().and_then(|p| p.session.issue.view.as_ref()).expect("the parked panel");
     assert_eq!((parked.comment.text.as_str(), parked.comment.posting), ("Again", false));
     assert_eq!(parked.comment.error.as_deref(), Some("timed out"));
     done(st, dir);
@@ -232,12 +232,12 @@ fn success_during_a_reload_loads_again() {
     run(&mut st, IssueMsg::Reload);
     assert!(view(&st).reloading);
     post(&mut st, "Thanks");
-    let before = st.issue_gen;
+    let before = st.session.issue.generation;
     let workdir = st.workdir().unwrap();
     let fx = answer(&mut st, &workdir, "12", Ok(posted("Thanks")));
     let loads: Vec<_> = jobs(&fx).into_iter().filter(|j| matches!(j.call, IssueCall::Load(_))).collect();
     assert_eq!(loads.len(), 1);
-    assert!(loads[0].generation == st.issue_gen && st.issue_gen > before, "the older answer is now stale");
+    assert!(loads[0].generation == st.session.issue.generation && st.session.issue.generation > before, "the older answer is now stale");
     done(st, dir);
 }
 

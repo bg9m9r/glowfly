@@ -1,10 +1,7 @@
 //! Open repository tabs. The active tab's data lives directly in `AppState` (where views read
-//! it); every other tab keeps its data parked here until it is selected again.
+//! it), with its views in `AppState::session`; every other tab keeps its data parked here until
+//! it is selected again.
 
-use super::conflict::ConflictView;
-use super::history::FileHistoryView;
-use super::pull_request::PrView;
-use super::rebase::RebasePanel;
 use super::undo::UndoHistory;
 use super::{CommitDraft, ForgeState, Selection};
 use git2::Oid;
@@ -202,37 +199,15 @@ pub fn open_places(tabs: &[Tab]) -> Vec<Place> {
 /// The per-repository part of `AppState`, set aside while another tab is active.
 #[derive(Default)]
 pub struct Parked {
+    /// The views with their generation counters (state/session.rs).
+    pub session: super::session::RepoSession,
     pub snap: Option<Snapshot>,
     pub selection: Selection,
     pub detail: Option<CommitDetail>,
     pub diff: Option<(DiffTarget, std::sync::Arc<FileDiff>)>,
-    /// The binary diff's sizes and previews (one still loading is asked for again on return).
-    pub diff_preview: Option<super::diff_preview::DiffPreview>,
-    /// The open conflict with its picks (a load in flight is requested again on return).
-    pub conflict: Option<ConflictView>,
-    /// The Conflicted Files counts and Resolved Files (read again on return).
-    pub conflict_files: crate::state::conflict_files::ConflictFiles,
-    /// The open file history (a request in flight is sent again on return).
-    pub history: Option<FileHistoryView>,
-    /// The open blame view (a load in flight is requested again on return).
-    pub blame: Option<super::blame::BlameView>,
-    /// The pull request panel (a file list in flight is asked for again on return).
-    pub pull_request: Option<PrView>,
-    /// The issue panel (its details load again on return).
-    pub issue: Option<super::issue::IssueView>,
     /// The Create issue dialog, unless an issue was being created (its choices load again on
     /// return).
     pub issue_form: Option<Box<super::issue_form::IssueForm>>,
-    /// The interactive rebase panel (a list still loading is requested again on return).
-    pub rebase: Option<RebasePanel>,
-    /// The Git Flow panel is open.
-    pub gitflow_panel: bool,
-    /// The operation journal (a load or preview in flight is asked for again on return).
-    pub journal: Option<crate::state::journal::JournalView>,
-    /// The Range-diff view (a comparison in flight is asked for again on return).
-    pub range_diff: Option<crate::state::range_diff::RangeDiffView>,
-    /// A Finish stopped at a merge conflict, with its steps still to run.
-    pub gitflow_resume: Option<crate::state::gitflow_resume::StoppedFinish>,
     pub draft: CommitDraft,
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,

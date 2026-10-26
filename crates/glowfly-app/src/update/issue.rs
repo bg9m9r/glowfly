@@ -34,7 +34,7 @@ pub(super) fn handle(st: &mut AppState, msg: IssueMsg, now: Instant, fx: &mut Ve
 
 fn open(st: &mut AppState, key: String, fx: &mut Vec<Effect>) {
     let (Some(_), Some(fs)) = (&st.snap, &st.forge) else { return };
-    if fs.tracker.is_none() || st.issue.as_ref().is_some_and(|v| v.key == key && fs.tracker.as_ref() == Some(&v.target)) {
+    if fs.tracker.is_none() || st.session.issue.view.as_ref().is_some_and(|v| v.key == key && fs.tracker.as_ref() == Some(&v.target)) {
         return;
     }
     let Some(view) = IssueView::new(listed_or_bare(fs, &key), fs) else { return };
@@ -43,7 +43,7 @@ fn open(st: &mut AppState, key: String, fx: &mut Vec<Effect>) {
     super::history::close(st);
     super::blame::close(st);
     super::pull_request::close(st);
-    st.issue = Some(view);
+    st.session.issue.view = Some(view);
     load(st, fx);
 }
 
@@ -68,12 +68,12 @@ pub(super) fn request(st: &AppState) -> Result<IssueRequest, String> {
 /// asked of a tracker without issue details in Glowfly, nor while the repository isn't trusted
 /// (signing in may run its credential helper).
 pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(v) = st.issue.as_ref() else { return };
+    let Some(v) = st.session.issue.view.as_ref() else { return };
     if v.details == Details::Unsupported {
         return;
     }
     if !st.runs_git_unasked() {
-        if let Some(v) = st.issue.as_mut()
+        if let Some(v) = st.session.issue.view.as_mut()
             && v.loaded().is_none()
         {
             v.details = Details::Held;
@@ -81,9 +81,9 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let req = request(st);
-    st.issue_gen += 1;
-    let generation = st.issue_gen;
-    let Some(v) = st.issue.as_mut() else { return };
+    st.session.issue.generation += 1;
+    let generation = st.session.issue.generation;
+    let Some(v) = st.session.issue.view.as_mut() else { return };
     match req {
         Err(e) => {
             if v.loaded().is_none() {
@@ -106,8 +106,8 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// request; a failed reload keeps the details on screen and is only logged.
 fn loaded(st: &mut AppState, workdir: &Path, target: &Target, generation: u64, key: &str, result: Result<IssueDetails, ForgeError>) {
     let tracker = st.forge.as_ref().and_then(|f| f.tracker.as_ref());
-    let current = st.workdir().as_deref() == Some(workdir) && generation == st.issue_gen && tracker == Some(target);
-    if !current || !st.issue.as_ref().is_some_and(|v| v.key == key && &v.target == target) {
+    let current = st.workdir().as_deref() == Some(workdir) && generation == st.session.issue.generation && tracker == Some(target);
+    if !current || !st.session.issue.view.as_ref().is_some_and(|v| v.key == key && &v.target == target) {
         return;
     }
     if let Err(e) = &result
@@ -116,7 +116,7 @@ fn loaded(st: &mut AppState, workdir: &Path, target: &Target, generation: u64, k
     {
         fs.auth.remove(&target.account().key());
     }
-    let Some(v) = st.issue.as_mut() else { return };
+    let Some(v) = st.session.issue.view.as_mut() else { return };
     v.reloading = false;
     let failed = match result {
         Ok(d) => {
@@ -141,8 +141,8 @@ fn loaded(st: &mut AppState, workdir: &Path, target: &Target, generation: u64, k
 
 /// Closes the panel; details still in flight must not reopen it.
 pub(super) fn close(st: &mut AppState) {
-    if st.issue.take().is_some() {
-        st.issue_gen += 1;
+    if st.session.issue.view.take().is_some() {
+        st.session.issue.generation += 1;
     }
 }
 
@@ -164,7 +164,7 @@ pub(super) fn tracker_changed(st: &mut AppState) {
 /// to the new one.
 pub(super) fn tracker_detected(st: &mut AppState) {
     let tracker = st.forge.as_ref().and_then(|f| f.tracker.clone());
-    if st.issue.as_ref().is_some_and(|v| Some(&v.target) != tracker.as_ref()) {
+    if st.session.issue.view.as_ref().is_some_and(|v| Some(&v.target) != tracker.as_ref()) {
         close(st);
     }
     if let Some(Modal::CreateIssue(form)) = &st.modal

@@ -245,7 +245,7 @@ fn a_folder_rows_history_starts_at_its_commit() {
         matches!(&fx[..], [Effect::LoadFileHistory { path, start: HistoryStart::At(o), folder: true, .. }] if path == "src/search" && *o == head),
         "{fx:?}"
     );
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     assert_eq!(v.kind, crate::state::history::HistoryKind::Folder);
     let _ = std::fs::remove_dir_all(&dir);
 }

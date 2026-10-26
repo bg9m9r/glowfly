@@ -26,7 +26,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.conflict_scroll_to.take();
     let wrap = st.settings.diff_word_wrap;
     let t = st.settings.lang();
-    let Some(view) = &st.conflict else { return };
+    let Some(view) = &st.session.conflict.view else { return };
     let blocked = merge_blocked(t, view.file.as_ref().map(|f| &f.content), st.job.is_some());
     let setup = ToolSetup::of(t, &st.settings.external_tools).merge;
     // Nothing here writes the file while the merge tool has it open; it closes the view on a change.
@@ -60,13 +60,13 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         .height_range(CONFLICT_OUTPUT.min..=(avail - CONFLICT_PANES_MIN).max(CONFLICT_OUTPUT.min))
         .frame(Frame::new().fill(color::bg()))
         .show_inside(ui, |ui| {
-            if let Some(view) = st.conflict.as_mut() {
+            if let Some(view) = st.session.conflict.view.as_mut() {
                 output(ui, t, view, scroll_to, wrap, msgs);
             }
         });
     egui::CentralPanel::default().frame(Frame::new()).show_inside(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
-        if let Some(view) = &st.conflict
+        if let Some(view) = &st.session.conflict.view
             && let Some(file) = &view.file
             && let ConflictContent::Text(segs) = &file.content
         {

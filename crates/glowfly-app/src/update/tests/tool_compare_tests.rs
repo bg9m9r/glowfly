@@ -253,9 +253,9 @@ fn a_merge_tool_run_keeps_the_undo_history() {
 fn running_in_view(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = running(name);
     drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())));
-    assert!(st.conflict.as_ref().is_some_and(|c| c.file.is_some()), "the view loaded");
+    assert!(st.session.conflict.view.as_ref().is_some_and(|c| c.file.is_some()), "the view loaded");
     update(&mut st, Msg::Conflict(ConflictMsg::ConflictTakeAll(Side::Ours)), Instant::now());
-    assert!(st.conflict.as_ref().unwrap().can_save());
+    assert!(st.session.conflict.view.as_ref().unwrap().can_save());
     (st, dir)
 }
 
@@ -283,13 +283,13 @@ fn the_conflict_view_writes_nothing_while_the_merge_tool_has_the_file() {
         assert!(!writes(&fx), "nothing is written or staged while the tool runs: {fx:?}");
         assert_eq!(st.log.last().map(|l| l.text.as_str()), Some("a.txt is open in the merge tool: save and close it there first."));
     }
-    assert!(!st.conflict.as_ref().unwrap().saving);
+    assert!(!st.session.conflict.view.as_ref().unwrap().saving);
     // Other files stage as usual.
     assert!(writes(&update(&mut st, Msg::Stage(StageMsg::StageFile("b.txt".into())), now)));
 
     // The tool left the file alone: the view and its picks stay, and Save works again.
     exited(&mut st, MergeEnd::Unchanged);
-    assert!(st.conflict.as_ref().is_some_and(|c| c.can_save()), "the picks are kept");
+    assert!(st.session.conflict.view.as_ref().is_some_and(|c| c.can_save()), "the picks are kept");
     assert!(writes(&update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), now)));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -299,7 +299,7 @@ fn a_merge_tool_that_changed_the_file_closes_the_conflict_view() {
     for (i, end) in [MergeEnd::Saved, MergeEnd::Exited { code: Some(1), said: String::new(), changed: true }].into_iter().enumerate() {
         let (mut st, dir) = running_in_view(&format!("tc-view-closes-{i}"));
         exited(&mut st, end.clone());
-        assert!(st.conflict.is_none(), "{end:?}: its picks would overwrite the tool's result");
+        assert!(st.session.conflict.view.is_none(), "{end:?}: its picks would overwrite the tool's result");
         // Mark resolved stages the tool's result once it has exited (after the markers check).
         assert!(checks_markers(&update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now())), "{end:?}");
         let _ = std::fs::remove_dir_all(&dir);

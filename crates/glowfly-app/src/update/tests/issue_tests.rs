@@ -83,7 +83,7 @@ pub(super) fn details(key: &str) -> IssueDetails {
 /// A reply from the active repository's tracker to the latest request.
 pub(super) fn reply(st: &AppState, reply: IssueReply) -> IssueMsg {
     let target = st.forge.as_ref().and_then(|f| f.tracker.clone()).unwrap_or_else(github);
-    IssueMsg::Replied { workdir: st.workdir().unwrap(), target, generation: st.issue_gen, reply: Box::new(reply) }
+    IssueMsg::Replied { workdir: st.workdir().unwrap(), target, generation: st.session.issue.generation, reply: Box::new(reply) }
 }
 
 fn loaded_reply(st: &AppState, key: &str, result: Result<IssueDetails, ForgeError>) -> IssueMsg {
@@ -95,7 +95,7 @@ pub(super) fn err(message: &str) -> ForgeError {
 }
 
 fn view(st: &AppState) -> &crate::state::issue::IssueView {
-    st.issue.as_ref().expect("the panel is open")
+    st.session.issue.view.as_ref().expect("the panel is open")
 }
 
 pub(super) fn done(st: AppState, dir: PathBuf) {
@@ -126,19 +126,21 @@ fn opening_a_listed_issue_loads_it_and_closes_the_other_views() {
     let (mut st, dir) = open_repo("issue-open");
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     st.diff = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
-    st.history = Some(FileHistoryView::loading("a.txt".into(), None));
-    st.blame = Some(crate::state::blame::BlameView::loading("a.txt".into(), None));
-    st.pull_request = Some(PrView::new(pr(7), st.forge.as_ref().unwrap(), st.snap.as_ref().unwrap()));
+    st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
+    st.session.blame.view = Some(crate::state::blame::BlameView::loading("a.txt".into(), None));
+    st.session.pull_request.view = Some(PrView::new(pr(7), st.forge.as_ref().unwrap(), st.snap.as_ref().unwrap()));
     let fx = run(&mut st, IssueMsg::Open("12".into()));
     let l = loads(&fx);
     assert_eq!(l.len(), 1);
     assert!(matches!(&l[0].call, IssueCall::Load(k) if k == "12"));
-    assert_eq!((&l[0].req.target, l[0].generation), (&github(), st.issue_gen));
+    assert_eq!((&l[0].req.target, l[0].generation), (&github(), st.session.issue.generation));
     assert_eq!(l[0].req.workdir, st.workdir().unwrap());
     let v = view(&st);
     assert_eq!((v.key.as_str(), v.mention.as_str(), v.issue.title.as_str()), ("12", "#12", "Crash on start"));
     assert_eq!(v.details, Details::Loading);
-    assert!(st.diff.is_none() && st.history.is_none() && st.blame.is_none() && st.pull_request.is_none());
+    assert!(
+        st.diff.is_none() && st.session.history.view.is_none() && st.session.blame.view.is_none() && st.session.pull_request.view.is_none()
+    );
     assert!(run(&mut st, IssueMsg::Open("12".into())).is_empty(), "the same issue again changes nothing");
     // A key nobody listed opens with its page only.
     run(&mut st, IssueMsg::Open("99".into()));
@@ -241,7 +243,7 @@ fn stale_misplaced_and_late_replies_are_dropped() {
     let late = loaded_reply(&st, "12", Ok(details("12")));
     run(&mut st, IssueMsg::Close);
     run(&mut st, late);
-    assert!(st.issue.is_none(), "a closed panel stays closed");
+    assert!(st.session.issue.view.is_none(), "a closed panel stays closed");
     assert!(st.log.is_empty());
     done(st, dir);
 }
@@ -251,18 +253,18 @@ fn a_commit_a_diff_and_the_pull_request_panel_close_it() {
     let (mut st, dir) = open_repo("issue-closers");
     let head = st.snap.as_ref().unwrap().head_oid.unwrap();
     run(&mut st, IssueMsg::Open("12".into()));
-    let before = st.issue_gen;
+    let before = st.session.issue.generation;
     update(&mut st, Msg::Repo(RepoMsg::SelectCommit(head)), Instant::now());
-    assert!(st.issue.is_none() && st.issue_gen > before, "selecting a commit");
+    assert!(st.session.issue.view.is_none() && st.session.issue.generation > before, "selecting a commit");
     run(&mut st, IssueMsg::Open("12".into()));
     update(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))), Instant::now());
-    assert!(st.issue.is_none(), "opening a file's diff");
+    assert!(st.session.issue.view.is_none(), "opening a file's diff");
     run(&mut st, IssueMsg::Open("12".into()));
     st.forge.as_mut().unwrap().prs = vec![pr(7)];
     update(&mut st, Msg::PullRequest(PullRequestMsg::Open(7)), Instant::now());
-    assert!(st.issue.is_none() && st.pull_request.is_some(), "opening the pull request panel");
+    assert!(st.session.issue.view.is_none() && st.session.pull_request.view.is_some(), "opening the pull request panel");
     run(&mut st, IssueMsg::Open("12".into()));
-    assert!(st.pull_request.is_none(), "and the other way round");
+    assert!(st.session.pull_request.view.is_none(), "and the other way round");
     done(st, dir);
 }
 
@@ -273,7 +275,7 @@ fn changing_the_tracker_closes_it() {
     let jira = Account { provider: Provider::JiraCloud, host: "acme.atlassian.net".into(), org: String::new() };
     let choice = TrackerChoice::Jira { account: jira, project: "PROJ".into() };
     update(&mut st, Msg::Forge(ForgeMsg::SetTracker(choice)), Instant::now());
-    assert!(st.issue.is_none());
+    assert!(st.session.issue.view.is_none());
     assert!(st.forge.as_ref().unwrap().tracker.as_ref().is_some_and(|t| t.provider == Provider::JiraCloud));
     done(st, dir);
 }
@@ -284,14 +286,14 @@ fn switching_tabs_parks_the_panel_and_reloads_on_return() {
     run(&mut st, IssueMsg::Open("12".into()));
     let msg = loaded_reply(&st, "12", Ok(details("12")));
     run(&mut st, msg);
-    let before = st.issue_gen;
+    let before = st.session.issue.generation;
     update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
-    assert!(st.issue.is_none(), "parked with its tab");
+    assert!(st.session.issue.view.is_none(), "parked with its tab");
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     assert!(view(&st).loaded().is_some(), "the last details stay on screen");
     let l = loads(&fx);
     assert_eq!(l.len(), 1, "and load again");
-    assert!(l[0].generation > before && l[0].generation == st.issue_gen);
+    assert!(l[0].generation > before && l[0].generation == st.session.issue.generation);
     assert!(view(&st).reloading);
     done(st, dir);
 }
@@ -301,7 +303,7 @@ fn blame_and_another_tracker_close_it() {
     let (mut st, dir) = open_repo("issue-blame-remote");
     run(&mut st, IssueMsg::Open("12".into()));
     update(&mut st, Msg::Blame(BlameMsg::Open { path: "a.txt".into(), at: None }), Instant::now());
-    assert!(st.issue.is_none(), "opening blame");
+    assert!(st.session.issue.view.is_none(), "opening blame");
 
     // The same key on another tracker is another issue.
     run(&mut st, IssueMsg::Open("12".into()));
@@ -311,15 +313,15 @@ fn blame_and_another_tracker_close_it() {
     assert_eq!(view(&st).target, r2);
     assert!(loads(&fx).first().is_some_and(|j| j.req.target == r2));
     st.forge.as_mut().unwrap().tracker = Some(github());
-    st.issue = None;
+    st.session.issue.view = None;
 
     // An edited remote changes the tracker on the next refresh.
     run(&mut st, IssueMsg::Open("12".into()));
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(st.issue.is_some(), "the same tracker keeps it");
+    assert!(st.session.issue.view.is_some(), "the same tracker keeps it");
     git(&dir, &["remote", "set-url", "origin", "https://github.com/o/r2"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(st.forge.as_ref().unwrap().tracker.as_ref(), Some(&r2));
-    assert!(st.issue.is_none(), "the remote's new tracker closes it");
+    assert!(st.session.issue.view.is_none(), "the remote's new tracker closes it");
     done(st, dir);
 }

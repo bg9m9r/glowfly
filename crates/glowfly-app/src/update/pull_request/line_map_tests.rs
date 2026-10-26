@@ -51,7 +51,7 @@ fn jobs(fx: &[Effect]) -> Vec<&LineMapJob> {
 }
 
 fn view(st: &AppState) -> &PrView {
-    st.pull_request.as_ref().expect("the panel is open")
+    st.session.pull_request.view.as_ref().expect("the panel is open")
 }
 
 /// Commits f.txt as `text` on top of the local feature branch (not pushed) and returns it.
@@ -151,11 +151,11 @@ fn a_stale_reply_is_dropped() {
     assert_eq!(key.paths, ["f.txt", "g.txt"], "still waiting for the new key");
     finish_keeping(&mut st, fx);
     assert!(matches!(view(&st).lines, LineMaps::Loaded { maps: PrLineMaps::Mapped { .. }, .. }));
-    let last = st.pull_request_lines_gen;
+    let last = st.session.pull_request.lines_gen;
     update(&mut st, Msg::PullRequest(PullRequestMsg::Close), Instant::now());
-    assert!(st.pull_request_lines_gen > last, "closing drops what is in flight");
+    assert!(st.session.pull_request.lines_gen > last, "closing drops what is in flight");
     answer(&mut st, last, Ok(PrLineMaps::HeadMissing));
-    assert!(st.pull_request.is_none());
+    assert!(st.session.pull_request.view.is_none());
     cleanup(&[&dirs[0], &dirs[1]]);
 }
 
@@ -189,12 +189,12 @@ fn a_parked_tab_asks_again() {
     let (mut st, fx, _, _, _, dirs) = newer_here("prl-parked");
     let first = jobs(&fx)[0].generation;
     update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
-    assert!(st.pull_request.is_none(), "parked with its tab");
+    assert!(st.session.pull_request.view.is_none(), "parked with its tab");
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     let again = jobs(&fx);
     let [job] = &again[..] else { panic!("asked again: {again:?}") };
     assert!(job.generation > first);
-    assert_eq!(job.generation, st.pull_request_lines_gen);
+    assert_eq!(job.generation, st.session.pull_request.lines_gen);
     answer(&mut st, first, Ok(PrLineMaps::HeadMissing));
     assert!(matches!(view(&st).lines, LineMaps::Loading(_)), "the old generation's reply is ignored");
     finish_keeping(&mut st, fx);

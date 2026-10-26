@@ -60,7 +60,7 @@ pub(super) fn draft(st: &AppState) -> &crate::state::pull_request_line_comment::
 }
 
 pub(super) fn set_text(st: &mut AppState, text: &str) {
-    st.pull_request.as_mut().unwrap().line_draft.as_mut().unwrap().text = text.into();
+    st.session.pull_request.view.as_mut().unwrap().line_draft.as_mut().unwrap().text = text.into();
 }
 
 fn select(st: &mut AppState, hunk: usize, lines: &[usize]) {
@@ -116,7 +116,7 @@ fn on_selection_spans_the_selection() {
     assert_eq!(draft(&st).anchor, anchor(2, LineSide::New, Some((2, LineSide::Old))));
 
     // A click on a selected line's button uses the selection too.
-    st.pull_request.as_mut().unwrap().line_draft = None;
+    st.session.pull_request.view.as_mut().unwrap().line_draft = None;
     start(&mut st, LineSide::New, 2, false);
     assert_eq!((draft(&st).first, draft(&st).last), (1, 2));
     // A line outside the selection is on its own.
@@ -145,7 +145,7 @@ fn start_elsewhere_moves_the_draft_and_keeps_its_text() {
     let (mut st, dirs) = ready("plc-move", |_| {});
     start(&mut st, LineSide::New, 2, false);
     set_text(&mut st, "Rename this");
-    st.pull_request.as_mut().unwrap().line_draft.as_mut().unwrap().error = Some("old failure".into());
+    st.session.pull_request.view.as_mut().unwrap().line_draft.as_mut().unwrap().error = Some("old failure".into());
     start(&mut st, LineSide::New, 21, false);
     assert_eq!(draft(&st).anchor, anchor(21, LineSide::New, None));
     assert_eq!(draft(&st).hunk, 1);
@@ -230,7 +230,7 @@ fn post_is_blocked_when_locked_head_elsewhere_empty_or_the_files_moved_since() {
     page(&mut st, &|d| d.head_sha = "abc1234".into());
     assert!(calls(&lc(&mut st, LineCommentMsg::Post { review: false })).is_empty(), "the service's head is elsewhere");
     page(&mut st, &|_| {});
-    st.pull_request.as_mut().unwrap().line_draft.as_mut().unwrap().head = "0".repeat(40);
+    st.session.pull_request.view.as_mut().unwrap().line_draft.as_mut().unwrap().head = "0".repeat(40);
     assert!(calls(&lc(&mut st, LineCommentMsg::Post { review: false })).is_empty(), "compared again since");
     assert_eq!(view(&st).busy, None);
     done(st, dirs);

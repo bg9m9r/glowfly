@@ -14,7 +14,7 @@ use glowfly_core::rebase::{RebaseAction::*, RebaseProgress, Remaining, Stop, Sto
 use glowfly_core::settings::ThemeChoice;
 
 fn panel(st: &mut AppState) -> &mut RebasePanel {
-    st.rebase.as_mut().unwrap()
+    st.session.rebase.view.as_mut().unwrap()
 }
 
 #[test]
@@ -25,7 +25,7 @@ fn rebase_panel_steps() {
     p.items.insert(1, TodoStep::Exec("cargo test --workspace".into()));
     p.items.insert(6, TodoStep::Break);
     p.selected = Some(5);
-    assert_eq!(st.rebase.as_ref().unwrap().start_blocker(st.snap.as_ref().unwrap(), false), None);
+    assert_eq!(st.session.rebase.view.as_ref().unwrap().start_blocker(st.snap.as_ref().unwrap(), false), None);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("rebase_panel_steps");
@@ -93,7 +93,7 @@ fn rebase_panel_remaining() {
         todo: String::new(),
     });
     p.add_step(Some(0), NewStep::Break);
-    st.rebase = Some(p);
+    st.session.rebase.view = Some(p);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("rebase_panel_remaining");

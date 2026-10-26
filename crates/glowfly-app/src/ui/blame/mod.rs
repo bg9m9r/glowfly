@@ -23,13 +23,13 @@ use eframe::egui::Ui;
 use menu::LineTarget;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    let Some(view) = st.blame.as_mut() else { return };
+    let Some(view) = st.session.blame.view.as_mut() else { return };
     let scroll_to = view.scroll_to.take();
     ui.add_space(6.0);
-    let over_history = st.history.is_some() && st.blame.as_ref().is_some_and(|v| v.over_history);
-    header::show(ui, &mut st.blame, &st.settings, st.snap.as_ref(), over_history, &st.keymap, msgs);
+    let over_history = st.session.history.view.is_some() && st.session.blame.view.as_ref().is_some_and(|v| v.over_history);
+    header::show(ui, &mut st.session.blame.view, &st.settings, st.snap.as_ref(), over_history, &st.keymap, msgs);
     ui.separator();
-    let Some(view) = &st.blame else { return };
+    let Some(view) = &st.session.blame.view else { return };
     // The blame waits for contents a partial clone hasn't downloaded.
     if let Some(p) = st.for_blame() {
         return super::content_fetch::show(ui, st, p, msgs);
@@ -38,7 +38,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         // A re-run after HEAD moved keeps the old blame on screen.
         Some(data) if !data.blame.lines.is_empty() => {
             let out = body::body(ui, st, cache, view, data, scroll_to, msgs);
-            if let Some(view) = st.blame.as_mut() {
+            if let Some(view) = st.session.blame.view.as_mut() {
                 view.top_line = out.top;
                 if out.clicked.is_some() {
                     view.cursor = out.clicked;

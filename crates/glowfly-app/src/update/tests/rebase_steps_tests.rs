@@ -20,7 +20,7 @@ fn rb(st: &mut AppState, msg: RebaseMsg) -> Vec<Effect> {
 }
 
 fn panel(st: &AppState) -> &RebasePanel {
-    st.rebase.as_ref().expect("panel open")
+    st.session.rebase.view.as_ref().expect("panel open")
 }
 
 #[test]
@@ -33,7 +33,7 @@ fn selecting_a_commit_row_shows_the_commit() {
         matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(crate::effect::LineCountsEffect::Commit { .. })] if *oid == c[1]),
         "{fx:?}"
     );
-    assert!(st.rebase.is_some(), "the panel stays open");
+    assert!(st.session.rebase.view.is_some(), "the panel stays open");
     rb(&mut st, RebaseMsg::RebaseAddStep { after: Some(1), step: NewStep::Break });
     let fx = rb(&mut st, RebaseMsg::RebaseSelect(2));
     assert!(fx.is_empty(), "a step has no commit to show");
@@ -51,7 +51,7 @@ fn an_exec_step_runs_with_the_list() {
     // An empty command blocks Start, and says why in the log.
     assert!(rb(&mut st, RebaseMsg::StartRebase { confirmed: false, autostash: false }).is_empty());
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(rebase::EMPTY_EXEC));
-    st.rebase.as_mut().unwrap().draft = "git log -1 --format=%s > seen.txt".into();
+    st.session.rebase.view.as_mut().unwrap().draft = "git log -1 --format=%s > seen.txt".into();
     rb(&mut st, RebaseMsg::RebaseSaveMessage);
     let fx = rb(&mut st, RebaseMsg::StartRebase { confirmed: false, autostash: false });
     let [Effect::Rebase(RebaseEffect::Start { request, detail, .. })] = &fx[..] else { panic!("expected the rebase, got {fx:?}") };
@@ -69,7 +69,7 @@ fn a_group_heads_combined_message() {
     assert_eq!(p.editing, Some(Editing::Combined(0)));
     assert_eq!(p.draft, rebase::default_combined(&p.items, 0));
     assert!(p.draft.starts_with("c1") && p.draft.contains("c2"), "{}", p.draft);
-    st.rebase.as_mut().unwrap().draft = "Both at once".into();
+    st.session.rebase.view.as_mut().unwrap().draft = "Both at once".into();
     rb(&mut st, RebaseMsg::RebaseSaveMessage);
     assert_eq!(panel(&st).items[0].commit().unwrap().combined_message.as_deref(), Some("Both at once"));
     rb(&mut st, RebaseMsg::RebaseEditMessage(0));

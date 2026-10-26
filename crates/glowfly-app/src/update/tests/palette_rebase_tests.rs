@@ -102,7 +102,7 @@ fn rebase_onto_the_selected_commit() {
     assert!(planned, "{fx:?}");
 
     // Not for HEAD, an ancestor, or a detached HEAD.
-    st.rebase = None;
+    st.session.rebase.view = None;
     for oid in [c[2], c[0]] {
         st.selection = Selection::Commit(oid);
         let sha = &oid.to_string()[..7];
@@ -123,7 +123,7 @@ fn restore_original_order_while_the_panel_is_open() {
     let (mut st, dir, _) = with_panel("palette-rebase-restore", RebaseBase::FromCommit(git2::Oid::zero()));
     assert_eq!(find(&entries(&st), "Restore original order"), Some(&None));
     assert!(matches!(RebaseCommand::RestoreOrder.msg(), Msg::Rebase(crate::msg::RebaseMsg::RebaseReset)));
-    let order = |st: &AppState| st.rebase.as_ref().unwrap().items.iter().filter_map(|s| s.oid()).collect::<Vec<_>>();
+    let order = |st: &AppState| st.session.rebase.view.as_ref().unwrap().items.iter().filter_map(|s| s.oid()).collect::<Vec<_>>();
     let original = order(&st);
     update(&mut st, Msg::Rebase(crate::msg::RebaseMsg::RebaseMove { from: 0, to: 2 }), Instant::now());
     assert_ne!(order(&st), original);
@@ -131,7 +131,7 @@ fn restore_original_order_while_the_panel_is_open() {
     update(&mut st, run, Instant::now());
     assert_eq!(order(&st), original, "back to the original order");
 
-    st.rebase.as_mut().unwrap().stale = true;
+    st.session.rebase.view.as_mut().unwrap().stale = true;
     let all = entries(&st);
     assert!(find(&all, "Reload rebase steps").is_some() && find(&all, "Restore original order").is_none());
     let _ = std::fs::remove_dir_all(&dir);

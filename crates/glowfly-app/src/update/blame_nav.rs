@@ -17,13 +17,13 @@ fn short(oid: Oid) -> String {
 
 /// Reloads the open view keeping its top line in place.
 fn reload_in_place(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    let Some(top) = st.blame.as_ref().map(|v| v.top_line) else { return };
+    let Some(top) = st.session.blame.view.as_ref().map(|v| v.top_line) else { return };
     reload(st, BlameLanding { line: top, center: false }, now, fx);
 }
 
 /// Back to the blame the last step came from, at its scroll position.
 pub(super) fn back(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    let Some(view) = st.blame.as_mut() else { return };
+    let Some(view) = st.session.blame.view.as_mut() else { return };
     let Some(step) = view.back.pop() else { return };
     view.follow = None;
     view.path = step.path;
@@ -36,7 +36,7 @@ pub(super) fn back(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
 /// Blames the version just before the commit of line `line`, at the file's path there, and
 /// lands on where the line was.
 pub(super) fn parent(st: &mut AppState, line: usize, now: Instant, fx: &mut Vec<Effect>) {
-    let Some(view) = st.blame.as_mut() else { return };
+    let Some(view) = st.session.blame.view.as_mut() else { return };
     let Some(data) = &view.data else { return };
     let Some(origin) = data.blame.origin_of_line(line) else { return };
     let Some(commit) = data.blame.commits.get(origin.commit) else { return };
@@ -64,7 +64,7 @@ pub(super) fn parent(st: &mut AppState, line: usize, now: Instant, fx: &mut Vec<
 
 /// Blames again looking past `oid`.
 pub(super) fn skip(st: &mut AppState, oid: Oid, now: Instant, fx: &mut Vec<Effect>) {
-    let Some(view) = st.blame.as_mut() else { return };
+    let Some(view) = st.session.blame.view.as_mut() else { return };
     if oid.is_zero() || view.skipped.contains(&oid) {
         return;
     }
@@ -74,7 +74,7 @@ pub(super) fn skip(st: &mut AppState, oid: Oid, now: Instant, fx: &mut Vec<Effec
 
 /// Stops skipping commits.
 pub(super) fn clear_skipped(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    let Some(view) = st.blame.as_mut().filter(|v| !v.skipped.is_empty()) else { return };
+    let Some(view) = st.session.blame.view.as_mut().filter(|v| !v.skipped.is_empty()) else { return };
     view.skipped.clear();
     reload_in_place(st, now, fx);
 }
@@ -103,7 +103,7 @@ pub(super) fn set_wrap_lines(st: &mut AppState, on: bool, fx: &mut Vec<Effect>) 
     }
     st.settings.blame.wrap_lines = on;
     fx.push(super::super::prefs::save_settings(st));
-    if let Some(view) = st.blame.as_mut() {
+    if let Some(view) = st.session.blame.view.as_mut() {
         view.scroll_to = Some(BlameLanding { line: view.top_line, center: false });
     }
 }
@@ -117,7 +117,7 @@ fn saved(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
 /// Closes blame and opens the file's history from the blamed commit, selecting `select`, else
 /// the blamed commit.
 pub(super) fn open_history(st: &mut AppState, select: Option<Oid>, fx: &mut Vec<Effect>) {
-    let Some(view) = st.blame.as_ref() else { return };
+    let Some(view) = st.session.blame.view.as_ref() else { return };
     let (path, at) = (view.path.clone(), view.at);
     let blamed = at.or_else(|| view.data.as_ref().map(|d| d.blame.at));
     super::super::history::open(st, path, at, select.or(blamed), HistoryKind::File, fx);
@@ -126,7 +126,7 @@ pub(super) fn open_history(st: &mut AppState, select: Option<Oid>, fx: &mut Vec<
 /// The header's Diff or File over a file history: closes the blame and shows the history
 /// underneath in `pane` (saved, and the File view asks for its text).
 pub(super) fn back_to_history(st: &mut AppState, pane: HistoryPane, fx: &mut Vec<Effect>) {
-    if st.history.is_none() || st.blame.is_none() {
+    if st.session.history.view.is_none() || st.session.blame.view.is_none() {
         return;
     }
     super::close(st);

@@ -92,7 +92,7 @@ pub(in crate::ui) fn with_file_view(name: &str, theme: ThemeChoice) -> (AppState
     assert!(spans.is_some(), "Rust is highlighted");
     let data = Arc::new(FileTextData { lines: f.lines, spans, lfs: f.lfs, preview: None });
     view.text = Some(FileText { oid: at, path: "lib.rs".into(), before: false, state: TextState::Ready(data) });
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     (st, dir)
 }
 
@@ -115,7 +115,7 @@ fn file_history_file_view() {
 fn file_history_file_binary_light() {
     let (mut st, dir) = with_file_view("history-file-binary", ThemeChoice::Light);
     st.settings.diff_line_numbers = false;
-    let text = st.history.as_mut().unwrap().text.as_mut().unwrap();
+    let text = st.session.history.view.as_mut().unwrap().text.as_mut().unwrap();
     text.state = TextState::Failed(TextError { message: "Binary file not shown".into(), retry: false });
     let mut h = harness(st, false);
     h.run();
@@ -152,7 +152,7 @@ pub(in crate::ui) fn with_folder(name: &str, theme: ThemeChoice) -> (AppState, P
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     diff.intraline = intraline::intraline(&diff);
     st.diff = Some((target, diff.into()));
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     (st, dir)
 }
 
@@ -182,7 +182,7 @@ fn folder_history_light() {
 #[test]
 fn file_history_switch_waits_for_a_commit() {
     let (mut st, dir) = with_history("history-switch-waits", ThemeChoice::Dark, 500, 0);
-    st.history.as_mut().unwrap().selected = None;
+    st.session.history.view.as_mut().unwrap().selected = None;
     let mut h = harness(st, true);
     h.run();
     for label in ["Diff", "File", "Blame"] {

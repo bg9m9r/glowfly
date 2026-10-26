@@ -24,21 +24,21 @@ fn loaded(saved: Option<SavedPicks>) -> Msg {
 #[test]
 fn saved_picks_come_back_when_the_file_loads() {
     let mut st = state();
-    st.conflict = Some(ConflictView::loading("f.txt".into()));
-    st.conflict_gen = 1;
+    st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
+    st.session.conflict.generation = 1;
     let cleans = CleanEdits::from([(0, vec!["TOP\n".to_owned()])]);
     send(&mut st, loaded(Some(SavedPicks { picks: vec![ChunkPick::Sides(Choice::Theirs), ChunkPick::default()], cleans: cleans.clone() })));
-    let c = st.conflict.as_ref().unwrap();
+    let c = st.session.conflict.view.as_ref().unwrap();
     assert_eq!(c.picks, [ChunkPick::Sides(Choice::Theirs), ChunkPick::default()]);
     assert_eq!((&c.cleans, c.restored, c.current, c.user_choices()), (&cleans, 1, 1, 0));
     assert_eq!(st.view.conflict_scroll_to, Some(1));
     // A failed read brings nothing back: the view closes as before.
     let mut st = state();
-    st.conflict = Some(ConflictView::loading("f.txt".into()));
-    st.conflict_gen = 1;
+    st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
+    st.session.conflict.generation = 1;
     let failed = ConflictMsg::ConflictLoaded { path: "f.txt".into(), generation: 1, result: Err("gone".into()), saved: None };
     send(&mut st, Msg::Conflict(failed));
-    assert!(st.conflict.is_none());
+    assert!(st.session.conflict.view.is_none());
 }
 
 #[test]
@@ -47,10 +47,10 @@ fn folds_open_and_close_and_reset_on_load() {
     let fold = |seg, open| Msg::Conflict(ConflictMsg::ConflictFold { seg, open });
     send(&mut st, fold(2, true));
     send(&mut st, fold(4, true));
-    assert_eq!(st.conflict.as_ref().unwrap().opened.iter().copied().collect::<Vec<_>>(), [2, 4]);
+    assert_eq!(st.session.conflict.view.as_ref().unwrap().opened.iter().copied().collect::<Vec<_>>(), [2, 4]);
     send(&mut st, fold(2, false));
-    assert_eq!(st.conflict.as_ref().unwrap().opened.iter().copied().collect::<Vec<_>>(), [4]);
-    let c = st.conflict.as_mut().unwrap();
+    assert_eq!(st.session.conflict.view.as_ref().unwrap().opened.iter().copied().collect::<Vec<_>>(), [4]);
+    let c = st.session.conflict.view.as_mut().unwrap();
     c.set_file(fake_file(2));
     assert!(c.opened.is_empty(), "a new load folds everything again");
 }
@@ -58,7 +58,7 @@ fn folds_open_and_close_and_reset_on_load() {
 #[test]
 fn wrapping_scrolls_the_current_conflict_into_view() {
     let mut st = with_fake(3);
-    st.conflict.as_mut().unwrap().current = 2;
+    st.session.conflict.view.as_mut().unwrap().current = 2;
     st.view.conflict_scroll_to = None;
     let fx = send(&mut st, Msg::Diff(DiffMsg::SetWordWrap(true)));
     assert!(st.settings.diff_word_wrap);

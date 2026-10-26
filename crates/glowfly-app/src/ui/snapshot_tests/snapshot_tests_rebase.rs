@@ -52,7 +52,7 @@ pub(in crate::ui) fn with_panel(theme: ThemeChoice, name: &str, actions: &[Rebas
     let mut panel = RebasePanel::loading(RebaseBase::FromCommit(items[0].oid));
     panel.fill(plan);
     panel.items = items.into_iter().map(TodoStep::Commit).collect();
-    st.rebase = Some(panel);
+    st.session.rebase.view = Some(panel);
     (st, dir)
 }
 
@@ -60,7 +60,7 @@ pub(in crate::ui) fn with_panel(theme: ThemeChoice, name: &str, actions: &[Rebas
 fn rebase_panel() {
     use RebaseAction::*;
     let (mut st, dir) = with_panel(ThemeChoice::Dark, "rebase-panel", &[Pick, Reword, Edit, Squash, Fixup, Drop]);
-    let p = st.rebase.as_mut().unwrap();
+    let p = st.session.rebase.view.as_mut().unwrap();
     p.items[1].commit_mut().unwrap().new_message = Some(NEW_MESSAGE.into());
     p.open_editor(1);
     assert_eq!(p.draft, NEW_MESSAGE);
@@ -79,7 +79,7 @@ fn rebase_panel_dirty() {
     use RebaseAction::*;
     let (mut st, dir) = with_panel(ThemeChoice::Dark, "rebase-dirty", &[Pick, Pick, Drop, Pick, Pick, Pick]);
     st.snap.as_mut().unwrap().unstaged.push(glowfly_core::repo::FileEntry::new("README.md", 'M'));
-    let blocker = st.rebase.as_ref().unwrap().start_blocker(st.snap.as_ref().unwrap(), false);
+    let blocker = st.session.rebase.view.as_ref().unwrap().start_blocker(st.snap.as_ref().unwrap(), false);
     assert_eq!(blocker, None, "uncommitted changes are stashed, not refused");
     let mut h = harness(st, true);
     h.run();
@@ -92,7 +92,7 @@ fn rebase_panel_dirty() {
 fn rebase_panel_blocked_light() {
     use RebaseAction::*;
     let (st, dir) = with_panel(ThemeChoice::Light, "rebase-blocked", &[Squash, Pick, Drop, Pick, Pick, Pick]);
-    let blocker = st.rebase.as_ref().unwrap().start_blocker(st.snap.as_ref().unwrap(), false);
+    let blocker = st.session.rebase.view.as_ref().unwrap().start_blocker(st.snap.as_ref().unwrap(), false);
     assert_eq!(blocker.as_deref(), Some(glowfly_core::rebase::FIRST_COMBINES));
     let mut h = harness(st, false);
     h.run();

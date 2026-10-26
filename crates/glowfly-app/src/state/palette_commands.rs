@@ -310,7 +310,12 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if let Some(b) = snap.head_info() {
         out.push(entry(C::RenameBranch(b.name.clone()), format!("Rename branch {}…", b.name), "rename move branch"));
     }
-    if !snap.commits.is_empty() && st.conflict.is_none() && st.history.is_none() && st.blame.is_none() && st.rebase.is_none() {
+    if !snap.commits.is_empty()
+        && st.session.conflict.view.is_none()
+        && st.session.history.view.is_none()
+        && st.session.blame.view.is_none()
+        && st.session.rebase.view.is_none()
+    {
         out.push(entry(C::SearchCommits, "Search commits", "find message author sha"));
     }
     if super::palette::can_pick_file(st) {

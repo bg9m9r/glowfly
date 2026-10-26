@@ -25,14 +25,14 @@ pub(super) fn handle(st: &mut AppState, msg: LineCommentMsg, _now: Instant, fx: 
         LineCommentMsg::Post { review } => post(st, review, fx),
         LineCommentMsg::Cancel => cancel(st),
         LineCommentMsg::Discard => {
-            if let Some(v) = st.pull_request.as_mut()
+            if let Some(v) = st.session.pull_request.view.as_mut()
                 && v.line_draft.as_ref().is_some_and(|d| d.posting.is_none())
             {
                 v.line_draft = None;
             }
         }
         LineCommentMsg::Focus => {
-            if let Some(v) = st.pull_request.as_mut().filter(|v| v.line_draft.is_some()) {
+            if let Some(v) = st.session.pull_request.view.as_mut().filter(|v| v.line_draft.is_some()) {
                 v.tab = PrTab::Files;
                 st.view.pr_line_comment_focus = true;
             }
@@ -47,7 +47,7 @@ fn provider(st: &AppState) -> Option<glowfly_core::forge::Provider> {
 
 /// The draft can start on the open diff: it is one of the panel's files and nothing blocks it.
 fn may_start(st: &mut AppState) -> bool {
-    let Some(v) = st.pull_request.as_ref() else { return false };
+    let Some(v) = st.session.pull_request.view.as_ref() else { return false };
     if !st.diff.as_ref().is_some_and(|(t, _)| v.shows_file(t)) {
         return false;
     }
@@ -78,7 +78,7 @@ fn span_at(st: &AppState, side: LineSide, n: u32, extend: bool) -> Result<(usize
     let (h, i) = line_index(diff, side, n).ok_or(OUTSIDE)?;
     let sel = &st.view.diff_lines;
     if extend {
-        return match st.pull_request.as_ref().and_then(|v| v.line_draft.as_ref()) {
+        return match st.session.pull_request.view.as_ref().and_then(|v| v.line_draft.as_ref()) {
             Some(d) if d.target == *target && d.hunk == h => Ok((h, d.first.min(i), d.last.max(i))),
             _ => Err(ONE_HUNK),
         };
@@ -106,7 +106,7 @@ fn on_selection(st: &mut AppState) {
 /// Puts the draft on lines `first..=last` of hunk `h` of the open diff, keeping an existing
 /// draft's text, and focuses its box.
 fn build(st: &mut AppState, h: usize, first: usize, last: usize) {
-    let (Some((target, diff)), Some(v)) = (st.diff.as_ref(), st.pull_request.as_mut()) else { return };
+    let (Some((target, diff)), Some(v)) = (st.diff.as_ref(), st.session.pull_request.view.as_mut()) else { return };
     match draft_at(v, target, diff, h, first, last) {
         Ok(mut d) => {
             if let Some(old) = v.line_draft.take() {
@@ -121,7 +121,7 @@ fn build(st: &mut AppState, h: usize, first: usize, last: usize) {
 }
 
 fn suggest(st: &mut AppState) {
-    let Some(d) = st.pull_request.as_mut().and_then(|v| v.line_draft.as_mut()) else { return };
+    let Some(d) = st.session.pull_request.view.as_mut().and_then(|v| v.line_draft.as_mut()) else { return };
     if d.posting.is_some() || suggest_blocked(d).is_some() {
         return;
     }
@@ -130,13 +130,13 @@ fn suggest(st: &mut AppState) {
 }
 
 fn post(st: &mut AppState, review: bool, fx: &mut Vec<Effect>) {
-    let Some(v) = st.pull_request.as_ref() else { return };
+    let Some(v) = st.session.pull_request.view.as_ref() else { return };
     if post_blocked(provider(st), v, review).is_some() {
         return;
     }
     if let Err(e) = service_request(st) {
         let text = format!("Commenting on {} failed: {e}", v.label);
-        if let Some(d) = st.pull_request.as_mut().and_then(|v| v.line_draft.as_mut()) {
+        if let Some(d) = st.session.pull_request.view.as_mut().and_then(|v| v.line_draft.as_mut()) {
             d.error = Some(e);
         }
         st.log(false, text);
@@ -146,7 +146,7 @@ fn post(st: &mut AppState, review: bool, fx: &mut Vec<Effect>) {
     let comment = NewComment { head_sha: d.head.clone(), anchor: d.anchor.clone(), body: d.text.clone() };
     let call = if review { PrCall::ReviewComment { comment, pending: page.detail.pending_review } } else { PrCall::LineComment(comment) };
     act(st, PrAction::LineComment, call, fx);
-    if let Some(v) = st.pull_request.as_mut().filter(|v| v.busy == Some(PrAction::LineComment))
+    if let Some(v) = st.session.pull_request.view.as_mut().filter(|v| v.busy == Some(PrAction::LineComment))
         && let Some(d) = v.line_draft.as_mut()
     {
         d.posting = Some(review);
@@ -156,7 +156,7 @@ fn post(st: &mut AppState, review: bool, fx: &mut Vec<Effect>) {
 
 /// Cancel and Esc: an empty draft goes at once, an edited one after a confirmation.
 fn cancel(st: &mut AppState) {
-    let Some(v) = st.pull_request.as_mut() else { return };
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     let Some(d) = v.line_draft.as_ref().filter(|d| d.posting.is_none()) else { return };
     if edited(d) {
         st.modal = Some(discard_confirm(d));
@@ -168,7 +168,7 @@ fn cancel(st: &mut AppState) {
 /// The box's line link: scrolls the open diff to the draft's last line, or opens its file
 /// there.
 fn show(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(d) = st.pull_request.as_ref().and_then(|v| v.line_draft.as_ref()) else { return };
+    let Some(d) = st.session.pull_request.view.as_ref().and_then(|v| v.line_draft.as_ref()) else { return };
     let (target, side, n) = (d.target.clone(), d.anchor.side, d.anchor.line);
     match &st.diff {
         Some((open, diff)) if *open == target => {
@@ -178,7 +178,7 @@ fn show(st: &mut AppState, fx: &mut Vec<Effect>) {
                 st.view.diff_top_row = row;
             }
         }
-        _ if st.pull_request.as_ref().is_some_and(|v| v.shows_file(&target)) => {
+        _ if st.session.pull_request.view.as_ref().is_some_and(|v| v.shows_file(&target)) => {
             super::super::repo::open_file_diff(st, target.clone(), fx);
             st.view.diff_open_line = Some((target, side, n));
         }
@@ -236,14 +236,14 @@ pub(super) fn replied(
     let PrReply::LineCommented { review, result } = reply else { return };
     let mine = |v: &&mut PrView| v.pr.id == id && v.line_draft.as_ref().is_some_and(|d| d.posting.is_some());
     let view = if active {
-        st.pull_request.as_mut().filter(mine)
+        st.session.pull_request.view.as_mut().filter(mine)
     } else {
         st.tabs
             .iter_mut()
             .find(|t| t.is(workdir))
             .and_then(|t| t.parked.as_mut())
             .filter(|p| p.forge.as_ref().and_then(|f| f.host.as_ref()) == Some(target))
-            .and_then(|p| p.pull_request.as_mut())
+            .and_then(|p| p.session.pull_request.view.as_mut())
             .filter(mine)
     };
     let found = view.map(|v| {

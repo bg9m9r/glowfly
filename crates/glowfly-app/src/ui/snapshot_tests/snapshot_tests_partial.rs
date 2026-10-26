@@ -103,7 +103,7 @@ fn content_cancelled_light() {
 #[test]
 fn file_view_downloading() {
     let (mut st, dir) = with_file_view("partial-file-view", ThemeChoice::Dark);
-    let text = st.history.as_mut().unwrap().text.as_mut().unwrap();
+    let text = st.session.history.view.as_mut().unwrap().text.as_mut().unwrap();
     text.state = TextState::Loading;
     let view = ContentView::FileText { oid: text.oid, path: text.path.clone(), before: text.before };
     st.partial.content = Some(pending(&dir, view, "lib.rs", ContentPhase::Fetching { id: 2, stopping: false }));
@@ -118,8 +118,8 @@ fn file_view_downloading() {
 #[test]
 fn blame_downloading() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "partial-blame");
-    st.blame_gen = 2;
-    st.blame = Some(BlameView::loading("src/main.rs".into(), None));
+    st.session.blame.generation = 2;
+    st.session.blame.view = Some(BlameView::loading("src/main.rs".into(), None));
     st.job = Some(job(crate::state::partial::DOWNLOAD_LABEL));
     st.job_stop = Some(JobStop::default());
     st.partial.content = Some(pending(&dir, ContentView::Blame { generation: 2 }, "src/main.rs", ContentPhase::FetchingAsJob));

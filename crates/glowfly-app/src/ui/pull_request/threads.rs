@@ -54,7 +54,7 @@ pub(super) struct Ctx<'a> {
 /// Why going to each thread of the open panel's page is unavailable, computed before the
 /// panel is borrowed for its text fields.
 pub(super) fn go_to_reasons(st: &AppState) -> HashMap<String, Option<String>> {
-    let Some(v) = &st.pull_request else { return HashMap::new() };
+    let Some(v) = &st.session.pull_request.view else { return HashMap::new() };
     let Some(p) = v.loaded() else { return HashMap::new() };
     p.threads.iter().map(|t| (t.id.clone(), go_to_open(st, v, t).err())).collect()
 }
@@ -238,7 +238,7 @@ pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, md: &mut Mar
     let reasons = super::line_comment::reasons(st);
     let focus = std::mem::take(&mut st.view.pr_line_comment_focus);
     let ctx = Ctx { settings: &st.settings, keys: &st.keymap, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
-    let Some(v) = st.pull_request.as_mut() else { return };
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     let drafted = draft_on(v, path);
     let shown = head_path(v, path).to_owned();
     let n = on_local_file(v, path);

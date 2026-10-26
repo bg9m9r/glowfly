@@ -53,19 +53,19 @@ pub(super) fn with_view(name: &str) -> (AppState, PathBuf) {
     let mut view = FileHistoryView::loading("a.txt".into(), None);
     view.append(FileHistory { entries: vec![entry(1, "a.txt"), entry(2, "old.txt")], from_head: true, ..Default::default() });
     view.batches = 1;
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     (st, dir)
 }
 
 pub(super) fn loaded(st: &AppState, h: FileHistory) -> Msg {
-    Msg::History(HistoryMsg::FileHistoryLoaded { path: "a.txt".into(), generation: st.history_gen, result: Ok(h) })
+    Msg::History(HistoryMsg::FileHistoryLoaded { path: "a.txt".into(), generation: st.session.history.generation, result: Ok(h) })
 }
 
 #[test]
 fn opening_file_history_requests_a_walk() {
     let (mut st, dir) = opened("history-open");
     st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
-    st.conflict = Some(ConflictView::loading("a.txt".into()));
+    st.session.conflict.view = Some(ConflictView::loading("a.txt".into()));
     let fx = update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
     let limit = st.settings.commit_limit();
     assert!(
@@ -73,9 +73,9 @@ fn opening_file_history_requests_a_walk() {
             if path == "a.txt" && *l == limit),
         "{fx:?}"
     );
-    let view = st.history.as_ref().expect("view open");
+    let view = st.session.history.view.as_ref().expect("view open");
     assert!(view.loading && view.entries.is_empty());
-    assert!(st.diff.is_none() && st.conflict.is_none());
+    assert!(st.diff.is_none() && st.session.conflict.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -89,7 +89,7 @@ fn file_history_end_to_end_with_rename() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
     drive(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "b.txt".into(), at: Some(head) }));
-    let view = st.history.as_ref().expect("view open");
+    let view = st.session.history.view.as_ref().expect("view open");
     assert!(!view.loading && view.complete() && view.as_of.is_none());
     let statuses: String = view.entries.iter().map(|e| e.status).collect();
     assert_eq!(statuses, "RMA");
@@ -108,20 +108,27 @@ fn stale_history_results_are_ignored() {
     update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
     let fresh = FileHistory { entries: vec![entry(1, "a.txt")], from_head: true, ..Default::default() };
     // An older generation.
-    let old =
-        Msg::History(HistoryMsg::FileHistoryLoaded { path: "a.txt".into(), generation: st.history_gen - 1, result: Ok(fresh.clone()) });
+    let old = Msg::History(HistoryMsg::FileHistoryLoaded {
+        path: "a.txt".into(),
+        generation: st.session.history.generation - 1,
+        result: Ok(fresh.clone()),
+    });
     assert!(update(&mut st, old, Instant::now()).is_empty());
     // Another path.
-    let other = Msg::History(HistoryMsg::FileHistoryLoaded { path: "b.txt".into(), generation: st.history_gen, result: Ok(fresh.clone()) });
+    let other = Msg::History(HistoryMsg::FileHistoryLoaded {
+        path: "b.txt".into(),
+        generation: st.session.history.generation,
+        result: Ok(fresh.clone()),
+    });
     assert!(update(&mut st, other, Instant::now()).is_empty());
-    let view = st.history.as_ref().unwrap();
+    let view = st.session.history.view.as_ref().unwrap();
     assert!(view.loading && view.entries.is_empty());
     // After closing.
-    let generation = st.history_gen;
+    let generation = st.session.history.generation;
     update(&mut st, Msg::History(HistoryMsg::CloseFileHistory), Instant::now());
     let late = Msg::History(HistoryMsg::FileHistoryLoaded { path: "a.txt".into(), generation, result: Ok(fresh) });
     assert!(update(&mut st, late, Instant::now()).is_empty());
-    assert!(st.history.is_none());
+    assert!(st.session.history.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -129,7 +136,7 @@ fn stale_history_results_are_ignored() {
 fn selecting_an_entry_opens_the_diff_at_its_path() {
     let (mut st, dir) = with_view("history-select");
     let fx = update(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(1)), Instant::now());
-    assert_eq!(st.history.as_ref().unwrap().selected, Some(1));
+    assert_eq!(st.session.history.view.as_ref().unwrap().selected, Some(1));
     assert_eq!(st.view.history_scroll_to, Some(1));
     assert!(
         matches!(&fx[..], [Effect::LoadDiff { target: DiffTarget::Commit(o, p), reload: false, .. }] if *o == oid(2) && p == "old.txt"),
@@ -137,7 +144,7 @@ fn selecting_an_entry_opens_the_diff_at_its_path() {
     );
     st.view.history_scroll_to = None;
     assert!(update(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(5)), Instant::now()).is_empty());
-    assert_eq!(st.history.as_ref().unwrap().selected, Some(1));
+    assert_eq!(st.session.history.view.as_ref().unwrap().selected, Some(1));
     assert!(st.view.history_scroll_to.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -147,12 +154,12 @@ fn searching_further_appends_without_duplicates() {
     let (mut st, dir) = with_view("history-more");
     let resume = vec![(oid(3), "old.txt".to_owned())];
     {
-        let v = st.history.as_mut().unwrap();
+        let v = st.session.history.view.as_mut().unwrap();
         v.resume = resume.clone();
         v.searched_until = Some((oid(2), 5));
     }
     let fx = update(&mut st, Msg::History(HistoryMsg::MoreFileHistory), Instant::now());
-    assert!(st.history.as_ref().unwrap().loading);
+    assert!(st.session.history.view.as_ref().unwrap().loading);
     assert!(matches!(&fx[..], [Effect::LoadFileHistory { start: HistoryStart::Resume(r), .. }] if *r == resume), "{fx:?}");
     assert!(update(&mut st, Msg::History(HistoryMsg::MoreFileHistory), Instant::now()).is_empty(), "one request at a time");
 
@@ -168,7 +175,7 @@ fn searching_further_appends_without_duplicates() {
     let m = loaded(&st, batch);
     let fx = update(&mut st, m, Instant::now());
     assert!(fx.is_empty(), "the selection stays where it was");
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     let got: Vec<Oid> = v.entries.iter().map(|e| e.oid).collect();
     assert_eq!(got, [oid(1), oid(2), oid(3)]);
     assert_eq!(v.resume, [(oid(5), "older.txt".to_owned())]);
@@ -183,7 +190,7 @@ fn view_on_graph_selects_visible_commits_only() {
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
     st.view.scroll_to_row = None;
     let fx = update(&mut st, Msg::History(HistoryMsg::ShowInGraph(head)), Instant::now());
-    assert!(st.history.is_none());
+    assert!(st.session.history.view.is_none());
     assert_eq!(st.selection, Selection::Commit(head));
     assert!(
         matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(crate::effect::LineCountsEffect::Commit { .. })] if *oid == head),
@@ -194,7 +201,7 @@ fn view_on_graph_selects_visible_commits_only() {
     let (mut st, dir2) = with_view("history-graph-hidden");
     let fx = update(&mut st, Msg::History(HistoryMsg::ShowInGraph(oid(9))), Instant::now());
     assert!(fx.is_empty());
-    assert!(st.history.is_some());
+    assert!(st.session.history.view.is_some());
     let toast = st.toasts.last().expect("a toast");
     assert!(!toast.ok && toast.text.contains("not visible on the graph"), "{}", toast.text);
     let _ = std::fs::remove_dir_all(&dir);
@@ -208,8 +215,8 @@ fn other_views_close_file_history() {
     let reopen = |st: &mut AppState| {
         let mut v = FileHistoryView::loading("a.txt".into(), None);
         v.loading = false;
-        st.history = Some(v);
-        st.history_gen
+        st.session.history.view = Some(v);
+        st.session.history.generation
     };
     let snap = Box::new(repo::load(&dir, &LoadOptions::all(100)).unwrap());
     let msgs = [
@@ -221,18 +228,18 @@ fn other_views_close_file_history() {
     for m in msgs {
         let before = reopen(&mut st);
         update(&mut st, m, Instant::now());
-        assert!(st.history.is_none() && st.history_gen > before);
+        assert!(st.session.history.view.is_none() && st.session.history.generation > before);
     }
     let before = reopen(&mut st);
     st.loading = true;
     let m = Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Open, result: Ok(snap) });
     update(&mut st, m, Instant::now());
-    assert!(st.history.is_none() && st.history_gen > before);
+    assert!(st.session.history.view.is_none() && st.session.history.generation > before);
 
     reopen(&mut st);
     st.diff = Some((DiffTarget::Commit(head, "a.txt".into()), empty_diff().into()));
     update(&mut st, Msg::History(HistoryMsg::CloseFileHistory), Instant::now());
-    assert!(st.history.is_none() && st.diff.is_none());
+    assert!(st.session.history.view.is_none() && st.diff.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -240,9 +247,13 @@ fn other_views_close_file_history() {
 fn history_error_is_shown_and_logged() {
     let (mut st, dir) = opened("history-error");
     update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
-    let m = Msg::History(HistoryMsg::FileHistoryLoaded { path: "a.txt".into(), generation: st.history_gen, result: Err("boom".into()) });
+    let m = Msg::History(HistoryMsg::FileHistoryLoaded {
+        path: "a.txt".into(),
+        generation: st.session.history.generation,
+        result: Err("boom".into()),
+    });
     update(&mut st, m, Instant::now());
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     assert_eq!(v.error.as_deref(), Some("boom"));
     assert!(!v.loading && !v.complete());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not load the history of a.txt: boom"));
@@ -255,14 +266,14 @@ fn tab_switch_parks_file_history() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
-    let first = st.history_gen;
+    let first = st.session.history.generation;
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
-    assert!(st.history.is_none(), "B has no history open");
+    assert!(st.session.history.view.is_none(), "B has no history open");
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    let v = st.history.as_ref().expect("restored");
+    let v = st.session.history.view.as_ref().expect("restored");
     assert!(v.loading && v.path == "a.txt");
-    assert!(st.history_gen > first);
-    let gen_now = st.history_gen;
+    assert!(st.session.history.generation > first);
+    let gen_now = st.session.history.generation;
     assert!(
         fx.iter().any(|e| matches!(e, Effect::LoadFileHistory { start: HistoryStart::Head, generation, .. } if *generation == gen_now)),
         "{fx:?}"
@@ -273,7 +284,7 @@ fn tab_switch_parks_file_history() {
 
 /// The target of the selected entry's diff.
 pub(super) fn selected_target(st: &AppState) -> DiffTarget {
-    let v = st.history.as_ref().expect("view open");
+    let v = st.session.history.view.as_ref().expect("view open");
     let e = &v.entries[v.selected.expect("an entry selected")];
     DiffTarget::Commit(e.oid, e.path.clone())
 }
@@ -297,7 +308,7 @@ fn tab_switch_reloads_the_selected_entrys_diff() {
     if let Some(m) = crate::runner::execute(walk) {
         update(&mut st, m, Instant::now());
     }
-    assert_eq!(st.history.as_ref().unwrap().selected, Some(0));
+    assert_eq!(st.session.history.view.as_ref().unwrap().selected, Some(0));
     assert!(st.diff.is_none());
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
@@ -333,11 +344,11 @@ fn loaded_history_records_on_disk() {
     let first = FileHistory { entries: vec![entry(1, "a.txt")], on_disk: true, ..Default::default() };
     let m = loaded(&st, first);
     update(&mut st, m, Instant::now());
-    assert!(st.history.as_ref().unwrap().on_disk);
+    assert!(st.session.history.view.as_ref().unwrap().on_disk);
     let later = FileHistory { entries: vec![entry(2, "a.txt")], on_disk: false, ..Default::default() };
     let m = loaded(&st, later);
     update(&mut st, m, Instant::now());
-    assert!(!st.history.as_ref().unwrap().on_disk, "the latest batch wins");
+    assert!(!st.session.history.view.as_ref().unwrap().on_disk, "the latest batch wins");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

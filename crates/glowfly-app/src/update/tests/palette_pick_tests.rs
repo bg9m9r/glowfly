@@ -80,15 +80,15 @@ fn file_history_entry_availability() {
     let at = labels.iter().position(|l| l == FILE_HISTORY).unwrap();
     assert_eq!(labels[at - 1], "Search commits", "right after Search commits");
 
-    st.history = Some(FileHistoryView::loading("a.txt".into(), None));
+    st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
     assert!(!listed(&st));
-    st.history = None;
-    st.rebase = Some(RebasePanel::loading(RebaseBase::OntoBranch("topic".into())));
+    st.session.history.view = None;
+    st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::OntoBranch("topic".into())));
     assert!(!listed(&st));
-    st.rebase = None;
-    st.conflict = Some(ConflictView::loading("a.txt".into()));
+    st.session.rebase.view = None;
+    st.session.conflict.view = Some(ConflictView::loading("a.txt".into()));
     assert!(!listed(&st));
-    st.conflict = None;
+    st.session.conflict.view = None;
     assert!(listed(&st));
     let _ = std::fs::remove_dir_all(&dir);
 
@@ -225,7 +225,7 @@ fn picking_a_file_opens_history() {
     enter(&mut st);
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::OpenFileHistory("a.txt".into()))));
     assert!(st.palette.is_none());
-    let h = st.history.as_ref().expect("history open");
+    let h = st.session.history.view.as_ref().expect("history open");
     assert_eq!(h.path, "a.txt");
     assert_eq!(h.at, None);
     assert!(!h.loading);

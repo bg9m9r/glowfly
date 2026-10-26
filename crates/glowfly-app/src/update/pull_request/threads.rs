@@ -14,12 +14,12 @@ use std::time::Instant;
 
 /// The loaded page's thread `id`.
 fn find(st: &AppState, id: &str) -> Option<ReviewThread> {
-    st.pull_request.as_ref()?.loaded()?.threads.iter().find(|t| t.id == id).cloned()
+    st.session.pull_request.view.as_ref()?.loaded()?.threads.iter().find(|t| t.id == id).cloned()
 }
 
 /// Posts thread `id`'s reply box.
 pub(super) fn reply(st: &mut AppState, id: String, fx: &mut Vec<Effect>) {
-    let (Some(v), Some(t)) = (st.pull_request.as_ref(), find(st, &id)) else { return };
+    let (Some(v), Some(t)) = (st.session.pull_request.view.as_ref(), find(st, &id)) else { return };
     if reply_blocked(v, &t).is_some() {
         return;
     }
@@ -30,7 +30,7 @@ pub(super) fn reply(st: &mut AppState, id: String, fx: &mut Vec<Effect>) {
 
 /// Resolves (`resolve`) or reopens thread `id`.
 pub(super) fn resolve(st: &mut AppState, id: String, resolve: bool, fx: &mut Vec<Effect>) {
-    let (Some(v), Some(t)) = (st.pull_request.as_ref(), find(st, &id)) else { return };
+    let (Some(v), Some(t)) = (st.session.pull_request.view.as_ref(), find(st, &id)) else { return };
     if resolve_blocked(v, &t).is_some() || t.resolved == resolve {
         return;
     }
@@ -38,13 +38,13 @@ pub(super) fn resolve(st: &mut AppState, id: String, resolve: bool, fx: &mut Vec
 }
 
 pub(super) fn show_resolved(st: &mut AppState, show: bool) {
-    if let Some(v) = st.pull_request.as_mut() {
+    if let Some(v) = st.session.pull_request.view.as_mut() {
         v.threads.show_resolved = show;
     }
 }
 
 pub(super) fn show_outdated(st: &mut AppState, show: bool) {
-    if let Some(v) = st.pull_request.as_mut() {
+    if let Some(v) = st.session.pull_request.view.as_mut() {
         v.threads.show_outdated = show;
     }
 }
@@ -52,7 +52,7 @@ pub(super) fn show_outdated(st: &mut AppState, show: bool) {
 /// A card's Show/Hide.
 pub(super) fn toggle(st: &mut AppState, id: String) {
     let Some(t) = find(st, &id) else { return };
-    if let Some(v) = st.pull_request.as_mut() {
+    if let Some(v) = st.session.pull_request.view.as_mut() {
         let open = is_open(&v.threads, &t);
         v.threads.open.insert(id, !open);
     }
@@ -60,7 +60,7 @@ pub(super) fn toggle(st: &mut AppState, id: String) {
 
 /// Opens thread `id` and asks the comment pane to scroll to it.
 pub(super) fn focus(st: &mut AppState, id: String) {
-    let Some(v) = st.pull_request.as_mut() else { return };
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     if !v.loaded().is_some_and(|p| p.threads.iter().any(|t| t.id == id)) {
         return;
     }
@@ -73,9 +73,9 @@ pub(super) fn focus(st: &mut AppState, id: String) {
 /// to land there once loaded. Nothing happens when it can't be placed (its link is disabled
 /// then, with the reason).
 pub(super) fn go_to_thread(st: &mut AppState, id: String, fx: &mut Vec<Effect>) {
-    let (Some(v), Some(t)) = (st.pull_request.as_ref(), find(st, &id)) else { return };
+    let (Some(v), Some(t)) = (st.session.pull_request.view.as_ref(), find(st, &id)) else { return };
     let Ok((target, side, n)) = go_to(v, &t) else { return };
-    if let Some(v) = st.pull_request.as_mut() {
+    if let Some(v) = st.session.pull_request.view.as_mut() {
         v.tab = PrTab::Files;
     }
     focus(st, id);
@@ -101,7 +101,7 @@ pub(super) fn go_to_thread(st: &mut AppState, id: String, fx: &mut Vec<Effect>) 
 /// A successful reply or resolve, applied in place (the page isn't loaded again). `open`: the
 /// answer is for the open panel; `text` is its log line.
 pub(super) fn applied(st: &mut AppState, open: bool, reply: PrReply, text: String, now: Instant) {
-    let page = st.pull_request.as_mut().filter(|_| open);
+    let page = st.session.pull_request.view.as_mut().filter(|_| open);
     match reply {
         PrReply::RepliedToThread { thread, result: Ok(comment) } => {
             if let Some(v) = page {

@@ -7,6 +7,7 @@ use super::update;
 use crate::effect::{BackgroundEffect, Effect};
 use crate::msg::{CloseRequest, Msg, TabsMsg};
 use crate::state::conflict::ConflictView;
+use crate::state::session::{Gen, RepoSession};
 use crate::state::tabs::{ClosedTab, Parked};
 use crate::state::{AppState, CommitDraft, Modal, Tab};
 use glowfly_core::conflict_pick::ChunkPick;
@@ -139,14 +140,15 @@ fn conflict(picks: Vec<ChunkPick>, auto: Vec<Option<Trivial>>) -> ConflictView {
 #[test]
 fn user_conflict_choices_ask_but_automatic_ones_do_not() {
     let mut st = fake_tabs(&["a", "b"], 1);
-    st.conflict = Some(conflict(vec![ChunkPick::Sides(Choice::Ours), ChunkPick::default()], vec![None, None]));
+    st.session.conflict.view = Some(conflict(vec![ChunkPick::Sides(Choice::Ours), ChunkPick::default()], vec![None, None]));
     send(&mut st, TabsMsg::CloseTab(1));
     let (_, body) = confirm(&st).expect("a confirmation");
     assert!(body.contains("- 1 conflict choice in src/lib.rs"), "{body}");
     assert!(!body.contains("draft"), "{body}");
     st.modal = None;
 
-    st.conflict = Some(conflict(vec![ChunkPick::Sides(Choice::Ours), ChunkPick::default()], vec![Some(Trivial::Unchanged), None]));
+    st.session.conflict.view =
+        Some(conflict(vec![ChunkPick::Sides(Choice::Ours), ChunkPick::default()], vec![Some(Trivial::Unchanged), None]));
     send(&mut st, TabsMsg::CloseTab(1));
     assert!(st.modal.is_none(), "an automatic pick is made again when the file opens again");
     assert_eq!(names(&st), ["a"]);
@@ -154,7 +156,11 @@ fn user_conflict_choices_ask_but_automatic_ones_do_not() {
     // Two choices in a parked tab, next to a draft.
     let mut st = fake_tabs(&["a", "b"], 0);
     let picks = vec![ChunkPick::Sides(Choice::Theirs), ChunkPick::Sides(Choice::Ours)];
-    let parked = Parked { draft: draft("wip"), conflict: Some(conflict(picks, vec![None, None])), ..Default::default() };
+    let parked = Parked {
+        draft: draft("wip"),
+        session: RepoSession { conflict: Gen::open(conflict(picks, vec![None, None])), ..Default::default() },
+        ..Default::default()
+    };
     st.tabs[1].parked = Some(Box::new(parked));
     send(&mut st, TabsMsg::CloseTab(1));
     let (_, body) = confirm(&st).expect("a confirmation");
@@ -166,7 +172,7 @@ fn a_clean_edit_alone_asks_but_restored_picks_do_not() {
     let mut st = fake_tabs(&["a", "b"], 1);
     let mut c = conflict(vec![ChunkPick::default()], vec![None]);
     c.cleans.insert(0, vec!["edited\n".into()]);
-    st.conflict = Some(c);
+    st.session.conflict.view = Some(c);
     send(&mut st, TabsMsg::CloseTab(1));
     let (_, body) = confirm(&st).expect("a confirmation");
     assert!(body.contains("- 1 conflict choice in src/lib.rs"), "{body}");
@@ -175,7 +181,7 @@ fn a_clean_edit_alone_asks_but_restored_picks_do_not() {
     let mut c = conflict(vec![ChunkPick::Sides(Choice::Ours)], vec![None]);
     c.cleans.insert(0, vec!["edited\n".into()]);
     c.baseline = (c.picks.clone(), c.cleans.clone());
-    st.conflict = Some(c);
+    st.session.conflict.view = Some(c);
     send(&mut st, TabsMsg::CloseTab(1));
     assert!(st.modal.is_none());
 }

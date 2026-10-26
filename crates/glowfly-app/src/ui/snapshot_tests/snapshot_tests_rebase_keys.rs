@@ -43,7 +43,7 @@ fn rebase_msgs(h: &H) -> Vec<String> {
 }
 
 fn select(h: &mut H, i: Option<usize>) {
-    h.state_mut().0.rebase.as_mut().unwrap().selected = i;
+    h.state_mut().0.session.rebase.view.as_mut().unwrap().selected = i;
     h.run();
 }
 
@@ -71,10 +71,10 @@ fn keys_send_panel_messages() {
     assert_eq!(press(&mut h, Modifiers::NONE, Key::Enter), ["edit 0"]);
 
     // An open editor, then a focused button, keep the keys.
-    h.state_mut().0.rebase.as_mut().unwrap().editing = Some(Editing::Message(0));
+    h.state_mut().0.session.rebase.view.as_mut().unwrap().editing = Some(Editing::Message(0));
     h.run();
     assert!(press(&mut h, Modifiers::NONE, Key::S).is_empty(), "the editor is open");
-    h.state_mut().0.rebase.as_mut().unwrap().editing = None;
+    h.state_mut().0.session.rebase.view.as_mut().unwrap().editing = None;
     h.run();
     h.get_by_label("Cancel").focus();
     h.run();
@@ -86,7 +86,7 @@ fn keys_send_panel_messages() {
 #[test]
 fn step_rows_and_the_row_menu() {
     let (mut st, dir) = with_panel(ThemeChoice::Dark, "rebase-keys-steps", &PICKS);
-    let p = st.rebase.as_mut().unwrap();
+    let p = st.session.rebase.view.as_mut().unwrap();
     p.add_step(Some(0), NewStep::Break);
     p.selected = Some(1);
     let mut h = harness(st, true);
@@ -105,7 +105,17 @@ fn step_rows_and_the_row_menu() {
     h.run();
     h.get_by_label("Add exec step after").click();
     h.run();
-    let row = h.state().0.rebase.as_ref().unwrap().items.iter().position(|s| s.commit().is_some_and(|c| c.summary == "Add app skeleton"));
+    let row = h
+        .state()
+        .0
+        .session
+        .rebase
+        .view
+        .as_ref()
+        .unwrap()
+        .items
+        .iter()
+        .position(|s| s.commit().is_some_and(|c| c.summary == "Add app skeleton"));
     assert_eq!(rebase_msgs(&h), [format!("add {row:?} {:?}", NewStep::Exec)]);
     drop(h);
     remove_fixture(&dir);

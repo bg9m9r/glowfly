@@ -20,11 +20,11 @@ fn text(lines: &[&str]) -> Arc<FileTextData> {
 }
 
 fn nav(st: &AppState) -> &TextNav {
-    &st.history.as_ref().unwrap().nav
+    &st.session.history.view.as_ref().unwrap().nav
 }
 
 fn nav_mut(st: &mut AppState) -> &mut TextNav {
-    &mut st.history.as_mut().unwrap().nav
+    &mut st.session.history.view.as_mut().unwrap().nav
 }
 
 /// `with_view` in the File pane, entry 0's text loaded.

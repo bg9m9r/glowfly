@@ -30,11 +30,11 @@ fn the_choice_is_remembered_and_saved_once() {
     let fx = send(&mut st, HistoryMsg::SetFilePreview(true));
     assert_eq!((saves(&fx), fx.len()), (1, 1), "{fx:?}");
     assert!(st.settings.history.preview);
-    assert!(st.history.as_ref().unwrap().nav.to_top, "the preview starts at the top");
+    assert!(st.session.history.view.as_ref().unwrap().nav.to_top, "the preview starts at the top");
     assert_eq!(saves(&send(&mut st, HistoryMsg::SetFilePreview(true))), 0, "unchanged: nothing to save");
     assert_eq!(saves(&send(&mut st, HistoryMsg::SetFilePreview(false))), 1);
     assert!(!st.settings.history.preview);
-    st.history = None;
+    st.session.history.view = None;
     assert!(send(&mut st, HistoryMsg::SetFilePreview(true)).is_empty());
     assert!(!st.settings.history.preview, "no history open: nothing changes");
     let _ = std::fs::remove_dir_all(&dir);
@@ -63,9 +63,9 @@ fn shown(name: &str, data: FileTextData) -> (AppState, std::path::PathBuf) {
 }
 
 fn focuses(st: &mut AppState) -> bool {
-    st.history.as_mut().unwrap().nav.focus_find = false;
+    st.session.history.view.as_mut().unwrap().nav.focus_find = false;
     send(st, HistoryMsg::FocusFileFind);
-    st.history.as_ref().unwrap().nav.focus_find
+    st.session.history.view.as_ref().unwrap().nav.focus_find
 }
 
 #[test]
@@ -91,7 +91,7 @@ fn the_search_key_does_nothing_over_a_preview() {
 #[test]
 fn previewing_needs_the_file_pane_and_the_shown_text() {
     let (mut st, dir) = shown("history-preview-truth", markdown_data());
-    let view = st.history.as_mut().unwrap();
+    let view = st.session.history.view.as_mut().unwrap();
     assert!(view.previewing(true) && !view.previewing(false));
     view.pane = HistoryPane::Diff;
     assert!(!view.previewing(true), "the Diff pane");
@@ -124,7 +124,7 @@ fn commit(dir: &Path, files: &[(&str, &[u8])]) {
 fn read(st: &mut AppState, path: &str) -> TextState {
     drive(st, Msg::History(HistoryMsg::OpenFileHistory { path: path.into(), at: None }));
     drive(st, Msg::History(HistoryMsg::SetHistoryPane(HistoryPane::File)));
-    st.history.as_ref().and_then(|v| v.text.as_ref()).map(|t| t.state.clone()).expect("text asked for")
+    st.session.history.view.as_ref().and_then(|v| v.text.as_ref()).map(|t| t.state.clone()).expect("text asked for")
 }
 
 fn ready(state: TextState) -> Arc<FileTextData> {

@@ -42,7 +42,7 @@ pub(super) fn with_panel(name: &str, base: RebaseBase) -> (AppState, PathBuf, [O
         b => b,
     };
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(base)));
-    assert!(st.rebase.as_ref().is_some_and(|p| !p.loading && p.items.len() == 3), "the list loaded");
+    assert!(st.session.rebase.view.as_ref().is_some_and(|p| !p.loading && p.items.len() == 3), "the list loaded");
     (st, dir, c)
 }
 
@@ -51,7 +51,7 @@ fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 }
 
 fn panel(st: &AppState) -> &RebasePanel {
-    st.rebase.as_ref().expect("panel open")
+    st.session.rebase.view.as_ref().expect("panel open")
 }
 
 fn actions(st: &AppState) -> Vec<RebaseAction> {
@@ -95,7 +95,7 @@ fn fake_panel() -> AppState {
     let mut st = state();
     let mut p = RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1)));
     p.fill(fake_plan(3));
-    st.rebase = Some(p);
+    st.session.rebase.view = Some(p);
     st
 }
 
@@ -119,17 +119,17 @@ fn opening_requests_the_list_and_closes_other_views() {
     let (mut st, dir, c) = repo("rebase-open");
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     st.diff = Some((DiffTarget::Commit(c[0], "c1.txt".into()), diff.into()));
-    st.history = Some(FileHistoryView::loading("c1.txt".into(), None));
-    st.conflict = Some(ConflictView::loading("c1.txt".into()));
+    st.session.history.view = Some(FileHistoryView::loading("c1.txt".into(), None));
+    st.session.conflict.view = Some(ConflictView::loading("c1.txt".into()));
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(c[1]))));
     match &fx[..] {
         [e @ Effect::Rebase(RebaseEffect::LoadPlan { base, generation, .. })] => {
-            assert_eq!((base, *generation), (&RebaseBase::FromCommit(c[1]), st.rebase_gen));
+            assert_eq!((base, *generation), (&RebaseBase::FromCommit(c[1]), st.session.rebase.generation));
             assert!(e.scope().is_some(), "the result comes back for this tab only");
         }
         other => panic!("expected one list request, got {other:?}"),
     }
-    assert!(st.diff.is_none() && st.history.is_none() && st.conflict.is_none());
+    assert!(st.diff.is_none() && st.session.history.view.is_none() && st.session.conflict.view.is_none());
     assert!(panel(&st).loading);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -141,35 +141,35 @@ fn opening_is_refused_during_a_merge_and_on_a_detached_head() {
     assert!(up(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(c[0])))).is_empty());
     assert_eq!(last_log(&st), "Finish or abort the merge in progress before starting an interactive rebase.");
     assert!(st.toasts.last().is_some_and(|t| !t.ok && t.text == last_log(&st)));
-    assert!(st.rebase.is_none());
+    assert!(st.session.rebase.view.is_none());
 
     st.snap.as_mut().unwrap().state = RepositoryState::Clean;
     st.snap.as_mut().unwrap().head_branch = None;
     assert!(up(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(c[0])))).is_empty());
     assert_eq!(last_log(&st), rebase::DETACHED);
-    assert!(st.rebase.is_none());
+    assert!(st.session.rebase.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn stale_and_failed_list_results() {
     let mut st = state();
-    st.rebase = Some(RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1))));
-    st.rebase_gen = 4;
+    st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1))));
+    st.session.rebase.generation = 4;
     up(&mut st, Msg::Rebase(RebaseMsg::RebasePlanLoaded { generation: 3, result: Ok(fake_plan(2)) }));
     assert!(panel(&st).loading, "an older request's result is ignored");
     up(&mut st, Msg::Rebase(RebaseMsg::CloseRebase));
     up(&mut st, Msg::Rebase(RebaseMsg::RebasePlanLoaded { generation: 4, result: Ok(fake_plan(2)) }));
-    assert!(st.rebase.is_none(), "a result after closing doesn't reopen the panel");
+    assert!(st.session.rebase.view.is_none(), "a result after closing doesn't reopen the panel");
 
-    st.rebase = Some(RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1))));
-    let generation = st.rebase_gen;
+    st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1))));
+    let generation = st.session.rebase.generation;
     up(&mut st, Msg::Rebase(RebaseMsg::RebasePlanLoaded { generation, result: Ok(fake_plan(2)) }));
     assert_eq!(panel(&st).items.len(), 2);
 
-    st.rebase = Some(RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1))));
+    st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1))));
     up(&mut st, Msg::Rebase(RebaseMsg::RebasePlanLoaded { generation, result: Err("1a2b3c4 is not on the current branch".into()) }));
-    assert!(st.rebase.is_none());
+    assert!(st.session.rebase.view.is_none());
     assert_eq!(last_log(&st), "1a2b3c4 is not on the current branch");
     assert!(st.toasts.last().is_some_and(|t| !t.ok && t.text == "1a2b3c4 is not on the current branch"));
 }
@@ -193,7 +193,7 @@ fn editing_the_list() {
     // Reword opens the editor with the full message; Update stores the trimmed draft.
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 1, action: Reword }));
     assert_eq!((panel(&st).editing, panel(&st).draft.as_str()), (Some(Editing::Message(1)), "commit 2\n\nbody 2"));
-    st.rebase.as_mut().unwrap().draft = "New title\n\nNew body\n\n".into();
+    st.session.rebase.view.as_mut().unwrap().draft = "New title\n\nNew body\n\n".into();
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseSaveMessage));
     let item = panel(&st).items[1].commit().unwrap();
     assert_eq!((item.action, item.new_message.as_deref()), (Reword, Some("New title\n\nNew body")));
@@ -248,7 +248,7 @@ fn start_is_refused_with_a_reason() {
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 0, action: RebaseAction::Pick }));
     assert!(matches!(&start(&mut st)[..], [Effect::Rebase(RebaseEffect::Start { .. })]), "the list is fine now");
     st.job = None;
-    st.rebase.as_mut().unwrap().starting = false;
+    st.session.rebase.view.as_mut().unwrap().starting = false;
 
     // HEAD moved: a refresh marks the list stale.
     std::fs::write(dir.join("c4.txt"), "4\n").unwrap();
@@ -259,7 +259,7 @@ fn start_is_refused_with_a_reason() {
     assert_eq!(last_log(&st), rebase::STALE);
     // Reset reloads a stale list.
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::RebaseReset));
-    assert!(matches!(&fx[..], [Effect::Rebase(RebaseEffect::LoadPlan { generation, .. })] if *generation == st.rebase_gen));
+    assert!(matches!(&fx[..], [Effect::Rebase(RebaseEffect::LoadPlan { generation, .. })] if *generation == st.session.rebase.generation));
     assert!(panel(&st).loading);
     assert_eq!(c.len(), 3);
     let _ = std::fs::remove_dir_all(&dir);
@@ -315,7 +315,7 @@ fn drops_are_confirmed_before_starting() {
 fn a_refused_start_keeps_the_panel() {
     let (mut st, dir, _) = with_panel("rebase-finished-err", RebaseBase::FromCommit(Oid::zero()));
     st.job = Some(running_job(&dir));
-    st.rebase.as_mut().unwrap().starting = true;
+    st.session.rebase.view.as_mut().unwrap().starting = true;
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(rebase::CHANGED.into()), undo: None }));
     let p = panel(&st);
     assert!(!p.starting && p.stale);
@@ -330,31 +330,31 @@ fn the_panel_is_parked_with_its_tab() {
     let (mut st, a, _) = with_panel("rebase-tabs-a", RebaseBase::FromCommit(Oid::zero()));
     let b = super::tests::scratch_repo("rebase-tabs-b");
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
-    assert!(st.rebase.is_none(), "B has no panel");
+    assert!(st.session.rebase.view.is_none(), "B has no panel");
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert_eq!(panel(&st).items.len(), 3, "A's panel comes back");
 
     // A list still loading is requested again on return.
-    st.rebase.as_mut().unwrap().reload();
+    st.session.rebase.view.as_mut().unwrap().reload();
     up(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     let fx = up(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    let gen_now = st.rebase_gen;
+    let gen_now = st.session.rebase.generation;
     assert!(fx.iter().any(|e| matches!(e, Effect::Rebase(RebaseEffect::LoadPlan { generation, .. }) if *generation == gen_now)), "{fx:?}");
 
     // A result for A while B is active closes A's parked panel and leaves B's alone.
     st.job = Some(running_job(&a));
-    st.rebase.as_mut().unwrap().starting = true;
+    st.session.rebase.view.as_mut().unwrap().starting = true;
     up(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     let mut other = RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1)));
     other.fill(fake_plan(2));
-    st.rebase = Some(other);
+    st.session.rebase.view = Some(other);
     up(
         &mut st,
         Msg::Rebase(RebaseMsg::RebaseFinished { result: Ok(Outcome::Finished { output: String::new(), stash_kept: false }), undo: None }),
     );
     assert_eq!(panel(&st).items.len(), 2, "the active tab's panel is untouched");
     let parked = st.tabs[0].parked.as_ref().expect("A is parked");
-    assert!(parked.rebase.is_none(), "A's panel closed");
+    assert!(parked.session.rebase.view.is_none(), "A's panel closed");
     assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == "Interactive rebase succeeded"));
     let _ = std::fs::remove_dir_all(&a);
     let _ = std::fs::remove_dir_all(&b);

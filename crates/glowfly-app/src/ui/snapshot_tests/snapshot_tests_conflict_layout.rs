@@ -33,7 +33,7 @@ fn long_settings(side: &str) -> Vec<u8> {
 #[test]
 fn conflict_folded() {
     let (mut st, dir) = with_conflict("conflict-folded", "settings.txt", long_settings);
-    let view = st.conflict.as_mut().unwrap();
+    let view = st.session.conflict.view.as_mut().unwrap();
     assert_eq!(view.chunk_count(), 2);
     view.picks[0] = Choice::Ours.into();
     render("conflict_folded", st, true);
@@ -43,7 +43,7 @@ fn conflict_folded() {
 #[test]
 fn conflict_fold_opened() {
     let (mut st, dir) = with_conflict("conflict-fold-opened", "settings.txt", long_settings);
-    let segs = st.conflict.as_ref().unwrap().segments().unwrap().to_vec();
+    let segs = st.session.conflict.view.as_ref().unwrap().segments().unwrap().to_vec();
     assert!(matches!(&segs[2], Segment::Clean(lines) if lines.len() == 44), "the run between the conflicts");
     send(&mut st, ConflictMsg::ConflictFold { seg: 2, open: true });
     render("conflict_fold_opened", st, true);
@@ -74,7 +74,7 @@ fn conflict_wrapped() {
     };
     let (mut st, dir) = with_conflict("conflict-wrapped", "settings.txt", settings);
     st.settings.diff_word_wrap = true;
-    st.conflict.as_mut().unwrap().picks[0] = Choice::OursThenTheirs.into();
+    st.session.conflict.view.as_mut().unwrap().picks[0] = Choice::OursThenTheirs.into();
     render("conflict_wrapped", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
@@ -100,12 +100,12 @@ fn short_settings(side: &str) -> Vec<u8> {
 fn conflict_output_clean_edit() {
     let (mut st, dir) = with_conflict("conflict-clean-edit", "settings.txt", short_settings);
     send(&mut st, ConflictMsg::ConflictEditOutput(true));
-    let e = st.conflict.as_mut().unwrap().edit.as_mut().unwrap();
+    let e = st.session.conflict.view.as_mut().unwrap().edit.as_mut().unwrap();
     let at = e.buffer.find("setting_6 = 6\n").unwrap();
     e.buffer.replace_range(at..at + "setting_6 = 6\n".len(), "setting_6 = 60\nsetting_6b = 61\n");
     send(&mut st, ConflictMsg::ConflictOutputEdited);
     send(&mut st, ConflictMsg::ConflictEditOutput(false));
-    let view = st.conflict.as_ref().unwrap();
+    let view = st.session.conflict.view.as_ref().unwrap();
     assert_eq!(view.cleans.len(), 1);
     render("conflict_output_clean_edit", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
@@ -114,14 +114,14 @@ fn conflict_output_clean_edit() {
 #[test]
 fn conflict_restored() {
     let (mut st, dir) = with_conflict("conflict-restored", "settings.txt", short_settings);
-    let view = st.conflict.as_mut().unwrap();
+    let view = st.session.conflict.view.as_mut().unwrap();
     view.picks[0] = Choice::Theirs.into();
     let f = view.file.clone().unwrap();
     repo::write_partial_resolution(&dir, "settings.txt", &view.partial_output().unwrap(), &f.ids).unwrap();
     let f = repo::load_conflict(&dir, "settings.txt").unwrap();
     let saved = repo::saved_picks(&dir, &f);
     assert_eq!(saved.as_ref().map(|s| s.picks.clone()), Some(vec![Choice::Theirs.into(), ChunkPick::default()]));
-    let view = st.conflict.as_mut().unwrap();
+    let view = st.session.conflict.view.as_mut().unwrap();
     view.set_file_saved(f, saved);
     assert_eq!((view.restored, view.current, view.user_choices()), (1, 1, 0));
     render("conflict_restored", st, true);

@@ -40,7 +40,7 @@ fn sides(side: &str) -> Vec<u8> {
 /// uncoloured and a third tab coloured Plum.
 fn coloured(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_conflict(name, "settings.txt", sides);
-    st.conflict = None;
+    st.session.conflict.view = None;
     std::fs::write(
         dir.join("app.txt"),
         "app

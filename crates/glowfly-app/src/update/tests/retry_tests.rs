@@ -68,12 +68,12 @@ fn blame_try_again_asks_again() {
     let (mut st, dir) = opened("retry-blame");
     up(&mut st, Msg::Blame(BlameMsg::Open { path: "a.txt".into(), at: None }));
     assert!(blame_loads(&up(&mut st, Msg::Blame(BlameMsg::Retry))).is_empty(), "nothing while it loads");
-    let generation = st.blame_gen;
+    let generation = st.session.blame.generation;
     up(&mut st, Msg::Blame(BlameMsg::Loaded { path: "a.txt".into(), generation, result: Err("not found: a.txt".into()) }));
-    assert!(st.blame.as_ref().unwrap().error.is_some());
+    assert!(st.session.blame.view.as_ref().unwrap().error.is_some());
     let fx = up(&mut st, Msg::Blame(BlameMsg::Retry));
     assert_eq!(blame_loads(&fx), [generation + 1]);
-    let v = st.blame.as_ref().unwrap();
+    let v = st.session.blame.view.as_ref().unwrap();
     assert!(v.loading && v.error.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -87,7 +87,7 @@ fn blame_try_again_in_a_held_repository_asks_for_trust() {
     let fx = up(&mut st, Msg::Blame(BlameMsg::Retry));
     assert!(blame_loads(&fx).is_empty(), "{fx:?}");
     assert!(matches!(st.modal, Some(Modal::Trust(_))), "the trust prompt opens again");
-    assert_eq!(st.blame.as_ref().unwrap().error.as_deref(), Some(crate::state::blame::HELD));
+    assert_eq!(st.session.blame.view.as_ref().unwrap().error.as_deref(), Some(crate::state::blame::HELD));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -105,19 +105,19 @@ fn history_try_again_repeats_the_failed_walk() {
     let (mut st, dir) = with_view("retry-history");
     let base = st.settings.commit_limit();
     // Nothing failed: nothing to do.
-    st.history.as_mut().unwrap().loading = false;
+    st.session.history.view.as_mut().unwrap().loading = false;
     assert!(history_loads(&up(&mut st, Msg::History(HistoryMsg::RetryFileHistory))).is_empty());
 
     // The first batch failed: from HEAD again, as deep as it had searched.
     {
-        let v = st.history.as_mut().unwrap();
+        let v = st.session.history.view.as_mut().unwrap();
         v.entries.clear();
         v.batches = 2;
         v.error = Some("network error: offline".into());
     }
     let fx = up(&mut st, Msg::History(HistoryMsg::RetryFileHistory));
     assert!(matches!(&history_loads(&fx)[..], [(HistoryStart::Head, n)] if *n == base * 2), "{fx:?}");
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     assert!(v.loading && v.error.is_none());
     assert!(history_loads(&up(&mut st, Msg::History(HistoryMsg::RetryFileHistory))).is_empty(), "nothing while it loads");
     let _ = std::fs::remove_dir_all(&dir);
@@ -126,7 +126,7 @@ fn history_try_again_repeats_the_failed_walk() {
     let (mut st, dir) = with_view("retry-history-further");
     let resume = vec![(oid(3), "a.txt".to_owned())];
     {
-        let v = st.history.as_mut().unwrap();
+        let v = st.session.history.view.as_mut().unwrap();
         v.loading = false;
         v.resume = resume.clone();
         v.error = Some("boom".into());
@@ -145,7 +145,7 @@ fn file_text_try_again_reads_it_again() {
     up(&mut st, Msg::History(HistoryMsg::FileTextLoaded { oid: oid(1), path: "a.txt".into(), before: false, result: Err(error) }));
     let fx = up(&mut st, Msg::History(HistoryMsg::RetryFileText));
     assert!(matches!(&fx[..], [Effect::LoadFileText(FileTextRequest { oid: o, path, .. })] if *o == oid(1) && path == "a.txt"), "{fx:?}");
-    let text = st.history.as_ref().unwrap().text.as_ref().unwrap();
+    let text = st.session.history.view.as_ref().unwrap().text.as_ref().unwrap();
     assert!(matches!(text.state, TextState::Loading));
     assert!(up(&mut st, Msg::History(HistoryMsg::RetryFileText)).is_empty(), "not failed any more");
     let _ = std::fs::remove_dir_all(&dir);
@@ -155,10 +155,10 @@ fn file_text_try_again_reads_it_again() {
 fn pull_request_files_try_again_compares_again() {
     let (mut st, work, bare, _) = super::pull_request::tests::setup("retry-pr-files", &[]);
     super::pull_request::tests::open(&mut st);
-    let view = st.pull_request.as_ref().unwrap();
+    let view = st.session.pull_request.view.as_ref().unwrap();
     assert!(matches!(view.files, Files::Loaded(_)));
     let id = view.pr.id;
-    let old = st.pull_request_gen;
+    let old = st.session.pull_request.generation;
     let fx = up(&mut st, Msg::PullRequest(PullRequestMsg::ReloadFiles));
     let jobs: Vec<u64> = fx
         .iter()
@@ -168,10 +168,10 @@ fn pull_request_files_try_again_compares_again() {
         })
         .collect();
     assert_eq!(jobs, [old + 1]);
-    assert!(matches!(st.pull_request.as_ref().unwrap().files, Files::Loading));
+    assert!(matches!(st.session.pull_request.view.as_ref().unwrap().files, Files::Loading));
     // The answer to the earlier request changes nothing.
     up(&mut st, Msg::PullRequest(PullRequestMsg::FilesLoaded { id, generation: old, result: Err("late".into()) }));
-    assert!(matches!(st.pull_request.as_ref().unwrap().files, Files::Loading));
+    assert!(matches!(st.session.pull_request.view.as_ref().unwrap().files, Files::Loading));
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }

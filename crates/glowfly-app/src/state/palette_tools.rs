@@ -26,7 +26,7 @@ pub(super) fn palette_entries(st: &AppState, out: &mut Vec<Entry>) {
         let open = entry(PaletteCommand::Tools(ToolsMsg::OpenDiff(target.clone())), "Open file in external diff tool", DIFF_KEYWORDS);
         out.push(with_detail(open, Some(super::tools::program_detail(&t.diff_tool, super::tool_compare::NO_DIFF_TOOL_DETAIL))));
     }
-    if let Some(c) = &st.conflict {
+    if let Some(c) = &st.session.conflict.view {
         let msg = ToolsMsg::ResolveInMergeTool(c.path.clone());
         let resolve = entry(PaletteCommand::Tools(msg), "Resolve conflict in external merge tool", MERGE_KEYWORDS);
         out.push(with_detail(resolve, Some(super::tools::program_detail(&t.merge_tool, super::tool_compare::NO_MERGE_TOOL_DETAIL))));

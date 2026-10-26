@@ -88,21 +88,21 @@ fn opening_asks_for_the_comparison_and_covers_the_graph() {
     let (mut st, dir) = rewritten("rd-open");
     let h = st.snap.as_ref().unwrap().head_oid.unwrap();
     st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
-    st.history = Some(FileHistoryView::loading("a.txt".into(), None));
-    st.blame = Some(BlameView::loading("a.txt".into(), None));
-    st.rebase = Some(RebasePanel::loading(RebaseBase::FromCommit(h)));
-    st.journal = Some(JournalView::default());
+    st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
+    st.session.blame.view = Some(BlameView::loading("a.txt".into(), None));
+    st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(h)));
+    st.session.journal.view = Some(JournalView::default());
     let fx = open_tips(&mut st);
     let [job] = jobs(&fx)[..] else { panic!("one comparison: {fx:?}") };
     assert_eq!(job.ends, Ends::Tips { old: tip(&st, "main"), new: tip(&st, "topic") });
     assert_eq!(job.mainline.as_ref().map(|m| m.0.as_str()), Some("main"));
     let e = fx.iter().find(|e| matches!(e, Effect::RangeDiff(_))).unwrap();
     assert!(e.scope().is_some_and(|w| same_place(w, &dir)), "scoped to the repository");
-    let view = st.range_diff.as_ref().expect("open");
+    let view = st.session.range_diff.view.as_ref().expect("open");
     assert_eq!((view.phase.clone(), view.generation), (Phase::Loading, job.generation));
-    assert!(st.diff.is_none() && st.history.is_none() && st.blame.is_none() && st.rebase.is_none());
-    assert!(st.pull_request.is_none() && st.issue.is_none());
-    assert!(st.journal.is_some(), "the journal stays underneath");
+    assert!(st.diff.is_none() && st.session.history.view.is_none() && st.session.blame.view.is_none() && st.session.rebase.view.is_none());
+    assert!(st.session.pull_request.view.is_none() && st.session.issue.view.is_none());
+    assert!(st.session.journal.view.is_some(), "the journal stays underneath");
     assert_eq!(tool_view(&st), Some(ToolView::RangeDiff));
     assert!(!st.graph_shown());
     let _ = std::fs::remove_dir_all(&dir);
@@ -113,7 +113,7 @@ fn refusals_before_anything_runs() {
     let (mut st, dir) = rewritten("rd-refuse");
     let main = tip(&st, "main");
     let fx = run(&mut st, RangeDiffMsg::Open { old: main, new: main, label: None, at: None });
-    assert!(jobs(&fx).is_empty() && st.range_diff.is_none());
+    assert!(jobs(&fx).is_empty() && st.session.range_diff.view.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("The two versions are the same commit."));
     st.git.info = Some(GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 18, 0)), chosen: false });
     for m in [
@@ -121,7 +121,7 @@ fn refusals_before_anything_runs() {
         RangeDiffMsg::OpenRewrite("refs/heads/topic".into()),
     ] {
         let fx = run(&mut st, m);
-        assert!(jobs(&fx).is_empty() && st.range_diff.is_none());
+        assert!(jobs(&fx).is_empty() && st.session.range_diff.view.is_none());
         let text = &st.toasts.last().unwrap().text;
         assert_eq!(text, "Comparing two versions of a branch needs git 2.19 or newer (you have 2.18.0).");
     }
@@ -133,13 +133,13 @@ fn a_held_repository_waits_for_trust() {
     let (mut st, dir) = held_repo("rd-held");
     let fx = run(&mut st, RangeDiffMsg::OpenRewrite("refs/heads/main".into()));
     assert!(jobs(&fx).is_empty(), "nothing runs while held");
-    assert_eq!(st.range_diff.as_ref().unwrap().phase, Phase::Held);
+    assert_eq!(st.session.range_diff.view.as_ref().unwrap().phase, Phase::Held);
     assert!(matches!(st.modal, Some(crate::state::Modal::Trust(_))), "the trust prompt is asked");
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     let fx = update(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }), Instant::now());
     let [job] = jobs(&fx)[..] else { panic!("the comparison runs once trusted: {fx:?}") };
     assert_eq!(job.ends, Ends::LastRewrite { refname: "refs/heads/main".into() });
-    assert_eq!(st.range_diff.as_ref().unwrap().phase, Phase::Loading);
+    assert_eq!(st.session.range_diff.view.as_ref().unwrap().phase, Phase::Loading);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -148,27 +148,27 @@ fn results_selection_retry_and_close() {
     let (mut st, dir) = rewritten("rd-results");
     let g = jobs(&open_tips(&mut st))[0].generation;
     run(&mut st, RangeDiffMsg::Loaded { generation: g - 1, result: Ok(outcome(&[Status::Changed])) });
-    assert_eq!(st.range_diff.as_ref().unwrap().phase, Phase::Loading, "a stale result is ignored");
+    assert_eq!(st.session.range_diff.view.as_ref().unwrap().phase, Phase::Loading, "a stale result is ignored");
     run(&mut st, RangeDiffMsg::Loaded { generation: g, result: Ok(outcome(&[Status::Unchanged, Status::Changed, Status::Added])) });
-    let v = st.range_diff.as_ref().unwrap();
+    let v = st.session.range_diff.view.as_ref().unwrap();
     assert!(matches!(v.phase, Phase::Ready(_)));
     assert_eq!((v.selected, v.widest.len()), (Some(1), 3), "the first changed pair is selected");
     run(&mut st, RangeDiffMsg::Select(5));
-    assert_eq!(st.range_diff.as_ref().unwrap().selected, Some(1), "out of range is ignored");
+    assert_eq!(st.session.range_diff.view.as_ref().unwrap().selected, Some(1), "out of range is ignored");
     run(&mut st, RangeDiffMsg::Select(2));
-    assert_eq!(st.range_diff.as_ref().unwrap().selected, Some(2));
+    assert_eq!(st.session.range_diff.view.as_ref().unwrap().selected, Some(2));
     let fx = run(&mut st, RangeDiffMsg::Retry);
     let [job] = jobs(&fx)[..] else { panic!("Retry asks again") };
     assert!(job.generation > g);
     assert_eq!(job.ends, Ends::Tips { old: tip(&st, "main"), new: tip(&st, "topic") });
     run(&mut st, RangeDiffMsg::Loaded { generation: job.generation, result: Ok(outcome(&[Status::Unchanged])) });
-    assert_eq!(st.range_diff.as_ref().unwrap().selected, None, "no changed pair, nothing selected");
-    let g = st.range_diff_gen;
+    assert_eq!(st.session.range_diff.view.as_ref().unwrap().selected, None, "no changed pair, nothing selected");
+    let g = st.session.range_diff.generation;
     run(&mut st, RangeDiffMsg::Loaded { generation: g, result: Err("boom".into()) });
-    assert_eq!(st.range_diff.as_ref().unwrap().phase, Phase::Failed("boom".into()));
-    st.journal = Some(JournalView::default());
+    assert_eq!(st.session.range_diff.view.as_ref().unwrap().phase, Phase::Failed("boom".into()));
+    st.session.journal.view = Some(JournalView::default());
     run(&mut st, RangeDiffMsg::Close);
-    assert!(st.range_diff.is_none() && st.journal.is_some());
+    assert!(st.session.range_diff.view.is_none() && st.session.journal.view.is_some());
     assert_eq!(tool_view(&st), Some(ToolView::Journal), "the journal shows again");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -178,10 +178,10 @@ fn the_journal_and_the_git_flow_panel_close_it() {
     let (mut st, dir) = rewritten("rd-closed-by");
     open_tips(&mut st);
     update(&mut st, Msg::Journal(JournalMsg::Open), Instant::now());
-    assert!(st.range_diff.is_none() && st.journal.is_some());
+    assert!(st.session.range_diff.view.is_none() && st.session.journal.view.is_some());
     open_tips(&mut st);
     update(&mut st, Msg::GitFlow(crate::gitflow::GitFlowMsg::OpenPanel), Instant::now());
-    assert!(st.range_diff.is_none());
+    assert!(st.session.range_diff.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

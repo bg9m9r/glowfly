@@ -90,7 +90,7 @@ fn worktree_remote_menu() {
 #[test]
 fn worktree_pr_menu() {
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "worktree-pr-menu", true);
-    st.pull_request = None;
+    st.session.pull_request.view = None;
     let mut h = harness(st, true);
     h.run();
     row_menu(&mut h, "Search results page", true);

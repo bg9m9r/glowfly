@@ -14,7 +14,7 @@ use glowfly_core::repo::PrLineMaps;
 /// files are of the head, or not loaded) nothing is kept.
 pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
     let workdir = st.workdir();
-    let Some(v) = st.pull_request.as_mut() else { return };
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     let Some(key) = wanted(v) else {
         v.lines = LineMaps::None;
         return;
@@ -23,9 +23,9 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
         return;
     }
     let Some(workdir) = workdir else { return };
-    st.pull_request_lines_gen += 1;
-    let generation = st.pull_request_lines_gen;
-    let Some(v) = st.pull_request.as_mut() else { return };
+    st.session.pull_request.lines_gen += 1;
+    let generation = st.session.pull_request.lines_gen;
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     v.lines = LineMaps::Loading(key.clone());
     let job = LineMapJob {
         workdir,
@@ -42,10 +42,10 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
 
 /// The runner's maps, for the panel still waiting for them with the same generation.
 pub(super) fn mapped(st: &mut AppState, id: u64, generation: u64, result: Result<PrLineMaps, String>) {
-    if generation != st.pull_request_lines_gen {
+    if generation != st.session.pull_request.lines_gen {
         return; // superseded: asked again, closed, or parked with its tab
     }
-    let Some(v) = st.pull_request.as_mut().filter(|v| v.pr.id == id) else { return };
+    let Some(v) = st.session.pull_request.view.as_mut().filter(|v| v.pr.id == id) else { return };
     let LineMaps::Loading(key) = &v.lines else { return };
     let key = key.clone();
     match result {

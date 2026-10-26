@@ -329,10 +329,10 @@ pub fn shown(st: &AppState, query: &str) -> Vec<Shown> {
 pub fn can_pick_file(st: &AppState) -> bool {
     st.snap.as_ref().is_some_and(|s| s.head_oid.is_some())
         && st.workdir().is_some()
-        && st.conflict.is_none()
-        && st.rebase.is_none()
-        && st.history.is_none()
-        && st.blame.is_none()
+        && st.session.conflict.view.is_none()
+        && st.session.rebase.view.is_none()
+        && st.session.history.view.is_none()
+        && st.session.blame.view.is_none()
 }
 
 /// Whether a stash sub-list can be offered: a repository with at least one stash.

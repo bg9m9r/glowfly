@@ -24,7 +24,7 @@ const LANE_ROW_H: f32 = 28.0;
 const DOT_R: f32 = 3.0;
 
 pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let (Some(view), Some(snap)) = (&st.journal, &st.snap) else { return };
+    let (Some(view), Some(snap)) = (&st.session.journal.view, &st.snap) else { return };
     let t = st.settings.lang();
     let Some(row) = view.selected_row() else {
         ui.add_space(32.0);

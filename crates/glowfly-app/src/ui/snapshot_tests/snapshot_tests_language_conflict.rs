@@ -121,7 +121,7 @@ fn auto_picked(name: &str) -> (AppState, PathBuf) {
         (lines.join("\n") + "\n").into_bytes()
     };
     let (mut st, dir) = with_conflict(name, "settings.txt", settings);
-    assert_eq!(st.conflict.as_ref().unwrap().auto_count(), 1);
+    assert_eq!(st.session.conflict.view.as_ref().unwrap().auto_count(), 1);
     st.view.details_expanded_for = crate::state::layout::tool_view(&st);
     (st, dir)
 }

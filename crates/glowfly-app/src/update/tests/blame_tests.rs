@@ -62,7 +62,7 @@ fn head(st: &AppState) -> Oid {
 fn opening_blame_requests_a_load() {
     let (mut st, dir) = opened("blame-open");
     st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
-    st.conflict = Some(ConflictView::loading("a.txt".into()));
+    st.session.conflict.view = Some(ConflictView::loading("a.txt".into()));
     st.settings.blame = BlamePrefs { ignore_whitespace: true, moves: BlameMoves::WithinFile, wrap_lines: false };
     let fx = update(&mut st, open("a.txt", None), Instant::now());
     let hl = st.settings.syntax_highlighting;
@@ -72,9 +72,9 @@ fn opening_blame_requests_a_load() {
             if path == "a.txt" && *highlight == hl && *opts == want),
         "{fx:?}"
     );
-    let v = st.blame.as_ref().expect("view open");
+    let v = st.session.blame.view.as_ref().expect("view open");
     assert!(v.loading && v.data.is_none() && v.error.is_none());
-    assert!(st.diff.is_none() && st.conflict.is_none());
+    assert!(st.diff.is_none() && st.session.conflict.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -83,15 +83,15 @@ fn opening_blame_from_history_keeps_it() {
     let (mut st, dir) = opened("blame-over-history");
     let mut h = FileHistoryView::loading("a.txt".into(), None);
     h.loading = false;
-    st.history = Some(h);
+    st.session.history.view = Some(h);
     let target = DiffTarget::Commit(head(&st), "a.txt".into());
     st.diff = Some((target.clone(), empty_diff().into()));
     let h = head(&st);
     update(&mut st, open("a.txt", Some(h)), Instant::now());
-    assert!(st.blame.is_some() && st.history.is_some());
+    assert!(st.session.blame.view.is_some() && st.session.history.view.is_some());
     assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target));
     update(&mut st, Msg::Blame(BlameMsg::Close), Instant::now());
-    assert!(st.blame.is_none() && st.history.is_some() && st.diff.is_some(), "Esc returns to the history");
+    assert!(st.session.blame.view.is_none() && st.session.history.view.is_some() && st.diff.is_some(), "Esc returns to the history");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -99,18 +99,18 @@ fn opening_blame_from_history_keeps_it() {
 fn loaded_fills_the_view_and_stale_results_are_dropped() {
     let (mut st, dir) = opened("blame-loaded");
     update(&mut st, open("a.txt", None), Instant::now());
-    let g = st.blame_gen;
+    let g = st.session.blame.generation;
     assert!(update(&mut st, loaded("a.txt", g - 1, Ok(data("a.txt"))), Instant::now()).is_empty());
     update(&mut st, loaded("b.txt", g, Ok(data("b.txt"))), Instant::now());
-    assert!(st.blame.as_ref().unwrap().loading, "another path's result is ignored");
+    assert!(st.session.blame.view.as_ref().unwrap().loading, "another path's result is ignored");
     update(&mut st, loaded("a.txt", g, Ok(data("a.txt"))), Instant::now());
-    let v = st.blame.as_ref().unwrap();
+    let v = st.session.blame.view.as_ref().unwrap();
     assert!(!v.loading && v.data.as_ref().is_some_and(|d| d.blame.lines == ["x"]));
 
     update(&mut st, open("a.txt", None), Instant::now());
-    let g = st.blame_gen;
+    let g = st.session.blame.generation;
     update(&mut st, loaded("a.txt", g, Err("boom".into())), Instant::now());
-    let v = st.blame.as_ref().unwrap();
+    let v = st.session.blame.view.as_ref().unwrap();
     assert_eq!(v.error.as_deref(), Some("boom"));
     assert!(!v.loading && v.data.is_none());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "boom"));
@@ -121,10 +121,10 @@ fn loaded_fills_the_view_and_stale_results_are_dropped() {
 fn close_ignores_a_late_result() {
     let (mut st, dir) = opened("blame-late");
     update(&mut st, open("a.txt", None), Instant::now());
-    let g = st.blame_gen;
+    let g = st.session.blame.generation;
     update(&mut st, Msg::Blame(BlameMsg::Close), Instant::now());
     update(&mut st, loaded("a.txt", g, Ok(data("a.txt"))), Instant::now());
-    assert!(st.blame.is_none());
+    assert!(st.session.blame.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -134,19 +134,19 @@ fn select_commit_selects_on_graph_and_closes() {
     let h = head(&st);
     let mut hist = FileHistoryView::loading("a.txt".into(), None);
     hist.loading = false;
-    st.history = Some(hist);
-    st.blame = Some(BlameView::loading("a.txt".into(), None));
+    st.session.history.view = Some(hist);
+    st.session.blame.view = Some(BlameView::loading("a.txt".into(), None));
     let fx = update(&mut st, Msg::Blame(BlameMsg::SelectCommit(h)), Instant::now());
-    assert!(st.blame.is_none() && st.history.is_none());
+    assert!(st.session.blame.view.is_none() && st.session.history.view.is_none());
     assert_eq!(st.selection, Selection::Commit(h));
     assert!(
         matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(crate::effect::LineCountsEffect::Commit { .. })] if *oid == h),
         "{fx:?}"
     );
 
-    st.blame = Some(BlameView::loading("a.txt".into(), None));
+    st.session.blame.view = Some(BlameView::loading("a.txt".into(), None));
     let fx = update(&mut st, Msg::Blame(BlameMsg::SelectCommit(oid(9))), Instant::now());
-    assert!(fx.is_empty() && st.blame.is_some());
+    assert!(fx.is_empty() && st.session.blame.view.is_some());
     let toast = st.toasts.last().expect("a toast");
     assert!(!toast.ok && toast.text == super::history::not_on_graph(oid(9)), "{}", toast.text);
     let _ = std::fs::remove_dir_all(&dir);
@@ -164,18 +164,18 @@ fn other_views_close_blame() {
         Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(h))),
     ];
     for m in msgs {
-        st.blame = Some(BlameView::loading("a.txt".into(), None));
-        let before = st.blame_gen;
+        st.session.blame.view = Some(BlameView::loading("a.txt".into(), None));
+        let before = st.session.blame.generation;
         update(&mut st, m, Instant::now());
-        assert!(st.blame.is_none() && st.blame_gen > before);
+        assert!(st.session.blame.view.is_none() && st.session.blame.generation > before);
     }
-    assert!(st.rebase.is_some(), "the rebase panel opened");
-    st.blame = Some(BlameView::loading("a.txt".into(), None));
+    assert!(st.session.rebase.view.is_some(), "the rebase panel opened");
+    st.session.blame.view = Some(BlameView::loading("a.txt".into(), None));
     let snap = Box::new(repo::load(&dir, &LoadOptions::all(100)).unwrap());
     st.loading = true;
     let m = Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Open, result: Ok(snap) });
     update(&mut st, m, Instant::now());
-    assert!(st.blame.is_none(), "reopening the repository closes it");
+    assert!(st.session.blame.view.is_none(), "reopening the repository closes it");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -185,14 +185,14 @@ fn blame_is_parked_with_its_tab() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     update(&mut st, open("a.txt", None), Instant::now());
-    let first = st.blame_gen;
+    let first = st.session.blame.generation;
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
-    assert!(st.blame.is_none(), "B has no blame open");
+    assert!(st.session.blame.view.is_none(), "B has no blame open");
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    let v = st.blame.as_ref().expect("restored");
+    let v = st.session.blame.view.as_ref().expect("restored");
     assert!(v.loading && v.path == "a.txt");
-    assert!(st.blame_gen > first);
-    let now = st.blame_gen;
+    assert!(st.session.blame.generation > first);
+    let now = st.session.blame.generation;
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadBlame(r) if r.generation == now && r.path == "a.txt")), "{fx:?}");
     let _ = std::fs::remove_dir_all(&a);
     let _ = std::fs::remove_dir_all(&b);
@@ -203,7 +203,7 @@ fn held_repository_asks_for_trust() {
     let (mut st, dir) = super::trust_held_tests::held_repo("blame-held");
     let fx = update(&mut st, open("a.txt", None), Instant::now());
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadBlame(_))), "{fx:?}");
-    let v = st.blame.as_ref().expect("view open");
+    let v = st.session.blame.view.as_ref().expect("view open");
     assert_eq!(v.error.as_deref(), Some(HELD));
     assert!(!v.loading);
     assert!(matches!(st.modal, Some(Modal::Trust(_))), "the trust prompt opens");
@@ -221,7 +221,7 @@ fn blame_end_to_end() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, open("main.rs", None));
-    let v = st.blame.as_ref().expect("view open");
+    let v = st.session.blame.view.as_ref().expect("view open");
     assert!(!v.loading && v.error.is_none(), "{:?}", v.error);
     let d = v.data.as_ref().expect("loaded");
     assert_eq!(d.blame.lines.len(), 3);

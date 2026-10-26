@@ -68,7 +68,7 @@ fn open(st: &mut AppState, dir: &Path, path: &str, at: Oid, data: FileTextData) 
     view.selected = Some(0);
     view.pane = HistoryPane::File;
     view.text = Some(FileText { oid: at, path: path.into(), before: false, state: TextState::Ready(Arc::new(data)) });
-    st.history = Some(view);
+    st.session.history.view = Some(view);
 }
 
 /// README.md committed and shown, its preview's text joined as the runner does.
@@ -131,7 +131,7 @@ fn file_history_markdown_lfs_pointer() {
         "oid sha256:4d7a214614ab2935c943f9e0ff69d22eadbb8f32b1258daaa5e2ca24d17e2393",
         "size 18204",
     ];
-    let text = st.history.as_mut().unwrap().text.as_mut().unwrap();
+    let text = st.session.history.view.as_mut().unwrap().text.as_mut().unwrap();
     let data = FileTextData { lines: pointer.map(String::from).to_vec(), spans: None, lfs: LfsState::Pointer, preview: None };
     text.state = TextState::Ready(Arc::new(data));
     let mut h = harness(st, true);
@@ -195,13 +195,13 @@ fn file_history_image_texture_freed_without_a_selection() {
     let mut h = harness(st, true);
     h.run();
     assert_eq!(preview_textures(&h), 1, "the image is uploaded");
-    h.state_mut().0.history.as_mut().unwrap().selected = None;
+    h.state_mut().0.session.history.view.as_mut().unwrap().selected = None;
     h.run();
     assert_eq!(preview_textures(&h), 0, "a history with no commit selected keeps no texture");
-    h.state_mut().0.history.as_mut().unwrap().selected = Some(0);
+    h.state_mut().0.session.history.view.as_mut().unwrap().selected = Some(0);
     h.run();
     assert_eq!(preview_textures(&h), 1, "shown again");
-    h.state_mut().0.history.as_mut().unwrap().pane = HistoryPane::Diff;
+    h.state_mut().0.session.history.view.as_mut().unwrap().pane = HistoryPane::Diff;
     // The diff isn't loaded, so its spinner keeps asking for frames.
     h.run_steps(2);
     assert_eq!(preview_textures(&h), 0, "the Diff pane keeps no texture");

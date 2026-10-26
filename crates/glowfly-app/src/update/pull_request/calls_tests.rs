@@ -70,7 +70,7 @@ pub(super) fn detail(head: &str) -> PrDetail {
 
 pub(super) fn reply_msg(st: &AppState, reply: PrReply) -> PullRequestMsg {
     let workdir = st.workdir().unwrap();
-    PullRequestMsg::Replied { workdir, target: github(), id: 7, generation: st.pull_request_page_gen, reply: Box::new(reply) }
+    PullRequestMsg::Replied { workdir, target: github(), id: 7, generation: st.session.pull_request.page_gen, reply: Box::new(reply) }
 }
 
 /// The opened panel with a page loaded: pull request 7, open, as `f` changes it.
@@ -100,7 +100,7 @@ pub(super) fn merged_ok(delete: bool) -> PrReply {
 }
 
 pub(super) fn view(st: &AppState) -> &crate::state::pull_request::PrView {
-    st.pull_request.as_ref().expect("the panel is open")
+    st.session.pull_request.view.as_ref().expect("the panel is open")
 }
 
 pub(super) fn done(st: AppState, dirs: [PathBuf; 2]) {
@@ -118,7 +118,7 @@ fn open_github_pr_requests_the_page() {
     assert_eq!(jobs.len(), 1);
     let job = jobs[0];
     assert!(matches!(job.call, PrCall::Load));
-    assert_eq!((job.id, job.generation, &job.req.target), (7, st.pull_request_page_gen, &github()));
+    assert_eq!((job.id, job.generation, &job.req.target), (7, st.session.pull_request.page_gen, &github()));
     assert!(job.req.auth.is_some(), "the session's credential goes along");
     assert_eq!(job.req.workdir, st.workdir().unwrap());
     assert_eq!(view(&st).page, Page::Loading);
@@ -152,7 +152,7 @@ fn untrusted_repository_holds_the_load() {
 fn stale_generation_and_other_workdir_and_closed_view_ignore_loaded() {
     let (mut st, _, dirs) = opened("prc-stale");
     let page = PrPage { detail: detail("h"), entries: Vec::new(), threads: Vec::new(), threads_note: None };
-    let fresh = st.pull_request_page_gen;
+    let fresh = st.session.pull_request.page_gen;
     let mut stale = reply_msg(&st, PrReply::Loaded(Ok(page.clone())));
     if let PullRequestMsg::Replied { generation, .. } = &mut stale {
         *generation = fresh - 1;
@@ -174,7 +174,7 @@ fn stale_generation_and_other_workdir_and_closed_view_ignore_loaded() {
     let late = reply_msg(&st, PrReply::Loaded(Ok(page)));
     run(&mut st, PullRequestMsg::Close);
     run(&mut st, late);
-    assert!(st.pull_request.is_none(), "a closed panel stays closed");
+    assert!(st.session.pull_request.view.is_none(), "a closed panel stays closed");
     assert!(st.log.is_empty());
     done(st, dirs);
 }
@@ -200,12 +200,12 @@ fn loaded_page_prefills_method() {
 #[test]
 fn post_comment_blocked_when_empty_or_busy() {
     let (mut st, _, dirs) = opened("prc-comment-blocked");
-    st.pull_request.as_mut().unwrap().forms.comment = "Thanks".into();
+    st.session.pull_request.view.as_mut().unwrap().forms.comment = "Thanks".into();
     assert!(calls(&run(&mut st, PullRequestMsg::PostComment)).is_empty(), "not loaded yet");
     loaded(&mut st, |_| {});
-    st.pull_request.as_mut().unwrap().forms.comment = "  ".into();
+    st.session.pull_request.view.as_mut().unwrap().forms.comment = "  ".into();
     assert!(calls(&run(&mut st, PullRequestMsg::PostComment)).is_empty(), "empty");
-    st.pull_request.as_mut().unwrap().forms.comment = "Thanks".into();
+    st.session.pull_request.view.as_mut().unwrap().forms.comment = "Thanks".into();
     let fx = run(&mut st, PullRequestMsg::PostComment);
     assert!(matches!(&calls(&fx)[..], [j] if matches!(&j.call, PrCall::Comment(t) if t == "Thanks")));
     assert_eq!(view(&st).busy, Some(PrAction::Comment));
@@ -217,7 +217,7 @@ fn post_comment_blocked_when_empty_or_busy() {
 fn commented_ok_appends_entry_and_clears_text() {
     let (mut st, _, dirs) = opened("prc-commented");
     loaded(&mut st, |_| {});
-    st.pull_request.as_mut().unwrap().forms.comment = "Thanks".into();
+    st.session.pull_request.view.as_mut().unwrap().forms.comment = "Thanks".into();
     run(&mut st, PullRequestMsg::PostComment);
     let entry = Entry { author: "grace".into(), time: 5, kind: EntryKind::Comment, body: "Thanks".into(), url: String::new() };
     let msg = reply_msg(&st, PrReply::Commented(Ok(entry.clone())));
@@ -233,7 +233,7 @@ fn commented_ok_appends_entry_and_clears_text() {
 fn commented_err_keeps_text_sets_error_and_logs() {
     let (mut st, _, dirs) = opened("prc-comment-err");
     loaded(&mut st, |_| {});
-    st.pull_request.as_mut().unwrap().forms.comment = "Thanks".into();
+    st.session.pull_request.view.as_mut().unwrap().forms.comment = "Thanks".into();
     run(&mut st, PullRequestMsg::PostComment);
     let msg = reply_msg(&st, PrReply::Commented(Err(err("HTTP 422: locked"))));
     run(&mut st, msg);
@@ -250,7 +250,7 @@ fn commented_err_keeps_text_sets_error_and_logs() {
 fn author_cannot_approve() {
     let (mut st, _, dirs) = opened("prc-author");
     loaded(&mut st, |d| d.me = "ada".into());
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     assert_eq!(v.forms.review_event, ReviewEvent::Comment);
     v.forms.review_event = ReviewEvent::Approve;
     assert!(calls(&run(&mut st, PullRequestMsg::SubmitReview)).is_empty());
@@ -262,9 +262,9 @@ fn author_cannot_approve() {
 fn review_needs_summary_for_request_changes() {
     let (mut st, _, dirs) = opened("prc-summary");
     loaded(&mut st, |_| {});
-    st.pull_request.as_mut().unwrap().forms.review_event = ReviewEvent::RequestChanges;
+    st.session.pull_request.view.as_mut().unwrap().forms.review_event = ReviewEvent::RequestChanges;
     assert!(calls(&run(&mut st, PullRequestMsg::SubmitReview)).is_empty());
-    st.pull_request.as_mut().unwrap().forms.review_body = "Rename it".into();
+    st.session.pull_request.view.as_mut().unwrap().forms.review_body = "Rename it".into();
     let fx = run(&mut st, PullRequestMsg::SubmitReview);
     let jobs = calls(&fx);
     let [job] = &jobs[..] else { panic!("one call: {jobs:?}") };
@@ -286,7 +286,7 @@ fn review_with_pending_review_sends_its_id() {
 fn reviewed_ok_reloads_page_and_refreshes_forge() {
     let (mut st, _, dirs) = opened("prc-reviewed");
     loaded(&mut st, |_| {});
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.forms.review_event = ReviewEvent::Approve;
     v.forms.review_body = "Nice".into();
     run(&mut st, PullRequestMsg::SubmitReview);

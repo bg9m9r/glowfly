@@ -19,22 +19,22 @@ pub(super) fn open(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
         refuse(st, why, now);
         return;
     }
-    if st.rebase.as_ref().is_some_and(|p| p.starting) {
+    if st.session.rebase.view.as_ref().is_some_and(|p| p.starting) {
         return;
     }
     close_views(st);
-    st.rebase = Some(RebasePanel::loading_remaining());
+    st.session.rebase.view = Some(RebasePanel::loading_remaining());
     request(st, fx);
 }
 
 /// The steps arrived; a refusal closes the panel and says why.
 pub(super) fn loaded(st: &mut AppState, generation: u64, result: Result<Remaining, String>, now: Instant) {
-    if generation != st.rebase_gen || !st.rebase.as_ref().is_some_and(|p| p.loading) {
+    if generation != st.session.rebase.generation || !st.session.rebase.view.as_ref().is_some_and(|p| p.loading) {
         return; // superseded: closed, reopened, or parked with its tab
     }
     match result {
         Ok(r) => {
-            if let Some(p) = st.rebase.as_mut() {
+            if let Some(p) = st.session.rebase.view.as_mut() {
                 p.fill_remaining(r);
             }
         }
@@ -47,7 +47,7 @@ pub(super) fn loaded(st: &mut AppState, generation: u64, result: Result<Remainin
 
 /// Update steps: newly dropped commits ask first; then the edit runs as the active job.
 pub(super) fn update_steps(st: &mut AppState, confirmed: bool, now: Instant, fx: &mut Vec<Effect>) {
-    let (Some(p), Some(snap)) = (&st.rebase, &st.snap) else { return };
+    let (Some(p), Some(snap)) = (&st.session.rebase.view, &st.snap) else { return };
     if let Some(why) = p.start_blocker(snap, st.job.is_some()) {
         st.log(false, why);
         return;
@@ -66,7 +66,7 @@ pub(super) fn update_steps(st: &mut AppState, confirmed: bool, now: Instant, fx:
     if started == Started::No {
         return;
     }
-    if let Some(p) = st.rebase.as_mut() {
+    if let Some(p) = st.session.rebase.view.as_mut() {
         p.starting = true;
         p.error = None;
     }
@@ -95,7 +95,7 @@ pub(super) fn edited(st: &mut AppState, result: Result<(), String>, now: Instant
         }
     }
     if here && ok {
-        st.rebase_gen += 1;
+        st.session.rebase.generation += 1;
     }
     let (headline, output) = match result {
         Ok(()) => (UPDATED.to_owned(), String::new()),

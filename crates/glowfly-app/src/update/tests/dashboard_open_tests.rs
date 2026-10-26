@@ -31,7 +31,7 @@ fn listed(st: &mut AppState, target: Target, prs: Vec<PullRequest>) {
 }
 
 fn shown_pr(st: &AppState) -> Option<u64> {
-    st.pull_request.as_ref().map(|v| v.pr.id)
+    st.session.pull_request.view.as_ref().map(|v| v.pr.id)
 }
 
 fn same(a: &Path, b: &Path) -> bool {
@@ -97,7 +97,7 @@ fn show_pull_request_opens_at_once_or_when_the_tab_lists_it() {
     assert!(st.dashboard.pending_pr.is_none());
 
     // Another repository's list drops the request.
-    st.pull_request = None;
+    st.session.pull_request.view = None;
     st.dashboard.pending_pr = Some(PendingPr { path: a.clone(), target: gh("acme", "a"), id: 9 });
     listed(&mut st, gh("acme", "b"), vec![pr(9, "Same number elsewhere", "ada", &[])]);
     assert_eq!(shown_pr(&st), None);

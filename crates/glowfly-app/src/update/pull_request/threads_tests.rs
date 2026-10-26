@@ -51,7 +51,7 @@ fn loaded_threads(st: &mut AppState, threads: Vec<ReviewThread>, f: impl FnOnce(
 }
 
 fn draft(st: &mut AppState, id: &str, text: &str) {
-    st.pull_request.as_mut().unwrap().forms.replies.insert(id.into(), text.into());
+    st.session.pull_request.view.as_mut().unwrap().forms.replies.insert(id.into(), text.into());
 }
 
 fn the_thread<'a>(st: &'a AppState, id: &str) -> &'a ReviewThread {
@@ -127,7 +127,7 @@ fn replied_err_keeps_draft_sets_error_for_reply_and_logs() {
 fn resolve_sends_call_and_reply_flips_state_and_collapses() {
     let (mut st, _, dirs) = opened("prt-resolve");
     loaded_threads(&mut st, vec![thread("T1", "f.txt", Some(1))], |_| {});
-    st.pull_request.as_mut().unwrap().threads.open.insert("T1".into(), true);
+    st.session.pull_request.view.as_mut().unwrap().threads.open.insert("T1".into(), true);
     let fx = run(&mut st, PullRequestMsg::Resolve { thread: "T1".into(), resolve: true });
     assert!(matches!(&calls(&fx)[..], [j] if matches!(&j.call, PrCall::Resolve { thread, resolve: true } if thread == "T1")));
     assert_eq!(view(&st).busy, Some(PrAction::Resolve("T1".into())));

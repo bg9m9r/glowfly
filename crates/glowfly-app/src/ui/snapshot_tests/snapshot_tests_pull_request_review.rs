@@ -41,7 +41,7 @@ pub(in crate::ui) fn entry(author: &str, day: i64, kind: EntryKind, body: &str) 
 
 /// The panel's page loaded by hand with `d` and `entries`, the forms fitted to it.
 pub(in crate::ui) fn load(st: &mut AppState, d: PrDetail, entries: Vec<Entry>) {
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     crate::state::pull_request_actions::prefill(&mut v.forms, &d);
     v.page = Page::Loaded(Box::new(PrPage { detail: d, entries, threads: Vec::new(), threads_note: None }));
 }
@@ -55,7 +55,7 @@ fn pull_request_overview_dark() {
         entry("linus", 14, EntryKind::Review(Verdict::ChangesRequested), "Please add a test for an empty result."),
     ];
     load(&mut st, detail(), entries);
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.forms.merge_method = Some(MergeMethod::Squash);
     v.forms.merge_title = "Search results page (#12)".into();
     let mut h = harness(st, true);
@@ -84,7 +84,7 @@ fn pull_request_overview_dark() {
     assert!(merges && body.contains("by squashing its commits"), "{body}");
     // A written comment can be posted.
     h.state_mut().1.clear();
-    h.state_mut().0.pull_request.as_mut().unwrap().forms.comment = "Thanks!".into();
+    h.state_mut().0.session.pull_request.view.as_mut().unwrap().forms.comment = "Thanks!".into();
     h.run();
     h.get_by_role_and_label(Role::Button, "Comment").click();
     h.run();
@@ -148,7 +148,7 @@ fn pull_request_unsupported_light() {
     let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
     assert_eq!(view.page, Page::Unsupported);
     view.checks.pane = crate::state::pull_request_checks::ChecksPane::Loaded(Default::default());
-    st.pull_request = Some(view);
+    st.session.pull_request.view = Some(view);
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("pull_request_unsupported_light");
@@ -187,7 +187,7 @@ fn command_enter_posts_the_comment_and_the_review() {
     h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
     h.run();
     assert_eq!(count(&h, |m| matches!(m, PullRequestMsg::PostComment)), 1);
-    assert_eq!(h.state().0.pull_request.as_ref().unwrap().forms.comment, "Thanks!", "no newline added");
+    assert_eq!(h.state().0.session.pull_request.view.as_ref().unwrap().forms.comment, "Thanks!", "no newline added");
     // The button names the key.
     h.get_by_role_and_label(Role::Button, "Comment").hover();
     h.run();

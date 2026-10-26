@@ -24,7 +24,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
-    let Some(view) = &st.issue else { return };
+    let Some(view) = &st.session.issue.view else { return };
     let open_label = st.forge.as_ref().map_or("Open in browser", |f| f.open_issue_label());
     ui.add_space(6.0);
     header(ui, st.settings.lang(), &st.keymap, view, open_label, msgs);

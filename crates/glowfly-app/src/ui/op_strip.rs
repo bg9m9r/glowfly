@@ -16,7 +16,7 @@ use eframe::egui;
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(snap) = st.snap.as_ref().filter(|_| !st.dashboard.open) else { return };
     let t = st.settings.lang();
-    let Some(text) = strip_text(t, snap, st.conflict_files.resolved_rows(snap).len()) else { return };
+    let Some(text) = strip_text(t, snap, st.session.conflict_files.resolved_rows(snap).len()) else { return };
     let mut b = if text.conflicts {
         Banner::new(BannerKind::Warning)
     } else if st.job.is_some() {

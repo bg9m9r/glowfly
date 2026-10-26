@@ -36,7 +36,7 @@ pub(super) struct Reasons {
 
 pub(super) fn reasons(st: &AppState) -> Reasons {
     let provider = st.forge.as_ref().and_then(|f| f.host_provider());
-    let Some(v) = &st.pull_request else { return Reasons { single: None, review: None, suggest: None } };
+    let Some(v) = &st.session.pull_request.view else { return Reasons { single: None, review: None, suggest: None } };
     Reasons {
         single: post_blocked(provider, v, false),
         review: post_blocked(provider, v, true),

@@ -264,7 +264,7 @@ fn interactive_rebase_with_always_stash_skips_question() {
     assert!(st.modal.is_none(), "no stash question");
     assert!(matches!(&fx[..], [Effect::Rebase(RebaseEffect::Start { request, .. })] if request.autostash), "{fx:?}");
     st.job = None;
-    st.rebase.as_mut().unwrap().starting = false;
+    st.session.rebase.view.as_mut().unwrap().starting = false;
 
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 1, action: RebaseAction::Drop }));
     assert!(up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false })).is_empty());

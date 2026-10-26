@@ -125,7 +125,7 @@ fn file_history_wrapped() {
     let target = DiffTarget::Commit(view.entries[0].oid, view.entries[0].path.clone());
     let diff = decorated(&dir, &target);
     st.diff = Some((target, diff.into()));
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     render("file_history_wrapped", st, true);
     remove_fixture(&dir);
 }

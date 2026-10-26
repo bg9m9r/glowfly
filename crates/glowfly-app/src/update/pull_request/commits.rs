@@ -9,7 +9,7 @@ use glowfly_core::repo::DiffTarget;
 
 pub(super) fn select(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
-    if !st.pull_request.as_ref().is_some_and(|v| v.has_commit(oid)) {
+    if !st.session.pull_request.view.as_ref().is_some_and(|v| v.has_commit(oid)) {
         return;
     }
     if matches!(&st.diff, Some((DiffTarget::Commit(o, _), _)) if *o != oid) {

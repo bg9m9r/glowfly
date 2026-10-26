@@ -72,7 +72,7 @@ pub(in crate::ui) fn thread(id: &str, line: u32, comments: Vec<ThreadComment>) -
 /// line's number.
 pub(in crate::ui) fn files_loaded(st: &mut AppState, dir: &std::path::Path) -> (DiffTarget, FileDiff, u32) {
     super::snapshot_tests_pull_request::compare(st, dir);
-    let target = st.pull_request.as_ref().unwrap().diff_target("search.txt").unwrap();
+    let target = st.session.pull_request.view.as_ref().unwrap().diff_target("search.txt").unwrap();
     let d = repo::load_diff(dir, &target).unwrap();
     let added = d.hunks.iter().flat_map(|h| &h.lines).find(|l| l.origin == '+').and_then(|l| l.new).expect("an added line");
     (target, d, added)
@@ -116,7 +116,7 @@ pub(in crate::ui) fn load(st: &mut AppState, d: PrDetail, threads: Vec<ReviewThr
             url: String::new(),
         },
     ];
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     crate::state::pull_request_actions::prefill(&mut v.forms, &d);
     v.page = Page::Loaded(Box::new(PrPage { detail: d, entries, threads, threads_note: None }));
 }
@@ -129,7 +129,7 @@ fn sent(h: &egui_kittest::Harness<'static, (AppState, Vec<Msg>)>, f: impl Fn(&Pu
 fn pull_request_threads_light() {
     let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-threads", true);
     let (_, _, line) = files_loaded(&mut st, &dir);
-    let head = st.pull_request.as_ref().unwrap().source_tip().unwrap().to_string();
+    let head = st.session.pull_request.view.as_ref().unwrap().source_tip().unwrap().to_string();
     load(&mut st, detail(head), threads(line));
     let mut h = harness(st, false);
     h.run();
@@ -156,11 +156,11 @@ fn pull_request_threads_light() {
 fn pull_request_threads_pending_dark() {
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "pr-threads-pending", true);
     let (_, _, line) = files_loaded(&mut st, &dir);
-    let head = st.pull_request.as_ref().unwrap().source_tip().unwrap().to_string();
+    let head = st.session.pull_request.view.as_ref().unwrap().source_tip().unwrap().to_string();
     let mut d = detail(head);
     d.pending_review = Some(9);
     load(&mut st, d, threads(line));
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.threads.show_resolved = true;
     v.threads.show_outdated = true;
     v.threads.open.insert("T3".into(), true);
@@ -193,11 +193,11 @@ fn pull_request_threads_pending_dark() {
 fn pull_request_file_threads_dark() {
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "pr-file-threads", true);
     let (target, d, line) = files_loaded(&mut st, &dir);
-    let head = st.pull_request.as_ref().unwrap().source_tip().unwrap().to_string();
+    let head = st.session.pull_request.view.as_ref().unwrap().source_tip().unwrap().to_string();
     let mut t1 = threads(line).remove(0);
     t1.comments[1].pending = false;
     load(&mut st, detail(head), vec![t1]);
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.tab = PrTab::Files;
     v.threads.focus = Some("T1".into());
     assert!(v.shows(&target));
@@ -223,7 +223,7 @@ fn pull_request_file_threads_dark() {
 fn command_enter_posts_a_reply() {
     let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-threads-key", true);
     let (_, _, line) = files_loaded(&mut st, &dir);
-    let head = st.pull_request.as_ref().unwrap().source_tip().unwrap().to_string();
+    let head = st.session.pull_request.view.as_ref().unwrap().source_tip().unwrap().to_string();
     load(&mut st, detail(head), threads(line));
     let mut h = harness(st, false);
     h.run();
@@ -233,7 +233,7 @@ fn command_enter_posts_a_reply() {
     h.run();
     let replies = h.state().1.iter().filter(|m| matches!(m, Msg::PullRequest(PullRequestMsg::Reply(id)) if id == "T1")).count();
     assert_eq!(replies, 1);
-    assert_eq!(h.state().0.pull_request.as_ref().unwrap().forms.replies["T1"], "Done.", "no newline added");
+    assert_eq!(h.state().0.session.pull_request.view.as_ref().unwrap().forms.replies["T1"], "Done.", "no newline added");
     drop(h);
     remove_fixture(&dir);
 }

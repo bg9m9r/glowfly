@@ -181,3 +181,12 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - The module lists in update/mod.rs, runner/mod.rs and effect/mod.rs are still one-line merge hotspots: folders per area or generated lists
 - Move state/*_tests.rs, runner/*_tests.rs and ui/*_tests.rs (tabs, toolbar, list rows) into test folders the same way
 - Move the test files declared from their handler or view with `#[path]` (app, blame, dashboard, logs, patch, status_tip; ui layout, sidebar, widgets) under the folders' `mod.rs` lists where their parent's private items allow
+
+### Per-tab state in one RepoSession
+
+- `Gen::close()` / `Gen::next()` helpers in place of the hand-written `view.take()` + `generation += 1` pairs in each area's close and request functions
+- A `RepoSession` query for "a central view is open", so `graph_shown`, `layout::tool_view` and ui/central.rs read one list instead of three kept in step
+- Closing a parked view in place (`rebase::panel_slot`, tool_compare's `take_if`, `gitflow_resume::store`) doesn't bump its counter: harmless because unpark bumps, but a `Gen::close` would make it uniform
+- `RangeDiffView` keeps its own `generation` beside `RepoSession::range_diff`'s counter: fold the two into one
+- `LoadKind::Open` closes the views one area at a time (range_diff, conflict_files and diff_preview aren't in that list): a `RepoSession` reset hook could close them all in one place
+- Move the Create issue form out of `st.modal` into the session if dialogs ever become per-tab, so `issue_form` leaves `Parked`

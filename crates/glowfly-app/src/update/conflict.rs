@@ -23,12 +23,12 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
     match msg {
         ConflictMsg::OpenConflict(path) => open(st, path, fx),
         ConflictMsg::ConflictLoaded { path, generation, result, saved } => {
-            if generation != st.conflict_gen || st.conflict.as_ref().is_none_or(|c| c.path != path) {
+            if generation != st.session.conflict.generation || st.session.conflict.view.as_ref().is_none_or(|c| c.path != path) {
                 return; // superseded: closed, reopened or another file opened
             }
             match result {
                 Ok(f) => {
-                    if let Some(c) = st.conflict.as_mut() {
+                    if let Some(c) = st.session.conflict.view.as_mut() {
                         c.set_file_saved(f, saved);
                         // The first chunk still to pick (automatic picks come before it).
                         st.view.conflict_scroll_to = Some(c.current);
@@ -50,7 +50,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
         ConflictMsg::ConflictDiscardEdit(k) => edit::discard_edit(st, k),
         ConflictMsg::ConflictDiscardCleanEdits => edit::discard_cleans(st),
         ConflictMsg::ConflictFold { seg, open } => {
-            if let Some(c) = st.conflict.as_mut() {
+            if let Some(c) = st.session.conflict.view.as_mut() {
                 if open {
                     c.opened.insert(seg);
                 } else {
@@ -59,7 +59,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             }
         }
         ConflictMsg::ConflictStep(d) => {
-            let Some(c) = st.conflict.as_mut() else { return };
+            let Some(c) = st.session.conflict.view.as_mut() else { return };
             let n = c.picks.len();
             if n == 0 {
                 return;
@@ -71,18 +71,18 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             }
         }
         ConflictMsg::ConflictSelect(i) => {
-            if let Some(c) = st.conflict.as_mut()
+            if let Some(c) = st.session.conflict.view.as_mut()
                 && i < c.picks.len()
             {
                 c.current = i;
             }
         }
         ConflictMsg::SaveConflict => {
-            let path = st.conflict.as_ref().map(|c| c.path.clone()).unwrap_or_default();
+            let path = st.session.conflict.view.as_ref().map(|c| c.path.clone()).unwrap_or_default();
             if in_tool(st, &path) {
                 return;
             }
-            let Some(c) = st.conflict.as_mut() else { return };
+            let Some(c) = st.session.conflict.view.as_mut() else { return };
             // The button is disabled until every chunk has a pick.
             if !c.can_save() {
                 return;
@@ -94,11 +94,11 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             super::ops::local(st, op, fx);
         }
         ConflictMsg::SaveConflictKeepMarkers => {
-            let path = st.conflict.as_ref().map(|c| c.path.clone()).unwrap_or_default();
+            let path = st.session.conflict.view.as_ref().map(|c| c.path.clone()).unwrap_or_default();
             if in_tool(st, &path) {
                 return;
             }
-            let Some(c) = st.conflict.as_mut() else { return };
+            let Some(c) = st.session.conflict.view.as_mut() else { return };
             // The button is disabled until something is resolved and something isn't.
             if !c.can_save_partial() {
                 return;
@@ -115,7 +115,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             if in_tool(st, &path) {
                 return;
             }
-            let Some(c) = st.conflict.as_mut().filter(|c| c.path == path && !c.saving) else { return };
+            let Some(c) = st.session.conflict.view.as_mut().filter(|c| c.path == path && !c.saving) else { return };
             let Some(f) = &c.file else { return };
             let op = LocalOp::ResolveWithSide { path, side, expected: f.ids.clone() };
             c.saving = true;
@@ -139,7 +139,7 @@ pub(super) fn open(st: &mut AppState, path: String, fx: &mut Vec<Effect>) {
     super::blame::close(st);
     super::pull_request::close(st);
     super::issue::close(st);
-    st.conflict = Some(ConflictView::loading(path));
+    st.session.conflict.view = Some(ConflictView::loading(path));
     request_load(st, fx);
 }
 
@@ -160,7 +160,7 @@ pub(super) fn after_undo(undo: &Option<UndoResult>, ok: bool) -> Option<(String,
 /// nothing unsaved. Unsaved choices in another file are never thrown away; the log says where to
 /// find `path` instead.
 pub(super) fn reopen_after_undo(st: &mut AppState, path: String, open_closed: bool, fx: &mut Vec<Effect>) {
-    match &st.conflict {
+    match &st.session.conflict.view {
         Some(c) if c.path == path => open(st, path, fx),
         Some(c) if c.user_choices() > 0 => {
             if open_closed {
@@ -184,21 +184,21 @@ pub(super) fn in_tool(st: &mut AppState, path: &str) -> bool {
 
 /// Requests the open conflict's file; older results are ignored from now on.
 fn request_load(st: &mut AppState, fx: &mut Vec<Effect>) {
-    st.conflict_gen += 1;
-    if let (Some(workdir), Some(c)) = (st.workdir(), &st.conflict) {
-        fx.push(Effect::Conflict(ConflictEffect::Load { workdir, path: c.path.clone(), generation: st.conflict_gen }));
+    st.session.conflict.generation += 1;
+    if let (Some(workdir), Some(c)) = (st.workdir(), &st.session.conflict.view) {
+        fx.push(Effect::Conflict(ConflictEffect::Load { workdir, path: c.path.clone(), generation: st.session.conflict.generation }));
     }
 }
 
 /// Closes the view; a load still in flight must not reopen it.
 pub(super) fn close(st: &mut AppState) {
-    st.conflict = None;
-    st.conflict_gen += 1;
+    st.session.conflict.view = None;
+    st.session.conflict.generation += 1;
 }
 
 /// After a tab switch: a conflict whose load was dropped while parked is requested again.
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if st.conflict.as_ref().is_some_and(|c| c.file.is_none()) {
+    if st.session.conflict.view.as_ref().is_some_and(|c| c.file.is_none()) {
         request_load(st, fx);
     }
 }
@@ -209,7 +209,7 @@ pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// are otherwise kept.
 pub(super) fn status_changed(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     super::conflict_files::want(st, fx);
-    let (Some(c), Some(snap)) = (&st.conflict, &st.snap) else { return };
+    let (Some(c), Some(snap)) = (&st.session.conflict.view, &st.snap) else { return };
     let conflicted: Vec<&str> = snap.unstaged.iter().filter(|f| f.status == '!').map(|f| f.path.as_str()).collect();
     if conflicted.contains(&c.path.as_str()) {
         return;

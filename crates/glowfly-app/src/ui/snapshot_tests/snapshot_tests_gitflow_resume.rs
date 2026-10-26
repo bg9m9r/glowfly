@@ -37,7 +37,7 @@ fn release() -> FinishOptions {
 #[test]
 fn gitflow_resume_banner() {
     let (mut st, dir) = with_flow_branches(ThemeChoice::Dark, "gitflow-resume-banner");
-    st.gitflow_resume = Some(stopped(&st, "release/1.0.0", release(), 1, true));
+    st.session.gitflow_resume = Some(stopped(&st, "release/1.0.0", release(), 1, true));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("gitflow_resume_banner");
@@ -52,8 +52,8 @@ fn gitflow_resume_banner() {
 #[test]
 fn gitflow_panel_resume() {
     let (mut st, dir) = with_flow_branches(ThemeChoice::Light, "gitflow-panel-resume");
-    st.gitflow_panel = true;
-    st.gitflow_resume = Some(stopped(&st, "release/1.0.0", release(), 1, true));
+    st.session.gitflow_panel = true;
+    st.session.gitflow_resume = Some(stopped(&st, "release/1.0.0", release(), 1, true));
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("gitflow_panel_resume");
@@ -69,7 +69,7 @@ fn gitflow_panel_resume() {
 #[test]
 fn gitflow_resume_waiting() {
     let (mut st, dir) = with_flow_branches(ThemeChoice::Dark, "gitflow-resume-waiting");
-    st.gitflow_resume = Some(stopped(&st, "feature/login", FinishOptions::default(), 1, false));
+    st.session.gitflow_resume = Some(stopped(&st, "feature/login", FinishOptions::default(), 1, false));
     let snap = st.snap.as_mut().unwrap();
     snap.state = RepositoryState::Merge;
     snap.head_branch = Some("develop".into());

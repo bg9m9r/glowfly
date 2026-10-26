@@ -79,7 +79,7 @@ fn is_head(e: &Effect) -> bool {
 }
 
 fn view(st: &AppState) -> &crate::state::pull_request::PrView {
-    st.pull_request.as_ref().unwrap()
+    st.session.pull_request.view.as_ref().unwrap()
 }
 
 /// A local-only commit on feature, so the listed head is here but origin/feature is behind it.
@@ -307,7 +307,7 @@ fn a_new_listed_head_and_a_parked_fetch_ask_again() {
 
     // Parked with the fetch running: its result is dropped, so the return asks again.
     update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
-    assert!(st.pull_request.is_none());
+    assert!(st.session.pull_request.view.is_none());
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     assert_eq!(view(&st).head_fetch, HeadFetch::Idle);
     assert_eq!(files_jobs(&fx).len(), 1, "compared again");

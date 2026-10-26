@@ -87,7 +87,7 @@ pub(crate) fn with_fake(n: usize) -> AppState {
     let mut st = state();
     let mut view = ConflictView::loading("f.txt".into());
     view.set_file(fake_file(n));
-    st.conflict = Some(view);
+    st.session.conflict.view = Some(view);
     st
 }
 
@@ -98,7 +98,7 @@ fn read(dir: &Path) -> String {
 #[test]
 fn opening_a_conflicted_file_loads_the_chunks() {
     let (st, dir) = opened("conflict-open");
-    let c = st.conflict.as_ref().expect("view open");
+    let c = st.session.conflict.view.as_ref().expect("view open");
     let f = c.file.as_ref().expect("loaded");
     assert_eq!(f.chunk_count(), 1);
     assert_eq!(c.picks, [ChunkPick::default()]);
@@ -120,28 +120,28 @@ fn open_conflict_closes_the_diff_and_open_diff_closes_the_conflict() {
     let fx = update(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())), Instant::now());
     match &fx[..] {
         [Effect::Conflict(ConflictEffect::Load { path, generation, .. })] => {
-            assert_eq!((path.as_str(), *generation), ("a.txt", st.conflict_gen))
+            assert_eq!((path.as_str(), *generation), ("a.txt", st.session.conflict.generation))
         }
         other => panic!("expected a conflict load, got {other:?}"),
     }
-    assert!(st.diff.is_none() && st.conflict.is_some());
+    assert!(st.diff.is_none() && st.session.conflict.view.is_some());
     update(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))), Instant::now());
-    assert!(st.conflict.is_none());
+    assert!(st.session.conflict.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn stale_conflict_results_are_ignored() {
     let mut st = state();
-    st.conflict = Some(ConflictView::loading("f.txt".into()));
-    st.conflict_gen = 5;
+    st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
+    st.session.conflict.generation = 5;
     let loaded =
         |generation, path: &str, result| Msg::Conflict(ConflictMsg::ConflictLoaded { path: path.into(), generation, result, saved: None });
     update(&mut st, loaded(4, "f.txt", Ok(fake_file(1))), Instant::now());
     update(&mut st, loaded(5, "g.txt", Ok(fake_file(1))), Instant::now());
-    assert!(st.conflict.as_ref().is_some_and(|c| c.file.is_none()), "still loading");
+    assert!(st.session.conflict.view.as_ref().is_some_and(|c| c.file.is_none()), "still loading");
     update(&mut st, loaded(5, "f.txt", Err("boom".into())), Instant::now());
-    assert!(st.conflict.is_none());
+    assert!(st.session.conflict.view.is_none());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "boom"));
 }
 
@@ -151,25 +151,25 @@ fn toggling_taking_all_resetting_and_stepping() {
     let send = |st: &mut AppState, m| update(st, m, Instant::now());
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 1, side: Side::Theirs }));
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 1, side: Side::Ours }));
-    let c = st.conflict.as_ref().unwrap();
+    let c = st.session.conflict.view.as_ref().unwrap();
     assert_eq!((&c.picks[1], c.current), (&Choice::TheirsThenOurs.into(), 1));
     assert_eq!(st.view.conflict_scroll_to, None, "picking doesn't scroll");
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictTakeAll(Side::Ours)));
-    assert_eq!(st.conflict.as_ref().unwrap().picks, vec![ChunkPick::Sides(Choice::Ours); 3]);
+    assert_eq!(st.session.conflict.view.as_ref().unwrap().picks, vec![ChunkPick::Sides(Choice::Ours); 3]);
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictReset));
-    assert_eq!(st.conflict.as_ref().unwrap().picks, vec![ChunkPick::default(); 3]);
+    assert_eq!(st.session.conflict.view.as_ref().unwrap().picks, vec![ChunkPick::default(); 3]);
 
-    st.conflict.as_mut().unwrap().current = 0;
+    st.session.conflict.view.as_mut().unwrap().current = 0;
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictStep(1)));
-    assert_eq!((st.conflict.as_ref().unwrap().current, st.view.conflict_scroll_to.take()), (1, Some(1)));
+    assert_eq!((st.session.conflict.view.as_ref().unwrap().current, st.view.conflict_scroll_to.take()), (1, Some(1)));
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictStep(1)));
-    assert_eq!((st.conflict.as_ref().unwrap().current, st.view.conflict_scroll_to.take()), (2, Some(2)));
+    assert_eq!((st.session.conflict.view.as_ref().unwrap().current, st.view.conflict_scroll_to.take()), (2, Some(2)));
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictStep(1)));
-    assert_eq!((st.conflict.as_ref().unwrap().current, st.view.conflict_scroll_to), (2, None), "clamped at the end");
+    assert_eq!((st.session.conflict.view.as_ref().unwrap().current, st.view.conflict_scroll_to), (2, None), "clamped at the end");
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictSelect(0)));
-    assert_eq!((st.conflict.as_ref().unwrap().current, st.view.conflict_scroll_to), (0, None));
+    assert_eq!((st.session.conflict.view.as_ref().unwrap().current, st.view.conflict_scroll_to), (0, None));
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictStep(-1)));
-    assert_eq!(st.conflict.as_ref().unwrap().current, 0, "clamped at the start");
+    assert_eq!(st.session.conflict.view.as_ref().unwrap().current, 0, "clamped at the start");
 }
 
 #[test]
@@ -178,7 +178,7 @@ fn save_is_refused_until_every_chunk_is_picked() {
     assert!(update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), Instant::now()).is_empty());
     update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours }), Instant::now());
     let fx = update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), Instant::now());
-    let ids = st.conflict.as_ref().unwrap().file.as_ref().unwrap().ids.clone();
+    let ids = st.session.conflict.view.as_ref().unwrap().file.as_ref().unwrap().ids.clone();
     match &fx[..] {
         [Effect::LocalOp { op: LocalOp::ResolveConflict { path, contents, expected }, .. }] => {
             assert_eq!((path.as_str(), contents.as_str()), ("a.txt", "one\nours\n"));
@@ -186,7 +186,7 @@ fn save_is_refused_until_every_chunk_is_picked() {
         }
         other => panic!("expected one resolve, got {other:?}"),
     }
-    assert!(st.conflict.as_ref().unwrap().saving);
+    assert!(st.session.conflict.view.as_ref().unwrap().saving);
     assert!(update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), Instant::now()).is_empty(), "not twice");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -200,7 +200,7 @@ fn saving_resolves_the_file_end_to_end() {
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.unstaged.iter().any(|f| f.status == '!'));
     assert!(snap.staged.iter().any(|f| f.path == "a.txt"));
-    assert!(st.conflict.is_none());
+    assert!(st.session.conflict.view.is_none());
     assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == "Resolved a.txt"));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -209,9 +209,9 @@ fn saving_resolves_the_file_end_to_end() {
 fn mark_resolved_closes_the_view() {
     let (mut st, dir) = opened("conflict-mark");
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
-    assert!(st.conflict.is_some(), "the markers warning comes first");
+    assert!(st.session.conflict.view.is_some(), "the markers warning comes first");
     drive(&mut st, Msg::ConfirmAccepted);
-    assert!(st.conflict.is_none());
+    assert!(st.session.conflict.view.is_none());
     assert!(read(&dir).contains("<<<<<<<"), "marked resolved as it is");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -230,7 +230,7 @@ fn a_failed_save_reenables_save() {
         }
     }
     assert!(st.log.iter().any(|l| !l.ok && l.text.contains("changed since it was opened")));
-    assert!(st.conflict.as_ref().is_some_and(|c| !c.saving && c.can_save()), "Save is enabled again");
+    assert!(st.session.conflict.view.as_ref().is_some_and(|c| !c.saving && c.can_save()), "Save is enabled again");
     assert!(read(&dir).contains("<<<<<<<"), "nothing written");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -243,7 +243,7 @@ fn resolving_with_a_side_needs_the_open_file() {
     );
     drive(&mut st, Msg::Conflict(ConflictMsg::ResolveWithSide { path: "a.txt".into(), side: Side::Theirs }));
     assert_eq!(read(&dir), "one\ntheirs\n");
-    assert!(st.conflict.is_none());
+    assert!(st.session.conflict.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -253,7 +253,7 @@ fn opened_two(name: &str) -> (AppState, PathBuf) {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())));
-    assert!(st.conflict.as_ref().is_some_and(|c| c.file.is_some()));
+    assert!(st.session.conflict.view.as_ref().is_some_and(|c| c.file.is_some()));
     (st, dir)
 }
 
@@ -262,14 +262,14 @@ fn saving_steps_to_the_next_conflicted_file() {
     let (mut st, dir) = opened_two("conflict-step");
     update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours }), Instant::now());
     drive(&mut st, Msg::Conflict(ConflictMsg::SaveConflict));
-    let c = st.conflict.as_ref().expect("still open");
+    let c = st.session.conflict.view.as_ref().expect("still open");
     assert_eq!(c.path, "b.txt");
     assert!(c.file.is_some() && !c.step_on_resolve, "b.txt loaded fresh");
     let toast = st.toasts.last().expect("a toast");
     assert_eq!(toast.text, "Resolved a.txt. Opened b.txt (1 conflicted file left)");
     // The last one closes the view as before.
     drive(&mut st, Msg::Conflict(ConflictMsg::ResolveWithSide { path: "b.txt".into(), side: Side::Theirs }));
-    assert!(st.conflict.is_none());
+    assert!(st.session.conflict.view.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Resolved b.txt"));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -279,7 +279,7 @@ fn marking_the_open_file_resolved_steps_too() {
     let (mut st, dir) = opened_two("conflict-step-mark");
     drive(&mut st, Msg::Conflict(ConflictMsg::MarkResolved(vec!["a.txt".into()])));
     drive(&mut st, Msg::ConfirmAccepted);
-    assert_eq!(st.conflict.as_ref().map(|c| c.path.as_str()), Some("b.txt"));
+    assert_eq!(st.session.conflict.view.as_ref().map(|c| c.path.as_str()), Some("b.txt"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -288,7 +288,7 @@ fn a_file_resolved_outside_the_app_closes_the_view_without_stepping() {
     let (mut st, dir) = opened_two("conflict-step-outside");
     git(&dir, &["add", "a.txt"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(st.conflict.is_none(), "closed, though b.txt is still conflicted");
+    assert!(st.session.conflict.view.is_none(), "closed, though b.txt is still conflicted");
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Resolved a.txt (1 conflicted file left)"));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -309,13 +309,13 @@ fn trivial_chunks_are_picked_when_the_file_loads() {
     assert!(view.output().is_none(), "nothing is saved until every chunk is picked");
 
     let mut st = state();
-    st.conflict = Some(view);
+    st.session.conflict.view = Some(view);
     update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours }), Instant::now());
-    let c = st.conflict.as_ref().unwrap();
+    let c = st.session.conflict.view.as_ref().unwrap();
     assert_eq!((&c.picks[0], c.auto[0]), (&Choice::TheirsThenOurs.into(), None), "a change clears the tag");
-    st.conflict.as_mut().unwrap().auto[1] = Some(Trivial::Whitespace);
+    st.session.conflict.view.as_mut().unwrap().auto[1] = Some(Trivial::Whitespace);
     update(&mut st, Msg::Conflict(ConflictMsg::ConflictReset), Instant::now());
-    let c = st.conflict.as_ref().unwrap();
+    let c = st.session.conflict.view.as_ref().unwrap();
     assert_eq!((c.picks.clone(), c.auto.clone()), (vec![ChunkPick::default(); 2], vec![None; 2]), "Reset clears every pick");
 
     // Every chunk picked automatically: Save is ready, and the view starts on the first.

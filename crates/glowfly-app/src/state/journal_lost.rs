@@ -23,7 +23,7 @@ pub enum JournalTab {
 /// The Lost commits tab's data.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LostView {
-    /// The load in flight or last asked for (`AppState::journal_gen`).
+    /// The load in flight or last asked for (`RepoSession::journal`).
     pub generation: u64,
     pub loading: bool,
     /// A refresh happened while the tab was hidden or a load ran: load again when it shows.

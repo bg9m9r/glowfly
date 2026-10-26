@@ -90,10 +90,10 @@ pub(super) fn exited(
 fn close_view(st: &mut AppState, workdir: &Path, path: &str) {
     let here = st.workdir().is_some_and(|w| same_spelling(&w, workdir));
     if here {
-        if st.conflict.as_ref().is_some_and(|c| c.path == path) {
+        if st.session.conflict.view.as_ref().is_some_and(|c| c.path == path) {
             super::conflict::close(st);
         }
     } else if let Some(parked) = st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()) {
-        parked.conflict.take_if(|c| c.path == path);
+        parked.session.conflict.view.take_if(|c| c.path == path);
     }
 }

@@ -38,7 +38,7 @@ fn with_bb(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
     assert_eq!((view.label.as_str(), view.noun, &view.page), ("#12", "pull request", &Page::Loading));
     view.checks.pane = ChecksPane::Loaded(CheckList::empty(fs.prs[0].head.clone().unwrap_or_default()));
-    st.pull_request = Some(view);
+    st.session.pull_request.view = Some(view);
     (st, dir)
 }
 
@@ -59,7 +59,7 @@ fn pull_request_bitbucket_review_light() {
         entry("Linus Torvalds", 14, EntryKind::Review(Verdict::ChangesRequested), ""),
     ];
     load(&mut st, bb_detail(Vote::Neither, vec![MergeMethod::Merge, MergeMethod::Squash, MergeMethod::FastForward]), entries);
-    if let Page::Loaded(p) = &mut st.pull_request.as_mut().unwrap().page {
+    if let Page::Loaded(p) = &mut st.session.pull_request.view.as_mut().unwrap().page {
         p.threads_note = Some(NOTE.into());
     }
     let mut h = harness_sized(st, false, TALL);
@@ -99,14 +99,14 @@ fn pull_request_bitbucket_changes_requested_dark() {
     h.check_snapshot("pull_request_bitbucket_changes_requested_dark");
     assert!(h.query_by_label("Remove change request").is_some());
     assert!(h.query_by_label("Approve").is_none() && h.query_by_label("Request changes").is_none());
-    assert_eq!(h.state().0.pull_request.as_ref().unwrap().forms.merge_method, Some(MergeMethod::Rebase));
+    assert_eq!(h.state().0.session.pull_request.view.as_ref().unwrap().forms.merge_method, Some(MergeMethod::Rebase));
     assert!(h.query_by_label("Commit title").is_none(), "a rebase makes no new message");
     h.get_by_label("Remove change request").click();
     h.run();
     h.get_by_role_and_label(Role::Button, "Submit review").click();
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::PullRequest(PullRequestMsg::SubmitReview))));
-    assert_eq!(h.state().0.pull_request.as_ref().unwrap().forms.review_event, ReviewEvent::UnrequestChanges);
+    assert_eq!(h.state().0.session.pull_request.view.as_ref().unwrap().forms.review_event, ReviewEvent::UnrequestChanges);
     drop(h);
     remove_fixture(&dir);
 }

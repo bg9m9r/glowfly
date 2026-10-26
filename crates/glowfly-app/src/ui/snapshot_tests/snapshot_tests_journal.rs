@@ -102,7 +102,7 @@ pub(in crate::ui) fn journal(st: &mut AppState, selected: usize) {
         .collect();
     let preview = Preview { history, leaving: Some(Count { n: 0, more: false }), arriving: Some(Count { n: 1, more: false }) };
     let timeline = Timeline { rows, capped: false, head: None, tips: Vec::new() };
-    st.journal = Some(JournalView {
+    st.session.journal.view = Some(JournalView {
         generation: 1,
         loading: false,
         timeline: Some(Ok(timeline)),
@@ -189,7 +189,7 @@ fn journal_restore_blocked() {
 
 fn with_timeline(name: &str, timeline: Option<Result<Timeline, String>>) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
-    st.journal = Some(JournalView { generation: 1, loading: timeline.is_none(), timeline, ..Default::default() });
+    st.session.journal.view = Some(JournalView { generation: 1, loading: timeline.is_none(), timeline, ..Default::default() });
     (st, dir)
 }
 
@@ -241,7 +241,7 @@ fn journal_narrow() {
 fn journal_confirm() {
     let (mut st, dir) = opened(ThemeChoice::Dark, "journal-confirm", 1);
     let t = st.settings.lang();
-    let view = st.journal.as_ref().unwrap();
+    let view = st.session.journal.view.as_ref().unwrap();
     let r = view.selected_row().unwrap();
     let snap = st.snap.as_ref().unwrap();
     let plan = crate::state::journal_restore::plan(snap, r, false, t).unwrap();

@@ -95,7 +95,7 @@ fn running() -> crate::state::RunningJob {
 fn the_lost_tab_loads_once_scoped_to_the_repository() {
     let (mut st, dir) = opened("journal-lost-once");
     open_loaded(&mut st, &dir);
-    assert_eq!(st.journal.as_ref().unwrap().tab, JournalTab::States, "States first");
+    assert_eq!(st.session.journal.view.as_ref().unwrap().tab, JournalTab::States, "States first");
     let fx = run(&mut st, JournalMsg::Tab(JournalTab::Lost));
     let [Effect::Journal(e @ JournalEffect::Lost { generation, .. })] = &fx[..] else { panic!("one lost load: {fx:?}") };
     assert!(super::tests::same_place(e.workdir(), &dir), "scoped to the repository");
@@ -115,14 +115,14 @@ fn stale_or_closed_lost_results_are_dropped() {
     let second = lost_loads(&run(&mut st, JournalMsg::Refresh))[0];
     assert!(second > first);
     lost(&mut st, LostMsg::Loaded { generation: first, result: Err("old".into()) });
-    let v = st.journal.as_ref().unwrap().lost.as_ref().unwrap();
+    let v = st.session.journal.view.as_ref().unwrap().lost.as_ref().unwrap();
     assert!(v.loading && matches!(v.result, Some(Ok(_))), "an older result is dropped");
     lost(&mut st, LostMsg::Loaded { generation: second, result: hand_built(vec![entry(1, LostKind::Commit)]) });
-    let v = st.journal.as_ref().unwrap().lost.as_ref().unwrap();
+    let v = st.session.journal.view.as_ref().unwrap().lost.as_ref().unwrap();
     assert!(!v.loading && v.commits().len() == 1);
     run(&mut st, JournalMsg::Close);
     lost(&mut st, LostMsg::Loaded { generation: second, result: hand_built(Vec::new()) });
-    assert!(st.journal.is_none(), "a closed view stays closed");
+    assert!(st.session.journal.view.is_none(), "a closed view stays closed");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -139,13 +139,13 @@ fn a_refresh_reloads_lost_only_while_it_shows() {
     run(&mut st, JournalMsg::Tab(JournalTab::States));
     let fx = run(&mut st, JournalMsg::Refresh);
     assert_eq!((timeline_loads(&fx), lost_loads(&fx).len()), (1, 0), "only the timeline on the States tab");
-    assert!(st.journal.as_ref().unwrap().lost.as_ref().unwrap().stale);
+    assert!(st.session.journal.view.as_ref().unwrap().lost.as_ref().unwrap().stale);
     assert_eq!(lost_loads(&run(&mut st, JournalMsg::Tab(JournalTab::Lost))).len(), 1, "a stale list is read again");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 fn preview_result(st: &AppState) -> bool {
-    st.journal.as_ref().unwrap().lost.as_ref().unwrap().preview.as_ref().unwrap().result.is_some()
+    st.session.journal.view.as_ref().unwrap().lost.as_ref().unwrap().preview.as_ref().unwrap().result.is_some()
 }
 
 #[test]
@@ -172,10 +172,10 @@ fn selecting_previews_from_the_stash_base() {
     let g = lost_loads(&run(&mut st, JournalMsg::Refresh))[0];
     let fx = lost(&mut st, LostMsg::Loaded { generation: g, result: hand_built(list) });
     assert!(matches!(&fx[..], [Effect::Journal(JournalEffect::LostPreview { oid: o, .. })] if *o == oid(3)), "kept and read again");
-    assert_eq!(st.journal.as_ref().unwrap().lost.as_ref().unwrap().selected, Some(oid(3)));
+    assert_eq!(st.session.journal.view.as_ref().unwrap().lost.as_ref().unwrap().selected, Some(oid(3)));
     let g = lost_loads(&run(&mut st, JournalMsg::Refresh))[0];
     lost(&mut st, LostMsg::Loaded { generation: g, result: hand_built(vec![entry(1, LostKind::Commit)]) });
-    let v = st.journal.as_ref().unwrap().lost.as_ref().unwrap();
+    let v = st.session.journal.view.as_ref().unwrap().lost.as_ref().unwrap();
     assert!(v.selected.is_none() && v.preview.is_none(), "cleared once it is no longer lost");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -221,7 +221,7 @@ fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
 fn apply_and_store_run_on_the_stash() {
     let (mut st, dir, second, stash) = fixture("journal-lost-apply");
     show_found(&mut st, &dir);
-    let listed = st.journal.as_ref().unwrap().lost.as_ref().unwrap().commit(stash).cloned();
+    let listed = st.session.journal.view.as_ref().unwrap().lost.as_ref().unwrap().commit(stash).cloned();
     assert_eq!(listed.expect("the stash is lost").summary, "On main: keep");
     // A stash has no branch or Restore, and a commit has no stash actions.
     for m in [LostMsg::Restore(stash), LostMsg::CreateBranch(stash), LostMsg::Apply(second), LostMsg::Store(second)] {
@@ -247,9 +247,9 @@ fn parking_the_tab_asks_again() {
     open_loaded(&mut st, &dir);
     let before = lost_loads(&run(&mut st, JournalMsg::Tab(JournalTab::Lost)))[0];
     drive(&mut st, Msg::Tabs(TabsMsg::NewTab));
-    assert!(st.journal.is_none());
+    assert!(st.session.journal.view.is_none());
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    let v = st.journal.as_ref().expect("back with its tab");
+    let v = st.session.journal.view.as_ref().expect("back with its tab");
     assert_eq!(v.tab, JournalTab::Lost, "the tab is parked with the view");
     let again = lost_loads(&fx);
     assert_eq!(again.len(), 1, "the lost load in flight is asked for again");
@@ -268,7 +268,7 @@ fn a_refresh_during_a_load_finds_them_again() {
     assert!(again > g);
     let fx = lost(&mut st, LostMsg::Loaded { generation: again, result: hand_built(Vec::new()) });
     assert!(lost_loads(&fx).is_empty(), "a result with no refresh during it is current");
-    let v = st.journal.as_ref().unwrap().lost.as_ref().unwrap();
+    let v = st.session.journal.view.as_ref().unwrap().lost.as_ref().unwrap();
     assert!(!v.loading && !v.stale);
 
     // Hidden by the time it lands: kept stale until the tab shows.
@@ -276,7 +276,7 @@ fn a_refresh_during_a_load_finds_them_again() {
     run(&mut st, JournalMsg::Refresh);
     run(&mut st, JournalMsg::Tab(JournalTab::States));
     assert!(lost_loads(&lost(&mut st, LostMsg::Loaded { generation: g, result: hand_built(Vec::new()) })).is_empty());
-    assert!(st.journal.as_ref().unwrap().lost.as_ref().unwrap().stale);
+    assert!(st.session.journal.view.as_ref().unwrap().lost.as_ref().unwrap().stale);
     assert_eq!(lost_loads(&run(&mut st, JournalMsg::Tab(JournalTab::Lost))).len(), 1, "read again when it shows");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -290,7 +290,7 @@ fn parking_on_the_states_tab_waits_for_the_lost_tab() {
     drive(&mut st, Msg::Tabs(TabsMsg::NewTab));
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     assert!(lost_loads(&fx).is_empty(), "no fsck while the States tab shows");
-    let v = st.journal.as_ref().unwrap().lost.as_ref().unwrap();
+    let v = st.session.journal.view.as_ref().unwrap().lost.as_ref().unwrap();
     assert!(!v.loading && v.stale);
     assert_eq!(lost_loads(&run(&mut st, JournalMsg::Tab(JournalTab::Lost))).len(), 1, "found when it shows");
     let _ = std::fs::remove_dir_all(&dir);

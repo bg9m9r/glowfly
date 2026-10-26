@@ -37,7 +37,7 @@ fn show(st: &mut AppState, at: Option<Oid>, data: BlameData) {
     let mut view = BlameView::loading("a.txt".into(), at);
     view.loading = false;
     view.data = Some(data);
-    st.blame = Some(view);
+    st.session.blame.view = Some(view);
 }
 
 /// A repository with a blame of a.txt at HEAD showing 20 lines, its top line at 5.
@@ -46,7 +46,7 @@ fn shown(name: &str) -> (AppState, PathBuf) {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     show(&mut st, None, data("a.txt", 20));
-    st.blame.as_mut().unwrap().top_line = 5;
+    st.session.blame.view.as_mut().unwrap().top_line = 5;
     (st, dir)
 }
 
@@ -64,7 +64,7 @@ fn requests(fx: &[Effect]) -> Vec<&BlameRequest> {
 }
 
 fn view(st: &AppState) -> &BlameView {
-    st.blame.as_ref().expect("blame open")
+    st.session.blame.view.as_ref().expect("blame open")
 }
 
 fn head_of(st: &AppState) -> Option<Oid> {
@@ -91,7 +91,7 @@ fn head_move_reblames_a_head_blame_keeping_the_top_line() {
     let (mut st, dir) = shown("blame-head-rerun");
     let old = head_of(&st);
     let fx = refresh_with_head(&mut st, Some(oid(9)));
-    let now = st.blame_gen;
+    let now = st.session.blame.generation;
     let r = requests(&fx);
     assert!(
         matches!(&r[..], [r] if r.at.is_none() && r.path == "a.txt" && r.generation == now && r.follow == old && old.is_some()),
@@ -131,22 +131,22 @@ fn two_moves_keep_the_earliest_follow() {
     refresh_with_head(&mut st, Some(oid(9)));
     let fx = refresh_with_head(&mut st, Some(oid(8)));
     let r = requests(&fx);
-    assert!(matches!(&r[..], [r] if r.follow == old && r.generation == st.blame_gen), "{fx:?}");
+    assert!(matches!(&r[..], [r] if r.follow == old && r.generation == st.session.blame.generation), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn stale_result_after_a_rerun_is_dropped() {
     let (mut st, dir) = shown("blame-head-stale");
-    let before = st.blame_gen;
-    st.blame.as_mut().unwrap().cursor = Some(15);
+    let before = st.session.blame.generation;
+    st.session.blame.view.as_mut().unwrap().cursor = Some(15);
     refresh_with_head(&mut st, Some(oid(9)));
     send(&mut st, loaded("a.txt", before, Ok(Box::new(data("a.txt", 3)))));
     let v = view(&st);
     assert!(v.loading, "the older result is ignored");
     assert_eq!(v.line_count(), 20, "the old blame stays");
 
-    let now = st.blame_gen;
+    let now = st.session.blame.generation;
     send(&mut st, loaded("a.txt", now, Ok(Box::new(data("a.txt", 10)))));
     let v = view(&st);
     assert!(!v.loading && v.error.is_none());
@@ -161,7 +161,7 @@ fn stale_result_after_a_rerun_is_dropped() {
 fn rerun_error_replaces_the_blame() {
     let (mut st, dir) = shown("blame-head-error");
     refresh_with_head(&mut st, Some(oid(9)));
-    let now = st.blame_gen;
+    let now = st.session.blame.generation;
     send(&mut st, loaded("a.txt", now, Err("a.txt is not in commit 0909090".into())));
     let v = view(&st);
     assert!(v.data.is_none() && !v.loading && v.follow.is_none());
@@ -173,13 +173,13 @@ fn rerun_error_replaces_the_blame() {
 fn rerun_takes_the_followed_name() {
     let (mut st, dir) = shown("blame-head-name");
     refresh_with_head(&mut st, Some(oid(9)));
-    let now = st.blame_gen;
+    let now = st.session.blame.generation;
     send(&mut st, loaded("a.txt", now, Ok(Box::new(data("b.txt", 4)))));
     assert_eq!(view(&st).path, "b.txt");
 
     show(&mut st, Some(oid(3)), data("a.txt", 4));
-    st.blame.as_mut().unwrap().loading = true;
-    let now = st.blame_gen;
+    st.session.blame.view.as_mut().unwrap().loading = true;
+    let now = st.session.blame.generation;
     send(&mut st, loaded("a.txt", now, Ok(Box::new(data("old.txt", 4)))));
     assert_eq!(view(&st).path, "a.txt", "a blame at a commit keeps its path");
     let _ = std::fs::remove_dir_all(&dir);
@@ -213,7 +213,7 @@ fn back_and_parent_clear_follow() {
     use glowfly_core::repo::{BlameCommit, BlameOrigin, BlameRun};
     let (mut st, dir) = shown("blame-head-back");
     let step = BlameStep { path: "a.txt".into(), at: Some(oid(4)), skipped: Vec::new(), top_line: 0, cursor: None };
-    st.blame.as_mut().unwrap().back.push(step);
+    st.session.blame.view.as_mut().unwrap().back.push(step);
     refresh_with_head(&mut st, Some(oid(9)));
     let fx = send(&mut st, BlameMsg::Back);
     assert!(matches!(&requests(&fx)[..], [r] if r.follow.is_none() && r.at == Some(oid(4))), "{fx:?}");
@@ -294,7 +294,7 @@ fn head_move_while_parked_reblames_on_return() {
     let (mut st, a) = blamed("blame-head-park-a");
     let b = scratch_repo("blame-head-park-b");
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
-    assert!(st.blame.is_none());
+    assert!(st.session.blame.view.is_none());
     commit(&a, "a.txt", "one\ntwo\nthree\n", "third");
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     let v = view(&st);

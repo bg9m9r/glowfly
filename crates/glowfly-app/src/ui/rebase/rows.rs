@@ -115,7 +115,7 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     let spell = st.settings.spellcheck;
     let t = st.settings.lang();
     let covered = st.modal.is_some() || st.palette.is_some() || st.prefs.is_some() || st.askpass.showing();
-    let Some(panel) = st.rebase.as_mut() else { return };
+    let Some(panel) = st.session.rebase.view.as_mut() else { return };
     let enabled = panel.editable();
     let can_drag = enabled && panel.editing.is_none() && panel.items.len() > 1;
     egui::ScrollArea::vertical().id_salt("rebase-list").auto_shrink([false, false]).show(ui, |ui| {

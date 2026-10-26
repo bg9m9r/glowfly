@@ -76,12 +76,12 @@ fn posted_single_comment_appears_and_the_page_reloads() {
     // Until the reload the thread can't be resolved, but its replies work.
     let t = view(&st).loaded().unwrap().threads[0].clone();
     assert_eq!(resolve_blocked(view(&st), &t).as_deref(), Some("This new thread can be resolved once the page has reloaded"));
-    st.pull_request.as_mut().unwrap().reloading = false;
+    st.session.pull_request.view.as_mut().unwrap().reloading = false;
     let fx = run(&mut st, PullRequestMsg::Resolve { thread: "new:901".into(), resolve: true });
     assert!(calls(&fx).is_empty());
 
     // The reload hands the reply draft and focus to the real thread.
-    st.pull_request.as_mut().unwrap().forms.replies.insert("new:901".into(), "Also this".into());
+    st.session.pull_request.view.as_mut().unwrap().forms.replies.insert("new:901".into(), "Also this".into());
     let head = st.forge.as_ref().unwrap().prs[0].head.clone().unwrap_or_default();
     let page = PrPage { detail: detail(&head), entries: Vec::new(), threads: vec![new_thread("PRRT_1", 901, false)], threads_note: None };
     let msg = reply_msg(&st, PrReply::Loaded(Ok(page)));
@@ -156,10 +156,10 @@ fn parked_tab_applies_the_answer_to_its_panel() {
     posted(&mut st, false);
     let msg = reply_msg(&st, single_ok());
     update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
-    assert!(st.pull_request.is_none(), "parked with its tab");
+    assert!(st.session.pull_request.view.is_none(), "parked with its tab");
     let toasts = st.toasts.len();
     run(&mut st, msg);
-    let parked = st.tabs[0].parked.as_ref().and_then(|p| p.pull_request.as_ref()).expect("the parked panel");
+    let parked = st.tabs[0].parked.as_ref().and_then(|p| p.session.pull_request.view.as_ref()).expect("the parked panel");
     assert!(parked.line_draft.is_none());
     assert_eq!(parked.loaded().unwrap().threads.iter().map(|t| t.id.as_str()).collect::<Vec<_>>(), ["new:901"]);
     assert!(st.tabs[0].log.last().is_some_and(|l| l.ok && l.text == "Commented on f.txt in #7"), "logged in that tab");
@@ -171,7 +171,7 @@ fn parked_tab_applies_the_answer_to_its_panel() {
     let msg = reply_msg(&st, PrReply::LineCommented { review: false, result: Err(err("timed out")) });
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     run(&mut st, msg);
-    let parked = st.tabs[0].parked.as_ref().and_then(|p| p.pull_request.as_ref()).expect("the parked panel");
+    let parked = st.tabs[0].parked.as_ref().and_then(|p| p.session.pull_request.view.as_ref()).expect("the parked panel");
     let d = parked.line_draft.as_ref().expect("kept");
     assert_eq!((d.text.as_str(), d.error.as_deref(), d.posting), ("Rename this", Some("timed out"), None));
     done(st, dirs);

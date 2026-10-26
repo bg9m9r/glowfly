@@ -85,7 +85,7 @@ fn conflicted(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, 
     let area = egui::ScrollArea::vertical().id_salt("Conflicted files").max_height(lists.height).auto_shrink([false, true]);
     area.show_rows(ui, super::widgets::LIST_ROW_H, rows.len(), |ui, range| {
         for f in &rows[range] {
-            let _ = wip_file_row(ui, snap, f, false, open, ctx, st.conflict_files.count_note(t, &f.path), msgs);
+            let _ = wip_file_row(ui, snap, f, false, open, ctx, st.session.conflict_files.count_note(t, &f.path), msgs);
         }
     });
 }

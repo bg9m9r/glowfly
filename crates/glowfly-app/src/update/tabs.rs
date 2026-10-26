@@ -1,13 +1,12 @@
 //! Tabs: opening repositories side by side, switching, reordering and restoring the previous
-//! session. Switching parks the active tab's data and restores the other's, and swaps their
-//! activity logs (`Tab::log`, outside `Parked`); reordering moves parked data and logs with its
-//! tab. Where a tab opens and how a drop or a keyboard move moves it follow
+//! session. Switching parks the active tab's data (its views whole, as `RepoSession`) and
+//! restores the other's, and swaps their activity logs (`Tab::log`, outside `Parked`); reordering
+//! moves parked data and logs with its tab. Where a tab opens and how a drop or a keyboard move moves it follow
 //! the worktree groups (`tab_groups.rs`). Closing and reopening are in `tabs_close.rs`, labels in
 //! `tab_label.rs`.
 
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::{CloseRequest, TabsMsg};
-use crate::state::conflict::ConflictView;
 use crate::state::tabs::Parked;
 use crate::state::{AppState, Selection, Tab};
 use glowfly_core::repo::Snapshot;
@@ -261,24 +260,12 @@ pub(super) fn park(st: &mut AppState) -> Parked {
     st.view.diff_cursor = None;
     super::stack_prs::parked(st);
     Parked {
+        session: st.session.park(),
         snap: st.snap.take(),
         selection: std::mem::take(&mut st.selection),
         detail: st.detail.take(),
         diff: st.diff.take(),
-        diff_preview: st.diff_preview.take(),
-        // A save in flight reports to this tab only if it is still active, so don't wait for it.
-        conflict: st.conflict.take().map(|c| ConflictView { saving: false, ..c }),
-        conflict_files: std::mem::take(&mut st.conflict_files),
-        history: st.history.take(),
-        blame: st.blame.take(),
-        pull_request: st.pull_request.take(),
-        issue: st.issue.take(),
         issue_form: super::issue_create::park(st),
-        rebase: st.rebase.take(),
-        gitflow_panel: std::mem::take(&mut st.gitflow_panel),
-        journal: st.journal.take(),
-        range_diff: st.range_diff.take(),
-        gitflow_resume: st.gitflow_resume.take(),
         draft: std::mem::take(&mut st.draft),
         undo: std::mem::take(&mut st.undo),
         forge: st.forge.take(),
@@ -301,12 +288,17 @@ pub(super) fn park(st: &mut AppState) -> Parked {
 
 fn unpark(st: &mut AppState, p: Parked) {
     st.snap = p.snap;
-    st.gitflow_resume = p.gitflow_resume;
+    // Every counter moves past the ones the previous tab left (`RepoSession::resume_after`):
+    // results in flight from before the park, or for another tab, are dropped, and `activate`
+    // asks again for what was loading.
+    let mut session = p.session;
+    session.resume_after(&mut st.session);
+    st.session = session;
+    // After the snapshot and `gitflow_resume` are back.
     super::gitflow::snapshot_changed(st);
     st.selection = if st.snap.is_some() { p.selection } else { Selection::None };
     st.detail = p.detail;
     st.diff = p.diff;
-    st.diff_preview = p.diff_preview;
     st.lfs.diff = p.lfs_diff;
     st.view.file_folds = p.file_folds;
     // Diff results for this tab were dropped while it was parked: its hunks stay disabled
@@ -330,38 +322,9 @@ fn unpark(st: &mut AppState, p: Parked) {
     };
     st.view.diff_scroll_to_row = st.diff.is_some().then_some(top);
     st.view.diff_top_row = top;
-    st.conflict = p.conflict;
-    // Summary reads for this tab were dropped while it was parked; `activate` reads again.
-    st.conflict_files = p.conflict_files;
-    // Conflict results for this tab were dropped while it was parked.
-    st.conflict_gen += 1;
-    st.view.conflict_scroll_to = st.conflict.as_ref().filter(|c| c.file.is_some()).map(|c| c.current);
-    st.history = p.history;
-    // History results for this tab were dropped while it was parked.
-    st.history_gen += 1;
-    st.view.history_scroll_to = st.history.as_ref().and_then(|h| h.selected);
-    st.blame = p.blame;
-    // Blame results for this tab were dropped while it was parked.
-    st.blame_gen += 1;
-    st.pull_request = p.pull_request;
-    // File lists for this tab were dropped while it was parked.
-    st.pull_request_gen += 1;
-    // Line maps for this tab were dropped while it was parked.
-    st.pull_request_lines_gen += 1;
-    st.issue = p.issue;
+    st.view.conflict_scroll_to = st.session.conflict.view.as_ref().filter(|c| c.file.is_some()).map(|c| c.current);
+    st.view.history_scroll_to = st.session.history.view.as_ref().and_then(|h| h.selected);
     super::issue_create::unpark(st, p.issue_form);
-    // Details for this tab were dropped while it was parked.
-    st.issue_gen += 1;
-    st.rebase = p.rebase;
-    // Rebase list results for this tab were dropped while it was parked.
-    st.rebase_gen += 1;
-    st.gitflow_panel = p.gitflow_panel;
-    st.journal = p.journal;
-    // Journal results for this tab were dropped while it was parked.
-    st.journal_gen += 1;
-    st.range_diff = p.range_diff;
-    // Results for this tab were dropped while it was parked.
-    st.range_diff_gen += 1;
     st.draft = p.draft;
     st.undo = p.undo;
     st.forge = p.forge;

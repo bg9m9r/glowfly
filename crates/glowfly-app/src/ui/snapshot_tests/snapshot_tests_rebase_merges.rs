@@ -22,19 +22,19 @@ fn with_merges(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let plan = rebase::plan(&dir, &base).unwrap();
     let mut panel = RebasePanel::loading(base);
     panel.fill(plan);
-    st.rebase = Some(panel);
+    st.session.rebase.view = Some(panel);
     (st, dir)
 }
 
 fn row(st: &AppState, summary: &str) -> usize {
-    let p = st.rebase.as_ref().unwrap();
+    let p = st.session.rebase.view.as_ref().unwrap();
     p.items.iter().position(|s| s.item().is_some_and(|i| i.summary == summary)).unwrap()
 }
 
 #[test]
 fn rebase_panel_merges() {
     let (st, dir) = with_merges(ThemeChoice::Dark, "rebase-merges");
-    let p = st.rebase.as_ref().unwrap();
+    let p = st.session.rebase.view.as_ref().unwrap();
     assert!(p.items.iter().any(TodoStep::is_structure), "{:?}", p.items);
     assert!(p.items.iter().any(|s| s.merge().is_some()));
     let subtitle = p.subtitle();
@@ -52,7 +52,7 @@ fn rebase_panel_merges_light() {
     let (mut st, dir) = with_merges(ThemeChoice::Light, "rebase-merges-light");
     let merge = row(&st, "Merge branch 'login-page'");
     let login = row(&st, "Add login page");
-    let p = st.rebase.as_mut().unwrap();
+    let p = st.session.rebase.view.as_mut().unwrap();
     p.set_action(merge, RebaseAction::Drop);
     p.set_action(login, RebaseAction::Reword);
     assert_eq!(p.items[merge].item().unwrap().action, RebaseAction::Drop);
@@ -68,10 +68,10 @@ fn rebase_panel_merge_combo() {
     let (mut st, dir) = with_merges(ThemeChoice::Dark, "rebase-merge-combo");
     // "Fix build on Windows" starts main's line again after a reset: it can't be squashed.
     let fix = row(&st, "Fix build on Windows");
-    let p = st.rebase.as_mut().unwrap();
+    let p = st.session.rebase.view.as_mut().unwrap();
     p.set_action(fix, RebaseAction::Squash);
     let blocker = p.start_blocker(st.snap.as_ref().unwrap(), false);
-    assert_eq!(blocker.as_deref(), Some(rebase::COMBINE_AFTER_MERGE), "{:?}", st.rebase.as_ref().unwrap().items);
+    assert_eq!(blocker.as_deref(), Some(rebase::COMBINE_AFTER_MERGE), "{:?}", st.session.rebase.view.as_ref().unwrap().items);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("rebase_panel_merge_combo");

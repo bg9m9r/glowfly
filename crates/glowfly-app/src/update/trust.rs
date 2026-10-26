@@ -207,13 +207,13 @@ fn forget(st: &mut AppState, h: HeldJob, trusted: bool) {
     if label == super::rebase::JOB_LABEL {
         let active = st.snap.as_ref().is_some_and(|s| is_repo_at(s, &h.real));
         let panel = if active {
-            st.rebase.as_mut()
+            st.session.rebase.view.as_mut()
         } else {
             st.tabs
                 .iter_mut()
                 .filter_map(|t| t.parked.as_mut())
                 .find(|p| p.snap.as_ref().is_some_and(|s| is_repo_at(s, &h.real)))
-                .and_then(|p| p.rebase.as_mut())
+                .and_then(|p| p.session.rebase.view.as_mut())
         };
         if let Some(p) = panel {
             p.starting = false;

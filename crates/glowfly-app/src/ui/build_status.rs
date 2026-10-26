@@ -117,7 +117,7 @@ pub fn pr_menu_item(ui: &mut Ui, pr: &PullRequest, msgs: &mut Vec<Msg>) {
 /// shown tip is due to be asked about again (so pending markers update without input).
 pub(super) fn after_draw(st: &mut AppState, ctx: &egui::Context, now: Instant, msgs: &mut Vec<Msg>) {
     // The pull request panel's running checks are read again once a minute.
-    if let Some(d) = st.pull_request.as_ref().and_then(|v| v.checks.next_wake(now)) {
+    if let Some(d) = st.session.pull_request.view.as_ref().and_then(|v| v.checks.next_wake(now)) {
         ctx.request_repaint_after(d);
     }
     let seen = std::mem::take(&mut st.view.tips_seen);

@@ -129,7 +129,7 @@ fn history_dest_mapping() {
     let (old, same) = (head(&st), Oid::from_bytes(&[7; 20]).unwrap());
     let mut view = FileHistoryView::loading("new.txt".into(), None);
     view.entries = vec![entry(same, "new.txt"), entry(old, "old.txt")];
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     let renamed = DiffTarget::Commit(old, "old.txt".into());
     st.diff = Some((renamed.clone(), one_hunk().into()));
     let generation = st.hunk_ops_gen().unwrap();

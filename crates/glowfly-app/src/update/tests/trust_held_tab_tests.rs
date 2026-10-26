@@ -27,11 +27,11 @@ fn rebase_held_then_switched(name: &str) -> (AppState, PathBuf, PathBuf) {
     drive(&mut st, Msg::CloseModal);
     assert!(st.held());
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(base.unwrap()))));
-    assert!(st.rebase.as_ref().is_some_and(|p| !p.loading && p.items.len() == 3), "the list loaded");
+    assert!(st.session.rebase.view.as_ref().is_some_and(|p| !p.loading && p.items.len() == 3), "the list loaded");
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 2, to: 0 }));
     let fx = run(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
     assert!(fx.is_empty(), "{fx:?}");
-    assert!(st.rebase.as_ref().unwrap().starting, "{:?}", st.log.last().map(|e| &e.text));
+    assert!(st.session.rebase.view.as_ref().unwrap().starting, "{:?}", st.log.last().map(|e| &e.text));
     assert_eq!(st.trust.held.as_ref().map(|h| h.job.label.as_str()), Some(JOB_LABEL));
 
     let b = scratch_repo(&format!("{name}-b"));
@@ -43,7 +43,7 @@ fn rebase_held_then_switched(name: &str) -> (AppState, PathBuf, PathBuf) {
 
 fn back_to_a(st: &mut AppState) {
     drive(st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    let p = st.rebase.as_ref().expect("A's panel comes back");
+    let p = st.session.rebase.view.as_ref().expect("A's panel comes back");
     assert!(!p.starting, "the panel can be used again");
 }
 

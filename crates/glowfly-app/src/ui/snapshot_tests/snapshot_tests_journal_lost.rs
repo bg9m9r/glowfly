@@ -47,7 +47,7 @@ fn lost_commit(oid: Oid, kind: LostKind, summary: &str, author: &str, ago: i64) 
 fn on_lost(name: &str, theme: ThemeChoice, result: Option<Result<LostCommits, String>>) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let lost = LostView { generation: 1, loading: result.is_none(), result, ..Default::default() };
-    st.journal = Some(JournalView { tab: JournalTab::Lost, lost: Some(lost), ..Default::default() });
+    st.session.journal.view = Some(JournalView { tab: JournalTab::Lost, lost: Some(lost), ..Default::default() });
     (st, dir)
 }
 
@@ -66,7 +66,7 @@ fn three(name: &str, theme: ThemeChoice, selected: usize) -> (AppState, PathBuf)
     let start = if matches!(c.kind, LostKind::Stash { .. }) { base } else { c.oid };
     let preview = Preview { history: history(&st, start), leaving: None, arriving: None };
     let mut st = st;
-    let lost = st.journal.as_mut().unwrap().lost.as_mut().unwrap();
+    let lost = st.session.journal.view.as_mut().unwrap().lost.as_mut().unwrap();
     lost.loading = false;
     lost.selected = Some(c.oid);
     lost.preview = Some(LostPreviewState { oid: c.oid, generation: 1, result: Some(Ok(preview)) });
@@ -78,7 +78,7 @@ fn three(name: &str, theme: ThemeChoice, selected: usize) -> (AppState, PathBuf)
 fn journal_unreachable() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "journal-unreachable");
     journal(&mut st, 1);
-    if let Some(Ok(t)) = &mut st.journal.as_mut().unwrap().timeline {
+    if let Some(Ok(t)) = &mut st.session.journal.view.as_mut().unwrap().timeline {
         t.rows[1].unreachable = true;
     }
     let mut h = harness(st, true);
@@ -162,7 +162,7 @@ fn journal_lost_failed() {
 #[test]
 fn journal_lost_capped() {
     let (mut st, dir) = three("journal-lost-capped", ThemeChoice::Dark, 1);
-    let lost = st.journal.as_mut().unwrap().lost.as_mut().unwrap();
+    let lost = st.session.journal.view.as_mut().unwrap().lost.as_mut().unwrap();
     if let Some(Ok(l)) = &mut lost.result {
         l.capped = true;
         l.incomplete = true;

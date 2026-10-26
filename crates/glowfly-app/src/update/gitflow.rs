@@ -34,10 +34,10 @@ pub(super) fn handle(st: &mut AppState, m: GitFlowMsg, now: Instant, fx: &mut Ve
         GitFlowMsg::Finish { branch, options } => super::gitflow_finish::finish(st, &branch, options, false, now, fx),
         GitFlowMsg::StashAndFinish { branch, options } => super::gitflow_finish::finish(st, &branch, options, true, now, fx),
         GitFlowMsg::OpenPanel => open_panel(st),
-        GitFlowMsg::ClosePanel => st.gitflow_panel = false,
+        GitFlowMsg::ClosePanel => st.session.gitflow_panel = false,
         GitFlowMsg::ContinueFinish => super::gitflow_resume::continue_finish(st, now, fx),
         GitFlowMsg::ForgetFinish => {
-            st.gitflow_resume = None;
+            st.session.gitflow_resume = None;
             // A stash held for the forgotten steps comes back at once.
             super::auto_stash::seen(st, false, now, fx);
         }
@@ -103,7 +103,7 @@ pub(super) fn apply(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
 /// Shows the Git Flow panel in place of the graph, closing the diff, the conflict view, the
 /// file history and the interactive rebase panel; nothing while a rebase is starting.
 fn open_panel(st: &mut AppState) {
-    if st.snap.is_none() || st.rebase.as_ref().is_some_and(|p| p.starting) {
+    if st.snap.is_none() || st.session.rebase.view.as_ref().is_some_and(|p| p.starting) {
         return;
     }
     super::repo::close_diff(st);
@@ -113,7 +113,7 @@ fn open_panel(st: &mut AppState) {
     super::rebase::close(st);
     super::journal::close(st);
     super::range_diff::close(st);
-    st.gitflow_panel = true;
+    st.session.gitflow_panel = true;
 }
 
 /// Opens the Start dialog for `kind` with `given` typed after the prefix, else the next version

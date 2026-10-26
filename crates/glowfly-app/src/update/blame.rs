@@ -35,17 +35,17 @@ pub(super) fn handle(st: &mut AppState, msg: BlameMsg, now: Instant, fx: &mut Ve
             super::issue::close(st);
             // Over the file history, its diff stays underneath; elsewhere no hidden diff stays
             // open for shortcuts to act on.
-            if st.history.is_none() {
+            if st.session.history.view.is_none() {
                 super::repo::close_diff(st);
             }
             // Opened on the history's shown file: its header offers the way back to it.
-            let over = st.history.as_ref().and_then(|h| h.shown()).is_some_and(|(oid, p, _)| at == Some(oid) && p == path);
+            let over = st.session.history.view.as_ref().and_then(|h| h.shown()).is_some_and(|(oid, p, _)| at == Some(oid) && p == path);
             if !st.runs_git_unasked() {
-                st.blame = Some(BlameView { over_history: over, ..BlameView::failed(path, at, HELD) });
+                st.session.blame.view = Some(BlameView { over_history: over, ..BlameView::failed(path, at, HELD) });
                 hold(st, now, fx);
                 return;
             }
-            st.blame = Some(BlameView { over_history: over, ..BlameView::loading(path, at) });
+            st.session.blame.view = Some(BlameView { over_history: over, ..BlameView::loading(path, at) });
             request(st, fx);
         }
         BlameMsg::Loaded { path, generation, result } => loaded(st, path, generation, result),
@@ -72,7 +72,7 @@ pub(super) fn handle(st: &mut AppState, msg: BlameMsg, now: Instant, fx: &mut Ve
         BlameMsg::GoToLine => find::go_to_line(st),
         BlameMsg::StepRun(d) => find::step_run(st, d),
         BlameMsg::Retry => {
-            let Some(view) = st.blame.as_ref().filter(|v| !v.loading) else { return };
+            let Some(view) = st.session.blame.view.as_ref().filter(|v| !v.loading) else { return };
             let land = BlameLanding { line: view.cursor.unwrap_or(view.top_line), center: view.cursor.is_some() };
             reload(st, land, now, fx);
         }
@@ -80,10 +80,10 @@ pub(super) fn handle(st: &mut AppState, msg: BlameMsg, now: Instant, fx: &mut Ve
 }
 
 fn loaded(st: &mut AppState, path: String, generation: u64, result: Result<Box<crate::state::blame::BlameData>, String>) {
-    if generation != st.blame_gen {
+    if generation != st.session.blame.generation {
         return; // superseded: closed, reopened, or parked with its tab
     }
-    let Some(view) = st.blame.as_mut().filter(|v| v.path == path) else { return };
+    let Some(view) = st.session.blame.view.as_mut().filter(|v| v.path == path) else { return };
     view.loading = false;
     let land = view.land.take();
     view.follow = None;
@@ -120,7 +120,7 @@ fn loaded(st: &mut AppState, path: String, generation: u64, result: Result<Box<c
 /// arrives. In a held repository the view shows why instead and trust is asked for.
 pub(super) fn reload(st: &mut AppState, land: BlameLanding, now: Instant, fx: &mut Vec<Effect>) {
     let held = !st.runs_git_unasked();
-    let Some(view) = st.blame.as_mut() else { return };
+    let Some(view) = st.session.blame.view.as_mut() else { return };
     view.data = None;
     view.error = None;
     view.land = Some(land);
@@ -142,7 +142,7 @@ pub(super) fn head_moved(st: &mut AppState, new: &Snapshot, fx: &mut Vec<Effect>
     if !st.runs_git_unasked() {
         return;
     }
-    let Some(view) = st.blame.as_mut().filter(|v| v.at.is_none()) else { return };
+    let Some(view) = st.session.blame.view.as_mut().filter(|v| v.at.is_none()) else { return };
     view.follow = view.follow.or(old); // the earliest HEAD while re-runs stack up
     if view.land.is_none() {
         view.land = Some(BlameLanding { line: view.top_line, center: false });
@@ -154,11 +154,11 @@ pub(super) fn head_moved(st: &mut AppState, new: &Snapshot, fx: &mut Vec<Effect>
 
 /// Shows HELD in the open view and asks to trust the repository.
 fn hold(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    if let Some(view) = st.blame.as_mut() {
+    if let Some(view) = st.session.blame.view.as_mut() {
         view.loading = false;
         view.error = Some(HELD.to_owned());
     }
-    st.blame_gen += 1;
+    st.session.blame.generation += 1;
     if let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()) {
         fx.extend(super::update(st, Msg::Trust(TrustMsg::Ask { real }), now));
     }
@@ -166,8 +166,8 @@ fn hold(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
 
 /// Asks for the open view's blame; results of older requests are ignored from now on.
 fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
-    st.blame_gen += 1;
-    if let (Some(workdir), Some(view)) = (st.workdir(), &st.blame) {
+    st.session.blame.generation += 1;
+    if let (Some(workdir), Some(view)) = (st.workdir(), &st.session.blame.view) {
         let opts = BlameOptions {
             ignore_whitespace: st.settings.blame.ignore_whitespace,
             moves: st.settings.blame.moves,
@@ -179,7 +179,7 @@ fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
             at: view.at,
             opts,
             highlight: st.settings.syntax_highlighting,
-            generation: st.blame_gen,
+            generation: st.session.blame.generation,
             follow: view.follow,
         }));
     }
@@ -187,14 +187,14 @@ fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// Closes the view; a request still in flight must not reopen it.
 pub(super) fn close(st: &mut AppState) {
-    if st.blame.take().is_some() {
-        st.blame_gen += 1;
+    if st.session.blame.view.take().is_some() {
+        st.session.blame.generation += 1;
     }
 }
 
 /// After a tab switch: a blame dropped while the tab was parked is asked for again.
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if st.blame.as_ref().is_some_and(|v| v.loading) {
+    if st.session.blame.view.as_ref().is_some_and(|v| v.loading) {
         request(st, fx);
     }
 }

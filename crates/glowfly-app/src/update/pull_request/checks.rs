@@ -15,12 +15,12 @@ use std::time::Instant;
 /// asked of a service without them, nor while the repository isn't trusted (signing in may run
 /// its credential helper).
 pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(v) = st.pull_request.as_ref() else { return };
+    let Some(v) = st.session.pull_request.view.as_ref() else { return };
     if v.checks.pane == ChecksPane::Unsupported {
         return;
     }
     if !st.runs_git_unasked() {
-        if let Some(v) = st.pull_request.as_mut()
+        if let Some(v) = st.session.pull_request.view.as_mut()
             && v.checks.loaded().is_none()
         {
             v.checks.pane = ChecksPane::Held;
@@ -30,7 +30,7 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
     let req = match service_request(st) {
         Ok(req) => req,
         Err(e) => {
-            if let Some(v) = st.pull_request.as_mut()
+            if let Some(v) = st.session.pull_request.view.as_mut()
                 && v.checks.loaded().is_none()
             {
                 v.checks.pane = ChecksPane::Failed(e);
@@ -38,9 +38,9 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
             return;
         }
     };
-    st.pull_request_checks_gen += 1;
-    let generation = st.pull_request_checks_gen;
-    let Some(v) = st.pull_request.as_mut() else { return };
+    st.session.pull_request.checks_gen += 1;
+    let generation = st.session.pull_request.checks_gen;
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     v.checks.in_flight = true;
     if v.checks.loaded().is_some() {
         v.checks.reloading = true;
@@ -54,7 +54,7 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// The checks arrived for the open panel: show them, or say why they failed (a failed reload
 /// keeps the last list and only logs).
 pub(super) fn loaded(st: &mut AppState, result: Result<CheckList, ForgeError>, now: Instant) {
-    let Some(v) = st.pull_request.as_mut() else { return };
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     let c = &mut v.checks;
     c.in_flight = false;
     c.reloading = false;
@@ -77,14 +77,14 @@ pub(super) fn loaded(st: &mut AppState, result: Result<CheckList, ForgeError>, n
 
 /// Reads a list with a check still running again, once a minute.
 pub(super) fn tick(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    if st.pull_request.as_ref().is_some_and(|v| v.checks.due(now)) {
+    if st.session.pull_request.view.as_ref().is_some_and(|v| v.checks.due(now)) {
         load(st, fx);
     }
 }
 
 /// The section's header: open or close it.
 pub(super) fn toggle(st: &mut AppState) {
-    if let Some(v) = st.pull_request.as_mut() {
+    if let Some(v) = st.session.pull_request.view.as_mut() {
         v.checks.open = !v.checks.open;
     }
 }

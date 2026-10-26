@@ -334,7 +334,7 @@ fn file_history_stays_single_file() {
     // The commit's details are loaded too, so only the history keeps the step in the file.
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(oid)));
     drive(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }));
-    assert!(st.history.is_some());
+    assert!(st.session.history.view.is_some());
     assert_eq!(shown(&st), Some(&DiffTarget::Commit(oid, "a.txt".into())));
     let headers = header_rows(diff(&st), st.settings.diff_layout);
     step_in_file(&mut st, 1, headers[1]);

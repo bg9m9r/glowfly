@@ -14,7 +14,7 @@ use glowfly_core::repo::HistoryEntry;
 /// The caption and the list of `e`'s files, in a scroll area of its own capped at about a third
 /// of the panel's height; `scroll` brings that file into view.
 pub(super) fn files(ui: &mut Ui, st: &AppState, e: &HistoryEntry, scroll: Option<usize>, msgs: &mut Vec<Msg>) {
-    let Some(view) = &st.history else { return };
+    let Some(view) = &st.session.history.view else { return };
     let folder = &view.path;
     let caption = match e.files.len() {
         0 => "No file changes in this folder".to_owned(),

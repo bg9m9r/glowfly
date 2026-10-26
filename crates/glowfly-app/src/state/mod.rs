@@ -138,6 +138,7 @@ pub mod section_actions;
 pub mod selection;
 pub mod selection_span;
 pub mod selection_wip;
+pub mod session;
 pub mod shallow;
 pub mod sign_in;
 pub mod signatures;
@@ -427,6 +428,9 @@ pub struct AppState {
     pub load_gen: u64,
     pub loading: bool,
     pub refresh: refresh::RefreshState,
+    /// The active tab's views with their generation counters, parked whole with the tab
+    /// (state/session.rs).
+    pub session: session::RepoSession,
     pub selection: Selection,
     pub detail: Option<CommitDetail>,
     /// Shared with effects that read it (a reload, a highlight) instead of copied for them.
@@ -437,59 +441,9 @@ pub struct AppState {
     /// The request that produced the diff on screen. Hunk operations only run while this is
     /// `diff_gen`: otherwise a reload is on its way and the hunk indexes may no longer match.
     pub diff_shown_gen: u64,
-    /// The binary diff on screen's sizes and image previews (update/diff_preview.rs).
-    pub diff_preview: Option<diff_preview::DiffPreview>,
-    /// The conflict being resolved; shown instead of the graph or a diff.
-    pub conflict: Option<conflict::ConflictView>,
-    /// Incremented for every conflict load request and whenever the view closes; older
-    /// `ConflictLoaded` results are ignored.
-    pub conflict_gen: u64,
-    /// The WIP panel's Conflicted Files counts and Resolved Files (parked with the tab).
-    pub conflict_files: conflict_files::ConflictFiles,
-    /// The open file history; shown instead of a diff or the graph (below a conflict).
-    pub history: Option<history::FileHistoryView>,
-    /// Incremented for every history request and whenever the view closes; older
-    /// `FileHistoryLoaded` results are ignored.
-    pub history_gen: u64,
-    /// The open blame view; shown above the file history, a diff and the panels, below a conflict.
-    pub blame: Option<blame::BlameView>,
-    /// Incremented for every blame request and whenever the view closes (stale `Loaded` results are dropped).
-    pub blame_gen: u64,
-    /// The open pull request panel; shown instead of a diff or the graph (below a conflict and the file history).
-    pub pull_request: Option<pull_request::PrView>,
-    /// Incremented for every file-list request and whenever the panel closes.
-    pub pull_request_gen: u64,
-    /// Incremented for every request of the panel's page and whenever the panel closes.
-    pub pull_request_page_gen: u64,
-    /// Incremented for every checks request and whenever the panel closes.
-    pub pull_request_checks_gen: u64,
-    /// Incremented for every line-map request and whenever the panel closes.
-    pub pull_request_lines_gen: u64,
-    /// The open issue panel; in the pull request panel's place (the two never show together).
-    pub issue: Option<issue::IssueView>,
-    /// Incremented for every request of the panel's details and whenever the panel closes.
-    pub issue_gen: u64,
-    /// The interactive rebase panel; shown instead of the graph (below a diff, the file history and a conflict).
-    pub rebase: Option<rebase::RebasePanel>,
-    /// Incremented for every rebase list request and whenever the panel closes; older
-    /// `RebasePlanLoaded` results are ignored.
-    pub rebase_gen: u64,
     /// Restacks stopped on a conflict, with the steps still to run once the banner's Continue or
     /// Skip finishes that step; keyed by working folder rather than parked with a tab.
     pub restacks: Vec<stack::PendingRestack>,
-    /// The Git Flow panel is open; shown in place of the graph (below the rebase panel). Parked
-    /// with the tab.
-    pub gitflow_panel: bool,
-    /// The operation journal, shown in place of the graph (update/journal.rs). Parked with the
-    /// tab.
-    pub journal: Option<journal::JournalView>,
-    /// Incremented for every journal load and preview request; older results are ignored.
-    pub journal_gen: u64,
-    /// The Range-diff view, shown in place of the graph (update/range_diff.rs); parked with its
-    /// tab.
-    pub range_diff: Option<range_diff::RangeDiffView>,
-    /// Incremented for every comparison asked for; older results are ignored.
-    pub range_diff_gen: u64,
     pub draft: CommitDraft,
     pub job: Option<RunningJob>,
     /// The active job's stop, when it can be stopped (state/job_stop.rs).
@@ -548,8 +502,6 @@ pub struct AppState {
     pub terminal: terminal::TerminalPanel,
     /// The running Git Flow Finish job's steps (update/gitflow_finish.rs).
     pub gitflow_finish: Option<gitflow::FinishJob>,
-    /// A Finish stopped at a merge conflict, with its steps still to run (parked with the tab).
-    pub gitflow_resume: Option<gitflow_resume::StoppedFinish>,
     /// The running remote tag push or delete (update/tags.rs), for its headline.
     pub tag_job: Option<tags::RemoteTagJob>,
     pub tag_checkout: Option<tags::TagCheckoutJob>,
@@ -608,34 +560,13 @@ impl AppState {
             load_gen: 0,
             loading: false,
             refresh: Default::default(),
+            session: Default::default(),
             selection: Selection::None,
             detail: None,
             diff: None,
             diff_gen: 0,
             diff_shown_gen: 0,
-            diff_preview: None,
-            conflict: None,
-            conflict_gen: 0,
-            conflict_files: Default::default(),
-            history: None,
-            history_gen: 0,
-            blame: None,
-            blame_gen: 0,
-            pull_request: None,
-            pull_request_gen: 0,
-            pull_request_page_gen: 0,
-            pull_request_checks_gen: 0,
-            pull_request_lines_gen: 0,
-            issue: None,
-            issue_gen: 0,
-            rebase: None,
-            rebase_gen: 0,
             restacks: Vec::new(),
-            gitflow_panel: false,
-            journal: None,
-            journal_gen: 0,
-            range_diff: None,
-            range_diff_gen: 0,
             draft: CommitDraft::default(),
             job: None,
             job_stop: None,
@@ -669,7 +600,6 @@ impl AppState {
             palette_recent: Default::default(),
             terminal,
             gitflow_finish: None,
-            gitflow_resume: None,
             tag_job: None,
             tag_checkout: None,
             patch_apply: None,

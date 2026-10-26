@@ -32,7 +32,7 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs:
     let t = st.settings.lang();
     let keys = &st.keymap;
     let ctx = threads::Ctx { settings: &st.settings, keys, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
-    let Some(v) = st.pull_request.as_mut() else { return };
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     let supported = !matches!(v.page, Page::Unsupported);
     if supported {
         egui::TopBottomPanel::bottom("pr-comment-box")

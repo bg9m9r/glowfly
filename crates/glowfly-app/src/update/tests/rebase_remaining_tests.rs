@@ -22,7 +22,7 @@ fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 }
 
 fn panel(st: &AppState) -> &RebasePanel {
-    st.rebase.as_ref().expect("panel open")
+    st.session.rebase.view.as_ref().expect("panel open")
 }
 
 fn last_toast(st: &AppState) -> (bool, &str) {
@@ -41,7 +41,7 @@ fn stopped_with(name: &str, edits: &[usize]) -> (AppState, PathBuf, [Oid; 3]) {
     }
     drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
     assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::RebaseInteractive);
-    assert!(st.rebase.is_none() && st.job.is_none());
+    assert!(st.session.rebase.view.is_none() && st.job.is_none());
     (st, dir, c)
 }
 
@@ -53,7 +53,7 @@ fn stopped(name: &str) -> (AppState, PathBuf, [Oid; 3]) {
 fn opening_needs_an_interactive_rebase() {
     let (mut st, dir, _) = super::rebase_tests::repo("remaining-refused");
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::OpenRemaining));
-    assert!(fx.is_empty() && st.rebase.is_none());
+    assert!(fx.is_empty() && st.session.rebase.view.is_none());
     assert_eq!(last_toast(&st), (false, rebase::NOT_INTERACTIVE));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -65,11 +65,14 @@ fn opening_loads_the_steps() {
     st.diff = Some((DiffTarget::Commit(c[0], "c1.txt".into()), diff.into()));
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::OpenRemaining));
     assert!(st.diff.is_none(), "the panel takes the diff's place");
-    assert!(matches!(&fx[..], [Effect::Rebase(RebaseEffect::LoadRemaining { generation, .. })] if *generation == st.rebase_gen), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Rebase(RebaseEffect::LoadRemaining { generation, .. })] if *generation == st.session.rebase.generation),
+        "{fx:?}"
+    );
     assert!(panel(&st).loading && panel(&st).source == PanelSource::Remaining);
 
     // An older request's result is ignored.
-    let stale = Msg::Rebase(RebaseMsg::RemainingLoaded { generation: st.rebase_gen - 1, result: Err("old".into()) });
+    let stale = Msg::Rebase(RebaseMsg::RemainingLoaded { generation: st.session.rebase.generation - 1, result: Err("old".into()) });
     up(&mut st, stale);
     assert!(panel(&st).loading);
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRemaining));
@@ -94,7 +97,7 @@ fn update_steps_asks_about_drops_and_runs_the_edit() {
     // Uncommitted changes and conflicted files don't matter here.
     std::fs::write(dir.join("c1.txt"), "edited\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(st.rebase.is_some());
+    assert!(st.session.rebase.view.is_some());
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 0, action: RebaseAction::Drop }));
     assert_eq!(panel(&st).start_blocker(st.snap.as_ref().unwrap(), false), None);
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
@@ -113,7 +116,7 @@ fn update_steps_asks_about_drops_and_runs_the_edit() {
     let a = glowfly_core::undo::Action::CreateTag { name: "v1".into(), oid: c[0] };
     st.undo.record(a.clone());
     up(&mut st, Msg::Rebase(RebaseMsg::RemainingEdited { result: Ok(()) }));
-    assert!(st.rebase.is_none(), "the panel closes");
+    assert!(st.session.rebase.view.is_none(), "the panel closes");
     assert_eq!(last_toast(&st), (true, UPDATED));
     assert_eq!(st.undo.undo.last(), Some(&a));
     git(&dir, &["rebase", "--abort"]);
@@ -125,7 +128,7 @@ fn a_refused_edit_keeps_the_panel() {
     let (mut st, dir, _) = stopped("remaining-refused-edit");
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRemaining));
     st.job = Some(running_job(&dir));
-    st.rebase.as_mut().unwrap().starting = true;
+    st.session.rebase.view.as_mut().unwrap().starting = true;
     up(&mut st, Msg::Rebase(RebaseMsg::RemainingEdited { result: Err(rebase::TODO_MOVED.into()) }));
     let p = panel(&st);
     assert!(!p.starting && p.stale);
@@ -149,7 +152,7 @@ fn the_panel_follows_the_rebase() {
     git(&dir, &["rebase", "--abort"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     // Ended: the panel closes.
-    assert!(st.rebase.is_none());
+    assert!(st.session.rebase.view.is_none());
     assert_eq!(last_log(&st), ENDED);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -161,10 +164,10 @@ fn a_parked_loading_panel_asks_again() {
     let b = super::tests::scratch_repo("remaining-tabs-b");
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    st.rebase.as_mut().unwrap().reload();
+    st.session.rebase.view.as_mut().unwrap().reload();
     up(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     let fx = up(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    let gen_now = st.rebase_gen;
+    let gen_now = st.session.rebase.generation;
     assert!(
         fx.iter().any(|e| matches!(e, Effect::Rebase(RebaseEffect::LoadRemaining { generation, .. }) if *generation == gen_now)),
         "{fx:?}"

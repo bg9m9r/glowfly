@@ -27,7 +27,7 @@ const LIST_SHARE: f32 = 0.4;
 const LIST_MIN_W: f32 = 320.0;
 
 pub fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let Some(view) = &st.range_diff else { return };
+    let Some(view) = &st.session.range_diff.view else { return };
     let t = st.settings.lang();
     header(ui, st, view, msgs);
     match &view.phase {

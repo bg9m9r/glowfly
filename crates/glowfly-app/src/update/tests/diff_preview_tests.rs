@@ -76,7 +76,7 @@ fn a_binary_diff_asks_for_its_sides_once() {
     let (mut st, dir) = repo("preview-ask");
     let fx = open(&mut st, bin());
     assert_eq!(requests(&fx), [(bin(), st.diff_shown_gen)]);
-    let p = st.diff_preview.as_ref().expect("a preview");
+    let p = st.session.diff_preview.as_ref().expect("a preview");
     assert!(p.target == bin() && p.sides.is_none(), "loading");
     // Running it fills the sides in.
     for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadBinarySides { .. })) {
@@ -89,7 +89,7 @@ fn a_binary_diff_asks_for_its_sides_once() {
 
     let fx = open(&mut st, DiffTarget::Unstaged("a.txt".into()));
     assert!(requests(&fx).is_empty(), "a text diff asks for nothing");
-    assert!(st.diff_preview.is_none());
+    assert!(st.session.diff_preview.is_none());
     cleanup(&dir);
 }
 
@@ -101,9 +101,9 @@ fn stale_results_are_ignored_and_errors_are_kept_quietly() {
     let log = st.log.len();
     drive(&mut st, loaded(bin(), generation - 1, Ok(sides(1))));
     drive(&mut st, loaded(DiffTarget::Unstaged("c.bin".into()), generation, Ok(sides(2))));
-    assert!(st.diff_preview.as_ref().unwrap().sides.is_none(), "an older or other result");
+    assert!(st.session.diff_preview.as_ref().unwrap().sides.is_none(), "an older or other result");
     drive(&mut st, loaded(bin(), generation, Err("no sides".into())));
-    assert!(matches!(&st.diff_preview.as_ref().unwrap().sides, Some(Err(e)) if e == "no sides"));
+    assert!(matches!(&st.session.diff_preview.as_ref().unwrap().sides, Some(Err(e)) if e == "no sides"));
     assert!(diff_preview::shown(&st).is_none());
     assert_eq!(st.log.len(), log, "nothing logged");
     drive(&mut st, loaded(bin(), generation, Ok(sides(3))));
@@ -126,13 +126,13 @@ fn a_reload_keeps_the_sides_and_another_file_or_close_drops_them() {
 
     let fx = open(&mut st, DiffTarget::Unstaged("c.bin".into()));
     assert_eq!(requests(&fx).len(), 1);
-    assert!(st.diff_preview.as_ref().unwrap().sides.is_none(), "another file's sides are dropped");
+    assert!(st.session.diff_preview.as_ref().unwrap().sides.is_none(), "another file's sides are dropped");
 
     let generation = st.diff_shown_gen;
     drive(&mut st, Msg::Repo(RepoMsg::CloseDiff));
-    assert!(st.diff_preview.is_none());
+    assert!(st.session.diff_preview.is_none());
     drive(&mut st, loaded(DiffTarget::Unstaged("c.bin".into()), generation, Ok(sides(1))));
-    assert!(st.diff_preview.is_none(), "a late result after closing");
+    assert!(st.session.diff_preview.is_none(), "a late result after closing");
     cleanup(&dir);
 }
 
@@ -144,19 +144,19 @@ fn lfs_summaries_ask_for_nothing_and_tabs_ask_again_while_loading() {
     st.lfs.diff = Some(crate::state::lfs::LfsDiffNote { target: bin(), change: lfs_change(), show_pointer: false });
     let mut fx = Vec::new();
     super::diff_preview::diff_shown(&mut st, &mut fx);
-    assert!(requests(&fx).is_empty() && st.diff_preview.is_none());
+    assert!(requests(&fx).is_empty() && st.session.diff_preview.is_none());
     st.lfs.diff = None;
 
-    st.diff_preview = Some(DiffPreview { target: bin(), generation: 0, sides: None });
+    st.session.diff_preview = Some(DiffPreview { target: bin(), generation: 0, sides: None });
     let parked = super::tabs::park(&mut st);
-    assert!(parked.diff_preview.is_some(), "parked with the tab");
+    assert!(parked.session.diff_preview.is_some(), "parked with the tab");
     st.snap = parked.snap;
     st.diff = parked.diff;
-    st.diff_preview = parked.diff_preview;
+    st.session.diff_preview = parked.session.diff_preview;
     let mut fx = Vec::new();
     super::diff_preview::reload_pending(&mut st, &mut fx);
     assert_eq!(requests(&fx), [(bin(), st.diff_shown_gen)], "still loading: asked again");
-    st.diff_preview.as_mut().unwrap().sides = Some(Ok(sides(1)));
+    st.session.diff_preview.as_mut().unwrap().sides = Some(Ok(sides(1)));
     let mut fx = Vec::new();
     super::diff_preview::reload_pending(&mut st, &mut fx);
     assert!(requests(&fx).is_empty(), "loaded: nothing to ask");

@@ -26,7 +26,7 @@ fn pull_request_mapped_threads_dark() {
     let t1 = thread("T1", line + 2, vec![comment(55, "linus", 13, "Should this be case-insensitive?", false)]);
     let t2 = thread("T2", line, vec![comment(56, "grace", 14, "This one was dropped.", false)]);
     load(&mut st, detail(head), vec![t1, t2]);
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     let change = LineChange { old_start: line, old_lines: 2, new_start: line - 1, new_lines: 0 };
     let files = [("search.txt".to_owned(), LineMap { path: Some("search.txt".into()), changes: Some(vec![change]) })].into();
     v.lines =

@@ -66,7 +66,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let actions = crate::state::section_actions::all(st);
     let t = st.settings.lang();
     let open_tabs = crate::state::tabs::open_places(&st.tabs);
-    let open_issue = st.issue.as_ref().map(|v| v.key.clone());
+    let open_issue = st.session.issue.view.as_ref().map(|v| v.key.clone());
     let trusted = crate::state::custom_commands::repo_trusted(st);
     let Some(snap) = &st.snap else { return };
     let commands = crate::state::custom_commands::MenuCommands::of(&st.custom_commands, snap, trusted, t);

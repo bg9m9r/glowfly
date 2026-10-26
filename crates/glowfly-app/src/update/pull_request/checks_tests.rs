@@ -44,7 +44,7 @@ fn list(sha: &str, states: &[RunState]) -> CheckList {
 fn checks_reply(st: &AppState, result: Result<CheckList, ForgeError>) -> Msg {
     let workdir = st.workdir().unwrap();
     let reply = Box::new(PrReply::Checks(result));
-    Msg::PullRequest(PullRequestMsg::Replied { workdir, target: github(), id: 7, generation: st.pull_request_checks_gen, reply })
+    Msg::PullRequest(PullRequestMsg::Replied { workdir, target: github(), id: 7, generation: st.session.pull_request.checks_gen, reply })
 }
 
 /// Feeds the checks answer to the open panel at `at`.
@@ -70,7 +70,7 @@ fn opening_asks_for_checks_with_the_head() {
     let jobs = checks_calls(&fx);
     assert_eq!((jobs.len(), loads(&fx)), (1, 1));
     assert!(matches!(&jobs[0].call, PrCall::Checks { head: Some(h) } if *h == head(&st)));
-    assert_eq!((jobs[0].id, jobs[0].generation, &jobs[0].req.target), (7, st.pull_request_checks_gen, &github()));
+    assert_eq!((jobs[0].id, jobs[0].generation, &jobs[0].req.target), (7, st.session.pull_request.checks_gen, &github()));
     let c = &view(&st).checks;
     assert_eq!((&c.pane, c.open, c.in_flight, c.reloading), (&ChecksPane::Loading, true, true, false));
     done(st, dirs);
@@ -123,7 +123,7 @@ fn a_reply_shows_the_list_and_stale_ones_are_dropped() {
     let late = checks_reply(&st, Ok(CheckList::empty("x")));
     run(&mut st, PullRequestMsg::Close);
     update(&mut st, late, Instant::now());
-    assert!(st.pull_request.is_none(), "a closed panel stays closed");
+    assert!(st.session.pull_request.view.is_none(), "a closed panel stays closed");
     assert!(st.log.is_empty());
     done(st, dirs);
 }

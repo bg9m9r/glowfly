@@ -53,7 +53,7 @@ pub fn banner_msg(st: &AppState, label: &'static str, args: &'static [&'static s
     let Some(snap) = &st.snap else { return Msg::git(label, args) };
     let Some(risky) = Risky::of(args) else { return action_msg(snap.state, label, args) };
     let t = st.settings.lang();
-    let resolved = st.conflict_files.resolved_rows(snap).len();
+    let resolved = st.session.conflict_files.resolved_rows(snap).len();
     let conflicted = snap.unstaged.iter().filter(|f| f.status == '!').count();
     let keep = risky == Risky::Abort && can_keep(snap);
     let (title, what) = words(t, risky, args);
@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn lost_lines_and_undo() {
         let mut st = st("confirm-lost", RepositoryState::Merge);
-        st.conflict_files.resolved = resolved(&["a.txt", "b.txt"]);
+        st.session.conflict_files.resolved = resolved(&["a.txt", "b.txt"]);
         st.snap.as_mut().unwrap().unstaged = rows(&[("c.txt", '!')]);
         let (label, args) = action(RepositoryState::Merge, "Abort");
         let (_, body, _, then) = asked(banner_msg(&st, label, args));
@@ -190,7 +190,7 @@ mod tests {
         let Msg::Job(JobMsg::Abort { label: job, args: cmd, keep: true }) = then else { panic!("a kept abort") };
         assert_eq!((job.as_str(), cmd), ("Abort merge", gitcli::args(&["merge", "--abort"])));
 
-        st.conflict_files.resolved = resolved(&["a.txt"]);
+        st.session.conflict_files.resolved = resolved(&["a.txt"]);
         st.snap.as_mut().unwrap().state = RepositoryState::CherryPickSequence;
         let (label, args) = action(RepositoryState::CherryPickSequence, "Abort");
         let (_, body, _, _) = asked(banner_msg(&st, label, args));

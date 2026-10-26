@@ -53,10 +53,10 @@ fn entering_and_leaving_the_comparison() {
     // From the commit menu, closing what showed the commit before.
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     st.diff = Some((DiffTarget::Commit(f.c(5), "f.txt".into()), empty_diff().into()));
-    st.history = Some(FileHistoryView::loading("f.txt".into(), None));
+    st.session.history.view = Some(FileHistoryView::loading("f.txt".into(), None));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::CompareWithWorkdir(f.c(3))));
     assert_eq!(compared(&st).oid, f.c(3));
-    assert!(st.diff.is_none() && st.history.is_none() && st.blame.is_none() && st.detail.is_none());
+    assert!(st.diff.is_none() && st.session.history.view.is_none() && st.session.blame.view.is_none() && st.detail.is_none());
     assert_eq!(reads(&fx), [(f.c(3), 1)]);
 
     // Ctrl-click on the WIP row again drops the commit; on a commit adds it back.

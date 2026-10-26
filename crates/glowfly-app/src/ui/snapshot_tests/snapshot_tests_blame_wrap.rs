@@ -53,7 +53,7 @@ fn with_long_lines(theme: ThemeChoice, name: &str, wrap: bool) -> (AppState, Pat
     view.loading = false;
     view.data = Some(BlameData::new(blame, spans));
     view.data_gen = 1;
-    st.blame = Some(view);
+    st.session.blame.view = Some(view);
     st.settings.blame.wrap_lines = wrap;
     (st, dir)
 }
@@ -61,7 +61,7 @@ fn with_long_lines(theme: ThemeChoice, name: &str, wrap: bool) -> (AppState, Pat
 #[test]
 fn blame_wrapped() {
     let (st, dir) = with_long_lines(ThemeChoice::Dark, "blame-wrapped", true);
-    let b = &st.blame.as_ref().unwrap().data.as_ref().unwrap().blame;
+    let b = &st.session.blame.view.as_ref().unwrap().data.as_ref().unwrap().blame;
     let runs: Vec<(usize, usize)> = b.runs.iter().take(4).map(|r| (r.start, r.len)).collect();
     assert_eq!(runs, [(0, 2), (2, 1), (3, 1), (4, 1)], "the long lines are Grace's");
     let mut h = harness(st, true);
@@ -74,7 +74,7 @@ fn blame_wrapped() {
 #[test]
 fn blame_wrapped_find() {
     let (mut st, dir) = with_long_lines(ThemeChoice::Dark, "blame-wrapped-find", true);
-    let view = st.blame.as_mut().unwrap();
+    let view = st.session.blame.view.as_mut().unwrap();
     view.find.query = "reading_20".into();
     view.find.hits = vec![89];
     view.land_on(89);
@@ -102,7 +102,7 @@ fn blame_scrolled() {
 #[test]
 fn blame_updating() {
     let (mut st, dir) = with_long_lines(ThemeChoice::Dark, "blame-updating", false);
-    st.blame.as_mut().unwrap().loading = true;
+    st.session.blame.view.as_mut().unwrap().loading = true;
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Updating…").is_some());

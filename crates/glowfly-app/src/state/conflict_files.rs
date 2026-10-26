@@ -59,7 +59,8 @@ pub fn next_conflicted(snap: &Snapshot, after: &str) -> Option<String> {
 /// that can be given to git safely, and not open in the merge tool.
 pub fn restorable_paths(st: &AppState) -> Vec<String> {
     let Some(snap) = &st.snap else { return Vec::new() };
-    st.conflict_files
+    st.session
+        .conflict_files
         .resolved_rows(snap)
         .into_iter()
         .filter(|r| r.both_sides && r.entry.hazard.is_none())

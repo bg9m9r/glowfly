@@ -206,7 +206,7 @@ fn diff_header_german() {
 fn blame_german() {
     let de = Lang::De;
     let (mut st, dir, grace) = with_blame(ThemeChoice::Dark, "lang-blame");
-    let view = st.blame.as_mut().unwrap();
+    let view = st.session.blame.view.as_mut().unwrap();
     view.skipped = vec![grace];
     view.back.push(BlameStep { path: "src/main.rs".into(), at: None, skipped: Vec::new(), top_line: 0, cursor: None });
     german(&mut st);

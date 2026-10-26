@@ -94,7 +94,7 @@ fn with_image(name: &str, theme: ThemeChoice, before: Option<&[u8]>, after: &[u8
     let target = DiffTarget::Unstaged("logo.png".into());
     open(&mut st, &dir, target.clone());
     let sides = repo::binary_sides(&dir, &target).unwrap();
-    st.diff_preview = Some(DiffPreview { target, generation: st.diff_shown_gen, sides: Some(Ok(Arc::new(sides))) });
+    st.session.diff_preview = Some(DiffPreview { target, generation: st.diff_shown_gen, sides: Some(Ok(Arc::new(sides))) });
     (st, dir)
 }
 

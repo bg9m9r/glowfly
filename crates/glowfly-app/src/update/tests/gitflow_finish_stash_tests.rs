@@ -125,13 +125,13 @@ fn a_conflict_holds_the_stash_until_continue_finish() {
         st.toasts.iter().map(|t| &t.text).collect::<Vec<_>>()
     );
     assert!(toasted(&st, &format!("Stashed your changes as \"{STASH}\".")));
-    assert!(st.gitflow_resume.is_some());
+    assert!(st.session.gitflow_resume.is_some());
     assert!(stash_list(&dir).contains(STASH));
     commit_merge(&mut st, &dir);
-    assert!(st.gitflow_resume.as_ref().is_some_and(|r| r.ready));
+    assert!(st.session.gitflow_resume.as_ref().is_some_and(|r| r.ready));
     assert!(stash_list(&dir).contains(STASH), "held while Continue finish waits for a clean tree");
     drive(&mut st, Msg::GitFlow(GitFlowMsg::ContinueFinish));
-    assert!(st.gitflow_resume.is_none());
+    assert!(st.session.gitflow_resume.is_none());
     assert!(!exists(&dir, "refs/heads/feature/login"), "the rest ran");
     assert_eq!(read(&dir, "a.txt"), "edited\n", "the changes are back");
     assert_eq!(stash_list(&dir).trim(), "");
@@ -155,7 +155,7 @@ fn forget_puts_a_held_stash_back() {
 fn another_branch_finish_puts_its_stash_back_while_one_is_stopped() {
     let (mut st, dir) = conflicted("stash-other");
     commit_merge(&mut st, &dir);
-    assert!(st.gitflow_resume.as_ref().is_some_and(|r| r.ready && r.resume.plan.branch == "feature/login"));
+    assert!(st.session.gitflow_resume.as_ref().is_some_and(|r| r.ready && r.resume.plan.branch == "feature/login"));
     git(&dir, &["checkout", "-q", "-b", "feature/b", "develop"]);
     commit(
         &dir, "b.txt", "b
@@ -171,7 +171,7 @@ fn another_branch_finish_puts_its_stash_back_while_one_is_stopped() {
     let msg = GitFlowMsg::StashAndFinish { branch: "feature/b".into(), options: FinishOptions::default() };
     drive(&mut st, Msg::GitFlow(msg));
     assert!(!exists(&dir, "refs/heads/feature/b"), "feature/b finished");
-    assert!(st.gitflow_resume.as_ref().is_some_and(|r| r.resume.plan.branch == "feature/login"), "still stopped");
+    assert!(st.session.gitflow_resume.as_ref().is_some_and(|r| r.resume.plan.branch == "feature/login"), "still stopped");
     assert_eq!(
         read(&dir, "a.txt"),
         "other

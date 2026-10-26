@@ -42,7 +42,7 @@ pub(in crate::ui) const NO_PREVIEW_LONG: &str = "Too long to preview (over 512 K
 const ONE_ROW: f32 = 560.0;
 
 pub(super) fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    let Some(view) = &st.history else { return };
+    let Some(view) = &st.session.history.view else { return };
     let Some((oid, path, status)) = view.shown() else { return };
     let before = status == 'D';
     let text = view.text.as_ref().filter(|t| t.oid == oid && t.path == path && t.before == before);
@@ -138,7 +138,7 @@ struct Bar<'a> {
 /// over a preview). Narrower than `ONE_ROW`, find and go to line move to a row of their own.
 fn toolbar(ui: &mut Ui, st: &mut AppState, bar: Bar<'_>, msgs: &mut Vec<Msg>) {
     let wrap = st.settings.diff_word_wrap;
-    let Some(view) = st.history.as_mut() else { return };
+    let Some(view) = st.session.history.view.as_mut() else { return };
     let nav = &mut view.nav;
     let one_row = ui.available_width() >= ONE_ROW;
     let text_tools = !bar.previewing;
@@ -221,7 +221,7 @@ fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, data: Arc<FileTextD
     let width = if wrap.is_some() { ui.available_width() } else { ui.available_width().max(code_x + tc.widest as f32 * char_w + 40.0) };
 
     let syntax = st.settings.syntax_highlighting;
-    let Some(view) = st.history.as_mut() else { return };
+    let Some(view) = st.session.history.view.as_mut() else { return };
     let nav = &mut view.nav;
     let scroll_row = if std::mem::take(&mut nav.to_top) {
         nav.scroll_to = None;

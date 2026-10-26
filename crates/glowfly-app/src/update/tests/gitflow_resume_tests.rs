@@ -48,7 +48,7 @@ fn toast(st: &AppState) -> String {
 }
 
 fn resume(st: &AppState) -> &StoppedFinish {
-    st.gitflow_resume.as_ref().expect("a stopped Finish is remembered")
+    st.session.gitflow_resume.as_ref().expect("a stopped Finish is remembered")
 }
 
 fn rest(st: &AppState) -> Vec<String> {
@@ -92,11 +92,11 @@ fn continue_after_commit() {
     let cmds = vec![args(&["checkout", "develop", "--"]), args(&["branch", "-d", "feature/login"])];
     assert_eq!(git_job(&fx), Some(cmds), "back on develop first: HEAD may have moved since the commit");
     assert_eq!(job_label(&st).as_deref(), Some("Continue finish feature login"));
-    assert!(st.gitflow_resume.is_some(), "kept until the job ends");
+    assert!(st.session.gitflow_resume.is_some(), "kept until the job ends");
     assert!(!entries(&st).iter().any(|e| e.command == C::ContinueGitFlowFinish), "hidden while a job runs");
     finish(&mut st, fx);
     assert_eq!(toast(&st), "Finished feature login: merged into develop and deleted feature/login.");
-    assert!(st.gitflow_resume.is_none());
+    assert!(st.session.gitflow_resume.is_none());
     assert!(!exists(&dir, "refs/heads/feature/login"));
     cleanup(&dir);
 }
@@ -136,7 +136,7 @@ fn release_two_conflicts() {
     refresh(&mut st);
     drive(&mut st, Msg::GitFlow(GitFlowMsg::ContinueFinish));
     assert_eq!(toast(&st), "Finished release 1.2.0: merged into main and develop, tagged 1.2.0 and deleted release/1.2.0.");
-    assert!(st.gitflow_resume.is_none());
+    assert!(st.session.gitflow_resume.is_none());
     assert!(!exists(&dir, "refs/heads/release/1.2.0"));
     cleanup(&dir);
 }
@@ -147,7 +147,7 @@ fn continue_refusals() {
     let refused = |st: &mut AppState, why: &str| {
         assert!(git_job(&flow(st, GitFlowMsg::ContinueFinish)).is_none(), "{why}");
         assert_eq!(last_log(st), why);
-        assert!(st.gitflow_resume.is_some(), "kept: {why}");
+        assert!(st.session.gitflow_resume.is_some(), "kept: {why}");
     };
     refused(&mut st, "Commit the merge into develop first, then Continue finish.");
     assert!(st.job.is_none());
@@ -165,7 +165,7 @@ fn continue_refusals() {
     st.job = None;
 
     flow(&mut st, GitFlowMsg::ForgetFinish);
-    assert!(st.gitflow_resume.is_none());
+    assert!(st.session.gitflow_resume.is_none());
     flow(&mut st, GitFlowMsg::ContinueFinish);
     assert_eq!(last_log(&st), "There is no stopped finish to continue.");
     cleanup(&dir);
@@ -179,16 +179,16 @@ fn aborted_merge_drops_resume() {
     drive(&mut st, finish_msg("feature/login", FinishOptions::default()));
     // The snapshot right after the job can still be the one from before the merge.
     let current = st.snap.replace(before);
-    st.gitflow_resume.as_mut().unwrap().seen_merge = false;
+    st.session.gitflow_resume.as_mut().unwrap().seen_merge = false;
     super::gitflow::snapshot_changed(&mut st);
-    assert!(st.gitflow_resume.as_ref().is_some_and(|r| !r.ready), "a stale snapshot is no abort");
+    assert!(st.session.gitflow_resume.as_ref().is_some_and(|r| !r.ready), "a stale snapshot is no abort");
     st.snap = current;
     super::gitflow::snapshot_changed(&mut st);
     assert!(resume(&st).seen_merge);
 
     git(&dir, &["merge", "--abort"]);
     refresh(&mut st);
-    assert!(st.gitflow_resume.is_none());
+    assert!(st.session.gitflow_resume.is_none());
     assert_eq!(
         last_log(&st),
         "Finishing feature/login can't continue: the merge into develop was aborted. Its remaining steps were dropped."
@@ -203,7 +203,7 @@ fn moved_branch_drops_resume() {
     git(&dir, &["checkout", "-q", "feature/login"]);
     commit(&dir, "b.txt", "more\n");
     refresh(&mut st);
-    assert!(st.gitflow_resume.is_none());
+    assert!(st.session.gitflow_resume.is_none());
     assert_eq!(
         last_log(&st),
         "Finishing feature/login can't continue: feature/login has new commits since the finish stopped. Its remaining steps were dropped."
@@ -238,15 +238,15 @@ fn pending_job(st: &AppState, snap: &glowfly_core::repo::Snapshot, workdir: Path
 fn resume_parks_with_tab() {
     let (mut st, dir) = stopped("park");
     run(&mut st, Msg::Tabs(TabsMsg::NewTab));
-    assert!(st.gitflow_resume.is_none());
-    let parked = |st: &AppState| st.tabs[0].parked.as_ref().and_then(|p| p.gitflow_resume.clone());
+    assert!(st.session.gitflow_resume.is_none());
+    let parked = |st: &AppState| st.tabs[0].parked.as_ref().and_then(|p| p.session.gitflow_resume.clone());
     assert!(parked(&st).is_some());
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert_eq!(rest(&st), ["delete feature/login"]);
 
     // A Finish job of the first tab ends while the second is active.
     let (job, pending) = pending_job(&st, st.snap.as_ref().unwrap(), dir.clone());
-    st.gitflow_resume = None;
+    st.session.gitflow_resume = None;
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     assert!(parked(&st).is_none());
     st.job = Some(job);
@@ -255,7 +255,7 @@ fn resume_parks_with_tab() {
                   CONFLICT (content): Merge conflict in a.txt"
         .to_owned();
     run(&mut st, Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }));
-    assert!(st.gitflow_resume.is_none(), "not in the active tab");
+    assert!(st.session.gitflow_resume.is_none(), "not in the active tab");
     let r = parked(&st).expect("stored in the job's tab");
     assert_eq!((r.resume.into.as_str(), r.seen_merge), ("develop", false));
     cleanup(&dir);
@@ -274,14 +274,14 @@ fn successful_finish_clears_same_branch() {
     let s = snap.gitflow.settings().unwrap();
     let plan = check_finish(&s, "feature/login", &FinishOptions::default(), &Branches::of(snap), &WorkState::of(snap)).unwrap();
     let r = plan.rest_after_conflict(1, &StartTips::of(snap, &plan).unwrap()).unwrap();
-    st.gitflow_resume = Some(StoppedFinish { resume: r, seen_merge: true, ready: false });
+    st.session.gitflow_resume = Some(StoppedFinish { resume: r, seen_merge: true, ready: false });
 
     drive(&mut st, finish_msg("feature/x", FinishOptions::default()));
     assert_eq!(toast(&st), "Finished feature x: merged into develop and deleted feature/x.");
-    assert!(st.gitflow_resume.is_some(), "another branch's steps stay");
+    assert!(st.session.gitflow_resume.is_some(), "another branch's steps stay");
     drive(&mut st, finish_msg("feature/login", FinishOptions::default()));
     assert_eq!(toast(&st), "Finished feature login: merged into develop and deleted feature/login.");
-    assert!(st.gitflow_resume.is_none());
+    assert!(st.session.gitflow_resume.is_none());
     cleanup(&dir);
 }
 
@@ -293,7 +293,7 @@ fn dropped_reason_is_translated() {
     git(&dir, &["checkout", "-q", "feature/login"]);
     commit(&dir, "b.txt", "more\n");
     refresh(&mut st);
-    assert!(st.gitflow_resume.is_none());
+    assert!(st.session.gitflow_resume.is_none());
     let de = Lang::De;
     let why = de.trf("gitflow.resume.why.branch_moved", &[("branch", &"feature/login")]);
     let expected = de.trf("gitflow.resume.dropped", &[("branch", &"feature/login"), ("why", &why)]);
@@ -329,7 +329,7 @@ fn opening_another_repository_clears_resume() {
     let m = Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Open, result: Ok(Box::new(snap)) });
     run(&mut st, m);
     assert_eq!(st.snap.as_ref().map(|s| &s.workdir), Some(&want), "the other repository is shown");
-    assert!(st.gitflow_resume.is_none());
+    assert!(st.session.gitflow_resume.is_none());
     cleanup(&dir);
     cleanup(&other);
 }

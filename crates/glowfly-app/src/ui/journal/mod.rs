@@ -33,7 +33,7 @@ const LIST_SHARE: f32 = 0.55;
 const LIST_MIN_W: f32 = 360.0;
 
 pub fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let Some(view) = &st.journal else { return };
+    let Some(view) = &st.session.journal.view else { return };
     let t = st.settings.lang();
     header(ui, st, msgs);
     if view.tab == JournalTab::Lost {
@@ -55,7 +55,7 @@ pub fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 /// The title and subtitle on the left; Close, the Refresh icon and the tabs on the right.
 fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
-    let tab = st.journal.as_ref().map(|v| v.tab).unwrap_or_default();
+    let tab = st.session.journal.view.as_ref().map(|v| v.tab).unwrap_or_default();
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), HEADER_H), Sense::hover());
     let inner = rect.shrink2(vec2(INSET, 0.0));
     let mut row = ui.new_child(UiBuilder::new().max_rect(inner).layout(Layout::right_to_left(Align::Center)));

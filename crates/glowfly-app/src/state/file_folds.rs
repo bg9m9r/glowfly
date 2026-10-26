@@ -63,7 +63,7 @@ impl FileFolds {
 /// a history is open, and for lists that stay flat (the pull request's, the working-tree
 /// comparison).
 pub fn list_of(st: &AppState, t: &DiffTarget) -> Option<FileListId> {
-    if st.history.is_some() || st.settings.file_list_mode != FileListMode::Tree {
+    if st.session.history.view.is_some() || st.settings.file_list_mode != FileListMode::Tree {
         return None;
     }
     match t {
@@ -78,7 +78,7 @@ pub fn list_of(st: &AppState, t: &DiffTarget) -> Option<FileListId> {
             stack.iter().any(|c| c.oid == *oid).then_some(FileListId::Stacked(*oid))
         }
         DiffTarget::Between(a, b, _) => {
-            if st.pull_request.as_ref().and_then(|v| v.diff_files(*a, *b)).is_some() {
+            if st.session.pull_request.view.as_ref().and_then(|v| v.diff_files(*a, *b)).is_some() {
                 return None;
             }
             match &st.selection {

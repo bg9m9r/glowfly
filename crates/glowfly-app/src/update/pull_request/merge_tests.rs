@@ -23,7 +23,7 @@ fn merge_blocked_on_conflicts_sends_nothing() {
 fn merge_sends_head_sha_and_method() {
     let (mut st, _, dirs) = opened("prc-merge");
     loaded(&mut st, |d| d.head_sha = "h1".into());
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.forms.merge_method = Some(MergeMethod::Rebase);
     v.forms.merge_title = " Title ".into();
     v.forms.delete_branch = true;

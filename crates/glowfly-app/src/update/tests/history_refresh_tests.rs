@@ -35,13 +35,13 @@ fn head_move_reruns_the_open_history() {
     let (mut st, dir) = with_view("history-rerun");
     let old = st.snap.as_ref().and_then(|s| s.head_oid);
     let fx = refresh_with_head(&mut st, Some(oid(9)));
-    let gen_now = st.history_gen;
+    let gen_now = st.session.history.generation;
     assert!(
         matches!(&walks(&fx)[..], [Effect::LoadFileHistory { start: HistoryStart::Moved(o), path, folder: false, generation, .. }]
             if Some(*o) == old && path == "a.txt" && *generation == gen_now),
         "{fx:?}"
     );
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     assert_eq!(v.entries.len(), 2, "the list stays until the result arrives");
     assert!(v.loading && v.rerun);
     let _ = std::fs::remove_dir_all(&dir);
@@ -54,7 +54,7 @@ fn same_head_refresh_leaves_history_alone() {
     st.snap.as_mut().unwrap().refs_key ^= 1;
     let fx = refresh_with_head(&mut st, head);
     assert!(walks(&fx).is_empty(), "{fx:?}");
-    assert!(!st.history.as_ref().unwrap().loading);
+    assert!(!st.session.history.view.as_ref().unwrap().loading);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -67,7 +67,7 @@ fn rerun_replaces_entries_and_keeps_the_selection() {
     st.view.history_scroll_to = None;
     let m = loaded(&st, history(vec![entry(9, "a.txt"), entry(1, "a.txt"), entry(2, "old.txt")]));
     let fx = update(&mut st, m, Instant::now());
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     let got: Vec<Oid> = v.entries.iter().map(|e| e.oid).collect();
     assert_eq!(got, [oid(9), oid(1), oid(2)]);
     assert_eq!(v.selected, Some(2));
@@ -84,7 +84,7 @@ fn rerun_without_the_selected_commit_selects_the_first() {
     refresh_with_head(&mut st, Some(oid(9)));
     let m = loaded(&st, history(vec![entry(9, "a.txt"), entry(1, "a.txt")]));
     let fx = update(&mut st, m, Instant::now());
-    assert_eq!(st.history.as_ref().unwrap().selected, Some(0));
+    assert_eq!(st.session.history.view.as_ref().unwrap().selected, Some(0));
     assert!(
         fx.iter().any(|e| matches!(e, Effect::LoadDiff { target: DiffTarget::Commit(o, p), .. } if *o == oid(9) && p == "a.txt")),
         "{fx:?}"
@@ -100,7 +100,7 @@ fn rerun_to_an_empty_history_closes_the_diff() {
     refresh_with_head(&mut st, Some(oid(9)));
     let m = loaded(&st, history(Vec::new()));
     update(&mut st, m, Instant::now());
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     assert!(v.entries.is_empty() && v.selected.is_none() && !v.loading);
     assert!(st.diff.is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -109,11 +109,11 @@ fn rerun_to_an_empty_history_closes_the_diff() {
 #[test]
 fn rerun_keeps_the_search_depth() {
     let (mut st, dir) = with_view("history-rerun-depth");
-    st.history.as_mut().unwrap().resume = vec![(oid(3), "old.txt".to_owned())];
+    st.session.history.view.as_mut().unwrap().resume = vec![(oid(3), "old.txt".to_owned())];
     update(&mut st, Msg::History(HistoryMsg::MoreFileHistory), Instant::now());
     let m = loaded(&st, history(vec![entry(3, "old.txt")]));
     update(&mut st, m, Instant::now());
-    assert_eq!(st.history.as_ref().unwrap().batches, 2);
+    assert_eq!(st.session.history.view.as_ref().unwrap().batches, 2);
     let fx = refresh_with_head(&mut st, Some(oid(9)));
     let want = 2 * st.settings.commit_limit();
     assert!(matches!(&walks(&fx)[..], [Effect::LoadFileHistory { limit, .. }] if *limit == want), "{fx:?}");
@@ -126,7 +126,7 @@ fn head_view_takes_the_new_name_from_a_rerun() {
     refresh_with_head(&mut st, Some(oid(9)));
     let m = loaded(&st, FileHistory { head_path: Some("b.txt".into()), ..history(vec![entry(9, "b.txt"), entry(1, "a.txt")]) });
     update(&mut st, m, Instant::now());
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     assert_eq!(v.path, "b.txt");
     assert!(v.head_path.is_none() && v.as_of.is_none());
     let fx = refresh_with_head(&mut st, Some(oid(8)));
@@ -140,10 +140,10 @@ fn at_view_records_the_head_name() {
     let (mut st, dir) = opened("history-at-head-name");
     let mut view = FileHistoryView::loading("old.txt".into(), Some(oid(5)));
     view.on_disk = false;
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     let m = Msg::History(HistoryMsg::FileHistoryLoaded {
         path: "old.txt".into(),
-        generation: st.history_gen,
+        generation: st.session.history.generation,
         result: Ok(FileHistory {
             head_path: Some("a.txt".into()),
             on_disk: false,
@@ -151,7 +151,7 @@ fn at_view_records_the_head_name() {
         }),
     });
     update(&mut st, m, Instant::now());
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     assert_eq!(v.path, "old.txt");
     assert_eq!(v.head_path.as_deref(), Some("a.txt"));
     assert_eq!(v.today_path(), "a.txt");
@@ -163,21 +163,26 @@ fn at_view_records_the_head_name() {
 #[test]
 fn search_further_keeps_on_disk_for_the_head_name() {
     let (mut st, dir) = opened("history-at-head-name-more");
-    st.history = Some(FileHistoryView::loading("old.txt".into(), Some(oid(5))));
+    st.session.history.view = Some(FileHistoryView::loading("old.txt".into(), Some(oid(5))));
     let first = FileHistory {
         head_path: Some("a.txt".into()),
         on_disk: true,
         resume: vec![(oid(4), "old.txt".to_owned())],
         ..history(vec![entry(1, "a.txt"), entry(5, "old.txt")])
     };
-    let m = Msg::History(HistoryMsg::FileHistoryLoaded { path: "old.txt".into(), generation: st.history_gen, result: Ok(first) });
+    let m = Msg::History(HistoryMsg::FileHistoryLoaded {
+        path: "old.txt".into(),
+        generation: st.session.history.generation,
+        result: Ok(first),
+    });
     update(&mut st, m, Instant::now());
     update(&mut st, Msg::History(HistoryMsg::MoreFileHistory), Instant::now());
     // The resumed walk checked the disk for old.txt, which is gone since the rename.
     let more = FileHistory { on_disk: false, ..history(vec![entry(4, "old.txt")]) };
-    let m = Msg::History(HistoryMsg::FileHistoryLoaded { path: "old.txt".into(), generation: st.history_gen, result: Ok(more) });
+    let m =
+        Msg::History(HistoryMsg::FileHistoryLoaded { path: "old.txt".into(), generation: st.session.history.generation, result: Ok(more) });
     update(&mut st, m, Instant::now());
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     assert_eq!(v.entries.len(), 3);
     assert_eq!(v.today_path(), "a.txt");
     assert!(v.on_disk && v.in_workdir(None), "a.txt is still on disk");
@@ -203,11 +208,11 @@ fn rerun_e2e_after_a_commit() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }));
     drive(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(1)));
-    let was = st.history.as_ref().unwrap().selected_entry().unwrap().oid;
+    let was = st.session.history.view.as_ref().unwrap().selected_entry().unwrap().oid;
     std::fs::write(dir.join("a.txt"), "one\ntwo\nthree\n").unwrap();
     git(&dir, &["commit", "-q", "-am", "edit a again"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    let v = st.history.as_ref().unwrap();
+    let v = st.session.history.view.as_ref().unwrap();
     let summaries: Vec<&str> = v.entries.iter().map(|e| e.summary.as_str()).collect();
     assert_eq!(summaries, ["edit a again", "edit a", "first"]);
     assert_eq!(v.selected_entry().map(|e| e.oid), Some(was), "the selected commit stays selected");

@@ -15,8 +15,8 @@ use std::time::Instant;
 pub(super) fn post(st: &mut AppState, fx: &mut Vec<Effect>) {
     let trusted = st.runs_git_unasked();
     let req = super::issue::request(st);
-    let generation = st.issue_gen;
-    let Some(v) = st.issue.as_mut() else { return };
+    let generation = st.session.issue.generation;
+    let Some(v) = st.session.issue.view.as_mut() else { return };
     v.comment.touched.attempt();
     if comment_blocked(v, trusted).is_some() {
         return;
@@ -38,7 +38,7 @@ pub(super) fn post(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// Quotes comment `i` of the loaded conversation at the end of the draft and focuses the field.
 pub(super) fn quote(st: &mut AppState, i: usize) {
-    let Some(v) = st.issue.as_mut() else { return };
+    let Some(v) = st.session.issue.view.as_mut() else { return };
     if v.comment.posting {
         return;
     }
@@ -83,9 +83,9 @@ pub(super) fn commented(
     }
     let mine = |v: &&mut IssueView| v.comment.posting && v.key == key && &v.target == target;
     let view = if active {
-        st.issue.as_mut().filter(mine)
+        st.session.issue.view.as_mut().filter(mine)
     } else {
-        st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()).and_then(|p| p.issue.as_mut()).filter(mine)
+        st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()).and_then(|p| p.session.issue.view.as_mut()).filter(mine)
     };
     let found = view.map(|v| apply(v, result));
     if active {

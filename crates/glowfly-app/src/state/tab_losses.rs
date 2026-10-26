@@ -38,10 +38,10 @@ impl Loss {
 pub fn loss_of(st: &AppState, i: usize) -> Option<Loss> {
     let tab = st.tabs.get(i)?;
     let (draft, conflict) = if i == st.active_tab {
-        (&st.draft, st.conflict.as_ref())
+        (&st.draft, st.session.conflict.view.as_ref())
     } else {
         let parked = tab.parked.as_ref()?;
-        (&parked.draft, parked.conflict.as_ref())
+        (&parked.draft, parked.session.conflict.view.as_ref())
     };
     let draft = !draft.is_blank();
     let conflict = conflict.map(|c| (c.path.clone(), c.user_choices())).filter(|(_, n)| *n > 0);

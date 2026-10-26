@@ -25,7 +25,7 @@ fn opened(name: &str) -> (AppState, Vec<crate::effect::Effect>, [PathBuf; 2]) {
 
 fn reply_msg(st: &AppState, reply: PrReply) -> PullRequestMsg {
     let workdir = st.workdir().unwrap();
-    PullRequestMsg::Replied { workdir, target: gitlab(), id: 7, generation: st.pull_request_page_gen, reply: Box::new(reply) }
+    PullRequestMsg::Replied { workdir, target: gitlab(), id: 7, generation: st.session.pull_request.page_gen, reply: Box::new(reply) }
 }
 
 /// The page loaded with GitLab's approvals style, as `f` changes it.
@@ -45,7 +45,7 @@ fn done(st: AppState, dirs: [PathBuf; 2]) {
 }
 
 fn choose(st: &mut AppState, ev: ReviewEvent) {
-    st.pull_request.as_mut().unwrap().forms.review_event = ev;
+    st.session.pull_request.view.as_mut().unwrap().forms.review_event = ev;
 }
 
 #[test]
@@ -93,7 +93,7 @@ fn remove_approval_waits_for_an_approval() {
     assert!(calls(&run(&mut st, PullRequestMsg::SubmitReview)).is_empty(), "nothing to take back");
     loaded(&mut st, |d| d.style = ReviewStyle::Approvals { by_me: true, can_approve: Some(true) });
     choose(&mut st, ReviewEvent::Unapprove);
-    st.pull_request.as_mut().unwrap().forms.review_body = "Not yet".into();
+    st.session.pull_request.view.as_mut().unwrap().forms.review_body = "Not yet".into();
     let fx = run(&mut st, PullRequestMsg::SubmitReview);
     let jobs = calls(&fx);
     assert!(matches!(&jobs[..], [j] if matches!(&j.call, PrCall::Review { event: ReviewEvent::Unapprove, .. })), "{jobs:?}");
@@ -131,7 +131,7 @@ fn fast_forward_merges_and_fetches() {
 fn rebase_is_not_sent_to_gitlab() {
     let (mut st, _, dirs) = opened("prg-rebase");
     loaded(&mut st, |_| {});
-    st.pull_request.as_mut().unwrap().forms.merge_method = Some(MergeMethod::Rebase);
+    st.session.pull_request.view.as_mut().unwrap().forms.merge_method = Some(MergeMethod::Rebase);
     assert!(calls(&run(&mut st, PullRequestMsg::Merge)).is_empty());
     assert_eq!(view(&st).busy, None);
     done(st, dirs);

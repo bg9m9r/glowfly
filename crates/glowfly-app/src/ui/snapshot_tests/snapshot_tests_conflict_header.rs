@@ -32,7 +32,7 @@ pub(in crate::ui) fn one_of_two(name: &str) -> (AppState, PathBuf) {
         (lines.join("\n") + "\n").into_bytes()
     };
     let (mut st, dir) = with_conflict(name, "settings.txt", settings);
-    let view = st.conflict.as_mut().unwrap();
+    let view = st.session.conflict.view.as_mut().unwrap();
     assert_eq!(view.chunk_count(), 2);
     view.picks[0] = Choice::Ours.into();
     st.view.details_expanded_for = crate::state::layout::tool_view(&st);
@@ -61,7 +61,7 @@ fn conflict_header_progress() {
     assert!(path.right() <= why.left(), "the path is left of the reason: {path:?} {why:?}");
     let branch = bounds(&h, "login-page");
     assert!(path.left() > branch.right(), "the view stays right of the sidebar: {path:?} {branch:?}");
-    if let Some(view) = h.state_mut().0.conflict.as_mut() {
+    if let Some(view) = h.state_mut().0.session.conflict.view.as_mut() {
         view.picks[1] = Choice::Theirs.into();
     }
     h.run();

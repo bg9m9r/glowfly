@@ -146,7 +146,7 @@ fn edge_strip_message_brings_side_panels_back() {
     let dir = scratch_repo("edge-strip-blame");
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
-    st.blame = Some(BlameView::loading("a.txt".into(), None));
+    st.session.blame.view = Some(BlameView::loading("a.txt".into(), None));
     send(&mut st, Msg::Layout(LayoutMsg::SetPanel { panel: Panel::Details, shown: false }));
     assert_eq!(details_shape(&st), DetailsShape::Hidden);
     send(&mut st, Msg::Layout(LayoutMsg::SetPanel { panel: Panel::Details, shown: true }));

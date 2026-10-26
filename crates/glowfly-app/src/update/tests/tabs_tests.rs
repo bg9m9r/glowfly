@@ -24,7 +24,7 @@ fn active_is(st: &AppState, dir: &Path) -> bool {
     tab.path.as_deref().is_some_and(|p| same(p, dir)) && st.snap.as_ref().is_some_and(|s| same(&s.workdir, dir))
 }
 
-fn two_repos(name: &str) -> (AppState, PathBuf, PathBuf) {
+pub(super) fn two_repos(name: &str) -> (AppState, PathBuf, PathBuf) {
     let (a, b) = (scratch_repo(&format!("{name}-a")), scratch_repo(&format!("{name}-b")));
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
@@ -32,7 +32,7 @@ fn two_repos(name: &str) -> (AppState, PathBuf, PathBuf) {
     (st, a, b)
 }
 
-fn cleanup(dirs: &[&Path]) {
+pub(super) fn cleanup(dirs: &[&Path]) {
     for d in dirs {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -222,15 +222,15 @@ fn conflict_view_survives_tab_switch() {
     drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())));
     update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Theirs }), Instant::now());
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
-    assert!(st.conflict.is_none(), "the other tab has no conflict open");
+    assert!(st.session.conflict.view.is_none(), "the other tab has no conflict open");
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    assert_eq!(st.conflict.as_ref().map(|c| c.picks.clone()), Some(vec![Choice::Theirs.into()]), "picks survive the switch");
+    assert_eq!(st.session.conflict.view.as_ref().map(|c| c.picks.clone()), Some(vec![Choice::Theirs.into()]), "picks survive the switch");
 
     // A load still in flight when the tab is parked is requested again on return.
     update(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())), Instant::now());
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    let generation = st.conflict_gen;
+    let generation = st.session.conflict.generation;
     assert!(
         fx.iter().any(
             |e| matches!(e, Effect::Conflict(ConflictEffect::Load { path, generation: g, .. }) if path == "a.txt" && *g == generation)
@@ -240,7 +240,7 @@ fn conflict_view_survives_tab_switch() {
 }
 
 /// Unloaded tabs for made-up paths (nothing is read from disk), with tab `active` selected.
-fn fake_tabs(names: &[&str], active: usize) -> AppState {
+pub(super) fn fake_tabs(names: &[&str], active: usize) -> AppState {
     let mut st = state();
     st.tabs = names.iter().map(|n| Tab::unloaded(fake(n))).collect();
     st.active_tab = active;

@@ -181,7 +181,7 @@ pub(super) fn seen(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Eff
     // changes wait for Continue finish, or for its steps to be forgotten or dropped. Only that
     // branch's stash waits; one from finishing another flow branch goes back as usual.
     if let AutoStashFor::GitFlowFinish { branch } = &p.job.op
-        && st.gitflow_resume.as_ref().is_some_and(|r| r.resume.plan.branch == *branch)
+        && st.session.gitflow_resume.as_ref().is_some_and(|r| r.resume.plan.branch == *branch)
     {
         return;
     }

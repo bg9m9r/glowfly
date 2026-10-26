@@ -183,7 +183,7 @@ fn a_created_issue_is_logged_toasted_cached_and_listed_again() {
     // The View action opens the panel.
     let id = toast.id;
     update(&mut st, Msg::ToastAction(id), Instant::now());
-    assert_eq!(st.issue.as_ref().map(|v| v.key.as_str()), Some("12"));
+    assert_eq!(st.session.issue.view.as_ref().map(|v| v.key.as_str()), Some("12"));
     done(st, dir);
 }
 
@@ -235,7 +235,7 @@ fn after_cancel_or_for_another_tab_the_reply_is_only_reported() {
     let msg = IssueMsg::Replied {
         workdir: elsewhere,
         target: github(),
-        generation: st.issue_gen,
+        generation: st.session.issue.generation,
         reply: Box::new(IssueReply::Created(Ok(created("14", "Elsewhere")))),
     };
     let toasts = st.toasts.len();

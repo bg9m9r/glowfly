@@ -69,14 +69,14 @@ pub(in crate::ui) fn with_blame(theme: ThemeChoice, name: &str) -> (AppState, Pa
     let mut view = BlameView::loading("src/main.rs".into(), None);
     view.loading = false;
     view.data = Some(BlameData::new(blame, spans));
-    st.blame = Some(view);
+    st.session.blame.view = Some(view);
     (st, dir, grace_oid)
 }
 
 #[test]
 fn blame_view() {
     let (st, dir, grace) = with_blame(ThemeChoice::Dark, "blame");
-    let b = &st.blame.as_ref().unwrap().data.as_ref().unwrap().blame;
+    let b = &st.session.blame.view.as_ref().unwrap().data.as_ref().unwrap().blame;
     let spans: Vec<(usize, usize)> = b.runs.iter().map(|r| (r.start, r.len)).collect();
     assert_eq!(spans, [(0, 3), (3, 3), (6, 3), (9, 1), (10, 2)]);
     assert_eq!(b.commits[b.runs[1].commit].oid, grace);
@@ -127,7 +127,7 @@ fn blame_error() {
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
     let why = repo::blame_file(&dir, "logo.png", None, &BlameOptions::default()).unwrap_err().to_string();
     assert_eq!(why, "logo.png is a binary file; blame shows text files only");
-    st.blame = Some(BlameView::failed("logo.png".into(), None, &why));
+    st.session.blame.view = Some(BlameView::failed("logo.png".into(), None, &why));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("blame_error");
@@ -203,7 +203,7 @@ fn blame_menu_deleted_row() {
 fn history_header_blames_the_selected_entry() {
     // Entry 2 is from before the move, when the file was app.txt.
     let (st, dir) = with_history("history-blame", ThemeChoice::Dark, 500, 2);
-    let e = st.history.as_ref().unwrap().entries[2].clone();
+    let e = st.session.history.view.as_ref().unwrap().entries[2].clone();
     let mut h = harness(st, true);
     h.run();
     h.get_by_label(BLAME).click();
@@ -213,7 +213,7 @@ fn history_header_blames_the_selected_entry() {
         "blames the entry's path at its commit"
     );
     // Nothing selected: the button waits for a commit.
-    h.state_mut().0.history.as_mut().unwrap().selected = None;
+    h.state_mut().0.session.history.view.as_mut().unwrap().selected = None;
     h.state_mut().1.clear();
     h.run();
     assert!(h.get_by_label(BLAME).is_disabled());
@@ -225,8 +225,8 @@ fn history_header_blames_the_selected_entry() {
 #[test]
 fn blame_over_history() {
     let (mut st, dir, _) = with_blame(ThemeChoice::Dark, "blame-over-history");
-    st.history = Some(FileHistoryView::loading("src/main.rs".into(), None));
-    st.blame.as_mut().unwrap().over_history = true;
+    st.session.history.view = Some(FileHistoryView::loading("src/main.rs".into(), None));
+    st.session.blame.view.as_mut().unwrap().over_history = true;
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("blame_over_history");

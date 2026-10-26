@@ -219,7 +219,7 @@ fn gitflow_section_filtered() {
 #[test]
 fn gitflow_panel() {
     let (mut st, dir) = with_flow_branches(ThemeChoice::Dark, "gitflow-panel");
-    st.gitflow_panel = true;
+    st.session.gitflow_panel = true;
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("gitflow_panel");
@@ -236,7 +236,7 @@ fn gitflow_panel() {
 #[test]
 fn gitflow_panel_not_set_up() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "gitflow-panel-off");
-    st.gitflow_panel = true;
+    st.session.gitflow_panel = true;
     render("gitflow_panel_not_set_up", st, false);
     remove_fixture(&dir);
 }

@@ -42,7 +42,7 @@ fn repo(name: &str, amend: bool) -> (AppState, PathBuf) {
 }
 
 fn outcome(st: &AppState) -> &Outcome {
-    match &st.range_diff.as_ref().expect("open").phase {
+    match &st.session.range_diff.view.as_ref().expect("open").phase {
         Phase::Ready(o) => o,
         other => panic!("not ready: {other:?}"),
     }
@@ -56,7 +56,7 @@ fn a_rewritten_branch_end_to_end() {
     let statuses: Vec<Status> = c.pairs.iter().map(|p| p.status).collect();
     assert_eq!(statuses, [Status::Unchanged, Status::Changed]);
     assert_eq!(c.mainline.as_deref(), Some("main"));
-    let v = st.range_diff.as_ref().unwrap();
+    let v = st.session.range_diff.view.as_ref().unwrap();
     assert_eq!(v.selected, Some(1));
     assert!(v.widest[1] > 0, "the interdiff's width is measured");
     let _ = std::fs::remove_dir_all(&dir);
@@ -77,16 +77,16 @@ fn a_branch_never_rewritten_says_so() {
 fn it_is_parked_with_its_tab_and_asked_for_again_on_return() {
     let (mut st, dir) = repo("rd-tabs", true);
     update(&mut st, Msg::RangeDiff(RangeDiffMsg::OpenRewrite("refs/heads/topic".into())), Instant::now());
-    let before = st.range_diff_gen;
+    let before = st.session.range_diff.generation;
     drive(&mut st, Msg::Tabs(TabsMsg::NewTab));
-    assert!(st.range_diff.is_none(), "the new tab has none");
+    assert!(st.session.range_diff.view.is_none(), "the new tab has none");
     let workdir = st.tabs[0].path.clone().unwrap();
     let loaded = || RangeDiffMsg::Loaded { generation: before, result: Err("late".into()) };
     assert!(Msg::RangeDiff(loaded()).on_inactive().is_none(), "nothing is kept for an inactive tab");
     let late = Msg::RangeDiff(loaded());
     update(&mut st, Msg::Scoped { workdir, msg: Box::new(late) }, Instant::now());
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    let v = st.range_diff.as_ref().expect("back with its tab");
+    let v = st.session.range_diff.view.as_ref().expect("back with its tab");
     assert_eq!(v.phase, Phase::Loading, "the late result was dropped");
     let again: Vec<u64> = fx
         .iter()

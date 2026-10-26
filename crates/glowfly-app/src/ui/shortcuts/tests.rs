@@ -214,7 +214,7 @@ fn blamed() -> AppState {
     let mut view = BlameView::loading("a.txt".into(), None);
     view.loading = false;
     view.data = Some(BlameData::new(blame, None));
-    st.blame = Some(view);
+    st.session.blame.view = Some(view);
     st
 }
 
@@ -249,7 +249,7 @@ fn run_keys_and_find_in_the_blame_view() {
     let mut h = harness(unstaged(), false);
     assert!(press_msgs(&mut h, Modifiers::NONE, Key::N).is_empty(), "no blame open");
     let mut st = blamed();
-    st.blame.as_mut().unwrap().data = None;
+    st.session.blame.view.as_mut().unwrap().data = None;
     let mut h = harness(st, false);
     assert!(press_msgs(&mut h, Modifiers::NONE, Key::N).is_empty(), "not loaded yet");
     let m = press_msgs(&mut h, Modifiers::COMMAND, Key::F);
@@ -287,7 +287,7 @@ fn find_and_stepping_in_a_history_s_file_pane() {
         let mut st = diff(DiffTarget::Commit(git2::Oid::zero(), "src/a.rs".into()));
         let mut view = FileHistoryView::loading_kind("src".into(), None, HistoryKind::Folder);
         view.pane = pane;
-        st.history = Some(view);
+        st.session.history.view = Some(view);
         st
     };
     let mut h = harness(with_history(HistoryPane::File), false);
@@ -306,7 +306,7 @@ fn find_and_stepping_in_a_history_s_file_pane() {
     assert!(matches!(&m[..], [Msg::Diff(DiffMsg::JumpToChange(1))]));
 
     let mut st = blamed();
-    st.history = with_history(HistoryPane::File).history;
+    st.session.history.view = with_history(HistoryPane::File).session.history.view;
     let mut h = harness(st, false);
     let m = press_msgs(&mut h, Modifiers::COMMAND, Key::F);
     assert!(matches!(&m[..], [Msg::Blame(BlameMsg::FocusFind)]), "a blame view over it finds in the blame");

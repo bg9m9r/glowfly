@@ -188,7 +188,7 @@ pub struct DiffComments {
 
 /// Some for the open panel's file diff `target` on a service that takes line comments.
 pub fn diff_comments(st: &AppState, target: &DiffTarget) -> Option<DiffComments> {
-    let v = st.pull_request.as_ref().filter(|v| v.shows_file(target))?;
+    let v = st.session.pull_request.view.as_ref().filter(|v| v.shows_file(target))?;
     let provider = st.forge.as_ref().and_then(|f| f.host_provider()).filter(|p| line_comments_in_app(*p))?;
     let mut out = DiffComments { blocked: start_blocked(Some(provider), v), ..Default::default() };
     if let Some(d) = v.line_draft.as_ref().filter(|d| d.target == *target) {
@@ -201,7 +201,7 @@ pub fn diff_comments(st: &AppState, target: &DiffTarget) -> Option<DiffComments>
 
 /// Whether Esc should go to the panel's draft first.
 pub fn esc_cancels(st: &AppState) -> bool {
-    st.pull_request.as_ref().is_some_and(|v| v.line_draft.is_some())
+    st.session.pull_request.view.as_ref().is_some_and(|v| v.line_draft.is_some())
 }
 
 /// Whether the panel's draft is on `path` (its comment box shows in that file's pane).

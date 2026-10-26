@@ -35,7 +35,7 @@ use glowfly_core::i18n::Lang;
 const STASH_HINT: &str = "Uncommitted changes will be stashed first and put back afterwards.";
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    let Some(panel) = &st.rebase else { return };
+    let Some(panel) = &st.session.rebase.view else { return };
     let remaining = panel.source == PanelSource::Remaining;
     let blocker = st.snap.as_ref().and_then(|s| panel.start_blocker(s, st.job.is_some()));
     ui.add_space(8.0);

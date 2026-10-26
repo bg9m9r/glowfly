@@ -244,7 +244,7 @@ fn a_card_created_for_another_tab_is_logged_with_its_folder() {
     let msg = IssueMsg::Replied {
         workdir: glowfly_core::paths::temp_dir().join("other-repo"),
         target: t,
-        generation: st.issue_gen,
+        generation: st.session.issue.generation,
         reply: Box::new(IssueReply::Created(Ok(card("AbCd1234", "Fix login")))),
     };
     run(&mut st, msg);

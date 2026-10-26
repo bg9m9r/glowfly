@@ -54,7 +54,7 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
         PullRequestMsg::Open(id) => {
             let (Some(snap), Some(fs)) = (&st.snap, &st.forge) else { return };
             let Some(pr) = fs.prs.iter().find(|p| p.id == id) else { return };
-            if st.pull_request.as_ref().is_some_and(|v| v.pr.id == id) {
+            if st.session.pull_request.view.as_ref().is_some_and(|v| v.pr.id == id) {
                 return;
             }
             let view = PrView::new(pr.clone(), fs, snap);
@@ -63,7 +63,7 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
             super::history::close(st);
             super::blame::close(st);
             super::issue::close(st);
-            st.pull_request = Some(view);
+            st.session.pull_request.view = Some(view);
             request(st, fx);
             load(st, fx);
             checks::load(st, fx);
@@ -71,7 +71,7 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
         PullRequestMsg::Close => close(st),
         PullRequestMsg::FilesLoaded { id, generation, result } => source::files_loaded(st, id, generation, result, fx),
         PullRequestMsg::Tab(t) => {
-            if let Some(v) = st.pull_request.as_mut() {
+            if let Some(v) = st.session.pull_request.view.as_mut() {
                 v.tab = t;
             }
         }
@@ -104,11 +104,11 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
 /// must not reopen it.
 pub(super) fn close(st: &mut AppState) {
     let shown = shows_diff(st);
-    if st.pull_request.take().is_some() {
-        st.pull_request_gen += 1;
-        st.pull_request_page_gen += 1;
-        st.pull_request_checks_gen += 1;
-        st.pull_request_lines_gen += 1;
+    if st.session.pull_request.view.take().is_some() {
+        st.session.pull_request.generation += 1;
+        st.session.pull_request.page_gen += 1;
+        st.session.pull_request.checks_gen += 1;
+        st.session.pull_request.lines_gen += 1;
         if shown {
             super::repo::close_diff(st);
         }
@@ -118,7 +118,7 @@ pub(super) fn close(st: &mut AppState) {
 /// A diff is opening: the panel stays only when it is one of its files (shown in Files
 /// changed) or of one of its commits (shown in Commits).
 pub(super) fn keep_for(st: &mut AppState, target: &DiffTarget) {
-    match st.pull_request.as_mut() {
+    match st.session.pull_request.view.as_mut() {
         Some(v) if v.shows(target) => v.tab = if matches!(target, DiffTarget::Commit(..)) { PrTab::Commits } else { PrTab::Files },
         _ => close(st),
     }
@@ -128,7 +128,7 @@ pub(super) fn keep_for(st: &mut AppState, target: &DiffTarget) {
 /// again (and a diff of the old list closes).
 pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
     let remote = st.forge.as_ref().filter(|f| f.host.is_some()).map(|f| f.remote.clone());
-    let Some(view) = st.pull_request.as_mut() else { return };
+    let Some(view) = st.session.pull_request.view.as_mut() else { return };
     if let Some(r) = remote {
         view.remote = r; // follows a renamed remote
     }
@@ -141,7 +141,7 @@ pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// and head belong to the old one); the checks load again then too, and when the listed
 /// summary of them changed (a check finished, say).
 pub(super) fn prs_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(view) = st.pull_request.as_mut() else { return };
+    let Some(view) = st.session.pull_request.view.as_mut() else { return };
     let (mut stale, mut checks_stale, mut head_changed) = (false, false, false);
     match st.forge.as_ref().and_then(|f| f.prs.iter().find(|p| p.id == view.pr.id)) {
         Some(pr) => {
@@ -179,7 +179,7 @@ pub(super) fn checks_tick(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>)
 /// while the tab was parked was only logged, so the panel no longer waits for it.
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     let (mut again, mut lines_again) = (false, false);
-    if let Some(v) = st.pull_request.as_mut() {
+    if let Some(v) = st.session.pull_request.view.as_mut() {
         v.busy = None;
         lines_again = matches!(v.lines, LineMaps::Loading(_));
         again = v.files == Files::Loading || v.head_fetch == HeadFetch::Running;

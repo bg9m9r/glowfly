@@ -27,13 +27,13 @@ const LOADING: &str = "Loading the issue…";
 pub(super) fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let trusted = st.runs_git_unasked();
     let focus = std::mem::take(&mut st.view.issue_comment_focus);
-    if let Some(v) = st.issue.as_mut().filter(|v| matches!(v.details, Details::Loaded(_))) {
+    if let Some(v) = st.session.issue.view.as_mut().filter(|v| matches!(v.details, Details::Loaded(_))) {
         egui::TopBottomPanel::bottom("issue-comment-box")
             .frame(Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(0, 8)))
             .show_inside(ui, |ui| comment_box::show(ui, v, trusted, focus, msgs));
     }
     let st = &*st;
-    let Some(v) = &st.issue else { return };
+    let Some(v) = &st.session.issue.view else { return };
     egui::ScrollArea::vertical().id_salt("issue-conversation").auto_shrink([false, false]).show(ui, |ui| match &v.details {
         Details::Unsupported => {
             let text =

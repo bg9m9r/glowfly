@@ -45,7 +45,7 @@ fn request(st: &AppState, form: &IssueForm) -> Result<IssueRequest, String> {
 fn ask_options(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(Modal::CreateIssue(form)) = &st.modal else { return };
     let req = request(st, form);
-    let generation = st.issue_gen;
+    let generation = st.session.issue.generation;
     let Some(form) = form_mut(st) else { return };
     let project = form.project.clone();
     if form.provider().is_jira() && project.is_empty() {
@@ -79,7 +79,7 @@ pub(super) fn set_project(st: &mut AppState, project: String, fx: &mut Vec<Effec
 pub(super) fn create(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(Modal::CreateIssue(form)) = &st.modal else { return };
     let req = request(st, form);
-    let generation = st.issue_gen;
+    let generation = st.session.issue.generation;
     let Some(form) = form_mut(st) else { return };
     if form.busy || form.submit_blocked().is_some() {
         return;

@@ -21,7 +21,7 @@ const PAD_X: f32 = 16.0;
 const ARROW_W: f32 = 20.0;
 
 pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let Some(view) = &st.range_diff else { return };
+    let Some(view) = &st.session.range_diff.view else { return };
     let Some(c) = view.compared() else { return };
     let t = st.settings.lang();
     egui::ScrollArea::vertical().id_salt("range-diff-pairs").auto_shrink([false, false]).show_rows(

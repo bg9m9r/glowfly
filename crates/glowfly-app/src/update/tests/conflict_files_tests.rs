@@ -93,11 +93,11 @@ fn mark_all_resolved_stages_every_file_and_lists_them_as_resolved() {
     drive(&mut st, Msg::Conflict(ConflictMsg::MarkResolved(owned(&["a.txt", "b.txt"]))));
     assert!(st.modal.is_none());
     assert!(!is_conflicted(&st, "a.txt") && !is_conflicted(&st, "b.txt"));
-    let mut resolved: Vec<&str> = st.conflict_files.resolved.iter().map(|r| r.entry.path.as_str()).collect();
+    let mut resolved: Vec<&str> = st.session.conflict_files.resolved.iter().map(|r| r.entry.path.as_str()).collect();
     resolved.sort();
     assert_eq!(resolved, ["a.txt", "b.txt"]);
     let snap = st.snap.as_ref().unwrap();
-    assert_eq!(st.conflict_files.resolved_rows(snap).len(), 2, "shown while the merge is in progress");
+    assert_eq!(st.session.conflict_files.resolved_rows(snap).len(), 2, "shown while the merge is in progress");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -108,14 +108,14 @@ fn mark_conflicted_brings_the_conflict_back() {
     assert!(send(&mut st, ConflictMsg::MarkConflicted(owned(&["a.txt"]))).is_empty(), "not resolved yet");
     drive(&mut st, Msg::Conflict(ConflictMsg::MarkResolvedConfirmed(owned(&["a.txt"]))));
     assert!(!is_conflicted(&st, "a.txt"));
-    assert_eq!(st.conflict_files.resolved.iter().map(|r| r.entry.path.as_str()).collect::<Vec<_>>(), ["a.txt"]);
+    assert_eq!(st.session.conflict_files.resolved.iter().map(|r| r.entry.path.as_str()).collect::<Vec<_>>(), ["a.txt"]);
     let fx = send(&mut st, ConflictMsg::MarkConflicted(owned(&["a.txt", "other.txt"])));
     assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::MarkConflicted(p), .. }] if *p == owned(&["a.txt"])), "{fx:?}");
     super::tests::finish(&mut st, fx);
     assert!(is_conflicted(&st, "a.txt"));
     assert!(markers_in(&dir, "a.txt") >= 1);
-    assert!(st.conflict_files.resolved.is_empty(), "conflicted again");
-    assert_eq!(st.conflict_files.count_note(glowfly_core::i18n::Lang::En, "a.txt"), Some(("1 conflict".into(), false)));
+    assert!(st.session.conflict_files.resolved.is_empty(), "conflicted again");
+    assert_eq!(st.session.conflict_files.count_note(glowfly_core::i18n::Lang::En, "a.txt"), Some(("1 conflict".into(), false)));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -127,7 +127,7 @@ fn nothing_is_marked_while_the_merge_tool_has_the_file() {
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(held));
     assert!(send(&mut st, ConflictMsg::MarkResolvedConfirmed(owned(&["a.txt"]))).is_empty());
     st.log.clear();
-    st.conflict_files.resolved = vec![ResolvedFile { entry: FileEntry::new("a.txt", ' '), both_sides: true }];
+    st.session.conflict_files.resolved = vec![ResolvedFile { entry: FileEntry::new("a.txt", ' '), both_sides: true }];
     assert!(send(&mut st, ConflictMsg::MarkConflicted(owned(&["a.txt"]))).is_empty());
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(held));
     let _ = std::fs::remove_dir_all(&dir);
@@ -146,7 +146,7 @@ fn summaries_follow_the_status_and_drop_stale_reads() {
     let dir = conflicted_repo("cf-summary");
     let mut st = opened(&dir);
     assert_eq!(
-        st.conflict_files.count_note(glowfly_core::i18n::Lang::En, "a.txt"),
+        st.session.conflict_files.count_note(glowfly_core::i18n::Lang::En, "a.txt"),
         Some(("1 conflict".into(), false)),
         "read when the repository opened"
     );
@@ -159,14 +159,14 @@ fn summaries_follow_the_status_and_drop_stale_reads() {
         result: Ok(ConflictSummary { counts: vec![("a.txt".into(), Some(n))], resolved: Vec::new() }),
     };
     send(&mut st, read(generation - 1, 7));
-    assert_eq!(st.conflict_files.counts.get("a.txt"), Some(&Some(1)), "an older read is ignored");
+    assert_eq!(st.session.conflict_files.counts.get("a.txt"), Some(&Some(1)), "an older read is ignored");
     send(&mut st, read(generation, 3));
-    assert_eq!(st.conflict_files.counts.get("a.txt"), Some(&Some(3)));
+    assert_eq!(st.session.conflict_files.counts.get("a.txt"), Some(&Some(3)));
 
     git(&dir, &["add", "a.txt"]);
     git(&dir, &["commit", "-q", "--no-edit"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(st.conflict_files.counts.is_empty() && st.conflict_files.resolved.is_empty(), "cleared after the merge commit");
+    assert!(st.session.conflict_files.counts.is_empty() && st.session.conflict_files.resolved.is_empty(), "cleared after the merge commit");
     let mut fx = Vec::new();
     super::conflict_files::want(&mut st, &mut fx);
     assert!(fx.is_empty(), "nothing to read once it is over: {fx:?}");
@@ -187,13 +187,13 @@ fn the_lists_are_parked_with_the_tab_and_read_again_on_return() {
     let a = conflicted_repo("cf-tabs-a");
     let b: PathBuf = scratch_repo("cf-tabs-b");
     let mut st = opened(&a);
-    let counts = st.conflict_files.counts.clone();
+    let counts = st.session.conflict_files.counts.clone();
     assert!(!counts.is_empty());
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
-    assert!(st.conflict_files.counts.is_empty(), "the other tab has no conflicts");
+    assert!(st.session.conflict_files.counts.is_empty(), "the other tab has no conflicts");
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    assert_eq!(st.conflict_files.counts, counts, "kept while parked");
-    assert_eq!(summary(&fx), Some(st.conflict_files.generation), "read again on return: {fx:?}");
+    assert_eq!(st.session.conflict_files.counts, counts, "kept while parked");
+    assert_eq!(summary(&fx), Some(st.session.conflict_files.generation), "read again on return: {fx:?}");
     for d in [&a, &b] {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -206,7 +206,7 @@ pub(crate) fn both_resolved(name: &str) -> (AppState, PathBuf) {
         git(&dir, &["add", f]);
     }
     let st = opened(&dir);
-    assert_eq!(st.conflict_files.resolved.len(), 2);
+    assert_eq!(st.session.conflict_files.resolved.len(), 2);
     (st, dir)
 }
 
@@ -219,7 +219,7 @@ fn mark_all_conflicted_sends_every_restorable_path() {
     let fx = send(&mut st, ConflictMsg::MarkConflicted(all));
     assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::MarkConflicted(p), .. }] if *p == owned(&["a.txt", "b.txt"])), "{fx:?}");
     // A record without both sides, and a file the merge tool has open, are left out.
-    st.conflict_files.resolved[0].both_sides = false;
+    st.session.conflict_files.resolved[0].both_sides = false;
     st.job = Some(crate::state::RunningJob {
         label: crate::state::tool_compare::merge_label("b.txt"),
         workdir: st.workdir(),

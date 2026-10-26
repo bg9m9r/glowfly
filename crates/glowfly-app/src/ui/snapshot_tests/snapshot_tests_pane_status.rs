@@ -32,7 +32,7 @@ fn click(h: &mut H, label: &str) -> Vec<Msg> {
 #[test]
 fn blame_loading() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "pane-blame-loading");
-    st.blame = Some(BlameView::loading("src/app.rs".into(), None));
+    st.session.blame.view = Some(BlameView::loading("src/app.rs".into(), None));
     let mut h = harness(st, true);
     h.run_steps(3);
     assert!(h.query_by_label("Loading the blame…").is_some());
@@ -45,7 +45,7 @@ fn blame_loading() {
 fn blame_failed() {
     let raw = "not found: src/x.rs is not in commit abc1234";
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "pane-blame-failed");
-    st.blame = Some(BlameView::failed("src/x.rs".into(), None, raw));
+    st.session.blame.view = Some(BlameView::failed("src/x.rs".into(), None, raw));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("blame_failed");
@@ -62,7 +62,7 @@ fn blame_failed() {
 #[test]
 fn blame_held_light() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "pane-blame-held");
-    st.blame = Some(BlameView::failed("src/app.rs".into(), None, crate::state::blame::HELD));
+    st.session.blame.view = Some(BlameView::failed("src/app.rs".into(), None, crate::state::blame::HELD));
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("blame_held_light");
@@ -77,7 +77,7 @@ fn history_list_failed() {
     let mut view = FileHistoryView::loading("src/app.rs".into(), None);
     view.loading = false;
     view.error = Some("network error: the repository is on a drive that went away".into());
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("history_list_failed");
@@ -90,7 +90,7 @@ fn history_list_failed() {
 #[test]
 fn history_text_failed_and_unavailable() {
     let (mut st, dir) = with_file_view("pane-history-text", ThemeChoice::Dark);
-    let text = st.history.as_mut().unwrap().text.as_mut().unwrap();
+    let text = st.session.history.view.as_mut().unwrap().text.as_mut().unwrap();
     text.state = TextState::Failed(TextError { message: "could not read lib.rs: the object is missing".into(), retry: true });
     let mut h = harness(st, true);
     h.run();
@@ -98,7 +98,7 @@ fn history_text_failed_and_unavailable() {
     assert!(h.query_by_label(super::history_file::FAILED_TITLE).is_some());
     assert!(matches!(&click(&mut h, "Try again")[..], [Msg::History(HistoryMsg::RetryFileText)]));
 
-    let text = h.state_mut().0.history.as_mut().unwrap().text.as_mut().unwrap();
+    let text = h.state_mut().0.session.history.view.as_mut().unwrap().text.as_mut().unwrap();
     text.state = TextState::Failed(TextError { message: "lib.rs is too large to show (9 MB)".into(), retry: false });
     h.run();
     h.check_snapshot("history_text_unavailable");
@@ -112,7 +112,7 @@ fn history_text_failed_and_unavailable() {
 #[test]
 fn pr_files_failed() {
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "pane-pr-files", true);
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.tab = PrTab::Files;
     v.files = Files::Failed("unexpected response: the merge base couldn't be found".into());
     let mut h = harness(st, true);

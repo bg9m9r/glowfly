@@ -76,11 +76,11 @@ fn fold_keys_stay_out_of_other_views() {
     assert!(press(&mut no_diff, Modifiers::NONE).is_empty(), "no diff");
 
     let mut st = with_diff();
-    st.conflict = Some(ConflictView::loading("f.txt".into()));
+    st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
     assert!(press(&mut harness(st, false), Modifiers::NONE).is_empty(), "conflict view");
 
     let mut st = with_diff();
-    st.blame = Some(BlameView::loading("f.txt".into(), None));
+    st.session.blame.view = Some(BlameView::loading("f.txt".into(), None));
     assert!(press(&mut harness(st, false), Modifiers::SHIFT).is_empty(), "blame");
 
     let mut typing = harness(with_diff(), true);

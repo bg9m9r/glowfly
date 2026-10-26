@@ -65,7 +65,7 @@ fn file_history_header_buttons() {
 fn file_history_not_on_disk_light() {
     let (mut st, dir) = with_history("history-not-on-disk", ThemeChoice::Light, 500, 0);
     remove_app(&mut st, &dir);
-    assert!(st.history.as_ref().unwrap().on_disk, "the walk saw it, but status now says it is gone");
+    assert!(st.session.history.view.as_ref().unwrap().on_disk, "the walk saw it, but status now says it is gone");
     let mut h = harness(st, false);
     h.run();
     assert!(h.get_by_label(OPEN_DEFAULT).is_disabled());
@@ -80,7 +80,7 @@ fn file_history_not_on_disk_light() {
 fn file_history_buttons_send_msgs() {
     // Entry 2 is from before the move, when the file was app.txt.
     let (st, dir) = with_history("history-buttons-click", ThemeChoice::Dark, 500, 2);
-    let e = st.history.as_ref().unwrap().entries[2].clone();
+    let e = st.session.history.view.as_ref().unwrap().entries[2].clone();
     assert_eq!(e.path, "app.txt");
     let mut h = harness(st, true);
     h.run();

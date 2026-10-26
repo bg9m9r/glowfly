@@ -1,4 +1,4 @@
-//! The Range-diff view's state (`AppState::range_diff`, parked with its tab) and the pure words
+//! The Range-diff view's state (`RepoSession::range_diff`, parked with its tab) and the pure words
 //! and rules it shows: the subtitle naming the two ends, how the ranges were cut, the counts,
 //! the refusals as sentences, why the journal's and the multi-commit menu's entry points are
 //! off, and the mainline a comparison is cut at (which names to leave out for a branch or a
@@ -39,7 +39,7 @@ pub enum Phase {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RangeDiffView {
     pub origin: Origin,
-    /// The comparison in flight or last asked for (`AppState::range_diff_gen`).
+    /// The comparison in flight or last asked for (`RepoSession::range_diff`).
     pub generation: u64,
     pub phase: Phase,
     /// The selected pair, by its place in `Compared::pairs`.

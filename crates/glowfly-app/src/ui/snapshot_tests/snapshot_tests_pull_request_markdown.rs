@@ -54,7 +54,7 @@ const COMMENT: &str = "Looks good. Run `cargo test -p demo` once more, then **me
 fn render(theme: ThemeChoice, name: &str) {
     let dark = matches!(theme, ThemeChoice::Dark);
     let (mut st, dir) = with_pr(theme, name, true);
-    st.pull_request.as_mut().unwrap().pr.description = RELEASE.into();
+    st.session.pull_request.view.as_mut().unwrap().pr.description = RELEASE.into();
     load(&mut st, detail(), vec![entry("grace", 13, EntryKind::Review(Verdict::Approved), COMMENT)]);
     let mut h = harness_sized(st, dark, egui::vec2(1400.0, 1250.0));
     h.run();

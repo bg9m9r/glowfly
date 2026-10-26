@@ -172,10 +172,10 @@ fn binary_and_lfs_diffs_have_no_view_menu() {
     assert_eq!((m.kind, m.view, m.status), (FileKind::Image, None, Some('A')));
     assert!(matches!(m.change, ChangeText::Sizes { old: None, new: Some(_) }), "{:?}", m.change);
     // While the sides load the chip shows the letter only.
-    st.diff_preview.as_mut().unwrap().sides = None;
+    st.session.diff_preview.as_mut().unwrap().sides = None;
     assert_eq!(model(&st).unwrap().change, ChangeText::Sizes { old: None, new: None });
     let sides = BinarySides { old: Some(BinarySide { size: 10, image: None }), new: Some(BinarySide { size: 12, image: None }) };
-    st.diff_preview.as_mut().unwrap().sides = Some(Ok(Arc::new(sides)));
+    st.session.diff_preview.as_mut().unwrap().sides = Some(Ok(Arc::new(sides)));
     assert_eq!(model(&st).unwrap().change, ChangeText::Sizes { old: Some(10), new: Some(12) });
 
     let change = glowfly_core::lfs::pointer::LfsChange {

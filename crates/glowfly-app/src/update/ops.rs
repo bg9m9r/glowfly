@@ -76,7 +76,7 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             // A save that failed can be tried again; one that worked moves the view on once the
             // status shows the file resolved.
             let mut saved = None;
-            if let Some(c) = st.conflict.as_mut() {
+            if let Some(c) = st.session.conflict.view.as_mut() {
                 c.saving = false;
                 c.step_on_resolve &= !failed;
                 // What Save with markers wrote is now what the file holds.

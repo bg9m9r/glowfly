@@ -166,7 +166,7 @@ pub(super) fn view(st: &AppState) -> Vec<Entry> {
     out.push(marked(keys, t.tr("menu.view.terminal"), Mark::Check(st.terminal.open), Some(I::ToggleTerminal), no_repo, term));
     out.push(marked(keys, t.tr("menu.view.activity_log"), Mark::Check(st.view.show_log), None, None, MenuAction::ToggleActivityLog));
     let journal = MenuAction::send(Msg::Journal(JournalMsg::Toggle));
-    out.push(marked(keys, t.tr("menu.view.journal"), Mark::Check(st.journal.is_some()), None, no_repo, journal));
+    out.push(marked(keys, t.tr("menu.view.journal"), Mark::Check(st.session.journal.view.is_some()), None, no_repo, journal));
     out.push(Entry::Separator);
     // The diff viewer's saved settings: they apply whether or not a diff is open.
     let diff = |m: DiffMsg| MenuAction::send(Msg::Diff(m));

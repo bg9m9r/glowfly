@@ -271,7 +271,7 @@ pub(super) fn close_diff(st: &mut AppState) {
     st.view.diff_open_line = None;
     st.view.diff_cursor = None;
     st.view.diff_opening = None;
-    st.diff_preview = None;
+    st.session.diff_preview = None;
     next_diff_gen(st);
 }
 
@@ -306,8 +306,8 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             super::issue::close(st);
             super::rebase::close(st);
             super::journal::close(st);
-            st.gitflow_panel = false;
-            st.gitflow_resume = None;
+            st.session.gitflow_panel = false;
+            st.session.gitflow_resume = None;
             st.draft = CommitDraft::default();
             st.undo = Default::default();
             st.view.scroll_to_row = Some(0);
@@ -319,7 +319,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             super::blame::head_moved(st, &snap, fx);
             if let Selection::Commit(oid) = st.selection {
                 // A pull request's commit (a fork's head, say) may be on no branch of the graph.
-                let in_pr = st.pull_request.as_ref().is_some_and(|v| v.has_commit(oid));
+                let in_pr = st.session.pull_request.view.as_ref().is_some_and(|v| v.has_commit(oid));
                 let still_there = snap.row_of.contains_key(&oid) || snap.stashes.iter().any(|s| s.oid == oid) || in_pr;
                 if !still_there {
                     st.selection = Selection::None;
@@ -394,7 +394,7 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     super::conflict::close(st);
     super::history::close(st);
     super::blame::close(st);
-    st.gitflow_panel = false;
+    st.session.gitflow_panel = false;
     super::journal::close(st);
     super::pull_request::close(st);
     super::issue::close(st);

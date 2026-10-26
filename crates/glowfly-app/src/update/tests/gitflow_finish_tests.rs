@@ -190,7 +190,7 @@ fn finish_conflict_end_to_end() {
     );
     assert!(st.log.iter().any(|l| !l.ok && l.text == toast), "the headline is logged too");
     assert!(st.gitflow_finish.is_none());
-    let r = st.gitflow_resume.as_ref().expect("the steps left are remembered");
+    let r = st.session.gitflow_resume.as_ref().expect("the steps left are remembered");
     let steps: Vec<&str> = r.resume.plan.steps.iter().map(|s| s.what.as_str()).collect();
     assert_eq!((steps, r.resume.into.as_str(), r.seen_merge, r.ready), (vec!["delete feature/login"], "develop", true, false));
     assert!(exists(&dir, "refs/heads/feature/login"));

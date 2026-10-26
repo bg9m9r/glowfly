@@ -70,29 +70,29 @@ fn nudge(st: &mut AppState) -> Vec<Effect> {
 #[test]
 fn tool_view_follows_the_central_order() {
     let (mut st, dir) = open_repo("rail-order");
-    st.blame = blame();
-    st.history = Some(FileHistoryView::loading_kind("src".into(), None, HistoryKind::Folder));
+    st.session.blame.view = blame();
+    st.session.history.view = Some(FileHistoryView::loading_kind("src".into(), None, HistoryKind::Folder));
     assert_eq!(tool_view(&st), Some(ToolView::Blame));
-    st.blame = None;
+    st.session.blame.view = None;
     assert_eq!(tool_view(&st), Some(ToolView::FolderHistory));
-    st.history = None;
+    st.session.history.view = None;
     send(&mut st, Msg::Issue(IssueMsg::Open("12".into())));
     assert_eq!(tool_view(&st), Some(ToolView::Issue));
     let pr = crate::state::pull_request::PrView::new(pr(), st.forge.as_ref().unwrap(), st.snap.as_ref().unwrap());
-    st.pull_request = Some(pr);
+    st.session.pull_request.view = Some(pr);
     assert_eq!(tool_view(&st), None, "the pull request panel covers the issue panel");
-    st.pull_request = None;
+    st.session.pull_request.view = None;
     st.dashboard.open = true;
     assert_eq!(tool_view(&st), None);
     st.dashboard.open = false;
-    st.issue = None;
+    st.session.issue.view = None;
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     st.diff = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
     assert_eq!(tool_view(&st), None);
     st.diff = None;
-    st.gitflow_panel = true;
+    st.session.gitflow_panel = true;
     assert_eq!(tool_view(&st), Some(ToolView::GitFlow));
-    st.conflict = Some(ConflictView::loading("a.txt".into()));
+    st.session.conflict.view = Some(ConflictView::loading("a.txt".into()));
     assert_eq!(tool_view(&st), Some(ToolView::Conflict));
     st.snap = None;
     assert_eq!(tool_view(&st), None, "no repository");
@@ -103,7 +103,7 @@ fn tool_view_follows_the_central_order() {
 fn details_shape_collapses_in_tool_views_without_saving() {
     let (mut st, dir) = opened("rail-collapse");
     assert_eq!(details_shape(&st), DetailsShape::Full);
-    st.blame = blame();
+    st.session.blame.view = blame();
     let fx = nudge(&mut st);
     assert_eq!(details_shape(&st), DetailsShape::Rail);
     assert!(st.settings.show_details_panel);
@@ -116,7 +116,7 @@ fn details_shape_collapses_in_tool_views_without_saving() {
 #[test]
 fn expand_lasts_for_the_open_view_only() {
     let (mut st, dir) = opened("rail-expand");
-    st.blame = blame();
+    st.session.blame.view = blame();
     let fx = send(&mut st, Msg::Layout(LayoutMsg::ExpandDetails));
     assert!(fx.is_empty(), "{fx:?}");
     assert_eq!(st.view.details_expanded_for, Some(ToolView::Blame));
@@ -124,19 +124,19 @@ fn expand_lasts_for_the_open_view_only() {
     send(&mut st, Msg::Blame(BlameMsg::Close));
     assert_eq!(details_shape(&st), DetailsShape::Full);
     assert_eq!(st.view.details_expanded_for, None);
-    st.blame = blame();
+    st.session.blame.view = blame();
     nudge(&mut st);
     assert_eq!(details_shape(&st), DetailsShape::Rail, "the next blame starts collapsed");
-    st.blame = None;
+    st.session.blame.view = None;
 
-    st.history = Some(FileHistoryView::loading("a.txt".into(), None));
+    st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
     send(&mut st, Msg::Layout(LayoutMsg::ExpandDetails));
     assert_eq!(details_shape(&st), DetailsShape::Full);
-    st.history = Some(FileHistoryView::loading_kind(String::new(), None, HistoryKind::Folder));
+    st.session.history.view = Some(FileHistoryView::loading_kind(String::new(), None, HistoryKind::Folder));
     nudge(&mut st);
     assert_eq!(details_shape(&st), DetailsShape::Rail, "another tool view collapses it again");
     send(&mut st, Msg::Layout(LayoutMsg::ExpandDetails));
-    st.conflict = Some(ConflictView::loading("a.txt".into()));
+    st.session.conflict.view = Some(ConflictView::loading("a.txt".into()));
     nudge(&mut st);
     assert_eq!(details_shape(&st), DetailsShape::Rail);
     assert!(st.settings.show_details_panel);
@@ -156,7 +156,7 @@ fn expand_without_a_tool_view_does_nothing() {
 #[test]
 fn go_to_commit_message_expands_the_rail() {
     let (mut st, dir) = opened("rail-focus-message");
-    st.blame = blame();
+    st.session.blame.view = blame();
     st.selection = Selection::None;
     let fx = send(&mut st, Msg::Shortcut(KeyAction::FocusMessage));
     assert_eq!(st.selection, Selection::Wip);
@@ -167,7 +167,7 @@ fn go_to_commit_message_expands_the_rail() {
     // Hidden: it is shown (and saved), and in full.
     let mut st2 = state();
     st2.snap = st.snap.take();
-    st2.blame = blame();
+    st2.session.blame.view = blame();
     st2.settings.show_details_panel = false;
     let fx = send(&mut st2, Msg::Shortcut(KeyAction::FocusMessage));
     assert!(st2.settings.show_details_panel);
@@ -179,7 +179,7 @@ fn go_to_commit_message_expands_the_rail() {
 #[test]
 fn toggle_key_hides_from_the_rail() {
     let (mut st, dir) = opened("rail-toggle");
-    st.blame = blame();
+    st.session.blame.view = blame();
     nudge(&mut st);
     assert_eq!(details_shape(&st), DetailsShape::Rail);
     let fx = send(&mut st, Msg::Layout(LayoutMsg::TogglePanel(Panel::Details)));
@@ -196,8 +196,16 @@ type Case = (&'static str, fn(&mut AppState), Msg);
 fn closing_each_tool_view_restores_the_panel() {
     let (mut st, dir) = open_repo("rail-close");
     let cases: [Case; 4] = [
-        ("history", |st| st.history = Some(FileHistoryView::loading("a.txt".into(), None)), Msg::History(HistoryMsg::CloseFileHistory)),
-        ("conflict", |st| st.conflict = Some(ConflictView::loading("a.txt".into())), Msg::Conflict(ConflictMsg::CloseConflict)),
+        (
+            "history",
+            |st| st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None)),
+            Msg::History(HistoryMsg::CloseFileHistory),
+        ),
+        (
+            "conflict",
+            |st| st.session.conflict.view = Some(ConflictView::loading("a.txt".into())),
+            Msg::Conflict(ConflictMsg::CloseConflict),
+        ),
         (
             "issue",
             |st| {
@@ -205,7 +213,7 @@ fn closing_each_tool_view_restores_the_panel() {
             },
             Msg::Issue(IssueMsg::Close),
         ),
-        ("git flow", |st| st.gitflow_panel = true, Msg::GitFlow(GitFlowMsg::ClosePanel)),
+        ("git flow", |st| st.session.gitflow_panel = true, Msg::GitFlow(GitFlowMsg::ClosePanel)),
     ];
     for (name, open, close) in cases {
         open(&mut st);

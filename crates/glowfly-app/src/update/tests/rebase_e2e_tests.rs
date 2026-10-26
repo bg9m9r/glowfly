@@ -40,7 +40,7 @@ fn reorder_reword_and_drop() {
     let (mut st, dir, c) = with_panel("rebase-e2e-finish", RebaseBase::FromCommit(Oid::zero()));
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 2, to: 0 }));
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 1, action: RebaseAction::Reword }));
-    st.rebase.as_mut().unwrap().draft = "c1, reworded\n\nWith a body.".into();
+    st.session.rebase.view.as_mut().unwrap().draft = "c1, reworded\n\nWith a body.".into();
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSaveMessage));
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 2, action: RebaseAction::Drop }));
     drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
@@ -48,7 +48,7 @@ fn reorder_reword_and_drop() {
     drive(&mut st, Msg::ConfirmAccepted);
 
     assert_eq!(last_toast(&st), (true, "Interactive rebase succeeded"));
-    assert!(st.rebase.is_none() && st.job.is_none());
+    assert!(st.session.rebase.view.is_none() && st.job.is_none());
     assert_eq!(log(&dir), ["c1, reworded", "c3", "first"]);
     assert!(!dir.join("c2.txt").exists());
     assert_eq!(repo_state(&st), RepositoryState::Clean);
@@ -64,7 +64,7 @@ fn an_edit_step_pauses_and_continue_finishes() {
     drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
 
     assert_eq!(repo_state(&st), RepositoryState::RebaseInteractive);
-    assert!(st.rebase.is_none());
+    assert!(st.session.rebase.view.is_none());
     assert_eq!(st.selection, Selection::Wip, "the banner is in view");
     let text = format!("Interactive rebase paused at {} (step 1 of 3) so you can edit it. Use Continue when you're done.", short(c[0]));
     assert_eq!(last_toast(&st), (true, text.as_str()));
@@ -96,7 +96,7 @@ fn a_conflict_stops_and_abort_restores() {
 
     let text = format!("Interactive rebase stopped on a conflict at {} (step 1 of 2). Resolve it, then Continue, or Abort.", short(b));
     assert_eq!(last_toast(&st), (false, text.as_str()));
-    assert!(st.rebase.is_none());
+    assert!(st.session.rebase.view.is_none());
     assert_eq!(st.selection, Selection::Wip);
     assert_eq!(repo_state(&st), RepositoryState::RebaseInteractive);
     assert!(st.snap.as_ref().unwrap().unstaged.iter().any(|f| f.status == '!' && f.path == "f.txt"), "the banner lists the conflict");

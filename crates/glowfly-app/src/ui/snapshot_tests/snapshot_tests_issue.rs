@@ -63,12 +63,12 @@ pub(in crate::ui) fn with_issue(
     fs.my_issues = vec![issue.clone(), Issue { key: other.into(), title: "Faster search".into(), ..crash() }];
     let view = IssueView::new(issue, &fs).unwrap();
     st.forge = Some(fs);
-    st.issue = Some(view);
+    st.session.issue.view = Some(view);
     (st, dir)
 }
 
 pub(in crate::ui) fn set_details(st: &mut AppState, d: IssueDetails) {
-    let v = st.issue.as_mut().unwrap();
+    let v = st.session.issue.view.as_mut().unwrap();
     v.issue = d.issue.clone();
     v.details = Details::Loaded(Box::new(d));
 }
@@ -161,7 +161,7 @@ fn issue_panel_jira_dark() {
 #[test]
 fn issue_panel_failed() {
     let (mut st, dir) = with_issue(ThemeChoice::Dark, "issue-failed", github(), crash(), None);
-    let v = st.issue.as_mut().unwrap();
+    let v = st.session.issue.view.as_mut().unwrap();
     v.issue.url = String::new();
     v.details = Details::Failed("not found: Issue #12 wasn't found".into());
     let mut h = harness(st, true);
@@ -208,7 +208,7 @@ fn sidebar_issues_with_add() {
 #[test]
 fn create_is_disabled_with_the_reason() {
     let (mut st, dir) = with_issue(ThemeChoice::Light, "issue-sidebar-blocked", github(), crash(), None);
-    st.issue = None;
+    st.session.issue.view = None;
     let ghe = Target { provider: Provider::GitHubEnterprise, host: "git.acme.io".into(), ..github() };
     st.forge.as_mut().unwrap().tracker = Some(ghe);
     let mut h = harness(st, false);

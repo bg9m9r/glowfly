@@ -60,7 +60,7 @@ fn picking_a_folder_opens_its_history() {
     finder(&mut st, PaletteCommand::FileHistory);
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::OpenFolderHistory("src/ui".into()))));
     assert!(st.palette.is_none());
-    let v = st.history.as_ref().expect("history open");
+    let v = st.session.history.view.as_ref().expect("history open");
     assert_eq!((v.path.as_str(), v.kind, v.at), ("src/ui", HistoryKind::Folder, None));
     assert!(
         fx.iter().any(|e| matches!(e, Effect::LoadFileHistory { path, folder: true, start: HistoryStart::Head, .. } if path == "src/ui")),

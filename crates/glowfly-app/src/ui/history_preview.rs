@@ -32,7 +32,7 @@ pub(super) fn toggle(ui: &mut Ui, toggle: Result<(), &str>, on: bool, msgs: &mut
 /// The rendered document, back at the top whenever the switch is used or another version is
 /// shown. `id`: the version's commit and path, which keep its widget ids apart from another's.
 pub(super) fn markdown(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, id: (Oid, String), source: &str, msgs: &mut Vec<Msg>) {
-    let to_top = st.history.as_mut().is_some_and(|v| std::mem::take(&mut v.nav.to_top));
+    let to_top = st.session.history.view.as_mut().is_some_and(|v| std::mem::take(&mut v.nav.to_top));
     ui.painter().rect_filled(ui.available_rect_before_wrap(), 0.0, color::bg());
     let mut area = egui::ScrollArea::vertical().id_salt("history-preview").auto_shrink([false, false]);
     if to_top {

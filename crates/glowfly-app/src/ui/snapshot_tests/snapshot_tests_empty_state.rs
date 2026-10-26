@@ -29,7 +29,7 @@ fn with_binary_diff(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
     assert!(diff.binary);
     st.diff = Some((target.clone(), diff.into()));
     let sides = repo::binary_sides(&dir, &target).unwrap();
-    st.diff_preview = Some(DiffPreview { target, generation: 0, sides: Some(Ok(std::sync::Arc::new(sides))) });
+    st.session.diff_preview = Some(DiffPreview { target, generation: 0, sides: Some(Ok(std::sync::Arc::new(sides))) });
     (st, dir)
 }
 

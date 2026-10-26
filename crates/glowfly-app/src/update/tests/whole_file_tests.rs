@@ -296,7 +296,7 @@ fn file_history_honours_whole_mode() {
     };
     let mut view = FileHistoryView::loading("a.txt".into(), None);
     view.append(FileHistory { entries: vec![entry], from_head: true, ..Default::default() });
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     let fx = run(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(0)));
     assert!(matches!(&fx[..], [Effect::LoadDiff { target: DiffTarget::Commit(o, _), whole_file: true, .. }] if *o == head), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);

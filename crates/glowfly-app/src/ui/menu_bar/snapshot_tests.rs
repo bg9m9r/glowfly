@@ -159,7 +159,7 @@ fn menu_bar_view_dark_and_light() {
     drop(h);
     // With the journal open: its item is ticked.
     let (mut st, _) = with_bar(ThemeChoice::Light, "menu-bar-view");
-    st.journal = Some(JournalView { timeline: Some(Ok(Default::default())), ..Default::default() });
+    st.session.journal.view = Some(JournalView { timeline: Some(Ok(Default::default())), ..Default::default() });
     let mut h = opened(st, false, "View");
     h.check_snapshot("menu_bar_view_light");
     drop(h);
@@ -188,7 +188,7 @@ fn view_menu_checks_the_shown_panels() {
     assert_eq!(h.get_by_label("Full screen").toggled(), Some(Toggled::True));
     drop(h);
     let (mut st, _) = with_bar(ThemeChoice::Dark, "menu-bar-view-checks");
-    st.journal = Some(JournalView { timeline: Some(Ok(Default::default())), ..Default::default() });
+    st.session.journal.view = Some(JournalView { timeline: Some(Ok(Default::default())), ..Default::default() });
     let h = opened(st, true, "View");
     let journal = h.query_all_by_label("Operation journal").find(|n| n.role() == Role::CheckBox).expect("the check item");
     assert_eq!(journal.toggled(), Some(Toggled::True));

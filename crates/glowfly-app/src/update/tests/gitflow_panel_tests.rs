@@ -36,38 +36,38 @@ fn open_and_close() {
     let (mut st, dir) = initialized("panel-open");
     let h = head(&st);
     st.diff = Some((DiffTarget::Commit(h, "a.txt".into()), empty_diff().into()));
-    st.history = Some(FileHistoryView::loading("a.txt".into(), None));
+    st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
     flow(&mut st, GitFlowMsg::OpenPanel);
-    assert!(st.gitflow_panel);
-    assert!(st.diff.is_none() && st.history.is_none());
+    assert!(st.session.gitflow_panel);
+    assert!(st.diff.is_none() && st.session.history.view.is_none());
     flow(&mut st, GitFlowMsg::ClosePanel);
-    assert!(!st.gitflow_panel);
+    assert!(!st.session.gitflow_panel);
     cleanup(&dir);
 
     let mut st = state();
     update(&mut st, Msg::GitFlow(GitFlowMsg::OpenPanel), Instant::now());
-    assert!(!st.gitflow_panel, "nothing without a repository");
+    assert!(!st.session.gitflow_panel, "nothing without a repository");
 }
 
 #[test]
 fn rebase_panel_and_git_flow_panel_replace_each_other() {
     let (mut st, dir) = initialized("panel-rebase");
     let h = head(&st);
-    st.rebase = Some(RebasePanel::loading(RebaseBase::FromCommit(h)));
+    st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(h)));
     flow(&mut st, GitFlowMsg::OpenPanel);
-    assert!(st.gitflow_panel && st.rebase.is_none());
+    assert!(st.session.gitflow_panel && st.session.rebase.view.is_none());
 
-    st.gitflow_panel = false;
+    st.session.gitflow_panel = false;
     let mut starting = RebasePanel::loading(RebaseBase::FromCommit(h));
     starting.starting = true;
-    st.rebase = Some(starting);
+    st.session.rebase.view = Some(starting);
     flow(&mut st, GitFlowMsg::OpenPanel);
-    assert!(!st.gitflow_panel && st.rebase.is_some(), "not while a rebase is starting");
+    assert!(!st.session.gitflow_panel && st.session.rebase.view.is_some(), "not while a rebase is starting");
 
-    st.rebase = None;
+    st.session.rebase.view = None;
     flow(&mut st, GitFlowMsg::OpenPanel);
     update(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(h))), Instant::now());
-    assert!(st.rebase.is_some() && !st.gitflow_panel);
+    assert!(st.session.rebase.view.is_some() && !st.session.gitflow_panel);
     cleanup(&dir);
 }
 
@@ -79,7 +79,7 @@ fn jumping_to_a_commit_closes_it() {
     let tip = st.snap.as_ref().unwrap().locals.iter().find(|b| b.name == "feature/x").and_then(|b| b.oid).unwrap();
     flow(&mut st, GitFlowMsg::OpenPanel);
     let fx = update(&mut st, Msg::Repo(RepoMsg::JumpTo(tip)), Instant::now());
-    assert!(!st.gitflow_panel);
+    assert!(!st.session.gitflow_panel);
     assert_eq!(st.selection, Selection::Commit(tip));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == tip)));
     cleanup(&dir);
@@ -90,16 +90,16 @@ fn parked_with_its_tab() {
     let (mut st, dir) = initialized("panel-tabs");
     flow(&mut st, GitFlowMsg::OpenPanel);
     drive(&mut st, Msg::Tabs(TabsMsg::NewTab));
-    assert!(!st.gitflow_panel, "the new tab shows no panel");
+    assert!(!st.session.gitflow_panel, "the new tab shows no panel");
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    assert!(st.gitflow_panel, "back on its tab");
+    assert!(st.session.gitflow_panel, "back on its tab");
 
     // A repository opened into this tab starts without it.
     let snap = Box::new(repo::load(&dir, &LoadOptions::all(100)).unwrap());
     st.loading = true;
     let m = Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Open, result: Ok(snap) });
     update(&mut st, m, Instant::now());
-    assert!(!st.gitflow_panel);
+    assert!(!st.session.gitflow_panel);
     cleanup(&dir);
 }
 
@@ -160,7 +160,7 @@ fn palette_opens_the_panel_once_set_up() {
     let (mut st, dir) = initialized("palette-panel");
     assert!(entries(&st).iter().any(|e| e.command == C::OpenGitFlowPanel && e.label == "Open Git Flow panel"));
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::OpenGitFlowPanel)));
-    assert!(st.gitflow_panel);
+    assert!(st.session.gitflow_panel);
     assert_eq!(st.palette_recent.keys(), ["gitflow-panel"]);
     cleanup(&dir);
 }

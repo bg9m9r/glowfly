@@ -60,7 +60,7 @@ fn every_state() -> CheckList {
 fn with_checks(theme: ThemeChoice, name: &str, f: impl FnOnce(&mut PrView)) -> (AppState, PathBuf) {
     let (mut st, dir) = with_pr(theme, name, true);
     load(&mut st, detail(), Vec::new());
-    f(st.pull_request.as_mut().unwrap());
+    f(st.session.pull_request.view.as_mut().unwrap());
     (st, dir)
 }
 
@@ -74,7 +74,7 @@ fn pr_check_list_dark() {
         v.checks.pane = ChecksPane::Loaded(every_state());
         v.pr.checks = Some(Checks { url: BUILD_URL.into(), ..Checks::from_counts(1, 1, 2, true) });
     });
-    let listed = st.pull_request.as_ref().unwrap().pr.checks.clone();
+    let listed = st.session.pull_request.view.as_ref().unwrap().pr.checks.clone();
     st.forge.as_mut().unwrap().prs[0].checks = listed;
     let mut h = harness(st, true);
     h.run();
@@ -123,7 +123,7 @@ fn pr_check_list_empty_light() {
     });
     let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
     view.checks.pane = ChecksPane::Loaded(CheckList::empty(""));
-    st.pull_request = Some(view);
+    st.session.pull_request.view = Some(view);
     let mut h = harness(st, false);
     h.run();
     assert!(h.query_by_label_contains("work with GitHub, GitLab and Bitbucket for now").is_some());

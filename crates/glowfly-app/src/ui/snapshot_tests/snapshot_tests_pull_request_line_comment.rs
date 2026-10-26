@@ -40,7 +40,7 @@ fn opened(
 ) -> (AppState, PathBuf, u32) {
     let (mut st, dir) = with_pr(theme, name, true);
     let (target, d, line) = files_loaded(&mut st, &dir);
-    let head = st.pull_request.as_ref().unwrap().source_tip().unwrap().to_string();
+    let head = st.session.pull_request.view.as_ref().unwrap().source_tip().unwrap().to_string();
     let mut det = detail(head);
     f(&mut det);
     let threads = if with_thread {
@@ -49,7 +49,7 @@ fn opened(
         Vec::new()
     };
     load(&mut st, det, threads);
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.tab = PrTab::Files;
     if let Some(text) = draft {
         let (h, i) = glowfly_core::diff_rows::line_index(&d, LineSide::New, line).expect("the added line");
@@ -84,7 +84,7 @@ fn pull_request_line_comment_dark() {
     h.run();
     assert_eq!(line_msgs(&h, |m| *m == LineCommentMsg::Post { review: false }), 1);
     let want = format!("{TEXT} Thanks");
-    assert_eq!(h.state().0.pull_request.as_ref().unwrap().line_draft.as_ref().unwrap().text, want, "no newline added");
+    assert_eq!(h.state().0.session.pull_request.view.as_ref().unwrap().line_draft.as_ref().unwrap().text, want, "no newline added");
 
     h.get_by_role_and_label(Role::Button, "Cancel").click();
     h.run();
@@ -103,7 +103,7 @@ fn pull_request_line_comment_dark() {
 fn pull_request_line_comment_suggestion_light() {
     let (mut st, dir, _) = opened(ThemeChoice::Light, "pr-line-comment-suggest", |d| d.pending_review = Some(9), false, None);
     let (target, d) = st.diff.clone().unwrap();
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     let (hk, i) = d.hunks.iter().enumerate().find_map(|(h, k)| k.lines.iter().position(|l| l.origin == '+').map(|i| (h, i))).unwrap();
     let mut dr = draft_at(v, &target, &d, hk, i, i).unwrap();
     dr.text = crate::state::pull_request_line_comment::with_suggestion("Maybe:", &dr);
@@ -165,7 +165,7 @@ fn diff_hunk_comment_lines_light() {
     assert_eq!(line_msgs(&h, |m| *m == LineCommentMsg::OnSelection), 1);
 
     // With the service's head elsewhere, no comment can start here.
-    if let Some(crate::state::pull_request::Page::Loaded(p)) = h.state_mut().0.pull_request.as_mut().map(|v| &mut v.page) {
+    if let Some(crate::state::pull_request::Page::Loaded(p)) = h.state_mut().0.session.pull_request.view.as_mut().map(|v| &mut v.page) {
         p.detail.head_sha = "abc1234".into();
     }
     h.run();

@@ -34,7 +34,7 @@ fn blame_entry_follows_file_history_and_hides_while_blame_is_open() {
     let l = labels(&st);
     let at = l.iter().position(|l| l == BLAME).expect("listed");
     assert_eq!(l[at - 1], "File history…", "right after File history");
-    st.blame = Some(BlameView::loading("a.txt".into(), None));
+    st.session.blame.view = Some(BlameView::loading("a.txt".into(), None));
     let l = labels(&st);
     assert!(!l.iter().any(|l| l == BLAME || l == "File history…" || l == "Search commits"), "{l:?}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -58,7 +58,7 @@ fn blame_file_lists_tracked_files_and_blames_the_pick() {
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::OpenBlame("a.txt".into()))));
     assert!(st.palette.is_none());
     assert_eq!(st.palette_recent.keys(), ["blame"], "the pick itself isn't recorded");
-    let v = st.blame.as_ref().expect("blame open");
+    let v = st.session.blame.view.as_ref().expect("blame open");
     assert_eq!((v.path.as_str(), v.at), ("a.txt", None));
     assert!(v.data.as_ref().is_some_and(|d| d.blame.lines == ["one"]), "{:?}", v.error);
     let _ = std::fs::remove_dir_all(&dir);

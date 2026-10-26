@@ -136,7 +136,7 @@ fn source_files(st: &AppState, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
 
 /// `source_files` with each file's status letter.
 fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, char)>> {
-    if let Some(h) = &st.history {
+    if let Some(h) = &st.session.history.view {
         return history_files(h, from);
     }
     let of = |files: &[FileEntry], make: &dyn Fn(String) -> DiffTarget| -> Vec<(DiffTarget, char)> {
@@ -164,7 +164,7 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
                 .then(|| stack.iter().flat_map(|c| shown(&c.files, &|p| DiffTarget::Commit(c.oid, p))).collect())
         }
         DiffTarget::Between(a, b, _) => {
-            if let Some(files) = st.pull_request.as_ref().and_then(|v| v.diff_files(*a, *b)) {
+            if let Some(files) = st.session.pull_request.view.as_ref().and_then(|v| v.diff_files(*a, *b)) {
                 return Some(of(files, &|p| DiffTarget::Between(*a, *b, p)));
             }
             match &st.selection {

@@ -155,13 +155,13 @@ fn stepping_keys() {
     assert_eq!(press(&mut h, Modifiers::ALT, Key::ArrowUp), ["jump -1"]);
 
     let mut st = state();
-    st.conflict = Some(ConflictView::loading("f.txt".into()));
+    st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
     let mut h = harness(st, false);
     assert_eq!(press(&mut h, NONE, Key::F7), ["conflict 1"]);
     assert_eq!(press(&mut h, Modifiers::ALT, Key::ArrowUp), ["conflict -1"]);
 
     let mut st = with_diff(state());
-    st.blame = Some(BlameView::loading("f.txt".into(), None));
+    st.session.blame.view = Some(BlameView::loading("f.txt".into(), None));
     let mut h = harness(st, false);
     assert_eq!(press(&mut h, NONE, Key::F7), quiet(), "not in blame");
 

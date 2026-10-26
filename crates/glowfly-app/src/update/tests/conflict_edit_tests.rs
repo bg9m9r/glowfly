@@ -17,13 +17,13 @@ fn send(st: &mut AppState, m: ConflictMsg) -> Vec<Effect> {
 }
 
 fn view(st: &AppState) -> &crate::state::conflict::ConflictView {
-    st.conflict.as_ref().expect("view open")
+    st.session.conflict.view.as_ref().expect("view open")
 }
 
 /// `with_fake(n)` with chunk `k` holding two lines per side ("ours k", "ours k more", ...).
 fn with_two_lines(n: usize, k: usize) -> AppState {
     let mut st = with_fake(n);
-    let c = st.conflict.as_mut().unwrap();
+    let c = st.session.conflict.view.as_mut().unwrap();
     if let Some(f) = c.file.as_mut()
         && let ConflictContent::Text(segs) = &mut f.content
         && let Segment::Conflict(chunk) = &mut segs[1 + 2 * k]
@@ -36,7 +36,7 @@ fn with_two_lines(n: usize, k: usize) -> AppState {
 
 /// Replaces chunk `k`'s text in the open editor with `text` and reports the edit.
 fn type_in_chunk(st: &mut AppState, k: usize, text: &str) {
-    let e = st.conflict.as_mut().unwrap().edit.as_mut().expect("editing");
+    let e = st.session.conflict.view.as_mut().unwrap().edit.as_mut().expect("editing");
     let r = e.rendered.chunks[k].clone();
     e.buffer.replace_range(r, text);
     send(st, ConflictMsg::ConflictOutputEdited);
@@ -45,7 +45,7 @@ fn type_in_chunk(st: &mut AppState, k: usize, text: &str) {
 #[test]
 fn line_toggles_build_the_output_in_tick_order() {
     let mut st = with_two_lines(3, 1);
-    st.conflict.as_mut().unwrap().auto[1] = Some(Trivial::Whitespace);
+    st.session.conflict.view.as_mut().unwrap().auto[1] = Some(Trivial::Whitespace);
     send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 1, side: Side::Theirs, line: 1 });
     send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 1, side: Side::Ours, line: 0 });
     let c = view(&st);
@@ -101,7 +101,7 @@ fn an_edit_across_a_chunk_and_a_clean_line_is_undone() {
     let mut st = with_fake(2);
     send(&mut st, ConflictMsg::ConflictEditOutput(true));
     let picks = view(&st).picks.clone();
-    let e = st.conflict.as_mut().unwrap().edit.as_mut().unwrap();
+    let e = st.session.conflict.view.as_mut().unwrap().edit.as_mut().unwrap();
     // From inside the top line into the first chunk's markers.
     let end = e.rendered.chunks[0].start + 3;
     e.buffer.replace_range(1..end, "X");
@@ -113,7 +113,7 @@ fn an_edit_across_a_chunk_and_a_clean_line_is_undone() {
     assert!(c.picks == picks && c.cleans.is_empty());
     type_in_chunk(&mut st, 0, "fine\n");
     assert!(view(&st).edit_note.is_none(), "an accepted edit clears the note");
-    st.conflict.as_mut().unwrap().edit_note = Some("x".into());
+    st.session.conflict.view.as_mut().unwrap().edit_note = Some("x".into());
     send(&mut st, ConflictMsg::ConflictEditOutput(false));
     assert!(view(&st).edit.is_none() && view(&st).edit_note.is_none(), "so does leaving the editor");
 }
@@ -123,7 +123,7 @@ fn the_span_note_follows_the_language() {
     let mut st = with_fake(2);
     st.settings.language = "de".into();
     send(&mut st, ConflictMsg::ConflictEditOutput(true));
-    let e = st.conflict.as_mut().unwrap().edit.as_mut().unwrap();
+    let e = st.session.conflict.view.as_mut().unwrap().edit.as_mut().unwrap();
     let end = e.rendered.chunks[0].start + 3;
     e.buffer.replace_range(1..end, "X");
     send(&mut st, ConflictMsg::ConflictOutputEdited);
@@ -147,7 +147,7 @@ fn an_edited_chunk_with_markers_is_still_open() {
     let mut st = with_fake(2);
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours });
     send(&mut st, ConflictMsg::ConflictEditOutput(true));
-    let e = st.conflict.as_mut().unwrap().edit.as_mut().unwrap();
+    let e = st.session.conflict.view.as_mut().unwrap().edit.as_mut().unwrap();
     let at = e.buffer.find("ours 1").unwrap();
     e.buffer.insert_str(at, "my ");
     send(&mut st, ConflictMsg::ConflictOutputEdited);
@@ -242,7 +242,7 @@ fn save_with_an_edited_chunk_stages_the_typed_text() {
 /// Replaces the text of the clean run `i` (in text order) in the open editor with `text` and
 /// reports the edit.
 fn type_in_clean(st: &mut AppState, i: usize, text: &str) {
-    let e = st.conflict.as_mut().unwrap().edit.as_mut().expect("editing");
+    let e = st.session.conflict.view.as_mut().unwrap().edit.as_mut().expect("editing");
     let r = e.rendered.cleans[i].1.clone();
     e.buffer.replace_range(r, text);
     send(st, ConflictMsg::ConflictOutputEdited);

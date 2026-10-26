@@ -44,7 +44,7 @@ fn a_dirty_tree_asks_then_stashes() {
     assert_eq!(confirm(&st), ("Stash changes and rebase", STASH_LINE, "Start rebase"));
     assert!(started(&up(&mut st, Msg::ConfirmAccepted)).autostash);
     st.job = None;
-    st.rebase.as_mut().unwrap().starting = false;
+    st.session.rebase.view.as_mut().unwrap().starting = false;
 
     // Drops and the stash share one question.
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 1, action: RebaseAction::Drop }));
@@ -54,7 +54,7 @@ fn a_dirty_tree_asks_then_stashes() {
     assert_eq!(body, format!("Drop 1 commit from main? Their changes will be removed.\n\n{STASH_LINE}"));
     assert!(started(&up(&mut st, Msg::ConfirmAccepted)).autostash);
     st.job = None;
-    st.rebase.as_mut().unwrap().starting = false;
+    st.session.rebase.view.as_mut().unwrap().starting = false;
 
     // A question that didn't mention stashing asks again once the tree is dirty.
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: true, autostash: false }));
@@ -72,6 +72,6 @@ fn a_kept_stash_is_reported() {
     let toast = st.toasts.last().expect("a toast");
     assert!(!toast.ok);
     assert_eq!(toast.text, "Interactive rebase finished, but your stashed changes didn't apply cleanly. They are kept in the stash list.");
-    assert!(st.rebase.is_none(), "the rebase ran, so the panel closes");
+    assert!(st.session.rebase.view.is_none(), "the rebase ran, so the panel closes");
     let _ = std::fs::remove_dir_all(&dir);
 }

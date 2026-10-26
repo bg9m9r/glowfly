@@ -60,32 +60,32 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Onboarding(crate::onboarding::OnboardingMsg::CloseTour));
     } else if st.dashboard.open {
         msgs.push(Msg::Dashboard(crate::msg::DashboardMsg::Close));
-    } else if st.conflict.is_some() {
+    } else if st.session.conflict.view.is_some() {
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
-    } else if st.blame.is_some() {
+    } else if st.session.blame.view.is_some() {
         msgs.push(Msg::Blame(BlameMsg::Close));
     } else if crate::state::pull_request_line_comment::esc_cancels(st) {
         msgs.push(Msg::PullRequest(PullRequestMsg::LineComment(crate::pull_request::line_comment::LineCommentMsg::Cancel)));
-    } else if st.history.is_some() && !st.view.diff_lines.is_empty() {
+    } else if st.session.history.view.is_some() && !st.view.diff_lines.is_empty() {
         // In File history too, Esc first drops a line selection of the entry's diff.
         msgs.push(Msg::Diff(DiffMsg::ClearLineSelection));
-    } else if st.history.is_some() {
+    } else if st.session.history.view.is_some() {
         msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
     } else if st.diff_or_download() {
         // Esc first drops a line selection, then closes the diff.
         msgs.push(if st.view.diff_lines.is_empty() { Msg::Repo(RepoMsg::CloseDiff) } else { Msg::Diff(DiffMsg::ClearLineSelection) });
-    } else if st.pull_request.is_some() {
+    } else if st.session.pull_request.view.is_some() {
         msgs.push(Msg::PullRequest(PullRequestMsg::Close));
-    } else if st.issue.is_some() {
+    } else if st.session.issue.view.is_some() {
         msgs.push(Msg::Issue(IssueMsg::Close));
-    } else if let Some(p) = &st.rebase {
+    } else if let Some(p) = &st.session.rebase.view {
         // Esc first closes the message editor, then the panel.
         msgs.push(if p.editing.is_some() { Msg::Rebase(RebaseMsg::RebaseCancelMessage) } else { Msg::Rebase(RebaseMsg::CloseRebase) });
-    } else if st.range_diff.is_some() {
+    } else if st.session.range_diff.view.is_some() {
         msgs.push(Msg::RangeDiff(crate::range_diff::RangeDiffMsg::Close));
-    } else if st.journal.is_some() {
+    } else if st.session.journal.view.is_some() {
         msgs.push(Msg::Journal(crate::journal::JournalMsg::Close));
-    } else if st.gitflow_panel {
+    } else if st.session.gitflow_panel {
         msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ClosePanel));
     } else if matches!(st.selection, crate::state::Selection::Commits(_) | crate::state::Selection::VsWorkdir(_)) {
         msgs.push(Msg::Selection(SelectionMsg::CollapseSelection));
@@ -108,25 +108,25 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
                 dashboard::show(ui, st, msgs);
             } else if st.snap.is_none() {
                 common::welcome(ui, st, msgs);
-            } else if st.conflict.is_some() {
+            } else if st.session.conflict.view.is_some() {
                 conflict::show(ui, st, msgs);
-            } else if st.blame.is_some() {
+            } else if st.session.blame.view.is_some() {
                 blame::show(ui, st, cache, msgs);
-            } else if st.history.is_some() {
+            } else if st.session.history.view.is_some() {
                 history::show(ui, st, cache, msgs);
-            } else if st.pull_request.is_some() {
+            } else if st.session.pull_request.view.is_some() {
                 pull_request::show(ui, st, cache, msgs);
-            } else if st.issue.is_some() {
+            } else if st.session.issue.view.is_some() {
                 issue::show(ui, st, &mut cache.markdown, msgs);
             } else if st.diff_or_download() {
                 diff::show(ui, st, cache, msgs);
-            } else if st.rebase.is_some() {
+            } else if st.session.rebase.view.is_some() {
                 rebase::show(ui, st, cache, msgs);
-            } else if st.range_diff.is_some() {
+            } else if st.session.range_diff.view.is_some() {
                 range_diff::show(ui, st, msgs);
-            } else if st.journal.is_some() {
+            } else if st.session.journal.view.is_some() {
                 journal::show(ui, st, msgs);
-            } else if st.gitflow_panel {
+            } else if st.session.gitflow_panel {
                 gitflow_panel::show(ui, st, msgs);
             } else {
                 graph::show(ui, st, cache, msgs);

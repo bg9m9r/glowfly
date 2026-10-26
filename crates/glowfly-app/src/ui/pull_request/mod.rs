@@ -34,7 +34,7 @@ use glowfly_core::repo::DiffTarget;
 use glowfly_core::text::printable;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    let Some(view) = &st.pull_request else { return };
+    let Some(view) = &st.session.pull_request.view else { return };
     // Also while the file being opened waits for contents a partial clone hasn't downloaded (in
     // the tab it opened in).
     let waiting = st.for_diff().is_some();
@@ -56,7 +56,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                 egui::ScrollArea::vertical().id_salt("pr-side").auto_shrink([false, false]).show(ui, |ui| {
                     let default_branch = st.forge.as_ref().and_then(|f| f.default_branch.clone());
                     let (lang, now) = (st.settings.lang(), st.view.now);
-                    let Some(view) = st.pull_request.as_mut() else { return };
+                    let Some(view) = st.session.pull_request.view.as_mut() else { return };
                     info::show(ui, view);
                     checks::show(ui, view, lang, now, msgs);
                     review::show(ui, &st.keymap, view, msgs);
@@ -67,7 +67,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         }
         PrTab::Commits => {
             side.show_inside(ui, |ui| {
-                let Some(view) = &st.pull_request else { return };
+                let Some(view) = &st.session.pull_request.view else { return };
                 commits::show(ui, st, view, msgs);
             });
             center.show_inside(ui, |ui| {
@@ -80,14 +80,16 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         }
         PrTab::Files => {
             side.show_inside(ui, |ui| {
-                let Some(view) = &st.pull_request else { return };
+                let Some(view) = &st.session.pull_request.view else { return };
                 files::show(ui, st, view, msgs);
             });
             center.show_inside(ui, |ui| {
                 if shows_file {
                     let path = st.diff.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
                     let commented = st
+                        .session
                         .pull_request
+                        .view
                         .as_ref()
                         .is_some_and(|v| on_local_file(v, &path) > 0 || crate::state::pull_request_line_comment::draft_on(v, &path));
                     if commented {

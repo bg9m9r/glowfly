@@ -100,27 +100,27 @@ pub fn tool_view(st: &AppState) -> Option<ToolView> {
     use super::history::HistoryKind;
     if st.dashboard.open || st.snap.is_none() {
         None
-    } else if st.conflict.is_some() {
+    } else if st.session.conflict.view.is_some() {
         Some(ToolView::Conflict)
-    } else if st.blame.is_some() {
+    } else if st.session.blame.view.is_some() {
         Some(ToolView::Blame)
-    } else if let Some(h) = &st.history {
+    } else if let Some(h) = &st.session.history.view {
         Some(match h.kind {
             HistoryKind::File => ToolView::FileHistory,
             HistoryKind::Folder => ToolView::FolderHistory,
         })
-    } else if st.pull_request.is_some() {
+    } else if st.session.pull_request.view.is_some() {
         // The pull request panel covers the issue panel, and keeps the full commit panel.
         None
-    } else if st.issue.is_some() {
+    } else if st.session.issue.view.is_some() {
         Some(ToolView::Issue)
-    } else if st.diff_or_download() || st.rebase.is_some() {
+    } else if st.diff_or_download() || st.session.rebase.view.is_some() {
         None
-    } else if st.range_diff.is_some() {
+    } else if st.session.range_diff.view.is_some() {
         Some(ToolView::RangeDiff)
-    } else if st.journal.is_some() {
+    } else if st.session.journal.view.is_some() {
         Some(ToolView::Journal)
-    } else if st.gitflow_panel {
+    } else if st.session.gitflow_panel {
         Some(ToolView::GitFlow)
     } else {
         None

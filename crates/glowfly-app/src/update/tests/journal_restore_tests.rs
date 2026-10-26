@@ -22,7 +22,7 @@ fn rev(dir: &Path, r: &str) -> Oid {
 
 /// The newest row of `subject` at `oid`.
 fn row(st: &AppState, subject: &Subject, oid: Oid) -> Row {
-    let rows = st.journal.as_ref().unwrap().rows();
+    let rows = st.session.journal.view.as_ref().unwrap().rows();
     rows.iter().find(|r| r.subject == *subject && r.oid == oid).unwrap_or_else(|| panic!("a row at {oid}: {rows:#?}")).clone()
 }
 
@@ -151,8 +151,17 @@ fn a_head_state_checks_out_its_branch_or_detaches() {
     git(&dir, &["checkout", "-q", "topic"]);
     git(&dir, &["checkout", "-q", "main"]);
     reload(&mut st, &dir);
-    let r =
-        st.journal.as_ref().unwrap().rows().iter().find(|r| r.subject == Subject::Head && r.oid == first).cloned().expect("the checkout");
+    let r = st
+        .session
+        .journal
+        .view
+        .as_ref()
+        .unwrap()
+        .rows()
+        .iter()
+        .find(|r| r.subject == Subject::Head && r.oid == first)
+        .cloned()
+        .expect("the checkout");
     restore(&mut st, &r);
     assert_eq!(asked(&st), ("Check out this state?".into(), "Check out".into()));
     let fx = accept(&mut st);

@@ -14,20 +14,20 @@ use glowfly_core::repo::{ConflictSummary, Hazard};
 /// The status changed (or the tab was opened or activated): reads the lists again while an
 /// operation is in progress or files are conflicted, and clears them once it is all over.
 pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let generation = st.conflict_files.generation + 1;
+    let generation = st.session.conflict_files.generation + 1;
     let (Some(snap), Some(workdir)) = (&st.snap, st.workdir()) else {
-        st.conflict_files = ConflictFiles { generation, ..Default::default() };
+        st.session.conflict_files = ConflictFiles { generation, ..Default::default() };
         return;
     };
     let paths = conflicted_paths(snap);
     let conflicted = snap.unstaged.iter().any(|f| f.status == '!');
     if snap.state == RepositoryState::Clean && !conflicted {
-        st.conflict_files = ConflictFiles { generation, ..Default::default() };
+        st.session.conflict_files = ConflictFiles { generation, ..Default::default() };
         return;
     }
     // Files conflicted again leave the resolved list now rather than when the read lands.
     let now: Vec<&str> = snap.unstaged.iter().filter(|f| f.status == '!').map(|f| f.path.as_str()).collect();
-    let files = &mut st.conflict_files;
+    let files = &mut st.session.conflict_files;
     files.generation = generation;
     files.resolved.retain(|r| !now.contains(&r.entry.path.as_str()));
     fx.push(Effect::Conflict(ConflictEffect::ReadFiles { workdir, paths, purpose: ConflictRead::Summary { generation } }));
@@ -64,7 +64,7 @@ pub(super) fn confirmed(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<Effe
     if paths.is_empty() || any_in_tool(st, &paths) {
         return;
     }
-    if let Some(c) = st.conflict.as_mut().filter(|c| paths.contains(&c.path)) {
+    if let Some(c) = st.session.conflict.view.as_mut().filter(|c| paths.contains(&c.path)) {
         c.step_on_resolve = true;
     }
     super::ops::local(st, LocalOp::MarkResolved(paths), fx);
@@ -74,7 +74,7 @@ pub(super) fn confirmed(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<Effe
 /// with a name git can be given safely, and not open in the merge tool (said in the log).
 pub(super) fn mark_conflicted(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<Effect>) {
     let restorable = |st: &AppState, p: &String| {
-        st.conflict_files.resolved.iter().any(|r| r.both_sides && r.entry.hazard.is_none() && r.entry.path == *p)
+        st.session.conflict_files.resolved.iter().any(|r| r.both_sides && r.entry.hazard.is_none() && r.entry.path == *p)
     };
     let paths: Vec<String> = paths.into_iter().filter(|p| restorable(st, p) && hazard_of(st, p).is_none()).collect();
     let paths: Vec<String> = paths.into_iter().filter(|p| !super::conflict::in_tool(st, p)).collect();
@@ -93,13 +93,13 @@ pub(super) fn read_done(
 ) {
     match purpose {
         ConflictRead::Summary { generation } => {
-            if generation != st.conflict_files.generation {
+            if generation != st.session.conflict_files.generation {
                 return;
             }
             match result {
                 Ok(s) => {
-                    st.conflict_files.counts = s.counts.into_iter().collect();
-                    st.conflict_files.resolved = s.resolved;
+                    st.session.conflict_files.counts = s.counts.into_iter().collect();
+                    st.session.conflict_files.resolved = s.resolved;
                 }
                 Err(e) => st.log(false, e),
             }

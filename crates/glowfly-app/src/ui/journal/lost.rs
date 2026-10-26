@@ -26,7 +26,7 @@ const PAD_X: f32 = 16.0;
 
 pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
-    let Some(view) = st.journal.as_ref().and_then(|v| v.lost.as_ref()) else {
+    let Some(view) = st.session.journal.view.as_ref().and_then(|v| v.lost.as_ref()) else {
         return pane_status::loading(ui, t.tr("journal.lost.loading"));
     };
     match &view.result {

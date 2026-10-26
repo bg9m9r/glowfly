@@ -63,7 +63,7 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
 /// selected lines when the selection is visible on it, else the whole file. Nothing on a diff of the other side, a commit or comparison
 /// diff, a conflicted file, or under the conflict view or the file history.
 fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
-    if st.conflict.is_some() || st.history.is_some() {
+    if st.session.conflict.view.is_some() || st.session.history.view.is_some() {
         return None;
     }
     // The file still opening, when there is one: the line selection is on the diff on screen.
@@ -91,7 +91,7 @@ fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
 /// working-tree diff or under the conflict or blame view. Refusals (a reload on its way) are
 /// logged by the handlers.
 fn revert_msg(st: &mut AppState) -> Option<Msg> {
-    if st.conflict.is_some() || st.blame.is_some() {
+    if st.session.conflict.view.is_some() || st.session.blame.view.is_some() {
         return None;
     }
     let (target, _) = st.diff.as_ref()?;

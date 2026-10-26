@@ -33,7 +33,7 @@ fn issue_comment_box_empty() {
 fn issue_comment_box_error() {
     let (mut st, dir) = with_issue(ThemeChoice::Dark, "issue-comment-error", github(), crash(), None);
     set_details(&mut st, crash_details());
-    let v = st.issue.as_mut().unwrap();
+    let v = st.session.issue.view.as_mut().unwrap();
     v.comment.text = "Confirmed on 1.2 too.".into();
     v.comment.error = Some("Unable to create comment because issue is locked.".into());
     let mut h = harness(st, true);
@@ -49,7 +49,7 @@ fn issue_comment_box_error() {
 fn issue_comment_box_posting() {
     let (mut st, dir) = with_issue(ThemeChoice::Light, "issue-comment-posting", github(), crash(), None);
     set_details(&mut st, crash_details());
-    let v = st.issue.as_mut().unwrap();
+    let v = st.session.issue.view.as_mut().unwrap();
     v.comment.text = "Confirmed on 1.2 too.".into();
     v.comment.posting = true;
     let mut h = harness(st, false);
@@ -69,7 +69,7 @@ fn issue_comment_too_long() {
     let card = Issue { key: "AbCd1234".into(), url: "https://trello.com/c/AbCd1234".into(), ..crash() };
     let (mut st, dir) = with_issue(ThemeChoice::Light, "issue-comment-long", trello, card.clone(), None);
     set_details(&mut st, IssueDetails { issue: card, ..crash_details() });
-    let v = st.issue.as_mut().unwrap();
+    let v = st.session.issue.view.as_mut().unwrap();
     v.comment.text = "x".repeat(16_385);
     v.comment.touched.mark(FIELD);
     let mut h = harness(st, false);

@@ -16,7 +16,7 @@ use glowfly_core::rebase::{self, RebaseAction, RebaseBase, ResetTo, TodoStep};
 use std::path::Path;
 
 fn panel(st: &AppState) -> &RebasePanel {
-    st.rebase.as_ref().expect("panel open")
+    st.session.rebase.view.as_ref().expect("panel open")
 }
 
 fn short(o: Oid) -> String {

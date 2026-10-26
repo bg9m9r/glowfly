@@ -75,16 +75,16 @@ impl AppState {
     pub fn graph_shown(&self) -> bool {
         !self.dashboard.open
             && self.snap.is_some()
-            && self.conflict.is_none()
-            && self.blame.is_none()
-            && self.history.is_none()
-            && self.pull_request.is_none()
-            && self.issue.is_none()
+            && self.session.conflict.view.is_none()
+            && self.session.blame.view.is_none()
+            && self.session.history.view.is_none()
+            && self.session.pull_request.view.is_none()
+            && self.session.issue.view.is_none()
             && !self.diff_or_download()
-            && self.rebase.is_none()
-            && self.range_diff.is_none()
-            && self.journal.is_none()
-            && !self.gitflow_panel
+            && self.session.rebase.view.is_none()
+            && self.session.range_diff.view.is_none()
+            && self.session.journal.view.is_none()
+            && !self.session.gitflow_panel
             && !super::terminal::maximized_shown(self)
     }
 }

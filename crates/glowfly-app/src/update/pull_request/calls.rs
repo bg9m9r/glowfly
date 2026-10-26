@@ -45,12 +45,12 @@ fn request(st: &AppState) -> Result<PrRequest, String> {
 /// asked of a service without in-app reviews, nor while the repository isn't trusted (signing
 /// in may run its credential helper).
 pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(v) = st.pull_request.as_ref() else { return };
+    let Some(v) = st.session.pull_request.view.as_ref() else { return };
     if v.page == Page::Unsupported {
         return;
     }
     if !st.runs_git_unasked() {
-        if let Some(v) = st.pull_request.as_mut()
+        if let Some(v) = st.session.pull_request.view.as_mut()
             && v.loaded().is_none()
         {
             v.page = Page::Held;
@@ -58,9 +58,9 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let req = request(st);
-    st.pull_request_page_gen += 1;
-    let generation = st.pull_request_page_gen;
-    let Some(v) = st.pull_request.as_mut() else { return };
+    st.session.pull_request.page_gen += 1;
+    let generation = st.session.pull_request.page_gen;
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     match req {
         Err(e) => {
             if v.loaded().is_none() {
@@ -87,21 +87,21 @@ pub(super) fn act(st: &mut AppState, action: PrAction, call: PrCall, fx: &mut Ve
             return;
         }
     };
-    let generation = st.pull_request_page_gen;
-    let Some(v) = st.pull_request.as_mut().filter(|v| v.loaded().is_some() && v.busy.is_none()) else { return };
+    let generation = st.session.pull_request.page_gen;
+    let Some(v) = st.session.pull_request.view.as_mut().filter(|v| v.loaded().is_some() && v.busy.is_none()) else { return };
     v.busy = Some(action);
     v.action_error = None;
     fx.push(Effect::PullRequest(PrEffect::Call(Box::new(CallJob { req, id: v.pr.id, generation, call }))));
 }
 
 pub(super) fn post_comment(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(v) = st.pull_request.as_ref().filter(|v| comment_blocked(v).is_none()) else { return };
+    let Some(v) = st.session.pull_request.view.as_ref().filter(|v| comment_blocked(v).is_none()) else { return };
     let call = PrCall::Comment(v.forms.comment.clone());
     act(st, PrAction::Comment, call, fx);
 }
 
 pub(super) fn submit_review(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(v) = st.pull_request.as_ref().filter(|v| review_blocked(v).is_none()) else { return };
+    let Some(v) = st.session.pull_request.view.as_ref().filter(|v| review_blocked(v).is_none()) else { return };
     let Some(page) = v.loaded() else { return };
     let call = PrCall::Review {
         event: v.forms.review_event,
@@ -114,7 +114,7 @@ pub(super) fn submit_review(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 pub(super) fn merge(st: &mut AppState, fx: &mut Vec<Effect>) {
     let default_branch = st.forge.as_ref().and_then(|f| f.default_branch.clone());
-    let Some(v) = st.pull_request.as_ref().filter(|v| merge_blocked(v).is_none()) else { return };
+    let Some(v) = st.session.pull_request.view.as_ref().filter(|v| merge_blocked(v).is_none()) else { return };
     let (Some(page), Some(method)) = (v.loaded(), v.forms.merge_method) else { return };
     let req = MergeRequest {
         method,
@@ -185,10 +185,10 @@ pub(super) fn replied(
     }
     let prefix = target.provider.pr_prefix();
     let label = format!("{prefix}{id}");
-    let open = active && st.pull_request.as_ref().is_some_and(|v| v.pr.id == id);
+    let open = active && st.session.pull_request.view.as_ref().is_some_and(|v| v.pr.id == id);
     let reply = match reply {
         PrReply::Loaded(result) => {
-            if open && generation == st.pull_request_page_gen {
+            if open && generation == st.session.pull_request.page_gen {
                 page_loaded(st, result);
                 // A fork the page names isn't compared from a same-named branch.
                 super::source::rekey(st, fx, false);
@@ -198,7 +198,7 @@ pub(super) fn replied(
             return;
         }
         PrReply::Checks(result) => {
-            if open && generation == st.pull_request_checks_gen {
+            if open && generation == st.session.pull_request.checks_gen {
                 super::checks::loaded(st, result, now);
             }
             return;
@@ -209,7 +209,7 @@ pub(super) fn replied(
         }
         other => other,
     };
-    let into = match (&st.pull_request, &st.forge) {
+    let into = match (&st.session.pull_request.view, &st.forge) {
         (Some(v), _) if open => v.pr.target.clone(),
         (_, Some(fs)) if active => fs.prs.iter().find(|p| p.id == id).map(|p| p.target.clone()).unwrap_or_default(),
         _ => String::new(),
@@ -220,7 +220,7 @@ pub(super) fn replied(
         return;
     }
     st.log(ok, text.clone());
-    if open && let Some(v) = st.pull_request.as_mut() {
+    if open && let Some(v) = st.session.pull_request.view.as_mut() {
         v.busy = None;
         if let Some(e) = reply_error(&reply) {
             let action = match &reply {
@@ -235,7 +235,7 @@ pub(super) fn replied(
     }
     match reply {
         PrReply::Commented(Ok(entry)) => {
-            if open && let Some(v) = st.pull_request.as_mut() {
+            if open && let Some(v) = st.session.pull_request.view.as_mut() {
                 v.forms.comment.clear();
                 if let Page::Loaded(p) = &mut v.page {
                     p.entries.push(entry);
@@ -244,7 +244,7 @@ pub(super) fn replied(
             st.toast(true, "Comment posted", now);
         }
         PrReply::Reviewed(_, Ok(())) => {
-            if open && let Some(v) = st.pull_request.as_mut() {
+            if open && let Some(v) = st.session.pull_request.view.as_mut() {
                 v.forms.review_body.clear();
             }
             st.toast(true, text, now);
@@ -284,7 +284,7 @@ fn reply_error(reply: &PrReply) -> Option<&ForgeError> {
 /// A page arrived for the open panel: show it and fit the forms to it, or say why it failed
 /// (a failed reload keeps the last page and only logs).
 fn page_loaded(st: &mut AppState, result: Result<PrPage, ForgeError>) {
-    let Some(v) = st.pull_request.as_mut() else { return };
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     v.reloading = false;
     let failed = match result {
         Ok(page) => {

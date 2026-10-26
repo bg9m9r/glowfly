@@ -173,7 +173,7 @@ fn state(provider: Provider, v: PrView) -> AppState {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     let t = Target { provider, host: "example.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
     st.forge = Some(ForgeState::new(Some(t), "origin".into(), None));
-    st.pull_request = Some(v);
+    st.session.pull_request.view = Some(v);
     st
 }
 
@@ -188,7 +188,7 @@ fn diff_comments_only_for_a_shown_file_on_github() {
     assert_eq!(c.draft_hunk, Some(0));
     assert_eq!(c.draft, HashSet::from([(LineSide::Old, 2), (LineSide::New, 2)]));
     assert!(esc_cancels(&st));
-    let v = st.pull_request.as_ref().unwrap();
+    let v = st.session.pull_request.view.as_ref().unwrap();
     assert!(draft_on(v, "f.txt") && !draft_on(v, "g.txt"));
     assert!(diff_comments(&st, &DiffTarget::Between(oid(3), oid(9), "f.txt".into())).is_none(), "not the panel's diff");
     assert!(diff_comments(&state(Provider::GitLab, v.clone()), &target()).is_none(), "not on GitLab");

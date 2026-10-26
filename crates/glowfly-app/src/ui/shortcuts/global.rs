@@ -99,10 +99,12 @@ impl Live {
             dialog: (st.modal.is_some() && !sheet) || (st.onboarding.welcome.is_some() && st.prefs.is_none()),
             typing: ctx.wants_keyboard_input() && crate::ui::wip_keys::focused_list(ctx).is_none(),
             working_diff: st.view.diff_opening.as_ref().or(st.diff.as_ref().map(|(t, _)| t)).is_some_and(|t| t.is_working_tree()),
-            commit_diff: st.blame.is_none() && st.conflict.is_none() && st.diff.as_ref().is_some_and(|(t, _)| t.reverts_hunks()),
-            stepping: st.blame.is_none() && (st.conflict.is_some() || st.diff.is_some()),
-            diff: st.blame.is_none() && st.conflict.is_none() && st.diff.is_some(),
-            blame: st.blame.as_ref().is_some_and(|v| v.data.is_some()),
+            commit_diff: st.session.blame.view.is_none()
+                && st.session.conflict.view.is_none()
+                && st.diff.as_ref().is_some_and(|(t, _)| t.reverts_hunks()),
+            stepping: st.session.blame.view.is_none() && (st.session.conflict.view.is_some() || st.diff.is_some()),
+            diff: st.session.blame.view.is_none() && st.session.conflict.view.is_none() && st.diff.is_some(),
+            blame: st.session.blame.view.as_ref().is_some_and(|v| v.data.is_some()),
             graph: st.graph_shown(),
             terminal: st.terminal.focused,
             rebasing: st.snap.as_ref().is_some_and(|s| {
@@ -212,9 +214,10 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
     use BindingId as I;
     // A history's File pane has no diff on screen: a folder history steps to the entry's next
     // or previous file instead.
-    let file_pane = |st: &AppState| st.blame.is_none() && st.history.as_ref().is_some_and(|v| v.pane == HistoryPane::File);
+    let file_pane =
+        |st: &AppState| st.session.blame.view.is_none() && st.session.history.view.as_ref().is_some_and(|v| v.pane == HistoryPane::File);
     let step = |d: isize, st: &AppState| {
-        if st.conflict.is_some() {
+        if st.session.conflict.view.is_some() {
             Msg::Conflict(ConflictMsg::ConflictStep(d))
         } else if file_pane(st) {
             Msg::History(HistoryMsg::StepHistoryFile(d))
@@ -312,7 +315,7 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::RebaseContinue => Msg::Rebase(RebaseMsg::Resume(Resume::Continue)),
         I::RebaseSkip => Msg::Rebase(RebaseMsg::Resume(Resume::Skip)),
         // In the blame view it finds in the file.
-        I::Search if st.blame.is_some() => Msg::Blame(BlameMsg::FocusFind),
+        I::Search if st.session.blame.view.is_some() => Msg::Blame(BlameMsg::FocusFind),
         // In a history's File pane it finds in the file shown.
         I::Search if file_pane(st) => Msg::History(HistoryMsg::FocusFileFind),
         // The search bar's visibility is view state.

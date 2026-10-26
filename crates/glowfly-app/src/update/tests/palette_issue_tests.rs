@@ -74,7 +74,7 @@ fn view_issue_picks_from_the_listed_issues() {
     assert_eq!(cmd.recall_key(), None);
     let fx = send(&mut st, cmd);
     assert!(st.palette.is_none());
-    assert_eq!(st.issue.as_ref().map(|v| v.key.as_str()), Some("14"));
+    assert_eq!(st.session.issue.view.as_ref().map(|v| v.key.as_str()), Some("14"));
     assert!(fx.iter().any(|e| matches!(e, Effect::Issue(IssueEffect::Call(j)) if matches!(&j.call, IssueCall::Load(k) if k == "14"))));
     assert_eq!(st.palette_recent.keys(), ["view-issue"], "the pick itself isn't recorded");
 

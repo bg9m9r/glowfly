@@ -67,13 +67,13 @@ pub(in crate::ui) fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) 
     // Answered already, so no spinner keeps the frame repainting.
     view.checks.pane = ChecksPane::Loaded(CheckList::empty(fs.prs[0].head.clone().unwrap_or_default()));
     st.forge = Some(fs);
-    st.pull_request = Some(view);
+    st.session.pull_request.view = Some(view);
     (st, dir)
 }
 
 /// Compares the open panel as the runner does (`repo::pr_compare`) and stores the result.
 pub(in crate::ui) fn compare(st: &mut AppState, dir: &Path) {
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     let key = v.files_key();
     match repo::pr_compare(dir, key.target.expect("origin/main"), key.branch, key.head.as_deref()).unwrap() {
         PrCompare::Loaded { source, changes, commits } => v.set_loaded(changes, source, commits),
@@ -85,7 +85,7 @@ pub(in crate::ui) fn compare(st: &mut AppState, dir: &Path) {
 fn pull_request_dark() {
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "pr-view", true);
     compare(&mut st, &dir);
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.tab = PrTab::Files;
     let target = v.diff_target("search.txt").unwrap();
     assert!(v.shows(&target));
@@ -104,8 +104,8 @@ fn pull_request_dark() {
 #[test]
 fn pull_request_out_of_sync_light() {
     let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-view-sync", false);
-    st.pull_request.as_mut().unwrap().tab = PrTab::Files;
-    assert_eq!(st.pull_request.as_ref().unwrap().files, Files::Missing);
+    st.session.pull_request.view.as_mut().unwrap().tab = PrTab::Files;
+    assert_eq!(st.session.pull_request.view.as_ref().unwrap().files, Files::Missing);
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("pull_request_out_of_sync_light");

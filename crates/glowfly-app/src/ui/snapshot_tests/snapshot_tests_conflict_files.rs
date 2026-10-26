@@ -58,17 +58,17 @@ pub(in crate::ui) fn merging(name: &str, fix_beta: bool) -> (AppState, PathBuf) 
 pub(in crate::ui) fn fill_lists(st: &mut AppState, dir: &Path) {
     let paths = conflicted_paths(st.snap.as_ref().unwrap());
     let summary = repo::conflict_summary(dir, &paths, true).unwrap();
-    st.conflict_files.counts = summary.counts.into_iter().collect();
-    st.conflict_files.resolved = summary.resolved;
+    st.session.conflict_files.counts = summary.counts.into_iter().collect();
+    st.session.conflict_files.resolved = summary.resolved;
 }
 
 #[test]
 fn wip_conflicted_and_resolved() {
     let (mut st, dir) = merging("conflict-lists", true);
     fill_lists(&mut st, &dir);
-    assert_eq!(st.conflict_files.count_note(glowfly_core::i18n::Lang::En, "alpha.txt"), Some(("2 conflicts".into(), false)));
-    assert_eq!(st.conflict_files.count_note(glowfly_core::i18n::Lang::En, "beta.txt"), Some(("no markers left".into(), true)));
-    assert_eq!(st.conflict_files.resolved_rows(st.snap.as_ref().unwrap()).len(), 1);
+    assert_eq!(st.session.conflict_files.count_note(glowfly_core::i18n::Lang::En, "alpha.txt"), Some(("2 conflicts".into(), false)));
+    assert_eq!(st.session.conflict_files.count_note(glowfly_core::i18n::Lang::En, "beta.txt"), Some(("no markers left".into(), true)));
+    assert_eq!(st.session.conflict_files.resolved_rows(st.snap.as_ref().unwrap()).len(), 1);
     render("wip_conflicted_and_resolved", st, true);
     super::snapshot_tests::remove_fixture(&dir);
 }
@@ -91,7 +91,7 @@ fn conflict_auto_picked() {
         (lines.join("\n") + "\n").into_bytes()
     };
     let (st, dir) = with_conflict("conflict-auto", "settings.txt", settings);
-    let view = st.conflict.as_ref().unwrap();
+    let view = st.session.conflict.view.as_ref().unwrap();
     assert_eq!((view.chunk_count(), view.auto_count(), view.current), (2, 1, 1), "starts on the real conflict");
     render("conflict_auto_picked", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
@@ -139,7 +139,7 @@ fn conflict_line_picks() {
     let (mut st, dir) = with_conflict("conflict-line-picks", "settings.txt", theme_settings);
     send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 0, side: Side::Theirs, line: 1 });
     send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 0, side: Side::Ours, line: 0 });
-    let view = st.conflict.as_ref().unwrap();
+    let view = st.session.conflict.view.as_ref().unwrap();
     assert!(matches!(view.picks[0], ChunkPick::Lines(_)) && view.picks[1].is_open());
     render("conflict_line_picks", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
@@ -149,11 +149,11 @@ fn conflict_line_picks() {
 fn edited(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_conflict(name, "settings.txt", theme_settings);
     send(&mut st, ConflictMsg::ConflictEditOutput(true));
-    let e = st.conflict.as_mut().unwrap().edit.as_mut().unwrap();
+    let e = st.session.conflict.view.as_mut().unwrap().edit.as_mut().unwrap();
     let r = e.rendered.chunks[1].clone();
     e.buffer.replace_range(r, "font_size = 15\n");
     send(&mut st, ConflictMsg::ConflictOutputEdited);
-    let view = st.conflict.as_ref().unwrap();
+    let view = st.session.conflict.view.as_ref().unwrap();
     assert!(view.picks[1].is_edited() && view.can_save_partial());
     (st, dir)
 }

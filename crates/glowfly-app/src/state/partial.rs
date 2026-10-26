@@ -133,8 +133,8 @@ impl AppState {
 
     /// The waiting contents of the blame being loaded.
     pub fn for_blame(&self) -> Option<&PendingContent> {
-        let loading = self.blame.as_ref().is_some_and(|b| b.loading);
-        self.partial.content.as_ref().filter(|p| loading && p.view == ContentView::Blame { generation: self.blame_gen })
+        let loading = self.session.blame.view.as_ref().is_some_and(|b| b.loading);
+        self.partial.content.as_ref().filter(|p| loading && p.view == ContentView::Blame { generation: self.session.blame.generation })
     }
 
     /// A diff is shown, or the diff being opened waits for its contents (the central area shows
@@ -157,10 +157,14 @@ impl AppState {
     pub fn content_view_current(&self, view: &ContentView) -> bool {
         match view {
             ContentView::Diff { generation } => *generation == self.diff_gen,
-            ContentView::FileText { oid, path, before } => self.history.as_ref().and_then(|h| h.text.as_ref()).is_some_and(|t| {
-                t.oid == *oid && t.path == *path && t.before == *before && matches!(t.state, super::history::TextState::Loading)
-            }),
-            ContentView::Blame { generation } => *generation == self.blame_gen && self.blame.as_ref().is_some_and(|b| b.loading),
+            ContentView::FileText { oid, path, before } => {
+                self.session.history.view.as_ref().and_then(|h| h.text.as_ref()).is_some_and(|t| {
+                    t.oid == *oid && t.path == *path && t.before == *before && matches!(t.state, super::history::TextState::Loading)
+                })
+            }
+            ContentView::Blame { generation } => {
+                *generation == self.session.blame.generation && self.session.blame.view.as_ref().is_some_and(|b| b.loading)
+            }
         }
     }
 }

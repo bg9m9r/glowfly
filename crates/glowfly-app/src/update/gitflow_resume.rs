@@ -26,11 +26,11 @@ pub(super) enum Change {
 pub(super) fn store(st: &mut AppState, workdir: Option<PathBuf>, change: Change) {
     let active = workdir.as_ref().is_none_or(|w| st.snap.as_ref().is_some_and(|s| is_repo_at(s, w)));
     let slot = if active {
-        &mut st.gitflow_resume
+        &mut st.session.gitflow_resume
     } else {
         let w = workdir.unwrap_or_default();
         match st.tabs.iter_mut().find(|t| t.is(&w)).and_then(|t| t.parked.as_mut()) {
-            Some(p) => &mut p.gitflow_resume,
+            Some(p) => &mut p.session.gitflow_resume,
             None => return,
         }
     };
@@ -50,14 +50,14 @@ pub(super) fn snapshot_changed(st: &mut AppState) {
     if st.gitflow_finish.is_some() {
         return;
     }
-    let (Some(r), Some(snap)) = (st.gitflow_resume.as_mut(), st.snap.as_ref()) else { return };
+    let (Some(r), Some(snap)) = (st.session.gitflow_resume.as_mut(), st.snap.as_ref()) else { return };
     r.seen_merge |= r.resume.merging(snap);
     match resume_state(&r.resume, r.seen_merge, snap) {
         ResumeState::Waiting => r.ready = false,
         ResumeState::Ready => r.ready = true,
         ResumeState::Gone(g) => {
             let text = gone_text(st.settings.lang(), &r.resume, &g);
-            st.gitflow_resume = None;
+            st.session.gitflow_resume = None;
             st.log(false, text);
         }
     }
@@ -67,7 +67,7 @@ pub(super) fn snapshot_changed(st: &mut AppState) {
 /// logged and keep the steps; the job's end replaces or clears them.
 pub(super) fn continue_finish(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
-    let (Some(r), Some(snap)) = (st.gitflow_resume.as_ref(), st.snap.as_ref()) else {
+    let (Some(r), Some(snap)) = (st.session.gitflow_resume.as_ref(), st.snap.as_ref()) else {
         st.log(false, t.tr("gitflow.resume.nothing"));
         return;
     };
@@ -84,7 +84,7 @@ pub(super) fn continue_finish(st: &mut AppState, now: Instant, fx: &mut Vec<Effe
         }
         ResumeState::Gone(g) => {
             let text = gone_text(t, &r.resume, &g);
-            st.gitflow_resume = None;
+            st.session.gitflow_resume = None;
             st.log(false, text);
             return;
         }

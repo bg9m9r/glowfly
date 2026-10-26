@@ -17,10 +17,10 @@ use glowfly_core::repo::PrCompare;
 /// on. Without the target's tip, or with neither a source branch nor a head, there is nothing
 /// to compare.
 pub(super) fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
-    st.pull_request_gen += 1;
-    let generation = st.pull_request_gen;
+    st.session.pull_request.generation += 1;
+    let generation = st.session.pull_request.generation;
     let workdir = st.workdir();
-    let Some(view) = st.pull_request.as_mut() else { return };
+    let Some(view) = st.session.pull_request.view.as_mut() else { return };
     let key = view.files_key();
     view.asked = Some(key.clone());
     view.shown = None;
@@ -38,7 +38,7 @@ pub(super) fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Asks again when `again`, or when the key changed since the last ask (a diff of the old
 /// lists closes then).
 pub(super) fn rekey(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
-    let Some(view) = &st.pull_request else { return };
+    let Some(view) = &st.session.pull_request.view else { return };
     let changed = view.asked.as_ref() != Some(&view.files_key());
     if changed && shows_diff(st) {
         super::super::repo::close_diff(st);
@@ -50,9 +50,9 @@ pub(super) fn rekey(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
 
 /// Reads the tips again from the snapshot, then asks as `rekey` does.
 pub(super) fn retip(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
-    let (Some(snap), Some(view)) = (&st.snap, &st.pull_request) else { return };
+    let (Some(snap), Some(view)) = (&st.snap, &st.session.pull_request.view) else { return };
     let tips = Tips::of(snap, &view.remote, &view.pr);
-    if let Some(v) = st.pull_request.as_mut() {
+    if let Some(v) = st.session.pull_request.view.as_mut() {
         v.tips = tips;
     }
     rekey(st, fx, again);
@@ -60,7 +60,7 @@ pub(super) fn retip(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
 
 /// Whether the diff on screen is one of the open pull request's files or commits.
 pub(super) fn shows_diff(st: &AppState) -> bool {
-    match (&st.pull_request, &st.diff) {
+    match (&st.session.pull_request.view, &st.diff) {
         (Some(v), Some((t, _))) => v.shows(t),
         _ => false,
     }
@@ -68,10 +68,10 @@ pub(super) fn shows_diff(st: &AppState) -> bool {
 
 /// The runner's comparison. With no source tip here, the head ref is fetched once.
 pub(super) fn files_loaded(st: &mut AppState, id: u64, generation: u64, result: Result<PrCompare, String>, fx: &mut Vec<Effect>) {
-    if generation != st.pull_request_gen {
+    if generation != st.session.pull_request.generation {
         return; // superseded: closed, reopened, the key changed, or parked with its tab
     }
-    let Some(view) = st.pull_request.as_mut().filter(|v| v.pr.id == id) else { return };
+    let Some(view) = st.session.pull_request.view.as_mut().filter(|v| v.pr.id == id) else { return };
     match result {
         Ok(PrCompare::NoSource) => {
             view.files = Files::Missing;
@@ -94,7 +94,7 @@ pub(super) fn files_loaded(st: &mut AppState, id: u64, generation: u64, result: 
 /// repository is trusted, its remote can be fetched and isn't paused for sign-in, and this
 /// panel copy hasn't tried yet.
 fn auto_head_fetch(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let (Some(v), Some(snap), Some(workdir)) = (&st.pull_request, &st.snap, st.workdir()) else { return };
+    let (Some(v), Some(snap), Some(workdir)) = (&st.session.pull_request.view, &st.snap, st.workdir()) else { return };
     let ready = v.head_ref.is_some()
         && v.files_key().head.is_some()
         && v.head_fetch == HeadFetch::Idle
@@ -111,7 +111,7 @@ fn start(st: &mut AppState, prompts: bool, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     // Without --no-write-fetch-head (git 2.29) FETCH_HEAD is written.
     let write_fetch_head = st.git.blocked(Feature::FetchObjects).is_some();
-    let Some(v) = st.pull_request.as_mut() else { return };
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     let (Some(head_ref), Some(head)) = (v.head_ref.clone(), v.files_key().head) else { return };
     let cmd = fetch_ref_cmd(&v.remote, &head_ref, write_fetch_head);
     v.head_fetch = HeadFetch::Running;
@@ -120,7 +120,7 @@ fn start(st: &mut AppState, prompts: bool, fx: &mut Vec<Effect>) {
 
 /// The notes' "Fetch #7's head" button: fetches with prompts, unless it is disabled.
 pub(super) fn fetch_clicked(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let (Some(v), Some(snap)) = (&st.pull_request, &st.snap) else { return };
+    let (Some(v), Some(snap)) = (&st.session.pull_request.view, &st.snap) else { return };
     if head_fetch_blocked(snap, v, st.runs_git_unasked()).is_some() {
         return;
     }
@@ -130,7 +130,7 @@ pub(super) fn fetch_clicked(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// The head ref fetch's result, for the panel copy that is still waiting for it with the same
 /// listed head: compares again, or notes (and logs) the failure.
 pub(super) fn head_fetched(st: &mut AppState, id: u64, head: String, result: Result<(), String>, fx: &mut Vec<Effect>) {
-    let Some(v) = st.pull_request.as_mut() else { return };
+    let Some(v) = st.session.pull_request.view.as_mut() else { return };
     if v.pr.id != id || v.files_key().head.as_deref() != Some(head.as_str()) || v.head_fetch != HeadFetch::Running {
         return;
     }

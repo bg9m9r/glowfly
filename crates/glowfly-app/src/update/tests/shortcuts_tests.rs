@@ -101,12 +101,12 @@ fn s_and_u_ignore_other_diffs_and_views() {
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S with no diff");
 
     st.diff = Some((unstaged(), one_hunk().into()));
-    st.conflict = Some(ConflictView::loading("f.txt".into()));
+    st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S under the conflict view");
-    st.conflict = None;
-    st.history = Some(FileHistoryView::loading("f.txt".into(), None));
+    st.session.conflict.view = None;
+    st.session.history.view = Some(FileHistoryView::loading("f.txt".into(), None));
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S under the file history");
-    st.history = None;
+    st.session.history.view = None;
     st.prefs = Some(PrefsState::new(PrefPage::General));
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S under Preferences");
     st.prefs = None;
@@ -309,12 +309,12 @@ fn r_reverts_the_current_hunk_or_the_lines() {
     assert!(matches!(revert_part(&fx), Some(RevertPart::Lines { hunk: 0, lines, .. }) if *lines == [2]), "{fx:?}");
     assert!(st.log.is_empty());
 
-    st.conflict = Some(ConflictView::loading("f.txt".into()));
+    st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "under the conflict view");
-    st.conflict = None;
-    st.blame = Some(crate::state::blame::BlameView::loading("f.txt".into(), None));
+    st.session.conflict.view = None;
+    st.session.blame.view = Some(crate::state::blame::BlameView::loading("f.txt".into(), None));
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "under the blame view");
-    st.blame = None;
+    st.session.blame.view = None;
     st.diff = Some((unstaged(), one_hunk().into()));
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "on a working-tree diff");
     let oid = st.snap.as_ref().unwrap().commits[0].oid;

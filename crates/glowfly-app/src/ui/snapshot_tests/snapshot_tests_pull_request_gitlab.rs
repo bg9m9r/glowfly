@@ -36,7 +36,7 @@ fn with_mr(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
     assert_eq!((view.label.as_str(), view.noun, &view.page), ("!12", "merge request", &Page::Loading));
     view.checks.pane = ChecksPane::Loaded(CheckList::empty(fs.prs[0].head.clone().unwrap_or_default()));
-    st.pull_request = Some(view);
+    st.session.pull_request.view = Some(view);
     (st, dir)
 }
 
@@ -53,7 +53,7 @@ fn pull_request_gitlab_review_light() {
         entry("Grace", 14, EntryKind::Review(Verdict::ApprovalRemoved), ""),
     ];
     load(&mut st, gitlab_detail(false, vec![MergeMethod::Merge, MergeMethod::Squash]), entries);
-    if let Page::Loaded(p) = &mut st.pull_request.as_mut().unwrap().page {
+    if let Page::Loaded(p) = &mut st.session.pull_request.view.as_mut().unwrap().page {
         p.threads_note = Some(NOTE.into());
     }
     let mut h = harness_sized(st, false, TALL);
@@ -84,7 +84,7 @@ fn pull_request_gitlab_approved_dark() {
     h.run();
     h.check_snapshot("pull_request_gitlab_approved_dark");
     assert!(h.query_by_label("Remove approval").is_some() && h.query_by_label("Approve").is_none());
-    assert_eq!(h.state().0.pull_request.as_ref().unwrap().forms.merge_method, Some(MergeMethod::FastForward));
+    assert_eq!(h.state().0.session.pull_request.view.as_ref().unwrap().forms.merge_method, Some(MergeMethod::FastForward));
     assert!(h.query_by_label("Fast-forward").is_some());
     assert!(h.query_by_label("Commit title").is_none(), "a fast-forward makes no commit");
     h.get_by_label("Remove approval").click();
@@ -92,7 +92,7 @@ fn pull_request_gitlab_approved_dark() {
     h.get_by_role_and_label(Role::Button, "Submit review").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::PullRequest(PullRequestMsg::SubmitReview))));
-    assert_eq!(h.state().0.pull_request.as_ref().unwrap().forms.review_event, ReviewEvent::Unapprove);
+    assert_eq!(h.state().0.session.pull_request.view.as_ref().unwrap().forms.review_event, ReviewEvent::Unapprove);
     drop(h);
     remove_fixture(&dir);
 }

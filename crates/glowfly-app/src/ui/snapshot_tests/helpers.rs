@@ -299,7 +299,7 @@ pub(in crate::ui) fn with_conflict(name: &str, file: &str, content: impl Fn(&str
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
     let mut view = ConflictView::loading(file.into());
     view.set_file(repo::load_conflict(&dir, file).unwrap());
-    st.conflict = Some(view);
+    st.session.conflict.view = Some(view);
     (st, dir)
 }
 
@@ -321,7 +321,7 @@ fn conflict_view() {
         (lines.join("\n") + "\n").into_bytes()
     };
     let (mut st, dir) = with_conflict("conflict", "settings.txt", settings);
-    let view = st.conflict.as_mut().unwrap();
+    let view = st.session.conflict.view.as_mut().unwrap();
     assert_eq!(view.chunk_count(), 2);
     view.picks[0] = glowfly_core::repo::Choice::Ours.into();
     render("conflict_view", st, true);
@@ -331,7 +331,7 @@ fn conflict_view() {
 #[test]
 fn conflict_binary() {
     let (st, dir) = with_conflict("conflict-binary", "logo.bin", |side| format!("{side}\0image").into_bytes());
-    assert_eq!(st.conflict.as_ref().unwrap().file.as_ref().unwrap().content, glowfly_core::repo::ConflictContent::Binary);
+    assert_eq!(st.session.conflict.view.as_ref().unwrap().file.as_ref().unwrap().content, glowfly_core::repo::ConflictContent::Binary);
     render("conflict_binary", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
@@ -375,14 +375,14 @@ pub(in crate::ui) fn with_history(name: &str, theme: ThemeChoice, limit: usize, 
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     diff.intraline = intraline::intraline(&diff);
     st.diff = Some((target, diff.into()));
-    st.history = Some(view);
+    st.session.history.view = Some(view);
     (st, dir)
 }
 
 #[test]
 fn file_history() {
     let (st, dir) = with_history("history", ThemeChoice::Dark, 500, 0);
-    let view = st.history.as_ref().unwrap();
+    let view = st.session.history.view.as_ref().unwrap();
     let statuses: String = view.entries.iter().map(|e| e.status).collect();
     assert_eq!(statuses, "MRMMA");
     assert!(view.complete());
@@ -393,7 +393,7 @@ fn file_history() {
 #[test]
 fn file_history_partial_light() {
     let (mut st, dir) = with_history("history-partial", ThemeChoice::Light, 2, 1);
-    let view = st.history.as_ref().unwrap();
+    let view = st.session.history.view.as_ref().unwrap();
     assert_eq!(view.entries.len(), 2);
     assert!(view.searched_until.is_some() && !view.resume.is_empty());
     // The renaming commit is not on the graph (as if its branch were hidden).

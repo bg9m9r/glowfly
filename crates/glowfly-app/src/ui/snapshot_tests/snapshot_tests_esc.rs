@@ -100,7 +100,7 @@ fn esc_closes_preferences_opened_while_the_terminal_had_focus() {
 #[test]
 fn esc_closes_the_git_flow_panel() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-gitflow-panel");
-    st.gitflow_panel = true;
+    st.session.gitflow_panel = true;
     let mut h = app_harness(st);
     h.run();
     let msgs = esc(&mut h);
@@ -115,8 +115,8 @@ fn esc_closes_blame_before_history() {
     use crate::state::blame::BlameView;
     use crate::state::history::FileHistoryView;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-blame");
-    st.history = Some(FileHistoryView::loading("README.md".into(), None));
-    st.blame = Some(BlameView::loading("README.md".into(), None));
+    st.session.history.view = Some(FileHistoryView::loading("README.md".into(), None));
+    st.session.blame.view = Some(BlameView::loading("README.md".into(), None));
     let mut h = app_harness(st);
     h.run_steps(4);
     let msgs = esc(&mut h);
@@ -193,7 +193,7 @@ fn esc_in_file_history_clears_a_line_selection_first() {
     use crate::msg::{DiffMsg, HistoryMsg};
     use crate::state::history::FileHistoryView;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-history-lines");
-    st.history = Some(FileHistoryView::loading("README.md".into(), None));
+    st.session.history.view = Some(FileHistoryView::loading("README.md".into(), None));
     st.view.diff_lines.target = Some(DiffTarget::Commit(git2::Oid::zero(), "README.md".into()));
     st.view.diff_lines.lines.insert(1);
     let mut h = app_harness(st);

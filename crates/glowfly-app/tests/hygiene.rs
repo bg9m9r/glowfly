@@ -29,7 +29,7 @@ const LINE_LIMIT: usize = 400;
 
 /// The non-test files over `LINE_LIMIT` today, with their length as a ceiling.
 const LONG_FILES: &[(&str, usize)] = &[
-    ("crates/glowfly-app/src/state/mod.rs", 695),
+    ("crates/glowfly-app/src/state/mod.rs", 625),
     ("crates/glowfly-app/src/update/repo.rs", 407),
     ("crates/glowfly-core/src/forge/github.rs", 406),
     ("crates/glowfly-core/src/settings.rs", 410),

@@ -26,7 +26,7 @@ fn compare_an_amended_branch_with_its_version_before() {
     j.menu("Compare with before last rebase");
     j.see("Range-diff", Region::Central);
     j.see("Changed: Add the list", Region::Central);
-    let view = j.state().range_diff.as_ref().expect("the view is open");
+    let view = j.state().session.range_diff.view.as_ref().expect("the view is open");
     let Phase::Ready(outcome) = &view.phase else { panic!("not ready: {:?}", view.phase) };
     let Outcome::Compared(c) = outcome.as_ref() else { panic!("{outcome:?}") };
     let pair = &c.pairs[view.selected.expect("the changed pair is selected")];
@@ -36,7 +36,7 @@ fn compare_an_amended_branch_with_its_version_before() {
 
     // step 2: Esc goes back to the graph; the repository is as it was.
     j.press(Key::Escape);
-    assert!(j.state().range_diff.is_none() && j.state().graph_shown());
+    assert!(j.state().session.range_diff.view.is_none() && j.state().graph_shown());
     assert_eq!(disk::branch_oid(&repo, "topic"), tip);
     assert!(disk::is_clean(&repo));
 }

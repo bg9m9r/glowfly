@@ -59,7 +59,7 @@ fn shown(name: &str, data: BlameData) -> (AppState, PathBuf) {
 }
 
 fn show(st: &mut AppState, data: BlameData) {
-    let view = st.blame.get_or_insert_with(|| BlameView::loading("a.txt".into(), None));
+    let view = st.session.blame.view.get_or_insert_with(|| BlameView::loading("a.txt".into(), None));
     view.loading = false;
     view.data = Some(data);
 }
@@ -69,7 +69,7 @@ fn send(st: &mut AppState, m: BlameMsg) -> Vec<Effect> {
 }
 
 fn view(st: &AppState) -> &BlameView {
-    st.blame.as_ref().expect("blame open")
+    st.session.blame.view.as_ref().expect("blame open")
 }
 
 fn requests(fx: &[Effect]) -> Vec<&BlameRequest> {
@@ -77,15 +77,15 @@ fn requests(fx: &[Effect]) -> Vec<&BlameRequest> {
 }
 
 fn loaded(st: &mut AppState, data: BlameData) {
-    let (path, generation) = (view(st).path.clone(), st.blame_gen);
+    let (path, generation) = (view(st).path.clone(), st.session.blame.generation);
     send(st, BlameMsg::Loaded { path, generation, result: Ok(Box::new(data)) });
 }
 
 #[test]
 fn blame_parent_pushes_back_and_requests_the_parent() {
     let (mut st, dir) = shown("blame-nav-parent", literal(&["x", "y"], &[(0, 2)], Some((oid(2), "old.txt"))));
-    st.blame.as_mut().unwrap().skipped = vec![oid(7)];
-    st.blame.as_mut().unwrap().top_line = 1;
+    st.session.blame.view.as_mut().unwrap().skipped = vec![oid(7)];
+    st.session.blame.view.as_mut().unwrap().top_line = 1;
     let fx = send(&mut st, BlameMsg::BlameParent { line: 0 });
     let v = view(&st);
     assert_eq!((v.path.as_str(), v.at, v.back.len()), ("old.txt", Some(oid(2)), 1));
@@ -123,7 +123,7 @@ fn blame_parent_without_previous_toasts() {
 fn back_stack_is_capped() {
     let (mut st, dir) = shown("blame-nav-cap", literal(&["x"], &[(0, 1)], Some((oid(2), "a.txt"))));
     for n in 0..=BACK_LIMIT {
-        st.blame.as_mut().unwrap().top_line = n;
+        st.session.blame.view.as_mut().unwrap().top_line = n;
         show(&mut st, literal(&["x"], &[(0, 1)], Some((oid(2), "a.txt"))));
         send(&mut st, BlameMsg::BlameParent { line: 0 });
     }
@@ -146,7 +146,7 @@ fn skip_and_clear() {
     assert!(matches!(&requests(&fx)[..], [r] if r.opts.ignore_revs.is_empty()), "{fx:?}");
     assert!(send(&mut st, BlameMsg::ClearSkipped).is_empty(), "nothing to clear");
 
-    let v = st.blame.as_mut().unwrap();
+    let v = st.session.blame.view.as_mut().unwrap();
     v.skipped = vec![oid(3)];
     v.back.push(crate::state::blame::BlameStep { path: "a.txt".into(), at: None, skipped: Vec::new(), top_line: 0, cursor: None });
     let fx = send(&mut st, BlameMsg::Open { path: "a.txt".into(), at: None });
@@ -158,7 +158,7 @@ fn skip_and_clear() {
 #[test]
 fn toggles_save_and_reblame() {
     let (mut st, dir) = shown("blame-nav-toggles", literal(&ten_lines(), &[(0, 10)], None));
-    st.blame.as_mut().unwrap().top_line = 7;
+    st.session.blame.view.as_mut().unwrap().top_line = 7;
     let fx = send(&mut st, BlameMsg::SetIgnoreWhitespace(true));
     assert!(st.settings.blame.ignore_whitespace);
     assert!(matches!(fx.first(), Some(Effect::SaveSettings(s)) if s.blame.ignore_whitespace), "{fx:?}");
@@ -170,7 +170,7 @@ fn toggles_save_and_reblame() {
     assert_eq!(st.settings.blame.moves, BlameMoves::AcrossFiles);
     assert!(matches!(&requests(&fx)[..], [r] if r.opts.moves == BlameMoves::AcrossFiles && r.opts.ignore_whitespace), "{fx:?}");
 
-    st.blame = None;
+    st.session.blame.view = None;
     let fx = send(&mut st, BlameMsg::SetMoves(BlameMoves::Off));
     assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -179,7 +179,7 @@ fn toggles_save_and_reblame() {
 #[test]
 fn set_wrap_lines_saves_and_keeps_the_top_line() {
     let (mut st, dir) = shown("blame-nav-wrap", literal(&ten_lines(), &[(0, 10)], None));
-    st.blame.as_mut().unwrap().top_line = 6;
+    st.session.blame.view.as_mut().unwrap().top_line = 6;
     let fx = send(&mut st, BlameMsg::SetWrapLines(true));
     assert!(st.settings.blame.wrap_lines);
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.blame.wrap_lines), "no reload: {fx:?}");
@@ -205,8 +205,8 @@ fn open_history_from_blame_selects_the_commit() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Blame(BlameMsg::Open { path: "a.txt".into(), at: None }));
     drive(&mut st, Msg::Blame(BlameMsg::OpenHistory { select: Some(c1) }));
-    assert!(st.blame.is_none());
-    let h = st.history.as_ref().expect("history open");
+    assert!(st.session.blame.view.is_none());
+    let h = st.session.history.view.as_ref().expect("history open");
     assert_eq!(h.entries.len(), 2);
     assert_eq!(h.selected_entry().map(|e| e.oid), Some(c1));
     assert!(h.select.is_none(), "used by the first batch");
@@ -214,18 +214,18 @@ fn open_history_from_blame_selects_the_commit() {
     // No commit asked for: the blamed one (HEAD resolved).
     drive(&mut st, Msg::Blame(BlameMsg::Open { path: "a.txt".into(), at: None }));
     drive(&mut st, Msg::Blame(BlameMsg::OpenHistory { select: None }));
-    assert_eq!(st.history.as_ref().unwrap().selected_entry().map(|e| e.oid), Some(c2));
+    assert_eq!(st.session.history.view.as_ref().unwrap().selected_entry().map(|e| e.oid), Some(c2));
     // A commit the history doesn't list: the first entry.
     drive(&mut st, Msg::Blame(BlameMsg::Open { path: "a.txt".into(), at: None }));
     drive(&mut st, Msg::Blame(BlameMsg::OpenHistory { select: Some(oid(9)) }));
-    assert_eq!(st.history.as_ref().unwrap().selected, Some(0));
+    assert_eq!(st.session.history.view.as_ref().unwrap().selected, Some(0));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn find_steps_through_matches() {
     let (mut st, dir) = shown("blame-nav-find", literal(&["foo", "bar", "Foo bar", "baz"], &[(0, 4)], None));
-    st.blame.as_mut().unwrap().find.query = "foo".into();
+    st.session.blame.view.as_mut().unwrap().find.query = "foo".into();
     send(&mut st, BlameMsg::FindChanged);
     let v = view(&st);
     assert_eq!((&v.find.hits[..], v.find.current, v.cursor), (&[0, 2][..], Some(0), Some(0)));
@@ -238,23 +238,23 @@ fn find_steps_through_matches() {
     send(&mut st, BlameMsg::FindStep(-1));
     assert_eq!(cursor(&st), Some(2));
 
-    st.blame.as_mut().unwrap().find.query = "zzz".into();
+    st.session.blame.view.as_mut().unwrap().find.query = "zzz".into();
     send(&mut st, BlameMsg::FindChanged);
     let v = view(&st);
     assert!(v.find.hits.is_empty() && v.find.current.is_none());
     assert_eq!(v.cursor, Some(2), "no match leaves the cursor");
-    st.blame.as_mut().unwrap().find.query.clear();
+    st.session.blame.view.as_mut().unwrap().find.query.clear();
     send(&mut st, BlameMsg::FindChanged);
     assert!(view(&st).find.hits.is_empty() && view(&st).find.current.is_none());
 
     // From the top line on.
-    st.blame.as_mut().unwrap().find.query = "BA".into();
-    st.blame.as_mut().unwrap().top_line = 2;
+    st.session.blame.view.as_mut().unwrap().find.query = "BA".into();
+    st.session.blame.view.as_mut().unwrap().top_line = 2;
     send(&mut st, BlameMsg::FindChanged);
     assert_eq!((&view(&st).find.hits[..], view(&st).find.current), (&[1, 2, 3][..], Some(1)));
 
     // A new blame of the file is searched again.
-    st.blame.as_mut().unwrap().loading = true;
+    st.session.blame.view.as_mut().unwrap().loading = true;
     loaded(&mut st, literal(&["bar", "x"], &[(0, 2)], None));
     assert_eq!((&view(&st).find.hits[..], view(&st).find.current), (&[0][..], None));
     let _ = std::fs::remove_dir_all(&dir);
@@ -264,7 +264,7 @@ fn find_steps_through_matches() {
 fn go_to_line_clamps() {
     let (mut st, dir) = shown("blame-nav-goto", literal(&["a", "b", "c", "d", "e"], &[(0, 5)], None));
     let go = |st: &mut AppState, text: &str| {
-        st.blame.as_mut().unwrap().goto = text.into();
+        st.session.blame.view.as_mut().unwrap().goto = text.into();
         send(st, BlameMsg::GoToLine);
         view(st).cursor
     };
@@ -286,7 +286,7 @@ fn step_run_moves_between_runs() {
     assert_eq!(step(&mut st, 1), Some(2), "from the top line");
     assert_eq!(step(&mut st, 1), Some(5));
     assert_eq!(step(&mut st, 1), Some(5), "stops at the last run");
-    st.blame.as_mut().unwrap().cursor = Some(6);
+    st.session.blame.view.as_mut().unwrap().cursor = Some(6);
     assert_eq!(step(&mut st, -1), Some(5), "to the start of its own run first");
     assert_eq!(step(&mut st, -1), Some(2));
     assert_eq!(step(&mut st, -1), Some(0));
@@ -340,13 +340,13 @@ fn blame_from_the_history_offers_the_way_back() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }));
     drive(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(0)));
-    let (at, path) = st.history.as_ref().and_then(|h| h.shown()).map(|(o, p, _)| (o, p.to_owned())).expect("an entry shown");
+    let (at, path) = st.session.history.view.as_ref().and_then(|h| h.shown()).map(|(o, p, _)| (o, p.to_owned())).expect("an entry shown");
     drive(&mut st, Msg::Blame(BlameMsg::Open { path: path.clone(), at: Some(at) }));
     assert!(view(&st).over_history, "opened on the history's shown file");
 
     let fx = send(&mut st, BlameMsg::BackToHistory(HistoryPane::File));
-    assert!(st.blame.is_none(), "the blame closes");
-    assert_eq!(st.history.as_ref().expect("the history stays").pane, HistoryPane::File);
+    assert!(st.session.blame.view.is_none(), "the blame closes");
+    assert_eq!(st.session.history.view.as_ref().expect("the history stays").pane, HistoryPane::File);
     assert_eq!(st.settings.history.pane, HistoryPane::File, "saved like the history's own switch");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadFileText(_))), "the File view asks for its text: {fx:?}");
 
@@ -354,9 +354,9 @@ fn blame_from_the_history_offers_the_way_back() {
     drive(&mut st, Msg::Blame(BlameMsg::Open { path, at: None }));
     assert!(!view(&st).over_history);
     // With no history underneath, the message leaves the blame alone.
-    st.blame.as_mut().unwrap().over_history = true;
-    st.history = None;
+    st.session.blame.view.as_mut().unwrap().over_history = true;
+    st.session.history.view = None;
     assert!(send(&mut st, BlameMsg::BackToHistory(HistoryPane::Diff)).is_empty());
-    assert!(st.blame.is_some());
+    assert!(st.session.blame.view.is_some());
     let _ = std::fs::remove_dir_all(&dir);
 }

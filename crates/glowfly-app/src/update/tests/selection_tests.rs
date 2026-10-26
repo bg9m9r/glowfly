@@ -234,11 +234,11 @@ fn selection_change_closes_views() {
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     st.diff = Some((DiffTarget::Commit(f.c(5), "f.txt".into()), empty.into()));
-    st.conflict = Some(ConflictView::loading("f.txt".into()));
-    st.history = Some(FileHistoryView::loading("f.txt".into(), None));
+    st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
+    st.session.history.view = Some(FileHistoryView::loading("f.txt".into(), None));
     let gen_before = st.diff_gen;
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
-    assert!(st.diff.is_none() && st.conflict.is_none() && st.history.is_none());
+    assert!(st.diff.is_none() && st.session.conflict.view.is_none() && st.session.history.view.is_none());
     assert!(st.diff_gen > gen_before, "a diff still loading must not reopen");
     let _ = std::fs::remove_dir_all(&f.dir);
 }

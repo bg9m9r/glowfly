@@ -79,14 +79,14 @@ pub(in crate::update) fn open(st: &mut AppState) {
 }
 
 pub(super) fn paths(st: &AppState) -> Vec<String> {
-    match &st.pull_request.as_ref().unwrap().files {
+    match &st.session.pull_request.view.as_ref().unwrap().files {
         Files::Loaded(c) => c.comparison.files.iter().map(|f| f.path.clone()).collect(),
         other => panic!("not loaded: {other:?}"),
     }
 }
 
 pub(super) fn pr_target(st: &AppState, path: &str) -> DiffTarget {
-    st.pull_request.as_ref().unwrap().diff_target(path).unwrap()
+    st.session.pull_request.view.as_ref().unwrap().diff_target(path).unwrap()
 }
 
 pub(super) fn cleanup(dirs: &[&Path]) {
@@ -100,13 +100,13 @@ fn opening_lists_the_files_from_the_merge_base() {
     let (mut st, work, bare, base) = setup("pr-open", &[]);
     let selection = st.selection.clone();
     open(&mut st);
-    let v = st.pull_request.as_ref().expect("the panel is open");
+    let v = st.session.pull_request.view.as_ref().expect("the panel is open");
     assert_eq!(v.pr.id, 7);
     assert_eq!((v.label.as_str(), v.noun, v.remote.as_str()), ("#7", "pull request", "origin"));
     let Files::Loaded(c) = &v.files else { panic!("{:?}", v.files) };
     assert_eq!(c.base, base);
     assert_eq!(paths(&st), ["f.txt"]);
-    assert!(out_of_sync(st.pull_request.as_ref().unwrap()).is_empty());
+    assert!(out_of_sync(st.session.pull_request.view.as_ref().unwrap()).is_empty());
     assert_eq!(st.selection, selection);
     assert!(st.diff.is_none());
     // Opening it again changes nothing.
@@ -114,7 +114,7 @@ fn opening_lists_the_files_from_the_merge_base() {
     assert!(fx.is_empty());
     // An id the service didn't list opens nothing.
     assert!(update(&mut st, Msg::PullRequest(PullRequestMsg::Open(8)), Instant::now()).is_empty());
-    assert_eq!(st.pull_request.as_ref().unwrap().pr.id, 7);
+    assert_eq!(st.session.pull_request.view.as_ref().unwrap().pr.id, 7);
     cleanup(&[&work, &bare]);
 }
 
@@ -125,7 +125,7 @@ fn a_file_opens_inside_the_panel() {
     assert_eq!(paths(&st), ["f.txt", "g.txt"]);
     let f = pr_target(&st, "f.txt");
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(f.clone())));
-    assert!(st.pull_request.is_some());
+    assert!(st.session.pull_request.view.is_some());
     assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&f));
     let g = pr_target(&st, "g.txt");
     assert_eq!(crate::state::diff_nav::next_file(&st, &f, 1), Some(g.clone()));
@@ -133,10 +133,10 @@ fn a_file_opens_inside_the_panel() {
     assert_eq!(crate::state::diff_nav::next_file(&st, &g, 1), None);
     // The diff's own Close leaves the panel open.
     drive(&mut st, Msg::Repo(RepoMsg::CloseDiff));
-    assert!(st.diff.is_none() && st.pull_request.is_some());
+    assert!(st.diff.is_none() && st.session.pull_request.view.is_some());
     // A working-tree file is not one of its files.
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
-    assert!(st.pull_request.is_none());
+    assert!(st.session.pull_request.view.is_none());
     assert!(matches!(&st.diff, Some((DiffTarget::Unstaged(p), _)) if p == "a.txt"));
     cleanup(&[&work, &bare]);
 }
@@ -147,7 +147,7 @@ fn missing_refs_are_noted_and_nothing_loads() {
     // The source branch isn't on origin, but the listed head is here: it is shown.
     set_pr(&mut st, |p| p.source = "from-a-fork".into());
     open(&mut st);
-    let v = st.pull_request.as_ref().unwrap();
+    let v = st.session.pull_request.view.as_ref().unwrap();
     assert_eq!(v.shown.as_ref().map(|s| s.source.from), Some(SourceFrom::Head));
     assert_eq!(paths(&st), ["f.txt"]);
     let head = rev(&work, "feature");
@@ -158,7 +158,7 @@ fn missing_refs_are_noted_and_nothing_loads() {
     set_pr(&mut st, |p| p.head = None);
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::Open(7)), Instant::now());
     assert!(!fx.iter().any(|e| matches!(e, Effect::PullRequest(PrEffect::Files(_) | PrEffect::FetchHead(_)))));
-    let v = st.pull_request.as_ref().unwrap();
+    let v = st.session.pull_request.view.as_ref().unwrap();
     assert_eq!(v.files, Files::Missing);
     assert_eq!(out_of_sync(v), [OutOfSync::SourceMissing]);
     drive(&mut st, Msg::PullRequest(PullRequestMsg::Close));
@@ -169,7 +169,7 @@ fn missing_refs_are_noted_and_nothing_loads() {
     });
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::Open(7)), Instant::now());
     assert!(!fx.iter().any(|e| matches!(e, Effect::PullRequest(PrEffect::Files(_)))));
-    assert_eq!(out_of_sync(st.pull_request.as_ref().unwrap()), [OutOfSync::TargetMissing]);
+    assert_eq!(out_of_sync(st.session.pull_request.view.as_ref().unwrap()), [OutOfSync::TargetMissing]);
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(fetch_blocked(snap, "origin", true), None);
     assert_eq!(fetch_blocked(snap, "origin", false).as_deref(), Some("Another operation is still running."));
@@ -184,7 +184,7 @@ fn a_moved_head_is_noted_until_fetched() {
     let head = git2::Repository::open_bare(&bare).unwrap().refname_to_id("refs/heads/feature").unwrap();
     set_pr(&mut st, |p| p.head = Some(head.to_string()));
     open(&mut st);
-    let v = st.pull_request.as_ref().unwrap();
+    let v = st.session.pull_request.view.as_ref().unwrap();
     assert!(matches!(&out_of_sync(v)[..], [OutOfSync::SourceDiffers { head: h, .. }] if *h == head.to_string()));
     assert_eq!(paths(&st), ["f.txt"], "listed from the local tip");
     let f = pr_target(&st, "f.txt");
@@ -194,7 +194,7 @@ fn a_moved_head_is_noted_until_fetched() {
     drive(&mut st, Msg::Remote(RemoteMsg::Fetch("origin".into())));
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(st.forge.is_none(), "detection found no host for the local-path remote");
-    let v = st.pull_request.as_ref().expect("the panel keeps its copy");
+    let v = st.session.pull_request.view.as_ref().expect("the panel keeps its copy");
     assert_eq!(v.tips.source, Some(head));
     assert!(out_of_sync(v).is_empty());
     assert_eq!(paths(&st), ["f.txt", "g.txt"]);
@@ -209,25 +209,25 @@ fn close_returns_and_drops_stale_results() {
     let f = pr_target(&st, "f.txt");
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(f)));
     assert!(st.diff.is_some());
-    let old = st.pull_request_gen;
+    let old = st.session.pull_request.generation;
     drive(&mut st, Msg::PullRequest(PullRequestMsg::Close));
-    assert!(st.pull_request.is_none() && st.diff.is_none());
+    assert!(st.session.pull_request.view.is_none() && st.diff.is_none());
 
     open(&mut st);
     let stale = PullRequestMsg::FilesLoaded { id: 7, generation: old, result: Ok(PrCompare::NoSource) };
     update(&mut st, Msg::PullRequest(stale), Instant::now());
-    assert!(matches!(st.pull_request.as_ref().unwrap().files, Files::Loaded(_)), "the stale result changed nothing");
+    assert!(matches!(st.session.pull_request.view.as_ref().unwrap().files, Files::Loaded(_)), "the stale result changed nothing");
     // A result for another pull request is dropped too.
-    let other = PullRequestMsg::FilesLoaded { id: 8, generation: st.pull_request_gen, result: Ok(PrCompare::NoSource) };
+    let other = PullRequestMsg::FilesLoaded { id: 8, generation: st.session.pull_request.generation, result: Ok(PrCompare::NoSource) };
     update(&mut st, Msg::PullRequest(other), Instant::now());
-    assert!(matches!(st.pull_request.as_ref().unwrap().files, Files::Loaded(_)));
+    assert!(matches!(st.session.pull_request.view.as_ref().unwrap().files, Files::Loaded(_)));
 
     let head = st.snap.as_ref().unwrap().head_oid.unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(head)));
-    assert!(st.pull_request.is_none());
+    assert!(st.session.pull_request.view.is_none());
     open(&mut st);
     drive(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }));
-    assert!(st.pull_request.is_none());
+    assert!(st.session.pull_request.view.is_none());
     cleanup(&[&work, &bare]);
 }
 
@@ -239,11 +239,11 @@ fn refresh_updates_the_copy() {
     renamed.title = "Add f, renamed".into();
     let reply = |prs| ForgeReply { target: github(), auth: None, results: vec![ForgeResult::Prs(Ok(prs))] };
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply(vec![renamed]))), Instant::now());
-    let v = st.pull_request.as_ref().unwrap();
+    let v = st.session.pull_request.view.as_ref().unwrap();
     assert_eq!(v.pr.title, "Add f, renamed");
     assert!(v.listed);
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply(Vec::new()))), Instant::now());
-    let v = st.pull_request.as_ref().expect("still open");
+    let v = st.session.pull_request.view.as_ref().expect("still open");
     assert!(!v.listed);
     assert_eq!(v.pr.title, "Add f, renamed", "the last copy");
     cleanup(&[&work, &bare]);
@@ -257,30 +257,30 @@ fn parked_tab_reloads_a_pending_list() {
     else {
         panic!("no request")
     };
-    assert_eq!(st.pull_request.as_ref().unwrap().files, Files::Loading);
+    assert_eq!(st.session.pull_request.view.as_ref().unwrap().files, Files::Loading);
 
     // A result for another repository's tab is dropped.
     let loaded = |generation| PullRequestMsg::FilesLoaded { id: 7, generation, result: Ok(PrCompare::NoSource) };
     assert!(loaded(job.generation).on_inactive().is_none());
     let scoped = Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(Msg::PullRequest(loaded(job.generation))) };
     update(&mut st, scoped, Instant::now());
-    assert_eq!(st.pull_request.as_ref().unwrap().files, Files::Loading);
+    assert_eq!(st.session.pull_request.view.as_ref().unwrap().files, Files::Loading);
 
-    let before = st.pull_request_gen;
+    let before = st.session.pull_request.generation;
     update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
-    assert!(st.pull_request.is_none(), "parked with its tab");
+    assert!(st.session.pull_request.view.is_none(), "parked with its tab");
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    assert!(st.pull_request.is_some(), "restored");
-    assert!(st.pull_request_gen > before);
+    assert!(st.session.pull_request.view.is_some(), "restored");
+    assert!(st.session.pull_request.generation > before);
     let again = fx.iter().find_map(|e| match e {
         Effect::PullRequest(PrEffect::Files(j)) => Some(j),
         _ => None,
     });
     let again = again.expect("asked for again");
     assert_eq!((again.id, again.target, again.branch, &again.head), (7, job.target, job.branch, &job.head));
-    assert_eq!(again.generation, st.pull_request_gen);
+    assert_eq!(again.generation, st.session.pull_request.generation);
     // The first request's result is stale now.
     update(&mut st, Msg::PullRequest(loaded(job.generation)), Instant::now());
-    assert_eq!(st.pull_request.as_ref().unwrap().files, Files::Loading);
+    assert_eq!(st.session.pull_request.view.as_ref().unwrap().files, Files::Loading);
     cleanup(&[&work, &bare]);
 }

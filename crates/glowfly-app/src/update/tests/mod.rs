@@ -227,6 +227,7 @@ pub(super) mod submodule_tests;
 pub(super) mod tab_groups_tests;
 pub(super) mod tab_label_tests;
 pub(super) mod tabs_close_tests;
+pub(super) mod tabs_session_tests;
 pub(super) mod tabs_tests;
 pub(super) mod tag_annotate_tests;
 pub(super) mod tag_checkout_tests;

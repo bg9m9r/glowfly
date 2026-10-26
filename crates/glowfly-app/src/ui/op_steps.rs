@@ -211,7 +211,7 @@ fn heading(ui: &mut Ui, st: &AppState, snap: &Snapshot, conflicts_left: bool, ms
     if let Some(note) = crate::state::auto_stash::banner_note(st) {
         ui.add(egui::Label::new(RichText::new(note).size(type_scale::SMALL).color(color::weak())).wrap());
     }
-    if let Some(r) = st.gitflow_resume.as_ref().filter(|r| r.resume.merging(snap)) {
+    if let Some(r) = st.session.gitflow_resume.as_ref().filter(|r| r.resume.merging(snap)) {
         let text = crate::state::gitflow_resume::waiting_text(t, &r.resume);
         ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
     }

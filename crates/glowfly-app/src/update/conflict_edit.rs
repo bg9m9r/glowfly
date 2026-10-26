@@ -11,7 +11,7 @@ use glowfly_core::repo::{Choice, ConflictContent, Segment, Side};
 
 /// Applies `f` to the pick of chunk `chunk` (unless its text was typed), making it current.
 fn change(st: &mut AppState, chunk: usize, f: impl FnOnce(&ChunkPick, &glowfly_core::repo::Chunk) -> ChunkPick) {
-    let Some(v) = st.conflict.as_mut() else { return };
+    let Some(v) = st.session.conflict.view.as_mut() else { return };
     let Some(pick) = v.picks.get(chunk).filter(|p| !p.is_edited()) else { return };
     let Some(c) = v.chunk(chunk) else { return };
     let next = f(pick, c);
@@ -32,7 +32,7 @@ pub(super) fn toggle_side(st: &mut AppState, chunk: usize, side: Side) {
 /// Take all and Reset: every chunk not edited by hand gets `choice`, and no pick is automatic
 /// any more.
 pub(super) fn set_all(st: &mut AppState, choice: Choice) {
-    if let Some(c) = st.conflict.as_mut() {
+    if let Some(c) = st.session.conflict.view.as_mut() {
         c.picks.iter_mut().filter(|p| !p.is_edited()).for_each(|p| *p = ChunkPick::Sides(choice));
         c.auto.iter_mut().for_each(|a| *a = None);
         c.rebuild_edit();
@@ -41,7 +41,7 @@ pub(super) fn set_all(st: &mut AppState, choice: Choice) {
 
 /// Shows (`on`) or hides the output as editable text; only a text file has one.
 pub(super) fn set_edit(st: &mut AppState, on: bool) {
-    let Some(c) = st.conflict.as_mut() else { return };
+    let Some(c) = st.session.conflict.view.as_mut() else { return };
     c.edit_note = None;
     c.edit = if on { start_edit(c) } else { None };
 }
@@ -62,7 +62,7 @@ fn bare(l: &str) -> &str {
 /// change spanning more than one is undone with a note.
 pub(super) fn edited(st: &mut AppState) {
     let lang = st.settings.lang();
-    let Some(c) = st.conflict.as_mut() else { return };
+    let Some(c) = st.session.conflict.view.as_mut() else { return };
     let (Some(e), Some(ConflictContent::Text(segs))) = (&c.edit, c.file.as_ref().map(|f| &f.content)) else { return };
     match locate_edit(&e.rendered, &e.buffer, file_eol(segs)) {
         EditResult::Unchanged => {}
@@ -100,14 +100,14 @@ pub(super) fn edited(st: &mut AppState) {
 /// Drops every edit of the clean runs, bringing back the file's own lines between the
 /// conflicts.
 pub(super) fn discard_cleans(st: &mut AppState) {
-    let Some(c) = st.conflict.as_mut() else { return };
+    let Some(c) = st.session.conflict.view.as_mut() else { return };
     c.cleans.clear();
     c.rebuild_edit();
 }
 
 /// Drops chunk `k`'s typed text, bringing back the pick it had before.
 pub(super) fn discard_edit(st: &mut AppState, k: usize) {
-    let Some(c) = st.conflict.as_mut() else { return };
+    let Some(c) = st.session.conflict.view.as_mut() else { return };
     let Some(ChunkPick::Edited { before, .. }) = c.picks.get_mut(k) else { return };
     let before = std::mem::take(before.as_mut());
     c.picks[k] = before;

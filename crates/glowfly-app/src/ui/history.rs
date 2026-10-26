@@ -39,7 +39,7 @@ pub(super) const NOT_ON_GRAPH: &str = "Not visible on the graph: its branch is h
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.history_scroll_to.take();
     let file_scroll = st.view.history_file_scroll.take();
-    let Some(view) = &st.history else { return };
+    let Some(view) = &st.session.history.view else { return };
     ui.add_space(6.0);
     header(ui, st.settings.lang(), &st.keymap, view, msgs);
     ui.separator();
@@ -95,7 +95,7 @@ fn header(ui: &mut Ui, t: Lang, keys: &Keymap, view: &FileHistoryView, msgs: &mu
 }
 
 fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
-    let Some(view) = &st.history else { return };
+    let Some(view) = &st.session.history.view else { return };
     keyboard(ui, view, msgs);
     let in_wd = view.in_workdir(st.snap.as_ref());
     let tools = ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
@@ -220,7 +220,7 @@ fn keyboard(ui: &Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
 /// files, and file buttons for the file shown (Restore this version, Open, Show, Open in
 /// external diff tool); then its diff of the file, or the whole file in the File view.
 fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Option<usize>, msgs: &mut Vec<Msg>) {
-    let Some(view) = &st.history else { return };
+    let Some(view) = &st.session.history.view else { return };
     let (kind, pane, target) = (view.kind, view.pane, view.target());
     let open_path = view.shown_today();
     let in_wd = view.shown_in_workdir(st.snap.as_ref());

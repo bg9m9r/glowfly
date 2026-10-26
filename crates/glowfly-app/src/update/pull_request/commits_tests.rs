@@ -16,7 +16,7 @@ use glowfly_core::repo::DiffTarget;
 use std::time::Instant;
 
 fn listed(st: &AppState) -> Vec<Oid> {
-    st.pull_request.as_ref().unwrap().shown.as_ref().unwrap().commits.commits.iter().map(|c| c.oid).collect()
+    st.session.pull_request.view.as_ref().unwrap().shown.as_ref().unwrap().commits.commits.iter().map(|c| c.oid).collect()
 }
 
 #[test]
@@ -30,7 +30,7 @@ fn a_row_selects_its_commit_and_keeps_the_panel() {
     assert_eq!(st.selection, Selection::Commit(commits[0]));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == commits[0])));
     assert!(fx.iter().any(|e| matches!(e, Effect::LineCounts(LineCountsEffect::Commit { oid, .. }) if *oid == commits[0])));
-    assert!(st.pull_request.is_some(), "the panel stays open");
+    assert!(st.session.pull_request.view.is_some(), "the panel stays open");
     assert!(st.settings.show_details_panel, "the commit panel is shown");
     // Again: only the panel is revealed.
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(commits[0])), Instant::now());
@@ -43,15 +43,15 @@ fn a_row_selects_its_commit_and_keeps_the_panel() {
     drive(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(commits[1])));
     let target = DiffTarget::Commit(commits[1], "g.txt".into());
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
-    let v = st.pull_request.as_ref().expect("still open");
+    let v = st.session.pull_request.view.as_ref().expect("still open");
     assert_eq!(v.tab, PrTab::Commits);
     assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target));
     // Selecting another of its commits closes that commit's diff.
     drive(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(commits[0])));
-    assert!(st.diff.is_none() && st.pull_request.is_some());
+    assert!(st.diff.is_none() && st.session.pull_request.view.is_some());
     // A diff of a commit outside the list closes the panel.
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(base, "a.txt".into()))));
-    assert!(st.pull_request.is_none());
+    assert!(st.session.pull_request.view.is_none());
     cleanup(&[&work, &bare]);
 }
 

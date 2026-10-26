@@ -22,7 +22,7 @@ const INSET: f32 = 16.0;
 const SIDE_ROW_H: f32 = 22.0;
 
 pub(super) fn show(ui: &mut Ui, st: &AppState) {
-    let Some(view) = &st.range_diff else { return };
+    let Some(view) = &st.session.range_diff.view else { return };
     let t = st.settings.lang();
     let Some(i) = view.selected else {
         return sentence(ui, t.tr("range_diff.pane.select"), color::weak());

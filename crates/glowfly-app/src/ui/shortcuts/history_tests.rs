@@ -95,7 +95,7 @@ fn graph_edits_follow_the_selection() {
 #[test]
 fn graph_edits_need_the_graph() {
     let (mut st, dir, a, _) = fixture("keys-history-panel");
-    st.rebase = Some(RebasePanel::loading(RebaseBase::FromCommit(a)));
+    st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(a)));
     assert!(!st.graph_shown());
     let mut h = harness(st, false);
     assert!(press(&mut h, Modifiers::NONE, Key::F2).is_empty(), "the rebase panel covers the graph");

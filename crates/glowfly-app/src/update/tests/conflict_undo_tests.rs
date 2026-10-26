@@ -26,7 +26,7 @@ fn bytes(dir: &Path, f: &str) -> Vec<u8> {
 }
 
 fn view(st: &AppState) -> &ConflictView {
-    st.conflict.as_ref().expect("view open")
+    st.session.conflict.view.as_ref().expect("view open")
 }
 
 fn conflicted(st: &AppState, path: &str) -> bool {
@@ -112,7 +112,7 @@ fn undo_and_redo_a_saved_resolution() {
     let markers = bytes(&dir, "a.txt");
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 0, side: Side::Theirs });
     drive(&mut st, Msg::Conflict(ConflictMsg::SaveConflict));
-    assert!(st.conflict.is_none(), "resolved and closed");
+    assert!(st.session.conflict.view.is_none(), "resolved and closed");
     assert!(matches!(st.undo.undo.last(), Some(Action::Resolve { staged: Some(_), .. })), "{:?}", st.undo.undo);
     assert_eq!(undo_label(&st), "Undo resolution of a.txt");
     let tip = st.undo.undo_entry(st.settings.lang(), true).0;
@@ -132,7 +132,7 @@ fn undo_and_redo_a_saved_resolution() {
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert_eq!(bytes(&dir, "a.txt"), b"one\ntheirs\n");
     assert!(!conflicted(&st, "a.txt") && staged(&st, "a.txt"));
-    assert!(st.conflict.is_none(), "the next status read closes the view");
+    assert!(st.session.conflict.view.is_none(), "the next status read closes the view");
     assert!(logged(&st, "Resolved a.txt again"));
     let _ = std::fs::remove_dir_all(&dir);
 }

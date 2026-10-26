@@ -22,7 +22,7 @@ const ROW_H: f32 = 56.0;
 const PAD_X: f32 = 16.0;
 
 pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let (Some(view), Some(snap)) = (&st.journal, &st.snap) else { return };
+    let (Some(view), Some(snap)) = (&st.session.journal.view, &st.snap) else { return };
     let rows = view.rows();
     // The capped footer takes the place of one more row.
     let n = rows.len() + usize::from(view.capped());

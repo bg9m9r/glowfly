@@ -42,11 +42,11 @@ fn reopen(st: &mut AppState, f: impl FnOnce(&mut glowfly_core::forge::PullReques
     f(&mut fs.prs[0]);
     let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
     view.checks.pane = ChecksPane::Loaded(CheckList::empty(fs.prs[0].head.clone().unwrap_or_default()));
-    st.pull_request = Some(view);
+    st.session.pull_request.view = Some(view);
 }
 
 fn commit_oids(st: &AppState) -> Vec<Oid> {
-    st.pull_request.as_ref().unwrap().shown.as_ref().unwrap().commits.commits.iter().map(|c| c.oid).collect()
+    st.session.pull_request.view.as_ref().unwrap().shown.as_ref().unwrap().commits.commits.iter().map(|c| c.oid).collect()
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn pull_request_commits_dark() {
     let oids = commit_oids(&st);
     assert_eq!(oids.len(), 2);
     assert_eq!(oids[1], second, "oldest first");
-    st.pull_request.as_mut().unwrap().tab = PrTab::Commits;
+    st.session.pull_request.view.as_mut().unwrap().tab = PrTab::Commits;
     st.selection = Selection::Commit(second);
     st.detail = Some(repo::commit_detail(&dir, second).unwrap());
     let mut h = harness(st, true);
@@ -84,13 +84,13 @@ fn pull_request_commits_dark() {
 fn pull_request_commits_empty_light() {
     let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-commits-empty", true);
     // The source is the target's tip: nothing to bring.
-    let main = st.pull_request.as_ref().unwrap().tips.target.unwrap();
+    let main = st.session.pull_request.view.as_ref().unwrap().tips.target.unwrap();
     let repo = Repository::open(&dir).unwrap();
     repo.reference("refs/remotes/origin/search", main, true, "test").unwrap();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
     reopen(&mut st, |p| p.head = Some(main.to_string()));
     compare(&mut st, &dir);
-    st.pull_request.as_mut().unwrap().tab = PrTab::Commits;
+    st.session.pull_request.view.as_mut().unwrap().tab = PrTab::Commits;
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("pull_request_commits_empty_light");
@@ -105,7 +105,7 @@ fn pull_request_commits_missing_light() {
     let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-commits-missing", false);
     // The listed head isn't here either.
     reopen(&mut st, |p| p.head = Some("0123456789abcdef0123456789abcdef01234567".into()));
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.tab = PrTab::Commits;
     assert_eq!(v.files, Files::Missing);
     let mut h = harness(st, false);
@@ -125,7 +125,7 @@ fn pull_request_commits_missing_light() {
 fn pull_request_head_used_light() {
     let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-head-used", false);
     compare(&mut st, &dir);
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     assert_eq!(v.shown.as_ref().unwrap().source.from, repo::SourceFrom::Head);
     v.tab = PrTab::Files;
     let mut h = harness(st, false);
@@ -143,7 +143,7 @@ fn pull_request_head_used_light() {
 fn pull_request_head_fetching_dark() {
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "pr-head-fetching", false);
     reopen(&mut st, |p| p.head = Some("0123456789abcdef0123456789abcdef01234567".into()));
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.tab = PrTab::Files;
     v.head_fetch = HeadFetch::Running;
     let mut h = harness(st, true);
@@ -160,7 +160,7 @@ fn pull_request_head_fetching_dark() {
 fn pull_request_head_failed_light() {
     let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-head-failed", false);
     reopen(&mut st, |p| p.head = Some("0123456789abcdef0123456789abcdef01234567".into()));
-    let v = st.pull_request.as_mut().unwrap();
+    let v = st.session.pull_request.view.as_mut().unwrap();
     v.tab = PrTab::Files;
     v.head_fetch = HeadFetch::Failed("could not read Username for 'https://github.com'".into());
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
