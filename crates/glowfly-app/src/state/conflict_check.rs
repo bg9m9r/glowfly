@@ -116,9 +116,14 @@ impl ConflictChecks {
         self.generation += 1;
     }
 
+    /// The request counter, for `RepoReads::counters`.
+    pub(super) fn counter(&mut self) -> &mut u64 {
+        &mut self.generation
+    }
+
     /// For parking: keeps the result, drops the check in flight (its reply is dropped, and the
-    /// tab asks again on return). Both the parked and the left-behind value get a newer
-    /// generation, so a reply that slips through is ignored.
+    /// tab asks again on return). The parked and the left-behind value carry the same newer
+    /// generation, so a reply that slips through is ignored by both.
     pub fn parked(&mut self) -> ConflictChecks {
         self.generation += 1;
         let parked = ConflictChecks {
@@ -130,7 +135,7 @@ impl ConflictChecks {
             generation: self.generation,
             logged_error: self.logged_error.take(),
         };
-        self.clear();
+        *self = ConflictChecks { generation: self.generation, ..Default::default() };
         parked
     }
 

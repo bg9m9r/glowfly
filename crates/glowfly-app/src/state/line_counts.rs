@@ -107,8 +107,13 @@ impl LineCounts {
         *self = LineCounts { wip_gen, ..Default::default() };
     }
 
-    /// For parking: keeps the stored counts, drops what was on its way. Both sides get a newer
-    /// generation, so a reply in flight is ignored.
+    /// The working-tree request counter, for `RepoReads::counters`.
+    pub(super) fn counter(&mut self) -> &mut u64 {
+        &mut self.wip_gen
+    }
+
+    /// For parking: keeps the stored counts, drops what was on its way. Both sides carry the
+    /// same newer generation, so a reply in flight is ignored by both.
     pub fn parked(&mut self) -> LineCounts {
         self.wip_gen += 1;
         let parked = LineCounts {

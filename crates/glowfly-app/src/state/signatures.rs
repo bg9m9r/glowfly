@@ -12,7 +12,9 @@ use std::collections::{HashMap, HashSet};
 pub struct Signatures {
     checked: HashMap<Oid, Result<SignatureCheck, String>>,
     pending: HashSet<Oid>,
-    /// Bumped by `clear`: replies to requests made before carry an older one and are ignored.
+    /// Bumped by `clear` and parking, and moved past other tabs' on return
+    /// (`RepoSession::resume_after`): replies to requests made before carry an older one and
+    /// are ignored.
     generation: u64,
 }
 
@@ -58,12 +60,17 @@ impl Signatures {
         self.generation += 1;
     }
 
-    /// For parking: keeps the results, drops what was on its way (those replies are dropped).
-    /// What stays behind is empty, with a newer generation.
+    /// The request counter, for `RepoReads::counters`.
+    pub(super) fn counter(&mut self) -> &mut u64 {
+        &mut self.generation
+    }
+
+    /// For parking: keeps the results, drops what was on its way; the parked and the
+    /// left-behind copy carry the same newer generation, so a reply in flight is ignored by both.
     pub fn parked(&mut self) -> Signatures {
+        self.generation += 1;
         let parked = Signatures { checked: std::mem::take(&mut self.checked), pending: HashSet::new(), generation: self.generation };
         self.pending.clear();
-        self.generation += 1;
         parked
     }
 }
@@ -210,9 +217,14 @@ mod tests {
         let other = Oid::from_bytes(&[2; 20]).unwrap();
         let g = s.start(oid);
         s.finish(oid, g, Err("x".into()));
-        s.start(other);
-        let parked = s.parked();
+        let g = s.start(other);
+        let mut parked = s.parked();
         assert!(parked.get(oid).is_some() && parked.wanted(other), "results kept, pending dropped");
         assert!(s.wanted(oid) && s.wanted(other));
+        assert_eq!(*parked.counter(), *s.counter(), "both copies carry the same newer generation");
+        assert!(*s.counter() > g);
+        parked.finish(other, g, Err("old".into()));
+        s.finish(other, g, Err("old".into()));
+        assert!(parked.get(other).is_none() && s.get(other).is_none(), "a reply from before the park is ignored by both");
     }
 }

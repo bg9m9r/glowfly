@@ -45,14 +45,17 @@ fn park_empties_the_views_and_keeps_the_counters() {
     let mut parked = active.park();
     assert!(parked.history.view.is_some() && parked.blame.view.is_some() && parked.journal.view.is_some(), "the views go with the tab");
     assert!(parked.gitflow_panel);
-    assert_eq!(counts(&mut parked), before, "the parked session keeps its counters");
+    let after = counts(&mut parked);
+    assert_eq!(after[..12], before[..12], "the parked session keeps the views' counters");
+    let reads: Vec<u64> = before[12..].iter().map(|c| c + 1).collect();
+    assert_eq!(after[12..], reads[..], "the reads' counters move past their requests in flight");
     assert_eq!(parked.history.generation, 4);
     assert_eq!(parked.pull_request.page_gen, 9);
 
     assert!(active.history.view.is_none() && active.blame.view.is_none() && active.journal.view.is_none());
     assert!(active.conflict.view.is_none() && active.pull_request.view.is_none() && active.rebase.view.is_none());
     assert!(!active.gitflow_panel, "the panel isn't left open for the next tab");
-    assert_eq!(counts(&mut active), before, "the counters stay behind as well");
+    assert_eq!(counts(&mut active), after, "the counters stay behind as well");
 }
 
 #[test]
@@ -61,17 +64,19 @@ fn resume_moves_every_counter_past_both() {
     set_all(&mut parked, 3);
     set_all(&mut current, 7);
     parked.resume_after(&mut current);
-    assert_eq!(counts(&mut parked), vec![8; 12]);
+    assert_eq!(counts(&mut parked), vec![8; 15]);
     let pr = &parked.pull_request;
     assert_eq!((pr.generation, pr.page_gen, pr.checks_gen, pr.lines_gen), (8, 8, 8, 8), "the panel's four counters are all in the list");
     assert_eq!((parked.conflict.generation, parked.issue.generation, parked.range_diff.generation), (8, 8, 8));
     assert_eq!(parked.diff.generation, 8, "the diff's counter is in the list");
+    let reads: Vec<u64> = parked.reads.counters().into_iter().map(|c| *c).collect();
+    assert_eq!(reads, vec![8; 3], "the reads' three counters are in the list");
 
     // Can't happen (the active counters are never behind a parked tab's), but stays safe.
     set_all(&mut parked, 10);
     set_all(&mut current, 2);
     parked.resume_after(&mut current);
-    assert_eq!(counts(&mut parked), vec![11; 12]);
+    assert_eq!(counts(&mut parked), vec![11; 15]);
 }
 
 #[test]

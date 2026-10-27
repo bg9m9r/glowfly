@@ -115,8 +115,10 @@ fn parking_keeps_the_result_and_drops_the_check_in_flight() {
     assert!(parked.shown(Some(&req)).is_some());
     assert!(parked.wants(&req), "the dropped check (only an F5 starts one for known inputs) is owed");
     assert_eq!(parked.finish(late, report(req.clone(), Ok(Prediction::Clean))), Finished::default(), "the old reply is ignored");
-    assert!(parked.start().is_some(), "nothing runs after a return");
-    assert_ne!(c.start(), Some(late));
+    let resumed = parked.start();
+    assert!(resumed.is_some(), "nothing runs after a return");
+    assert_ne!(resumed, Some(late));
+    assert_eq!(c.start(), resumed, "both sides carry the same newer generation");
 }
 
 #[test]

@@ -138,8 +138,9 @@ pub struct RepoSession {
 
 impl RepoSession {
     /// Every generation counter, in one list: `park` and `resume_after` go through it (add a
-    /// new pair here).
-    fn counters(&mut self) -> [&mut u64; 12] {
+    /// new pair here). The last three are the repository reads' (`RepoReads::counters`).
+    fn counters(&mut self) -> [&mut u64; 15] {
+        let [wip, sigs, checks] = self.reads.counters();
         let pr = &mut self.pull_request;
         [
             &mut self.conflict.generation,
@@ -154,16 +155,22 @@ impl RepoSession {
             &mut self.journal.generation,
             &mut self.range_diff.generation,
             &mut self.diff.generation,
+            wip,
+            sigs,
+            checks,
         ]
     }
 
     /// Takes the session out to park with its tab. What stays behind has no views but the same
     /// counters, so the next tab's counters move past them even when this tab is closed rather
     /// than parked; the diff's `shown_gen` stays behind too. A conflict save in flight reports
-    /// only to the active tab, so the parked view doesn't wait for it. The repository reads keep
-    /// their results and drop the requests in flight (`RepoReads::parked`).
+    /// only to the active tab, so the parked view doesn't wait for it. The repository reads'
+    /// results go with the tab and their requests in flight are dropped; what stays behind keeps
+    /// the reads' counters, moved past those requests (`RepoReads::parked`).
     pub fn park(&mut self) -> RepoSession {
+        let results = self.reads.parked();
         let mut parked = std::mem::take(self);
+        self.reads = std::mem::replace(&mut parked.reads, results);
         for (left, taken) in self.counters().into_iter().zip(parked.counters()) {
             *left = *taken;
         }
@@ -171,9 +178,6 @@ impl RepoSession {
         if let Some(c) = parked.conflict.view.as_mut() {
             c.saving = false;
         }
-        // Results stay with the tab; requests in flight are dropped with it and asked for again
-        // on return.
-        parked.reads = parked.reads.parked();
         parked
     }
 

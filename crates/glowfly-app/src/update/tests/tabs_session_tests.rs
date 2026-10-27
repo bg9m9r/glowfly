@@ -1,10 +1,12 @@
 //! Headless tests for the per-tab state that parks with its tab as one `RepoSession`: every view,
-//! the open diff and the draft come back after a switch, and the generation counters keep rising
-//! across tabs, so a result from before a park, or for another tab, never lands.
+//! the open diff and the draft come back after a switch, and the generation counters (the
+//! repository reads' included) keep rising across tabs, so a result from before a park, or for
+//! another tab or a closed one, never lands.
 
 use super::issue_tests::{github, listed};
 use super::tabs_tests::{cleanup, fake_tabs, two_repos};
 use super::update;
+use crate::conflict_check::{CheckRequest, ConflictCheckMsg};
 use crate::effect::Effect;
 use crate::msg::{CloseRequest, HistoryMsg, Msg, RepoMsg, TabsMsg};
 use crate::state::blame::BlameView;
@@ -18,6 +20,7 @@ use crate::state::range_diff::{Origin, RangeDiffView};
 use crate::state::rebase::RebasePanel;
 use crate::state::session::RepoSession;
 use crate::state::{AppState, ForgeState};
+use glowfly_core::conflict_check::{MergeTarget, Prediction, TargetKind};
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide};
 use glowfly_core::range_diff::Ends;
 use glowfly_core::repo::{DiffTarget, FileDiff};
@@ -225,4 +228,88 @@ fn hunk_ops_wait_for_the_reload_after_a_switch() {
     assert!(st.session.diff.view.is_some(), "the diff is back");
     assert_eq!(st.hunk_ops_gen(), None, "its hunks wait for the reload");
     assert_eq!(st.session.diff.shown_gen, shown, "the last request answered is unchanged");
+}
+
+/// A made-up oid for the read tests.
+fn oid(n: u8) -> git2::Oid {
+    git2::Oid::from_bytes(&[n; 20]).unwrap()
+}
+
+/// A conflict check's inputs (the values don't matter here).
+fn a_check() -> CheckRequest {
+    CheckRequest {
+        branch: "main".into(),
+        ours: oid(7),
+        target: MergeTarget { name: "origin/main".into(), oid: oid(8), kind: TargetKind::Upstream },
+    }
+}
+
+/// Starts a signature check of `oid(3)`, a conflict check and a working-tree count on the active
+/// tab's reads, by hand: their generations.
+fn start_reads(st: &mut AppState) -> (u64, u64, u64) {
+    let r = &mut st.session.reads;
+    (r.signatures.start(oid(3)), r.conflict_checks.start().expect("none running"), r.line_counts.start_wip().expect("none running"))
+}
+
+/// Delivers the replies to `start_reads`'s requests, unscoped (as if for the active tab).
+fn deliver_reads(st: &mut AppState, (sig, check, wip): (u64, u64, u64)) {
+    let result = Err("stale".into());
+    run(st, Msg::Repo(RepoMsg::SignatureChecked { oid: oid(3), generation: sig, result }));
+    let result = Ok(Prediction::Clean);
+    run(st, Msg::ConflictCheck(ConflictCheckMsg::Checked { request: a_check(), manual: false, generation: check, result }));
+    run(st, Msg::Repo(RepoMsg::WipLineCountsLoaded { generation: wip, result: Ok(Box::default()) }));
+}
+
+/// None of `start_reads`'s replies landed.
+fn no_reads_landed(st: &AppState) -> bool {
+    let r = &st.session.reads;
+    r.signatures.get(oid(3)).is_none() && r.conflict_checks.shown(Some(&a_check())).is_none() && r.line_counts.wip().is_none()
+}
+
+#[test]
+fn stale_reads_after_a_round_trip_are_dropped() {
+    let mut st = fake_tabs(&["a", "b"], 0);
+    let asked = start_reads(&mut st);
+    select(&mut st, 1);
+    select(&mut st, 0);
+    deliver_reads(&mut st, asked);
+    let r = &st.session.reads;
+    assert!(r.signatures.get(oid(3)).is_none(), "a signature check from before the switch is dropped");
+    assert!(r.conflict_checks.shown(Some(&a_check())).is_none(), "and a conflict check");
+    assert!(r.line_counts.wip().is_none(), "and a working-tree count");
+}
+
+#[test]
+fn a_closed_tabs_reads_never_reach_the_next_tab() {
+    let mut st = fake_tabs(&["a", "b"], 0);
+    let asked = start_reads(&mut st);
+    let id = st.tabs[0].id;
+    run(&mut st, Msg::Tabs(TabsMsg::CloseConfirmed(CloseRequest::One(id))));
+    assert_eq!(st.tabs.len(), 1, "a is closed");
+    deliver_reads(&mut st, asked);
+    assert!(no_reads_landed(&st), "b's reads are untouched by a's replies");
+}
+
+#[test]
+fn a_stats_result_for_a_parked_tab_is_dropped_and_asked_again() {
+    let (mut st, a, b) = two_repos("tabs-session-stats");
+    select(&mut st, 0);
+    let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("a has a commit");
+    st.session.reads.stats.clear();
+    let asks = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::Stats { oids, .. } if oids == &[head]));
+    let fx = run(&mut st, Msg::Repo(RepoMsg::WantStats(vec![head])));
+    assert!(asks(&fx), "a's stats are asked for");
+
+    select(&mut st, 1);
+    let workdir = st.tabs[0].path.clone().expect("a has a path");
+    run(&mut st, Msg::Scoped { workdir, msg: Box::new(Msg::Repo(RepoMsg::StatsLoaded(vec![(head, 9, 9, 9)]))) });
+    assert_ne!(st.session.reads.stats.get(&head), Some(&(9, 9, 9)), "b doesn't get a's stats");
+    let parked = &st.tabs[0].parked.as_ref().expect("a is parked").session;
+    assert_ne!(parked.reads.stats.get(&head), Some(&(9, 9, 9)), "nor does a while parked");
+
+    select(&mut st, 0);
+    assert!(st.session.reads.stats_pending.is_empty(), "nothing is waiting on return");
+    let fx = run(&mut st, Msg::Repo(RepoMsg::WantStats(vec![head])));
+    assert!(asks(&fx), "so the stats are asked for again");
+    cleanup(&[&a, &b]);
 }

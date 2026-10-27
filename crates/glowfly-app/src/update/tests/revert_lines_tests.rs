@@ -35,7 +35,7 @@ fn revert_lines_sends_effect() {
     assert_eq!(requests(&fx), [&want], "{fx:?}");
     assert_eq!(fx.len(), 1);
     assert!(st.view.diff_lines.is_empty(), "the selection is cleared");
-    assert_eq!(st.hunk_ops_gen(), generation, "diff_gen is not bumped");
+    assert_eq!(st.hunk_ops_gen(), generation, "the diff's counter (session.diff.generation) is not bumped");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

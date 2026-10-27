@@ -51,7 +51,7 @@ fn expect_effect(st: &mut AppState, target: &DiffTarget) {
             if t == target && *expected == want),
         "{fx:?}"
     );
-    assert!(st.hunk_ops_gen().is_some(), "diff_gen is not bumped");
+    assert!(st.hunk_ops_gen().is_some(), "the diff's counter (session.diff.generation) is not bumped");
 }
 
 #[test]

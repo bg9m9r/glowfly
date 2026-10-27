@@ -1,6 +1,8 @@
 //! What was read from the active tab's repository and is kept for it: commit stats, line counts,
-//! signature checks and the last conflict check. Parking keeps the results and drops the
-//! requests in flight (`parked`); opening another repository in the tab forgets them (`clear`).
+//! signature checks and the last conflict check. Parking splits the results, which go with the
+//! tab, from the counters, which stay behind moved past every request in flight (`parked`); the
+//! counters join `RepoSession::counters` so they rise past every tab's. Opening another
+//! repository in the tab forgets the results (`clear`).
 
 use git2::Oid;
 use std::collections::{HashMap, HashSet};
@@ -23,8 +25,16 @@ pub struct RepoReads {
 }
 
 impl RepoReads {
-    /// For parking: keeps the results and drops what was on its way. Replies in flight are
-    /// dropped, and the tab asks again on return.
+    /// The request counters (working-tree line counts, signatures, conflict checks), for
+    /// `RepoSession::counters`.
+    pub(super) fn counters(&mut self) -> [&mut u64; 3] {
+        [self.line_counts.counter(), self.signatures.counter(), self.conflict_checks.counter()]
+    }
+
+    /// Splits the results from the counters: returns the results (requests in flight dropped,
+    /// asked for again on return); `self` keeps no results and the same counters, moved past
+    /// every request in flight. `RepoSession::park` leaves `self` behind, so the next tab's
+    /// counters move past it.
     pub fn parked(&mut self) -> RepoReads {
         self.stats_pending.clear();
         RepoReads {
