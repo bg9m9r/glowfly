@@ -206,3 +206,6 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Write Glowfly's commit, amend, reword and squash messages in the repo's i18n.commitEncoding when it names a legacy encoding (git now labels Glowfly's UTF-8 with that header)
 - Pass `-c i18n.logOutputEncoding=UTF-8` to git CLI calls whose log or blame output Glowfly parses, for users who set a legacy output encoding
 - Show which encoding a commit declares (e.g. a small 'ISO-8859-1' note in the details panel)
+- Read stash messages that aren't UTF-8 without git2's stash_foreach, which panics on them (`to_str().unwrap()`); read the refs/stash reflog bytes lossily instead
+- List the encoding tables' licence in Help > About's licence list, through a third marked section in notices.rs
+- Decode annotated tag messages and taggers with the tag's own encoding header wherever tag text is shown

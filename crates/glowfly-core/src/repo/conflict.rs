@@ -307,7 +307,11 @@ fn side_labels(repo: &Repository) -> SideLabels {
         CherryPick | CherryPickSequence => {
             let theirs = oid_in(&git_dir.join("CHERRY_PICK_HEAD"))
                 .map(|o| {
-                    let summary = repo.find_commit(o).ok().map(|c| commit_text::summary(&c).chars().take(40).collect::<String>());
+                    let summary = repo
+                        .find_commit(o)
+                        .ok()
+                        .map(|c| commit_text::summary(&c).chars().take(40).collect::<String>())
+                        .filter(|s| !s.is_empty());
                     match summary {
                         Some(s) => format!("{} {s}", short(o)),
                         None => short(o),

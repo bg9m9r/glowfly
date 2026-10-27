@@ -252,6 +252,38 @@ fn rebase_labels() {
 }
 
 #[test]
+fn a_cherry_pick_label_reads_a_latin1_summary() {
+    let dir = scratch_repo("conflict-label-latin1");
+    write(&dir, "r.txt", "base\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "base"]);
+    git(&dir, &["checkout", "-q", "-b", "feature"]);
+    write(&dir, "r.txt", "feature\n");
+    git(&dir, &["commit", "-q", "-am", "feature change"]);
+    let repo = Repository::open(&dir).unwrap();
+    let tip = repo.head().unwrap().peel_to_commit().unwrap();
+    let (tree, parent) = (tip.tree_id(), tip.parent_id(0).unwrap());
+    let latin1 = raw_commit(&repo, tree, Some(parent), LATIN1_WHO, Some("ISO-8859-1"), b"Caf\xe9 au lait\n");
+    let empty = raw_commit(&repo, tree, Some(parent), LATIN1_WHO, None, b"");
+    git(&dir, &["checkout", "-q", "main"]);
+    write(&dir, "r.txt", "main\n");
+    git(&dir, &["commit", "-q", "-am", "main change"]);
+
+    let (ok, _) = run(&dir, &args(&["cherry-pick", &latin1.to_string()]));
+    assert!(!ok, "cherry-pick should conflict");
+    let f = load_conflict(&dir, "r.txt").unwrap();
+    assert_eq!(f.labels.theirs, format!("{} Café au lait", &latin1.to_string()[..7]));
+    git(&dir, &["cherry-pick", "--abort"]);
+
+    // An empty message leaves just the short id, with no trailing space.
+    let (ok, _) = run(&dir, &args(&["cherry-pick", &empty.to_string()]));
+    assert!(!ok, "cherry-pick should conflict");
+    let f = load_conflict(&dir, "r.txt").unwrap();
+    assert_eq!(f.labels.theirs, empty.to_string()[..7]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_whitespace_only_chunk_is_picked_automatically() {
     use crate::conflict_rows::{Trivial, trivial_picks};
     let base = base_lines();
