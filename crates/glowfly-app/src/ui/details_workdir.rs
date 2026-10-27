@@ -64,7 +64,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new(t.tr("details.workdir.same")).color(color::weak()));
         }
         Some(Ok(c)) => {
-            let open = st.diff.as_ref().map(|(target, _)| target);
+            let open = st.session.diff.view.as_ref().map(|(target, _)| target);
             let lfs = TrackContext::of(st);
             let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
             let commands = crate::state::custom_commands::MenuCommands::for_state(st);

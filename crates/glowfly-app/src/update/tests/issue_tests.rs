@@ -125,7 +125,7 @@ fn pr(id: u64) -> PullRequest {
 fn opening_a_listed_issue_loads_it_and_closes_the_other_views() {
     let (mut st, dir) = open_repo("issue-open");
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
+    st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
     st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
     st.session.blame.view = Some(crate::state::blame::BlameView::loading("a.txt".into(), None));
     st.session.pull_request.view = Some(PrView::new(pr(7), st.forge.as_ref().unwrap(), st.snap.as_ref().unwrap()));
@@ -139,7 +139,10 @@ fn opening_a_listed_issue_loads_it_and_closes_the_other_views() {
     assert_eq!((v.key.as_str(), v.mention.as_str(), v.issue.title.as_str()), ("12", "#12", "Crash on start"));
     assert_eq!(v.details, Details::Loading);
     assert!(
-        st.diff.is_none() && st.session.history.view.is_none() && st.session.blame.view.is_none() && st.session.pull_request.view.is_none()
+        st.session.diff.view.is_none()
+            && st.session.history.view.is_none()
+            && st.session.blame.view.is_none()
+            && st.session.pull_request.view.is_none()
     );
     assert!(run(&mut st, IssueMsg::Open("12".into())).is_empty(), "the same issue again changes nothing");
     // A key nobody listed opens with its page only.

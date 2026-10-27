@@ -10,9 +10,10 @@ use std::sync::Arc;
 /// The graph shows these commits and needs their totals (`RepoMsg::WantStats`).
 pub(super) fn want_totals(st: &mut AppState, oids: Vec<Oid>, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
-    let missing: Vec<Oid> = oids.into_iter().filter(|o| !st.stats.contains_key(o) && !st.stats_pending.contains(o)).collect();
+    let missing: Vec<Oid> =
+        oids.into_iter().filter(|o| !st.session.reads.stats.contains_key(o) && !st.session.reads.stats_pending.contains(o)).collect();
     if !missing.is_empty() {
-        st.stats_pending.extend(missing.iter().copied());
+        st.session.reads.stats_pending.extend(missing.iter().copied());
         fx.push(Effect::Stats { workdir, oids: missing });
     }
 }
@@ -20,33 +21,33 @@ pub(super) fn want_totals(st: &mut AppState, oids: Vec<Oid>, fx: &mut Vec<Effect
 /// Totals asked for but not worked out (`RepoMsg::StatsDropped`): they can be asked again.
 pub(super) fn totals_dropped(st: &mut AppState, oids: Vec<Oid>) {
     for oid in oids {
-        st.stats_pending.remove(&oid);
+        st.session.reads.stats_pending.remove(&oid);
     }
 }
 
 pub(super) fn totals_loaded(st: &mut AppState, batch: Vec<(Oid, usize, usize, usize)>) {
     for (oid, files, adds, dels) in batch {
-        st.stats_pending.remove(&oid);
-        st.stats.insert(oid, (files, adds, dels));
+        st.session.reads.stats_pending.remove(&oid);
+        st.session.reads.stats.insert(oid, (files, adds, dels));
     }
 }
 
 /// Asks for commit `oid`'s per-file counts unless they are known or on their way.
 pub(super) fn want_commit(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     if let Some(workdir) = st.workdir()
-        && st.line_counts.wants_commit(oid)
+        && st.session.reads.line_counts.wants_commit(oid)
     {
-        st.line_counts.start_commit(oid);
+        st.session.reads.line_counts.start_commit(oid);
         fx.push(Effect::LineCounts(LineCountsEffect::Commit { workdir, oid }));
     }
 }
 
 pub(super) fn commit_loaded(st: &mut AppState, oid: Oid, result: Result<Arc<FileLineCounts>, String>) {
     match result {
-        Ok(counts) => st.line_counts.finish_commit(oid, counts),
+        Ok(counts) => st.session.reads.line_counts.finish_commit(oid, counts),
         Err(e) => {
             // No toast: the rows simply show no counts.
-            st.line_counts.commit_failed(oid);
+            st.session.reads.line_counts.commit_failed(oid);
             tracing::debug!("line counts of {oid}: {e}");
         }
     }
@@ -56,11 +57,11 @@ pub(super) fn commit_loaded(st: &mut AppState, oid: Oid, result: Result<Arc<File
 pub(super) fn status_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(snap) = st.snap.as_ref() else { return };
     if !snap.is_dirty() {
-        st.line_counts.clear_wip();
+        st.session.reads.line_counts.clear_wip();
         return;
     }
     let workdir = snap.workdir.clone();
-    if let Some(generation) = st.line_counts.start_wip() {
+    if let Some(generation) = st.session.reads.line_counts.start_wip() {
         fx.push(Effect::LineCounts(LineCountsEffect::Wip { workdir, generation }));
     }
 }
@@ -69,7 +70,7 @@ pub(super) fn wip_loaded(st: &mut AppState, generation: u64, result: Result<Box<
     if let Err(e) = &result {
         tracing::debug!("line counts of the working tree: {e}");
     }
-    if st.line_counts.finish_wip(generation, result.ok().map(|b| *b)) {
+    if st.session.reads.line_counts.finish_wip(generation, result.ok().map(|b| *b)) {
         status_changed(st, fx);
     }
 }

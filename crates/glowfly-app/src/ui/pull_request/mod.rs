@@ -38,7 +38,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     // Also while the file being opened waits for contents a partial clone hasn't downloaded (in
     // the tab it opened in).
     let waiting = st.for_diff().is_some();
-    let diff = st.diff.as_ref().map(|(t, _)| t);
+    let diff = st.session.diff.view.as_ref().map(|(t, _)| t);
     let shows_file = waiting || diff.is_some_and(|t| view.shows_file(t));
     let shows_commit = waiting || diff.is_some_and(|t| matches!(t, DiffTarget::Commit(..)) && view.shows(t));
     let tab = view.tab;
@@ -85,7 +85,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             });
             center.show_inside(ui, |ui| {
                 if shows_file {
-                    let path = st.diff.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
+                    let path = st.session.diff.view.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
                     let commented = st
                         .session
                         .pull_request

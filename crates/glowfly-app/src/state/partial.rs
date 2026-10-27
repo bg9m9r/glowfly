@@ -122,7 +122,7 @@ pub enum Wait {
 impl AppState {
     /// The waiting contents of the diff being opened, while it is the latest diff request.
     pub fn for_diff(&self) -> Option<&PendingContent> {
-        self.partial.content.as_ref().filter(|p| p.view == ContentView::Diff { generation: self.diff_gen })
+        self.partial.content.as_ref().filter(|p| p.view == ContentView::Diff { generation: self.session.diff.generation })
     }
 
     /// The waiting contents of the File view's text `oid`/`path`/`before`.
@@ -140,7 +140,7 @@ impl AppState {
     /// A diff is shown, or the diff being opened waits for its contents (the central area shows
     /// the diff's place either way).
     pub fn diff_or_download(&self) -> bool {
-        self.diff.is_some() || self.for_diff().is_some()
+        self.session.diff.view.is_some() || self.for_diff().is_some()
     }
 
     /// `p`'s phase as its pane shows it: a download job that isn't running (dropped before it
@@ -156,7 +156,7 @@ impl AppState {
     /// Whether `view` is still what its view on screen asked for.
     pub fn content_view_current(&self, view: &ContentView) -> bool {
         match view {
-            ContentView::Diff { generation } => *generation == self.diff_gen,
+            ContentView::Diff { generation } => *generation == self.session.diff.generation,
             ContentView::FileText { oid, path, before } => {
                 self.session.history.view.as_ref().and_then(|h| h.text.as_ref()).is_some_and(|t| {
                     t.oid == *oid && t.path == *path && t.before == *before && matches!(t.state, super::history::TextState::Loading)

@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 /// The syntax of the diff on screen; `None` when it is plain or nothing is open.
 fn syntax(st: &AppState) -> Option<String> {
-    st.diff.as_ref().and_then(|(_, d)| d.highlight.as_ref()).map(|h| h.syntax.clone())
+    st.session.diff.view.as_ref().and_then(|(_, d)| d.highlight.as_ref()).map(|h| h.syntax.clone())
 }
 
 /// A repository with `.gitattributes` mapping `*.inc` to Rust and `lib.inc` committed, then
@@ -53,7 +53,7 @@ fn editing_gitattributes_changes_language_on_reload() {
 
     std::fs::write(dir.join(".gitattributes"), "*.inc linguist-language=Python\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t.path()), Some("lib.inc"), "still open");
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t.path()), Some("lib.inc"), "still open");
     assert_eq!(syntax(&st).as_deref(), Some("Python"), "the Rust spans are not adopted");
 
     // Out of the index too: with no working tree copy, the index's attributes apply.

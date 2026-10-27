@@ -66,7 +66,7 @@ fn open_landing(st: &mut AppState, target: DiffTarget, landing: Landing, fx: &mu
 /// reloads the shown file as usual.
 pub(super) fn renew_step(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
     let Some((pending, landing)) = st.view.diff_landing.clone() else { return false };
-    let shown = st.diff.as_ref().map(|(t, _)| t.clone());
+    let shown = st.session.diff.view.as_ref().map(|(t, _)| t.clone());
     let next = match shown {
         Some(s) if diff_nav::in_list(st, &s) => diff_nav::next_file(st, &s, landing.dir()),
         _ if diff_nav::in_list(st, &pending) => Some(pending),
@@ -106,7 +106,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             if layout == st.settings.diff_layout {
                 return;
             }
-            if let Some((_, d)) = &st.diff {
+            if let Some((_, d)) = &st.session.diff.view {
                 let (mode, from, top) = (st.settings.diff_mode, st.settings.diff_layout, st.view.diff_top_row);
                 let row = same_change_row(d, mode, from, layout, top, &st.view.diff_expanded);
                 st.view.diff_scroll_to_row = Some(row);
@@ -138,7 +138,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             st.settings.diff_word_wrap = on;
             // The rows and their indexes stay; only their heights change, so the view keeps
             // the row at the top where it is.
-            if st.diff.is_some() {
+            if st.session.diff.view.is_some() {
                 st.view.diff_scroll_to_row = Some(st.view.diff_top_row);
             }
             // The conflict view's rows change height too: its current chunk comes back in view.
@@ -200,7 +200,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
 fn lines(st: &mut AppState, msg: DiffMsg) {
     let blocked = st.line_ops_blocked().is_some();
     let sel = &mut st.view.diff_lines;
-    match (msg, &st.diff) {
+    match (msg, &st.session.diff.view) {
         (DiffMsg::ClearLineSelection, _) => sel.clear(),
         (DiffMsg::EndLineDrag, _) => sel.end_drag(),
         _ if blocked => {}
@@ -217,7 +217,7 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
     if mode == old {
         return;
     }
-    let h = st.diff.as_ref().and_then(|(_, d)| hunk_at_top(d, old, layout, st.view.diff_top_row, &st.view.diff_expanded));
+    let h = st.session.diff.view.as_ref().and_then(|(_, d)| hunk_at_top(d, old, layout, st.view.diff_top_row, &st.view.diff_expanded));
     st.settings.diff_mode = mode;
     st.view.diff_lines.clear();
     fx.push(super::prefs::save_settings(st));
@@ -231,7 +231,7 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
         }
         DiffMode::Hunks => {
             // The normal hunks are already loaded, and still current for hunk operations.
-            let Some((_, d)) = st.diff.as_mut() else { return };
+            let Some((_, d)) = st.session.diff.view.as_mut() else { return };
             std::sync::Arc::make_mut(d).whole = None;
             let row = h.and_then(|h| header_rows_filled(d, layout, &st.view.diff_expanded).get(h).copied()).unwrap_or(0);
             st.view.diff_scroll_to_row = Some(row);
@@ -252,7 +252,7 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
 /// already in the asked-for state).
 pub(super) fn refold(st: &mut AppState, change: impl FnOnce(&mut Expanded, &WholeFile) -> bool) {
     let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
-    let Some((_, d)) = &st.diff else { return };
+    let Some((_, d)) = &st.session.diff.view else { return };
     let Some(w) = shown(d, mode) else { return };
     let before = change_rows(d, mode, layout, &st.view.diff_expanded);
     let anchor = line_at_row(w, layout, &st.view.diff_expanded, st.view.diff_top_row);
@@ -272,7 +272,7 @@ pub(super) fn refold(st: &mut AppState, change: impl FnOnce(&mut Expanded, &Whol
 
 /// Whether the whole-file view is on screen.
 fn whole_shown(st: &AppState) -> bool {
-    st.diff.as_ref().is_some_and(|(_, d)| shown(d, st.settings.diff_mode).is_some())
+    st.session.diff.view.as_ref().is_some_and(|(_, d)| shown(d, st.settings.diff_mode).is_some())
 }
 
 /// Whether `key` names a fold of `w`.

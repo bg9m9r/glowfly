@@ -265,7 +265,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
         HistoryPane::File => super::history_file::show(ui, st, cache, msgs),
         HistoryPane::Diff => match st.for_diff() {
             Some(p) => super::content_fetch::show(ui, st, p, msgs),
-            None if st.diff.as_ref().is_some_and(|(t, _)| *t == target) => super::diff::body(ui, st, cache, msgs),
+            None if st.session.diff.view.as_ref().is_some_and(|(t, _)| *t == target) => super::diff::body(ui, st, cache, msgs),
             None => super::pane_status::loading(ui, LOADING_CHANGES),
         },
     }

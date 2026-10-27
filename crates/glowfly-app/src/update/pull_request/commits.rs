@@ -12,7 +12,7 @@ pub(super) fn select(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     if !st.session.pull_request.view.as_ref().is_some_and(|v| v.has_commit(oid)) {
         return;
     }
-    if matches!(&st.diff, Some((DiffTarget::Commit(o, _), _)) if *o != oid) {
+    if matches!(&st.session.diff.view, Some((DiffTarget::Commit(o, _), _)) if *o != oid) {
         super::super::repo::close_diff(st);
     }
     if st.selection != Selection::Commit(oid) {

@@ -18,7 +18,7 @@ fn screen(st: &AppState) -> std::ops::Range<usize> {
 
 /// The row of line `line` of the gap before hunk `hunk` in the hunk view's rows, once filled in.
 fn gap_line_row(st: &AppState, hunk: usize, line: usize) -> Option<usize> {
-    let (_, d) = st.diff.as_ref()?;
+    let (_, d) = st.session.diff.view.as_ref()?;
     let ex = &st.view.diff_expanded;
     match st.settings.diff_layout {
         DiffLayout::Inline => inline_rows_filled(d, ex).iter().position(|r| *r == DiffRow::GapLine { hunk, line }),
@@ -31,7 +31,7 @@ fn gap_line_row(st: &AppState, hunk: usize, line: usize) -> Option<usize> {
 /// as with a click.
 pub(super) fn open_at_top(st: &mut AppState, fx: &mut Vec<Effect>) {
     let (mode, layout, below) = (st.settings.diff_mode, st.settings.diff_layout, screen(st));
-    let Some((_, d)) = st.diff.as_ref().map(|(t, d)| (t, d.clone())) else { return };
+    let Some((_, d)) = st.session.diff.view.as_ref().map(|(t, d)| (t, d.clone())) else { return };
     let ex = &st.view.diff_expanded;
     if let Some(w) = shown(&d, mode) {
         let first = collapsed(w, ex).into_iter().map(|f| (f, row_of_line(w, layout, ex, f.start))).find(|&(_, row)| row >= below.start);
@@ -60,7 +60,7 @@ pub(super) fn open_at_top(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// on screen, keeping the same line at the top as a click on its fold-back control does.
 pub(super) fn close_at_top(st: &mut AppState) {
     let (mode, layout, screen) = (st.settings.diff_mode, st.settings.diff_layout, screen(st));
-    let Some((_, d)) = st.diff.as_ref().map(|(t, d)| (t, d.clone())) else { return };
+    let Some((_, d)) = st.session.diff.view.as_ref().map(|(t, d)| (t, d.clone())) else { return };
     let ex = &st.view.diff_expanded;
     if let Some(w) = shown(&d, mode) {
         let open = opened(w, ex);

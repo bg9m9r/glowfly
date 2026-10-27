@@ -17,9 +17,9 @@ fn main_in(t: BuiltinTheme) {
     let name = format!("theme_{}", t.id());
     let (mut st, dir) = with_bands(&format!("theme-{}", t.id()));
     let Selection::Commit(oid) = st.selection else { panic!("a commit is selected") };
-    st.detail = Some(repo::commit_detail(&dir, oid).unwrap());
-    st.line_counts.start_commit(oid);
-    st.line_counts.finish_commit(oid, Arc::new(repo::commit_line_counts(&dir, oid).unwrap()));
+    st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
+    st.session.reads.line_counts.start_commit(oid);
+    st.session.reads.line_counts.finish_commit(oid, Arc::new(repo::commit_line_counts(&dir, oid).unwrap()));
     let mut h = harness_palette_sized(st, *builtin(t), vec2(1600.0, 820.0));
     h.run_steps(4);
     h.check_snapshot(&name);

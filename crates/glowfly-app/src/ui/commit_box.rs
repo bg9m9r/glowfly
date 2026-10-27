@@ -66,7 +66,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
             ui.label(type_scale::section_text(ui, t.tr("commit.title")));
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if controls::checkbox(ui, &mut st.draft.amend, t.tr("commit.amend")).changed() && st.draft.amend {
+            if controls::checkbox(ui, &mut st.session.draft.amend, t.tr("commit.amend")).changed() && st.session.draft.amend {
                 msgs.push(Msg::Commit(CommitMsg::PrefillAmend));
             }
             // Between the title and Amend, cut to the room left, smaller than both so the row
@@ -84,7 +84,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     // Link the issue encoded in the branch name (e.g. 1234-login or PROJ-12-crash).
     if let Some((fs, key)) = st.forge.as_ref().and_then(|f| Some((f, f.branch_issue(snap.head_branch.as_deref()?)?))) {
         let tag = fs.mention(&key);
-        let mentioned = fs.links_issue(&st.draft.summary, &key) || fs.links_issue(&st.draft.description, &key);
+        let mentioned = fs.links_issue(&st.session.draft.summary, &key) || fs.links_issue(&st.session.draft.description, &key);
         ui.horizontal(|ui| {
             issue_chip(ui, fs, &key, msgs);
             let hover = if fs.message_ref(&key) == tag { t.tr("commit.link_tip.mention") } else { t.tr("commit.link_tip.link") };
@@ -104,15 +104,15 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
             let font = type_scale::font(type_scale::SMALL);
             let counter = |s: &String| format!("{}/{SUMMARY_HARD}", s.chars().count());
             let width = |s: &str| ui.painter().layout_no_wrap(s.to_owned(), font.clone(), color::weak()).size().x;
-            let reserve = width(&counter(&st.draft.summary)).max(width(&format!("000/{SUMMARY_HARD}")));
+            let reserve = width(&counter(&st.session.draft.summary)).max(width(&format!("000/{SUMMARY_HARD}")));
             let field_w = (ui.available_width() - reserve - COUNTER_GAP).max(80.0);
             let s = ui
                 .allocate_ui(vec2(field_w, 0.0), |ui| {
-                    spell_text_edit(ui, &mut st.draft.summary, t.tr("commit.summary_hint"), 1, &mut cache.speller, spell)
+                    spell_text_edit(ui, &mut st.session.draft.summary, t.tr("commit.summary_hint"), 1, &mut cache.speller, spell)
                 })
                 .inner;
             // Counted after the edit, so the number keeps up with typing.
-            let (len, text) = (st.draft.summary.chars().count(), counter(&st.draft.summary));
+            let (len, text) = (st.session.draft.summary.chars().count(), counter(&st.session.draft.summary));
             let tone = match summary_length(len) {
                 SummaryLength::Fine => color::weak(),
                 SummaryLength::Long => color::warn(),
@@ -128,9 +128,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     if std::mem::take(&mut st.view.focus_message) {
         s.request_focus();
     }
-    let d = spell_text_edit(ui, &mut st.draft.description, t.tr("commit.description_hint"), 4, &mut cache.speller, spell);
+    let d = spell_text_edit(ui, &mut st.session.draft.description, t.tr("commit.description_hint"), 4, &mut cache.speller, spell);
     super::access::name_field(&d, t.tr("commit.description_hint"));
-    if let Some(template) = &st.draft.template {
+    if let Some(template) = &st.session.draft.template {
         let note = t.trf("commit.template_note", &[("char", &template.comment_char)]);
         ui.label(RichText::new(note).size(type_scale::SMALL).color(color::faint()));
     }
@@ -148,12 +148,12 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     });
 
     let merging = snap.state == git2::RepositoryState::Merge;
-    let label = st.draft.button_label(t, snap.staged.len(), pushes_after(st), merging);
+    let label = st.session.draft.button_label(t, snap.staged.len(), pushes_after(st), merging);
     let blocked = commit_blocked(st, false);
     let enabled = blocked.is_none();
     let tip = shortcuts_tip(t, &st.keymap);
     ui.horizontal(|ui| {
-        if commit_split(ui, label, (enabled, style.primary), blocked, &tip, &mut st.draft, t).clicked() {
+        if commit_split(ui, label, (enabled, style.primary), blocked, &tip, &mut st.session.draft, t).clicked() {
             // A merge commits through Commit merge, which fills a blank message with git's.
             msgs.push(Msg::Commit(if merging { CommitMsg::CommitMerge } else { CommitMsg::Commit }));
         }

@@ -74,8 +74,8 @@ pub(super) fn cleanup(dir: &Path, bare: &Path) {
 fn rewritten(name: &str) -> (AppState, PathBuf, PathBuf) {
     let (mut st, dir, bare) = stacked(name);
     drive(&mut st, push_stack("mid"));
-    st.draft.amend = true;
-    st.draft.summary = "l1, amended".into();
+    st.session.draft.amend = true;
+    st.session.draft.summary = "l1, amended".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     drive(&mut st, Msg::Rebase(RebaseMsg::Restack { scope: RestackScope::Above("low".into()), autostash: false }));
     assert_eq!(tip(&dir, "mid^"), tip(&dir, "low"), "mid is on the amended low");

@@ -236,7 +236,7 @@ pub(super) fn close(st: &mut AppState) {
 /// diff on screen.
 pub(super) fn missing_diff(st: &AppState) -> Option<DiffTarget> {
     let target = st.session.history.view.as_ref()?.target()?;
-    st.diff.as_ref().is_none_or(|(t, _)| *t != target).then_some(target)
+    st.session.diff.view.as_ref().is_none_or(|(t, _)| *t != target).then_some(target)
 }
 
 /// After a tab switch: requests dropped while the tab was parked (the walk, the selected

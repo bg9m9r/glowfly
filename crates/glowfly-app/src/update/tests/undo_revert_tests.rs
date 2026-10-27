@@ -87,7 +87,7 @@ fn revert_hunk_with_whitespace_hidden_undo_and_redo() {
 #[test]
 fn revert_lines_and_file_are_recorded() {
     let (mut st, dir, target) = committed("undo-revert-lines", OLD, NEW, true);
-    let close = st.diff.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
+    let close = st.session.diff.view.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
     run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: close, how: Only }));
     drive(&mut st, Msg::Stage(StageMsg::RevertLines));
     assert_eq!(read(&dir), "a\nif {\n        x\n        y\nb\n");

@@ -149,7 +149,7 @@ fn succeeded(st: &mut AppState, op: &FileOp, ok: WorkFileOk, now: Instant) {
         | FileOp::Discard { path: from, .. } => from,
         FileOp::Create(_) => return,
     };
-    if matches!(&st.diff, Some((DiffTarget::Unstaged(p) | DiffTarget::Staged(p), _)) if p == old) {
+    if matches!(&st.session.diff.view, Some((DiffTarget::Unstaged(p) | DiffTarget::Staged(p), _)) if p == old) {
         super::repo::close_diff(st);
     }
 }

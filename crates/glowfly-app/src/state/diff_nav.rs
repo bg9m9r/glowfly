@@ -77,7 +77,7 @@ pub fn change_rows_of(d: &FileDiff, s: &Settings, ex: &Expanded) -> Vec<usize> {
 
 /// Where a step of `dir` (1 next, -1 previous) from the open diff goes.
 pub fn step(st: &AppState, dir: isize) -> Step {
-    let Some((target, d)) = st.diff.as_ref().filter(|_| dir != 0) else { return Step::End };
+    let Some((target, d)) = st.session.diff.view.as_ref().filter(|_| dir != 0) else { return Step::End };
     // The LFS summary shows instead of the rows: nothing to stop at inside the file.
     let rows = if super::lfs_notes::summary(st).is_some() { Vec::new() } else { change_rows_of(d, &st.settings, &st.view.diff_expanded) };
     if let Some(row) = step_change(&rows, position(&st.view), dir) {
@@ -93,7 +93,7 @@ pub fn step(st: &AppState, dir: isize) -> Step {
 /// whole-file view): the change at or above where stepping continues from (the change last
 /// stepped to while on screen, else the top row), else the first one. `None` without changes.
 pub fn current_hunk(st: &AppState) -> Option<usize> {
-    let (_, d) = st.diff.as_ref()?;
+    let (_, d) = st.session.diff.view.as_ref()?;
     let rows = change_rows_of(d, &st.settings, &st.view.diff_expanded);
     if rows.is_empty() {
         return None;
@@ -152,7 +152,7 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
             Some(tree_ordered(st, unstaged.collect()).into_iter().chain(tree_ordered(st, staged.collect())).collect())
         }
         DiffTarget::Commit(oid, _) => {
-            if let Some(d) = st.detail.as_ref().filter(|d| d.oid == *oid) {
+            if let Some(d) = st.session.detail.as_ref().filter(|d| d.oid == *oid) {
                 return Some(shown(&d.files, &|p| DiffTarget::Commit(*oid, p)));
             }
             // A stacked list: every section's files, commit by commit.
@@ -211,7 +211,7 @@ pub struct Counter {
 /// continues from, at least 1, as `current_hunk` counts), or for a file without rows (binary,
 /// empty, an LFS summary) its place in the list it came from. `None` when neither applies.
 pub fn counter(st: &AppState) -> Option<Counter> {
-    let (target, d) = st.diff.as_ref()?;
+    let (target, d) = st.session.diff.view.as_ref()?;
     let rows = if super::lfs_notes::summary(st).is_some() { Vec::new() } else { change_rows_of(d, &st.settings, &st.view.diff_expanded) };
     if !rows.is_empty() {
         let index = rows.partition_point(|&r| r <= position(&st.view)).max(1);
@@ -229,5 +229,5 @@ pub fn file_status(st: &AppState, target: &DiffTarget) -> Option<char> {
     }
     // A file history's commit diff isn't in a list but its detail may still name it.
     let DiffTarget::Commit(oid, path) = target else { return None };
-    st.detail.as_ref().filter(|d| d.oid == *oid)?.files.iter().find(|f| f.path == *path).map(|f| f.status)
+    st.session.detail.as_ref().filter(|d| d.oid == *oid)?.files.iter().find(|f| f.path == *path).map(|f| f.status)
 }

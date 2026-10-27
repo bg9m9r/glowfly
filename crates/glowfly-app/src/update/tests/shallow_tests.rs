@@ -193,7 +193,7 @@ fn fetch_more_commits_step() {
 fn deepen_drops_stats_of_old_boundary() {
     let (mut st, src, dest) = shallow_clone("shallow-stats", 3, 1);
     let root = st.snap.as_ref().unwrap().shallow_roots[0];
-    st.stats.insert(root, (99, 99, 99));
+    st.session.reads.stats.insert(root, (99, 99, 99));
     st.selection = Selection::Commit(root);
 
     // Step through the job by hand to see the effects of the reload that follows it.
@@ -204,7 +204,7 @@ fn deepen_drops_stats_of_old_boundary() {
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })).expect("a refresh");
     let loaded = runner::execute(load).expect("a load result");
     let fx = run(&mut st, loaded);
-    assert!(!st.stats.contains_key(&root), "line counts made as a root commit are dropped");
+    assert!(!st.session.reads.stats.contains_key(&root), "line counts made as a root commit are dropped");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == root)), "the selected commit's detail reloads");
     finish(&mut st, fx);
     assert!(!st.snap.as_ref().unwrap().shallow_roots.contains(&root));

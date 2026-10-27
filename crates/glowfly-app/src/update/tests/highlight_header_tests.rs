@@ -33,7 +33,7 @@ fn big() -> DiffTarget {
 
 /// Runs the held background pass for the diff on screen and applies its result.
 fn finish_held(st: &mut crate::state::AppState, fx: &mut Vec<Effect>) {
-    let i = fx.iter().position(|e| matches!(e, Effect::HighlightDiff { generation, .. } if *generation == st.diff_shown_gen));
+    let i = fx.iter().position(|e| matches!(e, Effect::HighlightDiff { generation, .. } if *generation == st.session.diff.shown_gen));
     let msg = runner::execute(fx.remove(i.expect("a background pass"))).expect("a result");
     update(st, msg, Instant::now());
 }

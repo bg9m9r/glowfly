@@ -1,10 +1,10 @@
 //! The pull request panel: opening it for a listed pull request, following refreshes of the refs
 //! and of the service's list, switching tabs, and closing it. Where its files and commits come
 //! from (and the head ref fetch) is in source.rs, the Commits tab's selection in commits.rs. Its
-//! diffs are the shared `st.diff`, opened through `RepoMsg::OpenDiff`; its page and actions on
-//! the service are in calls.rs, its Checks section in checks.rs, its code comment threads in
-//! threads.rs (placed on the local version's lines by line_map.rs when the files aren't of the
-//! service's head), and a new code comment on diff lines in line_comment.rs.
+//! diffs are the shared `st.session.diff.view`, opened through `RepoMsg::OpenDiff`; its page and
+//! actions on the service are in calls.rs, its Checks section in checks.rs, its code comment
+//! threads in threads.rs (placed on the local version's lines by line_map.rs when the files aren't
+//! of the service's head), and a new code comment on diff lines in line_comment.rs.
 
 use crate::effect::Effect;
 use crate::pull_request::PullRequestMsg;

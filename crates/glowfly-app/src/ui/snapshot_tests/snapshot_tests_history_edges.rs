@@ -13,7 +13,7 @@ fn history_table_edges_no_refs() {
     st.settings.columns.refs = false;
     let merge = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == "Merge branch 'login-page'").unwrap().oid;
     st.selection = Selection::Commit(merge);
-    st.detail = Some(glowfly_core::repo::commit_detail(&dir, merge).unwrap());
+    st.session.detail = Some(glowfly_core::repo::commit_detail(&dir, merge).unwrap());
     render("history_table_edges_no_refs", st, true);
     remove_fixture(&dir);
 }

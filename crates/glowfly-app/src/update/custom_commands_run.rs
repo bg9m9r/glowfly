@@ -33,7 +33,7 @@ pub(super) fn run(st: &mut AppState, r: CommandRef, at: Target, confirmed: bool,
         Selection::Commit(o) => Some(o),
         _ => None,
     };
-    let open_file = st.diff.as_ref().map(|(d, _)| d.path().to_owned());
+    let open_file = st.session.diff.view.as_ref().map(|(d, _)| d.path().to_owned());
     let vars = vars_for(snap, &at, selected, open_file.as_deref());
     let v = vars.as_vars();
     let expanded = match cmd.expand(&v, cfg!(windows)) {

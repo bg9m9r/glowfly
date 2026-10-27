@@ -1,24 +1,26 @@
-//! Headless tests for the views that park with their tab as one `RepoSession`: every view comes
-//! back after a switch, and the generation counters keep rising across tabs, so a result from
-//! before a park, or for another tab, never lands.
+//! Headless tests for the per-tab state that parks with its tab as one `RepoSession`: every view,
+//! the open diff and the draft come back after a switch, and the generation counters keep rising
+//! across tabs, so a result from before a park, or for another tab, never lands.
 
 use super::issue_tests::{github, listed};
 use super::tabs_tests::{cleanup, fake_tabs, two_repos};
 use super::update;
 use crate::effect::Effect;
-use crate::msg::{CloseRequest, HistoryMsg, Msg, TabsMsg};
+use crate::msg::{CloseRequest, HistoryMsg, Msg, RepoMsg, TabsMsg};
 use crate::state::blame::BlameView;
 use crate::state::conflict::ConflictView;
 use crate::state::diff_preview::DiffPreview;
 use crate::state::history::FileHistoryView;
 use crate::state::issue::IssueView;
 use crate::state::journal::JournalView;
+use crate::state::lfs::LfsDiffNote;
 use crate::state::range_diff::{Origin, RangeDiffView};
 use crate::state::rebase::RebasePanel;
 use crate::state::session::RepoSession;
 use crate::state::{AppState, ForgeState};
+use glowfly_core::lfs::pointer::{LfsChange, LfsSide};
 use glowfly_core::range_diff::Ends;
-use glowfly_core::repo::DiffTarget;
+use glowfly_core::repo::{DiffTarget, FileDiff};
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -49,7 +51,7 @@ fn still_loading(st: &AppState) -> bool {
 }
 
 /// Every counter of the session, in a fixed order (the pull request panel's four included).
-fn counters(s: &RepoSession) -> [u64; 11] {
+fn counters(s: &RepoSession) -> [u64; 12] {
     let pr = &s.pull_request;
     [
         s.conflict.generation,
@@ -63,7 +65,19 @@ fn counters(s: &RepoSession) -> [u64; 11] {
         s.rebase.generation,
         s.journal.generation,
         s.range_diff.generation,
+        s.diff.generation,
     ]
+}
+
+/// An empty diff of `a.txt`'s working copy.
+fn a_diff() -> Option<(DiffTarget, std::sync::Arc<FileDiff>)> {
+    let d = FileDiff { binary: false, hunks: vec![], highlight: None, intraline: Default::default(), whole: None };
+    Some((DiffTarget::Unstaged("a.txt".into()), d.into()))
+}
+
+fn a_note() -> LfsDiffNote {
+    let change = LfsChange { old: LfsSide::Absent, new: LfsSide::Regular { size: 4 }, new_in_workdir: true, filtered: false };
+    LfsDiffNote { target: DiffTarget::Unstaged("a.txt".into()), change, show_pointer: true }
 }
 
 #[test]
@@ -130,6 +144,9 @@ fn every_session_view_round_trips_a_switch() {
     s.conflict_files.generation = 7;
     s.history.generation = 3;
     s.pull_request.page_gen = 5;
+    s.diff.view = a_diff();
+    s.diff.lfs = Some(a_note());
+    s.draft.summary = "wip".into();
     let before = counters(&st.session);
 
     select(&mut st, 1);
@@ -138,8 +155,10 @@ fn every_session_view_round_trips_a_switch() {
     assert!(s.rebase.view.is_none() && s.journal.view.is_none() && s.range_diff.view.is_none());
     assert!(s.pull_request.view.is_none() && s.issue.view.is_none() && s.diff_preview.is_none());
     assert!(!s.gitflow_panel, "tab b doesn't show a's panels");
+    assert!(s.diff.view.is_none() && s.diff.lfs.is_none() && s.draft.summary.is_empty(), "nor a's diff or draft");
     let parked = &st.tabs[0].parked.as_ref().expect("a is parked").session;
     assert!(parked.conflict.view.is_some() && parked.history.view.is_some() && parked.issue.view.is_some());
+    assert!(parked.diff.view.is_some() && parked.diff.lfs.is_some() && parked.draft.summary == "wip");
     assert_eq!(parked.conflict_files.generation, 7);
 
     select(&mut st, 0);
@@ -153,6 +172,9 @@ fn every_session_view_round_trips_a_switch() {
     assert!(s.gitflow_panel);
     assert!(s.diff_preview.as_ref().is_some_and(|p| p.target.path() == "img.png"));
     assert!(s.conflict_files.generation >= 7);
+    assert_eq!(s.diff.view.as_ref().map(|(t, _)| t.path()), Some("a.txt"), "the diff comes back");
+    assert_eq!(s.diff.lfs, Some(a_note()), "with its note and Show pointer text choice");
+    assert_eq!(s.draft.summary, "wip");
     for (k, (after, was)) in counters(s).into_iter().zip(before).enumerate() {
         assert!(after > was, "counter {k} rose: {was} -> {after}");
     }
@@ -167,4 +189,40 @@ fn closing_the_active_tab_keeps_counters_rising() {
     run(&mut st, Msg::Tabs(TabsMsg::CloseConfirmed(CloseRequest::One(id))));
     assert_eq!(st.tabs.len(), 1, "a is closed");
     assert!(st.session.blame.generation > 50, "b's counter moved past a's, though b's parked session had 0");
+}
+
+#[test]
+fn a_diff_result_from_before_the_switch_is_dropped() {
+    let (mut st, a, b) = two_repos("tabs-session-diff");
+    select(&mut st, 0);
+    let target = DiffTarget::Unstaged("a.txt".into());
+    let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
+    let g = fx.iter().find_map(|e| if let Effect::LoadDiff { generation, .. } = e { Some(*generation) } else { None });
+    let g = g.expect("the diff is asked for");
+
+    select(&mut st, 1);
+    select(&mut st, 0);
+    assert!(st.session.diff.generation > g, "the diff's counter moved past the parked request");
+
+    let (lines, shown) = (st.log.len(), st.session.diff.view.is_some());
+    run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { generation: g, reload: false, result: Err("stale".into()), lfs: None, target }));
+    assert_eq!(st.log.len(), lines, "the old result is dropped: nothing is logged for it");
+    assert_eq!(st.session.diff.view.is_some(), shown, "and the diff view is untouched");
+    cleanup(&[&a, &b]);
+}
+
+#[test]
+fn hunk_ops_wait_for_the_reload_after_a_switch() {
+    let mut st = fake_tabs(&["a", "b"], 0);
+    st.session.diff.view = a_diff();
+    st.session.diff.generation = 4;
+    st.session.diff.shown_gen = 4;
+    assert!(st.hunk_ops_gen().is_some());
+    let shown = st.session.diff.shown_gen;
+
+    select(&mut st, 1);
+    select(&mut st, 0);
+    assert!(st.session.diff.view.is_some(), "the diff is back");
+    assert_eq!(st.hunk_ops_gen(), None, "its hunks wait for the reload");
+    assert_eq!(st.session.diff.shown_gen, shown, "the last request answered is unchanged");
 }

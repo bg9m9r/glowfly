@@ -98,12 +98,17 @@ impl Live {
             // The welcome counts as a dialog, except while Preferences hides it.
             dialog: (st.modal.is_some() && !sheet) || (st.onboarding.welcome.is_some() && st.prefs.is_none()),
             typing: ctx.wants_keyboard_input() && crate::ui::wip_keys::focused_list(ctx).is_none(),
-            working_diff: st.view.diff_opening.as_ref().or(st.diff.as_ref().map(|(t, _)| t)).is_some_and(|t| t.is_working_tree()),
+            working_diff: st
+                .view
+                .diff_opening
+                .as_ref()
+                .or(st.session.diff.view.as_ref().map(|(t, _)| t))
+                .is_some_and(|t| t.is_working_tree()),
             commit_diff: st.session.blame.view.is_none()
                 && st.session.conflict.view.is_none()
-                && st.diff.as_ref().is_some_and(|(t, _)| t.reverts_hunks()),
-            stepping: st.session.blame.view.is_none() && (st.session.conflict.view.is_some() || st.diff.is_some()),
-            diff: st.session.blame.view.is_none() && st.session.conflict.view.is_none() && st.diff.is_some(),
+                && st.session.diff.view.as_ref().is_some_and(|(t, _)| t.reverts_hunks()),
+            stepping: st.session.blame.view.is_none() && (st.session.conflict.view.is_some() || st.session.diff.view.is_some()),
+            diff: st.session.blame.view.is_none() && st.session.conflict.view.is_none() && st.session.diff.view.is_some(),
             blame: st.session.blame.view.as_ref().is_some_and(|v| v.data.is_some()),
             graph: st.graph_shown(),
             terminal: st.terminal.focused,

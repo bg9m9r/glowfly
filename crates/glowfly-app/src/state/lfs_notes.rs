@@ -1,7 +1,8 @@
 //! What Glowfly tells about Git LFS outside the preferences page: the main window's banner when
 //! a repository stores files in LFS but git-lfs is missing, the badge on file rows that hold
 //! pointers, and the summary a diff shows instead of pointer text (ui/lfs_banner.rs,
-//! ui/lfs_badge.rs, ui/diff/lfs_note.rs; the state is `lfs::LfsSession`).
+//! ui/lfs_badge.rs, ui/diff/lfs_note.rs; the state is `lfs::LfsSession`, and the open diff's note
+//! is `session::DiffSlot::lfs`).
 
 use super::AppState;
 use super::lfs::{LfsDiffNote, LfsInstall};
@@ -34,8 +35,8 @@ pub fn banner_workdir(st: &AppState) -> Option<&Path> {
 
 /// The open diff's note when it is for the diff on screen.
 fn note(st: &AppState) -> Option<&LfsDiffNote> {
-    let (target, _) = st.diff.as_ref()?;
-    st.lfs.diff.as_ref().filter(|n| n.target == *target)
+    let (target, _) = st.session.diff.view.as_ref()?;
+    st.session.diff.lfs.as_ref().filter(|n| n.target == *target)
 }
 
 /// The note when the open diff shows its LFS summary instead of rows.

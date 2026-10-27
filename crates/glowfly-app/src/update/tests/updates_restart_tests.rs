@@ -195,7 +195,7 @@ fn unsaved_work_in_a_tab_asks_first() {
     let (mut st, t) = msi_downloaded();
     st.tabs = vec![Tab::unloaded(fake("a"))];
     st.active_tab = 0;
-    st.draft.summary = "wip".into();
+    st.session.draft.summary = "wip".into();
     assert!(send(&mut st, U::InstallAndRestart, t).is_empty());
     let Some(Modal::ConfirmDanger { title, body, button, then, .. }) = &st.modal else { panic!("{:?}", st.modal.is_some()) };
     assert_eq!(title, "Restart to update?");
@@ -213,7 +213,7 @@ fn quitting_to_update_says_so() {
     let (mut st, t, _) = downloaded_on(MAC, InstallKind::Installer, &[dmg]);
     st.tabs = vec![Tab::unloaded(fake("a"))];
     st.active_tab = 0;
-    st.draft.summary = "wip".into();
+    st.session.draft.summary = "wip".into();
     send(&mut st, U::InstallAndRestart, t);
     let Some(Modal::ConfirmDanger { title, body, button, .. }) = &st.modal else { panic!("no confirmation") };
     assert_eq!((title.as_str(), button.as_str()), ("Quit to update?", "Open installer and quit"));

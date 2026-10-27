@@ -39,7 +39,7 @@ pub(super) fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
     w.swapped = !w.swapped;
     w.changes = None;
     let oid = w.oid;
-    if st.diff.as_ref().is_some_and(|(t, _)| t.workdir_compared() == Some(oid)) {
+    if st.session.diff.view.as_ref().is_some_and(|(t, _)| t.workdir_compared() == Some(oid)) {
         super::repo::close_diff(st);
     }
     request(st, fx);
@@ -84,8 +84,8 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
         return;
     }
     st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
-    st.detail = None;
-    if st.diff.as_ref().is_some_and(|(t, _)| t.workdir_compared().is_some()) {
+    st.session.detail = None;
+    if st.session.diff.view.as_ref().is_some_and(|(t, _)| t.workdir_compared().is_some()) {
         super::repo::close_diff(st);
     }
 }

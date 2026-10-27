@@ -1,8 +1,8 @@
 //! The Git LFS preferences page: the status read in the background, the new-pattern buffer and
 //! what to do once the status arrives; the remote LFS commands use. Also whether git-lfs is
-//! installed, the session's banner dismissals and the open diff's LFS summary (`LfsSession`;
-//! what they show is in `lfs_notes`), and the Track in Git LFS entries of file rows' context
-//! menus.
+//! installed and the session's banner dismissals (`LfsSession`), the open diff's LFS summary
+//! (`LfsDiffNote`, kept in `session::DiffSlot::lfs`; what they show is in `lfs_notes`), and the
+//! Track in Git LFS entries of file rows' context menus.
 
 use super::{AppState, branches};
 use glowfly_core::i18n::Lang;
@@ -17,7 +17,8 @@ pub const INIT_LABEL: &str = "Initialize LFS";
 /// Where git-lfs's installation help is (the page's link, the banner's Get Git LFS).
 pub const INSTALL_URL: &str = "https://git-lfs.com";
 
-/// Git LFS across the session: global, except `diff`, which is parked with its tab.
+/// Git LFS across the session: global. The open diff's note is `session::DiffSlot::lfs`, parked
+/// with its tab.
 #[derive(Default)]
 pub struct LfsSession {
     /// Whether git-lfs is installed: checked at startup and whenever Preferences > Git LFS reads
@@ -25,8 +26,6 @@ pub struct LfsSession {
     pub install: LfsInstall,
     /// Workdirs whose "git-lfs missing" banner was dismissed, until Glowfly restarts.
     pub banner_dismissed: Vec<PathBuf>,
-    /// The LFS sides of the diff last loaded, when either is a pointer.
-    pub diff: Option<LfsDiffNote>,
 }
 
 /// The open diff's LFS sides, shown as a summary instead of the pointer text.

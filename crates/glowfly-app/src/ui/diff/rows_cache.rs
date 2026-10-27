@@ -13,7 +13,7 @@ use glowfly_core::whole_file::{self, Expanded, WholeFile};
 use glowfly_core::wrap;
 
 /// What the rows were built from. A loaded, reloaded or restored diff always comes with a new
-/// `diff_gen` or `diff_shown_gen`; the addresses also catch the whole file being dropped in
+/// `DiffSlot::generation` or `shown_gen`; the addresses also catch the whole file being dropped in
 /// place when the view switches back to hunks.
 #[derive(PartialEq)]
 struct Key {

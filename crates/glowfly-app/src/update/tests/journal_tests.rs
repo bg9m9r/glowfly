@@ -75,7 +75,7 @@ fn opening_from_the_palette_reads_it_and_closes_the_views_it_replaces() {
             && st.session.blame.view.is_none()
             && st.session.rebase.view.is_none()
             && !st.session.gitflow_panel
-            && st.diff.is_none()
+            && st.session.diff.view.is_none()
     );
     let load = fx.iter().find(|e| matches!(e, Effect::Journal(JournalEffect::Load { .. }))).expect("a load");
     assert!(load.scope().is_some_and(|w| super::tests::same_place(w, &dir)), "scoped to the repository");

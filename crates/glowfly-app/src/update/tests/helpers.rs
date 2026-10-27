@@ -340,21 +340,21 @@ fn stage_and_commit_end_to_end() {
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     assert_eq!(st.snap.as_ref().unwrap().staged.len(), 1);
 
-    st.draft.summary = "Second line".into();
-    st.draft.description = "Adds a line.".into();
+    st.session.draft.summary = "Second line".into();
+    st.session.draft.description = "Adds a line.".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.commits[0].summary, "Second line");
     assert_eq!(snap.commits[0].body, "Adds a line.");
     assert!(!snap.is_dirty());
-    assert!(st.draft.summary.is_empty(), "the draft clears after a successful commit");
+    assert!(st.session.draft.summary.is_empty(), "the draft clears after a successful commit");
     assert!(st.job.is_none());
 
     // Amend pre-fills from HEAD and rewrites it.
-    st.draft.amend = true;
+    st.session.draft.amend = true;
     drive(&mut st, Msg::Commit(CommitMsg::PrefillAmend));
-    assert_eq!(st.draft.summary, "Second line");
-    st.draft.summary = "Second line, amended".into();
+    assert_eq!(st.session.draft.summary, "Second line");
+    st.session.draft.summary = "Second line, amended".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.commits.len(), 2);

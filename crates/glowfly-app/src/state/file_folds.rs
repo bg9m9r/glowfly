@@ -70,7 +70,7 @@ pub fn list_of(st: &AppState, t: &DiffTarget) -> Option<FileListId> {
         DiffTarget::Unstaged(_) => Some(FileListId::Unstaged),
         DiffTarget::Staged(_) => Some(FileListId::Staged),
         DiffTarget::Commit(oid, _) => {
-            if st.detail.as_ref().is_some_and(|d| d.oid == *oid) {
+            if st.session.detail.as_ref().is_some_and(|d| d.oid == *oid) {
                 return Some(FileListId::Commit);
             }
             let Selection::Commits(m) = &st.selection else { return None };

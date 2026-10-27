@@ -24,7 +24,7 @@ fn requests(fx: &[Effect]) -> Vec<&RevertRequest> {
 fn revert_lines_sends_effect() {
     let (mut st, dir) = with_diff("revert-lines-fx", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     let target = DiffTarget::Commit(head(&st), "a.txt".into());
-    st.diff = Some((target.clone(), one_hunk().into()));
+    st.session.diff.view = Some((target.clone(), one_hunk().into()));
     select(&mut st, 1);
     assert!(!st.view.diff_lines.is_empty());
     let generation = st.hunk_ops_gen();
@@ -43,7 +43,7 @@ fn revert_lines_sends_effect() {
 fn revert_lines_with_whitespace_hidden_carries_the_flag() {
     let (mut st, dir) = with_diff("revert-lines-ws", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     let target = DiffTarget::Commit(head(&st), "a.txt".into());
-    st.diff = Some((target.clone(), one_hunk().into()));
+    st.session.diff.view = Some((target.clone(), one_hunk().into()));
     st.settings.diff_ignore_whitespace = true;
     select(&mut st, 1);
     assert!(!st.view.diff_lines.is_empty(), "lines can be selected with whitespace hidden");
@@ -59,16 +59,16 @@ fn revert_lines_with_whitespace_hidden_carries_the_flag() {
 fn revert_lines_ignored() {
     let (mut st, dir) = with_diff("revert-lines-ignored", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     let commit = DiffTarget::Commit(head(&st), "a.txt".into());
-    st.diff = Some((commit.clone(), one_hunk().into()));
+    st.session.diff.view = Some((commit.clone(), one_hunk().into()));
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertLines)).is_empty(), "nothing selected");
 
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk().into()));
     select(&mut st, 1);
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertLines)).is_empty(), "a working-tree diff");
 
-    st.diff = Some((commit.clone(), one_hunk().into()));
+    st.session.diff.view = Some((commit.clone(), one_hunk().into()));
     select(&mut st, 1);
-    st.diff = Some((DiffTarget::Commit(head(&st), "b.txt".into()), one_hunk().into()));
+    st.session.diff.view = Some((DiffTarget::Commit(head(&st), "b.txt".into()), one_hunk().into()));
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertLines)).is_empty(), "a selection of another diff");
     assert!(st.log.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
@@ -77,14 +77,14 @@ fn revert_lines_ignored() {
 #[test]
 fn revert_lines_refused() {
     let (mut st, dir) = with_diff("revert-lines-refused", DiffTarget::Unstaged("a.txt".into()), one_hunk());
-    st.diff = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk().into()));
+    st.session.diff.view = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk().into()));
     select(&mut st, 1);
     st.settings.diff_mode = DiffMode::WholeFile;
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertLines)).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == WHOLE_FILE_BLOCKS_LINE_OPS));
     st.settings.diff_mode = DiffMode::Hunks;
 
-    st.diff_gen += 1;
+    st.session.diff.generation += 1;
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertLines)).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("diff changed")));
     assert!(!st.view.diff_lines.is_empty(), "a refusal keeps the selection");
@@ -101,7 +101,7 @@ fn revert_file_sends_effect() {
         assert_eq!(requests(&fx), [&want], "{fx:?}");
     }
     // Whatever diff is open (or none), and with whitespace hidden: it doesn't use the diff.
-    st.diff = None;
+    st.session.diff.view = None;
     st.settings.diff_ignore_whitespace = true;
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertFile(DiffTarget::Commit(a, "a.txt".into()))));
     assert!(matches!(requests(&fx)[..], [RevertRequest { ignore_whitespace: false, .. }]), "{fx:?}");
@@ -131,7 +131,7 @@ fn history_dest_mapping() {
     view.entries = vec![entry(same, "new.txt"), entry(old, "old.txt")];
     st.session.history.view = Some(view);
     let renamed = DiffTarget::Commit(old, "old.txt".into());
-    st.diff = Some((renamed.clone(), one_hunk().into()));
+    st.session.diff.view = Some((renamed.clone(), one_hunk().into()));
     let generation = st.hunk_ops_gen().unwrap();
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation }));
     assert_eq!(requests(&fx).iter().map(|r| r.dest.as_deref()).collect::<Vec<_>>(), [Some("new.txt")]);
@@ -164,7 +164,7 @@ fn opened(name: &str) -> (AppState, std::path::PathBuf, DiffTarget) {
 fn revert_lines_end_to_end() {
     let (mut st, dir, target) = opened("revert-lines-e2e");
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
-    let line = st.diff.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+').unwrap();
+    let line = st.session.diff.view.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+').unwrap();
     drive(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how: LineClick::Only }));
     drive(&mut st, Msg::Stage(StageMsg::RevertLines));
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "one\n");

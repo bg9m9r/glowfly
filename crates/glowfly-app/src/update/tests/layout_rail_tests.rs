@@ -87,9 +87,9 @@ fn tool_view_follows_the_central_order() {
     st.dashboard.open = false;
     st.session.issue.view = None;
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
+    st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
     assert_eq!(tool_view(&st), None);
-    st.diff = None;
+    st.session.diff.view = None;
     st.session.gitflow_panel = true;
     assert_eq!(tool_view(&st), Some(ToolView::GitFlow));
     st.session.conflict.view = Some(ConflictView::loading("a.txt".into()));

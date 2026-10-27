@@ -1,5 +1,5 @@
 //! Tabs: opening repositories side by side, switching, reordering and restoring the previous
-//! session. Switching parks the active tab's data (its views whole, as `RepoSession`) and
+//! session. Switching parks the active tab's data (its per-tab state whole, as `RepoSession`) and
 //! restores the other's, and swaps their activity logs (`Tab::log`, outside `Parked`); reordering
 //! moves parked data and logs with its tab. Where a tab opens and how a drop or a keyboard move moves it follow
 //! the worktree groups (`tab_groups.rs`). Closing and reopening are in `tabs_close.rs`, labels in
@@ -241,16 +241,11 @@ pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
 /// counts, signatures, conflict checks) and the folders collapsed in its file lists, when the
 /// tab opens another repository.
 pub(super) fn forget_repo_reads(st: &mut AppState) {
-    st.stats.clear();
-    st.stats_pending.clear();
-    st.line_counts.clear();
+    st.session.reads.clear();
     st.view.file_folds.clear();
-    st.signatures.clear();
-    st.conflict_checks.clear();
 }
 
 pub(super) fn park(st: &mut AppState) -> Parked {
-    st.stats_pending.clear();
     // Not kept: another tab may show the same path, and its diff reloads on return anyway.
     st.view.diff_lines.clear();
     // The parked tab's diff results are dropped, so a pending step can't land.
@@ -263,16 +258,9 @@ pub(super) fn park(st: &mut AppState) -> Parked {
         session: st.session.park(),
         snap: st.snap.take(),
         selection: std::mem::take(&mut st.selection),
-        detail: st.detail.take(),
-        diff: st.diff.take(),
         issue_form: super::issue_create::park(st),
-        draft: std::mem::take(&mut st.draft),
         undo: std::mem::take(&mut st.undo),
         forge: st.forge.take(),
-        stats: std::mem::take(&mut st.stats),
-        line_counts: st.line_counts.parked(),
-        signatures: st.signatures.parked(),
-        conflict_checks: st.conflict_checks.parked(),
         search: std::mem::take(&mut st.view.search),
         commit_search: std::mem::take(&mut st.search),
         ref_filter: std::mem::take(&mut st.view.ref_filter),
@@ -281,7 +269,6 @@ pub(super) fn park(st: &mut AppState) -> Parked {
         diff_layout: st.settings.diff_layout,
         diff_mode: st.settings.diff_mode,
         diff_expanded: std::mem::take(&mut st.view.diff_expanded),
-        lfs_diff: st.lfs.diff.take(),
         file_folds: std::mem::take(&mut st.view.file_folds),
     }
 }
@@ -290,25 +277,20 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.snap = p.snap;
     // Every counter moves past the ones the previous tab left (`RepoSession::resume_after`):
     // results in flight from before the park, or for another tab, are dropped, and `activate`
-    // asks again for what was loading.
+    // asks again for what was loading. The open diff's results were dropped while parked too, so
+    // its hunks stay off until the refresh that follows the switch reloads it.
     let mut session = p.session;
     session.resume_after(&mut st.session);
     st.session = session;
     // After the snapshot and `gitflow_resume` are back.
     super::gitflow::snapshot_changed(st);
     st.selection = if st.snap.is_some() { p.selection } else { Selection::None };
-    st.detail = p.detail;
-    st.diff = p.diff;
-    st.lfs.diff = p.lfs_diff;
     st.view.file_folds = p.file_folds;
-    // Diff results for this tab were dropped while it was parked: its hunks stay disabled
-    // until the refresh that follows the switch reloads the diff.
-    st.diff_gen += 1;
     // Before the rows below are counted: they count these folds.
     st.view.diff_expanded = p.diff_expanded;
     let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
     let ex = &st.view.diff_expanded;
-    let top = match st.diff.as_mut() {
+    let top = match st.session.diff.view.as_mut() {
         // The view mode changed while parked: open on the hunk that was at the top.
         Some((_, d)) if p.diff_mode != mode => {
             let h = super::diff::hunk_at_top(d, p.diff_mode, p.diff_layout, p.diff_top_row, ex);
@@ -320,22 +302,17 @@ fn unpark(st: &mut AppState, p: Parked) {
         Some((_, d)) => super::diff::same_change_row(d, mode, p.diff_layout, layout, p.diff_top_row, ex),
         None => 0,
     };
-    st.view.diff_scroll_to_row = st.diff.is_some().then_some(top);
+    st.view.diff_scroll_to_row = st.session.diff.view.is_some().then_some(top);
     st.view.diff_top_row = top;
     st.view.conflict_scroll_to = st.session.conflict.view.as_ref().filter(|c| c.file.is_some()).map(|c| c.current);
     st.view.history_scroll_to = st.session.history.view.as_ref().and_then(|h| h.selected);
     super::issue_create::unpark(st, p.issue_form);
-    st.draft = p.draft;
     st.undo = p.undo;
     st.forge = p.forge;
     // Replies that were in flight for this tab were dropped while it was parked.
     if let Some(f) = st.forge.as_mut() {
         f.replies_dropped();
     }
-    st.stats = p.stats;
-    st.line_counts = p.line_counts;
-    st.signatures = p.signatures;
-    st.conflict_checks = p.conflict_checks;
     st.view.search = p.search;
     // The matches belong to the parked snapshot, restored above.
     st.search = p.commit_search;

@@ -40,9 +40,9 @@ fn with_commit(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
     let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
     st.selection = Selection::Commit(oid);
-    st.detail = Some(repo::commit_detail(&dir, oid).unwrap());
-    st.line_counts.start_commit(oid);
-    st.line_counts.finish_commit(oid, Arc::new(repo::commit_line_counts(&dir, oid).unwrap()));
+    st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
+    st.session.reads.line_counts.start_commit(oid);
+    st.session.reads.line_counts.finish_commit(oid, Arc::new(repo::commit_line_counts(&dir, oid).unwrap()));
     (st, dir)
 }
 
@@ -59,15 +59,15 @@ pub(in crate::ui) fn with_wip(theme: ThemeChoice, name: &str) -> (AppState, Path
     std::fs::remove_file(dir.join("login.txt")).unwrap();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
     st.selection = Selection::Wip;
-    let generation = st.line_counts.start_wip().unwrap();
-    st.line_counts.finish_wip(generation, Some(repo::wip_line_counts(&dir).unwrap()));
+    let generation = st.session.reads.line_counts.start_wip().unwrap();
+    st.session.reads.line_counts.finish_wip(generation, Some(repo::wip_line_counts(&dir).unwrap()));
     (st, dir)
 }
 
 #[test]
 fn details_commit_line_counts() {
     let (st, dir) = with_commit(ThemeChoice::Dark, "lines-commit");
-    let counts = st.line_counts.commit(st.detail.as_ref().unwrap().oid).unwrap();
+    let counts = st.session.reads.line_counts.commit(st.session.detail.as_ref().unwrap().oid).unwrap();
     assert!(counts.complete && counts.get("logo.png").is_none(), "the binary file has no counts");
     render("details_commit_line_counts", st, true);
     let (st, _) = with_commit(ThemeChoice::Light, "lines-commit");
@@ -78,7 +78,7 @@ fn details_commit_line_counts() {
 #[test]
 fn details_wip_line_counts() {
     let (st, dir) = with_wip(ThemeChoice::Dark, "lines-wip");
-    let w = st.line_counts.wip().unwrap();
+    let w = st.session.reads.line_counts.wip().unwrap();
     assert!(w.unstaged.get("notes/todo.md").is_some() && w.staged.get("search.txt").is_some());
     render("details_wip_line_counts", st, true);
     let (st, _) = with_wip(ThemeChoice::Light, "lines-wip");
@@ -91,7 +91,7 @@ fn details_wip_line_counts() {
 #[test]
 fn graph_wip_row() {
     let (st, dir) = with_wip(ThemeChoice::Dark, "lines-graph-wip");
-    assert!(st.line_counts.wip().unwrap().total().is_some());
+    assert!(st.session.reads.line_counts.wip().unwrap().total().is_some());
     assert_eq!(st.settings.column_widths, Default::default(), "the default columns");
     render("graph_wip_row", st, true);
     let (st, _) = with_wip(ThemeChoice::Light, "lines-graph-wip");

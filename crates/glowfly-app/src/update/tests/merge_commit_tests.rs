@@ -33,8 +33,8 @@ fn resolve(st: &mut AppState, dir: &Path, text: &str) {
 fn merge_msg_prefills_the_draft() {
     let dir = conflicted_repo("merge-prefill");
     let st = opened(&dir);
-    assert_eq!((st.draft.summary.as_str(), st.draft.description.as_str()), ("Merge branch 'other'", ""));
-    assert!(st.draft.merge_msg.is_some() && st.draft.is_blank());
+    assert_eq!((st.session.draft.summary.as_str(), st.session.draft.description.as_str()), ("Merge branch 'other'", ""));
+    assert!(st.session.draft.merge_msg.is_some() && st.session.draft.is_blank());
     git(&dir, &["merge", "--abort"]);
     let _ = std::fs::remove_dir_all(&dir);
 
@@ -42,12 +42,12 @@ fn merge_msg_prefills_the_draft() {
     let dir = conflicted_repo("merge-prefill-typed");
     git(&dir, &["merge", "--abort"]);
     let mut st = opened(&dir);
-    st.draft.summary = "My own words".into();
+    st.session.draft.summary = "My own words".into();
     let (ok, _) = run(&dir, &args(&["merge", "other"]));
     assert!(!ok, "conflicts again");
     refresh(&mut st);
-    assert_eq!(st.draft.summary, "My own words");
-    assert!(st.draft.merge_msg.is_none());
+    assert_eq!(st.session.draft.summary, "My own words");
+    assert!(st.session.draft.merge_msg.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -57,22 +57,26 @@ fn prefill_cleared_when_merge_aborted() {
     std::fs::write(dir.join(".git/glowfly-template.txt"), "feat: \n\n# why\n").unwrap();
     git(&dir, &["config", "commit.template", ".git/glowfly-template.txt"]);
     let mut st = opened(&dir);
-    assert_eq!(st.draft.summary, "Merge branch 'other'", "the merge's message wins over the template");
+    assert_eq!(st.session.draft.summary, "Merge branch 'other'", "the merge's message wins over the template");
     git(&dir, &["merge", "--abort"]);
     refresh(&mut st);
-    assert!(st.draft.merge_msg.is_none());
-    assert_eq!(st.draft.summary, "feat:", "cleared, then the template applies again");
+    assert!(st.session.draft.merge_msg.is_none());
+    assert_eq!(st.session.draft.summary, "feat:", "cleared, then the template applies again");
 
-    st.draft = CommitDraft::default();
+    st.session.draft = CommitDraft::default();
     let (ok, _) = run(&dir, &args(&["merge", "other"]));
     assert!(!ok);
     refresh(&mut st);
-    assert!(st.draft.merge_msg.is_some());
-    st.draft.description = "Kept this one".into();
+    assert!(st.session.draft.merge_msg.is_some());
+    st.session.draft.description = "Kept this one".into();
     git(&dir, &["merge", "--abort"]);
     refresh(&mut st);
-    assert_eq!((st.draft.summary.as_str(), st.draft.description.as_str()), ("Merge branch 'other'", "Kept this one"), "edited: kept");
-    assert!(st.draft.merge_msg.is_none());
+    assert_eq!(
+        (st.session.draft.summary.as_str(), st.session.draft.description.as_str()),
+        ("Merge branch 'other'", "Kept this one"),
+        "edited: kept"
+    );
+    assert!(st.session.draft.merge_msg.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -86,7 +90,7 @@ fn commit_blocked_rules() {
     resolve(&mut st, &dir, "one\nours\n");
     assert!(st.snap.as_ref().unwrap().staged.is_empty());
     assert_eq!(commit_blocked(&st, false), None, "an empty Staged list still commits a merge");
-    st.draft.amend = true;
+    st.session.draft.amend = true;
     assert_eq!(commit_blocked(&st, false), Some(t.tr("commit.blocked.amend_merge")));
     git(&dir, &["merge", "--abort"]);
     let _ = std::fs::remove_dir_all(&dir);
@@ -101,13 +105,13 @@ fn commit_merge_from_banner() {
     assert!(st.toasts.iter().any(|t| !t.ok && t.text == "Resolve the 1 conflicted file first."));
 
     resolve(&mut st, &dir, "one\nmerged\n");
-    st.draft = CommitDraft::default();
+    st.session.draft = CommitDraft::default();
     drive(&mut st, Msg::Commit(CommitMsg::CommitMerge));
     let repo = Repository::open(&dir).unwrap();
     let head = repo.head().unwrap().peel_to_commit().unwrap();
     assert_eq!(head.parent_count(), 2);
     assert_eq!(head.summary(), Some("Merge branch 'other'"));
     assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::Clean);
-    assert!(st.draft.summary.is_empty() && st.draft.merge_msg.is_none(), "the draft starts over");
+    assert!(st.session.draft.summary.is_empty() && st.session.draft.merge_msg.is_none(), "the draft starts over");
     let _ = std::fs::remove_dir_all(&dir);
 }

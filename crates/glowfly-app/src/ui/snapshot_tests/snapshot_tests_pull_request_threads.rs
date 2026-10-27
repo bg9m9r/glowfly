@@ -201,7 +201,7 @@ fn pull_request_file_threads_dark() {
     v.tab = PrTab::Files;
     v.threads.focus = Some("T1".into());
     assert!(v.shows(&target));
-    st.diff = Some((target, Arc::new(d)));
+    st.session.diff.view = Some((target, Arc::new(d)));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("pull_request_file_threads_dark");

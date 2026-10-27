@@ -118,7 +118,7 @@ pub(super) fn running_job(dir: &Path) -> RunningJob {
 fn opening_requests_the_list_and_closes_other_views() {
     let (mut st, dir, c) = repo("rebase-open");
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Commit(c[0], "c1.txt".into()), diff.into()));
+    st.session.diff.view = Some((DiffTarget::Commit(c[0], "c1.txt".into()), diff.into()));
     st.session.history.view = Some(FileHistoryView::loading("c1.txt".into(), None));
     st.session.conflict.view = Some(ConflictView::loading("c1.txt".into()));
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(c[1]))));
@@ -129,7 +129,7 @@ fn opening_requests_the_list_and_closes_other_views() {
         }
         other => panic!("expected one list request, got {other:?}"),
     }
-    assert!(st.diff.is_none() && st.session.history.view.is_none() && st.session.conflict.view.is_none());
+    assert!(st.session.diff.view.is_none() && st.session.history.view.is_none() && st.session.conflict.view.is_none());
     assert!(panel(&st).loading);
     let _ = std::fs::remove_dir_all(&dir);
 }

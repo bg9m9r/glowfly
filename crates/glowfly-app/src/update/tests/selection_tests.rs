@@ -121,7 +121,7 @@ fn ctrl_click_builds_and_shrinks_a_selection() {
     let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     let m = multi(&st);
     assert_eq!((m.oids.clone(), m.anchor), (vec![f.c(5), f.c(3)], f.c(3)));
-    assert!(st.detail.is_none());
+    assert!(st.session.detail.is_none());
     assert_eq!(compares(&fx), [(f.c(3), f.c(5))]);
     assert_eq!(fx.len(), 1);
 
@@ -233,13 +233,13 @@ fn selection_change_closes_views() {
     let (mut st, f) = fixture("multi-closes");
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Commit(f.c(5), "f.txt".into()), empty.into()));
+    st.session.diff.view = Some((DiffTarget::Commit(f.c(5), "f.txt".into()), empty.into()));
     st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
     st.session.history.view = Some(FileHistoryView::loading("f.txt".into(), None));
-    let gen_before = st.diff_gen;
+    let gen_before = st.session.diff.generation;
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
-    assert!(st.diff.is_none() && st.session.conflict.view.is_none() && st.session.history.view.is_none());
-    assert!(st.diff_gen > gen_before, "a diff still loading must not reopen");
+    assert!(st.session.diff.view.is_none() && st.session.conflict.view.is_none() && st.session.history.view.is_none());
+    assert!(st.session.diff.generation > gen_before, "a diff still loading must not reopen");
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
@@ -277,7 +277,7 @@ fn two_commit_diff_end_to_end() {
 
     let target = DiffTarget::Between(f.c(3), f.c(5), "f.txt".into());
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
-    let (shown, diff) = st.diff.clone().expect("the diff opens");
+    let (shown, diff) = st.session.diff.view.clone().expect("the diff opens");
     assert_eq!(shown, target);
     let changed: Vec<String> = diff
         .hunks
@@ -292,12 +292,12 @@ fn two_commit_diff_end_to_end() {
     let stale = Msg::Repo(RepoMsg::DiffLoaded {
         target: target.clone(),
         reload: false,
-        generation: st.diff_gen - 1,
+        generation: st.session.diff.generation - 1,
         result: Err("old".into()),
         lfs: None,
     });
     up(&mut st, stale);
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&target));
 
     // Lines of a diff between commits can be selected (for Revert lines).
     let line = diff.hunks[0].lines.iter().position(|l| l.origin == '+').unwrap();
@@ -332,7 +332,7 @@ fn refresh_prunes_selection() {
     git(&f.dir, &["reset", "-q", "--hard", &f.c(3).to_string()]);
     let fx = refresh(&mut st);
     assert_eq!(st.selection, Selection::Commit(f.c(3)));
-    assert!(st.detail.is_none() && loads_detail(&fx, f.c(3)));
+    assert!(st.session.detail.is_none() && loads_detail(&fx, f.c(3)));
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
@@ -344,11 +344,11 @@ fn refresh_closes_the_diff_of_a_vanished_pair() {
     drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
     drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(5))));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Between(f.c(3), f.c(4), "f.txt".into()))));
-    assert!(st.diff.is_some());
+    assert!(st.session.diff.view.is_some());
     git(&f.dir, &["reset", "-q", "--hard", &f.c(3).to_string()]);
     refresh(&mut st);
     assert_eq!(st.selection, Selection::Commit(f.c(3)));
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 

@@ -64,7 +64,7 @@ fn with_whole(name: &str, theme: ThemeChoice, layout: DiffLayout, commit: bool, 
     assert_eq!(w.blocks.len(), 2);
     assert!(w.diff.highlight.is_some(), "shapes.rs is highlighted as Rust");
     st.view.diff_expanded = Expanded::all(w);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     st.settings.diff_mode = DiffMode::WholeFile;
     st.settings.diff_ignore_whitespace = ignore_ws;
@@ -91,7 +91,7 @@ fn diff_whole_commit() {
 #[test]
 fn diff_whole_ignore_whitespace() {
     let (st, dir) = with_whole("whole-ws", ThemeChoice::Dark, DiffLayout::Inline, false, true);
-    let lines = &st.diff.as_ref().unwrap().1.whole.as_ref().unwrap().diff.hunks[0].lines;
+    let lines = &st.session.diff.view.as_ref().unwrap().1.whole.as_ref().unwrap().diff.hunks[0].lines;
     assert!(lines.iter().any(|l| l.origin == ' ' && l.text.contains("self.w  *  self.h")), "the re-spaced line is context");
     assert!(st.hunk_ops_gen().is_some(), "the block buttons stay on");
     render("diff_whole_ignore_whitespace", st, true);
@@ -154,7 +154,7 @@ fn with_notes(name: &str, theme: ThemeChoice, layout: DiffLayout) -> (AppState, 
     let w = diff.whole.as_deref().expect("the whole file loads");
     assert_eq!(w.blocks.len(), 2);
     assert_eq!(folds(w).iter().map(|f| f.len()).collect::<Vec<_>>(), [8, 11, 7]);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     st.settings.diff_mode = DiffMode::WholeFile;
     (st, dir)
@@ -162,7 +162,7 @@ fn with_notes(name: &str, theme: ThemeChoice, layout: DiffLayout) -> (AppState, 
 
 /// The key of notes.txt's middle fold.
 fn middle_key(st: &AppState) -> u32 {
-    folds(st.diff.as_ref().unwrap().1.whole.as_deref().unwrap())[1].key
+    folds(st.session.diff.view.as_ref().unwrap().1.whole.as_deref().unwrap())[1].key
 }
 
 #[test]

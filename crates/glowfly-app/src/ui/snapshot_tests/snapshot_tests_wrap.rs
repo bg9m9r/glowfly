@@ -69,7 +69,7 @@ fn with_hunks(name: &str, layout: DiffLayout) -> (AppState, PathBuf) {
     let (mut st, dir) = with_wrap_repo(name, ThemeChoice::Dark, false);
     let target = DiffTarget::Unstaged("wrap.rs".into());
     let diff = decorated(&dir, &target);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }
@@ -77,7 +77,7 @@ fn with_hunks(name: &str, layout: DiffLayout) -> (AppState, PathBuf) {
 #[test]
 fn diff_wrap_inline() {
     let (mut st, dir) = with_hunks("wrap-inline", DiffLayout::Inline);
-    let lines = &st.diff.as_ref().unwrap().1.hunks[0].lines;
+    let lines = &st.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
     let line = lines.iter().position(|l| l.origin == '+' && l.text == NEW_GREETING).expect("the reworded line");
     let how = LineClick::Only;
     crate::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
@@ -105,7 +105,7 @@ fn diff_wrap_whole_file_light() {
     assert_eq!(all.iter().map(|f| f.len()).collect::<Vec<_>>(), [6, 7]);
     // The run starting at the long comment is open; the trailing one stays folded.
     st.view.diff_expanded.insert(all[0].key);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = DiffLayout::Split;
     st.settings.diff_mode = DiffMode::WholeFile;
     render("diff_wrap_whole_file_light", st, false);
@@ -124,7 +124,7 @@ fn file_history_wrapped() {
     view.selected = Some(0);
     let target = DiffTarget::Commit(view.entries[0].oid, view.entries[0].path.clone());
     let diff = decorated(&dir, &target);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.session.history.view = Some(view);
     render("file_history_wrapped", st, true);
     remove_fixture(&dir);

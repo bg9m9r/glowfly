@@ -38,8 +38,8 @@ fn sd(path: &str) -> DiffTarget {
 
 /// Puts `one_hunk` on screen as `t`, as if its diff had arrived.
 fn show(st: &mut AppState, t: DiffTarget) {
-    st.diff = Some((t, one_hunk().into()));
-    st.diff_shown_gen = st.diff_gen;
+    st.session.diff.view = Some((t, one_hunk().into()));
+    st.session.diff.shown_gen = st.session.diff.generation;
 }
 
 fn key(st: &mut AppState, action: KeyAction) -> Vec<Effect> {
@@ -178,18 +178,18 @@ fn s_moves_on_to_the_next_unstaged_file_end_to_end() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(un("b.txt"))));
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&un("b.txt")));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&un("b.txt")));
     // The status arrives before c.txt's diff, which a refresh would otherwise supersede.
     drive(&mut st, Msg::Shortcut(KeyAction::Stage));
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.staged.iter().any(|f| f.path == "b.txt"), "b.txt is staged");
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&un("c.txt")));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&un("c.txt")));
     // The last file: the one above it opens.
     drive(&mut st, Msg::Shortcut(KeyAction::Stage));
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&un("a.txt")));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&un("a.txt")));
     // The only file left: nothing opens, and the reload closes its emptied diff.
     drive(&mut st, Msg::Shortcut(KeyAction::Stage));
-    assert!(st.diff.is_none(), "{:?}", st.diff.as_ref().map(|(t, _)| t));
+    assert!(st.session.diff.view.is_none(), "{:?}", st.session.diff.view.as_ref().map(|(t, _)| t));
     assert!(st.snap.as_ref().unwrap().unstaged.is_empty());
     assert_eq!(st.view.diff_opening, None);
     assert_eq!(st.view.stage_move_on, None);
@@ -207,11 +207,11 @@ fn u_moves_on_in_the_staged_list_end_to_end() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(sd("a.txt"))));
     drive(&mut st, Msg::Shortcut(KeyAction::Unstage));
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&sd("b.txt")));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&sd("b.txt")));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(sd("c.txt"))));
     // The last staged file, with b.txt above it.
     drive(&mut st, Msg::Shortcut(KeyAction::Unstage));
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&sd("b.txt")));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&sd("b.txt")));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.staged.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["b.txt"]);
     assert!(snap.unstaged.iter().any(|f| f.path == "c.txt" && f.status == '?'), "c.txt is untracked again");

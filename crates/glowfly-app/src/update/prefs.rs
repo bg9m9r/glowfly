@@ -52,10 +52,10 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::ClosePrefs => {
             st.prefs = None;
             // The Commit Signing page may have changed the program or the allowed signers file.
-            st.signatures.clear();
+            st.session.reads.signatures.clear();
             // The diff's scroll offset is in pixels: keep the same top row if the editor font
             // size (and so the row height) changed.
-            if st.diff.is_some() {
+            if st.session.diff.view.is_some() {
                 st.view.diff_scroll_to_row = Some(st.view.diff_top_row);
             }
             // The commit limit or branch visibility may have changed.
@@ -289,8 +289,8 @@ pub(super) fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
         super::watch::sync(st, fx);
     }
     if !st.settings.conflict_check {
-        if !st.conflict_checks.is_empty() {
-            st.conflict_checks.clear();
+        if !st.session.reads.conflict_checks.is_empty() {
+            st.session.reads.conflict_checks.clear();
         }
     } else {
         super::conflict_check::want(st, fx);

@@ -43,7 +43,7 @@ pub(super) fn ready(name: &str, f: impl FnOnce(&mut PrDetail)) -> (AppState, [Pa
     let page = PrPage { detail: d, entries: Vec::new(), threads: Vec::new(), threads_note: None };
     let msg = reply_msg(&st, PrReply::Loaded(Ok(page)));
     run(&mut st, msg);
-    st.diff = Some((pr_target(&st, "f.txt"), Arc::new(diff())));
+    st.session.diff.view = Some((pr_target(&st, "f.txt"), Arc::new(diff())));
     (st, dirs)
 }
 

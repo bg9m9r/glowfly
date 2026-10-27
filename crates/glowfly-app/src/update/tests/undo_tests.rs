@@ -39,7 +39,7 @@ fn committed(name: &str) -> (AppState, PathBuf) {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
-    st.draft.summary = "Second line".into();
+    st.session.draft.summary = "Second line".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     (st, dir)
 }
@@ -68,24 +68,24 @@ fn commit_then_undo_and_redo_end_to_end() {
         st.undo.undo_entry(st.settings.lang(), true).0
     );
 
-    st.draft = Default::default();
+    st.session.draft = Default::default();
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "first");
     assert!(st.snap.as_ref().unwrap().staged.iter().any(|f| f.path == "a.txt"), "the changes stay staged");
-    assert_eq!(st.draft.summary, "Second line", "the message comes back into the empty draft");
+    assert_eq!(st.session.draft.summary, "Second line", "the message comes back into the empty draft");
     assert_eq!(st.undo.redo.len(), 1);
     assert_eq!(last_toast(&st), (true, "Undo commit 'Second line' succeeded".to_owned()));
 
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert_eq!(head_summary(&st), "Second line");
     assert_eq!((st.undo.undo.len(), st.undo.redo.len()), (1, 0));
-    assert!(st.draft.is_empty(), "the restored message leaves the draft once the commit is redone");
+    assert!(st.session.draft.is_empty(), "the restored message leaves the draft once the commit is redone");
 
     // A draft edited after the undo is the user's: redo leaves it alone.
     drive(&mut st, Msg::Job(JobMsg::Undo));
-    st.draft.summary = "Second line, reworded".into();
+    st.session.draft.summary = "Second line, reworded".into();
     drive(&mut st, Msg::Job(JobMsg::Redo));
-    assert_eq!(st.draft.summary, "Second line, reworded");
+    assert_eq!(st.session.draft.summary, "Second line, reworded");
     cleanup(&[&dir]);
 }
 
@@ -95,7 +95,7 @@ fn git_jobs_record_their_kind() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
-    st.draft.summary = "Commit me".into();
+    st.session.draft.summary = "Commit me".into();
     let fx = update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now());
     assert!(matches!(&fx[..], [Effect::RunGit { record: Some(UndoKind::Commit { amend: false }), .. }]), "{fx:?}");
     st.job = None;
@@ -222,7 +222,7 @@ fn undo_result_lands_in_its_own_tab() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
-    st.draft.summary = "Second line".into();
+    st.session.draft.summary = "Second line".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert_eq!(st.undo.undo.len(), 1);
 
@@ -238,7 +238,7 @@ fn undo_result_lands_in_its_own_tab() {
     assert!(st.undo.undo.is_empty() && st.undo.redo.is_empty() && st.undo.blocked.is_none());
     let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
     assert_eq!((parked.undo.undo.len(), parked.undo.redo.len()), (0, 1));
-    assert_eq!(parked.draft.summary, "Second line");
+    assert_eq!(parked.session.draft.summary, "Second line");
 
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     assert_eq!(st.undo.redo.len(), 1);

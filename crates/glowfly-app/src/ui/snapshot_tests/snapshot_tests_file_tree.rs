@@ -49,8 +49,8 @@ fn wip_tree(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     write(&dir, "lib/core.rs", &lines("fn core", 3));
     git(&dir, &["add", "lib/core.rs"], D);
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
-    let generation = st.line_counts.start_wip().unwrap();
-    st.line_counts.finish_wip(generation, Some(repo::wip_line_counts(&dir).unwrap()));
+    let generation = st.session.reads.line_counts.start_wip().unwrap();
+    st.session.reads.line_counts.finish_wip(generation, Some(repo::wip_line_counts(&dir).unwrap()));
     (tree(st), dir)
 }
 

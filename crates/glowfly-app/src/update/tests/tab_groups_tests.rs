@@ -98,7 +98,7 @@ fn a_worktree_found_only_by_its_load_moves_beside_its_group() {
     let mut st = state();
     open(&mut st, &main);
     open(&mut st, &other);
-    st.draft.summary = "other's draft".into();
+    st.session.draft.summary = "other's draft".into();
     // Made after main's snapshot was read: no snapshot lists it.
     let linked = linked_of(&main);
     git(&main, &["worktree", "add", "-q", "-b", "side", &linked.display().to_string()]);
@@ -110,7 +110,7 @@ fn a_worktree_found_only_by_its_load_moves_beside_its_group() {
     assert!(tab_is(&st, 0, &main) && tab_is(&st, 1, &linked) && tab_is(&st, 2, &other));
     assert!(same_place(&st.snap.as_ref().unwrap().workdir, &linked));
     let parked = st.tabs[2].parked.as_ref().expect("other is parked");
-    assert_eq!(parked.draft.summary, "other's draft", "parked data travels with its tab");
+    assert_eq!(parked.session.draft.summary, "other's draft", "parked data travels with its tab");
     cleanup(&[&linked, &main, &other]);
 }
 
@@ -204,14 +204,14 @@ fn names(st: &AppState) -> Vec<&str> {
 fn drops_inside_and_outside_a_group() {
     let mut st = fake_tabs(&["a1", "a2", "x", "b1", "b2"], 0);
     st.tabs[3].parked = Some(Box::default());
-    st.tabs[3].parked.as_mut().unwrap().draft.summary = "b1's draft".into();
+    st.tabs[3].parked.as_mut().unwrap().session.draft.summary = "b1's draft".into();
     let fx = update(&mut st, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 1 }), Instant::now());
     assert_eq!((names(&st), st.active_tab), (vec!["a2", "a1", "x", "b1", "b2"], 1), "reordered inside the group");
     assert_eq!(saved(&fx).len(), 1);
 
     update(&mut st, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 3 }), Instant::now());
     assert_eq!((names(&st), st.active_tab), (vec!["x", "b1", "b2", "a2", "a1"], 4), "the whole group moves, the active tab with it");
-    assert_eq!(st.tabs[1].parked.as_ref().unwrap().draft.summary, "b1's draft");
+    assert_eq!(st.tabs[1].parked.as_ref().unwrap().session.draft.summary, "b1's draft");
 
     update(&mut st, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 2 }), Instant::now());
     assert_eq!(names(&st), ["b1", "b2", "x", "a2", "a1"], "a lone tab never lands inside a group");

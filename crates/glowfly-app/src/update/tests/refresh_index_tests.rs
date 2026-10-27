@@ -88,7 +88,7 @@ fn an_open_index_diff_of_a_covered_file_reloads() {
     let fx = update(&mut st, index_changed(&workdir, &[]), Instant::now());
     finish(&mut st, fx);
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged("a.txt".into()))));
-    assert!(st.diff.is_some());
+    assert!(st.session.diff.view.is_some());
 
     std::fs::write(dir.join("a.txt"), "one\ntwo\nthree\n").unwrap();
     git(&dir, &["add", "a.txt"]);

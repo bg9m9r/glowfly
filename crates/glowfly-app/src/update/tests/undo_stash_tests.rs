@@ -94,7 +94,7 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
 fn committed(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = opened(name);
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
-    st.draft.summary = "Second line".into();
+    st.session.draft.summary = "Second line".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     (st, dir)
 }

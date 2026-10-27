@@ -40,7 +40,7 @@ fn reindented(name: &str, staged: bool) -> (AppState, PathBuf, DiffTarget) {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
     drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    assert_eq!(st.diff.as_ref().map(|(t, d)| (t, d.hunks.len())), Some((&target, 1)));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, d)| (t, d.hunks.len())), Some((&target, 1)));
     (st, dir, target)
 }
 
@@ -75,7 +75,7 @@ fn stage_hunk_applies_only_the_shown_change() {
 #[test]
 fn lines_can_be_selected_and_staged() {
     let (mut st, dir, _) = reindented("ws-ops-lines", false);
-    let close = st.diff.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
+    let close = st.session.diff.view.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
     assert!(run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: close, how: Only })).is_empty());
     assert!(!st.view.diff_lines.is_empty(), "selection works with whitespace hidden");
     let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)));
@@ -90,7 +90,7 @@ fn lines_can_be_selected_and_staged() {
 
 /// Selects the shown `}` line of the open diff.
 fn select_close(st: &mut AppState) -> usize {
-    let close = st.diff.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
+    let close = st.session.diff.view.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
     assert!(run(st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: close, how: Only })).is_empty());
     assert!(!st.view.diff_lines.is_empty());
     close

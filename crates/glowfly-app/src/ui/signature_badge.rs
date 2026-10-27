@@ -26,12 +26,12 @@ enum Glyph {
 pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
     let Some(format) = d.signature else { return };
     let held = !st.runs_git_unasked();
-    let state = match st.signatures.get(d.oid) {
+    let state = match st.session.reads.signatures.get(d.oid) {
         _ if held => BadgeState::Held,
         Some(r) => BadgeState::Done(r),
         None => {
             // Nothing known: ask, unless the check is already on its way.
-            if !st.signatures.pending(d.oid) {
+            if !st.session.reads.signatures.pending(d.oid) {
                 msgs.push(Msg::Repo(RepoMsg::WantSignature(d.oid)));
             }
             BadgeState::Checking

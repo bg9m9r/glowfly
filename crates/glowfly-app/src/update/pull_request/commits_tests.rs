@@ -45,10 +45,10 @@ fn a_row_selects_its_commit_and_keeps_the_panel() {
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
     let v = st.session.pull_request.view.as_ref().expect("still open");
     assert_eq!(v.tab, PrTab::Commits);
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&target));
     // Selecting another of its commits closes that commit's diff.
     drive(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(commits[0])));
-    assert!(st.diff.is_none() && st.session.pull_request.view.is_some());
+    assert!(st.session.diff.view.is_none() && st.session.pull_request.view.is_some());
     // A diff of a commit outside the list closes the panel.
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(base, "a.txt".into()))));
     assert!(st.session.pull_request.view.is_none());
@@ -69,6 +69,6 @@ fn a_refresh_keeps_a_fork_commit_that_is_not_on_the_graph() {
     assert!(!st.snap.as_ref().unwrap().row_of.contains_key(&head), "on no branch");
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(st.selection, Selection::Commit(head));
-    assert!(st.detail.as_ref().is_some_and(|d| d.oid == head), "its details loaded");
+    assert!(st.session.detail.as_ref().is_some_and(|d| d.oid == head), "its details loaded");
     cleanup(&[&work, &bare]);
 }

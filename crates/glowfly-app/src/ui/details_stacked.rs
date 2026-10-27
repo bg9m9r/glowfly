@@ -81,7 +81,7 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
         })
         .collect();
     let rows = rows_of(stack, &sections);
-    let open = st.diff.as_ref().map(|(target, _)| target);
+    let open = st.session.diff.view.as_ref().map(|(target, _)| target);
     let lfs = TrackContext::of(st);
     let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
     let commands = crate::state::custom_commands::MenuCommands::for_state(st);

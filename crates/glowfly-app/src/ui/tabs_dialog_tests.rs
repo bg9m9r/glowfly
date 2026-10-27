@@ -100,7 +100,7 @@ fn tabs_rename_enter() {
 #[test]
 fn tabs_close_confirm() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "tabs-close-confirm");
-    st.draft.summary = "Fix the login form".into();
+    st.session.draft.summary = "Fix the login form".into();
     let mut conflict = ConflictView::loading("src/lib.rs".into());
     conflict.picks = vec![ChunkPick::Sides(Choice::Ours), ChunkPick::Sides(Choice::Theirs), ChunkPick::default()];
     conflict.auto = vec![None, None, None];

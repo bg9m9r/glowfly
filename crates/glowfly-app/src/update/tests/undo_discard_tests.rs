@@ -35,7 +35,7 @@ fn two_hunks(name: &str) -> (AppState, PathBuf) {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("big.txt".into()))));
-    assert_eq!(st.diff.as_ref().map(|(_, d)| d.hunks.len()), Some(2));
+    assert_eq!(st.session.diff.view.as_ref().map(|(_, d)| d.hunks.len()), Some(2));
     (st, dir)
 }
 
@@ -73,7 +73,7 @@ fn line_discard_undo_and_redo() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
-    let (_, d) = st.diff.as_ref().unwrap();
+    let (_, d) = st.session.diff.view.as_ref().unwrap();
     let two = d.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "two").unwrap();
     drive(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: two, how: Only }));
     drive(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Discard)));

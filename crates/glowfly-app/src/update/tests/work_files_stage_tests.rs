@@ -36,13 +36,13 @@ fn rename_stages_only_tracked_files() {
 fn staged_rename_result_toast_and_diff() {
     let (mut st, dir) = loaded("wf-stage-done");
     let op = || FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: true };
-    st.diff = Some((DiffTarget::Staged("a.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Staged("a.txt".into()), empty_diff().into()));
     run(
         &mut st,
         Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Written { ignored: false, warnings: vec![] }) }),
     );
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Renamed a.txt to b.txt and staged the rename."));
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
 
     // Never "ignored": the new path stays tracked.
     run(

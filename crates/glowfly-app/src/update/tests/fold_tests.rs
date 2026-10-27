@@ -22,7 +22,7 @@ fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 }
 
 fn whole(st: &AppState) -> &WholeFile {
-    st.diff.as_ref().and_then(|(_, d)| d.whole.as_deref()).expect("whole file on screen")
+    st.session.diff.view.as_ref().and_then(|(_, d)| d.whole.as_deref()).expect("whole file on screen")
 }
 
 fn first_fold(st: &AppState) -> Fold {
@@ -51,7 +51,7 @@ fn late_changes() -> FileDiff {
 
 /// Delivers `d` for `target` as the result of the request in flight.
 fn arrive(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, String>) {
-    let generation = st.diff_gen;
+    let generation = st.session.diff.generation;
     run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result, lfs: None }));
 }
 
@@ -103,7 +103,7 @@ fn expand_unchanged_ignores_stale_clicks() {
     assert!(st.view.diff_expanded.is_empty(), "not a gap of this file");
 
     st.settings.diff_mode = DiffMode::WholeFile;
-    st.diff = None;
+    st.session.diff.view = None;
     assert!(run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(key))).is_empty());
     assert!(st.view.diff_expanded.is_empty(), "no diff open");
     let _ = std::fs::remove_dir_all(&dir);
@@ -135,10 +135,10 @@ fn folds_reset_only_for_another_file() {
     run(&mut st, Msg::Repo(RepoMsg::CloseDiff));
     assert!(st.view.diff_expanded.is_empty(), "the diff closed");
 
-    st.diff = Some((g.clone(), three_changes(true).into()));
+    st.session.diff.view = Some((g.clone(), three_changes(true).into()));
     open(&mut st);
     arrive(&mut st, g, true, Err("no changes".into()));
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     assert!(st.view.diff_expanded.is_empty(), "a failed reload closes the diff");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -178,7 +178,7 @@ fn stepping_counts_folds() {
         }
 
         // A file that starts with a fold opens on its first block, counted with it closed.
-        st.diff = Some((f_txt(), late_changes().into()));
+        st.session.diff.view = Some((f_txt(), late_changes().into()));
         let key = first_fold(&st).key;
         run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(key)));
         assert!(!st.view.diff_expanded.is_empty());
@@ -199,7 +199,7 @@ fn folds_are_parked_with_their_tab() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     st.settings.diff_mode = DiffMode::WholeFile;
     st.settings.diff_layout = DiffLayout::Inline;
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), three_changes(true).into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), three_changes(true).into()));
     let key = first_fold(&st).key;
     run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(key)));
     st.view.diff_top_row = block_rows(whole(&st), DiffLayout::Inline, &st.view.diff_expanded)[2];
@@ -268,7 +268,7 @@ fn collapse_unchanged_ignores_stale_clicks() {
     assert!(run(&mut st, Msg::Diff(DiffMsg::CollapseUnchanged(999))).is_empty());
     assert_eq!(st.view.diff_expanded, open, "not a gap of this file");
     st.settings.diff_mode = DiffMode::WholeFile;
-    st.diff = None;
+    st.session.diff.view = None;
     assert!(run(&mut st, Msg::Diff(DiffMsg::CollapseUnchanged(first.key))).is_empty());
     assert_eq!(st.view.diff_expanded, open, "no diff open");
     let _ = std::fs::remove_dir_all(&dir);
@@ -297,7 +297,7 @@ fn expand_all_and_collapse_all() {
     for (mode, diff) in [(DiffMode::Hunks, true), (DiffMode::WholeFile, false)] {
         st.settings.diff_mode = mode;
         if !diff {
-            st.diff = None;
+            st.session.diff.view = None;
         }
         for (msg, ex) in
             [(Msg::Diff(DiffMsg::CollapseAllUnchanged), all.clone()), (Msg::Diff(DiffMsg::ExpandAllUnchanged), Expanded::default())]

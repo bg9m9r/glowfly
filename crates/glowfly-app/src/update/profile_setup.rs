@@ -15,7 +15,7 @@ pub(super) fn switched(st: &mut AppState, swap: SetupSwap, now: Instant, fx: &mu
         super::prefs::sync_live_settings(st, fx);
         // The diff's scroll offset is in pixels: keep the same top row if the font size or
         // wrapping changed.
-        if st.diff.is_some() {
+        if st.session.diff.view.is_some() {
             st.view.diff_scroll_to_row = Some(st.view.diff_top_row);
         }
         // The commit limit or branch visibility may have changed.

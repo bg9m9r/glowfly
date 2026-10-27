@@ -26,9 +26,9 @@ fn commit_box_options() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-options");
     git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
     reload(&mut st, &dir, &LoadOptions::all(500));
-    st.draft.summary = "Add login form".into();
+    st.session.draft.summary = "Add login form".into();
     st.settings.push_after_commit = true;
-    st.draft.skip_hooks = true;
+    st.session.draft.skip_hooks = true;
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("commit_box_options");
@@ -45,7 +45,7 @@ fn commit_box_more_menu() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-more-menu");
     git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
     reload(&mut st, &dir, &LoadOptions::all(500));
-    st.draft.summary = "Add login form".into();
+    st.session.draft.summary = "Add login form".into();
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label_contains("(skip hooks)").is_none());
@@ -61,7 +61,7 @@ fn commit_box_more_menu() {
     assert!(check.x1 <= right, "the menu stays inside the window: {check:?} {right}");
     h.get_by_label("Skip hooks").click();
     h.run();
-    assert!(h.state().0.draft.skip_hooks);
+    assert!(h.state().0.session.draft.skip_hooks);
     assert!(h.query_by_label("Skip hooks").is_none(), "the menu closes so the tint shows");
     assert!(h.query_by_label_contains("(skip hooks)").is_some(), "the button says hooks are skipped");
     drop(h);
@@ -73,7 +73,7 @@ fn commit_box_split_halves() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-split");
     git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
     reload(&mut st, &dir, &LoadOptions::all(500));
-    st.draft.summary = "Add login form".into();
+    st.session.draft.summary = "Add login form".into();
     let mut h = harness(st, true);
     h.run();
     let caret = h.get_by_label("More commit options").bounding_box().unwrap();
@@ -85,7 +85,7 @@ fn commit_box_split_halves() {
     assert_eq!(count(&h, |m| matches!(m, Msg::Commit(CommitMsg::Commit))), 0, "without committing");
     h.get_by_label("Skip hooks").click();
     h.run();
-    assert!(h.state().0.draft.skip_hooks);
+    assert!(h.state().0.session.draft.skip_hooks);
     assert!(h.query_by_label("Skip hooks").is_none(), "ticking it closes the menu");
     h.get_by_label("More commit options").hover();
     h.run();
@@ -107,7 +107,7 @@ fn commit_box_says_why() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label(NO_SUMMARY).is_some(), "under the disabled button");
-    h.state_mut().0.draft.summary = "Add login form".into();
+    h.state_mut().0.session.draft.summary = "Add login form".into();
     h.run();
     assert!(h.query_by_label(NO_SUMMARY).is_none(), "gone once it can commit");
     drop(h);
@@ -118,7 +118,7 @@ fn commit_box_says_why() {
 fn commit_box_template_light() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "commit-template");
     let t = CommitTemplate::parse("\n# Why is this change needed?\n# What does it change?\n", '#').unwrap();
-    st.draft.apply_template(&t);
+    st.session.draft.apply_template(&t);
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("commit_box_template_light");
@@ -130,17 +130,17 @@ fn commit_box_template_light() {
 #[test]
 fn commit_shortcuts() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-shortcuts");
-    st.draft.summary = "Add login".into();
+    st.session.draft.summary = "Add login".into();
     let mut h = harness(st, true);
     h.run();
     h.get(By::new().role(Role::TextInput).value("Add login")).type_text(" form");
     h.run();
-    assert_eq!(h.state().0.draft.summary, "Add login form", "the summary field has focus");
+    assert_eq!(h.state().0.session.draft.summary, "Add login form", "the summary field has focus");
 
     h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
     h.run();
     assert_eq!(count(&h, |m| matches!(m, Msg::Commit(CommitMsg::Commit))), 1);
-    assert_eq!(h.state().0.draft.summary, "Add login form", "no newline or lost text");
+    assert_eq!(h.state().0.session.draft.summary, "Add login form", "no newline or lost text");
 
     h.state_mut().1.clear();
     h.press_key_modifiers(Modifiers::COMMAND | Modifiers::SHIFT, Key::Enter);
@@ -174,7 +174,7 @@ fn summary_counter(theme: ThemeChoice, name: &str, len: usize, want: &str) {
     reload(&mut st, &dir, &LoadOptions::all(500));
     // Counted in characters, not bytes: "é" is two bytes.
     let text = "Rewrite the café menu search so typing filters dishes, drinks and desserts as you go";
-    st.draft.summary = text.chars().take(len).collect();
+    st.session.draft.summary = text.chars().take(len).collect();
     let mut h = harness(st, dark);
     h.run();
     h.check_snapshot(name);

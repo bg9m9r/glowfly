@@ -135,9 +135,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let now = st.view.now;
         let offset = st.view.utc_offset;
         let avatars = &mut cache.avatars;
-        let stats = &st.stats;
+        let stats = &st.session.reads.stats;
         let wip_label = t.tr("graph.wip.label");
-        let wip_total = st.line_counts.wip().and_then(|w| w.total());
+        let wip_total = st.session.reads.line_counts.wip().and_then(|w| w.total());
         let mut want_stats: Vec<Oid> = Vec::new();
         let mut hover_tip_next = None;
         let tips = st.forge.as_ref().map(|f| &f.tips);

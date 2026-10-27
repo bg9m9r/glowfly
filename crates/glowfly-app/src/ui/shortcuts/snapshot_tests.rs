@@ -94,7 +94,7 @@ fn commit_summary_takes_focus() {
     // Typing goes to the focused field.
     h.input_mut().events.push(egui::Event::Text("Add login".into()));
     h.run();
-    assert_eq!(h.state().0.draft.summary, "Add login");
+    assert_eq!(h.state().0.session.draft.summary, "Add login");
     drop(h);
     remove_fixture(&dir);
 }

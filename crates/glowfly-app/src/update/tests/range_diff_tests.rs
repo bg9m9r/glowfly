@@ -87,7 +87,7 @@ fn empty_diff() -> FileDiff {
 fn opening_asks_for_the_comparison_and_covers_the_graph() {
     let (mut st, dir) = rewritten("rd-open");
     let h = st.snap.as_ref().unwrap().head_oid.unwrap();
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
     st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
     st.session.blame.view = Some(BlameView::loading("a.txt".into(), None));
     st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(h)));
@@ -100,7 +100,12 @@ fn opening_asks_for_the_comparison_and_covers_the_graph() {
     assert!(e.scope().is_some_and(|w| same_place(w, &dir)), "scoped to the repository");
     let view = st.session.range_diff.view.as_ref().expect("open");
     assert_eq!((view.phase.clone(), view.generation), (Phase::Loading, job.generation));
-    assert!(st.diff.is_none() && st.session.history.view.is_none() && st.session.blame.view.is_none() && st.session.rebase.view.is_none());
+    assert!(
+        st.session.diff.view.is_none()
+            && st.session.history.view.is_none()
+            && st.session.blame.view.is_none()
+            && st.session.rebase.view.is_none()
+    );
     assert!(st.session.pull_request.view.is_none() && st.session.issue.view.is_none());
     assert!(st.session.journal.view.is_some(), "the journal stays underneath");
     assert_eq!(tool_view(&st), Some(ToolView::RangeDiff));

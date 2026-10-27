@@ -374,7 +374,7 @@ pub(in crate::ui) fn with_history(name: &str, theme: ThemeChoice, limit: usize, 
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.session.history.view = Some(view);
     (st, dir)
 }

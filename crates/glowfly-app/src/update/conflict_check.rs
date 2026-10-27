@@ -20,11 +20,11 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     let Some(snap) = &st.snap else { return };
     let Some(request) = current_request(snap) else { return };
-    if !st.conflict_checks.wants(&request) {
+    if !st.session.reads.conflict_checks.wants(&request) {
         return;
     }
     let workdir = snap.workdir.clone();
-    let Some(generation) = st.conflict_checks.start() else { return };
+    let Some(generation) = st.session.reads.conflict_checks.start() else { return };
     fx.push(Effect::CheckConflicts(CheckJob { workdir, request, manual: false, generation }));
 }
 
@@ -40,7 +40,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictCheckMsg, now: Instant, fx:
         ConflictCheckMsg::Checked { request, manual: false, generation, result } => {
             let report = ConflictReport { request, result };
             let line = headline(st.settings.lang(), &report);
-            let done = st.conflict_checks.finish(generation, report);
+            let done = st.session.reads.conflict_checks.finish(generation, report);
             if done.accepted && done.new_error.is_some() {
                 st.log_quiet(false, line);
             }
@@ -52,7 +52,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictCheckMsg, now: Instant, fx:
             let report = ConflictReport { request, result };
             let current = st.snap.as_ref().and_then(current_request);
             if current.as_ref() == Some(&report.request) {
-                st.conflict_checks.store_manual(report.clone());
+                st.session.reads.conflict_checks.store_manual(report.clone());
             }
             let ok = report.result.is_ok();
             let line = headline(st.settings.lang(), &report);

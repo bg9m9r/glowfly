@@ -88,12 +88,12 @@ fn show_scrolls_to_a_fold_below_the_viewport() {
 fn fold_keys_act_on_gaps_in_the_hunk_view() {
     let (mut st, dir) = opened("foldkey-gaps");
     st.view.diff_visible_rows = 60;
-    let g = gaps(&st.diff.as_ref().unwrap().1);
+    let g = gaps(&st.session.diff.view.as_ref().unwrap().1);
     let fx = open_key(&mut st);
     assert_eq!(fx.iter().filter(|e| matches!(e, Effect::LoadDiffGaps { .. })).count(), 1, "{fx:?}");
     assert!(st.view.diff_expanded.contains(g[0].key));
     land(&mut st, fx);
-    assert_eq!(filled(&st.diff.as_ref().unwrap().1, &st.view.diff_expanded).len(), 1);
+    assert_eq!(filled(&st.session.diff.view.as_ref().unwrap().1, &st.view.diff_expanded).len(), 1);
     // The next press opens the second gap from the text already read.
     assert!(open_key(&mut st).is_empty());
     assert!(st.view.diff_expanded.contains(g[1].key));

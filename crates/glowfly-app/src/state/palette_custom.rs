@@ -19,7 +19,7 @@ pub(super) fn entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         super::Selection::Commit(o) => Some(o),
         _ => None,
     };
-    let open_file = st.diff.as_ref().map(|(d, _)| d.path());
+    let open_file = st.session.diff.view.as_ref().map(|(d, _)| d.path());
     let vars = vars_for(snap, &Target::Palette, selected, open_file);
     let trusted = repo_trusted(st);
     for (source, cmd) in st.custom_commands.listed(Some(&snap.workdir)).filter(|(_, c)| c.shows_in(Place::Palette)) {

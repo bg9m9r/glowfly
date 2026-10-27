@@ -70,8 +70,8 @@ pub(super) fn state_changed(st: &mut AppState, before: Option<RepositoryState>) 
         return;
     }
     st.selection = Selection::Wip;
-    st.detail = None;
-    if st.diff.as_ref().is_some_and(|(t, _)| !t.follows_workdir()) {
+    st.session.detail = None;
+    if st.session.diff.view.as_ref().is_some_and(|(t, _)| !t.follows_workdir()) {
         super::repo::close_diff(st);
     }
 }

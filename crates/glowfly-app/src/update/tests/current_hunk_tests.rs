@@ -10,13 +10,13 @@ use glowfly_core::repo::{self, DiffTarget, FileDiff, LoadDiffOptions};
 use glowfly_core::settings::DiffMode;
 
 fn rows(st: &AppState) -> Vec<usize> {
-    change_rows_of(&st.diff.as_ref().unwrap().1, &st.settings, &st.view.diff_expanded)
+    change_rows_of(&st.session.diff.view.as_ref().unwrap().1, &st.settings, &st.view.diff_expanded)
 }
 
 #[test]
 fn hunk_view() {
     let mut st = state();
-    st.diff = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), three_hunks().into()));
+    st.session.diff.view = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), three_hunks().into()));
     st.view.diff_visible_rows = 10;
     let r = rows(&st);
     assert_eq!(current_hunk(&st), Some(0), "the first hunk at the top");
@@ -54,7 +54,7 @@ fn whole_file_view_maps_blocks_to_hunks() {
     assert!(diff.whole.is_some());
     let mut st = state();
     st.settings.diff_mode = DiffMode::WholeFile;
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.view.diff_visible_rows = 5;
     let r = rows(&st);
     assert_eq!(r.len(), 2);
@@ -69,6 +69,6 @@ fn no_changes() {
     let mut st = state();
     assert_eq!(current_hunk(&st), None, "no diff");
     let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), empty.into()));
+    st.session.diff.view = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), empty.into()));
     assert_eq!(current_hunk(&st), None);
 }

@@ -143,7 +143,7 @@ fn without_template_comments(description: &str, t: &CommitTemplate) -> String {
 pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
     let t = st.settings.lang();
     let Some(snap) = &st.snap else { return Some(t.tr("commit.blocked.no_repo")) };
-    let d = &st.draft;
+    let d = &st.session.draft;
     let merging = snap.state == RepositoryState::Merge;
     let conflicted = snap.unstaged.iter().any(|f| f.status == '!');
     if st.job.is_some() {
@@ -178,7 +178,7 @@ pub fn commit_merge_blocked(st: &AppState) -> Option<String> {
         Some(t.trn("details.banner.commit_merge.conflicts", conflicted, &[]))
     } else if st.job.is_some() {
         Some(t.tr("commit.blocked.job_running").to_owned())
-    } else if st.draft.amend {
+    } else if st.session.draft.amend {
         Some(t.tr("commit.blocked.amend_merge").to_owned())
     } else {
         None

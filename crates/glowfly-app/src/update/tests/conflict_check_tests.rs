@@ -70,7 +70,7 @@ fn reload(st: &mut AppState, dir: &Path) -> Vec<CheckJob> {
 
 fn shown(st: &AppState) -> Option<Result<Prediction, String>> {
     let current = current_request(st.snap.as_ref()?);
-    st.conflict_checks.shown(current.as_ref()).map(|r| r.result.clone())
+    st.session.reads.conflict_checks.shown(current.as_ref()).map(|r| r.result.clone())
 }
 
 fn conflicts_in_a() -> Option<Result<Prediction, String>> {
@@ -145,7 +145,7 @@ fn late_replies_are_ignored() {
     st.settings.conflict_check = false;
     assert!(drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
     assert!(deliver(&mut st, job).is_empty());
-    assert_eq!(st.conflict_checks.shown(current_request(st.snap.as_ref().unwrap()).as_ref()), None, "cleared");
+    assert_eq!(st.session.reads.conflict_checks.shown(current_request(st.snap.as_ref().unwrap()).as_ref()), None, "cleared");
     st.settings.conflict_check = true;
     let jobs = drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     assert_eq!(jobs.len(), 1, "turning it on checks at once");

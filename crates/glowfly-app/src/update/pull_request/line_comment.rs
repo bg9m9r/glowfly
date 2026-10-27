@@ -48,7 +48,7 @@ fn provider(st: &AppState) -> Option<glowfly_core::forge::Provider> {
 /// The draft can start on the open diff: it is one of the panel's files and nothing blocks it.
 fn may_start(st: &mut AppState) -> bool {
     let Some(v) = st.session.pull_request.view.as_ref() else { return false };
-    if !st.diff.as_ref().is_some_and(|(t, _)| v.shows_file(t)) {
+    if !st.session.diff.view.as_ref().is_some_and(|(t, _)| v.shows_file(t)) {
         return false;
     }
     match start_blocked(provider(st), v) {
@@ -74,7 +74,7 @@ fn start(st: &mut AppState, side: LineSide, n: u32, extend: bool) {
 
 /// The (hunk, first, last) lines a button on file line `n` of `side` puts the draft on.
 fn span_at(st: &AppState, side: LineSide, n: u32, extend: bool) -> Result<(usize, usize, usize), &'static str> {
-    let (target, diff) = st.diff.as_ref().ok_or(OUTSIDE)?;
+    let (target, diff) = st.session.diff.view.as_ref().ok_or(OUTSIDE)?;
     let (h, i) = line_index(diff, side, n).ok_or(OUTSIDE)?;
     let sel = &st.view.diff_lines;
     if extend {
@@ -95,7 +95,7 @@ fn on_selection(st: &mut AppState) {
         return;
     }
     let sel = &st.view.diff_lines;
-    let (Some((target, _)), Some(first), Some(last)) = (st.diff.as_ref(), sel.lines.first(), sel.lines.last()) else { return };
+    let (Some((target, _)), Some(first), Some(last)) = (st.session.diff.view.as_ref(), sel.lines.first(), sel.lines.last()) else { return };
     if sel.target.as_ref() != Some(target) {
         return;
     }
@@ -106,7 +106,7 @@ fn on_selection(st: &mut AppState) {
 /// Puts the draft on lines `first..=last` of hunk `h` of the open diff, keeping an existing
 /// draft's text, and focuses its box.
 fn build(st: &mut AppState, h: usize, first: usize, last: usize) {
-    let (Some((target, diff)), Some(v)) = (st.diff.as_ref(), st.session.pull_request.view.as_mut()) else { return };
+    let (Some((target, diff)), Some(v)) = (st.session.diff.view.as_ref(), st.session.pull_request.view.as_mut()) else { return };
     match draft_at(v, target, diff, h, first, last) {
         Ok(mut d) => {
             if let Some(old) = v.line_draft.take() {
@@ -170,7 +170,7 @@ fn cancel(st: &mut AppState) {
 fn show(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(d) = st.session.pull_request.view.as_ref().and_then(|v| v.line_draft.as_ref()) else { return };
     let (target, side, n) = (d.target.clone(), d.anchor.side, d.anchor.line);
-    match &st.diff {
+    match &st.session.diff.view {
         Some((open, diff)) if *open == target => {
             let (s, ex) = (&st.settings, &st.view.diff_expanded);
             if let Some(row) = row_of_file_line(diff, s.diff_mode, s.diff_layout, ex, side, n) {

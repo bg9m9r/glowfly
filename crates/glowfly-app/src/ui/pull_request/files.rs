@@ -52,7 +52,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
         Files::Loaded(c) => {
             let Some(tip) = v.source_tip() else { return };
             let (base, files) = (c.base, &c.comparison.files);
-            let open = st.diff.as_ref().map(|(t, _)| t);
+            let open = st.session.diff.view.as_ref().map(|(t, _)| t);
             let lfs = TrackContext::of(st);
             let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
             let commands = crate::state::custom_commands::MenuCommands::for_state(st);

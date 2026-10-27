@@ -30,7 +30,7 @@ fn tabbed_diff() -> FileDiff {
 /// A state with `tabbed_diff` open and the settings as saved.
 fn with_diff() -> AppState {
     let mut st = state();
-    st.diff = Some((DiffTarget::Unstaged("f.rs".into()), tabbed_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("f.rs".into()), tabbed_diff().into()));
     // Bring the saved copy in line with the settings, so only the edits below count.
     run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     st
@@ -56,12 +56,12 @@ fn editor_settings_save_once() {
 #[test]
 fn turning_word_highlights_off_keeps_the_ranges() {
     let mut st = with_diff();
-    let before = st.diff.as_ref().unwrap().1.intraline.clone();
+    let before = st.session.diff.view.as_ref().unwrap().1.intraline.clone();
     assert!(!before.line(0, 1).is_empty(), "the -/+ pair is marked");
     st.settings.diff_word_highlights = false;
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     assert!(only_saves(&fx), "{fx:?}");
-    assert_eq!(st.diff.as_ref().unwrap().1.intraline, before);
+    assert_eq!(st.session.diff.view.as_ref().unwrap().1.intraline, before);
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn changing_tab_size_does_not_reload() {
     st.settings.tab_size = 2;
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     assert!(only_saves(&fx), "{fx:?}");
-    assert_eq!(st.diff.as_ref().unwrap().1, tabbed_diff().into(), "raw tabs kept; only the painting changes");
+    assert_eq!(st.session.diff.view.as_ref().unwrap().1, tabbed_diff().into(), "raw tabs kept; only the painting changes");
 }
 
 #[test]

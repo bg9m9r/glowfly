@@ -50,7 +50,7 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     // The file being opened is highlighted at once, so a click or a step answers immediately.
     let opening = st.view.diff_opening.as_ref().filter(|t| t.is_working_tree());
     let open = OpenFile {
-        diff: opening.or(st.diff.as_ref().map(|(t, _)| t)),
+        diff: opening.or(st.session.diff.view.as_ref().map(|(t, _)| t)),
         conflict: st.session.conflict.view.as_ref().map(|c| c.path.as_str()),
     };
 
@@ -58,7 +58,7 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let resolved = st.session.conflict_files.resolved_rows(snap);
     let kind = op_kind(snap);
     let tools = ToolAvail::of(st);
-    let lines = st.line_counts.wip();
+    let lines = st.session.reads.line_counts.wip();
     let commands = MenuCommands::for_state(st);
     let (lfs, keys, lang) = (TrackContext::of(st), &st.keymap, st.settings.lang());
     let (mode, folds) = (st.settings.file_list_mode, &st.view.file_folds);

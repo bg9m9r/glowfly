@@ -52,7 +52,7 @@ pub(in crate::ui) fn esc(h: &mut Harness<'_, (AppState, Vec<Msg>)>) -> Vec<Msg> 
 fn esc_in_a_text_field_leaves_it_before_closing_the_diff() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-typing");
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
     st.view.focus_message = true;
     let mut h = app_harness(st);
     h.run();
@@ -132,7 +132,7 @@ fn esc_closes_the_tour_and_leaves_the_welcome_to_itself() {
     use crate::state::onboarding_tour::TourStep;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-tour");
     st.onboarding.tour = Some(TourStep::Graph);
-    st.diff = Some((DiffTarget::Unstaged("README.md".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), empty_diff().into()));
     let mut h = app_harness(st);
     h.run();
     let msgs = esc(&mut h);
@@ -162,7 +162,7 @@ fn esc_cancels_a_tab_drag() {
     use crate::ui::snapshot_check::CheckSnapshot;
     use eframe::egui::PointerButton;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-tab-drag");
-    st.diff = Some((DiffTarget::Unstaged("README.md".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), empty_diff().into()));
     let mut h = app_harness(st);
     h.run();
     let (start, over) = (tab_centre(&h, 0), tab_centre(&h, 1) + egui::vec2(24.0, 0.0));
@@ -213,7 +213,7 @@ fn esc_with_the_view_menu_open_closes_only_the_menu() {
     use egui_kittest::kittest::Queryable;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-view-menu");
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
     let mut h = app_harness(st);
     h.run();
     let view = if h.query_by_label("Inline \u{b7} Hunks").is_some() { "Inline \u{b7} Hunks" } else { "View" };

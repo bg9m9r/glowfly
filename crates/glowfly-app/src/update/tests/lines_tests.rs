@@ -35,7 +35,7 @@ pub(super) fn unstaged() -> DiffTarget {
 
 pub(super) fn with_diff(target: DiffTarget) -> AppState {
     let mut st = state();
-    st.diff = Some((target, two_hunks().into()));
+    st.session.diff.view = Some((target, two_hunks().into()));
     st
 }
 
@@ -61,7 +61,7 @@ pub(super) fn selected(st: &AppState) -> Option<(usize, Vec<usize>)> {
 }
 
 pub(super) fn loaded(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, String>) {
-    let generation = st.diff_gen;
+    let generation = st.session.diff.generation;
     run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result, lfs: None }));
 }
 
@@ -147,7 +147,7 @@ fn apply_lines_emits_local_op() {
     assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Unstage))).is_empty(), "unstage doesn't fit an unstaged diff");
     assert!(!st.view.diff_lines.is_empty());
     let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)));
-    let expected = st.diff.as_ref().unwrap().1.hunks[0].clone();
+    let expected = st.session.diff.view.as_ref().unwrap().1.hunks[0].clone();
     assert_eq!(expected.header, "@@ -1,4 +1,4 @@");
     let want = LocalOp::Lines { op: HunkOp::Stage, path: "f.txt".into(), hunk: 0, expected, lines: vec![2, 5], ignore_whitespace: false };
     assert!(matches!(&fx[..], [Effect::LocalOp { op, .. }] if *op == want), "{fx:?}");
@@ -201,7 +201,7 @@ fn reload_keeps_identical_clears_changed() {
     loaded(&mut st, unstaged(), true, Ok(changed));
     assert_eq!(selected(&st), None, "a changed reload clears it");
 
-    st.diff = Some((unstaged(), two_hunks().into()));
+    st.session.diff.view = Some((unstaged(), two_hunks().into()));
     select(&mut st);
     loaded(&mut st, unstaged(), false, Ok(two_hunks()));
     assert_eq!(selected(&st), None, "opening a diff clears it");
@@ -210,10 +210,10 @@ fn reload_keeps_identical_clears_changed() {
     run(&mut st, Msg::Repo(RepoMsg::CloseDiff));
     assert_eq!(selected(&st), None);
 
-    st.diff = Some((unstaged(), two_hunks().into()));
+    st.session.diff.view = Some((unstaged(), two_hunks().into()));
     select(&mut st);
     loaded(&mut st, unstaged(), true, Err("no changes in f.txt".into()));
-    assert!(st.diff.is_none() && selected(&st).is_none(), "a reload that finds nothing closes it");
+    assert!(st.session.diff.view.is_none() && selected(&st).is_none(), "a reload that finds nothing closes it");
 
     let (mut st, dir) = with_repo("lines-commit", unstaged());
     select(&mut st);
@@ -230,7 +230,7 @@ fn tab_switch_clears_selection() {
     run(&mut st, Msg::Tabs(TabsMsg::NewTab));
     assert_eq!(selected(&st), None);
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    assert!(st.diff.as_ref().is_some_and(|(t, _)| *t == unstaged()), "the diff comes back");
+    assert!(st.session.diff.view.as_ref().is_some_and(|(t, _)| *t == unstaged()), "the diff comes back");
     assert_eq!(selected(&st), None, "the selection does not");
 }
 
@@ -241,7 +241,7 @@ fn end_to_end_stage_lines() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
-    let (_, d) = st.diff.as_ref().unwrap();
+    let (_, d) = st.session.diff.view.as_ref().unwrap();
     let two = d.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "two").unwrap();
     drive(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: two, how: Only }));
     drive(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)));
@@ -250,12 +250,12 @@ fn end_to_end_stage_lines() {
     assert!(snap.staged.iter().any(|f| f.path == "a.txt"), "a.txt is partly staged");
     assert!(snap.unstaged.iter().any(|f| f.path == "a.txt"), "and still has unstaged changes");
     // The reload after the operation shows what is left: just `+three`.
-    let (_, d) = st.diff.as_ref().unwrap();
+    let (_, d) = st.session.diff.view.as_ref().unwrap();
     let left: BTreeSet<String> = d.hunks.iter().flat_map(|h| &h.lines).filter(|l| l.origin == '+').map(|l| l.text.clone()).collect();
     assert_eq!(left, BTreeSet::from(["three".to_owned()]));
 
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged("a.txt".into()))));
-    let (_, d) = st.diff.as_ref().unwrap();
+    let (_, d) = st.session.diff.view.as_ref().unwrap();
     let changes: Vec<String> =
         d.hunks.iter().flat_map(|h| &h.lines).filter(|l| l.origin != ' ').map(|l| format!("{}{}", l.origin, l.text)).collect();
     assert_eq!(changes, ["+two"]);

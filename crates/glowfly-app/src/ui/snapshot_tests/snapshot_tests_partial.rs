@@ -28,7 +28,7 @@ fn pending(dir: &Path, view: ContentView, path: &str, phase: ContentPhase) -> Pe
 /// The repository with the diff of assets/logo.svg waiting in `phase`.
 fn waiting_diff(theme: ThemeChoice, name: &str, phase: ContentPhase) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
-    st.diff_gen = 3;
+    st.session.diff.generation = 3;
     st.partial.content = Some(pending(&dir, ContentView::Diff { generation: 3 }, "assets/logo.svg", phase));
     (st, dir)
 }

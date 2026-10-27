@@ -26,7 +26,7 @@ fn with_open(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_wip(theme, name);
     let target = DiffTarget::Unstaged("app.txt".into());
     let diff = repo::load_diff(&dir, &target).unwrap();
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     (st, dir)
 }
 

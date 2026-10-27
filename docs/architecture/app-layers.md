@@ -77,7 +77,8 @@ source file, update its line here. Features that span every layer are in
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the resolved changes.
 - `toolbar_tips.rs`: the toolbar's rules: why each button is off, the ahead/behind and last-fetched lines and the Push, Pull, Stash and Pop previews.
 - `section_actions.rs`: what each left-panel section header's + does (its name, why it is off and the message it sends).
-- `session.rs`: `RepoSession`, the per-tab views paired with their generation counters (`Gen`, `PrSlot`), parked whole with the tab; `resume_after` keeps the counters rising across tabs. Tests in `session_tests.rs`; the switch itself in `update/tests/tabs_session_tests.rs`.
+- `session.rs`: `RepoSession`, the per-tab views paired with their generation counters (`Gen`, `PrSlot`), the open diff as `DiffSlot` with its counter, the commit detail and draft, and the repository reads, parked whole with the tab; `resume_after` keeps the counters rising across tabs, and the diff's `shown_gen` is carried rather than counted. Tests in `session_tests.rs`; the switch itself in `update/tests/tabs_session_tests.rs`.
+- `session_reads.rs`: `RepoReads`, what was read from the tab's repository (commit stats, line counts, signatures, conflict check): `parked` keeps results and drops requests in flight, `clear` forgets them when another repository opens. Tests in `session_reads_tests.rs`.
 - `tip.rs`: the rich tooltip's data.
 - `undo_preview.rs`: what Undo and Redo would change.
 - `op_preview.rs`: the operation preview's dialog data, its title and headline, why Apply is off (busy, loading, nothing to do or stale) and the message Apply sends, the same as the direct menu item's.

@@ -271,7 +271,7 @@ pub(super) fn finished(st: &mut AppState, result: Result<Outcome, String>, undo:
         // The banner with Continue / Skip / Abort is on the WIP row.
         if stopped && st.snap.is_some() {
             st.selection = Selection::Wip;
-            st.detail = None;
+            st.session.detail = None;
         }
     }
     super::ops::finish_job(st, ok, output, headline, undo, now, fx);

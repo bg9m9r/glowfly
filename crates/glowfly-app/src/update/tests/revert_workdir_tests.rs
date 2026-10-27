@@ -25,7 +25,7 @@ fn select_line(st: &mut AppState, target: &DiffTarget) {
 fn reverting_on_a_commit_compared_with_the_working_tree() {
     let (mut st, dir) = with_diff("revert-workdir-effect", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     let target = DiffTarget::ToWorkdir(head(&st), "a.txt".into());
-    st.diff = Some((target.clone(), one_hunk().into()));
+    st.session.diff.view = Some((target.clone(), one_hunk().into()));
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation }));
     assert!(matches!(&parts(&fx)[..], [RevertPart::Hunk { index: 0, .. }]), "{fx:?}");
@@ -33,7 +33,7 @@ fn reverting_on_a_commit_compared_with_the_working_tree() {
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation })).is_empty());
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(DIFF_CHANGED));
 
-    st.diff_shown_gen = st.diff_gen;
+    st.session.diff.shown_gen = st.session.diff.generation;
     select_line(&mut st, &target);
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertLines));
     assert!(matches!(&parts(&fx)[..], [RevertPart::Lines { hunk: 0, .. }]), "{fx:?}");
@@ -45,7 +45,7 @@ fn reverting_on_a_commit_compared_with_the_working_tree() {
 #[test]
 fn the_r_key_reverts_the_current_hunk() {
     let (mut st, dir) = with_diff("revert-workdir-key", DiffTarget::Unstaged("a.txt".into()), one_hunk());
-    st.diff = Some((DiffTarget::ToWorkdir(head(&st), "a.txt".into()), one_hunk().into()));
+    st.session.diff.view = Some((DiffTarget::ToWorkdir(head(&st), "a.txt".into()), one_hunk().into()));
     let fx = run(&mut st, Msg::Shortcut(KeyAction::RevertHunk));
     assert!(matches!(&parts(&fx)[..], [RevertPart::Hunk { index: 0, .. }]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -55,7 +55,7 @@ fn the_r_key_reverts_the_current_hunk() {
 fn nothing_reverts_from_the_working_tree_to_a_commit() {
     let (mut st, dir) = with_diff("revert-workdir-reverse", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     let target = DiffTarget::FromWorkdir(head(&st), "a.txt".into());
-    st.diff = Some((target.clone(), one_hunk().into()));
+    st.session.diff.view = Some((target.clone(), one_hunk().into()));
     let generation = st.hunk_ops_gen().expect("a current diff");
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation })).is_empty(), "no Revert Hunk");
     assert!(run(&mut st, Msg::Shortcut(KeyAction::RevertHunk)).is_empty(), "no R");
@@ -91,7 +91,7 @@ fn a_hunk_reverted_end_to_end() {
     drive(&mut st, Msg::Selection(SelectionMsg::CompareWithWorkdir(c)));
     let target = DiffTarget::ToWorkdir(c, "f.txt".into());
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
-    assert_eq!(st.diff.as_ref().map(|(_, d)| d.hunks.len()), Some(2));
+    assert_eq!(st.session.diff.view.as_ref().map(|(_, d)| d.hunks.len()), Some(2));
     let read = match &st.selection {
         Selection::VsWorkdir(w) => w.generation,
         other => panic!("not compared: {other:?}"),
@@ -100,7 +100,7 @@ fn a_hunk_reverted_end_to_end() {
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
     drive(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation }));
     assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap(), numbered(&[(18, "eighteen")]));
-    let (shown, diff) = st.diff.clone().expect("still open");
+    let (shown, diff) = st.session.diff.view.clone().expect("still open");
     assert_eq!(shown, target);
     assert_eq!(diff.hunks.len(), 1, "the diff reloaded");
     assert!(st.hunk_ops_gen().is_some(), "the buttons are back");

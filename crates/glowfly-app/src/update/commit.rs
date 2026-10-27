@@ -17,17 +17,17 @@ pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut V
         CommitMsg::StageAllAndCommit => commit(st, true, now, fx),
         CommitMsg::PrefillAmend => {
             // Pre-fill from HEAD's message, when the user hasn't written anything yet.
-            if st.draft.is_blank()
+            if st.session.draft.is_blank()
                 && let Some(m) = st.snap.as_ref().and_then(|s| s.head_message.clone())
             {
-                st.draft.fill_from(&m);
+                st.session.draft.fill_from(&m);
             }
         }
         CommitMsg::AppendToDescription(text) => {
-            if !st.draft.description.trim().is_empty() {
-                st.draft.description.push_str("\n\n");
+            if !st.session.draft.description.trim().is_empty() {
+                st.session.draft.description.push_str("\n\n");
             }
-            st.draft.description.push_str(&text);
+            st.session.draft.description.push_str(&text);
         }
         CommitMsg::SetPushAfterCommit(on) if st.settings.push_after_commit != on => {
             st.settings.push_after_commit = on;
@@ -39,10 +39,10 @@ pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut V
                 st.toast(false, why, now);
                 return;
             }
-            if st.draft.is_blank()
+            if st.session.draft.is_blank()
                 && let Some(m) = st.snap.as_ref().and_then(|s| s.merge_message.clone())
             {
-                st.draft.fill_merge(&m);
+                st.session.draft.fill_merge(&m);
             }
             commit(st, false, now, fx);
         }
@@ -58,8 +58,8 @@ fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut Vec<Effect>
     }
     let Some(snap) = &st.snap else { return };
     let file = snap.git_dir.join("GLOWFLY_COMMIT_EDITMSG");
-    let cmds = st.draft.commit_cmds(&file, stage_all);
-    let amend = st.draft.amend;
+    let cmds = st.session.draft.commit_cmds(&file, stage_all);
+    let amend = st.session.draft.amend;
     let label = if amend {
         "Amend"
     } else if stage_all {
@@ -70,7 +70,7 @@ fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut Vec<Effect>
     let spec = JobSpec {
         clear_commit: true,
         then_push: pushes_after(st),
-        write_file: Some((file, st.draft.message() + "\n")),
+        write_file: Some((file, st.session.draft.message() + "\n")),
         record: Some(UndoKind::Commit { amend }),
         ..JobSpec::new(label.into(), cmds)
     };
@@ -88,7 +88,7 @@ pub(super) fn prefill(st: &mut AppState) {
 /// ends any other way than a Glowfly commit. A draft the user wrote is never replaced.
 fn merge_message(st: &mut AppState) {
     let m = st.snap.as_ref().and_then(|s| s.merge_message.clone());
-    let d = &mut st.draft;
+    let d = &mut st.session.draft;
     match (m, d.merge_msg.clone()) {
         (Some(m), held) if !d.amend => {
             let fresh = held.is_none() && d.is_blank();
@@ -113,7 +113,7 @@ fn merge_message(st: &mut AppState) {
 /// draft still holds the old one untouched.
 pub(super) fn apply_template(st: &mut AppState) {
     let Some(t) = st.snap.as_ref().and_then(|s| s.commit_template.as_ref()) else { return };
-    let d = &mut st.draft;
+    let d = &mut st.session.draft;
     if d.amend {
         return;
     }

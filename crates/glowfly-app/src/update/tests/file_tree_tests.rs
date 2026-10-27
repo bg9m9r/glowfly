@@ -138,7 +138,7 @@ fn next_change_walks_the_tree_and_opens_collapsed_folders() {
     // A step into a file of a collapsed folder opens the folder.
     toggle(&mut st, FileListId::Unstaged, "src");
     assert_eq!(diff_nav::next_file(&st, &un("a.txt"), -1), Some(un("src/b.txt")), "folds don't hide files from stepping");
-    st.diff = Some((un("a.txt"), empty_diff().into()));
+    st.session.diff.view = Some((un("a.txt"), empty_diff().into()));
     let fx = run(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1)));
     assert_eq!(loaded(&fx), Some(&un("src/b.txt")));
     assert!(!st.view.file_folds.is_closed(FileListId::Unstaged, "src"));
@@ -162,7 +162,7 @@ fn commit_details_walk_in_tree_order() {
     let flat: Vec<&str> = detail.files.iter().map(|f| f.path.as_str()).collect();
     assert_eq!(flat, ["a.txt", "a/b.txt"], "git's order");
     st.selection = crate::state::Selection::Commit(head);
-    st.detail = Some(detail);
+    st.session.detail = Some(detail);
     let c = |p: &str| DiffTarget::Commit(head, p.into());
     assert_eq!(diff_nav::next_file(&st, &c("a/b.txt"), 1), Some(c("a.txt")), "the folder first");
     assert_eq!(crate::state::file_folds::list_of(&st, &c("a.txt")), Some(FileListId::Commit));
@@ -184,7 +184,7 @@ fn s_moves_on_to_the_tree_neighbour() {
     drive(&mut st, Msg::Shortcut(KeyAction::Stage));
     assert!(st.snap.as_ref().unwrap().staged.iter().any(|f| f.path == "src/c.txt"));
     // In git's order src/c.txt is last (src/b.txt above it); in the tree a.txt follows it.
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&un("a.txt")));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&un("a.txt")));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

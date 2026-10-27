@@ -64,7 +64,7 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
                     st.toast(true, text, now);
                     // The file is back, so Open and Show become available without reselecting,
                     // in the commit detail, a comparison and the file history.
-                    if let Some(d) = st.detail.as_mut() {
+                    if let Some(d) = st.session.detail.as_mut() {
                         d.absent.remove(&path);
                     }
                     if let Some(h) = st.session.history.view.as_mut() {

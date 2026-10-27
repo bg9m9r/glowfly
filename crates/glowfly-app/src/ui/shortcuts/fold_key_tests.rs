@@ -58,7 +58,7 @@ fn press(h: &mut Harness<'static, Keys>, m: Modifiers) -> Vec<&'static str> {
 fn with_diff() -> AppState {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), empty.into()));
+    st.session.diff.view = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), empty.into()));
     st
 }
 

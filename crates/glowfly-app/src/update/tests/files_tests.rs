@@ -116,13 +116,13 @@ fn restored_toasts_and_refreshes() {
     let oid = head(&dir);
     let mut detail = repo::commit_detail(&dir, oid).unwrap();
     detail.absent.insert("a.txt".into());
-    st.detail = Some(detail);
+    st.session.detail = Some(detail);
 
     let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     let toast = st.toasts.last().expect("a toast");
     assert!(toast.ok && toast.text.contains("a.txt") && toast.text.contains(&short(oid)), "{}", toast.text);
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
-    assert!(st.detail.as_ref().unwrap().in_workdir("a.txt"), "Open and Show become available");
+    assert!(st.session.detail.as_ref().unwrap().in_workdir("a.txt"), "Open and Show become available");
     finish(&mut st, fx);
 
     let fx =

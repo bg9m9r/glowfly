@@ -21,8 +21,8 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         RepoMsg::Open(path) => super::tabs::open(st, path, fx),
         RepoMsg::Refresh => {
             // Keys or allowed signers may have changed outside Glowfly.
-            st.signatures.clear();
-            st.conflict_checks.invalidate();
+            st.session.reads.signatures.clear();
+            st.session.reads.conflict_checks.invalidate();
             super::refresh::reload(st, fx);
             super::forge::refresh(st, true, false, now, fx);
         }
@@ -74,19 +74,19 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             match result {
                 Ok(d) => {
                     let keys = st.forge.as_ref().map(|f| f.issue_refs(&d.message)).unwrap_or_default();
-                    st.detail = Some(d);
+                    st.session.detail = Some(d);
                     super::signatures::want(st, oid, fx);
                     super::forge::want_issues(st, keys, fx);
                 }
                 Err(e) => {
-                    st.detail = None;
+                    st.session.detail = None;
                     st.log(false, e);
                 }
             }
         }
         RepoMsg::OpenDiff(target) => open_file_diff(st, target, fx),
         RepoMsg::DiffLoaded { target, reload, generation, result, lfs } => {
-            if generation != st.diff_gen {
+            if generation != st.session.diff.generation {
                 return; // superseded: another file was opened, the diff closed, or a newer reload sent
             }
             st.view.diff_opening = None;
@@ -106,13 +106,13 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     }
                     // The line selection survives only a reload that brings back the same diff.
                     // Only the text counts: a provisional or pending highlight doesn't make it differ.
-                    let same =
-                        reload && st.diff.as_ref().is_some_and(|(t, old)| *t == target && old.binary == d.binary && old.hunks == d.hunks);
+                    let shown = st.session.diff.view.as_ref();
+                    let same = reload && shown.is_some_and(|(t, old)| *t == target && old.binary == d.binary && old.hunks == d.hunks);
                     if !same {
                         st.view.diff_lines.clear();
                     }
                     // Folds opened in another file don't apply to this one.
-                    if !matches!(&st.diff, Some((t, _)) if *t == target) {
+                    if !matches!(shown, Some((t, _)) if *t == target) {
                         st.view.diff_expanded.clear();
                     }
                     // A different file opens at the top (or its first change block, or the hunk kept
@@ -136,22 +136,22 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                         st.view.diff_cursor = None;
                     }
                     if reload {
-                        super::highlight::keep_finished(st.diff.as_ref(), &target, &mut d);
+                        super::highlight::keep_finished(st.session.diff.view.as_ref(), &target, &mut d);
                     }
                     // A step landed: its file list shows the file once.
                     if landing.is_some() {
                         st.view.file_reveal = Some((target.clone(), generation));
                     }
                     super::lfs::diff_loaded(st, &target, lfs);
-                    st.diff = Some((target, std::sync::Arc::new(d)));
-                    st.diff_shown_gen = generation;
+                    st.session.diff.view = Some((target, std::sync::Arc::new(d)));
+                    st.session.diff.shown_gen = generation;
                     super::highlight::schedule(st, fx);
                     super::diff_gaps::diff_shown(st, fx);
                     super::diff_preview::diff_shown(st, fx);
                 }
                 // A reload that finds no changes left simply closes the diff.
                 Err(_) if reload => {
-                    st.diff = None;
+                    st.session.diff.view = None;
                     st.view.diff_lines.clear();
                     st.view.diff_expanded.clear();
                     st.view.diff_open_hunk = None;
@@ -214,22 +214,15 @@ fn reload_shown_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 fn request_diff(st: &mut AppState, fx: &mut Vec<Effect>, reload: bool) {
-    if let (Some(workdir), Some((target, diff))) = (st.workdir(), st.diff.as_ref()) {
+    if let (Some(workdir), Some((target, diff))) = (st.workdir(), st.session.diff.view.as_ref()) {
         let target = target.clone();
         let highlighted = diff.highlight.is_some() || diff.whole.as_ref().is_some_and(|w| w.diff.highlight.is_some());
         let previous = highlighted.then(|| std::sync::Arc::clone(diff));
-        let generation = next_diff_gen(st);
+        let generation = st.session.diff.next();
         let ignore_whitespace = st.settings.diff_ignore_whitespace;
         let whole_file = st.settings.diff_mode == DiffMode::WholeFile;
         fx.push(Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file });
     }
-}
-
-/// Starts a new diff request: results still in flight, and hunk operations aimed at the diff
-/// on screen, are stale from now on.
-fn next_diff_gen(st: &mut AppState) -> u64 {
-    st.diff_gen += 1;
-    st.diff_gen
 }
 
 /// Opens a file's diff from a list (closing file history and blame, and the pull request panel
@@ -252,7 +245,7 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
     st.view.diff_open_line = None;
     st.view.diff_cursor = None;
     if let Some(workdir) = st.workdir() {
-        let generation = next_diff_gen(st);
+        let generation = st.session.diff.next();
         let ignore_whitespace = st.settings.diff_ignore_whitespace;
         let whole_file = st.settings.diff_mode == DiffMode::WholeFile;
         st.view.diff_opening = Some(target.clone());
@@ -262,7 +255,7 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
 
 /// Closes the diff; a load still in flight must not reopen it.
 pub(super) fn close_diff(st: &mut AppState) {
-    st.diff = None;
+    st.session.diff.view = None;
     st.view.diff_lines.clear();
     st.view.diff_expanded.clear();
     st.view.diff_open_hunk = None;
@@ -272,7 +265,7 @@ pub(super) fn close_diff(st: &mut AppState) {
     st.view.diff_cursor = None;
     st.view.diff_opening = None;
     st.session.diff_preview = None;
-    next_diff_gen(st);
+    st.session.diff.next();
 }
 
 fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, fx: &mut Vec<Effect>) {
@@ -297,7 +290,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             let label = st.tabs.get(st.active_tab).and_then(|t| t.label.as_deref());
             fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Glowfly", label.unwrap_or(&snap.name)))));
             st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
-            st.detail = None;
+            st.session.detail = None;
             close_diff(st);
             super::conflict::close(st);
             super::history::close(st);
@@ -308,7 +301,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             super::journal::close(st);
             st.session.gitflow_panel = false;
             st.session.gitflow_resume = None;
-            st.draft = CommitDraft::default();
+            st.session.draft = CommitDraft::default();
             st.undo = Default::default();
             st.view.scroll_to_row = Some(0);
             super::tabs::forget_repo_reads(st);
@@ -323,7 +316,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
                 let still_there = snap.row_of.contains_key(&oid) || snap.stashes.iter().any(|s| s.oid == oid) || in_pr;
                 if !still_there {
                     st.selection = Selection::None;
-                    st.detail = None;
+                    st.session.detail = None;
                 }
             }
             if matches!(st.selection, Selection::Commits(_)) {
@@ -382,7 +375,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
 /// Selects the WIP row, asking for the issue the checked-out branch names.
 pub(super) fn select_wip(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.selection = Selection::Wip;
-    st.detail = None;
+    st.session.detail = None;
     let key = st.snap.as_ref().and_then(|s| s.head_branch.clone()).and_then(|b| st.forge.as_ref().and_then(|f| f.branch_issue(&b)));
     super::forge::want_issues(st, key.into_iter().collect(), fx);
 }

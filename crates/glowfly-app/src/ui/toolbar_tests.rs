@@ -257,9 +257,9 @@ pub(super) fn variant(case: usize, labels: bool, name: &str) -> (AppState, PathB
             snap.head_branch = Some(long);
             if case == 4 {
                 let request = current_request(snap).expect("the long branch compares with main");
-                let generation = st.conflict_checks.start().unwrap();
+                let generation = st.session.reads.conflict_checks.start().unwrap();
                 let result = Ok(Prediction::Conflicts(vec!["a.txt".into(); 12]));
-                st.conflict_checks.finish(generation, ConflictReport { request, result });
+                st.session.reads.conflict_checks.finish(generation, ConflictReport { request, result });
             }
         }
         2 => snap.head_branch = None,

@@ -23,7 +23,7 @@ fn target(staged: bool, path: &str) -> DiffTarget {
 
 /// The file the keys act on: the one still opening, else the one on screen.
 pub(super) fn cursor(st: &AppState) -> Option<&DiffTarget> {
-    st.view.diff_opening.as_ref().or(st.diff.as_ref().map(|(t, _)| t))
+    st.view.diff_opening.as_ref().or(st.session.diff.view.as_ref().map(|(t, _)| t))
 }
 
 /// Where `t` sits in `files`, when it is a diff of that list's kind.
@@ -71,7 +71,7 @@ pub(super) fn neighbour(st: &AppState, snap: &Snapshot, staged: bool, path: &str
 fn open(st: &mut AppState, t: DiffTarget, fx: &mut Vec<Effect>) {
     super::repo::open_file_diff(st, t.clone(), fx);
     // After the open, which clears it.
-    st.view.file_reveal = Some((t, st.diff_gen));
+    st.view.file_reveal = Some((t, st.session.diff.generation));
 }
 
 /// Up (`down: false`) or Down in the focused list: the file above or below the one the keys

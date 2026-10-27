@@ -225,10 +225,10 @@ fn delete_staged_new_file_asks_to_unstage() {
 fn unstage_delete_results() {
     let (mut st, dir) = loaded("wf-unstage-delete-done");
     let op = || FileOp::UnstageDelete { path: "s.txt".into(), mode: DeleteMode::Permanent };
-    st.diff = Some((DiffTarget::Staged("s.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Staged("s.txt".into()), empty_diff().into()));
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::deleted(Deleted::Permanently)) }));
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Deleted s.txt and removed it from the staging area."));
-    assert!(st.diff.is_none(), "the staged diff of the deleted file is closed");
+    assert!(st.session.diff.view.is_none(), "the staged diff of the deleted file is closed");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
 
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Err("boom".into()) }));
@@ -298,13 +298,13 @@ fn rename_or_delete_closes_the_old_paths_diff() {
             WorkFileOk::Written { ignored: false, warnings: vec![] },
         ),
     ] {
-        st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
+        st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
         run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op.clone(), result: Ok(ok.clone()) }));
-        assert!(st.diff.is_none(), "{op:?}");
+        assert!(st.session.diff.view.is_none(), "{op:?}");
 
-        st.diff = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff().into()));
+        st.session.diff.view = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff().into()));
         run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: Ok(ok) }));
-        assert!(st.diff.is_some());
+        assert!(st.session.diff.view.is_some());
     }
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Renamed a.txt to b.txt."));
     let _ = std::fs::remove_dir_all(&dir);

@@ -115,7 +115,7 @@ fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(old) = m.compare_ends() else { return };
     m.swapped = !m.swapped;
     m.changes = None;
-    if let Some((DiffTarget::Between(a, b, _), _)) = &st.diff
+    if let Some((DiffTarget::Between(a, b, _), _)) = &st.session.diff.view
         && (*a, *b) == old
     {
         super::repo::close_diff(st);
@@ -149,7 +149,7 @@ pub(super) fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
         Selection::Commits(_) | Selection::VsWorkdir(_) => {
             let vs_workdir = matches!(new, Selection::VsWorkdir(_));
             st.selection = new;
-            st.detail = None;
+            st.session.detail = None;
             super::repo::close_diff(st);
             super::conflict::close(st);
             super::history::close(st);
@@ -168,7 +168,7 @@ pub(super) fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
         }
         Selection::None => {
             st.selection = new;
-            st.detail = None;
+            st.session.detail = None;
             super::repo::close_diff(st);
         }
     }
@@ -205,7 +205,7 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
         Selection::Commits(n) => n.stack_oids().unwrap_or_default(),
         _ => &[],
     };
-    if let Some((DiffTarget::Commit(o, _), _)) = &st.diff
+    if let Some((DiffTarget::Commit(o, _), _)) = &st.session.diff.view
         && old_stack.contains(o)
         && !new_stack.contains(o)
         && matches!(new, Selection::Commits(_))
@@ -217,7 +217,7 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
         _ => None,
     };
     if new_ends != old_ends
-        && let (Some((from, to)), Some((DiffTarget::Between(a, b, _), _))) = (old_ends, &st.diff)
+        && let (Some((from, to)), Some((DiffTarget::Between(a, b, _), _))) = (old_ends, &st.session.diff.view)
         && (*a, *b) == (from, to)
     {
         super::repo::close_diff(st);
@@ -234,13 +234,13 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
         }
         Selection::Commit(o) => {
             st.selection = Selection::Commit(o);
-            st.detail = None;
+            st.session.detail = None;
             fx.push(Effect::LoadDetail { workdir: snap.workdir.clone(), oid: o });
             super::line_counts::want_commit(st, o, fx);
         }
         Selection::None | Selection::Wip | Selection::VsWorkdir(_) => {
             st.selection = Selection::None;
-            st.detail = None;
+            st.session.detail = None;
         }
     }
 }

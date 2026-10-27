@@ -34,9 +34,9 @@ fn conflicts_on(st: &mut AppState, dir: &Path, branch: &str) {
     reload(st, dir, &LoadOptions::all(500));
     let request: CheckRequest = current_request(st.snap.as_ref().unwrap()).expect("compares with main");
     assert_eq!((request.target.name.as_str(), request.target.kind), ("main", TargetKind::DefaultBranch));
-    let generation = st.conflict_checks.start().unwrap();
+    let generation = st.session.reads.conflict_checks.start().unwrap();
     let result = Ok(Prediction::Conflicts(FILES.iter().map(|p| p.to_string()).collect()));
-    st.conflict_checks.finish(generation, ConflictReport { request, result });
+    st.session.reads.conflict_checks.finish(generation, ConflictReport { request, result });
 }
 
 /// The chip (the popover's heading has the same text).

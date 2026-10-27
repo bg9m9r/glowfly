@@ -70,7 +70,7 @@ fn graph_two_commits_selected() {
     let target = DiffTarget::Between(older, newer, "app.txt".into());
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     render("graph_two_commits_diff", st, true);
     remove_fixture(&dir);
 }
@@ -198,7 +198,7 @@ fn esc_collapses_after_closing_the_diff() {
     let (mut st, _) = with_selection(ThemeChoice::Dark, "multi-esc", &["Add login page", "Search results page"]);
     let (older, newer) = multi(&st).compare_ends().unwrap();
     let target = DiffTarget::Between(older, newer, "app.txt".into());
-    st.diff = Some((target.clone(), repo::load_diff(&dir, &target).unwrap().into()));
+    st.session.diff.view = Some((target.clone(), repo::load_diff(&dir, &target).unwrap().into()));
     let mut h = esc_harness(st);
     press_esc(&mut h);
     assert!(matches!(&h.state().1[..], [Msg::Repo(RepoMsg::CloseDiff)]));

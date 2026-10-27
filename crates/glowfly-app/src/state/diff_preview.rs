@@ -24,6 +24,6 @@ impl DiffPreview {
 
 /// The loaded sides when they are for the diff on screen.
 pub fn shown(st: &AppState) -> Option<&Arc<BinarySides>> {
-    let (target, _) = st.diff.as_ref()?;
+    let (target, _) = st.session.diff.view.as_ref()?;
     st.session.diff_preview.as_ref().filter(|p| p.target == *target)?.loaded()
 }

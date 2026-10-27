@@ -58,7 +58,7 @@ fn drag(h: &mut H, from: Pos2, to: Pos2) -> Vec<DiffMsg> {
 /// and releases.
 fn drag_test(layout: DiffLayout, name: &str, from_x: f32, to_x: f32) {
     let (st, dir) = with_diff(layout, "diff-drag");
-    let lines = &st.diff.as_ref().unwrap().1.hunks[0].lines;
+    let lines = &st.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
     let at = |origin: char, text: &str| lines.iter().position(|l| l.origin == origin && l.text == text).unwrap();
     let (fix, new_line) = (at('-', "fix"), at('+', "new line"));
     let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
@@ -80,7 +80,7 @@ fn drag_test(layout: DiffLayout, name: &str, from_x: f32, to_x: f32) {
     );
     assert!(sent.iter().any(|m| matches!(m, DiffMsg::DragDiffLine { hunk: 0, line } if *line == new_line)), "and reaches +new line");
     let sel = &h.state().0.view.diff_lines;
-    let lines = &h.state().0.diff.as_ref().unwrap().1.hunks[0].lines;
+    let lines = &h.state().0.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
     let changed: Vec<usize> = (fix..=new_line).filter(|&i| matches!(lines[i].origin, '+' | '-')).collect();
     assert_eq!(sel.lines.iter().copied().collect::<Vec<_>>(), changed);
     assert!(sel.dragging().is_some());

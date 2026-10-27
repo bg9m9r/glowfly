@@ -45,7 +45,7 @@ fn status_refresh_keeps_pending_step() {
     // b.bin has nothing to land on, so the step goes on to c.txt.
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));
     assert_eq!(st.view.diff_landing, None);
-    assert!(matches!(&st.view.file_reveal, Some((t, g)) if *t == unstaged("c.txt") && *g == st.diff_shown_gen));
+    assert!(matches!(&st.view.file_reveal, Some((t, g)) if *t == unstaged("c.txt") && *g == st.session.diff.shown_gen));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

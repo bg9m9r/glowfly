@@ -86,7 +86,7 @@ fn details_branch_row() {
     let oid = tip(&dir, "topic");
     assert_eq!(st.snap.as_ref().unwrap().commit_branch(oid).map(|(k, _)| k), Some("topic"));
     st.selection = Selection::Commit(oid);
-    st.detail = Some(repo::commit_detail(&dir, oid).unwrap());
+    st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let mut h = harness(st, true);
     h.run();
     let right = h.query_all_by_label("topic").filter_map(|n| n.bounding_box()).filter(|r| r.x0 > 900.0).count();

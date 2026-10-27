@@ -18,7 +18,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Tabs
 
-- The active tab's repository data lives directly in `AppState`; switching tabs parks it in `state::tabs::Parked` and restores the other tab's. The views with generation counters move as one `RepoSession`, whose counters on return move past both tabs' (`RepoSession::resume_after`).
+- The active tab's repository data lives directly in `AppState`; switching tabs parks it in `state::tabs::Parked` and restores the other tab's. The views with generation counters, the open diff (`DiffSlot`), the commit detail and draft, and the repository reads (`RepoReads`) move as one `RepoSession`, whose counters on return move past both tabs' (`RepoSession::resume_after`). What stays in `Parked` (snapshot, selection, forge, undo, searches, view fields, the Create issue form) is copied by hand.
 - Results of repository-scoped effects (`Effect::scope`) come back as `Msg::Scoped`.
 - If their tab is no longer active, only what the area's `on_inactive` returns is applied (a log line, an undo entry for that tab, a dialog's result); the rest is dropped.
 - Each tab's activity log lives outside `Parked`, in `Tab::log` (the active one's in `AppState::log`): `switch` and `activate` swap it, so a restored tab that hasn't loaded still gets lines.

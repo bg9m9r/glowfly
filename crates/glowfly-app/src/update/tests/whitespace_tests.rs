@@ -38,7 +38,7 @@ fn ws_repo(name: &str) -> PathBuf {
 }
 
 fn hunks(st: &AppState) -> Option<usize> {
-    st.diff.as_ref().map(|(_, d)| d.hunks.len())
+    st.session.diff.view.as_ref().map(|(_, d)| d.hunks.len())
 }
 
 #[test]
@@ -46,7 +46,7 @@ fn toggle_saves_and_reloads_the_open_diff() {
     let dir = scratch_repo("ws-toggle");
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk().into()));
     assert!(run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 1, how: Only })).is_empty());
     assert!(!st.view.diff_lines.is_empty());
     assert!(st.hunk_ops_gen().is_some());
@@ -77,7 +77,7 @@ fn whitespace_toggle_filters_a_real_repo() {
     assert!(hunks(&st) >= Some(1));
 
     drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&ws), "the diff stays open");
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&ws), "the diff stays open");
     assert_eq!(hunks(&st), Some(0));
 
     drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(false)));
@@ -123,7 +123,7 @@ fn a_load_started_before_the_toggle_is_dropped() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(a.clone())));
-    let before = st.diff.clone();
+    let before = st.session.diff.view.clone();
 
     // ws.txt is requested with whitespace shown; the toggle lands before its result.
     let held = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("ws.txt".into()))));
@@ -132,7 +132,7 @@ fn a_load_started_before_the_toggle_is_dropped() {
         let late = crate::runner::execute(e).expect("diff result");
         run(&mut st, late);
     }
-    assert_eq!(st.diff, before, "the stale result is dropped");
+    assert_eq!(st.session.diff.view, before, "the stale result is dropped");
     assert_eq!(st.hunk_ops_gen(), None);
 
     // The toggle asks again for the file still opening, and that lands.
@@ -140,7 +140,7 @@ fn a_load_started_before_the_toggle_is_dropped() {
         let loaded = crate::runner::execute(e).expect("diff result");
         run(&mut st, loaded);
     }
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&DiffTarget::Unstaged("ws.txt".into())));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&DiffTarget::Unstaged("ws.txt".into())));
     assert!(st.hunk_ops_gen().is_some());
     let _ = std::fs::remove_dir_all(&dir);
 }

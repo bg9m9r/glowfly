@@ -63,7 +63,7 @@ impl PreviewTextures {
 
 /// Draws the binary diff on screen's body.
 pub(super) fn show(ui: &mut Ui, st: &AppState, tex: &mut PreviewTextures) {
-    let (Some(sides), Some((target, _))) = (diff_preview::shown(st), st.diff.as_ref()) else {
+    let (Some(sides), Some((target, _))) = (diff_preview::shown(st), st.session.diff.view.as_ref()) else {
         tex.clear();
         empty_state::binary_file(ui);
         return;

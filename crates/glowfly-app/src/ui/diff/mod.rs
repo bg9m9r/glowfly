@@ -114,7 +114,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     if let Some(p) = st.for_diff() {
         return super::content_fetch::show(ui, st, p, msgs);
     }
-    if st.diff.is_none() {
+    if st.session.diff.view.is_none() {
         // A scroll target for a diff that is gone is dropped, not kept for the next one.
         st.view.diff_scroll_to_row = None;
         return;
@@ -137,7 +137,7 @@ fn record_rows(ui: &mut Ui, st: &mut AppState, cache: &mut DiffRowsCache, scroll
 /// when it loaded) and returns the first visible row and how many rows fit. Lines are
 /// selectable in every diff unless line operations are blocked.
 fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> Option<(usize, usize)> {
-    let (target, diff) = st.diff.as_ref()?;
+    let (target, diff) = st.session.diff.view.as_ref()?;
     let whole = whole_file::shown(diff, st.settings.diff_mode);
     // Highlighting always comes with the diff; the setting only decides whether to paint it.
     let hl = whole.map_or(diff.highlight.as_ref(), |w| w.diff.highlight.as_ref()).filter(|_| st.settings.syntax_highlighting);
@@ -156,7 +156,7 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
     let expanded = &st.view.diff_expanded;
     let opened = whole.map(|w| whole_file::opened(w, expanded)).unwrap_or_default();
     let layout = st.settings.diff_layout;
-    let generation = (st.diff_gen, st.diff_shown_gen);
+    let generation = (st.session.diff.generation, st.session.diff.shown_gen);
     // The gaps between hunks fill in only in the hunk view, and never with whitespace hidden.
     let fill = whole.is_none() && !st.settings.diff_ignore_whitespace;
     cache.refresh(Source { diff, whole, generation, layout, expanded, gaps: fill, tab: style.tab });
@@ -269,7 +269,7 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
         lfs_note::pointer_bar(ui, msgs);
     }
     {
-        let Some((_, diff)) = &st.diff else { return };
+        let Some((_, diff)) = &st.session.diff.view else { return };
         if diff.binary {
             preview::show(ui, st, &mut cache.diff_images);
             return;

@@ -248,10 +248,10 @@ fn run_theme_saves_once() {
 fn run_search_commits_closes_diff_and_focuses() {
     let (mut st, dir) = repo_with_topic("palette-search");
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
-    assert!(st.diff.is_some());
+    assert!(st.session.diff.view.is_some());
     open_palette(&mut st);
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::SearchCommits)));
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     assert!(st.view.show_search);
     assert!(st.view.focus_search);
     assert!(st.palette.is_none());

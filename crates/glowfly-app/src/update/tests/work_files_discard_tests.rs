@@ -162,17 +162,17 @@ fn discard_toasts() {
 #[test]
 fn discard_failure_logs_and_closes_diff() {
     let (mut st, dir) = loaded("wfd-fail");
-    st.diff = Some((DiffTarget::Unstaged("u.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("u.txt".into()), empty_diff().into()));
     let ok = Ok(WorkFileOk::deleted(Deleted::Trashed));
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", DeleteMode::Trash), result: ok }));
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
 
-    st.diff = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff().into()));
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", DeleteMode::Trash), result: Err("boom".into()) }));
     assert_eq!(last_log(&st), "Could not discard u.txt: boom");
     assert!(st.log.last().is_some_and(|l| !l.ok));
-    assert!(st.diff.is_some(), "another file's diff stays open");
+    assert!(st.session.diff.view.is_some(), "another file's diff stays open");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

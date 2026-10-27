@@ -220,7 +220,7 @@ pub(super) fn refresh_status(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// The file whose working-tree, index or commit-to-working-tree diff is open.
 pub(super) fn open_file(st: &AppState) -> Option<String> {
-    st.diff.as_ref().filter(|(t, _)| t.follows_workdir()).map(|(t, _)| t.path().to_owned())
+    st.session.diff.view.as_ref().filter(|(t, _)| t.follows_workdir()).map(|(t, _)| t.path().to_owned())
 }
 
 /// Whether the diff on screen must be read again after a status read that found the open file
@@ -232,13 +232,13 @@ pub(super) fn diff_changed(st: &mut AppState, stamp: Option<u64>) -> bool {
     if must_reload(st) {
         return true;
     }
-    st.diff.as_ref().is_some_and(|(target, _)| target.follows_workdir()) && (stamp.is_none() || stamp != last)
+    st.session.diff.view.as_ref().is_some_and(|(target, _)| target.follows_workdir()) && (stamp.is_none() || stamp != last)
 }
 
 /// Whether the diff must be read again whatever its file's stamp: no diff is open, a request is
 /// outstanding (a hunk operation waits for the reload), or the file history's entry is missing.
 pub(super) fn must_reload(st: &AppState) -> bool {
-    st.diff.is_none() || st.diff_gen != st.diff_shown_gen || super::history::missing_diff(st).is_some()
+    st.session.diff.view.is_none() || st.session.diff.generation != st.session.diff.shown_gen || super::history::missing_diff(st).is_some()
 }
 
 pub(super) fn set_status(snap: &mut Snapshot, status: Status, submodules: Option<Vec<SubmoduleInfo>>) {

@@ -96,7 +96,7 @@ fn merging_after_a_commit(name: &str) -> (AppState, PathBuf) {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("b.txt".into())));
-    st.draft.summary = "add b".into();
+    st.session.draft.summary = "add b".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     drive(&mut st, Msg::git("Merge", &["merge", "other"]));
     assert!(conflicted(&st, "a.txt"));
@@ -193,7 +193,7 @@ fn committing_the_merge_expires_the_resolution() {
     let (mut st, dir) = merging_after_a_commit("conflict-undo-committed");
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 0, side: Side::Theirs });
     drive(&mut st, Msg::Conflict(ConflictMsg::SaveConflict));
-    st.draft.summary = "Merge other".into();
+    st.session.draft.summary = "Merge other".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert!(matches!(st.undo.undo.last(), Some(Action::Moved { .. })), "{:?}", st.undo.undo);
 

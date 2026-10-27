@@ -60,7 +60,7 @@ pub(super) fn retip(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
 
 /// Whether the diff on screen is one of the open pull request's files or commits.
 pub(super) fn shows_diff(st: &AppState) -> bool {
-    match (&st.session.pull_request.view, &st.diff) {
+    match (&st.session.pull_request.view, &st.session.diff.view) {
         (Some(v), Some((t, _))) => v.shows(t),
         _ => false,
     }

@@ -46,7 +46,8 @@ fn draft(summary: &str) -> CommitDraft {
 
 /// Parks a draft with tab `i`, as switching away from it would.
 fn park_draft(st: &mut AppState, i: usize, summary: &str) {
-    st.tabs[i].parked = Some(Box::new(Parked { draft: draft(summary), ..Default::default() }));
+    st.tabs[i].parked =
+        Some(Box::new(Parked { session: RepoSession { draft: draft(summary), ..Default::default() }, ..Default::default() }));
 }
 
 /// The open confirmation's title and body.
@@ -64,7 +65,7 @@ fn accept(st: &mut AppState) -> Vec<Effect> {
 #[test]
 fn closing_a_tab_with_a_draft_asks_first() {
     let mut st = fake_tabs(&["a", "b"], 1);
-    st.draft.summary = "wip".into();
+    st.session.draft.summary = "wip".into();
     let fx = send(&mut st, TabsMsg::CloseTab(1));
     assert_eq!(st.tabs.len(), 2, "nothing closes yet");
     let (title, body) = confirm(&st).expect("a confirmation");
@@ -84,11 +85,11 @@ fn closing_a_tab_with_a_draft_asks_first() {
 #[test]
 fn ctrl_w_and_bulk_closes_ask_too() {
     let mut st = fake_tabs(&["a", "b", "c"], 0);
-    st.draft.summary = "wip".into();
+    st.session.draft.summary = "wip".into();
     send(&mut st, TabsMsg::CloseTab(usize::MAX));
     assert!(confirm(&st).is_some_and(|(t, b)| t == "Close tab?" && b.starts_with("a holds")), "Ctrl+W asks");
     st.modal = None;
-    st.draft = CommitDraft::default();
+    st.session.draft = CommitDraft::default();
 
     park_draft(&mut st, 1, "fix: b");
     park_draft(&mut st, 2, "fix: c");
@@ -110,7 +111,7 @@ fn ctrl_w_and_bulk_closes_ask_too() {
 #[test]
 fn blank_and_template_drafts_close_at_once() {
     let mut st = fake_tabs(&["a", "b", "c", "d"], 3);
-    st.draft.summary = "   ".into();
+    st.session.draft.summary = "   ".into();
     let fx = send(&mut st, TabsMsg::CloseTab(3));
     assert!(st.modal.is_none() && saves(&fx) > 0, "a whitespace-only summary is nothing to lose");
     assert_eq!(names(&st), ["a", "b", "c"]);
@@ -118,7 +119,7 @@ fn blank_and_template_drafts_close_at_once() {
     let template = CommitTemplate { summary: "feat:".into(), description: "# why".into(), comment_char: '#' };
     let mut untouched = CommitDraft::default();
     untouched.apply_template(&template);
-    st.tabs[1].parked = Some(Box::new(Parked { draft: untouched, ..Default::default() }));
+    st.tabs[1].parked = Some(Box::new(Parked { session: RepoSession { draft: untouched, ..Default::default() }, ..Default::default() }));
     send(&mut st, TabsMsg::CloseTab(1));
     assert!(st.modal.is_none(), "an untouched template is nothing to lose");
     assert_eq!(names(&st), ["a", "c"]);
@@ -157,8 +158,7 @@ fn user_conflict_choices_ask_but_automatic_ones_do_not() {
     let mut st = fake_tabs(&["a", "b"], 0);
     let picks = vec![ChunkPick::Sides(Choice::Theirs), ChunkPick::Sides(Choice::Ours)];
     let parked = Parked {
-        draft: draft("wip"),
-        session: RepoSession { conflict: Gen::open(conflict(picks, vec![None, None])), ..Default::default() },
+        session: RepoSession { conflict: Gen::open(conflict(picks, vec![None, None])), draft: draft("wip"), ..Default::default() },
         ..Default::default()
     };
     st.tabs[1].parked = Some(Box::new(parked));
@@ -189,13 +189,13 @@ fn a_clean_edit_alone_asks_but_restored_picks_do_not() {
 #[test]
 fn cancel_keeps_everything() {
     let mut st = fake_tabs(&["a", "b"], 1);
-    st.draft.summary = "wip".into();
+    st.session.draft.summary = "wip".into();
     send(&mut st, TabsMsg::CloseTab(1));
     assert!(st.modal.is_some());
     let fx = update(&mut st, Msg::CloseModal, Instant::now());
     assert!(st.modal.is_none() && saves(&fx) == 0);
     assert_eq!((names(&st), st.active_tab), (vec!["a".to_owned(), "b".into()], 1));
-    assert_eq!(st.draft.summary, "wip");
+    assert_eq!(st.session.draft.summary, "wip");
     assert!(st.closed_tabs.is_empty());
 }
 

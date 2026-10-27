@@ -159,7 +159,7 @@ fn the_open_diff_is_read_again_only_when_its_file_is_covered_and_changed() {
     let (mut st, dir, workdir) = opened("paths-diff");
     std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
-    assert!(st.diff.is_some());
+    assert!(st.session.diff.view.is_some());
     let ask = update(&mut st, changed(&workdir, false, Some(&["a.txt"])), Instant::now());
     let fx = run_read(&mut st, ask);
     finish(&mut st, fx);

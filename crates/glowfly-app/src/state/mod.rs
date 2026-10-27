@@ -139,6 +139,7 @@ pub mod selection;
 pub mod selection_span;
 pub mod selection_wip;
 pub mod session;
+pub mod session_reads;
 pub mod shallow;
 pub mod sign_in;
 pub mod signatures;
@@ -194,9 +195,9 @@ pub use view::{ColumnDrag, ViewState, file_folds, file_tree, frame_times};
 
 use crate::msg::Msg;
 use git2::Oid;
-use glowfly_core::repo::{CommitDetail, DiffTarget, FileDiff, Snapshot};
+use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -428,23 +429,13 @@ pub struct AppState {
     pub load_gen: u64,
     pub loading: bool,
     pub refresh: refresh::RefreshState,
-    /// The active tab's views with their generation counters, parked whole with the tab
-    /// (state/session.rs).
+    /// The active tab's per-tab state (its views with their counters, the open diff, the commit
+    /// detail and draft, the repository reads), parked whole with the tab (state/session.rs).
     pub session: session::RepoSession,
     pub selection: Selection,
-    pub detail: Option<CommitDetail>,
-    /// Shared with effects that read it (a reload, a highlight) instead of copied for them.
-    pub diff: Option<(DiffTarget, std::sync::Arc<FileDiff>)>,
-    /// Incremented for every diff request and whenever the diff on screen goes stale (closed,
-    /// replaced, or changed by a hunk operation); results of older requests are ignored.
-    pub diff_gen: u64,
-    /// The request that produced the diff on screen. Hunk operations only run while this is
-    /// `diff_gen`: otherwise a reload is on its way and the hunk indexes may no longer match.
-    pub diff_shown_gen: u64,
     /// Restacks stopped on a conflict, with the steps still to run once the banner's Continue or
     /// Skip finishes that step; keyed by working folder rather than parked with a tab.
     pub restacks: Vec<stack::PendingRestack>,
-    pub draft: CommitDraft,
     pub job: Option<RunningJob>,
     /// The active job's stop, when it can be stopped (state/job_stop.rs).
     pub job_stop: Option<job_stop::JobStop>,
@@ -466,15 +457,6 @@ pub struct AppState {
     pub dialog: dialog_guard::DialogGuard,
     pub prefs: Option<PrefsState>,
     pub forge: Option<ForgeState>,
-    /// Per-commit (files, added, deleted) for the CHANGES column.
-    pub stats: HashMap<Oid, (usize, usize, usize)>,
-    pub stats_pending: HashSet<Oid>,
-    /// Per-file line counts of commits and of the working tree (parked with the tab).
-    pub line_counts: line_counts::LineCounts,
-    /// Signature checks of the active tab's commits (parked with the tab).
-    pub signatures: signatures::Signatures,
-    /// Predicted merge conflicts of the checked-out branch (parked with the tab).
-    pub conflict_checks: conflict_check::ConflictChecks,
     /// The active tab's commit search; parked with the tab.
     pub search: search::CommitSearch,
     pub last_fetch: Instant,
@@ -486,7 +468,8 @@ pub struct AppState {
     pub sign_in: sign_in::SignInNotices,
     /// Submodule updates after jobs and the offers made on open (global, not per tab).
     pub submodules: submodules::batch::SubmoduleSession,
-    /// Git LFS: whether git-lfs is installed and banner dismissals (global), the open diff's LFS summary (parked with the tab).
+    /// Git LFS: whether git-lfs is installed and banner dismissals (global; the open diff's LFS
+    /// summary is in `session.diff`).
     pub lfs: lfs::LfsSession,
     /// The git Glowfly runs and what it can do (global): checked at startup.
     pub git: git_env::GitState,
@@ -562,12 +545,7 @@ impl AppState {
             refresh: Default::default(),
             session: Default::default(),
             selection: Selection::None,
-            detail: None,
-            diff: None,
-            diff_gen: 0,
-            diff_shown_gen: 0,
             restacks: Vec::new(),
-            draft: CommitDraft::default(),
             job: None,
             job_stop: None,
             partial: Default::default(),
@@ -581,11 +559,6 @@ impl AppState {
             dialog: Default::default(),
             prefs: None,
             forge: None,
-            stats: HashMap::new(),
-            stats_pending: HashSet::new(),
-            line_counts: Default::default(),
-            signatures: Default::default(),
-            conflict_checks: Default::default(),
             search: Default::default(),
             last_fetch: now,
             watch,

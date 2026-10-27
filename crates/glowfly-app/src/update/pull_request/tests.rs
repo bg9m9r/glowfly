@@ -108,7 +108,7 @@ fn opening_lists_the_files_from_the_merge_base() {
     assert_eq!(paths(&st), ["f.txt"]);
     assert!(out_of_sync(st.session.pull_request.view.as_ref().unwrap()).is_empty());
     assert_eq!(st.selection, selection);
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     // Opening it again changes nothing.
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::Open(7)), Instant::now());
     assert!(fx.is_empty());
@@ -126,18 +126,18 @@ fn a_file_opens_inside_the_panel() {
     let f = pr_target(&st, "f.txt");
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(f.clone())));
     assert!(st.session.pull_request.view.is_some());
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&f));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&f));
     let g = pr_target(&st, "g.txt");
     assert_eq!(crate::state::diff_nav::next_file(&st, &f, 1), Some(g.clone()));
     assert_eq!(crate::state::diff_nav::next_file(&st, &g, -1), Some(f.clone()));
     assert_eq!(crate::state::diff_nav::next_file(&st, &g, 1), None);
     // The diff's own Close leaves the panel open.
     drive(&mut st, Msg::Repo(RepoMsg::CloseDiff));
-    assert!(st.diff.is_none() && st.session.pull_request.view.is_some());
+    assert!(st.session.diff.view.is_none() && st.session.pull_request.view.is_some());
     // A working-tree file is not one of its files.
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
     assert!(st.session.pull_request.view.is_none());
-    assert!(matches!(&st.diff, Some((DiffTarget::Unstaged(p), _)) if p == "a.txt"));
+    assert!(matches!(&st.session.diff.view, Some((DiffTarget::Unstaged(p), _)) if p == "a.txt"));
     cleanup(&[&work, &bare]);
 }
 
@@ -189,7 +189,7 @@ fn a_moved_head_is_noted_until_fetched() {
     assert_eq!(paths(&st), ["f.txt"], "listed from the local tip");
     let f = pr_target(&st, "f.txt");
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(f)));
-    assert!(st.diff.is_some());
+    assert!(st.session.diff.view.is_some());
 
     drive(&mut st, Msg::Remote(RemoteMsg::Fetch("origin".into())));
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
@@ -198,7 +198,7 @@ fn a_moved_head_is_noted_until_fetched() {
     assert_eq!(v.tips.source, Some(head));
     assert!(out_of_sync(v).is_empty());
     assert_eq!(paths(&st), ["f.txt", "g.txt"]);
-    assert!(st.diff.is_none(), "the old list's diff closed");
+    assert!(st.session.diff.view.is_none(), "the old list's diff closed");
     cleanup(&[&work, &bare]);
 }
 
@@ -208,10 +208,10 @@ fn close_returns_and_drops_stale_results() {
     open(&mut st);
     let f = pr_target(&st, "f.txt");
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(f)));
-    assert!(st.diff.is_some());
+    assert!(st.session.diff.view.is_some());
     let old = st.session.pull_request.generation;
     drive(&mut st, Msg::PullRequest(PullRequestMsg::Close));
-    assert!(st.session.pull_request.view.is_none() && st.diff.is_none());
+    assert!(st.session.pull_request.view.is_none() && st.session.diff.view.is_none());
 
     open(&mut st);
     let stale = PullRequestMsg::FilesLoaded { id: 7, generation: old, result: Ok(PrCompare::NoSource) };

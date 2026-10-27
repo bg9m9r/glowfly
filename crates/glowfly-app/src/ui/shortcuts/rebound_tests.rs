@@ -28,7 +28,7 @@ fn state() -> AppState {
 
 fn with_diff(mut st: AppState) -> AppState {
     let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), empty.into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), empty.into()));
     st
 }
 

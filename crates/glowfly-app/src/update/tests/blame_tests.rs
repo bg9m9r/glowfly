@@ -61,7 +61,7 @@ fn head(st: &AppState) -> Oid {
 #[test]
 fn opening_blame_requests_a_load() {
     let (mut st, dir) = opened("blame-open");
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
     st.session.conflict.view = Some(ConflictView::loading("a.txt".into()));
     st.settings.blame = BlamePrefs { ignore_whitespace: true, moves: BlameMoves::WithinFile, wrap_lines: false };
     let fx = update(&mut st, open("a.txt", None), Instant::now());
@@ -74,7 +74,7 @@ fn opening_blame_requests_a_load() {
     );
     let v = st.session.blame.view.as_ref().expect("view open");
     assert!(v.loading && v.data.is_none() && v.error.is_none());
-    assert!(st.diff.is_none() && st.session.conflict.view.is_none());
+    assert!(st.session.diff.view.is_none() && st.session.conflict.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -85,13 +85,16 @@ fn opening_blame_from_history_keeps_it() {
     h.loading = false;
     st.session.history.view = Some(h);
     let target = DiffTarget::Commit(head(&st), "a.txt".into());
-    st.diff = Some((target.clone(), empty_diff().into()));
+    st.session.diff.view = Some((target.clone(), empty_diff().into()));
     let h = head(&st);
     update(&mut st, open("a.txt", Some(h)), Instant::now());
     assert!(st.session.blame.view.is_some() && st.session.history.view.is_some());
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&target));
     update(&mut st, Msg::Blame(BlameMsg::Close), Instant::now());
-    assert!(st.session.blame.view.is_none() && st.session.history.view.is_some() && st.diff.is_some(), "Esc returns to the history");
+    assert!(
+        st.session.blame.view.is_none() && st.session.history.view.is_some() && st.session.diff.view.is_some(),
+        "Esc returns to the history"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -4,10 +4,10 @@
 //! recorded in the tab's undo history. While File history is open, a revert of one of its
 //! entries under an older name acts on the file's current name. With whitespace changes hidden,
 //! a hunk or lines revert only the changes shown. A commit or comparison diff's hunks can't
-//! change, so reverting them leaves `diff_gen` alone and the other buttons stay valid (the
-//! status refresh that follows reloads the diff anyway). A commit-to-working-tree diff's hunks
-//! do change with the working file, so, as with staging, a revert there bumps `diff_gen`: its
-//! buttons wait for the reload, which `must_reload` then forces.
+//! change, so reverting them leaves the diff slot's `generation` alone and the other buttons
+//! stay valid (the status refresh that follows reloads the diff anyway). A commit-to-working-tree
+//! diff's hunks do change with the working file, so, as with staging, a revert there bumps the
+//! diff slot's `generation`: its buttons wait for the reload, which `must_reload` then forces.
 
 use crate::effect::Effect;
 use crate::msg::RevertWhat;
@@ -21,7 +21,7 @@ pub(super) const DIFF_CHANGED: &str = "The diff changed before the revert ran, s
 
 /// Reverts hunk `index` of the open commit or comparison diff shown at `generation`.
 pub(super) fn hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Vec<Effect>) {
-    if st.diff.as_ref().is_none_or(|(target, _)| !target.reverts_hunks()) {
+    if st.session.diff.view.as_ref().is_none_or(|(target, _)| !target.reverts_hunks()) {
         return;
     }
     if st.hunk_ops_gen() != Some(generation) {
@@ -29,7 +29,7 @@ pub(super) fn hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Ve
         return;
     }
     // Always the normal hunks, also in the whole-file view: core counts those.
-    let Some((target, diff)) = &st.diff else { return };
+    let Some((target, diff)) = &st.session.diff.view else { return };
     let Some(expected) = diff.hunks.get(index).cloned() else { return };
     let target = target.clone();
     let follows = target.follows_workdir();
@@ -40,7 +40,7 @@ pub(super) fn hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Ve
 /// Reverts the selected lines of the open commit or comparison diff, when the selection
 /// belongs to it. The selection is cleared.
 pub(super) fn lines(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some((target, _)) = &st.diff else { return };
+    let Some((target, _)) = &st.session.diff.view else { return };
     let sel = &st.view.diff_lines;
     if !target.reverts_hunks() || sel.is_empty() || sel.target.as_ref() != Some(target) {
         return;
@@ -54,7 +54,7 @@ pub(super) fn lines(st: &mut AppState, fx: &mut Vec<Effect>) {
         st.log(false, DIFF_CHANGED);
         return;
     }
-    let Some((target, diff)) = &st.diff else { return };
+    let Some((target, diff)) = &st.session.diff.view else { return };
     let Some(expected) = diff.hunks.get(st.view.diff_lines.hunk).cloned() else { return };
     let target = target.clone();
     let sel = std::mem::take(&mut st.view.diff_lines);
@@ -68,7 +68,7 @@ pub(super) fn lines(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// hunks are stale until the reload that follows lands.
 fn stale_until_reload(st: &mut AppState, follows_workdir: bool) {
     if follows_workdir {
-        st.diff_gen += 1;
+        st.session.diff.generation += 1;
     }
 }
 
@@ -84,8 +84,9 @@ pub(super) fn file(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) 
 fn push(st: &AppState, target: DiffTarget, part: RevertPart, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     let dest = dest(st, &target);
-    // Toggling the whitespace filter reloads the diff (and bumps `diff_gen`), so the indexes of
-    // a hunk or lines checked against `hunk_ops_gen` count the diff with this setting.
+    // Toggling the whitespace filter reloads the diff (and bumps the diff slot's `generation`), so
+    // the indexes of a hunk or lines checked against `hunk_ops_gen` count the diff with this
+    // setting.
     let ignore_whitespace = st.settings.diff_ignore_whitespace && !matches!(part, RevertPart::File);
     fx.push(Effect::Revert { workdir, req: RevertRequest { target, part, dest, ignore_whitespace } });
 }

@@ -44,9 +44,9 @@ fn each_tab_keeps_its_own_repository_and_draft() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     assert_eq!(st.tabs.len(), 1, "the empty start tab is reused");
-    st.draft.summary = "work in a".into();
+    st.session.draft.summary = "work in a".into();
     // A's open diff, scrolled down a few rows.
-    st.diff = Some((
+    st.session.diff.view = Some((
         DiffTarget::Unstaged("a.txt".into()),
         glowfly_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
             .into(),
@@ -57,13 +57,13 @@ fn each_tab_keeps_its_own_repository_and_draft() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
     assert!(active_is(&st, &b));
-    assert!(st.draft.summary.is_empty());
-    assert!(st.diff.is_none() && st.view.diff_scroll_to_row.is_none());
+    assert!(st.session.draft.summary.is_empty());
+    assert!(st.session.diff.view.is_none() && st.view.diff_scroll_to_row.is_none());
 
     // Switching back shows A immediately (then refreshes it) with its draft intact.
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     assert!(active_is(&st, &a));
-    assert_eq!(st.draft.summary, "work in a");
+    assert_eq!(st.session.draft.summary, "work in a");
     assert_eq!(st.view.diff_scroll_to_row, Some(6), "A's diff reopens where it was scrolled");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
 
@@ -95,14 +95,14 @@ fn results_for_other_tabs_are_dropped() {
     // cleared, and the result is still reported.
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
-    st.draft.summary = "commit me".into();
+    st.session.draft.summary = "commit me".into();
     update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now());
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     let fx = update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }), Instant::now());
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })));
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Commit succeeded"));
     let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
-    assert!(parked.draft.summary.is_empty());
+    assert!(parked.session.draft.summary.is_empty());
     cleanup(&[&a, &b]);
 }
 
@@ -267,12 +267,12 @@ fn closed(st: &AppState) -> Vec<PathBuf> {
 #[test]
 fn move_tab_keeps_the_active_repository() {
     let mut st = fake_tabs(&["a", "b", "c"], 1);
-    st.draft.summary = "wip".into();
+    st.session.draft.summary = "wip".into();
     let load_gen = st.load_gen;
     let fx = update(&mut st, Msg::Tabs(TabsMsg::MoveTab { from: 1, to: 2 }), Instant::now());
     assert_eq!(tab_names(&st), ["a", "c", "b"]);
     assert_eq!(st.active_tab, 2);
-    assert_eq!(st.draft.summary, "wip");
+    assert_eq!(st.session.draft.summary, "wip");
     assert_eq!(st.load_gen, load_gen);
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. } | Effect::Ui(UiEffect::SetTitle(_)))));
     assert_eq!(fx.len(), 1);

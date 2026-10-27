@@ -17,7 +17,7 @@ fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 
 fn with_diff() -> AppState {
     let mut st = state();
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_hunks().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), three_hunks().into()));
     st
 }
 

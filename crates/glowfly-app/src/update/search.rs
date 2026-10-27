@@ -15,7 +15,7 @@ use std::time::Instant;
 pub(super) fn handle(st: &mut AppState, msg: SearchMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         SearchMsg::Open => {
-            if st.diff.is_some() {
+            if st.session.diff.view.is_some() {
                 super::repo::close_diff(st);
             }
             st.view.show_search = true;

@@ -40,7 +40,7 @@ fn resolve(st: &mut AppState, dir: &Path, file: &str, text: &str) {
 }
 
 fn commit(st: &mut AppState, summary: &str) {
-    st.draft.summary = summary.into();
+    st.session.draft.summary = summary.into();
     drive(st, Msg::Commit(CommitMsg::Commit));
 }
 

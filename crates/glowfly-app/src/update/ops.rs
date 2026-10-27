@@ -54,9 +54,9 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
                 return;
             }
             // Core refuses the operation unless git still produces this hunk at `index`.
-            let Some(expected) = st.diff.as_ref().and_then(|(_, d)| d.hunks.get(index)).cloned() else { return };
+            let Some(expected) = st.session.diff.view.as_ref().and_then(|(_, d)| d.hunks.get(index)).cloned() else { return };
             // Its hunks are stale from now until the reload that follows the operation lands.
-            st.diff_gen += 1;
+            st.session.diff.generation += 1;
             // Toggling the whitespace filter reloads the diff, so `generation` matched this one.
             let ignore_whitespace = st.settings.diff_ignore_whitespace;
             local(st, LocalOp::Hunk { op, path, index, expected, ignore_whitespace }, fx);
@@ -167,7 +167,7 @@ pub(super) fn clone_repo(st: &mut AppState, req: crate::state::clone::CloneReque
 /// Stages, unstages or discards the selected diff lines, when the selection belongs to the
 /// diff on screen and `op` fits it (stage or discard unstaged lines, unstage staged ones).
 fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
-    let Some((target, diff)) = &st.diff else { return };
+    let Some((target, diff)) = &st.session.diff.view else { return };
     let sel = &st.view.diff_lines;
     let fits =
         matches!((target, op), (DiffTarget::Unstaged(_), HunkOp::Stage | HunkOp::Discard) | (DiffTarget::Staged(_), HunkOp::Unstage));
@@ -187,7 +187,7 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
     let path = target.path().to_owned();
     let sel = std::mem::take(&mut st.view.diff_lines);
     // Its hunks are stale from now until the reload that follows the operation lands.
-    st.diff_gen += 1;
+    st.session.diff.generation += 1;
     let lines = sel.lines.into_iter().collect();
     let ignore_whitespace = st.settings.diff_ignore_whitespace;
     local(st, LocalOp::Lines { op, path, hunk: sel.hunk, expected, lines, ignore_whitespace }, fx);
@@ -306,11 +306,11 @@ pub(super) fn finish_job(
     if ok {
         if job.clear_commit {
             if here {
-                st.draft = CommitDraft::default();
+                st.session.draft = CommitDraft::default();
             } else if let Some(parked) =
                 job.workdir.as_deref().and_then(|w| st.tabs.iter_mut().find(|t| t.is(w))).and_then(|t| t.parked.as_mut())
             {
-                parked.draft = CommitDraft::default();
+                parked.session.draft = CommitDraft::default();
             }
         }
         if let Some((p, how)) = job.then_open {

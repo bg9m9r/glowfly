@@ -186,7 +186,7 @@ fn binary_and_lfs_diffs_have_no_view_menu() {
     };
     let m = open(&mut st, DiffTarget::Commit(head, "staged.txt".into()));
     assert!(m.view.is_some());
-    st.lfs.diff =
+    st.session.diff.lfs =
         Some(crate::state::lfs::LfsDiffNote { target: DiffTarget::Commit(head, "staged.txt".into()), change, show_pointer: false });
     assert_eq!(model(&st).unwrap().view, None, "an LFS summary");
     let _ = std::fs::remove_dir_all(&dir);

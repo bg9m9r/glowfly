@@ -55,7 +55,7 @@ fn stage_all_and_commit_end_to_end() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.as_ref().unwrap().staged.is_empty());
-    st.draft.summary = "Everything".into();
+    st.session.draft.summary = "Everything".into();
     let fx = update(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, .. }, ..] => assert_eq!(cmds[0], args(&["add", "--all"])),
@@ -65,7 +65,7 @@ fn stage_all_and_commit_end_to_end() {
     drive(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit));
     assert_eq!(head_summary(&st), "Everything");
     assert!(!st.snap.as_ref().unwrap().is_dirty(), "both files were committed");
-    assert!(st.draft.is_empty());
+    assert!(st.session.draft.is_empty());
     assert!(st.job.is_none());
     cleanup(&dir);
 }
@@ -81,7 +81,7 @@ fn shortcut_refusals_toast() {
     assert!(!st.view.show_log, "a refused shortcut doesn't open the log");
     assert_eq!(st.log.len(), log_before);
 
-    st.draft.summary = "Work".into();
+    st.session.draft.summary = "Work".into();
     assert!(update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now()).is_empty(), "nothing staged");
     assert_eq!(last_toast(&st), (false, "Nothing is staged yet. Stage a file or a hunk first.".into()));
     assert!(!update(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit), Instant::now()).is_empty(), "stage-all has changes to stage");
@@ -111,17 +111,17 @@ fn skip_hooks_bypasses_failing_pre_commit() {
     drive(&mut st, Msg::CloseModal);
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     let head = rev(&dir, "HEAD");
-    st.draft.summary = "Hooked".into();
+    st.session.draft.summary = "Hooked".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert_eq!(rev(&dir, "HEAD"), head, "the pre-commit hook stopped the commit");
-    assert_eq!(st.draft.summary, "Hooked", "the draft is kept");
+    assert_eq!(st.session.draft.summary, "Hooked", "the draft is kept");
     let (ok, text) = last_toast(&st);
     assert!(!ok && text.starts_with("Commit failed"), "{text}");
 
-    st.draft.skip_hooks = true;
+    st.session.draft.skip_hooks = true;
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert_eq!(head_summary(&st), "Hooked");
-    assert!(!st.draft.skip_hooks, "skip hooks resets with the draft");
+    assert!(!st.session.draft.skip_hooks, "skip hooks resets with the draft");
     cleanup(&dir);
 }
 
@@ -133,7 +133,7 @@ fn push_after_commit_sets_upstream() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     st.settings.push_after_commit = true;
-    st.draft.summary = "Topic work".into();
+    st.session.draft.summary = "Topic work".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert_eq!(rev(&bare, "refs/heads/topic"), rev(&work, "HEAD"), "the new branch was pushed");
     let snap = st.snap.as_ref().unwrap();
@@ -146,7 +146,7 @@ fn push_after_commit_sets_upstream() {
     std::fs::write(work.join("a.txt"), "main\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
-    st.draft.summary = "Main work".into();
+    st.session.draft.summary = "Main work".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     // Both commits can share a timestamp, so the graph may list either first: ask git.
     assert_eq!(head_message(&work), "Main work");
@@ -190,7 +190,7 @@ fn no_push_when_commit_fails_or_tab_changed() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     assert!(!pushes_after(&st));
-    st.draft.summary = "Detached".into();
+    st.session.draft.summary = "Detached".into();
     update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now());
     assert!(st.job.as_ref().is_some_and(|j| !j.then_push));
     cleanup(&dir);
@@ -202,22 +202,22 @@ fn template_prefills_and_strips_comments() {
     set_template(&dir, "\n\n# Explain why\n");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    assert_eq!((st.draft.summary.as_str(), st.draft.description.as_str()), ("", "# Explain why"));
-    assert!(st.draft.template.is_some());
+    assert_eq!((st.session.draft.summary.as_str(), st.session.draft.description.as_str()), ("", "# Explain why"));
+    assert!(st.session.draft.template.is_some());
 
-    st.draft.summary = "Templated".into();
-    st.draft.description = "Because.\n# Explain why".into();
+    st.session.draft.summary = "Templated".into();
+    st.session.draft.description = "Because.\n# Explain why".into();
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert_eq!(head_message(&dir), "Templated\n\nBecause.", "comment lines are left out");
-    assert_eq!(st.draft.description, "# Explain why", "the template is back after the commit");
-    assert!(st.draft.is_untouched_template());
+    assert_eq!(st.session.draft.description, "# Explain why", "the template is back after the commit");
+    assert!(st.session.draft.is_untouched_template());
 
     // A draft the user cleared isn't prefilled again.
-    st.draft.summary.clear();
-    st.draft.description.clear();
+    st.session.draft.summary.clear();
+    st.session.draft.description.clear();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(st.draft.is_empty());
+    assert!(st.session.draft.is_empty());
     cleanup(&dir);
 }
 
@@ -228,10 +228,10 @@ fn template_keeps_issue_mentions() {
     git(&dir, &["config", "commit.cleanup", "strip"]);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    st.draft.summary = "#42 Fix login".into();
+    st.session.draft.summary = "#42 Fix login".into();
     // What the "Link #123" button sends.
     drive(&mut st, Msg::Commit(CommitMsg::AppendToDescription("#123".into())));
-    assert_eq!(st.draft.description, "# Explain why\n\n#123");
+    assert_eq!(st.session.draft.description, "# Explain why\n\n#123");
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert_eq!(head_message(&dir), "#42 Fix login\n\n#123", "only the template's comment is left out");
@@ -245,7 +245,7 @@ fn untouched_template_refused() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
-    assert_eq!(st.draft.summary, "feat:");
+    assert_eq!(st.session.draft.summary, "feat:");
     assert!(update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now()).is_empty());
     assert_eq!(last_toast(&st), (false, "Edit the commit template before committing.".into()));
     cleanup(&dir);
@@ -257,11 +257,11 @@ fn amend_replaces_untouched_template() {
     set_template(&dir, "feat: \n\n# body\n");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    assert!(st.draft.is_untouched_template());
-    st.draft.amend = true;
+    assert!(st.session.draft.is_untouched_template());
+    st.session.draft.amend = true;
     drive(&mut st, Msg::Commit(CommitMsg::PrefillAmend));
-    assert_eq!(st.draft.summary, "first");
-    assert!(st.draft.template.is_none(), "an amend of HEAD's message doesn't strip comments");
+    assert_eq!(st.session.draft.summary, "first");
+    assert!(st.session.draft.template.is_none(), "an amend of HEAD's message doesn't strip comments");
     cleanup(&dir);
 }
 
@@ -272,13 +272,13 @@ fn undo_restores_message_over_template() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
-    st.draft.summary = "feat: second line".into();
+    st.session.draft.summary = "feat: second line".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
-    assert!(st.draft.is_untouched_template(), "prefilled again after the commit");
+    assert!(st.session.draft.is_untouched_template(), "prefilled again after the commit");
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "first");
-    assert_eq!(st.draft.summary, "feat: second line");
-    assert!(st.draft.template.is_none());
+    assert_eq!(st.session.draft.summary, "feat: second line");
+    assert!(st.session.draft.template.is_none());
     cleanup(&dir);
 }
 

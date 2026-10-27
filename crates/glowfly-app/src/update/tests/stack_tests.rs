@@ -100,8 +100,8 @@ fn a_restack_runs_and_undoes_as_one_entry() {
 fn amending_a_lower_branch_offers_a_restack() {
     let dir = stacked("stack-offer", false);
     let mut st = opened(&dir);
-    st.draft.amend = true;
-    st.draft.summary = "l1, amended".into();
+    st.session.draft.amend = true;
+    st.session.draft.summary = "l1, amended".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     let offer = st.toasts.iter().rev().find_map(|t| t.action.as_ref()).expect("a toast with an action");
     assert!(matches!(&*offer.msg, Msg::Rebase(RebaseMsg::Restack { scope: RestackScope::Above(b), .. }) if b == "low"));
@@ -113,8 +113,8 @@ fn amending_a_lower_branch_offers_a_restack() {
     git(&dir, &["checkout", "-q", "top"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     st.toasts.clear();
-    st.draft.amend = true;
-    st.draft.summary = "t1, amended".into();
+    st.session.draft.amend = true;
+    st.session.draft.summary = "t1, amended".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert!(st.toasts.iter().all(|t| t.action.is_none()), "no offer for a branch with nothing above it");
     let _ = std::fs::remove_dir_all(&dir);

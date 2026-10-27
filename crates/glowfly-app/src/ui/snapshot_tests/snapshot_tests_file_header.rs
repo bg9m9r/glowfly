@@ -32,7 +32,7 @@ fn render(name: &str, st: AppState, dark: bool) -> egui_kittest::Harness<'static
 fn open(st: &mut AppState, dir: &Path, target: DiffTarget) {
     st.snap = Some(repo::load(dir, &LoadOptions::all(500)).unwrap());
     let diff = repo::load_diff(dir, &target).unwrap();
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn file_header_wide_dark() {
 #[test]
 fn file_header_commit_light() {
     let (st, dir) = with_commit_diff("file-header-commit", ThemeChoice::Light, DiffLayout::Inline, false);
-    let short = st.detail.as_ref().unwrap().oid.to_string()[..7].to_owned();
+    let short = st.session.detail.as_ref().unwrap().oid.to_string()[..7].to_owned();
     let h = render("file_header_commit_light", st, false);
     for label in ["Restore\u{2026}", "Open", super::file_menu::SHOW_IN_FOLDER, short.as_str()] {
         assert!(h.query_by_label(label).is_some(), "{label}");
@@ -94,7 +94,7 @@ fn with_image(name: &str, theme: ThemeChoice, before: Option<&[u8]>, after: &[u8
     let target = DiffTarget::Unstaged("logo.png".into());
     open(&mut st, &dir, target.clone());
     let sides = repo::binary_sides(&dir, &target).unwrap();
-    st.session.diff_preview = Some(DiffPreview { target, generation: st.diff_shown_gen, sides: Some(Ok(Arc::new(sides))) });
+    st.session.diff_preview = Some(DiffPreview { target, generation: st.session.diff.shown_gen, sides: Some(Ok(Arc::new(sides))) });
     (st, dir)
 }
 

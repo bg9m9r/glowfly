@@ -82,7 +82,7 @@ fn wip_merge_banner_ready() {
     fill_lists(&mut st, &dir);
     let message = st.snap.as_ref().unwrap().merge_message.clone().expect("MERGE_MSG");
     assert_eq!(message, "Merge branch 'list-side'");
-    st.draft.fill_merge(&message);
+    st.session.draft.fill_merge(&message);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("wip_merge_banner_ready");

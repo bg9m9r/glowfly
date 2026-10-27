@@ -57,7 +57,7 @@ fn opened(
         dr.text = text.into();
         v.line_draft = Some(dr);
     }
-    st.diff = Some((target, Arc::new(d)));
+    st.session.diff.view = Some((target, Arc::new(d)));
     (st, dir, line)
 }
 
@@ -102,7 +102,7 @@ fn pull_request_line_comment_dark() {
 #[test]
 fn pull_request_line_comment_suggestion_light() {
     let (mut st, dir, _) = opened(ThemeChoice::Light, "pr-line-comment-suggest", |d| d.pending_review = Some(9), false, None);
-    let (target, d) = st.diff.clone().unwrap();
+    let (target, d) = st.session.diff.view.clone().unwrap();
     let v = st.session.pull_request.view.as_mut().unwrap();
     let (hk, i) = d.hunks.iter().enumerate().find_map(|(h, k)| k.lines.iter().position(|l| l.origin == '+').map(|i| (h, i))).unwrap();
     let mut dr = draft_at(v, &target, &d, hk, i, i).unwrap();
@@ -151,7 +151,7 @@ fn pull_request_line_comment_hover_dark() {
 #[test]
 fn diff_hunk_comment_lines_light() {
     let (mut st, dir, _) = opened(ThemeChoice::Light, "pr-line-comment-hunk", |_| {}, false, None);
-    let (target, d) = st.diff.clone().unwrap();
+    let (target, d) = st.session.diff.view.clone().unwrap();
     let i = d.hunks[0].lines.iter().position(|l| l.origin == '+').expect("an added line");
     st.view.diff_lines.target = Some(target);
     st.view.diff_lines.hunk = 0;

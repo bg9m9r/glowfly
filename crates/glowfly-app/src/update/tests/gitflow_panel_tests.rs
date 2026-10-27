@@ -35,11 +35,11 @@ fn head(st: &AppState) -> git2::Oid {
 fn open_and_close() {
     let (mut st, dir) = initialized("panel-open");
     let h = head(&st);
-    st.diff = Some((DiffTarget::Commit(h, "a.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Commit(h, "a.txt".into()), empty_diff().into()));
     st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
     flow(&mut st, GitFlowMsg::OpenPanel);
     assert!(st.session.gitflow_panel);
-    assert!(st.diff.is_none() && st.session.history.view.is_none());
+    assert!(st.session.diff.view.is_none() && st.session.history.view.is_none());
     flow(&mut st, GitFlowMsg::ClosePanel);
     assert!(!st.session.gitflow_panel);
     cleanup(&dir);

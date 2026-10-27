@@ -76,7 +76,7 @@ fn gap(ui: &mut Ui, px: f32) {
 
 pub(super) fn panel(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
-    let Some(d) = &st.detail else {
+    let Some(d) = &st.session.detail else {
         return super::pane_status::loading_line(ui, t.tr("common.loading"));
     };
     let (title, body) = split_message(&d.message);
@@ -184,9 +184,9 @@ fn body_block(ui: &mut Ui, body: &str) {
 /// the file rows (as a tree in Tree mode, its folds kept for every commit).
 fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
-    let open = st.diff.as_ref().map(|(target, _)| target);
+    let open = st.session.diff.view.as_ref().map(|(target, _)| target);
     let n = d.files.len();
-    let counts = st.line_counts.commit(d.oid);
+    let counts = st.session.reads.line_counts.commit(d.oid);
     let mode = st.settings.file_list_mode;
     super::details_wip::header::frame(ui, |ui| {
         mode_toggle(ui, t, mode, msgs);

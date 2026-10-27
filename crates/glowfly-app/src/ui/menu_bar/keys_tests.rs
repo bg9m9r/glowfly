@@ -186,7 +186,7 @@ fn enter_clicks_the_focused_item() {
 fn esc_closes_the_menu_and_nothing_else() {
     let (mut st, dir) = fixture("menu-keys-esc");
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
     let mut h = keys_harness(st, SIZE);
     press(&mut h, Modifiers::ALT, Key::F);
     h.state_mut().1.clear();
@@ -299,7 +299,7 @@ fn a_focused_field_doesnt_get_the_letter() {
     h.input_mut().modifiers = Modifiers::NONE;
     h.run_ok();
     assert!(file_open(&h));
-    assert!(h.state().0.draft.summary.is_empty(), "{:?}", h.state().0.draft.summary);
+    assert!(h.state().0.session.draft.summary.is_empty(), "{:?}", h.state().0.session.draft.summary);
     drop(h);
     remove_fixture(&dir);
 }

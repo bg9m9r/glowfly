@@ -47,7 +47,7 @@ fn a_selection_with_a_gap_lists_each_commits_changes() {
     // A row opens that commit's diff; the selection stays.
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(commit_file(f.c(4)))));
     assert!(matches!(st.selection, Selection::Commits(_)));
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(commit_file(f.c(4))));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t.clone()), Some(commit_file(f.c(4))));
 
     // Stepping on goes to the next commit's file.
     assert_eq!(next_file(&st, &commit_file(f.c(4)), 1), Some(commit_file(f.c(2))));
@@ -57,9 +57,9 @@ fn a_selection_with_a_gap_lists_each_commits_changes() {
     assert_eq!(step(&st, 1), Step::File(commit_file(f.c(2)), Landing::First), "past c4's last change");
 
     // Ctrl-clicking c4 away closes its diff.
-    assert!(st.diff.is_some());
+    assert!(st.session.diff.view.is_some());
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
@@ -99,11 +99,11 @@ fn stale_failed_and_refreshed_lists() {
 
     // A commit whose diff is open leaves the history: the diff closes.
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(commit_file(f.c(5)))));
-    assert!(st.diff.is_some());
+    assert!(st.session.diff.view.is_some());
     super::selection_tests::git(&f.dir, &["reset", "-q", "--hard", &f.c(4).to_string()]);
     refresh(&mut st);
     assert_eq!(multi(&st).oids, [f.c(4), f.c(2)]);
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 

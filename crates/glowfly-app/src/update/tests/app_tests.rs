@@ -108,9 +108,9 @@ fn find_commits_closes_the_diff_and_focuses_search() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), diff.into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), diff.into()));
     run(&mut st, Msg::Search(SearchMsg::Open));
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     assert!(st.view.show_search && st.view.focus_search);
     assert!(SearchMsg::Open.on_inactive().is_none());
     let _ = std::fs::remove_dir_all(&dir);

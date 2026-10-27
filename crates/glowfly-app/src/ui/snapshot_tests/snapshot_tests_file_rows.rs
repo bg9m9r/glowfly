@@ -101,7 +101,7 @@ fn commit_row_click_on_empty_area_opens_the_diff() {
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
     let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
     st.selection = Selection::Commit(oid);
-    st.detail = Some(repo::commit_detail(&dir, oid).unwrap());
+    st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let mut h = harness(st, true);
     h.run();
     let (_, x1, y) = row(&h, "notes.txt");
@@ -129,7 +129,7 @@ fn selected_and_hovered(theme: ThemeChoice, dark: bool, name: &str) {
     let (mut st, dir) = with_wip(theme, "file-rows-look");
     let target = DiffTarget::Unstaged("app.txt".into());
     let diff = repo::load_diff(&dir, &target).unwrap();
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     let mut h = harness(st, dark);
     h.run();
     let (_, x1, y) = row(&h, "search.txt");

@@ -185,7 +185,7 @@ fn history_entry_menu() {
 #[test]
 fn diff_commit_header_buttons() {
     let (st, dir) = with_commit_diff("diff-commit-actions", ThemeChoice::Dark, DiffLayout::Inline, false);
-    let oid = st.detail.as_ref().unwrap().oid;
+    let oid = st.session.detail.as_ref().unwrap().oid;
     let mut h = harness_sized(st, true, WIDE);
     h.run_steps(4);
     h.check_snapshot("diff_commit_header_buttons");
@@ -199,12 +199,12 @@ fn diff_commit_header_buttons() {
     let msgs = click(&mut h, SHOW_IN_FOLDER);
     assert!(matches!(&msgs[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "app.txt"));
 
-    h.state_mut().0.detail.as_mut().unwrap().absent.insert("app.txt".into());
+    h.state_mut().0.session.detail.as_mut().unwrap().absent.insert("app.txt".into());
     h.run_steps(4);
     assert!(h.get_by_label(OPEN_SHORT).is_disabled() && h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     assert!(!h.get_by_label(RESTORE_SHORT).is_disabled());
 
-    h.state_mut().0.detail = None;
+    h.state_mut().0.session.detail = None;
     h.run_steps(4);
     assert!(h.query_by_label(RESTORE_SHORT).is_none(), "no detail lists the file");
     drop(h);
@@ -219,7 +219,7 @@ fn working_tree_diff_header_opens_the_file() {
     // The commit that changed app.txt and its parent.
     let fix = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == "Fix build on Windows").expect("the fix commit");
     let (newer, older) = (fix.oid, fix.parents[0]);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     let mut h = harness_sized(st, true, WIDE);
     h.run();
     assert!(h.query_by_label("Stage file").is_some());
@@ -231,7 +231,7 @@ fn working_tree_diff_header_opens_the_file() {
     // Comparing two commits.
     let target = DiffTarget::Between(older, newer, "app.txt".into());
     let diff = repo::load_diff(&dir, &target).unwrap();
-    h.state_mut().0.diff = Some((target, diff.into()));
+    h.state_mut().0.session.diff.view = Some((target, diff.into()));
     h.run();
     assert!(h.query_by_label(CLOSE_DIFF).is_some(), "the header is drawn");
     assert!(h.query_by_label(OPEN_SHORT).is_none() && h.query_by_label(RESTORE_SHORT).is_none());

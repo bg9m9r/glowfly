@@ -33,7 +33,7 @@ fn pull_request_mapped_threads_dark() {
         LineMaps::Loaded { key: wanted(v).expect("the files aren't of the head"), maps: PrLineMaps::Mapped { old_kept: true, files } };
     v.tab = PrTab::Files;
     assert!(v.shows(&target));
-    st.diff = Some((target, Arc::new(d)));
+    st.session.diff.view = Some((target, Arc::new(d)));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("pull_request_mapped_threads_dark");

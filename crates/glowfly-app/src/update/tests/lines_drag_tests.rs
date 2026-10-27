@@ -145,7 +145,7 @@ fn drag_unstage_every_line_untracks_the_file() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("n.txt".into())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged("n.txt".into()))));
-    let (_, d) = st.diff.as_ref().unwrap();
+    let (_, d) = st.session.diff.view.as_ref().unwrap();
     let at = |text: &str| d.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == text).unwrap();
     let (one, two) = (at("one"), at("two"));
     drive(&mut st, Msg::Diff(DiffMsg::StartLineDrag { hunk: 0, line: one, how: Only }));

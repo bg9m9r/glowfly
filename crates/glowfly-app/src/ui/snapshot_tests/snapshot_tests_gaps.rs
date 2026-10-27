@@ -42,7 +42,7 @@ fn with_gaps(layout: DiffLayout, theme: ThemeChoice, open: bool) -> (AppState, P
         }
         st.view.diff_expanded.set_gap_text(Arc::new(text));
     }
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }

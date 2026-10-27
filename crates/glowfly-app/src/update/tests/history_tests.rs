@@ -64,7 +64,7 @@ pub(super) fn loaded(st: &AppState, h: FileHistory) -> Msg {
 #[test]
 fn opening_file_history_requests_a_walk() {
     let (mut st, dir) = opened("history-open");
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
     st.session.conflict.view = Some(ConflictView::loading("a.txt".into()));
     let fx = update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
     let limit = st.settings.commit_limit();
@@ -75,7 +75,7 @@ fn opening_file_history_requests_a_walk() {
     );
     let view = st.session.history.view.as_ref().expect("view open");
     assert!(view.loading && view.entries.is_empty());
-    assert!(st.diff.is_none() && st.session.conflict.view.is_none());
+    assert!(st.session.diff.view.is_none() && st.session.conflict.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -96,7 +96,7 @@ fn file_history_end_to_end_with_rename() {
     assert_eq!(view.entries[0].old_path.as_deref(), Some("a.txt"));
     assert_eq!(view.entries[2].path, "a.txt");
     assert_eq!(view.selected, Some(0));
-    let (target, diff) = st.diff.as_ref().expect("diff open");
+    let (target, diff) = st.session.diff.view.as_ref().expect("diff open");
     assert_eq!(*target, DiffTarget::Commit(view.entries[0].oid, view.entries[0].path.clone()));
     assert!(!diff.binary && diff.hunks.is_empty(), "a pure rename has no textual changes");
     let _ = std::fs::remove_dir_all(&dir);
@@ -237,9 +237,9 @@ fn other_views_close_file_history() {
     assert!(st.session.history.view.is_none() && st.session.history.generation > before);
 
     reopen(&mut st);
-    st.diff = Some((DiffTarget::Commit(head, "a.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Commit(head, "a.txt".into()), empty_diff().into()));
     update(&mut st, Msg::History(HistoryMsg::CloseFileHistory), Instant::now());
-    assert!(st.session.history.view.is_none() && st.diff.is_none());
+    assert!(st.session.history.view.is_none() && st.session.diff.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -309,13 +309,13 @@ fn tab_switch_reloads_the_selected_entrys_diff() {
         update(&mut st, m, Instant::now());
     }
     assert_eq!(st.session.history.view.as_ref().unwrap().selected, Some(0));
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     let want = selected_target(&st);
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadDiff { target, .. } if *target == want));
     run(&mut st, load.expect("the selected entry's diff is asked for again"));
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&want));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&want));
     let _ = std::fs::remove_dir_all(&a);
     let _ = std::fs::remove_dir_all(&b);
 }
@@ -327,13 +327,13 @@ fn a_refresh_does_not_supersede_the_selected_entrys_diff() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }));
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)), "entry 0 on screen");
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)), "entry 0 on screen");
     // Entry 1's diff is in flight when a refresh (window focus, file watcher) reloads the diff.
     let fx = update(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(1)), Instant::now());
     let [pending] = <[Effect; 1]>::try_from(fx).unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     run(&mut st, pending);
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)), "entry 1 on screen");
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)), "entry 1 on screen");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

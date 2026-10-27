@@ -36,7 +36,7 @@ fn merge(name: &str, resolved: bool) -> (AppState, PathBuf) {
         git(&dir, &["add", "alpha.txt", "beta.txt"], DATE);
         st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
         let message = st.snap.as_ref().unwrap().merge_message.clone().expect("MERGE_MSG");
-        st.draft.fill_merge(&message);
+        st.session.draft.fill_merge(&message);
     }
     fill_lists(&mut st, &dir);
     (st, dir)

@@ -22,7 +22,7 @@ pub(super) fn palette_entries(st: &AppState, out: &mut Vec<Entry>) {
         out.push(with_detail(open, Some(super::tools::program_detail(&st.settings.external_tools.editor, super::tools::NO_EDITOR_DETAIL))));
     }
     let t = &st.settings.external_tools;
-    if let Some((target, _)) = &st.diff {
+    if let Some((target, _)) = &st.session.diff.view {
         let open = entry(PaletteCommand::Tools(ToolsMsg::OpenDiff(target.clone())), "Open file in external diff tool", DIFF_KEYWORDS);
         out.push(with_detail(open, Some(super::tools::program_detail(&t.diff_tool, super::tool_compare::NO_DIFF_TOOL_DETAIL))));
     }

@@ -90,7 +90,7 @@ fn pull_request_dark() {
     let target = v.diff_target("search.txt").unwrap();
     assert!(v.shows(&target));
     let d = repo::load_diff(&dir, &target).unwrap();
-    st.diff = Some((target, Arc::new(d)));
+    st.session.diff.view = Some((target, Arc::new(d)));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("pull_request_dark");

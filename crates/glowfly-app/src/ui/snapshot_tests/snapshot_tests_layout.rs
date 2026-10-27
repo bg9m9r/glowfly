@@ -83,7 +83,7 @@ fn layout_wide_window_details_drawer() {
     let snap = st.snap.as_ref().unwrap();
     let oid = snap.commits.iter().find(|c| c.summary == "Fix build on Windows").expect("the fix commit").oid;
     st.selection = crate::state::Selection::Commit(oid);
-    st.detail = Some(repo::commit_detail(&dir, oid).unwrap());
+    st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let wide = egui::vec2(2000.0, 1070.0);
     let mut h = harness_sized(st, true, wide);
     h.run();

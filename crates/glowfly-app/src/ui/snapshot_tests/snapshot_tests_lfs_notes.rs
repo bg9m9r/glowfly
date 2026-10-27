@@ -79,7 +79,7 @@ fn lfs_badge_commit() {
     st.selection = Selection::Commit(head);
     let mut detail = repo::commit_detail(&dir, head).unwrap();
     detail.files[0].lfs = true;
-    st.detail = Some(detail);
+    st.session.detail = Some(detail);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("lfs_badge_commit");
@@ -118,8 +118,8 @@ fn pointer(oid: &str, size: u64) -> LfsSide {
 fn lfs_diff(theme: ThemeChoice, name: &str, target: Option<DiffTarget>, change: LfsChange, show_pointer: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let target = target.unwrap_or_else(|| commit_target(&st));
-    st.diff = Some((target.clone(), pointer_hunks().into()));
-    st.lfs.diff = Some(LfsDiffNote { target, change, show_pointer });
+    st.session.diff.view = Some((target.clone(), pointer_hunks().into()));
+    st.session.diff.lfs = Some(LfsDiffNote { target, change, show_pointer });
     (st, dir)
 }
 

@@ -38,9 +38,14 @@ fn adopt(old: &FileDiff, new: &mut FileDiff) {
 
 /// Starts the background pass for the diff on screen if its hunks or whole file are pending.
 pub(super) fn schedule(st: &AppState, fx: &mut Vec<Effect>) {
-    let (Some(workdir), Some((target, d))) = (st.workdir(), st.diff.as_ref()) else { return };
+    let (Some(workdir), Some((target, d))) = (st.workdir(), st.session.diff.view.as_ref()) else { return };
     if pending(d) || d.whole.as_deref().is_some_and(|w| pending(&w.diff)) {
-        fx.push(Effect::HighlightDiff { workdir, target: target.clone(), generation: st.diff_shown_gen, diff: std::sync::Arc::clone(d) });
+        fx.push(Effect::HighlightDiff {
+            workdir,
+            target: target.clone(),
+            generation: st.session.diff.shown_gen,
+            diff: std::sync::Arc::clone(d),
+        });
     }
 }
 
@@ -48,10 +53,10 @@ pub(super) fn schedule(st: &AppState, fx: &mut Vec<Effect>) {
 /// pending. Stale results (another file, the diff closed, a newer diff shown) are dropped. Only
 /// the spans change: never the scroll position, cursor, selection or folds.
 pub(super) fn apply(st: &mut AppState, target: DiffTarget, generation: u64, hunks: Option<DiffHighlight>, whole: Option<DiffHighlight>) {
-    if generation != st.diff_shown_gen {
+    if generation != st.session.diff.shown_gen {
         return;
     }
-    let Some((_, d)) = st.diff.as_mut().filter(|(t, _)| *t == target) else { return };
+    let Some((_, d)) = st.session.diff.view.as_mut().filter(|(t, _)| *t == target) else { return };
     // Copies the diff only if a reload in flight still shares it.
     let d = std::sync::Arc::make_mut(d);
     if let Some(h) = hunks {

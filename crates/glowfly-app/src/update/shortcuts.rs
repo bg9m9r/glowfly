@@ -94,7 +94,7 @@ fn revert_msg(st: &mut AppState) -> Option<Msg> {
     if st.session.conflict.view.is_some() || st.session.blame.view.is_some() {
         return None;
     }
-    let (target, _) = st.diff.as_ref()?;
+    let (target, _) = st.session.diff.view.as_ref()?;
     if !target.reverts_hunks() {
         return None;
     }

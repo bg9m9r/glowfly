@@ -36,7 +36,7 @@ fn paired() -> FileDiff {
 fn with(d: &FileDiff, layout: DiffLayout) -> AppState {
     let mut st = state();
     st.settings.diff_layout = layout;
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), d.clone().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), d.clone().into()));
     st
 }
 

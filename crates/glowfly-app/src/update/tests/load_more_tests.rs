@@ -130,7 +130,7 @@ fn loading_more_keeps_the_selection_and_scroll() {
     assert_eq!(loads(&fx).len(), 1);
     finish(&mut st, fx);
     assert_eq!(st.selection, Selection::Commit(oids[1]));
-    assert_eq!(st.detail.as_ref().map(|d| d.oid), Some(oids[1]));
+    assert_eq!(st.session.detail.as_ref().map(|d| d.oid), Some(oids[1]));
     assert_eq!(st.view.scroll_to_row, None);
     assert_eq!(st.view.scroll_offset, None);
 

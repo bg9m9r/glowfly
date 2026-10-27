@@ -62,9 +62,9 @@ fn opening_needs_an_interactive_rebase() {
 fn opening_loads_the_steps() {
     let (mut st, dir, c) = stopped("remaining-open");
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Commit(c[0], "c1.txt".into()), diff.into()));
+    st.session.diff.view = Some((DiffTarget::Commit(c[0], "c1.txt".into()), diff.into()));
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::OpenRemaining));
-    assert!(st.diff.is_none(), "the panel takes the diff's place");
+    assert!(st.session.diff.view.is_none(), "the panel takes the diff's place");
     assert!(
         matches!(&fx[..], [Effect::Rebase(RebaseEffect::LoadRemaining { generation, .. })] if *generation == st.session.rebase.generation),
         "{fx:?}"

@@ -82,10 +82,10 @@ fn gone_file_not_staged_new_is_still_refused() {
 fn unstage_gone_results() {
     let (mut st, dir) = loaded("wfu-done");
     let op = || FileOp::UnstageGone("s.txt".into());
-    st.diff = Some((DiffTarget::Staged("s.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Staged("s.txt".into()), empty_diff().into()));
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Unstaged) }));
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Removed s.txt from the staging area."));
-    assert!(st.diff.is_none(), "the staged diff of the unstaged file is closed");
+    assert!(st.session.diff.view.is_none(), "the staged diff of the unstaged file is closed");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
 
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Err("boom".into()) }));

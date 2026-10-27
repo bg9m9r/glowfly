@@ -92,14 +92,14 @@ fn a_line_from_the_first_commit_compares_with_an_empty_tree() {
 
     let target = DiffTarget::Between(repo::empty_tree(), f.c(3), "f.txt".into());
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
-    let (shown, diff) = st.diff.clone().expect("the diff opens");
+    let (shown, diff) = st.session.diff.view.clone().expect("the diff opens");
     assert_eq!(shown, target);
     assert!(!diff.hunks.is_empty() && diff.hunks.iter().flat_map(|h| &h.lines).all(|l| l.origin == '+'));
 
     let fx = up(&mut st, Msg::Selection(SelectionMsg::SwapCompare));
     assert_eq!(multi(&st).compare_ends(), Some((f.c(3), repo::empty_tree())));
     assert_eq!(compares(&fx), [(f.c(3), repo::empty_tree())]);
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
@@ -127,12 +127,12 @@ fn swap_direction_reverses_the_comparison() {
     let c = Comparison { files: vec![FileEntry::new("f.txt", 'M')], absent: Default::default() };
     up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(4), to: f.c(5), result: Ok(c.clone()) }));
     let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Between(f.c(4), f.c(5), "f.txt".into()), empty.into()));
+    st.session.diff.view = Some((DiffTarget::Between(f.c(4), f.c(5), "f.txt".into()), empty.into()));
 
     let fx = up(&mut st, Msg::Selection(SelectionMsg::SwapCompare));
     assert_eq!(compares(&fx), [(f.c(5), f.c(4))]);
     assert!(multi(&st).swapped && multi(&st).changes.is_none());
-    assert!(st.diff.is_none(), "the old direction's diff closes");
+    assert!(st.session.diff.view.is_none(), "the old direction's diff closes");
     up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(4), to: f.c(5), result: Ok(c.clone()) }));
     assert!(multi(&st).changes.is_none(), "a late result of the old direction is dropped");
     up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(5), to: f.c(4), result: Ok(c.clone()) }));

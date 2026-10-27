@@ -115,7 +115,7 @@ fn details_commit_german() {
     st.selection = Selection::Commit(oid);
     let detail = repo::commit_detail(&dir, oid).unwrap();
     let n = detail.files.len();
-    st.detail = Some(detail);
+    st.session.detail = Some(detail);
     let mut h = harness(st, true);
     h.run();
     let short = crate::ui::common::short(oid);

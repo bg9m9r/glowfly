@@ -71,11 +71,11 @@ pub(super) fn nav_repo(name: &str) -> (AppState, PathBuf) {
 }
 
 pub(super) fn shown(st: &AppState) -> Option<&DiffTarget> {
-    st.diff.as_ref().map(|(t, _)| t)
+    st.session.diff.view.as_ref().map(|(t, _)| t)
 }
 
 pub(super) fn diff(st: &AppState) -> &FileDiff {
-    &st.diff.as_ref().expect("a diff is open").1
+    &st.session.diff.view.as_ref().expect("a diff is open").1
 }
 
 /// Runs every effect in `fx` and the messages they lead to, as the app would.
@@ -296,7 +296,7 @@ fn committed(name: &str) -> (AppState, PathBuf, Oid) {
 fn commit_file_list() {
     let (mut st, dir, oid) = committed("commit-list");
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(oid)));
-    let files: Vec<&str> = st.detail.as_ref().expect("details loaded").files.iter().map(|f| f.path.as_str()).collect();
+    let files: Vec<&str> = st.session.detail.as_ref().expect("details loaded").files.iter().map(|f| f.path.as_str()).collect();
     assert_eq!(files, ["a.txt", "c.txt", "d.txt"]);
     at_end_of(&mut st, DiffTarget::Commit(oid, "a.txt".into()));
     let fx = run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
@@ -305,7 +305,7 @@ fn commit_file_list() {
     assert_eq!(shown(&st), Some(&DiffTarget::Commit(oid, "c.txt".into())));
 
     // Details of another commit are not this diff's list.
-    st.detail.as_mut().unwrap().oid = Oid::from_bytes(&[7; 20]).unwrap();
+    st.session.detail.as_mut().unwrap().oid = Oid::from_bytes(&[7; 20]).unwrap();
     assert!(run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1))).is_empty());
     assert_eq!(diff_nav::step(&st, 1), Step::End);
     let _ = std::fs::remove_dir_all(&dir);
@@ -345,7 +345,7 @@ fn file_history_stays_single_file() {
 
 fn synthetic() -> AppState {
     let mut st = state();
-    st.diff = Some((unstaged("f.txt"), three_hunks().into()));
+    st.session.diff.view = Some((unstaged("f.txt"), three_hunks().into()));
     st
 }
 

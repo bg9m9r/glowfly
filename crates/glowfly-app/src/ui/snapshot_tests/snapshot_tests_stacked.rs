@@ -44,7 +44,7 @@ fn stacked_changes() {
     let target = DiffTarget::Commit(commit(&st, "Fix build on Windows"), "app.txt".into());
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     render("stacked_changes_diff", st, true);
     remove_fixture(&dir);
 }

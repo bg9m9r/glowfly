@@ -251,7 +251,7 @@ pub fn go_to(v: &PrView, t: &ReviewThread) -> Result<(DiffTarget, LineSide, u32)
 /// line.
 pub fn go_to_open(st: &AppState, v: &PrView, t: &ReviewThread) -> Result<(DiffTarget, LineSide, u32), String> {
     let (target, side, n) = go_to(v, t)?;
-    if let Some((open, d)) = &st.diff
+    if let Some((open, d)) = &st.session.diff.view
         && *open == target
         && n > 0
         && st.settings.diff_mode == DiffMode::Hunks

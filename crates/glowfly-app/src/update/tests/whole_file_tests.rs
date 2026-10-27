@@ -53,13 +53,13 @@ pub(super) fn with_diff(name: &str, diff: FileDiff) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), diff.into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), diff.into()));
     (st, dir)
 }
 
 /// Delivers `d` as the result of the diff request in flight.
 fn arrive(st: &mut AppState, target: DiffTarget, d: FileDiff) {
-    let generation = st.diff_gen;
+    let generation = st.session.diff.generation;
     run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload: false, generation, result: Ok(d), lfs: None }));
 }
 
@@ -125,7 +125,7 @@ fn set_diff_mode_hunks_needs_no_reload() {
 
         let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::Hunks)));
         assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.diff_mode == DiffMode::Hunks), "{fx:?}");
-        let (_, d) = st.diff.as_ref().unwrap();
+        let (_, d) = st.session.diff.view.as_ref().unwrap();
         assert!(d.whole.is_none());
         let header = header_rows(&three_changes(false), layout)[2];
         assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row), (Some(header), header), "{layout:?}");
@@ -138,7 +138,7 @@ fn set_diff_mode_hunks_needs_no_reload() {
 fn jump_to_change_steps_blocks_in_whole_mode() {
     for layout in [DiffLayout::Inline, DiffLayout::Split] {
         let mut st = state();
-        st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
+        st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
         st.settings.diff_mode = DiffMode::WholeFile;
         st.settings.diff_layout = layout;
         let rows = blocks(&three_changes(true), layout);
@@ -157,7 +157,7 @@ fn jump_to_change_steps_blocks_in_whole_mode() {
 
     // Switching the layout keeps the same block at the top.
     let mut st = state();
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
     st.settings.diff_mode = DiffMode::WholeFile;
     let (inline, split) = (blocks(&three_changes(true), DiffLayout::Inline), blocks(&three_changes(true), DiffLayout::Split));
     assert_ne!(inline[1], split[1]);
@@ -184,7 +184,7 @@ fn line_ops_blocked_in_whole_mode() {
 
     // A block's buttons send the normal hunk index.
     let generation = st.hunk_ops_gen().expect("enabled");
-    let shown = st.diff.as_ref().unwrap().1.hunks[2].clone();
+    let shown = st.session.diff.view.as_ref().unwrap().1.hunks[2].clone();
     let fx = run(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "f.txt".into(), index: 2, generation }));
     // With the hunk as shown, so core can refuse it if the file changed since.
     assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { index: 2, expected, .. }, .. }] if *expected == shown), "{fx:?}");
@@ -227,7 +227,7 @@ fn whole_file_stage_block_end_to_end() {
     st.settings.diff_mode = DiffMode::WholeFile;
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("main.rs".into()))));
-    let (_, d) = st.diff.as_ref().expect("diff open");
+    let (_, d) = st.session.diff.view.as_ref().expect("diff open");
     let w = d.whole.as_deref().expect("whole file loaded");
     assert_eq!(w.blocks.len(), 2);
     let hl = w.diff.highlight.as_ref().expect("the whole file is highlighted");
@@ -247,7 +247,7 @@ fn whole_file_stage_block_end_to_end() {
             drive(&mut st, msg);
         }
     }
-    let (_, d) = st.diff.as_ref().expect("the second change is still unstaged");
+    let (_, d) = st.session.diff.view.as_ref().expect("the second change is still unstaged");
     let w = d.whole.as_deref().expect("still the whole file");
     assert_eq!(w.blocks.len(), 1);
     assert!(w.diff.highlight.is_some());
@@ -266,7 +266,7 @@ fn whole_file_with_ignore_whitespace_stages_the_shown_hunk() {
     st.settings.diff_ignore_whitespace = true;
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("main.rs".into()))));
-    assert!(st.diff.as_ref().and_then(|(_, d)| d.whole.as_ref()).is_some());
+    assert!(st.session.diff.view.as_ref().and_then(|(_, d)| d.whole.as_ref()).is_some());
     let generation = st.hunk_ops_gen().expect("loaded");
     let fx = run(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation }));
     assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { index: 0, ignore_whitespace: true, .. }, .. }]), "{fx:?}");
@@ -305,14 +305,14 @@ fn file_history_honours_whole_mode() {
 #[test]
 fn a_parked_diff_follows_a_mode_change_made_in_another_tab() {
     let mut st = state();
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
     st.settings.diff_mode = DiffMode::WholeFile;
     st.view.diff_top_row = blocks(&three_changes(true), DiffLayout::Inline)[2];
 
     run(&mut st, Msg::Tabs(TabsMsg::NewTab));
     run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::Hunks)));
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    let (_, d) = st.diff.as_ref().unwrap();
+    let (_, d) = st.session.diff.view.as_ref().unwrap();
     assert!(d.whole.is_none(), "the hunk view shows the normal hunks");
     let header = header_rows(&three_changes(false), DiffLayout::Inline)[2];
     assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row), (Some(header), header), "the same hunk stays at the top");

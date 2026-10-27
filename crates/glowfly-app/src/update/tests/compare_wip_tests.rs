@@ -52,11 +52,16 @@ fn entering_and_leaving_the_comparison() {
 
     // From the commit menu, closing what showed the commit before.
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
-    st.diff = Some((DiffTarget::Commit(f.c(5), "f.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Commit(f.c(5), "f.txt".into()), empty_diff().into()));
     st.session.history.view = Some(FileHistoryView::loading("f.txt".into(), None));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::CompareWithWorkdir(f.c(3))));
     assert_eq!(compared(&st).oid, f.c(3));
-    assert!(st.diff.is_none() && st.session.history.view.is_none() && st.session.blame.view.is_none() && st.detail.is_none());
+    assert!(
+        st.session.diff.view.is_none()
+            && st.session.history.view.is_none()
+            && st.session.blame.view.is_none()
+            && st.session.detail.is_none()
+    );
     assert_eq!(reads(&fx), [(f.c(3), 1)]);
 
     // Ctrl-click on the WIP row again drops the commit; on a commit adds it back.
@@ -112,7 +117,7 @@ fn the_comparison_follows_the_working_tree() {
 
     let target = DiffTarget::ToWorkdir(f.c(3), "f.txt".into());
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
-    let (shown, diff) = st.diff.clone().expect("the diff opens");
+    let (shown, diff) = st.session.diff.view.clone().expect("the diff opens");
     assert_eq!(shown, target);
     assert!(diff.hunks.iter().flat_map(|h| &h.lines).any(|l| l.origin == '+' && l.text == "edited"));
 
@@ -121,7 +126,7 @@ fn the_comparison_follows_the_working_tree() {
     std::fs::write(f.dir.join("f.txt"), "edited again\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::WindowFocused));
     assert!(listed(&st).contains(&("more.txt".to_owned(), 'A')), "{:?}", listed(&st));
-    let (_, diff) = st.diff.clone().expect("still open");
+    let (_, diff) = st.session.diff.view.clone().expect("still open");
     assert!(diff.hunks.iter().flat_map(|h| &h.lines).any(|l| l.origin == '+' && l.text == "edited again"));
 
     // The commit leaves the history: the WIP row is selected (the tree is dirty), the diff closes.
@@ -129,7 +134,7 @@ fn the_comparison_follows_the_working_tree() {
     git(&f.dir, &["branch", "-q", "-D", "side"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(st.selection, Selection::Wip);
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
@@ -146,23 +151,23 @@ fn swap_direction_reads_the_list_the_other_way() {
     let c = Comparison { files: vec![FileEntry::new("f.txt", 'M')], absent: Default::default() };
     let before = compared(&st).generation;
     up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation: before, result: Ok(c.clone()) }));
-    st.diff = Some((DiffTarget::ToWorkdir(f.c(3), "f.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::ToWorkdir(f.c(3), "f.txt".into()), empty_diff().into()));
 
     let fx = up(&mut st, Msg::Selection(SelectionMsg::SwapCompare));
     let w = compared(&st);
     assert!(w.swapped && w.changes.is_none(), "Loading until the new list arrives");
     assert_eq!(w.generation, before + 1);
     assert_eq!(swapped_reads(&fx), [true]);
-    assert!(st.diff.is_none(), "the old direction's diff closes");
+    assert!(st.session.diff.view.is_none(), "the old direction's diff closes");
     up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation: before, result: Ok(c.clone()) }));
     assert_eq!(compared(&st).changes, None, "a read of the old direction is dropped");
 
     // A commit's own diff stays open; swapping again reads the forward list.
-    st.diff = Some((DiffTarget::Commit(f.c(3), "f.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Commit(f.c(3), "f.txt".into()), empty_diff().into()));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::SwapCompare));
     assert!(!compared(&st).swapped);
     assert_eq!(swapped_reads(&fx), [false]);
-    assert!(st.diff.is_some());
+    assert!(st.session.diff.view.is_some());
 
     // Only a comparison is swapped.
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(4))));
@@ -184,7 +189,7 @@ fn the_swapped_comparison_follows_the_working_tree() {
 
     let target = DiffTarget::FromWorkdir(f.c(3), "new.txt".into());
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
-    let (shown, diff) = st.diff.clone().expect("the diff opens");
+    let (shown, diff) = st.session.diff.view.clone().expect("the diff opens");
     assert_eq!(shown, target);
     let lines: Vec<_> = diff.hunks.iter().flat_map(|h| &h.lines).map(|l| (l.origin, l.text.as_str())).collect();
     assert_eq!(lines, [('-', "new")]);
@@ -202,7 +207,7 @@ fn the_swapped_comparison_follows_the_working_tree() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(compared(&st).swapped);
     assert!(!listed(&st).iter().any(|(p, _)| p == "more.txt"), "{:?}", listed(&st));
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target), "the swapped diff stays open");
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&target), "the swapped diff stays open");
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 

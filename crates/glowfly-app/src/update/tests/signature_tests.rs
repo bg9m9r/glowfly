@@ -65,7 +65,7 @@ fn signed_detail_asks_once() {
     let found = checks(&fx);
     assert_eq!(found.len(), 1, "one check");
     assert_eq!((found[0].0, found[0].1), (oid, SigningFormat::OpenPgp));
-    assert!(st.signatures.pending(oid));
+    assert!(st.session.reads.signatures.pending(oid));
     assert!(want(&mut st, oid).is_empty(), "already on its way");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -111,8 +111,8 @@ fn result_cached_per_commit() {
     let fx = show(&mut st, &dir, newer, Some(SigningFormat::OpenPgp));
     let [(_, _, generation)] = checks(&fx)[..] else { panic!("one check") };
     run(&mut st, Msg::Repo(RepoMsg::SignatureChecked { oid: newer, generation, result: good() }));
-    assert!(matches!(st.signatures.get(newer), Some(Ok(c)) if c.status == SigStatus::Good));
-    assert!(!st.signatures.pending(newer));
+    assert!(matches!(st.session.reads.signatures.get(newer), Some(Ok(c)) if c.status == SigStatus::Good));
+    assert!(!st.session.reads.signatures.pending(newer));
     assert!(checks(&show(&mut st, &dir, older, None)).is_empty());
     assert!(checks(&show(&mut st, &dir, newer, Some(SigningFormat::OpenPgp))).is_empty(), "the cached result is reused");
     let _ = std::fs::remove_dir_all(&dir);
@@ -126,13 +126,16 @@ fn stale_generation_ignored() {
     let [(_, _, old)] = checks(&show(&mut st, &dir, oid, Some(SigningFormat::OpenPgp)))[..] else { panic!("one check") };
     run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
     run(&mut st, Msg::Repo(RepoMsg::SignatureChecked { oid, generation: old, result: good() }));
-    assert!(st.signatures.get(oid).is_none(), "a reply from before the clear is ignored");
+    assert!(st.session.reads.signatures.get(oid).is_none(), "a reply from before the clear is ignored");
     let [(_, _, newer)] = want(&mut st, oid)[..] else { panic!("asked again") };
     assert!(newer > old);
     run(&mut st, Msg::Repo(RepoMsg::SignatureChecked { oid, generation: newer, result: good() }));
-    assert!(st.signatures.get(oid).is_some());
+    assert!(st.session.reads.signatures.get(oid).is_some());
     run(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(st.signatures.get(oid).is_none() && st.signatures.wanted(oid), "a manual refresh forgets the checks");
+    assert!(
+        st.session.reads.signatures.get(oid).is_none() && st.session.reads.signatures.wanted(oid),
+        "a manual refresh forgets the checks"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -143,10 +146,10 @@ fn check_again() {
     let oid = head(&st);
     let [(_, _, generation)] = checks(&show(&mut st, &dir, oid, Some(SigningFormat::Ssh)))[..] else { panic!("one check") };
     run(&mut st, Msg::Repo(RepoMsg::SignatureChecked { oid, generation, result: Err("boom".into()) }));
-    assert!(st.signatures.get(oid).is_some());
+    assert!(st.session.reads.signatures.get(oid).is_some());
     assert!(st.log.iter().all(|l| !l.text.contains("boom")), "failures show in the badge, not the log");
     let fx = run(&mut st, Msg::Repo(RepoMsg::CheckSignatureAgain(oid)));
-    assert!(st.signatures.get(oid).is_none());
+    assert!(st.session.reads.signatures.get(oid).is_none());
     assert_eq!(checks(&fx).iter().map(|c| (c.0, c.1)).collect::<Vec<_>>(), [(oid, SigningFormat::Ssh)]);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -157,14 +160,14 @@ fn parked_tab_asks_again() {
     let [(_, _, generation)] = checks(&show(&mut st, &dir, older, Some(SigningFormat::OpenPgp)))[..] else { panic!("one check") };
     run(&mut st, Msg::Repo(RepoMsg::SignatureChecked { oid: older, generation, result: good() }));
     assert_eq!(checks(&show(&mut st, &dir, newer, Some(SigningFormat::OpenPgp))).len(), 1);
-    assert!(st.signatures.pending(newer));
+    assert!(st.session.reads.signatures.pending(newer));
 
     let other = scratch_repo("sig-parked-b");
     drive(&mut st, Msg::Repo(RepoMsg::Open(other.clone())));
-    assert!(st.signatures.get(older).is_none(), "the other tab has its own checks");
+    assert!(st.session.reads.signatures.get(older).is_none(), "the other tab has its own checks");
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    assert!(st.signatures.wanted(newer), "the check in flight was dropped with the tab");
-    assert!(st.signatures.get(older).is_some(), "results survive the round trip");
+    assert!(st.session.reads.signatures.wanted(newer), "the check in flight was dropped with the tab");
+    assert!(st.session.reads.signatures.get(older).is_some(), "results survive the round trip");
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&other);
 }
@@ -209,8 +212,8 @@ fn e2e_ssh_signature_verifies() {
     let mut st = opened(&dir);
     assert_eq!(head(&st), oid);
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(oid)));
-    assert_eq!(st.detail.as_ref().and_then(|d| d.signature), Some(SigningFormat::Ssh));
-    match st.signatures.get(oid) {
+    assert_eq!(st.session.detail.as_ref().and_then(|d| d.signature), Some(SigningFormat::Ssh));
+    match st.session.reads.signatures.get(oid) {
         Some(Ok(c)) => assert_eq!((c.status, c.signer.as_str()), (SigStatus::Good, "test@example.com"), "{c:?}"),
         other => panic!("not checked: {other:?}"),
     }

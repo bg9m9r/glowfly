@@ -68,7 +68,7 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
             }
         }
         LfsMsg::ShowPointer(on) => {
-            if let Some(note) = st.lfs.diff.as_mut() {
+            if let Some(note) = st.session.diff.lfs.as_mut() {
                 note.show_pointer = on;
                 if !on {
                     // The summary hides the rows: no line stays selected behind it.
@@ -96,8 +96,8 @@ pub(super) fn patterns_read(st: &mut AppState, patterns: Option<Vec<LfsPattern>>
 /// A diff about to be shown for `target`: keeps its LFS sides, and the pointer text choice when
 /// it is the same diff loaded again.
 pub(super) fn diff_loaded(st: &mut AppState, target: &DiffTarget, lfs: Option<LfsChange>) {
-    let show_pointer = st.lfs.diff.as_ref().is_some_and(|n| n.target == *target && n.show_pointer);
-    st.lfs.diff = lfs.map(|change| LfsDiffNote { target: target.clone(), change, show_pointer });
+    let show_pointer = st.session.diff.lfs.as_ref().is_some_and(|n| n.target == *target && n.show_pointer);
+    st.session.diff.lfs = lfs.map(|change| LfsDiffNote { target: target.clone(), change, show_pointer });
 }
 
 /// Reads the active repository's status again for the open page, showing "Checking" meanwhile.

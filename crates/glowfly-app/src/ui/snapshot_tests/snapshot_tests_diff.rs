@@ -33,7 +33,7 @@ pub(in crate::ui) fn with_diff(layout: DiffLayout, name: &str) -> (AppState, Pat
     let target = DiffTarget::Unstaged("app.txt".into());
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }
@@ -55,7 +55,7 @@ fn diff_line_selection() {
     for (layout, name) in [(DiffLayout::Inline, "diff_lines_inline"), (DiffLayout::Split, "diff_lines_split")] {
         let (mut st, dir) = with_diff(layout, "diff-lines");
         // Select `-fix` and `+new line`, as a click and a Ctrl-click would.
-        let lines = &st.diff.as_ref().unwrap().1.hunks[0].lines;
+        let lines = &st.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
         let at = |origin: char, text: &str| lines.iter().position(|l| l.origin == origin && l.text == text).unwrap();
         let (fix, new_line) = (at('-', "fix"), at('+', "new line"));
         for (line, how) in [(fix, LineClick::Only), (new_line, LineClick::Toggle)] {
@@ -96,7 +96,7 @@ fn main() {
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     assert!(diff.highlight.is_some(), "main.rs is highlighted as Rust");
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }
@@ -137,7 +137,7 @@ fn greet(name: &str) -> String {
     diff.intraline = intraline::intraline(&diff);
     assert!(diff.hunks[0].header.contains("fn greet"), "{}", diff.hunks[0].header);
     assert!(diff.highlight.as_ref().is_some_and(|h| !h.header(0).is_empty()), "the context is highlighted");
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }
@@ -175,7 +175,7 @@ pub(in crate::ui) fn with_word_diff_in(layout: DiffLayout, theme: ThemeChoice, n
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }
@@ -183,7 +183,7 @@ pub(in crate::ui) fn with_word_diff_in(layout: DiffLayout, theme: ThemeChoice, n
 #[test]
 fn diff_word_highlights() {
     let (st, dir) = with_word_diff(DiffLayout::Inline, ThemeChoice::Dark);
-    let d = &st.diff.as_ref().unwrap().1;
+    let d = &st.session.diff.view.as_ref().unwrap().1;
     let marked = d.hunks[0].lines.iter().enumerate().filter(|(l, _)| !d.intraline.line(0, *l).is_empty()).count();
     assert_eq!(marked, 2, "the -/+ pair is marked");
     render("diff_words_inline", st, true);
@@ -207,7 +207,7 @@ fn with_hidden_whitespace(name: &str, file: &str, before: &str, after: &str) -> 
     let mut diff = repo::load_diff_with(&dir, &target, repo::LoadDiffOptions { ignore_whitespace: true, whole_file: false }).unwrap();
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_ignore_whitespace = true;
     (st, dir)
 }
@@ -220,7 +220,7 @@ fn diff_ignore_whitespace() {
                   fn perimeter(w: u32, h: u32) -> u32 {\n    2 * (w + h)\n}\n";
     let after = before.replace("-> u32 {\n    let", "-> u32 {  \n        let").replace("    2 * (w + h)\n", "    2 * w + 2 * h   \n");
     let (st, dir) = with_hidden_whitespace("diff-ws", "ws.rs", before, &after);
-    let d = &st.diff.as_ref().unwrap().1;
+    let d = &st.session.diff.view.as_ref().unwrap().1;
     let changed: Vec<&str> = d.hunks.iter().flat_map(|h| &h.lines).filter(|l| l.origin != ' ').map(|l| l.text.as_str()).collect();
     assert_eq!(changed, ["    2 * (w + h)", "    2 * w + 2 * h   "]);
     assert!(st.hunk_ops_gen().is_some());
@@ -241,7 +241,7 @@ fn diff_nav_first_file() {
     let target = DiffTarget::Unstaged("app.txt".into());
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     use crate::state::diff_nav::{StepKind, step};
     assert_eq!([step(&st, -1).kind(), step(&st, 1).kind()], [StepKind::End, StepKind::File]);
     render("diff_nav_first_file", st, true);
@@ -262,7 +262,7 @@ fn with_similar_pairs(layout: DiffLayout) -> (AppState, PathBuf) {
     let target = DiffTarget::Unstaged("config.txt".into());
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }
@@ -271,7 +271,7 @@ fn with_similar_pairs(layout: DiffLayout) -> (AppState, PathBuf) {
 fn diff_similar_pairs() {
     use glowfly_core::diff_rows::{SplitRow, split_rows};
     let (st, dir) = with_similar_pairs(DiffLayout::Split);
-    let d = &st.diff.as_ref().unwrap().1;
+    let d = &st.session.diff.view.as_ref().unwrap().1;
     let origins: String = d.hunks[0].lines.iter().map(|l| l.origin).collect();
     assert_eq!(origins, " --+++ ");
     let pair = |old, new| SplitRow::Pair { hunk: 0, old, new };
@@ -328,7 +328,7 @@ fn diff_hunk_buttons() {
 
     // A reload on its way disables both, saying why.
     let (mut st, dir) = with_diff(DiffLayout::Inline, "diff-hunk-buttons-reload");
-    st.diff_gen += 1;
+    st.session.diff.generation += 1;
     assert_eq!(st.hunk_ops_gen(), None);
     let mut h = harness(st, true);
     h.run();

@@ -22,7 +22,7 @@ fn many_files(dir: &Path, count: usize, text: &str) {
 fn open(st: &mut AppState, dir: &Path, target: DiffTarget, landed: bool) {
     let diff = repo::load_diff(dir, &target).unwrap();
     st.view.file_reveal = landed.then(|| (target.clone(), 7));
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
 }
 
 /// Renders `st` and returns whether the file list drew `label` (the diff's header always names
@@ -59,7 +59,7 @@ fn files_reveal_commit() {
         st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
         let oid = st.snap.as_ref().unwrap().commits[0].oid;
         st.selection = Selection::Commit(oid);
-        st.detail = Some(repo::commit_detail(&dir, oid).unwrap());
+        st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
         open(&mut st, &dir, DiffTarget::Commit(oid, "f55.txt".into()), landed);
         let name = landed.then_some("files_reveal_commit");
         assert_eq!(shows(st, "f55.txt", name), landed, "landed: {landed}");

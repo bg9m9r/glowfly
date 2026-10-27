@@ -8,11 +8,11 @@ use std::path::{Path, PathBuf};
 
 impl AppState {
     /// The generation of the diff on screen when its hunk indexes are current, i.e. no reload
-    /// or newer diff is on its way. Hunk operations must carry it. Every change to the
-    /// whitespace filter reopens the diff (a new `diff_gen`), so an operation that matches it
-    /// counts hunks of the diff under the current setting.
+    /// or newer diff is on its way (`DiffSlot::hunk_ops_gen`). Hunk operations must carry it.
+    /// Every change to the whitespace filter reopens the diff (a new `DiffSlot::generation`), so
+    /// an operation that matches it counts hunks of the diff under the current setting.
     pub fn hunk_ops_gen(&self) -> Option<u64> {
-        (self.diff.is_some() && self.diff_shown_gen == self.diff_gen).then_some(self.diff_gen)
+        self.session.diff.hunk_ops_gen()
     }
 
     /// Why selecting and applying single lines is refused: the whole-file view.

@@ -51,7 +51,7 @@ fn target(path: &str) -> DiffTarget {
 }
 
 fn loaded(st: &mut AppState, target: DiffTarget, reload: bool, lfs: Option<LfsChange>) {
-    let generation = st.diff_gen;
+    let generation = st.session.diff.generation;
     run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result: Ok(three_hunks()), lfs }));
 }
 
@@ -107,7 +107,7 @@ fn a_status_with_a_version_turns_the_banner_off() {
 fn a_diff_with_an_lfs_side_keeps_its_note_and_pointer_choice() {
     let mut st = state();
     loaded(&mut st, target("art.psd"), false, Some(change()));
-    assert_eq!(st.lfs.diff.as_ref().map(|n| &n.target), Some(&target("art.psd")));
+    assert_eq!(st.session.diff.lfs.as_ref().map(|n| &n.target), Some(&target("art.psd")));
     assert!(summary(&st).is_some() && !pointer_shown(&st));
 
     run(&mut st, Msg::Lfs(LfsMsg::ShowPointer(true)));
@@ -116,16 +116,16 @@ fn a_diff_with_an_lfs_side_keeps_its_note_and_pointer_choice() {
     assert!(pointer_shown(&st), "a reload of the same diff keeps the pointer text");
 
     // A superseded result changes nothing.
-    let generation = st.diff_gen.wrapping_sub(1);
+    let generation = st.session.diff.generation.wrapping_sub(1);
     let msg = RepoMsg::DiffLoaded { target: target("other.psd"), reload: false, generation, result: Ok(three_hunks()), lfs: None };
     run(&mut st, Msg::Repo(msg));
     assert!(pointer_shown(&st));
 
     loaded(&mut st, target("other.psd"), false, Some(change()));
-    let note = st.lfs.diff.as_ref().unwrap();
+    let note = st.session.diff.lfs.as_ref().unwrap();
     assert_eq!((&note.target, note.show_pointer), (&target("other.psd"), false), "another file starts on the summary");
     loaded(&mut st, target("plain.txt"), false, None);
-    assert_eq!(st.lfs.diff, None, "a diff without LFS sides");
+    assert_eq!(st.session.diff.lfs, None, "a diff without LFS sides");
     assert!(summary(&st).is_none() && !pointer_shown(&st));
 }
 
@@ -134,7 +134,7 @@ fn showing_the_summary_clears_the_line_selection() {
     let mut st = state();
     loaded(&mut st, target("art.psd"), false, Some(change()));
     run(&mut st, Msg::Lfs(LfsMsg::ShowPointer(true)));
-    let (t, d) = st.diff.clone().unwrap();
+    let (t, d) = st.session.diff.view.clone().unwrap();
     st.view.diff_lines.click(&t, &d, 0, 1, LineClick::Only);
     assert!(!st.view.diff_lines.is_empty());
     run(&mut st, Msg::Lfs(LfsMsg::ShowPointer(false)));
@@ -148,11 +148,11 @@ fn the_note_is_parked_with_its_tab() {
     let a = opened(&mut st, "lfs-notes-park-a");
     loaded(&mut st, DiffTarget::Unstaged("a.txt".into()), false, Some(change()));
     run(&mut st, Msg::Lfs(LfsMsg::ShowPointer(true)));
-    let note = st.lfs.diff.clone();
+    let note = st.session.diff.lfs.clone();
     let b = opened(&mut st, "lfs-notes-park-b");
-    assert_eq!(st.lfs.diff, None, "the new tab has no note");
+    assert_eq!(st.session.diff.lfs, None, "the new tab has no note");
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    assert_eq!(st.lfs.diff, note);
+    assert_eq!(st.session.diff.lfs, note);
     assert!(pointer_shown(&st));
     cleanup(&[&a, &b]);
 }

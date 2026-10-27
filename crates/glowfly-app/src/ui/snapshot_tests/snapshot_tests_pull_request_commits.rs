@@ -59,7 +59,7 @@ fn pull_request_commits_dark() {
     assert_eq!(oids[1], second, "oldest first");
     st.session.pull_request.view.as_mut().unwrap().tab = PrTab::Commits;
     st.selection = Selection::Commit(second);
-    st.detail = Some(repo::commit_detail(&dir, second).unwrap());
+    st.session.detail = Some(repo::commit_detail(&dir, second).unwrap());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("pull_request_commits_dark");

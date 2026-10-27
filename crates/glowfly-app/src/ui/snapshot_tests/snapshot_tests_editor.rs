@@ -48,7 +48,7 @@ fn diff_tab_size_and_font_size() {
     assert!(diff.hunks[0].lines.iter().any(|l| l.text == "\t\treturn\tx;"), "lines keep their tabs");
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = DiffLayout::Inline;
     st.settings.tab_size = 2;
     st.settings.diff_font_size = 16.0;

@@ -88,7 +88,7 @@ fn fetch_id(fx: &[Effect]) -> u64 {
 }
 
 fn diff_lines(st: &AppState) -> Vec<String> {
-    let (_, d) = st.diff.as_ref().expect("a diff");
+    let (_, d) = st.session.diff.view.as_ref().expect("a diff");
     d.hunks.iter().flat_map(|h| h.lines.iter().map(|l| l.text.clone())).collect()
 }
 
@@ -151,7 +151,7 @@ fn a_newer_read_of_another_file_stops_the_download_and_a_stale_one_is_dropped() 
     let reload = read_head_diff(&mut st);
     assert!(run(&mut st, reload).is_empty());
     assert_eq!(phase(&st), Some(ContentPhase::Fetching { id, stopping: false }));
-    assert_eq!(st.for_diff().map(|p| p.view.clone()), Some(ContentView::Diff { generation: st.diff_gen }));
+    assert_eq!(st.for_diff().map(|p| p.view.clone()), Some(ContentView::Diff { generation: st.session.diff.generation }));
     // The File view reports its missing version too.
     let request = FileTextRequest { workdir: dest.clone(), oid: blob(&dest, "HEAD~1"), path: "a.txt".into(), before: false, smudge: false };
     let Some(Msg::Partial(PartialMsg::ContentMissing { retry, .. })) = unscoped(runner::execute(Effect::LoadFileText(request))) else {

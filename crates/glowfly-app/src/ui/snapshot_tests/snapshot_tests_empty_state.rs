@@ -27,7 +27,7 @@ fn with_binary_diff(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
     let target = DiffTarget::Unstaged("logo.bin".into());
     let diff = repo::load_diff(&dir, &target).unwrap();
     assert!(diff.binary);
-    st.diff = Some((target.clone(), diff.into()));
+    st.session.diff.view = Some((target.clone(), diff.into()));
     let sides = repo::binary_sides(&dir, &target).unwrap();
     st.session.diff_preview = Some(DiffPreview { target, generation: 0, sides: Some(Ok(std::sync::Arc::new(sides))) });
     (st, dir)
@@ -36,7 +36,7 @@ fn with_binary_diff(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
 fn whitespace_only(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
     let (mut st, dir) = with_hidden_whitespace(name, "notes.txt", "one\n  two\n", "one  \n\ttwo\n");
     st.settings.theme = theme;
-    assert!(st.diff.as_ref().unwrap().1.hunks.is_empty());
+    assert!(st.session.diff.view.as_ref().unwrap().1.hunks.is_empty());
     (st, dir)
 }
 

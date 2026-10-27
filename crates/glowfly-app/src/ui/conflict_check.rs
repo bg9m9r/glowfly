@@ -28,7 +28,7 @@ pub fn shown(st: &AppState) -> Option<(&ConflictReport, &Vec<String>)> {
         return None;
     }
     let current = cc::current_request(st.snap.as_ref()?);
-    let report = st.conflict_checks.shown(current.as_ref())?;
+    let report = st.session.reads.conflict_checks.shown(current.as_ref())?;
     let Ok(Prediction::Conflicts(paths)) = &report.result else { return None };
     Some((report, paths))
 }

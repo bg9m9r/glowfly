@@ -70,7 +70,7 @@ pub(super) fn apply(
 ) {
     let Some(snap) = st.snap.as_mut() else { return };
     let fold = snap.ignorecase;
-    let touched = st.diff.as_ref().is_some_and(|(t, _)| t.follows_workdir() && repo::covers(&ps.covered, t.path(), fold));
+    let touched = st.session.diff.view.as_ref().is_some_and(|(t, _)| t.follows_workdir() && repo::covers(&ps.covered, t.path(), fold));
     merge_into(snap, ps, staged, submodules);
     super::line_counts::status_changed(st, fx);
     if must_reload(st) || (touched && diff_changed(st, open_stamp)) {

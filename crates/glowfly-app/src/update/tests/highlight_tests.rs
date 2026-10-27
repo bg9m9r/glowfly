@@ -71,7 +71,7 @@ fn big() -> DiffTarget {
 }
 
 pub(super) fn shown(st: &AppState) -> &FileDiff {
-    &st.diff.as_ref().expect("a diff is open").1
+    &st.session.diff.view.as_ref().expect("a diff is open").1
 }
 
 fn pending(hl: Option<&DiffHighlight>) -> bool {
@@ -112,12 +112,14 @@ pub(super) fn opened_big(name: &str) -> (AppState, PathBuf, Vec<Effect>) {
 fn big_diff_opens_plain_then_colors() {
     let (mut st, dir, mut held) = opened_big("hl-open");
     let d = shown(&st);
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&big()));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&big()));
     assert!(d.hunks.len() > 250 && shape(d).iter().sum::<usize>() > highlight::MAX_LINES, "{}", d.hunks.len());
     assert!(pending(d.highlight.as_ref()));
     assert!(spans_of(d).iter().flatten().all(Vec::is_empty), "plain at once");
     assert_eq!(held.len(), 1);
-    assert!(matches!(&held[0], Effect::HighlightDiff { generation, target, .. } if *generation == st.diff_shown_gen && *target == big()));
+    assert!(
+        matches!(&held[0], Effect::HighlightDiff { generation, target, .. } if *generation == st.session.diff.shown_gen && *target == big())
+    );
 
     let view = (st.view.diff_scroll_to_row, st.view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
     let msg = runner::execute(held.remove(0)).expect("a result");
@@ -151,7 +153,7 @@ fn stale_highlight_result_is_dropped() {
     // (a) Another file is open by the time the result lands.
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
     assert!(up(&mut st, result_of(old)).is_empty());
-    assert_eq!(st.diff.as_ref().map(|(t, d)| (t.path(), d.highlight.is_none())), Some(("a.txt", true)));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, d)| (t.path(), d.highlight.is_none())), Some(("a.txt", true)));
 
     // (b) big.rs again: a newer generation, so only the newer result applies.
     let newer = drive_holding_highlights(&mut st, Msg::Repo(RepoMsg::OpenDiff(big())));
@@ -164,14 +166,14 @@ fn stale_highlight_result_is_dropped() {
     // (c) Closed.
     up(&mut st, Msg::Repo(RepoMsg::CloseDiff));
     assert!(up(&mut st, result_of(&newer[0])).is_empty());
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
 
     // (d) The right generation, but another diff's shape.
     drive_holding_highlights(&mut st, Msg::Repo(RepoMsg::OpenDiff(big())));
     let small = FileDiff { hunks: shown(&st).hunks[..3].to_vec(), ..shown(&st).clone() };
     let hunks = highlight::highlight_diff("big.rs", &small, None);
     assert!(hunks.as_ref().is_some_and(|h| !h.is_pending()));
-    let msg = Msg::Diff(DiffMsg::DiffHighlighted { target: big(), generation: st.diff_shown_gen, hunks, whole: None });
+    let msg = Msg::Diff(DiffMsg::DiffHighlighted { target: big(), generation: st.session.diff.shown_gen, hunks, whole: None });
     assert!(up(&mut st, msg).is_empty());
     assert!(pending(shown(&st).highlight.as_ref()), "a mismatched shape is ignored");
     let _ = std::fs::remove_dir_all(&dir);
@@ -241,7 +243,7 @@ fn reload_keeps_colors_without_plain_flash() {
     let w = whole(&st);
     assert!(pending(w.highlight.as_ref()));
     assert_eq!(w.highlight.as_ref().unwrap().line(0, 10), line10.as_slice(), "carried, no plain flash");
-    let i = fx.iter().position(|e| matches!(e, Effect::HighlightDiff { generation, .. } if *generation == st.diff_shown_gen));
+    let i = fx.iter().position(|e| matches!(e, Effect::HighlightDiff { generation, .. } if *generation == st.session.diff.shown_gen));
     let msg = runner::execute(fx.remove(i.expect("a background pass"))).unwrap();
     up(&mut st, msg);
     assert_colored(&whole(&st));

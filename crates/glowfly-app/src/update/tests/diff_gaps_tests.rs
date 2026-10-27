@@ -45,7 +45,7 @@ pub(super) fn opened(name: &str) -> (AppState, PathBuf) {
 }
 
 fn shown(st: &AppState) -> Arc<FileDiff> {
-    st.diff.as_ref().map(|(_, d)| d.clone()).expect("a diff is open")
+    st.session.diff.view.as_ref().map(|(_, d)| d.clone()).expect("a diff is open")
 }
 
 fn spans(st: &AppState) -> Vec<GapSpan> {
@@ -99,7 +99,7 @@ fn stale_or_other_results_are_ignored() {
     let key = spans(&st)[0].key;
     run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(key)));
     let text = Arc::new(GapText::default());
-    let shown_gen = st.diff_shown_gen;
+    let shown_gen = st.session.diff.shown_gen;
     for (target, generation) in [(f_txt(), shown_gen + 1), (DiffTarget::Unstaged("g.txt".into()), shown_gen)] {
         run(&mut st, Msg::Diff(DiffMsg::GapsLoaded { target, generation, result: Ok(text.clone()) }));
         assert!(st.view.diff_expanded.gap_text().is_none());
@@ -157,7 +157,7 @@ fn reloads_keep_the_gap_and_other_files_reset_it() {
     // A reload of the same file keeps the gap open and reads its text again; the old text shows
     // meanwhile.
     let d = repo::load_diff(&dir, &f_txt()).unwrap();
-    let generation = st.diff_gen;
+    let generation = st.session.diff.generation;
     let fx = run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target: f_txt(), reload: true, generation, result: Ok(d), lfs: None }));
     assert_eq!(loads(&fx), 1, "{fx:?}");
     assert!(st.view.diff_expanded.contains(key));
@@ -183,7 +183,7 @@ fn a_failed_read_closes_the_gap_and_logs() {
     let (mut st, dir) = opened("gaps-error");
     let key = spans(&st)[0].key;
     run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(key)));
-    let generation = st.diff_shown_gen;
+    let generation = st.session.diff.shown_gen;
     run(&mut st, Msg::Diff(DiffMsg::GapsLoaded { target: f_txt(), generation, result: Err("boom".into()) }));
     assert!(!st.view.diff_expanded.contains(key));
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some("These unchanged lines can't be shown: boom"));

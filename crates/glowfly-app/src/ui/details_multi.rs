@@ -153,7 +153,7 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
             ui.label(RichText::new(t.tr("details.multi.same_files")).color(color::weak()));
         }
         Some(Ok(c)) => {
-            let open = st.diff.as_ref().map(|(target, _)| target);
+            let open = st.session.diff.view.as_ref().map(|(target, _)| target);
             let lfs = TrackContext::of(st);
             let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
             let commands = crate::state::custom_commands::MenuCommands::for_state(st);

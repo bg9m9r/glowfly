@@ -92,7 +92,7 @@ pub struct ViewState {
     /// A file opened by next/previous change, still loading, and the change to land on. Set
     /// and cleared only by `update`.
     pub diff_landing: Option<(DiffTarget, diff_nav::Landing)>,
-    /// The file a next/previous change step landed on and the `diff_shown_gen` it landed at:
+    /// The file a next/previous change step landed on and the `DiffSlot::shown_gen` it landed at:
     /// the file list it came from scrolls its row into view once. Set and cleared only by
     /// `update`.
     pub file_reveal: Option<(DiffTarget, u64)>,

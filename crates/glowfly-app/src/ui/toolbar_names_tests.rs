@@ -103,7 +103,7 @@ fn graph_rows_and_commit_fields_are_named() {
     let field = h.get_by_role_and_label(Role::TextInput, "Commit summary");
     field.type_text("Name the fields");
     h.run();
-    assert_eq!(h.state().0.draft.summary, "Name the fields");
+    assert_eq!(h.state().0.session.draft.summary, "Name the fields");
     assert!(h.query_by_label("Description").is_some());
     drop(h);
     remove_fixture(&dir);

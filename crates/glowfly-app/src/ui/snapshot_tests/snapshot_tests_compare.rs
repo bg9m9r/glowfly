@@ -75,7 +75,7 @@ fn workdir_diff(name: &str) -> (AppState, PathBuf) {
     let target = repo::DiffTarget::ToWorkdir(oid, "app.txt".into());
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.intraline = glowfly_core::intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     (st, dir)
 }
 
@@ -138,7 +138,7 @@ fn the_details_panel_compares_its_commit_with_the_working_directory() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "compare-details-button");
     let oid = commit(&st, "Fix build on Windows");
     st.selection = Selection::Commit(oid);
-    st.detail = Some(repo::commit_detail(&dir, oid).unwrap());
+    st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let mut h = super::snapshot_tests::harness(st, true);
     h.run();
     h.get_by_label("Compare with working directory").click();
@@ -152,7 +152,7 @@ fn the_details_panel_compares_its_commit_with_the_working_directory() {
     let mut d = repo::commit_detail(&dir, oid).unwrap();
     d.oid = Oid::from_str("1234567890123456789012345678901234567890").unwrap();
     st.selection = Selection::Commit(d.oid);
-    st.detail = Some(d);
+    st.session.detail = Some(d);
     let mut h = super::snapshot_tests::harness(st, true);
     h.run();
     assert!(h.query_by_label("Compare with working directory").is_none());

@@ -29,7 +29,7 @@ pub(super) fn three_hunks() -> FileDiff {
 
 fn with_diff() -> AppState {
     let mut st = state();
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_hunks().into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), three_hunks().into()));
     st
 }
 
@@ -106,7 +106,7 @@ fn opening_a_diff_scrolls_to_top_but_reload_keeps_position() {
     let mut st = with_diff();
     st.view.diff_top_row = 7;
     let target = DiffTarget::Unstaged("g.txt".into());
-    let generation = st.diff_gen;
+    let generation = st.session.diff.generation;
     run(
         &mut st,
         Msg::Repo(RepoMsg::DiffLoaded { target: target.clone(), reload: false, generation, result: Ok(three_hunks()), lfs: None }),
@@ -154,7 +154,7 @@ fn diffs_arrive_highlighted_including_reloads() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
 
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("main.rs".into()))));
-    let (_, d) = st.diff.as_ref().expect("diff open");
+    let (_, d) = st.session.diff.view.as_ref().expect("diff open");
     assert_eq!(d.hunks.len(), 2);
     let hl = d.highlight.as_ref().expect("highlighted on load");
     assert_eq!(hl.syntax, "Rust");
@@ -176,20 +176,20 @@ fn diffs_arrive_highlighted_including_reloads() {
             drive(&mut st, msg);
         }
     }
-    let (_, d) = st.diff.as_ref().expect("the second hunk is still unstaged");
+    let (_, d) = st.session.diff.view.as_ref().expect("the second hunk is still unstaged");
     assert_eq!(d.hunks.len(), 1);
     assert_eq!(d.highlight.as_ref().map(|h| h.hunk_lens()), Some(shape(d)), "the reload comes highlighted");
     assert!(marked(d, 0, '+'), "the reload comes with word marks for `let y = \"why\"`");
     assert_eq!(d.intraline.hunk_lens(), shape(d));
 
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged("main.rs".into()))));
-    let (target, d) = st.diff.as_ref().expect("staged diff open");
+    let (target, d) = st.session.diff.view.as_ref().expect("staged diff open");
     assert_eq!(*target, DiffTarget::Staged("main.rs".into()));
     assert_eq!(d.highlight.as_ref().map(|h| h.hunk_lens()), Some(shape(d)));
 
     // Plain text stays plain.
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
-    let (_, d) = st.diff.as_ref().expect("a.txt diff open");
+    let (_, d) = st.session.diff.view.as_ref().expect("a.txt diff open");
     assert!(!d.hunks.is_empty() && d.highlight.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -201,12 +201,12 @@ fn turning_highlighting_off_saves_and_keeps_the_spans() {
     d.highlight = glowfly_core::highlight::highlight_diff("f.rs", &d, None);
     assert!(d.highlight.is_some());
     let want = d.highlight.clone();
-    st.diff = Some((DiffTarget::Unstaged("f.rs".into()), d.into()));
+    st.session.diff.view = Some((DiffTarget::Unstaged("f.rs".into()), d.into()));
 
     st.settings.syntax_highlighting = false;
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if !s.syntax_highlighting));
-    assert_eq!(st.diff.as_ref().unwrap().1.highlight, want, "only painting is gated, so turning it back on needs no reload");
+    assert_eq!(st.session.diff.view.as_ref().unwrap().1.highlight, want, "only painting is gated, so turning it back on needs no reload");
 }
 
 /// Like `drive`, but diff loads are held back and returned, to act in the gap before they land.
@@ -243,14 +243,14 @@ fn hunk_ops_wait_for_the_reload_after_a_hunk_op() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("big.txt".into()))));
-    assert_eq!(st.diff.as_ref().map(|(_, d)| d.hunks.len()), Some(3));
+    assert_eq!(st.session.diff.view.as_ref().map(|(_, d)| d.hunks.len()), Some(3));
     let shown = st.hunk_ops_gen().expect("hunk buttons enabled");
 
     // Stage H0. Its reload is held back, so H0, H1 and H2 stay on screen.
     let held =
         drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "big.txt".into(), index: 0, generation: shown }));
     assert_eq!(held.len(), 1, "the unstaged diff reloads");
-    assert_eq!(st.diff.as_ref().map(|(_, d)| d.hunks.len()), Some(3));
+    assert_eq!(st.session.diff.view.as_ref().map(|(_, d)| d.hunks.len()), Some(3));
     assert_eq!(st.hunk_ops_gen(), None, "the buttons are disabled until the reload lands");
 
     // Discard H1 as seen on screen. In the real diff index 1 is now H2, so it must be refused.
@@ -263,7 +263,7 @@ fn hunk_ops_wait_for_the_reload_after_a_hunk_op() {
         let reloaded = crate::runner::execute(effect).expect("diff result");
         run(&mut st, reloaded);
     }
-    assert_eq!(st.diff.as_ref().map(|(_, d)| d.hunks.len()), Some(2));
+    assert_eq!(st.session.diff.view.as_ref().map(|(_, d)| d.hunks.len()), Some(2));
     assert!(run(&mut st, Msg::ConfirmAccepted).is_empty());
     assert_eq!(std::fs::read_to_string(dir.join("big.txt")).unwrap(), numbered(&[2, 15, 28]), "nothing discarded");
 
@@ -293,13 +293,13 @@ fn late_diff_results_do_not_replace_a_newer_diff_or_reopen_a_closed_one() {
     let b_loaded = load(run(&mut st, Msg::Repo(RepoMsg::OpenDiff(b.clone()))));
     run(&mut st, b_loaded);
     run(&mut st, late_a);
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&b));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&b));
     assert!(st.hunk_ops_gen().is_some());
 
     // A reload still in flight when the diff is closed doesn't bring it back.
     let late_reload = load(run(&mut st, Msg::Repo(RepoMsg::OpenDiff(b))));
     run(&mut st, Msg::Repo(RepoMsg::CloseDiff));
     run(&mut st, late_reload);
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

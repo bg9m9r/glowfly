@@ -166,7 +166,7 @@ fn read_status(st: &mut AppState) -> Vec<Effect> {
 fn a_status_read_rereads_the_open_diff_only_when_its_file_changed() {
     let (mut st, dir) = opened("refresh-diff");
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(glowfly_core::repo::DiffTarget::Unstaged("a.txt".into()))));
-    assert!(st.diff.is_some());
+    assert!(st.session.diff.view.is_some());
     // The first read after opening has nothing to compare with.
     let fx = read_status(&mut st);
     finish(&mut st, fx);
@@ -176,7 +176,7 @@ fn a_status_read_rereads_the_open_diff_only_when_its_file_changed() {
     let fx = read_status(&mut st);
     assert_eq!(diff_loads(&fx), 1, "the file changed: {fx:?}");
     finish(&mut st, fx);
-    assert_eq!(st.diff.as_ref().unwrap().1.hunks[0].lines.iter().filter(|l| l.origin == '+').count(), 2);
+    assert_eq!(st.session.diff.view.as_ref().unwrap().1.hunks[0].lines.iter().filter(|l| l.origin == '+').count(), 2);
 
     std::fs::write(dir.join("b.txt"), "b\n").unwrap();
     git(&dir, &["add", "b.txt"]);

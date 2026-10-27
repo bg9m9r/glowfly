@@ -75,7 +75,7 @@ fn pull_that_changes_nothing_keeps_the_history() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
-    st.draft.summary = "Second line".into();
+    st.session.draft.summary = "Second line".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert_eq!(st.undo.undo.len(), 1);
 

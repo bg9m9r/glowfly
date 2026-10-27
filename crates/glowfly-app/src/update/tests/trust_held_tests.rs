@@ -103,11 +103,11 @@ fn pull_while_undecided_asks_first() {
 fn commit_while_held_asks_first() {
     let (mut st, dir) = held_repo_with("held-commit", false);
     std::fs::write(dir.join("new.txt"), "new\n").unwrap();
-    st.draft.summary = "Add a file".into();
+    st.session.draft.summary = "Add a file".into();
     let fx = run(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit));
     assert!(run_gits(&fx).is_empty(), "{fx:?}");
     assert_eq!(prompt(&st).held.as_deref(), Some("Stage all and commit"));
-    assert_eq!(st.draft.summary, "Add a file", "the draft is kept");
+    assert_eq!(st.session.draft.summary, "Add a file", "the draft is kept");
 
     let fx = trust_and_run(&mut st);
     let gits = run_gits(&fx);

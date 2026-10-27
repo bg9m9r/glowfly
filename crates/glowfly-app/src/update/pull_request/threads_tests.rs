@@ -239,7 +239,7 @@ fn go_to_thread_opens_file_and_lands_on_line() {
     assert_eq!(st.view.diff_open_line, Some((target.clone(), LineSide::New, 1)));
     assert_eq!(view(&st).threads.focus.as_deref(), Some("T1"));
     finish_keeping(&mut st, fx);
-    let (open, d) = st.diff.as_ref().expect("the diff loaded");
+    let (open, d) = st.session.diff.view.as_ref().expect("the diff loaded");
     assert_eq!(*open, target);
     let want = row_of_file_line(d, st.settings.diff_mode, st.settings.diff_layout, &st.view.diff_expanded, LineSide::New, 1);
     assert!(want.is_some());
@@ -280,7 +280,7 @@ fn go_to_outdated_or_unknown_path_does_nothing() {
     for id in ["T1", "T2", "T3"] {
         let fx = run(&mut st, PullRequestMsg::GoToThread(id.into()));
         assert!(fx.is_empty(), "{id}");
-        assert!(st.diff.is_none(), "{id}");
+        assert!(st.session.diff.view.is_none(), "{id}");
         assert_eq!(view(&st).tab, PrTab::Overview, "{id}");
         assert_eq!(st.view.diff_open_line, None, "{id}");
     }

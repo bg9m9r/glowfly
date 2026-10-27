@@ -75,7 +75,7 @@ fn cleanup(dir: &Path) {
 fn a_binary_diff_asks_for_its_sides_once() {
     let (mut st, dir) = repo("preview-ask");
     let fx = open(&mut st, bin());
-    assert_eq!(requests(&fx), [(bin(), st.diff_shown_gen)]);
+    assert_eq!(requests(&fx), [(bin(), st.session.diff.shown_gen)]);
     let p = st.session.diff_preview.as_ref().expect("a preview");
     assert!(p.target == bin() && p.sides.is_none(), "loading");
     // Running it fills the sides in.
@@ -97,7 +97,7 @@ fn a_binary_diff_asks_for_its_sides_once() {
 fn stale_results_are_ignored_and_errors_are_kept_quietly() {
     let (mut st, dir) = repo("preview-stale");
     open(&mut st, bin());
-    let generation = st.diff_shown_gen;
+    let generation = st.session.diff.shown_gen;
     let log = st.log.len();
     drive(&mut st, loaded(bin(), generation - 1, Ok(sides(1))));
     drive(&mut st, loaded(DiffTarget::Unstaged("c.bin".into()), generation, Ok(sides(2))));
@@ -115,20 +115,20 @@ fn stale_results_are_ignored_and_errors_are_kept_quietly() {
 fn a_reload_keeps_the_sides_and_another_file_or_close_drops_them() {
     let (mut st, dir) = repo("preview-reload");
     open(&mut st, bin());
-    let generation = st.diff_shown_gen;
+    let generation = st.session.diff.shown_gen;
     drive(&mut st, loaded(bin(), generation, Ok(sides(5))));
     // A reload of the same file (as after a refresh) keeps the sides while asking again.
     let mut fx = Vec::new();
     super::repo::reload_diff(&mut st, &mut fx);
     let fx = deliver_diff(&mut st, fx);
-    assert_eq!(requests(&fx), [(bin(), st.diff_shown_gen)]);
+    assert_eq!(requests(&fx), [(bin(), st.session.diff.shown_gen)]);
     assert_eq!(diff_preview::shown(&st).unwrap().old.as_ref().unwrap().size, 5, "kept until the new ones arrive");
 
     let fx = open(&mut st, DiffTarget::Unstaged("c.bin".into()));
     assert_eq!(requests(&fx).len(), 1);
     assert!(st.session.diff_preview.as_ref().unwrap().sides.is_none(), "another file's sides are dropped");
 
-    let generation = st.diff_shown_gen;
+    let generation = st.session.diff.shown_gen;
     drive(&mut st, Msg::Repo(RepoMsg::CloseDiff));
     assert!(st.session.diff_preview.is_none());
     drive(&mut st, loaded(DiffTarget::Unstaged("c.bin".into()), generation, Ok(sides(1))));
@@ -141,21 +141,21 @@ fn lfs_summaries_ask_for_nothing_and_tabs_ask_again_while_loading() {
     let (mut st, dir) = repo("preview-tabs");
     open(&mut st, bin());
     // An LFS summary shows instead: no preview.
-    st.lfs.diff = Some(crate::state::lfs::LfsDiffNote { target: bin(), change: lfs_change(), show_pointer: false });
+    st.session.diff.lfs = Some(crate::state::lfs::LfsDiffNote { target: bin(), change: lfs_change(), show_pointer: false });
     let mut fx = Vec::new();
     super::diff_preview::diff_shown(&mut st, &mut fx);
     assert!(requests(&fx).is_empty() && st.session.diff_preview.is_none());
-    st.lfs.diff = None;
+    st.session.diff.lfs = None;
 
     st.session.diff_preview = Some(DiffPreview { target: bin(), generation: 0, sides: None });
     let parked = super::tabs::park(&mut st);
     assert!(parked.session.diff_preview.is_some(), "parked with the tab");
     st.snap = parked.snap;
-    st.diff = parked.diff;
+    st.session.diff.view = parked.session.diff.view;
     st.session.diff_preview = parked.session.diff_preview;
     let mut fx = Vec::new();
     super::diff_preview::reload_pending(&mut st, &mut fx);
-    assert_eq!(requests(&fx), [(bin(), st.diff_shown_gen)], "still loading: asked again");
+    assert_eq!(requests(&fx), [(bin(), st.session.diff.shown_gen)], "still loading: asked again");
     st.session.diff_preview.as_mut().unwrap().sides = Some(Ok(sides(1)));
     let mut fx = Vec::new();
     super::diff_preview::reload_pending(&mut st, &mut fx);

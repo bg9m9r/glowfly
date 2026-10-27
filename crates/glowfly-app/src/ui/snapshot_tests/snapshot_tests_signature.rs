@@ -23,14 +23,14 @@ pub(in crate::ui) fn with_signed_head(theme: ThemeChoice, name: &str, signature:
     st.selection = Selection::Commit(oid);
     let mut d = repo::commit_detail(&dir, oid).unwrap();
     d.signature = signature;
-    st.detail = Some(d);
+    st.session.detail = Some(d);
     (st, dir, oid)
 }
 
 /// `st` with a finished check of `oid` cached.
 pub(in crate::ui) fn checked(st: &mut AppState, oid: Oid, result: Result<SignatureCheck, String>) {
-    let generation = st.signatures.start(oid);
-    st.signatures.finish(oid, generation, result);
+    let generation = st.session.reads.signatures.start(oid);
+    st.session.reads.signatures.finish(oid, generation, result);
 }
 
 pub(in crate::ui) fn ssh(stdout: &str, stderr: &str) -> Result<SignatureCheck, String> {

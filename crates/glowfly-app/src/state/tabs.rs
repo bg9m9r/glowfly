@@ -1,15 +1,13 @@
 //! Open repository tabs. The active tab's data lives directly in `AppState` (where views read
-//! it), with its views in `AppState::session`; every other tab keeps its data parked here until
-//! it is selected again.
+//! it), with its per-tab state in `AppState::session`; every other tab keeps its data parked here
+//! until it is selected again.
 
 use super::undo::UndoHistory;
-use super::{CommitDraft, ForgeState, Selection};
-use git2::Oid;
+use super::{ForgeState, Selection};
 use glowfly_core::paths::{FolderId, same_spelling};
-use glowfly_core::repo::{CommitDetail, CommonDir, DiffTarget, FileDiff, Snapshot};
+use glowfly_core::repo::{CommonDir, Snapshot};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file::Expanded;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -199,23 +197,16 @@ pub fn open_places(tabs: &[Tab]) -> Vec<Place> {
 /// The per-repository part of `AppState`, set aside while another tab is active.
 #[derive(Default)]
 pub struct Parked {
-    /// The views with their generation counters (state/session.rs).
+    /// The views with their generation counters, the open diff, the commit detail and draft,
+    /// and the repository reads (state/session.rs).
     pub session: super::session::RepoSession,
     pub snap: Option<Snapshot>,
     pub selection: Selection,
-    pub detail: Option<CommitDetail>,
-    pub diff: Option<(DiffTarget, std::sync::Arc<FileDiff>)>,
     /// The Create issue dialog, unless an issue was being created (its choices load again on
     /// return).
     pub issue_form: Option<Box<super::issue_form::IssueForm>>,
-    pub draft: CommitDraft,
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,
-    pub stats: HashMap<Oid, (usize, usize, usize)>,
-    pub line_counts: crate::state::line_counts::LineCounts,
-    pub signatures: crate::state::signatures::Signatures,
-    /// The last conflict check (one in flight is asked for again on return).
-    pub conflict_checks: crate::state::conflict_check::ConflictChecks,
     pub search: String,
     pub commit_search: crate::state::search::CommitSearch,
     pub ref_filter: String,
@@ -229,8 +220,6 @@ pub struct Parked {
     pub diff_mode: DiffMode,
     /// The whole-file folds opened in the open diff.
     pub diff_expanded: Expanded,
-    /// The open diff's LFS summary and whether it shows the pointer text instead.
-    pub lfs_diff: Option<super::lfs::LfsDiffNote>,
     /// The folders collapsed in the changed-file lists' tree.
     pub file_folds: crate::state::file_folds::FileFolds,
 }

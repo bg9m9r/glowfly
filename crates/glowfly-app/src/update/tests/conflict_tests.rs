@@ -103,7 +103,7 @@ fn opening_a_conflicted_file_loads_the_chunks() {
     assert_eq!(f.chunk_count(), 1);
     assert_eq!(c.picks, [ChunkPick::default()]);
     assert_eq!(f.labels.theirs, "other");
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     assert_eq!(st.view.conflict_scroll_to, Some(0));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -113,7 +113,7 @@ fn open_conflict_closes_the_diff_and_open_diff_closes_the_conflict() {
     let dir = conflicted_repo("conflict-vs-diff");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    st.diff = Some((
+    st.session.diff.view = Some((
         DiffTarget::Unstaged("a.txt".into()),
         FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }.into(),
     ));
@@ -124,7 +124,7 @@ fn open_conflict_closes_the_diff_and_open_diff_closes_the_conflict() {
         }
         other => panic!("expected a conflict load, got {other:?}"),
     }
-    assert!(st.diff.is_none() && st.session.conflict.view.is_some());
+    assert!(st.session.diff.view.is_none() && st.session.conflict.view.is_some());
     update(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))), Instant::now());
     assert!(st.session.conflict.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);

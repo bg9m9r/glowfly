@@ -121,11 +121,11 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
         _ => None,
     };
     let (history, draft): (&mut UndoHistory, &mut CommitDraft) = if here {
-        (&mut st.undo, &mut st.draft)
+        (&mut st.undo, &mut st.session.draft)
     } else {
         let parked = job.workdir.as_deref().and_then(|w| st.tabs.iter_mut().find(|t| t.is(w))).and_then(|t| t.parked.as_mut());
         let Some(p) = parked else { return }; // closed, or not loaded since
-        (&mut p.undo, &mut p.draft)
+        (&mut p.undo, &mut p.session.draft)
     };
     match result {
         Some(UndoResult::Recorded(Some(a))) if ok => history.record(a),

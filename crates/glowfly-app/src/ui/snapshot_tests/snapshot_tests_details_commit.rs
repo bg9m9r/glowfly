@@ -45,9 +45,9 @@ fn commit_as_grace(dir: &Path, a: &[&str], authored: &str, committed: &str) {
 fn select(st: &mut AppState, dir: &Path, oid: Oid) {
     st.snap = Some(repo::load(dir, &LoadOptions::all(500)).unwrap());
     st.selection = Selection::Commit(oid);
-    st.detail = Some(repo::commit_detail(dir, oid).unwrap());
-    st.line_counts.start_commit(oid);
-    st.line_counts.finish_commit(oid, Arc::new(repo::commit_line_counts(dir, oid).unwrap()));
+    st.session.detail = Some(repo::commit_detail(dir, oid).unwrap());
+    st.session.reads.line_counts.start_commit(oid);
+    st.session.reads.line_counts.finish_commit(oid, Arc::new(repo::commit_line_counts(dir, oid).unwrap()));
 }
 
 fn head(dir: &Path) -> Oid {
@@ -106,7 +106,7 @@ fn details_commit_merge() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "details-merge");
     let merge = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == "Merge branch 'login-page'").unwrap().oid;
     select(&mut st, &dir, merge);
-    let parents = st.detail.as_ref().unwrap().parents.clone();
+    let parents = st.session.detail.as_ref().unwrap().parents.clone();
     assert_eq!(parents.len(), 2);
     let mut h = harness(st, true);
     h.run();
@@ -124,7 +124,7 @@ fn details_commit_merge() {
 #[test]
 fn details_commit_chips_send_their_messages() {
     let (st, dir, oid) = with_commit(ThemeChoice::Dark, "details-chips", MESSAGE);
-    let parent = st.detail.as_ref().unwrap().parents[0];
+    let parent = st.session.detail.as_ref().unwrap().parents[0];
     let mut h = harness(st, true);
     h.run();
     pushed(&mut h);
@@ -155,7 +155,7 @@ fn details_commit_chips_send_their_messages() {
 #[test]
 fn details_commit_person_tip() {
     let (st, dir, _) = with_commit(ThemeChoice::Dark, "details-person-tip", MESSAGE);
-    let authored = st.detail.as_ref().unwrap().author_time;
+    let authored = st.session.detail.as_ref().unwrap().author_time;
     let verbose = st.settings.format_verbose(authored, 0);
     let when = format!(" · {}", glowfly_core::dates::relative(Lang::En, NOW - authored));
     let mut h = harness(st, true);

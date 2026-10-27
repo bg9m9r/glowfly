@@ -19,11 +19,11 @@ pub(in crate::ui) fn with_commit_diff(name: &str, theme: ThemeChoice, layout: Di
     let snap = st.snap.as_ref().unwrap();
     let oid = snap.commits.iter().find(|c| c.summary == "Fix build on Windows").expect("the fix commit").oid;
     st.selection = Selection::Commit(oid);
-    st.detail = Some(repo::commit_detail(&dir, oid).unwrap());
+    st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let target = DiffTarget::Commit(oid, "app.txt".into());
     let mut diff = repo::load_diff_with(&dir, &target, repo::LoadDiffOptions { ignore_whitespace: ignore_ws, whole_file: false }).unwrap();
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff.into()));
+    st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     st.settings.diff_ignore_whitespace = ignore_ws;
     (st, dir)
@@ -72,7 +72,7 @@ fn revert_button_sends_msg() {
     assert_eq!(reverts(&h.state().1), [(0, generation)], "whitespace hidden");
     drop(h);
     let (mut st, _) = with_commit_diff("revert-click", ThemeChoice::Dark, DiffLayout::Inline, false);
-    st.diff_gen += 1;
+    st.session.diff.generation += 1;
     assert_eq!(st.hunk_ops_gen(), None);
     let mut h = harness(st, true);
     h.run();
@@ -89,7 +89,7 @@ fn with_line_diff(name: &str, theme: ThemeChoice, layout: DiffLayout, selected: 
     use crate::state::lines::LineClick;
     use glowfly_core::repo::{DiffLine, FileDiff, Hunk};
     let (mut st, dir) = with_commit_diff(name, theme, layout, false);
-    let target = st.diff.as_ref().unwrap().0.clone();
+    let target = st.session.diff.view.as_ref().unwrap().0.clone();
     let line = |origin: char, old: Option<u32>, new: Option<u32>, text: &str| DiffLine { origin, old, new, text: text.into() };
     let lines = vec![
         line(' ', Some(1), Some(1), "app"),
@@ -105,7 +105,7 @@ fn with_line_diff(name: &str, theme: ThemeChoice, layout: DiffLayout, selected: 
         whole: None,
     };
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target.clone(), diff.into()));
+    st.session.diff.view = Some((target.clone(), diff.into()));
     for (i, &line) in selected.iter().enumerate() {
         let how = if i == 0 { LineClick::Only } else { LineClick::Toggle };
         crate::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), std::time::Instant::now());

@@ -42,7 +42,7 @@ fn with_repo(name: &str, target: DiffTarget) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
-    st.diff = Some((target, one_hunk().into()));
+    st.session.diff.view = Some((target, one_hunk().into()));
     (st, dir)
 }
 
@@ -68,12 +68,12 @@ fn s_stages_the_file_or_the_selected_lines() {
     let fx = key(&mut st, KeyAction::Stage);
     assert_eq!(op(&fx), Some(&LocalOp::StageFile("f.txt".into())), "{fx:?}");
 
-    let generation = st.diff_gen;
+    let generation = st.session.diff.generation;
     select_line(&mut st);
     let fx = key(&mut st, KeyAction::Stage);
     assert!(matches!(op(&fx), Some(LocalOp::Lines { op: HunkOp::Stage, lines, .. }) if *lines == [2]), "{fx:?}");
     assert!(st.view.diff_lines.is_empty(), "staging the lines clears the selection");
-    assert_eq!(st.diff_gen, generation + 1);
+    assert_eq!(st.session.diff.generation, generation + 1);
     assert!(st.log.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -93,14 +93,14 @@ fn u_unstages_the_file_or_the_selected_lines() {
 fn s_and_u_ignore_other_diffs_and_views() {
     let (mut st, dir) = with_repo("keys-ignored", staged());
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S on a staged diff");
-    st.diff = Some((unstaged(), one_hunk().into()));
+    st.session.diff.view = Some((unstaged(), one_hunk().into()));
     assert!(key(&mut st, KeyAction::Unstage).is_empty(), "U on an unstaged diff");
-    st.diff = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), one_hunk().into()));
+    st.session.diff.view = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), one_hunk().into()));
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S on a commit diff");
-    st.diff = None;
+    st.session.diff.view = None;
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S with no diff");
 
-    st.diff = Some((unstaged(), one_hunk().into()));
+    st.session.diff.view = Some((unstaged(), one_hunk().into()));
     st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S under the conflict view");
     st.session.conflict.view = None;
@@ -166,11 +166,11 @@ fn only_the_sheet_key_works_under_preferences_or_a_credential_prompt() {
     let snap = st.snap.as_mut().unwrap();
     snap.staged = snap.unstaged.clone();
     let quiet = |st: &mut AppState, what: &str| {
-        st.diff = Some((unstaged(), one_hunk().into()));
+        st.session.diff.view = Some((unstaged(), one_hunk().into()));
         for a in [KeyAction::Stage, KeyAction::StageAll, KeyAction::UnstageAll, KeyAction::FocusMessage] {
             assert!(key(st, a).is_empty(), "{a:?} under {what}");
         }
-        st.diff = Some((staged(), one_hunk().into()));
+        st.session.diff.view = Some((staged(), one_hunk().into()));
         assert!(key(st, KeyAction::Unstage).is_empty(), "Unstage under {what}");
         assert!(!st.view.focus_message, "FocusMessage under {what}");
         assert_eq!(st.selection, Selection::None, "FocusMessage under {what}");
@@ -272,7 +272,7 @@ fn s_stages_the_open_file_end_to_end() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
-    assert!(matches!(&st.diff, Some((DiffTarget::Unstaged(p), _)) if p == "a.txt"));
+    assert!(matches!(&st.session.diff.view, Some((DiffTarget::Unstaged(p), _)) if p == "a.txt"));
     drive(&mut st, Msg::Shortcut(KeyAction::Stage));
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.staged.iter().any(|f| f.path == "a.txt"), "staged");
@@ -293,9 +293,9 @@ fn r_reverts_the_current_hunk_or_the_lines() {
     use glowfly_core::repo::RevertPart;
     let (mut st, dir) = with_repo("keys-revert", unstaged());
     let commit = DiffTarget::Commit(st.snap.as_ref().unwrap().commits[0].oid, "f.txt".into());
-    st.diff = Some((commit.clone(), super::diff_tests::three_hunks().into()));
+    st.session.diff.view = Some((commit.clone(), super::diff_tests::three_hunks().into()));
     st.view.diff_visible_rows = 40;
-    let rows = crate::state::diff_nav::change_rows_of(&st.diff.as_ref().unwrap().1, &st.settings, &st.view.diff_expanded);
+    let rows = crate::state::diff_nav::change_rows_of(&st.session.diff.view.as_ref().unwrap().1, &st.settings, &st.view.diff_expanded);
     st.view.diff_top_row = rows[1];
     assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 1, .. })));
     st.view.diff_top_row = 0;
@@ -315,20 +315,20 @@ fn r_reverts_the_current_hunk_or_the_lines() {
     st.session.blame.view = Some(crate::state::blame::BlameView::loading("f.txt".into(), None));
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "under the blame view");
     st.session.blame.view = None;
-    st.diff = Some((unstaged(), one_hunk().into()));
+    st.session.diff.view = Some((unstaged(), one_hunk().into()));
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "on a working-tree diff");
     let oid = st.snap.as_ref().unwrap().commits[0].oid;
-    st.diff = Some((DiffTarget::FromWorkdir(oid, "f.txt".into()), one_hunk().into()));
+    st.session.diff.view = Some((DiffTarget::FromWorkdir(oid, "f.txt".into()), one_hunk().into()));
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "on the working tree compared with a commit");
     assert!(st.log.is_empty());
 
-    st.diff = Some((commit, one_hunk().into()));
+    st.session.diff.view = Some((commit, one_hunk().into()));
     st.settings.diff_ignore_whitespace = true;
     let fx = key(&mut st, KeyAction::RevertHunk);
     assert!(matches!(revert_part(&fx), Some(RevertPart::Hunk { index: 0, .. })), "with whitespace hidden too: {fx:?}");
     assert!(st.log.is_empty());
     st.settings.diff_ignore_whitespace = false;
-    st.diff_gen += 1;
+    st.session.diff.generation += 1;
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("diff changed")), "a pending reload is logged");
     let _ = std::fs::remove_dir_all(&dir);

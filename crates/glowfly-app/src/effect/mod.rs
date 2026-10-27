@@ -139,7 +139,7 @@ effect_areas! { effect_enum! {
         whole_file: bool,
     },
     /// Finishes the syntax highlighting `diff` arrived with (pending in its hunks or its whole
-    /// file) for the diff shown at `generation` (AppState::diff_shown_gen). Started by
+    /// file) for the diff shown at `generation` (DiffSlot::shown_gen). Started by
     /// Runner::run with a cancel ticket: a newer HighlightDiff cancels this one.
     HighlightDiff {
         workdir: PathBuf,
@@ -148,7 +148,7 @@ effect_areas! { effect_enum! {
         diff: std::sync::Arc<FileDiff>,
     },
     /// Reads the unchanged lines between `diff`'s hunks for the hunk view, for the diff shown at
-    /// `generation` (AppState::diff_shown_gen).
+    /// `generation` (DiffSlot::shown_gen).
     LoadDiffGaps {
         workdir: PathBuf,
         target: DiffTarget,
@@ -156,7 +156,7 @@ effect_areas! { effect_enum! {
         diff: std::sync::Arc<FileDiff>,
     },
     /// Reads the sizes and decodes the images of the binary diff shown at `generation`
-    /// (AppState::diff_shown_gen), for its header and preview.
+    /// (DiffSlot::shown_gen), for its header and preview.
     LoadBinarySides {
         workdir: PathBuf,
         target: DiffTarget,

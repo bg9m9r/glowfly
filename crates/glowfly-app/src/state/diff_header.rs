@@ -165,7 +165,7 @@ pub enum Primary {
 
 /// The header of the diff on screen.
 pub fn model(st: &AppState) -> Option<HeaderModel> {
-    let (target, diff) = st.diff.as_ref()?;
+    let (target, diff) = st.session.diff.view.as_ref()?;
     let path = target.path().to_owned();
     let (folder, name) = split_path(&path);
     let lfs_summary = super::lfs_notes::summary(st).is_some();
@@ -253,7 +253,7 @@ fn context(st: &AppState, target: &DiffTarget, t: Lang) -> Context {
 
 /// The commit's summary line: from the open detail, else the loaded history.
 fn summary(st: &AppState, oid: Oid) -> Option<String> {
-    if let Some(d) = st.detail.as_ref().filter(|d| d.oid == oid) {
+    if let Some(d) = st.session.detail.as_ref().filter(|d| d.oid == oid) {
         return d.message.lines().next().map(str::to_owned);
     }
     let snap = st.snap.as_ref()?;
@@ -287,7 +287,7 @@ fn actions(st: &AppState, target: &DiffTarget) -> Actions {
     match target {
         // Restore, Open and Show for a commit's file, when the open detail lists it.
         DiffTarget::Commit(oid, path) => {
-            let Some(d) = st.detail.as_ref().filter(|d| d.oid == *oid) else { return none };
+            let Some(d) = st.session.detail.as_ref().filter(|d| d.oid == *oid) else { return none };
             let Some(f) = d.files.iter().find(|f| f.path == *path) else { return none };
             Actions {
                 restore: Some(RestoreAction { oid: *oid, path: f.path.clone(), status: f.status }),

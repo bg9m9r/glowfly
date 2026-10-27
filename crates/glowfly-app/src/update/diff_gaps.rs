@@ -14,7 +14,7 @@ use std::sync::Arc;
 /// with whitespace hidden, as the unchanged runs can hold hidden whitespace changes. `None`
 /// otherwise.
 pub(super) fn shown_gaps(st: &AppState) -> Option<(Arc<FileDiff>, Vec<GapSpan>)> {
-    let (_, d) = st.diff.as_ref()?;
+    let (_, d) = st.session.diff.view.as_ref()?;
     if st.settings.diff_ignore_whitespace || shown(d, st.settings.diff_mode).is_some() {
         return None;
     }
@@ -54,7 +54,7 @@ pub(super) fn close(st: &mut AppState, key: u32) {
 /// The gaps' text read for the diff shown at `generation`: kept when that diff is still on
 /// screen. When it can't be read, the gaps waiting for it close and the log says why.
 pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, result: Result<Arc<GapText>, String>) {
-    if generation != st.diff_shown_gen || !st.diff.as_ref().is_some_and(|(t, _)| *t == target) {
+    if generation != st.session.diff.shown_gen || !st.session.diff.view.as_ref().is_some_and(|(t, _)| *t == target) {
         return;
     }
     match result {
@@ -89,8 +89,8 @@ pub(super) fn diff_shown(st: &AppState, fx: &mut Vec<Effect>) {
 }
 
 fn request(st: &AppState, fx: &mut Vec<Effect>) {
-    if let (Some(workdir), Some((target, diff))) = (st.workdir(), st.diff.as_ref()) {
-        fx.push(Effect::LoadDiffGaps { workdir, target: target.clone(), generation: st.diff_shown_gen, diff: diff.clone() });
+    if let (Some(workdir), Some((target, diff))) = (st.workdir(), st.session.diff.view.as_ref()) {
+        fx.push(Effect::LoadDiffGaps { workdir, target: target.clone(), generation: st.session.diff.shown_gen, diff: diff.clone() });
     }
 }
 
@@ -124,7 +124,7 @@ fn rows(d: &FileDiff, layout: DiffLayout, ex: &Expanded) -> Vec<Row> {
 /// rows. Returns what `change` returned.
 pub(super) fn reanchor(st: &mut AppState, change: impl FnOnce(&mut Expanded) -> bool) -> bool {
     let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
-    let Some((_, d)) = st.diff.as_ref().map(|(t, d)| (t, d.clone())) else { return false };
+    let Some((_, d)) = st.session.diff.view.as_ref().map(|(t, d)| (t, d.clone())) else { return false };
     let ex = &mut st.view.diff_expanded;
     let (before, changes) = (rows(&d, layout, ex), change_rows(&d, mode, layout, ex));
     if !change(ex) {

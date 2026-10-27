@@ -1,4 +1,5 @@
-//! The per-tab views that live with their generation counters: the active tab's in
+//! The per-tab views that live with their generation counters, the open diff, the commit detail,
+//! the commit message draft and what was read from the repository: the active tab's in
 //! `AppState::session`, a parked tab's in `Parked::session`. Switching tabs swaps the struct
 //! whole (update/tabs.rs): `park` takes the views out and leaves the counters behind, and
 //! `resume_after` moves every counter of the tab coming back past both its own and the ones
@@ -15,6 +16,7 @@ use super::history::FileHistoryView;
 use super::journal::JournalView;
 use super::range_diff::RangeDiffView;
 use super::rebase::RebasePanel;
+use glowfly_core::repo::{CommitDetail, DiffTarget, FileDiff};
 
 /// A view that may be open, with the generation its requests carry: incremented for every
 /// request and whenever the view closes, so results of older requests are ignored.
@@ -55,6 +57,38 @@ pub struct PrSlot {
     pub lines_gen: u64,
 }
 
+/// The open diff with its counter.
+#[derive(Default)]
+pub struct DiffSlot {
+    /// Shared with effects that read it (a reload, a highlight) instead of copied for them.
+    pub view: Option<(DiffTarget, std::sync::Arc<FileDiff>)>,
+    /// Incremented for every diff request and whenever the diff on screen goes stale (closed,
+    /// replaced, or changed by a hunk operation), and when its tab comes back; in `counters()`.
+    /// Results of older requests are ignored.
+    pub generation: u64,
+    /// The request that produced the diff on screen. Hunk operations only run while this is
+    /// `generation`: otherwise a reload is on its way and the hunk indexes may no longer match.
+    /// Not a counter: `park` leaves it behind and `resume_after` takes the current one, so it
+    /// stays the last request answered whichever tab is active.
+    pub shown_gen: u64,
+    /// The open diff's LFS summary and whether it shows the pointer text instead.
+    pub lfs: Option<super::lfs::LfsDiffNote>,
+}
+
+impl DiffSlot {
+    /// Starts a new diff request and returns its generation: results still in flight, and hunk
+    /// operations aimed at the diff on screen, are stale from now on.
+    pub fn next(&mut self) -> u64 {
+        self.generation += 1;
+        self.generation
+    }
+
+    /// The generation hunk operations carry, while the diff on screen is the latest request's.
+    pub fn hunk_ops_gen(&self) -> Option<u64> {
+        (self.view.is_some() && self.shown_gen == self.generation).then_some(self.generation)
+    }
+}
+
 /// The active tab's views (in `AppState::session`), or a parked tab's (in `Parked::session`).
 #[derive(Default)]
 pub struct RepoSession {
@@ -91,12 +125,21 @@ pub struct RepoSession {
     /// The binary diff on screen's sizes and image previews (update/diff_preview.rs); one still
     /// loading is asked for again on return.
     pub diff_preview: Option<DiffPreview>,
+    /// The open diff, its counter and LFS note.
+    pub diff: DiffSlot,
+    /// The selected commit's details, shown in the right panel.
+    pub detail: Option<CommitDetail>,
+    /// The commit message draft. Views edit it in place as a text buffer.
+    pub draft: super::CommitDraft,
+    /// What was read from the tab's repository: commit stats, line counts, signatures and the
+    /// last conflict check.
+    pub reads: super::session_reads::RepoReads,
 }
 
 impl RepoSession {
     /// Every generation counter, in one list: `park` and `resume_after` go through it (add a
     /// new pair here).
-    fn counters(&mut self) -> [&mut u64; 11] {
+    fn counters(&mut self) -> [&mut u64; 12] {
         let pr = &mut self.pull_request;
         [
             &mut self.conflict.generation,
@@ -110,31 +153,39 @@ impl RepoSession {
             &mut self.rebase.generation,
             &mut self.journal.generation,
             &mut self.range_diff.generation,
+            &mut self.diff.generation,
         ]
     }
 
     /// Takes the session out to park with its tab. What stays behind has no views but the same
     /// counters, so the next tab's counters move past them even when this tab is closed rather
-    /// than parked. A conflict save in flight reports only to the active tab, so the parked
-    /// view doesn't wait for it.
+    /// than parked; the diff's `shown_gen` stays behind too. A conflict save in flight reports
+    /// only to the active tab, so the parked view doesn't wait for it. The repository reads keep
+    /// their results and drop the requests in flight (`RepoReads::parked`).
     pub fn park(&mut self) -> RepoSession {
         let mut parked = std::mem::take(self);
         for (left, taken) in self.counters().into_iter().zip(parked.counters()) {
             *left = *taken;
         }
+        self.diff.shown_gen = parked.diff.shown_gen;
         if let Some(c) = parked.conflict.view.as_mut() {
             c.saving = false;
         }
+        // Results stay with the tab; requests in flight are dropped with it and asked for again
+        // on return.
+        parked.reads = parked.reads.parked();
         parked
     }
 
     /// This parked session becomes active after `current` (what `park` left behind): every
     /// counter moves past both its own value and `current`'s, so a result still in flight from
-    /// before the park, or for another tab, never matches.
+    /// before the park, or for another tab, never matches. The diff's `shown_gen` is taken from
+    /// `current`, so the open diff's hunks stay off until the refresh after the switch reloads it.
     pub fn resume_after(&mut self, current: &mut RepoSession) {
         for (mine, now) in self.counters().into_iter().zip(current.counters()) {
             *mine = (*mine).max(*now) + 1;
         }
+        self.diff.shown_gen = current.diff.shown_gen;
     }
 }
 

@@ -79,7 +79,7 @@ pub(super) fn go_to_thread(st: &mut AppState, id: String, fx: &mut Vec<Effect>) 
         v.tab = PrTab::Files;
     }
     focus(st, id);
-    match &st.diff {
+    match &st.session.diff.view {
         Some((open, d)) if *open == target => {
             let (s, ex) = (&st.settings, &st.view.diff_expanded);
             match row_of_file_line(d, s.diff_mode, s.diff_layout, ex, side, n) {

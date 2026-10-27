@@ -62,7 +62,7 @@ fn same_head_refresh_leaves_history_alone() {
 fn rerun_replaces_entries_and_keeps_the_selection() {
     let (mut st, dir) = with_view("history-rerun-keep");
     update(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(1)), Instant::now());
-    st.diff = Some((DiffTarget::Commit(oid(2), "old.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Commit(oid(2), "old.txt".into()), empty_diff().into()));
     refresh_with_head(&mut st, Some(oid(9)));
     st.view.history_scroll_to = None;
     let m = loaded(&st, history(vec![entry(9, "a.txt"), entry(1, "a.txt"), entry(2, "old.txt")]));
@@ -96,13 +96,13 @@ fn rerun_without_the_selected_commit_selects_the_first() {
 fn rerun_to_an_empty_history_closes_the_diff() {
     let (mut st, dir) = with_view("history-rerun-empty");
     update(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(0)), Instant::now());
-    st.diff = Some((DiffTarget::Commit(oid(1), "a.txt".into()), empty_diff().into()));
+    st.session.diff.view = Some((DiffTarget::Commit(oid(1), "a.txt".into()), empty_diff().into()));
     refresh_with_head(&mut st, Some(oid(9)));
     let m = loaded(&st, history(Vec::new()));
     update(&mut st, m, Instant::now());
     let v = st.session.history.view.as_ref().unwrap();
     assert!(v.entries.is_empty() && v.selected.is_none() && !v.loading);
-    assert!(st.diff.is_none());
+    assert!(st.session.diff.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -217,6 +217,6 @@ fn rerun_e2e_after_a_commit() {
     assert_eq!(summaries, ["edit a again", "edit a", "first"]);
     assert_eq!(v.selected_entry().map(|e| e.oid), Some(was), "the selected commit stays selected");
     assert!(!v.loading);
-    assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)));
+    assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)));
     let _ = std::fs::remove_dir_all(&dir);
 }

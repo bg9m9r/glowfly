@@ -17,13 +17,13 @@ fn a_landed_step_reveals_its_file() {
     // b.bin has nothing to land on: the step goes on to c.txt.
     let landed = shown(&st).cloned();
     assert_eq!(landed, Some(unstaged("c.txt")));
-    assert_eq!(st.view.file_reveal, Some((unstaged("c.txt"), st.diff_shown_gen)));
+    assert_eq!(st.view.file_reveal, Some((unstaged("c.txt"), st.session.diff.shown_gen)));
 
     // A reload keeps the landing it already revealed.
     let fx = run(&mut st, Msg::Repo(RepoMsg::Refresh));
     finish(&mut st, fx);
     assert_eq!(shown(&st).cloned(), landed);
-    assert!(st.view.file_reveal.as_ref().is_none_or(|(t, g)| Some(t) == landed.as_ref() && *g < st.diff_shown_gen));
+    assert!(st.view.file_reveal.as_ref().is_none_or(|(t, g)| Some(t) == landed.as_ref() && *g < st.session.diff.shown_gen));
 
     // Opening a file from the list, or closing the diff, clears it.
     let fx = run(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1)));

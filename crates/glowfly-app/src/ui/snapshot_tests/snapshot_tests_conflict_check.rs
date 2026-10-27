@@ -28,8 +28,8 @@ pub(in crate::ui) fn on_search(theme: ThemeChoice, name: &str, result: Result<Pr
     reload(&mut st, &dir, &LoadOptions::all(500));
     let request = current_request(st.snap.as_ref().unwrap()).expect("search compares with main");
     assert_eq!((request.target.name.as_str(), request.target.kind), ("main", TargetKind::DefaultBranch));
-    let generation = st.conflict_checks.start().unwrap();
-    st.conflict_checks.finish(generation, ConflictReport { request: request.clone(), result });
+    let generation = st.session.reads.conflict_checks.start().unwrap();
+    st.session.reads.conflict_checks.finish(generation, ConflictReport { request: request.clone(), result });
     (st, dir, request)
 }
 
@@ -162,8 +162,8 @@ fn chip_only_for_current_conflicts() {
 
     let (mut st, _, mut request) = on_search(ThemeChoice::Dark, "conflict-chip", Ok(Prediction::Clean));
     request.ours = git2::Oid::zero();
-    let generation = st.conflict_checks.start().unwrap();
-    st.conflict_checks.finish(generation, ConflictReport { request, result: conflicts(&["a.txt"]) });
+    let generation = st.session.reads.conflict_checks.start().unwrap();
+    st.session.reads.conflict_checks.finish(generation, ConflictReport { request, result: conflicts(&["a.txt"]) });
     assert!(!chip(st), "for another commit");
     remove_fixture(&dir);
 }

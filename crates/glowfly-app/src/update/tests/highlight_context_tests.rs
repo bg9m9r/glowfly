@@ -42,7 +42,7 @@ fn target() -> DiffTarget {
 }
 
 fn shown(st: &AppState) -> &FileDiff {
-    &st.diff.as_ref().expect("a diff is open").1
+    &st.session.diff.view.as_ref().expect("a diff is open").1
 }
 
 fn hl(d: &FileDiff) -> &DiffHighlight {
@@ -88,7 +88,7 @@ fn medium_file_opens_colored_then_corrects() {
         let_lines(d)
     );
     assert_eq!(held.len(), 1);
-    assert!(matches!(&held[0], Effect::HighlightDiff { generation, .. } if *generation == st.diff_shown_gen));
+    assert!(matches!(&held[0], Effect::HighlightDiff { generation, .. } if *generation == st.session.diff.shown_gen));
 
     let view = (st.view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
     let msg = runner::execute(held.remove(0)).expect("a result");
@@ -104,7 +104,7 @@ fn medium_file_opens_colored_then_corrects() {
 fn adopt_requires_same_old_text() {
     let (mut st, dir, _) = opened("hlc-adopt", 2_450);
     // On screen: the same hunks, finished, but each parsed on its own.
-    let d = std::sync::Arc::make_mut(&mut st.diff.as_mut().unwrap().1);
+    let d = std::sync::Arc::make_mut(&mut st.session.diff.view.as_mut().unwrap().1);
     d.highlight = highlight::highlight_diff("a.rs", d, None);
     assert!(d.highlight.as_ref().is_some_and(|h| !h.is_pending()));
     let per_hunk = d.highlight.clone();
@@ -114,7 +114,13 @@ fn adopt_requires_same_old_text() {
     assert!(old.is_some());
     runner::decorate_in_context("a.rs", None, &mut fresh, None, old.as_ref());
     assert!(hl(&fresh).is_pending());
-    let msg = Msg::Repo(RepoMsg::DiffLoaded { target: target(), reload: true, generation: st.diff_gen, result: Ok(fresh), lfs: None });
+    let msg = Msg::Repo(RepoMsg::DiffLoaded {
+        target: target(),
+        reload: true,
+        generation: st.session.diff.generation,
+        result: Ok(fresh),
+        lfs: None,
+    });
     let fx = update(&mut st, msg, Instant::now());
     assert!(hl(shown(&st)).is_pending(), "not adopted");
     assert_ne!(shown(&st).highlight, per_hunk);
