@@ -12,8 +12,12 @@ use glowfly_core::settings::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS};
 pub const WEBSITE: &str = env!("CARGO_PKG_REPOSITORY");
 /// Help > Report an issue.
 pub const ISSUES: &str = concat!(env!("CARGO_PKG_REPOSITORY"), "/issues");
-/// The version in About and the copied version info.
+/// The version in About, the status bar and the copied version info.
+#[cfg(not(test))]
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Tests show a fixed version, so a release's version bump leaves the snapshots alone.
+#[cfg(test)]
+pub const VERSION: &str = "0.1.0";
 /// The licence line in About.
 pub const LICENSE: &str = env!("CARGO_PKG_LICENSE");
 

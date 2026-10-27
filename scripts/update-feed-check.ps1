@@ -27,7 +27,8 @@ $Out = [IO.Path]::GetFullPath($Out)
 New-Item -ItemType Directory -Force $Out | Out-Null
 $utf8 = [Text.UTF8Encoding]::new($false)
 
-$namePattern = '^glowfly-v(?<ver>[^-]+)-(?<triple>[^.]+)\.(?<ext>msi|deb|dmg|zip|tar\.gz)$'
+# The version is matched literally: a pre-release one (0.2.0-rc.1) has dashes and dots of its own.
+$namePattern = '^glowfly-v(?<ver>' + [regex]::Escape($Version) + ')-(?<triple>[^.]+)\.(?<ext>msi|deb|dmg|zip|tar\.gz)$'
 
 # The triple and extension of a package file named glowfly-v<Version>-<triple>.<ext>.
 function Get-PackageName([string]$Path) {

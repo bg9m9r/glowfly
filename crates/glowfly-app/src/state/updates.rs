@@ -76,7 +76,8 @@ impl Default for UpdatesState {
     fn default() -> Self {
         Self {
             status: UpdateStatus::Idle,
-            current: Version::parse(app_update::CURRENT_VERSION).unwrap_or(Version { major: 0, minor: 0, patch: 0, pre: Vec::new() }),
+            // The same version as core's CURRENT_VERSION, except fixed in tests.
+            current: Version::parse(super::menu_bar::VERSION).unwrap_or(Version { major: 0, minor: 0, patch: 0, pre: Vec::new() }),
             platform: app_update::current_platform(),
             auto_from: None,
             retry_at: None,
