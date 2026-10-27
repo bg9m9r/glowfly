@@ -124,8 +124,9 @@ window_start() {
   [ "${#cmd[@]}" -gt 0 ] || fail "glowfly.desktop has no Exec"
   prog="$(command -v "${cmd[0]}" || true)"
   # A merged /usr (Fedora) finds the same file through /usr/sbin too: compare the real paths.
-  [ -n "$prog" ] && [ "$(realpath -e -- "$prog")" = "$(realpath -e -- "$want")" ] \
-    || fail "Exec=${cmd[0]} resolves to '$prog', not $want"
+  if [ -z "$prog" ] || [ "$(realpath -e -- "$prog")" != "$(realpath -e -- "$want")" ]; then
+    fail "Exec=${cmd[0]} resolves to '$prog', not $want"
+  fi
 
   # Never the caller's display or Wayland session.
   unset WAYLAND_DISPLAY XDG_SESSION_TYPE DISPLAY
