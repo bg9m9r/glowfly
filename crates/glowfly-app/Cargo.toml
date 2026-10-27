@@ -65,7 +65,12 @@ maintainer = "Glowfly contributors <https://github.com/bg9m9r/glowfly/issues>"
 copyright = "Glowfly contributors"
 section = "vcs"
 priority = "optional"
-depends = "$auto, git"
+# `$auto` lists only the libraries the program links. winit, glutin and the Wayland client load
+# the windowing ones at run time (dlopen), so those are named here, for Debian 12 and Ubuntu
+# 22.04 or newer: xkbcommon (the keyboard; its X11 part on X11), Xlib with its xcb bridge, the
+# cursor and input extensions, xcb, the Wayland client and its EGL bridge, and the GL loaders
+# (EGL first, GLX on X11). tests/linux_packages.rs keeps this list and the .rpm's in step.
+depends = "$auto, git, libxkbcommon0, libxkbcommon-x11-0, libx11-6, libx11-xcb1, libxcursor1, libxi6, libxcb1, libwayland-client0, libwayland-egl1, libegl1, libgl1"
 # Glowfly was called Trellis: installing it replaces the trellis package instead of joining it.
 conflicts = "trellis"
 replaces = "trellis"
@@ -119,5 +124,19 @@ assets = [
     { source = "../../packaging/linux/package-format.rpm", dest = "/usr/share/glowfly/package-format", mode = "644" },
 ]
 
+# The libraries the program loads at run time, the same set as the .deb's `depends`. They are
+# named by soname, the way rpm's own linked-library requirements are, so Fedora and openSUSE
+# (whose package names differ) both resolve them.
 [package.metadata.generate-rpm.requires]
 git = "*"
+"libxkbcommon.so.0()(64bit)" = "*"
+"libxkbcommon-x11.so.0()(64bit)" = "*"
+"libX11.so.6()(64bit)" = "*"
+"libX11-xcb.so.1()(64bit)" = "*"
+"libXcursor.so.1()(64bit)" = "*"
+"libXi.so.6()(64bit)" = "*"
+"libxcb.so.1()(64bit)" = "*"
+"libwayland-client.so.0()(64bit)" = "*"
+"libwayland-egl.so.1()(64bit)" = "*"
+"libEGL.so.1()(64bit)" = "*"
+"libGL.so.1()(64bit)" = "*"

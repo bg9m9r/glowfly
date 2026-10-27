@@ -55,7 +55,7 @@ if installed_status | grep -q 'install ok installed'; then
   exit 2
 fi
 missing=()
-for tool in dpkg dpkg-query Xvfb jq pwsh desktop-file-validate sha256sum; do
+for tool in apt-get dpkg dpkg-query Xvfb jq pwsh desktop-file-validate sha256sum; do
   command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
 done
 if [ "${#missing[@]}" -gt 0 ]; then
@@ -104,11 +104,16 @@ assert_removed() {
 }
 
 # --- Install the old version, then upgrade -------------------------------------------------
-as_root dpkg -i "$old_deb" >"$INSTALLER_OUT/install-old.log" 2>&1 || fail "dpkg -i of the old package failed; see install-old.log"
+# apt rather than dpkg -i, so the package's dependencies (git and the libraries the program loads
+# at run time) come from the archive the way a user's install gets them.
+apt_install() {
+  as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$1"
+}
+apt_install "$old_deb" >"$INSTALLER_OUT/install-old.log" 2>&1 || fail "apt-get install of the old package failed; see install-old.log"
 INSTALLED=1
 assert_version 0.0.1
 log "ok install 0.0.1"
-as_root dpkg -i "$deb" >"$INSTALLER_OUT/upgrade.log" 2>&1 || fail "dpkg -i of the current package failed; see upgrade.log"
+apt_install "$deb" >"$INSTALLER_OUT/upgrade.log" 2>&1 || fail "apt-get install of the current package failed; see upgrade.log"
 assert_version "$version"
 log "ok upgrade to $version"
 assert_installed_files "$(dpkg -L glowfly)" deb

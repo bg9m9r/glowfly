@@ -95,7 +95,7 @@ jobs:
       - name: Install Linux build dependencies and the check's tools
         run: |
           ./scripts/linux-deps.sh
-          sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 libegl1 jq shellcheck desktop-file-utils
+          sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 jq shellcheck desktop-file-utils
       - name: Build (release)
         run: cargo build --release --locked -p glowfly --target x86_64-unknown-linux-gnu
       - name: Install cargo-deb and cargo-generate-rpm
@@ -149,7 +149,7 @@ jobs:
           docker run --rm -e GITHUB_ACTIONS -e GLOWFLY_VERSION -e INSTALLER_OUT=/out \
             -v "$PWD:/src:ro" -v "$RUNNER_TEMP/old:/old:ro" -v "$RUNNER_TEMP/installers-rpm:/out" fedora:43 bash -c '
               dnf install -y --setopt=install_weak_deps=False rpm xorg-x11-server-Xvfb mesa-dri-drivers mesa-libGL \
-                mesa-libEGL libxkbcommon-x11 jq desktop-file-utils procps-ng findutils > /out/tools.log 2>&1 &&
+                mesa-libEGL jq desktop-file-utils procps-ng findutils > /out/tools.log 2>&1 &&
               bash /src/scripts/installer-check-rpm.sh "/src/dist/glowfly-v$GLOWFLY_VERSION-x86_64-unknown-linux-gnu.rpm" \
                 /old/glowfly-v0.0.1-x86_64-unknown-linux-gnu.rpm "$GLOWFLY_VERSION"'
       - name: Upload logs

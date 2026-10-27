@@ -38,9 +38,9 @@ a new version starts.
 | `glowfly-vX.Y.Z-aarch64-pc-windows-msvc.msi`, `.zip` | The same for Windows on Arm (`wix build -arch arm64`). The MSI keeps the x64 one's UpgradeCode and folder, so it upgrades an x64 per-user install in place; no CI runner installs it |
 | `glowfly-vX.Y.Z-aarch64-apple-darwin.dmg`, `glowfly-vX.Y.Z-x86_64-apple-darwin.dmg` | `Glowfly.app` (`packaging/macos/Info.plist`, the icns) and a link to `/Applications` |
 | `glowfly-vX.Y.Z-<mac target>.tar.gz` | The macOS program on its own |
-| `glowfly-vX.Y.Z-<linux target>.deb` | For `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`: `/usr/bin/glowfly`, `glowfly.desktop` (folders open with Glowfly), the hidden `glowfly-links.desktop` for `glowfly://` links, hicolor icons from 16 to 512 px, the licences and README in `/usr/share/doc/glowfly`, and `/usr/share/glowfly/package-format` reading `deb`; depends on git |
-| `glowfly-vX.Y.Z-<linux target>.rpm` | The same files (cargo-generate-rpm, `[package.metadata.generate-rpm]` in `crates/glowfly-app/Cargo.toml`), with `package-format` reading `rpm`; requires git and the libraries the program links. A pre-release's version uses `~` for `-` (`0.3.0~rc.1`), so it sorts before the release |
-| `glowfly-vX.Y.Z-<linux target>.AppImage` | The program, its desktop entry and icons in one file that runs from anywhere (type-2 runtime; appimagetool and the runtime are pinned by version and SHA-256 in `scripts/package-linux.sh`). It needs glibc 2.35 or newer (it is built on Ubuntu 22.04), GTK 3 and git on the system; without FUSE, run it with `--appimage-extract-and-run` |
+| `glowfly-vX.Y.Z-<linux target>.deb` | For `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`: `/usr/bin/glowfly`, `glowfly.desktop` (folders open with Glowfly), the hidden `glowfly-links.desktop` for `glowfly://` links, hicolor icons from 16 to 512 px, the licences and README in `/usr/share/doc/glowfly`, and `/usr/share/glowfly/package-format` reading `deb`; depends on git and on the windowing libraries the program loads at run time, which `$auto` can't see (xkbcommon and its X11 part, Xlib and its xcb bridge, Xcursor, Xi, xcb, the Wayland client and its EGL bridge, EGL and GL) |
+| `glowfly-vX.Y.Z-<linux target>.rpm` | The same files (cargo-generate-rpm, `[package.metadata.generate-rpm]` in `crates/glowfly-app/Cargo.toml`), with `package-format` reading `rpm`; requires git, the libraries the program links, and the same run-time libraries as the .deb, named by soname (`libxkbcommon-x11.so.0()(64bit)`) so Fedora and openSUSE both resolve them. A pre-release's version uses `~` for `-` (`0.3.0~rc.1`), so it sorts before the release |
+| `glowfly-vX.Y.Z-<linux target>.AppImage` | The program, its desktop entry and icons in one file that runs from anywhere (type-2 runtime; appimagetool and the runtime are pinned by version and SHA-256 in `scripts/package-linux.sh`). It bundles no libraries: it needs glibc 2.35 or newer (it is built on Ubuntu 22.04), GTK 3, git and the .deb's run-time windowing libraries on the system, which every X11 or Wayland desktop has; without FUSE, run it with `--appimage-extract-and-run` |
 | `glowfly-vX.Y.Z-x86_64-unknown-linux-gnu.flatpak` | A Flatpak bundle with the app id `io.github.bg9m9r.glowfly` (`packaging/flatpak/`): the program, its own git (`/app/bin/git`), the desktop entries and icons named for the app id, and AppStream metadata, on the `org.freedesktop.Platform` 25.08 runtime, which installs from Flathub. Built by the `flatpak` job in the Flathub builder image; x86_64 only |
 | `glowfly-vX.Y.Z-<linux target>.tar.gz` | The Linux program on its own |
 | `<file>.sha256` | The SHA-256 of each file above |
@@ -173,12 +173,13 @@ version), and on a clean runner:
   current version is installed, its files, both shortcuts, the `HKEY_CURRENT_USER` keys, runs the
   installed program through each shortcut (`--version`) and through the update-feed check, then
   uninstalls it (`msiexec /x`) and checks that nothing is left.
-- **Linux** (`scripts/installer-check-linux.sh`): the same with `dpkg -i` and
+- **Linux** (`scripts/installer-check-linux.sh`): the same with `apt-get install` of
+  each .deb (so its dependencies come from the archive, not the runner's image) and
   `dpkg --purge`, plus `desktop-file-validate` on the installed entries, `package-format`, and
   the window started from `glowfly.desktop`'s `Exec` under its own Xvfb, seen drawing through
   the smoke probe.
 - **The .rpm** (`scripts/installer-check-rpm.sh`), in a `fedora:43` container: `dnf install` of
-  the v0.0.1 package and then the current one (dnf pulls git and GTK 3), the version, the files
+  the v0.0.1 package and then the current one (dnf pulls git, GTK 3 and the run-time libraries; `requires.txt` must list them), the version, the files
   `rpm -ql` lists, `package-format`, the desktop entries, `--version`, `--check-update` against
   an empty feed folder (exit 3, `install rpm`), the window under Xvfb, then `dnf remove` and
   nothing left. PowerShell isn't in Fedora's repositories, so it doesn't run the update-feed

@@ -96,6 +96,8 @@ assert_version "$rpm_version"
 log "ok upgrade to $rpm_version"
 rpm -qp --requires "$rpm_file" >"$INSTALLER_OUT/requires.txt"
 grep -q '^git' "$INSTALLER_OUT/requires.txt" || fail "the package doesn't require git; see requires.txt"
+grep -qF 'libxkbcommon-x11.so.0()(64bit)' "$INSTALLER_OUT/requires.txt" ||
+  fail "the package doesn't require the libraries the program loads at run time; see requires.txt"
 assert_installed_files "$(rpm -ql glowfly)" rpm
 log "ok files, desktop entries, icons, docs and package-format"
 
