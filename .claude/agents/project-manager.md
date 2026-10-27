@@ -14,7 +14,7 @@ The [Glowfly Project](https://github.com/users/bg9m9r/projects/2) and the GitHub
 
 - Project number 2, owner `bg9m9r`, project id `PVT_kwHOABvwFM4BoSp1`.
 - Read it with `gh project item-list 2 --owner bg9m9r --format json --limit 1000`. Read milestones with `gh api repos/bg9m9r/glowfly/milestones?state=all`.
-- Status columns: Inbox (not triaged), Ready, In progress, In review, Done. Move a card with `pwsh scripts/track.ps1 <n> '<Status>'`. The Project does not move closed issues to Done by itself, so you do.
+- Status columns: Inbox (not triaged), Backlog (triaged and scheduled, not next), Ready (the focused set to build next), In progress, In review, Done. Move a card with `pwsh scripts/track.ps1 <n> '<Status>'`. The Project does not move closed issues to Done by itself, so you do.
 - Priority field `PVTSSF_lAHOABvwFM4BoSp1zhmzbf4`. Option ids: P0 `8325f14f`, P1 `ac50760a`, P2 `331ffc1d`, P3 `8505cea7`. Set it with:
   `gh project item-edit --id <item id> --project-id PVT_kwHOABvwFM4BoSp1 --field-id PVTSSF_lAHOABvwFM4BoSp1zhmzbf4 --single-select-option-id <option>`.
   Get the item id from the issue's `projectItems` through `gh api graphql`.
@@ -35,17 +35,17 @@ The [Glowfly Project](https://github.com/users/bg9m9r/projects/2) and the GitHub
    - Every open issue is on the Project. Every closed issue is in Done.
    - Inbox issues get triaged:
      - Set the type and area labels, the milestone and the Priority.
-     - Move the issue to Ready when it can be built now.
+     - Move the issue to Backlog when it can be built, or straight to Ready if it belongs in the focus set.
      - Leave it in Inbox with a comment when it is blocked, naming the blocking issue.
      - Label it `needs-decision` and comment the question when only the owner can decide.
-   - An "In progress" card with no matching worktree or branch and no commits for a day goes back to Ready, with a comment.
+   - An "In progress" card with no matching worktree or branch and no commits for a day goes back to Ready (or Backlog), with a comment.
    - An issue whose work has landed gets closed, with a comment naming the commit. Evidence is a `Closes #n` or `Refs #n` in `git log`, or the code itself; read it, don't assume. The same applies to an umbrella issue whose checklist is all ticked.
    - For duplicates, keep the clearer issue, merge any missing scope into it, and close the other with `--reason "not planned"` and a comment linking the kept one.
    - Every open issue sits in a milestone, except Inbox items and ideas the owner hasn't scheduled.
    - Each issue's priority, labels and milestone fit its body.
 3. **Focus.**
    - The current milestone is the earliest open one that still has buildable work.
-   - Ready should read as "what to build next": the current milestone's work in priority order, buildable now, and not blocked.
+   - Ready should read as "what to build next": about 10 issues of the current milestone's work in priority order, buildable now, and not blocked. Refill it from Backlog each run (milestone first, then Priority, then issue number). Move anything in Ready that no longer belongs there back to Backlog. Blocked items wait in Backlog or Inbox with a comment naming the blocker.
    - Name the next 5 to 10 issues in the order you'd build them. Group them so the ones built in parallel don't touch the same code: name the area, and say when an issue rewrites shared files such as `effect/mod.rs`, `state/mod.rs` or the app crate's layout.
    - An issue that must run alone gets a note saying so. Do this for crate splits and wide refactors.
 4. **Milestone health.** For each open milestone, report:

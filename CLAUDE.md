@@ -39,7 +39,8 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
 
 ## Tracking work
 
-- Pick work from the Project's **Ready** column, highest Priority first (within a priority, the
+- Pick work from the Project's **Ready** column (the focused next set; Backlog holds the rest of
+  the scheduled work and is refilled into Ready by the `project-manager` agent), highest Priority first (within a priority, the
   current milestone first). Never pick a `needs-decision` issue: those are the owner's to decide.
 - One branch (and worktree) per issue, e.g. `issue/<n>-<slug>`. On starting, move its card:
   `pwsh scripts/track.ps1 <n> 'In progress'`. The Project doesn't move closed issues, so after

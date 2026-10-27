@@ -34,8 +34,9 @@ These need a vendor account or cloud service rather than git:
   issues are closed. Criteria marked *(you)* need a person: hands-on use, an account, or a
   release decision. The rest are checked by automated tests or CI.
 - **Issues** hold the items, each in a GitHub milestone when a milestone needs it. The
-  Project's columns are Inbox (not triaged), Ready, In progress, In review and Done, and its
-  Priority field (P0 to P3) orders Ready. Issues labelled `needs-decision` wait on the owner.
+  Project's columns are Inbox (not triaged), Backlog (triaged and scheduled, not next), Ready
+  (the focused set to build next, refilled from Backlog by milestone, then Priority), In progress,
+  In review and Done, and its Priority field (P0 to P3) orders Backlog and Ready. Issues labelled `needs-decision` wait on the owner.
 - **Follow-ups go to [docs/ideas](docs/ideas/README.md)**, which is not planned work. Finishing an
   item tends to suggest more follow-ups than it closes, so nothing there is built until a triage
   promotes it to an issue. Triage when a milestone closes.

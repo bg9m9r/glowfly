@@ -10,7 +10,7 @@
 param(
     [Parameter(Mandatory = $true)][int]$Issue,
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Inbox', 'Ready', 'In progress', 'In review', 'Done')]
+    [ValidateSet('Inbox', 'Backlog', 'Ready', 'In progress', 'In review', 'Done')]
     [string]$Status
 )
 $ErrorActionPreference = "Stop"
@@ -22,6 +22,7 @@ $ProjectId = 'PVT_kwHOABvwFM4BoSp1'
 $StatusField = 'PVTSSF_lAHOABvwFM4BoSp1zhmzbdI'
 $StatusOptions = @{
     'Inbox'       = '50086577'
+    'Backlog'     = '7a34acc5'
     'Ready'       = '74ed36ea'
     'In progress' = '32435649'
     'In review'   = '3c3d045b'
