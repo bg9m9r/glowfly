@@ -205,6 +205,10 @@ impl Sweep {
             if !stamp.exists || !stamp.dir {
                 found.push(abs);
                 drop_subtree(&mut seen.folders, rel);
+                // Its parent wasn't listed this time (that would have dropped it first): its
+                // own time can be unchanged (Linux stamps a folder from a coarse clock tick), so
+                // record the change there too, or the parent's next listing reports it again.
+                forget_in_parent(&mut seen.folders, rel, stamp);
                 continue;
             }
             if stamp == folder.stamp && !folder.racy && !rotating(i) {
@@ -278,6 +282,18 @@ fn drop_subtree(folders: &mut BTreeMap<PathBuf, Folder>, rel: &Path) {
     let below: Vec<PathBuf> = folders.range(rel.to_path_buf()..).map(|(k, _)| k).take_while(|k| k.starts_with(rel)).cloned().collect();
     for k in below {
         folders.remove(&k);
+    }
+}
+
+/// Makes the parent's listing say what `rel` is now (`stamp`): gone, or no longer a folder.
+fn forget_in_parent(folders: &mut BTreeMap<PathBuf, Folder>, rel: &Path, stamp: Stamp) {
+    let (Some(parent), Some(name)) = (rel.parent(), rel.file_name()) else { return };
+    let Some(folder) = folders.get_mut(parent) else { return };
+    let Ok(i) = folder.entries.binary_search_by(|e| e.name.as_os_str().cmp(name)) else { return };
+    if stamp.exists {
+        folder.entries[i] = Entry { name: name.to_os_string(), dir: false, len: stamp.len, mtime: stamp.mtime };
+    } else {
+        folder.entries.remove(i);
     }
 }
 

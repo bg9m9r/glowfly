@@ -63,6 +63,35 @@ fn files_and_folders_coming_and_going_are_reported() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Makes the sweep's record of the root match its stamp now, as when the removal lands in the
+/// same clock tick as the root's last change (Linux stamps folders from a coarse tick), and
+/// keeps the root (the first folder) out of the next sweep's rotating share.
+fn root_time_unchanged(s: &mut Sweep, dir: &Path) {
+    let seen = s.seen.as_mut().unwrap();
+    seen.folders.get_mut(Path::new("")).unwrap().stamp = Stamp::of(dir);
+    seen.cursor = 1;
+}
+
+#[test]
+fn a_folder_gone_while_its_parent_s_time_stays_is_reported_once() {
+    let dir = repo("sweep-gone-once", 3);
+    let (mut s, mut ig) = start(&dir);
+    std::fs::remove_dir_all(dir.join("d00")).unwrap();
+    root_time_unchanged(&mut s, &dir);
+    assert_eq!(s.sweep(&mut ig, later()), Some(vec![dir.join("d00")]), "found by its own stamp");
+    for _ in 0..SWEEP_ROUNDS {
+        assert_eq!(s.sweep(&mut ig, later()), Some(Vec::new()), "the root's next listing knows it is gone");
+    }
+    std::fs::remove_dir_all(dir.join("d01")).unwrap();
+    write(&dir, "d01", "now a file\n");
+    root_time_unchanged(&mut s, &dir);
+    assert_eq!(s.sweep(&mut ig, later()), Some(vec![dir.join("d01")]), "a folder turned into a file");
+    for _ in 0..SWEEP_ROUNDS {
+        assert_eq!(s.sweep(&mut ig, later()), Some(Vec::new()), "the root's next listing knows it is a file");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn a_content_edit_is_found_by_rotation() {
     let dir = repo("sweep-rotation", 20);
