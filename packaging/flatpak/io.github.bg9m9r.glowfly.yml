@@ -31,9 +31,15 @@ finish-args:
   - --talk-name=org.freedesktop.secrets
 modules:
   # git itself, at /app/bin/git, first on PATH inside the sandbox. No configure step: the make
-  # flags leave out gitk, git-gui, translations, Perl and Python.
+  # flags leave out gitk, git-gui, translations, Perl and Python. git builds its Rust parts
+  # (libgitcore) with cargo; they have no dependencies, so this needs no network.
   - name: git
     buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/git/cargo
+        CARGO_NET_OFFLINE: 'true'
     build-commands:
       - make -j${FLATPAK_BUILDER_N_JOBS} prefix=/app NO_TCLTK=YesPlease NO_GETTEXT=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease USE_LIBPCRE2=YesPlease INSTALL_SYMLINKS=YesPlease all
       - make prefix=/app NO_TCLTK=YesPlease NO_GETTEXT=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease USE_LIBPCRE2=YesPlease INSTALL_SYMLINKS=YesPlease install
