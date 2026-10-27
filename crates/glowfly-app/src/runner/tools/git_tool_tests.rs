@@ -72,6 +72,9 @@ fn git_mergetool_never_reads_the_file_name_as_a_pattern() {
     let dir = conflicted_files("git-mergetool-pattern", &["a.txt", "[ab].txt", "b c.txt"]);
     git(&dir, &["config", "mergetool.t.cmd", "cp \"$REMOTE\" \"$MERGED\""]);
     git(&dir, &["config", "mergetool.keepBackup", "false"]);
+    // Trust cp's exit code: otherwise mergetool asks whether the merge worked when the file isn't
+    // newer than its backup, which a copy within the same timestamp tick isn't (Linux).
+    git(&dir, &["config", "mergetool.t.trustExitCode", "true"]);
     // `[ab].txt` would merge and stage a.txt: refused, and neither file is touched.
     let e = merge_at(&dir, "[ab].txt", builtin("t"));
     assert!(matches!(&e, MergeEnd::Failed(LaunchFailure::Other(t)) if t.contains("[ab].txt")), "{e:?}");

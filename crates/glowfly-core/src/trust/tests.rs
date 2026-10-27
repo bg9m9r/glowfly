@@ -84,13 +84,14 @@ fn only_hooks_git_would_run_are_listed() {
     let dir = scratch_repo("trust-hooks");
     let hooks = dir.join(".git/hooks");
     hook(&hooks, "pre-commit");
+    // A sample of its own, executable even: git init writes none when its templates are missing.
+    hook(&hooks, "pre-push.sample");
     std::fs::write(hooks.join("notes.txt"), "x").unwrap();
     std::fs::create_dir_all(hooks.join("post-merge")).unwrap();
     #[cfg(unix)]
     std::fs::write(hooks.join("post-checkout"), "#!/bin/sh\n").unwrap();
     let s = scan_at(&dir).unwrap();
     assert_eq!(s.hooks, ["pre-commit"]);
-    assert!(hooks.join("pre-push.sample").exists(), "git init wrote samples");
     assert!(same_dir(s.hooks_dir.as_deref().unwrap(), &hooks));
     let _ = std::fs::remove_dir_all(&dir);
 }
