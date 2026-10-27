@@ -1,5 +1,6 @@
 //! Sweeps of fixture repositories: the baseline, folders and files coming and going, edits found
 //! by rotation or a racy listing, what is never walked, the git dir's files and the size limit.
+//! Each change a test expects a sweep to find through a stamp moves that stamp itself (`moved`).
 
 use super::*;
 use crate::testutil::{git, scratch_repo, write};
@@ -8,6 +9,19 @@ use std::time::Duration;
 /// Well after every file the test wrote: no listing is racy.
 fn later() -> SystemTime {
     SystemTime::now() + Duration::from_secs(60)
+}
+
+/// Gives `p` a time it has never had. A create or remove inside a folder changes the folder's
+/// time, but Linux takes it from a coarse clock tick, so changes within one tick can leave it
+/// equal. The app lists again any folder whose time was younger than `RACY_WINDOW`, so it still
+/// sees them, but these tests' `later()` makes every time old: a change they expect a sweep to
+/// find through a stamp moves that stamp itself, the same on every OS and file system. The
+/// times are years in the past (never racy, never an OS-given time) and each call's is new.
+fn moved(p: &Path) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(1_000_000_000);
+    let t = SystemTime::UNIX_EPOCH + Duration::from_secs(NEXT.fetch_add(1, Ordering::Relaxed));
+    filetime::set_file_mtime(p, filetime::FileTime::from_system_time(t)).unwrap();
 }
 
 fn start(dir: &Path) -> (Sweep, Ignores) {
@@ -44,18 +58,23 @@ fn files_and_folders_coming_and_going_are_reported() {
     let dir = repo("sweep-come-go", 1);
     let (mut s, mut ig) = start(&dir);
     write(&dir, "new.txt", "new\n");
+    moved(&dir);
     assert_eq!(s.sweep(&mut ig, later()), Some(vec![dir.join("new.txt")]));
 
     std::fs::create_dir_all(dir.join("n/deep")).unwrap();
     write(&dir, "n/deep/x.txt", "x\n");
+    moved(&dir);
     assert_eq!(s.sweep(&mut ig, later()), Some(vec![dir.join("n")]), "only the new folder: its path covers the rest");
     assert_eq!(s.sweep(&mut ig, later()), Some(Vec::new()), "walked into, not reported again");
     write(&dir, "n/deep/y.txt", "y\n");
+    moved(&dir.join("n/deep"));
     assert_eq!(s.sweep(&mut ig, later()), Some(vec![dir.join("n/deep/y.txt")]), "the new folder is watched too");
 
     std::fs::remove_file(dir.join("a.txt")).unwrap();
+    moved(&dir);
     assert_eq!(s.sweep(&mut ig, later()), Some(vec![dir.join("a.txt")]));
     std::fs::remove_dir_all(dir.join("n")).unwrap();
+    moved(&dir);
     assert_eq!(s.sweep(&mut ig, later()), Some(vec![dir.join("n")]));
     for _ in 0..SWEEP_ROUNDS {
         assert_eq!(s.sweep(&mut ig, later()), Some(Vec::new()), "its folders are forgotten");
@@ -141,6 +160,9 @@ fn ignored_and_nested_git_folders_are_not_walked() {
     write(&dir, "nested/.git/HEAD", "ref: refs/heads/other\n");
     write(&dir, "nested/.git/ORIG_HEAD", "x\n");
     write(&dir, ".git/description", "changed\n");
+    for d in ["target", "nested/.git", ".git"] {
+        moved(&dir.join(d)); // a stamp that changed doesn't make them walked
+    }
     let mut found = Vec::new();
     for _ in 0..SWEEP_ROUNDS {
         found.extend(s.sweep(&mut ig, later()).expect("a sweep"));
@@ -162,6 +184,7 @@ fn the_git_dir_s_files_are_compared() {
     let (mut s, mut ig) = start(&dir);
     write(&dir, "a.txt", "edited\n");
     git(&dir, &["add", "a.txt"]);
+    moved(&gd.join("index"));
     let found = s.sweep(&mut ig, later()).unwrap();
     assert!(found.contains(&gd.join("index")), "{found:?}");
     git(&dir, &["branch", "x"]);
@@ -193,13 +216,9 @@ fn a_new_folder_that_crosses_the_limit_reads_everything_from_then_on() {
     assert_eq!(s.sweep(&mut ig, later()), Some(Vec::new()), "the baseline fits");
     std::fs::create_dir_all(dir.join("n")).unwrap();
     for f in ["1", "2", "3"] {
-        write(
-            &dir,
-            &format!("n/{f}.txt"),
-            "x
-",
-        );
+        write(&dir, &format!("n/{f}.txt"), "x\n");
     }
+    moved(&dir);
     for _ in 0..3 {
         assert_eq!(s.sweep(&mut ig, later()), None, "n's 3 entries take it past the limit");
     }

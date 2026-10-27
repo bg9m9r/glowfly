@@ -56,6 +56,7 @@ syntect = { version = "5.3", default-features = false, features = ["parsing", "y
 two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"] }
 
 [dev-dependencies]
+filetime = "0.2.29"
 two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"] }
 
 # Linux: save tokens in the desktop keyring (GNOME Keyring, KWallet) through the Secret Service.
