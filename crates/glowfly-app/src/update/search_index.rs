@@ -12,9 +12,9 @@ use std::sync::Arc;
 /// Asks the index for the query's matches unless it answered already or is answering: only for
 /// an active query without path terms and an index current for the loaded history.
 pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let current = st.search.active().then(|| st.current_index().cloned()).flatten();
+    let current = st.session.search.active().then(|| st.current_index().cloned()).flatten();
     let Some(index) = current else {
-        let ix = &mut st.search.index;
+        let ix = &mut st.session.search.index;
         ix.answer = None;
         ix.pending = None;
         ix.asked = None;
@@ -23,8 +23,8 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.index_answer().is_some() {
         return;
     }
-    let query = st.search.query.clone();
-    let ix = &mut st.search.index;
+    let query = st.session.search.query.clone();
+    let ix = &mut st.session.search.index;
     let asking = ix.pending.is_some() && ix.asked.as_ref().is_some_and(|(q, i)| *q == query && Arc::ptr_eq(i, &index));
     if asking {
         return;
@@ -39,7 +39,7 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// The index's answer to request `request`: kept when it is the one pending, then a filtering
 /// search may load straight to its matches.
 pub(super) fn queried(st: &mut AppState, request: u64, result: Result<Vec<u32>, String>, fx: &mut Vec<Effect>) {
-    let ix = &mut st.search.index;
+    let ix = &mut st.session.search.index;
     if ix.pending != Some(request) {
         return;
     }
@@ -60,8 +60,8 @@ pub(super) fn queried(st: &mut AppState, request: u64, result: Result<Vec<u32>, 
 /// asked for again), and its history may need a build.
 pub(super) fn resume(st: &mut AppState, fx: &mut Vec<Effect>) {
     super::search_loaded::resume(st, fx);
-    st.search.index.pending = None;
-    st.search.index.asked = None;
+    st.session.search.index.pending = None;
+    st.session.search.index.asked = None;
     super::history_index::want_build(st, fx);
     want(st, fx);
 }
@@ -98,7 +98,7 @@ fn through_matches(positions: &[u32], n: usize, loaded: usize) -> Option<usize> 
 /// newest match; a match past the graph's cap is only logged.
 pub(super) fn next_beyond(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
     let Some((loaded, positions)) = answer(st) else { return false };
-    if st.search.index.jump.is_some() && st.loading_more() {
+    if st.session.search.index.jump.is_some() && st.loading_more() {
         return true;
     }
     let Some(p) = positions.iter().map(|&p| p as usize).find(|&p| p >= loaded) else { return false };
@@ -107,7 +107,7 @@ pub(super) fn next_beyond(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
         return false;
     }
     let oid = st.index_answer().and_then(|a| a.index.oid_at(p));
-    st.search.index.jump = oid;
+    st.session.search.index.jump = oid;
     load_through(st, p + 1, fx);
     true
 }
@@ -115,15 +115,15 @@ pub(super) fn next_beyond(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
 /// A new history loaded: selects the older match Enter asked for once it is shown, or gives up
 /// when the loads ended without it.
 pub(super) fn landed(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(oid) = st.search.index.jump else { return };
+    let Some(oid) = st.session.search.index.jump else { return };
     let Some(snap) = &st.snap else { return };
     if let Some(&row) = snap.row_of.get(&oid) {
-        st.search.index.jump = None;
-        st.search.cursor = row;
-        st.search.stepped = true;
+        st.session.search.index.jump = None;
+        st.session.search.cursor = row;
+        st.session.search.stepped = true;
         super::repo::select_commit(st, oid, true, fx);
     } else if !st.loading_more() {
-        st.search.index.jump = None;
+        st.session.search.index.jump = None;
         st.log_quiet(false, "The loaded history doesn't reach the next match");
     }
 }
@@ -134,11 +134,11 @@ pub(super) fn landed(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// else the commit count to load through for the first screenful of matches.
 pub(super) fn fill_target(st: &AppState) -> Option<Option<usize>> {
     let Some((loaded, positions)) = answer(st) else {
-        let asking = st.current_index().is_some() && st.search.index.pending.is_some();
+        let asking = st.current_index().is_some() && st.session.search.index.pending.is_some();
         return asking.then_some(None);
     };
     let fill = st.fill_rows();
-    if st.search.matches.len() >= fill {
+    if st.session.search.matches.len() >= fill {
         return Some(None);
     }
     Some(through_matches(positions, fill, loaded))
@@ -151,7 +151,7 @@ pub(super) fn near_end(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let Some((loaded, positions)) = answer(st) else { return };
-    if let Some(count) = through_matches(positions, st.search.matches.len() + st.fill_rows(), loaded) {
+    if let Some(count) = through_matches(positions, st.session.search.matches.len() + st.fill_rows(), loaded) {
         load_through(st, count, fx);
     }
 }

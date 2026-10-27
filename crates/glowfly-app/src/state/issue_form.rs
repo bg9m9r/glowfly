@@ -239,7 +239,7 @@ pub fn too_many(max: usize) -> String {
 /// Why an issue can't be created for the active repository now; None when it can.
 pub fn create_blocked(st: &AppState) -> Option<String> {
     let none = || Some("No issue tracker for this repository".to_owned());
-    let Some(fs) = st.forge.as_ref() else { return none() };
+    let Some(fs) = st.session.forge.as_ref() else { return none() };
     let Some(t) = fs.tracker.as_ref() else {
         if fs.host.as_ref().is_some_and(|h| h.provider == Provider::BitbucketDataCenter) {
             return Some(

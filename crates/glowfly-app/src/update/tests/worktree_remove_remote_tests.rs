@@ -88,7 +88,7 @@ fn removes_the_worktree_and_both_branches() {
     assert_eq!(last_toast(&st), (true, "Removed worktree feature and deleted branch feature and origin/feature".to_owned()));
     let log = &st.log.last().unwrap().text;
     assert!(log.contains("merge-base --is-ancestor refs/heads/feature HEAD") && log.contains("push origin --delete feature"), "{log}");
-    assert_eq!(st.undo.undo.len(), 1, "the local delete is undoable");
+    assert_eq!(st.session.undo.undo.len(), 1, "the local delete is undoable");
     cleanup(&[&work, &bare]);
 }
 
@@ -129,7 +129,7 @@ fn a_failed_push_is_reported_and_the_local_delete_stays_undoable() {
     );
     assert!(!st.log.last().unwrap().ok);
     assert!(on_remote(&bare, "feature"));
-    assert_eq!(st.undo.undo.len(), 1, "the local delete is undoable");
+    assert_eq!(st.session.undo.undo.len(), 1, "the local delete is undoable");
     cleanup(&[&work, &bare]);
 }
 

@@ -8,7 +8,7 @@ use crate::state::{AppState, Selection};
 use std::time::Instant;
 
 pub(super) fn back(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    match &st.selection {
+    match &st.session.selection {
         Selection::Commits(m) => {
             let (focus, dropped) = (m.focus(), m.len() - 1);
             super::repo::select_commit(st, focus, true, fx);

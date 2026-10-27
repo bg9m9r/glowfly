@@ -31,7 +31,7 @@ fn has_text(ex: &Expanded, g: &GapSpan) -> bool {
 pub(super) fn open(st: &mut AppState, key: u32, fx: &mut Vec<Effect>) {
     let Some((_, all)) = shown_gaps(st) else { return };
     let Some(g) = all.iter().find(|g| g.key == key) else { return };
-    let ex = &st.view.diff_expanded;
+    let ex = &st.session.tab_view.diff_expanded;
     // An opened gap (this one included, from an earlier click) still waits for the text.
     let waiting = all.iter().any(|o| ex.contains(o.key) && !has_text(ex, o));
     let need = !has_text(ex, g) && !waiting;
@@ -59,7 +59,7 @@ pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, res
     }
     match result {
         // Outside the hunk view the rows don't change.
-        Ok(text) if shown_gaps(st).is_none() => st.view.diff_expanded.set_gap_text(text),
+        Ok(text) if shown_gaps(st).is_none() => st.session.tab_view.diff_expanded.set_gap_text(text),
         Ok(text) => {
             reanchor(st, |ex| {
                 ex.set_gap_text(text);
@@ -68,7 +68,7 @@ pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, res
         }
         Err(e) => {
             let all = shown_gaps(st).map(|(_, all)| all).unwrap_or_default();
-            let ex = &mut st.view.diff_expanded;
+            let ex = &mut st.session.tab_view.diff_expanded;
             let waiting: Vec<u32> = all.iter().filter(|g| ex.contains(g.key) && !has_text(ex, g)).map(|g| g.key).collect();
             for key in waiting {
                 ex.remove(key);
@@ -83,7 +83,7 @@ pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, res
 /// moved show closed meanwhile.
 pub(super) fn diff_shown(st: &AppState, fx: &mut Vec<Effect>) {
     let Some((_, all)) = shown_gaps(st) else { return };
-    if all.iter().any(|g| st.view.diff_expanded.contains(g.key)) {
+    if all.iter().any(|g| st.session.tab_view.diff_expanded.contains(g.key)) {
         request(st, fx);
     }
 }
@@ -125,19 +125,19 @@ fn rows(d: &FileDiff, layout: DiffLayout, ex: &Expanded) -> Vec<Row> {
 pub(super) fn reanchor(st: &mut AppState, change: impl FnOnce(&mut Expanded) -> bool) -> bool {
     let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
     let Some((_, d)) = st.session.diff.view.as_ref().map(|(t, d)| (t, d.clone())) else { return false };
-    let ex = &mut st.view.diff_expanded;
+    let ex = &mut st.session.tab_view.diff_expanded;
     let (before, changes) = (rows(&d, layout, ex), change_rows(&d, mode, layout, ex));
     if !change(ex) {
         return false;
     }
     let (after, now) = (rows(&d, layout, ex), change_rows(&d, mode, layout, ex));
     st.view.diff_cursor = st.view.diff_cursor.and_then(|c| changes.iter().position(|&r| r == c)).and_then(|i| now.get(i).copied());
-    let top = st.view.diff_top_row;
+    let top = st.session.tab_view.diff_top_row;
     let moved = before
         .get(top)
         .and_then(|&r| after.iter().position(|&x| x == r).or_else(|| r.header_after().and_then(|h| after.iter().position(|&x| x == h))));
     if let Some(row) = moved.filter(|&row| row != top) {
-        st.view.diff_top_row = row;
+        st.session.tab_view.diff_top_row = row;
         st.view.diff_scroll_to_row = Some(row);
     }
     true

@@ -23,7 +23,7 @@ use glowfly_core::text::printable;
 const LABEL_W: f32 = 92.0;
 
 pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let (Some(v), Some(fs)) = (&st.session.issue.view, &st.forge) else { return };
+    let (Some(v), Some(fs)) = (&st.session.issue.view, &st.session.forge) else { return };
     ui.spacing_mut().item_spacing.y = 6.0;
     ui.label(type_scale::section_text(ui, "Details"));
     details(ui, v, st);

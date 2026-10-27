@@ -49,7 +49,7 @@ fn dialog(st: &AppState) -> Option<(String, String)> {
 }
 
 fn running(st: &AppState) -> bool {
-    st.forge.as_ref().is_some_and(|f| f.stack_prs.is_some())
+    st.session.forge.as_ref().is_some_and(|f| f.stack_prs.is_some())
 }
 
 fn logged(st: &AppState, text: &str) -> bool {
@@ -91,7 +91,7 @@ fn create(st: &mut AppState) -> Vec<Effect> {
 }
 
 fn reply(st: &mut AppState, result: ForgeResult) {
-    let target = st.forge.as_ref().unwrap().host.clone().unwrap();
+    let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
     drive(st, Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target, auth: None, results: vec![result] })));
 }
 
@@ -105,13 +105,13 @@ fn the_stack_is_pushed_then_each_layer_gets_its_dialog_in_turn() {
     drive(&mut st, create_prs());
     assert!(logged(&st, "low: pushed as a new branch, tracking origin/low"), "{:?}", st.log);
     assert_eq!(dialog(&st), Some(("low".into(), "main".into())));
-    assert_eq!(st.forge.as_ref().unwrap().stack_step("low"), Some((1, 2)));
+    assert_eq!(st.session.forge.as_ref().unwrap().stack_step("low"), Some((1, 2)));
     let fx = create(&mut st);
     assert!(fx.iter().any(|e| matches!(e, Effect::Forge { call: ForgeCall::Create(_), .. })), "{fx:?}");
     assert!(running(&st), "waiting for the service");
     reply(&mut st, ForgeResult::Created(Ok(Box::new(pr(1, "low", "main")))));
     assert_eq!(dialog(&st), Some(("mid".into(), "low".into())), "mid targets the branch below it");
-    assert_eq!(st.forge.as_ref().unwrap().stack_step("mid"), Some((2, 2)));
+    assert_eq!(st.session.forge.as_ref().unwrap().stack_step("mid"), Some((2, 2)));
     create(&mut st);
     reply(&mut st, ForgeResult::Created(Ok(Box::new(pr(2, "mid", "low")))));
     assert!(!running(&st) && st.modal.is_none());
@@ -122,13 +122,13 @@ fn the_stack_is_pushed_then_each_layer_gets_its_dialog_in_turn() {
 #[test]
 fn layers_with_an_open_pr_are_skipped_and_a_pushed_stack_starts_at_once() {
     let (mut st, dir, bare) = pushed("stack-prs-open");
-    st.forge.as_mut().unwrap().prs = vec![pr(4, "low", "main")];
+    st.session.forge.as_mut().unwrap().prs = vec![pr(4, "low", "main")];
     let fx = update(&mut st, create_prs(), Instant::now());
     assert!(!fx.iter().any(|e| matches!(e, Effect::Stack(_))), "nothing to push: {fx:?}");
     assert!(st.job.is_none());
     assert_eq!(dialog(&st), Some(("mid".into(), "low".into())));
     assert!(logged(&st, "low already has pull request #4; skipped."), "{:?}", st.log);
-    assert_eq!(st.forge.as_ref().unwrap().stack_step("mid"), Some((2, 2)));
+    assert_eq!(st.session.forge.as_ref().unwrap().stack_step("mid"), Some((2, 2)));
     done(&dir, &bare);
 }
 
@@ -197,7 +197,7 @@ fn a_parked_tab_drops_its_run() {
     assert!(log.iter().any(|l| l.text == "The stack's create dialogs stopped: its tab is no longer active."), "{log:?}");
     assert!(log.iter().any(|l| l.text.contains("Not created: low, mid.")), "{log:?}");
     let parked = st.tabs[0].parked.as_ref().unwrap();
-    assert!(parked.forge.as_ref().is_some_and(|f| f.stack_prs.is_none()));
+    assert!(parked.session.forge.as_ref().is_some_and(|f| f.stack_prs.is_none()));
     done(&dir, &bare);
 }
 
@@ -210,12 +210,12 @@ fn refusals_start_nothing() {
         assert!(st.modal.is_none());
         assert_eq!(st.log.last().map(|l| l.text.clone()).as_deref(), Some(want));
     };
-    st.forge.as_mut().unwrap().prs = vec![pr(1, "low", "main"), pr(2, "mid", "low")];
+    st.session.forge.as_mut().unwrap().prs = vec![pr(1, "low", "main"), pr(2, "mid", "low")];
     refused(&mut st, "Every branch in the stack already has an open pull request.");
-    st.forge.as_mut().unwrap().prs.clear();
+    st.session.forge.as_mut().unwrap().prs.clear();
     st.snap.as_mut().unwrap().stacks.links[0].behind = true;
     refused(&mut st, "mid needs a restack onto low first.");
-    st.forge = None;
+    st.session.forge = None;
     refused(&mut st, "origin isn't on a code host such as GitHub or GitLab, so it can't take pull requests.");
     done(&dir, &bare);
 }

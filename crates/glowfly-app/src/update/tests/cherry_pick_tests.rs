@@ -106,7 +106,7 @@ fn cherry_pick_conflict_shows_banner_state() {
     assert_eq!(title.as_deref(), Some("Cherry-pick in progress"));
     let labels: Vec<&str> = actions.iter().map(|(l, _)| *l).collect();
     assert_eq!(labels, ["Continue", "Skip commit", "Abort cherry-pick"]);
-    assert_eq!(st.selection, Selection::Wip, "the WIP row shows the banner");
+    assert_eq!(st.session.selection, Selection::Wip, "the WIP row shows the banner");
     let (label, abort) = actions[2];
     drive(&mut st, Msg::git(label, abort));
     assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::Clean);

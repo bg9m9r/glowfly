@@ -15,7 +15,7 @@ fn target(provider: Provider, host: &str) -> Target {
 
 fn with_host(t: &Target) -> AppState {
     let mut st = state();
-    st.forge = Some(ForgeState::new(Some(t.clone()), "origin".into(), Some(t.clone())));
+    st.session.forge = Some(ForgeState::new(Some(t.clone()), "origin".into(), Some(t.clone())));
     st
 }
 
@@ -37,7 +37,7 @@ fn guessed_self_hosted_servers_are_never_contacted() {
         for interactive in [false, true] {
             assert!(forge_calls(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive })).is_empty(), "{t:?}");
         }
-        let fs = st.forge.as_ref().unwrap();
+        let fs = st.session.forge.as_ref().unwrap();
         assert!(matches!(&fs.host_status, Status::Error(e) if e.contains("not connected")), "{:?}", fs.host_status);
         assert_eq!(fs.loading, 0);
     }
@@ -59,7 +59,8 @@ fn with_jira(project: &str) -> AppState {
     let jira = Account { provider: Provider::JiraCloud, host: "acme.atlassian.net".into(), org: String::new() };
     let mut st = state();
     st.settings.connections.push(Connection { account: jira.clone(), user: "ada".into(), method: "access token".into() });
-    st.forge = Some(ForgeState::new(Some(target(Provider::GitHub, "github.com")), "origin".into(), Some(Target::jira(&jira, project))));
+    st.session.forge =
+        Some(ForgeState::new(Some(target(Provider::GitHub, "github.com")), "origin".into(), Some(Target::jira(&jira, project))));
     st
 }
 
@@ -72,13 +73,13 @@ fn asks_project_keys(st: &mut AppState) -> Option<bool> {
 }
 
 fn project_keys_reply(st: &mut AppState, result: Result<Option<Vec<String>>, ForgeError>) {
-    let target = st.forge.as_ref().unwrap().tracker.clone().unwrap();
+    let target = st.session.forge.as_ref().unwrap().tracker.clone().unwrap();
     let reply = ForgeReply { target, auth: None, results: vec![ForgeResult::ProjectKeys(result)] };
     update(st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
 }
 
 fn refs(st: &AppState, text: &str) -> Vec<String> {
-    st.forge.as_ref().unwrap().issue_refs(text)
+    st.session.forge.as_ref().unwrap().issue_refs(text)
 }
 
 #[test]
@@ -90,21 +91,21 @@ fn jira_keys_are_checked_against_the_sites_projects() {
 
     project_keys_reply(&mut st, Ok(Some(vec!["ABC".into()])));
     assert_eq!(refs(&st, "PROJ-12 ABC-3"), ["ABC-3"]);
-    assert_eq!(st.forge.as_ref().unwrap().branch_issue("feature/UTF-8-fix"), None);
-    assert_eq!(st.forge.as_ref().unwrap().branch_issue("feature/ABC-3-fix").as_deref(), Some("ABC-3"));
+    assert_eq!(st.session.forge.as_ref().unwrap().branch_issue("feature/UTF-8-fix"), None);
+    assert_eq!(st.session.forge.as_ref().unwrap().branch_issue("feature/ABC-3-fix").as_deref(), Some("ABC-3"));
     assert_eq!(asks_project_keys(&mut st), Some(false));
 
     // Too many projects to list: the word list applies, and they aren't asked for again.
     let mut st = with_jira("");
     project_keys_reply(&mut st, Ok(None));
-    assert_eq!(st.forge.as_ref().unwrap().jira_projects, ProjectKeys::TooMany);
+    assert_eq!(st.session.forge.as_ref().unwrap().jira_projects, ProjectKeys::TooMany);
     assert_eq!(refs(&st, "UTF-8 and PROJ-12"), ["PROJ-12"]);
     assert_eq!(asks_project_keys(&mut st), Some(false));
 
     // A failed read is tried again on the next refresh.
     let mut st = with_jira("");
     project_keys_reply(&mut st, Err(ForgeError { message: "boom".into(), auth: false }));
-    assert_eq!(st.forge.as_ref().unwrap().jira_projects, ProjectKeys::Unknown);
+    assert_eq!(st.session.forge.as_ref().unwrap().jira_projects, ProjectKeys::Unknown);
     assert_eq!(asks_project_keys(&mut st), Some(true));
 }
 
@@ -113,7 +114,7 @@ fn a_jira_project_filter_applies_to_text_and_branch_names() {
     let mut st = with_jira(" proj ");
     assert_eq!(asks_project_keys(&mut st), Some(false));
     assert_eq!(refs(&st, "PROJ-1, ABC-2 and UTF-8"), ["PROJ-1"]);
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(fs.branch_issue("feature/ABC-3-x"), None);
     assert_eq!(fs.branch_issue("feature/PROJ-4-x").as_deref(), Some("PROJ-4"));
 }

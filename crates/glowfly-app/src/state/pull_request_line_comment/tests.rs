@@ -172,7 +172,7 @@ fn edited_drafts_are_confirmed_before_discarding() {
 fn state(provider: Provider, v: PrView) -> AppState {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     let t = Target { provider, host: "example.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
-    st.forge = Some(ForgeState::new(Some(t), "origin".into(), None));
+    st.session.forge = Some(ForgeState::new(Some(t), "origin".into(), None));
     st.session.pull_request.view = Some(v);
     st
 }

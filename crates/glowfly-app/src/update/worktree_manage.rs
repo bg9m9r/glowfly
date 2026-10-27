@@ -175,7 +175,7 @@ pub(super) fn removed(st: &mut AppState, r: Removed, now: Instant, fx: &mut Vec<
         st.log(false, e);
     }
     if here && let Some(a) = left_undo {
-        st.undo.record(a);
+        st.session.undo.record(a);
     }
     let open = open_tabs(st);
     if let RemoveOutcome::NeedsForce(refusal) = r.outcome

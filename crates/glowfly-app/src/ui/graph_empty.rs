@@ -24,7 +24,7 @@ pub(super) fn no_commits(ui: &mut Ui) {
 
 /// The search filters the graph and nothing matches (or it is still being searched).
 pub(super) fn no_matches(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    if st.search.searching_files() {
+    if st.session.search.searching_files() {
         return pane_status::loading(ui, SEARCHING_FILES);
     }
     let Some(snap) = &st.snap else { return };

@@ -194,7 +194,7 @@ fn deepen_drops_stats_of_old_boundary() {
     let (mut st, src, dest) = shallow_clone("shallow-stats", 3, 1);
     let root = st.snap.as_ref().unwrap().shallow_roots[0];
     st.session.reads.stats.insert(root, (99, 99, 99));
-    st.selection = Selection::Commit(root);
+    st.session.selection = Selection::Commit(root);
 
     // Step through the job by hand to see the effects of the reload that follows it.
     let fx = run(&mut st, deepen(Deepen::By(1)));

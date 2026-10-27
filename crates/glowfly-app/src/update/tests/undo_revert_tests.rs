@@ -58,7 +58,7 @@ fn said(st: &AppState, text: &str) -> bool {
 }
 
 fn top_is(st: &AppState, want: Discarded) -> bool {
-    matches!(st.undo.undo.last(), Some(Action::Discard { what, path, .. }) if *what == want && path == "f.txt")
+    matches!(st.session.undo.undo.last(), Some(Action::Discard { what, path, .. }) if *what == want && path == "f.txt")
 }
 
 #[test]
@@ -70,10 +70,10 @@ fn revert_hunk_with_whitespace_hidden_undo_and_redo() {
     finish(&mut st, fx);
     let reverted = "a\n        x\n        y\nb\n";
     assert_eq!(read(&dir), reverted, "only the shown change is reverted");
-    assert!(top_is(&st, Discarded::RevertedHunk), "{:?}", st.undo.undo);
+    assert!(top_is(&st, Discarded::RevertedHunk), "{:?}", st.session.undo.undo);
     let lang = st.settings.lang();
-    assert_eq!(st.undo.undo_entry(lang, true).0, "Undo revert of a hunk in f.txt");
-    assert_eq!(st.undo.undo_entry(lang, true).0, "Undo revert of a hunk in f.txt");
+    assert_eq!(st.session.undo.undo_entry(lang, true).0, "Undo revert of a hunk in f.txt");
+    assert_eq!(st.session.undo.undo_entry(lang, true).0, "Undo revert of a hunk in f.txt");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir), NEW, "the working copy from before, exactly");
@@ -91,15 +91,15 @@ fn revert_lines_and_file_are_recorded() {
     run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: close, how: Only }));
     drive(&mut st, Msg::Stage(StageMsg::RevertLines));
     assert_eq!(read(&dir), "a\nif {\n        x\n        y\nb\n");
-    assert!(top_is(&st, Discarded::RevertedLines(1)), "{:?}", st.undo.undo);
-    assert_eq!(st.undo.undo_entry(st.settings.lang(), true).0, "Undo revert of 1 line in f.txt");
+    assert!(top_is(&st, Discarded::RevertedLines(1)), "{:?}", st.session.undo.undo);
+    assert_eq!(st.session.undo.undo_entry(st.settings.lang(), true).0, "Undo revert of 1 line in f.txt");
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir), NEW);
 
     drive(&mut st, Msg::Stage(StageMsg::RevertFile(target)));
     assert_eq!(read(&dir), OLD, "the whole change, whitespace too");
-    assert!(top_is(&st, Discarded::RevertedFile), "{:?}", st.undo.undo);
-    assert_eq!(st.undo.undo_entry(st.settings.lang(), true).0, "Undo revert of the changes to f.txt");
+    assert!(top_is(&st, Discarded::RevertedFile), "{:?}", st.session.undo.undo);
+    assert_eq!(st.session.undo.undo_entry(st.settings.lang(), true).0, "Undo revert of the changes to f.txt");
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir), NEW);
     drive(&mut st, Msg::Job(JobMsg::Redo));
@@ -116,7 +116,7 @@ fn a_revert_with_conflicts_undoes_to_the_edited_copy() {
     let msg = revert_hunk(&st);
     drive(&mut st, msg);
     assert!(read(&dir).contains("<<<<<<<"), "{}", read(&dir));
-    assert!(top_is(&st, Discarded::RevertedHunk), "{:?}", st.undo.undo);
+    assert!(top_is(&st, Discarded::RevertedHunk), "{:?}", st.session.undo.undo);
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir), "1\nTwo!\n3\n", "the markers are gone");
     let _ = std::fs::remove_dir_all(&dir);
@@ -151,9 +151,13 @@ fn a_revert_for_a_parked_tab_goes_to_its_history() {
     assert!(matches!(reply, Msg::Scoped { .. }), "scoped to tab A's repository");
     run(&mut st, reply);
     assert_eq!(read(&a), OLD);
-    assert!(st.undo.undo.is_empty(), "tab B's history is untouched");
+    assert!(st.session.undo.undo.is_empty(), "tab B's history is untouched");
     let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
-    assert!(matches!(parked.undo.undo.last(), Some(Action::Discard { what: Discarded::RevertedFile, .. })), "{:?}", parked.undo.undo);
+    assert!(
+        matches!(parked.session.undo.undo.last(), Some(Action::Discard { what: Discarded::RevertedFile, .. })),
+        "{:?}",
+        parked.session.undo.undo
+    );
     for d in [&a, &b] {
         let _ = std::fs::remove_dir_all(d);
     }

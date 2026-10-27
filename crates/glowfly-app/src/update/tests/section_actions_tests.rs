@@ -130,7 +130,7 @@ fn add_worktree_starts_from_head() {
 #[test]
 fn create_pr_needs_a_host_a_branch_and_no_open_pr() {
     let (mut st, work, bare) = with_host("sa-pr");
-    let pr = |st: &AppState| create_pr(st, Lang::En, st.forge.as_ref().unwrap());
+    let pr = |st: &AppState| create_pr(st, Lang::En, st.session.forge.as_ref().unwrap());
     let a = pr(&st).expect("a code host");
     assert_eq!((a.name.as_str(), a.blocked.clone()), ("Create pull request", None));
     assert!(matches!(a.msg(), Msg::Forge(ForgeMsg::CreatePrDialog { ref source, target: None }) if source == "main"));
@@ -138,7 +138,7 @@ fn create_pr_needs_a_host_a_branch_and_no_open_pr() {
     assert!(matches!(&st.modal, Some(Modal::CreatePr { source, .. }) if source == "main"));
     st.modal = None;
 
-    st.forge.as_mut().unwrap().prs.push(PullRequest {
+    st.session.forge.as_mut().unwrap().prs.push(PullRequest {
         id: 7,
         title: "Main work".into(),
         description: String::new(),
@@ -159,7 +159,7 @@ fn create_pr_needs_a_host_a_branch_and_no_open_pr() {
     let detached = Lang::En.tr("toolbar.tip.blocked.detached_pull_request");
     assert_eq!(pr(&st).unwrap().blocked.as_deref(), Some(detached));
 
-    st.forge.as_mut().unwrap().host = None;
+    st.session.forge.as_mut().unwrap().host = None;
     assert!(pr(&st).is_none(), "no code host");
     cleanup_host(&work, &bare);
 }

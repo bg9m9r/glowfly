@@ -85,7 +85,7 @@ fn shortcut_sheet_empty_and_close() {
 #[test]
 fn commit_summary_takes_focus() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "shortcut-focus-message");
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     st.view.focus_message = true;
     let mut h = harness(st, true);
     h.run();

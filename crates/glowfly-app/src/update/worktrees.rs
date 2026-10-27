@@ -47,7 +47,7 @@ pub(super) fn handle(st: &mut AppState, msg: WorktreeMsg, now: Instant, fx: &mut
 /// Opens the Create worktree dialog for a pull request's source branch: the local branch of that
 /// name, else the code host remote's branch (`worktree_branches::pr_base`).
 fn create_for_pr(st: &mut AppState, id: u64, source: &str) {
-    let (Some(snap), Some(f)) = (st.snap.as_ref(), st.forge.as_ref()) else { return };
+    let (Some(snap), Some(f)) = (st.snap.as_ref(), st.session.forge.as_ref()) else { return };
     let (noun, label) = (f.pr_noun(), f.pr_label(id));
     match crate::state::worktree_branches::pr_base(snap, &f.remote, source) {
         Ok(base) => {

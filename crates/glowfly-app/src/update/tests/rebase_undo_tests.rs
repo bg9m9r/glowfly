@@ -20,7 +20,7 @@ fn finished(st: &mut AppState, result: Result<Outcome, String>, undo: Option<Und
 }
 
 fn undo_label(st: &AppState) -> String {
-    st.undo.undo_entry(st.settings.lang(), true).0
+    st.session.undo.undo_entry(st.settings.lang(), true).0
 }
 
 #[test]
@@ -36,7 +36,7 @@ fn a_finished_rebase_is_one_undoable_action() {
     };
     let done = Ok(Outcome::Finished { output: String::new(), stash_kept: false });
     finished(&mut st, done, Some(UndoResult::Recorded(Some(moved.clone()))));
-    assert_eq!(st.undo.undo.last(), Some(&moved));
+    assert_eq!(st.session.undo.undo.last(), Some(&moved));
     assert_eq!(undo_label(&st), "Undo interactive rebase of main");
 
     // A stop keeps what is there.
@@ -51,13 +51,13 @@ fn a_finished_rebase_is_one_undoable_action() {
         command: None,
     };
     finished(&mut st, Ok(Outcome::Stopped { ok: true, output: String::new(), progress }), Some(UndoResult::Recorded(None)));
-    assert_eq!(st.undo.undo.last(), Some(&moved), "the earlier action stays");
+    assert_eq!(st.session.undo.undo.last(), Some(&moved), "the earlier action stays");
 
     // A finished rebase that couldn't be recorded clears the history.
     st.job = Some(running_job(&dir));
     finished(&mut st, Ok(Outcome::Finished { output: String::new(), stash_kept: false }), None);
-    assert!(st.undo.undo.is_empty());
-    assert!(st.undo.blocked.is_some(), "the label says why nothing can be undone");
+    assert!(st.session.undo.undo.is_empty());
+    assert!(st.session.undo.blocked.is_some(), "the label says why nothing can be undone");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

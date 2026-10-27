@@ -112,24 +112,24 @@ fn another_project_clears_its_choices() {
 fn why_creating_is_blocked() {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     assert_eq!(create_blocked(&st).as_deref(), Some("No issue tracker for this repository"));
-    st.forge = Some(ForgeState::new(Some(github()), "origin".into(), None));
+    st.session.forge = Some(ForgeState::new(Some(github()), "origin".into(), None));
     assert_eq!(create_blocked(&st).as_deref(), Some("No issue tracker for this repository"));
     let bb = Target { provider: Provider::Bitbucket, host: "bitbucket.org".into(), ..github() };
-    st.forge = Some(ForgeState::new(Some(bb.clone()), "origin".into(), Some(bb)));
+    st.session.forge = Some(ForgeState::new(Some(bb.clone()), "origin".into(), Some(bb)));
     assert_eq!(create_blocked(&st), None, "Bitbucket Cloud issues");
     let az = Target { provider: Provider::AzureDevOps, host: "dev.azure.com".into(), ..github() };
-    st.forge = Some(ForgeState::new(None, String::new(), Some(az)));
+    st.session.forge = Some(ForgeState::new(None, String::new(), Some(az)));
     assert_eq!(create_blocked(&st), None, "Azure Boards work items");
     let dc = Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() };
-    st.forge = Some(ForgeState::new(Some(dc), "origin".into(), None));
+    st.session.forge = Some(ForgeState::new(Some(dc), "origin".into(), None));
     assert_eq!(
         create_blocked(&st).as_deref(),
         Some("Bitbucket Data Center has no issue tracker of its own; choose Jira under Repo-specific preferences > Issue tracker")
     );
     let ghe = Target { provider: Provider::GitHubEnterprise, host: "git.acme.io".into(), ..github() };
-    st.forge = Some(ForgeState::new(Some(ghe.clone()), "origin".into(), Some(ghe)));
+    st.session.forge = Some(ForgeState::new(Some(ghe.clone()), "origin".into(), Some(ghe)));
     assert_eq!(create_blocked(&st).as_deref(), Some("Connect GitHub Enterprise Server at git.acme.io in Preferences first"));
-    st.forge = Some(ForgeState::new(Some(github()), "origin".into(), Some(github())));
+    st.session.forge = Some(ForgeState::new(Some(github()), "origin".into(), Some(github())));
     assert_eq!(create_blocked(&st), None);
 }
 

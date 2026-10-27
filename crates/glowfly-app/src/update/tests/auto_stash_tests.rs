@@ -226,7 +226,7 @@ fn show_stash_opens_section_and_selects() {
     st.view.sections.stashes = false;
     drive(&mut st, Msg::AutoStash(AutoStashMsg::Show(oid)));
     assert!(st.view.sections.stashes);
-    assert_eq!(st.selection, Selection::Commit(oid));
+    assert_eq!(st.session.selection, Selection::Commit(oid));
     up(&mut st, Msg::AutoStash(AutoStashMsg::Show(Oid::from_bytes(&[3; 20]).unwrap())));
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("That stash is no longer in the list."));
     let _ = std::fs::remove_dir_all(&dir);

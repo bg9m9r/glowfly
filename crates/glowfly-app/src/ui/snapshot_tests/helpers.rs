@@ -173,7 +173,7 @@ pub(in crate::ui) fn with_repo(theme: ThemeChoice, name: &str) -> (AppState, Pat
     let dir = fixture_repo(name);
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     // A second, inactive tab.
     st.tabs = vec![Tab::unloaded(dir.clone()), Tab::unloaded(PathBuf::from("C:/work/api-server"))];
     (st, dir)
@@ -207,7 +207,7 @@ fn main_window_dark_and_light() {
     let to = snap.head_oid.unwrap();
     let from = snap.commits[snap.row_of[&to]].parents[0];
     let message = "Merge branch 'login-page'".to_owned();
-    st.undo.record(glowfly_core::undo::Action::Commit { branch: Some("main".into()), from, to, message, amend: false });
+    st.session.undo.record(glowfly_core::undo::Action::Commit { branch: Some("main".into()), from, to, message, amend: false });
     render("main_undo_available", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
@@ -269,7 +269,7 @@ fn ghost_branch_on_the_current_commit() {
     // other rows show none.
     let (mut st, _dir) = with_repo(ThemeChoice::Dark, "ghost");
     let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("HEAD");
-    st.selection = Selection::Commit(head);
+    st.session.selection = Selection::Commit(head);
     // Room for it after main's two chips.
     st.settings.column_widths = glowfly_core::settings::ColumnWidths { refs: 280.0, ..Default::default() };
     // The commit's details are still loading (a spinner): a fixed number of frames.

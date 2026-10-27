@@ -77,9 +77,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             return super::graph_empty::no_commits(ui);
         }
         // The search dims or hides rows only while its bar is shown.
-        let rows = GraphRows::new(snap, &st.search, st.view.show_search);
+        let rows = GraphRows::new(snap, &st.session.search, st.view.show_search);
         let filtered = rows.filtered();
-        let searching = st.view.show_search && st.search.active();
+        let searching = st.view.show_search && st.session.search.active();
         let total = rows.len();
         // While filtering every node sits in the first lane, without lane lines.
         let lanes = if filtered { 1 } else { snap.graph.max_width.clamp(1, MAX_VISIBLE_LANES) };
@@ -87,7 +87,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let graph_w = header::graph_width(ui, t, lanes);
         let cols_cfg = st.settings.columns;
 
-        select::keyboard_nav(ui, &st.selection, snap, &rows, &mut st.view, msgs);
+        select::keyboard_nav(ui, &st.session.selection, snap, &rows, st.session.tab_view.graph_scroll, &mut st.view, msgs);
 
         let widths = header::column_header(ui, t, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
         // How many matches fill the graph, for a filtering search loading further back.
@@ -100,6 +100,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let ref_cx = ref_group::RefContext::of(snap);
         // Pull requests by head commit, for graph badges.
         let pr_at: HashMap<Oid, (String, bool)> = st
+            .session
             .forge
             .as_ref()
             .map(|f| {
@@ -127,10 +128,10 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         } else if let Some(off) = st.view.scroll_offset.take() {
             area = area.vertical_scroll_offset(off);
         }
-        let selection = &st.selection;
+        let selection = &st.session.selection;
         let settings = &st.settings;
         let idle = st.job.is_none();
-        let forge = st.forge.as_ref();
+        let forge = st.session.forge.as_ref();
         let commands = crate::state::custom_commands::MenuCommands::for_state(st);
         let now = st.view.now;
         let offset = st.view.utc_offset;
@@ -140,7 +141,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let wip_total = st.session.reads.line_counts.wip().and_then(|w| w.total());
         let mut want_stats: Vec<Oid> = Vec::new();
         let mut hover_tip_next = None;
-        let tips = st.forge.as_ref().map(|f| &f.tips);
+        let tips = st.session.forge.as_ref().map(|f| &f.tips);
         let mut tips_seen: Vec<Oid> = Vec::new();
         let pointer = ui.ctx().pointer_hover_pos();
         // One more row below the last commit: more history loading, loading it failed, or the
@@ -236,7 +237,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     continue;
                 };
 
-                let dim = searching && !filtered && st.search.position(index).is_none();
+                let dim = searching && !filtered && st.session.search.position(index).is_none();
                 let kind = if c.parents.len() > 1 { NodeKind::Merge } else { NodeKind::Commit };
                 if cols_cfg.tree {
                     if kind == NodeKind::Merge {
@@ -340,7 +341,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             }
             last
         });
-        st.view.graph_scroll = (out.state.offset.y, out.inner_rect.height());
+        st.session.tab_view.graph_scroll = (out.state.offset.y, out.inner_rect.height());
         if more::wants_more(st, out.inner, total, filtered) {
             msgs.push(Msg::Load(LoadMsg::NearHistoryEnd));
         }

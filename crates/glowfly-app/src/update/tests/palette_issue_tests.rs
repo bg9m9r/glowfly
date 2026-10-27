@@ -31,7 +31,7 @@ fn create_issue_opens_the_dialog_or_says_why_not() {
     st.modal = None;
 
     let trello = Target { provider: Provider::Trello, host: "trello.com".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(trello.clone());
+    st.session.forge.as_mut().unwrap().tracker = Some(trello.clone());
     assert_eq!(entry(&st, "Create card…"), Some(Some("Connect Trello at trello.com in Preferences first".into())));
     st.palette = Some(Palette::default());
     send(&mut st, PaletteCommand::CreateIssue);
@@ -41,10 +41,10 @@ fn create_issue_opens_the_dialog_or_says_why_not() {
     assert_eq!(entry(&st, "Create card…"), Some(None), "Trello cards once connected");
     st.settings.connections.clear();
 
-    st.forge.as_mut().unwrap().tracker = None;
+    st.session.forge.as_mut().unwrap().tracker = None;
     assert!(entry(&st, "Create issue…").is_none(), "no tracker");
     let dc = Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() };
-    st.forge.as_mut().unwrap().host = Some(dc);
+    st.session.forge.as_mut().unwrap().host = Some(dc);
     let why = "Bitbucket Data Center has no issue tracker of its own; choose Jira under Repo-specific preferences > Issue tracker";
     assert_eq!(entry(&st, "Create issue…"), Some(Some(why.into())), "Bitbucket Data Center points to Jira");
     assert!(entry(&st, "View issue…").is_none());
@@ -54,7 +54,7 @@ fn create_issue_opens_the_dialog_or_says_why_not() {
 #[test]
 fn view_issue_picks_from_the_listed_issues() {
     let (mut st, dir) = open_repo("palette-issue-view");
-    let fs = st.forge.as_mut().unwrap();
+    let fs = st.session.forge.as_mut().unwrap();
     let searched = Issue { title: "Faster search".into(), ..listed("14") };
     fs.filters.issues = Some(IssueList {
         choice: FilterChoice::default(),
@@ -78,7 +78,7 @@ fn view_issue_picks_from_the_listed_issues() {
     assert!(fx.iter().any(|e| matches!(e, Effect::Issue(IssueEffect::Call(j)) if matches!(&j.call, IssueCall::Load(k) if k == "14"))));
     assert_eq!(st.palette_recent.keys(), ["view-issue"], "the pick itself isn't recorded");
 
-    let fs = st.forge.as_mut().unwrap();
+    let fs = st.session.forge.as_mut().unwrap();
     fs.my_issues.clear();
     fs.filters.issues = None;
     assert!(entry(&st, "View issue…").is_none(), "nothing listed");

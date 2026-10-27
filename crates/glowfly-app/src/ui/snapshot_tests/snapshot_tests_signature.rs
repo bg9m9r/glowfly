@@ -20,7 +20,7 @@ const KEY: &str = "SHA256:nu3mXdiXjT/P69lIp2s2NqrOSBxSCmevSqfmgZp4JuA";
 pub(in crate::ui) fn with_signed_head(theme: ThemeChoice, name: &str, signature: Option<SigningFormat>) -> (AppState, PathBuf, Oid) {
     let (mut st, dir) = with_repo(theme, name);
     let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     let mut d = repo::commit_detail(&dir, oid).unwrap();
     d.signature = signature;
     st.session.detail = Some(d);

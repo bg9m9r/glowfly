@@ -33,7 +33,7 @@ pub(in crate::ui) fn with_host(theme: ThemeChoice, name: &str, remote: &[&str]) 
         Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
     let mut f = ForgeState::new(Some(target), "origin".into(), None);
     f.host_status = Status::Ok;
-    st.forge = Some(f);
+    st.session.forge = Some(f);
     let branches = remote.iter().map(|n| (n.to_string(), tip(&st, n))).collect();
     st.snap.as_mut().unwrap().remotes = vec![("origin".into(), branches)];
     (st, dir)
@@ -71,7 +71,7 @@ pub(in crate::ui) fn sent(h: &Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&
 #[test]
 fn branch_menu_push_pr() {
     let (mut st, dir) = with_host(ThemeChoice::Dark, "branch-menu-push-pr", &["main"]);
-    st.selection = Selection::Commit(tip(&st, "main"));
+    st.session.selection = Selection::Commit(tip(&st, "main"));
     let mut h = harness(st, true);
     h.run_steps(4);
     open_row_menu(&mut h, true);
@@ -136,7 +136,7 @@ fn create_pr_dialog_linked_issues() {
     tracked(&mut st, 0);
     let tracker =
         Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
-    st.forge.as_mut().unwrap().tracker = Some(tracker);
+    st.session.forge.as_mut().unwrap().tracker = Some(tracker);
     st.modal = Some(Modal::CreatePr {
         source: "search".into(),
         target: "main".into(),
@@ -249,7 +249,7 @@ fn with_open_pr(name: &str, head: bool) -> (AppState, PathBuf) {
         url: "https://github.com/o/r/pull/7".into(),
         facets: Default::default(),
     };
-    st.forge.as_mut().unwrap().prs = vec![pr];
+    st.session.forge.as_mut().unwrap().prs = vec![pr];
     if head {
         check_out_search(&mut st);
     }

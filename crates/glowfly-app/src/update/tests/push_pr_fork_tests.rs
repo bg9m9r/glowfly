@@ -106,7 +106,7 @@ fn creates(fx: &[Effect]) -> Vec<(Target, Option<Target>)> {
 #[test]
 fn detect_lists_the_fork_after_the_code_host() {
     let (st, work, bare, ada) = with_fork("pr-fork-detect");
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     let found: Vec<(&str, Target)> = fs.pr_repos.iter().map(|r| (r.remote.as_str(), r.target.clone())).collect();
     assert_eq!(found, [("origin", t("https://github.com/o/r")), ("ada", t("https://github.com/ada/r"))]);
     cleanup(&work, &bare);
@@ -141,7 +141,7 @@ fn a_fork_on_origin_opens_into_upstream() {
     add_remote(&work, "upstream", "https://github.com/o/r.git", &up);
     git(&work, &["push", "-q", "-u", "origin", "topic"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     assert_eq!((fs.remote.as_str(), fs.pr_repos.len()), ("origin", 2));
     drive(&mut st, msg(ForgeMsg::CreatePrDialog { source: "topic".into(), target: None }));
     assert_eq!(repos(&st), ("origin".into(), "upstream".into()));
@@ -170,9 +170,9 @@ fn a_fork_on_origin_opens_into_upstream() {
     let upstream = t("https://github.com/o/r");
     update(&mut st, reply(upstream.clone(), vec![ForgeResult::Created(Ok(Box::new(pr.clone())))]), Instant::now());
     assert!(logged(&st, "Created pull request #12 Topic"));
-    assert!(st.forge.as_ref().unwrap().prs.is_empty(), "the list is origin's");
+    assert!(st.session.forge.as_ref().unwrap().prs.is_empty(), "the list is origin's");
     update(&mut st, reply(upstream, vec![ForgeResult::Prs(Ok(vec![pr.clone()]))]), Instant::now());
-    assert!(st.forge.as_ref().unwrap().prs.is_empty(), "other results from upstream are ignored");
+    assert!(st.session.forge.as_ref().unwrap().prs.is_empty(), "other results from upstream are ignored");
     let before = st.log.len();
     update(&mut st, reply(t("https://github.com/x/y"), vec![ForgeResult::Created(Ok(Box::new(pr)))]), Instant::now());
     assert_eq!(st.log.len(), before, "a repository that isn't a remote any more is dropped");
@@ -266,7 +266,7 @@ fn with_upstream(name: &str) -> (AppState, PathBuf, PathBuf, PathBuf) {
     let up = bare_next_to(&work, "upstream");
     add_remote(&work, "upstream", "https://github.com/o/r.git", &up);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert_eq!(st.forge.as_ref().map(|f| f.pr_repos.len()), Some(2));
+    assert_eq!(st.session.forge.as_ref().map(|f| f.pr_repos.len()), Some(2));
     (st, work, bare, up)
 }
 

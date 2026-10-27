@@ -67,7 +67,7 @@ pub(super) fn commented(
     fx: &mut Vec<Effect>,
 ) {
     let here = st.workdir().as_deref() == Some(workdir);
-    let active = here && st.forge.as_ref().and_then(|f| f.tracker.as_ref()) == Some(target);
+    let active = here && st.session.forge.as_ref().and_then(|f| f.tracker.as_ref()) == Some(target);
     let mention = forge::mention(target.provider.ref_style(), key);
     let label = format!("{} {mention}", issue_words::noun(target.provider));
     let (ok, text) = match &result {
@@ -77,7 +77,7 @@ pub(super) fn commented(
     let failure = result.as_ref().err().map(|e| e.message.clone());
     if active
         && result.as_ref().is_err_and(|e| e.auth)
-        && let Some(fs) = st.forge.as_mut()
+        && let Some(fs) = st.session.forge.as_mut()
     {
         fs.auth.remove(&target.account().key());
     }

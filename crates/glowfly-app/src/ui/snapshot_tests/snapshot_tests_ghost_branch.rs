@@ -22,7 +22,7 @@ const HEAD_ROW: usize = 2;
 fn head_selected(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("HEAD");
-    st.selection = Selection::Commit(head);
+    st.session.selection = Selection::Commit(head);
     st.settings.column_widths = ColumnWidths { refs: 280.0, ..Default::default() };
     (st, dir)
 }
@@ -51,7 +51,7 @@ fn ghost_button_hides_off_the_anchor_under_a_menu_and_when_off() {
     let (mut st, dir) = head_selected("ghost-hidden");
     let other = st.snap.as_ref().unwrap().commits[0].oid;
     crate::update::update(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(other)), Instant::now());
-    let Selection::Commits(m) = &st.selection else { panic!("a multi-selection") };
+    let Selection::Commits(m) = &st.session.selection else { panic!("a multi-selection") };
     assert!(m.focus() != st.snap.as_ref().unwrap().head_oid.unwrap(), "focused elsewhere");
     let mut h = harness(st, true);
     h.run_steps(4);

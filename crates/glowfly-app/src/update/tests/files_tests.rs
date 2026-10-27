@@ -189,7 +189,7 @@ fn comparison_restore_clears_absent() {
     let files = vec![FileEntry::new("a.txt", 'D')];
     let changes = Comparison { files, absent: ["a.txt".to_owned()].into() };
     let other = Oid::from_str("1111111111111111111111111111111111111111").unwrap();
-    st.selection = Selection::Commits(MultiSelection {
+    st.session.selection = Selection::Commits(MultiSelection {
         oids: vec![oid, other],
         anchor: oid,
         cursor: oid,
@@ -203,7 +203,7 @@ fn comparison_restore_clears_absent() {
     });
 
     let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
-    let Selection::Commits(m) = &st.selection else { panic!("still two commits") };
+    let Selection::Commits(m) = &st.session.selection else { panic!("still two commits") };
     let c = m.changes.as_ref().unwrap().as_ref().unwrap();
     assert!(c.in_workdir("a.txt"), "Open and Show become available");
     let toast = st.toasts.last().expect("a toast");
@@ -296,7 +296,7 @@ fn ignored_file_is_not_overwritten_without_a_warning() {
     drive(&mut st, Msg::ConfirmAccepted);
     assert_eq!(std::fs::read_to_string(dir.join(".env")).unwrap(), "TOKEN=old\n", "written once the user agreed");
     assert!(st.toasts.last().is_some_and(|t| t.ok));
-    assert!(matches!(st.undo.undo.last(), Some(Action::Restore { path, .. }) if path == ".env"), "{:?}", st.undo.undo);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Restore { path, .. }) if path == ".env"), "{:?}", st.session.undo.undo);
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(std::fs::read_to_string(dir.join(".env")).unwrap(), "TOKEN=secret\n", "undo brings the secret back");
     let _ = std::fs::remove_dir_all(&dir);

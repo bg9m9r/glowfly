@@ -283,7 +283,7 @@ fn with_forge(name: &str, provider: Provider, host: &str) -> (AppState, PathBuf)
     let mut f = ForgeState::new(Some(target(provider, host)), "origin".into(), Some(target(provider, host)));
     f.host_status = Status::Ok;
     f.tracker_status = Status::Ok;
-    st.forge = Some(f);
+    st.session.forge = Some(f);
     (st, dir)
 }
 

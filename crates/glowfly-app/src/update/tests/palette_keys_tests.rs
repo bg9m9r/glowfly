@@ -105,7 +105,7 @@ fn bound_two_step_commands_open_their_step() {
 fn bound_create_branch_opens_the_dialog() {
     let (mut st, dir) = repo_with_topic("bound-branch");
     let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     let dialog = |st: &AppState| match &st.modal {
         Some(Modal::NewBranch { start, name, .. }) => Some((start.clone(), name.clone())),
         _ => None,

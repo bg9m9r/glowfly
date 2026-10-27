@@ -140,16 +140,16 @@ impl AppState {
     /// preference is on, the index is for this history and the query has no path terms.
     pub fn current_index(&self) -> Option<&Arc<CommitIndex>> {
         let snap = self.snap.as_ref()?;
-        let ix = self.search.index.ready.as_ref()?;
-        let usable = snap.truncated && self.settings.index_history && !self.search.query.has_paths() && ix.key().covers(snap);
+        let ix = self.session.search.index.ready.as_ref()?;
+        let usable = snap.truncated && self.settings.index_history && !self.session.search.query.has_paths() && ix.key().covers(snap);
         usable.then_some(ix)
     }
 
     /// The index's answer for the current query, from the current index.
     pub fn index_answer(&self) -> Option<&IndexAnswer> {
         let ix = self.current_index()?;
-        let a = self.search.index.answer.as_ref()?;
-        (self.search.active() && a.query == self.search.query && Arc::ptr_eq(&a.index, ix)).then_some(a)
+        let a = self.session.search.index.answer.as_ref()?;
+        (self.session.search.active() && a.query == self.session.search.query && Arc::ptr_eq(&a.index, ix)).then_some(a)
     }
 
     /// What the search bar's count says beyond the loaded matches.
@@ -157,14 +157,14 @@ impl AppState {
         if let Some(a) = self.index_answer() {
             return HistoryCount::Whole { positions: &a.positions, commits: a.index.len(), complete: a.index.complete() };
         }
-        if !self.search.active() || self.search.query.has_paths() {
+        if !self.session.search.active() || self.session.search.query.has_paths() {
             return HistoryCount::Loaded;
         }
-        if self.current_index().is_some() && self.search.index.pending.is_some() {
+        if self.current_index().is_some() && self.session.search.index.pending.is_some() {
             return HistoryCount::Searching;
         }
         let truncated = self.snap.as_ref().is_some_and(|s| s.truncated);
-        if truncated && (self.indexing().is_some() || (self.settings.index_history && self.search.index.waiting())) {
+        if truncated && (self.indexing().is_some() || (self.settings.index_history && self.session.search.index.waiting())) {
             return HistoryCount::Indexing;
         }
         HistoryCount::Loaded
@@ -173,13 +173,13 @@ impl AppState {
     /// When a tick must come for the index: the active tab's delayed build is due, or a parked
     /// tab's large index is to be freed.
     pub fn index_wake(&self, now: Instant) -> Option<Instant> {
-        let active = match self.search.index.delay {
+        let active = match self.session.search.index.delay {
             BuildDelay::Wanted => Some(now),
             BuildDelay::Due(at) => Some(at),
             BuildDelay::Idle | BuildDelay::Passed => None,
         };
         let parked = self.tabs.iter().filter_map(|t| t.parked.as_ref()).filter_map(|p| {
-            let ix = &p.commit_search.index;
+            let ix = &p.session.search.index;
             let large = ix.ready.as_ref().is_some_and(|r| r.len() >= FREE_MIN_COMMITS);
             ix.seen.filter(|_| large).map(|s| s + PARKED_FREE_AFTER)
         });
@@ -188,7 +188,7 @@ impl AppState {
 
     /// A fresh build's progress (commits indexed, about how many there are), for the status bar.
     pub fn indexing(&self) -> Option<(usize, Option<usize>)> {
-        let b = self.search.index.building.as_ref().filter(|b| b.fresh)?;
+        let b = self.session.search.index.building.as_ref().filter(|b| b.fresh)?;
         self.settings.index_history.then_some((b.indexed, b.estimate))
     }
 }
@@ -220,26 +220,27 @@ mod tests {
         snap.truncated = true;
         let key = IndexKey::of(&snap);
         st.snap = Some(snap);
-        st.search.query = CommitQuery::parse("fix");
+        st.session.search.query = CommitQuery::parse("fix");
         assert_eq!(st.history_count(), HistoryCount::Loaded);
 
-        st.search.index.building = Some(Building { build: 1, key: key.clone(), indexed: 5, estimate: Some(9), fresh: true });
+        st.session.search.index.building = Some(Building { build: 1, key: key.clone(), indexed: 5, estimate: Some(9), fresh: true });
         assert_eq!(st.indexing(), Some((5, Some(9))));
         assert_eq!(st.history_count(), HistoryCount::Indexing);
-        st.search.index.building.as_mut().unwrap().fresh = false;
+        st.session.search.index.building.as_mut().unwrap().fresh = false;
         assert_eq!((st.indexing(), st.history_count()), (None, HistoryCount::Loaded), "an update is silent");
-        st.search.index.building = None;
+        st.session.search.index.building = None;
 
         let ix = Arc::new(CommitIndex::from_commits(key, &[info(1), info(2)]));
-        st.search.index.ready = Some(Arc::clone(&ix));
-        st.search.index.pending = Some(1);
+        st.session.search.index.ready = Some(Arc::clone(&ix));
+        st.session.search.index.pending = Some(1);
         assert_eq!(st.history_count(), HistoryCount::Searching);
-        st.search.index.answer = Some(IndexAnswer { query: st.search.query.clone(), index: Arc::clone(&ix), positions: vec![0, 1] });
+        st.session.search.index.answer =
+            Some(IndexAnswer { query: st.session.search.query.clone(), index: Arc::clone(&ix), positions: vec![0, 1] });
         assert_eq!(st.history_count(), HistoryCount::Whole { positions: &[0, 1], commits: 2, complete: true });
         // Another query, path terms, the preference off or a whole graph leave the answer unused.
-        st.search.query = CommitQuery::parse("fix path:a");
+        st.session.search.query = CommitQuery::parse("fix path:a");
         assert_eq!(st.history_count(), HistoryCount::Loaded);
-        st.search.query = CommitQuery::parse("fix");
+        st.session.search.query = CommitQuery::parse("fix");
         st.settings.index_history = false;
         assert!(st.current_index().is_none());
         st.settings.index_history = true;
@@ -255,8 +256,8 @@ mod tests {
         let dir = snap.workdir.clone();
         snap.truncated = true;
         st.snap = Some(snap);
-        st.search.query = CommitQuery::parse("fix");
-        st.search.index.delay = BuildDelay::Wanted;
+        st.session.search.query = CommitQuery::parse("fix");
+        st.session.search.index.delay = BuildDelay::Wanted;
         assert_eq!(st.history_count(), HistoryCount::Indexing);
         assert_eq!(st.indexing(), None, "nothing in the status bar yet");
         st.settings.index_history = false;
@@ -269,12 +270,12 @@ mod tests {
         let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
         let now = Instant::now();
         assert_eq!(st.index_wake(now), None);
-        st.search.index.delay = BuildDelay::Wanted;
+        st.session.search.index.delay = BuildDelay::Wanted;
         assert_eq!(st.index_wake(now), Some(now));
         let at = now + Duration::from_secs(1);
-        st.search.index.delay = BuildDelay::Due(at);
+        st.session.search.index.delay = BuildDelay::Due(at);
         assert_eq!(st.index_wake(now), Some(at));
-        st.search.index.delay = BuildDelay::Passed;
+        st.session.search.index.delay = BuildDelay::Passed;
         assert_eq!(st.index_wake(now), None);
 
         let key = IndexKey { starts: Vec::new(), shallow: Vec::new() };
@@ -288,15 +289,15 @@ mod tests {
             })
             .collect();
         let mut parked = crate::state::tabs::Parked::default();
-        parked.commit_search.index.ready = Some(Arc::new(CommitIndex::from_commits(key, &commits)));
+        parked.session.search.index.ready = Some(Arc::new(CommitIndex::from_commits(key, &commits)));
         let mut tab = crate::state::Tab::unloaded(glowfly_core::paths::temp_dir().join("glowfly-index-wake"));
         tab.parked = Some(Box::new(parked));
         st.tabs.push(tab);
         assert_eq!(st.index_wake(now), None, "not seen yet");
         let seen = now + Duration::from_secs(3);
-        st.tabs.last_mut().unwrap().parked.as_mut().unwrap().commit_search.index.seen = Some(seen);
+        st.tabs.last_mut().unwrap().parked.as_mut().unwrap().session.search.index.seen = Some(seen);
         assert_eq!(st.index_wake(now), Some(seen + PARKED_FREE_AFTER));
-        st.search.index.delay = BuildDelay::Wanted;
+        st.session.search.index.delay = BuildDelay::Wanted;
         assert_eq!(st.index_wake(now), Some(now), "the earliest");
     }
 }

@@ -54,7 +54,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         PrTab::Overview => {
             side.show_inside(ui, |ui| {
                 egui::ScrollArea::vertical().id_salt("pr-side").auto_shrink([false, false]).show(ui, |ui| {
-                    let default_branch = st.forge.as_ref().and_then(|f| f.default_branch.clone());
+                    let default_branch = st.session.forge.as_ref().and_then(|f| f.default_branch.clone());
                     let (lang, now) = (st.settings.lang(), st.view.now);
                     let Some(view) = st.session.pull_request.view.as_mut() else { return };
                     info::show(ui, view);

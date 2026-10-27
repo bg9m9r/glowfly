@@ -33,7 +33,7 @@ pub(super) fn handle(st: &mut AppState, msg: IssueMsg, now: Instant, fx: &mut Ve
 }
 
 fn open(st: &mut AppState, key: String, fx: &mut Vec<Effect>) {
-    let (Some(_), Some(fs)) = (&st.snap, &st.forge) else { return };
+    let (Some(_), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     if fs.tracker.is_none() || st.session.issue.view.as_ref().is_some_and(|v| v.key == key && fs.tracker.as_ref() == Some(&v.target)) {
         return;
     }
@@ -50,7 +50,7 @@ fn open(st: &mut AppState, key: String, fx: &mut Vec<Effect>) {
 /// A request to the active repository's tracker, or why there can be none.
 pub(super) fn request(st: &AppState) -> Result<IssueRequest, String> {
     let none = || "No issue tracker for this repository".to_owned();
-    let (Some(workdir), Some(fs)) = (st.workdir(), st.forge.as_ref()) else { return Err(none()) };
+    let (Some(workdir), Some(fs)) = (st.workdir(), st.session.forge.as_ref()) else { return Err(none()) };
     let Some(target) = fs.tracker.clone() else { return Err(none()) };
     if !forge::issues_in_app(target.provider) {
         return Err(format!("{} issues aren't supported in Glowfly yet", target.provider.name()));
@@ -105,14 +105,14 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Details arrived: shown when they are for the open panel's issue and tracker and the latest
 /// request; a failed reload keeps the details on screen and is only logged.
 fn loaded(st: &mut AppState, workdir: &Path, target: &Target, generation: u64, key: &str, result: Result<IssueDetails, ForgeError>) {
-    let tracker = st.forge.as_ref().and_then(|f| f.tracker.as_ref());
+    let tracker = st.session.forge.as_ref().and_then(|f| f.tracker.as_ref());
     let current = st.workdir().as_deref() == Some(workdir) && generation == st.session.issue.generation && tracker == Some(target);
     if !current || !st.session.issue.view.as_ref().is_some_and(|v| v.key == key && &v.target == target) {
         return;
     }
     if let Err(e) = &result
         && e.auth
-        && let Some(fs) = st.forge.as_mut()
+        && let Some(fs) = st.session.forge.as_mut()
     {
         fs.auth.remove(&target.account().key());
     }
@@ -123,7 +123,7 @@ fn loaded(st: &mut AppState, workdir: &Path, target: &Target, generation: u64, k
             v.issue = d.issue.clone();
             let issue = d.issue.clone();
             v.details = Details::Loaded(Box::new(d));
-            if let Some(fs) = st.forge.as_mut() {
+            if let Some(fs) = st.session.forge.as_mut() {
                 fs.cache.insert(issue.key.clone(), issue);
             }
             return;
@@ -163,7 +163,7 @@ pub(super) fn tracker_changed(st: &mut AppState) {
 /// a panel or a Create issue dialog for another tracker closes, since its calls would now go
 /// to the new one.
 pub(super) fn tracker_detected(st: &mut AppState) {
-    let tracker = st.forge.as_ref().and_then(|f| f.tracker.clone());
+    let tracker = st.session.forge.as_ref().and_then(|f| f.tracker.clone());
     if st.session.issue.view.as_ref().is_some_and(|v| Some(&v.target) != tracker.as_ref()) {
         close(st);
     }

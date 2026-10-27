@@ -68,22 +68,15 @@ pub struct ViewState {
     /// view clears it).
     pub activity_reveal: Option<crate::state::logs::EntryId>,
     pub show_search: bool,
-    /// The search bar's query text (parsed by update on `SearchMsg::QueryChanged`).
-    pub search: String,
     /// The author picker's filter field.
     pub author_filter: String,
-    pub ref_filter: String,
     pub sections: Sections,
     /// Scroll the graph so this row is near the top on the next frame (set by `update`).
     pub scroll_to_row: Option<usize>,
     /// Scroll the graph to this pixel offset on the next frame (keyboard navigation).
     pub scroll_offset: Option<f32>,
-    /// Graph scroll offset and viewport height from the last frame.
-    pub graph_scroll: (f32, f32),
     /// Graph rows that fit the viewport in the last frame, recorded by the view.
     pub graph_fit_rows: usize,
-    /// First diff row visible in the last frame, recorded by the view.
-    pub diff_top_row: usize,
     /// Scroll the diff so this row is at the top on the next frame (set by `update`).
     pub diff_scroll_to_row: Option<usize>,
     /// Put this hunk at the top of the next freshly opened diff (its header row, or its change
@@ -119,10 +112,6 @@ pub struct ViewState {
     /// The change row next/previous change last moved to. Steps continue from it while it is
     /// on screen, because a change near the end can't scroll to the top.
     pub diff_cursor: Option<usize>,
-    /// The unchanged runs opened in the open diff (whole-file folds and the hunk view's gaps), by
-    /// key, with the gaps' text. Changed only by `update`; cleared when a different target's diff
-    /// arrives or the diff closes; parked with its tab.
-    pub diff_expanded: glowfly_core::whole_file::Expanded,
     /// How many diff rows fit in the viewport, recorded by the view.
     pub diff_visible_rows: usize,
     /// Branch tip under the pointer (sidebar or BRANCH/TAG column), for row highlighting.
@@ -196,9 +185,6 @@ pub struct ViewState {
     /// The WIP panel's steps opened or folded by hand while an operation is in progress (set
     /// only by update, `LayoutMsg::ToggleOpStep`).
     pub op_steps: super::op_steps::StepFolds,
-    /// Folders collapsed in the changed-file lists' tree, per list (changed only by update,
-    /// LayoutMsg::ToggleFolder); parked with the tab, never saved.
-    pub file_folds: file_folds::FileFolds,
 }
 
 impl Default for ViewState {
@@ -207,15 +193,11 @@ impl Default for ViewState {
             show_log: false,
             activity_reveal: None,
             show_search: false,
-            search: String::new(),
             author_filter: String::new(),
-            ref_filter: String::new(),
             sections: Sections::default(),
             scroll_to_row: None,
             scroll_offset: None,
-            graph_scroll: (0.0, 0.0),
             graph_fit_rows: 0,
-            diff_top_row: 0,
             diff_scroll_to_row: None,
             diff_open_hunk: None,
             diff_landing: None,
@@ -227,7 +209,6 @@ impl Default for ViewState {
             issue_comment_focus: false,
             pr_line_comment_focus: false,
             diff_cursor: None,
-            diff_expanded: Default::default(),
             diff_visible_rows: 0,
             hover_tip: None,
             hover_tip_next: None,
@@ -259,7 +240,6 @@ impl Default for ViewState {
             quitting: false,
             backdrop: Backdrop::Solid,
             op_steps: Default::default(),
-            file_folds: Default::default(),
         }
     }
 }

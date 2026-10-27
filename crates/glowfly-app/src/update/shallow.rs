@@ -54,7 +54,7 @@ pub(super) fn refreshed(st: &mut AppState, new: &Snapshot, fx: &mut Vec<Effect>)
         st.session.reads.stats.remove(&oid);
         st.session.reads.stats_pending.remove(&oid);
         st.session.reads.line_counts.forget_commit(oid);
-        if st.selection == Selection::Commit(oid)
+        if st.session.selection == Selection::Commit(oid)
             && new.row_of.contains_key(&oid)
             && let Some(workdir) = st.workdir()
         {

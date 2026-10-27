@@ -58,7 +58,7 @@ fn options(st: &AppState, project: &str, result: CreateOptions) -> IssueMsg {
 /// Makes `t` the tracker, connected.
 fn tracker(st: &mut AppState, t: Target) -> Target {
     st.settings.connections.push(Connection { account: t.account(), user: "Ada".into(), method: "token".into() });
-    st.forge.as_mut().unwrap().tracker = Some(t.clone());
+    st.session.forge.as_mut().unwrap().tracker = Some(t.clone());
     t
 }
 
@@ -206,7 +206,7 @@ fn a_read_only_trello_token_keeps_the_dialog_and_the_sign_in() {
     let (mut st, dir) = open_repo("issue-trello-read-only");
     let t = trello(&mut st, BOARD);
     let key = t.account().key();
-    st.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::Trello, Some("k"), "tok", "test"));
+    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::Trello, Some("k"), "tok", "test"));
     run(&mut st, IssueMsg::CreateDialog);
     let msg = options(&st, BOARD, lists());
     run(&mut st, msg);
@@ -218,7 +218,7 @@ fn a_read_only_trello_token_keeps_the_dialog_and_the_sign_in() {
     run(&mut st, msg);
     let f = form(&st);
     assert_eq!((f.busy, f.error.as_deref()), (false, Some(why)));
-    assert!(st.forge.as_ref().unwrap().auth.contains_key(&key), "the token is kept");
+    assert!(st.session.forge.as_ref().unwrap().auth.contains_key(&key), "the token is kept");
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.starts_with("Creating the card failed: ")));
     done(st, dir);
 }
@@ -226,7 +226,7 @@ fn a_read_only_trello_token_keeps_the_dialog_and_the_sign_in() {
 #[test]
 fn bitbucket_data_center_points_to_jira() {
     let (mut st, dir) = open_repo("issue-bbdc");
-    let fs = st.forge.as_mut().unwrap();
+    let fs = st.session.forge.as_mut().unwrap();
     fs.host = Some(Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() });
     fs.tracker = None;
     assert!(run(&mut st, IssueMsg::CreateDialog).is_empty());

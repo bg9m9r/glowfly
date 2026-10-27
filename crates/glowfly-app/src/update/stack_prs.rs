@@ -16,7 +16,7 @@ use std::time::Instant;
 pub(super) fn start(st: &mut AppState, branch: String, now: Instant, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     let Some(snap) = &st.snap else { return };
-    let Some(fs) = st.forge.as_ref().filter(|f| f.host.is_some()) else {
+    let Some(fs) = st.session.forge.as_ref().filter(|f| f.host.is_some()) else {
         let remote = snap.locals.iter().find(|b| b.name == branch).and_then(|b| push_pr::pr_remote(b, snap));
         refuse(st, push_pr::no_host_reason(remote.as_deref()), now);
         return;
@@ -40,10 +40,10 @@ pub(super) fn start(st: &mut AppState, branch: String, now: Instant, fx: &mut Ve
 
 /// The dialogs of the stack `branch` is in start with its bottom layer.
 fn begin(st: &mut AppState, branch: &str, fx: &mut Vec<Effect>) {
-    let (Some(snap), Some(fs)) = (&st.snap, &st.forge) else { return };
+    let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     let left: std::collections::VecDeque<PrLayer> = pr_layers(snap, fs, branch).into();
     let run = StackPrRun { total: left.len(), left, ..Default::default() };
-    if let Some(fs) = st.forge.as_mut() {
+    if let Some(fs) = st.session.forge.as_mut() {
         fs.stack_prs = Some(StackPrs::Running(run));
     }
     advance(st, fx);
@@ -54,7 +54,7 @@ fn begin(st: &mut AppState, branch: &str, fx: &mut Vec<Effect>) {
 fn advance(st: &mut AppState, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     loop {
-        let Some(fs) = st.forge.as_mut() else { return };
+        let Some(fs) = st.session.forge.as_mut() else { return };
         let Some(StackPrs::Running(mut run)) = fs.stack_prs.take() else { return };
         run.current = None;
         run.sent = false;
@@ -93,7 +93,7 @@ fn advance(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// A snapshot landed: a run waiting for its push starts.
 pub(super) fn loaded(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     if !matches!(fs.stack_prs, Some(StackPrs::AfterPush(_))) {
         return;
     }
@@ -104,11 +104,11 @@ pub(super) fn loaded(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// The run's current layer, when its dialog is the one for `source`.
 fn current_is(st: &AppState, source: &str) -> bool {
-    st.forge.as_ref().and_then(|f| f.stack_step(source)).is_some()
+    st.session.forge.as_ref().and_then(|f| f.stack_step(source)).is_some()
 }
 
 fn running(st: &mut AppState) -> Option<&mut StackPrRun> {
-    match st.forge.as_mut()?.stack_prs.as_mut()? {
+    match st.session.forge.as_mut()?.stack_prs.as_mut()? {
         StackPrs::Running(run) => Some(run),
         StackPrs::AfterPush(_) => None,
     }
@@ -163,7 +163,7 @@ pub(super) fn stop(st: &mut AppState) {
 /// Ends the run, logging `reason` first, then the layers it didn't create.
 fn stop_with(st: &mut AppState, reason: Option<String>) {
     let t = st.settings.lang();
-    let Some(prs) = st.forge.as_mut().and_then(|f| f.stack_prs.take()) else { return };
+    let Some(prs) = st.session.forge.as_mut().and_then(|f| f.stack_prs.take()) else { return };
     if let Some(why) = reason {
         st.log(false, why);
     }
@@ -188,7 +188,7 @@ pub(super) fn dismissed(st: &mut AppState) {
 
 /// The active tab is being parked: its run is dropped.
 pub(super) fn parked(st: &mut AppState) {
-    if st.forge.as_ref().is_some_and(|f| f.stack_prs.is_some()) {
+    if st.session.forge.as_ref().is_some_and(|f| f.stack_prs.is_some()) {
         let why = st.settings.lang().tr("stack.prs.tab_changed").to_owned();
         stop_with(st, Some(why));
     }

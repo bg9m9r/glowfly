@@ -39,11 +39,11 @@ fn merge_undo_and_redo_end_to_end() {
     let (mut st, dir) = with_feature("undo-ops-merge");
     drive(&mut st, Msg::git("Merge", &["merge", "feature"]));
     assert_eq!(head_summary(&st), "on feature");
-    assert!(matches!(st.undo.undo.last(), Some(Action::Moved { op: MoveOp::Merge, .. })), "{:?}", st.undo.undo);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Moved { op: MoveOp::Merge, .. })), "{:?}", st.session.undo.undo);
     assert!(
-        st.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo merge of feature"),
+        st.session.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo merge of feature"),
         "{}",
-        st.undo.undo_entry(st.settings.lang(), true).0
+        st.session.undo.undo_entry(st.settings.lang(), true).0
     );
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
@@ -59,7 +59,7 @@ fn merge_undo_and_redo_end_to_end() {
     let t = st.toasts.last().expect("a toast");
     assert!(!t.ok && t.text.contains("Commit or stash your changes first"), "{}", t.text);
     assert!(t.action.as_ref().is_none_or(|a| a.label == "Details"), "only hard resets and Discard all offer to stash");
-    assert_eq!(st.undo.undo.len(), 1);
+    assert_eq!(st.session.undo.undo.len(), 1);
     cleanup(&[&dir]);
 }
 
@@ -77,12 +77,12 @@ fn pull_that_changes_nothing_keeps_the_history() {
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     st.session.draft.summary = "Second line".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
-    assert_eq!(st.undo.undo.len(), 1);
+    assert_eq!(st.session.undo.undo.len(), 1);
 
     drive(&mut st, Msg::git("Pull", &["pull", "--ff"]));
     assert!(st.toasts.last().is_some_and(|t| t.ok), "the pull ran");
-    assert!(matches!(st.undo.undo[..], [Action::Commit { .. }]), "already up to date: {:?}", st.undo.undo);
-    assert!(st.undo.blocked.is_none());
+    assert!(matches!(st.session.undo.undo[..], [Action::Commit { .. }]), "already up to date: {:?}", st.session.undo.undo);
+    assert!(st.session.undo.blocked.is_none());
     cleanup(&[&dir, &bare]);
 }
 
@@ -91,8 +91,10 @@ fn cherry_pick_from_the_graph_is_undoable() {
     let (mut st, dir, picks) = feature_repo("undo-ops-pick", &[("f1", "base\n1\n")], None);
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![picks[0]])));
     assert_eq!(head_summary(&st), "f1");
-    let Some(Action::Moved { op: MoveOp::CherryPick, .. }) = st.undo.undo.last() else { panic!("{:?}", st.undo.undo) };
-    assert!(st.undo.undo_entry(st.settings.lang(), true).0.starts_with(&format!("Undo cherry-pick of {}", &picks[0].to_string()[..7])));
+    let Some(Action::Moved { op: MoveOp::CherryPick, .. }) = st.session.undo.undo.last() else { panic!("{:?}", st.session.undo.undo) };
+    assert!(
+        st.session.undo.undo_entry(st.settings.lang(), true).0.starts_with(&format!("Undo cherry-pick of {}", &picks[0].to_string()[..7]))
+    );
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "base");
     cleanup(&[&dir]);
@@ -103,7 +105,7 @@ fn a_multi_commit_cherry_pick_is_one_undo_step() {
     let (mut st, dir, f) = feature_repo("undo-ops-pick-3", &[("f1", "base\n1\n"), ("f2", "base\n1\n2\n"), ("f3", "base\n1\n2\n3\n")], None);
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f[0], f[1], f[2]])));
     assert_eq!(head_summary(&st), "f3");
-    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
+    let tip = st.session.undo.undo_entry(st.settings.lang(), true).0;
     assert!(tip.starts_with("Undo cherry-pick of 3 commits"), "{tip}");
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "base", "one step takes all three back");
@@ -119,7 +121,7 @@ fn a_multi_commit_revert_is_one_undo_step() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::Selection(SelectionMsg::Revert(vec![f[0], f[1]])));
     assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap().replace("\r\n", "\n"), "base\n");
-    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
+    let tip = st.session.undo.undo_entry(st.settings.lang(), true).0;
     assert!(tip.starts_with("Undo revert of 2 commits"), "{tip}");
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "f2");
@@ -141,7 +143,7 @@ fn a_mainline_cherry_pick_names_the_merge() {
     );
     assert_eq!(head_summary(&st), "merge feature");
     assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap().replace("\r\n", "\n"), "base\n1\n");
-    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
+    let tip = st.session.undo.undo_entry(st.settings.lang(), true).0;
     assert!(tip.starts_with(&format!("Undo cherry-pick of {}", &merge[..7])), "{tip}");
     cleanup(&[&dir]);
 }

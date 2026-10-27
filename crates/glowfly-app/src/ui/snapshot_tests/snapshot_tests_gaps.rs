@@ -38,9 +38,9 @@ fn with_gaps(layout: DiffLayout, theme: ThemeChoice, open: bool) -> (AppState, P
         let syntax = diff.highlight.as_ref().map(|h| h.syntax.as_str());
         let text = repo::load_gap_text(&dir, &target, &diff.hunks, syntax).unwrap();
         for g in &spans {
-            st.view.diff_expanded.insert(g.key);
+            st.session.tab_view.diff_expanded.insert(g.key);
         }
-        st.view.diff_expanded.set_gap_text(Arc::new(text));
+        st.session.tab_view.diff_expanded.set_gap_text(Arc::new(text));
     }
     st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;

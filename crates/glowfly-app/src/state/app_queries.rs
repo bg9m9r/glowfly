@@ -52,7 +52,7 @@ impl AppState {
     pub fn load_options(&self, workdir: &Path) -> LoadOptions {
         let (smart, trusted) = (self.settings.branch_visibility == BranchVisibility::Smart, self.trusts(workdir));
         // Relevant branches also keeps branches that have open pull requests.
-        let extra_tips = self.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
+        let extra_tips = self.session.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
         let (f, worktree_wips) = (self.settings.graph_filter_for(&self.repo_key(workdir)), self.settings.worktree_wips);
         // What the decision was made on: git reads the status only while that covers the scan.
         let saved = self.saved_trust_for(workdir).or_else(|| self.settings.saved_trust(&self.repo_key(workdir)));

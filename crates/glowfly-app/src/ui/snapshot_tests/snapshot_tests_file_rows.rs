@@ -100,7 +100,7 @@ fn commit_row_click_on_empty_area_opens_the_diff() {
     git(&dir, &["commit", "-q", "-m", "Add notes"], "2026-01-20T10:00:00+00:00");
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
     let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let mut h = harness(st, true);
     h.run();

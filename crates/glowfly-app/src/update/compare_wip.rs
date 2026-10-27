@@ -13,7 +13,7 @@ use glowfly_core::repo::{Comparison, Snapshot};
 /// Ctrl-click on the WIP row: one commit gains the working directory, a comparison drops it,
 /// otherwise the WIP row is selected. Refused (logged) with several commits selected.
 pub(super) fn toggle(st: &mut AppState, fx: &mut Vec<Effect>) {
-    match wip_toggled(&st.selection) {
+    match wip_toggled(&st.session.selection) {
         // Only graph rows are compared (a stash selected in the sidebar isn't one).
         Ok(Selection::VsWorkdir(w)) if !st.snap.as_ref().is_some_and(|s| s.row_of.contains_key(&w.oid)) => {
             super::selection::apply(st, Selection::Wip, fx)
@@ -25,7 +25,9 @@ pub(super) fn toggle(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// The commit menu's Compare with working directory, for graph row `oid`.
 pub(super) fn compare(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
-    if !st.snap.as_ref().is_some_and(|s| s.row_of.contains_key(&oid)) || matches!(&st.selection, Selection::VsWorkdir(w) if w.oid == oid) {
+    if !st.snap.as_ref().is_some_and(|s| s.row_of.contains_key(&oid))
+        || matches!(&st.session.selection, Selection::VsWorkdir(w) if w.oid == oid)
+    {
         return;
     }
     super::selection::apply(st, Selection::VsWorkdir(WorkdirCompare::new(oid)), fx);
@@ -35,7 +37,7 @@ pub(super) fn compare(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
 /// list is read again ("Loading" until it arrives; the new generation drops a read of the old
 /// direction still on its way), and an open diff of this comparison closes.
 pub(super) fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Selection::VsWorkdir(w) = &mut st.selection else { return };
+    let Selection::VsWorkdir(w) = &mut st.session.selection else { return };
     w.swapped = !w.swapped;
     w.changes = None;
     let oid = w.oid;
@@ -49,14 +51,14 @@ pub(super) fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// until the new one arrives, so it doesn't flicker.
 pub(super) fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
-    let Selection::VsWorkdir(w) = &mut st.selection else { return };
+    let Selection::VsWorkdir(w) = &mut st.session.selection else { return };
     w.generation += 1;
     fx.push(Effect::Selection(SelectionEffect::WorkdirCompare { workdir, oid: w.oid, generation: w.generation, swapped: w.swapped }));
 }
 
 /// A file list read: kept when it is the latest read for the compared commit.
 pub(super) fn loaded(st: &mut AppState, oid: Oid, generation: u64, result: Result<Comparison, String>) {
-    match &mut st.selection {
+    match &mut st.session.selection {
         Selection::VsWorkdir(w) if w.oid == oid && w.generation == generation => {
             w.changes = Some(result.clone());
             if let Err(e) = result {
@@ -69,7 +71,7 @@ pub(super) fn loaded(st: &mut AppState, oid: Oid, generation: u64, result: Resul
 
 /// The working tree's status was read again: so is the comparison's file list.
 pub(super) fn status_read(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if matches!(st.selection, Selection::VsWorkdir(_)) {
+    if matches!(st.session.selection, Selection::VsWorkdir(_)) {
         request(st, fx);
     }
 }
@@ -78,12 +80,12 @@ pub(super) fn status_read(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// while its commit is still a graph row; otherwise the WIP row (when dirty) or nothing is
 /// selected, and its diff closes.
 pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>) {
-    let Selection::VsWorkdir(w) = &st.selection else { return };
+    let Selection::VsWorkdir(w) = &st.session.selection else { return };
     if snap.row_of.contains_key(&w.oid) {
         request(st, fx);
         return;
     }
-    st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
+    st.session.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
     st.session.detail = None;
     if st.session.diff.view.as_ref().is_some_and(|(t, _)| t.workdir_compared().is_some()) {
         super::repo::close_diff(st);

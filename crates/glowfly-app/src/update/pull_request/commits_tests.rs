@@ -27,7 +27,7 @@ fn a_row_selects_its_commit_and_keeps_the_panel() {
     assert_eq!(commits.len(), 2);
     st.settings.show_details_panel = false;
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(commits[0])), Instant::now());
-    assert_eq!(st.selection, Selection::Commit(commits[0]));
+    assert_eq!(st.session.selection, Selection::Commit(commits[0]));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == commits[0])));
     assert!(fx.iter().any(|e| matches!(e, Effect::LineCounts(LineCountsEffect::Commit { oid, .. }) if *oid == commits[0])));
     assert!(st.session.pull_request.view.is_some(), "the panel stays open");
@@ -37,7 +37,7 @@ fn a_row_selects_its_commit_and_keeps_the_panel() {
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadDetail { .. })));
     // A commit the panel doesn't list does nothing.
     assert!(update(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(base)), Instant::now()).is_empty());
-    assert_eq!(st.selection, Selection::Commit(commits[0]));
+    assert_eq!(st.session.selection, Selection::Commit(commits[0]));
 
     // Its files open in the Commits tab.
     drive(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(commits[1])));
@@ -68,7 +68,7 @@ fn a_refresh_keeps_a_fork_commit_that_is_not_on_the_graph() {
     drive(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(head)));
     assert!(!st.snap.as_ref().unwrap().row_of.contains_key(&head), "on no branch");
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert_eq!(st.selection, Selection::Commit(head));
+    assert_eq!(st.session.selection, Selection::Commit(head));
     assert!(st.session.detail.as_ref().is_some_and(|d| d.oid == head), "its details loaded");
     cleanup(&[&work, &bare]);
 }

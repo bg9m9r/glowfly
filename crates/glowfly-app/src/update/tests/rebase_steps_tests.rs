@@ -28,7 +28,7 @@ fn selecting_a_commit_row_shows_the_commit() {
     let (mut st, dir, c) = with_panel("steps-select", RebaseBase::FromCommit(Oid::zero()));
     let fx = rb(&mut st, RebaseMsg::RebaseSelect(1));
     assert_eq!(panel(&st).selected, Some(1));
-    assert_eq!(st.selection, Selection::Commit(c[1]));
+    assert_eq!(st.session.selection, Selection::Commit(c[1]));
     assert!(
         matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(crate::effect::LineCountsEffect::Commit { .. })] if *oid == c[1]),
         "{fx:?}"

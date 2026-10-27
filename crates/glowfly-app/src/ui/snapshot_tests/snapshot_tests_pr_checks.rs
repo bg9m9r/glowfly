@@ -50,7 +50,7 @@ fn with_prs(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
         pr(9, "Update README", "readme", false, None),
     ];
     assert_eq!(f.prs[2].checks.as_ref().map(|c| c.state), Some(CheckState::Pending));
-    st.forge = Some(f);
+    st.session.forge = Some(f);
     (st, dir)
 }
 
@@ -85,7 +85,7 @@ fn sidebar_tip_checks() {
     let tip = |name: &str| snap.locals.iter().find(|b| b.name == name).and_then(|b| b.oid).unwrap();
     let tips =
         [("main", CheckState::Passed), ("search", CheckState::Failed), ("login-page", CheckState::Pending)].map(|(n, s)| (tip(n), s));
-    let f = st.forge.as_mut().unwrap();
+    let f = st.session.forge.as_mut().unwrap();
     f.prs.clear();
     let now = Instant::now();
     for (oid, state) in tips {
@@ -105,7 +105,7 @@ fn pr_menu(h: &mut Harness<'_, (AppState, Vec<Msg>)>, title: &str) {
 #[test]
 fn pr_menu_build_page() {
     let (mut st, dir) = with_prs(ThemeChoice::Light, "pr-menu-build");
-    let f = st.forge.as_mut().unwrap();
+    let f = st.session.forge.as_mut().unwrap();
     f.prs[1].checks.as_mut().unwrap().url = "https://ci.example.com/build/7".into();
     let mut h = harness(st, false);
     h.run();

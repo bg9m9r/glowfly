@@ -200,7 +200,7 @@ fn the_counter_follows_changes_and_files() {
     st.view.diff_visible_rows = 10;
     assert_eq!(diff_nav::counter(&st), Some(Counter { index: 1, total: 2, files: false }));
     drive(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
-    st.view.diff_top_row = st.view.diff_scroll_to_row.unwrap_or(st.view.diff_top_row);
+    st.session.tab_view.diff_top_row = st.view.diff_scroll_to_row.unwrap_or(st.session.tab_view.diff_top_row);
     assert_eq!(diff_nav::counter(&st), Some(Counter { index: 2, total: 2, files: false }));
 
     // A binary file listed second of the unstaged files.

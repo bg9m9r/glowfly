@@ -94,7 +94,7 @@ fn post_is_blocked_with_reasons() {
     // Bitbucket Data Center has no tracker: its panel never loads.
     run(&mut st, IssueMsg::Close);
     let dc = Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(dc);
+    st.session.forge.as_mut().unwrap().tracker = Some(dc);
     run(&mut st, IssueMsg::Open("12".into()));
     assert_eq!(view(&st).details, Details::Unsupported);
     assert!(jobs(&post(&mut st, "Thanks")).is_empty(), "no tracker");
@@ -129,10 +129,10 @@ fn a_failed_post_keeps_the_draft() {
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == format!("Commenting on issue #12 failed: {locked}")));
 
     let key = github().account().key();
-    st.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
     post(&mut st, "Me too");
     answer(&mut st, &workdir, "12", Err(ForgeError { message: "Bad credentials".into(), auth: true }));
-    assert!(!st.forge.as_ref().unwrap().auth.contains_key(&key), "the credential is forgotten");
+    assert!(!st.session.forge.as_ref().unwrap().auth.contains_key(&key), "the credential is forgotten");
     done(st, dir);
 }
 

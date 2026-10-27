@@ -125,12 +125,12 @@ fn a_stopped_cherry_pick_selects_the_wip_row_and_skips_on() {
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f[0], f[1]])));
     let state = st.snap.as_ref().unwrap().state;
     assert!(matches!(state, RepositoryState::CherryPick | RepositoryState::CherryPickSequence), "{state:?}");
-    assert_eq!(st.selection, Selection::Wip);
+    assert_eq!(st.session.selection, Selection::Wip);
     assert_eq!(labels(state), ["Continue", "Skip commit", "Abort cherry-pick"]);
     let (label, skip) = crate::ui::common::state_actions(state).unwrap()[1];
-    let recorded = st.undo.undo.len();
+    let recorded = st.session.undo.undo.len();
     drive(&mut st, Msg::git(label, skip));
-    assert_eq!(st.undo.undo.len(), recorded, "a skip is never recorded for undo");
+    assert_eq!(st.session.undo.undo.len(), recorded, "a skip is never recorded for undo");
     // x2 conflicts as well once x1 is skipped (it builds on x1's line), so it stops at it or ends.
     let after = st.snap.as_ref().unwrap().state;
     assert!(matches!(after, RepositoryState::Clean | RepositoryState::CherryPick | RepositoryState::CherryPickSequence), "{after:?}");
@@ -149,7 +149,7 @@ fn a_stopped_revert_selects_the_wip_row() {
     drive(&mut st, Msg::Selection(SelectionMsg::Revert(vec![f[0], f[1]])));
     let state = st.snap.as_ref().unwrap().state;
     assert!(matches!(state, RepositoryState::Revert | RepositoryState::RevertSequence), "{state:?}");
-    assert_eq!(st.selection, Selection::Wip);
+    assert_eq!(st.session.selection, Selection::Wip);
     assert_eq!(labels(state), ["Continue", "Skip commit", "Abort revert"]);
     let _ = std::fs::remove_dir_all(&dir);
 }

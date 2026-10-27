@@ -15,7 +15,7 @@ use git2::Oid;
 use glowfly_core::repo::{self, Comparison, DiffTarget, FileDiff, FileEntry};
 
 fn multi(st: &AppState) -> &MultiSelection {
-    match &st.selection {
+    match &st.session.selection {
         Selection::Commits(m) => m,
         other => panic!("expected a multi-selection, got {other:?}"),
     }
@@ -159,9 +159,9 @@ fn select_all_takes_every_shown_commit() {
     assert_eq!(multi(&st).anchor, f.c(4), "the commit in focus stays the anchor");
     // While the search filters, only the matches.
     st.view.show_search = true;
-    st.search.query = glowfly_core::commit_query::CommitQuery::parse("c");
-    st.search.matches = vec![0, 1, 3, 4, 5];
-    st.search.filter = true;
+    st.session.search.query = glowfly_core::commit_query::CommitQuery::parse("c");
+    st.session.search.matches = vec![0, 1, 3, 4, 5];
+    st.session.search.filter = true;
     select(&mut st, f.c(4));
     up(&mut st, Msg::Selection(SelectionMsg::SelectAll));
     assert_eq!(multi(&st).oids, [f.c(5), f.c(4), f.c(3), f.c(2), f.c(1)]);
@@ -172,7 +172,7 @@ fn select_all_takes_every_shown_commit() {
     super::tests::drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     up(&mut st, Msg::Selection(SelectionMsg::SelectAll));
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
-    assert_eq!(st.selection, Selection::Commit(head), "one shown commit");
+    assert_eq!(st.session.selection, Selection::Commit(head), "one shown commit");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -31,7 +31,7 @@ pub(in crate::ui) fn with_files(theme: ThemeChoice, name: &str, unstaged: &[(&st
     let snap = st.snap.as_mut().unwrap();
     snap.unstaged = files(unstaged);
     snap.staged = files(staged);
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     (st, dir)
 }
 

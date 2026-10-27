@@ -16,7 +16,7 @@ use std::time::Instant;
 fn main_in(t: BuiltinTheme) {
     let name = format!("theme_{}", t.id());
     let (mut st, dir) = with_bands(&format!("theme-{}", t.id()));
-    let Selection::Commit(oid) = st.selection else { panic!("a commit is selected") };
+    let Selection::Commit(oid) = st.session.selection else { panic!("a commit is selected") };
     st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     st.session.reads.line_counts.start_commit(oid);
     st.session.reads.line_counts.finish_commit(oid, Arc::new(repo::commit_line_counts(&dir, oid).unwrap()));

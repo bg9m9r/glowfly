@@ -78,7 +78,7 @@ fn send(st: &mut AppState, msg: SearchMsg) -> Vec<Effect> {
 
 fn query(st: &mut AppState, q: &str) -> Vec<Effect> {
     st.view.show_search = true;
-    st.view.search = q.into();
+    st.session.tab_view.search = q.into();
     send(st, SearchMsg::QueryChanged)
 }
 
@@ -92,12 +92,12 @@ fn a_truncated_load_starts_a_fresh_build() {
     let [IndexEffect::Build { key, base: None, build, workdir }] = builds(&kept)[..] else { panic!("one fresh build: {kept:?}") };
     assert_eq!(key, &IndexKey::of(st.snap.as_ref().unwrap()));
     assert_eq!(Some(workdir), st.workdir().as_ref());
-    assert_eq!(st.search.index.building.as_ref().map(|b| (b.build, b.fresh)), Some((*build, true)));
+    assert_eq!(st.session.search.index.building.as_ref().map(|b| (b.build, b.fresh)), Some((*build, true)));
     assert_eq!(st.indexing(), Some((0, None)));
     assert_eq!(st.history_count(), HistoryCount::Loaded, "no query yet");
     query(&mut st, "needle");
     assert_eq!(st.history_count(), HistoryCount::Indexing);
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("Indexing history…"));
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("Indexing history…"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -107,7 +107,7 @@ fn a_complete_history_builds_nothing() {
     let mut st = state();
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())), Instant::now());
     assert!(builds(&finish_keeping(&mut st, fx)).is_empty());
-    assert!(st.search.index.building.is_none() && st.indexing().is_none());
+    assert!(st.session.search.index.building.is_none() && st.indexing().is_none());
     let _ = std::fs::remove_dir_all(&dir);
 
     let dir = long_repo("index-off", 620);
@@ -122,7 +122,7 @@ fn a_complete_history_builds_nothing() {
 #[test]
 fn progress_for_another_build_is_ignored() {
     let (mut st, dir, _) = opened_long("index-progress");
-    let build = st.search.index.building.as_ref().unwrap().build;
+    let build = st.session.search.index.building.as_ref().unwrap().build;
     send(&mut st, SearchMsg::IndexProgress { build: build + 7, indexed: 99, estimate: Some(5) });
     assert_eq!(st.indexing(), Some((0, None)));
     send(&mut st, SearchMsg::IndexProgress { build, indexed: 120, estimate: Some(1300) });
@@ -133,10 +133,10 @@ fn progress_for_another_build_is_ignored() {
 #[test]
 fn a_stale_built_is_ignored() {
     let (mut st, dir, _) = opened_long("index-stale");
-    let build = st.search.index.building.as_ref().unwrap().build;
+    let build = st.session.search.index.building.as_ref().unwrap().build;
     let index = Arc::new(CommitIndex::from_commits(IndexKey::of(st.snap.as_ref().unwrap()), &[]));
     send(&mut st, SearchMsg::IndexBuilt { build: build - 1, result: Ok(index) });
-    assert!(st.search.index.ready.is_none() && st.search.index.building.is_some());
+    assert!(st.session.search.index.ready.is_none() && st.session.search.index.building.is_some());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -145,17 +145,17 @@ fn built_index_is_asked_for_the_query() {
     let (mut st, dir, kept) = opened_long("index-asked");
     let fx = run_build(&mut st, kept);
     assert!(fx.iter().all(|e| !matches!(e, Effect::Index(_))), "no query yet: {fx:?}");
-    let ready = st.search.index.ready.clone().expect("the index is kept");
+    let ready = st.session.search.index.ready.clone().expect("the index is kept");
     assert_eq!((ready.len(), ready.complete()), (620, true));
-    assert!(st.search.index.building.is_none() && st.indexing().is_none());
+    assert!(st.session.search.index.building.is_none() && st.indexing().is_none());
 
     let fx = query(&mut st, "needle");
     assert!(fx.iter().any(|e| matches!(e, Effect::Index(IndexEffect::Query { .. }))), "{fx:?}");
     assert_eq!(st.history_count(), HistoryCount::Searching);
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("Searching history…"));
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("Searching history…"));
     finish(&mut st, fx);
     assert_eq!(st.history_count(), HistoryCount::Whole { positions: &[617, 618, 619], commits: 620, complete: true });
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("3 matches"));
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("3 matches"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -163,27 +163,27 @@ fn built_index_is_asked_for_the_query() {
 fn new_refs_update_the_index_with_the_old_one_as_base() {
     let (mut st, dir, kept) = opened_long("index-update");
     run_build(&mut st, kept);
-    let ready = st.search.index.ready.clone().unwrap();
+    let ready = st.session.search.index.ready.clone().unwrap();
     git(&dir, &["commit", "-q", "--allow-empty", "-m", "newer"]);
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
     let kept = finish_keeping(&mut st, fx);
     let [IndexEffect::Build { base: Some(base), key, .. }] = builds(&kept)[..] else { panic!("one update: {kept:?}") };
     assert!(Arc::ptr_eq(base, &ready), "built from the previous index");
     assert!(key.covers(st.snap.as_ref().unwrap()));
-    assert!(!st.search.index.building.as_ref().unwrap().fresh);
+    assert!(!st.session.search.index.building.as_ref().unwrap().fresh);
     assert_eq!(st.indexing(), None, "an update shows nothing in the status bar");
     run_build(&mut st, kept);
-    assert_eq!(st.search.index.ready.as_ref().map(|r| r.len()), Some(621));
+    assert_eq!(st.session.search.index.ready.as_ref().map(|r| r.len()), Some(621));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn a_failed_build_is_logged_once_and_not_retried_for_the_same_history() {
     let (mut st, dir, _) = opened_long("index-failed");
-    let build = st.search.index.building.as_ref().unwrap().build;
+    let build = st.session.search.index.building.as_ref().unwrap().build;
     send(&mut st, SearchMsg::IndexBuilt { build, result: Err("boom".into()) });
     assert_eq!(log_count(&st, "Could not index the history for search: boom"), 1);
-    assert!(st.search.index.building.is_none());
+    assert!(st.session.search.index.building.is_none());
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
     assert!(builds(&finish_keeping(&mut st, fx)).is_empty(), "the same history isn't tried again");
 
@@ -198,8 +198,8 @@ fn a_failed_build_is_logged_once_and_not_retried_for_the_same_history() {
 fn parked_with_index(path: &std::path::Path) -> Tab {
     let mut tab = Tab::unloaded(path.to_path_buf());
     let mut parked = Parked::default();
-    parked.commit_search.index.workdir = Some(path.to_path_buf());
-    parked.commit_search.index.ready = Some(Arc::new(CommitIndex::from_commits(IndexKey { starts: vec![], shallow: vec![] }, &[])));
+    parked.session.search.index.workdir = Some(path.to_path_buf());
+    parked.session.search.index.ready = Some(Arc::new(CommitIndex::from_commits(IndexKey { starts: vec![], shallow: vec![] }, &[])));
     tab.parked = Some(Box::new(parked));
     tab
 }
@@ -234,8 +234,8 @@ fn opening_another_repo_in_the_tab_forgets_the_old_one() {
     let msg = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).and_then(crate::runner::execute).unwrap();
     kept.extend(update(&mut st, msg, Instant::now()));
     assert_eq!(forgets(&kept), [old]);
-    assert!(st.search.index.ready.is_none() && st.search.index.building.is_none());
-    assert_eq!(st.search.index.workdir, st.workdir());
+    assert!(st.session.search.index.ready.is_none() && st.session.search.index.building.is_none());
+    assert_eq!(st.session.search.index.workdir, st.workdir());
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&next);
 }
@@ -246,8 +246,8 @@ fn an_index_built_for_a_parked_tab_is_kept() {
     let build = kept.into_iter().find(|e| matches!(e, Effect::Index(IndexEffect::Build { .. }))).unwrap();
     // The bar is open with a query when the tab is parked.
     st.view.show_search = true;
-    st.view.search = "needle".into();
-    st.search.query = CommitQuery::parse("needle");
+    st.session.tab_view.search = "needle".into();
+    st.session.search.query = CommitQuery::parse("needle");
     let fx = update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
     finish(&mut st, fx);
     assert_eq!(st.active_tab, 1);
@@ -255,8 +255,8 @@ fn an_index_built_for_a_parked_tab_is_kept() {
     assert!(matches!(&result, Msg::Scoped { workdir, .. } if *workdir == dir || super::tests::same_place(workdir, &dir)));
     update(&mut st, result, Instant::now());
     let parked = st.tabs[0].parked.as_ref().unwrap();
-    assert!(parked.commit_search.index.ready.is_some(), "the parked tab keeps it");
-    assert!(parked.commit_search.index.building.is_none());
+    assert!(parked.session.search.index.ready.is_some(), "the parked tab keeps it");
+    assert!(parked.session.search.index.building.is_none());
 
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::Index(IndexEffect::Query { .. }))), "asked for the query: {fx:?}");
@@ -273,8 +273,8 @@ fn turning_the_preference_off_drops_the_index() {
     let mut fx = Vec::new();
     super::prefs::sync_live_settings(&mut st, &mut fx);
     assert_eq!(forgets(&fx).len(), 2, "the active and the parked tab: {fx:?}");
-    assert!(st.search.index.ready.is_none());
-    assert!(st.tabs[1].parked.as_ref().unwrap().commit_search.index.ready.is_none());
+    assert!(st.session.search.index.ready.is_none());
+    assert!(st.tabs[1].parked.as_ref().unwrap().session.search.index.ready.is_none());
     let mut fx = Vec::new();
     super::prefs::sync_live_settings(&mut st, &mut fx);
     assert!(forgets(&fx).is_empty(), "once");

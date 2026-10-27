@@ -25,7 +25,7 @@ const NOTE: &str = "Code comments on GitLab merge requests open in the browser f
 /// `with_pr` on a GitLab project, the panel opened afresh (so it names merge request !12).
 fn with_mr(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_pr(theme, name, true);
-    let fs = st.forge.as_mut().unwrap();
+    let fs = st.session.forge.as_mut().unwrap();
     fs.host = Some(Target {
         provider: Provider::GitLab,
         host: "gitlab.com".into(),

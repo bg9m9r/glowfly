@@ -52,19 +52,19 @@ fn a_deleted_file_comes_back_with_undo_and_goes_again_with_redo() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, delete_confirmed("a.txt"));
     assert!(!dir.join("a.txt").exists());
-    assert!(matches!(st.undo.undo.last(), Some(Action::DeleteFile { path, via: DeleteVia::Trash, .. }) if path == "a.txt"));
-    assert_eq!(st.undo.undo_entry(st.settings.lang(), true).0, "Undo delete of a.txt");
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::DeleteFile { path, via: DeleteVia::Trash, .. }) if path == "a.txt"));
+    assert_eq!(st.session.undo.undo_entry(st.settings.lang(), true).0, "Undo delete of a.txt");
     let bin_before = in_bin(&contents);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), contents);
-    assert!(st.job.is_none() && st.undo.redo.len() == 1, "{:?}", st.undo);
+    assert!(st.job.is_none() && st.session.undo.redo.len() == 1, "{:?}", st.session.undo);
     assert!(said(&st).iter().any(|t| t.contains(&format!("Put back a.txt (its copy in the {TRASH} stays there)"))), "{:?}", said(&st));
 
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert!(!dir.join("a.txt").exists());
     assert_eq!(in_bin(&contents), bin_before + 1, "redo moved it into the stand-in bin again");
-    assert!(matches!(st.undo.undo.last(), Some(Action::DeleteFile { .. })));
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::DeleteFile { .. })));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -77,7 +77,7 @@ fn undo_leaves_a_file_that_is_back_alone_and_keeps_the_entry() {
     std::fs::write(dir.join("a.txt"), "someone else's\n").unwrap();
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "someone else's\n");
-    assert!(matches!(st.undo.undo.last(), Some(Action::DeleteFile { .. })), "the entry is kept: {:?}", st.undo);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::DeleteFile { .. })), "the entry is kept: {:?}", st.session.undo);
     assert!(said(&st).iter().any(|t| t.contains("a.txt is in your working tree again; move it away")), "{:?}", said(&st));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -114,7 +114,7 @@ fn toasts_say_what_undo_can_do() {
         toast(&mut st, delete(DeleteMode::Trash), deleted_ok("a.txt", true, false)),
         format!("Moved a.txt to the {TRASH}. Undo ({key}) puts it back.")
     );
-    assert!(matches!(st.undo.undo.last(), Some(Action::DeleteFile { .. })), "recorded");
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::DeleteFile { .. })), "recorded");
     let permanent = WorkFileOk::Deleted { how: Deleted::Permanently, undo: None, too_large: true };
     assert_eq!(toast(&mut st, delete(DeleteMode::Permanent), permanent), "Deleted a.txt. It's over 64 MB, so no copy was kept for Undo.");
     assert_eq!(
@@ -144,9 +144,13 @@ fn a_delete_for_an_inactive_tab_goes_into_its_history() {
     update(&mut st, reply, Instant::now());
 
     assert!(!a.join("a.txt").exists());
-    assert!(st.undo.undo.is_empty(), "tab B's history is untouched");
+    assert!(st.session.undo.undo.is_empty(), "tab B's history is untouched");
     let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
-    assert!(matches!(parked.undo.undo.last(), Some(Action::DeleteFile { path, .. }) if path == "a.txt"), "{:?}", parked.undo);
+    assert!(
+        matches!(parked.session.undo.undo.last(), Some(Action::DeleteFile { path, .. }) if path == "a.txt"),
+        "{:?}",
+        parked.session.undo
+    );
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(format!("Moved a.txt to the {TRASH}. Undo puts it back.").as_str()));
     for d in [&a, &b] {
         let _ = std::fs::remove_dir_all(d);

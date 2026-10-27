@@ -141,7 +141,7 @@ fn worktrees_submodules_empty() {
 #[test]
 fn empty_sections_filtered() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "header-empty-filtered");
-    st.view.ref_filter = "zzz".into();
+    st.session.tab_view.ref_filter = "zzz".into();
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Worktrees actions").is_some() && h.query_by_label("Submodules actions").is_some(), "the headers stay");

@@ -58,7 +58,7 @@ fn files_reveal_commit() {
         git(&dir, &["commit", "-q", "-m", "Add sixty files"], "2026-01-20T10:00:00+00:00");
         st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
         let oid = st.snap.as_ref().unwrap().commits[0].oid;
-        st.selection = Selection::Commit(oid);
+        st.session.selection = Selection::Commit(oid);
         st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
         open(&mut st, &dir, DiffTarget::Commit(oid, "f55.txt".into()), landed);
         let name = landed.then_some("files_reveal_commit");

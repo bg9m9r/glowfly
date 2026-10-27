@@ -40,13 +40,13 @@ fn a_pick_the_branch_already_has_changes_nothing() {
     let t = topic(&f, &["x.txt"]);
     git(&f.dir, &["cherry-pick", &t[0].to_string()]);
     refresh(&mut st);
-    let (before, undo) = (head(&f.dir), st.undo.undo.len());
+    let (before, undo) = (head(&f.dir), st.session.undo.undo.len());
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![t[0]])));
     let text = format!("Nothing to cherry-pick: the branch already has the changes of {}.", short(t[0]));
     assert!(toasts(&st).contains(&(true, text.as_str())), "{:?}", toasts(&st));
     assert!(st.job.is_none());
     assert_eq!((state(&st), head(&f.dir)), (RepositoryState::Clean, before));
-    assert_eq!(st.undo.undo.len(), undo, "nothing new to undo");
+    assert_eq!(st.session.undo.undo.len(), undo, "nothing new to undo");
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
@@ -56,14 +56,14 @@ fn a_sequence_skips_the_commit_already_applied() {
     let t = topic(&f, &["x.txt", "y.txt", "z.txt"]);
     git(&f.dir, &["cherry-pick", &t[1].to_string()]);
     refresh(&mut st);
-    let undo = st.undo.undo.len();
+    let undo = st.session.undo.undo.len();
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(t.clone())));
     let text = format!("Cherry-picked 2 of 3 commits; skipped {}, whose changes the branch already has.", short(t[1]));
     assert!(toasts(&st).contains(&(true, text.as_str())), "{:?}", toasts(&st));
     assert!(st.log.iter().any(|l| l.text == format!("Skipped because they change nothing on this branch: {}", short(t[1]))));
     assert_eq!(state(&st), RepositoryState::Clean);
     assert!(f.dir.join("x.txt").exists() && f.dir.join("z.txt").exists());
-    assert_eq!(st.undo.undo.len(), undo + 1, "one undoable action");
+    assert_eq!(st.session.undo.undo.len(), undo + 1, "one undoable action");
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
@@ -97,7 +97,7 @@ fn a_conflict_after_a_skipped_commit_still_stops() {
     refresh(&mut st);
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![t[0], clash])));
     assert!(matches!(state(&st), RepositoryState::CherryPick | RepositoryState::CherryPickSequence), "{:?}", state(&st));
-    assert_eq!(st.selection, Selection::Wip, "the banner shows");
+    assert_eq!(st.session.selection, Selection::Wip, "the banner shows");
     assert!(toasts(&st).iter().any(|(ok, _)| !ok), "{:?}", toasts(&st));
     assert!(!toasts(&st).iter().any(|(_, t)| t.starts_with("Cherry-picked")), "the conflict is what the toast says");
     assert!(st.log.iter().any(|l| l.text.starts_with("Skipped") && l.text.contains(&short(t[0]))));

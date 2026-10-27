@@ -106,7 +106,7 @@ fn submodule_dot_tooltip() {
 #[test]
 fn submodules_filtered() {
     let (mut st, dir) = with_submodules(ThemeChoice::Dark, "submodules-filtered");
-    st.view.ref_filter = "VENDOR".into();
+    st.session.tab_view.ref_filter = "VENDOR".into();
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("vendor/json").is_some() && h.query_by_label("vendor/zlib").is_some());

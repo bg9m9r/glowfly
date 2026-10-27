@@ -34,14 +34,14 @@ pub(in crate::ui) fn compared(theme: ThemeChoice, name: &str, swapped: bool) -> 
     w.swapped = swapped;
     let changes = if swapped { repo::compare_from_workdir(&dir, oid) } else { repo::compare_workdir(&dir, oid) };
     w.changes = Some(changes.map_err(|e| e.to_string()));
-    st.selection = Selection::VsWorkdir(w);
+    st.session.selection = Selection::VsWorkdir(w);
     (st, dir)
 }
 
 #[test]
 fn a_commit_compared_with_the_working_directory() {
     let (st, dir) = compared(ThemeChoice::Dark, "compare-workdir", false);
-    let Selection::VsWorkdir(w) = &st.selection else { unreachable!() };
+    let Selection::VsWorkdir(w) = &st.session.selection else { unreachable!() };
     let c = w.changes.clone().unwrap().unwrap();
     let mut files: Vec<(&str, char)> = c.files.iter().map(|f| (f.path.as_str(), f.status)).collect();
     // libgit2 orders paths ignoring case where the file system does.
@@ -60,7 +60,7 @@ fn a_commit_compared_with_the_working_directory() {
 #[test]
 fn the_working_directory_compared_with_a_commit() {
     let (st, dir) = compared(ThemeChoice::Dark, "compare-workdir-swapped", true);
-    let Selection::VsWorkdir(w) = &st.selection else { unreachable!() };
+    let Selection::VsWorkdir(w) = &st.session.selection else { unreachable!() };
     let c = w.changes.clone().unwrap().unwrap();
     let status = |p: &str| c.files.iter().find(|f| f.path == p).map(|f| f.status);
     assert_eq!((status("new.txt"), status("login.txt")), (Some('D'), Some('A')));
@@ -99,7 +99,7 @@ fn a_line_from_the_first_commit_combined() {
     // Each is the first parent of the one above it, down to the fixture's first commit.
     let summaries = ["Fix build on Windows", "Add app skeleton", "Initial commit"];
     let (st, dir) = selected(ThemeChoice::Dark, "compare-range-root", &summaries, false);
-    let Selection::Commits(m) = &st.selection else { unreachable!() };
+    let Selection::Commits(m) = &st.session.selection else { unreachable!() };
     assert_eq!(m.span, Span::Range { base: repo::empty_tree(), newest: commit(&st, "Fix build on Windows") });
     assert!(m.changes.as_ref().is_some_and(|c| c.as_ref().is_ok_and(|c| c.files.iter().all(|f| f.status == 'A'))));
     assert!(m.pick_blocked.is_some(), "the commits are on the current branch");
@@ -127,7 +127,7 @@ fn a_line_from_a_shallow_boundary_explains() {
     let root = commit(&st, "Initial commit");
     st.snap.as_mut().unwrap().shallow_roots = vec![root];
     let (st, dir) = select(st, dir, &["Fix build on Windows", "Add app skeleton", "Initial commit"], false);
-    let Selection::Commits(m) = &st.selection else { unreachable!() };
+    let Selection::Commits(m) = &st.session.selection else { unreachable!() };
     assert_eq!((m.span, m.compare_ends()), (Span::ShallowEnd, None));
     render("details_multi_shallow_end", st, true);
     remove_fixture(&dir);
@@ -137,7 +137,7 @@ fn a_line_from_a_shallow_boundary_explains() {
 fn the_details_panel_compares_its_commit_with_the_working_directory() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "compare-details-button");
     let oid = commit(&st, "Fix build on Windows");
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let mut h = super::snapshot_tests::harness(st, true);
     h.run();
@@ -151,7 +151,7 @@ fn the_details_panel_compares_its_commit_with_the_working_directory() {
     let (mut st, _) = with_repo(ThemeChoice::Dark, "compare-details-button");
     let mut d = repo::commit_detail(&dir, oid).unwrap();
     d.oid = Oid::from_str("1234567890123456789012345678901234567890").unwrap();
-    st.selection = Selection::Commit(d.oid);
+    st.session.selection = Selection::Commit(d.oid);
     st.session.detail = Some(d);
     let mut h = super::snapshot_tests::harness(st, true);
     h.run();
@@ -176,7 +176,7 @@ fn select(mut st: AppState, dir: PathBuf, summaries: &[&str], swapped: bool) -> 
         }
         super::snapshot_tests_select::load_stacked(m, &dir);
     }
-    st.selection = sel;
+    st.session.selection = sel;
     (st, dir)
 }
 
@@ -185,7 +185,7 @@ fn a_line_of_commits_combined() {
     // Each is the first parent of the one above it; main and search have their tips in it.
     let (st, dir) =
         selected(ThemeChoice::Dark, "compare-range", &["Search results page", "Merge branch 'login-page'", "Fix build on Windows"], false);
-    let Selection::Commits(m) = &st.selection else { unreachable!() };
+    let Selection::Commits(m) = &st.session.selection else { unreachable!() };
     assert_eq!(m.span, Span::Range { base: commit(&st, "Add app skeleton"), newest: commit(&st, "Search results page") });
     render("graph_range_selected", st, true);
     remove_fixture(&dir);
@@ -194,7 +194,7 @@ fn a_line_of_commits_combined() {
 #[test]
 fn two_commits_swapped() {
     let (st, dir) = selected(ThemeChoice::Dark, "compare-swapped", &["Add login page", "Search results page"], true);
-    let Selection::Commits(m) = &st.selection else { unreachable!() };
+    let Selection::Commits(m) = &st.session.selection else { unreachable!() };
     assert_eq!(m.compare_ends(), Some((commit(&st, "Search results page"), commit(&st, "Add login page"))));
     let mut h = super::snapshot_tests::harness(st, true);
     h.run();
@@ -220,17 +220,17 @@ fn arrow(h: &mut egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, modifiers: Mod
 fn shift_arrows_extend_the_selection() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "compare-shift-keys");
     let rows: Vec<Oid> = st.snap.as_ref().unwrap().commits.iter().map(|c| c.oid).collect();
-    st.selection = Selection::Commit(rows[1]);
+    st.session.selection = Selection::Commit(rows[1]);
     let mut h = app_harness(st);
     h.run_steps(4);
     let msgs = arrow(&mut h, Modifiers::SHIFT, Key::ArrowDown);
     assert!(matches!(&msgs[..], [Msg::Selection(SelectionMsg::SelectCommitRange(o))] if *o == rows[2]), "{}", msgs.len());
 
     // From the top commit, Up meets the WIP row: nothing.
-    h.state_mut().0.selection = Selection::Commit(rows[0]);
+    h.state_mut().0.session.selection = Selection::Commit(rows[0]);
     assert!(arrow(&mut h, Modifiers::SHIFT, Key::ArrowUp).is_empty());
     // Without a commit selected, Shift+Down moves like Down.
-    h.state_mut().0.selection = Selection::Wip;
+    h.state_mut().0.session.selection = Selection::Wip;
     let msgs = arrow(&mut h, Modifiers::SHIFT, Key::ArrowDown);
     assert!(matches!(&msgs[..], [Msg::Repo(RepoMsg::SelectCommit(o))] if *o == rows[0]), "{}", msgs.len());
     drop(h);

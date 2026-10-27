@@ -14,12 +14,12 @@ use glowfly_core::repo::{Collision, FileEntry, Hazard, HunkOp, Snapshot};
 pub fn hazard_of<'a>(st: &'a AppState, path: &str) -> Option<&'a Hazard> {
     let snap = st.snap.iter().flat_map(|s| s.unstaged.iter().chain(&s.staged));
     let detail = st.session.detail.iter().flat_map(|d| &d.files);
-    let compared = match &st.selection {
+    let compared = match &st.session.selection {
         Selection::Commits(m) => m.changes.as_ref().and_then(|c| c.as_ref().ok()).map(|c| c.files.as_slice()).unwrap_or_default(),
         Selection::VsWorkdir(w) => w.changes.as_ref().and_then(|c| c.as_ref().ok()).map(|c| c.files.as_slice()).unwrap_or_default(),
         _ => &[],
     };
-    let stacked = match &st.selection {
+    let stacked = match &st.session.selection {
         Selection::Commits(m) => m.stacked.as_ref().and_then(|s| s.as_ref().ok()).map(|s| s.as_slice()).unwrap_or_default(),
         _ => &[],
     };

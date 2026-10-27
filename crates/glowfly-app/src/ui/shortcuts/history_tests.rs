@@ -63,7 +63,7 @@ fn fixture(name: &str) -> (AppState, std::path::PathBuf, Oid, Oid) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     let snap = st.snap.as_ref().unwrap();
     let (a, b) = (snap.commits[0].oid, snap.commits[1].oid);
-    st.selection = Selection::Commit(a);
+    st.session.selection = Selection::Commit(a);
     (st, dir, a, b)
 }
 
@@ -81,12 +81,12 @@ fn graph_edits_follow_the_selection() {
     let both = MultiSelection::build([a, b], a, snap);
     let Selection::Commits(m) = &both else { panic!("two commits") };
     let oids = m.oids.clone();
-    h.state_mut().st.selection = both;
+    h.state_mut().st.session.selection = both;
     assert_eq!(press(&mut h, Modifiers::ALT, Key::S), [format!("{:?}", QuickEdit::Squash(oids.clone()))]);
     assert_eq!(press(&mut h, Modifiers::NONE, Key::Delete), [format!("{:?}", QuickEdit::Drop(oids))]);
     assert!(press(&mut h, Modifiers::NONE, Key::F2).is_empty(), "no reword of several commits");
 
-    h.state_mut().st.selection = Selection::Wip;
+    h.state_mut().st.session.selection = Selection::Wip;
     assert!(press(&mut h, Modifiers::NONE, Key::F2).is_empty());
     drop(h);
     remove_fixture(&dir);

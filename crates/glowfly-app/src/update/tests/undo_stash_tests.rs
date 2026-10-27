@@ -49,15 +49,15 @@ fn toolbar_stash_undo_and_redo() {
     let (mut st, dir) = opened("undo-stash-toolbar");
     drive(&mut st, Msg::git("Stash", &["stash", "push", "-u"]));
     assert!(!dirty(&st));
-    assert!(matches!(st.undo.undo.last(), Some(Action::StashPush { .. })), "{:?}", st.undo.undo);
-    assert!(st.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo stash 'WIP on main"));
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::StashPush { .. })), "{:?}", st.session.undo.undo);
+    assert!(st.session.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo stash 'WIP on main"));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir, "a.txt"), "one\ntwo\n");
     assert!(st.snap.as_ref().unwrap().stashes.is_empty());
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert!(!dirty(&st));
     let snap = st.snap.as_ref().unwrap();
-    assert!(matches!(st.undo.undo.last(), Some(Action::StashPush { stash, .. }) if *stash == snap.stashes[0].oid));
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::StashPush { stash, .. }) if *stash == snap.stashes[0].oid));
     cleanup(&[&dir]);
 }
 
@@ -73,7 +73,7 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
     assert!(matches!(&fx[..], [Effect::RunGit { record: Some(k), .. }] if *k == want), "start_job recognises it: {fx:?}");
     super::tests::finish(&mut st, fx);
     assert!(dirty(&st));
-    assert!(st.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo pop of stash 'On main: wip'"));
+    assert!(st.session.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo pop of stash 'On main: wip'"));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let snap = st.snap.as_ref().unwrap();
@@ -84,8 +84,8 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
     std::fs::write(dir.join("b.txt"), "local\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, oid }));
-    assert!(st.undo.undo.is_empty());
-    let (_, why) = st.undo.undo_entry(st.settings.lang(), true);
+    assert!(st.session.undo.undo.is_empty());
+    let (_, why) = st.session.undo.undo_entry(st.settings.lang(), true);
     assert!(why.as_deref().is_some_and(|w| w.starts_with("Can't undo Pop stash")), "{why:?}");
     cleanup(&[&dir]);
 }
@@ -181,10 +181,14 @@ fn drop_from_the_sidebar_is_undoable() {
     let (mut st, dir, first) = two_stashes("undo-stash-drop");
     drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid: first }));
     assert!(!stash_oids(&st).contains(&first));
-    assert!(matches!(st.undo.undo.last(), Some(Action::StashDrop { stash, .. }) if *stash == first), "{:?}", st.undo.undo);
-    assert!(st.undo.blocked.is_none());
-    assert!(matches!(st.undo.undo.first(), Some(Action::Commit { .. })), "the commit is still under it: {:?}", st.undo.undo);
-    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::StashDrop { stash, .. }) if *stash == first), "{:?}", st.session.undo.undo);
+    assert!(st.session.undo.blocked.is_none());
+    assert!(
+        matches!(st.session.undo.undo.first(), Some(Action::Commit { .. })),
+        "the commit is still under it: {:?}",
+        st.session.undo.undo
+    );
+    let tip = st.session.undo.undo_entry(st.settings.lang(), true).0;
     assert_eq!(tip, "Undo drop of stash 'On main: first'");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
@@ -193,7 +197,7 @@ fn drop_from_the_sidebar_is_undoable() {
     assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == "Undo drop of stash 'On main: first' succeeded"));
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert!(!stash_oids(&st).contains(&first));
-    assert!(matches!(st.undo.undo.last(), Some(Action::StashDrop { .. })));
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::StashDrop { .. })));
     cleanup(&[&dir]);
 }
 
@@ -208,6 +212,6 @@ fn drop_redo_refused_when_dropped_elsewhere() {
     drive(&mut st, Msg::Job(JobMsg::Redo));
     let t = st.toasts.last().unwrap();
     assert!(!t.ok && t.text.contains("The stash was dropped or applied since"), "{}", t.text);
-    assert!(st.undo.undo.is_empty() && st.undo.redo.is_empty(), "{:?}", st.undo);
+    assert!(st.session.undo.undo.is_empty() && st.session.undo.redo.is_empty(), "{:?}", st.session.undo);
     cleanup(&[&dir]);
 }

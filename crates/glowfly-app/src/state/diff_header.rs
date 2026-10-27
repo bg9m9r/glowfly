@@ -266,7 +266,7 @@ fn view_group(st: &AppState, diff: &FileDiff, rows: bool) -> ViewGroup {
         .filter(|_| rows && s.diff_mode == DiffMode::WholeFile)
         .map(|w| {
             let all = whole_file::folds(w);
-            let open = all.iter().filter(|f| st.view.diff_expanded.contains(f.key)).count();
+            let open = all.iter().filter(|f| st.session.tab_view.diff_expanded.contains(f.key)).count();
             FoldCounts { open, closed: all.len() - open }
         })
         .filter(|c| c.open + c.closed > 0);
@@ -317,14 +317,14 @@ fn working_file_on_disk(st: &AppState, target: &DiffTarget) -> bool {
             let staged = snap.and_then(|s| s.staged.iter().find(|f| f.path == *p)).map(|f| f.status);
             staged != Some('D') || unstaged(p) == Some('?')
         }
-        DiffTarget::ToWorkdir(o, p) => match &st.selection {
+        DiffTarget::ToWorkdir(o, p) => match &st.session.selection {
             Selection::VsWorkdir(w) if w.oid == *o && !w.swapped => match &w.changes {
                 Some(Ok(c)) => c.in_workdir(p),
                 _ => diff_nav::file_status(st, target) != Some('D'),
             },
             _ => diff_nav::file_status(st, target) != Some('D'),
         },
-        DiffTarget::FromWorkdir(o, p) => match &st.selection {
+        DiffTarget::FromWorkdir(o, p) => match &st.session.selection {
             Selection::VsWorkdir(w) if w.oid == *o && w.swapped => match &w.changes {
                 Some(Ok(c)) => c.in_workdir(p),
                 _ => diff_nav::file_status(st, target) != Some('A'),

@@ -15,11 +15,11 @@ pub(super) const STASH_AND_UNDO: &str = "Stash changes and undo";
 
 /// Undoes (or, with `redo`, redoes) the active tab's most recent operation.
 pub(super) fn run(st: &mut AppState, redo: bool, now: Instant, fx: &mut Vec<Effect>) {
-    let top = if redo { st.undo.redo.last() } else { st.undo.undo.last() }.cloned();
+    let top = if redo { st.session.undo.redo.last() } else { st.session.undo.undo.last() }.cloned();
     let Some(action) = top else {
         // Say why when the last operation can't be undone; otherwise there is nothing to do.
-        if !redo && st.undo.blocked.is_some() {
-            let (_, why) = st.undo.undo_entry(st.settings.lang(), true);
+        if !redo && st.session.undo.blocked.is_some() {
+            let (_, why) = st.session.undo.undo_entry(st.settings.lang(), true);
             st.toast(false, why.unwrap_or_default(), now);
         }
         return;
@@ -52,7 +52,7 @@ pub(super) fn run_with(st: &mut AppState, redo: bool, action: Action, opts: Undo
     if matches!(st.modal, Some(Modal::UndoCreated(_))) {
         st.modal = None;
     }
-    let top = if redo { st.undo.redo.last() } else { st.undo.undo.last() };
+    let top = if redo { st.session.undo.redo.last() } else { st.session.undo.undo.last() };
     if top != Some(&action) {
         st.log(false, "The undo history changed, so nothing was run.");
         return;
@@ -121,11 +121,11 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
         _ => None,
     };
     let (history, draft): (&mut UndoHistory, &mut CommitDraft) = if here {
-        (&mut st.undo, &mut st.session.draft)
+        (&mut st.session.undo, &mut st.session.draft)
     } else {
         let parked = job.workdir.as_deref().and_then(|w| st.tabs.iter_mut().find(|t| t.is(w))).and_then(|t| t.parked.as_mut());
         let Some(p) = parked else { return }; // closed, or not loaded since
-        (&mut p.undo, &mut p.session.draft)
+        (&mut p.session.undo, &mut p.session.draft)
     };
     match result {
         Some(UndoResult::Recorded(Some(a))) if ok => history.record(a),
@@ -176,7 +176,7 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
     // The refusal's toast (shown just before this) offers to stash the changes in the way and
     // undo anyway, for the active tab only.
     if let (true, Some(redo)) = (here, offer) {
-        let top = if redo { st.undo.redo.last() } else { st.undo.undo.last() }.cloned();
+        let top = if redo { st.session.undo.redo.last() } else { st.session.undo.undo.last() }.cloned();
         if let Some(top) = top {
             let opts = UndoOpts { stash_first: true, ..Default::default() };
             let msg = Box::new(Msg::Job(JobMsg::UndoWith { redo, action: Box::new(top), opts }));

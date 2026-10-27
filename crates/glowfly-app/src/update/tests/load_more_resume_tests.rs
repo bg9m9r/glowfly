@@ -86,7 +86,7 @@ fn load_more_goes_on_from_the_walk_without_a_full_load() {
     assert_eq!(oids(snap), oids(&fresh));
     assert_eq!((snap.commits.len(), snap.loaded_with.max_commits, snap.truncated), (1000, 1000, true));
     assert!(!st.loading && !st.loading_more());
-    assert_eq!(st.selection, Selection::Commit(picked));
+    assert_eq!(st.session.selection, Selection::Commit(picked));
     assert_eq!(st.view.scroll_to_row, None);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -200,25 +200,25 @@ fn an_index_jump_lands_after_a_resumed_page() {
     kept.extend(past_the_delay(&mut st));
     let fx = run_build(&mut st, kept);
     finish(&mut st, fx);
-    assert!(st.search.index.ready.is_some());
+    assert!(st.session.search.index.ready.is_some());
 
     st.view.show_search = true;
-    st.view.search = "beacon".into();
+    st.session.tab_view.search = "beacon".into();
     drive(&mut st, Msg::Search(SearchMsg::QueryChanged));
     drive(&mut st, Msg::Search(SearchMsg::Next));
     let summary = |st: &AppState| {
-        let Selection::Commit(oid) = st.selection else { return String::new() };
+        let Selection::Commit(oid) = st.session.selection else { return String::new() };
         let snap = st.snap.as_ref().unwrap();
         snap.commits[snap.row_of[&oid]].summary.to_string()
     };
     assert_eq!(summary(&st), "commit 1199 beacon");
 
     let load = one_more(update(&mut st, Msg::Search(SearchMsg::Next), Instant::now()));
-    assert!(st.search.index.jump.is_some());
+    assert!(st.session.search.index.jump.is_some());
     let fx = update(&mut st, run_page(load), Instant::now());
     finish(&mut st, fx);
     assert_eq!(summary(&st), "commit 0 needle beacon", "selected once its page is in");
-    assert_eq!(st.search.index.jump, None);
+    assert_eq!(st.session.search.index.jump, None);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -248,7 +248,7 @@ fn a_refresh_queued_before_a_chained_load_more_reads_the_status() {
     let (mut st, dir) = opened("resume-chained", 3000, 500);
     st.settings.load_more_on_scroll = true;
     st.view.show_search = true;
-    st.view.search = "needle".into();
+    st.session.tab_view.search = "needle".into();
     let mut fx = update(&mut st, Msg::Search(SearchMsg::ToggleFilter), Instant::now());
     fx.extend(update(&mut st, Msg::Search(SearchMsg::QueryChanged), Instant::now()));
     // The filtering search loads further back by itself; a refresh asked meanwhile waits.

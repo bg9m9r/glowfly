@@ -19,7 +19,7 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
         .frame(egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(10, 0)))
         .show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
-                if let Some(fs) = &st.forge {
+                if let Some(fs) = &st.session.forge {
                     let filters = st.snap.as_ref().map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
                     if let Some(h) = &fs.host {
                         ui.label(RichText::new(h.provider.name()).color(color::text()).font(type_scale::strong(ui, type_scale::BODY)));

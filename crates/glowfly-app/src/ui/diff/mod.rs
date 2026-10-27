@@ -128,7 +128,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
 /// Draws the open diff's rows and records the first visible row and how many rows fit.
 fn record_rows(ui: &mut Ui, st: &mut AppState, cache: &mut DiffRowsCache, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
     if let Some((top, visible)) = rows(ui, st, cache, scroll_to, msgs) {
-        st.view.diff_top_row = top;
+        st.session.tab_view.diff_top_row = top;
         st.view.diff_visible_rows = visible;
     }
 }
@@ -153,7 +153,7 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
         }
     }
     let style = DiffStyle::new(&st.settings);
-    let expanded = &st.view.diff_expanded;
+    let expanded = &st.session.tab_view.diff_expanded;
     let opened = whole.map(|w| whole_file::opened(w, expanded)).unwrap_or_default();
     let layout = st.settings.diff_layout;
     let generation = (st.session.diff.generation, st.session.diff.shown_gen);
@@ -170,7 +170,7 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
     // The same rows at new heights (a resize, or a font, number or tab change while wrapped)
     // keep the row at the top in place.
     let anchor = cache.refresh_heights(lines, &gap_lines, style.row_h, style.tab, wrap);
-    let scroll_to = scroll_to.or(anchor.then_some(st.view.diff_top_row));
+    let scroll_to = scroll_to.or(anchor.then_some(st.session.tab_view.diff_top_row));
     let m = cache.row_metrics(style.row_h);
     let marks =
         st.session.pull_request.view.as_ref().filter(|v| v.shows_file(target)).and_then(|v| pull_request_threads::marks(v, target.path()));

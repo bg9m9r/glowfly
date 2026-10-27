@@ -7,7 +7,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Unchanged lines in a diff
 
-- `ViewState::diff_expanded` holds the opened runs by key (a run's first new line, the same in the whole-file view and the hunk view) and, for the hunk view, the text of the gaps between hunks, read once per shown diff (`Effect::LoadDiffGaps`, `update/diff_gaps.rs`).
+- `TabView::diff_expanded` (in `RepoSession::tab_view`) holds the opened runs by key (a run's first new line, the same in the whole-file view and the hunk view) and, for the hunk view, the text of the gaps between hunks, read once per shown diff (`Effect::LoadDiffGaps`, `update/diff_gaps.rs`).
 - E and Shift+E open the next closed run from the top or fold back the one there (`update/fold_keys.rs`).
 
 ## Next/previous change across files
@@ -18,7 +18,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Tabs
 
-- The active tab's repository data lives directly in `AppState`; switching tabs parks it in `state::tabs::Parked` and restores the other tab's. The views with generation counters, the open diff (`DiffSlot`), the commit detail and draft, and the repository reads (`RepoReads`) move as one `RepoSession`, whose counters on return move past both tabs' (`RepoSession::resume_after`). What stays in `Parked` (snapshot, selection, forge, undo, searches, view fields, the Create issue form) is copied by hand.
+- The active tab's repository data lives in `AppState`; switching tabs parks it in `state::tabs::Parked` and restores the other tab's. Everything per tab moves as one `RepoSession`: the views with generation counters, the open diff (`DiffSlot`), the commit detail and draft, the repository reads (`RepoReads`), the selection, forge data, undo history, commit search and the view state (`TabView`). Its counters on return move past both tabs' (`RepoSession::resume_after`). `Parked` adds only the snapshot and the Create issue dialog. After the swap `unpark` runs named hooks: `gitflow::snapshot_changed`, the selection reset without a snapshot, the diff top-row recount (`restore_diff_top`), the Create issue dialog and the graph scroll restore.
 - Results of repository-scoped effects (`Effect::scope`) come back as `Msg::Scoped`.
 - If their tab is no longer active, only what the area's `on_inactive` returns is applied (a log line, an undo entry for that tab, a dialog's result); the rest is dropped.
 - Each tab's activity log lives outside `Parked`, in `Tab::log` (the active one's in `AppState::log`): `switch` and `activate` swap it, so a restored tab that hasn't loaded still gets lines.

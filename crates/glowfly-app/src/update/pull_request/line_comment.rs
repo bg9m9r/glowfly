@@ -42,7 +42,7 @@ pub(super) fn handle(st: &mut AppState, msg: LineCommentMsg, _now: Instant, fx: 
 }
 
 fn provider(st: &AppState) -> Option<glowfly_core::forge::Provider> {
-    st.forge.as_ref().and_then(|f| f.host_provider())
+    st.session.forge.as_ref().and_then(|f| f.host_provider())
 }
 
 /// The draft can start on the open diff: it is one of the panel's files and nothing blocks it.
@@ -172,10 +172,10 @@ fn show(st: &mut AppState, fx: &mut Vec<Effect>) {
     let (target, side, n) = (d.target.clone(), d.anchor.side, d.anchor.line);
     match &st.session.diff.view {
         Some((open, diff)) if *open == target => {
-            let (s, ex) = (&st.settings, &st.view.diff_expanded);
+            let (s, ex) = (&st.settings, &st.session.tab_view.diff_expanded);
             if let Some(row) = row_of_file_line(diff, s.diff_mode, s.diff_layout, ex, side, n) {
                 st.view.diff_scroll_to_row = Some(row);
-                st.view.diff_top_row = row;
+                st.session.tab_view.diff_top_row = row;
             }
         }
         _ if st.session.pull_request.view.as_ref().is_some_and(|v| v.shows_file(&target)) => {
@@ -242,7 +242,7 @@ pub(super) fn replied(
             .iter_mut()
             .find(|t| t.is(workdir))
             .and_then(|t| t.parked.as_mut())
-            .filter(|p| p.forge.as_ref().and_then(|f| f.host.as_ref()) == Some(target))
+            .filter(|p| p.session.forge.as_ref().and_then(|f| f.host.as_ref()) == Some(target))
             .and_then(|p| p.session.pull_request.view.as_mut())
             .filter(mine)
     };

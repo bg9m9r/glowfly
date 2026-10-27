@@ -23,9 +23,9 @@ fn fetched(st: &AppState) -> String {
 /// Undo: "Undo commit 'Fix login'", its keys, and what undoing it reverts (or why it can't).
 pub fn undo(st: &AppState) -> Tip {
     let t = lang(st);
-    let (title, why) = st.undo.undo_entry(t, st.job.is_none());
+    let (title, why) = st.session.undo.undo_entry(t, st.job.is_none());
     let tip = Tip::new(title).keys(BindingId::Undo);
-    match (why, st.undo.undo.last()) {
+    match (why, st.session.undo.undo.last()) {
         (Some(why), _) => tip.body(why),
         (None, Some(a)) => tip.preview(Some(crate::state::undo_preview::preview(t, a, st.snap.as_ref(), false))),
         (None, None) => tip,
@@ -35,9 +35,9 @@ pub fn undo(st: &AppState) -> Tip {
 /// Redo, like `undo`.
 pub fn redo(st: &AppState) -> Tip {
     let t = lang(st);
-    let (title, why) = st.undo.redo_entry(t, st.job.is_none());
+    let (title, why) = st.session.undo.redo_entry(t, st.job.is_none());
     let tip = Tip::new(title).keys(BindingId::Redo);
-    match (why, st.undo.redo.last()) {
+    match (why, st.session.undo.redo.last()) {
         (Some(why), _) => tip.body(why),
         (None, Some(a)) => tip.preview(Some(crate::state::undo_preview::preview(t, a, st.snap.as_ref(), true))),
         (None, None) => tip,

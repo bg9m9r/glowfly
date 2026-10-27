@@ -206,7 +206,7 @@ fn gitflow_section_header_menu() {
 #[test]
 fn gitflow_section_filtered() {
     let (mut st, dir) = with_flow_branches(ThemeChoice::Dark, "gitflow-section-filtered");
-    st.view.ref_filter = "log".into();
+    st.session.tab_view.ref_filter = "log".into();
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("gitflow_section_filtered");
@@ -256,7 +256,7 @@ fn gitflow_issue_menu() {
         url: "https://github.com/o/r/issues/12".into(),
         facets: Default::default(),
     }];
-    st.forge = Some(f);
+    st.session.forge = Some(f);
     let mut h = harness(st, true);
     h.run();
     let at = center(&h, "#12  Crash on start");

@@ -68,7 +68,7 @@ fn set_diff_mode_whole_reloads_and_keeps_hunk() {
     let (mut st, dir) = with_diff("whole-switch", three_changes(false));
     run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 1, line: 3, how: Only }));
     assert!(!st.view.diff_lines.is_empty());
-    st.view.diff_top_row = header_rows(&three_changes(false), DiffLayout::Inline)[1];
+    st.session.tab_view.diff_top_row = header_rows(&three_changes(false), DiffLayout::Inline)[1];
 
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::WholeFile)));
     assert_eq!(st.settings.diff_mode, DiffMode::WholeFile);
@@ -87,13 +87,13 @@ fn set_diff_mode_whole_reloads_and_keeps_hunk() {
 #[test]
 fn diff_loaded_in_whole_mode_scrolls_to_kept_block() {
     let (mut st, dir) = with_diff("whole-open", three_changes(false));
-    st.view.diff_top_row = header_rows(&three_changes(false), DiffLayout::Inline)[1] + 2;
+    st.session.tab_view.diff_top_row = header_rows(&three_changes(false), DiffLayout::Inline)[1] + 2;
     run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::WholeFile)));
     let target = DiffTarget::Unstaged("f.txt".into());
     arrive(&mut st, target, three_changes(true));
     let rows = blocks(&three_changes(true), DiffLayout::Inline);
     assert_eq!(st.view.diff_scroll_to_row, Some(rows[1]));
-    assert_eq!(st.view.diff_top_row, rows[1]);
+    assert_eq!(st.session.tab_view.diff_top_row, rows[1]);
     assert_eq!(st.view.diff_open_hunk, None, "used once");
     assert!(st.hunk_ops_gen().is_some());
 
@@ -119,7 +119,7 @@ fn set_diff_mode_hunks_needs_no_reload() {
         let (mut st, dir) = with_diff("whole-back", three_changes(true));
         st.settings.diff_mode = DiffMode::WholeFile;
         st.settings.diff_layout = layout;
-        st.view.diff_top_row = blocks(&three_changes(true), layout)[2] + 3;
+        st.session.tab_view.diff_top_row = blocks(&three_changes(true), layout)[2] + 3;
         let shown = st.hunk_ops_gen();
         assert!(shown.is_some());
 
@@ -128,7 +128,7 @@ fn set_diff_mode_hunks_needs_no_reload() {
         let (_, d) = st.session.diff.view.as_ref().unwrap();
         assert!(d.whole.is_none());
         let header = header_rows(&three_changes(false), layout)[2];
-        assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row), (Some(header), header), "{layout:?}");
+        assert_eq!((st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row), (Some(header), header), "{layout:?}");
         assert_eq!(st.hunk_ops_gen(), shown, "the hunks didn't change");
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -161,7 +161,7 @@ fn jump_to_change_steps_blocks_in_whole_mode() {
     st.settings.diff_mode = DiffMode::WholeFile;
     let (inline, split) = (blocks(&three_changes(true), DiffLayout::Inline), blocks(&three_changes(true), DiffLayout::Split));
     assert_ne!(inline[1], split[1]);
-    st.view.diff_top_row = inline[1] + 1;
+    st.session.tab_view.diff_top_row = inline[1] + 1;
     run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));
 }
@@ -307,7 +307,7 @@ fn a_parked_diff_follows_a_mode_change_made_in_another_tab() {
     let mut st = state();
     st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
     st.settings.diff_mode = DiffMode::WholeFile;
-    st.view.diff_top_row = blocks(&three_changes(true), DiffLayout::Inline)[2];
+    st.session.tab_view.diff_top_row = blocks(&three_changes(true), DiffLayout::Inline)[2];
 
     run(&mut st, Msg::Tabs(TabsMsg::NewTab));
     run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::Hunks)));
@@ -315,5 +315,5 @@ fn a_parked_diff_follows_a_mode_change_made_in_another_tab() {
     let (_, d) = st.session.diff.view.as_ref().unwrap();
     assert!(d.whole.is_none(), "the hunk view shows the normal hunks");
     let header = header_rows(&three_changes(false), DiffLayout::Inline)[2];
-    assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row), (Some(header), header), "the same hunk stays at the top");
+    assert_eq!((st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row), (Some(header), header), "the same hunk stays at the top");
 }

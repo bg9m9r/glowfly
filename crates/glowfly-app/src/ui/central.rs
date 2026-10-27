@@ -87,7 +87,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Journal(crate::journal::JournalMsg::Close));
     } else if st.session.gitflow_panel {
         msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ClosePanel));
-    } else if matches!(st.selection, crate::state::Selection::Commits(_) | crate::state::Selection::VsWorkdir(_)) {
+    } else if matches!(st.session.selection, crate::state::Selection::Commits(_) | crate::state::Selection::VsWorkdir(_)) {
         msgs.push(Msg::Selection(SelectionMsg::CollapseSelection));
     } else {
         st.view.show_search = false;

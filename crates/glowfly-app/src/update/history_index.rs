@@ -23,7 +23,7 @@ use std::time::Instant;
 /// for this same history failed. An index for another repository is forgotten first.
 pub(super) fn want_build(st: &mut AppState, fx: &mut Vec<Effect>) {
     let workdir = st.snap.as_ref().map(|s| s.workdir.clone());
-    let ix = &mut st.search.index;
+    let ix = &mut st.session.search.index;
     if ix.workdir != workdir {
         if let Some(old) = ix.workdir.take() {
             fx.push(Effect::Index(IndexEffect::Forget { workdir: old }));
@@ -35,7 +35,7 @@ pub(super) fn want_build(st: &mut AppState, fx: &mut Vec<Effect>) {
     if !st.settings.index_history || !snap.truncated {
         return;
     }
-    let ix = &mut st.search.index;
+    let ix = &mut st.session.search.index;
     let covered = |k: &IndexKey| k.covers(snap);
     if ix.ready.as_ref().is_some_and(|r| covered(r.key()))
         || ix.building.as_ref().is_some_and(|b| covered(&b.key))
@@ -64,7 +64,7 @@ pub(super) fn want_build(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// is freed once the tab has been parked `PARKED_FREE_AFTER`. A build still running for a freed
 /// index lands through `parked_built` and is freed again on a later tick.
 pub(super) fn tick(st: &mut AppState, t: Instant, fx: &mut Vec<Effect>) {
-    let ix = &mut st.search.index;
+    let ix = &mut st.session.search.index;
     ix.seen = Some(t);
     match ix.delay {
         BuildDelay::Wanted => ix.delay = BuildDelay::Due(t + FIRST_BUILD_DELAY),
@@ -76,7 +76,7 @@ pub(super) fn tick(st: &mut AppState, t: Instant, fx: &mut Vec<Effect>) {
     }
     for tab in &mut st.tabs {
         let Some(p) = tab.parked.as_mut() else { continue };
-        let ix = &mut p.commit_search.index;
+        let ix = &mut p.session.search.index;
         let since = *ix.seen.get_or_insert(t);
         let large = ix.ready.as_ref().is_some_and(|r| r.len() >= FREE_MIN_COMMITS);
         if large && t.saturating_duration_since(since) >= PARKED_FREE_AFTER {
@@ -88,7 +88,7 @@ pub(super) fn tick(st: &mut AppState, t: Instant, fx: &mut Vec<Effect>) {
 
 /// How far build `build` got (ignored for any other build).
 pub(super) fn progress(st: &mut AppState, build: u64, indexed: usize, estimate: Option<usize>) {
-    if let Some(b) = st.search.index.building.as_mut().filter(|b| b.build == build) {
+    if let Some(b) = st.session.search.index.building.as_mut().filter(|b| b.build == build) {
         b.indexed = indexed;
         b.estimate = estimate;
     }
@@ -97,7 +97,7 @@ pub(super) fn progress(st: &mut AppState, build: u64, indexed: usize, estimate: 
 /// Build `build` finished: the index is kept, the history may already need another build (from
 /// this one), and the query is asked of it.
 pub(super) fn built(st: &mut AppState, build: u64, result: Result<Arc<CommitIndex>, String>, fx: &mut Vec<Effect>) {
-    match finish(&mut st.search.index, build, result) {
+    match finish(&mut st.session.search.index, build, result) {
         None => return,
         Some(Some(error)) => return st.log(false, failed_text(&error)),
         Some(None) => {}
@@ -112,7 +112,7 @@ pub(super) fn built(st: &mut AppState, build: u64, result: Result<Arc<CommitInde
 pub(super) fn parked_built(st: &mut AppState, workdir: &Path, build: u64, result: Result<Arc<CommitIndex>, String>) {
     let Some(i) = st.tabs.iter().position(|t| t.is(workdir) && t.parked.is_some()) else { return };
     let Some(p) = st.tabs[i].parked.as_mut() else { return };
-    if let Some(Some(error)) = finish(&mut p.commit_search.index, build, result) {
+    if let Some(Some(error)) = finish(&mut p.session.search.index, build, result) {
         st.log_in(Some(workdir), false, failed_text(&error));
     }
 }
@@ -145,7 +145,7 @@ fn finish(ix: &mut HistoryIndex, build: u64, result: Result<Arc<CommitIndex>, St
 /// Tab `i` is closing: its build stops and its index goes with the tab.
 pub(super) fn tab_closed(st: &AppState, i: usize, fx: &mut Vec<Effect>) {
     let Some(tab) = st.tabs.get(i) else { return };
-    let ix = if i == st.active_tab { Some(&st.search.index) } else { tab.parked.as_ref().map(|p| &p.commit_search.index) };
+    let ix = if i == st.active_tab { Some(&st.session.search.index) } else { tab.parked.as_ref().map(|p| &p.session.search.index) };
     if let Some(workdir) = ix.and_then(|x| x.workdir.clone()).or_else(|| tab.path.clone()) {
         fx.push(Effect::Index(IndexEffect::Forget { workdir }));
     }
@@ -157,8 +157,8 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.settings.index_history {
         return want_build(st, fx);
     }
-    let parked = st.tabs.iter_mut().filter_map(|t| t.parked.as_mut()).map(|p| &mut p.commit_search.index);
-    for ix in std::iter::once(&mut st.search.index).chain(parked) {
+    let parked = st.tabs.iter_mut().filter_map(|t| t.parked.as_mut()).map(|p| &mut p.session.search.index);
+    for ix in std::iter::once(&mut st.session.search.index).chain(parked) {
         ix.delay = BuildDelay::Idle;
         if !ix.holds_any() && ix.answer.is_none() && ix.failed.is_none() {
             continue;

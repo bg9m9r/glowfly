@@ -25,7 +25,7 @@ fn commit(st: &AppState, summary: &str) -> Oid {
 #[test]
 fn stacked_changes() {
     let (st, dir) = with_selection(ThemeChoice::Dark, "stacked-changes", &STACKED);
-    let Selection::Commits(m) = &st.selection else { panic!("not a multi-selection") };
+    let Selection::Commits(m) = &st.session.selection else { panic!("not a multi-selection") };
     assert_eq!(m.gap(), Some(commit(&st, "Search results page")));
     let stack = m.stacked.clone().unwrap().unwrap();
     assert_eq!(stack.len(), 3);

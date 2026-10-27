@@ -51,7 +51,7 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
         FilesMsg::FileRestored { path, oid, result, undo } => {
             let undoable = undo.is_some();
             if let Some(a) = undo {
-                st.undo.record(a);
+                st.session.undo.record(a);
             }
             match result {
                 Ok(from) => {
@@ -73,7 +73,7 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
                             h.on_disk = true;
                         }
                     }
-                    if let Selection::Commits(m) = &mut st.selection {
+                    if let Selection::Commits(m) = &mut st.session.selection {
                         if let Some(Ok(c)) = &mut m.changes {
                             c.absent.remove(&path);
                         }

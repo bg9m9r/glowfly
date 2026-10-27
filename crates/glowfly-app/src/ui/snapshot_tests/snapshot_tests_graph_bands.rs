@@ -42,7 +42,7 @@ pub(in crate::ui) fn with_bands(name: &str) -> (AppState, PathBuf) {
     let head = snap.head_oid.expect("HEAD");
     // The commit under main's tip, so main's own row shows its band.
     let below = snap.commits[snap.row_of[&head]].parents[0];
-    st.selection = Selection::Commit(below);
+    st.session.selection = Selection::Commit(below);
     (st, dir)
 }
 

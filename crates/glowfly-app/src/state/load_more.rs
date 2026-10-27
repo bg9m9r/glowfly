@@ -129,7 +129,7 @@ pub fn retry_delay(retries: u8) -> Option<Duration> {
 impl AppState {
     /// Whether the search bar filters the graph to a non-empty query's matches.
     pub fn filtering(&self) -> bool {
-        self.view.show_search && self.search.filter && self.search.active()
+        self.view.show_search && self.session.search.filter && self.session.search.active()
     }
 
     /// Whether older history is loading for a filtering search.
@@ -168,7 +168,7 @@ impl AppState {
             match positions.first() {
                 None if complete => return Reach::Whole { shallow: snap.is_shallow(), commits },
                 None => return Reach::IndexCapped { commits },
-                Some(&first) if self.search.matches.is_empty() && first as usize >= MAX_COMMITS => {
+                Some(&first) if self.session.search.matches.is_empty() && first as usize >= MAX_COMMITS => {
                     return Reach::PastCap { matches: positions.len() };
                 }
                 Some(_) => {}
@@ -231,9 +231,9 @@ mod tests {
         st.loading = true;
         assert_eq!(st.more_row(), Some(MoreRow::Loading), "a load runs");
         st.view.show_search = true;
-        st.view.search = "x".into();
-        st.search.query = CommitQuery::parse("x");
-        st.search.filter = true;
+        st.session.tab_view.search = "x".into();
+        st.session.search.query = CommitQuery::parse("x");
+        st.session.search.filter = true;
         assert_eq!(st.more_row(), Some(MoreRow::SearchingOlder));
         assert_eq!(st.search_reach(), Reach::Searching);
         st.loading = false;
@@ -260,13 +260,13 @@ mod tests {
         let commits = snap.commits.clone();
         st.snap = Some(snap);
         st.view.show_search = true;
-        st.view.search = "x".into();
-        st.search.query = CommitQuery::parse("x");
-        st.search.filter = true;
+        st.session.tab_view.search = "x".into();
+        st.session.search.query = CommitQuery::parse("x");
+        st.session.search.filter = true;
         let answer = |st: &mut AppState, ix: CommitIndex, positions: Vec<u32>| {
             let index = Arc::new(ix);
-            st.search.index.ready = Some(Arc::clone(&index));
-            st.search.index.answer = Some(IndexAnswer { query: st.search.query.clone(), index, positions });
+            st.session.search.index.ready = Some(Arc::clone(&index));
+            st.session.search.index.answer = Some(IndexAnswer { query: st.session.search.query.clone(), index, positions });
         };
         answer(&mut st, CommitIndex::from_commits(key.clone(), &commits), vec![]);
         assert_eq!(st.search_reach(), Reach::Whole { shallow: false, commits: 1 });
@@ -276,7 +276,7 @@ mod tests {
         // Every match past the graph's cap.
         answer(&mut st, CommitIndex::from_commits(key, &commits), vec![250_000, 250_001]);
         assert_eq!(st.search_reach(), Reach::PastCap { matches: 2 });
-        st.search.matches = vec![0];
+        st.session.search.matches = vec![0];
         assert_eq!(st.search_reach(), Reach::Newest(Further::KeepSearching), "a loaded match: as before");
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -314,16 +314,16 @@ fn remote_jobs_and_undo() {
     assert!(!keeps(&["remote", "remove", "a"]));
 
     let (mut st, work, bare) = with_origin("remote-undo");
-    st.undo.record(Action::DeleteBranch { name: "gone".into(), oid: git2::Oid::zero(), upstream: None });
+    st.session.undo.record(Action::DeleteBranch { name: "gone".into(), oid: git2::Oid::zero(), upstream: None });
     run(&mut st, RemoteMsg::AddDialog);
     let f = form(&mut st);
     (f.name, f.url, f.fetch_after) = ("other".into(), "https://example.invalid/o.git".into(), false);
     submit(&mut st);
     assert_eq!(last_toast(&st), "Add remote other succeeded");
-    assert_eq!(st.undo.undo.len(), 1, "adding a remote keeps the history");
+    assert_eq!(st.session.undo.undo.len(), 1, "adding a remote keeps the history");
     drive(&mut st, Msg::Remote(RemoteMsg::Remove("other".into())));
     assert_eq!(last_toast(&st), "Remove remote other succeeded");
-    assert!(st.undo.undo.is_empty(), "removing a remote invalidates it");
+    assert!(st.session.undo.undo.is_empty(), "removing a remote invalidates it");
     cleanup(&[&work, &bare]);
 }
 
@@ -333,14 +333,14 @@ fn rename_follows_forge_remote() {
     git(&dir, &["remote", "add", "origin", "https://github.com/owner/repo.git"]);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    let host = st.forge.as_ref().expect("forge detected").host.clone();
+    let host = st.session.forge.as_ref().expect("forge detected").host.clone();
     assert!(host.is_some());
-    assert_eq!(st.forge.as_ref().unwrap().remote, "origin");
+    assert_eq!(st.session.forge.as_ref().unwrap().remote, "origin");
     run(&mut st, RemoteMsg::EditDialog("origin".into()));
     form(&mut st).name = "upstream".into();
     submit(&mut st);
     assert_eq!(last_toast(&st), "Edit remote origin succeeded");
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(fs.remote, "upstream");
     assert_eq!(fs.host, host);
     cleanup(&[&dir]);

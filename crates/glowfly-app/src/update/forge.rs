@@ -13,7 +13,7 @@ use std::time::Instant;
 pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         ForgeMsg::ForgeRefresh { interactive } => {
-            if let Some(fs) = st.forge.as_mut() {
+            if let Some(fs) = st.session.forge.as_mut() {
                 fs.host_status = Status::Idle;
                 fs.tracker_status = Status::Idle;
                 if interactive {
@@ -81,7 +81,7 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
     };
     let tracker = tracker_target(st.settings.tracker_for(&snap.real_workdir), host.as_ref());
     let pr_repos = host.as_ref().map(|h| pr_repos::list(&snap.remote_urls, &remote, h, &st.settings.connections)).unwrap_or_default();
-    st.forge = match st.forge.take() {
+    st.session.forge = match st.session.forge.take() {
         _ if host.is_none() && tracker.is_none() => None,
         // The same service: keep its loaded state, following a renamed remote.
         Some(mut existing) if existing.host == host && existing.tracker == tracker => {
@@ -106,7 +106,7 @@ pub(super) fn request(st: &mut AppState, target: Target, interactive: bool, call
     let cwd = st.any_dir();
     let account = target.account();
     let connected = forge::is_connected(&account, &st.settings.connections);
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     if !forge::may_contact(&account, &st.settings.connections) {
         let msg = format!("not connected to {} at {}", account.provider.name(), account.display());
         if fs.host.as_ref() == Some(&target) {
@@ -124,7 +124,7 @@ pub(super) fn request(st: &mut AppState, target: Target, interactive: bool, call
 
 /// Refreshes pull requests and issues; `force` ignores the interval and earlier failures.
 pub(super) fn refresh(st: &mut AppState, force: bool, interactive: bool, now: Instant, fx: &mut Vec<Effect>) {
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     if !force && fs.last_refresh.is_some_and(|t| now.duration_since(t) < FORGE_REFRESH_INTERVAL) {
         return;
     }
@@ -149,7 +149,7 @@ pub(super) fn refresh(st: &mut AppState, force: bool, interactive: bool, now: In
 
 /// Fetches issues that are mentioned but not cached yet.
 pub(super) fn want_issues(st: &mut AppState, keys: Vec<String>, fx: &mut Vec<Effect>) {
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     let Some(tracker) = fs.tracker.clone() else { return };
     if matches!(fs.tracker_status, Status::Error(_)) {
         return;
@@ -164,7 +164,7 @@ pub(super) fn want_issues(st: &mut AppState, keys: Vec<String>, fx: &mut Vec<Eff
 
 /// Maps each pull request's head SHA (or SHA prefix) to a commit in the graph.
 pub(super) fn resolve_pr_heads(st: &mut AppState) {
-    let (Some(fs), Some(snap)) = (st.forge.as_mut(), st.snap.as_ref()) else { return };
+    let (Some(fs), Some(snap)) = (st.session.forge.as_mut(), st.snap.as_ref()) else { return };
     fs.pr_heads.clear();
     for pr in &fs.prs {
         let Some(head) = pr.head.as_deref() else { continue };
@@ -183,7 +183,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
     let mut prs_changed = false;
     // Created pull requests' sources and whether a create failed, for a stack's run.
     let (mut created, mut create_failed) = (Vec::new(), false);
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     let is_host = fs.host.as_ref() == Some(&reply.target);
     let is_tracker = fs.tracker.as_ref() == Some(&reply.target);
     // A pull request created on another PR repository (an upstream of a fork).
@@ -336,7 +336,7 @@ fn connected(
             }
             st.log(true, format!("Connected to {} ({}) as {user}.", account.provider.name(), account.display()));
             // A new connection can make a self-hosted remote recognizable.
-            if let Some(fs) = st.forge.as_mut() {
+            if let Some(fs) = st.session.forge.as_mut() {
                 fs.auth.remove(&account.key());
                 let (host, tracker) = fs.uses_account(&account);
                 fs.filters.account_changed(host, tracker);
@@ -367,7 +367,7 @@ fn disconnect(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
     }
     fx.push(super::prefs::save_settings(st));
     super::dashboard::account_changed(st, account, fx);
-    if let Some(fs) = st.forge.as_mut() {
+    if let Some(fs) = st.session.forge.as_mut() {
         fs.auth.remove(&account.key());
         let msg = format!("not connected to {}", account.provider.name());
         let (host, tracker) = fs.uses_account(account);

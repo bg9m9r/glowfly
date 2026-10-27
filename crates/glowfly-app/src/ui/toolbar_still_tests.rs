@@ -16,7 +16,7 @@ fn undo_stays_put_whatever_the_names() {
         let (st, dir) = variant(case, true, &format!("toolbar-fit-{case}"));
         let long_branch = st.snap.as_ref().unwrap().head_branch.clone().filter(|b| b.len() == 80);
         let long_repo = Some(st.snap.as_ref().unwrap().name.clone()).filter(|n| n.len() == 60);
-        let has_pr = st.forge.is_some();
+        let has_pr = st.session.forge.is_some();
         // Wide enough for every group, the PR group and the chip included.
         let mut h = harness_sized(st, true, egui::vec2(1600.0, 820.0));
         h.run();

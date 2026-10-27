@@ -44,14 +44,14 @@ fn continue_reports_the_next_stop() {
     let p = st.snap.as_ref().unwrap().rebase.clone().expect("the snapshot knows where the rebase is");
     assert_eq!((p.step, p.total, p.stop.oid), (1, 3, Some(c[0])));
 
-    st.selection = Selection::None;
+    st.session.selection = Selection::None;
     let msg = banner(&st, "Continue");
     assert!(matches!(msg, Msg::Rebase(RebaseMsg::Resume(Resume::Continue))));
     drive(&mut st, msg);
     let text = format!("Interactive rebase paused at {} (step 2 of 3) so you can edit it. Use Continue when you're done.", short(c[1]));
     assert_eq!(last_toast(&st), (true, text.as_str()));
     assert_eq!(repo_state(&st), RepositoryState::RebaseInteractive);
-    assert_eq!(st.selection, Selection::Wip, "the banner is in view");
+    assert_eq!(st.session.selection, Selection::Wip, "the banner is in view");
 
     let msg = banner(&st, "Continue");
     drive(&mut st, msg);

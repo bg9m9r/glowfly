@@ -56,7 +56,7 @@ fn worktree_entries() {
     assert_eq!(detail, Some(glowfly_core::native_path::shown(&side)));
 
     assert!(is(command(&st, "Create worktree from main…"), WorktreeMsg::CreateDialog(WorktreeBase::Branch("main".into()))));
-    st.selection = Selection::Commit(head);
+    st.session.selection = Selection::Commit(head);
     assert!(is(command(&st, &format!("Create worktree from {sha}…")), WorktreeMsg::CreateDialog(WorktreeBase::Commit(head))));
     assert!(command(&st, "Create worktree from main…").is_none(), "the selected commit wins");
 

@@ -66,7 +66,7 @@ fn card(key: &str, title: &str) -> Issue {
 fn choosing_trello_detects_the_tracker_and_lists_cards() {
     let mut st = open("trello-choose", true);
     let fx = run(&mut st, ForgeMsg::SetTracker(trello("", "")));
-    let fs = st.forge.as_ref().expect("a tracker");
+    let fs = st.session.forge.as_ref().expect("a tracker");
     assert_eq!(fs.tracker, Some(Target::trello(&acct(), "", "")));
     assert_eq!(fs.host, None);
     assert_eq!(my_issues_calls(&fx), [true]);
@@ -77,11 +77,11 @@ fn choosing_trello_detects_the_tracker_and_lists_cards() {
 fn board_choice_reloads_the_cards() {
     let mut st = open("trello-board", true);
     run(&mut st, ForgeMsg::SetTracker(trello("", "")));
-    let fs = st.forge.as_mut().unwrap();
+    let fs = st.session.forge.as_mut().unwrap();
     fs.my_issues = vec![card("AbCd1234", "Fix login")];
     fs.cache.insert("AbCd1234".into(), card("AbCd1234", "Fix login"));
     let fx = run(&mut st, ForgeMsg::SetTracker(trello(BOARD, "Website")));
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     let t = fs.tracker.as_ref().unwrap();
     assert_eq!((t.owner.as_str(), t.project.as_str()), (BOARD, "Website"));
     assert!(fs.my_issues.is_empty() && fs.cache.is_empty());
@@ -137,7 +137,7 @@ fn unconnected_trello_is_never_contacted() {
     run(&mut st, ForgeMsg::SetTracker(trello(BOARD, "Website")));
     let fx = run(&mut st, ForgeMsg::ForgeRefresh { interactive: true });
     assert!(!fx.iter().any(|e| matches!(e, Effect::Forge { .. })), "nothing is called");
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     assert!(matches!(&fs.tracker_status, Status::Error(e) if e.contains("not connected")), "{:?}", fs.tracker_status);
 
     st.prefs = Some(PrefsState::new(PrefPage::General));
@@ -151,8 +151,8 @@ fn trello_words_and_refs() {
     let gh = Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
     let tracker = Target::trello(&acct(), BOARD, "Website");
     let mut st = state();
-    st.forge = Some(ForgeState::new(Some(gh), "origin".into(), Some(tracker.clone())));
-    let fs = st.forge.as_mut().unwrap();
+    st.session.forge = Some(ForgeState::new(Some(gh), "origin".into(), Some(tracker.clone())));
+    let fs = st.session.forge.as_mut().unwrap();
     assert_eq!((fs.issue_noun(), fs.open_issue_label(), fs.tracker_hint()), ("card", "View card in Trello", "Trello · Website".to_owned()));
     let c = card("AbCd1234", "Fix login");
     assert_eq!(fs.copy_issue_item(&c), ("Copy card link".to_owned(), "https://trello.com/c/AbCd1234".to_owned()));
@@ -172,7 +172,7 @@ fn trello_words_and_refs() {
     let error = ForgeError { message: "authentication failed: the Trello token has expired".into(), auth: true };
     let reply = ForgeReply { target: tracker, auth: None, results: vec![ForgeResult::MyIssues(Err(error))] };
     run(&mut st, ForgeMsg::ForgeReplied(reply));
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     assert!(!fs.auth.contains_key(&acct().key()));
     assert!(matches!(&fs.tracker_status, Status::Error(e) if e.contains("expired")));
 

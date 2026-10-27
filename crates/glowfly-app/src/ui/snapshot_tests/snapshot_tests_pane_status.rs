@@ -128,7 +128,7 @@ fn pr_files_failed() {
 #[test]
 fn details_multi_failed() {
     let (mut st, dir) = selected(ThemeChoice::Dark, "pane-multi-failed", &["Add login page", "Search results page"], false);
-    if let Selection::Commits(m) = &mut st.selection {
+    if let Selection::Commits(m) = &mut st.session.selection {
         m.changes = Some(Err("could not find the merge base of these commits".into()));
     }
     let mut h = harness(st, true);

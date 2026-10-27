@@ -1,11 +1,13 @@
-//! The per-tab views that live with their generation counters, the open diff, the commit detail,
-//! the commit message draft and what was read from the repository: the active tab's in
-//! `AppState::session`, a parked tab's in `Parked::session`. Switching tabs swaps the struct
-//! whole (update/tabs.rs): `park` takes the views out and leaves the counters behind, and
-//! `resume_after` moves every counter of the tab coming back past both its own and the ones
-//! the previous tab left. So the active counter is always at least every value any tab ever
-//! handed out, and a result still in flight from before a park, or for another tab, never
-//! matches.
+//! Everything a tab keeps while another tab is active, in one struct: the views with their
+//! generation counters, the open diff, the commit detail, the commit message draft, what was
+//! read from the repository, the graph selection, the code host's data, the undo history, the
+//! commit search and the per-tab view state (`TabView`). The active tab's is in
+//! `AppState::session`, a parked tab's in `Parked::session`; `Parked` adds only the snapshot
+//! and the Create issue dialog. Switching tabs swaps the struct whole (update/tabs.rs): `park`
+//! takes everything out and leaves the counters behind, and `resume_after` moves every counter
+//! of the tab coming back past both its own and the ones the previous tab left. So the active
+//! counter is always at least every value any tab ever handed out, and a result still in flight
+//! from before a park, or for another tab, never matches.
 
 use super::blame::BlameView;
 use super::conflict::ConflictView;
@@ -89,7 +91,8 @@ impl DiffSlot {
     }
 }
 
-/// The active tab's views (in `AppState::session`), or a parked tab's (in `Parked::session`).
+/// The active tab's per-tab state (in `AppState::session`), or a parked tab's (in
+/// `Parked::session`).
 #[derive(Default)]
 pub struct RepoSession {
     /// The conflict being resolved, with its picks; shown instead of the graph or a diff. A
@@ -134,6 +137,21 @@ pub struct RepoSession {
     /// What was read from the tab's repository: commit stats, line counts, signatures and the
     /// last conflict check.
     pub reads: super::session_reads::RepoReads,
+    /// What is selected in the graph; None on return to a tab whose repository isn't loaded
+    /// (update/tabs.rs).
+    pub selection: super::Selection,
+    /// The code host's and tracker's data; replies in flight are dropped while parked
+    /// (`resume_after`).
+    pub forge: Option<super::ForgeState>,
+    /// The undo history; results for a parked tab are recorded in its parked session
+    /// (update/inactive.rs).
+    pub undo: super::undo::UndoHistory,
+    /// The commit search; its matches belong to the tab's snapshot. Requests in flight are asked
+    /// for again on return (`search_paths::resume`, `search_index::resume`).
+    pub search: super::search::CommitSearch,
+    /// The search bar's text, the ref filter, the graph's scroll, the file lists' folds and the
+    /// open diff's folds and top row.
+    pub tab_view: super::session_view::TabView,
 }
 
 impl RepoSession {
@@ -185,11 +203,23 @@ impl RepoSession {
     /// counter moves past both its own value and `current`'s, so a result still in flight from
     /// before the park, or for another tab, never matches. The diff's `shown_gen` is taken from
     /// `current`, so the open diff's hunks stay off until the refresh after the switch reloads it.
+    /// The code host's replies in flight count as dropped.
     pub fn resume_after(&mut self, current: &mut RepoSession) {
         for (mine, now) in self.counters().into_iter().zip(current.counters()) {
             *mine = (*mine).max(*now) + 1;
         }
         self.diff.shown_gen = current.diff.shown_gen;
+        // Replies in flight for this tab were dropped while it was parked.
+        if let Some(f) = self.forge.as_mut() {
+            f.replies_dropped();
+        }
+    }
+
+    /// Another repository opened in the tab: forgets what was read from the one before and the
+    /// folders collapsed in its file lists.
+    pub fn forget_repo(&mut self) {
+        self.reads.clear();
+        self.tab_view.file_folds.clear();
     }
 }
 

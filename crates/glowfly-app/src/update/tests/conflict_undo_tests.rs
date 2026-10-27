@@ -46,11 +46,11 @@ fn last_toast(st: &AppState) -> (bool, String) {
 }
 
 fn undo_label(st: &AppState) -> String {
-    st.undo.undo_entry(st.settings.lang(), true).0
+    st.session.undo.undo_entry(st.settings.lang(), true).0
 }
 
 fn redo_label(st: &AppState) -> String {
-    st.undo.redo_entry(st.settings.lang(), true).0
+    st.session.undo.redo_entry(st.settings.lang(), true).0
 }
 
 fn open(dir: &Path, file: &str) -> AppState {
@@ -100,7 +100,7 @@ fn merging_after_a_commit(name: &str) -> (AppState, PathBuf) {
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     drive(&mut st, Msg::git("Merge", &["merge", "other"]));
     assert!(conflicted(&st, "a.txt"));
-    assert!(matches!(&st.undo.undo[..], [Action::Commit { .. }]), "{:?}", st.undo.undo);
+    assert!(matches!(&st.session.undo.undo[..], [Action::Commit { .. }]), "{:?}", st.session.undo.undo);
     drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())));
     (st, dir)
 }
@@ -113,9 +113,9 @@ fn undo_and_redo_a_saved_resolution() {
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 0, side: Side::Theirs });
     drive(&mut st, Msg::Conflict(ConflictMsg::SaveConflict));
     assert!(st.session.conflict.view.is_none(), "resolved and closed");
-    assert!(matches!(st.undo.undo.last(), Some(Action::Resolve { staged: Some(_), .. })), "{:?}", st.undo.undo);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Resolve { staged: Some(_), .. })), "{:?}", st.session.undo.undo);
     assert_eq!(undo_label(&st), "Undo resolution of a.txt");
-    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
+    let tip = st.session.undo.undo_entry(st.settings.lang(), true).0;
     assert_eq!(tip, "Undo resolution of a.txt");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
@@ -149,7 +149,7 @@ fn undo_keeps_picks_saved_with_markers() {
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 1, side: Side::Theirs });
     drive(&mut st, Msg::Conflict(ConflictMsg::SaveConflict));
     assert!(!conflicted(&st, "f.txt"));
-    assert_eq!(st.undo.undo.len(), 2, "{:?}", st.undo.undo);
+    assert_eq!(st.session.undo.undo.len(), 2, "{:?}", st.session.undo.undo);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(bytes(&dir, "f.txt"), partial);
@@ -177,14 +177,14 @@ fn a_changed_file_refuses_and_drops_only_that_entry() {
     let (mut st, dir) = merging_after_a_commit("conflict-undo-changed");
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 0, side: Side::Theirs });
     drive(&mut st, Msg::Conflict(ConflictMsg::SaveConflict));
-    assert_eq!(st.undo.undo.len(), 2, "{:?}", st.undo.undo);
+    assert_eq!(st.session.undo.undo.len(), 2, "{:?}", st.session.undo.undo);
     std::fs::write(dir.join("a.txt"), "by hand\n").unwrap();
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let (ok, text) = last_toast(&st);
     assert!(!ok && text.contains("a.txt has changed since") && text.contains("removed from the undo history"), "{text}");
     assert_eq!(bytes(&dir, "a.txt"), b"by hand\n", "left alone");
-    assert!(matches!(&st.undo.undo[..], [Action::Commit { .. }]), "{:?}", st.undo.undo);
+    assert!(matches!(&st.session.undo.undo[..], [Action::Commit { .. }]), "{:?}", st.session.undo.undo);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -195,23 +195,23 @@ fn committing_the_merge_expires_the_resolution() {
     drive(&mut st, Msg::Conflict(ConflictMsg::SaveConflict));
     st.session.draft.summary = "Merge other".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
-    assert!(matches!(st.undo.undo.last(), Some(Action::Moved { .. })), "{:?}", st.undo.undo);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Moved { .. })), "{:?}", st.session.undo.undo);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert!(st.toasts.last().is_some_and(|t| t.ok), "{:?}", st.toasts.last().map(|t| &t.text));
-    assert!(matches!(st.undo.undo.last(), Some(Action::Resolve { .. })));
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Resolve { .. })));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let (ok, text) = last_toast(&st);
     // Undoing the merge put HEAD back where the resolution was saved, but the index no longer
     // holds the staged resolution.
     assert!(!ok && text.contains("a.txt has changed in the index since; removed from the undo history"), "{text}");
-    assert!(matches!(&st.undo.undo[..], [Action::Commit { .. }]), "only the resolution was dropped: {:?}", st.undo.undo);
-    assert!(matches!(&st.undo.redo[..], [Action::Moved { .. }]), "{:?}", st.undo.redo);
+    assert!(matches!(&st.session.undo.undo[..], [Action::Commit { .. }]), "only the resolution was dropped: {:?}", st.session.undo.undo);
+    assert!(matches!(&st.session.undo.redo[..], [Action::Moved { .. }]), "{:?}", st.session.undo.redo);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
-    assert!(st.undo.undo.is_empty(), "{:?}", st.undo.undo);
-    assert!(st.undo.redo.iter().any(|a| matches!(a, Action::Moved { .. })), "{:?}", st.undo.redo);
+    assert!(st.session.undo.undo.is_empty(), "{:?}", st.session.undo.undo);
+    assert!(st.session.undo.redo.iter().any(|a| matches!(a, Action::Moved { .. })), "{:?}", st.session.undo.redo);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -252,9 +252,13 @@ fn a_resolution_saved_for_an_inactive_tab_goes_to_its_history() {
     let reply = runner::execute(effect).expect("a result");
     update(&mut st, reply, Instant::now());
 
-    assert!(st.undo.undo.is_empty(), "tab B's history is untouched");
+    assert!(st.session.undo.undo.is_empty(), "tab B's history is untouched");
     let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
-    assert!(matches!(parked.undo.undo.last(), Some(Action::Resolve { path, .. }) if path == "a.txt"), "{:?}", parked.undo.undo);
+    assert!(
+        matches!(parked.session.undo.undo.last(), Some(Action::Resolve { path, .. }) if path == "a.txt"),
+        "{:?}",
+        parked.session.undo.undo
+    );
     for d in [&a, &b] {
         let _ = std::fs::remove_dir_all(d);
     }

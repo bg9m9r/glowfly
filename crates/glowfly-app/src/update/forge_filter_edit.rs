@@ -10,7 +10,7 @@ use crate::state::{AppState, Modal};
 use glowfly_core::forge::{FilterChoice, FilterKind, SavedFilter};
 
 pub(super) fn new_dialog(st: &mut AppState, kind: FilterKind, fx: &mut Vec<Effect>) {
-    let Some(fs) = st.forge.as_ref() else { return };
+    let Some(fs) = st.session.forge.as_ref() else { return };
     let provider = target_for(fs, kind).map(|t| t.provider);
     let (_, start, _) = filters(st).conditions(kind);
     st.modal = Some(Modal::ForgeFilter(Box::new(FilterForm::new(kind, provider, &start))));
@@ -19,7 +19,7 @@ pub(super) fn new_dialog(st: &mut AppState, kind: FilterKind, fx: &mut Vec<Effec
 
 pub(super) fn edit_dialog(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
     let Some(saved): Option<SavedFilter> = filters(st).get(id).cloned() else { return };
-    let Some(fs) = st.forge.as_ref() else { return };
+    let Some(fs) = st.session.forge.as_ref() else { return };
     let provider = target_for(fs, saved.kind).map(|t| t.provider);
     st.modal = Some(Modal::ForgeFilter(Box::new(FilterForm::edit(&saved, provider))));
     load_options(st, saved.kind, fx);
@@ -27,7 +27,7 @@ pub(super) fn edit_dialog(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
 
 /// Asks for labels, milestones and sprints unless they are loaded or on their way.
 fn load_options(st: &mut AppState, kind: FilterKind, fx: &mut Vec<Effect>) {
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     if !matches!(fs.filters.options(kind), OptionsState::NotAsked | OptionsState::Failed(_)) {
         return;
     }
@@ -36,7 +36,7 @@ fn load_options(st: &mut AppState, kind: FilterKind, fx: &mut Vec<Effect>) {
     let sent = fx.len();
     request(st, target, false, ForgeCall::Filter(FilterCall::Options(kind)), fx);
     if fx.len() == sent
-        && let Some(fs) = st.forge.as_mut()
+        && let Some(fs) = st.session.forge.as_mut()
     {
         // Held (an untrusted repository) or not connected: offer what is known.
         *fs.filters.options_mut(kind) = OptionsState::Failed("The service isn't contacted for this repository.".into());

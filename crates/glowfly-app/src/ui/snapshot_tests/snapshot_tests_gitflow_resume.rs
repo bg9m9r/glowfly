@@ -73,7 +73,7 @@ fn gitflow_resume_waiting() {
     let snap = st.snap.as_mut().unwrap();
     snap.state = RepositoryState::Merge;
     snap.head_branch = Some("develop".into());
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("gitflow_resume_waiting");

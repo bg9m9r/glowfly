@@ -130,7 +130,7 @@ pub enum SearchMsg {
     /// Edit > Find commits and the palette's Search commits: close an open diff, show the search
     /// bar and focus its field.
     Open,
-    /// The view edited the query (`ViewState::search`).
+    /// The view edited the query (`TabView::search`).
     QueryChanged,
     /// Enter in the query field: select the next match (wrapping).
     Next,

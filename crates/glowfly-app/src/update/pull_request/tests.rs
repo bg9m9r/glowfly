@@ -66,12 +66,12 @@ pub(in crate::update) fn setup(name: &str, more: &[&str]) -> (AppState, PathBuf,
     // After the last refresh: detection finds no host for a local-path remote.
     let mut fs = ForgeState::new(Some(github()), "origin".into(), None);
     fs.prs = vec![pr(7, Some(rev(&work, "feature")))];
-    st.forge = Some(fs);
+    st.session.forge = Some(fs);
     (st, work, bare, base)
 }
 
 pub(super) fn set_pr(st: &mut AppState, f: impl FnOnce(&mut PullRequest)) {
-    f(&mut st.forge.as_mut().unwrap().prs[0]);
+    f(&mut st.session.forge.as_mut().unwrap().prs[0]);
 }
 
 pub(in crate::update) fn open(st: &mut AppState) {
@@ -98,7 +98,7 @@ pub(super) fn cleanup(dirs: &[&Path]) {
 #[test]
 fn opening_lists_the_files_from_the_merge_base() {
     let (mut st, work, bare, base) = setup("pr-open", &[]);
-    let selection = st.selection.clone();
+    let selection = st.session.selection.clone();
     open(&mut st);
     let v = st.session.pull_request.view.as_ref().expect("the panel is open");
     assert_eq!(v.pr.id, 7);
@@ -107,7 +107,7 @@ fn opening_lists_the_files_from_the_merge_base() {
     assert_eq!(c.base, base);
     assert_eq!(paths(&st), ["f.txt"]);
     assert!(out_of_sync(st.session.pull_request.view.as_ref().unwrap()).is_empty());
-    assert_eq!(st.selection, selection);
+    assert_eq!(st.session.selection, selection);
     assert!(st.session.diff.view.is_none());
     // Opening it again changes nothing.
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::Open(7)), Instant::now());
@@ -193,7 +193,7 @@ fn a_moved_head_is_noted_until_fetched() {
 
     drive(&mut st, Msg::Remote(RemoteMsg::Fetch("origin".into())));
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(st.forge.is_none(), "detection found no host for the local-path remote");
+    assert!(st.session.forge.is_none(), "detection found no host for the local-path remote");
     let v = st.session.pull_request.view.as_ref().expect("the panel keeps its copy");
     assert_eq!(v.tips.source, Some(head));
     assert!(out_of_sync(v).is_empty());
@@ -235,7 +235,7 @@ fn close_returns_and_drops_stale_results() {
 fn refresh_updates_the_copy() {
     let (mut st, work, bare, _) = setup("pr-refresh", &[]);
     open(&mut st);
-    let mut renamed = st.forge.as_ref().unwrap().prs[0].clone();
+    let mut renamed = st.session.forge.as_ref().unwrap().prs[0].clone();
     renamed.title = "Add f, renamed".into();
     let reply = |prs| ForgeReply { target: github(), auth: None, results: vec![ForgeResult::Prs(Ok(prs))] };
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply(vec![renamed]))), Instant::now());

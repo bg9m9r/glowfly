@@ -30,7 +30,7 @@ fn mid_merge(name: &str) -> (AppState, PathBuf) {
 fn op_strip_merge() {
     let (mut st, dir) = mid_merge("op-strip-merge");
     let head = st.snap.as_ref().unwrap().head_oid.unwrap();
-    st.selection = Selection::Commit(head);
+    st.session.selection = Selection::Commit(head);
     st.settings.show_details_panel = false;
     let mut h = harness(st, true);
     h.run();

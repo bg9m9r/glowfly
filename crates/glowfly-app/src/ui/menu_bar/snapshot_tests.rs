@@ -108,7 +108,7 @@ fn menu_bar_file_recent() {
 #[test]
 fn menu_bar_edit() {
     let (mut st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-edit");
-    st.undo.record(Action::Checkout { from: HeadPos::Branch("search".into()), to: HeadPos::Branch("main".into()), created: None });
+    st.session.undo.record(Action::Checkout { from: HeadPos::Branch("search".into()), to: HeadPos::Branch("main".into()), created: None });
     let mut h = opened(st, true, "Edit");
     h.check_snapshot("menu_bar_edit");
     h.get_by_label("Undo checkout of main").click();
@@ -121,7 +121,7 @@ fn menu_bar_edit() {
 #[test]
 fn disabled_items_keep_their_labels() {
     let (st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-disabled-labels");
-    let why = st.undo.redo_entry(st.settings.lang(), true).1.expect("nothing to redo");
+    let why = st.session.undo.redo_entry(st.settings.lang(), true).1.expect("nothing to redo");
     let mut h = opened(st, true, "Edit");
     // Keyed and disabled: found by its label alone, greyed with the info mark beside it.
     assert!(h.get_by_label("Redo").is_disabled());

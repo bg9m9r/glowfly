@@ -21,19 +21,19 @@ pub(super) fn pump(st: &mut AppState, fx: &mut Vec<Effect>) {
     // The matches aren't final while path terms are searched or the query worker matches, and
     // only one load runs at a time.
     if !st.settings.load_more_on_scroll
-        || st.search.searching_files()
-        || st.search.loaded.pending.is_some()
+        || st.session.search.searching_files()
+        || st.session.search.loaded.pending.is_some()
         || st.loading_more()
         || st.refresh.more_failed.is_some()
         || st.snap.is_none()
     {
         return;
     }
-    let enough = st.search.matches.len() >= st.fill_rows();
+    let enough = st.session.search.matches.len() >= st.fill_rows();
     let more = st.snap.as_ref().is_some_and(can_load_more);
     // With the whole-history index's answer, one load goes straight to the matches (or none).
     let target = super::search_index::fill_target(st);
-    let query = &st.search.query;
+    let query = &st.session.search.query;
     let deeper = match &mut st.refresh.deeper {
         Some(d) if d.query == *query => d,
         // A new query starts a fresh budget; the old query's goes no further.
@@ -73,6 +73,6 @@ pub(super) fn further(st: &mut AppState, fx: &mut Vec<Effect>) {
         }
         return;
     }
-    st.refresh.deeper = Some(DeeperSearch { query: st.search.query.clone(), batches: 0 });
+    st.refresh.deeper = Some(DeeperSearch { query: st.session.search.query.clone(), batches: 0 });
     pump(st, fx);
 }

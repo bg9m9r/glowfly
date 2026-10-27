@@ -34,7 +34,7 @@ pub(super) fn start(st: &mut AppState, remote: String, fx: &mut Vec<Effect>) {
         .and_then(|u| forge::parse_remote(u, connections))
         .filter(|t| forge::may_contact(&t.account(), connections))
         .map(|target| SizeService {
-            auth: st.forge.as_ref().and_then(|f| f.auth.get(&target.account().key())).cloned(),
+            auth: st.session.forge.as_ref().and_then(|f| f.auth.get(&target.account().key())).cloned(),
             connected: forge::is_connected(&target.account(), connections),
             target,
         });

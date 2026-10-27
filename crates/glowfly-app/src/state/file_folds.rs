@@ -73,7 +73,7 @@ pub fn list_of(st: &AppState, t: &DiffTarget) -> Option<FileListId> {
             if st.session.detail.as_ref().is_some_and(|d| d.oid == *oid) {
                 return Some(FileListId::Commit);
             }
-            let Selection::Commits(m) = &st.selection else { return None };
+            let Selection::Commits(m) = &st.session.selection else { return None };
             let Some(Ok(stack)) = &m.stacked else { return None };
             stack.iter().any(|c| c.oid == *oid).then_some(FileListId::Stacked(*oid))
         }
@@ -81,7 +81,7 @@ pub fn list_of(st: &AppState, t: &DiffTarget) -> Option<FileListId> {
             if st.session.pull_request.view.as_ref().and_then(|v| v.diff_files(*a, *b)).is_some() {
                 return None;
             }
-            match &st.selection {
+            match &st.session.selection {
                 Selection::Commits(m) if m.compare_ends() == Some((*a, *b)) => Some(FileListId::Compare),
                 _ => None,
             }

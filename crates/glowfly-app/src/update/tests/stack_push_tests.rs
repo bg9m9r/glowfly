@@ -87,7 +87,7 @@ fn rewritten(name: &str) -> (AppState, PathBuf, PathBuf) {
 #[test]
 fn an_unpushed_stack_goes_up_in_one_job_with_upstreams() {
     let (mut st, dir, bare) = stacked("stack-push-job");
-    let undo = st.undo.undo.len();
+    let undo = st.session.undo.undo.len();
     let fx = update(&mut st, push_stack("mid"), Instant::now());
     assert_eq!(fx.iter().filter(|e| matches!(e, Effect::Stack(StackEffect::Push { .. }))).count(), 1, "{fx:?}");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Push stack"));
@@ -98,7 +98,7 @@ fn an_unpushed_stack_goes_up_in_one_job_with_upstreams() {
         assert!(logged(&st, &format!("{b}: pushed as a new branch, tracking origin/{b}")), "{:?}", st.log);
     }
     assert_eq!(last_toast(&st), (true, "Pushed the stack".into()));
-    assert_eq!(st.undo.undo.len(), undo, "a push keeps the undo history");
+    assert_eq!(st.session.undo.undo.len(), undo, "a push keeps the undo history");
     assert!(st.job.is_none());
     cleanup(&dir, &bare);
 }

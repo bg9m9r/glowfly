@@ -42,7 +42,7 @@ fn thread(id: &str, path: &str, line: Option<u32>) -> ReviewThread {
 
 /// The opened panel with a page of `threads` loaded (head = the local source tip).
 fn loaded_threads(st: &mut AppState, threads: Vec<ReviewThread>, f: impl FnOnce(&mut glowfly_core::forge::PrDetail)) {
-    let head = st.forge.as_ref().unwrap().prs[0].head.clone().unwrap_or_default();
+    let head = st.session.forge.as_ref().unwrap().prs[0].head.clone().unwrap_or_default();
     let mut d = detail(&head);
     f(&mut d);
     let page = PrPage { detail: d, entries: Vec::new(), threads, threads_note: None };
@@ -156,12 +156,12 @@ fn resolve_auth_error_drops_cached_auth() {
     let (mut st, _, dirs) = opened("prt-auth");
     loaded_threads(&mut st, vec![thread("T1", "f.txt", Some(1))], |_| {});
     let key = github().account().key();
-    st.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
     run(&mut st, PullRequestMsg::Resolve { thread: "T1".into(), resolve: true });
     let failed = ForgeError { message: "authentication failed: 401".into(), auth: true };
     let msg = reply_msg(&st, PrReply::Resolved { thread: "T1".into(), resolve: true, result: Err(failed) });
     run(&mut st, msg);
-    assert!(!st.forge.as_ref().unwrap().auth.contains_key(&key));
+    assert!(!st.session.forge.as_ref().unwrap().auth.contains_key(&key));
     assert!(st.log.last().is_some_and(|l| l.text == "Resolving a thread on #7 failed: authentication failed: 401"));
     assert_eq!(view(&st).action_error.as_ref().map(|(a, _)| a.clone()), Some(PrAction::Resolve("T1".into())));
     done(st, dirs);
@@ -241,7 +241,7 @@ fn go_to_thread_opens_file_and_lands_on_line() {
     finish_keeping(&mut st, fx);
     let (open, d) = st.session.diff.view.as_ref().expect("the diff loaded");
     assert_eq!(*open, target);
-    let want = row_of_file_line(d, st.settings.diff_mode, st.settings.diff_layout, &st.view.diff_expanded, LineSide::New, 1);
+    let want = row_of_file_line(d, st.settings.diff_mode, st.settings.diff_layout, &st.session.tab_view.diff_expanded, LineSide::New, 1);
     assert!(want.is_some());
     assert_eq!(st.view.diff_scroll_to_row, want);
     assert_eq!(st.view.diff_open_line, None, "taken");

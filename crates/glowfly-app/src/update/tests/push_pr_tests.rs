@@ -26,7 +26,7 @@ pub(super) fn with_host(name: &str) -> (AppState, PathBuf, PathBuf) {
     git(&work, &["config", "remote.origin.pushurl", &bare.display().to_string()]);
     commit_on(&work, "main", "topic", "Add topic");
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(st.forge.as_ref().is_some_and(|f| f.host.is_some() && f.remote == "origin"), "GitHub is detected on origin");
+    assert!(st.session.forge.as_ref().is_some_and(|f| f.host.is_some() && f.remote == "origin"), "GitHub is detected on origin");
     (st, work, bare)
 }
 
@@ -77,7 +77,7 @@ fn run_git(fx: &[Effect]) -> Vec<&Vec<Vec<String>>> {
 }
 
 fn open_after_load(st: &AppState) -> Option<PrStart> {
-    st.forge.as_ref().and_then(|f| f.open_after_load.clone())
+    st.session.forge.as_ref().and_then(|f| f.open_after_load.clone())
 }
 
 #[test]
@@ -198,7 +198,7 @@ fn push_in_another_tab_only_logs() {
 #[test]
 fn other_modal_is_not_replaced() {
     let (mut st, work, bare) = with_host("pr-push-other-modal");
-    st.forge.as_mut().unwrap().open_after_load = Some(PrStart { source: "topic".into(), target: None, remote: None });
+    st.session.forge.as_mut().unwrap().open_after_load = Some(PrStart { source: "topic".into(), target: None, remote: None });
     st.modal = Some(Modal::RenameBranch { old: "feature".into(), name: "feature2".into(), touched: Default::default() });
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(matches!(st.modal, Some(Modal::RenameBranch { .. })));
@@ -250,7 +250,7 @@ fn dialog_from_remote_branch() {
 #[test]
 fn no_host_does_nothing() {
     let (mut st, work, bare) = with_host("pr-no-host");
-    st.forge = None;
+    st.session.forge = None;
     assert!(update(&mut st, push("topic", None), Instant::now()).is_empty());
     assert!(update(&mut st, dialog("feature", None), Instant::now()).is_empty());
     assert!(st.modal.is_none());

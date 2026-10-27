@@ -76,7 +76,7 @@ pub fn shas_text(m: &MultiSelection) -> String {
 
 /// Copy commit SHA for the selection, or why it is disabled.
 pub fn copy_sha(st: &AppState) -> Result<ShaCopy, &'static str> {
-    match &st.selection {
+    match &st.session.selection {
         Selection::Commit(oid) => Ok(ShaCopy::One(oid.to_string())),
         Selection::VsWorkdir(w) => Ok(ShaCopy::One(w.oid.to_string())),
         Selection::Commits(m) => Ok(ShaCopy::Many(m.oids.len())),
@@ -87,7 +87,7 @@ pub fn copy_sha(st: &AppState) -> Result<ShaCopy, &'static str> {
 /// The selected commit's summary for Copy commit message, or why it is disabled.
 pub fn copy_message(st: &AppState) -> Result<String, &'static str> {
     let no_commit = st.settings.lang().tr("menu.edit.no_commit");
-    let oid = match &st.selection {
+    let oid = match &st.session.selection {
         Selection::Commit(oid) => oid,
         Selection::VsWorkdir(w) => &w.oid,
         _ => return Err(no_commit),

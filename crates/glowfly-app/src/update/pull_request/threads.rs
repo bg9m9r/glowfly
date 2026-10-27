@@ -81,11 +81,11 @@ pub(super) fn go_to_thread(st: &mut AppState, id: String, fx: &mut Vec<Effect>) 
     focus(st, id);
     match &st.session.diff.view {
         Some((open, d)) if *open == target => {
-            let (s, ex) = (&st.settings, &st.view.diff_expanded);
+            let (s, ex) = (&st.settings, &st.session.tab_view.diff_expanded);
             match row_of_file_line(d, s.diff_mode, s.diff_layout, ex, side, n) {
                 Some(row) => {
                     st.view.diff_scroll_to_row = Some(row);
-                    st.view.diff_top_row = row;
+                    st.session.tab_view.diff_top_row = row;
                 }
                 None if n > 0 => st.log_quiet(false, format!("Line {n} isn't in the changed lines; switch to Whole file to see it")),
                 None => {}

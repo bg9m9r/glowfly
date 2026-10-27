@@ -56,7 +56,7 @@ fn stash_and_checkout_puts_changes_back() {
     finish(&mut st, fx);
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("feature"));
     mine_is_back(&st, &dir);
-    assert_eq!(st.undo.undo.len(), 2, "the checkout and putting the changes back are both undoable");
+    assert_eq!(st.session.undo.undo.len(), 2, "the checkout and putting the changes back are both undoable");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -80,7 +80,7 @@ fn the_checked_out_branch_is_reset_hard_and_undo_puts_it_back() {
     finish(&mut st, fx);
     assert_eq!(rev(&dir, "main"), first, "main is back at the old state");
     assert!(notes::read(&dir).iter().any(|n| matches!(&n.op, Op::Restore { .. })), "the restore left its own note");
-    assert_eq!(st.undo.undo.len(), 1, "the restore is undoable");
+    assert_eq!(st.session.undo.undo.len(), 1, "the restore is undoable");
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(rev(&dir, "main"), second, "Undo puts it back");
     let _ = std::fs::remove_dir_all(&dir);

@@ -119,14 +119,14 @@ fn rename_dialog_and_checks() {
 #[test]
 fn rename_end_to_end_moves_tracking_and_invalidates_undo() {
     let (mut st, work, bare) = with_origin("br-rename-e2e");
-    st.undo.record(dummy());
+    st.session.undo.record(dummy());
     drive(&mut st, rename("feature", "feature-2"));
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.locals.iter().any(|b| b.name == "feature"));
     let b = snap.locals.iter().find(|b| b.name == "feature-2").expect("renamed");
     assert_eq!(b.tracking, Some(Tracking { remote: "origin".into(), merge: "feature".into() }));
-    assert!(st.undo.undo.is_empty());
-    assert_eq!(st.undo.blocked.as_deref(), Some("Rename branch"));
+    assert!(st.session.undo.undo.is_empty());
+    assert_eq!(st.session.undo.blocked.as_deref(), Some("Rename branch"));
     cleanup(&[&work, &bare]);
 }
 
@@ -157,10 +157,10 @@ fn upstream_dialog_and_commands() {
     assert_eq!(last_log(&st), "Not a valid branch name.");
 
     // Setting an upstream keeps the undo history.
-    st.undo.record(dummy());
+    st.session.undo.record(dummy());
     update(&mut st, set("feature", "origin"), Instant::now());
     done(&mut st, true);
-    assert_eq!(st.undo.undo.len(), 1);
+    assert_eq!(st.session.undo.undo.len(), 1);
 
     assert_eq!(
         cmds(&mut st, Msg::Branch(BranchMsg::UnsetUpstream("feature".into()))),
@@ -168,7 +168,7 @@ fn upstream_dialog_and_commands() {
     );
     update(&mut st, Msg::Branch(BranchMsg::UnsetUpstream("feature".into())), Instant::now());
     done(&mut st, true);
-    assert_eq!(st.undo.undo.len(), 1, "unset keeps it too");
+    assert_eq!(st.session.undo.undo.len(), 1, "unset keeps it too");
     cleanup(&[&work, &bare]);
 }
 
@@ -198,11 +198,11 @@ fn fast_forward_commands_and_refusals() {
     assert_eq!(cmds(&mut st, ff("main")), vec![args(&["merge", "--ff-only", "refs/remotes/origin/main"])]);
 
     // The fetch into the repository moves a branch, so it clears the undo history.
-    st.undo.record(dummy());
+    st.session.undo.record(dummy());
     update(&mut st, ff("feature"), Instant::now());
     done(&mut st, true);
-    assert!(st.undo.undo.is_empty());
-    assert_eq!(st.undo.blocked.as_deref(), Some("Fast-forward"));
+    assert!(st.session.undo.undo.is_empty());
+    assert_eq!(st.session.undo.blocked.as_deref(), Some("Fast-forward"));
 
     // The job's refresh reloaded the snapshot; set the counts up again.
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
@@ -308,7 +308,7 @@ fn delete_with_remote_end_to_end_then_undo() {
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.locals.iter().any(|b| b.name == "feature"));
     assert!(!snap.remotes[0].1.iter().any(|(n, _)| n == "feature"), "gone from origin");
-    assert_eq!(st.undo.undo.len(), 1);
+    assert_eq!(st.session.undo.undo.len(), 1);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let b = local(&mut st, "feature").clone();

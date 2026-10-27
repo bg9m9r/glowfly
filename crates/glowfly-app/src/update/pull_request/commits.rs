@@ -15,8 +15,8 @@ pub(super) fn select(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     if matches!(&st.session.diff.view, Some((DiffTarget::Commit(o, _), _)) if *o != oid) {
         super::super::repo::close_diff(st);
     }
-    if st.selection != Selection::Commit(oid) {
-        st.selection = Selection::Commit(oid);
+    if st.session.selection != Selection::Commit(oid) {
+        st.session.selection = Selection::Commit(oid);
         fx.push(Effect::LoadDetail { workdir, oid });
         super::super::line_counts::want_commit(st, oid, fx);
     }

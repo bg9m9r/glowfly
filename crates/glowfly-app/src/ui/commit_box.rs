@@ -82,7 +82,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     });
 
     // Link the issue encoded in the branch name (e.g. 1234-login or PROJ-12-crash).
-    if let Some((fs, key)) = st.forge.as_ref().and_then(|f| Some((f, f.branch_issue(snap.head_branch.as_deref()?)?))) {
+    if let Some((fs, key)) = st.session.forge.as_ref().and_then(|f| Some((f, f.branch_issue(snap.head_branch.as_deref()?)?))) {
         let tag = fs.mention(&key);
         let mentioned = fs.links_issue(&st.session.draft.summary, &key) || fs.links_issue(&st.session.draft.description, &key);
         ui.horizontal(|ui| {

@@ -129,19 +129,19 @@ fn loading_more_keeps_the_selection_and_scroll() {
     let fx = near_end(&mut st);
     assert_eq!(loads(&fx).len(), 1);
     finish(&mut st, fx);
-    assert_eq!(st.selection, Selection::Commit(oids[1]));
+    assert_eq!(st.session.selection, Selection::Commit(oids[1]));
     assert_eq!(st.session.detail.as_ref().map(|d| d.oid), Some(oids[1]));
     assert_eq!(st.view.scroll_to_row, None);
     assert_eq!(st.view.scroll_offset, None);
 
     // Two commits selected stay selected.
     drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(oids[0])));
-    assert!(matches!(&st.selection, Selection::Commits(m) if m.len() == 2));
+    assert!(matches!(&st.session.selection, Selection::Commits(m) if m.len() == 2));
     truncate(&mut st);
     let fx = near_end(&mut st);
     assert_eq!(loads(&fx).len(), 1);
     finish(&mut st, fx);
-    let Selection::Commits(m) = &st.selection else { panic!("still two commits: {:?}", st.selection) };
+    let Selection::Commits(m) = &st.session.selection else { panic!("still two commits: {:?}", st.session.selection) };
     assert!(m.contains(oids[0]) && m.contains(oids[1]));
     assert_eq!(st.view.scroll_to_row, None);
     let _ = std::fs::remove_dir_all(&dir);

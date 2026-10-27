@@ -52,7 +52,7 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
     let snap = st.snap.as_ref().unwrap();
     let to = snap.head_oid.unwrap();
     let from = snap.commits[snap.row_of[&to]].parents[0];
-    st.undo.record(Action::Commit { branch: Some("main".into()), from, to, message: "Last".into(), amend: false });
+    st.session.undo.record(Action::Commit { branch: Some("main".into()), from, to, message: "Last".into(), amend: false });
     let mut h = harness(st, true);
     h.run();
     assert!(!disabled(&h, UNDO) && disabled(&h, REDO));
@@ -121,7 +121,7 @@ fn tool_button_names_hold_their_captions() {
         st.settings.language = lang.code().into();
         let github =
             Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
-        st.forge = Some(ForgeState::new(Some(github), "origin".into(), None));
+        st.session.forge = Some(ForgeState::new(Some(github), "origin".into(), None));
         let pr = lang.trf("toolbar.pr.name_pull_request", &[("service", &"GitHub")]);
         let mut h = harness(st, true);
         h.run();

@@ -74,7 +74,7 @@ pub(super) fn large_state(name: &str, n: usize) -> (AppState, std::path::PathBuf
 
 /// Types `q` into the search field at `now`.
 fn type_query(st: &mut AppState, q: &str, now: Instant) -> Vec<Effect> {
-    st.view.search = q.to_owned();
+    st.session.tab_view.search = q.to_owned();
     update(st, Msg::Search(SearchMsg::QueryChanged), now)
 }
 
@@ -98,22 +98,22 @@ fn a_large_history_is_matched_after_a_pause_on_the_worker() {
     let (mut st, dir) = large_state("loaded-pause", LARGE_HISTORY + 10);
     let t0 = Instant::now();
     let fx = type_query(&mut st, "nee", t0);
-    assert!(asked(&fx).is_empty() && st.search.matches.is_empty(), "nothing matched while typing");
+    assert!(asked(&fx).is_empty() && st.session.search.matches.is_empty(), "nothing matched while typing");
     let fx = type_query(&mut st, "needle", t0 + TYPING_PAUSE / 2);
     assert!(asked(&fx).is_empty(), "the next keystroke waits again");
     let fx = update(&mut st, Msg::Tick(t0 + TYPING_PAUSE), Instant::now());
     assert!(asked(&fx).is_empty(), "the pause after the last keystroke isn't over");
     let fx = update(&mut st, Msg::Tick(t0 + TYPING_PAUSE * 2), Instant::now());
     assert_eq!(asked(&fx).len(), 1, "one match for the query typed: {fx:?}");
-    assert!(st.search.matches.is_empty(), "applied when the answer comes");
+    assert!(st.session.search.matches.is_empty(), "applied when the answer comes");
     finish(&mut st, fx);
-    assert_eq!(st.search.matches, expected(&st, "needle"));
+    assert_eq!(st.session.search.matches, expected(&st, "needle"));
     for q in ["needle", "überblick", "author:josé needle", "commit 2000", "body of 4", "zzz"] {
         let want = expected(&st, q);
         type_query(&mut st, q, t0);
         let fx = update(&mut st, Msg::Tick(t0 + TYPING_PAUSE), Instant::now());
         finish(&mut st, fx);
-        assert_eq!(st.search.matches, want, "{q}: the same matches as on the UI thread");
+        assert_eq!(st.session.search.matches, want, "{q}: the same matches as on the UI thread");
     }
     assert_eq!(expected(&st, "needle").len(), (LARGE_HISTORY + 10).div_ceil(997));
     let _ = std::fs::remove_dir_all(&dir);
@@ -131,20 +131,20 @@ fn an_older_answer_is_ignored() {
     assert!(second > first);
     let answer = |request, matches: Vec<usize>| Msg::Search(SearchMsg::LoadedMatched { request, result: Ok(matches) });
     update(&mut st, answer(first, vec![0, 997]), Instant::now());
-    assert!(st.search.matches.is_empty(), "the replaced request's answer is dropped");
+    assert!(st.session.search.matches.is_empty(), "the replaced request's answer is dropped");
     update(&mut st, answer(second, vec![1, 10]), Instant::now());
-    assert_eq!(st.search.matches, [1, 10]);
+    assert_eq!(st.session.search.matches, [1, 10]);
     update(&mut st, answer(second, vec![5]), Instant::now());
-    assert_eq!(st.search.matches, [1, 10], "answered once");
+    assert_eq!(st.session.search.matches, [1, 10], "answered once");
 
     // A new history (or any match on the UI thread) drops the request in flight.
     type_query(&mut st, "needle", t0);
     let third = asked(&update(&mut st, Msg::Tick(t0 + TYPING_PAUSE), Instant::now()));
     super::search::recompute(&mut st);
-    let synced = st.search.matches.clone();
+    let synced = st.session.search.matches.clone();
     assert_eq!(synced, expected(&st, "needle"));
     update(&mut st, answer(third[0], vec![3]), Instant::now());
-    assert_eq!(st.search.matches, synced, "an answer for the history before is dropped");
+    assert_eq!(st.session.search.matches, synced, "an answer for the history before is dropped");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -155,9 +155,9 @@ fn enter_matches_a_waiting_query_first() {
     type_query(&mut st, "needle", t0);
     let fx = update(&mut st, Msg::Search(SearchMsg::Next), t0);
     assert!(asked(&fx).is_empty(), "matched at once, not on the worker");
-    assert_eq!(st.search.matches, expected(&st, "needle"));
-    assert_eq!(st.selection, Selection::Commit(oid_of(0)), "the newest match");
-    assert_eq!(st.search.loaded.due, None);
+    assert_eq!(st.session.search.matches, expected(&st, "needle"));
+    assert_eq!(st.session.selection, Selection::Commit(oid_of(0)), "the newest match");
+    assert_eq!(st.session.search.loaded.due, None);
     // A late tick has nothing left to do.
     assert!(asked(&update(&mut st, Msg::Tick(t0 + TYPING_PAUSE), Instant::now())).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
@@ -167,7 +167,7 @@ fn enter_matches_a_waiting_query_first() {
 fn a_small_history_is_matched_at_once() {
     let (mut st, dir) = large_state("loaded-small", 50);
     let fx = type_query(&mut st, "commit 4", Instant::now());
-    assert!(asked(&fx).is_empty() && st.search.loaded.due.is_none());
-    assert_eq!(st.search.matches, expected(&st, "commit 4"));
+    assert!(asked(&fx).is_empty() && st.session.search.loaded.due.is_none());
+    assert_eq!(st.session.search.matches, expected(&st, "commit 4"));
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -70,7 +70,7 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             let failed = result.is_err();
             match result {
                 Err(e) => st.log(false, e),
-                Ok(Some(action)) => st.undo.record(action),
+                Ok(Some(action)) => st.session.undo.record(action),
                 Ok(None) => {}
             }
             // A save that failed can be tried again; one that worked moves the view on once the

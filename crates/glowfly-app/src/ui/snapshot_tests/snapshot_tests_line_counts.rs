@@ -39,7 +39,7 @@ fn with_commit(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     git(&dir, &["commit", "-q", "-m", "Add the guide and search index"], D);
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
     let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     st.session.reads.line_counts.start_commit(oid);
     st.session.reads.line_counts.finish_commit(oid, Arc::new(repo::commit_line_counts(&dir, oid).unwrap()));
@@ -58,7 +58,7 @@ pub(in crate::ui) fn with_wip(theme: ThemeChoice, name: &str) -> (AppState, Path
     write(&dir, "notes/todo.md", &lines("- item", 4));
     std::fs::remove_file(dir.join("login.txt")).unwrap();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     let generation = st.session.reads.line_counts.start_wip().unwrap();
     st.session.reads.line_counts.finish_wip(generation, Some(repo::wip_line_counts(&dir).unwrap()));
     (st, dir)

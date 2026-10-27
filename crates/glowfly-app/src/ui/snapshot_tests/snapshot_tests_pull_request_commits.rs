@@ -38,7 +38,7 @@ fn extend_search(st: &mut AppState, dir: &Path, file: &str, summary: &str) -> Oi
 
 /// The panel opened again from the listed pull request as `f` changes it.
 fn reopen(st: &mut AppState, f: impl FnOnce(&mut glowfly_core::forge::PullRequest)) {
-    let fs = st.forge.as_mut().unwrap();
+    let fs = st.session.forge.as_mut().unwrap();
     f(&mut fs.prs[0]);
     let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
     view.checks.pane = ChecksPane::Loaded(CheckList::empty(fs.prs[0].head.clone().unwrap_or_default()));
@@ -58,7 +58,7 @@ fn pull_request_commits_dark() {
     assert_eq!(oids.len(), 2);
     assert_eq!(oids[1], second, "oldest first");
     st.session.pull_request.view.as_mut().unwrap().tab = PrTab::Commits;
-    st.selection = Selection::Commit(second);
+    st.session.selection = Selection::Commit(second);
     st.session.detail = Some(repo::commit_detail(&dir, second).unwrap());
     let mut h = harness(st, true);
     h.run();

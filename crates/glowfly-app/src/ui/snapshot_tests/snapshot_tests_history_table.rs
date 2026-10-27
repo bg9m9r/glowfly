@@ -120,7 +120,7 @@ fn history_row_selected_and_hovered() {
         crate::update::update(st, m, Instant::now());
     }
     let merge = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == "Merge branch 'login-page'").unwrap().oid;
-    assert!(st.selection.includes(merge), "the click selected row 2");
+    assert!(st.session.selection.includes(merge), "the click selected row 2");
     h.input_mut().events.push(Event::PointerMoved(pos2(700.0, row_y(3))));
     for _ in 0..4 {
         h.step();

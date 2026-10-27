@@ -44,9 +44,9 @@ fn send(st: &mut AppState, msg: SearchMsg) -> Vec<Effect> {
 /// The bar shown with `q` typed into it and the filter on.
 fn filter(st: &mut AppState, q: &str) -> Vec<Effect> {
     st.view.show_search = true;
-    st.view.search = q.into();
+    st.session.tab_view.search = q.into();
     let mut fx = Vec::new();
-    if !st.search.filter {
+    if !st.session.search.filter {
         fx.extend(send(st, SearchMsg::ToggleFilter));
     }
     fx.extend(send(st, SearchMsg::QueryChanged));
@@ -107,7 +107,7 @@ fn enough_matches_stop_it() {
     let (mut st, dir) = truncated("deeper-enough");
     st.view.graph_fit_rows = 1;
     assert!(loads(&filter(&mut st, "first")).is_empty(), "the one match fills the graph");
-    assert_eq!(st.search.matches.len(), 1);
+    assert_eq!(st.session.search.matches.len(), 1);
     st.view.graph_fit_rows = 5;
     assert_eq!(loads(&send(&mut st, SearchMsg::QueryChanged)).len(), 1, "five rows want more");
     let _ = std::fs::remove_dir_all(&dir);
@@ -142,7 +142,7 @@ fn a_new_or_cleared_query_stops_the_old_search() {
 fn only_while_filtering_with_the_preference_on() {
     let (mut st, dir) = truncated("deeper-only");
     st.view.show_search = true;
-    st.view.search = "zzz".into();
+    st.session.tab_view.search = "zzz".into();
     assert!(loads(&send(&mut st, SearchMsg::QueryChanged)).is_empty(), "the query only dims rows");
     assert_eq!(st.refresh.deeper, None);
 
@@ -167,12 +167,12 @@ fn path_terms_wait_for_the_file_search() {
     assert!(loads(&fx).is_empty(), "the matches aren't final yet");
     let mut loaded = 0;
     while let Some(search) = fx.iter().position(|e| matches!(e, Effect::SearchPaths { .. })) {
-        assert!(st.search.searching_files());
+        assert!(st.session.search.searching_files());
         let reply = crate::runner::execute(fx.swap_remove(search)).expect("a report");
         fx = update(&mut st, reply, Instant::now());
         loaded += loads(&fx).len();
     }
-    assert!(!st.search.searching_files());
+    assert!(!st.session.search.searching_files());
     assert_eq!(loaded, 1, "one load once the files are searched");
     let _ = std::fs::remove_dir_all(&dir);
 }

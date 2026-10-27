@@ -65,7 +65,7 @@ fn a_changed_worktree_gets_a_row_above_its_head() {
     assert_eq!(snap.worktrees[1].changes, ChangeCounts { modified: 1, added: 1, deleted: 0 });
     let head = snap.head_oid.unwrap();
     assert_eq!(wip_rows(&st), [(1, snap.row_of[&head])]);
-    let rows = GraphRows::new(snap, &st.search, false);
+    let rows = GraphRows::new(snap, &st.session.search, false);
     assert_eq!(rows.len(), snap.commits.len() + 2);
     assert_eq!((rows.at(0), rows.at(1), rows.at(2)), (Some(DisplayRow::Wip), Some(DisplayRow::Worktree(0)), Some(DisplayRow::Commit(0))));
     cleanup(&[&linked, &dir]);

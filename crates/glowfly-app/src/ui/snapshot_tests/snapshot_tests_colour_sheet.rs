@@ -97,7 +97,7 @@ fn strip(pal: Palette, name: &str) -> image::RgbaImage {
 /// The main window of `t` over the pinned-branch graph, a commit on main selected.
 fn main_window(t: BuiltinTheme) -> image::RgbaImage {
     let (mut st, dir) = with_bands(&format!("sheet-{}", t.id()));
-    let Selection::Commit(oid) = st.selection else { panic!("a commit is selected") };
+    let Selection::Commit(oid) = st.session.selection else { panic!("a commit is selected") };
     st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     st.session.reads.line_counts.start_commit(oid);
     st.session.reads.line_counts.finish_commit(oid, Arc::new(repo::commit_line_counts(&dir, oid).unwrap()));

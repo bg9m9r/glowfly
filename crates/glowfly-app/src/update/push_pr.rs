@@ -15,7 +15,7 @@ use glowfly_core::forge::{NewPullRequest, Target};
 /// with `preferred` as the target when it is one. `from` is the remote the source is on; None
 /// takes the branch's push remote (`pr_repos::push_remote`), else the code host's.
 pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<String>, from: Option<String>, fx: &mut Vec<Effect>) {
-    let (Some(snap), Some(fs)) = (&st.snap, &st.forge) else { return };
+    let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     if fs.host.is_none() {
         return;
     }
@@ -54,7 +54,7 @@ pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<Str
 /// Pushes local `branch` to `remote` (None: its push remote), then opens the create dialog (at
 /// once when the remote already has everything). A diverged branch is refused, never forced.
 pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, remote: Option<String>, fx: &mut Vec<Effect>) {
-    let (Some(snap), Some(fs)) = (&st.snap, &st.forge) else { return };
+    let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     if fs.host.is_none() {
         return;
     }
@@ -91,7 +91,7 @@ pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, rem
 /// host's), unless its source isn't on the From remote (the service would refuse it). A source
 /// on another repository goes as `source_repo`.
 pub(super) fn create(st: &mut AppState, mut pr: NewPullRequest, from: &str, into: &str, fx: &mut Vec<Effect>) {
-    let Some(fs) = st.forge.as_ref() else { return };
+    let Some(fs) = st.session.forge.as_ref() else { return };
     let Some(host) = fs.host.clone() else { return };
     let resolve = |r: &str| -> Option<(String, Target)> {
         if r.is_empty() || r == fs.remote {
@@ -128,7 +128,7 @@ pub(super) fn job_finished(st: &mut AppState, then_pr: Option<PrStart>, ok: bool
     let Some(p) = then_pr.filter(|_| ok) else { return };
     if !here {
         st.log(true, format!("Pushed {}. Its tab is no longer active, so the create dialog wasn't opened.", p.source));
-    } else if let Some(fs) = st.forge.as_mut() {
+    } else if let Some(fs) = st.session.forge.as_mut() {
         fs.open_after_load = Some(p);
     }
 }
@@ -143,7 +143,7 @@ pub(super) fn loaded(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Opens the create dialog a push was waiting for. One already open for that branch (the push
 /// started from it) keeps what was typed; another dialog isn't replaced.
 fn open_after_load(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     let Some(p) = fs.open_after_load.take() else { return };
     let noun = fs.pr_noun();
     let from = p.remote.as_deref().unwrap_or(&fs.remote);

@@ -40,7 +40,7 @@ fn opened(name: &str) -> (AppState, PathBuf) {
 }
 
 fn top_is_restore_of(st: &AppState, want: &str) -> bool {
-    matches!(st.undo.undo.last(), Some(Action::Restore { path, .. }) if path == want)
+    matches!(st.session.undo.undo.last(), Some(Action::Restore { path, .. }) if path == want)
 }
 
 #[test]
@@ -48,19 +48,19 @@ fn restore_then_undo_and_redo() {
     let (mut st, dir) = opened("files-undo-restore");
     drive(&mut st, restore(head(&dir), "a.txt"));
     assert_eq!(text(&dir, "a.txt"), "one\n");
-    assert!(top_is_restore_of(&st, "a.txt"), "{:?}", st.undo.undo);
-    assert_eq!(st.undo.undo_entry(st.settings.lang(), true).0, "Undo restore of a.txt");
+    assert!(top_is_restore_of(&st, "a.txt"), "{:?}", st.session.undo.undo);
+    assert_eq!(st.session.undo.undo_entry(st.settings.lang(), true).0, "Undo restore of a.txt");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(text(&dir, "a.txt"), "one\ntwo\n", "the edits are back");
     assert!(st.job.is_none());
-    assert_eq!(st.undo.redo.len(), 1);
+    assert_eq!(st.session.undo.redo.len(), 1);
     let log: Vec<&str> = st.log.iter().map(|l| l.text.as_str()).collect();
     assert!(log.iter().any(|t| t.contains("Put back the earlier working copy of a.txt")), "{log:?}");
 
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert_eq!(text(&dir, "a.txt"), "one\n");
-    assert!(top_is_restore_of(&st, "a.txt"), "{:?}", st.undo.undo);
+    assert!(top_is_restore_of(&st, "a.txt"), "{:?}", st.session.undo.undo);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -78,7 +78,7 @@ fn restore_of_deleted_file_undo_deletes_it_again() {
 
     drive(&mut st, restore(older, "gone.txt"));
     assert_eq!(text(&dir, "gone.txt"), "v1\n");
-    assert!(top_is_restore_of(&st, "gone.txt"), "{:?}", st.undo.undo);
+    assert!(top_is_restore_of(&st, "gone.txt"), "{:?}", st.session.undo.undo);
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert!(!dir.join("gone.txt").exists(), "removed again");
     let snap = st.snap.as_ref().unwrap();
@@ -95,7 +95,7 @@ fn undo_after_editing_the_restored_file_is_refused() {
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(text(&dir, "a.txt"), "newer\n", "left alone");
-    assert!(st.undo.undo.is_empty() && st.undo.redo.is_empty(), "history cleared");
+    assert!(st.session.undo.undo.is_empty() && st.session.undo.redo.is_empty(), "history cleared");
     let said: Vec<&str> = st.toasts.iter().map(|t| t.text.as_str()).chain(st.log.iter().map(|l| l.text.as_str())).collect();
     assert!(said.iter().any(|t| t.contains("has changed since")), "{said:?}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -120,10 +120,10 @@ fn restore_result_for_inactive_tab_goes_to_its_history() {
     update(&mut st, reply, Instant::now());
 
     assert_eq!(text(&a, "a.txt"), "one\n");
-    assert!(st.undo.undo.is_empty(), "tab B's history is untouched");
+    assert!(st.session.undo.undo.is_empty(), "tab B's history is untouched");
     let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
-    assert_eq!(parked.undo.undo.len(), 1);
-    assert!(matches!(parked.undo.undo.last(), Some(Action::Restore { path, .. }) if path == "a.txt"));
+    assert_eq!(parked.session.undo.undo.len(), 1);
+    assert!(matches!(parked.session.undo.undo.last(), Some(Action::Restore { path, .. }) if path == "a.txt"));
     for d in [&a, &b] {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -153,7 +153,7 @@ fn failed_restore_that_removed_the_file_can_be_undone() {
 
     drive(&mut st, restore(base, "b.up"));
     assert!(!dir.join("b.up").exists(), "git removed the file before the filter failed");
-    assert!(top_is_restore_of(&st, "b.up"), "{:?}", st.undo.undo);
+    assert!(top_is_restore_of(&st, "b.up"), "{:?}", st.session.undo.undo);
     let log: Vec<&str> = st.log.iter().map(|l| l.text.as_str()).collect();
     let said = log.iter().find(|t| t.starts_with("Could not restore b.up")).unwrap_or_else(|| panic!("{log:?}"));
     assert!(

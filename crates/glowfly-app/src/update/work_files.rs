@@ -138,7 +138,7 @@ fn succeeded(st: &mut AppState, op: &FileOp, ok: WorkFileOk, now: Instant) {
     let hint = st.keymap.paren(BindingId::Undo);
     st.toast(true, success_text(op, &ok, Some(&hint)), now);
     if let WorkFileOk::Deleted { undo: Some(a), .. } = ok {
-        st.undo.record(*a);
+        st.session.undo.record(*a);
     }
     // The old path's working-tree diff is gone; don't leave it on screen.
     let old = match op {

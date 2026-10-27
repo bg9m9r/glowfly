@@ -32,7 +32,7 @@ pub(super) fn view(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
 /// A request for `target` with this session's credential for it, if any.
 fn req(st: &AppState, workdir: PathBuf, target: Target) -> ForkRequest {
     let account = target.account();
-    let auth = st.forge.as_ref().and_then(|f| f.auth.get(&account.key())).cloned();
+    let auth = st.session.forge.as_ref().and_then(|f| f.auth.get(&account.key())).cloned();
     let connected = forge::is_connected(&account, &st.settings.connections);
     ForkRequest { workdir, target, auth, connected }
 }
@@ -276,7 +276,7 @@ pub(super) fn fork_created(
     let plain = || JobSpec::new(format!("Add remote {name}"), add_cmds(&name, &url, None, created.ready));
     let spec = JobSpec { cwd: Some(workdir), ..push_job.unwrap_or_else(plain) };
     start_job(st, spec, fx);
-    let noun = st.forge.as_ref().map_or("pull request", |f| f.pr_noun());
+    let noun = st.session.forge.as_ref().map_or("pull request", |f| f.pr_noun());
     match then_pr {
         Some(t) if !created.ready => {
             st.log(true, format!("{service} is still preparing the fork; push {} to {name} in a minute, then create the {noun}.", t.branch))

@@ -273,7 +273,7 @@ fn actions_do_what_the_menus_did() {
     assert!(matches!(find(&edit, "Show only matching commits").action, MenuAction::ShowFilter));
     assert!(matches!(find(&entries(&st, TopMenu::View), "Activity log").action, MenuAction::ToggleActivityLog));
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
-    st.selection = Selection::Commit(head);
+    st.session.selection = Selection::Commit(head);
     let edit = entries(&st, TopMenu::Edit);
     assert!(matches!(sent(find(&edit, "Copy commit SHA")), Msg::Copy(s) if *s == head.to_string()));
     let other = git2::Oid::from_str("1234567890123456789012345678901234567890").unwrap();
@@ -291,7 +291,7 @@ fn actions_do_what_the_menus_did() {
     };
     let want = shas_text(&multi);
     assert_eq!(want, format!("{head}\n{other}"));
-    st.selection = Selection::Commits(multi);
+    st.session.selection = Selection::Commits(multi);
     let edit = entries(&st, TopMenu::Edit);
     assert!(matches!(sent(find(&edit, "Copy 2 commit SHAs")), Msg::Copy(s) if *s == want));
 }

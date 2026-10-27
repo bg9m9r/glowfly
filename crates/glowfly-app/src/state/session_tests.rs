@@ -1,8 +1,11 @@
-//! Parking a `RepoSession` and resuming it after another tab's: the views, the open diff and
-//! the draft move, the counters stay behind, and every counter rises past both tabs'.
+//! Parking a `RepoSession` and resuming it after another tab's: the views, the open diff, the
+//! draft, the selection, forge data, undo, search and view state move, the counters stay behind,
+//! and every counter rises past both tabs'.
 
 use super::*;
+use crate::state::file_folds::{FileFolds, FileListId};
 use crate::state::lfs::LfsDiffNote;
+use crate::state::{ForgeState, Selection};
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide};
 
 /// Every counter, in the order `counters` lists them.
@@ -19,6 +22,11 @@ fn a_diff() -> Option<(DiffTarget, std::sync::Arc<FileDiff>)> {
 fn a_note() -> LfsDiffNote {
     let change = LfsChange { old: LfsSide::Absent, new: LfsSide::Regular { size: 4 }, new_in_workdir: true, filtered: false };
     LfsDiffNote { target: DiffTarget::Unstaged("a.txt".into()), change, show_pointer: true }
+}
+
+/// An undo entry (what it undoes doesn't matter here).
+fn an_action() -> glowfly_core::undo::Action {
+    glowfly_core::undo::Action::DeleteBranch { name: "old".into(), oid: git2::Oid::zero(), upstream: None }
 }
 
 /// Sets every counter to `n`.
@@ -40,6 +48,13 @@ fn park_empties_the_views_and_keeps_the_counters() {
     active.pull_request.page_gen = 9;
     active.pull_request.lines_gen = 3;
     active.range_diff.generation = 6;
+    active.selection = Selection::Wip;
+    active.forge = Some(ForgeState::new(None, "origin".into(), None));
+    active.undo.record(an_action());
+    active.search.filter = true;
+    let v = &mut active.tab_view;
+    (v.search, v.ref_filter, v.graph_scroll, v.diff_top_row) = ("fix".into(), "main".into(), (120.0, 400.0), 7);
+    v.file_folds.toggle(FileListId::Unstaged, "src".into());
     let before = counts(&mut active);
 
     let mut parked = active.park();
@@ -56,6 +71,17 @@ fn park_empties_the_views_and_keeps_the_counters() {
     assert!(active.conflict.view.is_none() && active.pull_request.view.is_none() && active.rebase.view.is_none());
     assert!(!active.gitflow_panel, "the panel isn't left open for the next tab");
     assert_eq!(counts(&mut active), after, "the counters stay behind as well");
+
+    assert_eq!(parked.selection, Selection::Wip, "the selection goes with the tab");
+    assert!(parked.forge.is_some() && parked.undo.undo.len() == 1 && parked.search.filter, "and the forge data, undo and search");
+    let v = &parked.tab_view;
+    assert_eq!((v.search.as_str(), v.ref_filter.as_str(), v.graph_scroll, v.diff_top_row), ("fix", "main", (120.0, 400.0), 7));
+    assert!(v.file_folds.is_closed(FileListId::Unstaged, "src"), "and the view state");
+    assert_eq!(active.selection, Selection::None);
+    assert!(active.forge.is_none() && active.undo.undo.is_empty() && !active.search.filter, "the next tab gets none of them");
+    let v = &active.tab_view;
+    assert!(v.search.is_empty() && v.ref_filter.is_empty() && v.graph_scroll == (0.0, 0.0) && v.diff_top_row == 0);
+    assert_eq!(v.file_folds, FileFolds::default());
 }
 
 #[test]
@@ -113,4 +139,24 @@ fn resume_moves_the_diff_counter_and_keeps_the_shown_request_current() {
     assert_eq!(parked.diff.generation, 10, "past both tabs' requests");
     assert_eq!(parked.diff.shown_gen, 8, "still the last request answered, not a counter");
     assert_eq!(parked.diff.hunk_ops_gen(), None, "the hunks wait for the reload");
+}
+
+#[test]
+fn resume_drops_the_forge_replies_in_flight() {
+    let mut parked = RepoSession { forge: Some(ForgeState::new(None, "origin".into(), None)), ..Default::default() };
+    parked.forge.as_mut().unwrap().loading = 2;
+    parked.resume_after(&mut RepoSession::default());
+    assert_eq!(parked.forge.as_ref().map(|f| f.loading), Some(0), "the replies in flight were dropped while parked");
+}
+
+#[test]
+fn forget_repo_clears_reads_and_folds() {
+    let mut s = RepoSession::default();
+    s.reads.stats.insert(git2::Oid::zero(), (1, 2, 3));
+    s.tab_view.file_folds.toggle(FileListId::Staged, "docs".into());
+    s.draft.summary = "wip".into();
+    s.forget_repo();
+    assert!(s.reads.stats.is_empty(), "the reads are forgotten");
+    assert_eq!(s.tab_view.file_folds, FileFolds::default(), "and the folds");
+    assert_eq!(s.draft.summary, "wip", "the rest is untouched");
 }

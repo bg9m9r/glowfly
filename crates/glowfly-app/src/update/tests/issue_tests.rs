@@ -41,7 +41,7 @@ pub(super) fn open_repo(name: &str) -> (AppState, PathBuf) {
     git(&dir, &["remote", "add", "origin", "https://github.com/o/r"]);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    let fs = st.forge.as_mut().expect("the service is detected");
+    let fs = st.session.forge.as_mut().expect("the service is detected");
     fs.host_status = Status::Ok;
     fs.tracker_status = Status::Ok;
     fs.loading = 0;
@@ -82,7 +82,7 @@ pub(super) fn details(key: &str) -> IssueDetails {
 
 /// A reply from the active repository's tracker to the latest request.
 pub(super) fn reply(st: &AppState, reply: IssueReply) -> IssueMsg {
-    let target = st.forge.as_ref().and_then(|f| f.tracker.clone()).unwrap_or_else(github);
+    let target = st.session.forge.as_ref().and_then(|f| f.tracker.clone()).unwrap_or_else(github);
     IssueMsg::Replied { workdir: st.workdir().unwrap(), target, generation: st.session.issue.generation, reply: Box::new(reply) }
 }
 
@@ -128,7 +128,7 @@ fn opening_a_listed_issue_loads_it_and_closes_the_other_views() {
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
     st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
     st.session.blame.view = Some(crate::state::blame::BlameView::loading("a.txt".into(), None));
-    st.session.pull_request.view = Some(PrView::new(pr(7), st.forge.as_ref().unwrap(), st.snap.as_ref().unwrap()));
+    st.session.pull_request.view = Some(PrView::new(pr(7), st.session.forge.as_ref().unwrap(), st.snap.as_ref().unwrap()));
     let fx = run(&mut st, IssueMsg::Open("12".into()));
     let l = loads(&fx);
     assert_eq!(l.len(), 1);
@@ -155,19 +155,19 @@ fn opening_a_listed_issue_loads_it_and_closes_the_other_views() {
 fn trackers_without_details_held_and_unconnected() {
     let (mut st, dir) = open_repo("issue-unsupported");
     let bb = Target { provider: Provider::Bitbucket, host: "bitbucket.org".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(bb.clone());
+    st.session.forge.as_mut().unwrap().tracker = Some(bb.clone());
     let fx = run(&mut st, IssueMsg::Open("12".into()));
     assert_eq!(jobs(&fx).iter().map(|j| &j.req.target).collect::<Vec<_>>(), [&bb], "Bitbucket Cloud issues load");
     assert_eq!(view(&st).details, Details::Loading);
     run(&mut st, IssueMsg::Close);
     let dc = Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(dc);
+    st.session.forge.as_mut().unwrap().tracker = Some(dc);
     assert!(jobs(&run(&mut st, IssueMsg::Open("12".into()))).is_empty());
     assert_eq!(view(&st).details, Details::Unsupported);
     assert!(run(&mut st, IssueMsg::Reload).is_empty());
     run(&mut st, IssueMsg::Close);
 
-    st.forge.as_mut().unwrap().tracker = Some(github());
+    st.session.forge.as_mut().unwrap().tracker = Some(github());
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     crate::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
     assert!(jobs(&run(&mut st, IssueMsg::Open("12".into()))).is_empty());
@@ -176,7 +176,7 @@ fn trackers_without_details_held_and_unconnected() {
     crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
 
     let gl = Target { provider: Provider::GitLabSelfManaged, host: "gitlab.acme.io".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(gl);
+    st.session.forge.as_mut().unwrap().tracker = Some(gl);
     assert!(jobs(&run(&mut st, IssueMsg::Open("12".into()))).is_empty());
     assert!(matches!(&view(&st).details, Details::Failed(e) if e.starts_with("not connected")), "{:?}", view(&st).details);
     done(st, dir);
@@ -192,7 +192,7 @@ fn loaded_details_fill_the_panel_and_the_cache() {
     assert!(matches!(&v.details, Details::Loaded(d) if d.author == "grace"));
     assert_eq!(v.issue.title, "Crash on start (fresh)");
     assert!(!v.reloading);
-    assert_eq!(st.forge.as_ref().unwrap().cache["12"].title, "Crash on start (fresh)");
+    assert_eq!(st.session.forge.as_ref().unwrap().cache["12"].title, "Crash on start (fresh)");
 
     // A reload keeps the details; a failure only logs.
     let fx = run(&mut st, IssueMsg::Reload);
@@ -263,7 +263,7 @@ fn a_commit_a_diff_and_the_pull_request_panel_close_it() {
     update(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))), Instant::now());
     assert!(st.session.issue.view.is_none(), "opening a file's diff");
     run(&mut st, IssueMsg::Open("12".into()));
-    st.forge.as_mut().unwrap().prs = vec![pr(7)];
+    st.session.forge.as_mut().unwrap().prs = vec![pr(7)];
     update(&mut st, Msg::PullRequest(PullRequestMsg::Open(7)), Instant::now());
     assert!(st.session.issue.view.is_none() && st.session.pull_request.view.is_some(), "opening the pull request panel");
     run(&mut st, IssueMsg::Open("12".into()));
@@ -279,7 +279,7 @@ fn changing_the_tracker_closes_it() {
     let choice = TrackerChoice::Jira { account: jira, project: "PROJ".into() };
     update(&mut st, Msg::Forge(ForgeMsg::SetTracker(choice)), Instant::now());
     assert!(st.session.issue.view.is_none());
-    assert!(st.forge.as_ref().unwrap().tracker.as_ref().is_some_and(|t| t.provider == Provider::JiraCloud));
+    assert!(st.session.forge.as_ref().unwrap().tracker.as_ref().is_some_and(|t| t.provider == Provider::JiraCloud));
     done(st, dir);
 }
 
@@ -311,11 +311,11 @@ fn blame_and_another_tracker_close_it() {
     // The same key on another tracker is another issue.
     run(&mut st, IssueMsg::Open("12".into()));
     let r2 = Target { repo: "r2".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(r2.clone());
+    st.session.forge.as_mut().unwrap().tracker = Some(r2.clone());
     let fx = run(&mut st, IssueMsg::Open("12".into()));
     assert_eq!(view(&st).target, r2);
     assert!(loads(&fx).first().is_some_and(|j| j.req.target == r2));
-    st.forge.as_mut().unwrap().tracker = Some(github());
+    st.session.forge.as_mut().unwrap().tracker = Some(github());
     st.session.issue.view = None;
 
     // An edited remote changes the tracker on the next refresh.
@@ -324,7 +324,7 @@ fn blame_and_another_tracker_close_it() {
     assert!(st.session.issue.view.is_some(), "the same tracker keeps it");
     git(&dir, &["remote", "set-url", "origin", "https://github.com/o/r2"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert_eq!(st.forge.as_ref().unwrap().tracker.as_ref(), Some(&r2));
+    assert_eq!(st.session.forge.as_ref().unwrap().tracker.as_ref(), Some(&r2));
     assert!(st.session.issue.view.is_none(), "the remote's new tracker closes it");
     done(st, dir);
 }

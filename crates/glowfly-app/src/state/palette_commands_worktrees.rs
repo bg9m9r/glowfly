@@ -19,7 +19,7 @@ fn command(m: WorktreeMsg) -> PaletteCommand {
 /// What Create worktree starts from: the selected commit, else HEAD's branch, else HEAD's commit.
 fn create_base(st: &AppState, snap: &Snapshot) -> Option<WorktreeBase> {
     let head = snap.head_oid?;
-    Some(match (&st.selection, &snap.head_branch) {
+    Some(match (&st.session.selection, &snap.head_branch) {
         (Selection::Commit(oid), _) => WorktreeBase::Commit(*oid),
         (_, Some(b)) => WorktreeBase::Branch(b.clone()),
         (_, None) => WorktreeBase::Commit(head),

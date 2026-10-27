@@ -7,7 +7,7 @@ use glowfly_core::repo::Snapshot;
 
 /// What Create branch and Create tag start at: the selected commit's short sha, else HEAD.
 fn at_label(st: &AppState) -> String {
-    match &st.selection {
+    match &st.session.selection {
         Selection::Commit(oid) => short(*oid),
         _ => "HEAD".to_owned(),
     }
@@ -19,7 +19,7 @@ fn short(oid: git2::Oid) -> String {
 
 /// The selected commit, when it is exactly one graph row (not a stash selected in the sidebar).
 fn selected_row(st: &AppState, snap: &Snapshot) -> Option<git2::Oid> {
-    match &st.selection {
+    match &st.session.selection {
         Selection::Commit(oid) if snap.row_of.contains_key(oid) => Some(*oid),
         _ => None,
     }

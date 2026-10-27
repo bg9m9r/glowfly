@@ -255,7 +255,7 @@ pub fn go_to_open(st: &AppState, v: &PrView, t: &ReviewThread) -> Result<(DiffTa
         && *open == target
         && n > 0
         && st.settings.diff_mode == DiffMode::Hunks
-        && row_of_file_line(d, DiffMode::Hunks, st.settings.diff_layout, &st.view.diff_expanded, side, n).is_none()
+        && row_of_file_line(d, DiffMode::Hunks, st.settings.diff_layout, &st.session.tab_view.diff_expanded, side, n).is_none()
     {
         return Err(format!("Line {n} isn't in the changed lines; switch to Whole file to see it"));
     }

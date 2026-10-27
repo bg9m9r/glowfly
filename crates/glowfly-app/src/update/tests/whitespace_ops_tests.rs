@@ -118,9 +118,9 @@ b
         "the re-indent stays"
     );
     assert!(
-        matches!(st.undo.undo.last(), Some(Action::Discard { what: Discarded::Lines(1), path, .. }) if path == "f.txt"),
+        matches!(st.session.undo.undo.last(), Some(Action::Discard { what: Discarded::Lines(1), path, .. }) if path == "f.txt"),
         "{:?}",
-        st.undo.undo
+        st.session.undo.undo
     );
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir), NEW, "the working copy is back byte for byte");
@@ -151,9 +151,9 @@ fn discard_hunk_keeps_the_reindent_and_undoes_exactly() {
     drive(&mut st, Msg::ConfirmAccepted);
     assert_eq!(read(&dir), "a\n        x\n        y\nb\n");
     assert!(
-        matches!(st.undo.undo.last(), Some(Action::Discard { what: Discarded::Hunk, path, .. }) if path == "f.txt"),
+        matches!(st.session.undo.undo.last(), Some(Action::Discard { what: Discarded::Hunk, path, .. }) if path == "f.txt"),
         "{:?}",
-        st.undo.undo
+        st.session.undo.undo
     );
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir), NEW, "the working copy is back byte for byte");

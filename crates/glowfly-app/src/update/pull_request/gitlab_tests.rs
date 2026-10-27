@@ -18,7 +18,7 @@ fn gitlab() -> Target {
 /// `setup` on a GitLab repository, with merge request 7's panel open.
 fn opened(name: &str) -> (AppState, Vec<crate::effect::Effect>, [PathBuf; 2]) {
     let (mut st, work, bare, _) = setup(name, &[]);
-    st.forge.as_mut().unwrap().host = Some(gitlab());
+    st.session.forge.as_mut().unwrap().host = Some(gitlab());
     let fx = run(&mut st, PullRequestMsg::Open(7));
     (st, fx, [work, bare])
 }

@@ -61,11 +61,11 @@ fn cleanup(dirs: &[&Path]) {
 #[test]
 fn commit_then_undo_and_redo_end_to_end() {
     let (mut st, dir) = committed("undo-commit");
-    assert_eq!(st.undo.undo.len(), 1);
+    assert_eq!(st.session.undo.undo.len(), 1);
     assert!(
-        st.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo commit 'Second line'"),
+        st.session.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo commit 'Second line'"),
         "{}",
-        st.undo.undo_entry(st.settings.lang(), true).0
+        st.session.undo.undo_entry(st.settings.lang(), true).0
     );
 
     st.session.draft = Default::default();
@@ -73,12 +73,12 @@ fn commit_then_undo_and_redo_end_to_end() {
     assert_eq!(head_summary(&st), "first");
     assert!(st.snap.as_ref().unwrap().staged.iter().any(|f| f.path == "a.txt"), "the changes stay staged");
     assert_eq!(st.session.draft.summary, "Second line", "the message comes back into the empty draft");
-    assert_eq!(st.undo.redo.len(), 1);
+    assert_eq!(st.session.undo.redo.len(), 1);
     assert_eq!(last_toast(&st), (true, "Undo commit 'Second line' succeeded".to_owned()));
 
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert_eq!(head_summary(&st), "Second line");
-    assert_eq!((st.undo.undo.len(), st.undo.redo.len()), (1, 0));
+    assert_eq!((st.session.undo.undo.len(), st.session.undo.redo.len()), (1, 0));
     assert!(st.session.draft.is_empty(), "the restored message leaves the draft once the commit is redone");
 
     // A draft edited after the undo is the user's: redo leaves it alone.
@@ -118,16 +118,16 @@ fn unrecorded_job_blocks_and_fetch_keeps_history() {
     let (mut st, dir) = committed("undo-blocked");
     update(&mut st, Msg::git("Fetch", &["fetch"]), Instant::now());
     done(&mut st, true);
-    assert_eq!(st.undo.undo.len(), 1, "a fetch doesn't touch the branch or working tree");
+    assert_eq!(st.session.undo.undo.len(), 1, "a fetch doesn't touch the branch or working tree");
     update(&mut st, Msg::git("Pull", &["pull"]), Instant::now());
     done(&mut st, false);
-    assert_eq!(st.undo.undo.len(), 1, "a failed job changes nothing");
+    assert_eq!(st.session.undo.undo.len(), 1, "a failed job changes nothing");
 
     update(&mut st, Msg::git("Rename branch", &["branch", "-m", "main", "trunk"]), Instant::now());
     done(&mut st, true);
-    assert!(st.undo.undo.is_empty() && st.undo.redo.is_empty());
-    assert_eq!(st.undo.blocked.as_deref(), Some("Rename branch"));
-    let tip = st.undo.undo_entry(st.settings.lang(), true).1.unwrap_or_default();
+    assert!(st.session.undo.undo.is_empty() && st.session.undo.redo.is_empty());
+    assert_eq!(st.session.undo.blocked.as_deref(), Some("Rename branch"));
+    let tip = st.session.undo.undo_entry(st.settings.lang(), true).1.unwrap_or_default();
     assert!(tip.starts_with("Can't undo Rename branch"), "{tip}");
 
     let fx = update(&mut st, Msg::Job(JobMsg::Undo), Instant::now());
@@ -142,20 +142,20 @@ fn hard_reset_undo_refused_while_dirty_then_allowed() {
     let first = summary_oid(&st, "first").to_string();
     drive(&mut st, Msg::git("Reset (hard)", &["reset", "--hard", &first]));
     assert_eq!(head_summary(&st), "first");
-    assert_eq!(st.undo.undo.len(), 2, "the commit, then the reset");
-    assert!(matches!(st.undo.undo.last(), Some(Action::Reset { mode: ResetMode::Hard, .. })));
+    assert_eq!(st.session.undo.undo.len(), 2, "the commit, then the reset");
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Reset { mode: ResetMode::Hard, .. })));
 
     std::fs::write(dir.join("a.txt"), "changed\n").unwrap();
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let (ok, text) = last_toast(&st);
     assert!(!ok && text.contains("Commit or stash"), "{text}");
-    assert_eq!(st.undo.undo.len(), 2, "the entry stays so the undo can be retried");
+    assert_eq!(st.session.undo.undo.len(), 2, "the entry stays so the undo can be retried");
     assert!(st.job.is_none());
 
     git(&dir, &["checkout", "--", "."]);
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "Second line");
-    assert_eq!(st.undo.redo.len(), 1);
+    assert_eq!(st.session.undo.redo.len(), 1);
     cleanup(&[&dir]);
 }
 
@@ -167,13 +167,13 @@ fn stale_history_is_cleared() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     git(&dir, &["branch", "feature"]);
     drive(&mut st, Msg::git("Checkout", &["checkout", "feature"]));
-    assert_eq!(st.undo.undo.len(), 1);
+    assert_eq!(st.session.undo.undo.len(), 1);
 
     git(&dir, &["checkout", "-q", "main"]); // outside the app
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let (ok, text) = last_toast(&st);
     assert!(!ok && text.contains("undo history cleared"), "{text}");
-    assert!(st.undo.undo.is_empty() && st.undo.redo.is_empty());
+    assert!(st.session.undo.undo.is_empty() && st.session.undo.redo.is_empty());
     cleanup(&[&dir]);
 }
 
@@ -185,7 +185,7 @@ fn discard_all_is_undoable_end_to_end() {
     drive(&mut st, Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]));
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.is_dirty());
-    assert_eq!((snap.stashes.len(), st.undo.undo.len()), (1, 1));
+    assert_eq!((snap.stashes.len(), st.session.undo.undo.len()), (1, 1));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let snap = st.snap.as_ref().unwrap();
@@ -196,7 +196,7 @@ fn discard_all_is_undoable_end_to_end() {
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.is_dirty());
     assert_eq!(snap.stashes.len(), 1);
-    assert!(matches!(st.undo.undo.last(), Some(Action::DiscardAll { stash, .. }) if *stash == snap.stashes[0].oid));
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::DiscardAll { stash, .. }) if *stash == snap.stashes[0].oid));
     cleanup(&[&dir]);
 }
 
@@ -224,24 +224,24 @@ fn undo_result_lands_in_its_own_tab() {
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     st.session.draft.summary = "Second line".into();
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
-    assert_eq!(st.undo.undo.len(), 1);
+    assert_eq!(st.session.undo.undo.len(), 1);
 
     let effect =
         update(&mut st, Msg::Job(JobMsg::Undo), Instant::now()).into_iter().find(|e| matches!(e, Effect::UndoRedo { .. })).expect("undo");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    assert!(st.undo.undo.is_empty() && st.undo.blocked.is_none(), "tab B has its own history");
+    assert!(st.session.undo.undo.is_empty() && st.session.undo.blocked.is_none(), "tab B has its own history");
     let reply = runner::execute(effect).expect("a result");
     assert!(matches!(reply, Msg::Job(JobMsg::JobDone { .. })), "undo results are not scoped to the active tab");
     let fx = update(&mut st, reply, Instant::now());
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "tab B is not refreshed");
     assert!(st.job.is_none());
-    assert!(st.undo.undo.is_empty() && st.undo.redo.is_empty() && st.undo.blocked.is_none());
+    assert!(st.session.undo.undo.is_empty() && st.session.undo.redo.is_empty() && st.session.undo.blocked.is_none());
     let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
-    assert_eq!((parked.undo.undo.len(), parked.undo.redo.len()), (0, 1));
+    assert_eq!((parked.session.undo.undo.len(), parked.session.undo.redo.len()), (0, 1));
     assert_eq!(parked.session.draft.summary, "Second line");
 
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    assert_eq!(st.undo.redo.len(), 1);
+    assert_eq!(st.session.undo.redo.len(), 1);
     cleanup(&[&a, &b]);
 }
 
@@ -253,7 +253,7 @@ fn undo_requires_idle_and_history() {
 
     let dir = scratch_repo("undo-idle");
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    st.undo.record(dummy(0));
+    st.session.undo.record(dummy(0));
     st.job = Some(RunningJob {
         label: "Fetch".into(),
         workdir: st.workdir(),
@@ -275,7 +275,7 @@ fn undo_requires_idle_and_history() {
     let result = Ok(Box::new(snap));
     let generation = st.load_gen;
     update(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation, kind: LoadKind::Open, result }), Instant::now());
-    assert!(st.undo.undo.is_empty());
+    assert!(st.session.undo.undo.is_empty());
 
     let mut h = UndoHistory { redo: vec![dummy(99)], blocked: Some("Merge".into()), ..Default::default() };
     for i in 0..25 {
@@ -301,15 +301,15 @@ fn discarded_file_comes_back_with_undo() {
     std::fs::write(dir.join("a.txt"), "work in progress\n").unwrap();
     drive(&mut st, Msg::Stage(StageMsg::DiscardFile("a.txt".into())));
     assert_ne!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");
-    assert!(matches!(st.undo.undo.last(), Some(Action::Discard { path, .. }) if path == "a.txt"), "{:?}", st.undo.undo);
-    assert_eq!(st.undo.undo_entry(st.settings.lang(), true).0, "Undo discard in a.txt");
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Discard { path, .. }) if path == "a.txt"), "{:?}", st.session.undo.undo);
+    assert_eq!(st.session.undo.undo_entry(st.settings.lang(), true).0, "Undo discard in a.txt");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");
-    assert!(st.job.is_none() && st.undo.redo.len() == 1, "{:?}", st.undo);
+    assert!(st.job.is_none() && st.session.undo.redo.len() == 1, "{:?}", st.session.undo);
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert_ne!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");
-    assert!(matches!(st.undo.undo.last(), Some(Action::Discard { .. })));
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Discard { .. })));
     cleanup(&[&dir]);
 }
 
@@ -326,7 +326,7 @@ fn hard_reset_stashes_uncommitted_work_and_undo_restores_it() {
     st.job = None;
     drive(&mut st, Msg::git("Reset (hard)", &["reset", "--hard", &first]));
     assert_eq!(head_summary(&st), "first");
-    assert!(matches!(st.undo.undo.last(), Some(Action::Reset { stash: Some(_), .. })), "{:?}", st.undo.undo);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Reset { stash: Some(_), .. })), "{:?}", st.session.undo.undo);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "Second line");

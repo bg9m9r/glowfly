@@ -57,7 +57,7 @@ fn with_prs(theme: ThemeChoice, name: &str, provider: Provider, filters: RepoFor
         pr(10, "Dark mode", "linus", &["grace"]),
         pr(9, "Update README", "grace", &[]),
     ];
-    st.forge = Some(f);
+    st.session.forge = Some(f);
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     st.settings.set_forge_filters(&real, filters);
     (st, dir)
@@ -76,7 +76,7 @@ fn ada() -> Me {
 #[test]
 fn sidebar_pr_filter_chip() {
     let (mut st, dir) = with_prs(ThemeChoice::Dark, "pr-filter-chip", Provider::GitHub, showing(FilterKind::Prs, Builtin::NeedsMyReview));
-    st.forge.as_mut().unwrap().filters.me = MeState::Known(ada());
+    st.session.forge.as_mut().unwrap().filters.me = MeState::Known(ada());
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Pull requests filter: Needs my review").is_some());
@@ -170,7 +170,7 @@ fn sidebar_issue_filter_jira() {
     filters.set_choice(FilterKind::Issues, FilterChoice::Saved(id));
     let items = vec![jira_issue("PROJ-12", "Crash on start", &["bug"]), jira_issue("PROJ-14", "Faster search", &[])];
     f.filters.issues = Some(IssueList { choice: FilterChoice::Saved(id), conditions: sprint, items, status: Status::Ok });
-    st.forge = Some(f);
+    st.session.forge = Some(f);
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     st.settings.set_forge_filters(&real, filters);
     let mut h = harness(st, true);
@@ -197,7 +197,7 @@ fn loaded(options: FilterOptions) -> OptionsState {
 #[test]
 fn forge_filter_dialog_pr() {
     let (mut st, dir) = with_prs(ThemeChoice::Light, "filter-dialog-pr", Provider::GitHub, RepoForgeFilters::default());
-    let f = st.forge.as_mut().unwrap();
+    let f = st.session.forge.as_mut().unwrap();
     f.filters.pr_options = loaded(FilterOptions {
         labels: vec!["bug".into(), "docs".into(), "performance".into()],
         milestones: vec![Named { key: "3".into(), title: "v1.2".into() }],
@@ -222,7 +222,7 @@ fn forge_filter_dialog_issue_jira() {
         milestones: vec![Named { key: "2.0".into(), title: "2.0".into() }],
         sprints: vec![Named { key: "42".into(), title: "Sprint 9".into() }],
     });
-    st.forge = Some(f);
+    st.session.forge = Some(f);
     let mut form = FilterForm::new(FilterKind::Issues, Some(Provider::JiraCloud), &Builtin::IssuesAssignedToMe.conditions());
     form.name = "This sprint".into();
     form.c.sprint = Sprint::Named { id: 42, name: "Sprint 9".into() };
@@ -238,7 +238,7 @@ fn forge_filter_dialog_issue_jira() {
 #[test]
 fn forge_filter_dialog_problems() {
     let (mut st, dir) = with_prs(ThemeChoice::Light, "filter-dialog-problems", Provider::GitHub, two_saved());
-    st.forge.as_mut().unwrap().filters.pr_options = OptionsState::Loading;
+    st.session.forge.as_mut().unwrap().filters.pr_options = OptionsState::Loading;
     let mut form = FilterForm::new(FilterKind::Prs, Some(Provider::GitHub), &Conditions::default());
     form.name = "ui WORK".into();
     form.touched = Touched::all();

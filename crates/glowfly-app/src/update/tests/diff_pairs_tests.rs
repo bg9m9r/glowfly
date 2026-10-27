@@ -59,11 +59,11 @@ fn jump_to_change_uses_similarity_rows() {
 
     // Switching from inline at hunk 1 lands on its split header.
     let mut st = with(&d, DiffLayout::Inline);
-    st.view.diff_top_row = header_rows(&d, DiffLayout::Inline)[1];
+    st.session.tab_view.diff_top_row = header_rows(&d, DiffLayout::Inline)[1];
     run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));
     // And back, from inside hunk 1's split rows.
-    st.view.diff_top_row = split[1] + 1;
+    st.session.tab_view.diff_top_row = split[1] + 1;
     run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Inline)));
     assert_eq!(st.view.diff_scroll_to_row, Some(header_rows(&d, DiffLayout::Inline)[1]));
 }

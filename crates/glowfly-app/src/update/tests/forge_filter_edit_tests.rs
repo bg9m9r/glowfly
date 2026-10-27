@@ -43,10 +43,10 @@ fn a_new_filter_starts_from_the_one_on_show_and_loads_options_once() {
     let calls = filter_calls(&fx);
     assert!(matches!(calls[..], [(_, FilterCall::Options(FilterKind::Prs))]), "{calls:?}");
     assert!(filter_calls(&send(&mut st, FilterMsg::NewDialog(FilterKind::Prs))).is_empty(), "loading");
-    let host = st.forge.as_ref().unwrap().host.clone().unwrap();
+    let host = st.session.forge.as_ref().unwrap().host.clone().unwrap();
     let options = FilterOptions { labels: vec!["bug".into()], ..Default::default() };
     reply(&mut st, host, FilterResult::Options(FilterKind::Prs, Ok(options.clone())));
-    assert_eq!(st.forge.as_ref().unwrap().filters.pr_options, OptionsState::Loaded(options));
+    assert_eq!(st.session.forge.as_ref().unwrap().filters.pr_options, OptionsState::Loaded(options));
     assert!(filter_calls(&send(&mut st, FilterMsg::NewDialog(FilterKind::Prs))).is_empty(), "loaded");
     let _ = std::fs::remove_dir_all(dir);
 }
@@ -107,10 +107,10 @@ fn editing_replaces_in_place_and_moving_stays_within_a_kind() {
 fn removing_the_filter_on_show_goes_back_to_the_default() {
     let (mut st, dir) = open("ffe-remove");
     let id = create(&mut st, FilterKind::Issues, "Bugs");
-    assert!(st.forge.as_ref().unwrap().filters.issues.is_some(), "searching");
+    assert!(st.session.forge.as_ref().unwrap().filters.issues.is_some(), "searching");
     assert!(saved(&send(&mut st, FilterMsg::Remove(id))).is_some());
     assert_eq!(filters(&st).choice(FilterKind::Issues), FilterChoice::default_for(FilterKind::Issues));
-    assert!(st.forge.as_ref().unwrap().filters.issues.is_none(), "assigned issues again");
+    assert!(st.session.forge.as_ref().unwrap().filters.issues.is_none(), "assigned issues again");
     assert!(filters(&st).is_empty());
     let _ = std::fs::remove_dir_all(dir);
 }

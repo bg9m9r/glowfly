@@ -68,12 +68,12 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         RepoMsg::SelectCommit(oid) => select_commit(st, oid, false, fx),
         RepoMsg::JumpTo(oid) => select_commit(st, oid, true, fx),
         RepoMsg::DetailLoaded { oid, result } => {
-            if st.selection != Selection::Commit(oid) {
+            if st.session.selection != Selection::Commit(oid) {
                 return;
             }
             match result {
                 Ok(d) => {
-                    let keys = st.forge.as_ref().map(|f| f.issue_refs(&d.message)).unwrap_or_default();
+                    let keys = st.session.forge.as_ref().map(|f| f.issue_refs(&d.message)).unwrap_or_default();
                     st.session.detail = Some(d);
                     super::signatures::want(st, oid, fx);
                     super::forge::want_issues(st, keys, fx);
@@ -113,7 +113,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     }
                     // Folds opened in another file don't apply to this one.
                     if !matches!(shown, Some((t, _)) if *t == target) {
-                        st.view.diff_expanded.clear();
+                        st.session.tab_view.diff_expanded.clear();
                     }
                     // A different file opens at the top (or its first change block, or the hunk kept
                     // through a view mode switch, or the change a step lands on); a reload after a
@@ -121,16 +121,16 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     if !reload {
                         let hunk = st.view.diff_open_hunk.take();
                         let row = match landing {
-                            Some(l) => super::diff::landing_row(&d, &st.settings, l, &st.view.diff_expanded),
+                            Some(l) => super::diff::landing_row(&d, &st.settings, l, &st.session.tab_view.diff_expanded),
                             None => {
-                                let (s, ex) = (&st.settings, &st.view.diff_expanded);
+                                let (s, ex) = (&st.settings, &st.session.tab_view.diff_expanded);
                                 // A file opened from a code comment lands on its line.
                                 line.and_then(|(_, side, n)| row_of_file_line(&d, s.diff_mode, s.diff_layout, ex, side, n))
                                     .unwrap_or_else(|| super::diff::opening_row(&d, s, hunk, ex))
                             }
                         };
                         st.view.diff_scroll_to_row = Some(row);
-                        st.view.diff_top_row = row;
+                        st.session.tab_view.diff_top_row = row;
                         st.view.diff_cursor = landing.map(|_| row);
                     } else {
                         st.view.diff_cursor = None;
@@ -153,7 +153,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                 Err(_) if reload => {
                     st.session.diff.view = None;
                     st.view.diff_lines.clear();
-                    st.view.diff_expanded.clear();
+                    st.session.tab_view.diff_expanded.clear();
                     st.view.diff_open_hunk = None;
                 }
                 Err(e) => {
@@ -257,7 +257,7 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
 pub(super) fn close_diff(st: &mut AppState) {
     st.session.diff.view = None;
     st.view.diff_lines.clear();
-    st.view.diff_expanded.clear();
+    st.session.tab_view.diff_expanded.clear();
     st.view.diff_open_hunk = None;
     st.view.diff_landing = None;
     st.view.file_reveal = None;
@@ -289,7 +289,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             st.missing_repos = missing.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
             let label = st.tabs.get(st.active_tab).and_then(|t| t.label.as_deref());
             fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Glowfly", label.unwrap_or(&snap.name)))));
-            st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
+            st.session.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
             st.session.detail = None;
             close_diff(st);
             super::conflict::close(st);
@@ -302,7 +302,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             st.session.gitflow_panel = false;
             st.session.gitflow_resume = None;
             st.session.draft = CommitDraft::default();
-            st.undo = Default::default();
+            st.session.undo = Default::default();
             st.view.scroll_to_row = Some(0);
             super::tabs::forget_repo_reads(st);
         }
@@ -310,16 +310,16 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             // (A load for more that loaded everything comes back as a refresh: runner/load.rs.)
             super::history::head_moved(st, &snap, fx);
             super::blame::head_moved(st, &snap, fx);
-            if let Selection::Commit(oid) = st.selection {
+            if let Selection::Commit(oid) = st.session.selection {
                 // A pull request's commit (a fork's head, say) may be on no branch of the graph.
                 let in_pr = st.session.pull_request.view.as_ref().is_some_and(|v| v.has_commit(oid));
                 let still_there = snap.row_of.contains_key(&oid) || snap.stashes.iter().any(|s| s.oid == oid) || in_pr;
                 if !still_there {
-                    st.selection = Selection::None;
+                    st.session.selection = Selection::None;
                     st.session.detail = None;
                 }
             }
-            if matches!(st.selection, Selection::Commits(_)) {
+            if matches!(st.session.selection, Selection::Commits(_)) {
                 super::selection::refreshed(st, &snap, fx);
             }
             super::compare_wip::refreshed(st, &snap, fx);
@@ -374,15 +374,15 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
 
 /// Selects the WIP row, asking for the issue the checked-out branch names.
 pub(super) fn select_wip(st: &mut AppState, fx: &mut Vec<Effect>) {
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     st.session.detail = None;
-    let key = st.snap.as_ref().and_then(|s| s.head_branch.clone()).and_then(|b| st.forge.as_ref().and_then(|f| f.branch_issue(&b)));
+    let key = st.snap.as_ref().and_then(|s| s.head_branch.clone()).and_then(|b| st.session.forge.as_ref().and_then(|f| f.branch_issue(&b)));
     super::forge::want_issues(st, key.into_iter().collect(), fx);
 }
 
 pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     close_diff(st);
     super::conflict::close(st);
     super::history::close(st);

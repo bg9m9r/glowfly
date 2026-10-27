@@ -136,12 +136,12 @@ fn checkout_remote_refuses_name_clashes() {
 fn compare_with_head() {
     let (mut st, work, bare) = with_origin("rb-compare");
     let compare = |oid: Oid| Msg::Selection(SelectionMsg::CompareWithHead { oid, name: "origin/feature".into() });
-    let before = st.selection.clone();
+    let before = st.session.selection.clone();
     let tip = remote_tip(&st, "origin", "feature");
     let fx = update(&mut st, compare(tip), Instant::now());
     assert!(fx.is_empty());
     assert_eq!(last_log(&st), "origin/feature is at the same commit as main.");
-    assert_eq!(st.selection, before, "the selection is unchanged");
+    assert_eq!(st.session.selection, before, "the selection is unchanged");
 
     remote_commit(&bare, "feature", "f.txt");
     git(&work, &["fetch", "-q", "origin"]);
@@ -149,7 +149,7 @@ fn compare_with_head() {
     let head = st.snap.as_ref().unwrap().head_oid.unwrap();
     let tip = remote_tip(&st, "origin", "feature");
     let fx = update(&mut st, compare(tip), Instant::now());
-    match &st.selection {
+    match &st.session.selection {
         Selection::Commits(m) => assert_eq!(m.compare_ends(), Some((head, tip))),
         other => panic!("not a pair: {other:?}"),
     }

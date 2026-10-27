@@ -285,16 +285,16 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
             None => return,
         },
         // The same messages as the graph's menu, so blocked edits explain themselves.
-        I::RewordCommit => match &st.selection {
+        I::RewordCommit => match &st.session.selection {
             Selection::Commit(o) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::Reword(*o))),
             _ => return,
         },
-        I::SquashCommit => match &st.selection {
+        I::SquashCommit => match &st.session.selection {
             Selection::Commit(o) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::SquashIntoParent(*o))),
             Selection::Commits(m) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::Squash(m.oids.clone()))),
             _ => return,
         },
-        I::DropCommit => match &st.selection {
+        I::DropCommit => match &st.session.selection {
             Selection::Commit(o) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::Drop(vec![*o]))),
             Selection::Commits(m) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::Drop(m.oids.clone()))),
             _ => return,

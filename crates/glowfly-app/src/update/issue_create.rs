@@ -26,7 +26,7 @@ pub(super) fn open_dialog(st: &mut AppState, fx: &mut Vec<Effect>) {
     if create_blocked(st).is_some() || st.modal.is_some() {
         return;
     }
-    let Some(target) = st.forge.as_ref().and_then(|f| f.tracker.clone()) else { return };
+    let Some(target) = st.session.forge.as_ref().and_then(|f| f.tracker.clone()) else { return };
     st.modal = Some(Modal::CreateIssue(Box::new(IssueForm::new(target))));
     ask_options(st, fx);
 }
@@ -151,7 +151,7 @@ pub(super) fn created(
             st.toast_action(true, text, ToastAction { label: "View".into(), msg: Box::new(open), workdir: Some(workdir.to_owned()) }, now);
             let branch = waiting && form_mut(st).is_some_and(|f| f.then_branch);
             let name = forge::branch_name_for(&issue);
-            if let Some(fs) = st.forge.as_mut().filter(|f| f.tracker.as_ref() == Some(target)) {
+            if let Some(fs) = st.session.forge.as_mut().filter(|f| f.tracker.as_ref() == Some(target)) {
                 fs.cache.insert(issue.key.clone(), issue);
             }
             super::forge::refresh(st, true, false, now, fx);
@@ -164,7 +164,7 @@ pub(super) fn created(
         Err(e) => {
             st.log(false, format!("Creating the {noun} failed: {}", e.message));
             if e.auth
-                && let Some(fs) = st.forge.as_mut()
+                && let Some(fs) = st.session.forge.as_mut()
             {
                 fs.auth.remove(&target.account().key());
             }

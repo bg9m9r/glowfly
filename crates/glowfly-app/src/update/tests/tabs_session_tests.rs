@@ -1,7 +1,7 @@
 //! Headless tests for the per-tab state that parks with its tab as one `RepoSession`: every view,
-//! the open diff and the draft come back after a switch, and the generation counters (the
-//! repository reads' included) keep rising across tabs, so a result from before a park, or for
-//! another tab or a closed one, never lands.
+//! the open diff, the draft, the selection, undo, searches and view state come back after a
+//! switch, and the generation counters (the repository reads' included) keep rising across tabs,
+//! so a result from before a park, or for another tab or a closed one, never lands.
 
 use super::issue_tests::{github, listed};
 use super::tabs_tests::{cleanup, fake_tabs, two_repos};
@@ -12,6 +12,7 @@ use crate::msg::{CloseRequest, HistoryMsg, Msg, RepoMsg, TabsMsg};
 use crate::state::blame::BlameView;
 use crate::state::conflict::ConflictView;
 use crate::state::diff_preview::DiffPreview;
+use crate::state::file_folds::FileListId;
 use crate::state::history::FileHistoryView;
 use crate::state::issue::IssueView;
 use crate::state::journal::JournalView;
@@ -19,11 +20,12 @@ use crate::state::lfs::LfsDiffNote;
 use crate::state::range_diff::{Origin, RangeDiffView};
 use crate::state::rebase::RebasePanel;
 use crate::state::session::RepoSession;
-use crate::state::{AppState, ForgeState};
+use crate::state::{AppState, ForgeState, Selection};
 use glowfly_core::conflict_check::{MergeTarget, Prediction, TargetKind};
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide};
 use glowfly_core::range_diff::Ends;
 use glowfly_core::repo::{DiffTarget, FileDiff};
+use glowfly_core::undo::Action;
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -150,6 +152,9 @@ fn every_session_view_round_trips_a_switch() {
     s.diff.view = a_diff();
     s.diff.lfs = Some(a_note());
     s.draft.summary = "wip".into();
+    s.selection = Selection::Wip;
+    s.forge = Some(ForgeState::new(Some(github()), "origin".into(), Some(github())));
+    s.forge.as_mut().unwrap().loading = 2;
     let before = counters(&st.session);
 
     select(&mut st, 1);
@@ -178,9 +183,44 @@ fn every_session_view_round_trips_a_switch() {
     assert_eq!(s.diff.view.as_ref().map(|(t, _)| t.path()), Some("a.txt"), "the diff comes back");
     assert_eq!(s.diff.lfs, Some(a_note()), "with its note and Show pointer text choice");
     assert_eq!(s.draft.summary, "wip");
+    assert_eq!(s.selection, Selection::None, "no selection without a loaded snapshot");
+    assert_eq!(s.forge.as_ref().map(|f| f.loading), Some(0), "the forge replies in flight count as dropped");
+    assert!(s.tab_view.parked_in.is_none(), "the diff's mode and layout are taken on return");
     for (k, (after, was)) in counters(s).into_iter().zip(before).enumerate() {
         assert!(after > was, "counter {k} rose: {was} -> {after}");
     }
+}
+
+#[test]
+fn selection_undo_searches_and_view_round_trip() {
+    let (mut st, a, b) = two_repos("tabs-session-view");
+    st.session.selection = Selection::None; // b's
+    select(&mut st, 0);
+    run(&mut st, Msg::Repo(RepoMsg::SelectWip));
+    assert_eq!(st.session.selection, Selection::Wip);
+    st.session.undo.record(Action::DeleteBranch { name: "old".into(), oid: git2::Oid::zero(), upstream: None });
+    st.session.search.filter = true;
+    let v = &mut st.session.tab_view;
+    (v.search, v.ref_filter, v.graph_scroll) = ("fix".into(), "main".into(), (120.0, 400.0));
+    v.file_folds.toggle(FileListId::Unstaged, "src".into());
+
+    select(&mut st, 1);
+    let s = &st.session;
+    assert_eq!(s.selection, Selection::None, "b has its own selection");
+    assert!(s.undo.undo.is_empty() && !s.search.filter, "and its own undo history and search");
+    let v = &s.tab_view;
+    assert!(v.search.is_empty() && v.ref_filter.is_empty() && v.graph_scroll == (0.0, 0.0), "and its own view state");
+    assert!(!v.file_folds.is_closed(FileListId::Unstaged, "src"));
+
+    select(&mut st, 0);
+    let s = &st.session;
+    assert_eq!(s.selection, Selection::Wip, "a's selection is back");
+    assert!(s.undo.undo.len() == 1 && s.search.filter, "with its undo history and search");
+    let v = &s.tab_view;
+    assert_eq!((v.search.as_str(), v.ref_filter.as_str(), v.graph_scroll), ("fix", "main", (120.0, 400.0)));
+    assert!(v.file_folds.is_closed(FileListId::Unstaged, "src"));
+    assert_eq!(st.view.scroll_offset, Some(120.0), "the graph scrolls back to where it was");
+    cleanup(&[&a, &b]);
 }
 
 #[test]

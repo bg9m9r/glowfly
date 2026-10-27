@@ -5,10 +5,10 @@ use crate::state::AppState;
 use std::path::Path;
 use std::time::Instant;
 
-/// Records `action` in the undo history of the parked tab for `workdir`.
+/// Records `action` in the undo history in the session of the parked tab for `workdir`.
 fn record_parked(st: &mut AppState, workdir: &Path, action: glowfly_core::undo::Action) {
     if let Some(p) = st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()) {
-        p.undo.record(action);
+        p.session.undo.record(action);
     }
 }
 

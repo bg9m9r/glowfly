@@ -21,7 +21,9 @@ use std::time::Instant;
 
 /// A request to the active repository's service, or why there can be none.
 pub(super) fn service_request(st: &AppState) -> Result<PrRequest, String> {
-    let (Some(workdir), Some(fs)) = (st.workdir(), st.forge.as_ref()) else { return Err("No hosting service for this repository".into()) };
+    let (Some(workdir), Some(fs)) = (st.workdir(), st.session.forge.as_ref()) else {
+        return Err("No hosting service for this repository".into());
+    };
     let Some(target) = fs.host.clone() else { return Err("No hosting service for this repository".into()) };
     let account = target.account();
     if !forge::may_contact(&account, &st.settings.connections) {
@@ -113,7 +115,7 @@ pub(super) fn submit_review(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 pub(super) fn merge(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let default_branch = st.forge.as_ref().and_then(|f| f.default_branch.clone());
+    let default_branch = st.session.forge.as_ref().and_then(|f| f.default_branch.clone());
     let Some(v) = st.session.pull_request.view.as_ref().filter(|v| merge_blocked(v).is_none()) else { return };
     let (Some(page), Some(method)) = (v.loaded(), v.forms.merge_method) else { return };
     let req = MergeRequest {
@@ -168,7 +170,7 @@ pub(super) fn replied(
     now: Instant,
     fx: &mut Vec<Effect>,
 ) {
-    let active = st.workdir().as_deref() == Some(workdir) && st.forge.as_ref().and_then(|f| f.host.as_ref()) == Some(target);
+    let active = st.workdir().as_deref() == Some(workdir) && st.session.forge.as_ref().and_then(|f| f.host.as_ref()) == Some(target);
     let failed_auth = match &reply {
         PrReply::Loaded(Err(e)) | PrReply::Checks(Err(e)) | PrReply::Commented(Err(e)) | PrReply::Reviewed(_, Err(e)) => e.auth,
         PrReply::Merged { result: Err(e), .. }
@@ -179,7 +181,7 @@ pub(super) fn replied(
     };
     if active && failed_auth {
         let key = target.account().key();
-        if let Some(fs) = st.forge.as_mut() {
+        if let Some(fs) = st.session.forge.as_mut() {
             fs.auth.remove(&key);
         }
     }
@@ -209,7 +211,7 @@ pub(super) fn replied(
         }
         other => other,
     };
-    let into = match (&st.session.pull_request.view, &st.forge) {
+    let into = match (&st.session.pull_request.view, &st.session.forge) {
         (Some(v), _) if open => v.pr.target.clone(),
         (_, Some(fs)) if active => fs.prs.iter().find(|p| p.id == id).map(|p| p.target.clone()).unwrap_or_default(),
         _ => String::new(),

@@ -22,12 +22,12 @@ fn branch(st: &AppState, name: &str) -> BranchInfo {
 }
 
 fn state_of(st: &AppState, name: &str) -> Option<HostBranch> {
-    push_pr::host_branch(&branch(st, name), st.snap.as_ref().unwrap(), st.forge.as_ref().unwrap())
+    push_pr::host_branch(&branch(st, name), st.snap.as_ref().unwrap(), st.session.forge.as_ref().unwrap())
 }
 
 fn target(st: &AppState, sel: Option<Oid>, name: &str) -> Option<String> {
     let sel = sel.map(Selection::Commit).unwrap_or(Selection::None);
-    push_pr::chosen_target(&sel, &branch(st, name), st.snap.as_ref().unwrap(), st.forge.as_ref().unwrap())
+    push_pr::chosen_target(&sel, &branch(st, name), st.snap.as_ref().unwrap(), st.session.forge.as_ref().unwrap())
 }
 
 fn tip(st: &AppState, name: &str) -> Oid {
@@ -67,9 +67,9 @@ fn chosen_target_rules() {
     let main = tip(&st, "main");
     // main and feature share a tip: the default branch, else the first by name.
     assert_eq!(target(&st, Some(main), "topic"), Some("feature".into()));
-    st.forge.as_mut().unwrap().default_branch = Some("main".into());
+    st.session.forge.as_mut().unwrap().default_branch = Some("main".into());
     assert_eq!(target(&st, Some(main), "topic"), Some("main".into()));
-    st.forge.as_mut().unwrap().default_branch = None;
+    st.session.forge.as_mut().unwrap().default_branch = None;
     // Move feature on (pushed): main's tip is main alone.
     commit_on(&work, "feature", "feature", "More feature");
     git(&work, &["push", "-q", "origin", "feature"]);
@@ -86,7 +86,7 @@ fn chosen_target_rules() {
     assert_eq!(target(&st, Some(feature), "wip"), None);
     assert_eq!(target(&st, Some(main), "wip"), Some("main".into()));
     // A remote branch as the source.
-    let (snap, fs) = (st.snap.as_ref().unwrap(), st.forge.as_ref().unwrap());
+    let (snap, fs) = (st.snap.as_ref().unwrap(), st.session.forge.as_ref().unwrap());
     let remote = |sel: Oid| push_pr::chosen_target_for(&Selection::Commit(sel), "feature", Some(feature), None, snap, fs);
     assert_eq!(remote(main), Some("main".into()));
     assert_eq!(remote(feature), None);
@@ -125,9 +125,9 @@ fn palette_pr_entries() {
     git(&work, &["checkout", "-q", "topic"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(pr_commands(&st), [PaletteCommand::CreatePr("topic".into()), PaletteCommand::PushAndCreatePr("topic".into())]);
-    st.forge.as_mut().unwrap().prs = vec![pr_for("topic")];
+    st.session.forge.as_mut().unwrap().prs = vec![pr_for("topic")];
     assert!(pr_commands(&st).is_empty());
-    st.forge.as_mut().unwrap().prs.clear();
+    st.session.forge.as_mut().unwrap().prs.clear();
     let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::PushAndCreatePr("topic".into()))), Instant::now());
     assert_eq!(fx.iter().filter(|e| matches!(e, Effect::RunGit { .. })).count(), 1, "{fx:?}");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Push"));
@@ -135,7 +135,7 @@ fn palette_pr_entries() {
     git(&work, &["checkout", "-q", "feature"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(pr_commands(&st), [PaletteCommand::CreatePr("feature".into())]);
-    st.forge = None;
+    st.session.forge = None;
     assert!(pr_commands(&st).is_empty());
     cleanup(&work, &bare);
 }
@@ -144,8 +144,8 @@ fn open_pr_is_found_by_the_upstream_name() {
     let (mut st, work, bare) = with_host("pr-open-by-upstream");
     git(&work, &["checkout", "-q", "-b", "wip", "--track", "origin/feature"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    st.forge.as_mut().unwrap().prs = vec![pr_for("feature")];
-    let (snap, fs) = (st.snap.as_ref().unwrap(), st.forge.as_ref().unwrap());
+    st.session.forge.as_mut().unwrap().prs = vec![pr_for("feature")];
+    let (snap, fs) = (st.snap.as_ref().unwrap(), st.session.forge.as_ref().unwrap());
     assert_eq!(push_pr::open_pr(snap, fs, "wip").map(|p| p.id), Some(7), "wip is feature on the host");
     assert!(push_pr::open_pr(snap, fs, "topic").is_none());
     assert!(matches!(push_pr::push_item(snap, fs), Err(why) if why.contains("already has")));

@@ -63,7 +63,7 @@ fn with_whole(name: &str, theme: ThemeChoice, layout: DiffLayout, commit: bool, 
     let w = diff.whole.as_deref().expect("the whole file loads");
     assert_eq!(w.blocks.len(), 2);
     assert!(w.diff.highlight.is_some(), "shapes.rs is highlighted as Rust");
-    st.view.diff_expanded = Expanded::all(w);
+    st.session.tab_view.diff_expanded = Expanded::all(w);
     st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     st.settings.diff_mode = DiffMode::WholeFile;
@@ -172,7 +172,7 @@ fn diff_whole_folded() {
     remove_fixture(&dir);
     let (mut st, dir) = with_notes("whole-folded-split", ThemeChoice::Light, DiffLayout::Split);
     let key = middle_key(&st);
-    st.view.diff_expanded.insert(key);
+    st.session.tab_view.diff_expanded.insert(key);
     render("diff_whole_folded_split_light", st, false);
     remove_fixture(&dir);
 }
@@ -196,7 +196,7 @@ fn fold_row_click_sends_expand() {
 fn diff_whole_fold_back() {
     let (mut st, dir) = with_notes("whole-fold-back", ThemeChoice::Dark, DiffLayout::Inline);
     let key = middle_key(&st);
-    st.view.diff_expanded.insert(key);
+    st.session.tab_view.diff_expanded.insert(key);
     render("diff_whole_fold_back", st, true);
     remove_fixture(&dir);
 }
@@ -206,7 +206,7 @@ fn fold_back_click_sends_collapse() {
     for layout in [DiffLayout::Inline, DiffLayout::Split] {
         let (mut st, dir) = with_notes(&format!("whole-fold-back-click-{layout:?}"), ThemeChoice::Dark, layout);
         let key = middle_key(&st);
-        st.view.diff_expanded.insert(key);
+        st.session.tab_view.diff_expanded.insert(key);
         let mut h = harness(st, true);
         h.run();
         h.get_by_label("Fold 11 unchanged lines").click();

@@ -139,5 +139,5 @@ Started from {}. Finish merges it into {}{tag}.",
 /// the tracker has issues assigned to the user.
 pub fn issues_ready(st: &AppState) -> bool {
     st.snap.as_ref().is_some_and(|s| s.gitflow.is_initialized())
-        && st.forge.as_ref().is_some_and(|f| f.tracker.is_some() && !f.my_issues.is_empty())
+        && st.session.forge.as_ref().is_some_and(|f| f.tracker.is_some() && !f.my_issues.is_empty())
 }

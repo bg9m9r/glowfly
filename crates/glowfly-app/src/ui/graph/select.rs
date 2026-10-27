@@ -55,7 +55,15 @@ pub(super) fn current_row(sel: &Selection, rows: &GraphRows) -> Option<usize> {
 /// it in view. Shift+Up/Down extend the commit selection from its moving end instead, as a
 /// Shift-click on that row would, stopping at the WIP row; without a selected commit they act
 /// as plain arrows.
-pub(super) fn keyboard_nav(ui: &egui::Ui, sel: &Selection, snap: &Snapshot, rows: &GraphRows, view: &mut ViewState, msgs: &mut Vec<Msg>) {
+pub(super) fn keyboard_nav(
+    ui: &egui::Ui,
+    sel: &Selection,
+    snap: &Snapshot,
+    rows: &GraphRows,
+    scroll: (f32, f32),
+    view: &mut ViewState,
+    msgs: &mut Vec<Msg>,
+) {
     let typing = ui.ctx().memory(|m| m.focused().is_some());
     if typing || rows.is_empty() {
         return;
@@ -91,7 +99,7 @@ pub(super) fn keyboard_nav(ui: &egui::Ui, sel: &Selection, snap: &Snapshot, rows
         (Some(DisplayRow::Wip), None) => Msg::Repo(RepoMsg::SelectWip),
         (Some(DisplayRow::Worktree(_)) | None, _) => return,
     });
-    let (offset, height) = view.graph_scroll;
+    let (offset, height) = scroll;
     let top = next as f32 * ROW_H;
     if top < offset {
         view.scroll_offset = Some(top);

@@ -117,7 +117,7 @@ fn trello_cards_menu() {
         facets: Default::default(),
     };
     f.my_issues = vec![card("AbCd1234", "Fix login", "Doing"), card("Zz9Yy8Xx", "Speed up the search page", "Review")];
-    st.forge = Some(f);
+    st.session.forge = Some(f);
     let mut h = harness(st, true);
     h.run();
     let at = center(&h, "AbCd1234  Fix login");

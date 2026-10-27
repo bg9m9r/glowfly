@@ -102,7 +102,7 @@ fn a_multi_selections_blocked_reasons_follow_a_language_switch_without_a_reselec
     let (mut st, f) = super::selection_tests::fixture("lang-multi-blocked");
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
-    let blocked = |st: &crate::state::AppState| match &st.selection {
+    let blocked = |st: &crate::state::AppState| match &st.session.selection {
         Selection::Commits(m) => m.pick_blocked,
         other => panic!("not a multi-selection: {other:?}"),
     };

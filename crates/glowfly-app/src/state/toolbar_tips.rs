@@ -89,7 +89,7 @@ pub fn pop_blocked(st: &AppState) -> Option<String> {
 
 /// Why the PR button can't run: a job, or a detached HEAD (in the service's own noun).
 pub fn pr_blocked(st: &AppState) -> Option<String> {
-    let merge_request = st.forge.as_ref().is_some_and(|f| f.pr_noun() == "merge request");
+    let merge_request = st.session.forge.as_ref().is_some_and(|f| f.pr_noun() == "merge request");
     job_running(st).or_else(|| {
         detached(st, |t| {
             if merge_request {

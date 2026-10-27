@@ -191,7 +191,7 @@ fn view_on_graph_selects_visible_commits_only() {
     st.view.scroll_to_row = None;
     let fx = update(&mut st, Msg::History(HistoryMsg::ShowInGraph(head)), Instant::now());
     assert!(st.session.history.view.is_none());
-    assert_eq!(st.selection, Selection::Commit(head));
+    assert_eq!(st.session.selection, Selection::Commit(head));
     assert!(
         matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(crate::effect::LineCountsEffect::Commit { .. })] if *oid == head),
         "{fx:?}"

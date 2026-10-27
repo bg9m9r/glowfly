@@ -114,7 +114,7 @@ fn an_undecided_repository_is_asked_about_and_held() {
     assert!(!st.runs_git_unasked());
 
     assert!(!tick_past_interval(&mut st).iter().any(|e| matches!(e, Effect::RunGit { .. })), "no auto-fetch");
-    assert!(st.forge.as_ref().is_some_and(|f| f.host.is_some()), "GitHub is detected");
+    assert!(st.session.forge.as_ref().is_some_and(|f| f.host.is_some()), "GitHub is detected");
     let fx = run(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(!fx.iter().any(is_forge), "no hosting-service call: {fx:?}");
     finish(&mut st, fx);

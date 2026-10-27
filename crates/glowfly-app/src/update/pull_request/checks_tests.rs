@@ -54,11 +54,11 @@ fn answer(st: &mut AppState, result: Result<CheckList, ForgeError>, at: Instant)
 }
 
 fn head(st: &AppState) -> String {
-    st.forge.as_ref().unwrap().prs[0].head.clone().unwrap()
+    st.session.forge.as_ref().unwrap().prs[0].head.clone().unwrap()
 }
 
 fn listed_again(st: &mut AppState, f: impl FnOnce(&mut glowfly_core::forge::PullRequest)) -> Vec<Effect> {
-    let mut pr = st.forge.as_ref().unwrap().prs[0].clone();
+    let mut pr = st.session.forge.as_ref().unwrap().prs[0].clone();
     f(&mut pr);
     let reply = ForgeReply { target: github(), auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr]))] };
     update(st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now())
@@ -79,7 +79,7 @@ fn opening_asks_for_checks_with_the_head() {
 #[test]
 fn unsupported_host_asks_for_checks_without_a_page() {
     let (mut st, work, bare, _) = setup("prk-unsupported", &[]);
-    st.forge.as_mut().unwrap().host =
+    st.session.forge.as_mut().unwrap().host =
         Some(Target { provider: Provider::AzureDevOps, host: "dev.azure.com".into(), project: "web".into(), ..github() });
     let fx = run(&mut st, PullRequestMsg::Open(7));
     assert_eq!((checks_calls(&fx).len(), loads(&fx)), (1, 0));
@@ -150,9 +150,9 @@ fn a_failed_first_load_fails_and_a_failed_reload_keeps_the_list() {
 fn an_auth_failure_forgets_the_cached_auth() {
     let (mut st, _, dirs) = opened("prk-auth");
     let key = github().account().key();
-    st.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
     answer(&mut st, Err(ForgeError { message: "authentication failed: 401".into(), auth: true }), Instant::now());
-    assert!(!st.forge.as_ref().unwrap().auth.contains_key(&key));
+    assert!(!st.session.forge.as_ref().unwrap().auth.contains_key(&key));
     assert_eq!(view(&st).checks.pane, ChecksPane::Failed("authentication failed: 401".into()));
     done(st, dirs);
 }

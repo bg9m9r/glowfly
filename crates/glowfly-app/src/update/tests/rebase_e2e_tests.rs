@@ -65,7 +65,7 @@ fn an_edit_step_pauses_and_continue_finishes() {
 
     assert_eq!(repo_state(&st), RepositoryState::RebaseInteractive);
     assert!(st.session.rebase.view.is_none());
-    assert_eq!(st.selection, Selection::Wip, "the banner is in view");
+    assert_eq!(st.session.selection, Selection::Wip, "the banner is in view");
     let text = format!("Interactive rebase paused at {} (step 1 of 3) so you can edit it. Use Continue when you're done.", short(c[0]));
     assert_eq!(last_toast(&st), (true, text.as_str()));
     let actions = crate::ui::common::state_actions(repo_state(&st)).unwrap();
@@ -97,7 +97,7 @@ fn a_conflict_stops_and_abort_restores() {
     let text = format!("Interactive rebase stopped on a conflict at {} (step 1 of 2). Resolve it, then Continue, or Abort.", short(b));
     assert_eq!(last_toast(&st), (false, text.as_str()));
     assert!(st.session.rebase.view.is_none());
-    assert_eq!(st.selection, Selection::Wip);
+    assert_eq!(st.session.selection, Selection::Wip);
     assert_eq!(repo_state(&st), RepositoryState::RebaseInteractive);
     assert!(st.snap.as_ref().unwrap().unstaged.iter().any(|f| f.status == '!' && f.path == "f.txt"), "the banner lists the conflict");
 
@@ -115,11 +115,11 @@ fn a_finished_rebase_is_undone_in_one_step() {
     drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
     assert_eq!(log(&dir)[..3], ["c1", "c3", "c2"]);
     assert_ne!(head(&dir), tip);
-    assert_eq!(st.undo.undo_entry(st.settings.lang(), true).0, "Undo interactive rebase of main");
+    assert_eq!(st.session.undo.undo_entry(st.settings.lang(), true).0, "Undo interactive rebase of main");
     drive(&mut st, Msg::Job(crate::msg::JobMsg::Undo));
     assert_eq!(head(&dir), tip, "the branch is back at its old tip");
     assert_eq!(log(&dir)[..3], ["c3", "c2", "c1"]);
-    assert!(!st.undo.redo.is_empty(), "and can be redone");
+    assert!(!st.session.undo.redo.is_empty(), "and can be redone");
     let _ = c;
     let _ = std::fs::remove_dir_all(&dir);
 }

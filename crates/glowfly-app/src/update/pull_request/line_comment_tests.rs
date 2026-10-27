@@ -37,7 +37,7 @@ fn diff() -> FileDiff {
 /// The opened panel with its page loaded (as `f` changes it) and f.txt's diff open.
 pub(super) fn ready(name: &str, f: impl FnOnce(&mut PrDetail)) -> (AppState, [PathBuf; 2]) {
     let (mut st, _, dirs) = opened(name);
-    let head = st.forge.as_ref().unwrap().prs[0].head.clone().unwrap_or_default();
+    let head = st.session.forge.as_ref().unwrap().prs[0].head.clone().unwrap_or_default();
     let mut d = detail(&head);
     f(&mut d);
     let page = PrPage { detail: d, entries: Vec::new(), threads: Vec::new(), threads_note: None };
@@ -215,7 +215,7 @@ fn post_is_blocked_when_locked_head_elsewhere_empty_or_the_files_moved_since() {
     start(&mut st, LineSide::New, 2, false);
     assert!(view(&st).line_draft.is_none(), "locked: no draft starts");
     let page = |st: &mut AppState, f: &dyn Fn(&mut PrDetail)| {
-        let head = st.forge.as_ref().unwrap().prs[0].head.clone().unwrap_or_default();
+        let head = st.session.forge.as_ref().unwrap().prs[0].head.clone().unwrap_or_default();
         let mut d = detail(&head);
         f(&mut d);
         let msg = reply_msg(st, PrReply::Loaded(Ok(PrPage { detail: d, entries: Vec::new(), threads: Vec::new(), threads_note: None })));

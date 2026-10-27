@@ -11,7 +11,7 @@ use std::time::Instant;
 
 /// The tips drawn in the last frame.
 pub(super) fn shown(st: &mut AppState, oids: Vec<Oid>) {
-    if let Some(fs) = st.forge.as_mut() {
+    if let Some(fs) = st.session.forge.as_mut() {
         fs.tips.visible = oids;
     }
 }
@@ -19,7 +19,7 @@ pub(super) fn shown(st: &mut AppState, oids: Vec<Oid>) {
 /// Asks about the visible tips that are due, when the host is reachable and the last request
 /// is far enough behind.
 pub(super) fn tick(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    let (Some(fs), Some(snap)) = (st.forge.as_mut(), st.snap.as_ref()) else { return };
+    let (Some(fs), Some(snap)) = (st.session.forge.as_mut(), st.snap.as_ref()) else { return };
     let Some(host) = fs.host.clone() else { return };
     if fs.host_status != Status::Ok || !fs.tips.may_ask(now) {
         return;
@@ -37,7 +37,7 @@ pub(super) fn tick(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let loading = fs.loading;
     super::forge::request(st, host, false, call, fx);
     // Held back (an untrusted repository, a host that may not be contacted): nothing is in flight.
-    if let Some(fs) = st.forge.as_mut().filter(|f| f.loading == loading) {
+    if let Some(fs) = st.session.forge.as_mut().filter(|f| f.loading == loading) {
         fs.tips.in_flight.clear();
     }
 }
@@ -49,7 +49,7 @@ pub(super) fn replied(fs: &mut ForgeState, asked: &[TipQuery], result: Result<Ha
 
 /// Pull requests' checks become their head commits' tip status.
 pub(super) fn seed_from_prs(st: &mut AppState, now: Instant) {
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     for pr in &fs.prs {
         if let (Some(c), Some(o)) = (&pr.checks, fs.pr_heads.get(&pr.id)) {
             fs.tips.seed(*o, c.clone(), now);

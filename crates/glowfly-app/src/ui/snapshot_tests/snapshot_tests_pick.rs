@@ -61,7 +61,7 @@ pub(in crate::ui) fn stopped_pick(name: &str) -> (AppState, PathBuf) {
     assert!(!ok, "the pick conflicts");
     reload(&mut st, &dir, &LoadOptions::all(500));
     assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::CherryPick);
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     (st, dir)
 }
 

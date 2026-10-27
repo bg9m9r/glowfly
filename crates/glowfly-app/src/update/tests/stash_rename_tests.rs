@@ -71,7 +71,7 @@ fn renaming_keeps_the_commit_and_the_place() {
     let first = before[1].clone();
     let branch = first.message.strip_prefix("On ").and_then(|r| r.split_once(':')).map(|(b, _)| b.to_owned()).unwrap();
     let kept = glowfly_core::undo::Action::DiscardAll { stash: before[0].oid, head: before[0].oid };
-    st.undo.record(kept.clone());
+    st.session.undo.record(kept.clone());
     run(&mut st, Msg::Stash(StashMsg::RenameDialog { oid: first.oid }));
 
     let fx = run(&mut st, rename(first.oid, "  renamed \n"));
@@ -98,7 +98,7 @@ fn renaming_keeps_the_commit_and_the_place() {
     assert_eq!(after[0].message, before[0].message, "the one above is untouched");
     assert_eq!(after[1].oid, first.oid, "same commit, same place");
     assert!(after[1].message.ends_with(": renamed"), "{}", after[1].message);
-    assert_eq!(st.undo.undo.last(), Some(&kept), "the undo history is kept");
+    assert_eq!(st.session.undo.undo.last(), Some(&kept), "the undo history is kept");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

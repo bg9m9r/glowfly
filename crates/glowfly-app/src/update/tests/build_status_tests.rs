@@ -28,7 +28,7 @@ fn open(name: &str) -> (AppState, PathBuf, Oid, Oid) {
     let mut st = crate::update::tests::state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let main = st.snap.as_ref().unwrap().head_oid.unwrap();
-    st.forge.as_mut().expect("the service is detected").host_status = Status::Ok;
+    st.session.forge.as_mut().expect("the service is detected").host_status = Status::Ok;
     (st, dir, main, solo)
 }
 
@@ -48,7 +48,7 @@ fn tick(st: &mut AppState, now: Instant) -> Vec<Vec<TipQuery>> {
 }
 
 fn reply(st: &mut AppState, tips: Vec<TipQuery>, result: Result<HashMap<String, Checks>, ForgeError>, now: Instant) {
-    let target = st.forge.as_ref().unwrap().host.clone().unwrap();
+    let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
     let reply = ForgeReply { target, auth: None, results: vec![ForgeResult::TipChecks(tips, result)] };
     update(st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), now);
 }
@@ -62,7 +62,7 @@ fn answer(oid: Oid, state: CheckState) -> Result<HashMap<String, Checks>, ForgeE
 }
 
 fn tips_state(st: &AppState, oid: Oid) -> Option<CheckState> {
-    st.forge.as_ref().unwrap().tips.checks(oid).map(|c| c.state)
+    st.session.forge.as_ref().unwrap().tips.checks(oid).map(|c| c.state)
 }
 
 #[test]
@@ -76,7 +76,7 @@ fn tips_are_asked_for_visible_upstream_tips() {
 
     reply(&mut st, want.clone(), answer(main, CheckState::Pending), t0);
     assert_eq!(tips_state(&st, main), Some(CheckState::Pending));
-    assert!(st.forge.as_ref().unwrap().host_status == Status::Ok);
+    assert!(st.session.forge.as_ref().unwrap().host_status == Status::Ok);
     assert!(tick(&mut st, t0 + Duration::from_secs(20)).is_empty(), "pending is fresh for a minute");
     let t1 = t0 + Duration::from_secs(61);
     assert_eq!(tick(&mut st, t1), std::slice::from_ref(&want), "pending is read again");
@@ -94,14 +94,14 @@ fn errors_back_off_until_a_manual_refresh() {
     update(&mut st, Msg::Forge(ForgeMsg::TipsShown(vec![main])), t0);
     let want = tick(&mut st, t0).pop().unwrap();
     reply(&mut st, want.clone(), Err(ForgeError { message: "boom".into(), auth: false }), t0);
-    assert_eq!(st.forge.as_ref().unwrap().host_status, Status::Ok, "tip errors leave the host's status alone");
+    assert_eq!(st.session.forge.as_ref().unwrap().host_status, Status::Ok, "tip errors leave the host's status alone");
     assert!(tick(&mut st, t0 + Duration::from_secs(299)).is_empty());
     assert_eq!(tick(&mut st, t0 + Duration::from_secs(300)), std::slice::from_ref(&want));
     reply(&mut st, want.clone(), Err(ForgeError { message: "boom".into(), auth: false }), t0 + Duration::from_secs(300));
 
     let t1 = t0 + Duration::from_secs(320);
     update(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }), t1);
-    st.forge.as_mut().unwrap().host_status = Status::Ok;
+    st.session.forge.as_mut().unwrap().host_status = Status::Ok;
     assert_eq!(tick(&mut st, t1), [want]);
     let _ = std::fs::remove_dir_all(dir);
 }
@@ -111,15 +111,15 @@ fn nothing_is_asked_while_the_host_failed_or_the_repository_is_untrusted() {
     let (mut st, dir, main, _) = open("tips-held");
     let t0 = Instant::now();
     update(&mut st, Msg::Forge(ForgeMsg::TipsShown(vec![main])), t0);
-    st.forge.as_mut().unwrap().host_status = Status::Error("not signed in".into());
+    st.session.forge.as_mut().unwrap().host_status = Status::Error("not signed in".into());
     assert!(tick(&mut st, t0).is_empty());
 
-    st.forge.as_mut().unwrap().host_status = Status::Ok;
+    st.session.forge.as_mut().unwrap().host_status = Status::Ok;
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     crate::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
     assert!(!st.runs_git_unasked());
     assert!(tick(&mut st, t0).is_empty());
-    assert!(st.forge.as_ref().unwrap().tips.in_flight.is_empty(), "nothing is left waiting");
+    assert!(st.session.forge.as_ref().unwrap().tips.in_flight.is_empty(), "nothing is left waiting");
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -141,11 +141,11 @@ fn tips_are_seeded_from_pull_requests() {
         url: String::new(),
         facets: Default::default(),
     };
-    let target = st.forge.as_ref().unwrap().host.clone().unwrap();
+    let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
     let reply = ForgeReply { target, auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr.clone()]))] };
     let t0 = Instant::now();
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), t0);
-    assert_eq!(st.forge.as_ref().unwrap().tips.checks(main), pr.checks.as_ref());
+    assert_eq!(st.session.forge.as_ref().unwrap().tips.checks(main), pr.checks.as_ref());
     // Shown, it needs no call of its own.
     update(&mut st, Msg::Forge(ForgeMsg::TipsShown(vec![main])), t0);
     assert!(tick(&mut st, t0).is_empty());
@@ -160,7 +160,7 @@ fn a_restored_tab_asks_again_and_disconnecting_clears_the_cache() {
     assert_eq!(tick(&mut st, t0).len(), 1);
     drive(&mut st, Msg::Tabs(TabsMsg::NewTab));
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    let fs = st.forge.as_mut().unwrap();
+    let fs = st.session.forge.as_mut().unwrap();
     assert!(fs.tips.in_flight.is_empty(), "the reply in flight was dropped with the tab");
     assert_eq!(fs.loading, 0);
     fs.host_status = Status::Ok;
@@ -169,9 +169,9 @@ fn a_restored_tab_asks_again_and_disconnecting_clears_the_cache() {
     reply(&mut st, want, answer(main, CheckState::Passed), t0 + Duration::from_secs(16));
     assert_eq!(tips_state(&st, main), Some(CheckState::Passed));
 
-    let account = st.forge.as_ref().unwrap().host.as_ref().unwrap().account();
+    let account = st.session.forge.as_ref().unwrap().host.as_ref().unwrap().account();
     update(&mut st, Msg::Forge(ForgeMsg::Disconnect(account)), t0);
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     assert!(fs.tips.by_oid.is_empty() && fs.tips.visible.is_empty());
     let _ = std::fs::remove_dir_all(dir);
 }

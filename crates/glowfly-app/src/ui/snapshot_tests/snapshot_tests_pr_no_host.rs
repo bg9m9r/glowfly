@@ -111,7 +111,7 @@ fn branch_menu_pr_no_remotes() {
     st.snap.as_mut().unwrap().remotes.clear();
     // An issue tracker alone is no code host either.
     let jira = Account { provider: Provider::JiraCloud, host: "acme.atlassian.net".into(), org: String::new() };
-    st.forge = Some(ForgeState::new(None, String::new(), Some(Target::jira(&jira, "PROJ"))));
+    st.session.forge = Some(ForgeState::new(None, String::new(), Some(Target::jira(&jira, "PROJ"))));
     let mut h = harness(st, true);
     h.run();
     open_row_menu(&mut h, true);

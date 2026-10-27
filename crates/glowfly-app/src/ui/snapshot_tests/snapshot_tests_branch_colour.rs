@@ -85,7 +85,7 @@ fn details_branch_row() {
     let (mut st, dir) = with_branches(ThemeChoice::Dark, "colour-details");
     let oid = tip(&dir, "topic");
     assert_eq!(st.snap.as_ref().unwrap().commit_branch(oid).map(|(k, _)| k), Some("topic"));
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let mut h = harness(st, true);
     h.run();

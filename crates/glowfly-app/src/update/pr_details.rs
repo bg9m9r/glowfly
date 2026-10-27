@@ -37,7 +37,7 @@ pub(super) fn list_arrived(fs: &mut ForgeState, now: Instant) {
 
 /// Asks about the next chunk, unless one is in flight or nothing is left.
 pub(super) fn send_next(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     let Some(host) = fs.host.clone() else { return };
     if fs.details.in_flight || fs.details.queue.is_empty() {
         return;
@@ -54,7 +54,7 @@ pub(super) fn send_next(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     let (loading, asking) = (fs.loading, chunk.iter().map(|p| p.id).collect());
     super::forge::request(st, host, false, ForgeCall::PrDetails(chunk), fx);
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     if fs.loading > loading {
         fs.details.in_flight = true;
         fs.details.asking = asking;

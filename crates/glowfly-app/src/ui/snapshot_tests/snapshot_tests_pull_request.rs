@@ -66,7 +66,7 @@ pub(in crate::ui) fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) 
     let mut view = PrView::new(fs.prs[0].clone(), &fs, st.snap.as_ref().unwrap());
     // Answered already, so no spinner keeps the frame repainting.
     view.checks.pane = ChecksPane::Loaded(CheckList::empty(fs.prs[0].head.clone().unwrap_or_default()));
-    st.forge = Some(fs);
+    st.session.forge = Some(fs);
     st.session.pull_request.view = Some(view);
     (st, dir)
 }

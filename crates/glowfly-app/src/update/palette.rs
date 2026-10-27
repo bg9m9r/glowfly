@@ -183,7 +183,7 @@ pub(super) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>
             if !crate::state::gitflow::issues_ready(st) {
                 return;
             }
-            let Some(f) = st.forge.as_ref() else { return };
+            let Some(f) = st.session.forge.as_ref() else { return };
             let pick = Pick::issues(kind, f);
             open_step(st, Mode::Pick(pick));
         }
@@ -191,7 +191,7 @@ pub(super) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>
             if !crate::state::palette_commands::palette_issues::can_view(st) {
                 return;
             }
-            let Some(f) = st.forge.as_ref() else { return };
+            let Some(f) = st.session.forge.as_ref() else { return };
             let pick = Pick::issues_to_view(f);
             open_step(st, Mode::Pick(pick));
         }
@@ -367,7 +367,7 @@ fn mark_conflicted(t: glowfly_core::i18n::Lang, paths: Vec<String>) -> Msg {
 /// The same messages the sidebar's STASHES menu sends.
 /// The single selected commit, if any (WIP, nothing or several commits give None).
 fn selected_commit(st: &AppState) -> Option<git2::Oid> {
-    match &st.selection {
+    match &st.session.selection {
         Selection::Commit(o) => Some(*o),
         _ => None,
     }

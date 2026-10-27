@@ -80,7 +80,7 @@ fn jumping_to_a_commit_closes_it() {
     flow(&mut st, GitFlowMsg::OpenPanel);
     let fx = update(&mut st, Msg::Repo(RepoMsg::JumpTo(tip)), Instant::now());
     assert!(!st.session.gitflow_panel);
-    assert_eq!(st.selection, Selection::Commit(tip));
+    assert_eq!(st.session.selection, Selection::Commit(tip));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == tip)));
     cleanup(&dir);
 }
@@ -179,7 +179,7 @@ fn with_issue(st: &mut AppState) {
         url: "https://github.com/o/r/issues/12".into(),
         facets: Default::default(),
     }];
-    st.forge = Some(f);
+    st.session.forge = Some(f);
 }
 
 fn issue_entries(st: &AppState) -> Vec<(C, String, Option<String>)> {

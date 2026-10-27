@@ -51,7 +51,7 @@ fn each_tab_keeps_its_own_repository_and_draft() {
         glowfly_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
             .into(),
     ));
-    st.view.diff_top_row = 6;
+    st.session.tab_view.diff_top_row = 6;
 
     let b = scratch_repo("tabs-own-b");
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));

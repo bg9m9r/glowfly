@@ -127,13 +127,13 @@ fn unsaved_profile_keeps_current_prefs_and_accounts() {
     let mut st = two_profiles();
     st.settings.connections = vec![github()];
     let t = Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
-    st.forge = Some(ForgeState::new(Some(t.clone()), "origin".into(), Some(t)));
-    st.forge.as_mut().unwrap().prs = vec![pr(1)];
+    st.session.forge = Some(ForgeState::new(Some(t.clone()), "origin".into(), Some(t)));
+    st.session.forge.as_mut().unwrap().prs = vec![pr(1)];
     let fx = switch(&mut st, PERSONAL);
     assert_eq!(st.settings.active_profile, Some(PERSONAL));
     assert_eq!((st.settings.theme.clone(), st.settings.connections.clone()), (ThemeChoice::Graphite, vec![github()]));
     assert_eq!(forge_calls(&fx), 0, "{fx:?}");
-    assert_eq!(st.forge.as_ref().unwrap().prs.len(), 1, "pull requests stay");
+    assert_eq!(st.session.forge.as_ref().unwrap().prs.len(), 1, "pull requests stay");
     assert_eq!(st.settings.profile(WORK).unwrap().connections, Some(vec![github()]), "Work keeps its own");
 }
 
@@ -142,7 +142,7 @@ fn open_github_repo(st: &mut AppState, name: &str) -> PathBuf {
     let dir = scratch_repo(name);
     git(&dir, &["remote", "add", "origin", "https://github.com/o/r.git"]);
     drive(st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    assert!(st.snap.is_some() && st.forge.is_some(), "the service is detected");
+    assert!(st.snap.is_some() && st.session.forge.is_some(), "the service is detected");
     dir
 }
 
@@ -152,19 +152,19 @@ fn account_change_reloads_forge() {
     st.settings.profile_mut(PERSONAL).unwrap().prefs = None;
     (st.settings.auto_fetch_minutes, st.settings.use_initials) = (0, true);
     let a = open_github_repo(&mut st, "profile-forge-a");
-    st.forge.as_mut().unwrap().prs = vec![pr(1)];
+    st.session.forge.as_mut().unwrap().prs = vec![pr(1)];
     let b = open_github_repo(&mut st, "profile-forge-b");
-    assert!(st.tabs[0].parked.as_ref().and_then(|p| p.forge.as_ref()).is_some_and(|f| f.prs.len() == 1));
-    st.forge.as_mut().unwrap().prs = vec![pr(2)];
+    assert!(st.tabs[0].parked.as_ref().and_then(|p| p.session.forge.as_ref()).is_some_and(|f| f.prs.len() == 1));
+    st.session.forge.as_mut().unwrap().prs = vec![pr(2)];
 
     let fx = switch(&mut st, PERSONAL);
-    let fs = st.forge.as_ref().expect("still on GitHub");
+    let fs = st.session.forge.as_ref().expect("still on GitHub");
     assert!(fs.prs.is_empty() && fs.auth.is_empty(), "rebuilt");
     assert!(fs.last_refresh.is_some(), "refreshed at once");
     assert_eq!(forge_calls(&fx), 1, "{fx:?}");
     // Personal doesn't list github.com, so the sign-in Work saved for it isn't used.
     assert!(fx.iter().any(|e| matches!(e, Effect::Forge { auth: None, connected: false, .. })), "{fx:?}");
-    assert!(st.tabs[0].parked.as_ref().unwrap().forge.is_none(), "the parked tab detects again when selected");
+    assert!(st.tabs[0].parked.as_ref().unwrap().session.forge.is_none(), "the parked tab detects again when selected");
     for d in [a, b] {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -179,7 +179,7 @@ fn prefs_change_refreshes_repo_and_keeps_diff_row() {
     let file =
         glowfly_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), file.into()));
-    st.view.diff_top_row = 6;
+    st.session.tab_view.diff_top_row = 6;
     st.view.diff_scroll_to_row = None;
     let fx = switch(&mut st, PERSONAL);
     assert_eq!(st.view.diff_scroll_to_row, Some(6));

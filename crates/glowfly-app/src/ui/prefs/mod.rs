@@ -108,7 +108,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let keymap = &st.keymap;
     let scheme = &st.deep_link.scheme;
     let Some(prefs) = st.prefs.as_mut() else { return };
-    let fs = st.forge.as_ref();
+    let fs = st.session.forge.as_ref();
     // Repository settings are keyed by where it really is (`settings::repo_keys`).
     let workdir = st.snap.as_ref().map(|s| s.real_workdir.clone());
     let now = (st.view.now, st.view.utc_offset);

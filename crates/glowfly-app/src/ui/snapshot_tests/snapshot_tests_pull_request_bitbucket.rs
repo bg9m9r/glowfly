@@ -27,7 +27,7 @@ const NOTE: &str = "Code comments on Bitbucket pull requests open in the browser
 /// `with_pr` on a Bitbucket Cloud repository, the panel opened afresh.
 fn with_bb(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_pr(theme, name, true);
-    let fs = st.forge.as_mut().unwrap();
+    let fs = st.session.forge.as_mut().unwrap();
     fs.host = Some(Target {
         provider: Provider::Bitbucket,
         host: "bitbucket.org".into(),

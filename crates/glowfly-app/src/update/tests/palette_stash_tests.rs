@@ -239,7 +239,7 @@ fn delete_chosen_stash_confirms() {
         "the confirmation doesn't drop the stash"
     );
     drive(&mut st, Msg::ConfirmAccepted);
-    assert!(matches!(st.undo.undo.last(), Some(Action::StashDrop { stash, .. }) if *stash == first), "{:?}", st.undo.undo);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::StashDrop { stash, .. }) if *stash == first), "{:?}", st.session.undo.undo);
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.stashes.len(), 1);
     assert!(snap.stashes[0].message.contains("second"));

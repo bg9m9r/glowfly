@@ -15,7 +15,7 @@ pub(super) fn pr_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
 
 /// Create {noun} for {head}… and, when the branch needs a push, Push {head} and create a {noun}….
 fn branch_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
-    let Some(fs) = st.forge.as_ref().filter(|f| f.host.is_some()) else { return };
+    let Some(fs) = st.session.forge.as_ref().filter(|f| f.host.is_some()) else { return };
     let Some(b) = snap.head_info() else { return };
     if push_pr::open_pr(snap, fs, &b.name).is_some() {
         return;

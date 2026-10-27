@@ -33,7 +33,7 @@ pub(super) fn gitflow_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entr
         let e = entry(PaletteCommand::StartGitFlow(k), format!("Start Git Flow {}…", k.noun()), keywords);
         out.push(with_detail(e, Some(format!("from {}", s.base(k)))));
     }
-    if let Some(f) = st.forge.as_ref().filter(|_| issues_ready(st)) {
+    if let Some(f) = st.session.forge.as_ref().filter(|_| issues_ready(st)) {
         let assigned = format!("{} assigned", f.my_issues.len());
         for k in FlowKind::ALL {
             let label = format!("Start Git Flow {} from {}…", k.noun(), f.issue_noun());

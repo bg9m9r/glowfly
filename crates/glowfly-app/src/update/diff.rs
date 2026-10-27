@@ -52,7 +52,7 @@ fn open_landing(st: &mut AppState, target: DiffTarget, landing: Landing, fx: &mu
     super::repo::open_diff(st, target.clone(), fx);
     // A step into a collapsed folder opens it, so the revealed row shows.
     if let Some(list) = crate::state::file_folds::list_of(st, &target) {
-        st.view.file_folds.open_to(list, target.path());
+        st.session.tab_view.file_folds.open_to(list, target.path());
     }
     // After `open_diff`, which clears it.
     st.view.diff_landing = Some((target.clone(), landing));
@@ -88,7 +88,7 @@ pub(super) fn renew_step(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
 /// while it is hidden) is passed over when another file follows in the same direction: that one
 /// opens instead. Returns whether it did.
 pub(super) fn skip_past(st: &mut AppState, target: &DiffTarget, d: &FileDiff, l: Landing, fx: &mut Vec<Effect>) -> bool {
-    if !diff_nav::change_rows_of(d, &st.settings, &st.view.diff_expanded).is_empty() {
+    if !diff_nav::change_rows_of(d, &st.settings, &st.session.tab_view.diff_expanded).is_empty() {
         return false;
     }
     match diff_nav::next_file(st, target, l.dir()) {
@@ -107,10 +107,10 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
                 return;
             }
             if let Some((_, d)) = &st.session.diff.view {
-                let (mode, from, top) = (st.settings.diff_mode, st.settings.diff_layout, st.view.diff_top_row);
-                let row = same_change_row(d, mode, from, layout, top, &st.view.diff_expanded);
+                let (mode, from, top) = (st.settings.diff_mode, st.settings.diff_layout, st.session.tab_view.diff_top_row);
+                let row = same_change_row(d, mode, from, layout, top, &st.session.tab_view.diff_expanded);
                 st.view.diff_scroll_to_row = Some(row);
-                st.view.diff_top_row = row;
+                st.session.tab_view.diff_top_row = row;
                 st.view.diff_cursor = None; // the rows are numbered differently now
             }
             st.settings.diff_layout = layout;
@@ -125,7 +125,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             st.settings.diff_ignore_whitespace = on;
             st.view.diff_lines.clear();
             // The gaps between the hunks shown now may sit where others did: read them again.
-            st.view.diff_expanded.drop_gap_text();
+            st.session.tab_view.diff_expanded.drop_gap_text();
             fx.push(super::prefs::save_settings(st));
             // Hunk rows change, so the diff reopens at the top; hunk operations wait for it, and
             // then count the hunks shown under the new setting.
@@ -139,7 +139,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             // The rows and their indexes stay; only their heights change, so the view keeps
             // the row at the top where it is.
             if st.session.diff.view.is_some() {
-                st.view.diff_scroll_to_row = Some(st.view.diff_top_row);
+                st.view.diff_scroll_to_row = Some(st.session.tab_view.diff_top_row);
             }
             // The conflict view's rows change height too: its current chunk comes back in view.
             if let Some(c) = &st.session.conflict.view {
@@ -160,7 +160,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
                 Step::Row(row) => {
                     st.view.diff_scroll_to_row = Some(row);
                     // Recorded now so repeated presses before the next frame keep stepping.
-                    st.view.diff_top_row = row;
+                    st.session.tab_view.diff_top_row = row;
                     st.view.diff_cursor = Some(row);
                 }
                 Step::File(target, landing) => open_landing(st, target, landing, fx),
@@ -217,7 +217,12 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
     if mode == old {
         return;
     }
-    let h = st.session.diff.view.as_ref().and_then(|(_, d)| hunk_at_top(d, old, layout, st.view.diff_top_row, &st.view.diff_expanded));
+    let h = st
+        .session
+        .diff
+        .view
+        .as_ref()
+        .and_then(|(_, d)| hunk_at_top(d, old, layout, st.session.tab_view.diff_top_row, &st.session.tab_view.diff_expanded));
     st.settings.diff_mode = mode;
     st.view.diff_lines.clear();
     fx.push(super::prefs::save_settings(st));
@@ -233,9 +238,9 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
             // The normal hunks are already loaded, and still current for hunk operations.
             let Some((_, d)) = st.session.diff.view.as_mut() else { return };
             std::sync::Arc::make_mut(d).whole = None;
-            let row = h.and_then(|h| header_rows_filled(d, layout, &st.view.diff_expanded).get(h).copied()).unwrap_or(0);
+            let row = h.and_then(|h| header_rows_filled(d, layout, &st.session.tab_view.diff_expanded).get(h).copied()).unwrap_or(0);
             st.view.diff_scroll_to_row = Some(row);
-            st.view.diff_top_row = row;
+            st.session.tab_view.diff_top_row = row;
             st.view.diff_cursor = None;
             // Folds opened in the whole file are open gaps here: their text is read.
             super::diff_gaps::diff_shown(st, fx);
@@ -254,17 +259,17 @@ pub(super) fn refold(st: &mut AppState, change: impl FnOnce(&mut Expanded, &Whol
     let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
     let Some((_, d)) = &st.session.diff.view else { return };
     let Some(w) = shown(d, mode) else { return };
-    let before = change_rows(d, mode, layout, &st.view.diff_expanded);
-    let anchor = line_at_row(w, layout, &st.view.diff_expanded, st.view.diff_top_row);
-    if !change(&mut st.view.diff_expanded, w) {
+    let before = change_rows(d, mode, layout, &st.session.tab_view.diff_expanded);
+    let anchor = line_at_row(w, layout, &st.session.tab_view.diff_expanded, st.session.tab_view.diff_top_row);
+    if !change(&mut st.session.tab_view.diff_expanded, w) {
         return;
     }
-    let after = change_rows(d, mode, layout, &st.view.diff_expanded);
+    let after = change_rows(d, mode, layout, &st.session.tab_view.diff_expanded);
     st.view.diff_cursor = st.view.diff_cursor.and_then(|c| before.iter().position(|&r| r == c)).and_then(|i| after.get(i).copied());
     if let Some(line) = anchor {
-        let row = row_of_line(w, layout, &st.view.diff_expanded, line);
-        if row != st.view.diff_top_row {
-            st.view.diff_top_row = row;
+        let row = row_of_line(w, layout, &st.session.tab_view.diff_expanded, line);
+        if row != st.session.tab_view.diff_top_row {
+            st.session.tab_view.diff_top_row = row;
             st.view.diff_scroll_to_row = Some(row);
         }
     }

@@ -68,7 +68,7 @@ fn create_pr_stack_step() {
     let (mut st, dir) = stacked(ThemeChoice::Dark, "create-pr-stack-step", &["main", "search", "login-page"]);
     let layer = PrLayer { branch: "login-page".into(), source: "login-page".into(), target: Some("search".into()) };
     let run = StackPrRun { current: Some(layer), index: 2, total: 2, created: vec!["search".into()], ..Default::default() };
-    st.forge.as_mut().unwrap().stack_prs = Some(StackPrs::Running(run));
+    st.session.forge.as_mut().unwrap().stack_prs = Some(StackPrs::Running(run));
     st.modal = Some(Modal::CreatePr {
         source: "login-page".into(),
         target: "search".into(),

@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 fn host(provider: Provider, host: &str) -> AppState {
     let t = Target { provider, host: host.into(), owner: "g".into(), project: String::new(), repo: "app".into() };
     let mut st = state();
-    st.forge = Some(ForgeState::new(Some(t.clone()), "origin".into(), Some(t)));
+    st.session.forge = Some(ForgeState::new(Some(t.clone()), "origin".into(), Some(t)));
     st
 }
 
@@ -65,7 +65,7 @@ fn chunks(fx: Vec<Effect>) -> Vec<Vec<u64>> {
 }
 
 fn reply(st: &mut AppState, result: ForgeResult, now: Instant) -> Vec<Vec<u64>> {
-    let target = st.forge.as_ref().unwrap().host.clone().unwrap();
+    let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
     let reply = ForgeReply { target, auth: None, results: vec![result] };
     chunks(update(st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), now))
 }
@@ -83,7 +83,7 @@ fn ids(r: std::ops::RangeInclusive<u64>) -> Vec<u64> {
 }
 
 fn fs(st: &AppState) -> &ForgeState {
-    st.forge.as_ref().unwrap()
+    st.session.forge.as_ref().unwrap()
 }
 
 /// A GitLab host with 60 pull requests whose details have all been read at `now`.
@@ -165,7 +165,7 @@ fn disconnecting_or_parking_drops_the_pass() {
     let now = Instant::now();
     let mut st = host(Provider::GitLab, "gitlab.com");
     assert_eq!(list(&mut st, prs(60), now), [ids(26..=50)]);
-    st.forge.as_mut().unwrap().replies_dropped();
+    st.session.forge.as_mut().unwrap().replies_dropped();
     assert!(!fs(&st).details.in_flight);
     assert_eq!(list(&mut st, prs(60), now), [ids(26..=50)], "the next list starts the pass again");
 

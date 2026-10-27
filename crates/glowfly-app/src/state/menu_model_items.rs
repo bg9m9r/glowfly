@@ -103,8 +103,8 @@ pub(super) fn edit(st: &AppState) -> Vec<Entry> {
     let t = st.settings.lang();
     let keys = &st.keymap;
     let idle = st.job.is_none();
-    let (undo, undo_why) = st.undo.undo_entry(t, idle);
-    let (redo, redo_why) = st.undo.redo_entry(t, idle);
+    let (undo, undo_why) = st.session.undo.undo_entry(t, idle);
+    let (redo, redo_why) = st.session.undo.redo_entry(t, idle);
     let no_repo = st.snap.is_none().then_some(t.tr("menu.common.no_repo"));
     let mut out = vec![
         send(keys, undo, Some(I::Undo), undo_why.as_deref(), Msg::Job(JobMsg::Undo)),
@@ -117,7 +117,7 @@ pub(super) fn edit(st: &AppState) -> Vec<Entry> {
     out.push(match copy_sha(st) {
         Ok(copy) => {
             let label = copy.label(t);
-            let msg = match (copy, &st.selection) {
+            let msg = match (copy, &st.session.selection) {
                 (ShaCopy::One(sha), _) => Msg::Copy(sha),
                 // Joined as the graph's commit menu joins them.
                 (ShaCopy::Many(_), Selection::Commits(m)) => Msg::Copy(shas_text(m)),

@@ -23,9 +23,9 @@ fn send(st: &mut AppState, msg: SearchMsg) -> Vec<Effect> {
 /// The bar shown with `q` typed into it, filtering when `filter`.
 fn search(st: &mut AppState, q: &str, filter: bool) -> Vec<Effect> {
     st.view.show_search = true;
-    st.view.search = q.into();
+    st.session.tab_view.search = q.into();
     let mut fx = Vec::new();
-    if st.search.filter != filter {
+    if st.session.search.filter != filter {
         fx.extend(send(st, SearchMsg::ToggleFilter));
     }
     fx.extend(send(st, SearchMsg::QueryChanged));
@@ -64,12 +64,12 @@ fn indexed(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir, kept) = opened_long(name);
     let fx = run_build(&mut st, kept);
     finish(&mut st, fx);
-    assert!(st.search.index.ready.is_some());
+    assert!(st.session.search.index.ready.is_some());
     (st, dir)
 }
 
 fn summary(st: &AppState) -> Option<String> {
-    let Selection::Commit(oid) = st.selection else { return None };
+    let Selection::Commit(oid) = st.session.selection else { return None };
     let snap = st.snap.as_ref()?;
     Some(snap.commits[*snap.row_of.get(&oid)?].summary.to_string())
 }
@@ -80,7 +80,7 @@ fn while_indexing_the_filter_falls_back_to_doubling_loads() {
     let fx = search(&mut st, "needle", true);
     assert_eq!(loads(&fx), [1000], "one doubling batch, as without an index");
     assert_eq!(queries(&fx), 0);
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("Indexing history…"));
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("Indexing history…"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -95,7 +95,7 @@ fn with_an_index_the_filter_loads_straight_to_the_matches() {
     finish(&mut st, fx);
     assert!(!st.loading);
     assert_eq!(st.snap.as_ref().unwrap().commits.len(), 620);
-    assert_eq!(st.search.matches.len(), 3, "the three needles are in");
+    assert_eq!(st.session.search.matches.len(), 3, "the three needles are in");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -106,7 +106,7 @@ fn no_match_anywhere_needs_no_load() {
     let fx = answer(&mut st, fx);
     assert!(loads(&fx).is_empty(), "{fx:?}");
     assert_eq!(st.search_reach(), Reach::Whole { shallow: false, commits: 620 });
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("No matches"));
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("No matches"));
     // Keep searching has nothing to load either.
     assert!(loads(&update(&mut st, Msg::Load(LoadMsg::SearchFurther), Instant::now())).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
@@ -118,19 +118,19 @@ fn enter_past_the_loaded_matches_loads_and_selects_the_next() {
     let fx = search(&mut st, "beacon", false);
     finish(&mut st, fx);
     assert_eq!(st.history_count(), HistoryCount::Whole { positions: &[0, 619], commits: 620, complete: true });
-    assert_eq!(st.search.matches, [0]);
+    assert_eq!(st.session.search.matches, [0]);
 
     let fx = send(&mut st, SearchMsg::Next);
     finish(&mut st, fx);
     assert_eq!(summary(&st).as_deref(), Some("commit 619 beacon"), "the newest match first");
-    assert_eq!(st.search.count_text(Some(0), st.history_count()).as_deref(), Some("1 of 2"));
+    assert_eq!(st.session.search.count_text(Some(0), st.history_count()).as_deref(), Some("1 of 2"));
 
     let fx = send(&mut st, SearchMsg::Next);
     assert_eq!(loads(&fx), [1000], "loads through the oldest commit");
-    assert!(st.search.index.jump.is_some());
+    assert!(st.session.search.index.jump.is_some());
     finish(&mut st, fx);
     assert_eq!(summary(&st).as_deref(), Some("commit 0 needle beacon"), "selected once loaded");
-    assert_eq!(st.search.index.jump, None);
+    assert_eq!(st.session.search.index.jump, None);
 
     let fx = send(&mut st, SearchMsg::Next);
     finish(&mut st, fx);
@@ -142,9 +142,9 @@ fn enter_past_the_loaded_matches_loads_and_selects_the_next() {
 fn staged(st: &mut AppState, positions: Vec<u32>) {
     let snap = st.snap.as_ref().unwrap();
     let index = Arc::new(CommitIndex::from_commits(IndexKey::of(snap), &snap.commits));
-    st.search.index.ready = Some(Arc::clone(&index));
-    st.search.index.pending = None;
-    st.search.index.answer = Some(IndexAnswer { query: st.search.query.clone(), index, positions });
+    st.session.search.index.ready = Some(Arc::clone(&index));
+    st.session.search.index.pending = None;
+    st.session.search.index.answer = Some(IndexAnswer { query: st.session.search.query.clone(), index, positions });
 }
 
 #[test]
@@ -155,8 +155,8 @@ fn a_match_past_the_graph_cap_is_logged_not_loaded() {
     let fx = send(&mut st, SearchMsg::Next);
     assert!(loads(&fx).is_empty(), "{fx:?}");
     assert!(st.log.iter().any(|l| l.text == "The next match is older than the newest 200000 commits the graph can show"));
-    assert!(st.search.index.jump.is_none());
-    st.search.filter = true;
+    assert!(st.session.search.index.jump.is_none());
+    st.session.search.filter = true;
     assert_eq!(st.search_reach(), Reach::PastCap { matches: 1 });
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -169,7 +169,7 @@ fn path_terms_never_ask_the_index() {
     assert_eq!(st.history_count(), HistoryCount::Loaded);
     assert!(st.current_index().is_none());
     finish(&mut st, fx);
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("No matches"));
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("No matches"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -177,12 +177,12 @@ fn path_terms_never_ask_the_index() {
 fn a_stale_query_answer_is_ignored() {
     let (mut st, dir) = indexed("index-stale-query");
     let first = search(&mut st, "needle", false);
-    let first_request = st.search.index.pending.unwrap();
+    let first_request = st.session.search.index.pending.unwrap();
     let second = search(&mut st, "beacon", false);
     assert_eq!((queries(&first), queries(&second)), (1, 1));
     // The first query's answer arrives after the second was asked.
     update(&mut st, Msg::Search(SearchMsg::IndexQueried { request: first_request, result: Ok(vec![617, 618, 619]) }), Instant::now());
-    assert!(st.search.index.answer.is_none() && st.search.index.pending.is_some());
+    assert!(st.session.search.index.answer.is_none() && st.session.search.index.pending.is_some());
     answer(&mut st, second);
     assert_eq!(st.index_answer().map(|a| a.positions.clone()), Some(vec![0, 619]));
     let _ = std::fs::remove_dir_all(&dir);
@@ -203,7 +203,7 @@ fn near_history_end_while_filtering_loads_the_next_screen_of_matches_or_nothing(
     st.view.graph_fit_rows = 10;
     let fx = search(&mut st, "619 beacon", true);
     finish(&mut st, fx);
-    assert_eq!(st.search.matches.len(), 1);
+    assert_eq!(st.session.search.matches.len(), 1);
     let fx = update(&mut st, Msg::Load(LoadMsg::NearHistoryEnd), Instant::now());
     assert!(loads(&fx).is_empty(), "no older match: {fx:?}");
     let _ = std::fs::remove_dir_all(&dir);

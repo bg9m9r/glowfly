@@ -58,7 +58,7 @@ pub(super) fn entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         let label = if p.stale { "Reload rebase steps" } else { "Restore original order" };
         out.push(entry(cmd(RebaseCommand::RestoreOrder), label, "rebase reset undo revert original order steps todo"));
     }
-    if let Selection::Commit(oid) = st.selection {
+    if let Selection::Commit(oid) = st.session.selection {
         let b = super::super::rebase_quick::single(snap, oid);
         let sha = &oid.to_string()[..7];
         if b.reword.is_none() {

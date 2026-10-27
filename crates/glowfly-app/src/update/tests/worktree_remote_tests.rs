@@ -99,7 +99,7 @@ fn a_refused_name_starts_nothing() {
 fn on_github(st: &mut AppState) {
     let target =
         Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
-    st.forge = Some(ForgeState::new(Some(target), "origin".into(), None));
+    st.session.forge = Some(ForgeState::new(Some(target), "origin".into(), None));
 }
 
 #[test]

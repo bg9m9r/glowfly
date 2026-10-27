@@ -199,17 +199,17 @@ fn no_automatic_fetch_without_a_head_ref_a_head_trust_or_sign_in() {
     // A service without head refs.
     let (mut st, work, bare, _) = setup("pr-no-head-fetch", &[]);
     let azure = Target { provider: Provider::AzureDevOps, ..github() };
-    let prs = st.forge.as_ref().unwrap().prs.clone();
+    let prs = st.session.forge.as_ref().unwrap().prs.clone();
     let mut fs = ForgeState::new(Some(azure), "origin".into(), None);
     fs.prs = prs;
-    st.forge = Some(fs);
+    st.session.forge = Some(fs);
     assert!(!opens_with_fetch(&mut st));
     assert_eq!(out_of_sync(view(&st)), [OutOfSync::SourceMissing]);
     assert!(view(&st).head_ref.is_none());
     drive(&mut st, Msg::PullRequest(PullRequestMsg::Close));
     let mut fs = ForgeState::new(Some(github()), "origin".into(), None);
-    fs.prs = st.forge.as_ref().unwrap().prs.clone();
-    st.forge = Some(fs);
+    fs.prs = st.session.forge.as_ref().unwrap().prs.clone();
+    st.session.forge = Some(fs);
 
     // An unknown head.
     set_pr(&mut st, |p| p.head = None);
@@ -245,9 +245,9 @@ fn a_merged_pr_with_its_branch_deleted_fetches_the_head() {
     let (mut st, work, bare, _) = setup("pr-merged-deleted", &[]);
     let head = head_on_remote(&bare);
     git(&work, &["update-ref", "-d", "refs/remotes/origin/feature"]);
-    let fs = st.forge.take();
+    let fs = st.session.forge.take();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    st.forge = fs;
+    st.session.forge = fs;
     set_pr(&mut st, |p| p.head = Some(head.to_string()));
     open(&mut st);
     loaded(&mut st, |d| d.state = PrState::Merged);

@@ -36,7 +36,7 @@ pub(in crate::ui) fn with_wips(theme: ThemeChoice, name: &str) -> (AppState, Pat
 /// The worktree (index into `snap.worktrees`) shown in display row `row`, if it is a worktree row.
 fn worktree_in(st: &AppState, row: usize) -> Option<usize> {
     let snap = st.snap.as_ref().unwrap();
-    match GraphRows::new(snap, &st.search, false).at(row)? {
+    match GraphRows::new(snap, &st.session.search, false).at(row)? {
         DisplayRow::Worktree(k) => Some(snap.graph.worktree_wips[k].worktree),
         _ => None,
     }
@@ -45,7 +45,7 @@ fn worktree_in(st: &AppState, row: usize) -> Option<usize> {
 /// The display row of commit `commits[i]`.
 pub(in crate::ui) fn commit_row(st: &AppState, i: usize) -> usize {
     let snap = st.snap.as_ref().unwrap();
-    GraphRows::new(snap, &st.search, false).row_of(snap.commits[i].oid).unwrap()
+    GraphRows::new(snap, &st.session.search, false).row_of(snap.commits[i].oid).unwrap()
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn graph_worktree_wips() {
     assert_eq!(worktree_in(&st, commit_row(&st, head) - 1), Some(3), "old's row sits above HEAD");
     let at = commit_row(&st, 2);
     assert_eq!((worktree_in(&st, at - 2), worktree_in(&st, at - 1)), (Some(1), Some(2)), "login, then hotfix");
-    assert_eq!(GraphRows::new(snap, &st.search, false).at(0), Some(DisplayRow::Wip));
+    assert_eq!(GraphRows::new(snap, &st.session.search, false).at(0), Some(DisplayRow::Wip));
     render("graph_worktree_wips", st, true);
     let (st, _) = with_wips(ThemeChoice::Light, "worktree-wips");
     render("graph_worktree_wips_light", st, false);
@@ -89,7 +89,7 @@ fn arrow_down_skips_worktree_wip_rows() {
         (snap.commits[1].oid, snap.commits[2].oid)
     };
     assert_eq!(commit_row(&st, 2) - commit_row(&st, 1), 3, "two worktree rows between them");
-    st.selection = Selection::Commit(one);
+    st.session.selection = Selection::Commit(one);
     let mut h = harness(st, true);
     h.run_steps(4);
     h.state_mut().1.clear();

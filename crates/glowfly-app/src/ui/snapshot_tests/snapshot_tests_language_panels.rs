@@ -112,7 +112,7 @@ fn details_commit_german() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "lang-details-commit");
     st.settings.language = "de".into();
     let oid = commit(&st, "Merge branch 'login-page'");
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     let detail = repo::commit_detail(&dir, oid).unwrap();
     let n = detail.files.len();
     st.session.detail = Some(detail);
@@ -153,7 +153,7 @@ fn details_multi_german() {
     let three = ["Search results page", "Merge branch 'login-page'", "Fix build on Windows"];
     let (mut st, dir) = selected(ThemeChoice::Dark, "lang-details-multi", &three, false);
     st.settings.language = "de".into();
-    let Selection::Commits(m) = &st.selection else { unreachable!() };
+    let Selection::Commits(m) = &st.session.selection else { unreachable!() };
     let (from, to) = m.compare_ends().expect("a line of commits");
     let mut h = harness(st, true);
     h.run();

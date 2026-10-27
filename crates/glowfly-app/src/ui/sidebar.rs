@@ -48,8 +48,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
             ui.add_space(widgets::PAD_X);
             let width = ui.available_width() - widgets::PAD_X;
             let (hint, cut) = widgets::truncate::hint(ui, filter_hint, width);
-            let empty = st.view.ref_filter.is_empty();
-            let r = controls::field(ui, egui::TextEdit::singleline(&mut st.view.ref_filter).hint_text(hint).desired_width(width));
+            let empty = st.session.tab_view.ref_filter.is_empty();
+            let r =
+                controls::field(ui, egui::TextEdit::singleline(&mut st.session.tab_view.ref_filter).hint_text(hint).desired_width(width));
             if empty && cut {
                 r.on_hover_text(filter_hint);
             }
@@ -71,11 +72,11 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let Some(snap) = &st.snap else { return };
     let commands = crate::state::custom_commands::MenuCommands::of(&st.custom_commands, snap, trusted, t);
     let repo_filters = st.settings.forge_filters_for(&snap.real_workdir);
-    let filter = st.view.ref_filter.to_lowercase();
+    let filter = st.session.tab_view.ref_filter.to_lowercase();
     let shown = |name: &str| glowfly_core::matching::contains_lower(name, &filter);
     let current = snap.head_branch.clone().unwrap_or_default();
-    let sel = &st.selection;
-    let fs = st.forge.as_ref();
+    let sel = &st.session.selection;
+    let fs = st.session.forge.as_ref();
     let idle = st.job.is_none();
     let sub_cx = crate::state::submodules::section_cx(st);
     let sections = &mut st.view.sections;

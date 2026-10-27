@@ -60,7 +60,7 @@ pub struct SectionActions {
 }
 
 pub fn all(st: &AppState) -> SectionActions {
-    let fs = st.forge.as_ref();
+    let fs = st.session.forge.as_ref();
     let t = st.settings.lang();
     SectionActions {
         local: new_branch(st, t),

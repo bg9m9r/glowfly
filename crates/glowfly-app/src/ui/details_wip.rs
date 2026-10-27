@@ -61,7 +61,7 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let lines = st.session.reads.line_counts.wip();
     let commands = MenuCommands::for_state(st);
     let (lfs, keys, lang) = (TrackContext::of(st), &st.keymap, st.settings.lang());
-    let (mode, folds) = (st.settings.file_list_mode, &st.view.file_folds);
+    let (mode, folds) = (st.settings.file_list_mode, &st.session.tab_view.file_folds);
     let ctx = RowContext { lfs, tools: &tools, keys, lang, lines, commands: &commands, keyed: false, depth: None, mode, folds };
     let reveal = st.view.file_reveal.as_ref();
 

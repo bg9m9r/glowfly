@@ -22,7 +22,7 @@ fn repo_state(st: &AppState) -> RepositoryState {
 }
 
 fn tooltip(st: &AppState) -> String {
-    st.undo.undo_entry(st.settings.lang(), true).0
+    st.session.undo.undo_entry(st.settings.lang(), true).0
 }
 
 fn read(dir: &Path, f: &str) -> String {
@@ -60,7 +60,7 @@ fn merge_repo(name: &str) -> (AppState, PathBuf) {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("b.txt".into())));
     commit(&mut st, "add b");
-    assert!(matches!(st.undo.undo.last(), Some(Action::Commit { .. })), "{:?}", st.undo.undo);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Commit { .. })), "{:?}", st.session.undo.undo);
     (st, dir)
 }
 
@@ -69,18 +69,18 @@ fn merge_finished_from_the_commit_box() {
     let (mut st, dir) = merge_repo("undo-cont-merge");
     drive(&mut st, Msg::git("Merge", &["merge", "other"]));
     assert_eq!(repo_state(&st), RepositoryState::Merge);
-    assert_eq!(st.undo.undo.len(), 1, "the failed merge keeps the history");
-    assert!(st.undo.blocked.is_none());
+    assert_eq!(st.session.undo.undo.len(), 1, "the failed merge keeps the history");
+    assert!(st.session.undo.blocked.is_none());
 
     resolve(&mut st, &dir, "a.txt", "one\nmerged\n");
     commit(&mut st, "Merge other");
     assert!(
-        matches!(st.undo.undo.last(), Some(Action::Moved { op: MoveOp::Merge, detail: Some(d), .. }) if d == "other"),
+        matches!(st.session.undo.undo.last(), Some(Action::Moved { op: MoveOp::Merge, detail: Some(d), .. }) if d == "other"),
         "{:?}",
-        st.undo.undo
+        st.session.undo.undo
     );
     assert!(tooltip(&st).starts_with("Undo merge of other"), "{}", tooltip(&st));
-    assert_eq!(st.undo.undo.len(), 2);
+    assert_eq!(st.session.undo.undo.len(), 2);
     let merged = head_summary(&st);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
@@ -100,15 +100,15 @@ fn cherry_pick_continued_from_the_banner() {
     assert_eq!(repo_state(&st), RepositoryState::CherryPick);
     resolve(&mut st, &dir, "f.txt", "base\nmain\n1\n");
     drive(&mut st, action_msg(RepositoryState::CherryPick, "Continue", &["cherry-pick", "--continue"]));
-    assert!(matches!(st.undo.undo.last(), Some(Action::Moved { op: MoveOp::CherryPick, .. })), "{:?}", st.undo.undo);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Moved { op: MoveOp::CherryPick, .. })), "{:?}", st.session.undo.undo);
     assert!(tooltip(&st).starts_with(&format!("Undo cherry-pick of {}", short(picks[0]))), "{}", tooltip(&st));
-    assert!(st.undo.blocked.is_none());
+    assert!(st.session.undo.blocked.is_none());
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "main edit");
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert_eq!(head_summary(&st), "f1");
-    assert!(st.undo.blocked.is_none());
+    assert!(st.session.undo.blocked.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -116,14 +116,14 @@ fn cherry_pick_continued_from_the_banner() {
 fn multi_pick_continued_is_one_step() {
     let feature = [("f1", "base\n1\n"), ("f2", "base\n1\n2\n")];
     let (mut st, dir, picks) = feature_repo("undo-cont-multi", &feature, Some("base\nmain\n"));
-    let before = st.undo.undo.len();
+    let before = st.session.undo.undo.len();
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(picks.clone())));
     assert_eq!(repo_state(&st), RepositoryState::CherryPickSequence);
     resolve(&mut st, &dir, "f.txt", "base\n1\n");
     drive(&mut st, action_msg(RepositoryState::CherryPickSequence, "Continue", &["cherry-pick", "--continue"]));
     assert_eq!(head_summary(&st), "f2");
-    assert_eq!(st.undo.undo.len(), before + 1, "one step: {:?}", st.undo.undo);
-    assert_eq!(st.undo.undo.last().unwrap().describe(), "cherry-pick of 2 commits");
+    assert_eq!(st.session.undo.undo.len(), before + 1, "one step: {:?}", st.session.undo.undo);
+    assert_eq!(st.session.undo.undo.last().unwrap().describe(), "cherry-pick of 2 commits");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "main edit");
@@ -145,7 +145,7 @@ fn revert_continued_from_the_banner() {
     assert_eq!(repo_state(&st), RepositoryState::Revert);
     resolve(&mut st, &dir, "a.txt", "one\n");
     drive(&mut st, action_msg(RepositoryState::Revert, "Continue", &["revert", "--continue"]));
-    assert!(matches!(st.undo.undo.last(), Some(Action::Moved { op: MoveOp::Revert, .. })), "{:?}", st.undo.undo);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Moved { op: MoveOp::Revert, .. })), "{:?}", st.session.undo.undo);
     assert!(tooltip(&st).starts_with(&format!("Undo revert of {}", short(a))), "{}", tooltip(&st));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
@@ -160,7 +160,7 @@ fn skip_keeps_the_history() {
     std::fs::write(dir.join("g.txt"), "g\n").unwrap();
     drive(&mut st, Msg::Stage(StageMsg::StageFile("g.txt".into())));
     commit(&mut st, "add g");
-    let history = st.undo.undo.clone();
+    let history = st.session.undo.undo.clone();
     assert!(matches!(history.last(), Some(Action::Commit { .. })), "{history:?}");
 
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![picks[0]])));
@@ -168,7 +168,7 @@ fn skip_keeps_the_history() {
     drive(&mut st, action_msg(RepositoryState::CherryPick, "Skip commit", CHERRY_PICK_SKIP));
     assert_eq!(repo_state(&st), RepositoryState::Clean);
     assert_eq!(head_summary(&st), "add g");
-    assert_eq!(st.undo.undo, history, "nothing added, nothing lost");
-    assert!(st.undo.blocked.is_none());
+    assert_eq!(st.session.undo.undo, history, "nothing added, nothing lost");
+    assert!(st.session.undo.blocked.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

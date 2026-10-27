@@ -61,7 +61,7 @@ fn refresh_that_changes_the_list_steps_to_the_new_neighbour() {
     assert_eq!(shown(&st), Some(&unstaged("a.txt")));
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));
-    assert_eq!(st.view.diff_cursor, Some(st.view.diff_top_row), "landed on its first change");
+    assert_eq!(st.view.diff_cursor, Some(st.session.tab_view.diff_top_row), "landed on its first change");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

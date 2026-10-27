@@ -39,7 +39,7 @@ fn index_in(files: &[&FileEntry], staged: bool, t: &DiffTarget) -> Option<usize>
 /// The folds of that list while the lists show as a tree; None in List mode.
 fn tree_folds(st: &AppState, staged: bool) -> Option<(&FileFolds, FileListId)> {
     let list = if staged { FileListId::Staged } else { FileListId::Unstaged };
-    (st.settings.file_list_mode == FileListMode::Tree).then_some((&st.view.file_folds, list))
+    (st.settings.file_list_mode == FileListMode::Tree).then_some((&st.session.tab_view.file_folds, list))
 }
 
 /// The visible file after (`down`) or before file `at` of `files` (the first visible one for

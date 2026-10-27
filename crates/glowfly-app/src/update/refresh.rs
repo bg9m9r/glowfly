@@ -27,7 +27,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             let state_before = st.snap.as_ref().map(|s| s.state);
             super::notify::unchanged(st);
             // A file list dropped in flight (a tab switch) is asked for again.
-            if matches!(st.selection, Selection::Commits(_))
+            if matches!(st.session.selection, Selection::Commits(_))
                 && let Some(snap) = st.snap.take()
             {
                 super::selection::refreshed(st, &snap, fx);
@@ -84,7 +84,9 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
         // While a failure is held, Load more tries the same load again.
         LoadMsg::LoadMoreCommits if st.refresh.more_failed.is_some() => super::load_more::retry(st, fx),
         // Under no matches, Load more goes through the first older match the index knows of.
-        LoadMsg::LoadMoreCommits if st.filtering() && st.search.matches.is_empty() && super::search_index::further_target(st).is_some() => {
+        LoadMsg::LoadMoreCommits
+            if st.filtering() && st.session.search.matches.is_empty() && super::search_index::further_target(st).is_some() =>
+        {
             super::search_deeper::further(st, fx)
         }
         LoadMsg::LoadMoreCommits if st.snap.as_ref().is_some_and(can_load_more) => {

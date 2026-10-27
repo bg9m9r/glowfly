@@ -19,14 +19,14 @@ fn cloud() -> Target {
 /// `setup` on a repository on `host`, with pull request 7's panel open.
 fn opened(name: &str, host: Target) -> (AppState, Vec<crate::effect::Effect>, [PathBuf; 2]) {
     let (mut st, work, bare, _) = setup(name, &[]);
-    st.forge.as_mut().unwrap().host = Some(host);
+    st.session.forge.as_mut().unwrap().host = Some(host);
     let fx = run(&mut st, PullRequestMsg::Open(7));
     (st, fx, [work, bare])
 }
 
 fn reply_msg(st: &AppState, reply: PrReply) -> PullRequestMsg {
     let workdir = st.workdir().unwrap();
-    let target = st.forge.as_ref().unwrap().host.clone().unwrap();
+    let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
     PullRequestMsg::Replied { workdir, target, id: 7, generation: st.session.pull_request.page_gen, reply: Box::new(reply) }
 }
 
@@ -150,7 +150,7 @@ fn data_center_pull_request_loads_and_approves() {
     // A self-hosted server is contacted only once connected.
     let connection = Connection { account: dc.account(), user: "ada".into(), method: "access token".into() };
     st.settings.connections.push(connection);
-    st.forge.as_mut().unwrap().host = Some(dc);
+    st.session.forge.as_mut().unwrap().host = Some(dc);
     let fx = run(&mut st, PullRequestMsg::Open(7));
     let jobs = calls(&fx);
     assert!(matches!(&jobs[..], [j] if matches!(j.call, PrCall::Load) && j.req.target == data_center()), "{jobs:?}");

@@ -300,10 +300,10 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if !snap.staged.is_empty() {
         out.push(entry(C::UnstageAll, "Unstage all files", "reset everything"));
     }
-    if let Some(a) = st.undo.undo.last() {
+    if let Some(a) = st.session.undo.undo.last() {
         out.push(with_detail(entry(C::Undo, "Undo", "revert back step history"), Some(a.describe())));
     }
-    if let Some(a) = st.undo.redo.last() {
+    if let Some(a) = st.session.undo.redo.last() {
         out.push(with_detail(entry(C::Redo, "Redo", "again forward step history"), Some(a.describe())));
     }
     super::palette_selected::entries(st, snap, out);

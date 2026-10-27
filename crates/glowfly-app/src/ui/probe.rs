@@ -46,7 +46,7 @@ pub fn snapshot(ctx: &egui::Context, st: &AppState) -> Value {
         "repo": snap.map(|s| s.real_workdir.to_string_lossy().into_owned()),
         "head": snap.and_then(|s| s.head_oid).map(|o| o.to_string()),
         "head_branch": snap.and_then(|s| s.head_branch.clone()),
-        "selection": selection(&st.selection),
+        "selection": selection(&st.session.selection),
         "draft_summary": st.session.draft.summary,
         "modal": st.modal.is_some(),
         "palette": st.palette.is_some(),

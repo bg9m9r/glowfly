@@ -137,19 +137,19 @@ fn edit_menu_copy_items_follow_the_selection() {
 
     let dir = scratch_repo("menu-copy");
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     assert_eq!(copy_sha(&st), Err(NO_COMMIT));
     assert_eq!(copy_message(&st), Err(NO_COMMIT));
     assert_eq!(copy_branch(&st), Ok("main".to_owned()));
 
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
-    st.selection = Selection::Commit(head);
+    st.session.selection = Selection::Commit(head);
     assert_eq!(copy_sha(&st), Ok(ShaCopy::One(head.to_string())));
     assert_eq!(copy_sha(&st).unwrap().label(Lang::En), "Copy commit SHA");
     assert_eq!(copy_message(&st), Ok("first".to_owned()));
 
     let other = git2::Oid::from_str("1234567890123456789012345678901234567890").unwrap();
-    st.selection = Selection::Commits(MultiSelection {
+    st.session.selection = Selection::Commits(MultiSelection {
         oids: vec![head, other],
         anchor: head,
         cursor: head,

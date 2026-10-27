@@ -14,7 +14,7 @@ use git2::Oid;
 use glowfly_core::repo::DiffTarget;
 
 fn multi(st: &AppState) -> &MultiSelection {
-    match &st.selection {
+    match &st.session.selection {
         Selection::Commits(m) => m,
         other => panic!("expected a multi-selection, got {other:?}"),
     }
@@ -46,14 +46,14 @@ fn a_selection_with_a_gap_lists_each_commits_changes() {
 
     // A row opens that commit's diff; the selection stays.
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(commit_file(f.c(4)))));
-    assert!(matches!(st.selection, Selection::Commits(_)));
+    assert!(matches!(st.session.selection, Selection::Commits(_)));
     assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t.clone()), Some(commit_file(f.c(4))));
 
     // Stepping on goes to the next commit's file.
     assert_eq!(next_file(&st, &commit_file(f.c(4)), 1), Some(commit_file(f.c(2))));
     assert_eq!(next_file(&st, &commit_file(f.c(4)), -1), Some(commit_file(f.c(5))));
     assert_eq!(next_file(&st, &commit_file(f.c(2)), 1), None);
-    st.view.diff_top_row = 10_000;
+    st.session.tab_view.diff_top_row = 10_000;
     assert_eq!(step(&st, 1), Step::File(commit_file(f.c(2)), Landing::First), "past c4's last change");
 
     // Ctrl-clicking c4 away closes its diff.
@@ -90,7 +90,7 @@ fn stale_failed_and_refreshed_lists() {
     assert!(stacks(&fx).is_empty(), "{fx:?}");
     assert_eq!(multi(&st).stacked, loaded);
     // One dropped in flight (a tab switch) is asked for again.
-    if let Selection::Commits(m) = &mut st.selection {
+    if let Selection::Commits(m) = &mut st.session.selection {
         m.stacked = None;
     }
     let fx = refresh(&mut st);

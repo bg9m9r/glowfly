@@ -192,11 +192,11 @@ fn fetched(st: &mut AppState, r: FetchReply, now: Instant) {
 /// Whether the active tab shows the clone at `path` with `target` as its code host.
 fn showing(st: &AppState, path: &Path, target: &Target) -> bool {
     let here = st.snap.as_ref().is_some_and(|s| st.names_repo(s, path));
-    here && st.forge.as_ref().is_some_and(|f| f.host.as_ref() == Some(target))
+    here && st.session.forge.as_ref().is_some_and(|f| f.host.as_ref() == Some(target))
 }
 
 fn listed(st: &AppState, id: u64) -> bool {
-    st.forge.as_ref().is_some_and(|f| f.prs.iter().any(|p| p.id == id))
+    st.session.forge.as_ref().is_some_and(|f| f.prs.iter().any(|p| p.id == id))
 }
 
 fn open_pr(st: &mut AppState, path: PathBuf, target: Target, id: u64, now: Instant, fx: &mut Vec<Effect>) {

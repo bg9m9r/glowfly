@@ -20,7 +20,7 @@ pub(super) fn open(name: &str) -> (AppState, PathBuf) {
     git(&dir, &["remote", "add", "origin", "https://github.com/o/r"]);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    let fs = st.forge.as_mut().expect("the service is detected");
+    let fs = st.session.forge.as_mut().expect("the service is detected");
     fs.host_status = Status::Ok;
     fs.tracker_status = Status::Ok;
     fs.loading = 0;
@@ -59,11 +59,11 @@ fn choose(kind: FilterKind, b: Builtin) -> FilterMsg {
 }
 
 fn host(st: &AppState) -> Target {
-    st.forge.as_ref().unwrap().host.clone().unwrap()
+    st.session.forge.as_ref().unwrap().host.clone().unwrap()
 }
 
 fn fs(st: &AppState) -> &ForgeState {
-    st.forge.as_ref().unwrap()
+    st.session.forge.as_ref().unwrap()
 }
 
 pub(super) fn pr(id: u64, author: &str) -> PullRequest {
@@ -117,7 +117,7 @@ fn choosing_mine_saves_it_and_asks_who_i_am_once() {
     assert_eq!(fs(&st).filters.me, MeState::Asking);
     assert!(filter_calls(&send(&mut st, choose(FilterKind::Prs, Builtin::NeedsMyReview))).is_empty(), "already asking");
 
-    st.forge.as_mut().unwrap().prs = vec![pr(1, "ada"), pr(2, "grace"), pr(3, "Ada")];
+    st.session.forge.as_mut().unwrap().prs = vec![pr(1, "ada"), pr(2, "grace"), pr(3, "Ada")];
     let filters = st.settings.forge_filters_for(&real);
     assert!(matches!(pr_view(fs(&st), &filters).hint, Some(Hint::Faint(h)) if h == "Finding your GitHub account…"));
     let h = host(&st);
@@ -140,7 +140,7 @@ fn team_review_requests_count_as_needs_my_review() {
     let fx = send(&mut st, choose(FilterKind::Prs, Builtin::NeedsMyReview));
     assert!(matches!(filter_calls(&fx)[..], [(t, FilterCall::Me { .. })] if *t == host(&st)));
     let with = |id, f: PrFacets| PullRequest { facets: PrFacets { author_id: "grace".into(), ..f }, ..pr(id, "grace") };
-    st.forge.as_mut().unwrap().prs = vec![
+    st.session.forge.as_mut().unwrap().prs = vec![
         with(1, PrFacets { awaiting_team_ids: vec!["o/core".into()], ..Default::default() }),
         with(2, PrFacets { awaiting_team_ids: vec!["o/docs".into()], ..Default::default() }),
         with(3, PrFacets { awaiting_ids: vec!["ada".into()], ..Default::default() }),
@@ -152,7 +152,7 @@ fn team_review_requests_count_as_needs_my_review() {
     assert_eq!(view.rows.iter().map(|p| p.id).collect::<Vec<_>>(), [1, 3]);
     assert_eq!(view.hint, Some(Hint::Faint("Needs my review · 2 of 3".into())));
     // Signing in again forgets the teams with the user.
-    st.forge.as_mut().unwrap().filters.account_changed(true, false);
+    st.session.forge.as_mut().unwrap().filters.account_changed(true, false);
     assert_eq!(fs(&st).filters.me, MeState::Unknown);
     let _ = std::fs::remove_dir_all(dir);
 }
@@ -173,7 +173,7 @@ fn a_failed_lookup_shows_the_error_and_the_next_refresh_asks_again() {
 #[test]
 fn issue_filters_search_the_tracker() {
     let (mut st, dir) = open("ff-issues");
-    st.forge.as_mut().unwrap().filters.me = MeState::Known(ada());
+    st.session.forge.as_mut().unwrap().filters.me = MeState::Known(ada());
     let fx = send(&mut st, choose(FilterKind::Issues, Builtin::IssuesCreatedByMe));
     let calls = filter_calls(&fx);
     let created = Builtin::IssuesCreatedByMe.conditions();
@@ -212,7 +212,7 @@ fn issue_filters_search_the_tracker() {
 fn a_tracker_that_cannot_apply_the_filter_is_not_asked() {
     let (mut st, dir) = open("ff-gitlab");
     let gl = Target { provider: Provider::GitLab, host: "gitlab.com".into(), owner: "g".into(), project: String::new(), repo: "a".into() };
-    st.forge = Some(ForgeState::new(Some(gl.clone()), "origin".into(), Some(gl)));
+    st.session.forge = Some(ForgeState::new(Some(gl.clone()), "origin".into(), Some(gl)));
     let fx = send(&mut st, choose(FilterKind::Issues, Builtin::IssuesMentioningMe));
     assert!(filter_calls(&fx).is_empty());
     let filters = st.settings.forge_filters_for(&st.snap.as_ref().unwrap().real_workdir);
@@ -224,7 +224,7 @@ fn a_tracker_that_cannot_apply_the_filter_is_not_asked() {
 fn an_auth_error_drops_the_saved_sign_in() {
     let (mut st, dir) = open("ff-auth");
     let key = host(&st).account().key();
-    st.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
     send(&mut st, choose(FilterKind::Issues, Builtin::IssuesCreatedByMe));
     let (choice, conditions) = (FilterChoice::Builtin(Builtin::IssuesCreatedByMe), Builtin::IssuesCreatedByMe.conditions());
     let h = host(&st);
@@ -239,7 +239,7 @@ fn a_refresh_runs_the_shown_filters_again() {
     let (mut st, dir) = open("ff-refresh");
     send(&mut st, choose(FilterKind::Issues, Builtin::IssuesCreatedByMe));
     send(&mut st, choose(FilterKind::Prs, Builtin::MyPrs));
-    st.forge.as_mut().unwrap().filters.me = MeState::Unknown;
+    st.session.forge.as_mut().unwrap().filters.me = MeState::Unknown;
     let fx = update(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: false }), Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::Forge { call: ForgeCall::Refresh { with_issues: true, .. }, .. })));
     let calls = filter_calls(&fx);
@@ -265,7 +265,7 @@ fn untrusted_repositories_and_unconnected_servers_get_no_filter_calls() {
         project: String::new(),
         repo: "r".into(),
     };
-    st.forge = Some(ForgeState::new(Some(ghe.clone()), "origin".into(), Some(ghe.clone())));
+    st.session.forge = Some(ForgeState::new(Some(ghe.clone()), "origin".into(), Some(ghe.clone())));
     assert!(filter_calls(&send(&mut st, choose(FilterKind::Prs, Builtin::MyPrs))).is_empty());
     st.settings.connections.push(Connection { account: ghe.account(), user: "ada".into(), method: "access token".into() });
     assert_eq!(filter_calls(&send(&mut st, choose(FilterKind::Prs, Builtin::NeedsMyReview))).len(), 1, "once connected");
@@ -278,7 +278,7 @@ fn dropped_replies_are_asked_for_again() {
     let (mut st, dir) = open("ff-parked");
     send(&mut st, choose(FilterKind::Prs, Builtin::MyPrs));
     send(&mut st, FilterMsg::NewDialog(FilterKind::Prs));
-    let f = st.forge.as_mut().unwrap();
+    let f = st.session.forge.as_mut().unwrap();
     f.replies_dropped();
     assert_eq!(f.filters.me, MeState::Unknown);
     assert_eq!(f.filters.pr_options, crate::state::forge_filters::OptionsState::NotAsked);

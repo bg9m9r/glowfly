@@ -14,7 +14,7 @@ use git2::Oid;
 use glowfly_core::repo::{Comparison, DiffTarget, FileDiff, FileEntry};
 
 fn compared(st: &AppState) -> &WorkdirCompare {
-    match &st.selection {
+    match &st.session.selection {
         Selection::VsWorkdir(w) => w,
         other => panic!("expected a working-directory comparison, got {other:?}"),
     }
@@ -44,10 +44,10 @@ fn entering_and_leaving_the_comparison() {
     assert_eq!(compared(&st).oid, f.c(3));
     assert_eq!(reads(&fx), [(f.c(3), 1)]);
     assert_eq!(fx.len(), 1, "{fx:?}");
-    assert!(st.selection.wip_shown() && st.selection.includes(f.c(3)));
+    assert!(st.session.selection.wip_shown() && st.session.selection.includes(f.c(3)));
 
     let fx = up(&mut st, Msg::Selection(SelectionMsg::CollapseSelection));
-    assert_eq!(st.selection, Selection::Commit(f.c(3)), "Esc returns to the commit");
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)), "Esc returns to the commit");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == f.c(3))));
 
     // From the commit menu, closing what showed the commit before.
@@ -66,17 +66,17 @@ fn entering_and_leaving_the_comparison() {
 
     // Ctrl-click on the WIP row again drops the commit; on a commit adds it back.
     up(&mut st, Msg::Selection(SelectionMsg::ToggleWip));
-    assert_eq!(st.selection, Selection::Commit(f.c(3)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleWip));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
-    assert_eq!(st.selection, Selection::Wip, "Ctrl-click on the compared commit leaves the WIP row");
+    assert_eq!(st.session.selection, Selection::Wip, "Ctrl-click on the compared commit leaves the WIP row");
 
     // Several commits can't be compared with it.
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
-    let before = st.selection.clone();
+    let before = st.session.selection.clone();
     assert!(up(&mut st, Msg::Selection(SelectionMsg::ToggleWip)).is_empty());
-    assert_eq!(st.selection, before);
+    assert_eq!(st.session.selection, before);
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(WORKDIR_NEEDS_ONE));
     let _ = std::fs::remove_dir_all(&f.dir);
 }
@@ -133,7 +133,7 @@ fn the_comparison_follows_the_working_tree() {
     git(&f.dir, &["reset", "-q", "--hard", &f.c(2).to_string()]);
     git(&f.dir, &["branch", "-q", "-D", "side"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert_eq!(st.selection, Selection::Wip);
+    assert_eq!(st.session.selection, Selection::Wip);
     assert!(st.session.diff.view.is_none());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
@@ -171,9 +171,9 @@ fn swap_direction_reads_the_list_the_other_way() {
 
     // Only a comparison is swapped.
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(4))));
-    let before = st.selection.clone();
+    let before = st.session.selection.clone();
     assert!(up(&mut st, Msg::Selection(SelectionMsg::SwapCompare)).is_empty());
-    assert_eq!(st.selection, before);
+    assert_eq!(st.session.selection, before);
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 

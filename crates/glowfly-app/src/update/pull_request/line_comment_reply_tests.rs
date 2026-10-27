@@ -82,7 +82,7 @@ fn posted_single_comment_appears_and_the_page_reloads() {
 
     // The reload hands the reply draft and focus to the real thread.
     st.session.pull_request.view.as_mut().unwrap().forms.replies.insert("new:901".into(), "Also this".into());
-    let head = st.forge.as_ref().unwrap().prs[0].head.clone().unwrap_or_default();
+    let head = st.session.forge.as_ref().unwrap().prs[0].head.clone().unwrap_or_default();
     let page = PrPage { detail: detail(&head), entries: Vec::new(), threads: vec![new_thread("PRRT_1", 901, false)], threads_note: None };
     let msg = reply_msg(&st, PrReply::Loaded(Ok(page)));
     run(&mut st, msg);
@@ -141,12 +141,12 @@ fn failed_post_keeps_the_draft_with_the_services_words() {
 fn an_auth_failure_drops_the_cached_auth() {
     let (mut st, dirs) = ready("plc-auth", |_| {});
     let key = github().account().key();
-    st.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
     posted(&mut st, false);
     let e = ForgeError { message: "authentication failed: 401".into(), auth: true };
     let msg = reply_msg(&st, PrReply::LineCommented { review: false, result: Err(e) });
     run(&mut st, msg);
-    assert!(!st.forge.as_ref().unwrap().auth.contains_key(&key));
+    assert!(!st.session.forge.as_ref().unwrap().auth.contains_key(&key));
     done(st, dirs);
 }
 

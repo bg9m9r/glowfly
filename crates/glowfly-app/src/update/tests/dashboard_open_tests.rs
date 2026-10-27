@@ -72,8 +72,8 @@ fn show_pull_request_opens_at_once_or_when_the_tab_lists_it() {
     let (a, b) = (repo("dash-pr-a", "a"), repo("dash-pr-b", "b"));
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
-    assert_eq!(st.forge.as_ref().and_then(|f| f.host.clone()), Some(gh("acme", "a")));
-    st.forge.as_mut().unwrap().prs = vec![pr(4, "Listed", "ada", &[])];
+    assert_eq!(st.session.forge.as_ref().and_then(|f| f.host.clone()), Some(gh("acme", "a")));
+    st.session.forge.as_mut().unwrap().prs = vec![pr(4, "Listed", "ada", &[])];
     st.dashboard.open = true;
     run(&mut st, DashboardMsg::OpenPr { path: a.clone(), target: gh("acme", "a"), id: 4 });
     assert_eq!(shown_pr(&st), Some(4), "already listed: shown at once");

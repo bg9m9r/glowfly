@@ -189,7 +189,7 @@ pub struct DiffComments {
 /// Some for the open panel's file diff `target` on a service that takes line comments.
 pub fn diff_comments(st: &AppState, target: &DiffTarget) -> Option<DiffComments> {
     let v = st.session.pull_request.view.as_ref().filter(|v| v.shows_file(target))?;
-    let provider = st.forge.as_ref().and_then(|f| f.host_provider()).filter(|p| line_comments_in_app(*p))?;
+    let provider = st.session.forge.as_ref().and_then(|f| f.host_provider()).filter(|p| line_comments_in_app(*p))?;
     let mut out = DiffComments { blocked: start_blocked(Some(provider), v), ..Default::default() };
     if let Some(d) = v.line_draft.as_ref().filter(|d| d.target == *target) {
         out.draft = d.lines.iter().flat_map(line_keys).flatten().collect();

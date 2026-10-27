@@ -260,7 +260,7 @@ fn palette_takes_typing_over_an_empty_search_bar() {
     h.input_mut().events.push(eframe::egui::Event::Text("push".into()));
     h.run();
     assert_eq!(h.state().0.palette.as_ref().map(|p| p.query.as_str()), Some("push"));
-    assert_eq!(h.state().0.view.search, "");
+    assert_eq!(h.state().0.session.tab_view.search, "");
     drop(h);
     remove_fixture(&dir);
 }

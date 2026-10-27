@@ -154,7 +154,7 @@ fn a_file_at_the_old_path_is_never_overwritten() {
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.stashes.is_empty(), "nothing was stashed");
     assert_eq!(rows(&snap.staged), [('R', "moved.txt")], "the rename is as it was");
-    assert!(st.undo.undo.is_empty(), "nothing recorded");
+    assert!(st.session.undo.undo.is_empty(), "nothing recorded");
     let headline = Lang::En.tr("stash.push.rename_blocked.toast");
     assert_eq!(st.log.last().expect("a log line").text, headline, "the translated headline");
     let _ = std::fs::remove_dir_all(&dir);

@@ -183,7 +183,7 @@ fn person_colours_graph_light() {
 fn details_person_colour() {
     let (mut st, dir) = with_grace(ThemeChoice::Dark, "details_person_colour");
     let oid = tip(&dir, "topic");
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     assert_eq!(st.session.detail.as_ref().unwrap().email, "grace@example.com");
     let mut h = harness(st, true);

@@ -33,15 +33,15 @@ fn clear_search_keeps_the_bar_and_the_filter() {
     let (mut st, dir) = opened("retry-clear-search");
     up(&mut st, Msg::Search(SearchMsg::Open));
     up(&mut st, Msg::Search(SearchMsg::ToggleFilter));
-    st.view.search = "first".into();
+    st.session.tab_view.search = "first".into();
     st.view.author_filter = "gr".into();
     up(&mut st, Msg::Search(SearchMsg::QueryChanged));
-    assert!(!st.search.matches.is_empty());
+    assert!(!st.session.search.matches.is_empty());
     st.view.focus_search = false;
     up(&mut st, Msg::Search(SearchMsg::Clear));
-    assert!(st.view.search.is_empty() && st.view.author_filter.is_empty());
-    assert!(st.search.matches.is_empty() && !st.search.active());
-    assert!(st.view.show_search && st.search.filter, "the bar and the filter stay");
+    assert!(st.session.tab_view.search.is_empty() && st.view.author_filter.is_empty());
+    assert!(st.session.search.matches.is_empty() && !st.session.search.active());
+    assert!(st.view.show_search && st.session.search.filter, "the bar and the filter stay");
     assert!(st.view.focus_search, "the field takes the focus");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -183,7 +183,7 @@ fn compare_try_again_reads_the_list_again() {
     assert!(up(&mut st, Msg::Selection(SelectionMsg::RetryCompare)).is_empty(), "one commit: nothing to compare");
 
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(5))));
-    if let Selection::Commits(m) = &mut st.selection {
+    if let Selection::Commits(m) = &mut st.session.selection {
         m.changes = Some(Err("boom".into()));
     }
     let fx = up(&mut st, Msg::Selection(SelectionMsg::RetryCompare));
@@ -191,11 +191,11 @@ fn compare_try_again_reads_the_list_again() {
         matches!(&fx[..], [Effect::Selection(SelectionEffect::Compare { from, to, .. })] if (*from, *to) == (f.c(3), f.c(5))),
         "{fx:?}"
     );
-    assert!(matches!(&st.selection, Selection::Commits(m) if m.changes.is_none()));
+    assert!(matches!(&st.session.selection, Selection::Commits(m) if m.changes.is_none()));
 
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(3))));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleWip));
-    let generation = match &mut st.selection {
+    let generation = match &mut st.session.selection {
         Selection::VsWorkdir(w) => {
             w.changes = Some(Err("boom".into()));
             w.generation

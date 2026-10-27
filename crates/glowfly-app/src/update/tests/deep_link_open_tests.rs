@@ -67,7 +67,7 @@ fn a_match_in_the_active_tab_is_selected_there() {
     let oid = tip(&work, "feature");
     st.view.scroll_to_row = None;
     let fx = answer(&mut st, &link_text("branch/feature"), vec![found(&work, present(oid))]);
-    assert_eq!(st.selection, Selection::Commit(oid));
+    assert_eq!(st.session.selection, Selection::Commit(oid));
     assert!(st.view.scroll_to_row.is_some(), "scrolled into view");
     assert_eq!(loads(&fx, LoadKind::Open), None, "nothing new opens");
     assert!(st.deep_link.pending.is_none());
@@ -83,7 +83,7 @@ fn a_match_in_a_parked_tab_is_switched_to() {
     let oid = tip(&work, "feature");
     answer(&mut st, &link_text("branch/feature"), vec![found(&work, present(oid))]);
     assert_eq!(st.active_tab, 0);
-    assert_eq!(st.selection, Selection::Commit(oid));
+    assert_eq!(st.session.selection, Selection::Commit(oid));
     cleanup(&[&work, &bare, &other]);
 }
 
@@ -98,7 +98,7 @@ fn a_recent_match_opens_then_selects() {
     assert!(st.deep_link.pending.is_some(), "waits for the load");
     finish(&mut st, fx);
     assert!(st.snap.is_some());
-    assert_eq!(st.selection, Selection::Commit(oid));
+    assert_eq!(st.session.selection, Selection::Commit(oid));
     assert!(st.deep_link.pending.is_none());
     cleanup(&[&work, &bare]);
 }
@@ -134,7 +134,7 @@ fn worktrees_of_one_repository_are_one_match() {
     linked.main_worktree = false;
     answer(&mut st, &link_text("branch/feature"), vec![linked, found(&work, present(oid))]);
     assert!(st.modal.is_none(), "no question");
-    assert_eq!(st.selection, Selection::Commit(oid), "the open tab won");
+    assert_eq!(st.session.selection, Selection::Commit(oid), "the open tab won");
     cleanup(&[&work, &bare]);
 }
 
@@ -209,7 +209,7 @@ fn a_missing_target_offers_fetch_and_looks_again() {
     let answered = crate::runner::execute(check).unwrap();
     let fx = update(&mut st, answered, Instant::now());
     finish(&mut st, fx);
-    assert_eq!(st.selection, Selection::Commit(tip(&work, "main")));
+    assert_eq!(st.session.selection, Selection::Commit(tip(&work, "main")));
     assert!(st.deep_link.pending.is_none());
 
     // Still missing after the fetch: said, and the link given up.

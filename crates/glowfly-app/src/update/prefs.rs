@@ -45,7 +45,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 super::git_env::discover(st, fx);
             }
             // Start the Integrations page on the open repository's service.
-            let provider = st.forge.as_ref().and_then(|f| f.host_provider()).unwrap_or(Provider::GitHub);
+            let provider = st.session.forge.as_ref().and_then(|f| f.host_provider()).unwrap_or(Provider::GitHub);
             select_integration(st, provider);
             fx.push(Effect::Prefs(PrefsEffect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() }));
         }
@@ -56,7 +56,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             // The diff's scroll offset is in pixels: keep the same top row if the editor font
             // size (and so the row height) changed.
             if st.session.diff.view.is_some() {
-                st.view.diff_scroll_to_row = Some(st.view.diff_top_row);
+                st.view.diff_scroll_to_row = Some(st.session.tab_view.diff_top_row);
             }
             // The commit limit or branch visibility may have changed.
             super::repo::refresh(st, fx);
@@ -302,7 +302,7 @@ pub(super) fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// Switches the Integrations page to `provider`, prefilling the host for the open repository.
 pub(super) fn select_integration(st: &mut AppState, provider: Provider) {
-    let host = st.forge.as_ref().and_then(|f| f.host.clone()).filter(|t| t.provider == provider);
+    let host = st.session.forge.as_ref().and_then(|f| f.host.clone()).filter(|t| t.provider == provider);
     let saved = st.settings.connections.iter().find(|c| c.account.provider == provider).map(|c| c.account.clone());
     let Some(p) = st.prefs.as_mut() else { return };
     p.int_provider = provider;

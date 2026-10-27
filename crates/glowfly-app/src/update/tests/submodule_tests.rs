@@ -301,11 +301,11 @@ fn update_blocked_cases() {
 fn submodule_update_keeps_undo_history() {
     let (mut st, parent, lib) = opened("sm-undo");
     commit_inside(&mut st, &parent);
-    st.undo.record(Action::DeleteBranch { name: "b".into(), oid: Oid::zero(), upstream: None });
+    st.session.undo.record(Action::DeleteBranch { name: "b".into(), oid: Oid::zero(), upstream: None });
     drive(&mut st, msg(PATH, true));
     assert_eq!(sub(&st).state, SubmoduleState::InSync);
-    assert_eq!(st.undo.undo.len(), 1, "updating a submodule leaves the parent's history valid");
-    assert!(st.undo.blocked.is_none());
+    assert_eq!(st.session.undo.undo.len(), 1, "updating a submodule leaves the parent's history valid");
+    assert!(st.session.undo.blocked.is_none());
     cleanup(&[&parent, &lib]);
 }
 

@@ -47,8 +47,8 @@ fn new_branch_is_undoable() {
     let (mut st, dir) = opened("undo-refs-branch");
     drive(&mut st, Msg::git("Create branch", &["branch", "x"]));
     assert!(has_branch(&st, "x"));
-    assert!(matches!(st.undo.undo.last(), Some(Action::CreateBranch { name, .. }) if name == "x"));
-    assert!(st.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo creation of branch x"));
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::CreateBranch { name, .. }) if name == "x"));
+    assert!(st.session.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo creation of branch x"));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert!(!has_branch(&st, "x"));
     drive(&mut st, Msg::Job(JobMsg::Redo));
@@ -65,7 +65,7 @@ fn new_tag_is_undoable_unless_pushed() {
     };
     drive(&mut st, create("v1", None));
     assert!(has_tag(&st, "v1"));
-    assert!(matches!(st.undo.undo.last(), Some(Action::CreateTag { name, .. }) if name == "v1"));
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::CreateTag { name, .. }) if name == "v1"));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert!(!has_tag(&st, "v1"));
     drive(&mut st, Msg::Job(JobMsg::Redo));
@@ -82,7 +82,7 @@ fn new_tag_is_undoable_unless_pushed() {
     assert!(matches!(&fx[..], [Effect::RunGit { cmds, record: None, .. }] if cmds.len() == 2), "{fx:?}");
     super::tests::finish(&mut st, fx);
     assert!(has_tag(&st, "v2"));
-    assert!(matches!(st.undo.undo[..], [Action::CreateTag { .. }]), "{:?}", st.undo.undo);
+    assert!(matches!(st.session.undo.undo[..], [Action::CreateTag { .. }]), "{:?}", st.session.undo.undo);
     cleanup(&[&dir, &bare]);
 }
 
@@ -91,7 +91,7 @@ fn undo_of_a_new_branch_checkout_asks_to_delete_it() {
     let (mut st, dir) = opened("undo-refs-checkout-new");
     drive(&mut st, Msg::git("Create branch", &["checkout", "-b", "x"]));
     assert_eq!(head_branch(&st).as_deref(), Some("x"));
-    let action = st.undo.undo.last().cloned().expect("recorded");
+    let action = st.session.undo.undo.last().cloned().expect("recorded");
     assert!(matches!(&action, Action::Checkout { created: Some(c), .. } if c.name == "x"), "{action:?}");
 
     let fx = update(&mut st, Msg::Job(JobMsg::Undo), Instant::now());
@@ -134,6 +134,6 @@ fn undo_with_runs_only_the_top_entry() {
     let fx = update(&mut st, undo_with(false, other), Instant::now());
     assert!(fx.is_empty() && st.job.is_none());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "The undo history changed, so nothing was run."));
-    assert!(has_branch(&st, "x") && st.undo.undo.len() == 1);
+    assert!(has_branch(&st, "x") && st.session.undo.undo.len() == 1);
     cleanup(&[&dir]);
 }

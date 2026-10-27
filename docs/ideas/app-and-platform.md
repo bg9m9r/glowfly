@@ -178,7 +178,9 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - `RangeDiffView` keeps its own `generation` beside `RepoSession::range_diff`'s counter: fold the two into one
 - `LoadKind::Open` closes the views one area at a time (range_diff, conflict_files and diff_preview aren't in that list): a `RepoSession` reset hook could close them all in one place
 - Move the Create issue form out of `st.modal` into the session if dialogs ever become per-tab, so `issue_form` leaves `Parked`
-- `LineCounts::wip_gen`, `Signatures::generation` and `ConflictChecks::generation` still bump themselves in their own `parked()` hooks: route them through `RepoSession::counters()` so they rise across tabs like the rest
 - `diff_preview` (already in the session) is keyed by the diff's `shown_gen`: fold it into `DiffSlot`
 - A `DiffSlot::close()` for the session part of `update/repo.rs::close_diff` (view, preview, next generation), leaving only the `ViewState` clears there
-- `forget_repo_reads` still clears `view.file_folds` on its own: one `RepoSession` reset for a newly opened repository once the folds join the session
+- `CommitSearch`'s request ids (`paths.pending/requests`, `index.pending/asked`, `loaded.pending/requests`) are reset by hand in `search_paths::resume` / `search_index::resume`: route them through `RepoSession::counters()`
+- A `RepoSession` lookup for a workdir, active or parked, in place of the hand-written active-or-parked matches in update/ops.rs, gitflow_resume.rs, tab_losses.rs, pull_request/line_comment.rs and inactive.rs
+- `TabView::graph_scroll`'s viewport height belongs to the window, not the tab: split it out if a keyboard step before the first frame after a switch ever needs the right height
+- Fold `TabView::parked_in` and `diff_top_row` into `DiffSlot`, so the open diff, its top row and the mode it was counted in live together

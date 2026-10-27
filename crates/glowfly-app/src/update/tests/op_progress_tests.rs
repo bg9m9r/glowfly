@@ -87,7 +87,7 @@ fn abort_merge_all_resolved_stashes_and_undo_restores() {
     assert_eq!(repo_state(&st), RepositoryState::Clean);
     assert_eq!(read(&dir, "a.txt"), "one\nours\n");
     assert!(top_stash(&dir).is_some_and(|m| m.contains(ABORT_STASH_MESSAGE)));
-    assert!(matches!(st.undo.undo.last(), Some(Action::StashPush { .. })), "recorded for undo");
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::StashPush { .. })), "recorded for undo");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir, "a.txt"), "one\nmerged\n");
@@ -210,7 +210,7 @@ fn single_cherry_pick_abort_keeps() {
     assert_eq!(repo_state(&st), RepositoryState::Clean);
     assert_eq!(read(&dir, "f.txt"), "ours\n");
     assert!(top_stash(&dir).is_some_and(|m| m.contains(ABORT_STASH_MESSAGE)));
-    assert!(matches!(st.undo.undo.last(), Some(Action::StashPush { .. })));
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::StashPush { .. })));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir, "f.txt"), "merged\n");
     assert!(st.snap.as_ref().unwrap().staged.iter().any(|f| f.path == "f.txt"));
@@ -263,7 +263,7 @@ fn show_in_progress() {
     st.settings.show_details_panel = false;
     st.view.scroll_to_row = None;
     let fx = update(&mut st, Msg::Repo(RepoMsg::ShowInProgress), Instant::now());
-    assert_eq!(st.selection, Selection::Wip);
+    assert_eq!(st.session.selection, Selection::Wip);
     assert!(st.settings.show_details_panel);
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "saved like the other panel toggles");
     assert!(st.snap.as_ref().unwrap().graph.wip.is_some());

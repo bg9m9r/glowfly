@@ -62,7 +62,7 @@ pub(in crate::ui) fn with_issue(
     fs.tracker_status = Status::Ok;
     fs.my_issues = vec![issue.clone(), Issue { key: other.into(), title: "Faster search".into(), ..crash() }];
     let view = IssueView::new(issue, &fs).unwrap();
-    st.forge = Some(fs);
+    st.session.forge = Some(fs);
     st.session.issue.view = Some(view);
     (st, dir)
 }
@@ -210,7 +210,7 @@ fn create_is_disabled_with_the_reason() {
     let (mut st, dir) = with_issue(ThemeChoice::Light, "issue-sidebar-blocked", github(), crash(), None);
     st.session.issue.view = None;
     let ghe = Target { provider: Provider::GitHubEnterprise, host: "git.acme.io".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(ghe);
+    st.session.forge.as_mut().unwrap().tracker = Some(ghe);
     let mut h = harness(st, false);
     h.run();
     assert!(h.get_by_label("Create issue").is_disabled());
@@ -282,7 +282,7 @@ fn issue_panel_azure_light() {
 fn bitbucket_data_center_points_to_jira_in_preferences() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "issue-bbdc-prefs");
     let dc = Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() };
-    st.forge = Some(ForgeState::new(Some(dc), "origin".into(), None));
+    st.session.forge = Some(ForgeState::new(Some(dc), "origin".into(), None));
     st.prefs = Some(PrefsState::new(PrefPage::RepoTracker));
     let mut h = harness(st, false);
     h.run();

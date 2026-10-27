@@ -68,7 +68,7 @@ pub(super) fn shown(st: &mut AppState, kind: FilterKind, fx: &mut Vec<Effect>) {
 /// it isn't known or being asked.
 fn ensure_me(st: &mut AppState, fx: &mut Vec<Effect>) {
     let (_, c, _) = filters(st).conditions(FilterKind::Prs);
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     let Some(host) = fs.host.clone().filter(|_| matching::needs_me(FilterKind::Prs, &c)) else { return };
     if !matches!(fs.filters.me, MeState::Unknown | MeState::Failed(_)) {
         return;
@@ -78,7 +78,7 @@ fn ensure_me(st: &mut AppState, fx: &mut Vec<Effect>) {
     let sent = fx.len();
     request(st, host, false, ForgeCall::Filter(FilterCall::Me { epoch }), fx);
     if fx.len() == sent
-        && let Some(fs) = st.forge.as_mut()
+        && let Some(fs) = st.session.forge.as_mut()
     {
         fs.filters.me = before;
     }
@@ -88,7 +88,7 @@ fn ensure_me(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// `my_issues` and needs no search. `keep` keeps the last answer's rows while the search loads.
 fn run_issue_query(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     let (choice, conditions, _) = filters(st).conditions(FilterKind::Issues);
-    let Some(fs) = st.forge.as_mut() else { return };
+    let Some(fs) = st.session.forge.as_mut() else { return };
     if choice == FilterChoice::default_for(FilterKind::Issues) {
         fs.filters.issues = None;
         return;

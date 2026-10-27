@@ -49,14 +49,14 @@ fn hunk_discard_undo_and_redo() {
     let (mut st, dir) = two_hunks("undo-discard-hunk");
     discard_first_hunk(&mut st);
     assert_eq!(read(&dir, "big.txt"), numbered(&[28]));
-    assert!(matches!(st.undo.undo.last(), Some(Action::Discard { what: Discarded::Hunk, .. })), "{:?}", st.undo.undo);
-    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Discard { what: Discarded::Hunk, .. })), "{:?}", st.session.undo.undo);
+    let tip = st.session.undo.undo_entry(st.settings.lang(), true).0;
     assert_eq!(tip, "Undo discard of a hunk in big.txt");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir, "big.txt"), numbered(&[2, 28]), "the exact text comes back");
     assert_eq!(last_toast(&st), (true, "Undo discard of a hunk in big.txt succeeded".to_owned()));
-    assert_eq!(st.undo.redo.len(), 1);
+    assert_eq!(st.session.undo.redo.len(), 1);
     assert!(st.log.iter().any(|l| l.text.contains("Restored big.txt")));
 
     drive(&mut st, Msg::Job(JobMsg::Redo));
@@ -78,7 +78,7 @@ fn line_discard_undo_and_redo() {
     drive(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: two, how: Only }));
     drive(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Discard)));
     assert_eq!(read(&dir, "a.txt"), "one\nthree\n");
-    let top = st.undo.undo.last().expect("recorded");
+    let top = st.session.undo.undo.last().expect("recorded");
     assert!(matches!(top, Action::Discard { what: Discarded::Lines(1), .. }), "{top:?}");
     assert_eq!(top.describe(), "discard of 1 line in a.txt");
 
@@ -96,8 +96,8 @@ fn two_hunk_discards_undo_in_order() {
     discard_first_hunk(&mut st);
     discard_first_hunk(&mut st);
     assert_eq!(read(&dir, "big.txt"), numbered(&[]));
-    let discards = st.undo.undo.iter().filter(|a| matches!(a, Action::Discard { .. })).count();
-    assert_eq!(discards, 2, "{:?}", st.undo.undo);
+    let discards = st.session.undo.undo.iter().filter(|a| matches!(a, Action::Discard { .. })).count();
+    assert_eq!(discards, 2, "{:?}", st.session.undo.undo);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir, "big.txt"), numbered(&[28]));
@@ -114,7 +114,7 @@ fn edited_since_is_refused_and_clears() {
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let (ok, text) = last_toast(&st);
     assert!(!ok && text.contains("has changed since") && text.contains("git cat-file -p"), "{text}");
-    assert!(st.undo.undo.is_empty(), "{:?}", st.undo.undo);
+    assert!(st.session.undo.undo.is_empty(), "{:?}", st.session.undo.undo);
     assert_eq!(read(&dir, "big.txt"), "newer work\n");
     let _ = std::fs::remove_dir_all(&dir);
 }

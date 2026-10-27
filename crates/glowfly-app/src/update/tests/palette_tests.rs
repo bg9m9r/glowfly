@@ -262,14 +262,14 @@ fn run_search_commits_closes_diff_and_focuses() {
 fn run_create_branch_uses_selected_commit() {
     let (mut st, dir) = repo_with_topic("palette-branch");
     let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     let short = &oid.to_string()[..7];
     assert!(has(&st, &format!("Create branch at {short}…")));
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CreateBranch)));
     assert!(matches!(&st.modal, Some(Modal::NewBranch { start: Some(s), name, .. }) if *s == oid.to_string() && name.is_empty()));
 
     st.modal = None;
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CreateBranch)));
     assert!(matches!(&st.modal, Some(Modal::NewBranch { start: None, .. })));
     let _ = std::fs::remove_dir_all(&dir);
@@ -311,10 +311,10 @@ fn tag_entries_follow_selection() {
     let (mut st, dir) = repo_with_topic("palette-tag-entries");
     let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
     let short = &oid.to_string()[..7];
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     assert!(has(&st, &format!("Create tag at {short}…")));
     assert!(has(&st, &format!("Create annotated tag at {short}…")));
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     assert!(has(&st, "Create tag at HEAD…"));
     assert!(has(&st, "Create annotated tag at HEAD…"));
 
@@ -327,7 +327,7 @@ fn tag_entries_follow_selection() {
 fn run_create_tag_opens_dialog() {
     let (mut st, dir) = repo_with_topic("palette-tag-run");
     let head = st.snap.as_ref().unwrap().head_oid.unwrap();
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     open_palette(&mut st);
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: false })));
     assert!(st.palette.is_none());
@@ -339,7 +339,7 @@ fn run_create_tag_opens_dialog() {
     st.modal = None;
     // Any selected commit is used as it is, not HEAD.
     let oid = git2::Oid::from_str("0123456789abcdef0123456789abcdef01234567").unwrap();
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     open_palette(&mut st);
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: true })));
     assert!(matches!(&st.modal, Some(Modal::NewTag(f)) if f.annotated && f.at == oid.to_string()));

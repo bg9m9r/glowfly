@@ -38,7 +38,7 @@ pub(in crate::ui) fn with_selection(theme: ThemeChoice, name: &str, summaries: &
         }
         load_stacked(m, &dir);
     }
-    st.selection = sel;
+    st.session.selection = sel;
     (st, dir)
 }
 
@@ -50,7 +50,7 @@ pub(in crate::ui) fn load_stacked(m: &mut MultiSelection, dir: &std::path::Path)
 }
 
 fn multi(st: &AppState) -> &MultiSelection {
-    let Selection::Commits(m) = &st.selection else { panic!("not a multi-selection") };
+    let Selection::Commits(m) = &st.session.selection else { panic!("not a multi-selection") };
     m
 }
 
@@ -125,7 +125,7 @@ const ROWS_TOP: f32 = 117.0;
 fn graph_multi_menu() {
     let (mut st, dir) = with_selection(ThemeChoice::Dark, "multi-menu", &["Add login page", "Search results page"]);
     // As on a branch without these commits, so the cherry-pick is offered.
-    if let Selection::Commits(m) = &mut st.selection {
+    if let Selection::Commits(m) = &mut st.session.selection {
         m.pick_blocked = None;
     }
     let (login, search) = (commit(&st, "Add login page"), commit(&st, "Search results page"));

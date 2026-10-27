@@ -26,7 +26,7 @@ fn truncated(name: &str) -> (AppState, PathBuf) {
 /// A fresh build of the fixture's index, `indexed` commits in, of about `estimate`.
 fn building(st: &mut AppState, indexed: usize, estimate: Option<usize>) {
     let key = IndexKey::of(st.snap.as_ref().unwrap());
-    st.search.index.building = Some(Building { build: 1, key, indexed, estimate, fresh: true });
+    st.session.search.index.building = Some(Building { build: 1, key, indexed, estimate, fresh: true });
 }
 
 /// An index of `commits` made-up commits for the fixture's history, answering the current query
@@ -46,8 +46,8 @@ fn answered(st: &mut AppState, commits: usize, positions: Vec<u32>) {
     };
     let list: Vec<CommitInfo> = (0..commits).map(info).collect();
     let index = Arc::new(CommitIndex::from_commits(IndexKey::of(st.snap.as_ref().unwrap()), &list));
-    st.search.index.ready = Some(Arc::clone(&index));
-    st.search.index.answer = Some(IndexAnswer { query: st.search.query.clone(), index, positions });
+    st.session.search.index.ready = Some(Arc::clone(&index));
+    st.session.search.index.answer = Some(IndexAnswer { query: st.session.search.query.clone(), index, positions });
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn search_bar_indexing() {
     let (mut st, dir) = truncated("index-bar-building");
     building(&mut st, 0, None);
     searching(&mut st, "page");
-    assert_eq!(st.search.matches.len(), 3);
+    assert_eq!(st.session.search.matches.len(), 3);
     let mut h = harness(st, true);
     h.run_steps(4);
     assert!(h.query_by_label("3 so far, indexing…").is_some());
@@ -70,8 +70,8 @@ fn search_bar_whole_history_count() {
     searching(&mut st, "page");
     answered(&mut st, 812, (0..40).collect());
     let snap = st.snap.as_ref().unwrap();
-    let second = snap.commits[st.search.matches[1]].oid;
-    st.selection = Selection::Commit(second);
+    let second = snap.commits[st.session.search.matches[1]].oid;
+    st.session.selection = Selection::Commit(second);
     let mut h = harness(st, true);
     h.run_steps(4);
     assert!(h.query_by_label("2 of 40").is_some());
@@ -88,10 +88,10 @@ fn status_bar_indexing() {
     h.run_steps(4);
     assert!(h.query_by_label("Indexing history: 1200 of about 5000 commits").is_some());
     h.check_snapshot("status_bar_indexing");
-    h.state_mut().0.search.index.building.as_mut().unwrap().estimate = None;
+    h.state_mut().0.session.search.index.building.as_mut().unwrap().estimate = None;
     h.run_steps(2);
     assert!(h.query_by_label("Indexing history: 1200 commits").is_some(), "without git's commit count");
-    h.state_mut().0.search.index.building.as_mut().unwrap().fresh = false;
+    h.state_mut().0.session.search.index.building.as_mut().unwrap().fresh = false;
     h.run_steps(2);
     assert!(h.query_by_label_contains("Indexing history").is_none(), "an update runs silently");
     drop(h);
@@ -103,7 +103,7 @@ fn filtering_nothing(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = truncated(name);
     searching(&mut st, "nothing like this");
     send(&mut st, SearchMsg::ToggleFilter);
-    assert!(st.search.matches.is_empty());
+    assert!(st.session.search.matches.is_empty());
     (st, dir)
 }
 

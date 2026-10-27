@@ -173,7 +173,7 @@ fn only_the_sheet_key_works_under_preferences_or_a_credential_prompt() {
         st.session.diff.view = Some((staged(), one_hunk().into()));
         assert!(key(st, KeyAction::Unstage).is_empty(), "Unstage under {what}");
         assert!(!st.view.focus_message, "FocusMessage under {what}");
-        assert_eq!(st.selection, Selection::None, "FocusMessage under {what}");
+        assert_eq!(st.session.selection, Selection::None, "FocusMessage under {what}");
     };
     st.prefs = Some(PrefsState::new(PrefPage::General));
     quiet(&mut st, "Preferences");
@@ -191,15 +191,15 @@ fn only_the_sheet_key_works_under_preferences_or_a_credential_prompt() {
 #[test]
 fn focus_message_selects_the_wip_panel() {
     let (mut st, dir) = with_repo("keys-focus", unstaged());
-    st.selection = Selection::Commit(git2::Oid::zero());
+    st.session.selection = Selection::Commit(git2::Oid::zero());
     key(&mut st, KeyAction::FocusMessage);
-    assert_eq!(st.selection, Selection::Wip);
+    assert_eq!(st.session.selection, Selection::Wip);
     assert!(st.view.focus_message);
 
     let mut st = state();
     key(&mut st, KeyAction::FocusMessage);
     assert!(!st.view.focus_message, "no repository");
-    assert_eq!(st.selection, Selection::None);
+    assert_eq!(st.session.selection, Selection::None);
 
     let _ = std::fs::remove_dir_all(&dir);
     let (mut st, dir) = with_repo("keys-focus-prefs", unstaged());
@@ -295,10 +295,11 @@ fn r_reverts_the_current_hunk_or_the_lines() {
     let commit = DiffTarget::Commit(st.snap.as_ref().unwrap().commits[0].oid, "f.txt".into());
     st.session.diff.view = Some((commit.clone(), super::diff_tests::three_hunks().into()));
     st.view.diff_visible_rows = 40;
-    let rows = crate::state::diff_nav::change_rows_of(&st.session.diff.view.as_ref().unwrap().1, &st.settings, &st.view.diff_expanded);
-    st.view.diff_top_row = rows[1];
+    let rows =
+        crate::state::diff_nav::change_rows_of(&st.session.diff.view.as_ref().unwrap().1, &st.settings, &st.session.tab_view.diff_expanded);
+    st.session.tab_view.diff_top_row = rows[1];
     assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 1, .. })));
-    st.view.diff_top_row = 0;
+    st.session.tab_view.diff_top_row = 0;
     assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 0, .. })));
     st.view.diff_cursor = Some(rows[1]);
     assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 1, .. })), "the stepped-to change");

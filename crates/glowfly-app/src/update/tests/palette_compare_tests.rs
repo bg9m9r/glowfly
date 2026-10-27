@@ -44,12 +44,12 @@ fn offered_for_one_selected_graph_commit() {
         Selection::Commit(Oid::from_str("1234567890123456789012345678901234567890").unwrap()),
     ];
     for sel in not {
-        st.selection = sel.clone();
+        st.session.selection = sel.clone();
         assert!(compare_entries(&st).is_empty(), "{sel:?}");
     }
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
-    assert!(matches!(st.selection, Selection::Commits(_)));
+    assert!(matches!(st.session.selection, Selection::Commits(_)));
     assert!(compare_entries(&st).is_empty(), "several commits");
     let _ = std::fs::remove_dir_all(&f.dir);
 }
@@ -61,7 +61,7 @@ fn running_it_compares_and_is_recalled_for_the_selected_commit() {
     reopen(&mut st);
     let fx = up(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::CompareWithWorkdir(f.c(3)))));
     assert!(st.palette.is_none(), "the palette closes");
-    assert!(matches!(&st.selection, Selection::VsWorkdir(w) if w.oid == f.c(3)), "{:?}", st.selection);
+    assert!(matches!(&st.session.selection, Selection::VsWorkdir(w) if w.oid == f.c(3)), "{:?}", st.session.selection);
     assert!(
         fx.iter().any(|e| matches!(e, Effect::Selection(SelectionEffect::WorkdirCompare { oid, swapped: false, .. }) if *oid == f.c(3))),
         "{fx:?}"
@@ -84,7 +84,7 @@ fn create_branch_and_tag_name_where_they_start() {
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(3))));
     let at = &f.c(3).to_string()[..7];
     assert_eq!(labels(&st), [format!("Create branch at {at}…"), format!("Create tag at {at}…"), format!("Create annotated tag at {at}…")]);
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     assert_eq!(labels(&st), ["Create branch at HEAD…", "Create tag at HEAD…", "Create annotated tag at HEAD…"]);
     let _ = std::fs::remove_dir_all(&f.dir);
 }

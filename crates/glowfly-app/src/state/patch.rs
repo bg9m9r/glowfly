@@ -81,7 +81,7 @@ pub(super) fn palette_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entr
             "patch diff export save uncommitted changes wip working tree",
         ));
     }
-    match &st.selection {
+    match &st.session.selection {
         Selection::Commits(m) if m.export_blocked.is_none() => out.push(entry(
             PaletteCommand::Patch(PatchMsg::Export(m.oids.clone())),
             format!("Create patch from {} selected commits…", m.len()),

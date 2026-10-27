@@ -92,7 +92,7 @@ fn a_hunk_reverted_end_to_end() {
     let target = DiffTarget::ToWorkdir(c, "f.txt".into());
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
     assert_eq!(st.session.diff.view.as_ref().map(|(_, d)| d.hunks.len()), Some(2));
-    let read = match &st.selection {
+    let read = match &st.session.selection {
         Selection::VsWorkdir(w) => w.generation,
         other => panic!("not compared: {other:?}"),
     };
@@ -104,11 +104,11 @@ fn a_hunk_reverted_end_to_end() {
     assert_eq!(shown, target);
     assert_eq!(diff.hunks.len(), 1, "the diff reloaded");
     assert!(st.hunk_ops_gen().is_some(), "the buttons are back");
-    match &st.selection {
+    match &st.session.selection {
         Selection::VsWorkdir(w) => assert!(w.generation > read && w.changes.as_ref().is_some_and(|c| c.is_ok()), "the list was read again"),
         other => panic!("not compared: {other:?}"),
     }
-    assert!(st.undo.undo.last().is_some(), "an undo is recorded");
+    assert!(st.session.undo.undo.last().is_some(), "an undo is recorded");
     assert!(st.log.iter().all(|l| l.ok), "{:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
     let _ = std::fs::remove_dir_all(&dir);
 }

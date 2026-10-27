@@ -75,8 +75,8 @@ fn graph_commit_menu_copy_submenu() {
 fn multi_commit_menu_copy_patch_merge() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "multi-menu-copy-merge");
     let (merge, fix) = (commit(&st, "Merge branch 'login-page'"), commit(&st, "Fix build on Windows"));
-    st.selection = MultiSelection::build([merge, fix], merge, st.snap.as_ref().unwrap());
-    let Selection::Commits(m) = &st.selection else { panic!("not a multi-selection") };
+    st.session.selection = MultiSelection::build([merge, fix], merge, st.snap.as_ref().unwrap());
+    let Selection::Commits(m) = &st.session.selection else { panic!("not a multi-selection") };
     let why = m.export_blocked.expect("a merge has no patch of its own");
     let at = pos2(700.0, row_y(row(&st, merge)));
     let mut h = harness(st, true);

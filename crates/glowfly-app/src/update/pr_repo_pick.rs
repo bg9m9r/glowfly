@@ -9,7 +9,7 @@ use crate::state::{AppState, Modal};
 /// Applies a From / Into pick; a remote that isn't a PR repository, or no open create dialog,
 /// changes nothing.
 pub(super) fn pick(st: &mut AppState, side: RepoSide, remote: &str) {
-    let (Some(snap), Some(fs)) = (st.snap.as_ref(), st.forge.as_ref()) else { return };
+    let (Some(snap), Some(fs)) = (st.snap.as_ref(), st.session.forge.as_ref()) else { return };
     if !pr_repos::is_pr_remote(fs, remote) {
         return;
     }

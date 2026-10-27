@@ -17,7 +17,7 @@ pub(super) fn show(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     let wip = snap.graph.wip.is_some();
     super::layout::reveal_details(st, fx);
-    if st.selection != Selection::Wip {
+    if st.session.selection != Selection::Wip {
         super::repo::select_wip(st, fx);
     }
     if wip {

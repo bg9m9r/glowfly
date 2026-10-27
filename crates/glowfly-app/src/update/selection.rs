@@ -19,16 +19,16 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, now: Instant, fx: &mu
     let Some(snap) = &st.snap else { return };
     match msg {
         SelectionMsg::ToggleCommit(oid) => {
-            let new = sel::toggled(&st.selection, oid, snap);
+            let new = sel::toggled(&st.session.selection, oid, snap);
             apply(st, new, fx);
         }
         SelectionMsg::SelectCommitRange(oid) => {
-            let shown = GraphRows::new(snap, &st.search, st.view.show_search).shown();
-            let new = sel::ranged(&st.selection, oid, snap, shown);
+            let shown = GraphRows::new(snap, &st.session.search, st.view.show_search).shown();
+            let new = sel::ranged(&st.session.selection, oid, snap, shown);
             apply(st, new, fx);
         }
         SelectionMsg::SelectAll => select_all(st, fx),
-        SelectionMsg::CollapseSelection => match &st.selection {
+        SelectionMsg::CollapseSelection => match &st.session.selection {
             Selection::Commits(m) => {
                 let focus = m.focus();
                 super::repo::select_commit(st, focus, false, fx);
@@ -40,7 +40,7 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, now: Instant, fx: &mu
             Selection::None | Selection::Wip | Selection::Commit(_) => {}
         },
         SelectionMsg::SwapCompare => swap(st, fx),
-        SelectionMsg::CompareLoaded { from, to, result } => match &mut st.selection {
+        SelectionMsg::CompareLoaded { from, to, result } => match &mut st.session.selection {
             Selection::Commits(m) if m.compare_ends() == Some((from, to)) => {
                 m.changes = Some(result.clone());
                 if let Err(e) = result {
@@ -64,7 +64,7 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, now: Instant, fx: &mu
 
 /// Try again after a comparison's file list failed: asks for it once more.
 fn retry_compare(st: &mut AppState, fx: &mut Vec<Effect>) {
-    match &mut st.selection {
+    match &mut st.session.selection {
         Selection::Commits(m) => {
             m.changes = None;
             m.stacked = None;
@@ -82,12 +82,12 @@ fn retry_compare(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// the commit in focus as the anchor (else the newest).
 fn select_all(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
-    let oids: Vec<_> = match GraphRows::new(snap, &st.search, st.view.show_search).shown() {
+    let oids: Vec<_> = match GraphRows::new(snap, &st.session.search, st.view.show_search).shown() {
         Some(rows) => rows.iter().filter_map(|&i| snap.commits.get(i)).map(|c| c.oid).collect(),
         None => snap.commits.iter().map(|c| c.oid).collect(),
     };
     let Some(&newest) = oids.first() else { return };
-    let focus = super::search::selected_oid(&st.selection).filter(|o| oids.contains(o));
+    let focus = super::search::selected_oid(&st.session.selection).filter(|o| oids.contains(o));
     let new = MultiSelection::build(oids, focus.unwrap_or(newest), snap);
     apply(st, new, fx);
 }
@@ -108,10 +108,10 @@ fn compare_with_head(st: &mut AppState, oid: git2::Oid, name: &str, fx: &mut Vec
 /// Swap direction: the selection's comparison (of commits, or of a commit and the working tree)
 /// runs the other way. The list is read again, and a diff of the old direction closes.
 fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if matches!(st.selection, Selection::VsWorkdir(_)) {
+    if matches!(st.session.selection, Selection::VsWorkdir(_)) {
         return super::compare_wip::swap(st, fx);
     }
-    let Selection::Commits(m) = &mut st.selection else { return };
+    let Selection::Commits(m) = &mut st.session.selection else { return };
     let Some(old) = m.compare_ends() else { return };
     m.swapped = !m.swapped;
     m.changes = None;
@@ -125,7 +125,7 @@ fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// A stacked list arrived: kept while the selection still shows those commits.
 fn stacked_loaded(st: &mut AppState, oids: Vec<git2::Oid>, result: Result<Vec<StackedCommit>, String>) {
-    match &mut st.selection {
+    match &mut st.session.selection {
         Selection::Commits(m) if m.stack_oids() == Some(&oids[..]) => {
             if let Err(e) = &result {
                 let e = e.clone();
@@ -141,14 +141,14 @@ fn stacked_loaded(st: &mut AppState, oids: Vec<git2::Oid>, result: Result<Vec<St
 
 /// Makes `new` the selection, closing whatever showed the old one.
 pub(super) fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
-    if new == st.selection {
+    if new == st.session.selection {
         return;
     }
     match new {
         Selection::Commit(o) => super::repo::select_commit(st, o, false, fx),
         Selection::Commits(_) | Selection::VsWorkdir(_) => {
             let vs_workdir = matches!(new, Selection::VsWorkdir(_));
-            st.selection = new;
+            st.session.selection = new;
             st.session.detail = None;
             super::repo::close_diff(st);
             super::conflict::close(st);
@@ -167,7 +167,7 @@ pub(super) fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
             super::repo::select_wip(st, fx);
         }
         Selection::None => {
-            st.selection = new;
+            st.session.selection = new;
             st.session.detail = None;
             super::repo::close_diff(st);
         }
@@ -177,7 +177,7 @@ pub(super) fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
 /// Asks for what the panel lists and hasn't received yet: the comparison's file list, or the
 /// stacked list of each commit's own changes.
 fn request_changes(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let (Selection::Commits(m), Some(workdir)) = (&st.selection, st.workdir()) else { return };
+    let (Selection::Commits(m), Some(workdir)) = (&st.session.selection, st.workdir()) else { return };
     if let Some(e) = changes_effect(m, workdir) {
         fx.push(e);
     }
@@ -196,7 +196,7 @@ fn changes_effect(m: &MultiSelection, workdir: std::path::PathBuf) -> Option<Eff
 /// After a refresh: `snap` is the new snapshot, not stored yet. Commits that are gone leave the
 /// selection, and the cherry-pick check is redone (HEAD may have moved).
 pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>) {
-    let Selection::Commits(m) = &st.selection else { return };
+    let Selection::Commits(m) = &st.session.selection else { return };
     let old_ends = m.compare_ends();
     let old_stack: Vec<_> = m.stack_oids().unwrap_or_default().to_vec();
     let new = sel::refreshed(m, snap);
@@ -224,22 +224,22 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
     }
     match new {
         Selection::Commits(_) => {
-            st.selection = new;
+            st.session.selection = new;
             // A list dropped in flight (a tab switch) is asked for again here.
-            if let Selection::Commits(m) = &st.selection
+            if let Selection::Commits(m) = &st.session.selection
                 && let Some(e) = changes_effect(m, snap.workdir.clone())
             {
                 fx.push(e);
             }
         }
         Selection::Commit(o) => {
-            st.selection = Selection::Commit(o);
+            st.session.selection = Selection::Commit(o);
             st.session.detail = None;
             fx.push(Effect::LoadDetail { workdir: snap.workdir.clone(), oid: o });
             super::line_counts::want_commit(st, o, fx);
         }
         Selection::None | Selection::Wip | Selection::VsWorkdir(_) => {
-            st.selection = Selection::None;
+            st.session.selection = Selection::None;
             st.session.detail = None;
         }
     }

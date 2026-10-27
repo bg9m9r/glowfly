@@ -198,7 +198,7 @@ fn tip_undo_commit() {
     let to = snap.head_oid.unwrap();
     let from = snap.commits[snap.row_of[&to]].parents[0];
     let message = snap.commits[snap.row_of[&to]].summary.to_string();
-    st.undo.record(Action::Commit { branch: Some("main".into()), from, to, message, amend: false });
+    st.session.undo.record(Action::Commit { branch: Some("main".into()), from, to, message, amend: false });
     let mut h = harness(st, true);
     h.run();
     hover(&mut h, "Undo the last action");
@@ -272,7 +272,7 @@ pub(super) fn variant(case: usize, labels: bool, name: &str) -> (AppState, PathB
                 project: String::new(),
                 repo: "r".into(),
             };
-            st.forge = Some(ForgeState::new(Some(github), "origin".into(), None));
+            st.session.forge = Some(ForgeState::new(Some(github), "origin".into(), None));
         }
     }
     (st, dir)

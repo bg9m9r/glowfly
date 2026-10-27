@@ -2,7 +2,7 @@
 
 use super::file_tree;
 use super::history::{FileHistoryView, HistoryKind};
-use super::{AppState, Selection, ViewState};
+use super::{AppState, Selection};
 use glowfly_core::diff_rows::step_change;
 use glowfly_core::repo::{DiffTarget, FileDiff, FileEntry};
 use glowfly_core::settings::{FileListMode, Settings};
@@ -62,10 +62,11 @@ impl Step {
 
 /// The row stepping continues from: the change last stepped to while it is still on screen
 /// (it may sit below the top when the scroll clamps at the end), otherwise the top row.
-pub fn position(v: &ViewState) -> usize {
-    match v.diff_cursor {
-        Some(c) if c >= v.diff_top_row && c < v.diff_top_row + v.diff_visible_rows.max(1) => c,
-        _ => v.diff_top_row,
+pub fn position(st: &AppState) -> usize {
+    let top = st.session.tab_view.diff_top_row;
+    match st.view.diff_cursor {
+        Some(c) if c >= top && c < top + st.view.diff_visible_rows.max(1) => c,
+        _ => top,
     }
 }
 
@@ -79,8 +80,12 @@ pub fn change_rows_of(d: &FileDiff, s: &Settings, ex: &Expanded) -> Vec<usize> {
 pub fn step(st: &AppState, dir: isize) -> Step {
     let Some((target, d)) = st.session.diff.view.as_ref().filter(|_| dir != 0) else { return Step::End };
     // The LFS summary shows instead of the rows: nothing to stop at inside the file.
-    let rows = if super::lfs_notes::summary(st).is_some() { Vec::new() } else { change_rows_of(d, &st.settings, &st.view.diff_expanded) };
-    if let Some(row) = step_change(&rows, position(&st.view), dir) {
+    let rows = if super::lfs_notes::summary(st).is_some() {
+        Vec::new()
+    } else {
+        change_rows_of(d, &st.settings, &st.session.tab_view.diff_expanded)
+    };
+    if let Some(row) = step_change(&rows, position(st), dir) {
         return Step::Row(row);
     }
     match next_file(st, target, dir) {
@@ -94,11 +99,11 @@ pub fn step(st: &AppState, dir: isize) -> Step {
 /// stepped to while on screen, else the top row), else the first one. `None` without changes.
 pub fn current_hunk(st: &AppState) -> Option<usize> {
     let (_, d) = st.session.diff.view.as_ref()?;
-    let rows = change_rows_of(d, &st.settings, &st.view.diff_expanded);
+    let rows = change_rows_of(d, &st.settings, &st.session.tab_view.diff_expanded);
     if rows.is_empty() {
         return None;
     }
-    let i = rows.partition_point(|&r| r <= position(&st.view)).saturating_sub(1);
+    let i = rows.partition_point(|&r| r <= position(st)).saturating_sub(1);
     whole_file::hunk_of_change(d, st.settings.diff_mode, i)
 }
 
@@ -156,7 +161,7 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
                 return Some(shown(&d.files, &|p| DiffTarget::Commit(*oid, p)));
             }
             // A stacked list: every section's files, commit by commit.
-            let Selection::Commits(m) = &st.selection else { return None };
+            let Selection::Commits(m) = &st.session.selection else { return None };
             let Some(Ok(stack)) = &m.stacked else { return None };
             stack
                 .iter()
@@ -167,7 +172,7 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
             if let Some(files) = st.session.pull_request.view.as_ref().and_then(|v| v.diff_files(*a, *b)) {
                 return Some(of(files, &|p| DiffTarget::Between(*a, *b, p)));
             }
-            match &st.selection {
+            match &st.session.selection {
                 Selection::Commits(m) if m.compare_ends() == Some((*a, *b)) => match &m.changes {
                     Some(Ok(c)) => Some(shown(&c.files, &|p| DiffTarget::Between(*a, *b, p))),
                     _ => None,
@@ -177,7 +182,7 @@ fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, c
         }
         // Only the list of the comparison's current direction: a ToWorkdir target is never
         // walked through a swapped list, or the reverse.
-        DiffTarget::ToWorkdir(o, _) | DiffTarget::FromWorkdir(o, _) => match &st.selection {
+        DiffTarget::ToWorkdir(o, _) | DiffTarget::FromWorkdir(o, _) => match &st.session.selection {
             Selection::VsWorkdir(w) if w.oid == *o && w.swapped == matches!(from, DiffTarget::FromWorkdir(..)) => match &w.changes {
                 Some(Ok(c)) => Some(of(&c.files, &|p| w.target(p))),
                 _ => None,
@@ -212,9 +217,13 @@ pub struct Counter {
 /// empty, an LFS summary) its place in the list it came from. `None` when neither applies.
 pub fn counter(st: &AppState) -> Option<Counter> {
     let (target, d) = st.session.diff.view.as_ref()?;
-    let rows = if super::lfs_notes::summary(st).is_some() { Vec::new() } else { change_rows_of(d, &st.settings, &st.view.diff_expanded) };
+    let rows = if super::lfs_notes::summary(st).is_some() {
+        Vec::new()
+    } else {
+        change_rows_of(d, &st.settings, &st.session.tab_view.diff_expanded)
+    };
     if !rows.is_empty() {
-        let index = rows.partition_point(|&r| r <= position(&st.view)).max(1);
+        let index = rows.partition_point(|&r| r <= position(st)).max(1);
         return Some(Counter { index, total: rows.len(), files: false });
     }
     let files = source_files(st, target)?;

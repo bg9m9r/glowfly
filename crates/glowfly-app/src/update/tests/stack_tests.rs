@@ -73,7 +73,7 @@ fn logged(st: &AppState, text: &str) -> bool {
 }
 
 fn undo_label(st: &AppState) -> String {
-    st.undo.undo_entry(st.settings.lang(), true).0
+    st.session.undo.undo_entry(st.settings.lang(), true).0
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn a_restack_runs_and_undoes_as_one_entry() {
     assert_eq!(tip(&dir, "mid^"), tip(&dir, "low"));
     assert_eq!(head_name(&dir), "low");
     assert!(undo_label(&st).contains("restack of the branches above low"), "{}", undo_label(&st));
-    assert_eq!(st.undo.undo.len(), 1);
+    assert_eq!(st.session.undo.undo.len(), 1);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!((tip(&dir, "mid"), tip(&dir, "top")), (mid, top), "every moved branch is back");
@@ -155,7 +155,7 @@ fn a_conflict_stops_and_continue_finishes_the_rest() {
     assert_eq!(tip(&dir, "top2^"), tip(&dir, "mid"));
     assert_eq!(tip(&dir, "mid^"), tip(&dir, "low"));
     assert_eq!(head_name(&dir), "low");
-    assert_eq!(st.undo.undo.len(), 1, "one entry for the whole restack");
+    assert_eq!(st.session.undo.undo.len(), 1, "one entry for the whole restack");
     assert!(undo_label(&st).contains("restack of the branches above low"));
     let _ = std::fs::remove_dir_all(&dir);
 }

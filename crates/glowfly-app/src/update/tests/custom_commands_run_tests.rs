@@ -39,7 +39,7 @@ fn a_git_command_runs_as_a_toolbar_job() {
     let text = [command("Log", "git", "log --oneline {sha}", ""), command("Reset", "git", "git reset --hard {sha}", "")].concat();
     load(&mut st, file(&text), FileRead::default());
     let oid = head(&st);
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     let fx = run(&mut st, Source::User, "Log", Target::Palette);
     assert_eq!(git_cmds(&fx), [["log", "--oneline", &oid.to_string()]]);
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Log"));

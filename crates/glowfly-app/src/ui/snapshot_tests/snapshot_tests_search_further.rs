@@ -44,7 +44,7 @@ fn click(h: &mut H, label: &str) -> Vec<Msg> {
 #[test]
 fn graph_searching_older() {
     let (st, dir) = filtering("search-older-row", "release notes");
-    assert_eq!(st.search.matches.len(), 1);
+    assert_eq!(st.session.search.matches.len(), 1);
     // The spinner keeps repainting; a fixed number of frames keeps the image reproducible.
     let mut h = harness(st, true);
     h.run_steps(4);
@@ -72,7 +72,7 @@ fn graph_search_keep_searching() {
     // The batch budget spent, with nothing found.
     st.loading = false;
     st.refresh.extra_commits = 0;
-    st.refresh.deeper = Some(DeeperSearch { query: st.search.query.clone(), batches: DEEPER_BATCHES });
+    st.refresh.deeper = Some(DeeperSearch { query: st.session.search.query.clone(), batches: DEEPER_BATCHES });
     let n = commits(&st);
     let mut h = harness(st, true);
     h.run();

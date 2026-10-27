@@ -1,9 +1,9 @@
 //! Tabs: opening repositories side by side, switching, reordering and restoring the previous
-//! session. Switching parks the active tab's data (its per-tab state whole, as `RepoSession`) and
-//! restores the other's, and swaps their activity logs (`Tab::log`, outside `Parked`); reordering
-//! moves parked data and logs with its tab. Where a tab opens and how a drop or a keyboard move moves it follow
-//! the worktree groups (`tab_groups.rs`). Closing and reopening are in `tabs_close.rs`, labels in
-//! `tab_label.rs`.
+//! session. Switching parks the active tab's data (its per-tab state whole, as `RepoSession`, plus
+//! the snapshot and the Create issue dialog) and restores the other's, and swaps their activity
+//! logs (`Tab::log`, outside `Parked`); reordering moves parked data and logs with its tab. Where
+//! a tab opens and how a drop or a keyboard move moves it follow the worktree groups
+//! (`tab_groups.rs`). Closing and reopening are in `tabs_close.rs`, labels in `tab_label.rs`.
 
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::{CloseRequest, TabsMsg};
@@ -241,8 +241,7 @@ pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
 /// counts, signatures, conflict checks) and the folders collapsed in its file lists, when the
 /// tab opens another repository.
 pub(super) fn forget_repo_reads(st: &mut AppState) {
-    st.session.reads.clear();
-    st.view.file_folds.clear();
+    st.session.forget_repo();
 }
 
 pub(super) fn park(st: &mut AppState) -> Parked {
@@ -253,24 +252,11 @@ pub(super) fn park(st: &mut AppState) -> Parked {
     st.view.diff_opening = None;
     st.view.stage_move_on = None;
     st.view.diff_cursor = None;
+    // Reads the forge data, so before it moves.
     super::stack_prs::parked(st);
-    Parked {
-        session: st.session.park(),
-        snap: st.snap.take(),
-        selection: std::mem::take(&mut st.selection),
-        issue_form: super::issue_create::park(st),
-        undo: std::mem::take(&mut st.undo),
-        forge: st.forge.take(),
-        search: std::mem::take(&mut st.view.search),
-        commit_search: std::mem::take(&mut st.search),
-        ref_filter: std::mem::take(&mut st.view.ref_filter),
-        graph_scroll: st.view.graph_scroll.0,
-        diff_top_row: st.view.diff_top_row,
-        diff_layout: st.settings.diff_layout,
-        diff_mode: st.settings.diff_mode,
-        diff_expanded: std::mem::take(&mut st.view.diff_expanded),
-        file_folds: std::mem::take(&mut st.view.file_folds),
-    }
+    // The settings are shared by all tabs and may change while this one is parked.
+    st.session.tab_view.parked_in = Some((st.settings.diff_mode, st.settings.diff_layout));
+    Parked { session: st.session.park(), snap: st.snap.take(), issue_form: super::issue_create::park(st) }
 }
 
 fn unpark(st: &mut AppState, p: Parked) {
@@ -284,45 +270,43 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.session = session;
     // After the snapshot and `gitflow_resume` are back.
     super::gitflow::snapshot_changed(st);
-    st.selection = if st.snap.is_some() { p.selection } else { Selection::None };
-    st.view.file_folds = p.file_folds;
-    // Before the rows below are counted: they count these folds.
-    st.view.diff_expanded = p.diff_expanded;
-    let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
-    let ex = &st.view.diff_expanded;
-    let top = match st.session.diff.view.as_mut() {
-        // The view mode changed while parked: open on the hunk that was at the top.
-        Some((_, d)) if p.diff_mode != mode => {
-            let h = super::diff::hunk_at_top(d, p.diff_mode, p.diff_layout, p.diff_top_row, ex);
-            if mode == DiffMode::Hunks {
-                std::sync::Arc::make_mut(d).whole = None;
-            }
-            super::diff::opening_row(d, &st.settings, h, ex)
-        }
-        Some((_, d)) => super::diff::same_change_row(d, mode, p.diff_layout, layout, p.diff_top_row, ex),
-        None => 0,
-    };
-    st.view.diff_scroll_to_row = st.session.diff.view.is_some().then_some(top);
-    st.view.diff_top_row = top;
+    if st.snap.is_none() {
+        st.session.selection = Selection::None;
+    }
+    restore_diff_top(st);
     st.view.conflict_scroll_to = st.session.conflict.view.as_ref().filter(|c| c.file.is_some()).map(|c| c.current);
     st.view.history_scroll_to = st.session.history.view.as_ref().and_then(|h| h.selected);
     super::issue_create::unpark(st, p.issue_form);
-    st.undo = p.undo;
-    st.forge = p.forge;
-    // Replies that were in flight for this tab were dropped while it was parked.
-    if let Some(f) = st.forge.as_mut() {
-        f.replies_dropped();
-    }
-    st.view.search = p.search;
-    // The matches belong to the parked snapshot, restored above.
-    st.search = p.commit_search;
-    st.view.ref_filter = p.ref_filter;
-    st.view.scroll_offset = Some(p.graph_scroll);
+    st.view.scroll_offset = Some(st.session.tab_view.graph_scroll.0);
     st.view.scroll_to_row = None;
     st.view.highlight = None;
     st.view.ref_rows.reset();
     st.view.hover_tip = None;
     st.view.hover_tip_next = None;
+}
+
+/// Recounts the open diff's top row in the current view mode and layout, which may have changed
+/// while the tab was parked, and scrolls the diff to it.
+fn restore_diff_top(st: &mut AppState) {
+    let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
+    let (was_mode, was_layout) = st.session.tab_view.parked_in.take().unwrap_or((mode, layout));
+    let old = st.session.tab_view.diff_top_row;
+    // The rows are counted with these folds open.
+    let ex = &st.session.tab_view.diff_expanded;
+    let top = match st.session.diff.view.as_mut() {
+        // The view mode changed while parked: open on the hunk that was at the top.
+        Some((_, d)) if was_mode != mode => {
+            let h = super::diff::hunk_at_top(d, was_mode, was_layout, old, ex);
+            if mode == DiffMode::Hunks {
+                std::sync::Arc::make_mut(d).whole = None;
+            }
+            super::diff::opening_row(d, &st.settings, h, ex)
+        }
+        Some((_, d)) => super::diff::same_change_row(d, mode, was_layout, layout, old, ex),
+        None => 0,
+    };
+    st.view.diff_scroll_to_row = st.session.diff.view.is_some().then_some(top);
+    st.session.tab_view.diff_top_row = top;
 }
 
 /// The session to restore on the next start: tabs with a repository, and the active one.

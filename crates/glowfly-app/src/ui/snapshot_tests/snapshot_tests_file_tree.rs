@@ -73,7 +73,7 @@ fn details_commit_tree() {
 #[test]
 fn details_commit_tree_closed() {
     let (mut st, dir, _) = with_commit(ThemeChoice::Dark, "tree-commit-closed", MESSAGE);
-    st.view.file_folds.toggle(FileListId::Commit, "src/search".into());
+    st.session.tab_view.file_folds.toggle(FileListId::Commit, "src/search".into());
     let mut h = harness(tree(st), true);
     h.run();
     assert!(h.query_by_label("src/search/").is_some());
@@ -117,7 +117,7 @@ fn details_compare_tree() {
         let (from, to) = m.compare_ends().expect("a pair");
         m.changes = Some(repo::compare(&dir, from, to).map_err(|e| e.to_string()));
     }
-    st.selection = sel;
+    st.session.selection = sel;
     let mut h = harness(tree(st), true);
     h.run();
     assert!(h.query_by_label("docs/").is_some() && h.query_by_label("src/lib/").is_some());

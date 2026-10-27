@@ -44,22 +44,22 @@ fn show_opens_the_next_closed_fold_from_the_top() {
         let f = folds(w);
         assert_eq!(f.len(), 2);
         // The top sits on the first fold's row: it opens, and nothing scrolls.
-        st.view.diff_top_row = row_of_line(w, layout, &Expanded::default(), f[0].start);
-        let top = st.view.diff_top_row;
+        st.session.tab_view.diff_top_row = row_of_line(w, layout, &Expanded::default(), f[0].start);
+        let top = st.session.tab_view.diff_top_row;
         assert!(open_key(&mut st).is_empty());
-        assert!(st.view.diff_expanded.contains(f[0].key), "{layout:?}");
-        assert_eq!((st.view.diff_top_row, st.view.diff_scroll_to_row), (top, None), "{layout:?}");
+        assert!(st.session.tab_view.diff_expanded.contains(f[0].key), "{layout:?}");
+        assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row), (top, None), "{layout:?}");
         // Then the next one down; then nothing is left.
         open_key(&mut st);
-        assert!(st.view.diff_expanded.contains(f[1].key), "{layout:?}");
-        let all = st.view.diff_expanded.clone();
+        assert!(st.session.tab_view.diff_expanded.contains(f[1].key), "{layout:?}");
+        let all = st.session.tab_view.diff_expanded.clone();
         open_key(&mut st);
-        assert_eq!(st.view.diff_expanded, all, "{layout:?}");
+        assert_eq!(st.session.tab_view.diff_expanded, all, "{layout:?}");
 
         // Fold back closes the fold holding the top line, keeping the top in place.
         close_key(&mut st);
-        assert!(!st.view.diff_expanded.contains(f[0].key), "{layout:?}");
-        assert_eq!(st.view.diff_top_row, top, "{layout:?}");
+        assert!(!st.session.tab_view.diff_expanded.contains(f[0].key), "{layout:?}");
+        assert_eq!(st.session.tab_view.diff_top_row, top, "{layout:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
@@ -74,12 +74,12 @@ fn show_scrolls_to_a_fold_below_the_viewport() {
         let row = row_of_line(w, layout, &Expanded::default(), f.start);
         assert!(row >= 2, "{layout:?}: below the two visible rows");
         open_key(&mut st);
-        assert!(st.view.diff_expanded.contains(f.key));
-        let to = row_of_line(w, layout, &st.view.diff_expanded, f.start);
-        assert_eq!((st.view.diff_top_row, st.view.diff_scroll_to_row), (to, Some(to)), "{layout:?}");
+        assert!(st.session.tab_view.diff_expanded.contains(f.key));
+        let to = row_of_line(w, layout, &st.session.tab_view.diff_expanded, f.start);
+        assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row), (to, Some(to)), "{layout:?}");
         // Nothing opened is on screen past the last fold: Fold back still finds the one at the top.
         close_key(&mut st);
-        assert!(st.view.diff_expanded.is_empty(), "{layout:?}");
+        assert!(st.session.tab_view.diff_expanded.is_empty(), "{layout:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
@@ -91,16 +91,16 @@ fn fold_keys_act_on_gaps_in_the_hunk_view() {
     let g = gaps(&st.session.diff.view.as_ref().unwrap().1);
     let fx = open_key(&mut st);
     assert_eq!(fx.iter().filter(|e| matches!(e, Effect::LoadDiffGaps { .. })).count(), 1, "{fx:?}");
-    assert!(st.view.diff_expanded.contains(g[0].key));
+    assert!(st.session.tab_view.diff_expanded.contains(g[0].key));
     land(&mut st, fx);
-    assert_eq!(filled(&st.session.diff.view.as_ref().unwrap().1, &st.view.diff_expanded).len(), 1);
+    assert_eq!(filled(&st.session.diff.view.as_ref().unwrap().1, &st.session.tab_view.diff_expanded).len(), 1);
     // The next press opens the second gap from the text already read.
     assert!(open_key(&mut st).is_empty());
-    assert!(st.view.diff_expanded.contains(g[1].key));
+    assert!(st.session.tab_view.diff_expanded.contains(g[1].key));
     // Fold back closes the first opened gap on screen.
     close_key(&mut st);
-    assert!(!st.view.diff_expanded.contains(g[0].key));
-    assert!(st.view.diff_expanded.contains(g[1].key));
+    assert!(!st.session.tab_view.diff_expanded.contains(g[0].key));
+    assert!(st.session.tab_view.diff_expanded.contains(g[1].key));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

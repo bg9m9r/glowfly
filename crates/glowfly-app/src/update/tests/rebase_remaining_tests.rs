@@ -114,11 +114,11 @@ fn update_steps_asks_about_drops_and_runs_the_edit() {
 
     // The edit keeps the undo history.
     let a = glowfly_core::undo::Action::CreateTag { name: "v1".into(), oid: c[0] };
-    st.undo.record(a.clone());
+    st.session.undo.record(a.clone());
     up(&mut st, Msg::Rebase(RebaseMsg::RemainingEdited { result: Ok(()) }));
     assert!(st.session.rebase.view.is_none(), "the panel closes");
     assert_eq!(last_toast(&st), (true, UPDATED));
-    assert_eq!(st.undo.undo.last(), Some(&a));
+    assert_eq!(st.session.undo.undo.last(), Some(&a));
     git(&dir, &["rebase", "--abort"]);
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -25,7 +25,7 @@ fn with_repos(st: &mut AppState, fork: bool) {
         let main = tip(st, "main");
         st.snap.as_mut().unwrap().remotes.push(("ada".into(), vec![("main".into(), main)]));
     }
-    st.forge.as_mut().unwrap().pr_repos = repos;
+    st.session.forge.as_mut().unwrap().pr_repos = repos;
 }
 
 fn dialog(st: &mut AppState, from: &str) {

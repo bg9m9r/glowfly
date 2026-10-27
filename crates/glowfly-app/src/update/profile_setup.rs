@@ -16,7 +16,7 @@ pub(super) fn switched(st: &mut AppState, swap: SetupSwap, now: Instant, fx: &mu
         // The diff's scroll offset is in pixels: keep the same top row if the font size or
         // wrapping changed.
         if st.session.diff.view.is_some() {
-            st.view.diff_scroll_to_row = Some(st.view.diff_top_row);
+            st.view.diff_scroll_to_row = Some(st.session.tab_view.diff_top_row);
         }
         // The commit limit or branch visibility may have changed.
         if st.snap.is_some() {
@@ -31,8 +31,8 @@ pub(super) fn switched(st: &mut AppState, swap: SetupSwap, now: Instant, fx: &mu
 /// The connected accounts changed: sign in again and reload pull requests and issues in the
 /// active tab; parked tabs detect their service again when selected.
 fn reset_forge(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    if let Some(old) = st.forge.take() {
-        st.forge = Some(ForgeState::new(old.host, old.remote, old.tracker));
+    if let Some(old) = st.session.forge.take() {
+        st.session.forge = Some(ForgeState::new(old.host, old.remote, old.tracker));
     }
     // A self-hosted server is recognized only through a connection.
     if let Some(snap) = st.snap.take() {
@@ -42,7 +42,7 @@ fn reset_forge(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     super::forge::refresh(st, true, false, now, fx);
     for tab in &mut st.tabs {
         if let Some(parked) = tab.parked.as_mut() {
-            parked.forge = None;
+            parked.session.forge = None;
         }
     }
     if let Some(provider) = st.prefs.as_ref().map(|p| p.int_provider) {

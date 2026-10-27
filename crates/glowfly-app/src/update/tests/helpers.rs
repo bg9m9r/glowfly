@@ -285,7 +285,7 @@ fn forge_replies_update_pull_requests_and_errors() {
     let mut st = state();
     let target =
         Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
-    st.forge = Some(ForgeState::new(Some(target.clone()), "origin".into(), Some(target.clone())));
+    st.session.forge = Some(ForgeState::new(Some(target.clone()), "origin".into(), Some(target.clone())));
     let checks =
         Checks { state: CheckState::Pending, passed: 1, failed: 0, pending: 1, complete: true, url: "https://ci.example.com/1".into() };
     let pr = PullRequest {
@@ -305,7 +305,7 @@ fn forge_replies_update_pull_requests_and_errors() {
     };
     let reply = ForgeReply { target: target.clone(), auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr]))] };
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(fs.prs.len(), 1);
     assert_eq!(fs.prs[0].checks, Some(checks));
     assert_eq!(fs.host_status, Status::Ok);
@@ -313,7 +313,7 @@ fn forge_replies_update_pull_requests_and_errors() {
 
     let reply = ForgeReply { target: target.clone(), auth: None, results: vec![ForgeResult::AuthFailed("not signed in".into())] };
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(fs.host_status, Status::Error("not signed in".into()));
 
     // Replies for a different repository are ignored.
@@ -323,7 +323,7 @@ fn forge_replies_update_pull_requests_and_errors() {
         Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target: other, auth: None, results: vec![ForgeResult::Prs(Ok(Vec::new()))] })),
         Instant::now(),
     );
-    assert_eq!(st.forge.as_ref().unwrap().prs.len(), 1);
+    assert_eq!(st.session.forge.as_ref().unwrap().prs.len(), 1);
 }
 
 #[test]
@@ -332,7 +332,7 @@ fn stage_and_commit_end_to_end() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let snap = st.snap.as_ref().expect("opened");
-    assert_eq!(st.selection, Selection::Wip, "a dirty repo opens on the WIP");
+    assert_eq!(st.session.selection, Selection::Wip, "a dirty repo opens on the WIP");
     assert_eq!(snap.unstaged.len(), 1);
 
     let fx = update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now());

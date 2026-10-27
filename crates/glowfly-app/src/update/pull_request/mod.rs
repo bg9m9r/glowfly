@@ -52,7 +52,7 @@ mod threads_tests;
 pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         PullRequestMsg::Open(id) => {
-            let (Some(snap), Some(fs)) = (&st.snap, &st.forge) else { return };
+            let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
             let Some(pr) = fs.prs.iter().find(|p| p.id == id) else { return };
             if st.session.pull_request.view.as_ref().is_some_and(|v| v.pr.id == id) {
                 return;
@@ -127,7 +127,7 @@ pub(super) fn keep_for(st: &mut AppState, target: &DiffTarget) {
 /// A full load stored a new snapshot: when the remote-tracking tips moved, the files load
 /// again (and a diff of the old list closes).
 pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let remote = st.forge.as_ref().filter(|f| f.host.is_some()).map(|f| f.remote.clone());
+    let remote = st.session.forge.as_ref().filter(|f| f.host.is_some()).map(|f| f.remote.clone());
     let Some(view) = st.session.pull_request.view.as_mut() else { return };
     if let Some(r) = remote {
         view.remote = r; // follows a renamed remote
@@ -143,7 +143,7 @@ pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
 pub(super) fn prs_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(view) = st.session.pull_request.view.as_mut() else { return };
     let (mut stale, mut checks_stale, mut head_changed) = (false, false, false);
-    match st.forge.as_ref().and_then(|f| f.prs.iter().find(|p| p.id == view.pr.id)) {
+    match st.session.forge.as_ref().and_then(|f| f.prs.iter().find(|p| p.id == view.pr.id)) {
         Some(pr) => {
             let summary_changed = view.pr.checks != pr.checks;
             head_changed = view.pr.head != pr.head;

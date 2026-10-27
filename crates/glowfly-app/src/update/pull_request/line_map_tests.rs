@@ -112,7 +112,7 @@ fn maps_threads_when_the_page_head_is_newer_here() {
 fn synced_page_asks_for_no_maps() {
     let (mut st, work, bare, _) = setup("prl-synced", &[]);
     open(&mut st);
-    let head = st.forge.as_ref().unwrap().prs[0].head.clone().unwrap();
+    let head = st.session.forge.as_ref().unwrap().prs[0].head.clone().unwrap();
     let fx = page_loaded(&mut st, &head, vec![thread("T1", "f.txt", 1)]);
     assert!(jobs(&fx).is_empty());
     assert_eq!(view(&st).lines, LineMaps::None);

@@ -125,7 +125,7 @@ fn fork_dialog_asks_for_the_forks() {
     // A credential from this session is passed along.
     let mut fs = ForgeState::new(Some(target()), "origin".into(), None);
     fs.auth.insert(target().account().key(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
-    st.forge = Some(fs);
+    st.session.forge = Some(fs);
     assert!(want(&run(&mut st, RemoteMsg::ForkDialog("origin".into())), true));
 
     st.modal = None;

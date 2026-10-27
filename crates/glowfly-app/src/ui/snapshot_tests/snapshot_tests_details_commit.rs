@@ -44,7 +44,7 @@ fn commit_as_grace(dir: &Path, a: &[&str], authored: &str, committed: &str) {
 /// Reloads the history and selects `oid` with its detail and line counts loaded.
 fn select(st: &mut AppState, dir: &Path, oid: Oid) {
     st.snap = Some(repo::load(dir, &LoadOptions::all(500)).unwrap());
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     st.session.detail = Some(repo::commit_detail(dir, oid).unwrap());
     st.session.reads.line_counts.start_commit(oid);
     st.session.reads.line_counts.finish_commit(oid, Arc::new(repo::commit_line_counts(dir, oid).unwrap()));

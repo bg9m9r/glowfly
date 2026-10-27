@@ -104,7 +104,7 @@ pub(super) fn panel(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut 
         gap(ui, BODY_GAP);
         body_block(ui, body);
     }
-    if let Some(fs) = &st.forge {
+    if let Some(fs) = &st.session.forge {
         let keys = fs.issue_refs(&d.message);
         if !keys.is_empty() {
             ui.add_space(6.0);
@@ -197,8 +197,13 @@ fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
             ui.label(type_scale::section_text(ui, t.trn("details.commit.changed_files", n, &[])));
         });
     });
-    let rows =
-        ListRows::of(ui, mode, n, || d.files.iter().map(|f| f.path.as_str()).collect(), st.view.file_folds.closed(FileListId::Commit));
+    let rows = ListRows::of(
+        ui,
+        mode,
+        n,
+        || d.files.iter().map(|f| f.path.as_str()).collect(),
+        st.session.tab_view.file_folds.closed(FileListId::Commit),
+    );
     let lfs = TrackContext::of(st);
     let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
     let commands = crate::state::custom_commands::MenuCommands::for_state(st);

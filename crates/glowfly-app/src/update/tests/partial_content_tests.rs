@@ -189,7 +189,7 @@ fn an_untrusted_repository_downloads_as_a_job_once_trusted() {
     let (mut st, src, dest) = partial("partial-untrusted", true);
     st.modal = None;
     let (to, message) = (head(&st), "second".to_owned());
-    st.undo.record(glowfly_core::undo::Action::Commit {
+    st.session.undo.record(glowfly_core::undo::Action::Commit {
         branch: Some("main".into()),
         from: blob(&dest, "HEAD~1"),
         to,
@@ -210,7 +210,7 @@ fn an_untrusted_repository_downloads_as_a_job_once_trusted() {
     finish(&mut st, fx);
     assert!(st.job.is_none() && st.partial.content.is_none());
     assert_eq!(diff_lines(&st), ["one", "two"]);
-    assert_eq!(st.undo.undo.len(), 1, "a download moves no branch, so Undo stays");
+    assert_eq!(st.session.undo.undo.len(), 1, "a download moves no branch, so Undo stays");
     assert_eq!(st.snap.as_ref().unwrap().fetched_at, fetched_at, "nor does it count as a fetch");
     cleanup(&[&src, &dest]);
 }

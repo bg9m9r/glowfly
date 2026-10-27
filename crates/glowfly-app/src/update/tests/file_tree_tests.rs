@@ -83,9 +83,9 @@ fn the_list_mode_is_saved_once() {
 fn folders_collapse_and_expand() {
     let mut st = state();
     assert!(toggle(&mut st, FileListId::Commit, "src").is_empty(), "view state: nothing saved");
-    assert!(st.view.file_folds.is_closed(FileListId::Commit, "src"));
+    assert!(st.session.tab_view.file_folds.is_closed(FileListId::Commit, "src"));
     toggle(&mut st, FileListId::Commit, "src");
-    assert!(!st.view.file_folds.is_closed(FileListId::Commit, "src"));
+    assert!(!st.session.tab_view.file_folds.is_closed(FileListId::Commit, "src"));
     assert!(LayoutMsg::SetFileListMode(FileListMode::Tree).on_inactive().is_none());
     assert!(LayoutMsg::ToggleFolder { list: FileListId::Commit, path: "src".into() }.on_inactive().is_none());
 }
@@ -95,15 +95,15 @@ fn folds_are_kept_per_tab_and_cleared_by_another_repository() {
     let (mut st, dir) = opened("tree-folds-tabs");
     toggle(&mut st, FileListId::Unstaged, "src");
     drive(&mut st, Msg::Tabs(TabsMsg::NewTab));
-    assert!(!st.view.file_folds.is_closed(FileListId::Unstaged, "src"), "a new tab has no folds");
+    assert!(!st.session.tab_view.file_folds.is_closed(FileListId::Unstaged, "src"), "a new tab has no folds");
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    assert!(st.view.file_folds.is_closed(FileListId::Unstaged, "src"), "back in the first tab");
+    assert!(st.session.tab_view.file_folds.is_closed(FileListId::Unstaged, "src"), "back in the first tab");
     // Opening a repository in the tab (LoadKind::Open) starts without folds.
     let mut fresh = state();
     toggle(&mut fresh, FileListId::Commit, "docs");
     drive(&mut fresh, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(fresh.snap.is_some());
-    assert!(!fresh.view.file_folds.is_closed(FileListId::Commit, "docs"));
+    assert!(!fresh.session.tab_view.file_folds.is_closed(FileListId::Commit, "docs"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -130,7 +130,7 @@ fn next_change_walks_the_tree_and_opens_collapsed_folders() {
     let (mut st, dir) = tree_repo("tree-nav");
     git(&dir, &["add", "src/c.txt"]);
     reload(&mut st, &dir);
-    st.selection = crate::state::Selection::Wip;
+    st.session.selection = crate::state::Selection::Wip;
     // Unstaged in tree order (src/b.txt, a.txt), then Staged (src/c.txt).
     assert_eq!(diff_nav::next_file(&st, &un("src/b.txt"), 1), Some(un("a.txt")));
     assert_eq!(diff_nav::next_file(&st, &un("a.txt"), 1), Some(DiffTarget::Staged("src/c.txt".into())));
@@ -141,7 +141,7 @@ fn next_change_walks_the_tree_and_opens_collapsed_folders() {
     st.session.diff.view = Some((un("a.txt"), empty_diff().into()));
     let fx = run(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1)));
     assert_eq!(loaded(&fx), Some(&un("src/b.txt")));
-    assert!(!st.view.file_folds.is_closed(FileListId::Unstaged, "src"));
+    assert!(!st.session.tab_view.file_folds.is_closed(FileListId::Unstaged, "src"));
     // List mode keeps git's order.
     st.settings.file_list_mode = FileListMode::List;
     assert_eq!(diff_nav::next_file(&st, &un("a.txt"), 1), Some(un("src/b.txt")));
@@ -161,7 +161,7 @@ fn commit_details_walk_in_tree_order() {
     let detail = repo::commit_detail(&dir, head).unwrap();
     let flat: Vec<&str> = detail.files.iter().map(|f| f.path.as_str()).collect();
     assert_eq!(flat, ["a.txt", "a/b.txt"], "git's order");
-    st.selection = crate::state::Selection::Commit(head);
+    st.session.selection = crate::state::Selection::Commit(head);
     st.session.detail = Some(detail);
     let c = |p: &str| DiffTarget::Commit(head, p.into());
     assert_eq!(diff_nav::next_file(&st, &c("a/b.txt"), 1), Some(c("a.txt")), "the folder first");

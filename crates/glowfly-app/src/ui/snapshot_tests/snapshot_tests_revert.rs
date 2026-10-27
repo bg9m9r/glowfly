@@ -18,7 +18,7 @@ pub(in crate::ui) fn with_commit_diff(name: &str, theme: ThemeChoice, layout: Di
     let (mut st, dir) = with_repo(theme, name);
     let snap = st.snap.as_ref().unwrap();
     let oid = snap.commits.iter().find(|c| c.summary == "Fix build on Windows").expect("the fix commit").oid;
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
     st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let target = DiffTarget::Commit(oid, "app.txt".into());
     let mut diff = repo::load_diff_with(&dir, &target, repo::LoadDiffOptions { ignore_whitespace: ignore_ws, whole_file: false }).unwrap();

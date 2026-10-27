@@ -78,7 +78,7 @@ fn tool_view_follows_the_central_order() {
     st.session.history.view = None;
     send(&mut st, Msg::Issue(IssueMsg::Open("12".into())));
     assert_eq!(tool_view(&st), Some(ToolView::Issue));
-    let pr = crate::state::pull_request::PrView::new(pr(), st.forge.as_ref().unwrap(), st.snap.as_ref().unwrap());
+    let pr = crate::state::pull_request::PrView::new(pr(), st.session.forge.as_ref().unwrap(), st.snap.as_ref().unwrap());
     st.session.pull_request.view = Some(pr);
     assert_eq!(tool_view(&st), None, "the pull request panel covers the issue panel");
     st.session.pull_request.view = None;
@@ -157,9 +157,9 @@ fn expand_without_a_tool_view_does_nothing() {
 fn go_to_commit_message_expands_the_rail() {
     let (mut st, dir) = opened("rail-focus-message");
     st.session.blame.view = blame();
-    st.selection = Selection::None;
+    st.session.selection = Selection::None;
     let fx = send(&mut st, Msg::Shortcut(KeyAction::FocusMessage));
-    assert_eq!(st.selection, Selection::Wip);
+    assert_eq!(st.session.selection, Selection::Wip);
     assert!(st.view.focus_message);
     assert_eq!(details_shape(&st), DetailsShape::Full);
     assert!(st.settings.show_details_panel);

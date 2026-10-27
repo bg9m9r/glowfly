@@ -61,7 +61,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     };
     let Some(modal) = st.modal.as_mut() else { return };
     let snap = st.snap.as_ref();
-    let fs = st.forge.as_ref();
+    let fs = st.session.forge.as_ref();
     let idle = st.job.is_none();
     let stage_renames = st.settings.stage_renames;
     let push_tags = st.settings.push_new_tags;

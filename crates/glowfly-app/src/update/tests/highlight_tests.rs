@@ -121,12 +121,12 @@ fn big_diff_opens_plain_then_colors() {
         matches!(&held[0], Effect::HighlightDiff { generation, target, .. } if *generation == st.session.diff.shown_gen && *target == big())
     );
 
-    let view = (st.view.diff_scroll_to_row, st.view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
+    let view = (st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
     let msg = runner::execute(held.remove(0)).expect("a result");
     assert!(matches!(msg, Msg::Scoped { .. }));
     assert!(up(&mut st, msg).is_empty());
     assert_colored(shown(&st));
-    assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone()), view);
+    assert_eq!((st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone()), view);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -108,7 +108,7 @@ pub(super) fn done(
     fx: &mut Vec<Effect>,
 ) {
     if let Some(a) = undo {
-        st.undo.record(a);
+        st.session.undo.record(a);
     }
     match result {
         Ok(r @ Reverted::Conflicts) => {

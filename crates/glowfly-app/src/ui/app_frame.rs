@@ -60,7 +60,7 @@ impl GlowflyApp {
             ctx.request_repaint_after(at.saturating_duration_since(now));
         }
         // A query typed into a large history is matched once typing pauses.
-        if let Some(at) = self.st.search.loaded.due {
+        if let Some(at) = self.st.session.search.loaded.due {
             ctx.request_repaint_after(at.saturating_duration_since(now));
         }
         // A delayed index build starts, and a long-parked tab's index is freed, on a tick.

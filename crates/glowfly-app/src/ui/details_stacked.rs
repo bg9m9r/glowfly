@@ -77,7 +77,7 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
         .iter()
         .map(|c| {
             let paths = || c.files.iter().map(|f| f.path.as_str()).collect();
-            ListRows::of(ui, mode, c.files.len(), paths, st.view.file_folds.closed(FileListId::Stacked(c.oid)))
+            ListRows::of(ui, mode, c.files.len(), paths, st.session.tab_view.file_folds.closed(FileListId::Stacked(c.oid)))
         })
         .collect();
     let rows = rows_of(stack, &sections);

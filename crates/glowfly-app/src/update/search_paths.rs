@@ -12,7 +12,7 @@ use crate::state::search::PathSearch;
 /// then requests the loaded commits that pass the text and author terms and haven't been looked
 /// at. A newer request makes the one in flight stale.
 pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let s = &mut st.search;
+    let s = &mut st.session.search;
     if !s.query.has_paths() {
         s.paths = PathSearch { requests: s.paths.requests, ..Default::default() };
         return;
@@ -22,7 +22,7 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
         // The matches were found with the old terms' answers; none are known for these yet.
         super::search::recompute(st);
     }
-    let s = &mut st.search;
+    let s = &mut st.session.search;
     let Some(snap) = &st.snap else {
         s.paths.pending = None;
         return;
@@ -42,7 +42,7 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Matches only grow below rows already shown, so nothing scrolls. When the search is done, a
 /// filtering search may load further back.
 pub(super) fn searched(st: &mut AppState, request: u64, result: Result<PathsChunk, String>, fx: &mut Vec<Effect>) {
-    let p = &mut st.search.paths;
+    let p = &mut st.session.search.paths;
     if p.pending != Some(request) {
         return;
     }
@@ -60,7 +60,7 @@ pub(super) fn searched(st: &mut AppState, request: u64, result: Result<PathsChun
         }
     }
     super::search::recompute(st);
-    if st.search.paths.pending.is_none() {
+    if st.session.search.paths.pending.is_none() {
         super::search_deeper::pump(st, fx);
     }
 }
@@ -68,7 +68,7 @@ pub(super) fn searched(st: &mut AppState, request: u64, result: Result<PathsChun
 /// The history changed: answers are kept for the commits still loaded, and any request in
 /// flight is dropped (`want` asks again for what is unsearched).
 pub(super) fn history_changed(st: &mut AppState) {
-    let p = &mut st.search.paths;
+    let p = &mut st.session.search.paths;
     p.pending = None;
     match &st.snap {
         Some(snap) => {
@@ -85,6 +85,6 @@ pub(super) fn history_changed(st: &mut AppState) {
 /// The tab was shown again: its reports were dropped while it was parked, so ask afresh for
 /// whatever is unsearched.
 pub(super) fn resume(st: &mut AppState, fx: &mut Vec<Effect>) {
-    st.search.paths.pending = None;
+    st.session.search.paths.pending = None;
     want(st, fx);
 }

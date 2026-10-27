@@ -78,7 +78,7 @@ pub(super) fn wip_loaded(st: &mut AppState, generation: u64, result: Result<Box<
 /// On return to a tab: the selected commit's counts were dropped in flight. (The working tree's
 /// follow the status read the activation sends.)
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if let Selection::Commit(oid) = st.selection {
+    if let Selection::Commit(oid) = st.session.selection {
         want_commit(st, oid, fx);
     }
 }

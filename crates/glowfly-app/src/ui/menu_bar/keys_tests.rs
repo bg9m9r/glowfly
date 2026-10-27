@@ -238,7 +238,7 @@ fn other_alt_presses_open_nothing() {
 fn bindings_keep_their_alt_keys() {
     let (mut st, dir) = fixture("menu-keys-binding");
     let head = st.snap.as_ref().unwrap().commits[0].oid;
-    st.selection = Selection::Commit(head);
+    st.session.selection = Selection::Commit(head);
     let mut h = keys_harness(st, SIZE);
     h.state_mut().1.clear();
     press(&mut h, Modifiers::ALT, Key::S);

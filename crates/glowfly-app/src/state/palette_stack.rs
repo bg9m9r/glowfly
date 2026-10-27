@@ -36,7 +36,7 @@ pub(super) fn entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         let c = PaletteCommand::Stack(StackCommand::Push(head.to_owned()));
         out.push(entry(c, format!("Push the stack of {head}"), "stacked branches layers upload publish push all"));
     }
-    if let Some(fs) = st.forge.as_ref().filter(|f| f.host.is_some())
+    if let Some(fs) = st.session.forge.as_ref().filter(|f| f.host.is_some())
         && prs_blocker(t, snap, fs, head).is_none()
     {
         let c = PaletteCommand::Stack(StackCommand::CreatePrs(head.to_owned()));

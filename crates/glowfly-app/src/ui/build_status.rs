@@ -121,7 +121,7 @@ pub(super) fn after_draw(st: &mut AppState, ctx: &egui::Context, now: Instant, m
         ctx.request_repaint_after(d);
     }
     let seen = std::mem::take(&mut st.view.tips_seen);
-    let (Some(fs), Some(snap)) = (st.forge.as_ref(), st.snap.as_ref()) else { return };
+    let (Some(fs), Some(snap)) = (st.session.forge.as_ref(), st.snap.as_ref()) else { return };
     // Only tips the host can be asked about (its remote's branches and what tracks them).
     let seen: Vec<Oid> = tip_queries(snap, &fs.remote, &seen).into_iter().map(|(o, _)| o).collect();
     if fs.host_status == Status::Ok

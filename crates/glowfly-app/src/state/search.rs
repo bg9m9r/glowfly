@@ -10,12 +10,12 @@ use std::collections::HashSet;
 use std::time::Instant;
 
 /// The active tab's commit search (parked with the tab). Changed only by update; the view edits
-/// the query's text buffer (`ViewState::search`) and sends `SearchMsg`s.
+/// the query's text buffer (`TabView::search`) and sends `SearchMsg`s.
 #[derive(Default)]
 pub struct CommitSearch {
     /// Show only the matching commits (while the search bar is shown).
     pub filter: bool,
-    /// `ViewState::search`, parsed when it last changed.
+    /// `TabView::search`, parsed when it last changed.
     pub query: CommitQuery,
     /// Indexes into `snap.commits` of the commits matching `query`, ascending.
     pub matches: Vec<usize>,

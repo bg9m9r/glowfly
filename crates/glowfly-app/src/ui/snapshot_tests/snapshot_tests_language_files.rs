@@ -170,7 +170,7 @@ fn file_menus_german() {
     let snap = st.snap.as_mut().unwrap();
     snap.unstaged = vec![FileEntry::new("b.txt", 'M')];
     snap.staged = vec![FileEntry::new("a.txt", 'M')];
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     german(&mut st);
     let mut h = harness(st, true);
     h.run();
@@ -309,14 +309,14 @@ fn commit_menus_german() {
     remove_fixture(&dir);
 
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "lang-multi-menu");
-    st.selection = MultiSelection::build([merge, fix], merge, st.snap.as_ref().unwrap());
+    st.session.selection = MultiSelection::build([merge, fix], merge, st.snap.as_ref().unwrap());
     german(&mut st);
     let mut h = harness(st, true);
     h.run_steps(4);
     click(&mut h, pos2(700.0, row_y(row)), PointerButton::Secondary);
     assert_no_english(&h, "the menu of a selection with a merge");
     h.check_snapshot("multi_commit_menu_german");
-    let Selection::Commits(m) = &h.state().0.selection else { panic!("not a multi-selection") };
+    let Selection::Commits(m) = &h.state().0.session.selection else { panic!("not a multi-selection") };
     let why = m.pick_blocked.expect("a merge can't be picked with others").text(de);
     assert_ne!(why, m.pick_blocked.unwrap().text(Lang::En));
     drop(h);

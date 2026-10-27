@@ -54,7 +54,7 @@ fn oids(st: &AppState, rows: &[usize]) -> Vec<Oid> {
 
 /// Types `q`: returns the path searches update asked for, as (request, oids).
 fn search(st: &mut AppState, q: &str) -> Vec<(u64, Vec<Oid>)> {
-    st.view.search = q.into();
+    st.session.tab_view.search = q.into();
     let fx = update(st, Msg::Search(SearchMsg::QueryChanged), Instant::now());
     settle(st, fx)
 }
@@ -89,7 +89,7 @@ fn report(st: &mut AppState, request: u64, result: Result<PathsChunk, String>) {
 
 /// Types `q` and runs the path search it asks for.
 fn search_all(st: &mut AppState, q: &str) {
-    st.view.search = q.into();
+    st.session.tab_view.search = q.into();
     up(st, SearchMsg::QueryChanged);
 }
 
@@ -100,14 +100,14 @@ fn a_path_term_asks_for_every_loaded_commit_then_matches() {
     let all: Vec<usize> = (0..8).collect();
     assert_eq!(asked.len(), 1);
     assert_eq!(asked[0].1, oids(&st, &all), "every loaded commit, in index order");
-    assert_eq!(st.search.paths.pending, Some(asked[0].0));
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("Searching files…"));
-    assert!(st.search.matches.is_empty());
+    assert_eq!(st.session.search.paths.pending, Some(asked[0].0));
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("Searching files…"));
+    assert!(st.session.search.matches.is_empty());
 
     search_all(&mut st, "path:docs");
-    assert_eq!(st.search.matches, [1, 2, 4]);
-    assert_eq!(st.search.paths.pending, None);
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("3 matches"));
+    assert_eq!(st.session.search.matches, [1, 2, 4]);
+    assert_eq!(st.session.search.paths.pending, None);
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("3 matches"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -118,7 +118,7 @@ fn only_commits_passing_the_other_terms_are_searched() {
     assert_eq!(asked.len(), 1);
     assert_eq!(asked[0].1, oids(&st, &[0, 1, 4]), "only Grace's commits");
     search_all(&mut st, "author:grace path:docs");
-    assert_eq!(st.search.matches, [1, 4]);
+    assert_eq!(st.session.search.matches, [1, 4]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -126,15 +126,15 @@ fn only_commits_passing_the_other_terms_are_searched() {
 fn answers_are_kept_while_only_the_text_changes() {
     let (mut st, dir) = repo("search-paths-cache");
     search_all(&mut st, "path:docs docs");
-    assert_eq!(st.search.matches, [1, 2, 4]);
+    assert_eq!(st.session.search.matches, [1, 2, 4]);
     assert!(search(&mut st, "path:docs more").is_empty(), "every candidate was searched");
-    assert_eq!(st.search.matches, [2]);
-    assert_eq!(st.search.paths.pending, None);
+    assert_eq!(st.session.search.matches, [2]);
+    assert_eq!(st.session.search.paths.pending, None);
     let asked = search(&mut st, "path:docs");
     assert_eq!(asked.len(), 1);
     assert_eq!(asked[0].1, oids(&st, &[0, 3, 5, 6, 7]), "only the commits not looked at yet");
-    assert_eq!(st.search.matches, [1, 2, 4], "the ones known so far");
-    assert!(st.search.searching_files());
+    assert_eq!(st.session.search.matches, [1, 2, 4], "the ones known so far");
+    assert!(st.session.search.searching_files());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -147,16 +147,16 @@ fn new_path_terms_start_again_and_old_reports_are_ignored() {
     let new = asked[0].0;
     assert!(new > old);
     assert_eq!(asked[0].1.len(), 8);
-    assert_eq!(st.search.paths.pending, Some(new));
+    assert_eq!(st.session.search.paths.pending, Some(new));
     let all = oids(&st, &[0, 1, 2, 3, 4, 5, 6, 7]);
     report(&mut st, old, Ok(PathsChunk { searched: all.clone(), touching: all, done: true }));
-    assert!(st.search.matches.is_empty() && st.search.paths.searched.is_empty(), "a stale report");
-    assert_eq!(st.search.paths.pending, Some(new));
+    assert!(st.session.search.matches.is_empty() && st.session.search.paths.searched.is_empty(), "a stale report");
+    assert_eq!(st.session.search.paths.pending, Some(new));
     search_all(&mut st, "path:src/ui");
-    assert_eq!(st.search.matches, [0, 3]);
+    assert_eq!(st.session.search.matches, [0, 3]);
     // Same terms in another spelling: the answers stay.
     assert!(search(&mut st, "file:SRC\\UI").is_empty());
-    assert_eq!(st.search.matches, [0, 3]);
+    assert_eq!(st.session.search.matches, [0, 3]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -164,17 +164,17 @@ fn new_path_terms_start_again_and_old_reports_are_ignored() {
 fn new_path_terms_drop_the_old_terms_matches() {
     let (mut st, dir) = repo("search-paths-new-terms-matches");
     search_all(&mut st, "path:docs");
-    assert_eq!(st.search.matches, [1, 2, 4]);
+    assert_eq!(st.session.search.matches, [1, 2, 4]);
     let asked = search(&mut st, "path:src");
     assert_eq!(asked.len(), 1);
-    assert!(st.search.matches.is_empty(), "no commit is known to touch src yet");
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("Searching files…"));
-    let before = st.selection.clone();
+    assert!(st.session.search.matches.is_empty(), "no commit is known to touch src yet");
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("Searching files…"));
+    let before = st.session.selection.clone();
     up(&mut st, SearchMsg::Next);
-    assert_eq!(st.selection, before, "Enter doesn't land on a docs commit");
+    assert_eq!(st.session.selection, before, "Enter doesn't land on a docs commit");
     let chunk = PathsChunk { searched: oids(&st, &[0, 1, 2]), touching: oids(&st, &[0, 1]), done: false };
     report(&mut st, asked[0].0, Ok(chunk));
-    assert_eq!(st.search.matches, [0, 1]);
+    assert_eq!(st.session.search.matches, [0, 1]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -184,23 +184,23 @@ fn partial_reports_match_and_enter_steps_through_them() {
     let request = search(&mut st, "path:docs")[0].0;
     let chunk = PathsChunk { searched: oids(&st, &[0, 1, 2]), touching: oids(&st, &[1, 2]), done: false };
     report(&mut st, request, Ok(chunk));
-    assert_eq!(st.search.matches, [1, 2]);
-    assert_eq!(st.search.paths.pending, Some(request));
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("2 so far, searching…"));
+    assert_eq!(st.session.search.matches, [1, 2]);
+    assert_eq!(st.session.search.paths.pending, Some(request));
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("2 so far, searching…"));
     up(&mut st, SearchMsg::Next);
-    assert_eq!(st.selection, Selection::Commit(oid(&st, 1)));
+    assert_eq!(st.session.selection, Selection::Commit(oid(&st, 1)));
     up(&mut st, SearchMsg::Next);
-    assert_eq!(st.selection, Selection::Commit(oid(&st, 2)));
+    assert_eq!(st.session.selection, Selection::Commit(oid(&st, 2)));
     up(&mut st, SearchMsg::Next);
-    assert_eq!(st.selection, Selection::Commit(oid(&st, 1)), "wraps");
+    assert_eq!(st.session.selection, Selection::Commit(oid(&st, 1)), "wraps");
 
     // Nothing found yet: Enter does nothing.
     search(&mut st, "path:nothing");
-    assert!(st.search.searching_files());
+    assert!(st.session.search.searching_files());
     let logged = st.log.len();
     up(&mut st, SearchMsg::Next);
     assert_eq!(st.log.len(), logged, "no \"No commits match\" while searching");
-    assert_eq!(st.selection, Selection::Commit(oid(&st, 1)));
+    assert_eq!(st.session.selection, Selection::Commit(oid(&st, 1)));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -210,8 +210,8 @@ fn a_failed_search_is_logged_and_ends() {
     let request = search(&mut st, "path:docs")[0].0;
     report(&mut st, request, Err("no such repository".into()));
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some("Could not search changed files: no such repository"));
-    assert_eq!(st.search.paths.pending, None);
-    assert_eq!(st.search.count_text(None, st.history_count()).as_deref(), Some("No matches"));
+    assert_eq!(st.session.search.paths.pending, None);
+    assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("No matches"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -220,20 +220,23 @@ fn a_refresh_searches_only_the_new_commits() {
     let (mut st, dir) = repo("search-paths-refresh");
     search_all(&mut st, "path:docs");
     let gone = Oid::from_bytes(&[9; 20]).unwrap();
-    st.search.paths.searched.insert(gone);
-    st.search.paths.touching.insert(gone);
+    st.session.search.paths.searched.insert(gone);
+    st.session.search.paths.touching.insert(gone);
     commit_as(&dir, "Test", &["docs/new.md"], "newest docs");
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
     let asked = settle(&mut st, fx);
     assert_eq!(st.snap.as_ref().unwrap().commits.len(), 9);
     assert_eq!(asked.len(), 1);
     assert_eq!(asked[0].1, [oid(&st, 0)], "only the new commit");
-    assert!(!st.search.paths.searched.contains(&gone) && !st.search.paths.touching.contains(&gone), "pruned to the loaded commits");
-    assert_eq!(st.search.paths.searched.len(), 8);
-    assert_eq!(st.search.matches, [2, 3, 5], "the known answers, shifted down");
+    assert!(
+        !st.session.search.paths.searched.contains(&gone) && !st.session.search.paths.touching.contains(&gone),
+        "pruned to the loaded commits"
+    );
+    assert_eq!(st.session.search.paths.searched.len(), 8);
+    assert_eq!(st.session.search.matches, [2, 3, 5], "the known answers, shifted down");
     let all = oids(&st, &[0]);
     report(&mut st, asked[0].0, Ok(PathsChunk { searched: all.clone(), touching: all, done: true }));
-    assert_eq!(st.search.matches, [0, 2, 3, 5]);
+    assert_eq!(st.session.search.matches, [0, 2, 3, 5]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -243,12 +246,12 @@ fn close_drops_the_answers() {
     st.view.show_search = true;
     let request = search(&mut st, "path:docs")[0].0;
     up(&mut st, SearchMsg::Close);
-    let p = &st.search.paths;
+    let p = &st.session.search.paths;
     assert!(p.pending.is_none() && p.terms.is_empty() && p.searched.is_empty() && p.touching.is_empty());
     assert_eq!(p.requests, request, "the counter is kept");
     let all = oids(&st, &[1]);
     report(&mut st, request, Ok(PathsChunk { searched: all.clone(), touching: all, done: true }));
-    assert!(st.search.paths.touching.is_empty() && st.search.matches.is_empty(), "a late report");
+    assert!(st.session.search.paths.touching.is_empty() && st.session.search.matches.is_empty(), "a late report");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -267,13 +270,13 @@ fn a_tab_switch_drops_reports_and_asks_again_on_return() {
 
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     let asked = settle(&mut st, fx);
-    assert_eq!(st.view.search, "path:docs");
-    assert!(st.search.paths.touching.is_empty(), "the report for the parked tab was dropped");
+    assert_eq!(st.session.tab_view.search, "path:docs");
+    assert!(st.session.search.paths.touching.is_empty(), "the report for the parked tab was dropped");
     assert!(!asked.is_empty());
     let last = asked.last().unwrap();
     assert!(last.0 > request);
     assert_eq!(last.1, all, "everything is still unsearched");
-    assert_eq!(st.search.paths.pending, Some(last.0));
+    assert_eq!(st.session.search.paths.pending, Some(last.0));
     let _ = std::fs::remove_dir_all(&a);
     let _ = std::fs::remove_dir_all(&b);
 }
@@ -285,12 +288,12 @@ fn the_filtered_graph_fills_in_when_the_search_reports() {
     up(&mut st, SearchMsg::ToggleFilter);
     let request = search(&mut st, "path:docs")[0].0;
     let snap = st.snap.as_ref().unwrap();
-    let rows = GraphRows::new(snap, &st.search, true);
+    let rows = GraphRows::new(snap, &st.session.search, true);
     assert!(rows.filtered() && rows.is_empty());
     let all = oids(&st, &[0, 1, 2, 3, 4, 5, 6, 7]);
     let touching = oids(&st, &[1, 2, 4]);
     report(&mut st, request, Ok(PathsChunk { searched: all, touching, done: true }));
-    let rows = GraphRows::new(st.snap.as_ref().unwrap(), &st.search, true);
+    let rows = GraphRows::new(st.snap.as_ref().unwrap(), &st.session.search, true);
     assert_eq!(rows.shown(), Some(&[1, 2, 4][..]));
     let _ = std::fs::remove_dir_all(&dir);
 }

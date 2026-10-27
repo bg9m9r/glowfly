@@ -39,13 +39,13 @@ pub(in crate::ui) fn send(st: &mut AppState, msg: SearchMsg) {
 /// The bar shown with `q` typed into it.
 pub(in crate::ui) fn searching(st: &mut AppState, q: &str) {
     st.view.show_search = true;
-    st.view.search = q.into();
+    st.session.tab_view.search = q.into();
     send(st, SearchMsg::QueryChanged);
 }
 
 fn select(st: &mut AppState, summary: &str) {
     let oid = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == summary).unwrap().oid;
-    st.selection = Selection::Commit(oid);
+    st.session.selection = Selection::Commit(oid);
 }
 
 /// Clicks the author picker open.
@@ -83,7 +83,7 @@ fn search_msgs(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Vec<String> {
 fn graph_search_dim() {
     let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-dim");
     searching(&mut st, "login");
-    assert_eq!(st.search.matches.len(), 2);
+    assert_eq!(st.session.search.matches.len(), 2);
     select(&mut st, "Merge branch 'login-page'");
     let mut h = harness(st, true);
     h.run_steps(4);
@@ -101,8 +101,8 @@ fn graph_search_filtered() {
         let (mut st, dir) = with_two_authors(theme, name);
         searching(&mut st, "page");
         send(&mut st, SearchMsg::ToggleFilter);
-        assert!(st.search.filter);
-        assert_eq!(st.search.matches.len(), 3);
+        assert!(st.session.search.filter);
+        assert_eq!(st.session.search.matches.len(), 3);
         let mut h = harness(st, dark);
         h.run();
         assert_eq!(h.get_by_label("Filter").toggled(), Some(Toggled::True), "the Filter mode is raised");
@@ -130,7 +130,7 @@ fn graph_search_paths_pending() {
     send(&mut st, SearchMsg::ToggleFilter);
     // The effect isn't run: the changed files are still being looked through.
     searching(&mut st, "path:notes.txt");
-    assert!(st.search.searching_files());
+    assert!(st.session.search.searching_files());
     let mut h = harness(st, true);
     h.run_steps(4);
     assert!(h.query_by_label("Searching files…").is_some());
@@ -139,7 +139,7 @@ fn graph_search_paths_pending() {
 
     // A first chunk found some: they show, and the count says the search goes on.
     let st = &mut h.state_mut().0;
-    let request = st.search.paths.pending.expect("a request");
+    let request = st.session.search.paths.pending.expect("a request");
     let commits = &st.snap.as_ref().unwrap().commits;
     let first: Vec<_> = commits[..3].iter().map(|c| c.oid).collect();
     let touching = vec![commits[0].oid];
@@ -158,11 +158,11 @@ fn graph_search_paths() {
     let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-paths");
     st.view.show_search = true;
     send(&mut st, SearchMsg::ToggleFilter);
-    st.view.search = "path:notes.txt".into();
+    st.session.tab_view.search = "path:notes.txt".into();
     send_and_search(&mut st, SearchMsg::QueryChanged);
-    assert!(!st.search.searching_files());
+    assert!(!st.session.search.searching_files());
     let snap = st.snap.as_ref().unwrap();
-    let shown: Vec<&str> = st.search.matches.iter().map(|&i| snap.commits[i].summary.as_str()).collect();
+    let shown: Vec<&str> = st.session.search.matches.iter().map(|&i| snap.commits[i].summary.as_str()).collect();
     assert_eq!(shown, ["Write release notes"]);
     let mut h = harness(st, true);
     h.run();
@@ -188,7 +188,7 @@ fn graph_search_author_picker() {
     let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-authors");
     searching(&mut st, "");
     send(&mut st, SearchMsg::WantAuthors);
-    assert_eq!(st.search.authors.as_ref().map(Vec::len), Some(2));
+    assert_eq!(st.session.search.authors.as_ref().map(Vec::len), Some(2));
     let mut h = harness(st, true);
     h.run();
     open_picker(&mut h);
@@ -218,7 +218,7 @@ fn the_bar_sends_search_messages() {
     // The empty field has the keyboard.
     h.input_mut().events.push(Event::Text("log".into()));
     h.run();
-    assert_eq!(h.state().0.view.search, "log");
+    assert_eq!(h.state().0.session.tab_view.search, "log");
     assert_eq!(search_msgs(&h), ["QueryChanged"]);
 
     // Highlight is the mode at first; clicking it again changes nothing.
@@ -304,10 +304,10 @@ fn arrow_keys_move_through_the_shown_matches() {
     searching(&mut st, "page");
     send(&mut st, SearchMsg::ToggleFilter);
     let snap = st.snap.as_ref().unwrap();
-    let shown: Vec<_> = st.search.matches.iter().map(|&i| snap.commits[i].oid).collect();
+    let shown: Vec<_> = st.session.search.matches.iter().map(|&i| snap.commits[i].oid).collect();
     assert_eq!(shown.len(), 3);
     // Merge branch 'login-page', then Add login page with Fix build on Windows hidden between.
-    st.selection = Selection::Commit(shown[1]);
+    st.session.selection = Selection::Commit(shown[1]);
     let mut h = harness(st, true);
     h.run_steps(4);
     h.state_mut().1.clear();
@@ -337,7 +337,7 @@ fn graph_search_clear() {
     // The count changes length; Close stays where it was.
     let st = &mut h.state_mut().0;
     searching(st, "path:notes.txt");
-    let request = st.search.paths.pending.expect("a request");
+    let request = st.session.search.paths.pending.expect("a request");
     let commits = &st.snap.as_ref().unwrap().commits;
     let searched: Vec<_> = commits[..3].iter().map(|c| c.oid).collect();
     let chunk = crate::msg::PathsChunk { searched, touching: vec![commits[0].oid], done: false };
@@ -350,7 +350,7 @@ fn graph_search_clear() {
     h.get_by_label("Clear search").click();
     h.run_steps(4);
     assert_eq!(search_msgs(&h), ["Clear"]);
-    h.state_mut().0.view.search.clear();
+    h.state_mut().0.session.tab_view.search.clear();
     h.run_steps(4);
     assert!(h.query_by_label("Clear search").is_none(), "nothing to clear");
     drop(h);

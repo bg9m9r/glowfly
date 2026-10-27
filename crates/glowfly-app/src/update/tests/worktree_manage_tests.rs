@@ -106,7 +106,7 @@ fn remove_clean_and_delete_branch() {
     assert_eq!(st.snap.as_ref().unwrap().worktrees.len(), 1);
     assert!(!has_branch(&st, "wt1"));
     assert_eq!(last_toast(&st), (true, "Removed worktree wt1 and deleted branch wt1".to_owned()));
-    assert_eq!(st.undo.undo.len(), 1, "the branch delete is undoable");
+    assert_eq!(st.session.undo.undo.len(), 1, "the branch delete is undoable");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert!(has_branch(&st, "wt1"), "undo restored the branch");
@@ -178,7 +178,7 @@ fn branch_delete_failure_reported_separately() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, wt(WorktreeMsg::RemoveDialog(linked.clone())));
     remove_form(&mut st).delete_branch = true;
-    let undo_before = st.undo.undo.len();
+    let undo_before = st.session.undo.undo.len();
     drive(&mut st, wt(WorktreeMsg::Remove));
     assert!(entry(&st, &linked).is_none() && !linked.exists());
     assert!(has_branch(&st, "wip"));
@@ -186,7 +186,7 @@ fn branch_delete_failure_reported_separately() {
     assert!(!ok && toast.starts_with("Removed worktree wip, but branch wip wasn't deleted: "), "{toast}");
     assert!(toast.contains("not fully merged"), "{toast}");
     assert!(!last_log(&st).0);
-    assert_eq!(st.undo.undo.len(), undo_before, "no undo entry");
+    assert_eq!(st.session.undo.undo.len(), undo_before, "no undo entry");
     cleanup(&dir, &root);
 }
 

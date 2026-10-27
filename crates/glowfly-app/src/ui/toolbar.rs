@@ -60,17 +60,29 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 let (keys, idle) = (&st.keymap, st.job.is_none());
                 widgets::tool_gap(ui);
                 widgets::tool_group(ui, |ui| {
-                    let r = tool(ui, Icon::Undo, t.tr("toolbar.undo.button"), t.tr("toolbar.undo.name"), idle && !st.undo.undo.is_empty());
+                    let r = tool(
+                        ui,
+                        Icon::Undo,
+                        t.tr("toolbar.undo.button"),
+                        t.tr("toolbar.undo.name"),
+                        idle && !st.session.undo.undo.is_empty(),
+                    );
                     if attach(r, keys, t, || tips::undo(st)).clicked() {
                         msgs.push(Msg::Job(JobMsg::Undo));
                     }
-                    let r = tool(ui, Icon::Redo, t.tr("toolbar.redo.button"), t.tr("toolbar.redo.name"), idle && !st.undo.redo.is_empty());
+                    let r = tool(
+                        ui,
+                        Icon::Redo,
+                        t.tr("toolbar.redo.button"),
+                        t.tr("toolbar.redo.name"),
+                        idle && !st.session.undo.redo.is_empty(),
+                    );
                     if attach(r, keys, t, || tips::redo(st)).clicked() {
                         msgs.push(Msg::Job(JobMsg::Redo));
                     }
                 });
                 widgets::tool_gap(ui);
-                let host = st.forge.as_ref().filter(|f| f.host.is_some());
+                let host = st.session.forge.as_ref().filter(|f| f.host.is_some());
                 widgets::tool_group(ui, |ui| {
                     let pull = (Icon::Pull, t.tr("toolbar.pull.button"), t.tr("toolbar.pull.name"));
                     // The button's text, and the job's label (English: it is also log and undo text).

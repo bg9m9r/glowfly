@@ -44,7 +44,7 @@ pub(in crate::ui) fn with_linear(theme: ThemeChoice, name: &str, clean: bool) ->
 }
 
 pub(in crate::ui) fn select(st: &mut AppState, oids: &[Oid]) {
-    st.selection = MultiSelection::build(oids.iter().copied(), oids[0], st.snap.as_ref().unwrap());
+    st.session.selection = MultiSelection::build(oids.iter().copied(), oids[0], st.snap.as_ref().unwrap());
 }
 
 #[test]
@@ -153,7 +153,7 @@ fn squash_dialog_dirty_light() {
 /// The fixture with an interactive rebase stopped at "Add app skeleton" (step 2 of 4).
 pub(in crate::ui) fn rebasing(theme: ThemeChoice, name: &str, kind: StopKind, conflicted: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     let snap = st.snap.as_mut().unwrap();
     let skeleton = snap.commits.iter().find(|c| c.summary == "Add app skeleton").unwrap().oid;
     snap.state = RepositoryState::RebaseInteractive;

@@ -35,7 +35,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fi
         .show(ctx, |ui| {
             panel_size::fill(ui);
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-            match st.selection {
+            match st.session.selection {
                 Selection::Wip => super::details_wip::wip_panel(ui, st, cache, msgs),
                 Selection::Commit(_) => super::details_commit::panel(ui, st, cache, msgs),
                 Selection::Commits(_) => super::details_multi::panel(ui, st, msgs),

@@ -29,7 +29,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, DiffTarget};
 
 pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let (Some(snap), Selection::Commits(m)) = (&st.snap, &st.selection) else { return };
+    let (Some(snap), Selection::Commits(m)) = (&st.snap, &st.session.selection) else { return };
     let t = st.settings.lang();
     title(ui, t, m.len());
     gap_note(ui, t, m, snap);
@@ -166,7 +166,7 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
                 });
             });
             let paths = || c.files.iter().map(|f| f.path.as_str()).collect();
-            let rows = ListRows::of(ui, mode, c.files.len(), paths, st.view.file_folds.closed(FileListId::Compare));
+            let rows = ListRows::of(ui, mode, c.files.len(), paths, st.session.tab_view.file_folds.closed(FileListId::Compare));
             egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show_rows(
                 ui,
                 row_h,

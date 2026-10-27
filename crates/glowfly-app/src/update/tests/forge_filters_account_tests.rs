@@ -18,7 +18,7 @@ fn choose(kind: FilterKind, b: Builtin) -> FilterMsg {
 }
 
 fn host(st: &AppState) -> Target {
-    st.forge.as_ref().unwrap().host.clone().unwrap()
+    st.session.forge.as_ref().unwrap().host.clone().unwrap()
 }
 
 fn user(id: &str) -> Me {
@@ -44,12 +44,12 @@ fn created() -> (FilterChoice, glowfly_core::forge::Conditions) {
 #[test]
 fn answers_from_the_previous_tracker_are_dropped() {
     let (mut st, dir) = open("ffa-tracker");
-    st.forge.as_mut().unwrap().filters.me = MeState::Known(user("ada"));
+    st.session.forge.as_mut().unwrap().filters.me = MeState::Known(user("ada"));
     send(&mut st, choose(FilterKind::Issues, Builtin::IssuesCreatedByMe));
     let github = host(&st);
     let jira = Account { provider: Provider::JiraCloud, host: "acme.atlassian.net".into(), org: String::new() };
     update(&mut st, Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::Jira { account: jira, project: "AC".into() })), Instant::now());
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     assert_eq!((fs.host.as_ref(), fs.tracker.as_ref().map(|t| t.provider)), (Some(&github), Some(Provider::JiraCloud)));
     assert_eq!(fs.filters.issues.as_ref().map(|l| &l.status), Some(&Status::Idle), "the Jira search is shown");
 
@@ -57,7 +57,7 @@ fn answers_from_the_previous_tracker_are_dropped() {
     let (choice, conditions) = created();
     reply(&mut st, github.clone(), FilterResult::Issues { choice, conditions, epoch: 0, me: None, result: Ok(vec![issue("7")]) });
     reply(&mut st, github, FilterResult::Options(FilterKind::Issues, Ok(FilterOptions::default())));
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     let list = fs.filters.issues.as_ref().unwrap();
     assert_eq!((list.items.len(), &list.status), (0, &Status::Idle));
     assert!(!fs.cache.contains_key("7"));
@@ -71,11 +71,11 @@ fn a_new_sign_in_forgets_the_previous_user() {
     send(&mut st, choose(FilterKind::Prs, Builtin::MyPrs));
     let h = host(&st);
     reply(&mut st, h.clone(), FilterResult::Me { epoch: 0, result: Ok(user("alice")) });
-    assert_eq!(st.forge.as_ref().unwrap().filters.me, MeState::Known(user("alice")));
+    assert_eq!(st.session.forge.as_ref().unwrap().filters.me, MeState::Known(user("alice")));
 
     let account = h.account();
     update(&mut st, Msg::Forge(ForgeMsg::Disconnect(account.clone())), Instant::now());
-    assert_eq!(st.forge.as_ref().unwrap().filters.me, MeState::Unknown);
+    assert_eq!(st.session.forge.as_ref().unwrap().filters.me, MeState::Unknown);
     let connected = ForgeMsg::Connected { account, method: "access token".into(), token: None, result: Ok("bob".into()) };
     let fx = update(&mut st, Msg::Forge(connected), Instant::now());
     let calls = filter_calls(&fx);
@@ -84,9 +84,9 @@ fn a_new_sign_in_forgets_the_previous_user() {
     };
     // A lookup sent under the old sign-in comes back late and is dropped.
     reply(&mut st, h.clone(), FilterResult::Me { epoch: 0, result: Ok(user("alice")) });
-    assert_eq!(st.forge.as_ref().unwrap().filters.me, MeState::Asking);
+    assert_eq!(st.session.forge.as_ref().unwrap().filters.me, MeState::Asking);
     reply(&mut st, h, FilterResult::Me { epoch, result: Ok(user("bob")) });
-    assert_eq!(st.forge.as_ref().unwrap().filters.me, MeState::Known(user("bob")));
+    assert_eq!(st.session.forge.as_ref().unwrap().filters.me, MeState::Known(user("bob")));
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -98,7 +98,7 @@ fn an_issue_search_that_looked_up_the_user_saves_asking_again() {
     let (choice, conditions) = created();
     let h = host(&st);
     reply(&mut st, h, FilterResult::Issues { choice, conditions, epoch: 0, me: Some(user("ada")), result: Ok(vec![issue("7")]) });
-    assert_eq!(st.forge.as_ref().unwrap().filters.me, MeState::Known(user("ada")));
+    assert_eq!(st.session.forge.as_ref().unwrap().filters.me, MeState::Known(user("ada")));
 
     let fx = update(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: false }), Instant::now());
     let calls = filter_calls(&fx);
@@ -112,16 +112,16 @@ fn a_user_without_teams_keeps_the_sign_in_and_personal_requests() {
     let (mut st, dir) = open("ffa-no-teams");
     let h = host(&st);
     let key = h.account().key();
-    st.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
     send(&mut st, choose(FilterKind::Prs, Builtin::NeedsMyReview));
     let asked = |id, f: PrFacets| PullRequest { facets: PrFacets { author_id: "grace".into(), ..f }, ..pr(id, "grace") };
-    st.forge.as_mut().unwrap().prs = vec![
+    st.session.forge.as_mut().unwrap().prs = vec![
         asked(1, PrFacets { awaiting_team_ids: vec!["o/core".into()], ..Default::default() }),
         asked(2, PrFacets { awaiting_ids: vec!["ada".into()], ..Default::default() }),
     ];
     // The teams couldn't be read: the user comes back without any.
     reply(&mut st, h, FilterResult::Me { epoch: 0, result: Ok(Me { teams: vec![], ..user("ada") }) });
-    let fs = st.forge.as_ref().unwrap();
+    let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(fs.filters.me, MeState::Known(user("ada")));
     assert!(fs.auth.contains_key(&key), "still signed in");
     let filters = st.settings.forge_filters_for(&st.snap.as_ref().unwrap().real_workdir);

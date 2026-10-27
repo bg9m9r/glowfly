@@ -80,7 +80,7 @@ fn a_free_branch_is_checked_out_as_an_undoable_job() {
     }
     super::tests::finish(&mut st, fx);
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("free"));
-    assert_eq!(st.undo.undo.len(), 1);
+    assert_eq!(st.session.undo.undo.len(), 1);
     cleanup(&dir, &side);
 }
 

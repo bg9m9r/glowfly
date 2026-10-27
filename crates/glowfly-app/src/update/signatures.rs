@@ -9,7 +9,7 @@ use glowfly_core::signature_check::SignatureCheck;
 /// Asks for a check of `oid` when it is the commit on screen, it is signed, nothing is known or
 /// on its way, and git may run unasked here (trust): the check runs the repo's gpg.program.
 pub(super) fn want(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
-    if st.selection != Selection::Commit(oid) || !st.runs_git_unasked() || !st.session.reads.signatures.wanted(oid) {
+    if st.session.selection != Selection::Commit(oid) || !st.runs_git_unasked() || !st.session.reads.signatures.wanted(oid) {
         return;
     }
     let Some(format) = st.session.detail.as_ref().filter(|d| d.oid == oid).and_then(|d| d.signature) else { return };

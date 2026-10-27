@@ -57,7 +57,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
             if let Some(more) = more_text(shown) {
                 weak(ui, more);
             }
-            let selected = match st.selection {
+            let selected = match st.session.selection {
                 Selection::Commit(o) => Some(o),
                 _ => None,
             };

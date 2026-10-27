@@ -15,7 +15,7 @@ use eframe::egui::{self, RichText};
 use glowfly_core::repo::DiffTarget;
 
 pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let (Some(snap), Selection::VsWorkdir(w)) = (&st.snap, &st.selection) else { return };
+    let (Some(snap), Selection::VsWorkdir(w)) = (&st.snap, &st.session.selection) else { return };
     let oid = w.oid;
     let t = st.settings.lang();
     let header = with_code(t.tr("details.workdir.header"), "{sha}", &short(oid), type_scale::SMALL, color::weak());

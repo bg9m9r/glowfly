@@ -27,7 +27,7 @@ fn find<'a>(all: &'a [(String, Option<String>)], label: &str) -> Option<&'a Opti
 #[test]
 fn edits_of_the_selected_commit() {
     let (mut st, dir, c) = repo("palette-rebase-edits");
-    st.selection = Selection::Commit(c[1]);
+    st.session.selection = Selection::Commit(c[1]);
     let sha = &c[1].to_string()[..7];
     let all = entries(&st);
     use crate::keymap::BindingId as I;
@@ -45,7 +45,7 @@ fn edits_of_the_selected_commit() {
 
     // The first commit has no parent to squash into.
     let first = st.snap.as_ref().unwrap().commits.last().unwrap().oid;
-    st.selection = Selection::Commit(first);
+    st.session.selection = Selection::Commit(first);
     let sha = first.to_string()[..7].to_owned();
     assert!(find(&entries(&st), &format!("Squash {sha} into parent")).is_none(), "a blocked edit isn't offered");
     let _ = std::fs::remove_dir_all(&dir);
@@ -54,7 +54,7 @@ fn edits_of_the_selected_commit() {
 #[test]
 fn entries_while_rebasing() {
     let (mut st, dir, _) = repo("palette-rebase-resume");
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     st.snap.as_mut().unwrap().state = RepositoryState::RebaseInteractive;
     let all = entries(&st);
     use crate::keymap::BindingId as I;
@@ -87,7 +87,7 @@ fn rebase_onto_the_selected_commit() {
     let other = commit_on(&dir, "other", 9);
     git(&dir, &["checkout", "-q", "main"]);
     super::tests::drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    st.selection = Selection::Commit(other);
+    st.session.selection = Selection::Commit(other);
     let sha = &other.to_string()[..7];
     let all = entries(&st);
     assert_eq!(find(&all, &format!("Rebase main onto {sha}")), Some(&None));
@@ -104,11 +104,11 @@ fn rebase_onto_the_selected_commit() {
     // Not for HEAD, an ancestor, or a detached HEAD.
     st.session.rebase.view = None;
     for oid in [c[2], c[0]] {
-        st.selection = Selection::Commit(oid);
+        st.session.selection = Selection::Commit(oid);
         let sha = &oid.to_string()[..7];
         assert!(find(&entries(&st), &format!("Rebase main onto {sha}")).is_none());
     }
-    st.selection = Selection::Commit(other);
+    st.session.selection = Selection::Commit(other);
     st.snap.as_mut().unwrap().head_branch = None;
     assert!(!entries(&st).iter().any(|(l, _)| l.contains(" onto ")));
     let _ = std::fs::remove_dir_all(&dir);

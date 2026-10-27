@@ -29,7 +29,7 @@ pub(super) fn run(st: &mut AppState, r: CommandRef, at: Target, confirmed: bool,
         st.log(false, t.trf("commands.run.gone", &[("name", &r.name)]));
         return;
     };
-    let selected = match st.selection {
+    let selected = match st.session.selection {
         Selection::Commit(o) => Some(o),
         _ => None,
     };

@@ -140,6 +140,7 @@ pub mod selection_span;
 pub mod selection_wip;
 pub mod session;
 pub mod session_reads;
+pub mod session_view;
 pub mod shallow;
 pub mod sign_in;
 pub mod signatures;
@@ -430,9 +431,9 @@ pub struct AppState {
     pub loading: bool,
     pub refresh: refresh::RefreshState,
     /// The active tab's per-tab state (its views with their counters, the open diff, the commit
-    /// detail and draft, the repository reads), parked whole with the tab (state/session.rs).
+    /// detail and draft, the repository reads, the selection, forge data, undo history, commit
+    /// search and view state), parked whole with the tab (state/session.rs).
     pub session: session::RepoSession,
-    pub selection: Selection,
     /// Restacks stopped on a conflict, with the steps still to run once the banner's Continue or
     /// Skip finishes that step; keyed by working folder rather than parked with a tab.
     pub restacks: Vec<stack::PendingRestack>,
@@ -441,8 +442,6 @@ pub struct AppState {
     pub job_stop: Option<job_stop::JobStop>,
     /// Fetch full history's size check and a partial clone's missing contents (state/partial.rs).
     pub partial: partial::PartialState,
-    /// The active tab's undo history.
-    pub undo: undo::UndoHistory,
     /// The active tab's activity log (other tabs keep theirs in `Tab::log`; state/logs.rs).
     pub log: Vec<LogEntry>,
     /// The log files: persistence of the activity log, the panel's tab (state/logs.rs).
@@ -456,9 +455,6 @@ pub struct AppState {
     pub modal: Option<Modal>,
     pub dialog: dialog_guard::DialogGuard,
     pub prefs: Option<PrefsState>,
-    pub forge: Option<ForgeState>,
-    /// The active tab's commit search; parked with the tab.
-    pub search: search::CommitSearch,
     pub last_fetch: Instant,
     /// The file watcher for the active tab.
     pub watch: watch::WatchState,
@@ -544,12 +540,10 @@ impl AppState {
             loading: false,
             refresh: Default::default(),
             session: Default::default(),
-            selection: Selection::None,
             restacks: Vec::new(),
             job: None,
             job_stop: None,
             partial: Default::default(),
-            undo: undo::UndoHistory::default(),
             log: Vec::new(),
             logs: Default::default(),
             toasts: Vec::new(),
@@ -558,8 +552,6 @@ impl AppState {
             modal: None,
             dialog: Default::default(),
             prefs: None,
-            forge: None,
-            search: Default::default(),
             last_fetch: now,
             watch,
             askpass: Default::default(),

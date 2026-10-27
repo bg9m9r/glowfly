@@ -5,7 +5,7 @@
 //! state, read each frame into `view.window` and never saved: the toggle only asks the shell. Opening or folding a step of the WIP panel's operation steps
 //! (`view.op_steps`) is view state too, kept until the operation moves on. The changed-file
 //! lists' List / Tree choice is a setting, saved when it changes; the folders collapsed in
-//! their tree (`view.file_folds`) are view state, parked with the tab.
+//! their tree (`session.tab_view.file_folds`) are view state, parked with the tab.
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::{LayoutMsg, Msg};
@@ -47,7 +47,7 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
                 fx.push(super::prefs::save_settings(st));
             }
         }
-        LayoutMsg::ToggleFolder { list, path } => st.view.file_folds.toggle(list, path),
+        LayoutMsg::ToggleFolder { list, path } => st.session.tab_view.file_folds.toggle(list, path),
     }
 }
 

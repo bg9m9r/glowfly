@@ -86,7 +86,7 @@ pub(super) fn fixture(name: &str) -> (AppState, Fixture) {
 }
 
 fn multi(st: &AppState) -> &MultiSelection {
-    match &st.selection {
+    match &st.session.selection {
         Selection::Commits(m) => m,
         other => panic!("expected a multi-selection, got {other:?}"),
     }
@@ -126,7 +126,7 @@ fn ctrl_click_builds_and_shrinks_a_selection() {
     assert_eq!(fx.len(), 1);
 
     let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
-    assert_eq!(st.selection, Selection::Commit(f.c(5)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(5)));
     assert!(loads_detail(&fx, f.c(5)));
     let _ = std::fs::remove_dir_all(&f.dir);
 }
@@ -134,27 +134,27 @@ fn ctrl_click_builds_and_shrinks_a_selection() {
 #[test]
 fn toggle_edge_cases() {
     let (mut st, f) = fixture("multi-toggle-edges");
-    st.selection = Selection::None;
+    st.session.selection = Selection::None;
     let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
-    assert_eq!(st.selection, Selection::Commit(f.c(3)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)));
     assert!(loads_detail(&fx, f.c(3)));
     // From the WIP row, the commit is compared with the working directory.
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
-    assert!(matches!(&st.selection, Selection::VsWorkdir(w) if w.oid == f.c(3)), "{:?}", st.selection);
+    assert!(matches!(&st.session.selection, Selection::VsWorkdir(w) if w.oid == f.c(3)), "{:?}", st.session.selection);
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(3))));
     // Toggling the only selected commit keeps it.
     assert!(up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3)))).is_empty());
-    assert_eq!(st.selection, Selection::Commit(f.c(3)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)));
     // An oid that is not a graph row does nothing, from one commit or several.
     let unknown = Oid::from_str("0123456789012345678901234567890123456789").unwrap();
     assert!(up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(unknown))).is_empty());
     assert!(up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(unknown))).is_empty());
-    assert_eq!(st.selection, Selection::Commit(f.c(3)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(1))));
-    let before = st.selection.clone();
+    let before = st.session.selection.clone();
     assert!(up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(unknown))).is_empty());
-    assert_eq!(st.selection, before);
+    assert_eq!(st.session.selection, before);
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
@@ -174,12 +174,12 @@ fn shift_click_selects_graph_rows() {
     assert_eq!(compares(&fx), [(f.c(4), f.c(5))]);
 
     let fx = up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(5))));
-    assert_eq!(st.selection, Selection::Commit(f.c(5)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(5)));
     assert!(loads_detail(&fx, f.c(5)));
 
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(3))));
-    assert_eq!(st.selection, Selection::Commit(f.c(3)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)));
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
@@ -188,9 +188,9 @@ fn shift_click_while_filtering_selects_only_shown_rows() {
     let (mut st, f) = fixture("multi-shift-filtered");
     // Every commit but `side` (row 2) matches, and the graph shows only the matches.
     st.view.show_search = true;
-    st.search.query = glowfly_core::commit_query::CommitQuery::parse("c");
-    st.search.matches = vec![0, 1, 3, 4, 5];
-    st.search.filter = true;
+    st.session.search.query = glowfly_core::commit_query::CommitQuery::parse("c");
+    st.session.search.matches = vec![0, 1, 3, 4, 5];
+    st.session.search.filter = true;
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(2))));
     assert_eq!(multi(&st).oids, [f.c(5), f.c(4), f.c(3), f.c(2)], "the hidden side commit is left out");
@@ -208,12 +208,12 @@ fn plain_select_and_collapse() {
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(4))));
-    assert_eq!(st.selection, Selection::Commit(f.c(4)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(4)));
 
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::CollapseSelection));
-    assert_eq!(st.selection, Selection::Commit(f.c(3)), "back to the anchor");
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)), "back to the anchor");
     assert!(loads_detail(&fx, f.c(3)));
 
     // With the anchor deselected, the newest selected commit.
@@ -223,7 +223,7 @@ fn plain_select_and_collapse() {
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
     assert_eq!(multi(&st).anchor, f.c(4));
     up(&mut st, Msg::Selection(SelectionMsg::CollapseSelection));
-    assert_eq!(st.selection, Selection::Commit(f.c(5)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(5)));
     assert!(up(&mut st, Msg::Selection(SelectionMsg::CollapseSelection)).is_empty());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
@@ -331,7 +331,7 @@ fn refresh_prunes_selection() {
 
     git(&f.dir, &["reset", "-q", "--hard", &f.c(3).to_string()]);
     let fx = refresh(&mut st);
-    assert_eq!(st.selection, Selection::Commit(f.c(3)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)));
     assert!(st.session.detail.is_none() && loads_detail(&fx, f.c(3)));
     let _ = std::fs::remove_dir_all(&f.dir);
 }
@@ -347,7 +347,7 @@ fn refresh_closes_the_diff_of_a_vanished_pair() {
     assert!(st.session.diff.view.is_some());
     git(&f.dir, &["reset", "-q", "--hard", &f.c(3).to_string()]);
     refresh(&mut st);
-    assert_eq!(st.selection, Selection::Commit(f.c(3)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)));
     assert!(st.session.diff.view.is_none());
     let _ = std::fs::remove_dir_all(&f.dir);
 }

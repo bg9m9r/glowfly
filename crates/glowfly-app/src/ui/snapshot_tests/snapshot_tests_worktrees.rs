@@ -126,7 +126,7 @@ fn worktrees_counting() {
 #[test]
 fn worktrees_filtered() {
     let (mut st, dir) = with_worktrees(ThemeChoice::Dark, "worktrees-filtered");
-    st.view.ref_filter = "hotfix".into();
+    st.session.tab_view.ref_filter = "hotfix".into();
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("hotfix").is_some());

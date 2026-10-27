@@ -17,7 +17,7 @@ use glowfly_core::repo::Snapshot;
 /// Opens the Fork dialog for the base repository, to push local `branch` to the fork; when
 /// the dialog can't open, `open_create` logged why.
 pub(super) fn open(st: &mut AppState, branch: String, target: Option<String>, fx: &mut Vec<Effect>) {
-    let (Some(snap), Some(fs)) = (&st.snap, &st.forge) else { return };
+    let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     if !snap.locals.iter().any(|b| b.name == branch) {
         st.log(false, format!("Branch {branch} no longer exists."));
         return;

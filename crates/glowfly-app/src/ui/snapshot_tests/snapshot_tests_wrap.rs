@@ -104,7 +104,7 @@ fn diff_wrap_whole_file_light() {
     let all = folds(w);
     assert_eq!(all.iter().map(|f| f.len()).collect::<Vec<_>>(), [6, 7]);
     // The run starting at the long comment is open; the trailing one stays folded.
-    st.view.diff_expanded.insert(all[0].key);
+    st.session.tab_view.diff_expanded.insert(all[0].key);
     st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = DiffLayout::Split;
     st.settings.diff_mode = DiffMode::WholeFile;

@@ -36,7 +36,7 @@ fn with_form(theme: ThemeChoice, name: &str, form: IssueForm, f: impl FnOnce(&mu
     fs.host_status = Status::Ok;
     fs.tracker_status = Status::Ok;
     f(&mut fs);
-    st.forge = Some(fs);
+    st.session.forge = Some(fs);
     st.modal = Some(Modal::CreateIssue(Box::new(form)));
     (st, dir)
 }

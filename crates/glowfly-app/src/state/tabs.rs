@@ -1,13 +1,9 @@
-//! Open repository tabs. The active tab's data lives directly in `AppState` (where views read
-//! it), with its per-tab state in `AppState::session`; every other tab keeps its data parked here
-//! until it is selected again.
+//! Open repository tabs. The active tab's data lives in `AppState` (where views read it), its
+//! per-tab state in `AppState::session`; every other tab keeps its data parked here (its
+//! `RepoSession`, snapshot and Create issue dialog) until it is selected again.
 
-use super::undo::UndoHistory;
-use super::{ForgeState, Selection};
 use glowfly_core::paths::{FolderId, same_spelling};
 use glowfly_core::repo::{CommonDir, Snapshot};
-use glowfly_core::settings::{DiffLayout, DiffMode};
-use glowfly_core::whole_file::Expanded;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -197,31 +193,14 @@ pub fn open_places(tabs: &[Tab]) -> Vec<Place> {
 /// The per-repository part of `AppState`, set aside while another tab is active.
 #[derive(Default)]
 pub struct Parked {
-    /// The views with their generation counters, the open diff, the commit detail and draft,
-    /// and the repository reads (state/session.rs).
+    /// Everything per tab that moves whole: the views with their counters, the open diff, the
+    /// commit detail and draft, the repository reads, the selection, forge data, undo history,
+    /// commit search and view state (state/session.rs).
     pub session: super::session::RepoSession,
     pub snap: Option<Snapshot>,
-    pub selection: Selection,
     /// The Create issue dialog, unless an issue was being created (its choices load again on
     /// return).
     pub issue_form: Option<Box<super::issue_form::IssueForm>>,
-    pub undo: UndoHistory,
-    pub forge: Option<ForgeState>,
-    pub search: String,
-    pub commit_search: crate::state::search::CommitSearch,
-    pub ref_filter: String,
-    pub graph_scroll: f32,
-    /// First visible row of the open diff, counted in `diff_layout` (the layout setting is
-    /// shared by all tabs and may change while this one is parked) with `diff_expanded`'s folds
-    /// open.
-    pub diff_top_row: usize,
-    pub diff_layout: DiffLayout,
-    /// The view mode `diff_top_row` was counted in (shared by all tabs, like the layout).
-    pub diff_mode: DiffMode,
-    /// The whole-file folds opened in the open diff.
-    pub diff_expanded: Expanded,
-    /// The folders collapsed in the changed-file lists' tree.
-    pub file_folds: crate::state::file_folds::FileFolds,
 }
 
 /// Where the tab at index `i` ends up after moving the tab at `from` to `to`: what

@@ -96,23 +96,23 @@ fn palette_patch_entries() {
     assert!(labels(&st).iter().any(|l| l == wip));
 
     let (second, third, merge) = (commit(&st, "Add the second line"), commit(&st, "Third: more (lines)"), commit(&st, "Merge side"));
-    st.selection = MultiSelection::build([second, third], third, st.snap.as_ref().unwrap());
+    st.session.selection = MultiSelection::build([second, third], third, st.snap.as_ref().unwrap());
     assert!(labels(&st).iter().any(|l| l == "Create patch from 2 selected commits…"));
-    st.selection = MultiSelection::build([second, merge], merge, st.snap.as_ref().unwrap());
+    st.session.selection = MultiSelection::build([second, merge], merge, st.snap.as_ref().unwrap());
     assert!(!labels(&st).iter().any(|l| l.contains("selected commits")), "not with a merge");
 
-    st.selection = Selection::Commit(third);
+    st.session.selection = Selection::Commit(third);
     let short = &third.to_string()[..7];
     let all = labels(&st);
     assert!(
         all.contains(&format!("Create patch from commit {short}…")) && all.contains(&format!("Copy patch of commit {short}")),
         "{all:?}"
     );
-    st.selection = Selection::Commit(merge);
+    st.session.selection = Selection::Commit(merge);
     assert!(!labels(&st).iter().any(|l| l.starts_with("Copy patch of commit")));
 
     // Choosing one sends its message.
-    st.selection = Selection::Commit(third);
+    st.session.selection = Selection::Commit(third);
     update(&mut st, Msg::Palette(PaletteMsg::TogglePalette), Instant::now());
     let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Patch(PatchMsg::Copy(vec![third])))), Instant::now());
     assert!(matches!(&fx[..], [Effect::Patch(PatchEffect::Copy { oids, .. })] if *oids == [third]), "{fx:?}");

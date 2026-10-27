@@ -76,7 +76,7 @@ fn lfs_badges_wip() {
 fn lfs_badge_commit() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "lfs-badge-commit");
     let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("HEAD");
-    st.selection = Selection::Commit(head);
+    st.session.selection = Selection::Commit(head);
     let mut detail = repo::commit_detail(&dir, head).unwrap();
     detail.files[0].lfs = true;
     st.session.detail = Some(detail);

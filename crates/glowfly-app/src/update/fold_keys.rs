@@ -12,14 +12,14 @@ use glowfly_core::whole_file::{collapsed, line_at_row, opened, row_of_line, show
 
 /// The rows from the top row down that fit in the viewport (at least one).
 fn screen(st: &AppState) -> std::ops::Range<usize> {
-    let top = st.view.diff_top_row;
+    let top = st.session.tab_view.diff_top_row;
     top..top + st.view.diff_visible_rows.max(1)
 }
 
 /// The row of line `line` of the gap before hunk `hunk` in the hunk view's rows, once filled in.
 fn gap_line_row(st: &AppState, hunk: usize, line: usize) -> Option<usize> {
     let (_, d) = st.session.diff.view.as_ref()?;
-    let ex = &st.view.diff_expanded;
+    let ex = &st.session.tab_view.diff_expanded;
     match st.settings.diff_layout {
         DiffLayout::Inline => inline_rows_filled(d, ex).iter().position(|r| *r == DiffRow::GapLine { hunk, line }),
         DiffLayout::Split => split_rows_filled(d, ex).iter().position(|r| *r == SplitRow::GapLine { hunk, line }),
@@ -32,14 +32,14 @@ fn gap_line_row(st: &AppState, hunk: usize, line: usize) -> Option<usize> {
 pub(super) fn open_at_top(st: &mut AppState, fx: &mut Vec<Effect>) {
     let (mode, layout, below) = (st.settings.diff_mode, st.settings.diff_layout, screen(st));
     let Some((_, d)) = st.session.diff.view.as_ref().map(|(t, d)| (t, d.clone())) else { return };
-    let ex = &st.view.diff_expanded;
+    let ex = &st.session.tab_view.diff_expanded;
     if let Some(w) = shown(&d, mode) {
         let first = collapsed(w, ex).into_iter().map(|f| (f, row_of_line(w, layout, ex, f.start))).find(|&(_, row)| row >= below.start);
         let Some((f, row)) = first else { return };
         refold(st, |ex, _| ex.insert(f.key));
         if row >= below.end {
-            let to = row_of_line(w, layout, &st.view.diff_expanded, f.start);
-            (st.view.diff_top_row, st.view.diff_scroll_to_row) = (to, Some(to));
+            let to = row_of_line(w, layout, &st.session.tab_view.diff_expanded, f.start);
+            (st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row) = (to, Some(to));
         }
         return;
     }
@@ -52,7 +52,7 @@ pub(super) fn open_at_top(st: &mut AppState, fx: &mut Vec<Effect>) {
     if row >= below.end {
         // Its first line once the text is there; until then the header after it.
         let to = gap_line_row(st, g.hunk, 0).unwrap_or(row);
-        (st.view.diff_top_row, st.view.diff_scroll_to_row) = (to, Some(to));
+        (st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row) = (to, Some(to));
     }
 }
 
@@ -61,7 +61,7 @@ pub(super) fn open_at_top(st: &mut AppState, fx: &mut Vec<Effect>) {
 pub(super) fn close_at_top(st: &mut AppState) {
     let (mode, layout, screen) = (st.settings.diff_mode, st.settings.diff_layout, screen(st));
     let Some((_, d)) = st.session.diff.view.as_ref().map(|(t, d)| (t, d.clone())) else { return };
-    let ex = &st.view.diff_expanded;
+    let ex = &st.session.tab_view.diff_expanded;
     if let Some(w) = shown(&d, mode) {
         let open = opened(w, ex);
         let at = line_at_row(w, layout, ex, screen.start);

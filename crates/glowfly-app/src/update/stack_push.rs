@@ -86,7 +86,7 @@ fn pushed(st: &mut AppState, result: Result<StackPush, String>, job: StackPushJo
         }
     };
     let Some(branch) = job.then_prs else { return };
-    match st.forge.as_mut() {
+    match st.session.forge.as_mut() {
         Some(fs) if ok && here => fs.stack_prs = Some(StackPrs::AfterPush(branch)),
         _ => {
             let remote = job.targets.first().map(|t| t.remote.clone()).unwrap_or_default();

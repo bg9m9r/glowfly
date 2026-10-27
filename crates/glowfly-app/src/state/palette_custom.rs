@@ -15,7 +15,7 @@ const KEYWORDS: &str = "custom command script user";
 pub(super) fn entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     let t = st.settings.lang();
     out.push(entry(PaletteCommand::Custom(CustomCommandMsg::Reload), t.tr("commands.palette.reload"), RELOAD_KEYWORDS));
-    let selected = match st.selection {
+    let selected = match st.session.selection {
         super::Selection::Commit(o) => Some(o),
         _ => None,
     };

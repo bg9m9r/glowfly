@@ -110,7 +110,7 @@ fn graph_no_commits() {
     assert!(ok, "{out}");
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label(super::graph_empty::NO_COMMITS_TITLE).is_some());

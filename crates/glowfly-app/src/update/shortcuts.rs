@@ -117,7 +117,7 @@ fn focus_message(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
         return;
     }
     super::layout::reveal_details(st, fx);
-    if st.selection != Selection::Wip {
+    if st.session.selection != Selection::Wip {
         fx.extend(super::update(st, Msg::Repo(RepoMsg::SelectWip), now));
     }
     st.view.focus_message = true;

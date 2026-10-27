@@ -18,9 +18,9 @@ fn back_from_select_all_to_the_focused_commit() {
     let (mut st, f) = fixture("focus-back");
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(3))));
     up(&mut st, Msg::Selection(SelectionMsg::SelectAll));
-    assert!(matches!(&st.selection, Selection::Commits(m) if m.len() == 6));
+    assert!(matches!(&st.session.selection, Selection::Commits(m) if m.len() == 6));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::BackToFocus));
-    assert_eq!(st.selection, Selection::Commit(f.c(3)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == f.c(3))), "{fx:?}");
     assert!(st.view.scroll_to_row.is_some(), "the graph scrolls to it");
     let want = format!("Back to {}: 5 commits deselected.", short(f.c(3)));
@@ -31,7 +31,7 @@ fn back_from_select_all_to_the_focused_commit() {
     st.settings.language = "de".into();
     up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(2))));
     up(&mut st, Msg::Selection(SelectionMsg::BackToFocus));
-    assert_eq!(st.selection, Selection::Commit(f.c(3)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(3)));
     let want = format!("Zurück zu {}: 1 Commit abgewählt.", short(f.c(3)));
     assert_eq!(last_toast(&st), Some(want.as_str()));
     let _ = std::fs::remove_dir_all(&f.dir);
@@ -43,11 +43,11 @@ fn back_with_one_commit_or_a_working_directory_compare() {
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(4))));
     let toasts = st.toasts.len();
     assert!(up(&mut st, Msg::Selection(SelectionMsg::BackToFocus)).is_empty());
-    assert_eq!((st.selection.clone(), st.toasts.len()), (Selection::Commit(f.c(4)), toasts), "nothing to go back from");
+    assert_eq!((st.session.selection.clone(), st.toasts.len()), (Selection::Commit(f.c(4)), toasts), "nothing to go back from");
 
-    st.selection = Selection::VsWorkdir(WorkdirCompare::new(f.c(4)));
+    st.session.selection = Selection::VsWorkdir(WorkdirCompare::new(f.c(4)));
     up(&mut st, Msg::Selection(SelectionMsg::BackToFocus));
-    assert_eq!(st.selection, Selection::Commit(f.c(4)));
+    assert_eq!(st.session.selection, Selection::Commit(f.c(4)));
     assert_eq!(st.toasts.len(), toasts, "collapsed silently, like Esc");
     let _ = std::fs::remove_dir_all(&f.dir);
 }

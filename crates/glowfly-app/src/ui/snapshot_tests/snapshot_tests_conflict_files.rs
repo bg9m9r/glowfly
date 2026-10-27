@@ -51,7 +51,7 @@ pub(in crate::ui) fn merging(name: &str, fix_beta: bool) -> (AppState, PathBuf) 
     }
     git(&dir, &["add", "gamma.txt"], DATE);
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
-    st.selection = Selection::Wip;
+    st.session.selection = Selection::Wip;
     (st, dir)
 }
 

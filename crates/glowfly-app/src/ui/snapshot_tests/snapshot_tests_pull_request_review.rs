@@ -137,7 +137,7 @@ fn pull_request_merged_light() {
 #[test]
 fn pull_request_unsupported_light() {
     let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-unsupported", true);
-    let fs = st.forge.as_mut().unwrap();
+    let fs = st.session.forge.as_mut().unwrap();
     fs.host = Some(Target {
         provider: Provider::AzureDevOps,
         host: "dev.azure.com".into(),

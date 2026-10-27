@@ -75,7 +75,7 @@ fn pr_check_list_dark() {
         v.pr.checks = Some(Checks { url: BUILD_URL.into(), ..Checks::from_counts(1, 1, 2, true) });
     });
     let listed = st.session.pull_request.view.as_ref().unwrap().pr.checks.clone();
-    st.forge.as_mut().unwrap().prs[0].checks = listed;
+    st.session.forge.as_mut().unwrap().prs[0].checks = listed;
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("pr_check_list_dark");
@@ -113,7 +113,7 @@ fn pr_check_list_empty_light() {
 
     // A service without in-app reviews (Azure DevOps) still shows its checks.
     let (mut st, _) = with_pr(ThemeChoice::Light, "pr-check-empty", true);
-    let fs = st.forge.as_mut().unwrap();
+    let fs = st.session.forge.as_mut().unwrap();
     fs.host = Some(Target {
         provider: Provider::AzureDevOps,
         host: "dev.azure.com".into(),
