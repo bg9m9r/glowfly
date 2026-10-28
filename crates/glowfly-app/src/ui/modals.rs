@@ -27,7 +27,8 @@
 //! `repo_sync.rs`), renaming a tab (drawn by `tab_dialog.rs`), choosing a merge's mainline parent
 //! (drawn by `mainline_dialog.rs`), the home Trash offer (drawn by `trash_offer_dialog.rs`),
 //! stashing uncommitted changes before an operation (drawn by `auto_stash_dialog.rs`) and
-//! generating an SSH key (drawn by `ssh_keygen_dialog.rs`).
+//! generating an SSH key (drawn by `ssh_keygen_dialog.rs`). An edited form kept under a question
+//! (state/dialog_guard.rs) is drawn first, beneath the question.
 
 use crate::msg::{DialogMsg, Dismiss, Msg};
 use crate::state::{AppState, Modal};
@@ -38,11 +39,42 @@ use eframe::egui;
 mod confirm_dialog;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    // An edited form kept under a question (state/dialog_guard.rs) is drawn first, beneath it:
+    // dimmed, without the keyboard, and what it sends is dropped.
+    let over = match st.dialog.take_under() {
+        Some((form, opened)) => {
+            let top = st.modal.replace(form);
+            draw(ctx, st, &mut Vec::new(), Layer::Under);
+            let form = std::mem::replace(&mut st.modal, top);
+            if let Some(form) = form {
+                st.dialog.put_under((form, opened));
+            }
+            true
+        }
+        None => false,
+    };
+    draw(ctx, st, msgs, if over { Layer::Over } else { Layer::Only });
+}
+
+/// Where the dialog drawn stacks.
+#[derive(Clone, Copy, PartialEq)]
+enum Layer {
+    /// The one dialog.
+    Only,
+    /// The form kept under a question.
+    Under,
+    /// The question over a form kept underneath.
+    Over,
+}
+
+fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Layer) {
     // Under a credential prompt, Esc and clicks belong to the prompt.
     let prompting = st.askpass.showing();
     // Under the "Discard your changes?" question, the form's fields don't take the focus.
-    let asking = st.dialog.asking;
-    let keyboard = !prompting && !asking;
+    let asking = st.dialog.asking && layer != Layer::Under;
+    let keyboard = !prompting && !asking && layer != Layer::Under;
+    // The form underneath keeps the usual id, so its fields keep their state when it is back.
+    let area = if layer == Layer::Over { "glowfly-modal-over" } else { "glowfly-modal" };
     let today = glowfly_core::clone_ops::local_date(st.view.now, st.view.utc_offset);
     let sparse_blocked = st.git.blocked(glowfly_core::git_version::Feature::SparseCheckout);
     // Worked out before the dialog borrows the state: which results are open or favorites.
@@ -72,7 +104,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let repo_filters = snap.map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
     let mut close = false;
     let first = msgs.len();
-    let resp = super::theme::show_modal(ctx, super::theme::dialog(ctx, egui::Id::new("glowfly-modal")), |ui| {
+    let resp = super::theme::show_modal(ctx, super::theme::dialog(ctx, egui::Id::new(area)), |ui| {
         // A dialog's key in egui's memory: the first frame of each kind takes the focus.
         let cx = Cx { t, keyboard, key: egui::Id::new("glowfly-dialog").with(std::mem::discriminant(&*modal)) };
         match modal {
@@ -172,6 +204,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     });
     // Taken every frame, so a click that closed this dialog never reaches the next one.
     let closed = super::dialog_frame::take_closed(&resp);
+    if layer == Layer::Under {
+        return;
+    }
     if close {
         // The dialog closes before what it asked for runs, so a dialog that opens (the trust
         // prompt holding the job it started) isn't closed with it.

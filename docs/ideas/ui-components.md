@@ -53,6 +53,10 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 
 ### Dialogs keep what was typed
 
+- Keep a form held under a question (`state/dialog_guard.rs` `open_over`) with its tab when the
+  tab is switched while the question shows; today it comes back over whichever tab is active
+- Keep an edited form under the other dialogs that can open over one (results that open a
+  confirmation), not only the quit, tab close, restart and trust questions
 - Keep a discarded or closed form's draft per dialog kind and offer it again when the same
   dialog reopens
 - Restore the keyboard focus to the field that had it after Keep editing, for dialogs that don't

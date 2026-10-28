@@ -151,6 +151,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("about_dialog", Dialog),
     ("dialog_guide_beside", Dialog),
     ("confirm_dialog_danger", Dialog),
+    ("quit_confirm_unsaved", Dialog),
     ("credential_prompt_sign_in", Dialog),
 ];
 

@@ -2,14 +2,18 @@
 //! and moving, resizing, minimising or maximising the window, showing its system menu, or
 //! entering or leaving full screen (which narrows what the others do, `WindowCmd::in_window`).
 //! Every way of quitting (File > Quit, the Quit key, the title bar's Close and the OS asking to
-//! close the window) goes through `quit`, which asks first while work runs or a terminal runs a
-//! program (`state/quit_confirm.rs`; the terminals are asked about off the UI thread first,
-//! update/terminal_busy.rs). Quit anyway stops a stoppable job (a fetch) and closes once it has
-//! ended; the open question closes the window by itself once what it named has ended (`settle`).
+//! close the window) goes through `quit`, which asks first while work exists only in memory
+//! (drafts, conflict choices, an edited dialog, unsaved Preferences edits), work runs or a
+//! terminal runs a program (`state/quit_confirm.rs`; the terminals are asked about off the UI
+//! thread first, update/terminal_busy.rs). An edited dialog stays under the question. Quit
+//! anyway stops a stoppable job (a fetch) and closes once it has ended; the open question closes
+//! the window by itself once what it named has ended (`settle`), never while it names unsaved
+//! work.
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::AppMsg;
-use crate::state::quit_confirm::{QuitAsk, asking, quit_confirm, running};
+use crate::state::dialog_guard::open_over;
+use crate::state::quit_confirm::{QuitAsk, asking, quit_confirm, running, unsaved};
 use crate::state::terminal::busy::{self as terminal_busy, BusyTerminal};
 use crate::state::{AppState, Modal};
 use crate::terminal::BusyCheck;
@@ -104,8 +108,10 @@ fn decide(st: &mut AppState, busy: Vec<BusyTerminal>, os_request: bool, fx: &mut
             fx.push(Effect::Ui(UiEffect::CancelClose));
         }
         st.palette = None;
-        st.modal = Some(modal);
-        st.view.quit_ask = Some(QuitAsk { work: running(st).is_some(), terminals: busy });
+        let ask = QuitAsk { work: running(st).is_some(), terminals: busy, unsaved: unsaved(st) };
+        // An edited form stays underneath, and comes back on Cancel.
+        open_over(&mut st.modal, &mut st.dialog, modal);
+        st.view.quit_ask = Some(ask);
         return;
     }
     st.view.quitting = true;
@@ -132,16 +138,20 @@ pub(super) fn settle(st: &mut AppState, fx: &mut Vec<Effect>) {
     let work = running(st).is_some();
     let named = ask.terminals.len();
     let terminals: Vec<BusyTerminal> = ask.terminals.into_iter().filter(|b| terminal_busy::running(st, b.id)).collect();
-    if !work && terminals.is_empty() {
+    // Unsaved work never ends by itself: only the user's answer closes the window then.
+    if !ask.unsaved && !work && terminals.is_empty() {
         st.modal = None;
         st.view.quitting = true;
         fx.push(Effect::Ui(UiEffect::CloseWindow));
         return;
     }
     if (ask.work && !work) || terminals.len() != named {
-        st.modal = quit_confirm(st, &terminals);
+        // The form kept underneath stays there.
+        if let Some(modal) = quit_confirm(st, &terminals) {
+            st.modal = Some(modal);
+        }
     }
-    st.view.quit_ask = Some(QuitAsk { work, terminals });
+    st.view.quit_ask = Some(QuitAsk { work, terminals, unsaved: ask.unsaved });
 }
 
 #[cfg(test)]

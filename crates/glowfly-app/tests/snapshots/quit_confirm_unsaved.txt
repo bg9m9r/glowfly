@@ -1,0 +1,14 @@
+Dialog
+  Label "New branch from main"
+  Button "Close this dialog"
+  Label "Branch name"
+  TextInput "Branch name" = "feature/login"
+  CheckBox "Check out after creating" [on]
+  Button "Cancel"
+  Button "Create"
+Dialog
+  Label "Quit Glowfly?"
+  Button "Close this dialog"
+  Label "Quitting loses work that isn't saved anywhere:\n- demo: its commit message draft\n- demo: 1 conflict choice in src/login.rs\n- demo: the changes in the open dialog\n\nPush is still running in demo.\npwsh · quit-confirm-unsaved in demo is running cargo.\n\nQuitting now can cut it off partway, and Glowfly won't see how it ends. Whatever runs in that terminal stops with it."
+  Button "Cancel" [focused]
+  Button "Quit anyway"

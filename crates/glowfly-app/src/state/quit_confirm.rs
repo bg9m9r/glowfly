@@ -1,10 +1,14 @@
-//! The question before quitting while work runs (update/app.rs asks it): a git job that isn't
+//! The question before quitting (update/app.rs asks it) while work exists only in memory (a tab's
+//! commit message draft, conflict choices, an edited dialog, comments not posted, unsaved
+//! Preferences edits: state/tab_losses.rs `quit_lines`) or work runs: a git job that isn't
 //! quiet (auto-fetch never asks; a sparse clone is such a job), a fetch or pull across
 //! repositories, an update's download, or a terminal running a program (state/terminal/busy.rs).
-//! Quitting can cut such work off partway, and Glowfly wouldn't see how it ends.
+//! Quitting would lose the first, and can cut the rest off partway, and Glowfly wouldn't see how
+//! it ends. One question names all of it.
 
 use super::menu_bar::tab_name;
 use super::repo_sync::SyncKind;
+use super::tab_losses::quit_lines;
 use super::terminal::busy::{BusyTerminal, busy_lines, stops_text};
 use super::updates::UpdateStatus;
 use super::{AppState, Modal};
@@ -23,12 +27,14 @@ pub enum Running {
 }
 
 /// What the open quit question is about (`ViewState::quit_ask`): whether it named running work,
-/// and the terminals it named. Once all of it has ended the window closes by itself
-/// (update/app.rs `settle`).
+/// the terminals it named, and whether it named unsaved work. Once the work and the terminals
+/// have ended the window closes by itself (update/app.rs `settle`), unless it named unsaved work:
+/// that never ends by itself, so only the user's answer closes the window then.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct QuitAsk {
     pub work: bool,
     pub terminals: Vec<BusyTerminal>,
+    pub unsaved: bool,
 }
 
 /// What is running that quitting would cut off: the job first, then a repository sync, then a
@@ -52,13 +58,27 @@ pub fn running(st: &AppState) -> Option<Running> {
     }
 }
 
-/// The quit question while work runs or any of `busy` runs a program (Quit anyway sends
-/// `AppMsg::QuitConfirmed`); `None` when nothing would be cut off.
+/// The quit question while anything exists only in memory, work runs or any of `busy` runs a
+/// program (Quit anyway sends `AppMsg::QuitConfirmed`); `None` when quitting loses nothing and
+/// cuts nothing off. The unsaved work comes first, then what runs.
 pub fn quit_confirm(st: &AppState, busy: &[BusyTerminal]) -> Option<Modal> {
     let t = st.settings.lang();
+    let unsaved = quit_lines(st);
     let work = running(st);
-    if work.is_none() && busy.is_empty() {
+    if unsaved.is_empty() && work.is_none() && busy.is_empty() {
         return None;
+    }
+    let mut parts = Vec::new();
+    if !unsaved.is_empty() {
+        parts.push(format!(
+            "{}
+{}",
+            t.tr("losses.quit"),
+            unsaved.join(
+                "
+"
+            )
+        ));
     }
     let mut lines: Vec<String> = work
         .iter()
@@ -78,8 +98,33 @@ pub fn quit_confirm(st: &AppState, busy: &[BusyTerminal]) -> Option<Modal> {
     if !busy.is_empty() {
         risks.push(stops_text(t, busy.len()));
     }
-    let body = format!("{}\n\n{}", lines.join("\n"), risks.join(" "));
-    Some(Modal::danger(t.tr("quit.confirm.title"), body, t.tr("quit.confirm.button"), Msg::App(AppMsg::QuitConfirmed)))
+    if !lines.is_empty() {
+        parts.push(format!(
+            "{}
+
+{}",
+            lines.join(
+                "
+"
+            ),
+            risks.join(" ")
+        ));
+    }
+    Some(Modal::danger(
+        t.tr("quit.confirm.title"),
+        parts.join(
+            "
+
+",
+        ),
+        t.tr("quit.confirm.button"),
+        Msg::App(AppMsg::QuitConfirmed),
+    ))
+}
+
+/// Whether quitting would lose work that exists only in memory.
+pub fn unsaved(st: &AppState) -> bool {
+    !quit_lines(st).is_empty()
 }
 
 /// Whether the quit question is the open dialog.

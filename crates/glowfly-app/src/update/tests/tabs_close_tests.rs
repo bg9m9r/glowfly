@@ -131,7 +131,7 @@ fn blank_and_template_drafts_close_at_once() {
     assert_eq!(names(&st), ["c"]);
 }
 
-fn conflict(picks: Vec<ChunkPick>, auto: Vec<Option<Trivial>>) -> ConflictView {
+pub(super) fn conflict(picks: Vec<ChunkPick>, auto: Vec<Option<Trivial>>) -> ConflictView {
     let mut v = ConflictView::loading("src/lib.rs".into());
     v.picks = picks;
     v.auto = auto;

@@ -48,7 +48,7 @@ fn decide(st: &mut AppState, confirmed: bool, busy: Option<Vec<BusyTerminal>>, n
         };
         if let Some(modal) = tab_losses::restart_confirm(st, method, &busy, Msg::Updates(UpdateMsg::InstallAndRestartConfirmed)) {
             st.palette = None;
-            st.modal = Some(modal);
+            crate::state::dialog_guard::open_over(&mut st.modal, &mut st.dialog, modal);
             return;
         }
     }

@@ -10,6 +10,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - `ui/modals.rs` reports a backdrop click, Esc or the header's close button as `DialogMsg::Dismiss`; the close button acts as Esc.
 - `update/dialog.rs` closes information and confirm dialogs, ignores the backdrop for forms, and on Esc compares the form's `Modal::draft` with the one `DialogGuard` recorded when it opened (after every update).
 - When they differ it asks "Discard your changes?" (`ui/dialog_guard.rs`), whose default button is Keep editing.
+- A question that opens over an edited form (the quit question, a tab close's or a restart's confirmation, the trust prompt) goes through `state/dialog_guard.rs::open_over`, which keeps the form underneath (`ui/modals.rs` draws it beneath, dimmed and without the keyboard); `restore` (after every update) brings it back, still counted as edited, once the question closes.
 - Enter runs a dialog's default button: its primary, or Cancel or Close when it has none or its tone is danger, so Enter never presses a danger button.
 - Enter in a single-line field runs the primary on the first press: the frame sees the field give up the focus, so a field that takes the focus back when nothing has it skips the frame it lost it.
 - `Modal::ConfirmDanger` (`state/confirm.rs`: `Modal::danger`, `with_ack`, `confirm_ready`) is the confirmation for a step that loses work.
@@ -97,10 +98,10 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Quit (the menu item, the macOS app menu's Quit Glowfly, or the rebindable Quit key, `BindingId::Quit`, Cmd+Q or Ctrl+Q, kept by a focused terminal on Windows and Linux) sends `AppMsg::Quit`.
 - winit's default app menu, whose Quit would end the app without asking, is off: `platform::native_menu::event_loop_hook`.
 - The window's close button reaches `update` as `AppMsg::CloseRequested` (the shell reads egui's `close_requested` in `input`).
-- `update/app.rs::quit` asks first while a non-quiet job (a sparse clone among them), a repository sync or an update's download runs, or a terminal runs a program (`state/quit_confirm.rs` builds the danger confirmation naming each, with its tab; Cancel is focused), and cancels the OS close with `UiEffect::CancelClose`.
+- `update/app.rs::quit` asks first while work exists only in memory (any tab's commit draft, conflict choices or comments not posted, an edited dialog, unsaved Preferences edits: `state/tab_losses.rs::quit_lines`), a non-quiet job (a sparse clone among them), a repository sync or an update's download runs, or a terminal runs a program (`state/quit_confirm.rs` builds one danger confirmation naming each, with its tab; Cancel is focused), and cancels the OS close with `UiEffect::CancelClose`.
 - Running shells are asked about first: `TerminalEffect::CheckBusy` probes them off the UI thread and answers with one `TerminalMsg::BusyChecked`, which `update/terminal_busy.rs` hands to the close waiting on it (quit, closing repository tabs, Install and restart); `state/terminal/busy.rs` names the busy terminals.
 - Quit anyway sends `AppMsg::QuitConfirmed`, which sets `view.quitting` and returns `UiEffect::CloseWindow`, and the close that follows is let through. A stoppable job (a fetch) is stopped first (`job_stop::cancel`, so its lock files are removed) and the window closes once it has ended (`view.quit_after_stop`).
-- While the question shows, `update/app.rs::settle` (after every message) closes the window once the work and terminals it named (`view.quit_ask`) have ended, or names only what is left.
+- While the question shows, `update/app.rs::settle` (after every message) closes the window once the work and terminals it named (`view.quit_ask`) have ended, or names only what is left; never while it names unsaved work, which doesn't end by itself.
 
 ## Desktop notifications
 

@@ -165,6 +165,7 @@ pub(super) mod push_pr_state_tests;
 pub(super) mod push_pr_tests;
 pub(super) mod quit_busy_tests;
 pub(super) mod quit_tests;
+pub(super) mod quit_unsaved_tests;
 pub(super) mod range_diff_flow_tests;
 pub(super) mod range_diff_tests;
 pub(super) mod rebase_e2e_tests;

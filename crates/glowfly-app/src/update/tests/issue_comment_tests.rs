@@ -23,7 +23,7 @@ fn view_mut(st: &mut AppState) -> &mut IssueView {
 }
 
 /// Issue 12's panel with its details loaded.
-fn loaded_panel(name: &str) -> (AppState, PathBuf) {
+pub(super) fn loaded_panel(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = open_repo(name);
     run(&mut st, IssueMsg::Open("12".into()));
     let msg = reply(&st, IssueReply::Loaded { key: "12".into(), result: Ok(details("12")) });

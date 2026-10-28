@@ -53,5 +53,6 @@ pub(super) fn close(st: &mut AppState) {
         deep_link::modal_closed(st);
     }
     st.modal = None;
-    st.dialog = Default::default();
+    // A form kept under a question comes back after this update (`dialog_guard::restore`).
+    st.dialog.closed();
 }

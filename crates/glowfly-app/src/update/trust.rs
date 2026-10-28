@@ -182,7 +182,8 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect, mut promp
     tracing::debug!("holding {} until {name} is trusted", job.label);
     let real = prompt.real.clone();
     st.palette = None;
-    st.modal = Some(Modal::Trust(prompt));
+    // An edited form stays underneath, and comes back once the prompt closes.
+    crate::state::dialog_guard::open_over(&mut st.modal, &mut st.dialog, Modal::Trust(prompt));
     st.trust.held = Some(HeldJob { real, name, job, effect, elsewhere });
     Started::Held
 }

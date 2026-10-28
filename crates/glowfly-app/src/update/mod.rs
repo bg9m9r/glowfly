@@ -199,6 +199,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     route(st, msg, now, &mut fx);
     prefs_leave::settle(st);
     app::settle(st, &mut fx);
+    // A form kept under a question that has closed comes back (state/dialog_guard.rs).
+    crate::state::dialog_guard::restore(&mut st.modal, &mut st.dialog);
     // Records a dialog that just opened (to tell later whether it was edited) and forgets a
     // closed one.
     st.dialog.track(st.modal.as_ref());

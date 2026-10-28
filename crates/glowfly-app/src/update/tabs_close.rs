@@ -1,5 +1,6 @@
 //! Closing tabs and reopening closed ones. A close that would lose work held only in memory (a
-//! commit message draft, conflict choices not saved yet; `state/tab_losses.rs`) or end a
+//! commit message draft, conflict choices not saved yet, an edited dialog, comments not posted;
+//! `state/tab_losses.rs`) or end a
 //! terminal running a program (asked about first, update/terminal_busy.rs) asks first; the
 //! confirmation names its tabs by id, so it closes the right ones if they moved meanwhile.
 
@@ -7,6 +8,7 @@ use super::tabs::{activate, open, park, save};
 use crate::effect::{BackgroundEffect, Effect};
 use crate::msg::{CloseRequest, Msg, TabsMsg};
 use crate::state::AppState;
+use crate::state::dialog_guard::open_over;
 use crate::state::tab_losses::close_confirm;
 use crate::state::tabs::{ClosedTab, MAX_CLOSED_TABS, Tab, TabId};
 use crate::state::terminal::busy::{BusyTerminal, ids_for_tabs};
@@ -59,7 +61,8 @@ fn decide(st: &mut AppState, req: CloseRequest, confirmed: bool, busy: Option<Ve
             }
         };
         if let Some(modal) = close_confirm(st, &closing, &busy, Msg::Tabs(TabsMsg::CloseConfirmed(req))) {
-            st.modal = Some(modal);
+            // An edited form stays underneath, and comes back on Cancel.
+            open_over(&mut st.modal, &mut st.dialog, modal);
             return;
         }
     }
@@ -92,6 +95,8 @@ fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         return;
     }
     super::partial_content::leave(st, fx);
+    // An edited form kept under the confirmation goes with its tab.
+    st.dialog.drop_under();
     // Discarded with the tab, on a worker (a large history is many allocations).
     super::large_graph::free(fx, "tab", Box::new(park(st)));
     if st.tabs.len() == 1 {
@@ -141,6 +146,7 @@ fn close_where(st: &mut AppState, keep: impl Fn(usize) -> bool, survivor: usize,
     let new_survivor = survivor - before(survivor);
     if closing.contains(&st.active_tab) {
         super::partial_content::leave(st, fx);
+        st.dialog.drop_under();
         park(st); // discarded with the tab
         for &j in closing.iter().rev() {
             st.tabs.remove(j);
