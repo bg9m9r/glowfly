@@ -1,5 +1,6 @@
 //! Closing tabs and reopening closed ones. A close that would lose work held only in memory (a
-//! commit message draft, conflict choices not saved yet; `state/tab_losses.rs`) asks first; the
+//! commit message draft, conflict choices not saved yet; `state/tab_losses.rs`) or end a
+//! terminal running a program (asked about first, update/terminal_busy.rs) asks first; the
 //! confirmation names its tabs by id, so it closes the right ones if they moved meanwhile.
 
 use super::tabs::{activate, open, park, save};
@@ -8,6 +9,8 @@ use crate::msg::{CloseRequest, Msg, TabsMsg};
 use crate::state::AppState;
 use crate::state::tab_losses::close_confirm;
 use crate::state::tabs::{ClosedTab, MAX_CLOSED_TABS, Tab, TabId};
+use crate::state::terminal::busy::{BusyTerminal, ids_for_tabs};
+use crate::terminal::BusyCheck;
 use std::path::{Path, PathBuf};
 
 /// A close asked for tab `i` (`usize::MAX`: the active tab), through the menus, the tab bar or
@@ -19,9 +22,19 @@ pub(super) fn asked(st: &mut AppState, i: usize, kind: fn(TabId) -> CloseRequest
     }
 }
 
-/// Closes what `req` names, unless that loses work and isn't `confirmed` yet: then the
-/// confirmation opens instead (over any other dialog).
+/// Closes what `req` names, unless that loses work or ends a terminal running a program and
+/// isn't `confirmed` yet: then the confirmation opens instead (over any other dialog). Running
+/// shells of the closing tabs are asked about first (the answer comes back to `checked`).
 pub(super) fn request(st: &mut AppState, req: CloseRequest, confirmed: bool, fx: &mut Vec<Effect>) {
+    decide(st, req, confirmed, None, fx);
+}
+
+/// The shells' answer for a close: `busy` are its terminals running a program.
+pub(super) fn checked(st: &mut AppState, req: CloseRequest, busy: Vec<BusyTerminal>, fx: &mut Vec<Effect>) {
+    decide(st, req, false, Some(busy), fx);
+}
+
+fn decide(st: &mut AppState, req: CloseRequest, confirmed: bool, busy: Option<Vec<BusyTerminal>>, fx: &mut Vec<Effect>) {
     let (CloseRequest::One(id) | CloseRequest::Others(id) | CloseRequest::Right(id)) = req;
     let Some(i) = st.tabs.iter().position(|t| t.id == id) else { return };
     let n = st.tabs.len();
@@ -33,9 +46,22 @@ pub(super) fn request(st: &mut AppState, req: CloseRequest, confirmed: bool, fx:
     if closing.is_empty() {
         return;
     }
-    if !confirmed && let Some(modal) = close_confirm(st, &closing, Msg::Tabs(TabsMsg::CloseConfirmed(req))) {
-        st.modal = Some(modal);
-        return;
+    if !confirmed {
+        let busy = match busy {
+            Some(busy) => busy,
+            None => {
+                let ids = ids_for_tabs(st, &closing);
+                if !ids.is_empty() {
+                    super::terminal_busy::check(ids, BusyCheck::CloseTabs(req), fx);
+                    return;
+                }
+                Vec::new()
+            }
+        };
+        if let Some(modal) = close_confirm(st, &closing, &busy, Msg::Tabs(TabsMsg::CloseConfirmed(req))) {
+            st.modal = Some(modal);
+            return;
+        }
     }
     match req {
         CloseRequest::One(_) => close(st, i, fx),

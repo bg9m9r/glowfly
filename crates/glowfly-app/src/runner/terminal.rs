@@ -8,7 +8,7 @@
 use super::execute::{Cx, Execute};
 use super::{Runner, Waker};
 use crate::msg::Msg;
-use crate::terminal::{AfterCheck, TerminalEffect, TerminalMsg};
+use crate::terminal::{AfterCheck, BusyCheck, TerminalEffect, TerminalMsg};
 use glowfly_core::settings::ShellSetting;
 use glowfly_core::terminal::{ShellActivity, ShellProbe, pty, shell};
 use std::collections::HashMap;
@@ -180,6 +180,11 @@ impl<W: Waker + Clone> Runner<W> {
                 let report = Reporter { tx: self.tx.clone(), waker: self.waker.clone() };
                 check_activity(id, then, self.terminals.probe(id), report);
             }
+            TerminalEffect::CheckBusy { ids, then } => {
+                let report = Reporter { tx: self.tx.clone(), waker: self.waker.clone() };
+                let probes = ids.into_iter().map(|id| (id, self.terminals.probe(id))).collect();
+                check_busy(probes, then, report);
+            }
         }
     }
 }
@@ -197,6 +202,20 @@ fn check_activity<W: Waker + Clone>(id: u64, then: AfterCheck, probe: Option<She
         .spawn(move || thread_report.send(TerminalMsg::Activity { id, activity: probe.activity(), then }));
     if spawned.is_err() {
         report.send(TerminalMsg::Activity { id, activity: ShellActivity::Unknown, then });
+    }
+}
+
+/// Reports what each of `probes`' shells is doing in one answer (with `then`), reading them on
+/// one thread of its own. A missing probe, or no thread, is Unknown.
+fn check_busy<W: Waker + Clone>(probes: Vec<(u64, Option<ShellProbe>)>, then: BusyCheck, report: Reporter<W>) {
+    let unknown: Vec<(u64, ShellActivity)> = probes.iter().map(|(id, _)| (*id, ShellActivity::Unknown)).collect();
+    let thread_report = report.clone();
+    let spawned = std::thread::Builder::new().name("glowfly-terminal-probe".into()).spawn(move || {
+        let found = probes.into_iter().map(|(id, p)| (id, p.map_or(ShellActivity::Unknown, |p| p.activity()))).collect();
+        thread_report.send(TerminalMsg::BusyChecked { found, then });
+    });
+    if spawned.is_err() {
+        report.send(TerminalMsg::BusyChecked { found: unknown, then });
     }
 }
 
@@ -251,7 +270,7 @@ fn short_name(program: &str) -> String {
 mod tests {
     use super::{Control, Handle, KillSwitch, ProbeSlot, Reporter, Terminals, check_activity, short_name};
     use crate::msg::Msg;
-    use crate::terminal::{AfterCheck, TerminalMsg};
+    use crate::terminal::{AfterCheck, BusyCheck, TerminalMsg};
     use glowfly_core::terminal::{ShellActivity, ShellProbe};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Arc, mpsc};
@@ -335,6 +354,25 @@ mod tests {
                 assert_eq!(then, AfterCheck::Kill, "the answer carries what waits on it");
             }
             _ => panic!("expected an Activity report"),
+        }
+    }
+
+    #[test]
+    fn checking_several_sessions_reports_them_in_one_answer() {
+        #[derive(Clone)]
+        struct NoWake;
+        impl super::Waker for NoWake {
+            fn wake(&self) {}
+        }
+        let (tx, rx) = mpsc::channel();
+        let probes = vec![(4, None), (5, Some(ShellProbe::default()))];
+        super::check_busy(probes, BusyCheck::Quit, Reporter { tx, waker: NoWake });
+        match rx.recv_timeout(std::time::Duration::from_secs(10)) {
+            Ok(Msg::Terminal(TerminalMsg::BusyChecked { found, then })) => {
+                assert_eq!(found, vec![(4, ShellActivity::Unknown), (5, ShellActivity::Unknown)]);
+                assert_eq!(then, BusyCheck::Quit);
+            }
+            _ => panic!("expected a BusyChecked report"),
         }
     }
 }

@@ -54,7 +54,7 @@ fn downloaded_on(platform: Platform, kind: InstallKind, files: &[&str]) -> (AppS
 }
 
 /// The 0.3.0 MSI downloaded for an installed Windows copy.
-fn msi_downloaded() -> (AppState, Instant) {
+pub(super) fn msi_downloaded() -> (AppState, Instant) {
     let (mut st, t) = offered();
     send(&mut st, U::Download, t);
     send(&mut st, U::Downloaded(Ok(saved(MSI))), t);

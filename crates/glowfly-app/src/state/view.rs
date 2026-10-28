@@ -179,6 +179,12 @@ pub struct ViewState {
     pub menu_keys: super::menu_keys::MenuKeys,
     /// Quit went ahead (update/app.rs): the close request that follows isn't asked about again.
     pub quitting: bool,
+    /// What the open quit question named, so it closes the window once all of that has ended
+    /// (update/app.rs `settle`); `None` while it isn't open.
+    pub quit_ask: Option<super::quit_confirm::QuitAsk>,
+    /// Quit anyway asked the running job to stop (a fetch): the window closes once it has
+    /// ended, its leftover lock files removed.
+    pub quit_after_stop: bool,
     /// What the title bar, toolbar and sidebar are painted on: set by the shell each frame;
     /// views read it through `ui::backdrop::fill`.
     pub backdrop: Backdrop,
@@ -238,6 +244,8 @@ impl Default for ViewState {
             alt_tap: AltTap::default(),
             menu_keys: Default::default(),
             quitting: false,
+            quit_ask: None,
+            quit_after_stop: false,
             backdrop: Backdrop::Solid,
             op_steps: Default::default(),
         }

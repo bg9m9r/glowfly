@@ -97,8 +97,10 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Quit (the menu item, the macOS app menu's Quit Glowfly, or the rebindable Quit key, `BindingId::Quit`, Cmd+Q or Ctrl+Q, kept by a focused terminal on Windows and Linux) sends `AppMsg::Quit`.
 - winit's default app menu, whose Quit would end the app without asking, is off: `platform::native_menu::event_loop_hook`.
 - The window's close button reaches `update` as `AppMsg::CloseRequested` (the shell reads egui's `close_requested` in `input`).
-- `update/app.rs::quit` asks first while a non-quiet job or a repository sync runs (`state/quit_confirm.rs` builds the danger confirmation naming it and its tab; Cancel is focused) and cancels the OS close with `UiEffect::CancelClose`.
-- Quit anyway sends `AppMsg::QuitConfirmed`, which sets `view.quitting` and returns `UiEffect::CloseWindow`, and the close that follows is let through.
+- `update/app.rs::quit` asks first while a non-quiet job (a sparse clone among them), a repository sync or an update's download runs, or a terminal runs a program (`state/quit_confirm.rs` builds the danger confirmation naming each, with its tab; Cancel is focused), and cancels the OS close with `UiEffect::CancelClose`.
+- Running shells are asked about first: `TerminalEffect::CheckBusy` probes them off the UI thread and answers with one `TerminalMsg::BusyChecked`, which `update/terminal_busy.rs` hands to the close waiting on it (quit, closing repository tabs, Install and restart); `state/terminal/busy.rs` names the busy terminals.
+- Quit anyway sends `AppMsg::QuitConfirmed`, which sets `view.quitting` and returns `UiEffect::CloseWindow`, and the close that follows is let through. A stoppable job (a fetch) is stopped first (`job_stop::cancel`, so its lock files are removed) and the window closes once it has ended (`view.quit_after_stop`).
+- While the question shows, `update/app.rs::settle` (after every message) closes the window once the work and terminals it named (`view.quit_ask`) have ended, or names only what is left.
 
 ## Desktop notifications
 

@@ -149,6 +149,7 @@ mod tag_annotate;
 mod tag_checkout;
 mod tags;
 mod terminal;
+mod terminal_busy;
 mod terminal_header;
 mod terminal_schemes;
 mod terminal_tabs;
@@ -197,6 +198,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     let toast_mark = st.toast_seq;
     route(st, msg, now, &mut fx);
     prefs_leave::settle(st);
+    app::settle(st, &mut fx);
     // Records a dialog that just opened (to tell later whether it was edited) and forgets a
     // closed one.
     st.dialog.track(st.modal.as_ref());

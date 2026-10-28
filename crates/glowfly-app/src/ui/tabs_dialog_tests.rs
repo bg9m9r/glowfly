@@ -107,7 +107,7 @@ fn tabs_close_confirm() {
     st.tabs[1].parked =
         Some(Box::new(Parked { session: RepoSession { conflict: Gen::open(conflict), ..Default::default() }, ..Default::default() }));
     let then = Msg::Tabs(TabsMsg::CloseConfirmed(CloseRequest::Others(st.tabs[0].id)));
-    st.modal = close_confirm(&st, &[0, 1], then);
+    st.modal = close_confirm(&st, &[0, 1], &[], then);
     assert!(st.modal.is_some());
     let mut h = harness(st, true);
     h.run();

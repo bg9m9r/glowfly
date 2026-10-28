@@ -34,6 +34,18 @@ pub enum AfterCheck {
     Kill,
 }
 
+/// What waits on a `CheckBusy` answer: one of the closes that ask first while a terminal of
+/// theirs runs a program (update/terminal_busy.rs).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BusyCheck {
+    /// Quitting (every way of quitting).
+    Quit,
+    /// Closing repository tabs.
+    CloseTabs(crate::msg::CloseRequest),
+    /// Install and restart.
+    Restart,
+}
+
 /// A keyboard step through the active tab's history (Shift with Page Up/Down, Home, End).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScrollStep {
@@ -136,6 +148,11 @@ pub enum TerminalMsg {
         activity: ShellActivity,
         then: AfterCheck,
     },
+    /// What the shells a `CheckBusy` asked about were doing, by session id, for `then`.
+    BusyChecked {
+        found: Vec<(u64, ShellActivity)>,
+        then: BusyCheck,
+    },
 }
 
 impl TerminalMsg {
@@ -171,7 +188,8 @@ impl TerminalMsg {
             | Self::Output { .. }
             | Self::Exited { .. }
             | Self::SpawnFailed { .. }
-            | Self::Activity { .. } => None,
+            | Self::Activity { .. }
+            | Self::BusyChecked { .. } => None,
         }
     }
 }
@@ -206,6 +224,12 @@ pub enum TerminalEffect {
     CheckActivity {
         id: u64,
         then: AfterCheck,
+    },
+    /// Find out, off the UI thread, what each of the sessions `ids` is doing; reported as one
+    /// `TerminalMsg::BusyChecked` carrying `then`.
+    CheckBusy {
+        ids: Vec<u64>,
+        then: BusyCheck,
     },
 }
 
@@ -245,6 +269,7 @@ impl std::fmt::Debug for TerminalEffect {
             Self::Kill(id) => write!(f, "Kill({id})"),
             Self::Close(id) => write!(f, "Close({id})"),
             Self::CheckActivity { id, then } => write!(f, "CheckActivity {{ id: {id}, then: {then:?} }}"),
+            Self::CheckBusy { ids, then } => write!(f, "CheckBusy {{ ids: {ids:?}, then: {then:?} }}"),
         }
     }
 }

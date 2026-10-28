@@ -221,9 +221,9 @@ fn quit_messages_have_nothing_for_an_inactive_tab() {
 fn the_question_is_translated() {
     let mut st = pushing();
     st.settings.language = "de".into();
-    let Some(Modal::ConfirmDanger { title, body, button, .. }) = quit_confirm(&st) else { panic!("no question") };
+    let Some(Modal::ConfirmDanger { title, body, button, .. }) = quit_confirm(&st, &[]) else { panic!("no question") };
     assert_eq!(title, "Glowfly beenden?");
     assert!(body.starts_with("Push läuft noch in api."), "{body}");
     assert_eq!(button, "Trotzdem beenden");
-    assert!(quit_confirm(&state()).is_none(), "nothing runs");
+    assert!(quit_confirm(&state(), &[]).is_none(), "nothing runs");
 }

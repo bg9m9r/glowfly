@@ -55,7 +55,8 @@ source file, update its line here.
 - The screen model and its history: scrolling, line numbers that selections follow, reading the text between two points, clearing (`history.rs`).
 - Key encoding and PTY sessions.
 - `shell.rs`: which shell to start from Preferences > Terminal.
-- `activity.rs`: whether the shell is running a program.
+- `activity.rs`: whether the shell is running a program, in front or as a background job.
+- `procs.rs`: the process lists `activity.rs` reads: a Windows ToolHelp snapshot and image paths, Linux `/proc`, macOS libproc.
 - `title.rs`: the window title a program sets, with what of it names a running command.
 
 ## Settings (`settings.rs`, `settings/`)

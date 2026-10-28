@@ -13,7 +13,7 @@ use glowfly_core::settings::ShellSetting;
 use glowfly_core::terminal::{TermScreen, encode};
 use std::path::{Path, PathBuf};
 
-pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, m: TerminalMsg, now: std::time::Instant, fx: &mut Vec<Effect>) {
     use super::{terminal_header as header, terminal_tabs as tabs, terminal_view as view};
     match m {
         TerminalMsg::Toggle => {
@@ -119,6 +119,7 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
             AfterCheck::Close => tabs::activity(st, id, activity, fx),
             AfterCheck::Kill => tabs::kill_activity(st, id, activity, fx),
         },
+        TerminalMsg::BusyChecked { found, then } => super::terminal_busy::answered(st, &found, then, now, fx),
     }
 }
 

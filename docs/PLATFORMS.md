@@ -253,12 +253,20 @@ second one next to it.
     `ShellChoice::offered` for this OS without probing PATH; a picked shell that is missing fails
     in its own tab rather than being hidden.
 11. **Whether a terminal's shell is running a program comes only from
-    `terminal::ShellProbe::activity`, off the UI thread.** On Windows it reads the shell's child
-    processes from a ToolHelp snapshot: console hosts (`conhost.exe`, `OpenConsole.exe`) are
-    ignored, and a single child with the shell's own executable name is a launcher (Git Bash's
-    `bash.exe` starting the real one) that is followed, up to four levels. On Unix it compares
-    the PTY's foreground process group with the shell's pid; Linux names the program from
-    `/proc/<pid>/comm`. Anything that can't be read is Unknown, which never prompts.
+    `terminal::ShellProbe::activity`, off the UI thread** (the process lists are read in
+    `terminal/procs.rs`). Closing a terminal tab, Kill, closing its repository's tab, Install and
+    restart and quitting all ask it. On Windows it reads the shell's child processes from a
+    ToolHelp snapshot: console hosts (`conhost.exe`, `OpenConsole.exe`) and WSL's `wslhost.exe`
+    are ignored, and a single child with the shell's own executable name is a launcher (Git
+    Bash's `bin` `bash.exe` starting the one in `usr/bin`, System32's `wsl.exe` starting WSL's)
+    that is followed, up to four levels, unless `QueryFullProcessImageNameW` shows both run the
+    same file (PowerShell's `Start-Job`: a background job). Any other child counts, background
+    jobs included. A `wsl.exe` with no other child is Unknown: what runs inside the distribution
+    isn't a Windows process. On Unix it compares the PTY's foreground process group with the
+    shell's pid, and at the prompt counts the shell's children as background jobs (Linux: from
+    `/proc/<pid>/stat`, in the shell's session and not ended; macOS: libproc's
+    `proc_listpids(PROC_PPID_ONLY)`). Linux names the program from `/proc/<pid>/comm`, macOS
+    from `proc_name`. Anything that can't be read is Unknown, which never prompts.
 
 ### Environment and git
 
@@ -665,10 +673,11 @@ Gaps that are accepted for now:
   a default whose file is gone.
 - **Keychain-backed pinentries (pinentry-mac and the like) are bypassed** while "Ask for the
   key's passphrase in Glowfly" is on, since loopback skips the pinentry.
-- **Detecting a terminal's running program is approximate:** macOS gives no program name, so
-  the close confirmation asks about "a program"; background jobs (`cmd &`) don't count; a custom
-  shell that is itself a launcher with a differently named child (`wsl.exe`) can look busy; and
-  on Windows the orphans of a process whose pid was reused for the shell could count.
+- **Detecting a terminal's running program is approximate:** a program running inside WSL (a
+  `wsl.exe` shell) can't be seen from Windows, so it never asks; a disowned job or a prompt
+  helper the shell keeps as a child (Unix) counts as a running program; macOS doesn't tell
+  ended children from running ones until the shell reaps them; and on Windows the orphans of a
+  process whose pid was reused for the shell could count.
 
 - **The installed MSI copy's window isn't started on the Windows runner:** it has only Windows'
   software OpenGL 1.1, and the renderer needs OpenGL 2 or later. The installer check runs the

@@ -32,7 +32,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Moving a worktree (`update/worktree_move.rs`) points the tabs, the recent list, the closed tabs, favorites and `KnownFolders` at the new folder.
 - Removing a worktree closes the other tabs showing it first (`update/worktree_manage.rs`).
 - Each tab has a `TabId` for as long as it is open: what a request waiting for an answer names it by, since its index changes when tabs move or close.
-- Closing a tab that holds work only in memory (a commit draft, conflict choices) asks first (`state/tab_losses.rs`), and the confirmation carries a `CloseRequest` by id (`update/tabs_close.rs`).
+- Closing a tab that holds work only in memory (a commit draft, conflict choices) or whose terminals run a program (asked about first, `update/terminal_busy.rs`) asks first (`state/tab_losses.rs`), and the confirmation carries a `CloseRequest` by id (`update/tabs_close.rs`).
 - A tab's label (Rename tab, `update/tab_label.rs`) is saved with the open tabs in tabs.txt and kept on the recently closed list.
 
 ## Job follow-ups

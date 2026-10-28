@@ -73,7 +73,7 @@ macro_rules! msg_areas {
             /// The SUBMODULES section (submodule.rs).
             Submodule(crate::submodule::SubmoduleMsg) "submodule" => submodules::handle(now, fx);
             /// The built-in terminal panel (terminal.rs).
-            Terminal(crate::terminal::TerminalMsg) "terminal" => terminal::handle(fx);
+            Terminal(crate::terminal::TerminalMsg) "terminal" => terminal::handle(now, fx);
             /// Zoom and showing or hiding the left, details and toolbar panels (update/layout.rs).
             Layout(crate::msg::LayoutMsg) "layout" => layout::handle(now, fx);
             /// Saving commits as a patch file and applying one (update/patch.rs).

@@ -1,6 +1,8 @@
-//! Whether a terminal's shell is running a program, so closing it can ask first. Windows reads
-//! the shell's child processes; Unix compares the terminal's foreground process group with the
-//! shell. Reading it can take milliseconds, so callers ask off the UI thread.
+//! Whether a terminal's shell is running a program, so closing it, closing its repository's tab
+//! or quitting can ask first. Windows reads the shell's child processes; Unix compares the
+//! terminal's foreground process group with the shell, then looks for the shell's children
+//! (background jobs). The systems' process lists are read in procs.rs. Reading it can take
+//! milliseconds, so callers ask off the UI thread.
 
 /// What a shell is doing.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -31,8 +33,8 @@ impl ShellProbe {
 
 #[cfg(windows)]
 fn os_activity(p: &ShellProbe) -> ShellActivity {
-    match (p.pid, process_table()) {
-        (Some(pid), Some(table)) => tree_activity(&table, pid),
+    match (p.pid, super::procs::process_table()) {
+        (Some(pid), Some(table)) => tree_activity(&table, pid, super::procs::image_path),
         _ => ShellActivity::Unknown,
     }
 }
@@ -44,7 +46,7 @@ fn os_activity(p: &ShellProbe) -> ShellActivity {
         let pty = master.lock().ok()?;
         pty.process_group_leader()
     });
-    foreground_activity(leader, p.pid, process_name)
+    foreground_activity(leader, p.pid, super::procs::process_name, super::procs::children)
 }
 
 #[cfg(not(any(windows, unix)))]
@@ -64,23 +66,28 @@ pub(crate) struct ProcEntry {
 /// How deep a chain of same-named launchers is followed.
 const LAUNCHER_DEPTH: usize = 4;
 
-/// Console hosts that Windows attaches to a console program; they are never the user's.
-fn console_host(exe: &str) -> bool {
-    exe.eq_ignore_ascii_case("conhost.exe") || exe.eq_ignore_ascii_case("openconsole.exe")
+/// Processes Windows or WSL attach to a shell that are never the user's: console hosts, and the
+/// host WSL keeps beside `wsl.exe`.
+fn helper(exe: &str) -> bool {
+    ["conhost.exe", "openconsole.exe", "wslhost.exe"].iter().any(|h| exe.eq_ignore_ascii_case(h))
 }
 
 /// The activity of `shell` in a process snapshot: no children is Idle, and a single child with
-/// the same executable name is a launcher (Git Bash's `bash.exe` starting the real one) that is
-/// followed. Any other child is the running program.
+/// the same executable name is a launcher (Git Bash's `bin\bash.exe` starting `usr\bin\bash.exe`,
+/// `wsl.exe` starting WSL's own) that is followed, unless `image` says both run the same file
+/// (PowerShell's Start-Job starting another pwsh.exe: a background job). Any other child is the
+/// running program, whether it runs in front or in the background. A `wsl.exe` with no
+/// child of its own is Unknown: the programs inside the distribution aren't Windows processes.
 #[cfg_attr(not(windows), allow(dead_code))]
-pub(crate) fn tree_activity(procs: &[ProcEntry], shell: u32) -> ShellActivity {
+pub(crate) fn tree_activity(procs: &[ProcEntry], shell: u32, image: impl Fn(u32) -> Option<String>) -> ShellActivity {
     let mut at = shell;
     for _ in 0..LAUNCHER_DEPTH {
         let exe = procs.iter().find(|p| p.pid == at).map_or("", |p| p.exe.as_str());
-        let kids: Vec<&ProcEntry> = procs.iter().filter(|p| p.parent == at && p.pid != at && !console_host(&p.exe)).collect();
+        let kids: Vec<&ProcEntry> = procs.iter().filter(|p| p.parent == at && p.pid != at && !helper(&p.exe)).collect();
         match kids.as_slice() {
+            [] if exe.eq_ignore_ascii_case("wsl.exe") => return ShellActivity::Unknown,
             [] => return ShellActivity::Idle,
-            [kid] if kid.exe.eq_ignore_ascii_case(exe) => at = kid.pid,
+            [kid] if kid.exe.eq_ignore_ascii_case(exe) && !same_file(image(at), image(kid.pid)) => at = kid.pid,
             [first, ..] => {
                 let stem =
                     std::path::Path::new(&first.exe).file_stem().map_or_else(|| first.exe.clone(), |s| s.to_string_lossy().into_owned());
@@ -91,63 +98,63 @@ pub(crate) fn tree_activity(procs: &[ProcEntry], shell: u32) -> ShellActivity {
     ShellActivity::Idle
 }
 
-/// The activity from the terminal's foreground process group `leader`: the shell's own group
-/// is Idle, any other is Running, named by `name`.
+/// Both image paths are known and name one file (Windows paths, compared ignoring case).
+fn same_file(a: Option<String>, b: Option<String>) -> bool {
+    matches!((a, b), (Some(a), Some(b)) if a.eq_ignore_ascii_case(&b))
+}
+
+/// The activity from the terminal's foreground process group `leader`: another group is the
+/// running program, named by `name`; the shell's own group is Idle unless the shell has
+/// `children` (background jobs, `cmd &`), when the first of them is the running program.
 #[cfg_attr(not(unix), allow(dead_code))]
-pub(crate) fn foreground_activity(leader: Option<i32>, shell: Option<u32>, name: impl Fn(i32) -> Option<String>) -> ShellActivity {
+pub(crate) fn foreground_activity(
+    leader: Option<i32>,
+    shell: Option<u32>,
+    name: impl Fn(i32) -> Option<String>,
+    children: impl Fn(u32) -> Vec<i32>,
+) -> ShellActivity {
     match (leader, shell) {
         (Some(l), Some(s)) if l > 0 => {
-            if l.unsigned_abs() == s {
-                ShellActivity::Idle
-            } else {
-                ShellActivity::Running { program: name(l) }
+            if l.unsigned_abs() != s {
+                return ShellActivity::Running { program: name(l) };
+            }
+            match children(s).first() {
+                Some(&kid) => ShellActivity::Running { program: name(kid) },
+                None => ShellActivity::Idle,
             }
         }
         _ => ShellActivity::Unknown,
     }
 }
 
-/// Every process on the system, from a ToolHelp snapshot.
-#[cfg(windows)]
-fn process_table() -> Option<Vec<ProcEntry>> {
-    use windows::Win32::Foundation::CloseHandle;
-    use windows::Win32::System::Diagnostics::ToolHelp::{
-        CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
-    };
-    // SAFETY: the call takes no pointers; the returned handle is closed below.
-    let snap = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) }.ok()?;
-    let mut entry = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
-    let mut out = Vec::new();
-    // SAFETY: `snap` is an open snapshot handle and `entry` a writable PROCESSENTRY32W whose
-    // dwSize is set, as both calls require.
-    let mut more = unsafe { Process32FirstW(snap, &mut entry) }.is_ok();
-    while more {
-        let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
-        out.push(ProcEntry {
-            pid: entry.th32ProcessID,
-            parent: entry.th32ParentProcessID,
-            exe: String::from_utf16_lossy(&entry.szExeFile[..len]),
-        });
-        // SAFETY: as above.
-        more = unsafe { Process32NextW(snap, &mut entry) }.is_ok();
-    }
-    // SAFETY: `snap` is open and not used after this.
-    let _ = unsafe { CloseHandle(snap) };
-    Some(out)
+/// What `/proc/<pid>/stat` tells about a process.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Stat {
+    /// `R`, `S`, `Z` (ended, not yet reaped) and so on.
+    pub state: char,
+    pub ppid: i32,
+    pub session: i32,
 }
 
-/// A process's command name.
-#[cfg(target_os = "linux")]
-fn process_name(pid: i32) -> Option<String> {
-    let name = std::fs::read_to_string(format!("/proc/{pid}/comm")).ok()?;
-    let name = name.trim_end();
-    (!name.is_empty()).then(|| name.to_string())
+/// Reads a `/proc/<pid>/stat` line: `pid (comm) state ppid pgrp session …`. The command name
+/// may hold spaces and parentheses, so the fields start after the last `)`.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub(crate) fn parse_stat(line: &str) -> Option<Stat> {
+    let rest = &line[line.rfind(')')? + 1..];
+    let mut fields = rest.split_whitespace();
+    let state = fields.next()?.chars().next()?;
+    let ppid = fields.next()?.parse().ok()?;
+    let _pgrp = fields.next()?;
+    let session = fields.next()?.parse().ok()?;
+    Some(Stat { state, ppid, session })
 }
 
-/// macOS and the BSDs have no file to read it from.
-#[cfg(all(unix, not(target_os = "linux")))]
-fn process_name(_pid: i32) -> Option<String> {
-    None
+/// The pids among `all` that are children of `shell` in its `session` and still run: a
+/// background job, not a helper that left the terminal's session or one that ended.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub(crate) fn children_in_session(all: &[(i32, Stat)], shell: i32, session: i32) -> Vec<i32> {
+    all.iter().filter(|(_, s)| s.ppid == shell && s.session == session && s.state != 'Z').map(|(pid, _)| *pid).collect()
 }
 
 #[cfg(test)]

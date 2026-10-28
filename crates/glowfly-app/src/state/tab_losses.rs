@@ -1,7 +1,9 @@
 //! What closing tabs would lose: work that exists only in memory (a commit message draft, or
-//! conflict choices not saved yet), and the confirmations that name it, before closing tabs or
+//! conflict choices not saved yet), and the confirmations that name it, with the terminals the
+//! close would end while they run a program (state/terminal/busy.rs), before closing tabs or
 //! restarting to update. Pure: the close itself is in `update/tabs_close.rs`.
 
+use super::terminal::busy::{BusyTerminal, busy_text};
 use super::updates::install_label;
 use super::{AppState, Modal};
 use crate::msg::Msg;
@@ -67,10 +69,16 @@ fn losses_body(st: &AppState, closing: &[usize]) -> Option<String> {
     Some(body.join("\n"))
 }
 
-/// The confirmation before closing the tabs at `closing`, running `then` when accepted; `None`
-/// when none of them would lose anything.
-pub fn close_confirm(st: &AppState, closing: &[usize], then: Msg) -> Option<Modal> {
-    let body = losses_body(st, closing)?;
+/// The losses' lines and the busy terminals' part, a blank line apart; None when neither.
+fn body_with(st: &AppState, losses: Option<String>, busy: &[BusyTerminal]) -> Option<String> {
+    let parts: Vec<String> = losses.into_iter().chain(busy_text(st.settings.lang(), busy)).collect();
+    (!parts.is_empty()).then(|| parts.join("\n\n"))
+}
+
+/// The confirmation before closing the tabs at `closing`, which would end the terminals `busy`,
+/// running `then` when accepted; `None` when none of them would lose anything or end a program.
+pub fn close_confirm(st: &AppState, closing: &[usize], busy: &[BusyTerminal], then: Msg) -> Option<Modal> {
+    let body = body_with(st, losses_body(st, closing), busy)?;
     let n = closing.len();
     let (title, button) =
         if n == 1 { ("Close tab?".to_owned(), "Close tab".to_owned()) } else { (format!("Close {n} tabs?"), format!("Close {n} tabs")) };
@@ -78,13 +86,14 @@ pub fn close_confirm(st: &AppState, closing: &[usize], then: Msg) -> Option<Moda
 }
 
 /// The confirmation before Install and restart (or, for `OpenAndQuit`, quitting to install)
-/// closes every tab, running `then` when accepted; `None` when no tab would lose anything.
-pub fn restart_confirm(st: &AppState, method: InstallMethod, then: Msg) -> Option<Modal> {
+/// closes every tab and ends the terminals `busy`, running `then` when accepted; `None` when no
+/// tab would lose anything and no terminal runs a program.
+pub fn restart_confirm(st: &AppState, method: InstallMethod, busy: &[BusyTerminal], then: Msg) -> Option<Modal> {
     let all: Vec<usize> = (0..st.tabs.len()).collect();
-    let losses = losses_body(st, &all)?;
+    let rest = body_with(st, losses_body(st, &all), busy)?;
     let t = st.settings.lang();
     let quits = method == InstallMethod::OpenAndQuit;
     let first = if quits { "Quitting closes every tab." } else { "Restarting closes every tab." };
     let title = if quits { t.tr("updates.restart_confirm.quit_title") } else { t.tr("updates.restart_confirm.title") };
-    Some(Modal::danger(title, format!("{first}\n{losses}"), install_label(t, method), then))
+    Some(Modal::danger(title, format!("{first}\n{rest}"), install_label(t, method), then))
 }

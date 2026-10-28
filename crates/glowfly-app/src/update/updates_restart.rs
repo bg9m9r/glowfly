@@ -1,17 +1,30 @@
-//! Install and restart: after Preferences' unsaved edits (prefs_leave), a running operation and
-//! the tabs' unsaved work have been dealt with, the downloaded update is prepared on a worker
+//! Install and restart: after Preferences' unsaved edits (prefs_leave), a running operation, and
+//! the tabs' unsaved work and terminals running a program (asked about first,
+//! update/terminal_busy.rs) have been dealt with, the downloaded update is prepared on a worker
 //! (runner/update_restart.rs). Once it is ready the window closes, the same way as Quit;
 //! a failure changes nothing and says why.
 
 use crate::effect::{Effect, RestartJob, UiEffect, UpdateEffect};
 use crate::msg::{Msg, UpdateMsg};
+use crate::state::terminal::busy::{BusyTerminal, running_ids};
 use crate::state::updates::{UpdateStatus, opened_text, restart_failed_text, restarting_text};
 use crate::state::{AppState, ToastAction, tab_losses};
+use crate::terminal::BusyCheck;
 use glowfly_core::app_update::InstallMethod;
 use std::time::Instant;
 
-/// `InstallAndRestart` (`confirmed`: from the confirmation, which already named the losses).
+/// `InstallAndRestart` (`confirmed`: from the confirmation, which already named the losses and
+/// the busy terminals). Running shells are asked about first (the answer comes to `checked`).
 pub(super) fn ask(st: &mut AppState, confirmed: bool, now: Instant, fx: &mut Vec<Effect>) {
+    decide(st, confirmed, None, now, fx);
+}
+
+/// The shells' answer for Install and restart: `busy` are the terminals running a program.
+pub(super) fn checked(st: &mut AppState, busy: Vec<BusyTerminal>, now: Instant, fx: &mut Vec<Effect>) {
+    decide(st, false, Some(busy), now, fx);
+}
+
+fn decide(st: &mut AppState, confirmed: bool, busy: Option<Vec<BusyTerminal>>, now: Instant, fx: &mut Vec<Effect>) {
     let Some((_, method)) = st.updates.downloaded() else { return };
     if !method.acts() || st.updates.blocked() {
         return;
@@ -21,10 +34,23 @@ pub(super) fn ask(st: &mut AppState, confirmed: bool, now: Instant, fx: &mut Vec
         st.toast(false, t.tr("updates.restart_busy"), now);
         return;
     }
-    if !confirmed && let Some(modal) = tab_losses::restart_confirm(st, method, Msg::Updates(UpdateMsg::InstallAndRestartConfirmed)) {
-        st.palette = None;
-        st.modal = Some(modal);
-        return;
+    if !confirmed {
+        let busy = match busy {
+            Some(busy) => busy,
+            None => {
+                let ids = running_ids(st);
+                if !ids.is_empty() {
+                    super::terminal_busy::check(ids, BusyCheck::Restart, fx);
+                    return;
+                }
+                Vec::new()
+            }
+        };
+        if let Some(modal) = tab_losses::restart_confirm(st, method, &busy, Msg::Updates(UpdateMsg::InstallAndRestartConfirmed)) {
+            st.palette = None;
+            st.modal = Some(modal);
+            return;
+        }
     }
     let UpdateStatus::Downloaded { offer, file, sha256, method } = st.updates.settled() else { return };
     let job = RestartJob { file: file.clone(), sha256: *sha256, method: *method, version: offer.version.clone() };

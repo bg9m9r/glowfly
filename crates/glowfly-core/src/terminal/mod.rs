@@ -1,11 +1,13 @@
 //! Terminal emulation for the built-in terminal panel: the screen model (screen) and its history
 //! (history), key and paste encoding (keys), PTY sessions (pty), which shell to start (shell),
 //! the queries the terminal answers (queries), redrawing a screen on a fresh parser (replay) and
-//! whether the shell is running a program (activity), and the window title a program sets (title).
+//! whether the shell is running a program (activity, reading the process lists in procs), and the
+//! window title a program sets (title).
 
 mod activity;
 mod history;
 mod keys;
+mod procs;
 pub mod pty;
 mod queries;
 mod replay;
