@@ -49,7 +49,7 @@ fn a_restack_is_undone_and_redone_branch_by_branch() {
     let (action, mid, top) = restacked_action(&dir);
     let (new_mid, new_top) = (tip(&dir, "mid"), tip(&dir, "top"));
     let want = vec![BranchMove { name: "mid".into(), from: mid, to: new_mid }, BranchMove { name: "top".into(), from: top, to: new_top }];
-    assert_eq!(action, Action::Restacked { detail: DETAIL.into(), moves: want });
+    assert_eq!(action, Action::Restacked { detail: DETAIL.into(), moves: want, partial: false });
     assert_eq!(action.describe(), DETAIL);
 
     let undo = plan(&dir, &action, false).unwrap();

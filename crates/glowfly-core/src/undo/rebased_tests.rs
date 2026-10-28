@@ -1,7 +1,7 @@
 //! Rebases recorded as one undoable action: where the branch was before (HEAD, or git's
 //! orig-head while one is in progress) and where it went.
 
-use super::tests::{cmds, commit, head_oid, run_plan};
+use super::tests::{cmds, commit, head_oid, refused, run_plan};
 use super::*;
 use crate::rebase::{self, Outcome, RebaseAction, RebaseBase, SequenceEditor, StartRequest, TodoStep};
 use crate::testutil::*;
@@ -73,4 +73,57 @@ fn a_finished_rebase_is_undone_and_redone() {
     run_plan(&dir, redo);
     assert_eq!(head_oid(&dir), to);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn tip(dir: &Path, name: &str) -> Oid {
+    git2::Repository::open(dir).unwrap().find_branch(name, git2::BranchType::Local).unwrap().get().target().unwrap()
+}
+
+/// main: c1..c3 with `lower` at c2 and `rebase.updateRefs` on; c2 reworded, which moves lower
+/// too. Returns the recorded action and the tips before.
+fn stacked_rebase(name: &str) -> (PathBuf, Action, [Oid; 2]) {
+    let (dir, [c1, c2, c3]) = three(name);
+    git(&dir, &["config", "rebase.updateRefs", "true"]);
+    git(&dir, &["branch", "lower", &c2.to_string()]);
+    let start = rebase_start(&dir).unwrap();
+    let outcome = run_rebase(&dir, c1, |items| {
+        let item = items[0].commit_mut().unwrap();
+        item.action = RebaseAction::Reword;
+        item.new_message = Some("c2, reworded".into());
+    });
+    assert!(matches!(outcome, Outcome::Finished { .. }), "{outcome:?}");
+    assert_ne!(tip(&dir, "lower"), c2, "git moved lower with the rebase");
+    let action = rebased(&dir, &start, "reword").unwrap();
+    (dir, action, [c2, c3])
+}
+
+#[test]
+fn undo_puts_back_the_branches_a_rebase_moved_with_it() {
+    let (dir, action, [c2, c3]) = stacked_rebase("undo-rebased-update-refs");
+    let Action::Restacked { moves, partial: true, .. } = &action else { panic!("{action:?}") };
+    let names: Vec<&str> = moves.iter().map(|m| m.name.as_str()).collect();
+    assert_eq!(names, ["main", "lower"]);
+    let (main_to, lower_to) = (tip(&dir, "main"), tip(&dir, "lower"));
+    run_plan(&dir, plan(&dir, &action, false).unwrap());
+    assert_eq!((tip(&dir, "main"), tip(&dir, "lower")), (c3, c2), "both are back");
+    run_plan(&dir, plan(&dir, &action, true).unwrap());
+    assert_eq!((tip(&dir, "main"), tip(&dir, "lower")), (main_to, lower_to), "and forward again");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_stacked_branch_moved_since_stays_while_the_rest_go_back() {
+    let (dir, action, [c2, c3]) = stacked_rebase("undo-rebased-update-refs-moved");
+    git(&dir, &["branch", "-f", "lower", &c3.to_string()]);
+    run_plan(&dir, plan(&dir, &action, false).unwrap());
+    assert_eq!((tip(&dir, "main"), tip(&dir, "lower")), (c3, c3), "main went back; lower stayed");
+    assert_ne!(c2, c3);
+
+    // The checked-out branch moved since: the undo is refused as a whole.
+    let (dir2, action, _) = stacked_rebase("undo-rebased-update-refs-head");
+    commit(&dir2, "4.txt", "4\n", "c4");
+    let r = refused(plan(&dir2, &action, false).unwrap());
+    assert!(r.is_stale() && r.message().contains("Branch main has moved"), "{r:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::remove_dir_all(&dir2);
 }

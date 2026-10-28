@@ -18,7 +18,7 @@ pub struct RestackBefore {
     tips: Vec<(String, Oid)>,
 }
 
-fn local_tips(repo: &Repository) -> Vec<(String, Oid)> {
+pub(super) fn local_tips(repo: &Repository) -> Vec<(String, Oid)> {
     let Ok(branches) = repo.branches(Some(BranchType::Local)) else { return Vec::new() };
     branches.flatten().filter_map(|(b, _)| Some((b.name().ok().flatten()?.to_owned(), b.get().target()?))).collect()
 }
@@ -42,7 +42,7 @@ pub fn restacked(workdir: &Path, before: &RestackBefore, detail: &str) -> Option
             (to != from).then(|| BranchMove { name: name.clone(), from: *from, to: *to })
         })
         .collect();
-    (!moves.is_empty()).then(|| Action::Restacked { detail: detail.to_owned(), moves })
+    (!moves.is_empty()).then(|| Action::Restacked { detail: detail.to_owned(), moves, partial: false })
 }
 
 /// Whether every branch is still where it was before the restack.
@@ -50,33 +50,48 @@ pub fn restack_unmoved(workdir: &Path, before: &RestackBefore) -> bool {
     Repository::open(workdir).is_ok_and(|r| local_tips(&r) == before.tips)
 }
 
-/// The commands that move every branch of a restack back (or, on redo, forward again).
+/// The commands that move every branch of a restack back (or, on redo, forward again). With
+/// `partial`, a branch that can't go (moved since, gone, checked out elsewhere) is left where
+/// it is unless it is the one checked out here.
 pub(super) fn plan(workdir: &Path, repo: &Repository, action: &Action, redo: bool) -> Result<Plan> {
-    let Action::Restacked { moves, .. } = action else { unreachable!("a restack") };
+    let Action::Restacked { moves, partial, .. } = action else { unreachable!("a restack") };
     let here = branch_name(&head(repo).0);
     let elsewhere: Vec<String> = crate::repo::worktrees_at(workdir)?.into_iter().filter(|w| !w.current).filter_map(|w| w.branch).collect();
     let reason = if redo { "Glowfly: redo restack" } else { "Glowfly: undo restack" };
     let mut cmds = Vec::new();
     let mut reset = None;
+    let mut first_refusal = None;
     for m in moves {
         let (expect, target) = if redo { (m.from, m.to) } else { (m.to, m.from) };
         let tip = repo.find_branch(&m.name, BranchType::Local).ok().map(|b| b.get().target());
-        match tip {
-            None => return Ok(stale(format!("Branch {} no longer exists", m.name))),
-            Some(t) if t != Some(expect) => return Ok(stale(format!("Branch {} has moved since the {}", m.name, action.describe()))),
-            Some(_) => {}
-        }
-        if repo.find_commit(target).is_err() {
-            return Ok(gone());
-        }
-        if elsewhere.contains(&m.name) {
-            return Ok(unsafe_(format!("{} is checked out in another worktree; switch that worktree to another branch first.", m.name)));
+        let refusal = match tip {
+            None => Some(stale(format!("Branch {} no longer exists", m.name))),
+            Some(t) if t != Some(expect) => Some(stale(format!("Branch {} has moved since the {}", m.name, action.describe()))),
+            Some(_) if repo.find_commit(target).is_err() => Some(gone()),
+            Some(_) if elsewhere.contains(&m.name) => {
+                Some(unsafe_(format!("{} is checked out in another worktree; switch that worktree to another branch first.", m.name)))
+            }
+            Some(_) => None,
+        };
+        if let Some(r) = refusal {
+            if !*partial || here.as_deref() == Some(m.name.as_str()) {
+                return Ok(r);
+            }
+            first_refusal.get_or_insert(r);
+            continue;
         }
         if here.as_deref() == Some(m.name.as_str()) {
             reset = Some(target);
         } else {
             cmds.push(args(&["update-ref", "-m", reason, &format!("refs/heads/{}", m.name), &target.to_string(), &expect.to_string()]));
         }
+    }
+    // Nothing could go back.
+    if cmds.is_empty()
+        && reset.is_none()
+        && let Some(r) = first_refusal
+    {
+        return Ok(r);
     }
     if let Some(target) = reset {
         if !tracked_clean(workdir)? {

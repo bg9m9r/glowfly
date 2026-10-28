@@ -183,10 +183,13 @@ pub enum Action {
         to: Oid,
     },
     /// A restack: every branch it moved, `detail` naming it ("restack of the branches above
-    /// search").
+    /// search"). Also a rebase that moved the branches stacked in it (`rebase.updateRefs`),
+    /// `partial`: a branch other than the checked-out one that moved since stays where it is
+    /// while the others go back; a restack's undo is refused instead.
     Restacked {
         detail: String,
         moves: Vec<BranchMove>,
+        partial: bool,
     },
     /// An abort of a merge, single cherry-pick or single revert (`op`) that kept its work in
     /// the commit `saved` (`aborted.rs`), with HEAD at `head` on `branch` (`None`: detached),
