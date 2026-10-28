@@ -86,7 +86,7 @@ fn trash_home_offer_without_a_copy_confirms_first() {
     let msgs = &h.state().1;
     assert!(
         msgs.iter().any(|m| matches!(m, Msg::ConfirmDanger { ack: Some(_), then, .. }
-            if matches!(&**then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Delete { mode: DeleteMode::PermanentNoTrash, .. }))))),
+            if matches!(&**then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Delete { mode: DeleteMode::PermanentNoPromise, .. }))))),
         "asks with the acknowledgement"
     );
     assert!(!msgs.iter().any(|m| matches!(m, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(_)))), "nothing is deleted yet");

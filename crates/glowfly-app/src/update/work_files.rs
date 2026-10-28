@@ -3,7 +3,7 @@
 //! discard a confirmation agreed to (the confirmations themselves are in `work_files_delete`), and
 //! the results (a toast, the dialog's inline error, or a log line).
 
-use super::work_files_delete::{UndoNote, ask_delete, ask_discard, deleted_text, trash_refused};
+use super::work_files_delete::{UndoNote, ask_delete, ask_discard, deleted_text, no_copy_kept, trash_refused};
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::keymap::BindingId;
 use crate::msg::WorkFileMsg;
@@ -46,6 +46,11 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
         },
         WorkFileMsg::TrashRefused { op, refusal, too_large } => {
             trash_refused(st, op, refusal, too_large);
+            super::watch::settled(st, now);
+            super::repo::refresh_status(st, fx);
+        }
+        WorkFileMsg::NoCopyKept { op, reason: _ } => {
+            no_copy_kept(st, op);
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }

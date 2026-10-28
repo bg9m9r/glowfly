@@ -180,8 +180,10 @@ second one next to it.
 6. **A delete keeps what undo needs first:** the working copy's bytes as a blob (files up to
    64 MB, `undo::MAX_KEPT_BYTES`; not links) and, for Unstage and delete, the staged entry
    (`undo/deleted.rs`; also for Discard of an untracked file, and kept when the delete fails
-   after the file went). Undo writes the file back with create-new semantics, so it never
-   overwrites a file (or a case twin) that appeared at the path.
+   after the file went). A permanent delete whose confirmation promised Undo refuses a file over
+   the limit (`Error::NoCopyKept`, decided when it runs, so a file that grew meanwhile counts)
+   and asks again with an acknowledgement. Undo writes the file back with create-new semantics,
+   so it never overwrites a file (or a case twin) that appeared at the path.
 7. **Undo of a trashed file takes it back out of the trash through `repo::os_untrash`**
    (`repo/trash/untrash.rs`, called by `repo::untrash_file`), and only an item that was at that
    path and holds exactly the kept bytes (the newest such one; a candidate of another size is

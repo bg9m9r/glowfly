@@ -18,11 +18,17 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, offer: &TrashOffer, msgs: &mut Vec<Msg>) 
         msgs.push(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(offer.op.clone().home_trash())));
     }
     if out.alt == Some(0) {
-        let delete = Msg::WorkFile(WorkFileMsg::DeleteConfirmed(offer.op.clone().permanent()));
+        let delete = |op: crate::effect::FileOp| Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op));
         msgs.push(match &offer.confirm {
-            // Final: confirmed once more, with the acknowledgement.
-            Some((body, ack)) => Msg::confirm_danger_ack("Delete permanently?", body.clone(), "Delete permanently", ack, delete),
-            None => delete,
+            // Final: confirmed once more, with the acknowledgement, and no Undo promised.
+            Some((body, ack)) => Msg::confirm_danger_ack(
+                "Delete permanently?",
+                body.clone(),
+                "Delete permanently",
+                ack,
+                delete(offer.op.clone().no_promise()),
+            ),
+            None => delete(offer.op.clone().permanent()),
         });
     }
     out.primary || out.alt.is_some() || out.dismiss

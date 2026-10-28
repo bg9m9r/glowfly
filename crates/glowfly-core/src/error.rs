@@ -42,6 +42,10 @@ pub enum Error {
     /// permanent delete is the remedy (no trash) or retrying after fixing the cause.
     #[error("{0}")]
     TrashRefused(crate::repo::TrashRefusal),
+    /// A delete whose confirmation promised Undo was refused because the file is over
+    /// `undo::MAX_KEPT_BYTES`, so no copy could be kept; nothing was removed.
+    #[error("{0}")]
+    NoCopyKept(String),
     /// A partial clone hasn't downloaded file contents the read needs (see `partial`).
     #[error("the contents of {} haven't been downloaded from {} yet", .0.path, .0.remote)]
     MissingContent(crate::partial::MissingContent),

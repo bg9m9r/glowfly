@@ -35,7 +35,7 @@ fn discarding_an_untracked_file_is_undone_like_a_delete() {
     let dir = base("ufa-discard");
     write(&dir, "u.txt", "untracked work\n");
     let before = in_bin("u.txt");
-    let d = discard_untracked_saving(&dir, "u.txt", DeleteVia::Trash, T).unwrap();
+    let d = discard_untracked_saving(&dir, "u.txt", DeleteVia::Trash, false, T).unwrap();
     assert_eq!(d.how, Deleted::Trashed);
     let a = d.undo.expect("undoable");
     assert!(matches!(&a, Action::DeleteFile { path, staged: None, .. } if path == "u.txt"), "{a:?}");
@@ -48,12 +48,12 @@ fn discarding_an_untracked_file_is_undone_like_a_delete() {
     // Redo discards it again; a permanent discard comes back from Glowfly's copy.
     assert!(matches!(plan(&dir, &a, true).unwrap(), Plan::DeleteAgain { .. }));
     write(&dir, "p.txt", "for good\n");
-    let a = discard_untracked_saving(&dir, "p.txt", DeleteVia::Permanent, T).unwrap().undo.unwrap();
+    let a = discard_untracked_saving(&dir, "p.txt", DeleteVia::Permanent, false, T).unwrap().undo.unwrap();
     assert_eq!(undo_delete(&dir, &a, T), PutBackHow::Written { trash: None });
     assert_eq!(std::fs::read_to_string(dir.join("p.txt")).unwrap(), "for good\n");
 
     // A file tracked by then is refused, keeping nothing to undo.
-    let e = discard_untracked_saving(&dir, "f.txt", DeleteVia::Permanent, T).unwrap_err();
+    let e = discard_untracked_saving(&dir, "f.txt", DeleteVia::Permanent, false, T).unwrap_err();
     assert!(e.undo.is_none() && dir.join("f.txt").exists(), "{e:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -128,7 +128,7 @@ fn a_delete_that_fails_after_the_file_went_keeps_its_undo() {
     let dir = base("ufa-delete-failed");
     write(&dir, "u.txt", "work\n");
     let t = Trashers { system: trash_then_fail, ..T };
-    let e = delete_saving(&dir, "u.txt", DeleteVia::Trash, t).unwrap_err();
+    let e = delete_saving(&dir, "u.txt", DeleteVia::Trash, false, t).unwrap_err();
     assert!(e.error.to_string().contains("was removed, but"), "{}", e.error);
     let a = *e.undo.expect("the file went, so it can be put back");
     assert!(!dir.join("u.txt").exists());
@@ -136,7 +136,7 @@ fn a_delete_that_fails_after_the_file_went_keeps_its_undo() {
     assert_eq!(std::fs::read_to_string(dir.join("u.txt")).unwrap(), "work\n");
 
     // A refusal leaves the file where it was: nothing to undo.
-    let e = delete_saving(&dir, "u.txt", DeleteVia::Trash, Trashers { system: refuse, ..T }).unwrap_err();
+    let e = delete_saving(&dir, "u.txt", DeleteVia::Trash, false, Trashers { system: refuse, ..T }).unwrap_err();
     assert!(matches!(e.error, Error::TrashRefused(_)) && e.undo.is_none(), "{e:?}");
     assert!(dir.join("u.txt").exists());
     let _ = std::fs::remove_dir_all(&dir);
@@ -149,7 +149,7 @@ fn unstage_and_delete_that_couldnt_change_the_index_keeps_its_undo() {
     git(&dir, &["add", "n.txt"]);
     let staged = index_entry(&dir, "n.txt");
     let t = Trashers { system: trash_and_lock_index, ..T };
-    let e = delete_staged_saving(&dir, "n.txt", DeleteVia::Trash, t).unwrap_err();
+    let e = delete_staged_saving(&dir, "n.txt", DeleteVia::Trash, false, t).unwrap_err();
     assert!(e.error.to_string().contains("still staged"), "{}", e.error);
     std::fs::remove_file(dir.join(".git/index.lock")).unwrap();
     let a = *e.undo.expect("the file went");
@@ -181,7 +181,7 @@ fn a_trash_that_cant_give_the_file_back_gets_glowflys_copy_and_keeps_its_own() {
     let dir = base("ufa-untrash-fallback");
     write(&dir, "u.txt", "kept\n");
     let before = in_bin("u.txt");
-    let a = delete_saving(&dir, "u.txt", DeleteVia::Trash, T).unwrap().undo.unwrap();
+    let a = delete_saving(&dir, "u.txt", DeleteVia::Trash, false, T).unwrap().undo.unwrap();
     let mac_like = Trashers { restore: unreadable, ..T };
     let how = undo_delete(&dir, &a, mac_like);
     assert_eq!(how, PutBackHow::Written { trash: Some(Untrashed::Unsupported) });
@@ -211,7 +211,7 @@ fn a_staged_new_file_comes_back_out_of_the_trash_staged() {
     write(&dir, "sub/n.txt", "new\n");
     git(&dir, &["add", "sub/n.txt"]);
     let staged = index_entry(&dir, "sub/n.txt");
-    let a = delete_staged_saving(&dir, "sub/n.txt", DeleteVia::Trash, T).unwrap().undo.unwrap();
+    let a = delete_staged_saving(&dir, "sub/n.txt", DeleteVia::Trash, false, T).unwrap().undo.unwrap();
     assert!(!dir.join("sub").exists(), "the emptied folder was pruned");
     let how = undo_delete(&dir, &a, T);
     assert_eq!(how, PutBackHow::FromTrash);
@@ -228,7 +228,7 @@ fn a_staged_new_file_comes_back_out_of_the_trash_staged() {
 fn a_file_that_came_back_from_the_trash_with_other_bytes_is_left_alone() {
     let dir = base("ufa-untrash-other");
     write(&dir, "u.txt", "kept\n");
-    let a = delete_saving(&dir, "u.txt", DeleteVia::Trash, T).unwrap().undo.unwrap();
+    let a = delete_saving(&dir, "u.txt", DeleteVia::Trash, false, T).unwrap().undo.unwrap();
     let Action::DeleteFile { before, .. } = &a else { unreachable!() };
     // A trash that puts something else there (another program won the race).
     fn other(full: &Path, _: &dyn Fn(&Path) -> bool) -> Untrashed {
@@ -251,5 +251,32 @@ fn only_a_regular_file_up_to_the_limit_keeps_a_copy() {
     assert!(!keeps_copy(&dir, "big.bin"), "over 64 MB: a permanent delete would be final");
     assert!(!keeps_copy(&dir, "missing.txt"));
     assert!(!keeps_copy(&dir, "../outside.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_promised_undo_refuses_a_file_too_large_to_keep_and_leaves_it() {
+    let dir = base("ufa-promised");
+    write(&dir, "u.txt", "grown\n");
+    let e = super::deleted::delete_saving_with(&dir, "u.txt", DeleteVia::Permanent, true, T, 4).unwrap_err();
+    assert!(matches!(e.error, Error::NoCopyKept(_)) && e.undo.is_none(), "{e:?}");
+    assert_eq!(std::fs::read_to_string(dir.join("u.txt")).unwrap(), "grown\n", "left as it is");
+    // Without the promise (the user acknowledged it), it goes with no copy.
+    let d = super::deleted::delete_saving_with(&dir, "u.txt", DeleteVia::Permanent, false, T, 4).unwrap();
+    assert!(d.too_large && d.undo.is_none() && !dir.join("u.txt").exists());
+
+    // Discard and Unstage and delete refuse too, at the real limit, keeping the index.
+    let big = |name: &str| {
+        let f = std::fs::File::create(dir.join(name)).unwrap();
+        f.set_len(MAX_KEPT_BYTES + 1).unwrap();
+    };
+    big("d.bin");
+    let e = discard_untracked_saving(&dir, "d.bin", DeleteVia::Permanent, true, T).unwrap_err();
+    assert!(matches!(e.error, Error::NoCopyKept(_)) && dir.join("d.bin").exists());
+    big("n.bin");
+    git(&dir, &["add", "n.bin"]);
+    let e = delete_staged_saving(&dir, "n.bin", DeleteVia::Permanent, true, T).unwrap_err();
+    assert!(matches!(e.error, Error::NoCopyKept(_)) && dir.join("n.bin").exists());
+    assert!(index_entry(&dir, "n.bin").is_some(), "still staged");
     let _ = std::fs::remove_dir_all(&dir);
 }

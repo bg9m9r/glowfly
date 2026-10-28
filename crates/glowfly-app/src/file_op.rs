@@ -11,10 +11,15 @@ use glowfly_core::undo::{self, Action, DeletedSaving};
 pub enum DeleteMode {
     /// To the Recycle Bin / Trash.
     Trash,
-    /// Removed for good (the preference is off).
+    /// Removed for good (the preference is off). Its confirmation promised Undo, so a file over
+    /// 64 MB, which gets no copy, is refused and asked about again.
     Permanent,
-    /// Permanent after the trash refused the file and the user agreed.
+    /// Permanent after the trash refused the file and the user agreed; Undo was promised, as for
+    /// `Permanent`.
     PermanentNoTrash,
+    /// Removed for good with no Undo promised: the file's content is in git anyway, or the user
+    /// acknowledged that a file over 64 MB can't be brought back.
+    PermanentNoPromise,
     /// To the home Trash, copied from another drive, after the drive's own trash couldn't be
     /// used and the user agreed (Linux).
     HomeTrash,
@@ -30,8 +35,14 @@ impl DeleteMode {
         match self {
             DeleteMode::Trash => undo::DeleteVia::Trash,
             DeleteMode::HomeTrash => undo::DeleteVia::HomeTrash,
-            DeleteMode::Permanent | DeleteMode::PermanentNoTrash => undo::DeleteVia::Permanent,
+            DeleteMode::Permanent | DeleteMode::PermanentNoTrash | DeleteMode::PermanentNoPromise => undo::DeleteVia::Permanent,
         }
+    }
+
+    /// Whether the confirmation promised that Undo brings the file back, so a file too large to
+    /// keep a copy of must not be removed for good. The trash keeps one itself.
+    pub fn promises_copy(self) -> bool {
+        matches!(self, DeleteMode::Permanent | DeleteMode::PermanentNoTrash)
     }
 }
 
@@ -85,6 +96,17 @@ impl FileOp {
             FileOp::Delete { path, .. } => FileOp::Delete { path, mode: DeleteMode::PermanentNoTrash },
             FileOp::UnstageDelete { path, .. } => FileOp::UnstageDelete { path, mode: DeleteMode::PermanentNoTrash },
             FileOp::Discard { path, .. } => FileOp::Discard { path, mode: DeleteMode::PermanentNoTrash },
+            op => op,
+        }
+    }
+
+    /// The same delete, removing the file for good with no Undo promised (the user acknowledged
+    /// that a file over 64 MB can't be brought back); other operations are returned unchanged.
+    pub fn no_promise(self) -> Self {
+        match self {
+            FileOp::Delete { path, .. } => FileOp::Delete { path, mode: DeleteMode::PermanentNoPromise },
+            FileOp::UnstageDelete { path, .. } => FileOp::UnstageDelete { path, mode: DeleteMode::PermanentNoPromise },
+            FileOp::Discard { path, .. } => FileOp::Discard { path, mode: DeleteMode::PermanentNoPromise },
             op => op,
         }
     }

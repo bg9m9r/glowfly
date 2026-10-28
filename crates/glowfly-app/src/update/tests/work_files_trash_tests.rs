@@ -68,14 +68,16 @@ fn permanent_preference_keeps_old_texts() {
     assert_eq!(
         body,
         format!(
-            "u.txt isn't tracked by git. Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open (files up to 64 MB).",
+            "u.txt isn't tracked by git. Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open. A file over 64 MB is too large to keep a copy of, so Glowfly asks again before deleting one.",
             keys("Ctrl+Z")
         )
     );
     assert_eq!(button, "Delete");
     assert_eq!(op, delete("u.txt", DeleteMode::Permanent));
-    let (body, ..) = ask(&mut st, "c.txt");
+    let (body, _, op) = ask(&mut st, "c.txt");
     assert_eq!(body, "c.txt is deleted from your working tree. Discarding the deletion brings it back from the last commit.");
+    // Git holds it: no Undo is promised, so even a large one isn't asked about again.
+    assert_eq!(op, delete("c.txt", DeleteMode::PermanentNoPromise));
     assert!(!body.contains(TRASH));
     let _ = std::fs::remove_dir_all(&dir);
 }

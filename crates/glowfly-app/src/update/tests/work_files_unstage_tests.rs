@@ -39,7 +39,7 @@ fn delete_staged_rename_asks_to_unstage_the_rename() {
     let (title, body, ..) = confirm(&st);
     assert_eq!(title, "Delete renamed file");
     // Undo keeps the unstaged edits: they are the bytes it puts back.
-    assert!(body.ends_with("brings back the file and the staged rename.") && !body.contains("lost"), "{body}");
+    assert!(body.contains("brings back the file and the staged rename.") && body.ends_with("asks again before deleting one."), "{body}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

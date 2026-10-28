@@ -65,44 +65,51 @@ pub type DeleteFailed = RestoreFailed;
 type Deleting = std::result::Result<DeletedSaving, DeleteFailed>;
 
 /// Deletes the working-tree file `path` (see [`repo::delete_file`]) via `via`, keeping its
-/// bytes first so the delete can be undone. A failure to keep them refuses the delete.
-pub fn delete_saving(workdir: &Path, path: &str, via: DeleteVia, t: Trashers) -> Deleting {
-    delete_saving_with(workdir, path, via, t, MAX_KEPT_BYTES)
+/// bytes first so the delete can be undone. A failure to keep them refuses the delete, and so
+/// does a file too large to keep when `promised` (its confirmation said Undo brings it back):
+/// [`Error::NoCopyKept`], with the file left as it is.
+pub fn delete_saving(workdir: &Path, path: &str, via: DeleteVia, promised: bool, t: Trashers) -> Deleting {
+    delete_saving_with(workdir, path, via, promised, t, MAX_KEPT_BYTES)
 }
 
 /// `delete_saving` with the size limit given, for tests.
-pub(super) fn delete_saving_with(workdir: &Path, path: &str, via: DeleteVia, t: Trashers, limit: u64) -> Deleting {
-    saving(workdir, path, via, None, limit, || repo::delete_file(workdir, path, t.removal(via)))
+pub(super) fn delete_saving_with(workdir: &Path, path: &str, via: DeleteVia, promised: bool, t: Trashers, limit: u64) -> Deleting {
+    saving(workdir, path, via, None, (limit, promised), || repo::delete_file(workdir, path, t.removal(via)))
 }
 
 /// Discards the untracked file `path` (see [`repo::discard_untracked`]) via `via`, keeping its
-/// bytes first so the discard can be undone like a delete.
-pub fn discard_untracked_saving(workdir: &Path, path: &str, via: DeleteVia, t: Trashers) -> Deleting {
-    saving(workdir, path, via, None, MAX_KEPT_BYTES, || repo::discard_untracked(workdir, path, t.removal(via)))
+/// bytes first so the discard can be undone like a delete (`promised` as for `delete_saving`).
+pub fn discard_untracked_saving(workdir: &Path, path: &str, via: DeleteVia, promised: bool, t: Trashers) -> Deleting {
+    saving(workdir, path, via, None, (MAX_KEPT_BYTES, promised), || repo::discard_untracked(workdir, path, t.removal(via)))
 }
 
 /// Unstage and delete (see [`repo::delete_staged_new_file`]) via `via`, keeping the working
-/// copy's bytes and the staged entry first.
-pub fn delete_staged_saving(workdir: &Path, path: &str, via: DeleteVia, t: Trashers) -> Deleting {
+/// copy's bytes and the staged entry first (`promised` as for `delete_saving`).
+pub fn delete_staged_saving(workdir: &Path, path: &str, via: DeleteVia, promised: bool, t: Trashers) -> Deleting {
     let staged = repo::staged_new(workdir, path).map_err(refused)?;
-    saving(workdir, path, via, Some(staged), MAX_KEPT_BYTES, || repo::delete_staged_new_file(workdir, path, t.removal(via)))
+    saving(workdir, path, via, Some(staged), (MAX_KEPT_BYTES, promised), || repo::delete_staged_new_file(workdir, path, t.removal(via)))
 }
 
 fn refused(error: Error) -> DeleteFailed {
     DeleteFailed { error, undo: None }
 }
 
-/// Keeps `path`'s bytes, then runs `delete`. When that fails after the file went, the index is
-/// as it was (it changes last, in one write), so the undo entry puts back only the file.
+/// Keeps `path`'s bytes (up to `limit`), then runs `delete`; a file over `limit` is refused
+/// when `promised`, since the confirmation said Undo would bring it back. When the delete fails
+/// after the file went, the index is as it was (it changes last, in one write), so the undo
+/// entry puts back only the file.
 fn saving(
     workdir: &Path,
     path: &str,
     via: DeleteVia,
     staged: Option<StagedNew>,
-    limit: u64,
+    (limit, promised): (u64, bool),
     delete: impl FnOnce() -> Result<Deleted>,
 ) -> Deleting {
     let (before, too_large) = keep(workdir, path, limit).map_err(refused)?;
+    if too_large && promised {
+        return Err(refused(Error::NoCopyKept(format!("{path} is too large for Glowfly to keep a copy for Undo"))));
+    }
     match delete() {
         Ok(how) => Ok(finish(path, how, before, via, staged, too_large)),
         Err(error) => {

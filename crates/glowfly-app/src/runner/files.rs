@@ -81,10 +81,14 @@ fn work_file_with(workdir: &Path, op: FileOp, trashers: undo::Trashers) -> Msg {
         FileOp::Create(p) => plain(repo::create_file(workdir, p).map(WorkFileOk::written)),
         FileOp::Rename { from, to, stage: true } => plain(repo::rename_file_staged(workdir, from, to).map(WorkFileOk::written)),
         FileOp::Rename { from, to, stage: false } => plain(repo::rename_file(workdir, from, to).map(WorkFileOk::written)),
-        FileOp::Delete { path, mode } => deleting(undo::delete_saving(workdir, path, mode.via(), trashers)),
-        FileOp::UnstageDelete { path, mode } => deleting(undo::delete_staged_saving(workdir, path, mode.via(), trashers)),
+        FileOp::Delete { path, mode } => deleting(undo::delete_saving(workdir, path, mode.via(), mode.promises_copy(), trashers)),
+        FileOp::UnstageDelete { path, mode } => {
+            deleting(undo::delete_staged_saving(workdir, path, mode.via(), mode.promises_copy(), trashers))
+        }
         FileOp::UnstageGone(p) => plain(undo::unstage_gone_saving(workdir, p).map(|a| WorkFileOk::Unstaged { undo: Some(Box::new(a)) })),
-        FileOp::Discard { path, mode } => deleting(undo::discard_untracked_saving(workdir, path, mode.via(), trashers)),
+        FileOp::Discard { path, mode } => {
+            deleting(undo::discard_untracked_saving(workdir, path, mode.via(), mode.promises_copy(), trashers))
+        }
     };
     match r {
         Err((Error::TrashRefused(refusal), None)) => {
@@ -92,9 +96,16 @@ fn work_file_with(workdir: &Path, op: FileOp, trashers: undo::Trashers) -> Msg {
             let too_large = !op.delete_path().is_some_and(|p| undo::keeps_copy(workdir, p));
             Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal, too_large })
         }
+        Err((Error::NoCopyKept(reason), None)) => Msg::WorkFile(WorkFileMsg::NoCopyKept { op, reason }),
         Err((e, Some(undo))) => Msg::WorkFile(WorkFileMsg::WorkFileFailed { op, error: e.to_string(), undo }),
         r => Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: r.map_err(|(e, _)| e.to_string()) }),
     }
+}
+
+/// `work_file` with the stand-in trashes, for tests.
+#[cfg(test)]
+pub(crate) fn work_file_for_test(workdir: &Path, op: FileOp) -> Msg {
+    work_file_with(workdir, op, TRASHERS)
 }
 
 /// `work_file` with a trash that refuses every file (`TrashProblem::NoTrash`), for tests.

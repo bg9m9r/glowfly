@@ -96,6 +96,8 @@ pub enum WorkFileMsg {
     /// The trash refused `op`'s file; nothing changed. `too_large`: Glowfly would keep no copy
     /// of it for Undo (over 64 MB), so deleting it permanently would be final.
     TrashRefused { op: FileOp, refusal: glowfly_core::repo::TrashRefusal, too_large: bool },
+    /// `op` promised Undo, but its file is over 64 MB so no copy could be kept; nothing changed.
+    NoCopyKept { op: FileOp, reason: String },
 }
 
 impl WorkFileMsg {
@@ -116,6 +118,7 @@ impl WorkFileMsg {
                 Some(Inactive::LogAndUndo { text: crate::update::work_files::failure(&op, &error), undo: *undo })
             }
             Self::TrashRefused { op, refusal, .. } => Some(Inactive::Log(op.not_deleted(&refusal.detail))),
+            Self::NoCopyKept { op, reason } => Some(Inactive::Log(op.not_deleted(&reason))),
         }
     }
 }

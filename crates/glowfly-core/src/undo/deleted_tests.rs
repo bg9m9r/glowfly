@@ -46,7 +46,7 @@ fn a_deleted_file_comes_back_byte_for_byte_and_goes_again() {
     let edited: &[u8] = b"one\r\ntwo changed\r\n\xff not utf-8";
     std::fs::write(dir.join("f.txt"), edited).unwrap();
     let before = in_bin("f.txt");
-    let d = delete_saving(&dir, "f.txt", DeleteVia::Trash, T).unwrap();
+    let d = delete_saving(&dir, "f.txt", DeleteVia::Trash, false, T).unwrap();
     assert_eq!((d.how, d.too_large), (Deleted::Trashed, false));
     let a = d.undo.expect("undoable");
     assert!(matches!(&a, Action::DeleteFile { path, via: DeleteVia::Trash, staged: None, .. } if path == "f.txt"), "{a:?}");
@@ -69,7 +69,7 @@ fn a_permanent_delete_comes_back_and_redo_removes_it_for_good() {
     let dir = base("udel-permanent");
     std::fs::create_dir_all(dir.join("sub/deep")).unwrap();
     std::fs::write(dir.join("sub/deep/u.txt"), "untracked\n").unwrap();
-    let a = delete_saving(&dir, "sub/deep/u.txt", DeleteVia::Permanent, T).unwrap().undo.unwrap();
+    let a = delete_saving(&dir, "sub/deep/u.txt", DeleteVia::Permanent, false, T).unwrap().undo.unwrap();
     assert!(!dir.join("sub").exists(), "the emptied folders were pruned");
     undo(&dir, &a);
     assert_eq!(std::fs::read_to_string(dir.join("sub/deep/u.txt")).unwrap(), "untracked\n");
@@ -83,7 +83,7 @@ fn a_permanent_delete_comes_back_and_redo_removes_it_for_good() {
 #[test]
 fn undo_never_overwrites_and_redo_never_deletes_edits() {
     let dir = base("udel-refused");
-    let a = delete_saving(&dir, "f.txt", DeleteVia::Permanent, T).unwrap().undo.unwrap();
+    let a = delete_saving(&dir, "f.txt", DeleteVia::Permanent, false, T).unwrap().undo.unwrap();
     let Action::DeleteFile { before, .. } = &a else { unreachable!() };
     write(&dir, "f.txt", "someone else's\n");
     let r = refusal(plan(&dir, &a, false).unwrap());
@@ -107,7 +107,7 @@ fn links_and_large_files_get_no_undo() {
     let objects = || {
         git2::Repository::open(&dir).unwrap().odb().unwrap().exists(git2::Oid::hash_object(git2::ObjectType::Blob, b"0123456789").unwrap())
     };
-    let d = super::deleted::delete_saving_with(&dir, "ten.txt", DeleteVia::Permanent, T, 4).unwrap();
+    let d = super::deleted::delete_saving_with(&dir, "ten.txt", DeleteVia::Permanent, false, T, 4).unwrap();
     assert!(d.too_large && d.undo.is_none(), "{d:?}");
     assert!(!objects(), "no blob was written");
 
@@ -121,7 +121,7 @@ fn links_and_large_files_get_no_undo() {
         eprintln!("skipped the link case: symbolic links are unavailable here");
         return;
     }
-    let d = delete_saving(&dir, "link.txt", DeleteVia::Trash, T).unwrap();
+    let d = delete_saving(&dir, "link.txt", DeleteVia::Trash, false, T).unwrap();
     assert_eq!((d.how, d.undo.is_none(), d.too_large), (Deleted::LinkRemoved, true, false));
     assert!(target.exists(), "the target is untouched");
     let _ = std::fs::remove_dir_all(&dir);
@@ -134,7 +134,7 @@ fn unstage_and_delete_of_a_new_file_is_staged_again() {
     git(&dir, &["add", "n.txt"]);
     let blob = |d: &Path| git2::Repository::open(d).unwrap().index().unwrap().get_path(Path::new("n.txt"), 0).map(|e| (e.id, e.mode));
     let staged_before = blob(&dir);
-    let a = delete_staged_saving(&dir, "n.txt", DeleteVia::Trash, T).unwrap().undo.unwrap();
+    let a = delete_staged_saving(&dir, "n.txt", DeleteVia::Trash, false, T).unwrap().undo.unwrap();
     assert_eq!(blob(&dir), None);
 
     undo(&dir, &a);
@@ -162,7 +162,7 @@ fn unstage_and_delete_of_a_rename_brings_the_rename_back() {
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "base"]);
     git(&dir, &["mv", "old.txt", "new.txt"]);
-    let a = delete_staged_saving(&dir, "new.txt", DeleteVia::Permanent, T).unwrap().undo.unwrap();
+    let a = delete_staged_saving(&dir, "new.txt", DeleteVia::Permanent, false, T).unwrap().undo.unwrap();
     undo(&dir, &a);
     let (_, staged, _) = repo::status_at(&dir, true).unwrap();
     let staged: Vec<_> = staged.into_iter().map(|f| (f.path, f.status)).collect();
@@ -175,9 +175,9 @@ fn a_staged_undo_waits_for_an_operation_in_progress() {
     let dir = base("udel-busy");
     write(&dir, "n.txt", "new\n");
     git(&dir, &["add", "n.txt"]);
-    let staged = delete_staged_saving(&dir, "n.txt", DeleteVia::Permanent, T).unwrap().undo.unwrap();
+    let staged = delete_staged_saving(&dir, "n.txt", DeleteVia::Permanent, false, T).unwrap().undo.unwrap();
     write(&dir, "p.txt", "plain\n");
-    let plain = delete_saving(&dir, "p.txt", DeleteVia::Permanent, T).unwrap().undo.unwrap();
+    let plain = delete_saving(&dir, "p.txt", DeleteVia::Permanent, false, T).unwrap().undo.unwrap();
     // A merge in progress, as git leaves it.
     let head = git2::Repository::open(&dir).unwrap().head().unwrap().target().unwrap();
     std::fs::write(dir.join(".git/MERGE_HEAD"), format!("{head}\n")).unwrap();
@@ -195,7 +195,7 @@ fn an_executable_file_comes_back_executable() {
     let script = dir.join("run.sh");
     std::fs::write(&script, "#!/bin/sh\n").unwrap();
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
-    let a = delete_saving(&dir, "run.sh", DeleteVia::Permanent, T).unwrap().undo.unwrap();
+    let a = delete_saving(&dir, "run.sh", DeleteVia::Permanent, false, T).unwrap().undo.unwrap();
     undo(&dir, &a);
     let mode = std::fs::metadata(&script).unwrap().permissions().mode();
     assert_ne!(mode & 0o100, 0, "{mode:o}");

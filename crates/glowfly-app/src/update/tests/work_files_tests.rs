@@ -178,7 +178,7 @@ fn delete_asks_first() {
     );
 
     run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "a.txt".into(), confirmed: false }));
-    assert!(confirm(&st).1.contains("a.txt is deleted with your uncommitted changes; Undo"), "{}", confirm(&st).1);
+    assert!(confirm(&st).1.contains("a.txt is deleted with your uncommitted changes; Glowfly keeps a copy so Undo"), "{}", confirm(&st).1);
     run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "s.txt".into(), confirmed: false }));
     assert!(confirm(&st).1.contains("brings it back as it is now"), "{}", confirm(&st).1);
 
@@ -217,7 +217,7 @@ fn delete_staged_new_file_asks_to_unstage() {
     run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "s.txt".into(), confirmed: false }));
     let (title, body, ..) = confirm(&st);
     assert_eq!(title, "Delete new file");
-    assert!(body.ends_with("brings back both.") && !body.contains("lost"), "{body}");
+    assert!(body.contains("brings back both.") && body.ends_with("asks again before deleting one.") && !body.contains("lost"), "{body}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

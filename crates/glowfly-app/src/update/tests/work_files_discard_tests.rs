@@ -63,17 +63,15 @@ fn discard_confirm_trash_off() {
     assert_eq!(
         body,
         format!(
-            "u.txt isn't tracked by git. Discarding it deletes it. Glowfly keeps a copy of files up to 64 MB, so Undo ({}) can bring it back while this tab is open; a larger file can't be brought back.",
+            "u.txt isn't tracked by git. Discarding it deletes it; Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open. A file over 64 MB is too large to keep a copy of, so Glowfly asks again before deleting one.",
             keys("Ctrl+Z")
         )
     );
     assert!(!body.contains(TRASH));
     assert_eq!(button, "Discard");
     assert_eq!(op, discard("u.txt", DeleteMode::Permanent));
-    // Its size isn't known here, and a file over 64 MB would be gone for good.
-    assert_eq!(ack(&st), Some("I understand this can't be undone"));
-    assert!(run(&mut st, Msg::ConfirmAccepted).is_empty(), "nothing runs before the tick");
-    tick(&mut st);
+    // Undo is promised, so a file over 64 MB is refused when it runs and asked about again.
+    assert_eq!(ack(&st), None);
     assert_eq!(work_ops(&run(&mut st, Msg::ConfirmAccepted)), [discard("u.txt", DeleteMode::Permanent)]);
     let _ = std::fs::remove_dir_all(&dir);
 }

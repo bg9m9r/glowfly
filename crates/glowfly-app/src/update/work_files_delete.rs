@@ -40,25 +40,24 @@ pub(super) fn ask_delete(st: &mut AppState, path: String) {
     }
     let staged = snap.staged.iter().any(|f| f.path == path);
     let trash = mode == DeleteMode::Trash;
+    let t = st.settings.lang();
     let body = match unstaged {
         Some(f) if f.status == '?' && trash => {
             format!("{path} isn't tracked by git. It goes to the {TRASH}, so you can restore it from there.")
         }
-        Some(f) if f.status == '?' => format!(
-            "{path} isn't tracked by git. Glowfly keeps a copy so Undo{hint} can bring it back while this tab is open (files up to 64 MB)."
-        ),
+        Some(f) if f.status == '?' => t.trf("files.delete.permanent_untracked", &[("path", &path), ("hint", &hint)]),
         Some(_) if trash => format!(
             "{path} goes to the {TRASH} with your uncommitted changes. Discarding the deletion afterwards brings back its staged or committed version instead."
         ),
-        Some(_) => format!(
-            "{path} is deleted with your uncommitted changes; Undo{hint} brings them back. Discarding the deletion instead brings back its staged or committed version."
-        ),
+        Some(_) => t.trf("files.delete.permanent_edited", &[("path", &path), ("hint", &hint)]),
         None if staged && trash => format!("{path} goes to the {TRASH}. Discarding the deletion brings it back as it is now."),
         None if staged => format!("{path} is deleted from your working tree. Discarding the deletion brings it back as it is now."),
         None if trash => format!("{path} goes to the {TRASH}. Discarding the deletion brings it back from the last commit."),
         None => format!("{path} is deleted from your working tree. Discarding the deletion brings it back from the last commit."),
     };
     let button = if trash { format!("Move to {TRASH}") } else { "Delete".into() };
+    // Git holds an unedited tracked file's content, so no Undo is promised for it.
+    let mode = if !trash && unstaged.is_none() { DeleteMode::PermanentNoPromise } else { mode };
     st.modal = Some(Modal::danger("Delete file", body, button, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Delete { path, mode }))));
 }
 
@@ -76,14 +75,12 @@ pub(super) fn ask_discard(st: &mut AppState, path: String) {
             format!("Move to {TRASH}"),
         )
     } else {
-        // Glowfly keeps a copy for Undo only of files up to 64 MB, and the size isn't known here.
+        // Undo is promised: a file over 64 MB is refused and asked about again (`no_copy_kept`).
         let hint = st.keymap.paren(BindingId::Undo);
         (st.settings.lang().trf("files.discard.permanent_body", &[("path", &path), ("hint", &hint)]), "Discard".to_owned())
     };
-    let trash = mode == DeleteMode::Trash;
-    let modal = Modal::danger("Discard changes", body, button, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode })));
-    // Without the trash, a file over 64 MB is gone for good: ask for the acknowledgement.
-    st.modal = Some(if trash { modal } else { modal.with_ack(st.settings.lang().tr("common.ack.check")) });
+    st.modal =
+        Some(Modal::danger("Discard changes", body, button, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode }))));
 }
 
 /// The confirmation for `path`, staged as new or (`renamed`) as a staged rename's new path:
@@ -106,17 +103,13 @@ pub(super) fn unstage_confirm(t: Lang, path: String, renamed: bool, gone: bool, 
         (true, true) => format!(
             "{path} is staged as a rename. It goes to the {TRASH} and the rename is unstaged: the file it was renamed from stays deleted in your working tree as an unstaged change, and discarding that brings back its committed version. Undo{hint} brings back the file and the staged rename."
         ),
-        (true, false) => format!(
-            "{path} is staged as a rename. Deleting it also unstages the rename: the file it was renamed from stays deleted in your working tree as an unstaged change, and discarding that brings back its committed version. Undo{hint} brings back the file and the staged rename."
-        ),
+        (true, false) => t.trf("files.unstage_delete.permanent_renamed", &[("path", &path), ("hint", &hint)]),
         (false, true) => {
             format!(
                 "{path} is a new file in the staging area. It goes to the {TRASH} and leaves the staging area; Undo{hint} stages it again."
             )
         }
-        (false, false) => format!(
-            "{path} is a new file in the staging area. Deleting it also takes it out of the staging area; Undo{hint} brings back both."
-        ),
+        (false, false) => t.trf("files.unstage_delete.permanent_new", &[("path", &path), ("hint", &hint)]),
     };
     // Undo keeps the edits in the permanent case too: they are the bytes it puts back.
     if edits && trash {
@@ -160,7 +153,8 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal
             if matches!(op, FileOp::UnstageDelete { .. }) {
                 body.push_str(" It also leaves the staging area.");
             }
-            let then = Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.clone().permanent()));
+            let for_good = if too_large { op.clone().no_promise() } else { op.clone().permanent() };
+            let then = Msg::WorkFile(WorkFileMsg::DeleteConfirmed(for_good));
             let modal = Modal::danger("Delete permanently?", body, "Delete permanently", then);
             if too_large { modal.with_ack(ack) } else { modal }
         }
@@ -194,6 +188,18 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal
             Modal::TrashOffer(TrashOffer { op: op.clone(), path, body, confirm })
         }
     });
+}
+
+/// `op` promised Undo but its file is over 64 MB, so nothing was deleted: asks whether to delete
+/// it for good anyway, with the acknowledgement.
+pub(super) fn no_copy_kept(st: &mut AppState, op: FileOp) {
+    let Some(path) = op.delete_path().map(str::to_owned) else {
+        return tracing::debug!("no copy kept for {op:?}, which isn't a delete");
+    };
+    let t = st.settings.lang();
+    let body = t.trf("files.no_copy_kept.body", &[("path", &path)]);
+    let then = Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.no_promise()));
+    st.modal = Some(Modal::danger("Delete permanently?", body, "Delete permanently", then).with_ack(t.tr("common.ack.check")));
 }
 
 /// What a delete's toast says about Undo: nothing, that Undo (with its key, when the result is
