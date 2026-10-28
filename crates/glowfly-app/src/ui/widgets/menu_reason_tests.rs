@@ -86,7 +86,8 @@ fn a_long_reason_does_not_widen_the_item() {
     drop(h);
     let [short, long, ready] = widths[..] else { panic!("{widths:?}") };
     assert_eq!(short, long, "the reason isn't in the menu");
-    assert!(short >= ready + INFO_ROOM - 0.5, "the info mark's room: {short} vs {ready}");
+    let room = crate::ui::widgets::menu_columns::LABEL_GAP + crate::ui::widgets::menu_columns::INFO_SLOT;
+    assert!(short >= ready + room - 0.5, "the info mark's room: {short} vs {ready}");
 }
 
 #[test]

@@ -4,8 +4,8 @@ Button "File"
 Button "Edit"
 Button "View"
 Button "Window"
-Button "demo"
-Button "api-server"
+RadioButton "demo" [on]
+RadioButton "api-server" [off]
 Button "Next tab"
 Button "Previous tab"
 Button "Close other tabs"

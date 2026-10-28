@@ -27,7 +27,9 @@ source file, update its line here.
 - `list_row.rs` holds the file lists' fixed-height `file_row` and `file_row_with_end`, whose right-hand part keeps its width while the path is cut, and `row_text` for their unnamed path.
 - The file rows are one click target each, with the selection painted across the row and into the panel padding.
 - `widgets/row_fill.rs`: one selection fill with a left accent bar and lifted hover, shared by the graph, sidebar rows, file rows and the file history list.
-- `widgets/menu.rs`: the one menu style (row metrics from `theme/spacing.rs`'s `menu` tokens, transparent rows, `SM` pills) and the only ways to open a menu: `context_menu`, `submenu`, `popup_below`, `custom_button`, `below`, plus `separator` (never first or doubled), `group_header` and `inset` for plain lines, and `danger_style` / `danger_submenu` for destructive items; `tests/menus.rs` checks.
+- `widgets/menu.rs`: the one menu style (row metrics from `theme/spacing.rs`'s `menu` tokens, transparent rows, `SM` pills) and the only ways to open a menu: `context_menu`, `submenu`, `popup_below`, `custom_button`, `below`, plus `separator` (never first or doubled), `group_header` (the one group-header style, in place of its separator), `inset` for plain lines at the label column, and `danger_style` / `danger_submenu` for destructive items; `tests/menus.rs` checks.
+- `widgets/menu_columns.rs`: a menu's shared columns (state, icon, label, reason slot, shortcut, chevron slot), learned from its rows each pass so every row lines up.
+- `widgets/menu_row.rs`: the menu row (`menu::item`): a ✓, radio dot or current-choice ✓ in the state column, a dot or swatch in the icon column, the label, the info mark and the shortcut on the menu's columns.
 - `widgets/row_menu.rs` (`RowMenuExt::row_menu`): right-click menus that open just below their row (at the pointer's x), or above it when they don't fit, sharing egui's context-menu state.
 - `widgets/truncate.rs`: single-line text cut with an ellipsis and its whole text on hover, and names and paths cut in the middle.
 - `widgets/section_header.rs`: the left panel's section headers with their hover + (the section's create action) and ⋯ (its menu), and the empty state line under an empty section; each + is described by `state/section_actions.rs`.
@@ -39,7 +41,7 @@ source file, update its line here.
 
 - `widgets/reason.rs` draws disabled reasons and setup suffixes: a weak line beside or under a disabled button.
 - A dialog footer's reason sits in the row before Cancel, or above it when the row is full; laid out by `dialog_footer.rs`.
-- `widgets/menu_reason.rs` (re-exported by `widgets/reason.rs`): a menu item's greyed label with a painted info mark and its reason in the shared tooltip on hover or focus (described to screen readers too), or "Set up…" after its label, or a destructive (`Danger`) item in the danger style.
+- `widgets/menu_reason.rs` (re-exported by `widgets/reason.rs`): a menu item's states (`ItemState`): a greyed label with a painted info mark and its reason in the shared tooltip on hover or focus (described to screen readers too), "Set up…" in the shortcut column, or a destructive (`Danger`) item in the danger style; drawn by `menu_row.rs`.
 
 ## Tooltips
 

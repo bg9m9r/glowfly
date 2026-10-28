@@ -89,12 +89,6 @@ impl egui::Widget for Check<'_> {
     }
 }
 
-/// A checkbox's box, as `Check` draws it, in the icon square at the left of `rect` (egui's
-/// `icon_rectangles`), for items that draw their own label (the View menu's check items).
-pub fn paint_check_box(ui: &Ui, rect: Rect, on: bool, hovered: bool) {
-    paint_box(ui, rect, on, false, hovered);
-}
-
 /// Paints the box (with a check mark when `checked`, a dash when `indeterminate`); returns it.
 fn paint_box(ui: &Ui, rect: Rect, checked: bool, indeterminate: bool, hovered: bool) -> Rect {
     let p = color::current();

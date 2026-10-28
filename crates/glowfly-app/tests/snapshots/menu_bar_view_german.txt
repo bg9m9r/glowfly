@@ -14,10 +14,10 @@ CheckBox "Vollbild" [off]
 CheckBox "Terminal" [off]
 CheckBox "Aktivitätsprotokoll" [off]
 CheckBox "Vorgangsjournal" [off]
-Label "Diff-Layout"
+Heading "Diff-Layout"
 RadioButton "Untereinander" [on]
 RadioButton "Nebeneinander" [off]
-Label "Diff zeigt"
+Heading "Diff zeigt"
 RadioButton "Nur geänderte Zeilen" [on]
 RadioButton "Ganze Datei" [off]
 CheckBox "Leerraum ignorieren" [off]

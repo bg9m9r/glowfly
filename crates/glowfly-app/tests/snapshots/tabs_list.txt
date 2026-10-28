@@ -2,11 +2,11 @@ window 1400x820
 Label "Glowfly 0.1.0"
 Button "New tab"
 Button "All tabs and recently closed tabs"
-Label "Open tabs"
-Button "demo"
-Button "api-server"
-Button "Frontend"
-Label "Recently closed"
+Heading "Open tabs"
+RadioButton "demo" [on]
+RadioButton "api-server" [off]
+RadioButton "Frontend" [off]
+Heading "Recently closed"
 Button "Team notes"
 Button "old-repo"
 Button "demo"

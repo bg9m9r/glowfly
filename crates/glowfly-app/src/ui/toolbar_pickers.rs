@@ -5,7 +5,7 @@
 //! its start and end around a "…" (`truncate::cut_middle_in`), a longer repository name is cut
 //! at its end. A cut name shows whole on hover, and the accessible name is always the whole name.
 //! The branch name follows a dot in the checked-out branch's colour (a ring while HEAD is
-//! detached), and each branch in its menu starts with its colour dot.
+//! detached), and each branch in its menu has its colour dot, the checked-out one checked.
 
 use super::menus::repo_menu;
 use crate::msg::{BranchMsg, Msg};
@@ -17,7 +17,7 @@ use crate::ui::theme::branch_colours::line;
 use crate::ui::theme::color;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale::{self, BODY, CAPTION};
-use crate::ui::widgets::menu::separator;
+use crate::ui::widgets::menu::{self, separator};
 use crate::ui::widgets::truncate::{cut_galley, cut_job, cut_middle_in};
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, Color32, CornerRadius, Galley, Id, Response, Sense, WidgetInfo, WidgetType, pos2, vec2};
@@ -106,15 +106,17 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             part(ui, t.tr("toolbar.branch"), (g, branch_w), Some(tone), head, cut, |ui| {
                 ui.set_min_width(220.0);
                 for b in &snap.locals {
-                    let text = if b.is_head { format!("✔ {}", b.name) } else { b.name.clone() };
-                    let why = if b.is_head {
-                        Some(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &b.name)]))
-                    } else {
-                        crate::state::worktree_branches::checkout_blocked(snap, &b.name)
-                    };
-                    let r = branch_dot::menu_row_if(ui, &text, Some(line(snap.branch_swatch(&b.name))), why.as_deref());
+                    // The current branch is checked and stays enabled: a click just closes the menu.
+                    let why = (!b.is_head).then(|| crate::state::worktree_branches::checkout_blocked(snap, &b.name)).flatten();
+                    let dot = Some(line(snap.branch_swatch(&b.name)));
+                    let r =
+                        menu::item(b.name.as_str()).current(b.is_head).icon(branch_dot::paint_slot, dot).blocked(why.as_deref()).show(ui);
+                    let r =
+                        if b.is_head { r.on_hover_text(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &b.name)])) } else { r };
                     if r.clicked() {
-                        msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
+                        if !b.is_head {
+                            msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
+                        }
                         ui.close_menu();
                     }
                 }

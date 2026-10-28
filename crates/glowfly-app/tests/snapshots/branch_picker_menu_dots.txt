@@ -3,11 +3,11 @@ Label "Glowfly 0.1.0"
 Button "New tab"
 Button "demo"
 Button "main"
-Button "fix-1"
-Button "login-page"
-Button "✔ main" [disabled]
-Button "search"
-Button "topic"
+RadioButton "fix-1" [off]
+RadioButton "login-page" [off]
+RadioButton "main" [on]
+RadioButton "search" [off]
+RadioButton "topic" [off]
 Button "New branch…"
 Button "Undo the last action" [disabled]
 Button "Redo the undone action" [disabled]
@@ -132,6 +132,7 @@ painted:
   "Ada Lovelace"
   "222c0ad"
   "01/10/2026 10:00 AM"
+  "✔ main"
   "+2"
   "Ada Lovelace"
   "f0d635c"

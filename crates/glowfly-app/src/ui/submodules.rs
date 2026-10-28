@@ -17,8 +17,7 @@ use crate::state::submodules::{
     SectionCx, copy_url_blocked, copy_url_text, dot_tip, edit_blocked, open_blocked, row_word, tooltip, update_blocked, update_label,
 };
 use crate::submodule::{Batch, SubmoduleMsg};
-use crate::ui::theme::controls;
-use crate::ui::widgets::menu::{separator, submenu};
+use crate::ui::widgets::menu::{self, separator, submenu};
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Painter, Pos2, Rect, Stroke, pos2, vec2};
 use glowfly_core::i18n::Lang;
@@ -92,7 +91,7 @@ fn header_menu(ui: &mut egui::Ui, snap: &Snapshot, cx: &SectionCx, add: &Section
             (SubmoduleUpdates::Always, "Always in this repository"),
             (SubmoduleUpdates::Never, "Never in this repository"),
         ] {
-            if controls::radio(ui, cx.updates == choice, label).clicked() {
+            if menu::item(label).option(cx.updates == choice).show(ui).clicked() {
                 msgs.push(Msg::Submodule(SubmoduleMsg::SetUpdates(choice)));
                 ui.close_menu();
             }

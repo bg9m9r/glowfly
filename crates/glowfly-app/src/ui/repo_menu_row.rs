@@ -1,5 +1,6 @@
 //! One repository row of the repository menu and File > Open recent: a single 32 px target
-//! (click, Enter or Space opens the repository or switches to its tab) with the colour swatch,
+//! (click, Enter or Space opens the repository or switches to its tab) with the colour swatch
+//! (in the menu's icon column, `widgets::menu_columns`),
 //! the folder name, its parent folder small and weak and cut at whole folders in the middle to
 //! fit, a status ("Current", "In a tab", "Not found") and, at the right, the star and, on
 //! Recent rows, ×.
@@ -10,7 +11,7 @@
 use super::repo_swatch;
 use super::theme::{color, tokens, type_scale};
 use super::widgets::truncate::{cut_path_in, paint_cut_text};
-use super::widgets::{self, Icon};
+use super::widgets::{self, Icon, menu_columns};
 use crate::ui::theme::tokens::radius;
 use eframe::egui::{self, Color32, CornerRadius, Id, Key, Rect, Response, Sense, Ui, pos2, vec2};
 use std::path::PathBuf;
@@ -122,14 +123,15 @@ pub fn show(ui: &mut Ui, row: &Row, cols: Columns, words: &Words<'_>) -> Option<
     if resp.has_focus() {
         tokens::focus_ring_inset(p, rect, radius::SM);
     }
+    // The swatch goes in the menu's icon column, so the names start where every label does.
+    let lead = menu_columns::note(ui, menu_columns::Columns { icon: cols.swatch, ..Default::default() });
+    let p = ui.painter();
     let pad = ui.spacing().button_padding.x;
-    let mut x = rect.left() + pad;
-    if cols.swatch {
-        if let Some(c) = row.swatch {
-            repo_swatch::paint(p, pos2(x, rect.center().y), repo_swatch::SIZE, c);
-        }
-        x += repo_swatch::ROOM;
+    if let (true, Some(c)) = (cols.swatch, row.swatch) {
+        let slot = Rect::from_min_size(pos2(rect.left() + lead.icon_left(pad), rect.top()), vec2(menu_columns::ICON_W, rect.height()));
+        repo_swatch::paint_slot(p, slot, c);
     }
+    let mut x = rect.left() + lead.label_x(pad);
     let missing = row.status == Some(Status::NotFound);
     let ink = if missing { color::faint() } else { color::text() };
     let name_w = cols.name_w.min((rect.width() * NAME_SHARE).floor());

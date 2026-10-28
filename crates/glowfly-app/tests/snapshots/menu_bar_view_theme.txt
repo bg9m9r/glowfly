@@ -14,10 +14,10 @@ CheckBox "Full screen" [off]
 CheckBox "Terminal" [off]
 CheckBox "Activity log" [off]
 CheckBox "Operation journal" [off]
-Label "Diff layout"
+Heading "Diff layout"
 RadioButton "Inline" [on]
 RadioButton "Side by side" [off]
-Label "Diff shows"
+Heading "Diff shows"
 RadioButton "Changed lines only" [on]
 RadioButton "Whole file" [off]
 CheckBox "Ignore whitespace" [off]
@@ -26,14 +26,14 @@ Button "Theme"
 RadioButton "Graphite" [off]
 RadioButton "Dawn" [off]
 RadioButton "Match system" [off]
-Label "Dark"
+Heading "Dark"
 RadioButton "Dusk" [on]
 RadioButton "Midnight" [off]
 RadioButton "Ember" [off]
 RadioButton "Pine" [off]
 RadioButton "Garden Dark" [off]
 RadioButton "High Contrast Dark" [off]
-Label "Light"
+Heading "Light"
 RadioButton "Mist" [off]
 RadioButton "Linen" [off]
 RadioButton "Sand" [off]

@@ -35,13 +35,13 @@ Button "Remote actions"
 Button "Create pull request"
 Button "Pull requests actions"
 Button "Pull requests filter: All"
-Button "All" [on]
-Button "Mine" [off]
-Button "Needs my review" [off]
-Button "Assigned to me" [disabled, off]
-Label "Saved filters"
+RadioButton "All" [on]
+RadioButton "Mine" [off]
+RadioButton "Needs my review" [off]
+RadioButton "Assigned to me" [disabled, off]
+Heading "Saved filters"
 Label "None yet"
-Button "New filter…" [off]
+Button "New filter…"
 Button "Search results page"
 Button "Fix flaky login test"
 Button "Dark mode"

@@ -9,20 +9,26 @@
 //! comfortable unless a later setting picks compact in `metrics`).
 //!
 //! Separators go through `separator`: a 1 px line in the frame's edge colour, 4 px from the
-//! rows on each side, never the first child of a menu or right after another one (and a debug
-//! build asserts no menu ends with one). A group's header goes through `group_header`, which
-//! stands in for the separator; other plain lines (notes) use `inset` to line up with the item
-//! labels.
+//! rows on each side, never the first child of a menu or right after another one or a group
+//! header (and a debug build asserts no menu ends with one). A group's title is `group_header`,
+//! the one header style, in place of its separator. Plain lines (object headers, notes) use
+//! `inset` to line up with the item labels.
+//!
+//! Rows lay out on the menu's shared columns (`menu_columns.rs`: state, icon, label, reason,
+//! shortcut, chevron), which `styled` learns around each menu's contents; a row is
+//! `menu_row::item` (re-exported here), which every item helper draws through.
 //!
 //! A destructive item (`menu_reason::ItemState::Danger`, or a `danger_submenu` title) takes
 //! `danger_style`: its label in `color::menu_danger` and its hover pill `color::danger_hover`.
 
-use super::super::theme::color;
 use super::super::theme::spacing::menu::{self as tokens, Metrics};
 use super::super::theme::tokens::radius;
+use super::super::theme::{color, type_scale};
+use super::menu_columns::{self as columns, Columns};
+pub use super::menu_row::item;
 use eframe::egui::menu::BarState;
 use eframe::egui::{
-    self, AboveOrBelow, Color32, CornerRadius, Id, InnerResponse, PopupCloseBehavior, Response, Stroke, Ui, WidgetText, vec2,
+    self, AboveOrBelow, Color32, CornerRadius, Id, InnerResponse, PopupCloseBehavior, Response, Sense, Stroke, Ui, WidgetText, vec2,
 };
 
 /// The row metrics menus use now: comfortable (a compact variant is opt-in, not offered yet).
@@ -64,9 +70,38 @@ pub fn context_menu(resp: &Response, add_contents: impl FnOnce(&mut Ui)) -> Opti
 }
 
 /// A submenu row inside a menu (or, outside one, a button with its dropdown), its contents in
-/// the menu style.
+/// the menu style. Inside a menu its title starts at the label column and its painted chevron
+/// sits in the chevron slot (`menu_columns`), which every row of the menu then keeps.
 pub fn submenu<R>(ui: &mut Ui, title: impl Into<WidgetText>, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<Option<R>> {
-    ui.menu_button(title, |ui| styled(ui, add_contents))
+    if !in_menu(ui) {
+        return ui.menu_button(title, |ui| styled(ui, add_contents));
+    }
+    let c = columns::note(ui, Columns { chevron: true, ..Columns::default() });
+    let pad = ui.spacing().button_padding.x;
+    let ink = ui.visuals().override_text_color.unwrap_or_else(|| ui.visuals().widgets.inactive.text_color());
+    // egui paints its own arrow in the text colour: the title keeps its colour in the job and
+    // the arrow goes clear, for the painted chevron to take its place.
+    let mut job = title.into().into_layout_job(ui.style(), egui::FontSelection::Default, egui::Align::Center);
+    for s in &mut job.sections {
+        if s.format.color == Color32::PLACEHOLDER {
+            s.format.color = ink;
+        }
+    }
+    if let Some(first) = job.sections.first_mut() {
+        first.leading_space = c.label_x(pad) - pad;
+    }
+    // Not in a scope: the row keeps the id the menu's keyboard navigation expects of it.
+    let plain = ui.visuals().clone();
+    ui.visuals_mut().override_text_color = Some(Color32::TRANSPARENT);
+    let r = ui.menu_button(WidgetText::LayoutJob(job), |ui| {
+        *ui.visuals_mut() = plain.clone();
+        styled(ui, add_contents)
+    });
+    ui.visuals_mut().override_text_color = plain.override_text_color;
+    let lit = r.response.hovered() || r.inner.is_some();
+    let at = egui::pos2(r.response.rect.right() - pad - columns::CHEVRON_W / 2.0, r.response.rect.center().y);
+    super::chevron(ui.painter(), at, false, if lit { color::text() } else { color::weak() });
+    r
 }
 
 /// `ui`'s items in the destructive style: the label in the danger colour (`color::menu_danger`,
@@ -148,12 +183,14 @@ pub fn popover_below<R>(
     egui::popup::popup_below_widget(ui, id, anchor, close, add_contents)
 }
 
-/// Runs `add_contents` in the menu style.
+/// Runs `add_contents` in the menu style, its rows on shared columns (`menu_columns`).
 pub(in crate::ui) fn styled<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
     style(ui);
     let start = (ui.ctx().cumulative_pass_nr(), ui.cursor().top());
     ui.data_mut(|d| d.insert_temp(mark_id(ui, "menu-start"), start));
+    columns::begin(ui);
     let r = add_contents(ui);
+    columns::end(ui);
     debug_assert!(!just_after_separator(ui), "a menu ends with a separator");
     r
 }
@@ -163,12 +200,18 @@ pub(in crate::ui) fn styled<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -
 /// nothing don't leave doubled lines. Each menu is its own layer, which keys the marks, so a
 /// separator inside a nested scope of the menu counts too.
 pub fn separator(ui: &mut Ui) {
-    if at_mark(ui, "menu-start") || just_after_separator(ui) {
+    if at_mark(ui, "menu-start") || just_after_separator(ui) || at_mark(ui, "menu-header") {
         return;
     }
     ui.add(egui::Separator::default().spacing(tokens::SEPARATOR_H));
     let mark = (ui.ctx().cumulative_pass_nr(), ui.cursor().top());
     ui.data_mut(|d| d.insert_temp(mark_id(ui, "menu-separator"), mark));
+}
+
+/// Whether `ui` is inside a menu's contents this pass.
+fn in_menu(ui: &Ui) -> bool {
+    let start = ui.data(|d| d.get_temp::<(u64, f32)>(mark_id(ui, "menu-start")));
+    start.is_some_and(|(pass, _)| pass == ui.ctx().cumulative_pass_nr())
 }
 
 /// Whether the last thing drawn in `ui`'s menu this pass is a separator.
@@ -186,31 +229,40 @@ fn mark_id(ui: &Ui, name: &str) -> Id {
     Id::new((ui.layer_id(), name))
 }
 
-/// Lays out `add_contents` at the rows' text inset, for a menu's plain lines (a header, a note)
-/// to line up with the item labels.
+/// Lays out `add_contents` at the label column (after the state and icon columns the menu
+/// keeps), for a menu's plain lines (an object header, a note) to line up with the item labels.
 pub fn inset<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
-    let pad = ui.spacing().button_padding.x as i8;
-    egui::Frame::new().inner_margin(egui::Margin { left: pad, right: pad, top: 0, bottom: 0 }).show(ui, add_contents).inner
+    let pad = ui.spacing().button_padding.x;
+    let left = columns::used(ui).label_x(pad);
+    let m = egui::Margin { left: left.round() as i8, right: pad as i8, top: 0, bottom: 0 };
+    egui::Frame::new().inner_margin(m).show(ui, add_contents).inner
 }
 
-/// A group's header: `SMALL` semibold weak text at the rows' text inset, 20 px tall, 8 px below
-/// the row above (4 as the menu's first child) and 2 px above its first row. It stands in for
-/// the separator before its group, so don't add one. Not focusable; screen readers get a
-/// heading.
-pub fn group_header(ui: &mut Ui, title: &str) {
-    use super::super::theme::{color, type_scale};
-    let gap = ui.spacing().item_spacing.y;
-    ui.add_space(if at_mark(ui, "menu-start") { tokens::HEADER_FIRST_GAP } else { tokens::HEADER_GAP - gap });
-    let font = type_scale::strong(ui, type_scale::SMALL);
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), tokens::HEADER_H), egui::Sense::hover());
+/// A group's header: small semibold weak text at the label column, in sentence case, 8 px below
+/// the row before it (4 as the menu's first child) and 2 above the group's first row. It takes
+/// the place of the group's separator (a `separator` right after it draws nothing), can't be
+/// focused or clicked, and is a heading to screen readers.
+pub fn group_header(ui: &mut Ui, text: &str) -> Response {
+    let first = at_mark(ui, "menu-start");
+    let gap = if first { tokens::HEADER_FIRST_GAP } else { tokens::HEADER_GAP - ui.spacing().item_spacing.y };
+    ui.add_space(gap.max(0.0));
     let pad = ui.spacing().button_padding.x;
-    let at = egui::pos2(rect.left() + pad, rect.center().y);
-    super::truncate::paint_cut_text(ui.painter(), at, title, font, color::weak(), rect.width() - 2.0 * pad);
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, title));
-    ui.ctx().accesskit_node_builder(resp.id, |b| {
-        b.set_role(egui::accesskit::Role::Heading);
-        b.set_label(title);
+    let x = columns::used(ui).label_x(pad);
+    let galley = ui.painter().layout_no_wrap(text.to_owned(), type_scale::strong(ui, type_scale::SMALL), color::weak());
+    let (rect, resp) = ui.allocate_at_least(vec2(x + galley.size().x + pad, tokens::HEADER_H), Sense::hover());
+    if ui.is_rect_visible(rect) {
+        let at = egui::pos2(rect.left() + x, rect.center().y - galley.size().y / 2.0);
+        ui.painter().galley(at, galley, color::weak());
+    }
+    // Egui's label node (with its bounds), turned into a named heading.
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, text));
+    resp.ctx.accesskit_node_builder(resp.id, |n| {
+        n.set_role(egui::accesskit::Role::Heading);
+        n.set_label(text);
     });
+    let mark = (ui.ctx().cumulative_pass_nr(), ui.cursor().top());
+    ui.data_mut(|d| d.insert_temp(mark_id(ui, "menu-header"), mark));
+    resp
 }
 
 #[cfg(test)]

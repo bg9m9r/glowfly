@@ -14,10 +14,10 @@ CheckBox "Full screen" [off]
 CheckBox "Terminal" [off]
 CheckBox "Activity log" [off]
 CheckBox "Operation journal" [on]
-Label "Diff layout"
+Heading "Diff layout"
 RadioButton "Inline" [on]
 RadioButton "Side by side" [off]
-Label "Diff shows"
+Heading "Diff shows"
 RadioButton "Changed lines only" [on]
 RadioButton "Whole file" [off]
 CheckBox "Ignore whitespace" [off]

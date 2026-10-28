@@ -56,7 +56,7 @@ fn branch_colour_submenu() {
     h.run();
     open_row_menu(&mut h, "topic", true);
     open_submenu(&mut h, "Color");
-    submenu_item(&h, "Color", "✔ Automatic");
+    assert_eq!(submenu_item(&h, "Color", "Automatic").toggled(), Some(eframe::egui::accesskit::Toggled::True));
     for hue in STANDARD {
         submenu_item(&h, "Color", hue);
     }
@@ -91,7 +91,7 @@ fn remote_branch_colour_submenu() {
     assert!(h.query_by_label("origin/topic").is_some(), "the remote branch's menu");
     open_submenu(&mut h, "Color");
     submenu_item(&h, "Color", "Automatic");
-    submenu_item(&h, "Color", "✔ Orange");
+    assert_eq!(submenu_item(&h, "Color", "Orange").toggled(), Some(eframe::egui::accesskit::Toggled::True));
     h.check_snapshot("remote_branch_colour_submenu");
     submenu_item(&h, "Color", "Automatic").click();
     h.run();

@@ -2,15 +2,15 @@ window 1400x820
 Label "Glowfly 0.1.0"
 Button "Rename tab…"
 Button "Color"
-Button "None"
-Button "Rose"
-Button "Ochre"
-Button "Fern"
-Button "✔ Teal"
-Button "Sky"
-Button "Slate"
-Button "Iris"
-Button "Plum"
+RadioButton "None" [off]
+RadioButton "Rose" [off]
+RadioButton "Ochre" [off]
+RadioButton "Fern" [off]
+RadioButton "Teal" [on]
+RadioButton "Sky" [off]
+RadioButton "Slate" [off]
+RadioButton "Iris" [off]
+RadioButton "Plum" [off]
 Button "Close tab"
 Button "Close other tabs"
 Button "Close tabs to the right"

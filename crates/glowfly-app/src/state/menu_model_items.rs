@@ -181,9 +181,9 @@ pub(super) fn view(st: &AppState) -> Vec<Entry> {
     }
     let ignore = s.diff_ignore_whitespace;
     let ignore_msg = diff(DiffMsg::SetIgnoreWhitespace(!ignore));
-    out.push(marked(keys, t.tr("menu.view.ignore_whitespace"), Mark::Toggle(ignore), None, None, ignore_msg));
+    out.push(marked(keys, t.tr("menu.view.ignore_whitespace"), Mark::Check(ignore), None, None, ignore_msg));
     let wrap = s.diff_word_wrap;
-    out.push(marked(keys, t.tr("menu.view.wrap"), Mark::Toggle(wrap), None, None, diff(DiffMsg::SetWordWrap(!wrap))));
+    out.push(marked(keys, t.tr("menu.view.wrap"), Mark::Check(wrap), None, None, diff(DiffMsg::SetWordWrap(!wrap))));
     out.push(Entry::Submenu(Submenu {
         kind: SubmenuKind::Theme,
         label: t.tr("menu.view.theme").to_owned(),

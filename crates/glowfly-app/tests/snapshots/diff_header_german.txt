@@ -69,12 +69,12 @@ Label "M +2 −1"
 Button "Vorherige Änderung"
 Button "Nächste Änderung" [disabled]
 Button "Ansicht"
-Label "Layout"
-Button "Inline" [on]
-Button "Geteilt" [off]
-Label "Anzeigen"
-Button "Hunks" [on]
-Button "Ganze Datei" [off]
+Heading "Layout"
+RadioButton "Inline" [on]
+RadioButton "Geteilt" [off]
+Heading "Anzeigen"
+RadioButton "Hunks" [on]
+RadioButton "Ganze Datei" [off]
 CheckBox "Leerraum ignorieren" [off]
 CheckBox "Lange Zeilen umbrechen" [off]
 Button "Weitere Dateiaktionen"

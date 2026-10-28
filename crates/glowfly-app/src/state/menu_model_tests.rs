@@ -221,8 +221,8 @@ fn marks_follow_the_state() {
     assert_eq!(mark("Inline"), Mark::Radio(false));
     assert_eq!(mark("Side by side"), Mark::Radio(true));
     assert_eq!(mark("Whole file"), Mark::Radio(true));
-    assert_eq!(mark("Ignore whitespace"), Mark::Toggle(true));
-    assert_eq!(mark("Wrap long lines"), Mark::Toggle(false));
+    assert_eq!(mark("Ignore whitespace"), Mark::Check(true));
+    assert_eq!(mark("Wrap long lines"), Mark::Check(false));
     assert_eq!(mark("Dawn"), Mark::Radio(true));
     assert_eq!(mark("Dusk"), Mark::Radio(false));
     let dir = |n: &str| glowfly_core::paths::temp_dir().join(n);

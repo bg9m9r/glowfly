@@ -5,9 +5,9 @@
 
 use super::common::{forge_error_rows, hint_row};
 use super::theme::color;
-use super::widgets::menu_reason;
 use super::widgets::section_header::{self, HeaderAdd, HeaderResponse, MenuFn};
 use super::widgets::{self, Icon};
+use super::widgets::{menu, menu_columns};
 use crate::msg::{FilterMsg, Msg};
 use crate::state::forge_filters::Hint;
 use crate::ui::theme::tokens::radius;
@@ -84,7 +84,7 @@ fn popover(ui: &mut egui::Ui, t: Lang, p: &Picker, msgs: &mut Vec<Msg>) {
     let builtins: &[Builtin] = if p.kind == FilterKind::Prs { &Builtin::PRS } else { &Builtin::ISSUES };
     for &b in builtins {
         let why = p.provider.and_then(|pr| matching::unsupported(pr, p.kind, &b.conditions()));
-        let r = row(ui, b.label(), shown == FilterChoice::Builtin(b), why.as_deref());
+        let r = menu::item(b.label()).current(shown == FilterChoice::Builtin(b)).blocked(why.as_deref()).show(ui);
         let r = match (&why, p.provider) {
             (None, Some(Provider::AzureDevOps)) if b == Builtin::IssuesMentioningMe => {
                 r.on_hover_text("Azure Boards finds mentions from the last 30 days.")
@@ -95,19 +95,16 @@ fn popover(ui: &mut egui::Ui, t: Lang, p: &Picker, msgs: &mut Vec<Msg>) {
             choose(ui, msgs, FilterMsg::Choose { kind: p.kind, choice: FilterChoice::Builtin(b) });
         }
     }
-    crate::ui::widgets::menu::separator(ui);
     let saved: Vec<&SavedFilter> = p.filters.saved_of(p.kind).collect();
-    ui.label(egui::RichText::new("Saved filters").size(type_scale::CAPTION).color(color::faint()));
-    ui.add_space(2.0);
+    menu::group_header(ui, "Saved filters");
     if saved.is_empty() {
-        ui.label(egui::RichText::new("None yet").size(type_scale::SMALL).color(color::faint()));
-        ui.add_space(4.0);
+        menu::inset(ui, |ui| ui.label(egui::RichText::new("None yet").size(type_scale::SMALL).color(color::faint())));
     }
     for (i, s) in saved.iter().enumerate() {
         saved_row(ui, s, shown == FilterChoice::Saved(s.id), (i > 0, i + 1 < saved.len()), msgs);
     }
-    crate::ui::widgets::menu::separator(ui);
-    if row(ui, t.tr("sidebar.new_filter"), false, None).clicked() {
+    menu::separator(ui);
+    if menu::item(t.tr("sidebar.new_filter")).show(ui).clicked() {
         choose(ui, msgs, FilterMsg::NewDialog(p.kind));
     }
 }
@@ -117,40 +114,32 @@ fn choose(ui: &egui::Ui, msgs: &mut Vec<Msg>, m: FilterMsg) {
     msgs.push(Msg::ForgeFilter(m));
 }
 
-/// A selectable row: the text, with a painted check mark when it is the one on show. While
-/// `why` holds a reason it is blocked: greyed with the info mark, focusable but not clickable,
-/// and the reason shows on hover or focus.
-fn row(ui: &mut egui::Ui, text: &str, checked: bool, why: Option<&str>) -> Response {
-    let sense = if why.is_none() { Sense::click() } else { Sense::hover() | Sense::FOCUSABLE };
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), row_h(ui)), sense);
-    let enabled = why.is_none();
-    paint_row(ui, rect, text, checked, enabled, enabled && resp.hovered());
-    resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, enabled, checked, text));
-    let Some(why) = why else { return resp };
-    menu_reason::paint_info(ui.painter(), rect, 6.0, resp.hovered() || resp.has_focus());
-    menu_reason::paint_focus(ui, &resp);
-    menu_reason::explain(resp, why)
-}
-
 /// A row's height: the shared menu row's.
 fn row_h(ui: &egui::Ui) -> f32 {
-    crate::ui::widgets::menu::metrics(ui).row_h
+    menu::metrics(ui).row_h
 }
 
-fn paint_row(ui: &egui::Ui, rect: Rect, text: &str, checked: bool, enabled: bool, hovered: bool) {
+/// A saved filter's text on the menu's columns: ✓ in the state column while it is on show, the
+/// name at the label column, cut to the room its buttons leave.
+fn paint_row(ui: &egui::Ui, rect: Rect, text: &str, checked: bool, hovered: bool) {
+    let c = menu_columns::note(ui, menu_columns::Columns { state: true, ..Default::default() });
+    let pad = ui.spacing().button_padding.x;
     let p = ui.painter();
     if hovered {
         p.rect_filled(rect, CornerRadius::same(radius::SM), color::hover());
     }
     if checked {
-        let (c, s) = (pos2(rect.left() + 11.0, rect.center().y), Stroke::new(1.8_f32, color::info()));
-        p.line_segment([pos2(c.x - 4.0, c.y), pos2(c.x - 1.0, c.y + 3.0)], s);
-        p.line_segment([pos2(c.x - 1.0, c.y + 3.0), pos2(c.x + 5.0, c.y - 4.0)], s);
+        widgets::paint_icon_sized(
+            p,
+            pos2(rect.left() + c.state_x(pad), rect.center().y),
+            Icon::Check,
+            color::text(),
+            widgets::icon::SIZE_SM,
+        );
     }
-    let col = if enabled { color::text() } else { color::faint() };
     let font = type_scale::font(type_scale::BODY);
-    let room = if enabled { 0.0 } else { menu_reason::INFO_ROOM };
-    widgets::paint_cut_text(p, pos2(rect.left() + 24.0, rect.center().y), text, font, col, rect.width() - 28.0 - room);
+    let x = c.label_x(pad);
+    widgets::paint_cut_text(p, pos2(rect.left() + x, rect.center().y), text, font, color::text(), rect.width() - x - pad);
 }
 
 /// A saved filter's row; while hovered or on show it also has Edit, Move up, Move down and
@@ -160,8 +149,8 @@ fn saved_row(ui: &mut egui::Ui, s: &SavedFilter, checked: bool, (up, down): (boo
     let active = ui.rect_contains_pointer(rect) || checked;
     let buttons = if active { 4.0 * 27.0 } else { 0.0 };
     let text_rect = Rect::from_min_max(rect.min, pos2(rect.right() - buttons, rect.bottom()));
-    paint_row(ui, text_rect, &s.name, checked, true, resp.hovered());
-    resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, checked, &s.name));
+    paint_row(ui, text_rect, &s.name, checked, resp.hovered());
+    resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::RadioButton, true, checked, &s.name));
     if resp.clicked() {
         choose(ui, msgs, FilterMsg::Choose { kind: s.kind, choice: FilterChoice::Saved(s.id) });
     }

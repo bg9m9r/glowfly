@@ -63,12 +63,11 @@ pub struct Item {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mark {
     None,
-    /// A check box in the gutter before the label (the panels, full screen …).
+    /// A check item, ✓ while on (the panels, full screen, Ignore whitespace …).
     Check(bool),
-    /// A check box control (Ignore whitespace, Wrap).
-    Toggle(bool),
+    /// One of a group's options (Diff layout, the themes), a dot while chosen.
     Radio(bool),
-    /// A selectable row (the Window menu's tabs).
+    /// The current one of a list (the Window menu's tabs), ✓ while it is.
     Selected(bool),
 }
 
@@ -77,7 +76,7 @@ impl Mark {
     pub fn on(self) -> bool {
         match self {
             Mark::None => false,
-            Mark::Check(on) | Mark::Toggle(on) | Mark::Radio(on) | Mark::Selected(on) => on,
+            Mark::Check(on) | Mark::Radio(on) | Mark::Selected(on) => on,
         }
     }
 }

@@ -68,6 +68,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("toolbar_restyled_dark", Window),
     ("toolbar_restyled_light", Window),
     ("menu_bar_file", Window),
+    ("menu_bar_view_theme", Window),
+    ("branch_colour_submenu", Window),
     ("graph_commit_menu", Window),
     ("toolbar_push_menu", Window),
     ("wip_file_menu_danger_light", Window),

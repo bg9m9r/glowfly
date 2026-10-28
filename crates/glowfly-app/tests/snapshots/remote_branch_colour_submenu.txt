@@ -49,21 +49,21 @@ Button "Create pull request from main into this branch…" [disabled]
 Button "Hide in graph"
 Button "Show only this"
 Button "Color"
-Button "Automatic"
-Button "Rose"
-Button "Lime"
-Button "Violet"
-Button "✔ Orange"
-Button "Cyan"
-Button "Magenta"
-Button "Olive"
-Button "Azure"
-Button "Red"
-Button "Teal"
-Button "Orchid"
-Button "Gold"
-Button "Sky"
-Button "Indigo"
+RadioButton "Automatic" [off]
+RadioButton "Rose" [off]
+RadioButton "Lime" [off]
+RadioButton "Violet" [off]
+RadioButton "Orange" [on]
+RadioButton "Cyan" [off]
+RadioButton "Magenta" [off]
+RadioButton "Olive" [off]
+RadioButton "Azure" [off]
+RadioButton "Red" [off]
+RadioButton "Teal" [off]
+RadioButton "Orchid" [off]
+RadioButton "Gold" [off]
+RadioButton "Sky" [off]
+RadioButton "Indigo" [off]
 Button "Copy"
 Button "Delete from remote…"
 Button "New tag"

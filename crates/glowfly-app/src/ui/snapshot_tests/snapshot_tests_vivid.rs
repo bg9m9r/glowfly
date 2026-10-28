@@ -143,7 +143,7 @@ fn tab_colour_menu() {
     for hue in ["Rose", "Ochre", "Fern", "Sky", "Slate", "Iris", "Plum"] {
         submenu_item(&h, "Color", hue);
     }
-    submenu_item(&h, "Color", "✔ Teal");
+    assert_eq!(submenu_item(&h, "Color", "Teal").toggled(), Some(eframe::egui::accesskit::Toggled::True));
     h.check_snapshot("tab_colour_menu");
     submenu_item(&h, "Color", "None").click();
     h.run();
@@ -160,7 +160,7 @@ fn tab_menu_color_sets_the_colour() {
     h.run();
     right_click_tab(&mut h, 1);
     open_submenu(&mut h, "Color");
-    submenu_item(&h, "Color", "✔ None");
+    assert_eq!(submenu_item(&h, "Color", "None").toggled(), Some(eframe::egui::accesskit::Toggled::True));
     submenu_item(&h, "Color", "Plum").click();
     h.run();
     assert_eq!(sent(&h), Some((second, Some(RepoColour::Plum))));

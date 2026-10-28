@@ -47,7 +47,7 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 - `graph/more.rs`: the row for a failed load for more history.
 - `graph/ref_menu.rs`: the graph row's right-click menu: a ref chip's own menu or the commit menu.
 - `graph/ref_checkout.rs`: what a double-click on a branch chip checks out (a remote label split into remote and branch by `state/remote_branch.rs`).
-- `branch_dot.rs`: the branch dots.
+- `branch_dot.rs`: the branch dots (in menus, in the row's icon column).
 
 ## Commit details and the WIP panel
 

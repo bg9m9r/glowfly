@@ -98,6 +98,14 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Tooltips share egui's popup margin, now the menus' 4 px: give them their own roomier frame
 - Dropdowns opened by `menu_anchor` line their first item's text up with the button's text again
 
+### Menu columns and group headers
+
+- The Color submenus as a 5×3 swatch grid under Automatic / None (keeping each swatch's accessible name)
+- Submenus draw over egui's own arrow (made clear) to paint the chevron; a submenu row of our own would also give the 250 ms open delay (spec §7)
+- A menu whose rows change while it is open, or a context menu opened right after another, lays out one pass on the old columns before it redraws
+- The repository dropdown's and Open recent's rows (stars, swatches, ×) move onto the columns with the dropdown's rework
+- The object header (`common::menu_header`) gets the spec's 6 px top and 8 px bottom padding
+
 ### Destructive menu items
 
 - On grey or green-grey dark fields (Graphite, Garden dark) the danger hover pill takes no red (the no-brown rule); try a red edge or mark instead
