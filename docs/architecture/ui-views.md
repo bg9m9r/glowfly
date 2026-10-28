@@ -86,7 +86,7 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 - `stack_rows.rs`: the LOCAL rows' stack indentation and painted elbows.
 - `repo_colour_menu.rs`: the tab menu's and the welcome rows' repository Color submenu, with the square swatches in `repo_swatch.rs`.
 - `repo_menu_list.rs`: the repository menu's and File > Open recent's Favorites and Recent groups, the filter field of a long list, and Remove missing / Clear recent.
-- `repo_menu_row.rs`: one repository row of those menus: name, parent path, status, and the star and × on hover or focus.
+- `repo_menu_row.rs`: one repository row of those menus: name, parent path, status, and the star and × on hover or focus; Up and Down step between the rows, Right and Tab reach the star and ×, typeahead by name.
 
 ## Snapshot tests
 

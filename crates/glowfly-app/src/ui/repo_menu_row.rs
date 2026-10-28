@@ -5,8 +5,10 @@
 //! fit, a status ("Current", "In a tab", "Not found") and, at the right, the star and, on
 //! Recent rows, ×.
 //! The filled star of a favorite always shows; the hollow star and × show while the row is
-//! hovered or it (or one of them) has keyboard focus, so Tab reaches them from the row. Delete
-//! on a focused Recent row removes it. The whole path is the row's name and tooltip.
+//! hovered or it (or one of them) has keyboard focus, so Tab (or Right) reaches them from the
+//! row. Up and Down move between the rows, and a typed letter to the next folder name starting
+//! with it (`menu_keys`). Delete on a focused Recent row removes it. The whole path is the
+//! row's name and tooltip.
 
 use super::repo_swatch;
 use super::theme::{color, tokens, type_scale};
@@ -155,6 +157,8 @@ pub fn show(ui: &mut Ui, row: &Row, cols: Columns, words: &Words<'_>) -> Option<
         p.galley(pos2(x, rect.center().y - g.size().y / 2.0), g, color::weak());
     }
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &row.full));
+    // Up and Down between the rows, Right to the star and ×, typeahead by folder name.
+    super::menu_keys::register(ui, &resp, Some(&row.name), false);
     if let Some(s) = row.status {
         super::access::describe(&resp, words.status(s));
     }
@@ -192,6 +196,7 @@ pub fn row_id(full: &str) -> Id {
 fn icon_box(ui: &mut Ui, rect: Rect, id: Id, icon: Icon, ink: Color32, name: &str) -> Response {
     let resp = ui.interact(rect, id, Sense::click());
     super::access::name_button(&resp, true, name);
+    super::menu_keys::register(ui, &resp, None, false);
     let p = ui.painter();
     let lit = resp.hovered() || resp.has_focus();
     if lit {

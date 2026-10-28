@@ -9,6 +9,7 @@
 
 use super::backdrop::{self, Surface};
 use super::menu_anchor::{self, MenuCmd};
+use super::menu_keys::take_key;
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};
 use super::window_buttons::BUTTON_W;
@@ -18,8 +19,8 @@ use crate::state::AppState;
 use crate::state::window_chrome::{AltFrame, WindowCmd};
 use crate::ui::theme::tokens::radius;
 use eframe::egui::{
-    self, Align, CornerRadius, Event, Id, Key, LayerId, Layout, Modifiers, PointerButton, Pos2, Rect, Sense, UiBuilder, WidgetInfo,
-    WidgetType, pos2, vec2,
+    self, Align, CornerRadius, Event, Id, Key, LayerId, Layout, PointerButton, Pos2, Rect, Sense, UiBuilder, WidgetInfo, WidgetType, pos2,
+    vec2,
 };
 
 /// The bar's height, and its tabs' (along its bottom edge).
@@ -133,7 +134,6 @@ fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Ms
     let open = menu_anchor::menu_below(ui, id, &r, cmd, |ui| menu_bar::main_menu(ui, st, msgs));
     if !open {
         st.view.menu_keys.closed();
-        menu_bar::forget(&ctx);
     }
     let p = ui.painter();
     if open {
@@ -150,13 +150,14 @@ fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Ms
 /// Esc, Left and Right while the menu shows menu `m` alone: Esc goes back to the list of five
 /// with `m`'s row focused (instead of closing), Left and Right show the menu before or after it.
 fn single_keys(ctx: &egui::Context, st: &mut AppState, m: crate::state::menu_keys::TopMenu) {
+    // The open menu's keys are set aside for it (`menu_keys`): take them from there.
     let k = &mut st.view.menu_keys;
-    if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape)) {
+    if take_key(ctx, Key::Escape) {
         (k.only, k.back_to) = (None, Some(m));
     } else if menu_bar::may_step(ctx) {
-        if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::ArrowLeft)) {
+        if take_key(ctx, Key::ArrowLeft) {
             k.stepped(-1);
-        } else if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::ArrowRight)) {
+        } else if take_key(ctx, Key::ArrowRight) {
             k.stepped(1);
         }
     }

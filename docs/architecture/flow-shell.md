@@ -87,8 +87,9 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - `state/menu_keys.rs` (egui-free) picks each title's mnemonic from the translated title, skipping letters a plain Alt key of the keymap or a custom command uses.
 - `state/menu_keys.rs` holds `ViewState::menu_keys` (`MenuKeys`: the menu an Alt+letter asked for this frame, whether a menu was opened from the keyboard, which item takes focus and which single menu the title bar shows).
 - `ui/shortcuts/global.rs` takes the Alt+letter press, and the text it types, out of the input before the views run (`ui/menu_bar/keys.rs::take`, which also underlines the letters while Alt is held or a keyboard-opened menu shows); the bar or the title bar's menu button opens that menu.
-- `ui/menu_bar/nav.rs` keeps the keyboard inside an open menu: the first item takes focus, and Up and Down step through the menu's own items (egui's spatial arrow moves are locked out on them, since they could land on a widget behind the menu).
-- Focus that leaks out of an open menu is put back (`keep_inside`), and Left and Right switch menus while the focus is in the menu (`may_step`).
+- The bar's menus take the keyboard every menu has (`ui/menu_keys/`, see `ui-shell.md`): the first item takes focus, Up and Down wrap, typeahead, Right opens a submenu (Theme, Open recent).
+- Focus that leaks out of an open menu is put back (`menu_keys::keep_inside`), and Left and Right switch menus while the focus is in the root menu, not a submenu (`menu_keys::may_step`).
+- The shortcut sheet lists the menu keys as its Menus group (`ui/shortcuts/sheet_menus.rs`).
 - Enter and Space click the focused item (egui's own), and Esc closes the menu before the central Esc chain (`central::escape_key` waits while `menu_bar::any_open`).
 
 ## Quitting

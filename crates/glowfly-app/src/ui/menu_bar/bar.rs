@@ -4,18 +4,19 @@
 //! to the menu before or after it (wrapping), its first item focused.
 
 use super::menu_anchor::{self, MenuCmd};
-use super::{BAR, contents, keys, nav};
+use super::{BAR, contents, keys};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::menu_keys::TopMenu;
-use eframe::egui::{self, Button, Id, Key, Modifiers};
+use crate::ui::menu_keys;
+use eframe::egui::{self, Button, Id, Key};
 
 /// Draws the titles inside `egui::menu::bar` (which gives them the bar's look) and the open
 /// menu.
 pub(super) fn draw(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let ctx = ui.ctx().clone();
     let id = Id::new(BAR);
-    nav::keep_inside(&ctx);
+    super::keep_inside(&ctx);
     let t = st.settings.lang();
     let marks = keys::marks(st);
     let show = keys::shown(&ctx, st);
@@ -31,27 +32,25 @@ pub(super) fn draw(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         } else {
             MenuCmd::None
         };
-        menu_anchor::menu_below(ui, id, &r, cmd, |ui| nav::contents(ui, st, |ui, st| contents(m, ui, st, msgs)));
+        menu_anchor::menu_below(ui, id, &r, cmd, |ui| contents(m, ui, st, msgs));
         buttons.push(r);
     }
     let open = menu_anchor::open_id(&ctx, id).and_then(|open| buttons.iter().position(|b| b.id == open));
     let Some(at) = open else {
         st.view.menu_keys.closed();
-        nav::forget(&ctx);
         return;
     };
-    if !nav::may_step(&ctx) {
+    if !menu_keys::may_step(&ctx) {
         return;
     }
-    let d = ctx.input_mut(|i| {
-        if i.consume_key(Modifiers::NONE, Key::ArrowLeft) {
-            -1
-        } else if i.consume_key(Modifiers::NONE, Key::ArrowRight) {
-            1
-        } else {
-            0
-        }
-    });
+    // The open menu's keys are set aside for it (`menu_keys`): take them from there.
+    let d = if menu_keys::take_key(&ctx, Key::ArrowLeft) {
+        -1
+    } else if menu_keys::take_key(&ctx, Key::ArrowRight) {
+        1
+    } else {
+        0
+    };
     if d != 0 {
         let next = TopMenu::ALL[at].step(d);
         let to = TopMenu::ALL.iter().position(|&m| m == next).unwrap_or(at);

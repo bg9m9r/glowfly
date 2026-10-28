@@ -117,7 +117,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Work out `merged` for every local branch (not only those with a remote upstream), so Force delete hides whenever a plain delete would do
 - The pull request items (`pr_menu_items.rs`) and the Push to remotes cut their interpolated names too; "Create pull request from main into this branch…" could say "into this branch…" with the source in the tooltip
 - A remote branch whose plain Checkout is blocked by a local branch of the same name offers "Checkout as local branch…" instead
-- Arrow keys reach a split row's preview button (Right from the row), once menus have their own keyboard navigation (spec §9)
 - The reset submenu's preview buttons could open the preview with that row's mode chosen
 
 ### Restyled toolbar and rich tooltips
@@ -191,7 +190,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Push all tags and a "Push new tags" toggle in the TAGS header menu
 - Pop or apply the latest stash from the STASHES header menu
 - Translate the left panel's section titles, menus and empty-state lines
-- Open a focused header's menu with the menu key or Shift+F10
 - A preference to hide empty sections (WORKTREES, SUBMODULES, TAGS, STASHES)
 - Count only linked worktrees in the WORKTREES header, so the count doesn't jump from 0 to 2
   when the first one is added
@@ -291,7 +289,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Palette entries for New repository… and Clone repository… (and suggesting them when no repository is open)
 - Translate the command palette's command labels, step titles, prompts and footers (the palette is English-only today)
 - Translate the shallow-clone tooltip on Fetch full history (state::shallow::header_tooltip)
-- Open a row's menu from the keyboard (Menu key / Shift+F10) below the focused row
 - Make the multi-selection direction row's SHAs clickable to jump to each end commit
 - Reach the graph's New branch… ghost button with Tab when its row has keyboard focus
 - Rename the repository picker's empty placeholder "Open…" in the toolbar

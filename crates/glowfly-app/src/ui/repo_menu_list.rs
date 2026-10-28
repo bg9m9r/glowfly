@@ -103,6 +103,7 @@ fn filter_field(ui: &mut egui::Ui, hint: &str) -> (String, egui::Response) {
     }
     let r = menu::inset(ui, |ui| ui.add(TextField::new(&mut text).id(id.with("field")).hint(hint)));
     super::access::name_field(&r, hint);
+    super::menu_keys::register(ui, &r, None, false);
     if opened {
         r.request_focus();
     }

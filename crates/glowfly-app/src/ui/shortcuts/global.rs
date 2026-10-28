@@ -8,7 +8,8 @@
 //! nothing covers the main window, then the menus' Alt+letter mnemonics (`ui/menu_bar/keys.rs`),
 //! which the view drawing the menus opens. Quit works anywhere but under a credential prompt.
 //! Presses no binding takes are left for the views; Esc goes on to the Esc chain in
-//! `ui/central.rs`.
+//! `ui/central.rs`. While a menu is open, its keys (those without Ctrl, Alt or Cmd) are set
+//! aside for it first (`ui/menu_keys`), so no binding or view behind it sees them.
 
 use super::chords::take_press;
 use super::record;
@@ -30,6 +31,8 @@ use glowfly_core::rebase::{QuickEdit, Resume};
 /// Turns this frame's shortcut presses into messages (or view-state changes, for the search
 /// bar). While Preferences > Keyboard records a key, it gets every key press instead.
 pub(crate) fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    // An open menu's keys are its own: no binding sees them.
+    crate::ui::menu_keys::capture(ctx);
     if record::keys(ctx, st, msgs) {
         return;
     }

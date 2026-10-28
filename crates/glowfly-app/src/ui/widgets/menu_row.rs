@@ -11,6 +11,9 @@
 //! A label whose interpolated names were cut (`menu_name.rs`) carries its full text
 //! (`item_named`), which becomes its accessible name and its tooltip.
 //!
+//! Every row (and its trailing button) registers with the menu keyboard (`ui/menu_keys`), the
+//! row by its label for typeahead.
+//!
 //! The row is one target as wide as the menu: enabled rows take egui's interaction colours (the
 //! hover pill, the danger style's), blocked ones (`ItemState::Blocked`) are greyed, take the
 //! focus but never click, and give their reason on hover, on focus and to screen readers. A
@@ -221,6 +224,11 @@ impl<'a> Item<'a> {
             (Some(t), Some(b)) => Some(menu_split::finish(ui, b, &t, blocked)),
             _ => None,
         };
+        // The menu keyboard's items: the row by its label, and its button beside it.
+        crate::ui::menu_keys::register(ui, &resp, Some(&name), false);
+        if let Some(b) = &button {
+            crate::ui::menu_keys::register(ui, b, None, false);
+        }
         match mark {
             Some(Mark::Check(on)) => resp.widget_info(|| WidgetInfo::selected(WidgetType::Checkbox, enabled, on, &name)),
             Some(Mark::Radio(on) | Mark::Current(on)) => {

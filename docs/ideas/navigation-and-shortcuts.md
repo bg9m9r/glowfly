@@ -80,7 +80,6 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 - Repository and Branch menus (fetch, pull, push, stash, new branch and tag)
 - Recently closed tabs as a submenu, to reopen any of them
 - The OS and architecture in the About dialog's copied version info
-- Open the submenus (Open recent, Theme) from the keyboard
 - F10 focuses the first menu
 - Mnemonics for the items inside menus
 - Let translators pick each menu's mnemonic in the catalog

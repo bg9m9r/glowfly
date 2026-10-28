@@ -226,7 +226,9 @@ pub(super) fn wip_file_row(
             Msg::Repo(RepoMsg::OpenDiff(target()))
         });
     }
-    r.row_menu(|ui| {
+    // Shift+F10 opens the selected file's menu while its list has the keyboard.
+    let keyboard = selected && super::wip_keys::focused_list(ui.ctx()) == Some(staged);
+    r.row_menu_for(keyboard, |ui| {
         if conflicted {
             menu_item(msgs, ui, t.tr("details.wip.open_conflict"), Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));
         }

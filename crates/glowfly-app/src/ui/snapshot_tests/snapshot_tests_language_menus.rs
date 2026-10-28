@@ -66,9 +66,15 @@ fn right_click_row(h: &mut H, name: &str, nth: usize) {
     click(h, at, PointerButton::Secondary);
 }
 
+/// Closes the open menu: Esc closes one level, an open submenu first.
 fn close_menu(h: &mut H) {
-    h.press_key(eframe::egui::Key::Escape);
-    h.run_ok();
+    for _ in 0..3 {
+        if !h.ctx.is_context_menu_open() {
+            return;
+        }
+        h.press_key(eframe::egui::Key::Escape);
+        h.run_ok();
+    }
 }
 
 /// Where the first chip of a graph row sits, and the fixture's rows (the WIP row is 0).

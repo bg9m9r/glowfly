@@ -20,6 +20,10 @@
 //! row adds a trailing button (`menu_split.rs`); names inside labels are cut to fit
 //! (`menu_name.rs`).
 //!
+//! Every menu's contents run through the menu keyboard (`ui/menu_keys`): arrows, Home and End,
+//! typeahead, submenus from the keyboard, Esc giving the focus back to what opened the menu.
+//! The dropdown openers open on Enter, Space or Alt+Down too (`menu_open.rs`).
+//!
 //! A destructive item (`menu_reason::ItemState::Danger`, or a `danger_submenu` title) takes
 //! `danger_style`: its label in `color::menu_danger` and its hover pill `color::danger_hover`.
 
@@ -30,6 +34,7 @@ use super::menu_columns::{self as columns, Columns};
 pub use super::menu_name::{Named, cut as cut_name, named};
 pub use super::menu_row::{Item, item, item_named};
 pub use super::menu_split::Part;
+use crate::ui::menu_keys::{self, Kind};
 use eframe::egui::menu::BarState;
 use eframe::egui::{
     self, AboveOrBelow, Color32, CornerRadius, Id, InnerResponse, PopupCloseBehavior, Response, Sense, Stroke, Ui, WidgetText, vec2,
@@ -68,9 +73,10 @@ pub fn style(ui: &mut Ui) {
     }
 }
 
-/// `resp`'s right-click menu at the pointer, in the menu style.
+/// `resp`'s right-click menu at the pointer, in the menu style; Shift+F10 on the focused widget
+/// opens it below the widget.
 pub fn context_menu(resp: &Response, add_contents: impl FnOnce(&mut Ui)) -> Option<InnerResponse<()>> {
-    resp.context_menu(|ui| styled(ui, add_contents))
+    super::row_menu::show(resp, false, false, add_contents)
 }
 
 /// A submenu row inside a menu (or, outside one, a button with its dropdown), its contents in
@@ -80,7 +86,7 @@ pub fn context_menu(resp: &Response, add_contents: impl FnOnce(&mut Ui)) -> Opti
 /// it fits (`menu_submenu`).
 pub fn submenu<R>(ui: &mut Ui, title: impl Into<WidgetText>, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<Option<R>> {
     if !in_menu(ui) {
-        return ui.menu_button(title, |ui| styled(ui, add_contents));
+        return super::menu_open::titled(ui, title, false, |ui| styled(ui, add_contents));
     }
     let c = columns::note(ui, Columns { chevron: true, ..Columns::default() });
     let pad = ui.spacing().button_padding.x;
@@ -99,9 +105,9 @@ pub fn submenu<R>(ui: &mut Ui, title: impl Into<WidgetText>, add_contents: impl 
     // Not in a scope: the row keeps the id the menu's keyboard navigation expects of it.
     let plain = ui.visuals().clone();
     ui.visuals_mut().override_text_color = Some(Color32::TRANSPARENT);
-    let r = super::menu_submenu::show(ui, WidgetText::LayoutJob(job), |ui| {
+    let r = super::menu_submenu::show(ui, WidgetText::LayoutJob(job), |ui, kind| {
         *ui.visuals_mut() = plain.clone();
-        styled(ui, add_contents)
+        styled_as(ui, kind, add_contents)
     });
     ui.visuals_mut().override_text_color = plain.override_text_color;
     // During the open delay egui's button isn't hovered (`menu_submenu`'s cover is), but the
@@ -136,9 +142,10 @@ pub fn danger_submenu<R>(ui: &mut Ui, title: impl Into<WidgetText>, add_contents
     .inner
 }
 
-/// A button drawn from `button` that opens its menu below it on a click (a header's ⋯).
+/// A button drawn from `button` that opens its menu below it on a click, or Enter, Space or
+/// Alt+Down while focused (a header's ⋯).
 pub fn custom_button<R>(ui: &mut Ui, button: egui::Button<'_>, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<Option<R>> {
-    egui::menu::menu_custom_button(ui, button, |ui| styled(ui, add_contents))
+    super::menu_open::custom(ui, button, false, |ui| styled(ui, add_contents))
 }
 
 /// A menu below `button` that a click on it opens and closes, kept under the button's own id
@@ -146,7 +153,7 @@ pub fn custom_button<R>(ui: &mut Ui, button: egui::Button<'_>, add_contents: imp
 pub fn below(ui: &Ui, button: &Response, add_contents: impl FnOnce(&mut Ui)) {
     let key = button.id.with("menu");
     let mut bar = BarState::load(ui.ctx(), key);
-    bar.bar_menu(button, |ui| styled(ui, add_contents));
+    super::menu_open::dropdown(&mut bar, button, false, |ui| styled(ui, add_contents));
     bar.store(ui.ctx(), key);
 }
 
@@ -167,7 +174,9 @@ pub fn popup_below<R>(ui: &Ui, id: Id, anchor: &Response, close: PopupCloseBehav
     popup_above_or_below(ui, id, anchor, AboveOrBelow::Below, close, add_contents)
 }
 
-/// `popup_below`, above `anchor` when `side` says so.
+/// `popup_below`, above `anchor` when `side` says so. Alt+Down on the focused anchor opens it
+/// too (a click, Enter or Space is the caller's), and a click inside a keyboard-opened submenu
+/// of it isn't a click outside it.
 pub fn popup_above_or_below<R>(
     ui: &Ui,
     id: Id,
@@ -176,7 +185,15 @@ pub fn popup_above_or_below<R>(
     close: PopupCloseBehavior,
     add_contents: impl FnOnce(&mut Ui) -> R,
 ) -> Option<R> {
-    egui::popup::popup_above_or_below_widget(ui, id, anchor, side, close, |ui| styled(ui, add_contents))
+    let ctx = ui.ctx();
+    menu_keys::capture(ctx);
+    if anchor.has_focus() && !ctx.memory(|m| m.is_popup_open(id)) && menu_keys::take_alt_down(ctx) {
+        ctx.memory_mut(|m| m.open_popup(id));
+    }
+    menu_keys::opener(ctx, Some(anchor.id));
+    let kind = Kind::Popup { close_on_click: matches!(close, PopupCloseBehavior::CloseOnClick) };
+    let close = if menu_keys::pointer_in_keyed(ctx).is_some() { PopupCloseBehavior::IgnoreClicks } else { close };
+    egui::popup::popup_above_or_below_widget(ui, id, anchor, side, close, |ui| styled_as(ui, kind, add_contents))
 }
 
 /// A popover below `anchor`: egui's popup frame around contents that are not a menu's rows (a
@@ -191,13 +208,19 @@ pub fn popover_below<R>(
     egui::popup::popup_below_widget(ui, id, anchor, close, add_contents)
 }
 
-/// Runs `add_contents` in the menu style, its rows on shared columns (`menu_columns`).
+/// Runs `add_contents` in the menu style, its rows on shared columns (`menu_columns`), with the
+/// menu keyboard (`menu_keys`), as one of egui's menus.
 pub(in crate::ui) fn styled<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
+    styled_as(ui, Kind::Root, add_contents)
+}
+
+/// `styled` for a menu level of the kind `kind`.
+pub(in crate::ui) fn styled_as<R>(ui: &mut Ui, kind: Kind, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
     style(ui);
     let start = (ui.ctx().cumulative_pass_nr(), ui.cursor().top());
     ui.data_mut(|d| d.insert_temp(mark_id(ui, "menu-start"), start));
     columns::begin(ui);
-    let r = add_contents(ui);
+    let r = menu_keys::contents(ui, kind, add_contents);
     columns::end(ui);
     debug_assert!(!just_after_separator(ui), "a menu ends with a separator");
     r

@@ -1,5 +1,5 @@
 //! The menu bar from the keyboard: Alt+letter opens a menu with its first item focused, the
-//! arrows move within and between menus, Enter clicks, Esc only closes the menu, and the
+//! arrows move within (wrapping) and between menus, Enter clicks, Esc only closes the menu, and the
 //! mnemonics stay out of the way of bindings, the terminal, a hidden bar and macOS. Runs the
 //! shortcut input before drawing, in the app's order.
 
@@ -105,25 +105,25 @@ fn alt_f_opens_file_with_its_first_item_focused() {
 }
 
 #[test]
-fn up_and_down_stay_in_the_menu() {
+fn up_and_down_stay_in_the_menu_and_wrap() {
     let (st, dir) = fixture("menu-keys-down");
     let mut h = keys_harness(st, SIZE);
     press(&mut h, Modifiers::ALT, Key::F);
     key(&mut h, Key::ArrowDown);
     assert!(focused(&h, "Open repository…"), "Down moves to the next item");
-    for _ in 0..12 {
-        key(&mut h, Key::ArrowDown);
-    }
-    assert!(focused(&h, "Quit"), "focus stops at the last item");
+    key(&mut h, Key::End);
+    assert!(focused(&h, "Quit"), "End goes to the last item");
     let in_menu = |h: &H| {
         let f = h.ctx.memory(|m| m.focused()).expect("something focused");
         h.ctx.read_response(f).is_some_and(|r| r.layer_id.order == egui::Order::Foreground)
     };
+    key(&mut h, Key::ArrowDown);
+    assert!(widest(&h, "New tab").is_focused(), "Down on the last item wraps to the first");
     assert!(in_menu(&h), "no graph row took the focus");
-    for _ in 0..12 {
-        key(&mut h, Key::ArrowUp);
-    }
-    assert!(widest(&h, "New tab").is_focused(), "and at the first one");
+    key(&mut h, Key::ArrowUp);
+    assert!(focused(&h, "Quit"), "and Up on the first to the last");
+    key(&mut h, Key::Home);
+    assert!(widest(&h, "New tab").is_focused(), "Home goes to the first");
     assert!(file_open(&h));
     drop(h);
     remove_fixture(&dir);

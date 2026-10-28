@@ -42,7 +42,9 @@ pub(super) fn context_menu(ui: &mut egui::Ui, resp: &Response, m: RowMenu, msgs:
         ui.ctx().data_mut(|d| d.insert_temp(id, on_labels));
     }
     let t = m.settings.lang();
-    resp.row_menu(|ui| {
+    // Shift+F10 opens the selected row's menu while nothing else has the keyboard.
+    let target = m.selection.includes(m.commit.oid) && ui.memory(|mm| mm.focused().is_none());
+    resp.row_menu_for(target, |ui| {
         let on_labels = ui.ctx().data(|d| d.get_temp::<bool>(id)).unwrap_or(false);
         match m.snap.refs.get(&m.commit.oid).filter(|l| on_labels && !l.is_empty()) {
             Some(labels) => labels_menu(ui, labels, &m, msgs),

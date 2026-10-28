@@ -1,7 +1,8 @@
 //! The toolbar's repository menu and its rows (`repo_menu_list.rs`, `repo_menu_row.rs`): the
 //! lists first, one row per repository with its name, parent, status, star and ×, then the
 //! commands and the tidying group; the star and × on hover or keyboard focus, Delete on a row,
-//! the filter field of a long list, and the pixel goldens in dark and light. The listed paths
+//! the filter field of a long list, the arrows and typeahead between the rows, and the pixel
+//! goldens in dark and light. The listed paths
 //! are labels only, never opened.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -216,5 +217,36 @@ fn repo_menu_actions() {
     h.get_by_label("Pull favorites").click();
     h.run();
     assert!(matches!(last(&h), Msg::Repos(ReposMsg::StartSync { kind: SyncKind::Pull, scope: SyncScope::Favorites })));
+    remove_fixture(&dir);
+}
+
+#[test]
+fn repo_menu_rows_take_the_arrows_and_typeahead() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "repo-menu-arrows");
+    lists(&mut st);
+    let mut h = harness(st, true);
+    h.run();
+    open_repo_menu(&mut h);
+    let row = |p: String| shown(&p);
+    h.get_by_label(&row(api())).focus();
+    h.run();
+    h.press_key(Key::ArrowDown);
+    h.run();
+    assert!(h.get_by_label(&row(old())).is_focused(), "Down goes to the next row, past the star and ×");
+    h.press_key(Key::ArrowUp);
+    h.run();
+    assert!(h.get_by_label(&row(api())).is_focused(), "Up back");
+    h.press_key(Key::ArrowRight);
+    h.run();
+    assert!(h.get_by_label("Add to favorites").is_focused(), "Right reaches the row's star");
+    h.press_key(Key::ArrowLeft);
+    h.run();
+    assert!(h.get_by_label(&row(api())).is_focused(), "Left returns to the row");
+    h.input_mut().events.push(eframe::egui::Event::Text("o".into()));
+    h.run();
+    assert!(h.get_by_label(&row(old())).is_focused(), "typeahead by name");
+    h.press_key(Key::Tab);
+    h.run();
+    assert!(h.get_by_label("Add to favorites").is_focused(), "Tab still reaches the star");
     remove_fixture(&dir);
 }

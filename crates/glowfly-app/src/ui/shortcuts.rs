@@ -10,6 +10,7 @@ mod custom_keys;
 mod global;
 mod record;
 mod sheet;
+mod sheet_menus;
 
 #[cfg(test)]
 mod command_keys_tests;

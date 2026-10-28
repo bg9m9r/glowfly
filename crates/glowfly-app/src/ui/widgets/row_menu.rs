@@ -1,7 +1,12 @@
 //! Right-click menus that open below the row they belong to, so the row (and the status at its
 //! right end) stays in view while the menu is open, in the shared menu style (`menu.rs`).
+//! Shift+F10 opens one from the keyboard, below its row, on the focused row or the row its view
+//! has selected (`row_menu_for`), its first item focused (`menu_keys`; egui reports no Menu
+//! key). `menu::context_menu` shares the code, at the pointer.
 
-use eframe::egui::{self, Id, InnerResponse, Rect, Response, Ui, Vec2, pos2};
+use crate::ui::menu_keys;
+use eframe::egui::menu::{BarState, MenuRoot};
+use eframe::egui::{Id, InnerResponse, Rect, Response, Ui, Vec2, pos2};
 
 /// Space between the row's edge and the menu.
 const GAP: f32 = 2.0;
@@ -14,30 +19,49 @@ const CONTEXT_MENU_ID: &str = "__egui::context_menu";
 pub trait RowMenuExt {
     /// Like `Response::context_menu`, but the menu's top edge sits just below the row (its left
     /// edge at the pointer, never left of the row), or its bottom edge just above the row when it
-    /// doesn't fit below inside the window.
+    /// doesn't fit below inside the window. Shift+F10 opens it while the row has the focus.
     fn row_menu(&self, add_contents: impl FnOnce(&mut Ui)) -> Option<InnerResponse<()>>;
+
+    /// `row_menu`, which Shift+F10 opens while the row is the keyboard's `target` too (the view's
+    /// selected row, while the view has the keyboard).
+    fn row_menu_for(&self, target: bool, add_contents: impl FnOnce(&mut Ui)) -> Option<InnerResponse<()>>;
 }
 
 impl RowMenuExt for Response {
-    /// Mirrors egui's own `menu::context_menu` (same state, same interaction), with a different
-    /// position: `MenuRoot::new` keeps the pointer in `menu_state.rect.min`, and the menu's area
-    /// is drawn at `rect.min`, so rewriting it moves the menu.
     fn row_menu(&self, add_contents: impl FnOnce(&mut Ui)) -> Option<InnerResponse<()>> {
-        let ctx = &self.ctx;
-        let id = Id::new(CONTEXT_MENU_ID);
-        let mut bar = egui::menu::BarState::load(ctx, id);
-        let was_ours = bar.as_ref().is_some_and(|r| r.id == self.id);
-        egui::menu::MenuRoot::context_click_interaction(self, &mut bar);
-        if let Some(root) = bar.as_ref().filter(|r| r.id == self.id) {
-            let row = ctx.layer_transform_to_global(self.layer_id).map_or(self.rect, |t| t * self.rect);
-            let screen = ctx.screen_rect();
-            let mut ms = root.menu_state.write();
-            ms.rect = placed(ms.rect, row, screen, !was_ours || self.secondary_clicked());
-        }
-        let inner = bar.show(self, |ui| super::menu::styled(ui, add_contents));
-        bar.store(ctx, id);
-        inner
+        show(self, false, true, add_contents)
     }
+
+    fn row_menu_for(&self, target: bool, add_contents: impl FnOnce(&mut Ui)) -> Option<InnerResponse<()>> {
+        show(self, target, true, add_contents)
+    }
+}
+
+/// Mirrors egui's own `menu::context_menu` (same state, same interaction). Below the row with
+/// `row`: `MenuRoot::new` keeps the pointer in `menu_state.rect.min`, and the menu's area is
+/// drawn at `rect.min`, so rewriting it moves the menu. Shift+F10 opens it while `resp` has the
+/// focus or is the `target`.
+pub(super) fn show(resp: &Response, target: bool, row: bool, add_contents: impl FnOnce(&mut Ui)) -> Option<InnerResponse<()>> {
+    let ctx = &resp.ctx;
+    menu_keys::capture(ctx);
+    let id = Id::new(CONTEXT_MENU_ID);
+    let mut bar = BarState::load(ctx, id);
+    let was_ours = bar.as_ref().is_some_and(|r| r.id == resp.id);
+    let rect = ctx.layer_transform_to_global(resp.layer_id).map_or(resp.rect, |t| t * resp.rect);
+    let keyed = !was_ours && (target || resp.has_focus()) && menu_keys::take_menu_key(ctx);
+    if keyed {
+        **bar = Some(MenuRoot::new(pos2(rect.left(), rect.bottom() + GAP), resp.id));
+    }
+    menu_keys::opener(ctx, resp.has_focus().then_some(resp.id));
+    super::menu_open::guarded(ctx, &mut bar, |bar| MenuRoot::context_click_interaction(resp, bar));
+    if let Some(root) = bar.as_ref().filter(|r| r.id == resp.id && row) {
+        let screen = ctx.screen_rect();
+        let mut ms = root.menu_state.write();
+        ms.rect = placed(ms.rect, rect, screen, !was_ours || resp.secondary_clicked());
+    }
+    let inner = bar.show(resp, |ui| super::menu::styled(ui, add_contents));
+    bar.store(ctx, id);
+    inner
 }
 
 /// Where the menu goes. `menu` is its last rect (on the frame it opens: the pointer, sized

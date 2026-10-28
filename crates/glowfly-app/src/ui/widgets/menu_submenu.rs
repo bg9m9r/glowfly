@@ -4,7 +4,7 @@
 //! own:
 //!
 //! - **Open delay.** Until the pointer has rested `OPEN_DELAY` on the row (or clicked it, or
-//!   pressed Enter, Space or Right on it), a click-sensing cover over the row takes the hover, so
+//!   pressed Enter, Space or Right while on it), a click-sensing cover over the row takes the hover, so
 //!   egui doesn't see its button hovered and doesn't open; the row is drawn hovered meanwhile.
 //! - **Close grace.** egui closes an open submenu when the pointer is elsewhere in the `Ui` that
 //!   holds its row. That `Ui` is the row's child, which never holds the pointer away from the
@@ -21,9 +21,18 @@
 //!   it, and if it belongs elsewhere the cover closes it before it is drawn and it opens again
 //!   in its place two frames later.
 //!
+//! - **Keyboard.** Right, Enter or Space on the focused row opens a submenu of our own
+//!   (`menu_submenu_keyed.rs`; egui's opens only under the pointer) with its first row focused,
+//!   or focuses the first row of the one already open. Left or Esc in egui's own submenu closes
+//!   it while the pointer is on the row (the cover again, `native_closed`); with the pointer
+//!   elsewhere, Left goes back to the row and Esc closes the whole menu. Each row registers with
+//!   the menu's keyboard (`menu_keys`), which sees which kind of level its contents are.
+//!
 //! One level only: a submenu's own submenu rows are rows of the same kind.
 
-use eframe::egui::{self, Id, InnerResponse, Key, LayerId, Pos2, Rect, Sense, Ui, UiBuilder, UiKind, Vec2, WidgetText, pos2};
+use super::menu_submenu_keyed as keyed;
+use crate::ui::menu_keys::{self, Kind};
+use eframe::egui::{self, Id, InnerResponse, Key, LayerId, Modifiers, Pos2, Rect, Sense, Ui, UiBuilder, UiKind, Vec2, WidgetText, pos2};
 use std::cell::Cell;
 
 /// How long the pointer rests on a row before its submenu opens, in seconds.
@@ -38,6 +47,8 @@ pub const EDGE: f32 = 8.0;
 struct Row {
     /// The row's rect last frame.
     rect: Option<Rect>,
+    /// The row's button last frame.
+    button: Option<Id>,
     /// When the pointer came to rest on the row (it is still there).
     since: Option<f64>,
     /// May egui open it: the delay is over, or it was clicked or opened with a key.
@@ -53,21 +64,40 @@ struct Row {
     size: Option<Vec2>,
     /// Closing it, the first time, to open it again where its measured size says.
     reopen: bool,
+    /// Closing egui's submenu from the keyboard (the cover takes the hover while the pointer is
+    /// on the row, and egui closes it).
+    shut: bool,
+    /// Closed so with the pointer on the row: it opens again only after the pointer moves.
+    hold: bool,
 }
 
-/// A submenu row: inside a menu with the open delay, close grace and placement above; outside
-/// one, egui's menu button.
-pub(super) fn show<R>(ui: &mut Ui, title: WidgetText, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<Option<R>> {
+/// A submenu row: inside a menu with the open delay, close grace and placement above, and
+/// opened from the keyboard (`menu_submenu_keyed`); outside one (a popup's row), a button whose
+/// menu a click, Enter, Space, Right or Alt+Down opens below it (`menu_open`). `add_contents`
+/// learns which kind of menu level it draws.
+pub(super) fn show<R>(ui: &mut Ui, title: WidgetText, add_contents: impl FnOnce(&mut Ui, Kind) -> R) -> InnerResponse<Option<R>> {
+    let text = title.text().to_owned();
     if !ui.stack().iter().any(|s| s.kind() == Some(UiKind::Menu)) {
-        return ui.menu_button(title, add_contents);
+        let r = super::menu_open::titled(ui, title, true, |ui| add_contents(ui, Kind::Root));
+        menu_keys::register(ui, &r.response, Some(&text), true);
+        return r;
     }
-    let key = ui.id().with(("glowfly-submenu", title.text().to_owned()));
+    let key = ui.id().with(("glowfly-submenu", text.clone()));
     let ctx = ui.ctx().clone();
     let mut row = ctx.data(|d| d.get_temp::<Row>(key)).unwrap_or_default();
     let now = ui.input(|i| i.time);
     let pointer = ui.input(|i| i.pointer.hover_pos());
     let menu = ctx.memory(|m| m.area_rect(ui.layer_id().id));
     let on_row = row.rect.is_some_and(|r| ui.rect_contains_pointer(r));
+    keys(ui, &row, key);
+    if keyed::is_open(&ctx, key) {
+        // The pointer moved on to another row of the menu, or egui opened its own.
+        let moved = ui.input(|i| i.pointer.delta() != Vec2::ZERO);
+        if row.open || (moved && !on_row && pointer.zip(menu).is_some_and(|(p, m)| m.contains(p))) {
+            keyed::close(&ctx, key);
+        }
+    }
+    let keyed_open = keyed::is_open(&ctx, key);
     if row.reopen && !row.open {
         row.reopen = false;
     }
@@ -81,7 +111,8 @@ pub(super) fn show<R>(ui: &mut Ui, title: WidgetText, add_contents: impl FnOnce(
     // The child takes this auto id's place in `ui`, and no widget gets it (`row_at`).
     let slot = ui.next_auto_id();
     let mut child = ui.new_child(UiBuilder::new().id_salt(key).max_rect(area));
-    let waiting = !row.armed && !row.open;
+    // While the keyboard's submenu is open, egui's own doesn't open under it.
+    let waiting = (!row.armed && !row.open) || keyed_open;
     if waiting && on_row {
         // The cover takes the hover from egui's button; draw the row hovered all the same.
         let w = &mut child.visuals_mut().widgets;
@@ -91,9 +122,11 @@ pub(super) fn show<R>(ui: &mut Ui, title: WidgetText, add_contents: impl FnOnce(
         aim(&mut child, m, area.top(), size);
     }
     let layer = Cell::new(None);
+    let add = Cell::new(Some(add_contents));
+    let native = Kind::Native { row: row.button.unwrap_or(Id::NULL) };
     let inner = child.menu_button(title, |ui| {
         layer.set(Some(ui.layer_id()));
-        add_contents(ui)
+        add.take().map(|f| f(ui, native))
     });
     let rect = inner.response.rect;
     let open = inner.inner.is_some();
@@ -113,7 +146,7 @@ pub(super) fn show<R>(ui: &mut Ui, title: WidgetText, add_contents: impl FnOnce(
         }
         row.size = size.or(row.size);
     }
-    if waiting || row.reopen {
+    if waiting || row.reopen || row.shut {
         let cover = child.interact(rect, key.with("cover"), Sense::CLICK);
         if cover.clicked() {
             arm(&ctx, &mut row);
@@ -124,29 +157,76 @@ pub(super) fn show<R>(ui: &mut Ui, title: WidgetText, add_contents: impl FnOnce(
         child.expand_to_include_rect(m);
         ctx.request_repaint();
     }
+    let button = inner.response.clone();
+    let keyed_inner = keyed::show(&mut child, key, &button, menu, |ui| add.take().map(|f| f(ui, Kind::Keyed { row: button.id })));
+    if let Some(esc) = row.layer.filter(|_| open).and_then(|l| menu_keys::take_close(&ctx, l)) {
+        native_closed(&mut child, &mut row, &button, on_row, esc);
+    }
     drop(child);
     ui.advance_cursor_after_rect(rect);
+    menu_keys::register(ui, &button, Some(&text), true);
+    row.button = Some(button.id);
     row.rect = Some(rect);
     row.open = open;
     if !open {
         row.left_at = None;
+        row.shut = false;
     }
     let pass = ctx.cumulative_pass_nr();
     ctx.data_mut(|d| {
         d.insert_temp(key, row);
         d.insert_temp(slot.with(SLOT), (pass, inner.response.id));
     });
-    inner
+    let r = inner.inner.flatten().or(keyed_inner.flatten());
+    InnerResponse::new(r, inner.response)
 }
 
 const SLOT: &str = "glowfly-submenu-row";
 
 /// The widget at the auto id `id` of a menu's `Ui`: `id` itself, or for a submenu row drawn
 /// this pass (in a child `Ui` that took that id's place) the row's button. For code that walks
-/// a menu's items by their auto ids after drawing them (`menu_bar::nav`).
+/// a menu's items by their auto ids after drawing them (`menu_keys`).
 pub fn row_at(ctx: &egui::Context, id: Id) -> Id {
     let pass = ctx.cumulative_pass_nr();
     ctx.data(|d| d.get_temp::<(u64, Id)>(id.with(SLOT))).filter(|&(p, _)| p == pass).map_or(id, |(_, row)| row)
+}
+
+/// Left or Esc (`esc`) in egui's own submenu of the row `button`. With the pointer on the row,
+/// the cover takes its hover, egui closes the submenu, and it waits for the pointer to move
+/// before opening again. Elsewhere egui keeps it open while the pointer can still reach it: Left
+/// goes back to the row, and Esc closes the whole menu.
+fn native_closed(child: &mut Ui, row: &mut Row, button: &egui::Response, on_row: bool, esc: bool) {
+    let ctx = child.ctx().clone();
+    if on_row {
+        (row.shut, row.hold, row.armed) = (true, true, false);
+    } else if esc {
+        child.close_menu();
+        menu_keys::closed_by_key(&ctx);
+        return;
+    }
+    ctx.memory_mut(|m| m.request_focus(button.id));
+    ctx.request_repaint();
+}
+
+/// Right, Enter or Space on the focused row: opens its submenu from the keyboard, or has the
+/// open one's first row take the focus.
+fn keys(ui: &Ui, row: &Row, key: Id) {
+    let ctx = ui.ctx();
+    let Some(button) = row.button.filter(|&b| ctx.memory(|m| m.has_focus(b))) else { return };
+    if menu_keys::caller_opens_set(ui) {
+        return;
+    }
+    let pressed = ctx.input_mut(|i| [Key::ArrowRight, Key::Enter, Key::Space].into_iter().any(|k| i.consume_key(Modifiers::NONE, k)));
+    if !pressed {
+        return;
+    }
+    if let Some(l) = row.layer.filter(|_| row.open) {
+        menu_keys::request_first(ctx, l);
+    } else if keyed::is_open(ctx, key) {
+        menu_keys::request_first(ctx, keyed::layer(button));
+    } else if let Some(rect) = row.rect {
+        keyed::open(ctx, key, button, rect);
+    }
 }
 
 /// Tracks the pointer resting on the row, and arms it when the delay is over or a key asks.
@@ -154,10 +234,15 @@ fn intent(ctx: &egui::Context, row: &mut Row, on_row: bool, now: f64) {
     if !on_row {
         row.since = None;
         row.armed = false;
+        row.hold = false;
         return;
     }
+    if row.hold && ctx.input(|i| i.pointer.delta() != Vec2::ZERO) {
+        row.hold = false;
+        row.since = None;
+    }
     let since = *row.since.get_or_insert(now);
-    if row.open {
+    if row.open || row.hold {
         return;
     }
     if row.armed {

@@ -12,7 +12,14 @@ mod views;
 use views::{code_lines, view_sources};
 
 /// The files that wrap egui's openers.
-const WRAPPERS: &[&str] = &["ui/widgets/menu.rs", "ui/widgets/menu_submenu.rs", "ui/widgets/row_menu.rs", "ui/menu_anchor.rs"];
+const WRAPPERS: &[&str] = &[
+    "ui/widgets/menu.rs",
+    "ui/widgets/menu_open.rs",
+    "ui/widgets/menu_submenu.rs",
+    "ui/widgets/menu_submenu_keyed.rs",
+    "ui/widgets/row_menu.rs",
+    "ui/menu_anchor.rs",
+];
 
 /// egui's openers, as (pattern, the wrapper to use instead).
 const DENIED: &[(&str, &str)] = &[

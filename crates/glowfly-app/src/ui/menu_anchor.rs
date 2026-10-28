@@ -1,11 +1,12 @@
 //! A menu that drops below a custom-drawn button, like a menu bar's: a click opens and closes
-//! it, hovering another button of the same `id` while one is open moves to that one, Esc and a
-//! click elsewhere close it, and code can open or close it too (the title bar's Alt tap, a
+//! it (and Enter, Space or Alt+Down on the focused button, `widgets/menu_open.rs`), hovering
+//! another button of the same `id` while one is open moves to that one, Esc and a click
+//! elsewhere close it, and code can open or close it too (the title bar's Alt tap, a
 //! mnemonic, Left and Right between the bar's menus). Returns whether it is open, so the
 //! caller can paint the button's open look. Its contents get the shared menu style
 //! (`widgets/menu.rs`).
 
-use eframe::egui::{self, Frame, Id, Pos2, Response};
+use eframe::egui::{self, Id, Pos2, Response};
 use egui::menu::{BarState, MenuRoot};
 
 /// What code does to a button's menu this frame, before the pointer has its say.
@@ -32,7 +33,7 @@ pub(super) fn menu_below(ui: &egui::Ui, id: Id, button: &Response, cmd: MenuCmd,
             }
         }
     }
-    bar.bar_menu(button, |ui| super::widgets::menu::styled(ui, contents));
+    super::widgets::menu_open::dropdown(&mut bar, button, false, |ui| super::widgets::menu::styled(ui, contents));
     let open = bar.as_ref().is_some_and(|r| r.id == button.id);
     bar.store(ui.ctx(), id);
     open
@@ -62,9 +63,5 @@ pub(super) fn open_id(ctx: &egui::Context, id: Id) -> Option<Id> {
 
 /// Where a click opens `button`'s menu: below it, its first item lined up with the button.
 fn below(button: &Response) -> Pos2 {
-    let style = button.ctx.style();
-    let mut pos = button.rect.left_bottom();
-    pos.x -= Frame::menu(&style).total_margin().left;
-    pos.y += style.spacing.menu_spacing;
-    pos
+    super::widgets::menu_open::below_pos(button)
 }

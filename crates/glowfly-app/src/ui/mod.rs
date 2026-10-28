@@ -93,6 +93,7 @@ mod markdown_code;
 mod markdown_inline;
 mod menu_anchor;
 mod menu_bar;
+mod menu_keys;
 mod menus;
 mod modals;
 mod needs_you;
@@ -227,6 +228,8 @@ pub struct UiCache {
 
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.
 pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+    // An open menu's keys are its own (done by the shortcuts already when they ran).
+    menu_keys::capture(ctx);
     widgets::tooltip::configure(ctx, st.settings.reduce_motion);
     let bounds = frame_layout::show(ctx, st, cache, msgs);
     // Frees the File view's image texture once a frame draws no image.
