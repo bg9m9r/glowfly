@@ -61,9 +61,6 @@ impl Auth {
 }
 
 const KEYRING_SERVICE: &str = "glowfly";
-/// Where tokens were saved under the app's earlier names, newest first (Trellis, then Riffle);
-/// moved on first use.
-const OLD_KEYRING_SERVICES: [&str; 2] = ["trellis", "riffle"];
 
 #[derive(Serialize, Deserialize)]
 struct Secret {
@@ -76,10 +73,6 @@ fn keyring_entry(account: &Account) -> Result<keyring::Entry> {
     Ok(keyring::Entry::new(KEYRING_SERVICE, &account.key())?)
 }
 
-fn old_keyring_entries(account: &Account) -> impl Iterator<Item = keyring::Entry> + '_ {
-    OLD_KEYRING_SERVICES.into_iter().filter_map(|service| keyring::Entry::new(service, &account.key()).ok())
-}
-
 pub fn save_token(account: &Account, user: Option<&str>, token: &str) -> Result<()> {
     let secret = Secret { user: user.map(str::to_owned), token: token.trim().to_owned() };
     keyring_entry(account)?.set_password(&serde_json::to_string(&secret)?)?;
@@ -87,9 +80,6 @@ pub fn save_token(account: &Account, user: Option<&str>, token: &str) -> Result<
 }
 
 pub fn delete_token(account: &Account) -> Result<()> {
-    for old in old_keyring_entries(account) {
-        let _ = old.delete_credential();
-    }
     match keyring_entry(account)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.into()),
@@ -97,19 +87,7 @@ pub fn delete_token(account: &Account) -> Result<()> {
 }
 
 fn saved_token(account: &Account) -> Option<Secret> {
-    let entry = keyring_entry(account).ok()?;
-    let raw = match entry.get_password() {
-        Ok(raw) => raw,
-        // Saved under an old name: copy it across, then remove the old entry.
-        Err(keyring::Error::NoEntry) => {
-            let (old, raw) = old_keyring_entries(account).find_map(|old| old.get_password().ok().map(|raw| (old, raw)))?;
-            if entry.set_password(&raw).is_ok() {
-                let _ = old.delete_credential();
-            }
-            raw
-        }
-        Err(_) => return None,
-    };
+    let raw = keyring_entry(account).ok()?.get_password().ok()?;
     serde_json::from_str(&raw).ok()
 }
 

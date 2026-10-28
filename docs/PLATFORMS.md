@@ -356,8 +356,7 @@ second one next to it.
    it, and it is never read again while Glowfly runs. It is independent of the `LANGUAGE=C`
    that `gitcli` gives git children (rule 5).
 10. **`GLOWFLY_UPDATE_FEED` replaces the release feed with a local folder** (`app_update::Feed`).
-    The old name, `TRELLIS_UPDATE_FEED`, is read when the new one is unset or empty
-    (`app_update::feed::feed_var`). Unset or empty means the hosting service over https, as always. Set, it must be an absolute
+    Unset or empty means the hosting service over https, as always. Set, it must be an absolute
     path (`Path::is_absolute`, so `/feed` counts as relative on Windows, which needs a drive or
     UNC prefix); a relative value is an error, never resolved against the working folder. The
     folder holds `release.json` in the hosting service's release shape next to the files it
@@ -405,11 +404,7 @@ second one next to it.
    `env_path::apply`). The Windows command quotes the program and `"%1"` through
    `native_path::native` (`url_scheme::windows_command`: no `\\?\` prefix); a desktop entry's
    `Exec` argument is quoted by `url_scheme::desktop_exec_arg` (reserved characters, `%%`, and the
-   desktop-file string escaping of `\`). The old `trellis` scheme (the app was called Trellis) is
-   registered for the same program beside it (`url_scheme::OLD_SCHEME`: a second class key, a
-   second `MimeType` in the same desktop entry, and the MSI writes both), so links made before
-   the rename still open; unregistering removes the `trellis` key only while it points at this
-   copy. `link::parse` accepts both schemes and links are always made with `glowfly://`.
+   desktop-file string escaping of `\`).
 2. **The instance file is private:** it is written with `persist::WriteOptions { private: true }`
    (mode 0600, and 0700 for a folder the write creates, on Unix) under `settings::runtime_dir`
    (`$XDG_RUNTIME_DIR/glowfly` on Linux, `$XDG_RUNTIME_DIR/app/<FLATPAK_ID>/glowfly` inside
@@ -586,15 +581,6 @@ second one next to it.
    operation journal's notes are `<git dir>/glowfly/journal.jsonl` (`journal::notes::path`, a
    linked worktree's own git dir, since HEAD is per worktree), appended through
    `persist::append` and trimmed through `persist::atomic_write`, bounded like a log.
-
-9. **Folders from the app's earlier names move once, at start** (`settings::migrate_old_dirs`,
-   `settings/migrate.rs`), before logging creates anything: the settings folder Trellis used
-   (else an older `<XDG config>/Trellis` or Riffle one), and Trellis's cache and logs folders,
-   each only when Glowfly's own isn't there yet. Every location is spelled by one function of the
-   name (`settings/paths.rs`, `AppName`), so the old folders follow the same OS rules. A move is a
-   rename, or a copy and then a removal across volumes. Saved tokens move the same way, from the
-   `trellis` (or `riffle`) keyring service on first use, and the journal notes from
-   `<git dir>/trellis` the first time a repository's notes are read.
 12. **Custom shell commands run under POSIX sh on every OS, found by `custom_commands::find_sh`
     on the runner thread only:** `/bin/sh` on Unix; on Windows the `sh.exe` beside the git in use
     (`<Git>\bin` or `<Git>\usr\bin`, from `<Git>\cmd`, `<Git>\bin` or `<Git>\mingw64\bin`),

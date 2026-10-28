@@ -57,21 +57,6 @@ fn every_kind_round_trips_through_the_file() {
 }
 
 #[test]
-fn notes_written_as_trellis_move_to_the_glowfly_folder() {
-    let dir = scratch_repo("journal-notes-trellis");
-    let first = note(1, every_op().remove(0));
-    append(&dir, &first).unwrap();
-    let (new, old) = (dir.join(".git").join("glowfly"), dir.join(".git").join("trellis"));
-    std::fs::rename(&new, &old).unwrap();
-    assert_eq!(read(&dir), vec![first.clone()], "read from the old folder, moving it");
-    assert!(new.join("journal.jsonl").is_file() && !old.exists());
-    let second = note(2, every_op().remove(1));
-    append(&dir, &second).unwrap();
-    assert_eq!(read(&dir), vec![first, second]);
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
 fn bad_lines_are_skipped() {
     let good = serde_json::to_string(&note(1, Op::Amend)).unwrap();
     let newer = good.replace("\"v\":1", "\"v\":2");

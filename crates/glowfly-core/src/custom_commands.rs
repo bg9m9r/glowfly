@@ -170,21 +170,9 @@ pub fn user_file() -> Option<PathBuf> {
 
 /// The folder in a working folder that holds the repository's commands file.
 pub const REPO_DIR: &str = ".glowfly";
-/// The same folder's name from before the app was renamed (it was called Trellis), read when a
-/// repository has no `.glowfly`.
-pub const OLD_REPO_DIR: &str = ".trellis";
-
-/// The repository's commands folder under its working folder `workdir`: `.glowfly`, or
-/// `.trellis` when only that one is there. Looks at the disk: runner threads only.
-pub fn repo_dir(workdir: &Path) -> PathBuf {
-    let (new, old) = (workdir.join(REPO_DIR), workdir.join(OLD_REPO_DIR));
-    // `symlink_metadata`: a link in either place counts as there (and is refused when read).
-    if std::fs::symlink_metadata(&new).is_err() && std::fs::symlink_metadata(&old).is_ok() { old } else { new }
-}
-
-/// The repository's commands file under its working folder `workdir` (see [`repo_dir`]).
+/// The repository's commands file under its working folder `workdir`.
 pub fn repo_file(workdir: &Path) -> PathBuf {
-    repo_dir(workdir).join(FILE_NAME)
+    workdir.join(REPO_DIR).join(FILE_NAME)
 }
 
 /// Reads the user's commands file. Runner threads only.
@@ -196,9 +184,9 @@ pub fn read_user() -> FileRead {
 }
 
 /// Reads the commands file of the repository at `workdir`, refusing a link for the file or
-/// its `.glowfly` (or `.trellis`) folder. Runner threads only.
+/// its `.glowfly` folder. Runner threads only.
 pub fn read_repo(workdir: &Path) -> FileRead {
-    let dir = repo_dir(workdir);
+    let dir = workdir.join(REPO_DIR);
     read_file(dir.join(FILE_NAME), Some(&dir))
 }
 

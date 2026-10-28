@@ -88,14 +88,8 @@ fn main() -> eframe::Result {
     if std::env::var_os(askpass::ENV_ADDR).is_some() {
         std::process::exit(askpass_helper(argv.get(1)));
     }
-    // Moves an earlier version's settings, cache and logs folders (the app was called Trellis):
-    // before logging, which would create the new logs folder first.
-    let migrated = glowfly_core::settings::migrate_old_dirs();
     // Only the window logs: the helper modes above exit before this.
     let logs = logging::init();
-    if let Err(e) = migrated {
-        tracing::warn!("could not move the settings, cache or logs folder from where an earlier version kept it: {e}");
-    }
     // Before any repository opens: lets libgit2 open partial clones older git made.
     glowfly_core::partial::allow_extension();
     // The installer checks' state file, only when GLOWFLY_SMOKE_PROBE asks for it.

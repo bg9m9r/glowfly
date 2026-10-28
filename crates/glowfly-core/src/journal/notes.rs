@@ -170,16 +170,9 @@ impl Captured {
     }
 }
 
-/// The notes file of the repository at `workdir` (its worktree's own git dir). Notes written
-/// while the app was called Trellis (`<git dir>/trellis`) move to the new folder the first time.
+/// The notes file of the repository at `workdir` (its worktree's own git dir).
 pub fn path(workdir: &Path) -> Result<PathBuf> {
-    let git_dir = Repository::open(workdir)?.path().to_path_buf();
-    let (dir, old) = (git_dir.join("glowfly"), git_dir.join("trellis"));
-    if !dir.exists() && old.join("journal.jsonl").is_file() {
-        // Best effort: on failure the old notes are only left behind.
-        let _ = std::fs::rename(&old, &dir);
-    }
-    Ok(dir.join("journal.jsonl"))
+    Ok(Repository::open(workdir)?.path().join("glowfly").join("journal.jsonl"))
 }
 
 /// Appends `note` as one line, trimming the file to the newest `MAX_NOTES` lines once it is

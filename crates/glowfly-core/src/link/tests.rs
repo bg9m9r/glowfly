@@ -112,20 +112,6 @@ fn links_are_told_from_paths() {
     assert!(!looks_like_link(OsStr::new("glowfly-repo")));
     assert!(!looks_like_link(OsStr::new("/home/me/glowfly")));
     assert!(!looks_like_link(OsStr::new(r"C:\src\glowfly")));
-    // Links from before the rename.
-    assert!(looks_like_link(OsStr::new(&format!("trellis://repo?root={ROOT}"))));
-    assert!(looks_like_link(OsStr::new("Trellis://commit/abc")));
-    assert!(!looks_like_link(OsStr::new("trellis")));
-}
-
-#[test]
-fn trellis_links_from_before_the_rename_still_open() {
-    let old = parse(&format!("trellis://branch/feature%2Fx?root={ROOT}")).unwrap();
-    assert_eq!(old, parse(&format!("glowfly://branch/feature%2Fx?root={ROOT}")).unwrap());
-    assert_eq!(parse(&format!("TRELLIS://repo?root={ROOT}")).map(|l| l.target), Ok(Target::Repository));
-    // What we make is always the new scheme.
-    assert!(old.to_uri().starts_with("glowfly://branch/"), "{}", old.to_uri());
-    assert_eq!(parse(&format!("trelli://repo?root={ROOT}")), Err(LinkError::NotALink));
 }
 
 #[test]

@@ -31,7 +31,7 @@ const LINE_LIMIT: usize = 400;
 const LONG_FILES: &[(&str, usize)] = &[
     ("crates/glowfly-app/src/state/mod.rs", 590),
     ("crates/glowfly-core/src/forge/github.rs", 406),
-    ("crates/glowfly-core/src/settings.rs", 410),
+    ("crates/glowfly-core/src/settings.rs", 408),
 ];
 
 /// How many log and toast calls in `update/` and `state/` still pass English text. Lower it when

@@ -71,10 +71,6 @@ priority = "optional"
 # cursor and input extensions, xcb, the Wayland client and its EGL bridge, and the GL loaders
 # (EGL first, GLX on X11). tests/linux_packages.rs keeps this list and the .rpm's in step.
 depends = "$auto, git, libxkbcommon0, libxkbcommon-x11-0, libx11-6, libx11-xcb1, libxcursor1, libxi6, libxcb1, libwayland-client0, libwayland-egl1, libegl1, libgl1"
-# Glowfly was called Trellis: installing it replaces the trellis package instead of joining it.
-conflicts = "trellis"
-replaces = "trellis"
-provides = "trellis"
 extended-description = """Glowfly is a native Git client: a commit graph, diffs, staging by file, hunk or line, branches, stashes, rebases and pull requests from the hosting service."""
 assets = [
     ["target/release/glowfly", "usr/bin/", "755"],

@@ -4,9 +4,6 @@
 //! - Windows: `%APPDATA%\Glowfly`
 //! - macOS: `~/Library/Application Support/Glowfly`
 //! - Linux and other Unix: `$XDG_CONFIG_HOME/glowfly`, or `~/.config/glowfly`
-//!
-//! Every location is a function of the app's name ([`AppName`]), so the folders the app used
-//! while it was called Trellis are spelled by the same code; `migrate` moves them once.
 
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -31,21 +28,14 @@ impl Os {
     };
 }
 
-/// The app's name as its folders spell it: `title` on Windows and macOS, `lower` on XDG systems.
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub(crate) struct AppName {
-    pub(crate) title: &'static str,
-    pub(crate) lower: &'static str,
-}
-
-/// The current name.
-pub(crate) const GLOWFLY: AppName = AppName { title: "Glowfly", lower: "glowfly" };
-/// The name before Glowfly; its folders are moved to Glowfly's once (`migrate`).
-pub(crate) const TRELLIS: AppName = AppName { title: "Trellis", lower: "trellis" };
+/// The app's name as its folders spell it on Windows and macOS.
+const TITLE: &str = "Glowfly";
+/// The app's name as its folders spell it on XDG systems.
+const LOWER: &str = "glowfly";
 
 /// An environment variable as a path, if it is set to something absolute. The XDG spec says to
 /// ignore relative values, and an empty `HOME` would put files in the working directory.
-pub(crate) fn abs_var(env: &impl Fn(&str) -> Option<OsString>, name: &str) -> Option<PathBuf> {
+fn abs_var(env: &impl Fn(&str) -> Option<OsString>, name: &str) -> Option<PathBuf> {
     env(name).map(PathBuf::from).filter(|p| p.is_absolute())
 }
 
@@ -54,16 +44,12 @@ fn xdg_config_home(env: &impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
     abs_var(env, "XDG_CONFIG_HOME").or_else(|| abs_var(env, "HOME").map(|h| h.join(".config")))
 }
 
-pub(crate) fn config_dir_named(os: Os, name: AppName, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
-    match os {
-        Os::Windows => abs_var(&env, "APPDATA").map(|a| a.join(name.title)),
-        Os::Mac => abs_var(&env, "HOME").map(|h| h.join("Library").join("Application Support").join(name.title)),
-        Os::Xdg => xdg_config_home(&env).map(|c| c.join(name.lower)),
-    }
-}
-
 pub(crate) fn config_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
-    config_dir_named(os, GLOWFLY, env)
+    match os {
+        Os::Windows => abs_var(&env, "APPDATA").map(|a| a.join(TITLE)),
+        Os::Mac => abs_var(&env, "HOME").map(|h| h.join("Library").join("Application Support").join(TITLE)),
+        Os::Xdg => xdg_config_home(&env).map(|c| c.join(LOWER)),
+    }
 }
 
 pub fn config_dir() -> Option<PathBuf> {
@@ -76,16 +62,12 @@ pub fn config_dir() -> Option<PathBuf> {
 /// - Windows: `%LOCALAPPDATA%\Glowfly`
 /// - macOS: `~/Library/Caches/Glowfly`
 /// - Linux and other Unix: `$XDG_CACHE_HOME/glowfly`, or `~/.cache/glowfly`
-pub(crate) fn cache_dir_named(os: Os, name: AppName, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
-    match os {
-        Os::Windows => abs_var(&env, "LOCALAPPDATA").map(|a| a.join(name.title)),
-        Os::Mac => abs_var(&env, "HOME").map(|h| h.join("Library").join("Caches").join(name.title)),
-        Os::Xdg => abs_var(&env, "XDG_CACHE_HOME").or_else(|| abs_var(&env, "HOME").map(|h| h.join(".cache"))).map(|c| c.join(name.lower)),
-    }
-}
-
 pub(crate) fn cache_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
-    cache_dir_named(os, GLOWFLY, env)
+    match os {
+        Os::Windows => abs_var(&env, "LOCALAPPDATA").map(|a| a.join(TITLE)),
+        Os::Mac => abs_var(&env, "HOME").map(|h| h.join("Library").join("Caches").join(TITLE)),
+        Os::Xdg => abs_var(&env, "XDG_CACHE_HOME").or_else(|| abs_var(&env, "HOME").map(|h| h.join(".cache"))).map(|c| c.join(LOWER)),
+    }
 }
 
 pub fn cache_dir() -> Option<PathBuf> {
@@ -98,18 +80,14 @@ pub fn cache_dir() -> Option<PathBuf> {
 /// - Windows: `%LOCALAPPDATA%\Glowfly\logs`
 /// - macOS: `~/Library/Logs/Glowfly`
 /// - Linux and other Unix: `$XDG_STATE_HOME/glowfly/logs`, or `~/.local/state/glowfly/logs`
-pub(crate) fn log_dir_named(os: Os, name: AppName, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
+pub(crate) fn log_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
     match os {
-        Os::Windows => abs_var(&env, "LOCALAPPDATA").map(|a| a.join(name.title).join("logs")),
-        Os::Mac => abs_var(&env, "HOME").map(|h| h.join("Library").join("Logs").join(name.title)),
+        Os::Windows => abs_var(&env, "LOCALAPPDATA").map(|a| a.join(TITLE).join("logs")),
+        Os::Mac => abs_var(&env, "HOME").map(|h| h.join("Library").join("Logs").join(TITLE)),
         Os::Xdg => abs_var(&env, "XDG_STATE_HOME")
             .or_else(|| abs_var(&env, "HOME").map(|h| h.join(".local").join("state")))
-            .map(|s| s.join(name.lower).join("logs")),
+            .map(|s| s.join(LOWER).join("logs")),
     }
-}
-
-pub(crate) fn log_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
-    log_dir_named(os, GLOWFLY, env)
 }
 
 /// The logs folder for this system (see [`log_dir_for`]); None when the variables it needs are
@@ -130,8 +108,8 @@ pub(crate) fn runtime_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) ->
             let shared = env("FLATPAK_ID").filter(|id| crate::flatpak::app_id_ok(id));
             abs_var(&env, "XDG_RUNTIME_DIR")
                 .map(|r| match shared {
-                    Some(id) => r.join("app").join(id).join(GLOWFLY.lower),
-                    None => r.join(GLOWFLY.lower),
+                    Some(id) => r.join("app").join(id).join(LOWER),
+                    None => r.join(LOWER),
                 })
                 .or_else(|| cache_dir_for(os, env))
         }
@@ -167,15 +145,15 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
+mod tests {
     use super::*;
 
     /// An absolute fake home (absolute on the host, whatever it is) and an environment over it.
-    pub(crate) fn root(tag: &str) -> PathBuf {
+    fn root(tag: &str) -> PathBuf {
         crate::paths::temp_dir().join(format!("glowfly-paths-{tag}-{}", std::process::id()))
     }
 
-    pub(crate) fn env_of(vars: Vec<(&'static str, PathBuf)>) -> impl Fn(&str) -> Option<OsString> {
+    fn env_of(vars: Vec<(&'static str, PathBuf)>) -> impl Fn(&str) -> Option<OsString> {
         move |k| vars.iter().find(|(n, _)| *n == k).map(|(_, v)| v.clone().into_os_string())
     }
 
@@ -191,12 +169,6 @@ pub(crate) mod tests {
         let env = env_of(vec![("HOME", r.join("home")), ("XDG_CONFIG_HOME", r.join("xdg"))]);
         assert_eq!(config_dir_for(Os::Xdg, &env), Some(r.join("xdg").join("glowfly")));
         assert_eq!(config_dir_for(Os::Mac, &env), Some(r.join("home").join("Library").join("Application Support").join("Glowfly")));
-        // The old name's folders follow the same layout.
-        assert_eq!(config_dir_named(Os::Xdg, TRELLIS, &env), Some(r.join("xdg").join("trellis")));
-        assert_eq!(
-            config_dir_named(Os::Mac, TRELLIS, &env),
-            Some(r.join("home").join("Library").join("Application Support").join("Trellis"))
-        );
     }
 
     #[test]

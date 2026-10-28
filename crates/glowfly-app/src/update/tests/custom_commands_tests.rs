@@ -108,9 +108,8 @@ fn changes_under_glowfly_and_reload_read_the_files_again() {
     let before = st.custom_commands.generation;
     assert_eq!(load_of(&changed(&mut st, &[".glowfly/commands.toml"])).map(|(g, _)| g), Some(before + 1));
     assert_eq!(load_of(&changed(&mut st, &["src/main.rs"])), None);
-    // The folder's name from before the rename is watched too, but not a look-alike.
-    assert_eq!(load_of(&changed(&mut st, &[".trellis/commands.toml"])).map(|(g, _)| g), Some(before + 2));
-    assert_eq!(load_of(&changed(&mut st, &[".trellis-notes/a.txt"])), None);
+    // Not a look-alike folder.
+    assert_eq!(load_of(&changed(&mut st, &[".glowfly-notes/a.txt"])), None);
     let reload = PaletteMsg::RunPaletteCommand(PaletteCommand::Custom(CustomCommandMsg::Reload));
     assert!(load_of(&update(&mut st, Msg::Palette(reload), Instant::now())).is_some());
     let _ = std::fs::remove_dir_all(&dir);
@@ -140,22 +139,5 @@ fn keys_are_claimed_once_and_checked() {
     assert!(has(&format!("line 15: {new_tab} is already used by New tab, so it was ignored.")), "{lines:?}");
     assert!(has(&format!("line 20: {} is already used by Log, so it was ignored.", mod_alt_l.text())), "{lines:?}");
     assert!(has("line 25: Mod+Banana isn't a key Glowfly knows"), "{lines:?}");
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn problems_in_an_old_trellis_folder_name_it() {
-    let (mut st, dir) = opened("cc-old-folder");
-    let repo = FileRead {
-        path: Some(dir.join(".trellis").join("commands.toml")),
-        ..file(
-            "[[command]]
-name = 1
-",
-        )
-    };
-    load(&mut st, file(""), repo);
-    let lines: Vec<&str> = st.log.iter().map(|l| l.text.as_str()).collect();
-    assert!(lines.iter().any(|l| l.starts_with(".trellis/commands.toml, line 2: ")), "{lines:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

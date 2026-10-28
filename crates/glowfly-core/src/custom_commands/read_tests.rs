@@ -76,31 +76,3 @@ fn links_are_refused() {
     link(&outside, &dir.join(".glowfly")).unwrap();
     assert_eq!(kinds(&read_repo(&dir)), [ProblemKind::Link]);
 }
-
-#[test]
-fn an_old_trellis_folder_is_read_until_there_is_a_glowfly_one() {
-    let dir = repo("old-folder");
-    std::fs::create_dir_all(dir.join(OLD_REPO_DIR)).unwrap();
-    let command = |name: &str| {
-        format!(
-            "[[command]]
-name = \"{name}\"
-kind = \"git\"
-template = \"log\"
-"
-        )
-    };
-    std::fs::write(dir.join(OLD_REPO_DIR).join(FILE_NAME), command("Old")).unwrap();
-    assert_eq!(repo_file(&dir), dir.join(".trellis").join("commands.toml"));
-    let r = read_repo(&dir);
-    assert_eq!(r.path.as_deref(), Some(dir.join(".trellis").join("commands.toml").as_path()));
-    assert_eq!(r.commands.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["Old"]);
-
-    // A .glowfly folder wins, even before it has a file.
-    std::fs::create_dir_all(dir.join(REPO_DIR)).unwrap();
-    assert_eq!(repo_file(&dir), dir.join(".glowfly").join("commands.toml"));
-    assert!(read_repo(&dir).commands.is_empty());
-    std::fs::write(dir.join(REPO_DIR).join(FILE_NAME), command("New")).unwrap();
-    assert_eq!(read_repo(&dir).commands.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["New"]);
-    let _ = std::fs::remove_dir_all(&dir);
-}

@@ -79,9 +79,9 @@ fn terminal_panel_dark() {
 /// A long prompt as a pseudoconsole sends it: trimmed of its trailing space, erased to the end
 /// of the line and the cursor placed one cell past the space, under a full row ending in red.
 const LONG_PROMPT: &str = "\x1b[?25l\x1b[2J\x1b[m\x1b[H\
-PS C:\\work> cd trellis-worktrees\\terminal-keeps-the-prompts-space\\src\r\n\
+PS C:\\work> cd glowfly-worktrees\\terminal-keeps-the-prompts-space\\src\r\n\
 -------------------------------------------------------------------------------\x1b[31m|\x1b[0m\r\n\
-PS C:\\work\\trellis-worktrees\\terminal-keeps-the-prompts-space\\src>\x1b[K\x1b[3;68H\x1b[?25h";
+PS C:\\work\\glowfly-worktrees\\terminal-keeps-the-prompts-space\\src>\x1b[K\x1b[3;68H\x1b[?25h";
 
 #[test]
 fn terminal_prompt_space_dark() {

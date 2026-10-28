@@ -18,10 +18,6 @@ The palette lists your commands first, then the repository's. Glowfly reads both
 repository opens and on Refresh. It reads the repository's file again when anything under
 `.glowfly/` changes. Use **Reload custom commands** in the palette after editing your own file.
 
-Glowfly was called Trellis, and a repository may still keep its commands in
-`.trellis/commands.toml`. That file is read when the repository has no `.glowfly` folder; once
-`.glowfly/` exists, only it counts.
-
 ## The format
 
 Each command is one `[[command]]` table:

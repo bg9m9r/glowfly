@@ -102,15 +102,6 @@ fn picking_falls_back_and_ignores_other_files() {
 }
 
 #[test]
-fn files_named_for_trellis_are_picked_too() {
-    let old = release("v0.3.0", &["trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "trellis-v0.3.0-x86_64-pc-windows-msvc.zip"]);
-    assert_eq!(picked(&old, WIN, Installer).as_deref(), Some("trellis-v0.3.0-x86_64-pc-windows-msvc.msi"));
-    // The new name wins when a release has both.
-    let both = release("v0.3.0", &["trellis-v0.3.0-x86_64-pc-windows-msvc.msi", "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"]);
-    assert_eq!(picked(&both, WIN, Installer).as_deref(), Some("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"));
-}
-
-#[test]
 fn how_a_copy_was_installed() {
     let win = [
         (r"C:\Users\ada\AppData\Local\Programs\Glowfly\glowfly.exe", Installer),

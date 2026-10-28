@@ -1,6 +1,6 @@
 //! The desktop entry and `xdg-mime` on Linux and the other XDG desktops.
 
-use super::{DESKTOP_FILE, NO_XDG_MIME, OLD_SCHEME, SCHEME, SchemeStatus};
+use super::{DESKTOP_FILE, NO_XDG_MIME, SCHEME, SchemeStatus};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -67,8 +67,7 @@ pub(super) fn register(exe: &Path) -> Result<SchemeStatus, String> {
     let apps = apps_dir().ok_or("There is no data folder for desktop entries (HOME isn't set).")?;
     write_desktop_file(&apps, exe).map_err(|e| format!("Couldn't write {}: {e}", apps.join(DESKTOP_FILE).display()))?;
     refresh_database(&apps);
-    // Both schemes: trellis:// links from before the rename open here too.
-    xdg_mime(&["default", DESKTOP_FILE, &mime_type(SCHEME), &mime_type(OLD_SCHEME)])?;
+    xdg_mime(&["default", DESKTOP_FILE, &mime_type(SCHEME)])?;
     status(exe)
 }
 
@@ -92,7 +91,7 @@ mod tests {
         let exe = crate::paths::temp_dir().join("my tools").join("glowfly");
         write_desktop_file(&apps, &exe).unwrap();
         let text = std::fs::read_to_string(apps.join(DESKTOP_FILE)).unwrap();
-        assert!(text.contains("MimeType=x-scheme-handler/glowfly;x-scheme-handler/trellis;"), "{text}");
+        assert!(text.contains("MimeType=x-scheme-handler/glowfly;"), "{text}");
         assert_eq!(super::super::decide_xdg(DESKTOP_FILE, Some(&text), &exe), SchemeStatus::Registered);
         remove_desktop_file(&apps).unwrap();
         assert!(!apps.join(DESKTOP_FILE).exists());

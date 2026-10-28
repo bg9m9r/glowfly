@@ -65,16 +65,6 @@ fn offer_for(feed: &Feed, kind: InstallKind) -> Offer {
 }
 
 #[test]
-fn the_old_trellis_variable_is_read_when_the_new_one_is_unset() {
-    let env = |vars: &'static [(&'static str, &'static str)]| move |k: &str| vars.iter().find(|(n, _)| *n == k).map(|(_, v)| v.into());
-    assert_eq!(feed::feed_var(env(&[])), None);
-    assert_eq!(feed::feed_var(env(&[("TRELLIS_UPDATE_FEED", "/old")])), Some("/old".into()));
-    assert_eq!(feed::feed_var(env(&[("GLOWFLY_UPDATE_FEED", "/new"), ("TRELLIS_UPDATE_FEED", "/old")])), Some("/new".into()));
-    assert_eq!(feed::feed_var(env(&[("GLOWFLY_UPDATE_FEED", ""), ("TRELLIS_UPDATE_FEED", "/old")])), Some("/old".into()));
-    assert_eq!(feed::feed_var(env(&[("TRELLIS_UPDATE_FEED", "")])), None);
-}
-
-#[test]
 fn the_feed_comes_from_the_variable() {
     let hosted = Ok(Feed::Hosted(REPOSITORY.to_owned()));
     assert_eq!(Feed::from_value(None, REPOSITORY), hosted);

@@ -1,6 +1,5 @@
 //! `glowfly://` links: a repository, a branch, a commit or a tag that someone else can open in
-//! their own copy of the repository. Links made while the app was called Trellis
-//! (`trellis://`) open the same way.
+//! their own copy of the repository.
 //!
 //! The format:
 //!
@@ -157,13 +156,13 @@ impl Link {
     }
 }
 
-/// Whether `scheme` is one of ours: `glowfly`, or `trellis` from before the rename, in any case.
+/// Whether `scheme` is ours, `glowfly`, in any case.
 fn is_our_scheme(scheme: &str) -> bool {
-    [crate::url_scheme::SCHEME, crate::url_scheme::OLD_SCHEME].iter().any(|s| scheme.eq_ignore_ascii_case(s))
+    scheme.eq_ignore_ascii_case(crate::url_scheme::SCHEME)
 }
 
-/// Whether a command-line argument is a link rather than a path: it starts with `glowfly:` (or
-/// the old `trellis:`), in any case. An argument that isn't UTF-8 is a path.
+/// Whether a command-line argument is a link rather than a path: it starts with `glowfly:`, in
+/// any case. An argument that isn't UTF-8 is a path.
 pub fn looks_like_link(arg: &std::ffi::OsStr) -> bool {
     arg.to_str().and_then(|s| s.split_once(':')).is_some_and(|(scheme, _)| is_our_scheme(scheme))
 }

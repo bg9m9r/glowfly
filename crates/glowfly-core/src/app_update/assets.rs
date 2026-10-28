@@ -202,8 +202,7 @@ fn formats(os: TargetOs, kind: InstallKind) -> [&'static str; 2] {
 /// copy the other way round. Each format is looked for in this platform's build first and then,
 /// on Windows and macOS on Arm, in the x86_64 build (both run it); so the format decides before
 /// the processor. None when the release has none of these. Files are named
-/// `glowfly-<tag>-<triple>.<ext>`; a release that still names them `trellis-...` (the app's name
-/// before Glowfly) is read too. A Flatpak copy is offered no file (Flatpak updates it), and no
+/// `glowfly-<tag>-<triple>.<ext>`. A Flatpak copy is offered no file (Flatpak updates it), and no
 /// kind takes the `.flatpak` bundle, since extensions match exactly.
 pub fn pick(release: &Release, platform: Platform, kind: InstallKind) -> Option<Asset> {
     if !kind.downloads() {
@@ -212,10 +211,8 @@ pub fn pick(release: &Release, platform: Platform, kind: InstallKind) -> Option<
     let triples: Vec<&str> = [Some(platform), platform.fallback()].into_iter().flatten().filter_map(Platform::triple).collect();
     formats(platform.os, kind).iter().find_map(|ext| {
         triples.iter().find_map(|triple| {
-            ["glowfly", "trellis"].iter().find_map(|name| {
-                let want = format!("{name}-{}-{triple}.{ext}", release.tag);
-                release.assets.iter().find(|a| a.name == want).cloned()
-            })
+            let want = format!("glowfly-{}-{triple}.{ext}", release.tag);
+            release.assets.iter().find(|a| a.name == want).cloned()
         })
     })
 }

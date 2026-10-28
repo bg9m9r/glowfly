@@ -21,7 +21,7 @@ fn the_windows_command_quotes_the_program_and_the_link() {
 fn the_desktop_entry_declares_the_scheme() {
     let text = desktop_entry(&exe()).unwrap();
     assert!(text.starts_with("[Desktop Entry]\n"), "{text}");
-    assert!(text.contains("\nMimeType=x-scheme-handler/glowfly;x-scheme-handler/trellis;\n"), "{text}");
+    assert!(text.contains("\nMimeType=x-scheme-handler/glowfly;\n"), "{text}");
     assert!(text.contains("\nNoDisplay=true\n"), "{text}");
     let exec = text.lines().find_map(|l| l.strip_prefix("Exec=")).unwrap();
     assert!(exec.ends_with(" %u"), "{exec}");
@@ -100,18 +100,15 @@ fn the_installer_registers_what_glowfly_registers() {
     // The installed program, as the registry sees it once the installer fills in the folder.
     let scheme = windows_command(std::path::Path::new("[INSTALLFOLDER]glowfly.exe"));
     assert_eq!(scheme, r#""[INSTALLFOLDER]glowfly.exe" "%1""#);
-    assert_eq!(wxs.matches(&format!("Value='{scheme}'")).count(), 2, "the command of both schemes");
+    assert_eq!(wxs.matches(&format!("Value='{scheme}'")).count(), 1, "the scheme's command");
     let folder = scheme.replace("%1", "%V");
     assert_eq!(wxs.matches(&format!("Value='{folder}'")).count(), 2, "folders and folder backgrounds");
-    for key in [
-        r"Software\Classes\glowfly",
-        r"Software\Classes\trellis",
-        r"Software\Classes\Directory\shell\Glowfly",
-        r"Software\Classes\Directory\Background\shell\Glowfly",
-    ] {
+    for key in
+        [r"Software\Classes\glowfly", r"Software\Classes\Directory\shell\Glowfly", r"Software\Classes\Directory\Background\shell\Glowfly"]
+    {
         assert!(wxs.contains(&format!(r#"Root="HKCU" Key="{key}""#)), "{key} under HKCU");
     }
-    assert_eq!(wxs.matches(r#"Value="URL:Glowfly link""#).count(), 2);
+    assert_eq!(wxs.matches(r#"Value="URL:Glowfly link""#).count(), 1);
     assert!(wxs.contains(r#"Name="URL Protocol""#));
     assert!(wxs.contains(r#"Value='"[INSTALLFOLDER]glowfly.exe",0'"#), "the default icon");
     assert!(!wxs.contains("HKLM"), "nothing machine-wide");
@@ -125,8 +122,8 @@ fn the_bundle_declares_the_scheme_and_folders() {
         let at = lines.iter().position(|l| *l == format!("<key>{key}</key>")).unwrap_or_else(|| panic!("{key} in Info.plist"));
         lines.iter().skip(at + 1).take(n).copied().collect()
     };
-    let schemes = [format!("<string>{SCHEME}</string>"), format!("<string>{OLD_SCHEME}</string>")];
-    assert_eq!(after("CFBundleURLSchemes", 4), ["<array>", schemes[0].as_str(), schemes[1].as_str(), "</array>"]);
+    let scheme = format!("<string>{SCHEME}</string>");
+    assert_eq!(after("CFBundleURLSchemes", 3), ["<array>", scheme.as_str(), "</array>"]);
     let name = after("CFBundleURLName", 1);
     assert!(name[0].starts_with(&format!("<string>{}", crate::app_identity::APP_ID)), "{name:?}");
     assert_eq!(after("LSItemContentTypes", 3), ["<array>", "<string>public.folder</string>", "</array>"]);

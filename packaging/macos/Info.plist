@@ -3,8 +3,7 @@
 <!--
   Glowfly.app's Info.plist; scripts/package-macos.sh replaces @VERSION@. The bundle id is what
   desktop notifications post under (glowfly_core::app_identity::APP_ID; a core test checks they
-  agree). CFBundleURLTypes sends glowfly: and trellis: links (url_scheme::SCHEME, OLD_SCHEME) as
-  GURL Apple events; CFBundleDocumentTypes offers Glowfly under Open With for folders and takes a
+  agree). CFBundleURLTypes sends glowfly: links (url_scheme::SCHEME) as GURL Apple events; CFBundleDocumentTypes offers Glowfly under Open With for folders and takes a
   folder dropped on its Dock icon, as odoc Apple events.
   crates/glowfly-app/src/platform/macos_events.rs receives both. Folders are an Alternate-rank
   Viewer type: offered, never Finder's default.
@@ -45,7 +44,6 @@
       <key>CFBundleURLSchemes</key>
       <array>
         <string>glowfly</string>
-        <string>trellis</string>
       </array>
     </dict>
   </array>

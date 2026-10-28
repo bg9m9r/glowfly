@@ -1,19 +1,16 @@
-//! Registering Glowfly as the program for `glowfly://` links, for this user only. Links made
-//! while the app was called Trellis use `trellis://`, so that scheme is registered for this
-//! copy too ([`OLD_SCHEME`]); the status reads only `glowfly://`.
+//! Registering Glowfly as the program for `glowfly://` links, for this user only.
 //!
-//! - Windows: the per-user class keys `HKEY_CURRENT_USER\Software\Classes\glowfly` (and
-//!   `...\trellis`), whose `shell\open\command` runs `"<glowfly.exe>" "%1"`.
+//! - Windows: the per-user class key `HKEY_CURRENT_USER\Software\Classes\glowfly`, whose
+//!   `shell\open\command` runs `"<glowfly.exe>" "%1"`.
 //! - Linux and the other XDG desktops: a hidden desktop entry, `glowfly-links.desktop` in the
 //!   data folder's `applications` (`$XDG_DATA_HOME`, else `~/.local/share`), declaring
-//!   `x-scheme-handler/glowfly` and `x-scheme-handler/trellis`, made the default for both with
-//!   `xdg-mime default`. The Linux package installs the same file for [`PACKAGED_EXE`] in
-//!   `/usr/share/applications`, which counts too.
-//! - macOS: Glowfly.app declares both schemes in its Info.plist and receives links as Apple
+//!   `x-scheme-handler/glowfly`, made the default with `xdg-mime default`. The Linux package
+//!   installs the same file for [`PACKAGED_EXE`] in `/usr/share/applications`, which counts too.
+//! - macOS: Glowfly.app declares the scheme in its Info.plist and receives links as Apple
 //!   events (glowfly-app's platform/macos_events.rs); LaunchServices registers the bundle when it
 //!   is installed, so there is nothing to register here, and [`status`] says so.
 //!
-//! - Inside Flatpak: the exported `io.github.bg9m9r.glowfly.links.desktop` declares both schemes,
+//! - Inside Flatpak: the exported `io.github.bg9m9r.glowfly.links.desktop` declares the scheme,
 //!   so nothing is registered ([`FLATPAK_NOTE`]; glowfly-app's runner/deep_link.rs).
 //!
 //! The decisions (what a registry value or `xdg-mime` answer means, how the command line is
@@ -37,8 +34,6 @@ use std::path::Path;
 
 /// The scheme.
 pub const SCHEME: &str = "glowfly";
-/// The scheme from before the app was renamed: its links still open here.
-pub const OLD_SCHEME: &str = "trellis";
 /// The desktop entry's file name on XDG desktops.
 pub const DESKTOP_FILE: &str = "glowfly-links.desktop";
 /// Where the Linux package installs Glowfly; its packaged `glowfly-links.desktop` (in
@@ -46,7 +41,7 @@ pub const DESKTOP_FILE: &str = "glowfly-links.desktop";
 pub const PACKAGED_EXE: &str = "/usr/bin/glowfly";
 /// Why macOS has nothing to register: Glowfly.app's Info.plist declares the scheme.
 pub const MACOS_NOTE: &str = "On macOS, links will open Glowfly once it is installed as an application.";
-/// Why a Flatpak copy has nothing to register: its exported desktop file declares the schemes.
+/// Why a Flatpak copy has nothing to register: its exported desktop file declares the scheme.
 pub const FLATPAK_NOTE: &str = "Flatpak registers glowfly:// links for Glowfly when it is installed.";
 /// The desktop's handler query lacks its program.
 pub const NO_XDG_MIME: &str = "xdg-mime wasn't found; install xdg-utils to register links.";
@@ -77,7 +72,7 @@ pub fn desktop_entry(exe: &Path) -> Result<String, String> {
     }
     Ok(format!(
         "[Desktop Entry]\nType=Application\nName=Glowfly\nComment=Opens glowfly:// links in Glowfly\nExec={} %u\n\
-         Terminal=false\nNoDisplay=true\nMimeType=x-scheme-handler/{SCHEME};x-scheme-handler/{OLD_SCHEME};\n",
+         Terminal=false\nNoDisplay=true\nMimeType=x-scheme-handler/{SCHEME};\n",
         desktop_exec_arg(exe)
     ))
 }

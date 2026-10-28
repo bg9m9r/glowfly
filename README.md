@@ -5,9 +5,6 @@ branch/remote/tag/stash sidebar, and a right-hand panel for commit details or st
 committing. It connects to GitHub, GitLab, Bitbucket, Azure DevOps, Jira and Trello for pull
 requests and issues.
 
-Glowfly was formerly called Trellis. An existing Trellis install upgrades in place, and its
-settings, saved sign-ins, `trellis://` links and `.trellis/commands.toml` files keep working.
-
 Glowfly is an independent project. It is not affiliated with or endorsed by any other Git client
 or hosting service; product names are used only to describe compatibility.
 

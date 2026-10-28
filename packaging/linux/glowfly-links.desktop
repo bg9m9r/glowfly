@@ -5,4 +5,4 @@ Comment=Opens glowfly:// links in Glowfly
 Exec=/usr/bin/glowfly %u
 Terminal=false
 NoDisplay=true
-MimeType=x-scheme-handler/glowfly;x-scheme-handler/trellis;
+MimeType=x-scheme-handler/glowfly;
