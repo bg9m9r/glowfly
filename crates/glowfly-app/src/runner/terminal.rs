@@ -7,6 +7,7 @@
 
 use super::execute::{Cx, Execute};
 use super::{Runner, Waker};
+use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::terminal::{AfterCheck, BusyCheck, TerminalEffect, TerminalMsg};
 use glowfly_core::settings::ShellSetting;
@@ -145,14 +146,20 @@ struct Reporter<W> {
 
 impl<W: Waker> Reporter<W> {
     fn send(&self, m: TerminalMsg) {
-        if self.tx.send(Msg::Terminal(m)).is_ok() {
+        self.send_msg(Msg::Terminal(m));
+    }
+
+    fn send_msg(&self, m: Msg) {
+        if self.tx.send(m).is_ok() {
             self.waker.wake();
         }
     }
 }
 
 impl<W: Waker + Clone> Runner<W> {
-    pub(super) fn terminal(&self, e: TerminalEffect) {
+    /// Runs a terminal effect; a shell with a trust `check` starts only once it passes, in its
+    /// session thread (runner/trust.rs).
+    pub(super) fn terminal(&self, e: TerminalEffect, check: Option<crate::effect::TrustCheck>) {
         match e {
             TerminalEffect::Spawn { id, cwd, rows, cols, shell } => {
                 let (ctl, rx) = mpsc::channel();
@@ -161,9 +168,14 @@ impl<W: Waker + Clone> Runner<W> {
                 self.terminals.map().insert(id, Handle { ctl: ctl.clone(), kill: kill.clone(), probe: probe.clone() });
                 let report = Reporter { tx: self.tx.clone(), waker: self.waker.clone() };
                 let failed = report.clone();
-                let spawned = std::thread::Builder::new()
-                    .name("glowfly-terminal".into())
-                    .spawn(move || session(id, &cwd, (rows, cols), &shell, Channels { rx, ctl, kill, probe }, report));
+                let spawned = std::thread::Builder::new().name("glowfly-terminal".into()).spawn(move || {
+                    let spawn = || Effect::Terminal(TerminalEffect::Spawn { id, cwd: cwd.clone(), rows, cols, shell: shell.clone() });
+                    match super::trust::before_shell(check, spawn) {
+                        Some(Ok(held)) => report.send_msg(held),
+                        Some(Err(error)) => report.send(TerminalMsg::SpawnFailed { id, error }),
+                        None => session(id, &cwd, (rows, cols), &shell, Channels { rx, ctl, kill, probe }, report),
+                    }
+                });
                 if let Err(e) = spawned {
                     self.terminals.map().remove(&id);
                     failed.send(TerminalMsg::SpawnFailed { id, error: format!("could not start a thread: {e}") });

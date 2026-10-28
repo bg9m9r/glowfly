@@ -153,12 +153,16 @@ pub(super) fn release_held(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.snap.as_ref().map(|s| s.workdir.clone()) else { return };
     let (rows, cols) = st.terminal.grid.unwrap_or(DEFAULT_SIZE);
     let mut started = false;
+    let mut spawns = Vec::new();
     for s in st.terminal.sessions.iter_mut().filter(|s| s.workdir == workdir && s.status == SessionStatus::Held) {
         s.status = SessionStatus::Starting;
         s.screen = TermScreen::new(rows, cols);
         s.selection = None;
-        fx.push(Effect::Terminal(E::Spawn { id: s.id, cwd: workdir.clone(), rows, cols, shell: s.shell.clone() }));
+        spawns.push(Effect::Terminal(E::Spawn { id: s.id, cwd: workdir.clone(), rows, cols, shell: s.shell.clone() }));
         started = true;
+    }
+    for e in spawns {
+        seal_shell(st, e, &workdir, fx);
     }
     if started && st.terminal.open {
         st.terminal.focus_requested = true;
@@ -221,9 +225,17 @@ pub(super) fn spawn(
     if held {
         tracing::debug!("holding a shell until {} is trusted", workdir.display());
     } else {
-        fx.push(Effect::Terminal(E::Spawn { id, cwd: workdir, rows, cols, shell }));
+        let cwd = workdir.clone();
+        seal_shell(st, Effect::Terminal(E::Spawn { id, cwd, rows, cols, shell }), &workdir, fx);
     }
     id
+}
+
+/// Pushes a shell's start with the runner's trust re-check (update/trust_seal.rs).
+fn seal_shell(st: &mut AppState, spawn: Effect, workdir: &Path, fx: &mut Vec<Effect>) {
+    let Effect::Terminal(E::Spawn { id, .. }) = &spawn else { return fx.push(spawn) };
+    let sealed = crate::effect::Sealed::Shell { id: *id };
+    super::trust_seal::push(st, spawn, sealed, workdir, fx);
 }
 
 /// The active repository's active session, as an index into the sessions.

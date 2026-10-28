@@ -73,7 +73,7 @@ pub use sparse::SparseMsg;
 pub use stack::StackMsg;
 pub use stash::{AutoStashMsg, StashMsg};
 pub use tabs::{CloseRequest, TabsMsg};
-pub use trust::{InheritedRepo, TrustMsg};
+pub use trust::{InheritedRepo, Stale, TrustMsg};
 pub use updates::{CheckedRelease, UpdateMsg};
 pub use work::{CommitMsg, JobMsg, RevertWhat, StageMsg};
 

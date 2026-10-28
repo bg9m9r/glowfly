@@ -99,6 +99,8 @@ pub use execute::execute;
 use execute::{Cx, err, execute_with};
 #[cfg(test)]
 pub(crate) use highlight::{decorate, decorate_in_context};
+#[cfg(test)]
+pub use trust::{execute_checked, trust_passes};
 
 /// Wakes the UI when a result arrives (so it can process the message promptly).
 pub trait Waker: Send + Sync + 'static {
@@ -192,17 +194,25 @@ impl<W: Waker + Clone> Runner<W> {
         }
     }
 
+    /// `run_checked` without a check (tests).
+    #[cfg(test)]
+    pub fn run(&self, effect: Effect) {
+        self.run_checked(effect, None)
+    }
+
     /// Starts `effect` on a worker thread, or queues it behind the earlier effects that change the
     /// same repository. UI effects must be handled by the caller instead. A panic in the effect
-    /// is reported as its failure, so a job it was running ends.
-    pub fn run(&self, effect: Effect) {
+    /// is reported as its failure, so a job it was running ends. With a trust re-check `check`,
+    /// made on its worker just before it starts (a shell's in its session thread), it runs only
+    /// if that passes (runner/trust.rs).
+    pub fn run_checked(&self, effect: Effect, check: Option<crate::effect::TrustCheck>) {
         #[cfg(test)]
         let Some(effect) = self.admit(effect) else { return };
         let effect = match effect {
             Effect::Watch(target) => return self.watch.set(target, self.tx.clone(), self.waker.clone()),
             Effect::SweepWatch { workdir } => return self.sweep_watch(workdir),
             Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
-            Effect::Terminal(t) => return self.terminal(t),
+            Effect::Terminal(t) => return self.terminal(t, check),
             Effect::Stats { workdir, oids } => return self.stats.submit(workdir, oids, self.tx.clone(), self.waker.clone()),
             Effect::Logs(e) if e.on_log_worker() => return self.logs.submit(e),
             Effect::StopGit(key) => {
@@ -228,6 +238,8 @@ impl<W: Waker + Clone> Runner<W> {
         let repo = effect.queue().map(Path::to_owned);
         let hold = effect.holds().map(Path::to_owned);
         let recovery = guard::Recovery::of(&effect, name);
+        // What a check that fails sends back: the failure its sender waits for.
+        let failed = guard::Recovery::of(&effect, name);
         let graph_cache = Arc::clone(&self.graph_cache);
         // Registered now, so a stop asked while it waits in its repository's queue is kept.
         let stop = effect.stop_key().map(|key| (key, self.stops.register(key)));
@@ -242,7 +254,10 @@ impl<W: Waker + Clone> Runner<W> {
             let cancelled = || ticket.as_ref().is_some_and(|(e, mine)| e.load(Ordering::Relaxed) != *mine);
             let started = std::time::Instant::now();
             let cx = Cx { cancelled: &cancelled, graph_cache: &graph_cache, stop: stop.as_ref().map(|(_, s)| s) };
-            let msg = guard::guarded(recovery, || execute_with(effect, &cx));
+            let msg = guard::guarded(recovery, || match check {
+                Some(c) => trust::checked(c, effect, |text| failed.failed(text), &cx),
+                None => execute_with(effect, &cx),
+            });
             if let Some((key, s)) = &stop {
                 stops.release(*key, s);
             }

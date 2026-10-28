@@ -138,6 +138,12 @@ impl Recovery {
 
     fn message(self, panic: String) -> Msg {
         let text = format!("Glowfly hit an internal error ({}): {panic}", self.name);
+        self.failed(text)
+    }
+
+    /// The failure message the effect's sender waits for, saying `text` (a trust re-check that
+    /// couldn't be made, runner/trust.rs).
+    pub(super) fn failed(self, text: String) -> Msg {
         let msg = match self.kind {
             Kind::Job(undo) => Msg::Job(JobMsg::JobDone { ok: false, output: text, undo }),
             Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(text), undo: None }),

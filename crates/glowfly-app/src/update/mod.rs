@@ -162,6 +162,7 @@ mod tools;
 mod trello;
 mod trust;
 mod trust_inherit;
+mod trust_seal;
 mod undo;
 mod updates;
 mod updates_restart;
@@ -182,6 +183,9 @@ use crate::effect::{Effect, UiEffect};
 use crate::msg::Msg;
 use crate::state::AppState;
 use std::time::Instant;
+
+/// The runner's trust re-check for each effect an update returned (update/trust_seal.rs).
+pub use trust_seal::pair as trust_checks;
 
 pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     let mut fx = Vec::new();

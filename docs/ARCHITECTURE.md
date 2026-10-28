@@ -139,7 +139,10 @@ source file, update its line in the matching file.
    the job gate for the active repository to be trusted, held built-in terminal shells
    (`SessionStatus::Held`), Open in external terminal, a conflict check or merge preview the user asked for (`TrustSession::waiting`) and the LFS
    and Sparse Checkout pages' git reads (`LfsPage::held`, `SparseStatus::held`), starts in
-   `trust::released`.
+   `trust::released`. Jobs, shells, external terminals, conflict checks and merge previews
+   that pass are pushed with a seal (`update/trust_seal.rs::push`): the runner scans the
+   repository again just before they start and sends them back held when the decision no
+   longer covers it.
 4. **Runner.** Execute it in the area's `Execute` impl in `runner/<area>.rs`. The real work
    (git, files, HTTP) goes in `glowfly-core`.
 5. **Result.** The runner sends a result message back. Handle it in the same `update` file.

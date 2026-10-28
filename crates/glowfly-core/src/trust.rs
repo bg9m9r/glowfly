@@ -10,8 +10,11 @@ use std::path::{Path, PathBuf};
 
 mod digest;
 use digest::Reading;
+pub mod follow;
+pub mod incoming;
 mod print;
 pub use digest::of_bytes as content_digest;
+pub use follow::Follow;
 pub use print::{TrustPrint, allows};
 
 /// A setting from the repository's own config that makes git run a program.
@@ -43,6 +46,9 @@ pub struct TrustScan {
     /// one: in the print, so a changed file asks again, but not a reason to ask by itself (its
     /// commands run only when the user picks one). None in a submodule.
     pub commands: Option<String>,
+    /// Where hooks run from inside the working tree, so they change with the branch
+    /// (`follow.rs`); never a reason to ask by itself, as a setting or hook comes with it.
+    pub follows: Vec<Follow>,
 }
 
 /// What `scan` found in one submodule.
@@ -137,6 +143,12 @@ pub fn scan_top(repo: &Repository) -> TrustScan {
     scan_top_reading(repo, Reading::Capped)
 }
 
+/// What the runner checks just before a job or shell starts: `scan_top` with every hook read
+/// whole, so its print compares with a saved one (submodules aside: see `incoming::recheck`).
+pub fn scan_now(repo: &Repository) -> TrustScan {
+    scan_top_reading(repo, Reading::Whole)
+}
+
 fn scan_top_reading(repo: &Repository, reading: Reading) -> TrustScan {
     let mut out = scan_own(repo, reading);
     out.commands = repo.workdir().and_then(commands_digest);
@@ -172,12 +184,15 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
         });
     }
     out.hooks_dir = hooks_dir(repo, config.as_ref(), local_hooks_path);
+    let mut paths = Vec::new();
     if let Some(dir) = &out.hooks_dir {
         for (name, path) in active_hooks(dir) {
             out.hook_digests.insert(name.clone(), digest::of_file(&path, reading));
             out.hooks.push(name);
+            paths.push(path);
         }
     }
+    out.follows = follow::find(repo, out.hooks_dir.as_deref(), &paths);
     out
 }
 

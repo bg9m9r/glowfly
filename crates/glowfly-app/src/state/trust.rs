@@ -59,6 +59,8 @@ pub struct TrustSession {
     pub lfs_install: Option<(String, PathBuf)>,
     /// A repository (real path) whose next full load adopts its new print without asking.
     pub adopt_next: Option<PathBuf>,
+    /// The re-checks for effects pushed since the shell last paired them (update/trust_seal.rs).
+    pub seals: Vec<crate::effect::Seal>,
 }
 
 /// Repositories a running job makes from the trusted repository `from` (update/trust_inherit.rs).
@@ -131,6 +133,9 @@ pub struct TrustPrompt {
     pub gained: Option<TrustScan>,
     /// The built-in terminal's shells wait for this decision: Trust and run / Cancel.
     pub terminal: bool,
+    /// What the commit the held job brings in has, where hooks follow the working tree, that
+    /// the decision doesn't cover (update/trust_seal.rs); trusting covers it too.
+    pub incoming: Option<TrustScan>,
 }
 
 /// The prompt for the loaded repository `snap`.
@@ -149,6 +154,7 @@ pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
         held: None,
         gained,
         terminal: false,
+        incoming: None,
     }
 }
 
@@ -171,7 +177,7 @@ pub fn record_trusted(s: &mut Settings, real: &Path, print: TrustPrint) {
 }
 
 /// The decision saved for the loaded repository `snap`, under its real path or as opened.
-fn saved_for(s: &Settings, snap: &Snapshot) -> Option<SavedTrust> {
+pub(crate) fn saved_for(s: &Settings, snap: &Snapshot) -> Option<SavedTrust> {
     s.saved_trust(&snap.real_workdir).or_else(|| s.saved_trust(&snap.workdir))
 }
 

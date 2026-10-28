@@ -9,8 +9,9 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 
 /// The hashed items of a scan: one per setting (key and value), one per hook (its name in any
-/// letter case, with its script's digest) and one for the repository's commands file (its
-/// digest), and the same for each checked-out submodule under its path.
+/// letter case, with its script's digest), one for the repository's commands file (its
+/// digest) and one per place in the working tree hooks run from (with the version tracked
+/// there), and the same for each checked-out submodule under its path.
 ///
 /// Prints saved before hook contents and the commands file were part of it hold hooks by name
 /// alone: those items never match now, so a repository trusted with hooks or a commands file
@@ -62,6 +63,14 @@ fn hook_item(prefix: &str, scan: &TrustScan, name: &str) -> String {
     format!("{prefix}h\0{}\0{digest}", hook_base(name))
 }
 
+/// A place hooks run from inside the working tree, with the version tracked there.
+pub(crate) fn follow_item(prefix: &str, f: &super::Follow) -> String {
+    match &f.tracked {
+        Some((path, oid)) => format!("{prefix}f\0{}\0{path}\0{oid}", f.path),
+        None => format!("{prefix}f\0{}\0-", f.path),
+    }
+}
+
 fn commands_item(prefix: &str, digest: &str) -> String {
     format!("{prefix}x\0{digest}")
 }
@@ -102,6 +111,7 @@ fn own_items(scan: &TrustScan, prefix: &str, out: &mut BTreeSet<String>) {
     out.extend(scan.config.iter().map(|c| hash(&config_item(prefix, c))));
     out.extend(scan.hooks.iter().map(|h| hash(&hook_item(prefix, scan, h))));
     out.extend(scan.commands.iter().map(|d| hash(&commands_item(prefix, d))));
+    out.extend(scan.follows.iter().map(|f| hash(&follow_item(prefix, f))));
 }
 
 /// `scan`'s own settings and hooks whose items under `prefix` aren't in `p`.
@@ -111,7 +121,8 @@ fn gained_own(scan: &TrustScan, prefix: &str, p: &TrustPrint) -> TrustScan {
     let hook_digests = hooks.iter().filter_map(|h| Some((h.clone(), scan.hook_digests.get(h)?.clone()))).collect();
     let hooks_dir = if hooks.is_empty() { None } else { scan.hooks_dir.clone() };
     let commands = scan.commands.clone().filter(|d| !p.0.contains(&hash(&commands_item(prefix, d))));
-    TrustScan { config, hooks, hook_digests, hooks_dir, submodules: Vec::new(), commands }
+    let follows = scan.follows.iter().filter(|f| !p.0.contains(&hash(&follow_item(prefix, f)))).cloned().collect();
+    TrustScan { config, hooks, hook_digests, hooks_dir, submodules: Vec::new(), commands, follows }
 }
 
 /// Whether git may run in a repository whose saved decision is `saved` and whose scan is

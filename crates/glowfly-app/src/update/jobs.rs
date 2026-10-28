@@ -1,5 +1,6 @@
 //! Starting the single active job: busy check, the trust gate (update/trust.rs), and the
-//! RunningJob plus effect it runs (`begin_tool_job` for the merge tool, which skips the gate).
+//! RunningJob plus effect it runs, sealed for the runner's re-check (update/trust_seal.rs);
+//! `begin_tool_job` for the merge tool skips both.
 
 use super::trust::Gate;
 use crate::effect::{Effect, PickJob};
@@ -327,9 +328,16 @@ fn launch(
             return Started::No;
         }
     }
-    let effect = effect(cwd);
+    let effect = effect(cwd.clone());
     st.job_stop = super::job_stop::for_effect(&effect);
+    let sealed = crate::effect::Sealed::Job { label: job.label.clone() };
     st.job = Some(job);
-    fx.push(effect);
+    // A clone or init runs in a folder that isn't a repository yet; anything else is checked
+    // again just before it starts (update/trust_seal.rs).
+    if makes {
+        fx.push(effect);
+    } else {
+        super::trust_seal::push(st, effect, sealed, &cwd, fx);
+    }
     Started::Now
 }

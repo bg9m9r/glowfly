@@ -71,7 +71,13 @@ pub(super) fn start(st: &mut AppState, job: OpPreviewJob, fx: &mut Vec<Effect>) 
         let label = st.settings.lang().tr("op_preview.menu.merge").to_owned();
         return super::trust::hold_waiting(st, WaitingFor::Preview(job), Some(label));
     }
-    if result.is_none() {
+    if result.is_none() && merge {
+        // merge-tree runs the repository's merge drivers: checked again just before it runs.
+        let label = st.settings.lang().tr("op_preview.menu.merge").to_owned();
+        let sealed = crate::effect::Sealed::Waiting { kind: crate::effect::WaitingKind::Preview, label: Some(label) };
+        let workdir = job.workdir.clone();
+        super::trust_seal::push(st, Effect::OpPreview(job.clone()), sealed, &workdir, fx);
+    } else if result.is_none() {
         fx.push(Effect::OpPreview(job.clone()));
     }
     st.modal = Some(Modal::OpPreview(Box::new(PreviewDialog { job, result })));

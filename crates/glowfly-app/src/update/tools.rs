@@ -85,7 +85,7 @@ pub(super) fn open_terminal(st: &mut AppState, now: Instant, fx: &mut Vec<Effect
     }
     let Some(w) = st.workdir() else { return };
     let effect = match terminal(&st.settings.external_tools, &w) {
-        None => Effect::Os(OsEffect::OpenTerminal(w)),
+        None => Effect::Os(OsEffect::OpenTerminal(w.clone())),
         Some(Ok(launch)) => {
             let target = st.snap.as_ref().map(|s| s.name.clone()).unwrap_or_default();
             Effect::Tool(ToolEffect::Launch { kind: ToolKind::Terminal, launch, target, check: None })
@@ -97,7 +97,8 @@ pub(super) fn open_terminal(st: &mut AppState, now: Instant, fx: &mut Vec<Effect
     if st.held() {
         return super::trust::hold_waiting(st, crate::state::trust::WaitingFor::Terminal(effect), None);
     }
-    fx.push(effect);
+    let sealed = crate::effect::Sealed::Waiting { kind: crate::effect::WaitingKind::Terminal, label: None };
+    super::trust_seal::push(st, effect, sealed, &w, fx);
 }
 
 /// Opens Preferences > External Tools (a tool entry run while its program isn't set).

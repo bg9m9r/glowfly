@@ -121,6 +121,8 @@ source file, update its line here.
 
 - `trust.rs`: repository trust: config keys (aliases for commands Glowfly runs that aren't git's own, such as alias.lfs, too) and hooks, the repository's own and its checked-out submodules', that make git run programs, and the commands file's digest (read with libgit2 only, at every full load; `scan_top`, without submodules, at every refresh through `repo::refs_key`).
 - `trust/print.rs`: the print of a scan (one short hash per item: settings, hooks with their scripts' digests, the commands file) a Trusted decision is saved with, so a scan with anything new or changed asks again (`trust::allows`).
+- `trust/follow.rs`: hooks that follow the working tree: the hooks folder `core.hooksPath` puts there, or a hook linked to a file there, with the version HEAD tracks at or above it (an item of the print, so another version asks again), and another commit's version read from its objects (`incoming`); tests in `follow_tests.rs`.
+- `trust/incoming.rs`: the commits a checkout, switch, merge, rebase or pull brings in, read from git's arguments and resolved with libgit2 (a pull's after its fetch), and whether a decision covers their hooks; tests in `incoming_tests.rs`.
 - `trust/digest.rs`: a file's contents digest for the print (read whole at full loads; a refresh reads up to 1 MiB, and past that its length and modification time stand in), opening only plain files, with one fixed value for a file that can't be read.
 - `custom_commands.rs`, `custom_commands/`: custom commands (`docs/CUSTOM_COMMANDS.md`): reading the user's and the repository's `commands.toml` (links refused, size and count capped).
 - `parse.rs`: strict TOML with each problem's line.

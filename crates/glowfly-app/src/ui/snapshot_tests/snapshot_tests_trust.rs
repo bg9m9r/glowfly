@@ -10,7 +10,7 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{RepoTrust, ThemeChoice};
-use glowfly_core::trust::{ConfigCommand, SubmoduleScan, TrustScan};
+use glowfly_core::trust::{ConfigCommand, Follow, SubmoduleScan, TrustScan};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -31,6 +31,7 @@ fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, held: Option
         held,
         gained: None,
         terminal: false,
+        incoming: None,
     }));
     st
 }
@@ -68,6 +69,7 @@ fn trust_prompt_hooks_only() {
         config: vec![setting("core.hooksPath", ".githooks"), setting("core.sshCommand", &format!("ssh {}", "x".repeat(196)))],
         hooks: vec!["pre-push".into()],
         hooks_dir: Some(PathBuf::from("C:/work/tools/.githooks")),
+        follows: vec![githooks()],
         ..TrustScan::default()
     };
     let mut h = harness(with_prompt(ThemeChoice::Light, scan), false);
@@ -75,9 +77,37 @@ fn trust_prompt_hooks_only() {
     h.check_snapshot("trust_prompt_hooks_only");
     assert!(h.query_by_label_contains("xxx…").is_some(), "the long value is cut");
     assert!(h.query_by_label("in .githooks").is_some());
+    assert!(h.query_by_label_contains("These hooks change with the branch (.githooks is in the working tree)").is_some());
     h.get_by_label("Trust").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Trust(TrustMsg::Decide { trusted: true, .. }))));
+}
+
+fn githooks() -> Follow {
+    Follow { path: ".githooks".into(), tracked: None, hooks: true }
+}
+
+#[test]
+fn trust_prompt_incoming() {
+    // A pull whose commit has another post-merge in the tracked .githooks.
+    let scan = TrustScan { config: vec![setting("core.hooksPath", ".githooks")], follows: vec![githooks()], ..TrustScan::default() };
+    let incoming = TrustScan {
+        hooks: vec!["post-merge".into()],
+        hooks_dir: Some(PathBuf::from("C:/work/tools/.githooks")),
+        follows: vec![githooks()],
+        ..TrustScan::default()
+    };
+    let mut st = prompt_state(ThemeChoice::Dark, scan, false, Some("Pull"));
+    if let Some(Modal::Trust(p)) = &mut st.modal {
+        p.incoming = Some(incoming);
+    }
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("trust_prompt_incoming");
+    assert!(h.query_by_label("Trust the incoming hooks?").is_some());
+    assert!(h.query_by_label_contains("The commit this brings in has other versions").is_some());
+    assert!(h.query_by_label("post-merge").is_some());
+    assert!(h.query_by_label("Trust and run").is_some());
 }
 
 #[test]

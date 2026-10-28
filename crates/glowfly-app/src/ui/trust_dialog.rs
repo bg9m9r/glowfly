@@ -3,7 +3,9 @@
 //! job the user started, or the built-in terminal's shells, wait for the decision, it says so
 //! and offers Trust and run or Cancel instead. For a repository trusted earlier that gained
 //! settings or hooks since (or whose hook scripts or commands file changed), it asks again and
-//! lists only what is new.
+//! lists only what is new. Hooks that come from the working tree are said to change with the
+//! branch, and a job held because the commit it brings in has other versions of them lists
+//! those versions.
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
@@ -21,7 +23,11 @@ use std::path::Path;
 /// decision). The other buttons send a decision and update closes it. Enter never trusts: the
 /// footer's tone makes Cancel the default (and with no Cancel there is no default).
 pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
-    let title = if p.gained.is_some() { "Trust this repository again?" } else { "Trust this repository?" };
+    let title = match (&p.incoming, &p.gained) {
+        (Some(_), _) => cx.t.tr("trust.incoming.title"),
+        (None, Some(_)) => "Trust this repository again?",
+        (None, None) => "Trust this repository?",
+    };
     let mut d = Dialog::new(cx, title).begin(ui);
     d.body(ui, |ui| body(ui, cx.t, p));
     let footer = if p.held.is_some() || p.terminal {
@@ -56,13 +62,15 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
         ui.label(RichText::new("You chose not to trust it before.").color(color::weak()));
     }
     ui.add_space(8.0);
-    let shown = p.gained.as_ref().unwrap_or(&p.scan);
+    let shown = p.incoming.as_ref().or(p.gained.as_ref()).unwrap_or(&p.scan);
     // A commands file alone runs nothing by itself: listed below, after "nothing runs", unless
     // it is what changed since the repository was trusted.
-    if shown.is_empty() && (p.gained.is_none() || shown.commands.is_none()) {
+    if shown.is_empty() && p.incoming.is_none() && (p.gained.is_none() || shown.commands.is_none()) {
         ui.add(egui::Label::new("Nothing in its settings or hooks runs programs right now.").wrap());
     } else {
-        let intro = if p.gained.is_some() {
+        let intro = if p.incoming.is_some() {
+            t.tr("trust.incoming.intro")
+        } else if p.gained.is_some() {
             t.tr("trust.gained.intro")
         } else {
             "This repository's own settings or hooks make git run programs. So far Glowfly has only read its files."
@@ -70,11 +78,11 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
         ui.add(egui::Label::new(intro).wrap());
         ui.add_space(8.0);
         egui::ScrollArea::vertical().id_salt("trust-findings").max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
-            findings(ui, shown, &p.workdir);
+            findings(ui, t, shown, &p.workdir);
             for m in &shown.submodules {
                 ui.add_space(4.0);
                 ui.label(RichText::new(format!("In submodule {}", printable(&m.path))).font(type_scale::strong(ui, type_scale::BODY)));
-                ui.indent(("trust-submodule", &m.path), |ui| findings(ui, &m.scan, &p.workdir));
+                ui.indent(("trust-submodule", &m.path), |ui| findings(ui, t, &m.scan, &p.workdir));
             }
         });
     }
@@ -102,7 +110,7 @@ fn commands(ui: &mut Ui, t: Lang) {
 }
 
 /// The settings and hooks of one repository (the top one or a submodule).
-fn findings(ui: &mut Ui, scan: &TrustScan, workdir: &Path) {
+fn findings(ui: &mut Ui, t: Lang, scan: &TrustScan, workdir: &Path) {
     if !scan.config.is_empty() {
         ui.label(type_scale::section_text(ui, "Settings that run commands"));
         for c in &scan.config {
@@ -126,4 +134,16 @@ fn findings(ui: &mut Ui, scan: &TrustScan, workdir: &Path) {
             ui.label(RichText::new(printable(h)).monospace());
         }
     }
+    follows(ui, t, scan);
+}
+
+/// Where hooks come from the working tree: they change with the branch.
+fn follows(ui: &mut Ui, t: Lang, scan: &TrustScan) {
+    if scan.follows.is_empty() {
+        return;
+    }
+    let paths: Vec<String> = scan.follows.iter().map(|f| printable(&f.path)).collect();
+    ui.add_space(4.0);
+    let note = t.trf("trust.follows.note", &[("path", &paths.join(", "))]);
+    ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap());
 }

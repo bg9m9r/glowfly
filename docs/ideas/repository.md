@@ -37,6 +37,20 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
   too much where there are many)
 - Stamp a submodule's included config files and a hooks folder its core.hooksPath points
   outside its git dir in the refresh key (only its own config files and hooks folder are now)
+- Re-check checked-out submodules' settings and hooks in the runner just before a job, as the
+  repository's own are (the runner's re-check skips submodules)
+- Compare the incoming hooks of cherry-pick, revert, `reset --hard`, stash apply, submodule
+  update and custom commands too (only checkout, switch, merge, rebase and pull are compared)
+- Compare the result of a rebase or `pull --rebase` whose own commits change the hooks folder,
+  not only the commit it rebases onto
+- Notice hooks that run tracked scripts outside the hooks folder by a plain path (only links
+  into the working tree are followed)
+- Close the window between a pull's own fetch and the fetch the re-check makes first: merge
+  the commit that was checked instead of fetching again
+- Re-check automatic conflict checks and the LFS, Sparse Checkout, range-diff and partial-clone
+  reads in the runner, as the jobs are
+- Don't ask again after a checkout when a hook's checked-out bytes differ from the trusted
+  commit's only by line endings (core.autocrlf)
 
 ### Submodules
 

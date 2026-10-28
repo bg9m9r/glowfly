@@ -105,10 +105,11 @@ fn check_branch(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
 /// Runs a check the user asked for, or, while git is held in the repository, holds it for the
 /// trust prompt (it runs on Trust and run).
 fn manual(st: &mut AppState, workdir: std::path::PathBuf, request: CheckRequest, fx: &mut Vec<Effect>) {
-    let effect = Effect::CheckConflicts(CheckJob { workdir, request, manual: true, generation: 0 });
+    let effect = Effect::CheckConflicts(CheckJob { workdir: workdir.clone(), request, manual: true, generation: 0 });
+    let label = st.settings.lang().tr("branch.menu.check_conflicts").to_owned();
     if !st.runs_git_unasked() {
-        let label = st.settings.lang().tr("branch.menu.check_conflicts").to_owned();
         return super::trust::hold_waiting(st, WaitingFor::Read(effect), Some(label));
     }
-    fx.push(effect);
+    let sealed = crate::effect::Sealed::Waiting { kind: crate::effect::WaitingKind::Read, label: Some(label) };
+    super::trust_seal::push(st, effect, sealed, &workdir, fx);
 }

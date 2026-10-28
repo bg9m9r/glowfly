@@ -8,7 +8,7 @@
 //! Glowfly makes from a trusted repository is in trust_inherit.rs.
 
 use super::jobs::Started;
-use crate::effect::{Effect, LoadKind};
+use crate::effect::{Effect, LoadKind, Sealed, WaitingKind};
 use crate::msg::TrustMsg;
 use crate::state::tabs::is_repo_at;
 use crate::state::trust::{Created, HeldJob, Standing, TrustPrompt, Waiting, WaitingFor, prompt_for, record, record_trusted, standing};
@@ -24,6 +24,7 @@ pub(super) fn handle(st: &mut AppState, msg: TrustMsg, now: Instant, fx: &mut Ve
         TrustMsg::Ask { real } => ask(st, &real, false),
         TrustMsg::AskForTerminal { real } => ask(st, &real, true),
         TrustMsg::Inherited { kind, from, repos, open } => super::trust_inherit::inherited(st, kind, &from, repos, open, fx),
+        TrustMsg::Stale(s) => super::trust_seal::stale(st, *s),
     }
 }
 
@@ -35,7 +36,7 @@ fn holds(s: Standing) -> bool {
 /// Shows the prompt again for the active repository at `real`, if git is held there (Undecided,
 /// NotTrusted or Changed) and no other dialog is open; `terminal`: on behalf of its held
 /// terminal shells. Closes the palette, which never covers a dialog.
-fn ask(st: &mut AppState, real: &Path, terminal: bool) {
+pub(super) fn ask(st: &mut AppState, real: &Path, terminal: bool) {
     let Some(snap) = st.snap.as_ref().filter(|s| same_spelling(&s.real_workdir, real)) else { return };
     if !holds(standing(&st.settings, snap)) || st.modal.is_some() {
         return;
@@ -56,7 +57,9 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
     if trusted {
         // What the user was shown: the open prompt's scan, else the active repository's.
         let print = match (&st.modal, &st.snap) {
-            (Some(Modal::Trust(p)), _) if same_spelling(&p.real, real) => Some(p.scan.print()),
+            (Some(Modal::Trust(p)), _) if same_spelling(&p.real, real) => {
+                Some(p.incoming.as_ref().map_or_else(|| p.scan.print(), |i| p.scan.print().with(&i.print())))
+            }
             (_, Some(s)) if same_spelling(&s.real_workdir, real) => Some(s.trust_print.clone()),
             _ => None,
         };
@@ -118,8 +121,10 @@ fn release(st: &mut AppState, h: HeldJob, real: &Path, named: bool, fx: &mut Vec
     }
     tracing::debug!("running {} now that {} is trusted", h.job.label, h.name);
     st.job_stop = super::job_stop::for_effect(&h.effect);
+    let sealed = Sealed::Job { label: h.job.label.clone() };
+    let cwd = h.job.workdir.clone().or_else(|| st.workdir()).unwrap_or_else(|| h.real.clone());
     st.job = Some(h.job);
-    fx.push(h.effect);
+    super::trust_seal::push(st, h.effect, sealed, &cwd, fx);
 }
 
 /// What the trust gate says about a job.
@@ -308,8 +313,15 @@ pub(super) fn released(st: &mut AppState, fx: &mut Vec<Effect>) {
     if let Some(w) = st.trust.waiting.take()
         && st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &w.real))
     {
+        let cwd = w.real.clone();
         match w.what {
-            WaitingFor::Terminal(effect) | WaitingFor::Read(effect) => fx.push(effect),
+            WaitingFor::Terminal(effect) => {
+                super::trust_seal::push(st, effect, Sealed::Waiting { kind: WaitingKind::Terminal, label: None }, &cwd, fx);
+            }
+            WaitingFor::Read(effect) => {
+                let label = st.settings.lang().tr("branch.menu.check_conflicts").to_owned();
+                super::trust_seal::push(st, effect, Sealed::Waiting { kind: WaitingKind::Read, label: Some(label) }, &cwd, fx);
+            }
             WaitingFor::Preview(job) => super::op_preview::start(st, job, fx),
         }
     }
