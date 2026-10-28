@@ -49,6 +49,9 @@ pub struct TrustSession {
     pub created: Vec<PathBuf>,
     /// The job waiting for the open trust prompt.
     pub held: Option<HeldJob>,
+    /// Open in external terminal, waiting for the open trust prompt: the repository's real
+    /// path and the launch, run once git runs there unasked (update/trust.rs::hold_terminal).
+    pub terminal: Option<(PathBuf, crate::effect::Effect)>,
     /// What the running job makes from a trusted repository, to be trusted once it succeeds.
     pub inherit: Option<Inherit>,
     /// The running `git lfs install` job's label and its repository's real path: once it

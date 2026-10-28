@@ -3,8 +3,8 @@
 //! launches that failed; the diff and merge tools' own steps are in update/tool_compare.rs.
 //! A tool entry run while its program isn't set opens Preferences > External Tools instead
 //! (`show_page`), whoever sent it: a menu, a header, the palette or a stale frame.
-//! Repository trust doesn't hold these up: the programs and their arguments come from the
-//! user's own settings, never from the repository. git config's tools, used when no program is
+//! Repository trust doesn't hold these up (except a terminal, whose shell runs git): the
+//! programs and their arguments come from the user's own settings, never from the repository. git config's tools, used when no program is
 //! set, may come from the repository's own config: those are gated in update/tool_git.rs.
 
 use crate::effect::Effect;
@@ -84,14 +84,20 @@ pub(super) fn open_terminal(st: &mut AppState, now: Instant, fx: &mut Vec<Effect
         return;
     }
     let Some(w) = st.workdir() else { return };
-    match terminal(&st.settings.external_tools, &w) {
-        None => fx.push(Effect::Os(OsEffect::OpenTerminal(w))),
+    let effect = match terminal(&st.settings.external_tools, &w) {
+        None => Effect::Os(OsEffect::OpenTerminal(w)),
         Some(Ok(launch)) => {
             let target = st.snap.as_ref().map(|s| s.name.clone()).unwrap_or_default();
-            fx.push(Effect::Tool(ToolEffect::Launch { kind: ToolKind::Terminal, launch, target, check: None }));
+            Effect::Tool(ToolEffect::Launch { kind: ToolKind::Terminal, launch, target, check: None })
         }
-        Some(Err(text)) => fail(st, text, now),
+        Some(Err(text)) => return fail(st, text, now),
+    };
+    // A shell's prompt often runs git, which runs what the repository's settings and hooks
+    // name: in a held repository it waits for trust, as the panel's shells do.
+    if st.held() {
+        return super::trust::hold_terminal(st, effect);
     }
+    fx.push(effect);
 }
 
 /// Opens Preferences > External Tools (a tool entry run while its program isn't set).

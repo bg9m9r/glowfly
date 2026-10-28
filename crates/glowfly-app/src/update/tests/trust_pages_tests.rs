@@ -39,11 +39,8 @@ fn open_clean(name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn detect_dir(fx: &[Effect]) -> Option<PathBuf> {
-    fx.iter().find_map(|e| match e {
-        Effect::Lfs(LfsEffect::Detect { cwd }) => Some(cwd.clone()),
-        _ => None,
-    })
+fn detects(fx: &[Effect]) -> bool {
+    fx.iter().any(|e| matches!(e, Effect::Lfs(LfsEffect::Detect)))
 }
 
 #[test]
@@ -67,18 +64,13 @@ fn the_lfs_page_reads_nothing_while_git_is_held_and_reads_once_trusted() {
 }
 
 #[test]
-fn the_install_check_runs_outside_a_held_repository() {
+fn the_install_check_runs_whatever_the_repository_s_trust() {
+    // The effect carries no folder: `git lfs version` always runs outside every repository, so
+    // a trusted one's alias.lfs can't answer either.
     let (mut st, dir) = held_repo("pages-detect-held");
-    let fx = run(&mut st, Msg::Lfs(LfsMsg::Detect));
-    assert_eq!(detect_dir(&fx), Some(AppState::outside_dir()));
+    assert!(detects(&run(&mut st, Msg::Lfs(LfsMsg::Detect))));
     trust(&mut st);
-    let fx = run(&mut st, Msg::Lfs(LfsMsg::Detect));
-    assert_eq!(detect_dir(&fx), st.workdir(), "a trusted repository");
-    let _ = std::fs::remove_dir_all(&dir);
-
-    let (mut st, dir) = open_clean("pages-detect-clean");
-    let fx = run(&mut st, Msg::Lfs(LfsMsg::Detect));
-    assert_eq!(detect_dir(&fx), st.workdir(), "a clean repository");
+    assert!(detects(&run(&mut st, Msg::Lfs(LfsMsg::Detect))), "a trusted repository");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

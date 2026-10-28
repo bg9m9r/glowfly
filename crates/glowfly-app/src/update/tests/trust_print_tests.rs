@@ -191,3 +191,31 @@ fn lfs_install_from_glowfly_doesn_t_ask_again() {
     assert!(asking(&st));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Writes the repository's commands file with one shell command running `template`.
+fn write_commands(dir: &Path, template: &str) {
+    std::fs::create_dir_all(dir.join(".glowfly")).unwrap();
+    let text = format!("[[command]]\nname = \"Hi\"\nkind = \"shell\"\ntemplate = \"{template}\"\n");
+    std::fs::write(dir.join(".glowfly").join("commands.toml"), text).unwrap();
+}
+
+#[test]
+fn a_changed_commands_file_asks_again_and_trusting_keeps_the_earlier_one() {
+    let (mut st, dir) = trusted_repo("print-commands");
+    write_commands(&dir, "echo one");
+    reload(&mut st);
+    assert!(asking(&st), "a new commands file in a trusted repository");
+    assert!(prompt(&st).gained.as_ref().is_some_and(|g| g.commands.is_some()));
+    let real = real(&st);
+    drive(&mut st, Msg::Trust(TrustMsg::Decide { real: real.clone(), trusted: true }));
+    write_commands(&dir, "echo two");
+    reload(&mut st);
+    assert_eq!(st.trust_standing(), Some(Standing::Changed), "the file changed");
+    drive(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
+    // Back to the first one, as on another branch: both were trusted.
+    write_commands(&dir, "echo one");
+    reload(&mut st);
+    assert_eq!(st.trust_standing(), Some(Standing::Trusted));
+    assert!(!asking(&st));
+    let _ = std::fs::remove_dir_all(&dir);
+}

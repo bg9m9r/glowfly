@@ -57,8 +57,7 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
         LfsMsg::Loaded { generation, result } => loaded(st, generation, result, now, fx),
         LfsMsg::Detect => {
             st.lfs.install = LfsInstall::Checking;
-            // Outside a held repository, whose own config (an alias) git would read.
-            fx.push(Effect::Lfs(LfsEffect::Detect { cwd: st.unasked_dir() }));
+            fx.push(Effect::Lfs(LfsEffect::Detect));
         }
         LfsMsg::Detected(v) => st.lfs.install = LfsInstall::from_version(v),
         LfsMsg::TrackPath(t) => track_path(st, t, fx),

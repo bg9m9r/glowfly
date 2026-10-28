@@ -80,7 +80,7 @@ pub(crate) fn partial_clone_of(name: &str, commit: impl FnOnce(&Path)) -> (PathB
 
 /// git-lfs's version, or None (with a note) so tests that need it can skip.
 pub(crate) fn lfs_or_skip(test: &str) -> Option<String> {
-    let v = crate::lfs::installed(&crate::paths::temp_dir());
+    let v = crate::lfs::installed();
     if v.is_none() {
         eprintln!("{test}: git-lfs is not installed, skipping");
     }

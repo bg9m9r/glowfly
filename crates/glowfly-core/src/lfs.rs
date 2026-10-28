@@ -56,9 +56,10 @@ pub fn parse_version(out: &str) -> Option<String> {
     (!version.is_empty()).then(|| version.to_owned())
 }
 
-/// git-lfs's version, or None when `git lfs` isn't available.
-pub fn installed(cwd: &Path) -> Option<String> {
-    let out = read(cwd, &args(&["lfs", "version"]));
+/// git-lfs's version, or None when `git lfs` isn't available. Runs outside every repository
+/// (in the temp folder): inside one, git would run its alias.lfs when git-lfs is missing.
+pub fn installed() -> Option<String> {
+    let out = read(&crate::paths::temp_dir(), &args(&["lfs", "version"]));
     if out.ok { parse_version(&out.stdout) } else { None }
 }
 
@@ -188,7 +189,7 @@ pub fn status(workdir: &Path) -> Result<LfsStatus> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => (false, Vec::new()),
         Err(e) => return Err(Error::Io(e)),
     };
-    let version = installed(workdir);
+    let version = installed();
     let (pre_push, foreign_hooks) = hook_state(&hooks_dir(workdir)?);
     let initialized = version.is_some() && pre_push && filters_configured(workdir);
     Ok(LfsStatus { version, initialized, patterns, has_gitattributes, foreign_hooks })

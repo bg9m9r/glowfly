@@ -120,9 +120,17 @@ fn gained_since_lists_only_what_is_new() {
 #[test]
 fn the_stored_hash_doesn_t_drift() {
     // Saved settings hold these: changing the format would ask about every trusted repository.
-    let scan = TrustScan { config: vec![setting("core.sshCommand", "ssh -v")], hooks: vec!["Post-Merge".into()], ..TrustScan::default() };
+    // (Hooks held only their name before their scripts were part of it: 415e1133caf14f50 for
+    // this one, which no longer matches, so such a repository asks once more.)
+    let scan = TrustScan {
+        config: vec![setting("core.sshCommand", "ssh -v")],
+        hooks: vec!["Post-Merge".into()],
+        hook_digests: [("Post-Merge".to_owned(), "0123456789abcdef".to_owned())].into(),
+        commands: Some("fedcba9876543210".into()),
+        ..TrustScan::default()
+    };
     let print = scan.print();
-    assert_eq!(print.0.iter().map(String::as_str).collect::<Vec<_>>(), ["415e1133caf14f50", "5c1d7309520ff92a"]);
+    assert_eq!(print.0.iter().map(String::as_str).collect::<Vec<_>>(), ["5c1d7309520ff92a", "720e8f01e12f413a", "cef9ee38d57dfd9b"]);
 }
 
 #[test]

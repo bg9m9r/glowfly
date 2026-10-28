@@ -72,7 +72,7 @@ fn detect_and_page_refresh() {
     let mut st = state();
     let fx = lfs(&mut st, LfsMsg::Detect);
     assert_eq!(st.lfs.install, LfsInstall::Checking);
-    assert!(matches!(&fx[..], [Effect::Lfs(LfsEffect::Detect { .. })]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Lfs(LfsEffect::Detect)]), "{fx:?}");
     lfs(&mut st, LfsMsg::Detected(Some("3.7.1".into())));
     assert_eq!(st.lfs.install, installed());
     lfs(&mut st, LfsMsg::Detected(None));
@@ -191,7 +191,7 @@ fn track_path_refusals() {
 
 #[test]
 fn track_path_end_to_end() {
-    if glowfly_core::lfs::installed(&glowfly_core::paths::temp_dir()).is_none() {
+    if glowfly_core::lfs::installed().is_none() {
         eprintln!("track_path_end_to_end: git-lfs is not installed, skipping");
         return;
     }

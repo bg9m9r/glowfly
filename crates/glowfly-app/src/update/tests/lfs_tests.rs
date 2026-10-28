@@ -332,7 +332,7 @@ fn palette_entries() {
 
 #[test]
 fn set_up_and_track_end_to_end() {
-    if glowfly_core::lfs::installed(&glowfly_core::paths::temp_dir()).is_none() {
+    if glowfly_core::lfs::installed().is_none() {
         eprintln!("set_up_and_track_end_to_end: git-lfs is not installed, skipping");
         return;
     }

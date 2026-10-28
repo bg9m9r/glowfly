@@ -8,9 +8,13 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 
-/// The hashed items of a scan: one per setting (key and value) and one per hook (by name, in
-/// any letter case), and the same for each checked-out submodule under its path. Hook script
-/// contents are not part of it.
+/// The hashed items of a scan: one per setting (key and value), one per hook (its name in any
+/// letter case, with its script's digest) and one for the repository's commands file (its
+/// digest), and the same for each checked-out submodule under its path.
+///
+/// Prints saved before hook contents and the commands file were part of it hold hooks by name
+/// alone: those items never match now, so a repository trusted with hooks or a commands file
+/// asks once more, listing them, rather than being trusted on what nobody saw.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct TrustPrint(pub BTreeSet<String>);
@@ -24,6 +28,12 @@ impl TrustPrint {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    /// This print with `other`'s items too: everything either was made on.
+    pub fn with(mut self, other: &TrustPrint) -> TrustPrint {
+        self.0.extend(other.0.iter().cloned());
+        self
+    }
 }
 
 /// The first 8 bytes of the SHA-256 of `item`, as 16 lowercase hex characters.
@@ -35,8 +45,14 @@ fn config_item(prefix: &str, c: &ConfigCommand) -> String {
     format!("{prefix}c\0{}\0{}", c.key, c.value)
 }
 
-fn hook_item(prefix: &str, name: &str) -> String {
-    format!("{prefix}h\0{}", hook_base(name))
+fn hook_item(prefix: &str, scan: &TrustScan, name: &str) -> String {
+    // A hook without a digest was never read: it can't match what a read gave.
+    let digest = scan.hook_digests.get(name).map_or("unread", String::as_str);
+    format!("{prefix}h\0{}\0{digest}", hook_base(name))
+}
+
+fn commands_item(prefix: &str, digest: &str) -> String {
+    format!("{prefix}x\0{digest}")
 }
 
 fn submodule_prefix(path: &str) -> String {
@@ -54,8 +70,8 @@ impl TrustScan {
         TrustPrint(out)
     }
 
-    /// What this scan found that `p` lacks: the new or changed settings and new hooks (with
-    /// `hooks_dir` when any remain), and the submodules with such findings.
+    /// What this scan found that `p` lacks: the new or changed settings, hooks and commands
+    /// file (with `hooks_dir` when any hooks remain), and the submodules with such findings.
     pub fn gained_since(&self, p: &TrustPrint) -> TrustScan {
         let mut out = gained_own(self, "", p);
         out.submodules = self
@@ -73,15 +89,18 @@ impl TrustScan {
 /// The hashed items of `scan`'s own settings and hooks (not its submodules), under `prefix`.
 fn own_items(scan: &TrustScan, prefix: &str, out: &mut BTreeSet<String>) {
     out.extend(scan.config.iter().map(|c| hash(&config_item(prefix, c))));
-    out.extend(scan.hooks.iter().map(|h| hash(&hook_item(prefix, h))));
+    out.extend(scan.hooks.iter().map(|h| hash(&hook_item(prefix, scan, h))));
+    out.extend(scan.commands.iter().map(|d| hash(&commands_item(prefix, d))));
 }
 
 /// `scan`'s own settings and hooks whose items under `prefix` aren't in `p`.
 fn gained_own(scan: &TrustScan, prefix: &str, p: &TrustPrint) -> TrustScan {
     let config: Vec<ConfigCommand> = scan.config.iter().filter(|c| !p.0.contains(&hash(&config_item(prefix, c)))).cloned().collect();
-    let hooks: Vec<String> = scan.hooks.iter().filter(|h| !p.0.contains(&hash(&hook_item(prefix, h)))).cloned().collect();
+    let hooks: Vec<String> = scan.hooks.iter().filter(|h| !p.0.contains(&hash(&hook_item(prefix, scan, h)))).cloned().collect();
+    let hook_digests = hooks.iter().filter_map(|h| Some((h.clone(), scan.hook_digests.get(h)?.clone()))).collect();
     let hooks_dir = if hooks.is_empty() { None } else { scan.hooks_dir.clone() };
-    TrustScan { config, hooks, hooks_dir, submodules: Vec::new() }
+    let commands = scan.commands.clone().filter(|d| !p.0.contains(&hash(&commands_item(prefix, d))));
+    TrustScan { config, hooks, hook_digests, hooks_dir, submodules: Vec::new(), commands }
 }
 
 /// Whether git may run in a repository whose saved decision is `saved` and whose scan is

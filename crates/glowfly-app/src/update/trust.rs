@@ -60,8 +60,11 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
             (_, Some(s)) if same_spelling(&s.real_workdir, real) => Some(s.trust_print.clone()),
             _ => None,
         };
+        // Trusting again keeps what was trusted before, so going back to it (a hook or commands
+        // file as another branch has it) doesn't ask again.
+        let earlier = st.settings.saved_trust(real).filter(|t| t.is_trusted()).and_then(|t| t.print);
         match print {
-            Some(print) => record_trusted(&mut st.settings, real, print),
+            Some(print) => record_trusted(&mut st.settings, real, earlier.map_or_else(|| print.clone(), |e| e.with(&print))),
             None => record(&mut st.settings, real, RepoTrust::Trusted),
         }
         // A later change in this session asks again.
@@ -188,8 +191,21 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect, mut promp
     Started::Held
 }
 
+/// Open in external terminal while git is held in the active repository: `effect` (the launch)
+/// waits for the trust prompt, which asks on the terminal's behalf; trusting starts it
+/// (`released`) and Cancel drops it. No prompt can open over another dialog: then nothing waits.
+pub(super) fn hold_terminal(st: &mut AppState, effect: Effect) {
+    let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()) else { return };
+    ask(st, &real, true);
+    if matches!(&st.modal, Some(Modal::Trust(p)) if p.terminal) {
+        tracing::debug!("holding the external terminal until {} is trusted", real.display());
+        st.trust.terminal = Some((real, effect));
+    }
+}
+
 /// The trust prompt was closed without a decision: the held job, if any, is dropped.
 pub(super) fn dismissed(st: &mut AppState) {
+    st.trust.terminal = None;
     if let Some(h) = st.trust.held.take() {
         forget(st, h, false);
     }
@@ -278,12 +294,18 @@ pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
 }
 
 /// What waits outside the job gate for the active repository to run git unasked: held terminal
-/// shells and the LFS and Sparse Checkout pages' reads.
+/// shells, the external terminal (only the active repository's: another's is dropped) and the
+/// LFS and Sparse Checkout pages' reads.
 pub(super) fn released(st: &mut AppState, fx: &mut Vec<Effect>) {
     if !st.runs_git_unasked() {
         return;
     }
     super::terminal::release_held(st, fx);
+    if let Some((real, effect)) = st.trust.terminal.take()
+        && st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &real))
+    {
+        fx.push(effect);
+    }
     super::lfs::trust_released(st, fx);
     super::sparse::trust_released(st, fx);
     super::range_diff::trust_released(st, fx);

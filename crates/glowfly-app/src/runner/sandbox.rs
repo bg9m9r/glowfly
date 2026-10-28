@@ -258,7 +258,7 @@ mod tests {
         let oid = git2::Oid::zero();
         let count = crate::worktree::CountRequest { workdir: dir.clone(), refs_key: 1, targets: Vec::new() };
         let runs = [
-            Effect::Lfs(LfsEffect::Detect { cwd: dir.clone() }),
+            Effect::Lfs(LfsEffect::Detect),
             Effect::Lfs(LfsEffect::Load { workdir: dir.clone(), generation: 1 }),
             Effect::Sparse(SparseEffect::Load { workdir: dir.clone(), generation: 1, run_git: false }),
             Effect::Sparse(SparseEffect::Checkout { cwd: dir.clone(), command: glowfly_core::sparse_ops::SparseCommand::Reapply }),

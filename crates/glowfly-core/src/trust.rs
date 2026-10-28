@@ -5,8 +5,10 @@
 //! touches the repository. `scan` lists them with libgit2 only, so reading them runs nothing.
 
 use git2::{Config, ConfigLevel, Repository};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+mod digest;
 mod print;
 pub use print::{TrustPrint, allows};
 
@@ -26,12 +28,19 @@ pub struct TrustScan {
     pub config: Vec<ConfigCommand>,
     /// Hook names that git would run, sorted.
     pub hooks: Vec<String>,
+    /// The digest of each of `hooks`' script contents, by name (`digest::of_file`): an edited
+    /// script asks again. A hook missing here counts as unreadable.
+    pub hook_digests: BTreeMap<String, String>,
     /// The folder `hooks` were found in; None when hooks come from the user's own (global or
     /// system) core.hooksPath, or from a path that can't be resolved without the shell.
     pub hooks_dir: Option<PathBuf>,
     /// Checked-out submodules, nested ones included, whose own config or hooks run programs:
     /// git's status and fetch run git inside each of them. Their own `submodules` are empty.
     pub submodules: Vec<SubmoduleScan>,
+    /// The digest of the repository's own commands file (`.glowfly/commands.toml`), when it has
+    /// one: in the print, so a changed file asks again, but not a reason to ask by itself (its
+    /// commands run only when the user picks one). None in a submodule.
+    pub commands: Option<String>,
 }
 
 /// What `scan` found in one submodule.
@@ -99,6 +108,11 @@ const COMMAND_KEYS: &[(&str, &str)] = &[
     ("gpg.ssh.defaultkeycommand", "gpg.ssh.defaultKeyCommand"),
 ];
 
+/// The git commands Glowfly runs that aren't built into git, so a repository's alias of the
+/// same name runs in their place when the program is missing (git looks for `git-<name>`
+/// before aliases, but after its built-in commands, which an alias never replaces).
+const ALIASED_COMMANDS: &[&str] = &["lfs", "mergetool"];
+
 /// How deep `scan` follows submodules inside submodules.
 const MAX_SUBMODULE_DEPTH: usize = 8;
 
@@ -106,9 +120,25 @@ const MAX_SUBMODULE_DEPTH: usize = 8;
 /// make git run programs. Settings from the user's own config (global, XDG, system) are left
 /// out: the user put them there.
 pub fn scan(repo: &Repository) -> TrustScan {
-    let mut out = scan_own(repo);
+    let mut out = scan_top(repo);
     scan_submodules(repo, "", 0, &mut out.submodules);
     out
+}
+
+/// What a refresh re-checks: `repo`'s own settings, hooks (with their contents) and commands
+/// file, without its submodules (a full load scans those). Cheap: the config files, a listing
+/// of the hooks folder and a read of each hook git would run.
+pub fn scan_top(repo: &Repository) -> TrustScan {
+    let mut out = scan_own(repo);
+    out.commands = repo.workdir().and_then(commands_digest);
+    out
+}
+
+/// The digest of the commands file of the working folder `workdir`, if there is one.
+fn commands_digest(workdir: &Path) -> Option<String> {
+    let path = crate::custom_commands::repo_file(workdir);
+    // `symlink_metadata`: a link counts as there (the commands reader refuses it).
+    std::fs::symlink_metadata(&path).is_ok().then(|| digest::of_file(&path))
 }
 
 /// `scan` of `repo` alone, without its submodules.
@@ -132,7 +162,10 @@ fn scan_own(repo: &Repository) -> TrustScan {
     }
     out.hooks_dir = hooks_dir(repo, config.as_ref(), local_hooks_path);
     if let Some(dir) = &out.hooks_dir {
-        out.hooks = active_hooks(dir);
+        for (name, path) in active_hooks(dir) {
+            out.hook_digests.insert(name.clone(), digest::of_file(&path));
+            out.hooks.push(name);
+        }
     }
     out
 }
@@ -182,6 +215,12 @@ fn command_key(name: &str, value: &str) -> Option<String> {
     }
     if let Some((_, shown)) = COMMAND_KEYS.iter().find(|(k, _)| *k == name) {
         return Some((*shown).to_owned());
+    }
+    // git runs an alias for a command it can't find (alias.lfs when git-lfs isn't installed),
+    // in any letter case of the name.
+    if let Some(cmd) = name.strip_prefix("alias.").map(|rest| rest.strip_suffix(".command").unwrap_or(rest)) {
+        let shadows = ALIASED_COMMANDS.iter().any(|c| c.eq_ignore_ascii_case(cmd));
+        return shadows.then(|| format!("alias.{}", cmd.to_ascii_lowercase()));
     }
     if name == "protocol.allow" {
         return value.eq_ignore_ascii_case("always").then(|| name.to_owned());
@@ -257,22 +296,24 @@ fn hooks_dir(repo: &Repository, config: Option<&Config>, local: Option<String>) 
 /// any case rule a file system might use (see [`is_hook_name`]), and each hook name is also
 /// looked up directly, so a file system that matches names in some other way (a Linux FAT or
 /// casefold mount, a Windows short name) can't hide one.
-fn active_hooks(dir: &Path) -> Vec<String> {
+fn active_hooks(dir: &Path) -> Vec<(String, PathBuf)> {
     let Ok(read) = std::fs::read_dir(dir) else { return Vec::new() };
     let runs = |p: &Path| std::fs::metadata(p).is_ok_and(|m| m.is_file() && runnable(&m));
-    let mut hooks: Vec<String> = read
+    let mut hooks: Vec<(String, PathBuf)> = read
         .flatten()
         .filter_map(|e| {
             let name = e.file_name().to_str()?.to_owned();
             // Follows links: a link to a script runs the script.
-            (is_hook_name(&name) && runs(&e.path())).then_some(name)
+            (is_hook_name(&name) && runs(&e.path())).then(|| (name, e.path()))
         })
         .collect();
     let exe = if cfg!(windows) { ".exe" } else { "" };
     for name in HOOK_NAMES {
-        let found = [name.to_string(), format!("{name}{exe}")].into_iter().any(|n| runs(&dir.join(n)));
-        if found && !hooks.iter().any(|h| hook_base(h) == hook_base(name)) {
-            hooks.push((*name).to_owned());
+        let found = [name.to_string(), format!("{name}{exe}")].into_iter().map(|n| dir.join(n)).find(|p| runs(p));
+        if let Some(path) = found
+            && !hooks.iter().any(|(h, _)| hook_base(h) == hook_base(name))
+        {
+            hooks.push(((*name).to_owned(), path));
         }
     }
     hooks.sort();
@@ -312,5 +353,7 @@ fn runnable(_meta: &std::fs::Metadata) -> bool {
     true
 }
 
+#[cfg(test)]
+mod reask_tests;
 #[cfg(test)]
 mod tests;

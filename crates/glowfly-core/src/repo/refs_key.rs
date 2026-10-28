@@ -1,7 +1,8 @@
 //! A cheap fingerprint of everything a full load reads besides the working-tree status: refs,
 //! HEAD, stashes, the repository state, config (the shared one and the worktree's own), linked
-//! worktrees and a shallow clone's `shallow` file. When it hasn't changed since the last load, re-reading the status is enough and the
-//! history needn't be walked again.
+//! worktrees, a shallow clone's `shallow` file and the trust print of the repository's own
+//! settings, hooks and commands file (`trust::scan_top`). When it hasn't changed since the last
+//! load, re-reading the status is enough and the history needn't be walked again.
 
 use crate::error::Result;
 use git2::Repository;
@@ -47,6 +48,9 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
     file_stamp(&common.join("shallow")).hash(&mut h);
     // `git am --skip` stopping at the next patch moves no ref.
     file_stamp(&repo.path().join("rebase-apply/next")).hash(&mut h);
+    // What makes git run programs (the settings, included files too, each hook with its script,
+    // the commands file): a change made outside Glowfly loads again, and the trust check asks.
+    crate::trust::scan_top(repo).print().0.hash(&mut h);
     // The root .gitattributes' LFS patterns aren't in it: every whole status read brings them.
     // Linked worktrees: added, removed, locked or switched to another branch.
     if let Ok(dir) = std::fs::read_dir(common.join("worktrees")) {

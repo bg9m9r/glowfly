@@ -7,7 +7,7 @@ use super::tests::{drive, scratch_repo};
 use super::trust_held_tests::held_repo;
 use super::trust_print_tests::{add_hook, trusted_repo};
 use super::trust_tests::{asking, real, run};
-use crate::effect::Effect;
+use crate::effect::{Effect, OsEffect};
 use crate::msg::{Msg, RepoMsg, TabsMsg, TrustMsg};
 use crate::state::terminal::SessionStatus;
 use crate::state::trust::{Standing, TrustPrompt, record};
@@ -173,5 +173,52 @@ fn not_trusting_a_repository_never_stops_its_running_shell() {
     let fx: Vec<Effect> = run(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: false }));
     assert!(terminal(fx).is_empty());
     assert_eq!(statuses(&st), [SessionStatus::Running]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn opens_external(fx: &[Effect]) -> bool {
+    fx.iter().any(|e| matches!(e, Effect::Os(OsEffect::OpenTerminal(_)) | Effect::Tool(_)))
+}
+
+fn external_terminal(st: &mut AppState) -> Vec<Effect> {
+    st.settings.terminal.open_in_panel = false;
+    run(st, Msg::OpenTerminal)
+}
+
+#[test]
+fn an_external_terminal_waits_for_trust_in_a_held_repository() {
+    let (mut st, dir) = held_repo("term-external-held");
+    let fx = external_terminal(&mut st);
+    assert!(!opens_external(&fx), "no shell starts in an untrusted repository: {fx:?}");
+    assert!(prompt(&st).terminal, "it asks on the terminal's behalf");
+    let real = real(&st);
+    let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
+    let w = workdir(&st);
+    assert!(fx.iter().any(|e| matches!(e, Effect::Os(OsEffect::OpenTerminal(p)) if *p == w)), "Trust and run opens it: {fx:?}");
+    assert!(st.trust.terminal.is_none());
+    assert!(opens_external(&external_terminal(&mut st)), "a trusted repository opens it at once");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn cancel_drops_the_waiting_external_terminal() {
+    let (mut st, dir) = held_repo("term-external-cancel");
+    external_terminal(&mut st);
+    let fx = run(&mut st, Msg::CloseModal);
+    assert!(!opens_external(&fx), "{fx:?}");
+    assert!(st.trust.terminal.is_none());
+    // Trusting it later another way doesn't open a terminal nobody is waiting for.
+    let real = real(&st);
+    assert!(!opens_external(&run(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }))));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_clean_repository_opens_an_external_terminal_at_once() {
+    let dir = scratch_repo("term-external-clean");
+    let mut st = super::tests::state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    assert!(opens_external(&external_terminal(&mut st)));
+    assert!(st.modal.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

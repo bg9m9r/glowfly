@@ -42,7 +42,7 @@ fn moved_effects_keep_their_metadata() {
     let oid = git2::Oid::zero();
     let scoped = Some(w.as_path());
     let cases: Vec<(Effect, Meta)> = vec![
-        (Effect::Lfs(LfsEffect::Detect { cwd: cwd.clone() }), ("lfs-detect", None, None, true)),
+        (Effect::Lfs(LfsEffect::Detect), ("lfs-detect", None, None, true)),
         (Effect::Lfs(LfsEffect::Load { workdir: w.clone(), generation: 1 }), ("lfs-status", scoped, None, true)),
         (Effect::Sparse(SparseEffect::Load { workdir: w.clone(), generation: 1, run_git: true }), ("sparse-status", scoped, None, true)),
         (

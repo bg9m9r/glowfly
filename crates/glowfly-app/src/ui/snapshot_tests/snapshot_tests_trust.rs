@@ -49,7 +49,7 @@ fn trust_prompt() {
         ],
         hooks: vec!["post-checkout".into(), "pre-commit".into()],
         hooks_dir: Some(PathBuf::from("C:/work/tools/.git/hooks")),
-        submodules: Vec::new(),
+        ..TrustScan::default()
     };
     let mut h = harness(with_prompt(ThemeChoice::Dark, scan), true);
     h.run();
@@ -68,7 +68,7 @@ fn trust_prompt_hooks_only() {
         config: vec![setting("core.hooksPath", ".githooks"), setting("core.sshCommand", &format!("ssh {}", "x".repeat(196)))],
         hooks: vec!["pre-push".into()],
         hooks_dir: Some(PathBuf::from("C:/work/tools/.githooks")),
-        submodules: Vec::new(),
+        ..TrustScan::default()
     };
     let mut h = harness(with_prompt(ThemeChoice::Light, scan), false);
     h.run();
@@ -120,7 +120,7 @@ fn trust_prompt_held() {
         config: vec![setting("core.sshCommand", "ssh -v")],
         hooks: vec!["pre-commit".into()],
         hooks_dir: Some(PathBuf::from("C:/work/tools/.git/hooks")),
-        submodules: Vec::new(),
+        ..TrustScan::default()
     };
     let mut h = harness(prompt_state(ThemeChoice::Dark, scan, false, Some("Pull")), true);
     h.run();
@@ -142,13 +142,16 @@ fn trust_prompt_held() {
 
 #[test]
 fn trust_prompt_changed() {
-    // Trusted with core.sshCommand; since then a helper, a hook and a submodule's setting appeared.
+    // Trusted with core.sshCommand; since then a helper, a hook and a submodule's setting
+    // appeared, and the repository's commands file changed.
     let gained_sub = TrustScan { config: vec![setting("core.fsmonitor", ".git/fsmon.sh")], ..TrustScan::default() };
     let gained = TrustScan {
         config: vec![setting("credential.helper", "!f() { echo password=x; }; f")],
         hooks: vec!["post-merge".into()],
         hooks_dir: Some(PathBuf::from("C:/work/tools/.git/hooks")),
         submodules: vec![SubmoduleScan { path: "deps/lib".into(), scan: gained_sub.clone() }],
+        commands: Some("0123456789abcdef".into()),
+        ..TrustScan::default()
     };
     let scan = TrustScan {
         config: vec![setting("core.sshCommand", "ssh -v"), gained.config[0].clone()],
@@ -163,7 +166,8 @@ fn trust_prompt_changed() {
     h.run();
     h.check_snapshot("trust_prompt_changed");
     assert!(h.query_by_label("Trust this repository again?").is_some());
-    assert!(h.query_by_label_contains("appeared since you trusted it").is_some());
+    assert!(h.query_by_label_contains("appeared or changed since you trusted it").is_some());
+    assert!(h.query_by_label(".glowfly/commands.toml").is_some(), "the changed commands file");
     assert!(h.query_by_label("credential.helper = !f() { echo password=x; }; f").is_some());
     assert!(h.query_by_label("post-merge").is_some());
     assert!(h.query_by_label("In submodule deps/lib").is_some());

@@ -2,7 +2,8 @@
 //! run programs, and the Trust / Don't trust choice (update/trust.rs records it). When a git
 //! job the user started, or the built-in terminal's shells, wait for the decision, it says so
 //! and offers Trust and run or Cancel instead. For a repository trusted earlier that gained
-//! settings or hooks since, it asks again and lists only what is new.
+//! settings or hooks since (or whose hook scripts or commands file changed), it asks again and
+//! lists only what is new.
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
@@ -11,6 +12,7 @@ use crate::msg::{Msg, TrustMsg};
 use crate::state::trust::{TrustPrompt, hooks_label, shown_value};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText, Ui};
+use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
 use glowfly_core::trust::TrustScan;
 use std::path::Path;
@@ -21,7 +23,7 @@ use std::path::Path;
 pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     let title = if p.gained.is_some() { "Trust this repository again?" } else { "Trust this repository?" };
     let mut d = Dialog::new(cx, title).begin(ui);
-    d.body(ui, |ui| body(ui, p));
+    d.body(ui, |ui| body(ui, cx.t, p));
     let footer = if p.held.is_some() || p.terminal {
         Footer::new().cancel().danger(buttons::primary("Trust and run"))
     } else {
@@ -35,7 +37,7 @@ pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
 }
 
 /// Where the repository is, the job waiting, and what in it runs programs.
-fn body(ui: &mut Ui, p: &TrustPrompt) {
+fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
     ui.label(RichText::new(printable(&p.name)).font(type_scale::strong(ui, type_scale::BODY)));
     ui.add(egui::Label::new(RichText::new(glowfly_core::native_path::shown(&p.workdir)).color(color::weak())).wrap());
     if p.held.is_some() || p.terminal || p.refused {
@@ -55,11 +57,13 @@ fn body(ui: &mut Ui, p: &TrustPrompt) {
     }
     ui.add_space(8.0);
     let shown = p.gained.as_ref().unwrap_or(&p.scan);
-    if shown.is_empty() {
+    // A commands file alone runs nothing by itself: listed below, after "nothing runs", unless
+    // it is what changed since the repository was trusted.
+    if shown.is_empty() && (p.gained.is_none() || shown.commands.is_none()) {
         ui.add(egui::Label::new("Nothing in its settings or hooks runs programs right now.").wrap());
     } else {
         let intro = if p.gained.is_some() {
-            "These settings or hooks that make git run programs appeared since you trusted it. So far Glowfly has only read its files."
+            t.tr("trust.gained.intro")
         } else {
             "This repository's own settings or hooks make git run programs. So far Glowfly has only read its files."
         };
@@ -74,6 +78,9 @@ fn body(ui: &mut Ui, p: &TrustPrompt) {
             }
         });
     }
+    if shown.commands.is_some() {
+        commands(ui, t);
+    }
     ui.add_space(8.0);
     ui.add(
         egui::Label::new(
@@ -83,6 +90,15 @@ fn body(ui: &mut Ui, p: &TrustPrompt) {
         )
         .wrap(),
     );
+}
+
+/// The repository's own commands file, new or changed: its commands run only when picked.
+fn commands(ui: &mut Ui, t: Lang) {
+    ui.add_space(6.0);
+    ui.label(type_scale::section_text(ui, t.tr("trust.commands.title")));
+    let file = format!("{}/{}", glowfly_core::custom_commands::REPO_DIR, glowfly_core::custom_commands::FILE_NAME);
+    ui.label(RichText::new(file).monospace());
+    ui.add(egui::Label::new(RichText::new(t.tr("trust.commands.note")).color(color::weak())).wrap());
 }
 
 /// The settings and hooks of one repository (the top one or a submodule).
