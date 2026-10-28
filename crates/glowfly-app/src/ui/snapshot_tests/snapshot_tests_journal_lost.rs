@@ -1,7 +1,8 @@
 //! Lost commit snapshots: a States row nothing keeps any more (its Lost chip and preview
 //! sentence), and the Lost commits tab with a dropped stash (Dark) or a plain commit (Light)
-//! selected, empty, loading, failed and cut with fsck's problems; and what its buttons and the
-//! States segment send. The lost commits are built by hand on the fixture's commits.
+//! selected, empty, loading, failed and cut with fsck's problems, and with the discarded changes
+//! Glowfly kept above them (a kept file selected); and what its buttons and the States segment
+//! send. The lost commits are built by hand on the fixture's commits.
 
 use super::snapshot_tests::{NOW, harness, remove_fixture, with_repo};
 use super::snapshot_tests_journal::journal;
@@ -15,6 +16,7 @@ use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::journal::{CommitLine, LostCommit, LostCommits, LostKind, Preview};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_core::undo::kept::KeptWhat;
 use std::path::PathBuf;
 
 fn commit(st: &AppState, summary: &str) -> Oid {
@@ -170,6 +172,41 @@ fn journal_lost_capped() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("journal_lost_capped");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn journal_lost_discarded() {
+    let (mut st, dir) = three("journal-lost-discarded", ThemeChoice::Dark, 1);
+    let kept = |n: u8, path: &str, what, ago| {
+        let kind = LostKind::Discarded { path: path.into(), blob: Oid::from_bytes(&[n + 100; 20]).unwrap(), what };
+        LostCommit {
+            oid: Oid::from_bytes(&[n; 20]).unwrap(),
+            kind,
+            summary: path.into(),
+            message: path.into(),
+            author: String::new(),
+            time: NOW - ago,
+        }
+    };
+    let lost = st.session.journal.view.as_mut().unwrap().lost.as_mut().unwrap();
+    let Some(Ok(l)) = &mut lost.result else { unreachable!() };
+    // The stash moves up: its record keeps it, so it is listed with the discarded changes.
+    let stash = l.commits.remove(0);
+    let first = kept(1, "src/search/results.rs", KeptWhat::Hunk, 120);
+    l.discarded = vec![first.clone(), kept(2, "notes/todo.md", KeptWhat::Delete, 900), stash];
+    lost.selected = Some(first.oid);
+    lost.preview = None;
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("journal_lost_discarded");
+    h.get_by_label("Restore as a copy").click();
+    h.run();
+    assert!(sent(&h, |m| matches!(m, JournalMsg::Lost(LostMsg::RestoreFile { copy: true, .. }))));
+    h.get_by_label("Restore").click();
+    h.run();
+    assert!(sent(&h, |m| matches!(m, JournalMsg::Lost(LostMsg::RestoreFile { copy: false, .. }))));
     drop(h);
     remove_fixture(&dir);
 }

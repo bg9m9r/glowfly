@@ -118,3 +118,17 @@ fn edited_since_is_refused_and_clears() {
     assert_eq!(read(&dir, "big.txt"), "newer work\n");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_discard_survives_a_job_that_cant_be_undone() {
+    let (mut st, dir) = two_hunks("undo-discard-unrelated");
+    discard_first_hunk(&mut st);
+    drive(&mut st, Msg::git("Rename branch", &["branch", "-m", "main", "trunk"]));
+    assert_eq!(st.session.undo.blocked.as_deref(), Some("Rename branch"), "the job couldn't be undone");
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Discard { what: Discarded::Hunk, .. })), "{:?}", st.session.undo.undo);
+
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(read(&dir, "big.txt"), numbered(&[2, 28]), "the discarded hunk comes back");
+    assert_eq!(last_toast(&st), (true, "Undo discard of a hunk in big.txt succeeded".to_owned()));
+    let _ = std::fs::remove_dir_all(&dir);
+}

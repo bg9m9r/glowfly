@@ -92,6 +92,7 @@ pub(super) mod issue_services_tests;
 pub(super) mod issue_tests;
 pub(super) mod job_errors_tests;
 pub(super) mod job_stop_tests;
+pub(super) mod journal_discarded_tests;
 pub(super) mod journal_lost_tests;
 pub(super) mod journal_restore_tests;
 pub(super) mod journal_tests;

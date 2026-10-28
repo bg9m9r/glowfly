@@ -212,6 +212,26 @@ fn drop_redo_refused_when_dropped_elsewhere() {
     drive(&mut st, Msg::Job(JobMsg::Redo));
     let t = st.toasts.last().unwrap();
     assert!(!t.ok && t.text.contains("The stash was dropped or applied since"), "{}", t.text);
-    assert!(st.session.undo.undo.is_empty() && st.session.undo.redo.is_empty(), "{:?}", st.session.undo);
+    // Only the expired drop goes: the commit under it is checked again when it is undone.
+    assert!(st.session.undo.redo.is_empty(), "{:?}", st.session.undo);
+    assert!(matches!(&st.session.undo.undo[..], [Action::Commit { .. }]), "{:?}", st.session.undo);
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn a_dropped_stash_survives_a_job_that_cant_be_undone() {
+    let (mut st, dir, first) = two_stashes("undo-stash-drop-unrelated");
+    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid: first }));
+    drive(&mut st, Msg::git("Rename branch", &["branch", "-m", "main", "trunk"]));
+    assert_eq!(st.session.undo.blocked.as_deref(), Some("Rename branch"));
+    assert!(
+        matches!(&st.session.undo.undo[..], [Action::StashDrop { stash, .. }] if *stash == first),
+        "the commit under it can't be undone past the rename; the drop can: {:?}",
+        st.session.undo.undo
+    );
+
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    let back = st.snap.as_ref().unwrap().stashes.iter().find(|s| s.oid == first).cloned().expect("the stash is back");
+    assert_eq!(back.message, "On main: first");
     cleanup(&[&dir]);
 }

@@ -270,6 +270,13 @@ impl Action {
         }
     }
 
+    /// Whether the action threw away work that only Glowfly keeps (a discard, a deleted file, a
+    /// dropped stash, an aborted operation's work): it stays undoable past a job that can't be
+    /// undone, since its undo checks the files (or stash list) it writes to before it acts.
+    pub fn is_content(&self) -> bool {
+        matches!(self, Action::Discard { .. } | Action::DeleteFile { .. } | Action::StashDrop { .. } | Action::AbortKept { .. })
+    }
+
     /// Whether a refusal for local changes can offer to stash them and undo anyway: only for
     /// undoing a hard reset or Discard all, whose redo stashes again by itself.
     pub fn offers_stash(&self, redo: bool) -> bool {

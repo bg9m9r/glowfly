@@ -93,7 +93,12 @@ pub(super) fn apply_target(workdir: &Path, rev: &str) -> Result<(Oid, Option<Str
     Ok((oid, message))
 }
 
-/// Records what an operation of `kind` may change, before it runs.
+fn stash_summary(repo: &Repository, stash: Oid) -> String {
+    repo.find_commit(stash).map(|c| commit_text::summary(&c).into_owned()).unwrap_or_default()
+}
+
+/// Records what an operation of `kind` may change, before it runs. A stash about to be dropped
+/// is also kept for the journal (`kept.rs`).
 pub fn before(workdir: &Path, kind: &UndoKind) -> Result<Before> {
     let repo = Repository::open(workdir)?;
     let (head, head_oid) = head(&repo);
@@ -112,7 +117,16 @@ pub fn before(workdir: &Path, kind: &UndoKind) -> Result<Before> {
         }
         UndoKind::Commit { amend: false } => b.paused = resumed::paused(workdir, false)?,
         UndoKind::Resume(_) => b.paused = resumed::paused(workdir, true)?,
-        UndoKind::StashDrop { rev } => b.dropped = apply_target(workdir, rev.as_deref().unwrap_or("stash@{0}")).ok(),
+        UndoKind::StashDrop { rev } => {
+            b.dropped = apply_target(workdir, rev.as_deref().unwrap_or("stash@{0}")).ok();
+            // Kept for the journal before it goes; the Lost tab hides it while it is still listed.
+            if let Some((stash, message)) = &b.dropped {
+                let message = message.clone().unwrap_or_else(|| stash_summary(&repo, *stash));
+                if let Err(e) = super::kept::keep_stash(workdir, *stash, &message) {
+                    tracing::warn!("could not keep the stash being dropped: {e}");
+                }
+            }
+        }
         UndoKind::Commit { amend: true } | UndoKind::Reset(_) | UndoKind::Move { .. } => {}
     }
     Ok(b)

@@ -1,5 +1,6 @@
 //! Per-tab undo history: Glowfly's own recent operations that can be reversed, most recent last.
-//! In memory only, so it ends with the tab or the app. Also the form of the dialog that asks
+//! In memory only, so it ends with the tab or the app (discarded work is also kept on disk for
+//! the journal's Lost tab, `undo::kept`). Also the form of the dialog that asks
 //! whether undoing a checkout should delete the branch it created (`Modal::UndoCreated`).
 
 use glowfly_core::i18n::Lang;
@@ -44,9 +45,11 @@ impl UndoHistory {
         self.blocked = None;
     }
 
-    /// An operation that can't be undone succeeded: older actions can't be undone past it.
+    /// An operation that can't be undone succeeded: older commits and ref moves can't be undone
+    /// past it, but discarded work (`Action::is_content`) stays undoable, since its undo checks
+    /// the files or stash list it writes to first.
     pub fn invalidate(&mut self, label: &str) {
-        self.undo.clear();
+        self.undo.retain(Action::is_content);
         self.redo.clear();
         self.blocked = Some(label.to_owned());
     }
@@ -148,6 +151,33 @@ mod tests {
         assert_eq!(label, "Undo");
         assert!(why.as_deref().is_some_and(|w| w.starts_with("Can't undo Rename branch: only checkout, commit")), "{why:?}");
         assert_eq!(why, Some(Lang::En.trf("menu.edit.cant_undo", &[("label", &"Rename branch")])));
+    }
+
+    fn discard() -> Action {
+        Action::Discard { path: "a.txt".into(), what: glowfly_core::undo::Discarded::File, before: None, after: None }
+    }
+
+    #[test]
+    fn discarded_work_survives_a_job_that_cant_be_undone() {
+        let mut h = UndoHistory::default();
+        let drop = Action::StashDrop { stash: git2::Oid::zero(), message: "On main: x".into() };
+        let abort = Action::AbortKept {
+            op: glowfly_core::undo::MoveOp::Merge,
+            saved: git2::Oid::zero(),
+            head: git2::Oid::zero(),
+            branch: None,
+            left: glowfly_core::undo::Changes(Vec::new()),
+        };
+        for a in [discard(), checkout(), abort.clone(), drop.clone(), checkout()] {
+            h.record(a);
+        }
+        h.undone(checkout());
+        h.invalidate("Rename branch");
+        // A kept abort stays named, so `kept_aborts` still keeps its ref from being pruned.
+        assert_eq!(h.undo, vec![discard(), abort, drop], "the commits and ref moves go; the content stays, in order");
+        assert!(h.redo.is_empty());
+        assert_eq!(h.blocked.as_deref(), Some("Rename branch"));
+        assert_eq!(h.undo_entry(Lang::En, true), ("Undo drop of stash 'On main: x'".to_owned(), None));
     }
 
     #[test]

@@ -1,14 +1,16 @@
 //! The journal's Lost commits tab (`JournalMsg::Tab`, `LostMsg`): switching tabs, finding the
 //! lost commits only while their tab shows (a refresh while it is hidden marks the list stale
 //! instead of running `git fsck`), the selected commit's history, and its actions through the
-//! pure rules in state/journal_lost.rs. Loads and previews carry a generation from
-//! `RepoSession::journal`, so a result for a view that was closed or parked is dropped.
+//! pure rules in state/journal_lost.rs, among them Restore of a kept discarded file. Loads and
+//! previews carry a generation from `RepoSession::journal`, so a result for a view that was
+//! closed or parked is dropped.
 
 use crate::effect::Effect;
 use crate::journal::{JournalEffect, LostMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::journal_lost::{self as rules, JournalTab, LostPreviewState, LostView};
+use crate::state::toasts::ToastAction;
 use git2::Oid;
 use glowfly_core::journal::{LostCommit, LostKind};
 use std::time::Instant;
@@ -52,7 +54,31 @@ pub(super) fn handle(st: &mut AppState, msg: LostMsg, now: Instant, fx: &mut Vec
             let msg = rules::store(&c, st.settings.lang());
             dispatch(st, msg, now, fx);
         }
+        LostMsg::RestoreFile { id, copy } => restore_file(st, id, copy, now, fx),
+        LostMsg::FileRestored { id, path, result } => {
+            let t = st.settings.lang();
+            let (ok, text, offer_copy) = rules::restored_toast(t, &path, &result);
+            st.toast(ok, text, now);
+            if offer_copy {
+                let msg = Box::new(Msg::Journal(crate::journal::JournalMsg::Lost(LostMsg::RestoreFile { id, copy: true })));
+                let action = ToastAction { label: t.tr("journal.lost.restore_copy").into(), msg, workdir: st.workdir() };
+                st.set_last_toast_action(action);
+            }
+            super::watch::settled(st, now);
+            super::repo::refresh_status(st, fx);
+            refreshed(st, fx);
+        }
     }
+}
+
+/// Restore (or Restore as a copy) on the kept file `id`, unless a job is running.
+fn restore_file(st: &mut AppState, id: Oid, copy: bool, now: Instant, fx: &mut Vec<Effect>) {
+    let Some(LostCommit { kind: LostKind::Discarded { path, .. }, .. }) = commit(st, id) else { return };
+    let Some(workdir) = st.workdir() else { return };
+    if let Some(why) = rules::restore_file_blocked(st.job.is_some(), st.settings.lang()) {
+        return super::rebase::refuse(st, why.into(), now);
+    }
+    fx.push(Effect::Journal(JournalEffect::RestoreFile { workdir, id, path, copy }));
 }
 
 fn lost_mut(st: &mut AppState) -> Option<&mut LostView> {
@@ -126,8 +152,13 @@ fn select(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     let generation = st.session.journal.generation;
     let Some(lost) = lost_mut(st) else { return };
     lost.selected = Some(oid);
+    // A kept file has no history to read.
+    let Some(from) = rules::history_from(&c) else {
+        lost.preview = None;
+        return;
+    };
     lost.preview = Some(LostPreviewState { oid, generation, result: None });
-    fx.push(Effect::Journal(JournalEffect::LostPreview { workdir, oid, from: rules::history_from(&c), generation }));
+    fx.push(Effect::Journal(JournalEffect::LostPreview { workdir, oid, from, generation }));
 }
 
 /// Restore… on lost commit `oid`: the confirmation of a detached checkout, or why it can't.

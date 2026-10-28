@@ -34,6 +34,9 @@ fn refs_key_follows_refs_config_and_stashes_but_not_the_working_tree() {
     let k5 = key();
     git(&dir, &["config", "branch.side.description", "x"]);
     assert_ne!(key(), k5, "config");
+    let k6 = key();
+    git(&dir, &["update-ref", "refs/glowfly/discarded/x", "HEAD"]);
+    assert_eq!(key(), k6, "Glowfly's own records are never loaded");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

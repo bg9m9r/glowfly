@@ -1,7 +1,8 @@
 //! Messages and effects of the operation journal: the timeline of HEAD's and the branches'
 //! states with Restore (state/journal.rs, state/journal_restore.rs, update/journal.rs,
 //! runner/journal.rs, the view in ui/journal/), and its Lost commits tab
-//! (state/journal_lost.rs, update/journal_lost.rs, ui/journal/lost*.rs).
+//! (state/journal_lost.rs, update/journal_lost.rs, ui/journal/lost*.rs), which also lists the
+//! discarded changes Glowfly kept and restores them.
 
 use crate::effect::EffectMeta;
 #[cfg(test)]
@@ -9,6 +10,7 @@ use crate::effect::SandboxRule;
 use crate::state::journal_lost::JournalTab;
 use git2::Oid;
 use glowfly_core::journal::{LostCommits, Preview, RowKey, Timeline};
+use glowfly_core::undo::kept::Restored;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -54,6 +56,10 @@ pub enum LostMsg {
     Apply(Oid),
     /// Put back in stash list on a dropped stash.
     Store(Oid),
+    /// Restore (`copy` false) or Restore as a copy on the kept file `id`.
+    RestoreFile { id: Oid, copy: bool },
+    /// The kept file `id` (at `path`) was restored, or not.
+    FileRestored { id: Oid, path: String, result: Result<Restored, String> },
 }
 
 impl LostMsg {
@@ -67,7 +73,11 @@ impl LostMsg {
             | Self::Restore(_)
             | Self::CreateBranch(_)
             | Self::Apply(_)
-            | Self::Store(_) => None,
+            | Self::Store(_)
+            | Self::RestoreFile { .. }
+            // The file was written (or not) all the same, and the tab's list is read again
+            // when it returns, showing whether it is back.
+            | Self::FileRestored { .. } => None,
         }
     }
 }
@@ -92,7 +102,8 @@ impl JournalMsg {
     }
 }
 
-/// The journal's reads (runner/journal.rs); scoped to the repository they read.
+/// The journal's reads (runner/journal.rs), and writing a kept file back; scoped to the
+/// repository.
 #[derive(Debug)]
 pub enum JournalEffect {
     Load {
@@ -119,14 +130,23 @@ pub enum JournalEffect {
         from: Oid,
         generation: u64,
     },
+    /// Writes the kept file `id` (at `path`) back, or as a copy next to it; never over anything.
+    RestoreFile {
+        workdir: PathBuf,
+        id: Oid,
+        path: String,
+        copy: bool,
+    },
 }
 
 impl JournalEffect {
     pub fn workdir(&self) -> &PathBuf {
         match self {
-            Self::Load { workdir, .. } | Self::Preview { workdir, .. } | Self::Lost { workdir, .. } | Self::LostPreview { workdir, .. } => {
-                workdir
-            }
+            Self::Load { workdir, .. }
+            | Self::Preview { workdir, .. }
+            | Self::Lost { workdir, .. }
+            | Self::LostPreview { workdir, .. }
+            | Self::RestoreFile { workdir, .. } => workdir,
         }
     }
 }
@@ -138,6 +158,7 @@ impl EffectMeta for JournalEffect {
             Self::Preview { .. } => "journal-preview",
             Self::Lost { .. } => "journal-lost",
             Self::LostPreview { .. } => "journal-lost-preview",
+            Self::RestoreFile { .. } => "journal-restore-file",
         }
     }
 

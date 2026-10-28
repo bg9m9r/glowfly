@@ -7,6 +7,7 @@
 //! (never over anything); a staged one is staged again. Redo deletes it again the way it went
 //! the first time.
 
+use super::kept::{self, KeptWhat};
 use super::planning::{busy_name, stale, unsafe_};
 use super::saved::RestoreFailed;
 use super::{Action, Plan, Refusal, Saved, saved};
@@ -74,20 +75,22 @@ pub fn delete_saving(workdir: &Path, path: &str, via: DeleteVia, promised: bool,
 
 /// `delete_saving` with the size limit given, for tests.
 pub(super) fn delete_saving_with(workdir: &Path, path: &str, via: DeleteVia, promised: bool, t: Trashers, limit: u64) -> Deleting {
-    saving(workdir, path, via, None, (limit, promised), || repo::delete_file(workdir, path, t.removal(via)))
+    saving(workdir, path, (via, KeptWhat::Delete), None, (limit, promised), || repo::delete_file(workdir, path, t.removal(via)))
 }
 
 /// Discards the untracked file `path` (see [`repo::discard_untracked`]) via `via`, keeping its
 /// bytes first so the discard can be undone like a delete (`promised` as for `delete_saving`).
 pub fn discard_untracked_saving(workdir: &Path, path: &str, via: DeleteVia, promised: bool, t: Trashers) -> Deleting {
-    saving(workdir, path, via, None, (MAX_KEPT_BYTES, promised), || repo::discard_untracked(workdir, path, t.removal(via)))
+    let kept = (via, KeptWhat::Untracked);
+    saving(workdir, path, kept, None, (MAX_KEPT_BYTES, promised), || repo::discard_untracked(workdir, path, t.removal(via)))
 }
 
 /// Unstage and delete (see [`repo::delete_staged_new_file`]) via `via`, keeping the working
 /// copy's bytes and the staged entry first (`promised` as for `delete_saving`).
 pub fn delete_staged_saving(workdir: &Path, path: &str, via: DeleteVia, promised: bool, t: Trashers) -> Deleting {
     let staged = repo::staged_new(workdir, path).map_err(refused)?;
-    saving(workdir, path, via, Some(staged), (MAX_KEPT_BYTES, promised), || repo::delete_staged_new_file(workdir, path, t.removal(via)))
+    let kept = (via, KeptWhat::Delete);
+    saving(workdir, path, kept, Some(staged), (MAX_KEPT_BYTES, promised), || repo::delete_staged_new_file(workdir, path, t.removal(via)))
 }
 
 fn refused(error: Error) -> DeleteFailed {
@@ -95,13 +98,15 @@ fn refused(error: Error) -> DeleteFailed {
 }
 
 /// Keeps `path`'s bytes (up to `limit`), then runs `delete`; a file over `limit` is refused
-/// when `promised`, since the confirmation said Undo would bring it back. When the delete fails
-/// after the file went, the index is as it was (it changes last, in one write), so the undo
-/// entry puts back only the file.
+/// when `promised`, since the confirmation said Undo would bring it back. The kept bytes are also
+/// recorded for the journal as `what` (`kept.rs`) before the delete runs, and that record is
+/// dropped again when the file is still there afterwards. When the delete fails after the file
+/// went, the index is as it was (it changes last, in one write), so the undo entry puts back
+/// only the file.
 fn saving(
     workdir: &Path,
     path: &str,
-    via: DeleteVia,
+    (via, what): (DeleteVia, KeptWhat),
     staged: Option<StagedNew>,
     (limit, promised): (u64, bool),
     delete: impl FnOnce() -> Result<Deleted>,
@@ -110,7 +115,16 @@ fn saving(
     if too_large && promised {
         return Err(refused(Error::NoCopyKept(format!("{path} is too large for Glowfly to keep a copy for Undo"))));
     }
-    match delete() {
+    let record = match before {
+        Some(s) => Some(kept::keep_file(workdir, path, s, what).map_err(refused)?),
+        None => None,
+    };
+    let result = delete();
+    let still_there = repo::contained(path).is_ok_and(|rel| workdir.join(rel).symlink_metadata().is_ok());
+    if let Some(id) = record.filter(|_| still_there) {
+        kept::forget(workdir, id);
+    }
+    match result {
         Ok(how) => Ok(finish(path, how, before, via, staged, too_large)),
         Err(error) => {
             let gone = !matches!(error, Error::TrashRefused(_))

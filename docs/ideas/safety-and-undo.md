@@ -56,6 +56,13 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Say "lost" in an unreachable row's accessible name
 - Recover dangling blobs (files staged but never committed)
 - Jump from a lost tip to its marked row in the States tab
+- Show a kept discarded file's contents (and its diff against the file now) in the Lost preview
+- Forget a kept discard from the Lost list without waiting 30 days, and a setting for how long
+  they are kept
+- Keep the working copy a file restore or a saved conflict resolution replaced, as discards are
+- Say in the Lost tab's subtitle that it lists discarded changes too, not only commits
+- Tell the user a Restore that finished after its tab was switched away (the toast is dropped)
+- Keep the stash "Discard all" makes as a record too, in case it is dropped from the list
 
 ### Disabled actions say why
 

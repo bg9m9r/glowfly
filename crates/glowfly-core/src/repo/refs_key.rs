@@ -32,6 +32,10 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
     }
     for r in repo.references()? {
         let r = r?;
+        // Glowfly's own records (kept discards and aborts) are never part of a load.
+        if r.name_bytes().starts_with(b"refs/glowfly/") {
+            continue;
+        }
         r.name_bytes().hash(&mut h);
         r.target().hash(&mut h);
         r.symbolic_target_bytes().hash(&mut h);

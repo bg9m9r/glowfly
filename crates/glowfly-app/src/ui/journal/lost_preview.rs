@@ -1,14 +1,15 @@
 //! The selected lost commit's preview: its label, "author · sha · date", what keeps it (or
 //! that a stash was dropped), up to 8 first-parent commits painted as a lane in the weak colour
 //! (from the commit, or from the commit a stash was made on), and its actions: Create branch
-//! here… and Restore… for a commit, Apply stash and Put back in stash list for a stash.
+//! here… and Restore… for a commit, Apply stash and Put back in stash list for a stash. A kept
+//! discarded file shows what was thrown away and when, with Restore and Restore as a copy.
 
 use super::preview::lane;
 use crate::journal::{JournalMsg, LostMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::journal::short;
-use crate::state::journal_lost::{LostView, apply_blocked, label, restore_plan};
+use crate::state::journal_lost::{LostView, apply_blocked, chip, label, restore_file_blocked, restore_plan};
 use crate::ui::pane_status;
 use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::{buttons, reason};
@@ -32,7 +33,35 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, view: &LostView, msgs: &mut Vec<M
     });
 }
 
+/// A kept discarded file: its path, what was thrown away and when, and its two restores.
+fn discarded(ui: &mut Ui, st: &AppState, c: &LostCommit, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
+    ui.spacing_mut().item_spacing.y = 6.0;
+    let title = RichText::new(label(t, c)).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text());
+    ui.add(egui::Label::new(title).wrap());
+    let date = st.settings.format_verbose(c.time, st.view.utc_offset);
+    let meta = format!("{} · {date}", chip(t, &c.kind).unwrap_or_default());
+    ui.label(RichText::new(meta).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
+    ui.add_space(4.0);
+    ui.add(egui::Label::new(RichText::new(t.tr("journal.lost.preview.discarded")).color(color::text())).wrap());
+    ui.add_space(12.0);
+    let why = restore_file_blocked(st.job.is_some(), t);
+    let restore = |copy| Msg::Journal(JournalMsg::Lost(LostMsg::RestoreFile { id: c.oid, copy }));
+    ui.horizontal(|ui| {
+        if ui.add(buttons::primary(t.tr("journal.lost.restore_file")).enabled(why.is_none()).why(why)).clicked() {
+            msgs.push(restore(false));
+        }
+        if ui.add(buttons::secondary(t.tr("journal.lost.restore_copy")).enabled(why.is_none()).why(why)).clicked() {
+            msgs.push(restore(true));
+        }
+    });
+    reason::line(ui, why, Align::Min);
+}
+
 fn pane(ui: &mut Ui, st: &AppState, view: &LostView, c: &LostCommit, msgs: &mut Vec<Msg>) {
+    if matches!(c.kind, LostKind::Discarded { .. }) {
+        return discarded(ui, st, c, msgs);
+    }
     let t = st.settings.lang();
     let stash = matches!(c.kind, LostKind::Stash { .. });
     ui.spacing_mut().item_spacing.y = 6.0;

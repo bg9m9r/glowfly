@@ -1,4 +1,4 @@
-//! The operation journal's reads (`Effect::Journal`), and writing its notes around the
+//! The operation journal's reads (`Effect::Journal`) and Restore of a kept file, and writing its notes around the
 //! operations that rewrite history: `around` captures the refs an op may move, runs it, and
 //! appends a note only when one of them moved, whether git succeeded or not. The clock is read
 //! here, never in `update`. A note that can't be written is logged and never fails the run.
@@ -27,6 +27,10 @@ pub(super) fn run(e: JournalEffect) -> Msg {
         JournalEffect::LostPreview { workdir, oid, from, generation } => {
             let result = journal::preview(&workdir, from, None).map_err(err);
             Msg::Journal(JournalMsg::Lost(LostMsg::PreviewLoaded { generation, oid, result }))
+        }
+        JournalEffect::RestoreFile { workdir, id, path, copy } => {
+            let result = glowfly_core::undo::kept::restore(&workdir, id, copy).map_err(err);
+            Msg::Journal(JournalMsg::Lost(LostMsg::FileRestored { id, path, result }))
         }
     }
 }

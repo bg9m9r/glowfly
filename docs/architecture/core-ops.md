@@ -76,6 +76,7 @@ source file, update its line here.
 - `rebased.rs`: interactive rebases, graph edits and rebases continued from the banner are recorded around their run.
 - `resumed.rs`: a merge, cherry-pick or revert finished after conflicts (Continue, Skip or a commit) is recorded as one move from the HEAD it started at.
 - `aborted.rs`: aborting a merge, single cherry-pick or single revert keeps its work first (index entries with conflict stages and flags, the bytes on disk at each of its paths, ignored files too, MERGE_HEAD and the like) in one commit under `refs/glowfly/aborted/<id>`, then puts only its paths back as HEAD has them, so other edits stay; a folder holding other files at one of its paths, or a file where one needs a folder, refuses it (the app then offers the plain abort); refs older than 30 days go at the next one unless an undo entry names them.
+- `kept.rs`: discarded work kept for the journal past the in-memory history: before a file, hunk or line discard, a revert over the working copy, a delete or a stash drop, one record commit under `refs/glowfly/discarded/<id>` (the bytes in its tree, or the stash as its parent, so `git gc` keeps them; the note as JSON on its last message line), dropped again when the discard changed nothing; the list hides what is back in place; Restore writes a file only where nothing is, or as a copy next to it; records older than 30 days go at the next one unless made since the app run started. Tests in `kept_tests.rs`.
 - `aborted_run.rs`: runs it, putting everything back at once when an abort command fails, and reads what the abort left on disk for Undo's byte check.
 - `aborted_restore.rs`: undoing it puts the operation back in progress with that work (refused while any of its paths or HEAD has changed) and drops the ref; redoing aborts again; tests in `aborted_tests.rs` and `aborted_safety_tests.rs`.
 
@@ -88,7 +89,7 @@ source file, update its line here.
 - `preview.rs`: a state's first-parent history and what Restore would leave behind or bring back.
 - `restore.rs`: the command lines that restore a state.
 - `reach.rs`: which rows' commits no ref, worktree HEAD or stash entry reaches any more: one revwalk that pushes the rows' commits and hides every tip.
-- `lost.rs`: the lost commits themselves: `git fsck --connectivity-only --no-reflogs` through gitcli, the stash list's own entries dropped, dropped stashes recognised by their shape, and the `stash apply` / `stash store` lines that keep one.
+- `lost.rs`: the lost commits themselves: `git fsck --connectivity-only --no-reflogs` through gitcli, the stash list's own entries dropped, dropped stashes recognised by their shape, and the `stash apply` / `stash store` lines that keep one; beside them the discarded changes `undo/kept.rs` kept (files and dropped stashes).
 
 ## Range-diff (`range_diff.rs`, `range_diff/`)
 

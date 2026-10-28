@@ -23,7 +23,7 @@ pub fn revert_saving(
     revert: impl FnOnce() -> Result<Reverted>,
 ) -> std::result::Result<(Reverted, Option<Action>), RevertFailed> {
     let action = |(before, after)| Action::Discard { path: path.to_owned(), what, before, after };
-    match saving(workdir, path, false, revert) {
+    match saving(workdir, path, false, Some(what.into()), revert) {
         Ok((reverted, pair)) => Ok((reverted, pair.map(action))),
         Err((error, pair)) => Err(RevertFailed { error, undo: pair.map(|p| Box::new(action(p))) }),
     }

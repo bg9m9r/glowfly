@@ -5,6 +5,7 @@
 //! before and after, so undo can put the earlier version back and redo can write the later one
 //! again.
 
+use super::kept::{self, KeptWhat};
 use super::{Action, DeleteVia, Discarded, Plan, stale};
 use crate::error::{Error, Result};
 use crate::persist::WriteOptions;
@@ -82,11 +83,14 @@ pub struct RestoreFailed {
 /// A failure to save afterwards is returned when `strict_after` is set, and otherwise just
 /// leaves the operation without a pair. When `op` fails but the file changed anyway (or can no
 /// longer be read), its error names the blob that keeps the earlier contents, and the pair
-/// comes back with it when the file as it is now could be saved.
+/// comes back with it when the file as it is now could be saved. With `keep`, the earlier
+/// contents are also kept for the journal (`kept.rs`) before `op` runs, a failure to keep them
+/// refusing it, and dropped again when the file still holds them afterwards.
 pub(super) fn saving<T>(
     workdir: &Path,
     path: &str,
     strict_after: bool,
+    keep: Option<KeptWhat>,
     op: impl FnOnce() -> Result<T>,
 ) -> std::result::Result<(T, Option<Pair>), (Error, Option<Pair>)> {
     let before = match save(workdir, path) {
@@ -94,7 +98,15 @@ pub(super) fn saving<T>(
         Err(Error::Unsupported(_)) => None,
         Err(e) => return Err((e, None)),
     };
-    let out = match op() {
+    let kept = match (keep, before) {
+        (Some(what), Some(Some(s))) => Some((kept::keep_file(workdir, path, s, what).map_err(|e| (e, None))?, s.blob)),
+        _ => None,
+    };
+    let out = op();
+    if let Some((id, blob)) = kept {
+        settle(workdir, path, id, blob);
+    }
+    let out = match out {
         Ok(out) => out,
         Err(e) => {
             return Err(match before {
@@ -110,6 +122,14 @@ pub(super) fn saving<T>(
         Err(e) => return Err((e, None)),
     };
     Ok((out, (before != after).then_some((before, after))))
+}
+
+/// Drops the record `id` kept before an operation on `path` when the file still holds its `blob`:
+/// nothing was thrown away.
+fn settle(workdir: &Path, path: &str, id: git2::Oid, blob: Oid) {
+    if current(workdir, path).ok().flatten().is_some_and(|s| s.blob == blob) {
+        kept::forget(workdir, id);
+    }
 }
 
 /// `op` failed after `path` was saved as `before`. Unchanged, the error comes back as it was;
@@ -135,7 +155,7 @@ pub(super) fn failed_after_saving(workdir: &Path, path: &str, before: Option<Sav
 /// link or a folder: the discard still runs). Any other failure to save refuses the discard. A
 /// discard that fails after changing the file says where its earlier contents are kept.
 pub fn discard_saving(workdir: &Path, path: &str, what: Discarded, discard: impl FnOnce() -> Result<()>) -> Result<Option<Action>> {
-    let ((), pair) = saving(workdir, path, true, discard).map_err(|(e, _)| e)?;
+    let ((), pair) = saving(workdir, path, true, Some(what.into()), discard).map_err(|(e, _)| e)?;
     Ok(pair.map(|(before, after)| Action::Discard { path: path.to_owned(), what, before, after }))
 }
 
@@ -152,7 +172,7 @@ pub fn restore_saving(
     overwrite: bool,
 ) -> std::result::Result<(RestoredFrom, Option<Action>), RestoreFailed> {
     let action = |(before, after): Pair| Action::Restore { path: path.to_owned(), oid, before, after };
-    match saving(workdir, path, false, || crate::repo::restore_file(workdir, oid, path, overwrite)) {
+    match saving(workdir, path, false, None, || crate::repo::restore_file(workdir, oid, path, overwrite)) {
         Ok((from, pair)) => Ok((from, pair.map(action))),
         Err((error, pair)) => Err(RestoreFailed { error, undo: pair.map(|p| Box::new(action(p))) }),
     }

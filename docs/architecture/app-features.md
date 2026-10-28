@@ -16,13 +16,13 @@ source file, update its line here. Each section lists one feature's files in eve
 - Shown in place of the graph.
 - `state/journal.rs`: the loaded timeline, the selection and its preview, and the row labels.
 - `state/journal_restore.rs`: what Restore does for a state and why it can't.
-- `state/journal_lost.rs`: the States / Lost commits tab, the lost list and what each lost commit or dropped stash offers (Apply stash waits for a running job or an operation in progress).
+- `state/journal_lost.rs`: the States / Lost commits tab, the lost list and what each lost commit, dropped stash or kept discarded file offers (Apply stash waits for a running job or an operation in progress; Restore of a kept file for a running job).
 - `update/journal.rs`: opening, reloading and restoring.
-- `update/journal_lost.rs`: the Lost commits tab's loads and actions.
+- `update/journal_lost.rs`: the Lost commits tab's loads and actions, Restore of a kept discarded file among them (a copy offered when something is at its path).
 - `update/git_job.rs`: which git jobs carry a note.
 - `runner/journal.rs`: writing the notes around a run.
 - `ui/journal/`: the header, the rows and the preview.
-- `ui/journal/lost.rs`, `ui/journal/lost_preview.rs`: the lost list and its preview.
+- `ui/journal/lost.rs`, `ui/journal/lost_preview.rs`: the lost list (Discarded changes, then Lost commits) and its preview.
 
 ## Custom commands (`CustomCommandMsg`, `CustomCommandEffect`)
 

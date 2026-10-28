@@ -14,6 +14,10 @@ fn stash(n: u8) -> LostCommit {
     lost(n, LostKind::Stash { base: oid(2), branch: Some("main".into()), untracked: false }, "On main: keep")
 }
 
+fn kept_file(what: KeptWhat) -> LostCommit {
+    lost(4, LostKind::Discarded { path: "src/a.rs".into(), blob: oid(5), what }, "src/a.rs")
+}
+
 /// A snapshot with HEAD at `oid(9)` on main.
 fn snap(name: &str) -> Snapshot {
     let mut s = snapshot(name);
@@ -27,8 +31,9 @@ fn label_history_and_row() {
     let en = Lang::En;
     assert_eq!(label(en, &lost(1, LostKind::Commit, "")), "(no message)");
     assert_eq!(label(en, &lost(1, LostKind::Commit, "Fix it")), "Fix it");
-    assert_eq!(history_from(&lost(1, LostKind::Commit, "x")), oid(1));
-    assert_eq!(history_from(&stash(3)), oid(2), "a stash's history starts at its base");
+    assert_eq!(history_from(&lost(1, LostKind::Commit, "x")), Some(oid(1)));
+    assert_eq!(history_from(&stash(3)), Some(oid(2)), "a stash's history starts at its base");
+    assert_eq!(history_from(&kept_file(KeptWhat::Hunk)), None, "a kept file has none");
     let r = as_row(&lost(1, LostKind::Commit, "x"));
     assert_eq!((r.subject, r.oid, r.event, r.summary.as_deref(), r.current), (Subject::Head, oid(1), Event::Other, Some("x"), false));
 }
@@ -82,7 +87,10 @@ fn apply_stash_waits_for_jobs_and_operations() {
 #[test]
 fn footer_lines_name_the_cut_then_the_problems() {
     let en = Lang::En;
-    let mut v = LostView { result: Some(Ok(LostCommits { commits: vec![], capped: true, incomplete: true })), ..Default::default() };
+    let mut v = LostView {
+        result: Some(Ok(LostCommits { commits: vec![], discarded: vec![], capped: true, incomplete: true })),
+        ..Default::default()
+    };
     assert_eq!(
         footer_lines(en, &v),
         vec![
@@ -92,4 +100,26 @@ fn footer_lines_name_the_cut_then_the_problems() {
     );
     v.result = Some(Ok(LostCommits::default()));
     assert!(footer_lines(en, &v).is_empty());
+}
+
+#[test]
+fn kept_files_are_named_and_their_restores_reported() {
+    let en = Lang::En;
+    assert_eq!(chip(en, &LostKind::Commit), None);
+    assert_eq!(chip(en, &stash(3).kind), Some("Dropped stash"));
+    assert_eq!(chip(en, &kept_file(KeptWhat::Hunk).kind), Some("Discarded hunk"));
+    assert_eq!(chip(en, &kept_file(KeptWhat::Delete).kind), Some("Deleted file"));
+    assert_ne!(chip(Lang::De, &kept_file(KeptWhat::Lines).kind), chip(en, &kept_file(KeptWhat::Lines).kind));
+    assert_eq!(restore_file_blocked(true, en), Some(en.tr("commit.blocked.job_running")));
+    assert_eq!(restore_file_blocked(false, en), None);
+
+    let wrote = |p: &str| Ok(Restored::Wrote { path: p.into() });
+    assert_eq!(restored_toast(en, "a.rs", &wrote("a.rs")), (true, "Restored a.rs".into(), false));
+    assert_eq!(restored_toast(en, "a.rs", &wrote("a (restored).rs")), (true, "Restored a.rs as a (restored).rs".into(), false));
+    let (ok, text, offer) = restored_toast(en, "a.rs", &Ok(Restored::Occupied { path: "a.rs".into() }));
+    assert!(!ok && offer && text.starts_with("a.rs is in your working tree"), "{text}");
+    let (ok, text, offer) = restored_toast(en, "a.rs", &Ok(Restored::AlreadyThere { path: "a.rs".into() }));
+    assert!(ok && !offer && text.contains("already holds this version"), "{text}");
+    let (ok, text, _) = restored_toast(Lang::Es, "a.rs", &Err("disk full".into()));
+    assert!(!ok && text.contains("disk full") && text.starts_with("No se pudo"), "{text}");
 }

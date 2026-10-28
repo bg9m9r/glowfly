@@ -4,11 +4,14 @@
 //! with `--lost-found` (which writes into the repository). The stash list's own entries live in
 //! the `refs/stash` reflog, so they are dropped from the result; a dropped stash (a commit with
 //! the shape `git stash push` makes) is named as one. The command lines that keep a dropped
-//! stash run through gitcli, so hooks and config apply.
+//! stash run through gitcli, so hooks and config apply. Beside them, the discarded changes that
+//! Glowfly kept (`undo::kept`): files as they were before a discard or delete, and dropped
+//! stashes, which their records keep out of fsck's list.
 
 use crate::commit_text;
 use crate::error::{Error, Result};
 use crate::gitcli::{self, args};
+use crate::undo::kept::{self, Kept, KeptItem, KeptWhat};
 use git2::{Commit, Oid, Repository};
 use std::collections::HashSet;
 use std::path::Path;
@@ -30,6 +33,13 @@ pub enum LostKind {
         branch: Option<String>,
         untracked: bool,
     },
+    /// A file as it was before Glowfly discarded or deleted it (`what`): `path`'s bytes in
+    /// `blob`. Its `oid` is the record's (`undo::kept`).
+    Discarded {
+        path: String,
+        blob: Oid,
+        what: KeptWhat,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -48,6 +58,9 @@ pub struct LostCommit {
 pub struct LostCommits {
     /// Newest first.
     pub commits: Vec<LostCommit>,
+    /// The discarded changes Glowfly kept, newest first: `LostKind::Discarded` files and dropped
+    /// `LostKind::Stash`es (their `time` when they were dropped).
+    pub discarded: Vec<LostCommit>,
     /// Cut at `MAX_LOST`.
     pub capped: bool,
     /// fsck reported problems, so some may be missing.
@@ -112,6 +125,7 @@ pub fn find(workdir: &Path) -> Result<LostCommits> {
         return Err(Error::Other(out.stderr.trim().to_owned()));
     }
     let repo = Repository::open(workdir)?;
+    let discarded = kept::list(workdir)?.into_iter().filter_map(|k| discarded(&repo, k)).collect();
     let kept: HashSet<Oid> = match repo.reflog("refs/stash") {
         Ok(log) => log.iter().map(|e| e.id_new()).collect(),
         Err(_) => HashSet::new(),
@@ -135,7 +149,35 @@ pub fn find(workdir: &Path) -> Result<LostCommits> {
     commits.sort_by(|a, b| b.time.cmp(&a.time).then_with(|| a.oid.cmp(&b.oid)));
     let capped = commits.len() > MAX_LOST;
     commits.truncate(MAX_LOST);
-    Ok(LostCommits { commits, capped, incomplete: !out.ok })
+    Ok(LostCommits { commits, discarded, capped, incomplete: !out.ok })
+}
+
+/// A kept record as a row: a file, or the dropped stash itself (`None` when it is gone).
+fn discarded(repo: &Repository, k: Kept) -> Option<LostCommit> {
+    match k.item {
+        KeptItem::File { path, blob, .. } => Some(LostCommit {
+            oid: k.id,
+            kind: LostKind::Discarded { path: path.clone(), blob, what: k.what },
+            summary: path.clone(),
+            message: path,
+            author: String::new(),
+            time: k.at,
+        }),
+        KeptItem::Stash { stash, message } => {
+            let c = repo.find_commit(stash).ok()?;
+            let base = c.parent_id(0).ok()?;
+            let kind = stash_shape(&c).unwrap_or(LostKind::Stash { base, branch: None, untracked: false });
+            let author = commit_text::author(&c).name;
+            Some(LostCommit {
+                oid: stash,
+                kind,
+                summary: message.lines().next().unwrap_or_default().to_owned(),
+                message,
+                author,
+                time: k.at,
+            })
+        }
+    }
 }
 
 /// Applies the stash-like commit `oid` to the working tree.
