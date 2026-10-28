@@ -1,7 +1,8 @@
 //! Preferences save-model snapshots: the Save / Revert bar under an edited Identity page (and
-//! what its buttons push), the "Save your changes?" question, the "Saved" tick beside a title,
-//! Git Flow's actions waiting while its form is edited, and the Integrations page with an
-//! account connected, adding another, and with nothing connected.
+//! what its buttons push, Save waiting while a save is written), a refused save's error on the
+//! page, the "Save your changes?" question, the "Saved" tick beside a title, Git Flow's actions
+//! waiting while its form is edited, and the Integrations page with an account connected,
+//! adding another, and with nothing connected.
 
 use super::snapshot_tests::{harness, harness_sized, remove_fixture, settings, with_repo};
 use super::snapshot_tests_gitflow::initialized;
@@ -43,6 +44,36 @@ fn prefs_identity_unsaved() {
     h.get_by_label("Save").click();
     h.run();
     assert!(pushed(&h.state().1, |m| matches!(m, Msg::Prefs(PrefsMsg::SavePage))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn prefs_save_failed() {
+    let (mut st, dir) = identity_edited("prefs-save-failed");
+    let error = "error: could not lock config file .git/config: File exists";
+    st.prefs.as_mut().unwrap().save_error = Some((PrefPage::RepoIdentity, error.into()));
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("prefs_save_failed");
+    assert!(h.query_by_label(&format!("Not saved: {error}")).is_some(), "the error shows on the page");
+    assert!(h.query_by_label("Saved").is_none(), "no tick");
+    assert!(h.query_by_label("Unsaved changes").is_some(), "the edits wait on the bar");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn prefs_save_waits_while_written() {
+    let (mut st, dir) = identity_edited("prefs-save-writing");
+    let p = st.prefs.as_mut().unwrap();
+    let written = p.git.clone();
+    p.saving.push(crate::state::prefs_save::PendingSave { ticket: 1, page: PrefPage::RepoIdentity, written });
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("Save").click();
+    h.run();
+    assert!(!pushed(&h.state().1, |m| matches!(m, Msg::Prefs(PrefsMsg::SavePage))), "Save waits for the write");
     drop(h);
     remove_fixture(&dir);
 }

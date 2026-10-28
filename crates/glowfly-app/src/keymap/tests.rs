@@ -105,7 +105,11 @@ fn ids_are_stable() {
     }
     assert_eq!(BindingId::from_key("New-Tab"), None);
     assert_eq!(BindingId::from_key("send-pull-request-text"), Some(BindingId::SendPrText));
-    assert_eq!(BindingId::ALL[BindingId::ALL.len() - 2..], [BindingId::SendPrText, BindingId::Quit]);
+    assert_eq!(
+        BindingId::ALL[BindingId::ALL.len() - 4..],
+        [BindingId::SendPrText, BindingId::Quit, BindingId::PrefsSave, BindingId::PrefsRevert]
+    );
+    assert_eq!(BindingId::from_key("save-preferences-page"), Some(BindingId::PrefsSave));
 }
 
 #[test]
@@ -165,6 +169,7 @@ fn rebindable_set() {
         I::CloseFold,
         I::ToggleFullscreen,
         I::Quit,
+        I::PrefsSave,
     ];
     assert_eq!(rebindable, want);
 }

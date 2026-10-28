@@ -77,6 +77,8 @@ pub enum When {
     RebasePanel,
     /// A pull request's comment, reply or review box has focus.
     PrText,
+    /// Preferences is open (even while typing in one of its fields).
+    Prefs,
 }
 
 impl When {
@@ -98,6 +100,7 @@ impl When {
             When::Graph => Some("in the commit graph"),
             When::RebasePanel => Some("in the interactive rebase panel"),
             When::PrText => Some("in a pull request's comment, reply or review box"),
+            When::Prefs => Some("in Preferences"),
         }
     }
 
@@ -163,7 +166,8 @@ const FULL_SCREEN: &[Chord] = if cfg!(target_os = "macos") { &[C::cmd_ctrl(K::Le
 
 /// Every binding, in display order within its group. Rebindable rows are matched through the
 /// effective keymap (`ui/shortcuts/global.rs`); fixed rows document context keys their views
-/// match themselves (dialogs, the palette, lists, the commit box, a pull request's text boxes, Esc in `ui/central.rs`, the
+/// match themselves (dialogs, the palette, lists, the commit box, a pull request's text boxes, Esc in `ui/central.rs`
+/// (Preferences' Revert included), the
 /// rebase panel's keys in `ui/rebase/keys.rs`), except Go to tab 1 to 8, matched with the
 /// rebindable rows. Change a fixed key there, change it here. The Repository commands rows have
 /// no default keys; each runs a palette command (`state/palette_bindings.rs`).
@@ -288,6 +292,8 @@ pub const BINDINGS: &[Binding] = &[
     b(I::Refresh, G::General, "Refresh", &[C::plain(K::F(5))], W::Anywhere),
     b(I::Undo, G::General, "Undo", &[C::cmd(K::Letter('Z'))], W::NotTyping),
     b(I::Redo, G::General, "Redo", &[C::cmd(K::Letter('Y')), C::cmd_shift(K::Letter('Z'))], W::NotTyping),
+    b(I::PrefsSave, G::General, "Save the Preferences page", &[C::cmd(K::Letter('S'))], W::Prefs),
+    fixed(I::PrefsRevert, G::General, "Revert the Preferences page's unsaved changes", &[C::plain(K::Escape)], W::Prefs),
     fixed(I::DialogSubmit, G::General, "Confirm a dialog's name field", &[C::plain(K::Enter)], W::Dialog),
     fixed(I::SendPrText, G::General, "Post the comment, reply or review", &[C::cmd(K::Enter)], W::PrText),
 ];

@@ -23,6 +23,8 @@ mod layout_tests;
 #[cfg(test)]
 mod platform_tests;
 #[cfg(test)]
+mod prefs_key_tests;
+#[cfg(test)]
 mod quit_key_tests;
 #[cfg(test)]
 mod rebound_tests;

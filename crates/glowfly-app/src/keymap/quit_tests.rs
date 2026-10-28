@@ -14,7 +14,8 @@ fn quit_is_a_general_key_that_works_anywhere() {
     assert_eq!(b.when, When::Anywhere);
     assert_eq!(b.label, "Quit Glowfly");
     assert_eq!(b.defaults, [Chord::cmd(KeyName::Letter('Q'))]);
-    assert_eq!(BindingId::ALL.last(), Some(&I::Quit), "appended, so older ids keep their place");
+    let at = BindingId::ALL.iter().position(|&id| id == I::Quit);
+    assert_eq!(at, BindingId::ALL.iter().position(|&id| id == I::SendPrText).map(|i| i + 1), "appended, so older ids keep their place");
 }
 
 #[test]

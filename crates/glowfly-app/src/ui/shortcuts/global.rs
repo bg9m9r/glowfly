@@ -190,6 +190,8 @@ fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         I::Search | I::SearchFilter => !l.palette && !l.prefs,
         I::Prefs => !l.prefs && !l.palette,
         I::Quit => !l.askpass,
+        // Saves the open Preferences page, from its fields too.
+        I::PrefsSave => l.prefs && !l.askpass && !l.dialog,
         I::Commit
         | I::StageAllAndCommit
         | I::SelectRow
@@ -213,7 +215,8 @@ fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         | I::RebaseAddExec
         | I::RebaseAddBreak
         | I::RebaseRemoveStep
-        | I::RebaseEditStep => false,
+        | I::RebaseEditStep
+        | I::PrefsRevert => false,
     }
 }
 
@@ -244,6 +247,7 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::Palette => Msg::Palette(PaletteMsg::TogglePalette),
         I::Prefs => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)),
         I::Quit => Msg::App(AppMsg::Quit),
+        I::PrefsSave => Msg::Prefs(PrefsMsg::SavePage),
         I::Refresh => Msg::Repo(RepoMsg::Refresh),
         I::Undo => Msg::Job(JobMsg::Undo),
         I::Redo => Msg::Job(JobMsg::Redo),
@@ -358,7 +362,8 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         | I::RebaseAddExec
         | I::RebaseAddBreak
         | I::RebaseRemoveStep
-        | I::RebaseEditStep => return,
+        | I::RebaseEditStep
+        | I::PrefsRevert => return,
     };
     msgs.push(msg);
 }

@@ -1,10 +1,12 @@
 //! The Preferences save model. App settings apply at once; pages that write repository or git
 //! config keep their edits until the Save / Revert bar saves or reverts them (`unsaved` tells
 //! whether the open page has any), and leaving such a page asks first (update/prefs_leave.rs).
-//! Either way a short "Saved" tick shows beside the page title (`SavedFlash`).
+//! Either way a short "Saved" tick shows beside the page title (`SavedFlash`); for git config
+//! only once git reports the write succeeded (`PendingSave`), and a refused write's error shows
+//! on its page instead (`save_error`).
 
 use super::PrefPage;
-use super::prefs::PrefsState;
+use super::prefs::{GitConfigValues, PrefsState};
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
 use std::time::{Duration, Instant};
@@ -54,6 +56,27 @@ impl SavedFlash {
     }
 }
 
+/// A save whose config writes are running (`PrefsEffect::WriteGitConfig` with `ticket`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct PendingSave {
+    pub ticket: u64,
+    /// The page it saved.
+    pub page: PrefPage,
+    /// The page's fields as written: the loaded copy takes them once the write succeeds. None
+    /// for a write the page doesn't compare (a Commit signing switch, a profile's identity).
+    pub written: Option<GitConfigValues>,
+}
+
+/// Whether the open page's save is still being written: the bar's Save waits.
+pub fn saving(p: &PrefsState) -> bool {
+    p.saving.iter().any(|s| s.page == p.page)
+}
+
+/// Why git refused the open page's last save, if it did.
+pub fn save_error(p: &PrefsState) -> Option<&str> {
+    p.save_error.as_ref().filter(|(page, _)| *page == p.page).map(|(_, e)| e.as_str())
+}
+
 /// The pages that write the repository's config: leaving them also covers switching tabs.
 pub fn repo_page(page: PrefPage) -> bool {
     matches!(page, PrefPage::RepoIdentity | PrefPage::RepoHooks | PrefPage::RepoGitFlow | PrefPage::RepoSparse)
@@ -67,6 +90,12 @@ pub fn unsaved(p: &PrefsState, settings: &Settings, snap: Option<&Snapshot>) -> 
         PrefPage::General => git.is_some_and(|(g, s)| g.longpaths != s.longpaths || g.autocrlf != s.autocrlf),
         PrefPage::RepoIdentity => git.is_some_and(|(g, s)| differ(&g.repo_name, &s.repo_name) || differ(&g.repo_email, &s.repo_email)),
         PrefPage::RepoHooks => git.is_some_and(|(g, s)| differ(&g.hooks_path, &s.hooks_path)),
+        PrefPage::Signing => git.is_some_and(|(g, s)| {
+            differ(&g.gpg_program, &s.gpg_program)
+                || differ(&g.ssh_program, &s.ssh_program)
+                || differ(&g.x509_program, &s.x509_program)
+                || differ(&g.ssh_allowed_signers, &s.ssh_allowed_signers)
+        }),
         PrefPage::Profile => p.profiles.edited(settings),
         PrefPage::RepoGitFlow => snap.is_some_and(|s| s.gitflow.is_initialized()) && p.gitflow.edited(),
         // A held status hides the form, so its edits wait too.

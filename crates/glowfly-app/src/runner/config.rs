@@ -1,7 +1,7 @@
-//! Reading the git configuration values Preferences shows, and writing one.
+//! Reading the git configuration values Preferences shows, and writing one or a page's save.
 
 use super::execute::{Cx, Execute};
-use crate::effect::PrefsEffect;
+use crate::effect::{ConfigWrite, PrefsEffect};
 use crate::msg::{Msg, PrefsMsg};
 use crate::state::prefs::{Autocrlf, GitConfigValues};
 use glowfly_core::gitcli::{self, args};
@@ -12,6 +12,9 @@ pub(super) fn run(e: PrefsEffect) -> Option<Msg> {
     match e {
         PrefsEffect::ReadGitConfig { cwd, has_repo } => Some(Msg::Prefs(PrefsMsg::GitConfigLoaded(read_git_config(&cwd, has_repo)))),
         PrefsEffect::SetGitConfig { cwd, global, key, value } => set(&cwd, global, &key, value.as_deref()),
+        PrefsEffect::WriteGitConfig { cwd, ticket, writes } => {
+            Some(Msg::Prefs(PrefsMsg::ConfigSaved { ticket, result: write_all(&cwd, &writes) }))
+        }
         PrefsEffect::ListSigningKeys { format, program } => Some(super::keys::list(format, &program)),
         PrefsEffect::GenerateGpgKey { program, name, email, passphrase } => {
             Some(super::keys::generate_gpg(&program, &name, &email, &passphrase))
@@ -29,6 +32,14 @@ impl Execute for PrefsEffect {
 /// Sets or (for None) unsets one config value; a failure goes to the activity log.
 pub(super) fn set(cwd: &Path, global: bool, key: &str, value: Option<&str>) -> Option<Msg> {
     glowfly_core::identity::set_config(cwd, global, key, value, &[]).err().map(|text| Msg::Logged { ok: false, text })
+}
+
+/// Writes each value in order, stopping at the first git refuses (its error).
+fn write_all(cwd: &Path, writes: &[ConfigWrite]) -> Result<(), String> {
+    for w in writes {
+        glowfly_core::identity::set_config(cwd, w.global, &w.key, w.value.as_deref(), &[])?;
+    }
+    Ok(())
 }
 
 pub(super) fn read_git_config(cwd: &Path, has_repo: bool) -> GitConfigValues {

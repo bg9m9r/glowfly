@@ -73,7 +73,7 @@ pub use notify::{DesktopNote, NoteKind};
 pub use op_preview::OpPreviewJob;
 pub use os::OsEffect;
 pub use pick::PickJob;
-pub use prefs::PrefsEffect;
+pub use prefs::{ConfigWrite, PrefsEffect};
 pub use rebase::{RebaseEffect, RestackJob};
 pub use repo::{ConflictRead, IndexRequest, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;

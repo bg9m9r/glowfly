@@ -34,7 +34,7 @@ source file, update its line here. Features that span every layer are in
 - Grouped effects: the Clone dialog (`clone.rs`), the Init dialog (`init.rs`), the SUBMODULES section (`submodule.rs`), interactive rebase (`rebase.rs`), connected accounts (`account.rs`) and the stash list (`stash.rs`).
 - `ui.rs`: the effects the UI shell carries out.
 - `os.rs`: `OsEffect`, what is handed to the operating system: links, terminals, the file manager, file pickers.
-- `prefs.rs`: `PrefsEffect`, the git config values and signing keys of Preferences.
+- `prefs.rs`: `PrefsEffect`, the git config values and signing keys of Preferences; a page's save goes as one `WriteGitConfig` batch that reports back (`PrefsMsg::ConfigSaved`).
 - `op_preview.rs`: `OpPreviewJob`, the operation preview's job: the work folder and the request.
 - `selection.rs`: `SelectionEffect`: comparing two commits or a commit and the working tree, and a multi-selection's stacked list (`StackRequest`).
 - `lfs.rs`: `LfsEffect`: whether git-lfs is installed and the LFS page's status.

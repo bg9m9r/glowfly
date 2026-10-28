@@ -94,12 +94,14 @@ pub enum BindingId {
     ShowRepoFolder,
     SendPrText,
     Quit,
+    PrefsSave,
+    PrefsRevert,
 }
 
 use BindingId as I;
 
 /// How many ids there are.
-const COUNT: usize = 92;
+const COUNT: usize = 94;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
 const KEYS: [(BindingId, &str); COUNT] = [
@@ -195,6 +197,8 @@ const KEYS: [(BindingId, &str); COUNT] = [
     (I::ShowRepoFolder, "show-repo-folder"),
     (I::SendPrText, "send-pull-request-text"),
     (I::Quit, "quit"),
+    (I::PrefsSave, "save-preferences-page"),
+    (I::PrefsRevert, "revert-preferences-page"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.

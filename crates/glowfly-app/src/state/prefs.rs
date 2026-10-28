@@ -180,6 +180,10 @@ pub struct PrefsState {
     pub leave_approved: bool,
     /// The "Saved" tick beside the page title.
     pub saved: crate::state::prefs_save::SavedFlash,
+    /// Saves whose config writes are still running.
+    pub saving: Vec<crate::state::prefs_save::PendingSave>,
+    /// The last save that git refused, with the page it was on: shown on that page.
+    pub save_error: Option<(PrefPage, String)>,
     /// The Integrations sign-in form is shown beside connected accounts.
     pub int_adding: bool,
     /// git config's diff and merge tools for the External tools page; None until read.
@@ -210,6 +214,8 @@ impl PrefsState {
             leaving: None,
             leave_approved: false,
             saved: Default::default(),
+            saving: Vec::new(),
+            save_error: None,
             int_adding: false,
             git_tools: None,
         }

@@ -49,12 +49,12 @@ pub(super) fn saves(fx: &[Effect]) -> usize {
     fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
 }
 
+/// The global git config writes among `fx`, one by one or batched for a save.
 fn git_writes(fx: &[Effect]) -> Vec<(String, Option<String>)> {
-    fx.iter()
-        .filter_map(|e| match e {
-            Effect::Prefs(PrefsEffect::SetGitConfig { global: true, key, value, .. }) => Some((key.clone(), value.clone())),
-            _ => None,
-        })
+    super::prefs_save_tests::writes(fx)
+        .into_iter()
+        .filter(|(global, ..)| *global)
+        .map(|(_, k, v)| (k.to_owned(), v.map(str::to_owned)))
         .collect()
 }
 

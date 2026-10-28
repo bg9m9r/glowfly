@@ -158,8 +158,10 @@ source file, update its line in the matching file.
    from `ui/prefs/form.rs` (rows, sections, labelled checkboxes). App settings apply at once.
    Values a page writes to git or repository config wait for the Save / Revert bar instead:
    `state/prefs_save.rs` says whether the open page has unsaved edits, `update/prefs_save.rs`
-   saves and reverts them, `update/prefs_leave.rs` asks "Save your changes?" before leaving
-   such a page, and `ui/prefs/save_bar.rs` draws the bar and the "Saved" tick.
+   saves and reverts them (Ctrl/Cmd+S and Esc too), showing "Saved" only once git reports the
+   write succeeded and git's error on the page when it doesn't, `update/prefs_leave.rs` asks
+   "Save your changes?" before leaving such a page, and `ui/prefs/save_bar.rs` draws the bar
+   and the "Saved" tick.
 
 ## Migration status
 

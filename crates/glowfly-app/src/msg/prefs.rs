@@ -78,9 +78,15 @@ pub enum PrefsMsg {
     SettingsUnreadable(String),
     /// A navigation row: show this page (asking first when the open one has unsaved edits).
     Navigate(PrefPage),
-    /// The Save / Revert bar's Save: write the open page's edits.
+    /// The Save / Revert bar's Save (or Ctrl/Cmd+S): write the open page's edits.
     SavePage,
-    /// The Save / Revert bar's Revert: put the open page's fields back to what was loaded.
+    /// A save's config writes finished (`PrefsEffect::WriteGitConfig`): the "Saved" tick on
+    /// success, the error on the page otherwise.
+    ConfigSaved {
+        ticket: u64,
+        result: Result<(), String>,
+    },
+    /// The Save / Revert bar's Revert (or Esc): put the open page's fields back to what was loaded.
     RevertPage,
     /// "Save your changes?" answered Save: save, then complete the leave.
     LeaveSave,
@@ -118,6 +124,7 @@ impl PrefsMsg {
             | Self::SettingsUnreadable(..)
             | Self::Navigate(..)
             | Self::SavePage
+            | Self::ConfigSaved { .. }
             | Self::RevertPage
             | Self::LeaveSave
             | Self::LeaveDiscard

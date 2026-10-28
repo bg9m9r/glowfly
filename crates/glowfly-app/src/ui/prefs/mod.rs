@@ -63,7 +63,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if st.prefs.as_ref().is_some_and(|p| prefs_save::unsaved(p, &st.settings, st.snap.as_ref())) {
         // Only Git Flow's and sparse checkout's saves run as a git job.
         let busy = st.job.is_some() && matches!(page, PrefPage::RepoGitFlow | PrefPage::RepoSparse);
-        save_bar::show(ctx, t, save_bar::BarView { busy }, msgs);
+        let saving = st.prefs.as_ref().is_some_and(prefs_save::saving);
+        save_bar::show(ctx, t, save_bar::BarView { busy, saving }, msgs);
     }
 
     // While git is held in the repository, its pages read nothing with git (trust).
@@ -124,6 +125,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     save_bar::saved_tick(ui, t, prefs.saved.alpha);
                 }
             });
+            // A save git refused: its error, until the page is saved or reverted.
+            if let Some(e) = prefs_save::save_error(prefs) {
+                ui.add_space(6.0);
+                warn(ui, &t.trf("prefs.save.error", &[("error", &e)]));
+            }
             ui.add_space(18.0);
             scroll_cue::show(ui, egui::ScrollArea::vertical().auto_shrink([false, false]), color::bg(), |ui| {
                 ui.spacing_mut().item_spacing.y = 6.0;

@@ -64,12 +64,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             super::profile_rules::want_identity(st, fx);
         }
         PrefsMsg::SelectIntegration(p) => select_integration(st, p),
-        PrefsMsg::GitConfig { global, key, value } => {
-            fx.push(Effect::Prefs(PrefsEffect::SetGitConfig { cwd: st.any_dir(), global, key, value }));
-            if let Some(p) = st.prefs.as_mut() {
-                p.saved.mark();
-            }
-        }
+        PrefsMsg::GitConfig { global, key, value } => super::prefs_save::write_now(st, global, key, value, fx),
         PrefsMsg::SettingsEdited => {
             if serde_json::to_string(&st.settings).ok().as_deref() != Some(st.saved_settings.as_str()) {
                 fx.push(save_settings(st));
@@ -172,25 +167,18 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             };
             fx.push(Effect::Os(OsEffect::PickFile { title: title.into(), purpose }));
         }
+        // Only fills the field: the Save / Revert bar writes it.
         PrefsMsg::FilePicked { purpose, path: Some(path) } => {
             let value = path.display().to_string();
             let Some(git) = st.prefs.as_mut().and_then(|p| p.git.as_mut()) else { return };
-            let key = match purpose {
-                FilePurpose::SigningProgram => {
-                    let format = SigningFormat::from_config(&git.signing_format);
-                    match format {
-                        SigningFormat::OpenPgp => git.gpg_program = value.clone(),
-                        SigningFormat::Ssh => git.ssh_program = value.clone(),
-                        SigningFormat::X509 => git.x509_program = value.clone(),
-                    }
-                    format.program_key()
-                }
-                FilePurpose::SshAllowedSigners => {
-                    git.ssh_allowed_signers = value.clone();
-                    "gpg.ssh.allowedSignersFile"
-                }
-            };
-            fx.push(Effect::Prefs(PrefsEffect::SetGitConfig { cwd: st.any_dir(), global: true, key: key.into(), value: Some(value) }));
+            match purpose {
+                FilePurpose::SigningProgram => match SigningFormat::from_config(&git.signing_format) {
+                    SigningFormat::OpenPgp => git.gpg_program = value,
+                    SigningFormat::Ssh => git.ssh_program = value,
+                    SigningFormat::X509 => git.x509_program = value,
+                },
+                FilePurpose::SshAllowedSigners => git.ssh_allowed_signers = value,
+            }
             load_signing_keys(st, fx);
         }
         PrefsMsg::FilePicked { path: None, .. } => {}
@@ -238,6 +226,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::SavePage => {
             super::prefs_save::save_page(st, fx);
         }
+        PrefsMsg::ConfigSaved { ticket, result } => super::prefs_save::written(st, ticket, result, now),
         PrefsMsg::RevertPage => super::prefs_save::revert_page(st),
         PrefsMsg::LeaveSave => super::prefs_save::leave_save(st, now, fx),
         PrefsMsg::LeaveDiscard => super::prefs_save::leave_discard(st, now, fx),
@@ -257,7 +246,7 @@ fn non_empty(value: &str, default: &str) -> String {
 }
 
 /// Lists the keys usable for the configured signing format.
-fn load_signing_keys(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(super) fn load_signing_keys(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(p) = st.prefs.as_mut() else { return };
     let Some(git) = p.git.as_ref() else { return };
     let format = SigningFormat::from_config(&git.signing_format);

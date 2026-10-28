@@ -1,5 +1,6 @@
 //! Preferences > Commit signing: format, program, signing key (listed from gpg or ~/.ssh),
-//! where the key's passphrase is asked, key generation, and signing defaults.
+//! where the key's passphrase is asked, key generation, and signing defaults. The switches and
+//! lists write at once; the program and the allowed signers file wait for the Save / Revert bar.
 
 use super::{check_row, help, primary_button, row, text_field, warn};
 use crate::msg::PrefsMsg;
@@ -56,8 +57,8 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
                 SigningFormat::Ssh => &mut git.ssh_program,
                 SigningFormat::X509 => &mut git.x509_program,
             };
+            // The Save / Revert bar writes it; the key list follows it at once.
             if text_field(ui, value, format.default_program()).lost_focus() {
-                set(msgs, format.program_key(), value);
                 msgs.push(Msg::Prefs(PrefsMsg::LoadSigningKeys));
             }
             if ui.add(buttons::secondary("Browse")).clicked() {
@@ -157,9 +158,8 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
     if format == SigningFormat::Ssh {
         row(ui, "Allowed signers file", |ui| {
             ui.horizontal(|ui| {
-                if text_field(ui, &mut git.ssh_allowed_signers, "~/.ssh/allowed_signers").lost_focus() {
-                    set(msgs, "gpg.ssh.allowedSignersFile", &git.ssh_allowed_signers);
-                }
+                // The Save / Revert bar writes it.
+                text_field(ui, &mut git.ssh_allowed_signers, "~/.ssh/allowed_signers");
                 if ui.add(buttons::secondary("Browse")).clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::PickFile(FilePurpose::SshAllowedSigners)));
                 }

@@ -1,6 +1,7 @@
 //! The Save / Revert bar fixed under a Preferences page with unsaved edits (shown only while
 //! `state::prefs_save::unsaved` holds), and the "Saved" tick beside the page title. The bar's
-//! buttons push `PrefsMsg::SavePage` and `PrefsMsg::RevertPage`.
+//! buttons push `PrefsMsg::SavePage` and `PrefsMsg::RevertPage` (also Ctrl/Cmd+S in
+//! `ui/shortcuts/global.rs` and Esc in `ui/central.rs`).
 
 use super::primary_button;
 use crate::msg::{Msg, PrefsMsg};
@@ -14,6 +15,8 @@ use glowfly_core::i18n::Lang;
 pub struct BarView {
     /// A git job runs and the page's save would be one too: Save waits.
     pub busy: bool,
+    /// The page's last save is still being written: Save waits for it.
+    pub saving: bool,
 }
 
 pub fn show(ctx: &egui::Context, t: Lang, view: BarView, msgs: &mut Vec<Msg>) {
@@ -22,8 +25,8 @@ pub fn show(ctx: &egui::Context, t: Lang, view: BarView, msgs: &mut Vec<Msg>) {
         ui.horizontal(|ui| {
             ui.label(RichText::new(t.tr("prefs.save_bar.unsaved")).color(color::weak()));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let busy = view.busy;
-                if primary_button(ui, t.tr("prefs.save_bar.save.button"), !busy, busy.then_some(BUSY)).clicked() {
+                let why = if view.saving { Some(t.tr("prefs.save_bar.saving")) } else { view.busy.then_some(BUSY) };
+                if primary_button(ui, t.tr("prefs.save_bar.save.button"), why.is_none(), why).clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::SavePage));
                 }
                 if ui.add(buttons::secondary(t.tr("prefs.save_bar.revert.button"))).clicked() {

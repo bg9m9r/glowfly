@@ -156,6 +156,7 @@ pub(super) mod pr_details_tests;
 pub(super) mod prefs_leave_profile_tests;
 pub(super) mod prefs_leave_tests;
 pub(super) mod prefs_save_tests;
+pub(super) mod prefs_write_tests;
 pub(super) mod profile_rules_tests;
 pub(super) mod profile_setup_tests;
 pub(super) mod profiles_tests;

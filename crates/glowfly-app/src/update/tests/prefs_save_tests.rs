@@ -1,5 +1,5 @@
 //! Headless tests for the Preferences save model: the Save / Revert bar on each tracked page,
-//! the "Saved" tick and its clock, the navigation column's rows, the Integrations form toggle,
+//! the "Saved" tick and its clock (it waits for the write: `prefs_write_tests.rs`), the navigation column's rows, the Integrations form toggle,
 //! and the Configure terminal palette entry. Leaving an edited page is in
 //! `prefs_leave_tests.rs`.
 
@@ -52,14 +52,26 @@ pub(super) fn page(st: &AppState) -> PrefPage {
     st.prefs.as_ref().unwrap().page
 }
 
-/// The git config writes among `fx`: (global, key, value).
+/// The git config writes among `fx`, one by one or batched for a save: (global, key, value).
 pub(super) fn writes(fx: &[Effect]) -> Vec<(bool, &str, Option<&str>)> {
     fx.iter()
-        .filter_map(|e| match e {
-            Effect::Prefs(PrefsEffect::SetGitConfig { global, key, value, .. }) => Some((*global, key.as_str(), value.as_deref())),
-            _ => None,
+        .flat_map(|e| match e {
+            Effect::Prefs(PrefsEffect::SetGitConfig { global, key, value, .. }) => vec![(*global, key.as_str(), value.as_deref())],
+            Effect::Prefs(PrefsEffect::WriteGitConfig { writes, .. }) => {
+                writes.iter().map(|w| (w.global, w.key.as_str(), w.value.as_deref())).collect()
+            }
+            _ => Vec::new(),
         })
         .collect()
+}
+
+/// Reports every batched config write among `fx` as succeeded.
+pub(super) fn succeed(st: &mut AppState, fx: &[Effect]) {
+    for e in fx {
+        if let Effect::Prefs(PrefsEffect::WriteGitConfig { ticket, .. }) = e {
+            prefs(st, PrefsMsg::ConfigSaved { ticket: *ticket, result: Ok(()) });
+        }
+    }
 }
 
 #[test]
@@ -70,6 +82,7 @@ fn identity_saves_only_the_changed_keys_and_shows_saved() {
     assert!(edited(&st));
     let fx = prefs(&mut st, PrefsMsg::SavePage);
     assert_eq!(writes(&fx), [(false, "user.email", Some("ada@example.com"))], "the unchanged name isn't written");
+    succeed(&mut st, &fx);
     assert!(!edited(&st), "the loaded copy now holds what was written");
     assert_eq!(git_mut(&mut st).repo_email, "ada@example.com", "the field is trimmed");
     assert!(st.prefs.as_ref().unwrap().saved.pending, "the tick waits for the next frame");
@@ -108,6 +121,7 @@ fn general_saves_long_paths_and_line_endings_globally() {
     git_mut(&mut st).autocrlf = Autocrlf::Input;
     let fx = prefs(&mut st, PrefsMsg::SavePage);
     assert_eq!(writes(&fx), [(true, "core.longpaths", Some("true")), (true, "core.autocrlf", Some("input"))]);
+    succeed(&mut st, &fx);
     let p = st.prefs.as_ref().unwrap();
     assert_eq!(p.git_saved.as_ref().map(|g| (g.longpaths, g.autocrlf.clone())), Some((true, Autocrlf::Input)));
     assert!(!edited(&st) && p.saved.pending);
@@ -155,14 +169,6 @@ fn the_saved_tick_runs_on_the_frame_clock() {
     assert_eq!(flash(&st).alpha, 1.0, "no fade with Reduce motion");
     run(&mut st, Msg::Tick(t0 + Duration::from_millis(2100)));
     assert!(!flash(&st).showing());
-}
-
-#[test]
-fn a_signing_write_shows_saved() {
-    let mut st = on_page(PrefPage::Signing, GitConfigValues::default());
-    let fx = prefs(&mut st, PrefsMsg::GitConfig { global: true, key: "commit.gpgsign".into(), value: Some("true".into()) });
-    assert_eq!(writes(&fx), [(true, "commit.gpgsign", Some("true"))]);
-    assert!(st.prefs.as_ref().unwrap().saved.pending);
 }
 
 #[test]

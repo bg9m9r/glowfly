@@ -20,7 +20,8 @@ use crate::state::AppState;
 use eframe::egui::{self, Key};
 
 /// Esc closes the innermost thing open: a maximised terminal panel (restored first, while the
-/// keyboard is outside the shell), Preferences, the tour, the dashboard, the conflict view, the blame view, a
+/// keyboard is outside the shell), Preferences (its page's unsaved edits first, as the Save /
+/// Revert bar's Revert), the tour, the dashboard, the conflict view, the blame view, a
 /// pull request's unposted code comment (cancelled, with a confirmation once edited), the
 /// file history (a line selection first), the diff (a line selection first), the pull request panel, the issue panel, the interactive
 /// rebase panel (its message editor first), the Range-diff view, the operation journal, the Git
@@ -54,8 +55,14 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Terminal(crate::terminal::TerminalMsg::ToggleMaximize));
         return;
     }
-    if st.prefs.is_some() {
-        msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
+    if let Some(p) = st.prefs.as_ref() {
+        // Over the Save / Revert bar it reverts the page (nothing while its save is written);
+        // else it closes Preferences.
+        if !crate::state::prefs_save::unsaved(p, &st.settings, st.snap.as_ref()) {
+            msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
+        } else if !crate::state::prefs_save::saving(p) {
+            msgs.push(Msg::Prefs(PrefsMsg::RevertPage));
+        }
     } else if st.onboarding.tour.is_some() {
         msgs.push(Msg::Onboarding(crate::onboarding::OnboardingMsg::CloseTour));
     } else if st.dashboard.open {
