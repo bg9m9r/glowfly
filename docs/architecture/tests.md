@@ -27,7 +27,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `testkit/mod.rs`: what both crates' tests build fixture repositories with (the app's dev-dependency turns on core's `testkit` feature): `git`, `git_out`, `git_env`, `try_git_env`, `git_cli`, `set_config`, `set_identity`, `write`. `GLOWFLY_TEST_GIT_CLI=1` sends every fixture command to the git CLI.
 - `testkit/fast.rs`: which fixture commands run in-process through libgit2 instead of starting git (`init`, `add`, `config`, `update-index -q --refresh`, `checkout -- <file>`, and the dispatch); `commit.rs`, `refs.rs` (`checkout`, `branch`, `tag`, `update-ref`, `remote`) and `push.rs` (to a bare repository in a local folder) hold the rest.
 - `testkit/guard.rs`: when a command goes to the git CLI after all: hooks, signing, filters and working-tree encodings, submodules, sparse checkout, repository extensions, an operation in progress, environment that redirects git.
-- `testkit/bin.rs`: a stand-in Recycle Bin / Trash folder that tests' `Trasher` and `Untrasher` move files into and take them back out of, so no test touches the real one.
+- `testkit/bin.rs`: a stand-in Recycle Bin / Trash folder that tests' `Trasher` and `Untrasher` move files into and take them back out of, so no test touches the real one; each process's folder is emptied on first use, since Windows reuses process ids.
 - `testkit/tests.rs`: one history built both ways (the CLI and in-process) gives the same commits, refs, reflogs, index, files and config.
 - `crates/glowfly-core/src/testutil.rs`: core's own fixtures (`scratch_repo`, origins, submodules, partial clones, byte-level `raw_commit`s) on the kit.
 

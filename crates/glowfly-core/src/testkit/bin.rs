@@ -4,8 +4,25 @@
 //! folder and wrap these in plain functions.
 
 use crate::repo::{TrashProblem, TrashRefusal, Untrashed};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
+
+/// This process's stand-in bin `<temp>/<prefix>-<pid>`, emptied on its first use. Windows reuses
+/// process ids, so a folder of that name left by an earlier test run (with items a failed or
+/// stopped test never took back out) would otherwise hold copies that look like this run's,
+/// down to their contents and `.from` notes, since the scratch repositories carry the id too.
+pub fn own(prefix: &str) -> PathBuf {
+    static CLEARED: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    let dir = crate::paths::temp_dir().join(format!("{prefix}-{}", std::process::id()));
+    // Held while clearing, so no other test gets the path (and moves an item in) before then.
+    let mut cleared = CLEARED.lock().unwrap_or_else(|e| e.into_inner());
+    if !cleared.iter().any(|p| p == prefix) {
+        let _ = std::fs::remove_dir_all(&dir);
+        cleared.push(prefix.to_owned());
+    }
+    dir
+}
 
 /// Numbers the items this process moves in, so two moved in within the clock's resolution never
 /// get the same name (a rename would silently replace the first).
@@ -89,4 +106,22 @@ pub fn count(bin: &Path, dir: &Path, name: &str) -> usize {
                 && std::fs::read_to_string(&note).is_ok_and(|from| Path::new(&from).ends_with(&want))
         })
         .count()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_bin_left_by_an_earlier_process_with_this_id_is_emptied_first() {
+        let left = crate::paths::temp_dir().join(format!("glowfly-own-probe-{}", std::process::id()));
+        std::fs::create_dir_all(&left).unwrap();
+        std::fs::write(left.join("1-u.txt"), "from an earlier run\n").unwrap();
+        let bin = super::own("glowfly-own-probe");
+        assert_eq!(bin, left);
+        assert!(!left.join("1-u.txt").exists(), "the earlier run's item is gone");
+        std::fs::create_dir_all(&bin).unwrap();
+        std::fs::write(bin.join("2-u.txt"), "this run\n").unwrap();
+        assert_eq!(super::own("glowfly-own-probe"), bin);
+        assert!(bin.join("2-u.txt").exists(), "only the first use empties it");
+        let _ = std::fs::remove_dir_all(&bin);
+    }
 }

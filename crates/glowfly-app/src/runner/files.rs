@@ -41,7 +41,7 @@ pub(super) const TRASHERS: undo::Trashers = undo::Trashers { system: test_trash,
 /// The stand-in trash of the app's test build: a folder in the temp dir, one per process.
 #[cfg(test)]
 pub(crate) fn test_bin() -> std::path::PathBuf {
-    glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-bin-{}", std::process::id()))
+    glowfly_core::testkit::bin::own("glowfly-app-test-bin")
 }
 
 /// Moves `full` into `test_bin()` under a unique name (`glowfly_core::testkit::bin`).

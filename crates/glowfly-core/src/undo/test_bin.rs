@@ -6,7 +6,7 @@ use crate::repo::{TrashRefusal, Untrashed};
 use std::path::{Path, PathBuf};
 
 pub(super) fn bin() -> PathBuf {
-    crate::paths::temp_dir().join(format!("glowfly-undo-delete-bin-{}", std::process::id()))
+    crate::testkit::bin::own("glowfly-undo-delete-bin")
 }
 
 pub(super) fn to_bin(full: &Path) -> Result<(), TrashRefusal> {
