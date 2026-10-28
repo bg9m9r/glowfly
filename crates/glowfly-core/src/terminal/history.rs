@@ -132,7 +132,8 @@ impl TermScreen {
     /// Forgets the history, keeping the screen, its modes, pen and cursor.
     pub fn clear_history(&mut self) {
         self.scroll_to_bottom();
-        self.rebuild();
+        let cursor = self.parser.screen().cursor_position();
+        self.rebuild_with(false, 0..self.size().0, cursor);
     }
 
     /// Clears the screen and the history except for the cursor's row, which moves to the top
@@ -140,7 +141,7 @@ impl TermScreen {
     pub fn clear_screen_keep_cursor_line(&mut self) {
         self.scroll_to_bottom();
         let (r, c) = self.parser.screen().cursor_position();
-        let r = usize::from(r);
-        self.rebuild_with(|rows| rows.get(r..=r).unwrap_or_default(), (0, c));
+        let r = r.min(self.size().0.saturating_sub(1));
+        self.rebuild_with(false, r..r + 1, (0, c));
     }
 }

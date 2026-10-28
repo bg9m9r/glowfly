@@ -5,7 +5,7 @@ use std::panic::AssertUnwindSafe;
 use super::keys::Modes;
 use super::title::ScreenEvents;
 use super::{CellStyle, TermColor, TermRow, TermSpan};
-use super::{queries, replay};
+use super::{edge, queries, replay};
 
 /// The rows of history a session keeps above its main screen.
 pub const HISTORY_ROWS: usize = 5_000;
@@ -19,6 +19,9 @@ pub struct TermScreen {
     pub(super) parser: vt100::Parser<ScreenEvents>,
     /// The start of a query split across two chunks of output, held back until the rest comes.
     pending: Vec<u8>,
+    /// Where the parser is in the output, to find the controls that start from the cursor
+    /// (terminal/edge.rs).
+    edge: edge::Scan,
     /// How many history rows the parser keeps.
     pub(super) history_cap: usize,
     /// How far the view is scrolled back into the history, in rows. Outside of these methods
@@ -43,6 +46,7 @@ impl TermScreen {
         Self {
             parser: vt100::Parser::new_with_callbacks(rows.max(1), cols.max(1), history, ScreenEvents::default()),
             pending: Vec::new(),
+            edge: edge::Scan::default(),
             history_cap: history,
             view: 0,
             history_len: 0,
@@ -84,9 +88,10 @@ impl TermScreen {
         }
     }
 
-    /// Hands output to the parser. vt100 panics on some states it gets itself into (see
-    /// `resize`); rather than take the app down, the screen starts over from what it showed and
-    /// the rest of this output is lost. Programs redraw after a resize anyway.
+    /// Hands output to the parser, minding the cursor at the right edge (terminal/edge.rs).
+    /// vt100 panics on some states it gets itself into (see `resize`); rather than take the app
+    /// down, the screen starts over from what it and its history showed and the rest of this
+    /// output is lost. Programs redraw after a resize anyway.
     ///
     /// vt100 moves a non-zero scrollback offset up by one for each row pushed into the history
     /// (so the same rows stay in view), which counts them. At the bottom the offset is 1 for
@@ -98,8 +103,8 @@ impl TermScreen {
         let alt = self.parser.screen().alternate_screen();
         let probe = if !alt && self.history_len > 0 { self.view.max(1) } else { 0 };
         self.parser.screen_mut().set_scrollback(probe);
-        let parser = &mut self.parser;
-        if std::panic::catch_unwind(AssertUnwindSafe(|| parser.process(bytes))).is_err() {
+        let (parser, scan) = (&mut self.parser, &mut self.edge);
+        if std::panic::catch_unwind(AssertUnwindSafe(|| edge::process(parser, scan, bytes))).is_err() {
             self.rebuild();
             return;
         }
@@ -149,26 +154,31 @@ impl TermScreen {
         self.parser.screen().scrollback()
     }
 
-    /// Replaces the parser with a fresh one showing the same screen. The history is lost.
+    /// Replaces the parser with a fresh one showing the same screen and history.
     pub(super) fn rebuild(&mut self) {
         let cursor = self.parser.screen().cursor_position();
-        self.rebuild_with(|rows| rows, cursor);
+        let rows = self.size().0;
+        self.rebuild_with(true, 0..rows, cursor);
     }
 
-    /// Replaces the parser with a fresh one of the same size and modes showing `pick` of the
-    /// screen's rows from the top, with the cursor at `cursor`. The history is lost; the window
-    /// title is kept.
-    pub(super) fn rebuild_with(&mut self, pick: impl FnOnce(&[TermRow]) -> &[TermRow], cursor: (u16, u16)) {
+    /// Replaces the parser with a fresh one of the same size and modes showing the screen's
+    /// rows `pick` from the top, with the cursor at `cursor`, and with `history` the history
+    /// above them too (the alternate screen's grid can't read the main screen's, so there it
+    /// is lost). Which rows wrapped onto the next is kept; the window title is kept.
+    pub(super) fn rebuild_with(&mut self, history: bool, pick: std::ops::Range<u16>, cursor: (u16, u16)) {
         self.view = 0;
-        self.parser.screen_mut().set_scrollback(0);
+        let history = if history && !self.alternate() { self.read_history_len() } else { 0 };
         let (rows, cols) = self.size();
-        let all = self.rows();
-        let replay = replay::replay_at(self.parser.screen(), pick(&all), cursor);
+        let lines = replay::lines(self.parser.screen_mut(), history, pick);
+        let replay = replay::replay_at(self.parser.screen(), &lines, cursor);
         let events = std::mem::take(self.parser.callbacks_mut());
         let mut parser = vt100::Parser::new_with_callbacks(rows, cols, self.history_cap, events);
         parser.process(&replay);
         self.parser = parser;
-        self.history_len = 0;
+        self.edge = edge::Scan::default();
+        self.history_len = if self.alternate() { 0 } else { self.read_history_len() };
+        self.parser.screen_mut().set_scrollback(0);
+        self.pushed = self.pushed.max(self.history_len as u64);
         self.epoch += 1;
     }
 
@@ -259,7 +269,8 @@ fn color(c: vt100::Color) -> TermColor {
     }
 }
 
-fn row(screen: &vt100::Screen, r: u16, cols: u16) -> TermRow {
+/// Row `r` in view as spans of equally styled cells (see `TermScreen::rows`).
+pub(super) fn row(screen: &vt100::Screen, r: u16, cols: u16) -> TermRow {
     let mut spans: Vec<TermSpan> = Vec::new();
     let mut joinable = false;
     for c in 0..cols {

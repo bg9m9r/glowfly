@@ -1,10 +1,11 @@
 //! Terminal emulation for the built-in terminal panel: the screen model (screen) and its history
-//! (history), key and paste encoding (keys), PTY sessions (pty), which shell to start (shell),
-//! the queries the terminal answers (queries), redrawing a screen on a fresh parser (replay) and
-//! whether the shell is running a program (activity, reading the process lists in procs), and the
-//! window title a program sets (title).
+//! (history), the cursor at the right edge (edge), key and paste encoding (keys), PTY sessions
+//! (pty), which shell to start (shell), the queries the terminal answers (queries), redrawing a
+//! screen and its history on a fresh parser (replay) and whether the shell is running a program
+//! (activity, reading the process lists in procs), and the window title a program sets (title).
 
 mod activity;
+mod edge;
 mod history;
 mod keys;
 mod procs;
@@ -102,9 +103,13 @@ pub fn xterm_rgb(idx: u8) -> Option<(u8, u8, u8)> {
 }
 
 #[cfg(test)]
+mod edge_tests;
+#[cfg(test)]
 mod history_tests;
 #[cfg(test)]
 mod prompt_tests;
+#[cfg(test)]
+mod rebuild_tests;
 #[cfg(test)]
 mod screen_tests;
 

@@ -85,11 +85,14 @@ fn pwsh_prompt_keeps_its_space() {
         assert_prompt(&mut s, r0, len, true);
 
         // Placing the cursor on the last cell clears the pending wrap, so a typed character
-        // would go there; the shell redraws anyway.
-        let (cr, cc) = cursor_after(r0, len);
-        let mut s = screen_with_output();
-        s.feed(trimmed_el(&p, r0, (usize::from(cr), usize::from(cc))).as_bytes());
-        assert_prompt(&mut s, r0, len, !len.is_multiple_of(COLS));
+        // would go there; the shell redraws anyway. When the trimmed text ends in the last
+        // column, an EL right after it erases that cell, as in xterm (terminal/edge.rs).
+        if !(len - 1).is_multiple_of(COLS) {
+            let (cr, cc) = cursor_after(r0, len);
+            let mut s = screen_with_output();
+            s.feed(trimmed_el(&p, r0, (usize::from(cr), usize::from(cc))).as_bytes());
+            assert_prompt(&mut s, r0, len, !len.is_multiple_of(COLS));
+        }
 
         if !len.is_multiple_of(COLS) && !(len - 1).is_multiple_of(COLS) {
             let mut s = screen_with_output();

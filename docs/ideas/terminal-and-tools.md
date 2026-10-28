@@ -58,6 +58,11 @@ The built-in terminal, custom commands, external tools and a command-line compan
 - Clear for cmd in step with Windows' pseudoconsole (today it only clears locally)
 - A palette entry for New terminal tab
 - Show the running program's name in the close confirmation on macOS
+- Keep the main screen and its history when the screen is rebuilt while a full-screen program
+  shows the alternate screen (vt100 can't read the hidden grid)
+- Honour DECAWM off (CSI ?7l): vt100 always wraps at the right edge
+- Narrowing through a cut wide glyph rebuilds the whole history on each resize step (about
+  50 ms for 5,000 rows); drop just the cut glyph instead
 - Note in the shortcut sheet and Preferences > Keyboard which keys the focused terminal keeps
 - An option to send Shift+Home/End to the shell (PSReadLine selects with them) instead of
   scrolling the history
