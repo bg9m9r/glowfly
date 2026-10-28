@@ -4,7 +4,8 @@
 
 use super::display_name;
 use crate::patch::{ApplyHow, ApplyRequest};
-use glowfly_core::patch_ops::{self, ApplyOptions, OnFail, PatchSummary};
+use glowfly_core::i18n::Lang;
+use glowfly_core::patch_ops::{self, AmOptions, ApplyOptions, OnFail, PatchSummary};
 use glowfly_core::repo::Snapshot;
 use std::path::PathBuf;
 
@@ -37,16 +38,18 @@ pub struct ApplyForm {
     pub summary: PatchSummary,
     pub mode: ApplyMode,
     pub opts: ApplyOptions,
-    /// Apply as commits with a three-way fallback.
-    pub am_three_way: bool,
+    /// How to apply as commits.
+    pub am: AmOptions,
 }
 
 impl ApplyForm {
     /// The dialog for the file at `path`: as commits when it holds emailed commits, else its
-    /// changes to the working tree only, changing nothing when part doesn't apply.
+    /// changes to the working tree only, changing nothing when part doesn't apply. Carriage
+    /// returns are kept when the patch's own lines have them (CRLF content).
     pub fn new(workdir: PathBuf, path: PathBuf, summary: PatchSummary) -> Self {
         let mode = if summary.commits > 0 { ApplyMode::Commits } else { ApplyMode::Changes };
-        Self { workdir, name: display_name(&path), path, summary, mode, opts: ApplyOptions::default(), am_three_way: true }
+        let am = AmOptions { keep_cr: summary.crlf_content, ..AmOptions::default() };
+        Self { workdir, name: display_name(&path), path, summary, mode, opts: ApplyOptions::default(), am }
     }
 
     /// What Apply sends. The three-way fallback always goes through the index.
@@ -57,7 +60,7 @@ impl ApplyForm {
                 o.index |= o.on_fail == OnFail::ThreeWay;
                 ApplyHow::Changes(o)
             }
-            ApplyMode::Commits => ApplyHow::Commits { three_way: self.am_three_way },
+            ApplyMode::Commits => ApplyHow::Commits(self.am),
         };
         ApplyRequest { workdir: self.workdir.clone(), path: self.path.clone(), how, commits: self.summary.commits }
     }
@@ -112,8 +115,8 @@ pub fn apply_blocked(form: &ApplyForm, snap: &Snapshot) -> Option<String> {
 /// Why `req` can't run now (checked again by `update`).
 pub fn request_blocked(req: &ApplyRequest, snap: &Snapshot) -> Option<String> {
     match req.how {
-        ApplyHow::Commits { .. } if req.commits == 0 => Some(NO_MESSAGES.to_owned()),
-        ApplyHow::Commits { .. } => am_blocked(snap),
+        ApplyHow::Commits(_) if req.commits == 0 => Some(NO_MESSAGES.to_owned()),
+        ApplyHow::Commits(_) => am_blocked(snap),
         ApplyHow::Changes(o) if o.index => index_blocked(snap).map(str::to_owned),
         ApplyHow::Changes(_) => None,
     }
@@ -167,6 +170,21 @@ pub fn changes_failed(name: &str, o: &ApplyOptions, output: &str) -> String {
     }
     let why = patch_ops::failure_summary(output).unwrap_or_else(|| last_line(output).to_owned());
     format!("{name} doesn't apply: {}. Nothing was changed.", why.trim_end_matches('.'))
+}
+
+/// The headline after applying `name`'s changes failed because they are already there (taken
+/// out already, for a reverse apply).
+pub fn changes_already(t: Lang, name: &str, o: &ApplyOptions) -> String {
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("name", &name)];
+    if o.reverse { t.trf("patch.apply.already_out", args) } else { t.trf("patch.apply.already_in", args) }
+}
+
+/// The headline after `git am` stopped on `name` at a patch that is already on the branch.
+pub fn am_already(t: Lang, name: &str, output: &str) -> String {
+    match patch_ops::am_stop(output).at {
+        Some((n, subject)) => t.trf("patch.am.already_at", &[("name", &name), ("n", &n), ("subject", &subject)]),
+        None => t.trf("patch.am.already", &[("name", &name)]),
+    }
 }
 
 /// The headline after applying `name` as `commits` commits.

@@ -53,8 +53,15 @@ fn cleanup(dir: &Path, patch: &Path) {
 
 #[test]
 fn am_cmd_shape() {
-    assert_eq!(am_cmd("/p/x.patch", true), ["am", "--3way", "/p/x.patch"]);
-    assert_eq!(am_cmd("/p/x.patch", false), ["am", "--no-3way", "/p/x.patch"]);
+    let o = AmOptions::default();
+    assert_eq!(am_cmd("/p/x.patch", &o), ["am", "--3way", "/p/x.patch"]);
+    assert_eq!(am_cmd("/p/x.patch", &AmOptions { three_way: false, ..o }), ["am", "--no-3way", "/p/x.patch"]);
+    let all = AmOptions { three_way: false, keep_cr: true, signoff: true, author_date: true };
+    assert_eq!(am_cmd("/p/x.patch", &all), ["am", "--no-3way", "--keep-cr", "--signoff", "--committer-date-is-author-date", "/p/x.patch"]);
+    assert_eq!(am_cmd("/p/x.patch", &AmOptions { signoff: true, ..o }), ["am", "--3way", "--signoff", "/p/x.patch"]);
+    let check = am_applied_check(Path::new("/r/.git")).unwrap();
+    assert_eq!(check[..4], ["apply", "--check", "--cached", "-R"]);
+    assert_eq!(Path::new(&check[4]), crate::native_path::native(Path::new("/r/.git/rebase-apply/patch")));
     assert_eq!((AM_CONTINUE, AM_SKIP, AM_ABORT), (&["am", "--continue"][..], &["am", "--skip"][..], &["am", "--abort"][..]));
 }
 
@@ -62,7 +69,7 @@ fn am_cmd_shape() {
 fn a_clean_series_becomes_commits() {
     let (dir, patch, _) = conflicting("am-clean");
     git(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
-    let (ok, out) = run(&dir, &am_cmd(&patch.display().to_string(), true));
+    let (ok, out) = run(&dir, &am_cmd(&patch.display().to_string(), &AmOptions::default()));
     // Second applies on the base; Third on top of it.
     assert!(ok, "{out}");
     let repo = Repository::open(&dir).unwrap();
@@ -78,7 +85,7 @@ fn a_clean_series_becomes_commits() {
 #[test]
 fn a_conflicting_series_stops_with_its_progress() {
     let (dir, patch, mine) = conflicting("am-stop");
-    let (ok, out) = run(&dir, &am_cmd(&patch.display().to_string(), true));
+    let (ok, out) = run(&dir, &am_cmd(&patch.display().to_string(), &AmOptions::default()));
     assert!(!ok, "{out}");
     let stop = am_stop(&out);
     assert_eq!(stop.at, Some((2, "Second".to_owned())), "{out}");
@@ -115,7 +122,7 @@ fn a_conflicting_series_stops_with_its_progress() {
 #[test]
 fn without_three_way_it_stops_on_the_problem() {
     let (dir, patch, _) = conflicting("am-no-3way");
-    let (ok, out) = run(&dir, &am_cmd(&patch.display().to_string(), false));
+    let (ok, out) = run(&dir, &am_cmd(&patch.display().to_string(), &no_3way()));
     assert!(!ok);
     let stop = am_stop(&out);
     assert_eq!(stop.at, Some((2, "Second".to_owned())), "{out}");
@@ -123,6 +130,29 @@ fn without_three_way_it_stops_on_the_problem() {
     assert!(stop.problem.as_deref().is_some_and(|p| p.contains("a.txt")), "{out}");
     let repo = Repository::open(&dir).unwrap();
     assert_eq!(progress_of(&repo).map(|p| p.conflicted), Some(false));
+    // Second isn't on the branch: the check after the stop fails.
+    let (applied, out) = run(&dir, &am_applied_check(repo.path()).unwrap());
+    assert!(!applied, "{out}");
+    git(&dir, &["am", "--abort"]);
+    cleanup(&dir, &patch);
+}
+
+fn no_3way() -> AmOptions {
+    AmOptions { three_way: false, ..AmOptions::default() }
+}
+
+#[test]
+fn an_applied_series_stops_on_a_patch_the_check_finds_applied() {
+    let (dir, patch, _) = conflicting("am-applied");
+    git(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
+    let p = patch.display().to_string();
+    assert!(run(&dir, &am_cmd(&p, &no_3way())).0);
+    let (ok, out) = run(&dir, &am_cmd(&p, &no_3way()));
+    assert!(!ok, "applied again: {out}");
+    assert_eq!(am_stop(&out).at, Some((1, "First".to_owned())), "{out}");
+    let repo = Repository::open(&dir).unwrap();
+    let (applied, out) = run(&dir, &am_applied_check(repo.path()).unwrap());
+    assert!(applied, "First is already on the branch: {out}");
     git(&dir, &["am", "--abort"]);
     cleanup(&dir, &patch);
 }
@@ -137,7 +167,7 @@ fn a_plain_diff_is_not_mail() {
     let (_, diff) = gitcli::output_bytes(&dir, &gitcli::args(&["diff"]), &[], None);
     std::fs::write(&patch, diff).unwrap();
     git(&dir, &["checkout", "--", "a.txt"]);
-    let (ok, out) = run(&dir, &am_cmd(&patch.display().to_string(), true));
+    let (ok, out) = run(&dir, &am_cmd(&patch.display().to_string(), &AmOptions::default()));
     assert!(!ok);
     assert!(am_stop(&out).not_mail, "{out}");
     cleanup(&dir, &patch);

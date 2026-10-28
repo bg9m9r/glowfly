@@ -13,6 +13,9 @@ pub struct PatchSummary {
     pub first_subject: Option<String>,
     /// The files it touches (their new names), in order and without duplicates.
     pub files: Vec<String>,
+    /// Some lines end in CRLF and others don't: the carriage returns belong to the files'
+    /// content (a patch whose every line ends in CRLF got them in transport, as mail does).
+    pub crlf_content: bool,
 }
 
 /// The largest patch file read.
@@ -32,7 +35,7 @@ pub fn summarize(bytes: &[u8]) -> PatchSummary {
     let text = String::from_utf8_lossy(bytes);
     let lines: Vec<&str> = text.lines().collect();
     let header = |l: &str| ["From:", "Date:", "Subject:"].iter().any(|h| l.starts_with(h));
-    let mut s = PatchSummary::default();
+    let mut s = PatchSummary { crlf_content: crlf_content(bytes), ..PatchSummary::default() };
     // A single email without the mbox "From " line.
     if lines.first().is_some_and(|l| header(l)) {
         s.commits = 1;
@@ -67,6 +70,22 @@ pub fn summarize(bytes: &[u8]) -> PatchSummary {
         }
     }
     s
+}
+
+/// Whether `bytes` has both lines that end in CRLF and lines that end in a bare LF.
+fn crlf_content(bytes: &[u8]) -> bool {
+    let (mut crlf, mut lf) = (false, false);
+    for (i, _) in bytes.iter().enumerate().filter(|(_, b)| **b == b'\n') {
+        if i > 0 && bytes[i - 1] == b'\r' {
+            crlf = true;
+        } else {
+            lf = true;
+        }
+        if crlf && lf {
+            return true;
+        }
+    }
+    false
 }
 
 /// `subject` without a leading "[PATCH…] " tag.

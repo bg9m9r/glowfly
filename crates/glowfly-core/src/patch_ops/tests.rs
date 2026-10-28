@@ -70,6 +70,7 @@ fn format_patch_cmd_shape() {
     assert_eq!(format_patch_cmd(oid, &[]), head);
     let paths = vec!["a b.txt".to_owned(), "-x".to_owned()];
     let mut with: Vec<&str> = head.to_vec();
+    with.insert(head.len() - 1, "-M");
     with.extend(["--", "a b.txt", "-x"]);
     assert_eq!(format_patch_cmd(oid, &paths), with);
 }
@@ -87,6 +88,17 @@ fn apply_cmds_shape() {
     assert_eq!(apply_cmds(p, &o(true, OnFail::ThreeWay, true)), [args(&["apply", "--3way", "-R", p])], "--3way implies the index");
     assert_eq!(apply_cmds(p, &o(false, OnFail::Reject, false)), [args(&["apply", "--reject", p])]);
     assert_eq!(apply_cmds(p, &o(true, OnFail::Reject, true)), [args(&["apply", "--reject", "--index", "-R", p])]);
+}
+
+#[test]
+fn applied_check_shape() {
+    let p = "/p/x y.patch";
+    let o = |index, on_fail, reverse| ApplyOptions { index, on_fail, reverse };
+    assert_eq!(applied_check(p, &ApplyOptions::default()), Some(args(&["apply", "--check", "-R", p])));
+    assert_eq!(applied_check(p, &o(true, OnFail::Refuse, false)), Some(args(&["apply", "--check", "--index", "-R", p])));
+    assert_eq!(applied_check(p, &o(false, OnFail::Refuse, true)), Some(args(&["apply", "--check", p])), "taken out already");
+    assert_eq!(applied_check(p, &o(false, OnFail::ThreeWay, false)), None);
+    assert_eq!(applied_check(p, &o(false, OnFail::Reject, false)), None);
 }
 
 #[test]

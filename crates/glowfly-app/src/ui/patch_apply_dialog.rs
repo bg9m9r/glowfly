@@ -1,7 +1,8 @@
 //! The Apply patch dialog (`Modal::ApplyPatch`): what the chosen file holds (its commits and
 //! the files it touches), how to apply it (its changes with the working tree, index, fallback
-//! and reverse options, or as commits), why it can't be applied now, then Apply. `update`
-//! checks the choice again before running anything.
+//! and reverse options, or as commits with the three-way, carriage return, Signed-off-by and
+//! date options), why it can't be applied now, then Apply. `update` checks the choice again
+//! before running anything.
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::dialog_guides;
@@ -14,6 +15,7 @@ use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
+use glowfly_core::i18n::Lang;
 use glowfly_core::patch_ops::OnFail;
 use glowfly_core::repo::Snapshot;
 
@@ -30,7 +32,7 @@ const ON_FAIL: [(OnFail, &str); 3] = [
 /// is false); on Apply the dialog stays open until `update` starts the job.
 pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut ApplyForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let mut d = Dialog::new(cx, "Apply patch").subtitle(form.name.clone()).guide(dialog_guides::patch_apply(cx.t)).begin(ui);
-    let blocked = d.body(ui, |ui| body(ui, form, snap));
+    let blocked = d.body(ui, |ui| body(ui, cx.t, form, snap));
     // The body already says why it can't be applied; the footer only says it waits.
     let why = if blocked.is_some() { None } else { (!idle).then_some(BUSY) };
     let button = buttons::primary("Apply").enabled(blocked.is_none() && idle).why(why);
@@ -42,7 +44,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut ApplyForm, snap: Option<&Snaps
 }
 
 /// What the patch holds and how to apply it; returns why it can't be applied now.
-fn body(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>) -> Option<String> {
+fn body(ui: &mut egui::Ui, t: Lang, form: &mut ApplyForm, snap: Option<&Snapshot>) -> Option<String> {
     match form.summary_line() {
         Some(line) => {
             ui.label(RichText::new(line).font(type_scale::strong(ui, type_scale::BODY)));
@@ -60,15 +62,7 @@ fn body(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>) -> Opt
     ui.add_space(4.0);
     ui.indent("apply-options", |ui| match form.mode {
         ApplyMode::Changes => changes_options(ui, form),
-        ApplyMode::Commits => {
-            controls::checkbox(ui, &mut form.am_three_way, "Three-way fallback when a patch doesn't apply");
-            let on = match snap.and_then(|s| s.head_branch.as_deref()) {
-                Some(b) => b.to_owned(),
-                None => "detached HEAD".to_owned(),
-            };
-            let note = format!("Each patch becomes a commit on {on}, keeping its author and message.");
-            ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap());
-        }
+        ApplyMode::Commits => commits_options(ui, t, form, snap),
     });
     let blocked = snap.and_then(|s| apply_blocked(form, s));
     if let Some(why) = blocked.as_deref().filter(|w| *w != NOTHING_TO_APPLY) {
@@ -77,6 +71,21 @@ fn body(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>) -> Opt
     }
     // Without a snapshot there is no repository to apply to.
     blocked.or(snap.is_none().then(|| NOTHING_TO_APPLY.to_owned()))
+}
+
+/// The `git am` options, and the branch the commits go on.
+fn commits_options(ui: &mut egui::Ui, t: Lang, form: &mut ApplyForm, snap: Option<&Snapshot>) {
+    let am = &mut form.am;
+    controls::checkbox(ui, &mut am.three_way, "Three-way fallback when a patch doesn't apply");
+    controls::checkbox(ui, &mut am.keep_cr, t.tr("patch.apply_dialog.keep_cr.check"));
+    controls::checkbox(ui, &mut am.signoff, t.tr("patch.apply_dialog.signoff.check"));
+    controls::checkbox(ui, &mut am.author_date, t.tr("patch.apply_dialog.author_date.check"));
+    let on = match snap.and_then(|s| s.head_branch.as_deref()) {
+        Some(b) => b.to_owned(),
+        None => "detached HEAD".to_owned(),
+    };
+    let note = format!("Each patch becomes a commit on {on}, keeping its author and message.");
+    ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap());
 }
 
 /// The files the patch touches, a few rows high.

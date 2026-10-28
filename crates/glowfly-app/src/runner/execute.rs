@@ -81,7 +81,7 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
         Effect::RestoreFile { workdir, oid, path, overwrite } => Some(files::restore(&workdir, oid, path, overwrite)),
         Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op)),
         Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),
-        Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable: _ } => {
+        Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable: _, on_fail_check } => {
             if let Some(refused) = expect.and_then(|(rev, oid)| expect::check(&cwd, &rev, oid).err()) {
                 return Some(Msg::Job(JobMsg::JobDone { ok: false, output: refused, undo: record.map(|_| UndoResult::Recorded(None)) }));
             }
@@ -106,7 +106,13 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
                 };
                 let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
                 let undo = if ok && irreversible { None } else { record.map(|k| UndoResult::Recorded(recorded(k))) };
-                Msg::Job(JobMsg::JobDone { ok, output, undo })
+                let mut output = output;
+                match on_fail_check.filter(|_| !ok) {
+                    Some(check) if git_ops::check_passes(&cwd, &check, prompts, &mut output) => {
+                        Msg::Job(JobMsg::FailCheckPassed { output, undo })
+                    }
+                    _ => Msg::Job(JobMsg::JobDone { ok, output, undo }),
+                }
             }))
         }
         Effect::UndoRedo { cwd, action, redo, opts } => {

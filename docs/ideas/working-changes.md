@@ -120,3 +120,5 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
   Create patch in the menu bar's File menu
 - Include more than 1000 untracked files in a changes patch (one diff through a temporary index)
 - Copy a patch of uncommitted changes to the clipboard
+- Say "already applied" for Apply what fits too (check before git writes `.rej` files for every hunk) and when the three-way fallback changed nothing
+- Translate the rest of the Apply patch dialog and its job headlines (the new git am options and "already applied" texts use `t.tr`)

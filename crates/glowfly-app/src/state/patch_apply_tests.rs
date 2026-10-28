@@ -1,10 +1,10 @@
 //! The Apply patch dialog's form and the texts of the apply and git am jobs.
 
 use super::*;
-use glowfly_core::patch_ops::ApplyOptions;
+use glowfly_core::patch_ops::{AmOptions, ApplyOptions};
 
 fn summary(commits: usize, files: &[&str]) -> PatchSummary {
-    PatchSummary { commits, first_subject: None, files: files.iter().map(|f| (*f).to_owned()).collect() }
+    PatchSummary { commits, first_subject: None, files: files.iter().map(|f| (*f).to_owned()).collect(), crlf_content: false }
 }
 
 fn form(commits: usize, files: &[&str]) -> ApplyForm {
@@ -18,9 +18,12 @@ fn opts(on_fail: OnFail, index: bool, reverse: bool) -> ApplyOptions {
 #[test]
 fn the_form_picks_its_mode_and_forces_the_index_for_three_way() {
     let f = form(3, &["a", "b"]);
-    assert_eq!((f.mode, f.name.as_str(), f.am_three_way), (ApplyMode::Commits, "x.patch", true));
+    assert_eq!((f.mode, f.name.as_str(), f.am), (ApplyMode::Commits, "x.patch", AmOptions::default()));
     assert_eq!(f.summary_line().as_deref(), Some("3 commits · 2 files"));
-    assert_eq!(f.request().how, ApplyHow::Commits { three_way: true });
+    assert_eq!(f.request().how, ApplyHow::Commits(AmOptions::default()));
+    // CRLF lines among LF ones are the files' own: keep their carriage returns.
+    let crlf = ApplyForm::new(PathBuf::from("repo"), PathBuf::from("x.patch"), PatchSummary { crlf_content: true, ..summary(1, &["a"]) });
+    assert_eq!(crlf.request().how, ApplyHow::Commits(AmOptions { keep_cr: true, ..AmOptions::default() }));
     assert_eq!(f.request().commits, 3);
 
     let mut f = form(0, &["a"]);

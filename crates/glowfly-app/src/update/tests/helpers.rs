@@ -464,6 +464,7 @@ fn job_output_hides_credentials_in_urls() {
         prompts: false,
         expect: None,
         stoppable: false,
+        on_fail_check: None,
     };
     let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = runner::execute(effect) else { panic!("expected JobDone") };
     assert!(ok, "{output}");

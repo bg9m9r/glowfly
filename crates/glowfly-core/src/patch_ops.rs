@@ -12,9 +12,11 @@ mod apply;
 mod inspect;
 mod wip;
 
-pub use am::{AM_ABORT, AM_CONTINUE, AM_SKIP, AmProgress, AmStop, am_cmd, am_stop};
+pub use am::{AM_ABORT, AM_CONTINUE, AM_SKIP, AmOptions, AmProgress, AmStop, am_applied_check, am_cmd, am_stop};
 pub(crate) use am::{current_subject, progress_of};
-pub use apply::{ApplyOptions, ApplyProblem, OnFail, apply_cmds, apply_problems, failure_summary, rej_name, rejects, three_way_conflicts};
+pub use apply::{
+    ApplyOptions, ApplyProblem, OnFail, applied_check, apply_cmds, apply_problems, failure_summary, rej_name, rejects, three_way_conflicts,
+};
 pub use inspect::{MAX_INSPECT, PatchSummary, inspect, summarize};
 pub use wip::{ChangesRequest, EMPTY_TREE, MAX_UNTRACKED, NO_CHANGES, WipScope, diff_cmd, untracked_cmd};
 
@@ -105,12 +107,15 @@ fn cut(s: &str) -> String {
 /// The command that prints commit `oid` as a patch on stdout (binary diffs included, which
 /// format-patch does by default), limited to `paths` when there are any. For a commit that
 /// changes no file it prints the message alone, so such commits are left out before running
-/// it. The explicit prefixes keep a `diff.noprefix` from making a patch git apply rejects.
+/// it. The explicit prefixes keep a `diff.noprefix` from making a patch git apply rejects. With
+/// `paths`, renames are looked for even under `diff.renames=false` (`-M`), so a renamed file
+/// whose old path is among them stays a rename (see [`with_rename_sources`]).
 pub fn format_patch_cmd(oid: Oid, paths: &[String]) -> Vec<String> {
     let sha = oid.to_string();
     let mut cmd =
         args(&["--literal-pathspecs", "format-patch", "-1", "--stdout", "--no-color", "--src-prefix=a/", "--dst-prefix=b/", &sha]);
     if !paths.is_empty() {
+        cmd.insert(cmd.len() - 1, "-M".into());
         cmd.push("--".into());
         cmd.extend(paths.iter().cloned());
     }
@@ -213,7 +218,8 @@ fn commit_parts(workdir: &Path, oids: &[Oid], paths: &[String]) -> Result<(Vec<u
             report.skipped.push(oid);
             continue;
         }
-        let (out, part) = gitcli::output_bytes(workdir, &format_patch_cmd(oid, paths), gitcli::NO_PROMPTS, Some(EXPORT_TIMEOUT));
+        let limit = if paths.is_empty() { Vec::new() } else { with_rename_sources(&repo, oid, paths)? };
+        let (out, part) = gitcli::output_bytes(workdir, &format_patch_cmd(oid, &limit), gitcli::NO_PROMPTS, Some(EXPORT_TIMEOUT));
         if !out.ok {
             let short = &oid.to_string()[..7];
             return Err(Error::Other(format!("git format-patch failed for {short}: {}", out.stderr.trim())));
@@ -250,6 +256,30 @@ fn changes_nothing(repo: &git2::Repository, oid: Oid) -> Result<bool> {
         Some(parent) => repo.find_commit(parent)?.tree_id() == commit.tree_id(),
         None => commit.tree()?.is_empty(),
     })
+}
+
+/// `paths` plus the old path of each one commit `oid` renamed (against its first parent, found
+/// as git's `-M` finds them), so a patch limited to them keeps the rename rather than adding
+/// the file as new.
+fn with_rename_sources(repo: &git2::Repository, oid: Oid, paths: &[String]) -> Result<Vec<String>> {
+    let commit = repo.find_commit(oid)?;
+    let parent = match commit.parent_ids().next() {
+        Some(p) => repo.find_commit(p)?.tree()?,
+        None => return Ok(paths.to_vec()),
+    };
+    let mut diff = repo.diff_tree_to_tree(Some(&parent), Some(&commit.tree()?), None)?;
+    diff.find_similar(Some(git2::DiffFindOptions::new().renames(true)))?;
+    let mut out = paths.to_vec();
+    for d in diff.deltas().filter(|d| d.status() == git2::Delta::Renamed) {
+        let path = |f: git2::DiffFile| f.path().and_then(|p| p.to_str()).map(str::to_owned);
+        if let (Some(old), Some(new)) = (path(d.old_file()), path(d.new_file()))
+            && paths.contains(&new)
+            && !out.contains(&old)
+        {
+            out.push(old);
+        }
+    }
+    Ok(out)
 }
 
 /// Whether commit `oid` changes any of `paths` (taken literally) against its first parent.

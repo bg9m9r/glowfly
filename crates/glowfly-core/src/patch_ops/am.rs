@@ -5,10 +5,43 @@ use crate::gitcli::args;
 use git2::{Repository, RepositoryState};
 use std::path::Path;
 
-/// The command that applies the series in `patch` as commits on HEAD, with a three-way
-/// fallback for a patch that doesn't apply when `three_way`.
-pub fn am_cmd(patch: &str, three_way: bool) -> Vec<String> {
-    args(&["am", if three_way { "--3way" } else { "--no-3way" }, patch])
+/// How `git am` applies a series.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AmOptions {
+    /// Fall back to a three-way merge for a patch that doesn't apply (`--3way`, else
+    /// `--no-3way`).
+    pub three_way: bool,
+    /// Keep the carriage returns of CRLF lines (`--keep-cr`); without it git strips them, so a
+    /// patch to a CRLF file no longer matches it. Left off, the user's `am.keepcr` decides.
+    pub keep_cr: bool,
+    /// Add a Signed-off-by line for the committer to each message (`--signoff`).
+    pub signoff: bool,
+    /// Date each commit with its author date instead of now
+    /// (`--committer-date-is-author-date`).
+    pub author_date: bool,
+}
+
+impl Default for AmOptions {
+    fn default() -> Self {
+        Self { three_way: true, keep_cr: false, signoff: false, author_date: false }
+    }
+}
+
+/// The command that applies the series in `patch` as commits on HEAD as `o` says.
+pub fn am_cmd(patch: &str, o: &AmOptions) -> Vec<String> {
+    let mut cmd = args(&["am", if o.three_way { "--3way" } else { "--no-3way" }]);
+    let flags = [(o.keep_cr, "--keep-cr"), (o.signoff, "--signoff"), (o.author_date, "--committer-date-is-author-date")];
+    cmd.extend(flags.iter().filter(|(on, _)| *on).map(|(_, f)| (*f).to_owned()));
+    cmd.push(patch.to_owned());
+    cmd
+}
+
+/// The check run after `git am` stopped, in the repository whose git directory is `git_dir`:
+/// whether the patch it stopped at is already in HEAD (its reverse applies to the index, which
+/// `git am` leaves at HEAD when a patch doesn't apply). None when the path isn't Unicode.
+pub fn am_applied_check(git_dir: &Path) -> Option<Vec<String>> {
+    let patch = crate::native_path::native(&git_dir.join("rebase-apply").join("patch"));
+    Some(args(&["apply", "--check", "--cached", "-R", patch.to_str()?]))
 }
 
 /// Commit the stopped patch (as staged) and apply the rest.

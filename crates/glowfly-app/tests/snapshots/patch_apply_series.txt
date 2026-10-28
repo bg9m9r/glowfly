@@ -12,6 +12,9 @@ Dialog
   RadioButton "Apply the changes to your files" [off]
   RadioButton "Apply as commits" [on]
   CheckBox "Three-way fallback when a patch doesn't apply" [on]
+  CheckBox "Keep carriage returns (files with CRLF line endings)" [off]
+  CheckBox "Add a Signed-off-by line with your name" [off]
+  CheckBox "Date each commit with its author date" [off]
   Label "Each patch becomes a commit on main, keeping its author and message."
   Button "Cancel"
   Button "Apply" [focused]

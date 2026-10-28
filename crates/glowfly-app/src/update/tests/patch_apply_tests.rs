@@ -13,7 +13,7 @@ use crate::state::patch::{AM_LABEL, APPLY_LABEL, PendingApply};
 use crate::state::{AppState, Modal};
 use crate::ui::common::state_actions;
 use git2::RepositoryState;
-use glowfly_core::patch_ops::{self, AM_ABORT, AM_CONTINUE, ApplyOptions, OnFail, PatchSummary};
+use glowfly_core::patch_ops::{self, AM_ABORT, AM_CONTINUE, AmOptions, ApplyOptions, OnFail, PatchSummary};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -121,11 +121,17 @@ fn apply_changes_starts_the_chosen_git_apply() {
     ];
     for (how, want) in cases {
         st.modal = Some(dialog(&st, &p));
-        let cmds = job_cmds(&send(&mut st, &p, how, 0));
+        let fx = send(&mut st, &p, how, 0);
+        let ApplyHow::Changes(o) = how else { unreachable!() };
+        assert!(matches!(&fx[..], [Effect::RunGit { on_fail_check, .. }] if *on_fail_check == patch_ops::applied_check(&text, &o)));
+        let cmds = job_cmds(&fx);
         let want: Vec<Vec<String>> = want.into_iter().map(|c| c.into_iter().map(str::to_owned).chain([text.clone()]).collect()).collect();
         assert_eq!(cmds, want);
         assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some(APPLY_LABEL));
-        assert_eq!(st.patch_apply, Some(PendingApply { label: APPLY_LABEL.into(), name: "p.patch".into(), how, commits: 0 }));
+        assert_eq!(
+            st.patch_apply,
+            Some(PendingApply { label: APPLY_LABEL.into(), name: "p.patch".into(), how, commits: 0, already: false })
+        );
         assert!(st.modal.is_none(), "the dialog closes once the job starts");
         forget_job(&mut st);
     }
@@ -143,8 +149,11 @@ fn apply_changes_starts_the_chosen_git_apply() {
 fn apply_commits_starts_git_am_unless_blocked() {
     let (mut st, dir) = three_commits("patch-apply-am-job");
     let p = beside(&dir, "p.patch");
-    let cmds = job_cmds(&send(&mut st, &p, ApplyHow::Commits { three_way: true }, 2));
-    assert_eq!(cmds, [patch_ops::am_cmd(p.to_str().unwrap(), true)]);
+    let o = AmOptions { keep_cr: true, signoff: true, ..AmOptions::default() };
+    let fx = send(&mut st, &p, ApplyHow::Commits(o), 2);
+    let check = patch_ops::am_applied_check(&st.snap.as_ref().unwrap().git_dir);
+    assert!(check.is_some() && matches!(&fx[..], [Effect::RunGit { on_fail_check, .. }] if *on_fail_check == check));
+    assert_eq!(job_cmds(&fx), [patch_ops::am_cmd(p.to_str().unwrap(), &o)]);
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some(AM_LABEL));
     forget_job(&mut st);
 
@@ -157,17 +166,17 @@ fn apply_commits_starts_git_am_unless_blocked() {
     .unwrap();
     git(&dir, &["add", "a.txt"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(send(&mut st, &p, ApplyHow::Commits { three_way: false }, 2).is_empty());
+    assert!(send(&mut st, &p, ApplyHow::Commits(AmOptions { three_way: false, ..AmOptions::default() }), 2).is_empty());
     assert_eq!(last_log(&st), STAGED_FIRST);
     // An operation in progress.
     git(&dir, &["reset", "-q", "--hard"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     st.snap.as_mut().unwrap().state = RepositoryState::Merge;
-    assert!(send(&mut st, &p, ApplyHow::Commits { three_way: true }, 2).is_empty());
+    assert!(send(&mut st, &p, ApplyHow::Commits(AmOptions::default()), 2).is_empty());
     assert_eq!(last_log(&st), "Finish or abort the merge in progress first.");
     // A plain diff has no commits to apply.
     st.snap.as_mut().unwrap().state = RepositoryState::Clean;
-    assert!(send(&mut st, &p, ApplyHow::Commits { three_way: true }, 0).is_empty());
+    assert!(send(&mut st, &p, ApplyHow::Commits(AmOptions::default()), 0).is_empty());
     assert!(st.job.is_none());
     cleanup(&dir);
 }
@@ -203,15 +212,45 @@ fn apply_end_to_end_success_and_failure() {
     assert_eq!(last_toast(&st), (true, "Applied p.patch to the working tree.".to_owned()));
     assert!(st.job.is_none() && st.patch_apply.is_none());
 
-    // Applied again, it no longer fits: nothing changes.
+    // Applied again, it no longer fits because it is already there: nothing changes.
+    apply_now(&mut st, &p, changes(OnFail::Refuse, false, false), 1);
+    let already = "p.patch is already applied: its changes are already in your files. Nothing was changed.";
+    assert_eq!(last_toast(&st), (false, already.to_owned()));
+    assert!(st.patch_apply.is_none());
+    // Taken back out instead, then once more.
+    apply_now(&mut st, &p, changes(OnFail::Refuse, false, true), 1);
+    assert_eq!(last_toast(&st), (true, "Took p.patch's changes out of the working tree.".to_owned()));
+    assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "one\n");
+    apply_now(&mut st, &p, changes(OnFail::Refuse, false, true), 1);
+    let out = "p.patch's changes are already out of your files. Nothing was changed.";
+    assert_eq!(last_toast(&st), (false, out.to_owned()));
+    cleanup(&dir);
+}
+
+#[test]
+fn a_patch_that_does_not_fit_is_not_called_applied() {
+    let (mut st, dir, p) = patch_then_reset("patch-apply-misfit", &["Add the second line"], true);
     apply_now(&mut st, &p, changes(OnFail::Refuse, false, false), 1);
     let (ok, toast) = last_toast(&st);
     assert!(!ok);
     assert!(toast.starts_with("p.patch doesn't apply: ") && toast.ends_with("Nothing was changed."), "{toast}");
-    // Taken back out instead.
-    apply_now(&mut st, &p, changes(OnFail::Refuse, false, true), 1);
-    assert_eq!(last_toast(&st), (true, "Took p.patch's changes out of the working tree.".to_owned()));
-    assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "one\n");
+    cleanup(&dir);
+}
+
+#[test]
+fn a_series_already_on_the_branch_says_so() {
+    let (mut st, dir, p) = patch_then_reset("patch-apply-am-again", &["Add the second line", "Third: more (lines)"], false);
+    let o = AmOptions { three_way: false, ..AmOptions::default() };
+    apply_now(&mut st, &p, ApplyHow::Commits(o), 2);
+    assert_eq!(last_toast(&st), (true, "Applied p.patch as 2 commits.".to_owned()));
+    apply_now(&mut st, &p, ApplyHow::Commits(o), 2);
+    let want = "Applying p.patch stopped at patch 1 (Add the second line): its changes are already on the branch. \
+                Skip patch to go on, or Abort.";
+    assert_eq!(last_toast(&st), (false, want.to_owned()));
+    assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::ApplyMailbox);
+    let plain = crate::state::patch::apply::am_already(glowfly_core::i18n::Lang::En, "p.patch", "error: x");
+    assert_eq!(plain, "Applying p.patch stopped: this patch's changes are already on the branch. Skip patch to go on, or Abort.");
+    drive(&mut st, Msg::git("Abort", AM_ABORT));
     cleanup(&dir);
 }
 
@@ -257,7 +296,7 @@ fn reject_end_to_end_names_the_rej_file() {
 #[test]
 fn a_series_applies_as_commits() {
     let (mut st, dir, p) = patch_then_reset("patch-apply-am-e2e", &["Add the second line", "Third: more (lines)"], false);
-    apply_now(&mut st, &p, ApplyHow::Commits { three_way: true }, 2);
+    apply_now(&mut st, &p, ApplyHow::Commits(AmOptions::default()), 2);
     assert_eq!(last_toast(&st), (true, "Applied p.patch as 2 commits.".to_owned()));
     let snap = st.snap.as_ref().unwrap();
     let subjects: Vec<&str> = snap.commits.iter().take(3).map(|c| c.summary.as_str()).collect();
@@ -270,7 +309,7 @@ fn a_series_applies_as_commits() {
 fn a_stopped_series_then_abort_or_continue() {
     let (mut st, dir, p) = patch_then_reset("patch-apply-am-stop", &["Add the second line", "Third: more (lines)"], true);
     let mine = head(&dir);
-    apply_now(&mut st, &p, ApplyHow::Commits { three_way: true }, 2);
+    apply_now(&mut st, &p, ApplyHow::Commits(AmOptions::default()), 2);
     let (ok, toast) = last_toast(&st);
     assert!(!ok);
     assert_eq!(
@@ -292,7 +331,7 @@ fn a_stopped_series_then_abort_or_continue() {
     assert_eq!(st.snap.as_ref().unwrap().am, None);
 
     // Again, then resolve, stage and Continue.
-    apply_now(&mut st, &p, ApplyHow::Commits { three_way: true }, 2);
+    apply_now(&mut st, &p, ApplyHow::Commits(AmOptions::default()), 2);
     assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::ApplyMailbox);
     std::fs::write(dir.join("a.txt"), "one\nmine\ntwo\n").unwrap();
     git(&dir, &["add", "a.txt"]);
@@ -311,7 +350,7 @@ fn other_job_ending_clears_pending_apply() {
     let (mut st, dir) = three_commits("patch-ui-stale");
     assert!(!update(&mut st, Msg::git("Fetch", &["fetch"]), Instant::now()).is_empty());
     let how = changes(OnFail::Refuse, false, false);
-    st.patch_apply = Some(PendingApply { label: APPLY_LABEL.into(), name: "p.patch".into(), how, commits: 0 });
+    st.patch_apply = Some(PendingApply { label: APPLY_LABEL.into(), name: "p.patch".into(), how, commits: 0, already: false });
     update(&mut st, Msg::Job(JobMsg::JobDone { ok: false, output: "offline".into(), undo: None }), Instant::now());
     assert_eq!(last_toast(&st), (false, "Fetch failed: offline".to_owned()));
     assert!(st.patch_apply.is_none());
@@ -326,7 +365,7 @@ fn conflicts_block_the_index_and_commits_but_not_the_working_tree() {
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(crate::state::patch::apply::index_blocked(snap), Some(crate::state::patch::apply::RESOLVE_FIRST));
     assert_eq!(crate::state::patch::apply::am_blocked(snap).as_deref(), Some(crate::state::patch::apply::RESOLVE_FIRST));
-    for how in [changes(OnFail::Refuse, true, false), changes(OnFail::ThreeWay, true, false), ApplyHow::Commits { three_way: true }] {
+    for how in [changes(OnFail::Refuse, true, false), changes(OnFail::ThreeWay, true, false), ApplyHow::Commits(AmOptions::default())] {
         assert!(send(&mut st, &p, how, 1).is_empty(), "{how:?}");
         assert_eq!(last_log(&st), "Resolve the conflicted files first.");
     }

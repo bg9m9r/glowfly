@@ -43,6 +43,8 @@ pub(super) struct JobSpec {
     /// The job's last command is a cherry-pick or revert of these commits: it runs as
     /// Effect::Pick, carried past the commits that change nothing.
     pub pick: Option<PickPlan>,
+    /// The check to run when the job fails (`Effect::RunGit::on_fail_check`).
+    pub on_fail_check: Option<Vec<String>>,
 }
 
 /// What a cherry-pick or revert job's last command takes (`JobSpec::pick`).
@@ -72,6 +74,7 @@ impl JobSpec {
             expect: None,
             auto_stash: None,
             pick: None,
+            on_fail_check: None,
         }
     }
 }
@@ -137,12 +140,12 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     let lfs_install = spec.cwd.is_none() && spec.cmds.iter().any(|c| c.windows(2).any(|w| w[0] == "lfs" && w[1] == "install"));
     // Only a job that just fetches can be cancelled: stopping it leaves the repository as it was.
     let stoppable = spec.write_file.is_none() && !spec.cmds.is_empty() && spec.cmds.iter().all(|c| fetch_only(c));
-    let (cmds, write_file, expect, pick) = (spec.cmds, spec.write_file, spec.expect, spec.pick);
+    let (cmds, write_file, expect, pick, on_fail_check) = (spec.cmds, spec.write_file, spec.expect, spec.pick, spec.on_fail_check);
     let effect = move |cwd| match pick {
         Some(PickPlan { picking, oids, can_skip }) => {
             Effect::Pick(PickJob { cwd, cmds, record, journal, prompts, picking, oids, can_skip })
         }
-        None => Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable },
+        None => Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable, on_fail_check },
     };
     let started = launch(st, job, spec.cwd, effect, fx);
     if started != Started::No {

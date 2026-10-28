@@ -222,6 +222,12 @@ pub enum JobMsg {
         output: String,
         undo: Option<UndoResult>,
     },
+    /// The job failed, and the check it carried for that (`Effect::RunGit::on_fail_check`)
+    /// passed: handled as a failed `JobDone` whose pending patch apply is already applied.
+    FailCheckPassed {
+        output: String,
+        undo: Option<UndoResult>,
+    },
     /// The Effect::Pick job (a cherry-pick or revert) ended; `result` names the commits it
     /// skipped because they changed nothing.
     PickDone {
@@ -250,6 +256,7 @@ impl JobMsg {
             | Self::Redo
             | Self::UndoWith { .. }
             | Self::JobDone { .. }
+            | Self::FailCheckPassed { .. }
             | Self::PickDone { .. } => None,
         }
     }

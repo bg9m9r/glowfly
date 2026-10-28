@@ -67,6 +67,8 @@ pub struct PendingApply {
     pub how: ApplyHow,
     /// Emailed commits in the file.
     pub commits: usize,
+    /// The job failed, and the check after it found the changes already there.
+    pub already: bool,
 }
 
 /// The palette's patch entries: Apply patch… whenever a repository is open, Create patch from

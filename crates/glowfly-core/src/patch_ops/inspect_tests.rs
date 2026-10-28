@@ -104,3 +104,12 @@ fn inspect_refuses_huge_files() {
     assert_eq!(inspect(&path).unwrap().commits, 3);
     let _ = std::fs::remove_file(&path);
 }
+
+#[test]
+fn crlf_lines_among_lf_ones_are_content() {
+    let mixed = "From: A <a@x>\nSubject: [PATCH] x\n\ndiff --git a/w.txt b/w.txt\n--- a/w.txt\n+++ b/w.txt\n@@ -1 +1 @@\n-one\r\n+two\r\n";
+    assert!(summarize(mixed.as_bytes()).crlf_content);
+    assert!(!summarize(mixed.replace('\r', "").as_bytes()).crlf_content, "LF only");
+    let mailed = mixed.replace('\r', "").replace('\n', "\r\n");
+    assert!(!summarize(mailed.as_bytes()).crlf_content, "every line CRLF: the mail's, not the files'");
+}

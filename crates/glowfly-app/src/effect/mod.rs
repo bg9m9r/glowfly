@@ -216,6 +216,9 @@ effect_areas! { effect_enum! {
         expect: Option<(String, git2::Oid)>,
         /// Every command only fetches: `Effect::StopGit(StopKey::Job)` can stop it.
         stoppable: bool,
+        /// Run after a failure: when this check passes the job ends with
+        /// `JobMsg::FailCheckPassed` instead of `JobDone` (a patch that is already applied).
+        on_fail_check: Option<Vec<String>>,
     },
     /// Undoes (or redoes) `action` after checking the repository still matches it. Unscoped like
     /// `RunGit`: the job's result must reach `update` even if its tab is no longer active.

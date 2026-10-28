@@ -32,6 +32,7 @@ fn git(cwd: &Path, cmds: &[&[&str]], stoppable: bool) -> Effect {
         prompts: false,
         expect: None,
         stoppable,
+        on_fail_check: None,
     }
 }
 

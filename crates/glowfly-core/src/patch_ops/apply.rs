@@ -47,6 +47,24 @@ pub fn apply_cmds(patch: &str, o: &ApplyOptions) -> Vec<Vec<String>> {
     }
 }
 
+/// The check run after applying the patch at `patch` as `o` says failed: whether its changes
+/// are already there (it applies the other way, to the same place). Only for
+/// [`OnFail::Refuse`], which changed nothing; the other fallbacks may have written files.
+pub fn applied_check(patch: &str, o: &ApplyOptions) -> Option<Vec<String>> {
+    if o.on_fail != OnFail::Refuse {
+        return None;
+    }
+    let mut c = args(&["apply", "--check"]);
+    if o.index {
+        c.push("--index".into());
+    }
+    if !o.reverse {
+        c.push("-R".into());
+    }
+    c.push(patch.to_owned());
+    Some(c)
+}
+
 /// The files `git apply --reject` saved hunks for, with how many: its "Applying patch <f> with
 /// <n> reject(s)..." lines.
 pub fn rejects(output: &str) -> Vec<(String, u32)> {

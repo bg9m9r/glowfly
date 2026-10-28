@@ -128,7 +128,7 @@ impl Modal {
             }
             Modal::RewordCommit(f) => format!("{:?}", f.draft),
             Modal::RenameTab(f) => format!("{:?}", f.text),
-            Modal::ApplyPatch(f) => format!("{:?}", (&f.mode, &f.opts, f.am_three_way)),
+            Modal::ApplyPatch(f) => format!("{:?}", (&f.mode, &f.opts, &f.am)),
             Modal::SavePatch(f) => format!("{:?}", (&f.scope, f.pick, &f.chosen, f.untracked)),
             // The fields outlive the dialog in `SshPage` (reopening shows them again), so Esc
             // loses nothing and needs no question.

@@ -113,6 +113,14 @@ fn ordered(st: &mut AppState, oids: Vec<git2::Oid>) -> Option<Vec<git2::Oid>> {
     Some(ordered)
 }
 
+/// The failed job that just ended was the pending patch apply, and the patch (or the one
+/// `git am` stopped at) turned out to be applied already.
+pub(super) fn already_applied(st: &mut AppState) {
+    if let Some(p) = st.patch_apply.as_mut() {
+        p.already = true;
+    }
+}
+
 /// The headline of the job that just ended, when it is a patch job (see `patch_apply.rs`).
 pub(super) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<String> {
     apply::headline(st, ok, output)

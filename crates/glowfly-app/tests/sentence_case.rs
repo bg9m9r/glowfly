@@ -45,6 +45,8 @@ const PROPER: &[&str] = &[
     "Shift",
     "Alt",
     "Option",
+    // The trailer git writes, spelled as git spells it.
+    "Signed-off-by",
 ];
 
 /// The parts of a key that mark its value as prose rather than a label.

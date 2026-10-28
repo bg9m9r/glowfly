@@ -176,6 +176,18 @@ pub(super) fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std:
     (true, output.trim_end().to_owned())
 }
 
+/// Runs `check` (a job's `on_fail_check`) after the job failed, adding it and what it printed
+/// to the job's `output`; whether it passed.
+pub(super) fn check_passes(cwd: &Path, check: &[String], prompts: bool, output: &mut String) -> bool {
+    output.push_str(&format!("\n$ git {}", glowfly_core::text::redact_credentials(&check.join(" "))));
+    let (passed, text) = gitcli::run_with_input(cwd, check, "", job_env(prompts));
+    if !text.trim().is_empty() {
+        output.push('\n');
+        output.push_str(text.trim_end());
+    }
+    passed
+}
+
 /// `run_git` for a job that only fetches, stopped when `stop` is asked (`Effect::StopGit`):
 /// git's process tree is ended, then the lock and temporary files it left in the repository are
 /// removed. Returns (ok, output, stopped); a stopped run runs none of the commands after it.

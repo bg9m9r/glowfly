@@ -7,7 +7,7 @@ use crate::effect::EffectMeta;
 #[cfg(test)]
 use crate::effect::SandboxRule;
 use git2::Oid;
-use glowfly_core::patch_ops::{ApplyOptions, ExportReport, PatchSource, PatchSummary, SaveReport, WipScope};
+use glowfly_core::patch_ops::{AmOptions, ApplyOptions, ExportReport, PatchSource, PatchSummary, SaveReport, WipScope};
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -81,7 +81,7 @@ pub enum ApplyHow {
     /// Its changes, with `git apply`.
     Changes(ApplyOptions),
     /// As commits, with `git am`.
-    Commits { three_way: bool },
+    Commits(AmOptions),
 }
 
 /// The patch dialogs, saving, copying and reading a patch file, run by runner/patches.rs.

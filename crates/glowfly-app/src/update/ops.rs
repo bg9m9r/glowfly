@@ -111,6 +111,10 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
         JobMsg::Redo => super::undo::run(st, true, now, fx),
         JobMsg::UndoWith { redo, action, opts } => super::undo::run_with(st, redo, *action, opts, fx),
         JobMsg::PickDone { ok, output, undo, result } => super::pick_done::finished(st, ok, output, undo, result, now, fx),
+        JobMsg::FailCheckPassed { output, undo } => {
+            super::patch::already_applied(st);
+            job(st, JobMsg::JobDone { ok: false, output, undo }, now, fx);
+        }
         JobMsg::JobDone { ok, output, undo } => {
             // A download started from a waiting pane reads its view again.
             super::partial_content::job_done(st, ok, &output, fx);

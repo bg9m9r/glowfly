@@ -39,6 +39,7 @@ fn run_git(dir: &Path, cmd: &[&str], record: Option<UndoKind>, journal: Option<O
         prompts: false,
         expect: None,
         stoppable: false,
+        on_fail_check: None,
     })
 }
 

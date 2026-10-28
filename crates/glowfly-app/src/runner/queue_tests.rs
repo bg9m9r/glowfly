@@ -124,6 +124,7 @@ fn which_effects_queue() {
         prompts: false,
         expect: None,
         stoppable: false,
+        on_fail_check: None,
     };
     assert_eq!(Effect::queue(&git(&[&["pull"]])), Some(w.as_path()));
     assert_eq!(Effect::queue(&git(&[&["fetch", "--all"]])), None, "auto-fetch doesn't hold up staging");
@@ -239,6 +240,7 @@ fn every_effect_that_changes_a_repository_queues() {
             prompts: false,
             expect: None,
             stoppable: false,
+            on_fail_check: None,
         },
         Effect::UndoRedo {
             cwd: w.clone(),

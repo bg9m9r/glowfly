@@ -140,7 +140,20 @@ fn job_effect(cwd: PathBuf, e: Expanded) -> (Effect, bool) {
             let journal = record.as_ref().and_then(|k| Op::of_kind(k, &argv));
             let cmds = vec![argv];
             let keeps = super::undo::keeps_history(&cmds);
-            (Effect::RunGit { cwd, cmds, write_file: None, record, journal, prompts: true, expect: None, stoppable: false }, keeps)
+            (
+                Effect::RunGit {
+                    cwd,
+                    cmds,
+                    write_file: None,
+                    record,
+                    journal,
+                    prompts: true,
+                    expect: None,
+                    stoppable: false,
+                    on_fail_check: None,
+                },
+                keeps,
+            )
         }
         Expanded::Shell(script) => (Effect::CustomCommand(CustomCommandEffect::RunShell(ShellRun { cwd, script })), false),
     }

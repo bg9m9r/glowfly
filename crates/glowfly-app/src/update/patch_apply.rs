@@ -1,7 +1,7 @@
 //! Applying a patch file: the open dialog, reading the chosen file (no git) for the Apply
 //! patch dialog, then one `RunGit` job: `git apply` with the chosen options, or `git am` for
-//! the series as commits. The headlines of those jobs and of the Applying patches banner's
-//! buttons.
+//! the series as commits, each with a check after a failure whether the changes are already
+//! there. The headlines of those jobs and of the Applying patches banner's buttons.
 
 use super::super::ops::{self, JobSpec};
 use crate::effect::Effect;
@@ -73,13 +73,18 @@ fn apply(st: &mut AppState, req: ApplyRequest, fx: &mut Vec<Effect>) {
     if ops::busy(st, false) {
         return;
     }
-    let (label, cmds) = match req.how {
-        ApplyHow::Changes(o) => (APPLY_LABEL, patch_ops::apply_cmds(text, &o)),
-        ApplyHow::Commits { three_way } => (AM_LABEL, vec![patch_ops::am_cmd(text, three_way)]),
+    // After a failure, a check whether the changes are already there.
+    let (label, cmds, on_fail_check) = match req.how {
+        ApplyHow::Changes(o) => (APPLY_LABEL, patch_ops::apply_cmds(text, &o), patch_ops::applied_check(text, &o)),
+        ApplyHow::Commits(o) => {
+            let check = st.snap.as_ref().and_then(|s| patch_ops::am_applied_check(&s.git_dir));
+            (AM_LABEL, vec![patch_ops::am_cmd(text, &o)], check)
+        }
     };
     // Also for a job waiting for the trust prompt; dropping it clears this.
-    if ops::start_job(st, JobSpec::new(label.into(), cmds), fx) != ops::Started::No {
-        st.patch_apply = Some(PendingApply { label: label.into(), name: display_name(&req.path), how: req.how, commits: req.commits });
+    if ops::start_job(st, JobSpec { on_fail_check, ..JobSpec::new(label.into(), cmds) }, fx) != ops::Started::No {
+        let (name, how, commits) = (display_name(&req.path), req.how, req.commits);
+        st.patch_apply = Some(PendingApply { label: label.into(), name, how, commits, already: false });
         if matches!(st.modal, Some(Modal::ApplyPatch(_))) {
             st.modal = None;
         }
@@ -93,12 +98,14 @@ pub(super) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<Stri
     let pending = st.patch_apply.take();
     let label = st.job.as_ref().map(|j| j.label.clone())?;
     if let Some(p) = pending.filter(|p| p.label == label) {
-        let name = p.name.as_str();
+        let (name, t) = (p.name.as_str(), st.settings.lang());
         return Some(match (p.how, ok) {
             (ApplyHow::Changes(o), true) => form::changes_done(name, &o),
+            (ApplyHow::Changes(o), false) if p.already => form::changes_already(t, name, &o),
             (ApplyHow::Changes(o), false) => form::changes_failed(name, &o, output),
-            (ApplyHow::Commits { .. }, true) => form::am_done(name, p.commits),
-            (ApplyHow::Commits { .. }, false) => form::am_failed(Some(name), output),
+            (ApplyHow::Commits(_), true) => form::am_done(name, p.commits),
+            (ApplyHow::Commits(_), false) if p.already => form::am_already(t, name, output),
+            (ApplyHow::Commits(_), false) => form::am_failed(Some(name), output),
         });
     }
     let applying = st.snap.as_ref().is_some_and(|s| s.state == RepositoryState::ApplyMailbox);

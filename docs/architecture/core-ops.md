@@ -31,8 +31,8 @@ source file, update its line here.
 - `stash_ops/saved.rs`: the auto-stashes waiting to go back, kept across restarts in the worktree's `glowfly/auto-stashes.json`; tests in `saved_tests.rs`.
 - `stash_ops/paths.rs`: the files a stash changes (its working-tree, index and untracked-files commits), for the question before applying it; tests in `paths_tests.rs`.
 - `sparse_ops.rs`: sparse checkout state, paths and command lines.
-- `patch_ops.rs`, `patch_ops/`: format-patch export of commits or one file of a commit; uncommitted changes through git diff (all, staged or unstaged, chosen paths, untracked files); clipboard text; reading what a patch file holds without git.
-- `patch_ops/`: git apply command lines for each option (index, three-way, `.rej` files, reverse) and their errors, and git am series with where a stopped one is.
+- `patch_ops.rs`, `patch_ops/`: format-patch export of commits or one file of a commit (a renamed file with its old path); uncommitted changes through git diff (all, staged or unstaged, chosen paths, untracked files); clipboard text; reading what a patch file holds without git.
+- `patch_ops/`: git apply command lines for each option (index, three-way, `.rej` files, reverse) and their errors, git am series with its options (three-way, `--keep-cr`, Signed-off-by, committer date) and where a stopped one is, and the checks that find a failed patch already applied.
 - `pick_ops.rs`: command lines for cherry-picking and reverting commits from the graph (several at once, a merge against a chosen mainline parent, skipping a stopped commit), run through gitcli so hooks, config and signing apply; which picking is stopped (`Picking`).
 - `pick_empty.rs`: telling a commit that changes nothing from a conflict and skipping it (`skip_empty`, with `--skip` from git 2.23; an older git ends a single pick cleanly) so the rest of the run goes on, counted in a `PickResult`.
 - `init_ops.rs`, `init_ops/`: new repository files and the init job: `.gitignore` templates, license texts, what the chosen folder already holds, and init, write (never overwriting) and commit.

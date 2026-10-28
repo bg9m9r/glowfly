@@ -16,7 +16,7 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
-use glowfly_core::patch_ops::{AmProgress, OnFail, PatchSummary, WipScope};
+use glowfly_core::patch_ops::{AmOptions, AmProgress, OnFail, PatchSummary, WipScope};
 use glowfly_core::repo::FileEntry;
 use glowfly_core::settings::ThemeChoice;
 use std::path::PathBuf;
@@ -38,7 +38,8 @@ pub(in crate::ui) fn with_files(theme: ThemeChoice, name: &str, unstaged: &[(&st
 /// The fixture with the Apply patch dialog open on a file holding `commits` and `paths`.
 fn apply_dialog(theme: ThemeChoice, name: &str, commits: usize, paths: &[&str]) -> (AppState, PathBuf) {
     let (mut st, dir) = with_files(theme, name, &[("README.md", 'M')], &[]);
-    let summary = PatchSummary { commits, first_subject: None, files: paths.iter().map(|p| (*p).to_owned()).collect() };
+    let summary =
+        PatchSummary { commits, first_subject: None, files: paths.iter().map(|p| (*p).to_owned()).collect(), crlf_content: false };
     let form = ApplyForm::new(dir.clone(), dir.with_file_name("login-form.patch"), summary);
     st.modal = Some(Modal::ApplyPatch(Box::new(form)));
     (st, dir)
@@ -69,12 +70,12 @@ fn patch_apply_series() {
     }
     assert!(h.query_by_label("Each patch becomes a commit on main, keeping its author and message.").is_some());
     h.check_snapshot("patch_apply_series");
+    lowest(&h, "Add a Signed-off-by line with your name").click();
+    h.run();
     lowest(&h, "Apply").click();
     h.run();
-    assert!(pushed(
-        &h,
-        &|m| matches!(m, Msg::Patch(PatchMsg::Apply(r)) if r.how == ApplyHow::Commits { three_way: true } && r.commits == 3)
-    ));
+    let o = AmOptions { signoff: true, ..AmOptions::default() };
+    assert!(pushed(&h, &|m| matches!(m, Msg::Patch(PatchMsg::Apply(r)) if r.how == ApplyHow::Commits(o) && r.commits == 3)));
     assert!(h.state().0.modal.is_some(), "update closes the dialog once the job starts");
     drop(h);
     remove_fixture(&dir);
