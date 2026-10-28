@@ -10,8 +10,9 @@
 //!
 //! Separators go through `separator`: a 1 px line in the frame's edge colour, 4 px from the
 //! rows on each side, never the first child of a menu or right after another one (and a debug
-//! build asserts no menu ends with one). Plain lines (headers, notes) use `inset` to line up
-//! with the item labels.
+//! build asserts no menu ends with one). A group's header goes through `group_header`, which
+//! stands in for the separator; other plain lines (notes) use `inset` to line up with the item
+//! labels.
 //!
 //! A destructive item (`menu_reason::ItemState::Danger`, or a `danger_submenu` title) takes
 //! `danger_style`: its label in `color::menu_danger` and its hover pill `color::danger_hover`.
@@ -192,6 +193,26 @@ pub fn inset<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
     egui::Frame::new().inner_margin(egui::Margin { left: pad, right: pad, top: 0, bottom: 0 }).show(ui, add_contents).inner
 }
 
+/// A group's header: `SMALL` semibold weak text at the rows' text inset, 20 px tall, 8 px below
+/// the row above (4 as the menu's first child) and 2 px above its first row. It stands in for
+/// the separator before its group, so don't add one. Not focusable; screen readers get a
+/// heading.
+pub fn group_header(ui: &mut Ui, title: &str) {
+    use super::super::theme::{color, type_scale};
+    let gap = ui.spacing().item_spacing.y;
+    ui.add_space(if at_mark(ui, "menu-start") { tokens::HEADER_FIRST_GAP } else { tokens::HEADER_GAP - gap });
+    let font = type_scale::strong(ui, type_scale::SMALL);
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), tokens::HEADER_H), egui::Sense::hover());
+    let pad = ui.spacing().button_padding.x;
+    let at = egui::pos2(rect.left() + pad, rect.center().y);
+    super::truncate::paint_cut_text(ui.painter(), at, title, font, color::weak(), rect.width() - 2.0 * pad);
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, title));
+    ui.ctx().accesskit_node_builder(resp.id, |b| {
+        b.set_role(egui::accesskit::Role::Heading);
+        b.set_label(title);
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -235,6 +256,19 @@ mod tests {
             let b = ui.button("Two");
             // One line: 2 px gap, 4 px separator, 2 px gap.
             assert_eq!(b.rect.top() - a.rect.bottom(), 2.0 + tokens::SEPARATOR_H + 2.0);
+        });
+    }
+
+    #[test]
+    fn group_headers_sit_8_above_and_2_below() {
+        in_menu(|ui| {
+            let top = ui.cursor().top();
+            group_header(ui, "Favorites");
+            let a = ui.button("One");
+            assert_eq!(a.rect.top() - top, tokens::HEADER_FIRST_GAP + tokens::HEADER_H + 2.0, "4 above as the first child");
+            group_header(ui, "Recent");
+            let b = ui.button("Two");
+            assert_eq!(b.rect.top() - a.rect.bottom(), tokens::HEADER_GAP + tokens::HEADER_H + 2.0);
         });
     }
 }

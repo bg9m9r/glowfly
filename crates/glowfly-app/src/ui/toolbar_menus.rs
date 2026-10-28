@@ -51,18 +51,27 @@ pub(super) fn split(
     button
 }
 
+/// The repository picker's menu: the lists first (what the picker is for), then getting a
+/// repository, the workspace commands, and the list's tidying last.
 pub(super) fn repo_menu(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.set_min_width(260.0);
+    if crate::ui::repo_menu_list::lists(ui, st, true, msgs) {
+        separator(ui);
+    }
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.open"), Msg::Repo(RepoMsg::PickRepo));
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.clone"), Msg::Clone(CloneMsg::Dialog));
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.init"), Msg::Repo(RepoMsg::InitRepo));
     separator(ui);
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.dashboard"), Msg::Dashboard(crate::msg::DashboardMsg::Open));
     crate::ui::repo_menu::actions(ui, t, st, msgs);
-    if let Some(snap) = &st.snap {
-        let fav = crate::state::repo_lists::is_favorite(st, &snap.workdir);
-        let label = if fav { t.tr("toolbar.repo_menu.favorite_remove") } else { t.tr("toolbar.repo_menu.favorite_add") };
-        menu_item(msgs, ui, label, Msg::Recent(RecentMsg::SetFavorite { path: snap.workdir.clone(), favorite: !fav }));
+    // A listed repository's row has its star; one that isn't listed gets the toggle here.
+    if let Some(snap) = st.snap.as_ref().filter(|s| !crate::state::repo_lists::is_listed(st, &s.workdir)) {
+        menu_item(
+            msgs,
+            ui,
+            t.tr("toolbar.repo_menu.favorite_add"),
+            Msg::Recent(RecentMsg::SetFavorite { path: snap.workdir.clone(), favorite: true }),
+        );
     }
-    crate::ui::repo_list::menu_sections(ui, st, msgs);
+    crate::ui::repo_menu_list::tidy(ui, st, msgs);
 }

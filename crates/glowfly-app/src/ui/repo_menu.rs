@@ -1,11 +1,11 @@
-//! The toolbar repository menu's list actions, after Dashboard: finding repositories in
-//! project folders, opening every favorite in a tab, fetching or pulling the listed
-//! repositories, and removing the entries that are gone.
+//! The toolbar repository menu's workspace commands, after Dashboard: finding repositories in
+//! project folders, opening every favorite in a tab, and fetching or pulling the listed
+//! repositories.
 
 use super::common::menu_item;
 use crate::msg::{Msg, RecentMsg, ReposMsg};
 use crate::state::AppState;
-use crate::state::repo_lists::{favorites, missing_counts, remove_missing_msg, unopened_favorites};
+use crate::state::repo_lists::{favorites, unopened_favorites};
 use crate::state::repo_sync::{SyncKind, SyncScope};
 use crate::ui::widgets::menu::{separator, submenu};
 use eframe::egui;
@@ -18,10 +18,6 @@ pub fn actions(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
     }
     if !st.settings.favorite_repos.is_empty() || !st.recent.is_empty() {
         submenu(ui, t.tr("toolbar.repo_menu.sync_menu"), |ui| sync_items(ui, t, st, msgs));
-    }
-    let (recent, favs) = missing_counts(st);
-    if let Some(ask) = remove_missing_msg(st) {
-        menu_item(msgs, ui, t.trn("toolbar.repo_menu.remove_missing", recent + favs, &[]), ask);
     }
 }
 

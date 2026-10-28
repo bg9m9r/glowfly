@@ -1,10 +1,10 @@
-//! Favorite and recent repository rows, shared by the welcome screen, the toolbar's repository
-//! menu and File > Open recent: star, the repository's colour swatch (a slot kept on every row
-//! once any repository has a colour, so the paths line up), path, "open" and "not found" tags,
-//! the favorites' keys, and on the welcome screen the row menu's Color submenu, the header links (Open all, Remove missing, Clear) and dragging
-//! favorites into another order (`repo_list_drag.rs`).
+//! The welcome screen's Favorite and Recent repository rows: star, the repository's colour
+//! swatch (a slot kept on every row once any repository has a colour, so the paths line up),
+//! path, "open" and "not found" tags, the favorites' keys, the row menu with its Color submenu,
+//! the header links (Open all, Remove missing, Clear) and dragging favorites into another order
+//! (`repo_list_drag.rs`). The menus' rows are `repo_menu_list.rs`.
 
-use super::common::{menu_danger, menu_item, menu_item_if};
+use super::common::{menu_item, menu_item_if};
 use super::repo_swatch;
 use super::theme::color;
 use super::widgets::{self, Icon};
@@ -25,13 +25,6 @@ use std::path::Path;
 
 /// The width of the welcome screen's repository column, when the window is wide enough.
 const COLUMN_WIDTH: f32 = 560.0;
-
-/// Where a row is drawn.
-#[derive(Clone, Copy, PartialEq)]
-enum Place {
-    Welcome,
-    Menu,
-}
 
 /// Which list a row belongs to: a favorite (its index and how many there are) or a recent
 /// entry. Only Recent rows can be removed; only favorites move.
@@ -86,7 +79,7 @@ pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let mut rows = Vec::new();
             for (index, p) in favs.iter().enumerate() {
                 let section = Section::Favorite { index, count: favs.len() };
-                rows.extend(row(ui, st, p, Place::Welcome, section, draggable, msgs));
+                rows.extend(row(ui, st, p, section, draggable, msgs));
             }
             super::repo_list_drag::track(ui, &rows, msgs);
             if !recent.is_empty() {
@@ -103,47 +96,11 @@ pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                     });
                 });
                 for p in recent {
-                    row(ui, st, p, Place::Welcome, Section::Recent, false, msgs);
+                    row(ui, st, p, Section::Recent, false, msgs);
                 }
             }
         });
     });
-}
-
-/// The repository menu's Favorites (when there are any) and Recent sections and "Clear recent".
-pub fn menu_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    sections(ui, st, msgs, true);
-}
-
-/// File > Open recent: the same sections, without the separator above the first.
-pub fn recent_submenu(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    sections(ui, st, msgs, false);
-}
-
-fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separator: bool) {
-    let t = st.settings.lang();
-    let favs = favorites(&st.settings);
-    if !favs.is_empty() {
-        if lead_separator {
-            separator(ui);
-        }
-        header(ui, t.tr("repos.favorites.header"));
-        for (index, p) in favs.iter().enumerate() {
-            row(ui, st, p, Place::Menu, Section::Favorite { index, count: favs.len() }, false, msgs);
-        }
-    }
-    let recent = recent_rows(st);
-    if !recent.is_empty() {
-        if lead_separator || !favs.is_empty() {
-            separator(ui);
-        }
-        header(ui, t.tr("repos.recent.header"));
-        for p in recent {
-            row(ui, st, p, Place::Menu, Section::Recent, false, msgs);
-        }
-        separator(ui);
-        menu_danger(msgs, ui, t.tr("repos.menu.clear_recent"), None, clear_recent_msg(st));
-    }
 }
 
 fn header(ui: &mut egui::Ui, title: &str) {
@@ -161,14 +118,13 @@ fn remove_missing_link(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 }
 
 /// A weak "open" tag; clicking it switches to the tab showing the repository (`open`).
-fn open_tag(ui: &mut egui::Ui, t: Lang, open: Msg, msgs: &mut Vec<Msg>) -> bool {
+fn open_tag(ui: &mut egui::Ui, t: Lang, open: Msg, msgs: &mut Vec<Msg>) {
     let text = RichText::new(t.tr("repos.open_tag.label")).size(type_scale::SMALL).color(color::weak());
     let tag = egui::Label::new(text).selectable(false).sense(Sense::click());
     let clicked = ui.add(tag).on_hover_text(t.tr("repos.open_tag.tip")).on_hover_cursor(egui::CursorIcon::PointingHand).clicked();
     if clicked {
         msgs.push(open);
     }
-    clicked
 }
 
 /// One repository: a grip (welcome favorites, when `draggable`), star toggle, the path (opens
@@ -178,7 +134,6 @@ fn row(
     ui: &mut egui::Ui,
     st: &AppState,
     path: &Path,
-    place: Place,
     section: Section,
     draggable: bool,
     msgs: &mut Vec<Msg>,
@@ -201,25 +156,6 @@ fn row(
         let (icon, col) = if fav { (Icon::StarFilled, color::warn()) } else { (Icon::Star, color::weak()) };
         if widgets::small_icon(ui, icon, favorite_label(t, fav), col).clicked() {
             msgs.push(favorite());
-        }
-        if place == Place::Menu {
-            let col = if missing { color::faint() } else { color::text() };
-            swatch_slot(ui, room, swatch);
-            let mut r = ui.add(egui::Button::new(RichText::new(&text).color(col)));
-            if missing {
-                r = r.on_hover_text(t.tr("repos.not_found.tip"));
-            }
-            if r.clicked() {
-                msgs.push(open());
-                ui.close_menu();
-            }
-            if in_tab && open_tag(ui, t, open(), msgs) {
-                ui.close_menu();
-            }
-            if section == Section::Recent && widgets::small_icon(ui, Icon::Close, t.tr("repos.remove_recent"), color::weak()).clicked() {
-                msgs.push(remove());
-            }
-            return;
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if section == Section::Recent && widgets::small_icon(ui, Icon::Close, t.tr("repos.remove_recent"), color::weak()).clicked() {

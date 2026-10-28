@@ -10,7 +10,7 @@ source file, update its line here.
 - `flatpak.rs`: running inside a Flatpak sandbox: detecting it (`/.flatpak-info`, or a valid `FLATPAK_ID` with the program under `/app`), the host's XDG folders (`host_var`, `child_config_home`) for what Glowfly shares with the host (git's XDG config, the home Trash), and pointing libgit2's XDG config search path at the host's at start (`init`).
 - `git_program.rs`: the git program every git child runs (chosen in Preferences > Git, else `git` from PATH), checking a program before it is used, and finding the installed gits.
 - `safe_directory.rs`: repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling.
-- `native_path.rs`: the spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`).
+- `native_path.rs`: the spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`), and a folder's name and parent for list rows.
 - `volume.rs`: whether a folder is on a network or virtual file system.
 - `git_errors.rs`: why a failed git command failed, from its untranslated output (cause plus listed files and names), for the failure toast; `-c apply.whitespace=nowarn` on merge, pull and stash so git's internal patch warnings stay out of job logs (pure).
 - `remote_failure.rs`: why git couldn't reach or read a remote (unreachable host, missing repository, no access).

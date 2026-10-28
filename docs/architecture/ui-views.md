@@ -85,6 +85,8 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 - `create_pr_dialog.rs`: the create dialog's step line and Skip during a stack's run.
 - `stack_rows.rs`: the LOCAL rows' stack indentation and painted elbows.
 - `repo_colour_menu.rs`: the tab menu's and the welcome rows' repository Color submenu, with the square swatches in `repo_swatch.rs`.
+- `repo_menu_list.rs`: the repository menu's and File > Open recent's Favorites and Recent groups, the filter field of a long list, and Remove missing / Clear recent.
+- `repo_menu_row.rs`: one repository row of those menus: name, parent path, status, and the star and × on hover or focus.
 
 ## Snapshot tests
 
@@ -92,6 +94,6 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 - `snapshot_check/mod.rs`: `check_snapshot` (the text snapshot, plus the image for a golden, cropped as listed; skipped with `GLOWFLY_SKIP_SNAPSHOTS`), and `builder()`, which every test harness starts from so harnesses render on pooled wgpu devices.
 - `snapshot_check/text.rs`: a frame's text snapshot: the accessibility tree's roles, labels, values and states, then the painted text no widget carries; only the dialogs when one is open.
 - `snapshot_check/compare.rs`: comparing a text snapshot with `tests/snapshots/<name>.txt` (`.new.txt` always, `.diff.txt` on a mismatch, `UPDATE_SNAPSHOTS=1` accepts).
-- `snapshot_check/goldens.rs`: the ~110 pixel goldens and their crop (window, dialog, top strip), checked against the PNGs on disk.
+- `snapshot_check/goldens.rs`: the ~110 pixel goldens and their crop (window, dialog, top strip, top-left corner), checked against the PNGs on disk.
 - `snapshot_check/tests.rs`: the tolerance, the skip variable, cropping and the text comparison's files.
 - `menu_testing.rs`: opens a submenu and finds its entries.

@@ -138,6 +138,31 @@ pub fn cut_middle_in(p: &Painter, text: &str, font: &FontId, max_w: f32) -> Stri
     ELLIPSIS.to_string()
 }
 
+/// A folder path cut to `max_w` at whole folders: its first folder (a drive, a share's server,
+/// `~`, with the separators before it), "…", and as many of its last folders as fit
+/// (`C:\…\team\services`), split at `sep`. A path of two folders, or one whose first and last
+/// folders alone don't fit, is cut in the middle instead (`cut_middle_in`).
+pub fn cut_path_in(p: &Painter, text: &str, font: &FontId, max_w: f32, sep: char) -> String {
+    let width = |s: &str| p.layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
+    if width(text) <= max_w {
+        return text.to_owned();
+    }
+    let parts: Vec<&str> = text.split(sep).collect();
+    let lead = parts.iter().take_while(|s| s.is_empty()).count();
+    if parts.len() < lead + 3 {
+        return cut_middle_in(p, text, font, max_w);
+    }
+    let head = parts[..=lead].join(&sep.to_string());
+    let rest = &parts[lead + 1..];
+    for keep in (1..rest.len()).rev() {
+        let cut = format!("{head}{sep}{ELLIPSIS}{sep}{}", rest[rest.len() - keep..].join(&sep.to_string()));
+        if width(&cut) <= max_w {
+            return cut;
+        }
+    }
+    cut_middle_in(p, text, font, max_w)
+}
+
 /// A text field's hint cut to the field: `TextEdit::hint_text` keeps a laid-out galley as it
 /// is (it lays a plain hint out on one uncut line). Drawn in egui's weak hint colour. Returns
 /// the hint and whether it was cut, for the caller's hover with the whole hint.
@@ -329,6 +354,26 @@ pub(crate) mod tests {
             let (head, tail) = cut.split_once(ELLIPSIS).expect("cut");
             assert!(name.starts_with(head) && name.ends_with(tail), "{w}: {cut:?}");
         }
+    }
+
+    #[test]
+    fn a_path_cut_keeps_whole_folders() {
+        let ctx = ctx();
+        let p = Painter::new(ctx.clone(), LayerId::background(), Rect::EVERYTHING);
+        let f = font();
+        let w = |s: &str| p.layout_no_wrap(s.to_owned(), f.clone(), Color32::WHITE).size().x;
+        let path = r"C:\work\clients\northwind\platform\services";
+        let bs = '\u{5c}';
+        assert_eq!(cut_path_in(&p, path, &f, 1000.0, bs), path, "a path that fits is kept");
+        assert_eq!(cut_path_in(&p, path, &f, w(r"C:\…\platform\services") + 1.0, bs), r"C:\…\platform\services");
+        assert_eq!(cut_path_in(&p, path, &f, w(r"C:\…\services") + 1.0, bs), r"C:\…\services");
+        let (share, server) = (format!("{bs}{bs}server{bs}share{bs}team{bs}api"), format!("{bs}{bs}server{bs}…{bs}api"));
+        assert_eq!(cut_path_in(&p, &share, &f, w(&server) + 1.0, bs), server, "a share keeps its server");
+        assert_eq!(cut_path_in(&p, "/home/me/src/app/lib", &f, w("/home/…/lib") + 1.0, '/'), "/home/…/lib");
+        // Too narrow for whole folders: cut in the middle.
+        let cut = cut_path_in(&p, path, &f, w(r"C:\…\services") - 4.0, bs);
+        assert_eq!(cut.matches(ELLIPSIS).count(), 1, "{cut:?}");
+        assert!(w(&cut) <= w(r"C:\…\services") - 4.0, "{cut:?}");
     }
 
     #[test]

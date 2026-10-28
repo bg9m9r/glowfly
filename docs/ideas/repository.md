@@ -181,6 +181,13 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - List bare repositories found by the scan
 - Drag to reorder favorites in the repository menu and File > Open recent
 
+### Repository dropdown
+
+- A filter field in File > Open recent too, once the list is long (only the toolbar menu has one)
+- Up and Down between the rows, Home and End, and typeahead by name (menu spec §9)
+- Ctrl+O shown beside Open repository… once menus have a shortcut column
+- Remove missing entries… in the macOS native File > Open recent menu as well
+
 ### Git engine choice
 
 - Warn when the chosen git is a minimal install with no shell for hook scripts (on Windows, no sh.exe next to it)

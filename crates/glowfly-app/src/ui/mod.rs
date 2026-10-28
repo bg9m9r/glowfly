@@ -125,6 +125,8 @@ mod repo_line;
 mod repo_list;
 mod repo_list_drag;
 mod repo_menu;
+mod repo_menu_list;
+mod repo_menu_row;
 mod repo_swatch;
 mod repo_sync;
 mod shortcuts;

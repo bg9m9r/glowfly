@@ -27,9 +27,9 @@ source file, update its line here.
 - `list_row.rs` holds the file lists' fixed-height `file_row` and `file_row_with_end`, whose right-hand part keeps its width while the path is cut, and `row_text` for their unnamed path.
 - The file rows are one click target each, with the selection painted across the row and into the panel padding.
 - `widgets/row_fill.rs`: one selection fill with a left accent bar and lifted hover, shared by the graph, sidebar rows, file rows and the file history list.
-- `widgets/menu.rs`: the one menu style (row metrics from `theme/spacing.rs`'s `menu` tokens, transparent rows, `SM` pills) and the only ways to open a menu: `context_menu`, `submenu`, `popup_below`, `custom_button`, `below`, plus `separator` (never first or doubled), `inset` for plain lines, and `danger_style` / `danger_submenu` for destructive items; `tests/menus.rs` checks.
+- `widgets/menu.rs`: the one menu style (row metrics from `theme/spacing.rs`'s `menu` tokens, transparent rows, `SM` pills) and the only ways to open a menu: `context_menu`, `submenu`, `popup_below`, `custom_button`, `below`, plus `separator` (never first or doubled), `group_header` and `inset` for plain lines, and `danger_style` / `danger_submenu` for destructive items; `tests/menus.rs` checks.
 - `widgets/row_menu.rs` (`RowMenuExt::row_menu`): right-click menus that open just below their row (at the pointer's x), or above it when they don't fit, sharing egui's context-menu state.
-- `widgets/truncate.rs`: single-line text cut with an ellipsis and its whole text on hover.
+- `widgets/truncate.rs`: single-line text cut with an ellipsis and its whole text on hover, and names and paths cut in the middle.
 - `widgets/section_header.rs`: the left panel's section headers with their hover + (the section's create action) and ⋯ (its menu), and the empty state line under an empty section; each + is described by `state/section_actions.rs`.
 - `line_counts.rs`: line counts drawn one way everywhere: a file row's `+N −M` and proportional bar, a total, the WIP row's chips.
 - Added, removed and modified share `common::added_color`, `removed_color` and `modified_color` with the status letters.

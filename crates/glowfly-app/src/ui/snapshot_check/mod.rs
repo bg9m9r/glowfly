@@ -126,6 +126,7 @@ fn crop_rect<S>(h: &Harness<'_, S>, crop: Crop) -> Option<egui::Rect> {
     match crop {
         Crop::Window => None,
         Crop::Top(height) => Some(egui::Rect::from_min_size(screen.min, egui::vec2(screen.width(), height))),
+        Crop::TopLeft(width, height) => Some(egui::Rect::from_min_size(screen.min, egui::vec2(width, height))),
         Crop::Dialog => {
             let rect =
                 text::dialog_rects(h).into_iter().reduce(|a, b| a.union(b)).unwrap_or_else(|| panic!("no dialog is open to crop to"));

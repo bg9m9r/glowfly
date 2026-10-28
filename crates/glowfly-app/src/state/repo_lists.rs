@@ -128,6 +128,13 @@ pub fn clear_recent_msg(st: &AppState) -> crate::msg::Msg {
     Msg::confirm(&title, body, t.tr("repos.clear_recent.button"), Msg::Recent(RecentMsg::ClearRecent))
 }
 
+/// Whether the repository menu's filter `query` keeps `p`: every word of it (case ignored)
+/// is in its path as shown, so `api work` finds `C:\work\api-server`. An empty query keeps all.
+pub fn matches_filter(p: &Path, query: &str) -> bool {
+    let shown = glowfly_core::native_path::shown(p).to_lowercase();
+    query.split_whitespace().all(|w| shown.contains(&w.to_lowercase()))
+}
+
 /// Whether there is a favorite or a recent repository to list.
 pub fn has_entries(st: &AppState) -> bool {
     !favorites(&st.settings).is_empty() || !recent_rows(st).is_empty()
@@ -222,6 +229,18 @@ mod tests {
         assert!(!has_entries(&state(&[], &[])));
         assert!(has_entries(&state(&["/w/a"], &[])));
         assert!(has_entries(&state(&[], &["/w/b"])));
+    }
+
+    #[test]
+    fn the_filter_matches_every_word_ignoring_case() {
+        let p = Path::new("/work/Clients/api-server");
+        assert!(matches_filter(p, ""));
+        assert!(matches_filter(p, "  "));
+        assert!(matches_filter(p, "API"));
+        assert!(matches_filter(p, "clients api"), "words in any part of the path");
+        assert!(matches_filter(p, "server work"), "in any order");
+        assert!(!matches_filter(p, "api web"), "every word must match");
+        assert!(!matches_filter(p, "docs"));
     }
 
     #[test]

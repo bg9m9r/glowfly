@@ -1,11 +1,10 @@
 //! The welcome screen's Favorites and Recent sections (rows, icons, the row menus, "open" tags,
-//! dragging favorites) and the toolbar's repository menu. Shares the renderer and fixture
+//! dragging favorites); the toolbar's repository menu is `snapshot_tests_repo_menu.rs`. Shares the renderer and fixture
 //! repository with `snapshot_tests`. The listed paths are labels only, never opened.
 
-use super::snapshot_tests::{harness, remove_fixture, render, settings, with_repo};
+use super::snapshot_tests::{harness, render, settings};
 use super::snapshot_tests_select::click;
-use crate::msg::{Msg, RecentMsg, ReposMsg};
-use crate::state::repo_sync::{SyncKind, SyncScope};
+use crate::msg::{Msg, RecentMsg};
 use crate::state::{AppState, Tab};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, Rect, pos2, vec2};
@@ -20,18 +19,18 @@ pub(in crate::ui) fn abs(rel: &str) -> String {
     if cfg!(windows) { format!("C:/work/{rel}") } else { format!("/work/{rel}") }
 }
 
-fn api() -> String {
+pub(super) fn api() -> String {
     abs("api-server")
 }
-fn old() -> String {
+pub(super) fn old() -> String {
     abs("old-site")
 }
-fn web() -> String {
+pub(super) fn web() -> String {
     abs("web-app")
 }
 
 /// Recent api-server, old-site (missing) and web-app, with web-app a favorite.
-fn lists(st: &mut AppState) {
+pub(super) fn lists(st: &mut AppState) {
     st.recent = [api(), old(), web()].iter().map(PathBuf::from).collect();
     st.settings.favorite_repos = vec![web()];
     st.missing_repos = vec![PathBuf::from(old())];
@@ -48,7 +47,7 @@ pub(in crate::ui) fn welcome_state(theme: ThemeChoice) -> AppState {
     st
 }
 
-type H = Harness<'static, (AppState, Vec<Msg>)>;
+pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// The bounds of the node labelled `label` that is `small` (a painted icon, 18 px wide) or not,
 /// on the same row as the `row` link.
@@ -62,7 +61,7 @@ fn bounds(h: &H, label: &str, row: &str, small: bool) -> Rect {
     Rect::from_min_max(pos2(b.x0 as f32, b.y0 as f32), pos2(b.x1 as f32, b.y1 as f32))
 }
 
-fn last(h: &H) -> &Msg {
+pub(super) fn last(h: &H) -> &Msg {
     h.state().1.last().expect("a message")
 }
 
@@ -217,66 +216,4 @@ fn welcome_icons_push_messages() {
     assert_eq!(title, "Clear recent repositories");
     assert!(body.contains("Remove all 3 repositories"), "{body}");
     assert!(matches!(**then, Msg::Recent(RecentMsg::ClearRecent)));
-}
-
-/// Opens the toolbar's repository menu: the button named by the repository, in the toolbar.
-fn open_repo_menu(h: &mut H) {
-    let name = h
-        .get_all_by_label("demo")
-        .filter_map(|n| n.bounding_box())
-        .filter(|b| b.y1 < 120.0)
-        .min_by(|a, b| a.x0.total_cmp(&b.x0))
-        .expect("the repository button");
-    click(h, pos2(((name.x0 + name.x1) / 2.0) as f32, ((name.y0 + name.y1) / 2.0) as f32), PointerButton::Primary);
-}
-
-#[test]
-fn repo_menu_favorites_and_recent() {
-    let (mut st, dir) = with_repo(ThemeChoice::Dark, "repo-menu");
-    lists(&mut st);
-    let workdir = st.snap.as_ref().unwrap().workdir.clone();
-    let mut h = harness(st, true);
-    h.run();
-    open_repo_menu(&mut h);
-    for label in ["Add this repository to favorites", "Favorites", "Recent", "Clear recent…", &shown(&web()), &shown(&api())] {
-        assert!(h.query_by_label(label).is_some(), "{label} is in the menu");
-    }
-    assert_eq!(h.query_all_by_label(&shown(&web())).count(), 1, "a favorite is listed once");
-    h.check_snapshot("repo_menu");
-    h.get_by_label("Add this repository to favorites").click();
-    h.run();
-    assert!(matches!(last(&h), Msg::Recent(RecentMsg::SetFavorite { path, favorite: true }) if *path == workdir));
-    remove_fixture(&dir);
-}
-
-#[test]
-fn repo_menu_actions() {
-    let (mut st, dir) = with_repo(ThemeChoice::Dark, "repo-menu-actions");
-    lists(&mut st);
-    // api-server is in the second tab.
-    st.tabs[1] = Tab::unloaded(PathBuf::from(api()));
-    let mut h = harness(st, true);
-    h.run();
-    open_repo_menu(&mut h);
-    for label in
-        ["Find repositories in folders…", "Open all favorites in tabs", "Fetch or pull repositories", "Remove missing entry (1)…", "open"]
-    {
-        assert!(h.query_by_label(label).is_some(), "{label} is in the menu");
-    }
-    h.check_snapshot("repo_menu_actions");
-    h.get_by_label("Find repositories in folders…").click();
-    h.run();
-    assert!(matches!(last(&h), Msg::Repos(ReposMsg::ShowFinder)));
-    // Fetch or pull, in a submenu.
-    open_repo_menu(&mut h);
-    h.get_by_label("Fetch or pull repositories").hover();
-    h.run();
-    for label in ["Fetch favorites", "Pull favorites", "Fetch all listed repositories", "Pull all listed repositories"] {
-        assert!(h.query_by_label(label).is_some(), "{label} is in the submenu");
-    }
-    h.check_snapshot("repo_menu_sync");
-    h.get_by_label("Pull favorites").click();
-    h.run();
-    assert!(matches!(last(&h), Msg::Repos(ReposMsg::StartSync { kind: SyncKind::Pull, scope: SyncScope::Favorites })));
-    remove_fixture(&dir);
 }

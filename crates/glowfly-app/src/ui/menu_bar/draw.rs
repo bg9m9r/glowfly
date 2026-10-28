@@ -8,7 +8,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::menu_keys::TopMenu;
 use crate::state::menu_model::{Entry, Item, Mark, Submenu, SubmenuKind};
-use crate::ui::repo_list;
+use crate::ui::repo_menu_list;
 use crate::ui::theme::{color, controls, type_scale};
 use crate::ui::widgets::menu;
 use eframe::egui::{self, Button, RichText};
@@ -47,11 +47,8 @@ fn rows(ui: &mut egui::Ui, st: &mut AppState, entries: Vec<Entry>, buttons: bool
             }
             Entry::Submenu(Submenu { kind, label, blocked, entries }) => {
                 submenu_if(ui, &label, blocked.as_deref(), |ui| match kind {
-                    // The rows keep their stars, swatches, × and "not found" tips.
-                    SubmenuKind::Recent => {
-                        ui.set_min_width(260.0);
-                        repo_list::recent_submenu(ui, st, msgs);
-                    }
+                    // The repository menu's rows, with their stars, swatches, × and statuses.
+                    SubmenuKind::Recent => repo_menu_list::recent_submenu(ui, st, msgs),
                     SubmenuKind::Theme => {
                         ui.set_min_width(200.0);
                         rows(ui, st, entries, true, msgs);

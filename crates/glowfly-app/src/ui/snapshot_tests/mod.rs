@@ -132,6 +132,7 @@ pub(super) mod snapshot_tests_remote_branch;
 pub(super) mod snapshot_tests_remotes;
 pub(super) mod snapshot_tests_repo_finder;
 pub(super) mod snapshot_tests_repo_list;
+pub(super) mod snapshot_tests_repo_menu;
 pub(super) mod snapshot_tests_repo_sync;
 pub(super) mod snapshot_tests_revert;
 pub(super) mod snapshot_tests_row_menu;

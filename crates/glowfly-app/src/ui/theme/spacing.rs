@@ -45,4 +45,10 @@ pub mod menu {
     /// A separator's height, its 1 px line in the middle: with the rows' gaps, 4 px between
     /// the line and the pills on either side.
     pub const SEPARATOR_H: f32 = 4.0;
+    /// A group header's height.
+    pub const HEADER_H: f32 = 20.0;
+    /// The space between a group header and the row above it.
+    pub const HEADER_GAP: f32 = 8.0;
+    /// The space above a group header that is a menu's first child (the frame's pad adds 4).
+    pub const HEADER_FIRST_GAP: f32 = 4.0;
 }

@@ -17,9 +17,12 @@ pub(crate) enum Crop {
     Dialog,
     /// The top of the window, this many points tall: the title bar and toolbar.
     Top(f32),
+    /// The window's top-left corner, this many points wide and tall: the toolbar's left end
+    /// and a menu dropped from it.
+    TopLeft(f32, f32),
 }
 
-use Crop::{Dialog, Top, Window};
+use Crop::{Dialog, Top, TopLeft, Window};
 
 /// The goldens and how each is cropped.
 pub(crate) const GOLDENS: &[(&str, Crop)] = &[
@@ -68,6 +71,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("graph_commit_menu", Window),
     ("toolbar_push_menu", Window),
     ("wip_file_menu_danger_light", Window),
+    ("repo_menu_dark", TopLeft(640.0, 620.0)),
+    ("repo_menu_light", TopLeft(640.0, 620.0)),
     // The graph and the history table.
     ("graph_bands_dawn", Window),
     ("graph_bands_dusk", Window),

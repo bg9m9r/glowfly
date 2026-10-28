@@ -94,6 +94,20 @@ fn unfavorite_removes_and_saves() {
 }
 
 #[test]
+fn starring_a_recent_row_moves_it_to_favorites_and_back() {
+    use crate::state::repo_lists::{favorites, recent_rows};
+    let mut st = state();
+    st.recent = paths(&["/w/a", "/w/b"]);
+    favorite(&mut st, "/w/b", true);
+    assert_eq!(recent_rows(&st), [&PathBuf::from("/w/a")], "the menu lists it once, under Favorites");
+    assert_eq!(favorites(&st.settings), paths(&["/w/b"]));
+    favorite(&mut st, "/w/b", false);
+    assert_eq!(recent_rows(&st).len(), 2, "back under Recent: the Recent list kept it");
+    run(&mut st, RecentMsg::Remove(PathBuf::from("/w/a")));
+    assert_eq!(recent_rows(&st), [&PathBuf::from("/w/b")]);
+}
+
+#[test]
 fn check_folders_covers_favorites_and_recent() {
     let mut st = state();
     assert!(run(&mut st, RecentMsg::CheckFolders).is_empty(), "nothing listed");
