@@ -12,6 +12,7 @@
 //! behaves calls [`git_cli`]; `GLOWFLY_TEST_GIT_CLI=1` sends every fixture command to the CLI,
 //! to check that a failure isn't the kit's.
 
+pub mod bin;
 mod commit;
 mod fast;
 mod guard;

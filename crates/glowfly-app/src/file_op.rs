@@ -108,11 +108,11 @@ pub enum WorkFileOk {
     /// (it won't check out on Windows, or it is one name with a tracked path there and on macOS).
     Written { ignored: bool, warnings: Vec<String> },
     /// Deleted or discarded (UnstageDelete also unstaged): how the working copy went, the action
-    /// that undoes it (Delete and UnstageDelete of a file whose copy was kept), and whether it
-    /// was too large to keep a copy of.
+    /// that undoes it (when a copy of the file was kept), and whether it was too large to keep a
+    /// copy of.
     Deleted { how: Deleted, undo: Option<Box<Action>>, too_large: bool },
-    /// UnstageGone: only the index changed.
-    Unstaged,
+    /// UnstageGone: only the index changed; `undo` stages it again.
+    Unstaged { undo: Option<Box<Action>> },
 }
 
 impl WorkFileOk {
@@ -127,5 +127,13 @@ impl WorkFileOk {
 
     pub fn from_saving(s: DeletedSaving) -> Self {
         WorkFileOk::Deleted { how: s.how, undo: s.undo.map(Box::new), too_large: s.too_large }
+    }
+
+    /// The action that undoes this result, if it has one.
+    pub fn undo(&self) -> Option<&Action> {
+        match self {
+            WorkFileOk::Deleted { undo, .. } | WorkFileOk::Unstaged { undo } => undo.as_deref(),
+            WorkFileOk::Written { .. } => None,
+        }
     }
 }

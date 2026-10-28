@@ -1,37 +1,13 @@
 //! Undoing and redoing Delete and Unstage and delete against real repositories, with a stand-in
-//! trash folder: the exact bytes come back, nothing at the path is ever overwritten, a staged new
-//! file or staged rename is staged again, and redo deletes the way the first delete went.
+//! trash folder: the exact bytes come back (out of the trash when they went there), nothing at
+//! the path is ever overwritten, a staged new file or staged rename is staged again, and redo
+//! deletes the way the first delete went.
 
+use super::test_bin::*;
 use super::*;
-use crate::repo::{self, Deleted, TrashProblem, TrashRefusal};
+use crate::repo::{self, Deleted};
 use crate::testutil::*;
 use std::path::{Path, PathBuf};
-
-/// The stand-in trash: a folder in the temp dir, one per process.
-fn bin() -> PathBuf {
-    crate::paths::temp_dir().join(format!("glowfly-undo-delete-bin-{}", std::process::id()))
-}
-
-fn to_bin(full: &Path) -> std::result::Result<(), TrashRefusal> {
-    let other = |e: std::io::Error| TrashRefusal::new(TrashProblem::Other, e.to_string());
-    std::fs::create_dir_all(bin()).map_err(other)?;
-    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
-    let name = full.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    std::fs::rename(full, bin().join(format!("{nanos}-{name}"))).map_err(other)
-}
-
-fn never(_: &Path) -> std::result::Result<(), TrashRefusal> {
-    panic!("this delete doesn't use the trash")
-}
-
-const T: Trashers = Trashers { system: to_bin, home: never };
-
-/// How many files in the stand-in bin end in `-name`.
-fn in_bin(name: &str) -> usize {
-    std::fs::read_dir(bin())
-        .map(|d| d.flatten().filter(|e| e.file_name().to_string_lossy().ends_with(&format!("-{name}"))).count())
-        .unwrap_or(0)
-}
 
 fn base(name: &str) -> PathBuf {
     let dir = scratch_repo(name);
@@ -43,7 +19,9 @@ fn base(name: &str) -> PathBuf {
 
 fn undo(dir: &Path, a: &Action) {
     match plan(dir, a, false).unwrap() {
-        Plan::PutBack { path, content, staged } => put_back(dir, &path, content, staged.as_ref()).unwrap(),
+        Plan::PutBack { path, content, staged, via } => {
+            put_back(dir, &path, content, staged.as_ref(), via, T).unwrap();
+        }
         other => panic!("expected a put-back, got {other:?}"),
     }
 }
@@ -78,12 +56,11 @@ fn a_deleted_file_comes_back_byte_for_byte_and_goes_again() {
 
     undo(&dir, &a);
     assert_eq!(std::fs::read(dir.join("f.txt")).unwrap(), edited);
-    assert_eq!(in_bin("f.txt"), before + 1, "the trash copy stays there");
-    assert!(a.wrote(false).starts_with("Put back f.txt (its copy in the "), "{}", a.wrote(false));
+    assert_eq!(in_bin("f.txt"), before, "taken back out of the trash");
 
     assert_eq!(redo(&dir, &a), Deleted::Trashed);
     assert!(!dir.join("f.txt").exists());
-    assert_eq!(in_bin("f.txt"), before + 2, "redo used the trash again");
+    assert_eq!(in_bin("f.txt"), before + 1, "redo used the trash again");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -163,7 +140,7 @@ fn unstage_and_delete_of_a_new_file_is_staged_again() {
     undo(&dir, &a);
     assert_eq!(blob(&dir), staged_before, "the same blob and mode at stage 0");
     assert_eq!(std::fs::read_to_string(dir.join("n.txt")).unwrap(), "new\n");
-    assert!(a.wrote(false).starts_with("Put back n.txt and staged it again"), "{}", a.wrote(false));
+    assert_eq!(a.wrote(false), "Put back n.txt and staged it again");
 
     assert_eq!(redo(&dir, &a), Deleted::Trashed);
     assert_eq!(blob(&dir), None, "redo unstaged it again");

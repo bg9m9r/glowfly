@@ -89,6 +89,9 @@ pub fn preview(t: Lang, a: &Action, snap: Option<&Snapshot>, redo: bool) -> TipP
         Action::DeleteFile { path, .. } => {
             vec![file('D', path), pick(t.tr("undo.preview.undelete").into(), t.tr("undo.preview.delete_file_again").into())]
         }
+        Action::UnstageGone { path, .. } => {
+            vec![file('A', path), pick(t.tr("undo.preview.restage").into(), t.tr("undo.preview.unstage_again").into())]
+        }
         Action::StashPush { message, .. } => {
             vec![TipRow::Line(message.clone()), pick(t.tr("undo.preview.stash_back").into(), t.tr("undo.preview.stash_again").into())]
         }

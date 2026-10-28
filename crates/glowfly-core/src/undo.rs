@@ -40,11 +40,15 @@ mod resumed;
 mod reverted;
 mod saved;
 mod stash;
+mod unstaged;
 pub use aborted::ABORT_REF_PREFIX;
 pub use aborted_restore::restore_abort;
 pub use aborted_run::{AbortRun, NOTHING_ABORTED, abort_keeping};
 pub use action::{Action, BranchMove, Changes, Created, Discarded, HeadPos, Staged};
-pub use deleted::{DeleteVia, DeletedSaving, MAX_KEPT_BYTES, Trashers, delete_again, delete_saving, delete_staged_saving, put_back};
+pub use deleted::{
+    DeleteFailed, DeleteVia, DeletedSaving, MAX_KEPT_BYTES, PutBackHow, Trashers, delete_again, delete_saving, delete_staged_saving,
+    discard_untracked_saving, put_back,
+};
 pub use kinds::{MoveOp, ResetMode, UndoKind};
 pub(crate) use kinds::{commits_label, move_targets};
 use planning::{has_staged, is_clean, stale};
@@ -56,8 +60,9 @@ pub use record::{Before, after, before, irreversible, redone};
 pub use reset::{HARD_RESET_STASH_MESSAGE, hard_reset_commands};
 pub use resolved::resolve_saving;
 pub use restacked::{RestackBefore, restack_before, restack_unmoved, restacked};
-pub use reverted::revert_saving;
+pub use reverted::{RevertFailed, revert_saving};
 pub use saved::{RestoreFailed, Saved, discard_saving, restore_saving, write as write_saved};
+pub use unstaged::{restage, unstage_again, unstage_gone_saving};
 
 /// The message of the stash that "Discard all" moves uncommitted changes into.
 pub const DISCARD_STASH_MESSAGE: &str = "Glowfly: discarded changes";
@@ -107,12 +112,22 @@ pub enum Plan {
         path: String,
         content: Option<Saved>,
     },
-    /// Write the deleted file `path` back as `content` (it must be absent) and put its `staged`
-    /// entry back in the index.
+    /// Put the deleted file `path` back (it must be absent): out of the trash when it went there
+    /// `via` one, else written as `content`; and its `staged` entry back in the index.
     PutBack {
         path: String,
         content: Saved,
         staged: Option<StagedNew>,
+        via: DeleteVia,
+    },
+    /// Put `staged` back in the index at `path` (undo of Unstage deleted file).
+    Restage {
+        path: String,
+        staged: StagedNew,
+    },
+    /// Take `path`, staged as new and gone from the working tree, out of the index again.
+    UnstageAgain {
+        path: String,
     },
     /// Delete `path` again via `via`, unstaging it too when it was `staged` as new.
     DeleteAgain {
@@ -178,4 +193,8 @@ mod saved_tests;
 #[cfg(test)]
 mod stash_tests;
 #[cfg(test)]
+mod test_bin;
+#[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod undo_file_actions_tests;

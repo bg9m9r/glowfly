@@ -166,7 +166,7 @@ mod updates;
 mod updates_restart;
 mod watch;
 mod wip_list;
-mod work_files;
+pub(crate) mod work_files;
 mod work_files_delete;
 mod worktree_counts;
 mod worktree_manage;

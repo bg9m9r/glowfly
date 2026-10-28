@@ -125,7 +125,13 @@ impl StageMsg {
                     None => Inactive::Log(text),
                 })
             }
-            Self::Reverted { path, what, result: Err(e), .. } => Some(Inactive::Log(crate::update::revert::fail_text(&path, what, &e))),
+            Self::Reverted { path, what, result: Err(e), undo: None } => {
+                Some(Inactive::Log(crate::update::revert::fail_text(&path, what, &e)))
+            }
+            // It changed the file before failing: its undo belongs to that tab.
+            Self::Reverted { path, what, result: Err(e), undo: Some(undo) } => {
+                Some(Inactive::LogAndUndo { text: crate::update::revert::fail_text(&path, what, &e), undo })
+            }
         }
     }
 }

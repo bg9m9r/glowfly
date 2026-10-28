@@ -13,6 +13,7 @@ use crate::msg::WorkFileMsg;
 use crate::state::files::TrashOffer;
 use crate::state::files::{TRASH, staged_rename, unstages_on_delete};
 use crate::state::{AppState, Modal};
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Deleted, TrashProblem, TrashRefusal};
 
 /// Opens the confirmation for deleting `path`, worded by what status says about it. Conflicted
@@ -30,7 +31,8 @@ pub(super) fn ask_delete(st: &mut AppState, path: String) {
     let gone = snap.missing_from_workdir(&path);
     let hint = st.keymap.paren(BindingId::Undo);
     if unstages_on_delete(snap, &path) {
-        st.modal = Some(unstage_confirm(path.clone(), staged_rename(snap, &path), gone, unstaged.is_some(), mode, &hint));
+        let t = st.settings.lang();
+        st.modal = Some(unstage_confirm(t, path.clone(), staged_rename(snap, &path), gone, unstaged.is_some(), mode, &hint));
         return;
     }
     if gone {
@@ -74,27 +76,25 @@ pub(super) fn ask_discard(st: &mut AppState, path: String) {
             format!("Move to {TRASH}"),
         )
     } else {
-        (format!("Delete untracked file {path}? This cannot be undone."), "Discard".to_owned())
+        // Glowfly keeps a copy for Undo, as for Delete.
+        let hint = st.keymap.paren(BindingId::Undo);
+        (st.settings.lang().trf("files.discard.permanent_body", &[("path", &path), ("hint", &hint)]), "Discard".to_owned())
     };
-    let trash = mode == DeleteMode::Trash;
-    let modal = Modal::danger("Discard changes", body, button, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode })));
-    // Without the trash nothing keeps a copy of an untracked file: ask for the acknowledgement.
-    st.modal = Some(if trash { modal } else { modal.with_ack(st.settings.lang().tr("common.ack.check")) });
+    st.modal =
+        Some(Modal::danger("Discard changes", body, button, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode }))));
 }
 
 /// The confirmation for `path`, staged as new or (`renamed`) as a staged rename's new path:
 /// unstage only when the working copy is `gone`, otherwise unstage and delete the way `mode`
 /// says, warning about unstaged `edits`. `hint` is the Undo key (" (Ctrl+Z)").
-pub(super) fn unstage_confirm(path: String, renamed: bool, gone: bool, edits: bool, mode: DeleteMode, hint: &str) -> Modal {
+pub(super) fn unstage_confirm(t: Lang, path: String, renamed: bool, gone: bool, edits: bool, mode: DeleteMode, hint: &str) -> Modal {
     if gone {
         let body = if renamed {
             format!(
                 "{path} is staged as a rename but is no longer in your working tree. This removes the rename from the staging area; the file it was renamed from shows as deleted in your working tree, and discarding that brings back its committed version."
             )
         } else {
-            format!(
-                "{path} is staged as a new file but is no longer in your working tree. This removes it from the staging area too, so its staged version can't be brought back."
-            )
+            t.trf("files.unstage_gone.body", &[("path", &path), ("hint", &hint)])
         };
         let then = Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::UnstageGone(path))));
         return Modal::Confirm { title: "Unstage deleted file".into(), body, button: "Unstage".into(), then };
@@ -140,25 +140,18 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal
         button: "Retry".into(),
         then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.clone()))),
     };
-    // Delete and Unstage and delete keep a copy for Undo; discarding an untracked file doesn't.
+    // Delete, Unstage and delete and Discard all keep a copy for Undo.
     let hint = st.keymap.paren(BindingId::Undo);
-    let undoable = !matches!(op, FileOp::Discard { .. });
     st.modal = Some(match refusal.problem {
         TrashProblem::NoTrash => {
-            let mut body = if undoable {
-                format!(
-                    "{path} couldn't be moved to the {TRASH}: {detail}.\n\nDelete it permanently instead? It won't be in the {TRASH}, but Undo{hint} can still bring it back while this tab is open."
-                )
-            } else {
-                format!("{path} couldn't be moved to the {TRASH}: {detail}.\n\nDelete it permanently instead? This can't be undone.")
-            };
+            let mut body = format!(
+                "{path} couldn't be moved to the {TRASH}: {detail}.\n\nDelete it permanently instead? It won't be in the {TRASH}, but Undo{hint} can still bring it back while this tab is open."
+            );
             if matches!(op, FileOp::UnstageDelete { .. }) {
                 body.push_str(" It also leaves the staging area.");
             }
             let then = Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.clone().permanent()));
-            let modal = Modal::danger("Delete permanently?", body, "Delete permanently", then);
-            // Discarding an untracked file keeps no copy for Undo.
-            if undoable { modal } else { modal.with_ack(st.settings.lang().tr("common.ack.check")) }
+            Modal::danger("Delete permanently?", body, "Delete permanently", then)
         }
         TrashProblem::InUse => retry(
             "File in use".into(),
@@ -177,11 +170,7 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal
             ),
         ),
         TrashProblem::HomeTrashOnly => {
-            let permanent = if undoable {
-                format!("Or delete it permanently; Undo{hint} can still bring it back while this tab is open.")
-            } else {
-                "Or delete it permanently, which can't be undone.".to_owned()
-            };
+            let permanent = format!("Or delete it permanently; Undo{hint} can still bring it back while this tab is open.");
             let body = format!(
                 "{path} is on a drive whose trash folder Glowfly can't use: {detail}.\n\nMove it to the Trash in your home folder instead? It is copied there, which can take a while for a large file. {permanent}"
             );

@@ -212,3 +212,92 @@ fn make_dir(dir: &Path) -> io::Result<()> {
     }
     b.create(dir)
 }
+
+/// Where the bytes of the item a `.trashinfo` file describes are: `files/<name>` next to the
+/// `info` folder, for `info/<name>.trashinfo`.
+pub(super) fn bytes_of_info(info: &Path) -> PathBuf {
+    let trash = info.parent().and_then(Path::parent).unwrap_or(Path::new(""));
+    // Built from the raw name where the system has one, so a name that isn't UTF-8 still works.
+    #[cfg(unix)]
+    let item = {
+        use std::os::unix::ffi::OsStrExt;
+        let raw = info.file_name().map(|n| n.as_bytes()).unwrap_or_default();
+        std::ffi::OsStr::from_bytes(raw.strip_suffix(b".trashinfo").unwrap_or(raw)).to_os_string()
+    };
+    #[cfg(not(unix))]
+    let item = {
+        let name = info.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        OsString::from(name.strip_suffix(".trashinfo").unwrap_or(&name))
+    };
+    trash.join("files").join(item)
+}
+
+/// The absolute path a `.trashinfo` file's `Path=` names, decoded; `None` for a relative one or
+/// a file without it.
+pub(super) fn info_path(text: &str) -> Option<PathBuf> {
+    let value = text.lines().find_map(|l| l.strip_prefix("Path="))?;
+    let bytes: Vec<u8> = percent_encoding::percent_decode_str(value.trim_end()).collect();
+    if bytes.first() != Some(&b'/') {
+        return None;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStringExt;
+        Some(PathBuf::from(OsString::from_vec(bytes)))
+    }
+    #[cfg(not(unix))]
+    {
+        Some(PathBuf::from(String::from_utf8_lossy(&bytes).into_owned()))
+    }
+}
+
+/// The items in the trash folder `trash` (one whose `.trashinfo` files hold absolute paths, as
+/// the home Trash does), each with its info file and, as its time, the info file's.
+pub(super) fn list_home(trash: &Path) -> Vec<super::untrash::Candidate<PathBuf>> {
+    let Ok(dir) = fs::read_dir(trash.join("info")) else { return Vec::new() };
+    dir.flatten()
+        .filter(|e| e.file_name().to_string_lossy().ends_with(".trashinfo"))
+        .filter_map(|e| {
+            let info = e.path();
+            let original = info_path(&fs::read_to_string(&info).ok()?)?;
+            let deleted = e
+                .metadata()
+                .ok()
+                .and_then(|m| m.modified().ok())
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX));
+            Some(super::untrash::Candidate { original, deleted, bytes: bytes_of_info(&info), item: info })
+        })
+        .collect()
+}
+
+/// Puts the trashed `bytes` (described by `info`) back at `full`, which must not exist: linked
+/// there, or copied (with its permissions) when the trash is on another drive. Then the trash's
+/// copy and its `.trashinfo` go. Nothing at `full` is ever replaced, and a failed copy leaves
+/// the trash as it was.
+pub(super) fn take_out(bytes: &Path, info: &Path, full: &Path) -> io::Result<()> {
+    match fs::hard_link(bytes, full) {
+        Ok(()) => {}
+        Err(e) if e.kind() == ErrorKind::AlreadyExists => return Err(e),
+        Err(_) => copy_new(bytes, full)?,
+    }
+    // The record goes only with the bytes, so the trash never lists an item that isn't there.
+    if fs::remove_file(bytes).is_ok() {
+        let _ = fs::remove_file(info);
+    }
+    Ok(())
+}
+
+/// Copies `src` to the new file `dst` with `src`'s permissions; a failed copy removes `dst`.
+fn copy_new(src: &Path, dst: &Path) -> io::Result<()> {
+    let meta = fs::metadata(src)?;
+    let mut out = OpenOptions::new().write(true).create_new(true).open(dst)?;
+    let copied = File::open(src)
+        .and_then(|mut input| io::copy(&mut input, &mut out))
+        .and_then(|_| out.sync_all())
+        .and_then(|()| fs::set_permissions(dst, meta.permissions()));
+    drop(out);
+    copied.inspect_err(|_| {
+        let _ = fs::remove_file(dst);
+    })
+}

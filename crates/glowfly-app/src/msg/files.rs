@@ -90,6 +90,9 @@ pub enum WorkFileMsg {
     DeleteConfirmed(FileOp),
     /// A WorkFile effect finished.
     WorkFileDone { op: FileOp, result: Result<WorkFileOk, String> },
+    /// A delete or discard failed after the file went (the trash reported an error, or the index
+    /// couldn't be changed): `undo` still puts it back.
+    WorkFileFailed { op: FileOp, error: String, undo: Box<glowfly_core::undo::Action> },
     /// The trash refused `op`'s file; nothing changed.
     TrashRefused { op: FileOp, refusal: glowfly_core::repo::TrashRefusal },
 }
@@ -108,6 +111,9 @@ impl WorkFileMsg {
             | Self::DeleteFile { .. }
             | Self::DeleteConfirmed(..) => None,
             Self::WorkFileDone { op, result } => Some(Inactive::WorkFile { op, result }),
+            Self::WorkFileFailed { op, error, undo } => {
+                Some(Inactive::LogAndUndo { text: crate::update::work_files::failure(&op, &error), undo: *undo })
+            }
             Self::TrashRefused { op, refusal } => Some(Inactive::Log(op.not_deleted(&refusal.detail))),
         }
     }

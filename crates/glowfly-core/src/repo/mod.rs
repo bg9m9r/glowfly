@@ -170,7 +170,7 @@ pub use template::{CommitTemplate, commit_template};
 pub use tool_sides::{DiffSides, MergeSides, SideSource, TOOL_FILE_TIMEOUT, blob_bytes, diff_sides, is_conflicted, merge_sides};
 pub use touching::{Touching, commits_touching};
 pub use tracked::tracked_paths;
-pub use trash::{TrashProblem, TrashRefusal, home_trash, os_trash};
+pub use trash::{TrashProblem, TrashRefusal, Untrashed, Untrasher, home_trash, os_trash, os_untrash};
 pub(crate) use workfile::contained;
 pub use workfile::{
     PathProblem, Written, check_new_path, check_new_path_for, create_file, delete_file, new_path_warning, new_path_warning_for,
@@ -178,7 +178,7 @@ pub use workfile::{
 pub use workfile_mv::rename_file_staged;
 pub use workfile_rename::rename_file;
 pub use workfile_rm::{delete_staged_new_file, unstage_gone_new_file};
-pub use workfile_unrm::{StagedNew, index_clear_for, staged_new, staged_new_matches, undelete_file};
+pub use workfile_unrm::{StagedNew, index_clear_for, restage_new, staged_new, staged_new_matches, undelete_file, untrash_file};
 pub use worktree_counts::{COUNT_TIMEOUT, ChangesRead, WorktreeCount, count_worktree};
 pub use worktrees::{WorktreeInfo, worktree_wip_heads, worktrees_at};
 

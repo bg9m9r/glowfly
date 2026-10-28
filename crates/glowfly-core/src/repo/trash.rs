@@ -233,6 +233,8 @@ pub(super) fn volume_root_of(full: &Path) -> Option<std::ffi::OsString> {
 mod win;
 
 mod home;
+mod untrash;
+pub use untrash::{Untrashed, Untrasher, os_untrash};
 
 #[cfg(not(any(windows, target_os = "macos")))]
 mod xdg;
@@ -244,6 +246,8 @@ mod mac;
 mod home_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod untrash_tests;
 
 /// What the trash said, without the crate's wrapping.
 fn detail_of(e: &trash::Error) -> String {

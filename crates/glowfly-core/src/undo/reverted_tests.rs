@@ -96,12 +96,12 @@ fn undo_brings_back_a_file_the_revert_removed() {
 }
 
 #[test]
-fn nothing_changed_records_nothing_and_errors_drop_the_pair() {
+fn nothing_changed_records_nothing_and_an_error_that_changed_nothing_has_no_undo() {
     let (dir, _) = added_line("rv-nothing");
     let (r, a) = revert_saving(&dir, "f.txt", Discarded::RevertedFile, || Ok(Reverted::Applied)).unwrap();
     assert_eq!((r, a), (Reverted::Applied, None));
     let e = revert_saving(&dir, "f.txt", Discarded::RevertedFile, || Err(crate::error::Error::NotFound("gone".into())));
-    assert!(e.is_err_and(|e| e.is_not_found()));
+    assert!(e.is_err_and(|e| e.error.is_not_found() && e.undo.is_none()));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

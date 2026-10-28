@@ -61,6 +61,9 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
   newer commit's version, as the comparison rows do)
 - Keep a copy for undo of files over 64 MB (outside the object database, or by restoring from
   the trash)
+- Take a file back out of the macOS Trash on undo (Finder keeps where it came from only in its
+  own records), instead of writing Glowfly's copy beside the Trash's
+- Name a discarded untracked file's undo entry "discard of" rather than "delete of"
 - Read Recycle Bin settings for redirected known folders and subst drives, which have no volume
   GUID
 - Find the mount's trash folder on unix systems without /proc/self/mounts or /etc/mtab (the

@@ -114,9 +114,22 @@ Your changes were stashed as \"{}\".
                 }
             }
         }
-        Ok(Plan::PutBack { path, content, staged }) => match undo::put_back(cwd, &path, content, staged.as_ref()) {
+        Ok(Plan::PutBack { path, content, staged, via }) => {
+            match undo::put_back(cwd, &path, content, staged.as_ref(), via, super::files::TRASHERS) {
+                Ok(how) => {
+                    let output = how.wrote(&path, staged.is_some(), via);
+                    done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) })
+                }
+                Err(e) => failed(format!("Could not put back {path}: {e}")),
+            }
+        }
+        Ok(Plan::Restage { path, staged }) => match undo::restage(cwd, &path, &staged) {
             Ok(()) => done(true, action.wrote(redo), UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
-            Err(e) => failed(format!("Could not put back {path}: {e}")),
+            Err(e) => failed(format!("Could not stage {path} again: {e}")),
+        },
+        Ok(Plan::UnstageAgain { path }) => match undo::unstage_again(cwd, &path) {
+            Ok(()) => done(true, action.wrote(redo), UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
+            Err(e) => failed(format!("Could not unstage {path}: {e}")),
         },
         Ok(Plan::DeleteAgain { path, via, staged }) => match undo::delete_again(cwd, &path, via, staged, super::files::TRASHERS) {
             Ok(_) => done(true, action.wrote(redo), UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),

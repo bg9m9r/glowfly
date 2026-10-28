@@ -3,9 +3,10 @@
 //! working copy is already gone: the confirmations, the results, and end to end against a
 //! scratch repository.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, keys, scratch_repo, state};
 use super::work_files_tests::{confirm, empty_diff, entry, last_log, loaded, run, work_ops};
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::WorkFileMsg;
@@ -83,7 +84,7 @@ fn unstage_gone_results() {
     let (mut st, dir) = loaded("wfu-done");
     let op = || FileOp::UnstageGone("s.txt".into());
     st.session.diff.view = Some((DiffTarget::Staged("s.txt".into()), empty_diff().into()));
-    let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Unstaged) }));
+    let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Unstaged { undo: None }) }));
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Removed s.txt from the staging area."));
     assert!(st.session.diff.view.is_none(), "the staged diff of the unstaged file is closed");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
@@ -92,7 +93,7 @@ fn unstage_gone_results() {
     assert_eq!(last_log(&st), "Could not unstage s.txt: boom");
 
     for (result, want) in [
-        (Ok(WorkFileOk::Unstaged), "Removed s.txt from the staging area."),
+        (Ok(WorkFileOk::Unstaged { undo: None }), "Removed s.txt from the staging area."),
         (Err("in the way".to_owned()), "Could not unstage s.txt: in the way"),
     ] {
         let ok = result.is_ok();
@@ -143,6 +144,15 @@ fn end_to_end_unstage_gone_new_file() {
     drive(&mut st, Msg::ConfirmAccepted);
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.staged.iter().chain(&snap.unstaged).all(|f| f.path != "new.txt"), "{:?} {:?}", snap.staged, snap.unstaged);
-    assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == "Removed new.txt from the staging area."));
+    let want = format!("Removed new.txt from the staging area. Undo ({}) stages it again.", keys("Ctrl+Z"));
+    assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == want), "{:?}", st.toasts.last().map(|t| &t.text));
+
+    // Undo stages its kept blob again; the file stays gone from the working tree.
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    let snap = st.snap.as_ref().unwrap();
+    assert!(snap.staged.contains(&entry("new.txt", 'A')) && snap.unstaged.contains(&entry("new.txt", 'D')), "{:?}", snap.staged);
+    assert!(!dir.join("new.txt").exists());
+    drive(&mut st, Msg::Job(JobMsg::Redo));
+    assert!(st.snap.as_ref().unwrap().staged.iter().all(|f| f.path != "new.txt"));
     let _ = std::fs::remove_dir_all(&dir);
 }

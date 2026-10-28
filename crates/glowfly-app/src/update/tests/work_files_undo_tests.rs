@@ -59,11 +59,12 @@ fn a_deleted_file_comes_back_with_undo_and_goes_again_with_redo() {
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), contents);
     assert!(st.job.is_none() && st.session.undo.redo.len() == 1, "{:?}", st.session.undo);
-    assert!(said(&st).iter().any(|t| t.contains(&format!("Put back a.txt (its copy in the {TRASH} stays there)"))), "{:?}", said(&st));
+    assert!(said(&st).iter().any(|t| t.contains(&format!("Took a.txt back out of the {TRASH}"))), "{:?}", said(&st));
+    assert_eq!(in_bin(&contents), bin_before - 1, "out of the stand-in bin");
 
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert!(!dir.join("a.txt").exists());
-    assert_eq!(in_bin(&contents), bin_before + 1, "redo moved it into the stand-in bin again");
+    assert_eq!(in_bin(&contents), bin_before, "redo moved it into the stand-in bin again");
     assert!(matches!(st.session.undo.undo.last(), Some(Action::DeleteFile { .. })));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -207,7 +208,14 @@ fn a_drive_without_a_usable_trash_offers_the_home_trash() {
             );
         }
         if matches!(op, FileOp::Discard { .. }) {
-            assert!(o.body.ends_with("Or delete it permanently, which can't be undone."), "{}", o.body);
+            assert!(
+                o.body.ends_with(&format!(
+                    "Or delete it permanently; Undo ({}) can still bring it back while this tab is open.",
+                    keys("Ctrl+Z")
+                )),
+                "{}",
+                o.body
+            );
         }
     }
     // Esc closes it like Cancel.

@@ -107,6 +107,7 @@ pub(super) fn done(
     now: Instant,
     fx: &mut Vec<Effect>,
 ) {
+    let undoable = undo.is_some();
     if let Some(a) = undo {
         st.session.undo.record(a);
     }
@@ -117,6 +118,12 @@ pub(super) fn done(
             st.log_quiet(false, text);
         }
         Ok(r) => st.toast(true, done_text(&path, what, r), now),
+        // It changed the file before failing: say that Undo puts it back.
+        Err(e) if undoable => {
+            let hint = st.keymap.paren(crate::keymap::BindingId::Undo);
+            let note = st.settings.lang().trf("diff.revert.failed_undo", &[("hint", &hint)]);
+            st.log(false, format!("{}. {note}", fail_text(&path, what, &e).trim_end_matches('.')));
+        }
         Err(e) => st.log(false, fail_text(&path, what, &e)),
     }
     super::watch::settled(st, now);

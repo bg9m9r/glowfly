@@ -6,7 +6,7 @@
 use super::record::{head, ref_exists};
 use super::{
     Action, HeadPos, Options, Plan, Refusal, aborted_restore, deleted, discard_command, moved, refs, reset, resolved, restacked, saved,
-    stash,
+    stash, unstaged,
 };
 use crate::error::Result;
 use crate::gitcli::args;
@@ -85,6 +85,7 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         Action::Restore { path, before, after, .. } => return saved::plan(workdir, path, *before, *after, redo, "overwritten"),
         // A staged entry is checked against an operation in progress there.
         Action::DeleteFile { .. } => return deleted::plan(workdir, action, redo),
+        Action::UnstageGone { .. } => return unstaged::plan(workdir, action, redo),
         // A stash store or drop touches no HEAD, index or file, so an operation in progress
         // doesn't matter either.
         Action::StashDrop { .. } => {
@@ -190,6 +191,6 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         Action::Discard { .. } | Action::Restore { .. } | Action::StashDrop { .. } | Action::Resolve { .. } => {
             unreachable!("planned above")
         }
-        Action::DeleteFile { .. } | Action::AbortKept { .. } => unreachable!("planned above"),
+        Action::DeleteFile { .. } | Action::AbortKept { .. } | Action::UnstageGone { .. } => unreachable!("planned above"),
     })
 }

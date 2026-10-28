@@ -67,7 +67,7 @@ pub(super) fn current(workdir: &Path, path: &str) -> Result<Option<Saved>> {
 /// The working copy before and after an operation, when the two differ.
 type Pair = (Option<Saved>, Option<Saved>);
 
-/// A restore that failed. `undo` is set when the file changed anyway (git removes a file before
+/// A restore (also a revert of part of a commit, or a delete) that failed. `undo` is set when the file changed anyway (git removes a file before
 /// a failing required filter runs, a write can be cut short), so the working copy it held can
 /// still be put back; the error then names the blob that keeps it.
 #[derive(Debug)]
@@ -181,15 +181,10 @@ impl Action {
                 DeleteVia::HomeTrash => format!("Moved {path} to the Trash in your home folder again"),
                 DeleteVia::Permanent => format!("Deleted {path} again"),
             },
-            Action::DeleteFile { path, via, staged, .. } => {
-                let again = if staged.is_some() { " and staged it again" } else { "" };
-                let copy = match via {
-                    DeleteVia::Trash => format!(" (its copy in the {TRASH_NAME} stays there)"),
-                    DeleteVia::HomeTrash => " (its copy in your home Trash stays there)".to_owned(),
-                    DeleteVia::Permanent => String::new(),
-                };
-                format!("Put back {path}{again}{copy}")
-            }
+            // How it came back (out of the trash, or from the kept copy) is `PutBackHow::wrote`.
+            Action::DeleteFile { path, via, staged, .. } => super::PutBackHow::Written { trash: None }.wrote(path, staged.is_some(), *via),
+            Action::UnstageGone { path, .. } if redo => format!("Removed {path} from the staging area again"),
+            Action::UnstageGone { path, .. } => format!("Staged {path} again"),
             _ => String::new(),
         }
     }

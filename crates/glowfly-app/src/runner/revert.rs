@@ -12,7 +12,8 @@ pub(super) fn run(workdir: &Path, req: RevertRequest) -> Msg {
     let what = RevertWhat::of(&req.part);
     let (result, undo) = match undo::revert_saving(workdir, &path, what.saved_as(), || repo::revert(workdir, &req)) {
         Ok((r, a)) => (Ok(r), a),
-        Err(e) => (Err(super::err(e)), None),
+        // A revert that changed the file before failing can still be undone.
+        Err(undo::RevertFailed { error, undo }) => (Err(super::err(error)), undo.map(|a| *a)),
     };
     Msg::Stage(StageMsg::Reverted { path, what, result, undo })
 }

@@ -99,6 +99,71 @@ pub fn undelete_file(workdir: &Path, path: &str, bytes: &[u8], executable: Optio
     Ok(())
 }
 
+/// Takes the deleted working-tree file `path` back out of the trash with `untrash` (see
+/// [`super::Untrasher`]), only as an item holding exactly the bytes of `blob`, and with `staged`
+/// puts its index entry back as `undelete_file` does. `path` must not exist; the parent folders
+/// the delete pruned are made again (and removed again when nothing comes back).
+///
+/// Anything other than [`super::Untrashed::Restored`] leaves the working tree as it was, for the
+/// caller to write its own copy instead. A file that appeared at `path` with other bytes is never
+/// touched: the error says so.
+pub fn untrash_file(
+    workdir: &Path,
+    path: &str,
+    blob: Oid,
+    staged: Option<&StagedNew>,
+    untrash: super::Untrasher,
+) -> Result<super::Untrashed> {
+    use super::Untrashed;
+    let rel = contained(path)?;
+    let (repo, root) = open_root(workdir)?;
+    drop(repo);
+    check_parents(&root, rel)?;
+    let full = root.join(rel);
+    if full.symlink_metadata().is_ok() {
+        return Err(Error::Other(format!("{rel} is in your working tree again")));
+    }
+    let created = create_parents(&root, rel)?;
+    if let Err(e) = ensure_inside(&root, full.parent().unwrap_or(&root)) {
+        remove_dirs(&created);
+        return Err(e);
+    }
+    let ours = |p: &Path| holds(p, blob);
+    let out = untrash(&full, &ours);
+    // Whatever the trash said, what is at the path now decides: only the kept bytes count as back.
+    if full.symlink_metadata().is_err() {
+        remove_dirs(&created);
+        return Ok(match out {
+            Untrashed::Restored => Untrashed::Failed("the trash reported the file restored, but it isn't there".into()),
+            other => other,
+        });
+    }
+    if !holds(&full, blob) {
+        return Err(Error::Other(format!(
+            "{rel} came back from the trash with other contents; it is left as it is, and the deleted version is kept as blob {blob} (git cat-file -p {blob})"
+        )));
+    }
+    if let Some(s) = staged {
+        restage(&root, rel, s).map_err(|e| Error::Other(format!("{rel} is back, but it couldn't be staged again: {e}")))?;
+    }
+    Ok(Untrashed::Restored)
+}
+
+/// Whether `p` is a regular file (not a link) holding exactly the bytes of `blob`.
+fn holds(p: &Path, blob: Oid) -> bool {
+    p.symlink_metadata().is_ok_and(|m| m.is_file())
+        && std::fs::read(p).is_ok_and(|b| Oid::hash_object(git2::ObjectType::Blob, &b).is_ok_and(|o| o == blob))
+}
+
+/// Puts `s`'s entry back at `path` in the index (and takes a rename's source out again), as
+/// before Unstage deleted file took it out. The working tree isn't touched.
+pub fn restage_new(workdir: &Path, path: &str, s: &StagedNew) -> Result<()> {
+    let rel = contained(path)?;
+    let (repo, root) = open_root(workdir)?;
+    drop(repo);
+    restage(&root, rel, s)
+}
+
 /// Creates `full` (never replacing anything) holding `bytes`; a failed write removes it again.
 fn write_new(full: &Path, bytes: &[u8], executable: Option<bool>) -> std::io::Result<()> {
     let mut f = OpenOptions::new().write(true).create_new(true).open(full)?;

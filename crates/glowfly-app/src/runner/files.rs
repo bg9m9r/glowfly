@@ -3,7 +3,7 @@
 //! listing the tracked files (`Effect::LoadTrackedPaths`), and checking the Clone dialog's
 //! parent folder (`CloneEffect::CheckParent`).
 
-use crate::effect::{DeleteMode, FileOp, WorkFileOk};
+use crate::effect::{FileOp, WorkFileOk};
 use crate::msg::CloneMsg;
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
@@ -31,12 +31,12 @@ pub(super) fn restore(workdir: &Path, oid: Oid, path: String, overwrite: bool) -
 }
 
 /// Moves a deleted file to the system trash, or to the home Trash when its drive's can't be
-/// used. The app's test build uses a stand-in folder for both instead, so tests never touch the
-/// real Recycle Bin / Trash.
+/// used, and takes it back out for Undo. The app's test build uses a stand-in folder for all of
+/// them instead, so tests never touch the real Recycle Bin / Trash.
 #[cfg(not(test))]
-pub(super) const TRASHERS: undo::Trashers = undo::Trashers { system: repo::os_trash, home: repo::home_trash };
+pub(super) const TRASHERS: undo::Trashers = undo::Trashers { system: repo::os_trash, home: repo::home_trash, restore: repo::os_untrash };
 #[cfg(test)]
-pub(super) const TRASHERS: undo::Trashers = undo::Trashers { system: test_trash, home: test_trash };
+pub(super) const TRASHERS: undo::Trashers = undo::Trashers { system: test_trash, home: test_trash, restore: test_untrash };
 
 /// The stand-in trash of the app's test build: a folder in the temp dir, one per process.
 #[cfg(test)]
@@ -44,24 +44,16 @@ pub(crate) fn test_bin() -> std::path::PathBuf {
     glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-bin-{}", std::process::id()))
 }
 
-/// Moves `full` into `test_bin()` under a unique name (the temp dir and scratch repositories
-/// share a volume, so a rename works).
+/// Moves `full` into `test_bin()` under a unique name (`glowfly_core::testkit::bin`).
 #[cfg(test)]
 fn test_trash(full: &Path) -> Result<(), repo::TrashRefusal> {
-    let other = |e: std::io::Error| repo::TrashRefusal::new(repo::TrashProblem::Other, e.to_string());
-    let bin = test_bin();
-    std::fs::create_dir_all(&bin).map_err(other)?;
-    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
-    let name = full.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    std::fs::rename(full, bin.join(format!("{nanos}-{name}"))).map_err(other)
+    glowfly_core::testkit::bin::move_in(&test_bin(), full)
 }
 
-fn removal(mode: DeleteMode) -> repo::Removal {
-    match mode {
-        DeleteMode::Trash => repo::Removal::Trash(TRASHERS.system),
-        DeleteMode::Permanent | DeleteMode::PermanentNoTrash => repo::Removal::Permanent,
-        DeleteMode::HomeTrash => repo::Removal::Trash(TRASHERS.home),
-    }
+/// Takes `full` back out of `test_bin()` for Undo.
+#[cfg(test)]
+fn test_untrash(full: &Path, ours: &dyn Fn(&Path) -> bool) -> repo::Untrashed {
+    glowfly_core::testkit::bin::take_out(&test_bin(), full, ours)
 }
 
 /// Runs `op` in `workdir`. A create or plain rename reports whether git ignores the new path (a
@@ -70,22 +62,29 @@ fn removal(mode: DeleteMode) -> repo::Removal {
 /// UnstageGone only does that. Discard deletes an untracked file, refusing one that is tracked by
 /// then. When the trash refuses a file, nothing has changed and the result
 /// is `WorkFileMsg::TrashRefused`, so the user can retry or be asked about deleting it permanently.
+/// Delete, UnstageDelete and Discard keep the file's bytes first, and UnstageGone its staged
+/// entry, so all of them can be undone; one that fails after the file went still reports its
+/// undo entry (`WorkFileMsg::WorkFileFailed`).
 pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
+    let deleting = |r: Result<undo::DeletedSaving, undo::DeleteFailed>| match r {
+        Ok(s) => Ok(WorkFileOk::from_saving(s)),
+        Err(undo::DeleteFailed { error, undo: Some(undo) }) => Err((error, Some(undo))),
+        Err(undo::DeleteFailed { error, undo: None }) => Err((error, None)),
+    };
+    let plain = |r: glowfly_core::error::Result<WorkFileOk>| r.map_err(|e| (e, None));
     let r = match &op {
-        FileOp::Create(p) => repo::create_file(workdir, p).map(WorkFileOk::written),
-        FileOp::Rename { from, to, stage: true } => repo::rename_file_staged(workdir, from, to).map(WorkFileOk::written),
-        FileOp::Rename { from, to, stage: false } => repo::rename_file(workdir, from, to).map(WorkFileOk::written),
-        // Both keep the file's bytes (and staged entry) first, so they can be undone.
-        FileOp::Delete { path, mode } => undo::delete_saving(workdir, path, mode.via(), TRASHERS).map(WorkFileOk::from_saving),
-        FileOp::UnstageDelete { path, mode } => {
-            undo::delete_staged_saving(workdir, path, mode.via(), TRASHERS).map(WorkFileOk::from_saving)
-        }
-        FileOp::UnstageGone(p) => repo::unstage_gone_new_file(workdir, p).map(|()| WorkFileOk::Unstaged),
-        FileOp::Discard { path, mode } => repo::discard_untracked(workdir, path, removal(*mode)).map(WorkFileOk::deleted),
+        FileOp::Create(p) => plain(repo::create_file(workdir, p).map(WorkFileOk::written)),
+        FileOp::Rename { from, to, stage: true } => plain(repo::rename_file_staged(workdir, from, to).map(WorkFileOk::written)),
+        FileOp::Rename { from, to, stage: false } => plain(repo::rename_file(workdir, from, to).map(WorkFileOk::written)),
+        FileOp::Delete { path, mode } => deleting(undo::delete_saving(workdir, path, mode.via(), TRASHERS)),
+        FileOp::UnstageDelete { path, mode } => deleting(undo::delete_staged_saving(workdir, path, mode.via(), TRASHERS)),
+        FileOp::UnstageGone(p) => plain(undo::unstage_gone_saving(workdir, p).map(|a| WorkFileOk::Unstaged { undo: Some(Box::new(a)) })),
+        FileOp::Discard { path, mode } => deleting(undo::discard_untracked_saving(workdir, path, mode.via(), TRASHERS)),
     };
     match r {
-        Err(Error::TrashRefused(refusal)) => Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal }),
-        r => Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: r.map_err(|e| e.to_string()) }),
+        Err((Error::TrashRefused(refusal), None)) => Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal }),
+        Err((e, Some(undo))) => Msg::WorkFile(WorkFileMsg::WorkFileFailed { op, error: e.to_string(), undo }),
+        r => Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: r.map_err(|(e, _)| e.to_string()) }),
     }
 }
 

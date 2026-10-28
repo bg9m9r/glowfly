@@ -4,9 +4,11 @@
 //! inactive tab, and end to end with the test build's stand-in trash (never the real one).
 //! Discarding a tracked file still reverts it to the index version.
 
+use super::tests::keys;
 use super::tests::{drive, scratch_repo, state};
 use super::work_files_tests::{ack, confirm, empty_diff, entry, last_log, loaded, run, tick, work_ops};
 use crate::effect::{DeleteMode, Effect, FileOp, LocalOp, WorkFileOk};
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
@@ -58,13 +60,17 @@ fn discard_confirm_trash_off() {
     let (mut st, dir) = with_untracked("wfd-trash-off");
     st.settings.delete_to_trash = false;
     let (body, button, op) = ask(&mut st, "u.txt");
-    assert_eq!(body, "Delete untracked file u.txt? This cannot be undone.");
+    assert_eq!(
+        body,
+        format!(
+            "u.txt isn't tracked by git. Discarding it deletes it; Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open (files up to 64 MB).",
+            keys("Ctrl+Z")
+        )
+    );
     assert!(!body.contains(TRASH));
     assert_eq!(button, "Discard");
     assert_eq!(op, discard("u.txt", DeleteMode::Permanent));
-    assert_eq!(ack(&st), Some("I understand this can't be undone"));
-    assert!(run(&mut st, Msg::ConfirmAccepted).is_empty(), "nothing runs before the tick");
-    tick(&mut st);
+    assert_eq!(ack(&st), None, "Undo brings it back, as for Delete: no acknowledgement");
     assert_eq!(work_ops(&run(&mut st, Msg::ConfirmAccepted)), [discard("u.txt", DeleteMode::Permanent)]);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -117,12 +123,12 @@ fn discard_trash_refused_offers_permanent() {
     assert_eq!(
         body,
         format!(
-            "u.txt couldn't be moved to the {TRASH}: this drive has no Recycle Bin.\n\nDelete it permanently instead? This can't be undone."
+            "u.txt couldn't be moved to the {TRASH}: this drive has no Recycle Bin.\n\nDelete it permanently instead? It won't be in the {TRASH}, but Undo ({}) can still bring it back while this tab is open.",
+            keys("Ctrl+Z")
         )
     );
     assert!(matches!(then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op)) if *op == discard("u.txt", DeleteMode::PermanentNoTrash)));
-    assert!(ack(&st).is_some(), "discarding an untracked file for good asks for the acknowledgement");
-    tick(&mut st);
+    assert_eq!(ack(&st), None, "Glowfly keeps a copy for Undo");
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert_eq!(work_ops(&fx), [discard("u.txt", DeleteMode::PermanentNoTrash)]);
 
@@ -245,16 +251,26 @@ fn in_test_bin(contents: &str) -> bool {
 
 #[test]
 fn end_to_end_discard_trash() {
-    let (dir, st, contents) = discard_end_to_end("wfd-e2e-trash", true);
+    let (dir, mut st, contents) = discard_end_to_end("wfd-e2e-trash", true);
     assert!(in_test_bin(&contents), "u.txt is in the stand-in bin");
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(format!("Moved u.txt to the {TRASH}.").as_str()));
+    let want = format!("Moved u.txt to the {TRASH}. Undo ({}) puts it back.", keys("Ctrl+Z"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()));
+
+    // Undo takes it back out of the bin.
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(std::fs::read_to_string(dir.join("u.txt")).unwrap(), contents);
+    assert!(!in_test_bin(&contents), "out of the stand-in bin again");
+    assert!(st.snap.as_ref().unwrap().unstaged.contains(&entry("u.txt", '?')));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn end_to_end_discard_permanent() {
-    let (dir, st, contents) = discard_end_to_end("wfd-e2e-perm", false);
+    let (dir, mut st, contents) = discard_end_to_end("wfd-e2e-perm", false);
     assert!(!in_test_bin(&contents));
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Deleted u.txt."));
+    let want = format!("Deleted u.txt. Undo ({}) puts it back.", keys("Ctrl+Z"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()));
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(std::fs::read_to_string(dir.join("u.txt")).unwrap(), contents, "Glowfly's copy");
     let _ = std::fs::remove_dir_all(&dir);
 }

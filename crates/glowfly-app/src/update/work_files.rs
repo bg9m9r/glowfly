@@ -9,6 +9,7 @@ use crate::keymap::BindingId;
 use crate::msg::WorkFileMsg;
 use crate::state::files::{PathForm, listed, tracked};
 use crate::state::{AppState, Modal};
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, PathProblem, check_new_path};
 use std::path::Path;
 use std::time::Instant;
@@ -48,6 +49,14 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
+        WorkFileMsg::WorkFileFailed { op, error, undo } => {
+            st.session.undo.record(*undo);
+            let hint = st.keymap.paren(BindingId::Undo);
+            let note = st.settings.lang().trf("files.delete.failed_undo", &[("hint", &hint)]);
+            st.log(false, format!("{}. {note}", failure(&op, &error).trim_end_matches('.')));
+            super::watch::settled(st, now);
+            super::repo::refresh_status(st, fx);
+        }
         WorkFileMsg::WorkFileDone { op, result } => {
             match result {
                 Ok(ok) => succeeded(st, &op, ok, now),
@@ -74,7 +83,10 @@ pub(super) fn inactive_result(st: &mut AppState, workdir: &Path, op: FileOp, res
     }
     match result {
         // The key hint would name the active tab's Undo, which isn't this one's.
-        Ok(ok) => st.toast(true, success_text(&op, &ok, None), now),
+        Ok(ok) => {
+            let text = success_text(st.settings.lang(), &op, &ok, None);
+            st.toast(true, text, now);
+        }
         Err(e) => st.log_in(Some(workdir), false, failure(&op, &e)),
     }
 }
@@ -90,7 +102,7 @@ fn form_for<'a>(modal: &'a mut Option<Modal>, op: &FileOp) -> Option<&'a mut Pat
 
 /// The toast for `op`'s success. `hint` is the Undo key (" (Ctrl+Z)") when the result is for the
 /// active tab, which a delete that can be undone mentions.
-fn success_text(op: &FileOp, ok: &WorkFileOk, hint: Option<&str>) -> String {
+fn success_text(t: Lang, op: &FileOp, ok: &WorkFileOk, hint: Option<&str>) -> String {
     let (deleted, note) = match ok {
         WorkFileOk::Deleted { how, too_large: true, .. } => (*how, UndoNote::TooLarge),
         WorkFileOk::Deleted { how, undo: Some(_), .. } => (*how, hint.map_or(UndoNote::Undo(""), UndoNote::Undo)),
@@ -107,7 +119,14 @@ fn success_text(op: &FileOp, ok: &WorkFileOk, hint: Option<&str>) -> String {
         FileOp::Rename { from, to, stage: false } => format!("Renamed {from} to {to}."),
         FileOp::Delete { path, mode } => return deleted_text(path, *mode, deleted, false, note),
         FileOp::UnstageDelete { path, mode } => return deleted_text(path, *mode, deleted, true, note),
-        FileOp::UnstageGone(p) => return format!("Removed {p} from the staging area."),
+        FileOp::UnstageGone(p) => {
+            let mut text = format!("Removed {p} from the staging area.");
+            if ok.undo().is_some() {
+                text.push(' ');
+                text.push_str(&t.trf("files.unstage_gone.undo", &[("hint", &hint.unwrap_or(""))]));
+            }
+            return text;
+        }
         FileOp::Discard { path, mode } => return deleted_text(path, *mode, deleted, false, note),
     };
     // A staged rename's new path stays tracked, so it is never "ignored".
@@ -121,7 +140,7 @@ fn success_text(op: &FileOp, ok: &WorkFileOk, hint: Option<&str>) -> String {
     text
 }
 
-fn failure(op: &FileOp, e: &str) -> String {
+pub(crate) fn failure(op: &FileOp, e: &str) -> String {
     match op {
         FileOp::Create(p) => format!("Could not create {p}: {e}"),
         FileOp::Rename { from, .. } => format!("Could not rename {from}: {e}"),
@@ -136,9 +155,10 @@ fn succeeded(st: &mut AppState, op: &FileOp, ok: WorkFileOk, now: Instant) {
         st.modal = None;
     }
     let hint = st.keymap.paren(BindingId::Undo);
-    st.toast(true, success_text(op, &ok, Some(&hint)), now);
-    if let WorkFileOk::Deleted { undo: Some(a), .. } = ok {
-        st.session.undo.record(*a);
+    let text = success_text(st.settings.lang(), op, &ok, Some(&hint));
+    st.toast(true, text, now);
+    if let Some(a) = ok.undo() {
+        st.session.undo.record(a.clone());
     }
     // The old path's working-tree diff is gone; don't leave it on screen.
     let old = match op {

@@ -70,9 +70,9 @@ source file, update its line here.
 - `stash.rs`: stashes, pops, applies and drops.
 - `reset.rs`: resets.
 - `saved.rs`: file, hunk and line discards and file restores.
-- `reverted.rs`: reverts of part of a commit in the working tree.
+- `reverted.rs`: reverts of part of a commit in the working tree (also one that failed after changing the file).
 - `resolved.rs`: saved conflict resolutions.
-- `deleted.rs`: deletes and Unstage and delete.
+- `deleted.rs`: deletes, Unstage and delete and discards of untracked files (also one that failed after the file went); undo takes the file back out of the trash when it can, else writes the kept copy. `unstaged.rs`: Unstage deleted file, undone by staging the kept entry again. Tests in `undo_file_actions_tests.rs`, with the stand-in trash in `test_bin.rs`.
 - `rebased.rs`: interactive rebases, graph edits and rebases continued from the banner are recorded around their run.
 - `resumed.rs`: a merge, cherry-pick or revert finished after conflicts (Continue, Skip or a commit) is recorded as one move from the HEAD it started at.
 - `aborted.rs`: aborting a merge, single cherry-pick or single revert keeps its work first (index entries with conflict stages and flags, the bytes on disk at each of its paths, ignored files too, MERGE_HEAD and the like) in one commit under `refs/glowfly/aborted/<id>`, then puts only its paths back as HEAD has them, so other edits stay; a folder holding other files at one of its paths, or a file where one needs a folder, refuses it (the app then offers the plain abort); refs older than 30 days go at the next one unless an undo entry names them.

@@ -280,6 +280,7 @@ pub(super) mod whitespace_ops_tests;
 pub(super) mod whitespace_tests;
 pub(super) mod whole_file_tests;
 pub(super) mod work_files_discard_tests;
+pub(super) mod work_files_failed_tests;
 pub(super) mod work_files_stage_tests;
 pub(super) mod work_files_tests;
 pub(super) mod work_files_trash_tests;

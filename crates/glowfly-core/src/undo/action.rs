@@ -158,6 +158,12 @@ pub enum Action {
         via: DeleteVia,
         staged: Option<StagedNew>,
     },
+    /// Unstage deleted file: `path`, staged as new (or as a staged rename's new path) and already
+    /// gone from the working tree, taken out of the index; `staged` is the entry it had.
+    UnstageGone {
+        path: String,
+        staged: StagedNew,
+    },
     /// Branch `name`, not checked out, moved from `from` to `to` (the journal's Restore).
     SetBranch {
         name: String,
@@ -257,6 +263,7 @@ impl Action {
             Action::Resolve { path, staged: Some(_), .. } => format!("resolution of {path}"),
             Action::Resolve { path, staged: None, .. } => format!("save of {path} with markers"),
             Action::DeleteFile { path, .. } => format!("delete of {path}"),
+            Action::UnstageGone { path, .. } => format!("unstage of {path}"),
             Action::SetBranch { name, to, .. } => format!("move of branch {name} to {}", short(*to)),
             Action::Restacked { detail, .. } => detail.clone(),
             Action::AbortKept { op, .. } => format!("abort of {}", op.noun()),
