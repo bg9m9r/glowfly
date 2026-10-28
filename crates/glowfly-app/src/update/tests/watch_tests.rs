@@ -13,9 +13,8 @@ use crate::msg::StageMsg;
 use crate::msg::TabsMsg;
 use crate::msg::WatchMsg;
 use crate::runner;
-use crate::state::trust::{Standing, record};
+use crate::state::trust::Standing;
 use crate::state::{AppState, Modal, RunningJob};
-use glowfly_core::settings::RepoTrust;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -285,8 +284,7 @@ fn outside_config_that_runs_programs_asks_for_trust() {
     // A trusted repository that gains a setting asks again, about that setting.
     let dir = scratch_repo("watch-trust-config-trusted");
     let mut st = state();
-    record(&mut st.settings, &std::fs::canonicalize(&dir).unwrap(), RepoTrust::Trusted);
-    record(&mut st.settings, &dir, RepoTrust::Trusted);
+    crate::state::trust::record_as_found(&mut st.settings, &std::fs::canonicalize(&dir).unwrap());
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert_eq!(st.trust_standing(), Some(Standing::Trusted));
     // The decision took the first load's print, so the load options changed: load once with them.

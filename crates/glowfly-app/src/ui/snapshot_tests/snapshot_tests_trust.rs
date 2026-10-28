@@ -301,7 +301,7 @@ fn no_chip_for_a_clean_or_trusted_repository() {
     st = std::mem::replace(&mut h.state_mut().0, AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now()));
     drop(h);
     let real = make_untrusted(&mut st, &dir);
-    record(&mut st.settings, &real, RepoTrust::Trusted);
+    crate::state::trust::record_as_found(&mut st.settings, &real);
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Untrusted").is_none(), "trusted");

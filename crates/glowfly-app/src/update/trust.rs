@@ -268,25 +268,21 @@ pub(super) fn created(st: &mut AppState, path: &Path, how: Created, output: &str
 }
 
 /// The active tab's snapshot was just replaced by a full load of `kind`: a repository Glowfly
-/// made is trusted on what this load found, a decision saved before prints were kept takes this
-/// load's print, and one a `git lfs install` from Glowfly changed adopts it; then it may ask.
+/// made is trusted on what this load found, and one a `git lfs install` from Glowfly changed
+/// adopts it; then it may ask. A decision saved before prints were kept adopts nothing: it
+/// covers only what runs nothing (`SavedTrust::covers`), so it asks again once.
 pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
-    let (real, workdir, print) = (snap.real_workdir.clone(), snap.workdir.clone(), snap.trust_print.clone());
+    let (real, print) = (snap.real_workdir.clone(), snap.trust_print.clone());
     let made = st.trust.created.iter().position(|p| st.names_repo(snap, p));
     let changed = standing(&st.settings, snap) == Standing::Changed;
     let adopt = st.trust.adopt_next.as_ref().is_some_and(|p| same_spelling(p, &real));
     if adopt {
         st.trust.adopt_next = None;
     }
-    let key = [&real, &workdir].into_iter().find(|p| st.settings.saved_trust(p).is_some()).cloned();
-    let legacy = key.as_ref().and_then(|k| st.settings.saved_trust(k)).is_some_and(|t| t.is_trusted() && t.print.is_none());
     let save = if let Some(i) = made {
         st.trust.created.remove(i);
         record_trusted(&mut st.settings, &real, print);
-        true
-    } else if let (true, Some(key)) = (legacy, key) {
-        record_trusted(&mut st.settings, &key, print);
         true
     } else if changed && adopt {
         tracing::debug!("adopting what git lfs install added to {}", real.display());

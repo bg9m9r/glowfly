@@ -22,7 +22,7 @@ fn a_then_b(name: &str) -> (AppState, PathBuf, PathBuf) {
     open(&mut st, &a);
     drive(&mut st, Msg::CloseModal);
     let b = untrusted_repo(&format!("{name}-b"));
-    record(&mut st.settings, &glowfly_core::paths::resolve(&b), RepoTrust::Trusted);
+    crate::state::trust::record_as_found(&mut st.settings, &glowfly_core::paths::resolve(&b));
     open(&mut st, &b);
     assert_eq!(st.active_tab, 1);
     assert!(!asking(&st) && !st.held(), "B is trusted");
@@ -90,7 +90,7 @@ fn a_trusted_repository_in_another_tab_runs_at_once() {
     // A is trusted and B, active, isn't: A's decision is the one that counts.
     let a = untrusted_repo("elsewhere-trusted-a");
     let mut st = state();
-    record(&mut st.settings, &glowfly_core::paths::resolve(&a), RepoTrust::Trusted);
+    crate::state::trust::record_as_found(&mut st.settings, &glowfly_core::paths::resolve(&a));
     open(&mut st, &a);
     let b = untrusted_repo("elsewhere-trusted-b");
     open(&mut st, &b);

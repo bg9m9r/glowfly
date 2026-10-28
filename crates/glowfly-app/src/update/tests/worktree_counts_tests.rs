@@ -223,6 +223,9 @@ fn another_worktree_is_counted_by_its_own_trust_not_the_tab_s() {
     let path = linked_info(&st).path.clone();
     let count_with = |st: &mut AppState, decision: Option<RepoTrust>| {
         glowfly_core::settings::repo_keys::set(&mut st.settings.repo_trust, &path, decision);
+        // Trusted on what it runs now, so the decision covers it.
+        let print = decision.filter(|d| *d == RepoTrust::Trusted).and_then(|_| glowfly_core::trust::scan_at(&path).ok()).map(|s| s.print());
+        glowfly_core::settings::repo_keys::set(&mut st.settings.repo_trust_prints, &path, print);
         st.refresh.counting = None;
         let fx = load_pending(st);
         let asked = counts(&fx);

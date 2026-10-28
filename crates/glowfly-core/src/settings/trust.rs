@@ -29,4 +29,11 @@ impl SavedTrust {
     pub fn is_trusted(&self) -> bool {
         self.trust == RepoTrust::Trusted
     }
+
+    /// Whether this is Trusted and its print covers `now`. A Trusted decision without a print
+    /// (saved before prints were kept, or recorded where no scan was at hand) counts as made on
+    /// a scan that found nothing: it covers only what runs nothing, so it asks again once.
+    pub fn covers(&self, now: &crate::trust::TrustPrint) -> bool {
+        self.is_trusted() && self.print.as_ref().map_or_else(|| now.is_empty(), |p| p.covers(now))
+    }
 }

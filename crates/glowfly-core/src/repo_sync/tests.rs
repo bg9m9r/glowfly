@@ -37,8 +37,11 @@ fn a_repository_that_runs_programs_is_skipped_unless_trusted() {
     set_config(&work, &[("core.sshCommand", "ssh-wrapper")]);
     assert_eq!(sync(&work, SyncOp::Fetch { prune: true }, None), Outcome::Untrusted);
     assert_eq!(sync(&work, SyncOp::Pull, None), Outcome::Untrusted);
+    // Without a print a decision covers nothing that runs (saved before prints were kept).
+    assert_eq!(sync(&work, SyncOp::Fetch { prune: true }, T), Outcome::Untrusted);
     // The remote is a local folder, so the ssh command never runs.
-    assert_eq!(sync(&work, SyncOp::Fetch { prune: true }, T), Outcome::UpToDate);
+    let trusted = SavedTrust::trusted(Some(crate::trust::scan_at(&work).unwrap().print()));
+    assert_eq!(sync(&work, SyncOp::Fetch { prune: true }, Some(&trusted)), Outcome::UpToDate);
     // Nothing in a plain repository runs programs: no decision is needed.
     let (plain, _) = with_origin("sync-plain");
     assert_eq!(sync(&plain, SyncOp::Fetch { prune: true }, None), Outcome::UpToDate);

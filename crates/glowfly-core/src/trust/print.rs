@@ -127,12 +127,13 @@ fn gained_own(scan: &TrustScan, prefix: &str, p: &TrustPrint) -> TrustScan {
 
 /// Whether git may run in a repository whose saved decision is `saved` and whose scan is
 /// `scan`: no decision allows only a repository where nothing runs; Trusted allows while its
-/// print (if it has one) covers the scan; Don't trust never does.
+/// print covers the scan (`SavedTrust::covers`: one without a print covers nothing that runs);
+/// Don't trust never does.
 pub fn allows(saved: Option<&crate::settings::SavedTrust>, scan: &TrustScan) -> bool {
     use crate::settings::RepoTrust;
     match saved {
         None => scan.is_empty(),
-        Some(s) if s.trust == RepoTrust::Trusted => s.print.as_ref().is_none_or(|p| p.covers(&scan.print())),
+        Some(s) if s.trust == RepoTrust::Trusted => s.covers(&scan.print()),
         Some(_) => false,
     }
 }

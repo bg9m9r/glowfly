@@ -121,7 +121,7 @@ fn upstream(repo: &Repository) -> Option<Oid> {
 pub fn allows(saved: Option<&SavedTrust>, incoming: &TrustScan) -> bool {
     match saved {
         None => incoming.follows.is_empty(),
-        Some(s) if s.is_trusted() => s.print.as_ref().is_none_or(|p| follow::covered(p, incoming)),
+        Some(s) if s.is_trusted() => s.print.as_ref().map_or_else(|| incoming.follows.is_empty(), |p| follow::covered(p, incoming)),
         Some(_) => false,
     }
 }

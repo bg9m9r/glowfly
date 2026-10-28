@@ -211,8 +211,7 @@ fn a_trusted_or_clean_repository_runs_at_once() {
     clean_tree(&dir);
     let mut st = state();
     let canonical = std::fs::canonicalize(&dir).unwrap();
-    record(&mut st.settings, &canonical, RepoTrust::Trusted);
-    record(&mut st.settings, &dir, RepoTrust::Trusted);
+    crate::state::trust::record_as_found(&mut st.settings, &canonical);
     open(&mut st, &dir);
     assert!(!st.held(), "trusted before it opened");
     assert!(st.modal.is_none());

@@ -166,9 +166,17 @@ pub fn recorded(s: &Settings, path: &Path) -> Option<RepoTrust> {
 }
 
 /// Saves `t` for the repository at `real`, replacing a decision saved under another spelling,
-/// with no print: a Trusted one adopts the print of its next full load.
+/// with no print: a Trusted one covers only what runs nothing (`SavedTrust::covers`), so the
+/// next scan that finds anything asks again.
 pub fn record(s: &mut Settings, real: &Path, t: RepoTrust) {
     s.set_trust(real, Some(SavedTrust { trust: t, print: None }));
+}
+
+/// Saves Trusted for the repository at `real`, made on what a scan of it finds now, for tests.
+#[cfg(test)]
+pub fn record_as_found(s: &mut Settings, real: &Path) {
+    let print = glowfly_core::trust::scan_at(real).map(|scan| scan.print()).unwrap_or_default();
+    record_trusted(s, real, print);
 }
 
 /// Saves Trusted for the repository at `real`, made on a scan whose print is `print`.
@@ -184,12 +192,12 @@ pub(crate) fn saved_for(s: &Settings, snap: &Snapshot) -> Option<SavedTrust> {
 /// Where the loaded repository `snap` stands.
 pub fn standing(s: &Settings, snap: &Snapshot) -> Standing {
     let saved = saved_for(s, snap);
-    let covered = saved.as_ref().and_then(|t| t.print.as_ref()).is_none_or(|p| p.covers(&snap.trust_print));
+    let covered = saved.as_ref().is_some_and(|t| t.covers(&snap.trust_print));
     standing_of(saved.map(|t| t.trust), snap.trust_scan.is_empty(), covered)
 }
 
 /// `standing` from the saved decision, whether the scan found nothing, and whether the
-/// decision's print covers the scan (true without a print).
+/// decision covers the scan (`SavedTrust::covers`).
 pub fn standing_of(saved: Option<RepoTrust>, clean: bool, covered: bool) -> Standing {
     match saved {
         Some(RepoTrust::Trusted) if !covered => Standing::Changed,

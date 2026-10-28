@@ -188,7 +188,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     drop(refs_span);
     let trust_scan = crate::trust::scan(&repo);
     let trust_print = trust_scan.print();
-    let git_status = trust_scan.is_empty() || (opts.trusted && opts.trusted_print.as_ref().is_none_or(|p| p.covers(&trust_print)));
+    let git_status = trust_scan.is_empty() || (opts.trusted && opts.trusted_print.as_ref().is_some_and(|p| p.covers(&trust_print)));
     // Found once per load, before the status read that marks its rows with them.
     let collisions = tracing::debug_span!("load.collisions").in_scope(|| repo.index().map(|mut i| super::collide::collisions(&mut i)))?;
     let started = std::time::Instant::now();

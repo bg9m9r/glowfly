@@ -103,16 +103,21 @@ fn removing_a_hook_doesn_t_ask() {
 }
 
 #[test]
-fn a_decision_saved_before_prints_takes_the_first_load_s() {
+fn a_decision_saved_before_prints_asks_once() {
     let dir = untrusted_repo("print-legacy");
     let mut st = state();
     let canonical = glowfly_core::paths::resolve(&dir);
     record(&mut st.settings, &canonical, RepoTrust::Trusted);
     assert!(st.settings.repo_trust_prints.is_empty());
     let fx = run(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    let saved = finish_keeping(&mut st, fx).iter().any(|e| matches!(e, Effect::SaveSettings(_)));
-    assert!(!asking(&st) && !st.held(), "not asked again");
-    assert!(saved, "the print is saved");
+    finish_keeping(&mut st, fx);
+    // Without a print it covers nothing that runs: whatever is there now wasn't seen.
+    assert!(st.held() && asking(&st), "asked again");
+    assert_eq!(st.trust_standing(), Some(Standing::Changed));
+    assert_eq!(saved_print(&st), None, "nothing adopted unseen");
+    let real = real(&st);
+    drive(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
+    assert!(!st.held(), "trusted on what the prompt showed");
     assert_eq!(saved_print(&st), Some(st.snap.as_ref().unwrap().trust_print.clone()));
     // From then on, something new asks.
     git(&dir, &["config", "credential.helper", "store"]);

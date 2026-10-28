@@ -105,7 +105,8 @@ fn a_worktree_not_trusted_never_runs_git() {
     assert!(!marker.exists(), "no hook ran");
 
     // Trusting it lets git read it, so its hook runs.
-    let count = count_worktree(&wt, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
+    let print = crate::trust::scan_at(&wt).unwrap().print();
+    let count = count_worktree(&wt, Some(&SavedTrust::trusted(Some(print))), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     assert!(marker.exists(), "git read it");
     cleanup(&[&wt, &dir]);

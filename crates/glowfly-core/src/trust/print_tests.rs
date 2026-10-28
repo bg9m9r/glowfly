@@ -139,7 +139,9 @@ fn allows_follows_the_decision_and_its_print() {
     let runs = TrustScan { config: vec![setting("core.sshCommand", "ssh -v")], ..TrustScan::default() };
     assert!(allows(None, &clean));
     assert!(!allows(None, &runs));
-    assert!(allows(Some(&SavedTrust::trusted(None)), &runs), "a decision saved before prints");
+    // A decision without a print (saved before prints were kept) covers only what runs nothing.
+    assert!(!allows(Some(&SavedTrust::trusted(None)), &runs), "a decision saved before prints asks again");
+    assert!(allows(Some(&SavedTrust::trusted(None)), &clean));
     assert!(allows(Some(&SavedTrust::trusted(Some(runs.print()))), &runs));
     assert!(allows(Some(&SavedTrust::trusted(Some(runs.print()))), &clean));
     let stale = SavedTrust::trusted(Some(clean.print()));
