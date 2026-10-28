@@ -36,7 +36,7 @@ source file, update its line here. Features that span every layer are in
 - `os.rs`: `OsEffect`, what is handed to the operating system: links, terminals, the file manager, file pickers.
 - `prefs.rs`: `PrefsEffect`, the git config values and signing keys of Preferences; a page's save goes as one `WriteGitConfig` batch that reports back (`PrefsMsg::ConfigSaved`).
 - `op_preview.rs`: `OpPreviewJob`, the operation preview's job: the work folder and the request.
-- `trust_check.rs`: `TrustCheck`, what the runner checks just before a trust-gated effect starts, and `Seal`, a check update records beside the effect it pushed.
+- `trust_check.rs`: `TrustCheck`, what the runner checks just before a trust-gated effect starts; `Seal`, a check update records beside the effect it pushed; and `Checked` (`Effect::Checked`), an effect carrying its check to the runner.
 - `selection.rs`: `SelectionEffect`: comparing two commits or a commit and the working tree, and a multi-selection's stacked list (`StackRequest`).
 - `lfs.rs`: `LfsEffect`: whether git-lfs is installed and the LFS page's status.
 - `branch.rs`: `BranchEffect`: counting the commits a branch delete would lose, for the Delete dialog.
@@ -101,7 +101,7 @@ source file, update its line here. Features that span every layer are in
 - `op_progress.rs`: the strip's Show work in progress and the banner's confirmed Abort (a kept one runs as `StashEffect::AbortKeeping`).
 - `branch_colour.rs`: pinned branch colours and the preset's hue count brought into the snapshot at load, on Preferences edits and on a tab's return.
 - `repo_colour.rs`: repository colours from the Color submenus.
-- `trust_seal.rs`: sealing trust-gated jobs, shells and reads for the runner's re-check (`push`), pairing the seals with the effects for the shell (`update::trust_checks`), and holding work again when the re-check finds the repository no longer covered (`TrustMsg::Stale`); tests in `update/tests/trust_recheck_tests.rs`.
+- `trust_seal.rs`: sealing trust-gated jobs, shells and previews for the runner's re-check (`push`), wrapping them and every read that lets git run (`read_in`) as `Effect::Checked` before update returns (`wrap`, from `update::update_sealed`), and holding work again when the re-check finds the repository no longer covered or what it brings in can't be compared (`TrustMsg::Stale`); tests in `update/tests/trust_recheck_tests.rs`.
 - `op_preview.rs`: opening the operation preview, its result for the dialog that asked only, Preview again and Apply, with a merge on a git without `merge-tree` answered at once and a merge preview in a held repository waiting for the trust prompt (`trust::hold_waiting`), since merge-tree runs the repository's merge drivers.
 - `load_more.rs`: a load for more history going on from the walk (the page taken in below the rows on screen), and a failed one kept with its automatic retries (its row in `ui/graph/more.rs`).
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
@@ -112,7 +112,7 @@ source file, update its line here. Features that span every layer are in
 ## `runner/`: background work
 
 - `mod.rs`: runs effects on worker threads and reports back with `Msg`s; one file per kind of work.
-- `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner, with the flat variants' arms.
+- `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate among them), with the flat variants' arms.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
 - `branches.rs`: the `Execute` impl of `BranchEffect`.
 - `ui.rs`: the `Execute` impl of `UiEffect`, which only warns: the UI shell carries those out.
@@ -121,7 +121,8 @@ source file, update its line here. Features that span every layer are in
 - `pick.rs`: runs a cherry-pick or revert, skipping the commits that change nothing, and reports `JobMsg::PickDone`.
 - `logs.rs`: the one ordered worker for the log files.
 - `guard.rs`: panic recovery: a panicking effect still sends the result that ends its job or loading state (`Recovery::of`); tests in `guard_tests.rs`.
-- `trust.rs`: reading the repositories made from a trusted one, and the re-check just before a sealed effect starts (`verify`, on its worker; a shell's in its session thread): a scan with libgit2 compared with the decision it was sent under, and an incoming commit's hooks that follow the working tree; tests in `trust_tests.rs`.
+- `trust.rs`: reading the repositories made from a trusted one, and the re-check just before a sealed effect starts (`verify`, on its worker; a shell's in its session thread): a scan with libgit2 compared with the decision it was sent under, and an incoming commit's hooks that follow the working tree; a read whose check fails reads without git where it can (a status read); a read's scan is reused while its stamp is unchanged (`trust::stamp`); tests in `trust_tests.rs`.
+- `trust_gate.rs`: the commits an effect names (a pick, a rebase step, an undo) compared before it starts, and the per-command gate a job's git commands go through where hooks follow the working tree (`Gate::before`: a pull pinned to what its one fetch brought, each later command compared just before it runs); tests in `trust_gate_tests.rs`.
 - Effects that change a repository, and fetches, keep it out of the repository pool while they run (`Effect::holds`, `repo_pool::hold`); a closed tab lets go of its handles (`BackgroundEffect::Forget`).
 - `sandbox.rs` (tests only): keeps the journeys' runner inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight.
 - `watcher.rs` (in `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`).

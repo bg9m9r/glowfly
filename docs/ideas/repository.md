@@ -39,16 +39,17 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
   outside its git dir in the refresh key (only its own config files and hooks folder are now)
 - Re-check checked-out submodules' settings and hooks in the runner just before a job, as the
   repository's own are (the runner's re-check skips submodules)
-- Compare the incoming hooks of cherry-pick, revert, `reset --hard`, stash apply, submodule
-  update and custom commands too (only checkout, switch, merge, rebase and pull are compared)
-- Compare the result of a rebase or `pull --rebase` whose own commits change the hooks folder,
-  not only the commit it rebases onto
+- Compare the incoming hooks of `reset --hard`, stash apply, submodule update and custom
+  commands too (checkout, switch, merge, rebase, pull, cherry-pick, revert and the interactive
+  rebase, undo and stack jobs are compared)
+- Compare `checkout -- path` restores from the index (only those naming a tree-ish are compared)
 - Notice hooks that run tracked scripts outside the hooks folder by a plain path (only links
   into the working tree are followed)
-- Close the window between a pull's own fetch and the fetch the re-check makes first: merge
-  the commit that was checked instead of fetching again
-- Re-check automatic conflict checks and the LFS, Sparse Checkout, range-diff and partial-clone
-  reads in the runner, as the jobs are
+- Re-check the partial-clone, forge and status-tip reads in the runner, as the jobs and the
+  other git reads are
+- Stamp a read's reused scan with file ids or content as well, where mtimes are coarse
+  (FAT32's two seconds)
+- Offer a fetch with hooks off from the "couldn't compare" prompt of a partial clone
 - Don't ask again after a checkout when a hook's checked-out bytes differ from the trusted
   commit's only by line endings (core.autocrlf)
 

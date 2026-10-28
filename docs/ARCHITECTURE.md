@@ -140,9 +140,11 @@ source file, update its line in the matching file.
    (`SessionStatus::Held`), Open in external terminal, a conflict check or merge preview the user asked for (`TrustSession::waiting`) and the LFS
    and Sparse Checkout pages' git reads (`LfsPage::held`, `SparseStatus::held`), starts in
    `trust::released`. Jobs, shells, external terminals, conflict checks and merge previews
-   that pass are pushed with a seal (`update/trust_seal.rs::push`): the runner scans the
+   that pass are pushed with a seal (`update/trust_seal.rs::push`), and update wraps them, and
+   every read that lets git run in a repository, in `Effect::Checked`: the runner scans the
    repository again just before they start and sends them back held when the decision no
-   longer covers it.
+   longer covers it (a read reads without git or fails). Where hooks follow the working tree,
+   a job's git commands also pass a per-command gate (`runner/trust_gate.rs`).
 4. **Runner.** Execute it in the area's `Execute` impl in `runner/<area>.rs`. The real work
    (git, files, HTTP) goes in `glowfly-core`.
 5. **Result.** The runner sends a result message back. Handle it in the same `update` file.
