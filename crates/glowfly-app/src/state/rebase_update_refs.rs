@@ -1,9 +1,13 @@
 //! The rebase panel's update-ref rows (`rebase.updateRefs`): fixed rows that belong to the commit
 //! or merge row right above them, and the row moves that carry them along. A row is moved with
-//! its update-ref rows as one block, and never lands between another row and its own.
+//! its update-ref rows as one block, and never lands between another row and its own. Also the
+//! branches an edit leaves on another commit (asked about before Start), and the branch aliases
+//! that hold a rebase back, in the user's words.
 
 use super::RebasePanel;
-use glowfly_core::rebase::TodoStep;
+use git2::Oid;
+use glowfly_core::i18n::Lang;
+use glowfly_core::rebase::{RebaseAction, TodoStep};
 use std::ops::Range;
 
 fn is_ref(step: Option<&TodoStep>) -> bool {
@@ -57,7 +61,62 @@ pub(in crate::state) fn moved_order(items: &[TodoStep], from: usize, to: usize) 
     (!order.iter().copied().eq(0..n)).then_some(order)
 }
 
+/// The commit the update-ref row at `i` leaves its branch on, and whether that commit melds
+/// into an earlier one: inside a squash group the last squash or fixup after it (the list writes
+/// the row after the group), else the nearest kept commit or merge row above it (exec and break
+/// steps don't move HEAD). `None` when none is above it: a commit the rebase already made, or
+/// the base.
+fn lands_on(items: &[TodoStep], i: usize) -> Option<(Oid, bool)> {
+    let kept = |s: &&TodoStep| match s {
+        TodoStep::UpdateRef(_) => false,
+        TodoStep::Commit(c) => c.action != RebaseAction::Drop,
+        _ => true,
+    };
+    if let Some(c) = items[i + 1..].iter().find(kept).and_then(TodoStep::commit).filter(|c| c.action.combines()) {
+        return Some((c.oid, true));
+    }
+    items[..i].iter().rev().find_map(|s| s.item().filter(|c| c.action != RebaseAction::Drop).map(|c| (c.oid, c.action.combines())))
+}
+
+/// Each update-ref row's branch (full ref name) and where it lands.
+fn landings(items: &[TodoStep]) -> Vec<(&str, Option<(Oid, bool)>)> {
+    items
+        .iter()
+        .enumerate()
+        .filter_map(|(i, s)| match s {
+            TodoStep::UpdateRef(r) => Some((r.as_str(), lands_on(items, i))),
+            _ => None,
+        })
+        .collect()
+}
+
 impl RebasePanel {
+    /// The branches (short names) the edited list leaves on another commit than the list as
+    /// loaded: the commit they point at is dropped or melds into another (or another into it),
+    /// or another commit moved above a branch whose commit is already done.
+    pub fn moved_refs(&self) -> Vec<String> {
+        let before = landings(&self.original);
+        landings(&self.items)
+            .into_iter()
+            .filter(|(r, now)| before.iter().find(|(b, _)| b == r).is_some_and(|(_, was)| was != now))
+            .map(|(r, _)| r.strip_prefix("refs/heads/").unwrap_or(r).to_owned())
+            .collect()
+    }
+
+    /// The paragraph Start's question adds for [`Self::moved_refs`], if any branch moves.
+    pub fn moved_refs_note(&self, t: Lang) -> Option<String> {
+        let refs = self.moved_refs();
+        (!refs.is_empty()).then(|| t.trf("rebase.update_ref.moved.body", &[("branches", &refs.join(", "))]))
+    }
+
+    /// Why a branch alias holds the rebase back, in the user's words, when `blocker` is that
+    /// reason (`start_blocker` gives it in English).
+    pub fn held_text(&self, t: Lang, blocker: &str) -> Option<String> {
+        let h = self.plan.as_ref()?.held.first().filter(|h| h.text() == blocker)?;
+        let key = if h.elsewhere { "rebase.update_ref.alias_busy" } else { "rebase.update_ref.alias_not_branch" };
+        Some(t.trf(key, &[("alias", &h.alias), ("target", &h.target)]))
+    }
+
     /// Where a step added at `at` goes instead: below the update-ref rows there, so it doesn't
     /// come between a commit and its branches.
     pub(in crate::state) fn past_refs(&self, mut at: usize) -> usize {

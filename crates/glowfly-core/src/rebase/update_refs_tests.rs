@@ -11,7 +11,7 @@ use git2::RepositoryState;
 use std::path::{Path, PathBuf};
 
 /// main: c1..c4 with `rebase.updateRefs` on, `lower` at c2 and `mid` at c3.
-fn stacked(name: &str) -> (PathBuf, [Oid; 4]) {
+pub(super) fn stacked(name: &str) -> (PathBuf, [Oid; 4]) {
     let (dir, c) = linear(name);
     set_config(&dir, &[("rebase.updateRefs", "true")]);
     git(&dir, &["branch", "lower", &c[1].to_string()]);
@@ -24,7 +24,7 @@ fn ur(branch: &str) -> TodoStep {
 }
 
 /// Each step as "pick c2" or "update-ref lower".
-fn kinds(steps: &[TodoStep]) -> Vec<String> {
+pub(super) fn kinds(steps: &[TodoStep]) -> Vec<String> {
     steps
         .iter()
         .map(|s| match s {
@@ -41,7 +41,12 @@ fn rev(dir: &Path, r: &str) -> String {
     out(dir, &["rev-parse", r]).trim().to_owned()
 }
 
-fn plan_from(dir: &Path, c: Oid) -> RebasePlan {
+/// The repository's own git folder (a worktree's is not `.git`).
+pub(super) fn git_dir(dir: &Path) -> PathBuf {
+    git2::Repository::open(dir).unwrap().path().to_path_buf()
+}
+
+pub(super) fn plan_from(dir: &Path, c: Oid) -> RebasePlan {
     plan(dir, &RebaseBase::FromCommit(c)).unwrap()
 }
 
@@ -49,7 +54,7 @@ fn start_steps(dir: &Path, p: &RebasePlan, steps: Vec<TodoStep>) -> Outcome {
     start_copy(dir, &StartRequest { head: p.head, upstream: p.upstream, items: steps, autostash: false })
 }
 
-fn unsupported<T: std::fmt::Debug>(r: crate::error::Result<T>) -> String {
+pub(super) fn unsupported<T: std::fmt::Debug>(r: crate::error::Result<T>) -> String {
     match r {
         Err(Error::Unsupported(t)) => t,
         other => panic!("expected a refusal, got {other:?}"),
@@ -58,20 +63,20 @@ fn unsupported<T: std::fmt::Debug>(r: crate::error::Result<T>) -> String {
 
 /// The list git itself writes for the rebase `p` plans, saved by a sequence editor that then
 /// fails, so nothing starts.
-fn gits_todo(dir: &Path, p: &RebasePlan) -> String {
-    let saved = dir.join(".git").join("gits-todo");
+pub(super) fn gits_todo(dir: &Path, p: &RebasePlan) -> String {
+    let saved = git_dir(dir).join("gits-todo");
     let editor = SequenceEditor::Shell(format!("sh -c 'cp \"$1\" {} && exit 1' sh", shell_quote(&saved.to_string_lossy())));
     let req = StartRequest { head: p.head, upstream: p.upstream, items: p.steps.clone(), autostash: false };
     let _ = start(dir, &req, &editor);
     assert_eq!(state(dir), RepositoryState::Clean);
-    std::fs::read_to_string(&saved).unwrap()
+    String::from_utf8_lossy(&std::fs::read(&saved).unwrap()).into_owned()
 }
 
 /// Whether git accepts the list built from `steps` in place of its own `theirs`.
-fn installs(dir: &Path, theirs: &str, steps: &[TodoStep]) -> crate::error::Result<()> {
-    let (saved, ours) = (dir.join(".git").join("gits-todo"), dir.join(".git").join("our-todo"));
+pub(super) fn installs(dir: &Path, theirs: &str, steps: &[TodoStep]) -> crate::error::Result<()> {
+    let (saved, ours) = (git_dir(dir).join("gits-todo"), git_dir(dir).join("our-todo"));
     std::fs::write(&saved, theirs).unwrap();
-    std::fs::write(&ours, build(steps, &dir.join(".git"), false).0).unwrap();
+    std::fs::write(&ours, build(steps, &git_dir(dir), false).0).unwrap();
     install_todo(&ours, &saved)
 }
 
@@ -90,7 +95,9 @@ fn the_plan_adds_an_update_ref_after_each_stacked_branchs_commit() {
     let off = plan_from(&dir, c2);
     assert_eq!(kinds(&off.steps), ["pick c2", "pick c3", "pick c4"], "off: no update-ref steps");
     assert!(listed_refs(&gits_todo(&dir, &off)).is_empty());
-    assert_eq!(unsupported(installs(&dir, &gits_todo(&dir, &off), &p.steps)), REFS_CHANGED);
+    let why = unsupported(installs(&dir, &gits_todo(&dir, &off), &p.steps));
+    assert!(why.starts_with("git won't move lower, mid, also-head with this rebase"), "{why}");
+    assert_eq!(unsupported(installs(&dir, &theirs, &off.steps)), REFS_CHANGED, "git moving branches the list doesn't");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -135,7 +142,8 @@ fn a_branch_checked_out_in_another_worktree_is_left_alone() {
     installs(&dir, &theirs, &p.steps).expect("the plan's list matches git's");
     let mut more = p.steps.clone();
     more.insert(3, ur("elsewhere"));
-    assert_eq!(unsupported(installs(&dir, &theirs, &more)), REFS_CHANGED);
+    let why = unsupported(installs(&dir, &theirs, &more));
+    assert!(why.starts_with("git won't move elsewhere (checked out at "), "{why}");
     let fewer: Vec<TodoStep> = p.steps.iter().filter(|s| s.update_ref() != Some("mid")).cloned().collect();
     assert_eq!(unsupported(installs(&dir, &theirs, &fewer)), REFS_CHANGED);
 
@@ -273,5 +281,15 @@ fn quick_edits_keep_the_stacked_branches() {
 
     let c3 = Oid::from_str(&rev(&dir, "main~1")).unwrap();
     assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::SquashIntoParent(c3))), SPLIT_BY_BRANCH);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A quick drop of a commit another branch points at would take it from that branch too.
+#[test]
+fn a_quick_drop_of_a_branch_tip_is_refused() {
+    let (dir, [_, c2, c3, c4]) = stacked("update-refs-quick-drop");
+    assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::Drop(vec![c3]))), BRANCH_TIP);
+    assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::Drop(vec![c2, c4]))), SOME_BRANCH_TIPS);
+    prepare_edit(&dir, &QuickEdit::Drop(vec![c4])).expect("no other branch points at c4");
     let _ = std::fs::remove_dir_all(&dir);
 }

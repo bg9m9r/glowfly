@@ -65,7 +65,7 @@ source file, update its line here. Features that span every layer are in
 - `init.rs`: the Init dialog.
 - `issue_words.rs`: the words of the issue panel and Create dialog per tracker.
 - `rebase_merges.rs`: the rebase panel's merge rows.
-- `rebase_update_refs.rs`: the rebase panel's update-ref rows and moving a commit with them.
+- `rebase_update_refs.rs`: the rebase panel's update-ref rows, moving a commit with them, the stacked branches an edit leaves on another commit, and the branch aliases that hold Start back.
 - `rebase_onto.rs`: rebasing onto a graph commit.
 - `stash_confirm.rs`: whether applying, popping or deleting a stash asks first or is refused over conflicts, for every entry point, and the files the stash and the working tree both change; tests in `stash_confirm_tests.rs`.
 - `auto_stash.rs`: the auto-stash prompt, its texts and the stashes waiting to go back.

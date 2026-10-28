@@ -14,6 +14,7 @@ use crate::state::rebase_quick::QUICK_STALE;
 use crate::state::rebase_remaining::ENDED;
 use crate::state::{AppState, Selection};
 use git2::RepositoryState;
+use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::{self, Outcome, StartRequest};
 use glowfly_core::repo::Snapshot;
 use std::path::PathBuf;
@@ -178,20 +179,24 @@ fn start(st: &mut AppState, confirmed: bool, autostash: bool, now: Instant, fx: 
     }
     let (Some(p), Some(snap)) = (&st.session.rebase.view, &st.snap) else { return };
     if let Some(why) = p.start_blocker(snap, st.job.is_some()) {
+        let why = p.held_text(st.settings.lang(), &why).unwrap_or(why);
         st.log(false, why);
         return;
     }
     let drops = p.drops();
     let stash = needs_stash(snap);
+    let refs = p.moved_refs_note(st.settings.lang());
+    let moves_refs = refs.is_some();
     // Always stash (Preferences > General) answers the stash-only question; drops still ask.
     let always = stash && st.settings.auto_stash;
     let autostash = autostash || always;
-    if (((drops > 0 || (stash && !always)) && !confirmed) || (stash && !autostash))
-        && let Some((title, body)) = start_question(drops, p.branch(), stash)
+    if (((drops > 0 || moves_refs || (stash && !always)) && !confirmed) || (stash && !autostash))
+        && let Some((title, body)) = with_refs(st.settings.lang(), start_question(drops, p.branch(), stash), refs)
     {
         let then = Msg::Rebase(RebaseMsg::StartRebase { confirmed: true, autostash: stash });
-        // Dropping commits loses them; only stashing first is an ordinary question.
-        let ask = if drops > 0 {
+        // Dropping commits (or leaving a stacked branch without its commit) loses them; only
+        // stashing first is an ordinary question.
+        let ask = if drops > 0 || moves_refs {
             Msg::confirm_danger(&title, body, "Start rebase", then)
         } else {
             Msg::confirm(&title, body, "Start rebase", then)
@@ -312,5 +317,15 @@ pub(super) fn close(st: &mut AppState) {
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.session.rebase.view.as_ref().is_some_and(|p| p.loading) {
         request(st, fx);
+    }
+}
+
+/// Start's question (`q`) with the paragraph about stacked branches left on another commit
+/// (`refs`), which asks on its own when nothing else does.
+pub(super) fn with_refs(t: Lang, q: Option<(String, String)>, refs: Option<String>) -> Option<(String, String)> {
+    match (q, refs) {
+        (Some((title, body)), Some(r)) => Some((title, format!("{body}\n\n{r}"))),
+        (None, Some(r)) => Some((t.tr("rebase.update_ref.moved.title").to_owned(), r)),
+        (q, None) => q,
     }
 }

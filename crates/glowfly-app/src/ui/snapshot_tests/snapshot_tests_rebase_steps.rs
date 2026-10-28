@@ -110,8 +110,9 @@ fn rebase_panel_update_refs() {
     let (mut st, dir) = with_panel(ThemeChoice::Dark, "rebase-update-refs", &[Pick, Pick, Pick, Reword, Pick]);
     let p = panel(&mut st);
     p.items.insert(2, TodoStep::UpdateRef("refs/heads/login-form".into()));
-    p.items.insert(5, TodoStep::UpdateRef("refs/heads/login-checks".into()));
-    p.items.insert(6, TodoStep::UpdateRef("refs/heads/review/login".into()));
+    // One commit's branches in git's order: reverse name order.
+    p.items.insert(5, TodoStep::UpdateRef("refs/heads/review/login".into()));
+    p.items.insert(6, TodoStep::UpdateRef("refs/heads/login-checks".into()));
     p.selected = Some(2);
     assert!(!p.movable(2));
     let mut h = harness(st, true);

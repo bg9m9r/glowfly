@@ -87,6 +87,8 @@ The graph and history table, search, multi-select, interactive rebase and stacke
   (refused now)
 - Show a branch checked out in another worktree, which git leaves out of `rebase.updateRefs`, as
   a note row in the panel
+- Explain git's "Failed to update refs/heads/<alias>" after a rebase whose range ends at a branch
+  alias of the rebased branch (git lists the alias; the rebase itself succeeds)
 
 ### Hide / show only branches in the graph
 

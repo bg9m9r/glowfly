@@ -4,7 +4,7 @@
 use super::plan::{checked_head, range};
 use super::progress::progress;
 use super::todo::{MSG_DIR, build, editor_command, problem};
-use super::{CHANGED, NOT_REBASING, Outcome, STALE, SequenceEditor, StartRequest, TodoStep, Upstream, merges};
+use super::{CHANGED, NOT_REBASING, Outcome, STALE, SequenceEditor, StartRequest, TodoStep, Upstream, merges, update_refs};
 use crate::error::{Error, Result};
 use crate::gitcli;
 use git2::{Oid, Repository, RepositoryState};
@@ -17,7 +17,7 @@ use std::path::Path;
 /// the sequence editor refused the todo.
 pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Result<Outcome> {
     let repo = Repository::open(workdir)?;
-    let (head, _) = checked_head(&repo)?;
+    let (head, branch) = checked_head(&repo)?;
     if head != req.head {
         return Err(Error::Unsupported(STALE.into()));
     }
@@ -29,6 +29,10 @@ pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Res
     }
     if let Some(p) = problem(&req.items) {
         return Err(Error::Unsupported(p));
+    }
+    // Checked again here, as the plan may be older than a new branch alias.
+    if let Some(h) = update_refs::predict(&repo, workdir, &format!("refs/heads/{branch}"), &expected)?.held.first() {
+        return Err(Error::Unsupported(h.text()));
     }
 
     // Message files from an earlier rebase are removed only now: exec lines read them until a

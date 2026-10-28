@@ -40,7 +40,7 @@ pub use todo::{
     build, default_combined, editor_command, group_end, install_todo, is_unchanged, listed_oids, problem, problem_with, shell_quote,
     shell_quote_for,
 };
-pub use update_refs::listed_refs;
+pub use update_refs::{HeldAlias, NOT_UTF8, listed_refs};
 
 /// Why Start refuses a list made before HEAD moved.
 pub const STALE: &str = "The branch changed since this list was made. Reset to reload it.";
@@ -58,6 +58,10 @@ pub const SOME_MERGE_SELECTED: &str = "The selection includes a merge commit.";
 pub const SIDE_LINE: &str = "This commit came in through a merge; edit it in the interactive rebase panel instead.";
 pub const SOME_SIDE_LINE: &str = "Some selected commits came in through a merge; edit them in the interactive rebase panel instead.";
 /// A squash whose commits follow one another on the line, but the older one starts another line.
+/// A quick drop of a commit another branch points at (`rebase.updateRefs`).
+pub const BRANCH_TIP: &str = "Another branch points at this commit and would lose it; drop it in the interactive rebase panel instead.";
+pub const SOME_BRANCH_TIPS: &str =
+    "Another branch points at a selected commit and would lose it; drop them in the interactive rebase panel instead.";
 pub const SPLIT_BY_BRANCH: &str = "Another branch starts between these commits; squash them in the interactive rebase panel instead.";
 pub const COMBINE_AFTER_MERGE: &str = "A squash or fixup must follow the commit it melds into, not a merge, label or reset step.";
 /// A commit row a later `reset` would throw away (see `merges::loses_commit`).
@@ -282,6 +286,8 @@ pub struct RebasePlan {
     /// All picks; label, reset and merge steps too when the range holds merges, and the
     /// update-ref steps git adds with `rebase.updateRefs`.
     pub steps: Vec<TodoStep>,
+    /// Branch aliases git would move wrongly with this rebase: Start is refused while any is.
+    pub held: Vec<HeldAlias>,
 }
 
 /// The list to run, with the HEAD it was made for.
@@ -382,5 +388,7 @@ mod remaining_tests;
 mod run_tests;
 #[cfg(test)]
 mod todo_tests;
+#[cfg(test)]
+mod update_refs_git_tests;
 #[cfg(test)]
 mod update_refs_tests;

@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 /// Starts `git rebase -i <upstream>` the way a terminal would, with a sequence editor that
 /// writes `todo` as the list. Returns git's exit status.
 pub(super) fn rebase_i(dir: &Path, upstream: &str, todo: &str) -> bool {
-    let file = dir.join(".git").join("test-todo");
+    let file = git2::Repository::open(dir).unwrap().path().join("test-todo");
     std::fs::write(&file, todo).unwrap();
     let editor = editor_command(&SequenceEditor::Copy, &file);
     let (ok, _) = run_with_input(dir, &args(&["rebase", "-i", upstream]), "", &[("GIT_SEQUENCE_EDITOR", &editor)]);

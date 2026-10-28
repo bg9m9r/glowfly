@@ -87,6 +87,7 @@ fn fake_plan(n: u8) -> RebasePlan {
         upstream: Upstream::Root,
         onto_label: String::new(),
         steps: (1..=n).map(|k| TodoStep::Commit(item(k))).collect(),
+        held: Vec::new(),
     }
 }
 

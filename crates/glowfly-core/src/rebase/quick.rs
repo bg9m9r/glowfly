@@ -4,8 +4,9 @@
 use super::plan::{checked_head, plan};
 use super::todo::problem;
 use super::{
-    DROPS_EVERYTHING, MERGE_SELECTED, NOT_CONSECUTIVE, NOT_ON_BRANCH, PARENT_MERGE, ROOT_SQUASH, RebaseAction, RebaseBase, SIDE_LINE,
-    SOME_MERGE_SELECTED, SOME_NOT_ON_BRANCH, SOME_SIDE_LINE, SPLIT_BY_BRANCH, StartRequest, TOO_FEW_TO_SQUASH, Upstream,
+    BRANCH_TIP, DROPS_EVERYTHING, MERGE_SELECTED, NOT_CONSECUTIVE, NOT_ON_BRANCH, PARENT_MERGE, ROOT_SQUASH, RebaseAction, RebaseBase,
+    SIDE_LINE, SOME_BRANCH_TIPS, SOME_MERGE_SELECTED, SOME_NOT_ON_BRANCH, SOME_SIDE_LINE, SPLIT_BY_BRANCH, StartRequest, TOO_FEW_TO_SQUASH,
+    TodoStep, Upstream,
 };
 use crate::error::{Error, Result};
 use git2::{Oid, Repository};
@@ -81,6 +82,9 @@ pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
         _ => oldest,
     };
     let p = plan(workdir, &RebaseBase::FromCommit(base))?;
+    if let Some(h) = p.held.first() {
+        return Err(Error::Unsupported(h.text()));
+    }
     let mut steps = p.steps;
     let mut rows: Vec<usize> = chosen.iter().filter_map(|o| steps.iter().position(|s| s.oid() == Some(*o))).collect();
     rows.sort_unstable();
@@ -112,6 +116,10 @@ pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
             }
         }
         QuickEdit::Drop(_) => {
+            // Another branch pointing at a dropped commit would lose it (rebase.updateRefs).
+            if rows.iter().any(|&r| matches!(steps.get(r + 1), Some(TodoStep::UpdateRef(_)))) {
+                return Err(refused(if many { SOME_BRANCH_TIPS } else { BRANCH_TIP }));
+            }
             for &r in &rows {
                 if let Some(i) = steps[r].commit_mut() {
                     i.action = RebaseAction::Drop;

@@ -29,7 +29,14 @@ fn c(n: u8, action: RebaseAction) -> TodoStep {
 /// A loaded panel holding `steps`.
 fn panel(steps: Vec<TodoStep>) -> RebasePanel {
     let mut p = RebasePanel::loading(RebaseBase::FromCommit(oid(1)));
-    let plan = RebasePlan { head: oid(9), branch: "main".into(), upstream: Upstream::Root, onto_label: String::new(), steps: Vec::new() };
+    let plan = RebasePlan {
+        head: oid(9),
+        branch: "main".into(),
+        upstream: Upstream::Root,
+        onto_label: String::new(),
+        steps: Vec::new(),
+        held: Vec::new(),
+    };
     p.fill(plan);
     p.original = steps.clone();
     p.items = steps;
@@ -213,4 +220,20 @@ fn update_ref_rows_travel_with_their_commit() {
     p.add_step(Some(1), NewStep::Break);
     assert_eq!(p.items[1..4], [c(3, Pick), ur("mid"), TodoStep::Break]);
     assert!(!p.items.iter().any(|s| matches!(s, TodoStep::Exec(_))));
+}
+
+/// A running rebase whose first remaining row is a branch's update (its commit is done):
+/// moving a commit above it, or a squash group taking it in, leaves the branch elsewhere.
+#[test]
+fn edits_that_move_a_stacked_branch_are_named() {
+    let mut p = panel(vec![ur("lower"), c(3, Pick), c(4, Pick)]);
+    assert!(p.moved_refs().is_empty());
+    p.move_item(2, 0);
+    assert_eq!(p.items[..2], [c(4, Pick), ur("lower")]);
+    assert_eq!(p.moved_refs(), ["lower"], "c4 now comes before lower's update");
+    p.reset();
+    p.set_action(1, Fixup);
+    assert_eq!(p.moved_refs(), ["lower"], "c3 melds into lower's commit");
+    p.set_action(1, Drop);
+    assert!(p.moved_refs().is_empty(), "a dropped c3 leaves lower where it was");
 }

@@ -183,6 +183,7 @@ pub(super) mod rebase_stash_tests;
 pub(super) mod rebase_steps_tests;
 pub(super) mod rebase_tests;
 pub(super) mod rebase_undo_tests;
+pub(super) mod rebase_update_refs_tests;
 pub(super) mod recent_tests;
 pub(super) mod refresh_index_tests;
 pub(super) mod refresh_tests;

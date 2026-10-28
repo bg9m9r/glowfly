@@ -48,6 +48,7 @@ pub(in crate::ui) fn with_panel(theme: ThemeChoice, name: &str, actions: &[Rebas
         upstream: Upstream::Root,
         onto_label: String::new(),
         steps: items.iter().cloned().map(TodoStep::Commit).collect(),
+        held: Vec::new(),
     };
     let mut panel = RebasePanel::loading(RebaseBase::FromCommit(items[0].oid));
     panel.fill(plan);

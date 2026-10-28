@@ -309,6 +309,9 @@ impl RebasePanel {
         if self.is_stale(snap) {
             return Some(rebase::STALE.into());
         }
+        if let Some(h) = self.plan.as_ref().and_then(|p| p.held.first()) {
+            return Some(h.text());
+        }
         if let Some(text) = rebase::in_progress_text(snap.state) {
             return Some(text);
         }

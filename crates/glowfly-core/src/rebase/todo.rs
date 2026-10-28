@@ -4,7 +4,7 @@
 
 use super::{
     CHANGED, COMBINE_AFTER_MERGE, COMBINE_AFTER_STEP, EMPTY_COMBINED, EMPTY_EXEC, EMPTY_REWORD, EXEC_ONE_LINE, FIRST_COMBINES,
-    LOST_TO_RESET, REFS_CHANGED, RebaseAction, SequenceEditor, TodoItem, TodoStep, merges,
+    LOST_TO_RESET, RebaseAction, SequenceEditor, TodoItem, TodoStep, merges,
 };
 use crate::error::{Error, Result};
 use git2::Oid;
@@ -345,14 +345,16 @@ pub fn listed_oids(text: &str) -> Vec<String> {
 /// git writes with `rebase.updateRefs`; never one git left out, such as a branch checked out in
 /// another worktree). On a mismatch git's todo is left as it is.
 pub fn install_todo(prepared: &Path, git_todo: &Path) -> Result<()> {
-    let theirs = listed_oids(&std::fs::read_to_string(git_todo)?);
+    // Read leniently: a branch name that isn't UTF-8 is then caught by its update-ref line.
+    let gits = String::from_utf8_lossy(&std::fs::read(git_todo)?).into_owned();
+    let theirs = listed_oids(&gits);
     let text = std::fs::read_to_string(prepared)?;
     let ours = listed_oids(&text);
     if theirs.len() != ours.len() {
         return Err(Error::Unsupported(CHANGED.into()));
     }
-    if !super::update_refs::same_refs(&std::fs::read_to_string(git_todo)?, &text) {
-        return Err(Error::Unsupported(REFS_CHANGED.into()));
+    if let Some(why) = super::update_refs::refs_problem(&gits, &text) {
+        return Err(Error::Unsupported(why));
     }
     let mut used = vec![false; ours.len()];
     for t in &theirs {

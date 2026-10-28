@@ -4,6 +4,7 @@ use super::{DETACHED, RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, 
 use crate::commit_text::{self, Decoder};
 use crate::error::{Error, Result};
 use git2::{Oid, Repository, Sort};
+use std::collections::HashSet;
 use std::path::Path;
 
 /// The list for rebasing the current branch from `base`, oldest first, all picks; a range that
@@ -56,8 +57,10 @@ pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan> {
     } else {
         oids.into_iter().map(|o| item(&repo, o).map(TodoStep::Commit)).collect::<Result<Vec<_>>>()?
     };
-    let steps = update_refs::add(&repo, workdir, &format!("refs/heads/{branch}"), steps)?;
-    Ok(RebasePlan { head, branch, upstream, onto_label, steps })
+    let in_range: HashSet<Oid> = steps.iter().filter_map(TodoStep::oid).collect();
+    let tips = update_refs::predict(&repo, workdir, &format!("refs/heads/{branch}"), &in_range)?;
+    let steps = update_refs::add(steps, &tips);
+    Ok(RebasePlan { head, branch, upstream, onto_label, steps, held: tips.held })
 }
 
 /// HEAD's commit and branch, refusing while an operation is in progress or on a detached or
