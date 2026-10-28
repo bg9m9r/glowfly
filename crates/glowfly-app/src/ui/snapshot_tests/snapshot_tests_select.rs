@@ -154,22 +154,30 @@ fn graph_multi_menu() {
     // Or copies it.
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.state_mut().1.clear();
-    open_submenu(&mut h, "Copy");
-    submenu_item(&h, "Copy", "Patch").click();
+    h.get_by_label("Copy patch").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Patch(PatchMsg::Copy(o)) if *o == [search, login])));
+    // The eye button of the Cherry-pick row previews the pick, oldest first.
+    click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
+    h.state_mut().1.clear();
+    h.get_by_label("Preview cherry-pick").click();
+    h.run();
+    let want = glowfly_core::op_preview::PreviewOp::CherryPick(vec![login, search]);
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpPreview(crate::msg::OpPreviewMsg::Open(op)) if *op == want)));
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Selection(SelectionMsg::CherryPick(_)))), "the button doesn't pick");
     // And their SHAs, one per line.
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.state_mut().1.clear();
-    open_submenu(&mut h, "Copy");
-    submenu_item(&h, "Copy", "SHAs").click();
+    // The menu's item, not the selection panel's button of the same name (right of the graph).
+    let in_menu = h.get_all_by_label("Copy SHAs").find(|n| n.bounding_box().is_some_and(|b| b.x0 < 1000.0));
+    in_menu.expect("the menu's Copy SHAs").click();
     h.run();
     let shas = format!("{search}\n{login}");
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Copy(t) if *t == shas)));
 
     // Any other row gets the single-commit menu.
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
-    assert!(h.query_by_label("Cherry-pick").is_some());
+    assert!(h.query_by_label("Checkout (detached)").is_some());
     assert!(h.query_by_label("2 commits selected").is_none(), "the single-commit menu has its own header");
     assert_eq!(h.query_all_by_label("Cherry-pick 2 commits").count(), 1, "only the details panel's button");
     drop(h);
@@ -277,6 +285,20 @@ fn graph_commit_menu() {
     let ys: Vec<f64> = order.iter().map(|l| h.get_by_label(l).bounding_box().expect("a laid-out item").y0).collect();
     assert!(ys.windows(2).all(|w| w[0] < w[1]), "{order:?} top to bottom, got {ys:?}");
     assert!(!h.get_by_label("Rebase main onto this commit").is_disabled());
+    // A split row: the row cherry-picks, its eye button opens the preview instead.
+    h.state_mut().1.clear();
+    h.get_by_label("Cherry-pick").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Selection(SelectionMsg::CherryPick(o)) if *o == [search])));
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::OpPreview(_))), "the row doesn't preview");
+    click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
+    h.state_mut().1.clear();
+    h.get_by_label("Preview cherry-pick").click();
+    h.run();
+    let want = glowfly_core::op_preview::PreviewOp::CherryPick(vec![search]);
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpPreview(crate::msg::OpPreviewMsg::Open(op)) if *op == want)));
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Selection(SelectionMsg::CherryPick(_)))), "the button doesn't pick");
+    click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.state_mut().1.clear();
     h.get_by_label("Interactive rebase main onto this commit…").click();
     h.run();
@@ -285,7 +307,8 @@ fn graph_commit_menu() {
 
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
     assert!(h.query_by_label(&format!("Fix build on Windows  {}", sha(fix))).is_some(), "the header");
-    assert!(h.get_by_label("Rebase main onto this commit").is_disabled(), "main already contains it");
+    // main already contains it: cherry-picking it or rebasing onto it can't apply.
+    assert!(h.query_by_label("Rebase main onto this commit").is_none() && h.query_by_label("Cherry-pick").is_none());
     h.state_mut().1.clear();
     h.get_by_label("Create patch…").click();
     h.run();
@@ -308,13 +331,15 @@ fn graph_commit_menu() {
     // A merge commit has no patch of its own.
     click(&mut h, pos2(700.0, row_y(merge_row)), PointerButton::Secondary);
     assert!(h.get_by_label("Create patch…").is_disabled());
-    // History edits need a linear run up to HEAD, which is a merge here.
-    assert!(h.get_by_label("Squash into parent…").is_disabled());
+    // History edits need a linear run up to HEAD, which is a merge here: reword, squash and
+    // drop are blocked alike, so one row says why, and there is no Drop row.
+    let edits = Lang::En.tr("commits.menu.edits_blocked");
+    assert!(h.get_by_label(edits).is_disabled());
+    assert!(h.query_by_label("Squash into parent…").is_none() && h.query_by_label("Drop…").is_none());
     open_submenu(&mut h, "Copy");
     assert!(submenu_item(&h, "Copy", "Patch").is_disabled());
     click(&mut h, pos2(700.0, row_y(root_row)), PointerButton::Secondary);
-    assert!(h.get_by_label("Squash into parent…").is_disabled());
-    assert!(h.get_by_label("Reword…").is_disabled());
+    assert!(h.get_by_label(edits).is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

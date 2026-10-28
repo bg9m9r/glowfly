@@ -13,8 +13,8 @@ pub fn onto_commit_blocker(t: Lang, snap: &Snapshot, oid: Oid) -> Option<String>
         return Some(why.to_owned());
     }
     let Some(current) = snap.head_branch.as_deref() else { return Some(t.tr("commits.blocked.detached").to_owned()) };
-    let head = snap.head_oid?;
-    let contained = head == oid || snap.commits_between(head, None).iter().any(|c| c.oid == oid);
+    snap.head_oid?;
+    let contained = super::commit_menu::menu_trim::head_contains(snap, oid);
     let sha = oid.to_string();
     contained.then(|| t.trf("commits.blocked.contains", &[("branch", &current), ("sha", &&sha[..7])]))
 }

@@ -78,20 +78,17 @@ Button "Branch hier erstellen…"
 Button "Tag hier erstellen…"
 Button "Worktree aus diesem Commit erstellen…"
 Button "Cherry-picken"
-Button "Cherry-pick-Vorschau…"
+Button "Cherry-pick-Vorschau"
 Button "Reverten"
 Button "Rebase von main auf diesen Commit"
-Button "Rebase-Vorschau…"
+Button "Rebase-Vorschau"
 Button "Interaktiver Rebase von main auf diesen Commit…"
+Button "Nachricht ändern, squashen oder entfernen" [disabled]
 Button "main auf diesen Commit zurücksetzen"
 Button "Interaktiver Rebase ab hier…"
-Button "Nachricht ändern…" [disabled]
-Button "In den Eltern-Commit squashen…" [disabled]
-Button "Vorschau zum Entfernen…" [disabled]
 Button "Mit dem Arbeitsverzeichnis vergleichen"
 Button "Patch erstellen…"
 Button "Kopieren"
-Button "Entfernen…" [disabled]
 Button "Merge branch 'login-page'"
 Button "Fix build on Windows"
 Button "Add login page"

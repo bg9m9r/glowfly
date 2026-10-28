@@ -100,6 +100,17 @@ pub fn fork_target(info: &RemoteInfo, connections: &[Connection], action: ForkAc
     Ok(t)
 }
 
+/// Whether `action` can ever apply to `info` here: it has a fetch URL on a recognized hosting
+/// service that supports it. (Not being connected yet is a reason the user can fix, so the
+/// menu shows that item disabled; the others leave it out.)
+pub fn fork_applies(info: &RemoteInfo, connections: &[Connection], action: ForkAction) -> bool {
+    let Some(t) = forge::parse_remote(info.fetch_url(), connections).filter(|_| !info.fetch_url().is_empty()) else { return false };
+    match action {
+        ForkAction::List => t.provider.lists_forks(),
+        ForkAction::Create => t.provider.creates_forks(),
+    }
+}
+
 /// `Fork origin (team/app) on GitHub…`, or a generic label when no service is recognized.
 pub fn fork_label(info: &RemoteInfo, connections: &[Connection]) -> String {
     match forge::parse_remote(info.fetch_url(), connections) {

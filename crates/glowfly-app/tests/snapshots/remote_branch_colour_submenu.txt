@@ -37,9 +37,9 @@ Button "Checkout" [disabled]
 Button "Create branch here…"
 Button "Create worktree from this branch…"
 Button "Merge into main"
-Button "Preview merge…"
+Button "Preview merge"
 Button "Rebase main onto this branch"
-Button "Preview rebase…"
+Button "Preview rebase"
 Button "Interactive rebase main onto this branch…" [disabled]
 Button "Check for conflicts with main"
 Button "Compare with main" [disabled]
@@ -64,7 +64,8 @@ RadioButton "Orchid" [off]
 RadioButton "Gold" [off]
 RadioButton "Sky" [off]
 RadioButton "Indigo" [off]
-Button "Copy"
+Button "Copy name"
+Button "Copy link"
 Button "Delete from remote…"
 Button "New tag"
 Button "Tags actions"
@@ -182,5 +183,4 @@ painted:
   "Ada Lovelace"
   "dcc73f3"
   "01/05/2026 10:00 AM"
-  "⏵"
   "⏵"

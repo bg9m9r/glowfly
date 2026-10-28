@@ -118,8 +118,8 @@ fn remote_group_menu() {
     }
     // example.com is no hosting service Glowfly knows: its page opens, but there are no forks.
     assert!(!h.get_by_label("View in browser").is_disabled());
-    assert!(h.get_by_label("Add a fork…").is_disabled());
-    assert!(h.get_by_label("Fork on its hosting service…").is_disabled());
+    assert!(h.query_by_label("Add a fork…").is_none());
+    assert!(h.query_by_label("Fork on its hosting service…").is_none());
     h.check_snapshot("remote_group_menu");
     open_submenu(&mut h, "Copy");
     for item in ["Fetch URL", "Push URL", "Link"] {
@@ -132,15 +132,14 @@ fn remote_group_menu() {
     let at = center(&h, "backup");
     click(&mut h, at, PointerButton::Secondary);
     assert!(h.query_by_label("Fetch").is_some());
-    open_submenu(&mut h, "Copy");
-    assert!(h.query_by_label("Push URL").is_none());
-    submenu_item(&h, "Copy", "Fetch URL").click();
+    // Two copy items sit in the menu, each saying what it copies.
+    assert!(h.query_by_label("Copy").is_none() && h.query_by_label("Copy push URL").is_none());
+    h.get_by_label("Copy fetch URL").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Copy(u) if u == "D:/backups/app.git")));
     let at = center(&h, "backup");
     click(&mut h, at, PointerButton::Secondary);
-    open_submenu(&mut h, "Copy");
-    submenu_item(&h, "Copy", "Link").click();
+    h.get_by_label("Copy link").click();
     h.run();
     let want = crate::deep_link::LinkTarget::Repository { remote: Some("backup".into()) };
     assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));

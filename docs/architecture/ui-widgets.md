@@ -28,8 +28,10 @@ source file, update its line here.
 - The file rows are one click target each, with the selection painted across the row and into the panel padding.
 - `widgets/row_fill.rs`: one selection fill with a left accent bar and lifted hover, shared by the graph, sidebar rows, file rows and the file history list.
 - `widgets/menu.rs`: the one menu style (row metrics from `theme/spacing.rs`'s `menu` tokens, transparent rows, `SM` pills) and the only ways to open a menu: `context_menu`, `submenu`, `popup_below`, `custom_button`, `below`, plus `separator` (never first or doubled), `group_header` (the one group-header style, in place of its separator), `inset` for plain lines at the label column, and `danger_style` / `danger_submenu` for destructive items; `tests/menus.rs` checks.
-- `widgets/menu_columns.rs`: a menu's shared columns (state, icon, label, reason slot, shortcut, chevron slot), learned from its rows each pass so every row lines up.
-- `widgets/menu_row.rs`: the menu row (`menu::item`): a ✓, radio dot or current-choice ✓ in the state column, a dot or swatch in the icon column, the label, the info mark and the shortcut on the menu's columns.
+- `widgets/menu_columns.rs`: a menu's shared columns (state, icon, label, reason slot, shortcut, end slot for a chevron or a trailing button), learned from its rows each pass so every row lines up.
+- `widgets/menu_row.rs`: the menu row (`menu::item`): a ✓, radio dot or current-choice ✓ in the state column, a dot or swatch in the icon column, the label, the info mark and the shortcut on the menu's columns; `item_named` for a label with cut names, `trailing_button` + `show_split` for a split row.
+- `widgets/menu_split.rs`: a split menu row's trailing icon button (its own target, focus, tooltip and name, blocked with its row or by its own reason) and `Part`, which part was clicked.
+- `widgets/menu_name.rs`: names inside menu labels cut in the middle to `NAME_MAX` characters (`named`), the full label kept for the tooltip and accessible name.
 - `widgets/row_menu.rs` (`RowMenuExt::row_menu`): right-click menus that open just below their row (at the pointer's x), or above it when they don't fit, sharing egui's context-menu state.
 - `widgets/truncate.rs`: single-line text cut with an ellipsis and its whole text on hover, and names and paths cut in the middle.
 - `widgets/section_header.rs`: the left panel's section headers with their hover + (the section's create action) and ⋯ (its menu), and the empty state line under an empty section; each + is described by `state/section_actions.rs`.

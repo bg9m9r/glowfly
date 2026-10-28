@@ -22,8 +22,17 @@ use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{FilterOp, GraphFilter, ThemeChoice};
 use std::path::PathBuf;
 
-const ITEMS: [&str; 8] =
-    ["Checkout (detached)", "Annotate…", "Push to", "Hide in graph", "Show only this", "Copy", "Delete locally…", "Delete from remote"];
+const ITEMS: [&str; 9] = [
+    "Checkout (detached)",
+    "Annotate…",
+    "Push to",
+    "Hide in graph",
+    "Show only this",
+    "Copy name",
+    "Copy link",
+    "Delete locally…",
+    "Delete from remote",
+];
 
 /// The fixture with the TAGS section open and the given remotes (no branches on them).
 fn with_tags(theme: ThemeChoice, name: &str, remotes: &[&str]) -> (AppState, PathBuf) {
@@ -107,8 +116,7 @@ fn tag_row_menu() {
     assert!(pushed(&h, &|m| matches!(m, Msg::Tag(t) if *t == want)));
 
     open_menu(&mut h);
-    open_submenu(&mut h, "Copy");
-    submenu_item(&h, "Copy", "Link").click();
+    h.get_by_label("Copy link").click();
     h.run();
     let want = crate::deep_link::LinkTarget::Tag("v0.1.0".into());
     assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));

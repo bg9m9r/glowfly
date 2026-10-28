@@ -2,6 +2,7 @@
 //! (a submenu per ref when the row has several), elsewhere the commit menu, or the
 //! multi-selection menu for a row of the selection.
 
+use crate::keymap::Keymap;
 use crate::msg::Msg;
 use crate::state::custom_commands::MenuCommands;
 use crate::state::{ForgeState, Selection, remote_branch};
@@ -28,6 +29,8 @@ pub(super) struct RowMenu<'a> {
     pub idle: bool,
     /// The custom commands of the commit and branch menus.
     pub commands: &'a MenuCommands<'a>,
+    /// The keys the commit menus show in their shortcut column.
+    pub keys: &'a Keymap,
 }
 
 /// Attaches the row's menu to `resp`. Where the right-click happened is kept until the menu
@@ -44,8 +47,8 @@ pub(super) fn context_menu(ui: &mut egui::Ui, resp: &Response, m: RowMenu, msgs:
         match m.snap.refs.get(&m.commit.oid).filter(|l| on_labels && !l.is_empty()) {
             Some(labels) => labels_menu(ui, labels, &m, msgs),
             None => match m.selection {
-                Selection::Commits(s) if s.contains(m.commit.oid) => multi_commit_menu(ui, t, s, m.snap, msgs),
-                _ => commit_menu(ui, t, m.commit, m.snap, m.commands, msgs),
+                Selection::Commits(s) if s.contains(m.commit.oid) => multi_commit_menu(ui, t, s, m.snap, m.keys, msgs),
+                _ => commit_menu(ui, t, m.commit, m.snap, m.commands, m.keys, msgs),
             },
         }
     });
@@ -91,5 +94,5 @@ fn label_menu(ui: &mut egui::Ui, l: &RefLabel, m: &RowMenu, msgs: &mut Vec<Msg>)
         RefKind::Tag => return tag_menu(ui, t, &l.name, snap, &filter(), m.idle, msgs),
         RefKind::Head => {}
     }
-    commit_menu(ui, t, m.commit, snap, m.commands, msgs);
+    commit_menu(ui, t, m.commit, snap, m.commands, m.keys, msgs);
 }

@@ -2,6 +2,11 @@
 //! commit named by its summary in confirmations.
 
 use crate::msg::Msg;
+
+/// What the long context menus leave out or fold together (beside the commit menus' wording, it
+/// covers the branch menus too).
+#[path = "menu_trim.rs"]
+pub mod menu_trim;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{CommitInfo, Snapshot};

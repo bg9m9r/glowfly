@@ -71,6 +71,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("menu_bar_view_theme", Window),
     ("branch_colour_submenu", Window),
     ("graph_commit_menu", Window),
+    ("graph_multi_menu", Window),
     ("toolbar_push_menu", Window),
     ("wip_file_menu_danger_light", Window),
     ("repo_menu_dark", TopLeft(640.0, 620.0)),

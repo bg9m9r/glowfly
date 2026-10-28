@@ -111,6 +111,15 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - On grey or green-grey dark fields (Graphite, Garden dark) the danger hover pill takes no red (the no-brown rule); try a red edge or mark instead
 - The terminal context menu's Clear and the welcome list's Remove from recent could join a last group once those menus are regrouped
 
+### Trimmed context menus and split rows
+
+- The local branch menu is still about 19 rows: fold Force delete into the Delete dialog (an "even if not merged" box), and a Compare ▸ submenu once there are more compare items, would bring it under 15
+- Work out `merged` for every local branch (not only those with a remote upstream), so Force delete hides whenever a plain delete would do
+- The pull request items (`pr_menu_items.rs`) and the Push to remotes cut their interpolated names too; "Create pull request from main into this branch…" could say "into this branch…" with the source in the tooltip
+- A remote branch whose plain Checkout is blocked by a local branch of the same name offers "Checkout as local branch…" instead
+- Arrow keys reach a split row's preview button (Right from the row), once menus have their own keyboard navigation (spec §9)
+- The reset submenu's preview buttons could open the preview with that row's mode chosen
+
 ### Restyled toolbar and rich tooltips
 
 - The other hover texts (sidebar rows, graph ref chips, file rows, status bar chips) move onto

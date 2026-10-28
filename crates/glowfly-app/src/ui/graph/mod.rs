@@ -336,6 +336,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     forge,
                     idle,
                     commands: &commands,
+                    keys: keymap,
                 };
                 ref_menu::context_menu(ui, &resp, menu, msgs);
             }

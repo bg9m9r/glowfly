@@ -31,8 +31,6 @@ Button "origin"
 Label "origin"
 Button "Fetch"
 Button "View in browser"
-Button "Add a fork…" [disabled]
-Button "Fork on its hosting service…" [disabled]
 Button "Edit…"
 Button "Copy"
 Button "Remove…"

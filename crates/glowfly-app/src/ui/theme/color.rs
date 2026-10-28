@@ -9,7 +9,8 @@ use glowfly_core::settings::{BranchPalette, RepoColour};
 use std::cell::RefCell;
 
 pub use super::surfaces::{
-    danger_hover, field_fill, guide_fill, hover_layer, inset, menu_danger, tool_backing, tool_hover, tool_press, tool_pressed, wash,
+    danger_hover, field_fill, guide_fill, hover_layer, inset, menu_danger, pressed_layer, tool_backing, tool_hover, tool_press,
+    tool_pressed, wash,
 };
 
 /// The colors of one theme, in families: neutrals, brand, status, attention, diff, syntax,

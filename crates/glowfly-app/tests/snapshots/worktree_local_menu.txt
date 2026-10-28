@@ -28,24 +28,24 @@ Button "search"
 Label "search"
 Button "Checkout" [disabled]
 Button "Open worktree"
+Button "Push" [disabled]
+Button "Merge into main"
+Button "Preview merge"
+Button "Rebase main onto this branch"
+Button "Preview rebase"
+Button "Interactive rebase main onto this branch…"
+Button "Check for conflicts with main"
+Button "Compare with before last rebase"
 Button "Create branch here…"
 Button "Create worktree from this branch…"
 Button "Rename…"
 Button "Set upstream…" [disabled]
-Button "Merge into main"
-Button "Preview merge…"
-Button "Rebase main onto this branch"
-Button "Preview rebase…"
-Button "Interactive rebase main onto this branch…"
-Button "Check for conflicts with main"
-Button "Compare with before last rebase"
-Button "Fast-forward" [disabled]
-Button "Push" [disabled]
 Button "Create pull request…" [disabled]
 Button "Hide in graph"
 Button "Show only this"
 Button "Color"
-Button "Copy"
+Button "Copy name"
+Button "Copy link"
 Button "Delete…" [disabled]
 Button "Force delete…" [disabled]
 Button "Add remote"
@@ -161,5 +161,4 @@ painted:
   "Ada Lovelace"
   "dcc73f3"
   "01/05/2026 10:00 AM"
-  "⏵"
   "⏵"

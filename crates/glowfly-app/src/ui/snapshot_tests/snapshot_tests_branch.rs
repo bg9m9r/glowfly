@@ -124,8 +124,7 @@ fn branch_menu() {
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Branch(BranchMsg::FastForwardBranch(b)) if b == "search")));
     open_menu(&mut h);
-    super::menu_testing::open_submenu(&mut h, "Copy");
-    super::menu_testing::submenu_item(&h, "Copy", "Link").click();
+    h.get_by_label("Copy link").click();
     h.run();
     let want = crate::deep_link::LinkTarget::LocalBranch("search".into());
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));

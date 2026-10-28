@@ -1,6 +1,7 @@
-//! The Copy submenus of the commit, multi-commit, tag, local branch and remote branch menus:
-//! what each entry copies, and the patch entry disabled for a merge. Shares the fixture
-//! repository and renderer with `snapshot_tests`.
+//! The copy items of the commit, multi-commit, tag, local branch and remote branch menus (a
+//! Copy submenu for the commit's four, in the menu for the others' two): what each copies, and
+//! the patch entry disabled for a merge. Shares the fixture repository and renderer with
+//! `snapshot_tests`.
 
 use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -37,6 +38,13 @@ fn copy(h: &mut H, open: &dyn Fn(&mut H), label: &str) {
     open(h);
     open_submenu(h, "Copy");
     submenu_item(h, "Copy", label).click();
+    h.run();
+}
+
+/// Clicks `label`, a copy item the menu `open` opens holds itself (two or fewer, no submenu).
+fn flat(h: &mut H, open: &dyn Fn(&mut H), label: &str) {
+    open(h);
+    h.get_by_label(label).click();
     h.run();
 }
 
@@ -82,9 +90,9 @@ fn multi_commit_menu_copy_patch_merge() {
     let mut h = harness(st, true);
     h.run_steps(4);
     click(&mut h, at, PointerButton::Secondary);
-    open_submenu(&mut h, "Copy");
-    assert!(submenu_item(&h, "Copy", "Patch").is_disabled(), "{why:?}");
-    assert!(!submenu_item(&h, "Copy", "SHAs").is_disabled());
+    assert!(h.get_by_label("Copy patch").is_disabled(), "{why:?}");
+    // The selection panel has a Copy SHAs button too; neither is blocked.
+    assert!(h.get_all_by_label("Copy SHAs").all(|n| !n.is_disabled()));
     drop(h);
     remove_fixture(&dir);
 }
@@ -103,7 +111,7 @@ fn ref_menus_copy_names() {
         let at = sidebar_row(h, "v0.1.0", false);
         click(h, at, PointerButton::Secondary);
     };
-    copy(&mut h, &tag, "Name");
+    flat(&mut h, &tag, "Copy name");
     assert!(copied(&h, "v0.1.0"));
 
     // A local branch.
@@ -111,9 +119,9 @@ fn ref_menus_copy_names() {
         let at = sidebar_row(h, "search", false);
         click(h, at, PointerButton::Secondary);
     };
-    copy(&mut h, &local, "Name");
+    flat(&mut h, &local, "Copy name");
     assert!(copied(&h, "search"));
-    copy(&mut h, &local, "Link");
+    flat(&mut h, &local, "Copy link");
     assert!(linked(&h, LinkTarget::LocalBranch("search".into())));
 
     // A remote branch copies its full name.
@@ -121,7 +129,7 @@ fn ref_menus_copy_names() {
         let at = sidebar_row(h, "search", true);
         click(h, at, PointerButton::Secondary);
     };
-    copy(&mut h, &remote, "Name");
+    flat(&mut h, &remote, "Copy name");
     assert!(copied(&h, "origin/search"));
     drop(h);
     remove_fixture(&dir);

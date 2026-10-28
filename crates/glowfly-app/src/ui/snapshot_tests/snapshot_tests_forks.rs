@@ -111,7 +111,7 @@ fn remote_group_menu_github() {
     let at = center(&h, "backup");
     click(&mut h, at, PointerButton::Secondary);
     assert!(h.get_by_label("View in browser").is_disabled(), "a folder has no web page");
-    assert!(h.get_by_label("Add a fork…").is_disabled());
+    assert!(h.query_by_label("Add a fork…").is_none(), "a folder is on no hosting service: no fork items");
     drop(h);
     remove_fixture(&dir);
 }

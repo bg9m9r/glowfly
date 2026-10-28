@@ -92,9 +92,7 @@ fn menus_german() {
     open_submenu(&mut h, de.tr("branch.menu.push_to"));
     let _ = submenu_item(&h, de.tr("branch.menu.push_to"), "backup");
     assert_no_english(&h, "the Push to submenu");
-    open_submenu(&mut h, de.tr("commits.menu.copy"));
-    assert!(h.query_by_label(de.tr("refs.copy.link")).is_some());
-    assert_no_english(&h, "the Copy submenu");
+    assert!(h.query_by_label(de.tr("refs.copy.link_item")).is_some(), "the copy items, in the menu");
     close_menu(&mut h);
 
     // REMOTE origin/search.

@@ -1,14 +1,18 @@
-//! The right-click menu of a local branch, in groups: checkout (or, for a branch another
-//! worktree has, open that worktree), a new branch or worktree, rename and upstream; merge,
-//! rebase, checking for conflicts, comparing with its version before the last rebase
-//! (Range-diff), fast-forward and push; the stack items for a branch in a stack (restack,
-//! push, pull requests: `stack_menu.rs`); pull requests (pushing the branch
-//! first when the code host lacks it, into the branch selected before; without a code host, a
-//! disabled item saying why); hide or solo in the graph, and its colour; the custom commands
-//! (`custom_menu.rs`); the Copy submenu; and delete. The branch's name heads the menu once; the items leave it out. Disabled items say why
-//! on hover, with the same text `update` logs when it refuses a late message.
+//! The right-click menu of a local branch, in the menu review's groups (spec §10): checkout (or,
+//! for a branch another worktree has, open that worktree), push, push to another remote (only
+//! when that offers more than Push) and fast-forward (only with an upstream); merge and rebase
+//! (split rows whose eye button previews them), interactive rebase, checking for conflicts and
+//! comparing with its version before the last rebase (Range-diff); a new branch or worktree,
+//! rename and upstream; the stack items for a branch in a stack (`stack_menu.rs`); pull requests
+//! (pushing the branch first when the code host lacks it, into the branch selected before;
+//! without a code host, a disabled item saying why); hide or solo in the graph, and its colour;
+//! copying its name or a link; the custom commands (`custom_menu.rs`); and delete (force delete
+//! only when a plain delete may refuse, and one blocked row when all of them are blocked alike).
+//! The branch's name heads the menu once; other names in labels are cut to fit, in full on hover.
+//! Disabled items say why on hover, with the same text `update` logs when it refuses a late
+//! message.
 
-use super::common::{menu_danger, menu_item, menu_item_if};
+use super::common::{menu_danger, menu_item, menu_item_if, menu_row, menu_row_preview};
 use super::ref_visibility;
 use super::theme::color;
 use crate::conflict_check::ConflictCheckMsg;
@@ -20,12 +24,14 @@ use crate::msg::OpPreviewMsg;
 use crate::msg::RebaseMsg;
 use crate::range_diff::RangeDiffMsg;
 use crate::state::branches::{self, NO_REMOTES};
+use crate::state::commit_menu::menu_trim;
 use crate::state::custom_commands::MenuCommands;
 use crate::state::gitflow_base::{Deleting, guard};
 use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere};
 use crate::state::worktrees::open_blocked;
 use crate::state::{ForgeState, Selection};
-use crate::ui::widgets::menu::{separator, submenu};
+use crate::ui::widgets::menu::{item, item_named, named, separator, submenu};
+use crate::ui::widgets::reason::ItemState;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
 use glowfly_core::custom_commands::Place;
@@ -50,10 +56,11 @@ pub fn local_branch_menu(
 ) {
     let name = b.name.as_str();
     super::stack_menu::header(ui, t, name, snap);
-    branch_items(ui, t, b, snap, msgs);
+    primary_items(ui, t, b, snap, msgs);
     separator(ui);
     integrate_items(ui, t, b, snap, msgs);
-    push_items(ui, t, b, snap, msgs);
+    separator(ui);
+    branch_items(ui, t, b, snap, msgs);
     super::stack_menu::items(ui, t, b, snap, fs, msgs);
     // Always drawn: without a code host, a disabled item says why there are no pull requests.
     separator(ui);
@@ -70,21 +77,20 @@ pub fn local_branch_menu(
     separator(ui);
     ref_visibility::menu_items(ui, t, &format!("refs/heads/{name}"), filter, b.is_head, msgs);
     super::branch_colour_menu::items(ui, t, name, snap, msgs);
-    super::custom_menu::group(ui, t, cmds, Place::Branch, Target::Branch(name.to_owned()), msgs);
     separator(ui);
-    submenu(ui, t.tr("commits.menu.copy"), |ui| {
-        menu_item(msgs, ui, t.tr("refs.copy.name"), Msg::Copy(name.to_owned()));
-        menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::LocalBranch(name.to_owned()))));
-    });
+    menu_item(msgs, ui, t.tr("refs.copy.name_item"), Msg::Copy(name.to_owned()));
+    let link = Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::LocalBranch(name.to_owned())));
+    menu_item(msgs, ui, t.tr("refs.copy.link_item"), link);
+    super::custom_menu::group(ui, t, cmds, Place::Branch, Target::Branch(name.to_owned()), msgs);
     if !b.is_head {
         separator(ui);
         delete_items(ui, t, b, snap, msgs);
     }
 }
 
-/// Checkout (or open the worktree that has it), a new branch or worktree from it, rename and
-/// upstream.
-fn branch_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+/// Checkout (or open the worktree that has it), Push, the "Push to" submenu (one entry per
+/// remote, when that offers more than Push) and fast-forward (with an upstream).
+fn primary_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     if !b.is_head {
         let checkout = Msg::Branch(BranchMsg::Checkout(name.to_owned()));
@@ -94,6 +100,20 @@ fn branch_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
             menu_item_if(msgs, ui, t.tr("branch.menu.open_worktree"), open_blocked(wt), open);
         }
     }
+    push_items(ui, t, b, snap, msgs);
+    if menu_trim::fast_forward_applies(b) {
+        let ff_blocked = branches::fast_forward_blocked(b, snap.state);
+        let ff = match branches::upstream_label(b) {
+            Some(up) => item_named(named(t.tr("branch.menu.fast_forward_to"), &[("upstream", &up)])),
+            None => item(t.tr("branch.menu.fast_forward")),
+        };
+        menu_row(msgs, ui, ff.blocked(ff_blocked.as_deref()), Msg::Branch(BranchMsg::FastForwardBranch(name.to_owned())));
+    }
+}
+
+/// A new branch or worktree from it, rename and upstream.
+fn branch_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    let name = b.name.as_str();
     if let Some(o) = b.oid {
         let new_branch = Msg::Branch(BranchMsg::NewBranch { start: Some(o.to_string()), name: String::new() });
         menu_item(msgs, ui, t.tr("commits.menu.create_branch"), new_branch);
@@ -108,32 +128,55 @@ fn branch_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
     }
 }
 
-/// Merge, rebase and conflict check against the checked-out branch; on the checked-out branch
-/// itself, the conflict check against its target.
+/// Merge (with its preview), rebase (with its preview), interactive rebase and conflict check
+/// against the checked-out branch; on the checked-out branch itself, the conflict check against
+/// its target. Then the compare with the branch before its last rebase.
 fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let current = snap.head_branch.as_deref().unwrap_or_default();
     if b.is_head {
         let check = Msg::ConflictCheck(ConflictCheckMsg::CheckNow);
         match glowfly_core::conflict_check::target_for(snap) {
-            Some(target) => menu_item(msgs, ui, t.trf("branch.menu.check_conflicts_with", &[("branch", &target.name)]), check),
+            Some(target) => {
+                menu_row(msgs, ui, item_named(named(t.tr("branch.menu.check_conflicts_with"), &[("branch", &target.name)])), check)
+            }
             None => menu_item_if(msgs, ui, t.tr("branch.menu.check_conflicts"), Some(t.tr("conflict_check.no_target")), check),
         }
     } else if !current.is_empty() {
-        let args: [(&str, &dyn std::fmt::Display); 1] = [("branch", &current)];
-        menu_item(msgs, ui, t.trf("branch.menu.merge_into", &args), Msg::git("Merge", &["merge", name]));
+        let on = [("branch", current)];
         let preview = |op| Msg::OpPreview(OpPreviewMsg::Open(op));
-        if let Some(oid) = b.oid {
-            menu_item(msgs, ui, t.tr("op_preview.menu.merge"), preview(PreviewOp::Merge { theirs: name.to_owned(), oid }));
-        }
-        menu_item(msgs, ui, t.trf("branch.menu.rebase_onto", &args), Msg::git("Rebase", &["rebase", name]));
-        if let Some(oid) = b.oid {
-            menu_item(msgs, ui, t.tr("op_preview.menu.rebase"), preview(PreviewOp::Rebase { onto: name.to_owned(), oid }));
+        let merge = item_named(named(t.tr("branch.menu.merge_into"), &on));
+        let rebase = item_named(named(t.tr("branch.menu.rebase_onto"), &on));
+        match b.oid {
+            Some(oid) => {
+                let merge_preview = preview(PreviewOp::Merge { theirs: name.to_owned(), oid });
+                menu_row_preview(
+                    msgs,
+                    ui,
+                    merge,
+                    (t.tr("op_preview.menu.merge"), None),
+                    Msg::git("Merge", &["merge", name]),
+                    merge_preview,
+                );
+                let rebase_preview = preview(PreviewOp::Rebase { onto: name.to_owned(), oid });
+                menu_row_preview(
+                    msgs,
+                    ui,
+                    rebase,
+                    (t.tr("op_preview.menu.rebase"), None),
+                    Msg::git("Rebase", &["rebase", name]),
+                    rebase_preview,
+                );
+            }
+            None => {
+                menu_row(msgs, ui, merge, Msg::git("Merge", &["merge", name]));
+                menu_row(msgs, ui, rebase, Msg::git("Rebase", &["rebase", name]));
+            }
         }
         let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch(name.to_owned())));
-        menu_item(msgs, ui, t.trf("branch.menu.interactive_onto", &args), onto);
+        menu_row(msgs, ui, item_named(named(t.tr("branch.menu.interactive_onto"), &on)), onto);
         let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(name.to_owned()));
-        menu_item(msgs, ui, t.trf("branch.menu.check_conflicts_with", &args), check);
+        menu_row(msgs, ui, item_named(named(t.tr("branch.menu.check_conflicts_with"), &on)), check);
     }
     if b.oid.is_some() {
         let compare = Msg::RangeDiff(RangeDiffMsg::OpenRewrite(format!("refs/heads/{name}")));
@@ -141,16 +184,9 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
     }
 }
 
-/// Fast-forward, Push, and the "Push to" submenu (one entry per remote).
+/// Push, and the "Push to" submenu (one entry per remote) when it offers more than Push.
 fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
-    let ff_label = match branches::upstream_label(b) {
-        Some(up) => t.trf("branch.menu.fast_forward_to", &[("upstream", &up)]),
-        None => t.tr("branch.menu.fast_forward").to_owned(),
-    };
-    let ff_blocked = branches::fast_forward_blocked(b, snap.state);
-    menu_item_if(msgs, ui, ff_label, ff_blocked.as_deref(), Msg::Branch(BranchMsg::FastForwardBranch(name.to_owned())));
-
     let has_remotes = !snap.remotes.is_empty();
     let push_blocked = branches::push_blocked(b, has_remotes);
     menu_item_if(
@@ -160,7 +196,7 @@ fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs:
         push_blocked.as_deref(),
         Msg::Branch(BranchMsg::PushBranch { branch: name.to_owned(), remote: None }),
     );
-    if !has_remotes {
+    if !menu_trim::push_to_adds_a_choice(b, snap) {
         return;
     }
     // egui draws the submenu arrow; the label has none of its own.
@@ -191,14 +227,23 @@ fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs:
     });
 }
 
-/// Delete, force delete and, with an upstream on a remote, delete together with it (only when
-/// the checked-out branch contains it). All are disabled for a branch another worktree has, and
-/// ask more firmly for the Git Flow production or development branch (`gitflow_base::guard`).
+/// Delete, force delete (unless the branch is known to be merged, when a plain delete takes
+/// it) and, with an upstream on a remote, delete together with it (only when the checked-out
+/// branch contains it). All are disabled for a branch another worktree has (one row says so
+/// when there would be three), and ask more firmly for the Git Flow production or development
+/// branch (`gitflow_base::guard`).
 fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let head = snap.head_branch.as_deref();
     let in_worktree = delete_blocked(snap, name);
     let in_worktree = in_worktree.as_deref();
+    let force = menu_trim::force_delete_applies(b);
+    let with_remote = branches::can_delete_with_remote(b);
+    let rows = 1 + force as usize + with_remote.is_some() as usize;
+    if menu_trim::deletes_fold(rows, in_worktree.is_some()) {
+        item(t.tr("branch.menu.delete")).blocked(in_worktree).show(ui);
+        return;
+    }
     menu_danger(
         msgs,
         ui,
@@ -217,43 +262,41 @@ fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
             ),
         ),
     );
-    menu_danger(
-        msgs,
-        ui,
-        t.tr("branch.menu.force_delete"),
-        in_worktree,
-        guard(
-            t,
-            snap,
-            name,
-            Deleting::Local,
-            Msg::confirm_danger(
-                t.tr("branch.force_delete.title"),
-                t.trf("branch.force_delete.body", &[("branch", &name)]),
-                t.tr("common.delete.button"),
-                Msg::git("Delete branch", &["branch", "-D", name]),
-            ),
-        ),
-    );
-    if let Some(tr) = branches::can_delete_with_remote(b) {
-        let blocked = in_worktree.map(str::to_owned).or_else(|| branches::delete_with_remote_blocked(b, tr, head));
+    if force {
         menu_danger(
             msgs,
             ui,
-            t.trf("branch.menu.delete_with_remote", &[("remote_branch", &tr.display())]),
-            blocked.as_deref(),
+            t.tr("branch.menu.force_delete"),
+            in_worktree,
             guard(
                 t,
                 snap,
                 name,
-                Deleting::LocalAndRemote(&tr.remote),
+                Deleting::Local,
                 Msg::confirm_danger(
-                    t.tr("branch.delete_both.title"),
-                    branches::delete_with_remote_body(t, b, tr),
-                    t.tr("branch.delete_both.button"),
-                    Msg::Branch(BranchMsg::DeleteBranchAndRemote(name.to_owned())),
+                    t.tr("branch.force_delete.title"),
+                    t.trf("branch.force_delete.body", &[("branch", &name)]),
+                    t.tr("common.delete.button"),
+                    Msg::git("Delete branch", &["branch", "-D", name]),
                 ),
             ),
         );
+    }
+    if let Some(tr) = with_remote {
+        let blocked = in_worktree.map(str::to_owned).or_else(|| branches::delete_with_remote_blocked(b, tr, head));
+        let label = named(t.tr("branch.menu.delete_with_remote"), &[("remote_branch", &tr.display())]);
+        let ask = guard(
+            t,
+            snap,
+            name,
+            Deleting::LocalAndRemote(&tr.remote),
+            Msg::confirm_danger(
+                t.tr("branch.delete_both.title"),
+                branches::delete_with_remote_body(t, b, tr),
+                t.tr("branch.delete_both.button"),
+                Msg::Branch(BranchMsg::DeleteBranchAndRemote(name.to_owned())),
+            ),
+        );
+        menu_row(msgs, ui, item_named(label).state(ItemState::danger_unless(blocked.as_deref())), ask);
     }
 }

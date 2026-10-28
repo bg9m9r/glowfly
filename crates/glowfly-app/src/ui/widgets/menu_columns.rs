@@ -7,7 +7,9 @@
 //! - the label, at least `LABEL_GAP` from what follows;
 //! - the reason slot (`INFO_SLOT`): a blocked row's info mark, at one x on every row;
 //! - the shortcut column, right-aligned, as wide as the widest key (or "Set up…");
-//! - the chevron slot (`CHEVRON_W`), kept on every row once the menu has a submenu.
+//! - the end slot at the far right: a submenu's chevron (`CHEVRON_W`), or a split row's
+//!   trailing button (`BUTTON_W`, centred where the chevrons are, reaching `BUTTON_SLOT` in from
+//!   the text inset), kept on every row once any row has one.
 //!
 //! Each row says what it needs (`note`), and the menu remembers the union for its next pass
 //! (`begin` and `end`, run by `menu::styled` around every menu's contents). When the union
@@ -26,6 +28,10 @@ pub const LABEL_GAP: f32 = 24.0;
 pub const INFO_SLOT: f32 = 16.0;
 pub const CHEVRON_W: f32 = 12.0;
 pub const SLOT_GAP: f32 = 8.0;
+/// A split row's trailing button: its square's side, and how far it reaches in from the text
+/// inset (it is centred on the chevrons' centre, so it overhangs the inset by the rest).
+pub const BUTTON_W: f32 = 20.0;
+pub const BUTTON_SLOT: f32 = CHEVRON_W / 2.0 + BUTTON_W / 2.0;
 
 /// What a menu's rows need room for.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -40,6 +46,8 @@ pub struct Columns {
     pub key_w: f32,
     /// A submenu's chevron.
     pub chevron: bool,
+    /// A split row's trailing button.
+    pub button: bool,
 }
 
 impl Columns {
@@ -51,7 +59,25 @@ impl Columns {
             info: self.info || o.info,
             key_w: self.key_w.max(o.key_w),
             chevron: self.chevron || o.chevron,
+            button: self.button || o.button,
         }
+    }
+
+    /// The end slot's width in from the text inset: a trailing button's reach, a chevron's, or
+    /// nothing.
+    fn end_w(&self) -> f32 {
+        if self.button {
+            BUTTON_SLOT
+        } else if self.chevron {
+            CHEVRON_W
+        } else {
+            0.0
+        }
+    }
+
+    /// The centre of the end slot (a chevron, a trailing button), in from the row's right edge.
+    pub fn end_centre(&self, pad: f32) -> f32 {
+        pad + CHEVRON_W / 2.0
     }
 
     /// The state column's centre, from the row's left edge (`pad` is the text inset).
@@ -71,7 +97,8 @@ impl Columns {
 
     /// The shortcut column's right edge, in from the row's right edge.
     pub fn key_right(&self, pad: f32) -> f32 {
-        pad + if self.chevron { CHEVRON_W + SLOT_GAP } else { 0.0 }
+        let end = self.end_w();
+        pad + if end > 0.0 { end + SLOT_GAP } else { 0.0 }
     }
 
     /// The reason slot's right edge, in from the row's right edge.
@@ -81,7 +108,8 @@ impl Columns {
 
     /// The room right of the label: the gap and the trailing slots, or nothing without any.
     pub fn trailing(&self) -> f32 {
-        let slots = [(self.info, INFO_SLOT), (self.key_w > 0.0, self.key_w), (self.chevron, CHEVRON_W)];
+        let end = self.end_w();
+        let slots = [(self.info, INFO_SLOT), (self.key_w > 0.0, self.key_w), (end > 0.0, end)];
         let (n, w) = slots.iter().filter(|(on, _)| *on).fold((0, 0.0), |(n, w), (_, s)| (n + 1, w + s));
         if n == 0 { 0.0 } else { LABEL_GAP + w + SLOT_GAP * (n - 1) as f32 }
     }
@@ -167,5 +195,14 @@ mod tests {
         assert_eq!(c.info_right(12.0), 32.0 + 50.0 + 8.0);
         assert_eq!(c.trailing(), 24.0 + 16.0 + 50.0 + 12.0 + 2.0 * 8.0);
         assert_eq!(Columns::default().trailing(), 0.0);
+    }
+
+    #[test]
+    fn a_trailing_button_takes_the_end_slot_round_the_chevrons_centre() {
+        let split = Columns { button: true, chevron: true, ..Columns::default() };
+        assert_eq!(split.end_centre(12.0), 18.0, "where the chevrons are");
+        assert_eq!(split.key_right(12.0), 12.0 + BUTTON_SLOT + 8.0, "the shortcuts keep clear of the button");
+        assert_eq!(split.end_centre(12.0) + BUTTON_W / 2.0, 12.0 + BUTTON_SLOT);
+        assert_eq!(Columns { button: true, ..Columns::default() }.trailing(), 24.0 + BUTTON_SLOT);
     }
 }

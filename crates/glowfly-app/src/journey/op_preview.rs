@@ -17,7 +17,7 @@ fn preview_a_drop_then_apply_it() {
 
     // step 1: preview dropping "Add b" from its menu in the graph.
     j.right_click("Add b", Region::Central, Pick::Only);
-    j.menu("Preview drop…");
+    j.menu("Preview drop");
     j.see("Preview: drop 1 commit from main", Region::Anywhere);
     j.see("Dropping removes 1 commit.", Region::Anywhere);
     j.see("1 later commit is rewritten.", Region::Anywhere);

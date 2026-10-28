@@ -4,6 +4,13 @@
 //! slot, and the shortcut (or a setup item's "Set up…") right-aligned in the shortcut column.
 //! `menu_reason::menu_button` and every menu item helper draw through it.
 //!
+//! A split row (`trailing_button`, then `show_split`) adds a small icon button at its right
+//! end, in the end slot where the chevrons are (`menu_split.rs`): the row runs its action, the
+//! button a variant of it (a preview), with its own tooltip, focus and accessible name.
+//!
+//! A label whose interpolated names were cut (`menu_name.rs`) carries its full text
+//! (`item_named`), which becomes its accessible name and its tooltip.
+//!
 //! The row is one target as wide as the menu: enabled rows take egui's interaction colours (the
 //! hover pill, the danger style's), blocked ones (`ItemState::Blocked`) are greyed, take the
 //! focus but never click, and give their reason on hover, on focus and to screen readers. A
@@ -13,6 +20,7 @@ use super::super::access;
 use super::super::theme::{color, type_scale};
 use super::menu_columns::{self as cols, Columns, STATE_W};
 use super::menu_reason::{self, ItemState};
+use super::menu_split::{self, Split, Trailing};
 use super::{Icon, paint_icon_sized, tooltip};
 use eframe::egui::{Color32, Painter, Rect, Response, Sense, TextStyle, TextWrapMode, Ui, WidgetInfo, WidgetText, WidgetType, pos2, vec2};
 use std::sync::Arc;
@@ -45,11 +53,28 @@ pub struct Item<'a> {
     state: ItemState<'a>,
     mark: Option<Mark>,
     icon: Option<(PaintIcon, Option<Color32>)>,
+    full: Option<String>,
+    trailing: Option<Trailing<'a>>,
 }
 
 /// A menu row labelled `label`: ready, with no mark, icon or shortcut.
 pub fn item<'a>(label: impl Into<WidgetText>) -> Item<'a> {
-    Item { label: label.into(), shortcut: WidgetText::default(), state: ItemState::Ready, mark: None, icon: None }
+    Item {
+        label: label.into(),
+        shortcut: WidgetText::default(),
+        state: ItemState::Ready,
+        mark: None,
+        icon: None,
+        full: None,
+        trailing: None,
+    }
+}
+
+/// A menu row labelled with `n`, its names cut to fit (`menu_name::named`): the full label is
+/// its tooltip and accessible name when anything was cut.
+pub fn item_named<'a>(n: super::menu_name::Named) -> Item<'a> {
+    let full = (n.full != n.shown).then_some(n.full);
+    Item { full, ..item(n.shown) }
 }
 
 impl<'a> Item<'a> {
@@ -96,8 +121,28 @@ impl<'a> Item<'a> {
         self
     }
 
+    /// A split row: `icon` as a button at the row's right end, named and tipped `tip`. Blocked
+    /// as the row is (`trailing_blocked` gives it a reason of its own). Draw it with `show_split`.
+    pub fn trailing_button(mut self, icon: Icon, tip: impl Into<String>) -> Self {
+        self.trailing = Some(Trailing { icon, tip: tip.into(), blocked: None });
+        self
+    }
+
+    /// The trailing button blocked by `why` when there is a reason, whatever the row's state.
+    pub fn trailing_blocked(mut self, why: Option<&'a str>) -> Self {
+        if let Some(t) = &mut self.trailing {
+            t.blocked = why;
+        }
+        self
+    }
+
     /// Draws the row; clicked only when it is enabled.
     pub fn show(self, ui: &mut Ui) -> Response {
+        self.show_split(ui).row
+    }
+
+    /// Draws the row and its trailing button: which part was clicked is `Split::clicked`.
+    pub fn show_split(self, ui: &mut Ui) -> Split {
         match self.state {
             ItemState::Danger => {
                 ui.scope(|ui| {
@@ -110,8 +155,8 @@ impl<'a> Item<'a> {
         }
     }
 
-    fn draw(self, ui: &mut Ui) -> Response {
-        let Item { label, shortcut, state, mark, icon } = self;
+    fn draw(self, ui: &mut Ui) -> Split {
+        let Item { label, shortcut, state, mark, icon, full, trailing } = self;
         let blocked = match state {
             ItemState::Blocked(why) => Some(why),
             _ => None,
@@ -127,6 +172,7 @@ impl<'a> Item<'a> {
             info: blocked.is_some(),
             key_w: key.as_ref().map_or(0.0, |k| k.size().x),
             chevron: false,
+            button: trailing.is_some(),
         };
         let c = cols::note(ui, need);
         let galley = label.into_galley(ui, Some(TextWrapMode::Extend), f32::INFINITY, TextStyle::Button);
@@ -134,12 +180,16 @@ impl<'a> Item<'a> {
         let h = ui.spacing().interact_size.y.max(galley.size().y);
         let sense = if blocked.is_some() { Sense::hover() | Sense::FOCUSABLE } else { Sense::click() };
         let (rect, resp) = ui.allocate_at_least(vec2(c.row_w(pad, galley.size().x), h), sense);
-        let name = galley.text().to_owned();
+        let name = full.clone().unwrap_or_else(|| galley.text().to_owned());
         let enabled = blocked.is_none();
+        // Registered after the row, so it is on top and takes the pointer over its square.
+        let button = trailing.as_ref().map(|t| menu_split::interact(ui, &resp, c.end_centre(pad), t.blocked.or(blocked).is_none()));
+        let button_lit = button.as_ref().is_some_and(Response::hovered);
         if ui.is_rect_visible(rect) {
             let p = ui.painter();
             let ink = if enabled {
-                let vis = ui.style().interact(&resp);
+                // The row stays lit while its button is hovered: the button is part of it.
+                let vis = if button_lit && !resp.hovered() { &ui.visuals().widgets.hovered } else { ui.style().interact(&resp) };
                 if ui.visuals().button_frame {
                     p.rect_filled(rect.expand(vis.expansion), vis.corner_radius, vis.weak_bg_fill);
                 }
@@ -167,18 +217,29 @@ impl<'a> Item<'a> {
                 menu_reason::paint_focus(ui, &resp);
             }
         }
+        let button = match (trailing, button) {
+            (Some(t), Some(b)) => Some(menu_split::finish(ui, b, &t, blocked)),
+            _ => None,
+        };
         match mark {
             Some(Mark::Check(on)) => resp.widget_info(|| WidgetInfo::selected(WidgetType::Checkbox, enabled, on, &name)),
             Some(Mark::Radio(on) | Mark::Current(on)) => {
                 resp.widget_info(|| WidgetInfo::selected(WidgetType::RadioButton, enabled, on, &name));
             }
             None => access::name_button(&resp, enabled, &name),
-        }
-        match state {
-            ItemState::Blocked(why) => menu_reason::explain(resp, why),
-            ItemState::Setup { note, .. } => tooltip::attach_text(resp, note),
-            ItemState::Ready | ItemState::Danger => resp,
-        }
+        };
+        let row = match (state, full) {
+            (ItemState::Blocked(why), Some(full)) => {
+                access::describe(&resp, why);
+                tooltip::attach_text(resp, &format!("{full}\n\n{why}"))
+            }
+            (ItemState::Blocked(why), None) => menu_reason::explain(resp, why),
+            (ItemState::Setup { note, .. }, Some(full)) => tooltip::attach_text(resp, &format!("{full}\n\n{note}")),
+            (ItemState::Setup { note, .. }, None) => tooltip::attach_text(resp, note),
+            (ItemState::Ready | ItemState::Danger, Some(full)) => tooltip::attach_text(resp, &full),
+            (ItemState::Ready | ItemState::Danger, None) => resp,
+        };
+        Split { row, button }
     }
 }
 

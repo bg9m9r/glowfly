@@ -72,20 +72,17 @@ Button "Create branch here…"
 Button "Create tag here…"
 Button "Create worktree from this commit…"
 Button "Cherry-pick"
-Button "Preview cherry-pick…"
+Button "Preview cherry-pick"
 Button "Revert"
 Button "Rebase main onto this commit"
-Button "Preview rebase…"
+Button "Preview rebase"
 Button "Interactive rebase main onto this commit…"
+Button "Reword, squash or drop" [disabled]
 Button "Reset main to this commit"
 Button "Interactive rebase from here…"
-Button "Reword…" [disabled]
-Button "Squash into parent…" [disabled]
-Button "Preview drop…" [disabled]
 Button "Compare with working directory"
 Button "Create patch…"
 Button "Copy"
-Button "Drop…" [disabled]
 Button "Merge branch 'login-page'"
 Button "Fix build on Windows"
 Button "Add login page"

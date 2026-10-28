@@ -15,8 +15,10 @@
 //! `inset` to line up with the item labels.
 //!
 //! Rows lay out on the menu's shared columns (`menu_columns.rs`: state, icon, label, reason,
-//! shortcut, chevron), which `styled` learns around each menu's contents; a row is
-//! `menu_row::item` (re-exported here), which every item helper draws through.
+//! shortcut, chevron or trailing button), which `styled` learns around each menu's contents; a
+//! row is `menu_row::item` (re-exported here), which every item helper draws through. A split
+//! row adds a trailing button (`menu_split.rs`); names inside labels are cut to fit
+//! (`menu_name.rs`).
 //!
 //! A destructive item (`menu_reason::ItemState::Danger`, or a `danger_submenu` title) takes
 //! `danger_style`: its label in `color::menu_danger` and its hover pill `color::danger_hover`.
@@ -25,7 +27,9 @@ use super::super::theme::spacing::menu::{self as tokens, Metrics};
 use super::super::theme::tokens::radius;
 use super::super::theme::{color, type_scale};
 use super::menu_columns::{self as columns, Columns};
-pub use super::menu_row::item;
+pub use super::menu_name::{Named, cut as cut_name, named};
+pub use super::menu_row::{Item, item, item_named};
+pub use super::menu_split::Part;
 use eframe::egui::menu::BarState;
 use eframe::egui::{
     self, AboveOrBelow, Color32, CornerRadius, Id, InnerResponse, PopupCloseBehavior, Response, Sense, Stroke, Ui, WidgetText, vec2,

@@ -90,10 +90,8 @@ pub(in crate::ui) fn tag_menu(
     separator(ui);
     ref_visibility::menu_items(ui, t, &format!("refs/tags/{name}"), graph, false, msgs);
     separator(ui);
-    submenu(ui, t.tr("commits.menu.copy"), |ui| {
-        menu_item(msgs, ui, t.tr("refs.copy.name"), Msg::Copy(tag()));
-        menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Tag(tag()))));
-    });
+    menu_item(msgs, ui, t.tr("refs.copy.name_item"), Msg::Copy(tag()));
+    menu_item(msgs, ui, t.tr("refs.copy.link_item"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Tag(tag()))));
     separator(ui);
     let delete = Msg::git("Delete tag", &["tag", "-d", name]);
     let body = t.trf("tag.delete.body", &[("tag", &name)]);

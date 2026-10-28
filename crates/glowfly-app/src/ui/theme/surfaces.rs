@@ -227,7 +227,19 @@ macro_rules! active {
     };
 }
 
-active!(field_fill, guide_fill, tool_backing, tool_hover, tool_press, tool_pressed, inset, hover_layer, danger_hover, menu_danger);
+active!(
+    field_fill,
+    guide_fill,
+    tool_backing,
+    tool_hover,
+    tool_press,
+    tool_pressed,
+    inset,
+    hover_layer,
+    pressed_layer,
+    danger_hover,
+    menu_danger
+);
 
 /// [`Palette::wash`] in the active palette.
 pub fn wash(c: Color32, t: f32) -> Color32 {

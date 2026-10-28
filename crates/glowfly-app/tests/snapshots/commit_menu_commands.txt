@@ -73,25 +73,20 @@ Button "Checkout (detached)"
 Button "Create branch here…"
 Button "Create tag here…"
 Button "Create worktree from this commit…"
-Button "Cherry-pick" [disabled]
-Button "Preview cherry-pick…" [disabled]
 Button "Revert"
-Button "Rebase main onto this commit" [disabled]
-Button "Preview rebase…" [disabled]
-Button "Interactive rebase main onto this commit…" [disabled]
-Button "Reset main to this commit"
-Button "Interactive rebase from here…"
 Button "Reword…"
 Button "Squash into parent…" [disabled]
-Button "Preview drop…"
+Button "Reset main to this commit"
+Button "Interactive rebase from here…"
 Button "Compare with working directory"
 Button "Create patch…"
+Button "Copy"
 Button "Commands"
 Button "Deploy commit"
 Button "Show file at commit" [disabled]
 Button "Deploy with project script"
-Button "Copy"
 Button "Drop…"
+Button "Preview drop"
 Button "Add login page"
 Button "Add app skeleton"
 Button "Initial commit"
@@ -156,6 +151,9 @@ painted:
   "Ada Lovelace"
   "dcc73f3"
   "01/05/2026 10:00 AM"
+  "F2"
+  "Alt+S"
   "⏵"
   "⏵"
   "⏵"
+  "Del"

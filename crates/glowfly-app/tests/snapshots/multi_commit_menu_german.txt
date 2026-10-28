@@ -65,14 +65,15 @@ Button "Search results page"
 Button "Merge branch 'login-page'"
 Label "2 Commits ausgewählt"
 Button "Cherry-picken" [disabled]
-Button "Cherry-pick-Vorschau…" [disabled]
+Button "Cherry-pick-Vorschau" [disabled]
 Button "Reverten"
 Button "Squashen…" [disabled]
-Button "Vorschau zum Entfernen…" [disabled]
 Button "Range-diff der beiden Commits"
 Button "Patch erstellen…" [disabled]
-Button "Kopieren"
+Button "SHAs kopieren"
+Button "Patch kopieren" [disabled]
 Button "Entfernen…" [disabled]
+Button "Vorschau zum Entfernen" [disabled]
 Button "Fix build on Windows"
 Button "Add login page"
 Button "Add app skeleton"
@@ -138,4 +139,5 @@ painted:
   "Ada Lovelace"
   "dcc73f3"
   "01/05/2026 10:00 AM"
-  "⏵"
+  "Alt+S"
+  "Del"

@@ -2,13 +2,14 @@
 //! and the remote-branch labels in the graph, in groups: checkout (the local branch tracking it,
 //! or a new one), a new branch and a worktree; fast-forward of that local branch, merge, rebase,
 //! conflict check, compare and set upstream against the checked-out branch, and comparing it
-//! with its version before the last force-push (Range-diff); pull requests (also from a fork
-//! remote into the base repository); hide
-//! or solo, and its colour; the Copy submenu; and delete on the remote. The branch's name heads
-//! the menu once; the items leave it out. Disabled items say why on hover, with the same text
+//! with its version before the last force-push (Range-diff), merge and rebase as split rows
+//! whose eye button previews them; pull requests (also from a fork remote into the base
+//! repository); hide or solo, and its colour; copying its name or a link; and delete on the
+//! remote. The branch's name heads the menu once; the items leave it out, and other names in
+//! labels are cut to fit, in full on hover. Disabled items say why on hover, with the same text
 //! `update` logs when it refuses a late message.
 
-use super::common::{menu_danger, menu_header, menu_item, menu_item_if};
+use super::common::{menu_danger, menu_header, menu_item, menu_item_if, menu_row, menu_row_preview};
 use super::ref_visibility;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
@@ -16,7 +17,7 @@ use crate::msg::{BranchMsg, ForgeMsg, Msg, OpPreviewMsg, RebaseMsg, SelectionMsg
 use crate::state::gitflow_base::{Deleting, guard};
 use crate::state::rebase_onto::onto_commit_blocker;
 use crate::state::{ForgeState, Selection, branches, pr_repos, remote_branch, worktree_branches};
-use crate::ui::widgets::menu::{separator, submenu};
+use crate::ui::widgets::menu::{item_named, named, separator};
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use git2::Oid;
@@ -47,8 +48,8 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     if let Some(b) = tracking {
         let blocked = branches::fast_forward_blocked(b, snap.state);
         let ff = Msg::Branch(BranchMsg::FastForwardBranch(b.name.clone()));
-        let label = t.trf("remote_branch.menu.fast_forward_local", &[("branch", &b.name)]);
-        menu_item_if(msgs, ui, label, blocked.as_deref(), ff);
+        let label = named(t.tr("remote_branch.menu.fast_forward_local"), &[("branch", &b.name)]);
+        menu_row(msgs, ui, item_named(label).blocked(blocked.as_deref()), ff);
     }
     if !current.is_empty() {
         current_items(ui, c, (remote, name), oid, snap, msgs);
@@ -83,11 +84,9 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     ref_visibility::menu_items(ui, t, &format!("refs/remotes/{full}"), filter, false, msgs);
     super::branch_colour_menu::items(ui, t, name, snap, msgs);
     separator(ui);
-    submenu(ui, t.tr("commits.menu.copy"), |ui| {
-        menu_item(msgs, ui, t.tr("refs.copy.name"), Msg::Copy(full.clone()));
-        let link = LinkTarget::RemoteBranch { remote: remote.to_owned(), name: name.to_owned() };
-        menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(link)));
-    });
+    menu_item(msgs, ui, t.tr("refs.copy.name_item"), Msg::Copy(full.clone()));
+    let link = LinkTarget::RemoteBranch { remote: remote.to_owned(), name: name.to_owned() };
+    menu_item(msgs, ui, t.tr("refs.copy.link_item"), Msg::DeepLink(DeepLinkMsg::Copy(link)));
     separator(ui);
     menu_danger(
         msgs,
@@ -123,8 +122,8 @@ fn checkout_items(
         Some(b) if !b.is_head => {
             let local = b.name.as_str();
             let blocked = worktree_branches::checkout_blocked(snap, local);
-            let label = t.trf("remote_branch.menu.checkout_local", &[("branch", &local)]);
-            menu_item_if(msgs, ui, label, blocked.as_deref(), Msg::Branch(BranchMsg::Checkout(local.to_owned())));
+            let label = named(t.tr("remote_branch.menu.checkout_local"), &[("branch", local)]);
+            menu_row(msgs, ui, item_named(label).blocked(blocked.as_deref()), Msg::Branch(BranchMsg::Checkout(local.to_owned())));
         }
         Some(_) => {}
         None => {
@@ -141,28 +140,28 @@ fn checkout_items(
     }
 }
 
-/// Operations against the checked-out branch `current`: merge, rebase, conflict check, compare
-/// and set upstream.
+/// Operations against the checked-out branch `current`: merge and rebase (each with its
+/// preview), interactive rebase, conflict check, compare and set upstream.
 fn current_items(ui: &mut egui::Ui, c: &RemoteMenu, (remote, name): (&str, &str), oid: Oid, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let (t, current) = (c.t, c.current);
-    let args: [(&str, &dyn std::fmt::Display); 1] = [("branch", &current)];
+    let on = [("branch", current)];
     let full = format!("{remote}/{name}");
-    menu_item(msgs, ui, t.trf("branch.menu.merge_into", &args), Msg::git("Merge", &["merge", &full]));
     let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Merge { theirs: full.clone(), oid }));
-    menu_item(msgs, ui, t.tr("op_preview.menu.merge"), preview);
-    menu_item(msgs, ui, t.trf("branch.menu.rebase_onto", &args), Msg::git("Rebase", &["rebase", &full]));
+    let merge = item_named(named(t.tr("branch.menu.merge_into"), &on));
+    menu_row_preview(msgs, ui, merge, (t.tr("op_preview.menu.merge"), None), Msg::git("Merge", &["merge", &full]), preview);
     let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Rebase { onto: full.clone(), oid }));
-    menu_item(msgs, ui, t.tr("op_preview.menu.rebase"), preview);
+    let rebase = item_named(named(t.tr("branch.menu.rebase_onto"), &on));
+    menu_row_preview(msgs, ui, rebase, (t.tr("op_preview.menu.rebase"), None), Msg::git("Rebase", &["rebase", &full]), preview);
     let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));
     let blocked = onto_commit_blocker(t, snap, oid);
-    menu_item_if(msgs, ui, t.trf("branch.menu.interactive_onto", &args), blocked.as_deref(), onto);
+    menu_row(msgs, ui, item_named(named(t.tr("branch.menu.interactive_onto"), &on)).blocked(blocked.as_deref()), onto);
     let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(full.clone()));
-    menu_item(msgs, ui, t.trf("branch.menu.check_conflicts_with", &args), check);
+    menu_row(msgs, ui, item_named(named(t.tr("branch.menu.check_conflicts_with"), &on)), check);
     let compare = Msg::Selection(SelectionMsg::CompareWithHead { oid, name: full.clone() });
     let blocked = remote_branch::compare_blocked(snap, oid, &full);
-    menu_item_if(msgs, ui, t.trf("remote_branch.menu.compare_with", &args), blocked.as_deref(), compare);
+    menu_row(msgs, ui, item_named(named(t.tr("remote_branch.menu.compare_with"), &on)).blocked(blocked.as_deref()), compare);
     if !remote_branch::is_upstream_of_head(snap, remote, name) {
         let set = BranchMsg::SetUpstream { branch: current.to_owned(), remote: remote.to_owned(), name: name.to_owned() };
-        menu_item(msgs, ui, t.trf("remote_branch.menu.set_as_upstream", &args), Msg::Branch(set));
+        menu_row(msgs, ui, item_named(named(t.tr("remote_branch.menu.set_as_upstream"), &on)), Msg::Branch(set));
     }
 }

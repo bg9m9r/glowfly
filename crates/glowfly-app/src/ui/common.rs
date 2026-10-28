@@ -181,6 +181,35 @@ pub fn menu_item_state(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<
     }
 }
 
+/// A menu row built with `menu::item` (a shortcut, a cut name, a state), pushing `m` and closing
+/// the menu when clicked.
+pub fn menu_row(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, row: menu::Item<'_>, m: Msg) {
+    if row.show(ui).clicked() {
+        msgs.push(m);
+        ui.close_menu();
+    }
+}
+
+/// A split menu row with a preview button: the row pushes `m`, the button (a painted eye, named
+/// and tipped `tip`) pushes `preview`, and either closes the menu. The button is blocked as the
+/// row is, or by `preview_blocked` when that is set.
+pub fn menu_row_preview(
+    msgs: &mut Vec<Msg>,
+    ui: &mut egui::Ui,
+    row: menu::Item<'_>,
+    (tip, preview_blocked): (&str, Option<&str>),
+    m: Msg,
+    preview: Msg,
+) {
+    let split = row.trailing_button(widgets::Icon::Eye, tip).trailing_blocked(preview_blocked).show_split(ui);
+    match split.clicked() {
+        Some(menu::Part::Row) => msgs.push(m),
+        Some(menu::Part::Button) => msgs.push(preview),
+        None => return,
+    }
+    ui.close_menu();
+}
+
 /// Small caret drawn after a menu button (the font has no ▾ glyph).
 pub fn caret_after(ui: &mut egui::Ui, r: &egui::Response) {
     let c = pos2(r.rect.right() + 6.0, r.rect.center().y + 1.0);
