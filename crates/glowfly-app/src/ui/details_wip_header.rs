@@ -8,10 +8,11 @@ use super::{RowContext, discard_all_text};
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::{Msg, StageMsg, WorkFileMsg};
 use crate::ui::access;
-use crate::ui::common::menu_item;
+use crate::ui::common::{menu_danger, menu_item};
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons::{self, StyledButton};
+use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::{self, Icon, truncate};
 use eframe::egui::{self, Align, Color32, Layout, Response, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
@@ -170,12 +171,18 @@ fn widths(ui: &Ui, actions: &[HeaderAction], t: Lang) -> Vec<f32> {
     actions.iter().map(|a| a.button(t, None).desired_width(ui)).collect()
 }
 
-/// The more-actions button (a painted icon) and its menu, listing `moved` in reading order.
+/// The more-actions button (a painted icon) and its menu, listing `moved` in reading order,
+/// with Discard all… last, after a separator, in the danger style.
 fn more_button(ui: &mut Ui, moved: &[HeaderAction], ctx: RowContext, msgs: &mut Vec<Msg>) {
     let (keys, t) = (ctx.keys, ctx.lang);
     more_menu(ui, t, |ui| {
-        for a in moved.iter().rev() {
+        for a in moved.iter().rev().filter(|a| **a != HeaderAction::DiscardAll) {
             menu_item(msgs, ui, a.label(t), a.msg(t, keys));
+        }
+        if moved.contains(&HeaderAction::DiscardAll) {
+            separator(ui);
+            let a = HeaderAction::DiscardAll;
+            menu_danger(msgs, ui, t.tr("details.wip.discard_all.item"), None, a.msg(t, keys));
         }
     });
 }

@@ -161,6 +161,12 @@ pub fn menu_item_if(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egu
     menu_item_state(msgs, ui, label, ItemState::blocked_by(blocked), m);
 }
 
+/// A destructive menu item (in its menu's last group): the danger style, or greyed with the
+/// reason while `blocked` is set.
+pub fn menu_danger(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: Option<&str>, m: Msg) {
+    menu_item_state(msgs, ui, label, ItemState::danger_unless(blocked), m);
+}
+
 /// A menu item that stays enabled while what it needs isn't set up (`setup` holds the note shown
 /// on hover or focus): a weak "Set up…" follows the label, and running it opens the setting.
 pub fn menu_item_setup(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, t: Lang, label: impl Into<egui::WidgetText>, setup: Option<&str>, m: Msg) {

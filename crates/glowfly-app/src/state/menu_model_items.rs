@@ -92,6 +92,7 @@ fn recent(st: &AppState) -> Vec<Entry> {
         }
         out.push(Entry::Heading(t.tr("repos.recent.header").to_owned()));
         out.extend(rows.into_iter().map(|p| open(p)));
+        out.push(Entry::Separator);
         out.push(send(keys, t.tr("repos.menu.clear_recent"), None, None, clear_recent_msg(st)));
     }
     out

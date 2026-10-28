@@ -9,7 +9,7 @@
 
 use super::color::{self, Palette};
 use super::contrast::{self, mix};
-use super::tokens::{FILL_HOVER, FILL_PRESSED, HOVER, LATCHED, PRESSED};
+use super::tokens::{DANGER_HOVER, FILL_HOVER, FILL_PRESSED, HOVER, LATCHED, PRESSED};
 use eframe::egui::Color32;
 
 /// How far a text field's fill moves from `input` toward the accent.
@@ -136,6 +136,21 @@ impl Palette {
         }
     }
 
+    /// A destructive menu item's hover pill: the overlay's hover pill tinted `DANGER_HOVER`
+    /// toward the danger colour (`contrast::tint`, so a dark field keeps its own hue).
+    pub fn danger_hover(&self) -> Color32 {
+        contrast::tint(self.hover_on(self.overlay()), self.tone(Tone::Danger), DANGER_HOVER, self.dark)
+    }
+
+    /// A destructive menu item's label: the danger colour, pushed until it reads at 4.5:1 (7:1
+    /// in a high-contrast palette) on the overlay and on `danger_hover`. (`danger` itself is a
+    /// button fill that carries white text, too dark or light to be text.)
+    pub fn menu_danger(&self) -> Color32 {
+        let min = if contrast::ratio(self.text, self.panel) >= HIGH_CONTRAST_TEXT { INK_MIN_HC } else { INK_MIN };
+        let on_hover = contrast::readable_on(self.tone(Tone::Danger), self.danger_hover(), self.dark, min);
+        contrast::readable_on(on_hover, self.overlay(), self.dark, min)
+    }
+
     /// Tone `t`'s tint: (a soft opaque fill of it, its colour pushed to read at 4.5:1 there).
     pub fn tone_tint(&self, t: Tone) -> (Color32, Color32) {
         contrast::change_chip(self.tone(t), self)
@@ -212,7 +227,7 @@ macro_rules! active {
     };
 }
 
-active!(field_fill, guide_fill, tool_backing, tool_hover, tool_press, tool_pressed, inset, hover_layer);
+active!(field_fill, guide_fill, tool_backing, tool_hover, tool_press, tool_pressed, inset, hover_layer, danger_hover, menu_danger);
 
 /// [`Palette::wash`] in the active palette.
 pub fn wash(c: Color32, t: f32) -> Color32 {

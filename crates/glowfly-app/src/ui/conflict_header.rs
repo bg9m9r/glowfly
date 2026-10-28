@@ -7,8 +7,9 @@
 //! Preferences. Files with no chunk view get only Close and the menu.
 
 use super::super::access;
-use super::super::common::{menu_item_if, menu_item_setup};
+use super::super::common::{menu_danger, menu_item_if, menu_item_setup};
 use super::super::theme::color;
+use super::super::widgets::menu::separator;
 use super::super::widgets::{self, Icon, buttons, icon_button, reason};
 use super::step_tip;
 use crate::keymap::Keymap;
@@ -184,16 +185,6 @@ fn more_menu(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeT
             Some(why) => menu_item_if(msgs, ui, t.tr("tools.merge_tool.button"), Some(why), open),
             None => menu_item_setup(msgs, ui, t, t.tr("tools.merge_tool.button"), tool.setup, open),
         }
-        if text {
-            let blocked = if in_tool {
-                Some(t.tr("tools.in_merge_tool"))
-            } else if view.saving {
-                Some(t.tr("conflict.header.saving.tip"))
-            } else {
-                None
-            };
-            menu_item_if(msgs, ui, t.tr("conflict.header.reset.button"), blocked, view.reset_msg(t));
-        }
         let blocked = in_tool.then(|| t.tr("tools.in_merge_tool"));
         menu_item_if(
             msgs,
@@ -202,6 +193,18 @@ fn more_menu(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeT
             blocked,
             Msg::Conflict(ConflictMsg::MarkResolved(vec![path.clone()])),
         );
+        // It asks before clearing the picks: last, set apart.
+        if text {
+            let blocked = if in_tool {
+                Some(t.tr("tools.in_merge_tool"))
+            } else if view.saving {
+                Some(t.tr("conflict.header.saving.tip"))
+            } else {
+                None
+            };
+            separator(ui);
+            menu_danger(msgs, ui, t.tr("conflict.header.reset.button"), blocked, view.reset_msg(t));
+        }
     });
     let r = menu.response.on_hover_text(t.tr("conflict.header.more.tip"));
     widgets::paint_icon(ui.painter(), r.rect.center(), Icon::More, color::text());

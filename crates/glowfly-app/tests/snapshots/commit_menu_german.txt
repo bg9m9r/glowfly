@@ -87,11 +87,11 @@ Button "main auf diesen Commit zurücksetzen"
 Button "Interaktiver Rebase ab hier…"
 Button "Nachricht ändern…" [disabled]
 Button "In den Eltern-Commit squashen…" [disabled]
-Button "Entfernen…" [disabled]
 Button "Vorschau zum Entfernen…" [disabled]
 Button "Mit dem Arbeitsverzeichnis vergleichen"
 Button "Patch erstellen…"
 Button "Kopieren"
+Button "Entfernen…" [disabled]
 Button "Merge branch 'login-page'"
 Button "Fix build on Windows"
 Button "Add login page"

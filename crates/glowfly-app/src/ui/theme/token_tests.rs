@@ -62,6 +62,18 @@ fn the_overlay_floats_a_step_off_raised() {
 }
 
 #[test]
+fn destructive_menu_items_read_on_the_overlay() {
+    for (name, p, hc) in palettes() {
+        let (text, hover) = (p.menu_danger(), p.danger_hover());
+        for (s, what) in [(p.overlay(), "overlay"), (hover, "danger hover")] {
+            assert!(ratio(text, s) >= floor(hc), "{name}: danger on {what} {:.2}", ratio(text, s));
+        }
+        assert!(ratio(p.overlay(), hover) > 1.03, "{name}: the danger hover shows ({:.3})", ratio(p.overlay(), hover));
+        assert_ne!(hover, p.hover_on(p.overlay()), "{name}: the danger hover is tinted");
+    }
+}
+
+#[test]
 fn state_layers_keep_text_readable_and_step_up() {
     for (name, p, hc) in palettes() {
         for (s, what) in [(p.panel, "panel"), (p.raised, "raised"), (p.overlay(), "overlay"), (p.tool_backing(), "tool backing")] {

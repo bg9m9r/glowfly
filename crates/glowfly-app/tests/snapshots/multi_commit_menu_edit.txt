@@ -66,11 +66,11 @@ Button "Cherry-pick" [disabled]
 Button "Preview cherry-pick…" [disabled]
 Button "Revert"
 Button "Squash…"
-Button "Drop…"
 Button "Preview drop…"
 Button "Range-diff the two commits"
 Button "Create patch…"
 Button "Copy"
+Button "Drop…"
 Button "Track open tasks"
 Button "Add release notes"
 Button "Search results page"

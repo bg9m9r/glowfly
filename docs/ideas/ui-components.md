@@ -98,6 +98,11 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Tooltips share egui's popup margin, now the menus' 4 px: give them their own roomier frame
 - Dropdowns opened by `menu_anchor` line their first item's text up with the button's text again
 
+### Destructive menu items
+
+- On grey or green-grey dark fields (Graphite, Garden dark) the danger hover pill takes no red (the no-brown rule); try a red edge or mark instead
+- The terminal context menu's Clear and the welcome list's Remove from recent could join a last group once those menus are regrouped
+
 ### Restyled toolbar and rich tooltips
 
 - The other hover texts (sidebar rows, graph ref chips, file rows, status bar chips) move onto

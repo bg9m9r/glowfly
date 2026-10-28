@@ -132,7 +132,7 @@ fn terminal_more_menu_dark() {
     h.get_by_label("More terminal actions").click();
     h.run();
     h.check_snapshot("terminal_more_menu");
-    h.get_by_label("Kill all terminals").click();
+    h.get_by_label("Kill all terminals…").click();
     h.run();
     assert!(!pushed(&h, |t| matches!(t, TerminalMsg::AskKillAll)), "one shell runs");
     h.get_by_label("Rename terminal").click();

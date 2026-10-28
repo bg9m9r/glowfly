@@ -8,7 +8,7 @@
 //! the menu once; the items leave it out. Disabled items say why on hover, with the same text
 //! `update` logs when it refuses a late message.
 
-use super::common::{menu_header, menu_item, menu_item_if};
+use super::common::{menu_danger, menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
@@ -89,10 +89,11 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
         menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(link)));
     });
     separator(ui);
-    menu_item(
+    menu_danger(
         msgs,
         ui,
         t.tr("remote_branch.menu.delete"),
+        None,
         guard(
             t,
             snap,

@@ -138,6 +138,7 @@ pub(in crate::ui) fn harness_in(t: Lang, f: FileEntry, menu: Menu, dark: bool, t
                             setup.editor,
                             tool,
                             &crate::state::custom_commands::MenuCommands::none(),
+                            None,
                         )
                     }
                 }

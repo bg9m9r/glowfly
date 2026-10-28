@@ -97,7 +97,7 @@ fn op_steps_rebase() {
     let caret = h.get_by_label("More ways to go on").bounding_box().unwrap();
     h.get_by_label("More ways to go on").click();
     h.run();
-    assert!(!h.get_by_label("Skip commit").is_disabled(), "Skip stays at hand");
+    assert!(!h.get_by_label("Skip commit…").is_disabled(), "Skip stays at hand");
     assert!(h.get_by_label("Edit remaining steps…").bounding_box().unwrap().y1 <= caret.y0, "the menu opens above");
     h.check_snapshot("op_steps_rebase_menu");
     drop(h);

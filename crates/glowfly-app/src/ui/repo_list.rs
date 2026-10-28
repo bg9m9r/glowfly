@@ -4,7 +4,7 @@
 //! the favorites' keys, and on the welcome screen the row menu's Color submenu, the header links (Open all, Remove missing, Clear) and dragging
 //! favorites into another order (`repo_list_drag.rs`).
 
-use super::common::{menu_item, menu_item_if};
+use super::common::{menu_danger, menu_item, menu_item_if};
 use super::repo_swatch;
 use super::theme::color;
 use super::widgets::{self, Icon};
@@ -141,7 +141,8 @@ fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separato
         for p in recent {
             row(ui, st, p, Place::Menu, Section::Recent, false, msgs);
         }
-        menu_item(msgs, ui, t.tr("repos.menu.clear_recent"), clear_recent_msg(st));
+        separator(ui);
+        menu_danger(msgs, ui, t.tr("repos.menu.clear_recent"), None, clear_recent_msg(st));
     }
 }
 

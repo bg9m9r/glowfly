@@ -12,7 +12,11 @@
 //! rows on each side, never the first child of a menu or right after another one (and a debug
 //! build asserts no menu ends with one). Plain lines (headers, notes) use `inset` to line up
 //! with the item labels.
+//!
+//! A destructive item (`menu_reason::ItemState::Danger`, or a `danger_submenu` title) takes
+//! `danger_style`: its label in `color::menu_danger` and its hover pill `color::danger_hover`.
 
+use super::super::theme::color;
 use super::super::theme::spacing::menu::{self as tokens, Metrics};
 use super::super::theme::tokens::radius;
 use eframe::egui::menu::BarState;
@@ -62,6 +66,30 @@ pub fn context_menu(resp: &Response, add_contents: impl FnOnce(&mut Ui)) -> Opti
 /// the menu style.
 pub fn submenu<R>(ui: &mut Ui, title: impl Into<WidgetText>, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<Option<R>> {
     ui.menu_button(title, |ui| styled(ui, add_contents))
+}
+
+/// `ui`'s items in the destructive style: the label in the danger colour (`color::menu_danger`,
+/// readable on the overlay and the pill) and the hover pill tinted toward it (`color::danger_hover`).
+pub fn danger_style(ui: &mut Ui) {
+    let v = ui.visuals_mut();
+    v.override_text_color = Some(color::menu_danger());
+    v.widgets.hovered.weak_bg_fill = color::danger_hover();
+    v.widgets.open.weak_bg_fill = color::danger_hover();
+}
+
+/// A submenu whose title is destructive (its items are): the title in the danger style, the
+/// items in the plain menu style (each destructive one marks itself).
+pub fn danger_submenu<R>(ui: &mut Ui, title: impl Into<WidgetText>, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<Option<R>> {
+    let plain = ui.visuals().clone();
+    ui.scope(|ui| {
+        danger_style(ui);
+        submenu(ui, title, |ui| {
+            *ui.visuals_mut() = plain;
+            style(ui);
+            add_contents(ui)
+        })
+    })
+    .inner
 }
 
 /// A button drawn from `button` that opens its menu below it on a click (a header's ⋯).

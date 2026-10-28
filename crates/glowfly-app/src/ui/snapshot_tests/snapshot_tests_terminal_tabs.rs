@@ -103,7 +103,7 @@ fn terminal_tabs_dark() {
     assert!(pushed_msg(&h, |m| matches!(m, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Terminal)))));
     h.get_by_label("More terminal actions").click();
     h.run();
-    h.get_by_label("Kill all terminals").click();
+    h.get_by_label("Kill all terminals…").click();
     h.run();
     assert!(pushed(&h, |t| matches!(t, TerminalMsg::AskKillAll)), "two shells run");
     let at = bounds(&h, "pwsh \u{b7} demo (3)").center();

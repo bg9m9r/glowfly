@@ -23,14 +23,16 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo;
 use glowfly_core::settings::ThemeChoice;
 
-/// Clicks the WIP header's button `label`, through the more-actions menu (`more`) when the
-/// button moved there.
-pub(in crate::ui) fn click_header_action(h: &mut Harness<'_, (AppState, Vec<Msg>)>, label: &str, more: &str) {
+/// Clicks the WIP header's button `label`, or its item `item` in the more-actions menu (`more`)
+/// when the button moved there.
+pub(in crate::ui) fn click_header_action(h: &mut Harness<'_, (AppState, Vec<Msg>)>, label: &str, item: &str, more: &str) {
     if h.query_by_label(label).is_none() {
         h.get_by_label(more).click();
         h.run();
+        h.get_by_label(item).click();
+    } else {
+        h.get_by_label(label).click();
     }
-    h.get_by_label(label).click();
     h.run();
 }
 
@@ -138,7 +140,8 @@ fn details_wip_spanish() {
     // The header and its list's focus target share the name.
     assert!(h.query_all_by_label(&header).next().is_some(), "{header} is shown");
     h.check_snapshot("details_wip_spanish");
-    click_header_action(&mut h, Lang::Es.tr("details.wip.discard_all.button"), Lang::Es.tr("details.wip.more.tip"));
+    let (button, item) = (Lang::Es.tr("details.wip.discard_all.button"), Lang::Es.tr("details.wip.discard_all.item"));
+    click_header_action(&mut h, button, item, Lang::Es.tr("details.wip.more.tip"));
     let body = discard_all_text(Lang::Es, &h.state().0.keymap);
     let asked = h.state().1.iter().any(
         |m| matches!(m, Msg::ConfirmDanger { title, body: b, .. } if title == Lang::Es.tr("details.wip.discard_all.title") && *b == body),

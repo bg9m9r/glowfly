@@ -6,7 +6,7 @@
 //! remotes.
 
 use super::branch_dot::{self, DOT_ROOM};
-use super::common::{hint_row, menu_header, menu_item, menu_item_if};
+use super::common::{hint_row, menu_danger, menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use super::remote_branch_menu::{RemoteMenu, remote_branch_menu};
 use super::theme::branch_colours::line;
@@ -171,5 +171,5 @@ fn group_menu(ui: &mut egui::Ui, info: &RemoteInfo, idle: bool, connections: &[C
         });
     }
     separator(ui);
-    menu_item(msgs, ui, "Remove…", Msg::Remote(RemoteMsg::RemoveDialog(name.clone())));
+    menu_danger(msgs, ui, "Remove…", None, Msg::Remote(RemoteMsg::RemoveDialog(name.clone())));
 }

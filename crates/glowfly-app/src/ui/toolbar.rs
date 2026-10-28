@@ -119,21 +119,25 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     let menu = (t.tr("toolbar.push_menu"), if host.is_some() { 260.0 } else { 200.0 }, rules::busy_blocked(st).is_none());
                     let r = split(ui, "push-menu", push, rules::push_blocked(st).is_none(), labels, menu, |ui| {
                         let busy = rules::busy_blocked(st);
-                        let busy = ItemState::blocked_by(busy.as_deref());
-                        if reason::menu_button(ui, t.tr("toolbar.force_push"), "", busy).clicked() {
+                        if snap.remotes.is_empty()
+                            && reason::menu_button(ui, t.tr("toolbar.publish"), "", ItemState::blocked_by(busy.as_deref())).clicked()
+                        {
+                            msgs.push(Msg::Publish(PublishMsg::PublishDialog));
+                        }
+                        if let Some(fs) = host {
+                            separator(ui);
+                            super::pr_menu_items::push_pr_item(ui, t, snap, fs, idle, msgs);
+                        }
+                        // Destructive, so last and set apart.
+                        separator(ui);
+                        let force = ItemState::danger_unless(busy.as_deref());
+                        if reason::menu_button(ui, t.tr("toolbar.force_push"), "", force).clicked() {
                             msgs.push(Msg::confirm_danger(
                                 t.tr("toolbar.force_push.title"),
                                 t.tr("toolbar.force_push.body").into(),
                                 t.tr("toolbar.force_push.button"),
                                 Msg::Job(JobMsg::Push { force: true }),
                             ));
-                        }
-                        if snap.remotes.is_empty() && reason::menu_button(ui, t.tr("toolbar.publish"), "", busy).clicked() {
-                            msgs.push(Msg::Publish(PublishMsg::PublishDialog));
-                        }
-                        if let Some(fs) = host {
-                            separator(ui);
-                            super::pr_menu_items::push_pr_item(ui, t, snap, fs, idle, msgs);
                         }
                     });
                     if attach(r, keys, t, || tips::push(st)).clicked() {

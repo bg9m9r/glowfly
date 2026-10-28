@@ -12,8 +12,8 @@ Button "Pull the current branch" [disabled]
 Button "More pull actions"
 Button "Push the current branch"
 Button "More push actions"
-Button "Force push (with lease)"
 Button "Push search and create a pull request…"
+Button "Force push (with lease)…"
 Button "Create a branch"
 Button "Stash all changes"
 Button "Pop the latest stash" [disabled]

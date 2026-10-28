@@ -66,7 +66,7 @@ fn wip_header_german_narrow() {
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::WorkFile(WorkFileMsg::NewFileDialog(_)))));
 
-    click_header_action(&mut h, discard, more);
+    click_header_action(&mut h, discard, de.tr("details.wip.discard_all.item"), more);
     let title = de.tr("details.wip.discard_all.title");
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmDanger { title: t, .. } if t == title)), "Discard all asks in German");
     drop(h);

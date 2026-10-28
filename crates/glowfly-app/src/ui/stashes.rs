@@ -2,9 +2,10 @@
 //! menu to apply, pop, rename or delete it; an auto-stash shows a weak "auto" on the right. The header's + opens the Stash dialog, and its menu
 //! stashes every change or only the staged ones.
 
-use super::common::menu_item;
+use super::common::{menu_danger, menu_item};
 use super::theme::color;
 use super::widgets;
+use super::widgets::menu::separator;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use crate::msg::{Msg, RepoMsg, StashMsg};
 use crate::state::Selection;
@@ -57,7 +58,8 @@ pub(super) fn section(
             menu_item(msgs, ui, t.tr("sidebar.stashes.menu.apply"), stash(StashAction::Apply));
             menu_item(msgs, ui, t.tr("sidebar.stashes.menu.pop"), stash(StashAction::Pop));
             menu_item(msgs, ui, t.tr("sidebar.stashes.menu.rename"), Msg::Stash(StashMsg::RenameDialog { oid: s.oid }));
-            menu_item(msgs, ui, t.tr("sidebar.stashes.menu.delete"), stash(StashAction::Drop));
+            separator(ui);
+            menu_danger(msgs, ui, t.tr("sidebar.stashes.menu.delete"), None, stash(StashAction::Drop));
         });
     }
 }

@@ -75,7 +75,7 @@ Label "Continue once the conflicts are resolved."
 Button "Commit or amend first…"
 Button "Continue" [disabled]
 Button "More ways to go on"
-Button "Skip patch"
+Button "Skip patch…"
 Button "Resize branch / tag column"
 Button "Resize commit column"
 Button "Resize date column"

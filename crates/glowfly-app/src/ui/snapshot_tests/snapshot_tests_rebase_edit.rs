@@ -177,8 +177,8 @@ fn rebase_banner_conflict() {
     assert!(!h.get_by_label(MORE).is_disabled(), "its menu still opens");
     h.get_by_label(MORE).click();
     h.run();
-    assert!(!h.get_by_label("Skip commit").is_disabled());
-    h.get_by_label("Skip commit").click();
+    assert!(!h.get_by_label("Skip commit…").is_disabled());
+    h.get_by_label("Skip commit…").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmDanger { .. })), "Skip asks first, as before");
     drop(h);
@@ -235,7 +235,7 @@ fn no_step_editing_for_a_plain_rebase() {
     h.run();
     h.get_by_label(MORE).click();
     h.run();
-    assert!(h.query_by_label("Skip commit").is_some());
+    assert!(h.query_by_label("Skip commit…").is_some());
     assert!(h.query_by_label(EDIT_STEPS).is_none());
     drop(h);
     remove_fixture(&dir);

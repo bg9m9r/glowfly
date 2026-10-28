@@ -65,8 +65,8 @@ Button "Hide panel"
 Button "Maximize panel"
 Button "Terminal settings"
 Button "More terminal actions"
-Button "Kill all terminals" [disabled]
 Button "Rename terminal"
+Button "Kill all terminals…" [disabled]
 Button "Kill terminal"
 Button "Clear"
 Button "pwsh · demo"

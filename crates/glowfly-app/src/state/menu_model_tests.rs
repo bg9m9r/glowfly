@@ -319,10 +319,19 @@ fn open_recent_lists_favorites_then_recent_then_clear() {
     let file = entries(&st, TopMenu::File);
     let recent = submenu(&file, SubmenuKind::Recent);
     let shown = |p: &PathBuf| glowfly_core::native_path::shown(p);
-    let want = ["[Favorites]".to_owned(), shown(&fav), "---".into(), "[Recent]".into(), shown(&a), shown(&b), "Clear recent".into()];
+    let want = [
+        "[Favorites]".to_owned(),
+        shown(&fav),
+        "---".into(),
+        "[Recent]".into(),
+        shown(&a),
+        shown(&b),
+        "---".into(),
+        "Clear recent…".into(),
+    ];
     assert_eq!(rows(&recent.entries), want);
     assert!(matches!(sent(find(&recent.entries, &shown(&a))), Msg::Repo(crate::msg::RepoMsg::Open(p)) if *p == a));
-    let clear = sent(find(&recent.entries, "Clear recent"));
+    let clear = sent(find(&recent.entries, "Clear recent…"));
     assert!(matches!(clear, Msg::Confirm { then, .. } if matches!(**then, Msg::Recent(RecentMsg::ClearRecent))));
 }
 
@@ -332,7 +341,7 @@ fn walk_and_take_agree() {
     st.recent = vec![glowfly_core::paths::temp_dir().join("glowfly-menu-walk")];
     let mut menus = build(&st);
     let labels: Vec<String> = items(&menus).iter().map(|it| it.label.clone()).collect();
-    assert!(labels.iter().any(|l| l == "Theme settings…") && labels.iter().any(|l| l == "Clear recent"));
+    assert!(labels.iter().any(|l| l == "Theme settings…") && labels.iter().any(|l| l == "Clear recent…"));
     for (k, label) in labels.iter().enumerate() {
         assert_eq!(take_item(&mut menus, k).map(|it| it.label).as_deref(), Some(label.as_str()), "item {k}");
     }

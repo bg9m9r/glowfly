@@ -67,6 +67,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("menu_bar_file", Window),
     ("graph_commit_menu", Window),
     ("toolbar_push_menu", Window),
+    ("wip_file_menu_danger_light", Window),
     // The graph and the history table.
     ("graph_bands_dawn", Window),
     ("graph_bands_dusk", Window),

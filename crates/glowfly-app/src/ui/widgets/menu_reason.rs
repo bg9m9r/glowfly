@@ -7,6 +7,9 @@
 //! - a setup item stays enabled with a weak "Set up…" (in the language) after its label, and its
 //!   note in the same tooltip.
 //!
+//! - a destructive item (`Danger`) has its label in the danger colour and a danger-tinted hover
+//!   pill (`menu::danger_style`); menus put it in their last group, and blocked it greys as any.
+//!
 //! The reason is never text in the menu, so a long one doesn't widen it, and the item's
 //! accessible name stays its label.
 
@@ -26,11 +29,13 @@ pub const INFO_W: f32 = super::icon::SIZE_SM;
 pub const INFO_GAP: f32 = 12.0;
 pub const INFO_ROOM: f32 = INFO_GAP + INFO_W;
 
-/// A menu item's state: usable, disabled with the whole reason, or usable while what it needs
-/// isn't set up yet (carrying the hover note and the suffix; it opens the setting).
+/// A menu item's state: usable, usable and destructive, disabled with the whole reason, or
+/// usable while what it needs isn't set up yet (carrying the hover note and the suffix; it opens
+/// the setting).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ItemState<'a> {
     Ready,
+    Danger,
     Blocked(&'a str),
     Setup { note: &'a str, suffix: &'a str },
 }
@@ -45,24 +50,40 @@ impl<'a> ItemState<'a> {
     pub fn blocked_by(why: Option<&'a str>) -> Self {
         why.map_or(Self::Ready, Self::Blocked)
     }
+
+    /// A destructive item, blocked by `why` when there is a reason.
+    pub fn danger_unless(why: Option<&'a str>) -> Self {
+        why.map_or(Self::Danger, Self::Blocked)
+    }
 }
 
-/// A menu item: `label` (never wrapped), `shortcut` at the right when not empty. A blocked item
+/// A menu item: `label` (never wrapped), `shortcut` at the right when not empty. A danger item
+/// is in the danger colour with a danger-tinted hover pill. A blocked item
 /// is greyed with an info mark and its reason in a tooltip; a setup item stays enabled with a
 /// weak "Set up…" after its label, the menu widened to fit it.
 pub fn menu_button(ui: &mut Ui, label: impl Into<WidgetText>, shortcut: impl Into<WidgetText>, state: ItemState<'_>) -> Response {
     let shortcut = shortcut.into();
     match state {
-        ItemState::Ready => {
-            let mut b = Button::new(label).wrap_mode(TextWrapMode::Extend);
-            if !shortcut.is_empty() {
-                b = b.shortcut_text(shortcut);
-            }
-            ui.add(b)
+        ItemState::Ready => plain_item(ui, label.into(), shortcut),
+        ItemState::Danger => {
+            ui.scope(|ui| {
+                super::menu::danger_style(ui);
+                plain_item(ui, label.into(), shortcut)
+            })
+            .inner
         }
         ItemState::Blocked(why) => blocked_item(ui, label.into(), shortcut, why),
         ItemState::Setup { note, suffix } => setup_item(ui, label.into(), shortcut, note, suffix),
     }
+}
+
+/// An enabled item: egui's `Button`, its text never wrapped.
+fn plain_item(ui: &mut Ui, label: WidgetText, shortcut: WidgetText) -> Response {
+    let mut b = Button::new(label).wrap_mode(TextWrapMode::Extend);
+    if !shortcut.is_empty() {
+        b = b.shortcut_text(shortcut);
+    }
+    ui.add(b)
 }
 
 /// An enabled item with the weak `suffix` after its label and `note` in the tooltip.

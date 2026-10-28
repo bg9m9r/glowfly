@@ -68,11 +68,11 @@ Button "Cherry-picken" [disabled]
 Button "Cherry-pick-Vorschau…" [disabled]
 Button "Reverten"
 Button "Squashen…" [disabled]
-Button "Entfernen…" [disabled]
 Button "Vorschau zum Entfernen…" [disabled]
 Button "Range-diff der beiden Commits"
 Button "Patch erstellen…" [disabled]
 Button "Kopieren"
+Button "Entfernen…" [disabled]
 Button "Fix build on Windows"
 Button "Add login page"
 Button "Add app skeleton"

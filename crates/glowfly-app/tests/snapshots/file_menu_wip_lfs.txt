@@ -8,7 +8,7 @@ Button "Open in external diff tool"
 Button "Show in Explorer"
 Button "New file in this folder…"
 Button "Rename…"
-Button "Delete…"
 Button "Track in Git LFS"
+Button "Delete…"
 painted:
   "⏵"

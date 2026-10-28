@@ -3,7 +3,7 @@
 //! `branch_menu.rs`; remote branches: `remote_branch_menu.rs`; pull request items:
 //! `pr_menu_items.rs`).
 
-use super::common::{commit_menu_header, menu_header, menu_item, menu_item_if, menu_note};
+use super::common::{commit_menu_header, menu_danger, menu_header, menu_item, menu_item_if, menu_note};
 use super::widgets::reason::{self, ItemState};
 use crate::custom_commands::Target;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
@@ -78,6 +78,8 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
         let blocked = merge.then(|| CommitBlock::PatchMerge.text(t));
         menu_item_if(msgs, ui, t.tr("commits.menu.copy_patch"), blocked, Msg::Patch(PatchMsg::Copy(vec![oid])));
     });
+    separator(ui);
+    super::rebase::edit_menu::drop_single(ui, t, oid, snap, msgs);
 }
 
 /// The reset submenu: soft, mixed and hard (asked first), titled with the branch it moves.
@@ -91,7 +93,7 @@ fn reset_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs:
         menu_item(msgs, ui, t.tr("commits.menu.reset.soft"), Msg::git("Reset (soft)", &["reset", "--soft", &sha]));
         menu_item(msgs, ui, t.tr("commits.menu.reset.mixed"), Msg::git("Reset (mixed)", &["reset", "--mixed", &sha]));
         let ask = hard_reset_msg(t, snap, c);
-        menu_item(msgs, ui, t.tr("commits.menu.reset.hard"), ask);
+        menu_danger(msgs, ui, t.tr("commits.menu.reset.hard"), None, ask);
         menu_note(ui, t.tr("commits.menu.reset.hard_hint"));
     });
 }
@@ -119,6 +121,8 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &
         let copy = Msg::Patch(PatchMsg::Copy(m.oids.clone()));
         menu_item_if(msgs, ui, t.tr("commits.menu.copy_patch"), m.export_blocked.map(|b| b.text(t)), copy);
     });
+    separator(ui);
+    super::rebase::edit_menu::drop_multi(ui, t, m, snap, msgs);
 }
 
 /// Range-diff the two commits: the older row (graph order is newest first) is the old version.

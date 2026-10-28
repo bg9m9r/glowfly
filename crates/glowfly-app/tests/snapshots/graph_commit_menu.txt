@@ -81,11 +81,11 @@ Button "Reset main to this commit"
 Button "Interactive rebase from here…"
 Button "Reword…" [disabled]
 Button "Squash into parent…" [disabled]
-Button "Drop…" [disabled]
 Button "Preview drop…" [disabled]
 Button "Compare with working directory"
 Button "Create patch…"
 Button "Copy"
+Button "Drop…" [disabled]
 Button "Merge branch 'login-page'"
 Button "Fix build on Windows"
 Button "Add login page"

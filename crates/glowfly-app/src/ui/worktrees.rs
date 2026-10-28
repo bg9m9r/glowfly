@@ -6,7 +6,7 @@
 //! prunes missing records. The header's + adds a worktree from HEAD, and its menu adds one or
 //! prunes missing records.
 
-use super::common::{menu_item, menu_item_if};
+use super::common::{menu_danger, menu_item, menu_item_if};
 use super::theme::color;
 use super::widgets;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
@@ -112,8 +112,9 @@ pub(super) fn row_menu(ui: &mut egui::Ui, wt: &WorktreeInfo, msgs: &mut Vec<Msg>
         menu_item_if(msgs, ui, "Lock…", manage_blocked(wt), Msg::Worktree(WorktreeMsg::LockDialog(path.clone())));
     }
     menu_item_if(msgs, ui, "Move…", move_refused(wt), Msg::Worktree(WorktreeMsg::MoveDialog(path.clone())));
-    menu_item_if(msgs, ui, "Remove…", remove_blocked(wt), Msg::Worktree(WorktreeMsg::RemoveDialog(path)));
     if wt.missing {
         menu_item_if(msgs, ui, "Prune missing worktrees", row_prune_blocked(wt), Msg::Worktree(WorktreeMsg::Prune));
     }
+    separator(ui);
+    menu_danger(msgs, ui, "Remove…", remove_blocked(wt), Msg::Worktree(WorktreeMsg::RemoveDialog(path)));
 }

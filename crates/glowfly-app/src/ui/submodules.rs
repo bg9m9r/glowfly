@@ -5,7 +5,7 @@
 //! them after checkouts and pulls; its + adds one too. The section always shows: without
 //! submodules, an empty state line offers Add submodule….
 
-use super::common::menu_item_if;
+use super::common::{menu_danger, menu_item_if};
 use super::theme::color;
 use super::widgets;
 use super::widgets::section_header::{self, Header, HeaderAdd};
@@ -110,7 +110,7 @@ fn menu(ui: &mut egui::Ui, sm: &SubmoduleInfo, snap: &Snapshot, cx: &SectionCx, 
     menu_item_if(msgs, ui, "Edit submodule…", edit.as_deref(), Msg::Submodule(SubmoduleMsg::EditDialog(path)));
     separator(ui);
     let remove = Msg::Submodule(SubmoduleMsg::RemoveDialog(sm.path.clone()));
-    menu_item_if(msgs, ui, "Remove submodule…", remove_blocked(sm, snap), remove);
+    menu_danger(msgs, ui, "Remove submodule…", remove_blocked(sm, snap), remove);
 }
 
 /// The row's status marker, painted (the bundled fonts lack suitable glyphs). An added

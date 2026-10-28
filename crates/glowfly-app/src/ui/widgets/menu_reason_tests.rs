@@ -114,3 +114,24 @@ fn setup_items_say_set_up_in_the_language() {
     h.run();
     assert!(!h.get_by_label("Öffnen").is_disabled(), "a setup item stays enabled");
 }
+
+#[test]
+fn danger_items_click_unless_blocked() {
+    assert_eq!(ItemState::danger_unless(None), ItemState::Danger);
+    assert_eq!(ItemState::danger_unless(Some(UNLOCK_WHY)), ItemState::Blocked(UNLOCK_WHY));
+    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
+        |ui, clicked: &mut bool| {
+            if menu_button(ui, "Delete…", "", ItemState::Danger).clicked() {
+                *clicked = true;
+            }
+            // The danger style stays on its own item.
+            assert_eq!(ui.visuals().override_text_color, None);
+        },
+        false,
+    );
+    h.run();
+    assert!(!h.get_by_label("Delete…").is_disabled());
+    h.get_by_label("Delete…").click();
+    h.run();
+    assert!(*h.state());
+}

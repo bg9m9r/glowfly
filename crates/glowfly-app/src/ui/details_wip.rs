@@ -231,24 +231,19 @@ pub(super) fn wip_file_row(
             menu_item(msgs, ui, t.tr("details.wip.open_conflict"), Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));
         }
         menu_item(msgs, ui, action, toggle());
-        // Checking out the index version of a conflicted path means nothing.
-        if !staged && !conflicted {
+        // Checking out the index version of a conflicted path means nothing. Both ask first.
+        let discard = (!staged && !conflicted).then(|| {
             if f.status == '?' {
-                menu_item(msgs, ui, t.tr("details.wip.discard.item"), Msg::WorkFile(WorkFileMsg::DiscardUntracked(f.path.clone())));
+                Msg::WorkFile(WorkFileMsg::DiscardUntracked(f.path.clone()))
             } else {
-                menu_item(
-                    msgs,
-                    ui,
-                    t.tr("details.wip.discard.item"),
-                    Msg::confirm_danger(
-                        t.tr("details.wip.discard.title"),
-                        t.trf("details.wip.discard.body", &[("path", &f.path)]),
-                        t.tr("details.wip.discard.button"),
-                        Msg::Stage(StageMsg::DiscardFile(f.path.clone())),
-                    ),
-                );
+                Msg::confirm_danger(
+                    t.tr("details.wip.discard.title"),
+                    t.trf("details.wip.discard.body", &[("path", &f.path)]),
+                    t.tr("details.wip.discard.button"),
+                    Msg::Stage(StageMsg::DiscardFile(f.path.clone())),
+                )
             }
-        }
+        });
         file_menu::stash_file_item(ui, t, msgs, snap, f);
         file_menu::patch_file_item(ui, t, msgs, f, staged);
         if f.status != '?' {
@@ -265,7 +260,7 @@ pub(super) fn wip_file_row(
         } else {
             file_menu::diff_item(t, target(), ctx.tools.setup.diff)
         };
-        file_menu::wip_file_items(ui, t, msgs, f, missing, unstages, &items, ctx.tools.setup.editor, tool, ctx.commands);
+        file_menu::wip_file_items(ui, t, msgs, f, missing, unstages, &items, ctx.tools.setup.editor, tool, ctx.commands, discard);
     });
     r
 }

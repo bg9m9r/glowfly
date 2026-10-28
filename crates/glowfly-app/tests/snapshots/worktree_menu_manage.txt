@@ -43,8 +43,8 @@ Button "Open folder" [disabled]
 Button "Copy path"
 Button "Lock…"
 Button "Move…" [disabled]
-Button "Remove…"
 Button "Prune missing worktrees"
+Button "Remove…"
 Button "Add submodule"
 Button "Submodules actions"
 Label "No submodules"

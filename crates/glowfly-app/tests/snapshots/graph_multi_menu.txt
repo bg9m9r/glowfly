@@ -67,11 +67,11 @@ Button "Cherry-pick"
 Button "Preview cherry-pick…"
 Button "Revert"
 Button "Squash…" [disabled]
-Button "Drop…" [disabled]
 Button "Preview drop…" [disabled]
 Button "Range-diff the two commits"
 Button "Create patch…"
 Button "Copy"
+Button "Drop…" [disabled]
 Button "Merge branch 'login-page'"
 Button "Fix build on Windows"
 Button "Add login page"

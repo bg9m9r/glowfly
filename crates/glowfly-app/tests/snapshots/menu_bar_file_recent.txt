@@ -17,7 +17,7 @@ Button "Remove from recent"
 Button "Add to favorites"
 Button "C:\\work\\docs"
 Button "Remove from recent"
-Button "Clear recent"
+Button "Clear recent…"
 Button "Reopen closed tab" [disabled]
 Button "Close tab"
 Button "Preferences…"

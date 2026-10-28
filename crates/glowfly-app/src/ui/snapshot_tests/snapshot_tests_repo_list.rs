@@ -238,7 +238,7 @@ fn repo_menu_favorites_and_recent() {
     let mut h = harness(st, true);
     h.run();
     open_repo_menu(&mut h);
-    for label in ["Add this repository to favorites", "Favorites", "Recent", "Clear recent", &shown(&web()), &shown(&api())] {
+    for label in ["Add this repository to favorites", "Favorites", "Recent", "Clear recent…", &shown(&web()), &shown(&api())] {
         assert!(h.query_by_label(label).is_some(), "{label} is in the menu");
     }
     assert_eq!(h.query_all_by_label(&shown(&web())).count(), 1, "a favorite is listed once");
@@ -259,7 +259,7 @@ fn repo_menu_actions() {
     h.run();
     open_repo_menu(&mut h);
     for label in
-        ["Find repositories in folders…", "Open all favorites in tabs", "Fetch or pull repositories", "Remove missing entry (1)", "open"]
+        ["Find repositories in folders…", "Open all favorites in tabs", "Fetch or pull repositories", "Remove missing entry (1)…", "open"]
     {
         assert!(h.query_by_label(label).is_some(), "{label} is in the menu");
     }

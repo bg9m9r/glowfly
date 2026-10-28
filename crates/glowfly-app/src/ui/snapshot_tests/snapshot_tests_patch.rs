@@ -176,7 +176,7 @@ fn am_banner_conflict() {
     assert!(!h.get_by_label("More ways to go on").is_disabled());
     h.get_by_label("More ways to go on").click();
     h.run();
-    assert!(!h.get_by_label("Skip patch").is_disabled());
+    assert!(!h.get_by_label("Skip patch…").is_disabled());
     assert!(h.query_by_label("View conflicts").is_some());
     h.check_snapshot("am_banner_conflict");
     drop(h);
@@ -193,7 +193,7 @@ fn am_banner_stopped() {
     h.check_snapshot("am_banner_stopped");
     h.get_by_label("More ways to go on").click();
     h.run();
-    h.get_by_label("Skip patch").click();
+    h.get_by_label("Skip patch…").click();
     h.run();
     // It asks first, then runs the plain skip.
     let skips = |m: &Msg| {

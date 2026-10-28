@@ -8,7 +8,7 @@
 //! (`custom_menu.rs`); the Copy submenu; and delete. The branch's name heads the menu once; the items leave it out. Disabled items say why
 //! on hover, with the same text `update` logs when it refuses a late message.
 
-use super::common::{menu_item, menu_item_if};
+use super::common::{menu_danger, menu_item, menu_item_if};
 use super::ref_visibility;
 use super::theme::color;
 use crate::conflict_check::ConflictCheckMsg;
@@ -199,7 +199,7 @@ fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
     let head = snap.head_branch.as_deref();
     let in_worktree = delete_blocked(snap, name);
     let in_worktree = in_worktree.as_deref();
-    menu_item_if(
+    menu_danger(
         msgs,
         ui,
         t.tr("branch.menu.delete"),
@@ -217,7 +217,7 @@ fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
             ),
         ),
     );
-    menu_item_if(
+    menu_danger(
         msgs,
         ui,
         t.tr("branch.menu.force_delete"),
@@ -237,7 +237,7 @@ fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
     );
     if let Some(tr) = branches::can_delete_with_remote(b) {
         let blocked = in_worktree.map(str::to_owned).or_else(|| branches::delete_with_remote_blocked(b, tr, head));
-        menu_item_if(
+        menu_danger(
             msgs,
             ui,
             t.trf("branch.menu.delete_with_remote", &[("remote_branch", &tr.display())]),

@@ -20,7 +20,7 @@ mod extra;
 pub(super) use extra::lfs_track_items;
 pub(super) use extra::{patch_file_item, staged_header_items, stash_file_item};
 
-use super::common::{menu_item, menu_item_if, menu_item_setup, short};
+use super::common::{menu_danger, menu_item, menu_item_if, menu_item_setup, short};
 use super::widgets::reason::{self, ItemState};
 use crate::custom_commands::Target;
 use crate::msg::BlameMsg;
@@ -258,8 +258,10 @@ pub(super) fn commit_file_items(
 
 /// Extra items for a working-tree row: separator, open items (disabled when `missing`, with
 /// `tool` among them: the row's diff tool entry, or the merge tool's for a conflicted row), then
-/// separator, new file in this folder, rename and delete (the last two also disabled while the
-/// row is conflicted), then (unless `missing`) the Track in Git LFS submenu with `lfs`. The editor
+/// separator, new file in this folder and rename (disabled while the row is conflicted), then
+/// (unless `missing`) the Track in Git LFS submenu with `lfs`, the custom commands, and last the
+/// destructive group: `discard` (Discard changes…, when the row has changes to discard) and
+/// delete (disabled while conflicted). The editor
 /// entry says "Set up…" while no editor is set (`editor_setup`). `unstages` means deleting this path also takes it out of the index (staged
 /// as new or as a rename's new path): the item then reads "Unstage and delete…" and stays enabled
 /// when the file is already gone, since unstaging it is still useful.
@@ -275,6 +277,7 @@ pub(super) fn wip_file_items(
     editor_setup: Option<&'static str>,
     tool: ToolItem,
     cmds: &MenuCommands,
+    discard: Option<Msg>,
 ) {
     separator(ui);
     let gone = missing.then(|| t.tr("files.menu.deleted_in_workdir"));
@@ -284,11 +287,15 @@ pub(super) fn wip_file_items(
     let conflicted = (f.status == '!').then(|| t.tr("files.menu.conflicted"));
     let blocked = gone.or(conflicted);
     menu_item_if(msgs, ui, t.tr("files.menu.rename"), blocked, Msg::WorkFile(WorkFileMsg::RenameFileDialog(f.path.clone())));
-    let (label, del_blocked) =
-        if unstages { (t.tr("files.menu.unstage_delete"), conflicted) } else { (t.tr("files.menu.delete"), blocked) };
-    menu_item_if(msgs, ui, label, del_blocked, Msg::WorkFile(WorkFileMsg::DeleteFile { path: f.path.clone(), confirmed: false }));
     if !missing {
         extra::lfs_submenu(ui, t, msgs, lfs);
     }
     super::custom_menu::group(ui, t, cmds, Place::File, Target::File { path: f.path.clone(), at: None }, msgs);
+    separator(ui);
+    if let Some(m) = discard {
+        menu_danger(msgs, ui, t.tr("details.wip.discard.item"), None, m);
+    }
+    let (label, del_blocked) =
+        if unstages { (t.tr("files.menu.unstage_delete"), conflicted) } else { (t.tr("files.menu.delete"), blocked) };
+    menu_danger(msgs, ui, label, del_blocked, Msg::WorkFile(WorkFileMsg::DeleteFile { path: f.path.clone(), confirmed: false }));
 }

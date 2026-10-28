@@ -104,7 +104,7 @@ fn busy_dropdown_items_say_why() {
     assert_eq!(fetch.description().as_deref(), Some(busy));
     h.get_by_label("More push actions").click();
     h.run_steps(4);
-    for label in ["Force push (with lease)", "Publish to GitHub…"] {
+    for label in ["Force push (with lease)…", "Publish to GitHub…"] {
         let item = h.get_by_label(label);
         assert!(item.is_disabled(), "{label}");
         assert_eq!(item.description().as_deref(), Some(busy), "{label}");

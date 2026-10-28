@@ -73,7 +73,7 @@ fn stopped_cherry_pick_banner() {
     h.check_snapshot("cherry_pick_banner");
     h.get_by_label("More ways to go on").click();
     h.run();
-    assert!(!h.get_by_label("Skip commit").is_disabled());
+    assert!(!h.get_by_label("Skip commit…").is_disabled());
     drop(h);
     remove_fixture(&dir);
 
@@ -85,7 +85,7 @@ fn stopped_cherry_pick_banner() {
     h.check_snapshot("cherry_pick_banner_old_git");
     h.get_by_label("More ways to go on").click();
     h.run();
-    assert!(h.get_by_label("Skip commit").is_disabled(), "too old a git: a disabled item with its reason");
+    assert!(h.get_by_label("Skip commit…").is_disabled(), "too old a git: a disabled item with its reason");
     drop(h);
     remove_fixture(&dir);
 }
