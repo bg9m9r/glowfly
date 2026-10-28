@@ -221,16 +221,18 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         C::Push => Msg::Job(JobMsg::Push { force: false }),
         C::Stash => Msg::git("Stash", &["stash", "push", "-u"]),
         C::PopStash => {
-            let Some(m) = st.snap.as_ref().and_then(stash_confirm::pop_latest) else {
+            let t = st.settings.lang();
+            let Some(m) = st.snap.as_ref().and_then(|snap| stash_confirm::pop_latest(snap, t)) else {
                 st.log(false, "There are no stashes.");
                 return;
             };
             m
         }
         C::StashOp { action, oid } => {
+            let t = st.settings.lang();
             let found = st.snap.as_ref().and_then(|snap| {
                 let s = snap.stashes.iter().find(|x| x.oid == oid)?;
-                Some(stash_confirm::stash_msg(snap, action, s))
+                Some(stash_confirm::stash_msg(snap, t, action, s))
             });
             let Some(m) = found else {
                 st.log(false, "That stash no longer exists.");

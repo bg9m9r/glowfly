@@ -2,7 +2,7 @@
 //! menu to apply, pop, rename or delete it; an auto-stash shows a weak "auto" on the right. The header's + opens the Stash dialog, and its menu
 //! stashes every change or only the staged ones.
 
-use super::common::{menu_danger, menu_item};
+use super::common::{menu_danger, menu_item, menu_item_if};
 use super::theme::color;
 use super::widgets;
 use super::widgets::menu::separator;
@@ -49,14 +49,15 @@ pub(super) fn section(
         if auto {
             r = r.on_hover_text(t.tr("sidebar.stashes.auto.tip"));
         }
-        let stash = |action| crate::state::stash_confirm::stash_msg(snap, action, s);
+        let stash = |action| crate::state::stash_confirm::stash_msg(snap, t, action, s);
+        let blocked = crate::state::stash_confirm::apply_blocked(snap, t);
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
         }
         r.row_menu(|ui| {
             super::common::menu_header(ui, &s.message);
-            menu_item(msgs, ui, t.tr("sidebar.stashes.menu.apply"), stash(StashAction::Apply));
-            menu_item(msgs, ui, t.tr("sidebar.stashes.menu.pop"), stash(StashAction::Pop));
+            menu_item_if(msgs, ui, t.tr("sidebar.stashes.menu.apply"), blocked, stash(StashAction::Apply));
+            menu_item_if(msgs, ui, t.tr("sidebar.stashes.menu.pop"), blocked, stash(StashAction::Pop));
             menu_item(msgs, ui, t.tr("sidebar.stashes.menu.rename"), Msg::Stash(StashMsg::RenameDialog { oid: s.oid }));
             separator(ui);
             menu_danger(msgs, ui, t.tr("sidebar.stashes.menu.delete"), None, stash(StashAction::Drop));

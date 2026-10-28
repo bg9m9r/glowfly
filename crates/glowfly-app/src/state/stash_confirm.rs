@@ -1,97 +1,131 @@
-//! Whether applying, popping or deleting a stash asks first: Delete always does, Apply and Pop
-//! only on top of uncommitted changes (they may conflict or be refused). The one place that
-//! decides it, for the STASHES menu, the palette and the toolbar's Pop. Pure.
+//! Whether applying, popping or deleting a stash asks first, the one place that decides it for
+//! the STASHES menu, the palette, the toolbar's Pop and the journal's lost stashes. Pure.
+//!
+//! Delete always asks. Apply and Pop are refused while the index has conflicted entries (git
+//! can't apply a stash then), run straight away on a clean tree, and on top of uncommitted
+//! changes ask a question that names the files both the stash and the working tree change. That
+//! list needs the stash's files, so the question goes through `StashMsg::Ask`, which reads them
+//! (`StashEffect::ReadPaths`) and opens it with `ask_confirm`. Every pop and apply of a listed
+//! stash names it by position and commit (`JobMsg::Stash`), so git is refused if the list moved.
 
+use super::conflict_check::{POPOVER_FILES, file_list};
 use super::palette_kinds::StashAction;
+use super::rebase::has_conflicts;
 use super::stashes::drop_confirm_body;
-use crate::msg::{JobMsg, Msg};
+use crate::msg::{JobMsg, Msg, StashMsg};
+use git2::Oid;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Snapshot, StashInfo};
+use std::collections::HashSet;
 
-/// `run`, or the confirmation that sends it once accepted, for `action` on the stash named
-/// `message`.
-pub fn guarded(snap: &Snapshot, action: StashAction, message: &str, run: Msg) -> Msg {
-    match action {
-        StashAction::Drop => Msg::confirm_danger("Delete stash", drop_confirm_body(message), "Delete", run),
-        StashAction::Apply | StashAction::Pop if snap.is_dirty() => {
-            let button = if action == StashAction::Pop { "Pop" } else { "Apply" };
-            Msg::confirm(action.job_label(), dirty_body(action, message), button, run)
+/// What an accepted Apply or Pop runs.
+#[derive(Clone, Debug, PartialEq)]
+pub enum StashRun {
+    /// `git stash <verb> stash@{index}`, refused unless that still is the stash's commit.
+    Listed { index: usize },
+    /// A plain job, for a stash that isn't in the list (the journal's lost stashes).
+    Git { label: String, cmds: Vec<Vec<String>> },
+}
+
+/// An Apply or Pop of the stash with commit `oid` (named `message`) on top of uncommitted
+/// changes, waiting for the stash's files before it asks.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StashAsk {
+    pub action: StashAction,
+    pub oid: Oid,
+    pub message: String,
+    pub run: StashRun,
+}
+
+impl StashAsk {
+    /// The job the question's button runs.
+    pub fn job(&self) -> Msg {
+        match &self.run {
+            StashRun::Listed { index } => Msg::Job(JobMsg::Stash { action: self.action, index: *index, oid: self.oid }),
+            StashRun::Git { label, cmds } => Msg::Job(JobMsg::Git { label: label.clone(), cmds: cmds.clone() }),
         }
-        StashAction::Apply | StashAction::Pop => run,
     }
 }
 
-/// The question before applying or popping the stash named `message` on a dirty tree.
-pub fn dirty_body(action: StashAction, message: &str) -> String {
-    let mut body = format!(
-        "Apply \"{message}\" on top of your uncommitted changes? If they change the same files, git may stop with conflicts or refuse to apply."
-    );
+/// Why Apply and Pop can't run now, when the index has conflicted entries.
+pub fn apply_blocked(snap: &Snapshot, t: Lang) -> Option<&'static str> {
+    has_conflicts(snap).then(|| t.tr("stash.blocked.conflicts"))
+}
+
+/// What `action` on the stash with commit `oid` (named `message`) sends: the job, the question
+/// before it, or the refusal over conflicts.
+pub fn guarded(snap: &Snapshot, t: Lang, action: StashAction, oid: Oid, message: &str, run: StashRun) -> Msg {
+    let ask = StashAsk { action, oid, message: message.to_owned(), run };
+    match action {
+        StashAction::Drop => Msg::confirm_danger("Delete stash", drop_confirm_body(message), "Delete", ask.job()),
+        StashAction::Apply | StashAction::Pop => match apply_blocked(snap, t) {
+            Some(why) => Msg::Logged { ok: false, text: why.to_owned() },
+            None if snap.is_dirty() => Msg::Stash(StashMsg::Ask(ask)),
+            None => ask.job(),
+        },
+    }
+}
+
+/// `action` on stash `s`, named by its position and commit.
+pub fn stash_msg(snap: &Snapshot, t: Lang, action: StashAction, s: &StashInfo) -> Msg {
+    guarded(snap, t, action, s.oid, &s.message, StashRun::Listed { index: s.index })
+}
+
+/// Pop of the newest stash as the snapshot shows it (`stash@{0}` with its commit); None
+/// without stashes.
+pub fn pop_latest(snap: &Snapshot, t: Lang) -> Option<Msg> {
+    Some(stash_msg(snap, t, StashAction::Pop, snap.stashes.first()?))
+}
+
+/// The paths in `stash_paths` that the working tree changes too (staged, unstaged or
+/// untracked, a staged rename's old path included), sorted.
+pub fn overlap(stash_paths: &[String], snap: &Snapshot) -> Vec<String> {
+    let changed: HashSet<&str> =
+        snap.staged.iter().chain(&snap.unstaged).flat_map(|f| std::iter::once(f.path.as_str()).chain(f.renamed_from.as_deref())).collect();
+    let mut both: Vec<String> = stash_paths.iter().filter(|p| changed.contains(p.as_str())).cloned().collect();
+    both.sort();
+    both.dedup();
+    both
+}
+
+/// The question before applying or popping the stash named `message` on a dirty tree. `both`
+/// holds the files the stash and the working tree both change; None when the stash's files
+/// couldn't be read, which keeps the general warning.
+pub fn dirty_body(t: Lang, action: StashAction, message: &str, both: Option<&[String]>) -> String {
+    let mut body = t.trf("stash.ask.body", &[("message", &message)]);
+    match both {
+        None => {
+            body.push(' ');
+            body.push_str(t.tr("stash.ask.unknown"));
+        }
+        Some([]) => {
+            body.push(' ');
+            body.push_str(t.tr("stash.ask.apart"));
+        }
+        Some(paths) => {
+            body.push(' ');
+            body.push_str(&t.trn("stash.ask.overlap", paths.len(), &[]));
+            let (shown, more) = file_list(t, paths, Some(POPOVER_FILES));
+            for p in shown.iter().chain(&more) {
+                body.push_str("\n    ");
+                body.push_str(p);
+            }
+        }
+    }
     if action == StashAction::Pop {
-        body.push_str(" If it conflicts, the stash is kept.");
+        body.push_str(if matches!(both, Some(p) if !p.is_empty()) { "\n\n" } else { " " });
+        body.push_str(t.tr("stash.ask.pop_kept"));
     }
     body
 }
 
-/// `action` on stash `s`, named by its position and commit, asking first when it should.
-pub fn stash_msg(snap: &Snapshot, action: StashAction, s: &StashInfo) -> Msg {
-    guarded(snap, action, &s.message, Msg::Job(JobMsg::Stash { action, index: s.index, oid: s.oid }))
-}
-
-/// `git stash pop` of the newest stash, asking first on a dirty tree; None without stashes.
-pub fn pop_latest(snap: &Snapshot) -> Option<Msg> {
-    let top = snap.stashes.first()?;
-    Some(guarded(snap, StashAction::Pop, &top.message, Msg::git("Pop stash", &["stash", "pop"])))
+/// The question for `ask`, given the stash's files (`paths`, or None when they couldn't be read).
+pub fn ask_confirm(snap: &Snapshot, t: Lang, ask: &StashAsk, paths: Option<&[String]>) -> Msg {
+    let both = paths.map(|p| overlap(p, snap));
+    let button = if ask.action == StashAction::Pop { "Pop" } else { "Apply" };
+    Msg::confirm(ask.action.job_label(), dirty_body(t, ask.action, &ask.message, both.as_deref()), button, ask.job())
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn fixture(name: &str) -> (std::path::PathBuf, Snapshot) {
-        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-stash-confirm-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        let repo = git2::Repository::init(&dir).unwrap();
-        std::fs::write(dir.join("a.txt"), "a").unwrap();
-        let mut index = repo.index().unwrap();
-        index.add_path(std::path::Path::new("a.txt")).unwrap();
-        index.write().unwrap();
-        let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
-        let sig = git2::Signature::now("T", "t@example.com").unwrap();
-        repo.commit(Some("HEAD"), &sig, &sig, "one", &tree, &[]).unwrap();
-        let snap = glowfly_core::repo::load(&dir, &glowfly_core::repo::LoadOptions::all(100)).unwrap();
-        (dir, snap)
-    }
-
-    fn run() -> Msg {
-        Msg::git("Pop stash", &["stash", "pop"])
-    }
-
-    #[test]
-    fn asks_only_on_a_dirty_tree() {
-        let (dir, clean) = fixture("guard");
-        assert!(matches!(guarded(&clean, StashAction::Apply, "wip", run()), Msg::Job(JobMsg::Git { .. })));
-        assert!(matches!(guarded(&clean, StashAction::Pop, "wip", run()), Msg::Job(JobMsg::Git { .. })));
-        assert!(
-            matches!(guarded(&clean, StashAction::Drop, "wip", run()), Msg::ConfirmDanger { ref title, .. } if title == "Delete stash")
-        );
-        std::fs::write(dir.join("a.txt"), "b").unwrap();
-        let dirty = glowfly_core::repo::load(&dir, &glowfly_core::repo::LoadOptions::all(100)).unwrap();
-        assert!(dirty.is_dirty());
-        let m = guarded(&dirty, StashAction::Pop, "wip", run());
-        assert!(matches!(&m, Msg::Confirm { title, button, then, .. }
-            if title == "Pop stash" && button == "Pop" && matches!(**then, Msg::Job(JobMsg::Git { .. }))));
-        let m = guarded(&dirty, StashAction::Apply, "wip", run());
-        assert!(matches!(&m, Msg::Confirm { title, button, .. } if title == "Apply stash" && button == "Apply"));
-        assert!(pop_latest(&dirty).is_none(), "no stashes");
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn dirty_body_wording() {
-        let apply = dirty_body(StashAction::Apply, "wip on main");
-        assert_eq!(
-            apply,
-            "Apply \"wip on main\" on top of your uncommitted changes? If they change the same files, git may stop with conflicts or refuse to apply."
-        );
-        assert_eq!(dirty_body(StashAction::Pop, "wip on main"), format!("{apply} If it conflicts, the stash is kept."));
-    }
-}
+#[path = "stash_confirm_tests.rs"]
+mod tests;

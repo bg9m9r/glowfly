@@ -6,6 +6,7 @@
 
 use super::journal_restore::{self, RestorePlan};
 use super::palette_kinds::StashAction;
+use super::stash_confirm::StashRun;
 use crate::msg::{BranchMsg, JobMsg, Msg};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
@@ -117,8 +118,8 @@ pub fn create_branch(c: &LostCommit) -> BranchMsg {
 
 /// Apply stash: `git stash apply <oid>`, asking first on a dirty tree.
 pub fn apply(snap: &Snapshot, c: &LostCommit, t: Lang) -> Msg {
-    let run = Msg::Job(JobMsg::Git { label: t.tr("journal.lost.apply.job").into(), cmds: vec![lost::apply_stash(c.oid)] });
-    super::stash_confirm::guarded(snap, StashAction::Apply, &c.summary, run)
+    let run = StashRun::Git { label: t.tr("journal.lost.apply.job").into(), cmds: vec![lost::apply_stash(c.oid)] };
+    super::stash_confirm::guarded(snap, t, StashAction::Apply, c.oid, &c.summary, run)
 }
 
 /// Put back in stash list: `git stash store -m <summary> <oid>`.

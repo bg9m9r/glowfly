@@ -1,10 +1,11 @@
-//! Stash list jobs (`Effect::Stash`): renaming an entry, putting an auto-stash back, and
-//! reading and writing the auto-stashes waiting to go back across restarts.
+//! Stash list jobs (`Effect::Stash`): renaming an entry, putting an auto-stash back,
+//! reading and writing the auto-stashes waiting to go back across restarts, and reading the
+//! files a stash changes for the question before applying it.
 
 use super::execute::{Cx, Execute};
 use super::expect;
 use crate::effect::{PutBackRequest, StashEffect, UndoResult};
-use crate::msg::{AutoStashMsg, JobMsg, Msg};
+use crate::msg::{AutoStashMsg, JobMsg, Msg, StashMsg};
 use git2::Oid;
 use glowfly_core::stash_ops::{self, PutBack};
 use glowfly_core::undo::{self, UndoKind};
@@ -21,6 +22,10 @@ pub(super) fn run(e: StashEffect) -> Option<Msg> {
         StashEffect::SaveAutoStashes { cwd, saved } => stash_ops::write_saved(&cwd, &saved)
             .err()
             .map(|e| Msg::Logged { ok: false, text: format!("Could not save the stashes waiting to go back: {e}") }),
+        StashEffect::ReadPaths { cwd, ask } => {
+            let paths = stash_ops::changed_paths(&cwd, ask.oid).map_err(|e| e.to_string());
+            Some(Msg::Stash(StashMsg::PathsRead { ask, paths }))
+        }
     }
 }
 

@@ -29,6 +29,7 @@ source file, update its line here.
 - `stash_ops/renames.rs`: a chosen staged rename stashed whole: its old path put back from HEAD after the stash, refused beforehand when something is on disk there.
 - `stash_ops/auto.rs`: auto-stashes: which single commands the guard covers (plus Git Flow start and finish, a pull request's checkout and a restack, named by their entry points), their fixed English stash messages, and putting a stash back with `git stash pop --index` once nothing is in progress (a plain pop when the staged state no longer fits), telling restored, restored unstaged, conflicted, failed and gone apart; tests in `auto_tests.rs` and `auto_put_back_tests.rs`.
 - `stash_ops/saved.rs`: the auto-stashes waiting to go back, kept across restarts in the worktree's `glowfly/auto-stashes.json`; tests in `saved_tests.rs`.
+- `stash_ops/paths.rs`: the files a stash changes (its working-tree, index and untracked-files commits), for the question before applying it; tests in `paths_tests.rs`.
 - `sparse_ops.rs`: sparse checkout state, paths and command lines.
 - `patch_ops.rs`, `patch_ops/`: format-patch export of commits or one file of a commit; uncommitted changes through git diff (all, staged or unstaged, chosen paths, untracked files); clipboard text; reading what a patch file holds without git.
 - `patch_ops/`: git apply command lines for each option (index, three-way, `.rej` files, reverse) and their errors, and git am series with where a stopped one is.

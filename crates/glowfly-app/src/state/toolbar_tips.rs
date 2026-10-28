@@ -79,11 +79,15 @@ pub fn stash_blocked(st: &AppState) -> Option<String> {
     })
 }
 
-/// Why Pop can't run: a job, or no stash.
+/// Why Pop can't run: a job, no stash, or conflicted files (git can't apply a stash then).
 pub fn pop_blocked(st: &AppState) -> Option<String> {
     job_running(st).or_else(|| {
         let snap = st.snap.as_ref()?;
-        snap.stashes.is_empty().then(|| st.settings.lang().tr("toolbar.tip.blocked.no_stashes").to_owned())
+        let t = st.settings.lang();
+        if snap.stashes.is_empty() {
+            return Some(t.tr("toolbar.tip.blocked.no_stashes").to_owned());
+        }
+        super::stash_confirm::apply_blocked(snap, t).map(str::to_owned)
     })
 }
 

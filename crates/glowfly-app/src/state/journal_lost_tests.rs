@@ -56,7 +56,10 @@ fn stash_actions_and_create_branch() {
     assert_eq!(cmds, vec![glowfly_core::gitcli::args(&["stash", "apply", &id])]);
     let mut dirty = snap("journal-lost-apply-dirty");
     dirty.unstaged = rows(&[("a.txt", 'M')]);
-    assert!(matches!(apply(&dirty, &s, en), Msg::Confirm { .. }), "asks first on a dirty tree");
+    let Msg::Stash(crate::msg::StashMsg::Ask(ask)) = apply(&dirty, &s, en) else { panic!("asks first on a dirty tree") };
+    assert!(
+        matches!(ask.job(), Msg::Job(JobMsg::Git { ref cmds, .. }) if cmds[..] == [glowfly_core::gitcli::args(&["stash", "apply", &id])])
+    );
     let Msg::Job(JobMsg::Git { cmds, .. }) = store(&s, en) else { panic!("a job") };
     assert_eq!(cmds, vec![glowfly_core::gitcli::args(&["stash", "store", "-m", "On main: keep", &id])]);
     let BranchMsg::NewBranch { start, name } = create_branch(&lost(1, LostKind::Commit, "x")) else { panic!("New branch") };

@@ -158,7 +158,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     }
                     let r = tool(ui, Icon::Pop, t.tr("toolbar.pop.button"), t.tr("toolbar.pop.name"), rules::pop_blocked(st).is_none());
                     if attach(r, keys, t, || tips::pop(st)).clicked() {
-                        msgs.extend(crate::state::stash_confirm::pop_latest(snap));
+                        msgs.extend(crate::state::stash_confirm::pop_latest(snap, t));
                     }
                 });
                 if let Some(fs) = host {

@@ -1,9 +1,10 @@
-//! Stash list jobs that aren't a plain git command line, and the saved auto-stash records
-//! (`Effect::Stash`).
+//! Stash list jobs that aren't a plain git command line, the saved auto-stash records and the
+//! read of a stash's files (`Effect::Stash`).
 
 use super::EffectMeta;
 #[cfg(test)]
 use super::SandboxRule;
+use crate::state::stash_confirm::StashAsk;
 use git2::Oid;
 use glowfly_core::stash_ops::SavedAutoStash;
 use std::path::{Path, PathBuf};
@@ -22,6 +23,9 @@ pub enum StashEffect {
     /// Replaces `cwd`'s saved auto-stash records with `saved` (none removes the file); a
     /// failure is logged.
     SaveAutoStashes { cwd: PathBuf, saved: Vec<SavedAutoStash> },
+    /// Reads the files stash `ask.oid` changes (`stash_ops::changed_paths`) for the question
+    /// before applying it; reports `StashMsg::PathsRead`, scoped to the tab that asked.
+    ReadPaths { cwd: PathBuf, ask: StashAsk },
 }
 
 /// The auto-stash to put back: the stash with commit `oid` in `cwd`'s list.
@@ -38,7 +42,8 @@ impl StashEffect {
             StashEffect::Rename { cwd, .. }
             | StashEffect::PutBack(PutBackRequest { cwd, .. })
             | StashEffect::ReadAutoStashes { cwd }
-            | StashEffect::SaveAutoStashes { cwd, .. } => cwd,
+            | StashEffect::SaveAutoStashes { cwd, .. }
+            | StashEffect::ReadPaths { cwd, .. } => cwd,
         }
     }
 }
@@ -50,19 +55,27 @@ impl EffectMeta for StashEffect {
             StashEffect::PutBack(_) => "put-back-stash",
             StashEffect::ReadAutoStashes { .. } => "read-auto-stashes",
             StashEffect::SaveAutoStashes { .. } => "save-auto-stashes",
+            StashEffect::ReadPaths { .. } => "read-stash-paths",
         }
     }
 
     fn scope(&self) -> Option<&PathBuf> {
-        None
+        match self {
+            StashEffect::ReadPaths { cwd, .. } => Some(cwd),
+            _ => None,
+        }
     }
 
     fn timed(&self) -> bool {
         true
     }
 
+    /// The read of a stash's files changes nothing, so it doesn't wait behind a running job.
     fn queue(&self) -> Option<&Path> {
-        Some(self.cwd())
+        match self {
+            StashEffect::ReadPaths { .. } => None,
+            _ => Some(self.cwd()),
+        }
     }
 
     #[cfg(test)]

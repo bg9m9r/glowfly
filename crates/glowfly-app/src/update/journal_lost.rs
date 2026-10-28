@@ -70,7 +70,11 @@ fn dispatch(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         Msg::Confirm { title, body, button, then } => st.modal = Some(crate::state::Modal::Confirm { title, body, button, then }),
         Msg::Job(job) => super::ops::job(st, job, now, fx),
-        // The actions only ever give one of those two.
+        // Apply on top of uncommitted changes reads the stash's files before it asks.
+        Msg::Stash(m) => super::stash::handle(st, m, fx),
+        // Apply refused over conflicts.
+        Msg::Logged { ok, text } => st.log(ok, text),
+        // The actions only ever give one of those.
         _ => {}
     }
 }

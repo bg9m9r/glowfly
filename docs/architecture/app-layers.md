@@ -64,7 +64,7 @@ source file, update its line here. Features that span every layer are in
 - `issue_words.rs`: the words of the issue panel and Create dialog per tracker.
 - `rebase_merges.rs`: the rebase panel's merge rows.
 - `rebase_onto.rs`: rebasing onto a graph commit.
-- `stash_confirm.rs`: whether applying, popping or deleting a stash asks first, for every entry point.
+- `stash_confirm.rs`: whether applying, popping or deleting a stash asks first or is refused over conflicts, for every entry point, and the files the stash and the working tree both change; tests in `stash_confirm_tests.rs`.
 - `auto_stash.rs`: the auto-stash prompt, its texts and the stashes waiting to go back.
 - `palette_nav.rs`: the palette's page and end keys.
 - `palette_selected.rs`: the palette's entries for the selected commit.

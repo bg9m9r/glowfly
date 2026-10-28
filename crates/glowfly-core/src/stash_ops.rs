@@ -15,7 +15,7 @@
 //! (checkout, pull, merge, rebase, cherry-pick, revert, hard reset), recognises it and git's own
 //! kept "autostash" in the list, and puts it back with `git stash pop --index` (a plain pop when
 //! the staged state no longer fits) once nothing is in progress. `saved` keeps the ones still
-//! waiting to go back across restarts.
+//! waiting to go back across restarts. `paths` lists the files a stash changes.
 
 use crate::error::Result;
 use crate::gitcli::{self, args};
@@ -24,10 +24,12 @@ use git2::Oid;
 use std::path::Path;
 
 mod auto;
+mod paths;
 mod push;
 mod renames;
 mod saved;
 pub use auto::{AUTO_STASH_PREFIX, AutoStashFor, GIT_AUTOSTASH, PutBack, is_auto_stash, pop_put_back, prepare_put_back};
+pub use paths::changed_paths;
 pub use push::{PATHS_ON_COMMAND_LINE, PushCommand, STAGED_MIN_GIT, StashScope, push_command, push_message, staged_unsupported};
 pub use renames::{RESTORE_BLOCKED, rename_sources, restore_blocked, restore_blocked_output, restore_commands};
 pub use saved::{SavedAutoStash, path as saved_path, read_saved, write_saved};
@@ -185,3 +187,7 @@ mod auto_put_back_tests;
 #[cfg(test)]
 #[path = "stash_ops/saved_tests.rs"]
 mod saved_tests;
+
+#[cfg(test)]
+#[path = "stash_ops/paths_tests.rs"]
+mod paths_tests;

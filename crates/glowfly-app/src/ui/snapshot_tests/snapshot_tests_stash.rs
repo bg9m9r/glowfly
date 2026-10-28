@@ -80,16 +80,14 @@ fn stash_menu_asks_on_a_dirty_tree() {
     let (st, dir) = with_stashes(ThemeChoice::Dark, "stash-menu-dirty");
     assert!(st.snap.as_ref().unwrap().is_dirty(), "the fixture has local changes");
     let row = st.snap.as_ref().unwrap().stashes[0].message.clone();
+    let oid = st.snap.as_ref().unwrap().stashes[0].oid;
     let mut h = harness(st, true);
     h.run();
-    for (item, title) in [("Apply", "Apply stash"), ("Pop", "Pop stash")] {
+    for (item, action) in [("Apply", StashAction::Apply), ("Pop", StashAction::Pop)] {
         open_menu(&mut h, &row);
         h.get_by_label(item).click();
         h.run();
-        assert!(
-            pushed(&h, &|m| matches!(m, Msg::Confirm { title: t, .. } | Msg::ConfirmDanger { title: t, .. } if t == title)),
-            "{item} asks first"
-        );
+        assert!(pushed(&h, &|m| matches!(m, Msg::Stash(StashMsg::Ask(a)) if a.action == action && a.oid == oid)), "{item} asks first");
         h.state_mut().1.clear();
     }
     drop(h);
@@ -111,11 +109,35 @@ fn stash_menu_asks_on_a_dirty_tree() {
 }
 
 #[test]
+fn stash_menu_greys_apply_and_pop_over_conflicts() {
+    let (mut st, dir) = with_stashes(ThemeChoice::Dark, "stash-menu-conflicts");
+    st.snap.as_mut().unwrap().unstaged.push(glowfly_core::repo::FileEntry::new("README.md", '!'));
+    let row = st.snap.as_ref().unwrap().stashes[0].message.clone();
+    let mut h = harness(st, true);
+    h.run();
+    for item in ["Apply", "Pop"] {
+        open_menu(&mut h, &row);
+        h.get_by_label(item).click();
+        h.run();
+        assert!(!pushed(&h, &|m| matches!(m, Msg::Stash(_) | Msg::Job(_) | Msg::Logged { .. })), "{item} is greyed");
+        h.state_mut().1.clear();
+    }
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn stash_apply_confirm_light() {
     let (mut st, dir) = with_stashes(ThemeChoice::Light, "stash-apply-confirm");
     let snap = st.snap.as_ref().unwrap();
-    let msg = crate::state::stash_confirm::stash_msg(snap, StashAction::Apply, &snap.stashes[0]);
+    let t = st.settings.lang();
+    let msg = crate::state::stash_confirm::stash_msg(snap, t, StashAction::Apply, &snap.stashes[0]);
+    let Msg::Stash(crate::msg::StashMsg::Ask(ask)) = msg else { panic!("a question on a dirty tree") };
+    // The stash changes one of the working tree's files and one it leaves alone.
+    let paths = vec![snap.unstaged[0].path.clone(), "untouched.txt".to_owned()];
+    let msg = crate::state::stash_confirm::ask_confirm(snap, t, &ask, Some(&paths));
     let Msg::Confirm { title, body, button, then } = msg else { panic!("a confirmation on a dirty tree") };
+    assert!(body.contains(&paths[0]) && !body.contains("untouched.txt"), "{body}");
     st.modal = Some(Modal::Confirm { title, body, button, then });
     let mut h = harness(st, false);
     h.run();

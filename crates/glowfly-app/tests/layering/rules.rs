@@ -119,6 +119,7 @@ pub const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("settings", &["log_dir", "downloads_dir"]),
     ("app_update", &["download", "install_kind", "appimage_file", "current_platform"]),
     ("conflict_check", &["predict"]),
+    ("stash_ops", &["changed_paths"]),
     (
         "forge",
         &[

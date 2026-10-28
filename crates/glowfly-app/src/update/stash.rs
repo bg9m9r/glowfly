@@ -3,12 +3,14 @@
 //! stash list is numbered from the newest entry, so a stash made or dropped elsewhere since the
 //! snapshot shifts every `stash@{N}`: the job names the entry by position for git but carries
 //! the commit the user picked, and the runner refuses it if that position now holds another stash.
-//! The Stash dialog's messages go to update/stash_push.rs.
+//! The question before applying or popping on top of uncommitted changes opens once the
+//! stash's files are read. The Stash dialog's messages go to update/stash_push.rs.
 
 use super::ops::{self, JobSpec, start_job};
 use crate::effect::{Effect, StashEffect};
-use crate::msg::StashMsg;
+use crate::msg::{Msg, StashMsg};
 use crate::state::palette::StashAction;
+use crate::state::stash_confirm::{self, StashAsk};
 use crate::state::stashes::RenameStashForm;
 use crate::state::{AppState, Modal};
 use git2::Oid;
@@ -37,6 +39,35 @@ pub(super) fn handle(st: &mut AppState, msg: StashMsg, fx: &mut Vec<Effect>) {
         StashMsg::Rename { oid, message } => rename(st, oid, &message, fx),
         StashMsg::PushDialog { scope, path } => super::stash_push::open(st, scope, path),
         StashMsg::Push { scope, message, paths, keep_index } => super::stash_push::push(st, scope, &message, paths, keep_index, fx),
+        StashMsg::Ask(ask) => {
+            if let Some(cwd) = st.workdir() {
+                fx.push(Effect::Stash(StashEffect::ReadPaths { cwd, ask }));
+            }
+        }
+        StashMsg::PathsRead { ask, paths } => open_question(st, &ask, paths),
+    }
+}
+
+/// Opens the question before applying or popping on top of uncommitted changes, with the files
+/// the stash and the working tree both change (the general warning when the stash's files
+/// couldn't be read). Conflicts that appeared meanwhile refuse it instead; another dialog that
+/// opened meanwhile keeps its place.
+fn open_question(st: &mut AppState, ask: &StashAsk, paths: Result<Vec<String>, String>) {
+    let t = st.settings.lang();
+    let Some(snap) = st.snap.as_ref() else { return };
+    if let Some(why) = stash_confirm::apply_blocked(snap, t) {
+        st.log(false, why);
+        return;
+    }
+    if st.modal.is_some() {
+        tracing::debug!("a dialog opened while the stash's files were read; no question");
+        return;
+    }
+    if let Err(e) = &paths {
+        tracing::debug!("could not read the stash's files: {e}");
+    }
+    if let Msg::Confirm { title, body, button, then } = stash_confirm::ask_confirm(snap, t, ask, paths.as_deref().ok()) {
+        st.modal = Some(Modal::Confirm { title, body, button, then });
     }
 }
 

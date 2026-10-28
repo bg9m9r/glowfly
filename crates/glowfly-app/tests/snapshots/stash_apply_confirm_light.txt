@@ -1,6 +1,6 @@
 Dialog
   Label "Apply stash"
   Button "Close this dialog"
-  Label "Apply \"On main: login form tweaks\" on top of your uncommitted changes? If they change the same files, git may stop with conflicts or refuse to apply."
+  Label "Apply \"On main: login form tweaks\" on top of your uncommitted changes? It changes a file you have changed too, so git may stop with conflicts or refuse to apply:\n    README.md"
   Button "Cancel"
   Button "Apply" [focused]

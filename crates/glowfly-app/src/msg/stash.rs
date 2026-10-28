@@ -1,7 +1,9 @@
-//! Messages for renaming a stash and the Stash dialog (update/stash.rs), and the auto-stash
+//! Messages for renaming a stash, the question before applying one and the Stash dialog
+//! (update/stash.rs), and the auto-stash
 //! (update/auto_stash.rs), with the records a restart left waiting (update/auto_stash_saved.rs).
 
 use super::Inactive;
+use crate::state::stash_confirm::StashAsk;
 use git2::Oid;
 use glowfly_core::stash_ops::{SavedAutoStash, StashScope};
 use std::path::PathBuf;
@@ -18,14 +20,25 @@ pub enum StashMsg {
     /// Stash with the dialog's choice and text; `paths` only for Files. `update` re-checks them
     /// against the snapshot. `keep_index`: --keep-index, ignored for Staged.
     Push { scope: StashScope, message: String, paths: Vec<String>, keep_index: bool },
+    /// Apply or pop on top of uncommitted changes (state/stash_confirm.rs): read the stash's
+    /// files, then ask.
+    Ask(StashAsk),
+    /// The stash's files for `ask` (runner/stashes.rs), or why they couldn't be read: open the
+    /// question.
+    PathsRead { ask: StashAsk, paths: Result<Vec<String>, String> },
 }
 
 impl StashMsg {
-    /// What this message still needs when its tab is no longer active (`Msg::Scoped`): nothing,
-    /// as all are user intents and never come back scoped.
+    /// What this message still needs when its tab is no longer active (`Msg::Scoped`): nothing.
+    /// The intents never come back scoped, and a question for a tab the user left is dropped.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::RenameDialog { .. } | Self::Rename { .. } | Self::PushDialog { .. } | Self::Push { .. } => None,
+            Self::RenameDialog { .. }
+            | Self::Rename { .. }
+            | Self::PushDialog { .. }
+            | Self::Push { .. }
+            | Self::Ask(_)
+            | Self::PathsRead { .. } => None,
         }
     }
 }

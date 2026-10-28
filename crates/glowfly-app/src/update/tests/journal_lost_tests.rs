@@ -236,8 +236,9 @@ fn apply_and_store_run_on_the_stash() {
     finish(&mut st, fx);
     let text = std::fs::read_to_string(dir.join("a.txt")).unwrap().replace("\r\n", "\n");
     assert_eq!(text, "one\nstashed\n", "the stash's change is back");
-    lost(&mut st, LostMsg::Apply(stash));
-    assert!(matches!(&st.modal, Some(Modal::Confirm { .. })), "asks first on a dirty tree");
+    let fx = lost(&mut st, LostMsg::Apply(stash));
+    finish(&mut st, fx);
+    assert!(matches!(&st.modal, Some(Modal::Confirm { body, .. }) if body.contains("a.txt")), "asks first on a dirty tree");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
