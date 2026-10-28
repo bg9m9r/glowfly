@@ -192,8 +192,6 @@ fn nothing_to_publish_without_commits() {
 
 #[test]
 fn credentials_come_from_outside_a_held_repository() {
-    use crate::state::trust::record;
-    use glowfly_core::settings::RepoTrust;
     let (mut st, dir) = super::trust_held_tests::held_repo("publish-held");
     let fx = run(&mut st, Msg::Publish(PublishMsg::PublishDialog));
     let [Effect::Account(AccountEffect::Owners { cwd, .. })] = &fx[..] else { panic!("{fx:?}") };
@@ -208,7 +206,7 @@ fn credentials_come_from_outside_a_held_repository() {
 
     // Trusted: the repository's own folder.
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    record(&mut st.settings, &real, RepoTrust::Trusted);
+    crate::state::trust::record_as_found(&mut st.settings, &real);
     let fx = run(&mut st, Msg::Publish(PublishMsg::PublishDialog));
     let [Effect::Account(AccountEffect::Owners { cwd, .. })] = &fx[..] else { panic!("{fx:?}") };
     assert_eq!(*cwd, form(&st).workdir);
