@@ -1,7 +1,7 @@
 //! The Save / Revert bar fixed under a Preferences page with unsaved edits (shown only while
 //! `state::prefs_save::unsaved` holds), and the "Saved" tick beside the page title. The bar's
 //! buttons push `PrefsMsg::SavePage` and `PrefsMsg::RevertPage` (also Ctrl/Cmd+S in
-//! `ui/shortcuts/global.rs` and Esc in `ui/central.rs`).
+//! `ui/shortcuts/global.rs`, and Esc on one of the bar's buttons in `ui/central.rs`).
 
 use super::primary_button;
 use crate::msg::{Msg, PrefsMsg};
@@ -19,24 +19,30 @@ pub struct BarView {
     pub saving: bool,
 }
 
-pub fn show(ctx: &egui::Context, t: Lang, view: BarView, msgs: &mut Vec<Msg>) {
+/// Draws the bar; returns whether one of its buttons has the keyboard (Esc then reverts).
+pub fn show(ctx: &egui::Context, t: Lang, view: BarView, msgs: &mut Vec<Msg>) -> bool {
+    let mut focused = false;
     let frame = egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(24, 10));
     let resp = egui::TopBottomPanel::bottom("prefs-save-bar").frame(frame).show_separator_line(false).show(ctx, |ui| {
         ui.horizontal(|ui| {
             ui.label(RichText::new(t.tr("prefs.save_bar.unsaved")).color(color::weak()));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let why = if view.saving { Some(t.tr("prefs.save_bar.saving")) } else { view.busy.then_some(BUSY) };
-                if primary_button(ui, t.tr("prefs.save_bar.save.button"), why.is_none(), why).clicked() {
+                let save = primary_button(ui, t.tr("prefs.save_bar.save.button"), why.is_none(), why);
+                if save.clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::SavePage));
                 }
-                if ui.add(buttons::secondary(t.tr("prefs.save_bar.revert.button"))).clicked() {
+                let revert = ui.add(buttons::secondary(t.tr("prefs.save_bar.revert.button")));
+                if revert.clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::RevertPage));
                 }
+                focused = save.has_focus() || revert.has_focus();
             });
         });
     });
     let r = resp.response.rect;
     ctx.layer_painter(resp.response.layer_id).hline(r.x_range(), r.top() + 0.5, Stroke::new(1.0_f32, color::border()));
+    focused
 }
 
 /// A green tick and "Saved", at `alpha` of full strength (it fades out).

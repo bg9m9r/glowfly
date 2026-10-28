@@ -1,8 +1,8 @@
 //! Preferences save-model snapshots: the Save / Revert bar under an edited Identity page (and
-//! what its buttons push, Save waiting while a save is written), a refused save's error on the
-//! page, the "Save your changes?" question, the "Saved" tick beside a title, Git Flow's actions
-//! waiting while its form is edited, and the Integrations page with an account connected,
-//! adding another, and with nothing connected.
+//! what its buttons push, Save waiting while a save is written, telling Esc when it has the
+//! keyboard), a refused save's error on the page, the "Save your changes?" question, the
+//! "Saved" tick beside a title, Git Flow's actions waiting while its form is edited, and the
+//! Integrations page with an account connected, adding another, and with nothing connected.
 
 use super::snapshot_tests::{harness, harness_sized, remove_fixture, settings, with_repo};
 use super::snapshot_tests_gitflow::initialized;
@@ -44,6 +44,19 @@ fn prefs_identity_unsaved() {
     h.get_by_label("Save").click();
     h.run();
     assert!(pushed(&h.state().1, |m| matches!(m, Msg::Prefs(PrefsMsg::SavePage))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn the_bar_tells_esc_when_it_has_the_keyboard() {
+    let (st, dir) = identity_edited("prefs-bar-focus");
+    let mut h = harness(st, true);
+    h.run();
+    assert!(!h.state().0.view.prefs_bar_focused, "nothing focused yet");
+    h.get_by_label("Revert").focus();
+    h.run();
+    assert!(h.state().0.view.prefs_bar_focused, "Esc now reverts");
     drop(h);
     remove_fixture(&dir);
 }

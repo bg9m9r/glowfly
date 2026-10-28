@@ -134,6 +134,9 @@ pub struct ViewState {
     /// A text field had the keyboard when the last frame was drawn. egui takes the focus
     /// away when Esc is pressed before the shell sees the key, so Esc checks this instead.
     pub was_typing: bool,
+    /// The keyboard was on the Preferences Save / Revert bar (its Save or Revert button) when
+    /// the last frame was drawn: Esc there reverts the page.
+    pub prefs_bar_focused: bool,
     /// Wall-clock time (Unix seconds) for this frame, set by the shell; fixed in tests.
     pub now: i64,
     /// The shell's time stamp for this frame (ui/app.rs); toasts fade and expire by it. None in
@@ -224,6 +227,7 @@ impl Default for ViewState {
             was_focused: true,
             focused: true,
             was_typing: false,
+            prefs_bar_focused: false,
             now: 0,
             frame_at: None,
             utc_offset: 0,

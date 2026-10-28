@@ -201,7 +201,7 @@ Dialog
   Label "Save the Preferences page"
   Label "in Preferences"
   Label "Ctrl+S"
-  Label "Revert the Preferences page's unsaved changes"
+  Label "Revert the page's unsaved changes (from the Save / Revert bar)"
   Label "in Preferences"
   Label "Esc"
   Label "Confirm a dialog's name field"

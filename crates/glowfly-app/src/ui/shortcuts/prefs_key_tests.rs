@@ -1,6 +1,7 @@
-//! Preferences' keys: Ctrl/Cmd+S saves the open page (from one of its fields too), and Esc over
-//! the Save / Revert bar reverts the page, closing Preferences only once nothing is unsaved.
-//! Esc leaves a dialog, an open menu or a save still being written alone.
+//! Preferences' keys: Ctrl/Cmd+S saves the open page (from one of its fields too). Esc on the
+//! Save / Revert bar's buttons reverts the page; anywhere else it closes Preferences, which asks
+//! "Save your changes?" about an edited page (update/prefs_leave.rs). Esc leaves a dialog and a
+//! save still being written alone.
 
 use crate::msg::{Msg, PrefsMsg};
 use crate::state::prefs::GitConfigValues;
@@ -79,18 +80,38 @@ fn ctrl_s_only_in_preferences_and_not_under_a_dialog() {
 }
 
 #[test]
-fn esc_reverts_an_edited_page_then_closes() {
+fn esc_reverts_only_from_the_save_bar() {
+    let mut st = identity(true);
+    st.view.prefs_bar_focused = true;
+    let mut h = harness(st);
+    let msgs = press(&mut h, Key::Escape, Modifiers::NONE);
+    assert!(reverts(&msgs) && !closes(&msgs), "on the bar's buttons it is the bar's Revert");
+}
+
+#[test]
+fn esc_elsewhere_on_an_edited_page_leaves_through_the_question() {
     let mut h = harness(identity(true));
     let msgs = press(&mut h, Key::Escape, Modifiers::NONE);
-    assert!(reverts(&msgs) && !closes(&msgs), "the bar's Revert first");
-    let mut h = harness(identity(false));
+    assert!(closes(&msgs) && !reverts(&msgs), "a stray Esc doesn't throw the edits away");
+    let mut st = identity(true);
+    let fx = crate::update::update(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs), Instant::now());
+    assert!(fx.is_empty() && matches!(st.modal, Some(Modal::ConfirmChoice { .. })), "it asks first");
+    assert!(st.prefs.is_some());
+}
+
+#[test]
+fn esc_on_an_unedited_page_closes() {
+    let mut st = identity(false);
+    st.view.prefs_bar_focused = true;
+    let mut h = harness(st);
     let msgs = press(&mut h, Key::Escape, Modifiers::NONE);
-    assert!(closes(&msgs) && !reverts(&msgs), "nothing unsaved: Esc closes Preferences");
+    assert!(closes(&msgs) && !reverts(&msgs));
 }
 
 #[test]
 fn esc_waits_for_a_save_being_written() {
     let mut st = identity(true);
+    st.view.prefs_bar_focused = true;
     let p = st.prefs.as_mut().unwrap();
     p.saving.push(PendingSave { ticket: 1, page: PrefPage::RepoIdentity, written: p.git.clone() });
     let mut h = harness(st);
@@ -101,6 +122,7 @@ fn esc_waits_for_a_save_being_written() {
 #[test]
 fn esc_under_a_dialog_is_the_dialog_s() {
     let mut st = identity(true);
+    st.view.prefs_bar_focused = true;
     st.modal = Some(Modal::About);
     let mut h = harness(st);
     let msgs = press(&mut h, Key::Escape, Modifiers::NONE);

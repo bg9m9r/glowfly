@@ -20,8 +20,8 @@ use crate::state::AppState;
 use eframe::egui::{self, Key};
 
 /// Esc closes the innermost thing open: a maximised terminal panel (restored first, while the
-/// keyboard is outside the shell), Preferences (its page's unsaved edits first, as the Save /
-/// Revert bar's Revert), the tour, the dashboard, the conflict view, the blame view, a
+/// keyboard is outside the shell), Preferences (on the Save / Revert bar's buttons, the
+/// page's unsaved edits instead), the tour, the dashboard, the conflict view, the blame view, a
 /// pull request's unposted code comment (cancelled, with a confirmation once edited), the
 /// file history (a line selection first), the diff (a line selection first), the pull request panel, the issue panel, the interactive
 /// rebase panel (its message editor first), the Range-diff view, the operation journal, the Git
@@ -56,12 +56,12 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         return;
     }
     if let Some(p) = st.prefs.as_ref() {
-        // Over the Save / Revert bar it reverts the page (nothing while its save is written);
-        // else it closes Preferences.
-        if !crate::state::prefs_save::unsaved(p, &st.settings, st.snap.as_ref()) {
-            msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
-        } else if !crate::state::prefs_save::saving(p) {
-            msgs.push(Msg::Prefs(PrefsMsg::RevertPage));
+        // Nothing while the page's save is written. On the Save / Revert bar's buttons it
+        // reverts the page; anywhere else it closes Preferences, which asks first about
+        // unsaved edits (update/prefs_leave.rs).
+        let edited = crate::state::prefs_save::unsaved(p, &st.settings, st.snap.as_ref());
+        if !crate::state::prefs_save::saving(p) {
+            msgs.push(Msg::Prefs(if edited && st.view.prefs_bar_focused { PrefsMsg::RevertPage } else { PrefsMsg::ClosePrefs }));
         }
     } else if st.onboarding.tour.is_some() {
         msgs.push(Msg::Onboarding(crate::onboarding::OnboardingMsg::CloseTour));

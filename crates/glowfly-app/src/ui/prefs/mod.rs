@@ -60,11 +60,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if page == PrefPage::Integrations {
         providers(ctx, st, msgs);
     }
+    st.view.prefs_bar_focused = false;
     if st.prefs.as_ref().is_some_and(|p| prefs_save::unsaved(p, &st.settings, st.snap.as_ref())) {
         // Only Git Flow's and sparse checkout's saves run as a git job.
         let busy = st.job.is_some() && matches!(page, PrefPage::RepoGitFlow | PrefPage::RepoSparse);
         let saving = st.prefs.as_ref().is_some_and(prefs_save::saving);
-        save_bar::show(ctx, t, save_bar::BarView { busy, saving }, msgs);
+        st.view.prefs_bar_focused = save_bar::show(ctx, t, save_bar::BarView { busy, saving }, msgs);
     }
 
     // While git is held in the repository, its pages read nothing with git (trust).

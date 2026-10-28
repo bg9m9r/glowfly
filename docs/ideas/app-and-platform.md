@@ -45,6 +45,9 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - A search field over all Preferences pages
 - Remember the last Preferences page between openings
 - Highlight the unsaved fields on a page and in its nav row
+- Profile page: keep the page edited after its git identity write fails (the profile is stored
+  in settings at once, so today only the error shows)
+- Git Flow and sparse checkout: show "Saved" when their job succeeds, not when it starts
 
 ### Notifications
 

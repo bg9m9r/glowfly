@@ -293,7 +293,7 @@ pub const BINDINGS: &[Binding] = &[
     b(I::Undo, G::General, "Undo", &[C::cmd(K::Letter('Z'))], W::NotTyping),
     b(I::Redo, G::General, "Redo", &[C::cmd(K::Letter('Y')), C::cmd_shift(K::Letter('Z'))], W::NotTyping),
     b(I::PrefsSave, G::General, "Save the Preferences page", &[C::cmd(K::Letter('S'))], W::Prefs),
-    fixed(I::PrefsRevert, G::General, "Revert the Preferences page's unsaved changes", &[C::plain(K::Escape)], W::Prefs),
+    fixed(I::PrefsRevert, G::General, "Revert the page's unsaved changes (from the Save / Revert bar)", &[C::plain(K::Escape)], W::Prefs),
     fixed(I::DialogSubmit, G::General, "Confirm a dialog's name field", &[C::plain(K::Enter)], W::Dialog),
     fixed(I::SendPrText, G::General, "Post the comment, reply or review", &[C::cmd(K::Enter)], W::PrText),
 ];
