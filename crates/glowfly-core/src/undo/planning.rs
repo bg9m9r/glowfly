@@ -4,7 +4,10 @@
 //! `stash.rs`, saved conflict resolutions in `resolved.rs`.
 
 use super::record::{head, ref_exists};
-use super::{Action, HeadPos, Options, Plan, Refusal, deleted, discard_command, moved, refs, reset, resolved, restacked, saved, stash};
+use super::{
+    Action, HeadPos, Options, Plan, Refusal, aborted_restore, deleted, discard_command, moved, refs, reset, resolved, restacked, saved,
+    stash,
+};
 use crate::error::Result;
 use crate::gitcli::args;
 use git2::{Oid, Repository, RepositoryState};
@@ -90,6 +93,8 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         }
         // A saved conflict resolution is expected to have an operation in progress.
         Action::Resolve { .. } => return resolved::plan(workdir, action, redo),
+        // Undoing needs nothing in progress, redoing the operation it aborted.
+        Action::AbortKept { .. } => return aborted_restore::plan(workdir, action, redo),
         _ => {}
     }
     let repo = Repository::open(workdir)?;
@@ -185,6 +190,6 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         Action::Discard { .. } | Action::Restore { .. } | Action::StashDrop { .. } | Action::Resolve { .. } => {
             unreachable!("planned above")
         }
-        Action::DeleteFile { .. } => unreachable!("planned above"),
+        Action::DeleteFile { .. } | Action::AbortKept { .. } => unreachable!("planned above"),
     })
 }

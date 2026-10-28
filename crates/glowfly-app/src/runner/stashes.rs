@@ -1,6 +1,7 @@
-//! Stash list jobs (`Effect::Stash`): renaming an entry, putting an auto-stash back,
-//! reading and writing the auto-stashes waiting to go back across restarts, and reading the
-//! files a stash changes for the question before applying it.
+//! Stash list jobs (`Effect::Stash`): renaming an entry, putting an auto-stash back, reading
+//! and writing the auto-stashes waiting to go back across restarts, reading the files a stash
+//! changes for the question before applying it, and the abort that keeps an operation's work
+//! (also run by redoing one).
 
 use super::execute::{Cx, Execute};
 use super::expect;
@@ -26,7 +27,26 @@ pub(super) fn run(e: StashEffect) -> Option<Msg> {
             let paths = stash_ops::changed_paths(&cwd, ask.oid).map_err(|e| e.to_string());
             Some(Msg::Stash(StashMsg::PathsRead { ask, paths }))
         }
+        StashEffect::AbortKeeping { cwd } => {
+            let (ok, output, action) = abort_keeping(&cwd);
+            Some(Msg::Job(JobMsg::JobDone { ok, output, undo: Some(UndoResult::Recorded(action)) }))
+        }
     }
+}
+
+/// Keeps the work of the operation in progress in `cwd`, then aborts it: whether that worked,
+/// the output, and the abort to record for Undo. When the work can't all be kept, nothing is
+/// aborted; when an abort command fails, the output says where the work is kept.
+pub(super) fn abort_keeping(cwd: &Path) -> (bool, String, Option<undo::Action>) {
+    let saving = match undo::abort_saving(cwd) {
+        Ok(s) => s,
+        Err(e) => return (false, format!("Nothing was aborted: {e}."), None),
+    };
+    let (ok, output) = super::git_ops::run_git(cwd, &saving.cmds, None, true);
+    if !ok {
+        return (false, format!("{output}\nThe operation's work is kept in {}.", saving.kept), None);
+    }
+    (true, output, Some(saving.action))
 }
 
 impl Execute for StashEffect {

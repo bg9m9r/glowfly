@@ -1,8 +1,8 @@
 //! Asking before the in-progress banner's Abort, Skip and Reset bisect, which lose work: what
 //! each does, what is lost (the resolved files, edits in conflicted ones) and whether Undo
-//! brings it back. A merge, single cherry-pick or single revert with every conflict resolved and
-//! no edits outside its files aborts by stashing its changes first
-//! (`glowfly_core::undo::abort_keeping_commands`).
+//! brings it back. A merge, single cherry-pick or single revert with work to keep (resolved or
+//! staged files, conflicted ones) aborts keeping it first (`glowfly_core::undo::abort_saving`):
+//! Undo puts the operation back in progress with that work, and edits to other files stay.
 
 use super::AppState;
 use super::op_actions::action_text;
@@ -34,17 +34,19 @@ impl Risky {
     }
 }
 
-/// Whether an abort can keep the resolved changes in a stash: a merge, single cherry-pick or
-/// single revert (a sequence's stash wouldn't pop back meaningfully), nothing conflicted (git
-/// can't stash unmerged entries), and staged changes to keep. Every unstaged tracked change must
-/// be to a staged file: the stash takes all tracked changes, so an edit unrelated to the
-/// operation would leave the working tree with them, where a plain abort keeps it in place.
+/// Whether an abort can keep the operation's work for Undo: a merge, single cherry-pick or
+/// single revert (a sequence's commits would not come back with it) with something to keep,
+/// staged or conflicted. Edits to other files don't matter: the abort leaves them in place.
 pub fn can_keep(snap: &Snapshot) -> bool {
     use RepositoryState::*;
-    let in_op = |path: &str| snap.staged.iter().any(|s| s.path == path);
-    matches!(snap.state, Merge | CherryPick | Revert)
-        && !snap.staged.is_empty()
-        && snap.unstaged.iter().all(|f| f.status == '?' || (f.status != '!' && in_op(&f.path)))
+    matches!(snap.state, Merge | CherryPick | Revert) && (!snap.staged.is_empty() || snap.unstaged.iter().any(|f| f.status == '!'))
+}
+
+/// The changed tracked files outside the operation (neither staged nor conflicted), which a
+/// kept abort leaves as they are.
+fn others(snap: &Snapshot) -> usize {
+    let in_op = |path: &str| snap.staged.iter().any(|s| s.path == path || s.renamed_from.as_deref() == Some(path));
+    snap.unstaged.iter().filter(|f| !matches!(f.status, '?' | '!') && !in_op(&f.path)).count()
 }
 
 /// What the banner button `label` running `args` sends: Continue as it is, the others behind a
@@ -56,13 +58,14 @@ pub fn banner_msg(st: &AppState, label: &'static str, args: &'static [&'static s
     let resolved = st.session.conflict_files.resolved_rows(snap).len();
     let conflicted = snap.unstaged.iter().filter(|f| f.status == '!').count();
     let keep = risky == Risky::Abort && can_keep(snap);
+    let others = if keep { others(snap) } else { 0 };
     let (title, what) = words(t, risky, args);
     let then = match risky {
         Risky::Abort => Msg::Job(JobMsg::Abort { label: label.into(), args: gitcli::args(args), keep }),
         Risky::Skip => action_msg(snap.state, label, args),
         Risky::ResetBisect => Msg::git(label, args),
     };
-    Msg::confirm_danger(title, body(t, what, resolved, conflicted, keep), action_text(t, label), then)
+    Msg::confirm_danger(title, body(t, what, resolved, conflicted, others, keep), action_text(t, label), then)
 }
 
 /// The dialog's title and its sentence on what happens, for `risky` running `args`.
@@ -80,24 +83,29 @@ fn words(t: Lang, risky: Risky, args: &[&str]) -> (&'static str, &'static str) {
 }
 
 /// The dialog's paragraphs: what happens, what is lost (the `resolved` files, edits in the
-/// `conflicted` ones) and whether Undo brings it back (`keep`).
-fn body(t: Lang, what: &str, resolved: usize, conflicted: usize, keep: bool) -> String {
+/// `conflicted` ones), whether Undo brings it back (`keep`) and, then, that the `others`
+/// changed files stay.
+fn body(t: Lang, what: &str, resolved: usize, conflicted: usize, others: usize, keep: bool) -> String {
     let mut paras = vec![what.to_owned()];
     let mut lost = Vec::new();
     if resolved > 0 {
         lost.push(t.trn("op.confirm.resolved", resolved, &[]));
     }
-    if conflicted > 0 {
+    if conflicted > 0 && keep {
+        lost.push(t.trn("op.confirm.conflicted_kept", conflicted, &[]));
+    } else if conflicted > 0 {
         lost.push(t.trn("op.confirm.conflicted_lost", conflicted, &[]));
     }
     let said = !lost.is_empty();
     if said {
         paras.push(lost.join(" "));
     }
-    if keep && said {
-        paras.push(t.tr("op.confirm.undo_stash").to_owned());
-    } else if keep {
-        paras.push(t.tr("op.confirm.undo_stash_changes").to_owned());
+    if keep {
+        let mut kept = if said { t.tr("op.confirm.undo_kept") } else { t.tr("op.confirm.undo_kept_changes") }.to_owned();
+        if others > 0 {
+            kept = format!("{kept} {}", t.tr("op.confirm.others_stay"));
+        }
+        paras.push(kept);
     } else if said {
         paras.push(t.tr("op.confirm.no_undo").to_owned());
     }
@@ -168,33 +176,43 @@ mod tests {
 
     #[test]
     fn lost_lines_and_undo() {
-        let mut st = st("confirm-lost", RepositoryState::Merge);
+        let mut st = st("confirm-lost", RepositoryState::CherryPickSequence);
         st.session.conflict_files.resolved = resolved(&["a.txt", "b.txt"]);
         st.snap.as_mut().unwrap().unstaged = rows(&[("c.txt", '!')]);
-        let (label, args) = action(RepositoryState::Merge, "Abort");
+        let (label, args) = action(RepositoryState::CherryPickSequence, "Abort");
         let (_, body, _, then) = asked(banner_msg(&st, label, args));
         let paras: Vec<&str> = body.split("\n\n").collect();
         assert_eq!(paras[1], "The 2 files you resolved go back to how they were. Edits in the 1 conflicted file are lost too.");
         assert_eq!(paras[2], "This can't be undone.");
-        assert!(matches!(then, Msg::Job(JobMsg::Abort { keep: false, .. })));
+        assert!(matches!(then, Msg::Job(JobMsg::Abort { keep: false, .. })), "a sequence isn't kept");
 
-        let snap = st.snap.as_mut().unwrap();
-        snap.unstaged.clear();
-        snap.staged = rows(&[("a.txt", 'M'), ("b.txt", 'M')]);
+        st.snap.as_mut().unwrap().state = RepositoryState::Merge;
+        let (label, args) = action(RepositoryState::Merge, "Abort");
         let (_, body, _, then) = asked(banner_msg(&st, label, args));
         let paras: Vec<&str> = body.split("\n\n").collect();
         assert_eq!(
             paras[1..],
-            ["The 2 files you resolved go back to how they were.", "They are kept in a stash first, so Undo brings them back."]
+            [
+                "The 2 files you resolved go back to how they were. Edits in the 1 conflicted file go too.",
+                "Glowfly keeps them first, so Undo brings them back and picks up where you left off."
+            ]
         );
         let Msg::Job(JobMsg::Abort { label: job, args: cmd, keep: true }) = then else { panic!("a kept abort") };
         assert_eq!((job.as_str(), cmd), ("Abort merge", gitcli::args(&["merge", "--abort"])));
 
-        st.session.conflict_files.resolved = resolved(&["a.txt"]);
-        st.snap.as_mut().unwrap().state = RepositoryState::CherryPickSequence;
-        let (label, args) = action(RepositoryState::CherryPickSequence, "Abort");
+        let snap = st.snap.as_mut().unwrap();
+        snap.unstaged = rows(&[("a.txt", 'M'), ("README.md", 'M'), ("new.txt", '?')]);
+        snap.staged = rows(&[("a.txt", 'M'), ("b.txt", 'M')]);
         let (_, body, _, _) = asked(banner_msg(&st, label, args));
-        assert!(body.ends_with("The 1 file you resolved goes back to how it was.\n\nThis can't be undone."), "{body}");
+        assert!(body.ends_with("picks up where you left off. Your other changes stay as they are."), "{body}");
+
+        st.session.conflict_files.resolved.clear();
+        st.snap.as_mut().unwrap().unstaged.clear();
+        let (_, body, _, _) = asked(banner_msg(&st, label, args));
+        assert!(
+            body.ends_with("\n\nThe changes so far are kept first, so Undo brings them back and picks up where you left off."),
+            "{body}"
+        );
     }
 
     #[test]
@@ -219,7 +237,7 @@ mod tests {
     }
 
     #[test]
-    fn keeping_needs_a_single_operation_with_nothing_conflicted() {
+    fn keeping_needs_a_single_operation_with_work_to_keep() {
         let mut snap = snapshot("confirm-keep");
         snap.staged = rows(&[("a.txt", 'M')]);
         for (state, want) in [
@@ -239,15 +257,13 @@ mod tests {
         }
         snap.state = RepositoryState::Merge;
         snap.unstaged = rows(&[("b.txt", '!')]);
-        assert!(!can_keep(&snap), "a conflicted file");
-        snap.unstaged = rows(&[("new.txt", '?'), ("a.txt", 'M')]);
-        assert!(can_keep(&snap), "untracked files and further edits to a staged file");
-        snap.unstaged = rows(&[("README.md", 'M')]);
-        assert!(!can_keep(&snap), "an edit unrelated to the operation stays in place instead");
+        assert!(can_keep(&snap), "a conflicted file is kept too");
+        snap.unstaged = rows(&[("README.md", 'M'), ("new.txt", '?')]);
+        assert!(can_keep(&snap), "an edit unrelated to the operation stays in place");
         snap.staged.clear();
-        snap.unstaged = rows(&[("new.txt", '?')]);
-        assert!(!can_keep(&snap), "only untracked files");
-        snap.unstaged = rows(&[("a.txt", 'M')]);
-        assert!(!can_keep(&snap), "only an unstaged change, which no operation file has");
+        snap.unstaged = rows(&[("b.txt", '!')]);
+        assert!(can_keep(&snap), "only conflicts");
+        snap.unstaged = rows(&[("new.txt", '?'), ("a.txt", 'M')]);
+        assert!(!can_keep(&snap), "nothing staged or conflicted: nothing of the operation's to keep");
     }
 }

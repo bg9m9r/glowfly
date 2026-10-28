@@ -75,7 +75,8 @@ source file, update its line here.
 - `deleted.rs`: deletes and Unstage and delete.
 - `rebased.rs`: interactive rebases, graph edits and rebases continued from the banner are recorded around their run.
 - `resumed.rs`: a merge, cherry-pick or revert finished after conflicts (Continue, Skip or a commit) is recorded as one move from the HEAD it started at.
-- `abort_keeping_commands`: aborting a merge, single cherry-pick or single revert with every conflict resolved and no edits outside its files stashes its changes first, recorded as a stash push so Undo pops them back.
+- `aborted.rs`: aborting a merge, single cherry-pick or single revert keeps its work first (index entries with conflict stages, changed working copies, MERGE_HEAD and the like) in one commit under `refs/glowfly/aborted/<id>`, then puts only its paths back as HEAD has them, so other edits stay; refs older than 30 days go at the next one.
+- `aborted_restore.rs`: undoing it puts the operation back in progress with that work (refused while any of its paths or HEAD has changed) and drops the ref; redoing aborts again; tests in `aborted_tests.rs`.
 
 ## Operation journal (`journal.rs`, `journal/`)
 

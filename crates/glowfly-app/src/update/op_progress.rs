@@ -1,14 +1,11 @@
 //! The operation in progress: the strip's click (the WIP row and the details panel) and the
-//! banner's confirmed Abort, which keeps the resolved changes of a merge, single cherry-pick or
-//! single revert in a stash so Undo brings them back.
+//! banner's confirmed Abort, which keeps the work of a merge, single cherry-pick or single
+//! revert first (resolutions, conflicts and the operation itself), so Undo brings it back.
 
-use super::ops::{JobSpec, start_job};
-use crate::effect::Effect;
+use crate::effect::{Effect, StashEffect};
 use crate::msg::JobMsg;
 use crate::state::op_confirm::can_keep;
 use crate::state::{AppState, Selection};
-use glowfly_core::gitcli::args as cmd;
-use glowfly_core::undo::{self, ABORT_STASH_MESSAGE, UndoKind};
 use std::time::Instant;
 
 /// Selects the WIP row, shows the details panel and scrolls the graph to its top (where the WIP
@@ -25,9 +22,9 @@ pub(super) fn show(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
 }
 
-/// Runs the confirmed abort `args` (named `label`). With `keep`, its changes are stashed first,
-/// recorded as an undoable stash push, unless conflicts or edits outside the operation's files
-/// appeared since the dialog asked.
+/// Runs the confirmed abort `args` (named `label`). With `keep`, its work is kept first and the
+/// abort recorded for Undo (`StashEffect::AbortKeeping`), unless nothing is left to keep since
+/// the dialog asked.
 pub(super) fn abort(st: &mut AppState, label: String, args: Vec<String>, keep: bool, now: Instant, fx: &mut Vec<Effect>) {
     if !keep {
         super::ops::job(st, JobMsg::Git { label, cmds: vec![args] }, now, fx);
@@ -38,8 +35,5 @@ pub(super) fn abort(st: &mut AppState, label: String, args: Vec<String>, keep: b
         st.toast(false, t.tr("op.abort.changed.toast"), now);
         return;
     }
-    let replay = cmd(&["stash", "push", "-m", ABORT_STASH_MESSAGE]);
-    let spec =
-        JobSpec { record: Some(UndoKind::StashPush { replay: Some(vec![replay]) }), ..JobSpec::new(label, undo::abort_keeping_commands()) };
-    start_job(st, spec, fx);
+    super::ops::begin_job(st, &label, true, |cwd| Effect::Stash(StashEffect::AbortKeeping { cwd }), fx);
 }

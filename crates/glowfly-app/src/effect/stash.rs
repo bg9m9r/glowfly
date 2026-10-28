@@ -1,5 +1,5 @@
-//! Stash list jobs that aren't a plain git command line, the saved auto-stash records and the
-//! read of a stash's files (`Effect::Stash`).
+//! Stash list jobs that aren't a plain git command line, the saved auto-stash records, the read
+//! of a stash's files and the abort that keeps an operation's work for Undo (`Effect::Stash`).
 
 use super::EffectMeta;
 #[cfg(test)]
@@ -26,6 +26,10 @@ pub enum StashEffect {
     /// Reads the files stash `ask.oid` changes (`stash_ops::changed_paths`) for the question
     /// before applying it; reports `StashMsg::PathsRead`, scoped to the tab that asked.
     ReadPaths { cwd: PathBuf, ask: StashAsk },
+    /// Aborts the merge, single cherry-pick or single revert in progress in `cwd`, keeping its
+    /// work first (`undo::abort_saving`) and recording the abort for Undo; nothing is aborted
+    /// when it can't all be kept. Unscoped like RunGit: it ends the active job.
+    AbortKeeping { cwd: PathBuf },
 }
 
 /// The auto-stash to put back: the stash with commit `oid` in `cwd`'s list.
@@ -43,7 +47,8 @@ impl StashEffect {
             | StashEffect::PutBack(PutBackRequest { cwd, .. })
             | StashEffect::ReadAutoStashes { cwd }
             | StashEffect::SaveAutoStashes { cwd, .. }
-            | StashEffect::ReadPaths { cwd, .. } => cwd,
+            | StashEffect::ReadPaths { cwd, .. }
+            | StashEffect::AbortKeeping { cwd } => cwd,
         }
     }
 }
@@ -56,6 +61,7 @@ impl EffectMeta for StashEffect {
             StashEffect::ReadAutoStashes { .. } => "read-auto-stashes",
             StashEffect::SaveAutoStashes { .. } => "save-auto-stashes",
             StashEffect::ReadPaths { .. } => "read-stash-paths",
+            StashEffect::AbortKeeping { .. } => "abort-keeping",
         }
     }
 

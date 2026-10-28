@@ -74,7 +74,7 @@ source file, update its line here. Features that span every layer are in
 - `file_tree.rs`: a changed-file list grouped in folders: the tree's rows in order (compacted folder chains, folders first), its file order and stepping past collapsed folders.
 - `file_folds.rs`: the folders collapsed in each changed-file list's tree (in `RepoSession::tab_view`, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
-- `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the resolved changes.
+- `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the operation's work for Undo.
 - `toolbar_tips.rs`: the toolbar's rules: why each button is off, the ahead/behind and last-fetched lines and the Push, Pull, Stash and Pop previews.
 - `section_actions.rs`: what each left-panel section header's + does (its name, why it is off and the message it sends).
 - `session.rs`: `RepoSession`, the per-tab views paired with their generation counters (`Gen`, `PrSlot`), the open diff as `DiffSlot` with its counter, the commit detail and draft, the repository reads, the selection, forge data, undo history and commit search, parked whole with the tab; `counters()` lists every counter (the reads' included) and `resume_after` keeps them rising across tabs and drops the forge replies in flight (`replies_dropped`); the diff's `shown_gen` is carried rather than counted. Tests in `session_tests.rs`; the switch itself in `update/tests/tabs_session_tests.rs`.
@@ -94,7 +94,7 @@ source file, update its line here. Features that span every layer are in
 - `auto_stash_restack.rs`: a restack's auto-stash as a pending entry while its stop waits (held from the ordinary put-back, saved for a restart), and telling how the restack's own put-back went.
 - `stack_push.rs`: pushing a stack as one job with a log line per layer.
 - `stack_prs.rs`: creating a stack's pull requests: the push first when a layer isn't on the code host's remote, then one create dialog per layer bottom first, skipping layers with an open one, and stopping on Cancel, Esc, a failed create or a tab switch.
-- `op_progress.rs`: the strip's Show work in progress and the banner's confirmed Abort.
+- `op_progress.rs`: the strip's Show work in progress and the banner's confirmed Abort (a kept one runs as `StashEffect::AbortKeeping`).
 - `branch_colour.rs`: pinned branch colours and the preset's hue count brought into the snapshot at load, on Preferences edits and on a tab's return.
 - `repo_colour.rs`: repository colours from the Color submenus.
 - `op_preview.rs`: opening the operation preview, its result for the dialog that asked only, Preview again and Apply, with a merge on a git without `merge-tree` answered at once.

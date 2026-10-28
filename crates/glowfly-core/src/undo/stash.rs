@@ -9,7 +9,7 @@ use super::planning::{dirty, gone, is_clean, stale};
 use super::{Action, Changes, Plan, Refusal, reset::stash_index};
 use crate::error::{Error, Result};
 use crate::gitcli::args;
-use crate::repo::{CLI_PATH_BYTES, FileEntry, Hazard, status_at};
+use crate::repo::{FileEntry, Hazard, status_at};
 use git2::{Diff, Index, ObjectType, Oid, Repository, Tree, TreeWalkMode, TreeWalkResult};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -98,20 +98,7 @@ fn left_staged(index: &Index, staged: &Tree, work: &Tree, path: &str) -> bool {
 /// `git clean` commands removing the untracked `paths`, as many as keep each command line's paths
 /// under `CLI_PATH_BYTES`.
 pub(super) fn clean_commands(paths: Vec<String>) -> Vec<Vec<String>> {
-    let start = || args(&["--literal-pathspecs", "clean", "-f", "-q", "--"]);
-    let (mut out, mut cmd, mut bytes) = (Vec::new(), start(), 0);
-    for p in paths {
-        if bytes > 0 && bytes + p.len() + 1 > CLI_PATH_BYTES {
-            out.push(std::mem::replace(&mut cmd, start()));
-            bytes = 0;
-        }
-        bytes += p.len() + 1;
-        cmd.push(p);
-    }
-    if bytes > 0 {
-        out.push(cmd);
-    }
-    out
+    super::aborted::path_commands(&["--literal-pathspecs", "clean", "-f", "-q", "--"], &paths)
 }
 
 fn stash_ref(n: usize) -> String {

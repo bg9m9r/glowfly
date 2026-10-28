@@ -14,12 +14,16 @@
 //! one move from the HEAD it started at (`resumed.rs`). `resolved` handles conflict resolutions
 //! saved in the conflict view: the conflict's stages come back from git's resolve-undo record.
 //! A restack, which moves several branches at once, is recorded around its run too and undone
-//! branch by branch (`restacked.rs`).
+//! branch by branch (`restacked.rs`). An abort of a merge, cherry-pick or revert keeps its work
+//! (resolutions, conflicts and the operation's state) as git objects first and is undone by
+//! putting all of it back (`aborted.rs`, `aborted_restore.rs`).
 
 use crate::gitcli::args;
 use crate::repo::StagedNew;
 use git2::Oid;
 
+mod aborted;
+mod aborted_restore;
 mod action;
 mod deleted;
 mod kinds;
@@ -35,6 +39,8 @@ mod resumed;
 mod reverted;
 mod saved;
 mod stash;
+pub use aborted::{ABORT_REF_PREFIX, AbortSaving, abort_saving};
+pub use aborted_restore::restore_abort;
 pub use action::{Action, BranchMove, Changes, Created, Discarded, HeadPos, Staged};
 pub use deleted::{DeleteVia, DeletedSaving, MAX_KEPT_BYTES, Trashers, delete_again, delete_saving, delete_staged_saving, put_back};
 pub use kinds::{MoveOp, ResetMode, UndoKind};
@@ -112,6 +118,10 @@ pub enum Plan {
         via: DeleteVia,
         staged: bool,
     },
+    /// Put a kept abort back (`restore_abort`): the operation is in progress again.
+    RestoreAbort,
+    /// Abort the operation in progress again, keeping its work (`abort_saving`).
+    AbortAgain,
 }
 
 /// Choices the user made for one undo.
@@ -126,18 +136,6 @@ pub fn stash_first_command() -> Vec<String> {
     args(&["stash", "push", "-u", "-m", UNDO_STASH_MESSAGE])
 }
 
-/// The message of the stash an abort keeps the resolved changes of a merge, cherry-pick or
-/// revert in, so Undo brings them back.
-pub const ABORT_STASH_MESSAGE: &str = "Glowfly: resolved changes before abort";
-
-/// The commands that abort a merge, single cherry-pick or single revert while keeping its
-/// resolved changes. The stash comes first: git can't stash unmerged entries (so every conflict
-/// must be resolved), and the stash's own hard reset already ends a merge or single pick.
-/// `reset --merge` then ends the operation also when the stash saved nothing.
-pub fn abort_keeping_commands() -> Vec<Vec<String>> {
-    vec![args(&["stash", "push", "-m", ABORT_STASH_MESSAGE]), args(&["reset", "--merge"])]
-}
-
 /// The command Glowfly runs for "Discard all".
 pub fn discard_command() -> Vec<String> {
     args(&["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE])
@@ -148,7 +146,7 @@ fn short(oid: Oid) -> String {
 }
 
 #[cfg(test)]
-mod abort_tests;
+mod aborted_tests;
 #[cfg(test)]
 mod deleted_tests;
 #[cfg(test)]

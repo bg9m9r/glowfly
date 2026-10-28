@@ -170,6 +170,14 @@ pub enum Action {
         detail: String,
         moves: Vec<BranchMove>,
     },
+    /// An abort of a merge, single cherry-pick or single revert (`op`) that kept its work in
+    /// the commit `saved` (`aborted.rs`), with HEAD at `head` on `branch` (`None`: detached).
+    AbortKept {
+        op: MoveOp,
+        saved: Oid,
+        head: Oid,
+        branch: Option<String>,
+    },
 }
 
 /// A local branch an operation moved from `from` to `to`.
@@ -249,6 +257,7 @@ impl Action {
             Action::DeleteFile { path, .. } => format!("delete of {path}"),
             Action::SetBranch { name, to, .. } => format!("move of branch {name} to {}", short(*to)),
             Action::Restacked { detail, .. } => detail.clone(),
+            Action::AbortKept { op, .. } => format!("abort of {}", op.noun()),
         }
     }
 

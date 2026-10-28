@@ -98,6 +98,7 @@ pub fn preview(t: Lang, a: &Action, snap: Option<&Snapshot>, redo: bool) -> TipP
         Action::StashApply { pop: false, message, .. } => {
             vec![TipRow::Line(message.clone()), pick(t.tr("undo.preview.unapply").into(), t.tr("undo.preview.apply_again").into())]
         }
+        Action::AbortKept { .. } => vec![pick(t.tr("undo.preview.abort_back").into(), t.tr("undo.preview.abort_again").into())],
         Action::StashDrop { message, .. } => {
             vec![TipRow::Line(message.clone()), pick(t.tr("undo.preview.restore_stash").into(), t.tr("undo.preview.drop_again").into())]
         }

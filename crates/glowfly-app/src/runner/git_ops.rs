@@ -1,5 +1,5 @@
 //! Local git operations run by the runner: staging and discarding ops, undo and redo (also of a
-//! deleted file, put back or deleted again), and
+//! deleted file, put back or deleted again, and of an abort that kept its work), and
 //! running a list of git commands.
 
 use crate::effect::{LocalOp, UndoOpts, UndoResult};
@@ -122,6 +122,14 @@ Your changes were stashed as \"{}\".
             Ok(_) => done(true, action.wrote(redo), UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
             Err(Error::TrashRefused(r)) => failed(format!("The {TRASH} couldn't take {path}: {}", r.detail)),
             Err(e) => failed(format!("Could not delete {path}: {e}")),
+        },
+        Ok(Plan::RestoreAbort) => match undo::restore_abort(cwd, &action) {
+            Ok(output) => done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
+            Err(e) => failed(format!("Could not put the {} back: {e}", action.describe())),
+        },
+        Ok(Plan::AbortAgain) => match super::stashes::abort_keeping(cwd) {
+            (true, output, Some(again)) => done(true, output, UndoResult::Done { redo, before: action, after: Box::new(again) }),
+            (_, output, _) => failed(output),
         },
     }
 }

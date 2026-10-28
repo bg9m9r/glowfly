@@ -115,6 +115,8 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 ### In-progress operations stay visible and safe
 
 - Undo for aborting a rebase, a patch series or a multi-commit cherry-pick or revert
+- Undo of a kept abort after a restart, from its `refs/glowfly/aborted/` ref (listed in the journal)
+- Keep a changed symbolic link among an aborted operation's files (today the kept abort is refused)
 - Undo for Skip commit and Skip patch (the resolved files of the skipped step)
 - Bisect in the strip: the good and bad counts, and Mark good / Mark bad
 - Keyboard shortcuts for Continue and Commit merge
