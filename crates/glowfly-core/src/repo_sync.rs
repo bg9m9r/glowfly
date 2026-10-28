@@ -68,6 +68,26 @@ pub fn sync(path: &Path, op: SyncOp, trust: Option<&crate::settings::SavedTrust>
         return Outcome::NoUpstream;
     }
     let before = ref_targets(&repo);
+    // Hooks that follow the working tree come with the commits a pull merges: the pull is
+    // pinned to commits whose hooks the decision covers (trust/pull.rs), else skipped.
+    let follows = crate::trust::scan_now(&repo).follows;
+    if op == SyncOp::Pull && !follows.is_empty() {
+        let pull = crate::trust::pull::Pull::of(&command(op)).expect("a pull");
+        let mut timed_out = false;
+        let mut git = |args: &[String], input: &str| {
+            let out = gitcli::output(path, args, input, gitcli::NO_PROMPTS, Some(TIMEOUT));
+            timed_out |= out.timed_out;
+            (out.ok, out.combined())
+        };
+        return match crate::trust::pull::run_pinned(path, &pull, &follows, trust, &mut git) {
+            crate::trust::pull::PullRun::Refused { .. } => Outcome::Untrusted,
+            crate::trust::pull::PullRun::Ran { ok: false, output } if timed_out => {
+                Outcome::Failed { reason: format!("git stopped after {} minutes.", TIMEOUT.as_secs() / 60), detail: error_detail(&output) }
+            }
+            crate::trust::pull::PullRun::Ran { ok: false, output } => failure(&output),
+            crate::trust::pull::PullRun::Ran { ok: true, .. } => changed(path, &before),
+        };
+    }
     let out = gitcli::output(path, &command(op), "", gitcli::NO_PROMPTS, Some(TIMEOUT));
     if !out.ok {
         let text = out.combined();
@@ -77,6 +97,11 @@ pub fn sync(path: &Path, op: SyncOp, trust: Option<&crate::settings::SavedTrust>
         }
         return failure(&text);
     }
+    changed(path, &before)
+}
+
+/// Up to date, or how many references moved since `before`.
+fn changed(path: &Path, before: &[(String, Option<git2::Oid>)]) -> Outcome {
     // Reopened: libgit2 caches packed references.
     let after = Repository::open(path).map(|r| ref_targets(&r)).unwrap_or_default();
     let changed =

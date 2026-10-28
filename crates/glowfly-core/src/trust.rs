@@ -10,8 +10,12 @@ use std::path::{Path, PathBuf};
 
 mod digest;
 use digest::Reading;
+pub mod compare;
 pub mod follow;
 pub mod incoming;
+pub mod pull;
+mod stamp;
+pub use stamp::stamp;
 mod print;
 pub use digest::of_bytes as content_digest;
 pub use follow::Follow;

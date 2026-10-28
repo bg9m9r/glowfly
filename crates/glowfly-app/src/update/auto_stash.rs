@@ -343,7 +343,7 @@ fn answer(st: &mut AppState, stash: bool, now: Instant, fx: &mut Vec<Effect>) {
 /// it.
 fn approve_and_run(st: &mut AppState, op: AutoStashFor, stash: bool, retry: Box<Msg>, now: Instant, fx: &mut Vec<Effect>) {
     st.auto_stash.approved = Some(Approval { op, stash });
-    fx.extend(super::update(st, *retry, now));
+    fx.extend(super::update_sealed(st, *retry, now));
     // The answer never outlives its retry.
     st.auto_stash.approved = None;
 }

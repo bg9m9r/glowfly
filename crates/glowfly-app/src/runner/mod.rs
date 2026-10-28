@@ -89,6 +89,7 @@ mod terminal_out;
 mod themes;
 mod tools;
 mod trust;
+mod trust_gate;
 mod ui;
 mod update_restart;
 mod updates;
@@ -100,7 +101,9 @@ use execute::{Cx, err, execute_with};
 #[cfg(test)]
 pub(crate) use highlight::{decorate, decorate_in_context};
 #[cfg(test)]
-pub use trust::{execute_checked, trust_passes};
+pub(crate) use sandbox::rule as sandbox_rule;
+#[cfg(test)]
+pub use trust::execute_checked;
 
 /// Wakes the UI when a result arrives (so it can process the message promptly).
 pub trait Waker: Send + Sync + 'static {
@@ -194,18 +197,22 @@ impl<W: Waker + Clone> Runner<W> {
         }
     }
 
-    /// `run_checked` without a check (tests).
-    #[cfg(test)]
-    pub fn run(&self, effect: Effect) {
-        self.run_checked(effect, None)
-    }
-
     /// Starts `effect` on a worker thread, or queues it behind the earlier effects that change the
     /// same repository. UI effects must be handled by the caller instead. A panic in the effect
-    /// is reported as its failure, so a job it was running ends. With a trust re-check `check`,
-    /// made on its worker just before it starts (a shell's in its session thread), it runs only
-    /// if that passes (runner/trust.rs).
-    pub fn run_checked(&self, effect: Effect, check: Option<crate::effect::TrustCheck>) {
+    /// is reported as its failure, so a job it was running ends. An effect with a trust re-check
+    /// (`Effect::Checked`) runs only if that passes, checked on its worker just before it
+    /// starts (a shell's in its session thread; runner/trust.rs).
+    pub fn run(&self, effect: Effect) {
+        match effect {
+            Effect::Checked(c) => {
+                let crate::effect::Checked { effect, check } = *c;
+                self.run_checked(effect, Some(check))
+            }
+            e => self.run_checked(e, None),
+        }
+    }
+
+    fn run_checked(&self, effect: Effect, check: Option<crate::effect::TrustCheck>) {
         #[cfg(test)]
         let Some(effect) = self.admit(effect) else { return };
         let effect = match effect {
@@ -253,7 +260,7 @@ impl<W: Waker + Clone> Runner<W> {
             let _hold = hold.as_deref().map(glowfly_core::repo_pool::hold);
             let cancelled = || ticket.as_ref().is_some_and(|(e, mine)| e.load(Ordering::Relaxed) != *mine);
             let started = std::time::Instant::now();
-            let cx = Cx { cancelled: &cancelled, graph_cache: &graph_cache, stop: stop.as_ref().map(|(_, s)| s) };
+            let cx = Cx { cancelled: &cancelled, graph_cache: &graph_cache, stop: stop.as_ref().map(|(_, s)| s), gate: None };
             let msg = guard::guarded(recovery, || match check {
                 Some(c) => trust::checked(c, effect, |text| failed.failed(text), &cx),
                 None => execute_with(effect, &cx),

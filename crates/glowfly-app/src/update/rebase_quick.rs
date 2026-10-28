@@ -86,7 +86,7 @@ pub(super) fn run(st: &mut AppState, mut plan: QuickPlan, autostash: bool, confi
                 _ => ("Stash changes and squash", "Squash"),
             };
             let then = Msg::Rebase(RebaseMsg::RunEdit { plan: Box::new(plan), autostash: true, confirmed: true });
-            fx.extend(super::update(st, Msg::confirm(title, STASH_LINE.to_owned(), button, then), now));
+            fx.extend(super::update_sealed(st, Msg::confirm(title, STASH_LINE.to_owned(), button, then), now));
         }
         return Started::No;
     }
@@ -97,5 +97,5 @@ pub(super) fn run(st: &mut AppState, mut plan: QuickPlan, autostash: bool, confi
 fn ask_drop(st: &mut AppState, plan: QuickPlan, stash: bool, now: Instant, fx: &mut Vec<Effect>) {
     let (title, body, button) = drop_question(&plan, stash);
     let then = Msg::Rebase(RebaseMsg::RunEdit { plan: Box::new(plan), autostash: stash, confirmed: true });
-    fx.extend(super::update(st, Msg::confirm(&title, body, &button, then), now));
+    fx.extend(super::update_sealed(st, Msg::confirm(&title, body, &button, then), now));
 }

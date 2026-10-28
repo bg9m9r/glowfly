@@ -201,7 +201,7 @@ fn start(st: &mut AppState, confirmed: bool, autostash: bool, now: Instant, fx: 
         } else {
             Msg::confirm(&title, body, "Start rebase", then)
         };
-        fx.extend(super::update(st, ask, now));
+        fx.extend(super::update_sealed(st, ask, now));
         return;
     }
     let Some(plan) = p.plan.as_ref() else { return };

@@ -25,7 +25,7 @@ pub(super) fn save(st: &mut AppState, scope: WipScope, paths: Option<Vec<String>
     let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()) else { return };
     if !st.runs_git_unasked() {
         st.log(false, HELD);
-        fx.extend(super::super::update(st, Msg::Trust(TrustMsg::Ask { real }), now));
+        fx.extend(super::super::update_sealed(st, Msg::Trust(TrustMsg::Ask { real }), now));
         return;
     }
     let Some(snap) = &st.snap else { return };

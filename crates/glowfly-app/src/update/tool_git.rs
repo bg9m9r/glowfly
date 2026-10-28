@@ -92,7 +92,7 @@ fn open_diff_with(st: &mut AppState, w: PathBuf, tools: GitTools, target: DiffTa
     if tool.needs_trust() && !st.runs_git_unasked() {
         st.log(false, held_text(ToolMode::Diff, &tool));
         if let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()) {
-            fx.extend(super::update(st, Msg::Trust(TrustMsg::Ask { real }), now));
+            fx.extend(super::update_sealed(st, Msg::Trust(TrustMsg::Ask { real }), now));
         }
         return;
     }

@@ -184,10 +184,30 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use std::time::Instant;
 
-/// The runner's trust re-check for each effect an update returned (update/trust_seal.rs).
-pub use trust_seal::pair as trust_checks;
+/// `trust_seal::wrap`, for tests.
+#[cfg(test)]
+pub(crate) use trust_seal::wrap as trust_seal_wrap;
 
+/// `update_sealed` with the effects taken out of their trust checks (`Effect::unsealed`), so
+/// tests see what was asked for; `update_sealed` keeps them.
+#[cfg(test)]
 pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
+    update_sealed(st, msg, now).into_iter().map(Effect::unsealed).collect()
+}
+
+/// Handles `msg` and returns the effects to run, each that must be checked against the
+/// repository's trust first carrying its check (`Effect::Checked`, update/trust_seal.rs).
+pub fn update_sealed(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
+    // Only the seals recorded from here on are this call's: an outer call (a handler that
+    // updates with another message) wraps its own, and those a handler called on its own (in a
+    // test) left belong to no effect here.
+    let mark = st.trust.seals.len();
+    let mut fx = update_plain(st, msg, now);
+    trust_seal::wrap(st, &mut fx, mark);
+    fx
+}
+
+fn update_plain(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     let mut fx = Vec::new();
     // A row whose path could reach the wrong file: refused before any handler runs.
     if let Some(why) = crate::state::path_hazards::refusal(st, &msg) {
@@ -268,7 +288,7 @@ crate::msg::msg_areas! { area_router! {
         }
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {
-                fx.extend(update(st, *msg, now));
+                fx.extend(update_sealed(st, *msg, now));
             } else {
                 inactive::inactive(st, &workdir, *msg, now);
             }
@@ -288,14 +308,14 @@ crate::msg::msg_areas! { area_router! {
                 | crate::state::Modal::ConfirmChoice { then, .. },
             ) = st.modal.take()
             {
-                fx.extend(update(st, *then, now));
+                fx.extend(update_sealed(st, *then, now));
             }
         }
         Msg::ConfirmAlt => {
             if matches!(st.modal, Some(crate::state::Modal::ConfirmChoice { .. }))
                 && let Some(crate::state::Modal::ConfirmChoice { alt_then, .. }) = st.modal.take()
             {
-                fx.extend(update(st, *alt_then, now));
+                fx.extend(update_sealed(st, *alt_then, now));
             }
         }
         Msg::ToastAction(id) => notify::toast_action(st, id, false, now, fx),

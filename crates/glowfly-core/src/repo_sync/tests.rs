@@ -1,8 +1,8 @@
 use super::*;
 use crate::settings::SavedTrust;
-use crate::testutil::{git, remote_commit, scratch_repo, set_config, with_origin};
+use crate::testutil::{git, remote_commit, scratch_repo, set_config, with_origin, write};
 
-/// Trusted, by a decision saved before prints were kept.
+/// Trusted, by a decision saved before prints were kept: it covers only what runs nothing.
 const T: Option<&SavedTrust> = Some(&SavedTrust { trust: crate::settings::RepoTrust::Trusted, print: None });
 
 #[test]
@@ -94,4 +94,21 @@ fn a_trusted_repository_that_gained_a_command_since_is_skipped() {
     assert_eq!(sync(&work, SyncOp::Fetch { prune: true }, Some(&stale)), Outcome::Untrusted);
     let now = SavedTrust::trusted(Some(crate::trust::scan_at(&work).unwrap().print()));
     assert_eq!(sync(&work, SyncOp::Fetch { prune: true }, Some(&now)), Outcome::UpToDate);
+}
+
+#[test]
+fn a_pull_that_brings_other_hooks_into_a_tracked_hooks_folder_is_skipped() {
+    let (work, bare) = with_origin("sync-follow");
+    std::fs::create_dir_all(work.join(".githooks")).unwrap();
+    write(&work, ".githooks/post-merge", "#!/bin/sh\necho one > ran.txt\n");
+    git(&work, &["add", "."]);
+    git(&work, &["commit", "-q", "-m", "hooks"]);
+    git(&work, &["push", "-q", "origin", "main"]);
+    git(&work, &["config", "core.hooksPath", ".githooks"]);
+    let trusted = SavedTrust::trusted(Some(crate::trust::scan_at(&work).unwrap().print()));
+    remote_commit(&bare, "main", ".githooks/post-merge", "#!/bin/sh\necho two > ran.txt\n");
+    assert_eq!(sync(&work, SyncOp::Pull, Some(&trusted)), Outcome::Untrusted);
+    assert!(!work.join("ran.txt").exists(), "the incoming hook never ran");
+    let _ = std::fs::remove_dir_all(&work);
+    let _ = std::fs::remove_dir_all(&bare);
 }

@@ -49,7 +49,7 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
     };
     if let Some(m) = msg {
         let before = fx.len();
-        fx.extend(super::update(st, m, now));
+        fx.extend(super::update_sealed(st, m, now));
         // Not when nothing was sent (a refusal, or the merge tool asked first).
         if let Some(t) = whole
             && fx[before..].iter().any(|e| matches!(e, Effect::LocalOp { .. }))
@@ -118,7 +118,7 @@ fn focus_message(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     }
     super::layout::reveal_details(st, fx);
     if st.session.selection != Selection::Wip {
-        fx.extend(super::update(st, Msg::Repo(RepoMsg::SelectWip), now));
+        fx.extend(super::update_sealed(st, Msg::Repo(RepoMsg::SelectWip), now));
     }
     st.view.focus_message = true;
 }

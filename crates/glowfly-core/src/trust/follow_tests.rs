@@ -2,7 +2,8 @@
 //! into it, part of the print with the version HEAD tracks, and an incoming commit's version
 //! read from its objects, so a pull or checkout that brings other hooks is noticed first.
 
-use super::super::incoming::{Target, allows, resolve, targets};
+use super::super::incoming::{allows, commits, targets};
+use super::super::pull::{Pull, fetched};
 use super::super::tests::hook;
 use super::*;
 use crate::settings::SavedTrust;
@@ -90,14 +91,13 @@ fn an_untracked_hooks_folder_is_covered_by_the_tracked_folder_around_it() {
 fn a_tracked_hooks_folder_changed_by_a_pull_is_not_covered() {
     let (work, bare) = tracked_hooks("follow-pull");
     let saved = trusted(&work);
-    let pull = targets(&crate::gitcli::args(&["pull", "--ff"]));
-    let Some(Target::Fetched { fetch, upstream: true }) = pull.first().cloned() else { panic!("{pull:?}") };
-    assert_eq!(fetch, ["fetch"]);
+    let pull = Pull::of(&crate::gitcli::args(&["pull", "--ff"])).expect("a pull");
     let incoming = |work: &Path| {
-        git(work, &fetch.iter().map(String::as_str).collect::<Vec<_>>());
+        git(work, &pull.fetch.iter().map(String::as_str).collect::<Vec<_>>());
         let repo = Repository::open(work).unwrap();
-        let oid = resolve(&repo, &pull[0]).expect("the upstream");
-        incoming(&repo, &scan(work).follows, oid).unwrap()
+        let heads = fetched(&repo).expect("FETCH_HEAD");
+        assert_eq!(heads.len(), 1, "{heads:?}");
+        incoming(&repo, &scan(work).follows, heads[0].oid).unwrap()
     };
     // Something else changed upstream: the hooks the pull brings are the trusted ones.
     remote_commit(&bare, "main", "b.txt", "other\n");
@@ -129,13 +129,117 @@ fn a_checkout_of_another_branch_compares_its_hooks() {
     let check = |args: &[&str]| {
         targets(&crate::gitcli::args(args))
             .iter()
-            .filter_map(|t| resolve(&repo, t))
+            .flat_map(|t| commits(&repo, &follows, t).unwrap())
             .all(|oid| allows(Some(&saved), &incoming(&repo, &follows, oid).unwrap()))
     };
     assert!(!check(&["checkout", "side", "--"]), "side adds a hook");
     assert!(!check(&["merge", "--no-ff", "side"]));
+    assert!(!check(&["cherry-pick", "side"]), "a pick replays it");
+    assert!(!check(&["rebase", "main", "side"]), "the branch a rebase checks out first");
+    assert!(!check(&["checkout", "side", "--", ".githooks"]), "the folder from another tree");
+    assert!(check(&["checkout", "side", "--", "a.txt"]), "a file away from the hooks");
     assert!(check(&["checkout", "main", "--"]), "the branch already trusted");
     assert!(check(&["checkout", "-b", "new"]), "a new branch at HEAD");
+    cleanup(&[&work, &bare]);
+}
+
+/// A commit on HEAD whose tree is HEAD's with `name` (a folder holding `post-merge` with
+/// `script`) added beside what is there: libgit2 writes it, so two names one folding file
+/// system takes for the same folder can both be in the tree.
+fn with_folder(repo: &Repository, name: &str, script: &str) -> Oid {
+    let head = repo.head().unwrap().peel_to_commit().unwrap();
+    let blob = repo.blob(script.as_bytes()).unwrap();
+    let mut inner = repo.treebuilder(None).unwrap();
+    inner.insert("post-merge", blob, 0o100755).unwrap();
+    let inner = inner.write().unwrap();
+    let mut top = repo.treebuilder(Some(&head.tree().unwrap())).unwrap();
+    top.insert(name, inner, 0o040000).unwrap();
+    let tree = repo.find_tree(top.write().unwrap()).unwrap();
+    let sig = git2::Signature::now("t", "t@example.com").unwrap();
+    repo.commit(None, &sig, &sig, "twin", &tree, &[&head]).unwrap()
+}
+
+#[test]
+fn a_folder_another_case_or_spelling_of_the_hooks_folder_is_compared_too() {
+    let (work, bare) = tracked_hooks("follow-twins");
+    let saved = trusted(&work);
+    let repo = Repository::open(&work).unwrap();
+    let follows = scan(&work).follows;
+    // `.GITHOOKS` beside `.githooks`: on a folding file system either may be the one on disk.
+    for twin in [".GITHOOKS", ".githooks\u{200c}", ".githooks."] {
+        let oid = with_folder(&repo, twin, "#!/bin/sh\necho twin\n");
+        let v = versions(&repo, &follows, oid).unwrap();
+        let tracked = v[0].tracked.as_ref().unwrap();
+        assert!(tracked.0.contains('|'), "both are recorded: {tracked:?}");
+        assert!(!follow_allows(&saved, &repo, &follows, oid), "{twin}: held");
+    }
+    cleanup(&[&work, &bare]);
+}
+
+fn follow_allows(saved: &SavedTrust, repo: &Repository, follows: &[Follow], oid: Oid) -> bool {
+    allows(Some(saved), &incoming(repo, follows, oid).unwrap())
+}
+
+#[test]
+fn a_hooks_folder_reached_through_a_link_follows_both_places() {
+    let dir = scratch_repo("follow-through-link");
+    hook(&dir.join("tools"), "post-checkout");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "tools"]);
+    // A link (a junction on Windows) inside the tree to the tracked folder.
+    let Some(link) = alias_of(&dir.join("tools")) else {
+        eprintln!("no link could be made, skipping");
+        return cleanup(&[&dir]);
+    };
+    let name = link.file_name().unwrap().to_string_lossy().into_owned();
+    git(&dir, &["config", "core.hooksPath", &name]);
+    let paths: Vec<String> = scan(&dir).follows.iter().map(|f| f.path.clone()).collect();
+    assert_eq!(paths, [name.clone(), "tools".to_owned()], "as spelled and where it leads");
+    // A branch changing the folder it leads to brings other hooks, though the link is the same.
+    let saved = trusted(&dir);
+    let off = |args: &[&str]| git(&dir, &[&["-c", "core.hooksPath=.git/hooks"], args].concat());
+    off(&["checkout", "-q", "-b", "side"]);
+    std::fs::write(dir.join("tools/post-checkout"), "#!/bin/sh\necho changed\n").unwrap();
+    off(&["commit", "-q", "-am", "edit"]);
+    off(&["checkout", "-q", "main"]);
+    let repo = Repository::open(&dir).unwrap();
+    let side = repo.revparse_single("side").unwrap().id();
+    assert!(!follow_allows(&saved, &repo, &scan(&dir).follows, side));
+    let _ = std::fs::remove_dir(&link).or_else(|_| std::fs::remove_file(&link));
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn hooks_a_partial_clone_lacks_are_listed_without_reading_them() {
+    let (src, clone) = partial_clone_of("follow-partial", |src| {
+        hook(&src.join(".githooks"), "post-merge");
+        git(src, &["add", "."]);
+        git(src, &["commit", "-q", "-m", "hooks"]);
+        std::fs::write(src.join(".githooks/post-merge"), "#!/bin/sh\necho two\n").unwrap();
+        git(src, &["commit", "-q", "-am", "two"]);
+    });
+    git(&clone, &["config", "core.hooksPath", ".githooks"]);
+    let repo = Repository::open(&clone).unwrap();
+    let follows = scan(&clone).follows;
+    // HEAD~1's hook blob was never fetched: its version is still read from the trees.
+    let old = repo.revparse_single("HEAD~1").unwrap().id();
+    let inc = incoming(&repo, &follows, old).expect("trees are enough");
+    assert_eq!(inc.hooks, ["post-merge"]);
+    assert!(inc.hook_digests.is_empty(), "the missing blob isn't read");
+    cleanup(&[&src, &clone]);
+}
+
+#[test]
+fn a_tree_that_can_t_be_read_can_t_be_compared() {
+    let (work, bare) = tracked_hooks("follow-missing-tree");
+    let repo = Repository::open(&work).unwrap();
+    let follows = scan(&work).follows;
+    let oid = with_folder(&repo, "tools", "x");
+    // Drop the loose object of the commit's new top tree.
+    let tree = repo.find_commit(oid).unwrap().tree_id().to_string();
+    std::fs::remove_file(work.join(".git/objects").join(&tree[..2]).join(&tree[2..])).unwrap();
+    let repo = Repository::open(&work).unwrap();
+    assert!(versions(&repo, &follows, oid).is_err(), "the caller holds the job");
     cleanup(&[&work, &bare]);
 }
 

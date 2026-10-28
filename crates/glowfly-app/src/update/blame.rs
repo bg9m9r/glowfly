@@ -160,7 +160,7 @@ fn hold(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     }
     st.session.blame.generation += 1;
     if let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()) {
-        fx.extend(super::update(st, Msg::Trust(TrustMsg::Ask { real }), now));
+        fx.extend(super::update_sealed(st, Msg::Trust(TrustMsg::Ask { real }), now));
     }
 }
 

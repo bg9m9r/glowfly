@@ -17,6 +17,7 @@ use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
 use glowfly_core::trust::TrustScan;
+use glowfly_core::trust::incoming::Unchecked;
 use std::path::Path;
 
 /// Draws the prompt; returns true when Cancel was clicked (the dialog closes without a
@@ -24,6 +25,7 @@ use std::path::Path;
 /// footer's tone makes Cancel the default (and with no Cancel there is no default).
 pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     let title = match (&p.incoming, &p.gained) {
+        _ if p.unchecked.is_some() => cx.t.tr("trust.incoming.title"),
         (Some(_), _) => cx.t.tr("trust.incoming.title"),
         (None, Some(_)) => "Trust this repository again?",
         (None, None) => "Trust this repository?",
@@ -42,6 +44,16 @@ pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     out.dismiss
 }
 
+/// Why what the held job brings in couldn't be compared.
+fn unchecked(t: Lang, u: &Unchecked) -> String {
+    match u {
+        Unchecked::Unresolved(rev) => t.trf("trust.unchecked.unresolved", &[("rev", &printable(rev))]),
+        Unchecked::TooMany(n) => t.trf("trust.unchecked.too_many", &[("count", &n.to_string())]),
+        Unchecked::Unreadable(e) => t.trf("trust.unchecked.unreadable", &[("error", &printable(e))]),
+        Unchecked::Unknown => t.tr("trust.unchecked.unknown").to_owned(),
+    }
+}
+
 /// Where the repository is, the job waiting, and what in it runs programs.
 fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
     ui.label(RichText::new(printable(&p.name)).font(type_scale::strong(ui, type_scale::BODY)));
@@ -52,6 +64,9 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
     if let Some(label) = &p.held {
         let what = format!("{} needs git to run this repository's settings and hooks.", printable(label));
         ui.add(egui::Label::new(RichText::new(what).font(type_scale::strong(ui, type_scale::BODY))).wrap());
+    }
+    if let Some(u) = &p.unchecked {
+        ui.add(egui::Label::new(RichText::new(unchecked(t, u)).font(type_scale::strong(ui, type_scale::BODY))).wrap());
     }
     if p.terminal {
         let what =

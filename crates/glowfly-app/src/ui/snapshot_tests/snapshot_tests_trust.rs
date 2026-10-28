@@ -32,6 +32,7 @@ fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, held: Option
         gained: None,
         terminal: false,
         incoming: None,
+        unchecked: None,
     }));
     st
 }
@@ -107,6 +108,21 @@ fn trust_prompt_incoming() {
     assert!(h.query_by_label("Trust the incoming hooks?").is_some());
     assert!(h.query_by_label_contains("The commit this brings in has other versions").is_some());
     assert!(h.query_by_label("post-merge").is_some());
+    assert!(h.query_by_label("Trust and run").is_some());
+}
+
+#[test]
+fn trust_prompt_unchecked() {
+    // A pull in a partial clone: the commits it brings in can't be read to compare their hooks.
+    let scan = TrustScan { config: vec![setting("core.hooksPath", ".githooks")], follows: vec![githooks()], ..TrustScan::default() };
+    let mut st = prompt_state(ThemeChoice::Dark, scan, false, Some("Pull"));
+    if let Some(Modal::Trust(p)) = &mut st.modal {
+        p.unchecked = Some(Box::new(glowfly_core::trust::incoming::Unchecked::Unreadable("object 1a2b3c4 is missing".into())));
+    }
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("trust_prompt_unchecked");
+    assert!(h.query_by_label_contains("couldn't read the commits it brings in").is_some());
     assert!(h.query_by_label("Trust and run").is_some());
 }
 

@@ -33,6 +33,8 @@ pub struct Stale {
     /// What the commit it brings in has where hooks follow the working tree, when that is what
     /// isn't covered (`trust::follow::incoming`).
     pub incoming: Option<TrustScan>,
+    /// Why what it brings in couldn't be compared, when that is why it didn't start.
+    pub unchecked: Option<glowfly_core::trust::incoming::Unchecked>,
 }
 
 /// One repository `TrustMsg::Inherited` reports.

@@ -1,36 +1,43 @@
 //! The runner's trust re-check, from update's side. Trust is judged against the scan of the last
 //! full load, so work that passes the gate (a job, a released held job, the external or built-in
 //! terminal, a conflict check or merge preview) is pushed with a `Seal` (`push`): what the
-//! runner must find just before it starts (effect/trust_check.rs, runner/trust.rs). The shell
-//! pairs the seals with the effects before running them (`pair`). When the check finds the
+//! runner must find just before it starts (effect/trust_check.rs, runner/trust.rs). Before
+//! update returns, each sealed effect is wrapped with its check (`wrap`, `Effect::Checked`), and
+//! so is every read that lets git run in a repository (`read_in`: a status read by git, a
+//! signature check, a diff or blame through git's filters). When the check finds the
 //! repository no longer covered (a hook edited while the prompt was open, a pull that brings
 //! other hooks into a hooks folder that follows the working tree), the work comes back here
 //! (`stale`): the active tab takes the scan just made, and the work waits for the trust prompt
 //! again, which names what changed.
 
-use crate::effect::{Effect, RebaseEffect, Seal, Sealed, TrustCheck, WaitingKind};
+use crate::effect::{Checked, Effect, LfsEffect, Seal, Sealed, SparseEffect, TrustCheck, WaitingKind};
 use crate::msg::Stale;
 use crate::state::AppState;
 use crate::state::Modal;
 use crate::state::tabs::is_repo_at;
 use crate::state::terminal::SessionStatus;
 use crate::state::trust::{TrustPrompt, WaitingFor, saved_for};
+use crate::tools::ToolEffect;
 use glowfly_core::paths::same_spelling;
-use glowfly_core::rebase::Upstream;
 use glowfly_core::trust::TrustScan;
-use glowfly_core::trust::incoming::{Target, targets};
 use std::path::Path;
 
 /// Pushes `effect`, which runs in `cwd`, with the re-check the runner makes just before it
 /// starts; `sealed` says how to hold it again.
 pub(super) fn push(st: &mut AppState, effect: Effect, sealed: Sealed, cwd: &Path, fx: &mut Vec<Effect>) {
-    let check = check_for(st, &effect, sealed, cwd);
+    push_accepting(st, effect, sealed, cwd, false, fx);
+}
+
+/// `push`; `accept_unchecked`: the user chose Trust and run on a prompt that said what it
+/// brings in couldn't be compared.
+pub(super) fn push_accepting(st: &mut AppState, effect: Effect, sealed: Sealed, cwd: &Path, accept_unchecked: bool, fx: &mut Vec<Effect>) {
+    let check = check_for(st, sealed, cwd, accept_unchecked);
     st.trust.seals.push(Seal { at: fx.len(), name: effect.name(), check });
     fx.push(effect);
 }
 
-/// The check for `effect` in `cwd`: the decision of the repository there as it stands now.
-fn check_for(st: &AppState, effect: &Effect, sealed: Sealed, cwd: &Path) -> TrustCheck {
+/// The check for an effect in `cwd`: the decision of the repository there as it stands now.
+fn check_for(st: &AppState, sealed: Sealed, cwd: &Path, accept_unchecked: bool) -> TrustCheck {
     let parked = || st.tabs.iter().find_map(|t| t.parked.as_ref()?.snap.as_ref().filter(|s| t.is(cwd) || is_repo_at(s, cwd)));
     let snap = st.snap.as_ref().filter(|s| is_repo_at(s, cwd)).or_else(parked);
     let (real, saved) = match snap {
@@ -40,38 +47,69 @@ fn check_for(st: &AppState, effect: &Effect, sealed: Sealed, cwd: &Path) -> Trus
             (real, st.saved_trust_for(cwd))
         }
     };
-    let (incoming, prompts) = match effect {
-        Effect::RunGit { cmds, prompts, .. } => (cmds.iter().flat_map(|c| targets(c)).collect(), *prompts),
-        Effect::Pick(j) => (j.cmds.iter().flat_map(|c| targets(c)).collect(), j.prompts),
-        Effect::Rebase(RebaseEffect::Start { request, .. }) => match request.upstream {
-            Upstream::Commit(oid) => (vec![Target::Commit(oid)], true),
-            Upstream::Root => (Vec::new(), true),
-        },
-        _ => (Vec::new(), true),
-    };
-    TrustCheck { workdir: cwd.to_path_buf(), real, saved, incoming, prompts, sealed }
+    TrustCheck { workdir: cwd.to_path_buf(), real, saved, sealed, accept_unchecked }
 }
 
-/// The check for each of `fx` (the effects one update returned), from the seals recorded since
-/// the last call: a seal goes with the effect at its place when that one has its name, else
-/// with the last effect that has. A seal whose effect is gone (dropped by update) is dropped.
-pub fn pair(st: &mut AppState, fx: &[Effect]) -> Vec<Option<TrustCheck>> {
-    let mut out: Vec<Option<TrustCheck>> = fx.iter().map(|_| None).collect();
-    for seal in std::mem::take(&mut st.trust.seals) {
-        let free: Vec<bool> = out.iter().zip(fx).map(|(c, e)| c.is_none() && e.name() == seal.name).collect();
-        let at = if free.get(seal.at).copied().unwrap_or(false) { Some(seal.at) } else { free.iter().rposition(|f| *f) };
-        match at {
-            Some(i) => out[i] = Some(seal.check),
-            None => tracing::debug!("the checked {} was dropped before it ran", seal.name),
+/// Wraps the effects one update returns with their checks: each sealed one (`st.trust.seals`
+/// from `mark` on) by its place, and every read that lets git run in a repository (`read_in`). A seal whose
+/// place now holds another effect (one was put before it) checks every effect of its name,
+/// so none of them runs unchecked. A seal whose effect is gone (dropped by update) is dropped.
+pub(crate) fn wrap(st: &mut AppState, fx: &mut [Effect], mark: usize) {
+    let mut checks: Vec<Option<TrustCheck>> = fx.iter().map(|_| None).collect();
+    let mark = mark.min(st.trust.seals.len());
+    for seal in st.trust.seals.split_off(mark) {
+        let same = |e: &Effect| e.name() == seal.name;
+        if fx.get(seal.at).is_some_and(same) && checks[seal.at].is_none() {
+            checks[seal.at] = Some(seal.check);
+            continue;
+        }
+        tracing::debug!("the checked {} moved before it ran: every {} is checked", seal.name, seal.name);
+        let mut any = false;
+        for (c, e) in checks.iter_mut().zip(fx.iter()) {
+            if c.is_none() && same(e) {
+                *c = Some(seal.check.clone());
+                any = true;
+            }
+        }
+        if !any {
+            tracing::debug!("the checked {} was dropped before it ran", seal.name);
         }
     }
-    out
+    for (i, e) in fx.iter_mut().enumerate() {
+        let read = read_in(e).map(Path::to_path_buf);
+        let check = checks[i].take().or_else(|| read.map(|w| check_for(st, Sealed::Read, &w, false)));
+        if let Some(check) = check {
+            let effect = std::mem::replace(e, Effect::FetchAvatars(Vec::new()));
+            *e = Effect::Checked(Box::new(Checked { effect, check }));
+        }
+    }
+}
+
+/// The repository a read lets git run in (its fsmonitor and filters, a signing program, a diff
+/// or merge tool, git LFS): the runner checks it first (`Sealed::Read`).
+fn read_in(e: &Effect) -> Option<&Path> {
+    let w = match e {
+        Effect::LoadStatus { workdir, git_status: true, .. } | Effect::LoadIndexStatus { workdir, git_status: true, .. } => workdir,
+        Effect::VerifySignature { workdir, .. } => workdir,
+        Effect::Lfs(LfsEffect::Load { workdir, .. }) => workdir,
+        Effect::Sparse(SparseEffect::Load { workdir, run_git: true, .. }) => workdir,
+        Effect::Tool(ToolEffect::OpenDiff(r)) if r.filters => &r.workdir,
+        Effect::Tool(ToolEffect::RunMerge(r)) if r.filters => &r.workdir,
+        Effect::Tool(ToolEffect::OpenGitDiff(r)) => &r.workdir,
+        Effect::Tool(ToolEffect::RunGitMerge(r)) => &r.workdir,
+        Effect::LoadFileText(r) if r.smudge => &r.workdir,
+        Effect::LoadBlame(r) => &r.workdir,
+        Effect::RangeDiff(j) => &j.workdir,
+        Effect::CheckConflicts(j) => &j.workdir,
+        _ => return None,
+    };
+    Some(w.as_path())
 }
 
 /// The runner didn't start checked work (`TrustMsg::Stale`): it waits for the trust prompt
 /// again, made on what the runner just found.
 pub(super) fn stale(st: &mut AppState, s: Stale) {
-    let Stale { check, effect, now, incoming } = s;
+    let Stale { check, effect, now, incoming, unchecked } = s;
     let active = st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &check.real));
     let now = if active { adopt(st, now) } else { now };
     let print = check.saved.as_ref().and_then(|t| t.print.as_ref());
@@ -90,8 +128,18 @@ pub(super) fn stale(st: &mut AppState, s: Stale) {
             };
             let gained = print.filter(|_| incoming.is_none()).map(|p| now.gained_since(p));
             let incoming = incoming.map(|i| print.map_or_else(|| i.clone(), |p| i.gained_since(p)));
-            let prompt =
-                TrustPrompt { name, workdir, real: check.real, scan: now, refused: false, held: None, gained, terminal: false, incoming };
+            let prompt = TrustPrompt {
+                name,
+                workdir,
+                real: check.real,
+                scan: now,
+                refused: false,
+                held: None,
+                gained,
+                terminal: false,
+                incoming,
+                unchecked: unchecked.map(Box::new),
+            };
             super::trust::hold(st, job, effect, prompt, !active);
         }
         Sealed::Waiting { kind, label } => {
@@ -123,6 +171,8 @@ pub(super) fn stale(st: &mut AppState, s: Stale) {
                 super::trust::ask(st, &check.real, true);
             }
         }
+        // The runner reads without git, or fails the read, itself; the next load asks.
+        Sealed::Read => {}
     }
 }
 

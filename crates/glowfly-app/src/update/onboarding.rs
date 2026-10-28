@@ -123,7 +123,7 @@ fn finish(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// Runs the last step's choice as the welcome screen's button would.
 fn start(st: &mut AppState, choice: StartChoice, now: Instant, fx: &mut Vec<Effect>) {
-    fx.extend(super::update(st, choice.msg(), now));
+    fx.extend(super::update_sealed(st, choice.msg(), now));
 }
 
 /// Ends the tour, remembering its step for "Resume the tour" unless it was the last.

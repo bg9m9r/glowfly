@@ -100,7 +100,7 @@ impl<W: Waker + Clone> Runner<W> {
 
 /// What the sandbox does with `effect`: an area's rule comes from its `EffectMeta`; every flat
 /// variant is listed, so a new one has to be placed.
-fn rule(effect: &Effect) -> SandboxRule {
+pub(crate) fn rule(effect: &Effect) -> SandboxRule {
     effect_areas! { effect_match! { effect, |e| e.sandbox(), {
         Effect::LoadRepo { .. }
         | Effect::LoadStatus { .. }

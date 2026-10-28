@@ -54,6 +54,8 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
     // Only the prompt that names the held job can release it; any other held job is stale.
     let held = st.trust.held.take();
     let named = matches!(&st.modal, Some(Modal::Trust(p)) if p.held.is_some());
+    // The prompt said what the job brings in couldn't be compared: Trust and run takes that.
+    let unchecked = matches!(&st.modal, Some(Modal::Trust(p)) if p.held.is_some() && p.unchecked.is_some());
     if trusted {
         // What the user was shown: the open prompt's scan, else the active repository's.
         let print = match (&st.modal, &st.snap) {
@@ -84,7 +86,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
             // A job for another open repository runs there whichever tab is active.
             Some(h) if trusted && h.elsewhere && same_spelling(&h.real, real) => {
                 st.log(true, format!("{} is trusted.", h.name));
-                release(st, h, real, named, fx);
+                release(st, h, real, named, unchecked, fx);
             }
             Some(h) => forget(st, h, trusted),
             None => {}
@@ -99,7 +101,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
         super::forge::refresh(st, true, false, now, fx);
         released(st, fx);
         if let Some(h) = held {
-            release(st, h, real, named, fx);
+            release(st, h, real, named, unchecked, fx);
         }
     } else {
         st.log(true, format!("{name} isn't trusted. Glowfly won't fetch or contact its hosting service for it on its own."));
@@ -113,7 +115,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
 /// trusted, if it was held for that repository, its prompt was the one decided (`named`), it is
 /// still the active one (or the job runs elsewhere anyway) and no other job is running;
 /// otherwise drops it.
-fn release(st: &mut AppState, h: HeldJob, real: &Path, named: bool, fx: &mut Vec<Effect>) {
+fn release(st: &mut AppState, h: HeldJob, real: &Path, named: bool, unchecked: bool, fx: &mut Vec<Effect>) {
     let active = st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &h.real));
     let here = named && same_spelling(&h.real, real) && (h.elsewhere || active);
     if !here || super::jobs::busy(st, false) {
@@ -124,7 +126,7 @@ fn release(st: &mut AppState, h: HeldJob, real: &Path, named: bool, fx: &mut Vec
     let sealed = Sealed::Job { label: h.job.label.clone() };
     let cwd = h.job.workdir.clone().or_else(|| st.workdir()).unwrap_or_else(|| h.real.clone());
     st.job = Some(h.job);
-    super::trust_seal::push(st, h.effect, sealed, &cwd, fx);
+    super::trust_seal::push_accepting(st, h.effect, sealed, &cwd, unchecked, fx);
 }
 
 /// What the trust gate says about a job.

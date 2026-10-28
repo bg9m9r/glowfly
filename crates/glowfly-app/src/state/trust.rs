@@ -136,6 +136,9 @@ pub struct TrustPrompt {
     /// What the commit the held job brings in has, where hooks follow the working tree, that
     /// the decision doesn't cover (update/trust_seal.rs); trusting covers it too.
     pub incoming: Option<TrustScan>,
+    /// Why what the held job brings in couldn't be compared (a partial clone, a long replay, a
+    /// revision Glowfly can't resolve as git does): Trust and run runs it without comparing.
+    pub unchecked: Option<Box<glowfly_core::trust::incoming::Unchecked>>,
 }
 
 /// The prompt for the loaded repository `snap`.
@@ -155,6 +158,7 @@ pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
         gained,
         terminal: false,
         incoming: None,
+        unchecked: None,
     }
 }
 

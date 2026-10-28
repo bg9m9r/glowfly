@@ -1,12 +1,15 @@
-//! The re-check the runner makes just before a trust-gated job, shell or read starts
-//! (runner/trust.rs): the repository is scanned again and compared with the decision as it was
-//! when update sent the work, and the commits a checkout, merge, pull or rebase brings in have
-//! their hooks that follow the working tree compared too. Update records a `Seal` beside each
-//! such effect it pushes (update/trust_seal.rs); the shell pairs them before running.
+//! The re-check the runner makes just before trust-gated work starts (runner/trust.rs): the
+//! repository is scanned again and compared with the decision as it was when update sent the
+//! work, and the commits a checkout, merge, pull, rebase or pick brings in have their hooks that
+//! follow the working tree compared too. The check travels inside the effect
+//! (`Effect::Checked`): update wraps each effect it sealed before returning it
+//! (update/trust_seal.rs), so nothing pairs them up later.
 
+#[cfg(test)]
+use super::SandboxRule;
+use super::{Effect, EffectMeta};
 use glowfly_core::settings::SavedTrust;
-use glowfly_core::trust::incoming::Target;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// What the runner checks before it starts one effect.
 #[derive(Clone, Debug)]
@@ -17,12 +20,12 @@ pub struct TrustCheck {
     pub real: PathBuf,
     /// The decision when the effect was sent: what the scan must still be covered by.
     pub saved: Option<SavedTrust>,
-    /// The commits the effect brings into the working tree.
-    pub incoming: Vec<Target>,
-    /// A pull's fetch, run first to learn the commit it merges, may ask for a sign-in.
-    pub prompts: bool,
     /// What it is, for holding it again when the check fails.
     pub sealed: Sealed,
+    /// The user chose Trust and run on a prompt that said what it brings in couldn't be
+    /// compared (`Unchecked`): the repository's own scan is still checked, the incoming commits
+    /// aren't.
+    pub accept_unchecked: bool,
 }
 
 /// What a checked effect is.
@@ -34,6 +37,10 @@ pub enum Sealed {
     Waiting { kind: WaitingKind, label: Option<String> },
     /// The built-in terminal's shell `id`.
     Shell { id: u64 },
+    /// A read that lets git run in the repository (a status read by git, a signature check, a
+    /// diff through its filters): when the check fails it reads without git where it can, else
+    /// it fails as its sender expects.
+    Read,
 }
 
 /// Which `WaitingFor` a waiting effect goes back to.
@@ -44,11 +51,69 @@ pub enum WaitingKind {
     Preview,
 }
 
-/// A check update attached to the effect it pushed at `at` in its effects, named `name`
-/// (`Effect::name`): the shell pairs them before running (`update::trust_checks`).
+/// A check update recorded for the effect it pushed at `at` in its effects, named `name`
+/// (`Effect::name`); update wraps them before it returns (`update::update_sealed`).
 #[derive(Debug)]
 pub struct Seal {
     pub at: usize,
     pub name: &'static str,
     pub check: TrustCheck,
+}
+
+/// An effect with the re-check the runner makes before it starts it (`Effect::Checked`).
+#[derive(Debug)]
+pub struct Checked {
+    pub effect: Effect,
+    pub check: TrustCheck,
+}
+
+impl EffectMeta for Checked {
+    fn name(&self) -> &'static str {
+        self.effect.name()
+    }
+
+    /// None: the runner takes the effect out before running it (`Runner::run`), and
+    /// `execute_with` scopes the effect's own result.
+    fn scope(&self) -> Option<&PathBuf> {
+        None
+    }
+
+    fn timed(&self) -> bool {
+        self.effect.timed()
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        self.effect.queue()
+    }
+
+    fn holds(&self) -> Option<&Path> {
+        self.effect.holds()
+    }
+
+    fn stop_key(&self) -> Option<super::partial::StopKey> {
+        self.effect.stop_key()
+    }
+
+    #[cfg(test)]
+    fn sandbox(&self) -> SandboxRule {
+        crate::runner::sandbox_rule(&self.effect)
+    }
+}
+
+impl Effect {
+    /// The effect itself, without the check it carries (`Effect::Checked`).
+    pub fn unsealed(self) -> Effect {
+        match self {
+            Effect::Checked(c) => c.effect,
+            e => e,
+        }
+    }
+
+    /// The check this effect carries.
+    pub fn trust_check(&self) -> Option<&TrustCheck> {
+        match self {
+            Effect::Checked(c) => Some(&c.check),
+            _ => None,
+        }
+    }
 }

@@ -158,7 +158,7 @@ fn start(st: &mut AppState, kind: FlowKind, name: &str, now: Instant, fx: &mut V
         st.modal = None;
     }
     if st.prefs.is_some() {
-        fx.extend(super::update(st, Msg::Prefs(PrefsMsg::ClosePrefs), now));
+        fx.extend(super::update_sealed(st, Msg::Prefs(PrefsMsg::ClosePrefs), now));
     }
     let cmd = gitflow::start_cmd(&s, kind, &branch);
     let spec = JobSpec::new(format!("Start {branch}"), vec![cmd]);

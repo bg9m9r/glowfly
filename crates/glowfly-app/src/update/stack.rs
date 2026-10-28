@@ -48,7 +48,7 @@ pub(super) fn restack(st: &mut AppState, scope: RestackScope, autostash: bool, n
     if stash && !autostash {
         let then = Msg::Rebase(RebaseMsg::Restack { scope, autostash: true });
         let ask = Msg::confirm(t.tr("stack.stash.title"), STASH_LINE.into(), t.tr("stack.offer.button"), then);
-        fx.extend(super::update(st, ask, now));
+        fx.extend(super::update_sealed(st, ask, now));
         return;
     }
     let plan = plan_for(snap, &scope, autostash);

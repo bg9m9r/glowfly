@@ -80,7 +80,7 @@ pub(super) fn finish(st: &mut AppState, branch: &str, options: FinishOptions, st
         st.modal = None;
     }
     if st.prefs.is_some() {
-        fx.extend(super::update(st, Msg::Prefs(PrefsMsg::ClosePrefs), now));
+        fx.extend(super::update_sealed(st, Msg::Prefs(PrefsMsg::ClosePrefs), now));
     }
     let label = plan.label();
     let mut spec = JobSpec::new(label.clone(), plan.cmds());

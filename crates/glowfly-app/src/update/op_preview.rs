@@ -40,7 +40,7 @@ pub(super) fn handle(st: &mut AppState, msg: OpPreviewMsg, now: Instant, fx: &mu
             }
             let Some(msg) = apply_msg(t, snap, &d.job.request.op, mode) else { return };
             st.modal = None;
-            fx.extend(super::update(st, msg, now));
+            fx.extend(super::update_sealed(st, msg, now));
         }
     }
 }

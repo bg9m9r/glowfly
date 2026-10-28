@@ -293,5 +293,5 @@ fn replay(st: &mut AppState, go: bool, now: Instant, fx: &mut Vec<Effect>) {
     let Some(p) = st.prefs.as_mut() else { return };
     let Some(m) = p.leaving.take().filter(|_| go) else { return };
     p.leave_approved = true;
-    fx.extend(super::update(st, *m, now));
+    fx.extend(super::update_sealed(st, *m, now));
 }

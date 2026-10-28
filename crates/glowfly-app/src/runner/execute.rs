@@ -21,6 +21,9 @@ pub(super) struct Cx<'a> {
     pub graph_cache: &'a repo::GraphCache,
     /// The stop of an effect that can be cancelled (`Effect::stop_key`).
     pub stop: Option<&'a gitcli::Stop>,
+    /// The trust gate a job's git commands go through one by one, with the check it passed
+    /// (runner/trust.rs), where hooks follow the working tree.
+    pub gate: Option<(&'a super::trust_gate::Gate, &'a crate::effect::TrustCheck)>,
 }
 
 /// Runs one effect area's value to completion (blocking), returning the message to send back.
@@ -32,7 +35,7 @@ pub(super) trait Execute {
 /// Results that belong to one repository come back as `Msg::Scoped`.
 #[cfg(test)]
 pub fn execute(effect: Effect) -> Option<Msg> {
-    execute_with(effect, &Cx { cancelled: &|| false, graph_cache: &repo::GraphCache::default(), stop: None })
+    execute_with(effect, &Cx { cancelled: &|| false, graph_cache: &repo::GraphCache::default(), stop: None, gate: None })
 }
 
 /// `execute` with the runner's `Cx`.
@@ -94,15 +97,44 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             // A pop onto local changes mixes them with the stash's, so it can't be undone.
             let irreversible = before.as_ref().is_some_and(undo::irreversible);
+            // Held again before anything but a fetch ran: the job as it was asked for.
+            let again = cx.gate.map(|(_, check)| {
+                let job = Effect::RunGit {
+                    cwd: cwd.clone(),
+                    cmds: cmds.clone(),
+                    write_file: write_file.clone(),
+                    record: record.clone(),
+                    journal: journal.clone(),
+                    prompts,
+                    expect: None,
+                    stoppable: false,
+                    on_fail_check: on_fail_check.clone(),
+                };
+                (job, check.clone())
+            });
             // The journal note sees the refs before git runs and after the undo record is read.
             Some(journal::around(&cwd, journal, || {
                 // Only a job that just fetches has a stop, and it writes no file.
-                let (ok, output) = match cx.stop.filter(|_| write_file.is_none()) {
-                    Some(stop) => match git_ops::run_git_until(&cwd, &cmds, prompts, stop) {
+                let (ok, output) = match (cx.stop.filter(|_| write_file.is_none()), cx.gate) {
+                    (Some(stop), _) => match git_ops::run_git_until(&cwd, &cmds, prompts, stop) {
                         (_, output, true) => return Msg::Job(JobMsg::Stopped { output }),
                         (ok, output, false) => (ok, output),
                     },
-                    None => git_ops::run_git(&cwd, &cmds, write_file, prompts),
+                    (None, Some((gate, _))) => match git_ops::run_git_gated(&cwd, &cmds, write_file, prompts, gate) {
+                        git_ops::Gated::Done(ok, output) => (ok, output),
+                        git_ops::Gated::Halted { halt, moved: false, .. } => {
+                            let (job, check) = again.expect("a gate");
+                            let now = git2::Repository::open(&cwd).map(|r| glowfly_core::trust::scan_now(&r)).unwrap_or_default();
+                            return match super::trust::halted(now, halt) {
+                                super::trust::Verdict::Stale(f) => super::trust::stale(check, job, f.0, f.1, None),
+                                super::trust::Verdict::Unchecked(f) => super::trust::stale(check, job, f.0, None, Some(f.1)),
+                                _ => unreachable!("halted is held or unchecked"),
+                            };
+                        }
+                        git_ops::Gated::Halted { output, halt, .. } => (false, format!("{output}
+    {}", halt.describe())),
+                    },
+                    (None, None) => git_ops::run_git(&cwd, &cmds, write_file, prompts),
                 };
                 let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
                 let undo = if ok && irreversible { None } else { record.map(|k| UndoResult::Recorded(recorded(k))) };

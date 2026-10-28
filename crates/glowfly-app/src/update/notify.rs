@@ -108,7 +108,7 @@ pub(super) fn run_action(st: &mut AppState, action: ToastAction, now: Instant, f
     if !may_run(st, &action, now) {
         return false;
     }
-    fx.extend(super::update(st, *action.msg, now));
+    fx.extend(super::update_sealed(st, *action.msg, now));
     true
 }
 

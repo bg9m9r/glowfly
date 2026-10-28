@@ -214,6 +214,62 @@ pub(super) fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std:
     (true, output.trim_end().to_owned())
 }
 
+/// How a job's commands went through the trust gate (`run_git_gated`).
+pub(super) enum Gated {
+    /// They ran to the end or to the first failure: whether all succeeded, and the output.
+    Done(bool, String),
+    /// The gate stopped one: why, the output so far, and whether a command before it could have
+    /// changed the repository (anything but a fetch ran).
+    Halted { halt: super::trust_gate::Halt, output: String, moved: bool },
+}
+
+/// `run_git` with each command compared by `gate` first (runner/trust_gate.rs): a pull runs
+/// there, pinned to the commits its fetch brought, and a command whose commits aren't covered
+/// stops the job before it runs.
+pub(super) fn run_git_gated(
+    cwd: &Path,
+    cmds: &[Vec<String>],
+    write_file: Option<(std::path::PathBuf, String)>,
+    prompts: bool,
+    gate: &super::trust_gate::Gate,
+) -> Gated {
+    use super::trust_gate::Step;
+    if let Some((path, contents)) = write_file
+        && let Err(e) = glowfly_core::persist::atomic_write(&path, contents.as_bytes())
+    {
+        return Gated::Done(false, format!("Could not write {}: {e}", path.display()));
+    }
+    let mut output = String::new();
+    let mut moved = false;
+    let mut git = |c: &[String], input: &str| gitcli::run_with_input(cwd, c, input, job_env(prompts));
+    for c in cmds {
+        let (success, text) = match gate.before(c, &mut git) {
+            Step::Halt(halt, ran) => {
+                output.push_str(&ran);
+                return Gated::Halted { halt, output: output.trim_end().to_owned(), moved };
+            }
+            Step::Ran(ok, text) => {
+                output.push_str(&text);
+                output.push('\n');
+                (ok, String::new())
+            }
+            Step::Run => {
+                output.push_str(&format!("$ git {}\n", glowfly_core::text::redact_credentials(&c.join(" "))));
+                git(c, "")
+            }
+        };
+        moved |= !matches!(glowfly_core::trust::incoming::sub_name(c), Some("fetch"));
+        if !text.is_empty() {
+            output.push_str(&text);
+            output.push('\n');
+        }
+        if !success {
+            return Gated::Done(false, output.trim_end().to_owned());
+        }
+    }
+    Gated::Done(true, output.trim_end().to_owned())
+}
+
 /// Runs `check` (a job's `on_fail_check`) after the job failed, adding it and what it printed
 /// to the job's `output`; whether it passed.
 pub(super) fn check_passes(cwd: &Path, check: &[String], prompts: bool, output: &mut String) -> bool {

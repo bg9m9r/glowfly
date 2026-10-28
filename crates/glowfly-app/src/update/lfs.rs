@@ -34,7 +34,7 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
         LfsMsg::Reload => load(st, fx),
         LfsMsg::Initialize => initialize(st, fx),
         LfsMsg::InitializeWhenReady => {
-            fx.extend(super::update(st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)), now));
+            fx.extend(super::update_sealed(st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)), now));
             if let Some(p) = st.prefs.as_mut() {
                 p.lfs.init_when_ready = true;
             }
@@ -51,7 +51,7 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
             let body = "Delete local copies of old LFS files that recent commits don't use? Only files the remote already has are \
                         deleted, and Fetch can download them again.";
             let then = Msg::Lfs(LfsMsg::Run { command: LfsCommand::Prune, confirmed: true });
-            fx.extend(super::update(st, Msg::confirm("Prune LFS files", body.into(), "Prune", then), now));
+            fx.extend(super::update_sealed(st, Msg::confirm("Prune LFS files", body.into(), "Prune", then), now));
         }
         LfsMsg::Run { command, .. } => run(st, command, fx),
         LfsMsg::Loaded { generation, result } => loaded(st, generation, result, now, fx),
@@ -254,6 +254,6 @@ fn loaded(st: &mut AppState, generation: u64, result: Result<LfsStatus, String>,
         let body = "This repository already tracks files in LFS. Pull them now so the working tree has their contents instead of \
                     pointer files?";
         let then = Msg::Lfs(LfsMsg::Run { command: LfsCommand::Pull, confirmed: true });
-        fx.extend(super::update(st, Msg::confirm("Download LFS files?", body.into(), "Pull LFS files", then), now));
+        fx.extend(super::update_sealed(st, Msg::confirm("Download LFS files?", body.into(), "Pull LFS files", then), now));
     }
 }

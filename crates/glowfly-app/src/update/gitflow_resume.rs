@@ -101,7 +101,7 @@ pub(super) fn continue_finish(st: &mut AppState, now: Instant, fx: &mut Vec<Effe
         return;
     }
     if st.prefs.is_some() {
-        fx.extend(super::update(st, Msg::Prefs(PrefsMsg::ClosePrefs), now));
+        fx.extend(super::update_sealed(st, Msg::Prefs(PrefsMsg::ClosePrefs), now));
     }
     let label = plan.resume_label();
     if start_job(st, JobSpec::new(label.clone(), plan.cmds()), fx) != Started::No {

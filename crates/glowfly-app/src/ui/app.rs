@@ -17,7 +17,6 @@ use crate::platform::native_menu::NativeMenu;
 use crate::platform::native_window::NativeWindow;
 use crate::runner::Runner;
 use crate::state::AppState;
-use crate::update::update;
 use eframe::egui;
 use glowfly_core::settings::{Settings, ThemeCatalog};
 use glowfly_core::spell::Speller;
@@ -184,9 +183,8 @@ impl GlowflyApp {
         let area = msg.area();
         let _span = tracing::trace_span!("update", area).entered();
         let started = Instant::now();
-        let effects = update(&mut self.st, msg, started);
-        let checks = crate::update::trust_checks(&mut self.st, &effects);
-        for (effect, check) in effects.into_iter().zip(checks) {
+        let effects = crate::update::update_sealed(&mut self.st, msg, started);
+        for effect in effects {
             match effect {
                 Effect::Ui(UiEffect::CopyText(text)) => ctx.copy_text(text),
                 Effect::Ui(UiEffect::SetTitle(title)) => ctx.send_viewport_cmd(egui::ViewportCommand::Title(title)),
@@ -210,7 +208,7 @@ impl GlowflyApp {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                     request_attention(ctx);
                 }
-                other => self.runner.run_checked(other, check),
+                other => self.runner.run(other),
             }
         }
         self.frames.area(area, started.elapsed());
