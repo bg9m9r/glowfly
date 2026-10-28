@@ -48,6 +48,12 @@ pub enum StageMsg {
     /// A LocalOp finished; a discard or a saved conflict resolution that can be undone carries
     /// its undo action.
     LocalOpDone(Result<Option<glowfly_core::undo::Action>, String>),
+    /// A conflict change (Mark resolved, Mark conflicted) that failed partway: its error, and
+    /// the undo action for the files it changed before it stopped.
+    LocalOpFailed {
+        error: String,
+        undo: glowfly_core::undo::Action,
+    },
     /// A revert finished; `path` is the working-tree file it changed. A revert that changed it
     /// carries the undo action that puts the earlier working copy back.
     Reverted {
@@ -112,6 +118,7 @@ impl StageMsg {
             Self::LocalOpDone(Err(e)) => Some(Inactive::Log(e)),
             // A discard in a tab switched away from: its undo belongs to that tab.
             Self::LocalOpDone(Ok(Some(action))) => Some(Inactive::Undo(action)),
+            Self::LocalOpFailed { error, undo } => Some(Inactive::LogAndUndo { text: error, undo }),
             // A revert in a tab switched away from: its undo belongs to that tab too.
             Self::Reverted {
                 result: Ok(Reverted::Applied | Reverted::Removed | Reverted::RemovedNew | Reverted::Merged),

@@ -127,8 +127,9 @@ The diff viewer, blame and file history, range-diff, conflict prediction and the
 - Reload a parked tab's conflict view when an undo there changed its open file
 - Undo of a resolution whose resolve-undo record was removed outside the app (restore the stages from the recorded ids with libgit2, as Mark resolved's undo does)
 - A toast with Undo after Mark resolved or Mark conflicted from the WIP panel or palette (only the conflict view's own toasts carry Undo)
-- Keep a copy of a file over 64 MB before Take ours/theirs or Mark conflicted writes over it (its undo is refused today)
-- Bring a symbolic link back on undo when no index entry holds its target (refused today)
+- Keep a copy of a file over 64 MB, so Take ours/theirs or Mark conflicted can write over it (both refuse today)
+- Take a side or mark conflicted over a symbolic link no index entry holds (refused today, as the link couldn't be put back)
+- Ignore the executable bit in a conflict undo's file check when `core.fileMode` is false (an undo there can leave a file the next redo calls changed)
 
 ### Blame gutter
 

@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 /// `file` mid-merge of `other`, its sides written as `content("base" | "ours" | "theirs")`
 /// (`None`: deleted on that side).
-fn merging(name: &str, file: &str, content: impl Fn(&str) -> Option<Vec<u8>>) -> PathBuf {
+pub(super) fn merging(name: &str, file: &str, content: impl Fn(&str) -> Option<Vec<u8>>) -> PathBuf {
     let dir = scratch_repo(name);
     let put = |side: &str| match content(side) {
         Some(b) => std::fs::write(dir.join(file), b).unwrap(),
@@ -32,45 +32,45 @@ fn merging(name: &str, file: &str, content: impl Fn(&str) -> Option<Vec<u8>>) ->
     dir
 }
 
-fn text(name: &str) -> PathBuf {
+pub(super) fn text(name: &str) -> PathBuf {
     merging(name, "a.txt", |s| Some(format!("one\n{s}\n").into_bytes()))
 }
 
-fn binary(name: &str) -> PathBuf {
+pub(super) fn binary(name: &str) -> PathBuf {
     merging(name, "logo.bin", |s| Some(format!("\0\x01{s}\0").into_bytes()))
 }
 
 /// The index entries of `f`, as `git ls-files -s` lists them (mode, blob and stage).
-fn stages(dir: &Path, f: &str) -> String {
+pub(super) fn stages(dir: &Path, f: &str) -> String {
     let (ok, out) = run(dir, &args(&["ls-files", "-s", "--", f]));
     assert!(ok, "{out}");
     out
 }
 
-fn bytes(dir: &Path, f: &str) -> Option<Vec<u8>> {
+pub(super) fn bytes(dir: &Path, f: &str) -> Option<Vec<u8>> {
     std::fs::read(dir.join(f)).ok()
 }
 
-fn ids(dir: &Path, f: &str) -> repo::ConflictIds {
+pub(super) fn ids(dir: &Path, f: &str) -> repo::ConflictIds {
     repo::conflict_ids(&Repository::open(dir).unwrap(), f).expect("conflicted")
 }
 
 /// Plans and carries out an undo (or redo) of `a`; panics on a refusal.
-fn apply(dir: &Path, a: &Action, redo: bool) -> String {
+pub(super) fn apply(dir: &Path, a: &Action, redo: bool) -> String {
     match plan(dir, a, redo).unwrap() {
         Plan::PutConflicts => put_conflicts(dir, a, redo).unwrap(),
         other => panic!("expected the files to be put back, got {other:?}"),
     }
 }
 
-fn refusal(dir: &Path, a: &Action, redo: bool) -> String {
+pub(super) fn refusal(dir: &Path, a: &Action, redo: bool) -> String {
     match plan(dir, a, redo).unwrap() {
         Plan::Refuse(Refusal::Stale(m)) => m,
         other => panic!("expected a stale refusal, got {other:?}"),
     }
 }
 
-fn kept_paths(dir: &Path) -> Vec<(String, Oid)> {
+pub(super) fn kept_paths(dir: &Path) -> Vec<(String, Oid)> {
     kept::all_for_test(dir)
         .into_iter()
         .filter(|k| k.what == kept::KeptWhat::Conflict)
@@ -81,7 +81,7 @@ fn kept_paths(dir: &Path) -> Vec<(String, Oid)> {
         .collect()
 }
 
-fn mark(dir: &Path, change: ConflictChange, paths: &[&str]) -> Action {
+pub(super) fn mark(dir: &Path, change: ConflictChange, paths: &[&str]) -> Action {
     let paths: Vec<String> = paths.iter().map(|p| (*p).to_owned()).collect();
     let op = || match change {
         ConflictChange::MarkResolved => mark_resolved(dir, &paths),

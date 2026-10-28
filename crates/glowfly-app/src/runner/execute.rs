@@ -6,7 +6,7 @@ use super::{
 };
 use crate::effect::areas::{effect_areas, effect_match};
 use crate::effect::{Effect, UndoResult};
-use crate::msg::{AvatarMsg, DiffMsg, ForgeMsg, JobMsg, Msg, RecentMsg, RepoMsg, StageMsg};
+use crate::msg::{AvatarMsg, DiffMsg, ForgeMsg, JobMsg, Msg, RecentMsg, RepoMsg};
 use glowfly_core::{avatars, gitcli, repo, undo};
 
 pub(super) fn err(e: glowfly_core::error::Error) -> String {
@@ -76,7 +76,7 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
         Effect::LoadFileHistory { workdir, path, start, limit, folder, generation } => {
             Some(history::walk(&workdir, path, &start, limit, folder, generation))
         }
-        Effect::LocalOp { workdir, op } => Some(Msg::Stage(StageMsg::LocalOpDone(git_ops::local_op(&workdir, op).map_err(err)))),
+        Effect::LocalOp { workdir, op } => Some(git_ops::local_done(&workdir, op)),
         Effect::Revert { workdir, req } => Some(revert::run(&workdir, req)),
         Effect::RestoreFile { workdir, oid, path, overwrite } => Some(files::restore(&workdir, oid, path, overwrite)),
         Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op)),

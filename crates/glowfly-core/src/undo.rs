@@ -34,6 +34,7 @@ mod deleted;
 pub mod kept;
 mod kinds;
 mod marked;
+mod marked_plan;
 mod marked_put;
 mod moved;
 mod planning;
@@ -58,7 +59,7 @@ pub use deleted::{
 };
 pub use kinds::{MoveOp, ResetMode, UndoKind};
 pub(crate) use kinds::{commits_label, move_targets};
-pub use marked::{ConflictChange, ConflictFile, IndexAt, PathState, WorkAt, conflicts_saving};
+pub use marked::{ConflictChange, ConflictFile, ConflictsFailed, EntryFlags, IndexAt, PathState, WorkAt, conflicts_saving};
 pub use marked_put::put_conflicts;
 use planning::{has_staged, is_clean, stale};
 pub use planning::{plan, plan_with};
@@ -184,6 +185,8 @@ mod deleted_tests;
 mod kept_tests;
 #[cfg(test)]
 mod kinds_tests;
+#[cfg(test)]
+mod marked_safety_tests;
 #[cfg(test)]
 mod marked_tests;
 #[cfg(test)]

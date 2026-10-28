@@ -2,17 +2,19 @@
 //! (`git add`), Mark conflicted (`git checkout -m`) and taking one side's whole version or its
 //! deletion (binary, deleted, link and submodule conflicts). Each file's index entries (the
 //! conflict's stages 1 to 3, or its stage-0 entry, or none) and what is on disk at its path are
-//! recorded before and after the change. Undo puts the "before" back exactly (`marked_put.rs`,
+//! recorded before and after the change, with the commits the operation in progress names
+//! (MERGE_HEAD and the like). Undo puts the "before" back exactly (`marked_put.rs`,
 //! through libgit2, so a submodule or modify/delete conflict, which git's resolve-undo record
 //! can't bring back, comes back too); redo puts the "after" back. Both run only while HEAD and
 //! the operation in progress are as they were and every file still is as the change (or the
-//! undo) left it; otherwise the entry is refused as stale and dropped alone. Whatever file bytes
+//! undo) left it (`marked_plan.rs`); otherwise the entry is refused and dropped alone. Whatever file bytes
 //! a change, an undo or a redo writes over are kept for the journal first (`kept.rs`).
 
+use super::aborted::KEPT_FLAGS;
 use super::kept::{self, KeptWhat};
-use super::planning::busy_name;
+use super::marked_plan::{check_paths, op_heads, restorable};
 use super::record::head;
-use super::{Action, MAX_KEPT_BYTES, Plan, Refusal, Saved, Staged, saved};
+use super::{Action, MAX_KEPT_BYTES, Saved, Staged, saved};
 use crate::error::{Error, Result};
 use crate::repo::Side;
 use git2::{Index, ObjectType, Oid, Repository};
@@ -29,36 +31,34 @@ pub enum ConflictChange {
     Took(Side),
 }
 
+/// A stage-0 entry's kept flags: assume-unchanged (`KEPT_FLAGS` of `flags`) and the extended
+/// flags (skip-worktree, intent-to-add).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct EntryFlags {
+    pub flags: u16,
+    pub extended: u16,
+}
+
 /// A path's index entries.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum IndexAt {
     /// Conflicted: the `[base, ours, theirs]` stages.
     Conflict([Option<Staged>; 3]),
-    /// Not conflicted: its stage-0 entry, `None` when the index has none.
-    Merged(Option<Staged>),
+    /// Not conflicted: its stage-0 entry with its flags, `None` when the index has none.
+    Merged(Option<Staged>, EntryFlags),
 }
 
 /// What is on disk at a path.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WorkAt {
     Absent,
-    /// A regular file's exact bytes. Its blob may be missing from the object database for a
-    /// file that was only hashed (one over `MAX_KEPT_BYTES`, or one Mark resolved never writes).
+    /// A regular file's exact bytes and executable bit. Its blob may be missing from the object
+    /// database for a file that was only hashed (one Mark resolved never writes over).
     File(Saved),
     /// A symbolic link, its target as a blob.
     Link(Oid),
     /// A folder (a submodule's checkout), which is never written.
     Folder,
-}
-
-impl WorkAt {
-    /// Whether the path holds the same thing (a file's executable bit aside).
-    pub(super) fn same(&self, other: &WorkAt) -> bool {
-        match (self, other) {
-            (WorkAt::File(a), WorkAt::File(b)) => a.blob == b.blob,
-            (a, b) => a == b,
-        }
-    }
 }
 
 /// A path's index entries and what is on disk there.
@@ -76,17 +76,47 @@ pub struct ConflictFile {
     pub after: PathState,
 }
 
+/// A conflict change that failed. `undo` is set when it changed some of its files anyway (a
+/// later batch of a Mark resolved, say), so those can still be put back.
+#[derive(Debug)]
+pub struct ConflictsFailed {
+    pub error: Error,
+    pub undo: Option<Action>,
+}
+
+impl From<Error> for ConflictsFailed {
+    fn from(error: Error) -> Self {
+        Self { error, undo: None }
+    }
+}
+
+/// Whether `index` holds a stage-0 entry for `path` beside conflict stages, which `IndexAt`
+/// can't hold: such an index is refused rather than have the stage-0 entry dropped.
+pub(super) fn mixed(index: &Index, path: &str) -> bool {
+    let p = Path::new(path);
+    index.get_path(p, 0).is_some() && (1..=3).any(|s| index.get_path(p, s).is_some())
+}
+
 /// `path`'s entries in `index`.
 pub(super) fn index_at(index: &Index, path: &str) -> IndexAt {
     let p = Path::new(path);
     let stage = |s: i32| index.get_path(p, s).map(|e| Staged { mode: e.mode, blob: e.id });
     let stages = [stage(1), stage(2), stage(3)];
-    if stages.iter().any(Option::is_some) { IndexAt::Conflict(stages) } else { IndexAt::Merged(stage(0)) }
+    if stages.iter().any(Option::is_some) {
+        return IndexAt::Conflict(stages);
+    }
+    let flags = index.get_path(p, 0).map(|e| EntryFlags { flags: e.flags & KEPT_FLAGS, extended: e.flags_extended });
+    IndexAt::Merged(stage(0), flags.unwrap_or_default())
 }
 
 /// What is at `path` now. With `save`, a file's bytes (up to `MAX_KEPT_BYTES`) and a link's
 /// target are written to the object database; otherwise they are only hashed.
 pub(super) fn work_at(workdir: &Path, path: &str, save: bool) -> Result<WorkAt> {
+    work_kept(workdir, path, save.then_some(MAX_KEPT_BYTES))
+}
+
+/// `work_at`, saving a file of up to `limit` bytes (none without one).
+fn work_kept(workdir: &Path, path: &str, limit: Option<u64>) -> Result<WorkAt> {
     let full = workdir.join(crate::repo::contained(path)?);
     let meta = match full.symlink_metadata() {
         Ok(m) => m,
@@ -95,56 +125,85 @@ pub(super) fn work_at(workdir: &Path, path: &str, save: bool) -> Result<WorkAt> 
     };
     if meta.file_type().is_symlink() {
         let target = std::fs::read_link(&full)?.to_string_lossy().replace('\\', "/");
-        let blob =
-            if save { Repository::open(workdir)?.blob(target.as_bytes())? } else { Oid::hash_object(ObjectType::Blob, target.as_bytes())? };
+        let blob = if limit.is_some() {
+            Repository::open(workdir)?.blob(target.as_bytes())?
+        } else {
+            Oid::hash_object(ObjectType::Blob, target.as_bytes())?
+        };
         return Ok(WorkAt::Link(blob));
     }
     if meta.is_dir() {
         return Ok(WorkAt::Folder);
     }
-    if save && meta.len() <= MAX_KEPT_BYTES {
+    if limit.is_some_and(|l| meta.len() <= l) {
         return Ok(saved::save(workdir, path)?.map_or(WorkAt::Absent, WorkAt::File));
     }
     let executable = saved::executable(&meta);
     Ok(WorkAt::File(Saved { blob: Oid::hash_file(ObjectType::Blob, &full)?, executable }))
 }
 
-/// Each of `paths` as it is now.
-fn states(workdir: &Path, paths: &[String], save: bool) -> Result<Vec<PathState>> {
+/// Each of `paths` as it is now; refused for an index holding a stage-0 entry beside a conflict.
+fn states(workdir: &Path, paths: &[String], limit: Option<u64>) -> Result<Vec<PathState>> {
     let repo = Repository::open(workdir)?;
     let index = repo.index()?;
-    paths.iter().map(|p| Ok(PathState { index: index_at(&index, p), work: work_at(workdir, p, save)? })).collect()
+    let read = |p: &String| {
+        if mixed(&index, p) {
+            return Err(Error::Unsupported(format!(
+                "{p} has a resolved entry beside its conflict in the index; resolve it with git first"
+            )));
+        }
+        Ok(PathState { index: index_at(&index, p), work: work_kept(workdir, p, limit)? })
+    };
+    paths.iter().map(read).collect()
 }
 
 /// Runs `op` (the conflict change `change` of `paths`) with each path's index entries and
 /// working copy recorded before and after it. Returns the action that undoes it, or `None`
 /// when it changed nothing. A change that writes over files (all but Mark resolved) keeps each
-/// file's bytes for the journal first, a failure to keep them refusing it; a record whose file
-/// still holds those bytes afterwards is dropped again.
+/// file's bytes for the journal first and is refused, with nothing changed, for a file it
+/// can't keep (over `MAX_KEPT_BYTES`) or couldn't put back (a link no index entry holds); a
+/// record whose file still holds those bytes afterwards is dropped again. A change that failed
+/// partway still returns the action for the files it changed, with its error.
 pub fn conflicts_saving(
     workdir: &Path,
     change: ConflictChange,
     paths: &[String],
     op: impl FnOnce() -> Result<()>,
-) -> Result<Option<Action>> {
+) -> std::result::Result<Option<Action>, ConflictsFailed> {
+    conflicts_saving_with(workdir, change, paths, MAX_KEPT_BYTES, op)
+}
+
+/// `conflicts_saving`, keeping files of up to `limit` bytes.
+pub(super) fn conflicts_saving_with(
+    workdir: &Path,
+    change: ConflictChange,
+    paths: &[String],
+    limit: u64,
+    op: impl FnOnce() -> Result<()>,
+) -> std::result::Result<Option<Action>, ConflictsFailed> {
     let writes = change != ConflictChange::MarkResolved;
-    let (at, state) = {
-        let repo = Repository::open(workdir)?;
-        (head(&repo).1, repo.state())
+    let keep = writes.then_some(limit);
+    let (at, state, heads) = {
+        let repo = Repository::open(workdir).map_err(Error::from)?;
+        check_paths(&repo, paths)?;
+        (head(&repo).1, repo.state(), op_heads(&repo))
     };
-    let before = states(workdir, paths, writes)?;
+    let before = states(workdir, paths, keep)?;
+    if writes {
+        let repo = Repository::open(workdir).map_err(Error::from)?;
+        for (p, s) in paths.iter().zip(&before) {
+            restorable(&repo, p, s)?;
+        }
+    }
     let mut records = Vec::new();
     if writes {
-        let in_odb = |blob: Oid| Repository::open(workdir).is_ok_and(|r| r.find_blob(blob).is_ok());
         for (p, s) in paths.iter().zip(&before) {
-            if let WorkAt::File(saved) = s.work
-                && in_odb(saved.blob)
-            {
+            if let WorkAt::File(saved) = s.work {
                 match kept::keep_file(workdir, p, saved, KeptWhat::Conflict) {
                     Ok(id) => records.push((p.as_str(), id, saved.blob)),
                     Err(e) => {
                         settle(workdir, &records);
-                        return Err(e);
+                        return Err(e.into());
                     }
                 }
             }
@@ -152,15 +211,27 @@ pub fn conflicts_saving(
     }
     let out = op();
     settle(workdir, &records);
-    out?;
-    let after = states(workdir, paths, writes)?;
+    let after = match states(workdir, paths, keep) {
+        Ok(a) => a,
+        Err(e) => {
+            let what = match out {
+                Ok(()) => "it can't be undone".to_owned(),
+                Err(op) => format!("it can't be undone. It failed: {op}"),
+            };
+            return Err(Error::Other(format!("Glowfly couldn't read what the change left, so {what} ({e})")).into());
+        }
+    };
     let files: Vec<ConflictFile> = paths
         .iter()
         .zip(before.into_iter().zip(after))
-        .filter(|(_, (b, a))| b.index != a.index || !b.work.same(&a.work))
+        .filter(|(_, (b, a))| b != a)
         .map(|(p, (before, after))| ConflictFile { path: p.clone(), before, after })
         .collect();
-    Ok((!files.is_empty()).then_some(Action::Conflicts { change, head: at, state, files }))
+    let undo = (!files.is_empty()).then_some(Action::Conflicts { change, head: at, state, heads, files });
+    match out {
+        Ok(()) => Ok(undo),
+        Err(error) => Err(ConflictsFailed { error, undo }),
+    }
 }
 
 /// Drops each record whose file still holds the bytes it kept: nothing was written over.
@@ -170,55 +241,6 @@ pub(super) fn settle(workdir: &Path, records: &[(&str, Oid, Oid)]) {
             kept::forget(workdir, *id);
         }
     }
-}
-
-fn expired(m: impl std::fmt::Display) -> Plan {
-    Plan::Refuse(Refusal::Stale(format!("{m}; removed from the undo history")))
-}
-
-/// Plans undoing (or redoing) a `Conflicts` action: refused as stale, with nothing written,
-/// when HEAD moved, the operation in progress ended (or another began), or any of its files
-/// isn't as the change (or the undo) left it, in the index or on disk.
-pub(super) fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
-    let Action::Conflicts { head: at, state, files, .. } = action else { unreachable!("a conflict change") };
-    let what = action.describe();
-    let repo = Repository::open(workdir)?;
-    if head(&repo).1 != *at {
-        return Ok(expired(format!("HEAD has moved since the {what}")));
-    }
-    let now = repo.state();
-    if now != *state {
-        return Ok(expired(match (busy_name(*state), busy_name(now)) {
-            (Some(op), _) => format!("The {op} that was in progress during the {what} is over"),
-            (None, Some(op)) => format!("A {op} has started since the {what}"),
-            (None, None) => format!("The repository has changed since the {what}"),
-        }));
-    }
-    let index = repo.index()?;
-    for f in files {
-        let (expect, target) = if redo { (&f.before, &f.after) } else { (&f.after, &f.before) };
-        if index_at(&index, &f.path) != expect.index {
-            return Ok(expired(format!("{} has changed in the index since", f.path)));
-        }
-        let work = work_at(workdir, &f.path, false)?;
-        if !work.same(&expect.work) {
-            return Ok(expired(format!("{} has changed since", f.path)));
-        }
-        if work.same(&target.work) {
-            continue;
-        }
-        let missing = match target.work {
-            WorkAt::File(s) => repo.find_blob(s.blob).is_err(),
-            WorkAt::Link(t) => super::marked_put::link_stage(&target.index, t).is_none(),
-            WorkAt::Absent => false,
-            WorkAt::Folder => true,
-        };
-        if missing || work == WorkAt::Folder {
-            let p = &f.path;
-            return Ok(Plan::Refuse(Refusal::Unsafe(format!("Glowfly kept no copy of what {p} held, so it can't be put back"))));
-        }
-    }
-    Ok(Plan::PutConflicts)
 }
 
 /// "a.txt" for one path, "3 files" for several.
@@ -232,7 +254,7 @@ fn named(files: &[ConflictFile]) -> String {
 /// What the change did, for tooltips and job labels.
 pub(super) fn describe(change: ConflictChange, files: &[ConflictFile]) -> String {
     let n = named(files);
-    let deleted = files.iter().all(|f| f.after.index == IndexAt::Merged(None));
+    let deleted = files.iter().all(|f| matches!(f.after.index, IndexAt::Merged(None, _)));
     match change {
         ConflictChange::MarkResolved => format!("marking {n} resolved"),
         ConflictChange::MarkConflicted => format!("marking {n} conflicted"),

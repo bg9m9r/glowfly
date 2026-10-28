@@ -66,6 +66,10 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
         StageMsg::RevertLines => super::revert::lines(st, fx),
         StageMsg::RevertFile(target) => super::revert::file(st, target, fx),
         StageMsg::Reverted { path, what, result, undo } => super::revert::done(st, path, what, result, undo, now, fx),
+        StageMsg::LocalOpFailed { error, undo } => {
+            st.session.undo.record(undo);
+            stage(st, StageMsg::LocalOpDone(Err(error)), now, fx);
+        }
         StageMsg::LocalOpDone(result) => {
             let failed = result.is_err();
             let recorded = matches!(result, Ok(Some(_)));

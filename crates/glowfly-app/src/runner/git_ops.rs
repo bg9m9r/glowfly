@@ -3,12 +3,12 @@
 //! changes such as Mark resolved), and running a list of git commands.
 
 use crate::effect::{LocalOp, UndoOpts, UndoResult};
-use crate::msg::{JobMsg, Msg};
+use crate::msg::{JobMsg, Msg, StageMsg};
 use crate::state::files::TRASH;
 use glowfly_core::error::Error;
 use glowfly_core::gitcli;
 use glowfly_core::repo;
-use glowfly_core::undo::{self, Action, ConflictChange, Discarded, Plan, Refusal};
+use glowfly_core::undo::{self, Action, ConflictChange, ConflictsFailed, Discarded, Plan, Refusal};
 use std::path::Path;
 
 /// Runs a local op. Discards, conflict saves and conflict changes (Mark resolved, Mark
@@ -50,6 +50,30 @@ pub(super) fn local_op(workdir: &Path, op: LocalOp) -> glowfly_core::error::Resu
         LocalOp::SavePartialResolution { path, contents, expected } => {
             undo::resolve_saving(workdir, &path, &expected, || repo::write_partial_resolution(workdir, &path, &contents, &expected))
         }
+        LocalOp::ResolveWithSide { .. } | LocalOp::MarkResolved(_) | LocalOp::MarkConflicted(_) => {
+            conflict_change(workdir, op).map_err(|f| f.error)
+        }
+    }
+}
+
+/// Runs a local op and says how it went. A conflict change that failed partway carries the
+/// undo action for the files it changed.
+pub(super) fn local_done(workdir: &Path, op: LocalOp) -> Msg {
+    let conflict = matches!(op, LocalOp::ResolveWithSide { .. } | LocalOp::MarkResolved(_) | LocalOp::MarkConflicted(_));
+    let result = if conflict { conflict_change(workdir, op) } else { local_op(workdir, op).map_err(ConflictsFailed::from) };
+    Msg::Stage(match result {
+        Ok(undo) => StageMsg::LocalOpDone(Ok(undo)),
+        Err(ConflictsFailed { error, undo: None }) => StageMsg::LocalOpDone(Err(error.to_string())),
+        Err(ConflictsFailed { error, undo: Some(undo) }) => {
+            let error = format!("{error}. Undo puts back the files it changed before it stopped.");
+            StageMsg::LocalOpFailed { error, undo }
+        }
+    })
+}
+
+/// Mark resolved, Mark conflicted or a whole side taken, recorded for undo.
+fn conflict_change(workdir: &Path, op: LocalOp) -> Result<Option<Action>, ConflictsFailed> {
+    match op {
         LocalOp::ResolveWithSide { path, side, expected } => {
             let paths = [path];
             undo::conflicts_saving(workdir, ConflictChange::Took(side), &paths, || {
@@ -62,6 +86,7 @@ pub(super) fn local_op(workdir: &Path, op: LocalOp) -> glowfly_core::error::Resu
         LocalOp::MarkConflicted(paths) => {
             undo::conflicts_saving(workdir, ConflictChange::MarkConflicted, &paths, || repo::mark_conflicted(workdir, &paths))
         }
+        other => unreachable!("not a conflict change: {other:?}"),
     }
 }
 

@@ -155,11 +155,13 @@ pub enum Action {
     /// Conflicted files resolved without the editor (Mark resolved, or one side's whole version
     /// taken), or resolved files made conflicted again (Mark conflicted): each changed file's
     /// index entries and working copy before and after, with HEAD at `head` and the repository
-    /// in `state`. A stale refusal drops only this entry.
+    /// in `state`, naming the commits in `heads` (MERGE_HEAD and the like, with what each file
+    /// held). Any refusal drops only this entry.
     Conflicts {
         change: ConflictChange,
         head: Option<Oid>,
         state: RepositoryState,
+        heads: Vec<(String, String)>,
         files: Vec<ConflictFile>,
     },
     DeleteFile {

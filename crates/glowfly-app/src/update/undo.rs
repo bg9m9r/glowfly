@@ -160,6 +160,12 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
         }
         Some(UndoResult::Refused { redo, stale, offer_stash }) => {
             tracing::debug!(redo, stale, offer_stash, "undo/redo refused");
+            // A conflict change that can't be carried out never can be: it goes alone, so it
+            // doesn't block the older entries.
+            let stack = if redo { &mut history.redo } else { &mut history.undo };
+            if !stale && stack.last().is_some_and(|a| matches!(a, Action::Conflicts { .. })) {
+                stack.pop();
+            }
             if stale {
                 // A resolution or conflict change touches only its files and their index entries,
                 // and discarded work (kept in the journal too) only its own files or stash, so an

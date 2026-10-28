@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 /// The index entries of `f`, as `git ls-files -s` lists them (mode, blob and stage).
-fn stages(dir: &Path, f: &str) -> String {
+pub(super) fn stages(dir: &Path, f: &str) -> String {
     let (ok, out) = run(dir, &args(&["ls-files", "-s", "--", f]));
     assert!(ok, "{out}");
     out
@@ -29,7 +29,7 @@ fn conflicted(st: &AppState, path: &str) -> bool {
     st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.status == '!' && f.path == path))
 }
 
-fn opened(dir: &Path) -> AppState {
+pub(super) fn opened(dir: &Path) -> AppState {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.to_path_buf())));
     st
@@ -48,7 +48,7 @@ fn click_undo(st: &mut AppState) {
 }
 
 /// A repository mid-merge where logo.bin, a binary file, conflicts.
-fn binary_conflict(name: &str) -> PathBuf {
+pub(super) fn binary_conflict(name: &str) -> PathBuf {
     let dir = scratch_repo(name);
     let put = |s: &str| std::fs::write(dir.join("logo.bin"), format!("\0\x01{s}\0")).unwrap();
     put("base");

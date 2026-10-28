@@ -255,13 +255,14 @@ pub(super) fn toast_with(st: &mut AppState, text: String, undo: Option<ToastActi
 
 /// An Undo button for the toast saying `path` was `resolved` (else saved with markers), when
 /// the newest undo entry is what did it: a resolution saved, Mark resolved or a whole side
-/// taken (else a save with markers). The undo runs only while that entry is still the newest.
+/// taken, of that one file alone (else a save with markers). The undo runs only while that
+/// entry is still the newest.
 pub(super) fn undo_button(st: &AppState, path: &str, resolved: bool) -> Option<ToastAction> {
     let top = st.session.undo.undo.last()?;
     let did = match top {
         Action::Resolve { path: p, staged, .. } => p == path && staged.is_some() == resolved,
         Action::Conflicts { change, files, .. } => {
-            resolved && *change != ConflictChange::MarkConflicted && files.iter().any(|f| f.path == path)
+            resolved && *change != ConflictChange::MarkConflicted && matches!(&files[..], [f] if f.path == path)
         }
         _ => false,
     };
