@@ -36,11 +36,13 @@ fn opened(st: AppState, dark: bool, title: &str) -> H {
     h
 }
 
+/// Hovers `label` and rests there, past a submenu's open delay.
 fn hover(h: &mut H, label: &str) {
     h.get_by_label(label).hover();
     for _ in 0..4 {
-        h.run();
+        h.step();
     }
+    h.run_ok();
 }
 
 fn sent(h: &H, f: impl Fn(&Msg) -> bool) -> bool {

@@ -44,6 +44,7 @@ source file, update its line here.
 - `widgets/reason.rs` draws disabled reasons and setup suffixes: a weak line beside or under a disabled button.
 - A dialog footer's reason sits in the row before Cancel, or above it when the row is full; laid out by `dialog_footer.rs`.
 - `widgets/menu_reason.rs` (re-exported by `widgets/reason.rs`): a menu item's states (`ItemState`): a greyed label with a painted info mark and its reason in the shared tooltip on hover or focus (described to screen readers too), "Set up…" in the shortcut column, or a destructive (`Danger`) item in the danger style; drawn by `menu_row.rs`.
+- `widgets/menu_submenu.rs` (tests in `menu_submenu_tests.rs`): what `menu::submenu` adds to egui's submenu: a 250 ms open delay on hover (at once on a click, Enter, Space or Right), a 400 ms close grace, and placement right of the menu or flipped left, kept 8 px inside the window; `row_at` maps a submenu row's auto-id slot to its button for `menu_bar::nav`.
 
 ## Tooltips
 

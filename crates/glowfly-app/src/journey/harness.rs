@@ -246,6 +246,9 @@ impl Journey {
             };
             node.hover();
         }
+        // Rest there past a submenu's open delay (a step is a quarter second).
+        self.step();
+        self.step();
         self.settle();
     }
 

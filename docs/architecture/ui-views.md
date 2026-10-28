@@ -96,4 +96,4 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 - `snapshot_check/compare.rs`: comparing a text snapshot with `tests/snapshots/<name>.txt` (`.new.txt` always, `.diff.txt` on a mismatch, `UPDATE_SNAPSHOTS=1` accepts).
 - `snapshot_check/goldens.rs`: the ~110 pixel goldens and their crop (window, dialog, top strip, top-left corner), checked against the PNGs on disk.
 - `snapshot_check/tests.rs`: the tolerance, the skip variable, cropping and the text comparison's files.
-- `menu_testing.rs`: opens a submenu and finds its entries.
+- `menu_testing.rs`: opens a submenu (hovering and resting past its open delay) and finds its entries.

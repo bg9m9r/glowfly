@@ -79,6 +79,49 @@ fn graph_commit_menu_copy_submenu() {
     remove_fixture(&dir);
 }
 
+/// Near the window's right edge the Copy submenu opens left of the commit menu, level with
+/// Copy (a pixel golden).
+#[test]
+fn graph_commit_menu_copy_flipped() {
+    let (st, dir) = with_repo(ThemeChoice::Dark, "commit-menu-copy-flipped");
+    let fix = commit(&st, "Fix build on Windows");
+    let mut h = harness(st, true);
+    h.run();
+    let y = row_y(row(&h.state().0, fix));
+    // The graph pane ends near x = 1000; its menu at the right end has no room for Copy's.
+    click(&mut h, pos2(990.0, y), PointerButton::Secondary);
+    open_submenu(&mut h, "Copy");
+    let (parent, sha) = (h.get_by_label("Copy").bounding_box().unwrap(), submenu_item(&h, "Copy", "SHA").bounding_box().unwrap());
+    assert!(sha.x1 < parent.x0, "the submenu is left of the menu");
+    // Copy sits low, but the submenu still fits level with it, inside the bottom's 8 px (the
+    // shift up when it doesn't is `menu_submenu`'s tests).
+    let last = submenu_item(&h, "Copy", "Patch").bounding_box().unwrap();
+    assert!((sha.y0 - parent.y0).abs() < 0.5 && last.y1 <= 820.0 - 8.0, "level and inside: {sha:?} to {last:?} beside {parent:?}");
+    h.check_snapshot("graph_commit_menu_copy_flipped");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The Reset submenu's split rows: moving the pointer from the Reset row onto a row's eye and
+/// clicking it previews that reset; the submenu's grace and cover don't get in the way.
+#[test]
+fn reset_submenu_eye_takes_a_pointer_click() {
+    let (st, dir) = with_repo(ThemeChoice::Dark, "commit-menu-reset-eye");
+    let fix = commit(&st, "Fix build on Windows");
+    let mut h = harness(st, true);
+    h.run();
+    let y = row_y(row(&h.state().0, fix));
+    click(&mut h, pos2(700.0, y), PointerButton::Secondary);
+    open_submenu(&mut h, "Reset main to this commit");
+    let eye = submenu_item(&h, "Reset main to this commit", "Preview reset").bounding_box().expect("the eye");
+    h.state_mut().1.clear();
+    click(&mut h, pos2(((eye.x0 + eye.x1) / 2.0) as f32, ((eye.y0 + eye.y1) / 2.0) as f32), PointerButton::Primary);
+    assert!(pushed(&h, &|m| matches!(m, Msg::OpPreview(_))), "the eye previews the reset");
+    assert!(!pushed(&h, &|m| matches!(m, Msg::Job(_))), "and doesn't reset");
+    drop(h);
+    remove_fixture(&dir);
+}
+
 #[test]
 fn multi_commit_menu_copy_patch_merge() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "multi-menu-copy-merge");

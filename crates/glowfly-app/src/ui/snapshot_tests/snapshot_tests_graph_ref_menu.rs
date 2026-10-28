@@ -3,7 +3,7 @@
 //! row; a tag's push items, the same as in the TAGS menu. Shares the fixture repository with
 //! `snapshot_tests`.
 
-use super::menu_testing::submenu_item;
+use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_remotes::{click_steps, running};
 use super::snapshot_tests_select::{click, row_y};
@@ -53,8 +53,7 @@ fn graph_label_menu_many() {
     click(&mut h, pos2(CHIP_X, row_y(MAIN_ROW)), PointerButton::Secondary);
     h.check_snapshot("graph_label_menu_many");
     assert!(h.query_by_label("Branch main").is_some());
-    h.get_by_label("Tag v0.1.0").hover();
-    h.run();
+    open_submenu(&mut h, "Tag v0.1.0");
     h.check_snapshot("graph_label_menu_tag");
     assert!(h.query_by_label("Checkout (detached)").is_some(), "the tag's menu");
     h.state_mut().1.clear();
@@ -78,8 +77,7 @@ fn graph_label_menu_remote() {
     let mut h = harness(st, true);
     h.run();
     click(&mut h, pos2(CHIP_X, row_y(SEARCH_ROW)), PointerButton::Secondary);
-    h.get_by_label("Remote origin/search").hover();
-    h.run();
+    open_submenu(&mut h, "Remote origin/search");
     h.check_snapshot("graph_label_menu_remote");
     assert!(h.query_by_label("Compare with main").is_some(), "the remote branch's menu");
     h.state_mut().1.clear();
@@ -99,10 +97,8 @@ fn graph_label_menu_remote() {
 /// to submenu.
 fn open_tag_submenu(h: &mut super::snapshot_tests_worktrees::H) {
     click(h, pos2(CHIP_X, row_y(MAIN_ROW)), PointerButton::Secondary);
-    h.get_by_label("Tag v0.1.0").hover();
-    h.run();
-    h.get_by_label("Push to").hover();
-    h.run();
+    open_submenu(h, "Tag v0.1.0");
+    open_submenu(h, "Push to");
 }
 
 #[test]
@@ -136,10 +132,8 @@ fn graph_label_menu_tag_push() {
     running(&mut h.state_mut().0);
     h.run_steps(2);
     click_steps(&mut h, pos2(CHIP_X, row_y(MAIN_ROW)), PointerButton::Secondary);
-    h.get_by_label("Tag v0.1.0").hover();
-    h.run_steps(3);
-    h.get_by_label("Push to").hover();
-    h.run_steps(3);
+    open_submenu(&mut h, "Tag v0.1.0");
+    open_submenu(&mut h, "Push to");
     assert!(submenu_item(&h, "Push to", "origin").is_disabled(), "a job is running");
     drop(h);
     remove_fixture(&dir);

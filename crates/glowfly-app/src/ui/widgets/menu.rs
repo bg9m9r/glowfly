@@ -75,7 +75,9 @@ pub fn context_menu(resp: &Response, add_contents: impl FnOnce(&mut Ui)) -> Opti
 
 /// A submenu row inside a menu (or, outside one, a button with its dropdown), its contents in
 /// the menu style. Inside a menu its title starts at the label column and its painted chevron
-/// sits in the chevron slot (`menu_columns`), which every row of the menu then keeps.
+/// sits in the chevron slot (`menu_columns`), which every row of the menu then keeps. It opens
+/// after a short rest on the row and closes after a short grace, on whichever side of the menu
+/// it fits (`menu_submenu`).
 pub fn submenu<R>(ui: &mut Ui, title: impl Into<WidgetText>, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<Option<R>> {
     if !in_menu(ui) {
         return ui.menu_button(title, |ui| styled(ui, add_contents));
@@ -97,12 +99,14 @@ pub fn submenu<R>(ui: &mut Ui, title: impl Into<WidgetText>, add_contents: impl 
     // Not in a scope: the row keeps the id the menu's keyboard navigation expects of it.
     let plain = ui.visuals().clone();
     ui.visuals_mut().override_text_color = Some(Color32::TRANSPARENT);
-    let r = ui.menu_button(WidgetText::LayoutJob(job), |ui| {
+    let r = super::menu_submenu::show(ui, WidgetText::LayoutJob(job), |ui| {
         *ui.visuals_mut() = plain.clone();
         styled(ui, add_contents)
     });
     ui.visuals_mut().override_text_color = plain.override_text_color;
-    let lit = r.response.hovered() || r.inner.is_some();
+    // During the open delay egui's button isn't hovered (`menu_submenu`'s cover is), but the
+    // row is drawn hovered.
+    let lit = ui.rect_contains_pointer(r.response.rect) || r.inner.is_some();
     let at = egui::pos2(r.response.rect.right() - pad - columns::CHEVRON_W / 2.0, r.response.rect.center().y);
     super::chevron(ui.painter(), at, false, if lit { color::text() } else { color::weak() });
     r

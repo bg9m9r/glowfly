@@ -7,7 +7,8 @@
 //! warning and information marks in `severity.rs`. The shared row selection and hover look is
 //! in `row_fill.rs`, the weak lines that say why an action is disabled in `reason.rs`, and the
 //! menu items marked with an info icon whose reason shows on hover or focus (or that open a
-//! setting first) in `menu_reason.rs`. The toolbar's buttons, toggles, split buttons, caret and
+//! setting first) in `menu_reason.rs`, and a submenu's open delay, close grace and placement in
+//! `menu_submenu.rs`. The toolbar's buttons, toggles, split buttons, caret and
 //! group surfaces are in `tool.rs`. The tab bars' painted close × and new-tab + are in
 //! `tab_glyph.rs`, and the quiet, clickable chips of the commit details (its
 //! SHA, parents and committer) in `quiet_chip.rs`. The quiet headers' ghost buttons, divider
@@ -35,6 +36,7 @@ pub mod menu_name;
 pub mod menu_reason;
 pub mod menu_row;
 pub mod menu_split;
+pub mod menu_submenu;
 pub mod quiet_chip;
 pub mod reason;
 pub mod row_fill;

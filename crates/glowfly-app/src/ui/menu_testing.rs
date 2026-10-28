@@ -10,9 +10,17 @@ use egui_kittest::kittest::Queryable;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
-/// Hovers the submenu button `parent` so its submenu opens.
+/// Hovers the submenu button `parent` and rests there (a step is a quarter second, the
+/// submenu's open delay) so its submenu opens.
 pub(super) fn open_submenu(h: &mut H, parent: &str) {
     h.get_by_label(parent).hover();
+    rest(h);
+}
+
+/// Steps past a submenu's open delay after a hover, then until the app is idle.
+pub(super) fn rest(h: &mut H) {
+    h.step();
+    h.step();
     // A loading pane's spinner keeps repainting; stop at the step limit then.
     h.run_ok();
 }

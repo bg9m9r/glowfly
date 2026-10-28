@@ -3,6 +3,7 @@
 //! menu still offers both refs. Copies on other remotes at the same commit fold in too, and
 //! copies on several remotes with no local branch share one remote label. Shares the fixture repository with `snapshot_tests`.
 
+use super::menu_testing::open_submenu;
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::{click, row_y};
 use crate::msg::{Msg, SelectionMsg};
@@ -100,8 +101,7 @@ fn graph_ref_in_sync_menu() {
     h.run();
     click(&mut h, pos2(CHIP_X, row_y(SEARCH_ROW)), PointerButton::Secondary);
     assert!(h.query_by_label("Branch search").is_some(), "the branch");
-    h.get_by_label("Remote origin/search").hover();
-    h.run();
+    open_submenu(&mut h, "Remote origin/search");
     h.check_snapshot("graph_ref_in_sync_menu");
     h.state_mut().1.clear();
     h.get_by_label("Compare with main").click();

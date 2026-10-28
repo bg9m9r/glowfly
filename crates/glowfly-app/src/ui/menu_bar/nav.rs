@@ -8,6 +8,7 @@
 //! it keeps between frames lives in egui's temp data.
 
 use crate::state::AppState;
+use crate::ui::widgets::menu_submenu::row_at;
 use eframe::egui::{self, Event, EventFilter, Id, Key, LayerId, Modifiers, Order, Ui};
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -39,21 +40,27 @@ pub(super) fn contents(ui: &mut Ui, st: &mut AppState, add: impl FnOnce(&mut Ui,
     if ctx.memory(|m| m.focused()).is_none() && ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::ArrowDown)) {
         st.view.menu_keys.focus_first = true;
     }
+    let mut focus_first = false;
     if st.view.menu_keys.focus_first {
         // A menu's first frame only sizes it (its items can't take focus yet), and egui would
         // carry the focus on in an arrow's direction: the next frame does it then.
         if ui.is_sizing_pass() || arrow_pressed(&ctx) {
             ctx.request_repaint();
         } else {
-            focus(&ctx, first);
+            focus_first = true;
             st.view.menu_keys.focus_first = false;
         }
     }
     add(ui, st);
+    // After drawing: a submenu row's button is known then (`row_at`).
+    if focus_first {
+        focus(&ctx, row_at(&ctx, first));
+    }
     let items: Vec<Id> = start
         .map(|s| allocated(s, ui.next_auto_id()))
         .unwrap_or_default()
         .into_iter()
+        .map(|id| row_at(&ctx, id))
         .filter(|&id| ctx.read_response(id).is_some_and(|r| r.layer_id == layer && r.sense.is_focusable()))
         .collect();
     let mut mem = load(&ctx);
