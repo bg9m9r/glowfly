@@ -25,6 +25,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Failures reaching or reading a remote get their sentences from `state/error_words.rs`, which the Fetch/Pull repositories rows share.
 - `toast_replacing` updates a toast still on screen instead of stacking another (the zoom toast keeps its id in `view.zoom_toast`).
 - Every toast has an x (`NotifyMsg::CloseToast`) that removes it without running its action.
+- The conflict view's Resolved and Saved-with-markers toasts carry Undo while the entry that did it is the newest (`update/conflict.rs::undo_button`, run as `JobMsg::UndoWith`, which refuses once the history moved).
 - The pointer over a toast holds it: `ui/toasts.rs` sends `NotifyMsg::HoldToast` when the toast under the pointer changes, and a held toast's clock stops (`Toast::counted` and `held`), so it neither fades nor expires.
 - Let go, a held toast has at least `HOLD_GRACE` left, and the toast limit drops the oldest toast that isn't held.
 - Toasts fade and expire by `view.frame_at`, the shell's time stamp for the frame (None in snapshot tests, so they draw at full strength).

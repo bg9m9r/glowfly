@@ -7,7 +7,7 @@ use super::tip::{PREVIEW_ROWS, TipPreview, TipRow, commit_rows, short_sha};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
-use glowfly_core::undo::{Action, Discarded, HeadPos};
+use glowfly_core::undo::{Action, ConflictChange, Discarded, HeadPos};
 
 #[cfg(test)]
 #[path = "undo_preview_tests.rs"]
@@ -85,6 +85,19 @@ pub fn preview(t: Lang, a: &Action, snap: Option<&Snapshot>, redo: bool) -> TipP
         }
         Action::Resolve { path, .. } => {
             vec![file('M', path), pick(t.tr("undo.preview.conflict_back").into(), t.tr("undo.preview.resolve_again").into())]
+        }
+        Action::Conflicts { change, files, .. } => {
+            let mut rows: Vec<TipRow> = files.iter().take(PREVIEW_ROWS).map(|f| file('M', &f.path)).collect();
+            if files.len() > PREVIEW_ROWS {
+                rows.push(TipRow::Line(t.trn("toolbar.tip.more", files.len() - PREVIEW_ROWS, &[])));
+            }
+            rows.push(match change {
+                ConflictChange::MarkConflicted => {
+                    pick(t.tr("undo.preview.resolution_back").into(), t.tr("undo.preview.conflict_again").into())
+                }
+                _ => pick(t.tr("undo.preview.conflict_back").into(), t.tr("undo.preview.resolved_again").into()),
+            });
+            rows
         }
         Action::DeleteFile { path, .. } => {
             vec![file('D', path), pick(t.tr("undo.preview.undelete").into(), t.tr("undo.preview.delete_file_again").into())]

@@ -135,7 +135,7 @@ pub fn mark_conflicted(workdir: &Path, paths: &[String]) -> Result<()> {
 
 /// `paths` split into runs that take at most `max_bytes` written one after another with a
 /// separator between each two; a path longer than that is a run of its own.
-pub(super) fn path_batches(paths: &[String], max_bytes: usize) -> Vec<&[String]> {
+pub(crate) fn path_batches(paths: &[String], max_bytes: usize) -> Vec<&[String]> {
     let mut out = Vec::new();
     let (mut start, mut size) = (0, 0);
     for (i, p) in paths.iter().enumerate() {

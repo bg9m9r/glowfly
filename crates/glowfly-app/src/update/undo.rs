@@ -161,11 +161,12 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
         Some(UndoResult::Refused { redo, stale, offer_stash }) => {
             tracing::debug!(redo, stale, offer_stash, "undo/redo refused");
             if stale {
-                // A resolution touches one file and its index entry, and discarded work (kept in
-                // the journal too) only its own files or stash, so an expired one is dropped
-                // alone: each older entry checks the repository again when planned.
+                // A resolution or conflict change touches only its files and their index entries,
+                // and discarded work (kept in the journal too) only its own files or stash, so an
+                // expired one is dropped alone: each older entry checks the repository again when
+                // planned.
                 let stack = if redo { &mut history.redo } else { &mut history.undo };
-                if stack.last().is_some_and(|a| matches!(a, Action::Resolve { .. }) || a.is_content()) {
+                if stack.last().is_some_and(|a| matches!(a, Action::Resolve { .. } | Action::Conflicts { .. }) || a.is_content()) {
                     stack.pop();
                 } else {
                     history.clear();

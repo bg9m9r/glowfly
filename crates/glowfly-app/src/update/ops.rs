@@ -68,6 +68,7 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
         StageMsg::Reverted { path, what, result, undo } => super::revert::done(st, path, what, result, undo, now, fx),
         StageMsg::LocalOpDone(result) => {
             let failed = result.is_err();
+            let recorded = matches!(result, Ok(Some(_)));
             match result {
                 Err(e) => st.log(false, e),
                 Ok(Some(action)) => st.session.undo.record(action),
@@ -85,9 +86,12 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
                     saved = Some(note);
                 }
             }
-            // Save with markers leaves the view open: say it worked.
+            // Save with markers leaves the view open: say it worked, with Undo when it changed
+            // the file.
             if let Some(note) = saved {
-                st.toast(true, note, now);
+                let path = st.session.conflict.view.as_ref().map(|c| c.path.clone()).unwrap_or_default();
+                let undo = super::conflict::undo_button(st, &path, false).filter(|_| recorded);
+                super::conflict::toast_with(st, note, undo, now);
             }
             super::watch::settled(st, now);
             super::wip_list::op_done(st, !failed, fx);

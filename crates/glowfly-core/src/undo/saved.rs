@@ -40,13 +40,13 @@ fn read(workdir: &Path, path: &str) -> Result<Option<(Vec<u8>, bool)>> {
 }
 
 #[cfg(unix)]
-fn executable(meta: &std::fs::Metadata) -> bool {
+pub(super) fn executable(meta: &std::fs::Metadata) -> bool {
     use std::os::unix::fs::PermissionsExt;
     meta.permissions().mode() & 0o111 != 0
 }
 
 #[cfg(not(unix))]
-fn executable(_: &std::fs::Metadata) -> bool {
+pub(super) fn executable(_: &std::fs::Metadata) -> bool {
     false
 }
 
@@ -196,6 +196,7 @@ impl Action {
             Action::Restore { path, before: Some(_), .. } => format!("Put back the earlier working copy of {path}"),
             Action::Restore { path, before: None, .. } => format!("Removed {path} again"),
             Action::Resolve { path, staged, .. } => super::resolved::wrote(path, staged.is_some(), redo),
+            Action::Conflicts { change, files, .. } => super::marked::wrote(*change, files, redo),
             Action::DeleteFile { path, via, .. } if redo => match via {
                 DeleteVia::Trash => format!("Moved {path} to the {TRASH_NAME} again"),
                 DeleteVia::HomeTrash => format!("Moved {path} to the Trash in your home folder again"),

@@ -1,6 +1,6 @@
 //! Local git operations run by the runner: staging and discarding ops, undo and redo (also of a
-//! deleted file, put back or deleted again, and of an abort that kept its work), and
-//! running a list of git commands.
+//! deleted file, put back or deleted again, of an abort that kept its work, and of conflict
+//! changes such as Mark resolved), and running a list of git commands.
 
 use crate::effect::{LocalOp, UndoOpts, UndoResult};
 use crate::msg::{JobMsg, Msg};
@@ -8,12 +8,12 @@ use crate::state::files::TRASH;
 use glowfly_core::error::Error;
 use glowfly_core::gitcli;
 use glowfly_core::repo;
-use glowfly_core::undo::{self, Action, Discarded, Plan, Refusal};
+use glowfly_core::undo::{self, Action, ConflictChange, Discarded, Plan, Refusal};
 use std::path::Path;
 
-/// Runs a local op. Discards and conflict saves save the file's contents first and return the
-/// undo action. A hunk or lines shown with whitespace changes hidden go through
-/// `repo::apply_shown`.
+/// Runs a local op. Discards, conflict saves and conflict changes (Mark resolved, Mark
+/// conflicted, a whole side taken) save the file's contents first and return the undo action.
+/// A hunk or lines shown with whitespace changes hidden go through `repo::apply_shown`.
 pub(super) fn local_op(workdir: &Path, op: LocalOp) -> glowfly_core::error::Result<Option<Action>> {
     use glowfly_core::repo::HunkOp::Discard;
     let saving =
@@ -50,9 +50,18 @@ pub(super) fn local_op(workdir: &Path, op: LocalOp) -> glowfly_core::error::Resu
         LocalOp::SavePartialResolution { path, contents, expected } => {
             undo::resolve_saving(workdir, &path, &expected, || repo::write_partial_resolution(workdir, &path, &contents, &expected))
         }
-        LocalOp::ResolveWithSide { path, side, expected } => done(repo::resolve_with_side(workdir, &path, side, &expected)),
-        LocalOp::MarkResolved(paths) => done(repo::mark_resolved(workdir, &paths)),
-        LocalOp::MarkConflicted(paths) => done(repo::mark_conflicted(workdir, &paths)),
+        LocalOp::ResolveWithSide { path, side, expected } => {
+            let paths = [path];
+            undo::conflicts_saving(workdir, ConflictChange::Took(side), &paths, || {
+                repo::resolve_with_side(workdir, &paths[0], side, &expected)
+            })
+        }
+        LocalOp::MarkResolved(paths) => {
+            undo::conflicts_saving(workdir, ConflictChange::MarkResolved, &paths, || repo::mark_resolved(workdir, &paths))
+        }
+        LocalOp::MarkConflicted(paths) => {
+            undo::conflicts_saving(workdir, ConflictChange::MarkConflicted, &paths, || repo::mark_conflicted(workdir, &paths))
+        }
     }
 }
 
@@ -139,6 +148,10 @@ Your changes were stashed as \"{}\".
         Ok(Plan::RestoreAbort) => match undo::restore_abort(cwd, &action) {
             Ok(output) => done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
             Err(e) => failed(format!("Could not put the {} back: {e}", action.describe())),
+        },
+        Ok(Plan::PutConflicts) => match undo::put_conflicts(cwd, &action, redo) {
+            Ok(output) => done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
+            Err(e) => failed(format!("Could not put back the files of the {}: {e}", action.describe())),
         },
         Ok(Plan::AbortAgain) => match super::stashes::abort_keeping(cwd, None) {
             (true, output, Some(again)) => done(true, output, UndoResult::Done { redo, before: action, after: Box::new(again) }),

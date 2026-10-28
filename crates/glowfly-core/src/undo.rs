@@ -12,7 +12,9 @@
 //! (`rebased.rs`): they finish in steps, possibly outside Glowfly. A merge, cherry-pick or revert
 //! that stopped for conflicts and was finished later (Continue, Skip or a commit) is recorded as
 //! one move from the HEAD it started at (`resumed.rs`). `resolved` handles conflict resolutions
-//! saved in the conflict view: the conflict's stages come back from git's resolve-undo record.
+//! saved in the conflict view: the conflict's stages come back from git's resolve-undo record;
+//! `marked` handles Mark resolved, Mark conflicted and taking a whole side, putting each file's
+//! index entries and bytes back exactly (`marked_put`).
 //! A restack, which moves several branches at once, is recorded around its run too and undone
 //! branch by branch (`restacked.rs`). An abort of a merge, cherry-pick or revert keeps its work
 //! (resolutions, conflicts and the operation's state) as git objects first and is undone by
@@ -31,6 +33,8 @@ mod action;
 mod deleted;
 pub mod kept;
 mod kinds;
+mod marked;
+mod marked_put;
 mod moved;
 mod planning;
 mod rebased;
@@ -54,6 +58,8 @@ pub use deleted::{
 };
 pub use kinds::{MoveOp, ResetMode, UndoKind};
 pub(crate) use kinds::{commits_label, move_targets};
+pub use marked::{ConflictChange, ConflictFile, IndexAt, PathState, WorkAt, conflicts_saving};
+pub use marked_put::put_conflicts;
 use planning::{has_staged, is_clean, stale};
 pub use planning::{plan, plan_with};
 pub use rebased::{RebaseStart, rebase_start, rebased, unmoved};
@@ -142,6 +148,9 @@ pub enum Plan {
     RestoreAbort,
     /// Abort the operation in progress again, keeping its work (`abort_keeping`).
     AbortAgain,
+    /// Put a conflict change's files back as they were before it, or after it for a redo
+    /// (`put_conflicts`).
+    PutConflicts,
 }
 
 /// Choices the user made for one undo.
@@ -175,6 +184,8 @@ mod deleted_tests;
 mod kept_tests;
 #[cfg(test)]
 mod kinds_tests;
+#[cfg(test)]
+mod marked_tests;
 #[cfg(test)]
 mod moved_tests;
 #[cfg(test)]

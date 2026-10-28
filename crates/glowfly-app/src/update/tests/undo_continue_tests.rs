@@ -80,7 +80,8 @@ fn merge_finished_from_the_commit_box() {
         st.session.undo.undo
     );
     assert!(tooltip(&st).starts_with("Undo merge of other"), "{}", tooltip(&st));
-    assert_eq!(st.session.undo.undo.len(), 2);
+    // add b, marking a.txt resolved (refused as over once the merge is undone), the merge.
+    assert_eq!(st.session.undo.undo.len(), 3);
     let merged = head_summary(&st);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
@@ -122,7 +123,9 @@ fn multi_pick_continued_is_one_step() {
     resolve(&mut st, &dir, "f.txt", "base\n1\n");
     drive(&mut st, action_msg(RepositoryState::CherryPickSequence, "Continue", &["cherry-pick", "--continue"]));
     assert_eq!(head_summary(&st), "f2");
-    assert_eq!(st.session.undo.undo.len(), before + 1, "one step: {:?}", st.session.undo.undo);
+    // Marking f.txt resolved, then the whole pick as one step.
+    assert_eq!(st.session.undo.undo.len(), before + 2, "one step: {:?}", st.session.undo.undo);
+    assert!(matches!(st.session.undo.undo[before], Action::Conflicts { .. }), "{:?}", st.session.undo.undo);
     assert_eq!(st.session.undo.undo.last().unwrap().describe(), "cherry-pick of 2 commits");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));

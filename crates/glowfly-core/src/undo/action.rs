@@ -1,8 +1,8 @@
 //! Recorded operations and how they are named in tooltips and job labels.
 
-use super::{DeleteVia, MoveOp, ResetMode, Saved, short};
+use super::{ConflictChange, ConflictFile, DeleteVia, MoveOp, ResetMode, Saved, short};
 use crate::repo::{ConflictIds, StagedNew};
-use git2::Oid;
+use git2::{Oid, RepositoryState};
 
 /// Where HEAD points.
 #[derive(Clone, Debug, PartialEq)]
@@ -152,6 +152,16 @@ pub enum Action {
         before: Option<Saved>,
         after: Option<Saved>,
     },
+    /// Conflicted files resolved without the editor (Mark resolved, or one side's whole version
+    /// taken), or resolved files made conflicted again (Mark conflicted): each changed file's
+    /// index entries and working copy before and after, with HEAD at `head` and the repository
+    /// in `state`. A stale refusal drops only this entry.
+    Conflicts {
+        change: ConflictChange,
+        head: Option<Oid>,
+        state: RepositoryState,
+        files: Vec<ConflictFile>,
+    },
     DeleteFile {
         path: String,
         before: Saved,
@@ -262,6 +272,7 @@ impl Action {
             Action::StashDrop { message, .. } => format!("drop of stash '{}'", cut50(message)),
             Action::Resolve { path, staged: Some(_), .. } => format!("resolution of {path}"),
             Action::Resolve { path, staged: None, .. } => format!("save of {path} with markers"),
+            Action::Conflicts { change, files, .. } => super::marked::describe(*change, files),
             Action::DeleteFile { path, .. } => format!("delete of {path}"),
             Action::UnstageGone { path, .. } => format!("unstage of {path}"),
             Action::SetBranch { name, to, .. } => format!("move of branch {name} to {}", short(*to)),

@@ -152,6 +152,7 @@ pub use remotes::RemoteInfo;
 pub(crate) use removal::TRASH_NAME;
 pub use removal::{Deleted, Removal, Trasher};
 pub use resolve::{Choice, conflict_ids, render_output, resolve_with_side, write_partial_resolution, write_resolution};
+pub(crate) use resolve_undo::path_batches;
 pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_conflicted, mark_resolved, resolve_undo_ids, resolved_paths};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::{ALREADY_REVERTED, RevertPart, RevertRequest, Reverted, revert};

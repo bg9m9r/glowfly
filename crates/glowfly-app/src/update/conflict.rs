@@ -2,18 +2,20 @@
 //! stage), saving with markers left (write only) or resolving with a whole side. After Glowfly
 //! resolves the open file the view steps to the next conflicted one. Picking sides and lines
 //! and editing the output are in update/conflict_edit.rs; Mark resolved and Mark conflicted in
-//! update/conflict_files.rs. Undoing a saved resolution opens (or reloads) the view on the file
-//! again (`reopen_after_undo`).
+//! update/conflict_files.rs. Undoing a saved resolution, a whole side or Mark resolved of one
+//! file opens (or reloads) the view on the file again (`reopen_after_undo`); the Resolved and
+//! Saved-with-markers toasts carry an Undo button for that entry (`undo_button`).
 
 use crate::effect::ConflictEffect;
-use crate::effect::{Effect, LocalOp, UndoResult};
-use crate::msg::ConflictMsg;
+use crate::effect::{Effect, LocalOp, UndoOpts, UndoResult};
+use crate::msg::{ConflictMsg, JobMsg, Msg};
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use crate::state::conflict_files::next_conflicted;
+use crate::state::toasts::ToastAction;
 use crate::state::tool_compare::merging;
 use glowfly_core::repo::Choice;
-use glowfly_core::undo::Action;
+use glowfly_core::undo::{Action, ConflictChange};
 use std::time::Instant;
 
 #[path = "conflict_edit.rs"]
@@ -151,6 +153,12 @@ pub(super) fn after_undo(undo: &Option<UndoResult>, ok: bool) -> Option<(String,
         _ if !ok => None,
         Some(UndoResult::Done { redo: false, before: Action::Resolve { path, .. }, .. }) => Some((path.clone(), true)),
         Some(UndoResult::Done { redo: true, before: Action::Resolve { path, staged: None, .. }, .. }) => Some((path.clone(), false)),
+        // One file whose conflict came back (Mark resolved or a whole side undone).
+        Some(UndoResult::Done { redo: false, before: Action::Conflicts { change, files, .. }, .. })
+            if *change != ConflictChange::MarkConflicted && files.len() == 1 =>
+        {
+            Some((files[0].path.clone(), true))
+        }
         _ => None,
     }
 }
@@ -219,8 +227,9 @@ pub(super) fn status_changed(st: &mut AppState, now: Instant, fx: &mut Vec<Effec
         && let Some(next) = next_conflicted(snap, &c.path)
     {
         let text = format!("Resolved {}. Opened {next} ({n} conflicted file{} left)", c.path, if n == 1 { "" } else { "s" });
+        let undo = undo_button(st, &c.path, true);
         open(st, next, fx);
-        st.toast(true, text, now);
+        toast_with(st, text, undo, now);
         return;
     }
     let mut text = format!("Resolved {}", c.path);
@@ -229,6 +238,36 @@ pub(super) fn status_changed(st: &mut AppState, now: Instant, fx: &mut Vec<Effec
         1 => text.push_str(" (1 conflicted file left)"),
         n => text.push_str(&format!(" ({n} conflicted files left)")),
     }
+    let undo = undo_button(st, &c.path, true);
     close(st);
-    st.toast(true, text, now);
+    toast_with(st, text, undo, now);
+}
+
+/// A toast saying something worked, with `undo` as its button when there is one.
+pub(super) fn toast_with(st: &mut AppState, text: String, undo: Option<ToastAction>, now: Instant) {
+    match undo {
+        Some(a) => {
+            st.toast_action(true, text, a, now);
+        }
+        None => st.toast(true, text, now),
+    }
+}
+
+/// An Undo button for the toast saying `path` was `resolved` (else saved with markers), when
+/// the newest undo entry is what did it: a resolution saved, Mark resolved or a whole side
+/// taken (else a save with markers). The undo runs only while that entry is still the newest.
+pub(super) fn undo_button(st: &AppState, path: &str, resolved: bool) -> Option<ToastAction> {
+    let top = st.session.undo.undo.last()?;
+    let did = match top {
+        Action::Resolve { path: p, staged, .. } => p == path && staged.is_some() == resolved,
+        Action::Conflicts { change, files, .. } => {
+            resolved && *change != ConflictChange::MarkConflicted && files.iter().any(|f| f.path == path)
+        }
+        _ => false,
+    };
+    did.then(|| ToastAction {
+        label: st.settings.lang().tr("menu.edit.undo").into(),
+        msg: Box::new(Msg::Job(JobMsg::UndoWith { redo: false, action: Box::new(top.clone()), opts: UndoOpts::default() })),
+        workdir: st.workdir(),
+    })
 }

@@ -43,6 +43,9 @@ pub enum KeptWhat {
     Untracked,
     /// A stash dropped from the stash list.
     Stash,
+    /// A file written over while resolving a conflict, or by undoing or redoing that (Mark
+    /// conflicted, a whole side taken).
+    Conflict,
 }
 
 impl From<Discarded> for KeptWhat {

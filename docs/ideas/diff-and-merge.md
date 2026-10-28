@@ -125,7 +125,10 @@ The diff viewer, blame and file history, range-diff, conflict prediction and the
 - Text typed into a clean run deleted between two conflicts joins the next conflict; let it bring the run back
 - Drop expired resolution entries from the undo history as soon as the merge or rebase step is committed or aborted, not when they are next tried
 - Reload a parked tab's conflict view when an undo there changed its open file
-- Undo of a resolution whose resolve-undo record was removed outside the app (restore the stages from the recorded ids with libgit2)
+- Undo of a resolution whose resolve-undo record was removed outside the app (restore the stages from the recorded ids with libgit2, as Mark resolved's undo does)
+- A toast with Undo after Mark resolved or Mark conflicted from the WIP panel or palette (only the conflict view's own toasts carry Undo)
+- Keep a copy of a file over 64 MB before Take ours/theirs or Mark conflicted writes over it (its undo is refused today)
+- Bring a symbolic link back on undo when no index entry holds its target (refused today)
 
 ### Blame gutter
 

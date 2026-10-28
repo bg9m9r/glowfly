@@ -31,6 +31,7 @@ pub(super) mod compare_wip_tests;
 pub(super) mod conflict_check_tests;
 pub(super) mod conflict_files_tests;
 pub(super) mod conflict_layout_tests;
+pub(super) mod conflict_mark_undo_tests;
 pub(super) mod conflict_tests;
 pub(super) mod conflict_undo_tests;
 pub(super) mod current_hunk_tests;

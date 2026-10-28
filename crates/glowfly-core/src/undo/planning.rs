@@ -5,8 +5,8 @@
 
 use super::record::{head, ref_exists};
 use super::{
-    Action, HeadPos, Options, Plan, Refusal, aborted_restore, deleted, discard_command, moved, refs, reset, resolved, restacked, saved,
-    stash, unstaged,
+    Action, HeadPos, Options, Plan, Refusal, aborted_restore, deleted, discard_command, marked, moved, refs, reset, resolved, restacked,
+    saved, stash, unstaged,
 };
 use crate::error::Result;
 use crate::gitcli::args;
@@ -94,6 +94,7 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         }
         // A saved conflict resolution is expected to have an operation in progress.
         Action::Resolve { .. } => return resolved::plan(workdir, action, redo),
+        Action::Conflicts { .. } => return marked::plan(workdir, action, redo),
         // Undoing needs nothing in progress, redoing the operation it aborted.
         Action::AbortKept { .. } => return aborted_restore::plan(workdir, action, redo),
         _ => {}
@@ -188,7 +189,7 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
                 None => stale("The discarded-changes stash was dropped"),
             }
         }
-        Action::Discard { .. } | Action::Restore { .. } | Action::StashDrop { .. } | Action::Resolve { .. } => {
+        Action::Discard { .. } | Action::Restore { .. } | Action::StashDrop { .. } | Action::Resolve { .. } | Action::Conflicts { .. } => {
             unreachable!("planned above")
         }
         Action::DeleteFile { .. } | Action::AbortKept { .. } | Action::UnstageGone { .. } => unreachable!("planned above"),

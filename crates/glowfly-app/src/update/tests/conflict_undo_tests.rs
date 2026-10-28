@@ -61,7 +61,7 @@ fn open(dir: &Path, file: &str) -> AppState {
 }
 
 /// A repository mid-merge where f.txt conflicts in two chunks (lines 2 and 10).
-fn two_chunks(name: &str) -> PathBuf {
+pub(super) fn two_chunks(name: &str) -> PathBuf {
     let dir = scratch_repo(name);
     git(&dir, &["config", "core.autocrlf", "false"]);
     let base: String = (1..=12).map(|i| format!("line {i}\n")).collect();
