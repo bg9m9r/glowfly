@@ -1,5 +1,6 @@
 //! Posting the issue panel's comment box and quoting a comment into it; the reply appends the
-//! posted comment or keeps the draft with the reason, also for a parked tab's panel.
+//! posted comment or keeps the draft with the reason, also for a parked tab's panel or the
+//! draft kept for a closed one.
 
 use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob};
 use crate::state::AppState;
@@ -55,8 +56,9 @@ pub(super) fn quote(st: &mut AppState, i: usize) {
 /// A comment's answer for issue `key` on `target` in the repository at `workdir`. It is matched
 /// by repository, tracker and key only, never by generation: a details reload in the meantime
 /// must not make a posted comment's answer stale. It goes to the active panel, else to the
-/// parked panel of the tab showing `workdir`, and only while that panel is posting: a panel
-/// closed and reopened meanwhile has a new draft to keep. Without one it is logged and toasted.
+/// parked panel of the tab showing `workdir`, and only while that panel is posting (a panel
+/// closed and reopened meanwhile got the posting draft back). Without one it settles the draft
+/// kept for the closed panel, and is logged and toasted.
 pub(super) fn commented(
     st: &mut AppState,
     workdir: &Path,
@@ -87,7 +89,13 @@ pub(super) fn commented(
     } else {
         st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()).and_then(|p| p.session.issue.view.as_mut()).filter(mine)
     };
-    let found = view.map(|v| apply(v, result));
+    let found = match view {
+        Some(v) => Some(apply(v, result)),
+        None => {
+            settle_kept(st, workdir, active, target, key, result);
+            None
+        }
+    };
     if active {
         st.log(ok, text.clone());
     } else {
@@ -105,6 +113,27 @@ pub(super) fn commented(
         None if here && !active => {}
         None if ok => st.toast(true, text, now),
         None => st.toast(false, format!("Couldn't post the comment on {mention}: {}", failure.unwrap_or_default()), now),
+    }
+}
+
+/// The answer for a closed panel's kept draft that is being posted (in the active tab, else in
+/// the parked tab showing `workdir`): a posted draft goes, a failed one stays with the reason.
+fn settle_kept(st: &mut AppState, workdir: &Path, active: bool, target: &Target, key: &str, result: Result<Entry, ForgeError>) {
+    let session = if active {
+        Some(&mut st.session)
+    } else {
+        st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()).map(|p| &mut p.session)
+    };
+    let Some(kept) = session.map(|s| &mut s.issue_drafts) else { return };
+    match result {
+        Ok(_) if kept.posting_mut(target, key).is_some() => kept.remove(key),
+        Ok(_) => {}
+        Err(e) => {
+            if let Some(d) = kept.posting_mut(target, key) {
+                d.posting = false;
+                d.error = Some(e.message);
+            }
+        }
     }
 }
 

@@ -112,6 +112,8 @@ pub struct RepoSession {
     /// The open issue panel; in the pull request panel's place (the two never show together).
     /// Its details load again on return.
     pub issue: Gen<super::issue::IssueView>,
+    /// The comment drafts of issues whose panel closed, restored when the issue opens again.
+    pub issue_drafts: super::issue_comment::KeptDrafts,
     /// The interactive rebase panel; shown instead of the graph (below a diff, the file history
     /// and a conflict). A list still loading is asked for again on return.
     pub rebase: Gen<RebasePanel>,
@@ -215,11 +217,12 @@ impl RepoSession {
         }
     }
 
-    /// Another repository opened in the tab: forgets what was read from the one before and the
-    /// folders collapsed in its file lists.
+    /// Another repository opened in the tab: forgets what was read from the one before, the
+    /// folders collapsed in its file lists and the issue comment drafts kept for it.
     pub fn forget_repo(&mut self) {
         self.reads.clear();
         self.tab_view.file_folds.clear();
+        self.issue_drafts.clear();
     }
 }
 

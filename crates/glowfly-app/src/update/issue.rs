@@ -1,8 +1,8 @@
 //! The issue panel: opening it for a listed issue (closing the pull request panel, a diff,
 //! the file history and blame), loading its details from the tracker, following tab switches
-//! and tracker changes, and closing it. The calls are unscoped effects whose replies name
-//! their repository and tracker: a stale or misplaced reply is dropped, and a failed reload
-//! keeps the details on screen. The Create issue dialog is in issue_create.rs, the comment box
+//! and tracker changes, and closing it (its comment draft is kept for the issue). The calls
+//! are unscoped effects whose replies name their repository and tracker: a stale or misplaced
+//! reply is dropped, and a failed reload keeps the details on screen. The Create issue dialog is in issue_create.rs, the comment box
 //! in issue_comment.rs.
 
 use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply, IssueRequest};
@@ -37,12 +37,15 @@ fn open(st: &mut AppState, key: String, fx: &mut Vec<Effect>) {
     if fs.tracker.is_none() || st.session.issue.view.as_ref().is_some_and(|v| v.key == key && fs.tracker.as_ref() == Some(&v.target)) {
         return;
     }
-    let Some(view) = IssueView::new(listed_or_bare(fs, &key), fs) else { return };
+    let Some(mut view) = IssueView::new(listed_or_bare(fs, &key), fs) else { return };
     super::repo::close_diff(st);
     super::conflict::close(st);
     super::history::close(st);
     super::blame::close(st);
     super::pull_request::close(st);
+    // The issue shown before keeps its draft; this one gets back the draft it had.
+    close(st);
+    view.comment = st.session.issue_drafts.take(&view.target, &view.key);
     st.session.issue.view = Some(view);
     load(st, fx);
 }
@@ -139,10 +142,12 @@ fn loaded(st: &mut AppState, workdir: &Path, target: &Target, generation: u64, k
     st.log_quiet(false, failed);
 }
 
-/// Closes the panel; details still in flight must not reopen it.
+/// Closes the panel, keeping its comment draft for when the issue opens again; details still in
+/// flight must not reopen it.
 pub(super) fn close(st: &mut AppState) {
-    if st.session.issue.view.take().is_some() {
+    if let Some(v) = st.session.issue.view.take() {
         st.session.issue.generation += 1;
+        st.session.issue_drafts.keep(v);
     }
 }
 
@@ -161,12 +166,13 @@ pub(super) fn tracker_changed(st: &mut AppState) {
 
 /// The tracker was worked out again (after a refresh, a new connection or a profile switch):
 /// a panel or a Create issue dialog for another tracker closes, since its calls would now go
-/// to the new one.
+/// to the new one, and the comment drafts kept for another tracker's issues go.
 pub(super) fn tracker_detected(st: &mut AppState) {
     let tracker = st.session.forge.as_ref().and_then(|f| f.tracker.clone());
     if st.session.issue.view.as_ref().is_some_and(|v| Some(&v.target) != tracker.as_ref()) {
         close(st);
     }
+    st.session.issue_drafts.retain_tracker(tracker.as_ref());
     if let Some(Modal::CreateIssue(form)) = &st.modal
         && Some(&form.target) != tracker.as_ref()
     {

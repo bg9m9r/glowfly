@@ -80,6 +80,7 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Choose a Trello card's position in its list (top or bottom) when creating
 - Check a Trello token's write access before Create instead of after a refused create
 - Azure DevOps work item priority and Jira priority in the panel's details
+- Keep issue comment drafts across restarts (now kept per issue only while the tab is open)
 
 ### Limits found while building integrations
 
@@ -182,6 +183,8 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Start code comments from the Commits tab's per-commit diffs
 - Keep several unposted line comments at once (one per line), and keep them across closing the
   panel or restarting
+- Ask before another view replaces the pull request panel while a line comment is unposted
+  (opening an issue, a diff outside the panel, the file history or blame still drops it)
 - A key to start a comment on the line at the diff cursor, and one to extend it
 - Show how many comments the pending review holds on Finish review, and discard a pending review
 - Edit or delete a pending review comment before the review is submitted

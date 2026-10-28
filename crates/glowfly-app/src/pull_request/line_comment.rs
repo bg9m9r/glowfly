@@ -5,6 +5,15 @@
 
 use glowfly_core::diff_rows::LineSide;
 
+/// Where the user was going when the panel asked about its unposted draft.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Leave {
+    /// Closing the panel.
+    Close,
+    /// Opening pull request .0.
+    Open(u64),
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum LineCommentMsg {
     /// A diff line's comment button: start a draft on file line `line` of `side` (or on the
@@ -21,6 +30,9 @@ pub enum LineCommentMsg {
     Cancel,
     /// Drop the draft (after the confirmation).
     Discard,
+    /// Drop the draft and close the panel or open another pull request (the confirmation asked
+    /// before leaving an edited draft).
+    DiscardAnd(Leave),
     /// The draft's marker in the diff: focus the comment box.
     Focus,
     /// The comment box's line link: scroll the diff to the draft's lines.

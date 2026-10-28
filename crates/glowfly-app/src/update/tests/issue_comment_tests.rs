@@ -1,6 +1,7 @@
 //! Headless tests for the issue panel's comment box: posting the draft and why it can't be
-//! posted, the answer appended or the draft kept, answers that find no panel or a reopened one,
-//! one for a parked tab, a reload in flight, and Reply quoting a comment into the draft.
+//! posted, the answer appended or the draft kept, drafts kept while the panel is closed or shows
+//! another issue, answers that find no panel, a reopened one or only a kept draft, one for a
+//! parked tab, a reload in flight, and Reply quoting a comment into the draft.
 
 use super::issue_tests::{details, done, err, github, jobs, open_repo, reply, run};
 use super::update;
@@ -177,7 +178,31 @@ fn replies_without_their_panel_are_logged_and_toasted() {
 }
 
 #[test]
-fn a_reply_leaves_a_reopened_panel_alone() {
+fn a_draft_survives_close_and_reopen() {
+    let (mut st, dir) = loaded_panel("issue-comment-kept");
+    view_mut(&mut st).comment.text = "Half a thought".into();
+    run(&mut st, IssueMsg::Close);
+    run(&mut st, IssueMsg::Open("12".into()));
+    assert_eq!(view(&st).comment.text, "Half a thought", "back after the panel closed");
+
+    run(&mut st, IssueMsg::Open("14".into()));
+    assert_eq!(view(&st).comment.text, "", "another issue has its own draft");
+    view_mut(&mut st).comment.text = "For 14".into();
+    run(&mut st, IssueMsg::Open("12".into()));
+    assert_eq!(view(&st).comment.text, "Half a thought", "back after another issue opened");
+    run(&mut st, IssueMsg::Open("14".into()));
+    assert_eq!(view(&st).comment.text, "For 14");
+
+    view_mut(&mut st).comment.text = " 
+"
+    .into();
+    run(&mut st, IssueMsg::Close);
+    assert_eq!(st.session.issue_drafts.len(), 1, "a blank draft isn't kept: only 12's");
+    done(st, dir);
+}
+
+#[test]
+fn a_reopened_panel_gets_its_posting_draft_back() {
     let (mut st, dir) = loaded_panel("issue-comment-reopened");
     let workdir = st.workdir().unwrap();
     post(&mut st, "Thanks");
@@ -185,20 +210,36 @@ fn a_reply_leaves_a_reopened_panel_alone() {
     run(&mut st, IssueMsg::Open("12".into()));
     let msg = reply(&st, IssueReply::Loaded { key: "12".into(), result: Ok(details("12")) });
     run(&mut st, msg);
-    if let Details::Loaded(d) = &mut view_mut(&mut st).details {
-        d.comments.push(posted("Thanks"));
-    }
-    view_mut(&mut st).comment.text = "New draft".into();
+    assert_eq!((view(&st).comment.text.as_str(), view(&st).comment.posting), ("Thanks", true));
     answer(&mut st, &workdir, "12", Ok(posted("Thanks")));
     let v = view(&st);
-    assert_eq!(v.comment.text, "New draft", "the reopened panel's draft is kept");
-    assert_eq!(v.loaded().unwrap().comments, vec![posted("Thanks")], "the comment isn't shown twice");
-    assert!(st.toasts.iter().any(|t| t.ok && t.text == "Commented on issue #12"));
+    assert_eq!((v.comment.text.as_str(), v.comment.posting), ("", false), "the answer reaches the reopened panel");
+    assert_eq!(v.loaded().unwrap().comments, vec![posted("Thanks")]);
+    assert!(st.toasts.iter().any(|t| t.ok && t.text == "Comment posted"));
+    done(st, dir);
+}
 
+#[test]
+fn a_closed_panels_answer_settles_its_kept_draft() {
+    let (mut st, dir) = loaded_panel("issue-comment-kept-answer");
+    let workdir = st.workdir().unwrap();
+    post(&mut st, "Thanks");
+    run(&mut st, IssueMsg::Close);
     answer(&mut st, &workdir, "12", Err(err("timed out")));
-    let v = view(&st);
-    assert_eq!((v.comment.text.as_str(), v.comment.error.as_deref()), ("New draft", None));
     assert!(st.toasts.iter().any(|t| !t.ok && t.text == "Couldn't post the comment on #12: timed out"));
+    run(&mut st, IssueMsg::Open("12".into()));
+    let v = view(&st);
+    assert_eq!((v.comment.text.as_str(), v.comment.posting), ("Thanks", false), "a failed post keeps the draft");
+    assert_eq!(v.comment.error.as_deref(), Some("timed out"));
+
+    let msg = reply(&st, IssueReply::Loaded { key: "12".into(), result: Ok(details("12")) });
+    run(&mut st, msg);
+    post(&mut st, "Thanks");
+    run(&mut st, IssueMsg::Close);
+    answer(&mut st, &workdir, "12", Ok(posted("Thanks")));
+    assert!(st.session.issue_drafts.is_empty(), "a posted draft goes");
+    run(&mut st, IssueMsg::Open("12".into()));
+    assert_eq!(view(&st).comment.text, "");
     done(st, dir);
 }
 

@@ -168,9 +168,11 @@ pub fn edited(d: &LineDraft) -> bool {
     !d.text.trim().is_empty()
 }
 
-pub fn discard_confirm(d: &LineDraft) -> Modal {
+/// The question before dropping edited draft `d`; its Discard sends `then` (`Discard`, or
+/// `DiscardAnd` when the panel is closing or giving way to another pull request).
+pub fn discard_confirm(d: &LineDraft, then: LineCommentMsg) -> Modal {
     let body = format!("Discard your comment on {} of {}? It hasn't been posted.", where_text(&d.anchor), printable(&d.anchor.path));
-    Modal::danger("Discard comment", body, "Discard", Msg::PullRequest(PullRequestMsg::LineComment(LineCommentMsg::Discard)))
+    Modal::danger("Discard comment", body, "Discard", Msg::PullRequest(PullRequestMsg::LineComment(then)))
 }
 
 /// What a pull request file's diff draws for new comments.

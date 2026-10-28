@@ -53,7 +53,7 @@ impl Loss {
 }
 
 /// Whether `s` holds a pull request or issue comment typed and not posted (a review's body, a
-/// reply, a comment on lines). The merge's title and message are filled in, so they don't count.
+/// reply, a comment on lines, an issue's draft kept after its panel closed). The merge's title and message are filled in, so they don't count.
 fn unposted(s: &RepoSession) -> bool {
     let typed = |x: &str| !x.trim().is_empty();
     let pr = s.pull_request.view.as_ref().is_some_and(|v| {
@@ -63,7 +63,7 @@ fn unposted(s: &RepoSession) -> bool {
             || f.replies.values().any(|r| typed(r))
             || v.line_draft.as_ref().is_some_and(|d| typed(&d.text))
     });
-    pr || s.issue.view.as_ref().is_some_and(|v| typed(&v.comment.text))
+    pr || s.issue.view.as_ref().is_some_and(|v| typed(&v.comment.text)) || s.issue_drafts.any_typed()
 }
 
 /// Whether a Create issue form kept with a parked tab has anything typed or chosen.

@@ -201,6 +201,11 @@ fn closing_a_tab_with_a_comment_not_posted_asks() {
 - comments typed and not posted yet"
         )
     );
+    // A draft kept after its panel closed counts too.
+    run(&mut st, Msg::CloseModal);
+    run(&mut st, Msg::Issue(crate::msg::IssueMsg::Close));
+    send(&mut st, TabsMsg::CloseTab(usize::MAX));
+    assert!(question(&st).1.ends_with("- comments typed and not posted yet"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

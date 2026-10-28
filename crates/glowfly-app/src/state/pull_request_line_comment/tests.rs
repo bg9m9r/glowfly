@@ -159,7 +159,7 @@ fn edited_drafts_are_confirmed_before_discarding() {
     drafted(&mut v, 2, 2, "Rename");
     let d = v.line_draft.as_ref().unwrap();
     assert!(edited(d));
-    match discard_confirm(d) {
+    match discard_confirm(d, LineCommentMsg::Discard) {
         Modal::ConfirmDanger { title, body, button, then, .. } => {
             assert_eq!((title.as_str(), button.as_str()), ("Discard comment", "Discard"));
             assert_eq!(body, "Discard your comment on line 2 of f.txt? It hasn't been posted.");

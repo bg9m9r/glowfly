@@ -1,5 +1,6 @@
 //! The pull request panel: opening it for a listed pull request, following refreshes of the refs
-//! and of the service's list, switching tabs, and closing it. Where its files and commits come
+//! and of the service's list, switching tabs, and closing it (asking first while a new code
+//! comment is unposted). Where its files and commits come
 //! from (and the head ref fetch) is in source.rs, the Commits tab's selection in commits.rs. Its
 //! diffs are the shared `st.session.diff.view`, opened through `RepoMsg::OpenDiff`; its page and
 //! actions on the service are in calls.rs, its Checks section in checks.rs, its code comment
@@ -8,6 +9,7 @@
 
 use crate::effect::Effect;
 use crate::pull_request::PullRequestMsg;
+use crate::pull_request::line_comment::Leave;
 use crate::state::AppState;
 use crate::state::pull_request::{Files, PrTab, PrView};
 use crate::state::pull_request_line_map::LineMaps;
@@ -32,6 +34,8 @@ mod commits_tests;
 mod gitlab_tests;
 mod line_comment;
 #[cfg(test)]
+mod line_comment_leave_tests;
+#[cfg(test)]
 mod line_comment_reply_tests;
 #[cfg(test)]
 mod line_comment_tests;
@@ -52,23 +56,17 @@ mod threads_tests;
 pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         PullRequestMsg::Open(id) => {
-            let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
-            let Some(pr) = fs.prs.iter().find(|p| p.id == id) else { return };
-            if st.session.pull_request.view.as_ref().is_some_and(|v| v.pr.id == id) {
-                return;
+            let listed = st.session.forge.as_ref().is_some_and(|f| f.prs.iter().any(|p| p.id == id));
+            let shown = st.session.pull_request.view.as_ref().is_some_and(|v| v.pr.id == id);
+            if listed && !shown && !line_comment::asks_to_leave(st, Leave::Open(id)) {
+                open(st, id, fx);
             }
-            let view = PrView::new(pr.clone(), fs, snap);
-            super::repo::close_diff(st);
-            super::conflict::close(st);
-            super::history::close(st);
-            super::blame::close(st);
-            super::issue::close(st);
-            st.session.pull_request.view = Some(view);
-            request(st, fx);
-            load(st, fx);
-            checks::load(st, fx);
         }
-        PullRequestMsg::Close => close(st),
+        PullRequestMsg::Close => {
+            if !line_comment::asks_to_leave(st, Leave::Close) {
+                close(st);
+            }
+        }
         PullRequestMsg::FilesLoaded { id, generation, result } => source::files_loaded(st, id, generation, result, fx),
         PullRequestMsg::Tab(t) => {
             if let Some(v) = st.session.pull_request.view.as_mut() {
@@ -98,6 +96,26 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
             calls::replied(st, &workdir, &target, id, generation, *reply, now, fx)
         }
     }
+}
+
+/// Opens the panel for listed pull request `id` in place of a diff, a conflict, the file
+/// history, blame and the issue panel; nothing when it is already shown.
+fn open(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
+    let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
+    let Some(pr) = fs.prs.iter().find(|p| p.id == id) else { return };
+    if st.session.pull_request.view.as_ref().is_some_and(|v| v.pr.id == id) {
+        return;
+    }
+    let view = PrView::new(pr.clone(), fs, snap);
+    super::repo::close_diff(st);
+    super::conflict::close(st);
+    super::history::close(st);
+    super::blame::close(st);
+    super::issue::close(st);
+    st.session.pull_request.view = Some(view);
+    request(st, fx);
+    load(st, fx);
+    checks::load(st, fx);
 }
 
 /// Closes the panel, and the diff when it is one of its files; a list or page still in flight
