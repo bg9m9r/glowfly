@@ -43,7 +43,7 @@ thiserror = "2"
 tracing = "0.1.44"
 trash = "5.2"
 portable-pty = "0.9"
-vt100 = "0.16"
+vt100 = "0.18"
 toml = "1.1"
 # Reading a portable update's zip or tar.gz (app_update/archive.rs): decompression only, with
 # flate2's pure-Rust inflate.
