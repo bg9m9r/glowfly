@@ -48,6 +48,7 @@ pub(super) fn run(e: RebaseEffect) -> Msg {
         }
         RebaseEffect::Restack { cwd, job } => return super::stack::restack(cwd, job),
         RebaseEffect::ResumeRestack { cwd, how, job } => return super::stack::resume(cwd, how, job),
+        RebaseEffect::EndRestack { cwd, job } => return super::stack::end(cwd, job),
         RebaseEffect::EditTodo { cwd, request } => {
             RebaseMsg::RemainingEdited { result: rebase::edit_todo(&cwd, &request, &sequence_editor()).map_err(err) }
         }

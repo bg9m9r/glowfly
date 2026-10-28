@@ -6,6 +6,7 @@ mod app;
 mod askpass;
 mod askpass_store;
 mod auto_stash;
+mod auto_stash_restack;
 mod auto_stash_saved;
 mod avatars;
 mod blame;

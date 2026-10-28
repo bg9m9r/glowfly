@@ -175,7 +175,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Auto-stash
 
-- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/pr_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
+- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pr_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
 - One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset, and for Git Flow start and a pull request's checkout (`start_guarded_as` with their own `AutoStashFor`).
 - Each entry point passes its single command and a retry message to `gate`.
 - Only staged changes and changed tracked files count (`Snapshot::has_tracked_changes`): untracked files and an unstaged submodule row don't.
@@ -189,6 +189,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - A plain single-command job started outside the guard (`start_job`, `started_plain`) records its retry too, so its "would be overwritten" toast still offers Stash and <op>.
 - The put-back's result becomes a toast with Show stash when it conflicted or failed, and the stash then stays in the list (marked auto in STASHES).
 - Interactive rebases and graph edits keep their own `--autostash` and skip their stash question with Always stash on.
+- A restack stashes once itself (`glowfly-core/src/stack/restack_end.rs`) and puts the stash back on the branch checked out before; while a stop waits, its stash is a pending entry the ordinary put-back leaves alone (`auto_stash_restack::held`), saved for a restart like the others.
 
 ## Custom commands
 

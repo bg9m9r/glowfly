@@ -163,6 +163,7 @@ pub fn body(t: Lang, op: &AutoStashFor, files: usize) -> String {
         AutoStashFor::GitFlowFinish { branch } => t.trf("auto_stash.body.gitflow_finish", &[("branch", branch)]),
         AutoStashFor::GitFlowStart { branch } => t.trf("auto_stash.body.gitflow_start", &[("branch", branch)]),
         AutoStashFor::PullRequestCheckout { pr, branch } => t.trf("auto_stash.body.pr_checkout", &[("branch", branch), ("pr", pr)]),
+        AutoStashFor::Restack { onto } => t.trf("auto_stash.body.restack", &[("onto", onto)]),
     };
     let mut text = format!("{} {what}", t.trn("auto_stash.files", files, &[]));
     if op.can_stop() {
@@ -184,6 +185,7 @@ pub fn button(t: Lang, op: &AutoStashFor) -> &'static str {
         AutoStashFor::HardReset { .. } => t.tr("auto_stash.button.reset"),
         AutoStashFor::GitFlowFinish { .. } => t.tr("auto_stash.button.gitflow_finish"),
         AutoStashFor::GitFlowStart { .. } => t.tr("auto_stash.button.gitflow_start"),
+        AutoStashFor::Restack { .. } => t.tr("auto_stash.button.restack"),
     }
 }
 

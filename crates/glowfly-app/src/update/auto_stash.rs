@@ -226,6 +226,7 @@ pub(super) fn seen(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Eff
 fn seen_pending(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Effect>) {
     let Some(snap) = st.snap.as_ref() else { return };
     let Some(i) = st.auto_stash.index_of(&snap.workdir) else { return };
+    let restack_holds = super::auto_stash_restack::held(st, &st.auto_stash.pending[i]);
     let p = &mut st.auto_stash.pending[i];
     if p.oid.is_none() {
         p.oid = found(snap, &p.job);
@@ -260,6 +261,10 @@ fn seen_pending(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Effect
     if let AutoStashFor::GitFlowFinish { branch } = &p.job.op
         && st.session.gitflow_resume.as_ref().is_some_and(|r| r.resume.plan.branch == *branch)
     {
+        return auto_stash_saved::keep(st, i, fx);
+    }
+    // A stopped restack puts its stash back itself, on the branch checked out before.
+    if restack_holds {
         return auto_stash_saved::keep(st, i, fx);
     }
     let effect = move |cwd| Effect::Stash(StashEffect::PutBack(PutBackRequest { cwd, oid }));
@@ -344,7 +349,15 @@ fn approve_and_run(st: &mut AppState, op: AutoStashFor, stash: bool, retry: Box<
 }
 
 /// Tells how putting back the stash `name` went, in a toast and the log.
-fn told(st: &mut AppState, name: &str, outcome: PutBack, output: &str, oid: git2::Oid, workdir: std::path::PathBuf, now: Instant) {
+pub(super) fn told(
+    st: &mut AppState,
+    name: &str,
+    outcome: PutBack,
+    output: &str,
+    oid: git2::Oid,
+    workdir: std::path::PathBuf,
+    now: Instant,
+) {
     let t = st.settings.lang();
     match outcome {
         PutBack::Restored | PutBack::RestoredUnstaged | PutBack::Gone => {

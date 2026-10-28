@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 /// main <- low (l1) <- mid (m1) <- top (t1), with low checked out and amended, so mid and top
 /// need a restack.
-fn amended(name: &str) -> PathBuf {
+pub(super) fn amended(name: &str) -> PathBuf {
     let dir = scratch_repo(name);
     write(&dir, "g.txt", "1\n2\n3\n4\n5\n6\n7\n8\n");
     commit(&dir, "base");
@@ -25,16 +25,16 @@ fn amended(name: &str) -> PathBuf {
     dir
 }
 
-fn above_low(dir: &Path, autostash: bool) -> RestackPlan {
+pub(super) fn above_low(dir: &Path, autostash: bool) -> RestackPlan {
     let head = crate::repo::load(dir, &crate::repo::LoadOptions::all(100)).unwrap().head_branch;
     plan(&stacks_of(dir), &RestackScope::Above("low".into()), head.as_deref(), autostash)
 }
 
-fn head_name(dir: &Path) -> String {
+pub(super) fn head_name(dir: &Path) -> String {
     git2::Repository::open(dir).unwrap().head().unwrap().shorthand().unwrap().to_owned()
 }
 
-fn parent(dir: &Path, rev: &str) -> Oid {
+pub(super) fn parent(dir: &Path, rev: &str) -> Oid {
     tip(dir, &format!("{rev}^"))
 }
 
@@ -142,21 +142,6 @@ fn a_refusing_pre_rebase_hook_moves_nothing() {
     let run = restack(&dir, &p).unwrap();
     assert!(matches!(run.outcome, Outcome::Failed { .. }), "{:?}", run.outcome);
     assert_eq!((tip(&dir, "mid"), tip(&dir, "top")), (mid, top));
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn a_refused_checkout_back_stays_on_the_top() {
-    let dir = amended("stack-restack-stay");
-    // A change to a line mid didn't touch: it applies on top, but checking low out again would
-    // overwrite it.
-    write(&dir, "g.txt", "1\n2\n3\n4\n5\n6\n7\neight\n");
-    let p = above_low(&dir, true);
-    let run = restack(&dir, &p).unwrap();
-    assert!(matches!(run.outcome, Outcome::Finished { .. }), "{:?}", run.outcome);
-    assert_eq!(run.stayed_on.as_deref(), Some("top"));
-    assert_eq!(head_name(&dir), "top");
-    assert_eq!(std::fs::read_to_string(dir.join("g.txt")).unwrap(), "one\n2\n3\n4\n5\n6\n7\neight\n");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

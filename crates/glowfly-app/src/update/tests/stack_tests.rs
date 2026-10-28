@@ -14,23 +14,23 @@ use glowfly_core::stack::RestackScope;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-fn commit(dir: &Path, file: &str, text: &str, msg: &str) {
+pub(super) fn commit(dir: &Path, file: &str, text: &str, msg: &str) {
     std::fs::write(dir.join(file), text).unwrap();
     git(dir, &["add", "."]);
     git(dir, &["commit", "-q", "-m", msg]);
 }
 
-fn tip(dir: &Path, rev: &str) -> Oid {
+pub(super) fn tip(dir: &Path, rev: &str) -> Oid {
     git2::Repository::open(dir).unwrap().revparse_single(rev).unwrap().peel_to_commit().unwrap().id()
 }
 
-fn head_name(dir: &Path) -> String {
+pub(super) fn head_name(dir: &Path) -> String {
     git2::Repository::open(dir).unwrap().head().unwrap().shorthand().unwrap().to_owned()
 }
 
 /// main <- low <- mid <- top (mid edits g.txt's first line), with low checked out; `amend`
 /// rewrites low first, so mid and top need a restack.
-fn stacked(name: &str, amend: bool) -> PathBuf {
+pub(super) fn stacked(name: &str, amend: bool) -> PathBuf {
     let dir = scratch_repo(name);
     // Line endings off before a.txt is checked out again, or it comes back with a CRLF the index
     // doesn't have, and git's rebase sees an unstaged change once it re-reads the file.
@@ -50,7 +50,7 @@ fn stacked(name: &str, amend: bool) -> PathBuf {
     dir
 }
 
-fn opened(dir: &Path) -> AppState {
+pub(super) fn opened(dir: &Path) -> AppState {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.to_path_buf())));
     st
@@ -60,11 +60,11 @@ fn restack_msg(scope: RestackScope) -> Msg {
     Msg::Rebase(RebaseMsg::Restack { scope, autostash: false })
 }
 
-fn above_low() -> Msg {
+pub(super) fn above_low() -> Msg {
     restack_msg(RestackScope::Above("low".into()))
 }
 
-fn last_toast(st: &AppState) -> (bool, String) {
+pub(super) fn last_toast(st: &AppState) -> (bool, String) {
     st.toasts.last().map(|t| (t.ok, t.text.clone())).expect("a toast")
 }
 
@@ -72,7 +72,7 @@ fn logged(st: &AppState, text: &str) -> bool {
     st.log.iter().any(|l| l.text.contains(text))
 }
 
-fn undo_label(st: &AppState) -> String {
+pub(super) fn undo_label(st: &AppState) -> String {
     st.session.undo.undo_entry(st.settings.lang(), true).0
 }
 
@@ -271,7 +271,8 @@ fn a_dirty_tree_asks_then_stashes() {
     let fx = update(&mut st, Msg::ConfirmAccepted, Instant::now());
     assert!(matches!(&fx[..], [Effect::Rebase(RebaseEffect::Restack { job, .. })] if job.plan.autostash), "{fx:?}");
     finish(&mut st, fx);
-    assert_eq!(last_toast(&st), (true, "Restack succeeded".into()));
+    assert!(st.toasts.iter().any(|t| t.ok && t.text == "Restack succeeded"));
+    assert_eq!(last_toast(&st).1, "Your changes from \"Auto-stash before restacking onto low\" are back.");
     assert_eq!(std::fs::read_to_string(dir.join("l.txt")).unwrap(), "edited\n");
     assert_eq!(head_name(&dir), "low");
     assert_eq!(tip(&dir, "mid^"), tip(&dir, "low"));

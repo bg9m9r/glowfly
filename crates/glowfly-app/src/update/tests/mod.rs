@@ -216,6 +216,7 @@ pub(super) mod ssh_use_tests;
 pub(super) mod ssh_windows_tests;
 pub(super) mod stack_prs_tests;
 pub(super) mod stack_push_tests;
+pub(super) mod stack_stash_tests;
 pub(super) mod stack_tests;
 pub(super) mod stash_confirm_tests;
 pub(super) mod stash_push_options_tests;

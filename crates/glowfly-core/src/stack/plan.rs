@@ -15,13 +15,16 @@ pub struct RestackStep {
     pub top: String,
 }
 
-/// The steps of a restack, the branch to check out again afterwards, and whether each step
-/// stashes uncommitted changes first (`--autostash`).
+/// The steps of a restack, the branch checked out before (checked out again afterwards, even
+/// when the last step leaves HEAD on it, so an abort midway can go back), and whether the
+/// uncommitted changes are stashed once before the first step (`autostash`) and put back there
+/// at the end. `stash` is that stash while it waits: set on the steps left after a stop.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct RestackPlan {
     pub steps: Vec<RestackStep>,
     pub return_to: Option<String>,
     pub autostash: bool,
+    pub stash: Option<Oid>,
 }
 
 impl RestackPlan {
@@ -84,9 +87,8 @@ pub fn plan(stacks: &Stacks, scope: &RestackScope, head_branch: Option<&str>, au
         }
         moved.extend(&p[j..]);
     }
-    let last_top = steps.last().map(|s: &RestackStep| s.top.as_str());
-    let return_to = if steps.is_empty() { None } else { head_branch.filter(|h| Some(*h) != last_top).map(str::to_owned) };
-    RestackPlan { steps, return_to, autostash }
+    let return_to = if steps.is_empty() { None } else { head_branch.map(str::to_owned) };
+    RestackPlan { steps, return_to, autostash, stash: None }
 }
 
 /// Every path from `root` up to a branch with nothing stacked on it, children in name order;

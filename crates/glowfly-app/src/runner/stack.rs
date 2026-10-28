@@ -1,6 +1,7 @@
 //! Stack jobs: running a restack's steps with `glowfly_core::stack` (inside a journal note,
 //! like other history rewrites) and going on with a stopped one after the banner's Continue or
-//! Skip, each recording what the run means for the undo history; and pushing a stack's layers
+//! Skip, each recording what the run means for the undo history, and ending a stopped one whose
+//! rebase ended another way (recording the part that finished); and pushing a stack's layers
 //! (`Effect::Stack`), which moves no local branch, so it needs no note and no undo record.
 
 use super::err;
@@ -10,7 +11,7 @@ use crate::msg::{Msg, RebaseMsg, StackMsg};
 use glowfly_core::error::Result;
 use glowfly_core::journal::Op;
 use glowfly_core::rebase::{Outcome, Resume};
-use glowfly_core::stack::{self, RestackPlan, RestackRun};
+use glowfly_core::stack::{self, RestackRun};
 use glowfly_core::undo::{self, RestackBefore};
 use std::path::{Path, PathBuf};
 
@@ -41,9 +42,22 @@ pub(super) fn resume(cwd: PathBuf, how: Resume, job: RestackJob) -> Msg {
     ran(&cwd, before, job, result)
 }
 
-/// The result message: the job carries the steps still left, the tips before its first run and,
-/// after a stop, the step it stopped in (the one before the steps left, or the same one again
-/// when Continue or Skip stopped in it once more).
+/// Ends the stopped restack `job` once its rebase is over: back onto the branch checked out
+/// before, its stash put back, and what its finished steps moved recorded as one action.
+pub(super) fn end(cwd: PathBuf, job: RestackJob) -> Msg {
+    let top = job.stopped.as_ref().map(|s| s.top.clone());
+    let result = stack::end_stopped(&cwd, &job.plan, top.as_deref());
+    let undo = match (&result, &job.before) {
+        (Ok(_), Some(b)) => UndoResult::Recorded(undo::restacked(&cwd, b, &job.detail)),
+        _ => UndoResult::Recorded(None),
+    };
+    Msg::Rebase(RebaseMsg::RestackEnded { result: result.map_err(err), undo: Some(undo), job: Box::new(job) })
+}
+
+/// The result message: the job carries the steps still left (all of them, with the stash, when
+/// nothing could run), the tips before its first run and, after a stop, the step it stopped in
+/// (the one before the steps left, or the same one again when Continue or Skip stopped in it
+/// once more).
 fn ran(cwd: &Path, before: Option<RestackBefore>, job: RestackJob, result: Result<RestackRun>) -> Msg {
     let undo = recorded(cwd, before.as_ref(), &job.detail, &result);
     let stopped = match &result {
@@ -51,10 +65,12 @@ fn ran(cwd: &Path, before: Option<RestackBefore>, job: RestackJob, result: Resul
             let i = job.plan.steps.len().checked_sub(r.left.steps.len() + 1);
             i.and_then(|i| job.plan.steps.get(i).cloned()).or(job.stopped)
         }
-        _ => None,
+        Ok(r) if r.left.stash.is_none() => None,
+        // Still waiting with its stash (a Continue git refused, or nothing could run).
+        _ => job.stopped,
     };
-    let plan = result.as_ref().map(|r| r.left.clone()).unwrap_or_else(|_| RestackPlan::default());
-    let job = RestackJob { plan, before, detail: job.detail, stopped };
+    let plan = result.as_ref().map_or_else(|_| job.plan.clone(), |r| r.left.clone());
+    let job = RestackJob { plan, before, detail: job.detail, stopped, stash_op: job.stash_op };
     Msg::Rebase(RebaseMsg::RestackRan { result: result.map_err(err), undo, job: Box::new(job) })
 }
 

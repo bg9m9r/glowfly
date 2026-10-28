@@ -93,7 +93,7 @@ pub enum RebaseMsg {
     Resume(Resume),
     /// Restack the branches in `scope` (the branch menu's stack items, the offer after a
     /// rewrite; update/stack.rs). Uncommitted changes ask first; `autostash`: that question was
-    /// answered, so each step stashes them.
+    /// answered, so they are stashed once for the whole restack.
     Restack {
         scope: RestackScope,
         autostash: bool,
@@ -101,6 +101,13 @@ pub enum RebaseMsg {
     /// A restack job's result (its first run, or the banner's Continue or Skip of a stopped
     /// one), for whichever tab it ran in (like `RebaseFinished`).
     RestackRan {
+        result: Result<RestackRun, String>,
+        undo: Option<UndoResult>,
+        job: Box<RestackJob>,
+    },
+    /// The result of ending a stopped restack whose rebase ended another way
+    /// (`RebaseEffect::EndRestack`), for whichever tab it ran in.
+    RestackEnded {
         result: Result<RestackRun, String>,
         undo: Option<UndoResult>,
         job: Box<RestackJob>,
@@ -136,7 +143,8 @@ impl RebaseMsg {
             | Self::RunEdit { .. }
             | Self::Resume(..)
             | Self::Restack { .. }
-            | Self::RestackRan { .. } => None,
+            | Self::RestackRan { .. }
+            | Self::RestackEnded { .. } => None,
         }
     }
 }

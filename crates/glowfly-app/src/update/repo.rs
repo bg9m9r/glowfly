@@ -324,7 +324,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             }
             super::compare_wip::refreshed(st, &snap, fx);
             super::rebase::refreshed(st, &snap);
-            super::stack::refreshed(st, &snap);
+            super::stack::refreshed(st, &snap, fx);
             super::shallow::refreshed(st, &snap, fx);
         }
     }

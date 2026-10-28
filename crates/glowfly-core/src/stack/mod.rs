@@ -18,6 +18,7 @@ mod porcelain;
 mod push;
 mod read;
 mod restack;
+mod restack_end;
 
 pub use link::{BranchTip, StackInput, link};
 pub use plan::{RestackPlan, RestackStep, plan};
@@ -25,6 +26,7 @@ pub use porcelain::{commands as push_commands, parse as parse_porcelain};
 pub use push::{LayerOutcome, LayerPushed, MAX_LEASE_REFLOG, PushPlan, PushTarget, StackPush, classify, push};
 pub use read::read;
 pub use restack::{RestackRun, restack, resume};
+pub use restack_end::{STILL_REBASING, end_stopped, stash_op};
 
 /// Why a restack refuses to run when the stack no longer matches its plan.
 pub const STALE_PLAN: &str = "The stack changed since this restack was planned. Try again.";
@@ -112,5 +114,7 @@ mod porcelain_tests;
 mod push_tests;
 #[cfg(test)]
 mod read_tests;
+#[cfg(test)]
+mod restack_stash_tests;
 #[cfg(test)]
 mod restack_tests;

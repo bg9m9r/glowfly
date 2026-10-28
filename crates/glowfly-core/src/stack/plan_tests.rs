@@ -74,9 +74,9 @@ fn onto_leaves_siblings_out() {
 }
 
 #[test]
-fn return_to_is_left_out_when_head_is_the_last_top() {
+fn return_to_is_the_branch_checked_out_before_even_the_last_top() {
     let s = stacks(vec![on("M", "L", 1, true)]);
-    assert_eq!(plan(&s, &above("L"), Some("M"), false).return_to, None);
+    assert_eq!(plan(&s, &above("L"), Some("M"), false).return_to.as_deref(), Some("M"));
     assert_eq!(plan(&s, &above("L"), Some("other"), false).return_to.as_deref(), Some("other"));
 }
 

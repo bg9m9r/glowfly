@@ -23,21 +23,52 @@ pub const GIT_AUTOSTASH: &str = "autostash";
 
 /// The operation an auto-stash was made for, with the names its message shows. Most come
 /// from the command about to run (`of_command`). The others are asked for by their entry
-/// points: a Git Flow start or finish (its full branch name, such as "feature/login") and the
-/// checkout of a pull request's source branch (`pr` is the forge's label, such as "#12").
+/// points: a Git Flow start or finish (its full branch name, such as "feature/login"), the
+/// checkout of a pull request's source branch (`pr` is the forge's label, such as "#12") and a
+/// restack (`stack::restack` makes and puts back its stash itself).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AutoStashFor {
-    Checkout { target: String },
-    Pull { branch: String },
-    Merge { from: String, into: String },
-    Rebase { branch: String, onto: String },
-    CherryPick { commits: String, onto: String },
-    Revert { commits: String, on: String },
-    HardReset { branch: String, to: String },
-    GitFlowFinish { branch: String },
-    GitFlowStart { branch: String },
-    PullRequestCheckout { pr: String, branch: String },
+    Checkout {
+        target: String,
+    },
+    Pull {
+        branch: String,
+    },
+    Merge {
+        from: String,
+        into: String,
+    },
+    Rebase {
+        branch: String,
+        onto: String,
+    },
+    CherryPick {
+        commits: String,
+        onto: String,
+    },
+    Revert {
+        commits: String,
+        on: String,
+    },
+    HardReset {
+        branch: String,
+        to: String,
+    },
+    GitFlowFinish {
+        branch: String,
+    },
+    GitFlowStart {
+        branch: String,
+    },
+    PullRequestCheckout {
+        pr: String,
+        branch: String,
+    },
+    /// A restack of stacked branches onto `onto`, stashed once before its first step.
+    Restack {
+        onto: String,
+    },
 }
 
 /// Flags that carry on, end or edit an operation already started, or make a rebase interactive.
@@ -85,6 +116,7 @@ impl AutoStashFor {
             Self::GitFlowFinish { branch } => format!("finishing {branch}"),
             Self::GitFlowStart { branch } => format!("starting {branch}"),
             Self::PullRequestCheckout { pr, branch } => format!("checking out {branch} for {pr}"),
+            Self::Restack { onto } => format!("restacking onto {onto}"),
         };
         format!("{AUTO_STASH_PREFIX}{what}")
     }
@@ -104,6 +136,7 @@ impl AutoStashFor {
                 | Self::CherryPick { .. }
                 | Self::Revert { .. }
                 | Self::GitFlowFinish { .. }
+                | Self::Restack { .. }
         )
     }
 

@@ -90,7 +90,8 @@ source file, update its line here. Features that span every layer are in
 
 - `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests in `update/tests/` (`mod.rs` lists them, `helpers.rs` holds the shared fixtures).
 - `terminal_schemes.rs`: importing terminal color schemes and switching the terminal to the first one.
-- `stack.rs`: restacking stacked branches: a rebase job whose results end in `rebase.rs::finished` and whose stopped runs wait in `st.restacks` for the banner's Continue or Skip.
+- `stack.rs`: restacking stacked branches: a rebase job whose results end in `rebase.rs::finished` and whose stopped runs wait in `st.restacks` for the banner's Continue or Skip; a stop whose rebase ended another way ends as the quiet `EndRestack` job (back to the branch checked out before, stash put back, finished part recorded for undo).
+- `auto_stash_restack.rs`: a restack's auto-stash as a pending entry while its stop waits (held from the ordinary put-back, saved for a restart), and telling how the restack's own put-back went.
 - `stack_push.rs`: pushing a stack as one job with a log line per layer.
 - `stack_prs.rs`: creating a stack's pull requests: the push first when a layer isn't on the code host's remote, then one create dialog per layer bottom first, skipping layers with an open one, and stopping on Cancel, Esc, a failed create or a tab switch.
 - `op_progress.rs`: the strip's Show work in progress and the banner's confirmed Abort.

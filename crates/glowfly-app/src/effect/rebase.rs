@@ -8,18 +8,21 @@ use super::EffectMeta;
 use super::SandboxRule;
 use glowfly_core::rebase::{EditTodoRequest, QuickEdit, RebaseBase, Resume, StartRequest};
 use glowfly_core::stack::{RestackPlan, RestackStep};
+use glowfly_core::stash_ops::AutoStashFor;
 use glowfly_core::undo::RestackBefore;
 use std::path::{Path, PathBuf};
 
-/// A restack job: the steps still to run, every branch's tip before its first run (for undo),
-/// how the undo history names it ("restack of the branches above search"), and the step a
-/// stopped run stopped in.
+/// A restack job: the steps still to run (with the auto-stash waiting after a stop), every
+/// branch's tip before its first run (for undo), how the undo history names it ("restack of
+/// the branches above search"), the step a stopped run stopped in, and the operation its
+/// auto-stash is made for (`None`: it doesn't stash).
 #[derive(Debug, Clone)]
 pub struct RestackJob {
     pub plan: RestackPlan,
     pub before: Option<RestackBefore>,
     pub detail: String,
     pub stopped: Option<RestackStep>,
+    pub stash_op: Option<AutoStashFor>,
 }
 
 #[derive(Debug)]
@@ -43,6 +46,10 @@ pub enum RebaseEffect {
     /// Continues or skips the step a restack stopped at, then runs the steps it has left; a job,
     /// unscoped like `Start`.
     ResumeRestack { cwd: PathBuf, how: Resume, job: RestackJob },
+    /// Ends a stopped restack whose rebase ended another way (Abort, or outside Glowfly): back
+    /// onto the branch checked out before, its stash put back, the finished part recorded
+    /// (`RebaseMsg::RestackEnded`); a quiet job, unscoped like `Start`.
+    EndRestack { cwd: PathBuf, job: RestackJob },
 }
 
 impl EffectMeta for RebaseEffect {
@@ -56,6 +63,7 @@ impl EffectMeta for RebaseEffect {
             Self::EditTodo { .. } => "rebase-edit-todo",
             Self::Restack { .. } => "restack",
             Self::ResumeRestack { .. } => "restack-resume",
+            Self::EndRestack { .. } => "restack-end",
         }
     }
 
@@ -64,7 +72,12 @@ impl EffectMeta for RebaseEffect {
     fn scope(&self) -> Option<&PathBuf> {
         match self {
             Self::LoadPlan { workdir, .. } | Self::PrepareEdit { workdir, .. } | Self::LoadRemaining { workdir, .. } => Some(workdir),
-            Self::Start { .. } | Self::Resume { .. } | Self::EditTodo { .. } | Self::Restack { .. } | Self::ResumeRestack { .. } => None,
+            Self::Start { .. }
+            | Self::Resume { .. }
+            | Self::EditTodo { .. }
+            | Self::Restack { .. }
+            | Self::ResumeRestack { .. }
+            | Self::EndRestack { .. } => None,
         }
     }
 
@@ -80,7 +93,8 @@ impl EffectMeta for RebaseEffect {
             | Self::Resume { cwd, .. }
             | Self::EditTodo { cwd, .. }
             | Self::Restack { cwd, .. }
-            | Self::ResumeRestack { cwd, .. } => Some(cwd),
+            | Self::ResumeRestack { cwd, .. }
+            | Self::EndRestack { cwd, .. } => Some(cwd),
             Self::LoadPlan { .. } | Self::PrepareEdit { .. } | Self::LoadRemaining { .. } => None,
         }
     }
