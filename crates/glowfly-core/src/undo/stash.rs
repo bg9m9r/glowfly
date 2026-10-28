@@ -55,7 +55,8 @@ pub(super) fn hash(workdir: &Path, path: &str) -> Result<Option<Oid>> {
     let f = workdir.join(crate::repo::contained(path)?);
     let meta = match f.symlink_metadata() {
         Ok(m) => m,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        // A file where a folder on the way should be: nothing is at `path` (ENOTDIR on Unix).
+        Err(e) if matches!(e.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory) => return Ok(None),
         Err(e) => return Err(e.into()),
     };
     Ok(Some(if meta.is_file() {

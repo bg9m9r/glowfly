@@ -32,6 +32,39 @@ fn reshaped(name: &str) -> PathBuf {
 }
 
 #[test]
+fn a_file_where_the_abort_needs_a_folder_refuses_it() {
+    let dir = scratch_repo("abort-safe-ancestor");
+    std::fs::create_dir_all(dir.join("docs")).unwrap();
+    write(&dir, "docs/x.md", "the only file in docs\n");
+    commit(&dir, "c.txt", "base\n", "base");
+    git(&dir, &["checkout", "-q", "-b", "other"]);
+    git(&dir, &["rm", "-q", "docs/x.md"]);
+    commit(&dir, "c.txt", "theirs\n", "theirs");
+    git(&dir, &["checkout", "-q", "main"]);
+    commit(&dir, "c.txt", "ours\n", "ours");
+    let (ok, _) = run(&dir, &args(&["merge", "other"]));
+    assert!(!ok, "the merge stops for the conflict");
+    assert!(!dir.join("docs").exists(), "git removed the empty folder");
+    write(&dir, "docs", "a file a tool wrote\n");
+    let r = abort_keeping(&dir, Some(&[]), |_| panic!("nothing runs"));
+    assert!(!r.ok && r.output.contains("docs is a file where the abort needs a folder"), "{}", r.output);
+    assert!(r.output.starts_with(NOTHING_ABORTED));
+    assert_eq!(state(&dir), RepositoryState::Merge);
+    assert_eq!(read(&dir, "docs"), "a file a tool wrote\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_path_under_a_file_reads_as_absent() {
+    // ENOTDIR on Unix, not found on Windows: either way nothing is there.
+    let dir = scratch_repo("abort-safe-notdir");
+    write(&dir, "lib", "a file\n");
+    assert_eq!(super::stash::hash(&dir, "lib/a.rs").unwrap(), None);
+    assert!(matches!(super::aborted::on_disk(&dir, "lib/a.rs").unwrap(), super::aborted::OnDisk::Nothing));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_folder_holding_files_the_merge_didnt_bring_refuses_the_abort() {
     let dir = reshaped("abort-safe-folder");
     write(&dir, "lib/b.rs", "my new file\n");

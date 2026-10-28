@@ -1205,6 +1205,7 @@
   "op.confirm.conflicted_kept.other": "Änderungen in den {count} Dateien mit Konflikten ebenfalls.",
   "op.confirm.conflicted_lost.one": "Änderungen in der {count} Datei mit Konflikt gehen ebenfalls verloren.",
   "op.confirm.conflicted_lost.other": "Änderungen in den {count} Dateien mit Konflikten gehen ebenfalls verloren.",
+  "op.confirm.keep_refused": "Die Arbeit kann nicht zum Rückgängigmachen aufbewahrt werden: {reason}",
   "op.confirm.no_undo": "Das lässt sich nicht rückgängig machen.",
   "op.confirm.others_stay": "Deine anderen Änderungen bleiben, wie sie sind.",
   "op.confirm.reset_bisect.body": "Die Markierungen gut und schlecht werden vergessen, und HEAD kehrt dorthin zurück, wo der Bisect begann.",

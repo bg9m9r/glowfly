@@ -4,9 +4,9 @@
 //! staged files, conflicted ones) aborts keeping it first (`glowfly_core::undo::abort_keeping`):
 //! Undo puts the operation back in progress with that work, and edits to other files stay.
 
-use super::AppState;
-use super::op_actions::action_text;
+use super::op_actions::{action_text, state_actions};
 use super::rebase_banner::action_msg;
+use super::{AppState, Modal};
 use crate::msg::{JobMsg, Msg};
 use git2::RepositoryState;
 use glowfly_core::gitcli;
@@ -66,6 +66,20 @@ pub fn banner_msg(st: &AppState, label: &'static str, args: &'static [&'static s
         Risky::ResetBisect => Msg::git(label, args),
     };
     Msg::confirm_danger(title, body(t, what, resolved, conflicted, others, keep), action_text(t, label), then)
+}
+
+/// After an abort that was to keep its work was refused for `reason` (nothing changed), the
+/// dialog offering the plain abort of the operation still in progress, which can't be undone,
+/// so the user is never left unable to abort. None when nothing abortable is in progress.
+pub fn plain_abort(st: &AppState, reason: &str) -> Option<Modal> {
+    let snap = st.snap.as_ref()?;
+    let (label, args) = *state_actions(snap.state)?.iter().find(|(_, a)| Risky::of(a) == Some(Risky::Abort))?;
+    let t = st.settings.lang();
+    let (title, what) = words(t, Risky::Abort, args);
+    let refused = t.trf("op.confirm.keep_refused", &[("reason", &reason)]);
+    let body = [what, refused.as_str(), t.tr("op.confirm.no_undo")].join("\n\n");
+    let then = Msg::Job(JobMsg::Abort { label: label.into(), args: gitcli::args(args), keep: false });
+    Some(Modal::danger(title, body, action_text(t, label), then))
 }
 
 /// The dialog's title and its sentence on what happens, for `risky` running `args`.

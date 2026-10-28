@@ -40,6 +40,20 @@ pub(super) fn abort(st: &mut AppState, label: String, args: Vec<String>, keep: b
     super::ops::begin_job(st, &label, true, |cwd| Effect::Stash(StashEffect::AbortKeeping { cwd, keep }), fx);
 }
 
+/// The reason a kept abort was refused with nothing changed, from its job's `output`.
+pub(super) fn refused(output: &str) -> Option<String> {
+    let reason = output.strip_prefix(glowfly_core::undo::NOTHING_ABORTED)?;
+    Some(reason.trim().trim_end_matches('.').to_owned())
+}
+
+/// After a refused kept abort, offers the plain abort (`op_confirm::plain_abort`) unless another
+/// dialog is open.
+pub(super) fn offer_plain(st: &mut AppState, reason: &str) {
+    if st.modal.is_none() {
+        st.modal = crate::state::op_confirm::plain_abort(st, reason);
+    }
+}
+
 /// The kept aborts every tab's undo history still names, whose refs must stay.
 fn kept_aborts(st: &AppState) -> Vec<git2::Oid> {
     let parked = st.tabs.iter().filter_map(|t| t.parked.as_ref()).map(|p| &p.session.undo);

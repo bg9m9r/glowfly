@@ -1205,6 +1205,7 @@
   "op.confirm.conflicted_kept.other": "Los cambios en los {count} archivos en conflicto también.",
   "op.confirm.conflicted_lost.one": "Los cambios en el {count} archivo en conflicto también se pierden.",
   "op.confirm.conflicted_lost.other": "Los cambios en los {count} archivos en conflicto también se pierden.",
+  "op.confirm.keep_refused": "El trabajo no se puede guardar para deshacer: {reason}",
   "op.confirm.no_undo": "Esto no se puede deshacer.",
   "op.confirm.others_stay": "Tus otros cambios se quedan como están.",
   "op.confirm.reset_bisect.body": "Las marcas de bueno y malo se olvidan y HEAD vuelve a donde empezó el bisect.",

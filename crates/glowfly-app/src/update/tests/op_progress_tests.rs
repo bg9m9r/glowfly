@@ -199,6 +199,42 @@ fn undo_of_a_kept_abort_refuses_when_its_file_changed() {
 }
 
 #[test]
+fn a_kept_abort_that_cant_keep_offers_the_plain_abort() {
+    // HEAD has the file `lib`; other makes it the folder `lib/a.rs` and ignores `*.o`.
+    let dir = scratch_repo("op-abort-cant-keep");
+    git(&dir, &["config", "core.autocrlf", "false"]);
+    std::fs::write(dir.join("lib"), "a file\n").unwrap();
+    git(&dir, &["add", "lib"]);
+    git(&dir, &["commit", "-q", "-m", "lib"]);
+    git(&dir, &["checkout", "-q", "-b", "other"]);
+    git(&dir, &["rm", "-q", "lib"]);
+    std::fs::create_dir(dir.join("lib")).unwrap();
+    std::fs::write(dir.join("lib").join("a.rs"), "fn a() {}\n").unwrap();
+    std::fs::write(dir.join(".gitignore"), "*.o\n").unwrap();
+    std::fs::write(dir.join("a.txt"), "one\ntheirs\n").unwrap();
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "theirs"]);
+    git(&dir, &["checkout", "-q", "main"]);
+    std::fs::write(dir.join("a.txt"), "one\nours\n").unwrap();
+    git(&dir, &["commit", "-q", "-am", "ours"]);
+    let (ok, _) = glowfly_core::gitcli::run(&dir, &glowfly_core::gitcli::args(&["merge", "other"]));
+    assert!(!ok, "the merge stops for the conflict");
+    // A build wrote an ignored file into the folder the merge brought.
+    std::fs::write(dir.join("lib").join("a.o"), "built\n").unwrap();
+    let mut st = opened(&dir);
+    ask(&mut st, "Abort");
+    drive(&mut st, Msg::ConfirmAccepted);
+    assert_eq!(repo_state(&st), RepositoryState::Merge, "nothing was aborted");
+    let Some(Modal::ConfirmDanger { title, body, .. }) = &st.modal else { panic!("offers the plain abort") };
+    assert_eq!(title, "Abort the merge?");
+    assert!(body.contains("The work can't be kept for undoing: lib is a folder holding lib/a.o"), "{body}");
+    assert!(body.ends_with("This can't be undone."), "{body}");
+    drive(&mut st, Msg::ConfirmAccepted);
+    assert_eq!(repo_state(&st), RepositoryState::Clean, "the plain abort ran");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn abort_keep_refused_when_the_operation_ended_meanwhile() {
     let dir = conflicted_repo("op-abort-refused");
     let mut st = opened(&dir);

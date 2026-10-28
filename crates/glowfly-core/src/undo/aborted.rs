@@ -197,6 +197,24 @@ fn check_folder(workdir: &Path, dir: &str, paths: &BTreeSet<String>) -> Result<(
     Ok(())
 }
 
+/// Refuses a file (or link) standing where a folder of the operation's path `path` should be,
+/// unless it is one of the operation's `paths` itself (kept in its own turn): the abort would
+/// remove it to put the folder back, with nothing kept.
+fn check_ancestors(workdir: &Path, path: &str, paths: &BTreeSet<String>) -> Result<()> {
+    for (i, _) in path.match_indices('/') {
+        let dir = &path[..i];
+        match on_disk(workdir, dir)? {
+            OnDisk::Folder => {}
+            OnDisk::Nothing => return Ok(()),
+            OnDisk::Item if paths.contains(dir) => return Ok(()),
+            OnDisk::Item => {
+                return Err(Error::Unsupported(format!("{dir} is a file where the abort needs a folder; move it away first")));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Keeps the work of the merge, single cherry-pick or single revert in progress (see the module
 /// doc) and returns the commands that then abort it. Refused, with nothing changed, when it
 /// can't all be kept: something at one of its paths that isn't a regular file (or a folder of
@@ -227,7 +245,10 @@ pub(super) fn abort_saving(workdir: &Path, prune: Option<&[Oid]>) -> Result<Abor
     let (mut work, mut absent) = (BTreeMap::new(), Vec::new());
     for p in paths.iter().filter(|p| !gitlink(p)) {
         match on_disk(workdir, p)? {
-            OnDisk::Nothing => absent.push(p.as_str()),
+            OnDisk::Nothing => {
+                check_ancestors(workdir, p, &paths)?;
+                absent.push(p.as_str());
+            }
             // Its files are the operation's paths, each kept in its own turn.
             OnDisk::Folder => {
                 check_folder(workdir, p, &paths)?;

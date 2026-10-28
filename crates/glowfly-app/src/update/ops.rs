@@ -121,7 +121,11 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             let stash = super::stash_push::headline(st, ok, &output);
             let (checkout, warn) = super::tag_checkout::headline(st, ok).map_or((None, None), |(t, w)| (Some(t), w));
             let headline = flow.or(tag).or(patch).or(stash).or(checkout);
+            let refused = (!ok).then(|| super::op_progress::refused(&output)).flatten();
             finish_job(st, ok, output, headline.clone(), undo, now, fx);
+            if let Some(reason) = refused {
+                super::op_progress::offer_plain(st, &reason);
+            }
             if let Some(p) = warn {
                 super::tag_checkout::warned(st, p, fx);
             }

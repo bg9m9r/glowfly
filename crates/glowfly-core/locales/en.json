@@ -1205,6 +1205,7 @@
   "op.confirm.conflicted_kept.other": "Edits in the {count} conflicted files go too.",
   "op.confirm.conflicted_lost.one": "Edits in the {count} conflicted file are lost too.",
   "op.confirm.conflicted_lost.other": "Edits in the {count} conflicted files are lost too.",
+  "op.confirm.keep_refused": "The work can't be kept for undoing: {reason}",
   "op.confirm.no_undo": "This can't be undone.",
   "op.confirm.others_stay": "Your other changes stay as they are.",
   "op.confirm.reset_bisect.body": "The good and bad marks are forgotten and HEAD goes back to where the bisect started.",

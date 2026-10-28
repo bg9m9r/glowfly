@@ -9,6 +9,10 @@ use super::aborted_restore::{left, put_back};
 use git2::Oid;
 use std::path::Path;
 
+/// How the output of a kept abort that was refused, with nothing changed, starts; the reason
+/// follows. The app then offers the plain abort.
+pub const NOTHING_ABORTED: &str = "Nothing was aborted: ";
+
 /// How a kept abort went.
 #[derive(Debug)]
 pub struct AbortRun {
@@ -28,7 +32,7 @@ pub fn abort_keeping(workdir: &Path, prune: Option<&[Oid]>, run: impl FnOnce(&[V
     let failed = |output: String| AbortRun { ok: false, output, action: None };
     let saving = match abort_saving(workdir, prune) {
         Ok(s) => s,
-        Err(e) => return failed(format!("Nothing was aborted: {e}.")),
+        Err(e) => return failed(format!("{NOTHING_ABORTED}{e}.")),
     };
     let Action::AbortKept { op, saved, head, branch, .. } = saving.action else { unreachable!("a kept abort") };
     let (ok, output) = run(&saving.cmds);
@@ -45,8 +49,8 @@ pub fn abort_keeping(workdir: &Path, prune: Option<&[Oid]>, run: impl FnOnce(&[V
             output: format!("{output}\nIts work is kept in {kept} until Undo puts it back.").trim().to_owned(),
             action: Some(Action::AbortKept { op, saved, head, branch, left }),
         },
-        Err(e) => {
-            AbortRun { ok: true, output: format!("{output}\nUndo can't put it back ({e}); its work is kept in {kept}."), action: None }
-        }
+        // The abort happened, but Undo has nothing to check against: said as a failure, so the
+        // ref that keeps the work is seen (it is pruned only once it is `KEEP_DAYS` old).
+        Err(e) => failed(format!("{output}\nThe abort happened, but Undo can't put its work back ({e}). All of it is kept in {kept}.")),
     }
 }
