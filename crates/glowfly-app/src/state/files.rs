@@ -34,12 +34,15 @@ pub fn show_in_folder(t: Lang) -> &'static str {
 }
 
 /// The trash on `path`'s drive can't be used (Linux): `body` asks whether to move it to the home
-/// Trash (`op` in `DeleteMode::HomeTrash`) or delete it permanently instead.
+/// Trash (`op` in `DeleteMode::HomeTrash`) or delete it permanently instead. For a file Undo
+/// can't bring back, `confirm` is the body and acknowledgement of the confirmation Delete
+/// permanently opens first.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TrashOffer {
     pub op: crate::effect::FileOp,
     pub path: String,
     pub body: String,
+    pub confirm: Option<(String, String)>,
 }
 
 /// A path field with the outcome of its last submission.

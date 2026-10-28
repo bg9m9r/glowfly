@@ -240,3 +240,16 @@ fn a_file_that_came_back_from_the_trash_with_other_bytes_is_left_alone() {
     assert_eq!(std::fs::read_to_string(dir.join("u.txt")).unwrap(), "someone else's\n", "left as it is");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn only_a_regular_file_up_to_the_limit_keeps_a_copy() {
+    let dir = base("ufa-keeps-copy");
+    let big = std::fs::File::create(dir.join("big.bin")).unwrap();
+    big.set_len(MAX_KEPT_BYTES + 1).unwrap();
+    drop(big);
+    assert!(keeps_copy(&dir, "f.txt"));
+    assert!(!keeps_copy(&dir, "big.bin"), "over 64 MB: a permanent delete would be final");
+    assert!(!keeps_copy(&dir, "missing.txt"));
+    assert!(!keeps_copy(&dir, "../outside.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}

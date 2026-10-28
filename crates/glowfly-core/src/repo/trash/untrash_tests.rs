@@ -4,7 +4,7 @@
 //! real Recycle Bin / Trash only in an ignored test run by hand.
 
 use super::home::{bytes_of_info, info_path, list_home, take_out, trashinfo};
-use super::untrash::{Candidate, newest_ours, same_place};
+use super::untrash::{Candidate, newest_ours, recycle_record, same_place};
 use std::path::{Path, PathBuf};
 
 fn temp(name: &str) -> PathBuf {
@@ -27,10 +27,14 @@ fn only_an_item_from_that_path_with_the_kept_bytes_is_picked_newest_first() {
         cand("/r/a.txt", 20, "mid-same"),
     ];
     let same = |p: &Path| p.to_string_lossy().ends_with("-same");
-    let found = newest_ours(items.clone(), Path::new("/r/a.txt"), false, &same).expect("found");
+    let at = |p: &str| vec![PathBuf::from(p)];
+    let found = newest_ours(items.clone(), &at("/r/a.txt"), false, &same).expect("found");
     assert_eq!(found.item, 20, "the newest with the kept bytes, not a newer one with other bytes");
-    assert!(newest_ours(items.clone(), Path::new("/r/c.txt"), false, &same).is_none(), "nothing from that path");
-    assert!(newest_ours(items, Path::new("/r/a.txt"), false, &|_| false).is_none(), "nothing with those bytes");
+    assert!(newest_ours(items.clone(), &at("/r/c.txt"), false, &same).is_none(), "nothing from that path");
+    assert!(newest_ours(items.clone(), &at("/r/a.txt"), false, &|_| false).is_none(), "nothing with those bytes");
+    // The trash recorded the resolved folder (a link in the path given): either place matches.
+    let both = vec![PathBuf::from("/link/a.txt"), PathBuf::from("/r/a.txt")];
+    assert_eq!(newest_ours(items, &both, false, &same).map(|c| c.item), Some(20));
 }
 
 #[test]
@@ -40,6 +44,13 @@ fn windows_paths_compare_without_case_separators_or_a_verbatim_prefix() {
     assert!(same_place(Path::new(r"\\?\UNC\srv\share\a.txt"), Path::new(r"\\srv\share\a.txt"), true));
     assert!(!same_place(Path::new(r"C:\repo\a.txt"), Path::new(r"C:\repo\b.txt"), true));
     assert!(!same_place(Path::new("/r/A.txt"), Path::new("/r/a.txt"), false), "case matters elsewhere");
+}
+
+#[test]
+fn a_recycle_bin_item_s_record_is_its_i_file() {
+    let bin = Path::new(r"C:\$Recycle.Bin\S-1-5-21");
+    assert_eq!(recycle_record(&bin.join("$RAB12CD.txt")), Some(bin.join("$IAB12CD.txt")));
+    assert_eq!(recycle_record(&bin.join("a.txt")), None, "not a bin item: nothing is removed");
 }
 
 #[test]
@@ -105,6 +116,11 @@ fn real_trash_round_trip() {
     } else {
         assert_eq!(got, super::Untrashed::Restored);
         assert_eq!(std::fs::read_to_string(&full).unwrap(), "round trip\n");
+        #[cfg(not(target_os = "macos"))]
+        {
+            let left = trash::os_limited::list().unwrap().into_iter().filter(|i| same_place(&i.original_path(), &full, cfg!(windows)));
+            assert_eq!(left.count(), 0, "no longer listed in the trash");
+        }
     }
     let _ = std::fs::remove_dir_all(&t);
 }

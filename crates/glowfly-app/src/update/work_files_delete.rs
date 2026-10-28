@@ -76,12 +76,14 @@ pub(super) fn ask_discard(st: &mut AppState, path: String) {
             format!("Move to {TRASH}"),
         )
     } else {
-        // Glowfly keeps a copy for Undo, as for Delete.
+        // Glowfly keeps a copy for Undo only of files up to 64 MB, and the size isn't known here.
         let hint = st.keymap.paren(BindingId::Undo);
         (st.settings.lang().trf("files.discard.permanent_body", &[("path", &path), ("hint", &hint)]), "Discard".to_owned())
     };
-    st.modal =
-        Some(Modal::danger("Discard changes", body, button, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode }))));
+    let trash = mode == DeleteMode::Trash;
+    let modal = Modal::danger("Discard changes", body, button, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode })));
+    // Without the trash, a file over 64 MB is gone for good: ask for the acknowledgement.
+    st.modal = Some(if trash { modal } else { modal.with_ack(st.settings.lang().tr("common.ack.check")) });
 }
 
 /// The confirmation for `path`, staged as new or (`renamed`) as a staged rename's new path:
@@ -129,7 +131,9 @@ pub(super) fn unstage_confirm(t: Lang, path: String, renamed: bool, gone: bool, 
 /// trash for it is a permanent delete offered; a file in use, a permission problem or anything
 /// else gets its own message and Retry, since deleting it for good would lose what the trash
 /// was meant to keep.
-pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal) {
+/// `too_large`: Glowfly kept no copy of the file for Undo (over 64 MB), so a permanent delete is
+/// said to be final and asks for the acknowledgement.
+pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal, too_large: bool) {
     let Some(path) = op.delete_path().map(str::to_owned) else {
         return tracing::debug!("the trash refused {op:?}, which isn't a delete");
     };
@@ -140,18 +144,25 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal
         button: "Retry".into(),
         then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.clone()))),
     };
-    // Delete, Unstage and delete and Discard all keep a copy for Undo.
+    // Delete, Unstage and delete and Discard keep a copy for Undo, but only of files up to 64 MB.
     let hint = st.keymap.paren(BindingId::Undo);
+    let t = st.settings.lang();
+    let ack = t.tr("common.ack.check");
     st.modal = Some(match refusal.problem {
         TrashProblem::NoTrash => {
-            let mut body = format!(
-                "{path} couldn't be moved to the {TRASH}: {detail}.\n\nDelete it permanently instead? It won't be in the {TRASH}, but Undo{hint} can still bring it back while this tab is open."
-            );
+            let mut body = if too_large {
+                format!("{path} couldn't be moved to the {TRASH}: {detail}.\n\n{}", t.tr("files.trash_refused.no_copy"))
+            } else {
+                format!(
+                    "{path} couldn't be moved to the {TRASH}: {detail}.\n\nDelete it permanently instead? It won't be in the {TRASH}, but Undo{hint} can still bring it back while this tab is open."
+                )
+            };
             if matches!(op, FileOp::UnstageDelete { .. }) {
                 body.push_str(" It also leaves the staging area.");
             }
             let then = Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.clone().permanent()));
-            Modal::danger("Delete permanently?", body, "Delete permanently", then)
+            let modal = Modal::danger("Delete permanently?", body, "Delete permanently", then);
+            if too_large { modal.with_ack(ack) } else { modal }
         }
         TrashProblem::InUse => retry(
             "File in use".into(),
@@ -170,11 +181,17 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal
             ),
         ),
         TrashProblem::HomeTrashOnly => {
-            let permanent = format!("Or delete it permanently; Undo{hint} can still bring it back while this tab is open.");
+            let (permanent, confirm) = if too_large {
+                // Delete permanently asks once more, with the acknowledgement.
+                let body = t.trf("files.trash_refused.confirm_no_copy", &[("path", &path)]);
+                (t.tr("files.trash_refused.home_no_copy").to_owned(), Some((body, ack.to_owned())))
+            } else {
+                (format!("Or delete it permanently; Undo{hint} can still bring it back while this tab is open."), None)
+            };
             let body = format!(
                 "{path} is on a drive whose trash folder Glowfly can't use: {detail}.\n\nMove it to the Trash in your home folder instead? It is copied there, which can take a while for a large file. {permanent}"
             );
-            Modal::TrashOffer(TrashOffer { op: op.clone(), path, body })
+            Modal::TrashOffer(TrashOffer { op: op.clone(), path, body, confirm })
         }
     });
 }

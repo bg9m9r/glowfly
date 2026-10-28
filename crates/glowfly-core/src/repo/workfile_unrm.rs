@@ -117,6 +117,8 @@ pub fn untrash_file(
     use super::Untrashed;
     let rel = contained(path)?;
     let (repo, root) = open_root(workdir)?;
+    // Only a file of the blob's size is read to compare, so a large one isn't read for nothing.
+    let size = repo.odb()?.read_header(blob)?.0 as u64;
     drop(repo);
     check_parents(&root, rel)?;
     let full = root.join(rel);
@@ -128,7 +130,7 @@ pub fn untrash_file(
         remove_dirs(&created);
         return Err(e);
     }
-    let ours = |p: &Path| holds(p, blob);
+    let ours = |p: &Path| holds(p, blob, size);
     let out = untrash(&full, &ours);
     // Whatever the trash said, what is at the path now decides: only the kept bytes count as back.
     if full.symlink_metadata().is_err() {
@@ -138,7 +140,7 @@ pub fn untrash_file(
             other => other,
         });
     }
-    if !holds(&full, blob) {
+    if !holds(&full, blob, size) {
         return Err(Error::Other(format!(
             "{rel} came back from the trash with other contents; it is left as it is, and the deleted version is kept as blob {blob} (git cat-file -p {blob})"
         )));
@@ -149,9 +151,9 @@ pub fn untrash_file(
     Ok(Untrashed::Restored)
 }
 
-/// Whether `p` is a regular file (not a link) holding exactly the bytes of `blob`.
-fn holds(p: &Path, blob: Oid) -> bool {
-    p.symlink_metadata().is_ok_and(|m| m.is_file())
+/// Whether `p` is a regular file (not a link) of `size` bytes holding exactly the bytes of `blob`.
+fn holds(p: &Path, blob: Oid, size: u64) -> bool {
+    p.symlink_metadata().is_ok_and(|m| m.is_file() && m.len() == size)
         && std::fs::read(p).is_ok_and(|b| Oid::hash_object(git2::ObjectType::Blob, &b).is_ok_and(|o| o == blob))
 }
 

@@ -34,7 +34,7 @@ fn trash_in_use_retry() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "trash-in-use");
     let refusal = TrashRefusal::new(TrashProblem::InUse, "in use");
     let op = FileOp::Delete { path: "notes/scratch.txt".into(), mode: DeleteMode::Trash };
-    crate::update::update(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal }), std::time::Instant::now());
+    crate::update::update(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: false, op, refusal }), std::time::Instant::now());
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("trash_in_use_retry");
@@ -52,7 +52,7 @@ fn trash_home_offer() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "trash-home-offer");
     let refusal = TrashRefusal::new(TrashProblem::HomeTrashOnly, "/mnt/usb has no trash folder you can use");
     let op = FileOp::Delete { path: "notes/scratch.txt".into(), mode: DeleteMode::Trash };
-    crate::update::update(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal }), std::time::Instant::now());
+    crate::update::update(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: false, op, refusal }), std::time::Instant::now());
     assert!(matches!(&st.modal, Some(Modal::TrashOffer(_))));
     let mut h = harness(st, false);
     h.run();
@@ -67,6 +67,29 @@ fn trash_home_offer() {
     h.get_by_label("Delete permanently").click();
     h.run();
     assert!(sent(&h.state().1, DeleteMode::PermanentNoTrash), "or deletes it for good");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The home Trash offer for a file Glowfly kept no copy of: Delete permanently asks once more,
+/// with the acknowledgement, instead of deleting straight away.
+#[test]
+fn trash_home_offer_without_a_copy_confirms_first() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "trash-home-offer-large");
+    let refusal = TrashRefusal::new(TrashProblem::HomeTrashOnly, "/mnt/usb has no trash folder you can use");
+    let op = FileOp::Delete { path: "notes/scratch.txt".into(), mode: DeleteMode::Trash };
+    crate::update::update(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: true, op, refusal }), std::time::Instant::now());
+    let mut h = harness(st, false);
+    h.run();
+    h.get_by_label("Delete permanently").click();
+    h.run();
+    let msgs = &h.state().1;
+    assert!(
+        msgs.iter().any(|m| matches!(m, Msg::ConfirmDanger { ack: Some(_), then, .. }
+            if matches!(&**then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Delete { mode: DeleteMode::PermanentNoTrash, .. }))))),
+        "asks with the acknowledgement"
+    );
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(_)))), "nothing is deleted yet");
     drop(h);
     remove_fixture(&dir);
 }

@@ -2,8 +2,9 @@
 //! file's path and holds exactly the bytes Glowfly kept is taken out (the newest such item), and
 //! never over anything at the path.
 //!
-//! - Windows: the Recycle Bin is listed and the item restored through the shell (the `trash`
-//!   crate), which keeps its dates and attributes.
+//! - Windows: the Recycle Bin is listed (the `trash` crate) and the item's `$R` file linked back
+//!   to its path, which never replaces anything (the shell's own restore runs without UI and so
+//!   would overwrite a file saved there meanwhile); then its `$R` bytes and `$I` record go.
 //! - Linux and the BSDs (freedesktop): the trash folders the `trash` crate knows (inside Flatpak
 //!   also the host's home Trash, which Glowfly moves files into itself) are read, and the file is
 //!   linked back to its path (copied when the trash is on another drive), then removed from the
@@ -80,43 +81,83 @@ pub(crate) fn same_place(a: &Path, b: &Path, windows: bool) -> bool {
     norm(a) == norm(b)
 }
 
-/// The newest of `items` that was at `full` and whose bytes `ours` accepts.
+/// The newest of `items` that was at one of `places` (one path, as given and with its parent
+/// folder resolved, since the trash may record either) and whose bytes `ours` accepts.
 pub(crate) fn newest_ours<T>(
     mut items: Vec<Candidate<T>>,
-    full: &Path,
+    places: &[PathBuf],
     windows: bool,
     ours: &dyn Fn(&Path) -> bool,
 ) -> Option<Candidate<T>> {
-    items.retain(|c| same_place(&c.original, full, windows));
+    items.retain(|c| places.iter().any(|p| same_place(&c.original, p, windows)));
     items.sort_by_key(|c| std::cmp::Reverse(c.deleted));
     items.into_iter().find(|c| ours(&c.bytes))
 }
 
+/// `full`, and `full` with its parent folder resolved (links, short names) when that differs.
+fn places(full: &Path) -> Vec<PathBuf> {
+    let mut out = vec![full.to_path_buf()];
+    if let (Some(parent), Some(name)) = (full.parent(), full.file_name())
+        && let Ok(real) = std::fs::canonicalize(parent)
+        && real.join(name) != full
+    {
+        out.push(real.join(name));
+    }
+    out
+}
+
+/// The `$I…` record next to a Recycle Bin item's `$R…` bytes; `None` for any other name.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) fn recycle_record(bytes: &Path) -> Option<PathBuf> {
+    let name = bytes.file_name()?.to_str()?;
+    let rest = name.strip_prefix("$R")?;
+    Some(bytes.with_file_name(format!("$I{rest}")))
+}
+
+/// The trash's list, or why it couldn't be read. The `trash` crate panics on some malformed
+/// `.trashinfo` files; that becomes a failure, so Undo writes Glowfly's copy instead.
+fn listed() -> Result<Vec<trash::TrashItem>, String> {
+    #[cfg(not(target_os = "macos"))]
+    {
+        match std::panic::catch_unwind(trash::os_limited::list) {
+            Ok(Ok(items)) => Ok(items),
+            Ok(Err(e)) => Err(super::detail_of(&e)),
+            Err(_) => Err("the trash holds a record Glowfly can't read".into()),
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Err("this system's trash can't be read back".into())
+    }
+}
+
+/// The Recycle Bin item is linked back to its path (never replacing anything, unlike the shell's
+/// restore, which runs without UI and so overwrites), then its `$R` bytes and `$I` record go.
 #[cfg(windows)]
 fn win_untrash(full: &Path, ours: &dyn Fn(&Path) -> bool) -> Untrashed {
-    let items = match trash::os_limited::list() {
+    let items = match listed() {
         Ok(items) => items,
-        Err(e) => return Untrashed::Failed(super::detail_of(&e)),
+        Err(e) => return Untrashed::Failed(e),
     };
     // A Recycle Bin item's parsing name is the path of its bytes in the volume's bin folder.
     let candidates = items
         .into_iter()
-        .map(|i| Candidate { original: i.original_path(), deleted: i.time_deleted, bytes: PathBuf::from(&i.id), item: i })
+        .map(|i| Candidate { original: i.original_path(), deleted: i.time_deleted, bytes: PathBuf::from(&i.id), item: () })
         .collect();
-    let Some(found) = newest_ours(candidates, full, true, ours) else { return Untrashed::NotFound };
-    if full.symlink_metadata().is_ok() {
-        return Untrashed::Failed(format!("{} is in the way", full.display()));
-    }
-    match trash::os_limited::restore_all([found.item]) {
+    let Some(found) = newest_ours(candidates, &places(full), true, ours) else { return Untrashed::NotFound };
+    let Some(record) = recycle_record(&found.bytes) else {
+        return Untrashed::Failed(format!("{} isn't a Recycle Bin item Glowfly knows", found.bytes.display()));
+    };
+    match super::home::take_out(&found.bytes, &record, full) {
         Ok(()) => Untrashed::Restored,
-        Err(e) => Untrashed::Failed(super::detail_of(&e)),
+        Err(e) => Untrashed::Failed(e.to_string()),
     }
 }
 
 /// The freedesktop items: the crate's list, plus inside Flatpak the host's home Trash.
 #[cfg(not(any(windows, target_os = "macos")))]
 fn xdg_untrash(full: &Path, ours: &dyn Fn(&Path) -> bool) -> Untrashed {
-    let mut candidates: Vec<Candidate<PathBuf>> = match trash::os_limited::list() {
+    let mut candidates: Vec<Candidate<PathBuf>> = match listed() {
         Ok(items) => items
             .into_iter()
             .map(|i| {
@@ -124,7 +165,7 @@ fn xdg_untrash(full: &Path, ours: &dyn Fn(&Path) -> bool) -> Untrashed {
                 Candidate { original: i.original_path(), deleted: i.time_deleted, bytes: super::home::bytes_of_info(&info), item: info }
             })
             .collect(),
-        Err(e) => return Untrashed::Failed(super::detail_of(&e)),
+        Err(e) => return Untrashed::Failed(e),
     };
     if crate::flatpak::in_flatpak()
         && let Some(dir) = super::home::home_trash_dir(crate::flatpak::host_var)
@@ -135,7 +176,7 @@ fn xdg_untrash(full: &Path, ours: &dyn Fn(&Path) -> bool) -> Untrashed {
             }
         }
     }
-    let Some(found) = newest_ours(candidates, full, false, ours) else { return Untrashed::NotFound };
+    let Some(found) = newest_ours(candidates, &places(full), false, ours) else { return Untrashed::NotFound };
     match super::home::take_out(&found.bytes, &found.item, full) {
         Ok(()) => Untrashed::Restored,
         Err(e) => Untrashed::Failed(e.to_string()),

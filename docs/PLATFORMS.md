@@ -184,9 +184,13 @@ second one next to it.
    overwrites a file (or a case twin) that appeared at the path.
 7. **Undo of a trashed file takes it back out of the trash through `repo::os_untrash`**
    (`repo/trash/untrash.rs`, called by `repo::untrash_file`), and only an item that was at that
-   path and holds exactly the kept bytes (the newest such one). Windows restores it through the
-   shell (the `trash` crate's `restore_all`), keeping its dates and attributes. Linux and the BSDs
-   read the crate's trash folders (inside Flatpak also the host's home Trash) and link the file
+   path and holds exactly the kept bytes (the newest such one; a candidate of another size is
+   never read). The path is matched as given and with its parent folder resolved, since the trash
+   records either. Windows lists the Recycle Bin with the `trash` crate, links the item's `$R`
+   file back with `hard_link` and removes it and its `$I` record; the shell's own restore isn't
+   used, since it runs without UI and so would replace a file saved there meanwhile. Linux and
+   the BSDs read the crate's trash folders (inside Flatpak also the host's home Trash; the crate's
+   list panics on some malformed `.trashinfo`, which is caught as a failure) and link the file
    back with `hard_link`, which never replaces anything, copying it into a new file when the
    trash is on another drive, then remove the trash's copy and its `.trashinfo`. macOS returns
    `Untrashed::Unsupported`. Whenever the trash can't give it back, Undo writes Glowfly's copy and
@@ -616,8 +620,8 @@ making the decision a pure function and testing it for every OS on every machine
   the OS, a `windows: bool`, error codes or volume facts as parameters
   (`check_new_path_for`, `check_branch_name_for`, `shell_quote_for`, `config_dir_for`,
   `opens_as_program` with `opens::Os`, `volume::linux_remote_kind`, `trash::bin_refuses`,
-  `trash::volume_trash_usable`, `home::move_into` with an injected rename, `untrash::newest_ours`
-  and `same_place` with `windows: bool`,
+  `trash::volume_trash_usable`, `home::move_into` with an injected rename, `untrash::newest_ours`,
+  `untrash::recycle_record` and `same_place` with `windows: bool`,
   `git_version::missing_for`, `poll_every`, `custom_commands::sh_for`, `repo::monitor_offer_for`,
   `app_update::install_method_for`, `swap::plan` with an injected `exists`) and test every OS's
   rows on every runner. The
@@ -666,9 +670,10 @@ Gaps that are accepted for now:
   the read-only attribute carry over.
 - **Undo can't take a file back out of the macOS Trash:** the Trash keeps no record of where a
   file came from that Glowfly can read, so Undo writes its own copy and the Trash keeps one too.
-- **Taking a file out of the Recycle Bin checks the path is free, then asks the shell:** a file
-  created there in between could be replaced, as the shell runs without UI. Linux never replaces
-  (`hard_link`, or a create-new copy).
+- **Taking a file out of the Recycle Bin leaves the bin's own index to Windows:** the `$R` file
+  is linked back and it and its `$I` record removed directly, never through the shell (which
+  would replace a file saved there meanwhile; without hard links, as on FAT, it is copied into a
+  new file). An open Recycle Bin window may go on showing the item until it is refreshed.
 - **Linux trash across devices is slow, but only when the user picks Move to home Trash:** the
   file is copied synchronously into the home Trash, which takes a while for large files on
   network mounts.

@@ -63,14 +63,17 @@ fn discard_confirm_trash_off() {
     assert_eq!(
         body,
         format!(
-            "u.txt isn't tracked by git. Discarding it deletes it; Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open (files up to 64 MB).",
+            "u.txt isn't tracked by git. Discarding it deletes it. Glowfly keeps a copy of files up to 64 MB, so Undo ({}) can bring it back while this tab is open; a larger file can't be brought back.",
             keys("Ctrl+Z")
         )
     );
     assert!(!body.contains(TRASH));
     assert_eq!(button, "Discard");
     assert_eq!(op, discard("u.txt", DeleteMode::Permanent));
-    assert_eq!(ack(&st), None, "Undo brings it back, as for Delete: no acknowledgement");
+    // Its size isn't known here, and a file over 64 MB would be gone for good.
+    assert_eq!(ack(&st), Some("I understand this can't be undone"));
+    assert!(run(&mut st, Msg::ConfirmAccepted).is_empty(), "nothing runs before the tick");
+    tick(&mut st);
     assert_eq!(work_ops(&run(&mut st, Msg::ConfirmAccepted)), [discard("u.txt", DeleteMode::Permanent)]);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -115,7 +118,11 @@ fn discard_trash_refused_offers_permanent() {
     let op = discard("u.txt", DeleteMode::Trash);
     let fx = run(
         &mut st,
-        Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal: TrashRefusal::new(TrashProblem::NoTrash, "this drive has no Recycle Bin") }),
+        Msg::WorkFile(WorkFileMsg::TrashRefused {
+            too_large: false,
+            op,
+            refusal: TrashRefusal::new(TrashProblem::NoTrash, "this drive has no Recycle Bin"),
+        }),
     );
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
     let (title, body, button, then) = confirm(&st);
@@ -136,6 +143,7 @@ fn discard_trash_refused_offers_permanent() {
     run(
         &mut st,
         Msg::WorkFile(WorkFileMsg::TrashRefused {
+            too_large: false,
             op: discard("u.txt", DeleteMode::Trash),
             refusal: TrashRefusal::new(TrashProblem::NoTrash, "no bin"),
         }),
@@ -187,6 +195,7 @@ fn discard_inactive_tab() {
     let (mut st, dir) = loaded("wfd-scoped");
     let elsewhere = || PathBuf::from("C:/elsewhere");
     let msg = Msg::WorkFile(WorkFileMsg::TrashRefused {
+        too_large: false,
         op: discard("u.txt", DeleteMode::Trash),
         refusal: TrashRefusal::new(TrashProblem::NoTrash, "no bin"),
     });

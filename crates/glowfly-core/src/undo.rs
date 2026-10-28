@@ -47,7 +47,7 @@ pub use aborted_run::{AbortRun, NOTHING_ABORTED, abort_keeping};
 pub use action::{Action, BranchMove, Changes, Created, Discarded, HeadPos, Staged};
 pub use deleted::{
     DeleteFailed, DeleteVia, DeletedSaving, MAX_KEPT_BYTES, PutBackHow, Trashers, delete_again, delete_saving, delete_staged_saving,
-    discard_untracked_saving, put_back,
+    discard_untracked_saving, keeps_copy, put_back,
 };
 pub use kinds::{MoveOp, ResetMode, UndoKind};
 pub(crate) use kinds::{commits_label, move_targets};

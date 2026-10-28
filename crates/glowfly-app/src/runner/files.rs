@@ -66,6 +66,11 @@ fn test_untrash(full: &Path, ours: &dyn Fn(&Path) -> bool) -> repo::Untrashed {
 /// entry, so all of them can be undone; one that fails after the file went still reports its
 /// undo entry (`WorkFileMsg::WorkFileFailed`).
 pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
+    work_file_with(workdir, op, TRASHERS)
+}
+
+/// `work_file` with the trashes given.
+fn work_file_with(workdir: &Path, op: FileOp, trashers: undo::Trashers) -> Msg {
     let deleting = |r: Result<undo::DeletedSaving, undo::DeleteFailed>| match r {
         Ok(s) => Ok(WorkFileOk::from_saving(s)),
         Err(undo::DeleteFailed { error, undo: Some(undo) }) => Err((error, Some(undo))),
@@ -76,16 +81,29 @@ pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
         FileOp::Create(p) => plain(repo::create_file(workdir, p).map(WorkFileOk::written)),
         FileOp::Rename { from, to, stage: true } => plain(repo::rename_file_staged(workdir, from, to).map(WorkFileOk::written)),
         FileOp::Rename { from, to, stage: false } => plain(repo::rename_file(workdir, from, to).map(WorkFileOk::written)),
-        FileOp::Delete { path, mode } => deleting(undo::delete_saving(workdir, path, mode.via(), TRASHERS)),
-        FileOp::UnstageDelete { path, mode } => deleting(undo::delete_staged_saving(workdir, path, mode.via(), TRASHERS)),
+        FileOp::Delete { path, mode } => deleting(undo::delete_saving(workdir, path, mode.via(), trashers)),
+        FileOp::UnstageDelete { path, mode } => deleting(undo::delete_staged_saving(workdir, path, mode.via(), trashers)),
         FileOp::UnstageGone(p) => plain(undo::unstage_gone_saving(workdir, p).map(|a| WorkFileOk::Unstaged { undo: Some(Box::new(a)) })),
-        FileOp::Discard { path, mode } => deleting(undo::discard_untracked_saving(workdir, path, mode.via(), TRASHERS)),
+        FileOp::Discard { path, mode } => deleting(undo::discard_untracked_saving(workdir, path, mode.via(), trashers)),
     };
     match r {
-        Err((Error::TrashRefused(refusal), None)) => Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal }),
+        Err((Error::TrashRefused(refusal), None)) => {
+            // The file is still there: whether a permanent delete could be undone.
+            let too_large = !op.delete_path().is_some_and(|p| undo::keeps_copy(workdir, p));
+            Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal, too_large })
+        }
         Err((e, Some(undo))) => Msg::WorkFile(WorkFileMsg::WorkFileFailed { op, error: e.to_string(), undo }),
         r => Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: r.map_err(|(e, _)| e.to_string()) }),
     }
+}
+
+/// `work_file` with a trash that refuses every file (`TrashProblem::NoTrash`), for tests.
+#[cfg(test)]
+pub(crate) fn refused_for_test(workdir: &Path, op: FileOp) -> Msg {
+    fn refuse(_: &Path) -> Result<(), repo::TrashRefusal> {
+        Err(repo::TrashRefusal::new(repo::TrashProblem::NoTrash, "no bin"))
+    }
+    work_file_with(workdir, op, undo::Trashers { system: refuse, home: refuse, ..TRASHERS })
 }
 
 /// The paths in the index, for the palette's file finder.

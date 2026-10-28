@@ -161,6 +161,7 @@ fn trash_refused_offers_permanent() {
     let fx = run(
         &mut st,
         Msg::WorkFile(WorkFileMsg::TrashRefused {
+            too_large: false,
             op: delete("a.txt", DeleteMode::Trash),
             refusal: TrashRefusal::new(TrashProblem::NoTrash, "this drive has no Recycle Bin"),
         }),
@@ -182,6 +183,7 @@ fn trash_refused_offers_permanent() {
     run(
         &mut st,
         Msg::WorkFile(WorkFileMsg::TrashRefused {
+            too_large: false,
             op: unstage_delete("n.txt", DeleteMode::Trash),
             refusal: TrashRefusal::new(TrashProblem::NoTrash, "no bin"),
         }),
@@ -248,6 +250,7 @@ fn delete_toasts() {
 fn trash_refused_on_inactive_tab_logs() {
     let (mut st, dir) = loaded("wft-scoped");
     let msg = Msg::WorkFile(WorkFileMsg::TrashRefused {
+        too_large: false,
         op: delete("x.txt", DeleteMode::Trash),
         refusal: TrashRefusal::new(TrashProblem::NoTrash, "no bin"),
     });
@@ -292,7 +295,7 @@ fn trash_refused_for_other_reasons_offers_retry_never_a_permanent_delete() {
     ] {
         for (problem, detail, want_title, want_body) in &cases {
             let refusal = TrashRefusal::new(*problem, *detail);
-            run(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { op: op.clone(), refusal }));
+            run(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: false, op: op.clone(), refusal }));
             let (title, body, button, then) = confirm(&st);
             assert_eq!((title, body, button), (want_title.as_str(), want_body.as_str(), "Retry"), "{problem:?} {op:?}");
             assert!(!body.contains("permanently"), "{body}");

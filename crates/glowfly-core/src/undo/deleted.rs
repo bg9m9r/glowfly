@@ -115,6 +115,13 @@ fn saving(
     }
 }
 
+/// Whether a delete of `path` keeps a copy for Undo: it is a regular file of at most
+/// [`MAX_KEPT_BYTES`]. Asked when the trash refused the file, to word the permanent offer.
+pub fn keeps_copy(workdir: &Path, path: &str) -> bool {
+    repo::contained(path)
+        .is_ok_and(|rel| std::fs::symlink_metadata(workdir.join(rel)).is_ok_and(|m| m.is_file() && m.len() <= MAX_KEPT_BYTES))
+}
+
 /// The working copy's bytes saved as a blob, when it is a regular file of at most `limit`
 /// bytes, and whether it was larger. Links and folders aren't kept.
 fn keep(workdir: &Path, path: &str, limit: u64) -> Result<(Option<Saved>, bool)> {
@@ -202,7 +209,7 @@ impl PutBackHow {
             PutBackHow::FromTrash => format!("Took {path} back out of the {bin}{again}"),
             PutBackHow::Written { trash: None | Some(Untrashed::Restored) } => format!("Put back {path}{again}"),
             PutBackHow::Written { trash: Some(Untrashed::NotFound) } => {
-                format!("Put back {path}{again} from Glowfly's copy; the {bin} no longer holds it as it was deleted")
+                format!("Put back {path}{again} from Glowfly's copy; no matching copy was found in the {bin} to take out")
             }
             PutBackHow::Written { trash: Some(Untrashed::Unsupported) } => {
                 format!("Put back {path}{again} from Glowfly's copy (its copy in the {bin} stays there)")
