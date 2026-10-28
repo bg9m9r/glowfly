@@ -36,5 +36,15 @@ fn read(path: &Path) -> Option<String> {
         h.update(format!("{}\0{modified}\0", meta.len()).as_bytes());
     }
     h.update(&bytes);
-    Some(h.finalize()[..8].iter().map(|b| format!("{b:02x}")).collect())
+    Some(hex(&h.finalize()))
+}
+
+/// The digest of a file holding `bytes` (no more than [`MAX_BYTES`]): what [`of_file`] gives
+/// for it.
+pub fn of_bytes(bytes: &[u8]) -> String {
+    hex(&Sha256::digest(bytes))
+}
+
+fn hex(sum: &[u8]) -> String {
+    sum[..8].iter().map(|b| format!("{b:02x}")).collect()
 }

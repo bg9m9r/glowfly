@@ -25,6 +25,9 @@ pub struct CustomCommands {
     pub repo: Vec<Command>,
     /// The working folder `repo` was read for.
     pub repo_for: Option<PathBuf>,
+    /// The digest of the bytes `repo` was read from: they run only while the repository's
+    /// trust print covers it (update/custom_commands_run.rs).
+    pub repo_digest: Option<String>,
     /// The latest load asked for; an answer to an older one is dropped.
     pub generation: u64,
     pub keys: Vec<CommandKey>,

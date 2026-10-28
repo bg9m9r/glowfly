@@ -22,7 +22,7 @@ pub(super) fn command(name: &str, kind: &str, template: &str, extra: &str) -> St
 /// What a file holding `text` reads as.
 pub(super) fn file(text: &str) -> FileRead {
     let (commands, problems) = parse(text);
-    FileRead { path: None, commands, problems }
+    FileRead { path: None, commands, problems, digest: Some(glowfly_core::trust::content_digest(text.as_bytes())) }
 }
 
 /// `scratch_repo` opened in a fresh state; the commands load it asked for is not run.

@@ -35,8 +35,6 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Re-check checked-out submodules' settings and hooks at every refresh, not only at a full load
   (a refresh rescans only the repository's own, since opening every submodule each time costs
   too much where there are many)
-- Hold a repository command picked between an outside change to its commands file and the
-  full load that notices it (compare the loaded file's digest with the trust print)
 
 ### Submodules
 

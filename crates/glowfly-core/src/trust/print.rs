@@ -29,6 +29,17 @@ impl TrustPrint {
         self.0.is_empty()
     }
 
+    /// Whether this print covers the repository's commands file whose contents' digest is
+    /// `digest` (`trust::content_digest`): it was trusted with exactly those contents.
+    pub fn covers_commands(&self, digest: &str) -> bool {
+        self.0.contains(&hash(&commands_item("", digest)))
+    }
+
+    /// The print of a scan that found only a commands file with this digest.
+    pub fn of_commands(digest: &str) -> TrustPrint {
+        TrustPrint([hash(&commands_item("", digest))].into())
+    }
+
     /// This print with `other`'s items too: everything either was made on.
     pub fn with(mut self, other: &TrustPrint) -> TrustPrint {
         self.0.extend(other.0.iter().cloned());

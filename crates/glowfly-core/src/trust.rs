@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 
 mod digest;
 mod print;
+pub use digest::of_bytes as content_digest;
 pub use print::{TrustPrint, allows};
 
 /// A setting from the repository's own config that makes git run a program.

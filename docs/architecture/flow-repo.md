@@ -198,4 +198,4 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Loaded commands get their keys (checked against the keymap and each other) and their problems, logged and toasted only when the set changes (`CustomCommands::reported`).
 - A run fills the placeholders from the row (`vars_for`) and may ask first (`Modal::Confirm`).
 - A run is then an ordinary job: a git command through `start_job` (`Effect::RunGit` with prompts), a shell command through `begin_job` as `CustomCommandEffect::RunShell`, answered with `JobMsg::JobDone`.
-- The repository's own commands in a repository not yet trusted wait in `trust::hold`; in a held repository the jobs' own trust gate holds every command.
+- The repository's own commands run only while the repository is Trusted with a print that covers the commands file as loaded (`FileRead::digest`, kept as `CustomCommands::repo_digest`); otherwise, including an edit made outside Glowfly that the next full load hasn't noticed yet, they wait in `trust::hold` with a prompt listing that file, and Trust and run trusts it.

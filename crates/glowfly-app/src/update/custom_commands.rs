@@ -69,6 +69,7 @@ fn loaded_files(st: &mut AppState, generation: u64, workdir: PathBuf, user: File
     let cc = &mut st.custom_commands;
     cc.user = user.commands;
     cc.repo = repo.commands;
+    cc.repo_digest = repo.digest;
     cc.repo_for = Some(workdir);
     cc.keys = keys;
     if problems == cc.reported {
