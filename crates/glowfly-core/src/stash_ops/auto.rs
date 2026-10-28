@@ -4,13 +4,16 @@
 //! The stash's message is fixed English text kept in the repository ("Auto-stash before checking
 //! out feature"), so the STASHES list can recognise it whatever language the UI shows. It is
 //! made with `git stash push -m` in the same job as the operation (untracked files stay, as with
-//! git's own `--autostash`) and put back with a plain `git stash pop`: staged changes come back
-//! unstaged, and on conflicts git keeps the entry.
+//! git's own `--autostash`) and put back with `git stash pop --index`, so what was staged comes
+//! back staged. When git can't restore the staged state (the staged hunks no longer fit the
+//! index) it changes nothing, and a plain `git stash pop` follows, bringing everything back
+//! unstaged. On conflicts git keeps the entry.
 
 use super::{list, split_message};
 use crate::gitcli::{self, args};
 use crate::undo::{commits_label, move_targets};
 use git2::{Oid, RepositoryState};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// What every auto-stash message starts with.
@@ -19,9 +22,11 @@ pub const AUTO_STASH_PREFIX: &str = "Auto-stash before ";
 pub const GIT_AUTOSTASH: &str = "autostash";
 
 /// The operation an auto-stash was made for, with the names its message shows. Most come
-/// from the command about to run (`of_command`); a Git Flow finish (its full branch name, such
-/// as "feature/login") runs several and is asked for by its dialog.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// from the command about to run (`of_command`). The others are asked for by their entry
+/// points: a Git Flow start or finish (its full branch name, such as "feature/login") and the
+/// checkout of a pull request's source branch (`pr` is the forge's label, such as "#12").
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AutoStashFor {
     Checkout { target: String },
     Pull { branch: String },
@@ -31,6 +36,8 @@ pub enum AutoStashFor {
     Revert { commits: String, on: String },
     HardReset { branch: String, to: String },
     GitFlowFinish { branch: String },
+    GitFlowStart { branch: String },
+    PullRequestCheckout { pr: String, branch: String },
 }
 
 /// Flags that carry on, end or edit an operation already started, or make a rebase interactive.
@@ -76,6 +83,8 @@ impl AutoStashFor {
             Self::Revert { commits, on } => format!("reverting {commits} on {on}"),
             Self::HardReset { branch, to } => format!("resetting {branch} to {to}"),
             Self::GitFlowFinish { branch } => format!("finishing {branch}"),
+            Self::GitFlowStart { branch } => format!("starting {branch}"),
+            Self::PullRequestCheckout { pr, branch } => format!("checking out {branch} for {pr}"),
         };
         format!("{AUTO_STASH_PREFIX}{what}")
     }
@@ -162,6 +171,9 @@ pub fn is_auto_stash(list_text: &str) -> bool {
 pub enum PutBack {
     /// The changes are back and the entry is gone.
     Restored,
+    /// The changes are back and the entry is gone, but git couldn't restore the staged state,
+    /// so everything is unstaged.
+    RestoredUnstaged,
     /// git applied the stash with conflicts in `paths` (repository-relative, '/'-separated) and
     /// kept the entry.
     Conflicted { paths: Vec<String> },
@@ -189,25 +201,53 @@ pub fn prepare_put_back(workdir: &Path, oid: Oid) -> Result<usize, (PutBack, Str
     }
 }
 
-/// Runs `git stash pop stash@{index}` (found by `prepare_put_back` for `oid`) and tells what
-/// happened, with the command and its output for the log.
+/// Runs `git stash pop --index stash@{index}` (found by `prepare_put_back` for `oid`) and tells
+/// what happened, with the commands and their output for the log. When git refuses to restore
+/// the index ("Try without --index": nothing changed, the entry is kept), it runs a plain
+/// `git stash pop` straight away and reports `RestoredUnstaged` when that works.
 pub fn pop_put_back(workdir: &Path, index: usize, oid: Oid) -> (PutBack, String) {
-    let cmd = args(&["stash", "pop", &format!("stash@{{{index}}}")]);
-    let (ok, text) = gitcli::run(workdir, &cmd);
+    let (ok, mut output, listed) = pop(workdir, &args(&["stash", "pop", "--index", &format!("stash@{{{index}}}")]), oid);
+    let paths = conflicted_paths(workdir);
+    if !ok && listed && paths.is_empty() && output.to_lowercase().contains("without --index") {
+        let Some(again) = list(workdir).ok().and_then(|l| l.iter().find(|s| s.oid == oid).map(|s| s.index)) else {
+            return (PutBack::Failed, output);
+        };
+        let (ok, text, listed) = pop(workdir, &args(&["stash", "pop", &format!("stash@{{{again}}}")]), oid);
+        output.push('\n');
+        output.push_str(&text);
+        return match classify(workdir, ok, listed) {
+            PutBack::Restored => (PutBack::RestoredUnstaged, output),
+            other => (other, output),
+        };
+    }
+    (classify_with(ok, listed, paths), output)
+}
+
+/// Runs one pop command: whether git said it worked, the command with its output, and whether
+/// stash `oid` is still listed afterwards.
+fn pop(workdir: &Path, cmd: &[String], oid: Oid) -> (bool, String, bool) {
+    let (ok, text) = gitcli::run(workdir, cmd);
     let mut output = format!("$ git {}", cmd.join(" "));
     if !text.is_empty() {
         output.push('\n');
         output.push_str(text.trim_end());
     }
     let listed = list(workdir).map(|l| l.iter().any(|s| s.oid == oid)).unwrap_or(true);
-    if ok && !listed {
-        return (PutBack::Restored, output);
+    (ok, output, listed)
+}
+
+fn classify(workdir: &Path, ok: bool, listed: bool) -> PutBack {
+    if ok && !listed { PutBack::Restored } else { classify_with(ok, listed, conflicted_paths(workdir)) }
+}
+
+/// A pop that didn't simply work: conflicts when git kept the entry and left conflicted
+/// `paths`, a failure otherwise.
+fn classify_with(ok: bool, listed: bool, paths: Vec<String>) -> PutBack {
+    match (ok, listed) {
+        (true, false) => PutBack::Restored,
+        (false, true) if !paths.is_empty() => PutBack::Conflicted { paths },
+        _ => PutBack::Failed,
     }
-    let paths = conflicted_paths(workdir);
-    if !ok && listed && !paths.is_empty() {
-        return (PutBack::Conflicted { paths }, output);
-    }
-    (PutBack::Failed, output)
 }
 
 /// The conflicted paths in the index, sorted.

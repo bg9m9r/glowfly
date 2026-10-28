@@ -1,16 +1,18 @@
 //! Stash and carry on: the auto-stash prompt (`Modal::AutoStash`), the stashes Glowfly made
 //! before an operation and still has to put back (`AppState::auto_stash`, global and never
-//! parked), and the pure rules and texts around them. The flow is in update/auto_stash.rs.
+//! parked), the ones a restart left waiting (`AutoStashes::saved`, offered once the repository
+//! is ready), and the pure rules and texts around them. The flow is in update/auto_stash.rs and
+//! update/auto_stash_saved.rs.
 
 use super::AppState;
-use super::rebase::{has_conflicts, needs_stash};
+use super::rebase::has_conflicts;
 use crate::msg::Msg;
 use git2::{Oid, RepositoryState};
 use glowfly_core::i18n::Lang;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::repo::Snapshot;
-use glowfly_core::stash_ops::{AutoStashFor, split_message};
-use std::path::PathBuf;
+use glowfly_core::stash_ops::{AutoStashFor, SavedAutoStash, split_message};
+use std::path::{Path, PathBuf};
 
 /// The prompt: the operation, how many files changed, the Always stash box and the message that
 /// starts the operation again once answered.
@@ -79,6 +81,19 @@ pub struct PendingStash {
     pub phase: Phase,
     /// The "they come back when you continue or abort" toast was shown.
     pub told: bool,
+    /// It is written to the repository's saved records (`stash_ops::write_saved`), so a
+    /// restart still offers it.
+    pub saved: bool,
+}
+
+/// An auto-stash a restart left waiting in `workdir` (read from its saved records), until its
+/// offer is answered. `offered`: the offer was shown this session.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SavedOffer {
+    pub workdir: PathBuf,
+    pub stash: SavedAutoStash,
+    pub oid: Oid,
+    pub offered: bool,
 }
 
 #[derive(Default)]
@@ -88,29 +103,36 @@ pub struct AutoStashes {
     /// Set only while the prompt's (or a failure toast's) retry message runs.
     pub approved: Option<Approval>,
     pub unstashed: Option<Unstashed>,
+    pub saved: Vec<SavedOffer>,
 }
 
 impl AutoStashes {
     /// The entry for `workdir`'s tab.
-    pub fn index_of(&self, workdir: &std::path::Path) -> Option<usize> {
+    pub fn index_of(&self, workdir: &Path) -> Option<usize> {
         self.pending.iter().position(|p| same_spelling(&p.workdir, workdir))
+    }
+
+    /// The saved records of `workdir` waiting for an answer.
+    pub fn saved_of<'a>(&'a self, workdir: &'a Path) -> impl Iterator<Item = &'a SavedOffer> + 'a {
+        self.saved.iter().filter(move |o| same_spelling(&o.workdir, workdir))
     }
 }
 
 /// How many files the stash would take: the distinct paths staged or changed (untracked files
-/// stay).
+/// stay, and an unstaged submodule row isn't counted: git leaves the submodule alone).
 pub fn changed_files(snap: &Snapshot) -> usize {
-    let mut paths: Vec<&str> =
-        snap.staged.iter().chain(snap.unstaged.iter().filter(|f| f.status != '?')).map(|f| f.path.as_str()).collect();
+    let unstaged = snap.unstaged.iter().filter(|f| f.status != '?' && !snap.is_submodule(&f.path));
+    let mut paths: Vec<&str> = snap.staged.iter().chain(unstaged).map(|f| f.path.as_str()).collect();
     paths.sort_unstable();
     paths.dedup();
     paths.len()
 }
 
-/// Whether the uncommitted changes call for the guard: nothing in progress, something to
-/// stash, and no conflicted files (git stash would refuse those).
+/// Whether the uncommitted changes call for the guard: nothing in progress, something in the
+/// way (`Snapshot::has_tracked_changes`: not untracked files, not an unstaged submodule), and
+/// no conflicted files (git stash would refuse those).
 pub fn blocks(snap: &Snapshot) -> bool {
-    snap.state == RepositoryState::Clean && needs_stash(snap) && !has_conflicts(snap)
+    snap.state == RepositoryState::Clean && snap.has_tracked_changes() && !has_conflicts(snap)
 }
 
 /// The stash `job` made, among the entries that weren't there when it was built.
@@ -139,6 +161,8 @@ pub fn body(t: Lang, op: &AutoStashFor, files: usize) -> String {
         AutoStashFor::Revert { commits, on } => t.trf("auto_stash.body.revert", &[("commits", commits), ("branch", on)]),
         AutoStashFor::HardReset { branch, to } => t.trf("auto_stash.body.reset", &[("branch", branch), ("commit", to)]),
         AutoStashFor::GitFlowFinish { branch } => t.trf("auto_stash.body.gitflow_finish", &[("branch", branch)]),
+        AutoStashFor::GitFlowStart { branch } => t.trf("auto_stash.body.gitflow_start", &[("branch", branch)]),
+        AutoStashFor::PullRequestCheckout { pr, branch } => t.trf("auto_stash.body.pr_checkout", &[("branch", branch), ("pr", pr)]),
     };
     let mut text = format!("{} {what}", t.trn("auto_stash.files", files, &[]));
     if op.can_stop() {
@@ -151,7 +175,7 @@ pub fn body(t: Lang, op: &AutoStashFor, files: usize) -> String {
 /// The primary: "Stash and <operation>".
 pub fn button(t: Lang, op: &AutoStashFor) -> &'static str {
     match op {
-        AutoStashFor::Checkout { .. } => t.tr("auto_stash.button.checkout"),
+        AutoStashFor::Checkout { .. } | AutoStashFor::PullRequestCheckout { .. } => t.tr("auto_stash.button.checkout"),
         AutoStashFor::Pull { .. } => t.tr("auto_stash.button.pull"),
         AutoStashFor::Merge { .. } => t.tr("auto_stash.button.merge"),
         AutoStashFor::Rebase { .. } => t.tr("auto_stash.button.rebase"),
@@ -159,6 +183,7 @@ pub fn button(t: Lang, op: &AutoStashFor) -> &'static str {
         AutoStashFor::Revert { .. } => t.tr("auto_stash.button.revert"),
         AutoStashFor::HardReset { .. } => t.tr("auto_stash.button.reset"),
         AutoStashFor::GitFlowFinish { .. } => t.tr("auto_stash.button.gitflow_finish"),
+        AutoStashFor::GitFlowStart { .. } => t.tr("auto_stash.button.gitflow_start"),
     }
 }
 
@@ -193,6 +218,11 @@ pub fn back(t: Lang, name: &str) -> String {
     t.trf("auto_stash.toast.back", &[("name", &name)])
 }
 
+/// The toast when the changes came back but git couldn't restore what was staged.
+pub fn back_unstaged(t: Lang, name: &str) -> String {
+    t.trf("auto_stash.toast.back_unstaged", &[("name", &name)])
+}
+
 pub fn conflicted(t: Lang, name: &str, files: usize) -> String {
     t.trn("auto_stash.toast.conflict", files, &[("name", &name)])
 }
@@ -204,4 +234,36 @@ pub fn failed(t: Lang, name: &str, reason: &str) -> String {
 
 pub fn gone(t: Lang, name: &str) -> String {
     t.trf("auto_stash.toast.gone", &[("name", &name)])
+}
+
+pub fn saved_title(t: Lang) -> &'static str {
+    t.tr("auto_stash.saved.title")
+}
+
+/// The offer's text for the saved stash `name`; `dirty`: the tree has changes of its own.
+pub fn saved_body(t: Lang, name: &str, dirty: bool) -> String {
+    let mut text = t.trf("auto_stash.saved.body", &[("name", &name)]);
+    if dirty {
+        text.push(' ');
+        text.push_str(t.tr("auto_stash.saved.body.dirty"));
+    }
+    text
+}
+
+pub fn saved_put_back(t: Lang) -> &'static str {
+    t.tr("auto_stash.saved.put_back")
+}
+
+pub fn saved_leave(t: Lang) -> &'static str {
+    t.tr("auto_stash.saved.leave")
+}
+
+/// The log line after Leave in stash list.
+pub fn saved_left(t: Lang, name: &str) -> String {
+    t.trf("auto_stash.saved.left", &[("name", &name)])
+}
+
+/// The log line when a saved record's stash is no longer listed.
+pub fn saved_gone(t: Lang, name: &str) -> String {
+    t.trf("auto_stash.saved.gone", &[("name", &name)])
 }

@@ -2,7 +2,7 @@
 //! refusals, refilling on new snapshots, the palette entries, the Start dialog and Start itself,
 //! end to end against real repositories.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{clean_tree, drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::gitflow::GitFlowMsg;
@@ -268,6 +268,8 @@ fn start_dialog() {
 fn start() {
     let (mut st, dir) = initialized("start");
     git(&dir, &["branch", "feature/taken"]);
+    // A clean tree: a dirty one asks about stashing first (auto_stash_guard_tests.rs).
+    clean_tree(&dir);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let start = |kind, name: &str| Msg::GitFlow(GitFlowMsg::Start { kind, name: name.into() });
 
@@ -295,6 +297,8 @@ fn start() {
 #[test]
 fn start_end_to_end() {
     let (mut st, dir) = initialized("start-e2e");
+    clean_tree(&dir);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::GitFlow(GitFlowMsg::Start { kind: FlowKind::Feature, name: "login".into() }));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.head_branch.as_deref(), Some("feature/login"));

@@ -13,7 +13,9 @@
 //!
 //! `auto` names the stash Glowfly makes before an operation that needs a clean work tree
 //! (checkout, pull, merge, rebase, cherry-pick, revert, hard reset), recognises it and git's own
-//! kept "autostash" in the list, and puts it back with `git stash pop` once nothing is in progress.
+//! kept "autostash" in the list, and puts it back with `git stash pop --index` (a plain pop when
+//! the staged state no longer fits) once nothing is in progress. `saved` keeps the ones still
+//! waiting to go back across restarts.
 
 use crate::error::Result;
 use crate::gitcli::{self, args};
@@ -24,9 +26,11 @@ use std::path::Path;
 mod auto;
 mod push;
 mod renames;
+mod saved;
 pub use auto::{AUTO_STASH_PREFIX, AutoStashFor, GIT_AUTOSTASH, PutBack, is_auto_stash, pop_put_back, prepare_put_back};
 pub use push::{PATHS_ON_COMMAND_LINE, PushCommand, STAGED_MIN_GIT, StashScope, push_command, push_message, staged_unsupported};
 pub use renames::{RESTORE_BLOCKED, rename_sources, restore_blocked, restore_blocked_output, restore_commands};
+pub use saved::{SavedAutoStash, path as saved_path, read_saved, write_saved};
 
 /// Splits a stash list text into the branch it was made on and the part the user can edit:
 /// "On <branch>: <rest>" and "WIP on <branch>: <rest>" give `(Some(branch), rest)`, anything
@@ -173,3 +177,11 @@ mod renames_tests;
 #[cfg(test)]
 #[path = "stash_ops/auto_tests.rs"]
 mod auto_tests;
+
+#[cfg(test)]
+#[path = "stash_ops/auto_put_back_tests.rs"]
+mod auto_put_back_tests;
+
+#[cfg(test)]
+#[path = "stash_ops/saved_tests.rs"]
+mod saved_tests;

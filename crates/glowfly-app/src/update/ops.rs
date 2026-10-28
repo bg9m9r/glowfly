@@ -295,7 +295,7 @@ pub(super) fn finish_job(
     let reopen = super::conflict::after_undo(&undo, ok);
     super::stack::job_finished(st, ok && !job.quiet, here, &undo, now);
     super::undo::finished(st, &job, ok, undo, here);
-    super::auto_stash::job_finished(st, &job);
+    super::auto_stash::job_finished(st, &job, fx);
     if here && let Some((p, open_closed)) = reopen {
         super::conflict::reopen_after_undo(st, p, open_closed, fx);
     }

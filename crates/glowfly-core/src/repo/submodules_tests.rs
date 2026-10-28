@@ -1,7 +1,7 @@
 //! Submodule status against real repositories: in sync, dirty, out of sync, both, never
 //! initialized, deinitialized, folder deleted, added and not committed, a gitlink without
 //! .gitmodules, a staged pointer change, a .gitmodules that can't be parsed, and the branch and
-//! clone URL.
+//! clone URL; and which submodule changes count as tracked changes.
 
 use super::*;
 use crate::testutil::*;
@@ -272,5 +272,25 @@ fn broken_gitmodules_does_not_fail_load() {
     // The list may be empty or partial; it just must not fail.
     assert!(snap.submodules.len() <= 1);
     assert!(status_at(&parent, true).is_ok(), "status reads the files without the submodules");
+    cleanup(&parent);
+}
+
+#[test]
+fn submodule_only_changes_are_not_tracked_changes() {
+    let (parent, sub) = with_submodule("sm-tracked-changes");
+    write(&sub, "lib.txt", "two\n");
+    git(&sub, &["commit", "-q", "-am", "inside"]);
+    let snap = load(&parent, &LoadOptions::all(100)).unwrap();
+    assert!(snap.unstaged.iter().any(|f| f.path == "libs/lib" && f.status == 'M'), "{:?}", snap.unstaged);
+    assert!(snap.is_submodule("libs/lib") && !snap.is_submodule("a.txt"));
+    assert!(!snap.has_tracked_changes(), "git's checkout leaves a moved submodule alone");
+    assert!(!crate::gitflow::WorkState::of(&snap).tracked_changes);
+
+    write(&parent, "a.txt", "edited\n");
+    assert!(load(&parent, &LoadOptions::all(100)).unwrap().has_tracked_changes(), "a tracked file changed");
+    git(&parent, &["checkout", "--", "a.txt"]);
+
+    git(&parent, &["add", "libs/lib"]);
+    assert!(load(&parent, &LoadOptions::all(100)).unwrap().has_tracked_changes(), "a staged gitlink counts");
     cleanup(&parent);
 }

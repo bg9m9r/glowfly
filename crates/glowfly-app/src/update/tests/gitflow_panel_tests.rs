@@ -140,6 +140,8 @@ fn start_from_issue_opens_the_dialog_with_its_name() {
 #[test]
 fn start_from_issue_end_to_end() {
     let (mut st, dir) = initialized("issue-e2e");
+    super::tests::clean_tree(&dir);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let name = "PROJ-12-crash-on-start";
     flow(&mut st, GitFlowMsg::StartFromIssue { kind: FlowKind::Feature, name: name.into() });
     let (kind, typed) = start_form(&st).expect("the Start dialog");

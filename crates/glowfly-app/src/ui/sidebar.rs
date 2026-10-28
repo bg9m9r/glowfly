@@ -16,7 +16,6 @@ use super::widgets::{self, Part};
 use crate::msg::BranchMsg;
 use crate::msg::FilterMsg;
 use crate::msg::IssueMsg;
-use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::pull_request::PullRequestMsg;
@@ -271,14 +270,12 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
             // A local source branch is checked out like any other (refused when another worktree
             // has it); otherwise a new branch tracking the remote one is made.
             let local = snap.locals.iter().any(|b| b.name == pr.source);
-            let (blocked, m) = match crate::state::branches::pr_checkout(snap, &f.remote, &pr.source) {
-                Ok(_) if local => (
-                    crate::state::worktree_branches::checkout_blocked(snap, &pr.source),
-                    Msg::Branch(BranchMsg::Checkout(pr.source.clone())),
-                ),
-                Ok(cmd) => (None, Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![cmd] })),
-                Err(why) => (Some(why), Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: Vec::new() })),
+            let blocked = match crate::state::branches::pr_checkout(snap, &f.remote, &pr.source) {
+                Ok(_) if local => crate::state::worktree_branches::checkout_blocked(snap, &pr.source),
+                Ok(_) => None,
+                Err(why) => Some(why),
             };
+            let m = Msg::Branch(BranchMsg::CheckoutPullRequest { id: pr.id });
             menu_item_if(msgs, ui, format!("Checkout {}", pr.source), blocked.as_deref(), m);
             let base = crate::state::worktree_branches::pr_base(snap, &f.remote, &pr.source).err();
             let create = Msg::Worktree(crate::worktree::WorktreeMsg::CreateForPr { id: pr.id, source: pr.source.clone() });

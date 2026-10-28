@@ -1,9 +1,11 @@
-//! Stash list jobs that aren't a plain git command line (`Effect::Stash`).
+//! Stash list jobs that aren't a plain git command line, and the saved auto-stash records
+//! (`Effect::Stash`).
 
 use super::EffectMeta;
 #[cfg(test)]
 use super::SandboxRule;
 use git2::Oid;
+use glowfly_core::stash_ops::SavedAutoStash;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -14,6 +16,12 @@ pub enum StashEffect {
     /// Puts an auto-stash back once nothing is in progress. Unscoped like RunGit: it ends the
     /// active job.
     PutBack(PutBackRequest),
+    /// Reads the auto-stashes a restart left waiting in `cwd` (`stash_ops::read_saved`);
+    /// reports `AutoStashMsg::SavedRead` only when there are any.
+    ReadAutoStashes { cwd: PathBuf },
+    /// Replaces `cwd`'s saved auto-stash records with `saved` (none removes the file); a
+    /// failure is logged.
+    SaveAutoStashes { cwd: PathBuf, saved: Vec<SavedAutoStash> },
 }
 
 /// The auto-stash to put back: the stash with commit `oid` in `cwd`'s list.
@@ -27,7 +35,10 @@ impl StashEffect {
     /// The repository the job changes, for the runner's per-repository queue.
     pub fn cwd(&self) -> &PathBuf {
         match self {
-            StashEffect::Rename { cwd, .. } | StashEffect::PutBack(PutBackRequest { cwd, .. }) => cwd,
+            StashEffect::Rename { cwd, .. }
+            | StashEffect::PutBack(PutBackRequest { cwd, .. })
+            | StashEffect::ReadAutoStashes { cwd }
+            | StashEffect::SaveAutoStashes { cwd, .. } => cwd,
         }
     }
 }
@@ -37,6 +48,8 @@ impl EffectMeta for StashEffect {
         match self {
             StashEffect::Rename { .. } => "rename-stash",
             StashEffect::PutBack(_) => "put-back-stash",
+            StashEffect::ReadAutoStashes { .. } => "read-auto-stashes",
+            StashEffect::SaveAutoStashes { .. } => "save-auto-stashes",
         }
     }
 

@@ -164,7 +164,7 @@ fn pending(st: &mut AppState, dir: &Path, from: u64) -> String {
     git(dir, &["stash", "push", "-q", "-m", &message]);
     let job = AutoStashJob { op, message: message.clone(), before: Vec::new() };
     let workdir = st.workdir().unwrap();
-    st.auto_stash.pending.push(PendingStash { workdir, job, oid: None, phase: Phase::Ended { from }, told: false });
+    st.auto_stash.pending.push(PendingStash { workdir, job, oid: None, phase: Phase::Ended { from }, told: false, saved: false });
     message
 }
 

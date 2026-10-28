@@ -20,6 +20,7 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
     match msg {
         BranchMsg::Checkout(name) => checkout(st, &name, fx),
         BranchMsg::CheckoutRemote { remote, name } => checkout_remote(st, &remote, &name, fx),
+        BranchMsg::CheckoutPullRequest { id } => super::pr_checkout::checkout(st, id, fx),
         BranchMsg::NewBranch { start, name } => {
             st.modal = Some(Modal::NewBranch { start, name, checkout: true, touched: Default::default() })
         }

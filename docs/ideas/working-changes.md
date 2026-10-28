@@ -14,6 +14,7 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - A Show stash button on the toast when git's own autostash is kept after an interactive rebase
 - An option to include untracked files in the auto-stash
 - Pull and Checkout tooltips say when the changes will be stashed first
+- Save the auto-stash record as soon as the stash is made, so a crash mid-operation still offers it (now only once it has to wait)
 
 ### Line-level staging
 

@@ -58,6 +58,8 @@ fn messages_are_fixed_english_and_recognised() {
         (CherryPick { commits: s("3 commits"), onto: s("main") }, "Auto-stash before cherry-picking 3 commits onto main"),
         (Revert { commits: s("1a2b3c4"), on: s("main") }, "Auto-stash before reverting 1a2b3c4 on main"),
         (HardReset { branch: s("main"), to: s("1a2b3c4") }, "Auto-stash before resetting main to 1a2b3c4"),
+        (GitFlowStart { branch: s("feature/login") }, "Auto-stash before starting feature/login"),
+        (PullRequestCheckout { pr: s("#12"), branch: s("feature") }, "Auto-stash before checking out feature for #12"),
     ];
     for (op, want) in cases {
         assert_eq!(op.message(), want);
@@ -73,6 +75,18 @@ fn messages_are_fixed_english_and_recognised() {
     assert!(!HardReset { branch: s("main"), to: s("x") }.can_stop());
     assert!(!Checkout { target: s("x") }.can_stop());
     assert!(Merge { from: s("x"), into: s("main") }.can_stop());
+    assert!(!GitFlowStart { branch: s("feature/login") }.can_stop());
+    assert!(!PullRequestCheckout { pr: s("#12"), branch: s("feature") }.can_stop());
+}
+
+#[test]
+fn git_flow_start_and_pull_request_checkout_are_asked_for_by_their_entry_points() {
+    let start = of(&["checkout", "-b", "feature/login", "refs/heads/develop"]);
+    assert_eq!(start, Some(AutoStashFor::Checkout { target: s("feature/login") }));
+    for cmd in [&["checkout", "feature", "--"][..], &["checkout", "--track", "origin/feature", "--"]] {
+        let op = of(cmd);
+        assert!(!matches!(op, Some(AutoStashFor::GitFlowStart { .. } | AutoStashFor::PullRequestCheckout { .. })), "{cmd:?}");
+    }
 }
 
 #[test]
@@ -117,7 +131,7 @@ fn put_back_restores_changes() {
     assert_eq!(prepare_put_back(&dir, oid), Ok(0));
     let (outcome, output) = pop_put_back(&dir, 0, oid);
     assert_eq!(outcome, PutBack::Restored, "{output}");
-    assert!(output.starts_with("$ git stash pop stash@{0}"), "{output}");
+    assert!(output.starts_with("$ git stash pop --index stash@{0}"), "{output}");
     assert_eq!(read(&dir, "a.txt"), "mine\n");
     assert!(list(&dir).unwrap().is_empty());
 }

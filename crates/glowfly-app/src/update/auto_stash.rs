@@ -2,26 +2,36 @@
 //! reset on a dirty work tree, and the stash a Git Flow Finish makes when its dialog's Stash
 //! changes and finish asks for one (`wrap` directly, without the gate).
 //!
-//! Each entry point calls `gate` with the command it would run and a retry message. On a dirty
-//! tree the gate opens the prompt (`Modal::AutoStash`) holding the retry; its answer sets
+//! Each entry point calls `gate` with the command it would run and a retry message; the ones
+//! whose operation isn't read from a command (Git Flow start, a pull request's checkout) call
+//! `gate_for` with it, through `start_guarded_as`. An unstaged submodule row doesn't count as
+//! dirty (`Snapshot::has_tracked_changes`): git's checkout, merge and rebase leave it alone. On a
+//! dirty tree the gate opens the prompt (`Modal::AutoStash`) holding the retry; its answer sets
 //! `AutoStashes::approved` for exactly the length of the retry, which reaches the gate again
 //! and is let through. `wrap` puts `git stash push -m <message>` in front of the operation's
 //! command (one RunGit job), and `JobSpec::auto_stash` marks the job (`making`). When it ends,
 //! `job_finished` arms a pending entry with `from = load_gen + 1`, and `seen`, after each
 //! snapshot of that tab, finds the stash and, once nothing is in progress, puts it back as a
-//! quiet job (`StashEffect::PutBack`), whose result `handle` turns into a toast.
+//! quiet job (`StashEffect::PutBack`), whose result `handle` turns into a toast. It goes back
+//! with `git stash pop --index`, falling back to a plain pop when the staged state no longer
+//! fits (`PutBack::RestoredUnstaged`). An entry that has to wait (an operation stopped, a job
+//! runs) is written to the repository's saved records, so a restart offers it again
+//! (update/auto_stash_saved.rs, read on every `LoadKind::Open` through `loaded`).
 //!
 //! A guarded job the gate lets run without stashing (the snapshot showed nothing to stash) is
 //! recorded with its retry (`ran`, `AutoStashes::unstashed`); when it fails because changes were
 //! in the way, its toast's Stash and <op> sends that retry with the stash approved
-//! (update/job_errors.rs, `AutoStashMsg::Retry`).
+//! (update/job_errors.rs, `AutoStashMsg::Retry`). A plain job started outside the guard (one
+//! recognised command in the active repository, not quiet) is recorded the same way by
+//! `started_plain`, its retry rerunning the command as `JobMsg::Git`.
 
+use super::auto_stash_saved;
 use super::jobs::{JobSpec, Started, begin_background_job, start_job};
-use crate::effect::{Effect, PutBackRequest, StashEffect};
-use crate::msg::{AutoStashMsg, Msg};
+use crate::effect::{Effect, LoadKind, PutBackRequest, StashEffect};
+use crate::msg::{AutoStashMsg, JobMsg, Msg};
 use crate::state::auto_stash::{
-    Approval, AutoStashAsk, AutoStashJob, PendingStash, Phase, StashRetry, Unstashed, back, blocks, changed_files, conflicted, failed,
-    found, gone, made, ready,
+    Approval, AutoStashAsk, AutoStashJob, PendingStash, Phase, StashRetry, Unstashed, back, back_unstaged, blocks, changed_files,
+    conflicted, failed, found, gone, made, ready,
 };
 use crate::state::toasts::ToastAction;
 use crate::state::{AppState, Modal, RunningJob};
@@ -49,6 +59,13 @@ pub(super) enum Gate {
 pub(super) fn gate(st: &mut AppState, cmd: &[String], retry: impl FnOnce() -> Msg) -> Gate {
     let Some(snap) = st.snap.as_ref() else { return Gate::Run(None) };
     let Some(op) = AutoStashFor::of_command(cmd, snap.head_branch.as_deref()) else { return Gate::Run(None) };
+    gate_for(st, op, retry)
+}
+
+/// Whether the operation `op` may run now on the active tab's tree (`gate` once the command is
+/// read as an operation).
+pub(super) fn gate_for(st: &mut AppState, op: AutoStashFor, retry: impl FnOnce() -> Msg) -> Gate {
+    let Some(snap) = st.snap.as_ref() else { return Gate::Run(None) };
     // The prompt's answer or a failure toast's Stash and <op>; also when the snapshot hasn't
     // caught up with the changes.
     if let Some(a) = st.auto_stash.approved.take_if(|a| a.op == op) {
@@ -93,6 +110,45 @@ pub(super) fn start_guarded(st: &mut AppState, mut spec: JobSpec, retry: impl Fn
     }
 }
 
+/// Starts `spec` (any number of commands) through the gate as the operation `op`, which isn't
+/// read from its commands: a Git Flow start, a pull request's checkout.
+pub(super) fn start_guarded_as(
+    st: &mut AppState,
+    mut spec: JobSpec,
+    op: AutoStashFor,
+    retry: impl FnOnce() -> Msg,
+    fx: &mut Vec<Effect>,
+) -> Started {
+    let label = spec.label.clone();
+    match gate_for(st, op, retry) {
+        Gate::Asked => Started::No,
+        Gate::Run(r) => {
+            let started = start_job(st, spec, fx);
+            ran(st, &label, started, r);
+            started
+        }
+        Gate::Stash(op) => {
+            wrap(st, &mut spec, op);
+            start_job(st, spec, fx)
+        }
+    }
+}
+
+/// A job labelled `label` started (`start_job`); `cmd` is its one command when it runs in the
+/// active repository, isn't quiet and has no auto-stash. When the guard knows that command's
+/// operation, its failure over local changes offers Stash and <op>, rerunning it as
+/// `JobMsg::Git` with the stash approved. Guarded starts call `ran` right after, which replaces
+/// this record with their own retry.
+pub(super) fn started_plain(st: &mut AppState, label: &str, cmd: Option<Vec<String>>) {
+    let head = st.snap.as_ref().and_then(|s| s.head_branch.as_deref());
+    let retry = cmd.and_then(|cmd| {
+        let op = AutoStashFor::of_command(&cmd, head)?;
+        Some(StashRetry { op, retry: Box::new(Msg::Job(JobMsg::Git { label: label.to_owned(), cmds: vec![cmd] })) })
+    });
+    let workdir = st.workdir();
+    st.auto_stash.unstashed = retry.map(|retry| Unstashed { label: label.to_owned(), workdir, retry });
+}
+
 /// A guarded job labelled `label` was asked to start without an auto-stash: records `retry`
 /// for its failure toast while it runs or waits for the trust prompt (any older record is
 /// stale by now).
@@ -131,22 +187,43 @@ pub(super) fn wrap(st: &AppState, spec: &mut JobSpec, op: AutoStashFor) {
 
 /// `job` ended (ops::finish_job, before its refresh): when it made an auto-stash, its tab's
 /// next snapshots look for the stash and put it back.
-pub(super) fn job_finished(st: &mut AppState, job: &RunningJob) {
+pub(super) fn job_finished(st: &mut AppState, job: &RunningJob, fx: &mut Vec<Effect>) {
     let Some(m) = st.auto_stash.making.take() else { return };
     let same = m.label == job.label && matches!((&m.workdir, &job.workdir), (Some(a), Some(b)) if same_spelling(a, b));
     let (true, Some(workdir)) = (same, m.workdir) else { return };
     if let Some(i) = st.auto_stash.index_of(&workdir) {
         let old = st.auto_stash.pending.remove(i);
         st.log_quiet(true, format!("Stopped waiting to put back \"{}\"; it stays in the stash list.", old.job.message));
+        if old.saved {
+            auto_stash_saved::save(st, &workdir, fx);
+        }
     }
     // A load that started before the job ended can still arrive with the current generation.
     let from = st.load_gen + 1;
-    st.auto_stash.pending.push(PendingStash { workdir, job: m.job, oid: None, phase: Phase::Ended { from }, told: false });
+    let job = m.job;
+    st.auto_stash.pending.push(PendingStash { workdir, job, oid: None, phase: Phase::Ended { from }, told: false, saved: false });
+}
+
+/// After a repository load of the active tab (update/repo.rs): opening it reads the auto-stashes
+/// a restart left waiting there, then `seen`.
+pub(super) fn loaded(st: &mut AppState, kind: LoadKind, now: Instant, fx: &mut Vec<Effect>) {
+    if kind == LoadKind::Open {
+        auto_stash_saved::opened(st, fx);
+    }
+    seen(st, true, now, fx);
 }
 
 /// After the active tab's snapshot changed (`full`: a repository load, whose stash list is
-/// current): finds its auto-stash and puts it back once nothing is in progress.
+/// current): finds its auto-stash and puts it back once nothing is in progress, then offers a
+/// saved one a restart left waiting.
 pub(super) fn seen(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Effect>) {
+    seen_pending(st, full, now, fx);
+    auto_stash_saved::offer(st, fx);
+}
+
+/// `seen` for the in-memory entry of the active tab. Every path that leaves an entry with a
+/// stash waiting keeps it in the saved records (`auto_stash_saved::keep`).
+fn seen_pending(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Effect>) {
     let Some(snap) = st.snap.as_ref() else { return };
     let Some(i) = st.auto_stash.index_of(&snap.workdir) else { return };
     let p = &mut st.auto_stash.pending[i];
@@ -166,7 +243,7 @@ pub(super) fn seen(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Eff
         return;
     };
     if st.job.is_some() || st.trust.held.is_some() {
-        return;
+        return auto_stash_saved::keep(st, i, fx);
     }
     if !ready(snap) {
         if !p.told {
@@ -175,7 +252,7 @@ pub(super) fn seen(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Eff
             let text = made(t, &p.job.message);
             st.toast_action(true, text, show_action(t, oid, workdir), now);
         }
-        return;
+        return auto_stash_saved::keep(st, i, fx);
     }
     // A stopped Git Flow finish still has steps that need a clean tree (a checkout): its
     // changes wait for Continue finish, or for its steps to be forgotten or dropped. Only that
@@ -183,7 +260,7 @@ pub(super) fn seen(st: &mut AppState, full: bool, now: Instant, fx: &mut Vec<Eff
     if let AutoStashFor::GitFlowFinish { branch } = &p.job.op
         && st.session.gitflow_resume.as_ref().is_some_and(|r| r.resume.plan.branch == *branch)
     {
-        return;
+        return auto_stash_saved::keep(st, i, fx);
     }
     let effect = move |cwd| Effect::Stash(StashEffect::PutBack(PutBackRequest { cwd, oid }));
     if begin_background_job(st, PUT_BACK_LABEL, effect, fx) == Started::Now {
@@ -220,11 +297,17 @@ pub(super) fn handle(st: &mut AppState, msg: AutoStashMsg, now: Instant, fx: &mu
                 return super::ops::finish_job(st, true, output, None, undo, now, fx);
             }
             let entry = i.map(|i| st.auto_stash.pending.remove(i));
-            let ok = matches!(outcome, PutBack::Restored | PutBack::Gone);
+            let ok = matches!(outcome, PutBack::Restored | PutBack::RestoredUnstaged | PutBack::Gone);
             super::ops::finish_job(st, ok, output.clone(), None, undo, now, fx);
             let Some(entry) = entry else { return };
+            if entry.saved {
+                auto_stash_saved::save(st, &workdir, fx);
+            }
             told(st, &entry.job.message, outcome, &output, oid, workdir, now);
         }
+        AutoStashMsg::SavedRead { workdir, saved } => auto_stash_saved::read(st, workdir, saved, fx),
+        AutoStashMsg::PutBackSaved { workdir, oid } => auto_stash_saved::put_back(st, &workdir, oid, now, fx),
+        AutoStashMsg::LeaveSaved { workdir, oid } => auto_stash_saved::leave(st, &workdir, oid, fx),
         AutoStashMsg::Show(oid) => {
             if st.snap.as_ref().is_some_and(|s| s.stashes.iter().any(|x| x.oid == oid)) {
                 st.view.sections.stashes = true;
@@ -264,8 +347,12 @@ fn approve_and_run(st: &mut AppState, op: AutoStashFor, stash: bool, retry: Box<
 fn told(st: &mut AppState, name: &str, outcome: PutBack, output: &str, oid: git2::Oid, workdir: std::path::PathBuf, now: Instant) {
     let t = st.settings.lang();
     match outcome {
-        PutBack::Restored | PutBack::Gone => {
-            let text = if outcome == PutBack::Restored { back(t, name) } else { gone(t, name) };
+        PutBack::Restored | PutBack::RestoredUnstaged | PutBack::Gone => {
+            let text = match outcome {
+                PutBack::Restored => back(t, name),
+                PutBack::RestoredUnstaged => back_unstaged(t, name),
+                _ => gone(t, name),
+            };
             st.toast(true, text.clone(), now);
             st.log(true, text);
         }

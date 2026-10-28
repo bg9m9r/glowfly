@@ -1,0 +1,7 @@
+Dialog
+  Label "Stashed changes waiting"
+  Button "Close this dialog"
+  Label "Glowfly stashed your changes as \"Auto-stash before merging feature into main\" and hadn't put them back when it last closed. Put them back now? They go on top of the changes you have now."
+  Button "Cancel"
+  Button "Leave in stash list"
+  Button "Put back" [focused]

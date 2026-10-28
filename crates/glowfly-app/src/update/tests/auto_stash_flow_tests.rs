@@ -22,7 +22,7 @@ fn dirty(st: &mut AppState, dir: &Path) {
     drive(st, Msg::Repo(RepoMsg::Refresh));
 }
 
-fn mine_is_back(st: &AppState, dir: &Path) {
+pub(super) fn mine_is_back(st: &AppState, dir: &Path) {
     let text = std::fs::read_to_string(dir.join("a.txt")).unwrap().replace("\r\n", "\n");
     assert_eq!(text, "one\nmine\n", "the changes are back");
     assert!(stash_count(dir) == 0, "the stash is gone");
@@ -181,7 +181,7 @@ fn double_click_remote_without_local_creates_it_after_stashing() {
 }
 
 /// A merge of `feature` that stops on f.txt, with the changes in the stash.
-fn stopped_merge(name: &str) -> (AppState, std::path::PathBuf) {
+pub(super) fn stopped_merge(name: &str) -> (AppState, std::path::PathBuf) {
     let (mut st, dir, _) = feature_repo(name, &[("feature edit", "feature\n")], Some("main\n"));
     dirty(&mut st, &dir);
     up(&mut st, Msg::git("Merge", &["merge", "feature"]));

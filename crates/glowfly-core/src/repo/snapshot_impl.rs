@@ -28,6 +28,20 @@ impl Snapshot {
         !self.unstaged.is_empty() || !self.staged.is_empty()
     }
 
+    /// Whether `path` (repo-relative, '/'-separated) is one of the index's submodules.
+    pub fn is_submodule(&self, path: &str) -> bool {
+        self.submodules.iter().any(|s| s.path == path)
+    }
+
+    /// Whether a checkout, merge or rebase would find uncommitted changes in its way: something
+    /// is staged, or a tracked file changed. Untracked files don't count, and neither does an
+    /// unstaged row at a submodule's path (a moved checkout, changes inside it, a missing
+    /// folder): git's checkout, merge and rebase leave an out-of-sync or dirty submodule alone.
+    /// A staged gitlink still counts, and a conflicted row is kept.
+    pub fn has_tracked_changes(&self) -> bool {
+        !self.staged.is_empty() || self.unstaged.iter().any(|f| f.status != '?' && (f.status == '!' || !self.is_submodule(&f.path)))
+    }
+
     /// Why `core.ignorecase` and the file system disagree, when they do: git then matches
     /// paths differently from the disk (a repository copied between systems).
     pub fn case_mismatch(&self) -> Option<&'static str> {

@@ -98,6 +98,8 @@ pub(super) fn busy(st: &mut AppState, quiet: bool) -> bool {
 /// Runs `spec` as the active job. Holding it for the trust prompt pushes no effect.
 pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Started {
     let auto_stash = spec.auto_stash;
+    // A plain job outside the guard: its failure over local changes can still offer the stash.
+    let plain = (auto_stash.is_none() && spec.cwd.is_none() && !spec.quiet && spec.cmds.len() == 1).then(|| spec.cmds[0].clone());
     let job = RunningJob {
         label: spec.label,
         workdir: None,
@@ -145,6 +147,7 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     let started = launch(st, job, spec.cwd, effect, fx);
     if started != Started::No {
         super::submodule_batch::job_started(st, &label, moves);
+        super::auto_stash::started_plain(st, &label, plain);
         // Also for a job held for the trust prompt; dropping it clears this.
         if let Some(job) = auto_stash {
             st.auto_stash.making = Some(Making { label: label.clone(), workdir: st.workdir(), job });

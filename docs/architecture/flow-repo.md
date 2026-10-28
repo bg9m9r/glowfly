@@ -175,15 +175,18 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Auto-stash
 
-- Files: `update/auto_stash.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`.
-- One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset.
+- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/pr_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
+- One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset, and for Git Flow start and a pull request's checkout (`start_guarded_as` with their own `AutoStashFor`).
 - Each entry point passes its single command and a retry message to `gate`.
+- Only staged changes and changed tracked files count (`Snapshot::has_tracked_changes`): untracked files and an unstaged submodule row don't.
 - On a dirty tree with nothing in progress the gate opens `Modal::AutoStash` holding the retry (Always stash skips it, except for a hard reset), and the answer reruns the retry with `st.auto_stash.approved` set for just that call.
 - `wrap` puts `git stash push -m <message>` before the command in the same job (same label, undo recorded as the original command) and marks it (`making`, dropped with a held job).
 - A guarded command the gate lets run unstashed (the snapshot showed nothing to stash) is recorded with its retry (`unstashed`, matched by label and workdir when the job ends).
 - If git then says changes were in the way, the failure toast's Stash and <op> sends `AutoStashMsg::Retry`, which reruns it with the stash approved.
 - `finish_job` turns the mark into a pending entry armed for the next load generation.
-- `seen` runs after each snapshot of that tab, finds the stash, and once the operation is over (merge committed or aborted, rebase continued) and no job runs, puts it back as the quiet job `StashEffect::PutBack`.
+- `seen` runs after each snapshot of that tab, finds the stash, and once the operation is over (merge committed or aborted, rebase continued) and no job runs, puts it back as the quiet job `StashEffect::PutBack` (`git stash pop --index`, then a plain pop with a notice when the staged state no longer fits).
+- An entry that has to wait is written to the worktree's saved records (`StashEffect::SaveAutoStashes`); opening the repository after a restart reads them (`ReadAutoStashes`) and, once it is ready, offers each listed stash (`Modal::ConfirmChoice`: Put back, Leave in stash list, Cancel asks again next open).
+- A plain single-command job started outside the guard (`start_job`, `started_plain`) records its retry too, so its "would be overwritten" toast still offers Stash and <op>.
 - The put-back's result becomes a toast with Show stash when it conflicted or failed, and the stash then stays in the list (marked auto in STASHES).
 - Interactive rebases and graph edits keep their own `--autostash` and skip their stash question with Always stash on.
 

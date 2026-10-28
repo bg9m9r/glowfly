@@ -1,7 +1,7 @@
 //! Stash and carry on: the Uncommitted changes prompt (a rebase in dark; a hard reset in light,
 //! with Discard and reset in place of Always stash), the STASHES rows of an auto-stash and of
-//! git's own "autostash" with their auto marker, and the merge banner's line while the
-//! auto-stash waits.
+//! git's own "autostash" with their auto marker, the merge banner's line while the
+//! auto-stash waits, and the offer to put back an auto-stash a restart left waiting.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_conflict_files::{fill_lists, merging};
@@ -13,7 +13,7 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::StashInfo;
 use glowfly_core::settings::ThemeChoice;
-use glowfly_core::stash_ops::AutoStashFor;
+use glowfly_core::stash_ops::{AutoStashFor, SavedAutoStash};
 
 fn asking(st: &mut AppState, op: AutoStashFor, files: usize) {
     st.modal = Some(Modal::AutoStash(AutoStashAsk { op, files, always: false, retry: Box::new(Msg::CloseModal) }));
@@ -89,11 +89,38 @@ fn merge_banner_auto_stash_note() {
     let workdir = st.snap.as_ref().unwrap().workdir.clone();
     let oid = st.snap.as_ref().unwrap().head_oid;
     let job = AutoStashJob { op, message, before: Vec::new() };
-    st.auto_stash.pending.push(PendingStash { workdir, job, oid, phase: Phase::Ended { from: 0 }, told: true });
+    st.auto_stash.pending.push(PendingStash { workdir, job, oid, phase: Phase::Ended { from: 0 }, told: true, saved: false });
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("merge_banner_auto_stash_note");
     assert!(h.query_by_label_contains("Auto-stash before merging list-side into main").is_some(), "the banner names the stash");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn auto_stash_saved_offer() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "auto-stash-saved-offer");
+    let op = AutoStashFor::Merge { from: "feature".into(), into: "main".into() };
+    let snap = st.snap.as_mut().unwrap();
+    let oid = snap.commits[0].oid;
+    snap.stashes = vec![StashInfo { index: 0, message: format!("On main: {}", op.message()), oid }];
+    let workdir = snap.workdir.clone();
+    let saved = vec![SavedAutoStash::new(op.clone(), op.message(), oid)];
+    let read = Msg::AutoStash(AutoStashMsg::SavedRead { workdir, saved });
+    crate::update::update(&mut st, read, std::time::Instant::now());
+    assert!(matches!(st.modal, Some(Modal::ConfirmChoice { .. })), "the offer opens");
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("auto_stash_saved_offer");
+    assert!(h.query_by_label("Stashed changes waiting").is_some());
+    assert!(h.query_all_by_label_contains("hadn't put them back").count() >= 1, "the body names the stash");
+    h.get_by_label("Put back").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::ConfirmAccepted)));
+    h.get_by_label("Leave in stash list").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::ConfirmAlt)));
     drop(h);
     remove_fixture(&dir);
 }

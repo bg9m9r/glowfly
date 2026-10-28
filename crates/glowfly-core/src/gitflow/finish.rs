@@ -62,7 +62,8 @@ pub fn targets(s: &GitFlowSettings, kind: FlowKind) -> String {
 /// What else Finish checks in the repository.
 pub struct WorkState<'a> {
     pub state: RepositoryState,
-    /// Staged or unstaged changes to tracked files (untracked '?' entries don't count).
+    /// Staged or unstaged changes to tracked files (`Snapshot::has_tracked_changes`: untracked
+    /// entries and unstaged submodule rows don't count).
     pub tracked_changes: bool,
     /// Branches checked out in the other worktrees.
     pub elsewhere: Vec<&'a str>,
@@ -72,7 +73,7 @@ impl<'a> WorkState<'a> {
     pub fn of(snap: &'a Snapshot) -> Self {
         WorkState {
             state: snap.state,
-            tracked_changes: !snap.staged.is_empty() || snap.unstaged.iter().any(|f| f.status != '?'),
+            tracked_changes: snap.has_tracked_changes(),
             elsewhere: snap.worktrees.iter().filter(|w| !w.current).filter_map(|w| w.branch.as_deref()).collect(),
         }
     }

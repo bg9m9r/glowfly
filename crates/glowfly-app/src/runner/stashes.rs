@@ -1,4 +1,5 @@
-//! Stash list jobs (`Effect::Stash`): renaming an entry, and putting an auto-stash back.
+//! Stash list jobs (`Effect::Stash`): renaming an entry, putting an auto-stash back, and
+//! reading and writing the auto-stashes waiting to go back across restarts.
 
 use super::execute::{Cx, Execute};
 use super::expect;
@@ -9,16 +10,23 @@ use glowfly_core::stash_ops::{self, PutBack};
 use glowfly_core::undo::{self, UndoKind};
 use std::path::Path;
 
-pub(super) fn run(e: StashEffect) -> Msg {
+pub(super) fn run(e: StashEffect) -> Option<Msg> {
     match e {
-        StashEffect::Rename { cwd, index, oid, message } => rename(&cwd, index, oid, &message),
-        StashEffect::PutBack(req) => put_back(req),
+        StashEffect::Rename { cwd, index, oid, message } => Some(rename(&cwd, index, oid, &message)),
+        StashEffect::PutBack(req) => Some(put_back(req)),
+        StashEffect::ReadAutoStashes { cwd } => {
+            let saved = stash_ops::read_saved(&cwd);
+            (!saved.is_empty()).then(|| Msg::AutoStash(AutoStashMsg::SavedRead { workdir: cwd, saved }))
+        }
+        StashEffect::SaveAutoStashes { cwd, saved } => stash_ops::write_saved(&cwd, &saved)
+            .err()
+            .map(|e| Msg::Logged { ok: false, text: format!("Could not save the stashes waiting to go back: {e}") }),
     }
 }
 
 impl Execute for StashEffect {
     fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
-        Some(run(self))
+        run(self)
     }
 }
 
@@ -46,8 +54,11 @@ fn put_back(req: PutBackRequest) -> Msg {
     // A pop onto local changes mixes them with the stash's, so it can't be undone.
     let irreversible = before.as_ref().is_some_and(undo::irreversible);
     let (outcome, output) = stash_ops::pop_put_back(&cwd, n, oid);
-    let recorded =
-        if outcome == PutBack::Restored && !irreversible { before.and_then(|b| undo::after(&cwd, kind, b).ok().flatten()) } else { None };
+    let recorded = if matches!(outcome, PutBack::Restored | PutBack::RestoredUnstaged) && !irreversible {
+        before.and_then(|b| undo::after(&cwd, kind, b).ok().flatten())
+    } else {
+        None
+    };
     done(outcome, output, Some(Box::new(UndoResult::Recorded(recorded))))
 }
 

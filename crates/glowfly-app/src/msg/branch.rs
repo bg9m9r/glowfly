@@ -10,6 +10,11 @@ pub enum BranchMsg {
         remote: String,
         name: String,
     },
+    /// Check out the source branch of the listed pull request `id` (update/pr_checkout.rs):
+    /// its local branch, or a new one tracking the code host's remote.
+    CheckoutPullRequest {
+        id: u64,
+    },
     /// Open the rename dialog for local branch `.0`.
     RenameBranchDialog(String),
     /// `git branch -m old new`.
@@ -49,6 +54,7 @@ impl BranchMsg {
         match self {
             Self::Checkout(..)
             | Self::CheckoutRemote { .. }
+            | Self::CheckoutPullRequest { .. }
             | Self::RenameBranchDialog(..)
             | Self::RenameBranch { .. }
             | Self::SetUpstreamDialog(..)

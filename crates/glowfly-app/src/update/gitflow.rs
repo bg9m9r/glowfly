@@ -1,9 +1,10 @@
 //! Git Flow: filling the preferences form from the snapshot, Initialize / Save (one git job that
 //! creates any missing branch and writes the config), starting a feature, release or hotfix
-//! branch (also with an issue's branch name typed), and opening and closing the Git Flow panel
-//! (finishing a branch is in gitflow_finish.rs, continuing one stopped at a conflict in
-//! gitflow_resume.rs). Everything is checked again here against the current snapshot before a
-//! job starts.
+//! branch (also with an issue's branch name typed; through the auto-stash guard as
+//! `AutoStashFor::GitFlowStart`, so uncommitted changes come along to the new branch), and
+//! opening and closing the Git Flow panel (finishing a branch is in gitflow_finish.rs,
+//! continuing one stopped at a conflict in gitflow_resume.rs). Everything is checked again here
+//! against the current snapshot before a job starts.
 
 use super::ops::{JobSpec, Started, busy, start_job};
 use crate::effect::Effect;
@@ -13,6 +14,7 @@ use crate::msg::PrefsMsg;
 use crate::state::gitflow::{INIT_LABEL, NOT_SET_UP, SAVE_LABEL, StartForm};
 use crate::state::{AppState, Modal, PrefPage};
 use glowfly_core::gitflow::{self, Branches, FlowKind, StartProblem};
+use glowfly_core::stash_ops::AutoStashFor;
 use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, m: GitFlowMsg, now: Instant, fx: &mut Vec<Effect>) {
@@ -159,5 +161,8 @@ fn start(st: &mut AppState, kind: FlowKind, name: &str, now: Instant, fx: &mut V
         fx.extend(super::update(st, Msg::Prefs(PrefsMsg::ClosePrefs), now));
     }
     let cmd = gitflow::start_cmd(&s, kind, &branch);
-    start_job(st, JobSpec::new(format!("Start {branch}"), vec![cmd]), fx);
+    let spec = JobSpec::new(format!("Start {branch}"), vec![cmd]);
+    let op = AutoStashFor::GitFlowStart { branch };
+    let retry = || Msg::GitFlow(GitFlowMsg::Start { kind, name: name.to_owned() });
+    super::auto_stash::start_guarded_as(st, spec, op, retry, fx);
 }

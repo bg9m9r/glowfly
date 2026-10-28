@@ -338,7 +338,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     super::pick::state_changed(st, state_before);
     // Before the auto-stash: remembered Git Flow steps dropped by this load release its stash.
     super::gitflow::snapshot_changed(st);
-    super::auto_stash::seen(st, true, now, fx);
+    super::auto_stash::loaded(st, kind, now, fx);
     super::search::snapshot_changed(st, fx);
     super::trust::loaded(st, kind, fx);
     super::custom_commands::loaded(st, fx);
