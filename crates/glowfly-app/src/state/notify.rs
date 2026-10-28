@@ -68,7 +68,8 @@ pub fn clip(text: &str, max: usize) -> String {
 /// A desktop notification about the repository at `workdir`, with its title and body clipped to
 /// what notification centres show.
 pub fn desktop_note(kind: NoteKind, title: &str, body: &str, workdir: Option<&Path>) -> DesktopNote {
-    DesktopNote { kind, title: clip(title, 120), body: clip(body, 200), workdir: workdir.map(Path::to_path_buf) }
+    let shown = |text: &str, max| clip(&super::logs::redacted(text.to_owned()), max);
+    DesktopNote { kind, title: shown(title, 120), body: shown(body, 200), workdir: workdir.map(Path::to_path_buf) }
 }
 
 #[cfg(test)]
@@ -91,6 +92,13 @@ mod tests {
         assert_eq!(note.title.chars().count(), 120);
         assert_eq!(note.workdir.as_deref(), Some(Path::new("repo")));
         assert!(note.body.chars().count() <= 200 && !note.body.contains('\n'));
+    }
+
+    #[test]
+    fn a_note_hides_credentials_in_urls() {
+        let note = desktop_note(NoteKind::Job, "Push failed: https://ada:TOKEN123@example.com/o/r.git", "https://t0k@h/x", None);
+        assert_eq!(note.title, "Push failed: https://***@example.com/o/r.git");
+        assert_eq!(note.body, "https://***@h/x");
     }
 
     fn watch(behind: usize) -> BehindWatch {

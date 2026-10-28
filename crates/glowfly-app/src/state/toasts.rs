@@ -88,7 +88,7 @@ impl AppState {
     /// Updates the toast `previous` in place (its text, colour and timer) while it is still up,
     /// else shows a new one. Returns the toast's id, for the next call.
     pub fn toast_replacing(&mut self, previous: Option<u64>, ok: bool, text: impl Into<String>, now: Instant) -> u64 {
-        let text = text.into();
+        let text = super::logs::redacted(text.into());
         if let Some(t) = previous.and_then(|id| self.toasts.iter_mut().find(|t| t.id == id)) {
             // A held toast stays held, its clock started again.
             (t.text, t.ok, t.at, t.counted) = (text, ok, now, Duration::ZERO);
@@ -99,6 +99,7 @@ impl AppState {
 
     fn push_toast(&mut self, ok: bool, text: String, action: Option<ToastAction>, now: Instant) -> u64 {
         self.toast_seq += 1;
+        let text = super::logs::redacted(text);
         let t = Toast { ok, text, at: now, counted: Duration::ZERO, held: false, id: self.toast_seq, action, details: None };
         self.toasts.push(t);
         if self.toasts.len() > TOAST_LIMIT {

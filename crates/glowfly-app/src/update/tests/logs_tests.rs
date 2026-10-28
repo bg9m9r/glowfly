@@ -96,6 +96,26 @@ fn logged_lines_are_appended_once_on() {
 }
 
 #[test]
+fn credentials_in_urls_never_reach_the_log_or_a_toast() {
+    let mut st = state();
+    loaded(&mut st, Vec::new());
+    let leak = "fatal: unable to access 'https://ada:TOKEN123@example.com/o/r.git/': 403";
+    let shown = "fatal: unable to access 'https://***@example.com/o/r.git/': 403";
+    let fx = run(&mut st, Msg::Logged { ok: false, text: leak.into() });
+    assert_eq!(appends(&fx), vec![vec![(false, shown.to_owned())]], "the file");
+    assert_eq!(st.log.last().map(|e| e.text.as_str()), Some(shown), "the panel");
+    let info = glowfly_core::logs::RunInfo { title: "Push".into(), summary: leak.into(), took_ms: None, routine: false };
+    st.log_run_in(None, false, format!("Push FAILED\n{leak}"), info, true);
+    let last = st.log.last().unwrap();
+    assert!(!last.text.contains("TOKEN123") && last.run.as_ref().is_some_and(|r| r.summary == shown), "a run");
+    assert!(st.logs.pending.iter().all(|l| !l.text.contains("TOKEN123") && l.run.as_ref().is_none_or(|r| r.summary == shown)));
+    st.toast(false, leak, Instant::now());
+    let id = st.toast_replacing(None, false, leak, Instant::now());
+    st.toast_replacing(Some(id), false, leak, Instant::now());
+    assert!(!st.toasts.is_empty() && st.toasts.iter().all(|t| !t.text.contains("TOKEN123")), "the toasts");
+}
+
+#[test]
 fn earlier_entries_respect_log_limit() {
     let mut st = state();
     for i in 0..10 {

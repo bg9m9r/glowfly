@@ -190,6 +190,13 @@ pub fn headline(text: &str) -> String {
     }
 }
 
+/// `text` with the user name and password of every URL in it hidden
+/// ([`glowfly_core::text::redact_credentials`]), for the activity log, toasts and desktop
+/// notifications.
+pub fn redacted(text: String) -> String {
+    if text.contains("://") { glowfly_core::text::redact_credentials(&text) } else { text }
+}
+
 impl AppState {
     /// Adds to the active tab's activity log. It never opens the panel: a failure is announced
     /// by a toast with Details at the end of `update`.
@@ -222,8 +229,12 @@ impl AppState {
     /// Adds a line to a tab's log, dropping the oldest entries past `LOG_LIMIT` (auto-fetch
     /// adds one a minute for as long as the app runs; a long streak of them is capped first).
     /// The line is also queued for the activity file, tagged with the tab's repository, unless
-    /// persistence is off.
+    /// persistence is off. The user name and password of any URL in the text (a typed clone
+    /// address, git's own output, a hook's) become `***` first, so no token reaches the panel,
+    /// its toast or the file.
     fn log_to(&mut self, repo: Option<&Path>, ok: bool, text: String, run: Option<RunInfo>, loud: bool) -> EntryId {
+        let text = redacted(text);
+        let run = run.map(|r| RunInfo { summary: redacted(r.summary), ..r });
         let active = self.tabs.get(self.active_tab);
         // Another tab showing `repo`. With no active tab (only inside a tab handler,
         // `usize::MAX`) the line stays in `log`.
