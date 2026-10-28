@@ -194,7 +194,15 @@ fn a_key_keeps_at_most_two_idle_handles_and_they_expire() {
     let lent: Vec<_> = (0..3).map(|_| lend(&dir, Use::Workdir).unwrap()).collect();
     drop(lent);
     assert_eq!(idle(&dir), MAX_PER_KEY);
-    let gone = expire(&mut pool(), Instant::now() + IDLE);
+    // Only this repository's handles: other tests running meanwhile keep theirs.
+    let gone = {
+        let mut p = pool();
+        let (mine, others) = std::mem::take(&mut p.idle).into_iter().partition(|i| i.slot.key == dir);
+        p.idle = mine;
+        let gone = expire(&mut p, Instant::now() + IDLE);
+        p.idle.extend(others);
+        gone
+    };
     assert!(gone.iter().filter(|i| i.slot.key == dir).count() == MAX_PER_KEY);
     assert_eq!(idle(&dir), 0);
 }
